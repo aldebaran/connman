@@ -18,4 +18,9 @@ AC_PROG_CC
 AC_PROG_CC_PIE
 AC_PROG_INSTALL
 
-AC_OUTPUT(Makefile)
+PKG_CHECK_MODULES(GDBUS, gdbus, dummy=yes,
+				AC_MSG_ERROR(libgdbus is required))
+AC_SUBST(GDBUS_CFLAGS)
+AC_SUBST(GDBUS_LIBS)
+
+AC_OUTPUT(Makefile src/Makefile)
