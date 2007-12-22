@@ -1,7 +1,7 @@
 
 includedir = @includedir@/connman
 
-noinst_HEADERS = plugin.h
+noinst_HEADERS = plugin.h iface.h
 
 MAINTAINERCLEANFILES = Makefile.in
 

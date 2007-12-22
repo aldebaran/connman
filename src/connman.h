@@ -29,7 +29,15 @@
 #define CONNMAN_MANAGER_PATH "/"
 #define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
 
+#define CONNMAN_IFACE_BASEPATH  "/interface"
+#define CONNMAN_IFACE_INTERFACE  CONNMAN_SERVICE ".Interface"
+
 #include <connman/plugin.h>
 
 int __connman_plugin_init(void);
 void __connman_plugin_cleanup(void);
+
+#include <connman/iface.h>
+
+int __connman_iface_init(DBusConnection *conn);
+void __connman_iface_cleanup(void);
