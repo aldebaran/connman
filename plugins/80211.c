@@ -28,20 +28,38 @@
 #include <connman/plugin.h>
 #include <connman/iface.h>
 
+#include "net.h"
+
 static int iface_probe(struct connman_iface *iface)
 {
-	printf("[802.11] probe interface %s\n", iface->udi);
+	char *ifname;
+
+	ifname = __net_ifname(iface->sysfs);
+	if (ifname == NULL)
+		return -1;
+
+	printf("[802.11] probe interface %s\n", ifname);
 
 	iface->type = CONNMAN_IFACE_TYPE_80211;
 
 	iface->flags = CONNMAN_IFACE_FLAGS_IPV4;
+
+	__net_free(ifname);
 
 	return 0;
 }
 
 static void iface_remove(struct connman_iface *iface)
 {
-	printf("[802.11] remove interface %s\n", iface->udi);
+	char *ifname;
+
+	ifname = __net_ifname(iface->sysfs);
+	if (ifname == NULL)
+		return;
+
+	printf("[802.11] remove interface %s\n", ifname);
+
+	__net_free(ifname);
 }
 
 static struct connman_iface_driver iface_driver = {
