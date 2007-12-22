@@ -18,9 +18,20 @@ AC_PROG_CC
 AC_PROG_CC_PIE
 AC_PROG_INSTALL
 
+m4_define([_LT_AC_TAGCONFIG], [])
+m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
+
+AC_DISABLE_STATIC
+AC_PROG_LIBTOOL
+
+PKG_CHECK_MODULES(GMODULE, gmodule-2.0, dummy=yes,
+				AC_MSG_ERROR(gmodule is required))
+AC_SUBST(GMODULE_CFLAGS)
+AC_SUBST(GMODULE_LIBS)
+
 PKG_CHECK_MODULES(GDBUS, gdbus, dummy=yes,
 				AC_MSG_ERROR(libgdbus is required))
 AC_SUBST(GDBUS_CFLAGS)
 AC_SUBST(GDBUS_LIBS)
 
-AC_OUTPUT(Makefile src/Makefile)
+AC_OUTPUT(Makefile include/Makefile src/Makefile plugins/Makefile)

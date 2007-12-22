@@ -54,12 +54,16 @@ int main(int argc, char *argv[])
 
 	g_dbus_register_object(conn, CONNMAN_MANAGER_PATH, NULL, NULL);
 
+	__connman_plugin_init();
+
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 
 	g_main_loop_run(main_loop);
+
+	__connman_plugin_cleanup();
 
 	g_dbus_unregister_object(conn, CONNMAN_MANAGER_PATH);
 

@@ -19,17 +19,28 @@
  *
  */
 
-#include <stdio.h>
+#ifndef __CONNMAN_PLUGIN_H
+#define __CONNMAN_PLUGIN_H
 
-#define DBG(fmt, arg...)  printf("%s: " fmt "\n" , __FUNCTION__ , ## arg)
-//#define DBG(fmt, arg...)
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-#define CONNMAN_SERVICE  "org.freedesktop.connman"
+struct connman_plugin_desc {
+	const char *name;
+	const char *description;
+	const char *version;
+	int (*init) (void);
+	void (*exit) (void);
+};
 
-#define CONNMAN_MANAGER_PATH "/"
-#define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
+#define CONNMAN_PLUGIN_DEFINE(name,description,version,init,exit) \
+		struct connman_plugin_desc connman_plugin_desc = { \
+			name, description, version, init, exit \
+		};
 
-#include <connman/plugin.h>
+#ifdef __cplusplus
+}
+#endif
 
-int __connman_plugin_init(void);
-void __connman_plugin_cleanup(void);
+#endif /* __CONNMAN_PLUGIN_H */
