@@ -1,0 +1,21 @@
+AC_PREREQ(2.50)
+AC_INIT()
+
+AM_INIT_AUTOMAKE(connman-core, 0.0)
+AM_CONFIG_HEADER(config.h)
+
+AM_MAINTAINER_MODE
+
+AC_PREFIX_DEFAULT(/usr/local)
+
+if (test "${CFLAGS}" = ""); then
+	CFLAGS="-Wall -O2"
+fi
+
+AC_LANG_C
+
+AC_PROG_CC
+AC_PROG_CC_PIE
+AC_PROG_INSTALL
+
+AC_OUTPUT(Makefile)
