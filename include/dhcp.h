@@ -19,32 +19,26 @@
  *
  */
 
-#include <stdio.h>
+#ifndef __CONNMAN_DHCP_H
+#define __CONNMAN_DHCP_H
 
-#define DBG(fmt, arg...)  printf("%s: " fmt "\n" , __FUNCTION__ , ## arg)
-//#define DBG(fmt, arg...)
-
-#include <dbus/dbus.h>
-
-#define CONNMAN_SERVICE  "org.freedesktop.connman"
-
-#define CONNMAN_MANAGER_PATH "/"
-#define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
-
-#define CONNMAN_IFACE_BASEPATH  "/interface"
-#define CONNMAN_IFACE_INTERFACE  CONNMAN_SERVICE ".Interface"
-
-#include <connman/plugin.h>
-
-int __connman_plugin_init(void);
-void __connman_plugin_cleanup(void);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #include <connman/iface.h>
 
-int __connman_iface_init(DBusConnection *conn);
-void __connman_iface_cleanup(void);
+struct connman_dhcp_driver {
+	const char *name;
+	int (*request) (struct connman_iface *iface);
+	int (*release) (struct connman_iface *iface);
+};
 
-#include <connman/dhcp.h>
+extern int connman_dhcp_register(struct connman_dhcp_driver *driver);
+extern void connman_dhcp_unregister(struct connman_dhcp_driver *driver);
 
-int __connman_dhcp_request(struct connman_iface *iface);
-int __connman_dhcp_release(struct connman_iface *iface);
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __CONNMAN_DHCP_H */
