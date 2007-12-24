@@ -19,5 +19,11 @@
  *
  */
 
+int __net_ifaddr(const char *sysfs, struct in_addr *addr);
 char *__net_ifname(const char *sysfs);
 void __net_free(void *ptr);
+
+int __net_clear(const char *sysfs);
+int __net_set(const char *sysfs, struct in_addr *addr, struct in_addr *mask,
+				struct in_addr *route, struct in_addr *bcast,
+						struct in_addr *namesrv);

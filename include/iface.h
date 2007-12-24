@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#include <netinet/in.h>
+
 enum connman_iface_type {
 	CONNMAN_IFACE_TYPE_UNKNOWN   = 0,
 	CONNMAN_IFACE_TYPE_80203     = 1,
@@ -40,6 +42,15 @@ enum connman_iface_flags {
 	CONNMAN_IFACE_FLAGS_IPV6		= (1 << 2),
 };
 
+struct connman_ipv4 {
+	struct in_addr address;
+	struct in_addr netmask;
+	struct in_addr gateway;
+	struct in_addr network;
+	struct in_addr broadcast;
+	struct in_addr nameserver;
+};
+
 struct connman_iface {
 	struct connman_iface_driver *driver;
 	char *path;
@@ -47,6 +58,7 @@ struct connman_iface {
 	char *sysfs;
 	enum connman_iface_type type;
 	enum connman_iface_flags flags;
+	struct connman_ipv4 ipv4;
 };
 
 struct connman_iface_driver {
@@ -54,6 +66,10 @@ struct connman_iface_driver {
 	const char *capability;
 	int (*probe) (struct connman_iface *iface);
 	void (*remove) (struct connman_iface *iface);
+	int (*get_ipv4) (struct connman_iface *iface,
+					struct connman_ipv4 *ipv4);
+	int (*set_ipv4) (struct connman_iface *iface,
+					struct connman_ipv4 *ipv4);
 };
 
 extern int connman_iface_register(struct connman_iface_driver *driver);

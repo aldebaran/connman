@@ -24,6 +24,7 @@
 #endif
 
 #include <stdio.h>
+#include <arpa/inet.h>
 
 #include <connman/plugin.h>
 #include <connman/iface.h>
@@ -52,15 +53,34 @@ static int iface_probe(struct connman_iface *iface)
 
 static void iface_remove(struct connman_iface *iface)
 {
-	char *ifname;
+	printf("[802.03] remove interface\n");
 
-	ifname = __net_ifname(iface->sysfs);
-	if (ifname == NULL)
-		return;
+	__net_clear(iface->sysfs);
+}
 
-	printf("[802.03] remove interface %s\n", ifname);
+static int iface_get_ipv4(struct connman_iface *iface,
+					struct connman_ipv4 *ipv4)
+{
+	if (__net_ifaddr(iface->sysfs, &ipv4->address) < 0)
+		return -1;
 
-	__net_free(ifname);
+	printf("[802.03] get address %s\n", inet_ntoa(ipv4->address));
+
+	return 0;
+}
+
+static int iface_set_ipv4(struct connman_iface *iface,
+					struct connman_ipv4 *ipv4)
+{
+	printf("[802.03] set address %s\n", inet_ntoa(ipv4->address));
+	printf("[802.03] set netmask %s\n", inet_ntoa(ipv4->netmask));
+	printf("[802.03] set gateway %s\n", inet_ntoa(ipv4->gateway));
+
+	__net_set(iface->sysfs, &ipv4->address, &ipv4->netmask,
+				&ipv4->gateway, &ipv4->broadcast,
+						&ipv4->nameserver);
+
+	return 0;
 }
 
 static struct connman_iface_driver iface_driver = {
@@ -68,6 +88,8 @@ static struct connman_iface_driver iface_driver = {
 	.capability	= "net.80203",
 	.probe		= iface_probe,
 	.remove		= iface_remove,
+	.get_ipv4	= iface_get_ipv4,
+	.set_ipv4	= iface_set_ipv4,
 };
 
 static int plugin_init(void)

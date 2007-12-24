@@ -30,6 +30,8 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <arpa/inet.h>
+#include <netinet/in.h>
 #include <net/if.h>
 
 #include "net.h"
@@ -74,6 +76,39 @@ done:
 	return val;
 }
 
+int __net_ifaddr(const char *sysfs, struct in_addr *addr)
+{
+	struct ifreq ifr;
+	int sk, ifindex;
+
+	ifindex = __net_ifindex(sysfs);
+	if (ifindex < 0)
+		return ifindex;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = ifindex;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -errno;
+	}
+
+	if (ioctl(sk, SIOCGIFADDR, &ifr) < 0) {
+		close(sk);
+		return -errno;
+	}
+
+	close(sk);
+
+	*addr = ((struct sockaddr_in *) (&ifr.ifr_addr))->sin_addr;
+
+	return 0;
+}
+
 char *__net_ifname(const char *sysfs)
 {
 	struct ifreq ifr;
@@ -83,7 +118,7 @@ char *__net_ifname(const char *sysfs)
 	if (ifindex < 0)
 		return NULL;
 
-	sk = socket (PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
 		return NULL;
 
@@ -104,4 +139,59 @@ void __net_free(void *ptr)
 {
 	if (ptr)
 		free(ptr);
+}
+
+int __net_clear(const char *sysfs)
+{
+	char *ifname, cmd[128];
+
+	ifname = __net_ifname(sysfs);
+	if (ifname == NULL)
+		return -1;
+
+	sprintf(cmd, "resolvconf -d %s", ifname);
+	printf("[NET] %s\n", cmd);
+	system(cmd);
+
+	sprintf(cmd, "ip addr flush dev %s", ifname);
+	printf("[NET] %s\n", cmd);
+	system(cmd);
+
+	__net_free(ifname);
+
+	return 0;
+}
+
+int __net_set(const char *sysfs, struct in_addr *addr, struct in_addr *mask,
+				struct in_addr *route, struct in_addr *bcast,
+						struct in_addr *namesrv)
+{
+	char *ifname, cmd[128], msk[32], brd[32];
+
+	ifname = __net_ifname(sysfs);
+	if (ifname == NULL)
+		return -1;
+
+	__net_clear(sysfs);
+
+	sprintf(msk, "%s", "24");
+	sprintf(brd, "%s", inet_ntoa(*bcast));
+	sprintf(cmd, "ip addr add %s/%s brd %s dev %s",
+				inet_ntoa(*addr), msk, brd, ifname);
+	printf("[NET] %s\n", cmd);
+	system(cmd);
+
+	sprintf(cmd, "ip route add default via %s dev %s",
+					inet_ntoa(*route), ifname);
+	printf("[NET] %s\n", cmd);
+	system(cmd);
+
+	sprintf(cmd, "echo \"nameserver %s\" | resolvconf -a %s",
+					inet_ntoa(*namesrv), ifname);
+	printf("[NET] %s\n", cmd);
+	system(cmd);
+
+	__net_free(ifname);
+
+	return 0;
 }
