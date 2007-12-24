@@ -24,6 +24,7 @@
 #endif
 
 #include <string.h>
+#include <arpa/inet.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -115,6 +116,13 @@ static int probe_device(LibHalContext *ctx,
 	g_dbus_register_object(conn, iface->path, iface, device_free);
 
 	interfaces = g_slist_append(interfaces, iface);
+
+	if ((iface->flags & CONNMAN_IFACE_FLAGS_IPV4) &&
+						driver->get_ipv4) {
+		driver->get_ipv4(iface, &iface->ipv4);
+
+		DBG("address %s", inet_ntoa(iface->ipv4.address));
+	}
 
 	return 0;
 }
