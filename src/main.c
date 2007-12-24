@@ -25,8 +25,10 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/stat.h>
 
 #include <gdbus.h>
 
@@ -43,6 +45,9 @@ int main(int argc, char *argv[])
 {
 	DBusConnection *conn;
 	struct sigaction sa;
+
+	mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -74,6 +79,8 @@ int main(int argc, char *argv[])
 	g_dbus_cleanup_connection(conn);
 
 	g_main_loop_unref(main_loop);
+
+	rmdir(STATEDIR);
 
 	return 0;
 }
