@@ -117,7 +117,7 @@ static int probe_device(LibHalContext *ctx,
 
 	interfaces = g_slist_append(interfaces, iface);
 
-	if ((iface->flags & CONNMAN_IFACE_FLAGS_IPV4) &&
+	if ((iface->flags & CONNMAN_IFACE_FLAG_IPV4) &&
 						driver->get_ipv4) {
 		driver->get_ipv4(iface, &iface->ipv4);
 

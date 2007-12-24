@@ -37,9 +37,9 @@ enum connman_iface_type {
 };
 
 enum connman_iface_flags {
-	CONNMAN_IFACE_FLAGS_CARRIER_DETECT	= (1 << 0),
-	CONNMAN_IFACE_FLAGS_IPV4		= (1 << 1),
-	CONNMAN_IFACE_FLAGS_IPV6		= (1 << 2),
+	CONNMAN_IFACE_FLAG_CARRIER_DETECT = (1 << 0),
+	CONNMAN_IFACE_FLAG_IPV4           = (1 << 1),
+	CONNMAN_IFACE_FLAG_IPV6           = (1 << 2),
 };
 
 struct connman_ipv4 {

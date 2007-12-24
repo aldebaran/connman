@@ -43,8 +43,8 @@ static int iface_probe(struct connman_iface *iface)
 
 	iface->type = CONNMAN_IFACE_TYPE_80203;
 
-	iface->flags = CONNMAN_IFACE_FLAGS_CARRIER_DETECT |
-						CONNMAN_IFACE_FLAGS_IPV4;
+	iface->flags = CONNMAN_IFACE_FLAG_CARRIER_DETECT |
+					CONNMAN_IFACE_FLAG_IPV4;
 
 	__net_free(ifname);
 
