@@ -28,6 +28,14 @@ extern "C" {
 
 #include <connman/iface.h>
 
+enum connman_dhcp_state {
+	CONNMAN_DHCP_STATE_UNKNOWN = 0,
+	CONNMAN_DHCP_STATE_INIT    = 1,
+	CONNMAN_DHCP_STATE_BOUND   = 2,
+	CONNMAN_DHCP_STATE_RENEW   = 3,
+	CONNMAN_DHCP_STATE_FAILED  = 4,
+};
+
 struct connman_dhcp_driver {
 	const char *name;
 	int (*request) (struct connman_iface *iface);
@@ -36,6 +44,10 @@ struct connman_dhcp_driver {
 
 extern int connman_dhcp_register(struct connman_dhcp_driver *driver);
 extern void connman_dhcp_unregister(struct connman_dhcp_driver *driver);
+
+extern int connman_dhcp_update(struct connman_iface *iface,
+				enum connman_dhcp_state state,
+					struct connman_ipv4 *ipv4);
 
 #ifdef __cplusplus
 }

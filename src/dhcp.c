@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <arpa/inet.h>
+
 #include <glib.h>
 
 #include "connman.h"
@@ -43,6 +45,29 @@ void connman_dhcp_unregister(struct connman_dhcp_driver *driver)
 	DBG("driver %p", driver);
 
 	drivers = g_slist_remove(drivers, driver);
+}
+
+int connman_dhcp_update(struct connman_iface *iface,
+				enum connman_dhcp_state state,
+					struct connman_ipv4 *ipv4)
+{
+	DBG("iface %p state %d", iface, state);
+
+	if (state == CONNMAN_DHCP_STATE_BOUND) {
+		DBG("address %s", inet_ntoa(ipv4->address));
+		DBG("netmask %s", inet_ntoa(ipv4->netmask));
+		DBG("gateway %s", inet_ntoa(ipv4->gateway));
+		DBG("network %s", inet_ntoa(ipv4->network));
+		DBG("broadcast %s", inet_ntoa(ipv4->broadcast));
+		DBG("nameserver %s", inet_ntoa(ipv4->nameserver));
+
+		if (iface->driver->set_ipv4) {
+			iface->driver->set_ipv4(iface, ipv4);
+			iface->ipv4 = *ipv4;
+		}
+	}
+
+	return 0;
 }
 
 int __connman_dhcp_request(struct connman_iface *iface)
