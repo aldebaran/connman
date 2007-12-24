@@ -34,9 +34,15 @@ PKG_CHECK_MODULES(GDBUS, gdbus, dummy=yes,
 AC_SUBST(GDBUS_CFLAGS)
 AC_SUBST(GDBUS_LIBS)
 
+PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
+				AC_MSG_ERROR(libdbus is required))
+AC_SUBST(DBUS_CFLAGS)
+AC_SUBST(DBUS_LIBS)
+
 PKG_CHECK_MODULES(HAL, hal >= 0.5.8, dummy=yes,
 				AC_MSG_ERROR(libhal is required))
 AC_SUBST(HAL_CFLAGS)
 AC_SUBST(HAL_LIBS)
 
-AC_OUTPUT(Makefile include/Makefile src/Makefile plugins/Makefile)
+AC_OUTPUT(Makefile include/Makefile src/Makefile
+			plugins/Makefile scripts/Makefile)
