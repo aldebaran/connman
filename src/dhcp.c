@@ -65,6 +65,8 @@ int connman_dhcp_update(struct connman_iface *iface,
 			iface->driver->set_ipv4(iface, ipv4);
 			iface->ipv4 = *ipv4;
 		}
+
+		connman_iface_update(iface, CONNMAN_IFACE_STATE_READY);
 	}
 
 	return 0;

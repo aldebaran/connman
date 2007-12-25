@@ -19,11 +19,13 @@
  *
  */
 
-int __net_ifaddr(const char *sysfs, struct in_addr *addr);
-char *__net_ifname(const char *sysfs);
+#include <arpa/inet.h>
+
+int __net_ifaddr(int ifindex, struct in_addr *addr);
+char *__net_ifname(int ifindex);
 void __net_free(void *ptr);
 
-int __net_clear(const char *sysfs);
-int __net_set(const char *sysfs, struct in_addr *addr, struct in_addr *mask,
+int __net_clear(int ifindex);
+int __net_set(int ifindex, struct in_addr *addr, struct in_addr *mask,
 				struct in_addr *route, struct in_addr *bcast,
 						struct in_addr *namesrv);

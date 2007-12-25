@@ -33,34 +33,36 @@
 
 static int iface_probe(struct connman_iface *iface)
 {
-	char *ifname;
-
-	ifname = __net_ifname(iface->sysfs);
-	if (ifname == NULL)
-		return -1;
-
-	printf("[802.11] probe interface %s\n", ifname);
+	printf("[802.11] probe interface index %d\n", iface->index);
 
 	iface->type = CONNMAN_IFACE_TYPE_80211;
 
-	iface->flags = CONNMAN_IFACE_FLAG_IPV4;
-
-	__net_free(ifname);
+	iface->flags = CONNMAN_IFACE_FLAG_RTNL |
+				CONNMAN_IFACE_FLAG_IPV4;
 
 	return 0;
 }
 
 static void iface_remove(struct connman_iface *iface)
 {
-	printf("[802.11] remove interface\n");
+	printf("[802.11] remove interface index %d\n", iface->index);
 
-	__net_clear(iface->sysfs);
+	__net_clear(iface->index);
+}
+
+static int iface_activate(struct connman_iface *iface)
+{
+	printf("[802.11] activate interface index %d\n", iface->index);
+
+	connman_iface_update(iface, CONNMAN_IFACE_STATE_ACTIVE);
+
+	return 0;
 }
 
 static int iface_get_ipv4(struct connman_iface *iface,
 					struct connman_ipv4 *ipv4)
 {
-	if (__net_ifaddr(iface->sysfs, &ipv4->address) < 0)
+	if (__net_ifaddr(iface->index, &ipv4->address) < 0)
 		return -1;
 
 	printf("[802.11] get address %s\n", inet_ntoa(ipv4->address));
@@ -75,9 +77,24 @@ static int iface_set_ipv4(struct connman_iface *iface,
 	printf("[802.11] set netmask %s\n", inet_ntoa(ipv4->netmask));
 	printf("[802.11] set gateway %s\n", inet_ntoa(ipv4->gateway));
 
-	__net_set(iface->sysfs, &ipv4->address, &ipv4->netmask,
+	__net_set(iface->index, &ipv4->address, &ipv4->netmask,
 				&ipv4->gateway, &ipv4->broadcast,
 						&ipv4->nameserver);
+
+	return 0;
+}
+
+static int iface_scan(struct connman_iface *iface)
+{
+	printf("[802.11] scanning interface index %d\n", iface->index);
+
+	return 0;
+}
+
+static int iface_connect(struct connman_iface *iface,
+					struct connman_network *network)
+{
+	printf("[802.11] connect interface index %d\n", iface->index);
 
 	return 0;
 }
@@ -87,8 +104,11 @@ static struct connman_iface_driver iface_driver = {
 	.capability	= "net.80211",
 	.probe		= iface_probe,
 	.remove		= iface_remove,
+	.activate	= iface_activate,
 	.get_ipv4	= iface_get_ipv4,
 	.set_ipv4	= iface_set_ipv4,
+	.scan		= iface_scan,
+	.connect	= iface_connect,
 };
 
 static int plugin_init(void)

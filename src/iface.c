@@ -53,6 +53,33 @@ void connman_iface_unregister(struct connman_iface_driver *driver)
 
 static GSList *interfaces = NULL;
 
+int connman_iface_update(struct connman_iface *iface,
+                                        enum connman_iface_state state)
+{
+	switch (state) {
+	case CONNMAN_IFACE_STATE_ACTIVE:
+		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
+			if (iface->driver->scan)
+				iface->driver->scan(iface);
+
+			if (iface->driver->connect)
+				iface->driver->connect(iface, NULL);
+		}
+		break;
+
+	case CONNMAN_IFACE_STATE_CONNECTED:
+		__connman_dhcp_request(iface);
+		break;
+
+	default:
+		break;
+        }
+
+	iface->state = state;
+
+	return 0;
+}
+
 static void device_free(void *data)
 {
 	struct connman_iface *iface = data;
@@ -98,8 +125,15 @@ static int probe_device(LibHalContext *ctx,
 	if (sysfs != NULL)
 		iface->sysfs = g_strdup(sysfs);
 
+	iface->index = -1;
+
+	if (g_str_has_prefix(driver->capability, "net") == TRUE)
+		iface->index = libhal_device_get_property_int(ctx, udi,
+						"net.linux.ifindex", NULL);
+
 	iface->type = CONNMAN_IFACE_TYPE_UNKNOWN;
 	iface->flags = 0;
+	iface->state = CONNMAN_IFACE_STATE_UNKNOWN;
 
 	DBG("iface %p", iface);
 
@@ -123,6 +157,9 @@ static int probe_device(LibHalContext *ctx,
 
 		DBG("address %s", inet_ntoa(iface->ipv4.address));
 	}
+
+	if (driver->activate)
+		driver->activate(iface);
 
 	return 0;
 }

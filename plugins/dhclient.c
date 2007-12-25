@@ -67,7 +67,7 @@ static int dhclient_request(struct connman_iface *iface)
 	char *ifname, *argv[16], address[128], pidfile[PATH_MAX];
 	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
 
-	ifname = __net_ifname(iface->sysfs);
+	ifname = __net_ifname(iface->index);
 	if (ifname == NULL)
 		return -1;
 
@@ -122,7 +122,7 @@ static int dhclient_release(struct connman_iface *iface)
 {
 	char *ifname;
 
-	ifname = __net_ifname(iface->sysfs);
+	ifname = __net_ifname(iface->index);
 	if (ifname == NULL)
 		return -1;
 

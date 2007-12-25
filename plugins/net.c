@@ -36,54 +36,10 @@
 
 #include "net.h"
 
-static int __net_ifindex(const char *sysfs)
-{
-	char *pathname;
-	char buf[8];
-	size_t size;
-	ssize_t len;
-	int fd, val = -EIO;
-
-	if (sysfs == NULL)
-		return -1;
-
-	size = strlen(sysfs) + 9;
-
-	pathname = malloc(size);
-
-	sprintf(pathname, "%s/ifindex", sysfs);
-
-	fd = open(pathname, O_RDONLY);
-
-	free(pathname);
-
-	if (fd < 0)
-		return -errno;
-
-	memset(buf, 0, sizeof(buf));
-
-	len = read(fd, buf, sizeof(buf) - 1);
-	if (len < 0) {
-		val = -errno;
-		goto done;
-	}
-
-	val = atoi(buf);
-
-done:
-	close(fd);
-
-	return val;
-}
-
-int __net_ifaddr(const char *sysfs, struct in_addr *addr)
+int __net_ifaddr(int ifindex, struct in_addr *addr)
 {
 	struct ifreq ifr;
-	int sk, ifindex;
-
-	ifindex = __net_ifindex(sysfs);
-	if (ifindex < 0)
-		return ifindex;
+	int sk;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
@@ -109,14 +65,10 @@ int __net_ifaddr(const char *sysfs, struct in_addr *addr)
 	return 0;
 }
 
-char *__net_ifname(const char *sysfs)
+char *__net_ifname(int ifindex)
 {
 	struct ifreq ifr;
-	int sk, err, ifindex;
-
-	ifindex = __net_ifindex(sysfs);
-	if (ifindex < 0)
-		return NULL;
+	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
@@ -141,11 +93,11 @@ void __net_free(void *ptr)
 		free(ptr);
 }
 
-int __net_clear(const char *sysfs)
+int __net_clear(int ifindex)
 {
 	char *ifname, cmd[128];
 
-	ifname = __net_ifname(sysfs);
+	ifname = __net_ifname(ifindex);
 	if (ifname == NULL)
 		return -1;
 
@@ -162,17 +114,17 @@ int __net_clear(const char *sysfs)
 	return 0;
 }
 
-int __net_set(const char *sysfs, struct in_addr *addr, struct in_addr *mask,
+int __net_set(int ifindex, struct in_addr *addr, struct in_addr *mask,
 				struct in_addr *route, struct in_addr *bcast,
 						struct in_addr *namesrv)
 {
 	char *ifname, cmd[128], msk[32], brd[32];
 
-	ifname = __net_ifname(sysfs);
+	ifname = __net_ifname(ifindex);
 	if (ifname == NULL)
 		return -1;
 
-	__net_clear(sysfs);
+	__net_clear(ifindex);
 
 	sprintf(msk, "%s", "24");
 	sprintf(brd, "%s", inet_ntoa(*bcast));
