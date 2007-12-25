@@ -183,20 +183,30 @@ static void parse_route(struct nlmsghdr *hdr)
 	int bytes;
 
 	msg = (struct rtmsg *) NLMSG_DATA(hdr);
-	bytes = IFA_PAYLOAD(hdr);
+	bytes = RTM_PAYLOAD(hdr);
 
 	DBG("rtm_family %d rtm_flags %d", msg->rtm_family, msg->rtm_flags);
 
-	for (attr = RTA_DATA(msg); RTA_OK(attr, bytes);
+	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
 		int len = RTA_PAYLOAD(attr);
 
 		switch (attr->rta_type) {
 		case RTA_DST:
 			DBG("  rta_type dst len %d", len);
+			if (msg->rtm_family == AF_INET) {
+				struct in_addr addr;
+				addr = *((struct in_addr *) RTA_DATA(attr));
+				DBG("    address %s", inet_ntoa(addr));
+			}
 			break;
 		case RTA_SRC:
 			DBG("  rta_type src len %d", len);
+			if (msg->rtm_family == AF_INET) {
+				struct in_addr addr;
+				addr = *((struct in_addr *) RTA_DATA(attr));
+				DBG("    address %s", inet_ntoa(addr));
+			}
 			break;
 		case RTA_IIF:
 			DBG("  rta_type iff len %d", len);
@@ -206,6 +216,28 @@ static void parse_route(struct nlmsghdr *hdr)
 			break;
 		case RTA_GATEWAY:
 			DBG("  rta_type gateway len %d", len);
+			if (msg->rtm_family == AF_INET) {
+				struct in_addr addr;
+				addr = *((struct in_addr *) RTA_DATA(attr));
+				DBG("    address %s", inet_ntoa(addr));
+			}
+			break;
+		case RTA_PRIORITY:
+			DBG("  rta_type priority len %d", len);
+			break;
+		case RTA_PREFSRC:
+			DBG("  rta_type prefsrc len %d", len);
+			if (msg->rtm_family == AF_INET) {
+				struct in_addr addr;
+				addr = *((struct in_addr *) RTA_DATA(attr));
+				DBG("    address %s", inet_ntoa(addr));
+			}
+			break;
+		case RTA_METRICS:
+			DBG("  rta_type metrics len %d", len);
+			break;
+		case RTA_TABLE:
+			DBG("  rta_type table len %d", len);
 			break;
 		default:
 			DBG("  rta_type %d len %d", attr->rta_type, len);
