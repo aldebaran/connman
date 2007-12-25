@@ -6,7 +6,8 @@ plugin_LTLIBRARIES = libconnman-80203.la libconnman-80211.la \
 
 libconnman_80203_la_SOURCES = 80203.c net.h net.c
 
-libconnman_80211_la_SOURCES = 80211.c net.h net.c
+libconnman_80211_la_SOURCES = 80211.c net.h net.c \
+				supplicant.h supplicant.c
 
 libconnman_dhclient_la_SOURCES = dhclient.c net.h net.c
 libconnman_dhclient_la_LIBADD = @GDBUS_LIBS@

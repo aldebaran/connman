@@ -30,6 +30,7 @@
 #include <connman/iface.h>
 
 #include "net.h"
+#include "supplicant.h"
 
 static int iface_probe(struct connman_iface *iface)
 {
@@ -48,11 +49,15 @@ static void iface_remove(struct connman_iface *iface)
 	printf("[802.11] remove interface index %d\n", iface->index);
 
 	__net_clear(iface->index);
+
+	__supplicant_stop(iface);
 }
 
 static int iface_activate(struct connman_iface *iface)
 {
 	printf("[802.11] activate interface index %d\n", iface->index);
+
+	__supplicant_start(iface);
 
 	connman_iface_update(iface, CONNMAN_IFACE_STATE_ACTIVE);
 
@@ -95,6 +100,8 @@ static int iface_connect(struct connman_iface *iface,
 					struct connman_network *network)
 {
 	printf("[802.11] connect interface index %d\n", iface->index);
+
+	__supplicant_connect(iface);
 
 	return 0;
 }
