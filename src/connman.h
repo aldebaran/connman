@@ -44,6 +44,11 @@ void __connman_plugin_cleanup(void);
 int __connman_iface_init(DBusConnection *conn);
 void __connman_iface_cleanup(void);
 
+#include <connman/rtnl.h>
+
+int __connman_rtnl_init(void);
+void __connman_rtnl_cleanup(void);
+
 #include <connman/dhcp.h>
 
 int __connman_dhcp_request(struct connman_iface *iface);
