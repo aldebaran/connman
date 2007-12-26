@@ -57,7 +57,7 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	g_dbus_register_object(conn, CONNMAN_MANAGER_PATH, NULL, NULL);
+	__connman_manager_init(conn);
 
 	__connman_plugin_init();
 
@@ -78,7 +78,7 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_cleanup();
 
-	g_dbus_unregister_object(conn, CONNMAN_MANAGER_PATH);
+	__connman_manager_cleanup();
 
 	g_dbus_cleanup_connection(conn);
 
