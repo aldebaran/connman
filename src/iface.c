@@ -94,6 +94,68 @@ int connman_iface_update(struct connman_iface *iface,
 	return 0;
 }
 
+static DBusMessage *enable_iface(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	struct connman_iface_driver *driver = iface->driver;
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	if (driver->activate)
+		driver->activate(iface);
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static GDBusMethodTable iface_methods[] = {
+	{ "Enable", "", "", enable_iface },
+	{ },
+};
+
+static dbus_bool_t get_type(DBusConnection *conn,
+					DBusMessageIter *iter, void *data)
+{
+	struct connman_iface *iface = data;
+	const char *type;
+
+	DBG("iface %p", iface);
+
+	switch (iface->type) {
+	case CONNMAN_IFACE_TYPE_80203:
+		type = "80203";
+		break;
+	case CONNMAN_IFACE_TYPE_80211:
+		type = "80211";
+		break;
+	case CONNMAN_IFACE_TYPE_WIMAX:
+		type = "wimax";
+		break;
+	case CONNMAN_IFACE_TYPE_BLUETOOTH:
+		type = "bluetooth";
+		break;
+	default:
+		type = "unknown";
+		break;
+	}
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &type);
+
+	return TRUE;
+}
+
+static GDBusPropertyTable iface_properties[] = {
+	{ "Type", "s", get_type },
+	{ },
+};
+
 static void device_free(void *data)
 {
 	struct connman_iface *iface = data;
@@ -172,14 +234,15 @@ static int probe_device(LibHalContext *ctx,
 		DBG("address %s", inet_ntoa(iface->ipv4.address));
 	}
 
+	g_dbus_register_interface(conn, iface->path,
+					CONNMAN_IFACE_INTERFACE,
+					iface_methods, NULL, iface_properties);
+
 	g_dbus_emit_signal(conn, CONNMAN_MANAGER_PATH,
 					CONNMAN_MANAGER_INTERFACE,
 					"InterfaceAdded",
 					DBUS_TYPE_OBJECT_PATH, &iface->path,
 					DBUS_TYPE_INVALID);
-
-	if (driver->activate)
-		driver->activate(iface);
 
 	return 0;
 }
@@ -223,6 +286,8 @@ static void device_removed(LibHalContext *ctx, const char *udi)
 					DBUS_TYPE_OBJECT_PATH, &iface->path,
 					DBUS_TYPE_INVALID);
 			interfaces = g_slist_remove(interfaces, iface);
+			g_dbus_unregister_interface(conn, iface->path,
+						CONNMAN_IFACE_INTERFACE);
 			g_dbus_unregister_object(conn, iface->path);
 			break;
 		}
@@ -323,6 +388,9 @@ static void hal_cleanup(void *data)
 					"InterfaceRemoved",
 					DBUS_TYPE_OBJECT_PATH, &iface->path,
 					DBUS_TYPE_INVALID);
+
+		g_dbus_unregister_interface(conn, iface->path,
+						CONNMAN_IFACE_INTERFACE);
 
 		g_dbus_unregister_object(conn, iface->path);
 	}
