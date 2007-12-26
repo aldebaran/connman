@@ -53,8 +53,22 @@ void connman_iface_unregister(struct connman_iface_driver *driver)
 
 static GSList *interfaces = NULL;
 
+void __connman_iface_list(DBusMessageIter *iter)
+{
+	GSList *list;
+
+	DBG("");
+
+	for (list = interfaces; list; list = list->next) {
+		struct connman_iface *iface = list->data;
+
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_OBJECT_PATH, &iface->path);
+	}
+}
+
 int connman_iface_update(struct connman_iface *iface,
-                                        enum connman_iface_state state)
+					enum connman_iface_state state)
 {
 	switch (state) {
 	case CONNMAN_IFACE_STATE_ACTIVE:
@@ -158,6 +172,12 @@ static int probe_device(LibHalContext *ctx,
 		DBG("address %s", inet_ntoa(iface->ipv4.address));
 	}
 
+	g_dbus_emit_signal(conn, CONNMAN_MANAGER_PATH,
+					CONNMAN_MANAGER_INTERFACE,
+					"InterfaceAdded",
+					DBUS_TYPE_OBJECT_PATH, &iface->path,
+					DBUS_TYPE_INVALID);
+
 	if (driver->activate)
 		driver->activate(iface);
 
@@ -197,6 +217,11 @@ static void device_removed(LibHalContext *ctx, const char *udi)
 		struct connman_iface *iface = list->data;
 
 		if (strcmp(udi, iface->udi) == 0) {
+			g_dbus_emit_signal(conn, CONNMAN_MANAGER_PATH,
+					CONNMAN_MANAGER_INTERFACE,
+					"InterfaceRemoved",
+					DBUS_TYPE_OBJECT_PATH, &iface->path,
+					DBUS_TYPE_INVALID);
 			interfaces = g_slist_remove(interfaces, iface);
 			g_dbus_unregister_object(conn, iface->path);
 			break;
@@ -292,6 +317,12 @@ static void hal_cleanup(void *data)
 		struct connman_iface *iface = list->data;
 
 		DBG("path %s", iface->path);
+
+		g_dbus_emit_signal(conn, CONNMAN_MANAGER_PATH,
+					CONNMAN_MANAGER_INTERFACE,
+					"InterfaceRemoved",
+					DBUS_TYPE_OBJECT_PATH, &iface->path,
+					DBUS_TYPE_INVALID);
 
 		g_dbus_unregister_object(conn, iface->path);
 	}
