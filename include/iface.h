@@ -68,6 +68,7 @@ struct connman_iface {
 	char *udi;
 	char *sysfs;
 	int index;
+	int carrier;
 	enum connman_iface_type type;
 	enum connman_iface_flags flags;
 	enum connman_iface_state state;

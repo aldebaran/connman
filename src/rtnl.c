@@ -29,6 +29,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
@@ -38,16 +39,17 @@
 
 static inline void print_char(struct rtattr *attr, const char *name)
 {
-	printf("  attr %s (len %d) %s", name, RTA_PAYLOAD(attr),
+	printf("  attr %s (len %d) %s\n", name, RTA_PAYLOAD(attr),
 						(char *) RTA_DATA(attr));
 }
 
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
 	if (name)
-		printf("  attr %s (len %d)", name, RTA_PAYLOAD(attr));
+		printf("  attr %s (len %d)\n", name, RTA_PAYLOAD(attr));
 	else
-		printf("  attr %d (len %d)", attr->rta_type, RTA_PAYLOAD(attr));
+		printf("  attr %d (len %d)\n",
+					attr->rta_type, RTA_PAYLOAD(attr));
 }
 
 static void rtnl_link(struct nlmsghdr *hdr)
@@ -60,7 +62,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 	bytes = IFLA_PAYLOAD(hdr);
 
-	DBG("ifi_index %d ifi_flags %d", msg->ifi_index, msg->ifi_flags);
+	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
 
 	iface = __connman_iface_find(msg->ifi_index);
 	if (iface == NULL)
@@ -68,6 +70,11 @@ static void rtnl_link(struct nlmsghdr *hdr)
 
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
 		return;
+
+	if (iface->carrier != (msg->ifi_flags & IFF_RUNNING)) {
+		iface->carrier = (msg->ifi_flags & IFF_RUNNING);
+		DBG("carrier %s", iface->carrier ? "on" : "off");
+	}
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -206,7 +213,7 @@ static void rtnl_route(struct nlmsghdr *hdr)
 	msg = (struct rtmsg *) NLMSG_DATA(hdr);
 	bytes = RTM_PAYLOAD(hdr);
 
-	DBG("rtm_family %d rtm_flags %d", msg->rtm_family, msg->rtm_flags);
+	DBG("rtm_family %d rtm_flags 0x%04x", msg->rtm_family, msg->rtm_flags);
 
 	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
