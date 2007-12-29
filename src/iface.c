@@ -53,6 +53,20 @@ void connman_iface_unregister(struct connman_iface_driver *driver)
 
 static GSList *interfaces = NULL;
 
+struct connman_iface *__connman_iface_find(int index)
+{
+	GSList *list;
+
+	for (list = interfaces; list; list = list->next) {
+		struct connman_iface *iface = list->data;
+
+		if (iface->index == index)
+			return iface;
+	}
+
+	return NULL;
+}
+
 void __connman_iface_list(DBusMessageIter *iter)
 {
 	GSList *list;

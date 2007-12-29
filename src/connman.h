@@ -47,6 +47,7 @@ void __connman_plugin_cleanup(void);
 int __connman_iface_init(DBusConnection *conn);
 void __connman_iface_cleanup(void);
 
+struct connman_iface *__connman_iface_find(int index);
 void __connman_iface_list(DBusMessageIter *iter);
 
 #include <connman/rtnl.h>

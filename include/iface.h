@@ -88,6 +88,9 @@ struct connman_iface_driver {
 	int (*scan) (struct connman_iface *iface);
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
+
+	void (*rtnl_wireless) (struct connman_iface *iface,
+					void *data, unsigned short len);
 };
 
 extern int connman_iface_register(struct connman_iface_driver *driver);
