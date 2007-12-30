@@ -108,6 +108,11 @@ int connman_iface_update(struct connman_iface *iface,
 	return 0;
 }
 
+void connman_iface_indicate_carrier(struct connman_iface *iface, int carrier)
+{
+	DBG("iface %p carrier %d", iface, carrier);
+}
+
 static DBusMessage *enable_iface(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {

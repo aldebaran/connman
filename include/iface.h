@@ -63,7 +63,6 @@ struct connman_network {
 };
 
 struct connman_iface {
-	struct connman_iface_driver *driver;
 	char *path;
 	char *udi;
 	char *sysfs;
@@ -73,6 +72,9 @@ struct connman_iface {
 	enum connman_iface_flags flags;
 	enum connman_iface_state state;
 	struct connman_ipv4 ipv4;
+
+	struct connman_iface_driver *driver;
+	void *driver_data;
 };
 
 struct connman_iface_driver {
@@ -90,6 +92,7 @@ struct connman_iface_driver {
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
 
+	void (*rtnl_carrier) (struct connman_iface *iface, int carrier);
 	void (*rtnl_wireless) (struct connman_iface *iface,
 					void *data, unsigned short len);
 };
@@ -97,8 +100,22 @@ struct connman_iface_driver {
 extern int connman_iface_register(struct connman_iface_driver *driver);
 extern void connman_iface_unregister(struct connman_iface_driver *driver);
 
+static inline void *connman_iface_get_data(struct connman_iface *iface)
+{
+	return iface->driver_data;
+}
+
+static inline void connman_iface_set_data(struct connman_iface *iface,
+								void *data)
+{
+	iface->driver_data = data;
+}
+
 extern int connman_iface_update(struct connman_iface *iface,
 					enum connman_iface_state state);
+
+extern void connman_iface_indicate_carrier(struct connman_iface *iface,
+							int carrier);
 
 #ifdef __cplusplus
 }

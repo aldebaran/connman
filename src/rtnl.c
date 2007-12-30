@@ -43,6 +43,12 @@ static inline void print_char(struct rtattr *attr, const char *name)
 						(char *) RTA_DATA(attr));
 }
 
+static inline void print_byte(struct rtattr *attr, const char *name)
+{
+	printf("  attr %s (len %d) 0x%02x\n", name, RTA_PAYLOAD(attr),
+					*((unsigned char *) RTA_DATA(attr)));
+}
+
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
 	if (name)
@@ -71,9 +77,12 @@ static void rtnl_link(struct nlmsghdr *hdr)
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
 		return;
 
-	if (iface->carrier != (msg->ifi_flags & IFF_RUNNING)) {
-		iface->carrier = (msg->ifi_flags & IFF_RUNNING);
-		DBG("carrier %s", iface->carrier ? "on" : "off");
+	if (iface->carrier != ((msg->ifi_flags & IFF_RUNNING) != 0)) {
+		iface->carrier = ((msg->ifi_flags & IFF_RUNNING) != 0);
+		if (iface->driver->rtnl_carrier)
+			iface->driver->rtnl_carrier(iface, iface->carrier);
+		else
+			connman_iface_indicate_carrier(iface, iface->carrier);
 	}
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
@@ -127,10 +136,10 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			print_attr(attr, "weight");
 			break;
 		case IFLA_OPERSTATE:
-			print_attr(attr, "operstate");
+			print_byte(attr, "operstate");
 			break;
 		case IFLA_LINKMODE:
-			print_attr(attr, "linkmode");
+			print_byte(attr, "linkmode");
 			break;
 		default:
 			print_attr(attr, NULL);
