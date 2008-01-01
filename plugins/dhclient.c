@@ -24,10 +24,15 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
 #include <arpa/inet.h>
+#include <net/if.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -35,12 +40,11 @@
 #include <connman/plugin.h>
 #include <connman/dhcp.h>
 
-#include "net.h"
-
 static const char *busname;
 
 struct dhclient_task {
 	GPid pid;
+	int ifindex;
 	char *ifname;
 	struct connman_iface *iface;
 };
@@ -63,28 +67,46 @@ static struct dhclient_task *find_task(GPid pid)
 
 static int dhclient_request(struct connman_iface *iface)
 {
+	struct ifreq ifr;
 	struct dhclient_task *task;
-	char *ifname, *argv[16], address[128], pidfile[PATH_MAX];
+	char *argv[16], address[128], pidfile[PATH_MAX];
 	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
+	int sk, err;
 
-	ifname = __net_ifname(iface->index);
-	if (ifname == NULL)
-		return -1;
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -EIO;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = iface->index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return -EIO;
 
 	task = g_try_new0(struct dhclient_task, 1);
 	if (task == NULL)
-		return -1;
+		return -ENOMEM;
 
-	task->ifname = ifname;
+	task->ifindex = iface->index;
+	task->ifname = strdup(ifr.ifr_name);
 	task->iface = iface;
 
-	printf("[DHCP] request for %s\n", ifname);
+	if (task->ifname == NULL) {
+		g_free(task);
+		return -ENOMEM;
+	}
+
+	printf("[DHCP] request %s\n", task->ifname);
 
 	snprintf(address, sizeof(address) - 1, "BUSNAME=%s", busname);
 	snprintf(pidfile, sizeof(pidfile) - 1,
-				"%s/dhclient.%s.pid", STATEDIR, ifname);
+			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
 	snprintf(leases, sizeof(leases) - 1,
-				"%s/dhclient.%s.leases", STATEDIR, ifname);
+			"%s/dhclient.%s.leases", STATEDIR, task->ifname);
 	snprintf(config, sizeof(config) - 1, "%s/dhclient.conf", SCRIPTDIR);
 	snprintf(script, sizeof(script) - 1, "%s/dhclient-script", SCRIPTDIR);
 
@@ -102,7 +124,7 @@ static int dhclient_request(struct connman_iface *iface)
 	argv[11] = config;
 	argv[12] = "-sf";
 	argv[13] = script;
-	argv[14] = ifname;
+	argv[14] = task->ifname;
 	argv[15] = NULL;
 
 	if (g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
@@ -120,15 +142,7 @@ static int dhclient_request(struct connman_iface *iface)
 
 static int dhclient_release(struct connman_iface *iface)
 {
-	char *ifname;
-
-	ifname = __net_ifname(iface->index);
-	if (ifname == NULL)
-		return -1;
-
-	printf("[DHCP] release for %s\n", ifname);
-
-	__net_free(ifname);
+	printf("[DHCP] release\n");
 
 	return 0;
 }
@@ -257,7 +271,7 @@ static void plugin_exit(void)
 				"%s/dhclient.%s.leases", STATEDIR, task->ifname);
 		unlink(pathname);
 
-		__net_free(task->ifname);
+		free(task->ifname);
 
 		g_free(task);
 	}
