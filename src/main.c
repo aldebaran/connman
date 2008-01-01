@@ -61,9 +61,9 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_init();
 
-	__connman_iface_init(conn);
-
 	__connman_rtnl_init();
+
+	__connman_iface_init(conn);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
@@ -72,9 +72,9 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	__connman_rtnl_cleanup();
-
 	__connman_iface_cleanup();
+
+	__connman_rtnl_cleanup();
 
 	__connman_plugin_cleanup();
 

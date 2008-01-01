@@ -26,6 +26,9 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+
 #include <glib.h>
 #include <gdbus.h>
 
@@ -101,7 +104,7 @@ int connman_iface_update(struct connman_iface *iface,
 
 	default:
 		break;
-        }
+	}
 
 	iface->state = state;
 
@@ -111,6 +114,43 @@ int connman_iface_update(struct connman_iface *iface,
 void connman_iface_indicate_carrier(struct connman_iface *iface, int carrier)
 {
 	DBG("iface %p carrier %d", iface, carrier);
+}
+
+int connman_iface_get_ipv4(struct connman_iface *iface,
+						struct connman_ipv4 *ipv4)
+{
+	struct {
+		struct nlmsghdr hdr;
+		struct rtgenmsg msg;
+	} req;
+
+	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
+		return -1;
+
+	DBG("iface %p ipv4 %p", iface, ipv4);
+
+	memset(&req, 0, sizeof(req));
+	req.hdr.nlmsg_len = sizeof(req);
+	req.hdr.nlmsg_type = RTM_GETADDR;
+	req.hdr.nlmsg_flags = NLM_F_ROOT | NLM_F_MATCH | NLM_F_REQUEST;
+	req.hdr.nlmsg_pid = 0;
+	req.hdr.nlmsg_seq = 4711;
+	req.msg.rtgen_family = AF_INET;
+
+	__connman_rtnl_send(&req, sizeof(req));
+
+	return 0;
+}
+
+int connman_iface_set_ipv4(struct connman_iface *iface,
+						struct connman_ipv4 *ipv4)
+{
+	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
+		return -1;
+
+	DBG("iface %p ipv4 %p", iface, ipv4);
+
+	return 0;
 }
 
 static DBusMessage *enable_iface(DBusConnection *conn,
@@ -246,9 +286,11 @@ static int probe_device(LibHalContext *ctx,
 
 	interfaces = g_slist_append(interfaces, iface);
 
-	if ((iface->flags & CONNMAN_IFACE_FLAG_IPV4) &&
-						driver->get_ipv4) {
-		driver->get_ipv4(iface, &iface->ipv4);
+	if (iface->flags & CONNMAN_IFACE_FLAG_IPV4) {
+		if (driver->get_ipv4)
+			driver->get_ipv4(iface, &iface->ipv4);
+		else
+			connman_iface_get_ipv4(iface, &iface->ipv4);
 
 		DBG("address %s", inet_ntoa(iface->ipv4.address));
 	}

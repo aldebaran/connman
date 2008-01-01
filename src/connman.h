@@ -55,6 +55,8 @@ void __connman_iface_list(DBusMessageIter *iter);
 int __connman_rtnl_init(void);
 void __connman_rtnl_cleanup(void);
 
+int __connman_rtnl_send(const void *buf, size_t len);
+
 #include <connman/dhcp.h>
 
 int __connman_dhcp_request(struct connman_iface *iface);

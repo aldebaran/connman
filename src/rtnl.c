@@ -37,6 +37,17 @@
 
 #include "connman.h"
 
+static inline void print_inet(struct rtattr *attr, const char *name, int family)
+{
+	if (family == AF_INET) {
+		struct in_addr addr;
+		addr = *((struct in_addr *) RTA_DATA(attr));
+		printf("  attr %s (len %d) %s\n",
+				name, RTA_PAYLOAD(attr), inet_ntoa(addr));
+	} else
+		printf("  attr %s (len %d)\n", name, RTA_PAYLOAD(attr));
+}
+
 static inline void print_char(struct rtattr *attr, const char *name)
 {
 	printf("  attr %s (len %d) %s\n", name, RTA_PAYLOAD(attr),
@@ -171,31 +182,16 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 					attr = RTA_NEXT(attr, bytes)) {
 		switch (attr->rta_type) {
 		case IFA_ADDRESS:
-			print_attr(attr, "address");
-			if (msg->ifa_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "address", msg->ifa_family);
 			break;
 		case IFA_LOCAL:
-			print_attr(attr, "local");
-			if (msg->ifa_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "local", msg->ifa_family);
 			break;
 		case IFA_LABEL:
 			print_char(attr, "label");
 			break;
 		case IFA_BROADCAST:
-			print_attr(attr, "broadcast");
-			if (msg->ifa_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "broadcast", msg->ifa_family);
 			break;
 		case IFA_ANYCAST:
 			print_attr(attr, "anycast");
@@ -228,20 +224,10 @@ static void rtnl_route(struct nlmsghdr *hdr)
 					attr = RTA_NEXT(attr, bytes)) {
 		switch (attr->rta_type) {
 		case RTA_DST:
-			print_attr(attr, "dst");
-			if (msg->rtm_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "dst", msg->rtm_family);
 			break;
 		case RTA_SRC:
-			print_attr(attr, "src");
-			if (msg->rtm_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "src", msg->rtm_family);
 			break;
 		case RTA_IIF:
 			print_char(attr, "iif");
@@ -250,23 +236,13 @@ static void rtnl_route(struct nlmsghdr *hdr)
 			print_attr(attr, "oif");
 			break;
 		case RTA_GATEWAY:
-			print_attr(attr, "gateway");
-			if (msg->rtm_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "gateway", msg->rtm_family);
 			break;
 		case RTA_PRIORITY:
 			print_attr(attr, "priority");
 			break;
 		case RTA_PREFSRC:
-			print_attr(attr, "prefsrc");
-			if (msg->rtm_family == AF_INET) {
-				struct in_addr addr;
-				addr = *((struct in_addr *) RTA_DATA(attr));
-				DBG("    address %s", inet_ntoa(addr));
-			}
+			print_inet(attr, "prefsrc", msg->rtm_family);
 			break;
 		case RTA_METRICS:
 			print_attr(attr, "metrics");
@@ -281,47 +257,57 @@ static void rtnl_route(struct nlmsghdr *hdr)
 	}
 }
 
-static void rtnl_message(unsigned char *buf, size_t size)
+static void rtnl_message(void *buf, size_t len)
 {
-	struct nlmsghdr *hdr = (void *) buf;
+	DBG("buf %p len %d", buf, len);
 
-	if (!NLMSG_OK(hdr, size))
-		return;
+	while (len > 0) {
+		struct nlmsghdr *hdr = buf;
 
-	switch (hdr->nlmsg_type) {
-	case NLMSG_DONE:
-		DBG("done");
-		return;
-	case NLMSG_NOOP:
-		DBG("noop");
-		return;
-	case NLMSG_OVERRUN:
-		DBG("overrun");
-		return;
-	case NLMSG_ERROR:
-		DBG("error");
-		return;
-	case RTM_NEWLINK:
-		rtnl_link(hdr);
-		break;
-	case RTM_DELLINK:
-		rtnl_link(hdr);
-		break;
-	case RTM_NEWADDR:
-		rtnl_addr(hdr);
-		break;
-	case RTM_DELADDR:
-		rtnl_addr(hdr);
-		break;
-	case RTM_NEWROUTE:
-		rtnl_route(hdr);
-		break;
-	case RTM_DELROUTE:
-		rtnl_route(hdr);
-		break;
-	default:
-		DBG("type %d", hdr->nlmsg_type);
-		break;
+		if (!NLMSG_OK(hdr, len))
+			break;
+
+		DBG("len %d type %d flags 0x%04x",
+			hdr->nlmsg_len, hdr->nlmsg_type, hdr->nlmsg_flags);
+
+		switch (hdr->nlmsg_type) {
+		case NLMSG_DONE:
+			DBG("done");
+			return;
+		case NLMSG_NOOP:
+			DBG("noop");
+			return;
+		case NLMSG_OVERRUN:
+			DBG("overrun");
+			return;
+		case NLMSG_ERROR:
+			DBG("error");
+			return;
+		case RTM_NEWLINK:
+			rtnl_link(hdr);
+			break;
+		case RTM_DELLINK:
+			rtnl_link(hdr);
+			break;
+		case RTM_NEWADDR:
+			rtnl_addr(hdr);
+			break;
+		case RTM_DELADDR:
+			rtnl_addr(hdr);
+			break;
+		case RTM_NEWROUTE:
+			rtnl_route(hdr);
+			break;
+		case RTM_DELROUTE:
+			rtnl_route(hdr);
+			break;
+		default:
+			DBG("type %d", hdr->nlmsg_type);
+			break;
+		}
+
+		len -= hdr->nlmsg_len;
+		buf += hdr->nlmsg_len;
 	}
 }
 
@@ -353,6 +339,22 @@ static gboolean netlink_event(GIOChannel *chan,
 }
 
 static GIOChannel *channel = NULL;
+
+int __connman_rtnl_send(const void *buf, size_t len)
+{
+	struct sockaddr_nl addr;
+	int sk;
+
+	DBG("buf %p len %d", buf, len);
+
+	sk = g_io_channel_unix_get_fd(channel);
+
+	memset(&addr, 0, sizeof(addr));
+	addr.nl_family = AF_NETLINK;
+
+	return sendto(sk, buf, len, 0,
+			(struct sockaddr *) &addr, sizeof(addr));
+}
 
 int __connman_rtnl_init(void)
 {
