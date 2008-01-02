@@ -263,12 +263,14 @@ static void rtnl_message(void *buf, size_t len)
 
 	while (len > 0) {
 		struct nlmsghdr *hdr = buf;
+		struct nlmsgerr *err;
 
 		if (!NLMSG_OK(hdr, len))
 			break;
 
-		DBG("len %d type %d flags 0x%04x",
-			hdr->nlmsg_len, hdr->nlmsg_type, hdr->nlmsg_flags);
+		DBG("len %d type %d flags 0x%04x seq %d",
+					hdr->nlmsg_len, hdr->nlmsg_type,
+					hdr->nlmsg_flags, hdr->nlmsg_seq);
 
 		switch (hdr->nlmsg_type) {
 		case NLMSG_DONE:
@@ -281,7 +283,9 @@ static void rtnl_message(void *buf, size_t len)
 			DBG("overrun");
 			return;
 		case NLMSG_ERROR:
-			DBG("error");
+			err = NLMSG_DATA(hdr);
+			DBG("error %d (%s)", -err->error,
+						strerror(-err->error));
 			return;
 		case RTM_NEWLINK:
 			rtnl_link(hdr);
@@ -371,7 +375,6 @@ int __connman_rtnl_init(void)
 	addr.nl_family = AF_NETLINK;
 	addr.nl_groups = RTMGRP_LINK;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
-	addr.nl_pid = getpid();
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
