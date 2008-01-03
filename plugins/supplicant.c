@@ -260,9 +260,11 @@ int __supplicant_stop(struct connman_iface *iface)
 	return 0;
 }
 
-int __supplicant_connect(struct connman_iface *iface)
+int __supplicant_connect(struct connman_iface *iface,
+				const char *network, const char *passphrase)
 {
 	struct supplicant_task *task;
+	char cmd[128];
 
 	task = find_task(iface->index);
 	if (task == NULL)
@@ -271,6 +273,22 @@ int __supplicant_connect(struct connman_iface *iface)
 	printf("[SUPPLICANT] connect %s\n", task->ifname);
 
 	exec_cmd(task, "DISABLE_NETWORK 0");
+
+	sprintf(cmd, "SET_NETWORK 0 ssid \"%s\"", network);
+	exec_cmd(task, cmd);
+
+	if (passphrase && strlen(passphrase) > 0) {
+		exec_cmd(task, "SET_NETWORK 0 proto RSN WPA");
+		exec_cmd(task, "SET_NETWORK 0 key_mgmt WPA-PSK");
+
+		sprintf(cmd, "SET_NETWORK 0 psk \"%s\"", passphrase);
+		exec_cmd(task, cmd);
+	} else {
+		exec_cmd(task, "SET_NETWORK 0 proto RSN WPA");
+		exec_cmd(task, "SET_NETWORK 0 key_mgmt NONE");
+	}
+
+	exec_cmd(task, "ENABLE_NETWORK 0");
 
 	return 0;
 }

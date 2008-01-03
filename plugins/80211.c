@@ -59,6 +59,9 @@ struct station_data {
 struct iface_data {
 	char ifname[IFNAMSIZ];
 	GSList *stations;
+
+	gchar *network;
+	gchar *passphrase;
 };
 
 static struct station_data *create_station(struct iface_data *iface,
@@ -208,6 +211,9 @@ static void iface_remove(struct connman_iface *iface)
 
 	connman_iface_set_data(iface, NULL);
 
+	g_free(data->network);
+	g_free(data->passphrase);
+
 	free(data);
 }
 
@@ -259,13 +265,39 @@ static int iface_scan(struct connman_iface *iface)
 static int iface_connect(struct connman_iface *iface,
 					struct connman_network *network)
 {
-	printf("[802.11] connect interface index %d\n", iface->index);
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	printf("[802.11] connect %s\n", data->ifname);
 
 	__supplicant_start(iface);
 
-	__supplicant_connect(iface);
+	__supplicant_connect(iface, data->network, data->passphrase);
 
 	return 0;
+}
+
+static void iface_set_network(struct connman_iface *iface,
+						const char *network)
+{
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	printf("[802.11] set network %s\n", data->ifname);
+
+	g_free(data->network);
+
+	data->network = g_strdup(network);
+}
+
+static void iface_set_passphrase(struct connman_iface *iface,
+						const char *passphrase)
+{
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	printf("[802.11] set passphrase %s\n", data->ifname);
+
+	g_free(data->passphrase);
+
+	data->passphrase = g_strdup(passphrase);
 }
 
 static void iface_carrier(struct connman_iface *iface, int carrier)
@@ -480,6 +512,8 @@ static struct connman_iface_driver iface_driver = {
 	.activate	= iface_activate,
 	.scan		= iface_scan,
 	.connect	= iface_connect,
+	.set_network	= iface_set_network,
+	.set_passphrase	= iface_set_passphrase,
 	.rtnl_carrier	= iface_carrier,
 	.rtnl_wireless	= iface_wireless,
 };
