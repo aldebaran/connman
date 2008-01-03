@@ -27,7 +27,9 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
+#include <syslog.h>
 #include <signal.h>
+#include <getopt.h>
 #include <sys/stat.h>
 
 #include <gdbus.h>
@@ -41,10 +43,63 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static void usage(void)
+{
+	printf("Connection Manager version %s\n\n", VERSION);
+
+	printf("Usage:\n"
+		"\tconnmand [options]\n"
+		"\n");
+
+	printf("Options:\n"
+		"\t-c, --compat         Enable Network Manager compatibility\n"
+		"\t-n, --nodaemon       Don't fork daemon to background\n"
+		"\t-h, --help           Display help\n"
+		"\n");
+}
+
+static struct option options[] = {
+	{ "nodaemon", 0, 0, 'n' },
+	{ "compat",   0, 0, 'c' },
+	{ "help",     0, 0, 'h' },
+	{ }
+};
+
 int main(int argc, char *argv[])
 {
 	DBusConnection *conn;
 	struct sigaction sa;
+	int log_option = LOG_NDELAY | LOG_PID;
+	int opt, detach = 1, compat = 0;
+
+	while ((opt = getopt_long(argc, argv, "+nch", options, NULL)) != EOF) {
+		switch(opt) {
+		case 'n':
+			detach = 0;
+			break;
+		case 'c':
+			compat = 1;
+			break;
+		case 'h':
+		default:
+			usage();
+			exit(0);
+		}
+	}
+
+	argc -= optind;
+	argv += optind;
+	optind = 0;
+
+	if (detach) {
+		if (daemon(0, 0)) {
+			perror("Can't start daemon");
+			exit(1);
+		}
+	} else
+		log_option |= LOG_PERROR;
+
+	openlog("connmand", log_option, LOG_DAEMON);
 
 	mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -57,7 +112,12 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	__connman_manager_init(conn);
+	if (compat) {
+		if (g_dbus_request_name(conn, NM_SERVICE) == FALSE)
+			compat = 0;
+	}
+
+	__connman_manager_init(conn, compat);
 
 	__connman_plugin_init();
 
@@ -85,6 +145,8 @@ int main(int argc, char *argv[])
 	g_main_loop_unref(main_loop);
 
 	rmdir(STATEDIR);
+
+	closelog();
 
 	return 0;
 }

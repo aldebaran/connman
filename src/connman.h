@@ -28,13 +28,18 @@
 
 #define CONNMAN_SERVICE  "org.freedesktop.connman"
 
-#define CONNMAN_MANAGER_PATH "/"
+#define CONNMAN_MANAGER_PATH       "/"
 #define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
 
 #define CONNMAN_IFACE_BASEPATH  "/interface"
 #define CONNMAN_IFACE_INTERFACE  CONNMAN_SERVICE ".Interface"
 
-int __connman_manager_init(DBusConnection *conn);
+#define NM_SERVICE    "org.freedesktop.NetworkManager"
+#define NM_PATH       "/org/freedesktop/NetworkManager"
+#define NM_INTERFACE  NM_SERVICE
+#define NM_DEVICE     NM_SERVICE ".Devices"
+
+int __connman_manager_init(DBusConnection *conn, int compat);
 void __connman_manager_cleanup(void);
 
 #include <connman/plugin.h>

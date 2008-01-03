@@ -62,9 +62,139 @@ static GDBusSignalTable manager_signals[] = {
 	{ },
 };
 
-static DBusConnection *connection = NULL;
+static DBusMessage *activate_device(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *path;
 
-int __connman_manager_init(DBusConnection *conn)
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	DBG("device %s", path);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *set_wireless(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_bool_t enabled;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &enabled,
+							DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *get_wireless(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_bool_t enabled = TRUE;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &enabled,
+							DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *do_sleep(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *do_wake(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+enum {
+	NM_STATE_UNKNOWN = 0,
+	NM_STATE_ASLEEP,
+	NM_STATE_CONNECTING,
+	NM_STATE_CONNECTED,
+	NM_STATE_DISCONNECTED
+};
+
+static DBusMessage *get_state(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	dbus_uint32_t state = NM_STATE_DISCONNECTED;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &state,
+							DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static GDBusMethodTable nm_methods[] = {
+	{ "getDevices",            "",  "ao", list_interfaces },
+	{ "setActiveDevice",       "o", "",   activate_device },
+	{ "setWirelessEnabled",    "b", "",   set_wireless    },
+	{ "getWirelessEnabled",    "",  "b",  get_wireless    },
+	{ "sleep",                 "",  "",   do_sleep        },
+	{ "wake",                  "",  "",   do_wake         },
+	{ "state",                 "",  "u",  get_state       },
+	{ },
+};
+
+static DBusConnection *connection = NULL;
+static int nm_compat = 0;
+
+int __connman_manager_init(DBusConnection *conn, int compat)
 {
 	DBG("conn %p", conn);
 
@@ -79,12 +209,27 @@ int __connman_manager_init(DBusConnection *conn)
 						manager_methods,
 						manager_signals, NULL);
 
+	if (compat) {
+		g_dbus_register_object(connection, NM_PATH, NULL, NULL);
+
+		g_dbus_register_interface(connection, NM_PATH, NM_INTERFACE,
+						nm_methods, NULL, NULL);
+
+		nm_compat = 1;
+	}
+
 	return 0;
 }
 
 void __connman_manager_cleanup(void)
 {
 	DBG("conn %p", connection);
+
+	if (nm_compat) {
+		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);
+
+		g_dbus_unregister_object(connection, NM_PATH);
+	}
 
 	g_dbus_unregister_interface(connection, CONNMAN_MANAGER_PATH,
 						CONNMAN_MANAGER_INTERFACE);
