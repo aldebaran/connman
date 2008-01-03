@@ -23,8 +23,16 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+#include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
 #include <arpa/inet.h>
+#include <net/if.h>
+#include <net/route.h>
 
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
@@ -130,9 +138,9 @@ int connman_iface_get_ipv4(struct connman_iface *iface,
 	DBG("iface %p ipv4 %p", iface, ipv4);
 
 	memset(&req, 0, sizeof(req));
-	req.hdr.nlmsg_len = sizeof(req);
+	req.hdr.nlmsg_len = sizeof(req.hdr) + sizeof(req.msg);
 	req.hdr.nlmsg_type = RTM_GETADDR;
-	req.hdr.nlmsg_flags = NLM_F_ROOT | NLM_F_MATCH | NLM_F_REQUEST;
+	req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
 	req.hdr.nlmsg_pid = 0;
 	req.hdr.nlmsg_seq = 4711;
 	req.msg.rtgen_family = AF_INET;
@@ -145,10 +153,122 @@ int connman_iface_get_ipv4(struct connman_iface *iface,
 int connman_iface_set_ipv4(struct connman_iface *iface,
 						struct connman_ipv4 *ipv4)
 {
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in *addr;
+	int sk, err;
+
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
 		return -1;
 
 	DBG("iface %p ipv4 %p", iface, ipv4);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = iface->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	addr = (struct sockaddr_in *) &ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->address;
+
+	err = ioctl(sk, SIOCSIFADDR, &ifr);
+
+	if (err < 0)
+		DBG("address setting failed (%s)", strerror(errno));
+
+	addr = (struct sockaddr_in *) &ifr.ifr_netmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->netmask;
+
+	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
+
+	if (err < 0)
+		DBG("netmask setting failed (%s)", strerror(errno));
+
+	addr = (struct sockaddr_in *) &ifr.ifr_broadaddr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->broadcast;
+
+	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
+
+	if (err < 0)
+		DBG("broadcast setting failed (%s)", strerror(errno));
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
+
+	addr = (struct sockaddr_in *) &rt.rt_dst;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	addr = (struct sockaddr_in *) &rt.rt_gateway;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->gateway;
+
+	addr = (struct sockaddr_in *) &rt.rt_genmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+
+	close(sk);
+
+	if (err < 0) {
+		DBG("default route failed (%s)", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+int connman_iface_clear_ipv4(struct connman_iface *iface)
+{
+	struct ifreq ifr;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
+		return -1;
+
+	DBG("iface %p", iface);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = iface->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	addr = (struct sockaddr_in *) &ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	//err = ioctl(sk, SIOCDIFADDR, &ifr);
+	err = ioctl(sk, SIOCSIFADDR, &ifr);
+
+	close(sk);
+
+	if (err < 0 && errno != EADDRNOTAVAIL) {
+		DBG("address removal failed (%s)", strerror(errno));
+		return -1;
+	}
 
 	return 0;
 }
@@ -220,6 +340,8 @@ static void device_free(void *data)
 	struct connman_iface *iface = data;
 
 	DBG("iface %p", iface);
+
+	connman_iface_clear_ipv4(iface);
 
 	if (iface->driver && iface->driver->remove)
 		iface->driver->remove(iface);

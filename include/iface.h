@@ -121,6 +121,7 @@ extern int connman_iface_get_ipv4(struct connman_iface *iface,
 						struct connman_ipv4 *ipv4);
 extern int connman_iface_set_ipv4(struct connman_iface *iface,
 						struct connman_ipv4 *ipv4);
+extern int connman_iface_clear_ipv4(struct connman_iface *iface);
 
 #ifdef __cplusplus
 }
