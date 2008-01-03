@@ -328,9 +328,61 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *set_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	struct connman_iface_driver *driver = iface->driver;
+	DBusMessage *reply;
+	const char *network;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &network,
+							DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	if (driver->set_network)
+		driver->set_network(iface, network);
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *set_passphrase(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	struct connman_iface_driver *driver = iface->driver;
+	DBusMessage *reply;
+	const char *passphrase;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &passphrase,
+							DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	if (driver->set_passphrase)
+		driver->set_passphrase(iface, passphrase);
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
 static GDBusMethodTable iface_methods[] = {
-	{ "Enable", "", "", enable_iface },
-	{ "Scan",   "", "", scan_iface   },
+	{ "Enable",        "",  "", enable_iface   },
+	{ "Scan",          "",  "", scan_iface     },
+	{ "SetNetwork",    "s", "", set_network    },
+	{ "SetPassphrase", "s", "", set_passphrase },
 	{ },
 };
 
