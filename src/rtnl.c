@@ -273,36 +273,42 @@ static void rtnl_message(void *buf, size_t len)
 					hdr->nlmsg_flags, hdr->nlmsg_seq);
 
 		switch (hdr->nlmsg_type) {
-		case NLMSG_DONE:
-			DBG("done");
-			return;
 		case NLMSG_NOOP:
-			DBG("noop");
-			return;
-		case NLMSG_OVERRUN:
-			DBG("overrun");
+			DBG("NOOP");
 			return;
 		case NLMSG_ERROR:
 			err = NLMSG_DATA(hdr);
-			DBG("error %d (%s)", -err->error,
+			DBG("ERROR %d (%s)", -err->error,
 						strerror(-err->error));
 			return;
+		case NLMSG_DONE:
+			DBG("DONE");
+			return;
+		case NLMSG_OVERRUN:
+			DBG("OVERRUN");
+			return;
 		case RTM_NEWLINK:
+			DBG("NEWLINK");
 			rtnl_link(hdr);
 			break;
 		case RTM_DELLINK:
+			DBG("DELLINK");
 			rtnl_link(hdr);
 			break;
 		case RTM_NEWADDR:
+			DBG("NEWADDR");
 			rtnl_addr(hdr);
 			break;
 		case RTM_DELADDR:
+			DBG("DELADDR");
 			rtnl_addr(hdr);
 			break;
 		case RTM_NEWROUTE:
+			DBG("NEWROUTE");
 			rtnl_route(hdr);
 			break;
 		case RTM_DELROUTE:
+			DBG("DELROUTE");
 			rtnl_route(hdr);
 			break;
 		default:
@@ -373,7 +379,7 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK;
+	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
