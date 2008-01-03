@@ -98,9 +98,6 @@ int connman_iface_update(struct connman_iface *iface,
 	switch (state) {
 	case CONNMAN_IFACE_STATE_ACTIVE:
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
-			if (iface->driver->scan)
-				iface->driver->scan(iface);
-
 			if (iface->driver->connect)
 				iface->driver->connect(iface, NULL);
 		}
@@ -294,8 +291,30 @@ static DBusMessage *enable_iface(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *scan_iface(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	struct connman_iface_driver *driver = iface->driver;
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	if (driver->scan)
+		driver->scan(iface);
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
 static GDBusMethodTable iface_methods[] = {
 	{ "Enable", "", "", enable_iface },
+	{ "Scan",   "", "", scan_iface   },
 	{ },
 };
 
