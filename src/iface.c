@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -153,6 +154,7 @@ int connman_iface_set_ipv4(struct connman_iface *iface,
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in *addr;
+	char cmd[128];
 	int sk, err;
 
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
@@ -225,6 +227,13 @@ int connman_iface_set_ipv4(struct connman_iface *iface,
 		return -1;
 	}
 
+	sprintf(cmd, "echo \"nameserver %s\" | resolvconf -a %s",
+				inet_ntoa(ipv4->nameserver), ifr.ifr_name);
+
+	DBG("%s", cmd);
+
+	system(cmd);
+
 	return 0;
 }
 
@@ -232,6 +241,7 @@ int connman_iface_clear_ipv4(struct connman_iface *iface)
 {
 	struct ifreq ifr;
 	struct sockaddr_in *addr;
+	char cmd[128];
 	int sk, err;
 
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
@@ -266,6 +276,12 @@ int connman_iface_clear_ipv4(struct connman_iface *iface)
 		DBG("address removal failed (%s)", strerror(errno));
 		return -1;
 	}
+
+	sprintf(cmd, "resolvconf -d %s", ifr.ifr_name);
+
+	DBG("%s", cmd);
+
+	system(cmd);
 
 	return 0;
 }
