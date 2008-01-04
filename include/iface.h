@@ -75,6 +75,12 @@ struct connman_iface {
 
 	struct connman_iface_driver *driver;
 	void *driver_data;
+
+	struct {
+		char *driver;
+		char *vendor;
+		char *product;
+	} device;
 };
 
 struct connman_iface_driver {
@@ -91,6 +97,8 @@ struct connman_iface_driver {
 	int (*scan) (struct connman_iface *iface);
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
+
+	const char * (*get_address) (struct connman_iface *iface);
 
 	void (*set_network) (struct connman_iface *iface,
 						const char *network);

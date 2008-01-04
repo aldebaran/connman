@@ -417,8 +417,80 @@ static dbus_bool_t get_type(DBusConnection *conn,
 	return TRUE;
 }
 
+static dbus_bool_t get_address(DBusConnection *conn,
+					DBusMessageIter *iter, void *data)
+{
+	struct connman_iface *iface = data;
+	const char *address;
+
+	DBG("iface %p", iface);
+
+	if (!iface->driver->get_address)
+		return FALSE;
+
+	address = iface->driver->get_address(iface);
+	if (address == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &address);
+
+	return TRUE;
+}
+
+static dbus_bool_t get_driver(DBusConnection *conn,
+					DBusMessageIter *iter, void *data)
+{
+	struct connman_iface *iface = data;
+
+	DBG("iface %p", iface);
+
+	if (iface->device.driver == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&iface->device.driver);
+
+	return TRUE;
+}
+
+static dbus_bool_t get_vendor(DBusConnection *conn,
+					DBusMessageIter *iter, void *data)
+{
+	struct connman_iface *iface = data;
+
+	DBG("iface %p", iface);
+
+	if (iface->device.vendor == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&iface->device.vendor);
+
+	return TRUE;
+}
+
+static dbus_bool_t get_product(DBusConnection *conn,
+					DBusMessageIter *iter, void *data)
+{
+	struct connman_iface *iface = data;
+
+	DBG("iface %p", iface);
+
+	if (iface->device.product == NULL)
+		return FALSE;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						&iface->device.product);
+
+	return TRUE;
+}
+
 static GDBusPropertyTable iface_properties[] = {
-	{ "Type", "s", get_type },
+	{ "Type",    "s", get_type    },
+	{ "Address", "s", get_address },
+	{ "Driver",  "s", get_driver  },
+	{ "Vendor",  "s", get_vendor  },
+	{ "Product", "s", get_product },
 	{ },
 };
 
@@ -436,7 +508,42 @@ static void device_free(void *data)
 	g_free(iface->path);
 	g_free(iface->udi);
 	g_free(iface->sysfs);
+	g_free(iface->device.driver);
+	g_free(iface->device.vendor);
+	g_free(iface->device.product);
 	g_free(iface);
+}
+
+static void detect_device_info(LibHalContext *ctx, struct connman_iface *iface)
+{
+	char *parent, *subsys, *value;
+
+	parent = libhal_device_get_property_string(ctx, iface->udi,
+						"info.parent", NULL);
+
+	subsys = libhal_device_get_property_string(ctx, iface->udi,
+						"linux.subsystem", NULL);
+
+	value = libhal_device_get_property_string(ctx, iface->udi,
+						"info.linux.driver", NULL);
+	if (value == NULL) {
+		value = libhal_device_get_property_string(ctx, parent,
+						"info.linux.driver", NULL);
+		if (value != NULL)
+			iface->device.driver = g_strdup(value);
+	}
+
+	if (strcmp(subsys, "net") == 0) {
+		value = libhal_device_get_property_string(ctx, parent,
+							"info.vendor", NULL);
+		if (value != NULL)
+			iface->device.vendor = g_strdup(value);
+
+		value = libhal_device_get_property_string(ctx, parent,
+							"info.product", NULL);
+		if (value != NULL)
+			iface->device.product = g_strdup(value);
+	}
 }
 
 static int probe_device(LibHalContext *ctx,
@@ -468,6 +575,8 @@ static int probe_device(LibHalContext *ctx,
 						"linux.sysfs_path", NULL);
 	if (sysfs != NULL)
 		iface->sysfs = g_strdup(sysfs);
+
+	detect_device_info(ctx, iface);
 
 	iface->index = -1;
 
