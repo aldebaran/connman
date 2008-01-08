@@ -55,6 +55,14 @@ void __connman_iface_cleanup(void);
 struct connman_iface *__connman_iface_find(int index);
 void __connman_iface_list(DBusMessageIter *iter);
 
+const char *__connman_iface_type2string(enum connman_iface_type type);
+const char *__connman_iface_state2string(enum connman_iface_state state);
+const char *__connman_iface_policy2string(enum connman_iface_policy policy);
+enum connman_iface_policy __connman_iface_string2policy(const char *policy);
+
+const char *__connman_ipv4_method2string(enum connman_ipv4_method method);
+enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
+
 #include <connman/rtnl.h>
 
 int __connman_rtnl_init(void);
