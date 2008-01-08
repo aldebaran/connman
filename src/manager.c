@@ -27,6 +27,8 @@
 
 #include "connman.h"
 
+static const char *master_state = "unknown";
+
 static DBusMessage *list_interfaces(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -51,14 +53,33 @@ static DBusMessage *list_interfaces(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *get_state(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &master_state,
+							DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
 static GDBusMethodTable manager_methods[] = {
 	{ "ListInterfaces", "", "ao", list_interfaces },
+	{ "GetState",       "", "s",  get_state       },
 	{ },
 };
 
 static GDBusSignalTable manager_signals[] = {
 	{ "InterfaceAdded",   "o" },
 	{ "InterfaceRemoved", "o" },
+	{ "StateChanged",     "s" },
 	{ },
 };
 
@@ -162,7 +183,7 @@ enum {
 	NM_STATE_DISCONNECTED
 };
 
-static DBusMessage *get_state(DBusConnection *conn,
+static DBusMessage *do_state(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -187,7 +208,7 @@ static GDBusMethodTable nm_methods[] = {
 	{ "getWirelessEnabled",    "",  "b",  get_wireless    },
 	{ "sleep",                 "",  "",   do_sleep        },
 	{ "wake",                  "",  "",   do_wake         },
-	{ "state",                 "",  "u",  get_state       },
+	{ "state",                 "",  "u",  do_state        },
 	{ },
 };
 
