@@ -97,14 +97,14 @@ int connman_iface_update(struct connman_iface *iface,
 					enum connman_iface_state state)
 {
 	switch (state) {
-	case CONNMAN_IFACE_STATE_ACTIVE:
+	case CONNMAN_IFACE_STATE_ENABLED:
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
 			if (iface->driver->connect)
 				iface->driver->connect(iface, NULL);
 		}
 		break;
 
-	case CONNMAN_IFACE_STATE_CONNECTED:
+	case CONNMAN_IFACE_STATE_CARRIER:
 		__connman_dhcp_request(iface);
 		break;
 

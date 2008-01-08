@@ -223,7 +223,18 @@ static int iface_activate(struct connman_iface *iface)
 
 	printf("[802.11] activate %s\n", data->ifname);
 
-	connman_iface_update(iface, CONNMAN_IFACE_STATE_ACTIVE);
+	connman_iface_update(iface, CONNMAN_IFACE_STATE_ENABLED);
+
+	return 0;
+}
+
+static int iface_shutdown(struct connman_iface *iface)
+{
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	printf("[802.11] shutdown %s\n", data->ifname);
+
+	connman_iface_update(iface, CONNMAN_IFACE_STATE_SHUTDOWN);
 
 	return 0;
 }
@@ -510,6 +521,7 @@ static struct connman_iface_driver iface_driver = {
 	.probe		= iface_probe,
 	.remove		= iface_remove,
 	.activate	= iface_activate,
+	.shutdown	= iface_shutdown,
 	.scan		= iface_scan,
 	.connect	= iface_connect,
 	.set_network	= iface_set_network,
