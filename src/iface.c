@@ -386,114 +386,6 @@ static GDBusMethodTable iface_methods[] = {
 	{ },
 };
 
-static dbus_bool_t get_type(DBusConnection *conn,
-					DBusMessageIter *iter, void *data)
-{
-	struct connman_iface *iface = data;
-	const char *type;
-
-	DBG("iface %p", iface);
-
-	switch (iface->type) {
-	case CONNMAN_IFACE_TYPE_80203:
-		type = "80203";
-		break;
-	case CONNMAN_IFACE_TYPE_80211:
-		type = "80211";
-		break;
-	case CONNMAN_IFACE_TYPE_WIMAX:
-		type = "wimax";
-		break;
-	case CONNMAN_IFACE_TYPE_BLUETOOTH:
-		type = "bluetooth";
-		break;
-	default:
-		type = "unknown";
-		break;
-	}
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &type);
-
-	return TRUE;
-}
-
-static dbus_bool_t get_address(DBusConnection *conn,
-					DBusMessageIter *iter, void *data)
-{
-	struct connman_iface *iface = data;
-	const char *address;
-
-	DBG("iface %p", iface);
-
-	if (!iface->driver->get_address)
-		return FALSE;
-
-	address = iface->driver->get_address(iface);
-	if (address == NULL)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &address);
-
-	return TRUE;
-}
-
-static dbus_bool_t get_driver(DBusConnection *conn,
-					DBusMessageIter *iter, void *data)
-{
-	struct connman_iface *iface = data;
-
-	DBG("iface %p", iface);
-
-	if (iface->device.driver == NULL)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&iface->device.driver);
-
-	return TRUE;
-}
-
-static dbus_bool_t get_vendor(DBusConnection *conn,
-					DBusMessageIter *iter, void *data)
-{
-	struct connman_iface *iface = data;
-
-	DBG("iface %p", iface);
-
-	if (iface->device.vendor == NULL)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&iface->device.vendor);
-
-	return TRUE;
-}
-
-static dbus_bool_t get_product(DBusConnection *conn,
-					DBusMessageIter *iter, void *data)
-{
-	struct connman_iface *iface = data;
-
-	DBG("iface %p", iface);
-
-	if (iface->device.product == NULL)
-		return FALSE;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&iface->device.product);
-
-	return TRUE;
-}
-
-static GDBusPropertyTable iface_properties[] = {
-	{ "Type",    "s", get_type    },
-	{ "Address", "s", get_address },
-	{ "Driver",  "s", get_driver  },
-	{ "Vendor",  "s", get_vendor  },
-	{ "Product", "s", get_product },
-	{ },
-};
-
 static void device_free(void *data)
 {
 	struct connman_iface *iface = data;
@@ -615,7 +507,7 @@ static int probe_device(LibHalContext *ctx,
 
 	g_dbus_register_interface(conn, iface->path,
 					CONNMAN_IFACE_INTERFACE,
-					iface_methods, NULL, iface_properties);
+					iface_methods, NULL, NULL);
 
 	g_dbus_emit_signal(conn, CONNMAN_MANAGER_PATH,
 					CONNMAN_MANAGER_INTERFACE,
