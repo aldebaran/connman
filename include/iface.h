@@ -80,6 +80,7 @@ struct connman_ipv4 {
 };
 
 struct connman_network {
+	char *essid;
 };
 
 struct connman_iface {
@@ -93,6 +94,7 @@ struct connman_iface {
 	enum connman_iface_flags flags;
 	enum connman_iface_state state;
 	enum connman_iface_policy policy;
+	struct connman_network network;
 	struct connman_ipv4 ipv4;
 
 	struct connman_iface_driver *driver;

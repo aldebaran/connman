@@ -663,6 +663,7 @@ static DBusMessage *set_network(DBusConnection *conn,
 	struct connman_iface *iface = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	gboolean changed = FALSE;
 
 	DBG("conn %p", conn);
 
@@ -685,8 +686,11 @@ static DBusMessage *set_network(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &val);
 
 		if (g_strcasecmp(key, "ESSID") == 0) {
+			g_free(iface->network.essid);
+			iface->network.essid = g_strdup(val);
 			if (iface->driver->set_network)
 				iface->driver->set_network(iface, val);
+			changed = TRUE;
 		}
 
 		if (g_strcasecmp(key, "PSK") == 0) {
@@ -702,6 +706,9 @@ static DBusMessage *set_network(DBusConnection *conn,
 		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	if (changed == TRUE)
+		__connman_iface_store(iface);
 
 	return reply;
 }
@@ -743,6 +750,7 @@ static void device_free(void *data)
 	g_free(iface->udi);
 	g_free(iface->sysfs);
 	g_free(iface->identifier);
+	g_free(iface->network.essid);
 	g_free(iface->device.driver);
 	g_free(iface->device.vendor);
 	g_free(iface->device.product);
@@ -834,9 +842,9 @@ static int probe_device(LibHalContext *ctx,
 
 	__connman_iface_init_via_inet(iface);
 
-	__connman_iface_load(iface);
-
 	iface->driver = driver;
+
+	__connman_iface_load(iface);
 
 	conn = libhal_ctx_get_dbus_connection(ctx);
 

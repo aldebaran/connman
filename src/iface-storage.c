@@ -60,6 +60,15 @@ int __connman_iface_load(struct connman_iface *iface)
 	}
 
 	str = g_key_file_get_string(keyfile, iface->identifier,
+							"Network.ESSID", NULL);
+	if (str != NULL) {
+		g_free(iface->network.essid);
+		iface->network.essid = str;
+		if (iface->driver->set_network)
+			iface->driver->set_network(iface, str);
+	}
+
+	str = g_key_file_get_string(keyfile, iface->identifier,
 							"IPv4.Method", NULL);
 	if (str != NULL) {
 		iface->ipv4.method = __connman_ipv4_string2method(str);
@@ -113,6 +122,13 @@ static void do_update(GKeyFile *keyfile, struct connman_iface *iface)
 
 	str = __connman_iface_policy2string(iface->policy);
 	g_key_file_set_string(keyfile, iface->identifier, "Policy", str);
+
+	if (iface->network.essid != NULL) {
+		g_key_file_set_string(keyfile, iface->identifier,
+					"Network.ESSID", iface->network.essid);
+	} else
+		g_key_file_remove_key(keyfile, iface->identifier,
+							"Network.ESSID", NULL);
 
 	if (iface->ipv4.method != CONNMAN_IPV4_METHOD_UNKNOWN) {
 		str = __connman_ipv4_method2string(iface->ipv4.method);
