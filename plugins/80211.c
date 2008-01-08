@@ -58,7 +58,6 @@ struct station_data {
 
 struct iface_data {
 	char ifname[IFNAMSIZ];
-	char ifaddr[18];
 	GSList *stations;
 
 	gchar *network;
@@ -164,7 +163,6 @@ static int iface_probe(struct connman_iface *iface)
 {
 	struct iface_data *data;
 	struct ifreq ifr;
-	struct ether_addr *eth;
 	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
@@ -175,9 +173,6 @@ static int iface_probe(struct connman_iface *iface)
 	ifr.ifr_ifindex = iface->index;
 
 	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	if (err == 0)
-		err = ioctl(sk, SIOCGIFHWADDR, &ifr);
 
 	close(sk);
 
@@ -193,15 +188,6 @@ static int iface_probe(struct connman_iface *iface)
 	memset(data, 0, sizeof(*data));
 
 	memcpy(data->ifname, ifr.ifr_name, IFNAMSIZ);
-
-	eth = (void *) &ifr.ifr_hwaddr.sa_data;
-	sprintf(data->ifaddr, "%02X:%02X:%02X:%02X:%02X:%02X",
-						eth->ether_addr_octet[0],
-						eth->ether_addr_octet[1],
-						eth->ether_addr_octet[2],
-						eth->ether_addr_octet[3],
-						eth->ether_addr_octet[4],
-						eth->ether_addr_octet[5]);
 
 	iface->type = CONNMAN_IFACE_TYPE_80211;
 
@@ -288,15 +274,6 @@ static int iface_connect(struct connman_iface *iface,
 	__supplicant_connect(iface, data->network, data->passphrase);
 
 	return 0;
-}
-
-static const char *iface_get_address(struct connman_iface *iface)
-{
-	struct iface_data *data = connman_iface_get_data(iface);
-
-	printf("[802.11] get address %s\n", data->ifname);
-
-	return data->ifaddr;
 }
 
 static void iface_set_network(struct connman_iface *iface,
@@ -535,7 +512,6 @@ static struct connman_iface_driver iface_driver = {
 	.activate	= iface_activate,
 	.scan		= iface_scan,
 	.connect	= iface_connect,
-	.get_address	= iface_get_address,
 	.set_network	= iface_set_network,
 	.set_passphrase	= iface_set_passphrase,
 	.rtnl_carrier	= iface_carrier,

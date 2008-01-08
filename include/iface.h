@@ -98,8 +98,6 @@ struct connman_iface_driver {
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
 
-	const char * (*get_address) (struct connman_iface *iface);
-
 	void (*set_network) (struct connman_iface *iface,
 						const char *network);
 	void (*set_passphrase) (struct connman_iface *iface,
