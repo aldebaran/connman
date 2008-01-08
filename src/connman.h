@@ -58,6 +58,9 @@ void __connman_iface_list(DBusMessageIter *iter);
 int __connman_iface_create_identifier(struct connman_iface *iface);
 int __connman_iface_init_via_inet(struct connman_iface *iface);
 
+int __connman_iface_load(struct connman_iface *iface);
+int __connman_iface_store(struct connman_iface *iface);
+
 const char *__connman_iface_type2string(enum connman_iface_type type);
 const char *__connman_iface_state2string(enum connman_iface_state state);
 const char *__connman_iface_policy2string(enum connman_iface_policy policy);

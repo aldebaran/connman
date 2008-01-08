@@ -500,6 +500,7 @@ static DBusMessage *set_policy(DBusConnection *conn,
 		path = dbus_message_get_path(msg);
 
 		iface->policy = new_policy;
+		__connman_iface_store(iface);
 
 		if (new_policy == CONNMAN_IFACE_POLICY_AUTO) {
 			if (iface->driver->activate)
@@ -642,6 +643,8 @@ static DBusMessage *set_ipv4(DBusConnection *conn,
 	path = dbus_message_get_path(msg);
 
 	if (changed == TRUE) {
+		__connman_iface_store(iface);
+
 		signal = dbus_message_new_signal(path,
 				CONNMAN_IFACE_INTERFACE, "IPv4Changed");
 		if (signal != NULL) {
@@ -830,6 +833,8 @@ static int probe_device(LibHalContext *ctx,
 	__connman_iface_create_identifier(iface);
 
 	__connman_iface_init_via_inet(iface);
+
+	__connman_iface_load(iface);
 
 	iface->driver = driver;
 
