@@ -827,6 +827,10 @@ static int probe_device(LibHalContext *ctx,
 		return -1;
 	}
 
+	__connman_iface_create_identifier(iface);
+
+	__connman_iface_init_via_inet(iface);
+
 	iface->driver = driver;
 
 	conn = libhal_ctx_get_dbus_connection(ctx);

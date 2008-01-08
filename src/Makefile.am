@@ -6,7 +6,7 @@ dbus_DATA = connman.conf
 sbin_PROGRAMS = connmand
 
 connmand_SOURCES = main.c connman.h manager.c plugin.c \
-			iface.c iface-helper.c rtnl.c dhcp.c
+			iface.c iface-helper.c iface-inet.c rtnl.c dhcp.c
 
 connmand_LDADD = @HAL_LIBS@ @GDBUS_LIBS@ @GMODULE_LIBS@
  
