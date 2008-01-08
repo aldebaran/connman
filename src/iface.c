@@ -45,6 +45,8 @@
 
 #include "connman.h"
 
+static DBusConnection *connection = NULL;
+
 static GSList *drivers = NULL;
 
 int connman_iface_register(struct connman_iface_driver *driver)
@@ -96,8 +98,11 @@ void __connman_iface_list(DBusMessageIter *iter)
 int connman_iface_update(struct connman_iface *iface,
 					enum connman_iface_state state)
 {
+	const char *str = NULL;
+
 	switch (state) {
 	case CONNMAN_IFACE_STATE_ENABLED:
+		str = "enabled";
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
 			if (iface->driver->connect)
 				iface->driver->connect(iface, NULL);
@@ -105,7 +110,15 @@ int connman_iface_update(struct connman_iface *iface,
 		break;
 
 	case CONNMAN_IFACE_STATE_CARRIER:
+		str = "carrier";
 		__connman_dhcp_request(iface);
+		break;
+
+	case CONNMAN_IFACE_STATE_READY:
+		str = "ready";
+		break;
+
+	case CONNMAN_IFACE_STATE_SHUTDOWN:
 		break;
 
 	default:
@@ -113,6 +126,12 @@ int connman_iface_update(struct connman_iface *iface,
 	}
 
 	iface->state = state;
+
+	if (str != NULL) {
+		g_dbus_emit_signal(connection, iface->path,
+				CONNMAN_IFACE_INTERFACE, "StateChanged",
+				DBUS_TYPE_STRING, &str, DBUS_TYPE_INVALID);
+	}
 
 	return 0;
 }
@@ -286,27 +305,6 @@ int connman_iface_clear_ipv4(struct connman_iface *iface)
 	return 0;
 }
 
-static DBusMessage *enable_iface(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_iface *iface = data;
-	struct connman_iface_driver *driver = iface->driver;
-	DBusMessage *reply;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	if (driver->activate)
-		driver->activate(iface);
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
 static DBusMessage *scan_iface(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -328,50 +326,377 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *set_network(DBusConnection *conn,
+static void append_entry(DBusMessageIter *dict,
+				const char *key, int type, void *val)
+{
+	DBusMessageIter entry, value;
+	const char *signature;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		signature = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT16:
+		signature = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	default:
+		signature = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							signature, &value);
+	dbus_message_iter_append_basic(&value, type, val);
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_iface *iface = data;
-	struct connman_iface_driver *driver = iface->driver;
 	DBusMessage *reply;
-	const char *network;
+	DBusMessageIter array, dict;
+	const char *str;
 
 	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &network,
-							DBUS_TYPE_INVALID);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
 
-	if (driver->set_network)
-		driver->set_network(iface, network);
+	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = __connman_iface_type2string(iface->type);
+	append_entry(&dict, "Type", DBUS_TYPE_STRING, &str);
+
+	str = __connman_iface_state2string(iface->state);
+	append_entry(&dict, "State", DBUS_TYPE_STRING, &str);
+
+	if (iface->type == CONNMAN_IFACE_TYPE_80211) {
+		dbus_uint16_t signal = 75;
+		append_entry(&dict, "Signal", DBUS_TYPE_UINT16, &signal);
+	}
+
+	str = __connman_iface_policy2string(iface->policy);
+	append_entry(&dict, "Policy", DBUS_TYPE_STRING, &str);
+
+	if (iface->device.driver != NULL)
+		append_entry(&dict, "Driver",
+				DBUS_TYPE_STRING, &iface->device.driver);
+
+	if (iface->device.vendor != NULL)
+		append_entry(&dict, "Vendor",
+				DBUS_TYPE_STRING, &iface->device.vendor);
+
+	if (iface->device.product != NULL)
+		append_entry(&dict, "Product",
+				DBUS_TYPE_STRING, &iface->device.product);
+
+	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
 }
 
-static DBusMessage *set_passphrase(DBusConnection *conn,
+static DBusMessage *get_state(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_iface *iface = data;
-	struct connman_iface_driver *driver = iface->driver;
 	DBusMessage *reply;
-	const char *passphrase;
+	const char *state;
 
 	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &passphrase,
-							DBUS_TYPE_INVALID);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
 
-	if (driver->set_passphrase)
-		driver->set_passphrase(iface, passphrase);
+	state = __connman_iface_state2string(iface->state);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &state,
+							DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *get_signal(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	dbus_uint16_t signal;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	if (iface->type == CONNMAN_IFACE_TYPE_80211)
+		signal = 75;
+	else
+		signal = 0;
+
+	dbus_message_append_args(reply, DBUS_TYPE_UINT16, &signal,
+							DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *get_policy(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	const char *policy;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	policy = __connman_iface_policy2string(iface->policy);
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &policy,
+							DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *set_policy(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	enum connman_iface_policy new_policy;
+	const char *path, *policy;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &policy,
+							DBUS_TYPE_INVALID);
+
+	new_policy = __connman_iface_string2policy(policy);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	if (iface->policy != new_policy) {
+		path = dbus_message_get_path(msg);
+
+		iface->policy = new_policy;
+
+		if (new_policy == CONNMAN_IFACE_POLICY_AUTO) {
+			if (iface->driver->activate)
+				iface->driver->activate(iface);
+		} else {
+			if (iface->driver->shutdown)
+				iface->driver->shutdown(iface);
+		}
+
+		g_dbus_emit_signal(conn, path, CONNMAN_IFACE_INTERFACE,
+				"PolicyChanged", DBUS_TYPE_STRING, &policy,
+							DBUS_TYPE_INVALID);
+	}
+
+	return reply;
+}
+
+static void append_ipv4(DBusMessage *reply, struct connman_iface *iface)
+{
+	DBusMessageIter array, dict;
+	const char *str;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = __connman_ipv4_method2string(iface->ipv4.method);
+	append_entry(&dict, "Method", DBUS_TYPE_STRING, &str);
+
+	if (iface->ipv4.address.s_addr != INADDR_ANY) {
+		str = inet_ntoa(iface->ipv4.address);
+		append_entry(&dict, "Address", DBUS_TYPE_STRING, &str);
+	}
+
+	if (iface->ipv4.netmask.s_addr != INADDR_ANY) {
+		str = inet_ntoa(iface->ipv4.netmask);
+		append_entry(&dict, "Netmask", DBUS_TYPE_STRING, &str);
+	}
+
+	if (iface->ipv4.gateway.s_addr != INADDR_ANY) {
+		str = inet_ntoa(iface->ipv4.gateway);
+		append_entry(&dict, "Gateway", DBUS_TYPE_STRING, &str);
+	}
+
+	dbus_message_iter_close_container(&array, &dict);
+}
+
+static DBusMessage *get_ipv4(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	append_ipv4(reply, iface);
+
+	return reply;
+}
+
+static DBusMessage *set_ipv4(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply, *signal;
+	DBusMessageIter array, dict;
+	const char *path;
+	gboolean changed = FALSE;
+
+	DBG("conn %p", conn);
+
+	dbus_message_iter_init(msg, &array);
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+		enum connman_ipv4_method method;
+		in_addr_t addr;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		//type = dbus_message_iter_get_arg_type(&value);
+		dbus_message_iter_get_basic(&value, &val);
+
+		if (g_strcasecmp(key, "Method") == 0) {
+			method = __connman_ipv4_string2method(val);
+			if (iface->ipv4.method != method) {
+				iface->ipv4.method = method;
+				changed = TRUE;
+			}
+		}
+
+		if (g_strcasecmp(key, "Address") == 0) {
+			addr = inet_addr(val);
+			if (iface->ipv4.address.s_addr != addr) {
+				iface->ipv4.address.s_addr = addr;
+				changed = TRUE;
+			}
+		}
+
+		if (g_strcasecmp(key, "Netmask") == 0) {
+			addr = inet_addr(val);
+			if (iface->ipv4.netmask.s_addr != addr) {
+				iface->ipv4.netmask.s_addr = addr;
+				changed = TRUE;
+			}
+		}
+
+		if (g_strcasecmp(key, "Gateway") == 0) {
+			addr = inet_addr(val);
+			if (iface->ipv4.gateway.s_addr != addr) {
+				iface->ipv4.gateway.s_addr = addr;
+				changed = TRUE;
+			}
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	path = dbus_message_get_path(msg);
+
+	if (changed == TRUE) {
+		signal = dbus_message_new_signal(path,
+				CONNMAN_IFACE_INTERFACE, "IPv4Changed");
+		if (signal != NULL) {
+			append_ipv4(signal, iface);
+			dbus_connection_send(conn, signal, NULL);
+			dbus_message_unref(signal);
+		}
+	}
+
+	return reply;
+}
+
+static DBusMessage *set_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("conn %p", conn);
+
+	dbus_message_iter_init(msg, &array);
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		//type = dbus_message_iter_get_arg_type(&value);
+		dbus_message_iter_get_basic(&value, &val);
+
+		if (g_strcasecmp(key, "ESSID") == 0) {
+			if (iface->driver->set_network)
+				iface->driver->set_network(iface, val);
+		}
+
+		if (g_strcasecmp(key, "PSK") == 0) {
+			if (iface->driver->set_network)
+				iface->driver->set_passphrase(iface, val);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
@@ -379,10 +704,24 @@ static DBusMessage *set_passphrase(DBusConnection *conn,
 }
 
 static GDBusMethodTable iface_methods[] = {
-	{ "Enable",        "",  "", enable_iface   },
-	{ "Scan",          "",  "", scan_iface     },
-	{ "SetNetwork",    "s", "", set_network    },
-	{ "SetPassphrase", "s", "", set_passphrase },
+	{ "Scan",          "",      "",      scan_iface     },
+	{ "GetProperties", "",      "a{sv}", get_properties },
+	{ "GetState",      "",      "s",     get_state      },
+	{ "GetSignal",     "",      "q",     get_signal     },
+	{ "GetPolicy",     "",      "s",     get_policy     },
+	{ "SetPolicy",     "s",     "",      set_policy     },
+	{ "GetIPv4",       "",      "a{sv}", get_ipv4       },
+	{ "SetIPv4",       "a{sv}", "",      set_ipv4       },
+	{ "SetNetwork",    "a{sv}", "",      set_network    },
+	{ },
+};
+
+static GDBusSignalTable iface_signals[] = {
+	{ "StateChanged",   "s"     },
+	{ "SignalChanged",  "q"     },
+	{ "PolicyChanged",  "s"     },
+	{ "IPv4Changed",    "a{sv}" },
+	{ "NetworkChanged", "a{sv}" },
 	{ },
 };
 
@@ -400,6 +739,7 @@ static void device_free(void *data)
 	g_free(iface->path);
 	g_free(iface->udi);
 	g_free(iface->sysfs);
+	g_free(iface->identifier);
 	g_free(iface->device.driver);
 	g_free(iface->device.vendor);
 	g_free(iface->device.product);
@@ -461,7 +801,7 @@ static int probe_device(LibHalContext *ctx,
 
 	iface->udi = g_strdup(udi);
 
-	DBG("path %s", iface->path);
+	DBG("iface %p path %s", iface, iface->path);
 
 	sysfs = libhal_device_get_property_string(ctx, udi,
 						"linux.sysfs_path", NULL);
@@ -479,8 +819,7 @@ static int probe_device(LibHalContext *ctx,
 	iface->type = CONNMAN_IFACE_TYPE_UNKNOWN;
 	iface->flags = 0;
 	iface->state = CONNMAN_IFACE_STATE_UNKNOWN;
-
-	DBG("iface %p", iface);
+	iface->policy = CONNMAN_IFACE_POLICY_UNKNOWN;
 
 	err = driver->probe(iface);
 	if (err < 0) {
@@ -507,13 +846,20 @@ static int probe_device(LibHalContext *ctx,
 
 	g_dbus_register_interface(conn, iface->path,
 					CONNMAN_IFACE_INTERFACE,
-					iface_methods, NULL, NULL);
+					iface_methods, iface_signals, NULL);
+
+	DBG("iface %p identifier %s", iface, iface->identifier);
 
 	g_dbus_emit_signal(conn, CONNMAN_MANAGER_PATH,
 					CONNMAN_MANAGER_INTERFACE,
 					"InterfaceAdded",
 					DBUS_TYPE_OBJECT_PATH, &iface->path,
 					DBUS_TYPE_INVALID);
+
+	if (iface->policy == CONNMAN_IFACE_POLICY_AUTO) {
+		if (driver->activate)
+			driver->activate(iface);
+	}
 
 	return 0;
 }
@@ -677,7 +1023,6 @@ static void hal_cleanup(void *data)
 	hal_ctx = NULL;
 }
 
-static DBusConnection *connection = NULL;
 static guint hal_watch = 0;
 
 int __connman_iface_init(DBusConnection *conn)
