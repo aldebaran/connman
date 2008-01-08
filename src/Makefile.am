@@ -11,6 +11,8 @@ connmand_LDADD = @HAL_LIBS@ @GDBUS_LIBS@ @GMODULE_LIBS@
  
 statedir = $(localstatedir)/run/connman
 
+storagedir = $(localstatedir)/lib/connman
+
 if MAINTAINER_MODE
 plugindir = $(abs_top_srcdir)/plugins
 else
@@ -18,7 +20,9 @@ plugindir = $(libdir)/connman/plugins
 endif
 
 AM_CFLAGS = @GMODULE_CFLAGS@ @GDBUS_CFLAGS@ @HAL_CFLAGS@ \
-		-DSTATEDIR=\""$(statedir)"\" -DPLUGINDIR=\""$(plugindir)"\"
+			-DSTATEDIR=\""$(statedir)"\" \
+			-DSTORAGEDIR=\""$(storagedir)\"" \
+			-DPLUGINDIR=\""$(plugindir)"\"
 
 INCLUDES = -I$(top_builddir)/include
 

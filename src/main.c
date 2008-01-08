@@ -104,6 +104,9 @@ int main(int argc, char *argv[])
 	mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
+	mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+
 	main_loop = g_main_loop_new(NULL, FALSE);
 
 	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, CONNMAN_SERVICE);
@@ -143,6 +146,8 @@ int main(int argc, char *argv[])
 	g_dbus_cleanup_connection(conn);
 
 	g_main_loop_unref(main_loop);
+
+	rmdir(STORAGEDIR);
 
 	rmdir(STATEDIR);
 
