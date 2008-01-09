@@ -179,7 +179,7 @@ static int dhclient_release(struct connman_iface *iface)
 
 	task = find_task_by_index(iface->index);
 	if (task == NULL)
-		return NULL;
+		return -ENODEV;
 
 	printf("[DHCP] release %s\n", task->ifname);
 
