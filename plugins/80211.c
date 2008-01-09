@@ -428,40 +428,53 @@ static void iface_scan_results(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 	struct iwreq iwr;
-	unsigned char *buf;
-	int sk, err, size = 1024;
+	void *buf;
+	size_t size;
+	int sk, err, done = 0;
+
+	if (data == NULL)
+		return;
+
+	memset(&iwr, 0, sizeof(iwr));
+	memcpy(iwr.ifr_name, data->ifname, IFNAMSIZ);
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
 		return;
 
-retrieve:
-	buf = malloc(size);
-	if (buf == NULL) {
-		close(sk);
-		return;
+	buf = NULL;
+	size = 1024;
+
+	while (!done) {
+		void *newbuf;
+
+		newbuf = g_realloc(buf, size);
+		if (newbuf == NULL) {
+			close(sk);
+			return;
+		}
+
+		buf = newbuf;
+		iwr.u.data.pointer = buf;
+		iwr.u.data.length = size;
+		iwr.u.data.flags = 0;
+
+		err = ioctl(sk, SIOCGIWSCAN, &iwr);
+		if (err < 0) {
+			if (errno == E2BIG)
+				size *= 2;
+			else
+				done = 1;
+		} else {
+			parse_scan_results(iface, iwr.u.data.pointer,
+						iwr.u.data.length);
+			done = 1;
+		}
 	}
 
-	memset(&iwr, 0, sizeof(iwr));
-	strncpy(iwr.ifr_name, data->ifname, IFNAMSIZ);
-	iwr.u.data.pointer = buf;
-	iwr.u.data.length = size;
-	iwr.u.data.flags = 0;
-
-	err = ioctl(sk, SIOCGIWSCAN, &iwr);
-	if (err < 0) {
-		if (errno == E2BIG) {
-			free(buf);
-			size *= 2;
-			goto retrieve;
-		}
-	} else
-		parse_scan_results(iface, iwr.u.data.pointer,
-						iwr.u.data.length);
+	g_free(buf);
 
 	close(sk);
-
-	free(buf);
 
 	print_stations(data);
 }
