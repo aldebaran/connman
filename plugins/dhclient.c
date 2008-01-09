@@ -51,7 +51,7 @@ struct dhclient_task {
 
 static GSList *tasks = NULL;
 
-static struct dhclient_task *find_task(GPid pid)
+static struct dhclient_task *find_task_by_pid(GPid pid)
 {
 	GSList *list;
 
@@ -63,6 +63,39 @@ static struct dhclient_task *find_task(GPid pid)
 	}
 
 	return NULL;
+}
+
+static struct dhclient_task *find_task_by_index(int index)
+{
+	GSList *list;
+
+	for (list = tasks; list; list = list->next) {
+		struct dhclient_task *task = list->data;
+
+		if (task->ifindex == index)
+			return task;
+	}
+
+	return NULL;
+}
+
+static void kill_task(struct dhclient_task *task)
+{
+	char pathname[PATH_MAX];
+
+	kill(task->pid, SIGTERM);
+
+	snprintf(pathname, sizeof(pathname) - 1,
+			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
+	unlink(pathname);
+
+	snprintf(pathname, sizeof(pathname) - 1,
+			"%s/dhclient.%s.leases", STATEDIR, task->ifname);
+	unlink(pathname);
+
+	free(task->ifname);
+
+	g_free(task);
 }
 
 static int dhclient_request(struct connman_iface *iface)
@@ -142,7 +175,17 @@ static int dhclient_request(struct connman_iface *iface)
 
 static int dhclient_release(struct connman_iface *iface)
 {
-	printf("[DHCP] release\n");
+	struct dhclient_task *task;
+
+	task = find_task_by_index(iface->index);
+	if (task == NULL)
+		return NULL;
+
+	printf("[DHCP] release %s\n", task->ifname);
+
+	tasks = g_slist_remove(tasks, task);
+
+	kill_task(task);
 
 	return 0;
 }
@@ -174,7 +217,7 @@ static DBusMessage *notify_method(DBusConnection *conn,
 
 	printf("[DHCP] change %d to %s\n", pid, text);
 
-	task = find_task(pid);
+	task = find_task_by_pid(pid);
 	if (task == NULL)
 		return NULL;
 
@@ -257,23 +300,10 @@ static void plugin_exit(void)
 
 	for (list = tasks; list; list = list->next) {
 		struct dhclient_task *task = list->data;
-		char pathname[PATH_MAX];
 
 		printf("[DHCP] killing process %d\n", task->pid);
 
-		kill(task->pid, SIGTERM);
-
-		snprintf(pathname, sizeof(pathname) - 1,
-				"%s/dhclient.%s.pid", STATEDIR, task->ifname);
-		unlink(pathname);
-
-		snprintf(pathname, sizeof(pathname) - 1,
-				"%s/dhclient.%s.leases", STATEDIR, task->ifname);
-		unlink(pathname);
-
-		free(task->ifname);
-
-		g_free(task);
+		kill_task(task);
 	}
 
 	g_slist_free(tasks);
