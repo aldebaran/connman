@@ -61,6 +61,8 @@ int connman_dhcp_update(struct connman_iface *iface,
 		DBG("broadcast %s", inet_ntoa(ipv4->broadcast));
 		DBG("nameserver %s", inet_ntoa(ipv4->nameserver));
 
+		ipv4->method = CONNMAN_IPV4_METHOD_DHCP;
+
 		if (iface->driver->set_ipv4) {
 			iface->driver->set_ipv4(iface, ipv4);
 			iface->ipv4 = *ipv4;
