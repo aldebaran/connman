@@ -525,6 +525,116 @@ static DBusMessage *set_policy(DBusConnection *conn,
 	return reply;
 }
 
+static void append_network(DBusMessage *reply,
+				struct connman_iface *iface, gboolean secrets)
+{
+	DBusMessageIter array, dict;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (iface->network.essid != NULL)
+		append_entry(&dict, "ESSID",
+				DBUS_TYPE_STRING, &iface->network.essid);
+
+	if (secrets == TRUE && iface->network.psk != NULL)
+		append_entry(&dict, "PSK",
+				DBUS_TYPE_STRING, &iface->network.psk);
+
+	dbus_message_iter_close_container(&array, &dict);
+}
+
+static DBusMessage *get_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	append_network(reply, iface, TRUE);
+
+	return reply;
+}
+
+static DBusMessage *set_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply, *signal;
+	DBusMessageIter array, dict;
+	gboolean changed = FALSE;
+
+	DBG("conn %p", conn);
+
+	dbus_message_iter_init(msg, &array);
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		//type = dbus_message_iter_get_arg_type(&value);
+		dbus_message_iter_get_basic(&value, &val);
+
+		if (g_strcasecmp(key, "ESSID") == 0) {
+			g_free(iface->network.essid);
+			iface->network.essid = g_strdup(val);
+			if (iface->driver->set_network)
+				iface->driver->set_network(iface, val);
+			changed = TRUE;
+		}
+
+		if (g_strcasecmp(key, "PSK") == 0) {
+			g_free(iface->network.psk);
+			iface->network.psk = g_strdup(val);
+			if (iface->driver->set_network)
+				iface->driver->set_passphrase(iface, val);
+			changed = TRUE;
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	if (changed == TRUE) {
+		const char *path = dbus_message_get_path(msg);
+
+		__connman_iface_store(iface);
+
+		signal = dbus_message_new_signal(path,
+				CONNMAN_IFACE_INTERFACE, "NetworkChanged");
+		if (signal != NULL) {
+			append_network(signal, iface, FALSE);
+			dbus_connection_send(conn, signal, NULL);
+			dbus_message_unref(signal);
+		}
+	}
+
+	return reply;
+}
+
 static void append_ipv4(DBusMessage *reply, struct connman_iface *iface)
 {
 	DBusMessageIter array, dict;
@@ -581,7 +691,6 @@ static DBusMessage *set_ipv4(DBusConnection *conn,
 	struct connman_iface *iface = data;
 	DBusMessage *reply, *signal;
 	DBusMessageIter array, dict;
-	const char *path;
 	gboolean changed = FALSE;
 
 	DBG("conn %p", conn);
@@ -647,9 +756,9 @@ static DBusMessage *set_ipv4(DBusConnection *conn,
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
-	path = dbus_message_get_path(msg);
-
 	if (changed == TRUE) {
+		const char *path = dbus_message_get_path(msg);
+
 		__connman_iface_store(iface);
 
 		signal = dbus_message_new_signal(path,
@@ -664,62 +773,6 @@ static DBusMessage *set_ipv4(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *set_network(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_iface *iface = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-	gboolean changed = FALSE;
-
-	DBG("conn %p", conn);
-
-	dbus_message_iter_init(msg, &array);
-
-	dbus_message_iter_recurse(&array, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key, *val;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		dbus_message_iter_next(&entry);
-
-		dbus_message_iter_recurse(&entry, &value);
-
-		//type = dbus_message_iter_get_arg_type(&value);
-		dbus_message_iter_get_basic(&value, &val);
-
-		if (g_strcasecmp(key, "ESSID") == 0) {
-			g_free(iface->network.essid);
-			iface->network.essid = g_strdup(val);
-			if (iface->driver->set_network)
-				iface->driver->set_network(iface, val);
-			changed = TRUE;
-		}
-
-		if (g_strcasecmp(key, "PSK") == 0) {
-			if (iface->driver->set_network)
-				iface->driver->set_passphrase(iface, val);
-		}
-
-		dbus_message_iter_next(&dict);
-	}
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	if (changed == TRUE)
-		__connman_iface_store(iface);
-
-	return reply;
-}
-
 static GDBusMethodTable iface_methods[] = {
 	{ "Scan",          "",      "",      scan_iface     },
 	{ "GetProperties", "",      "a{sv}", get_properties },
@@ -727,9 +780,10 @@ static GDBusMethodTable iface_methods[] = {
 	{ "GetSignal",     "",      "q",     get_signal     },
 	{ "GetPolicy",     "",      "s",     get_policy     },
 	{ "SetPolicy",     "s",     "",      set_policy     },
+	{ "GetNetwork",    "",      "a{sv}", get_network    },
+	{ "SetNetwork",    "a{sv}", "",      set_network    },
 	{ "GetIPv4",       "",      "a{sv}", get_ipv4       },
 	{ "SetIPv4",       "a{sv}", "",      set_ipv4       },
-	{ "SetNetwork",    "a{sv}", "",      set_network    },
 	{ },
 };
 
@@ -737,8 +791,8 @@ static GDBusSignalTable iface_signals[] = {
 	{ "StateChanged",   "s"     },
 	{ "SignalChanged",  "q"     },
 	{ "PolicyChanged",  "s"     },
-	{ "IPv4Changed",    "a{sv}" },
 	{ "NetworkChanged", "a{sv}" },
+	{ "IPv4Changed",    "a{sv}" },
 	{ },
 };
 

@@ -81,6 +81,7 @@ struct connman_ipv4 {
 
 struct connman_network {
 	char *essid;
+	char *psk;
 };
 
 struct connman_iface {
