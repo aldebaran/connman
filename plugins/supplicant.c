@@ -244,14 +244,16 @@ int __supplicant_stop(struct connman_iface *iface)
 
 	exec_cmd(task, "DETACH");
 
+	sleep(1);
+
+	kill(task->pid, SIGTERM);
+
 	//close(task->socket);
 	g_io_channel_unref(task->channel);
 
 	snprintf(pathname, sizeof(pathname),
 					"%s/%s.cli", STATEDIR, task->ifname);
 	unlink(pathname);
-
-	kill(task->pid, SIGTERM);
 
 	free(task->ifname);
 
