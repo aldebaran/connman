@@ -234,7 +234,9 @@ static int iface_shutdown(struct connman_iface *iface)
 
 	printf("[802.11] shutdown %s\n", data->ifname);
 
-	connman_iface_update(iface, CONNMAN_IFACE_STATE_SHUTDOWN);
+	__supplicant_stop(iface);
+
+	connman_iface_update(iface, CONNMAN_IFACE_STATE_OFF);
 
 	return 0;
 }
