@@ -101,6 +101,10 @@ int connman_iface_update(struct connman_iface *iface,
 	const char *str = NULL;
 
 	switch (state) {
+	case CONNMAN_IFACE_STATE_OFF:
+		str = "off";
+		break;
+
 	case CONNMAN_IFACE_STATE_ENABLED:
 		str = "enabled";
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
@@ -119,6 +123,10 @@ int connman_iface_update(struct connman_iface *iface,
 		break;
 
 	case CONNMAN_IFACE_STATE_SHUTDOWN:
+		str = "shutdown";
+		__connman_dhcp_release(iface);
+		if (iface->driver->shutdown)
+			iface->driver->shutdown(iface);
 		break;
 
 	default:
@@ -505,10 +513,9 @@ static DBusMessage *set_policy(DBusConnection *conn,
 		if (new_policy == CONNMAN_IFACE_POLICY_AUTO) {
 			if (iface->driver->activate)
 				iface->driver->activate(iface);
-		} else {
-			if (iface->driver->shutdown)
-				iface->driver->shutdown(iface);
-		}
+		} else
+			connman_iface_update(iface,
+					CONNMAN_IFACE_STATE_SHUTDOWN);
 
 		g_dbus_emit_signal(conn, path, CONNMAN_IFACE_INTERFACE,
 				"PolicyChanged", DBUS_TYPE_STRING, &policy,
