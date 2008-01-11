@@ -77,10 +77,8 @@ static gboolean control_event(GIOChannel *chan,
 	gsize len;
 	GIOError err;
 
-	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_unref(chan);
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;
-	}
 
 	memset(buf, 0, sizeof(buf));
 
@@ -88,7 +86,6 @@ static gboolean control_event(GIOChannel *chan,
 	if (err) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
-		g_io_channel_unref(chan);
 		return FALSE;
 	}
 
@@ -157,8 +154,6 @@ static int open_control(struct supplicant_task *task)
 
 	exec_cmd(task, "ATTACH");
 	exec_cmd(task, "ADD_NETWORK");
-
-	g_io_channel_unref(task->channel);
 
 	return 0;
 }
@@ -242,13 +237,14 @@ int __supplicant_stop(struct connman_iface *iface)
 
 	tasks = g_slist_remove(tasks, task);
 
+	exec_cmd(task, "DISABLE_NETWORK 0");
 	exec_cmd(task, "DETACH");
 
 	sleep(1);
 
 	kill(task->pid, SIGTERM);
 
-	//close(task->socket);
+	g_io_channel_shutdown(task->channel, TRUE, NULL);
 	g_io_channel_unref(task->channel);
 
 	snprintf(pathname, sizeof(pathname),
