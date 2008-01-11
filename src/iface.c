@@ -98,15 +98,22 @@ void __connman_iface_list(DBusMessageIter *iter)
 int connman_iface_update(struct connman_iface *iface,
 					enum connman_iface_state state)
 {
-	const char *str = NULL;
+	const char *str;
+
+	iface->state = state;
+
+	str = __connman_iface_state2string(iface->state);
+
+	g_dbus_emit_signal(connection, iface->path,
+				CONNMAN_IFACE_INTERFACE, "StateChanged",
+				DBUS_TYPE_STRING, &str, DBUS_TYPE_INVALID);
 
 	switch (state) {
 	case CONNMAN_IFACE_STATE_OFF:
-		str = "off";
+		__connman_dhcp_release(iface);
 		break;
 
 	case CONNMAN_IFACE_STATE_ENABLED:
-		str = "enabled";
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
 			if (iface->driver->connect)
 				iface->driver->connect(iface, NULL);
@@ -114,16 +121,10 @@ int connman_iface_update(struct connman_iface *iface,
 		break;
 
 	case CONNMAN_IFACE_STATE_CARRIER:
-		str = "carrier";
 		__connman_dhcp_request(iface);
 		break;
 
-	case CONNMAN_IFACE_STATE_READY:
-		str = "ready";
-		break;
-
 	case CONNMAN_IFACE_STATE_SHUTDOWN:
-		str = "shutdown";
 		__connman_dhcp_release(iface);
 		if (iface->driver->shutdown)
 			iface->driver->shutdown(iface);
@@ -131,14 +132,6 @@ int connman_iface_update(struct connman_iface *iface,
 
 	default:
 		break;
-	}
-
-	iface->state = state;
-
-	if (str != NULL) {
-		g_dbus_emit_signal(connection, iface->path,
-				CONNMAN_IFACE_INTERFACE, "StateChanged",
-				DBUS_TYPE_STRING, &str, DBUS_TYPE_INVALID);
 	}
 
 	return 0;
@@ -489,7 +482,7 @@ static DBusMessage *set_policy(DBusConnection *conn,
 	struct connman_iface *iface = data;
 	DBusMessage *reply;
 	enum connman_iface_policy new_policy;
-	const char *path, *policy;
+	const char *policy;
 
 	DBG("conn %p", conn);
 
@@ -505,8 +498,6 @@ static DBusMessage *set_policy(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	if (iface->policy != new_policy) {
-		path = dbus_message_get_path(msg);
-
 		iface->policy = new_policy;
 		__connman_iface_store(iface);
 
@@ -517,7 +508,9 @@ static DBusMessage *set_policy(DBusConnection *conn,
 			connman_iface_update(iface,
 					CONNMAN_IFACE_STATE_SHUTDOWN);
 
-		g_dbus_emit_signal(conn, path, CONNMAN_IFACE_INTERFACE,
+		policy = __connman_iface_policy2string(new_policy);
+
+		g_dbus_emit_signal(conn, iface->path, CONNMAN_IFACE_INTERFACE,
 				"PolicyChanged", DBUS_TYPE_STRING, &policy,
 							DBUS_TYPE_INVALID);
 	}
@@ -537,13 +530,18 @@ static void append_network(DBusMessage *reply,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	if (iface->network.essid != NULL)
-		append_entry(&dict, "ESSID",
+	switch (iface->type) {
+	case CONNMAN_IFACE_TYPE_80211:
+		if (iface->network.essid != NULL)
+			append_entry(&dict, "ESSID",
 				DBUS_TYPE_STRING, &iface->network.essid);
-
-	if (secrets == TRUE && iface->network.psk != NULL)
-		append_entry(&dict, "PSK",
+		if (secrets == TRUE && iface->network.psk != NULL)
+			append_entry(&dict, "PSK",
 				DBUS_TYPE_STRING, &iface->network.psk);
+		break;
+	default:
+		break;
+	}
 
 	dbus_message_iter_close_container(&array, &dict);
 }
@@ -619,11 +617,9 @@ static DBusMessage *set_network(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	if (changed == TRUE) {
-		const char *path = dbus_message_get_path(msg);
-
 		__connman_iface_store(iface);
 
-		signal = dbus_message_new_signal(path,
+		signal = dbus_message_new_signal(iface->path,
 				CONNMAN_IFACE_INTERFACE, "NetworkChanged");
 		if (signal != NULL) {
 			append_network(signal, iface, FALSE);
@@ -757,11 +753,9 @@ static DBusMessage *set_ipv4(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	if (changed == TRUE) {
-		const char *path = dbus_message_get_path(msg);
-
 		__connman_iface_store(iface);
 
-		signal = dbus_message_new_signal(path,
+		signal = dbus_message_new_signal(iface->path,
 				CONNMAN_IFACE_INTERFACE, "IPv4Changed");
 		if (signal != NULL) {
 			append_ipv4(signal, iface);
