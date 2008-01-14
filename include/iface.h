@@ -38,10 +38,10 @@ enum connman_iface_type {
 };
 
 enum connman_iface_flags {
-	CONNMAN_IFACE_FLAG_RTNL           = (1 << 0),
-	CONNMAN_IFACE_FLAG_IPV4           = (1 << 1),
-	CONNMAN_IFACE_FLAG_IPV6           = (1 << 2),
-	CONNMAN_IFACE_FLAG_CARRIER_DETECT = (1 << 3),
+	CONNMAN_IFACE_FLAG_RTNL     = (1 << 0),
+	CONNMAN_IFACE_FLAG_IPV4     = (1 << 1),
+	CONNMAN_IFACE_FLAG_IPV6     = (1 << 2),
+	CONNMAN_IFACE_FLAG_SCANNING = (1 << 3),
 };
 
 enum connman_iface_state {
@@ -122,6 +122,7 @@ struct connman_iface_driver {
 	int (*scan) (struct connman_iface *iface);
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
+	int (*disconnect) (struct connman_iface *iface);
 
 	void (*set_network) (struct connman_iface *iface,
 						const char *network);

@@ -217,30 +217,6 @@ static void iface_remove(struct connman_iface *iface)
 	free(data);
 }
 
-static int iface_activate(struct connman_iface *iface)
-{
-	struct iface_data *data = connman_iface_get_data(iface);
-
-	printf("[802.11] activate %s\n", data->ifname);
-
-	connman_iface_update(iface, CONNMAN_IFACE_STATE_ENABLED);
-
-	return 0;
-}
-
-static int iface_shutdown(struct connman_iface *iface)
-{
-	struct iface_data *data = connman_iface_get_data(iface);
-
-	printf("[802.11] shutdown %s\n", data->ifname);
-
-	__supplicant_stop(iface);
-
-	connman_iface_update(iface, CONNMAN_IFACE_STATE_OFF);
-
-	return 0;
-}
-
 static int iface_scan(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
@@ -289,6 +265,17 @@ static int iface_connect(struct connman_iface *iface,
 	return 0;
 }
 
+static int iface_disconnect(struct connman_iface *iface)
+{
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	printf("[802.11] disconnect %s\n", data->ifname);
+
+	__supplicant_stop(iface);
+
+	return 0;
+}
+
 static void iface_set_network(struct connman_iface *iface,
 						const char *network)
 {
@@ -311,13 +298,6 @@ static void iface_set_passphrase(struct connman_iface *iface,
 	g_free(data->passphrase);
 
 	data->passphrase = g_strdup(passphrase);
-}
-
-static void iface_carrier(struct connman_iface *iface, int carrier)
-{
-	printf("[802.11] carrier %s\n", carrier ? "on" : "off");
-
-	connman_iface_indicate_carrier(iface, carrier);
 }
 
 static void parse_genie(struct station_data *station,
@@ -535,13 +515,11 @@ static struct connman_iface_driver iface_driver = {
 	.capability	= "net.80211",
 	.probe		= iface_probe,
 	.remove		= iface_remove,
-	.activate	= iface_activate,
-	.shutdown	= iface_shutdown,
 	.scan		= iface_scan,
 	.connect	= iface_connect,
+	.disconnect	= iface_disconnect,
 	.set_network	= iface_set_network,
 	.set_passphrase	= iface_set_passphrase,
-	.rtnl_carrier	= iface_carrier,
 	.rtnl_wireless	= iface_wireless,
 };
 

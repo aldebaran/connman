@@ -24,7 +24,6 @@
 #endif
 
 #include <stdio.h>
-#include <arpa/inet.h>
 
 #include <connman/plugin.h>
 #include <connman/iface.h>
@@ -36,8 +35,7 @@ static int iface_probe(struct connman_iface *iface)
 	iface->type = CONNMAN_IFACE_TYPE_80203;
 
 	iface->flags = CONNMAN_IFACE_FLAG_RTNL |
-				CONNMAN_IFACE_FLAG_IPV4 |
-				CONNMAN_IFACE_FLAG_CARRIER_DETECT;
+				CONNMAN_IFACE_FLAG_IPV4;
 
 	return 0;
 }
