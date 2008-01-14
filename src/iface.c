@@ -100,7 +100,7 @@ static void state_changed(struct connman_iface *iface)
 	const char *str = __connman_iface_state2string(iface->state);
 	enum connman_iface_state state = iface->state;
 
-	DBG("%s", str);
+	DBG("iface %p state %s", iface, str);
 
 	g_dbus_emit_signal(connection, iface->path,
 				CONNMAN_IFACE_INTERFACE, "StateChanged",
@@ -113,6 +113,7 @@ static void state_changed(struct connman_iface *iface)
 
 	case CONNMAN_IFACE_STATE_ENABLED:
 		__connman_dhcp_release(iface);
+		connman_iface_clear_ipv4(iface);
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
 			state = CONNMAN_IFACE_STATE_SCANNING;
 			if (iface->driver->connect) {
@@ -157,6 +158,7 @@ static void switch_policy(struct connman_iface *iface)
 	case CONNMAN_IFACE_POLICY_OFF:
 		iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
 		state_changed(iface);
+		connman_iface_clear_ipv4(iface);
 		__connman_iface_down(iface);
 		break;
 
@@ -165,6 +167,7 @@ static void switch_policy(struct connman_iface *iface)
 
 	case CONNMAN_IFACE_POLICY_AUTO:
 		__connman_iface_up(iface);
+		state_changed(iface);
 		break;
 
 	default:
@@ -178,6 +181,7 @@ void connman_iface_indicate_enabled(struct connman_iface *iface)
 
 	switch (iface->state) {
 	case CONNMAN_IFACE_STATE_OFF:
+	case CONNMAN_IFACE_STATE_CARRIER:
 		iface->state = CONNMAN_IFACE_STATE_ENABLED;
 		state_changed(iface);
 		break;
@@ -229,6 +233,7 @@ void connman_iface_indicate_carrier_off(struct connman_iface *iface)
 	DBG("iface %p state %d", iface, iface->state);
 
 	switch (iface->state) {
+	case CONNMAN_IFACE_STATE_CARRIER:
 	case CONNMAN_IFACE_STATE_CONFIGURE:
 	case CONNMAN_IFACE_STATE_READY:
 		iface->state = CONNMAN_IFACE_STATE_ENABLED;
