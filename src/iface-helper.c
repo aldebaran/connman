@@ -56,12 +56,16 @@ const char *__connman_iface_state2string(enum connman_iface_state state)
 		return "off";
 	case CONNMAN_IFACE_STATE_ENABLED:
 		return "enabled";
+	case CONNMAN_IFACE_STATE_SCANNING:
+		return "scanning";
 	case CONNMAN_IFACE_STATE_CONNECT:
 		return "connect";
-	case CONNMAN_IFACE_STATE_CONFIG:
-		return "config";
+	case CONNMAN_IFACE_STATE_CONNECTED:
+		return "connected";
 	case CONNMAN_IFACE_STATE_CARRIER:
 		return "carrier";
+	case CONNMAN_IFACE_STATE_CONFIGURE:
+		return "configure";
 	case CONNMAN_IFACE_STATE_READY:
 		return "ready";
 	case CONNMAN_IFACE_STATE_SHUTDOWN:

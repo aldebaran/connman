@@ -48,11 +48,13 @@ enum connman_iface_state {
 	CONNMAN_IFACE_STATE_UNKNOWN   = 0,
 	CONNMAN_IFACE_STATE_OFF       = 1,
 	CONNMAN_IFACE_STATE_ENABLED   = 2,
-	CONNMAN_IFACE_STATE_CONNECT   = 3,
-	CONNMAN_IFACE_STATE_CONFIG    = 4,
-	CONNMAN_IFACE_STATE_CARRIER   = 5,
-	CONNMAN_IFACE_STATE_READY     = 6,
-	CONNMAN_IFACE_STATE_SHUTDOWN  = 7,
+	CONNMAN_IFACE_STATE_SCANNING  = 3,
+	CONNMAN_IFACE_STATE_CONNECT   = 4,
+	CONNMAN_IFACE_STATE_CONNECTED = 5,
+	CONNMAN_IFACE_STATE_CARRIER   = 6,
+	CONNMAN_IFACE_STATE_CONFIGURE = 7,
+	CONNMAN_IFACE_STATE_READY     = 8,
+	CONNMAN_IFACE_STATE_SHUTDOWN  = 9,
 };
 
 enum connman_iface_policy {
@@ -90,7 +92,6 @@ struct connman_iface {
 	char *sysfs;
 	char *identifier;
 	int index;
-	int carrier;
 	enum connman_iface_type type;
 	enum connman_iface_flags flags;
 	enum connman_iface_state state;
@@ -100,6 +101,8 @@ struct connman_iface {
 
 	struct connman_iface_driver *driver;
 	void *driver_data;
+
+	void *rtnl_data;
 
 	struct {
 		char *driver;
@@ -113,12 +116,7 @@ struct connman_iface_driver {
 	const char *capability;
 	int (*probe) (struct connman_iface *iface);
 	void (*remove) (struct connman_iface *iface);
-	int (*activate) (struct connman_iface *iface);
-	int (*shutdown) (struct connman_iface *iface);
-	int (*get_ipv4) (struct connman_iface *iface,
-					struct connman_ipv4 *ipv4);
-	int (*set_ipv4) (struct connman_iface *iface,
-					struct connman_ipv4 *ipv4);
+
 	int (*scan) (struct connman_iface *iface);
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
@@ -148,11 +146,12 @@ static inline void connman_iface_set_data(struct connman_iface *iface,
 	iface->driver_data = data;
 }
 
-extern int connman_iface_update(struct connman_iface *iface,
-					enum connman_iface_state state);
-
-extern void connman_iface_indicate_carrier(struct connman_iface *iface,
-							int carrier);
+extern void connman_iface_indicate_enabled(struct connman_iface *iface);
+extern void connman_iface_indicate_disabled(struct connman_iface *iface);
+extern void connman_iface_indicate_connected(struct connman_iface *iface);
+extern void connman_iface_indicate_carrier_on(struct connman_iface *iface);
+extern void connman_iface_indicate_carrier_off(struct connman_iface *iface);
+extern void connman_iface_indicate_configured(struct connman_iface *iface);
 
 extern int connman_iface_get_ipv4(struct connman_iface *iface,
 						struct connman_ipv4 *ipv4);

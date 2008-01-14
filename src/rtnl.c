@@ -37,6 +37,21 @@
 
 #include "connman.h"
 
+struct rtnl_data {
+	unsigned ifi_flags;
+};
+
+static struct rtnl_data *get_rtnl_data(struct connman_iface *iface)
+{
+	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
+		return NULL;
+
+	if (iface->rtnl_data == NULL)
+		iface->rtnl_data = g_try_new0(struct rtnl_data, 1);
+
+	return iface->rtnl_data;
+}
+
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
 {
 	if (family == AF_INET) {
@@ -72,6 +87,7 @@ static inline void print_attr(struct rtattr *attr, const char *name)
 static void rtnl_link(struct nlmsghdr *hdr)
 {
 	struct connman_iface *iface;
+	struct rtnl_data *data;
 	struct ifinfomsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -85,16 +101,25 @@ static void rtnl_link(struct nlmsghdr *hdr)
 	if (iface == NULL)
 		return;
 
-	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
+	data = get_rtnl_data(iface);
+	if (data == NULL)
 		return;
 
-	if (iface->carrier != ((msg->ifi_flags & IFF_RUNNING) != 0)) {
-		iface->carrier = ((msg->ifi_flags & IFF_RUNNING) != 0);
-		if (iface->driver->rtnl_carrier)
-			iface->driver->rtnl_carrier(iface, iface->carrier);
+	if ((data->ifi_flags & IFF_RUNNING) != (msg->ifi_flags & IFF_RUNNING)) {
+		if (msg->ifi_flags & IFF_RUNNING)
+			connman_iface_indicate_carrier_on(iface);
 		else
-			connman_iface_indicate_carrier(iface, iface->carrier);
+			connman_iface_indicate_carrier_off(iface);
 	}
+
+	if ((data->ifi_flags & IFF_UP) != (msg->ifi_flags & IFF_UP)) {
+		if (msg->ifi_flags & IFF_UP)
+			connman_iface_indicate_enabled(iface);
+		else
+			connman_iface_indicate_disabled(iface);
+	}
+
+	data->ifi_flags = msg->ifi_flags;
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -162,6 +187,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 static void rtnl_addr(struct nlmsghdr *hdr)
 {
 	struct connman_iface *iface;
+	struct rtnl_data *data;
 	struct ifaddrmsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -175,7 +201,8 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 	if (iface == NULL)
 		return;
 
-	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
+	data = get_rtnl_data(iface);
+	if (data == NULL)
 		return;
 
 	for (attr = IFA_RTA(msg); RTA_OK(attr, bytes);
@@ -328,10 +355,8 @@ static gboolean netlink_event(GIOChannel *chan,
 	gsize len;
 	GIOError err;
 
-	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR)) {
-		g_io_channel_unref(chan);
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;
-	}
 
 	memset(buf, 0, sizeof(buf));
 
@@ -339,7 +364,6 @@ static gboolean netlink_event(GIOChannel *chan,
 	if (err) {
 		if (err == G_IO_ERROR_AGAIN)
 			return TRUE;
-		g_io_channel_unref(chan);
 		return FALSE;
 	}
 
@@ -394,8 +418,6 @@ int __connman_rtnl_init(void)
 			G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 						netlink_event, NULL);
 
-	g_io_channel_unref(channel);
-
 	return 0;
 }
 
@@ -403,6 +425,7 @@ void __connman_rtnl_cleanup(void)
 {
 	DBG("");
 
+	g_io_channel_shutdown(channel, TRUE, NULL);
 	g_io_channel_unref(channel);
 
 	channel = NULL;

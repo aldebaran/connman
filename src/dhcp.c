@@ -63,15 +63,10 @@ int connman_dhcp_update(struct connman_iface *iface,
 
 		ipv4->method = CONNMAN_IPV4_METHOD_DHCP;
 
-		if (iface->driver->set_ipv4) {
-			iface->driver->set_ipv4(iface, ipv4);
-			iface->ipv4 = *ipv4;
-		} else {
-			connman_iface_set_ipv4(iface, ipv4);
-			iface->ipv4 = *ipv4;
-		}
+		connman_iface_set_ipv4(iface, ipv4);
+		iface->ipv4 = *ipv4;
 
-		connman_iface_update(iface, CONNMAN_IFACE_STATE_READY);
+		connman_iface_indicate_configured(iface);
 	}
 
 	return 0;

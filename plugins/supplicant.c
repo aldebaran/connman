@@ -94,8 +94,7 @@ static gboolean control_event(GIOChannel *chan,
 
 	if (g_str_has_prefix(buf + 3, "CTRL-EVENT-CONNECTED") == TRUE) {
 		printf("[SUPPLICANT] connected\n");
-		connman_iface_update(task->iface,
-					CONNMAN_IFACE_STATE_CARRIER);
+		connman_iface_indicate_connected(task->iface);
 	}
 
 	if (g_str_has_prefix(buf + 3, "CTRL-EVENT-DISCONNECTED") == TRUE) {
