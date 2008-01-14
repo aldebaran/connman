@@ -252,7 +252,7 @@ int connman_iface_set_ipv4(struct connman_iface *iface,
 
 	DBG("%s", cmd);
 
-	system(cmd);
+	err = system(cmd);
 
 	return 0;
 }
@@ -301,7 +301,7 @@ int connman_iface_clear_ipv4(struct connman_iface *iface)
 
 	DBG("%s", cmd);
 
-	system(cmd);
+	err = system(cmd);
 
 	return 0;
 }

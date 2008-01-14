@@ -64,9 +64,7 @@ static struct supplicant_task *find_task(int ifindex)
 
 static int exec_cmd(struct supplicant_task *task, char *cmd)
 {
-	write(task->socket, cmd, strlen(cmd));
-
-	return 0;
+	return write(task->socket, cmd, strlen(cmd));
 }
 
 static gboolean control_event(GIOChannel *chan,
