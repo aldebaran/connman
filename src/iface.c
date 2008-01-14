@@ -112,6 +112,7 @@ static void state_changed(struct connman_iface *iface)
 		break;
 
 	case CONNMAN_IFACE_STATE_ENABLED:
+		__connman_dhcp_release(iface);
 		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
 			state = CONNMAN_IFACE_STATE_SCANNING;
 			if (iface->driver->connect) {
