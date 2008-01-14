@@ -108,3 +108,87 @@ int __connman_iface_init_via_inet(struct connman_iface *iface)
 
 	return 0;
 }
+
+int __connman_iface_up(struct connman_iface *iface)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	DBG("iface %p", iface);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = iface->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ifr.ifr_flags & IFF_UP) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags |= IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
+
+int __connman_iface_down(struct connman_iface *iface)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	DBG("iface %p", iface);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = iface->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (!(ifr.ifr_flags & IFF_UP)) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
