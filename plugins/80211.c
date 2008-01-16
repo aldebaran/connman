@@ -64,6 +64,16 @@ struct iface_data {
 	gchar *passphrase;
 };
 
+static void report_station(struct connman_iface *iface,
+						struct station_data *station)
+{
+	if (station == NULL)
+		return;
+
+	if (station->name)
+		connman_iface_indicate_station(iface, station->name);
+}
+
 static struct station_data *create_station(struct iface_data *iface,
 							const char *address)
 {
@@ -339,6 +349,7 @@ static void parse_scan_results(struct connman_iface *iface,
 
 		switch (event->cmd) {
 		case SIOCGIWAP:
+			report_station(iface, station);
 			eth = (void *) &event->u.ap_addr.sa_data;
 			sprintf(addr, "%02X:%02X:%02X:%02X:%02X:%02X",
 						eth->ether_addr_octet[0],
@@ -400,6 +411,8 @@ static void parse_scan_results(struct connman_iface *iface,
 		ptr += event->len;
 		len -= event->len;
 	}
+
+	report_station(iface, station);
 
 	printf("[802.11] found %d networks\n", num);
 }

@@ -95,6 +95,37 @@ void __connman_iface_list(DBusMessageIter *iter)
 	}
 }
 
+static void append_entry(DBusMessageIter *dict,
+				const char *key, int type, void *val)
+{
+	DBusMessageIter entry, value;
+	const char *signature;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		signature = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT16:
+		signature = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	default:
+		signature = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							signature, &value);
+	dbus_message_iter_append_basic(&value, type, val);
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static void state_changed(struct connman_iface *iface)
 {
 	const char *str = __connman_iface_state2string(iface->state);
@@ -256,6 +287,40 @@ void connman_iface_indicate_configured(struct connman_iface *iface)
 	default:
 		break;
 	}
+}
+
+static void append_station(DBusMessage *reply, const char *name)
+{
+	DBusMessageIter array, dict;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	append_entry(&dict, "ESSID", DBUS_TYPE_STRING, &name);
+
+	dbus_message_iter_close_container(&array, &dict);
+}
+
+void connman_iface_indicate_station(struct connman_iface *iface,
+							const char *name)
+{
+	DBusMessage *signal;
+
+	DBG("iface %p name %s", iface, name);
+
+	signal = dbus_message_new_signal(iface->path,
+				CONNMAN_IFACE_INTERFACE, "NetworkFound");
+	if (signal == NULL)
+		return;
+
+	append_station(signal, name);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
 }
 
 int connman_iface_get_ipv4(struct connman_iface *iface,
@@ -441,37 +506,6 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	return reply;
-}
-
-static void append_entry(DBusMessageIter *dict,
-				const char *key, int type, void *val)
-{
-	DBusMessageIter entry, value;
-	const char *signature;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		signature = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT16:
-		signature = DBUS_TYPE_UINT16_AS_STRING;
-		break;
-	default:
-		signature = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							signature, &value);
-	dbus_message_iter_append_basic(&value, type, val);
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -895,6 +929,7 @@ static GDBusSignalTable iface_signals[] = {
 	{ "StateChanged",   "s"     },
 	{ "SignalChanged",  "q"     },
 	{ "PolicyChanged",  "s"     },
+	{ "NetworkFound",   "a{sv}" },
 	{ "NetworkChanged", "a{sv}" },
 	{ "IPv4Changed",    "a{sv}" },
 	{ },
