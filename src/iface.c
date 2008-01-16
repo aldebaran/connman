@@ -289,7 +289,7 @@ void connman_iface_indicate_configured(struct connman_iface *iface)
 	}
 }
 
-static void append_station(DBusMessage *reply, const char *name)
+static void append_station(DBusMessage *reply, const char *name, int signal)
 {
 	DBusMessageIter array, dict;
 
@@ -301,12 +301,13 @@ static void append_station(DBusMessage *reply, const char *name)
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
 	append_entry(&dict, "ESSID", DBUS_TYPE_STRING, &name);
+	append_entry(&dict, "Signal", DBUS_TYPE_UINT16, &signal);
 
 	dbus_message_iter_close_container(&array, &dict);
 }
 
 void connman_iface_indicate_station(struct connman_iface *iface,
-							const char *name)
+						const char *name, int strength)
 {
 	DBusMessage *signal;
 
@@ -317,7 +318,7 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 	if (signal == NULL)
 		return;
 
-	append_station(signal, name);
+	append_station(signal, name, strength);
 
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);

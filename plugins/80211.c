@@ -70,8 +70,10 @@ static void report_station(struct connman_iface *iface,
 	if (station == NULL)
 		return;
 
-	if (station->name)
-		connman_iface_indicate_station(iface, station->name);
+	if (station->name == NULL)
+		return;
+
+	connman_iface_indicate_station(iface, station->name, station->qual);
 }
 
 static struct station_data *create_station(struct iface_data *iface,
