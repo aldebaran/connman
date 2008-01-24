@@ -23,30 +23,100 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+#include <stdlib.h>
+#include <string.h>
+
+#include <gdbus.h>
+
 #include "connman.h"
 
-int __connman_agent_init(void)
+static DBusConnection *connection = NULL;
+static guint agent_watch = 0;
+static gchar *agent_path = NULL;
+static gchar *agent_sender = NULL;
+
+static void agent_free(void)
 {
-	DBG("");
+	agent_watch = 0;
+
+	g_free(agent_sender);
+	agent_sender = NULL;
+
+	g_free(agent_path);
+	agent_path = NULL;
+}
+
+static gboolean agent_disconnect(void *data)
+{
+	DBG("data %p", data);
+
+	agent_free();
+
+	return TRUE;
+}
+
+int __connman_agent_register(const char *sender, const char *path)
+{
+	DBG("sender %s path %s", sender, path);
+
+	if (agent_path != NULL)
+		return -EEXIST;
+
+	agent_sender = g_strdup(sender);
+	agent_path = g_strdup(path);
+
+	agent_watch = g_dbus_add_disconnect_watch(connection, sender,
+						agent_disconnect, NULL, NULL);
+
+	return 0;
+}
+
+int __connman_agent_unregister(const char *sender, const char *path)
+{
+	DBG("sender %s path %s", sender, path);
+
+	if (agent_path == NULL)
+		return -ENOENT;
+
+	if (agent_watch > 0)
+		g_dbus_remove_watch(connection, agent_watch);
+
+	agent_free();
+
+	return 0;
+}
+
+int __connman_agent_init(DBusConnection *conn)
+{
+	DBG("conn %p", conn);
+
+	connection = dbus_connection_ref(conn);
+	if (connection == NULL)
+		return -1;
 
 	return 0;
 }
 
 void __connman_agent_cleanup(void)
 {
-	DBG("");
-}
+	DBusMessage *msg;
 
-int __connman_agent_register(const char *path)
-{
-	DBG("");
+	DBG("conn %p", connection);
 
-	return 0;
-}
+	if (agent_watch > 0)
+		g_dbus_remove_watch(connection, agent_watch);
 
-int __connman_agent_unregister(const char *path)
-{
-	DBG("");
+	msg = dbus_message_new_method_call(agent_sender, agent_path,
+					CONNMAN_AGENT_INTERFACE, "Release");
 
-	return 0;
+	dbus_message_set_no_reply(msg, TRUE);
+
+	dbus_connection_send(connection, msg, NULL);
+
+	dbus_message_unref(msg);
+
+	agent_free();
+
+	dbus_connection_unref(connection);
 }

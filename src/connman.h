@@ -28,6 +28,8 @@
 
 #define CONNMAN_SERVICE  "org.freedesktop.connman"
 
+#define CONNMAN_AGENT_INTERFACE  CONNMAN_SERVICE ".Agent"
+
 #define CONNMAN_MANAGER_PATH       "/"
 #define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
 
@@ -42,11 +44,11 @@
 int __connman_manager_init(DBusConnection *conn, int compat);
 void __connman_manager_cleanup(void);
 
-int __connman_agent_init(void);
+int __connman_agent_init(DBusConnection *conn);
 void __connman_agent_cleanup(void);
 
-int __connman_agent_register(const char *path);
-int __connman_agent_unregister(const char *path);
+int __connman_agent_register(const char *sender, const char *path);
+int __connman_agent_unregister(const char *sender, const char *path);
 
 #include <connman/plugin.h>
 

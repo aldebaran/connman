@@ -74,9 +74,11 @@ static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char *path;
+	const char *sender, *path;
 
 	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
@@ -87,7 +89,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
-	__connman_agent_register(path);
+	__connman_agent_register(sender, path);
 
 	return reply;
 }
@@ -96,9 +98,11 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	const char *path;
+	const char *sender, *path;
 
 	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
@@ -109,7 +113,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
-	__connman_agent_unregister(path);
+	__connman_agent_unregister(sender, path);
 
 	return reply;
 }

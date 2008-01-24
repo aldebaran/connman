@@ -120,7 +120,7 @@ int main(int argc, char *argv[])
 			compat = 0;
 	}
 
-	__connman_agent_init();
+	__connman_agent_init(conn);
 
 	__connman_manager_init(conn, compat);
 
