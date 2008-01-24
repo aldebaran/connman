@@ -61,5 +61,5 @@ PKG_CHECK_MODULES(HAL, hal >= 0.5.8, dummy=yes,
 AC_SUBST(HAL_CFLAGS)
 AC_SUBST(HAL_LIBS)
 
-AC_OUTPUT(Makefile include/Makefile src/Makefile
-			plugins/Makefile scripts/Makefile)
+AC_OUTPUT(Makefile include/Makefile src/Makefile test/Makefile
+				plugins/Makefile scripts/Makefile)
