@@ -42,6 +42,12 @@
 int __connman_manager_init(DBusConnection *conn, int compat);
 void __connman_manager_cleanup(void);
 
+int __connman_agent_init(void);
+void __connman_agent_cleanup(void);
+
+int __connman_agent_register(const char *path);
+int __connman_agent_unregister(const char *path);
+
 #include <connman/plugin.h>
 
 int __connman_plugin_init(void);

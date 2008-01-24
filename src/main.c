@@ -120,6 +120,8 @@ int main(int argc, char *argv[])
 			compat = 0;
 	}
 
+	__connman_agent_init();
+
 	__connman_manager_init(conn, compat);
 
 	__connman_plugin_init();
@@ -142,6 +144,8 @@ int main(int argc, char *argv[])
 	__connman_plugin_cleanup();
 
 	__connman_manager_cleanup();
+
+	__connman_agent_cleanup();
 
 	g_dbus_cleanup_connection(conn);
 

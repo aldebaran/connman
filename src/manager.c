@@ -70,9 +70,55 @@ static DBusMessage *get_state(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *register_agent(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *path;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	__connman_agent_register(path);
+
+	return reply;
+}
+
+static DBusMessage *unregister_agent(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	const char *path;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	__connman_agent_unregister(path);
+
+	return reply;
+}
+
 static GDBusMethodTable manager_methods[] = {
-	{ "ListInterfaces", "", "ao", list_interfaces },
-	{ "GetState",       "", "s",  get_state       },
+	{ "ListInterfaces",  "",  "ao", list_interfaces  },
+	{ "GetState",        "",  "s",  get_state        },
+	{ "RegisterAgent",   "o", "",   register_agent   },
+	{ "UnregisterAgent", "o", "",   unregister_agent },
 	{ },
 };
 
