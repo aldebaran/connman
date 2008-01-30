@@ -1,5 +1,5 @@
 
-SUBDIRS = include src test plugins scripts
+SUBDIRS = include src doc test plugins scripts
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
