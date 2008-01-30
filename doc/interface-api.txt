@@ -1,0 +1,24 @@
+Interface hierarchy
+*******************
+
+Service name	org.freedesktop.connman
+Interface name	org.freedesktop.connman.Interface
+Object path	[interface object]
+
+Methods		dict GetProperties()
+		string GetState()
+		uint16 GetSignal()
+		string GetPolicy()
+		void SetPolicy(string policy)
+		dict GetNetwork()
+		void SetNetwork(dict network)
+		dict GetIPv4()
+		void SetIPv4(dict ipv4)
+
+Signals		StateChanged(string state)
+		SignalChanged(uint16 signal)
+		PolicyChanged(string policy)
+		NetworkFound(dict network)
+		NetworkChanged(dict network)
+		IPv4Changed(dict ipv4)
+
