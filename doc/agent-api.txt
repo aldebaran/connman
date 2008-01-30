@@ -15,4 +15,3 @@ happens when the core shuts down.
 
 To get notified when the core exits, an agent should also watch out for the
 NameOwnerChanged from org.freedesktop.connman service.
-

@@ -44,4 +44,3 @@ Signal: InterfaceRemoved
 This signal is emitted every time an interface has been removed. This can
 happen at any time in case of hotplug devices. When the system shuts down,
 this signal is also emitted.
-

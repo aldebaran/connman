@@ -21,4 +21,3 @@ Signals		StateChanged(string state)
 		NetworkFound(dict network)
 		NetworkChanged(dict network)
 		IPv4Changed(dict ipv4)
-
