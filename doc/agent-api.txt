@@ -1,0 +1,18 @@
+Agent hierarchy
+***************
+
+Service name	[unique name]
+Interface name	org.freedesktop.connman.Agent
+Object path	[random object]
+
+Methods		void Release()
+
+
+Method: Release
+===============
+This method will be called when the core releases the agent. This normally
+happens when the core shuts down.
+
+To get notified when the core exits, an agent should also watch out for the
+NameOwnerChanged from org.freedesktop.connman service.
+
