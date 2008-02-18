@@ -279,7 +279,7 @@ static DBusConnection *connection;
 
 static int plugin_init(void)
 {
-	connection = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL);
+	connection = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
 
 	busname = dbus_bus_get_unique_name(connection);
 
