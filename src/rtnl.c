@@ -57,30 +57,30 @@ static inline void print_inet(struct rtattr *attr, const char *name, int family)
 	if (family == AF_INET) {
 		struct in_addr addr;
 		addr = *((struct in_addr *) RTA_DATA(attr));
-		printf("  attr %s (len %d) %s\n",
+		printf("  attr %s (len %jd) %s\n",
 				name, RTA_PAYLOAD(attr), inet_ntoa(addr));
 	} else
-		printf("  attr %s (len %d)\n", name, RTA_PAYLOAD(attr));
+		printf("  attr %s (len %jd)\n", name, RTA_PAYLOAD(attr));
 }
 
 static inline void print_char(struct rtattr *attr, const char *name)
 {
-	printf("  attr %s (len %d) %s\n", name, RTA_PAYLOAD(attr),
+	printf("  attr %s (len %jd) %s\n", name, RTA_PAYLOAD(attr),
 						(char *) RTA_DATA(attr));
 }
 
 static inline void print_byte(struct rtattr *attr, const char *name)
 {
-	printf("  attr %s (len %d) 0x%02x\n", name, RTA_PAYLOAD(attr),
+	printf("  attr %s (len %jd) 0x%02x\n", name, RTA_PAYLOAD(attr),
 					*((unsigned char *) RTA_DATA(attr)));
 }
 
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
 	if (name)
-		printf("  attr %s (len %d)\n", name, RTA_PAYLOAD(attr));
+		printf("  attr %s (len %jd)\n", name, RTA_PAYLOAD(attr));
 	else
-		printf("  attr %d (len %d)\n",
+		printf("  attr %d (len %jd)\n",
 					attr->rta_type, RTA_PAYLOAD(attr));
 }
 
@@ -286,7 +286,7 @@ static void rtnl_route(struct nlmsghdr *hdr)
 
 static void rtnl_message(void *buf, size_t len)
 {
-	DBG("buf %p len %d", buf, len);
+	DBG("buf %p len %zd", buf, len);
 
 	while (len > 0) {
 		struct nlmsghdr *hdr = buf;
@@ -379,7 +379,7 @@ int __connman_rtnl_send(const void *buf, size_t len)
 	struct sockaddr_nl addr;
 	int sk;
 
-	DBG("buf %p len %d", buf, len);
+	DBG("buf %p len %zd", buf, len);
 
 	sk = g_io_channel_unix_get_fd(channel);
 
