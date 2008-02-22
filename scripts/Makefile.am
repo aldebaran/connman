@@ -1,4 +1,10 @@
 
+initdir = $(sysconfdir)/init.d
+
+init_SCRIPTS = connman
+
+DISTCLEANFILES = $(init_SCRIPTS)
+
 scriptdir = $(libdir)/connman/scripts
 
 script_DATA = dhclient.conf

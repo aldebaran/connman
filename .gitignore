@@ -23,4 +23,5 @@ autom4te.cache
 
 include/connman
 src/connmand
+scripts/connman
 scripts/dhclient-script
