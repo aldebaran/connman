@@ -21,9 +21,6 @@
 
 #include <stdio.h>
 
-#define DBG(fmt, arg...)  printf("%s: " fmt "\n" , __FUNCTION__ , ## arg)
-//#define DBG(fmt, arg...)
-
 #include <dbus/dbus.h>
 
 #define CONNMAN_SERVICE  "org.freedesktop.connman"
@@ -49,6 +46,11 @@ void __connman_agent_cleanup(void);
 
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
+
+#include <connman/log.h>
+
+int __connman_log_init(int syslog, int debug);
+void __connman_log_cleanup(void);
 
 #include <connman/plugin.h>
 

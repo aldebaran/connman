@@ -27,7 +27,6 @@
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
-#include <syslog.h>
 #include <signal.h>
 #include <getopt.h>
 #include <sys/stat.h>
@@ -61,6 +60,7 @@ static void usage(void)
 static struct option options[] = {
 	{ "nodaemon", 0, 0, 'n' },
 	{ "compat",   0, 0, 'c' },
+	{ "debug",    0, 0, 'd' },
 	{ "help",     0, 0, 'h' },
 	{ }
 };
@@ -70,16 +70,18 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError err;
 	struct sigaction sa;
-	int log_option = LOG_NDELAY | LOG_PID;
-	int opt, detach = 1, compat = 0;
+	int opt, detach = 1, compat = 0, debug = 0;
 
-	while ((opt = getopt_long(argc, argv, "+nch", options, NULL)) != EOF) {
-		switch(opt) {
+	while ((opt = getopt_long(argc, argv, "+ncdh", options, NULL)) != EOF) {
+		switch (opt) {
 		case 'n':
 			detach = 0;
 			break;
 		case 'c':
 			compat = 1;
+			break;
+		case 'd':
+			debug = 1;
 			break;
 		case 'h':
 		default:
@@ -97,10 +99,7 @@ int main(int argc, char *argv[])
 			perror("Can't start daemon");
 			exit(1);
 		}
-	} else
-		log_option |= LOG_PERROR;
-
-	openlog("connmand", log_option, LOG_DAEMON);
+	}
 
 	mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
@@ -126,6 +125,8 @@ int main(int argc, char *argv[])
 		if (g_dbus_request_name(conn, NM_SERVICE, NULL) == FALSE)
 			compat = 0;
 	}
+
+	__connman_log_init(detach, debug);
 
 	__connman_agent_init(conn);
 
@@ -154,6 +155,8 @@ int main(int argc, char *argv[])
 
 	__connman_agent_cleanup();
 
+	__connman_log_cleanup();
+
 	g_dbus_cleanup_connection(conn);
 
 	g_main_loop_unref(main_loop);
@@ -161,8 +164,6 @@ int main(int argc, char *argv[])
 	rmdir(STORAGEDIR);
 
 	rmdir(STATEDIR);
-
-	closelog();
 
 	return 0;
 }
