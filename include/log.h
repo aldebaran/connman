@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#define DBG(fmt, arg...) connman_debug(fmt, ## arg)
+#define DBG(fmt, arg...) connman_debug("%s: " fmt, __FUNCTION__ , ## arg)
 
 extern void connman_info(const char *format, ...);
 extern void connman_error(const char *format, ...);
