@@ -24,13 +24,23 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
+#include <sys/stat.h>
 
 #include <connman/plugin.h>
 #include <connman/iface.h>
 
 static int iface_probe(struct connman_iface *iface)
 {
+	char sysfs_path[PATH_MAX];
+	struct stat st;
+
 	printf("[802.03] probe interface index %d\n", iface->index);
+
+	snprintf(sysfs_path, PATH_MAX, "%s/bridge", iface->sysfs);
+
+	if (stat(sysfs_path, &st) == 0 && (st.st_mode & S_IFDIR))
+		return -ENODEV;
 
 	iface->type = CONNMAN_IFACE_TYPE_80203;
 
