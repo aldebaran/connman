@@ -49,7 +49,7 @@ int __connman_agent_unregister(const char *sender, const char *path);
 
 #include <connman/log.h>
 
-int __connman_log_init(int syslog, int debug);
+int __connman_log_init(int detach, int debug);
 void __connman_log_cleanup(void);
 
 #include <connman/plugin.h>

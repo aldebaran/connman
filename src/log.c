@@ -66,11 +66,11 @@ void connman_debug(const char *format, ...)
 	va_end(ap);
 }
 
-int __connman_log_init(int syslog, int debug)
+int __connman_log_init(int detach, int debug)
 {
 	int option = LOG_NDELAY | LOG_PID;
 
-	if (!syslog)
+	if (!detach)
 		option |= LOG_PERROR;
 
 	openlog("connmand", option, LOG_DAEMON);
