@@ -155,7 +155,7 @@ extern void connman_iface_indicate_carrier_off(struct connman_iface *iface);
 extern void connman_iface_indicate_configured(struct connman_iface *iface);
 
 extern void connman_iface_indicate_station(struct connman_iface *iface,
-						const char *name, int strength);
+				const char *name, int strength, int security);
 
 extern int connman_iface_get_ipv4(struct connman_iface *iface,
 						struct connman_ipv4 *ipv4);

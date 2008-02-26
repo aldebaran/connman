@@ -289,9 +289,11 @@ void connman_iface_indicate_configured(struct connman_iface *iface)
 	}
 }
 
-static void append_station(DBusMessage *reply, const char *name, int signal)
+static void append_station(DBusMessage *reply, const char *name,
+						int signal, int security)
 {
 	DBusMessageIter array, dict;
+	const char *wpa = "WPA";
 
 	dbus_message_iter_init_append(reply, &array);
 
@@ -303,22 +305,28 @@ static void append_station(DBusMessage *reply, const char *name, int signal)
 	append_entry(&dict, "ESSID", DBUS_TYPE_STRING, &name);
 	append_entry(&dict, "Signal", DBUS_TYPE_UINT16, &signal);
 
+	if (security > 0)
+		append_entry(&dict, "Security", DBUS_TYPE_STRING, &wpa);
+
 	dbus_message_iter_close_container(&array, &dict);
 }
 
 void connman_iface_indicate_station(struct connman_iface *iface,
-						const char *name, int strength)
+				const char *name, int strength, int security)
 {
 	DBusMessage *signal;
 
-	DBG("iface %p name %s", iface, name);
+	DBG("iface %p security %d name %s", iface, security, name);
+
+	if (name == NULL || strlen(name) == 0)
+		return;
 
 	signal = dbus_message_new_signal(iface->path,
 				CONNMAN_IFACE_INTERFACE, "NetworkFound");
 	if (signal == NULL)
 		return;
 
-	append_station(signal, name, strength);
+	append_station(signal, name, strength, security);
 
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);

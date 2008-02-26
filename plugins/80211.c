@@ -54,6 +54,10 @@ struct station_data {
 	int wpa_ie_len;
 	unsigned char rsn_ie[40];
 	int rsn_ie_len;
+
+	int has_wep;
+	int has_wpa;
+	int has_rsn;
 };
 
 struct iface_data {
@@ -67,13 +71,23 @@ struct iface_data {
 static void report_station(struct connman_iface *iface,
 						struct station_data *station)
 {
+	int security = 0;
+
 	if (station == NULL)
 		return;
 
 	if (station->name == NULL)
 		return;
 
-	connman_iface_indicate_station(iface, station->name, station->qual);
+	if (station->has_wep)
+		security |= 0x01;
+	if (station->has_wpa)
+		security |= 0x02;
+	if (station->has_rsn)
+		security |= 0x04;
+
+	connman_iface_indicate_station(iface, station->name,
+						station->qual, security);
 }
 
 static struct station_data *create_station(struct iface_data *iface,
@@ -156,6 +170,9 @@ static void print_stations(struct iface_data *iface)
 		//printf("Address:%s Mode:%d ESSID:\"%s\" Quality:%d/100\n",
 		//			station->address, station->mode,
 		//				station->name, station->qual);
+
+		if (station->name == NULL)
+			continue;
 
 		g_key_file_set_string(keyfile, station->address,
 						"Name", station->name);
@@ -338,8 +355,10 @@ static void parse_genie(struct station_data *station,
 
 		switch (data[offset]) {
 		case 0xdd:	/* WPA1 (and other) */
+			station->has_wpa = 1;
 			break;
 		case 0x30:	/* WPA2 (RSN) */
+			station->has_rsn = 1;
 			break;
 		default:
 			break;
@@ -401,9 +420,8 @@ static void parse_scan_results(struct connman_iface *iface,
 			break;
 		case SIOCGIWENCODE:
 			if (station != NULL) {
-				if (!(event->u.data.flags & IW_ENCODE_DISABLED)) {
-					/* privacy */
-				}
+				if (!(event->u.data.flags & IW_ENCODE_DISABLED))
+					station->has_wep = 1;
 			}
 			break;
 		case SIOCGIWRATE:
