@@ -62,6 +62,7 @@ enum connman_iface_policy {
 	CONNMAN_IFACE_POLICY_OFF     = 1,
 	CONNMAN_IFACE_POLICY_IGNORE  = 2,
 	CONNMAN_IFACE_POLICY_AUTO    = 3,
+	CONNMAN_IFACE_POLICY_ASK     = 4,
 };
 
 enum connman_ipv4_method {

@@ -86,6 +86,8 @@ const char *__connman_iface_policy2string(enum connman_iface_policy policy)
 		return "ignore";
 	case CONNMAN_IFACE_POLICY_AUTO:
 		return "auto";
+	case CONNMAN_IFACE_POLICY_ASK:
+		return "ask";
 	}
 
 	return "unknown";
@@ -99,6 +101,8 @@ enum connman_iface_policy __connman_iface_string2policy(const char *policy)
 		return CONNMAN_IFACE_POLICY_IGNORE;
 	else if (strcasecmp(policy, "auto") == 0)
 		return CONNMAN_IFACE_POLICY_AUTO;
+	else if (strcasecmp(policy, "ask") == 0)
+		return CONNMAN_IFACE_POLICY_ASK;
 	else
 		return CONNMAN_IFACE_POLICY_UNKNOWN;
 }
