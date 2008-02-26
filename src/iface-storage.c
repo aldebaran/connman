@@ -30,6 +30,8 @@
 
 #include "connman.h"
 
+#define GROUP_CONFIG  "Config"
+
 int __connman_iface_load(struct connman_iface *iface)
 {
 	GKeyFile *keyfile;
@@ -40,7 +42,8 @@ int __connman_iface_load(struct connman_iface *iface)
 	if (iface->identifier == NULL)
 		return -EIO;
 
-	pathname = g_strdup_printf("%s/interfaces.conf", STORAGEDIR);
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							iface->identifier);
 	if (pathname == NULL)
 		return -ENOMEM;
 
@@ -49,16 +52,16 @@ int __connman_iface_load(struct connman_iface *iface)
 	if (g_key_file_load_from_file(keyfile, pathname, 0, NULL) == FALSE)
 		goto done;
 
-	if (g_key_file_has_group(keyfile, iface->identifier) == FALSE)
+	if (g_key_file_has_group(keyfile, GROUP_CONFIG) == FALSE)
 		goto done;
 
-	str = g_key_file_get_string(keyfile, iface->identifier,
-							"Policy", NULL);
+	str = g_key_file_get_string(keyfile, GROUP_CONFIG, "Policy", NULL);
 	if (str != NULL) {
 		iface->policy = __connman_iface_string2policy(str);
 		g_free(str);
 	}
 
+#if 0
 	str = g_key_file_get_string(keyfile, iface->identifier,
 							"Network.ESSID", NULL);
 	if (str != NULL) {
@@ -95,6 +98,7 @@ int __connman_iface_load(struct connman_iface *iface)
 		iface->ipv4.gateway.s_addr = inet_addr(str);
 		g_free(str);
 	}
+#endif
 
 done:
 	g_key_file_free(keyfile);
@@ -107,22 +111,13 @@ done:
 static void do_update(GKeyFile *keyfile, struct connman_iface *iface)
 {
 	const char *str;
-	gchar *comment;
 
 	DBG("iface %p", iface);
 
-	comment = g_key_file_get_comment(keyfile,
-					iface->identifier, NULL, NULL);
-	if (comment == NULL || *comment == '\0') {
-		if (iface->device.product != NULL)
-			g_key_file_set_comment(keyfile, iface->identifier,
-					NULL, iface->device.product, NULL);
-	}
-	g_free(comment);
-
 	str = __connman_iface_policy2string(iface->policy);
-	g_key_file_set_string(keyfile, iface->identifier, "Policy", str);
+	g_key_file_set_string(keyfile, GROUP_CONFIG, "Policy", str);
 
+#if 0
 	if (iface->network.essid != NULL) {
 		g_key_file_set_string(keyfile, iface->identifier,
 					"Network.ESSID", iface->network.essid);
@@ -161,6 +156,7 @@ static void do_update(GKeyFile *keyfile, struct connman_iface *iface)
 	} else
 		g_key_file_remove_key(keyfile, iface->identifier,
 							"IPv4.Gateway", NULL);
+#endif
 }
 
 int __connman_iface_store(struct connman_iface *iface)
@@ -174,14 +170,15 @@ int __connman_iface_store(struct connman_iface *iface)
 	if (iface->identifier == NULL)
 		return -EIO;
 
-	pathname = g_strdup_printf("%s/interfaces.conf", STORAGEDIR);
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							iface->identifier);
 	if (pathname == NULL)
 		return -ENOMEM;
 
 	keyfile = g_key_file_new();
 
 	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
-		goto done;
+		goto update;
 
 	if (length > 0) {
 		if (g_key_file_load_from_data(keyfile, data, length,
@@ -191,6 +188,7 @@ int __connman_iface_store(struct connman_iface *iface)
 
 	g_free(data);
 
+update:
 	do_update(keyfile, iface);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
