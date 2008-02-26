@@ -272,7 +272,8 @@ static int iface_connect(struct connman_iface *iface,
 
 	__supplicant_start(iface);
 
-	__supplicant_connect(iface, data->network, data->passphrase);
+	if (data->network != NULL)
+		__supplicant_connect(iface, data->network, data->passphrase);
 
 	return 0;
 }
@@ -282,6 +283,9 @@ static int iface_disconnect(struct connman_iface *iface)
 	struct iface_data *data = connman_iface_get_data(iface);
 
 	printf("[802.11] disconnect %s\n", data->ifname);
+
+	if (data->network != NULL)
+		__supplicant_disconnect(iface);
 
 	__supplicant_stop(iface);
 
@@ -295,9 +299,15 @@ static void iface_set_network(struct connman_iface *iface,
 
 	printf("[802.11] set network %s\n", data->ifname);
 
+	if (data->network != NULL)
+		__supplicant_disconnect(iface);
+
 	g_free(data->network);
 
 	data->network = g_strdup(network);
+
+	if (data->network != NULL)
+		__supplicant_connect(iface, data->network, data->passphrase);
 }
 
 static void iface_set_passphrase(struct connman_iface *iface,
@@ -307,9 +317,15 @@ static void iface_set_passphrase(struct connman_iface *iface,
 
 	printf("[802.11] set passphrase %s\n", data->ifname);
 
+	if (data->network != NULL)
+		__supplicant_disconnect(iface);
+
 	g_free(data->passphrase);
 
 	data->passphrase = g_strdup(passphrase);
+
+	if (data->network != NULL)
+		__supplicant_connect(iface, data->network, data->passphrase);
 }
 
 static void parse_genie(struct station_data *station,
