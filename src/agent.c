@@ -107,8 +107,13 @@ void __connman_agent_cleanup(void)
 	if (agent_watch > 0)
 		g_dbus_remove_watch(connection, agent_watch);
 
+	if (agent_path == NULL)
+		return;
+
 	msg = dbus_message_new_method_call(agent_sender, agent_path,
 					CONNMAN_AGENT_INTERFACE, "Release");
+	if (msg == NULL)
+		return;
 
 	dbus_message_set_no_reply(msg, TRUE);
 
