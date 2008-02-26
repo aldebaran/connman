@@ -366,11 +366,12 @@ static void parse_scan_results(struct connman_iface *iface,
 			break;
 		case SIOCGIWESSID:
 			if (station != NULL) {
-				station->name = malloc(event->len - 7);
+				station->name = malloc(event->len - IW_EV_POINT_LEN + 1);
 				if (station->name != NULL) {
-					memset(station->name, 0, event->len - 7);
-					memcpy(station->name, ptr + 8,
-								event->len - 8);
+					memset(station->name, 0,
+						event->len - IW_EV_POINT_LEN + 1);
+					memcpy(station->name, ptr + IW_EV_POINT_LEN,
+						event->len - IW_EV_POINT_LEN);
 				}
 			}
 			break;
@@ -462,7 +463,7 @@ static void iface_scan_results(struct connman_iface *iface)
 				done = 1;
 		} else {
 			parse_scan_results(iface, iwr.u.data.pointer,
-						iwr.u.data.length);
+							iwr.u.data.length);
 			done = 1;
 		}
 	}
