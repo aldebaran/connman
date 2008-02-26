@@ -269,6 +269,9 @@ int __supplicant_connect(struct connman_iface *iface,
 
 	exec_cmd(task, "DISABLE_NETWORK 0");
 
+	if (network == NULL)
+		return 0;
+
 	sprintf(cmd, "SET_NETWORK 0 ssid \"%s\"", network);
 	exec_cmd(task, cmd);
 
@@ -284,6 +287,21 @@ int __supplicant_connect(struct connman_iface *iface,
 	}
 
 	exec_cmd(task, "ENABLE_NETWORK 0");
+
+	return 0;
+}
+
+int __supplicant_disconnect(struct connman_iface *iface)
+{
+	struct supplicant_task *task;
+
+	task = find_task(iface->index);
+	if (task == NULL)
+		return -ENODEV;
+
+	printf("[SUPPLICANT] disconnect %s\n", task->ifname);
+
+	exec_cmd(task, "DISABLE_NETWORK 0");
 
 	return 0;
 }
