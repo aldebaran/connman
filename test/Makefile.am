@@ -1,4 +1,4 @@
 
-EXTRA_DIST = list-interfaces
+EXTRA_DIST = list-interfaces start-scanning
 
 MAINTAINERCLEANFILES = Makefile.in
