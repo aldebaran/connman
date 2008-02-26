@@ -1,0 +1,21 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SystemBus()
+
+object = dbus.Interface(bus.get_object('org.freedesktop.connman', '/'),
+				'org.freedesktop.DBus.Introspectable')
+
+print object.Introspect()
+
+manager = dbus.Interface(bus.get_object('org.freedesktop.connman', "/"),
+					'org.freedesktop.connman.Manager')
+
+interfaces = manager.ListInterfaces()
+
+for path in interfaces:
+	object = dbus.Interface(bus.get_object('org.freedesktop.connman', path),
+					'org.freedesktop.DBus.Introspectable')
+
+	print object.Introspect()
