@@ -61,44 +61,22 @@ int __connman_iface_load(struct connman_iface *iface)
 		g_free(str);
 	}
 
-#if 0
-	str = g_key_file_get_string(keyfile, iface->identifier,
-							"Network.ESSID", NULL);
+	str = g_key_file_get_string(keyfile, GROUP_CONFIG, "Network", NULL);
 	if (str != NULL) {
 		g_free(iface->network.essid);
 		iface->network.essid = str;
 		if (iface->driver->set_network)
 			iface->driver->set_network(iface, str);
-	}
 
-	str = g_key_file_get_string(keyfile, iface->identifier,
-							"IPv4.Method", NULL);
-	if (str != NULL) {
-		iface->ipv4.method = __connman_ipv4_string2method(str);
-		g_free(str);
+		str = g_key_file_get_string(keyfile, iface->network.essid,
+								"PSK", NULL);
+		if (str != NULL) {
+			g_free(iface->network.psk);
+			iface->network.psk = str;
+			if (iface->driver->set_passphrase)
+				iface->driver->set_passphrase(iface, str);
+		}
 	}
-
-	str = g_key_file_get_string(keyfile, iface->identifier,
-							"IPv4.Address", NULL);
-	if (str != NULL) {
-		iface->ipv4.address.s_addr = inet_addr(str);
-		g_free(str);
-	}
-
-	str = g_key_file_get_string(keyfile, iface->identifier,
-							"IPv4.Netmask", NULL);
-	if (str != NULL) {
-		iface->ipv4.netmask.s_addr = inet_addr(str);
-		g_free(str);
-	}
-
-	str = g_key_file_get_string(keyfile, iface->identifier,
-							"IPv4.Gateway", NULL);
-	if (str != NULL) {
-		iface->ipv4.gateway.s_addr = inet_addr(str);
-		g_free(str);
-	}
-#endif
 
 done:
 	g_key_file_free(keyfile);
@@ -117,46 +95,15 @@ static void do_update(GKeyFile *keyfile, struct connman_iface *iface)
 	str = __connman_iface_policy2string(iface->policy);
 	g_key_file_set_string(keyfile, GROUP_CONFIG, "Policy", str);
 
-#if 0
 	if (iface->network.essid != NULL) {
-		g_key_file_set_string(keyfile, iface->identifier,
-					"Network.ESSID", iface->network.essid);
+		g_key_file_set_string(keyfile, GROUP_CONFIG,
+					"Network", iface->network.essid);
 	} else
-		g_key_file_remove_key(keyfile, iface->identifier,
-							"Network.ESSID", NULL);
+		g_key_file_remove_key(keyfile, GROUP_CONFIG, "Network", NULL);
 
-	if (iface->ipv4.method != CONNMAN_IPV4_METHOD_UNKNOWN) {
-		str = __connman_ipv4_method2string(iface->ipv4.method);
-		g_key_file_set_string(keyfile, iface->identifier,
-							"IPv4.Method", str);
-	} else
-		g_key_file_remove_key(keyfile, iface->identifier,
-							"IPv4.Method", NULL);
-
-	if (iface->ipv4.address.s_addr != INADDR_ANY) {
-		str = inet_ntoa(iface->ipv4.address);
-		g_key_file_set_string(keyfile, iface->identifier,
-							"IPv4.Address", str);
-	} else
-		g_key_file_remove_key(keyfile, iface->identifier,
-							"IPv4.Address", NULL);
-
-	if (iface->ipv4.netmask.s_addr != INADDR_ANY) {
-		str = inet_ntoa(iface->ipv4.netmask);
-		g_key_file_set_string(keyfile, iface->identifier,
-							"IPv4.Netmask", str);
-	} else
-		g_key_file_remove_key(keyfile, iface->identifier,
-							"IPv4.Netmask", NULL);
-
-	if (iface->ipv4.gateway.s_addr != INADDR_ANY) {
-		str = inet_ntoa(iface->ipv4.gateway);
-		g_key_file_set_string(keyfile, iface->identifier,
-							"IPv4.Gateway", str);
-	} else
-		g_key_file_remove_key(keyfile, iface->identifier,
-							"IPv4.Gateway", NULL);
-#endif
+	if (iface->network.essid != NULL)
+		g_key_file_set_string(keyfile, iface->network.essid,
+						"PSK", iface->network.psk);
 }
 
 int __connman_iface_store(struct connman_iface *iface)
