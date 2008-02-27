@@ -221,7 +221,8 @@ static int iface_probe(struct connman_iface *iface)
 	iface->type = CONNMAN_IFACE_TYPE_80211;
 
 	iface->flags = CONNMAN_IFACE_FLAG_RTNL |
-				CONNMAN_IFACE_FLAG_IPV4;
+				CONNMAN_IFACE_FLAG_IPV4 |
+				CONNMAN_IFACE_FLAG_SCANNING;
 
 	connman_iface_set_data(iface, data);
 
@@ -316,15 +317,9 @@ static void iface_set_network(struct connman_iface *iface,
 
 	printf("[802.11] set network %s\n", data->ifname);
 
-	if (data->network != NULL)
-		__supplicant_disconnect(iface);
-
 	g_free(data->network);
 
 	data->network = g_strdup(network);
-
-	if (data->network != NULL)
-		__supplicant_connect(iface, data->network, data->passphrase);
 }
 
 static void iface_set_passphrase(struct connman_iface *iface,
@@ -334,15 +329,9 @@ static void iface_set_passphrase(struct connman_iface *iface,
 
 	printf("[802.11] set passphrase %s\n", data->ifname);
 
-	if (data->network != NULL)
-		__supplicant_disconnect(iface);
-
 	g_free(data->passphrase);
 
 	data->passphrase = g_strdup(passphrase);
-
-	if (data->network != NULL)
-		__supplicant_connect(iface, data->network, data->passphrase);
 }
 
 static void parse_genie(struct station_data *station,
@@ -420,6 +409,9 @@ static void parse_scan_results(struct connman_iface *iface,
 			break;
 		case SIOCGIWENCODE:
 			if (station != NULL) {
+				if (!event->u.data.pointer)
+					event->u.data.flags |= IW_ENCODE_NOKEY;
+
 				if (!(event->u.data.flags & IW_ENCODE_DISABLED))
 					station->has_wep = 1;
 			}
