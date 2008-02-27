@@ -126,6 +126,23 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static gboolean scan_timeout(gpointer user_data)
+{
+	struct connman_iface *iface = user_data;
+
+	switch (iface->state) {
+	case CONNMAN_IFACE_STATE_SCANNING:
+	case CONNMAN_IFACE_STATE_READY:
+		if (iface->driver->scan)
+			iface->driver->scan(iface);
+		return TRUE;
+	default:
+		break;
+	}
+
+	return FALSE;
+}
+
 static void state_changed(struct connman_iface *iface)
 {
 	const char *str = __connman_iface_state2string(iface->state);
@@ -145,13 +162,16 @@ static void state_changed(struct connman_iface *iface)
 	case CONNMAN_IFACE_STATE_ENABLED:
 		__connman_dhcp_release(iface);
 		connman_iface_clear_ipv4(iface);
-		if (iface->type == CONNMAN_IFACE_TYPE_80211) {
+		if (iface->driver->disconnect)
+			iface->driver->disconnect(iface);
+		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING)
 			state = CONNMAN_IFACE_STATE_SCANNING;
-			if (iface->driver->connect) {
-				iface->driver->connect(iface, NULL);
-				state = CONNMAN_IFACE_STATE_CONNECT;
-			}
-		}
+		break;
+
+	case CONNMAN_IFACE_STATE_SCANNING:
+		if (iface->driver->scan)
+			iface->driver->scan(iface);
+		g_timeout_add(8000, scan_timeout, iface);
 		break;
 
 	case CONNMAN_IFACE_STATE_CARRIER:
@@ -169,6 +189,11 @@ static void state_changed(struct connman_iface *iface)
 			iface->driver->disconnect(iface);
 		if (iface->policy != CONNMAN_IFACE_POLICY_AUTO)
 			state = CONNMAN_IFACE_STATE_OFF;
+		break;
+
+	case CONNMAN_IFACE_STATE_READY:
+		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING)
+			g_timeout_add(20000, scan_timeout, iface);
 		break;
 
 	default:
@@ -225,7 +250,11 @@ void connman_iface_indicate_disabled(struct connman_iface *iface)
 {
 	DBG("iface %p state %d", iface, iface->state);
 
-	iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
+	if (iface->policy == CONNMAN_IFACE_POLICY_AUTO) {
+		iface->state = CONNMAN_IFACE_STATE_ENABLED;
+		__connman_iface_up(iface);
+	} else
+		iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
 	state_changed(iface);
 }
 
@@ -267,7 +296,14 @@ void connman_iface_indicate_carrier_off(struct connman_iface *iface)
 	case CONNMAN_IFACE_STATE_CARRIER:
 	case CONNMAN_IFACE_STATE_CONFIGURE:
 	case CONNMAN_IFACE_STATE_READY:
-		iface->state = CONNMAN_IFACE_STATE_ENABLED;
+#if 0
+		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING) {
+			if (iface->driver->disconnect)
+				iface->driver->disconnect(iface);
+			iface->state = CONNMAN_IFACE_STATE_SCANNING;
+		} else
+#endif
+			iface->state = CONNMAN_IFACE_STATE_ENABLED;
 		state_changed(iface);
 		break;
 	default:
@@ -330,6 +366,21 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
+
+	if (g_str_equal(name, iface->network.essid) == TRUE &&
+			iface->state == CONNMAN_IFACE_STATE_SCANNING) {
+		if (iface->driver->set_network)
+			iface->driver->set_network(iface, name);
+		if (iface->driver->set_passphrase)
+			iface->driver->set_passphrase(iface,
+						iface->network.psk);
+
+		if (iface->driver->connect) {
+			iface->driver->connect(iface, NULL);
+			iface->state = CONNMAN_IFACE_STATE_CONNECT;
+			state_changed(iface);
+		}
+	}
 }
 
 int connman_iface_get_ipv4(struct connman_iface *iface,
@@ -509,8 +560,8 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	if (driver->scan)
-		driver->scan(iface);
+	//if (driver->scan)
+	//	driver->scan(iface);
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
@@ -755,7 +806,7 @@ static DBusMessage *set_network(DBusConnection *conn,
 		if (g_strcasecmp(key, "PSK") == 0) {
 			g_free(iface->network.psk);
 			iface->network.psk = g_strdup(val);
-			if (iface->driver->set_network)
+			if (iface->driver->set_passphrase)
 				iface->driver->set_passphrase(iface, val);
 			changed = TRUE;
 		}
@@ -780,6 +831,33 @@ static DBusMessage *set_network(DBusConnection *conn,
 			dbus_message_unref(signal);
 		}
 	}
+
+	return reply;
+}
+
+static DBusMessage *select_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	const char *network;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &network,
+							DBUS_TYPE_INVALID);
+
+	g_free(iface->network.essid);
+	iface->network.essid = g_strdup(network);
+
+	if (iface->driver->set_network)
+		iface->driver->set_network(iface, network);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	return reply;
 }
@@ -929,6 +1007,7 @@ static GDBusMethodTable iface_methods[] = {
 	{ "SetPolicy",     "s",     "",      set_policy     },
 	{ "GetNetwork",    "",      "a{sv}", get_network    },
 	{ "SetNetwork",    "a{sv}", "",      set_network    },
+	{ "SelectNetwork", "s",     "",      select_network },
 	{ "GetIPv4",       "",      "a{sv}", get_ipv4       },
 	{ "SetIPv4",       "a{sv}", "",      set_ipv4       },
 	{ },
@@ -1054,6 +1133,9 @@ static int probe_device(LibHalContext *ctx,
 	iface->driver = driver;
 
 	__connman_iface_load(iface);
+
+	DBG("iface %p network %s secret %s", iface,
+				iface->network.essid, iface->network.psk);
 
 	conn = libhal_ctx_get_dbus_connection(ctx);
 
