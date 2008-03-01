@@ -115,8 +115,12 @@ struct connman_iface {
 struct connman_iface_driver {
 	const char *name;
 	const char *capability;
+
 	int (*probe) (struct connman_iface *iface);
 	void (*remove) (struct connman_iface *iface);
+
+	int (*start) (struct connman_iface *iface);
+	int (*stop) (struct connman_iface *iface);
 
 	int (*scan) (struct connman_iface *iface);
 	int (*connect) (struct connman_iface *iface,
