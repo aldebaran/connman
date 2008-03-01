@@ -434,6 +434,8 @@ static void parse_scan_results(struct connman_iface *iface,
 		default:
 			printf("[802.11] scan element 0x%04x (len %d)\n",
 						event->cmd, event->len);
+			if (event->len == 0)
+				len = 0;
 			break;
 		}
 
