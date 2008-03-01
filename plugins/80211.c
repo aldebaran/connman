@@ -248,6 +248,28 @@ static void wifi_remove(struct connman_iface *iface)
 	free(data);
 }
 
+static int wifi_start(struct connman_iface *iface)
+{
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	DBG("iface %p %s", iface, data->ifname);
+
+	__supplicant_start(iface);
+
+	return 0;
+}
+
+static int wifi_stop(struct connman_iface *iface)
+{
+	struct iface_data *data = connman_iface_get_data(iface);
+
+	DBG("iface %p %s", iface, data->ifname);
+
+	__supplicant_stop(iface);
+
+	return 0;
+}
+
 static int wifi_scan(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
@@ -290,8 +312,6 @@ static int wifi_connect(struct connman_iface *iface,
 
 	DBG("iface %p %s", iface, data->ifname);
 
-	__supplicant_start(iface);
-
 	if (data->network != NULL)
 		__supplicant_connect(iface, data->network, data->passphrase);
 
@@ -306,8 +326,6 @@ static int wifi_disconnect(struct connman_iface *iface)
 
 	if (data->network != NULL)
 		__supplicant_disconnect(iface);
-
-	__supplicant_stop(iface);
 
 	return 0;
 }
@@ -561,6 +579,8 @@ static struct connman_iface_driver wifi_driver = {
 	.capability	= "net.80211",
 	.probe		= wifi_probe,
 	.remove		= wifi_remove,
+	.start		= wifi_start,
+	.stop		= wifi_stop,
 	.scan		= wifi_scan,
 	.connect	= wifi_connect,
 	.disconnect	= wifi_disconnect,
