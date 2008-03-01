@@ -39,6 +39,7 @@
 
 #include <connman/plugin.h>
 #include <connman/iface.h>
+#include <connman/log.h>
 
 #include "supplicant.h"
 
@@ -188,7 +189,7 @@ static void print_stations(struct iface_data *iface)
 	g_key_file_free(keyfile);
 }
 
-static int iface_probe(struct connman_iface *iface)
+static int wifi_probe(struct connman_iface *iface)
 {
 	struct iface_data *data;
 	struct ifreq ifr;
@@ -208,7 +209,7 @@ static int iface_probe(struct connman_iface *iface)
 	if (err < 0)
 		return -EIO;
 
-	printf("[802.11] probe %s\n", ifr.ifr_name);
+	DBG("iface %p %s", iface, ifr.ifr_name);
 
 	data = malloc(sizeof(*data));
 	if (data == NULL)
@@ -231,11 +232,11 @@ static int iface_probe(struct connman_iface *iface)
 	return 0;
 }
 
-static void iface_remove(struct connman_iface *iface)
+static void wifi_remove(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 
-	printf("[802.11] remove %s\n", data->ifname);
+	DBG("iface %p %s", iface, data->ifname);
 
 	__supplicant_stop(iface);
 
@@ -247,14 +248,14 @@ static void iface_remove(struct connman_iface *iface)
 	free(data);
 }
 
-static int iface_scan(struct connman_iface *iface)
+static int wifi_scan(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 	struct iwreq iwr;
 	struct iw_scan_req iws;
 	int sk, err;
 
-	printf("[802.11] scanning %s\n", data->ifname);
+	DBG("iface %p %s", iface, data->ifname);
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
@@ -276,17 +277,18 @@ static int iface_scan(struct connman_iface *iface)
 	close(sk);
 
 	if (err < 0)
-		printf("[802.11] scan initiate error %d\n", errno);
+		connman_error("%s: scan initiate error %d",
+						data->ifname, errno);
 
 	return err;
 }
 
-static int iface_connect(struct connman_iface *iface,
+static int wifi_connect(struct connman_iface *iface,
 					struct connman_network *network)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 
-	printf("[802.11] connect %s\n", data->ifname);
+	DBG("iface %p %s", iface, data->ifname);
 
 	__supplicant_start(iface);
 
@@ -296,11 +298,11 @@ static int iface_connect(struct connman_iface *iface,
 	return 0;
 }
 
-static int iface_disconnect(struct connman_iface *iface)
+static int wifi_disconnect(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 
-	printf("[802.11] disconnect %s\n", data->ifname);
+	DBG("iface %p %s", iface, data->ifname);
 
 	if (data->network != NULL)
 		__supplicant_disconnect(iface);
@@ -310,24 +312,24 @@ static int iface_disconnect(struct connman_iface *iface)
 	return 0;
 }
 
-static void iface_set_network(struct connman_iface *iface,
+static void wifi_set_network(struct connman_iface *iface,
 						const char *network)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 
-	printf("[802.11] set network %s\n", data->ifname);
+	DBG("iface %p %s", iface, data->ifname);
 
 	g_free(data->network);
 
 	data->network = g_strdup(network);
 }
 
-static void iface_set_passphrase(struct connman_iface *iface,
+static void wifi_set_passphrase(struct connman_iface *iface,
 						const char *passphrase)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 
-	printf("[802.11] set passphrase %s\n", data->ifname);
+	DBG("iface %p %s", iface, data->ifname);
 
 	g_free(data->passphrase);
 
@@ -448,7 +450,7 @@ static void parse_scan_results(struct connman_iface *iface,
 	printf("[802.11] found %d networks\n", num);
 }
 
-static void iface_scan_results(struct connman_iface *iface)
+static void scan_results(struct connman_iface *iface)
 {
 	struct iface_data *data = connman_iface_get_data(iface);
 	struct iwreq iwr;
@@ -503,7 +505,7 @@ static void iface_scan_results(struct connman_iface *iface)
 	print_stations(data);
 }
 
-static void iface_wireless(struct connman_iface *iface,
+static void wifi_wireless(struct connman_iface *iface,
 					void *data, unsigned short len)
 {
 	struct iw_event *event = data;
@@ -545,7 +547,7 @@ static void iface_wireless(struct connman_iface *iface,
 		printf("[802.11] New Access Point %s\n", addr);
 		break;
 	case SIOCGIWSCAN:
-		iface_scan_results(iface);
+		scan_results(iface);
 		break;
 	default:
 		printf("[802.11] Wireless event (cmd 0x%04x len %d)\n",
@@ -554,30 +556,28 @@ static void iface_wireless(struct connman_iface *iface,
 	}
 }
 
-static struct connman_iface_driver iface_driver = {
+static struct connman_iface_driver wifi_driver = {
 	.name		= "80211",
 	.capability	= "net.80211",
-	.probe		= iface_probe,
-	.remove		= iface_remove,
-	.scan		= iface_scan,
-	.connect	= iface_connect,
-	.disconnect	= iface_disconnect,
-	.set_network	= iface_set_network,
-	.set_passphrase	= iface_set_passphrase,
-	.rtnl_wireless	= iface_wireless,
+	.probe		= wifi_probe,
+	.remove		= wifi_remove,
+	.scan		= wifi_scan,
+	.connect	= wifi_connect,
+	.disconnect	= wifi_disconnect,
+	.set_network	= wifi_set_network,
+	.set_passphrase	= wifi_set_passphrase,
+	.rtnl_wireless	= wifi_wireless,
 };
 
-static int plugin_init(void)
+static int wifi_init(void)
 {
-	connman_iface_register(&iface_driver);
-
-	return 0;
+	return connman_iface_register(&wifi_driver);
 }
 
-static void plugin_exit(void)
+static void wifi_exit(void)
 {
-	connman_iface_unregister(&iface_driver);
+	connman_iface_unregister(&wifi_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE("80211", "IEEE 802.11 interface plugin", VERSION,
-						plugin_init, plugin_exit)
+							wifi_init, wifi_exit)
