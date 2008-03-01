@@ -62,4 +62,5 @@ AC_SUBST(HAL_CFLAGS)
 AC_SUBST(HAL_LIBS)
 
 AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile test/Makefile
-			plugins/Makefile scripts/Makefile scripts/connman)
+					plugins/Makefile scripts/Makefile
+					scripts/connman src/connman.service)

@@ -1,0 +1,4 @@
+[D-BUS Service]
+Name=org.freedesktop.connman
+Exec=@prefix@/sbin/connmand
+User=root
