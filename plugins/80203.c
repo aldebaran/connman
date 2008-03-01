@@ -29,13 +29,14 @@
 
 #include <connman/plugin.h>
 #include <connman/iface.h>
+#include <connman/log.h>
 
-static int iface_probe(struct connman_iface *iface)
+static int ethernet_probe(struct connman_iface *iface)
 {
 	char sysfs_path[PATH_MAX];
 	struct stat st;
 
-	printf("[802.03] probe interface index %d\n", iface->index);
+	DBG("iface %p", iface);
 
 	snprintf(sysfs_path, PATH_MAX, "%s/bridge", iface->sysfs);
 
@@ -50,29 +51,27 @@ static int iface_probe(struct connman_iface *iface)
 	return 0;
 }
 
-static void iface_remove(struct connman_iface *iface)
+static void ethernet_remove(struct connman_iface *iface)
 {
-	printf("[802.03] remove interface index %d\n", iface->index);
+	DBG("iface %p", iface);
 }
 
-static struct connman_iface_driver iface_driver = {
+static struct connman_iface_driver ethernet_driver = {
 	.name		= "80203",
 	.capability	= "net.80203",
-	.probe		= iface_probe,
-	.remove		= iface_remove,
+	.probe		= ethernet_probe,
+	.remove		= ethernet_remove,
 };
 
-static int plugin_init(void)
+static int ethernet_init(void)
 {
-	connman_iface_register(&iface_driver);
-
-	return 0;
+	return connman_iface_register(&ethernet_driver);
 }
 
-static void plugin_exit(void)
+static void ethernet_exit(void)
 {
-	connman_iface_unregister(&iface_driver);
+	connman_iface_unregister(&ethernet_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE("80203", "IEEE 802.03 interface plugin", VERSION,
-						plugin_init, plugin_exit)
+						ethernet_init, ethernet_exit)
