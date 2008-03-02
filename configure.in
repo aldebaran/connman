@@ -61,6 +61,6 @@ PKG_CHECK_MODULES(HAL, hal >= 0.5.8, dummy=yes,
 AC_SUBST(HAL_CFLAGS)
 AC_SUBST(HAL_LIBS)
 
-AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile test/Makefile
-					plugins/Makefile scripts/Makefile
-					scripts/connman src/connman.service)
+AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile
+			test/Makefile plugins/Makefile scripts/Makefile
+			scripts/connman src/connman.service connman.pc)

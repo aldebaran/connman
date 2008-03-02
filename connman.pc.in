@@ -1,0 +1,10 @@
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+libdir=@libdir@
+includedir=@includedir@
+ 
+Name: connman
+Description: Connection Manager
+Version: @VERSION@
+Libs: -module -avoid-version -export-symbols-regex connman_plugin_desc
+Cflags: -I${includedir}

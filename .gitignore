@@ -21,6 +21,7 @@ missing
 stamp-h1
 autom4te.cache
 
+connman.pc
 include/connman
 src/connmand
 src/connman.service
