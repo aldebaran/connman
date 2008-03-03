@@ -3,6 +3,9 @@ exec_prefix=@exec_prefix@
 libdir=@libdir@
 includedir=@includedir@
  
+plugindir=${libdir}/connman/plugins
+scriptdir=${libdir}/connman/scripts
+
 Name: connman
 Description: Connection Manager
 Version: @VERSION@
