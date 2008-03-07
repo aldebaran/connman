@@ -386,6 +386,7 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 int connman_iface_get_ipv4(struct connman_iface *iface,
 						struct connman_ipv4 *ipv4)
 {
+#if 0
 	struct {
 		struct nlmsghdr hdr;
 		struct rtgenmsg msg;
@@ -405,6 +406,7 @@ int connman_iface_get_ipv4(struct connman_iface *iface,
 	req.msg.rtgen_family = AF_INET;
 
 	__connman_rtnl_send(&req, sizeof(req));
+#endif
 
 	return 0;
 }

@@ -403,7 +403,8 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
+	addr.nl_groups = RTMGRP_LINK;
+	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
