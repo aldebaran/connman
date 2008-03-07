@@ -43,6 +43,10 @@
 
 #include "supplicant.h"
 
+#ifndef IW_EV_LCP_PK_LEN
+#define IW_EV_LCP_PK_LEN	(4)
+#endif
+
 struct station_data {
 	char *address;
 	char *name;
