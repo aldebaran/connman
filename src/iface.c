@@ -562,8 +562,9 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	//if (driver->scan)
-	//	driver->scan(iface);
+	if (driver->scan) {
+		//driver->scan(iface);
+	}
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
