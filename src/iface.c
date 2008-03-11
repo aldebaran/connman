@@ -215,14 +215,20 @@ static void switch_policy(struct connman_iface *iface)
 		iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
 		state_changed(iface);
 		connman_iface_clear_ipv4(iface);
-		__connman_iface_down(iface);
+		if (iface->driver->stop)
+			iface->driver->stop(iface);
+		else
+			__connman_iface_down(iface);
 		break;
 
 	case CONNMAN_IFACE_POLICY_IGNORE:
 		break;
 
 	case CONNMAN_IFACE_POLICY_AUTO:
-		__connman_iface_up(iface);
+		if (iface->driver->start)
+			iface->driver->start(iface);
+		else
+			__connman_iface_up(iface);
 		state_changed(iface);
 		break;
 
@@ -252,9 +258,13 @@ void connman_iface_indicate_disabled(struct connman_iface *iface)
 
 	if (iface->policy == CONNMAN_IFACE_POLICY_AUTO) {
 		iface->state = CONNMAN_IFACE_STATE_ENABLED;
-		__connman_iface_up(iface);
+		if (iface->driver->start)
+			iface->driver->start(iface);
+		else
+			__connman_iface_up(iface);
 	} else
 		iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
+
 	state_changed(iface);
 }
 

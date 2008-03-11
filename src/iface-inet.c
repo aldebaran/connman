@@ -145,10 +145,7 @@ int __connman_iface_up(struct connman_iface *iface)
 		goto done;
 	}
 
-	if (iface->driver->start)
-		err = iface->driver->start(iface);
-	else
-		err = 0;
+	err = 0;
 
 done:
 	close(sk);
@@ -162,12 +159,6 @@ int __connman_iface_down(struct connman_iface *iface)
 	int sk, err;
 
 	DBG("iface %p", iface);
-
-	if (iface->driver->stop) {
-		err = iface->driver->stop(iface);
-		if (err < 0)
-			return err;
-	}
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
