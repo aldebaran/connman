@@ -47,6 +47,8 @@
 
 static DBusConnection *connection = NULL;
 
+static gchar *ifname_filter = NULL;
+
 static GSList *drivers = NULL;
 
 int connman_iface_register(struct connman_iface_driver *driver)
@@ -1095,7 +1097,7 @@ static int probe_device(LibHalContext *ctx,
 {
 	DBusConnection *conn;
 	struct connman_iface *iface;
-	char *temp, *sysfs;
+	char *temp, *sysfs, *ifname;
 	int err;
 
 	DBG("ctx %p driver %p udi %s", ctx, driver, udi);
@@ -1124,9 +1126,19 @@ static int probe_device(LibHalContext *ctx,
 
 	iface->index = -1;
 
-	if (g_str_has_prefix(driver->capability, "net") == TRUE)
+	if (g_str_has_prefix(driver->capability, "net") == TRUE) {
 		iface->index = libhal_device_get_property_int(ctx, udi,
 						"net.linux.ifindex", NULL);
+
+		ifname = libhal_device_get_property_string(ctx, udi,
+						"net.interface", NULL);
+		if (ifname != NULL && ifname_filter != NULL &&
+						*ifname_filter != '\0' &&
+				g_str_equal(ifname, ifname_filter) == FALSE) {
+			device_free(iface);
+			return -1;
+		}
+	}
 
 	iface->type = CONNMAN_IFACE_TYPE_UNKNOWN;
 	iface->flags = 0;
@@ -1340,13 +1352,16 @@ static void hal_cleanup(void *data)
 
 static guint hal_watch = 0;
 
-int __connman_iface_init(DBusConnection *conn)
+int __connman_iface_init(DBusConnection *conn, const char *interface)
 {
 	DBG("conn %p", conn);
 
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
 		return -1;
+
+	if (interface != NULL)
+		ifname_filter = g_strdup(interface);
 
 	hal_init(connection);
 
@@ -1363,6 +1378,8 @@ void __connman_iface_cleanup(void)
 	g_dbus_remove_watch(connection, hal_watch);
 
 	hal_cleanup(connection);
+
+	g_free(ifname_filter);
 
 	dbus_connection_unref(connection);
 }

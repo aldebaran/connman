@@ -59,7 +59,7 @@ void __connman_plugin_cleanup(void);
 
 #include <connman/iface.h>
 
-int __connman_iface_init(DBusConnection *conn);
+int __connman_iface_init(DBusConnection *conn, const char *interface);
 void __connman_iface_cleanup(void);
 
 struct connman_iface *__connman_iface_find(int index);

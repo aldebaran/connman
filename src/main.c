@@ -30,6 +30,7 @@
 #include <signal.h>
 #include <getopt.h>
 #include <sys/stat.h>
+#include <net/if.h>
 
 #include <gdbus.h>
 
@@ -47,7 +48,7 @@ static void usage(void)
 	printf("Connection Manager version %s\n\n", VERSION);
 
 	printf("Usage:\n"
-		"\tconnmand [options]\n"
+		"\tconnmand [-i <interface>] [options]\n"
 		"\n");
 
 	printf("Options:\n"
@@ -58,10 +59,11 @@ static void usage(void)
 }
 
 static struct option options[] = {
-	{ "nodaemon", 0, 0, 'n' },
-	{ "compat",   0, 0, 'c' },
-	{ "debug",    0, 0, 'd' },
-	{ "help",     0, 0, 'h' },
+	{ "interface", 1, 0, 'i' },
+	{ "nodaemon",  0, 0, 'n' },
+	{ "compat",    0, 0, 'c' },
+	{ "debug",     0, 0, 'd' },
+	{ "help",      0, 0, 'h' },
 	{ }
 };
 
@@ -70,10 +72,16 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError err;
 	struct sigaction sa;
+	char interface[IFNAMSIZ];
 	int opt, detach = 1, compat = 0, debug = 0;
 
-	while ((opt = getopt_long(argc, argv, "+ncdh", options, NULL)) != EOF) {
+	memset(interface, 0, IFNAMSIZ);
+
+	while ((opt = getopt_long(argc, argv, "+i:ncdh", options, NULL)) != EOF) {
 		switch (opt) {
+		case 'i':
+			snprintf(interface, IFNAMSIZ, "%s", optarg);
+			break;
 		case 'n':
 			detach = 0;
 			break;
@@ -136,7 +144,7 @@ int main(int argc, char *argv[])
 
 	__connman_rtnl_init();
 
-	__connman_iface_init(conn);
+	__connman_iface_init(conn, interface);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
