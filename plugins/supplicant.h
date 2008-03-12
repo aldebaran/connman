@@ -21,8 +21,14 @@
 
 #include <connman/iface.h>
 
+#define SUPPLICANT_NAME  "fi.epitest.hostap.WPASupplicant"
+#define SUPPLICANT_INTF  "fi.epitest.hostap.WPASupplicant"
+#define SUPPLICANT_PATH  "/fi/epitest/hostap/WPASupplicant"
+
 int __supplicant_start(struct connman_iface *iface);
 int __supplicant_stop(struct connman_iface *iface);
+
+int __supplicant_scan(struct connman_iface *iface);
 
 int __supplicant_connect(struct connman_iface *iface,
 				const char *network, const char *passphrase);
