@@ -63,18 +63,14 @@ int __connman_iface_load(struct connman_iface *iface)
 
 	str = g_key_file_get_string(keyfile, GROUP_CONFIG, "Network", NULL);
 	if (str != NULL) {
-		g_free(iface->network.essid);
-		iface->network.essid = str;
-		if (iface->driver->set_network)
-			iface->driver->set_network(iface, str);
+		g_free(iface->network.identifier);
+		iface->network.identifier = str;
 
-		str = g_key_file_get_string(keyfile, iface->network.essid,
-								"PSK", NULL);
+		str = g_key_file_get_string(keyfile,
+				iface->network.identifier, "PSK", NULL);
 		if (str != NULL) {
-			g_free(iface->network.psk);
-			iface->network.psk = str;
-			if (iface->driver->set_passphrase)
-				iface->driver->set_passphrase(iface, str);
+			g_free(iface->network.passphrase);
+			iface->network.passphrase = str;
 		}
 	}
 
@@ -95,15 +91,15 @@ static void do_update(GKeyFile *keyfile, struct connman_iface *iface)
 	str = __connman_iface_policy2string(iface->policy);
 	g_key_file_set_string(keyfile, GROUP_CONFIG, "Policy", str);
 
-	if (iface->network.essid != NULL) {
+	if (iface->network.identifier != NULL) {
 		g_key_file_set_string(keyfile, GROUP_CONFIG,
-					"Network", iface->network.essid);
+				"Network", iface->network.identifier);
 	} else
 		g_key_file_remove_key(keyfile, GROUP_CONFIG, "Network", NULL);
 
-	if (iface->network.essid != NULL)
-		g_key_file_set_string(keyfile, iface->network.essid,
-						"PSK", iface->network.psk);
+	if (iface->network.identifier != NULL)
+		g_key_file_set_string(keyfile, iface->network.identifier,
+					"PSK", iface->network.passphrase);
 }
 
 int __connman_iface_store(struct connman_iface *iface)

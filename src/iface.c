@@ -134,7 +134,6 @@ static gboolean scan_timeout(gpointer user_data)
 
 	switch (iface->state) {
 	case CONNMAN_IFACE_STATE_SCANNING:
-	case CONNMAN_IFACE_STATE_READY:
 		if (iface->driver->scan)
 			iface->driver->scan(iface);
 		return TRUE;
@@ -194,8 +193,6 @@ static void state_changed(struct connman_iface *iface)
 		break;
 
 	case CONNMAN_IFACE_STATE_READY:
-		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING)
-			g_timeout_add(20000, scan_timeout, iface);
 		break;
 
 	default:
@@ -379,16 +376,12 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
 
-	if (g_str_equal(name, iface->network.essid) == TRUE &&
+	if (g_str_equal(name, iface->network.identifier) == TRUE &&
 			iface->state == CONNMAN_IFACE_STATE_SCANNING) {
-		if (iface->driver->set_network)
-			iface->driver->set_network(iface, name);
-		if (iface->driver->set_passphrase)
-			iface->driver->set_passphrase(iface,
-						iface->network.psk);
+		iface->network.identifier = g_strdup(name);
 
 		if (iface->driver->connect) {
-			iface->driver->connect(iface, NULL);
+			iface->driver->connect(iface, &iface->network);
 			iface->state = CONNMAN_IFACE_STATE_CONNECT;
 			state_changed(iface);
 		}
@@ -574,9 +567,8 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	if (driver->scan) {
-		//driver->scan(iface);
-	}
+	if (driver->scan)
+		driver->scan(iface);
 
 	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
@@ -751,12 +743,12 @@ static void append_network(DBusMessage *reply,
 
 	switch (iface->type) {
 	case CONNMAN_IFACE_TYPE_80211:
-		if (iface->network.essid != NULL)
+		if (iface->network.identifier != NULL)
 			append_entry(&dict, "ESSID",
-				DBUS_TYPE_STRING, &iface->network.essid);
-		if (secrets == TRUE && iface->network.psk != NULL)
+				DBUS_TYPE_STRING, &iface->network.identifier);
+		if (secrets == TRUE && iface->network.passphrase != NULL)
 			append_entry(&dict, "PSK",
-				DBUS_TYPE_STRING, &iface->network.psk);
+				DBUS_TYPE_STRING, &iface->network.passphrase);
 		break;
 	default:
 		break;
@@ -811,18 +803,14 @@ static DBusMessage *set_network(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &val);
 
 		if (g_strcasecmp(key, "ESSID") == 0) {
-			g_free(iface->network.essid);
-			iface->network.essid = g_strdup(val);
-			if (iface->driver->set_network)
-				iface->driver->set_network(iface, val);
+			g_free(iface->network.identifier);
+			iface->network.identifier = g_strdup(val);
 			changed = TRUE;
 		}
 
 		if (g_strcasecmp(key, "PSK") == 0) {
-			g_free(iface->network.psk);
-			iface->network.psk = g_strdup(val);
-			if (iface->driver->set_passphrase)
-				iface->driver->set_passphrase(iface, val);
+			g_free(iface->network.passphrase);
+			iface->network.passphrase = g_strdup(val);
 			changed = TRUE;
 		}
 
@@ -845,6 +833,12 @@ static DBusMessage *set_network(DBusConnection *conn,
 			dbus_connection_send(conn, signal, NULL);
 			dbus_message_unref(signal);
 		}
+
+		if (iface->driver->disconnect)
+			iface->driver->disconnect(iface);
+
+		if (iface->driver->connect)
+			iface->driver->connect(iface, &iface->network);
 	}
 
 	return reply;
@@ -862,11 +856,14 @@ static DBusMessage *select_network(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &network,
 							DBUS_TYPE_INVALID);
 
-	g_free(iface->network.essid);
-	iface->network.essid = g_strdup(network);
+	g_free(iface->network.identifier);
+	iface->network.identifier = g_strdup(network);
 
-	if (iface->driver->set_network)
-		iface->driver->set_network(iface, network);
+	if (iface->driver->disconnect)
+		iface->driver->disconnect(iface);
+
+	if (iface->driver->connect)
+		iface->driver->connect(iface, &iface->network);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
@@ -1053,7 +1050,8 @@ static void device_free(void *data)
 	g_free(iface->udi);
 	g_free(iface->sysfs);
 	g_free(iface->identifier);
-	g_free(iface->network.essid);
+	g_free(iface->network.identifier);
+	g_free(iface->network.passphrase);
 	g_free(iface->device.driver);
 	g_free(iface->device.vendor);
 	g_free(iface->device.product);
@@ -1160,7 +1158,8 @@ static int probe_device(LibHalContext *ctx,
 	__connman_iface_load(iface);
 
 	DBG("iface %p network %s secret %s", iface,
-				iface->network.essid, iface->network.psk);
+					iface->network.identifier,
+					iface->network.passphrase);
 
 	conn = libhal_ctx_get_dbus_connection(ctx);
 

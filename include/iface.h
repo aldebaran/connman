@@ -83,8 +83,8 @@ struct connman_ipv4 {
 };
 
 struct connman_network {
-	char *essid;
-	char *psk;
+	char *identifier;
+	char *passphrase;
 };
 
 struct connman_iface {
@@ -126,11 +126,6 @@ struct connman_iface_driver {
 	int (*connect) (struct connman_iface *iface,
 					struct connman_network *network);
 	int (*disconnect) (struct connman_iface *iface);
-
-	void (*set_network) (struct connman_iface *iface,
-						const char *network);
-	void (*set_passphrase) (struct connman_iface *iface,
-						const char *passphrase);
 
 	void (*rtnl_carrier) (struct connman_iface *iface, int carrier);
 	void (*rtnl_wireless) (struct connman_iface *iface,
