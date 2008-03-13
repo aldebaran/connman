@@ -70,6 +70,8 @@ int __connman_iface_init_via_inet(struct connman_iface *iface);
 int __connman_iface_up(struct connman_iface *iface);
 int __connman_iface_down(struct connman_iface *iface);
 
+char *__connman_iface_find_passphrase(struct connman_iface *iface,
+							const char *network);
 int __connman_iface_load(struct connman_iface *iface);
 int __connman_iface_store(struct connman_iface *iface);
 

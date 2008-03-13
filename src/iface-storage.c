@@ -32,10 +32,62 @@
 
 #define GROUP_CONFIG  "Config"
 
+char *__connman_iface_find_passphrase(struct connman_iface *iface,
+							const char *network)
+{
+	GKeyFile *keyfile;
+	gchar *pathname, *result = NULL;
+	gchar **list;
+	gsize list_len;
+	int i;
+
+	DBG("iface %p", iface);
+
+	if (iface->identifier == NULL)
+		return NULL;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							iface->identifier);
+	if (pathname == NULL)
+		return NULL;
+
+	keyfile = g_key_file_new();
+
+	g_key_file_set_list_separator(keyfile, ',');
+
+	if (g_key_file_load_from_file(keyfile, pathname, 0, NULL) == FALSE)
+		goto done;
+
+	if (g_key_file_has_group(keyfile, GROUP_CONFIG) == FALSE)
+		goto done;
+
+	list = g_key_file_get_string_list(keyfile, GROUP_CONFIG,
+					"KnownNetworks", &list_len, NULL);
+	for (i = 0; i < list_len; i++)
+		if (g_str_equal(list[i], network) == TRUE) {
+			result = g_key_file_get_string(keyfile, network,
+								"PSK", NULL);
+			if (result == NULL)
+				result = g_strdup("");
+			break;
+		}
+
+	g_strfreev(list);
+
+done:
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
+
+	return result;
+}
+
 int __connman_iface_load(struct connman_iface *iface)
 {
 	GKeyFile *keyfile;
 	gchar *pathname, *str;
+	gchar **list;
+	gsize list_len;
 
 	DBG("iface %p", iface);
 
@@ -49,6 +101,8 @@ int __connman_iface_load(struct connman_iface *iface)
 
 	keyfile = g_key_file_new();
 
+	g_key_file_set_list_separator(keyfile, ',');
+
 	if (g_key_file_load_from_file(keyfile, pathname, 0, NULL) == FALSE)
 		goto done;
 
@@ -61,7 +115,13 @@ int __connman_iface_load(struct connman_iface *iface)
 		g_free(str);
 	}
 
-	str = g_key_file_get_string(keyfile, GROUP_CONFIG, "Network", NULL);
+	list = g_key_file_get_string_list(keyfile, GROUP_CONFIG,
+					"KnownNetworks", &list_len, NULL);
+
+	g_strfreev(list);
+
+	str = g_key_file_get_string(keyfile, GROUP_CONFIG,
+						"LastNetwork", NULL);
 	if (str != NULL) {
 		g_free(iface->network.identifier);
 		iface->network.identifier = str;
@@ -93,9 +153,10 @@ static void do_update(GKeyFile *keyfile, struct connman_iface *iface)
 
 	if (iface->network.identifier != NULL) {
 		g_key_file_set_string(keyfile, GROUP_CONFIG,
-				"Network", iface->network.identifier);
+				"LastNetwork", iface->network.identifier);
 	} else
-		g_key_file_remove_key(keyfile, GROUP_CONFIG, "Network", NULL);
+		g_key_file_remove_key(keyfile, GROUP_CONFIG,
+						"LastNetwork", NULL);
 
 	if (iface->network.identifier != NULL)
 		g_key_file_set_string(keyfile, iface->network.identifier,

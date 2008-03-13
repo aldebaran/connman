@@ -360,6 +360,7 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 				const char *name, int strength, int security)
 {
 	DBusMessage *signal;
+	char *passphrase;
 
 	DBG("iface %p security %d name %s", iface, security, name);
 
@@ -376,9 +377,15 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
 
-	if (g_str_equal(name, iface->network.identifier) == TRUE &&
-			iface->state == CONNMAN_IFACE_STATE_SCANNING) {
+	if (iface->state != CONNMAN_IFACE_STATE_SCANNING)
+		return;
+
+	passphrase = __connman_iface_find_passphrase(iface, name);
+	if (passphrase != NULL) {
+		g_free(iface->network.identifier);
 		iface->network.identifier = g_strdup(name);
+		g_free(iface->network.passphrase);
+		iface->network.passphrase = passphrase;
 
 		if (iface->driver->connect) {
 			iface->driver->connect(iface, &iface->network);
