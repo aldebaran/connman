@@ -23,7 +23,6 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -57,30 +56,30 @@ static inline void print_inet(struct rtattr *attr, const char *name, int family)
 	if (family == AF_INET) {
 		struct in_addr addr;
 		addr = *((struct in_addr *) RTA_DATA(attr));
-		printf("  attr %s (len %jd) %s\n",
+		DBG("  attr %s (len %jd) %s\n",
 				name, RTA_PAYLOAD(attr), inet_ntoa(addr));
 	} else
-		printf("  attr %s (len %jd)\n", name, RTA_PAYLOAD(attr));
+		DBG("  attr %s (len %jd)\n", name, RTA_PAYLOAD(attr));
 }
 
 static inline void print_char(struct rtattr *attr, const char *name)
 {
-	printf("  attr %s (len %jd) %s\n", name, RTA_PAYLOAD(attr),
+	DBG("  attr %s (len %jd) %s\n", name, RTA_PAYLOAD(attr),
 						(char *) RTA_DATA(attr));
 }
 
 static inline void print_byte(struct rtattr *attr, const char *name)
 {
-	printf("  attr %s (len %jd) 0x%02x\n", name, RTA_PAYLOAD(attr),
+	DBG("  attr %s (len %jd) 0x%02x\n", name, RTA_PAYLOAD(attr),
 					*((unsigned char *) RTA_DATA(attr)));
 }
 
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
 	if (name)
-		printf("  attr %s (len %jd)\n", name, RTA_PAYLOAD(attr));
+		DBG("  attr %s (len %jd)\n", name, RTA_PAYLOAD(attr));
 	else
-		printf("  attr %d (len %jd)\n",
+		DBG("  attr %d (len %jd)\n",
 					attr->rta_type, RTA_PAYLOAD(attr));
 }
 
