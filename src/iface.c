@@ -382,6 +382,8 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 
 	passphrase = __connman_iface_find_passphrase(iface, name);
 	if (passphrase != NULL) {
+		DBG("network %s passphrase %s", name, passphrase);
+
 		g_free(iface->network.identifier);
 		iface->network.identifier = g_strdup(name);
 		g_free(iface->network.passphrase);
