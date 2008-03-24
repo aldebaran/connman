@@ -63,14 +63,19 @@ char *__connman_iface_find_passphrase(struct connman_iface *iface,
 
 	list = g_key_file_get_string_list(keyfile, GROUP_CONFIG,
 					"KnownNetworks", &list_len, NULL);
-	for (i = 0; i < list_len; i++)
+	for (i = 0; i < list_len; i++) {
+		DBG("known network %s", list[i]);
+
 		if (g_str_equal(list[i], network) == TRUE) {
+			DBG("found network %s", network);
+
 			result = g_key_file_get_string(keyfile, network,
 								"PSK", NULL);
 			if (result == NULL)
 				result = g_strdup("");
 			break;
 		}
+	}
 
 	g_strfreev(list);
 
