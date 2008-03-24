@@ -51,18 +51,6 @@ enum supplicant_state {
 	STATE_DISCONNECTED,
 };
 
-// COMPLETED       ==> ASSOCIATING
-// ASSOCIATED      ==> DISCONNECTED
-// DISCONNECTED    ==> INACTIVE
-
-// DISCONNECTED    ==> SCANNING
-// SCANNING        ==> ASSOCIATED
-
-// ASSOCIATING     ==> ASSOCIATED
-// ASSOCIATED      ==> 4WAY_HANDSHAKE
-// 4WAY_HANDSHAKE  ==> GROUP_HANDSHAKE
-// GROUP_HANDSHAKE ==> COMPLETED
-
 struct supplicant_task {
 	DBusConnection *conn;
 	int ifindex;
@@ -457,13 +445,12 @@ static int set_network(struct supplicant_task *task, const char *network,
 	append_entry(&dict, "ssid", DBUS_TYPE_STRING, &network);
 
 	if (passphrase && strlen(passphrase) > 0) {
-		//exec_cmd(task, "SET_NETWORK 0 proto RSN WPA");
-		//exec_cmd(task, "SET_NETWORK 0 key_mgmt WPA-PSK");
-
+		const char *key_mgmt = "WPA-PSK";
+		append_entry(&dict, "key_mgmt", DBUS_TYPE_STRING, &key_mgmt);
 		append_entry(&dict, "psk", DBUS_TYPE_STRING, &passphrase);
 	} else {
-		//exec_cmd(task, "SET_NETWORK 0 proto RSN WPA");
-		//exec_cmd(task, "SET_NETWORK 0 key_mgmt NONE");
+		const char *key_mgmt = "NONE";
+		append_entry(&dict, "key_mgmt", DBUS_TYPE_STRING, &key_mgmt);
 	}
 
 	dbus_message_iter_close_container(&array, &dict);
