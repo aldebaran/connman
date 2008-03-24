@@ -431,7 +431,6 @@ int connman_iface_set_ipv4(struct connman_iface *iface,
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in *addr;
-	char cmd[128];
 	int sk, err;
 
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
@@ -504,12 +503,7 @@ int connman_iface_set_ipv4(struct connman_iface *iface,
 		return -1;
 	}
 
-	sprintf(cmd, "echo \"nameserver %s\" | resolvconf -a %s",
-				inet_ntoa(ipv4->nameserver), ifr.ifr_name);
-
-	DBG("%s", cmd);
-
-	err = system(cmd);
+	__connman_resolver_append(iface, inet_ntoa(ipv4->nameserver));
 
 	return 0;
 }
@@ -518,7 +512,6 @@ int connman_iface_clear_ipv4(struct connman_iface *iface)
 {
 	struct ifreq ifr;
 	struct sockaddr_in *addr;
-	char cmd[128];
 	int sk, err;
 
 	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
@@ -554,11 +547,7 @@ int connman_iface_clear_ipv4(struct connman_iface *iface)
 		return -1;
 	}
 
-	sprintf(cmd, "resolvconf -d %s", ifr.ifr_name);
-
-	DBG("%s", cmd);
-
-	err = system(cmd);
+	__connman_resolver_remove(iface);
 
 	return 0;
 }
