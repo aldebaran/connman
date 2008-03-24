@@ -25,6 +25,8 @@
 
 #define CONNMAN_SERVICE  "org.freedesktop.connman"
 
+#define CONNMAN_ERROR_INTERFACE  CONNMAN_SERVICE ".Error"
+
 #define CONNMAN_AGENT_INTERFACE  CONNMAN_SERVICE ".Agent"
 
 #define CONNMAN_MANAGER_PATH       "/"

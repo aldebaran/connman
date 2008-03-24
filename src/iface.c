@@ -884,7 +884,7 @@ static void append_ipv4(DBusMessage *reply, struct connman_iface *iface)
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	str = __connman_ipv4_method2string(iface->ipv4.method);
+	str = __connman_ipv4_method2string(CONNMAN_IPV4_METHOD_DHCP);
 	append_entry(&dict, "Method", DBUS_TYPE_STRING, &str);
 
 	if (iface->ipv4.address.s_addr != INADDR_ANY) {
@@ -931,6 +931,9 @@ static DBusMessage *set_ipv4(DBusConnection *conn,
 	gboolean changed = FALSE;
 
 	DBG("conn %p", conn);
+
+	return dbus_message_new_error(msg, CONNMAN_ERROR_INTERFACE
+						".NotImplemented", "");
 
 	dbus_message_iter_init(msg, &array);
 
