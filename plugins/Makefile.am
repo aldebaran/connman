@@ -10,6 +10,8 @@ libconnman_80211_la_SOURCES = 80211.c supplicant.h supplicant.c
 
 libconnman_dhclient_la_SOURCES = dhclient.c
 libconnman_dhclient_la_LIBADD = @GDBUS_LIBS@
+libconnman_dhclient_la_CFLAGS = @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
+		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
 libconnman_resolvconf_la_SOURCES = resolvconf.c
 
@@ -23,8 +25,7 @@ else
 scriptdir = $(libdir)/connman/scripts
 endif
 
-AM_CFLAGS = @GDBUS_CFLAGS@ \
-		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+AM_CFLAGS = @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 

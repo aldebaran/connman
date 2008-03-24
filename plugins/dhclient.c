@@ -29,6 +29,7 @@
 #include <stdlib.h>
 #include <signal.h>
 #include <string.h>
+#include <sys/wait.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
@@ -39,6 +40,9 @@
 
 #include <connman/plugin.h>
 #include <connman/dhcp.h>
+
+#define DHCLIENT_INTF "org.isc.dhclient"
+#define DHCLIENT_PATH "/org/isc/dhclient"
 
 static const char *busname;
 
@@ -83,7 +87,8 @@ static void kill_task(struct dhclient_task *task)
 {
 	char pathname[PATH_MAX];
 
-	kill(task->pid, SIGTERM);
+	if (task->pid > 0)
+		kill(task->pid, SIGTERM);
 
 	snprintf(pathname, sizeof(pathname) - 1,
 			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
@@ -98,11 +103,37 @@ static void kill_task(struct dhclient_task *task)
 	g_free(task);
 }
 
+static void task_died(GPid pid, gint status, gpointer data)
+{
+	struct dhclient_task *task = data;
+
+	if (WIFEXITED(status))
+		printf("[DHCP] exit status %d for %s\n",
+					WEXITSTATUS(status), task->ifname);
+	else
+		printf("[DHCP] signal %d killed %s\n",
+					WTERMSIG(status), task->ifname);
+
+	g_spawn_close_pid(pid);
+	task->pid = 0;
+
+	tasks = g_slist_remove(tasks, task);
+
+	kill_task(task);
+}
+
+static void task_setup(gpointer data)
+{
+	struct dhclient_task *task = data;
+
+	printf("[DHCP] setup %s\n", task->ifname);
+}
+
 static int dhclient_request(struct connman_iface *iface)
 {
 	struct ifreq ifr;
 	struct dhclient_task *task;
-	char *argv[16], address[128], pidfile[PATH_MAX];
+	char *argv[16], *envp[1], address[128], pidfile[PATH_MAX];
 	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
 	int sk, err;
 
@@ -143,7 +174,7 @@ static int dhclient_request(struct connman_iface *iface)
 	snprintf(config, sizeof(config) - 1, "%s/dhclient.conf", SCRIPTDIR);
 	snprintf(script, sizeof(script) - 1, "%s/dhclient-script", SCRIPTDIR);
 
-	argv[0] = "/sbin/dhclient";
+	argv[0] = DHCLIENT;
 	argv[1] = "-d";
 	argv[2] = "-q";
 	argv[3] = "-n";
@@ -160,15 +191,19 @@ static int dhclient_request(struct connman_iface *iface)
 	argv[14] = task->ifname;
 	argv[15] = NULL;
 
-	if (g_spawn_async(NULL, argv, NULL, G_SPAWN_DO_NOT_REAP_CHILD,
-				NULL, NULL, &task->pid, NULL) == FALSE) {
+	envp[0] = NULL;
+
+	if (g_spawn_async(NULL, argv, envp, G_SPAWN_DO_NOT_REAP_CHILD,
+				task_setup, task, &task->pid, NULL) == FALSE) {
 		printf("Failed to spawn dhclient\n");
 		return -1;
 	}
 
 	tasks = g_slist_append(tasks, task);
 
-	printf("[DHCP] executed with pid %d\n", task->pid);
+	g_child_watch_add(task->pid, task_died, task);
+
+	printf("[DHCP] executed %s with pid %d\n", DHCLIENT, task->pid);
 
 	return 0;
 }
@@ -196,14 +231,17 @@ static struct connman_dhcp_driver dhclient_driver = {
 	.release	= dhclient_release,
 };
 
-static DBusMessage *notify_method(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+static DBusHandlerResult dhclient_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
 {
 	DBusMessageIter iter, dict;
 	dbus_uint32_t pid;
 	struct dhclient_task *task;
 	struct connman_ipv4 ipv4;
 	const char *text, *key, *value;
+
+	if (dbus_message_is_method_call(msg, DHCLIENT_INTF, "notify") == FALSE)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	memset(&ipv4, 0, sizeof(ipv4));
 
@@ -219,7 +257,7 @@ static DBusMessage *notify_method(DBusConnection *conn,
 
 	task = find_task_by_pid(pid);
 	if (task == NULL)
-		return NULL;
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	dbus_message_iter_recurse(&iter, &dict);
 
@@ -267,27 +305,29 @@ static DBusMessage *notify_method(DBusConnection *conn,
 		connman_dhcp_update(task->iface,
 					CONNMAN_DHCP_STATE_FAILED, NULL);
 
-	return NULL;
+	return DBUS_HANDLER_RESULT_HANDLED;
 }
-
-static GDBusMethodTable dhclient_methods[] = {
-	{ "notify", "usa{ss}", "", notify_method, G_DBUS_METHOD_FLAG_NOREPLY },
-	{ },
-};
 
 static DBusConnection *connection;
 
 static int plugin_init(void)
 {
-	connection = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, NULL);
+	gchar *filter;
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
 	busname = dbus_bus_get_unique_name(connection);
 
-	g_dbus_register_object(connection, "/org/isc/dhclient", NULL, NULL);
+	busname = "org.freedesktop.connman";
 
-	g_dbus_register_interface(connection, "/org/isc/dhclient",
-					"org.isc.dhclient",
-					dhclient_methods, NULL, NULL);
+	dbus_connection_add_filter(connection, dhclient_filter, NULL, NULL);
+
+	filter = g_strdup_printf("interface=%s,path=%s",
+						DHCLIENT_INTF, DHCLIENT_PATH);
+
+	dbus_bus_add_match(connection, filter, NULL);
+
+	g_free(filter);
 
 	connman_dhcp_register(&dhclient_driver);
 
@@ -310,7 +350,7 @@ static void plugin_exit(void)
 
 	connman_dhcp_unregister(&dhclient_driver);
 
-	g_dbus_cleanup_connection(connection);
+	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE("dhclient", "ISC DHCP client plugin", VERSION,

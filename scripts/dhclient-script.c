@@ -56,6 +56,7 @@ static void append(DBusMessageIter *dict, const char *pattern)
 int main(int argc, char *argv[])
 {
 	DBusConnection *conn;
+	DBusError error;
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
 	dbus_uint32_t pid;
@@ -67,16 +68,27 @@ int main(int argc, char *argv[])
 	reason = getenv("reason");
 	interface = getenv("interface");
 
-	conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (conn == NULL)
-		exit(1);
+	dbus_error_init(&error);
+
+	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
+	if (conn == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			fprintf(stderr, "%s\n", error.message);
+			dbus_error_free(&error);
+		} else
+			fprintf(stderr, "Failed to get on system bus\n");
+		return 0;
+	}
 
 	msg = dbus_message_new_method_call(busname, "/org/isc/dhclient",
 						"org.isc.dhclient", "notify");
 	if (msg == NULL) {
 		dbus_connection_unref(conn);
-		exit(1);
+		fprintf(stderr, "Failed to allocate method call\n");
+		return 0;
 	}
+
+	dbus_message_set_no_reply(msg, TRUE);
 
 	dbus_message_append_args(msg, DBUS_TYPE_UINT32, &pid,
 				DBUS_TYPE_STRING, &reason, DBUS_TYPE_INVALID);
@@ -100,7 +112,8 @@ int main(int argc, char *argv[])
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	dbus_connection_send(conn, msg, NULL);
+	if (dbus_connection_send(conn, msg, NULL) == FALSE)
+		fprintf(stderr, "Failed to send message\n");
 
 	dbus_message_unref(msg);
 
