@@ -360,7 +360,8 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 				const char *name, int strength, int security)
 {
 	DBusMessage *signal;
-	char *passphrase;
+	char *ssid, *passphrase;
+	int len;
 
 	DBG("iface %p security %d name %s", iface, security, name);
 
@@ -380,12 +381,21 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 	if (iface->state != CONNMAN_IFACE_STATE_SCANNING)
 		return;
 
-	passphrase = __connman_iface_find_passphrase(iface, name);
+	len = strlen(name);
+	ssid = strdup(name);
+	if (ssid == NULL)
+		return;
+
+	/* The D-Link access points return a 0x05 at the end of the SSID */
+	if (ssid[len - 1] == '\05')
+		ssid[len - 1] = '\0';
+
+	passphrase = __connman_iface_find_passphrase(iface, ssid);
 	if (passphrase != NULL) {
-		DBG("network %s passphrase %s", name, passphrase);
+		DBG("network %s passphrase %s", ssid, passphrase);
 
 		g_free(iface->network.identifier);
-		iface->network.identifier = g_strdup(name);
+		iface->network.identifier = g_strdup(ssid);
 		g_free(iface->network.passphrase);
 		iface->network.passphrase = passphrase;
 
@@ -395,6 +405,8 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 			state_changed(iface);
 		}
 	}
+
+	free(ssid);
 }
 
 int connman_iface_get_ipv4(struct connman_iface *iface,
