@@ -803,6 +803,32 @@ static int add_filter(struct supplicant_task *task)
 	return 0;
 }
 
+static int remove_filter(struct supplicant_task *task)
+{
+	DBusError error;
+	gchar *filter;
+
+	filter = g_strdup_printf("type=signal,interface=%s.Interface,path=%s",
+						SUPPLICANT_INTF, task->path);
+
+	DBG("filter %s", filter);
+
+	dbus_error_init(&error);
+
+	dbus_bus_add_match(task->conn, filter, &error);
+
+	g_free(filter);
+
+	if (dbus_error_is_set(&error) == TRUE) {
+		connman_error("Can't add match: %s", error.message);
+		dbus_error_free(&error);
+	}
+
+	dbus_connection_remove_filter(task->conn, supplicant_filter, task);
+
+	return 0;
+}
+
 int __supplicant_start(struct connman_iface *iface)
 {
 	struct ifreq ifr;
@@ -880,6 +906,8 @@ int __supplicant_stop(struct connman_iface *iface)
 	DBG("interface %s", task->ifname);
 
 	tasks = g_slist_remove(tasks, task);
+
+	remove_filter(task);
 
 	remove_network(task);
 
