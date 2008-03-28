@@ -85,27 +85,14 @@ static struct dhclient_task *find_task_by_index(int index)
 
 static void kill_task(struct dhclient_task *task)
 {
-	char pathname[PATH_MAX];
-
 	if (task->pid > 0)
 		kill(task->pid, SIGTERM);
-
-	snprintf(pathname, sizeof(pathname) - 1,
-			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
-	unlink(pathname);
-
-	snprintf(pathname, sizeof(pathname) - 1,
-			"%s/dhclient.%s.leases", STATEDIR, task->ifname);
-	unlink(pathname);
-
-	free(task->ifname);
-
-	g_free(task);
 }
 
 static void task_died(GPid pid, gint status, gpointer data)
 {
 	struct dhclient_task *task = data;
+	char pathname[PATH_MAX];
 
 	if (WIFEXITED(status))
 		printf("[DHCP] exit status %d for %s\n",
@@ -119,7 +106,17 @@ static void task_died(GPid pid, gint status, gpointer data)
 
 	tasks = g_slist_remove(tasks, task);
 
-	kill_task(task);
+	snprintf(pathname, sizeof(pathname) - 1,
+			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
+	unlink(pathname);
+
+	snprintf(pathname, sizeof(pathname) - 1,
+			"%s/dhclient.%s.leases", STATEDIR, task->ifname);
+	unlink(pathname);
+
+	free(task->ifname);
+
+	g_free(task);
 }
 
 static void task_setup(gpointer data)
