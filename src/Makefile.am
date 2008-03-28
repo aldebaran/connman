@@ -22,7 +22,7 @@ statedir = $(localstatedir)/run/connman
 storagedir = $(localstatedir)/lib/connman
 
 if MAINTAINER_MODE
-plugindir = $(abs_top_srcdir)/plugins
+plugindir = $(abs_top_srcdir)/plugins/.libs
 else
 plugindir = $(libdir)/connman/plugins
 endif
