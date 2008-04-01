@@ -925,6 +925,15 @@ static DBusMessage *get_ipv4(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	switch (iface->policy) {
+	case CONNMAN_IFACE_POLICY_OFF:
+	case CONNMAN_IFACE_POLICY_IGNORE:
+		return dbus_message_new_error(msg, CONNMAN_ERROR_INTERFACE
+						".NotAvailable", "");
+	default:
+		break;
+	}
+
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
