@@ -81,7 +81,8 @@ static int wifi_probe(struct connman_iface *iface)
 
 	iface->flags = CONNMAN_IFACE_FLAG_RTNL |
 				CONNMAN_IFACE_FLAG_IPV4 |
-				CONNMAN_IFACE_FLAG_SCANNING;
+				CONNMAN_IFACE_FLAG_SCANNING |
+				CONNMAN_IFACE_FLAG_NOCARRIER;
 
 	connman_iface_set_data(iface, data);
 

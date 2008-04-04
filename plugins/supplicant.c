@@ -201,6 +201,82 @@ static int add_interface(struct supplicant_task *task)
 	return 0;
 }
 
+static int remove_interface(struct supplicant_task *task)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+
+	DBG("task %p", task);
+
+	if (task->created == FALSE)
+		return -EINVAL;
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, SUPPLICANT_PATH,
+					SUPPLICANT_INTF, "removeInterface");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->path,
+							DBUS_TYPE_INVALID);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(task->conn,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Failed to remove interface");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_message_unref(message);
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
+static int set_ap_scan(struct supplicant_task *task)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+	guint32 ap_scan = 1;
+
+	DBG("task %p", task);
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
+				SUPPLICANT_INTF ".Interface", "setAPScan");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_append_args(message, DBUS_TYPE_UINT32, &ap_scan,
+							DBUS_TYPE_INVALID);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(task->conn,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Failed to set AP scan");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_message_unref(message);
+
+	dbus_message_unref(reply);
+
+	return 0;
+}
+
 static int add_network(struct supplicant_task *task)
 {
 	DBusMessage *message, *reply;
@@ -208,6 +284,9 @@ static int add_network(struct supplicant_task *task)
 	const char *path;
 
 	DBG("task %p", task);
+
+	if (task->network != NULL)
+		return -EALREADY;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 				SUPPLICANT_INTF ".Interface", "addNetwork");
@@ -259,6 +338,9 @@ static int remove_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
+	if (task->network == NULL)
+		return -EINVAL;
+
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 				SUPPLICANT_INTF ".Interface", "removeNetwork");
 	if (message == NULL)
@@ -285,6 +367,9 @@ static int remove_network(struct supplicant_task *task)
 
 	dbus_message_unref(reply);
 
+	g_free(task->network);
+	task->network = NULL;
+
 	return 0;
 }
 
@@ -294,6 +379,9 @@ static int select_network(struct supplicant_task *task)
 	DBusError error;
 
 	DBG("task %p", task);
+
+	if (task->network == NULL)
+		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 				SUPPLICANT_INTF ".Interface", "selectNetwork");
@@ -331,6 +419,9 @@ static int enable_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
+	if (task->network == NULL)
+		return -EINVAL;
+
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->network,
 					SUPPLICANT_INTF ".Network", "enable");
 	if (message == NULL)
@@ -363,6 +454,9 @@ static int disable_network(struct supplicant_task *task)
 	DBusError error;
 
 	DBG("task %p", task);
+
+	if (task->network == NULL)
+		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->network,
 					SUPPLICANT_INTF ".Network", "disable");
@@ -429,6 +523,9 @@ static int set_network(struct supplicant_task *task, const char *network,
 	DBusError error;
 
 	DBG("task %p", task);
+
+	if (task->network == NULL)
+		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->network,
 					SUPPLICANT_INTF ".Network", "set");
@@ -567,8 +664,6 @@ static int parse_network_properties(struct supplicant_task *task,
 	struct supplicant_ap *ap;
 	int security = 0;
 
-	DBG("task %p", task);
-
 	ap = g_try_new0(struct supplicant_ap, 1);
 	if (ap == NULL)
 		return -ENOMEM;
@@ -603,8 +698,6 @@ static int parse_network_properties(struct supplicant_task *task,
 		dbus_message_iter_next(&dict);
 	}
 
-	DBG("SSID %s", ap->identifier);
-
 	if (ap->has_wep)
 		security |= 0x01;
 	if (ap->has_wpa)
@@ -625,8 +718,6 @@ static int get_network_properties(struct supplicant_task *task,
 {
 	DBusMessage *message, *reply;
 	DBusError error;
-
-	DBG("task %p", task);
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, path,
 						SUPPLICANT_INTF ".BSSID",
@@ -749,6 +840,17 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		task->state = STATE_COMPLETED;
 	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
 		task->state = STATE_DISCONNECTED;
+
+	switch (task->state) {
+	case STATE_COMPLETED:
+		connman_iface_indicate_carrier_on(task->iface);
+		break;
+	case STATE_DISCONNECTED:
+		connman_iface_indicate_carrier_off(task->iface);
+		break;
+	default:
+		break;
+	}
 }
 
 static DBusHandlerResult supplicant_filter(DBusConnection *conn,
@@ -887,10 +989,7 @@ int __supplicant_start(struct connman_iface *iface)
 
 	add_filter(task);
 
-	add_network(task);
-
-	select_network(task);
-	disable_network(task);
+	set_ap_scan(task);
 
 	return 0;
 }
@@ -907,14 +1006,17 @@ int __supplicant_stop(struct connman_iface *iface)
 
 	tasks = g_slist_remove(tasks, task);
 
-	remove_filter(task);
+	disable_network(task);
 
 	remove_network(task);
+
+	remove_filter(task);
+
+	remove_interface(task);
 
 	dbus_connection_unref(task->conn);
 
 	g_free(task->ifname);
-	g_free(task->network);
 	g_free(task->path);
 	g_free(task);
 
@@ -960,6 +1062,11 @@ int __supplicant_connect(struct connman_iface *iface,
 
 	DBG("interface %s", task->ifname);
 
+	add_network(task);
+
+	select_network(task);
+	disable_network(task);
+
 	set_network(task, network, passphrase);
 
 	enable_network(task);
@@ -978,6 +1085,8 @@ int __supplicant_disconnect(struct connman_iface *iface)
 	DBG("interface %s", task->ifname);
 
 	disable_network(task);
+
+	remove_network(task);
 
 	return 0;
 }
