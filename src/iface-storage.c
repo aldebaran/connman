@@ -254,3 +254,45 @@ done:
 
 	return 0;
 }
+
+int __connman_iface_load_networks(struct connman_iface *iface)
+{
+	GKeyFile *keyfile;
+	gchar *pathname;
+	gchar **list;
+	gsize list_len;
+	int i;
+
+	if (iface->identifier == NULL)
+		return -1;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							iface->identifier);
+	if (pathname == NULL)
+		return -1;
+
+	keyfile = g_key_file_new();
+
+	g_key_file_set_list_separator(keyfile, ',');
+
+	if (g_key_file_load_from_file(keyfile, pathname, 0, NULL) == FALSE)
+		goto done;
+
+	if (g_key_file_has_group(keyfile, GROUP_CONFIG) == FALSE)
+		goto done;
+
+	list = g_key_file_get_string_list(keyfile, GROUP_CONFIG,
+					"KnownNetworks", &list_len, NULL);
+	for (i = 0; i < list_len; i++) {
+		DBG("Known network %s", list[i]);
+	}
+
+	g_strfreev(list);
+
+done:
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
+
+	return 0;
+}

@@ -1203,6 +1203,8 @@ static int probe_device(LibHalContext *ctx,
 					DBUS_TYPE_OBJECT_PATH, &iface->path,
 					DBUS_TYPE_INVALID);
 
+	__connman_iface_load_networks(iface);
+
 	switch_policy(iface);
 
 	state_changed(iface);

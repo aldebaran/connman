@@ -80,6 +80,7 @@ char *__connman_iface_find_passphrase(struct connman_iface *iface,
 int __connman_iface_load(struct connman_iface *iface);
 int __connman_iface_store(struct connman_iface *iface);
 int __connman_iface_store_current_network(struct connman_iface *iface);
+int __connman_iface_load_networks(struct connman_iface *iface);
 
 const char *__connman_iface_type2string(enum connman_iface_type type);
 const char *__connman_iface_state2string(enum connman_iface_state state);
