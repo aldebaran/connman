@@ -850,17 +850,25 @@ static DBusMessage *select_network(DBusConnection *conn,
 	struct connman_iface *iface = data;
 	DBusMessage *reply;
 	const char *network;
+	gchar *passphrase;
 
 	DBG("conn %p", conn);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &network,
 							DBUS_TYPE_INVALID);
 
+	passphrase = __connman_iface_find_passphrase(iface, network);
+	if (passphrase == NULL)
+		goto done;
+
 	g_free(iface->network.identifier);
 	iface->network.identifier = g_strdup(network);
+	g_free(iface->network.passphrase);
+	iface->network.passphrase = passphrase;
 
 	__connman_iface_connect(iface, &iface->network);
 
+done:
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
