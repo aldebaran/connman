@@ -12,8 +12,8 @@ DISTCLEANFILES = $(service_DATA)
 sbin_PROGRAMS = connmand
 
 connmand_SOURCES = main.c connman.h log.c manager.c agent.c plugin.c \
-				iface.c iface-storage.c iface-helper.c \
-					iface-inet.c rtnl.c dhcp.c resolver.c
+			iface.c iface-storage.c iface-helper.c iface-inet.c \
+					network.c rtnl.c dhcp.c resolver.c
 
 connmand_LDADD = @HAL_LIBS@ @GDBUS_LIBS@ @GMODULE_LIBS@
  
