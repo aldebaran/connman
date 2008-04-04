@@ -211,3 +211,50 @@ done:
 
 	return 0;
 }
+
+int __connman_iface_store_current_network(struct connman_iface *iface)
+{
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+
+	DBG("iface %p", iface);
+
+	if (iface->identifier == NULL)
+		return -EIO;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							iface->identifier);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
+		goto update;
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+				G_KEY_FILE_KEEP_COMMENTS, NULL) == FALSE)
+			goto done;
+	}
+
+	g_free(data);
+
+update:
+	g_key_file_set_string(keyfile, GROUP_CONFIG,
+				"LastNetwork", iface->network.identifier);
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	g_file_set_contents(pathname, data, length, NULL);
+
+done:
+	g_free(data);
+
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
+
+	return 0;
+}

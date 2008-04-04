@@ -306,6 +306,7 @@ void connman_iface_indicate_configured(struct connman_iface *iface)
 	case CONNMAN_IFACE_STATE_CONFIGURE:
 		iface->state = CONNMAN_IFACE_STATE_READY;
 		state_changed(iface);
+		__connman_iface_store_current_network(iface);
 		break;
 	default:
 		break;
