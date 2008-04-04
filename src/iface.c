@@ -157,14 +157,11 @@ static void state_changed(struct connman_iface *iface)
 
 	switch (iface->state) {
 	case CONNMAN_IFACE_STATE_OFF:
-		__connman_dhcp_release(iface);
+		__connman_iface_stop(iface);
 		break;
 
 	case CONNMAN_IFACE_STATE_ENABLED:
-		__connman_dhcp_release(iface);
-		connman_iface_clear_ipv4(iface);
-		if (iface->driver->disconnect)
-			iface->driver->disconnect(iface);
+		__connman_iface_start(iface);
 		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING)
 			state = CONNMAN_IFACE_STATE_SCANNING;
 		break;
@@ -185,9 +182,7 @@ static void state_changed(struct connman_iface *iface)
 		break;
 
 	case CONNMAN_IFACE_STATE_SHUTDOWN:
-		__connman_dhcp_release(iface);
-		if (iface->driver->disconnect)
-			iface->driver->disconnect(iface);
+		__connman_iface_stop(iface);
 		if (iface->policy != CONNMAN_IFACE_POLICY_AUTO)
 			state = CONNMAN_IFACE_STATE_OFF;
 		break;
@@ -207,28 +202,19 @@ static void state_changed(struct connman_iface *iface)
 
 static void switch_policy(struct connman_iface *iface)
 {
-	DBG("iface %p", iface);
+	DBG("iface %p policy %d", iface, iface->policy);
 
 	switch (iface->policy) {
 	case CONNMAN_IFACE_POLICY_OFF:
-		iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
-		state_changed(iface);
-		connman_iface_clear_ipv4(iface);
-		if (iface->driver->stop)
-			iface->driver->stop(iface);
-		else
-			__connman_iface_down(iface);
+		__connman_iface_stop(iface);
 		break;
 
 	case CONNMAN_IFACE_POLICY_IGNORE:
 		break;
 
 	case CONNMAN_IFACE_POLICY_AUTO:
-		if (iface->driver->start)
-			iface->driver->start(iface);
-		else
-			__connman_iface_up(iface);
-		state_changed(iface);
+	case CONNMAN_IFACE_POLICY_ASK:
+		__connman_iface_start(iface);
 		break;
 
 	default:
@@ -236,13 +222,12 @@ static void switch_policy(struct connman_iface *iface)
 	}
 }
 
-void connman_iface_indicate_enabled(struct connman_iface *iface)
+void connman_iface_indicate_ifup(struct connman_iface *iface)
 {
 	DBG("iface %p state %d", iface, iface->state);
 
 	switch (iface->state) {
 	case CONNMAN_IFACE_STATE_OFF:
-	case CONNMAN_IFACE_STATE_CARRIER:
 		iface->state = CONNMAN_IFACE_STATE_ENABLED;
 		state_changed(iface);
 		break;
@@ -251,17 +236,13 @@ void connman_iface_indicate_enabled(struct connman_iface *iface)
 	}
 }
 
-void connman_iface_indicate_disabled(struct connman_iface *iface)
+void connman_iface_indicate_ifdown(struct connman_iface *iface)
 {
 	DBG("iface %p state %d", iface, iface->state);
 
-	if (iface->policy == CONNMAN_IFACE_POLICY_AUTO) {
+	if (iface->policy == CONNMAN_IFACE_POLICY_AUTO)
 		iface->state = CONNMAN_IFACE_STATE_ENABLED;
-		if (iface->driver->start)
-			iface->driver->start(iface);
-		else
-			__connman_iface_up(iface);
-	} else
+	else
 		iface->state = CONNMAN_IFACE_STATE_SHUTDOWN;
 
 	state_changed(iface);
@@ -305,13 +286,10 @@ void connman_iface_indicate_carrier_off(struct connman_iface *iface)
 	case CONNMAN_IFACE_STATE_CARRIER:
 	case CONNMAN_IFACE_STATE_CONFIGURE:
 	case CONNMAN_IFACE_STATE_READY:
-#if 0
-		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING) {
-			if (iface->driver->disconnect)
-				iface->driver->disconnect(iface);
+		__connman_iface_disconnect(iface);
+		if (iface->flags & CONNMAN_IFACE_FLAG_SCANNING)
 			iface->state = CONNMAN_IFACE_STATE_SCANNING;
-		} else
-#endif
+		else
 			iface->state = CONNMAN_IFACE_STATE_ENABLED;
 		state_changed(iface);
 		break;
@@ -378,8 +356,16 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
 
-	if (iface->state != CONNMAN_IFACE_STATE_SCANNING)
+	switch (iface->state) {
+	case CONNMAN_IFACE_STATE_CONNECT:
+	case CONNMAN_IFACE_STATE_CONNECTED:
+	case CONNMAN_IFACE_STATE_CARRIER:
+	case CONNMAN_IFACE_STATE_CONFIGURE:
+	case CONNMAN_IFACE_STATE_READY:
 		return;
+	default:
+		break;
+	}
 
 	len = strlen(name);
 	ssid = strdup(name);
@@ -399,11 +385,10 @@ void connman_iface_indicate_station(struct connman_iface *iface,
 		g_free(iface->network.passphrase);
 		iface->network.passphrase = passphrase;
 
-		if (iface->driver->connect) {
-			iface->driver->connect(iface, &iface->network);
-			iface->state = CONNMAN_IFACE_STATE_CONNECT;
-			state_changed(iface);
-		}
+		__connman_iface_connect(iface, &iface->network);
+
+		iface->state = CONNMAN_IFACE_STATE_CONNECT;
+		state_changed(iface);
 	}
 
 	free(ssid);
@@ -577,10 +562,18 @@ static DBusMessage *scan_iface(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	switch (iface->state) {
+	case CONNMAN_IFACE_STATE_CONNECT:
+	case CONNMAN_IFACE_STATE_CONFIGURE:
+			return reply;
+	default:
+		break;
+	}
+
 	if (driver->scan)
 		driver->scan(iface);
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
 
 	return reply;
 }
@@ -844,11 +837,7 @@ static DBusMessage *set_network(DBusConnection *conn,
 			dbus_message_unref(signal);
 		}
 
-		if (iface->driver->disconnect)
-			iface->driver->disconnect(iface);
-
-		if (iface->driver->connect)
-			iface->driver->connect(iface, &iface->network);
+		__connman_iface_connect(iface, &iface->network);
 	}
 
 	return reply;
@@ -869,11 +858,7 @@ static DBusMessage *select_network(DBusConnection *conn,
 	g_free(iface->network.identifier);
 	iface->network.identifier = g_strdup(network);
 
-	if (iface->driver->disconnect)
-		iface->driver->disconnect(iface);
-
-	if (iface->driver->connect)
-		iface->driver->connect(iface, &iface->network);
+	__connman_iface_connect(iface, &iface->network);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
@@ -1177,6 +1162,8 @@ static int probe_device(LibHalContext *ctx,
 
 	iface->driver = driver;
 
+	iface->policy = CONNMAN_IFACE_POLICY_AUTO;
+
 	__connman_iface_load(iface);
 
 	DBG("iface %p network %s secret %s", iface,
@@ -1208,6 +1195,8 @@ static int probe_device(LibHalContext *ctx,
 					DBUS_TYPE_INVALID);
 
 	switch_policy(iface);
+
+	state_changed(iface);
 
 	return 0;
 }

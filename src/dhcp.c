@@ -76,8 +76,13 @@ int __connman_dhcp_request(struct connman_iface *iface)
 {
 	struct connman_dhcp_driver *driver = g_slist_nth_data(drivers, 0);
 
-	if (driver && driver->request)
+	if (iface->flags & CONNMAN_IFACE_FLAG_DHCP)
+		return -1;
+
+	if (driver && driver->request) {
+		iface->flags |= CONNMAN_IFACE_FLAG_DHCP;
 		return driver->request(iface);
+	}
 
 	return -1;
 }
@@ -86,8 +91,13 @@ int __connman_dhcp_release(struct connman_iface *iface)
 {
 	struct connman_dhcp_driver *driver = g_slist_nth_data(drivers, 0);
 
-	if (driver && driver->release)
+	if (!(iface->flags & CONNMAN_IFACE_FLAG_DHCP))
+		return -1;
+
+	if (driver && driver->release) {
+		iface->flags &= ~CONNMAN_IFACE_FLAG_DHCP;
 		return driver->release(iface);
+	}
 
 	return -1;
 }

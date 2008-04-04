@@ -41,8 +41,6 @@ char *__connman_iface_find_passphrase(struct connman_iface *iface,
 	gsize list_len;
 	int i;
 
-	DBG("iface %p", iface);
-
 	if (iface->identifier == NULL)
 		return NULL;
 

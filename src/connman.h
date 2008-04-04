@@ -69,8 +69,11 @@ void __connman_iface_list(DBusMessageIter *iter);
 
 int __connman_iface_create_identifier(struct connman_iface *iface);
 int __connman_iface_init_via_inet(struct connman_iface *iface);
-int __connman_iface_up(struct connman_iface *iface);
-int __connman_iface_down(struct connman_iface *iface);
+int __connman_iface_start(struct connman_iface *iface);
+int __connman_iface_stop(struct connman_iface *iface);
+int __connman_iface_connect(struct connman_iface *iface,
+					struct connman_network *network);
+int __connman_iface_disconnect(struct connman_iface *iface);
 
 char *__connman_iface_find_passphrase(struct connman_iface *iface,
 							const char *network);

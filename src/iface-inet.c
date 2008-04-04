@@ -103,13 +103,15 @@ int __connman_iface_init_via_inet(struct connman_iface *iface)
 	else
 		iface->state = CONNMAN_IFACE_STATE_OFF;
 
-	if (ifr.ifr_flags & IFF_RUNNING)
-		iface->state = CONNMAN_IFACE_STATE_CARRIER;
+	if (ifr.ifr_flags & IFF_RUNNING) {
+		if (!(iface->flags & CONNMAN_IFACE_FLAG_NOCARRIER))
+			iface->state = CONNMAN_IFACE_STATE_CARRIER;
+	}
 
 	return 0;
 }
 
-int __connman_iface_up(struct connman_iface *iface)
+static int __connman_iface_up(struct connman_iface *iface)
 {
 	struct ifreq ifr;
 	int sk, err;
@@ -153,7 +155,7 @@ done:
 	return err;
 }
 
-int __connman_iface_down(struct connman_iface *iface)
+static int __connman_iface_down(struct connman_iface *iface)
 {
 	struct ifreq ifr;
 	int sk, err;
@@ -193,4 +195,104 @@ done:
 	close(sk);
 
 	return err;
+}
+
+int __connman_iface_start(struct connman_iface *iface)
+{
+	int err;
+
+	DBG("iface %p", iface);
+
+	if (iface->flags & CONNMAN_IFACE_FLAG_STARTED)
+		return -EALREADY;
+
+	err = __connman_iface_up(iface);
+
+	if (iface->driver->start) {
+		err = iface->driver->start(iface);
+		if (err < 0)
+			return err;
+	}
+
+	iface->flags |= CONNMAN_IFACE_FLAG_STARTED;
+
+	return 0;
+}
+
+int __connman_iface_stop(struct connman_iface *iface)
+{
+	int err;
+
+	DBG("iface %p", iface);
+
+	__connman_dhcp_release(iface);
+
+	connman_iface_clear_ipv4(iface);
+
+	if (iface->flags & CONNMAN_IFACE_FLAG_RUNNING) {
+		if (iface->driver->disconnect)
+			iface->driver->disconnect(iface);
+		iface->flags &= ~CONNMAN_IFACE_FLAG_RUNNING;
+	}
+
+	if (!(iface->flags & CONNMAN_IFACE_FLAG_STARTED))
+		return -EINVAL;
+
+	if (iface->driver->stop) {
+		err = iface->driver->stop(iface);
+		if (err < 0)
+			return err;
+	}
+
+	iface->flags &= ~CONNMAN_IFACE_FLAG_STARTED;
+
+	err = __connman_iface_down(iface);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
+int __connman_iface_connect(struct connman_iface *iface,
+					struct connman_network *network)
+{
+	DBG("iface %p name %s passphrase %s", iface,
+				network->identifier, network->passphrase);
+
+	if (iface->flags & CONNMAN_IFACE_FLAG_RUNNING) {
+		__connman_dhcp_release(iface);
+
+		connman_iface_clear_ipv4(iface);
+
+		if (iface->driver->disconnect)
+			iface->driver->disconnect(iface);
+
+		iface->flags &= ~CONNMAN_IFACE_FLAG_RUNNING;
+	}
+
+	if (iface->driver->connect)
+		iface->driver->connect(iface, network);
+
+	iface->flags |= CONNMAN_IFACE_FLAG_RUNNING;
+
+	return 0;
+}
+
+int __connman_iface_disconnect(struct connman_iface *iface)
+{
+	DBG("iface %p", iface);
+
+	__connman_dhcp_release(iface);
+
+	connman_iface_clear_ipv4(iface);
+
+	if (!(iface->flags & CONNMAN_IFACE_FLAG_RUNNING))
+		return -EINVAL;
+
+	if (iface->driver->disconnect)
+		iface->driver->disconnect(iface);
+
+	iface->flags &= ~CONNMAN_IFACE_FLAG_RUNNING;
+
+	return 0;
 }

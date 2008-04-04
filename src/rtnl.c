@@ -105,20 +105,24 @@ static void rtnl_link(struct nlmsghdr *hdr)
 		return;
 
 	if ((data->ifi_flags & IFF_RUNNING) != (msg->ifi_flags & IFF_RUNNING)) {
-		if (msg->ifi_flags & IFF_RUNNING)
-			connman_iface_indicate_carrier_on(iface);
-		else
-			connman_iface_indicate_carrier_off(iface);
+		if (!(iface->flags & CONNMAN_IFACE_FLAG_NOCARRIER)) {
+			if (msg->ifi_flags & IFF_RUNNING)
+				connman_iface_indicate_carrier_on(iface);
+			else
+				connman_iface_indicate_carrier_off(iface);
+		}
 	}
 
 	if ((data->ifi_flags & IFF_UP) != (msg->ifi_flags & IFF_UP)) {
 		if (msg->ifi_flags & IFF_UP)
-			connman_iface_indicate_enabled(iface);
+			connman_iface_indicate_ifup(iface);
 		else
-			connman_iface_indicate_disabled(iface);
+			connman_iface_indicate_ifdown(iface);
 	}
 
 	data->ifi_flags = msg->ifi_flags;
+
+	return;
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {

@@ -38,10 +38,15 @@ enum connman_iface_type {
 };
 
 enum connman_iface_flags {
-	CONNMAN_IFACE_FLAG_RTNL     = (1 << 0),
-	CONNMAN_IFACE_FLAG_IPV4     = (1 << 1),
-	CONNMAN_IFACE_FLAG_IPV6     = (1 << 2),
-	CONNMAN_IFACE_FLAG_SCANNING = (1 << 3),
+	CONNMAN_IFACE_FLAG_RTNL      = (1 << 0),
+	CONNMAN_IFACE_FLAG_IPV4      = (1 << 1),
+	CONNMAN_IFACE_FLAG_IPV6      = (1 << 2),
+	CONNMAN_IFACE_FLAG_SCANNING  = (1 << 3),
+	CONNMAN_IFACE_FLAG_NOCARRIER = (1 << 4),
+
+	CONNMAN_IFACE_FLAG_STARTED   = (1 << 16),
+	CONNMAN_IFACE_FLAG_RUNNING   = (1 << 17),
+	CONNMAN_IFACE_FLAG_DHCP      = (1 << 18),
 };
 
 enum connman_iface_state {
@@ -94,7 +99,7 @@ struct connman_iface {
 	char *identifier;
 	int index;
 	enum connman_iface_type type;
-	enum connman_iface_flags flags;
+	unsigned long flags;
 	enum connman_iface_state state;
 	enum connman_iface_policy policy;
 	struct connman_network network;
@@ -146,8 +151,8 @@ static inline void connman_iface_set_data(struct connman_iface *iface,
 	iface->driver_data = data;
 }
 
-extern void connman_iface_indicate_enabled(struct connman_iface *iface);
-extern void connman_iface_indicate_disabled(struct connman_iface *iface);
+extern void connman_iface_indicate_ifup(struct connman_iface *iface);
+extern void connman_iface_indicate_ifdown(struct connman_iface *iface);
 extern void connman_iface_indicate_connected(struct connman_iface *iface);
 extern void connman_iface_indicate_carrier_on(struct connman_iface *iface);
 extern void connman_iface_indicate_carrier_off(struct connman_iface *iface);
