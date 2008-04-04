@@ -1,0 +1,26 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.freedesktop.connman', "/"),
+					'org.freedesktop.connman.Manager')
+
+interfaces = manager.ListInterfaces()
+
+for path in interfaces:
+	print "[ %s ]" % (path)
+
+	interface = dbus.Interface(bus.get_object('org.freedesktop.connman', path),
+					'org.freedesktop.connman.Interface')
+
+	properties = interface.GetProperties()
+
+	if (properties["Type"] == "80211"):
+		print "   Selecting network"
+		interface.SelectNetwork("ConnMan Testing")
+	else:
+		print "   No networks"
+
+	print
