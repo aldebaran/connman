@@ -27,8 +27,6 @@
 
 #include "connman.h"
 
-static const char *master_state = "unknown";
-
 static DBusMessage *list_interfaces(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -57,6 +55,7 @@ static DBusMessage *get_state(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
+	const char *state;
 
 	DBG("conn %p", conn);
 
@@ -64,7 +63,12 @@ static DBusMessage *get_state(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &master_state,
+	if (__connman_iface_is_connected() == TRUE)
+		state = "online";
+	else
+		state = "offline";
+
+	dbus_message_append_args(reply, DBUS_TYPE_STRING, &state,
 							DBUS_TYPE_INVALID);
 
 	return reply;
@@ -133,67 +137,7 @@ static GDBusSignalTable manager_signals[] = {
 	{ },
 };
 
-static DBusMessage *activate_device(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	const char *path;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-
-	DBG("device %s", path);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *set_wireless(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	dbus_bool_t enabled;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_BOOLEAN, &enabled,
-							DBUS_TYPE_INVALID);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *get_wireless(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	dbus_bool_t enabled = TRUE;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_BOOLEAN, &enabled,
-							DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *do_sleep(DBusConnection *conn,
+static DBusMessage *nm_sleep(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -209,7 +153,7 @@ static DBusMessage *do_sleep(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *do_wake(DBusConnection *conn,
+static DBusMessage *nm_wake(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
@@ -233,17 +177,22 @@ enum {
 	NM_STATE_DISCONNECTED
 };
 
-static DBusMessage *do_state(DBusConnection *conn,
+static DBusMessage *nm_state(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
-	dbus_uint32_t state = NM_STATE_DISCONNECTED;
+	dbus_uint32_t state;
 
 	DBG("conn %p", conn);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
+
+	if (__connman_iface_is_connected() == TRUE)
+		state = NM_STATE_CONNECTED;
+	else
+		state = NM_STATE_DISCONNECTED;
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &state,
 							DBUS_TYPE_INVALID);
@@ -252,13 +201,9 @@ static DBusMessage *do_state(DBusConnection *conn,
 }
 
 static GDBusMethodTable nm_methods[] = {
-	{ "getDevices",            "",  "ao", list_interfaces },
-	{ "setActiveDevice",       "o", "",   activate_device },
-	{ "setWirelessEnabled",    "b", "",   set_wireless    },
-	{ "getWirelessEnabled",    "",  "b",  get_wireless    },
-	{ "sleep",                 "",  "",   do_sleep        },
-	{ "wake",                  "",  "",   do_wake         },
-	{ "state",                 "",  "u",  do_state        },
+	{ "sleep",                 "",  "",   nm_sleep        },
+	{ "wake",                  "",  "",   nm_wake         },
+	{ "state",                 "",  "u",  nm_state        },
 	{ },
 };
 

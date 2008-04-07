@@ -21,6 +21,8 @@
 
 #include <stdio.h>
 
+#include <glib.h>
+
 #include <dbus/dbus.h>
 
 #define CONNMAN_SERVICE  "org.freedesktop.connman"
@@ -66,6 +68,7 @@ void __connman_iface_cleanup(void);
 
 struct connman_iface *__connman_iface_find(int index);
 void __connman_iface_list(DBusMessageIter *iter);
+gboolean __connman_iface_is_connected(void);
 
 int __connman_iface_create_identifier(struct connman_iface *iface);
 int __connman_iface_init_via_inet(struct connman_iface *iface);

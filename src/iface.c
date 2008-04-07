@@ -97,6 +97,25 @@ void __connman_iface_list(DBusMessageIter *iter)
 	}
 }
 
+gboolean __connman_iface_is_connected(void)
+{
+	GSList *list;
+	gboolean connected = FALSE;
+
+	DBG("");
+
+	for (list = interfaces; list; list = list->next) {
+		struct connman_iface *iface = list->data;
+
+		if (iface->state == CONNMAN_IFACE_STATE_READY) {
+			connected = TRUE;
+			break;
+		}
+	}
+
+	return connected;
+}
+
 static void append_entry(DBusMessageIter *dict,
 				const char *key, int type, void *val)
 {
