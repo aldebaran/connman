@@ -6,11 +6,13 @@ Interface name	org.freedesktop.connman.Manager
 Object path	/
 
 Methods		array{object} ListInterfaces()
+		string GetState()
 		void RegisterAgent(object path)
 		void UnregisterAgent(object path)
 
 Signals		InterfaceAdded(object)
 		InterfaceRemoved(object)
+		StateChanged(string state)
 
 
 Method: ListInferfaces
@@ -19,6 +21,12 @@ This method lists all available interfaces. The return value is an array of
 object paths. Every attached network interface (eth0, wlan0 etc.) of the
 system is presented by an object path with additional interfaces on it. The
 main interface is org.freedesktop.connman.Interface.
+
+Method: GetState
+================
+This method gets the overall master state of the Internet connection. Possible
+return values are "offline" and "online". If at least one interface is
+connected it will return "online".
 
 Method: RegisterAgent
 =====================
@@ -44,3 +52,8 @@ Signal: InterfaceRemoved
 This signal is emitted every time an interface has been removed. This can
 happen at any time in case of hotplug devices. When the system shuts down,
 this signal is also emitted.
+
+Signal: StateChanged
+====================
+This signal is emitted every time the master state changes. Possible values
+are "offline" and "online" and reflect the state of the Internet connection.
