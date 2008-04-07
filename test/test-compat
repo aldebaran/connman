@@ -8,6 +8,8 @@ manager = dbus.Interface(bus.get_object('org.freedesktop.NetworkManager',
 				'/org/freedesktop/NetworkManager'),
 					'org.freedesktop.NetworkManager')
 
+states = [ "unknown", "asleep", "connecting", "connected", "disconnected" ]
+
 state = manager.state()
 
-print "System is %d" % (state)
+print "System is %s" % (states[state])
