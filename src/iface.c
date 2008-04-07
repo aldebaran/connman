@@ -1253,7 +1253,7 @@ static void device_removed(LibHalContext *ctx, const char *udi)
 			interfaces = g_slist_remove(interfaces, iface);
 			g_dbus_unregister_interface(conn, iface->path,
 						CONNMAN_IFACE_INTERFACE);
-			g_dbus_unregister_object(conn, iface->path);
+			g_dbus_unregister_object_hierarchy(conn, iface->path);
 			break;
 		}
 	}
@@ -1357,7 +1357,7 @@ static void hal_cleanup(void *data)
 		g_dbus_unregister_interface(conn, iface->path,
 						CONNMAN_IFACE_INTERFACE);
 
-		g_dbus_unregister_object(conn, iface->path);
+		g_dbus_unregister_object_hierarchy(conn, iface->path);
 	}
 
 	g_slist_free(interfaces);
