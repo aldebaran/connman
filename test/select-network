@@ -18,8 +18,14 @@ for path in interfaces:
 	properties = interface.GetProperties()
 
 	if (properties["Type"] == "80211"):
-		print "   Selecting network"
-		interface.SelectNetwork("ConnMan Testing")
+		networks = interface.ListNetworks()
+		for i in networks:
+			network = dbus.Interface(bus.get_object('org.freedesktop.connman', i),
+						'org.freedesktop.connman.Network')
+
+			if (network.GetIdentifier() == "ConnMan Testing"):
+				print "   Selecting network %s" % (i)
+				interface.SelectNetwork(i)
 	else:
 		print "   No networks"
 

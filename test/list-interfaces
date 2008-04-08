@@ -23,4 +23,14 @@ for path in interfaces:
 	for key in ipv4.keys():
 		print "    IPv4.%s = %s" % (key, ipv4[key])
 
+	networks = interface.ListNetworks()
+	for i in networks:
+		print "    Network.Path = %s" % (i)
+
+		network = dbus.Interface(bus.get_object('org.freedesktop.connman', i),
+						'org.freedesktop.connman.Network')
+
+		print "    Network.Identifier = %s" % (network.GetIdentifier())
+		print "    Network.Passphrase = %s" % (network.GetPassphrase())
+
 	print
