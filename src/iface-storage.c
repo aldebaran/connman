@@ -284,7 +284,13 @@ int __connman_iface_load_networks(struct connman_iface *iface)
 	list = g_key_file_get_string_list(keyfile, GROUP_CONFIG,
 					"KnownNetworks", &list_len, NULL);
 	for (i = 0; i < list_len; i++) {
+		gchar *psk;
+
 		DBG("Known network %s", list[i]);
+
+		psk = g_key_file_get_string(keyfile, list[i], "PSK", NULL);
+
+		__connman_iface_add_network(iface, list[i], psk);
 	}
 
 	g_strfreev(list);

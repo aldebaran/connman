@@ -37,6 +37,8 @@
 #define CONNMAN_IFACE_BASEPATH  "/interface"
 #define CONNMAN_IFACE_INTERFACE  CONNMAN_SERVICE ".Interface"
 
+#define CONNMAN_NETWORK_INTERFACE  CONNMAN_SERVICE ".Network"
+
 #define NM_SERVICE    "org.freedesktop.NetworkManager"
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
@@ -84,6 +86,17 @@ int __connman_iface_load(struct connman_iface *iface);
 int __connman_iface_store(struct connman_iface *iface);
 int __connman_iface_store_current_network(struct connman_iface *iface);
 int __connman_iface_load_networks(struct connman_iface *iface);
+
+void __connman_iface_network_list(struct connman_iface *iface,
+						DBusMessageIter *iter);
+struct connman_network *__connman_iface_find_network(struct connman_iface *iface,
+								const char *path);
+int __connman_iface_remove_network(struct connman_iface *iface, const char *path);
+const char *__connman_iface_add_network(struct connman_iface *iface,
+				const char *identifier, const char *passphrase);
+
+int __connman_network_init(DBusConnection *conn);
+void __connman_network_cleanup(void);
 
 const char *__connman_iface_type2string(enum connman_iface_type type);
 const char *__connman_iface_state2string(enum connman_iface_state state);

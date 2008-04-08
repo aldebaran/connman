@@ -863,27 +863,126 @@ static DBusMessage *set_network(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *select_network(DBusConnection *conn,
+static DBusMessage *list_networks(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_iface *iface = data;
 	DBusMessage *reply;
-	const char *network;
-	gchar *passphrase;
+	DBusMessageIter array, iter;
 
 	DBG("conn %p", conn);
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &network,
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_iface_network_list(iface, &iter);
+
+	dbus_message_iter_close_container(&array, &iter);
+
+	return reply;
+}
+
+static DBusMessage *create_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	const char *path, *identifier = NULL, *passphrase = NULL;
+
+	DBG("conn %p", conn);
+
+	dbus_message_iter_init(msg, &array);
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		//type = dbus_message_iter_get_arg_type(&value);
+		dbus_message_iter_get_basic(&value, &val);
+
+		if (g_strcasecmp(key, "Identifier") == 0)
+			identifier = val;
+
+		if (g_strcasecmp(key, "Passphrase") == 0)
+			passphrase = val;
+
+		dbus_message_iter_next(&dict);
+	}
+
+	DBG("identifier %s passphrase %s", identifier, passphrase);
+
+	path = __connman_iface_add_network(iface, identifier, passphrase);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	passphrase = __connman_iface_find_passphrase(iface, network);
-	if (passphrase == NULL)
+	return reply;
+}
+
+static DBusMessage *remove_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	DBusMessage *reply;
+	const char *path;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	__connman_iface_remove_network(iface, path);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
+
+	return reply;
+}
+
+static DBusMessage *select_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_iface *iface = data;
+	struct connman_network *network;
+	DBusMessage *reply;
+	const char *path;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	network = __connman_iface_find_network(iface, path);
+	if (network == NULL)
 		goto done;
 
 	g_free(iface->network.identifier);
-	iface->network.identifier = g_strdup(network);
+	iface->network.identifier = g_strdup(network->identifier);
 	g_free(iface->network.passphrase);
-	iface->network.passphrase = passphrase;
+	iface->network.passphrase = g_strdup(network->passphrase);
 
 	__connman_iface_connect(iface, &iface->network);
 
@@ -1054,7 +1153,10 @@ static GDBusMethodTable iface_methods[] = {
 	{ "SetPolicy",     "s",     "",      set_policy     },
 	{ "GetNetwork",    "",      "a{sv}", get_network    },
 	{ "SetNetwork",    "a{sv}", "",      set_network    },
-	{ "SelectNetwork", "s",     "",      select_network },
+	{ "ListNetworks",  "",      "ao",    list_networks  },
+	{ "CreateNetwork", "a{av}", "o",     create_network },
+	{ "RemoveNetwork", "o",     "",      remove_network },
+	{ "SelectNetwork", "o",     "",      select_network },
 	{ "GetIPv4",       "",      "a{sv}", get_ipv4       },
 	{ "SetIPv4",       "a{sv}", "",      set_ipv4       },
 	{ },

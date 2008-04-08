@@ -130,8 +130,10 @@ int main(int argc, char *argv[])
 	}
 
 	if (compat) {
-		if (g_dbus_request_name(conn, NM_SERVICE, NULL) == FALSE)
+		if (g_dbus_request_name(conn, NM_SERVICE, NULL) == FALSE) {
+			fprintf(stderr, "Can't register compat service\n");
 			compat = 0;
+		}
 	}
 
 	__connman_log_init(detach, debug);
@@ -144,6 +146,8 @@ int main(int argc, char *argv[])
 
 	__connman_rtnl_init();
 
+	__connman_network_init(conn);
+
 	__connman_iface_init(conn, interface);
 
 	memset(&sa, 0, sizeof(sa));
@@ -154,6 +158,8 @@ int main(int argc, char *argv[])
 	g_main_loop_run(main_loop);
 
 	__connman_iface_cleanup();
+
+	__connman_network_cleanup();
 
 	__connman_rtnl_cleanup();
 

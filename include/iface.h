@@ -88,6 +88,8 @@ struct connman_ipv4 {
 };
 
 struct connman_network {
+	struct connman_iface *iface;
+	char *path;
 	char *identifier;
 	char *passphrase;
 };
