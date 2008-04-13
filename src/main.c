@@ -115,7 +115,15 @@ int main(int argc, char *argv[])
 	mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
 
+	if (g_thread_supported() == FALSE)
+		g_thread_init(NULL);
+
 	main_loop = g_main_loop_new(NULL, FALSE);
+
+	if (dbus_threads_init_default() == FALSE) {
+		fprintf(stderr, "Can't init usage of threads\n");
+		exit(1);
+	}
 
 	dbus_error_init(&err);
 
