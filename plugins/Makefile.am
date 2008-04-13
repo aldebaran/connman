@@ -2,11 +2,14 @@
 plugindir = $(libdir)/connman/plugins
 
 plugin_LTLIBRARIES = libconnman-80203.la libconnman-80211.la \
+			libconnman-bluetooth.la \
 			libconnman-dhclient.la libconnman-resolvconf.la
 
 libconnman_80203_la_SOURCES = 80203.c
 
 libconnman_80211_la_SOURCES = 80211.c supplicant.h supplicant.c
+
+libconnman_bluetooth_la_SOURCES = bluetooth.c
 
 libconnman_dhclient_la_SOURCES = dhclient.c
 libconnman_dhclient_la_LIBADD = @GDBUS_LIBS@
