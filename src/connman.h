@@ -44,7 +44,7 @@
 #define NM_INTERFACE  NM_SERVICE
 #define NM_DEVICE     NM_SERVICE ".Devices"
 
-int __connman_manager_init(DBusConnection *conn, int compat);
+int __connman_manager_init(DBusConnection *conn, gboolean compat);
 void __connman_manager_cleanup(void);
 
 int __connman_agent_init(DBusConnection *conn);
@@ -55,7 +55,7 @@ int __connman_agent_unregister(const char *sender, const char *path);
 
 #include <connman/log.h>
 
-int __connman_log_init(int detach, int debug);
+int __connman_log_init(gboolean detach, gboolean debug);
 void __connman_log_cleanup(void);
 
 #include <connman/plugin.h>

@@ -43,66 +43,50 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void usage(void)
-{
-	printf("Connection Manager version %s\n\n", VERSION);
+static gchar *option_interface = NULL;
+static gboolean option_detach = TRUE;
+static gboolean option_compat = FALSE;
+static gboolean option_debug = FALSE;
 
-	printf("Usage:\n"
-		"\tconnmand [-i <interface>] [options]\n"
-		"\n");
-
-	printf("Options:\n"
-		"\t-c, --compat         Enable Network Manager compatibility\n"
-		"\t-n, --nodaemon       Don't fork daemon to background\n"
-		"\t-h, --help           Display help\n"
-		"\n");
-}
-
-static struct option options[] = {
-	{ "interface", 1, 0, 'i' },
-	{ "nodaemon",  0, 0, 'n' },
-	{ "compat",    0, 0, 'c' },
-	{ "debug",     0, 0, 'd' },
-	{ "help",      0, 0, 'h' },
-	{ }
+static GOptionEntry options[] = {
+	{ "interface", 'i', 0, G_OPTION_ARG_STRING, &option_interface,
+				"Specify network interface", "IFACE" },
+	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_detach,
+				"Don't fork daemon to background" },
+	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
+				"Enable Network Manager compatibility" },
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
+				"Enable debug information output" },
+	{ NULL },
 };
 
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
+	GError *error = NULL;
 	DBusConnection *conn;
 	DBusError err;
 	struct sigaction sa;
-	char interface[IFNAMSIZ];
-	int opt, detach = 1, compat = 0, debug = 0;
 
-	memset(interface, 0, IFNAMSIZ);
+	if (g_thread_supported() == FALSE)
+		g_thread_init(NULL);
 
-	while ((opt = getopt_long(argc, argv, "+i:ncdh", options, NULL)) != EOF) {
-		switch (opt) {
-		case 'i':
-			snprintf(interface, IFNAMSIZ, "%s", optarg);
-			break;
-		case 'n':
-			detach = 0;
-			break;
-		case 'c':
-			compat = 1;
-			break;
-		case 'd':
-			debug = 1;
-			break;
-		case 'h':
-		default:
-			usage();
-			exit(0);
-		}
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			g_error_free(error);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(1);
 	}
 
-	argc -= optind;
-	argv += optind;
-	optind = 0;
+	g_option_context_free(context);
 
-	if (detach) {
+	if (option_detach == TRUE) {
 		if (daemon(0, 0)) {
 			perror("Can't start daemon");
 			exit(1);
@@ -114,9 +98,6 @@ int main(int argc, char *argv[])
 
 	mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
-
-	if (g_thread_supported() == FALSE)
-		g_thread_init(NULL);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -137,18 +118,18 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
-	if (compat) {
+	if (option_compat == TRUE) {
 		if (g_dbus_request_name(conn, NM_SERVICE, NULL) == FALSE) {
 			fprintf(stderr, "Can't register compat service\n");
-			compat = 0;
+			option_compat = FALSE;
 		}
 	}
 
-	__connman_log_init(detach, debug);
+	__connman_log_init(option_detach, option_debug);
 
 	__connman_agent_init(conn);
 
-	__connman_manager_init(conn, compat);
+	__connman_manager_init(conn, option_compat);
 
 	__connman_plugin_init();
 
@@ -156,7 +137,9 @@ int main(int argc, char *argv[])
 
 	__connman_network_init(conn);
 
-	__connman_iface_init(conn, interface);
+	__connman_iface_init(conn, option_interface);
+
+	g_free(option_interface);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;

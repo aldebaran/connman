@@ -1268,7 +1268,6 @@ static int probe_device(LibHalContext *ctx,
 		ifname = libhal_device_get_property_string(ctx, udi,
 						"net.interface", NULL);
 		if (ifname != NULL && ifname_filter != NULL &&
-						*ifname_filter != '\0' &&
 				g_str_equal(ifname, ifname_filter) == FALSE) {
 			device_free(iface);
 			return -1;

@@ -28,7 +28,7 @@
 
 #include "connman.h"
 
-static volatile int debug_enabled = 0;
+static volatile gboolean debug_enabled = FALSE;
 
 void connman_info(const char *format, ...)
 {
@@ -56,7 +56,7 @@ void connman_debug(const char *format, ...)
 {
 	va_list ap;
 
-	if (!debug_enabled)
+	if (debug_enabled == FALSE)
 		return;
 
 	va_start(ap, format);
@@ -66,11 +66,11 @@ void connman_debug(const char *format, ...)
 	va_end(ap);
 }
 
-int __connman_log_init(int detach, int debug)
+int __connman_log_init(gboolean detach, gboolean debug)
 {
 	int option = LOG_NDELAY | LOG_PID;
 
-	if (!detach)
+	if (detach == FALSE)
 		option |= LOG_PERROR;
 
 	openlog("connmand", option, LOG_DAEMON);

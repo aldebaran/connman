@@ -208,9 +208,9 @@ static GDBusMethodTable nm_methods[] = {
 };
 
 static DBusConnection *connection = NULL;
-static int nm_compat = 0;
+static gboolean nm_compat = FALSE;
 
-int __connman_manager_init(DBusConnection *conn, int compat)
+int __connman_manager_init(DBusConnection *conn, gboolean compat)
 {
 	DBG("conn %p", conn);
 
@@ -225,13 +225,13 @@ int __connman_manager_init(DBusConnection *conn, int compat)
 						manager_methods,
 						manager_signals, NULL);
 
-	if (compat) {
+	if (compat == TRUE) {
 		g_dbus_register_object(connection, NM_PATH, NULL, NULL);
 
 		g_dbus_register_interface(connection, NM_PATH, NM_INTERFACE,
 						nm_methods, NULL, NULL);
 
-		nm_compat = 1;
+		nm_compat = TRUE;
 	}
 
 	return 0;
@@ -241,7 +241,7 @@ void __connman_manager_cleanup(void)
 {
 	DBG("conn %p", connection);
 
-	if (nm_compat) {
+	if (nm_compat == TRUE) {
 		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);
 
 		g_dbus_unregister_object(connection, NM_PATH);
