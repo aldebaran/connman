@@ -26,11 +26,11 @@
 extern "C" {
 #endif
 
-#define DBG(fmt, arg...) connman_debug("%s: " fmt, __FUNCTION__ , ## arg)
-
 extern void connman_info(const char *format, ...);
 extern void connman_error(const char *format, ...);
 extern void connman_debug(const char *format, ...);
+
+#define DBG(fmt, arg...) connman_debug("%s:%s() " fmt, __FILE__, __FUNCTION__ , ## arg)
 
 #ifdef __cplusplus
 }
