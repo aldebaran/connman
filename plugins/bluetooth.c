@@ -23,43 +23,143 @@
 #include <config.h>
 #endif
 
+#include <dbus/dbus.h>
+
 #include <connman/plugin.h>
-#include <connman/iface.h>
+#include <connman/driver.h>
 #include <connman/log.h>
 
-static int bluetooth_probe(struct connman_iface *iface)
+#define BLUEZ_SERVICE "org.bluez"
+
+#define MANAGER_INTERFACE "org.bluez.Manager"
+#define MANAGER_PATH "/"
+
+static GStaticMutex element_mutex = G_STATIC_MUTEX_INIT;
+static GSList *element_list = NULL;
+
+static void create_element(DBusConnection *conn, const char *path)
 {
-	DBG("iface %p", iface);
+	struct connman_element *element;
 
-	iface->type = CONNMAN_IFACE_TYPE_BLUETOOTH;
+	DBG("conn %p path %s", conn, path);
 
-	iface->flags = CONNMAN_IFACE_FLAG_RTNL |
-				CONNMAN_IFACE_FLAG_IPV4;
+	element = connman_element_create();
+
+	element->name = g_path_get_basename(path);
+	element->type = CONNMAN_ELEMENT_TYPE_DEVICE;
+	element->subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
+
+	g_static_mutex_lock(&element_mutex);
+
+	connman_element_register(element, NULL);
+
+	element_list = g_slist_append(element_list, element);
+
+	g_static_mutex_unlock(&element_mutex);
+}
+
+static DBusHandlerResult bluetooth_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	DBG("conn %p msg %p", conn, msg);
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static void list_adapters(DBusConnection *conn)
+{
+	DBusMessage *msg, *reply;
+	char **paths = NULL;
+	int i, num = 0;
+
+	DBG("conn %p");
+
+	msg = dbus_message_new_method_call(BLUEZ_SERVICE, MANAGER_PATH,
+					MANAGER_INTERFACE, "ListAdapters");
+	if (!msg) {
+		connman_error("ListAdpaters message alloction failed");
+		return;
+	}
+
+	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
+
+	dbus_message_unref(msg);
+
+	if (!reply) {
+		connman_error("ListAdapters method call failed");
+		return;
+	}
+
+	dbus_message_get_args(reply, NULL, DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH,
+						&paths, &num, DBUS_TYPE_INVALID);
+
+	for (i = 0; i < num; i++)
+		create_element(conn, paths[i]);
+
+	g_strfreev(paths);
+
+	dbus_message_unref(reply);
+}
+
+static int bluetooth_probe(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
 
 	return 0;
 }
 
-static void bluetooth_remove(struct connman_iface *iface)
+static void bluetooth_remove(struct connman_element *element)
 {
-	DBG("iface %p", iface);
+	DBG("element %p name %s", element, element->name);
 }
 
-static struct connman_iface_driver bluetooth_driver = {
+static struct connman_driver bluetooth_driver = {
 	.name		= "bluetooth",
-	.capability	= "bluetooth_hci",
+	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
+	.subtype	= CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH,
 	.probe		= bluetooth_probe,
 	.remove		= bluetooth_remove,
 };
 
+static DBusConnection *connection;
+
 static int bluetooth_init(void)
 {
-	return connman_iface_register(&bluetooth_driver);
+	gchar *match;
+	int err;
+
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
+		return -EIO;
+
+	if (dbus_connection_add_filter(connection, bluetooth_filter,
+						NULL, NULL) == FALSE)
+		connman_error("Can't add D-Bus filter for Bluetooth");
+
+	match = g_strdup_printf("sender=%s,interface=%s", "org.bluez",
+							"org.bluez.Manager");
+
+	dbus_bus_add_match(connection, match, NULL);
+
+	g_free(match);
+
+	err = connman_driver_register(&bluetooth_driver);
+	if (err < 0) {
+		dbus_connection_unref(connection);
+		return err;
+	}
+
+	list_adapters(connection);
+
+	return 0;
 }
 
 static void bluetooth_exit(void)
 {
-	connman_iface_unregister(&bluetooth_driver);
+	connman_driver_unregister(&bluetooth_driver);
+
+	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE("bluetooth", "Bluetooth interface plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE("bluetooth", "Bluetooth technology plugin", VERSION,
 						bluetooth_init, bluetooth_exit)
