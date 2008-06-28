@@ -19,25 +19,9 @@
  *
  */
 
-#include <stdio.h>
-
 #include <glib.h>
 
-#include <dbus/dbus.h>
-
-#define CONNMAN_SERVICE  "org.freedesktop.connman"
-
-#define CONNMAN_ERROR_INTERFACE  CONNMAN_SERVICE ".Error"
-
-#define CONNMAN_AGENT_INTERFACE  CONNMAN_SERVICE ".Agent"
-
-#define CONNMAN_MANAGER_PATH       "/"
-#define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
-
-#define CONNMAN_IFACE_BASEPATH  "/interface"
-#define CONNMAN_IFACE_INTERFACE  CONNMAN_SERVICE ".Interface"
-
-#define CONNMAN_NETWORK_INTERFACE  CONNMAN_SERVICE ".Network"
+#include <connman/dbus.h>
 
 #define NM_SERVICE    "org.freedesktop.NetworkManager"
 #define NM_PATH       "/org/freedesktop/NetworkManager"

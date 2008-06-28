@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
