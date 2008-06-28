@@ -135,12 +135,6 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_init();
 
-	__connman_rtnl_init();
-
-	__connman_network_init(conn);
-
-	__connman_iface_init(conn, option_interface);
-
 	g_free(option_interface);
 
 	memset(&sa, 0, sizeof(sa));
@@ -149,12 +143,6 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 
 	g_main_loop_run(main_loop);
-
-	__connman_iface_cleanup();
-
-	__connman_network_cleanup();
-
-	__connman_rtnl_cleanup();
 
 	__connman_plugin_cleanup();
 
