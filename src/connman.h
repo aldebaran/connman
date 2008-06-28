@@ -47,6 +47,14 @@ void __connman_log_cleanup(void);
 int __connman_plugin_init(void);
 void __connman_plugin_cleanup(void);
 
+#include <connman/driver.h>
+#include <connman/element.h>
+
+int __connman_element_init(void);
+void __connman_element_cleanup(void);
+
+void __connman_element_list(DBusMessageIter *iter);
+
 #include <connman/iface.h>
 
 int __connman_iface_init(DBusConnection *conn, const char *interface);
