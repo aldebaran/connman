@@ -1,8 +1,12 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = 80203.la 80211.la bluetooth.la \
-				dhclient.la resolvconf.la
+plugin_LTLIBRARIES = hal.la 80203.la 80211.la bluetooth.la \
+					dhclient.la resolvconf.la
+
+hal_la_SOURCES = hal.c
+hal_la_LIBADD = @HAL_LIBS@
+hal_la_CFLAGS = @GLIB_CFLAGS@ @HAL_CFLAGS@
 
 80203_la_SOURCES = 80203.c
 
