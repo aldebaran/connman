@@ -40,6 +40,7 @@
 
 #include <connman/plugin.h>
 #include <connman/dhcp.h>
+#include <connman/dbus.h>
 
 #define DHCLIENT_INTF "org.isc.dhclient"
 #define DHCLIENT_PATH "/org/isc/dhclient"
@@ -314,8 +315,7 @@ static int plugin_init(void)
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
 	busname = dbus_bus_get_unique_name(connection);
-
-	busname = "org.freedesktop.connman";
+	busname = CONNMAN_SERVICE;
 
 	dbus_connection_add_filter(connection, dhclient_filter, NULL, NULL);
 
