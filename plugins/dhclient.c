@@ -23,24 +23,13 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <string.h>
 #include <sys/wait.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <net/if.h>
-
-#include <glib.h>
-#include <gdbus.h>
+#include <glib/gstdio.h>
 
 #include <connman/plugin.h>
-#include <connman/dhcp.h>
+#include <connman/driver.h>
 #include <connman/dbus.h>
+#include <connman/log.h>
 
 #define DHCLIENT_INTF "org.isc.dhclient"
 #define DHCLIENT_PATH "/org/isc/dhclient"
@@ -50,17 +39,19 @@ static const char *busname;
 struct dhclient_task {
 	GPid pid;
 	int ifindex;
-	char *ifname;
-	struct connman_iface *iface;
+	gchar *ifname;
+	struct connman_element *parent;
+	struct connman_element *child;
 };
 
-static GSList *tasks = NULL;
+static GStaticMutex task_mutex = G_STATIC_MUTEX_INIT;
+static GSList *task_list = NULL;
 
 static struct dhclient_task *find_task_by_pid(GPid pid)
 {
 	GSList *list;
 
-	for (list = tasks; list; list = list->next) {
+	for (list = task_list; list; list = list->next) {
 		struct dhclient_task *task = list->data;
 
 		if (task->pid == pid)
@@ -74,7 +65,7 @@ static struct dhclient_task *find_task_by_index(int index)
 {
 	GSList *list;
 
-	for (list = tasks; list; list = list->next) {
+	for (list = task_list; list; list = list->next) {
 		struct dhclient_task *task = list->data;
 
 		if (task->ifindex == index)
@@ -86,37 +77,48 @@ static struct dhclient_task *find_task_by_index(int index)
 
 static void kill_task(struct dhclient_task *task)
 {
+	DBG("task %p name %s pid %d", task, task->ifname, task->pid);
+
 	if (task->pid > 0)
 		kill(task->pid, SIGTERM);
+}
+
+static void unlink_task(struct dhclient_task *task)
+{
+	gchar *pathname;
+
+	DBG("task %p name %s pid %d", task, task->ifname, task->pid);
+
+	pathname = g_strdup_printf("%s/dhclient.%s.pid",
+						STATEDIR, task->ifname);
+	g_unlink(pathname);
+	g_free(pathname);
+
+	pathname = g_strdup_printf("%s/dhclient.%s.leases",
+						STATEDIR, task->ifname);
+	g_unlink(pathname);
+	g_free(pathname);
 }
 
 static void task_died(GPid pid, gint status, gpointer data)
 {
 	struct dhclient_task *task = data;
-	char pathname[PATH_MAX];
 
 	if (WIFEXITED(status))
-		printf("[DHCP] exit status %d for %s\n",
-					WEXITSTATUS(status), task->ifname);
+		DBG("exit status %d for %s", WEXITSTATUS(status), task->ifname);
 	else
-		printf("[DHCP] signal %d killed %s\n",
-					WTERMSIG(status), task->ifname);
+		DBG("signal %d killed %s", WTERMSIG(status), task->ifname);
 
 	g_spawn_close_pid(pid);
 	task->pid = 0;
 
-	tasks = g_slist_remove(tasks, task);
+	g_static_mutex_lock(&task_mutex);
+	task_list = g_slist_remove(task_list, task);
+	g_static_mutex_unlock(&task_mutex);
 
-	snprintf(pathname, sizeof(pathname) - 1,
-			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
-	unlink(pathname);
+	unlink_task(task);
 
-	snprintf(pathname, sizeof(pathname) - 1,
-			"%s/dhclient.%s.leases", STATEDIR, task->ifname);
-	unlink(pathname);
-
-	free(task->ifname);
-
+	g_free(task->ifname);
 	g_free(task);
 }
 
@@ -124,45 +126,32 @@ static void task_setup(gpointer data)
 {
 	struct dhclient_task *task = data;
 
-	printf("[DHCP] setup %s\n", task->ifname);
+	DBG("task %p name %s", task, task->ifname);
 }
 
-static int dhclient_request(struct connman_iface *iface)
+static int dhclient_probe(struct connman_element *element)
 {
-	struct ifreq ifr;
 	struct dhclient_task *task;
 	char *argv[16], *envp[1], address[128], pidfile[PATH_MAX];
 	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
-	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -EIO;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = iface->index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return -EIO;
+	DBG("element %p name %s", element, element->name);
 
 	task = g_try_new0(struct dhclient_task, 1);
 	if (task == NULL)
 		return -ENOMEM;
 
-	task->ifindex = iface->index;
-	task->ifname = strdup(ifr.ifr_name);
-	task->iface = iface;
+	task->ifindex = element->netdev.index;
+	task->ifname = g_strdup(element->netdev.name);
+	task->parent = element;
+	task->child = NULL;
 
 	if (task->ifname == NULL) {
 		g_free(task);
 		return -ENOMEM;
 	}
 
-	printf("[DHCP] request %s\n", task->ifname);
+	DBG("request %s", task->ifname);
 
 	snprintf(address, sizeof(address) - 1, "BUSNAME=%s", busname);
 	snprintf(pidfile, sizeof(pidfile) - 1,
@@ -193,41 +182,70 @@ static int dhclient_request(struct connman_iface *iface)
 
 	if (g_spawn_async(NULL, argv, envp, G_SPAWN_DO_NOT_REAP_CHILD,
 				task_setup, task, &task->pid, NULL) == FALSE) {
-		printf("Failed to spawn dhclient\n");
+		connman_error("Failed to spawn dhclient");
 		return -1;
 	}
 
-	tasks = g_slist_append(tasks, task);
+	g_static_mutex_lock(&task_mutex);
+	task_list = g_slist_append(task_list, task);
+	g_static_mutex_unlock(&task_mutex);
 
 	g_child_watch_add(task->pid, task_died, task);
 
-	printf("[DHCP] executed %s with pid %d\n", DHCLIENT, task->pid);
+	DBG("executed %s with pid %d", DHCLIENT, task->pid);
 
 	return 0;
 }
 
-static int dhclient_release(struct connman_iface *iface)
+static void dhclient_remove(struct connman_element *element)
 {
 	struct dhclient_task *task;
 
-	task = find_task_by_index(iface->index);
+	DBG("element %p name %s", element, element->name);
+
+	g_static_mutex_lock(&task_mutex);
+	task = find_task_by_index(element->netdev.index);
+	g_static_mutex_unlock(&task_mutex);
+
 	if (task == NULL)
-		return -ENODEV;
+		return;
 
-	printf("[DHCP] release %s\n", task->ifname);
+	DBG("release %s", task->ifname);
 
-	tasks = g_slist_remove(tasks, task);
+	g_static_mutex_lock(&task_mutex);
+	task_list = g_slist_remove(task_list, task);
+	g_static_mutex_unlock(&task_mutex);
+
+	connman_element_unregister(task->child);
+	connman_element_unref(task->child);
+	task->child = NULL;
 
 	kill_task(task);
-
-	return 0;
 }
 
-static struct connman_dhcp_driver dhclient_driver = {
+static struct connman_driver dhclient_driver = {
 	.name		= "dhclient",
-	.request	= dhclient_request,
-	.release	= dhclient_release,
+	.type		= CONNMAN_ELEMENT_TYPE_DHCP,
+	.probe		= dhclient_probe,
+	.remove		= dhclient_remove,
 };
+
+static void copy_ipv4(struct connman_element *src, struct connman_element *dst)
+{
+	g_free(dst->ipv4.address);
+	g_free(dst->ipv4.netmask);
+	g_free(dst->ipv4.gateway);
+	g_free(dst->ipv4.network);
+	g_free(dst->ipv4.broadcast);
+	g_free(dst->ipv4.nameserver);
+
+	dst->ipv4.address = g_strdup(src->ipv4.address);
+	dst->ipv4.netmask = g_strdup(src->ipv4.netmask);
+	dst->ipv4.gateway = g_strdup(src->ipv4.gateway);
+	dst->ipv4.network = g_strdup(src->ipv4.network);
+	dst->ipv4.broadcast = g_strdup(src->ipv4.broadcast);
+	dst->ipv4.nameserver = g_strdup(src->ipv4.nameserver);
+}
 
 static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
@@ -235,13 +253,10 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	DBusMessageIter iter, dict;
 	dbus_uint32_t pid;
 	struct dhclient_task *task;
-	struct connman_ipv4 ipv4;
 	const char *text, *key, *value;
 
 	if (dbus_message_is_method_call(msg, DHCLIENT_INTF, "notify") == FALSE)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	memset(&ipv4, 0, sizeof(ipv4));
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -251,9 +266,12 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	dbus_message_iter_get_basic(&iter, &text);
 	dbus_message_iter_next(&iter);
 
-	printf("[DHCP] change %d to %s\n", pid, text);
+	DBG("change %d to %s", pid, text);
 
+	g_static_mutex_lock(&task_mutex);
 	task = find_task_by_pid(pid);
+	g_static_mutex_unlock(&task_mutex);
+
 	if (task == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
@@ -267,50 +285,53 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_get_basic(&entry, &value);
 
-		printf("[DHCP] %s = %s\n", key, value);
+		DBG("%s = %s", key, value);
 
-		if (strcmp(key, "new_ip_address") == 0)
-			inet_aton(value, &ipv4.address);
+		if (g_ascii_strcasecmp(key, "new_ip_address") == 0)
+			task->parent->ipv4.address = g_strdup(value);
 
-		if (strcmp(key, "new_subnet_mask") == 0)
-			inet_aton(value, &ipv4.netmask);
+		if (g_ascii_strcasecmp(key, "new_subnet_mask") == 0)
+			task->parent->ipv4.netmask = g_strdup(value);
 
-		if (strcmp(key, "new_routers") == 0)
-			inet_aton(value, &ipv4.gateway);
+		if (g_ascii_strcasecmp(key, "new_routers") == 0)
+			task->parent->ipv4.gateway = g_strdup(value);
 
-		if (strcmp(key, "new_network_number") == 0)
-			inet_aton(value, &ipv4.network);
+		if (g_ascii_strcasecmp(key, "new_network_number") == 0)
+			task->parent->ipv4.network = g_strdup(value);
 
-		if (strcmp(key, "new_broadcast_address") == 0)
-			inet_aton(value, &ipv4.broadcast);
+		if (g_ascii_strcasecmp(key, "new_broadcast_address") == 0)
+			task->parent->ipv4.broadcast = g_strdup(value);
 
-		if (strcmp(key, "new_domain_name_servers") == 0)
-			inet_aton(value, &ipv4.nameserver);
+		if (g_ascii_strcasecmp(key, "new_domain_name_servers") == 0)
+			task->parent->ipv4.nameserver = g_strdup(value);
 
 		dbus_message_iter_next(&dict);
 	}
 
-	if (strcmp(text, "PREINIT") == 0)
-		connman_dhcp_update(task->iface,
-					CONNMAN_DHCP_STATE_INIT, &ipv4);
-	else if (strcmp(text, "BOUND") == 0 || strcmp(text, "REBOOT") == 0)
-		connman_dhcp_update(task->iface,
-					CONNMAN_DHCP_STATE_BOUND, &ipv4);
-	else if (strcmp(text, "RENEW") == 0 || strcmp(text, "REBIND") == 0)
-		connman_dhcp_update(task->iface,
-					CONNMAN_DHCP_STATE_RENEW, &ipv4);
-	else
-		connman_dhcp_update(task->iface,
-					CONNMAN_DHCP_STATE_FAILED, NULL);
+	if (g_ascii_strcasecmp(text, "PREINIT") == 0) {
+	} else if (g_ascii_strcasecmp(text, "BOUND") == 0 ||
+				g_ascii_strcasecmp(text, "REBOOT") == 0) {
+		task->child = connman_element_create();
+		task->child->type = CONNMAN_ELEMENT_TYPE_IPV4;
+		task->child->netdev.index = task->ifindex;
+		copy_ipv4(task->parent, task->child);
+		connman_element_register(task->child, task->parent);
+	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
+				g_ascii_strcasecmp(text, "REBIND") == 0) {
+		copy_ipv4(task->parent, task->child);
+		connman_element_update(task->child);
+	} else {
+	}
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
 static DBusConnection *connection;
 
-static int plugin_init(void)
+static int dhclient_init(void)
 {
 	gchar *filter;
+	int err;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 
@@ -326,29 +347,44 @@ static int plugin_init(void)
 
 	g_free(filter);
 
-	connman_dhcp_register(&dhclient_driver);
+	err = connman_driver_register(&dhclient_driver);
+	if (err < 0) {
+		dbus_connection_unref(connection);
+		return err;
+	}
 
 	return 0;
 }
 
-static void plugin_exit(void)
+static void dhclient_exit(void)
 {
 	GSList *list;
 
-	for (list = tasks; list; list = list->next) {
+	g_static_mutex_lock(&task_mutex);
+
+	for (list = task_list; list; list = list->next) {
 		struct dhclient_task *task = list->data;
 
-		printf("[DHCP] killing process %d\n", task->pid);
+		if (task->child) {
+			connman_element_unregister(task->child);
+			connman_element_unref(task->child);
+			task->child = NULL;
+		}
+
+		DBG("killing process %d", task->pid);
 
 		kill_task(task);
+		unlink_task(task);
 	}
 
-	g_slist_free(tasks);
+	g_static_mutex_unlock(&task_mutex);
 
-	connman_dhcp_unregister(&dhclient_driver);
+	g_slist_free(task_list);
+
+	connman_driver_unregister(&dhclient_driver);
 
 	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE("dhclient", "ISC DHCP client plugin", VERSION,
-						plugin_init, plugin_exit)
+						dhclient_init, dhclient_exit)
