@@ -28,7 +28,7 @@ extern "C" {
 
 #include <dbus/dbus.h>
 
-#define CONNMAN_SERVICE  "org.freedesktop.connman"
+#define CONNMAN_SERVICE  "org.moblin.connman"
 
 #define CONNMAN_ERROR_INTERFACE  CONNMAN_SERVICE ".Error"
 

@@ -4,16 +4,16 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object('org.freedesktop.connman', "/"),
-					'org.freedesktop.connman.Manager')
+manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
+					'org.moblin.connman.Manager')
 
 interfaces = manager.ListInterfaces()
 
 for path in interfaces:
 	print "[ %s ]" % (path)
 
-	interface = dbus.Interface(bus.get_object('org.freedesktop.connman', path),
-					'org.freedesktop.connman.Interface')
+	interface = dbus.Interface(bus.get_object('org.moblin.connman', path),
+					'org.moblin.connman.Interface')
 
 	properties = interface.GetProperties()
 	for key in properties.keys():
@@ -27,8 +27,8 @@ for path in interfaces:
 	for i in networks:
 		print "    Network.Path = %s" % (i)
 
-		network = dbus.Interface(bus.get_object('org.freedesktop.connman', i),
-						'org.freedesktop.connman.Network')
+		network = dbus.Interface(bus.get_object('org.moblin.connman', i),
+						'org.moblin.connman.Network')
 
 		print "    Network.Identifier = %s" % (network.GetIdentifier())
 		print "    Network.Passphrase = %s" % (network.GetPassphrase())
