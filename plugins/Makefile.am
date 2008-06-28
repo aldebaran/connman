@@ -1,22 +1,20 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = libconnman-80203.la libconnman-80211.la \
-			libconnman-bluetooth.la \
-			libconnman-dhclient.la libconnman-resolvconf.la
+plugin_LTLIBRARIES = 80203.la 80211.la bluetooth.la \
+				dhclient.la resolvconf.la
 
-libconnman_80203_la_SOURCES = 80203.c
+80203_la_SOURCES = 80203.c
 
-libconnman_80211_la_SOURCES = 80211.c supplicant.h supplicant.c
+80211_la_SOURCES = 80211.c supplicant.h supplicant.c
 
-libconnman_bluetooth_la_SOURCES = bluetooth.c
+bluetooth_la_SOURCES = bluetooth.c
 
-libconnman_dhclient_la_SOURCES = dhclient.c
-libconnman_dhclient_la_LIBADD = @GDBUS_LIBS@
-libconnman_dhclient_la_CFLAGS = @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
+dhclient_la_SOURCES = dhclient.c
+dhclient_la_CFLAGS = @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
-libconnman_resolvconf_la_SOURCES = resolvconf.c
+resolvconf_la_SOURCES = resolvconf.c
 
 AM_LDFLAGS = -module -avoid-version -export-symbols-regex connman_plugin_desc
 
