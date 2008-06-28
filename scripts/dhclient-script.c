@@ -29,6 +29,9 @@
 
 #include <dbus/dbus.h>
 
+#define DHCLIENT_INTF "org.isc.dhclient"
+#define DHCLIENT_PATH "/org/isc/dhclient"
+
 extern char **environ;
 
 static void append(DBusMessageIter *dict, const char *pattern)
@@ -80,8 +83,8 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	msg = dbus_message_new_method_call(busname, "/org/isc/dhclient",
-						"org.isc.dhclient", "notify");
+	msg = dbus_message_new_method_call(busname, DHCLIENT_PATH,
+						DHCLIENT_INTF, "notify");
 	if (msg == NULL) {
 		dbus_connection_unref(conn);
 		fprintf(stderr, "Failed to allocate method call\n");
