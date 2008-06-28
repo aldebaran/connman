@@ -70,7 +70,8 @@ struct connman_network *__connman_iface_find_network(struct connman_iface *iface
 
 int __connman_iface_remove_network(struct connman_iface *iface, const char *path)
 {
-	g_dbus_unregister_object(connection, path);
+	g_dbus_unregister_interface(connection, path,
+					CONNMAN_NETWORK_INTERFACE);
 
 	return 0;
 }
@@ -157,10 +158,9 @@ const char *__connman_iface_add_network(struct connman_iface *iface,
 
 	networks = g_slist_append(networks, network);
 
-	g_dbus_register_object(connection, path, network, network_free);
-
 	g_dbus_register_interface(connection, path, CONNMAN_NETWORK_INTERFACE,
-						network_methods, NULL, NULL);
+						network_methods, NULL, NULL,
+							network, network_free);
 
 	return path;
 }

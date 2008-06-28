@@ -201,9 +201,9 @@ static DBusMessage *nm_state(DBusConnection *conn,
 }
 
 static GDBusMethodTable nm_methods[] = {
-	{ "sleep",                 "",  "",   nm_sleep        },
-	{ "wake",                  "",  "",   nm_wake         },
-	{ "state",                 "",  "u",  nm_state        },
+	{ "sleep", "",  "",   nm_sleep        },
+	{ "wake",  "",  "",   nm_wake         },
+	{ "state", "",  "u",  nm_state        },
 	{ },
 };
 
@@ -218,18 +218,14 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 	if (connection == NULL)
 		return -1;
 
-	g_dbus_register_object(connection, CONNMAN_MANAGER_PATH, NULL, NULL);
-
 	g_dbus_register_interface(connection, CONNMAN_MANAGER_PATH,
-						CONNMAN_MANAGER_INTERFACE,
-						manager_methods,
-						manager_signals, NULL);
+					CONNMAN_MANAGER_INTERFACE,
+					manager_methods,
+					manager_signals, NULL, NULL, NULL);
 
 	if (compat == TRUE) {
-		g_dbus_register_object(connection, NM_PATH, NULL, NULL);
-
 		g_dbus_register_interface(connection, NM_PATH, NM_INTERFACE,
-						nm_methods, NULL, NULL);
+					nm_methods, NULL, NULL, NULL, NULL);
 
 		nm_compat = TRUE;
 	}
@@ -243,14 +239,10 @@ void __connman_manager_cleanup(void)
 
 	if (nm_compat == TRUE) {
 		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);
-
-		g_dbus_unregister_object(connection, NM_PATH);
 	}
 
 	g_dbus_unregister_interface(connection, CONNMAN_MANAGER_PATH,
 						CONNMAN_MANAGER_INTERFACE);
-
-	g_dbus_unregister_object(connection, CONNMAN_MANAGER_PATH);
 
 	dbus_connection_unref(connection);
 }

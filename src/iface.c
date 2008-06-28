@@ -1301,8 +1301,6 @@ static int probe_device(LibHalContext *ctx,
 
 	conn = libhal_ctx_get_dbus_connection(ctx);
 
-	g_dbus_register_object(conn, iface->path, iface, device_free);
-
 	interfaces = g_slist_append(interfaces, iface);
 
 	if (iface->flags & CONNMAN_IFACE_FLAG_IPV4) {
@@ -1313,7 +1311,8 @@ static int probe_device(LibHalContext *ctx,
 
 	g_dbus_register_interface(conn, iface->path,
 					CONNMAN_IFACE_INTERFACE,
-					iface_methods, iface_signals, NULL);
+					iface_methods, iface_signals, NULL,
+							iface, device_free);
 
 	DBG("iface %p identifier %s", iface, iface->identifier);
 
@@ -1373,7 +1372,6 @@ static void device_removed(LibHalContext *ctx, const char *udi)
 			interfaces = g_slist_remove(interfaces, iface);
 			g_dbus_unregister_interface(conn, iface->path,
 						CONNMAN_IFACE_INTERFACE);
-			g_dbus_unregister_object_hierarchy(conn, iface->path);
 			break;
 		}
 	}
@@ -1476,8 +1474,6 @@ static void hal_cleanup(void *data)
 
 		g_dbus_unregister_interface(conn, iface->path,
 						CONNMAN_IFACE_INTERFACE);
-
-		g_dbus_unregister_object_hierarchy(conn, iface->path);
 	}
 
 	g_slist_free(interfaces);

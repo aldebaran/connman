@@ -47,13 +47,11 @@ static void agent_free(void)
 	agent_path = NULL;
 }
 
-static gboolean agent_disconnect(void *data)
+static void agent_disconnect(void *data)
 {
 	DBG("data %p", data);
 
 	agent_free();
-
-	return TRUE;
 }
 
 int __connman_agent_register(const char *sender, const char *path)
