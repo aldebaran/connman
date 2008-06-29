@@ -1,0 +1,50 @@
+Element hierarchy
+*****************
+
+Service name	org.moblin.connman
+Interface name	org.moblin.connman.Element
+Object path	[element object]
+
+Methods		dict GetProperties()
+
+Properties	string Type
+		string Subtype
+		string Driver
+		string Vendor
+		string Product
+
+
+Method: GetProperties
+=====================
+This method allows to retrieve all properties of an element at once. The
+properties are presented in a dictionary.
+
+Property: Type
+==============
+This property represents the main type of an element. It can have the values
+like "device", "network", "ipv4", "ipv6", "dhcp", "bootp" and "zeroconf".
+
+Property: Subtype
+=================
+This property represents the subtype of an element. In the normal case this
+is the hardware type. It can have values like "ethernet", "wifi", "wimax",
+"modem" and "bluetooth".
+
+The element system will inherit the subtype from the parent if not overwritten
+manually and so it should be present in every element.
+
+Property: Driver
+================
+This property represents the driver that is assigned to this element. This
+value will only be present in case of Device elements. On Linux system this
+is the kernel driver name.
+
+Property: Vendor
+================
+This property represent the vendor string for this element. This value is only
+present in case of a Device element. This information are taken from HAL.
+
+Property: Product
+=================
+This property represent the product string for this element. This value is only
+present in case of a Device element. This information are taken from HAL.

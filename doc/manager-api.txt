@@ -1,39 +1,31 @@
 Manager hierarchy
 *****************
 
-Service name	org.freedesktop.connman
-Interface name	org.freedesktop.connman.Manager
+Service name	org.moblin.connman
+Interface name	org.moblin.connman.Manager
 Object path	/
 
-Methods		array{object} ListInterfaces()
-		string GetState()
+Methods		array{object} ListElements()
 		void RegisterAgent(object path)
 		void UnregisterAgent(object path)
 
-Signals		InterfaceAdded(object)
-		InterfaceRemoved(object)
-		StateChanged(string state)
+Signals		ElementAdded(object)
+		ElementRemoved(object)
 
 
-Method: ListInferfaces
-======================
+Method: ListElements
+====================
 This method lists all available interfaces. The return value is an array of
 object paths. Every attached network interface (eth0, wlan0 etc.) of the
 system is presented by an object path with additional interfaces on it. The
 main interface is org.freedesktop.connman.Interface.
-
-Method: GetState
-================
-This method gets the overall master state of the Internet connection. Possible
-return values are "offline" and "online". If at least one interface is
-connected it will return "online".
 
 Method: RegisterAgent
 =====================
 This method allows the user interace to register an agent. There can be only
 one agent registered at a time. The parameter of the method is the object
 path the agent has been registered for the callback method. The agent has
-to implement org.freedesktop.connman.Agent interface on this object path.
+to implement org.moblin.connman.Agent interface on this object path.
 
 Method: UnregisterAgent
 =======================
@@ -41,19 +33,14 @@ This method unregisters a previously registered agent. In case the agent
 application exits the core will automatically unregister the agent. However
 for a clean agent application it is important to call the unregister method.
 
-Signal: InterfaceAdded
-======================
-This signal is emitted every time a new interface has been found by the
+Signal: ElementAdded
+====================
+This signal is emitted every time a new element has been added by the
 core and successfully activated. The signal is also emitted on startup
 or at anytime at runtime in case of hotplug devices.
 
-Signal: InterfaceRemoved
-========================
-This signal is emitted every time an interface has been removed. This can
+Signal: ElementRemoved
+======================
+This signal is emitted every time an element has been removed. This can
 happen at any time in case of hotplug devices. When the system shuts down,
 this signal is also emitted.
-
-Signal: StateChanged
-====================
-This signal is emitted every time the master state changes. Possible values
-are "offline" and "online" and reflect the state of the Internet connection.
