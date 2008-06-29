@@ -4,18 +4,18 @@ import dbus
 
 bus = dbus.SystemBus()
 
-object = dbus.Interface(bus.get_object('org.moblin.connman', '/'),
-				'org.freedesktop.DBus.Introspectable')
+object = dbus.Interface(bus.get_object("org.moblin.connman", '/'),
+				"org.freedesktop.DBus.Introspectable")
 
 print object.Introspect()
 
-manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
-					'org.moblin.connman.Manager')
+manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
+					"org.moblin.connman.Manager")
 
-interfaces = manager.ListInterfaces()
+elements = manager.ListElements()
 
-for path in interfaces:
-	object = dbus.Interface(bus.get_object('org.moblin.connman', path),
-					'org.freedesktop.DBus.Introspectable')
+for path in elements:
+	object = dbus.Interface(bus.get_object("org.moblin.connman", path),
+					"org.freedesktop.DBus.Introspectable")
 
 	print object.Introspect()

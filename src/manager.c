@@ -27,53 +27,6 @@
 
 #include "connman.h"
 
-static DBusMessage *list_interfaces(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	DBusMessageIter array, iter;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
-	__connman_iface_list(&iter);
-
-	dbus_message_iter_close_container(&array, &iter);
-
-	return reply;
-}
-
-static DBusMessage *get_state(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	const char *state;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	if (__connman_iface_is_connected() == TRUE)
-		state = "online";
-	else
-		state = "offline";
-
-	dbus_message_append_args(reply, DBUS_TYPE_STRING, &state,
-							DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -122,18 +75,69 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *list_elements(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter array, iter;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_UNKNOWN, &iter);
+
+	dbus_message_iter_close_container(&array, &iter);
+
+	return reply;
+}
+
+static DBusMessage *list_devices(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter array, iter;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+
+	dbus_message_iter_close_container(&array, &iter);
+
+	return reply;
+}
+
 static GDBusMethodTable manager_methods[] = {
-	{ "ListInterfaces",  "",  "ao", list_interfaces  },
-	{ "GetState",        "",  "s",  get_state        },
-	{ "RegisterAgent",   "o", "",   register_agent   },
-	{ "UnregisterAgent", "o", "",   unregister_agent },
+	{ "RegisterAgent",   "o", "", register_agent   },
+	{ "UnregisterAgent", "o", "", unregister_agent },
+
+	{ "ListElements", "", "ao", list_elements },
+	{ "ListDevices",  "", "ao", list_devices  },
 	{ },
 };
 
 static GDBusSignalTable manager_signals[] = {
-	{ "InterfaceAdded",   "o" },
-	{ "InterfaceRemoved", "o" },
-	{ "StateChanged",     "s" },
+	{ "ElementAdded",   "o" },
+	{ "ElementUpdated", "o" },
+	{ "ElementRemoved", "o" },
+	{ "DeviceAdded",    "o" },
+	{ "DeviceRemoved",  "o" },
 	{ },
 };
 
@@ -189,10 +193,7 @@ static DBusMessage *nm_state(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	if (__connman_iface_is_connected() == TRUE)
-		state = NM_STATE_CONNECTED;
-	else
-		state = NM_STATE_DISCONNECTED;
+	state = NM_STATE_DISCONNECTED;
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &state,
 							DBUS_TYPE_INVALID);

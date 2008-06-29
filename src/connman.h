@@ -26,7 +26,6 @@
 #define NM_SERVICE    "org.freedesktop.NetworkManager"
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
-#define NM_DEVICE     NM_SERVICE ".Devices"
 
 int __connman_manager_init(DBusConnection *conn, gboolean compat);
 void __connman_manager_cleanup(void);
@@ -50,10 +49,14 @@ void __connman_plugin_cleanup(void);
 #include <connman/driver.h>
 #include <connman/element.h>
 
-int __connman_element_init(void);
+int __connman_element_init(DBusConnection *conn);
 void __connman_element_cleanup(void);
 
-void __connman_element_list(DBusMessageIter *iter);
+void __connman_element_list(enum connman_element_type type,
+						DBusMessageIter *iter);
+
+const char *__connman_element_type2string(enum connman_element_type type);
+const char *__connman_element_subtype2string(enum connman_element_subtype type);
 
 #include <connman/iface.h>
 

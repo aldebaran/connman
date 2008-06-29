@@ -26,9 +26,11 @@
 #include <errno.h>
 
 #include <glib.h>
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include "connman.h"
+
+static DBusConnection *connection;
 
 static GStaticMutex driver_mutex = G_STATIC_MUTEX_INIT;
 static GSList *driver_list = NULL;
@@ -38,29 +40,183 @@ static GStaticMutex element_mutex = G_STATIC_MUTEX_INIT;
 static GNode *element_root = NULL;
 static GThreadPool *element_thread;
 
+static const char *type2string(enum connman_element_type type)
+{
+	switch (type) {
+	case CONNMAN_ELEMENT_TYPE_UNKNOWN:
+		return "unknown";
+	case CONNMAN_ELEMENT_TYPE_ROOT:
+		return "root";
+	case CONNMAN_ELEMENT_TYPE_DEVICE:
+		return "device";
+	case CONNMAN_ELEMENT_TYPE_NETWORK:
+		return "network";
+	case CONNMAN_ELEMENT_TYPE_IPV4:
+		return "ipv4";
+	case CONNMAN_ELEMENT_TYPE_IPV6:
+		return "ipv6";
+	case CONNMAN_ELEMENT_TYPE_DHCP:
+		return "dhcp";
+	case CONNMAN_ELEMENT_TYPE_BOOTP:
+		return "bootp";
+	case CONNMAN_ELEMENT_TYPE_ZEROCONF:
+		return "zeroconf";
+	case CONNMAN_ELEMENT_TYPE_CONNECTION:
+		return "42";
+	}
+
+	return NULL;
+}
+
+static const char *subtype2string(enum connman_element_subtype type)
+{
+	switch (type) {
+	case CONNMAN_ELEMENT_SUBTYPE_UNKNOWN:
+		return "unknown";
+	case CONNMAN_ELEMENT_SUBTYPE_ETHERNET:
+		return "ethernet";
+	case CONNMAN_ELEMENT_SUBTYPE_WIFI:
+		return "wifi";
+	case CONNMAN_ELEMENT_SUBTYPE_WIMAX:
+		return "wimax";
+	case CONNMAN_ELEMENT_SUBTYPE_MODEM:
+		return "modem";
+	case CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH:
+		return "bluetooth";
+	}
+
+	return NULL;
+}
+
+static void append_entry(DBusMessageIter *dict,
+				const char *key, int type, void *val)
+{
+	DBusMessageIter entry, value;
+	const char *signature;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		signature = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT16:
+		signature = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	default:
+		signature = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							signature, &value);
+	dbus_message_iter_append_basic(&value, type, val);
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	const char *str;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = type2string(element->type);
+	if (str != NULL)
+		append_entry(&dict, "Type", DBUS_TYPE_STRING, &str);
+
+	str = subtype2string(element->subtype);
+	if (str != NULL)
+		append_entry(&dict, "Subtype", DBUS_TYPE_STRING, &str);
+
+	if (element->info.driver != NULL)
+		append_entry(&dict, "Driver",
+				DBUS_TYPE_STRING, &element->info.driver);
+
+	if (element->info.vendor != NULL)
+		append_entry(&dict, "Vendor",
+				DBUS_TYPE_STRING, &element->info.vendor);
+
+	if (element->info.product != NULL)
+		append_entry(&dict, "Product",
+				DBUS_TYPE_STRING, &element->info.product);
+
+	if (element->ipv4.address != NULL)
+		append_entry(&dict, "IPv4.Address",
+				DBUS_TYPE_STRING, &element->ipv4.address);
+
+	if (element->ipv4.netmask != NULL)
+		append_entry(&dict, "IPv4.Netmask",
+				DBUS_TYPE_STRING, &element->ipv4.netmask);
+
+	if (element->ipv4.gateway != NULL)
+		append_entry(&dict, "IPv4.Gateway",
+				DBUS_TYPE_STRING, &element->ipv4.gateway);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
+static GDBusMethodTable element_methods[] = {
+	{ "GetProperties", "", "a{sv}", get_properties },
+	{ },
+};
+
+struct append_filter {
+	enum connman_element_type type;
+	DBusMessageIter *iter;
+};
+
 static gboolean append_path(GNode *node, gpointer data)
 {
 	struct connman_element *element = node->data;
-	DBusMessageIter *iter = data;
+	struct append_filter *filter = data;
 
 	DBG("element %p name %s", element, element->name);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
 		return FALSE;
 
-	dbus_message_iter_append_basic(iter,
+	if (filter->type != CONNMAN_ELEMENT_TYPE_UNKNOWN &&
+					filter->type != element->type)
+		return FALSE;
+
+	dbus_message_iter_append_basic(filter->iter,
 				DBUS_TYPE_OBJECT_PATH, &element->path);
 
 	return FALSE;
 }
 
-void __connman_element_list(DBusMessageIter *iter)
+void __connman_element_list(enum connman_element_type type,
+						DBusMessageIter *iter)
 {
+	struct append_filter filter = { type, iter };
+
 	DBG("");
 
 	g_static_mutex_lock(&element_mutex);
 	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
-							append_path, iter);
+							append_path, &filter);
 	g_static_mutex_unlock(&element_mutex);
 }
 
@@ -229,6 +385,22 @@ int connman_element_register(struct connman_element *element,
 
 	g_static_mutex_unlock(&element_mutex);
 
+	g_dbus_register_interface(connection, element->path,
+					CONNMAN_ELEMENT_INTERFACE,
+					element_methods, NULL, NULL,
+							element, NULL);
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementAdded",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
+		g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "DeviceAdded",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
 	g_thread_pool_push(element_thread, element, NULL);
 
 	return 0;
@@ -239,6 +411,20 @@ void connman_element_unregister(struct connman_element *element)
 	GNode *node;
 
 	DBG("element %p name %s", element, element->name);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
+		g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "DeviceRemoved",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementRemoved",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_ELEMENT_INTERFACE);
 
 	g_static_mutex_lock(&element_mutex);
 
@@ -353,11 +539,15 @@ static void element_probe(gpointer data, gpointer user_data)
 	connman_element_unref(element);
 }
 
-int __connman_element_init(void)
+int __connman_element_init(DBusConnection *conn)
 {
 	struct connman_element *element;
 
-	DBG("");
+	DBG("conn %p", conn);
+
+	connection = dbus_connection_ref(conn);
+	if (connection == NULL)
+		return -EIO;
 
 	g_static_mutex_lock(&element_mutex);
 
@@ -383,6 +573,9 @@ static gboolean free_node(GNode *node, gpointer data)
 	struct connman_element *element = node->data;
 
 	DBG("element %p name %s", element, element->name);
+
+	g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_ELEMENT_INTERFACE);
 
 	if (element->driver) {
 		if (element->driver->remove)
@@ -414,4 +607,6 @@ void __connman_element_cleanup(void)
 	element_root = NULL;
 
 	g_static_mutex_unlock(&element_mutex);
+
+	dbus_connection_unref(connection);
 }

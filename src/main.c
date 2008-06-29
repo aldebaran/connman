@@ -127,7 +127,7 @@ int main(int argc, char *argv[])
 
 	__connman_log_init(option_detach, option_debug);
 
-	__connman_element_init();
+	__connman_element_init(conn);
 
 	__connman_agent_init(conn);
 
