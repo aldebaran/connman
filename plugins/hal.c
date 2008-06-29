@@ -59,19 +59,22 @@ static void device_info(LibHalContext *ctx, const char *udi,
 		value = libhal_device_get_property_string(ctx, parent,
 						"info.linux.driver", NULL);
 		if (value != NULL)
-			element->info.driver = g_strdup(value);
+			connman_element_add_static_property(element,
+					"Driver", DBUS_TYPE_STRING, &value);
 	}
 
 	if (g_str_equal(subsys, "net") == TRUE) {
 		value = libhal_device_get_property_string(ctx, parent,
 							"info.vendor", NULL);
 		if (value != NULL)
-			element->info.vendor = g_strdup(value);
+			connman_element_add_static_property(element,
+					"Vendor", DBUS_TYPE_STRING, &value);
 
 		value = libhal_device_get_property_string(ctx, parent,
 							"info.product", NULL);
 		if (value != NULL)
-			element->info.product = g_strdup(value);
+			connman_element_add_static_property(element,
+					"Product", DBUS_TYPE_STRING, &value);
 	}
 }
 

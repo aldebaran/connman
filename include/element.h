@@ -29,6 +29,8 @@ extern "C" {
 #include <errno.h>
 #include <glib.h>
 
+#include <connman/property.h>
+
 enum connman_element_state {
 	CONNMAN_ELEMENT_STATE_UNKNOWN   = 0,
 	CONNMAN_ELEMENT_STATE_CONNECT   = 1,
@@ -74,11 +76,7 @@ struct connman_element {
 	struct connman_driver *driver;
 	void *driver_data;
 
-	struct {
-		gchar *driver;
-		gchar *vendor;
-		gchar *product;
-	} info;
+	GSList *properties;
 
 	struct {
 		int index;
@@ -99,6 +97,13 @@ struct connman_element {
 extern struct connman_element *connman_element_create(void);
 extern struct connman_element *connman_element_ref(struct connman_element *element);
 extern void connman_element_unref(struct connman_element *element);
+
+extern int connman_element_add_static_property(struct connman_element *element,
+				const char *name, int type, const void *value);
+extern int connman_element_set_property(struct connman_element *element,
+			enum connman_property_type type, const void *value);
+extern int connman_element_get_value(struct connman_element *element,
+				enum connman_property_type type, void *value);
 
 extern int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);

@@ -106,6 +106,9 @@ static void append_entry(DBusMessageIter *dict,
 	case DBUS_TYPE_UINT16:
 		signature = DBUS_TYPE_UINT16_AS_STRING;
 		break;
+	case DBUS_TYPE_OBJECT_PATH:
+		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		break;
 	default:
 		signature = DBUS_TYPE_VARIANT_AS_STRING;
 		break;
@@ -119,10 +122,21 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void append_property(DBusMessageIter *dict,
+				struct connman_property *property)
+{
+	if (property->flags & CONNMAN_PROPERTY_FLAG_STATIC) {
+		append_entry(dict, property->name, property->type,
+							&property->value);
+		return;
+	}
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
+	GSList *list;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	const char *str;
@@ -140,37 +154,32 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
+	if (element->parent != NULL)
+		append_entry(&dict, "Parent",
+				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
+
 	str = type2string(element->type);
 	if (str != NULL)
 		append_entry(&dict, "Type", DBUS_TYPE_STRING, &str);
-
 	str = subtype2string(element->subtype);
 	if (str != NULL)
 		append_entry(&dict, "Subtype", DBUS_TYPE_STRING, &str);
 
-	if (element->info.driver != NULL)
-		append_entry(&dict, "Driver",
-				DBUS_TYPE_STRING, &element->info.driver);
-
-	if (element->info.vendor != NULL)
-		append_entry(&dict, "Vendor",
-				DBUS_TYPE_STRING, &element->info.vendor);
-
-	if (element->info.product != NULL)
-		append_entry(&dict, "Product",
-				DBUS_TYPE_STRING, &element->info.product);
-
 	if (element->ipv4.address != NULL)
 		append_entry(&dict, "IPv4.Address",
 				DBUS_TYPE_STRING, &element->ipv4.address);
-
 	if (element->ipv4.netmask != NULL)
 		append_entry(&dict, "IPv4.Netmask",
 				DBUS_TYPE_STRING, &element->ipv4.netmask);
-
 	if (element->ipv4.gateway != NULL)
 		append_entry(&dict, "IPv4.Gateway",
 				DBUS_TYPE_STRING, &element->ipv4.gateway);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		append_property(&dict, property);
+	}
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -313,6 +322,18 @@ void connman_element_unref(struct connman_element *element)
 				g_atomic_int_get(&element->refcount) - 1);
 
 	if (g_atomic_int_dec_and_test(&element->refcount) == TRUE) {
+		GSList *list;
+
+		for (list = element->properties; list; list = list->next) {
+			struct connman_property *property = list->data;
+			if ((property->flags & CONNMAN_PROPERTY_FLAG_STATIC) &&
+					property->type == DBUS_TYPE_STRING)
+				g_free(property->value);
+			g_free(property);
+			list->data = NULL;
+		}
+		g_slist_free(element->properties);
+
 		g_free(element->ipv4.address);
 		g_free(element->ipv4.netmask);
 		g_free(element->ipv4.gateway);
@@ -320,13 +341,102 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.broadcast);
 		g_free(element->ipv4.nameserver);
 		g_free(element->netdev.name);
-		g_free(element->info.driver);
-		g_free(element->info.vendor);
-		g_free(element->info.product);
 		g_free(element->path);
 		g_free(element->name);
 		g_free(element);
 	}
+}
+
+int connman_element_add_static_property(struct connman_element *element,
+				const char *name, int type, const void *value)
+{
+	struct connman_property *property;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (type != DBUS_TYPE_STRING)
+		return -EINVAL;
+
+	property = g_try_new0(struct connman_property, 1);
+	if (property == NULL)
+		return -ENOMEM;
+
+	property->flags = CONNMAN_PROPERTY_FLAG_STATIC;
+
+	property->name = g_strdup(name);
+	property->type = type;
+
+	DBG("name %s type %d value %p", name, type, value);
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		property->value = g_strdup(*((const char **) value));
+		break;
+	}
+
+	element->properties = g_slist_append(element->properties, property);
+
+	return 0;
+}
+
+int connman_element_set_property(struct connman_element *element,
+			enum connman_property_type type, const void *value)
+{
+	switch (type) {
+	case CONNMAN_PROPERTY_TYPE_INVALID:
+		return -EINVAL;
+	case CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS:
+		g_free(element->ipv4.address);
+		element->ipv4.address = g_strdup(*((const char **) value));
+		break;
+	case CONNMAN_PROPERTY_TYPE_IPV4_NETMASK:
+		g_free(element->ipv4.netmask);
+		element->ipv4.netmask = g_strdup(*((const char **) value));
+		break;
+	case CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY:
+		g_free(element->ipv4.gateway);
+		element->ipv4.gateway = g_strdup(*((const char **) value));
+		break;
+	}
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	return 0;
+}
+
+int connman_element_get_value(struct connman_element *element,
+				enum connman_property_type type, void *value)
+{
+	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
+		return -EINVAL;
+
+	switch (type) {
+	case CONNMAN_PROPERTY_TYPE_INVALID:
+		return -EINVAL;
+	case CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS:
+		if (element->ipv4.address == NULL)
+			return connman_element_get_value(element->parent,
+								type, value);
+		*((char **) value) = element->ipv4.address;
+		break;
+	case CONNMAN_PROPERTY_TYPE_IPV4_NETMASK:
+		if (element->ipv4.netmask == NULL)
+			return connman_element_get_value(element->parent,
+								type, value);
+		*((char **) value) = element->ipv4.netmask;
+		break;
+	case CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY:
+		if (element->ipv4.gateway == NULL)
+			return connman_element_get_value(element->parent,
+								type, value);
+		*((char **) value) = element->ipv4.gateway;
+		break;
+	}
+
+	return 0;
 }
 
 int connman_element_register(struct connman_element *element,
@@ -455,6 +565,11 @@ void connman_element_update(struct connman_element *element)
 		element->driver->update(element);
 
 	g_static_mutex_unlock(&element_mutex);
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
 }
 
 static inline void set_driver(struct connman_element *element,

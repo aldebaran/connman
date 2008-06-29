@@ -29,11 +29,20 @@
 
 static int ipv4_probe(struct connman_element *element)
 {
+	const char *address = NULL, *netmask = NULL, *gateway = NULL;
+
 	DBG("element %p name %s", element, element->name);
 
-	DBG("address %s", element->ipv4.address);
-	DBG("netmask %s", element->ipv4.netmask);
-	DBG("gateway %s", element->ipv4.gateway);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS, &address);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_TYPE_IPV4_NETMASK, &netmask);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY, &gateway);
+
+	DBG("address %s", address);
+	DBG("netmask %s", netmask);
+	DBG("gateway %s", gateway);
 
 	return 0;
 }

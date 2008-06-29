@@ -40,7 +40,7 @@ struct dhclient_task {
 	GPid pid;
 	int ifindex;
 	gchar *ifname;
-	struct connman_element *parent;
+	struct connman_element *element;
 	struct connman_element *child;
 };
 
@@ -143,7 +143,7 @@ static int dhclient_probe(struct connman_element *element)
 
 	task->ifindex = element->netdev.index;
 	task->ifname = g_strdup(element->netdev.name);
-	task->parent = element;
+	task->element = element;
 	task->child = NULL;
 
 	if (task->ifname == NULL) {
@@ -230,23 +230,6 @@ static struct connman_driver dhclient_driver = {
 	.remove		= dhclient_remove,
 };
 
-static void copy_ipv4(struct connman_element *src, struct connman_element *dst)
-{
-	g_free(dst->ipv4.address);
-	g_free(dst->ipv4.netmask);
-	g_free(dst->ipv4.gateway);
-	g_free(dst->ipv4.network);
-	g_free(dst->ipv4.broadcast);
-	g_free(dst->ipv4.nameserver);
-
-	dst->ipv4.address = g_strdup(src->ipv4.address);
-	dst->ipv4.netmask = g_strdup(src->ipv4.netmask);
-	dst->ipv4.gateway = g_strdup(src->ipv4.gateway);
-	dst->ipv4.network = g_strdup(src->ipv4.network);
-	dst->ipv4.broadcast = g_strdup(src->ipv4.broadcast);
-	dst->ipv4.nameserver = g_strdup(src->ipv4.nameserver);
-}
-
 static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
@@ -287,23 +270,35 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 
 		DBG("%s = %s", key, value);
 
-		if (g_ascii_strcasecmp(key, "new_ip_address") == 0)
-			task->parent->ipv4.address = g_strdup(value);
+		if (g_ascii_strcasecmp(key, "new_ip_address") == 0) {
+			g_free(task->element->ipv4.address);
+			task->element->ipv4.address = g_strdup(value);
+		}
 
-		if (g_ascii_strcasecmp(key, "new_subnet_mask") == 0)
-			task->parent->ipv4.netmask = g_strdup(value);
+		if (g_ascii_strcasecmp(key, "new_subnet_mask") == 0) {
+			g_free(task->element->ipv4.netmask);
+			task->element->ipv4.netmask = g_strdup(value);
+		}
 
-		if (g_ascii_strcasecmp(key, "new_routers") == 0)
-			task->parent->ipv4.gateway = g_strdup(value);
+		if (g_ascii_strcasecmp(key, "new_routers") == 0) {
+			g_free(task->element->ipv4.gateway);
+			task->element->ipv4.gateway = g_strdup(value);
+		}
 
-		if (g_ascii_strcasecmp(key, "new_network_number") == 0)
-			task->parent->ipv4.network = g_strdup(value);
+		if (g_ascii_strcasecmp(key, "new_network_number") == 0) {
+			g_free(task->element->ipv4.network);
+			task->element->ipv4.network = g_strdup(value);
+		}
 
-		if (g_ascii_strcasecmp(key, "new_broadcast_address") == 0)
-			task->parent->ipv4.broadcast = g_strdup(value);
+		if (g_ascii_strcasecmp(key, "new_broadcast_address") == 0) {
+			g_free(task->element->ipv4.broadcast);
+			task->element->ipv4.broadcast = g_strdup(value);
+		}
 
-		if (g_ascii_strcasecmp(key, "new_domain_name_servers") == 0)
-			task->parent->ipv4.nameserver = g_strdup(value);
+		if (g_ascii_strcasecmp(key, "new_domain_name_servers") == 0) {
+			g_free(task->element->ipv4.nameserver);
+			task->element->ipv4.nameserver = g_strdup(value);
+		}
 
 		dbus_message_iter_next(&dict);
 	}
@@ -314,11 +309,11 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 		task->child = connman_element_create();
 		task->child->type = CONNMAN_ELEMENT_TYPE_IPV4;
 		task->child->netdev.index = task->ifindex;
-		copy_ipv4(task->parent, task->child);
-		connman_element_register(task->child, task->parent);
+		connman_element_update(task->element);
+		connman_element_register(task->child, task->element);
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
 				g_ascii_strcasecmp(text, "REBIND") == 0) {
-		copy_ipv4(task->parent, task->child);
+		connman_element_update(task->element);
 		connman_element_update(task->child);
 	} else {
 	}
