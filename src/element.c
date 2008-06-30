@@ -32,7 +32,7 @@
 
 static DBusConnection *connection;
 
-static GStaticMutex driver_mutex = G_STATIC_MUTEX_INIT;
+static GStaticRWLock driver_lock = G_STATIC_RW_LOCK_INIT;
 static GSList *driver_list = NULL;
 static GThreadPool *driver_thread;
 
@@ -247,10 +247,10 @@ int connman_driver_register(struct connman_driver *driver)
 	if (!driver->probe)
 		return -EINVAL;
 
-	g_static_mutex_lock(&driver_mutex);
+	g_static_rw_lock_writer_lock(&driver_lock);
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
-	g_static_mutex_unlock(&driver_mutex);
+	g_static_rw_lock_writer_unlock(&driver_lock);
 
 	g_thread_pool_push(driver_thread, driver, NULL);
 
@@ -282,9 +282,9 @@ void connman_driver_unregister(struct connman_driver *driver)
 							remove_driver, driver);
 	g_static_mutex_unlock(&element_mutex);
 
-	g_static_mutex_lock(&driver_mutex);
+	g_static_rw_lock_writer_lock(&driver_lock);
 	driver_list = g_slist_remove(driver_list, driver);
-	g_static_mutex_unlock(&driver_mutex);
+	g_static_rw_lock_writer_unlock(&driver_lock);
 }
 
 struct connman_element *connman_element_create(void)
@@ -633,7 +633,7 @@ static void element_probe(gpointer data, gpointer user_data)
 	if (connman_element_ref(element) == NULL)
 		return;
 
-	g_static_mutex_lock(&driver_mutex);
+	g_static_rw_lock_reader_lock(&driver_lock);
 
 	for (list = driver_list; list; list = list->next) {
 		struct connman_driver *driver = list->data;
@@ -649,7 +649,7 @@ static void element_probe(gpointer data, gpointer user_data)
 		set_driver(element, NULL);
 	}
 
-	g_static_mutex_unlock(&driver_mutex);
+	g_static_rw_lock_reader_unlock(&driver_lock);
 
 	connman_element_unref(element);
 }
