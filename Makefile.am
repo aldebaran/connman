@@ -3,9 +3,9 @@ SUBDIRS = include src doc test plugins scripts
 
 pkgconfigdir = $(libdir)/pkgconfig
 
-noinst_DATA = connman.pc
+pkgconfig_DATA = connman.pc
 
-DISTCLEANFILES = $(noinst_DATA)
+DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
