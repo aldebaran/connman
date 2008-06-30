@@ -69,7 +69,8 @@ static void load_plugins(const gchar *path)
 			GModule *module;
 			struct connman_plugin_desc *desc;
 
-			if (g_str_has_suffix(file, ".so") == FALSE)
+			if (g_str_has_prefix(file, "lib") == TRUE ||
+					g_str_has_suffix(file, ".so") == FALSE)
 				continue;
 
 			filename = g_build_filename(path, file, NULL);
