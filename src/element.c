@@ -36,7 +36,7 @@ static GStaticRWLock driver_lock = G_STATIC_RW_LOCK_INIT;
 static GSList *driver_list = NULL;
 static GThreadPool *driver_thread;
 
-static GStaticMutex element_mutex = G_STATIC_MUTEX_INIT;
+static GStaticRWLock element_lock = G_STATIC_RW_LOCK_INIT;
 static GNode *element_root = NULL;
 static GThreadPool *element_thread;
 
@@ -223,10 +223,10 @@ void __connman_element_list(enum connman_element_type type,
 
 	DBG("");
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_reader_lock(&element_lock);
 	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 							append_path, &filter);
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -277,10 +277,10 @@ void connman_driver_unregister(struct connman_driver *driver)
 {
 	DBG("driver %p name %s", driver, driver->name);
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_reader_lock(&element_lock);
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							remove_driver, driver);
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_reader_unlock(&element_lock);
 
 	g_static_rw_lock_writer_lock(&driver_lock);
 	driver_list = g_slist_remove(driver_list, driver);
@@ -450,7 +450,7 @@ int connman_element_register(struct connman_element *element,
 	if (connman_element_ref(element) == NULL)
 		return -1;
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_writer_lock(&element_lock);
 
 	if (parent) {
 		node = g_node_find(element_root, G_PRE_ORDER,
@@ -493,7 +493,7 @@ int connman_element_register(struct connman_element *element,
 
 	g_node_append_data(node, element);
 
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_writer_unlock(&element_lock);
 
 	g_dbus_register_interface(connection, element->path,
 					CONNMAN_ELEMENT_INTERFACE,
@@ -536,7 +536,7 @@ void connman_element_unregister(struct connman_element *element)
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_ELEMENT_INTERFACE);
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_writer_lock(&element_lock);
 
 	if (element->driver) {
 		if (element->driver->remove)
@@ -550,7 +550,7 @@ void connman_element_unregister(struct connman_element *element)
 		g_node_destroy(node);
 	}
 
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_writer_unlock(&element_lock);
 
 	connman_element_unref(element);
 }
@@ -559,12 +559,12 @@ void connman_element_update(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_reader_lock(&element_lock);
 
 	if (element->driver && element->driver->update)
 		element->driver->update(element);
 
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_reader_unlock(&element_lock);
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
@@ -575,9 +575,9 @@ void connman_element_update(struct connman_element *element)
 static inline void set_driver(struct connman_element *element,
 						struct connman_driver *driver)
 {
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_reader_lock(&element_lock);
 	element->driver = driver;
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
 static gboolean match_driver(struct connman_element *element,
@@ -617,10 +617,10 @@ static void driver_probe(gpointer data, gpointer user_data)
 
 	DBG("driver %p name %s", driver, driver->name);
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_reader_lock(&element_lock);
 	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 							probe_driver, driver);
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
 static void element_probe(gpointer data, gpointer user_data)
@@ -664,7 +664,7 @@ int __connman_element_init(DBusConnection *conn)
 	if (connection == NULL)
 		return -EIO;
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_writer_lock(&element_lock);
 
 	element = connman_element_create();
 
@@ -674,7 +674,7 @@ int __connman_element_init(DBusConnection *conn)
 
 	element_root = g_node_new(element);
 
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_writer_unlock(&element_lock);
 
 	element_thread = g_thread_pool_new(element_probe, NULL, 1, FALSE, NULL);
 
@@ -713,7 +713,7 @@ void __connman_element_cleanup(void)
 
 	g_thread_pool_free(element_thread, TRUE, TRUE);
 
-	g_static_mutex_lock(&element_mutex);
+	g_static_rw_lock_writer_lock(&element_lock);
 
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_node, NULL);
@@ -721,7 +721,7 @@ void __connman_element_cleanup(void)
 	g_node_destroy(element_root);
 	element_root = NULL;
 
-	g_static_mutex_unlock(&element_mutex);
+	g_static_rw_lock_writer_unlock(&element_lock);
 
 	dbus_connection_unref(connection);
 }
