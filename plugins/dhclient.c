@@ -216,9 +216,11 @@ static void dhclient_remove(struct connman_element *element)
 	task_list = g_slist_remove(task_list, task);
 	g_static_mutex_unlock(&task_mutex);
 
-	connman_element_unregister(task->child);
-	connman_element_unref(task->child);
-	task->child = NULL;
+	if (task->child != NULL) {
+		connman_element_unregister(task->child);
+		connman_element_unref(task->child);
+		task->child = NULL;
+	}
 
 	kill_task(task);
 }
