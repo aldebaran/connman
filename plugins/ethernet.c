@@ -62,23 +62,28 @@ static void create_element(struct connman_element *parent,
 
 static void remove_elements(struct connman_element *parent)
 {
-	GSList *list;
+	GSList *list = element_list;
 
 	DBG("parent %p name %s", parent, parent->name);
 
 	g_static_mutex_lock(&element_mutex);
 
-	for (list = element_list; list; list = list->next) {
+	while (list) {
+		GSList *next = list->next;
 		struct connman_element *element = list->data;
 
-		if (element->netdev.index != parent->netdev.index)
+		if (element->netdev.index != parent->netdev.index) {
+			list = next;
 			continue;
+		}
 
-		element_list = g_slist_remove(element_list, element);
+		element_list = g_slist_delete_link(element_list, list);
 
 		connman_element_unregister(element);
 
 		connman_element_unref(element);
+
+		list = next;
 	}
 
 	g_static_mutex_unlock(&element_mutex);
