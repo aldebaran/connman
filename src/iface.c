@@ -1502,7 +1502,7 @@ int __connman_iface_init(DBusConnection *conn, const char *interface)
 
 	hal_init(connection);
 
-	hal_watch = g_dbus_add_watch(connection, "org.freedesktop.Hal",
+	hal_watch = g_dbus_add_service_watch(connection, "org.freedesktop.Hal",
 				hal_init, hal_cleanup, connection, NULL);
 
 	return 0;
