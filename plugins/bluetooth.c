@@ -23,7 +23,7 @@
 #include <config.h>
 #endif
 
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
@@ -58,12 +58,20 @@ static void create_element(DBusConnection *conn, const char *path)
 	g_static_mutex_unlock(&element_mutex);
 }
 
-static DBusHandlerResult bluetooth_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static gboolean bluetooth_signal(DBusConnection *conn,
+					DBusMessage *msg, void *data)
 {
+	const char *sender, *interface, *member;
+
 	DBG("conn %p msg %p", conn, msg);
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	sender = dbus_message_get_sender(msg);
+	interface = dbus_message_get_interface(msg);
+	member = dbus_message_get_member(msg);
+
+	DBG("sender %s name %s.%s", sender, interface, member);
+
+	return TRUE;
 }
 
 static void list_adapters(DBusConnection *conn)
@@ -122,26 +130,18 @@ static struct connman_driver bluetooth_driver = {
 };
 
 static DBusConnection *connection;
+static guint signal;
 
 static int bluetooth_init(void)
 {
-	gchar *match;
 	int err;
 
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
 	if (connection == NULL)
 		return -EIO;
 
-	if (dbus_connection_add_filter(connection, bluetooth_filter,
-						NULL, NULL) == FALSE)
-		connman_error("Can't add D-Bus filter for Bluetooth");
-
-	match = g_strdup_printf("sender=%s,interface=%s", "org.bluez",
-							"org.bluez.Manager");
-
-	dbus_bus_add_match(connection, match, NULL);
-
-	g_free(match);
+	signal = g_dbus_add_signal_watch(connection, "sender=org.bluez",
+						bluetooth_signal, NULL, NULL);
 
 	err = connman_driver_register(&bluetooth_driver);
 	if (err < 0) {
@@ -157,6 +157,8 @@ static int bluetooth_init(void)
 static void bluetooth_exit(void)
 {
 	connman_driver_unregister(&bluetooth_driver);
+
+	g_dbus_remove_watch(connection, signal);
 
 	dbus_connection_unref(connection);
 }
