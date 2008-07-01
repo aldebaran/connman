@@ -36,6 +36,7 @@ static struct {
 } capabilities[] = {
 	{ "net.80203", CONNMAN_ELEMENT_SUBTYPE_ETHERNET },
 	{ "net.80211", CONNMAN_ELEMENT_SUBTYPE_WIFI     },
+	{ "modem",     CONNMAN_ELEMENT_SUBTYPE_MODEM    },
 	{ }
 };
 
@@ -63,7 +64,8 @@ static void device_info(LibHalContext *ctx, const char *udi,
 					"Driver", DBUS_TYPE_STRING, &value);
 	}
 
-	if (g_str_equal(subsys, "net") == TRUE) {
+	if (g_str_equal(subsys, "net") == TRUE ||
+					g_str_equal(subsys, "tty") == TRUE) {
 		value = libhal_device_get_property_string(ctx, parent,
 							"info.vendor", NULL);
 		if (value != NULL)
@@ -88,6 +90,14 @@ static void device_netdev(LibHalContext *ctx, const char *udi,
 
 		element->netdev.name = libhal_device_get_property_string(ctx,
 						udi, "net.interface", NULL);
+	}
+
+	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_MODEM) {
+		element->netdev.index = libhal_device_get_property_int(ctx,
+						udi, "serial.port", NULL);
+
+		element->netdev.name = libhal_device_get_property_string(ctx,
+						udi, "serial.device", NULL);
 	}
 }
 
