@@ -70,6 +70,7 @@ struct connman_element {
 	enum connman_element_type type;
 	enum connman_element_subtype subtype;
 	enum connman_element_state state;
+	guint16 priority;
 
 	struct connman_element *parent;
 

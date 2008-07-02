@@ -106,6 +106,9 @@ static void append_entry(DBusMessageIter *dict,
 	case DBUS_TYPE_UINT16:
 		signature = DBUS_TYPE_UINT16_AS_STRING;
 		break;
+	case DBUS_TYPE_UINT32:
+		signature = DBUS_TYPE_UINT32_AS_STRING;
+		break;
 	case DBUS_TYPE_OBJECT_PATH:
 		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
 		break;
@@ -164,6 +167,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	str = subtype2string(element->subtype);
 	if (str != NULL)
 		append_entry(&dict, "Subtype", DBUS_TYPE_STRING, &str);
+
+	if (element->priority > 0)
+		append_entry(&dict, "Priority",
+				DBUS_TYPE_UINT16, &element->priority);
 
 	if (element->ipv4.address != NULL)
 		append_entry(&dict, "IPv4.Address",
