@@ -457,6 +457,8 @@ int connman_element_register(struct connman_element *element,
 	if (connman_element_ref(element) == NULL)
 		return -1;
 
+	__connman_element_load(element);
+
 	g_static_rw_lock_writer_lock(&element_lock);
 
 	if (parent) {
@@ -501,6 +503,8 @@ int connman_element_register(struct connman_element *element,
 	g_node_append_data(node, element);
 
 	g_static_rw_lock_writer_unlock(&element_lock);
+
+	__connman_element_store(element);
 
 	g_dbus_register_interface(connection, element->path,
 					CONNMAN_ELEMENT_INTERFACE,

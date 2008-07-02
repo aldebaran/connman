@@ -27,6 +27,9 @@
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
 
+int __connman_storage_init(void);
+void __connman_storage_cleanup(void);
+
 int __connman_manager_init(DBusConnection *conn, gboolean compat);
 void __connman_manager_cleanup(void);
 
@@ -57,6 +60,9 @@ void __connman_element_list(enum connman_element_type type,
 
 const char *__connman_element_type2string(enum connman_element_type type);
 const char *__connman_element_subtype2string(enum connman_element_subtype type);
+
+int __connman_element_load(struct connman_element *element);
+int __connman_element_store(struct connman_element *element);
 
 #include <connman/iface.h>
 

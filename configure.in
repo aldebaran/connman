@@ -74,6 +74,11 @@ PKG_CHECK_MODULES(HAL, hal >= 0.5.8, dummy=yes,
 AC_SUBST(HAL_CFLAGS)
 AC_SUBST(HAL_LIBS)
 
+PKG_CHECK_MODULES(SQLITE, sqlite3, dummy=yes,
+				AC_MSG_ERROR(sqlite3 is required))
+AC_SUBST(SQLITE_CFLAGS)
+AC_SUBST(SQLITE_LIBS)
+
 AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile
 			test/Makefile plugins/Makefile scripts/Makefile
 			scripts/fi.epitest.hostap.WPASupplicant.service

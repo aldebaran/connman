@@ -127,6 +127,8 @@ int main(int argc, char *argv[])
 
 	__connman_log_init(option_detach, option_debug);
 
+	__connman_storage_init();
+
 	__connman_element_init(conn);
 
 	__connman_agent_init(conn);
@@ -151,6 +153,8 @@ int main(int argc, char *argv[])
 	__connman_agent_cleanup();
 
 	__connman_element_cleanup();
+
+	__connman_storage_cleanup();
 
 	__connman_log_cleanup();
 
