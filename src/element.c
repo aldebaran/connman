@@ -174,6 +174,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		append_entry(&dict, "Priority",
 				DBUS_TYPE_UINT16, &element->priority);
 
+	if (element->network.identifier != NULL)
+		append_entry(&dict, "Identifier",
+				DBUS_TYPE_STRING, &element->network.identifier);
+
 	if (element->ipv4.address != NULL)
 		append_entry(&dict, "IPv4.Address",
 				DBUS_TYPE_STRING, &element->ipv4.address);
@@ -392,6 +396,7 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.network);
 		g_free(element->ipv4.broadcast);
 		g_free(element->ipv4.nameserver);
+		g_free(element->network.identifier);
 		g_free(element->netdev.name);
 		g_free(element->path);
 		g_free(element->name);

@@ -88,6 +88,10 @@ struct connman_element {
 	} netdev;
 
 	struct {
+		gchar *identifier;
+	} network;
+
+	struct {
 		gchar *address;
 		gchar *netmask;
 		gchar *gateway;

@@ -29,12 +29,52 @@
 
 #include "supplicant.h"
 
-static void scan_result(struct connman_element *element,
+struct wifi_data {
+	GStaticMutex mutex;
+	GSList *list;
+};
+
+static struct connman_element *find_element(struct wifi_data *data,
+						const char *identifier)
+{
+	GSList *list;
+
+	for (list = data->list; list; list = list->next) {
+		struct connman_element *element = list->data;
+
+		if (g_str_equal(identifier, element->network.identifier) == TRUE)
+			return element;
+	}
+
+	return NULL;
+}
+
+static void scan_result(struct connman_element *parent,
 					struct supplicant_network *network)
 {
-	DBG("element %p name %s", element, element->name);
+	struct wifi_data *data = connman_element_get_data(parent);
+	struct connman_element *element;
 
 	DBG("network %p identifier %s", network, network->identifier);
+
+	if (data == NULL)
+		return;
+
+	g_static_mutex_lock(&data->mutex);
+
+	element = find_element(data, network->identifier);
+	if (element == NULL) {
+		element = connman_element_create();
+
+		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
+		element->name = g_strdup(network->identifier);
+
+		data->list = g_slist_append(data->list, element);
+	}
+
+	g_static_mutex_unlock(&data->mutex);
+
+	connman_element_register(element, parent);
 }
 
 static struct supplicant_callback wifi_callback = {
@@ -43,9 +83,18 @@ static struct supplicant_callback wifi_callback = {
 
 static int wifi_probe(struct connman_element *element)
 {
+	struct wifi_data *data;
 	int err;
 
 	DBG("element %p name %s", element, element->name);
+
+	data = g_try_new0(struct wifi_data, 1);
+	if (data == NULL)
+		return -ENOMEM;
+
+	g_static_mutex_init(&data->mutex);
+
+	connman_element_set_data(element, data);
 
 	err = __supplicant_start(element, &wifi_callback);
 	if (err < 0)
@@ -58,9 +107,32 @@ static int wifi_probe(struct connman_element *element)
 
 static void wifi_remove(struct connman_element *element)
 {
+	struct wifi_data *data = connman_element_get_data(element);
+	GSList *list;
+
 	DBG("element %p name %s", element, element->name);
 
 	__supplicant_stop(element);
+
+	connman_element_set_data(element, NULL);
+
+	if (data == NULL)
+		return;
+
+	g_static_mutex_lock(&data->mutex);
+
+	for (list = data->list; list; list = list->next) {
+		struct connman_element *network = list->data;
+
+		connman_element_unregister(network);
+		connman_element_unref(network);
+	}
+
+	g_slist_free(data->list);
+
+	g_static_mutex_unlock(&data->mutex);
+
+	g_free(data);
 }
 
 static struct connman_driver wifi_driver = {
