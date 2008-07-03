@@ -20,7 +20,8 @@ dhclient_la_CFLAGS = @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 
 ipv4_la_SOURCES = ipv4.c
 
-AM_LDFLAGS = -module -avoid-version -export-symbols-regex connman_plugin_desc
+AM_LDFLAGS = -no-undefined -module -avoid-version \
+				-export-symbols-regex connman_plugin_desc
 
 statedir = $(localstatedir)/run/connman
 

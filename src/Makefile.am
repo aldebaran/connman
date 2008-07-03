@@ -15,7 +15,13 @@ connmand_SOURCES = main.c connman.h log.c plugin.c element.c \
 					storage.c manager.c agent.c
 
 connmand_LDADD = @SQLITE_LIBS@ @GDBUS_LIBS@ @GMODULE_LIBS@ @GTHREAD_LIBS@
- 
+
+connmand_LDFLAGS = -Wl,--version-script=connman.ver
+
+connmand_DEPENDENCIES = connman.ver
+
+CLEANFILES = connman.ver connman.exp
+
 statedir = $(localstatedir)/run/connman
 
 storagedir = $(localstatedir)/lib/connman
@@ -36,3 +42,11 @@ INCLUDES = -I$(top_builddir)/include
 EXTRA_DIST = $(dbus_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in
+
+connman.exp:
+	nm -B *.o | awk '{ print $$3 }' | sort -u | grep -E -e '^connman_' > $@
+
+connman.ver: connman.exp
+	echo "{ global:" > $@
+	cat $< | sed -e "s/\(.*\)/\1;/" >> $@
+	echo "local: *; };" >> $@
