@@ -23,95 +23,62 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <net/if.h>
 
 #include <connman/plugin.h>
-#include <connman/resolver.h>
+#include <connman/driver.h>
 #include <connman/log.h>
 
-static int resolvconf_append(struct connman_iface *iface, const char *nameserver)
+static int resolvconf_probe(struct connman_element *element)
 {
-	struct ifreq ifr;
-	char cmd[128];
-	int sk, err;
+	gchar *cmd;
+	//int err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
+	DBG("element %p name %s", element, element->name);
 
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = iface->index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return -1;
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	snprintf(cmd, sizeof(cmd), "echo \"nameserver %s\" | resolvconf -a %s",
-						nameserver, ifr.ifr_name);
+	cmd = g_strdup_printf("echo \"nameserver %s\" | resolvconf -a %s",
+					"127.0.0.1", element->netdev.name);
 
 	DBG("%s", cmd);
 
-	err = system(cmd);
+	//err = system(cmd);
+
+	g_free(cmd);
 
 	return 0;
 }
 
-static int resolvconf_remove(struct connman_iface *iface)
+static void resolvconf_remove(struct connman_element *element)
 {
-	struct ifreq ifr;
-	char cmd[128];
-	int sk, err;
+	gchar *cmd;
+	//int err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
+	DBG("element %p name %s", element, element->name);
 
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = iface->index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return -1;
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	snprintf(cmd, sizeof(cmd), "resolvconf -d %s", ifr.ifr_name);
+	cmd = g_strdup_printf("resolvconf -d %s", element->netdev.name);
 
 	DBG("%s", cmd);
 
-	err = system(cmd);
+	//err = system(cmd);
 
-	return 0;
+	g_free(cmd);
 }
 
-static struct connman_resolver_driver resolvconf_driver = {
+static struct connman_driver resolvconf_driver = {
 	.name		= "resolvconf",
-	.append		= resolvconf_append,
+	.type		= CONNMAN_ELEMENT_TYPE_RESOLVER,
+	.probe		= resolvconf_probe,
 	.remove		= resolvconf_remove,
 };
 
 static int resolvconf_init(void)
 {
-	return connman_resolver_register(&resolvconf_driver);
+	return connman_driver_register(&resolvconf_driver);
 }
 
 static void resolvconf_exit(void)
 {
-	connman_resolver_unregister(&resolvconf_driver);
+	connman_driver_unregister(&resolvconf_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE("resolvconf", "Name resolver plugin", VERSION,
