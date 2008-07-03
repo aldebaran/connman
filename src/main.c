@@ -43,6 +43,11 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static void disconnect_callback(void *user_data)
+{
+	DBG("D-Bus disconnect");
+}
+
 static gchar *option_interface = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_compat = FALSE;
@@ -117,6 +122,8 @@ int main(int argc, char *argv[])
 			fprintf(stderr, "Can't register with system bus\n");
 		exit(1);
 	}
+
+	g_dbus_set_disconnect_function(conn, disconnect_callback, NULL, NULL);
 
 	if (option_compat == TRUE) {
 		if (g_dbus_request_name(conn, NM_SERVICE, NULL) == FALSE) {
