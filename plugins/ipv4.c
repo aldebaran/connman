@@ -29,6 +29,7 @@
 
 static int ipv4_probe(struct connman_element *element)
 {
+	struct connman_element *resolver;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 
 	DBG("element %p name %s", element, element->name);
@@ -44,12 +45,29 @@ static int ipv4_probe(struct connman_element *element)
 	DBG("netmask %s", netmask);
 	DBG("gateway %s", gateway);
 
+	resolver = connman_element_create();
+
+	resolver->type = CONNMAN_ELEMENT_TYPE_RESOLVER;
+	resolver->netdev.name = g_strdup(element->netdev.name);
+
+	connman_element_register(resolver, element);
+
+	connman_element_set_data(element, resolver);
+
 	return 0;
 }
 
 static void ipv4_remove(struct connman_element *element)
 {
+	struct connman_element *resolver = connman_element_get_data(element);
+
 	DBG("element %p name %s", element, element->name);
+
+	connman_element_set_data(element, NULL);
+
+	connman_element_unregister(resolver);
+
+	connman_element_unref(resolver);
 }
 
 static struct connman_driver ipv4_driver = {

@@ -31,13 +31,20 @@
 
 static int resolvconf_probe(struct connman_element *element)
 {
+	const char *nameserver = NULL;
 	gchar *cmd;
 	//int err;
 
 	DBG("element %p name %s", element, element->name);
 
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER, &nameserver);
+
+	if (nameserver == NULL)
+		return -EINVAL;
+
 	cmd = g_strdup_printf("echo \"nameserver %s\" | resolvconf -a %s",
-					"127.0.0.1", element->netdev.name);
+					nameserver, element->netdev.name);
 
 	DBG("%s", cmd);
 

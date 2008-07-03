@@ -311,6 +311,7 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 		task->child = connman_element_create();
 		task->child->type = CONNMAN_ELEMENT_TYPE_IPV4;
 		task->child->netdev.index = task->ifindex;
+		task->child->netdev.name = g_strdup(task->ifname);
 		connman_element_update(task->element);
 		connman_element_register(task->child, task->element);
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||

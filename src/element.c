@@ -406,6 +406,10 @@ int connman_element_set_property(struct connman_element *element,
 		g_free(element->ipv4.gateway);
 		element->ipv4.gateway = g_strdup(*((const char **) value));
 		break;
+	case CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER:
+		g_free(element->ipv4.nameserver);
+		element->ipv4.nameserver = g_strdup(*((const char **) value));
+		break;
 	}
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
@@ -442,6 +446,12 @@ int connman_element_get_value(struct connman_element *element,
 			return connman_element_get_value(element->parent,
 								type, value);
 		*((char **) value) = element->ipv4.gateway;
+		break;
+	case CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER:
+		if (element->ipv4.nameserver == NULL)
+			return connman_element_get_value(element->parent,
+								type, value);
+		*((char **) value) = element->ipv4.nameserver;
 		break;
 	}
 
@@ -491,6 +501,9 @@ int connman_element_register(struct connman_element *element,
 			break;
 		case CONNMAN_ELEMENT_TYPE_ZEROCONF:
 			element->name = g_strdup("zeroconf");
+			break;
+		case CONNMAN_ELEMENT_TYPE_RESOLVER:
+			element->name = g_strdup("resolver");
 			break;
 		default:
 			break;
