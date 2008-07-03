@@ -50,9 +50,9 @@ static int ipv4_probe(struct connman_element *element)
 	resolver->type = CONNMAN_ELEMENT_TYPE_RESOLVER;
 	resolver->netdev.name = g_strdup(element->netdev.name);
 
-	connman_element_register(resolver, element);
-
 	connman_element_set_data(element, resolver);
+
+	connman_element_register(resolver, element);
 
 	return 0;
 }

@@ -32,13 +32,13 @@
 
 static DBusConnection *connection;
 
-static GStaticRWLock driver_lock = G_STATIC_RW_LOCK_INIT;
-static GSList *driver_list = NULL;
-static GThreadPool *driver_thread;
-
 static GStaticRWLock element_lock = G_STATIC_RW_LOCK_INIT;
 static GNode *element_root = NULL;
-static GThreadPool *element_thread;
+
+static GSList *driver_list = NULL;
+
+static GThreadPool *thread_register;
+static GThreadPool *thread_unregister;
 
 static const char *type2string(enum connman_element_type type)
 {
@@ -246,22 +246,59 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
 	return driver2->priority - driver1->priority;
 }
 
+static gboolean match_driver(struct connman_element *element,
+					struct connman_driver *driver)
+{
+	if (element->type != driver->type &&
+			driver->type != CONNMAN_ELEMENT_TYPE_UNKNOWN)
+		return FALSE;
+
+	if (element->subtype == driver->subtype ||
+			driver->subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN)
+		return TRUE;
+
+	return FALSE;
+}
+
+static gboolean probe_driver(GNode *node, gpointer data)
+{
+	struct connman_element *element = node->data;
+	struct connman_driver *driver = data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (!element->driver && match_driver(element, driver) == TRUE) {
+		if (driver->probe(element) < 0)
+			return FALSE;
+
+		connman_element_lock(element);
+		element->driver = driver;
+		connman_element_unlock(element);
+	}
+
+	return FALSE;
+}
+
 int connman_driver_register(struct connman_driver *driver)
 {
 	DBG("driver %p name %s", driver, driver->name);
 
 	if (driver->type == CONNMAN_ELEMENT_TYPE_ROOT)
-		return -1;
+		return -EINVAL;
 
 	if (!driver->probe)
 		return -EINVAL;
 
-	g_static_rw_lock_writer_lock(&driver_lock);
+	g_static_rw_lock_writer_lock(&element_lock);
+
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
-	g_static_rw_lock_writer_unlock(&driver_lock);
 
-	g_thread_pool_push(driver_thread, driver, NULL);
+	if (element_root != NULL)
+		g_node_traverse(element_root, G_PRE_ORDER,
+				G_TRAVERSE_ALL, -1, probe_driver, driver);
+
+	g_static_rw_lock_writer_unlock(&element_lock);
 
 	return 0;
 }
@@ -276,7 +313,10 @@ static gboolean remove_driver(GNode *node, gpointer data)
 	if (element->driver == driver) {
 		if (driver->remove)
 			driver->remove(element);
+
+		connman_element_lock(element);
 		element->driver = NULL;
+		connman_element_unlock(element);
 	}
 
 	return FALSE;
@@ -286,14 +326,15 @@ void connman_driver_unregister(struct connman_driver *driver)
 {
 	DBG("driver %p name %s", driver, driver->name);
 
-	g_static_rw_lock_reader_lock(&element_lock);
-	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
-							remove_driver, driver);
-	g_static_rw_lock_reader_unlock(&element_lock);
+	g_static_rw_lock_writer_lock(&element_lock);
 
-	g_static_rw_lock_writer_lock(&driver_lock);
 	driver_list = g_slist_remove(driver_list, driver);
-	g_static_rw_lock_writer_unlock(&driver_lock);
+
+	if (element_root != NULL)
+		g_node_traverse(element_root, G_POST_ORDER,
+				G_TRAVERSE_ALL, -1, remove_driver, driver);
+
+	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 struct connman_element *connman_element_create(void)
@@ -305,6 +346,8 @@ struct connman_element *connman_element_create(void)
 	DBG("element %p", element);
 
 	element->refcount = 1;
+
+	g_static_mutex_init(&element->mutex);
 
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
@@ -383,7 +426,9 @@ int connman_element_add_static_property(struct connman_element *element,
 		break;
 	}
 
+	connman_element_lock(element);
 	element->properties = g_slist_append(element->properties, property);
+	connman_element_unlock(element);
 
 	return 0;
 }
@@ -395,20 +440,28 @@ int connman_element_set_property(struct connman_element *element,
 	case CONNMAN_PROPERTY_TYPE_INVALID:
 		return -EINVAL;
 	case CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS:
+		connman_element_lock(element);
 		g_free(element->ipv4.address);
 		element->ipv4.address = g_strdup(*((const char **) value));
+		connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_TYPE_IPV4_NETMASK:
+		connman_element_lock(element);
 		g_free(element->ipv4.netmask);
 		element->ipv4.netmask = g_strdup(*((const char **) value));
+		connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY:
+		connman_element_lock(element);
 		g_free(element->ipv4.gateway);
 		element->ipv4.gateway = g_strdup(*((const char **) value));
+		connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER:
+		connman_element_lock(element);
 		g_free(element->ipv4.nameserver);
 		element->ipv4.nameserver = g_strdup(*((const char **) value));
+		connman_element_unlock(element);
 		break;
 	}
 
@@ -433,25 +486,33 @@ int connman_element_get_value(struct connman_element *element,
 		if (element->ipv4.address == NULL)
 			return connman_element_get_value(element->parent,
 								type, value);
+		connman_element_lock(element);
 		*((char **) value) = element->ipv4.address;
+		connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_TYPE_IPV4_NETMASK:
 		if (element->ipv4.netmask == NULL)
 			return connman_element_get_value(element->parent,
 								type, value);
+		connman_element_lock(element);
 		*((char **) value) = element->ipv4.netmask;
+		connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY:
 		if (element->ipv4.gateway == NULL)
 			return connman_element_get_value(element->parent,
 								type, value);
+		connman_element_lock(element);
 		*((char **) value) = element->ipv4.gateway;
+		connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER:
 		if (element->ipv4.nameserver == NULL)
 			return connman_element_get_value(element->parent,
 								type, value);
+		connman_element_lock(element);
 		*((char **) value) = element->ipv4.nameserver;
+		connman_element_unlock(element);
 		break;
 	}
 
@@ -461,29 +522,14 @@ int connman_element_get_value(struct connman_element *element,
 int connman_element_register(struct connman_element *element,
 					struct connman_element *parent)
 {
-	GNode *node;
-	const gchar *basepath;
-
 	DBG("element %p name %s parent %p", element, element->name, parent);
 
 	if (connman_element_ref(element) == NULL)
-		return -1;
+		return -EINVAL;
+
+	connman_element_lock(element);
 
 	__connman_element_load(element);
-
-	g_static_rw_lock_writer_lock(&element_lock);
-
-	if (parent) {
-		node = g_node_find(element_root, G_PRE_ORDER,
-						G_TRAVERSE_ALL, parent);
-		basepath = parent->path;
-
-		if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN)
-			element->subtype = parent->subtype;
-	} else {
-		node = element_root;
-		basepath = "";
-	}
 
 	if (element->name == NULL) {
 		switch (element->type) {
@@ -510,8 +556,65 @@ int connman_element_register(struct connman_element *element,
 		}
 	}
 
-	element->path = g_strdup_printf("%s/%s", basepath, element->name);
 	element->parent = parent;
+
+	connman_element_unlock(element);
+
+	g_thread_pool_push(thread_register, element, NULL);
+
+	return 0;
+}
+
+void connman_element_unregister(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	g_thread_pool_push(thread_unregister, element, NULL);
+}
+
+void connman_element_update(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	g_static_rw_lock_reader_lock(&element_lock);
+
+	if (element->driver && element->driver->update)
+		element->driver->update(element);
+
+	g_static_rw_lock_reader_unlock(&element_lock);
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+}
+
+static void register_element(gpointer data, gpointer user_data)
+{
+	struct connman_element *element = data;
+	const gchar *basepath;
+	GSList *list;
+	GNode *node;
+
+	g_static_rw_lock_writer_lock(&element_lock);
+
+	connman_element_lock(element);
+
+	if (element->parent) {
+		node = g_node_find(element_root, G_PRE_ORDER,
+					G_TRAVERSE_ALL, element->parent);
+		basepath = element->parent->path;
+
+		if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN)
+			element->subtype = element->parent->subtype;
+	} else {
+		node = element_root;
+		basepath = "";
+	}
+
+	element->path = g_strdup_printf("%s/%s", basepath, element->name);
+
+	connman_element_unlock(element);
 
 	DBG("element %p path %s", element, element->path);
 
@@ -537,16 +640,53 @@ int connman_element_register(struct connman_element *element,
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
 
-	g_thread_pool_push(element_thread, element, NULL);
+	g_static_rw_lock_writer_lock(&element_lock);
 
-	return 0;
+	for (list = driver_list; list; list = list->next) {
+		struct connman_driver *driver = list->data;
+
+		if (match_driver(element, driver) == FALSE)
+			continue;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->probe(element) < 0)
+			continue;
+
+		connman_element_lock(element);
+		element->driver = driver;
+		connman_element_unlock(element);
+	}
+
+	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
-void connman_element_unregister(struct connman_element *element)
+static void unregister_element(gpointer data, gpointer user_data)
 {
+	struct connman_element *element = data;
 	GNode *node;
 
 	DBG("element %p name %s", element, element->name);
+
+	g_static_rw_lock_writer_lock(&element_lock);
+
+	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
+
+	if (element->driver) {
+		if (element->driver->remove)
+			element->driver->remove(element);
+
+		connman_element_lock(element);
+		element->driver = NULL;
+		connman_element_unlock(element);
+	}
+
+	if (node != NULL) {
+		g_node_unlink(node);
+		g_node_destroy(node);
+	}
+
+	g_static_rw_lock_writer_unlock(&element_lock);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
 		g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
@@ -561,121 +701,6 @@ void connman_element_unregister(struct connman_element *element)
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_ELEMENT_INTERFACE);
-
-	g_static_rw_lock_writer_lock(&element_lock);
-
-	if (element->driver) {
-		if (element->driver->remove)
-			element->driver->remove(element);
-		element->driver = NULL;
-	}
-
-	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
-	if (node != NULL) {
-		g_node_unlink(node);
-		g_node_destroy(node);
-	}
-
-	g_static_rw_lock_writer_unlock(&element_lock);
-
-	connman_element_unref(element);
-}
-
-void connman_element_update(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	g_static_rw_lock_reader_lock(&element_lock);
-
-	if (element->driver && element->driver->update)
-		element->driver->update(element);
-
-	g_static_rw_lock_reader_unlock(&element_lock);
-
-	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
-				DBUS_TYPE_OBJECT_PATH, &element->path,
-							DBUS_TYPE_INVALID);
-}
-
-static inline void set_driver(struct connman_element *element,
-						struct connman_driver *driver)
-{
-	g_static_rw_lock_reader_lock(&element_lock);
-	element->driver = driver;
-	g_static_rw_lock_reader_unlock(&element_lock);
-}
-
-static gboolean match_driver(struct connman_element *element,
-					struct connman_driver *driver)
-{
-	if (element->type != driver->type &&
-			driver->type != CONNMAN_ELEMENT_TYPE_UNKNOWN)
-		return FALSE;
-
-	if (element->subtype == driver->subtype ||
-			driver->subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN)
-		return TRUE;
-
-	return FALSE;
-}
-
-static gboolean probe_driver(GNode *node, gpointer data)
-{
-	struct connman_element *element = node->data;
-	struct connman_driver *driver = data;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (!element->driver && match_driver(element, driver) == TRUE) {
-		element->driver = driver;
-
-		if (driver->probe(element) < 0)
-			element->driver = NULL;
-	}
-
-	return FALSE;
-}
-
-static void driver_probe(gpointer data, gpointer user_data)
-{
-	struct connman_driver *driver = data;
-
-	DBG("driver %p name %s", driver, driver->name);
-
-	g_static_rw_lock_reader_lock(&element_lock);
-	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
-							probe_driver, driver);
-	g_static_rw_lock_reader_unlock(&element_lock);
-}
-
-static void element_probe(gpointer data, gpointer user_data)
-{
-	struct connman_element *element = data;
-	GSList *list;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (connman_element_ref(element) == NULL)
-		return;
-
-	g_static_rw_lock_reader_lock(&driver_lock);
-
-	for (list = driver_list; list; list = list->next) {
-		struct connman_driver *driver = list->data;
-
-		DBG("driver %p name %s", driver, driver->name);
-
-		set_driver(element, driver);
-
-		if (match_driver(element, driver) == TRUE &&
-						driver->probe(element) == 0)
-			break;
-
-		set_driver(element, NULL);
-	}
-
-	g_static_rw_lock_reader_unlock(&driver_lock);
 
 	connman_element_unref(element);
 }
@@ -702,11 +727,30 @@ int __connman_element_init(DBusConnection *conn)
 
 	g_static_rw_lock_writer_unlock(&element_lock);
 
-	element_thread = g_thread_pool_new(element_probe, NULL, 1, FALSE, NULL);
-
-	driver_thread = g_thread_pool_new(driver_probe, NULL, 1, FALSE, NULL);
+	thread_register = g_thread_pool_new(register_element,
+							NULL, 1, FALSE, NULL);
+	thread_unregister = g_thread_pool_new(unregister_element,
+							NULL, 1, FALSE, NULL);
 
 	return 0;
+}
+
+static gboolean free_driver(GNode *node, gpointer data)
+{
+	struct connman_element *element = node->data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->driver) {
+		if (element->driver->remove)
+			element->driver->remove(element);
+
+		connman_element_lock(element);
+		element->driver = NULL;
+		connman_element_unlock(element);
+	}
+
+	return FALSE;
 }
 
 static gboolean free_node(GNode *node, gpointer data)
@@ -715,18 +759,8 @@ static gboolean free_node(GNode *node, gpointer data)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_ELEMENT_INTERFACE);
-
-	if (element->driver) {
-		if (element->driver->remove)
-			element->driver->remove(element);
-		element->driver = NULL;
-	}
-
-	connman_element_unref(element);
-
-	node->data = NULL;
+	if (g_node_depth(node) > 1)
+		g_thread_pool_push(thread_unregister, element, NULL);
 
 	return FALSE;
 }
@@ -735,18 +769,23 @@ void __connman_element_cleanup(void)
 {
 	DBG("");
 
-	g_thread_pool_free(driver_thread, TRUE, TRUE);
-
-	g_thread_pool_free(element_thread, TRUE, TRUE);
+	g_thread_pool_free(thread_register, TRUE, TRUE);
 
 	g_static_rw_lock_writer_lock(&element_lock);
+	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
+							free_driver, NULL);
+	g_static_rw_lock_writer_unlock(&element_lock);
 
+	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_node, NULL);
+	g_static_rw_lock_writer_unlock(&element_lock);
 
+	g_thread_pool_free(thread_unregister, FALSE, TRUE);
+
+	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_destroy(element_root);
 	element_root = NULL;
-
 	g_static_rw_lock_writer_unlock(&element_lock);
 
 	dbus_connection_unref(connection);

@@ -66,6 +66,7 @@ struct connman_driver;
 
 struct connman_element {
 	gint refcount;
+	GStaticMutex mutex;
 	gchar *name;
 	gchar *path;
 	enum connman_element_type type;
@@ -95,6 +96,9 @@ struct connman_element {
 		gchar *nameserver;
 	} ipv4;
 };
+
+#define connman_element_lock(element)    g_static_mutex_lock(&(element)->mutex)
+#define connman_element_unlock(element)  g_static_mutex_unlock(&(element)->mutex)
 
 extern struct connman_element *connman_element_create(void);
 extern struct connman_element *connman_element_ref(struct connman_element *element);

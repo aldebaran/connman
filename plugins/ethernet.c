@@ -236,6 +236,8 @@ static void ethernet_remove(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
+	remove_elements(element);
+
 	g_static_mutex_lock(&ethernet_mutex);
 	ethernet_list = g_slist_remove(ethernet_list, element);
 	g_static_mutex_unlock(&ethernet_mutex);
