@@ -37,8 +37,8 @@ static GNode *element_root = NULL;
 
 static GSList *driver_list = NULL;
 
-static GThreadPool *thread_register;
-static GThreadPool *thread_unregister;
+static GThreadPool *thread_register = NULL;
+static GThreadPool *thread_unregister = NULL;
 
 static const char *type2string(enum connman_element_type type)
 {
@@ -560,7 +560,8 @@ int connman_element_register(struct connman_element *element,
 
 	connman_element_unlock(element);
 
-	g_thread_pool_push(thread_register, element, NULL);
+	if (thread_register != NULL)
+		g_thread_pool_push(thread_register, element, NULL);
 
 	return 0;
 }
@@ -569,7 +570,8 @@ void connman_element_unregister(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
-	g_thread_pool_push(thread_unregister, element, NULL);
+	if (thread_unregister != NULL)
+		g_thread_pool_push(thread_unregister, element, NULL);
 }
 
 void connman_element_update(struct connman_element *element)
@@ -770,6 +772,7 @@ void __connman_element_cleanup(void)
 	DBG("");
 
 	g_thread_pool_free(thread_register, TRUE, TRUE);
+	thread_register = NULL;
 
 	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
@@ -782,6 +785,7 @@ void __connman_element_cleanup(void)
 	g_static_rw_lock_writer_unlock(&element_lock);
 
 	g_thread_pool_free(thread_unregister, FALSE, TRUE);
+	thread_unregister = NULL;
 
 	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_destroy(element_root);
