@@ -10,7 +10,7 @@ hal_la_CFLAGS = @GLIB_CFLAGS@ @HAL_CFLAGS@
 
 ethernet_la_SOURCES = ethernet.c
 
-wifi_la_SOURCES = wifi.c
+wifi_la_SOURCES = wifi.c supplicant.h supplicant.c
 
 bluetooth_la_SOURCES = bluetooth.c
 

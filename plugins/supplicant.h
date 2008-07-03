@@ -19,17 +19,31 @@
  *
  */
 
-#include <connman/iface.h>
+#include <connman/element.h>
 
 #define SUPPLICANT_NAME  "fi.epitest.hostap.WPASupplicant"
 #define SUPPLICANT_INTF  "fi.epitest.hostap.WPASupplicant"
 #define SUPPLICANT_PATH  "/fi/epitest/hostap/WPASupplicant"
 
-int __supplicant_start(struct connman_iface *iface);
-int __supplicant_stop(struct connman_iface *iface);
+struct supplicant_network {
+	gchar *identifier;
+	GByteArray *ssid;
+	guint capabilities;
+	gboolean has_wep;
+	gboolean has_wpa;
+	gboolean has_rsn;
+};
 
-int __supplicant_scan(struct connman_iface *iface);
+struct supplicant_callback {
+	void (*scan_result) (struct connman_element *element,
+					struct supplicant_network *network);
+};
 
-int __supplicant_connect(struct connman_iface *iface,
-				const char *network, const char *passphrase);
-int __supplicant_disconnect(struct connman_iface *iface);
+int __supplicant_start(struct connman_element *element,
+					struct supplicant_callback *callback);
+int __supplicant_stop(struct connman_element *element);
+
+int __supplicant_scan(struct connman_element *element);
+
+int __supplicant_connect(struct connman_element *element);
+int __supplicant_disconnect(struct connman_element *element);

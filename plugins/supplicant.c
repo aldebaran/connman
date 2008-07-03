@@ -23,22 +23,16 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
-#include <stdlib.h>
-#include <signal.h>
-#include <sys/ioctl.h>
-#include <sys/socket.h>
-#include <sys/un.h>
-#include <net/if.h>
-
+#include <string.h>
 #include <dbus/dbus.h>
-#include <gdbus.h>
 
 #include <connman/log.h>
 
 #include "supplicant.h"
+
+#define IEEE80211_CAP_ESS       0x0001
+#define IEEE80211_CAP_IBSS      0x0002
+#define IEEE80211_CAP_PRIVACY   0x0010
 
 enum supplicant_state {
 	STATE_INACTIVE,
@@ -55,36 +49,25 @@ struct supplicant_task {
 	DBusConnection *conn;
 	int ifindex;
 	gchar *ifname;
-	struct connman_iface *iface;
+	struct connman_element *element;
+	struct supplicant_callback *callback;
 	gchar *path;
 	gboolean created;
 	gchar *network;
 	enum supplicant_state state;
 };
 
-static GSList *tasks = NULL;
+static GStaticMutex task_mutex = G_STATIC_MUTEX_INIT;
+static GSList *task_list = NULL;
 
-struct supplicant_ap {
-	gchar *identifier;
-	GByteArray *ssid;
-	guint capabilities;
-	gboolean has_wep;
-	gboolean has_wpa;
-	gboolean has_rsn;
-};
-
-#define IEEE80211_CAP_ESS       0x0001
-#define IEEE80211_CAP_IBSS      0x0002
-#define IEEE80211_CAP_PRIVACY   0x0010
-
-static struct supplicant_task *find_task(int ifindex)
+static struct supplicant_task *find_task_by_index(int index)
 {
 	GSList *list;
 
-	for (list = tasks; list; list = list->next) {
+	for (list = task_list; list; list = list->next) {
 		struct supplicant_task *task = list->data;
 
-		if (task->ifindex == ifindex) 
+		if (task->ifindex == index)
 			return task;
 	}
 
@@ -606,7 +589,8 @@ static int initiate_scan(struct supplicant_task *task)
 	return 0;
 }
 
-static void extract_ssid(struct supplicant_ap *ap, DBusMessageIter *value)
+static void extract_ssid(struct supplicant_network *network,
+						DBusMessageIter *value)
 {
 	DBusMessageIter array;
 	unsigned char *ssid;
@@ -615,10 +599,11 @@ static void extract_ssid(struct supplicant_ap *ap, DBusMessageIter *value)
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ssid, &ssid_len);
 
-	ap->identifier = g_strdup((char *) ssid);
+	network->identifier = g_strdup((char *) ssid);
 }
 
-static void extract_wpaie(struct supplicant_ap *ap, DBusMessageIter *value)
+static void extract_wpaie(struct supplicant_network *network,
+						DBusMessageIter *value)
 {
 	DBusMessageIter array;
 	unsigned char *ie;
@@ -628,10 +613,11 @@ static void extract_wpaie(struct supplicant_ap *ap, DBusMessageIter *value)
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
 	if (ie_len > 0)
-		ap->has_wpa = TRUE;
+		network->has_wpa = TRUE;
 }
 
-static void extract_rsnie(struct supplicant_ap *ap, DBusMessageIter *value)
+static void extract_rsnie(struct supplicant_network *network,
+						DBusMessageIter *value)
 {
 	DBusMessageIter array;
 	unsigned char *ie;
@@ -641,31 +627,30 @@ static void extract_rsnie(struct supplicant_ap *ap, DBusMessageIter *value)
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
 	if (ie_len > 0)
-		ap->has_rsn = TRUE;
+		network->has_rsn = TRUE;
 }
 
-static void extract_capabilites(struct supplicant_ap *ap,
+static void extract_capabilites(struct supplicant_network *network,
 						DBusMessageIter *value)
 {
 	guint capabilities;
 
 	dbus_message_iter_get_basic(value, &capabilities);
 
-	ap->capabilities = capabilities;
+	network->capabilities = capabilities;
 
 	if (capabilities & IEEE80211_CAP_PRIVACY)
-		ap->has_wep = TRUE;
+		network->has_wep = TRUE;
 }
 
 static int parse_network_properties(struct supplicant_task *task,
 							DBusMessage *message)
 {
 	DBusMessageIter array, dict;
-	struct supplicant_ap *ap;
-	int security = 0;
+	struct supplicant_network *network;
 
-	ap = g_try_new0(struct supplicant_ap, 1);
-	if (ap == NULL)
+	network = g_try_new0(struct supplicant_network, 1);
+	if (network == NULL)
 		return -ENOMEM;
 
 	dbus_message_iter_init(message, &array);
@@ -687,28 +672,21 @@ static int parse_network_properties(struct supplicant_task *task,
 		//dbus_message_iter_get_basic(&value, &val);
 
 		if (g_str_equal(key, "ssid") == TRUE)
-			extract_ssid(ap, &value);
+			extract_ssid(network, &value);
 		else if (g_str_equal(key, "wpaie") == TRUE)
-			extract_wpaie(ap, &value);
+			extract_wpaie(network, &value);
 		else if (g_str_equal(key, "rsnie") == TRUE)
-			extract_rsnie(ap, &value);
+			extract_rsnie(network, &value);
 		else if (g_str_equal(key, "capabilities") == TRUE)
-			extract_capabilites(ap, &value);
+			extract_capabilites(network, &value);
 
 		dbus_message_iter_next(&dict);
 	}
 
-	if (ap->has_wep)
-		security |= 0x01;
-	if (ap->has_wpa)
-		security |= 0x02;
-	if (ap->has_rsn)
-		security |= 0x04;
+	if (task->callback && task->callback->scan_result)
+		task->callback->scan_result(task->element, network);
 
-	connman_iface_indicate_station(task->iface,
-					ap->identifier, 25, security);
-
-	g_free(ap);
+	g_free(network);
 
 	return 0;
 }
@@ -843,10 +821,10 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	switch (task->state) {
 	case STATE_COMPLETED:
-		connman_iface_indicate_carrier_on(task->iface);
+		/* carrier on */
 		break;
 	case STATE_DISCONNECTED:
-		connman_iface_indicate_carrier_off(task->iface);
+		/* carrier off */
 		break;
 	default:
 		break;
@@ -931,35 +909,22 @@ static int remove_filter(struct supplicant_task *task)
 	return 0;
 }
 
-int __supplicant_start(struct connman_iface *iface)
+int __supplicant_start(struct connman_element *element,
+					struct supplicant_callback *callback)
 {
-	struct ifreq ifr;
 	struct supplicant_task *task;
-	int sk, err;
+	int err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -EIO;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = iface->index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return -EIO;
-
-	DBG("interface %s", ifr.ifr_name);
+	DBG("element %p name %s", element, element->name);
 
 	task = g_try_new0(struct supplicant_task, 1);
 	if (task == NULL)
 		return -ENOMEM;
 
-	task->ifindex = iface->index;
-	task->ifname = g_strdup(ifr.ifr_name);
-	task->iface = iface;
+	task->ifindex = element->netdev.index;
+	task->ifname = g_strdup(element->netdev.name);
+	task->element = element;
+	task->callback = callback;
 
 	if (task->ifname == NULL) {
 		g_free(task);
@@ -973,6 +938,11 @@ int __supplicant_start(struct connman_iface *iface)
 	}
 
 	task->created = FALSE;
+	task->state = STATE_INACTIVE;
+
+	g_static_mutex_lock(&task_mutex);
+	task_list = g_slist_append(task_list, task);
+	g_static_mutex_unlock(&task_mutex);
 
 	err = get_interface(task);
 	if (err < 0) {
@@ -983,10 +953,6 @@ int __supplicant_start(struct connman_iface *iface)
 		}
 	}
 
-	task->state = STATE_INACTIVE;
-
-	tasks = g_slist_append(tasks, task);
-
 	add_filter(task);
 
 	set_ap_scan(task);
@@ -994,17 +960,19 @@ int __supplicant_start(struct connman_iface *iface)
 	return 0;
 }
 
-int __supplicant_stop(struct connman_iface *iface)
+int __supplicant_stop(struct connman_element *element)
 {
 	struct supplicant_task *task;
 
-	task = find_task(iface->index);
+	DBG("element %p name %s", element, element->name);
+
+	task = find_task_by_index(element->netdev.index);
 	if (task == NULL)
 		return -ENODEV;
 
-	DBG("interface %s", task->ifname);
-
-	tasks = g_slist_remove(tasks, task);
+	g_static_mutex_lock(&task_mutex);
+	task_list = g_slist_remove(task_list, task);
+	g_static_mutex_unlock(&task_mutex);
 
 	disable_network(task);
 
@@ -1023,16 +991,16 @@ int __supplicant_stop(struct connman_iface *iface)
 	return 0;
 }
 
-int __supplicant_scan(struct connman_iface *iface)
+int __supplicant_scan(struct connman_element *element)
 {
 	struct supplicant_task *task;
 	int err;
 
-	task = find_task(iface->index);
+	DBG("element %p name %s", element, element->name);
+
+	task = find_task_by_index(element->netdev.index);
 	if (task == NULL)
 		return -ENODEV;
-
-	DBG("interface %s", task->ifname);
 
 	switch (task->state) {
 	case STATE_SCANNING:
@@ -1051,38 +1019,37 @@ int __supplicant_scan(struct connman_iface *iface)
 	return 0;
 }
 
-int __supplicant_connect(struct connman_iface *iface,
-				const char *network, const char *passphrase)
+int __supplicant_connect(struct connman_element *element)
 {
 	struct supplicant_task *task;
 
-	task = find_task(iface->index);
+	DBG("element %p name %s", element, element->name);
+
+	task = find_task_by_index(element->netdev.index);
 	if (task == NULL)
 		return -ENODEV;
-
-	DBG("interface %s", task->ifname);
 
 	add_network(task);
 
 	select_network(task);
 	disable_network(task);
 
-	set_network(task, network, passphrase);
+	set_network(task, NULL, NULL);
 
 	enable_network(task);
 
 	return 0;
 }
 
-int __supplicant_disconnect(struct connman_iface *iface)
+int __supplicant_disconnect(struct connman_element *element)
 {
 	struct supplicant_task *task;
 
-	task = find_task(iface->index);
+	DBG("element %p name %s", element, element->name);
+
+	task = find_task_by_index(element->netdev.index);
 	if (task == NULL)
 		return -ENODEV;
-
-	DBG("interface %s", task->ifname);
 
 	disable_network(task);
 
