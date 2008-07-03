@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/log.h>
@@ -42,7 +44,11 @@ static struct connman_element *find_element(struct wifi_data *data,
 	for (list = data->list; list; list = list->next) {
 		struct connman_element *element = list->data;
 
-		if (g_str_equal(identifier, element->network.identifier) == TRUE)
+		if (element->network.identifier == NULL)
+			continue;
+
+		if (g_str_equal(element->network.identifier,
+							identifier) == TRUE)
 			return element;
 	}
 
@@ -54,27 +60,40 @@ static void scan_result(struct connman_element *parent,
 {
 	struct wifi_data *data = connman_element_get_data(parent);
 	struct connman_element *element;
+	gchar *temp;
+	int i;
 
 	DBG("network %p identifier %s", network, network->identifier);
 
 	if (data == NULL)
 		return;
 
+	temp = g_strdup(network->identifier);
+
+	for (i = 0; i < strlen(temp); i++) {
+		if (temp[i] == ' ' || temp[i] == '.')
+			temp[i] = '_';
+		temp[i] = g_ascii_tolower(temp[i]);
+	}
+
 	g_static_mutex_lock(&data->mutex);
 
-	element = find_element(data, network->identifier);
+	element = find_element(data, temp);
 	if (element == NULL) {
 		element = connman_element_create();
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
-		element->name = g_strdup(network->identifier);
+		element->name = temp;
+
+		element->network.identifier = g_strdup(temp);
 
 		data->list = g_slist_append(data->list, element);
-	}
+
+		connman_element_register(element, parent);
+	} else
+		g_free(temp);
 
 	g_static_mutex_unlock(&data->mutex);
-
-	connman_element_register(element, parent);
 }
 
 static struct supplicant_callback wifi_callback = {
