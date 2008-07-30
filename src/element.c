@@ -102,6 +102,9 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
 	switch (type) {
+	case DBUS_TYPE_BOOLEAN:
+		signature = DBUS_TYPE_BOOLEAN_AS_STRING;
+		break;
 	case DBUS_TYPE_STRING:
 		signature = DBUS_TYPE_STRING_AS_STRING;
 		break;
@@ -170,6 +173,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (str != NULL)
 		append_entry(&dict, "Subtype", DBUS_TYPE_STRING, &str);
 
+	append_entry(&dict, "Connected",
+				DBUS_TYPE_BOOLEAN, &element->connected);
+
 	if (element->priority > 0)
 		append_entry(&dict, "Priority",
 				DBUS_TYPE_UINT16, &element->priority);
@@ -199,8 +205,46 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *do_connect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+
+	DBG("conn %p", conn);
+
+	if (element->driver == NULL)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (element->driver->connect) {
+		DBG("Calling connect callback");
+		element->driver->connect(element);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *do_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+
+	DBG("conn %p", conn);
+
+	if (element->driver == NULL)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (element->driver->disconnect) {
+		DBG("Calling disconnect callback");
+		element->driver->disconnect(element);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable element_methods[] = {
 	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "Connect",       "", "",      do_connect     },
+	{ "Disconnect",    "", "",      do_disconnect  },
 	{ },
 };
 
@@ -356,6 +400,8 @@ struct connman_element *connman_element_create(void)
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 	element->state   = CONNMAN_ELEMENT_STATE_CLOSED;
+
+	element->connected = FALSE;
 
 	element->netdev.index = -1;
 
