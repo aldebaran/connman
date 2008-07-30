@@ -7,19 +7,22 @@ bus = dbus.SystemBus()
 manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
 					'org.moblin.connman.Manager')
 
-interfaces = manager.ListInterfaces()
+elements = manager.ListElements()
 
-for path in interfaces:
+for path in elements:
+	element = dbus.Interface(bus.get_object('org.moblin.connman', path),
+						'org.moblin.connman.Element')
+
+	properties = element.GetProperties()
+
+	if (properties["Type"] != "device"):
+		continue
+
 	print "[ %s ]" % (path)
 
-	interface = dbus.Interface(bus.get_object('org.moblin.connman', path),
-					'org.moblin.connman.Interface')
-
-	properties = interface.GetProperties()
-
-	if (properties["Type"] == "80211"):
+	if (properties["Subtype"] == "wifi"):
 		print "   Started scanning"
-		interface.Scan()
+		element.Update()
 	else:
 		print "   No scanning"
 
