@@ -32,8 +32,9 @@
 static int resolvconf_probe(struct connman_element *element)
 {
 	const char *nameserver = NULL;
+	struct connman_element *internet;
 	gchar *cmd;
-	//int err;
+	int err;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -48,25 +49,42 @@ static int resolvconf_probe(struct connman_element *element)
 
 	DBG("%s", cmd);
 
-	//err = system(cmd);
+	err = system(cmd);
 
 	g_free(cmd);
+
+	internet = connman_element_create();
+
+	internet->type = CONNMAN_ELEMENT_TYPE_INTERNET;
+
+	connman_element_set_data(element, internet);
+
+	connman_element_register(internet, element);
 
 	return 0;
 }
 
 static void resolvconf_remove(struct connman_element *element)
 {
+	struct connman_element *internet = connman_element_get_data(element);
 	gchar *cmd;
-	//int err;
+	int err;
 
 	DBG("element %p name %s", element, element->name);
+
+	DBG("element %p name %s", element, element->name);
+
+	connman_element_set_data(element, NULL);
+
+	connman_element_unregister(internet);
+
+	connman_element_unref(internet);
 
 	cmd = g_strdup_printf("resolvconf -d %s", element->netdev.name);
 
 	DBG("%s", cmd);
 
-	//err = system(cmd);
+	err = system(cmd);
 
 	g_free(cmd);
 }
