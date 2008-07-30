@@ -23,13 +23,160 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
+#include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <net/if.h>
+#include <net/route.h>
+
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/log.h>
 
+enum connman_ipv4_method {
+	CONNMAN_IPV4_METHOD_UNKNOWN = 0,
+	CONNMAN_IPV4_METHOD_OFF     = 1,
+	CONNMAN_IPV4_METHOD_STATIC  = 2,
+	CONNMAN_IPV4_METHOD_DHCP    = 3,
+};
+
+struct connman_ipv4 {
+	enum connman_ipv4_method method;
+	struct in_addr address;
+	struct in_addr netmask;
+	struct in_addr gateway;
+	struct in_addr network;
+	struct in_addr broadcast;
+	struct in_addr nameserver;
+};
+
+static int set_ipv4(struct connman_element *element,
+						struct connman_ipv4 *ipv4)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	DBG("element %p ipv4 %p", element, ipv4);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->netdev.index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	addr = (struct sockaddr_in *) &ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->address;
+
+	err = ioctl(sk, SIOCSIFADDR, &ifr);
+
+	if (err < 0)
+		DBG("address setting failed (%s)", strerror(errno));
+
+	addr = (struct sockaddr_in *) &ifr.ifr_netmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->netmask;
+
+	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
+
+	if (err < 0)
+		DBG("netmask setting failed (%s)", strerror(errno));
+
+	addr = (struct sockaddr_in *) &ifr.ifr_broadaddr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->broadcast;
+
+	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
+
+	if (err < 0)
+		DBG("broadcast setting failed (%s)", strerror(errno));
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
+
+	addr = (struct sockaddr_in *) &rt.rt_dst;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	addr = (struct sockaddr_in *) &rt.rt_gateway;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = ipv4->gateway;
+
+	addr = (struct sockaddr_in *) &rt.rt_genmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+
+	close(sk);
+
+	if (err < 0) {
+		DBG("default route failed (%s)", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+static int clear_ipv4(struct connman_element *element)
+{
+	struct ifreq ifr;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	DBG("element %p", element);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->netdev.index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	addr = (struct sockaddr_in *) &ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	//err = ioctl(sk, SIOCDIFADDR, &ifr);
+	err = ioctl(sk, SIOCSIFADDR, &ifr);
+
+	close(sk);
+
+	if (err < 0 && errno != EADDRNOTAVAIL) {
+		DBG("address removal failed (%s)", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 static int ipv4_probe(struct connman_element *element)
 {
 	struct connman_element *resolver;
+	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 
 	DBG("element %p name %s", element, element->name);
@@ -44,6 +191,13 @@ static int ipv4_probe(struct connman_element *element)
 	DBG("address %s", address);
 	DBG("netmask %s", netmask);
 	DBG("gateway %s", gateway);
+
+	memset(&ipv4, 0, sizeof(ipv4));
+	ipv4.address.s_addr = inet_addr(address);
+	ipv4.netmask.s_addr = inet_addr(netmask);
+	ipv4.gateway.s_addr = inet_addr(gateway);
+
+	set_ipv4(element, &ipv4);
 
 	resolver = connman_element_create();
 
@@ -68,6 +222,8 @@ static void ipv4_remove(struct connman_element *element)
 	connman_element_unregister(resolver);
 
 	connman_element_unref(resolver);
+
+	clear_ipv4(element);
 }
 
 static struct connman_driver ipv4_driver = {
