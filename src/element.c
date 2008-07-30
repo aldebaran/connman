@@ -205,6 +205,24 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *do_update(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+
+	DBG("conn %p", conn);
+
+	if (element->driver == NULL)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (element->driver->update) {
+		DBG("Calling update callback");
+		element->driver->update(element);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *do_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -243,6 +261,7 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 
 static GDBusMethodTable element_methods[] = {
 	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "Update",        "", "",      do_update      },
 	{ "Connect",       "", "",      do_connect     },
 	{ "Disconnect",    "", "",      do_disconnect  },
 	{ },
