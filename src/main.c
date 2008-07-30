@@ -46,6 +46,8 @@ static void sig_term(int sig)
 static void disconnect_callback(void *user_data)
 {
 	DBG("D-Bus disconnect");
+
+	g_main_loop_quit(main_loop);
 }
 
 static gchar *option_interface = NULL;
