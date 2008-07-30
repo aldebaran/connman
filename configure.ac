@@ -81,6 +81,5 @@ AC_SUBST(SQLITE_LIBS)
 
 AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile
 			test/Makefile plugins/Makefile scripts/Makefile
-			scripts/fi.epitest.hostap.WPASupplicant.service
 			scripts/connman src/connman.service connman.pc)
 			
