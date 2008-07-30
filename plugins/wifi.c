@@ -24,6 +24,7 @@
 #endif
 
 #include <string.h>
+#include <dbus/dbus.h>
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
@@ -94,6 +95,9 @@ static void scan_result(struct connman_element *parent,
 		element->network.identifier = g_strdup(temp);
 
 		data->list = g_slist_append(data->list, element);
+
+		connman_element_add_static_property(element, "SSID",
+				DBUS_TYPE_STRING, &network->identifier);
 
 		connman_element_register(element, parent);
 	} else
