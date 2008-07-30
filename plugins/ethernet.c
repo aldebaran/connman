@@ -25,6 +25,7 @@
 
 #include <unistd.h>
 #include <string.h>
+#include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
@@ -219,6 +220,92 @@ static int rtnl_request(void)
 			(struct sockaddr *) &addr, sizeof(addr));
 }
 
+static int iface_up(struct connman_element *element)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	DBG("element %p", element);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->netdev.index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ifr.ifr_flags & IFF_UP) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags |= IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
+
+static int iface_down(struct connman_element *element)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	DBG("element %p", element);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->netdev.index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (!(ifr.ifr_flags & IFF_UP)) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
+
 static int ethernet_probe(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
@@ -226,6 +313,8 @@ static int ethernet_probe(struct connman_element *element)
 	g_static_mutex_lock(&ethernet_mutex);
 	ethernet_list = g_slist_append(ethernet_list, element);
 	g_static_mutex_unlock(&ethernet_mutex);
+
+	iface_up(element);
 
 	rtnl_request();
 
@@ -235,6 +324,8 @@ static int ethernet_probe(struct connman_element *element)
 static void ethernet_remove(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
+
+	iface_down(element);
 
 	remove_elements(element);
 
