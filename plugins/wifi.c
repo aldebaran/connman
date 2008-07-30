@@ -68,6 +68,12 @@ static void scan_result(struct connman_element *parent,
 	if (data == NULL)
 		return;
 
+	if (network->identifier == NULL)
+		return;
+
+	if (network->identifier[0] == '\0')
+		return;
+
 	temp = g_strdup(network->identifier);
 
 	for (i = 0; i < strlen(temp); i++) {
