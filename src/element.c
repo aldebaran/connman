@@ -556,6 +556,9 @@ int connman_element_register(struct connman_element *element,
 		case CONNMAN_ELEMENT_TYPE_RESOLVER:
 			element->name = g_strdup("resolver");
 			break;
+		case CONNMAN_ELEMENT_TYPE_INTERNET:
+			element->name = g_strdup("internet");
+			break;
 		default:
 			break;
 		}
