@@ -631,10 +631,11 @@ static void register_element(gpointer data, gpointer user_data)
 
 	__connman_element_store(element);
 
-	g_dbus_register_interface(connection, element->path,
+	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_ELEMENT_INTERFACE,
 					element_methods, NULL, NULL,
-							element, NULL);
+						element, NULL) == FALSE)
+		connman_error("Failed to register %s", element->path);
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementAdded",
