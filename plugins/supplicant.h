@@ -25,6 +25,17 @@
 #define SUPPLICANT_INTF  "fi.epitest.hostap.WPASupplicant"
 #define SUPPLICANT_PATH  "/fi/epitest/hostap/WPASupplicant"
 
+enum supplicant_state {
+	STATE_INACTIVE,
+	STATE_SCANNING,
+	STATE_ASSOCIATING,
+	STATE_ASSOCIATED,
+	STATE_4WAY_HANDSHAKE,
+	STATE_GROUP_HANDSHAKE,
+	STATE_COMPLETED,
+	STATE_DISCONNECTED,
+};
+
 struct supplicant_network {
 	gchar *identifier;
 	GByteArray *ssid;
@@ -35,6 +46,8 @@ struct supplicant_network {
 };
 
 struct supplicant_callback {
+	void (*state_change) (struct connman_element *element,
+						enum supplicant_state state);
 	void (*scan_result) (struct connman_element *element,
 					struct supplicant_network *network);
 };
@@ -45,5 +58,5 @@ int __supplicant_stop(struct connman_element *element);
 
 int __supplicant_scan(struct connman_element *element);
 
-int __supplicant_connect(struct connman_element *element);
+int __supplicant_connect(struct connman_element *element, const char *ssid);
 int __supplicant_disconnect(struct connman_element *element);

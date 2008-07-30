@@ -30,20 +30,11 @@
 
 #include "supplicant.h"
 
+#define TIMEOUT 5000
+
 #define IEEE80211_CAP_ESS       0x0001
 #define IEEE80211_CAP_IBSS      0x0002
 #define IEEE80211_CAP_PRIVACY   0x0010
-
-enum supplicant_state {
-	STATE_INACTIVE,
-	STATE_SCANNING,
-	STATE_ASSOCIATING,
-	STATE_ASSOCIATED,
-	STATE_4WAY_HANDSHAKE,
-	STATE_GROUP_HANDSHAKE,
-	STATE_COMPLETED,
-	STATE_DISCONNECTED,
-};
 
 struct supplicant_task {
 	DBusConnection *conn;
@@ -558,8 +549,8 @@ static int set_network(struct supplicant_task *task, const char *network,
 
 static int initiate_scan(struct supplicant_task *task)
 {
-	DBusMessage *message, *reply;
-	DBusError error;
+	DBusMessage *message;
+	DBusPendingCall *call;
 
 	DBG("task %p", task);
 
@@ -568,23 +559,14 @@ static int initiate_scan(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to initiate scan");
+	if (dbus_connection_send_with_reply(task->conn, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to initiate scan");
 		dbus_message_unref(message);
 		return -EIO;
 	}
 
 	dbus_message_unref(message);
-
-	dbus_message_unref(reply);
 
 	return 0;
 }
@@ -643,17 +625,22 @@ static void extract_capabilites(struct supplicant_network *network,
 		network->has_wep = TRUE;
 }
 
-static int parse_network_properties(struct supplicant_task *task,
-							DBusMessage *message)
+static void properties_reply(DBusPendingCall *call, void *user_data)
 {
-	DBusMessageIter array, dict;
+	struct supplicant_task *task = user_data;
 	struct supplicant_network *network;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("task %p", task);
+
+	reply = dbus_pending_call_steal_reply(call);
 
 	network = g_try_new0(struct supplicant_network, 1);
 	if (network == NULL)
-		return -ENOMEM;
+		goto done;
 
-	dbus_message_iter_init(message, &array);
+	dbus_message_iter_init(reply, &array);
 
 	dbus_message_iter_recurse(&array, &dict);
 
@@ -688,14 +675,15 @@ static int parse_network_properties(struct supplicant_task *task,
 
 	g_free(network);
 
-	return 0;
+done:
+	dbus_message_unref(reply);
 }
 
 static int get_network_properties(struct supplicant_task *task,
 							const char *path)
 {
-	DBusMessage *message, *reply;
-	DBusError error;
+	DBusMessage *message;
+	DBusPendingCall *call;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, path,
 						SUPPLICANT_INTF ".BSSID",
@@ -703,59 +691,31 @@ static int get_network_properties(struct supplicant_task *task,
 	if (message == NULL)
 		return -ENOMEM;
 
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to get network properties");
+	if (dbus_connection_send_with_reply(task->conn, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to get network properties");
 		dbus_message_unref(message);
 		return -EIO;
 	}
 
+	dbus_pending_call_set_notify(call, properties_reply, task, NULL);
+
 	dbus_message_unref(message);
-
-	parse_network_properties(task, reply);
-
-	dbus_message_unref(reply);
 
 	return 0;
 }
 
-static int scan_results_available(struct supplicant_task *task)
+static void scan_results_reply(DBusPendingCall *call, void *user_data)
 {
-	DBusMessage *message, *reply;
+	struct supplicant_task *task = user_data;
+	DBusMessage *reply;
 	DBusError error;
 	char **results;
 	int i, num_results;
 
 	DBG("task %p", task);
 
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
-						SUPPLICANT_INTF ".Interface",
-							"scanResults");
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to request scan result");
-		dbus_message_unref(message);
-		return -EIO;
-	}
-
-	dbus_message_unref(message);
+	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&error);
 
@@ -768,8 +728,7 @@ static int scan_results_available(struct supplicant_task *task)
 			dbus_error_free(&error);
 		} else
 			connman_error("Wrong arguments for scan result");
-		dbus_message_unref(reply);
-		return -EIO;
+		goto done;
 	}
 
 	for (i = 0; i < num_results; i++)
@@ -777,7 +736,33 @@ static int scan_results_available(struct supplicant_task *task)
 
 	g_strfreev(results);
 
+done:
 	dbus_message_unref(reply);
+}
+
+static int scan_results_available(struct supplicant_task *task)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("task %p", task);
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
+						SUPPLICANT_INTF ".Interface",
+							"scanResults");
+	if (message == NULL)
+		return -ENOMEM;
+
+	if (dbus_connection_send_with_reply(task->conn, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to request scan result");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, scan_results_reply, task, NULL);
+
+	dbus_message_unref(message);
 
 	return 0;
 }
@@ -818,6 +803,9 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		task->state = STATE_COMPLETED;
 	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
 		task->state = STATE_DISCONNECTED;
+
+	if (task->callback && task->callback->state_change)
+		task->callback->state_change(task->element, task->state);
 
 	switch (task->state) {
 	case STATE_COMPLETED:
@@ -1019,7 +1007,7 @@ int __supplicant_scan(struct connman_element *element)
 	return 0;
 }
 
-int __supplicant_connect(struct connman_element *element)
+int __supplicant_connect(struct connman_element *element, const char *ssid)
 {
 	struct supplicant_task *task;
 
@@ -1034,7 +1022,7 @@ int __supplicant_connect(struct connman_element *element)
 	select_network(task);
 	disable_network(task);
 
-	set_network(task, NULL, NULL);
+	set_network(task, ssid, NULL);
 
 	enable_network(task);
 
