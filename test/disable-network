@@ -1,11 +1,6 @@
 #!/usr/bin/python
 
-import sys
 import dbus
-
-if (len(sys.argv) < 2):
-	print "Usage: %s <network>" % (sys.argv[0])
-	sys.exit(1)
 
 bus = dbus.SystemBus()
 
@@ -23,8 +18,5 @@ for path in elements:
 		continue
 
 	if (properties["Connected"] == dbus.Boolean(1)):
-		continue
-
-	if (properties["Identifier"] == sys.argv[1]):
-		print "Connecting %s" % (path)
-		element.Connect()
+		print "Disconnecting %s" % (path)
+		element.Disconnect()
