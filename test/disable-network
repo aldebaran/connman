@@ -13,10 +13,13 @@ for path in elements:
 	element = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Element")
 
-	properties = element.GetProperties()
-	if (properties["Type"] != "network"):
-		continue
+	try:
+		properties = element.GetProperties()
+		if (properties["Type"] != "network"):
+			continue
 
-	if (properties["Connected"] == dbus.Boolean(1)):
-		print "Disconnecting %s" % (path)
-		element.Disconnect()
+		if (properties["Connected"] == dbus.Boolean(1)):
+			print "Disconnecting %s" % (path)
+			element.Disconnect()
+	except:
+		pass

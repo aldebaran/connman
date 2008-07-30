@@ -1,0 +1,57 @@
+#!/usr/bin/python
+
+import gobject
+
+import dbus
+import dbus.service
+import dbus.mainloop.glib
+
+internet_path = ""
+
+def get_properties(path):
+	element = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Element")
+
+	return element.GetProperties()
+
+def element_added(path):
+	global internet_path
+	properties = get_properties(path)
+	if (properties["Type"] == "dhcp"):
+		print "Aquiring IP address"
+	if (properties["Type"] == "ipv4"):
+		print "IP address assigned"
+	if (properties["Type"] == "internet"):
+		internet_path = path
+		print "Succesfully connected"
+
+def element_updated(path):
+	properties = get_properties(path)
+	if (properties["Type"] == "network" and properties["Connected"] == 1):
+		print "Associated with %s" % (properties["SSID"])
+
+def element_removed(path):
+	global internet_path
+	if (path == internet_path):
+		internet_path = ""
+		print "Connection terminated"
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	bus.add_signal_receiver(element_added,
+				dbus_interface = "org.moblin.connman.Manager",
+						signal_name = "ElementAdded")
+
+	bus.add_signal_receiver(element_updated,
+				dbus_interface = "org.moblin.connman.Manager",
+						signal_name = "ElementUpdated")
+
+	bus.add_signal_receiver(element_removed,
+				dbus_interface = "org.moblin.connman.Manager",
+						signal_name = "ElementRemoved")
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()
