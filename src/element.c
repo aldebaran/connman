@@ -205,6 +205,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *do_update(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -260,10 +266,11 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 }
 
 static GDBusMethodTable element_methods[] = {
-	{ "GetProperties", "", "a{sv}", get_properties },
-	{ "Update",        "", "",      do_update      },
-	{ "Connect",       "", "",      do_connect     },
-	{ "Disconnect",    "", "",      do_disconnect  },
+	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "SetProperty",   "sv", "",      set_property   },
+	{ "Update",        "",   "",      do_update      },
+	{ "Connect",       "",   "",      do_connect     },
+	{ "Disconnect",    "",   "",      do_disconnect  },
 	{ },
 };
 
