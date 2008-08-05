@@ -50,14 +50,14 @@ static void disconnect_callback(void *user_data)
 	g_main_loop_quit(main_loop);
 }
 
-static gchar *option_interface = NULL;
+static gchar *option_device = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_compat = FALSE;
 static gboolean option_debug = FALSE;
 
 static GOptionEntry options[] = {
-	{ "interface", 'i', 0, G_OPTION_ARG_STRING, &option_interface,
-				"Specify network interface", "IFACE" },
+	{ "device", 'i', 0, G_OPTION_ARG_STRING, &option_device,
+				"Specify network device/interface", "DEV" },
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
@@ -138,7 +138,7 @@ int main(int argc, char *argv[])
 
 	__connman_storage_init();
 
-	__connman_element_init(conn);
+	__connman_element_init(conn, option_device);
 
 	__connman_agent_init(conn);
 
@@ -146,7 +146,7 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_init();
 
-	g_free(option_interface);
+	g_free(option_device);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;

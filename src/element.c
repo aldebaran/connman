@@ -40,6 +40,8 @@ static GSList *driver_list = NULL;
 static GThreadPool *thread_register = NULL;
 static GThreadPool *thread_unregister = NULL;
 
+static gchar *device_filter = NULL;
+
 static const char *type2string(enum connman_element_type type)
 {
 	switch (type) {
@@ -601,6 +603,11 @@ int connman_element_register(struct connman_element *element,
 {
 	DBG("element %p name %s parent %p", element, element->name, parent);
 
+	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+		if (g_str_equal(device_filter, element->netdev.name) == FALSE)
+			return -EINVAL;
+	}
+
 	if (connman_element_ref(element) == NULL)
 		return -EINVAL;
 
@@ -788,7 +795,7 @@ static void unregister_element(gpointer data, gpointer user_data)
 	connman_element_unref(element);
 }
 
-int __connman_element_init(DBusConnection *conn)
+int __connman_element_init(DBusConnection *conn, const char *device)
 {
 	struct connman_element *element;
 
@@ -797,6 +804,8 @@ int __connman_element_init(DBusConnection *conn)
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
 		return -EIO;
+
+	device_filter = g_strdup(device);
 
 	g_static_rw_lock_writer_lock(&element_lock);
 
@@ -872,6 +881,8 @@ void __connman_element_cleanup(void)
 	g_node_destroy(element_root);
 	element_root = NULL;
 	g_static_rw_lock_writer_unlock(&element_lock);
+
+	g_free(device_filter);
 
 	dbus_connection_unref(connection);
 }

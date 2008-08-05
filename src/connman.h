@@ -52,7 +52,7 @@ void __connman_plugin_cleanup(void);
 #include <connman/driver.h>
 #include <connman/element.h>
 
-int __connman_element_init(DBusConnection *conn);
+int __connman_element_init(DBusConnection *conn, const char *device);
 void __connman_element_cleanup(void);
 
 void __connman_element_list(enum connman_element_type type,
