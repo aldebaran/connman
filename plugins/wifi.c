@@ -32,6 +32,72 @@
 
 #include "supplicant.h"
 
+static struct connman_element *dhcp_element = NULL;
+
+static int network_probe(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	return 0;
+}
+
+static void network_remove(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+}
+
+static int network_connect(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	if (dhcp_element != NULL) {
+		connman_element_unregister(dhcp_element);
+		dhcp_element = NULL;
+	}
+
+	__supplicant_disconnect(element);
+
+	element->connected = FALSE;
+
+	connman_element_update(element);
+
+	g_free(element->parent->network.identifier);
+	element->parent->network.identifier = element->network.identifier;
+
+	if (__supplicant_connect(element, element->network.identifier) < 0)
+		connman_error("Failed to initiate connect");
+
+	return 0;
+}
+
+static int network_disconnect(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	if (dhcp_element != NULL) {
+		connman_element_unregister(dhcp_element);
+		dhcp_element = NULL;
+	}
+
+	__supplicant_disconnect(element);
+
+	element->connected = FALSE;
+
+	connman_element_update(element);
+
+	return 0;
+}
+
+static struct connman_driver network_driver = {
+	.name		= "wifi-network",
+	.type		= CONNMAN_ELEMENT_TYPE_NETWORK,
+	.subtype	= CONNMAN_ELEMENT_SUBTYPE_WIFI,
+	.probe		= network_probe,
+	.remove		= network_remove,
+	.connect	= network_connect,
+	.disconnect	= network_disconnect,
+};
+
 struct wifi_data {
 	GStaticMutex mutex;
 	GSList *list;
@@ -56,6 +122,40 @@ static struct connman_element *find_element(struct wifi_data *data,
 	return NULL;
 }
 
+static void state_change(struct connman_element *parent,
+						enum supplicant_state state)
+{
+	struct wifi_data *data = connman_element_get_data(parent);
+	struct connman_element *element;
+
+	DBG("state %d", state);
+
+	if (parent->network.identifier == NULL)
+		return;
+
+	element = find_element(data, parent->network.identifier);
+	if (element == NULL)
+		return;
+
+	if (state == STATE_COMPLETED) {
+		struct connman_element *dhcp;
+
+		dhcp = connman_element_create();
+
+		dhcp->type = CONNMAN_ELEMENT_TYPE_DHCP;
+		dhcp->netdev.index = element->netdev.index;
+		dhcp->netdev.name = g_strdup(element->netdev.name);
+
+		dhcp_element = dhcp;
+
+		element->connected = TRUE;
+
+		connman_element_update(element);
+
+		connman_element_register(dhcp, element);
+	}
+}
+
 static void scan_result(struct connman_element *parent,
 					struct supplicant_network *network)
 {
@@ -78,21 +178,28 @@ static void scan_result(struct connman_element *parent,
 	temp = g_strdup(network->identifier);
 
 	for (i = 0; i < strlen(temp); i++) {
-		if (temp[i] == ' ' || temp[i] == '.')
+		if (temp[i] == ' ' || temp[i] == '.' || temp[i] == '-')
+			temp[i] = '_';
+		if (temp[i] == '(' || temp[i] == ')')
+			temp[i] = '_';
+		if (g_ascii_isprint(temp[i]) == FALSE)
 			temp[i] = '_';
 		temp[i] = g_ascii_tolower(temp[i]);
 	}
 
 	g_static_mutex_lock(&data->mutex);
 
-	element = find_element(data, temp);
+	element = find_element(data, network->identifier);
 	if (element == NULL) {
 		element = connman_element_create();
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
 		element->name = temp;
 
-		element->network.identifier = g_strdup(temp);
+		element->network.identifier = g_strdup(network->identifier);
+
+		element->netdev.index = parent->netdev.index;
+		element->netdev.name = g_strdup(parent->netdev.name);
 
 		data->list = g_slist_append(data->list, element);
 
@@ -107,6 +214,7 @@ static void scan_result(struct connman_element *parent,
 }
 
 static struct supplicant_callback wifi_callback = {
+	.state_change	= state_change,
 	.scan_result	= scan_result,
 };
 
@@ -164,21 +272,44 @@ static void wifi_remove(struct connman_element *element)
 	g_free(data);
 }
 
+static int wifi_update(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	__supplicant_scan(element);
+
+	return 0;
+}
+
 static struct connman_driver wifi_driver = {
-	.name		= "wifi",
+	.name		= "wifi-device",
 	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
 	.subtype	= CONNMAN_ELEMENT_SUBTYPE_WIFI,
 	.probe		= wifi_probe,
 	.remove		= wifi_remove,
+	.update		= wifi_update,
 };
 
 static int wifi_init(void)
 {
-	return connman_driver_register(&wifi_driver);
+	int err;
+
+	err = connman_driver_register(&network_driver);
+	if (err < 0)
+		return err;
+
+	err = connman_driver_register(&wifi_driver);
+	if (err < 0) {
+		connman_driver_unregister(&network_driver);
+		return err;
+	}
+
+	return 0;
 }
 
 static void wifi_exit(void)
 {
+	connman_driver_unregister(&network_driver);
 	connman_driver_unregister(&wifi_driver);
 }
 
