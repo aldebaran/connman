@@ -2,7 +2,7 @@
 plugindir = $(libdir)/connman/plugins
 
 plugin_LTLIBRARIES = hal.la ethernet.la wifi.la bluetooth.la \
-					dhclient.la ipv4.la resolvconf.la
+			dhclient.la ipv4.la resolvconf.la resolvfile.la
 
 hal_la_SOURCES = hal.c
 hal_la_LIBADD = @HAL_LIBS@
@@ -21,6 +21,8 @@ dhclient_la_CFLAGS = @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 ipv4_la_SOURCES = ipv4.c
 
 resolvconf_la_SOURCES = resolvconf.c
+
+resolvfile_la_SOURCES = resolvfile.c
 
 AM_LDFLAGS = -no-undefined -module -avoid-version \
 				-export-symbols-regex connman_plugin_desc

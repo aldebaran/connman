@@ -29,7 +29,7 @@
 #include <connman/driver.h>
 #include <connman/log.h>
 
-static int resolvconf_probe(struct connman_element *element)
+static int resolvfile_probe(struct connman_element *element)
 {
 	const char *nameserver = NULL;
 	struct connman_element *internet;
@@ -44,8 +44,8 @@ static int resolvconf_probe(struct connman_element *element)
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	cmd = g_strdup_printf("echo \"nameserver %s\" | resolvconf -a %s",
-					nameserver, element->netdev.name);
+	cmd = g_strdup_printf("echo \"nameserver %s\" > /etc/resolv.conf",
+								nameserver);
 
 	DBG("%s", cmd);
 
@@ -64,11 +64,9 @@ static int resolvconf_probe(struct connman_element *element)
 	return 0;
 }
 
-static void resolvconf_remove(struct connman_element *element)
+static void resolvfile_remove(struct connman_element *element)
 {
 	struct connman_element *internet = connman_element_get_data(element);
-	gchar *cmd;
-	int err;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -77,33 +75,25 @@ static void resolvconf_remove(struct connman_element *element)
 	connman_element_unregister(internet);
 
 	connman_element_unref(internet);
-
-	cmd = g_strdup_printf("resolvconf -d %s", element->netdev.name);
-
-	DBG("%s", cmd);
-
-	err = system(cmd);
-
-	g_free(cmd);
 }
 
-static struct connman_driver resolvconf_driver = {
+static struct connman_driver resolvfile_driver = {
 	.name		= "resolvconf",
 	.type		= CONNMAN_ELEMENT_TYPE_RESOLVER,
-	.priority	= CONNMAN_DRIVER_PRIORITY_HIGH,
-	.probe		= resolvconf_probe,
-	.remove		= resolvconf_remove,
+	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
+	.probe		= resolvfile_probe,
+	.remove		= resolvfile_remove,
 };
 
-static int resolvconf_init(void)
+static int resolvfile_init(void)
 {
-	return connman_driver_register(&resolvconf_driver);
+	return connman_driver_register(&resolvfile_driver);
 }
 
-static void resolvconf_exit(void)
+static void resolvfile_exit(void)
 {
-	connman_driver_unregister(&resolvconf_driver);
+	connman_driver_unregister(&resolvfile_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE("resolvconf", "Name resolver plugin", VERSION,
-					resolvconf_init, resolvconf_exit)
+CONNMAN_PLUGIN_DEFINE("resolvfile", "Name resolver plugin", VERSION,
+					resolvfile_init, resolvfile_exit)
