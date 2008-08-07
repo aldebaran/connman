@@ -19,4 +19,8 @@ for path in elements:
 		print "[ %s ]" % (path)
 
 	if (properties["Type"] == "network"):
-		print "    %s" % (properties["SSID"])
+		if (properties["Connected"] == 1):
+			state = "*"
+		else:
+			state = " "
+		print "    %s %s" % (state, properties["SSID"])
