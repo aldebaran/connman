@@ -37,7 +37,52 @@ void __connman_profile_list(DBusMessageIter *iter)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
 
+static void append_string(DBusMessageIter *dict, const char *key, void *val)
+{
+	DBusMessageIter entry, value;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, val);
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *name = "Default";
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	append_string(&dict, "Name", &name);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
 static GDBusMethodTable profile_methods[] = {
+	{ "GetProperties", "", "a{sv}", get_properties },
 	{ },
 };
 
