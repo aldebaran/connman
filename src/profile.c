@@ -36,3 +36,38 @@ void __connman_profile_list(DBusMessageIter *iter)
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
+
+static GDBusMethodTable profile_methods[] = {
+	{ },
+};
+
+static DBusConnection *connection = NULL;
+
+int __connman_profile_init(DBusConnection *conn)
+{
+	DBG("conn %p", conn);
+
+	connection = dbus_connection_ref(conn);
+	if (connection == NULL)
+		return -1;
+
+	g_dbus_register_interface(connection, "/profile/default",
+						CONNMAN_PROFILE_INTERFACE,
+						profile_methods,
+						NULL, NULL, NULL, NULL);
+
+	return 0;
+}
+
+void __connman_profile_cleanup(void)
+{
+	DBG("conn %p", connection);
+
+	g_dbus_unregister_interface(connection, "/profile/default",
+						CONNMAN_PROFILE_INTERFACE);
+
+	if (connection == NULL)
+		return;
+
+	dbus_connection_unref(connection);
+}

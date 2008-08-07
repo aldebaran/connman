@@ -39,6 +39,9 @@ void __connman_agent_cleanup(void);
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
 
+int __connman_profile_init(DBusConnection *conn);
+void __connman_profile_cleanup(void);
+
 void __connman_profile_list(DBusMessageIter *iter);
 
 #include <connman/log.h>
