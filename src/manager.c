@@ -75,6 +75,30 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *list_profiles(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter array, iter;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_profile_list(&iter);
+
+	dbus_message_iter_close_container(&array, &iter);
+
+	return reply;
+}
+
 static DBusMessage *list_elements(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -126,6 +150,8 @@ static DBusMessage *list_devices(DBusConnection *conn,
 static GDBusMethodTable manager_methods[] = {
 	{ "RegisterAgent",   "o", "", register_agent   },
 	{ "UnregisterAgent", "o", "", unregister_agent },
+
+	{ "ListProfiles", "", "ao", list_profiles },
 
 	{ "ListElements", "", "ao", list_elements },
 	{ "ListDevices",  "", "ao", list_devices  },
