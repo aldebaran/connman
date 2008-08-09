@@ -325,6 +325,9 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
 static gboolean match_driver(struct connman_element *element,
 					struct connman_driver *driver)
 {
+	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
+		return FALSE;
+
 	if (element->type != driver->type &&
 			driver->type != CONNMAN_ELEMENT_TYPE_UNKNOWN)
 		return FALSE;
