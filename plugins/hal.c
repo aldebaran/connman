@@ -290,5 +290,5 @@ static void hal_exit(void)
 	dbus_connection_unref(conn);
 }
 
-CONNMAN_PLUGIN_DEFINE("HAL", "Hardware detection plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE("hal", "Hardware detection plugin", VERSION,
 							hal_init, hal_exit)

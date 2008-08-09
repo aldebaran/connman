@@ -313,5 +313,5 @@ static void wifi_exit(void)
 	connman_driver_unregister(&wifi_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE("WiFi", "WiFi interface plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE("wifi", "WiFi interface plugin", VERSION,
 							wifi_init, wifi_exit)
