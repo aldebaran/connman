@@ -23,11 +23,14 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
 #include <stdlib.h>
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/log.h>
+
+#define RESOLVCONF "/sbin/resolvconf"
 
 static int resolvconf_probe(struct connman_element *element)
 {
@@ -38,14 +41,18 @@ static int resolvconf_probe(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	if (access(RESOLVCONF, X_OK) < 0)
+		return -errno;
+
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER, &nameserver);
 
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	cmd = g_strdup_printf("echo \"nameserver %s\" | resolvconf -a %s",
-					nameserver, element->netdev.name);
+	cmd = g_strdup_printf("echo \"nameserver %s\" | %s -a %s",
+						RESOLVCONF, nameserver,
+							element->netdev.name);
 
 	DBG("%s", cmd);
 
@@ -78,7 +85,7 @@ static void resolvconf_remove(struct connman_element *element)
 
 	connman_element_unref(internet);
 
-	cmd = g_strdup_printf("resolvconf -d %s", element->netdev.name);
+	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, element->netdev.name);
 
 	DBG("%s", cmd);
 
