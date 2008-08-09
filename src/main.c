@@ -146,6 +146,8 @@ int main(int argc, char *argv[])
 
 	__connman_profile_init(conn);
 
+	__connman_rtnl_init();
+
 	__connman_plugin_init();
 
 	g_free(option_device);
@@ -156,6 +158,8 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 
 	g_main_loop_run(main_loop);
+
+	__connman_rtnl_cleanup();
 
 	__connman_agent_cleanup();
 

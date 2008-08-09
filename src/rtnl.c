@@ -36,21 +36,6 @@
 
 #include "connman.h"
 
-struct rtnl_data {
-	unsigned ifi_flags;
-};
-
-static struct rtnl_data *get_rtnl_data(struct connman_iface *iface)
-{
-	if ((iface->flags & CONNMAN_IFACE_FLAG_RTNL) == 0)
-		return NULL;
-
-	if (iface->rtnl_data == NULL)
-		iface->rtnl_data = g_try_new0(struct rtnl_data, 1);
-
-	return iface->rtnl_data;
-}
-
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
 {
 	if (family == AF_INET) {
@@ -85,8 +70,6 @@ static inline void print_attr(struct rtattr *attr, const char *name)
 
 static void rtnl_link(struct nlmsghdr *hdr)
 {
-	struct connman_iface *iface;
-	struct rtnl_data *data;
 	struct ifinfomsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -95,34 +78,6 @@ static void rtnl_link(struct nlmsghdr *hdr)
 	bytes = IFLA_PAYLOAD(hdr);
 
 	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
-
-	iface = __connman_iface_find(msg->ifi_index);
-	if (iface == NULL)
-		return;
-
-	data = get_rtnl_data(iface);
-	if (data == NULL)
-		return;
-
-	if ((data->ifi_flags & IFF_RUNNING) != (msg->ifi_flags & IFF_RUNNING)) {
-		if (!(iface->flags & CONNMAN_IFACE_FLAG_NOCARRIER)) {
-			if (msg->ifi_flags & IFF_RUNNING)
-				connman_iface_indicate_carrier_on(iface);
-			else
-				connman_iface_indicate_carrier_off(iface);
-		}
-	}
-
-	if ((data->ifi_flags & IFF_UP) != (msg->ifi_flags & IFF_UP)) {
-		if (msg->ifi_flags & IFF_UP)
-			connman_iface_indicate_ifup(iface);
-		else
-			connman_iface_indicate_ifdown(iface);
-	}
-
-	data->ifi_flags = msg->ifi_flags;
-
-	return;
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -158,9 +113,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			print_attr(attr, "master");
 			break;
 		case IFLA_WIRELESS:
-			if (iface->driver->rtnl_wireless)
-				iface->driver->rtnl_wireless(iface,
-					RTA_DATA(attr), RTA_PAYLOAD(attr));
+			print_attr(attr, "wireless");
 			break;
 		case IFLA_PROTINFO:
 			print_attr(attr, "protinfo");
@@ -189,8 +142,6 @@ static void rtnl_link(struct nlmsghdr *hdr)
 
 static void rtnl_addr(struct nlmsghdr *hdr)
 {
-	struct connman_iface *iface;
-	struct rtnl_data *data;
 	struct ifaddrmsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -199,14 +150,6 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 	bytes = IFA_PAYLOAD(hdr);
 
 	DBG("ifa_family %d ifa_index %d", msg->ifa_family, msg->ifa_index);
-
-	iface = __connman_iface_find(msg->ifa_index);
-	if (iface == NULL)
-		return;
-
-	data = get_rtnl_data(iface);
-	if (data == NULL)
-		return;
 
 	for (attr = IFA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -406,7 +349,7 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK;
+	//addr.nl_groups = RTMGRP_LINK;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
@@ -418,9 +361,8 @@ int __connman_rtnl_init(void)
 	channel = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(channel, TRUE);
 
-	g_io_add_watch(channel,
-			G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-						netlink_event, NULL);
+	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+							netlink_event, NULL);
 
 	return 0;
 }
