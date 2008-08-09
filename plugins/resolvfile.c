@@ -23,7 +23,11 @@
 #include <config.h>
 #endif
 
-#include <stdlib.h>
+#include <stdio.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/stat.h>
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
@@ -34,7 +38,7 @@ static int resolvfile_probe(struct connman_element *element)
 	const char *nameserver = NULL;
 	struct connman_element *internet;
 	gchar *cmd;
-	int err;
+	int fd, len, err;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -44,14 +48,20 @@ static int resolvfile_probe(struct connman_element *element)
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	cmd = g_strdup_printf("echo \"nameserver %s\" > /etc/resolv.conf",
-								nameserver);
+	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0)
+		return errno;
 
-	DBG("%s", cmd);
+	err = ftruncate(fd, 0);
 
-	err = system(cmd);
+	cmd = g_strdup_printf("nameserver %s\n", nameserver);
+
+	len = write(fd, cmd, strlen(cmd));
 
 	g_free(cmd);
+
+	close(fd);
 
 	internet = connman_element_create();
 
