@@ -746,12 +746,12 @@ static void register_element(gpointer data, gpointer user_data)
 
 		DBG("driver %p name %s", driver, driver->name);
 
-		if (driver->probe(element) < 0)
-			continue;
-
-		connman_element_lock(element);
-		element->driver = driver;
-		connman_element_unlock(element);
+		if (driver->probe(element) == 0) {
+			connman_element_lock(element);
+			element->driver = driver;
+			connman_element_unlock(element);
+			break;
+		}
 	}
 
 	g_static_rw_lock_writer_unlock(&element_lock);
