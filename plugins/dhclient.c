@@ -41,7 +41,6 @@ struct dhclient_task {
 	int ifindex;
 	gchar *ifname;
 	struct connman_element *element;
-	struct connman_element *child;
 };
 
 static GStaticMutex task_mutex = G_STATIC_MUTEX_INIT;
@@ -144,7 +143,6 @@ static int dhclient_probe(struct connman_element *element)
 	task->ifindex = element->netdev.index;
 	task->ifname = g_strdup(element->netdev.name);
 	task->element = element;
-	task->child = NULL;
 
 	if (task->ifname == NULL) {
 		g_free(task);
@@ -204,23 +202,17 @@ static void dhclient_remove(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	g_static_mutex_lock(&task_mutex);
+
 	task = find_task_by_index(element->netdev.index);
+	if (task != NULL)
+		task_list = g_slist_remove(task_list, task);
+
 	g_static_mutex_unlock(&task_mutex);
 
 	if (task == NULL)
 		return;
 
 	DBG("release %s", task->ifname);
-
-	g_static_mutex_lock(&task_mutex);
-	task_list = g_slist_remove(task_list, task);
-	g_static_mutex_unlock(&task_mutex);
-
-	if (task->child != NULL) {
-		connman_element_unregister(task->child);
-		connman_element_unref(task->child);
-		task->child = NULL;
-	}
 
 	kill_task(task);
 }
@@ -308,16 +300,16 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	if (g_ascii_strcasecmp(text, "PREINIT") == 0) {
 	} else if (g_ascii_strcasecmp(text, "BOUND") == 0 ||
 				g_ascii_strcasecmp(text, "REBOOT") == 0) {
-		task->child = connman_element_create();
-		task->child->type = CONNMAN_ELEMENT_TYPE_IPV4;
-		task->child->netdev.index = task->ifindex;
-		task->child->netdev.name = g_strdup(task->ifname);
+		struct connman_element *element;
+		element = connman_element_create();
+		element->type = CONNMAN_ELEMENT_TYPE_IPV4;
+		element->netdev.index = task->ifindex;
+		element->netdev.name = g_strdup(task->ifname);
 		connman_element_update(task->element);
-		connman_element_register(task->child, task->element);
+		connman_element_register(element, task->element);
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
 				g_ascii_strcasecmp(text, "REBIND") == 0) {
 		connman_element_update(task->element);
-		connman_element_update(task->child);
 	} else {
 	}
 
@@ -362,12 +354,6 @@ static void dhclient_exit(void)
 
 	for (list = task_list; list; list = list->next) {
 		struct dhclient_task *task = list->data;
-
-		if (task->child) {
-			connman_element_unregister(task->child);
-			connman_element_unref(task->child);
-			task->child = NULL;
-		}
 
 		DBG("killing process %d", task->pid);
 
