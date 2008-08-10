@@ -656,21 +656,38 @@ void connman_element_unregister_children(struct connman_element *element)
 		g_thread_pool_push(thread_unregister_children, element, NULL);
 }
 
-void connman_element_update(struct connman_element *element)
+static gboolean update_element(GNode *node, gpointer user_data)
 {
-	DBG("element %p name %s", element, element->name);
+	struct connman_element *element = node->data;
 
-	g_static_rw_lock_reader_lock(&element_lock);
+	DBG("element %p name %s", element, element->name);
 
 	if (element->driver && element->driver->update)
 		element->driver->update(element);
-
-	g_static_rw_lock_reader_unlock(&element_lock);
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+
+	return FALSE;
+}
+
+void connman_element_update(struct connman_element *element)
+{
+	GNode *node;
+
+	DBG("element %p name %s", element, element->name);
+
+	g_static_rw_lock_reader_lock(&element_lock);
+
+	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
+
+	if (node != NULL)
+		g_node_traverse(node, G_PRE_ORDER,
+				G_TRAVERSE_ALL, -1, update_element, NULL);
+
+	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
 static void register_element(gpointer data, gpointer user_data)
