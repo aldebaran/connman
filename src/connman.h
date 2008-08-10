@@ -69,49 +69,6 @@ const char *__connman_element_subtype2string(enum connman_element_subtype type);
 int __connman_element_load(struct connman_element *element);
 int __connman_element_store(struct connman_element *element);
 
-#include <connman/iface.h>
-
-int __connman_iface_init(DBusConnection *conn, const char *interface);
-void __connman_iface_cleanup(void);
-
-struct connman_iface *__connman_iface_find(int index);
-void __connman_iface_list(DBusMessageIter *iter);
-gboolean __connman_iface_is_connected(void);
-
-int __connman_iface_create_identifier(struct connman_iface *iface);
-int __connman_iface_init_via_inet(struct connman_iface *iface);
-int __connman_iface_start(struct connman_iface *iface);
-int __connman_iface_stop(struct connman_iface *iface);
-int __connman_iface_connect(struct connman_iface *iface,
-					struct connman_network *network);
-int __connman_iface_disconnect(struct connman_iface *iface);
-
-char *__connman_iface_find_passphrase(struct connman_iface *iface,
-							const char *network);
-int __connman_iface_load(struct connman_iface *iface);
-int __connman_iface_store(struct connman_iface *iface);
-int __connman_iface_store_current_network(struct connman_iface *iface);
-int __connman_iface_load_networks(struct connman_iface *iface);
-
-void __connman_iface_network_list(struct connman_iface *iface,
-						DBusMessageIter *iter);
-struct connman_network *__connman_iface_find_network(struct connman_iface *iface,
-								const char *path);
-int __connman_iface_remove_network(struct connman_iface *iface, const char *path);
-const char *__connman_iface_add_network(struct connman_iface *iface,
-				const char *identifier, const char *passphrase);
-
-int __connman_network_init(DBusConnection *conn);
-void __connman_network_cleanup(void);
-
-const char *__connman_iface_type2string(enum connman_iface_type type);
-const char *__connman_iface_state2string(enum connman_iface_state state);
-const char *__connman_iface_policy2string(enum connman_iface_policy policy);
-enum connman_iface_policy __connman_iface_string2policy(const char *policy);
-
-const char *__connman_ipv4_method2string(enum connman_ipv4_method method);
-enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
-
 #include <connman/rtnl.h>
 
 int __connman_rtnl_init(void);
