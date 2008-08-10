@@ -119,6 +119,7 @@ extern int connman_element_get_value(struct connman_element *element,
 extern int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);
 extern void connman_element_unregister(struct connman_element *element);
+extern void connman_element_unregister_children(struct connman_element *element);
 extern void connman_element_update(struct connman_element *element);
 
 static inline void *connman_element_get_data(struct connman_element *element)

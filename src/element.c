@@ -39,6 +39,7 @@ static GSList *driver_list = NULL;
 
 static GThreadPool *thread_register = NULL;
 static GThreadPool *thread_unregister = NULL;
+static GThreadPool *thread_unregister_children = NULL;
 
 static gchar *device_filter = NULL;
 
@@ -647,6 +648,14 @@ void connman_element_unregister(struct connman_element *element)
 		g_thread_pool_push(thread_unregister, element, NULL);
 }
 
+void connman_element_unregister_children(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	if (thread_unregister_children != NULL)
+		g_thread_pool_push(thread_unregister_children, element, NULL);
+}
+
 void connman_element_update(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
@@ -734,8 +743,12 @@ static void register_element(gpointer data, gpointer user_data)
 static gboolean remove_element(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
+	struct connman_element *root = user_data;
 
 	DBG("element %p name %s", element, element->name);
+
+	if (element == root)
+		return FALSE;
 
 	if (element->driver) {
 		if (element->driver->remove)
@@ -782,6 +795,24 @@ static void unregister_element(gpointer data, gpointer user_data)
 	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
+static void unregister_children(gpointer data, gpointer user_data)
+{
+	struct connman_element *element = data;
+	GNode *node;
+
+	DBG("element %p name %s", element, element->name);
+
+	g_static_rw_lock_writer_lock(&element_lock);
+
+	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
+
+	if (node != NULL)
+		g_node_traverse(node, G_POST_ORDER,
+				G_TRAVERSE_ALL, -1, remove_element, element);
+
+	g_static_rw_lock_writer_unlock(&element_lock);
+}
+
 int __connman_element_init(DBusConnection *conn, const char *device)
 {
 	struct connman_element *element;
@@ -809,6 +840,8 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 	thread_register = g_thread_pool_new(register_element,
 							NULL, 1, FALSE, NULL);
 	thread_unregister = g_thread_pool_new(unregister_element,
+							NULL, 1, FALSE, NULL);
+	thread_unregister_children = g_thread_pool_new(unregister_children,
 							NULL, 1, FALSE, NULL);
 
 	return 0;
@@ -863,6 +896,9 @@ void __connman_element_cleanup(void)
 
 	g_thread_pool_free(thread_unregister, FALSE, TRUE);
 	thread_unregister = NULL;
+
+	g_thread_pool_free(thread_unregister_children, FALSE, TRUE);
+	thread_unregister_children = NULL;
 
 	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_destroy(element_root);
