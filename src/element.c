@@ -623,33 +623,8 @@ int connman_element_register(struct connman_element *element,
 
 	__connman_element_load(element);
 
-	if (element->name == NULL) {
-		switch (element->type) {
-		case CONNMAN_ELEMENT_TYPE_IPV4:
-			element->name = g_strdup("ipv4");
-			break;
-		case CONNMAN_ELEMENT_TYPE_IPV6:
-			element->name = g_strdup("ipv6");
-			break;
-		case CONNMAN_ELEMENT_TYPE_DHCP:
-			element->name = g_strdup("dhcp");
-			break;
-		case CONNMAN_ELEMENT_TYPE_BOOTP:
-			element->name = g_strdup("bootp");
-			break;
-		case CONNMAN_ELEMENT_TYPE_ZEROCONF:
-			element->name = g_strdup("zeroconf");
-			break;
-		case CONNMAN_ELEMENT_TYPE_RESOLVER:
-			element->name = g_strdup("resolver");
-			break;
-		case CONNMAN_ELEMENT_TYPE_INTERNET:
-			element->name = g_strdup("internet");
-			break;
-		default:
-			break;
-		}
-	}
+	if (element->name == NULL)
+		element->name = g_strdup(type2string(element->type));
 
 	element->parent = parent;
 
