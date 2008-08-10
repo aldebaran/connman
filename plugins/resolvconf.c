@@ -51,7 +51,7 @@ static int resolvconf_probe(struct connman_element *element)
 		return -EINVAL;
 
 	cmd = g_strdup_printf("echo \"nameserver %s\" | %s -a %s",
-						RESOLVCONF, nameserver,
+						nameserver, RESOLVCONF,
 							element->netdev.name);
 
 	DBG("%s", cmd);
