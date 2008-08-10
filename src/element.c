@@ -623,8 +623,11 @@ int connman_element_register(struct connman_element *element,
 
 	__connman_element_load(element);
 
-	if (element->name == NULL)
+	if (element->name == NULL) {
 		element->name = g_strdup(type2string(element->type));
+		if (element->name == NULL)
+			return -EINVAL;
+	}
 
 	element->parent = parent;
 
