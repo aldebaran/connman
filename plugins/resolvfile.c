@@ -67,8 +67,6 @@ static int resolvfile_probe(struct connman_element *element)
 
 	internet->type = CONNMAN_ELEMENT_TYPE_INTERNET;
 
-	connman_element_set_data(element, internet);
-
 	connman_element_register(internet, element);
 
 	return 0;
@@ -76,15 +74,7 @@ static int resolvfile_probe(struct connman_element *element)
 
 static void resolvfile_remove(struct connman_element *element)
 {
-	struct connman_element *internet = connman_element_get_data(element);
-
 	DBG("element %p name %s", element, element->name);
-
-	connman_element_set_data(element, NULL);
-
-	connman_element_unregister(internet);
-
-	connman_element_unref(internet);
 }
 
 static struct connman_driver resolvfile_driver = {

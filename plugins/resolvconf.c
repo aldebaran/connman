@@ -64,8 +64,6 @@ static int resolvconf_probe(struct connman_element *element)
 
 	internet->type = CONNMAN_ELEMENT_TYPE_INTERNET;
 
-	connman_element_set_data(element, internet);
-
 	connman_element_register(internet, element);
 
 	return 0;
@@ -73,17 +71,10 @@ static int resolvconf_probe(struct connman_element *element)
 
 static void resolvconf_remove(struct connman_element *element)
 {
-	struct connman_element *internet = connman_element_get_data(element);
 	gchar *cmd;
 	int err;
 
 	DBG("element %p name %s", element, element->name);
-
-	connman_element_set_data(element, NULL);
-
-	connman_element_unregister(internet);
-
-	connman_element_unref(internet);
 
 	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, element->netdev.name);
 

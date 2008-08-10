@@ -204,8 +204,6 @@ static int ipv4_probe(struct connman_element *element)
 	resolver->type = CONNMAN_ELEMENT_TYPE_RESOLVER;
 	resolver->netdev.name = g_strdup(element->netdev.name);
 
-	connman_element_set_data(element, resolver);
-
 	connman_element_register(resolver, element);
 
 	return 0;
@@ -213,15 +211,7 @@ static int ipv4_probe(struct connman_element *element)
 
 static void ipv4_remove(struct connman_element *element)
 {
-	struct connman_element *resolver = connman_element_get_data(element);
-
 	DBG("element %p name %s", element, element->name);
-
-	connman_element_set_data(element, NULL);
-
-	connman_element_unregister(resolver);
-
-	connman_element_unref(resolver);
 
 	clear_ipv4(element);
 }
