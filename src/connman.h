@@ -118,14 +118,3 @@ int __connman_rtnl_init(void);
 void __connman_rtnl_cleanup(void);
 
 int __connman_rtnl_send(const void *buf, size_t len);
-
-#include <connman/dhcp.h>
-
-int __connman_dhcp_request(struct connman_iface *iface);
-int __connman_dhcp_release(struct connman_iface *iface);
-
-#include <connman/resolver.h>
-
-int __connman_resolver_append(struct connman_iface *iface,
-						const char *nameserver);
-int __connman_resolver_remove(struct connman_iface *iface);
