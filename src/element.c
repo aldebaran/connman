@@ -712,10 +712,6 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_node_append_data(node, element);
 
-	g_static_rw_lock_writer_unlock(&element_lock);
-
-	__connman_element_store(element);
-
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_ELEMENT_INTERFACE,
 					element_methods, NULL, NULL,
@@ -727,11 +723,9 @@ static void register_element(gpointer data, gpointer user_data)
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
-		g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "DeviceAdded",
-				DBUS_TYPE_OBJECT_PATH, &element->path,
-							DBUS_TYPE_INVALID);
+	g_static_rw_lock_writer_unlock(&element_lock);
+
+	__connman_element_store(element);
 
 	g_static_rw_lock_writer_lock(&element_lock);
 
@@ -754,16 +748,11 @@ static void register_element(gpointer data, gpointer user_data)
 	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
-static void unregister_element(gpointer data, gpointer user_data)
+static gboolean remove_element(GNode *node, gpointer user_data)
 {
-	struct connman_element *element = data;
-	GNode *node;
+	struct connman_element *element = node->data;
 
 	DBG("element %p name %s", element, element->name);
-
-	g_static_rw_lock_writer_lock(&element_lock);
-
-	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
 
 	if (element->driver) {
 		if (element->driver->remove)
@@ -779,14 +768,6 @@ static void unregister_element(gpointer data, gpointer user_data)
 		g_node_destroy(node);
 	}
 
-	g_static_rw_lock_writer_unlock(&element_lock);
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
-		g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "DeviceRemoved",
-				DBUS_TYPE_OBJECT_PATH, &element->path,
-							DBUS_TYPE_INVALID);
-
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementRemoved",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
@@ -796,6 +777,26 @@ static void unregister_element(gpointer data, gpointer user_data)
 						CONNMAN_ELEMENT_INTERFACE);
 
 	connman_element_unref(element);
+
+	return FALSE;
+}
+
+static void unregister_element(gpointer data, gpointer user_data)
+{
+	struct connman_element *element = data;
+	GNode *node;
+
+	DBG("element %p name %s", element, element->name);
+
+	g_static_rw_lock_writer_lock(&element_lock);
+
+	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
+
+	if (node != NULL)
+		g_node_traverse(node, G_POST_ORDER,
+				G_TRAVERSE_ALL, -1, remove_element, NULL);
+
+	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 int __connman_element_init(DBusConnection *conn, const char *device)
