@@ -276,6 +276,11 @@ static GDBusMethodTable element_methods[] = {
 	{ },
 };
 
+static GDBusSignalTable element_signals[] = {
+	{ "PropertyChanged", "sv" },
+	{ },
+};
+
 struct append_filter {
 	enum connman_element_type type;
 	DBusMessageIter *iter;
@@ -714,8 +719,8 @@ static void register_element(gpointer data, gpointer user_data)
 
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_ELEMENT_INTERFACE,
-					element_methods, NULL, NULL,
-						element, NULL) == FALSE)
+					element_methods, element_signals,
+					NULL, element, NULL) == FALSE)
 		connman_error("Failed to register %s", element->path);
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
