@@ -19,7 +19,7 @@ for path in elements:
 		print "[ %s ]" % (path)
 
 	if (properties["Type"] == "network"):
-		if (properties["Connected"] == 1):
+		if (properties["Enabled"] == 1):
 			state = "*"
 		else:
 			state = " "

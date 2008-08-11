@@ -57,7 +57,7 @@ static int network_enable(struct connman_element *element)
 
 	__supplicant_disconnect(element);
 
-	element->connected = FALSE;
+	element->enabled = FALSE;
 
 	connman_element_update(element);
 
@@ -81,7 +81,7 @@ static int network_disable(struct connman_element *element)
 
 	__supplicant_disconnect(element);
 
-	element->connected = FALSE;
+	element->enabled = FALSE;
 
 	connman_element_update(element);
 
@@ -148,7 +148,7 @@ static void state_change(struct connman_element *parent,
 
 		dhcp_element = dhcp;
 
-		element->connected = TRUE;
+		element->enabled = TRUE;
 
 		connman_element_update(element);
 

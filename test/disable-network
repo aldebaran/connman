@@ -18,8 +18,8 @@ for path in elements:
 		if (properties["Type"] != "network"):
 			continue
 
-		if (properties["Connected"] == dbus.Boolean(1)):
-			print "Disconnecting %s" % (path)
-			element.Disconnect()
+		if (properties["Enabled"] == dbus.Boolean(1)):
+			print "Disabling %s" % (path)
+			element.Disable()
 	except:
 		pass

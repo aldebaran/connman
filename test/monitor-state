@@ -27,7 +27,7 @@ def element_added(path):
 
 def element_updated(path):
 	properties = get_properties(path)
-	if (properties["Type"] == "network" and properties["Connected"] == 1):
+	if (properties["Type"] == "network" and properties["Enabled"] == 1):
 		print "Associated with %s" % (properties["SSID"])
 
 def element_removed(path):

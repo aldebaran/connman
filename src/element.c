@@ -176,8 +176,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (str != NULL)
 		append_entry(&dict, "Subtype", DBUS_TYPE_STRING, &str);
 
-	append_entry(&dict, "Connected",
-				DBUS_TYPE_BOOLEAN, &element->connected);
+	append_entry(&dict, "Enabled", DBUS_TYPE_BOOLEAN, &element->enabled);
 
 	if (element->priority > 0)
 		append_entry(&dict, "Priority",
@@ -438,7 +437,7 @@ struct connman_element *connman_element_create(void)
 	element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 	element->state   = CONNMAN_ELEMENT_STATE_CLOSED;
 
-	element->connected = FALSE;
+	element->enabled = FALSE;
 
 	element->netdev.index = -1;
 

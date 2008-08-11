@@ -22,9 +22,9 @@ for path in elements:
 	if (properties["Type"] != "network"):
 		continue
 
-	if (properties["Connected"] == dbus.Boolean(1)):
+	if (properties["Enabled"] == dbus.Boolean(1)):
 		continue
 
 	if (properties["Identifier"] == sys.argv[1]):
-		print "Connecting %s" % (path)
-		element.Connect()
+		print "Enabling %s" % (path)
+		element.Enable()
