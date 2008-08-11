@@ -46,7 +46,7 @@ static void network_remove(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 }
 
-static int network_connect(struct connman_element *element)
+static int network_enable(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
@@ -70,7 +70,7 @@ static int network_connect(struct connman_element *element)
 	return 0;
 }
 
-static int network_disconnect(struct connman_element *element)
+static int network_disable(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
@@ -94,8 +94,8 @@ static struct connman_driver network_driver = {
 	.subtype	= CONNMAN_ELEMENT_SUBTYPE_WIFI,
 	.probe		= network_probe,
 	.remove		= network_remove,
-	.connect	= network_connect,
-	.disconnect	= network_disconnect,
+	.enable		= network_enable,
+	.disable	= network_disable,
 };
 
 struct wifi_data {

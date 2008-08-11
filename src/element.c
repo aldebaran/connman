@@ -232,7 +232,7 @@ static DBusMessage *do_update(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *do_connect(DBusConnection *conn,
+static DBusMessage *do_enable(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
@@ -242,15 +242,15 @@ static DBusMessage *do_connect(DBusConnection *conn,
 	if (element->driver == NULL)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
-	if (element->driver->connect) {
-		DBG("Calling connect callback");
-		element->driver->connect(element);
+	if (element->driver->enable) {
+		DBG("Calling enable callback");
+		element->driver->enable(element);
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *do_disconnect(DBusConnection *conn,
+static DBusMessage *do_disable(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
@@ -260,9 +260,9 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 	if (element->driver == NULL)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
-	if (element->driver->disconnect) {
-		DBG("Calling disconnect callback");
-		element->driver->disconnect(element);
+	if (element->driver->disable) {
+		DBG("Calling disable callback");
+		element->driver->disable(element);
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -272,8 +272,8 @@ static GDBusMethodTable element_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties },
 	{ "SetProperty",   "sv", "",      set_property   },
 	{ "Update",        "",   "",      do_update      },
-	{ "Connect",       "",   "",      do_connect     },
-	{ "Disconnect",    "",   "",      do_disconnect  },
+	{ "Enable",        "",   "",      do_enable      },
+	{ "Disable",       "",   "",      do_disable     },
 	{ },
 };
 

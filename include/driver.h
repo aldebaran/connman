@@ -40,8 +40,8 @@ struct connman_driver {
 	int (*probe) (struct connman_element *element);
 	void (*remove) (struct connman_element *element);
 	int (*update) (struct connman_element *element);
-	int (*connect) (struct connman_element *element);
-	int (*disconnect) (struct connman_element *element);
+	int (*enable) (struct connman_element *element);
+	int (*disable) (struct connman_element *element);
 };
 
 extern int connman_driver_register(struct connman_driver *driver);
