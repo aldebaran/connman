@@ -59,15 +59,13 @@ PKG_CHECK_MODULES(GMODULE, gmodule-2.0, dummy=yes,
 AC_SUBST(GMODULE_CFLAGS)
 AC_SUBST(GMODULE_LIBS)
 
-PKG_CHECK_MODULES(GDBUS, gdbus, dummy=yes,
-				AC_MSG_ERROR(libgdbus is required))
-AC_SUBST(GDBUS_CFLAGS)
-AC_SUBST(GDBUS_LIBS)
-
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(libdbus is required))
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
+
+AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
+AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.a $(DBUS_LIBS)'])
 
 PKG_CHECK_MODULES(HAL, hal >= 0.5.8, hal_found=yes, hal_found=no)
 AC_SUBST(HAL_CFLAGS)
@@ -83,6 +81,6 @@ PKG_CHECK_MODULES(SQLITE, sqlite3, sqlite_found=yes, sqlite_found=no)
 AC_SUBST(SQLITE_CFLAGS)
 AC_SUBST(SQLITE_LIBS)
 
-AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile
-			test/Makefile plugins/Makefile scripts/Makefile
-			scripts/connman src/connman.service connman.pc)
+AC_OUTPUT(Makefile gdbus/Makefile include/Makefile src/Makefile doc/Makefile
+				test/Makefile plugins/Makefile scripts/Makefile
+				scripts/connman src/connman.service connman.pc)

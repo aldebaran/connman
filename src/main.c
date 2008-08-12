@@ -175,7 +175,7 @@ int main(int argc, char *argv[])
 
 	__connman_log_cleanup();
 
-	g_dbus_cleanup_connection(conn);
+	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
 

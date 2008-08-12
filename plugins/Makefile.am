@@ -13,7 +13,7 @@ wifi_la_SOURCES = wifi.c supplicant.h supplicant.c
 bluetooth_la_SOURCES = bluetooth.c
 
 dhclient_la_SOURCES = dhclient.c
-dhclient_la_CFLAGS = @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
+dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
 ipv4_la_SOURCES = ipv4.c
@@ -49,7 +49,7 @@ else
 scriptdir = $(libdir)/connman/scripts
 endif
 
-AM_CFLAGS = @GDBUS_CFLAGS@
+AM_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 
