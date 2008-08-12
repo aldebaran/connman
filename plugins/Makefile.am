@@ -1,12 +1,16 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = hal.la rtnllink.la ethernet.la wifi.la bluetooth.la \
+plugin_LTLIBRARIES = rtnllink.la ethernet.la wifi.la bluetooth.la \
 			dhclient.la ipv4.la resolvconf.la resolvfile.la
+
+if HAL
+plugin_LTLIBRARIES += hal.la
 
 hal_la_SOURCES = hal.c
 hal_la_LIBADD = @HAL_LIBS@
 hal_la_CFLAGS = @GLIB_CFLAGS@ @HAL_CFLAGS@
+endif
 
 rtnllink_la_SOURCES = rtnllink.c
 

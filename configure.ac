@@ -45,7 +45,7 @@ AC_PATH_PROG(DHCLIENT, [dhclient])
 AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant])
 
 PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
-                                AC_MSG_ERROR(glib is required))
+				AC_MSG_ERROR(glib is required))
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
@@ -69,17 +69,19 @@ PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-PKG_CHECK_MODULES(HAL, hal >= 0.5.8, dummy=yes,
-				AC_MSG_ERROR(libhal is required))
+PKG_CHECK_MODULES(HAL, hal >= 0.5.8, hal_found=yes, hal_found=no)
 AC_SUBST(HAL_CFLAGS)
 AC_SUBST(HAL_LIBS)
+AM_CONDITIONAL(HAL, test "${hal_found}" = "yes")
 
-PKG_CHECK_MODULES(SQLITE, sqlite3, dummy=yes,
-				AC_MSG_ERROR(sqlite3 is required))
+PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, polkit_found=yes, polkit_found=no)
+AC_SUBST(POLKIT_CFLAGS)
+AC_SUBST(POLKIT_LIBS)
+
+PKG_CHECK_MODULES(SQLITE, sqlite3, sqlite_found=yes, sqlite_found=no)
 AC_SUBST(SQLITE_CFLAGS)
 AC_SUBST(SQLITE_LIBS)
 
 AC_OUTPUT(Makefile include/Makefile src/Makefile doc/Makefile
 			test/Makefile plugins/Makefile scripts/Makefile
 			scripts/connman src/connman.service connman.pc)
-			
