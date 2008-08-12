@@ -23,10 +23,13 @@
 #include <config.h>
 #endif
 
+#if 0
 #include <sqlite3.h>
+#endif
 
 #include "connman.h"
 
+#if 0
 static sqlite3 *db = NULL;
 
 static int create_tables(void)
@@ -51,9 +54,11 @@ static int create_tables(void)
 
 	return 0;
 }
+#endif
 
 int __connman_storage_init(void)
 {
+#if 0
 	int err;
 
 	DBG("");
@@ -73,15 +78,18 @@ int __connman_storage_init(void)
 	}
 
 	create_tables();
+#endif
 
 	return 0;
 }
 
 void __connman_storage_cleanup(void)
 {
+#if 0
 	DBG("");
 
 	sqlite3_close(db);
+#endif
 }
 
 int __connman_element_load(struct connman_element *element)
@@ -91,6 +99,7 @@ int __connman_element_load(struct connman_element *element)
 
 int __connman_element_store(struct connman_element *element)
 {
+#if 0
 	char *sql, *msg;
 
 	DBG("");
@@ -106,6 +115,7 @@ int __connman_element_store(struct connman_element *element)
 			sqlite3_free(msg);
 		}
 	}
+#endif
 
 	return 0;
 }
