@@ -77,6 +77,7 @@ AM_CONDITIONAL(HAL, test "${hal_found}" = "yes")
 PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, polkit_found=yes, polkit_found=no)
 AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
+AM_CONDITIONAL(POLKIT, test "${polkit_found}" = "yes")
 
 PKG_CHECK_MODULES(SQLITE, sqlite3, sqlite_found=yes, sqlite_found=no)
 AC_SUBST(SQLITE_CFLAGS)

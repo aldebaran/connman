@@ -4,14 +4,6 @@ plugindir = $(libdir)/connman/plugins
 plugin_LTLIBRARIES = rtnllink.la ethernet.la wifi.la bluetooth.la \
 			dhclient.la ipv4.la resolvconf.la resolvfile.la
 
-if HAL
-plugin_LTLIBRARIES += hal.la
-
-hal_la_SOURCES = hal.c
-hal_la_LIBADD = @HAL_LIBS@
-hal_la_CFLAGS = @GLIB_CFLAGS@ @HAL_CFLAGS@
-endif
-
 rtnllink_la_SOURCES = rtnllink.c
 
 ethernet_la_SOURCES = ethernet.c
@@ -29,6 +21,22 @@ ipv4_la_SOURCES = ipv4.c
 resolvconf_la_SOURCES = resolvconf.c
 
 resolvfile_la_SOURCES = resolvfile.c
+
+if HAL
+plugin_LTLIBRARIES += hal.la
+
+hal_la_SOURCES = hal.c
+hal_la_LIBADD = @HAL_LIBS@
+hal_la_CFLAGS = @GLIB_CFLAGS@ @HAL_CFLAGS@
+endif
+
+if POLKIT
+plugin_LTLIBRARIES += polkit.la
+
+polkit_la_SOURCES = polkit.c
+polkit_la_LIBADD = @POLKIT_LIBS@
+polkit_la_CFLAGS = @GLIB_CFLAGS@ @POLKIT_CFLAGS@
+endif
 
 AM_LDFLAGS = -no-undefined -module -avoid-version \
 				-export-symbols-regex connman_plugin_desc
