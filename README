@@ -11,9 +11,9 @@ In order to compile libgdbus you need following software packages:
 	- GCC compiler
 	- GLib library
 	- D-Bus library
-	- GDBus library
-	- HAL library
-	- SQLite3 library
+	- HAL library (optional)
+	- SQLite3 library (optional)
+	- PolicyKit (optional)
 
 To configure run:
 	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
