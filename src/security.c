@@ -60,3 +60,32 @@ void connman_security_unregister(struct connman_security *security)
 
 	g_static_rw_lock_writer_unlock(&security_lock);
 }
+
+int __connman_security_check_privileges(DBusMessage *message)
+{
+	GSList *list;
+	const char *sender;
+	int err = -EPERM;
+
+	DBG("message %p", message);
+
+	sender = dbus_message_get_sender(message);
+
+	g_static_rw_lock_reader_lock(&security_lock);
+
+	for (list = security_list; list; list = list->next) {
+		struct connman_security *security = list->data;
+		int err;
+
+		DBG("%s", security->name);
+
+		if (security->authorize_sender) {
+			err = security->authorize_sender(sender);
+			break;
+		}
+	}
+
+	g_static_rw_lock_reader_unlock(&security_lock);
+
+	return err;
+}
