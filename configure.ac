@@ -24,6 +24,8 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
+GTK_DOC_CHECK
+
 AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [
 	if (test "${enableval}" = "yes" &&
