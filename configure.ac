@@ -84,5 +84,5 @@ AC_SUBST(SQLITE_CFLAGS)
 AC_SUBST(SQLITE_LIBS)
 
 AC_OUTPUT(Makefile gdbus/Makefile include/Makefile src/Makefile doc/Makefile
-				test/Makefile plugins/Makefile scripts/Makefile
-				scripts/connman src/connman.service connman.pc)
+		test/Makefile plugins/Makefile scripts/Makefile scripts/connman
+				src/connman.service doc/version.xml connman.pc)
