@@ -27,6 +27,8 @@
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
 
+DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
+
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 
