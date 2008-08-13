@@ -29,3 +29,11 @@ src/connman.ver
 src/connman.service
 scripts/connman
 scripts/dhclient-script
+doc/*.bak
+doc/*.stamp
+doc/connman.*
+doc/connman-*.txt
+doc/*.sgml
+doc/version.xml
+doc/xml
+doc/html
