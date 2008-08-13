@@ -37,6 +37,10 @@ plugin_LTLIBRARIES += polkit.la
 polkit_la_SOURCES = polkit.c
 polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
 polkit_la_CFLAGS = @GLIB_CFLAGS@ @POLKIT_CFLAGS@
+
+policydir = $(datadir)/PolicyKit/policy
+
+policy_DATA = connman.policy
 endif
 
 AM_LDFLAGS = -no-undefined -module -avoid-version \
@@ -53,5 +57,7 @@ endif
 AM_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
+
+EXTRA_DIST = $(policy_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in
