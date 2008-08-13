@@ -66,14 +66,14 @@
     </partintro>
   </reference>
 
-  <index>
-    <title>Index</title>
-  </index>
-
   <appendix id="license">
     <title>License</title>
     <para>
 <programlisting><xi:include href="../COPYING" parse="text" /></programlisting>
     </para>
   </appendix>
+
+  <index>
+    <title>Index</title>
+  </index>
 </book>
