@@ -32,13 +32,47 @@
 #include <connman/security.h>
 #include <connman/log.h>
 
-static PolKitContext *polkit_context = NULL;
+#define ACTION "org.moblin.connman.modify"
+
+static DBusConnection *connection;
+static PolKitContext *polkit_context;
 
 static int polkit_authorize(const char *sender)
 {
+	DBusError error;
+	PolKitCaller *caller;
+	PolKitAction *action;
+	PolKitResult result;
+
 	DBG("sender %s", sender);
 
-	return -EPERM;
+	dbus_error_init(&error);
+
+	caller = polkit_caller_new_from_dbus_name(connection, sender, &error);
+	if (caller == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Failed to get caller information");
+		return -EIO;
+	}
+
+	action = polkit_action_new();
+	polkit_action_set_action_id(action, ACTION);
+
+	result = polkit_context_is_caller_authorized(polkit_context,
+						action, caller, TRUE, NULL);
+
+	polkit_action_unref(action);
+	polkit_caller_unref(caller);
+
+	DBG("result %s", polkit_result_to_string_representation(result));
+
+	if (result == POLKIT_RESULT_NO)
+		return -EPERM;
+
+	return 0;
 }
 
 static struct connman_security polkit_security = {
@@ -90,6 +124,10 @@ static int polkit_init(void)
 {
 	int err;
 
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
+		return -EIO;
+
 	polkit_context = polkit_context_new();
 
 	polkit_context_set_io_watch_functions(polkit_context,
@@ -98,14 +136,14 @@ static int polkit_init(void)
 	if (polkit_context_init(polkit_context, NULL) == FALSE) {
 		connman_error("Can't initialize PolicyKit");
 		polkit_context_unref(polkit_context);
-		polkit_context = NULL;
+		dbus_connection_unref(connection);
 		return -EIO;
 	}
 
 	err = connman_security_register(&polkit_security);
 	if (err < 0) {
 		polkit_context_unref(polkit_context);
-		polkit_context = NULL;
+		dbus_connection_unref(connection);
 		return err;
 	}
 
@@ -116,11 +154,9 @@ static void polkit_exit(void)
 {
 	connman_security_unregister(&polkit_security);
 
-	if (polkit_context == NULL)
-		return;
-
 	polkit_context_unref(polkit_context);
-	polkit_context = NULL;
+
+	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE("polkit", "PolicyKit authorization plugin", VERSION,
