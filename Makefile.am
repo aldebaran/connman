@@ -5,6 +5,8 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = connman.pc
 
+DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc
+
 DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
