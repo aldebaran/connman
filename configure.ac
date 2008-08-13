@@ -65,7 +65,7 @@ AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
 AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
-AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.a $(DBUS_LIBS)'])
+AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
 
 PKG_CHECK_MODULES(HAL, hal >= 0.5.8, hal_found=yes, hal_found=no)
 AC_SUBST(HAL_CFLAGS)
