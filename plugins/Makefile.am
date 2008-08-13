@@ -58,6 +58,6 @@ AM_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 
-EXTRA_DIST = $(policy_DATA)
+EXTRA_DIST = connman.policy
 
 MAINTAINERCLEANFILES = Makefile.in
