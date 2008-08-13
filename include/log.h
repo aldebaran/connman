@@ -26,10 +26,24 @@
 extern "C" {
 #endif
 
+/**
+ * SECTION:log
+ * @title: Logging premitives
+ * @short_description: Functions for logging error and debug information
+ */
+
 extern void connman_info(const char *format, ...);
 extern void connman_error(const char *format, ...);
 extern void connman_debug(const char *format, ...);
 
+/**
+ * DBG:
+ * @fmt: format string
+ * @arg...: list of arguments
+ *
+ * Simple macro around connman_debug() which also include the function
+ * name it is called in.
+ */
 #define DBG(fmt, arg...) connman_debug("%s:%s() " fmt, __FILE__, __FUNCTION__ , ## arg)
 
 #ifdef __cplusplus

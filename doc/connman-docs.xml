@@ -64,6 +64,8 @@
 	This part presents the function reference for Connection Manager.
       </para>
     </partintro>
+    <xi:include href="xml/log.xml" />
+    <xi:include href="xml/plugin.xml" />
   </reference>
 
   <appendix id="license">

@@ -26,6 +26,12 @@
 extern "C" {
 #endif
 
+/**
+ * SECTION:plugin
+ * @title: Plugin premitives
+ * @short_description: Functions for declaring plugins
+ */
+
 struct connman_plugin_desc {
 	const char *name;
 	const char *description;
@@ -34,7 +40,17 @@ struct connman_plugin_desc {
 	void (*exit) (void);
 };
 
-#define CONNMAN_PLUGIN_DEFINE(name,description,version,init,exit) \
+/**
+ * CONNMAN_PLUGIN_DEFINE:
+ * @name: plugin name
+ * @description: plugin description
+ * @version: plugin version string
+ * @init: init function called on plugin loading
+ * @exit: exit function called on plugin removal
+ *
+ * Macro for defining a plugin descriptor
+ */
+#define CONNMAN_PLUGIN_DEFINE(name, description, version, init, exit) \
 		struct connman_plugin_desc connman_plugin_desc = { \
 			name, description, version, init, exit \
 		};

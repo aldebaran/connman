@@ -30,6 +30,13 @@
 
 static volatile gboolean debug_enabled = FALSE;
 
+/**
+ * connman_info:
+ * @format: format string
+ * @Varargs: list of arguments
+ *
+ * Output general information
+ */
 void connman_info(const char *format, ...)
 {
 	va_list ap;
@@ -41,6 +48,13 @@ void connman_info(const char *format, ...)
 	va_end(ap);
 }
 
+/**
+ * connman_error:
+ * @format: format string
+ * @varargs: list of arguments
+ *
+ * Output error messages
+ */
 void connman_error(const char *format, ...)
 {
 	va_list ap;
@@ -52,6 +66,16 @@ void connman_error(const char *format, ...)
 	va_end(ap);
 }
 
+/**
+ * connman_debug:
+ * @format: format string
+ * @varargs: list of arguments
+ *
+ * Output debug message
+ *
+ * The actual output of the debug message is controlled via a command line
+ * switch. If not enabled, these messages will be ignored.
+ */
 void connman_debug(const char *format, ...)
 {
 	va_list ap;

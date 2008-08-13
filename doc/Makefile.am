@@ -5,25 +5,32 @@ DOC_MAIN_SGML_FILE = $(DOC_MODULE)-docs.xml
 
 DOC_SOURCE_DIR = ../src
 
-MKDB_OPTIONS = --sgml-mode --output-format=xml --tmpl-dir=.
+SCAN_OPTIONS = --rebuild-sections --source-dir=../include
+
+MKDB_OPTIONS = --sgml-mode --output-format=xml --tmpl-dir=. \
+						--ignore-files=connman \
+						--source-dir=../include \
+						--source-suffixes=c,h
 
 MKTMPL_OPTIONS = --output-dir=.
 
 HFILE_GLOB = $(top_srcdir)/include/*.h
-CFILE_GLOB = $(top_srcdir)/src/*.c
+CFILE_GLOB = $(top_srcdir)/src/*.c $(top_srcdir)/src/*.h
 
-IGNORE_HFILES = config.h connman.h
+IGNORE_HFILES = connman connman.h supplicant.h \
+		iface.h rtnl.h dbus.h element.h property.h driver.h security.h
 
 HTML_IMAGES =
 
 content_files = connman-introduction.xml
 
-INCLUDES = -I$(top_srcdir) $(GLIB_CFLAGS) $(DBUS_CFLAGS)
+INCLUDES = -I$(top_srcdir)/include -I$(top_srcdir)/gdbus \
+	$(GTHREAD_CFLAGS) $(GMODULE_CFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS)
 
-GTKDOC_LIBS =
+GTKDOC_LIBS = $(DBUS_LIBS) $(GLIB_LIBS) $(GMODULE_LIBS) $(GTHREAD_LIBS)
 
 MAINTAINERCLEANFILES = Makefile.in \
-	$(DOC_MODULE).types $(DOC_MODULE)-*.sgml $(DOC_MODULE)-*.txt
+	$(DOC_MODULE).types $(DOC_MODULE)-*.txt *.sgml
 
 if ENABLE_GTK_DOC
 include $(top_srcdir)/doc/gtk-doc.make

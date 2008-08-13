@@ -28,8 +28,6 @@
 #include <glib.h>
 #include <gmodule.h>
 
-#include <connman/plugin.h>
-
 #include "connman.h"
 
 static GSList *plugins = NULL;
