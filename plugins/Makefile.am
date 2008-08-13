@@ -11,6 +11,7 @@ ethernet_la_SOURCES = ethernet.c
 wifi_la_SOURCES = wifi.c supplicant.h supplicant.c
 
 bluetooth_la_SOURCES = bluetooth.c
+bluetooth_la_LIBADD = @GDBUS_LIBS@
 
 dhclient_la_SOURCES = dhclient.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
@@ -34,7 +35,7 @@ if POLKIT
 plugin_LTLIBRARIES += polkit.la
 
 polkit_la_SOURCES = polkit.c
-polkit_la_LIBADD = @POLKIT_LIBS@
+polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
 polkit_la_CFLAGS = @GLIB_CFLAGS@ @POLKIT_CFLAGS@
 endif
 
