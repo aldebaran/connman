@@ -54,6 +54,8 @@ void __connman_log_cleanup(void);
 int __connman_plugin_init(void);
 void __connman_plugin_cleanup(void);
 
+#include <connman/security.h>
+
 #include <connman/driver.h>
 #include <connman/element.h>
 
