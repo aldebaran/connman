@@ -75,7 +75,6 @@ int __connman_security_check_privileges(DBusMessage *message)
 
 	for (list = security_list; list; list = list->next) {
 		struct connman_security *security = list->data;
-		int err;
 
 		DBG("%s", security->name);
 
