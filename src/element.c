@@ -363,6 +363,14 @@ static gboolean probe_driver(GNode *node, gpointer data)
 	return FALSE;
 }
 
+/**
+ * connman_driver_register:
+ * @driver: driver definition
+ *
+ * Register a new driver
+ *
+ * Returns: %0 on success
+ */
 int connman_driver_register(struct connman_driver *driver)
 {
 	DBG("driver %p name %s", driver, driver->name);
@@ -406,6 +414,12 @@ static gboolean remove_driver(GNode *node, gpointer data)
 	return FALSE;
 }
 
+/**
+ * connman_driver_unregister:
+ * @driver: driver definition
+ *
+ * Remove a previously registered driver
+ */
 void connman_driver_unregister(struct connman_driver *driver)
 {
 	DBG("driver %p name %s", driver, driver->name);

@@ -28,6 +28,12 @@ extern "C" {
 
 #include <connman/element.h>
 
+/**
+ * SECTION:driver
+ * @title: Driver premitives
+ * @short_description: Functions for registering drivers
+ */
+
 #define CONNMAN_DRIVER_PRIORITY_LOW      -100
 #define CONNMAN_DRIVER_PRIORITY_DEFAULT     0
 #define CONNMAN_DRIVER_PRIORITY_HIGH      100
