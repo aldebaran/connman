@@ -26,6 +26,12 @@
 extern "C" {
 #endif
 
+/**
+ * SECTION:property
+ * @title: Property premitives
+ * @short_description: Functions for handling properties
+ */
+
 enum connman_property_type {
 	CONNMAN_PROPERTY_TYPE_INVALID = 0,
 

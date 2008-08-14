@@ -31,6 +31,12 @@ extern "C" {
 
 #include <connman/property.h>
 
+/**
+ * SECTION:element
+ * @title: Element premitives
+ * @short_description: Functions for handling elements
+ */
+
 enum connman_element_state {
 	CONNMAN_ELEMENT_STATE_UNKNOWN   = 0,
 	CONNMAN_ELEMENT_STATE_CONNECT   = 1,

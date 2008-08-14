@@ -17,8 +17,7 @@ MKTMPL_OPTIONS = --output-dir=.
 HFILE_GLOB = $(top_srcdir)/include/*.h
 CFILE_GLOB = $(top_srcdir)/src/*.c $(top_srcdir)/src/*.h
 
-IGNORE_HFILES = connman connman.h supplicant.h \
-		iface.h rtnl.h dbus.h element.h property.h
+IGNORE_HFILES = connman connman.h rtnl.h dbus.h iface.h
 
 HTML_IMAGES =
 
