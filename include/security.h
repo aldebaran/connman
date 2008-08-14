@@ -28,6 +28,12 @@ extern "C" {
 
 #include <connman/element.h>
 
+/**
+ * SECTION:security
+ * @title: Security premitives
+ * @short_description: Functions for registering security modules
+ */
+
 #define CONNMAN_SECURITY_PRIORITY_LOW      -100
 #define CONNMAN_SECURITY_PRIORITY_DEFAULT     0
 #define CONNMAN_SECURITY_PRIORITY_HIGH      100

@@ -18,7 +18,7 @@ HFILE_GLOB = $(top_srcdir)/include/*.h
 CFILE_GLOB = $(top_srcdir)/src/*.c $(top_srcdir)/src/*.h
 
 IGNORE_HFILES = connman connman.h supplicant.h \
-		iface.h rtnl.h dbus.h element.h property.h driver.h security.h
+		iface.h rtnl.h dbus.h element.h property.h driver.h
 
 HTML_IMAGES =
 

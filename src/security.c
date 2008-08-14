@@ -36,6 +36,14 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
 	return security2->priority - security1->priority;
 }
 
+/**
+ * connman_security_register:
+ * @security: security module
+ *
+ * Register a new security module
+ *
+ * Returns: %0 on success
+ */
 int connman_security_register(struct connman_security *security)
 {
 	DBG("security %p name %s", security, security->name);
@@ -50,6 +58,12 @@ int connman_security_register(struct connman_security *security)
 	return 0;
 }
 
+/**
+ * connman_security_unregister:
+ * @security: security module
+ *
+ * Remove a previously registered security module
+ */
 void connman_security_unregister(struct connman_security *security)
 {
 	DBG("security %p name %s", security, security->name);

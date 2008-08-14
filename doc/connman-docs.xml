@@ -66,6 +66,7 @@
     </partintro>
     <xi:include href="xml/log.xml" />
     <xi:include href="xml/plugin.xml" />
+    <xi:include href="xml/security.xml" />
   </reference>
 
   <appendix id="license">
