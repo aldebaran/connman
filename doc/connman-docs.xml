@@ -57,6 +57,20 @@
     <xi:include href="connman-introduction.xml" />
   </reference>
 
+  <reference id="manager">
+    <title>Manager interface</title>
+    <para>
+<programlisting><xi:include href="manager-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
+  <reference id="element">
+    <title>Element interface</title>
+    <para>
+<programlisting><xi:include href="element-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
   <reference id="reference">
     <title>API Reference</title>
     <partintro>
