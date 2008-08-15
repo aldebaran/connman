@@ -79,7 +79,7 @@ int __connman_security_check_privileges(DBusMessage *message)
 {
 	GSList *list;
 	const char *sender;
-	int err = -EPERM;
+	int err = 0;
 
 	DBG("message %p", message);
 
