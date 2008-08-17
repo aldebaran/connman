@@ -27,6 +27,12 @@
 
 #include "connman.h"
 
+DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						".InvalidArguments", NULL);
+}
+
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
