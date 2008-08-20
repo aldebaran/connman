@@ -37,4 +37,6 @@ else
 EXTRA_DIST = $(DOC_MAIN_SGML_FILE) $(content_files)
 endif
 
+EXTRA_DIST += dbus-introspection.dtd dbus-introspection.xsl
+
 EXTRA_DIST += manager-api.txt element-api.txt agent-api.txt plugin-api.txt
