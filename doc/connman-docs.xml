@@ -65,7 +65,7 @@
 	Manager.
       </para>
     </partintro>
-    <xi:include href="xml/dbus-manager.xml"/>
+    <xi:include href="dbus/manager.xml"/>
   </reference>
 
   <reference id="manager">

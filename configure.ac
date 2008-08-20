@@ -24,9 +24,9 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
 
-AC_PATH_PROG([XSLTPROC], [xsltproc])
-
 GTK_DOC_CHECK
+
+AC_PATH_PROG([XSLTPROC], [xsltproc])
 
 AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [

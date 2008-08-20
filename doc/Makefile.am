@@ -21,7 +21,7 @@ IGNORE_HFILES = connman connman.h rtnl.h dbus.h iface.h
 
 HTML_IMAGES =
 
-content_files = connman-introduction.xml
+content_files = connman-introduction.xml dbus/manager.xml
 
 INCLUDES = -I$(top_srcdir)/include -I$(top_srcdir)/gdbus \
 	$(GTHREAD_CFLAGS) $(GMODULE_CFLAGS) $(GLIB_CFLAGS) $(DBUS_CFLAGS)
@@ -34,15 +34,17 @@ MAINTAINERCLEANFILES = Makefile.in \
 if ENABLE_GTK_DOC
 include $(top_srcdir)/doc/gtk-doc.make
 
-all-local: xml/dbus-manager.xml
-
-xml/dbus-manager.xml : dbus-manager.xml dbus-introspection.xsl
+dbus/manager.xml: dbus-manager.xml dbus-introspection.xsl
+	$(MKDIR_P) -p $(builddir)/dbus
 	echo "<?xml version=\"1.0\"?>" > $@
 	echo "<!DOCTYPE refentry PUBLIC \"-//OASIS//DTD DocBook XML V4.1.2//EN\" \"http://www.oasis-open.org/docbook/xml/4.1.2/docbookx.dtd\">" >> $@
 	$(XSLTPROC) dbus-introspection.xsl $< | tail -n +2 >> $@
 
+clean-local:
+	rm -rf $(builddir)/dbus
+
 else
-EXTRA_DIST = $(DOC_MAIN_SGML_FILE) $(content_files)
+EXTRA_DIST = $(DOC_MAIN_SGML_FILE) connman-introduction.xml
 endif
 
 EXTRA_DIST += dbus-introspection.dtd dbus-introspection.xsl \
