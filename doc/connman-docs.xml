@@ -57,6 +57,17 @@
     <xi:include href="connman-introduction.xml" />
   </reference>
 
+  <reference id="dbus">
+    <title>D-Bus API Reference</title>
+    <partintro>
+      <para>
+	This part presents the D-Bus interface used to access Connection
+	Manager.
+      </para>
+    </partintro>
+    <xi:include href="xml/dbus-manager.xml"/>
+  </reference>
+
   <reference id="manager">
     <title>Manager interface</title>
     <para>
@@ -72,7 +83,7 @@
   </reference>
 
   <reference id="reference">
-    <title>API Reference</title>
+    <title>Plugin API Reference</title>
     <partintro>
       <para>
 	This part presents the function reference for Connection Manager.
