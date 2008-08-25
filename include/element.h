@@ -73,6 +73,7 @@ struct connman_driver;
 struct connman_element {
 	gint refcount;
 	GStaticMutex mutex;
+	gint index;
 	gchar *name;
 	gchar *path;
 	enum connman_element_type type;
@@ -87,12 +88,6 @@ struct connman_element {
 	void *driver_data;
 
 	GSList *properties;
-
-	struct {
-		int index;
-		short flags;
-		gchar *name;
-	} netdev;
 
 	struct {
 		gchar *identifier;
@@ -111,16 +106,19 @@ struct connman_element {
 #define connman_element_lock(element)    g_static_mutex_lock(&(element)->mutex)
 #define connman_element_unlock(element)  g_static_mutex_unlock(&(element)->mutex)
 
-extern struct connman_element *connman_element_create(void);
+extern struct connman_element *connman_element_create(const char *name);
 extern struct connman_element *connman_element_ref(struct connman_element *element);
 extern void connman_element_unref(struct connman_element *element);
 
 extern int connman_element_add_static_property(struct connman_element *element,
 				const char *name, int type, const void *value);
+extern int connman_element_define_properties(struct connman_element *element, ...);
+extern int connman_element_create_property(struct connman_element *element,
+						const char *name, int type);
 extern int connman_element_set_property(struct connman_element *element,
-			enum connman_property_type type, const void *value);
+				enum connman_property_id id, const void *value);
 extern int connman_element_get_value(struct connman_element *element,
-				enum connman_property_type type, void *value);
+				enum connman_property_id id, void *value);
 
 extern int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);
