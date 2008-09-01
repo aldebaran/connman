@@ -140,11 +140,10 @@ static void state_change(struct connman_element *parent,
 	if (state == STATE_COMPLETED) {
 		struct connman_element *dhcp;
 
-		dhcp = connman_element_create();
+		dhcp = connman_element_create(NULL);
 
 		dhcp->type = CONNMAN_ELEMENT_TYPE_DHCP;
-		dhcp->netdev.index = element->netdev.index;
-		dhcp->netdev.name = g_strdup(element->netdev.name);
+		dhcp->index = element->index;
 
 		dhcp_element = dhcp;
 
@@ -191,15 +190,12 @@ static void scan_result(struct connman_element *parent,
 
 	element = find_element(data, network->identifier);
 	if (element == NULL) {
-		element = connman_element_create();
+		element = connman_element_create(temp);
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
-		element->name = temp;
+		element->index = parent->index;
 
 		element->network.identifier = g_strdup(network->identifier);
-
-		element->netdev.index = parent->netdev.index;
-		element->netdev.name = g_strdup(parent->netdev.name);
 
 		data->list = g_slist_append(data->list, element);
 
@@ -207,10 +203,11 @@ static void scan_result(struct connman_element *parent,
 				DBUS_TYPE_STRING, &network->identifier);
 
 		connman_element_register(element, parent);
-	} else
-		g_free(temp);
+	}
 
 	g_static_mutex_unlock(&data->mutex);
+
+	g_free(temp);
 }
 
 static struct supplicant_callback wifi_callback = {

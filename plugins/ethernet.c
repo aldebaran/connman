@@ -35,6 +35,11 @@
 #include <connman/driver.h>
 #include <connman/log.h>
 
+struct ethernet_data {
+	int index;
+	short flags;
+};
+
 static GStaticMutex ethernet_mutex = G_STATIC_MUTEX_INIT;
 static GSList *ethernet_list = NULL;
 
@@ -45,11 +50,12 @@ static void create_element(struct connman_element *parent,
 
 	DBG("parent %p name %s", parent, parent->name);
 
-	element = connman_element_create();
+	element = connman_element_create(NULL);
+	if (element == NULL)
+		return;
 
 	element->type = type;
-	element->netdev.index = parent->netdev.index;
-	element->netdev.name = g_strdup(parent->netdev.name);
+	element->index = parent->index;
 
 	connman_element_register(element, parent);
 }
@@ -70,20 +76,22 @@ static void rtnl_link(struct nlmsghdr *hdr, const char *type)
 
 	for (list = ethernet_list; list; list = list->next) {
 		struct connman_element *element = list->data;
+		struct ethernet_data *ethernet;
 
-		if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
+		ethernet = connman_element_get_data(element);
+		if (ethernet == NULL)
 			continue;
 
-		if (element->netdev.index != msg->ifi_index)
+		if (ethernet->index != msg->ifi_index)
 			continue;
 
-		if ((element->netdev.flags & IFF_RUNNING) ==
-						(msg->ifi_flags & IFF_RUNNING))
+		if ((ethernet->flags & IFF_RUNNING) ==
+					(msg->ifi_flags & IFF_RUNNING))
 			continue;
 
-		element->netdev.flags = msg->ifi_flags;
+		ethernet->flags = msg->ifi_flags;
 
-		if (msg->ifi_flags & IFF_RUNNING) {
+		if (ethernet->flags & IFF_RUNNING) {
 			DBG("carrier on");
 
 			create_element(element, CONNMAN_ELEMENT_TYPE_DHCP);
@@ -153,7 +161,7 @@ static gboolean rtnl_event(GIOChannel *chan, GIOCondition cond, gpointer data)
 	return TRUE;
 }
 
-static GIOChannel *channel = NULL;
+static GIOChannel *channel;
 
 static int rtnl_request(void)
 {
@@ -184,19 +192,19 @@ static int rtnl_request(void)
 			(struct sockaddr *) &addr, sizeof(addr));
 }
 
-static int iface_up(struct connman_element *element)
+static int iface_up(struct ethernet_data *ethernet)
 {
 	struct ifreq ifr;
 	int sk, err;
 
-	DBG("element %p", element);
+	DBG("index %d flags %d", ethernet->index, ethernet->flags);
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
 		return -errno;
 
 	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->netdev.index;
+	ifr.ifr_ifindex = ethernet->index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
 		err = -errno;
@@ -228,19 +236,19 @@ done:
 	return err;
 }
 
-static int iface_down(struct connman_element *element)
+static int iface_down(struct ethernet_data *ethernet)
 {
 	struct ifreq ifr;
 	int sk, err;
 
-	DBG("element %p", element);
+	DBG("index %d flags %d", ethernet->index, ethernet->flags);
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
 		return -errno;
 
 	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->netdev.index;
+	ifr.ifr_ifindex = ethernet->index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
 		err = -errno;
@@ -272,13 +280,23 @@ done:
 
 static int ethernet_probe(struct connman_element *element)
 {
+	struct ethernet_data *ethernet;
+
 	DBG("element %p name %s", element, element->name);
+
+	ethernet = g_try_new0(struct ethernet_data, 1);
+	if (ethernet == NULL)
+		return -ENOMEM;
 
 	g_static_mutex_lock(&ethernet_mutex);
 	ethernet_list = g_slist_append(ethernet_list, element);
 	g_static_mutex_unlock(&ethernet_mutex);
 
-	iface_up(element);
+	connman_element_set_data(element, ethernet);
+
+	ethernet->index = element->index;
+
+	iface_up(ethernet);
 
 	rtnl_request();
 
@@ -287,13 +305,19 @@ static int ethernet_probe(struct connman_element *element)
 
 static void ethernet_remove(struct connman_element *element)
 {
+	struct ethernet_data *ethernet = connman_element_get_data(element);
+
 	DBG("element %p name %s", element, element->name);
 
-	iface_down(element);
+	connman_element_set_data(element, NULL);
+
+	iface_down(ethernet);
 
 	g_static_mutex_lock(&ethernet_mutex);
 	ethernet_list = g_slist_remove(ethernet_list, element);
 	g_static_mutex_unlock(&ethernet_mutex);
+
+	g_free(ethernet);
 }
 
 static struct connman_driver ethernet_driver = {
@@ -340,8 +364,6 @@ static void rtnl_cleanup(void)
 
 	g_io_channel_shutdown(channel, TRUE, NULL);
 	g_io_channel_unref(channel);
-
-	channel = NULL;
 }
 
 static int ethernet_init(void)

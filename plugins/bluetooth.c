@@ -43,7 +43,7 @@ static void create_element(DBusConnection *conn, const char *path)
 
 	DBG("conn %p path %s", conn, path);
 
-	element = connman_element_create();
+	element = connman_element_create(NULL);
 
 	element->name = g_path_get_basename(path);
 	element->type = CONNMAN_ELEMENT_TYPE_DEVICE;
