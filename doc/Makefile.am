@@ -29,7 +29,7 @@ INCLUDES = -I$(top_srcdir)/include -I$(top_srcdir)/gdbus \
 GTKDOC_LIBS = $(DBUS_LIBS) $(GLIB_LIBS) $(GMODULE_LIBS) $(GTHREAD_LIBS)
 
 MAINTAINERCLEANFILES = Makefile.in \
-	$(DOC_MODULE).types $(DOC_MODULE)-*.txt *.sgml
+	$(DOC_MODULE).types $(DOC_MODULE)-*.txt *.sgml *.bak
 
 if ENABLE_GTK_DOC
 include $(top_srcdir)/doc/gtk-doc.make
