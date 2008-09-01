@@ -85,18 +85,18 @@ static void device_netdev(LibHalContext *ctx, const char *udi,
 {
 	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_ETHERNET ||
 			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI) {
-		element->netdev.index = libhal_device_get_property_int(ctx,
+		element->index = libhal_device_get_property_int(ctx,
 						udi, "net.linux.ifindex", NULL);
 
-		element->netdev.name = libhal_device_get_property_string(ctx,
+		element->name = libhal_device_get_property_string(ctx,
 						udi, "net.interface", NULL);
 	}
 
 	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_MODEM) {
-		element->netdev.index = libhal_device_get_property_int(ctx,
+		element->index = libhal_device_get_property_int(ctx,
 						udi, "serial.port", NULL);
 
-		element->netdev.name = libhal_device_get_property_string(ctx,
+		element->name = libhal_device_get_property_string(ctx,
 						udi, "serial.device", NULL);
 	}
 }
@@ -108,14 +108,21 @@ static void create_element(LibHalContext *ctx, const char *udi,
 
 	DBG("ctx %p udi %s", ctx, udi);
 
-	element = connman_element_create();
+	element = connman_element_create(NULL);
 
-	element->name = g_path_get_basename(udi);
 	element->type = CONNMAN_ELEMENT_TYPE_DEVICE;
 	element->subtype = subtype;
 
 	device_info(ctx, udi, element);
 	device_netdev(ctx, udi, element);
+
+	if (element->name == NULL) {
+		element->name = g_path_get_basename(udi);
+		if (element->name == NULL) {
+			connman_element_unref(element);
+			return;
+		}
+	}
 
 	g_static_mutex_lock(&element_mutex);
 
