@@ -30,13 +30,15 @@
 #include <connman/driver.h>
 #include <connman/log.h>
 
+#include "inet.h"
+
 #define RESOLVCONF "/sbin/resolvconf"
 
 static int resolvconf_probe(struct connman_element *element)
 {
 	const char *nameserver = NULL;
 	struct connman_element *internet;
-	gchar *cmd;
+	gchar *cmd, *name;
 	int err;
 
 	DBG("element %p name %s", element, element->name);
@@ -45,22 +47,26 @@ static int resolvconf_probe(struct connman_element *element)
 		return -errno;
 
 	connman_element_get_value(element,
-			CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER, &nameserver);
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 
 	if (nameserver == NULL)
 		return -EINVAL;
 
+	name = inet_index2name(element->index);
+
 	cmd = g_strdup_printf("echo \"nameserver %s\" | %s -a %s",
-						nameserver, RESOLVCONF,
-							element->netdev.name);
+						nameserver, RESOLVCONF, name);
+
+	g_free(name);
 
 	DBG("%s", cmd);
 
-	err = system(cmd);
+	//err = system(cmd);
+	err = 0;
 
 	g_free(cmd);
 
-	internet = connman_element_create();
+	internet = connman_element_create(NULL);
 
 	internet->type = CONNMAN_ELEMENT_TYPE_INTERNET;
 
@@ -71,16 +77,21 @@ static int resolvconf_probe(struct connman_element *element)
 
 static void resolvconf_remove(struct connman_element *element)
 {
-	gchar *cmd;
+	gchar *cmd, *name;
 	int err;
 
 	DBG("element %p name %s", element, element->name);
 
-	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, element->netdev.name);
+	name = inet_index2name(element->index);
+
+	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, name);
+
+	g_free(name);
 
 	DBG("%s", cmd);
 
-	err = system(cmd);
+	//err = system(cmd);
+	err = 0;
 
 	g_free(cmd);
 }

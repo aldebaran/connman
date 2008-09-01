@@ -43,7 +43,7 @@ static int resolvfile_probe(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	connman_element_get_value(element,
-			CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER, &nameserver);
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 
 	if (nameserver == NULL)
 		return -EINVAL;
@@ -63,7 +63,7 @@ static int resolvfile_probe(struct connman_element *element)
 
 	close(fd);
 
-	internet = connman_element_create();
+	internet = connman_element_create(NULL);
 
 	internet->type = CONNMAN_ELEMENT_TYPE_INTERNET;
 
