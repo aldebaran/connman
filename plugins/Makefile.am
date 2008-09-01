@@ -8,7 +8,7 @@ rtnllink_la_SOURCES = rtnllink.c
 
 ethernet_la_SOURCES = ethernet.c
 
-wifi_la_SOURCES = wifi.c supplicant.h supplicant.c
+wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 
 bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
@@ -19,7 +19,7 @@ dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 
 ipv4_la_SOURCES = ipv4.c
 
-resolvconf_la_SOURCES = resolvconf.c
+resolvconf_la_SOURCES = resolvconf.c inet.h inet.c
 
 resolvfile_la_SOURCES = resolvfile.c
 
