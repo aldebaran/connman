@@ -71,7 +71,7 @@ static int set_ipv4(struct connman_element *element,
 		return -1;
 
 	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->netdev.index;
+	ifr.ifr_ifindex = element->index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
 		close(sk);
@@ -147,7 +147,7 @@ static int clear_ipv4(struct connman_element *element)
 		return -1;
 
 	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->netdev.index;
+	ifr.ifr_ifindex = element->index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
 		close(sk);
@@ -182,11 +182,11 @@ static int ipv4_probe(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	connman_element_get_value(element,
-				CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS, &address);
+				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
 	connman_element_get_value(element,
-				CONNMAN_PROPERTY_TYPE_IPV4_NETMASK, &netmask);
+				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
 	connman_element_get_value(element,
-				CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY, &gateway);
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
 
 	DBG("address %s", address);
 	DBG("netmask %s", netmask);
@@ -199,10 +199,9 @@ static int ipv4_probe(struct connman_element *element)
 
 	set_ipv4(element, &ipv4);
 
-	resolver = connman_element_create();
+	resolver = connman_element_create(NULL);
 
 	resolver->type = CONNMAN_ELEMENT_TYPE_RESOLVER;
-	resolver->netdev.name = g_strdup(element->netdev.name);
 
 	connman_element_register(resolver, element);
 
