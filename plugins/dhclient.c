@@ -31,6 +31,8 @@
 #include <connman/dbus.h>
 #include <connman/log.h>
 
+#include "inet.h"
+
 #define DHCLIENT_INTF "org.isc.dhclient"
 #define DHCLIENT_PATH "/org/isc/dhclient"
 
@@ -140,8 +142,8 @@ static int dhclient_probe(struct connman_element *element)
 	if (task == NULL)
 		return -ENOMEM;
 
-	task->ifindex = element->netdev.index;
-	task->ifname = g_strdup(element->netdev.name);
+	task->ifindex = element->index;
+	task->ifname = inet_index2name(element->index);
 	task->element = element;
 
 	if (task->ifname == NULL) {
@@ -203,7 +205,7 @@ static void dhclient_remove(struct connman_element *element)
 
 	g_static_mutex_lock(&task_mutex);
 
-	task = find_task_by_index(element->netdev.index);
+	task = find_task_by_index(element->index);
 	if (task != NULL)
 		task_list = g_slist_remove(task_list, task);
 
@@ -301,10 +303,9 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	} else if (g_ascii_strcasecmp(text, "BOUND") == 0 ||
 				g_ascii_strcasecmp(text, "REBOOT") == 0) {
 		struct connman_element *element;
-		element = connman_element_create();
+		element = connman_element_create(NULL);
 		element->type = CONNMAN_ELEMENT_TYPE_IPV4;
-		element->netdev.index = task->ifindex;
-		element->netdev.name = g_strdup(task->ifname);
+		element->index = task->ifindex;
 		connman_element_update(task->element);
 		connman_element_register(element, task->element);
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||

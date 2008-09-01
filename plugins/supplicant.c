@@ -28,6 +28,7 @@
 
 #include <connman/log.h>
 
+#include "inet.h"
 #include "supplicant.h"
 
 #define TIMEOUT 5000
@@ -909,8 +910,8 @@ int __supplicant_start(struct connman_element *element,
 	if (task == NULL)
 		return -ENOMEM;
 
-	task->ifindex = element->netdev.index;
-	task->ifname = g_strdup(element->netdev.name);
+	task->ifindex = element->index;
+	task->ifname = inet_index2name(element->index);
 	task->element = element;
 	task->callback = callback;
 
@@ -954,7 +955,7 @@ int __supplicant_stop(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	task = find_task_by_index(element->netdev.index);
+	task = find_task_by_index(element->index);
 	if (task == NULL)
 		return -ENODEV;
 
@@ -986,7 +987,7 @@ int __supplicant_scan(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	task = find_task_by_index(element->netdev.index);
+	task = find_task_by_index(element->index);
 	if (task == NULL)
 		return -ENODEV;
 
@@ -1013,7 +1014,7 @@ int __supplicant_connect(struct connman_element *element, const char *ssid)
 
 	DBG("element %p name %s", element, element->name);
 
-	task = find_task_by_index(element->netdev.index);
+	task = find_task_by_index(element->index);
 	if (task == NULL)
 		return -ENODEV;
 
@@ -1035,7 +1036,7 @@ int __supplicant_disconnect(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	task = find_task_by_index(element->netdev.index);
+	task = find_task_by_index(element->index);
 	if (task == NULL)
 		return -ENODEV;
 
