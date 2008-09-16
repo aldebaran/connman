@@ -1,10 +1,9 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = rtnllink.la ethernet.la wifi.la bluetooth.la \
-			dhclient.la ipv4.la resolvconf.la resolvfile.la
-
-rtnllink_la_SOURCES = rtnllink.c
+plugin_LTLIBRARIES = ethernet.la wifi.la bluetooth.la \
+				netdev.la dhclient.la ipv4.la \
+				resolvconf.la resolvfile.la rtnllink.la
 
 ethernet_la_SOURCES = ethernet.c
 
@@ -12,6 +11,8 @@ wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 
 bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
+
+netdev_la_SOURCES = netdev.c
 
 dhclient_la_SOURCES = dhclient.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
@@ -22,6 +23,8 @@ ipv4_la_SOURCES = ipv4.c
 resolvconf_la_SOURCES = resolvconf.c inet.h inet.c
 
 resolvfile_la_SOURCES = resolvfile.c
+
+rtnllink_la_SOURCES = rtnllink.c
 
 if HAL
 plugin_LTLIBRARIES += hal.la
