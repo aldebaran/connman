@@ -23,6 +23,9 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <sys/stat.h>
+
 #include <dbus/dbus.h>
 #include <hal/libhal.h>
 
@@ -36,6 +39,7 @@ static struct {
 } capabilities[] = {
 	{ "net.80203", CONNMAN_ELEMENT_SUBTYPE_ETHERNET },
 	{ "net.80211", CONNMAN_ELEMENT_SUBTYPE_WIFI     },
+	{ "net.wimax", CONNMAN_ELEMENT_SUBTYPE_WIMAX    },
 	{ "modem",     CONNMAN_ELEMENT_SUBTYPE_MODEM    },
 	{ }
 };
@@ -84,7 +88,8 @@ static void device_netdev(LibHalContext *ctx, const char *udi,
 					struct connman_element *element)
 {
 	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_ETHERNET ||
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI) {
+			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
+			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX) {
 		element->index = libhal_device_get_property_int(ctx,
 						udi, "net.linux.ifindex", NULL);
 
@@ -107,6 +112,21 @@ static void create_element(LibHalContext *ctx, const char *udi,
 	struct connman_element *element;
 
 	DBG("ctx %p udi %s", ctx, udi);
+
+	if (subtype == CONNMAN_ELEMENT_SUBTYPE_ETHERNET) {
+		char *sysfs_path, wimax_path[PATH_MAX];
+		struct stat st;
+
+		sysfs_path = libhal_device_get_property_string(ctx, udi,
+						"linux.sysfs_path", NULL);
+		if (sysfs_path != NULL) {
+			snprintf(wimax_path, PATH_MAX, "%s/wimax", sysfs_path);
+
+			if (stat(wimax_path, &st) == 0 &&
+						(st.st_mode & S_IFDIR))
+				subtype = CONNMAN_ELEMENT_SUBTYPE_WIMAX;
+		}
+	}
 
 	element = connman_element_create(NULL);
 
