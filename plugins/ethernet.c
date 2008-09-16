@@ -43,23 +43,6 @@ struct ethernet_data {
 static GStaticMutex ethernet_mutex = G_STATIC_MUTEX_INIT;
 static GSList *ethernet_list = NULL;
 
-static void create_element(struct connman_element *parent,
-					enum connman_element_type type)
-{
-	struct connman_element *element;
-
-	DBG("parent %p name %s", parent, parent->name);
-
-	element = connman_element_create(NULL);
-	if (element == NULL)
-		return;
-
-	element->type = type;
-	element->index = parent->index;
-
-	connman_element_register(element, parent);
-}
-
 static void rtnl_link(struct nlmsghdr *hdr, const char *type)
 {
 	GSList *list;
@@ -76,6 +59,7 @@ static void rtnl_link(struct nlmsghdr *hdr, const char *type)
 
 	for (list = ethernet_list; list; list = list->next) {
 		struct connman_element *element = list->data;
+		struct connman_element *netdev;
 		struct ethernet_data *ethernet;
 
 		ethernet = connman_element_get_data(element);
@@ -94,8 +78,14 @@ static void rtnl_link(struct nlmsghdr *hdr, const char *type)
 		if (ethernet->flags & IFF_RUNNING) {
 			DBG("carrier on");
 
-			create_element(element, CONNMAN_ELEMENT_TYPE_DHCP);
-			create_element(element, CONNMAN_ELEMENT_TYPE_ZEROCONF);
+			netdev = connman_element_create(NULL);
+			if (netdev != NULL) {
+				netdev->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
+				netdev->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
+				netdev->index   = element->index;
+
+				connman_element_register(netdev, element);
+			}
 		} else {
 			DBG("carrier off");
 
