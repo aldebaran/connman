@@ -21,7 +21,10 @@ for path in elements:
 	print "[ %s ]" % (path)
 
 	if (properties["Subtype"] == "wifi"):
-		print "   Started scanning"
+		print "   Started WiFi scanning"
+		element.Update()
+	elif (properties["Subtype"] == "wimax")
+		print "   Started WiMAX scanning"
 		element.Update()
 	else:
 		print "   No scanning"
