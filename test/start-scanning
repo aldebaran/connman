@@ -23,7 +23,7 @@ for path in elements:
 	if (properties["Subtype"] == "wifi"):
 		print "   Started WiFi scanning"
 		element.Update()
-	elif (properties["Subtype"] == "wimax")
+	elif (properties["Subtype"] == "wimax"):
 		print "   Started WiMAX scanning"
 		element.Update()
 	else:
