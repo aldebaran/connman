@@ -45,8 +45,8 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 	fi
 ])
 
-AC_PATH_PROG(DHCLIENT, [dhclient])
-AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant])
+AC_PATH_PROG(DHCLIENT, [dhclient], ,$PATH:/sbin:/usr/sbin)
+AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], ,$PATH:/sbin:/usr/sbin)
 
 PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
 				AC_MSG_ERROR(glib is required))
