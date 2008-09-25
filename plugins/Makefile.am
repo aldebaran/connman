@@ -14,7 +14,7 @@ bluetooth_la_LIBADD = @GDBUS_LIBS@
 
 netdev_la_SOURCES = netdev.c
 
-dhclient_la_SOURCES = dhclient.c
+dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
