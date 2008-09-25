@@ -75,7 +75,8 @@ static void load_plugins(const gchar *path)
 
 			module = g_module_open(filename, 0);
 			if (module == NULL) {
-				g_warning("Can't load %s", filename);
+				g_warning("Can't load %s: %s", filename,
+							g_module_error());
 				continue;
 			}
 
