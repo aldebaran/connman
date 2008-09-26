@@ -854,36 +854,34 @@ int connman_element_create_property(struct connman_element *element,
 int connman_element_set_property(struct connman_element *element,
 				enum connman_property_id id, const void *value)
 {
-#if 0
-	switch (type) {
-	case CONNMAN_PROPERTY_TYPE_INVALID:
-		return -EINVAL;
-	case CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS:
+	switch (id) {
+	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
 		connman_element_lock(element);
 		g_free(element->ipv4.address);
 		element->ipv4.address = g_strdup(*((const char **) value));
 		connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_TYPE_IPV4_NETMASK:
+	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
 		connman_element_lock(element);
 		g_free(element->ipv4.netmask);
 		element->ipv4.netmask = g_strdup(*((const char **) value));
 		connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY:
+	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
 		connman_element_lock(element);
 		g_free(element->ipv4.gateway);
 		element->ipv4.gateway = g_strdup(*((const char **) value));
 		connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER:
+	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
 		connman_element_lock(element);
 		g_free(element->ipv4.nameserver);
 		element->ipv4.nameserver = g_strdup(*((const char **) value));
 		connman_element_unlock(element);
 		break;
+	default:
+		return -EINVAL;
 	}
-#endif
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
