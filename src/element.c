@@ -899,44 +899,42 @@ int connman_element_get_value(struct connman_element *element,
 	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
 		return -EINVAL;
 
-#if 0
-	switch (type) {
-	case CONNMAN_PROPERTY_TYPE_INVALID:
-		return -EINVAL;
-	case CONNMAN_PROPERTY_TYPE_IPV4_ADDRESS:
+	switch (id) {
+	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
 		if (element->ipv4.address == NULL)
 			return connman_element_get_value(element->parent,
-								type, value);
+								id, value);
 		connman_element_lock(element);
 		*((char **) value) = element->ipv4.address;
 		connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_TYPE_IPV4_NETMASK:
+	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
 		if (element->ipv4.netmask == NULL)
 			return connman_element_get_value(element->parent,
-								type, value);
+								id, value);
 		connman_element_lock(element);
 		*((char **) value) = element->ipv4.netmask;
 		connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_TYPE_IPV4_GATEWAY:
+	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
 		if (element->ipv4.gateway == NULL)
 			return connman_element_get_value(element->parent,
-								type, value);
+								id, value);
 		connman_element_lock(element);
 		*((char **) value) = element->ipv4.gateway;
 		connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_TYPE_IPV4_NAMESERVER:
+	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
 		if (element->ipv4.nameserver == NULL)
 			return connman_element_get_value(element->parent,
-								type, value);
+								id, value);
 		connman_element_lock(element);
 		*((char **) value) = element->ipv4.nameserver;
 		connman_element_unlock(element);
 		break;
+	default:
+		return -EINVAL;
 	}
-#endif
 
 	return 0;
 }
