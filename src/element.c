@@ -953,7 +953,8 @@ int connman_element_register(struct connman_element *element,
 	DBG("element %p name %s parent %p", element, element->name, parent);
 
 	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
-		if (g_str_equal(device_filter, element->name) == FALSE) {
+		if (g_pattern_match_simple(device_filter,
+						element->name) == FALSE) {
 			DBG("ignoring %s device", element->name);
 			return -EPERM;
 		}
