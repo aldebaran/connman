@@ -192,6 +192,9 @@ static int ipv4_probe(struct connman_element *element)
 	DBG("netmask %s", netmask);
 	DBG("gateway %s", gateway);
 
+	if (address == NULL || netmask == NULL || gateway == NULL)
+		return -EINVAL;
+
 	memset(&ipv4, 0, sizeof(ipv4));
 	ipv4.address.s_addr = inet_addr(address);
 	ipv4.netmask.s_addr = inet_addr(netmask);
