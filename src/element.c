@@ -385,15 +385,15 @@ static DBusMessage *do_enable(DBusConnection *conn,
 
 	if (element->driver->enable) {
 		DBG("Calling enable callback");
-		if (element->driver->enable(element) == 0) {
-			element->enabled = TRUE;
+		element->driver->enable(element);
+	}
 
-			g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+	element->enabled = TRUE;
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
-		}
-	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -413,15 +413,15 @@ static DBusMessage *do_disable(DBusConnection *conn,
 
 	if (element->driver->disable) {
 		DBG("Calling disable callback");
-		if (element->driver->disable(element) == 0) {
-			element->enabled = FALSE;
+		element->driver->disable(element);
+	}
 
-			g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+	element->enabled = FALSE;
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
-		}
-	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
