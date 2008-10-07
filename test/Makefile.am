@@ -1,6 +1,7 @@
 
 EXTRA_DIST = list-profiles list-elements monitor-elements monitor-state \
-		start-scanning select-network disable-network simple-agent \
-		get-state show-introspection test-compat test-supplicant
+		get-state select-network disable-network monitor-networks \
+		start-scanning simple-agent \
+		show-introspection test-compat test-supplicant
 
 MAINTAINERCLEANFILES = Makefile.in
