@@ -356,13 +356,10 @@ static DBusMessage *do_update(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (element->driver == NULL)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
 	if (element->enabled == FALSE)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
-	if (element->driver->update) {
+	if (element->driver && element->driver->update) {
 		DBG("Calling update callback");
 		element->driver->update(element);
 	}
@@ -377,13 +374,10 @@ static DBusMessage *do_enable(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (element->driver == NULL)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
 	if (element->enabled == TRUE)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
-	if (element->driver->enable) {
+	if (element->driver && element->driver->enable) {
 		DBG("Calling enable callback");
 		element->driver->enable(element);
 	}
