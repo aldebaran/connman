@@ -399,13 +399,10 @@ static DBusMessage *do_disable(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (element->driver == NULL)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
 	if (element->enabled == FALSE)
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
-	if (element->driver->disable) {
+	if (element->driver && element->driver->disable) {
 		DBG("Calling disable callback");
 		element->driver->disable(element);
 	}
