@@ -85,6 +85,10 @@ PKG_CHECK_MODULES(SQLITE, sqlite3, sqlite_found=yes, sqlite_found=no)
 AC_SUBST(SQLITE_CFLAGS)
 AC_SUBST(SQLITE_LIBS)
 
+AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
+			[enable fake plugin]), [enable_fake=${enableval}])
+AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
+
 AC_OUTPUT(Makefile gdbus/Makefile include/Makefile src/Makefile doc/Makefile
 		test/Makefile plugins/Makefile scripts/Makefile scripts/connman
 				src/connman.service doc/version.xml connman.pc)

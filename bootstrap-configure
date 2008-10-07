@@ -15,4 +15,5 @@ fi
 		--prefix=/usr \
 		--mandir=/usr/share/man \
 		--localstatedir=/var \
-		--sysconfdir=/etc
+		--sysconfdir=/etc \
+		--enable-fake $*

@@ -46,6 +46,12 @@ policydir = $(datadir)/PolicyKit/policy
 policy_DATA = connman.policy
 endif
 
+if FAKE
+plugin_LTLIBRARIES += fake.la
+
+fake_la_SOURCES = fake.c
+endif
+
 AM_LDFLAGS = -no-undefined -module -avoid-version \
 				-export-symbols-regex connman_plugin_desc
 
