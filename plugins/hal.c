@@ -168,6 +168,7 @@ static void device_added(LibHalContext *ctx, const char *udi)
 
 static void device_removed(LibHalContext *ctx, const char *udi)
 {
+	struct connman_element *removal = NULL;
 	GSList *list;
 	gchar *name;
 
@@ -181,12 +182,16 @@ static void device_removed(LibHalContext *ctx, const char *udi)
 		struct connman_element *element = list->data;
 
 		if (g_str_equal(element->name, name) == TRUE) {
-			element_list = g_slist_remove(element_list, element);
-
-			connman_element_unregister(element);
-			connman_element_unref(element);
+			removal = element;
 			break;
 		}
+	}
+
+	if (removal != NULL) {
+		element_list = g_slist_remove(element_list, removal);
+
+		connman_element_unregister(removal);
+		connman_element_unref(removal);
 	}
 
 	g_static_mutex_unlock(&element_mutex);
