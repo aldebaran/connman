@@ -229,9 +229,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		append_entry(&dict, "Priority",
 				DBUS_TYPE_UINT16, &element->priority);
 
+#if 0
 	if (element->network.identifier != NULL)
 		append_entry(&dict, "Identifier",
 				DBUS_TYPE_STRING, &element->network.identifier);
+#endif
 
 	if (element->ipv4.address != NULL)
 		append_entry(&dict, "IPv4.Address",
