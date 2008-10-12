@@ -34,6 +34,7 @@ static void create_network(struct connman_element *parent, const char *name)
 
 	element = connman_element_create(name);
 	element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
+	element->subtype = CONNMAN_ELEMENT_SUBTYPE_FAKE;
 
 	connman_element_register(element, parent);
 	connman_element_unref(element);
@@ -82,7 +83,7 @@ static int fake_device_disable(struct connman_element *element)
 static struct connman_driver fake_device_driver = {
 	.name		= "fake-device",
 	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.priority	= CONNMAN_DRIVER_PRIORITY_HIGH,
+	.subtype	= CONNMAN_ELEMENT_SUBTYPE_FAKE,
 	.probe		= fake_device_probe,
 	.remove		= fake_device_remove,
 	.update		= fake_device_update,
@@ -96,6 +97,7 @@ static void create_device(const char *name)
 
 	element = connman_element_create(name);
 	element->type = CONNMAN_ELEMENT_TYPE_DEVICE;
+	element->subtype = CONNMAN_ELEMENT_SUBTYPE_FAKE;
 
 	//connman_element_define_properties(element,
 	//				CONNMAN_PROPERTY_ID_IPV4_METHOD,
