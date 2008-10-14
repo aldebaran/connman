@@ -39,7 +39,7 @@ extern "C" {
 struct connman_rtnl {
 	const char *name;
 	int priority;
-	void (*link_flags) (int index, int flags);
+	void (*link_flags) (int index, short flags);
 };
 
 extern int connman_rtnl_register(struct connman_rtnl *rtnl);

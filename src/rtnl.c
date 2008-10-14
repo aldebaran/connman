@@ -86,7 +86,7 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 	g_static_rw_lock_writer_unlock(&rtnl_lock);
 }
 
-static void process_link_flags(int index, int flags)
+static void process_link_flags(int index, short flags)
 {
 	GSList *list;
 
