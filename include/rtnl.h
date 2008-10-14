@@ -26,6 +26,25 @@
 extern "C" {
 #endif
 
+/**
+ * SECTION:rtnl
+ * @title: RTNL premitives
+ * @short_description: Functions for registering RTNL modules
+ */
+
+#define CONNMAN_RTNL_PRIORITY_LOW      -100
+#define CONNMAN_RTNL_PRIORITY_DEFAULT     0
+#define CONNMAN_RTNL_PRIORITY_HIGH      100
+
+struct connman_rtnl {
+	const char *name;
+	int priority;
+	void (*link_flags) (int index, int flags);
+};
+
+extern int connman_rtnl_register(struct connman_rtnl *rtnl);
+extern void connman_rtnl_unregister(struct connman_rtnl *rtnl);
+
 #ifdef __cplusplus
 }
 #endif

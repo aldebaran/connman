@@ -36,6 +36,74 @@
 
 #include "connman.h"
 
+static GStaticRWLock rtnl_lock = G_STATIC_RW_LOCK_INIT;
+static GSList *rtnl_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_rtnl *rtnl1 = a;
+	const struct connman_rtnl *rtnl2 = b;
+
+	return rtnl2->priority - rtnl1->priority;
+}
+
+/**
+ * connman_rtnl_register:
+ * @rtnl: RTNL module
+ *
+ * Register a new RTNL module
+ *
+ * Returns: %0 on success
+ */
+int connman_rtnl_register(struct connman_rtnl *rtnl)
+{
+	DBG("rtnl %p name %s", rtnl, rtnl->name);
+
+	g_static_rw_lock_writer_lock(&rtnl_lock);
+
+	rtnl_list = g_slist_insert_sorted(rtnl_list, rtnl,
+							compare_priority);
+
+	g_static_rw_lock_writer_unlock(&rtnl_lock);
+
+	return 0;
+}
+
+/**
+ * connman_rtnl_unregister:
+ * @rtnl: RTNL module
+ *
+ * Remove a previously registered RTNL module
+ */
+void connman_rtnl_unregister(struct connman_rtnl *rtnl)
+{
+	DBG("rtnl %p name %s", rtnl, rtnl->name);
+
+	g_static_rw_lock_writer_lock(&rtnl_lock);
+
+	rtnl_list = g_slist_remove(rtnl_list, rtnl);
+
+	g_static_rw_lock_writer_unlock(&rtnl_lock);
+}
+
+static void process_link_flags(int flags)
+{
+	GSList *list;
+
+	DBG("idex %d", index);
+
+	g_static_rw_lock_reader_lock(&rtnl_lock);
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->link_flags)
+			rtnl->link_flags(index, flags);
+	}
+
+	g_static_rw_lock_reader_unlock(&rtnl_lock);
+}
+
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
 {
 	if (family == AF_INET) {
@@ -138,6 +206,8 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			break;
 		}
 	}
+
+	process_link_flags(msg->ifi_flags);
 }
 
 static void rtnl_addr(struct nlmsghdr *hdr)
@@ -349,7 +419,7 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	//addr.nl_groups = RTMGRP_LINK;
+	addr.nl_groups = RTMGRP_LINK;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
