@@ -43,17 +43,9 @@ struct ethernet_data {
 static GStaticMutex ethernet_mutex = G_STATIC_MUTEX_INIT;
 static GSList *ethernet_list = NULL;
 
-static void rtnl_link(struct nlmsghdr *hdr, const char *type)
+static void ethernet_link_flags(int index, short flags)
 {
 	GSList *list;
-	struct ifinfomsg *msg;
-	int bytes;
-
-	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
-	bytes = IFLA_PAYLOAD(hdr);
-
-	DBG("%s ifi_index %d ifi_flags 0x%04x",
-				type, msg->ifi_index, msg->ifi_flags);
 
 	g_static_mutex_lock(&ethernet_mutex);
 
@@ -66,14 +58,13 @@ static void rtnl_link(struct nlmsghdr *hdr, const char *type)
 		if (ethernet == NULL)
 			continue;
 
-		if (ethernet->index != msg->ifi_index)
+		if (ethernet->index != index)
 			continue;
 
-		if ((ethernet->flags & IFF_RUNNING) ==
-					(msg->ifi_flags & IFF_RUNNING))
+		if ((ethernet->flags & IFF_RUNNING) == (flags & IFF_RUNNING))
 			continue;
 
-		ethernet->flags = msg->ifi_flags;
+		ethernet->flags = flags;
 
 		if (ethernet->flags & IFF_RUNNING) {
 			DBG("carrier on");
@@ -96,91 +87,10 @@ static void rtnl_link(struct nlmsghdr *hdr, const char *type)
 	g_static_mutex_unlock(&ethernet_mutex);
 }
 
-static gboolean rtnl_event(GIOChannel *chan, GIOCondition cond, gpointer data)
-{
-	unsigned char buf[1024];
-	void *ptr = buf;
-	gsize len;
-	GIOError err;
-
-	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-		return FALSE;
-
-	memset(buf, 0, sizeof(buf));
-
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err) {
-		if (err == G_IO_ERROR_AGAIN)
-			return TRUE;
-		return FALSE;
-	}
-
-	DBG("buf %p len %zd", buf, len);
-
-	while (len > 0) {
-		struct nlmsghdr *hdr = ptr;
-		struct nlmsgerr *err;
-
-		if (!NLMSG_OK(hdr, len))
-			break;
-
-		DBG("len %d type %d flags 0x%04x seq %d",
-					hdr->nlmsg_len, hdr->nlmsg_type,
-					hdr->nlmsg_flags, hdr->nlmsg_seq);
-
-		switch (hdr->nlmsg_type) {
-		case NLMSG_ERROR:
-			err = NLMSG_DATA(hdr);
-			DBG("ERROR %d (%s)", -err->error,
-						strerror(-err->error));
-			break;
-
-		case RTM_NEWLINK:
-			rtnl_link(hdr, "NEWLINK");
-			break;
-
-		case RTM_DELLINK:
-			rtnl_link(hdr, "DELLINK");
-			break;
-		}
-
-		len -= hdr->nlmsg_len;
-		ptr += hdr->nlmsg_len;
-	}
-
-	return TRUE;
-}
-
-static GIOChannel *channel;
-
-static int rtnl_request(void)
-{
-	struct {
-		struct nlmsghdr hdr;
-		struct rtgenmsg msg;
-	} req;
-
-	struct sockaddr_nl addr;
-	int sk;
-
-	DBG("");
-
-	memset(&req, 0, sizeof(req));
-	req.hdr.nlmsg_len = sizeof(req.hdr) + sizeof(req.msg);
-	req.hdr.nlmsg_type = RTM_GETLINK;
-	req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-	req.hdr.nlmsg_pid = 0;
-	req.hdr.nlmsg_seq = 42;
-	req.msg.rtgen_family = AF_INET;
-
-	sk = g_io_channel_unix_get_fd(channel);
-
-	memset(&addr, 0, sizeof(addr));
-	addr.nl_family = AF_NETLINK;
-
-	return sendto(sk, &req, sizeof(req), 0,
-			(struct sockaddr *) &addr, sizeof(addr));
-}
+static struct connman_rtnl ethernet_rtnl = {
+	.name		= "ethernet",
+	.link_flags	= ethernet_link_flags,
+};
 
 static int iface_up(struct ethernet_data *ethernet)
 {
@@ -288,7 +198,7 @@ static int ethernet_probe(struct connman_element *element)
 
 	iface_up(ethernet);
 
-	rtnl_request();
+	connman_rtnl_send_getlink();
 
 	return 0;
 }
@@ -318,55 +228,17 @@ static struct connman_driver ethernet_driver = {
 	.remove		= ethernet_remove,
 };
 
-static int rtnl_init(void)
-{
-	struct sockaddr_nl addr;
-	int sk, err;
-
-	DBG("");
-
-	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
-	if (sk < 0)
-		return -errno;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK;
-
-	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
-		err = -errno;
-		close(sk);
-		return err;
-	}
-
-	channel = g_io_channel_unix_new(sk);
-	g_io_channel_set_close_on_unref(channel, TRUE);
-
-	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
-							rtnl_event, NULL);
-
-	return 0;
-}
-
-static void rtnl_cleanup(void)
-{
-	DBG("");
-
-	g_io_channel_shutdown(channel, TRUE, NULL);
-	g_io_channel_unref(channel);
-}
-
 static int ethernet_init(void)
 {
 	int err;
 
-	err = rtnl_init();
+	err = connman_rtnl_register(&ethernet_rtnl);
 	if (err < 0)
 		return err;
 
 	err = connman_driver_register(&ethernet_driver);
 	if (err < 0) {
-		rtnl_cleanup();
+		connman_rtnl_unregister(&ethernet_rtnl):
 		return err;
 	}
 
@@ -377,7 +249,7 @@ static void ethernet_exit(void)
 {
 	connman_driver_unregister(&ethernet_driver);
 
-	rtnl_cleanup();
+	connman_rtnl_unregister(&ethernet_rtnl);
 }
 
 CONNMAN_PLUGIN_DEFINE("ethernet", "Ethernet interface plugin", VERSION,
