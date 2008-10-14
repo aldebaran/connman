@@ -12,7 +12,8 @@ DISTCLEANFILES = $(service_DATA)
 sbin_PROGRAMS = connmand
 
 connmand_SOURCES = main.c connman.h log.c error.c plugin.c profile.c \
-		element.c security.c storage.c manager.c agent.c rtnl.c
+				element.c device.c security.c storage.c \
+						manager.c agent.c rtnl.c
 
 connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @GTHREAD_LIBS@ -ldl
 
