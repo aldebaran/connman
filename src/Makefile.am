@@ -14,7 +14,7 @@ sbin_PROGRAMS = connmand
 connmand_SOURCES = main.c connman.h log.c error.c plugin.c profile.c \
 		element.c security.c storage.c manager.c agent.c rtnl.c
 
-connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @GMODULE_LIBS@ @GTHREAD_LIBS@
+connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @GTHREAD_LIBS@ -ldl
 
 connmand_LDFLAGS = -Wl,--version-script=connman.ver
 
@@ -32,7 +32,7 @@ else
 plugindir = $(libdir)/connman/plugins
 endif
 
-AM_CFLAGS = @GTHREAD_CFLAGS@ @GMODULE_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
+AM_CFLAGS = @GTHREAD_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
 			-DSTATEDIR=\""$(statedir)"\" \
 			-DSTORAGEDIR=\""$(storagedir)\"" \
 			-DPLUGINDIR=\""$(plugindir)"\"

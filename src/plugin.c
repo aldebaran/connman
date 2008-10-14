@@ -23,21 +23,20 @@
 #include <config.h>
 #endif
 
-#include <dbus/dbus.h>
+#include <dlfcn.h>
 
 #include <glib.h>
-#include <gmodule.h>
 
 #include "connman.h"
 
 static GSList *plugins = NULL;
 
 struct connman_plugin {
-	GModule *module;
+	void *handle;
 	struct connman_plugin_desc *desc;
 };
 
-static gboolean add_plugin(GModule *module, struct connman_plugin_desc *desc)
+static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 {
 	struct connman_plugin *plugin;
 
@@ -45,7 +44,7 @@ static gboolean add_plugin(GModule *module, struct connman_plugin_desc *desc)
 	if (plugin == NULL)
 		return FALSE;
 
-	plugin->module = module;
+	plugin->handle = handle;
 	plugin->desc = desc;
 
 	plugins = g_slist_append(plugins, plugin);
@@ -55,65 +54,53 @@ static gboolean add_plugin(GModule *module, struct connman_plugin_desc *desc)
 	return TRUE;
 }
 
-static void load_plugins(const gchar *path)
+int __connman_plugin_init(void)
 {
 	GDir *dir;
 	const gchar *file;
 	gchar *filename;
 
-	dir = g_dir_open(path, 0, NULL);
+	DBG("");
+
+	dir = g_dir_open(PLUGINDIR, 0, NULL);
 	if (dir != NULL) {
 		while ((file = g_dir_read_name(dir)) != NULL) {
-			GModule *module;
+			void *handle;
 			struct connman_plugin_desc *desc;
 
 			if (g_str_has_prefix(file, "lib") == TRUE ||
 					g_str_has_suffix(file, ".so") == FALSE)
 				continue;
 
-			filename = g_build_filename(path, file, NULL);
+			filename = g_build_filename(PLUGINDIR, file, NULL);
 
-			module = g_module_open(filename, 0);
-			if (module == NULL) {
+			handle = dlopen(filename, RTLD_LAZY);
+			if (handle == NULL) {
 				g_warning("Can't load %s: %s", filename,
-							g_module_error());
+								dlerror());
 				continue;
 			}
 
 			g_free(filename);
 
-			DBG("%s", g_module_name(module));
-
-			if (g_module_symbol(module, "connman_plugin_desc",
-						(gpointer) &desc) == FALSE) {
+			desc = dlsym(handle, "connman_plugin_desc");
+			if (desc == NULL) {
 				g_warning("Can't load symbol");
-				g_module_close(module);
+				dlclose(handle);
 				continue;
 			}
 
-			if (desc == NULL || desc->init == NULL) {
-				g_module_close(module);
+			if (desc->init == NULL) {
+				dlclose(handle);
 				continue;
 			}
 
-			if (add_plugin(module, desc) == FALSE)
-				g_module_close(module);
+			if (add_plugin(handle, desc) == FALSE)
+				dlclose(handle);
 		}
 
 		g_dir_close(dir);
 	}
-}
-
-int __connman_plugin_init(void)
-{
-	DBG("");
-
-	if (g_module_supported() == FALSE) {
-		g_warning("Modules not supported: %s", g_module_error());
-		return FALSE;
-	}
-
-	load_plugins(PLUGINDIR);
 
 	return 0;
 }
@@ -127,12 +114,10 @@ void __connman_plugin_cleanup(void)
 	for (list = plugins; list; list = list->next) {
 		struct connman_plugin *plugin = list->data;
 
-		DBG("%s", g_module_name(plugin->module));
-
 		if (plugin->desc->exit)
 			plugin->desc->exit();
 
-		g_module_close(plugin->module);
+		dlclose(plugin->handle);
 
 		g_free(plugin);
 	}

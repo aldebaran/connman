@@ -48,6 +48,9 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 AC_PATH_PROG(DHCLIENT, [dhclient], ,$PATH:/sbin:/usr/sbin)
 AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], ,$PATH:/sbin:/usr/sbin)
 
+AC_CHECK_LIB(dl, dlopen, dummy=yes,
+			AC_MSG_ERROR(dynamic linking loader is required))
+
 PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
 				AC_MSG_ERROR(glib is required))
 AC_SUBST(GLIB_CFLAGS)
@@ -57,11 +60,6 @@ PKG_CHECK_MODULES(GTHREAD, gthread-2.0, dummy=yes,
 				AC_MSG_ERROR(gthread is required))
 AC_SUBST(GTHREAD_CFLAGS)
 AC_SUBST(GTHREAD_LIBS)
-
-PKG_CHECK_MODULES(GMODULE, gmodule-2.0, dummy=yes,
-				AC_MSG_ERROR(gmodule is required))
-AC_SUBST(GMODULE_CFLAGS)
-AC_SUBST(GMODULE_LIBS)
 
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(libdbus is required))
