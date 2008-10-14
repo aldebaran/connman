@@ -49,6 +49,8 @@ static void ethernet_newlink(unsigned short type, int index,
 {
 	GSList *list;
 
+	DBG("index %d flags %ld change %ld", index, flags, change);
+
 	g_static_mutex_lock(&ethernet_mutex);
 
 	for (list = ethernet_list; list; list = list->next) {
