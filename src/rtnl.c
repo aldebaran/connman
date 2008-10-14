@@ -124,24 +124,6 @@ static void process_dellink(unsigned short type, int index,
 	g_static_rw_lock_reader_unlock(&rtnl_lock);
 }
 
-static void process_link_flags(int index, short flags)
-{
-	GSList *list;
-
-	DBG("idex %d", index);
-
-	g_static_rw_lock_reader_lock(&rtnl_lock);
-
-	for (list = rtnl_list; list; list = list->next) {
-		struct connman_rtnl *rtnl = list->data;
-
-		if (rtnl->link_flags)
-			rtnl->link_flags(index, flags);
-	}
-
-	g_static_rw_lock_reader_unlock(&rtnl_lock);
-}
-
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
 {
 	if (family == AF_INET) {
@@ -244,8 +226,6 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			break;
 		}
 	}
-
-	process_link_flags(msg->ifi_index, msg->ifi_flags);
 }
 
 static void rtnl_newlink(struct nlmsghdr *hdr)

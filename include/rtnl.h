@@ -43,7 +43,6 @@ struct connman_rtnl {
 					unsigned flags, unsigned change);
 	void (*dellink) (unsigned short type, int index,
 					unsigned flags, unsigned change);
-	void (*link_flags) (int index, short flags);
 };
 
 extern int connman_rtnl_register(struct connman_rtnl *rtnl);
