@@ -25,15 +25,35 @@
 
 #include <connman/plugin.h>
 #include <connman/element.h>
+#include <connman/rtnl.h>
 #include <connman/log.h>
+
+static void rtnllink_newlink(unsigned short type, int index,
+					unsigned flags, unsigned change)
+{
+	DBG("index %d", index);
+}
+
+static void rtnllink_dellink(unsigned short type, int index,
+					unsigned flags, unsigned change)
+{
+	DBG("index %d", index);
+}
+
+static struct connman_rtnl rtnllink_rtnl = {
+	.name		= "rtnllink",
+	.newlink	= rtnllink_newlink,
+	.dellink	= rtnllink_dellink,
+};
 
 static int rtnllink_init(void)
 {
-	return 0;
+	return connman_rtnl_register(&rtnllink_rtnl);
 }
 
 static void rtnllink_exit(void)
 {
+	connman_rtnl_unregister(&rtnllink_rtnl);
 }
 
 CONNMAN_PLUGIN_DEFINE("rtnllink", "RTNL link detection plugin", VERSION,
