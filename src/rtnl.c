@@ -91,7 +91,7 @@ static void process_newlink(unsigned short type, int index,
 {
 	GSList *list;
 
-	DBG("idex %d", index);
+	DBG("index %d", index);
 
 	g_static_rw_lock_reader_lock(&rtnl_lock);
 
@@ -110,7 +110,7 @@ static void process_dellink(unsigned short type, int index,
 {
 	GSList *list;
 
-	DBG("idex %d", index);
+	DBG("index %d", index);
 
 	g_static_rw_lock_reader_lock(&rtnl_lock);
 
