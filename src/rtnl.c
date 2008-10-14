@@ -158,6 +158,7 @@ static inline void print_attr(struct rtattr *attr, const char *name)
 
 static void rtnl_link(struct nlmsghdr *hdr)
 {
+#if 0
 	struct ifinfomsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -226,6 +227,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			break;
 		}
 	}
+#endif
 }
 
 static void rtnl_newlink(struct nlmsghdr *hdr)
