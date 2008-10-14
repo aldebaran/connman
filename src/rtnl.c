@@ -86,7 +86,7 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 	g_static_rw_lock_writer_unlock(&rtnl_lock);
 }
 
-static void process_link_flags(int flags)
+static void process_link_flags(int index, int flags)
 {
 	GSList *list;
 
@@ -207,7 +207,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 		}
 	}
 
-	process_link_flags(msg->ifi_flags);
+	process_link_flags(msg->ifi_index, msg->ifi_flags);
 }
 
 static void rtnl_addr(struct nlmsghdr *hdr)
