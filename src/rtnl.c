@@ -86,6 +86,44 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 	g_static_rw_lock_writer_unlock(&rtnl_lock);
 }
 
+static void process_newlink(unsigned short type, int index,
+					unsigned flags, unsigned change)
+{
+	GSList *list;
+
+	DBG("idex %d", index);
+
+	g_static_rw_lock_reader_lock(&rtnl_lock);
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->newlink)
+			rtnl->newlink(type, index, flags, change);
+	}
+
+	g_static_rw_lock_reader_unlock(&rtnl_lock);
+}
+
+static void process_dellink(unsigned short type, int index,
+					unsigned flags, unsigned change)
+{
+	GSList *list;
+
+	DBG("idex %d", index);
+
+	g_static_rw_lock_reader_lock(&rtnl_lock);
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->dellink)
+			rtnl->dellink(type, index, flags, change);
+	}
+
+	g_static_rw_lock_reader_unlock(&rtnl_lock);
+}
+
 static void process_link_flags(int index, short flags)
 {
 	GSList *list;
@@ -210,6 +248,34 @@ static void rtnl_link(struct nlmsghdr *hdr)
 	process_link_flags(msg->ifi_index, msg->ifi_flags);
 }
 
+static void rtnl_newlink(struct nlmsghdr *hdr)
+{
+	struct ifinfomsg *msg;
+
+	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
+
+	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
+
+	process_newlink(msg->ifi_type, msg->ifi_index,
+					msg->ifi_flags, msg->ifi_change);
+
+	rtnl_link(hdr);
+}
+
+static void rtnl_dellink(struct nlmsghdr *hdr)
+{
+	struct ifinfomsg *msg;
+
+	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
+
+	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
+
+	process_dellink(msg->ifi_type, msg->ifi_index,
+					msg->ifi_flags, msg->ifi_change);
+
+	rtnl_link(hdr);
+}
+
 static void rtnl_addr(struct nlmsghdr *hdr)
 {
 	struct ifaddrmsg *msg;
@@ -332,11 +398,11 @@ static void rtnl_message(void *buf, size_t len)
 			return;
 		case RTM_NEWLINK:
 			DBG("NEWLINK");
-			rtnl_link(hdr);
+			rtnl_newlink(hdr);
 			break;
 		case RTM_DELLINK:
 			DBG("DELLINK");
-			rtnl_link(hdr);
+			rtnl_dellink(hdr);
 			break;
 		case RTM_NEWADDR:
 			DBG("NEWADDR");

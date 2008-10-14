@@ -39,6 +39,10 @@ extern "C" {
 struct connman_rtnl {
 	const char *name;
 	int priority;
+	void (*newlink) (unsigned short type, int index,
+					unsigned flags, unsigned change);
+	void (*dellink) (unsigned short type, int index,
+					unsigned flags, unsigned change);
 	void (*link_flags) (int index, short flags);
 };
 
