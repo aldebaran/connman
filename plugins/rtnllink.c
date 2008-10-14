@@ -23,6 +23,15 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <linux/if_arp.h>
+#include <linux/wireless.h>
+
 #include <connman/plugin.h>
 #include <connman/element.h>
 #include <connman/rtnl.h>
@@ -36,8 +45,8 @@ static GSList *device_list = NULL;
 static void rtnllink_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
+	enum connman_element_subtype subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 	struct connman_element *device;
-	enum connman_element_subtype subtype;
 	GSList *list;
 	gboolean exists = FALSE;
 	gchar *name;
@@ -62,16 +71,35 @@ static void rtnllink_newlink(unsigned short type, int index,
 
 	name = inet_index2name(index);
 
-	if (g_str_has_prefix(name, "eth") == TRUE)
-		subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
-	else if (g_str_has_prefix(name, "wlan") == TRUE)
-		subtype = CONNMAN_ELEMENT_SUBTYPE_WIFI;
-	else if (g_str_has_prefix(name, "wmx") == TRUE)
-		subtype = CONNMAN_ELEMENT_SUBTYPE_WIMAX;
-	else if (g_str_has_prefix(name, "bnep") == TRUE)
-		subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
-	else
-		subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+	if (type == ARPHRD_ETHER) {
+		char bridge_path[PATH_MAX], wimax_path[PATH_MAX];
+		struct stat st;
+		struct iwreq iwr;
+		int sk;
+
+		snprintf(bridge_path, PATH_MAX,
+					"/sys/class/net/%s/bridge", name);
+		snprintf(wimax_path, PATH_MAX,
+					"/sys/class/net/%s/wimax", name);
+
+		memset(&iwr, 0, sizeof(iwr));
+		strncpy(iwr.ifr_ifrn.ifrn_name, name, IFNAMSIZ);
+
+		sk = socket(PF_INET, SOCK_DGRAM, 0);
+
+		if (g_str_has_prefix(name, "bnep") == TRUE)
+			subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
+		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
+			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
+			subtype = CONNMAN_ELEMENT_SUBTYPE_WIMAX;
+		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
+			subtype = CONNMAN_ELEMENT_SUBTYPE_WIFI;
+		else
+			subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
+
+		close(sk);
+	}
 
 	if (subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN) {
 		g_free(name);
