@@ -45,6 +45,8 @@ struct connman_rtnl {
 extern int connman_rtnl_register(struct connman_rtnl *rtnl);
 extern void connman_rtnl_unregister(struct connman_rtnl *rtnl);
 
+int connman_rtnl_send_getlink(void);
+
 #ifdef __cplusplus
 }
 #endif

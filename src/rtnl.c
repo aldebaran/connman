@@ -406,6 +406,26 @@ int __connman_rtnl_send(const void *buf, size_t len)
 			(struct sockaddr *) &addr, sizeof(addr));
 }
 
+int connman_rtnl_send_getlink(void)
+{
+	struct {
+		struct nlmsghdr hdr;
+		struct rtgenmsg msg;
+	} req;
+
+	DBG("");
+
+	memset(&req, 0, sizeof(req));
+	req.hdr.nlmsg_len = sizeof(req.hdr) + sizeof(req.msg);
+	req.hdr.nlmsg_type = RTM_GETLINK;
+	req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	req.hdr.nlmsg_pid = 0;
+	req.hdr.nlmsg_seq = 42;
+	req.msg.rtgen_family = AF_INET;
+
+	__connman_rtnl_send(&req, sizeof(req));
+}
+
 int __connman_rtnl_init(void)
 {
 	struct sockaddr_nl addr;
