@@ -415,7 +415,7 @@ static void rtnl_message(void *buf, size_t len)
 static gboolean netlink_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
-	unsigned char buf[256];
+	unsigned char buf[4096];
 	gsize len;
 	GIOError err;
 
