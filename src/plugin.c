@@ -74,10 +74,11 @@ int __connman_plugin_init(void)
 
 			filename = g_build_filename(PLUGINDIR, file, NULL);
 
-			handle = dlopen(filename, RTLD_LAZY);
+			handle = dlopen(filename, RTLD_NOW);
 			if (handle == NULL) {
 				g_warning("Can't load %s: %s", filename,
 								dlerror());
+				g_free(filename);
 				continue;
 			}
 
@@ -85,7 +86,7 @@ int __connman_plugin_init(void)
 
 			desc = dlsym(handle, "connman_plugin_desc");
 			if (desc == NULL) {
-				g_warning("Can't load symbol");
+				g_warning("Can't load symbol: %s", dlerror());
 				dlclose(handle);
 				continue;
 			}
