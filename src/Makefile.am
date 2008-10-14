@@ -16,7 +16,7 @@ connmand_SOURCES = main.c connman.h log.c error.c plugin.c profile.c \
 
 connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @GTHREAD_LIBS@ -ldl
 
-connmand_LDFLAGS = -Wl,--version-script=connman.ver
+connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
 connmand_DEPENDENCIES = connman.ver
 
