@@ -469,7 +469,7 @@ int connman_rtnl_send_getlink(void)
 	req.hdr.nlmsg_seq = 42;
 	req.msg.rtgen_family = AF_INET;
 
-	__connman_rtnl_send(&req, sizeof(req));
+	return __connman_rtnl_send(&req, sizeof(req));
 }
 
 int __connman_rtnl_init(void)
