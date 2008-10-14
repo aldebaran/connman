@@ -33,17 +33,19 @@
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
+#include <connman/rtnl.h>
 #include <connman/log.h>
 
 struct ethernet_data {
 	int index;
-	short flags;
+	unsigned flags;
 };
 
 static GStaticMutex ethernet_mutex = G_STATIC_MUTEX_INIT;
 static GSList *ethernet_list = NULL;
 
-static void ethernet_link_flags(int index, short flags)
+static void ethernet_newlink(unsigned short type, int index,
+					unsigned flags, unsigned change)
 {
 	GSList *list;
 
@@ -89,7 +91,7 @@ static void ethernet_link_flags(int index, short flags)
 
 static struct connman_rtnl ethernet_rtnl = {
 	.name		= "ethernet",
-	.link_flags	= ethernet_link_flags,
+	.newlink	= ethernet_newlink,
 };
 
 static int iface_up(struct ethernet_data *ethernet)
@@ -238,7 +240,7 @@ static int ethernet_init(void)
 
 	err = connman_driver_register(&ethernet_driver);
 	if (err < 0) {
-		connman_rtnl_unregister(&ethernet_rtnl):
+		connman_rtnl_unregister(&ethernet_rtnl);
 		return err;
 	}
 
