@@ -383,7 +383,8 @@ static DBusMessage *do_enable(DBusConnection *conn,
 
 	if (element->driver && element->driver->enable) {
 		DBG("Calling enable callback");
-		element->driver->enable(element);
+		if (element->driver->enable(element) < 0)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
 	element->enabled = TRUE;
@@ -408,7 +409,8 @@ static DBusMessage *do_disable(DBusConnection *conn,
 
 	if (element->driver && element->driver->disable) {
 		DBG("Calling disable callback");
-		element->driver->disable(element);
+		if (element->driver->disable(element) < 0)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
 	element->enabled = FALSE;
