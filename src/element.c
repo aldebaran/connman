@@ -122,6 +122,8 @@ static const char *subtype2string(enum connman_element_subtype type)
 	switch (type) {
 	case CONNMAN_ELEMENT_SUBTYPE_UNKNOWN:
 		return "unknown";
+	case CONNMAN_ELEMENT_SUBTYPE_FAKE:
+		return "fake";
 	case CONNMAN_ELEMENT_SUBTYPE_NETWORK:
 		return "network";
 	case CONNMAN_ELEMENT_SUBTYPE_ETHERNET:
