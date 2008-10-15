@@ -72,7 +72,7 @@ static int device_probe(struct connman_element *element)
 	return -ENODEV;
 }
 
-static int device_remove(struct connman_element *element)
+static void device_remove(struct connman_element *element)
 {
 	struct connman_device *device = connman_element_get_data(element);
 
@@ -84,8 +84,6 @@ static int device_remove(struct connman_element *element)
 	connman_element_set_data(element, NULL);
 
 	g_free(device);
-
-	return 0;
 }
 
 static struct connman_driver device_driver = {
