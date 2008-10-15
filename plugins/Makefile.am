@@ -24,7 +24,7 @@ resolvconf_la_SOURCES = resolvconf.c inet.h inet.c
 
 resolvfile_la_SOURCES = resolvfile.c
 
-rtnllink_la_SOURCES = rtnllink.c
+rtnllink_la_SOURCES = rtnllink.c inet.h inet.c
 
 if HAL
 plugin_LTLIBRARIES += hal.la
