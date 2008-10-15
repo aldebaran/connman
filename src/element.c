@@ -1229,6 +1229,8 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 	thread_unregister_children = g_thread_pool_new(unregister_children,
 							NULL, 1, FALSE, NULL);
 
+	__connman_device_init();
+
 	return 0;
 }
 
@@ -1265,6 +1267,8 @@ static gboolean free_node(GNode *node, gpointer data)
 void __connman_element_cleanup(void)
 {
 	DBG("");
+
+	__connman_device_cleanup();
 
 	g_thread_pool_free(thread_register, TRUE, TRUE);
 	thread_register = NULL;
