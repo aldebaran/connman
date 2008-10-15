@@ -62,6 +62,9 @@ void __connman_plugin_cleanup(void);
 int __connman_security_check_privileges(DBusMessage *message);
 
 #include <connman/driver.h>
+
+void __connman_driver_rescan(struct connman_driver *driver);
+
 #include <connman/element.h>
 
 int __connman_element_init(DBusConnection *conn, const char *device);
@@ -75,6 +78,11 @@ const char *__connman_element_subtype2string(enum connman_element_subtype type);
 
 int __connman_element_load(struct connman_element *element);
 int __connman_element_store(struct connman_element *element);
+
+#include <connman/device.h>
+
+int __connman_device_init(void);
+void __connman_device_cleanup(void);
 
 #include <connman/rtnl.h>
 

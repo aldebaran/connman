@@ -128,6 +128,9 @@ extern void connman_element_unregister(struct connman_element *element);
 extern void connman_element_unregister_children(struct connman_element *element);
 extern void connman_element_update(struct connman_element *element);
 
+extern int connman_element_set_enabled(struct connman_element *element,
+							gboolean enabled);
+
 static inline void *connman_element_get_data(struct connman_element *element)
 {
 	return element->driver_data;

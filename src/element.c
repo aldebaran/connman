@@ -518,6 +518,22 @@ static gboolean probe_driver(GNode *node, gpointer data)
 	return FALSE;
 }
 
+void __connman_driver_rescan(struct connman_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	if (!driver->probe)
+		return;
+
+	g_static_rw_lock_writer_lock(&element_lock);
+
+	if (element_root != NULL)
+		g_node_traverse(element_root, G_PRE_ORDER,
+				G_TRAVERSE_ALL, -1, probe_driver, driver);
+
+	g_static_rw_lock_writer_unlock(&element_lock);
+}
+
 /**
  * connman_driver_register:
  * @driver: driver definition
@@ -1051,6 +1067,19 @@ void connman_element_update(struct connman_element *element)
 				G_TRAVERSE_ALL, -1, update_element, NULL);
 
 	g_static_rw_lock_reader_unlock(&element_lock);
+}
+
+int connman_element_set_enabled(struct connman_element *element,
+							gboolean enabled)
+{
+	if (element->enabled == enabled)
+		return 0;
+
+	element->enabled = enabled;
+
+	connman_element_update(element);
+
+	return 0;
 }
 
 static void register_element(gpointer data, gpointer user_data)
