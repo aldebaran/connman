@@ -93,10 +93,6 @@ struct connman_element {
 	GSList *properties;
 
 	struct {
-		gchar *identifier;
-	} network;
-
-	struct {
 		gchar *address;
 		gchar *netmask;
 		gchar *gateway;
