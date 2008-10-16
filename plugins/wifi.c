@@ -291,13 +291,20 @@ static int wifi_init(void)
 {
 	int err;
 
-	err = connman_driver_register(&network_driver);
+	err = __supplicant_init();
 	if (err < 0)
 		return err;
+
+	err = connman_driver_register(&network_driver);
+	if (err < 0) {
+		__supplicant_exit();
+		return err;
+	}
 
 	err = connman_driver_register(&wifi_driver);
 	if (err < 0) {
 		connman_driver_unregister(&network_driver);
+		__supplicant_exit();
 		return err;
 	}
 
@@ -308,6 +315,8 @@ static void wifi_exit(void)
 {
 	connman_driver_unregister(&network_driver);
 	connman_driver_unregister(&wifi_driver);
+
+	__supplicant_exit();
 }
 
 CONNMAN_PLUGIN_DEFINE("wifi", "WiFi interface plugin", VERSION,

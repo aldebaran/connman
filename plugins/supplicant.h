@@ -52,6 +52,9 @@ struct supplicant_callback {
 					struct supplicant_network *network);
 };
 
+int __supplicant_init(void);
+void __supplicant_exit(void);
+
 int __supplicant_start(struct connman_element *element,
 					struct supplicant_callback *callback);
 int __supplicant_stop(struct connman_element *element);

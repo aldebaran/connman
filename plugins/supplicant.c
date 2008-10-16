@@ -38,7 +38,6 @@
 #define IEEE80211_CAP_PRIVACY   0x0010
 
 struct supplicant_task {
-	DBusConnection *conn;
 	int ifindex;
 	gchar *ifname;
 	struct connman_element *element;
@@ -52,6 +51,8 @@ struct supplicant_task {
 static GStaticMutex task_mutex = G_STATIC_MUTEX_INIT;
 static GSList *task_list = NULL;
 
+static DBusConnection *connection;
+
 static struct supplicant_task *find_task_by_index(int index)
 {
 	GSList *list;
@@ -60,6 +61,20 @@ static struct supplicant_task *find_task_by_index(int index)
 		struct supplicant_task *task = list->data;
 
 		if (task->ifindex == index)
+			return task;
+	}
+
+	return NULL;
+}
+
+static struct supplicant_task *find_task_by_path(const char *path)
+{
+	GSList *list;
+
+	for (list = task_list; list; list = list->next) {
+		struct supplicant_task *task = list->data;
+
+		if (g_str_equal(task->path, path) == TRUE)
 			return task;
 	}
 
@@ -84,7 +99,7 @@ static int get_interface(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -139,7 +154,7 @@ static int add_interface(struct supplicant_task *task)
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &task->ifname,
 							DBUS_TYPE_INVALID);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -196,7 +211,7 @@ static int remove_interface(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -233,7 +248,7 @@ static int set_ap_scan(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -270,7 +285,7 @@ static int add_network(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -326,7 +341,7 @@ static int remove_network(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -368,7 +383,7 @@ static int select_network(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -404,7 +419,7 @@ static int enable_network(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -440,7 +455,7 @@ static int disable_network(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -529,7 +544,7 @@ static int set_network(struct supplicant_task *task, const char *network,
 
 	dbus_error_init(&error);
 
-	reply = dbus_connection_send_with_reply_and_block(task->conn,
+	reply = dbus_connection_send_with_reply_and_block(connection,
 							message, -1, &error);
 	if (reply == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -560,7 +575,7 @@ static int initiate_scan(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(task->conn, message,
+	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to initiate scan");
 		dbus_message_unref(message);
@@ -692,7 +707,7 @@ static int get_network_properties(struct supplicant_task *task,
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(task->conn, message,
+	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get network properties");
 		dbus_message_unref(message);
@@ -754,7 +769,7 @@ static int scan_results_available(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
-	if (dbus_connection_send_with_reply(task->conn, message,
+	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to request scan result");
 		dbus_message_unref(message);
@@ -823,8 +838,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
-	struct supplicant_task *task = data;
-	const char *member;
+	struct supplicant_task *task;
+	const char *member, *path;
 
 	if (dbus_message_has_interface(msg,
 				SUPPLICANT_INTF ".Interface") == FALSE)
@@ -832,6 +847,14 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 
 	member = dbus_message_get_member(msg);
 	if (member == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	path = dbus_message_get_path(msg);
+	if (path == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	task = find_task_by_path(path);
+	if (task == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	DBG("task %p member %s", task, member);
@@ -849,10 +872,6 @@ static int add_filter(struct supplicant_task *task)
 	DBusError error;
 	gchar *filter;
 
-	if (dbus_connection_add_filter(task->conn,
-				supplicant_filter, task, NULL) == FALSE)
-		return -EIO;
-
 	filter = g_strdup_printf("type=signal,interface=%s.Interface,path=%s",
 						SUPPLICANT_INTF, task->path);
 
@@ -860,7 +879,7 @@ static int add_filter(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	dbus_bus_add_match(task->conn, filter, &error);
+	dbus_bus_add_match(connection, filter, &error);
 
 	g_free(filter);
 
@@ -884,7 +903,7 @@ static int remove_filter(struct supplicant_task *task)
 
 	dbus_error_init(&error);
 
-	dbus_bus_add_match(task->conn, filter, &error);
+	dbus_bus_remove_match(connection, filter, &error);
 
 	g_free(filter);
 
@@ -892,8 +911,6 @@ static int remove_filter(struct supplicant_task *task)
 		connman_error("Can't add match: %s", error.message);
 		dbus_error_free(&error);
 	}
-
-	dbus_connection_remove_filter(task->conn, supplicant_filter, task);
 
 	return 0;
 }
@@ -918,12 +935,6 @@ int __supplicant_start(struct connman_element *element,
 	if (task->ifname == NULL) {
 		g_free(task);
 		return -ENOMEM;
-	}
-
-	task->conn = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (task->conn == NULL) {
-		g_free(task);
-		return -EIO;
 	}
 
 	task->created = FALSE;
@@ -971,8 +982,6 @@ int __supplicant_stop(struct connman_element *element)
 
 	remove_interface(task);
 
-	dbus_connection_unref(task->conn);
-
 	g_free(task->ifname);
 	g_free(task->path);
 	g_free(task);
@@ -1011,6 +1020,7 @@ int __supplicant_scan(struct connman_element *element)
 int __supplicant_connect(struct connman_element *element, const char *ssid)
 {
 	struct supplicant_task *task;
+	const char *passphrase = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -1023,7 +1033,7 @@ int __supplicant_connect(struct connman_element *element, const char *ssid)
 	select_network(task);
 	disable_network(task);
 
-	set_network(task, ssid, NULL);
+	set_network(task, ssid, passphrase);
 
 	enable_network(task);
 
@@ -1045,4 +1055,30 @@ int __supplicant_disconnect(struct connman_element *element)
 	remove_network(task);
 
 	return 0;
+}
+
+int __supplicant_init(void)
+{
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
+		return -EIO;
+
+	if (dbus_connection_add_filter(connection,
+				supplicant_filter, NULL, NULL) == FALSE) {
+		dbus_connection_unref(connection);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+void __supplicant_exit(void)
+{
+	if (connection == NULL)
+		return;
+
+	dbus_connection_remove_filter(connection, supplicant_filter, NULL);
+
+	dbus_connection_unref(connection);
+	connection = NULL;
 }
