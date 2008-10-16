@@ -44,6 +44,10 @@ enum connman_device_type {
 	CONNMAN_DEVICE_TYPE_BLUETOOTH = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH,
 };
 
+enum connman_device_capabilities {
+	CONNMAN_DEVICE_CAPABILITY_SCANNING = (1 << 0),
+};
+
 enum connman_device_state {
 	CONNMAN_DEVICE_STATE_UNKNOWN = 0,
 	CONNMAN_DEVICE_STATE_OFF     = 1,
@@ -53,6 +57,7 @@ struct connman_device_driver;
 
 struct connman_device {
 	struct connman_element *element;
+	unsigned long capabilities;
 	enum connman_device_state state;
 
 	struct connman_device_driver *driver;
