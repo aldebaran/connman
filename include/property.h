@@ -57,7 +57,9 @@ struct connman_property {
 	enum connman_property_id id;
 	char *name;
 	int type;
+	int subtype;
 	void *value;
+	int size;
 };
 
 #ifdef __cplusplus

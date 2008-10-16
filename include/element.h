@@ -115,6 +115,8 @@ extern void connman_element_unref(struct connman_element *element);
 
 extern int connman_element_add_static_property(struct connman_element *element,
 				const char *name, int type, const void *value);
+extern int connman_element_add_static_array_property(struct connman_element *element,
+			const char *name, int type, const void *value, int len);
 extern int connman_element_define_properties(struct connman_element *element, ...);
 extern int connman_element_create_property(struct connman_element *element,
 						const char *name, int type);
@@ -122,6 +124,12 @@ extern int connman_element_set_property(struct connman_element *element,
 				enum connman_property_id id, const void *value);
 extern int connman_element_get_value(struct connman_element *element,
 				enum connman_property_id id, void *value);
+extern gboolean connman_element_get_static_property(struct connman_element *element,
+						const char *name, void *value);
+extern gboolean connman_element_get_static_array_property(struct connman_element *element,
+					const char *name, void *value, int *len);
+extern gboolean connman_element_match_static_property(struct connman_element *element,
+					const char *name, const void *value);
 
 extern int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);

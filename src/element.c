@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <stdarg.h>
+#include <string.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -143,6 +144,39 @@ static const char *subtype2string(enum connman_element_subtype type)
 	return NULL;
 }
 
+static void append_array(DBusMessageIter *dict,
+				const char *key, int type, void *val, int len)
+{
+	DBusMessageIter entry, value, array;
+	const char *variant_sig, *array_sig;
+
+	switch (type) {
+	case DBUS_TYPE_BYTE:
+		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING;
+		array_sig = DBUS_TYPE_BYTE_AS_STRING;
+		break;
+	default:
+		return;
+	}
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							variant_sig, &value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+							array_sig, &array);
+	dbus_message_iter_append_fixed_array(&array, type, val, len);
+	dbus_message_iter_close_container(&value, &array);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static void append_entry(DBusMessageIter *dict,
 				const char *key, int type, void *val)
 {
@@ -189,7 +223,12 @@ static void append_property(DBusMessageIter *dict,
 	if (property->value == NULL)
 		return;
 
-	append_entry(dict, property->name, property->type, &property->value);
+	if (property->type == DBUS_TYPE_ARRAY)
+		append_array(dict, property->name, property->subtype,
+					&property->value, property->size);
+	else
+		append_entry(dict, property->name, property->type,
+							&property->value);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -232,12 +271,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (element->priority > 0)
 		append_entry(&dict, "Priority",
 				DBUS_TYPE_UINT16, &element->priority);
-
-#if 0
-	if (element->network.identifier != NULL)
-		append_entry(&dict, "Identifier",
-				DBUS_TYPE_STRING, &element->network.identifier);
-#endif
 
 	if (element->ipv4.address != NULL)
 		append_entry(&dict, "IPv4.Address",
@@ -667,6 +700,9 @@ static void free_properties(struct connman_element *element)
 		if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE)) {
 			if (property->type == DBUS_TYPE_STRING)
 				g_free(property->value);
+			if (property->type == DBUS_TYPE_ARRAY &&
+					property->subtype == DBUS_TYPE_BYTE)
+				g_free(property->value);
 		}
 
 		g_free(property);
@@ -692,7 +728,6 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.network);
 		g_free(element->ipv4.broadcast);
 		g_free(element->ipv4.nameserver);
-		g_free(element->network.identifier);
 		g_free(element->path);
 		g_free(element->name);
 		g_free(element);
@@ -723,6 +758,46 @@ int connman_element_add_static_property(struct connman_element *element,
 	switch (type) {
 	case DBUS_TYPE_STRING:
 		property->value = g_strdup(*((const char **) value));
+		break;
+	}
+
+	connman_element_lock(element);
+	element->properties = g_slist_append(element->properties, property);
+	connman_element_unlock(element);
+
+	return 0;
+}
+
+int connman_element_add_static_array_property(struct connman_element *element,
+			const char *name, int type, const void *value, int len)
+{
+	struct connman_property *property;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (type != DBUS_TYPE_BYTE)
+		return -EINVAL;
+
+	property = g_try_new0(struct connman_property, 1);
+	if (property == NULL)
+		return -ENOMEM;
+
+	property->flags   = CONNMAN_PROPERTY_FLAG_STATIC;
+	property->id      = CONNMAN_PROPERTY_ID_INVALID;
+	property->name    = g_strdup(name);
+	property->type    = DBUS_TYPE_ARRAY;
+	property->subtype = type;
+
+	DBG("name %s type %d value %p", name, type, value);
+
+	switch (type) {
+	case DBUS_TYPE_BYTE:
+		property->value = g_try_malloc(len);
+		if (property->value != NULL) {
+			memcpy(property->value,
+				*((const unsigned char **) value), len);
+			property->size = len;
+		}
 		break;
 	}
 
@@ -973,6 +1048,95 @@ int connman_element_get_value(struct connman_element *element,
 	}
 
 	return 0;
+}
+
+gboolean connman_element_get_static_property(struct connman_element *element,
+						const char *name, void *value)
+{
+	GSList *list;
+	gboolean found = FALSE;
+
+	DBG("element %p name %s", element, element->name);
+
+	connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
+			continue;
+
+		if (g_str_equal(property->name, name) == TRUE) {
+			*((char **) value) = property->value;
+			found = TRUE;
+			break;
+		}
+	}
+
+	connman_element_unlock(element);
+
+	return found;
+}
+
+gboolean connman_element_get_static_array_property(struct connman_element *element,
+					const char *name, void *value, int *len)
+{
+	GSList *list;
+	gboolean found = FALSE;
+
+	DBG("element %p name %s", element, element->name);
+
+	connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
+			continue;
+
+		if (g_str_equal(property->name, name) == TRUE) {
+			*((char **) value) = property->value;
+			*len = property->size;
+			found = TRUE;
+			break;
+		}
+	}
+
+	connman_element_unlock(element);
+
+	return found;
+}
+
+gboolean connman_element_match_static_property(struct connman_element *element,
+					const char *name, const void *value)
+{
+	GSList *list;
+	gboolean result = FALSE;
+
+	DBG("element %p name %s", element, element->name);
+
+	connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
+			continue;
+
+		if (g_str_equal(property->name, name) == FALSE)
+			continue;
+
+		if (property->type == DBUS_TYPE_STRING)
+			result = g_str_equal(property->value,
+						*((const char **) value));
+
+		if (result == TRUE)
+			break;
+	}
+
+	connman_element_unlock(element);
+
+	return result;
 }
 
 /**
