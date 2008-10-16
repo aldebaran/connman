@@ -32,8 +32,6 @@
 
 #include "supplicant.h"
 
-static struct connman_element *dhcp_element = NULL;
-
 static int network_probe(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
@@ -50,19 +48,14 @@ static int network_enable(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
-	if (dhcp_element != NULL) {
-		connman_element_unregister(dhcp_element);
-		dhcp_element = NULL;
-	}
-
-	__supplicant_disconnect(element);
-
 	element->enabled = FALSE;
-
 	connman_element_update(element);
 
-	g_free(element->parent->network.identifier);
-	element->parent->network.identifier = element->network.identifier;
+	if (element->parent) {
+		g_free(element->parent->network.identifier);
+		element->parent->network.identifier =
+					g_strdup(element->network.identifier);
+	}
 
 	if (__supplicant_connect(element, element->network.identifier) < 0)
 		connman_error("Failed to initiate connect");
@@ -74,15 +67,11 @@ static int network_disable(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
-	if (dhcp_element != NULL) {
-		connman_element_unregister(dhcp_element);
-		dhcp_element = NULL;
-	}
+	connman_element_unregister_children(element);
 
 	__supplicant_disconnect(element);
 
 	element->enabled = FALSE;
-
 	connman_element_update(element);
 
 	return 0;
@@ -145,10 +134,7 @@ static void state_change(struct connman_element *parent,
 		dhcp->type = CONNMAN_ELEMENT_TYPE_DHCP;
 		dhcp->index = element->index;
 
-		dhcp_element = dhcp;
-
 		element->enabled = TRUE;
-
 		connman_element_update(element);
 
 		connman_element_register(dhcp, element);
