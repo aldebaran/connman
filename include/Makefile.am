@@ -2,7 +2,7 @@
 includedir = @includedir@/connman
 
 include_HEADERS = log.h plugin.h security.h driver.h element.h property.h \
-							device.h rtnl.h dbus.h
+					device.h network.h rtnl.h dbus.h
 
 MAINTAINERCLEANFILES = Makefile.in
 

@@ -19,8 +19,15 @@
  *
  */
 
-#ifdef HAVE_CONFIG_H
-#include <config.h>
+#ifndef __CONNMAN_NETWORK_H
+#define __CONNMAN_NETWORK_H
+
+#ifdef __cplusplus
+extern "C" {
 #endif
 
-#include "connman.h"
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __CONNMAN_NETWORK_H */
