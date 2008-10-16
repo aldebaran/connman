@@ -505,8 +505,35 @@ static void append_entry(DBusMessageIter *dict,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static int set_network(struct supplicant_task *task, const char *network,
-						const char *passphrase)
+static void append_array(DBusMessageIter *dict,
+				const char *key, int type, void *val, int len)
+{
+	DBusMessageIter entry, value, array;
+
+	if (type != DBUS_TYPE_BYTE)
+		return;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING, &value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_BYTE_AS_STRING, &array);
+	dbus_message_iter_append_fixed_array(&array, type, val, len);
+	dbus_message_iter_close_container(&value, &array);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static int set_network(struct supplicant_task *task,
+					const unsigned char *network, int len,
+							const char *passphrase)
 {
 	DBusMessage *message, *reply;
 	DBusMessageIter array, dict;
@@ -529,7 +556,7 @@ static int set_network(struct supplicant_task *task, const char *network,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_entry(&dict, "ssid", DBUS_TYPE_STRING, &network);
+	append_array(&dict, "ssid", DBUS_TYPE_BYTE, &network, len);
 
 	if (passphrase && strlen(passphrase) > 0) {
 		const char *key_mgmt = "WPA-PSK";
@@ -597,7 +624,21 @@ static void extract_ssid(struct supplicant_network *network,
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ssid, &ssid_len);
 
-	network->identifier = g_strdup((char *) ssid);
+	if (ssid_len < 1)
+		return;
+
+	network->ssid = g_try_malloc(ssid_len);
+	if (network->ssid == NULL)
+		return;
+
+	memcpy(network->ssid, ssid, ssid_len);
+	network->ssid_len = ssid_len;
+
+	network->identifier = g_try_malloc0(ssid_len + 1);
+	if (network->identifier == NULL)
+		return;
+
+	memcpy(network->identifier, ssid, ssid_len);
 }
 
 static void extract_wpaie(struct supplicant_network *network,
@@ -689,6 +730,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (task->callback && task->callback->scan_result)
 		task->callback->scan_result(task->element, network);
 
+	g_free(network->identifier);
+	g_free(network->ssid);
 	g_free(network);
 
 done:
@@ -1017,10 +1060,11 @@ int __supplicant_scan(struct connman_element *element)
 	return 0;
 }
 
-int __supplicant_connect(struct connman_element *element, const char *ssid)
+int __supplicant_connect(struct connman_element *element,
+				const unsigned char *ssid, int ssid_len,
+							const char *passphrase)
 {
 	struct supplicant_task *task;
-	const char *passphrase = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -1033,7 +1077,7 @@ int __supplicant_connect(struct connman_element *element, const char *ssid)
 	select_network(task);
 	disable_network(task);
 
-	set_network(task, ssid, passphrase);
+	set_network(task, ssid, ssid_len, passphrase);
 
 	enable_network(task);
 

@@ -38,7 +38,8 @@ enum supplicant_state {
 
 struct supplicant_network {
 	gchar *identifier;
-	GByteArray *ssid;
+	guint8 *ssid;
+	guint ssid_len;
 	guint capabilities;
 	gboolean has_wep;
 	gboolean has_wpa;
@@ -61,5 +62,7 @@ int __supplicant_stop(struct connman_element *element);
 
 int __supplicant_scan(struct connman_element *element);
 
-int __supplicant_connect(struct connman_element *element, const char *ssid);
+int __supplicant_connect(struct connman_element *element,
+				const unsigned char *ssid, int ssid_len,
+							const char *passphrase);
 int __supplicant_disconnect(struct connman_element *element);
