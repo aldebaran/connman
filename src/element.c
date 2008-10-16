@@ -94,6 +94,8 @@ static const char *type2string(enum connman_element_type type)
 		return "unknown";
 	case CONNMAN_ELEMENT_TYPE_ROOT:
 		return "root";
+	case CONNMAN_ELEMENT_TYPE_PROFILE:
+		return "profile";
 	case CONNMAN_ELEMENT_TYPE_DEVICE:
 		return "device";
 	case CONNMAN_ELEMENT_TYPE_NETWORK:
