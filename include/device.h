@@ -29,9 +29,9 @@ extern "C" {
 #include <connman/element.h>
 
 /**
- * SECTION:driver
- * @title: Driver premitives
- * @short_description: Functions for registering drivers
+ * SECTION:device
+ * @title: Device driver premitives
+ * @short_description: Functions for registering device drivers
  */
 
 enum connman_device_type {
