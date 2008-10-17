@@ -46,6 +46,11 @@ extern "C" {
 
 #define CONNMAN_NETWORK_INTERFACE  CONNMAN_SERVICE ".Network"
 
+extern void connman_dbus_dict_append_array(DBusMessageIter *dict,
+				const char *key, int type, void *val, int len);
+extern void connman_dbus_dict_append_variant(DBusMessageIter *dict,
+					const char *key, int type, void *val);
+
 #ifdef __cplusplus
 }
 #endif
