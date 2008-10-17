@@ -144,79 +144,6 @@ static const char *subtype2string(enum connman_element_subtype type)
 	return NULL;
 }
 
-static void append_array(DBusMessageIter *dict,
-				const char *key, int type, void *val, int len)
-{
-	DBusMessageIter entry, value, array;
-	const char *variant_sig, *array_sig;
-
-	switch (type) {
-	case DBUS_TYPE_BYTE:
-		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING;
-		array_sig = DBUS_TYPE_BYTE_AS_STRING;
-		break;
-	default:
-		return;
-	}
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							variant_sig, &value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-							array_sig, &array);
-	dbus_message_iter_append_fixed_array(&array, type, val, len);
-	dbus_message_iter_close_container(&value, &array);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_entry(DBusMessageIter *dict,
-				const char *key, int type, void *val)
-{
-	DBusMessageIter entry, value;
-	const char *signature;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	switch (type) {
-	case DBUS_TYPE_BOOLEAN:
-		signature = DBUS_TYPE_BOOLEAN_AS_STRING;
-		break;
-	case DBUS_TYPE_STRING:
-		signature = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT16:
-		signature = DBUS_TYPE_UINT16_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT32:
-		signature = DBUS_TYPE_UINT32_AS_STRING;
-		break;
-	case DBUS_TYPE_OBJECT_PATH:
-		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
-		break;
-	default:
-		signature = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							signature, &value);
-	dbus_message_iter_append_basic(&value, type, val);
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static void append_property(DBusMessageIter *dict,
 				struct connman_property *property)
 {
@@ -224,11 +151,11 @@ static void append_property(DBusMessageIter *dict,
 		return;
 
 	if (property->type == DBUS_TYPE_ARRAY)
-		append_array(dict, property->name, property->subtype,
-					&property->value, property->size);
+		connman_dbus_dict_append_array(dict, property->name,
+			property->subtype, &property->value, property->size);
 	else
-		append_entry(dict, property->name, property->type,
-							&property->value);
+		connman_dbus_dict_append_variant(dict, property->name,
+					property->type, &property->value);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -255,31 +182,34 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	if (element->parent != NULL &&
 			element->parent->type != CONNMAN_ELEMENT_TYPE_ROOT) {
-		append_entry(&dict, "Parent",
+		connman_dbus_dict_append_variant(&dict, "Parent",
 				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
 	}
 
 	str = type2string(element->type);
 	if (str != NULL)
-		append_entry(&dict, "Type", DBUS_TYPE_STRING, &str);
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &str);
 	str = subtype2string(element->subtype);
 	if (str != NULL)
-		append_entry(&dict, "Subtype", DBUS_TYPE_STRING, &str);
+		connman_dbus_dict_append_variant(&dict, "Subtype",
+						DBUS_TYPE_STRING, &str);
 
-	append_entry(&dict, "Enabled", DBUS_TYPE_BOOLEAN, &element->enabled);
+	connman_dbus_dict_append_variant(&dict, "Enabled",
+					DBUS_TYPE_BOOLEAN, &element->enabled);
 
 	if (element->priority > 0)
-		append_entry(&dict, "Priority",
-				DBUS_TYPE_UINT16, &element->priority);
+		connman_dbus_dict_append_variant(&dict, "Priority",
+					DBUS_TYPE_UINT16, &element->priority);
 
 	if (element->ipv4.address != NULL)
-		append_entry(&dict, "IPv4.Address",
+		connman_dbus_dict_append_variant(&dict, "IPv4.Address",
 				DBUS_TYPE_STRING, &element->ipv4.address);
 	if (element->ipv4.netmask != NULL)
-		append_entry(&dict, "IPv4.Netmask",
+		connman_dbus_dict_append_variant(&dict, "IPv4.Netmask",
 				DBUS_TYPE_STRING, &element->ipv4.netmask);
 	if (element->ipv4.gateway != NULL)
-		append_entry(&dict, "IPv4.Gateway",
+		connman_dbus_dict_append_variant(&dict, "IPv4.Gateway",
 				DBUS_TYPE_STRING, &element->ipv4.gateway);
 
 	connman_element_lock(element);

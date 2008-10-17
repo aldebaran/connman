@@ -27,6 +27,7 @@
 #include <dbus/dbus.h>
 
 #include <connman/log.h>
+#include <connman/dbus.h>
 
 #include "inet.h"
 #include "supplicant.h"
@@ -474,63 +475,6 @@ static int disable_network(struct supplicant_task *task)
 	return 0;
 }
 
-static void append_entry(DBusMessageIter *dict,
-				const char *key, int type, void *val)
-{
-	DBusMessageIter entry, value;
-	const char *signature;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		signature = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT16:
-		signature = DBUS_TYPE_UINT16_AS_STRING;
-		break;
-	default:
-		signature = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							signature, &value);
-	dbus_message_iter_append_basic(&value, type, val);
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_array(DBusMessageIter *dict,
-				const char *key, int type, void *val, int len)
-{
-	DBusMessageIter entry, value, array;
-
-	if (type != DBUS_TYPE_BYTE)
-		return;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING, &value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_BYTE_AS_STRING, &array);
-	dbus_message_iter_append_fixed_array(&array, type, val, len);
-	dbus_message_iter_close_container(&value, &array);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static int set_network(struct supplicant_task *task,
 					const unsigned char *network, int len,
 							const char *passphrase)
@@ -556,15 +500,19 @@ static int set_network(struct supplicant_task *task,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_array(&dict, "ssid", DBUS_TYPE_BYTE, &network, len);
+	connman_dbus_dict_append_array(&dict, "ssid",
+					DBUS_TYPE_BYTE, &network, len);
 
 	if (passphrase && strlen(passphrase) > 0) {
 		const char *key_mgmt = "WPA-PSK";
-		append_entry(&dict, "key_mgmt", DBUS_TYPE_STRING, &key_mgmt);
-		append_entry(&dict, "psk", DBUS_TYPE_STRING, &passphrase);
+		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+						DBUS_TYPE_STRING, &key_mgmt);
+		connman_dbus_dict_append_variant(&dict, "psk",
+						DBUS_TYPE_STRING, &passphrase);
 	} else {
 		const char *key_mgmt = "NONE";
-		append_entry(&dict, "key_mgmt", DBUS_TYPE_STRING, &key_mgmt);
+		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+						DBUS_TYPE_STRING, &key_mgmt);
 	}
 
 	dbus_message_iter_close_container(&array, &dict);
