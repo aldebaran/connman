@@ -47,7 +47,7 @@ static void agent_free(void)
 	agent_path = NULL;
 }
 
-static void agent_disconnect(void *data)
+static void agent_disconnect(DBusConnection *connection, void *data)
 {
 	DBG("data %p", data);
 
