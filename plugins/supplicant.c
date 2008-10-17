@@ -1049,11 +1049,9 @@ int __supplicant_disconnect(struct connman_element *element)
 	return 0;
 }
 
-int __supplicant_init(void)
+int __supplicant_init(DBusConnection *conn)
 {
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
-	if (connection == NULL)
-		return -EIO;
+	connection = conn;
 
 	if (dbus_connection_add_filter(connection,
 				supplicant_filter, NULL, NULL) == FALSE) {
@@ -1066,11 +1064,5 @@ int __supplicant_init(void)
 
 void __supplicant_exit(void)
 {
-	if (connection == NULL)
-		return;
-
 	dbus_connection_remove_filter(connection, supplicant_filter, NULL);
-
-	dbus_connection_unref(connection);
-	connection = NULL;
 }

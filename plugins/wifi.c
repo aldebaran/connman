@@ -24,7 +24,7 @@
 #endif
 
 #include <string.h>
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
@@ -299,17 +299,40 @@ static struct connman_driver wifi_driver = {
 	.disable	= wifi_disable,
 };
 
+static void supplicant_connect(DBusConnection *connection, void *user_data)
+{
+	DBG("connection %p", connection);
+}
+
+static void supplicant_disconnect(DBusConnection *connection, void *user_data)
+{
+	DBG("connection %p", connection);
+}
+
+static DBusConnection *connection;
+static guint watch;
+
 static int wifi_init(void)
 {
 	int err;
 
-	err = __supplicant_init();
-	if (err < 0)
+	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	if (connection == NULL)
+		return -EIO;
+
+	err = __supplicant_init(connection);
+	if (err < 0) {
+		dbus_connection_unref(connection);
 		return err;
+	}
+
+	watch = g_dbus_add_service_watch(connection, SUPPLICANT_NAME,
+			supplicant_connect, supplicant_disconnect, NULL, NULL);
 
 	err = connman_driver_register(&network_driver);
 	if (err < 0) {
 		__supplicant_exit();
+		dbus_connection_unref(connection);
 		return err;
 	}
 
@@ -317,6 +340,7 @@ static int wifi_init(void)
 	if (err < 0) {
 		connman_driver_unregister(&network_driver);
 		__supplicant_exit();
+		dbus_connection_unref(connection);
 		return err;
 	}
 
@@ -328,7 +352,12 @@ static void wifi_exit(void)
 	connman_driver_unregister(&network_driver);
 	connman_driver_unregister(&wifi_driver);
 
+	if (watch > 0)
+		g_dbus_remove_watch(connection, watch);
+
 	__supplicant_exit();
+
+	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE("wifi", "WiFi interface plugin", VERSION,
