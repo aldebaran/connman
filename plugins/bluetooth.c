@@ -23,114 +23,47 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <gdbus.h>
 
 #include <connman/plugin.h>
-#include <connman/driver.h>
+#include <connman/device.h>
 #include <connman/log.h>
 
 #define BLUEZ_SERVICE "org.bluez"
 
-#define MANAGER_INTERFACE "org.bluez.Manager"
-#define MANAGER_PATH "/"
-
-static GStaticMutex element_mutex = G_STATIC_MUTEX_INIT;
-static GSList *element_list = NULL;
-
-static void create_element(DBusConnection *conn, const char *path)
+static int bluetooth_probe(struct connman_device *device)
 {
-	struct connman_element *element;
-
-	DBG("conn %p path %s", conn, path);
-
-	element = connman_element_create(NULL);
-
-	element->name = g_path_get_basename(path);
-	element->type = CONNMAN_ELEMENT_TYPE_DEVICE;
-	element->subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
-
-	g_static_mutex_lock(&element_mutex);
-
-	connman_element_register(element, NULL);
-
-	element_list = g_slist_append(element_list, element);
-
-	g_static_mutex_unlock(&element_mutex);
-}
-
-static gboolean bluetooth_signal(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *sender, *interface, *member;
-
-	DBG("conn %p msg %p", conn, msg);
-
-	sender = dbus_message_get_sender(msg);
-	interface = dbus_message_get_interface(msg);
-	member = dbus_message_get_member(msg);
-
-	DBG("sender %s name %s.%s", sender, interface, member);
-
-	return TRUE;
-}
-
-static void list_adapters(DBusConnection *conn)
-{
-	DBusMessage *msg, *reply;
-	char **paths = NULL;
-	int i, num = 0;
-
-	DBG("conn %p");
-
-	msg = dbus_message_new_method_call(BLUEZ_SERVICE, MANAGER_PATH,
-					MANAGER_INTERFACE, "ListAdapters");
-	if (!msg) {
-		connman_error("ListAdpaters message alloction failed");
-		return;
-	}
-
-	reply = dbus_connection_send_with_reply_and_block(conn, msg, -1, NULL);
-
-	dbus_message_unref(msg);
-
-	if (!reply) {
-		connman_error("ListAdapters method call failed");
-		return;
-	}
-
-	dbus_message_get_args(reply, NULL, DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH,
-						&paths, &num, DBUS_TYPE_INVALID);
-
-	for (i = 0; i < num; i++)
-		create_element(conn, paths[i]);
-
-	g_strfreev(paths);
-
-	dbus_message_unref(reply);
-}
-
-static int bluetooth_probe(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
 	return 0;
 }
 
-static void bluetooth_remove(struct connman_element *element)
+static void bluetooth_remove(struct connman_device *device)
 {
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 }
 
-static struct connman_driver bluetooth_driver = {
-	.name		= "bluetooth",
-	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.subtype	= CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH,
-	.probe		= bluetooth_probe,
-	.remove		= bluetooth_remove,
+static struct connman_device_driver bluetooth_driver = {
+	.name	= "bluetooth",
+	.type	= CONNMAN_DEVICE_TYPE_BLUETOOTH,
+	.probe	= bluetooth_probe,
+	.remove	= bluetooth_remove,
 };
 
+static void bluetooth_connect(DBusConnection *connection, void *user_data)
+{
+	DBG("connection %p", connection);
+}
+
+static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
+{
+	DBG("connection %p", connection);
+}
+
 static DBusConnection *connection;
-static guint signal;
+static guint watch;
 
 static int bluetooth_init(void)
 {
@@ -140,25 +73,28 @@ static int bluetooth_init(void)
 	if (connection == NULL)
 		return -EIO;
 
-	signal = g_dbus_add_signal_watch(connection, "sender=org.bluez",
-						bluetooth_signal, NULL, NULL);
-
-	err = connman_driver_register(&bluetooth_driver);
+	err = connman_device_driver_register(&bluetooth_driver);
 	if (err < 0) {
 		dbus_connection_unref(connection);
-		return err;
+		return -EIO;
 	}
 
-	list_adapters(connection);
+	watch = g_dbus_add_service_watch(connection, BLUEZ_SERVICE,
+			bluetooth_connect, bluetooth_disconnect, NULL, NULL);
+	if (watch == 0) {
+		connman_device_driver_unregister(&bluetooth_driver);
+		dbus_connection_unref(connection);
+		return -EIO;
+	}
 
 	return 0;
 }
 
 static void bluetooth_exit(void)
 {
-	connman_driver_unregister(&bluetooth_driver);
+	g_dbus_remove_watch(connection, watch);
 
-	g_dbus_remove_watch(connection, signal);
+	connman_device_driver_unregister(&bluetooth_driver);
 
 	dbus_connection_unref(connection);
 }
