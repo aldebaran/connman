@@ -43,7 +43,7 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void disconnect_callback(void *user_data)
+static void disconnect_callback(DBusConnection *conn, void *user_data)
 {
 	DBG("D-Bus disconnect");
 
