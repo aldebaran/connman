@@ -47,8 +47,10 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	plugin->handle = handle;
 	plugin->desc = desc;
 
-	if (desc->init() < 0)
+	if (desc->init() < 0) {
+		g_free(plugin);
 		return FALSE;
+	}
 
 	plugins = g_slist_append(plugins, plugin);
 
