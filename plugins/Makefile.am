@@ -8,6 +8,7 @@ plugin_LTLIBRARIES = ethernet.la wifi.la bluetooth.la \
 ethernet_la_SOURCES = ethernet.c
 
 wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
+wifi_la_LIBADD = @GDBUS_LIBS@
 
 bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
