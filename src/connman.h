@@ -61,6 +61,8 @@ void __connman_plugin_cleanup(void);
 
 int __connman_security_check_privileges(DBusMessage *message);
 
+#include <connman/resolver.h>
+
 #include <connman/driver.h>
 
 void __connman_driver_rescan(struct connman_driver *driver);
