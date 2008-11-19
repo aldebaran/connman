@@ -81,10 +81,6 @@ AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
 AM_CONDITIONAL(POLKIT, test "${polkit_found}" = "yes")
 
-PKG_CHECK_MODULES(SQLITE, sqlite3, sqlite_found=yes, sqlite_found=no)
-AC_SUBST(SQLITE_CFLAGS)
-AC_SUBST(SQLITE_LIBS)
-
 AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 			[enable fake plugin]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
