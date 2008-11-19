@@ -23,99 +23,95 @@
 #include <config.h>
 #endif
 
-#if 0
-#include <sqlite3.h>
-#endif
-
 #include "connman.h"
-
-#if 0
-static sqlite3 *db = NULL;
-
-static int create_tables(void)
-{
-	char *msg;
-	int err;
-
-	DBG("");
-
-	err = sqlite3_exec(db, "CREATE TABLE properties ("
-					"element TEXT NOT NULL,"
-					"name TEXT NOT NULL,"
-					"value TEXT NOT NULL,"
-					"PRIMARY KEY(element, name))",
-							NULL, NULL, &msg);
-
-	if (err != SQLITE_OK) {
-		connman_error("SQL error: %s", msg);
-		sqlite3_free(msg);
-		return -1;
-	}
-
-	return 0;
-}
-#endif
 
 int __connman_storage_init(void)
 {
-#if 0
-	int err;
-
 	DBG("");
-
-#if 0
-	if (!sqlite3_threadsafe()) {
-		connman_error("SQLite is missing thread support");
-		return -1;
-	}
-#endif
-
-	err = sqlite3_open(STORAGEDIR "/config.db", &db);
-	if (err != SQLITE_OK) {
-		connman_error("Can't open database: %s", sqlite3_errmsg(db));
-		sqlite3_close(db);
-		return -1;
-	}
-
-	create_tables();
-#endif
 
 	return 0;
 }
 
 void __connman_storage_cleanup(void)
 {
-#if 0
 	DBG("");
-
-	sqlite3_close(db);
-#endif
 }
 
 int __connman_element_load(struct connman_element *element)
 {
+	DBG("element %p name %s", element, element->name);
+
 	return 0;
+}
+
+static void do_update(GKeyFile *keyfile, struct connman_element *element)
+{
+	GSList *list;
+
+	DBG("element %p name %s", element, element->name);
+
+	g_key_file_set_string(keyfile, element->path, "Name", element->name);
+
+	g_key_file_set_boolean(keyfile, element->path, "Enabled",
+							element->enabled);
+
+	connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		if (property->flags & CONNMAN_PROPERTY_FLAG_STATIC)
+			continue;
+
+		if (property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE)
+			continue;
+
+		if (property->type == DBUS_TYPE_STRING)
+			g_key_file_set_string(keyfile, element->path,
+					property->name, property->value);
+	}
+
+	connman_element_unlock(element);
 }
 
 int __connman_element_store(struct connman_element *element)
 {
-#if 0
-	char *sql, *msg;
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
 
-	DBG("");
+	DBG("element %p name %s", element, element->name);
 
-	if (element->priority > 0) {
-		sql = g_strdup_printf("INSERT INTO properties "
-						"VALUES ('%s','%s','%d')",
-						element->path, "Priority",
-							element->priority);
+	pathname = g_strdup_printf("%s/elements.conf", STORAGEDIR);
+	if (pathname == NULL)
+		return -ENOMEM;
 
-		if (sqlite3_exec(db, sql, NULL, NULL, &msg) != SQLITE_OK) {
-			connman_error("SQL error: %s", msg);
-			sqlite3_free(msg);
-		}
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
+		goto update;
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+				G_KEY_FILE_KEEP_COMMENTS, NULL) == FALSE)
+			goto done;
 	}
-#endif
+
+	g_free(data);
+
+update:
+	do_update(keyfile, element);
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	g_file_set_contents(pathname, data, length, NULL);
+
+done:
+	g_free(data);
+
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
 
 	return 0;
 }
