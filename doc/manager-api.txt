@@ -1,46 +1,55 @@
 Manager hierarchy
-*****************
+=================
 
-Service name	org.moblin.connman
-Interface name	org.moblin.connman.Manager
+Service		org.moblin.connman
+Interface	org.moblin.connman.Manager
 Object path	/
 
-Methods		array{object} ListElements()
+Methods		dict GetProperties()
+
+			Returns all global system properties. See the
+			properties section for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed as read-write are
+			changeable. On success a PropertyChanged signal
+			will be emitted.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
 		void RegisterAgent(object path)
+
+			Register new agent for handling user requests.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		void UnregisterAgent(object path)
 
-Signals		ElementAdded(object)
-		ElementRemoved(object)
+			Unregister an existing agent.
 
+			Possible Errors: [service].Error.InvalidArguments
 
-Method: ListElements
-====================
-This method lists all available interfaces. The return value is an array of
-object paths. Every attached network interface (eth0, wlan0 etc.) of the
-system is presented by an object path with additional interfaces on it. The
-main interface is org.freedesktop.connman.Interface.
+Signals		PropertyChanged(string name, variant value)
 
-Method: RegisterAgent
-=====================
-This method allows the user interace to register an agent. There can be only
-one agent registered at a time. The parameter of the method is the object
-path the agent has been registered for the callback method. The agent has
-to implement org.moblin.connman.Agent interface on this object path.
+			This signal indicates a changed value of the given
+			property.
 
-Method: UnregisterAgent
-=======================
-This method unregisters a previously registered agent. In case the agent
-application exits the core will automatically unregister the agent. However
-for a clean agent application it is important to call the unregister method.
+Properties	string State [readonly]
 
-Signal: ElementAdded
-====================
-This signal is emitted every time a new element has been added by the
-core and successfully activated. The signal is also emitted on startup
-or at anytime at runtime in case of hotplug devices.
+			The global connection state of a system. Possible
+			values are "online" if at least one connection exists
+			and "offline" if no device is connected.
 
-Signal: ElementRemoved
-======================
-This signal is emitted every time an element has been removed. This can
-happen at any time in case of hotplug devices. When the system shuts down,
-this signal is also emitted.
+		array{object} Devices [readonly]
+
+			List of device object paths.
+
+		array{object} Connections [readonly]
+
+			List of active connection object paths.
