@@ -48,6 +48,7 @@ EXTRA_DIST = $(DOC_MAIN_SGML_FILE) connman-introduction.xml
 endif
 
 EXTRA_DIST += dbus-introspection.dtd dbus-introspection.xsl \
-		dbus-manager.xml
+						dbus-manager.xml
 
-EXTRA_DIST += manager-api.txt element-api.txt agent-api.txt plugin-api.txt
+EXTRA_DIST += manager-api.txt device-api.txt \
+				element-api.txt agent-api.txt plugin-api.txt
