@@ -27,10 +27,10 @@
 
 #include "connman.h"
 
-static void append_elements(DBusMessageIter *dict)
+static void append_devices(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
-	const char *key = "Elements";
+	const char *key = "Devices";
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
@@ -44,7 +44,59 @@ static void append_elements(DBusMessageIter *dict)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_UNKNOWN, &iter);
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_connections(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "Connections";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_INTERNET, &iter);
+
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_profiles(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "Profiles";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_profile_list(&iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
@@ -72,7 +124,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	append_elements(&dict);
+	append_profiles(&dict);
+
+	append_devices(&dict);
+	append_connections(&dict);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -127,30 +182,6 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *list_profiles(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	DBusMessageIter array, iter;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
-	__connman_profile_list(&iter);
-
-	dbus_message_iter_close_container(&array, &iter);
-
-	return reply;
-}
-
 static DBusMessage *list_elements(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -179,7 +210,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",   "",  "a{sv}", get_properties   },
 	{ "RegisterAgent",   "o", "",      register_agent   },
 	{ "UnregisterAgent", "o", "",      unregister_agent },
-	{ "ListProfiles",    "",  "ao",    list_profiles    },
 	{ "ListElements",    "",  "ao",    list_elements    },
 	{ },
 };
