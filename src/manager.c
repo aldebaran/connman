@@ -27,6 +27,32 @@
 
 #include "connman.h"
 
+static void append_profiles(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "Profiles";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_profile_list(&iter);
+
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static void append_devices(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
@@ -79,10 +105,10 @@ static void append_connections(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static void append_profiles(DBusMessageIter *dict)
+static void append_state(DBusMessageIter *dict, const char *state)
 {
 	DBusMessageIter entry, value, iter;
-	const char *key = "Profiles";
+	const char *key = "State";
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
@@ -90,15 +116,9 @@ static void append_profiles(DBusMessageIter *dict)
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
 	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
+					DBUS_TYPE_STRING_AS_STRING, &value);
 
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
-	__connman_profile_list(&iter);
-
-	dbus_message_iter_close_container(&value, &iter);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &state);
 
 	dbus_message_iter_close_container(&entry, &value);
 
@@ -128,6 +148,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	append_devices(&dict);
 	append_connections(&dict);
+
+	append_state(&dict, "offline");
 
 	dbus_message_iter_close_container(&array, &dict);
 
