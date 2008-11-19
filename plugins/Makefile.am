@@ -27,14 +27,6 @@ resolvfile_la_SOURCES = resolvfile.c
 
 rtnllink_la_SOURCES = rtnllink.c inet.h inet.c
 
-if HAL
-plugin_LTLIBRARIES += hal.la
-
-hal_la_SOURCES = hal.c
-hal_la_LIBADD = @HAL_LIBS@
-hal_la_CFLAGS = @GLIB_CFLAGS@ @HAL_CFLAGS@
-endif
-
 if POLKIT
 plugin_LTLIBRARIES += polkit.la
 
