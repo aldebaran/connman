@@ -46,6 +46,10 @@ Properties	string State [readonly]
 			values are "online" if at least one connection exists
 			and "offline" if no device is connected.
 
+		array{object} Profiles [readonly]
+
+			List of profile object paths.
+
 		array{object} Devices [readonly]
 
 			List of device object paths.
