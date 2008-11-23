@@ -25,6 +25,6 @@ for path in elements:
 	if (properties["Enabled"] == dbus.Boolean(1)):
 		continue
 
-	if (properties["Identifier"] == sys.argv[1]):
+	if (properties["WiFi.Name"] == sys.argv[1]):
 		print "Enabling %s" % (path)
 		element.Enable()
