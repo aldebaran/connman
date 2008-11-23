@@ -1406,6 +1406,120 @@ int connman_element_set_enabled(struct connman_element *element,
 	return 0;
 }
 
+static void append_devices(DBusMessageIter *entry)
+{
+	DBusMessageIter value, iter;
+	const char *key = "Devices";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	//__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
+static void emit_devices_signal(DBusConnection *conn)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	DBG("conn %p", conn);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	append_devices(&entry);
+
+	g_dbus_send_message(conn, signal);
+}
+
+static void append_connections(DBusMessageIter *entry)
+{
+	DBusMessageIter value, iter;
+	const char *key = "Connections";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	//__connman_element_list(CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
+
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
+static void emit_connections_signal(DBusConnection *conn)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	DBG("conn %p", conn);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	append_connections(&entry);
+
+	g_dbus_send_message(conn, signal);
+}
+
+static void append_state(DBusMessageIter *entry, const char *state)
+{
+	DBusMessageIter value;
+	const char *key = "State";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &state);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
+static void emit_state_change(DBusConnection *conn, const char *state)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	DBG("conn %p", conn);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	append_state(&entry, state);
+
+	g_dbus_send_message(conn, signal);
+}
+
 static void register_element(gpointer data, gpointer user_data)
 {
 	struct connman_element *element = data;
@@ -1456,6 +1570,8 @@ static void register_element(gpointer data, gpointer user_data)
 					NULL, element, NULL) == FALSE)
 			connman_error("Failed to register %s device",
 								element->path);
+		else
+			emit_devices_signal(connection);
 	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
@@ -1474,6 +1590,10 @@ static void register_element(gpointer data, gpointer user_data)
 					NULL, element, NULL) == FALSE)
 			connman_error("Failed to register %s connection",
 								element->path);
+		else {
+			emit_connections_signal(connection);
+			emit_state_change(connection, "online");
+		}
 	}
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
@@ -1535,17 +1655,24 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION)
+	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
+		emit_state_change(connection, "offline");
+		emit_connections_signal(connection);
+
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_CONNECTION_INTERFACE);
+	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK)
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+		emit_devices_signal(connection);
+
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_DEVICE_INTERFACE);
+	}
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_ELEMENT_INTERFACE);
