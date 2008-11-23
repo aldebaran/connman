@@ -12,7 +12,7 @@ properties = manager.GetProperties()
 def print_list(key, value):
 	text = ""
 	for path in value:
-		text = text + str(path)
+		text = text + str(path) + " "
 	print "%s = %s" % (key, text)
 
 for key in properties.keys():
