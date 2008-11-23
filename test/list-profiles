@@ -12,10 +12,10 @@ properties = manager.GetProperties()
 for path in properties["Profiles"]:
 	print "[ %s ]" % (path)
 
-	element = dbus.Interface(bus.get_object("org.moblin.connman", path),
+	profile = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Profile")
 
-	properties = element.GetProperties()
+	properties = profile.GetProperties()
 	for key in properties.keys():
 		print "    %s = %s" % (key, properties[key])
 
