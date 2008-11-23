@@ -164,11 +164,53 @@ static void append_property(DBusMessageIter *dict,
 					property->type, &property->value);
 }
 
+static void add_common_properties(struct connman_element *element,
+						DBusMessageIter *dict)
+{
+	GSList *list;
+
+	if (element->priority > 0)
+		connman_dbus_dict_append_variant(dict, "Priority",
+					DBUS_TYPE_UINT16, &element->priority);
+
+	if (element->ipv4.address != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Address",
+				DBUS_TYPE_STRING, &element->ipv4.address);
+	if (element->ipv4.netmask != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Netmask",
+				DBUS_TYPE_STRING, &element->ipv4.netmask);
+	if (element->ipv4.gateway != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Gateway",
+				DBUS_TYPE_STRING, &element->ipv4.gateway);
+
+	if (element->wifi.security != NULL) {
+		const char *passphrase = "";
+
+		connman_dbus_dict_append_variant(dict, "WiFi.Security",
+				DBUS_TYPE_STRING, &element->wifi.security);
+
+		if (element->wifi.passphrase != NULL)
+			passphrase = element->wifi.passphrase;
+
+		connman_dbus_dict_append_variant(dict, "WiFi.Passphrase",
+				DBUS_TYPE_STRING, &passphrase);
+	}
+
+	connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		append_property(dict, property);
+	}
+
+	connman_element_unlock(element);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
-	GSList *list;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	const char *str;
@@ -204,42 +246,73 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Enabled",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
-	if (element->priority > 0)
-		connman_dbus_dict_append_variant(&dict, "Priority",
-					DBUS_TYPE_UINT16, &element->priority);
+	add_common_properties(element, &dict);
 
-	if (element->ipv4.address != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Address",
-				DBUS_TYPE_STRING, &element->ipv4.address);
-	if (element->ipv4.netmask != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Netmask",
-				DBUS_TYPE_STRING, &element->ipv4.netmask);
-	if (element->ipv4.gateway != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Gateway",
-				DBUS_TYPE_STRING, &element->ipv4.gateway);
+	dbus_message_iter_close_container(&array, &dict);
 
-	if (element->wifi.security != NULL) {
-		const char *passphrase = "";
+	return reply;
+}
 
-		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
-				DBUS_TYPE_STRING, &element->wifi.security);
+static DBusMessage *get_device_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	const char *str;
 
-		if (element->wifi.passphrase != NULL)
-			passphrase = element->wifi.passphrase;
+	DBG("conn %p", conn);
 
-		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
-				DBUS_TYPE_STRING, &passphrase);
-	}
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
 
-	connman_element_lock(element);
+	dbus_message_iter_init_append(reply, &array);
 
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-		append_property(&dict, property);
-	}
+	str = subtype2string(element->subtype);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &str);
 
-	connman_element_unlock(element);
+	connman_dbus_dict_append_variant(&dict, "Powered",
+					DBUS_TYPE_BOOLEAN, &element->enabled);
+
+	add_common_properties(element, &dict);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
+static DBusMessage *get_network_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	connman_dbus_dict_append_variant(&dict, "Connected",
+					DBUS_TYPE_BOOLEAN, &element->enabled);
+
+	add_common_properties(element, &dict);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -423,16 +496,12 @@ static GDBusSignalTable element_signals[] = {
 };
 
 static GDBusMethodTable device_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
-	{ "SetProperty",   "sv", "",      set_property   },
-	{ "ClearProperty", "s",  "",      clear_property },
+	{ "GetProperties", "",   "a{sv}", get_device_properties },
 	{ },
 };
 
 static GDBusMethodTable network_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
-	{ "SetProperty",   "sv", "",      set_property   },
-	{ "ClearProperty", "s",  "",      clear_property },
+	{ "GetProperties", "",   "a{sv}", get_network_properties },
 	{ },
 };
 
