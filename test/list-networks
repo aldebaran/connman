@@ -7,20 +7,25 @@ bus = dbus.SystemBus()
 manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 					"org.moblin.connman.Manager")
 
-elements = manager.ListElements()
+properties = manager.GetProperties()
 
-for path in elements:
-	element = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Element")
+for path in properties["Devices"]:
+	device = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Device")
 
-	properties = element.GetProperties()
+	properties = device.GetProperties()
 
-	if (properties["Type"] == "device"):
-		print "[ %s ]" % (path)
+	print "[ %s ]" % (path)
 
-	if (properties["Type"] == "network"):
-		if (properties["Enabled"] == 1):
-			state = "*"
-		else:
-			state = " "
-		print "    %s %s" % (state, properties["WiFi.Name"])
+	for path in properties["Networks"]:
+		network = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Network")
+
+		properties = network.GetProperties()
+
+		print "    [ %s ]" % (path)
+
+		for key in properties.keys():
+			print "        %s = %s" % (key, properties[key])
+
+	print
