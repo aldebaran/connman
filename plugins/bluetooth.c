@@ -87,6 +87,9 @@ static int bluetooth_init(void)
 		return -EIO;
 	}
 
+	if (g_dbus_check_service(connection, BLUEZ_SERVICE) == TRUE)
+		bluetooth_connect(connection, NULL);
+
 	return 0;
 }
 
