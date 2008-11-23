@@ -1,0 +1,60 @@
+Network hierarchy
+=================
+
+Service		org.moblin.connman
+Interface	org.moblin.connman.Network
+Object path	[variable prefix]/{network0,network1,...}
+
+Methods		dict GetProperties()
+
+			Returns properties for the network object. See
+			the properties section for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed as read-write are
+			changeable. On success a PropertyChanged signal
+			will be emitted.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	string WiFi.Name [readonly]
+
+			If the network type is WiFi, then this property is
+			present and contains the network name.
+
+		array{byte} WiFi.SSID [readonly]
+
+			If the network type is WiFi, then this property is
+			present and contains the binary SSID value.
+
+		string WiFi.Security [readonly, readwrite]
+
+			If the network type is WiFi, then this property is
+			present and contains the security method or key
+			management setting.
+
+			For scanned networks this value is read only, but in
+			case the network was manually created it is also
+			changeable.
+
+			Possible values are NONE, WPA and WPA2.
+
+		string WiFi.Passphrase [readwrite]
+
+			If the network type is WiFi and a passhrase is
+			requires, then this property is present and contains
+			the passphrase in clear text.
+
+			For system using PolicyKit, the access to this value
+			will be protected by the security policy.
