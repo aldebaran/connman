@@ -253,6 +253,32 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static void append_networks(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "Networks";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
+
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static DBusMessage *get_device_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -281,6 +307,8 @@ static DBusMessage *get_device_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
+
+	append_networks(&dict);
 
 	add_common_properties(element, &dict);
 
