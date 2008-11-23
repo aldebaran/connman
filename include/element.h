@@ -57,7 +57,7 @@ enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_ZEROCONF   = 9,
 	CONNMAN_ELEMENT_TYPE_RESOLVER   = 10,
 
-	CONNMAN_ELEMENT_TYPE_INTERNET   = 42,
+	CONNMAN_ELEMENT_TYPE_CONNECTION = 42,
 };
 
 enum connman_element_subtype {

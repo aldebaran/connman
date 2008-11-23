@@ -68,7 +68,7 @@ static int resolvconf_probe(struct connman_element *element)
 
 	internet = connman_element_create(NULL);
 
-	internet->type = CONNMAN_ELEMENT_TYPE_INTERNET;
+	internet->type = CONNMAN_ELEMENT_TYPE_CONNECTION;
 
 	connman_element_register(internet, element);
 

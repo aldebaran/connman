@@ -119,8 +119,8 @@ static const char *type2string(enum connman_element_type type)
 		return "zeroconf";
 	case CONNMAN_ELEMENT_TYPE_RESOLVER:
 		return "resolver";
-	case CONNMAN_ELEMENT_TYPE_INTERNET:
-		return "internet";
+	case CONNMAN_ELEMENT_TYPE_CONNECTION:
+		return "connection";
 	}
 
 	return NULL;
@@ -319,6 +319,33 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *get_connection_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	add_common_properties(element, &dict);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -502,6 +529,11 @@ static GDBusMethodTable device_methods[] = {
 
 static GDBusMethodTable network_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_network_properties },
+	{ },
+};
+
+static GDBusMethodTable connection_methods[] = {
+	{ "GetProperties", "",   "a{sv}", get_connection_properties },
 	{ },
 };
 
@@ -1369,6 +1401,15 @@ static void register_element(gpointer data, gpointer user_data)
 								element->path);
 	}
 
+	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
+		if (g_dbus_register_interface(connection, element->path,
+					CONNMAN_CONNECTION_INTERFACE,
+					connection_methods, element_signals,
+					NULL, element, NULL) == FALSE)
+			connman_error("Failed to register %s connection",
+								element->path);
+	}
+
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementAdded",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
@@ -1427,6 +1468,10 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 				CONNMAN_MANAGER_INTERFACE, "ElementRemoved",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION)
+		g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_CONNECTION_INTERFACE);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK)
 		g_dbus_unregister_interface(connection, element->path,
