@@ -88,13 +88,13 @@ static void rtnllink_newlink(unsigned short type, int index,
 		sk = socket(PF_INET, SOCK_DGRAM, 0);
 
 		if (g_str_has_prefix(name, "bnep") == TRUE)
-			subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
+			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			subtype = CONNMAN_ELEMENT_SUBTYPE_WIMAX;
 		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
-			subtype = CONNMAN_ELEMENT_SUBTYPE_WIFI;
+			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 		else
 			subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
 
