@@ -218,12 +218,18 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "IPv4.Gateway",
 				DBUS_TYPE_STRING, &element->ipv4.gateway);
 
-	if (element->wifi.security != NULL)
+	if (element->wifi.security != NULL) {
+		const char *passphrase = "";
+
 		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
 				DBUS_TYPE_STRING, &element->wifi.security);
-	if (element->wifi.passphrase != NULL)
+
+		if (element->wifi.passphrase != NULL)
+			passphrase = element->wifi.passphrase;
+
 		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
-				DBUS_TYPE_STRING, &element->wifi.passphrase);
+				DBUS_TYPE_STRING, &passphrase);
+	}
 
 	connman_element_lock(element);
 
