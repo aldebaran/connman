@@ -7,6 +7,6 @@ bus = dbus.SystemBus()
 manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
 					'org.moblin.connman.Manager')
 
-state = manager.GetState()
+properties = manager.GetProperties()
 
-print "System is %s" % (state)
+print "System is %s" % (properties["State"])
