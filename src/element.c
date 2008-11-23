@@ -1496,7 +1496,7 @@ static void append_state(DBusMessageIter *entry, const char *state)
 	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
 					DBUS_TYPE_STRING_AS_STRING, &value);
 
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &state);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &state);
 
 	dbus_message_iter_close_container(entry, &value);
 }
