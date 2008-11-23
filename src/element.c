@@ -416,6 +416,18 @@ static GDBusSignalTable element_signals[] = {
 	{ },
 };
 
+static GDBusMethodTable device_methods[] = {
+	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "SetProperty",   "sv", "",      set_property   },
+	{ "ClearProperty", "s",  "",      clear_property },
+	{ },
+};
+
+static GDBusSignalTable device_signals[] = {
+	{ "PropertyChanged", "sv" },
+	{ },
+};
+
 struct append_filter {
 	enum connman_element_type type;
 	DBusMessageIter *iter;
@@ -1260,7 +1272,16 @@ static void register_element(gpointer data, gpointer user_data)
 					CONNMAN_ELEMENT_INTERFACE,
 					element_methods, element_signals,
 					NULL, element, NULL) == FALSE)
-		connman_error("Failed to register %s", element->path);
+		connman_error("Failed to register %s element", element->path);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+		if (g_dbus_register_interface(connection, element->path,
+					CONNMAN_DEVICE_INTERFACE,
+					device_methods, device_signals,
+					NULL, element, NULL) == FALSE)
+			connman_error("Failed to register %s device",
+								element->path);
+	}
 
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementAdded",
@@ -1320,6 +1341,10 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 				CONNMAN_MANAGER_INTERFACE, "ElementRemoved",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
+		g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_DEVICE_INTERFACE);
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_ELEMENT_INTERFACE);
