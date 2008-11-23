@@ -41,9 +41,7 @@ extern "C" {
 #define CONNMAN_MANAGER_INTERFACE  CONNMAN_SERVICE ".Manager"
 #define CONNMAN_MANAGER_PATH       "/"
 
-#define CONNMAN_IFACE_INTERFACE    CONNMAN_SERVICE ".Interface"
-#define CONNMAN_IFACE_BASEPATH     "/interface"
-
+#define CONNMAN_DEVICE_INTERFACE   CONNMAN_SERVICE ".Device"
 #define CONNMAN_NETWORK_INTERFACE  CONNMAN_SERVICE ".Network"
 
 extern void connman_dbus_dict_append_array(DBusMessageIter *dict,
