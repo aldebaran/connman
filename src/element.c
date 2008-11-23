@@ -429,8 +429,10 @@ static GDBusMethodTable device_methods[] = {
 	{ },
 };
 
-static GDBusSignalTable device_signals[] = {
-	{ "PropertyChanged", "sv" },
+static GDBusMethodTable network_methods[] = {
+	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "SetProperty",   "sv", "",      set_property   },
+	{ "ClearProperty", "s",  "",      clear_property },
 	{ },
 };
 
@@ -1283,9 +1285,18 @@ static void register_element(gpointer data, gpointer user_data)
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
 		if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_DEVICE_INTERFACE,
-					device_methods, device_signals,
+					device_methods, element_signals,
 					NULL, element, NULL) == FALSE)
 			connman_error("Failed to register %s device",
+								element->path);
+	}
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
+		if (g_dbus_register_interface(connection, element->path,
+					CONNMAN_NETWORK_INTERFACE,
+					network_methods, element_signals,
+					NULL, element, NULL) == FALSE)
+			connman_error("Failed to register %s network",
 								element->path);
 	}
 
@@ -1347,6 +1358,10 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 				CONNMAN_MANAGER_INTERFACE, "ElementRemoved",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK)
+		g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_NETWORK_INTERFACE);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE)
 		g_dbus_unregister_interface(connection, element->path,
