@@ -32,6 +32,10 @@ Properties	string Name [readonly]
 
 			The device name (for example eth0, wlan0 etc.)
 
+		string Type [readonly]
+
+			The device type (for example ethernet, wifi etc.)
+
 		boolean Powered [readwrite]
 
 			Switch a device on or off. This will also modify
