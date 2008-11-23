@@ -61,6 +61,12 @@ static struct {
 		DBUS_TYPE_STRING, "IPv4.Gateway" },
 	{ CONNMAN_PROPERTY_ID_IPV4_NAMESERVER,
 		DBUS_TYPE_STRING, "IPv4.Nameserver" },
+
+	{ CONNMAN_PROPERTY_ID_WIFI_SECURITY,
+		DBUS_TYPE_STRING, "WiFi.Security" },
+	{ CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE,
+		DBUS_TYPE_STRING, "WiFi.Passphrase" },
+
 	{ }
 };
 
@@ -211,6 +217,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (element->ipv4.gateway != NULL)
 		connman_dbus_dict_append_variant(&dict, "IPv4.Gateway",
 				DBUS_TYPE_STRING, &element->ipv4.gateway);
+
+	if (element->wifi.security != NULL)
+		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
+				DBUS_TYPE_STRING, &element->wifi.security);
+	if (element->wifi.passphrase != NULL)
+		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
+				DBUS_TYPE_STRING, &element->wifi.passphrase);
 
 	connman_element_lock(element);
 
@@ -922,6 +935,18 @@ int connman_element_set_property(struct connman_element *element,
 		element->ipv4.nameserver = g_strdup(*((const char **) value));
 		connman_element_unlock(element);
 		break;
+	case CONNMAN_PROPERTY_ID_WIFI_SECURITY:
+		connman_element_lock(element);
+		g_free(element->wifi.security);
+		element->wifi.security = g_strdup(*((const char **) value));
+		connman_element_unlock(element);
+		break;
+	case CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE:
+		connman_element_lock(element);
+		g_free(element->wifi.passphrase);
+		element->wifi.passphrase = g_strdup(*((const char **) value));
+		connman_element_unlock(element);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -971,6 +996,22 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		connman_element_lock(element);
 		*((char **) value) = element->ipv4.nameserver;
+		connman_element_unlock(element);
+		break;
+	case CONNMAN_PROPERTY_ID_WIFI_SECURITY:
+		if (element->wifi.security == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		connman_element_lock(element);
+		*((char **) value) = element->wifi.security;
+		connman_element_unlock(element);
+		break;
+	case CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE:
+		if (element->wifi.passphrase == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		connman_element_lock(element);
+		*((char **) value) = element->wifi.passphrase;
 		connman_element_unlock(element);
 		break;
 	default:
@@ -1097,8 +1138,6 @@ int connman_element_register(struct connman_element *element,
 
 	connman_element_lock(element);
 
-	__connman_element_load(element);
-
 	if (element->name == NULL) {
 		element->name = g_strdup(type2string(element->type));
 		if (element->name == NULL) {
@@ -1212,6 +1251,8 @@ static void register_element(gpointer data, gpointer user_data)
 	connman_element_unlock(element);
 
 	DBG("element %p path %s", element, element->path);
+
+	__connman_element_load(element);
 
 	g_node_append_data(node, element);
 

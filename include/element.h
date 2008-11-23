@@ -100,6 +100,11 @@ struct connman_element {
 		gchar *broadcast;
 		gchar *nameserver;
 	} ipv4;
+
+	struct {
+		gchar *security;
+		gchar *passphrase;
+	} wifi;
 };
 
 #define connman_element_lock(element)    g_static_mutex_lock(&(element)->mutex)

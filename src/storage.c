@@ -37,9 +37,59 @@ void __connman_storage_cleanup(void)
 	DBG("");
 }
 
+static int do_load(GKeyFile *keyfile, struct connman_element *element)
+{
+	const gchar *value;
+
+	DBG("element %p name %s", element, element->name);
+
+	value = g_key_file_get_string(keyfile, element->path,
+						"WiFi.Security", NULL);
+	if (value != NULL)
+		connman_element_set_property(element,
+				CONNMAN_PROPERTY_ID_WIFI_SECURITY, &value);
+
+	value = g_key_file_get_string(keyfile, element->path,
+						"WiFi.Passphrase", NULL);
+	if (value != NULL)
+		connman_element_set_property(element,
+				CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE, &value);
+
+	return 0;
+}
+
 int __connman_element_load(struct connman_element *element)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+
 	DBG("element %p name %s", element, element->name);
+
+	pathname = g_strdup_printf("%s/elements.conf", STORAGEDIR);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
+		g_free(pathname);
+		return -ENOENT;
+	}
+
+	g_free(pathname);
+
+	if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE) {
+		g_free(data);
+		return -EILSEQ;
+	}
+
+	g_free(data);
+
+	do_load(keyfile, element);
+
+	g_key_file_free(keyfile);
 
 	return 0;
 }
@@ -47,6 +97,7 @@ int __connman_element_load(struct connman_element *element)
 static void do_update(GKeyFile *keyfile, struct connman_element *element)
 {
 	GSList *list;
+	char *value;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -72,6 +123,16 @@ static void do_update(GKeyFile *keyfile, struct connman_element *element)
 	}
 
 	connman_element_unlock(element);
+
+	if (connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_WIFI_SECURITY, &value) == 0)
+		g_key_file_set_string(keyfile, element->path,
+						"WiFi.Security", value);
+
+	if (connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE, &value) == 0)
+		g_key_file_set_string(keyfile, element->path,
+						"WiFi.Passphrase", value);
 }
 
 int __connman_element_store(struct connman_element *element)
@@ -81,6 +142,10 @@ int __connman_element_store(struct connman_element *element)
 	gsize length;
 
 	DBG("element %p name %s", element, element->name);
+
+	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE &&
+				element->type != CONNMAN_ELEMENT_TYPE_NETWORK)
+		return -EINVAL;
 
 	pathname = g_strdup_printf("%s/elements.conf", STORAGEDIR);
 	if (pathname == NULL)
