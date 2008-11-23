@@ -10,10 +10,10 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 properties = manager.GetProperties()
 
 for path in properties["Devices"]:
-	element = dbus.Interface(bus.get_object("org.moblin.connman", path),
+	device = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Device")
 
-	properties = element.GetProperties()
+	properties = device.GetProperties()
 
 	print "[ %s ]" % (path)
 
