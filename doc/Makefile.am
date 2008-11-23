@@ -51,4 +51,4 @@ EXTRA_DIST += dbus-introspection.dtd dbus-introspection.xsl \
 						dbus-manager.xml
 
 EXTRA_DIST += manager-api.txt device-api.txt network-api.txt \
-				element-api.txt agent-api.txt plugin-api.txt
+					agent-api.txt plugin-api.txt
