@@ -75,10 +75,17 @@
     </para>
   </reference>
 
-  <reference id="element">
-    <title>Element interface</title>
+  <reference id="device">
+    <title>Device interface</title>
     <para>
-<programlisting><xi:include href="element-api.txt" parse="text" /></programlisting>
+<programlisting><xi:include href="device-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
+  <reference id="network">
+    <title>Network interface</title>
+    <para>
+<programlisting><xi:include href="network-api.txt" parse="text" /></programlisting>
     </para>
   </reference>
 
