@@ -107,7 +107,7 @@ static void append_connections(DBusMessageIter *dict)
 
 static void append_state(DBusMessageIter *dict, const char *state)
 {
-	DBusMessageIter entry, value, iter;
+	DBusMessageIter entry, value;
 	const char *key = "State";
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
