@@ -74,6 +74,7 @@ void __connman_element_cleanup(void);
 
 void __connman_element_list(enum connman_element_type type,
 						DBusMessageIter *iter);
+int __connman_element_count(enum connman_element_type type);
 
 const char *__connman_element_type2string(enum connman_element_type type);
 const char *__connman_element_subtype2string(enum connman_element_subtype type);

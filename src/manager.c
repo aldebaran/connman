@@ -149,7 +149,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	append_devices(&dict);
 	append_connections(&dict);
 
-	append_state(&dict, "offline");
+	if (__connman_element_count(CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
+		append_state(&dict, "online");
+	else
+		append_state(&dict, "offline");
 
 	dbus_message_iter_close_container(&array, &dict);
 

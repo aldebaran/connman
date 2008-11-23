@@ -542,10 +542,10 @@ struct append_filter {
 	DBusMessageIter *iter;
 };
 
-static gboolean append_path(GNode *node, gpointer data)
+static gboolean append_path(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
-	struct append_filter *filter = data;
+	struct append_filter *filter = user_data;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -573,6 +573,44 @@ void __connman_element_list(enum connman_element_type type,
 	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 							append_path, &filter);
 	g_static_rw_lock_reader_unlock(&element_lock);
+}
+
+struct count_data {
+	enum connman_element_type type;
+	int count;
+};
+
+static gboolean count_element(GNode *node, gpointer user_data)
+{
+	struct connman_element *element = node->data;
+	struct count_data *data = user_data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
+		return FALSE;
+
+	if (data->type != CONNMAN_ELEMENT_TYPE_UNKNOWN &&
+					data->type != element->type)
+		return FALSE;
+
+	data->count++;
+
+	return FALSE;
+}
+
+int __connman_element_count(enum connman_element_type type)
+{
+	struct count_data data = { type, 0 };
+
+	DBG("");
+
+	g_static_rw_lock_reader_lock(&element_lock);
+	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+							count_element, &data);
+	g_static_rw_lock_reader_unlock(&element_lock);
+
+	return data.count;
 }
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
