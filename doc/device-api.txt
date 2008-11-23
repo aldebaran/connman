@@ -7,7 +7,7 @@ Object path	[variable prefix]/{device0,device1,...}
 
 Methods		dict GetProperties()
 
-			Returns properties for the device objects. See
+			Returns properties for the device object. See
 			the properties section for available properties.
 
 			Possible Errors: [service].Error.InvalidArguments
