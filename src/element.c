@@ -1450,7 +1450,8 @@ static void register_element(gpointer data, gpointer user_data)
 					NULL, element, NULL) == FALSE)
 		connman_error("Failed to register %s element", element->path);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
+			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
 		if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_DEVICE_INTERFACE,
 					device_methods, element_signals,
@@ -1599,7 +1600,8 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
+			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
 		emit_devices_signal(connection);
 
 		g_dbus_unregister_interface(connection, element->path,
