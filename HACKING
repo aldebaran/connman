@@ -52,6 +52,28 @@ like this:
     # make maintainer-clean
 
 
+Running from within the source code repository
+==============================================
+
+When using "./configure --enable-maintainer-mode" the automake scripts will
+use the plugins directly from within the repository. This removes the need
+to use "make install" when testing "connmand". The "bootstrap-configure"
+automatically includes this option.
+
+  Run daemon in foreground with debugging
+    # sudo ./src/connmand -n -d
+
+For production installations or distribution packaging it is important that
+the "--enable-maintainer-mode" option is NOT used.
+
+Some times it is important to restrict the available interfaces. For example
+in cases where testing happens over a network connection. The "-i" command
+line switch allows to specify a glob pattern for the interface names.
+
+  Run daemon for wireless interfaces
+    # sudo ./src/connmand -n -i wlan*
+
+
 Generating source code documentation
 ====================================
 
@@ -81,3 +103,4 @@ the documentation files are like this:
 
   View documentation
     # firefox doc/html/index.html
+
