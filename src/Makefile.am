@@ -15,7 +15,11 @@ connmand_SOURCES = main.c connman.h log.c error.c plugin.c profile.c \
 			element.c device.c network.c security.c resolver.c \
 				storage.c manager.c agent.c rtnl.c dbus.c
 
-connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ -ldl
+if UDEV
+connmand_SOURCES += udev.c
+endif
+
+connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @UDEV_LIBS@ -ldl
 
 connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
@@ -33,10 +37,10 @@ else
 plugindir = $(libdir)/connman/plugins
 endif
 
-AM_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
-			-DSTATEDIR=\""$(statedir)"\" \
-			-DSTORAGEDIR=\""$(storagedir)\"" \
-			-DPLUGINDIR=\""$(plugindir)"\"
+AM_CFLAGS = @UDEV_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
+				-DSTATEDIR=\""$(statedir)"\" \
+					-DSTORAGEDIR=\""$(storagedir)\"" \
+						-DPLUGINDIR=\""$(plugindir)"\"
 
 INCLUDES = -I$(top_builddir)/include
 
