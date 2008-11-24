@@ -74,6 +74,11 @@ AC_SUBST(DBUS_LIBS)
 AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
 AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
 
+PKG_CHECK_MODULES(UDEV, libudev >= 130, udev_found=yes, udev_found=no)
+AC_SUBST(UDEV_CFLAGS)
+AC_SUBST(UDEV_LIBS)
+AM_CONDITIONAL(UDEV, test "${udev_found}" = "yes")
+
 PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, polkit_found=yes, polkit_found=no)
 AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
