@@ -146,6 +146,24 @@ static const char *subtype2string(enum connman_element_subtype type)
 	return NULL;
 }
 
+static const char *policy2string(enum connman_element_policy policy)
+{
+	switch (policy) {
+	case CONNMAN_ELEMENT_POLICY_UNKNOWN:
+		return "unknown";
+	case CONNMAN_ELEMENT_POLICY_OFF:
+		return "off";
+	case CONNMAN_ELEMENT_POLICY_AUTO:
+		return "auto";
+	case CONNMAN_ELEMENT_POLICY_IGNORE:
+		return "ignore";
+	case CONNMAN_ELEMENT_POLICY_ASK:
+		return "ask";
+	}
+
+	return NULL;
+}
+
 static void append_property(DBusMessageIter *dict,
 				struct connman_property *property)
 {
@@ -301,6 +319,11 @@ static DBusMessage *get_device_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
+	str = policy2string(element->policy);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Policy",
+						DBUS_TYPE_STRING, &str);
+
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
@@ -319,6 +342,7 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -332,6 +356,11 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = policy2string(element->policy);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Policy",
+						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_variant(&dict, "Connected",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
@@ -796,6 +825,7 @@ struct connman_element *connman_element_create(const char *name)
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 	element->state   = CONNMAN_ELEMENT_STATE_CLOSED;
+	element->policy  = CONNMAN_ELEMENT_POLICY_AUTO;
 	element->index   = -1;
 	element->enabled = FALSE;
 
