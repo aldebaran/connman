@@ -39,10 +39,6 @@ static GNode *element_root = NULL;
 
 static GSList *driver_list = NULL;
 
-static GThreadPool *thread_register = NULL;
-static GThreadPool *thread_unregister = NULL;
-static GThreadPool *thread_unregister_children = NULL;
-
 static gchar *device_filter = NULL;
 
 static struct {
@@ -1297,115 +1293,6 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 	return result;
 }
 
-/**
- * connman_element_register:
- * @element: the element to register
- * @parent: the parent to register the element with
- *
- * Register an element with the core. It will be register under the given
- * parent of if %NULL is provided under the root element.
- *
- * Returns: %0 on success
- */
-int connman_element_register(struct connman_element *element,
-					struct connman_element *parent)
-{
-	DBG("element %p name %s parent %p", element, element->name, parent);
-
-	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
-		if (g_pattern_match_simple(device_filter,
-						element->name) == FALSE) {
-			DBG("ignoring %s device", element->name);
-			return -EPERM;
-		}
-	}
-
-	if (connman_element_ref(element) == NULL)
-		return -EINVAL;
-
-	connman_element_lock(element);
-
-	if (element->name == NULL) {
-		element->name = g_strdup(type2string(element->type));
-		if (element->name == NULL) {
-			connman_element_unlock(element);
-			return -EINVAL;
-		}
-	}
-
-	element->parent = parent;
-
-	connman_element_unlock(element);
-
-	if (thread_register != NULL)
-		g_thread_pool_push(thread_register, element, NULL);
-
-	return 0;
-}
-
-void connman_element_unregister(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	if (thread_unregister != NULL)
-		g_thread_pool_push(thread_unregister, element, NULL);
-}
-
-void connman_element_unregister_children(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	if (thread_unregister_children != NULL)
-		g_thread_pool_push(thread_unregister_children, element, NULL);
-}
-
-static gboolean update_element(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (element->driver && element->driver->update)
-		element->driver->update(element);
-
-	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
-				DBUS_TYPE_OBJECT_PATH, &element->path,
-							DBUS_TYPE_INVALID);
-
-	return FALSE;
-}
-
-void connman_element_update(struct connman_element *element)
-{
-	GNode *node;
-
-	DBG("element %p name %s", element, element->name);
-
-	g_static_rw_lock_reader_lock(&element_lock);
-
-	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
-
-	if (node != NULL)
-		g_node_traverse(node, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, update_element, NULL);
-
-	g_static_rw_lock_reader_unlock(&element_lock);
-}
-
-int connman_element_set_enabled(struct connman_element *element,
-							gboolean enabled)
-{
-	if (element->enabled == enabled)
-		return 0;
-
-	element->enabled = enabled;
-
-	connman_element_update(element);
-
-	return 0;
-}
-
 static void append_devices(DBusMessageIter *entry)
 {
 	DBusMessageIter value, iter;
@@ -1626,6 +1513,51 @@ static void register_element(gpointer data, gpointer user_data)
 	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
+/**
+ * connman_element_register:
+ * @element: the element to register
+ * @parent: the parent to register the element with
+ *
+ * Register an element with the core. It will be register under the given
+ * parent of if %NULL is provided under the root element.
+ *
+ * Returns: %0 on success
+ */
+int connman_element_register(struct connman_element *element,
+					struct connman_element *parent)
+{
+	DBG("element %p name %s parent %p", element, element->name, parent);
+
+	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+		if (g_pattern_match_simple(device_filter,
+						element->name) == FALSE) {
+			DBG("ignoring %s device", element->name);
+			return -EPERM;
+		}
+	}
+
+	if (connman_element_ref(element) == NULL)
+		return -EINVAL;
+
+	connman_element_lock(element);
+
+	if (element->name == NULL) {
+		element->name = g_strdup(type2string(element->type));
+		if (element->name == NULL) {
+			connman_element_unlock(element);
+			return -EINVAL;
+		}
+	}
+
+	element->parent = parent;
+
+	connman_element_unlock(element);
+
+	register_element(element, NULL);
+
+	return 0;
+}
+
 static gboolean remove_element(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
@@ -1700,6 +1632,13 @@ static void unregister_element(gpointer data, gpointer user_data)
 	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
+void connman_element_unregister(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	unregister_element(element, NULL);
+}
+
 static void unregister_children(gpointer data, gpointer user_data)
 {
 	struct connman_element *element = data;
@@ -1716,6 +1655,60 @@ static void unregister_children(gpointer data, gpointer user_data)
 				G_TRAVERSE_ALL, -1, remove_element, element);
 
 	g_static_rw_lock_writer_unlock(&element_lock);
+}
+
+void connman_element_unregister_children(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	unregister_children(element, NULL);
+}
+
+static gboolean update_element(GNode *node, gpointer user_data)
+{
+	struct connman_element *element = node->data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->driver && element->driver->update)
+		element->driver->update(element);
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	return FALSE;
+}
+
+void connman_element_update(struct connman_element *element)
+{
+	GNode *node;
+
+	DBG("element %p name %s", element, element->name);
+
+	g_static_rw_lock_reader_lock(&element_lock);
+
+	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
+
+	if (node != NULL)
+		g_node_traverse(node, G_PRE_ORDER,
+				G_TRAVERSE_ALL, -1, update_element, NULL);
+
+	g_static_rw_lock_reader_unlock(&element_lock);
+}
+
+int connman_element_set_enabled(struct connman_element *element,
+							gboolean enabled)
+{
+	if (element->enabled == enabled)
+		return 0;
+
+	element->enabled = enabled;
+
+	connman_element_update(element);
+
+	return 0;
 }
 
 int __connman_element_init(DBusConnection *conn, const char *device)
@@ -1742,13 +1735,6 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 	element_root = g_node_new(element);
 
 	g_static_rw_lock_writer_unlock(&element_lock);
-
-	thread_register = g_thread_pool_new(register_element,
-							NULL, 1, FALSE, NULL);
-	thread_unregister = g_thread_pool_new(unregister_element,
-							NULL, 1, FALSE, NULL);
-	thread_unregister_children = g_thread_pool_new(unregister_children,
-							NULL, 1, FALSE, NULL);
 
 	__connman_device_init();
 
@@ -1780,7 +1766,7 @@ static gboolean free_node(GNode *node, gpointer data)
 	DBG("element %p name %s", element, element->name);
 
 	if (g_node_depth(node) > 1)
-		g_thread_pool_push(thread_unregister, element, NULL);
+		unregister_element(element, NULL);
 
 	return FALSE;
 }
@@ -1791,9 +1777,6 @@ void __connman_element_cleanup(void)
 
 	__connman_device_cleanup();
 
-	g_thread_pool_free(thread_register, TRUE, TRUE);
-	thread_register = NULL;
-
 	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_driver, NULL);
@@ -1803,12 +1786,6 @@ void __connman_element_cleanup(void)
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_node, NULL);
 	g_static_rw_lock_writer_unlock(&element_lock);
-
-	g_thread_pool_free(thread_unregister, FALSE, TRUE);
-	thread_unregister = NULL;
-
-	g_thread_pool_free(thread_unregister_children, FALSE, TRUE);
-	thread_unregister_children = NULL;
 
 	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_destroy(element_root);
