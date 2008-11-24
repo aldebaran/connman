@@ -56,10 +56,15 @@ PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
-PKG_CHECK_MODULES(GTHREAD, gthread-2.0, dummy=yes,
+AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
+					[enable threading support]), [
+	AC_DEFINE(NEED_THREADS, 1, [Define if threading support is required])
+
+	PKG_CHECK_MODULES(GTHREAD, gthread-2.0, dummy=yes,
 				AC_MSG_ERROR(gthread is required))
-AC_SUBST(GTHREAD_CFLAGS)
-AC_SUBST(GTHREAD_LIBS)
+	GLIB_CFLAGS="$GLIB_CFLAGS $GTHREAD_CFLAGS"
+	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
+])
 
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(libdbus is required))
