@@ -103,6 +103,8 @@ static const char *type2string(enum connman_element_type type)
 		return "device";
 	case CONNMAN_ELEMENT_TYPE_NETWORK:
 		return "network";
+	case CONNMAN_ELEMENT_TYPE_SERVICE:
+		return "service";
 	case CONNMAN_ELEMENT_TYPE_IPV4:
 		return "ipv4";
 	case CONNMAN_ELEMENT_TYPE_IPV6:
