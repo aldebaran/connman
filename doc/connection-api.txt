@@ -27,4 +27,3 @@ Properties	string IPv4.Method [readonly]
 		string IPv4.Address [readonly]
 
 			Shows the current configured IPv4 address.
-			
