@@ -1,0 +1,30 @@
+Connection hierarchy
+====================
+
+Service		org.moblin.connman
+Interface	org.moblin.connman.Connection
+Object path	[variable prefix]/{connection0,connection1,...}
+
+Methods		dict GetProperties()
+
+			Returns properties for the connection object. See
+			the properties section for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	string IPv4.Method [readonly]
+
+			Indicates the way how the IPv4 settings were
+			configured. Possible values here are "dhcp"
+			and "static".
+
+		string IPv4.Address [readonly]
+
+			Shows the current configured IPv4 address.
+			
