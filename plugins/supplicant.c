@@ -619,13 +619,9 @@ static void extract_rsnie(struct supplicant_network *network,
 static void extract_capabilites(struct supplicant_network *network,
 						DBusMessageIter *value)
 {
-	guint capabilities;
+	dbus_message_iter_get_basic(value, &network->capabilities);
 
-	dbus_message_iter_get_basic(value, &capabilities);
-
-	network->capabilities = capabilities;
-
-	if (capabilities & IEEE80211_CAP_PRIVACY)
+	if (network->capabilities & IEEE80211_CAP_PRIVACY)
 		network->has_wep = TRUE;
 }
 
@@ -662,6 +658,19 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		//type = dbus_message_iter_get_arg_type(&value);
 		//dbus_message_iter_get_basic(&value, &val);
 
+		/* 
+		 * bssid        : a (97)
+		 * ssid         : a (97)
+		 * wpaie        : a (97)
+		 * rsnie        : a (97)
+		 * frequency    : i (105)
+		 * capabilities : q (113)
+		 * quality      : i (105)
+		 * noise        : i (105)
+		 * level        : i (105)
+		 * maxrate      : i (105)
+		 */
+
 		if (g_str_equal(key, "ssid") == TRUE)
 			extract_ssid(network, &value);
 		else if (g_str_equal(key, "wpaie") == TRUE)
@@ -670,6 +679,15 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 			extract_rsnie(network, &value);
 		else if (g_str_equal(key, "capabilities") == TRUE)
 			extract_capabilites(network, &value);
+		else if (g_str_equal(key, "quality") == TRUE)
+			dbus_message_iter_get_basic(&value, &network->quality);
+		else if (g_str_equal(key, "noise") == TRUE)
+			dbus_message_iter_get_basic(&value, &network->noise);
+		else if (g_str_equal(key, "level") == TRUE)
+			dbus_message_iter_get_basic(&value, &network->level);
+		else if (g_str_equal(key, "maxrate") == TRUE)
+			dbus_message_iter_get_basic(&value, &network->maxrate);
+
 
 		dbus_message_iter_next(&dict);
 	}

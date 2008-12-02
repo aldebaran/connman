@@ -40,10 +40,14 @@ struct supplicant_network {
 	gchar *identifier;
 	guint8 *ssid;
 	guint ssid_len;
-	guint capabilities;
+	guint16 capabilities;
 	gboolean has_wep;
 	gboolean has_wpa;
 	gboolean has_rsn;
+	gint32 quality;
+	gint32 noise;
+	gint32 level;
+	gint32 maxrate;
 };
 
 struct supplicant_callback {
