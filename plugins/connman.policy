@@ -17,4 +17,13 @@
     </defaults>
   </action>
 
+  <action id="org.moblin.connman.passphrase">
+    <description>Passphrase configuration</description>
+    <message>Policy prevents modification of passphrases</message>
+    <defaults>
+      <allow_inactive>no</allow_inactive>
+      <allow_active>auth_admin_keep_always</allow_active>
+    </defaults>
+  </action>
+
 </policyconfig>
