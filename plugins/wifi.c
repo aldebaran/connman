@@ -182,9 +182,9 @@ static void scan_result(struct connman_element *parent,
 	for (i = 0; i < strlen(temp); i++) {
 		if (temp[i] == ' ' || temp[i] == '.' || temp[i] == '-')
 			temp[i] = '_';
-		if (temp[i] == '(' || temp[i] == ')')
+		else if (temp[i] == '(' || temp[i] == ')')
 			temp[i] = '_';
-		if (g_ascii_isprint(temp[i]) == FALSE)
+		else if (g_ascii_isprint(temp[i]) == FALSE)
 			temp[i] = '_';
 		temp[i] = g_ascii_tolower(temp[i]);
 	}
