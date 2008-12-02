@@ -223,6 +223,41 @@ static void add_common_properties(struct connman_element *element,
 	__connman_element_unlock(element);
 }
 
+static void set_common_property(struct connman_element *element,
+				const char *name, DBusMessageIter *value)
+{
+	GSList *list;
+
+	if (g_str_equal(name, "Priority") == TRUE) {
+		dbus_message_iter_get_basic(value, &element->priority);
+		return;
+	}
+
+	__connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+		const char *str;
+
+		if (g_str_equal(property->name, name) == FALSE)
+			continue;
+
+		if (property->flags & CONNMAN_PROPERTY_FLAG_STATIC)
+			continue;
+
+		property->flags &= ~CONNMAN_PROPERTY_FLAG_REFERENCE;
+
+		if (property->type == DBUS_TYPE_STRING) {
+			dbus_message_iter_get_basic(value, &str);
+			g_free(property->value);
+			property->value = g_strdup(str);
+		} else
+			property->value = NULL;
+	}
+
+	__connman_element_unlock(element);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -374,6 +409,40 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *set_network_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessageIter iter;
+	DBusMessageIter value;
+	const char *name;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
+
+	if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
+		const char *str;
+
+		dbus_message_iter_get_basic(&value, &str);
+		g_free(element->wifi.passphrase);
+		element->wifi.passphrase = g_strdup(str);
+	} else
+		set_common_property(element, name, &value);
+
+	__connman_element_store(element);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *get_connection_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -408,7 +477,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	DBusMessageIter iter;
 	DBusMessageIter value;
 	const char *name;
-	GSList *list;
 
 	DBG("conn %p", conn);
 
@@ -422,29 +490,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	if (__connman_security_check_privileges(msg) < 0)
 		return __connman_error_permission_denied(msg);
 
-	__connman_element_lock(element);
-
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-		const char *str;
-
-		if (g_str_equal(property->name, name) == FALSE)
-			continue;
-
-		if (property->flags & CONNMAN_PROPERTY_FLAG_STATIC)
-			continue;
-
-		property->flags &= ~CONNMAN_PROPERTY_FLAG_REFERENCE;
-
-		if (property->type == DBUS_TYPE_STRING) {
-			dbus_message_iter_get_basic(&value, &str);
-			g_free(property->value);
-			property->value = g_strdup(str);
-		} else
-			property->value = NULL;
-	}
-
-	__connman_element_unlock(element);
+	set_common_property(element, name, &value);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -584,6 +630,7 @@ static GDBusMethodTable device_methods[] = {
 
 static GDBusMethodTable network_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_network_properties },
+	{ "SetProperty",   "sv", "",      set_network_property   },
 	{ },
 };
 
