@@ -41,7 +41,6 @@ struct ethernet_data {
 	unsigned flags;
 };
 
-static GStaticMutex ethernet_mutex = G_STATIC_MUTEX_INIT;
 static GSList *ethernet_list = NULL;
 
 static void ethernet_newlink(unsigned short type, int index,
@@ -50,8 +49,6 @@ static void ethernet_newlink(unsigned short type, int index,
 	GSList *list;
 
 	DBG("index %d flags %ld change %ld", index, flags, change);
-
-	g_static_mutex_lock(&ethernet_mutex);
 
 	for (list = ethernet_list; list; list = list->next) {
 		struct connman_element *element = list->data;
@@ -87,8 +84,6 @@ static void ethernet_newlink(unsigned short type, int index,
 			connman_element_unregister_children(element);
 		}
 	}
-
-	g_static_mutex_unlock(&ethernet_mutex);
 }
 
 static struct connman_rtnl ethernet_rtnl = {
@@ -192,9 +187,7 @@ static int ethernet_probe(struct connman_element *element)
 	if (ethernet == NULL)
 		return -ENOMEM;
 
-	g_static_mutex_lock(&ethernet_mutex);
 	ethernet_list = g_slist_append(ethernet_list, element);
-	g_static_mutex_unlock(&ethernet_mutex);
 
 	connman_element_set_data(element, ethernet);
 
@@ -217,9 +210,7 @@ static void ethernet_remove(struct connman_element *element)
 
 	iface_down(ethernet);
 
-	g_static_mutex_lock(&ethernet_mutex);
 	ethernet_list = g_slist_remove(ethernet_list, element);
-	g_static_mutex_unlock(&ethernet_mutex);
 
 	g_free(ethernet);
 }

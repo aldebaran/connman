@@ -106,7 +106,7 @@ static void do_update(GKeyFile *keyfile, struct connman_element *element)
 	g_key_file_set_boolean(keyfile, element->path, "Enabled",
 							element->enabled);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -122,7 +122,7 @@ static void do_update(GKeyFile *keyfile, struct connman_element *element)
 					property->name, property->value);
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	if (connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_WIFI_SECURITY, &value) == 0)

@@ -212,7 +212,7 @@ static void add_common_properties(struct connman_element *element,
 				DBUS_TYPE_STRING, &passphrase);
 	}
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -220,7 +220,7 @@ static void add_common_properties(struct connman_element *element,
 		append_property(dict, property);
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -422,7 +422,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	if (__connman_security_check_privileges(msg) < 0)
 		return __connman_error_permission_denied(msg);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -444,7 +444,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			property->value = NULL;
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -465,7 +465,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	if (__connman_security_check_privileges(msg) < 0)
 		return __connman_error_permission_denied(msg);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -487,7 +487,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		property->value = NULL;
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -704,9 +704,9 @@ static gboolean probe_driver(GNode *node, gpointer data)
 		if (driver->probe(element) < 0)
 			return FALSE;
 
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		element->driver = driver;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 	}
 
 	return FALSE;
@@ -771,9 +771,9 @@ static gboolean remove_driver(GNode *node, gpointer data)
 		if (driver->remove)
 			driver->remove(element);
 
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		element->driver = NULL;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 	}
 
 	return FALSE;
@@ -821,8 +821,6 @@ struct connman_element *connman_element_create(const char *name)
 
 	element->refcount = 1;
 
-	g_static_mutex_init(&element->mutex);
-
 	element->name    = g_strdup(name);
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
@@ -850,7 +848,7 @@ static void free_properties(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -870,7 +868,7 @@ static void free_properties(struct connman_element *element)
 
 	element->properties = NULL;
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 }
 
 void connman_element_unref(struct connman_element *element)
@@ -919,9 +917,9 @@ int connman_element_add_static_property(struct connman_element *element,
 		break;
 	}
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 	element->properties = g_slist_append(element->properties, property);
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return 0;
 }
@@ -959,9 +957,9 @@ int connman_element_add_static_array_property(struct connman_element *element,
 		break;
 	}
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 	element->properties = g_slist_append(element->properties, property);
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return 0;
 }
@@ -1014,7 +1012,7 @@ static struct connman_property *create_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		property = list->data;
@@ -1041,7 +1039,7 @@ static struct connman_property *create_property(struct connman_element *element,
 	element->properties = g_slist_append(element->properties, property);
 
 unlock:
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return property;
 }
@@ -1127,40 +1125,40 @@ int connman_element_set_property(struct connman_element *element,
 {
 	switch (id) {
 	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		g_free(element->ipv4.address);
 		element->ipv4.address = g_strdup(*((const char **) value));
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		g_free(element->ipv4.netmask);
 		element->ipv4.netmask = g_strdup(*((const char **) value));
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		g_free(element->ipv4.gateway);
 		element->ipv4.gateway = g_strdup(*((const char **) value));
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		g_free(element->ipv4.nameserver);
 		element->ipv4.nameserver = g_strdup(*((const char **) value));
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_WIFI_SECURITY:
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		g_free(element->wifi.security);
 		element->wifi.security = g_strdup(*((const char **) value));
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE:
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		g_free(element->wifi.passphrase);
 		element->wifi.passphrase = g_strdup(*((const char **) value));
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	default:
 		return -EINVAL;
@@ -1185,49 +1183,49 @@ int connman_element_get_value(struct connman_element *element,
 		if (element->ipv4.address == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.address;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
 		if (element->ipv4.netmask == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.netmask;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
 		if (element->ipv4.gateway == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.gateway;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
 		if (element->ipv4.nameserver == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.nameserver;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_WIFI_SECURITY:
 		if (element->wifi.security == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		*((char **) value) = element->wifi.security;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE:
 		if (element->wifi.passphrase == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		*((char **) value) = element->wifi.passphrase;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 		break;
 	default:
 		return -EINVAL;
@@ -1244,7 +1242,7 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -1259,7 +1257,7 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 		}
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return found;
 }
@@ -1272,7 +1270,7 @@ gboolean connman_element_get_static_array_property(struct connman_element *eleme
 
 	DBG("element %p name %s", element, element->name);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -1288,7 +1286,7 @@ gboolean connman_element_get_static_array_property(struct connman_element *eleme
 		}
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return found;
 }
@@ -1301,7 +1299,7 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
@@ -1320,7 +1318,7 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 			break;
 	}
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	return result;
 }
@@ -1448,7 +1446,7 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_static_rw_lock_writer_lock(&element_lock);
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	if (element->parent) {
 		node = g_node_find(element_root, G_PRE_ORDER,
@@ -1468,7 +1466,7 @@ static void register_element(gpointer data, gpointer user_data)
 
 	set_reference_properties(element);
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	DBG("element %p path %s", element, element->path);
 
@@ -1536,9 +1534,9 @@ static void register_element(gpointer data, gpointer user_data)
 		DBG("driver %p name %s", driver, driver->name);
 
 		if (driver->probe(element) == 0) {
-			connman_element_lock(element);
+			__connman_element_lock(element);
 			element->driver = driver;
-			connman_element_unlock(element);
+			__connman_element_unlock(element);
 			break;
 		}
 	}
@@ -1572,19 +1570,19 @@ int connman_element_register(struct connman_element *element,
 	if (connman_element_ref(element) == NULL)
 		return -EINVAL;
 
-	connman_element_lock(element);
+	__connman_element_lock(element);
 
 	if (element->name == NULL) {
 		element->name = g_strdup(type2string(element->type));
 		if (element->name == NULL) {
-			connman_element_unlock(element);
+			__connman_element_unlock(element);
 			return -EINVAL;
 		}
 	}
 
 	element->parent = parent;
 
-	connman_element_unlock(element);
+	__connman_element_unlock(element);
 
 	register_element(element, NULL);
 
@@ -1605,9 +1603,9 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		if (element->driver->remove)
 			element->driver->remove(element);
 
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		element->driver = NULL;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 	}
 
 	if (node != NULL) {
@@ -1785,9 +1783,9 @@ static gboolean free_driver(GNode *node, gpointer data)
 		if (element->driver->remove)
 			element->driver->remove(element);
 
-		connman_element_lock(element);
+		__connman_element_lock(element);
 		element->driver = NULL;
-		connman_element_unlock(element);
+		__connman_element_unlock(element);
 	}
 
 	return FALSE;

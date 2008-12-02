@@ -49,7 +49,6 @@ struct supplicant_task {
 	enum supplicant_state state;
 };
 
-static GStaticMutex task_mutex = G_STATIC_MUTEX_INIT;
 static GSList *task_list = NULL;
 
 static DBusConnection *connection;
@@ -931,9 +930,7 @@ int __supplicant_start(struct connman_element *element,
 	task->created = FALSE;
 	task->state = STATE_INACTIVE;
 
-	g_static_mutex_lock(&task_mutex);
 	task_list = g_slist_append(task_list, task);
-	g_static_mutex_unlock(&task_mutex);
 
 	err = get_interface(task);
 	if (err < 0) {
@@ -961,9 +958,7 @@ int __supplicant_stop(struct connman_element *element)
 	if (task == NULL)
 		return -ENODEV;
 
-	g_static_mutex_lock(&task_mutex);
 	task_list = g_slist_remove(task_list, task);
-	g_static_mutex_unlock(&task_mutex);
 
 	disable_network(task);
 

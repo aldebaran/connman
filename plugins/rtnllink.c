@@ -39,7 +39,6 @@
 
 #include "inet.h"
 
-static GStaticMutex device_mutex = G_STATIC_MUTEX_INIT;
 static GSList *device_list = NULL;
 
 static void rtnllink_newlink(unsigned short type, int index,
@@ -53,8 +52,6 @@ static void rtnllink_newlink(unsigned short type, int index,
 
 	DBG("index %d", index);
 
-	g_static_mutex_lock(&device_mutex);
-
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
 
@@ -63,8 +60,6 @@ static void rtnllink_newlink(unsigned short type, int index,
 			break;
 		}
 	}
-
-	g_static_mutex_unlock(&device_mutex);
 
 	if (exists == TRUE)
 		return;
@@ -113,12 +108,8 @@ static void rtnllink_newlink(unsigned short type, int index,
 	device->index = index;
 	device->name = name;
 
-	g_static_mutex_lock(&device_mutex);
-
 	connman_element_register(device, NULL);
 	device_list = g_slist_append(device_list, device);
-
-	g_static_mutex_unlock(&device_mutex);
 }
 
 static void rtnllink_dellink(unsigned short type, int index,
@@ -127,8 +118,6 @@ static void rtnllink_dellink(unsigned short type, int index,
 	GSList *list;
 
 	DBG("index %d", index);
-
-	g_static_mutex_lock(&device_mutex);
 
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
@@ -140,8 +129,6 @@ static void rtnllink_dellink(unsigned short type, int index,
 			break;
 		}
 	}
-
-	g_static_mutex_unlock(&device_mutex);
 }
 
 static struct connman_rtnl rtnllink_rtnl = {
@@ -169,8 +156,6 @@ static void rtnllink_exit(void)
 
 	connman_rtnl_unregister(&rtnllink_rtnl);
 
-	g_static_mutex_lock(&device_mutex);
-
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
 
@@ -180,8 +165,6 @@ static void rtnllink_exit(void)
 
 	g_slist_free(device_list);
 	device_list = NULL;
-
-	g_static_mutex_unlock(&device_mutex);
 }
 
 CONNMAN_PLUGIN_DEFINE("rtnllink", "RTNL link detection plugin", VERSION,

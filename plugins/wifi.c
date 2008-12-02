@@ -42,7 +42,6 @@
 #include "supplicant.h"
 
 struct wifi_data {
-	GStaticMutex mutex;
 	GSList *list;
 	gchar *identifier;
 };
@@ -190,8 +189,6 @@ static void scan_result(struct connman_element *parent,
 		temp[i] = g_ascii_tolower(temp[i]);
 	}
 
-	g_static_mutex_lock(&data->mutex);
-
 	element = find_element(data, network->identifier);
 	if (element == NULL) {
 		element = connman_element_create(temp);
@@ -210,8 +207,6 @@ static void scan_result(struct connman_element *parent,
 		connman_element_register(element, parent);
 	}
 
-	g_static_mutex_unlock(&data->mutex);
-
 	g_free(temp);
 }
 
@@ -229,8 +224,6 @@ static int wifi_probe(struct connman_element *element)
 	data = g_try_new0(struct wifi_data, 1);
 	if (data == NULL)
 		return -ENOMEM;
-
-	g_static_mutex_init(&data->mutex);
 
 	connman_element_set_data(element, data);
 
@@ -282,8 +275,6 @@ static int wifi_disable(struct connman_element *element)
 
 	__supplicant_disconnect(element);
 
-	g_static_mutex_lock(&data->mutex);
-
 	for (list = data->list; list; list = list->next) {
 		struct connman_element *network = list->data;
 
@@ -292,8 +283,6 @@ static int wifi_disable(struct connman_element *element)
 
 	g_slist_free(data->list);
 	data->list = NULL;
-
-	g_static_mutex_unlock(&data->mutex);
 
 	connman_element_unregister_children(element);
 
@@ -311,7 +300,6 @@ static struct connman_driver wifi_driver = {
 	.disable	= wifi_disable,
 };
 
-static GStaticMutex device_mutex = G_STATIC_MUTEX_INIT;
 static GSList *device_list = NULL;
 
 static void wifi_newlink(unsigned short type, int index,
@@ -344,8 +332,6 @@ static void wifi_newlink(unsigned short type, int index,
 
 	close(sk);
 
-	g_static_mutex_lock(&device_mutex);
-
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
 
@@ -354,8 +340,6 @@ static void wifi_newlink(unsigned short type, int index,
 			break;
 		}
 	}
-
-	g_static_mutex_unlock(&device_mutex);
 
 	if (exists == TRUE) {
 		g_free(name);
@@ -369,12 +353,8 @@ static void wifi_newlink(unsigned short type, int index,
 	device->index = index;
 	device->name = name;
 
-	g_static_mutex_lock(&device_mutex);
-
 	connman_element_register(device, NULL);
 	device_list = g_slist_append(device_list, device);
-
-	g_static_mutex_unlock(&device_mutex);
 }
 
 static void wifi_dellink(unsigned short type, int index,
@@ -383,8 +363,6 @@ static void wifi_dellink(unsigned short type, int index,
 	GSList *list;
 
 	DBG("index %d", index);
-
-	g_static_mutex_lock(&device_mutex);
 
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
@@ -396,8 +374,6 @@ static void wifi_dellink(unsigned short type, int index,
 			break;
 		}
 	}
-
-	g_static_mutex_unlock(&device_mutex);
 }
 
 static struct connman_rtnl wifi_rtnl = {
@@ -426,8 +402,6 @@ static void supplicant_disconnect(DBusConnection *connection, void *user_data)
 
 	connman_rtnl_unregister(&wifi_rtnl);
 
-	g_static_mutex_lock(&device_mutex);
-
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
 
@@ -437,8 +411,6 @@ static void supplicant_disconnect(DBusConnection *connection, void *user_data)
 
 	g_slist_free(device_list);
 	device_list = NULL;
-
-	g_static_mutex_unlock(&device_mutex);
 
 	__supplicant_exit();
 }

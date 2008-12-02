@@ -45,7 +45,6 @@ struct dhclient_task {
 	struct connman_element *element;
 };
 
-static GStaticMutex task_mutex = G_STATIC_MUTEX_INIT;
 static GSList *task_list = NULL;
 
 static struct dhclient_task *find_task_by_pid(GPid pid)
@@ -113,9 +112,7 @@ static void task_died(GPid pid, gint status, gpointer data)
 	g_spawn_close_pid(pid);
 	task->pid = 0;
 
-	g_static_mutex_lock(&task_mutex);
 	task_list = g_slist_remove(task_list, task);
-	g_static_mutex_unlock(&task_mutex);
 
 	unlink_task(task);
 
@@ -186,9 +183,7 @@ static int dhclient_probe(struct connman_element *element)
 		return -1;
 	}
 
-	g_static_mutex_lock(&task_mutex);
 	task_list = g_slist_append(task_list, task);
-	g_static_mutex_unlock(&task_mutex);
 
 	g_child_watch_add(task->pid, task_died, task);
 
@@ -203,13 +198,9 @@ static void dhclient_remove(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_static_mutex_lock(&task_mutex);
-
 	task = find_task_by_index(element->index);
 	if (task != NULL)
 		task_list = g_slist_remove(task_list, task);
-
-	g_static_mutex_unlock(&task_mutex);
 
 	if (task == NULL)
 		return;
@@ -247,9 +238,7 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 
 	DBG("change %d to %s", pid, text);
 
-	g_static_mutex_lock(&task_mutex);
 	task = find_task_by_pid(pid);
-	g_static_mutex_unlock(&task_mutex);
 
 	if (task == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -351,8 +340,6 @@ static void dhclient_exit(void)
 {
 	GSList *list;
 
-	g_static_mutex_lock(&task_mutex);
-
 	for (list = task_list; list; list = list->next) {
 		struct dhclient_task *task = list->data;
 
@@ -361,8 +348,6 @@ static void dhclient_exit(void)
 		kill_task(task);
 		unlink_task(task);
 	}
-
-	g_static_mutex_unlock(&task_mutex);
 
 	g_slist_free(task_list);
 

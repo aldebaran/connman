@@ -82,6 +82,14 @@ const char *__connman_element_subtype2string(enum connman_element_subtype type);
 int __connman_element_load(struct connman_element *element);
 int __connman_element_store(struct connman_element *element);
 
+static inline void __connman_element_lock(struct connman_element *element)
+{
+}
+
+static inline void __connman_element_unlock(struct connman_element *element)
+{
+}
+
 #include <connman/device.h>
 
 int __connman_device_init(void);
