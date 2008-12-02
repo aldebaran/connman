@@ -191,6 +191,8 @@ static void scan_result(struct connman_element *parent,
 
 	element = find_element(data, network->identifier);
 	if (element == NULL) {
+		const char *security;
+
 		element = connman_element_create(temp);
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
@@ -203,6 +205,18 @@ static void scan_result(struct connman_element *parent,
 
 		connman_element_add_static_array_property(element, "WiFi.SSID",
 			DBUS_TYPE_BYTE, &network->ssid, network->ssid_len);
+
+		if (network->has_rsn == TRUE)
+			security = "wpa2";
+		else if (network->has_wpa == TRUE)
+			security = "wpa";
+		else if (network->has_wep == TRUE)
+			security = "wep";
+		else
+			security = "none";
+
+		connman_element_add_static_property(element, "WiFi.Security",
+						DBUS_TYPE_STRING, &security);
 
 		connman_element_register(element, parent);
 	}
