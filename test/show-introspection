@@ -12,9 +12,9 @@ print object.Introspect()
 manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 					"org.moblin.connman.Manager")
 
-elements = manager.ListElements()
+properties = manager.GetProperties()
 
-for path in elements:
+for path in properties["Devices"]:
 	object = dbus.Interface(bus.get_object("org.moblin.connman", path),
 					"org.freedesktop.DBus.Introspectable")
 
