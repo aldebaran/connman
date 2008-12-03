@@ -83,10 +83,8 @@ static int network_enable(struct connman_element *element)
 		}
 	}
 
-	if (connman_element_get_static_property(element,
-					"WiFi.Security", &security) == FALSE)
-		connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_WIFI_SECURITY, &security);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_WIFI_SECURITY, &security);
 
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE, &passphrase);
@@ -198,7 +196,6 @@ static void scan_result(struct connman_element *parent,
 
 	element = find_element(data, network->identifier);
 	if (element == NULL) {
-		const char *security;
 		guint8 strength;
 
 		element = connman_element_create(temp);
@@ -214,17 +211,20 @@ static void scan_result(struct connman_element *parent,
 		connman_element_add_static_array_property(element, "WiFi.SSID",
 			DBUS_TYPE_BYTE, &network->ssid, network->ssid_len);
 
-		if (network->has_rsn == TRUE)
-			security = "wpa2";
-		else if (network->has_wpa == TRUE)
-			security = "wpa";
-		else if (network->has_wep == TRUE)
-			security = "wep";
-		else
-			security = "none";
+		if (element->wifi.security == NULL) {
+			const char *security;
 
-		connman_element_add_static_property(element, "WiFi.Security",
-						DBUS_TYPE_STRING, &security);
+			if (network->has_rsn == TRUE)
+				security = "wpa2";
+			else if (network->has_wpa == TRUE)
+				security = "wpa";
+			else if (network->has_wep == TRUE)
+				security = "wep";
+			else
+				security = "none";
+
+			element->wifi.security = g_strdup(security);
+		}
 
 		strength = network->quality;
 
@@ -235,7 +235,7 @@ static void scan_result(struct connman_element *parent,
 					DBUS_TYPE_INT32, &network->noise);
 
 		DBG("%s (%s) strength %d", network->identifier,
-							security, strength);
+					element->wifi.security, strength);
 
 		connman_element_register(element, parent);
 	}
