@@ -304,6 +304,76 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *do_update(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+
+	DBG("conn %p", conn);
+
+	if (element->enabled == FALSE)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (element->driver && element->driver->update) {
+		DBG("Calling update callback");
+		element->driver->update(element);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *do_enable(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+
+	DBG("conn %p", conn);
+
+	if (element->enabled == TRUE)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (element->driver && element->driver->enable) {
+		DBG("Calling enable callback");
+		if (element->driver->enable(element) < 0)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
+	element->enabled = TRUE;
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *do_disable(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+
+	DBG("conn %p", conn);
+
+	if (element->enabled == FALSE)
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	if (element->driver && element->driver->disable) {
+		DBG("Calling disable callback");
+		if (element->driver->disable(element) < 0)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
+	element->enabled = FALSE;
+
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
+				DBUS_TYPE_OBJECT_PATH, &element->path,
+							DBUS_TYPE_INVALID);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static void append_networks(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
@@ -371,6 +441,43 @@ static DBusMessage *get_device_properties(DBusConnection *conn,
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
+}
+
+static DBusMessage *set_device_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessageIter iter;
+	DBusMessageIter value;
+	const char *name;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
+
+	if (g_str_equal(name, "Powered") == TRUE) {
+		dbus_bool_t powered;
+
+		dbus_message_iter_get_basic(&value, &powered);
+
+		if (powered == TRUE)
+			do_enable(conn, msg, data);
+		else
+			do_disable(conn, msg, data);
+	} else
+		set_common_property(element, name, &value);
+
+	__connman_element_store(element);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *get_network_properties(DBusConnection *conn,
@@ -538,76 +645,6 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *do_update(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-
-	DBG("conn %p", conn);
-
-	if (element->enabled == FALSE)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
-	if (element->driver && element->driver->update) {
-		DBG("Calling update callback");
-		element->driver->update(element);
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *do_enable(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-
-	DBG("conn %p", conn);
-
-	if (element->enabled == TRUE)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
-	if (element->driver && element->driver->enable) {
-		DBG("Calling enable callback");
-		if (element->driver->enable(element) < 0)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
-
-	element->enabled = TRUE;
-
-	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
-				DBUS_TYPE_OBJECT_PATH, &element->path,
-							DBUS_TYPE_INVALID);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *do_disable(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-
-	DBG("conn %p", conn);
-
-	if (element->enabled == FALSE)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
-	if (element->driver && element->driver->disable) {
-		DBG("Calling disable callback");
-		if (element->driver->disable(element) < 0)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
-
-	element->enabled = FALSE;
-
-	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
-				DBUS_TYPE_OBJECT_PATH, &element->path,
-							DBUS_TYPE_INVALID);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
 static GDBusMethodTable element_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties },
 	{ "SetProperty",   "sv", "",      set_property   },
@@ -625,6 +662,7 @@ static GDBusSignalTable element_signals[] = {
 
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_device_properties },
+	{ "SetProperty",   "sv", "",      set_device_property   },
 	{ },
 };
 
