@@ -185,7 +185,11 @@ static void scan_result(struct connman_element *parent,
 	temp = g_strdup(network->identifier);
 
 	for (i = 0; i < strlen(temp); i++) {
-		if (temp[i] == ' ' || temp[i] == '.' || temp[i] == '-')
+		if (temp[i] == ' ' || temp[i] == '.')
+			temp[i] = '_';
+		else if (temp[i] == '-' || temp[i] == '+')
+			temp[i] = '_';
+		else if (temp[i] == '!' || temp[i] == '?')
 			temp[i] = '_';
 		else if (temp[i] == '(' || temp[i] == ')')
 			temp[i] = '_';
