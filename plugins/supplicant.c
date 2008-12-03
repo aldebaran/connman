@@ -475,8 +475,8 @@ static int disable_network(struct supplicant_task *task)
 }
 
 static int set_network(struct supplicant_task *task,
-					const unsigned char *network, int len,
-							const char *passphrase)
+				const unsigned char *network, int len,
+				const char *security, const char *passphrase)
 {
 	DBusMessage *message, *reply;
 	DBusMessageIter array, dict;
@@ -1023,7 +1023,7 @@ int __supplicant_scan(struct connman_element *element)
 
 int __supplicant_connect(struct connman_element *element,
 				const unsigned char *ssid, int ssid_len,
-							const char *passphrase)
+				const char *security, const char *passphrase)
 {
 	struct supplicant_task *task;
 
@@ -1038,7 +1038,7 @@ int __supplicant_connect(struct connman_element *element,
 	select_network(task);
 	disable_network(task);
 
-	set_network(task, ssid, ssid_len, passphrase);
+	set_network(task, ssid, ssid_len, security, passphrase);
 
 	enable_network(task);
 

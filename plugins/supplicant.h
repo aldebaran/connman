@@ -68,5 +68,5 @@ int __supplicant_scan(struct connman_element *element);
 
 int __supplicant_connect(struct connman_element *element,
 				const unsigned char *ssid, int ssid_len,
-							const char *passphrase);
+				const char *security, const char *passphrase);
 int __supplicant_disconnect(struct connman_element *element);

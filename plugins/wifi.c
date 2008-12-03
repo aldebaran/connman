@@ -60,7 +60,7 @@ static void network_remove(struct connman_element *element)
 
 static int network_enable(struct connman_element *element)
 {
-	char *identifier, *passphrase = NULL;
+	char *identifier, *security = NULL, *passphrase = NULL;
 	unsigned char *ssid;
 	int ssid_len;
 
@@ -83,12 +83,19 @@ static int network_enable(struct connman_element *element)
 		}
 	}
 
+	if (connman_element_get_static_property(element,
+					"WiFi.Security", &security) == FALSE)
+		connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_WIFI_SECURITY, &security);
+
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE, &passphrase);
 
-	DBG("identifier %s passhprase %s", identifier, passphrase);
+	DBG("identifier %s security %s passhprase %s",
+					identifier, security, passphrase);
 
-	if (__supplicant_connect(element, ssid, ssid_len, passphrase) < 0)
+	if (__supplicant_connect(element, ssid, ssid_len,
+						security, passphrase) < 0)
 		connman_error("Failed to initiate connect");
 
 	return 0;
