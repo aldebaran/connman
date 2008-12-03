@@ -192,6 +192,7 @@ static void scan_result(struct connman_element *parent,
 	element = find_element(data, network->identifier);
 	if (element == NULL) {
 		const char *security;
+		guint8 strength;
 
 		element = connman_element_create(temp);
 
@@ -217,6 +218,17 @@ static void scan_result(struct connman_element *parent,
 
 		connman_element_add_static_property(element, "WiFi.Security",
 						DBUS_TYPE_STRING, &security);
+
+		strength = network->quality;
+
+		connman_element_add_static_property(element, "WiFi.Strength",
+						DBUS_TYPE_BYTE, &strength);
+
+		connman_element_add_static_property(element, "WiFi.Noise",
+					DBUS_TYPE_INT32, &network->noise);
+
+		DBG("%s (%s) strength %d", network->identifier,
+							security, strength);
 
 		connman_element_register(element, parent);
 	}
