@@ -76,11 +76,20 @@ void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 	case DBUS_TYPE_STRING:
 		signature = DBUS_TYPE_STRING_AS_STRING;
 		break;
+	case DBUS_TYPE_BYTE:
+		signature = DBUS_TYPE_BYTE_AS_STRING;
+		break;
 	case DBUS_TYPE_UINT16:
 		signature = DBUS_TYPE_UINT16_AS_STRING;
 		break;
+	case DBUS_TYPE_INT16:
+		signature = DBUS_TYPE_INT16_AS_STRING;
+		break;
 	case DBUS_TYPE_UINT32:
 		signature = DBUS_TYPE_UINT32_AS_STRING;
+		break;
+	case DBUS_TYPE_INT32:
+		signature = DBUS_TYPE_INT32_AS_STRING;
 		break;
 	case DBUS_TYPE_OBJECT_PATH:
 		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
