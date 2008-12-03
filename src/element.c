@@ -669,6 +669,8 @@ static GDBusMethodTable device_methods[] = {
 static GDBusMethodTable network_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_network_properties },
 	{ "SetProperty",   "sv", "",      set_network_property   },
+	{ "Connect",       "",   "",      do_enable              },
+	{ "Disconnect",    "",   "",      do_disable             },
 	{ },
 };
 
