@@ -900,14 +900,10 @@ static void free_properties(struct connman_element *element)
 	for (list = element->properties; list; list = list->next) {
 		struct connman_property *property = list->data;
 
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE)) {
-			if (property->type == DBUS_TYPE_STRING)
-				g_free(property->value);
-			if (property->type == DBUS_TYPE_ARRAY &&
-					property->subtype == DBUS_TYPE_BYTE)
-				g_free(property->value);
-		}
+		if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE))
+			g_free(property->value);
 
+		g_free(property->name);
 		g_free(property);
 	}
 
@@ -944,7 +940,8 @@ int connman_element_add_static_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	if (type != DBUS_TYPE_STRING)
+	if (type != DBUS_TYPE_STRING && type != DBUS_TYPE_BYTE &&
+						type != DBUS_TYPE_INT32)
 		return -EINVAL;
 
 	property = g_try_new0(struct connman_property, 1);
@@ -961,6 +958,16 @@ int connman_element_add_static_property(struct connman_element *element,
 	switch (type) {
 	case DBUS_TYPE_STRING:
 		property->value = g_strdup(*((const char **) value));
+		break;
+	case DBUS_TYPE_BYTE:
+		property->value = g_try_malloc(1);
+		if (property->value != NULL)
+			memcpy(property->value, value, 1);
+		break;
+	case DBUS_TYPE_INT32:
+		property->value = g_try_malloc(sizeof(gint32));
+		if (property->value != NULL)
+			memcpy(property->value, value, sizeof(gint32));
 		break;
 	}
 
@@ -1298,7 +1305,17 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 			continue;
 
 		if (g_str_equal(property->name, name) == TRUE) {
-			*((char **) value) = property->value;
+			switch (property->type) {
+			case DBUS_TYPE_STRING:
+				*((char **) value) = property->value;
+				break;
+			case DBUS_TYPE_BYTE:
+				*((guint8 *) value) = *((guint8 *) property->value);
+				break;
+			case DBUS_TYPE_INT32:
+				*((gint32 *) value) = *((gint32 *) property->value);
+				break;
+			}
 			found = TRUE;
 			break;
 		}
