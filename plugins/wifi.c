@@ -228,11 +228,11 @@ static void scan_result(struct connman_element *parent,
 
 		strength = network->quality;
 
-		connman_element_add_static_property(element, "WiFi.Strength",
-						DBUS_TYPE_BYTE, &strength);
+		//connman_element_add_static_property(element, "WiFi.Strength",
+		//				DBUS_TYPE_BYTE, &strength);
 
-		connman_element_add_static_property(element, "WiFi.Noise",
-					DBUS_TYPE_INT32, &network->noise);
+		//connman_element_add_static_property(element, "WiFi.Noise",
+		//			DBUS_TYPE_INT32, &network->noise);
 
 		DBG("%s (%s) strength %d", network->identifier,
 					element->wifi.security, strength);
