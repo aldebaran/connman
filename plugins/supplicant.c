@@ -502,12 +502,26 @@ static int set_network(struct supplicant_task *task,
 	connman_dbus_dict_append_array(&dict, "ssid",
 					DBUS_TYPE_BYTE, &network, len);
 
-	if (passphrase && strlen(passphrase) > 0) {
+	if (g_ascii_strcasecmp(security, "wpa") == 0 ||
+				g_ascii_strcasecmp(security, "wpa2") == 0) {
 		const char *key_mgmt = "WPA-PSK";
 		connman_dbus_dict_append_variant(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
-		connman_dbus_dict_append_variant(&dict, "psk",
+
+		if (passphrase && strlen(passphrase) > 0)
+			connman_dbus_dict_append_variant(&dict, "psk",
 						DBUS_TYPE_STRING, &passphrase);
+	} else if (g_ascii_strcasecmp(security, "wep") == 0) {
+		const char *key_mgmt = "NONE", *index = "0";
+		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+						DBUS_TYPE_STRING, &key_mgmt);
+
+		if (passphrase && strlen(passphrase) > 0) {
+			connman_dbus_dict_append_variant(&dict, "wep_key0",
+						DBUS_TYPE_STRING, &passphrase);
+			connman_dbus_dict_append_variant(&dict, "wep_tx_keyidx",
+						DBUS_TYPE_STRING, &index);
+		}
 	} else {
 		const char *key_mgmt = "NONE";
 		connman_dbus_dict_append_variant(&dict, "key_mgmt",
