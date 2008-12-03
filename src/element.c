@@ -663,6 +663,7 @@ static GDBusSignalTable element_signals[] = {
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_device_properties },
 	{ "SetProperty",   "sv", "",      set_device_property   },
+	{ "Scan",          "",   "",      do_update             },
 	{ },
 };
 
