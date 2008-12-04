@@ -183,21 +183,29 @@ static void append_property(DBusMessageIter *dict,
 static void add_common_properties(struct connman_element *element,
 						DBusMessageIter *dict)
 {
+	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 	GSList *list;
+
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
 
 	if (element->priority > 0)
 		connman_dbus_dict_append_variant(dict, "Priority",
 					DBUS_TYPE_UINT16, &element->priority);
 
-	if (element->ipv4.address != NULL)
+	if (address != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Address",
-				DBUS_TYPE_STRING, &element->ipv4.address);
-	if (element->ipv4.netmask != NULL)
+						DBUS_TYPE_STRING, &address);
+	if (netmask != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Netmask",
-				DBUS_TYPE_STRING, &element->ipv4.netmask);
-	if (element->ipv4.gateway != NULL)
+						DBUS_TYPE_STRING, &netmask);
+	if (gateway != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Gateway",
-				DBUS_TYPE_STRING, &element->ipv4.gateway);
+						DBUS_TYPE_STRING, &gateway);
 
 	if (element->wifi.security != NULL) {
 		const char *passphrase = "";
