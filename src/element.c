@@ -294,10 +294,12 @@ static DBusMessage *do_enable(DBusConnection *conn,
 
 	element->enabled = TRUE;
 
+#if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+#endif
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -320,10 +322,12 @@ static DBusMessage *do_disable(DBusConnection *conn,
 
 	element->enabled = FALSE;
 
+#if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+#endif
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1261,10 +1265,12 @@ int connman_element_set_property(struct connman_element *element,
 		return -EINVAL;
 	}
 
+#if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+#endif
 
 	return 0;
 }
@@ -1623,10 +1629,12 @@ static void register_element(gpointer data, gpointer user_data)
 		}
 	}
 
+#if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementAdded",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+#endif
 
 	g_static_rw_lock_writer_unlock(&element_lock);
 
@@ -1722,10 +1730,12 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		g_node_destroy(node);
 	}
 
+#if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementRemoved",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+#endif
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
 		emit_state_change(connection, "offline");
@@ -1816,10 +1826,12 @@ static gboolean update_element(GNode *node, gpointer user_data)
 	if (element->driver && element->driver->update)
 		element->driver->update(element);
 
+#if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
 				DBUS_TYPE_OBJECT_PATH, &element->path,
 							DBUS_TYPE_INVALID);
+#endif
 
 	return FALSE;
 }

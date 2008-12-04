@@ -207,6 +207,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return reply;
 }
 
+#if 0
 static DBusMessage *list_elements(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -230,20 +231,25 @@ static DBusMessage *list_elements(DBusConnection *conn,
 
 	return reply;
 }
+#endif
 
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",   "",  "a{sv}", get_properties   },
 	{ "RegisterAgent",   "o", "",      register_agent   },
 	{ "UnregisterAgent", "o", "",      unregister_agent },
+#if 0
 	{ "ListElements",    "",  "ao",    list_elements    },
+#endif
 	{ },
 };
 
 static GDBusSignalTable manager_signals[] = {
 	{ "PropertyChanged", "sv" },
+#if 0
 	{ "ElementAdded",    "o"  },
 	{ "ElementUpdated",  "o"  },
 	{ "ElementRemoved",  "o"  },
+#endif
 	{ },
 };
 
