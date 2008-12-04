@@ -1,0 +1,23 @@
+Service hierarchy
+=================
+
+Service		org.moblin.connman
+Interface	org.moblin.connman.Service
+Object path	[variable prefix]/{service0,service1,...}
+
+Methods		dict GetProperties()
+
+			Returns properties for the service object. See
+			the properties section for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	string Identifier [readonly]
+
+			Unique identifier for this service.

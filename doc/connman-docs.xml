@@ -78,6 +78,20 @@
     </para>
   </reference>
 
+  <reference id="service">
+    <title>Service interface</title>
+    <para>
+<programlisting><xi:include href="service-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
+  <reference id="connection">
+    <title>Connection interface</title>
+    <para>
+<programlisting><xi:include href="connection-api.txt" parse="text" /></programlisting>
+    </para>
+  </reference>
+
   <reference id="reference">
     <title>Plugin API Reference</title>
     <partintro>
