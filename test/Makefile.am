@@ -1,7 +1,7 @@
 
-EXTRA_DIST = list-profiles list-elements monitor-elements monitor-state \
-		get-state set-passphrase select-network disable-network \
-		monitor-networks enable-device disable-device start-scanning \
+EXTRA_DIST = get-state list-profiles list-connections \
+		list-devices enable-device disable-device start-scanning \
+		list-networks select-network disable-network set-passphrase \
 		simple-agent show-introspection test-compat test-supplicant
 
 MAINTAINERCLEANFILES = Makefile.in
