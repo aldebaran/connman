@@ -205,6 +205,7 @@ static int ipv4_probe(struct connman_element *element)
 	resolver = connman_element_create(NULL);
 
 	resolver->type = CONNMAN_ELEMENT_TYPE_RESOLVER;
+	resolver->index = element->index;
 
 	connman_element_register(resolver, element);
 
