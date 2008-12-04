@@ -258,52 +258,6 @@ static void set_common_property(struct connman_element *element,
 	__connman_element_unlock(element);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	if (element->parent != NULL &&
-			element->parent->type != CONNMAN_ELEMENT_TYPE_ROOT) {
-		connman_dbus_dict_append_variant(&dict, "Parent",
-				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
-	}
-
-	str = type2string(element->type);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
-						DBUS_TYPE_STRING, &str);
-	str = subtype2string(element->subtype);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Subtype",
-						DBUS_TYPE_STRING, &str);
-
-	connman_dbus_dict_append_variant(&dict, "Enabled",
-					DBUS_TYPE_BOOLEAN, &element->enabled);
-
-	add_common_properties(element, &dict);
-
-	dbus_message_iter_close_container(&array, &dict);
-
-	return reply;
-}
-
 static DBusMessage *do_update(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -577,6 +531,53 @@ static DBusMessage *get_connection_properties(DBusConnection *conn,
 	return reply;
 }
 
+#if 0
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	const char *str;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (element->parent != NULL &&
+			element->parent->type != CONNMAN_ELEMENT_TYPE_ROOT) {
+		connman_dbus_dict_append_variant(&dict, "Parent",
+				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
+	}
+
+	str = type2string(element->type);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &str);
+	str = subtype2string(element->subtype);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Subtype",
+						DBUS_TYPE_STRING, &str);
+
+	connman_dbus_dict_append_variant(&dict, "Enabled",
+					DBUS_TYPE_BOOLEAN, &element->enabled);
+
+	add_common_properties(element, &dict);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -654,6 +655,7 @@ static GDBusMethodTable element_methods[] = {
 	{ "Disable",       "",   "",      do_disable     },
 	{ },
 };
+#endif
 
 static GDBusSignalTable element_signals[] = {
 	{ "PropertyChanged", "sv" },
@@ -1579,11 +1581,13 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_node_append_data(node, element);
 
+#if 0
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_ELEMENT_INTERFACE,
 					element_methods, element_signals,
 					NULL, element, NULL) == FALSE)
 		connman_error("Failed to register %s element", element->path);
+#endif
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
 			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
@@ -1743,8 +1747,10 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 						CONNMAN_DEVICE_INTERFACE);
 	}
 
+#if 0
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_ELEMENT_INTERFACE);
+#endif
 
 	connman_element_unref(element);
 
