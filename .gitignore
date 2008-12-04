@@ -35,6 +35,4 @@ doc/connman.*
 doc/connman-*.txt
 doc/*.sgml
 doc/version.xml
-doc/xml
-doc/dbus
 doc/html
