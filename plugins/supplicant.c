@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <string.h>
 #include <dbus/dbus.h>
 
@@ -516,9 +517,28 @@ static int set_network(struct supplicant_task *task,
 		connman_dbus_dict_append_variant(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
 
-		if (passphrase && strlen(passphrase) > 0) {
-			connman_dbus_dict_append_variant(&dict, "wep_key0",
-						DBUS_TYPE_STRING, &passphrase);
+		if (passphrase) {
+			int size = strlen(passphrase);
+			if (size == 10 || size == 26) {
+				unsigned char *key = malloc(13);
+				char tmp[3];
+				int i;
+				memset(tmp, 0, sizeof(tmp));
+				if (key == NULL)
+					size = 0;
+				for (i = 0; i < size / 2; i++) {
+					memcpy(tmp, passphrase + (i * 2), 2);
+					key[i] = (unsigned char) strtol(tmp,
+								NULL, 16);
+				}
+			        connman_dbus_dict_append_array(&dict,
+						"wep_key0", DBUS_TYPE_BYTE,
+							&key, size / 2);
+				free(key);
+			} else
+				connman_dbus_dict_append_variant(&dict,
+						"wep_key0", DBUS_TYPE_STRING,
+								&passphrase);
 			connman_dbus_dict_append_variant(&dict, "wep_tx_keyidx",
 						DBUS_TYPE_STRING, &index);
 		}
