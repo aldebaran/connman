@@ -20,6 +20,9 @@ for path in properties["Devices"]:
 
 	properties = device.GetProperties()
 
+	if (properties["Type"] != "wifi" and properties["Type"] != "wimax"):
+		continue;
+
 	print "[ %s ]" % (path)
 
 	for path in properties["Networks"]:
