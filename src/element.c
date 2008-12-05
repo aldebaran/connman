@@ -288,11 +288,13 @@ static DBusMessage *do_update(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	if (element->enabled == FALSE)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		return __connman_error_failed(msg);
 
 	if (element->driver && element->driver->update) {
 		DBG("Calling update callback");
-		element->driver->update(element);
+		if (element->driver->update(element) < 0)
+			return __connman_error_failed(msg);
+
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -306,12 +308,12 @@ static DBusMessage *do_enable(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	if (element->enabled == TRUE)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		return __connman_error_failed(msg);
 
 	if (element->driver && element->driver->enable) {
 		DBG("Calling enable callback");
 		if (element->driver->enable(element) < 0)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+			return __connman_error_failed(msg);
 	}
 
 	element->enabled = TRUE;
@@ -334,12 +336,12 @@ static DBusMessage *do_disable(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	if (element->enabled == FALSE)
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		return __connman_error_failed(msg);
 
 	if (element->driver && element->driver->disable) {
 		DBG("Calling disable callback");
 		if (element->driver->disable(element) < 0)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+			return __connman_error_failed(msg);
 	}
 
 	element->enabled = FALSE;

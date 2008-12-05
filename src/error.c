@@ -27,6 +27,12 @@
 
 #include "connman.h"
 
+DBusMessage *__connman_error_failed(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+							".Failed", NULL);
+}
+
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
