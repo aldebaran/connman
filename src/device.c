@@ -29,6 +29,7 @@
 
 static GSList *driver_list = NULL;
 
+#if 0
 static gboolean match_driver(struct connman_device *device,
 					struct connman_device_driver *driver)
 {
@@ -93,19 +94,21 @@ static struct connman_driver device_driver = {
 	.probe		= device_probe,
 	.remove		= device_remove,
 };
+#endif
 
 int __connman_device_init(void)
 {
 	DBG("");
 
-	return connman_driver_register(&device_driver);
+	//return connman_driver_register(&device_driver);
+	return 0;
 }
 
 void __connman_device_cleanup(void)
 {
 	DBG("");
 
-	connman_driver_unregister(&device_driver);
+	//connman_driver_unregister(&device_driver);
 }
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -131,7 +134,7 @@ int connman_device_driver_register(struct connman_device_driver *driver)
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
-	__connman_driver_rescan(&device_driver);
+	//__connman_driver_rescan(&device_driver);
 
 	return 0;
 }
