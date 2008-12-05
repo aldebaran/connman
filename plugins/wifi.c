@@ -44,6 +44,7 @@
 struct wifi_data {
 	GSList *list;
 	gchar *identifier;
+	gboolean connected;
 };
 
 static int network_probe(struct connman_element *element)
@@ -76,6 +77,9 @@ static int network_enable(struct connman_element *element)
 
 	if (element->parent != NULL) {
 		struct wifi_data *data = connman_element_get_data(element->parent);
+
+		if (data->connected == TRUE)
+			return -EBUSY;
 
 		if (data != NULL) {
 			g_free(data->identifier);
@@ -154,13 +158,16 @@ static void state_change(struct connman_element *parent,
 	if (state == STATE_COMPLETED) {
 		struct connman_element *dhcp;
 
+		data->connected = TRUE;
+
 		dhcp = connman_element_create(NULL);
 
 		dhcp->type = CONNMAN_ELEMENT_TYPE_DHCP;
 		dhcp->index = element->index;
 
 		connman_element_register(dhcp, element);
-	}
+	} else if (state == STATE_DISCONNECTED || state == STATE_INACTIVE)
+		data->connected = FALSE;
 }
 
 static void scan_result(struct connman_element *parent,
@@ -261,6 +268,8 @@ static int wifi_probe(struct connman_element *element)
 	data = g_try_new0(struct wifi_data, 1);
 	if (data == NULL)
 		return -ENOMEM;
+
+	data->connected = FALSE;
 
 	connman_element_set_data(element, data);
 
