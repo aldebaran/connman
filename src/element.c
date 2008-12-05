@@ -356,7 +356,8 @@ static DBusMessage *do_disable(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static void append_networks(DBusMessageIter *dict)
+static void append_networks(struct connman_element *element,
+						DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
 	const char *key = "Networks";
@@ -373,7 +374,7 @@ static void append_networks(DBusMessageIter *dict)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
+	__connman_element_list(element, CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
@@ -416,7 +417,7 @@ static DBusMessage *get_device_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
-	append_networks(&dict);
+	append_networks(element, &dict);
 
 	add_common_properties(element, &dict);
 
@@ -735,16 +736,26 @@ static gboolean append_path(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-void __connman_element_list(enum connman_element_type type,
-						DBusMessageIter *iter)
+void __connman_element_list(struct connman_element *element,
+					enum connman_element_type type,
+							DBusMessageIter *iter)
 {
 	struct append_filter filter = { type, iter };
+	GNode *node;
 
 	DBG("");
 
+	if (element != NULL) {
+		node = g_node_find(element_root, G_PRE_ORDER,
+						G_TRAVERSE_ALL, element);
+		if (node == NULL)
+			return;
+	} else
+		node = element_root;
+
 	g_static_rw_lock_reader_lock(&element_lock);
-	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
-							append_path, &filter);
+	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+						append_path, &filter);
 	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
@@ -772,15 +783,25 @@ static gboolean count_element(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-int __connman_element_count(enum connman_element_type type)
+int __connman_element_count(struct connman_element *element,
+					enum connman_element_type type)
 {
 	struct count_data data = { type, 0 };
+	GNode *node;
 
 	DBG("");
 
+	if (element != NULL) {
+		node = g_node_find(element_root, G_PRE_ORDER,
+						G_TRAVERSE_ALL, element);
+		if (node == NULL)
+			return 0;
+	} else
+		node = element_root;
+
 	g_static_rw_lock_reader_lock(&element_lock);
-	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
-							count_element, &data);
+	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+						count_element, &data);
 	g_static_rw_lock_reader_unlock(&element_lock);
 
 	return data.count;
@@ -1506,7 +1527,7 @@ static void append_devices(DBusMessageIter *entry)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
@@ -1546,7 +1567,7 @@ static void append_connections(DBusMessageIter *entry)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
+	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 

@@ -70,7 +70,7 @@ static void append_devices(DBusMessageIter *dict)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
@@ -96,7 +96,7 @@ static void append_connections(DBusMessageIter *dict)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
+	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
@@ -149,7 +149,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	append_devices(&dict);
 	append_connections(&dict);
 
-	if (__connman_element_count(CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
+	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
 		append_state(&dict, "online");
 	else
 		append_state(&dict, "offline");
