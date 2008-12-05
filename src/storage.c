@@ -113,8 +113,8 @@ static void do_update(GKeyFile *keyfile, struct connman_element *element)
 	if (str != NULL)
 		g_key_file_set_string(keyfile, element->path, "Policy", str);
 
-	g_key_file_set_boolean(keyfile, element->path, "Enabled",
-							element->enabled);
+	//g_key_file_set_boolean(keyfile, element->path, "Enabled",
+	//						element->enabled);
 
 	__connman_element_lock(element);
 
