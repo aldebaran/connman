@@ -79,6 +79,8 @@ int __connman_element_count(enum connman_element_type type);
 const char *__connman_element_type2string(enum connman_element_type type);
 const char *__connman_element_subtype2string(enum connman_element_subtype type);
 
+const char *__connman_element_policy2string(enum connman_element_policy policy);
+
 int __connman_element_load(struct connman_element *element);
 int __connman_element_store(struct connman_element *element);
 

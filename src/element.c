@@ -148,7 +148,7 @@ static const char *subtype2string(enum connman_element_subtype type)
 	return NULL;
 }
 
-static const char *policy2string(enum connman_element_policy policy)
+const char *__connman_element_policy2string(enum connman_element_policy policy)
 {
 	switch (policy) {
 	case CONNMAN_ELEMENT_POLICY_UNKNOWN:
@@ -392,7 +392,7 @@ static DBusMessage *get_device_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
-	str = policy2string(element->policy);
+	str = __connman_element_policy2string(element->policy);
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "Policy",
 						DBUS_TYPE_STRING, &str);
@@ -467,7 +467,7 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	str = policy2string(element->policy);
+	str = __connman_element_policy2string(element->policy);
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "Policy",
 						DBUS_TYPE_STRING, &str);
