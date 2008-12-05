@@ -193,8 +193,6 @@ static int ethernet_probe(struct connman_element *element)
 
 	ethernet->index = element->index;
 
-	iface_up(ethernet);
-
 	connman_rtnl_send_getlink();
 
 	return 0;
@@ -208,11 +206,31 @@ static void ethernet_remove(struct connman_element *element)
 
 	connman_element_set_data(element, NULL);
 
-	iface_down(ethernet);
-
 	ethernet_list = g_slist_remove(ethernet_list, element);
 
 	g_free(ethernet);
+}
+
+static int ethernet_enable(struct connman_element *element)
+{
+	struct ethernet_data *ethernet = connman_element_get_data(element);
+
+	DBG("element %p name %s", element, element->name);
+
+	iface_up(ethernet);
+
+	return 0;
+}
+
+static int ethernet_disable(struct connman_element *element)
+{
+	struct ethernet_data *ethernet = connman_element_get_data(element);
+
+	DBG("element %p name %s", element, element->name);
+
+	iface_down(ethernet);
+
+	return 0;
 }
 
 static struct connman_driver ethernet_driver = {
@@ -221,6 +239,8 @@ static struct connman_driver ethernet_driver = {
 	.subtype	= CONNMAN_ELEMENT_SUBTYPE_ETHERNET,
 	.probe		= ethernet_probe,
 	.remove		= ethernet_remove,
+	.enable		= ethernet_enable,
+	.disable	= ethernet_disable,
 };
 
 static int ethernet_init(void)
