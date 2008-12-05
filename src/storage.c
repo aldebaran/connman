@@ -44,6 +44,11 @@ static int do_load(GKeyFile *keyfile, struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	value = g_key_file_get_string(keyfile, element->path,
+						"Policy", NULL);
+	if (value != NULL)
+		element->policy = __connman_element_string2policy(value);
+
+	value = g_key_file_get_string(keyfile, element->path,
 						"WiFi.Security", NULL);
 	if (value != NULL)
 		connman_element_set_property(element,
@@ -98,14 +103,15 @@ static void do_update(GKeyFile *keyfile, struct connman_element *element)
 {
 	GSList *list;
 	char *value;
+	const char *str;
 
 	DBG("element %p name %s", element, element->name);
 
 	g_key_file_set_string(keyfile, element->path, "Name", element->name);
 
-	value = __connman_element_policy2string(element->policy);
-	if (value != NULL)
-		g_key_file_set_string(keyfile, element->path, "Policy", value);
+	str = __connman_element_policy2string(element->policy);
+	if (str != NULL)
+		g_key_file_set_string(keyfile, element->path, "Policy", str);
 
 	g_key_file_set_boolean(keyfile, element->path, "Enabled",
 							element->enabled);

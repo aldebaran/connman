@@ -166,6 +166,20 @@ const char *__connman_element_policy2string(enum connman_element_policy policy)
 	return NULL;
 }
 
+enum connman_element_policy __connman_element_string2policy(const char *policy)
+{
+	if (strcasecmp(policy, "off") == 0)
+		return CONNMAN_ELEMENT_POLICY_OFF;
+	else if (strcasecmp(policy, "ignore") == 0)
+		return CONNMAN_ELEMENT_POLICY_IGNORE;
+	else if (strcasecmp(policy, "auto") == 0)
+		return CONNMAN_ELEMENT_POLICY_AUTO;
+	else if (strcasecmp(policy, "ask") == 0)
+		return CONNMAN_ELEMENT_POLICY_ASK;
+	else
+		return CONNMAN_ELEMENT_POLICY_UNKNOWN;
+}
+
 static void append_property(DBusMessageIter *dict,
 				struct connman_property *property)
 {
