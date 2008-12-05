@@ -1458,7 +1458,7 @@ static void append_devices(DBusMessageIter *entry)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	//__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
@@ -1498,7 +1498,7 @@ static void append_connections(DBusMessageIter *entry)
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 
-	//__connman_element_list(CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
+	__connman_element_list(CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
 
 	dbus_message_iter_close_container(&value, &iter);
 
