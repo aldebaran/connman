@@ -1775,9 +1775,8 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-static void unregister_element(gpointer data, gpointer user_data)
+void connman_element_unregister(struct connman_element *element)
 {
-	struct connman_element *element = data;
 	GNode *node;
 
 	DBG("element %p name %s", element, element->name);
@@ -1793,16 +1792,8 @@ static void unregister_element(gpointer data, gpointer user_data)
 	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
-void connman_element_unregister(struct connman_element *element)
+void connman_element_unregister_children(struct connman_element *element)
 {
-	DBG("element %p name %s", element, element->name);
-
-	unregister_element(element, NULL);
-}
-
-static void unregister_children(gpointer data, gpointer user_data)
-{
-	struct connman_element *element = data;
 	GNode *node;
 
 	DBG("element %p name %s", element, element->name);
@@ -1816,13 +1807,6 @@ static void unregister_children(gpointer data, gpointer user_data)
 				G_TRAVERSE_ALL, -1, remove_element, element);
 
 	g_static_rw_lock_writer_unlock(&element_lock);
-}
-
-void connman_element_unregister_children(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	unregister_children(element, NULL);
 }
 
 static gboolean update_element(GNode *node, gpointer user_data)
@@ -1929,7 +1913,7 @@ static gboolean free_node(GNode *node, gpointer data)
 	DBG("element %p name %s", element, element->name);
 
 	if (g_node_depth(node) > 1)
-		unregister_element(element, NULL);
+		connman_element_unregister(element);
 
 	return FALSE;
 }
