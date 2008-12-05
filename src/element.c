@@ -362,6 +362,10 @@ static void append_networks(struct connman_element *element,
 	DBusMessageIter entry, value, iter;
 	const char *key = "Networks";
 
+	if (element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIFI &&
+			element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIMAX)
+		return;
+
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 
