@@ -1,6 +1,7 @@
 Plugin programming interface
 ****************************
 
+
 Plugin basics
 =============
 The Connection Manager supports plugins for various actions. The basic plugin
