@@ -356,5 +356,5 @@ static void dhclient_exit(void)
 	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE("dhclient", "ISC DHCP client plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(dhclient, "ISC DHCP client plugin", VERSION,
 						dhclient_init, dhclient_exit)

@@ -159,5 +159,5 @@ static void polkit_exit(void)
 	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE("polkit", "PolicyKit authorization plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(polkit, "PolicyKit authorization plugin", VERSION,
 						polkit_init, polkit_exit)

@@ -95,5 +95,5 @@ static void resolvfile_exit(void)
 	connman_driver_unregister(&resolvfile_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE("resolvfile", "Name resolver plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(resolvfile, "Name resolver plugin", VERSION,
 					resolvfile_init, resolvfile_exit)

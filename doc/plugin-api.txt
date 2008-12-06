@@ -4,6 +4,7 @@ Plugin programming interface
 
 Plugin basics
 =============
+
 The Connection Manager supports plugins for various actions. The basic plugin
 contains of plugin description via CONNMAN_PLUGIN_DEFINE and also init/exit
 callbacks definied through that description.
@@ -19,5 +20,5 @@ static void example_exit(void)
 {
 }
 
-CONNMAN_PLUGIN_DEFINE("example", "Example plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(example, "Example plugin", VERSION,
 						example_init, example_exit)

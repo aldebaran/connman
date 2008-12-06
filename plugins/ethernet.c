@@ -267,5 +267,5 @@ static void ethernet_exit(void)
 	connman_rtnl_unregister(&ethernet_rtnl);
 }
 
-CONNMAN_PLUGIN_DEFINE("ethernet", "Ethernet interface plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(ethernet, "Ethernet interface plugin", VERSION,
 						ethernet_init, ethernet_exit)

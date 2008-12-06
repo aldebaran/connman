@@ -507,5 +507,5 @@ static void wifi_exit(void)
 	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE("wifi", "WiFi interface plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(wifi, "WiFi interface plugin", VERSION,
 							wifi_init, wifi_exit)

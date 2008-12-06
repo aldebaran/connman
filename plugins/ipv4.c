@@ -236,5 +236,5 @@ static void ipv4_exit(void)
 	connman_driver_unregister(&ipv4_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE("ipv4", "IPv4 configuration plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(ipv4, "IPv4 configuration plugin", VERSION,
 							ipv4_init, ipv4_exit)

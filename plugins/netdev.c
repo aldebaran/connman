@@ -77,5 +77,5 @@ static void netdev_exit(void)
 	connman_driver_unregister(&netdev_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE("netdev", "Network device plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(netdev, "Network device plugin", VERSION,
 						netdev_init, netdev_exit)

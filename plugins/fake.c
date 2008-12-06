@@ -120,4 +120,4 @@ static void fake_exit(void)
 	connman_driver_unregister(&fake_device_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE("fake", "Tesing plugin", VERSION, fake_init, fake_exit)
+CONNMAN_PLUGIN_DEFINE(fake, "Tesing plugin", VERSION, fake_init, fake_exit)

@@ -167,5 +167,5 @@ static void rtnllink_exit(void)
 	device_list = NULL;
 }
 
-CONNMAN_PLUGIN_DEFINE("rtnllink", "RTNL link detection plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(rtnllink, "RTNL link detection plugin", VERSION,
 						rtnllink_init, rtnllink_exit)

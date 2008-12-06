@@ -52,7 +52,7 @@ struct connman_plugin_desc {
  */
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, init, exit) \
 		struct connman_plugin_desc connman_plugin_desc = { \
-			name, description, version, init, exit \
+			#name, description, version, init, exit \
 		};
 
 #ifdef __cplusplus

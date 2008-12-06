@@ -181,5 +181,5 @@ static void bluetooth_exit(void)
 	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE("bluetooth", "Bluetooth technology plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(bluetooth, "Bluetooth technology plugin", VERSION,
 						bluetooth_init, bluetooth_exit)
