@@ -61,14 +61,14 @@ static void network_remove(struct connman_element *element)
 
 static int network_enable(struct connman_element *element)
 {
-	char *identifier, *security = NULL, *passphrase = NULL;
+	char *name, *security = NULL, *passphrase = NULL;
 	unsigned char *ssid;
 	int ssid_len;
 
 	DBG("element %p name %s", element, element->name);
 
 	if (connman_element_get_static_property(element,
-					"WiFi.Name", &identifier) == FALSE)
+						"Name", &name) == FALSE)
 		return -EIO;
 
 	if (connman_element_get_static_array_property(element,
@@ -83,7 +83,7 @@ static int network_enable(struct connman_element *element)
 
 		if (data != NULL) {
 			g_free(data->identifier);
-			data->identifier = g_strdup(identifier);
+			data->identifier = g_strdup(name);
 		}
 	}
 
@@ -93,8 +93,8 @@ static int network_enable(struct connman_element *element)
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE, &passphrase);
 
-	DBG("identifier %s security %s passhprase %s",
-					identifier, security, passphrase);
+	DBG("name %s security %s passhprase %s",
+					name, security, passphrase);
 
 	if (__supplicant_connect(element, ssid, ssid_len,
 						security, passphrase) < 0)
@@ -133,7 +133,7 @@ static struct connman_element *find_element(struct wifi_data *data,
 		struct connman_element *element = list->data;
 
 		if (connman_element_match_static_property(element,
-					"WiFi.Name", &identifier) == TRUE)
+					"Name", &identifier) == TRUE)
 			return element;
 	}
 
@@ -216,7 +216,7 @@ static void scan_result(struct connman_element *parent,
 
 		data->list = g_slist_append(data->list, element);
 
-		connman_element_add_static_property(element, "WiFi.Name",
+		connman_element_add_static_property(element, "Name",
 				DBUS_TYPE_STRING, &network->identifier);
 
 		connman_element_add_static_array_property(element, "WiFi.SSID",
