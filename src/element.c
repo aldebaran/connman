@@ -442,8 +442,7 @@ static DBusMessage *device_set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
-	DBusMessageIter iter;
-	DBusMessageIter value;
+	DBusMessageIter iter, value;
 	const char *name;
 
 	DBG("conn %p", conn);
@@ -475,10 +474,74 @@ static DBusMessage *device_set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static int parse_network_dict(DBusMessageIter *iter, const char **ssid,
+				const char **security, const char **passphrase)
+{
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(iter, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		switch (dbus_message_iter_get_arg_type(&value)) {
+		case DBUS_TYPE_STRING:
+			if (g_str_equal(key, "WiFi.SSID") == TRUE)
+				dbus_message_iter_get_basic(&value, ssid);
+			else if (g_str_equal(key, "WiFi.Security") == TRUE)
+				dbus_message_iter_get_basic(&value, security);
+			else if (g_str_equal(key, "WiFi.Passphrase") == TRUE)
+				dbus_message_iter_get_basic(&value, passphrase);
+			break;
+		}
+
+		dbus_message_iter_next(iter);
+	}
+
+	return 0;
+}
+
 static DBusMessage *device_create_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return __connman_error_invalid_arguments(msg);
+	struct connman_element *element = data;
+	struct connman_element *network;
+	DBusMessageIter iter, array;
+	const char *ssid = NULL, *security = NULL, *passphrase = NULL;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_recurse(&iter, &array);
+	parse_network_dict(&array, &ssid, &security, &passphrase);
+	if (ssid == NULL)
+		return __connman_error_invalid_arguments(msg);
+
+	DBG("ssid %s security %s passphrase %s", ssid, security, passphrase);
+
+	network = connman_element_create(ssid);
+
+	network->type = CONNMAN_ELEMENT_TYPE_NETWORK;
+	network->index = element->index;
+
+	connman_element_add_static_property(network, "Name",
+						DBUS_TYPE_STRING, &ssid);
+
+	connman_element_add_static_array_property(element, "WiFi.SSID",
+					DBUS_TYPE_BYTE, &ssid, strlen(ssid));
+
+	network->wifi.security = g_strdup(security);
+	network->wifi.passphrase = g_strdup(passphrase);
+
+	connman_element_register(network, element);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &network->path,
+							DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *device_remove_network(DBusConnection *conn,
