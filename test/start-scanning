@@ -19,10 +19,10 @@ for path in properties["Devices"]:
 
 	if (properties["Type"] == "wifi"):
 		print "   Started WiFi scanning"
-		device.Scan()
+		device.ProposeScan()
 	elif (properties["Type"] == "wimax"):
 		print "   Started WiMAX scanning"
-		device.Scan()
+		device.ProposeScan()
 	else:
 		print "   No scanning"
 
