@@ -186,12 +186,20 @@ static void append_property(DBusMessageIter *dict,
 	if (property->value == NULL)
 		return;
 
-	if (property->type == DBUS_TYPE_ARRAY)
+	switch (property->type) {
+	case DBUS_TYPE_ARRAY:
 		connman_dbus_dict_append_array(dict, property->name,
 			property->subtype, &property->value, property->size);
-	else
+		break;
+	case DBUS_TYPE_STRING:
 		connman_dbus_dict_append_variant(dict, property->name,
 					property->type, &property->value);
+		break;
+	default:
+		connman_dbus_dict_append_variant(dict, property->name,
+					property->type, property->value);
+		break;
+	}
 }
 
 static void add_common_properties(struct connman_element *element,
@@ -1068,8 +1076,7 @@ int connman_element_add_static_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	if (type != DBUS_TYPE_STRING && type != DBUS_TYPE_BYTE &&
-						type != DBUS_TYPE_INT32)
+	if (type != DBUS_TYPE_STRING && type != DBUS_TYPE_BYTE)
 		return -EINVAL;
 
 	property = g_try_new0(struct connman_property, 1);
@@ -1091,11 +1098,6 @@ int connman_element_add_static_property(struct connman_element *element,
 		property->value = g_try_malloc(1);
 		if (property->value != NULL)
 			memcpy(property->value, value, 1);
-		break;
-	case DBUS_TYPE_INT32:
-		property->value = g_try_malloc(sizeof(gint32));
-		if (property->value != NULL)
-			memcpy(property->value, value, sizeof(gint32));
 		break;
 	}
 
@@ -1438,15 +1440,9 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 			switch (property->type) {
 			case DBUS_TYPE_STRING:
 				*((char **) value) = property->value;
-				break;
-			case DBUS_TYPE_BYTE:
-				*((guint8 *) value) = *((guint8 *) property->value);
-				break;
-			case DBUS_TYPE_INT32:
-				*((gint32 *) value) = *((gint32 *) property->value);
+				found = TRUE;
 				break;
 			}
-			found = TRUE;
 			break;
 		}
 	}
