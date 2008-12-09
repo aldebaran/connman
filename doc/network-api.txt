@@ -27,10 +27,25 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string WiFi.Name [readonly]
+Properties	string Name [readonly]
 
-			If the network type is WiFi, then this property is
-			present and contains the network name.
+			The pretty/long version of the network name. For
+			example in case of WiFi this should be the UTF-8
+			valid version of the SSID.
+
+		boolean Available [readonly]
+
+			Indicates that this network is in range and
+			ready to be used.
+
+			The scanning process can change this property.
+
+		boolean Remember [readwrite]
+
+			Indicates that this network will be remembered.
+
+			For manually created networks this is set by
+			default.
 
 		array{byte} WiFi.SSID [readonly]
 
