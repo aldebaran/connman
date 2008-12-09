@@ -395,7 +395,7 @@ static void append_networks(struct connman_element *element,
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static DBusMessage *get_device_properties(DBusConnection *conn,
+static DBusMessage *device_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
@@ -438,7 +438,7 @@ static DBusMessage *get_device_properties(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *set_device_property(DBusConnection *conn,
+static DBusMessage *device_set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
@@ -472,6 +472,18 @@ static DBusMessage *set_device_property(DBusConnection *conn,
 
 	__connman_element_store(element);
 
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *device_create_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return __connman_error_invalid_arguments(msg);
+}
+
+static DBusMessage *device_remove_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
@@ -704,9 +716,11 @@ static GDBusSignalTable element_signals[] = {
 };
 
 static GDBusMethodTable device_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_device_properties },
-	{ "SetProperty",   "sv", "",      set_device_property   },
-	{ "Scan",          "",   "",      do_update             },
+	{ "GetProperties", "",      "a{sv}", device_get_properties },
+	{ "SetProperty",   "sv",    "",      device_set_property   },
+	{ "CreateNetwork", "a{sv}", "o",     device_create_network },
+	{ "RemoveNetwork", "o",     "",      device_remove_network },
+	{ "ProposeScan",   "",      "",      do_update             },
 	{ },
 };
 
