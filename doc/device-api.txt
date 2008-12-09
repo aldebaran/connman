@@ -11,7 +11,6 @@ Methods		dict GetProperties()
 			the properties section for available properties.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.DoesNotExist
 
 		void SetProperty(string name, variant value)
 
