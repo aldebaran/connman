@@ -529,6 +529,8 @@ static DBusMessage *device_create_network(DBusConnection *conn,
 	network->type = CONNMAN_ELEMENT_TYPE_NETWORK;
 	network->index = element->index;
 
+	network->remember = TRUE;
+
 	connman_element_add_static_property(network, "Name",
 						DBUS_TYPE_STRING, &ssid);
 
@@ -550,7 +552,7 @@ static DBusMessage *device_remove_network(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *get_network_properties(DBusConnection *conn,
+static DBusMessage *network_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
@@ -576,8 +578,14 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Policy",
 						DBUS_TYPE_STRING, &str);
 
+	connman_dbus_dict_append_variant(&dict, "Available",
+					DBUS_TYPE_BOOLEAN, &element->available);
+
 	connman_dbus_dict_append_variant(&dict, "Connected",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
+
+	connman_dbus_dict_append_variant(&dict, "Remember",
+					DBUS_TYPE_BOOLEAN, &element->remember);
 
 	add_common_properties(element, &dict);
 
@@ -586,7 +594,7 @@ static DBusMessage *get_network_properties(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *set_network_property(DBusConnection *conn,
+static DBusMessage *network_set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
@@ -606,7 +614,9 @@ static DBusMessage *set_network_property(DBusConnection *conn,
 	if (__connman_security_check_privileges(msg) < 0)
 		return __connman_error_permission_denied(msg);
 
-	if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
+	if (g_str_equal(name, "Remember") == TRUE) {
+		dbus_message_iter_get_basic(&value, &element->remember);
+	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
 		const char *str;
 
 		dbus_message_iter_get_basic(&value, &str);
@@ -788,8 +798,8 @@ static GDBusMethodTable device_methods[] = {
 };
 
 static GDBusMethodTable network_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_network_properties },
-	{ "SetProperty",   "sv", "",      set_network_property   },
+	{ "GetProperties", "",   "a{sv}", network_get_properties },
+	{ "SetProperty",   "sv", "",      network_set_property   },
 	{ "Connect",       "",   "",      do_enable              },
 	{ "Disconnect",    "",   "",      do_disable             },
 	{ },

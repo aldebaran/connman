@@ -251,6 +251,8 @@ static void scan_result(struct connman_element *parent,
 		connman_element_register(element, parent);
 	}
 
+	element->available = TRUE;
+
 	g_free(temp);
 }
 

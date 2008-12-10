@@ -48,6 +48,10 @@ static int do_load(GKeyFile *keyfile, struct connman_element *element)
 	if (value != NULL)
 		element->policy = __connman_element_string2policy(value);
 
+	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK)
+		element->remember = g_key_file_get_boolean(keyfile,
+					element->path, "Remember", NULL);
+
 	value = g_key_file_get_string(keyfile, element->path,
 						"WiFi.Security", NULL);
 	if (value != NULL)
@@ -116,6 +120,10 @@ static void do_update(GKeyFile *keyfile, struct connman_element *element)
 	//g_key_file_set_boolean(keyfile, element->path, "Enabled",
 	//						element->enabled);
 
+	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK)
+		g_key_file_set_boolean(keyfile, element->path, "Remember",
+							element->remember);
+
 	__connman_element_lock(element);
 
 	for (list = element->properties; list; list = list->next) {
@@ -172,7 +180,7 @@ int __connman_element_store(struct connman_element *element)
 
 	if (length > 0) {
 		if (g_key_file_load_from_data(keyfile, data, length,
-				G_KEY_FILE_KEEP_COMMENTS, NULL) == FALSE)
+							0, NULL) == FALSE)
 			goto done;
 	}
 
