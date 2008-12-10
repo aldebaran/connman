@@ -40,6 +40,10 @@ Properties	string Name [readonly]
 
 			The scanning process can change this property.
 
+		boolean Connected [readonly]
+
+			Indicates that this network is currently connected.
+
 		boolean Remember [readwrite]
 
 			Indicates that this network will be remembered.
