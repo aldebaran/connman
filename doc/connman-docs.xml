@@ -104,7 +104,6 @@
     <xi:include href="xml/security.xml" />
     <xi:include href="xml/element.xml" />
     <xi:include href="xml/driver.xml" />
-    <xi:include href="xml/ipv4.xml" />
   </reference>
 
   <appendix id="license">
