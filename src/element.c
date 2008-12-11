@@ -1154,6 +1154,7 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.network);
 		g_free(element->ipv4.broadcast);
 		g_free(element->ipv4.nameserver);
+		g_free(element->devname);
 		g_free(element->path);
 		g_free(element->name);
 		g_free(element);
@@ -1846,10 +1847,14 @@ int connman_element_register(struct connman_element *element,
 {
 	DBG("element %p name %s parent %p", element, element->name, parent);
 
+	if (element->devname == NULL)
+		element->devname = g_strdup(element->name);
+
 	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
 		if (g_pattern_match_simple(device_filter,
-						element->name) == FALSE) {
-			DBG("ignoring %s device", element->name);
+						element->devname) == FALSE) {
+			DBG("ignoring %s [%s] device", element->name,
+							element->devname);
 			return -EPERM;
 		}
 	}
