@@ -48,7 +48,7 @@ static void rtnllink_newlink(unsigned short type, int index,
 	struct connman_element *device;
 	GSList *list;
 	gboolean exists = FALSE;
-	gchar *name;
+	gchar *name, *devname;
 
 	DBG("index %d", index);
 
@@ -64,7 +64,8 @@ static void rtnllink_newlink(unsigned short type, int index,
 	if (exists == TRUE)
 		return;
 
-	name = inet_index2name(index);
+	name = inet_index2ident(index, "dev_");
+	devname = inet_index2name(index);
 
 	if (type == ARPHRD_ETHER) {
 		char bridge_path[PATH_MAX], wimax_path[PATH_MAX];
@@ -78,7 +79,7 @@ static void rtnllink_newlink(unsigned short type, int index,
 					"/sys/class/net/%s/wimax", name);
 
 		memset(&iwr, 0, sizeof(iwr));
-		strncpy(iwr.ifr_ifrn.ifrn_name, name, IFNAMSIZ);
+		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
 
 		sk = socket(PF_INET, SOCK_DGRAM, 0);
 
@@ -107,6 +108,7 @@ static void rtnllink_newlink(unsigned short type, int index,
 
 	device->index = index;
 	device->name = name;
+	device->devname = devname;
 
 	connman_element_register(device, NULL);
 	device_list = g_slist_append(device_list, device);

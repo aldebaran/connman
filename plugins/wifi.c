@@ -356,7 +356,7 @@ static void wifi_newlink(unsigned short type, int index,
 	struct connman_element *device;
 	GSList *list;
 	gboolean exists = FALSE;
-	gchar *name;
+	gchar *name, *devname;
 	struct iwreq iwr;
 	int sk;
 
@@ -365,10 +365,11 @@ static void wifi_newlink(unsigned short type, int index,
 	if (type != ARPHRD_ETHER)
 		return;
 
-	name = inet_index2name(index);
+	name = inet_index2ident(index, "dev_");
+	devname = inet_index2name(index);
 
 	memset(&iwr, 0, sizeof(iwr));
-	strncpy(iwr.ifr_ifrn.ifrn_name, name, IFNAMSIZ);
+	strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 
@@ -400,6 +401,7 @@ static void wifi_newlink(unsigned short type, int index,
 
 	device->index = index;
 	device->name = name;
+	device->devname = devname;
 
 	connman_element_register(device, NULL);
 	device_list = g_slist_append(device_list, device);
