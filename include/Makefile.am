@@ -2,7 +2,7 @@
 includedir = @includedir@/connman
 
 include_HEADERS = log.h plugin.h security.h resolver.h driver.h \
-				element.h property.h network.h rtnl.h dbus.h
+			element.h property.h network.h ipv4.h rtnl.h dbus.h
 
 noinst_HEADERS = device.h
 
