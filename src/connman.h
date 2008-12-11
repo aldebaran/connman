@@ -63,6 +63,10 @@ void __connman_plugin_cleanup(void);
 int __connman_security_check_privileges(DBusMessage *message);
 
 #include <connman/ipv4.h>
+
+const char *__connman_ipv4_method2string(enum connman_ipv4_method method);
+enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
+
 #include <connman/resolver.h>
 
 #include <connman/driver.h>

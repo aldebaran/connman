@@ -180,6 +180,34 @@ enum connman_element_policy __connman_element_string2policy(const char *policy)
 		return CONNMAN_ELEMENT_POLICY_UNKNOWN;
 }
 
+const char *__connman_ipv4_method2string(enum connman_ipv4_method method)
+{
+	switch (method) {
+	case CONNMAN_IPV4_METHOD_UNKNOWN:
+		return "unknown";
+	case CONNMAN_IPV4_METHOD_OFF:
+		return "off";
+	case CONNMAN_IPV4_METHOD_STATIC:
+		return "static";
+	case CONNMAN_IPV4_METHOD_DHCP:
+		return "dhcp";
+	}
+
+	return "unknown";
+}
+
+enum connman_ipv4_method __connman_ipv4_string2method(const char *method)
+{
+	if (strcasecmp(method, "off") == 0)
+		return CONNMAN_IPV4_METHOD_OFF;
+	else if (strcasecmp(method, "static") == 0)
+		return CONNMAN_IPV4_METHOD_STATIC;
+	else if (strcasecmp(method, "dhcp") == 0)
+		return CONNMAN_IPV4_METHOD_DHCP;
+	else
+		return CONNMAN_IPV4_METHOD_UNKNOWN;
+}
+
 static void append_property(DBusMessageIter *dict,
 				struct connman_property *property)
 {
