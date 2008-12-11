@@ -20,3 +20,4 @@
  */
 
 char *inet_index2name(int index);
+char *inet_index2ident(int index, const char *prefix);
