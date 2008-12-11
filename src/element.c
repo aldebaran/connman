@@ -34,11 +34,8 @@
 
 static DBusConnection *connection;
 
-static GStaticRWLock element_lock = G_STATIC_RW_LOCK_INIT;
 static GNode *element_root = NULL;
-
 static GSList *driver_list = NULL;
-
 static gchar *device_filter = NULL;
 
 static struct {
@@ -884,10 +881,8 @@ void __connman_element_list(struct connman_element *element,
 	} else
 		node = element_root;
 
-	g_static_rw_lock_reader_lock(&element_lock);
 	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 						append_path, &filter);
-	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
 struct count_data {
@@ -930,10 +925,8 @@ int __connman_element_count(struct connman_element *element,
 	} else
 		node = element_root;
 
-	g_static_rw_lock_reader_lock(&element_lock);
 	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 						count_element, &data);
-	g_static_rw_lock_reader_unlock(&element_lock);
 
 	return data.count;
 }
@@ -1005,13 +998,9 @@ void __connman_driver_rescan(struct connman_driver *driver)
 	if (!driver->probe)
 		return;
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	if (element_root != NULL)
 		g_node_traverse(element_root, G_PRE_ORDER,
 				G_TRAVERSE_ALL, -1, probe_driver, driver);
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 /**
@@ -1032,16 +1021,12 @@ int connman_driver_register(struct connman_driver *driver)
 	if (!driver->probe)
 		return -EINVAL;
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
 	if (element_root != NULL)
 		g_node_traverse(element_root, G_PRE_ORDER,
 				G_TRAVERSE_ALL, -1, probe_driver, driver);
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 
 	return 0;
 }
@@ -1091,15 +1076,11 @@ void connman_driver_unregister(struct connman_driver *driver)
 {
 	DBG("driver %p name %s", driver, driver->name);
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	driver_list = g_slist_remove(driver_list, driver);
 
 	if (element_root != NULL)
 		g_node_traverse(element_root, G_POST_ORDER,
 				G_TRAVERSE_ALL, -1, remove_driver, driver);
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 /**
@@ -1754,8 +1735,6 @@ static void register_element(gpointer data, gpointer user_data)
 	GSList *list;
 	GNode *node;
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	__connman_element_lock(element);
 
 	if (element->parent) {
@@ -1833,11 +1812,7 @@ static void register_element(gpointer data, gpointer user_data)
 							DBUS_TYPE_INVALID);
 #endif
 
-	g_static_rw_lock_writer_unlock(&element_lock);
-
 	__connman_element_store(element);
-
-	g_static_rw_lock_writer_lock(&element_lock);
 
 	for (list = driver_list; list; list = list->next) {
 		struct connman_driver *driver = list->data;
@@ -1856,8 +1831,6 @@ static void register_element(gpointer data, gpointer user_data)
 			break;
 		}
 	}
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 /**
@@ -1976,15 +1949,11 @@ void connman_element_unregister(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
 
 	if (node != NULL)
 		g_node_traverse(node, G_POST_ORDER,
 				G_TRAVERSE_ALL, -1, remove_element, NULL);
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 void connman_element_unregister_children(struct connman_element *element)
@@ -1993,15 +1962,11 @@ void connman_element_unregister_children(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
 
 	if (node != NULL)
 		g_node_traverse(node, G_POST_ORDER,
 				G_TRAVERSE_ALL, -1, remove_element, element);
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 }
 
 static gboolean update_element(GNode *node, gpointer user_data)
@@ -2029,15 +1994,11 @@ void connman_element_update(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_static_rw_lock_reader_lock(&element_lock);
-
 	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
 
 	if (node != NULL)
 		g_node_traverse(node, G_PRE_ORDER,
 				G_TRAVERSE_ALL, -1, update_element, NULL);
-
-	g_static_rw_lock_reader_unlock(&element_lock);
 }
 
 int connman_element_set_enabled(struct connman_element *element,
@@ -2065,8 +2026,6 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 
 	device_filter = g_strdup(device);
 
-	g_static_rw_lock_writer_lock(&element_lock);
-
 	element = connman_element_create("root");
 
 	element->path = g_strdup("/");
@@ -2075,8 +2034,6 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 	create_default_properties(element);
 
 	element_root = g_node_new(element);
-
-	g_static_rw_lock_writer_unlock(&element_lock);
 
 	__connman_device_init();
 
@@ -2119,20 +2076,14 @@ void __connman_element_cleanup(void)
 
 	__connman_device_cleanup();
 
-	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_driver, NULL);
-	g_static_rw_lock_writer_unlock(&element_lock);
 
-	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_node, NULL);
-	g_static_rw_lock_writer_unlock(&element_lock);
 
-	g_static_rw_lock_writer_lock(&element_lock);
 	g_node_destroy(element_root);
 	element_root = NULL;
-	g_static_rw_lock_writer_unlock(&element_lock);
 
 	g_free(device_filter);
 

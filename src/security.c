@@ -25,7 +25,6 @@
 
 #include "connman.h"
 
-static GStaticRWLock security_lock = G_STATIC_RW_LOCK_INIT;
 static GSList *security_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -48,12 +47,8 @@ int connman_security_register(struct connman_security *security)
 {
 	DBG("security %p name %s", security, security->name);
 
-	g_static_rw_lock_writer_lock(&security_lock);
-
 	security_list = g_slist_insert_sorted(security_list, security,
 							compare_priority);
-
-	g_static_rw_lock_writer_unlock(&security_lock);
 
 	return 0;
 }
@@ -68,11 +63,7 @@ void connman_security_unregister(struct connman_security *security)
 {
 	DBG("security %p name %s", security, security->name);
 
-	g_static_rw_lock_writer_lock(&security_lock);
-
 	security_list = g_slist_remove(security_list, security);
-
-	g_static_rw_lock_writer_unlock(&security_lock);
 }
 
 int __connman_security_check_privileges(DBusMessage *message)
@@ -85,8 +76,6 @@ int __connman_security_check_privileges(DBusMessage *message)
 
 	sender = dbus_message_get_sender(message);
 
-	g_static_rw_lock_reader_lock(&security_lock);
-
 	for (list = security_list; list; list = list->next) {
 		struct connman_security *security = list->data;
 
@@ -97,8 +86,6 @@ int __connman_security_check_privileges(DBusMessage *message)
 			break;
 		}
 	}
-
-	g_static_rw_lock_reader_unlock(&security_lock);
 
 	return err;
 }

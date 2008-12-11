@@ -25,7 +25,6 @@
 
 #include "connman.h"
 
-static GStaticRWLock resolver_lock = G_STATIC_RW_LOCK_INIT;
 static GSList *resolver_list = NULL;
 
 /**
@@ -40,11 +39,7 @@ int connman_resolver_register(struct connman_resolver *resolver)
 {
 	DBG("resolver %p name %s", resolver, resolver->name);
 
-	g_static_rw_lock_writer_lock(&resolver_lock);
-
 	resolver_list = g_slist_append(resolver_list, resolver);
-
-	g_static_rw_lock_writer_unlock(&resolver_lock);
 
 	return 0;
 }
@@ -59,9 +54,5 @@ void connman_resolver_unregister(struct connman_resolver *resolver)
 {
 	DBG("resolver %p name %s", resolver, resolver->name);
 
-	g_static_rw_lock_writer_lock(&resolver_lock);
-
 	resolver_list = g_slist_remove(resolver_list, resolver);
-
-	g_static_rw_lock_writer_unlock(&resolver_lock);
 }

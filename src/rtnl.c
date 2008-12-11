@@ -36,7 +36,6 @@
 
 #include "connman.h"
 
-static GStaticRWLock rtnl_lock = G_STATIC_RW_LOCK_INIT;
 static GSList *rtnl_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -59,12 +58,8 @@ int connman_rtnl_register(struct connman_rtnl *rtnl)
 {
 	DBG("rtnl %p name %s", rtnl, rtnl->name);
 
-	g_static_rw_lock_writer_lock(&rtnl_lock);
-
 	rtnl_list = g_slist_insert_sorted(rtnl_list, rtnl,
 							compare_priority);
-
-	g_static_rw_lock_writer_unlock(&rtnl_lock);
 
 	return 0;
 }
@@ -79,11 +74,7 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 {
 	DBG("rtnl %p name %s", rtnl, rtnl->name);
 
-	g_static_rw_lock_writer_lock(&rtnl_lock);
-
 	rtnl_list = g_slist_remove(rtnl_list, rtnl);
-
-	g_static_rw_lock_writer_unlock(&rtnl_lock);
 }
 
 static void process_newlink(unsigned short type, int index,
@@ -93,16 +84,12 @@ static void process_newlink(unsigned short type, int index,
 
 	DBG("index %d", index);
 
-	g_static_rw_lock_reader_lock(&rtnl_lock);
-
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
 		if (rtnl->newlink)
 			rtnl->newlink(type, index, flags, change);
 	}
-
-	g_static_rw_lock_reader_unlock(&rtnl_lock);
 }
 
 static void process_dellink(unsigned short type, int index,
@@ -112,16 +99,12 @@ static void process_dellink(unsigned short type, int index,
 
 	DBG("index %d", index);
 
-	g_static_rw_lock_reader_lock(&rtnl_lock);
-
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
 		if (rtnl->dellink)
 			rtnl->dellink(type, index, flags, change);
 	}
-
-	g_static_rw_lock_reader_unlock(&rtnl_lock);
 }
 
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
