@@ -390,21 +390,18 @@ static DBusMessage *do_disable(DBusConnection *conn,
 }
 
 static void append_networks(struct connman_element *element,
-						DBusMessageIter *dict)
+						DBusMessageIter *entry)
 {
-	DBusMessageIter entry, value, iter;
+	DBusMessageIter value, iter;
 	const char *key = "Networks";
 
 	if (element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIFI &&
 			element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIMAX)
 		return;
 
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
 		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
 								&value);
 
@@ -415,9 +412,7 @@ static void append_networks(struct connman_element *element,
 
 	dbus_message_iter_close_container(&value, &iter);
 
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
+	dbus_message_iter_close_container(entry, &value);
 }
 
 static DBusMessage *device_get_properties(DBusConnection *conn,
@@ -425,7 +420,7 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 {
 	struct connman_element *element = data;
 	DBusMessage *reply;
-	DBusMessageIter array, dict;
+	DBusMessageIter array, dict, entry;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -454,7 +449,12 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
 	append_networks(element, &dict);
+
+	dbus_message_iter_close_container(&dict, &entry);
 
 	add_common_properties(element, &dict);
 
@@ -1654,6 +1654,29 @@ static void emit_devices_signal(DBusConnection *conn)
 	g_dbus_send_message(conn, signal);
 }
 
+static void emit_networks_signal(DBusConnection *conn,
+					struct connman_element *device)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	DBG("conn %p", conn);
+
+	if (device == NULL)
+		return;
+
+	signal = dbus_message_new_signal(device->path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	append_networks(device, &entry);
+
+	g_dbus_send_message(conn, signal);
+}
+
 static void append_connections(DBusMessageIter *entry)
 {
 	DBusMessageIter value, iter;
@@ -1790,6 +1813,8 @@ static void register_element(gpointer data, gpointer user_data)
 					NULL, element, NULL) == FALSE)
 			connman_error("Failed to register %s network",
 								element->path);
+		else
+			emit_networks_signal(connection, element->parent);
 	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
