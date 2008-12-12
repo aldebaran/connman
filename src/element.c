@@ -1893,6 +1893,8 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		return FALSE;
 
 	if (element->driver) {
+		disable_element(element);
+
 		if (element->driver->remove)
 			element->driver->remove(element);
 
@@ -2047,6 +2049,8 @@ static gboolean free_driver(GNode *node, gpointer data)
 	DBG("element %p name %s", element, element->name);
 
 	if (element->driver) {
+		disable_element(element);
+
 		if (element->driver->remove)
 			element->driver->remove(element);
 
