@@ -501,7 +501,7 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 
-	append_networks(element, &dict);
+	append_networks(element, &entry);
 
 	dbus_message_iter_close_container(&dict, &entry);
 
