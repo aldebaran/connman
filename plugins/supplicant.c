@@ -789,6 +789,9 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
+	if (task->callback && task->callback->clear_results)
+			task->callback->clear_results(task->element);
+
 	for (i = 0; i < num_results; i++)
 		get_network_properties(task, results[i]);
 

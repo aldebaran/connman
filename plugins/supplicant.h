@@ -53,6 +53,7 @@ struct supplicant_network {
 struct supplicant_callback {
 	void (*state_change) (struct connman_element *element,
 						enum supplicant_state state);
+	void (*clear_results) (struct connman_element *element);
 	void (*scan_result) (struct connman_element *element,
 					struct supplicant_network *network);
 };
