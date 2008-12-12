@@ -1948,9 +1948,12 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 						CONNMAN_CONNECTION_INTERFACE);
 	}
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK)
+	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
+		emit_networks_signal(connection, element->parent);
+
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
+	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
 			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
