@@ -5,19 +5,20 @@ import gobject
 import dbus
 import dbus.mainloop.glib
 
-def property_changed(name, value, path):
-	print "[%s] %s = %s" % (path, name, str(value))
+def property_changed(name, value, path, interface):
+	iface = interface[interface.rfind(".") + 1:]
+	print "{%s} [%s] %s = %s" % (iface, path, name, str(value))
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
-	manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-						"org.moblin.connman.Manager")
 
 	bus.add_signal_receiver(property_changed,
+					bus_name="org.moblin.connman",
 					signal_name = "PropertyChanged",
-							path_keyword="path")
+						path_keyword="path",
+						interface_keyword="interface")
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
