@@ -313,6 +313,51 @@ static void set_common_property(struct connman_element *element,
 	__connman_element_unlock(element);
 }
 
+static void emit_enabled_signal(DBusConnection *conn,
+					struct connman_element *element)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *iface, *key;
+
+	DBG("conn %p", conn);
+
+	if (element == NULL)
+		return;
+
+	switch (element->type) {
+	case CONNMAN_ELEMENT_TYPE_DEVICE:
+		iface = CONNMAN_DEVICE_INTERFACE;
+		key = "Powered";
+		break;
+	case CONNMAN_ELEMENT_TYPE_NETWORK:
+		iface = CONNMAN_NETWORK_INTERFACE;
+		key = "Connected";
+		break;
+	default:
+		return;
+	}
+
+	signal = dbus_message_new_signal(element->path,
+						iface, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&element->enabled);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(conn, signal);
+}
+
 static DBusMessage *do_update(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -351,6 +396,8 @@ static DBusMessage *do_enable(DBusConnection *conn,
 
 	element->enabled = TRUE;
 
+	emit_enabled_signal(connection, element);
+
 #if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "ElementUpdated",
@@ -378,6 +425,8 @@ static DBusMessage *do_disable(DBusConnection *conn,
 	}
 
 	element->enabled = FALSE;
+
+	emit_enabled_signal(connection, element);
 
 #if 0
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
@@ -965,8 +1014,10 @@ static void enable_element(struct connman_element *element)
 		return;
 
 	if (element->driver && element->driver->enable) {
-		if (element->driver->enable(element) == 0)
+		if (element->driver->enable(element) == 0) {
 			element->enabled = TRUE;
+			emit_enabled_signal(connection, element);
+		}
 	}
 }
 
@@ -1040,8 +1091,10 @@ static void disable_element(struct connman_element *element)
 		return;
 
 	if (element->driver && element->driver->disable) {
-		if (element->driver->disable(element) == 0)
+		if (element->driver->disable(element) == 0) {
 			element->enabled = FALSE;
+			emit_enabled_signal(connection, element);
+		}
 	}
 }
 
