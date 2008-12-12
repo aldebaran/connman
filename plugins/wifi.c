@@ -148,6 +148,9 @@ static void state_change(struct connman_element *parent,
 
 	DBG("state %d", state);
 
+	if (data == NULL)
+		return;
+
 	if (data->identifier == NULL)
 		return;
 
@@ -333,6 +336,8 @@ static int wifi_disable(struct connman_element *element)
 	data->list = NULL;
 
 	connman_element_unregister_children(element);
+
+	__supplicant_stop(element);
 
 	return 0;
 }
