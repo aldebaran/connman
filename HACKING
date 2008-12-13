@@ -90,6 +90,30 @@ line switch allows to specify a glob pattern for the interface names.
     # sudo ./src/connmand -n -i wlan*
 
 
+Debugging the D-Bus interface during runtime
+============================================
+
+Running the daemon with debugging information in the foreground is quite
+verbose and sometimes not really helpful. The "monitor-connman" script
+allows to monitor "PropertyChanged" D-Bus signals from various interfaces.
+
+  During start of daemon
+    {Manager} [/] Devices = dbus.Array([dbus.ObjectPath('/dev_00_90_CC ...
+    {Device} [/dev_00_90_CC_xx_xx_xx] Powered = 1
+    {Device} [/dev_00_90_CC_xx_xx_xx] Networks = dbus.Array( ...
+
+  During shutdown of daemon
+    {Device} [/dev_00_90_CC_xx_xx_xx] Networks = dbus.Array( ...
+    {Device} [/dev_00_90_CC_xx_xx_xx] Powered = 0
+    {Manager} [/] Devices = dbus.Array([], ...
+
+Every "PropertyChanged" signal will generate a line of output. Some of them
+can get very complex. The first detail inside "{ ... }" is the interface
+name (without its service name prefix). The second detail inside "[ ... ]"
+is the object path. And after that it is followed by a key and value of
+the property that changed.
+
+
 Generating source code documentation
 ====================================
 
