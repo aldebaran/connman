@@ -41,8 +41,12 @@
 #include "inet.h"
 #include "supplicant.h"
 
+#define CLEANUP_PENDING_TIMEOUT  8	/* in seconds */
+
 struct wifi_data {
-	GSList *list;
+	GSList *current;
+	GSList *pending;
+	guint timer;
 	gchar *identifier;
 	gboolean connected;
 };
@@ -124,12 +128,28 @@ static struct connman_driver network_driver = {
 	.disable	= network_disable,
 };
 
-static struct connman_element *find_element(struct wifi_data *data,
-						const char *identifier)
+static struct connman_element *find_current_element(struct wifi_data *data,
+							const char *identifier)
 {
 	GSList *list;
 
-	for (list = data->list; list; list = list->next) {
+	for (list = data->current; list; list = list->next) {
+		struct connman_element *element = list->data;
+
+		if (connman_element_match_static_property(element,
+					"Name", &identifier) == TRUE)
+			return element;
+	}
+
+	return NULL;
+}
+
+static struct connman_element *find_pending_element(struct wifi_data *data,
+							const char *identifier)
+{
+	GSList *list;
+
+	for (list = data->pending; list; list = list->next) {
 		struct connman_element *element = list->data;
 
 		if (connman_element_match_static_property(element,
@@ -154,7 +174,7 @@ static void state_change(struct connman_element *parent,
 	if (data->identifier == NULL)
 		return;
 
-	element = find_element(data, data->identifier);
+	element = find_current_element(data, data->identifier);
 	if (element == NULL)
 		return;
 
@@ -171,6 +191,46 @@ static void state_change(struct connman_element *parent,
 		connman_element_register(dhcp, element);
 	} else if (state == STATE_DISCONNECTED || state == STATE_INACTIVE)
 		data->connected = FALSE;
+}
+
+static gboolean cleanup_pending(gpointer user_data)
+{
+	struct wifi_data *data = user_data;
+	GSList *list;
+
+	DBG("");
+
+	for (list = data->pending; list; list = list->next) {
+		struct connman_element *element = list->data;
+
+		DBG("element %p name %s", element, element->name);
+
+		connman_element_unregister(element);
+		connman_element_unref(element);
+	}
+
+	g_slist_free(data->pending);
+	data->pending = NULL;
+
+	data->timer = 0;
+
+	return FALSE;
+}
+
+static void clear_results(struct connman_element *parent)
+{
+	struct wifi_data *data = connman_element_get_data(parent);
+	GSList *list;
+
+	DBG("pending %d", g_slist_length(data->pending));
+	DBG("current %d", g_slist_length(data->current));
+
+	data->pending = data->current;
+	data->current = NULL;
+
+	if (data->timer == 0)
+		data->timer = g_timeout_add_seconds(CLEANUP_PENDING_TIMEOUT,
+							cleanup_pending, data);
 }
 
 static void scan_result(struct connman_element *parent,
@@ -208,7 +268,7 @@ static void scan_result(struct connman_element *parent,
 		temp[i] = g_ascii_tolower(temp[i]);
 	}
 
-	element = find_element(data, network->identifier);
+	element = find_pending_element(data, network->identifier);
 	if (element == NULL) {
 		guint8 strength;
 
@@ -216,8 +276,6 @@ static void scan_result(struct connman_element *parent,
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
 		element->index = parent->index;
-
-		data->list = g_slist_append(data->list, element);
 
 		connman_element_add_static_property(element, "Name",
 				DBUS_TYPE_STRING, &network->identifier);
@@ -252,7 +310,10 @@ static void scan_result(struct connman_element *parent,
 					element->wifi.security, strength);
 
 		connman_element_register(element, parent);
-	}
+	} else
+		data->pending = g_slist_remove(data->pending, element);
+
+	data->current = g_slist_append(data->current, element);
 
 	element->available = TRUE;
 
@@ -261,6 +322,7 @@ static void scan_result(struct connman_element *parent,
 
 static struct supplicant_callback wifi_callback = {
 	.state_change	= state_change,
+	.clear_results	= clear_results,
 	.scan_result	= scan_result,
 };
 
@@ -324,16 +386,30 @@ static int wifi_disable(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	if (data->timer > 0) {
+		g_source_remove(data->timer);
+		data->timer = 0;
+	}
+
 	__supplicant_disconnect(element);
 
-	for (list = data->list; list; list = list->next) {
+	for (list = data->pending; list; list = list->next) {
 		struct connman_element *network = list->data;
 
 		connman_element_unref(network);
 	}
 
-	g_slist_free(data->list);
-	data->list = NULL;
+	g_slist_free(data->pending);
+	data->pending = NULL;
+
+	for (list = data->current; list; list = list->next) {
+		struct connman_element *network = list->data;
+
+		connman_element_unref(network);
+	}
+
+	g_slist_free(data->current);
+	data->current = NULL;
 
 	connman_element_unregister_children(element);
 
