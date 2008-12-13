@@ -7,7 +7,11 @@ import dbus.mainloop.glib
 
 def property_changed(name, value, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
-	print "{%s} [%s] %s = %s" % (iface, path, name, str(value))
+	if (name == "WiFi.Strength"):
+		val = int(value)
+	else:
+		val = str(value)
+	print "{%s} [%s] %s = %s" % (iface, path, name, val)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
