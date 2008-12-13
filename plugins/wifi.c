@@ -190,7 +190,8 @@ static void state_change(struct connman_element *device,
 
 	DBG("state %d", state);
 
-	if (state == STATE_INACTIVE && data->inactive_timer == 0)
+	if ((state == STATE_INACTIVE || state == STATE_DISCONNECTED) &&
+						data->inactive_timer == 0)
 		data->inactive_timer = g_timeout_add_seconds(INACTIVE_TIMEOUT,
 							inactive_scan, device);
 
