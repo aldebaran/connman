@@ -31,8 +31,12 @@ int __connman_selftest(void)
 
 	connman_info("Start self testing");
 
-	err = 0;
+	connman_info("Testing resolver unit");
+	err = __connman_resolver_selftest();
+	if (err < 0)
+		goto done;
 
+done:
 	connman_info("Finished self testing");
 
 	return err;

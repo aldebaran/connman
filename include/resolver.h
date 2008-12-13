@@ -39,10 +39,18 @@ extern "C" {
 struct connman_resolver {
 	const char *name;
 	int priority;
+	int (*append) (const char *interface, const char *domain,
+							const char *server);
+	int (*remove) (const char *interface, const char *domain,
+							const char *server);
 };
 
 extern int connman_resolver_register(struct connman_resolver *resolver);
 extern void connman_resolver_unregister(struct connman_resolver *resolver);
+
+extern int connman_resolver_append(const char *interface, const char *domain,
+							const char *server);
+extern int connman_resolver_remove_all(const char *interface);
 
 #ifdef __cplusplus
 }
