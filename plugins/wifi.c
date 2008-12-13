@@ -220,7 +220,6 @@ static gboolean cleanup_pending(gpointer user_data)
 static void clear_results(struct connman_element *parent)
 {
 	struct wifi_data *data = connman_element_get_data(parent);
-	GSList *list;
 
 	DBG("pending %d", g_slist_length(data->pending));
 	DBG("current %d", g_slist_length(data->current));
