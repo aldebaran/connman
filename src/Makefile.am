@@ -11,9 +11,9 @@ DISTCLEANFILES = $(service_DATA)
 
 sbin_PROGRAMS = connmand
 
-connmand_SOURCES = main.c connman.h log.c error.c plugin.c profile.c \
-			element.c device.c network.c security.c resolver.c \
-				storage.c manager.c agent.c rtnl.c dbus.c
+connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
+			profile.c element.c device.c network.c security.c \
+			resolver.c storage.c manager.c agent.c rtnl.c dbus.c
 
 if UDEV
 connmand_SOURCES += udev.c

@@ -31,6 +31,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg);
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
 
+int __connman_selftest(void);
+
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 

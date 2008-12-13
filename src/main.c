@@ -52,6 +52,7 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 
 static gchar *option_device = NULL;
 static gboolean option_detach = TRUE;
+static gboolean option_selftest = FALSE;
 static gboolean option_compat = FALSE;
 static gboolean option_debug = FALSE;
 
@@ -61,6 +62,8 @@ static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
+	{ "selftest", 't', 0, G_OPTION_ARG_NONE, &option_selftest,
+				"Run self testing routines" },
 	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Enable Network Manager compatibility" },
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
@@ -140,6 +143,13 @@ int main(int argc, char *argv[])
 
 	__connman_log_init(option_detach, option_debug);
 
+	if (option_selftest == TRUE) {
+		if (__connman_selftest() < 0) {
+			connman_error("Self testing routines failed");
+			goto selftest;
+		}
+	}
+
 	__connman_storage_init();
 
 	__connman_element_init(conn, option_device);
@@ -177,6 +187,7 @@ int main(int argc, char *argv[])
 
 	__connman_storage_cleanup();
 
+selftest:
 	__connman_log_cleanup();
 
 	dbus_connection_unref(conn);
