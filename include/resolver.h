@@ -32,8 +32,13 @@ extern "C" {
  * @short_description: Functions for registering resolver modules
  */
 
+#define CONNMAN_RESOLVER_PRIORITY_LOW      -100
+#define CONNMAN_RESOLVER_PRIORITY_DEFAULT     0
+#define CONNMAN_RESOLVER_PRIORITY_HIGH      100
+
 struct connman_resolver {
 	const char *name;
+	int priority;
 };
 
 extern int connman_resolver_register(struct connman_resolver *resolver);

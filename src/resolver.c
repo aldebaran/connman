@@ -27,6 +27,14 @@
 
 static GSList *resolver_list = NULL;
 
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_resolver *resolver1 = a;
+	const struct connman_resolver *resolver2 = b;
+
+	return resolver2->priority - resolver1->priority;
+}
+
 /**
  * connman_resolver_register:
  * @resolver: resolver module
@@ -39,7 +47,8 @@ int connman_resolver_register(struct connman_resolver *resolver)
 {
 	DBG("resolver %p name %s", resolver, resolver->name);
 
-	resolver_list = g_slist_append(resolver_list, resolver);
+	resolver_list = g_slist_insert_sorted(resolver_list, resolver,
+							compare_priority);
 
 	return 0;
 }
