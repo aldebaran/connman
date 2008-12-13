@@ -299,6 +299,7 @@ static void scan_result(struct connman_element *device,
 {
 	struct wifi_data *data = connman_element_get_data(device);
 	struct connman_element *element;
+	guint8 strength = network->quality;
 	gchar *temp;
 	int i;
 
@@ -324,8 +325,6 @@ static void scan_result(struct connman_element *device,
 
 	element = find_pending_element(data, network->identifier);
 	if (element == NULL) {
-		guint8 strength;
-
 		element = connman_element_create(temp);
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
@@ -352,20 +351,19 @@ static void scan_result(struct connman_element *device,
 			element->wifi.security = g_strdup(security);
 		}
 
-		strength = network->quality;
-
 		connman_element_add_static_property(element, "WiFi.Strength",
 						DBUS_TYPE_BYTE, &strength);
-
-		//connman_element_add_static_property(element, "WiFi.Noise",
-		//			DBUS_TYPE_INT32, &network->noise);
 
 		DBG("%s (%s) strength %d", network->identifier,
 					element->wifi.security, strength);
 
 		connman_element_register(element, device);
-	} else
+	} else {
 		data->pending = g_slist_remove(data->pending, element);
+
+		connman_element_set_static_property(element, "WiFi.Strength",
+						DBUS_TYPE_BYTE, &strength);
+	}
 
 	data->current = g_slist_append(data->current, element);
 
