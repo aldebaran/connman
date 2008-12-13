@@ -67,6 +67,7 @@ static void network_remove(struct connman_element *element)
 
 static int network_enable(struct connman_element *element)
 {
+	struct connman_element *device = element->parent;
 	char *name, *security = NULL, *passphrase = NULL;
 	unsigned char *ssid;
 	int ssid_len;
@@ -81,13 +82,13 @@ static int network_enable(struct connman_element *element)
 				"WiFi.SSID", &ssid, &ssid_len) == FALSE)
 		return -EIO;
 
-	if (element->parent != NULL) {
-		struct wifi_data *data = connman_element_get_data(element->parent);
-
-		if (data->connected == TRUE)
-			return -EBUSY;
+	if (device != NULL) {
+		struct wifi_data *data = connman_element_get_data(device);
 
 		if (data != NULL) {
+			if (data->connected == TRUE)
+				return -EBUSY;
+
 			g_free(data->identifier);
 			data->identifier = g_strdup(name);
 		}
@@ -181,17 +182,17 @@ static gboolean inactive_scan(gpointer user_data)
 	return FALSE;
 }
 
-static void state_change(struct connman_element *parent,
+static void state_change(struct connman_element *device,
 						enum supplicant_state state)
 {
-	struct wifi_data *data = connman_element_get_data(parent);
+	struct wifi_data *data = connman_element_get_data(device);
 	struct connman_element *element;
 
 	DBG("state %d", state);
 
 	if (state == STATE_INACTIVE && data->inactive_timer == 0)
 		data->inactive_timer = g_timeout_add_seconds(INACTIVE_TIMEOUT,
-							inactive_scan, parent);
+							inactive_scan, device);
 
 	if (data == NULL)
 		return;
@@ -242,9 +243,9 @@ static gboolean cleanup_pending(gpointer user_data)
 	return FALSE;
 }
 
-static void clear_results(struct connman_element *parent)
+static void clear_results(struct connman_element *device)
 {
-	struct wifi_data *data = connman_element_get_data(parent);
+	struct wifi_data *data = connman_element_get_data(device);
 
 	DBG("pending %d", g_slist_length(data->pending));
 	DBG("current %d", g_slist_length(data->current));
@@ -259,10 +260,10 @@ static void clear_results(struct connman_element *parent)
 							cleanup_pending, data);
 }
 
-static void scan_result(struct connman_element *parent,
+static void scan_result(struct connman_element *device,
 					struct supplicant_network *network)
 {
-	struct wifi_data *data = connman_element_get_data(parent);
+	struct wifi_data *data = connman_element_get_data(device);
 	struct connman_element *element;
 	gchar *temp;
 	int i;
@@ -294,7 +295,7 @@ static void scan_result(struct connman_element *parent,
 		element = connman_element_create(temp);
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
-		element->index = parent->index;
+		element->index = device->index;
 
 		connman_element_add_static_property(element, "Name",
 				DBUS_TYPE_STRING, &network->identifier);
@@ -328,7 +329,7 @@ static void scan_result(struct connman_element *parent,
 		DBG("%s (%s) strength %d", network->identifier,
 					element->wifi.security, strength);
 
-		connman_element_register(element, parent);
+		connman_element_register(element, device);
 	} else
 		data->pending = g_slist_remove(data->pending, element);
 
