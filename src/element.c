@@ -112,8 +112,6 @@ static const char *type2string(enum connman_element_type type)
 		return "bootp";
 	case CONNMAN_ELEMENT_TYPE_ZEROCONF:
 		return "zeroconf";
-	case CONNMAN_ELEMENT_TYPE_RESOLVER:
-		return "resolver";
 	case CONNMAN_ELEMENT_TYPE_CONNECTION:
 		return "connection";
 	}
