@@ -198,7 +198,8 @@ static void connect_known_networks(struct connman_element *device)
 		struct connman_element *element = list->data;
 
 		if (element->policy == CONNMAN_ELEMENT_POLICY_AUTO &&
-						element->remember == TRUE) {
+						element->remember == TRUE &&
+						element->available == TRUE) {
 			if (network_enable(element) == 0)
 				return;
 		}
