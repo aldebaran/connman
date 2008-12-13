@@ -3,12 +3,6 @@ dbusdir = $(sysconfdir)/dbus-1/system.d
 
 dbus_DATA = connman.conf
 
-servicedir = $(datarootdir)/dbus-1/system-services
-
-service_DATA = connman.service
-
-DISTCLEANFILES = $(service_DATA)
-
 sbin_PROGRAMS = connmand
 
 connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
