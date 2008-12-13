@@ -1909,7 +1909,7 @@ int connman_element_set_enabled(struct connman_element *element,
 
 	element->enabled = enabled;
 
-	connman_element_update(element);
+	emit_enabled_signal(connection, element);
 
 	return 0;
 }
