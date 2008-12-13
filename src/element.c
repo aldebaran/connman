@@ -343,10 +343,8 @@ static void emit_enabled_signal(DBusConnection *conn,
 
 	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
 					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-
 	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
 							&element->enabled);
-
 	dbus_message_iter_close_container(&entry, &value);
 
 	g_dbus_send_message(conn, signal);
@@ -1116,6 +1114,99 @@ int connman_element_add_static_property(struct connman_element *element,
 	return 0;
 }
 
+static void emit_property_changed(DBusConnection *conn,
+				struct connman_element *element,
+				const char *name, int type, const void *data)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *iface, *sig;
+
+	DBG("conn %p", conn);
+
+	switch (element->type) {
+	case CONNMAN_ELEMENT_TYPE_DEVICE:
+		iface = CONNMAN_DEVICE_INTERFACE;
+		break;
+	case CONNMAN_ELEMENT_TYPE_NETWORK:
+		iface = CONNMAN_NETWORK_INTERFACE;
+		break;
+	default:
+		return;
+	}
+
+	signal = dbus_message_new_signal(element->path,
+						iface, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &name);
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		sig = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_BYTE:
+		sig = DBUS_TYPE_BYTE_AS_STRING;
+		break;
+	default:
+		sig = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+							sig, &value);
+	dbus_message_iter_append_basic(&value, type, data);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(conn, signal);
+}
+
+int connman_element_set_static_property(struct connman_element *element,
+				const char *name, int type, const void *value)
+{
+	GSList *list;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (type != DBUS_TYPE_STRING && type != DBUS_TYPE_BYTE)
+		return -EINVAL;
+
+	__connman_element_lock(element);
+
+	for (list = element->properties; list; list = list->next) {
+		struct connman_property *property = list->data;
+
+		if (g_str_equal(property->name, name) == FALSE)
+			continue;
+
+		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
+			continue;
+
+		property->type = type;
+		g_free(property->value);
+
+		switch (type) {
+		case DBUS_TYPE_STRING:
+			property->value = g_strdup(*((const char **) value));
+			break;
+		case DBUS_TYPE_BYTE:
+			property->value = g_try_malloc(1);
+			if (property->value != NULL)
+				memcpy(property->value, value, 1);
+			break;
+		}
+	}
+
+	__connman_element_unlock(element);
+
+	emit_property_changed(connection, element, name, type, value);
+
+	return 0;
+}
+
 int connman_element_add_static_array_property(struct connman_element *element,
 			const char *name, int type, const void *value, int len)
 {
@@ -1527,9 +1618,7 @@ static void append_devices(DBusMessageIter *entry)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
 	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
-
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(entry, &value);
@@ -1590,9 +1679,7 @@ static void append_connections(DBusMessageIter *entry)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
 	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
-
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(entry, &value);
@@ -1626,9 +1713,7 @@ static void append_state(DBusMessageIter *entry, const char *state)
 
 	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
 					DBUS_TYPE_STRING_AS_STRING, &value);
-
 	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &state);
-
 	dbus_message_iter_close_container(entry, &value);
 }
 
