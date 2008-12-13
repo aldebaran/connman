@@ -29,6 +29,6 @@ for path in properties["Devices"]:
 
 		properties = network.GetProperties()
 
-		if (properties["WiFi.Name"] == sys.argv[1]):
+		if (properties["Name"] == sys.argv[1]):
 			print "Setting passphrase for %s" % (path)
 			network.SetProperty("WiFi.Passphrase", sys.argv[2])
