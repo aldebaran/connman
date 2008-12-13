@@ -182,6 +182,32 @@ static gboolean inactive_scan(gpointer user_data)
 	return FALSE;
 }
 
+static void connect_known_networks(struct connman_element *device)
+{
+	struct wifi_data *data = connman_element_get_data(device);
+	GSList *list;
+
+	DBG("");
+
+	if (data->inactive_timer > 0) {
+		g_source_remove(data->inactive_timer);
+		data->inactive_timer = 0;
+	}
+
+	for (list = data->current; list; list = list->next) {
+		struct connman_element *element = list->data;
+
+		if (element->policy == CONNMAN_ELEMENT_POLICY_AUTO &&
+						element->remember == TRUE) {
+			if (network_enable(element) == 0)
+				return;
+		}
+	}
+
+	data->inactive_timer = g_timeout_add_seconds(INACTIVE_TIMEOUT,
+							inactive_scan, device);
+}
+
 static void state_change(struct connman_element *device,
 						enum supplicant_state state)
 {
@@ -190,25 +216,21 @@ static void state_change(struct connman_element *device,
 
 	DBG("state %d", state);
 
-	if ((state == STATE_INACTIVE || state == STATE_DISCONNECTED) &&
-						data->inactive_timer == 0)
-		data->inactive_timer = g_timeout_add_seconds(INACTIVE_TIMEOUT,
-							inactive_scan, device);
-
 	if (data == NULL)
 		return;
 
 	if (data->identifier == NULL)
-		return;
+		goto reconnect;
 
 	element = find_current_element(data, data->identifier);
 	if (element == NULL)
-		return;
+		goto reconnect;
 
 	if (state == STATE_COMPLETED) {
 		struct connman_element *dhcp;
 
 		data->connected = TRUE;
+		connman_element_set_enabled(element, TRUE);
 
 		dhcp = connman_element_create(NULL);
 
@@ -216,8 +238,18 @@ static void state_change(struct connman_element *device,
 		dhcp->index = element->index;
 
 		connman_element_register(dhcp, element);
-	} else if (state == STATE_DISCONNECTED || state == STATE_INACTIVE)
+	} else if (state == STATE_INACTIVE || state == STATE_DISCONNECTED) {
 		data->connected = FALSE;
+		connman_element_set_enabled(element, FALSE);
+
+		connman_element_unregister_children(element);
+	}
+
+reconnect:
+	if (state == STATE_INACTIVE || state == STATE_DISCONNECTED) {
+		data->connected = FALSE;
+		connect_known_networks(device);
+	}
 }
 
 static gboolean cleanup_pending(gpointer user_data)
