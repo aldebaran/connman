@@ -2,8 +2,8 @@
 plugindir = $(libdir)/connman/plugins
 
 plugin_LTLIBRARIES = loopback.la ethernet.la wifi.la bluetooth.la \
-				netdev.la dhclient.la ipv4.la \
-				resolvconf.la resolvfile.la rtnllink.la
+				netdev.la dhclient.la ipv4.la rtnllink.la \
+				dnsproxy.la resolvconf.la resolvfile.la
 
 loopback_la_SOURCES = loopback.c
 
@@ -23,11 +23,13 @@ dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 
 ipv4_la_SOURCES = ipv4.c
 
+rtnllink_la_SOURCES = rtnllink.c inet.h inet.c
+
+dnsproxy_la_SOURCES = dnsproxy.c
+
 resolvconf_la_SOURCES = resolvconf.c
 
 resolvfile_la_SOURCES = resolvfile.c
-
-rtnllink_la_SOURCES = rtnllink.c inet.h inet.c
 
 if POLKIT
 plugin_LTLIBRARIES += polkit.la
