@@ -1,2 +1,11 @@
+ver 0.2:
+	Add support for indicating network changes.
+	Add support for signal strength property.
+	Add support for unique device names.
+	Fix broken device enumeration.
+	Fix issue with device removal callback.
+	Fix issue with wpa_supplicant disconnecting.
+	Fix D-Bus access policy configuration.
+
 ver 0.1:
 	Initial public release.
