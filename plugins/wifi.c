@@ -41,12 +41,14 @@
 #include "inet.h"
 #include "supplicant.h"
 
-#define CLEANUP_PENDING_TIMEOUT  8	/* in seconds */
+#define CLEANUP_TIMEOUT   8	/* in seconds */
+#define INACTIVE_TIMEOUT  12	/* in seconds */
 
 struct wifi_data {
 	GSList *current;
 	GSList *pending;
-	guint timer;
+	guint cleanup_timer;
+	guint inactive_timer;
 	gchar *identifier;
 	gboolean connected;
 };
@@ -160,6 +162,25 @@ static struct connman_element *find_pending_element(struct wifi_data *data,
 	return NULL;
 }
 
+static gboolean inactive_scan(gpointer user_data)
+{
+	struct connman_element *device = user_data;
+	struct wifi_data *data = connman_element_get_data(device);
+
+	DBG("");
+
+	if (data->cleanup_timer > 0) {
+		g_source_remove(data->cleanup_timer);
+		data->cleanup_timer = 0;
+	}
+
+	__supplicant_scan(device);
+
+	data->inactive_timer = 0;
+
+	return FALSE;
+}
+
 static void state_change(struct connman_element *parent,
 						enum supplicant_state state)
 {
@@ -167,6 +188,10 @@ static void state_change(struct connman_element *parent,
 	struct connman_element *element;
 
 	DBG("state %d", state);
+
+	if (state == STATE_INACTIVE && data->inactive_timer == 0)
+		data->inactive_timer = g_timeout_add_seconds(INACTIVE_TIMEOUT,
+							inactive_scan, parent);
 
 	if (data == NULL)
 		return;
@@ -212,7 +237,7 @@ static gboolean cleanup_pending(gpointer user_data)
 	g_slist_free(data->pending);
 	data->pending = NULL;
 
-	data->timer = 0;
+	data->cleanup_timer = 0;
 
 	return FALSE;
 }
@@ -227,8 +252,10 @@ static void clear_results(struct connman_element *parent)
 	data->pending = data->current;
 	data->current = NULL;
 
-	if (data->timer == 0)
-		data->timer = g_timeout_add_seconds(CLEANUP_PENDING_TIMEOUT,
+	if (data->cleanup_timer > 0)
+		return;
+
+	data->cleanup_timer = g_timeout_add_seconds(CLEANUP_TIMEOUT,
 							cleanup_pending, data);
 }
 
@@ -378,9 +405,14 @@ static int wifi_disable(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	if (data->timer > 0) {
-		g_source_remove(data->timer);
-		data->timer = 0;
+	if (data->cleanup_timer > 0) {
+		g_source_remove(data->cleanup_timer);
+		data->cleanup_timer = 0;
+	}
+
+	if (data->inactive_timer > 0) {
+		g_source_remove(data->inactive_timer);
+		data->inactive_timer = 0;
 	}
 
 	__supplicant_disconnect(element);
