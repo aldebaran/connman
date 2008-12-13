@@ -254,17 +254,10 @@ static void scan_result(struct connman_element *parent,
 	temp = g_strdup(network->identifier);
 
 	for (i = 0; i < strlen(temp); i++) {
-		if (temp[i] == ' ' || temp[i] == '.')
+		gchar tmp = g_ascii_tolower(temp[i]);
+
+		if (tmp < 'a' || tmp > 'z')
 			temp[i] = '_';
-		else if (temp[i] == '-' || temp[i] == '+')
-			temp[i] = '_';
-		else if (temp[i] == '!' || temp[i] == '?')
-			temp[i] = '_';
-		else if (temp[i] == '(' || temp[i] == ')')
-			temp[i] = '_';
-		else if (g_ascii_isprint(temp[i]) == FALSE)
-			temp[i] = '_';
-		temp[i] = g_ascii_tolower(temp[i]);
 	}
 
 	element = find_pending_element(data, network->identifier);
