@@ -46,10 +46,9 @@ enum connman_element_state {
 
 enum connman_element_policy {
 	CONNMAN_ELEMENT_POLICY_UNKNOWN = 0,
-	CONNMAN_ELEMENT_POLICY_OFF     = 1,
+	CONNMAN_ELEMENT_POLICY_IGNORE  = 1,
 	CONNMAN_ELEMENT_POLICY_AUTO    = 2,
-	CONNMAN_ELEMENT_POLICY_IGNORE  = 3,
-	CONNMAN_ELEMENT_POLICY_ASK     = 4,
+	CONNMAN_ELEMENT_POLICY_ASK     = 3,
 };
 
 enum connman_element_type {
