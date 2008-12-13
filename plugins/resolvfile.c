@@ -24,29 +24,25 @@
 #endif
 
 #include <stdio.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/stat.h>
 
 #include <connman/plugin.h>
-#include <connman/driver.h>
+#include <connman/resolver.h>
 #include <connman/log.h>
 
-static int resolvfile_probe(struct connman_element *element)
+#include <glib.h>
+
+static int resolvfile_append(const char *interface, const char *domain,
+							const char *server)
 {
-	const char *nameserver = NULL;
-	struct connman_element *internet;
-	gchar *cmd;
+	char *cmd;
 	int fd, len, err;
 
-	DBG("element %p name %s", element, element->name);
-
-	connman_element_get_value(element,
-			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
-
-	if (nameserver == NULL)
-		return -EINVAL;
+	DBG("server %s", server);
 
 	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT,
 					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
@@ -55,7 +51,7 @@ static int resolvfile_probe(struct connman_element *element)
 
 	err = ftruncate(fd, 0);
 
-	cmd = g_strdup_printf("nameserver %s\n", nameserver);
+	cmd = g_strdup_printf("nameserver %s\n", server);
 
 	len = write(fd, cmd, strlen(cmd));
 
@@ -63,36 +59,32 @@ static int resolvfile_probe(struct connman_element *element)
 
 	close(fd);
 
-	internet = connman_element_create(NULL);
+	return 0;
+}
 
-	internet->type = CONNMAN_ELEMENT_TYPE_CONNECTION;
-
-	connman_element_register(internet, element);
+static int resolvfile_remove(const char *interface, const char *domain,
+							const char *server)
+{
+	DBG("server %s", server);
 
 	return 0;
 }
 
-static void resolvfile_remove(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-}
-
-static struct connman_driver resolvfile_driver = {
-	.name		= "resolvconf",
-	.type		= CONNMAN_ELEMENT_TYPE_RESOLVER,
-	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
-	.probe		= resolvfile_probe,
+static struct connman_resolver resolvfile_resolver = {
+	.name		= "resolvfile",
+	.priority	= CONNMAN_RESOLVER_PRIORITY_LOW,
+	.append		= resolvfile_append,
 	.remove		= resolvfile_remove,
 };
 
 static int resolvfile_init(void)
 {
-	return connman_driver_register(&resolvfile_driver);
+	return connman_resolver_register(&resolvfile_resolver);
 }
 
 static void resolvfile_exit(void)
 {
-	connman_driver_unregister(&resolvfile_driver);
+	connman_resolver_unregister(&resolvfile_resolver);
 }
 
 CONNMAN_PLUGIN_DEFINE(resolvfile, "Name resolver plugin", VERSION,

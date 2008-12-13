@@ -23,41 +23,31 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <unistd.h>
 #include <stdlib.h>
 
 #include <connman/plugin.h>
-#include <connman/driver.h>
+#include <connman/resolver.h>
 #include <connman/log.h>
 
-#include "inet.h"
+#include <glib.h>
 
 #define RESOLVCONF "/sbin/resolvconf"
 
-static int resolvconf_probe(struct connman_element *element)
+static int resolvconf_append(const char *interface, const char *domain,
+							const char *server)
 {
-	const char *nameserver = NULL;
-	struct connman_element *internet;
-	gchar *cmd, *name;
+	char *cmd;
 	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("interface %s server %s", interface, server);
 
 	if (access(RESOLVCONF, X_OK) < 0)
 		return -errno;
 
-	connman_element_get_value(element,
-			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
-
-	if (nameserver == NULL)
-		return -EINVAL;
-
-	name = inet_index2name(element->index);
-
 	cmd = g_strdup_printf("echo \"nameserver %s\" | %s -a %s",
-						nameserver, RESOLVCONF, name);
-
-	g_free(name);
+						server, RESOLVCONF, interface);
 
 	DBG("%s", cmd);
 
@@ -66,27 +56,18 @@ static int resolvconf_probe(struct connman_element *element)
 
 	g_free(cmd);
 
-	internet = connman_element_create(NULL);
-
-	internet->type = CONNMAN_ELEMENT_TYPE_CONNECTION;
-
-	connman_element_register(internet, element);
-
-	return 0;
+	return err;
 }
 
-static void resolvconf_remove(struct connman_element *element)
+static int resolvconf_remove(const char *interface, const char *domain,
+							const char *server)
 {
-	gchar *cmd, *name;
+	char *cmd;
 	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("interface %s server %s", interface, server);
 
-	name = inet_index2name(element->index);
-
-	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, name);
-
-	g_free(name);
+	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, interface);
 
 	DBG("%s", cmd);
 
@@ -94,24 +75,25 @@ static void resolvconf_remove(struct connman_element *element)
 	err = 0;
 
 	g_free(cmd);
+
+	return err;
 }
 
-static struct connman_driver resolvconf_driver = {
+static struct connman_resolver resolvconf_resolver = {
 	.name		= "resolvconf",
-	.type		= CONNMAN_ELEMENT_TYPE_RESOLVER,
-	.priority	= CONNMAN_DRIVER_PRIORITY_HIGH,
-	.probe		= resolvconf_probe,
+	.priority	= CONNMAN_RESOLVER_PRIORITY_DEFAULT,
+	.append		= resolvconf_append,
 	.remove		= resolvconf_remove,
 };
 
 static int resolvconf_init(void)
 {
-	return connman_driver_register(&resolvconf_driver);
+	return connman_resolver_register(&resolvconf_resolver);
 }
 
 static void resolvconf_exit(void)
 {
-	connman_driver_unregister(&resolvconf_driver);
+	connman_resolver_unregister(&resolvconf_resolver);
 }
 
 CONNMAN_PLUGIN_DEFINE(resolvconf, "Name resolver plugin", VERSION,

@@ -37,7 +37,10 @@
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
+#include <connman/resolver.h>
 #include <connman/log.h>
+
+#include "inet.h"
 
 enum connman_ipv4_method {
 	CONNMAN_IPV4_METHOD_UNKNOWN = 0,
@@ -57,7 +60,7 @@ struct connman_ipv4 {
 };
 
 static int set_ipv4(struct connman_element *element,
-						struct connman_ipv4 *ipv4)
+			struct connman_ipv4 *ipv4, const char *nameserver)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
@@ -131,6 +134,8 @@ static int set_ipv4(struct connman_element *element,
 		return -1;
 	}
 
+	connman_resolver_append(ifr.ifr_name, NULL, nameserver);
+
 	return 0;
 }
 
@@ -156,6 +161,8 @@ static int clear_ipv4(struct connman_element *element)
 
 	DBG("ifname %s", ifr.ifr_name);
 
+	connman_resolver_remove_all(ifr.ifr_name);
+
 	addr = (struct sockaddr_in *) &ifr.ifr_addr;
 	addr->sin_family = AF_INET;
 	addr->sin_addr.s_addr = INADDR_ANY;
@@ -175,9 +182,10 @@ static int clear_ipv4(struct connman_element *element)
 
 static int ipv4_probe(struct connman_element *element)
 {
-	struct connman_element *resolver;
+	struct connman_element *connection;
 	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
+	const char *nameserver = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -187,6 +195,9 @@ static int ipv4_probe(struct connman_element *element)
 				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 
 	DBG("address %s", address);
 	DBG("netmask %s", netmask);
@@ -200,14 +211,14 @@ static int ipv4_probe(struct connman_element *element)
 	ipv4.netmask.s_addr = inet_addr(netmask);
 	ipv4.gateway.s_addr = inet_addr(gateway);
 
-	set_ipv4(element, &ipv4);
+	set_ipv4(element, &ipv4, nameserver);
 
-	resolver = connman_element_create(NULL);
+	connection = connman_element_create(NULL);
 
-	resolver->type = CONNMAN_ELEMENT_TYPE_RESOLVER;
-	resolver->index = element->index;
+	connection->type = CONNMAN_ELEMENT_TYPE_CONNECTION;
+	connection->index = element->index;
 
-	connman_element_register(resolver, element);
+	connman_element_register(connection, element);
 
 	return 0;
 }
