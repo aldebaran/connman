@@ -181,7 +181,6 @@ int connman_resolver_remove_all(const char *interface)
 
 	for (list = entry_list; list; list = list->next) {
 		struct entry_data *entry = list->data;
-		struct connman_resolver *resolver;
 
 		if (g_str_equal(entry->interface, interface) == FALSE)
 			continue;
@@ -210,7 +209,7 @@ static int selftest_remove(const char *interface, const char *domain,
 	return 0;
 }
 
-static struct connman_resolver selftest = {
+static struct connman_resolver selftest_resolver = {
 	.name     = "selftest",
 	.priority = CONNMAN_RESOLVER_PRIORITY_HIGH + 42,
 	.append   = selftest_append,
@@ -221,14 +220,14 @@ int __connman_resolver_selftest(void)
 {
 	connman_resolver_append("wlan0", "lwn.net", "192.168.0.1");
 
-	connman_resolver_register(&selftest);
+	connman_resolver_register(&selftest_resolver);
 
 	connman_resolver_append("eth0", "moblin.org", "192.168.42.1");
 	connman_resolver_append("wlan0", "lwn.net", "192.168.0.2");
 
 	connman_resolver_remove_all("wlan0");
 
-	connman_resolver_unregister(&selftest);
+	connman_resolver_unregister(&selftest_resolver);
 
 	return 0;
 }
