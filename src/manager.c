@@ -207,49 +207,15 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return reply;
 }
 
-#if 0
-static DBusMessage *list_elements(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	DBusMessageIter array, iter;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
-	__connman_element_list(CONNMAN_ELEMENT_TYPE_UNKNOWN, &iter);
-
-	dbus_message_iter_close_container(&array, &iter);
-
-	return reply;
-}
-#endif
-
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",   "",  "a{sv}", get_properties   },
 	{ "RegisterAgent",   "o", "",      register_agent   },
 	{ "UnregisterAgent", "o", "",      unregister_agent },
-#if 0
-	{ "ListElements",    "",  "ao",    list_elements    },
-#endif
 	{ },
 };
 
 static GDBusSignalTable manager_signals[] = {
 	{ "PropertyChanged", "sv" },
-#if 0
-	{ "ElementAdded",    "o"  },
-	{ "ElementUpdated",  "o"  },
-	{ "ElementRemoved",  "o"  },
-#endif
 	{ },
 };
 
