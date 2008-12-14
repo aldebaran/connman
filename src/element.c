@@ -422,10 +422,6 @@ static void append_networks(struct connman_element *element,
 	DBusMessageIter value, iter;
 	const char *key = "Networks";
 
-	if (element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIFI &&
-			element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIMAX)
-		return;
-
 	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
 
 	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
@@ -476,12 +472,13 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
-	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
+			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX) {
+		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
-
-	append_networks(element, &entry);
-
-	dbus_message_iter_close_container(&dict, &entry);
+		append_networks(element, &entry);
+		dbus_message_iter_close_container(&dict, &entry);
+	}
 
 	add_common_properties(element, &dict);
 
