@@ -41,6 +41,11 @@ static void create_element(struct connman_element *parent,
 	element->type = type;
 	element->index = parent->index;
 
+	if (parent->parent)
+		element->subtype = parent->parent->subtype;
+	else
+		element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+
 	connman_element_register(element, parent);
 }
 
