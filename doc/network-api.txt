@@ -51,6 +51,10 @@ Properties	string Name [readonly]
 			For manually created networks this is set by
 			default.
 
+		uint8 Strength [readonly]
+
+			Indicates the signal strength of the network.
+
 		array{byte} WiFi.SSID [readonly]
 
 			If the network type is WiFi, then this property is

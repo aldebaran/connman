@@ -42,7 +42,7 @@ for path in properties["Devices"]:
 			if (key == "WiFi.SSID"):
 				ssid = convert_ssid(properties[key])
 				print "        %s = [ %s ]" % (key, ssid)
-			elif (key == "WiFi.Strength"):
+			elif (key == "Strength"):
 				print "        %s = %d" % (key, properties[key])
 			else:
 				print "        %s = %s" % (key, properties[key])
