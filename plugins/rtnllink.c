@@ -74,9 +74,9 @@ static void rtnllink_newlink(unsigned short type, int index,
 		int sk;
 
 		snprintf(bridge_path, PATH_MAX,
-					"/sys/class/net/%s/bridge", name);
+					"/sys/class/net/%s/bridge", devname);
 		snprintf(wimax_path, PATH_MAX,
-					"/sys/class/net/%s/wimax", name);
+					"/sys/class/net/%s/wimax", devname);
 
 		memset(&iwr, 0, sizeof(iwr));
 		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
