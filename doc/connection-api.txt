@@ -17,7 +17,11 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string IPv4.Method [readonly]
+Properties	string Type [readonly]
+
+			The connection type (for example wifi etc.)
+
+		string IPv4.Method [readonly]
 
 			Indicates the way how the IPv4 settings were
 			configured. Possible values here are "dhcp"

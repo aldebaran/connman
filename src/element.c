@@ -679,12 +679,13 @@ static DBusMessage *network_set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *get_connection_properties(DBusConnection *conn,
+static DBusMessage *connection_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -698,6 +699,11 @@ static DBusMessage *get_connection_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = subtype2string(element->subtype);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &str);
 
 	add_common_properties(element, &dict);
 
@@ -724,7 +730,7 @@ static GDBusMethodTable network_methods[] = {
 };
 
 static GDBusMethodTable connection_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_connection_properties },
+	{ "GetProperties", "",   "a{sv}", connection_get_properties },
 	{ },
 };
 
