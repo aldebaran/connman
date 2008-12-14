@@ -1,3 +1,10 @@
+ver 0.3:
+	Add support for automatically connecting known networks.
+	Add improved framework for handling resolver details.
+	Add generic signal strength property.
+	Fix bridge and WiMAX device detection.
+	Fix network listing for Ethernet devices.
+
 ver 0.2:
 	Add support for indicating network changes.
 	Add support for signal strength property.
