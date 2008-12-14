@@ -1846,7 +1846,8 @@ int connman_element_register(struct connman_element *element,
 	if (element->devname == NULL)
 		element->devname = g_strdup(element->name);
 
-	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
+	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
+			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
 		if (g_pattern_match_simple(device_filter,
 						element->devname) == FALSE) {
 			DBG("ignoring %s [%s] device", element->name,
