@@ -27,6 +27,11 @@ Properties	string Type [readonly]
 
 			This property is optional and not always present.
 
+		boolean Default [readonly]
+
+			Indicates if it is a default connection. It is
+			possible to have multiple default connections.
+
 		string IPv4.Method [readonly]
 
 			Indicates the way how the IPv4 settings were

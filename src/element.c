@@ -330,6 +330,10 @@ static void emit_enabled_signal(DBusConnection *conn,
 		iface = CONNMAN_NETWORK_INTERFACE;
 		key = "Connected";
 		break;
+	case CONNMAN_ELEMENT_TYPE_CONNECTION:
+		iface = CONNMAN_CONNECTION_INTERFACE;
+		key = "Default";
+		break;
 	default:
 		return;
 	}
@@ -711,6 +715,9 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &element->strength);
+
+	connman_dbus_dict_append_variant(&dict, "Default",
+					DBUS_TYPE_BOOLEAN, &element->enabled);
 
 	add_common_properties(element, &dict);
 
