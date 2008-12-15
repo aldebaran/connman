@@ -1139,6 +1139,9 @@ static void emit_property_changed(DBusConnection *conn,
 	case CONNMAN_ELEMENT_TYPE_NETWORK:
 		iface = CONNMAN_NETWORK_INTERFACE;
 		break;
+	case CONNMAN_ELEMENT_TYPE_CONNECTION:
+		iface = CONNMAN_CONNECTION_INTERFACE;
+		break;
 	default:
 		return;
 	}
@@ -1984,11 +1987,21 @@ void connman_element_unregister_children(struct connman_element *element)
 static gboolean update_element(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
+	struct connman_element *root = user_data;
 
 	DBG("element %p name %s", element, element->name);
 
 	if (element->driver && element->driver->update)
 		element->driver->update(element);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION &&
+				root->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
+		if (element->strength != root->strength) {
+			element->strength = root->strength;
+			emit_property_changed(connection, element, "Strength",
+					DBUS_TYPE_BYTE, &element->strength);
+		}
+	}
 
 	return FALSE;
 }
@@ -2003,7 +2016,7 @@ void connman_element_update(struct connman_element *element)
 
 	if (node != NULL)
 		g_node_traverse(node, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, update_element, NULL);
+				G_TRAVERSE_ALL, -1, update_element, element);
 }
 
 int connman_element_set_enabled(struct connman_element *element,
