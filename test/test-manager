@@ -10,11 +10,11 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 properties = manager.GetProperties()
 
 def print_properties(key, value):
-	if (key == "Profiles"):
+	if key == "Profiles":
 		interface = "org.moblin.connman.Profile"
-	elif (key == "Devices"):
+	elif key == "Devices":
 		interface = "org.moblin.connman.Device"
-	elif (key == "Connections"):
+	elif key == "Connections":
 		interface = "org.moblin.connman.Connection"
 	else:
 		return
@@ -28,10 +28,16 @@ def print_properties(key, value):
 		properties = obj.GetProperties()
 
 		for key in properties.keys():
-			if (key == "Networks"):
+			if key == "Networks":
 				continue
 
-			if (key == "Strength"):
+			if key in ["Powered", "Connected", "Available",
+							"Remember", "Default"]:
+				if properties[key] == dbus.Boolean(1):
+					val = "true"
+				else:
+					val = "false"
+			elif key == "Strength":
 				val = int(properties[key])
 			else:
 				val = str(properties[key])
