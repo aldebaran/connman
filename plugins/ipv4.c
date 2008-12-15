@@ -223,7 +223,54 @@ static int set_route(struct connman_element *element, const char *gateway)
 
 	err = ioctl(sk, SIOCADDRT, &rt);
 	if (err < 0)
-		DBG("default route failed (%s)", strerror(errno));
+		DBG("default route setting failed (%s)", strerror(errno));
+
+	close(sk);
+
+	return err;
+}
+
+static int del_route(struct connman_element *element, const char *gateway)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	DBG("element %p", element);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
+
+	addr = (struct sockaddr_in *) &rt.rt_dst;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	addr = (struct sockaddr_in *) &rt.rt_gateway;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = inet_addr(gateway);
+
+	addr = (struct sockaddr_in *) &rt.rt_genmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	err = ioctl(sk, SIOCDELRT, &rt);
+	if (err < 0)
+		DBG("default route removal failed (%s)", strerror(errno));
 
 	close(sk);
 
@@ -248,11 +295,11 @@ static int conn_probe(struct connman_element *element)
 	DBG("gateway %s", gateway);
 
 	if (gateway == NULL)
-		return -EINVAL;
+		return 0;
 
 	if (g_slist_length(gateway_list) > 0) {
 		DBG("default already present");
-		return -EALREADY;
+		return 0;
 	}
 
 	set_route(element, gateway);
@@ -267,11 +314,51 @@ static void conn_remove(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 }
 
+static int conn_enable(struct connman_element *element)
+{
+	const char *gateway = NULL;
+
+	DBG("element %p name %s", element, element->name);
+
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+
+	DBG("gateway %s", gateway);
+
+	if (gateway == NULL)
+		return -EINVAL;
+
+	set_route(element, gateway);
+
+	return 0;
+}
+
+static int conn_disable(struct connman_element *element)
+{
+	const char *gateway = NULL;
+
+	DBG("element %p name %s", element, element->name);
+
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+
+	DBG("gateway %s", gateway);
+
+	if (gateway == NULL)
+		return -EINVAL;
+
+	del_route(element, gateway);
+
+	return 0;
+}
+
 static struct connman_driver conn_driver = {
 	.name		= "ipv4-connection",
 	.type		= CONNMAN_ELEMENT_TYPE_CONNECTION,
 	.probe		= conn_probe,
 	.remove		= conn_remove,
+	.enable		= conn_enable,
+	.disable	= conn_disable,
 };
 
 static int ipv4_probe(struct connman_element *element)
