@@ -247,7 +247,7 @@ static void state_change(struct connman_element *device,
 	}
 
 reconnect:
-	if (state == STATE_INACTIVE || state == STATE_DISCONNECTED) {
+	if (state == STATE_INACTIVE) {
 		data->connected = FALSE;
 		connect_known_networks(device);
 	}
