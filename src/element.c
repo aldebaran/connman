@@ -52,6 +52,8 @@ static struct {
 		DBUS_TYPE_STRING, "IPv4.Netmask" },
 	{ CONNMAN_PROPERTY_ID_IPV4_GATEWAY,
 		DBUS_TYPE_STRING, "IPv4.Gateway" },
+	{ CONNMAN_PROPERTY_ID_IPV4_BROADCAST,
+		DBUS_TYPE_STRING, "IPv4.Broadcast" },
 	{ CONNMAN_PROPERTY_ID_IPV4_NAMESERVER,
 		DBUS_TYPE_STRING, "IPv4.Nameserver" },
 
@@ -1436,6 +1438,12 @@ int connman_element_set_property(struct connman_element *element,
 		element->ipv4.gateway = g_strdup(*((const char **) value));
 		__connman_element_unlock(element);
 		break;
+	case CONNMAN_PROPERTY_ID_IPV4_BROADCAST:
+		__connman_element_lock(element);
+		g_free(element->ipv4.broadcast);
+		element->ipv4.broadcast = g_strdup(*((const char **) value));
+		__connman_element_unlock(element);
+		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
 		__connman_element_lock(element);
 		g_free(element->ipv4.nameserver);
@@ -1490,6 +1498,14 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.gateway;
+		__connman_element_unlock(element);
+		break;
+	case CONNMAN_PROPERTY_ID_IPV4_BROADCAST:
+		if (element->ipv4.broadcast == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		__connman_element_lock(element);
+		*((char **) value) = element->ipv4.broadcast;
 		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
