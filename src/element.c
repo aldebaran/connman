@@ -518,9 +518,9 @@ static DBusMessage *device_set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &powered);
 
 		if (powered == TRUE)
-			do_enable(conn, msg, data);
+			do_enable(conn, msg, element);
 		else
-			do_disable(conn, msg, data);
+			do_disable(conn, msg, element);
 	} else
 		set_common_property(element, name, &value);
 
@@ -726,6 +726,39 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *connection_set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_element *element = data;
+	DBusMessageIter iter, value;
+	const char *name;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
+
+	if (g_str_equal(name, "Default") == TRUE) {
+		dbus_bool_t enabled;
+
+		dbus_message_iter_get_basic(&value, &enabled);
+
+		if (enabled == TRUE)
+			return do_enable(conn, msg, element);
+		else
+			return do_disable(conn, msg, element);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties", "",      "a{sv}", device_get_properties },
 	{ "SetProperty",   "sv",    "",      device_set_property   },
@@ -745,6 +778,7 @@ static GDBusMethodTable network_methods[] = {
 
 static GDBusMethodTable connection_methods[] = {
 	{ "GetProperties", "",   "a{sv}", connection_get_properties },
+	{ "SetProperty",   "sv", "",      connection_set_property   },
 	{ },
 };
 
