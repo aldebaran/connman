@@ -89,5 +89,5 @@ AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
 
 AC_OUTPUT(Makefile gdbus/Makefile include/Makefile src/Makefile doc/Makefile
-		test/Makefile plugins/Makefile scripts/Makefile scripts/connman
-				src/connman.service doc/version.xml connman.pc)
+		test/Makefile plugins/Makefile client/Makefile scripts/Makefile
+		scripts/connman src/connman.service doc/version.xml connman.pc)
