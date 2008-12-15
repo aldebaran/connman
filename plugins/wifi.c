@@ -366,6 +366,8 @@ static void scan_result(struct connman_element *device,
 
 		connman_element_set_static_property(element, "Strength",
 					DBUS_TYPE_BYTE, &element->strength);
+
+		connman_element_update(element);
 	}
 
 	data->current = g_slist_append(data->current, element);
