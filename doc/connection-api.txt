@@ -21,6 +21,12 @@ Properties	string Type [readonly]
 
 			The connection type (for example wifi etc.)
 
+		uint8 Strength [readonly]
+
+			Indicates the signal strength of the connection.
+
+			This property is optional and not always present.
+
 		string IPv4.Method [readonly]
 
 			Indicates the way how the IPv4 settings were

@@ -705,6 +705,11 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
+	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
+			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX)
+		connman_dbus_dict_append_variant(&dict, "Strength",
+					DBUS_TYPE_BYTE, &element->strength);
+
 	add_common_properties(element, &dict);
 
 	dbus_message_iter_close_container(&array, &dict);
@@ -1739,6 +1744,20 @@ static void emit_state_change(DBusConnection *conn, const char *state)
 	g_dbus_send_message(conn, signal);
 }
 
+static void set_signal_strength(struct connman_element *connection)
+{
+	struct connman_element *element = connection;
+
+	while (element != NULL) {
+		if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
+			connection->strength = element->strength;
+			break;
+		}
+
+		element = element->parent;
+	}
+}
+
 static void register_element(gpointer data, gpointer user_data)
 {
 	struct connman_element *element = data;
@@ -1805,6 +1824,7 @@ static void register_element(gpointer data, gpointer user_data)
 			connman_error("Failed to register %s connection",
 								element->path);
 		else {
+			set_signal_strength(element);
 			emit_connections_signal(connection);
 			emit_state_change(connection, "online");
 		}
