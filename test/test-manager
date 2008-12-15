@@ -30,7 +30,13 @@ def print_properties(key, value):
 		for key in properties.keys():
 			if (key == "Networks"):
 				continue
-			print "        %s = %s" % (key, properties[key])
+
+			if (key == "Strength"):
+				val = int(properties[key])
+			else:
+				val = str(properties[key])
+
+			print "        %s = %s" % (key, val)
 
 		if "Networks" in properties.keys():
 			list = ""
