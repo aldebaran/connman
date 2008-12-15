@@ -362,12 +362,14 @@ static void scan_result(struct connman_element *device,
 	} else {
 		data->pending = g_slist_remove(data->pending, element);
 
-		element->strength = network->quality;
+		if (element->strength != network->quality) {
+			element->strength = network->quality;
 
-		connman_element_set_static_property(element, "Strength",
+			connman_element_set_static_property(element, "Strength",
 					DBUS_TYPE_BYTE, &element->strength);
 
-		connman_element_update(element);
+			connman_element_update(element);
+		}
 	}
 
 	data->current = g_slist_append(data->current, element);
