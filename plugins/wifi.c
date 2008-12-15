@@ -316,9 +316,9 @@ static void scan_result(struct connman_element *device,
 	temp = g_strdup(network->identifier);
 
 	for (i = 0; i < strlen(temp); i++) {
-		gchar tmp = g_ascii_tolower(temp[i]);
-
-		if (tmp < 'a' || tmp > 'z')
+		char tmp = temp[i];
+		if ((tmp < '0' || tmp > '9') && (tmp < 'A' || tmp > 'Z') &&
+						(tmp < 'a' || tmp > 'z'))
 			temp[i] = '_';
 	}
 
