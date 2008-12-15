@@ -51,8 +51,7 @@ static int resolvconf_append(const char *interface, const char *domain,
 
 	DBG("%s", cmd);
 
-	//err = system(cmd);
-	err = 0;
+	err = system(cmd);
 
 	g_free(cmd);
 
@@ -71,8 +70,7 @@ static int resolvconf_remove(const char *interface, const char *domain,
 
 	DBG("%s", cmd);
 
-	//err = system(cmd);
-	err = 0;
+	err = system(cmd);
 
 	g_free(cmd);
 
