@@ -43,12 +43,15 @@ struct connman_rtnl {
 					unsigned flags, unsigned change);
 	void (*dellink) (unsigned short type, int index,
 					unsigned flags, unsigned change);
+	void (*newgateway) (int index, const char *gateway);
+	void (*delgateway) (int index, const char *gateway);
 };
 
 extern int connman_rtnl_register(struct connman_rtnl *rtnl);
 extern void connman_rtnl_unregister(struct connman_rtnl *rtnl);
 
 int connman_rtnl_send_getlink(void);
+int connman_rtnl_send_getroute(void);
 
 #ifdef __cplusplus
 }

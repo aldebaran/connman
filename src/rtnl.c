@@ -82,8 +82,6 @@ static void process_newlink(unsigned short type, int index,
 {
 	GSList *list;
 
-	DBG("index %d", index);
-
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
@@ -97,14 +95,75 @@ static void process_dellink(unsigned short type, int index,
 {
 	GSList *list;
 
-	DBG("index %d", index);
-
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
 		if (rtnl->dellink)
 			rtnl->dellink(type, index, flags, change);
 	}
+}
+
+static char *extract_gateway(struct rtmsg *msg, int bytes, int *index)
+{
+	char *gateway = NULL;
+	struct in_addr addr;
+	struct rtattr *attr;
+
+	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case RTA_GATEWAY:
+			addr = *((struct in_addr *) RTA_DATA(attr));
+			g_free(gateway);
+			gateway = g_strdup(inet_ntoa(addr));
+			break;
+		case RTA_OIF:
+			*index = *((int *) RTA_DATA(attr));
+			break;
+		}
+	}
+
+	return gateway;
+}
+
+static void process_newgateway(struct rtmsg *msg, int bytes)
+{
+	int index = -1;
+	char *gateway;
+	GSList *list;
+
+	gateway = extract_gateway(msg, bytes, &index);
+	if (gateway == NULL || index < 0)
+		return;
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->newgateway)
+			rtnl->newgateway(index, gateway);
+	}
+
+	g_free(gateway);
+}
+
+static void process_delgateway(struct rtmsg *msg, int bytes)
+{
+	int index = -1;
+	char *gateway;
+	GSList *list;
+
+	gateway = extract_gateway(msg, bytes, &index);
+	if (gateway == NULL || index < 0)
+		return;
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->delgateway)
+			rtnl->delgateway(index, gateway);
+	}
+
+	g_free(gateway);
 }
 
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
@@ -219,7 +278,9 @@ static void rtnl_newlink(struct nlmsghdr *hdr)
 
 	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 
-	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
+	DBG("ifi_type %d ifi_index %d ifi_flags 0x%04x ifi_change 0x%04x",
+					msg->ifi_type, msg->ifi_index,
+					msg->ifi_flags, msg->ifi_change);
 
 	process_newlink(msg->ifi_type, msg->ifi_index,
 					msg->ifi_flags, msg->ifi_change);
@@ -233,7 +294,9 @@ static void rtnl_dellink(struct nlmsghdr *hdr)
 
 	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 
-	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
+	DBG("ifi_type %d ifi_index %d ifi_flags 0x%04x ifi_change 0x%04x",
+					msg->ifi_type, msg->ifi_index,
+					msg->ifi_flags, msg->ifi_change);
 
 	process_dellink(msg->ifi_type, msg->ifi_index,
 					msg->ifi_flags, msg->ifi_change);
@@ -285,6 +348,7 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 
 static void rtnl_route(struct nlmsghdr *hdr)
 {
+#if 0
 	struct rtmsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -329,6 +393,146 @@ static void rtnl_route(struct nlmsghdr *hdr)
 			break;
 		}
 	}
+#endif
+}
+
+static void rtnl_newroute(struct nlmsghdr *hdr)
+{
+	struct rtmsg *msg;
+
+	msg = (struct rtmsg *) NLMSG_DATA(hdr);
+
+	if (msg->rtm_type == RTN_UNICAST && msg->rtm_table == RT_TABLE_MAIN &&
+					msg->rtm_scope == RT_SCOPE_UNIVERSE) {
+		DBG("rtm_table %d rtm_scope %d rtm_type %d rtm_flags 0x%04x",
+					msg->rtm_table, msg->rtm_scope,
+					msg->rtm_type, msg->rtm_flags);
+		process_newgateway(msg, RTM_PAYLOAD(hdr));
+	}
+
+	rtnl_route(hdr);
+}
+
+static void rtnl_delroute(struct nlmsghdr *hdr)
+{
+	struct rtmsg *msg;
+
+	msg = (struct rtmsg *) NLMSG_DATA(hdr);
+
+	if (msg->rtm_type == RTN_UNICAST && msg->rtm_table == RT_TABLE_MAIN &&
+					msg->rtm_scope == RT_SCOPE_UNIVERSE) {
+		DBG("rtm_table %d rtm_scope %d rtm_type %d rtm_flags 0x%04x",
+					msg->rtm_table, msg->rtm_scope,
+					msg->rtm_type, msg->rtm_flags);
+		process_delgateway(msg, RTM_PAYLOAD(hdr));
+	}
+
+	rtnl_route(hdr);
+}
+
+static const char *type2string(uint16_t type)
+{
+	switch (type) {
+	case NLMSG_NOOP:
+		return "NOOP";
+	case NLMSG_ERROR:
+		return "ERROR";
+	case NLMSG_DONE:
+		return "DONE";
+	case NLMSG_OVERRUN:
+		return "OVERRUN";
+	case RTM_GETLINK:
+		return "GETLINK";
+	case RTM_NEWLINK:
+		return "NEWLINK";
+	case RTM_DELLINK:
+		return "DELLINK";
+	case RTM_NEWADDR:
+		return "NEWADDR";
+	case RTM_DELADDR:
+		return "DELADDR";
+	case RTM_GETROUTE:
+		return "GETROUTE";
+	case RTM_NEWROUTE:
+		return "NEWROUTE";
+	case RTM_DELROUTE:
+		return "DELROUTE";
+	default:
+		return "UNKNOWN";
+	}
+}
+
+static GIOChannel *channel = NULL;
+
+struct rtnl_request {
+	struct nlmsghdr hdr;
+	struct rtgenmsg msg;
+};
+#define RTNL_REQUEST_SIZE  (sizeof(struct nlmsghdr) + sizeof(struct rtgenmsg))
+
+static GSList *request_list = NULL;
+static guint32 request_seq = 0;
+
+static struct rtnl_request *find_request(guint32 seq)
+{
+	GSList *list;
+
+	for (list = request_list; list; list = list->next) {
+		struct rtnl_request *req = list->data;
+
+		if (req->hdr.nlmsg_seq == seq)
+			return req;
+	}
+
+	return NULL;
+}
+
+static int send_request(struct rtnl_request *req)
+{
+	struct sockaddr_nl addr;
+	int sk;
+
+	DBG("%s len %d type %d flags 0x%04x seq %d",
+				type2string(req->hdr.nlmsg_type),
+				req->hdr.nlmsg_len, req->hdr.nlmsg_type,
+				req->hdr.nlmsg_flags, req->hdr.nlmsg_seq);
+
+	sk = g_io_channel_unix_get_fd(channel);
+
+	memset(&addr, 0, sizeof(addr));
+	addr.nl_family = AF_NETLINK;
+
+	return sendto(sk, req, req->hdr.nlmsg_len, 0,
+				(struct sockaddr *) &addr, sizeof(addr));
+}
+
+static int queue_request(struct rtnl_request *req)
+{
+	request_list = g_slist_append(request_list, req);
+
+	if (g_slist_length(request_list) > 1)
+		return 0;
+
+	return send_request(req);
+}
+
+static int process_response(guint32 seq)
+{
+	struct rtnl_request *req;
+
+	DBG("seq %d", seq);
+
+	req = find_request(seq);
+	if (req != NULL) {
+		request_list = g_slist_remove(request_list, req);
+		g_free(req);
+	}
+
+	req = g_slist_nth_data(request_list, 0);
+	if (req == NULL)
+		return 0;
+
+	return send_request(req);
 }
 
 static void rtnl_message(void *buf, size_t len)
@@ -342,51 +546,38 @@ static void rtnl_message(void *buf, size_t len)
 		if (!NLMSG_OK(hdr, len))
 			break;
 
-		DBG("len %d type %d flags 0x%04x seq %d",
+		DBG("%s len %d type %d flags 0x%04x seq %d",
+					type2string(hdr->nlmsg_type),
 					hdr->nlmsg_len, hdr->nlmsg_type,
 					hdr->nlmsg_flags, hdr->nlmsg_seq);
 
 		switch (hdr->nlmsg_type) {
 		case NLMSG_NOOP:
-			DBG("NOOP");
+		case NLMSG_OVERRUN:
+			return;
+		case NLMSG_DONE:
+			process_response(hdr->nlmsg_seq);
 			return;
 		case NLMSG_ERROR:
 			err = NLMSG_DATA(hdr);
-			DBG("ERROR %d (%s)", -err->error,
+			DBG("error %d (%s)", -err->error,
 						strerror(-err->error));
 			return;
-		case NLMSG_DONE:
-			DBG("DONE");
-			return;
-		case NLMSG_OVERRUN:
-			DBG("OVERRUN");
-			return;
 		case RTM_NEWLINK:
-			DBG("NEWLINK");
 			rtnl_newlink(hdr);
 			break;
 		case RTM_DELLINK:
-			DBG("DELLINK");
 			rtnl_dellink(hdr);
 			break;
 		case RTM_NEWADDR:
-			DBG("NEWADDR");
-			rtnl_addr(hdr);
-			break;
 		case RTM_DELADDR:
-			DBG("DELADDR");
 			rtnl_addr(hdr);
 			break;
 		case RTM_NEWROUTE:
-			DBG("NEWROUTE");
-			rtnl_route(hdr);
+			rtnl_newroute(hdr);
 			break;
 		case RTM_DELROUTE:
-			DBG("DELROUTE");
-			rtnl_route(hdr);
-			break;
-		default:
-			DBG("type %d", hdr->nlmsg_type);
+			rtnl_delroute(hdr);
 			break;
 		}
 
@@ -419,42 +610,44 @@ static gboolean netlink_event(GIOChannel *chan,
 	return TRUE;
 }
 
-static GIOChannel *channel = NULL;
-
-int __connman_rtnl_send(const void *buf, size_t len)
-{
-	struct sockaddr_nl addr;
-	int sk;
-
-	DBG("buf %p len %zd", buf, len);
-
-	sk = g_io_channel_unix_get_fd(channel);
-
-	memset(&addr, 0, sizeof(addr));
-	addr.nl_family = AF_NETLINK;
-
-	return sendto(sk, buf, len, 0,
-			(struct sockaddr *) &addr, sizeof(addr));
-}
-
 int connman_rtnl_send_getlink(void)
 {
-	struct {
-		struct nlmsghdr hdr;
-		struct rtgenmsg msg;
-	} req;
+	struct rtnl_request *req;
 
 	DBG("");
 
-	memset(&req, 0, sizeof(req));
-	req.hdr.nlmsg_len = sizeof(req.hdr) + sizeof(req.msg);
-	req.hdr.nlmsg_type = RTM_GETLINK;
-	req.hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
-	req.hdr.nlmsg_pid = 0;
-	req.hdr.nlmsg_seq = 42;
-	req.msg.rtgen_family = AF_INET;
+	req = g_try_malloc0(RTNL_REQUEST_SIZE);
+	if (req == NULL)
+		return -ENOMEM;
 
-	return __connman_rtnl_send(&req, sizeof(req));
+	req->hdr.nlmsg_len = RTNL_REQUEST_SIZE;
+	req->hdr.nlmsg_type = RTM_GETLINK;
+	req->hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	req->hdr.nlmsg_pid = 0;
+	req->hdr.nlmsg_seq = request_seq++;
+	req->msg.rtgen_family = AF_INET;
+
+	return queue_request(req);
+}
+
+int connman_rtnl_send_getroute(void)
+{
+	struct rtnl_request *req;
+
+	DBG("");
+
+	req = g_try_malloc0(RTNL_REQUEST_SIZE);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->hdr.nlmsg_len = RTNL_REQUEST_SIZE;
+	req->hdr.nlmsg_type = RTM_GETROUTE;
+	req->hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	req->hdr.nlmsg_pid = 0;
+	req->hdr.nlmsg_seq = request_seq++;
+	req->msg.rtgen_family = AF_INET;
+
+	return queue_request(req);
 }
 
 int __connman_rtnl_init(void)
@@ -470,7 +663,7 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK;
+	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_ROUTE;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
 	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
@@ -490,7 +683,24 @@ int __connman_rtnl_init(void)
 
 void __connman_rtnl_cleanup(void)
 {
+	GSList *list;
+
 	DBG("");
+
+	for (list = request_list; list; list = list->next) {
+		struct rtnl_request *req = list->data;
+
+		DBG("%s len %d type %d flags 0x%04x seq %d",
+				type2string(req->hdr.nlmsg_type),
+				req->hdr.nlmsg_len, req->hdr.nlmsg_type,
+				req->hdr.nlmsg_flags, req->hdr.nlmsg_seq);
+
+		g_free(req);
+		list->data = NULL;
+	}
+
+	g_slist_free(request_list);
+	request_list = NULL;
 
 	g_io_channel_shutdown(channel, TRUE, NULL);
 	g_io_channel_unref(channel);
