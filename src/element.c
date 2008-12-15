@@ -1988,7 +1988,9 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
-		emit_state_change(connection, "offline");
+		if (__connman_element_count(NULL,
+					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
+			emit_state_change(connection, "offline");
 		emit_connections_signal(connection);
 
 		g_dbus_unregister_interface(connection, element->path,
