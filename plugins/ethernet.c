@@ -62,12 +62,12 @@ static void ethernet_newlink(unsigned short type, int index,
 		if (ethernet->index != index)
 			continue;
 
-		if ((ethernet->flags & IFF_RUNNING) == (flags & IFF_RUNNING))
+		if ((ethernet->flags & IFF_LOWER_UP) == (flags & IFF_LOWER_UP))
 			continue;
 
 		ethernet->flags = flags;
 
-		if (ethernet->flags & IFF_RUNNING) {
+		if (ethernet->flags & IFF_LOWER_UP) {
 			DBG("carrier on");
 
 			netdev = connman_element_create(NULL);
