@@ -28,10 +28,19 @@ def print_properties(key, value):
 		properties = obj.GetProperties()
 
 		for key in properties.keys():
+			if (key == "Networks"):
+				continue
 			print "        %s = %s" % (key, properties[key])
 
+		if "Networks" in properties.keys():
+			list = ""
+			for path in properties["Networks"]:
+				val = str(path)
+				list = list + val[val.rfind("/") + 1:] + " "
+			print "        Networks = [ %s]" % (list)
+
 for key in properties.keys():
-	if (key in ["Profiles", "Devices", "Connections"]):
+	if key in ["Profiles", "Devices", "Connections"]:
 		print_properties(key, properties[key])
 	else:
 		print "%s" % (key)
