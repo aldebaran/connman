@@ -1,3 +1,12 @@
+ver 0.4:
+	Add DNS proxy resolver plugin.
+	Add support for default connections.
+	Add support for gateway change notifications.
+	Add signal strength property for connections.
+	Add property for connection type.
+	Fix issue with carrier detection.
+	Fix broken resolvconf plugin.
+
 ver 0.3:
 	Add support for automatically connecting known networks.
 	Add improved framework for handling resolver details.
