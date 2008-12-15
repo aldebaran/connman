@@ -368,12 +368,10 @@ static int dnsproxy_init(void)
 		return err;
 
 	err = connman_resolver_register(&dnsproxy_resolver);
-	if (err < 0) {
+	if (err < 0)
 		destroy_listener();
-		return err;
-	}
 
-	return 0;
+	return err;
 }
 
 static void dnsproxy_exit(void)
