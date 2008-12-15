@@ -9,14 +9,30 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 
 properties = manager.GetProperties()
 
-def print_list(key, value):
-	text = ""
+def print_properties(key, value):
+	if (key == "Profiles"):
+		interface = "org.moblin.connman.Profile"
+	elif (key == "Devices"):
+		interface = "org.moblin.connman.Device"
+	elif (key == "Connections"):
+		interface = "org.moblin.connman.Connection"
+	else:
+		return
+
+	print "%s" % (key)
 	for path in value:
-		text = text + str(path) + " "
-	print "%s = %s" % (key, text)
+		print "    %s" % (path)
+		obj = dbus.Interface(bus.get_object("org.moblin.connman", path),
+								interface)
+
+		properties = obj.GetProperties()
+
+		for key in properties.keys():
+			print "        %s = %s" % (key, properties[key])
 
 for key in properties.keys():
 	if (key in ["Profiles", "Devices", "Connections"]):
-		print_list(key, properties[key])
+		print_properties(key, properties[key])
 	else:
-		print "%s = %s" % (key, properties[key])
+		print "%s" % (key)
+		print "    %s" % (properties[key])
