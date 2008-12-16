@@ -511,6 +511,11 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 
 	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
 			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX) {
+		dbus_bool_t scanning = FALSE;
+
+		connman_dbus_dict_append_variant(&dict, "Scanning",
+						DBUS_TYPE_BOOLEAN, &scanning);
+
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 		append_networks(element, &entry);

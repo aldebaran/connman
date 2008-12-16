@@ -31,8 +31,8 @@ def print_properties(key, value):
 			if key == "Networks":
 				continue
 
-			if key in ["Powered", "Connected", "Available",
-							"Remember", "Default"]:
+			if key in ["Powered", "Scanning", "Connected",
+					"Available", "Remember", "Default"]:
 				if properties[key] == dbus.Boolean(1):
 					val = "true"
 				else:
