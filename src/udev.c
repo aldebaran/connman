@@ -24,6 +24,7 @@
 #endif
 
 #include <stdarg.h>
+#include <sys/types.h>
 
 #define LIBUDEV_I_KNOW_THE_API_IS_SUBJECT_TO_CHANGE
 #include <libudev.h>
