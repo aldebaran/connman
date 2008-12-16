@@ -45,7 +45,10 @@ Signals		PropertyChanged(string name, variant value)
 
 Properties	string Name [readonly]
 
-			The device name (for example eth0, wlan0 etc.)
+			The device name (for example "Wireless" etc.)
+
+			This name can be used for directly displaying it in
+			the application. It has pure informational purpose.
 
 		string Type [readonly]
 

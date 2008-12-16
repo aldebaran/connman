@@ -145,6 +145,28 @@ static const char *subtype2string(enum connman_element_subtype type)
 	return NULL;
 }
 
+static const char *subtype2description(enum connman_element_subtype type)
+{
+	switch (type) {
+	case CONNMAN_ELEMENT_SUBTYPE_UNKNOWN:
+	case CONNMAN_ELEMENT_SUBTYPE_FAKE:
+	case CONNMAN_ELEMENT_SUBTYPE_NETWORK:
+		return NULL;
+	case CONNMAN_ELEMENT_SUBTYPE_ETHERNET:
+		return "Ethernet";
+	case CONNMAN_ELEMENT_SUBTYPE_WIFI:
+		return "Wireless";
+	case CONNMAN_ELEMENT_SUBTYPE_WIMAX:
+		return "WiMAX";
+	case CONNMAN_ELEMENT_SUBTYPE_MODEM:
+		return "Modem";
+	case CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH:
+		return "Bluetooth";
+	}
+
+	return NULL;
+}
+
 const char *__connman_element_policy2string(enum connman_element_policy policy)
 {
 	switch (policy) {
@@ -464,6 +486,15 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = subtype2description(element->subtype);
+	if (str != NULL && element->devname != NULL) {
+		char *name = g_strdup_printf("%s (%s)", str, element->devname);
+		if (name != NULL)
+			connman_dbus_dict_append_variant(&dict, "Name",
+						DBUS_TYPE_STRING, &name);
+		g_free(name);
+	}
 
 	str = subtype2string(element->subtype);
 	if (str != NULL)
