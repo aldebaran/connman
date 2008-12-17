@@ -76,7 +76,8 @@ static void ethernet_newlink(unsigned short type, int index,
 				netdev->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
 				netdev->index   = element->index;
 
-				connman_element_register(netdev, element);
+				if (connman_element_register(netdev, element) < 0)
+					connman_element_unref(netdev);
 			}
 		} else {
 			DBG("carrier off");

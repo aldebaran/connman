@@ -399,7 +399,8 @@ static int ipv4_probe(struct connman_element *element)
 	connection->type = CONNMAN_ELEMENT_TYPE_CONNECTION;
 	connection->index = element->index;
 
-	connman_element_register(connection, element);
+	if (connman_element_register(connection, element) < 0)
+		connman_element_unref(connection);
 
 	return 0;
 }

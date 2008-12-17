@@ -46,7 +46,8 @@ static void create_element(struct connman_element *parent,
 	else
 		element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 
-	connman_element_register(element, parent);
+	if (connman_element_register(element, parent) < 0)
+		connman_element_unref(element);
 }
 
 static int netdev_probe(struct connman_element *element)

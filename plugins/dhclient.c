@@ -296,7 +296,8 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 		element->type = CONNMAN_ELEMENT_TYPE_IPV4;
 		element->index = task->ifindex;
 		connman_element_update(task->element);
-		connman_element_register(element, task->element);
+		if (connman_element_register(element, task->element) < 0)
+			connman_element_unref(element);
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
 				g_ascii_strcasecmp(text, "REBIND") == 0) {
 		connman_element_update(task->element);

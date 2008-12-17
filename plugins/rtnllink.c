@@ -110,7 +110,11 @@ static void rtnllink_newlink(unsigned short type, int index,
 	device->name = name;
 	device->devname = devname;
 
-	connman_element_register(device, NULL);
+	if (connman_element_register(device, NULL) < 0) {
+		connman_element_unref(device);
+		return;
+	}
+
 	device_list = g_slist_append(device_list, device);
 }
 

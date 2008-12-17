@@ -243,7 +243,8 @@ static void state_change(struct connman_element *device,
 		dhcp->type = CONNMAN_ELEMENT_TYPE_DHCP;
 		dhcp->index = element->index;
 
-		connman_element_register(dhcp, element);
+		if (connman_element_register(dhcp, element) < 0)
+			connman_element_unref(dhcp);
 	} else if (state == STATE_INACTIVE || state == STATE_DISCONNECTED) {
 		data->connected = FALSE;
 		connman_element_set_enabled(element, FALSE);
@@ -363,7 +364,10 @@ static void scan_result(struct connman_element *device,
 		DBG("%s (%s) strength %d", network->identifier,
 				element->wifi.security, element->strength);
 
-		connman_element_register(element, device);
+		if (connman_element_register(element, device) < 0) {
+			connman_element_unref(element);
+			goto done;
+		}
 	} else {
 		data->pending = g_slist_remove(data->pending, element);
 
@@ -381,6 +385,7 @@ static void scan_result(struct connman_element *device,
 
 	element->available = TRUE;
 
+done:
 	g_free(temp);
 }
 
@@ -553,7 +558,11 @@ static void wifi_newlink(unsigned short type, int index,
 	device->name = name;
 	device->devname = devname;
 
-	connman_element_register(device, NULL);
+	if (connman_element_register(device, NULL) < 0) {
+		connman_element_unregister(device);
+		return;
+	}
+
 	device_list = g_slist_append(device_list, device);
 }
 
