@@ -55,6 +55,11 @@ Properties	string Name [readonly]
 
 			Indicates the signal strength of the network.
 
+		object Device [readonly]
+
+			The object path of the device this networks
+			belongs to.
+
 		array{byte} WiFi.SSID [readonly]
 
 			If the network type is WiFi, then this property is

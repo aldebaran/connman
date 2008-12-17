@@ -696,6 +696,10 @@ static DBusMessage *network_get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
+	if (element->parent)
+		connman_dbus_dict_append_variant(&dict, "Device",
+				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
+
 	str = __connman_element_policy2string(element->policy);
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "Policy",
