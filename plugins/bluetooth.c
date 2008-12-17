@@ -190,6 +190,7 @@ static void add_adapter(DBusConnection *connection, const char *path)
 	device = connman_element_create(NULL);
 	device->type = CONNMAN_ELEMENT_TYPE_DEVICE;
 	device->subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
+	device->policy = CONNMAN_ELEMENT_POLICY_IGNORE;
 
 	device->name = g_path_get_basename(path);
 
