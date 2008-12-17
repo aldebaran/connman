@@ -217,6 +217,11 @@ static void state_change(struct connman_element *device,
 
 	DBG("state %d", state);
 
+	if (state == STATE_SCANNING)
+		connman_element_set_scanning(device, TRUE);
+	else
+		connman_element_set_scanning(device, FALSE);
+
 	if (data == NULL)
 		return;
 
