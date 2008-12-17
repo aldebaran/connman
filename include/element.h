@@ -90,6 +90,7 @@ struct connman_element {
 	enum connman_element_state state;
 	enum connman_element_policy policy;
 	gboolean enabled;
+	gboolean scanning;
 	gboolean available;
 	gboolean remember;
 	guint16 priority;
@@ -150,6 +151,8 @@ extern void connman_element_update(struct connman_element *element);
 
 extern int connman_element_set_enabled(struct connman_element *element,
 							gboolean enabled);
+extern int connman_element_set_scanning(struct connman_element *element,
+							gboolean scanning);
 
 static inline void *connman_element_get_data(struct connman_element *element)
 {

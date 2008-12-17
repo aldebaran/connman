@@ -378,6 +378,39 @@ static void emit_enabled_signal(DBusConnection *conn,
 	g_dbus_send_message(conn, signal);
 }
 
+static void emit_scanning_signal(DBusConnection *conn,
+					struct connman_element *element)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Scanning";
+
+	DBG("conn %p", conn);
+
+	if (element == NULL)
+		return;
+
+	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
+		return;
+
+	signal = dbus_message_new_signal(element->path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&element->scanning);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(conn, signal);
+}
+
 static DBusMessage *do_update(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -510,11 +543,10 @@ static DBusMessage *device_get_properties(DBusConnection *conn,
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
 	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX) {
-		dbus_bool_t scanning = FALSE;
-
+			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX ||
+			element->subtype == CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH) {
 		connman_dbus_dict_append_variant(&dict, "Scanning",
-						DBUS_TYPE_BOOLEAN, &scanning);
+					DBUS_TYPE_BOOLEAN, &element->scanning);
 
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
@@ -2123,6 +2155,19 @@ int connman_element_set_enabled(struct connman_element *element,
 	element->enabled = enabled;
 
 	emit_enabled_signal(connection, element);
+
+	return 0;
+}
+
+int connman_element_set_scanning(struct connman_element *element,
+							gboolean scanning)
+{
+	if (element->scanning == scanning)
+		return 0;
+
+	element->scanning = scanning;
+
+	emit_scanning_signal(connection, element);
 
 	return 0;
 }
