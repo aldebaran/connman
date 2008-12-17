@@ -243,7 +243,11 @@ static void add_adapter(DBusConnection *connection, const char *path)
 
 	device->name = g_path_get_basename(path);
 
-	connman_element_register(device, NULL);
+	if (connman_element_register(device, NULL) < 0) {
+		connman_element_unref(device);
+		return;
+	}
+
 	device_list = g_slist_append(device_list, device);
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
