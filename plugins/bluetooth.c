@@ -114,14 +114,19 @@ static void property_changed(DBusConnection *connection, DBusMessage *message)
 
 	dbus_message_iter_get_basic(&iter, &key);
 
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
 	if (g_str_equal(key, "Powered") == TRUE) {
 		gboolean val;
 
-		dbus_message_iter_next(&iter);
-		dbus_message_iter_recurse(&iter, &value);
-
 		dbus_message_iter_get_basic(&value, &val);
 		connman_element_set_enabled(device, val);
+	} else if (g_str_equal(key, "Discovering") == TRUE) {
+		gboolean val;
+
+		dbus_message_iter_get_basic(&value, &val);
+		connman_element_set_scanning(device, val);
 	}
 }
 
@@ -158,14 +163,19 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_recurse(&dict, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
 		if (g_str_equal(key, "Powered") == TRUE) {
 			gboolean val;
 
-			dbus_message_iter_next(&entry);
-			dbus_message_iter_recurse(&entry, &value);
-
 			dbus_message_iter_get_basic(&value, &val);
 			connman_element_set_enabled(device, val);
+		} else if (g_str_equal(key, "Discovering") == TRUE) {
+			gboolean val;
+
+			dbus_message_iter_get_basic(&value, &val);
+			connman_element_set_scanning(device, val);
 		}
 
 		dbus_message_iter_next(&dict);
