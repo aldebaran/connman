@@ -58,6 +58,8 @@ struct supplicant_callback {
 					struct supplicant_network *network);
 };
 
+void __supplicant_activate(DBusConnection *conn);
+
 int __supplicant_init(DBusConnection *conn);
 void __supplicant_exit(void);
 

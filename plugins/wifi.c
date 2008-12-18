@@ -653,6 +653,8 @@ static int wifi_init(void)
 
 	if (g_dbus_check_service(connection, SUPPLICANT_NAME) == TRUE)
 		supplicant_connect(connection, NULL);
+	else
+		__supplicant_activate(connection);
 
 	return 0;
 }

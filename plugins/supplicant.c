@@ -1099,8 +1099,28 @@ int __supplicant_disconnect(struct connman_element *element)
 	return 0;
 }
 
+void __supplicant_activate(DBusConnection *conn)
+{
+	DBusMessage *message;
+
+	DBG("conn %p", conn);
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, "/",
+				DBUS_INTERFACE_INTROSPECTABLE, "Introspect");
+        if (message == NULL)
+		return;
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_connection_send(conn, message, NULL);
+
+	dbus_message_unref(message);
+}
+
 int __supplicant_init(DBusConnection *conn)
 {
+	DBG("conn %p", conn);
+
 	connection = conn;
 
 	if (dbus_connection_add_filter(connection,
@@ -1114,5 +1134,7 @@ int __supplicant_init(DBusConnection *conn)
 
 void __supplicant_exit(void)
 {
+	DBG("conn %p", connection);
+
 	dbus_connection_remove_filter(connection, supplicant_filter, NULL);
 }
