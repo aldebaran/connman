@@ -637,6 +637,9 @@ static DBusMessage *device_create_network(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIFI)
+		return __connman_error_invalid_arguments(msg);
+
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
 		return __connman_error_invalid_arguments(msg);
 
