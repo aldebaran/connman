@@ -140,7 +140,7 @@ static struct connman_element *find_current_element(struct wifi_data *data,
 		struct connman_element *element = list->data;
 
 		if (connman_element_match_static_property(element,
-					"Name", &identifier) == TRUE)
+						"Name", &identifier) == TRUE)
 			return element;
 	}
 
@@ -156,7 +156,7 @@ static struct connman_element *find_pending_element(struct wifi_data *data,
 		struct connman_element *element = list->data;
 
 		if (connman_element_match_static_property(element,
-					"Name", &identifier) == TRUE)
+						"Name", &identifier) == TRUE)
 			return element;
 	}
 
@@ -169,11 +169,6 @@ static gboolean inactive_scan(gpointer user_data)
 	struct wifi_data *data = connman_element_get_data(device);
 
 	DBG("");
-
-	if (data->cleanup_timer > 0) {
-		g_source_remove(data->cleanup_timer);
-		data->cleanup_timer = 0;
-	}
 
 	__supplicant_scan(device);
 
@@ -290,11 +285,13 @@ static void clear_results(struct connman_element *device)
 	DBG("pending %d", g_slist_length(data->pending));
 	DBG("current %d", g_slist_length(data->current));
 
+	if (data->cleanup_timer > 0) {
+		g_source_remove(data->cleanup_timer);
+		cleanup_pending(data);
+	}
+
 	data->pending = data->current;
 	data->current = NULL;
-
-	if (data->cleanup_timer > 0)
-		return;
 
 	data->cleanup_timer = g_timeout_add_seconds(CLEANUP_TIMEOUT,
 							cleanup_pending, data);
@@ -457,7 +454,7 @@ static int wifi_disable(struct connman_element *element)
 
 	if (data->cleanup_timer > 0) {
 		g_source_remove(data->cleanup_timer);
-		data->cleanup_timer = 0;
+		cleanup_pending(data);
 	}
 
 	if (data->inactive_timer > 0) {
@@ -466,15 +463,6 @@ static int wifi_disable(struct connman_element *element)
 	}
 
 	__supplicant_disconnect(element);
-
-	for (list = data->pending; list; list = list->next) {
-		struct connman_element *network = list->data;
-
-		connman_element_unref(network);
-	}
-
-	g_slist_free(data->pending);
-	data->pending = NULL;
 
 	for (list = data->current; list; list = list->next) {
 		struct connman_element *network = list->data;
