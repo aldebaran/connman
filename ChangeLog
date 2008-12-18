@@ -1,3 +1,14 @@
+ver 0.5:
+	Add support for handling Bluetooth adapters.
+	Add support for activating wpa_supplicant on demand.
+	Add Device property to network objects.
+	Add Scanning property to device objects.
+	Fix Name property of device objects.
+	Fix WiFi SSID to object path conversion.
+	Fix duplicate wireless scan results.
+	Fix built issue with libudev and uClibc.
+	Fix issues with element registration failures.
+
 ver 0.4:
 	Add DNS proxy resolver plugin.
 	Add support for default connections.
