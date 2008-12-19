@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
 #include <sys/wait.h>
 #include <glib/gstdio.h>
 
@@ -134,6 +135,9 @@ static int dhclient_probe(struct connman_element *element)
 	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
 
 	DBG("element %p name %s", element, element->name);
+
+	if (access(DHCLIENT, X_OK) < 0)
+		return -errno;
 
 	task = g_try_new0(struct dhclient_task, 1);
 	if (task == NULL)
