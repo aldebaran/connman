@@ -114,3 +114,25 @@ void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 
 	dbus_message_iter_close_container(dict, &entry);
 }
+
+static DBusConnection *connection = NULL;
+
+DBusConnection *connman_dbus_get_connection(void)
+{
+	if (connection == NULL)
+		return NULL;
+
+	return dbus_connection_ref(connection);
+}
+
+int __connman_dbus_init(DBusConnection *conn)
+{
+	connection = conn;
+
+	return 0;
+}
+
+void __connman_dbus_cleanup(void)
+{
+	connection = NULL;
+}

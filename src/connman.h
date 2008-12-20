@@ -27,6 +27,9 @@
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
 
+int __connman_dbus_init(DBusConnection *conn);
+void __connman_dbus_cleanup(void);
+
 DBusMessage *__connman_error_failed(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg);
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg);

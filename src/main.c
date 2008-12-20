@@ -150,6 +150,8 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	__connman_dbus_init(conn);
+
 	__connman_storage_init();
 
 	__connman_element_init(conn, option_device);
@@ -186,6 +188,8 @@ int main(int argc, char *argv[])
 	__connman_element_cleanup();
 
 	__connman_storage_cleanup();
+
+	__connman_dbus_cleanup();
 
 selftest:
 	__connman_log_cleanup();
