@@ -41,6 +41,7 @@
 #define ADAPTER_REMOVED			"AdapterRemoved"
 
 #define PROPERTY_CHANGED		"PropertyChanged"
+#define GET_PROPERTIES			"GetProperties"
 #define SET_PROPERTY			"SetProperty"
 
 #define TIMEOUT 5000
@@ -172,6 +173,29 @@ static struct connman_element *find_adapter(const char *path)
 	return NULL;
 }
 
+static void check_devices(struct connman_element *adapter,
+						DBusMessageIter *array)
+{
+	DBusMessageIter value;
+
+	DBG("adapter %p name %s", adapter, adapter->name);
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_OBJECT_PATH) {
+		const char *path;
+
+		dbus_message_iter_get_basic(&value, &path);
+
+		DBG("device %s", path);
+
+		dbus_message_iter_next(&value);
+	}
+}
+
 static void property_changed(DBusConnection *connection, DBusMessage *message)
 {
 	const char *path = dbus_message_get_path(message);
@@ -252,49 +276,12 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 			dbus_message_iter_get_basic(&value, &val);
 			connman_element_set_scanning(device, val);
+		} else if (g_str_equal(key, "Devices") == TRUE) {
+			check_devices(device, &value);
 		}
 
 		dbus_message_iter_next(&dict);
 	}
-
-done:
-	dbus_message_unref(reply);
-}
-
-static void devices_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusMessage *message = user_data;
-	const char *path = dbus_message_get_path(message);
-	DBusMessage *reply;
-	DBusError error;
-	char **devices;
-	int i, num_devices;
-
-	DBG("path %s", path);
-
-	dbus_message_unref(message);
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&error);
-
-	if (dbus_message_get_args(reply, &error,
-				DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH,
-						&devices, &num_devices,
-						DBUS_TYPE_INVALID) == FALSE) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Wrong arguments for device list");
-		goto done;
-	}
-
-	for (i = 0; i < num_devices; i++) {
-		DBG("device %s", devices[i]);
-	}
-
-	g_strfreev(devices);
 
 done:
 	dbus_message_unref(reply);
@@ -328,7 +315,7 @@ static void add_adapter(DBusConnection *connection, const char *path)
 	device_list = g_slist_append(device_list, device);
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
-				BLUEZ_ADAPTER_INTERFACE, "GetProperties");
+				BLUEZ_ADAPTER_INTERFACE, GET_PROPERTIES);
 	if (message == NULL)
 		return;
 
@@ -340,20 +327,6 @@ static void add_adapter(DBusConnection *connection, const char *path)
 	}
 
 	dbus_pending_call_set_notify(call, properties_reply, message, NULL);
-
-	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
-				BLUEZ_ADAPTER_INTERFACE, "ListDevices");
-	if (message == NULL)
-		return;
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get Bluetooth devices");
-		dbus_message_unref(message);
-		return;
-	}
-
-	dbus_pending_call_set_notify(call, devices_reply, message, NULL);
 }
 
 static void remove_adapter(DBusConnection *connection, const char *path)
