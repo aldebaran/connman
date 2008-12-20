@@ -95,6 +95,7 @@ struct connman_element {
 	gboolean remember;
 	guint16 priority;
 	guint8 strength;
+	gchar *devpath;
 	gchar *devname;
 
 	struct connman_element *parent;
