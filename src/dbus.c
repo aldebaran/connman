@@ -25,6 +25,50 @@
 
 #include <connman/dbus.h>
 
+void connman_dbus_property_append_variant(DBusMessageIter *iter,
+					const char *key, int type, void *val)
+{
+	DBusMessageIter value;
+	const char *signature;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+
+	switch (type) {
+	case DBUS_TYPE_BOOLEAN:
+		signature = DBUS_TYPE_BOOLEAN_AS_STRING;
+		break;
+	case DBUS_TYPE_STRING:
+		signature = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_BYTE:
+		signature = DBUS_TYPE_BYTE_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT16:
+		signature = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	case DBUS_TYPE_INT16:
+		signature = DBUS_TYPE_INT16_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT32:
+		signature = DBUS_TYPE_UINT32_AS_STRING;
+		break;
+	case DBUS_TYPE_INT32:
+		signature = DBUS_TYPE_INT32_AS_STRING;
+		break;
+	case DBUS_TYPE_OBJECT_PATH:
+		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		break;
+	default:
+		signature = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+							signature, &value);
+	dbus_message_iter_append_basic(&value, type, val);
+	dbus_message_iter_close_container(iter, &value);
+}
+
 void connman_dbus_dict_append_array(DBusMessageIter *dict,
 				const char *key, int type, void *val, int len)
 {
@@ -61,48 +105,12 @@ void connman_dbus_dict_append_array(DBusMessageIter *dict,
 void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 					const char *key, int type, void *val)
 {
-	DBusMessageIter entry, value;
-	const char *signature;
+	DBusMessageIter entry;
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	switch (type) {
-	case DBUS_TYPE_BOOLEAN:
-		signature = DBUS_TYPE_BOOLEAN_AS_STRING;
-		break;
-	case DBUS_TYPE_STRING:
-		signature = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_BYTE:
-		signature = DBUS_TYPE_BYTE_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT16:
-		signature = DBUS_TYPE_UINT16_AS_STRING;
-		break;
-	case DBUS_TYPE_INT16:
-		signature = DBUS_TYPE_INT16_AS_STRING;
-		break;
-	case DBUS_TYPE_UINT32:
-		signature = DBUS_TYPE_UINT32_AS_STRING;
-		break;
-	case DBUS_TYPE_INT32:
-		signature = DBUS_TYPE_INT32_AS_STRING;
-		break;
-	case DBUS_TYPE_OBJECT_PATH:
-		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
-		break;
-	default:
-		signature = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							signature, &value);
-	dbus_message_iter_append_basic(&value, type, val);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&entry, key, type, val);
 
 	dbus_message_iter_close_container(dict, &entry);
 }
