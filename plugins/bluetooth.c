@@ -29,15 +29,19 @@
 
 #include <connman/plugin.h>
 #include <connman/driver.h>
+#include <connman/dbus.h>
 #include <connman/log.h>
 
 #define BLUEZ_SERVICE			"org.bluez"
 #define BLUEZ_MANAGER_INTERFACE		BLUEZ_SERVICE ".Manager"
 #define BLUEZ_ADAPTER_INTERFACE		BLUEZ_SERVICE ".Adapter"
 
+#define LIST_ADAPTERS			"ListAdapters"
 #define ADAPTER_ADDED			"AdapterAdded"
 #define ADAPTER_REMOVED			"AdapterRemoved"
+
 #define PROPERTY_CHANGED		"PropertyChanged"
+#define SET_PROPERTY			"SetProperty"
 
 #define TIMEOUT 5000
 
@@ -53,18 +57,65 @@ static void bluetooth_remove(struct connman_element *device)
 	DBG("device %p name %s", device, device->name);
 }
 
+static void powered_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+
+	DBG("");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_message_unref(reply);
+}
+
+static int change_powered(DBusConnection *connection, const char *path,
+							dbus_bool_t powered)
+{
+	DBusMessage *message;
+	DBusMessageIter iter;
+	DBusPendingCall *call;
+
+	DBG("");
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+					BLUEZ_ADAPTER_INTERFACE, SET_PROPERTY);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+	connman_dbus_property_append_variant(&iter, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to change Powered property");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, powered_reply, NULL, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
 static int bluetooth_enable(struct connman_element *device)
 {
+	DBusConnection *connection = connman_element_get_data(device);
+
 	DBG("device %p name %s", device, device->name);
 
-	return -EINVAL;
+	return change_powered(connection, device->devpath, TRUE);
 }
 
 static int bluetooth_disable(struct connman_element *device)
 {
+	DBusConnection *connection = connman_element_get_data(device);
+
 	DBG("device %p name %s", device, device->name);
 
-	return -EINVAL;
+	return change_powered(connection, device->devpath, FALSE);
 }
 
 static struct connman_driver bluetooth_driver = {
@@ -81,7 +132,6 @@ static GSList *device_list = NULL;
 
 static struct connman_element *find_adapter(const char *path)
 {
-	const char *devname = g_basename(path);
 	GSList *list;
 
 	DBG("path %s", path);
@@ -89,7 +139,7 @@ static struct connman_element *find_adapter(const char *path)
 	for (list = device_list; list; list = list->next) {
 		struct connman_element *device = list->data;
 
-		if (g_str_equal(device->devname, devname) == TRUE)
+		if (g_str_equal(device->devpath, path) == TRUE)
 			return device;
 	}
 
@@ -242,6 +292,9 @@ static void add_adapter(DBusConnection *connection, const char *path)
 	device->policy = CONNMAN_ELEMENT_POLICY_IGNORE;
 
 	device->name = g_path_get_basename(path);
+	device->devpath = g_strdup(path);
+
+	connman_element_set_data(device, connection);
 
 	if (connman_element_register(device, NULL) < 0) {
 		connman_element_unref(device);
@@ -338,7 +391,7 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 	DBG("connection %p", connection);
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, "/",
-				BLUEZ_MANAGER_INTERFACE, "ListAdapters");
+				BLUEZ_MANAGER_INTERFACE, LIST_ADAPTERS);
 	if (message == NULL)
 		return;
 
