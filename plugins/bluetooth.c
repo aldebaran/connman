@@ -45,16 +45,42 @@
 
 #define TIMEOUT 5000
 
-static int bluetooth_probe(struct connman_element *device)
+struct adapter_data {
+	DBusConnection *connection;
+};
+
+static int bluetooth_probe(struct connman_element *adapter)
 {
-	DBG("device %p name %s", device, device->name);
+	struct adapter_data *data;
+
+	DBG("adapter %p name %s", adapter, adapter->name);
+
+	data = g_try_new0(struct adapter_data, 1);
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->connection = connman_dbus_get_connection();
+	if (data->connection == NULL) {
+		g_free(data);
+		return -EIO;
+	}
+
+	connman_element_set_data(adapter, data);
 
 	return 0;
 }
 
-static void bluetooth_remove(struct connman_element *device)
+static void bluetooth_remove(struct connman_element *adapter)
 {
-	DBG("device %p name %s", device, device->name);
+	struct adapter_data *data = connman_element_get_data(adapter);
+
+	DBG("adapter %p name %s", adapter, adapter->name);
+
+	connman_element_set_data(adapter, NULL);
+
+	dbus_connection_unref(data->connection);
+
+	g_free(data);
 }
 
 static void powered_reply(DBusPendingCall *call, void *user_data)
@@ -100,22 +126,22 @@ static int change_powered(DBusConnection *connection, const char *path,
 	return -EINPROGRESS;
 }
 
-static int bluetooth_enable(struct connman_element *device)
+static int bluetooth_enable(struct connman_element *adapter)
 {
-	DBusConnection *connection = connman_element_get_data(device);
+	struct adapter_data *data = connman_element_get_data(adapter);
 
-	DBG("device %p name %s", device, device->name);
+	DBG("adapter %p name %s", adapter, adapter->name);
 
-	return change_powered(connection, device->devpath, TRUE);
+	return change_powered(data->connection, adapter->devpath, TRUE);
 }
 
-static int bluetooth_disable(struct connman_element *device)
+static int bluetooth_disable(struct connman_element *adapter)
 {
-	DBusConnection *connection = connman_element_get_data(device);
+	struct adapter_data *data = connman_element_get_data(adapter);
 
-	DBG("device %p name %s", device, device->name);
+	DBG("adapter %p name %s", adapter, adapter->name);
 
-	return change_powered(connection, device->devpath, FALSE);
+	return change_powered(data->connection, adapter->devpath, FALSE);
 }
 
 static struct connman_driver bluetooth_driver = {
@@ -293,8 +319,6 @@ static void add_adapter(DBusConnection *connection, const char *path)
 
 	device->name = g_path_get_basename(path);
 	device->devpath = g_strdup(path);
-
-	connman_element_set_data(device, connection);
 
 	if (connman_element_register(device, NULL) < 0) {
 		connman_element_unref(device);
