@@ -64,7 +64,7 @@ static int bluetooth_disable(struct connman_element *device)
 {
 	DBG("device %p name %s", device, device->name);
 
-	return 0;
+	return -EINVAL;
 }
 
 static struct connman_driver bluetooth_driver = {
