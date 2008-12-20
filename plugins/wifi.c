@@ -36,6 +36,7 @@
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/rtnl.h>
+#include <connman/dbus.h>
 #include <connman/log.h>
 
 #include "inet.h"
@@ -619,7 +620,7 @@ static int wifi_init(void)
 {
 	int err;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
 

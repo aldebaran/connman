@@ -318,7 +318,7 @@ static int dhclient_init(void)
 	gchar *filter;
 	int err;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = connman_dbus_get_connection();
 
 	busname = dbus_bus_get_unique_name(connection);
 	busname = CONNMAN_SERVICE;

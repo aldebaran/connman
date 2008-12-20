@@ -466,7 +466,7 @@ static int bluetooth_init(void)
 {
 	int err = -EIO;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
 

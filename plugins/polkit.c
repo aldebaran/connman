@@ -30,6 +30,7 @@
 
 #include <connman/plugin.h>
 #include <connman/security.h>
+#include <connman/dbus.h>
 #include <connman/log.h>
 
 #define ACTION "org.moblin.connman.modify"
@@ -124,7 +125,7 @@ static int polkit_init(void)
 {
 	int err;
 
-	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
 
