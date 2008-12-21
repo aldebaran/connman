@@ -33,8 +33,6 @@
 
 #include <glib.h>
 
-#define RESOLVCONF "/sbin/resolvconf"
-
 static int resolvconf_append(const char *interface, const char *domain,
 							const char *server)
 {

@@ -30,6 +30,7 @@ rtnllink_la_SOURCES = rtnllink.c inet.h inet.c
 dnsproxy_la_SOURCES = dnsproxy.c
 
 resolvconf_la_SOURCES = resolvconf.c
+resolvconf_la_CFLAGS = @GLIB_CFLAGS@ -DRESOLVCONF=\"@RESOLVCONF@\"
 
 resolvfile_la_SOURCES = resolvfile.c
 
