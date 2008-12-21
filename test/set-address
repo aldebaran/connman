@@ -1,0 +1,26 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+if (len(sys.argv) < 2):
+	print "Usage: %s <address>" % (sys.argv[0])
+	sys.exit(1)
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
+					'org.moblin.connman.Manager')
+
+properties = manager.GetProperties()
+
+for path in properties["Devices"]:
+	device = dbus.Interface(bus.get_object('org.moblin.connman', path),
+						'org.moblin.connman.Device')
+
+	print "Setting static address %s for %s" % (sys.argv[1], path)
+
+	device.SetProperty("IPv4.Method", "static")
+	device.SetProperty("IPv4.Address", sys.argv[1])
+
+	print
