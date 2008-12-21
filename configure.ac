@@ -45,6 +45,7 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 	fi
 ])
 
+AC_PATH_PROG(UDHCPC, [udhcpc], ,$PATH:/sbin:/usr/sbin)
 AC_PATH_PROG(DHCLIENT, [dhclient], ,$PATH:/sbin:/usr/sbin)
 AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], ,$PATH:/sbin:/usr/sbin)
 
