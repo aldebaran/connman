@@ -45,6 +45,18 @@ Properties	string State [readonly]
 			values are "online" if at least one connection exists
 			and "offline" if no device is connected.
 
+		string Policy [readwrite]
+
+			The global connection policy of a system. This
+			allows to configure how connections are established
+			and also when they are taken down again.
+
+			Possible values are "single", "multiple" and "ask".
+
+			For the single policy, the priority setting of the
+			device defines which becomes the default connection
+			when multiple are available.
+
 		boolean FlightMode [readwrite]
 
 			The flight mode indicates the global setting for
