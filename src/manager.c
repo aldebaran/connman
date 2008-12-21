@@ -105,31 +105,12 @@ static void append_connections(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static void append_state(DBusMessageIter *dict, const char *state)
-{
-	DBusMessageIter entry, value;
-	const char *key = "State";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &state);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	const char *state, *policy = "single";
 
 	DBG("conn %p", conn);
 
@@ -150,9 +131,15 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	append_connections(&dict);
 
 	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
-		append_state(&dict, "online");
+		state = "online";
 	else
-		append_state(&dict, "offline");
+		state = "offline";
+
+	connman_dbus_dict_append_variant(&dict, "State",
+						DBUS_TYPE_STRING, &state);
+
+	connman_dbus_dict_append_variant(&dict, "Policy",
+						DBUS_TYPE_STRING, &policy);
 
 	dbus_message_iter_close_container(&array, &dict);
 
