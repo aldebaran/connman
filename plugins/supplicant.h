@@ -41,6 +41,7 @@ struct supplicant_network {
 	guint8 *ssid;
 	guint ssid_len;
 	guint16 capabilities;
+	gboolean adhoc;
 	gboolean has_wep;
 	gboolean has_wpa;
 	gboolean has_rsn;

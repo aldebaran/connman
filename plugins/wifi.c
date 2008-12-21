@@ -328,6 +328,8 @@ static void scan_result(struct connman_element *device,
 
 	element = find_pending_element(data, network->identifier);
 	if (element == NULL) {
+		const char *mode;
+
 		element = connman_element_create(temp);
 
 		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
@@ -338,6 +340,10 @@ static void scan_result(struct connman_element *device,
 
 		connman_element_add_static_array_property(element, "WiFi.SSID",
 			DBUS_TYPE_BYTE, &network->ssid, network->ssid_len);
+
+		mode = (network->adhoc == TRUE) ? "adhoc" : "managed";
+		connman_element_add_static_property(element, "WiFi.Mode",
+						DBUS_TYPE_STRING, &mode);
 
 		if (element->wifi.security == NULL) {
 			const char *security;
@@ -359,7 +365,7 @@ static void scan_result(struct connman_element *device,
 		connman_element_add_static_property(element, "Strength",
 					DBUS_TYPE_BYTE, &element->strength);
 
-		DBG("%s (%s) strength %d", network->identifier,
+		DBG("%s (%s %s) strength %d", network->identifier, mode,
 				element->wifi.security, element->strength);
 
 		if (connman_element_register(element, device) < 0) {

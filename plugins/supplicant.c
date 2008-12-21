@@ -655,6 +655,11 @@ static void extract_capabilites(struct supplicant_network *network,
 {
 	dbus_message_iter_get_basic(value, &network->capabilities);
 
+	if (network->capabilities & IEEE80211_CAP_ESS)
+		network->adhoc = FALSE;
+	else if (network->capabilities & IEEE80211_CAP_IBSS)
+		network->adhoc = TRUE;
+
 	if (network->capabilities & IEEE80211_CAP_PRIVACY)
 		network->has_wep = TRUE;
 }
