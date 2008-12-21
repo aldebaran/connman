@@ -18,6 +18,7 @@ bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 
 udhcp_la_SOURCES = udhcp.c
+udhcp_la_CFLAGS = @GLIB_CFLAGS@ -DUDHCPC=\"@UDHCPC@\"
 
 dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
