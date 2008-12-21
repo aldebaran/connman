@@ -48,6 +48,13 @@ enum connman_device_capabilities {
 	CONNMAN_DEVICE_CAPABILITY_SCANNING = (1 << 0),
 };
 
+enum connman_device_policy {
+	CONNMAN_DEVICE_POLICY_UNKNOWN = 0,
+	CONNMAN_DEVICE_POLICY_IGNORE  = 1,
+	CONNMAN_DEVICE_POLICY_AUTO    = 2,
+	CONNMAN_DEVICE_POLICY_OFF     = 3,
+};
+
 enum connman_device_state {
 	CONNMAN_DEVICE_STATE_UNKNOWN = 0,
 	CONNMAN_DEVICE_STATE_OFF     = 1,
@@ -58,6 +65,7 @@ struct connman_device_driver;
 struct connman_device {
 	struct connman_element *element;
 	unsigned long capabilities;
+	enum connman_device_policy policy;
 	enum connman_device_state state;
 
 	struct connman_device_driver *driver;
