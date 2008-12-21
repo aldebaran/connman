@@ -45,6 +45,19 @@ Properties	string State [readonly]
 			values are "online" if at least one connection exists
 			and "offline" if no device is connected.
 
+		boolean FlightMode [readwrite]
+
+			The flight mode indicates the global setting for
+			switching all radios on or off. Changing flight mode
+			to true results in powering down all devices. When
+			leaving flight mode the individual policy of each
+			device decides to switch the radio back on or not.
+
+			During flight mode, it is still possible to switch
+			certain technologies manually back on. For example
+			the limited usage of WiFi or Bluetooth devices might
+			be allowed in some situations.
+
 		array{object} Profiles [readonly]
 
 			List of profile object paths.

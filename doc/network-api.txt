@@ -53,7 +53,8 @@ Properties	string Name [readonly]
 
 		uint8 Strength [readonly]
 
-			Indicates the signal strength of the network.
+			Indicates the signal strength of the network. This
+			is a normalized value between 0 and 100.
 
 		object Device [readonly]
 
@@ -65,6 +66,16 @@ Properties	string Name [readonly]
 			If the network type is WiFi, then this property is
 			present and contains the binary SSID value.
 
+		string WiFi.Mode [readonly, readwrite]
+
+			If the network type is WiFi, then this property is
+			present and contains the mode of the network. The
+			possible values are "managed" or "adhoc".
+
+			For scanned networks this value is read only, but in
+			case the network was manually created it is also
+			changeable.
+
 		string WiFi.Security [readonly, readwrite]
 
 			If the network type is WiFi, then this property is
@@ -75,7 +86,7 @@ Properties	string Name [readonly]
 			case the network was manually created it is also
 			changeable.
 
-			Possible values are NONE, WPA and WPA2.
+			Possible values are "none", "wep", "wpa" and "wpa2".
 
 		string WiFi.Passphrase [readwrite]
 
@@ -83,5 +94,5 @@ Properties	string Name [readonly]
 			requires, then this property is present and contains
 			the passphrase in clear text.
 
-			For system using PolicyKit, the access to this value
+			For systems using PolicyKit, the access to this value
 			will be protected by the security policy.

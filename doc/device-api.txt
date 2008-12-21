@@ -52,13 +52,39 @@ Properties	string Name [readonly]
 
 		string Type [readonly]
 
-			The device type (for example ethernet, wifi etc.)
+			The device type (for example "ethernet", "wifi" etc.)
+
+		string Policy [readwrite]
+
+			Setting of the device power policy. Possible values
+			are "off", "ignore" and "auto".
+
+			The policy defines on how the device is initialized
+			when brought up. The actual device power state can
+			be changed independently to this value.
+
+			If a device is switched off and the policy is changed
+			to "auto", the device will be switched. For a current
+			active device changing the policy to "off" results
+			in powering down the device.
+
+			The "ignore" policy can be set for devices that are
+			detected, but managed by a different entity on the
+			system. For example complex network setups.
 
 		boolean Powered [readwrite]
 
 			Switch a device on or off. This will also modify
 			the list of networks in range. All known networks
 			will be still available via the Networks property.
+
+			Changing this value doesn't change the value of the
+			Policy property.
+
+			The value of this property can be changed by other
+			parts of the system (including the kernel). An
+			example would be modifications via the "ifconfig"
+			command line utility.
 
 		boolean Scanning [readonly]
 
