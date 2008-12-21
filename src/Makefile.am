@@ -42,7 +42,7 @@ EXTRA_DIST = $(dbus_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in
 
-connman.exp:
+connman.exp: $(connmand_OBJECTS)
 	nm -B *.o | awk '{ print $$3 }' | sort -u | grep -E -e '^connman_' > $@
 
 connman.ver: connman.exp
