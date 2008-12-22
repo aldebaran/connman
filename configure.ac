@@ -86,6 +86,10 @@ AC_SUBST(POLKIT_CFLAGS)
 AC_SUBST(POLKIT_LIBS)
 AM_CONDITIONAL(POLKIT, test "${polkit_found}" = "yes")
 
+AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
+		[enable command line client]), [enable_client=${enableval}])
+AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
+
 AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 			[enable fake plugin]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
