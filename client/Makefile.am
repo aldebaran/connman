@@ -1,2 +1,10 @@
 
+noinst_PROGRAMS = cm
+
+cm_SOURCES = main.c
+
+cm_LDADD = @DBUS_LIBS@
+
+AM_CFLAGS = @DBUS_CFLAGS@
+
 MAINTAINERCLEANFILES = Makefile.in

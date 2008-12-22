@@ -29,6 +29,7 @@ src/connman.ver
 src/connman.service
 scripts/connman
 scripts/dhclient-script
+client/cm
 doc/*.bak
 doc/*.stamp
 doc/connman.*
