@@ -31,7 +31,7 @@ static int udhcp_probe(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
-	return 0;
+	return -ENODEV;
 }
 
 static void udhcp_remove(struct connman_element *element)
