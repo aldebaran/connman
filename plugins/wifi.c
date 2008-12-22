@@ -228,7 +228,7 @@ static void state_change(struct connman_element *device,
 	if (element == NULL)
 		goto reconnect;
 
-	if (state == STATE_COMPLETED) {
+	if (state == STATE_COMPLETED && data->connected == FALSE) {
 		struct connman_element *dhcp;
 
 		data->connected = TRUE;
