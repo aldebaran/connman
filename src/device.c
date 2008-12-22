@@ -46,6 +46,9 @@ static int device_probe(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_NETWORK)
+		return -ENODEV;
+
 	device = g_try_new0(struct connman_device, 1);
 	if (device == NULL)
 		return -ENOMEM;
