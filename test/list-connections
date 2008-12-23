@@ -18,6 +18,10 @@ for path in properties["Connections"]:
 	print "[ %s ]" % (path)
 
 	for key in properties.keys():
-		print "    %s = %s" % (key, properties[key])
+		if key == "Strength":
+			val = int(properties[key])
+		else:
+			val = str(properties[key])
+		print "    %s = %s" % (key, val)
 
 	print
