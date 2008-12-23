@@ -304,7 +304,7 @@ static void scan_result(struct connman_element *device,
 	struct wifi_data *data = connman_element_get_data(device);
 	struct connman_element *element;
 	gchar *temp;
-	int i;
+	unsigned int i;
 
 	DBG("network %p identifier %s", network, network->identifier);
 
