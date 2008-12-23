@@ -23,7 +23,7 @@
 #include <config.h>
 #endif
 
-#include <connman/dbus.h>
+#include "connman.h"
 
 void connman_dbus_property_append_variant(DBusMessageIter *iter,
 					const char *key, int type, void *val)
