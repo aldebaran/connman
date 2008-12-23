@@ -10,6 +10,21 @@ AC_DEFUN([AC_PROG_CC_PIE], [
 	])
 ])
 
+AC_DEFUN([COMPILER_FLAGS], [
+	if (test "${CFLAGS}" = ""); then
+		CFLAGS="-Wall -O2 -D_FORTIFY_SOURCE=2"
+	fi
+	if (test "$USE_MAINTAINER_MODE" = "yes"); then
+		CFLAGS+=" -Werror -Wextra"
+		CFLAGS+=" -Wno-unused-parameter"
+		CFLAGS+=" -Wno-missing-field-initializers"
+		CFLAGS+=" -Wdeclaration-after-statement"
+		CFLAGS+=" -Wmissing-declarations"
+		CFLAGS+=" -Wredundant-decls"
+		CFLAGS+=" -Wcast-align"
+	fi
+])
+
 AC_DEFUN([GTK_DOC_CHECK],
 [
   AC_BEFORE([AC_PROG_LIBTOOL],[$0])dnl setup libtool first

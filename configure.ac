@@ -8,9 +8,7 @@ AM_MAINTAINER_MODE
 
 AC_PREFIX_DEFAULT(/usr/local)
 
-if (test "${CFLAGS}" = ""); then
-	CFLAGS="-Wall -O2 -D_FORTIFY_SOURCE=2"
-fi
+COMPILER_FLAGS
 
 AC_LANG_C
 
@@ -32,7 +30,7 @@ AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [
 	if (test "${enableval}" = "yes" &&
 				test "${ac_cv_prog_cc_g}" = "yes"); then
-		CFLAGS="$CFLAGS -g -O0 -Werror"
+		CFLAGS="$CFLAGS -g -O0"
 	fi
 ])
 
