@@ -42,6 +42,7 @@ enum connman_device_type {
 	CONNMAN_DEVICE_TYPE_WIMAX     = CONNMAN_ELEMENT_SUBTYPE_WIMAX,
 	CONNMAN_DEVICE_TYPE_MODEM     = CONNMAN_ELEMENT_SUBTYPE_MODEM,
 	CONNMAN_DEVICE_TYPE_BLUETOOTH = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH,
+	CONNMAN_DEVICE_TYPE_VENDOR    = 42,
 };
 
 enum connman_device_capabilities {
@@ -64,6 +65,7 @@ struct connman_device_driver;
 
 struct connman_device {
 	struct connman_element *element;
+	enum connman_device_type type;
 	unsigned long capabilities;
 	enum connman_device_policy policy;
 	enum connman_device_state state;

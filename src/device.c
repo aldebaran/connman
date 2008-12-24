@@ -28,6 +28,24 @@
 
 #include "connman.h"
 
+static const char *type2string(enum connman_device_type type)
+{
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		return "ethernet";
+	case CONNMAN_DEVICE_TYPE_WIFI:
+		return "wifi";
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		return "wimax";
+	case CONNMAN_DEVICE_TYPE_MODEM:
+		return "modem";
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		return "bluetooth";
+	default:
+		return NULL;
+	}
+}
+
 static int set_powered(struct connman_device *device, gboolean powered)
 {
 	struct connman_device_driver *driver = device->driver;
@@ -59,6 +77,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	struct connman_device *device = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -72,6 +91,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = type2string(device->type);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
@@ -346,6 +370,7 @@ static int device_probe(struct connman_element *element)
 		return -ENOMEM;
 
 	device->element = element;
+	device->type = element->subtype;
 
 	connman_element_set_data(element, device);
 
