@@ -67,6 +67,7 @@ struct connman_device {
 	unsigned long capabilities;
 	enum connman_device_policy policy;
 	enum connman_device_state state;
+	gboolean powered;
 
 	struct connman_device_driver *driver;
 	void *driver_data;
@@ -74,8 +75,8 @@ struct connman_device {
 	GSList *networks;
 };
 
-extern int connman_device_set_enabled(struct connman_device *device,
-							gboolean enabled);
+extern int connman_device_set_powered(struct connman_device *device,
+							gboolean powered);
 
 struct connman_device_driver {
 	const char *name;
