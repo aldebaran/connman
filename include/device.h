@@ -78,6 +78,17 @@ struct connman_device {
 extern int connman_device_set_powered(struct connman_device *device,
 							gboolean powered);
 
+static inline void *connman_device_get_data(struct connman_device *device)
+{
+	return device->driver_data;
+}
+
+static inline void connman_device_set_data(struct connman_device *device,
+								void *data)
+{
+	device->driver_data = data;
+}
+
 struct connman_device_driver {
 	const char *name;
 	enum connman_device_type type;
