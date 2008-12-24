@@ -76,6 +76,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
 
+	if (device->driver && device->driver->scan)
+		connman_dbus_dict_append_variant(&dict, "Scanning",
+					DBUS_TYPE_BOOLEAN, &device->scanning);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
@@ -264,6 +268,51 @@ int connman_device_set_powered(struct connman_device *device,
 	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
 					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
 	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &powered);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+
+	return 0;
+}
+
+/**
+ * connman_device_set_scanning:
+ * @device: device structure
+ *
+ * Change scanning state of device
+ */
+int connman_device_set_scanning(struct connman_device *device,
+							gboolean scanning)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Scanning";
+
+	DBG("driver %p scanning %d", device, scanning);
+
+	if (!device->driver)
+		return -EINVAL;
+
+	if (!device->driver->scan)
+		return -EINVAL;
+
+	if (device->scanning == scanning)
+		return -EALREADY;
+
+	device->scanning = scanning;
+
+	signal = dbus_message_new_signal(device->element->path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return 0;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &scanning);
 	dbus_message_iter_close_container(&entry, &value);
 
 	g_dbus_send_message(connection, signal);
