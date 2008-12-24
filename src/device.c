@@ -28,6 +28,31 @@
 
 #include "connman.h"
 
+static int set_powered(struct connman_device *device, gboolean powered)
+{
+	struct connman_device_driver *driver = device->driver;
+	int err;
+
+	DBG("device %p powered %d", device, powered);
+
+	if (!driver)
+		return -EINVAL;
+
+	if (powered == TRUE) {
+		if (driver->enable)
+			err = driver->enable(device);
+		else
+			err = -EINVAL;
+	} else {
+		if (driver->disable)
+			err = driver->disable(device);
+		else
+			err = -EINVAL;
+	}
+
+	return err;
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -59,7 +84,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	struct connman_element *element = data;
+	struct connman_device *device = data;
 	DBusMessageIter iter, value;
 	const char *name;
 
@@ -75,7 +100,21 @@ static DBusMessage *set_property(DBusConnection *conn,
 	if (__connman_security_check_privileges(msg) < 0)
 		return __connman_error_permission_denied(msg);
 
-	__connman_element_store(element);
+	if (g_str_equal(name, "Powered") == TRUE) {
+		gboolean powered;
+		int err;
+
+		dbus_message_iter_get_basic(&value, &powered);
+
+		if (device->powered == powered)
+			return __connman_error_invalid_arguments(msg);
+
+		err = set_powered(device, powered);
+		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+	}
+
+	__connman_element_store(device->element);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }

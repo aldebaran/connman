@@ -95,6 +95,8 @@ struct connman_device_driver {
 	int priority;
 	int (*probe) (struct connman_device *device);
 	void (*remove) (struct connman_device *device);
+	int (*enable) (struct connman_device *device);
+	int (*disable) (struct connman_device *device);
 	int (*scan) (struct connman_device *device);
 };
 
