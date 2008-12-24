@@ -24,3 +24,34 @@
 #endif
 
 #include "connman.h"
+
+static int network_probe(struct connman_element *element)
+{
+	return 0;
+}
+
+static void network_remove(struct connman_element *element)
+{
+}
+
+static struct connman_driver network_driver = {
+	.name		= "network",
+	.type		= CONNMAN_ELEMENT_TYPE_NETWORK,
+	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
+	.probe		= network_probe,
+	.remove		= network_remove,
+};
+
+int __connman_network_init(void)
+{
+	DBG("");
+
+	return connman_driver_register(&network_driver);
+}
+
+void __connman_network_cleanup(void)
+{
+	DBG("");
+
+	connman_driver_unregister(&network_driver);
+}

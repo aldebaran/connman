@@ -2218,6 +2218,7 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 	element_root = g_node_new(element);
 
 	__connman_device_init();
+	__connman_network_init();
 
 	return 0;
 }
@@ -2285,6 +2286,7 @@ void __connman_element_cleanup(void)
 {
 	DBG("");
 
+	__connman_network_cleanup();
 	__connman_device_cleanup();
 
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
