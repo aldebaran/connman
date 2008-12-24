@@ -241,12 +241,32 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 int connman_device_set_powered(struct connman_device *device,
 							gboolean powered)
 {
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Powered";
+
 	DBG("driver %p powered %d", device, powered);
 
 	if (device->powered == powered)
 		return -EALREADY;
 
 	device->powered = powered;
+
+	signal = dbus_message_new_signal(device->element->path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return 0;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &powered);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
 
 	return 0;
 }
