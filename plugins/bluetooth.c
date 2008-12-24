@@ -28,6 +28,7 @@
 #include <gdbus.h>
 
 #include <connman/plugin.h>
+#include <connman/device.h>
 #include <connman/driver.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
@@ -50,11 +51,11 @@ struct adapter_data {
 	DBusConnection *connection;
 };
 
-static int bluetooth_probe(struct connman_element *adapter)
+static int bluetooth_probe(struct connman_device *adapter)
 {
 	struct adapter_data *data;
 
-	DBG("adapter %p name %s", adapter, adapter->name);
+	DBG("adapter %p", adapter);
 
 	data = g_try_new0(struct adapter_data, 1);
 	if (data == NULL)
@@ -66,18 +67,18 @@ static int bluetooth_probe(struct connman_element *adapter)
 		return -EIO;
 	}
 
-	connman_element_set_data(adapter, data);
+	connman_device_set_data(adapter, data);
 
 	return 0;
 }
 
-static void bluetooth_remove(struct connman_element *adapter)
+static void bluetooth_remove(struct connman_device *adapter)
 {
-	struct adapter_data *data = connman_element_get_data(adapter);
+	struct adapter_data *data = connman_device_get_data(adapter);
 
-	DBG("adapter %p name %s", adapter, adapter->name);
+	DBG("adapter %p", adapter);
 
-	connman_element_set_data(adapter, NULL);
+	connman_device_set_data(adapter, NULL);
 
 	dbus_connection_unref(data->connection);
 
@@ -127,32 +128,41 @@ static int change_powered(DBusConnection *connection, const char *path,
 	return -EINPROGRESS;
 }
 
-static int bluetooth_enable(struct connman_element *adapter)
+static int bluetooth_enable(struct connman_device *adapter)
 {
-	struct adapter_data *data = connman_element_get_data(adapter);
+	struct adapter_data *data = connman_device_get_data(adapter);
 
-	DBG("adapter %p name %s", adapter, adapter->name);
+	DBG("adapter %p", adapter);
 
-	return change_powered(data->connection, adapter->devpath, TRUE);
+	return change_powered(data->connection,
+					adapter->element->devpath, TRUE);
 }
 
-static int bluetooth_disable(struct connman_element *adapter)
+static int bluetooth_disable(struct connman_device *adapter)
 {
-	struct adapter_data *data = connman_element_get_data(adapter);
+	struct adapter_data *data = connman_device_get_data(adapter);
 
-	DBG("adapter %p name %s", adapter, adapter->name);
+	DBG("adapter %p", adapter);
 
-	return change_powered(data->connection, adapter->devpath, FALSE);
+	return change_powered(data->connection,
+					adapter->element->devpath, FALSE);
 }
 
-static struct connman_driver bluetooth_driver = {
+static int bluetooth_scan(struct connman_device *adapter)
+{
+	DBG("adapter %p", adapter);
+
+	return -EIO;
+}
+
+static struct connman_device_driver bluetooth_driver = {
 	.name		= "bluetooth",
-	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.subtype	= CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH,
+	.type		= CONNMAN_DEVICE_TYPE_BLUETOOTH,
 	.probe		= bluetooth_probe,
 	.remove		= bluetooth_remove,
 	.enable		= bluetooth_enable,
 	.disable	= bluetooth_disable,
+	.scan		= bluetooth_scan,
 };
 
 static GSList *device_list = NULL;
@@ -218,15 +228,19 @@ static void property_changed(DBusConnection *connection, DBusMessage *message)
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "Powered") == TRUE) {
+		struct connman_device *dev = connman_element_get_data(device);
 		gboolean val;
 
 		dbus_message_iter_get_basic(&value, &val);
-		connman_element_set_enabled(device, val);
+		if (dev != NULL)
+			connman_device_set_powered(dev, val);
 	} else if (g_str_equal(key, "Discovering") == TRUE) {
+		struct connman_device *dev = connman_element_get_data(device);
 		gboolean val;
 
 		dbus_message_iter_get_basic(&value, &val);
-		connman_element_set_scanning(device, val);
+		if (dev != NULL)
+			connman_device_set_scanning(dev, val);
 	}
 }
 
@@ -257,6 +271,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_iter_recurse(&array, &dict);
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		struct connman_device *dev = connman_element_get_data(device);
 		DBusMessageIter entry, value;
 		const char *key;
 
@@ -270,12 +285,14 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 			gboolean val;
 
 			dbus_message_iter_get_basic(&value, &val);
-			connman_element_set_enabled(device, val);
+			if (dev != NULL)
+				connman_device_set_powered(dev, val);
 		} else if (g_str_equal(key, "Discovering") == TRUE) {
 			gboolean val;
 
 			dbus_message_iter_get_basic(&value, &val);
-			connman_element_set_scanning(device, val);
+			if (dev != NULL)
+				connman_device_set_scanning(dev, val);
 		} else if (g_str_equal(key, "Devices") == TRUE) {
 			check_devices(device, &value);
 		}
@@ -471,14 +488,14 @@ static int bluetooth_init(void)
 							NULL, NULL) == FALSE)
 		goto unref;
 
-	err = connman_driver_register(&bluetooth_driver);
+	err = connman_device_driver_register(&bluetooth_driver);
 	if (err < 0)
 		goto remove;
 
 	watch = g_dbus_add_service_watch(connection, BLUEZ_SERVICE,
 			bluetooth_connect, bluetooth_disconnect, NULL, NULL);
 	if (watch == 0) {
-		connman_driver_unregister(&bluetooth_driver);
+		connman_device_driver_unregister(&bluetooth_driver);
 		err = -EIO;
 		goto remove;
 	}
@@ -513,7 +530,7 @@ static void bluetooth_exit(void)
 
 	bluetooth_disconnect(connection, NULL);
 
-	connman_driver_unregister(&bluetooth_driver);
+	connman_device_driver_unregister(&bluetooth_driver);
 
 	dbus_connection_remove_filter(connection, bluetooth_signal, NULL);
 
