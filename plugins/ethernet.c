@@ -32,7 +32,7 @@
 #include <linux/rtnetlink.h>
 
 #include <connman/plugin.h>
-#include <connman/driver.h>
+#include <connman/device.h>
 #include <connman/rtnl.h>
 #include <connman/log.h>
 
@@ -43,6 +43,43 @@ struct ethernet_data {
 
 static GSList *ethernet_list = NULL;
 
+static void update_power(struct connman_device *device, unsigned flags)
+{
+	if (flags & IFF_UP) {
+		DBG("power on");
+
+		connman_device_set_powered(device, TRUE);
+	} else {
+		DBG("power off");
+
+		connman_device_set_powered(device, FALSE);
+	}
+}
+
+static void update_carrier(struct connman_device *device, unsigned flags)
+{
+	struct connman_element *netdev;
+
+	if (flags & IFF_LOWER_UP) {
+		DBG("carrier on");
+
+		netdev = connman_element_create(NULL);
+		if (netdev != NULL) {
+			netdev->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
+			netdev->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
+			netdev->index   = device->element->index;
+
+			if (connman_element_register(netdev,
+							device->element) < 0)
+				connman_element_unref(netdev);
+		}
+	} else {
+		DBG("carrier off");
+
+		connman_element_unregister_children(device->element);
+	}
+}
+
 static void ethernet_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
@@ -51,39 +88,23 @@ static void ethernet_newlink(unsigned short type, int index,
 	DBG("index %d flags %ld change %ld", index, flags, change);
 
 	for (list = ethernet_list; list; list = list->next) {
-		struct connman_element *element = list->data;
-		struct connman_element *netdev;
+		struct connman_device *device = list->data;
 		struct ethernet_data *ethernet;
 
-		ethernet = connman_element_get_data(element);
+		ethernet = connman_device_get_data(device);
 		if (ethernet == NULL)
 			continue;
 
 		if (ethernet->index != index)
 			continue;
 
-		if ((ethernet->flags & IFF_LOWER_UP) == (flags & IFF_LOWER_UP))
-			continue;
+		if ((ethernet->flags & IFF_UP) != (flags & IFF_UP))
+			update_power(device, flags);
+
+		if ((ethernet->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP))
+			update_carrier(device, flags);
 
 		ethernet->flags = flags;
-
-		if (ethernet->flags & IFF_LOWER_UP) {
-			DBG("carrier on");
-
-			netdev = connman_element_create(NULL);
-			if (netdev != NULL) {
-				netdev->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
-				netdev->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
-				netdev->index   = element->index;
-
-				if (connman_element_register(netdev, element) < 0)
-					connman_element_unref(netdev);
-			}
-		} else {
-			DBG("carrier off");
-
-			connman_element_unregister_children(element);
-		}
 	}
 }
 
@@ -178,66 +199,61 @@ done:
 	return err;
 }
 
-static int ethernet_probe(struct connman_element *element)
+static int ethernet_probe(struct connman_device *device)
 {
 	struct ethernet_data *ethernet;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
 	ethernet = g_try_new0(struct ethernet_data, 1);
 	if (ethernet == NULL)
 		return -ENOMEM;
 
-	ethernet_list = g_slist_append(ethernet_list, element);
+	ethernet_list = g_slist_append(ethernet_list, device);
 
-	connman_element_set_data(element, ethernet);
+	connman_device_set_data(device, ethernet);
 
-	ethernet->index = element->index;
+	ethernet->index = device->element->index;
 
 	connman_rtnl_send_getlink();
 
 	return 0;
 }
 
-static void ethernet_remove(struct connman_element *element)
+static void ethernet_remove(struct connman_device *device)
 {
-	struct ethernet_data *ethernet = connman_element_get_data(element);
+	struct ethernet_data *ethernet = connman_device_get_data(device);
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	connman_element_set_data(element, NULL);
+	connman_device_set_data(device, NULL);
 
-	ethernet_list = g_slist_remove(ethernet_list, element);
+	ethernet_list = g_slist_remove(ethernet_list, device);
 
 	g_free(ethernet);
 }
 
-static int ethernet_enable(struct connman_element *element)
+static int ethernet_enable(struct connman_device *device)
 {
-	struct ethernet_data *ethernet = connman_element_get_data(element);
+	struct ethernet_data *ethernet = connman_device_get_data(device);
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	iface_up(ethernet);
-
-	return 0;
+	return iface_up(ethernet);
 }
 
-static int ethernet_disable(struct connman_element *element)
+static int ethernet_disable(struct connman_device *device)
 {
-	struct ethernet_data *ethernet = connman_element_get_data(element);
+	struct ethernet_data *ethernet = connman_device_get_data(device);
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	iface_down(ethernet);
-
-	return 0;
+	return iface_down(ethernet);
 }
 
-static struct connman_driver ethernet_driver = {
+static struct connman_device_driver ethernet_driver = {
 	.name		= "ethernet",
-	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.subtype	= CONNMAN_ELEMENT_SUBTYPE_ETHERNET,
+	.type		= CONNMAN_DEVICE_TYPE_ETHERNET,
 	.probe		= ethernet_probe,
 	.remove		= ethernet_remove,
 	.enable		= ethernet_enable,
@@ -252,7 +268,7 @@ static int ethernet_init(void)
 	if (err < 0)
 		return err;
 
-	err = connman_driver_register(&ethernet_driver);
+	err = connman_device_driver_register(&ethernet_driver);
 	if (err < 0) {
 		connman_rtnl_unregister(&ethernet_rtnl);
 		return err;
@@ -263,7 +279,7 @@ static int ethernet_init(void)
 
 static void ethernet_exit(void)
 {
-	connman_driver_unregister(&ethernet_driver);
+	connman_device_driver_unregister(&ethernet_driver);
 
 	connman_rtnl_unregister(&ethernet_rtnl);
 }
