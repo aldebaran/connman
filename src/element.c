@@ -38,6 +38,8 @@ static GNode *element_root = NULL;
 static GSList *driver_list = NULL;
 static gchar *device_filter = NULL;
 
+static gboolean started = FALSE;
+
 static struct {
 	enum connman_property_id id;
 	int type;
@@ -1053,6 +1055,9 @@ int connman_driver_register(struct connman_driver *driver)
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
+	if (started == FALSE)
+		return 0;
+
 	if (element_root != NULL)
 		g_node_traverse(element_root, G_PRE_ORDER,
 				G_TRAVERSE_ALL, -1, probe_driver, driver);
@@ -1894,11 +1899,35 @@ static void set_signal_strength(struct connman_element *connection)
 	}
 }
 
+static void probe_element(struct connman_element *element)
+{
+	GSList *list;
+
+	DBG("element %p name %s", element, element->name);
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_driver *driver = list->data;
+
+		if (match_driver(element, driver) == FALSE)
+			continue;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->probe(element) == 0) {
+			__connman_element_lock(element);
+			element->driver = driver;
+			__connman_element_unlock(element);
+
+			enable_element(element);
+			break;
+		}
+	}
+}
+
 static void register_element(gpointer data, gpointer user_data)
 {
 	struct connman_element *element = data;
 	const gchar *basepath;
-	GSList *list;
 	GNode *node;
 
 	__connman_element_lock(element);
@@ -1968,23 +1997,10 @@ static void register_element(gpointer data, gpointer user_data)
 
 	__connman_element_store(element);
 
-	for (list = driver_list; list; list = list->next) {
-		struct connman_driver *driver = list->data;
+	if (started == FALSE)
+		return;
 
-		if (match_driver(element, driver) == FALSE)
-			continue;
-
-		DBG("driver %p name %s", driver, driver->name);
-
-		if (driver->probe(element) == 0) {
-			__connman_element_lock(element);
-			element->driver = driver;
-			__connman_element_unlock(element);
-
-			enable_element(element);
-			break;
-		}
-	}
+	probe_element(element);
 }
 
 /**
@@ -2204,6 +2220,33 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 	__connman_device_init();
 
 	return 0;
+}
+
+static gboolean probe_node(GNode *node, gpointer data)
+{
+	struct connman_element *element = node->data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
+		return FALSE;
+
+	if (element->driver)
+		return FALSE;
+
+	probe_element(element);
+
+	return FALSE;
+}
+
+void __connman_element_start(void)
+{
+	DBG("");
+
+	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+							probe_node, NULL);
+
+	started = TRUE;
 }
 
 static gboolean free_driver(GNode *node, gpointer data)

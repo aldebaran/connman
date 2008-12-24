@@ -166,6 +166,8 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_init();
 
+	__connman_element_start();
+
 	g_free(option_device);
 
 	memset(&sa, 0, sizeof(sa));

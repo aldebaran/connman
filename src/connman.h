@@ -83,6 +83,7 @@ void __connman_driver_rescan(struct connman_driver *driver);
 #include <connman/element.h>
 
 int __connman_element_init(DBusConnection *conn, const char *device);
+void __connman_element_start(void);
 void __connman_element_cleanup(void);
 
 void __connman_element_list(struct connman_element *element,
