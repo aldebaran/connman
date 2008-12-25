@@ -43,43 +43,6 @@ struct ethernet_data {
 
 static GSList *ethernet_list = NULL;
 
-static void update_power(struct connman_device *device, unsigned flags)
-{
-	if (flags & IFF_UP) {
-		DBG("power on");
-
-		connman_device_set_powered(device, TRUE);
-	} else {
-		DBG("power off");
-
-		connman_device_set_powered(device, FALSE);
-	}
-}
-
-static void update_carrier(struct connman_device *device, unsigned flags)
-{
-	struct connman_element *netdev;
-
-	if (flags & IFF_LOWER_UP) {
-		DBG("carrier on");
-
-		netdev = connman_element_create(NULL);
-		if (netdev != NULL) {
-			netdev->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
-			netdev->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
-			netdev->index   = device->element->index;
-
-			if (connman_element_register(netdev,
-							device->element) < 0)
-				connman_element_unref(netdev);
-		}
-	} else {
-		DBG("carrier off");
-
-		connman_element_unregister_children(device->element);
-	}
-}
-
 static void ethernet_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
@@ -98,11 +61,25 @@ static void ethernet_newlink(unsigned short type, int index,
 		if (ethernet->index != index)
 			continue;
 
-		if ((ethernet->flags & IFF_UP) != (flags & IFF_UP))
-			update_power(device, flags);
+		if ((ethernet->flags & IFF_UP) != (flags & IFF_UP)) {
+			if (flags & IFF_UP) {
+				DBG("power on");
+				connman_device_set_powered(device, TRUE);
+			} else {
+				DBG("power off");
+				connman_device_set_powered(device, FALSE);
+			}
+		}
 
-		if ((ethernet->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP))
-			update_carrier(device, flags);
+		if ((ethernet->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
+			if (flags & IFF_LOWER_UP) {
+				DBG("carrier on");
+				connman_device_set_carrier(device, TRUE);
+			} else {
+				DBG("carrier off");
+				connman_device_set_carrier(device, FALSE);
+			}
+		}
 
 		ethernet->flags = flags;
 	}
@@ -213,7 +190,7 @@ static int ethernet_probe(struct connman_device *device)
 
 	connman_device_set_data(device, ethernet);
 
-	ethernet->index = device->element->index;
+	ethernet->index = connman_device_get_index(device);
 
 	connman_rtnl_send_getlink();
 
