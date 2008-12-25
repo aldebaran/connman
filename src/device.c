@@ -44,6 +44,22 @@ struct connman_device {
 	GSList *networks;
 };
 
+static const char *type2description(enum connman_device_type type)
+{
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		return "Ethernet";
+	case CONNMAN_DEVICE_TYPE_WIFI:
+		return "Wireless";
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		return "WiMAX";
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		return "Bluetooth";
+	default:
+		return NULL;
+	}
+}
+
 static const char *type2string(enum connman_device_type type)
 {
 	switch (type) {
@@ -121,6 +137,15 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = type2description(device->type);
+	if (str != NULL && device->interface != NULL) {
+		char *name = g_strdup_printf("%s (%s)", str, device->interface);
+		if (name != NULL)
+			connman_dbus_dict_append_variant(&dict, "Name",
+						DBUS_TYPE_STRING, &name);
+		g_free(name);
+	}
 
 	str = type2string(device->type);
 	if (str != NULL)
