@@ -32,17 +32,17 @@ extern "C" {
  * @short_description: Functions for handling networks
  */
 
-enum connman_network_mode {
-	CONNMAN_NETWORK_MODE_NONE     = 0,
-	CONNMAN_NETWORK_MODE_SINGLE   = 1,
-	CONNMAN_NETWORK_MODE_MULTIPLE = 2,
-};
-
 enum connman_network_type {
 	CONNMAN_NETWORK_TYPE_UNKNOWN = 0,
+	CONNMAN_NETWORK_TYPE_WIFI    = 1,
 };
 
 struct connman_network;
+
+extern struct connman_network *connman_network_create(const char *identifier,
+						enum connman_network_type type);
+extern struct connman_network *connman_network_ref(struct connman_network *network);
+extern void connman_network_unref(struct connman_network *network);
 
 struct connman_network_driver {
 	const char *name;
