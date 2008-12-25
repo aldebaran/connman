@@ -44,3 +44,9 @@ DBusMessage *__connman_error_permission_denied(DBusMessage *msg)
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 						".PermissionDenied", NULL);
 }
+
+DBusMessage *__connman_error_not_supported(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						".NotSupported", NULL);
+}

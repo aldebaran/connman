@@ -238,7 +238,7 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 {
 	DBG("conn %p", conn);
 
-	return __connman_error_failed(msg);
+	return __connman_error_not_supported(msg);
 }
 
 static GDBusMethodTable device_methods[] = {
