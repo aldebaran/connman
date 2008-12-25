@@ -356,6 +356,8 @@ struct connman_device *connman_device_create(const char *node,
 
 	DBG("device %p", device);
 
+	device->element.refcount = 1;
+
 	device->element.name = g_strdup(node);
 	device->element.type = CONNMAN_ELEMENT_TYPE_DEVICE;
 	device->element.index = -1;
