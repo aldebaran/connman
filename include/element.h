@@ -108,6 +108,7 @@ struct connman_element {
 	union {
 		void *private;
 		struct connman_device *device;
+		struct connman_network *network;
 	};
 
 	GSList *properties;
