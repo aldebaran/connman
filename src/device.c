@@ -31,6 +31,7 @@
 struct connman_device {
 	struct connman_element element;
 	enum connman_device_type type;
+	enum connman_device_mode mode;
 	enum connman_device_policy policy;
 	gboolean powered;
 	gboolean carrier;
@@ -363,6 +364,7 @@ struct connman_device *connman_device_create(const char *node,
 	device->element.destruct = device_destruct;
 
 	device->type = type;
+	device->mode = CONNMAN_DEVICE_MODE_NO_NETWORK;
 	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
 
 	return device;
@@ -472,6 +474,19 @@ const char *connman_device_get_interface(struct connman_device *device)
 }
 
 /**
+ * connman_device_set_mode:
+ * @device: device structure
+ * @mode: network mode
+ *
+ * Change network mode of device
+ */
+void connman_device_set_mode(struct connman_device *device,
+						enum connman_device_mode mode)
+{
+	device->mode = mode;
+}
+
+/**
  * connman_device_set_powered:
  * @device: device structure
  * @powered: powered state
@@ -523,10 +538,7 @@ int connman_device_set_carrier(struct connman_device *device,
 {
 	DBG("driver %p carrier %d", device, carrier);
 
-	if (!device->driver)
-		return -EINVAL;
-
-	if (device->driver->scan)
+	if (device->mode != CONNMAN_DEVICE_MODE_NO_NETWORK)
 		return -EINVAL;
 
 	if (device->carrier == carrier)
@@ -569,10 +581,7 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	DBG("driver %p scanning %d", device, scanning);
 
-	if (!device->driver)
-		return -EINVAL;
-
-	if (!device->driver->scan)
+	if (!device->driver || !device->driver->scan)
 		return -EINVAL;
 
 	if (device->scanning == scanning)

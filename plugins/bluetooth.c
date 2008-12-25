@@ -343,6 +343,8 @@ static void add_adapter(DBusConnection *connection, const char *path)
 
 	connman_device_set_interface(adapter, node);
 
+	connman_device_set_mode(adapter, CONNMAN_DEVICE_MODE_MULTIPLE_NETWORKS);
+
 	if (connman_device_register(adapter) < 0) {
 		connman_device_unref(adapter);
 		return;

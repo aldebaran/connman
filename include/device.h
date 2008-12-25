@@ -45,6 +45,12 @@ enum connman_device_type {
 	CONNMAN_DEVICE_TYPE_VENDOR    = 42,
 };
 
+enum connman_device_mode {
+	CONNMAN_DEVICE_MODE_NO_NETWORK        = 0,
+	CONNMAN_DEVICE_MODE_SINGLE_NETWORK    = 1,
+	CONNMAN_DEVICE_MODE_MULTIPLE_NETWORKS = 2,
+};
+
 enum connman_device_policy {
 	CONNMAN_DEVICE_POLICY_UNKNOWN = 0,
 	CONNMAN_DEVICE_POLICY_IGNORE  = 1,
@@ -68,6 +74,9 @@ extern int connman_device_get_index(struct connman_device *device);
 extern void connman_device_set_interface(struct connman_device *device,
 							const char *interface);
 extern const char *connman_device_get_interface(struct connman_device *device);
+
+extern void connman_device_set_mode(struct connman_device *device,
+						enum connman_device_mode mode);
 
 extern int connman_device_set_powered(struct connman_device *device,
 							gboolean powered);
