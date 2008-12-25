@@ -1192,6 +1192,8 @@ void connman_element_unref(struct connman_element *element)
 				g_atomic_int_get(&element->refcount) - 1);
 
 	if (g_atomic_int_dec_and_test(&element->refcount) == TRUE) {
+		if (element->destruct)
+			element->destruct(element);
 		free_properties(element);
 		g_free(element->ipv4.address);
 		g_free(element->ipv4.netmask);

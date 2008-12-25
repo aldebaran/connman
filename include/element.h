@@ -103,6 +103,13 @@ struct connman_element {
 	struct connman_driver *driver;
 	void *driver_data;
 
+	void (*destruct) (struct connman_element *element);
+
+	union {
+		void *private;
+		struct connman_device *device;
+	};
+
 	GSList *properties;
 
 	struct {
