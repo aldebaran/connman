@@ -28,6 +28,21 @@
 
 #include "connman.h"
 
+struct connman_device {
+	struct connman_element element;
+	enum connman_device_type type;
+	enum connman_device_policy policy;
+	gboolean powered;
+	gboolean carrier;
+	gboolean scanning;
+	char *interface;
+
+	struct connman_device_driver *driver;
+	void *driver_data;
+
+	GSList *networks;
+};
+
 static const char *type2string(enum connman_device_type type)
 {
 	switch (type) {
@@ -41,6 +56,20 @@ static const char *type2string(enum connman_device_type type)
 		return "modem";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
+	default:
+		return NULL;
+	}
+}
+
+static const char *policy2string(enum connman_device_policy policy)
+{
+	switch (policy) {
+	case CONNMAN_DEVICE_POLICY_IGNORE:
+		return "ignore";
+	case CONNMAN_DEVICE_POLICY_AUTO:
+		return "auto";
+	case CONNMAN_DEVICE_POLICY_OFF:
+		return "off";
 	default:
 		return NULL;
 	}
@@ -97,6 +126,15 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
+	if (device->interface != NULL)
+		connman_dbus_dict_append_variant(&dict, "Interface",
+					DBUS_TYPE_STRING, &device->interface);
+
+	str = policy2string(device->policy);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Policy",
+						DBUS_TYPE_STRING, &str);
+
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
 
@@ -142,7 +180,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_failed(msg);
 	}
 
-	__connman_element_store(device->element);
+	__connman_element_store(&device->element);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -195,7 +233,7 @@ static DBusConnection *connection;
 
 static int register_interface(struct connman_element *element)
 {
-	struct connman_device *device = connman_element_get_data(element);
+	struct connman_device *device = element->device;
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_DEVICE_INTERFACE);
@@ -260,9 +298,130 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+static void device_destruct(struct connman_element *element)
+{
+	struct connman_device *device = element->device;
+
+	DBG("element %p name %s", element, element->name);
+
+	g_free(device->interface);
+}
+
+/**
+ * connman_device_create:
+ * @node: device node name (for example an address)
+ * @type: device type
+ *
+ * Allocate a new device of given #type and assign the #node name to it.
+ *
+ * Returns: a newly-allocated #connman_device structure
+ */
+struct connman_device *connman_device_create(const char *node,
+						enum connman_device_type type)
+{
+	struct connman_device *device;
+
+	DBG("node %s type %d", node, type);
+
+	device = g_try_new0(struct connman_device, 1);
+	if (device == NULL)
+		return NULL;
+
+	DBG("device %p", device);
+
+	device->element.name = g_strdup(node);
+	device->element.type = CONNMAN_ELEMENT_TYPE_DEVICE;
+	device->element.index = -1;
+
+	device->element.device = device;
+	device->element.destruct = device_destruct;
+
+	device->type = type;
+	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
+
+	return device;
+}
+
+/**
+ * connman_device_ref:
+ * @device: device structure
+ *
+ * Increase reference counter of device
+ */
+struct connman_device *connman_device_ref(struct connman_device *device)
+{
+	if (connman_element_ref(&device->element) == NULL)
+		return NULL;
+
+	return device;
+}
+
+/**
+ * connman_device_unref:
+ * @device: device structure
+ *
+ * Decrease reference counter of device
+ */
+void connman_device_unref(struct connman_device *device)
+{
+	connman_element_unref(&device->element);
+}
+
+/**
+ * connman_device_set_interface:
+ * @device: device structure
+ * @index: index number
+ *
+ * Set index number of device
+ */
+void connman_device_set_index(struct connman_device *device, int index)
+{
+	device->element.index = index;
+}
+
+/**
+ * connman_device_get_index:
+ * @device: device structure
+ *
+ * Get index number of device
+ */
+int connman_device_get_index(struct connman_device *device)
+{
+	return device->element.index;
+}
+
+/**
+ * connman_device_set_interface:
+ * @device: device structure
+ * @interface: interface name
+ *
+ * Set interface name of device
+ */
+void connman_device_set_interface(struct connman_device *device,
+							const char *interface)
+{
+	g_free(device->element.devname);
+	device->element.devname = g_strdup(interface);
+
+	g_free(device->interface);
+	device->interface = g_strdup(interface);
+}
+
+/**
+ * connman_device_get_interface:
+ * @device: device structure
+ *
+ * Get interface name of device
+ */
+const char *connman_device_get_interface(struct connman_device *device)
+{
+	return device->interface;
+}
+
 /**
  * connman_device_set_powered:
  * @device: device structure
+ * @powered: powered state
  *
  * Change power state of device
  */
@@ -280,7 +439,7 @@ int connman_device_set_powered(struct connman_device *device,
 
 	device->powered = powered;
 
-	signal = dbus_message_new_signal(device->element->path,
+	signal = dbus_message_new_signal(device->element.path,
 				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return 0;
@@ -300,8 +459,51 @@ int connman_device_set_powered(struct connman_device *device,
 }
 
 /**
+ * connman_device_set_carrier:
+ * @device: device structure
+ * @carrier: carrier state
+ *
+ * Change carrier state of device (only for device without scanning)
+ */
+int connman_device_set_carrier(struct connman_device *device,
+							gboolean carrier)
+{
+	DBG("driver %p carrier %d", device, carrier);
+
+	if (!device->driver)
+		return -EINVAL;
+
+	if (device->driver->scan)
+		return -EINVAL;
+
+	if (device->carrier == carrier)
+		return -EALREADY;
+
+	device->carrier = carrier;
+
+	if (carrier == TRUE) {
+		struct connman_element *element;
+
+		element = connman_element_create(NULL);
+		if (element != NULL) {
+			element->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
+			element->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
+			element->index   = device->element.index;
+
+			if (connman_element_register(element,
+							&device->element) < 0)
+				connman_element_unref(element);
+		}
+	} else
+		connman_element_unregister_children(&device->element);
+
+	return 0;
+}
+
+/**
  * connman_device_set_scanning:
  * @device: device structure
+ * @scanning: scanning state
  *
  * Change scanning state of device
  */
@@ -325,7 +527,7 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	device->scanning = scanning;
 
-	signal = dbus_message_new_signal(device->element->path,
+	signal = dbus_message_new_signal(device->element.path,
 				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return 0;
@@ -344,10 +546,83 @@ int connman_device_set_scanning(struct connman_device *device,
 	return 0;
 }
 
+/**
+ * connman_device_register:
+ * @device: device structure
+ *
+ * Register device with the system
+ */
+int connman_device_register(struct connman_device *device)
+{
+	return connman_element_register(&device->element, NULL);
+}
+
+/**
+ * connman_device_unregister:
+ * @device: device structure
+ *
+ * Unregister device with the system
+ */
+void connman_device_unregister(struct connman_device *device)
+{
+	connman_element_unregister(&device->element);
+}
+
+/**
+ * connman_device_get_data:
+ * @device: device structure
+ *
+ * Get private device data pointer
+ */
+void *connman_device_get_data(struct connman_device *device)
+{
+	return device->driver_data;
+}
+
+/**
+ * connman_device_set_data:
+ * @device: device structure
+ * @data: data pointer
+ *
+ * Set private device data pointer
+ */
+void connman_device_set_data(struct connman_device *device, void *data)
+{
+	device->driver_data = data;
+}
+
+static void device_enable(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
+		return;
+
+	if (device->powered == TRUE)
+		return;
+
+	if (device->driver->enable)
+		device->driver->enable(device);
+}
+
+static void device_disable(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
+		return;
+
+	if (device->powered == FALSE)
+		return;
+
+	if (device->driver->disable)
+		device->driver->disable(device);
+}
+
 static gboolean match_driver(struct connman_device *device,
 					struct connman_device_driver *driver)
 {
-	if (device->element->subtype == driver->type ||
+	if (device->type == driver->type ||
 			driver->type == CONNMAN_DEVICE_TYPE_UNKNOWN)
 		return TRUE;
 
@@ -356,29 +631,18 @@ static gboolean match_driver(struct connman_device *device,
 
 static int device_probe(struct connman_element *element)
 {
-	struct connman_device *device;
+	struct connman_device *device = element->device;
 	GSList *list;
 	int err;
 
 	DBG("element %p name %s", element, element->name);
 
-	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_NETWORK)
+	if (device == NULL)
 		return -ENODEV;
 
-	device = g_try_new0(struct connman_device, 1);
-	if (device == NULL)
-		return -ENOMEM;
-
-	device->element = element;
-	device->type = element->subtype;
-
-	connman_element_set_data(element, device);
-
 	err = register_interface(element);
-	if (err < 0) {
-		g_free(device);
+	if (err < 0)
 		return err;
-	}
 
 	for (list = driver_list; list; list = list->next) {
 		struct connman_device_driver *driver = list->data;
@@ -390,6 +654,7 @@ static int device_probe(struct connman_element *element)
 
 		if (driver->probe(device) == 0) {
 			device->driver = driver;
+			device_enable(device);
 			break;
 		}
 	}
@@ -399,18 +664,21 @@ static int device_probe(struct connman_element *element)
 
 static void device_remove(struct connman_element *element)
 {
-	struct connman_device *device = connman_element_get_data(element);
+	struct connman_device *device = element->device;
 
 	DBG("element %p name %s", element, element->name);
 
+	if (device == NULL)
+		return;
+
 	unregister_interface(element);
 
-	if (device->driver && device->driver->remove)
-		device->driver->remove(device);
+	if (device->driver) {
+		device_disable(device);
 
-	connman_element_set_data(element, NULL);
-
-	g_free(device);
+		if (device->driver->remove)
+			device->driver->remove(device);
+	}
 }
 
 static struct connman_driver device_driver = {

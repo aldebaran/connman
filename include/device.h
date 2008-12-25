@@ -30,8 +30,8 @@ extern "C" {
 
 /**
  * SECTION:device
- * @title: Device driver premitives
- * @short_description: Functions for registering device drivers
+ * @title: Device premitives
+ * @short_description: Functions for handling devices
  */
 
 enum connman_device_type {
@@ -45,10 +45,6 @@ enum connman_device_type {
 	CONNMAN_DEVICE_TYPE_VENDOR    = 42,
 };
 
-enum connman_device_capabilities {
-	CONNMAN_DEVICE_CAPABILITY_SCANNING = (1 << 0),
-};
-
 enum connman_device_policy {
 	CONNMAN_DEVICE_POLICY_UNKNOWN = 0,
 	CONNMAN_DEVICE_POLICY_IGNORE  = 1,
@@ -56,43 +52,32 @@ enum connman_device_policy {
 	CONNMAN_DEVICE_POLICY_OFF     = 3,
 };
 
-enum connman_device_state {
-	CONNMAN_DEVICE_STATE_UNKNOWN = 0,
-	CONNMAN_DEVICE_STATE_OFF     = 1,
-};
+struct connman_device;
 
-struct connman_device_driver;
+extern struct connman_device *connman_device_create(const char *node,
+						enum connman_device_type type);
+extern struct connman_device *connman_device_ref(struct connman_device *device);
+extern void connman_device_unref(struct connman_device *device);
 
-struct connman_device {
-	struct connman_element *element;
-	enum connman_device_type type;
-	unsigned long capabilities;
-	enum connman_device_policy policy;
-	enum connman_device_state state;
-	gboolean powered;
-	gboolean scanning;
-
-	struct connman_device_driver *driver;
-	void *driver_data;
-
-	GSList *networks;
-};
+extern void connman_device_set_index(struct connman_device *device,
+								int index);
+extern int connman_device_get_index(struct connman_device *device);
+extern void connman_device_set_interface(struct connman_device *device,
+							const char *interface);
+extern const char *connman_device_get_interface(struct connman_device *device);
 
 extern int connman_device_set_powered(struct connman_device *device,
 							gboolean powered);
+extern int connman_device_set_carrier(struct connman_device *device,
+							gboolean carrier);
 extern int connman_device_set_scanning(struct connman_device *device,
 							gboolean scanning);
 
-static inline void *connman_device_get_data(struct connman_device *device)
-{
-	return device->driver_data;
-}
+extern int connman_device_register(struct connman_device *device);
+extern void connman_device_unregister(struct connman_device *device);
 
-static inline void connman_device_set_data(struct connman_device *device,
-								void *data)
-{
-	device->driver_data = data;
-}
+extern void *connman_device_get_data(struct connman_device *device);
+extern void connman_device_set_data(struct connman_device *device, void *data);
 
 struct connman_device_driver {
 	const char *name;
