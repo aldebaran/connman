@@ -26,6 +26,35 @@
 extern "C" {
 #endif
 
+/**
+ * SECTION:network
+ * @title: Network premitives
+ * @short_description: Functions for handling networks
+ */
+
+enum connman_network_mode {
+	CONNMAN_NETWORK_MODE_NONE     = 0,
+	CONNMAN_NETWORK_MODE_SINGLE   = 1,
+	CONNMAN_NETWORK_MODE_MULTIPLE = 2,
+};
+
+enum connman_network_type {
+	CONNMAN_NETWORK_TYPE_UNKNOWN = 0,
+};
+
+struct connman_network;
+
+struct connman_network_driver {
+	const char *name;
+	enum connman_network_type type;
+	int priority;
+	int (*probe) (struct connman_network *network);
+	void (*remove) (struct connman_network *network);
+};
+
+extern int connman_network_driver_register(struct connman_network_driver *driver);
+extern void connman_network_driver_unregister(struct connman_network_driver *driver);
+
 #ifdef __cplusplus
 }
 #endif
