@@ -102,8 +102,7 @@
     <xi:include href="xml/log.xml" />
     <xi:include href="xml/plugin.xml" />
     <xi:include href="xml/security.xml" />
-    <xi:include href="xml/element.xml" />
-    <xi:include href="xml/driver.xml" />
+    <xi:include href="xml/resolver.xml" />
   </reference>
 
   <appendix id="license">
