@@ -33,7 +33,7 @@
 #include <linux/wireless.h>
 
 #include <connman/plugin.h>
-#include <connman/element.h>
+#include <connman/device.h>
 #include <connman/rtnl.h>
 #include <connman/log.h>
 
@@ -41,30 +41,33 @@
 
 static GSList *device_list = NULL;
 
+static struct connman_device *find_device(int index)
+{
+	GSList *list;
+
+	for (list = device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		if (connman_device_get_index(device) == index)
+			return device;
+	}
+
+	return NULL;
+}
+
 static void rtnllink_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
-	enum connman_element_subtype subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
-	struct connman_element *device;
-	GSList *list;
-	gboolean exists = FALSE;
+	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+	struct connman_device *device;
 	gchar *name, *devname;
 
 	DBG("index %d", index);
 
-	for (list = device_list; list; list = list->next) {
-		struct connman_element *device = list->data;
-
-		if (device->index == index) {
-			exists = TRUE;
-			break;
-		}
-	}
-
-	if (exists == TRUE)
+	device = find_device(index);
+	if (device != NULL)
 		return;
 
-	name = inet_index2ident(index, "dev_");
 	devname = inet_index2name(index);
 
 	if (type == ARPHRD_ETHER) {
@@ -83,35 +86,42 @@ static void rtnllink_newlink(unsigned short type, int index,
 
 		sk = socket(PF_INET, SOCK_DGRAM, 0);
 
-		if (g_str_has_prefix(name, "bnep") == TRUE)
-			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+		if (g_str_has_prefix(devname, "bnep") == TRUE)
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			subtype = CONNMAN_ELEMENT_SUBTYPE_WIMAX;
+			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
 		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
-			subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else
-			subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
+			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
 
 		close(sk);
 	}
 
-	if (subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN) {
+	if (devtype == CONNMAN_DEVICE_TYPE_UNKNOWN) {
+		g_free(devname);
+		return;
+	}
+
+	name = inet_index2ident(index, "dev_");
+
+	device = connman_device_create(name, devtype);
+	if (device == NULL) {
+		g_free(devname);
 		g_free(name);
 		return;
 	}
 
-	device = connman_element_create(NULL);
-	device->type = CONNMAN_ELEMENT_TYPE_DEVICE;
-	device->subtype = subtype;
+	connman_device_set_index(device, index);
+	connman_device_set_interface(device, devname);
 
-	device->index = index;
-	device->name = name;
-	device->devname = devname;
+	g_free(devname);
+	g_free(name);
 
-	if (connman_element_register(device, NULL) < 0) {
-		connman_element_unref(device);
+	if (connman_device_register(device) < 0) {
+		connman_device_unref(device);
 		return;
 	}
 
@@ -121,20 +131,18 @@ static void rtnllink_newlink(unsigned short type, int index,
 static void rtnllink_dellink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
-	GSList *list;
+	struct connman_device *device;
 
 	DBG("index %d", index);
 
-	for (list = device_list; list; list = list->next) {
-		struct connman_element *device = list->data;
+	device = find_device(index);
+	if (device == NULL)
+		return;
 
-		if (device->index == index) {
-			device_list = g_slist_remove(device_list, device);
-			connman_element_unregister(device);
-			connman_element_unref(device);
-			break;
-		}
-	}
+	device_list = g_slist_remove(device_list, device);
+
+	connman_device_unregister(device);
+	connman_device_unref(device);
 }
 
 static struct connman_rtnl rtnllink_rtnl = {
@@ -163,10 +171,10 @@ static void rtnllink_exit(void)
 	connman_rtnl_unregister(&rtnllink_rtnl);
 
 	for (list = device_list; list; list = list->next) {
-		struct connman_element *device = list->data;
+		struct connman_device *device = list->data;
 
-		connman_element_unregister(device);
-		connman_element_unref(device);
+		connman_device_unregister(device);
+		connman_device_unref(device);
 	}
 
 	g_slist_free(device_list);
