@@ -35,6 +35,7 @@ struct connman_device {
 	gboolean powered;
 	gboolean carrier;
 	gboolean scanning;
+	char *path;
 	char *interface;
 
 	struct connman_device_driver *driver;
@@ -368,7 +369,34 @@ void connman_device_unref(struct connman_device *device)
 }
 
 /**
- * connman_device_set_interface:
+ * connman_device_set_path:
+ * @device: device structure
+ * @path: path name
+ *
+ * Set path name of device
+ */
+void connman_device_set_path(struct connman_device *device, const char *path)
+{
+	g_free(device->element.devpath);
+	device->element.devpath = g_strdup(path);
+
+	g_free(device->path);
+	device->path = g_strdup(path);
+}
+
+/**
+ * connman_device_get_path:
+ * @device: device structure
+ *
+ * Get path name of device
+ */
+const char *connman_device_get_path(struct connman_device *device)
+{
+	return device->path;
+}
+
+/**
+ * connman_device_set_index:
  * @device: device structure
  * @index: index number
  *
