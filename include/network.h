@@ -44,6 +44,11 @@ extern struct connman_network *connman_network_create(const char *identifier,
 extern struct connman_network *connman_network_ref(struct connman_network *network);
 extern void connman_network_unref(struct connman_network *network);
 
+extern const char *connman_network_get_identifier(struct connman_network *network);
+
+extern void *connman_network_get_data(struct connman_network *network);
+extern void connman_network_set_data(struct connman_network *network, void *data);
+
 struct connman_network_driver {
 	const char *name;
 	enum connman_network_type type;

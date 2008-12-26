@@ -28,6 +28,7 @@
 struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
+	char *identifier;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -35,7 +36,11 @@ struct connman_network {
 
 static void network_destruct(struct connman_element *element)
 {
+	struct connman_network *network = element->network;
+
 	DBG("element %p name %s", element, element->name);
+
+	g_free(network->identifier);
 }
 
 /**
@@ -69,6 +74,7 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->element.destruct = network_destruct;
 
 	network->type = type;
+	network->identifier = g_strdup(identifier);
 
 	return network;
 }
@@ -96,6 +102,40 @@ struct connman_network *connman_network_ref(struct connman_network *network)
 void connman_network_unref(struct connman_network *network)
 {
 	connman_element_unref(&network->element);
+}
+
+/**
+ * connman_network_get_identifier:
+ * @network: network structure
+ *
+ * Get identifier of network
+ */
+const char *connman_network_get_identifier(struct connman_network *network)
+{
+	return network->identifier;
+}
+
+/**
+ * connman_network_get_data:
+ * @network: network structure
+ *
+ * Get private network data pointer
+ */
+void *connman_network_get_data(struct connman_network *network)
+{
+	return network->driver_data;
+}
+
+/**
+ * connman_network_set_data:
+ * @network: network structure
+ * @data: data pointer
+ *
+ * Set private network data pointer
+ */
+void connman_network_set_data(struct connman_network *network, void *data)
+{
+	network->driver_data = data;
 }
 
 static int network_probe(struct connman_element *element)
