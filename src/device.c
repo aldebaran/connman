@@ -132,7 +132,8 @@ static void append_networks(struct connman_device *device,
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	/* FIXME append networks */
+	__connman_element_list((struct connman_element *) device,
+					CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(entry, &value);
