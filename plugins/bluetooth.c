@@ -36,6 +36,7 @@
 #define BLUEZ_SERVICE			"org.bluez"
 #define BLUEZ_MANAGER_INTERFACE		BLUEZ_SERVICE ".Manager"
 #define BLUEZ_ADAPTER_INTERFACE		BLUEZ_SERVICE ".Adapter"
+#define BLUEZ_DEVICE_INTERFACE		BLUEZ_SERVICE ".Device"
 
 #define LIST_ADAPTERS			"ListAdapters"
 #define ADAPTER_ADDED			"AdapterAdded"
@@ -46,6 +47,76 @@
 #define SET_PROPERTY			"SetProperty"
 
 #define TIMEOUT 5000
+
+typedef void (* properties_callback_t) (DBusConnection *connection,
+							const char *path,
+							DBusMessage *message,
+							void *user_data);
+
+struct properties_data {
+	DBusConnection *connection;
+	DBusMessage *message;
+	properties_callback_t callback;
+	void *user_data;
+};
+
+static void get_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	struct properties_data *data = user_data;
+	DBusMessage *reply;
+	const char *path;
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		goto done;
+
+	path = dbus_message_get_path(data->message);
+
+	data->callback(data->connection, path, reply, data->user_data);
+
+	dbus_message_unref(reply);
+
+done:
+	dbus_message_unref(data->message);
+	g_free(data);
+}
+
+static void get_properties(DBusConnection *connection,
+				const char *path, const char *interface,
+				properties_callback_t callback, void *user_data)
+{
+	struct properties_data *data;
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("path %s interface %s", path, interface);
+
+	data = g_try_new0(struct properties_data, 1);
+	if (data == NULL)
+		return;
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+						interface, GET_PROPERTIES);
+	if (message == NULL) {
+		g_free(data);
+		return;
+	}
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to get properties for %s", interface);
+		dbus_message_unref(message);
+		g_free(data);
+		return;
+	}
+
+	data->connection = connection;
+	data->message    = message;
+	data->callback   = callback;
+	data->user_data  = user_data;
+
+	dbus_pending_call_set_notify(call, get_properties_reply, data, NULL);
+}
 
 struct adapter_data {
 	DBusConnection *connection;
@@ -204,8 +275,28 @@ static struct connman_device *find_adapter(const char *path)
 	return NULL;
 }
 
+static void device_properties(DBusConnection *connection, const char *path,
+				DBusMessage *message, void *user_data)
+{
+	struct connman_device *device = user_data;
+	const char *node = g_basename(path);
+	struct connman_network *network;
+
+	DBG("path %s", path);
+
+	network = connman_device_get_network(device, node);
+	if (network != NULL)
+		return;
+
+	network = connman_network_create(node, CONNMAN_NETWORK_TYPE_WIFI);
+	if (network == NULL)
+		return;
+
+	connman_device_add_network(device, network);
+}
+
 static void check_devices(struct connman_device *adapter,
-						DBusMessageIter *array)
+			DBusConnection *connection, DBusMessageIter *array)
 {
 	DBusMessageIter value;
 
@@ -219,7 +310,8 @@ static void check_devices(struct connman_device *adapter,
 
 		dbus_message_iter_get_basic(&value, &path);
 
-		DBG("device %s", path);
+		get_properties(connection, path, BLUEZ_DEVICE_INTERFACE,
+						device_properties, adapter);
 
 		dbus_message_iter_next(&value);
 	}
@@ -259,32 +351,20 @@ static void property_changed(DBusConnection *connection, DBusMessage *message)
 	}
 }
 
-static void properties_reply(DBusPendingCall *call, void *user_data)
+static void parse_adapter_properties(struct connman_device *adapter,
+						DBusConnection *connection,
+							DBusMessage *reply)
 {
-	DBusMessage *message = user_data;
-	const char *path = dbus_message_get_path(message);
-	struct connman_device *adapter;
 	DBusMessageIter array, dict;
-	DBusMessage *reply;
-
-	DBG("path %s", path);
-
-	adapter = find_adapter(path);
-
-	dbus_message_unref(message);
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	if (adapter == NULL)
-		goto done;
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
-		goto done;
+		return;
 
 	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		goto done;
+		return;
 
 	dbus_message_iter_recurse(&array, &dict);
+
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
 		const char *key;
@@ -306,30 +386,28 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 			dbus_message_iter_get_basic(&value, &val);
 			connman_device_set_scanning(adapter, val);
 		} else if (g_str_equal(key, "Devices") == TRUE) {
-			check_devices(adapter, &value);
+			check_devices(adapter, connection, &value);
 		}
 
 		dbus_message_iter_next(&dict);
 	}
-
-done:
-	dbus_message_unref(reply);
 }
 
-static void add_adapter(DBusConnection *connection, const char *path)
+static void adapter_properties(DBusConnection *connection, const char *path,
+				DBusMessage *message, void *user_data)
 {
 	const char *node = g_basename(path);
 	struct connman_device *adapter;
-	DBusMessage *message;
-	DBusPendingCall *call;
 
 	DBG("path %s", path);
 
 	adapter = find_adapter(path);
 	if (adapter != NULL)
-		return;
+		goto done;
 
 	adapter = connman_device_create(node, CONNMAN_DEVICE_TYPE_BLUETOOTH);
+	if (adapter == NULL)
+		return;
 
 	connman_device_set_path(adapter, path);
 
@@ -352,19 +430,16 @@ static void add_adapter(DBusConnection *connection, const char *path)
 
 	adapter_list = g_slist_append(adapter_list, adapter);
 
-	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
-				BLUEZ_ADAPTER_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
+done:
+	parse_adapter_properties(adapter, connection, message);
+}
 
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get adapter properties");
-		dbus_message_unref(message);
-		return;
-	}
+static void add_adapter(DBusConnection *connection, const char *path)
+{
+	DBG("path %s", path);
 
-	dbus_pending_call_set_notify(call, properties_reply, message, NULL);
+	get_properties(connection, path, BLUEZ_ADAPTER_INTERFACE,
+						adapter_properties, NULL);
 }
 
 static void remove_adapter(DBusConnection *connection, const char *path)
@@ -383,7 +458,7 @@ static void remove_adapter(DBusConnection *connection, const char *path)
 	connman_device_unref(adapter);
 }
 
-static void adapters_reply(DBusPendingCall *call, void *user_data)
+static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusConnection *connection = user_data;
 	DBusMessage *reply;
@@ -410,7 +485,9 @@ static void adapters_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	for (i = 0; i < num_adapters; i++)
-		add_adapter(connection, adapters[i]);
+		get_properties(connection, adapters[i],
+					BLUEZ_ADAPTER_INTERFACE,
+						adapter_properties, NULL);
 
 	g_strfreev(adapters);
 
@@ -437,7 +514,8 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 		return;
 	}
 
-	dbus_pending_call_set_notify(call, adapters_reply, connection, NULL);
+	dbus_pending_call_set_notify(call, list_adapters_reply,
+							connection, NULL);
 
 	dbus_message_unref(message);
 }
