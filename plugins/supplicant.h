@@ -19,6 +19,7 @@
  *
  */
 
+#include <connman/device.h>
 #include <connman/element.h>
 
 #define SUPPLICANT_NAME  "fi.epitest.hostap.WPASupplicant"
@@ -52,10 +53,10 @@ struct supplicant_network {
 };
 
 struct supplicant_callback {
-	void (*state_change) (struct connman_element *element,
+	void (*state_change) (struct connman_device *device,
 						enum supplicant_state state);
-	void (*clear_results) (struct connman_element *element);
-	void (*scan_result) (struct connman_element *element,
+	void (*clear_results) (struct connman_device *device);
+	void (*scan_result) (struct connman_device *device,
 					struct supplicant_network *network);
 };
 
@@ -64,11 +65,11 @@ void __supplicant_activate(DBusConnection *conn);
 int __supplicant_init(DBusConnection *conn);
 void __supplicant_exit(void);
 
-int __supplicant_start(struct connman_element *element,
+int __supplicant_start(struct connman_device *device,
 					struct supplicant_callback *callback);
-int __supplicant_stop(struct connman_element *element);
+int __supplicant_stop(struct connman_device *device);
 
-int __supplicant_scan(struct connman_element *element);
+int __supplicant_scan(struct connman_device *device);
 
 int __supplicant_connect(struct connman_element *element,
 				const unsigned char *ssid, int ssid_len,

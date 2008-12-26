@@ -42,7 +42,7 @@
 struct supplicant_task {
 	int ifindex;
 	gchar *ifname;
-	struct connman_element *element;
+	struct connman_device *device;
 	struct supplicant_callback *callback;
 	gchar *path;
 	gboolean created;
@@ -732,7 +732,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	if (task->callback && task->callback->scan_result)
-		task->callback->scan_result(task->element, network);
+		task->callback->scan_result(task->device, network);
 
 	g_free(network->identifier);
 	g_free(network->ssid);
@@ -795,7 +795,7 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	if (task->callback && task->callback->clear_results)
-			task->callback->clear_results(task->element);
+			task->callback->clear_results(task->device);
 
 	for (i = 0; i < num_results; i++)
 		get_network_properties(task, results[i]);
@@ -871,7 +871,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		task->state = STATE_DISCONNECTED;
 
 	if (task->callback && task->callback->state_change)
-		task->callback->state_change(task->element, task->state);
+		task->callback->state_change(task->device, task->state);
 
 	switch (task->state) {
 	case STATE_COMPLETED:
@@ -965,21 +965,21 @@ static int remove_filter(struct supplicant_task *task)
 	return 0;
 }
 
-int __supplicant_start(struct connman_element *element,
+int __supplicant_start(struct connman_device *device,
 					struct supplicant_callback *callback)
 {
 	struct supplicant_task *task;
 	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
 	task = g_try_new0(struct supplicant_task, 1);
 	if (task == NULL)
 		return -ENOMEM;
 
-	task->ifindex = element->index;
-	task->ifname = inet_index2name(element->index);
-	task->element = element;
+	task->ifindex = connman_device_get_index(device);
+	task->ifname = inet_index2name(task->ifindex);
+	task->device = device;
 	task->callback = callback;
 
 	if (task->ifname == NULL) {
@@ -1008,13 +1008,14 @@ int __supplicant_start(struct connman_element *element,
 	return 0;
 }
 
-int __supplicant_stop(struct connman_element *element)
+int __supplicant_stop(struct connman_device *device)
 {
+	int index = connman_device_get_index(device);
 	struct supplicant_task *task;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	task = find_task_by_index(element->index);
+	task = find_task_by_index(index);
 	if (task == NULL)
 		return -ENODEV;
 
@@ -1035,14 +1036,15 @@ int __supplicant_stop(struct connman_element *element)
 	return 0;
 }
 
-int __supplicant_scan(struct connman_element *element)
+int __supplicant_scan(struct connman_device *device)
 {
+	int index = connman_device_get_index(device);
 	struct supplicant_task *task;
 	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	task = find_task_by_index(element->index);
+	task = find_task_by_index(index);
 	if (task == NULL)
 		return -ENODEV;
 
@@ -1069,7 +1071,7 @@ int __supplicant_connect(struct connman_element *element,
 {
 	struct supplicant_task *task;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("element %p", element);
 
 	task = find_task_by_index(element->index);
 	if (task == NULL)
@@ -1091,7 +1093,7 @@ int __supplicant_disconnect(struct connman_element *element)
 {
 	struct supplicant_task *task;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("element %p", element);
 
 	task = find_task_by_index(element->index);
 	if (task == NULL)
@@ -1112,7 +1114,7 @@ void __supplicant_activate(DBusConnection *conn)
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, "/",
 				DBUS_INTERFACE_INTROSPECTABLE, "Introspect");
-        if (message == NULL)
+	if (message == NULL)
 		return;
 
 	dbus_message_set_no_reply(message, TRUE);

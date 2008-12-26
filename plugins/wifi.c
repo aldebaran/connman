@@ -68,7 +68,7 @@ static void network_remove(struct connman_element *element)
 
 static int network_enable(struct connman_element *element)
 {
-	struct connman_element *device = element->parent;
+	struct connman_device *device = (struct connman_device *) element->parent;
 	char *name, *security = NULL, *passphrase = NULL;
 	unsigned char *ssid;
 	int ssid_len;
@@ -84,7 +84,7 @@ static int network_enable(struct connman_element *element)
 		return -EIO;
 
 	if (device != NULL) {
-		struct wifi_data *data = connman_element_get_data(device);
+		struct wifi_data *data = connman_device_get_data(device);
 
 		if (data != NULL) {
 			if (data->connected == TRUE)
@@ -166,10 +166,10 @@ static struct connman_element *find_pending_element(struct wifi_data *data,
 
 static gboolean inactive_scan(gpointer user_data)
 {
-	struct connman_element *device = user_data;
-	struct wifi_data *data = connman_element_get_data(device);
+	struct connman_device *device = user_data;
+	struct wifi_data *data = connman_device_get_data(device);
 
-	DBG("");
+	DBG("device %p", device);
 
 	__supplicant_scan(device);
 
@@ -178,12 +178,12 @@ static gboolean inactive_scan(gpointer user_data)
 	return FALSE;
 }
 
-static void connect_known_networks(struct connman_element *device)
+static void connect_known_networks(struct connman_device *device)
 {
-	struct wifi_data *data = connman_element_get_data(device);
+	struct wifi_data *data = connman_device_get_data(device);
 	GSList *list;
 
-	DBG("");
+	DBG("device %p", device);
 
 	if (data->inactive_timer > 0) {
 		g_source_remove(data->inactive_timer);
@@ -205,21 +205,23 @@ static void connect_known_networks(struct connman_element *device)
 							inactive_scan, device);
 }
 
-static void state_change(struct connman_element *device,
+static void state_change(struct connman_device *device,
 						enum supplicant_state state)
 {
-	struct wifi_data *data = connman_element_get_data(device);
+	struct wifi_data *data = connman_device_get_data(device);
 	struct connman_element *element;
 
-	DBG("state %d", state);
+	DBG("device %p state %d", device, state);
 
 	if (state == STATE_SCANNING)
-		connman_element_set_scanning(device, TRUE);
+		connman_device_set_scanning(device, TRUE);
 	else
-		connman_element_set_scanning(device, FALSE);
+		connman_device_set_scanning(device, FALSE);
 
 	if (data == NULL)
 		return;
+
+	DBG("identifier %s", data->identifier);
 
 	if (data->identifier == NULL)
 		goto reconnect;
@@ -279,9 +281,9 @@ static gboolean cleanup_pending(gpointer user_data)
 	return FALSE;
 }
 
-static void clear_results(struct connman_element *device)
+static void clear_results(struct connman_device *device)
 {
-	struct wifi_data *data = connman_element_get_data(device);
+	struct wifi_data *data = connman_device_get_data(device);
 
 	DBG("pending %d", g_slist_length(data->pending));
 	DBG("current %d", g_slist_length(data->current));
@@ -298,15 +300,15 @@ static void clear_results(struct connman_element *device)
 							cleanup_pending, data);
 }
 
-static void scan_result(struct connman_element *device,
+static void scan_result(struct connman_device *device,
 					struct supplicant_network *network)
 {
-	struct wifi_data *data = connman_element_get_data(device);
+	struct wifi_data *data = connman_device_get_data(device);
 	struct connman_element *element;
 	gchar *temp;
 	unsigned int i;
 
-	DBG("network %p identifier %s", network, network->identifier);
+	DBG("device %p identifier %s", device, network->identifier);
 
 	if (data == NULL)
 		return;
@@ -332,8 +334,9 @@ static void scan_result(struct connman_element *device,
 
 		element = connman_element_create(temp);
 
-		element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
-		element->index = device->index;
+		element->type    = CONNMAN_ELEMENT_TYPE_NETWORK;
+		element->subtype = CONNMAN_ELEMENT_SUBTYPE_WIFI;
+		element->index   = connman_device_get_index(device);
 
 		connman_element_add_static_property(element, "Name",
 				DBUS_TYPE_STRING, &network->identifier);
@@ -368,7 +371,8 @@ static void scan_result(struct connman_element *device,
 		DBG("%s (%s %s) strength %d", network->identifier, mode,
 				element->wifi.security, element->strength);
 
-		if (connman_element_register(element, device) < 0) {
+		if (connman_element_register(element,
+				(struct connman_element *) device) < 0) {
 			connman_element_unref(element);
 			goto done;
 		}
@@ -399,11 +403,11 @@ static struct supplicant_callback wifi_callback = {
 	.scan_result	= scan_result,
 };
 
-static int wifi_probe(struct connman_element *element)
+static int wifi_probe(struct connman_device *device)
 {
 	struct wifi_data *data;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
 	data = g_try_new0(struct wifi_data, 1);
 	if (data == NULL)
@@ -411,53 +415,46 @@ static int wifi_probe(struct connman_element *element)
 
 	data->connected = FALSE;
 
-	connman_element_set_data(element, data);
+	connman_device_set_data(device, data);
 
 	return 0;
 }
 
-static void wifi_remove(struct connman_element *element)
+static void wifi_remove(struct connman_device *device)
 {
-	struct wifi_data *data = connman_element_get_data(element);
+	struct wifi_data *data = connman_device_get_data(device);
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	connman_element_set_data(element, NULL);
+	connman_device_set_data(device, NULL);
 
 	g_free(data->identifier);
 	g_free(data);
 }
 
-static int wifi_update(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	__supplicant_scan(element);
-
-	return 0;
-}
-
-static int wifi_enable(struct connman_element *element)
+static int wifi_enable(struct connman_device *device)
 {
 	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
-	err = __supplicant_start(element, &wifi_callback);
+	err = __supplicant_start(device, &wifi_callback);
 	if (err < 0)
 		return err;
 
-	__supplicant_scan(element);
+	connman_device_set_powered(device, TRUE);
+
+	__supplicant_scan(device);
 
 	return 0;
 }
 
-static int wifi_disable(struct connman_element *element)
+static int wifi_disable(struct connman_device *device)
 {
-	struct wifi_data *data = connman_element_get_data(element);
+	struct wifi_data *data = connman_device_get_data(device);
 	GSList *list;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p", device);
 
 	if (data->cleanup_timer > 0) {
 		g_source_remove(data->cleanup_timer);
@@ -469,10 +466,11 @@ static int wifi_disable(struct connman_element *element)
 		data->inactive_timer = 0;
 	}
 
-	__supplicant_disconnect(element);
-
 	for (list = data->current; list; list = list->next) {
 		struct connman_element *network = list->data;
+
+		if (network->enabled == TRUE)
+			__supplicant_disconnect(network);
 
 		connman_element_unref(network);
 	}
@@ -480,22 +478,32 @@ static int wifi_disable(struct connman_element *element)
 	g_slist_free(data->current);
 	data->current = NULL;
 
-	connman_element_unregister_children(element);
+	connman_element_unregister_children((struct connman_element *) device);
 
-	__supplicant_stop(element);
+	__supplicant_stop(device);
+
+	connman_device_set_powered(device, FALSE);
 
 	return 0;
 }
 
-static struct connman_driver wifi_driver = {
+static int wifi_scan(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	__supplicant_scan(device);
+
+	return 0;
+}
+
+static struct connman_device_driver wifi_driver = {
 	.name		= "wifi-device",
-	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.subtype	= CONNMAN_ELEMENT_SUBTYPE_WIFI,
+	.type		= CONNMAN_DEVICE_TYPE_WIFI,
 	.probe		= wifi_probe,
 	.remove		= wifi_remove,
-	.update		= wifi_update,
 	.enable		= wifi_enable,
 	.disable	= wifi_disable,
+	.scan		= wifi_scan,
 };
 
 static GSList *device_list = NULL;
@@ -503,7 +511,7 @@ static GSList *device_list = NULL;
 static void wifi_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
-	struct connman_element *device;
+	struct connman_device *device;
 	GSList *list;
 	gboolean exists = FALSE;
 	gchar *name, *devname;
@@ -515,7 +523,6 @@ static void wifi_newlink(unsigned short type, int index,
 	if (type != ARPHRD_ETHER)
 		return;
 
-	name = inet_index2ident(index, "dev_");
 	devname = inet_index2name(index);
 
 	memset(&iwr, 0, sizeof(iwr));
@@ -524,7 +531,7 @@ static void wifi_newlink(unsigned short type, int index,
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 
 	if (ioctl(sk, SIOCGIWNAME, &iwr) < 0) {
-		g_free(name);
+		g_free(devname);
 		close(sk);
 		return;
 	}
@@ -532,29 +539,38 @@ static void wifi_newlink(unsigned short type, int index,
 	close(sk);
 
 	for (list = device_list; list; list = list->next) {
-		struct connman_element *device = list->data;
+		struct connman_device *device = list->data;
 
-		if (device->index == index) {
+		if (connman_device_get_index(device) == index) {
 			exists = TRUE;
 			break;
 		}
 	}
 
 	if (exists == TRUE) {
+		g_free(devname);
+		return;
+	}
+
+	name = inet_index2ident(index, "dev_");
+
+	device = connman_device_create(name, CONNMAN_DEVICE_TYPE_WIFI);
+	if (device == NULL) {
+		g_free(devname);
 		g_free(name);
 		return;
 	}
 
-	device = connman_element_create(NULL);
-	device->type = CONNMAN_ELEMENT_TYPE_DEVICE;
-	device->subtype = CONNMAN_ELEMENT_SUBTYPE_WIFI;
+	connman_device_set_index(device, index);
+	connman_device_set_interface(device, devname);
 
-	device->index = index;
-	device->name = name;
-	device->devname = devname;
+	g_free(devname);
+	g_free(name);
 
-	if (connman_element_register(device, NULL) < 0) {
-		connman_element_unregister(device);
+	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_SINGLE_NETWORK);
+
+	if (connman_device_register(device) < 0) {
+		connman_device_unregister(device);
 		return;
 	}
 
@@ -569,12 +585,12 @@ static void wifi_dellink(unsigned short type, int index,
 	DBG("index %d", index);
 
 	for (list = device_list; list; list = list->next) {
-		struct connman_element *device = list->data;
+		struct connman_device *device = list->data;
 
-		if (device->index == index) {
+		if (connman_device_get_index(device) == index) {
 			device_list = g_slist_remove(device_list, device);
-			connman_element_unregister(device);
-			connman_element_unref(device);
+			connman_device_unregister(device);
+			connman_device_unref(device);
 			break;
 		}
 	}
@@ -607,10 +623,10 @@ static void supplicant_disconnect(DBusConnection *connection, void *user_data)
 	connman_rtnl_unregister(&wifi_rtnl);
 
 	for (list = device_list; list; list = list->next) {
-		struct connman_element *device = list->data;
+		struct connman_device *device = list->data;
 
-		connman_element_unregister(device);
-		connman_element_unref(device);
+		connman_device_unregister(device);
+		connman_device_unref(device);
 	}
 
 	g_slist_free(device_list);
@@ -636,7 +652,7 @@ static int wifi_init(void)
 		return err;
 	}
 
-	err = connman_driver_register(&wifi_driver);
+	err = connman_device_driver_register(&wifi_driver);
 	if (err < 0) {
 		connman_driver_unregister(&network_driver);
 		dbus_connection_unref(connection);
@@ -657,7 +673,7 @@ static int wifi_init(void)
 static void wifi_exit(void)
 {
 	connman_driver_unregister(&network_driver);
-	connman_driver_unregister(&wifi_driver);
+	connman_device_driver_unregister(&wifi_driver);
 
 	if (watch > 0)
 		g_dbus_remove_watch(connection, watch);
