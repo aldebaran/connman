@@ -684,8 +684,8 @@ int connman_device_add_network(struct connman_device *device,
 	if (device->mode == CONNMAN_DEVICE_MODE_NO_NETWORK)
 		return -EINVAL;
 
-	err = connman_element_register(&device->element,
-					(struct connman_element *) network);
+	err = connman_element_register((struct connman_element *) network,
+							&device->element);
 	if (err < 0)
 		return err;
 
