@@ -299,12 +299,45 @@ static GDBusSignalTable device_signals[] = {
 
 static DBusConnection *connection;
 
+static void append_devices(DBusMessageIter *entry)
+{
+	DBusMessageIter value, iter;
+	const char *key = "Devices";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
+static void emit_devices_signal(void)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	append_devices(&entry);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static int register_interface(struct connman_element *element)
 {
 	struct connman_device *device = element->device;
-
-	g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_DEVICE_INTERFACE);
 
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_DEVICE_INTERFACE,
@@ -314,11 +347,15 @@ static int register_interface(struct connman_element *element)
 		return -EIO;
 	}
 
+	emit_devices_signal();
+
 	return 0;
 }
 
 static void unregister_interface(struct connman_element *element)
 {
+	emit_devices_signal();
+
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_DEVICE_INTERFACE);
 }
