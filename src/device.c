@@ -698,7 +698,7 @@ int connman_device_add_network(struct connman_device *device,
 /**
  * connman_device_get_network:
  * @device: device structure
- * @indentifier: network identifier
+ * @identifier: network identifier
  *
  * Get network for given identifier
  */
@@ -713,7 +713,7 @@ struct connman_network *connman_device_get_network(struct connman_device *device
 /**
  * connman_device_remove_network:
  * @device: device structure
- * @indentifier: network identifier
+ * @identifier: network identifier
  *
  * Remove network for given identifier
  */
