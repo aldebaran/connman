@@ -42,7 +42,7 @@ struct connman_device {
 	struct connman_device_driver *driver;
 	void *driver_data;
 
-	GSList *networks;
+	GHashTable *networks;
 };
 
 static const char *type2description(enum connman_device_type type)
@@ -118,12 +118,32 @@ static int set_powered(struct connman_device *device, gboolean powered)
 	return err;
 }
 
+static void append_networks(struct connman_device *device,
+						DBusMessageIter *entry)
+{
+	DBusMessageIter value, iter;
+	const char *key = "Networks";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+	/* FIXME append networks */
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_device *device = data;
 	DBusMessage *reply;
-	DBusMessageIter array, dict;
+	DBusMessageIter array, dict, entry;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -168,6 +188,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (device->driver && device->driver->scan)
 		connman_dbus_dict_append_variant(&dict, "Scanning",
 					DBUS_TYPE_BOOLEAN, &device->scanning);
+
+	if (device->mode != CONNMAN_DEVICE_MODE_NO_NETWORK) {
+		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+		append_networks(device, &entry);
+		dbus_message_iter_close_container(&dict, &entry);
+	}
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -237,9 +264,22 @@ static DBusMessage *remove_network(DBusConnection *conn,
 static DBusMessage *propose_scan(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_device *device = data;
+	int err;
+
 	DBG("conn %p", conn);
 
-	return __connman_error_not_supported(msg);
+	if (device->mode == CONNMAN_DEVICE_MODE_NO_NETWORK)
+		return __connman_error_not_supported(msg);
+
+	if (!device->driver || !device->driver->scan)
+		return __connman_error_not_supported(msg);
+
+	err = device->driver->scan(device);
+	if (err < 0)
+		return __connman_error_failed(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static GDBusMethodTable device_methods[] = {
@@ -325,6 +365,17 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+static void unregister_network(gpointer data)
+{
+	struct connman_network *network = data;
+
+	DBG("network %p", network);
+
+	connman_element_unregister((struct connman_element *) network);
+
+	connman_network_unref(network);
+}
+
 static void device_destruct(struct connman_element *element)
 {
 	struct connman_device *device = element->device;
@@ -332,6 +383,8 @@ static void device_destruct(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	g_free(device->interface);
+
+	g_hash_table_destroy(device->networks);
 }
 
 /**
@@ -368,6 +421,9 @@ struct connman_device *connman_device_create(const char *node,
 	device->type = type;
 	device->mode = CONNMAN_DEVICE_MODE_NO_NETWORK;
 	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
+
+	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
+						g_free, unregister_network);
 
 	return device;
 }
@@ -606,6 +662,67 @@ int connman_device_set_scanning(struct connman_device *device,
 	dbus_message_iter_close_container(&entry, &value);
 
 	g_dbus_send_message(connection, signal);
+
+	return 0;
+}
+
+/**
+ * connman_device_add_network:
+ * @device: device structure
+ * @network: network structure
+ *
+ * Add new network to the device
+ */
+int connman_device_add_network(struct connman_device *device,
+					struct connman_network *network)
+{
+	const char *identifier = connman_network_get_identifier(network);
+	int err;
+
+	DBG("device %p network %p", device, network);
+
+	if (device->mode == CONNMAN_DEVICE_MODE_NO_NETWORK)
+		return -EINVAL;
+
+	err = connman_element_register(&device->element,
+					(struct connman_element *) network);
+	if (err < 0)
+		return err;
+
+	g_hash_table_insert(device->networks, g_strdup(identifier),
+								network);
+
+	return 0;
+}
+
+/**
+ * connman_device_get_network:
+ * @device: device structure
+ * @indentifier: network identifier
+ *
+ * Get network for given identifier
+ */
+struct connman_network *connman_device_get_network(struct connman_device *device,
+							const char *identifier)
+{
+	DBG("device %p identifier %s", device, identifier);
+
+	return g_hash_table_lookup(device->networks, identifier);
+}
+
+/**
+ * connman_device_remove_network:
+ * @device: device structure
+ * @indentifier: network identifier
+ *
+ * Remove network for given identifier
+ */
+int connman_device_remove_network(struct connman_device *device,
+							const char *identifier)
+{
+	DBG("device %p identifier %s", device, identifier);
+
+	g_hash_table_remove(device->networks, identifier);
 
 	return 0;
 }

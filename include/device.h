@@ -26,6 +26,7 @@
 extern "C" {
 #endif
 
+#include <connman/network.h>
 #include <connman/element.h>
 
 /**
@@ -84,6 +85,13 @@ extern int connman_device_set_carrier(struct connman_device *device,
 							gboolean carrier);
 extern int connman_device_set_scanning(struct connman_device *device,
 							gboolean scanning);
+
+extern int connman_device_add_network(struct connman_device *device,
+					struct connman_network *network);
+extern struct connman_network *connman_device_get_network(struct connman_device *device,
+							const char *identifier);
+extern int connman_device_remove_network(struct connman_device *device,
+							const char *identifier);
 
 extern int connman_device_register(struct connman_device *device);
 extern void connman_device_unregister(struct connman_device *device);
