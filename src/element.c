@@ -147,28 +147,6 @@ static const char *subtype2string(enum connman_element_subtype type)
 	return NULL;
 }
 
-static const char *subtype2description(enum connman_element_subtype type)
-{
-	switch (type) {
-	case CONNMAN_ELEMENT_SUBTYPE_UNKNOWN:
-	case CONNMAN_ELEMENT_SUBTYPE_FAKE:
-	case CONNMAN_ELEMENT_SUBTYPE_NETWORK:
-		return NULL;
-	case CONNMAN_ELEMENT_SUBTYPE_ETHERNET:
-		return "Ethernet";
-	case CONNMAN_ELEMENT_SUBTYPE_WIFI:
-		return "Wireless";
-	case CONNMAN_ELEMENT_SUBTYPE_WIMAX:
-		return "WiMAX";
-	case CONNMAN_ELEMENT_SUBTYPE_MODEM:
-		return "Modem";
-	case CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH:
-		return "Bluetooth";
-	}
-
-	return NULL;
-}
-
 const char *__connman_element_policy2string(enum connman_element_policy policy)
 {
 	switch (policy) {
@@ -413,26 +391,6 @@ static void emit_scanning_signal(DBusConnection *conn,
 	g_dbus_send_message(conn, signal);
 }
 
-static DBusMessage *do_update(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-
-	DBG("conn %p", conn);
-
-	if (element->enabled == FALSE)
-		return __connman_error_failed(msg);
-
-	if (element->driver && element->driver->update) {
-		DBG("Calling update callback");
-		if (element->driver->update(element) < 0)
-			return __connman_error_failed(msg);
-
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
 static DBusMessage *do_enable(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -476,207 +434,6 @@ static DBusMessage *do_disable(DBusConnection *conn,
 
 	emit_enabled_signal(connection, element);
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static void append_networks(struct connman_element *element,
-						DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Networks";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
-	__connman_element_list(element, CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
-
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
-static DBusMessage *device_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict, entry;
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	str = subtype2description(element->subtype);
-	if (str != NULL && element->devname != NULL) {
-		char *name = g_strdup_printf("%s (%s)", str, element->devname);
-		if (name != NULL)
-			connman_dbus_dict_append_variant(&dict, "Name",
-						DBUS_TYPE_STRING, &name);
-		g_free(name);
-	}
-
-	str = subtype2string(element->subtype);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
-						DBUS_TYPE_STRING, &str);
-
-	str = __connman_element_policy2string(element->policy);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Policy",
-						DBUS_TYPE_STRING, &str);
-
-	connman_dbus_dict_append_variant(&dict, "Powered",
-					DBUS_TYPE_BOOLEAN, &element->enabled);
-
-	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX ||
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH) {
-		connman_dbus_dict_append_variant(&dict, "Scanning",
-					DBUS_TYPE_BOOLEAN, &element->scanning);
-
-		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-		append_networks(element, &entry);
-		dbus_message_iter_close_container(&dict, &entry);
-	}
-
-	add_common_properties(element, &dict);
-
-	dbus_message_iter_close_container(&array, &dict);
-
-	return reply;
-}
-
-static DBusMessage *device_set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessageIter iter, value;
-	const char *name;
-
-	DBG("conn %p", conn);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_get_basic(&iter, &name);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (__connman_security_check_privileges(msg) < 0)
-		return __connman_error_permission_denied(msg);
-
-	if (g_str_equal(name, "Powered") == TRUE) {
-		dbus_bool_t powered;
-
-		dbus_message_iter_get_basic(&value, &powered);
-
-		if (powered == TRUE)
-			do_enable(conn, msg, element);
-		else
-			do_disable(conn, msg, element);
-	} else
-		set_common_property(element, name, &value);
-
-	__connman_element_store(element);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static int parse_network_dict(DBusMessageIter *iter, const char **ssid,
-				const char **security, const char **passphrase)
-{
-	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key;
-
-		dbus_message_iter_recurse(iter, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
-
-		switch (dbus_message_iter_get_arg_type(&value)) {
-		case DBUS_TYPE_STRING:
-			if (g_str_equal(key, "WiFi.SSID") == TRUE)
-				dbus_message_iter_get_basic(&value, ssid);
-			else if (g_str_equal(key, "WiFi.Security") == TRUE)
-				dbus_message_iter_get_basic(&value, security);
-			else if (g_str_equal(key, "WiFi.Passphrase") == TRUE)
-				dbus_message_iter_get_basic(&value, passphrase);
-			break;
-		}
-
-		dbus_message_iter_next(iter);
-	}
-
-	return 0;
-}
-
-static DBusMessage *device_create_network(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	struct connman_element *network;
-	DBusMessageIter iter, array;
-	const char *ssid = NULL, *security = NULL, *passphrase = NULL;
-
-	DBG("conn %p", conn);
-
-	if (element->subtype != CONNMAN_ELEMENT_SUBTYPE_WIFI)
-		return __connman_error_invalid_arguments(msg);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_recurse(&iter, &array);
-	parse_network_dict(&array, &ssid, &security, &passphrase);
-	if (ssid == NULL)
-		return __connman_error_invalid_arguments(msg);
-
-	DBG("ssid %s security %s passphrase %s", ssid, security, passphrase);
-
-	network = connman_element_create(ssid);
-
-	network->type = CONNMAN_ELEMENT_TYPE_NETWORK;
-	network->index = element->index;
-
-	network->remember = TRUE;
-
-	connman_element_add_static_property(network, "Name",
-						DBUS_TYPE_STRING, &ssid);
-
-	connman_element_add_static_array_property(element, "WiFi.SSID",
-					DBUS_TYPE_BYTE, &ssid, strlen(ssid));
-
-	network->wifi.security = g_strdup(security);
-	network->wifi.passphrase = g_strdup(passphrase);
-
-	connman_element_register(network, element);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &network->path,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *device_remove_network(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
@@ -835,15 +592,6 @@ static DBusMessage *connection_set_property(DBusConnection *conn,
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
-
-static GDBusMethodTable device_methods[] = {
-	{ "GetProperties", "",      "a{sv}", device_get_properties },
-	{ "SetProperty",   "sv",    "",      device_set_property   },
-	{ "CreateNetwork", "a{sv}", "o",     device_create_network },
-	{ "RemoveNetwork", "o",     "",      device_remove_network },
-	{ "ProposeScan",   "",      "",      do_update             },
-	{ },
-};
 
 static GDBusMethodTable network_methods[] = {
 	{ "GetProperties", "",   "a{sv}", network_get_properties },
@@ -1756,10 +1504,11 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 	return result;
 }
 
-static void append_devices(DBusMessageIter *entry)
+static void append_networks(struct connman_element *element,
+						DBusMessageIter *entry)
 {
 	DBusMessageIter value, iter;
-	const char *key = "Devices";
+	const char *key = "Networks";
 
 	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
 
@@ -1769,29 +1518,10 @@ static void append_devices(DBusMessageIter *entry)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
+	__connman_element_list(element, CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(entry, &value);
-}
-
-static void emit_devices_signal(DBusConnection *conn)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry;
-
-	DBG("conn %p", conn);
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_devices(&entry);
-
-	g_dbus_send_message(conn, signal);
 }
 
 static void emit_networks_signal(DBusConnection *conn,
@@ -1960,18 +1690,6 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_node_append_data(node, element);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
-		if (g_dbus_register_interface(connection, element->path,
-					CONNMAN_DEVICE_INTERFACE,
-					device_methods, element_signals,
-					NULL, element, NULL) == FALSE)
-			connman_error("Failed to register %s device",
-								element->path);
-		else
-			emit_devices_signal(connection);
-	}
-
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
 		if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_NETWORK_INTERFACE,
@@ -2096,14 +1814,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
-	}
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
-		emit_devices_signal(connection);
-
-		g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_DEVICE_INTERFACE);
 	}
 
 	connman_element_unref(element);
