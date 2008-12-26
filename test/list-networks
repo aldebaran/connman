@@ -25,7 +25,7 @@ for path in properties["Devices"]:
 
 	properties = device.GetProperties()
 
-	if (properties["Type"] != "wifi" and properties["Type"] != "wimax"):
+	if properties["Type"] not in ["wifi", "wimax", "bluetooth"]:
 		continue;
 
 	print "[ %s ]" % (path)
