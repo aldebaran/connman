@@ -1783,6 +1783,9 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 	if (element == root)
 		return FALSE;
 
+	if (node != NULL)
+		g_node_unlink(node);
+
 	if (element->driver) {
 		disable_element(element);
 
@@ -1794,10 +1797,8 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		__connman_element_unlock(element);
 	}
 
-	if (node != NULL) {
-		g_node_unlink(node);
+	if (node != NULL)
 		g_node_destroy(node);
-	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
 		if (__connman_element_count(NULL,
