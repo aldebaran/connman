@@ -56,6 +56,8 @@ static const char *type2description(enum connman_device_type type)
 		return "WiMAX";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "Bluetooth";
+	case CONNMAN_DEVICE_TYPE_HSO:
+		return "Cellular";
 	default:
 		return NULL;
 	}
@@ -74,6 +76,8 @@ static const char *type2string(enum connman_device_type type)
 		return "modem";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
+	case CONNMAN_DEVICE_TYPE_HSO:
+		return "cellular";
 	default:
 		return NULL;
 	}
