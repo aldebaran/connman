@@ -1,8 +1,8 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = loopback.la netdev.la ethernet.la wifi.la bluetooth.la \
-				udhcp.la dhclient.la ipv4.la rtnllink.la \
+plugin_LTLIBRARIES = loopback.la netdev.la ethernet.la wifi.la \
+			bluetooth.la udhcp.la dhclient.la ipv4.la \
 				dnsproxy.la resolvconf.la resolvfile.la
 
 loopback_la_SOURCES = loopback.c
