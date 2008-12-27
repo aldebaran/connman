@@ -1961,11 +1961,15 @@ void __connman_element_start(void)
 							probe_node, NULL);
 
 	started = TRUE;
+
+	__connman_detect_init();
 }
 
 void __connman_element_stop(void)
 {
 	DBG("");
+
+	__connman_detect_cleanup();
 }
 
 static gboolean free_driver(GNode *node, gpointer data)

@@ -111,6 +111,9 @@ static inline void __connman_element_unlock(struct connman_element *element)
 {
 }
 
+int __connman_detect_init(void);
+void __connman_detect_cleanup(void);
+
 #include <connman/device.h>
 
 int __connman_device_init(void);
