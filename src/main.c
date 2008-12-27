@@ -177,6 +177,8 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
+	__connman_element_stop();
+
 	__connman_plugin_cleanup();
 
 	__connman_rtnl_cleanup();

@@ -1963,6 +1963,11 @@ void __connman_element_start(void)
 	started = TRUE;
 }
 
+void __connman_element_stop(void)
+{
+	DBG("");
+}
+
 static gboolean free_driver(GNode *node, gpointer data)
 {
 	struct connman_element *element = node->data;
