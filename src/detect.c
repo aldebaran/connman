@@ -181,7 +181,14 @@ static void detect_newlink(unsigned short type, int index,
 		return;
 	}
 
-	name = index2ident(index, "dev_");
+	switch (devtype) {
+	case CONNMAN_DEVICE_TYPE_HSO:
+		name = strdup(devname);
+		break;
+	default:
+		name = index2ident(index, "dev_");
+		break;
+	}
 
 	device = connman_device_create(name, devtype);
 	if (device == NULL) {
