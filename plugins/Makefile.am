@@ -26,8 +26,6 @@ dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 
 ipv4_la_SOURCES = ipv4.c
 
-rtnllink_la_SOURCES = rtnllink.c inet.h inet.c
-
 dnsproxy_la_SOURCES = dnsproxy.c
 
 resolvconf_la_SOURCES = resolvconf.c
