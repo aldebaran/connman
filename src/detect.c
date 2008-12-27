@@ -135,7 +135,7 @@ static void detect_newlink(unsigned short type, int index,
 	struct connman_device *device;
 	gchar *name, *devname;
 
-	DBG("index %d", index);
+	DBG("type %d index %d", type, index);
 
 	device = find_device(index);
 	if (device != NULL)
@@ -171,6 +171,9 @@ static void detect_newlink(unsigned short type, int index,
 			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
 
 		close(sk);
+	} else if (type == ARPHRD_NONE) {
+		if (g_str_has_prefix(devname, "hso") == TRUE)
+			devtype = CONNMAN_DEVICE_TYPE_HSO;
 	}
 
 	if (devtype == CONNMAN_DEVICE_TYPE_UNKNOWN) {
@@ -206,7 +209,7 @@ static void detect_dellink(unsigned short type, int index,
 {
 	struct connman_device *device;
 
-	DBG("index %d", index);
+	DBG("type %d index %d", type, index);
 
 	device = find_device(index);
 	if (device == NULL)
