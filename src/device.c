@@ -859,10 +859,6 @@ static int device_probe(struct connman_element *element)
 	if (device == NULL)
 		return -ENODEV;
 
-	err = register_interface(element);
-	if (err < 0)
-		return err;
-
 	for (list = driver_list; list; list = list->next) {
 		struct connman_device_driver *driver = list->data;
 
@@ -873,10 +869,21 @@ static int device_probe(struct connman_element *element)
 
 		if (driver->probe(device) == 0) {
 			device->driver = driver;
-			device_enable(device);
 			break;
 		}
 	}
+
+	if (!device->driver)
+		return -ENODEV;
+
+	err = register_interface(element);
+	if (err < 0) {
+		if (device->driver->remove)
+			device->driver->remove(device);
+		return err;
+	}
+
+	device_enable(device);
 
 	return 0;
 }
@@ -890,14 +897,15 @@ static void device_remove(struct connman_element *element)
 	if (device == NULL)
 		return;
 
+	if (!device->driver)
+		return;
+
+	device_disable(device);
+
 	unregister_interface(element);
 
-	if (device->driver) {
-		device_disable(device);
-
-		if (device->driver->remove)
-			device->driver->remove(device);
-	}
+	if (device->driver->remove)
+		device->driver->remove(device);
 }
 
 static struct connman_driver device_driver = {
