@@ -72,8 +72,6 @@ static const char *type2string(enum connman_device_type type)
 		return "wifi";
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		return "wimax";
-	case CONNMAN_DEVICE_TYPE_MODEM:
-		return "modem";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
 	case CONNMAN_DEVICE_TYPE_HSO:
