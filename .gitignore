@@ -28,6 +28,7 @@ src/connman.exp
 src/connman.ver
 src/connman.service
 scripts/connman
+scripts/udhcpc-script
 scripts/dhclient-script
 client/cm
 doc/*.bak
