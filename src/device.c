@@ -576,6 +576,19 @@ const char *connman_device_get_interface(struct connman_device *device)
 }
 
 /**
+ * connman_device_set_policy:
+ * @device: device structure
+ * @policy: power and connection policy
+ *
+ * Change power and connection policy of device
+ */
+void connman_device_set_policy(struct connman_device *device,
+					enum connman_device_policy policy)
+{
+	device->policy = policy;
+}
+
+/**
  * connman_device_set_mode:
  * @device: device structure
  * @mode: network mode
