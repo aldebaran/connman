@@ -36,6 +36,8 @@
 #include <connman/rtnl.h>
 #include <connman/log.h>
 
+#include "inet.h"
+
 struct ethernet_data {
 	int index;
 	unsigned flags;
@@ -90,92 +92,6 @@ static struct connman_rtnl ethernet_rtnl = {
 	.newlink	= ethernet_newlink,
 };
 
-static int iface_up(struct ethernet_data *ethernet)
-{
-	struct ifreq ifr;
-	int sk, err;
-
-	DBG("index %d flags %d", ethernet->index, ethernet->flags);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -errno;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = ethernet->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		err = -errno;
-		goto done;
-	}
-
-	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
-		err = -errno;
-		goto done;
-	}
-
-	if (ifr.ifr_flags & IFF_UP) {
-		err = -EALREADY;
-		goto done;
-	}
-
-	ifr.ifr_flags |= IFF_UP;
-
-	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0) {
-		err = -errno;
-		goto done;
-	}
-
-	err = 0;
-
-done:
-	close(sk);
-
-	return err;
-}
-
-static int iface_down(struct ethernet_data *ethernet)
-{
-	struct ifreq ifr;
-	int sk, err;
-
-	DBG("index %d flags %d", ethernet->index, ethernet->flags);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -errno;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = ethernet->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		err = -errno;
-		goto done;
-	}
-
-	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
-		err = -errno;
-		goto done;
-	}
-
-	if (!(ifr.ifr_flags & IFF_UP)) {
-		err = -EALREADY;
-		goto done;
-	}
-
-	ifr.ifr_flags &= ~IFF_UP;
-
-	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
-		err = -errno;
-	else
-		err = 0;
-
-done:
-	close(sk);
-
-	return err;
-}
-
 static int ethernet_probe(struct connman_device *device)
 {
 	struct ethernet_data *ethernet;
@@ -216,7 +132,7 @@ static int ethernet_enable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	return iface_up(ethernet);
+	return inet_ifup(ethernet->index);
 }
 
 static int ethernet_disable(struct connman_device *device)
@@ -225,7 +141,7 @@ static int ethernet_disable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	return iface_down(ethernet);
+	return inet_ifdown(ethernet->index);
 }
 
 static struct connman_device_driver ethernet_driver = {

@@ -9,7 +9,7 @@ loopback_la_SOURCES = loopback.c
 
 netdev_la_SOURCES = netdev.c
 
-ethernet_la_SOURCES = ethernet.c
+ethernet_la_SOURCES = ethernet.c inet.h inet.c
 
 wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
