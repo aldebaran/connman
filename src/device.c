@@ -127,6 +127,8 @@ static int set_powered(struct connman_device *device, gboolean powered)
 		else
 			err = -EINVAL;
 	} else {
+		g_hash_table_remove_all(device->networks);
+
 		if (driver->disable)
 			err = driver->disable(device);
 		else
@@ -941,6 +943,8 @@ static void device_disable(struct connman_device *device)
 
 	if (device->powered == FALSE)
 		return;
+
+	g_hash_table_remove_all(device->networks);
 
 	if (device->driver->disable)
 		device->driver->disable(device);
