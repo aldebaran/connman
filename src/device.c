@@ -99,6 +99,20 @@ static const char *policy2string(enum connman_device_policy policy)
 	}
 }
 
+static enum connman_device_policy string2policy(const char *policy)
+{
+	if (g_str_equal(policy, "ignore") == TRUE)
+		return CONNMAN_DEVICE_POLICY_IGNORE;
+	else if (g_str_equal(policy, "off") == TRUE)
+		return CONNMAN_DEVICE_POLICY_OFF;
+	else if (g_str_equal(policy, "auto") == TRUE)
+		return CONNMAN_DEVICE_POLICY_AUTO;
+	else if (g_str_equal(policy, "manual") == TRUE)
+		return CONNMAN_DEVICE_POLICY_MANUAL;
+	else
+		return CONNMAN_DEVICE_POLICY_UNKNOWN;
+}
+
 static int set_powered(struct connman_device *device, gboolean powered)
 {
 	struct connman_device_driver *driver = device->driver;
@@ -122,6 +136,60 @@ static int set_powered(struct connman_device *device, gboolean powered)
 	}
 
 	return err;
+}
+
+static int set_policy(DBusConnection *connection,
+				struct connman_device *device,
+					enum connman_device_policy policy)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *str, *key = "Policy";
+	int err = 0;
+
+	DBG("device %p policy %d", device, policy);
+
+	if (device->policy == policy)
+		return 0;
+
+	switch (policy) {
+	case CONNMAN_DEVICE_POLICY_OFF:
+		if (device->powered == TRUE)
+			err = set_powered(device, FALSE);
+		break;
+	case CONNMAN_DEVICE_POLICY_AUTO:
+	case CONNMAN_DEVICE_POLICY_MANUAL:
+		if (device->powered == FALSE)
+			err = set_powered(device, TRUE);
+		break;
+	default:
+		break;
+	}
+
+	if (err < 0)
+		return err;
+
+	device->policy = policy;
+
+	signal = dbus_message_new_signal(device->element.path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return 0;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	str = policy2string(policy);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+
+	return 0;
 }
 
 static void append_networks(struct connman_device *device,
@@ -238,6 +306,19 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		err = set_powered(device, powered);
 		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+	} else if (g_str_equal(name, "Policy") == TRUE) {
+		enum connman_device_policy policy;
+		const char *str;
+		int err;
+
+		dbus_message_iter_get_basic(&value, &str);
+		policy = string2policy(str);
+		if (policy == CONNMAN_DEVICE_POLICY_UNKNOWN)
+			return __connman_error_invalid_arguments(msg);
+
+		err = set_policy(conn, device, policy);
+		if (err < 0)
 			return __connman_error_failed(msg);
 	}
 
