@@ -19,8 +19,9 @@ bluetooth_la_LIBADD = @GDBUS_LIBS@
 
 hso_la_SOURCES = hso.c
 
-udhcp_la_SOURCES = udhcp.c
-udhcp_la_CFLAGS = @GLIB_CFLAGS@ -DUDHCPC=\"@UDHCPC@\"
+udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
+udhcp_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DUDHCPC=\"@UDHCPC@\" \
+		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
 dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \

@@ -9,7 +9,9 @@ scriptdir = $(libdir)/connman/scripts
 
 script_DATA = dhclient.conf
 
-script_PROGRAMS = dhclient-script
+script_PROGRAMS = udhcpc-script dhclient-script
+
+udhcpc_script_LDADD = @DBUS_LIBS@
 
 dhclient_script_LDADD = @DBUS_LIBS@
 
