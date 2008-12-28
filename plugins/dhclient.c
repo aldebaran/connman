@@ -313,9 +313,11 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 
 static DBusConnection *connection;
 
+static const char *dhclient_rule = "path=" DHCLIENT_PATH
+						",interface=" DHCLIENT_INTF;
+
 static int dhclient_init(void)
 {
-	gchar *filter;
 	int err;
 
 	connection = connman_dbus_get_connection();
@@ -325,12 +327,7 @@ static int dhclient_init(void)
 
 	dbus_connection_add_filter(connection, dhclient_filter, NULL, NULL);
 
-	filter = g_strdup_printf("interface=%s,path=%s",
-						DHCLIENT_INTF, DHCLIENT_PATH);
-
-	dbus_bus_add_match(connection, filter, NULL);
-
-	g_free(filter);
+	dbus_bus_add_match(connection, dhclient_rule, NULL);
 
 	err = connman_driver_register(&dhclient_driver);
 	if (err < 0) {
@@ -357,6 +354,10 @@ static void dhclient_exit(void)
 	g_slist_free(task_list);
 
 	connman_driver_unregister(&dhclient_driver);
+
+	dbus_bus_remove_match(connection, dhclient_rule, NULL);
+
+	dbus_connection_remove_filter(connection, dhclient_filter, NULL);
 
 	dbus_connection_unref(connection);
 }
