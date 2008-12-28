@@ -34,6 +34,47 @@ struct connman_network {
 	void *driver_data;
 };
 
+static GSList *driver_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_network_driver *driver1 = a;
+	const struct connman_network_driver *driver2 = b;
+
+	return driver2->priority - driver1->priority;
+}
+
+/**
+ * connman_network_driver_register:
+ * @driver: network driver definition
+ *
+ * Register a new network driver
+ *
+ * Returns: %0 on success
+ */
+int connman_network_driver_register(struct connman_network_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_insert_sorted(driver_list, driver,
+							compare_priority);
+
+	return 0;
+}
+
+/**
+ * connman_network_driver_unregister:
+ * @driver: network driver definition
+ *
+ * Remove a previously registered network driver
+ */
+void connman_network_driver_unregister(struct connman_network_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_remove(driver_list, driver);
+}
+
 static void network_destruct(struct connman_element *element)
 {
 	struct connman_network *network = element->network;
@@ -138,13 +179,60 @@ void connman_network_set_data(struct connman_network *network, void *data)
 	network->driver_data = data;
 }
 
+static gboolean match_driver(struct connman_network *network,
+					struct connman_network_driver *driver)
+{
+	if (network->type == driver->type ||
+			driver->type == CONNMAN_NETWORK_TYPE_UNKNOWN)
+		return TRUE;
+
+	return FALSE;
+}
+
 static int network_probe(struct connman_element *element)
 {
+	struct connman_network *network = element->network;
+	GSList *list;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (network == NULL)
+		return -ENODEV;
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_network_driver *driver = list->data;
+
+		if (match_driver(network, driver) == FALSE)
+			continue;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->probe(network) == 0) {
+			network->driver = driver;
+			break;
+		}
+	}
+
+	if (!network->driver)
+		return -ENODEV;
+
 	return 0;
 }
 
 static void network_remove(struct connman_element *element)
 {
+	struct connman_network *network = element->network;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (network == NULL)
+		return;
+
+	if (!network->driver)
+		return;
+
+	if (network->driver->remove)
+		network->driver->remove(network);
 }
 
 static struct connman_driver network_driver = {
