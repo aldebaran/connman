@@ -538,6 +538,15 @@ struct connman_device *connman_device_create(const char *node,
 	device->element.type = CONNMAN_ELEMENT_TYPE_DEVICE;
 	device->element.index = -1;
 
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
+		break;
+	default:
+		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+		break;
+	}
+
 	device->element.device = device;
 	device->element.destruct = device_destruct;
 
