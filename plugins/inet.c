@@ -105,3 +105,85 @@ char *inet_index2ident(int index, const char *prefix)
 
 	return str;
 }
+
+int inet_ifup(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ifr.ifr_flags & IFF_UP) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags |= IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
+
+int inet_ifdown(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (!(ifr.ifr_flags & IFF_UP)) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}

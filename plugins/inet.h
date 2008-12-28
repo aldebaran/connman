@@ -21,3 +21,6 @@
 
 char *inet_index2name(int index);
 char *inet_index2ident(int index, const char *prefix);
+
+int inet_ifup(int index);
+int inet_ifdown(int index);
