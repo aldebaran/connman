@@ -27,6 +27,8 @@
 #include <string.h>
 #include <dbus/dbus.h>
 
+#include <glib.h>
+
 #include <connman/log.h>
 #include <connman/dbus.h>
 

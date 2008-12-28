@@ -35,6 +35,8 @@
 #include <linux/if_arp.h>
 #include <linux/wireless.h>
 
+#include <glib.h>
+
 #include <connman/device.h>
 #include <connman/rtnl.h>
 #include <connman/log.h>

@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -30,6 +31,8 @@
 #include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+
+#include <glib.h>
 
 #include <connman/plugin.h>
 #include <connman/device.h>
