@@ -88,10 +88,12 @@ static const char *policy2string(enum connman_device_policy policy)
 	switch (policy) {
 	case CONNMAN_DEVICE_POLICY_IGNORE:
 		return "ignore";
-	case CONNMAN_DEVICE_POLICY_AUTO:
-		return "auto";
 	case CONNMAN_DEVICE_POLICY_OFF:
 		return "off";
+	case CONNMAN_DEVICE_POLICY_AUTO:
+		return "auto";
+	case CONNMAN_DEVICE_POLICY_MANUAL:
+		return "manual";
 	default:
 		return NULL;
 	}

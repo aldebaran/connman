@@ -56,8 +56,9 @@ enum connman_device_mode {
 enum connman_device_policy {
 	CONNMAN_DEVICE_POLICY_UNKNOWN = 0,
 	CONNMAN_DEVICE_POLICY_IGNORE  = 1,
-	CONNMAN_DEVICE_POLICY_AUTO    = 2,
-	CONNMAN_DEVICE_POLICY_OFF     = 3,
+	CONNMAN_DEVICE_POLICY_OFF     = 2,
+	CONNMAN_DEVICE_POLICY_AUTO    = 3,
+	CONNMAN_DEVICE_POLICY_MANUAL  = 4,
 };
 
 struct connman_device;

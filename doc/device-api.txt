@@ -63,21 +63,29 @@ Properties	string Name [readonly]
 
 		string Policy [readwrite]
 
-			Setting of the device power policy. Possible values
-			are "off", "ignore" and "auto".
+			Setting of the device power and connection policy.
+			Possible values are "ignore", "off", "auto"
+			and "manual".
 
 			The policy defines on how the device is initialized
-			when brought up. The actual device power state can
-			be changed independently to this value.
+			when brought up and how it connects. The actual
+			device power state can be changed independently to
+			this value.
 
 			If a device is switched off and the policy is changed
-			to "auto", the device will be switched. For a current
-			active device changing the policy to "off" results
-			in powering down the device.
+			to "auto" or "manual", the device will be switched
+			on. For a current active device changing the policy
+			to "off" results in powering down the device.
 
 			The "ignore" policy can be set for devices that are
 			detected, but managed by a different entity on the
-			system. For example complex network setups.
+			system. For example for complex network setups.
+
+			Devices that can connect to various networks, the
+			difference between "auto" or "manual" defines if
+			known networks are connected automatically or not.
+			For simple devices like Ethernet cards, setting
+			the "manual" policy might fail.
 
 		boolean Powered [readwrite]
 
