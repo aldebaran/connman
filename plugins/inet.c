@@ -35,6 +35,31 @@
 
 #include "inet.h"
 
+int inet_name2index(const char *name)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (name == NULL)
+		return -1;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
+	err = ioctl(sk, SIOCGIFINDEX, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return -1;
+
+	return ifr.ifr_ifindex;
+}
+
 char *inet_index2name(int index)
 {
 	struct ifreq ifr;
