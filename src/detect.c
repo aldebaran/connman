@@ -200,9 +200,10 @@ static void detect_newlink(unsigned short type, int index,
 	}
 
 	switch (devtype) {
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_HSO:
 		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
+		connman_device_set_mode(device,
+					CONNMAN_DEVICE_MODE_SINGLE_NETWORK);
 		break;
 	default:
 		break;
