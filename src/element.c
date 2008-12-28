@@ -443,7 +443,6 @@ static DBusMessage *network_get_properties(DBusConnection *conn,
 	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -461,11 +460,6 @@ static DBusMessage *network_get_properties(DBusConnection *conn,
 	if (element->parent)
 		connman_dbus_dict_append_variant(&dict, "Device",
 				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
-
-	str = __connman_element_policy2string(element->policy);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Policy",
-						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_variant(&dict, "Available",
 					DBUS_TYPE_BOOLEAN, &element->available);
