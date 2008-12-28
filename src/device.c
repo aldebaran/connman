@@ -833,7 +833,8 @@ static void device_enable(struct connman_device *device)
 {
 	DBG("device %p", device);
 
-	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
+	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE ||
+				device->policy == CONNMAN_DEVICE_POLICY_OFF)
 		return;
 
 	if (device->powered == TRUE)
@@ -847,7 +848,7 @@ static void device_disable(struct connman_device *device)
 {
 	DBG("device %p", device);
 
-	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
+	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE)
 		return;
 
 	if (device->powered == FALSE)
