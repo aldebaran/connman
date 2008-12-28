@@ -197,6 +197,15 @@ static void detect_newlink(unsigned short type, int index,
 		return;
 	}
 
+	switch (devtype) {
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_HSO:
+		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
+		break;
+	default:
+		break;
+	}
+
 	connman_device_set_index(device, index);
 	connman_device_set_interface(device, devname);
 
