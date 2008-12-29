@@ -29,8 +29,8 @@
 
 #include <dbus/dbus.h>
 
-#define UDHCPC_INTF  "org.busybox.udhcpc"
-#define UDHCPC_PATH  "/org/busybox/udhcpc"
+#define UDHCPC_INTF  "net.busybox.udhcpc"
+#define UDHCPC_PATH  "/net/busybox/udhcpc"
 
 int main(int argc, char *argv[])
 {

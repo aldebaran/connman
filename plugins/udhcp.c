@@ -34,8 +34,8 @@
 #include "inet.h"
 #include "task.h"
 
-#define UDHCPC_INTF  "org.busybox.udhcpc"
-#define UDHCPC_PATH  "/org/busybox/udhcpc"
+#define UDHCPC_INTF  "net.busybox.udhcpc"
+#define UDHCPC_PATH  "/net/busybox/udhcpc"
 
 static int udhcp_probe(struct connman_element *element)
 {
