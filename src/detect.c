@@ -140,6 +140,8 @@ static void detect_newlink(unsigned short type, int index,
 		return;
 
 	devname = index2name(index);
+	if (devname == NULL)
+		return;
 
 	if (type == ARPHRD_ETHER) {
 		char bridge_path[PATH_MAX], wimax_path[PATH_MAX];
