@@ -34,10 +34,13 @@
 #include <connman/dbus.h>
 #include <connman/log.h>
 
+#include "inet.h"
+
 #define BLUEZ_SERVICE			"org.bluez"
 #define BLUEZ_MANAGER_INTERFACE		BLUEZ_SERVICE ".Manager"
 #define BLUEZ_ADAPTER_INTERFACE		BLUEZ_SERVICE ".Adapter"
 #define BLUEZ_DEVICE_INTERFACE		BLUEZ_SERVICE ".Device"
+#define BLUEZ_NETWORK_INTERFACE		BLUEZ_SERVICE ".Network"
 
 #define LIST_ADAPTERS			"ListAdapters"
 #define ADAPTER_ADDED			"AdapterAdded"
@@ -46,6 +49,9 @@
 #define PROPERTY_CHANGED		"PropertyChanged"
 #define GET_PROPERTIES			"GetProperties"
 #define SET_PROPERTY			"SetProperty"
+
+#define CONNECT				"Connect"
+#define DISCONNECT			"Disconnect"
 
 #define TIMEOUT 5000
 
@@ -121,6 +127,201 @@ static void get_properties(DBusConnection *connection,
 
 struct adapter_data {
 	DBusConnection *connection;
+};
+
+struct network_data {
+	DBusConnection *connection;
+	char *interface;
+};
+
+static int pan_probe(struct connman_network *network)
+{
+	struct connman_device *device = connman_network_get_device(network);
+	struct adapter_data *adapter;
+	struct network_data *data;
+
+	DBG("network %p", network);
+
+	if (device == NULL)
+		return -EINVAL;
+
+	adapter = connman_device_get_data(device);
+	if (adapter == NULL)
+		return -EINVAL;
+
+	data = g_try_new0(struct network_data, 1);
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->connection = adapter->connection;
+
+	connman_network_set_data(network, data);
+
+	return 0;
+}
+
+static void pan_remove(struct connman_network *network)
+{
+	struct network_data *data = connman_network_get_data(network);
+
+	DBG("network %p", network);
+
+	connman_network_set_data(network, NULL);
+
+	g_free(data);
+}
+
+static void connect_reply(DBusPendingCall *call, void *user_data)
+{
+	struct connman_network *network = user_data;
+	struct network_data *data = connman_network_get_data(network);
+	DBusMessage *reply;
+	DBusError error;
+	const char *interface = NULL;
+	int index;
+
+	DBG("network %p", network);
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	dbus_error_init(&error);
+
+	if (dbus_message_get_args(reply, &error,
+					DBUS_TYPE_STRING, &interface,
+						DBUS_TYPE_INVALID) == FALSE) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Wrong arguments for connect");
+		goto done;
+	}
+
+	if (interface == NULL)
+		goto done;
+
+	DBG("interface %s", interface);
+
+	data->interface = g_strdup(interface);
+
+	index = inet_name2index(interface);
+
+	connman_network_set_index(network, index);
+	connman_network_set_connected(network, TRUE);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int pan_connect(struct connman_network *network)
+{
+	struct network_data *data = connman_network_get_data(network);
+	const char *path = connman_network_get_path(network);
+	const char *uuid = "nap";
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("network %p", network);
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+					BLUEZ_NETWORK_INTERFACE, CONNECT);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &uuid,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(data->connection, message,
+					&call, TIMEOUT * 10) == FALSE) {
+		connman_error("Failed to connect service");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, connect_reply, network, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static void disconnect_reply(DBusPendingCall *call, void *user_data)
+{
+	struct connman_network *network = user_data;
+	struct network_data *data = connman_network_get_data(network);
+	DBusMessage *reply;
+	DBusError error;
+
+	DBG("network %p", network);
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	dbus_error_init(&error);
+
+	if (dbus_message_get_args(reply, &error, DBUS_TYPE_INVALID) == FALSE) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Wrong arguments for disconnect");
+		goto done;
+	}
+
+	g_free(data->interface);
+	data->interface = NULL;
+
+	connman_network_set_connected(network, FALSE);
+	connman_network_set_index(network, -1);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int pan_disconnect(struct connman_network *network)
+{
+	struct network_data *data = connman_network_get_data(network);
+	const char *path = connman_network_get_path(network);
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("network %p", network);
+
+	if (data->interface == NULL)
+		return -EINVAL;
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+					BLUEZ_NETWORK_INTERFACE, DISCONNECT);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &data->interface,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(data->connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to disconnect service");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, disconnect_reply, network, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static struct connman_network_driver pan_driver = {
+	.name		= "bluetooth-pan",
+	.type		= CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN,
+	.probe		= pan_probe,
+	.remove		= pan_remove,
+	.connect	= pan_connect,
+	.disconnect	= pan_disconnect,
 };
 
 static int bluetooth_probe(struct connman_device *adapter)
@@ -289,9 +490,12 @@ static void device_properties(DBusConnection *connection, const char *path,
 	if (network != NULL)
 		return;
 
-	network = connman_network_create(node, CONNMAN_NETWORK_TYPE_WIFI);
+	network = connman_network_create(node,
+					CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN);
 	if (network == NULL)
 		return;
+
+	connman_network_set_path(network, path);
 
 	connman_device_add_network(device, network);
 }
@@ -585,14 +789,21 @@ static int bluetooth_init(void)
 							NULL, NULL) == FALSE)
 		goto unref;
 
-	err = connman_device_driver_register(&bluetooth_driver);
+	err = connman_network_driver_register(&pan_driver);
 	if (err < 0)
 		goto remove;
+
+	err = connman_device_driver_register(&bluetooth_driver);
+	if (err < 0) {
+		connman_network_driver_unregister(&pan_driver);
+		goto remove;
+	}
 
 	watch = g_dbus_add_service_watch(connection, BLUEZ_SERVICE,
 			bluetooth_connect, bluetooth_disconnect, NULL, NULL);
 	if (watch == 0) {
 		connman_device_driver_unregister(&bluetooth_driver);
+		connman_network_driver_unregister(&pan_driver);
 		err = -EIO;
 		goto remove;
 	}
@@ -628,6 +839,7 @@ static void bluetooth_exit(void)
 	free_adapters();
 
 	connman_device_driver_unregister(&bluetooth_driver);
+	connman_network_driver_unregister(&pan_driver);
 
 	dbus_connection_remove_filter(connection, bluetooth_signal, NULL);
 

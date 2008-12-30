@@ -14,7 +14,7 @@ ethernet_la_SOURCES = ethernet.c inet.h inet.c
 wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
 
-bluetooth_la_SOURCES = bluetooth.c
+bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 
 hso_la_SOURCES = hso.c modem.h modem.c
