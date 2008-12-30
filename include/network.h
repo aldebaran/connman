@@ -22,6 +22,9 @@
 #ifndef __CONNMAN_NETWORK_H
 #define __CONNMAN_NETWORK_H
 
+#include <connman/types.h>
+#include <connman/device.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -35,6 +38,7 @@ extern "C" {
 enum connman_network_type {
 	CONNMAN_NETWORK_TYPE_UNKNOWN = 0,
 	CONNMAN_NETWORK_TYPE_WIFI    = 1,
+	CONNMAN_NETWORK_TYPE_HSO     = 23,
 };
 
 struct connman_network;
@@ -46,6 +50,8 @@ extern void connman_network_unref(struct connman_network *network);
 
 extern const char *connman_network_get_identifier(struct connman_network *network);
 
+extern struct connman_device *connman_network_get_device(struct connman_network *network);
+
 extern void *connman_network_get_data(struct connman_network *network);
 extern void connman_network_set_data(struct connman_network *network, void *data);
 
@@ -55,6 +61,8 @@ struct connman_network_driver {
 	int priority;
 	int (*probe) (struct connman_network *network);
 	void (*remove) (struct connman_network *network);
+	int (*connect) (struct connman_network *network);
+	int (*disconnect) (struct connman_network *network);
 };
 
 extern int connman_network_driver_register(struct connman_network_driver *driver);

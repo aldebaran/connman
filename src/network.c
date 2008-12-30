@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <gdbus.h>
+
 #include "connman.h"
 
 struct connman_network {
@@ -32,7 +34,117 @@ struct connman_network {
 
 	struct connman_network_driver *driver;
 	void *driver_data;
+
+	struct connman_device *device;
 };
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter, value;
+	const char *name;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *do_connect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBG("conn %p", conn);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *do_disconnect(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBG("conn %p", conn);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static GDBusMethodTable network_methods[] = {
+	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "SetProperty",   "sv", "",      set_property   },
+	{ "Connect",       "",   "",      do_connect     },
+	{ "Disconnect",    "",   "",      do_disconnect  },
+	{ },
+};
+
+static GDBusSignalTable network_signals[] = {
+	{ "PropertyChanged", "sv" },
+	{ },
+};
+
+static DBusConnection *connection;
+
+static void emit_networks_signal(void)
+{
+}
+
+static int register_interface(struct connman_element *element)
+{
+	struct connman_network *network = element->network;
+
+	g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_NETWORK_INTERFACE);
+
+	if (g_dbus_register_interface(connection, element->path,
+					CONNMAN_NETWORK_INTERFACE,
+					network_methods, network_signals,
+					NULL, network, NULL) == FALSE) {
+		connman_error("Failed to register %s network", element->path);
+		return -EIO;
+	}
+
+	emit_networks_signal();
+
+	return 0;
+}
+
+static void unregister_interface(struct connman_element *element)
+{
+	emit_networks_signal();
+
+	g_dbus_unregister_interface(connection, element->path,
+						CONNMAN_NETWORK_INTERFACE);
+}
 
 static GSList *driver_list = NULL;
 
@@ -156,6 +268,23 @@ const char *connman_network_get_identifier(struct connman_network *network)
 	return network->identifier;
 }
 
+void __connman_network_set_device(struct connman_network *network,
+					struct connman_device *device)
+{
+	network->device = device;
+}
+
+/**
+ * connman_network_get_device:
+ * @network: network structure
+ *
+ * Get parent device of network
+ */
+struct connman_device *connman_network_get_device(struct connman_network *network)
+{
+	return network->device;
+}
+
 /**
  * connman_network_get_data:
  * @network: network structure
@@ -193,6 +322,7 @@ static int network_probe(struct connman_element *element)
 {
 	struct connman_network *network = element->network;
 	GSList *list;
+	int err;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -216,6 +346,13 @@ static int network_probe(struct connman_element *element)
 	if (!network->driver)
 		return -ENODEV;
 
+	err = register_interface(element);
+	if (err < 0) {
+		if (network->driver->remove)
+			network->driver->remove(network);
+		return err;
+	}
+
 	return 0;
 }
 
@@ -230,6 +367,8 @@ static void network_remove(struct connman_element *element)
 
 	if (!network->driver)
 		return;
+
+	unregister_interface(element);
 
 	if (network->driver->remove)
 		network->driver->remove(network);
@@ -247,6 +386,8 @@ int __connman_network_init(void)
 {
 	DBG("");
 
+	connection = connman_dbus_get_connection();
+
 	return connman_driver_register(&network_driver);
 }
 
@@ -255,4 +396,6 @@ void __connman_network_cleanup(void)
 	DBG("");
 
 	connman_driver_unregister(&network_driver);
+
+	dbus_connection_unref(connection);
 }

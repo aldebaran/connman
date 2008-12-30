@@ -124,6 +124,9 @@ void __connman_device_cleanup(void);
 int __connman_network_init(void);
 void __connman_network_cleanup(void);
 
+void __connman_network_set_device(struct connman_network *network,
+					struct connman_device *device);
+
 #include <connman/rtnl.h>
 
 int __connman_rtnl_init(void);

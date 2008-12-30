@@ -836,6 +836,8 @@ int connman_device_add_network(struct connman_device *device,
 	if (err < 0)
 		return err;
 
+	__connman_network_set_device(network, device);
+
 	g_hash_table_insert(device->networks, g_strdup(identifier),
 								network);
 
