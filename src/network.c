@@ -31,6 +31,7 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	char *identifier;
+	char *path;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -193,6 +194,7 @@ static void network_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	g_free(network->path);
 	g_free(network->identifier);
 }
 
@@ -266,6 +268,33 @@ void connman_network_unref(struct connman_network *network)
 const char *connman_network_get_identifier(struct connman_network *network)
 {
 	return network->identifier;
+}
+
+/**
+ * connman_network_set_path:
+ * @network: network structure
+ * @path: path name
+ *
+ * Set path name of network
+ */
+void connman_network_set_path(struct connman_network *network, const char *path)
+{
+	g_free(network->element.devpath);
+	network->element.devpath = g_strdup(path);
+
+	g_free(network->path);
+	network->path = g_strdup(path);
+}
+
+/**
+ * connman_network_get_path:
+ * @network: network structure
+ *
+ * Get path name of network
+ */
+const char *connman_network_get_path(struct connman_network *network)
+{
+	return network->path;
 }
 
 void __connman_network_set_device(struct connman_network *network,
