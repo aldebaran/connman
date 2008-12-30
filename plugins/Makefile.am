@@ -17,7 +17,7 @@ wifi_la_LIBADD = @GDBUS_LIBS@
 bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 
-hso_la_SOURCES = hso.c
+hso_la_SOURCES = hso.c modem.h modem.c
 
 udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
 udhcp_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DUDHCPC=\"@UDHCPC@\" \
