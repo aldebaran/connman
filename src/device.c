@@ -507,6 +507,7 @@ static void device_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	g_free(device->path);
 	g_free(device->interface);
 
 	g_hash_table_destroy(device->networks);
