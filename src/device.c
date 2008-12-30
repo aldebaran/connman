@@ -426,6 +426,8 @@ static int register_interface(struct connman_element *element)
 {
 	struct connman_device *device = element->device;
 
+	DBG("element %p name %s", element, element->name);
+
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_DEVICE_INTERFACE,
 					device_methods, device_signals,
@@ -441,6 +443,8 @@ static int register_interface(struct connman_element *element)
 
 static void unregister_interface(struct connman_element *element)
 {
+	DBG("element %p name %s", element, element->name);
+
 	emit_devices_signal();
 
 	g_dbus_unregister_interface(connection, element->path,
@@ -988,7 +992,7 @@ static int device_probe(struct connman_element *element)
 		}
 	}
 
-	if (!device->driver)
+	if (device->driver == NULL)
 		return -ENODEV;
 
 	err = register_interface(element);
@@ -1012,7 +1016,7 @@ static void device_remove(struct connman_element *element)
 	if (device == NULL)
 		return;
 
-	if (!device->driver)
+	if (device->driver == NULL)
 		return;
 
 	device_disable(device);
