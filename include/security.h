@@ -26,8 +26,6 @@
 extern "C" {
 #endif
 
-#include <connman/element.h>
-
 /**
  * SECTION:security
  * @title: Security premitives
