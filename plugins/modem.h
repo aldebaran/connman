@@ -31,6 +31,9 @@ int modem_close(struct modem_data *modem);
 
 typedef void (* modem_cb_t) (const char *buf, void *user_data);
 
+int modem_add_callback(struct modem_data *modem, const char *command,
+					modem_cb_t function, void *user_data);
+
 int modem_command(struct modem_data *modem,
 				modem_cb_t callback, void *user_data,
 				const char *command, const char *format, ...);

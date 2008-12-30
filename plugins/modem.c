@@ -40,9 +40,16 @@
 struct modem_data {
 	char *device;
 	GIOChannel *channel;
+	GSList *callbacks;
 	GSList *commands;
 	char buf[1024];
 	int offset;
+};
+
+struct modem_callback {
+	char *command;
+	modem_cb_t function;
+	void *user_data;
 };
 
 struct modem_cmd {
@@ -118,6 +125,7 @@ static gboolean modem_event(GIOChannel *channel,
 {
 	struct modem_data *modem = user_data;
 	struct modem_cmd *cmd;
+	GSList *list;
 	gsize len;
 	GIOError err;
 
@@ -134,12 +142,26 @@ static gboolean modem_event(GIOChannel *channel,
 
 	DBG("Read %d bytes (offset %d)", len, modem->offset);
 
+	if (g_str_has_suffix(modem->buf, "\r\n") == TRUE) {
+		for (list = modem->callbacks; list; list = list->next) {
+			struct modem_callback *callback = list->data;
+
+			if (callback->function == NULL)
+				continue;
+
+			if (g_strrstr(modem->buf, callback->command) != NULL)
+				callback->function(modem->buf,
+							callback->user_data);
+		}
+	}
+
 	if (g_strrstr(modem->buf, "\r\nERROR\r\n") == NULL &&
 				g_strrstr(modem->buf, "\r\nOK\r\n") == NULL) {
 		modem->offset += len;
 		return TRUE;
 	}
 
+	memset(modem->buf, 0, sizeof(modem->buf));
 	modem->offset = 0;
 
 	cmd = g_slist_nth_data(modem->commands, 0);
@@ -228,6 +250,24 @@ int modem_close(struct modem_data *modem)
 	g_io_channel_unref(modem->channel);
 
 	modem->channel = NULL;
+
+	return 0;
+}
+
+int modem_add_callback(struct modem_data *modem, const char *command,
+					modem_cb_t function, void *user_data)
+{
+	struct modem_callback *callback;
+
+	callback = g_try_new0(struct modem_callback, 1);
+	if (callback == NULL)
+		return -ENOMEM;
+
+	callback->command   = g_strdup(command);
+	callback->function  = function;
+	callback->user_data = user_data;
+
+	modem->callbacks = g_slist_append(modem->callbacks, callback);
 
 	return 0;
 }
