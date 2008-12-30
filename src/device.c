@@ -836,12 +836,14 @@ int connman_device_add_network(struct connman_device *device,
 	if (device->mode == CONNMAN_DEVICE_MODE_NO_NETWORK)
 		return -EINVAL;
 
+	__connman_network_set_device(network, device);
+
 	err = connman_element_register((struct connman_element *) network,
 							&device->element);
-	if (err < 0)
+	if (err < 0) {
+		__connman_network_set_device(network, NULL);
 		return err;
-
-	__connman_network_set_device(network, device);
+	}
 
 	g_hash_table_insert(device->networks, g_strdup(identifier),
 								network);
