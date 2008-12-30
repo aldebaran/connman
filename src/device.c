@@ -699,7 +699,7 @@ void connman_device_set_mode(struct connman_device *device,
  * Change power state of device
  */
 int connman_device_set_powered(struct connman_device *device,
-							gboolean powered)
+						connman_bool_t powered)
 {
 	DBusMessage *signal;
 	DBusMessageIter entry, value;
@@ -739,7 +739,7 @@ int connman_device_set_powered(struct connman_device *device,
  * Change carrier state of device (only for device without scanning)
  */
 int connman_device_set_carrier(struct connman_device *device,
-							gboolean carrier)
+						connman_bool_t carrier)
 {
 	DBG("driver %p carrier %d", device, carrier);
 
@@ -778,7 +778,7 @@ int connman_device_set_carrier(struct connman_device *device,
  * Change scanning state of device
  */
 int connman_device_set_scanning(struct connman_device *device,
-							gboolean scanning)
+						connman_bool_t scanning)
 {
 	DBusMessage *signal;
 	DBusMessageIter entry, value;

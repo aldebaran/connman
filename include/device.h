@@ -26,6 +26,7 @@
 extern "C" {
 #endif
 
+#include <connman/types.h>
 #include <connman/network.h>
 
 /**
@@ -81,11 +82,11 @@ extern void connman_device_set_mode(struct connman_device *device,
 						enum connman_device_mode mode);
 
 extern int connman_device_set_powered(struct connman_device *device,
-							gboolean powered);
+						connman_bool_t powered);
 extern int connman_device_set_carrier(struct connman_device *device,
-							gboolean carrier);
+						connman_bool_t carrier);
 extern int connman_device_set_scanning(struct connman_device *device,
-							gboolean scanning);
+						connman_bool_t scanning);
 
 extern int connman_device_add_network(struct connman_device *device,
 					struct connman_network *network);
