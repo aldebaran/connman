@@ -28,6 +28,7 @@
 
 #include <gdbus.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/dbus.h>

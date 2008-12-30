@@ -34,6 +34,7 @@
 
 #include <glib.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/rtnl.h>

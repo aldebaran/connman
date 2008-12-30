@@ -33,6 +33,7 @@
 
 #include <gdbus.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/rtnl.h>

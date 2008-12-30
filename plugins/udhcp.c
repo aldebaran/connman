@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/dbus.h>

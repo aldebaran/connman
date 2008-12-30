@@ -21,6 +21,8 @@
 
 #include <glib.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
+
 #include <connman/dbus.h>
 
 #define NM_SERVICE    "org.freedesktop.NetworkManager"

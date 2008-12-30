@@ -31,6 +31,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/log.h>
 

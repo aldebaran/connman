@@ -35,6 +35,7 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/resolver.h>

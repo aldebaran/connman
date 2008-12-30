@@ -37,10 +37,6 @@
 
 #include <glib.h>
 
-#include <connman/device.h>
-#include <connman/rtnl.h>
-#include <connman/log.h>
-
 #include "connman.h"
 
 static GSList *device_list = NULL;

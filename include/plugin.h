@@ -26,6 +26,11 @@
 extern "C" {
 #endif
 
+#ifndef CONNMAN_API_SUBJECT_TO_CHANGE
+#error "Please define CONNMAN_API_SUBJECT_TO_CHANGE to acknowledge your \
+understanding that ConnMan hasn't reached a stable API."
+#endif
+
 /**
  * SECTION:plugin
  * @title: Plugin premitives

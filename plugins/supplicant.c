@@ -29,6 +29,7 @@
 
 #include <glib.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/log.h>
 #include <connman/dbus.h>
 

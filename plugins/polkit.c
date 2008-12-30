@@ -28,6 +28,7 @@
 #include <glib.h>
 #include <polkit-dbus/polkit-dbus.h>
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/security.h>
 #include <connman/dbus.h>
