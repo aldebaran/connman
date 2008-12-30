@@ -49,6 +49,22 @@ struct connman_plugin_desc {
  * @exit: exit function called on plugin removal
  *
  * Macro for defining a plugin descriptor
+ *
+ * |[
+ * #include <connman/plugin.h>
+ *
+ * static int example_init(void)
+ * {
+ * 	return 0;
+ * }
+ *
+ * static void example_exit(void)
+ * {
+ * }
+ *
+ * CONNMAN_PLUGIN_DEFINE(example, "Example plugin", VERSION,
+ * 					example_init, example_exit)
+ * ]|
  */
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, init, exit) \
 		struct connman_plugin_desc connman_plugin_desc = { \
