@@ -55,6 +55,12 @@ extern const char *connman_network_get_identifier(struct connman_network *networ
 extern void connman_network_set_path(struct connman_network *network,
 							const char *path);
 extern const char *connman_network_get_path(struct connman_network *network);
+extern void connman_network_set_index(struct connman_network *network,
+								int index);
+extern int connman_network_get_index(struct connman_network *network);
+
+extern int connman_network_set_connected(struct connman_network *network,
+						connman_bool_t connected);
 
 extern struct connman_device *connman_network_get_device(struct connman_network *network);
 

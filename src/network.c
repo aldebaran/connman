@@ -30,6 +30,7 @@
 struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
+	gboolean connected;
 	char *identifier;
 	char *path;
 
@@ -62,6 +63,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (network->identifier != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
 				DBUS_TYPE_STRING, &network->identifier);
+
+	connman_dbus_dict_append_variant(&dict, "Connected",
+				DBUS_TYPE_BOOLEAN, &network->connected);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -322,6 +326,65 @@ void connman_network_set_path(struct connman_network *network, const char *path)
 const char *connman_network_get_path(struct connman_network *network)
 {
 	return network->path;
+}
+
+/**
+ * connman_network_set_index:
+ * @network: network structure
+ * @index: index number
+ *
+ * Set index number of network
+ */
+void connman_network_set_index(struct connman_network *network, int index)
+{
+	network->element.index = index;
+}
+
+/**
+ * connman_network_get_index:
+ * @device: network structure
+ *
+ * Get index number of network
+ */
+int connman_network_get_index(struct connman_network *network)
+{
+	return network->element.index;
+}
+
+/**
+ * connman_network_set_connected:
+ * @netowrk: network structure
+ * @connected: connected state
+ *
+ * Change connected state of network
+ */
+int connman_network_set_connected(struct connman_network *network,
+						connman_bool_t connected)
+{
+	DBG("network %p connected %d", network, connected);
+
+	if (network->connected == connected)
+		return -EALREADY;
+
+	network->connected = connected;
+
+	if (connected == TRUE) {
+		struct connman_element *element;
+
+		element = connman_element_create(NULL);
+		if (element != NULL) {
+			element->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
+			element->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
+			element->index   = network->element.index;
+
+			if (connman_element_register(element,
+							&network->element) < 0)
+				connman_element_unref(element);
+		}
+	} else
+		connman_element_unregister_children(&network->element);
+
+	return 0;
 }
 
 void __connman_network_set_device(struct connman_network *network,
