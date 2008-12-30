@@ -412,7 +412,7 @@ static void adapter_properties(DBusConnection *connection, const char *path,
 
 	connman_device_set_path(adapter, path);
 
-	if (g_str_has_prefix(node, "hci") == TRUE) {
+	if (node != NULL && g_str_has_prefix(node, "hci") == TRUE) {
 		int index;
 		errno = 0;
 		index = atoi(node + 3);
