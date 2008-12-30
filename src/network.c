@@ -42,6 +42,7 @@ struct connman_network {
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_network *network = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 
@@ -57,6 +58,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (network->identifier != NULL)
+		connman_dbus_dict_append_variant(&dict, "Name",
+				DBUS_TYPE_STRING, &network->identifier);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -87,7 +92,16 @@ static DBusMessage *set_property(DBusConnection *conn,
 static DBusMessage *do_connect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_network *network = data;
+	int err;
+
 	DBG("conn %p", conn);
+
+	if (network->driver && network->driver->connect) {
+		err = network->driver->connect(network);
+		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -95,7 +109,16 @@ static DBusMessage *do_connect(DBusConnection *conn,
 static DBusMessage *do_disconnect(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_network *network = data;
+	int err;
+
 	DBG("conn %p", conn);
+
+	if (network->driver && network->driver->disconnect) {
+		err = network->driver->disconnect(network);
+		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -123,6 +146,8 @@ static int register_interface(struct connman_element *element)
 {
 	struct connman_network *network = element->network;
 
+	DBG("element %p name %s", element, element->name);
+
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
 
@@ -141,6 +166,8 @@ static int register_interface(struct connman_element *element)
 
 static void unregister_interface(struct connman_element *element)
 {
+	DBG("element %p name %s", element, element->name);
+
 	emit_networks_signal();
 
 	g_dbus_unregister_interface(connection, element->path,
@@ -372,7 +399,7 @@ static int network_probe(struct connman_element *element)
 		}
 	}
 
-	if (!network->driver)
+	if (network->driver == NULL)
 		return -ENODEV;
 
 	err = register_interface(element);
@@ -394,7 +421,7 @@ static void network_remove(struct connman_element *element)
 	if (network == NULL)
 		return;
 
-	if (!network->driver)
+	if (network->driver == NULL)
 		return;
 
 	unregister_interface(element);
