@@ -103,6 +103,8 @@
     <xi:include href="xml/plugin.xml" />
     <xi:include href="xml/security.xml" />
     <xi:include href="xml/resolver.xml" />
+    <!-- <xi:include href="xml/device.xml" /> -->
+    <!-- <xi:include href="xml/network.xml" /> -->
   </reference>
 
   <appendix id="license">
