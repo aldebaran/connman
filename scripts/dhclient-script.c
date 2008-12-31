@@ -118,6 +118,8 @@ int main(int argc, char *argv[])
 	if (dbus_connection_send(conn, msg, NULL) == FALSE)
 		fprintf(stderr, "Failed to send message\n");
 
+	dbus_connection_flush(conn);
+
 	dbus_message_unref(msg);
 
 	dbus_connection_unref(conn);
