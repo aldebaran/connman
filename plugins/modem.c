@@ -40,6 +40,7 @@
 struct modem_data {
 	char *device;
 	GIOChannel *channel;
+	guint watch;
 	GSList *callbacks;
 	GSList *commands;
 	char buf[1024];
@@ -200,7 +201,9 @@ static int open_device(const char *device)
 	tcflush(fd, TCIOFLUSH);
 
 	/* Switch TTY to raw mode */
+	memset(&ti, 0, sizeof(ti));
 	cfmakeraw(&ti);
+
 	tcsetattr(fd, TCSANOW, &ti);
 
 	return fd;
@@ -232,7 +235,7 @@ int modem_open(struct modem_data *modem)
 	modem->channel = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(modem->channel, TRUE);
 
-	g_io_add_watch(modem->channel,
+	modem->watch = g_io_add_watch(modem->channel,
 				G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 							modem_event, modem);
 
@@ -246,9 +249,10 @@ int modem_close(struct modem_data *modem)
 	if (modem == NULL)
 		return -ENOENT;
 
-	g_io_channel_shutdown(modem->channel, TRUE, NULL);
-	g_io_channel_unref(modem->channel);
+	g_source_remove(modem->watch);
+	modem->watch = 0;
 
+	g_io_channel_unref(modem->channel);
 	modem->channel = NULL;
 
 	return 0;
