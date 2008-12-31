@@ -39,7 +39,6 @@
 
 struct hso_data {
 	int index;
-	GIOChannel *channel;
 	struct modem_data *modem;
 };
 
@@ -207,9 +206,6 @@ static int hso_disable(struct connman_device *device)
 	connman_device_set_powered(device, FALSE);
 
 	modem_close(data->modem);
-
-	g_io_channel_shutdown(data->channel, TRUE, NULL);
-	g_io_channel_unref(data->channel);
 
 	return 0;
 }
