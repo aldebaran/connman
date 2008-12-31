@@ -21,6 +21,13 @@ Properties	string Type [readonly]
 
 			The connection type (for example wifi etc.)
 
+		string Interface [readonly]
+
+			The connection interface (for example "eth0" etc.)
+
+			This value is for pure informational purposes. It
+			is not guaranteed that it is always present.
+
 		uint8 Strength [readonly]
 
 			Indicates the signal strength of the connection.

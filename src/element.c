@@ -539,6 +539,10 @@ static DBusMessage *connection_get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
+	if (element->devname != NULL)
+		connman_dbus_dict_append_variant(&dict, "Interface",
+					DBUS_TYPE_STRING, &element->devname);
+
 	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
 			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX)
 		connman_dbus_dict_append_variant(&dict, "Strength",
