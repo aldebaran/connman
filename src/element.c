@@ -138,8 +138,8 @@ static const char *subtype2string(enum connman_element_subtype type)
 		return "wifi";
 	case CONNMAN_ELEMENT_SUBTYPE_WIMAX:
 		return "wimax";
-	case CONNMAN_ELEMENT_SUBTYPE_MODEM:
-		return "modem";
+	case CONNMAN_ELEMENT_SUBTYPE_CELLULAR:
+		return "cellular";
 	case CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH:
 		return "bluetooth";
 	}

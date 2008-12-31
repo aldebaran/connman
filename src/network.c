@@ -256,6 +256,19 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->element.type = CONNMAN_ELEMENT_TYPE_NETWORK;
 	network->element.index = -1;
 
+	switch (type) {
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
+		break;
+	case CONNMAN_NETWORK_TYPE_HSO:
+		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_CELLULAR;
+		break;
+	default:
+		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+		break;
+	}
+
 	network->element.network = network;
 	network->element.destruct = network_destruct;
 
