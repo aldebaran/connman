@@ -51,10 +51,24 @@ int main(int argc, char *argv[])
 	interface = getenv("interface");
 
 	address = getenv("ip");
+	if (address == NULL)
+		address = "";
+
 	netmask = getenv("subnet");
+	if (netmask == NULL)
+		netmask = "";
+
 	broadcast = getenv("broadcast");
+	if (broadcast == NULL)
+		broadcast = "";
+
 	gateway = getenv("router");
+	if (gateway == NULL)
+		gateway = "";
+
 	dns = getenv("dns");
+	if (dns == NULL)
+		dns = "";
 
 	dbus_error_init(&error);
 
