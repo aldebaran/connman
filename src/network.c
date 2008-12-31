@@ -355,7 +355,7 @@ void connman_network_set_index(struct connman_network *network, int index)
 
 /**
  * connman_network_get_index:
- * @device: network structure
+ * @network: network structure
  *
  * Get index number of network
  */
@@ -366,7 +366,7 @@ int connman_network_get_index(struct connman_network *network)
 
 /**
  * connman_network_set_connected:
- * @netowrk: network structure
+ * @network: network structure
  * @connected: connected state
  *
  * Change connected state of network
