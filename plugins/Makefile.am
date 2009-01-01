@@ -27,6 +27,12 @@ dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
+if PPPD
+plugin_LTLIBRARIES += pppd.la
+
+pppd_la_SOURCES = pppd.c
+endif
+
 ipv4_la_SOURCES = ipv4.c inet.h inet.c
 
 dnsproxy_la_SOURCES = dnsproxy.c
