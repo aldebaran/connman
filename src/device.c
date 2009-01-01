@@ -785,8 +785,8 @@ int connman_device_set_carrier(struct connman_device *device,
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {
-			element->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
-			element->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
+			element->type    = CONNMAN_ELEMENT_TYPE_DHCP;
+			element->subtype = device->element.subtype;
 			element->index   = device->element.index;
 
 			if (connman_element_register(element,

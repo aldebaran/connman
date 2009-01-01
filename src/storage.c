@@ -165,8 +165,7 @@ int __connman_element_store(struct connman_element *element)
 				element->type != CONNMAN_ELEMENT_TYPE_NETWORK)
 		return -EINVAL;
 
-	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_FAKE ||
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_NETWORK)
+	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_FAKE)
 		return -EINVAL;
 
 	pathname = g_strdup_printf("%s/elements.conf", STORAGEDIR);

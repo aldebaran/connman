@@ -132,8 +132,6 @@ static const char *subtype2string(enum connman_element_subtype type)
 		return "unknown";
 	case CONNMAN_ELEMENT_SUBTYPE_FAKE:
 		return "fake";
-	case CONNMAN_ELEMENT_SUBTYPE_NETWORK:
-		return "network";
 	case CONNMAN_ELEMENT_SUBTYPE_ETHERNET:
 		return "ethernet";
 	case CONNMAN_ELEMENT_SUBTYPE_WIFI:
@@ -629,10 +627,6 @@ static gboolean append_path(GNode *node, gpointer user_data)
 
 	if (filter->type != CONNMAN_ELEMENT_TYPE_UNKNOWN &&
 					filter->type != element->type)
-		return FALSE;
-
-	if (filter->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_NETWORK)
 		return FALSE;
 
 	dbus_message_iter_append_basic(filter->iter,
@@ -1741,8 +1735,7 @@ int connman_element_register(struct connman_element *element,
 	if (element->devname == NULL)
 		element->devname = g_strdup(element->name);
 
-	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-			element->subtype != CONNMAN_ELEMENT_SUBTYPE_NETWORK) {
+	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
 		if (g_pattern_match_simple(device_filter,
 						element->devname) == FALSE) {
 			DBG("ignoring %s [%s] device", element->name,

@@ -397,11 +397,23 @@ int connman_network_set_connected(struct connman_network *network,
 
 	if (connected == TRUE) {
 		struct connman_element *element;
+		enum connman_element_type type;
+
+		switch (network->protocol) {
+		case CONNMAN_NETWORK_PROTOCOL_UNKNOWN:
+			return 0;
+		case CONNMAN_NETWORK_PROTOCOL_IP:
+			type = CONNMAN_ELEMENT_TYPE_DHCP;
+			break;
+		case CONNMAN_NETWORK_PROTOCOL_PPP:
+			type = CONNMAN_ELEMENT_TYPE_PPP;
+			break;
+		}
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {
-			element->type    = CONNMAN_ELEMENT_TYPE_DEVICE;
-			element->subtype = CONNMAN_ELEMENT_SUBTYPE_NETWORK;
+			element->type    = type;
+			element->subtype = network->element.subtype;
 			element->index   = network->element.index;
 
 			if (connman_element_register(element,
