@@ -12,6 +12,10 @@ connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 
 if UDEV
 connmand_SOURCES += udev.c
+
+rulesdir = $(sysconfdir)/udev/rules.d
+
+rules_DATA = 92-connman.rules
 endif
 
 connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @UDEV_LIBS@ -ldl
@@ -20,7 +24,7 @@ connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
 connmand_DEPENDENCIES = connman.ver
 
-CLEANFILES = connman.ver connman.exp
+CLEANFILES = connman.ver connman.exp 92-connman.rules
 
 statedir = $(localstatedir)/run/connman
 
@@ -36,10 +40,9 @@ AM_CFLAGS = @UDEV_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
 				-DSTATEDIR=\""$(statedir)"\" \
 					-DSTORAGEDIR=\""$(storagedir)\"" \
 						-DPLUGINDIR=\""$(plugindir)"\"
-
 INCLUDES = -I$(top_builddir)/include
 
-EXTRA_DIST = $(dbus_DATA)
+EXTRA_DIST = $(dbus_DATA) connman.rules
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -50,3 +53,6 @@ connman.ver: connman.exp
 	echo "{ global:" > $@
 	cat $< | sed -e "s/\(.*\)/\1;/" >> $@
 	echo "local: *; };" >> $@
+
+92-connman.rules: connman.rules
+	cp $< $@

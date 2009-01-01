@@ -27,6 +27,7 @@ src/connmand
 src/connman.exp
 src/connman.ver
 src/connman.service
+src/*-connman.rules
 scripts/connman
 scripts/udhcpc-script
 scripts/dhclient-script
