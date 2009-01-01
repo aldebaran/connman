@@ -43,6 +43,12 @@ enum connman_network_type {
 	CONNMAN_NETWORK_TYPE_HSO           = 23,
 };
 
+enum connman_network_protocol {
+	CONNMAN_NETWORK_PROTOCOL_UNKNOWN = 0,
+	CONNMAN_NETWORK_PROTOCOL_IP      = 1,
+	CONNMAN_NETWORK_PROTOCOL_PPP     = 2,
+};
+
 struct connman_network;
 
 extern struct connman_network *connman_network_create(const char *identifier,
@@ -58,6 +64,9 @@ extern const char *connman_network_get_path(struct connman_network *network);
 extern void connman_network_set_index(struct connman_network *network,
 								int index);
 extern int connman_network_get_index(struct connman_network *network);
+
+extern void connman_network_set_protocol(struct connman_network *network,
+					enum connman_network_protocol protocol);
 
 extern int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected);

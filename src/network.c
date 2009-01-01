@@ -30,6 +30,7 @@
 struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
+	enum connman_network_protocol protocol;
 	gboolean connected;
 	char *identifier;
 	char *path;
@@ -362,6 +363,19 @@ void connman_network_set_index(struct connman_network *network, int index)
 int connman_network_get_index(struct connman_network *network)
 {
 	return network->element.index;
+}
+
+/**
+ * connman_network_set_protocol:
+ * @network: network structure
+ * @protocol: network protocol
+ *
+ * Change protocol of network
+ */
+void connman_network_set_protocol(struct connman_network *network,
+					enum connman_network_protocol protocol)
+{
+	network->protocol = protocol;
 }
 
 /**
