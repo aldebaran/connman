@@ -29,4 +29,89 @@
 #define LIBUDEV_I_KNOW_THE_API_IS_SUBJECT_TO_CHANGE
 #include <libudev.h>
 
+#include <glib.h>
+
 #include "connman.h"
+
+static gboolean udev_event(GIOChannel *channel,
+				GIOCondition condition, gpointer user_data)
+{
+	struct udev_monitor *monitor = user_data;
+	struct udev_device *device;
+	const char *action, *sysname;
+
+	device = udev_monitor_receive_device(monitor);
+	if (device == NULL)
+		return TRUE;
+
+	action = udev_device_get_action(device);
+	if (action == NULL)
+		return TRUE;
+
+	sysname = udev_device_get_sysname(device);
+
+	DBG("%s %s", action, sysname);
+
+	return TRUE;
+}
+
+static struct udev *udev_ctx;
+static struct udev_monitor *udev_mon;
+static guint udev_watch = 0;
+
+int __connman_udev_init(void)
+{
+	GIOChannel *channel;
+	int fd;
+
+	DBG("");
+
+	udev_ctx = udev_new();
+	if (udev_ctx == NULL) {
+		connman_error("Failed to create udev context");
+		return -1;
+	}
+
+	udev_mon = udev_monitor_new_from_socket(udev_ctx,
+						"@/org/moblin/connman/udev");
+	if (udev_mon == NULL) {
+		connman_error("Failed to create udev monitor");
+		udev_unref(udev_ctx);
+		udev_ctx = NULL;
+		return -1;
+	}
+
+	if (udev_monitor_enable_receiving(udev_mon) < 0) {
+		connman_error("Failed to enable udev monitor");
+		udev_unref(udev_ctx);
+		udev_ctx = NULL;
+		udev_monitor_unref(udev_mon);
+		return -1;
+	}
+
+	fd = udev_monitor_get_fd(udev_mon);
+
+	channel = g_io_channel_unix_new(fd);
+	if (channel == NULL)
+		return 0;
+
+	udev_watch = g_io_add_watch(channel, G_IO_IN, udev_event, udev_mon);
+
+	g_io_channel_unref(channel);
+
+	return 0;
+}
+
+void __connman_udev_cleanup(void)
+{
+	DBG("");
+
+	if (udev_watch > 0)
+		g_source_remove(udev_watch);
+
+	if (udev_ctx == NULL)
+		return;
+
+	udev_monitor_unref(udev_mon);
+	udev_unref(udev_ctx);
+}

@@ -163,6 +163,7 @@ int main(int argc, char *argv[])
 	__connman_profile_init(conn);
 
 	__connman_rtnl_init();
+	__connman_udev_init();
 
 	__connman_plugin_init();
 
@@ -181,6 +182,7 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_cleanup();
 
+	__connman_udev_cleanup();
 	__connman_rtnl_cleanup();
 
 	__connman_profile_cleanup();
