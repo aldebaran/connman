@@ -49,7 +49,7 @@ AC_PATH_PROG(RESOLVCONF, [resolvconf], ,$PATH:/sbin:/usr/sbin)
 AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], ,$PATH:/sbin:/usr/sbin)
 AC_PATH_PROG(PPPD, [pppd], ,$PATH:/sbin:/usr/sbin)
 
-AC_CHECK_HEADERS(pppd/pppd.h, pppd_found=no, pppd_found=yes)
+AC_CHECK_HEADERS(pppd/pppd.h, pppd_found=yes, pppd_found=no)
 AM_CONDITIONAL(PPPD, test "${pppd_found}" = "yes")
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
