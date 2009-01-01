@@ -48,6 +48,9 @@ struct connman_device {
 static const char *type2description(enum connman_device_type type)
 {
 	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 		return "Ethernet";
 	case CONNMAN_DEVICE_TYPE_WIFI:
@@ -58,14 +61,17 @@ static const char *type2description(enum connman_device_type type)
 		return "Bluetooth";
 	case CONNMAN_DEVICE_TYPE_HSO:
 		return "Cellular";
-	default:
-		return NULL;
 	}
+
+	return NULL;
 }
 
 static const char *type2string(enum connman_device_type type)
 {
 	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 		return "ethernet";
 	case CONNMAN_DEVICE_TYPE_WIFI:
@@ -76,9 +82,9 @@ static const char *type2string(enum connman_device_type type)
 		return "bluetooth";
 	case CONNMAN_DEVICE_TYPE_HSO:
 		return "cellular";
-	default:
-		return NULL;
 	}
+
+	return NULL;
 }
 
 static const char *policy2string(enum connman_device_policy policy)
@@ -264,11 +270,17 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Scanning",
 					DBUS_TYPE_BOOLEAN, &device->scanning);
 
-	if (device->mode != CONNMAN_DEVICE_MODE_NO_NETWORK) {
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		break;
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 		append_networks(device, &entry);
 		dbus_message_iter_close_container(&dict, &entry);
+		break;
 	}
 
 	dbus_message_iter_close_container(&array, &dict);
@@ -357,8 +369,14 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (device->mode == CONNMAN_DEVICE_MODE_NO_NETWORK)
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		return __connman_error_not_supported(msg);
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		break;
+	}
 
 	if (!device->driver || !device->driver->scan)
 		return __connman_error_not_supported(msg);
@@ -557,8 +575,8 @@ struct connman_device *connman_device_create(const char *node,
 	device->element.device = device;
 	device->element.destruct = device_destruct;
 
-	device->type = type;
-	device->mode = CONNMAN_DEVICE_MODE_NO_NETWORK;
+	device->type   = type;
+	device->mode   = CONNMAN_DEVICE_MODE_UNKNOWN;
 	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
 
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -748,8 +766,14 @@ int connman_device_set_carrier(struct connman_device *device,
 {
 	DBG("driver %p carrier %d", device, carrier);
 
-	if (device->mode != CONNMAN_DEVICE_MODE_NO_NETWORK)
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		return -EINVAL;
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		break;
+	}
 
 	if (device->carrier == carrier)
 		return -EALREADY;
@@ -833,8 +857,14 @@ int connman_device_add_network(struct connman_device *device,
 
 	DBG("device %p network %p", device, network);
 
-	if (device->mode == CONNMAN_DEVICE_MODE_NO_NETWORK)
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		return -EINVAL;
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		break;
+	}
 
 	__connman_network_set_device(network, device);
 

@@ -130,6 +130,7 @@ static void detect_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+	enum connman_device_mode mode;
 	struct connman_device *device;
 	gchar *name, *devname;
 
@@ -198,14 +199,27 @@ static void detect_newlink(unsigned short type, int index,
 	}
 
 	switch (devtype) {
-	case CONNMAN_DEVICE_TYPE_HSO:
-		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
-		connman_device_set_mode(device,
-					CONNMAN_DEVICE_MODE_SINGLE_NETWORK);
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 		break;
-	default:
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		mode = CONNMAN_DEVICE_MODE_TRANSPORT_IP;
+		break;
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
+		break;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
+		break;
+	case CONNMAN_DEVICE_TYPE_HSO:
+		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
+		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
 		break;
 	}
+
+	connman_device_set_mode(device, mode);
 
 	connman_device_set_index(device, index);
 	connman_device_set_interface(device, devname);

@@ -568,7 +568,7 @@ static void wifi_newlink(unsigned short type, int index,
 	g_free(devname);
 	g_free(name);
 
-	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_SINGLE_NETWORK);
+	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
 
 	if (connman_device_register(device) < 0) {
 		connman_device_unregister(device);
