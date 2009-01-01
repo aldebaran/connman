@@ -130,7 +130,7 @@ static void detect_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-	enum connman_device_mode mode;
+	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	struct connman_device *device;
 	gchar *name, *devname;
 

@@ -400,7 +400,7 @@ int connman_network_set_connected(struct connman_network *network,
 
 	if (connected == TRUE) {
 		struct connman_element *element;
-		enum connman_element_type type;
+		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 
 		switch (network->protocol) {
 		case CONNMAN_NETWORK_PROTOCOL_UNKNOWN:
