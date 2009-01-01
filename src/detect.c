@@ -177,17 +177,19 @@ static void detect_newlink(unsigned short type, int index,
 			devtype = CONNMAN_DEVICE_TYPE_HSO;
 	}
 
-	if (devtype == CONNMAN_DEVICE_TYPE_UNKNOWN) {
+	switch (devtype) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 		g_free(devname);
 		return;
-	}
-
-	switch (devtype) {
-	case CONNMAN_DEVICE_TYPE_HSO:
-		name = strdup(devname);
-		break;
-	default:
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "dev_");
+		break;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		name = strdup(devname);
 		break;
 	}
 

@@ -90,6 +90,8 @@ static const char *type2string(enum connman_device_type type)
 static const char *policy2string(enum connman_device_policy policy)
 {
 	switch (policy) {
+	case CONNMAN_DEVICE_POLICY_UNKNOWN:
+		break;
 	case CONNMAN_DEVICE_POLICY_IGNORE:
 		return "ignore";
 	case CONNMAN_DEVICE_POLICY_OFF:
@@ -98,9 +100,9 @@ static const char *policy2string(enum connman_device_policy policy)
 		return "auto";
 	case CONNMAN_DEVICE_POLICY_MANUAL:
 		return "manual";
-	default:
-		return NULL;
 	}
+
+	return NULL;
 }
 
 static enum connman_device_policy string2policy(const char *policy)
@@ -159,6 +161,10 @@ static int set_policy(DBusConnection *connection,
 		return 0;
 
 	switch (policy) {
+	case CONNMAN_DEVICE_POLICY_UNKNOWN:
+		return -EINVAL;
+	case CONNMAN_DEVICE_POLICY_IGNORE:
+		break;
 	case CONNMAN_DEVICE_POLICY_OFF:
 		if (device->powered == TRUE)
 			err = set_powered(device, FALSE);
@@ -167,8 +173,6 @@ static int set_policy(DBusConnection *connection,
 	case CONNMAN_DEVICE_POLICY_MANUAL:
 		if (device->powered == FALSE)
 			err = set_powered(device, TRUE);
-		break;
-	default:
 		break;
 	}
 
@@ -564,11 +568,16 @@ struct connman_device *connman_device_create(const char *node,
 	device->element.index = -1;
 
 	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_HSO:
+		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
+		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
-		break;
-	default:
-		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 		break;
 	}
 
