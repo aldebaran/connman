@@ -23,6 +23,12 @@ endif
 bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 
+if NOVATEL
+plugin_LTLIBRARIES += novatel.la
+
+novatel_la_SOURCES = novatel.c modem.h modem.c
+endif
+
 if HUAWEI
 plugin_LTLIBRARIES += huawei.la
 

@@ -18,6 +18,7 @@ fi
 		--sysconfdir=/etc \
 		--enable-loopback \
 		--enable-wifi \
+		--enable-novatel \
 		--enable-huawei \
 		--enable-hso \
 		--enable-ppp \

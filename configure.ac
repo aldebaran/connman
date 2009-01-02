@@ -62,6 +62,10 @@ if (test "${enable_wifi}" = "yes"); then
 fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 
+AC_ARG_ENABLE(novatel, AC_HELP_STRING([--enable-novatel],
+		[enable Novatel support]), [enable_novatel=${enableval}])
+AM_CONDITIONAL(NOVATEL, test "${enable_novatel}" = "yes")
+
 AC_ARG_ENABLE(huawei, AC_HELP_STRING([--enable-huawei],
 		[enable HUAWEI support]), [enable_huawei=${enableval}])
 AM_CONDITIONAL(HUAWEI, test "${enable_huawei}" = "yes")
@@ -72,7 +76,8 @@ AM_CONDITIONAL(HSO, test "${enable_hso}" = "yes")
 
 AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
 		[enable PPP support]), [enable_ppp=${enableval}])
-if (test "${enable_ppp}" = "yes" || test "${enable_huawei}" = "yes"); then
+if (test "${enable_ppp}" = "yes" || test "${enable_novatel}" = "yes" ||
+					test "${enable_huawei}" = "yes"); then
 	AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
 	AC_CHECK_HEADERS(pppd/pppd.h, enable_ppp=yes,
 			AC_MSG_ERROR(PPP development files are required))
