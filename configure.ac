@@ -67,7 +67,7 @@ AC_ARG_ENABLE(hso, AC_HELP_STRING([--enable-hso],
 AM_CONDITIONAL(HSO, test "${enable_hso}" = "yes")
 
 AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
-		[enable PPP support]), [enable_udev=${enableval}])
+		[enable PPP support]), [enable_ppp=${enableval}])
 if (test "${enable_ppp}" = "yes"); then
 	AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
 	AC_CHECK_HEADERS(pppd/pppd.h, enable_ppp=yes,
