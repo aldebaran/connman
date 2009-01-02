@@ -79,5 +79,5 @@ static void huawei_exit(void)
 	connman_device_driver_unregister(&huawei_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE(huawei, "Option HUAWEI device plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(huawei, "HUAWEI Mobile device plugin", VERSION,
 						huawei_init, huawei_exit)
