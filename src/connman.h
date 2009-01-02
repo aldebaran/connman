@@ -90,7 +90,8 @@ void __connman_element_start(void);
 void __connman_element_stop(void);
 void __connman_element_cleanup(void);
 
-typedef void (* element_cb_t) (struct connman_element *element, void *user_data);
+typedef void (* element_cb_t) (struct connman_element *element,
+							gpointer user_data);
 
 void __connman_element_foreach(struct connman_element *element,
 				enum connman_element_type type,
