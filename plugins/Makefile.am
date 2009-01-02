@@ -26,7 +26,7 @@ bluetooth_la_LIBADD = @GDBUS_LIBS@
 if HUAWEI
 plugin_LTLIBRARIES += huawei.la
 
-huawei_la_SOURCES = huawei.c modem.h modem.
+huawei_la_SOURCES = huawei.c modem.h modem.c
 endif
 
 if HSO
