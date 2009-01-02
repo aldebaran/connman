@@ -475,6 +475,37 @@ static void unregister_interface(struct connman_element *element)
 						CONNMAN_DEVICE_INTERFACE);
 }
 
+static void device_enable(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE ||
+				device->policy == CONNMAN_DEVICE_POLICY_OFF)
+		return;
+
+	if (device->powered == TRUE)
+		return;
+
+	if (device->driver->enable)
+		device->driver->enable(device);
+}
+
+static void device_disable(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE)
+		return;
+
+	if (device->powered == FALSE)
+		return;
+
+	g_hash_table_remove_all(device->networks);
+
+	if (device->driver->disable)
+		device->driver->disable(device);
+}
+
 static GSList *driver_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -505,6 +536,25 @@ int connman_device_driver_register(struct connman_device_driver *driver)
 	return 0;
 }
 
+static void remove_driver(struct connman_element *element, gpointer user_data)
+{
+	struct connman_device_driver *driver = user_data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->device == NULL)
+		return;
+
+	if (element->device->driver == driver) {
+		device_disable(element->device);
+
+		if (driver->remove)
+			driver->remove(element->device);
+
+		element->device->driver = NULL;
+	}
+}
+
 /**
  * connman_device_driver_unregister:
  * @driver: device driver definition
@@ -516,6 +566,9 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_remove(driver_list, driver);
+
+	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
+						remove_driver, driver);
 }
 
 static void unregister_network(gpointer data)
@@ -539,6 +592,7 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->interface);
 
 	g_hash_table_destroy(device->networks);
+	device->networks = NULL;
 }
 
 /**
@@ -968,37 +1022,6 @@ void *connman_device_get_data(struct connman_device *device)
 void connman_device_set_data(struct connman_device *device, void *data)
 {
 	device->driver_data = data;
-}
-
-static void device_enable(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE ||
-				device->policy == CONNMAN_DEVICE_POLICY_OFF)
-		return;
-
-	if (device->powered == TRUE)
-		return;
-
-	if (device->driver->enable)
-		device->driver->enable(device);
-}
-
-static void device_disable(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE)
-		return;
-
-	if (device->powered == FALSE)
-		return;
-
-	g_hash_table_remove_all(device->networks);
-
-	if (device->driver->disable)
-		device->driver->disable(device);
 }
 
 static gboolean match_driver(struct connman_device *device,
