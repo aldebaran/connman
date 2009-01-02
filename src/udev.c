@@ -33,6 +33,13 @@
 
 #include "connman.h"
 
+#ifdef NEED_UDEV_MONITOR_ENABLE_RECEIVING
+static int udev_monitor_enable_receiving(struct udev_monitor *monitor)
+{
+	return 0;
+}
+#endif
+
 #ifdef NEED_UDEV_MONITOR_RECEIVE_DEVICE
 static struct udev_device *udev_monitor_receive_device(struct udev_monitor *monitor);
 {

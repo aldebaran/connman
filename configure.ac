@@ -103,6 +103,10 @@ AC_ARG_ENABLE(udev, AC_HELP_STRING([--enable-udev],
 		[enable udev support]), [enable_udev=${enableval}])
 if (test "${enable_udev}" = "yes"); then
 	AC_DEFINE(HAVE_UDEV, 1, [Define if udev support is available])
+	AC_CHECK_LIB(udev, udev_monitor_enable_receiving, dummy=yes,
+		AC_DEFINE(NEED_UDEV_MONITOR_ENABLE_RECEIVING, 1,
+			[Define to 1 if you need the
+				udev_monitor_enable_receiving() function.]))
 	AC_CHECK_LIB(udev, udev_monitor_receive_device, dummy=yes,
 		AC_DEFINE(NEED_UDEV_MONITOR_RECEIVE_DEVICE, 1,
 			[Define to 1 if you need the
