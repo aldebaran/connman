@@ -1,21 +1,35 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = loopback.la ethernet.la wifi.la bluetooth.la hso.la \
-				udhcp.la dhclient.la ipv4.la dnsproxy.la \
-						resolvconf.la resolvfile.la
+plugin_LTLIBRARIES = ethernet.la bluetooth.la \
+				ipv4.la udhcp.la dhclient.la \
+				dnsproxy.la resolvconf.la resolvfile.la
+
+if LOOPBACK
+plugin_LTLIBRARIES += loopback.la
 
 loopback_la_SOURCES = loopback.c
+endif
 
 ethernet_la_SOURCES = ethernet.c inet.h inet.c
 
+if WIFI
+plugin_LTLIBRARIES += wifi.la
+
 wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
+endif
 
 bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 
+if HSO
+plugin_LTLIBRARIES += hso.la
+
 hso_la_SOURCES = hso.c modem.h modem.c
+endif
+
+ipv4_la_SOURCES = ipv4.c inet.h inet.c
 
 udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
 udhcp_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DUDHCPC=\"@UDHCPC@\" \
@@ -30,8 +44,6 @@ plugin_LTLIBRARIES += pppd.la
 
 pppd_la_SOURCES = pppd.c
 endif
-
-ipv4_la_SOURCES = ipv4.c inet.h inet.c
 
 dnsproxy_la_SOURCES = dnsproxy.c
 

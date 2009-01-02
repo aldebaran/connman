@@ -13,6 +13,7 @@ In order to compile Connection Manager you need following software packages:
 	- D-Bus library
 	- udev library (optional)
 	- PolicyKit (optional)
+	- PPP support (optional)
 
 To configure run:
 	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var

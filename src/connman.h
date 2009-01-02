@@ -116,8 +116,19 @@ static inline void __connman_element_unlock(struct connman_element *element)
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
 
+#ifdef HAVE_UDEV
 int __connman_udev_init(void);
 void __connman_udev_cleanup(void);
+#else
+static inline int __connman_udev_init(void)
+{
+	return 0;
+}
+
+static inline void __connman_udev_cleanup(void)
+{
+}
+#endif
 
 #include <connman/device.h>
 

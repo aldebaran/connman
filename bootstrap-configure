@@ -16,4 +16,10 @@ fi
 		--mandir=/usr/share/man \
 		--localstatedir=/var \
 		--sysconfdir=/etc \
+		--enable-loopback \
+		--enable-wifi \
+		--enable-hso \
+		--enable-ppp \
+		--enable-udev \
+		--enable-polkit \
 		--enable-client $*

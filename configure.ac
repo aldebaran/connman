@@ -43,14 +43,37 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 	fi
 ])
 
-AC_PATH_PROG(UDHCPC, [udhcpc], ,$PATH:/sbin:/usr/sbin)
-AC_PATH_PROG(DHCLIENT, [dhclient], ,$PATH:/sbin:/usr/sbin)
-AC_PATH_PROG(RESOLVCONF, [resolvconf], ,$PATH:/sbin:/usr/sbin)
-AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], ,$PATH:/sbin:/usr/sbin)
-AC_PATH_PROG(PPPD, [pppd], ,$PATH:/sbin:/usr/sbin)
+AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
+		[enable threading support]), [enable_threads=${enableval}])
 
-AC_CHECK_HEADERS(pppd/pppd.h, pppd_found=yes, pppd_found=no)
-AM_CONDITIONAL(PPPD, test "${pppd_found}" = "yes")
+AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
+AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
+AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
+
+AC_ARG_ENABLE(loopback, AC_HELP_STRING([--enable-loopback],
+		[enable loopback support]), [enable_loopback=${enableval}])
+AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" = "yes")
+
+AC_ARG_ENABLE(wifi, AC_HELP_STRING([--enable-wifi],
+		[enable WiFi support]), [enable_wifi=${enableval}])
+if (test "${enable_wifi}" = "yes"); then
+	AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], [],
+						$PATH:/sbin:/usr/sbin)
+fi
+AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
+
+AC_ARG_ENABLE(hso, AC_HELP_STRING([--enable-hso],
+		[enable HSO support]), [enable_hso=${enableval}])
+AM_CONDITIONAL(HSO, test "${enable_hso}" = "yes")
+
+AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
+		[enable PPP support]), [enable_udev=${enableval}])
+if (test "${enable_ppp}" = "yes"); then
+	AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
+	AC_CHECK_HEADERS(pppd/pppd.h, enable_ppp=yes,
+			AC_MSG_ERROR(PPP development files are required))
+fi
+AM_CONDITIONAL(PPPD, test "${enable_ppp}" = "yes")
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
@@ -60,15 +83,13 @@ PKG_CHECK_MODULES(GLIB, glib-2.0, dummy=yes,
 AC_SUBST(GLIB_CFLAGS)
 AC_SUBST(GLIB_LIBS)
 
-AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
-					[enable threading support]), [
+if (test "${enable_threads}" = "yes"); then
 	AC_DEFINE(NEED_THREADS, 1, [Define if threading support is required])
-
 	PKG_CHECK_MODULES(GTHREAD, gthread-2.0, dummy=yes,
 				AC_MSG_ERROR(gthread is required))
 	GLIB_CFLAGS="$GLIB_CFLAGS $GTHREAD_CFLAGS"
 	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
-])
+fi
 
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(libdbus is required))
@@ -78,22 +99,33 @@ AC_SUBST(DBUS_LIBS)
 AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
 AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
 
-PKG_CHECK_MODULES(UDEV, libudev >= 127, udev_found=yes, udev_found=no)
+AC_ARG_ENABLE(udev, AC_HELP_STRING([--enable-udev],
+		[enable udev support]), [enable_udev=${enableval}])
+if (test "${enable_udev}" = "yes"); then
+	AC_DEFINE(HAVE_UDEV, 1, [Define if udev support is available])
+	PKG_CHECK_MODULES(UDEV, libudev >= 127, enable_udev=yes,
+				AC_MSG_ERROR(udev >= 127 is required))
+fi
 AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
-AM_CONDITIONAL(UDEV, test "${udev_found}" = "yes")
+AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
 
-PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, polkit_found=yes, polkit_found=no)
-AC_SUBST(POLKIT_CFLAGS)
-AC_SUBST(POLKIT_LIBS)
-AM_CONDITIONAL(POLKIT, test "${polkit_found}" = "yes")
+AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
+		[enable PolicyKit support]), [enable_polkit=${enableval}])
+if (test "${enable_polkit}" = "yes"); then
+	PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, enable_polkit=yes,
+				AC_MSG_ERROR(PolicyKit >= 0.7 is required))
+	AC_SUBST(POLKIT_CFLAGS)
+	AC_SUBST(POLKIT_LIBS)
+fi
+AM_CONDITIONAL(POLKIT, test "${enable_polkit}" = "yes")
 
 AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
 		[enable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 
 AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
-			[enable fake plugin]), [enable_fake=${enableval}])
+		[enable fake device support]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
 
 AC_OUTPUT(Makefile gdbus/Makefile include/Makefile src/Makefile doc/Makefile

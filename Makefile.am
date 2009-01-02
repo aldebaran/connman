@@ -5,7 +5,10 @@ pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = connman.pc
 
-DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc
+DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
+				--enable-loopback \
+				--enable-wifi \
+				--enable-client
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
