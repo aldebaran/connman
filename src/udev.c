@@ -105,6 +105,8 @@ static void add_device(struct udev_device *udev_device)
 
 	if (g_str_equal(type, "huawei") == TRUE)
 		devtype = CONNMAN_DEVICE_TYPE_HUAWEI;
+	else if (g_str_equal(type, "novatel") == TRUE)
+		devtype = CONNMAN_DEVICE_TYPE_NOVATEL;
 	else
 		return;
 
