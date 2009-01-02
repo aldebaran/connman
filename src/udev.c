@@ -168,7 +168,8 @@ static void print_properties(struct udev_device *device, const char *prefix)
 		const char *value = udev_list_entry_get_value(entry);
 
 		if (g_str_has_prefix(name, "CONNMAN") == TRUE ||
-				g_str_equal(name, "DEVNAME") == TRUE ||
+				g_str_has_prefix(name, "ID_MODEM") == TRUE ||
+					g_str_equal(name, "DEVNAME") == TRUE ||
 					g_str_equal(name, "DEVPATH") == TRUE)
 			connman_debug("%s%s = %s", prefix, name, value);
 
