@@ -8,6 +8,9 @@ pkgconfig_DATA = connman.pc
 DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-loopback \
 				--enable-wifi \
+				--enable-novatel \
+				--enable-huawei \
+				--enable-hso \
 				--enable-client
 
 DISTCLEANFILES = $(pkgconfig_DATA)
