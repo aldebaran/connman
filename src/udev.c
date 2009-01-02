@@ -33,12 +33,26 @@
 
 #include "connman.h"
 
+#ifdef NEED_UDEV_MONITOR_RECEIVE_DEVICE
+static struct udev_device *udev_monitor_receive_device(struct udev_monitor *monitor);
+{
+	return udev_monitor_get_device(monitor);
+}
+#endif
+
+#ifdef NEED_UDEV_DEVICE_GET_ACTION
+static const char *udev_device_get_action(struct udev_device *device)
+{
+	return NULL;
+}
+#endif
+
 static gboolean udev_event(GIOChannel *channel,
 				GIOCondition condition, gpointer user_data)
 {
 	struct udev_monitor *monitor = user_data;
 	struct udev_device *device;
-	const char *action, *sysname;
+	const char *action;
 
 	device = udev_monitor_receive_device(monitor);
 	if (device == NULL)
@@ -46,11 +60,12 @@ static gboolean udev_event(GIOChannel *channel,
 
 	action = udev_device_get_action(device);
 	if (action == NULL)
-		return TRUE;
+		goto done;
 
-	sysname = udev_device_get_sysname(device);
+	connman_debug("=== %s ===", action);
 
-	DBG("%s %s", action, sysname);
+done:
+	udev_device_unref(device);
 
 	return TRUE;
 }
