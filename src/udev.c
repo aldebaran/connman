@@ -48,6 +48,111 @@ static int udev_enumerate_add_match_property(struct udev_enumerate *enumerate,
 }
 #endif
 
+static GSList *device_list = NULL;
+
+static struct connman_device *find_device(const char *interface)
+{
+	GSList *list;
+
+	if (interface == NULL)
+		return NULL;
+
+	for (list = device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+		const char *device_interface;
+
+		device_interface = connman_device_get_interface(device);
+		if (device_interface == NULL)
+			continue;
+
+		if (g_str_equal(device_interface, interface) == TRUE)
+			return device;
+	}
+
+	return NULL;
+}
+
+static void add_device(struct udev_device *udev_device)
+{
+	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+	struct connman_device *device;
+	struct udev_list_entry *entry;
+	const char *type = NULL, *interface = NULL;
+
+	DBG("");
+
+	entry = udev_device_get_properties_list_entry(udev_device);
+	while (entry) {
+		const char *name = udev_list_entry_get_name(entry);
+
+		if (g_str_has_prefix(name, "CONNMAN_TYPE") == TRUE)
+			type = udev_list_entry_get_value(entry);
+		else if (g_str_has_prefix(name, "CONNMAN_INTERFACE") == TRUE)
+			interface = udev_list_entry_get_value(entry);
+
+		entry = udev_list_entry_get_next(entry);
+	}
+
+	device = find_device(interface);
+	if (device != NULL)
+		return;
+
+	if (type == NULL || interface == NULL)
+		return;
+
+	if (g_str_equal(interface, "ttyUSB0") == FALSE)
+		return;
+
+	if (g_str_equal(type, "huawei") == TRUE)
+		devtype = CONNMAN_DEVICE_TYPE_HUAWEI;
+	else
+		return;
+
+	device = connman_device_create(interface, devtype);
+	if (device == NULL)
+		return;
+
+	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
+	connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
+
+	connman_device_set_interface(device, interface);
+
+	if (connman_device_register(device) < 0) {
+		connman_device_unref(device);
+		return;
+	}
+
+	device_list = g_slist_append(device_list, device);
+}
+
+static void remove_device(struct udev_device *udev_device)
+{
+	struct connman_device *device;
+	struct udev_list_entry *entry;
+	const char *interface = NULL;
+
+	DBG("");
+
+	entry = udev_device_get_properties_list_entry(udev_device);
+	while (entry) {
+		const char *name = udev_list_entry_get_name(entry);
+
+		if (g_str_has_prefix(name, "CONNMAN_INTERFACE") == TRUE)
+			interface = udev_list_entry_get_value(entry);
+
+		entry = udev_list_entry_get_next(entry);
+	}
+
+	device = find_device(interface);
+	if (device == NULL)
+		return;
+
+	device_list = g_slist_remove(device_list, device);
+
+	connman_device_unregister(device);
+	connman_device_unref(device);
+}
+
 static void print_properties(struct udev_device *device, const char *prefix)
 {
 	struct udev_list_entry *entry;
@@ -99,6 +204,8 @@ static void enumerate_devices(struct udev *context)
 
 		print_device(device, "coldplug");
 
+		add_device(device);
+
 		udev_device_unref(device);
 
 		entry = udev_list_entry_get_next(entry);
@@ -123,6 +230,11 @@ static gboolean udev_event(GIOChannel *channel,
 		goto done;
 
 	print_device(device, action);
+
+	if (g_str_equal(action, "add") == TRUE)
+		add_device(device);
+	else if (g_str_equal(action, "remove") == TRUE)
+		remove_device(device);
 
 done:
 	udev_device_unref(device);
@@ -181,10 +293,22 @@ int __connman_udev_init(void)
 
 void __connman_udev_cleanup(void)
 {
+	GSList *list;
+
 	DBG("");
 
 	if (udev_watch > 0)
 		g_source_remove(udev_watch);
+
+	for (list = device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		connman_device_unregister(device);
+		connman_device_unref(device);
+	}
+
+	g_slist_free(device_list);
+	device_list = NULL;
 
 	if (udev_ctx == NULL)
 		return;
