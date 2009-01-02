@@ -1,6 +1,8 @@
 
-DRIVERS=="hso", ENV{CONNMAN_TYPE}="hso"
+SUBSYSTEM=="net", DRIVERS=="hso", ENV{CONNMAN_TYPE}="hso"
 
-SUBSYSTEM=="usb", ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1003", ENV{CONNMAN_TYPE}="huawei"
+SUBSYSTEM=="tty", ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1003", \
+						ENV{CONNMAN_TYPE}="huawei"
 
-ENV{CONNMAN_TYPE}=="?*", RUN+="socket:@/org/moblin/connman/udev"
+ENV{CONNMAN_TYPE}=="?*", ENV{CONNMAN_INTERFACE}="$kernel", \
+				RUN+="socket:@/org/moblin/connman/udev"
