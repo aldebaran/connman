@@ -67,8 +67,10 @@ int plugin_init(void);
 
 int plugin_init(void)
 {
+#if 0
 	path_ipup[0] = '\0';
 	path_ipdown[0] = '\0';
+#endif
 
 	add_notifier(&phasechange, notifier_phasechange, NULL);
 	add_notifier(&exitnotify, notifier_exit, NULL);
