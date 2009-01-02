@@ -23,7 +23,6 @@
 #include <config.h>
 #endif
 
-#include <stdarg.h>
 #include <sys/types.h>
 
 #define LIBUDEV_I_KNOW_THE_API_IS_SUBJECT_TO_CHANGE
@@ -33,26 +32,80 @@
 
 #include "connman.h"
 
-#ifdef NEED_UDEV_MONITOR_ENABLE_RECEIVING
-static int udev_monitor_enable_receiving(struct udev_monitor *monitor)
+#ifdef NEED_UDEV_DEVICE_GET_PARENT_WITH_DEVTYPE
+static struct udev_device *udev_device_get_parent_with_devtype(struct udev_device *device,
+								const char *devtype)
+{
+	return NULL;
+}
+#endif
+
+#ifdef NEED_UDEV_ENUMERATE_ADD_MATCH_PROPERTY
+static int udev_enumerate_add_match_property(struct udev_enumerate *enumerate,
+					const char *property, const char *value)
 {
 	return 0;
 }
 #endif
 
-#ifdef NEED_UDEV_MONITOR_RECEIVE_DEVICE
-static struct udev_device *udev_monitor_receive_device(struct udev_monitor *monitor)
+static void print_properties(struct udev_device *device, const char *prefix)
 {
-	return udev_monitor_get_device(monitor);
-}
-#endif
+	struct udev_list_entry *entry;
 
-#ifdef NEED_UDEV_DEVICE_GET_ACTION
-static const char *udev_device_get_action(struct udev_device *device)
-{
-	return NULL;
+	entry = udev_device_get_properties_list_entry(device);
+	while (entry) {
+		const char *name = udev_list_entry_get_name(entry);
+		const char *value = udev_list_entry_get_value(entry);
+
+		if (g_str_has_prefix(name, "CONNMAN") == TRUE ||
+				g_str_equal(name, "DEVNAME") == TRUE ||
+					g_str_equal(name, "DEVPATH") == TRUE)
+			connman_debug("%s%s = %s", prefix, name, value);
+
+		entry = udev_list_entry_get_next(entry);
+	}
 }
-#endif
+
+static void print_device(struct udev_device *device, const char *action)
+{
+	struct udev_device *parent;
+
+	connman_debug("=== %s ===", action);
+	print_properties(device, "");
+
+	parent = udev_device_get_parent_with_devtype(device, "usb_device");
+	print_properties(parent, "    ");
+}
+
+static void enumerate_devices(struct udev *context)
+{
+	struct udev_enumerate *enumerate;
+	struct udev_list_entry *entry;
+
+	enumerate = udev_enumerate_new(context);
+	if (enumerate == NULL)
+		return;
+
+	udev_enumerate_add_match_property(enumerate, "CONNMAN_TYPE", "?*");
+
+	udev_enumerate_scan_devices(enumerate);
+
+	entry = udev_enumerate_get_list_entry(enumerate);
+	while (entry) {
+		const char *syspath = udev_list_entry_get_name(entry);
+		struct udev_device *device;
+
+		device = udev_device_new_from_syspath(context, syspath);
+
+		print_device(device, "coldplug");
+
+		udev_device_unref(device);
+
+		entry = udev_list_entry_get_next(entry);
+	}
+
+	udev_enumerate_unref(enumerate);
+}
 
 static gboolean udev_event(GIOChannel *channel,
 				GIOCondition condition, gpointer user_data)
@@ -69,7 +122,7 @@ static gboolean udev_event(GIOChannel *channel,
 	if (action == NULL)
 		goto done;
 
-	connman_debug("=== %s ===", action);
+	print_device(device, action);
 
 done:
 	udev_device_unref(device);
@@ -110,6 +163,8 @@ int __connman_udev_init(void)
 		udev_monitor_unref(udev_mon);
 		return -1;
 	}
+
+	enumerate_devices(udev_ctx);
 
 	fd = udev_monitor_get_fd(udev_mon);
 

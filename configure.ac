@@ -103,20 +103,16 @@ AC_ARG_ENABLE(udev, AC_HELP_STRING([--enable-udev],
 		[enable udev support]), [enable_udev=${enableval}])
 if (test "${enable_udev}" = "yes"); then
 	AC_DEFINE(HAVE_UDEV, 1, [Define if udev support is available])
-	AC_CHECK_LIB(udev, udev_monitor_enable_receiving, dummy=yes,
-		AC_DEFINE(NEED_UDEV_MONITOR_ENABLE_RECEIVING, 1,
+	PKG_CHECK_MODULES(UDEV, libudev >= 129, enable_udev=yes,
+				AC_MSG_ERROR(udev >= 129 is required))
+	AC_CHECK_LIB(udev, udev_device_get_parent_with_devtype, dummy=yes,
+		AC_DEFINE(NEED_UDEV_DEVICE_GET_PARENT_WITH_DEVTYPE, 1,
 			[Define to 1 if you need the
-				udev_monitor_enable_receiving() function.]))
-	AC_CHECK_LIB(udev, udev_monitor_receive_device, dummy=yes,
-		AC_DEFINE(NEED_UDEV_MONITOR_RECEIVE_DEVICE, 1,
+				udev_device_get_parent_with_devtype() function.]))
+	AC_CHECK_LIB(udev, udev_enumerate_add_match_property, dummy=yes,
+		AC_DEFINE(NEED_UDEV_ENUMERATE_ADD_MATCH_PROPERTY, 1,
 			[Define to 1 if you need the
-				udev_monitor_receive_device() function.]))
-	AC_CHECK_LIB(udev, udev_device_get_action, dummy=yes,
-		AC_DEFINE(NEED_UDEV_DEVICE_GET_ACTION, 1,
-			[Define to 1 if you need the
-				udev_device_get_action() function.]))
-	PKG_CHECK_MODULES(UDEV, libudev >= 127, enable_udev=yes,
-				AC_MSG_ERROR(udev >= 127 is required))
+				udev_enumerate_add_match_property() function.]))
 fi
 AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
