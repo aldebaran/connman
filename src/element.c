@@ -610,6 +610,53 @@ static GDBusSignalTable element_signals[] = {
 	{ },
 };
 
+struct foreach_data {
+	enum connman_element_type type;
+	element_cb_t callback;
+	gpointer user_data;
+};
+
+static gboolean foreach_callback(GNode *node, gpointer user_data)
+{
+	struct connman_element *element = node->data;
+	struct foreach_data *data = user_data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
+		return FALSE;
+
+	if (data->type != CONNMAN_ELEMENT_TYPE_UNKNOWN &&
+					data->type != element->type)
+		return FALSE;
+
+	if (data->callback)
+		data->callback(element, data->user_data);
+
+	return FALSE;
+}
+
+void __connman_element_foreach(struct connman_element *element,
+				enum connman_element_type type,
+				element_cb_t callback, gpointer user_data)
+{
+	struct foreach_data data = { type, callback, user_data };
+	GNode *node;
+
+	DBG("");
+
+	if (element != NULL) {
+		node = g_node_find(element_root, G_PRE_ORDER,
+						G_TRAVERSE_ALL, element);
+		if (node == NULL)
+			return;
+	} else
+		node = element_root;
+
+	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
+						foreach_callback, &data);
+}
+
 struct append_filter {
 	enum connman_element_type type;
 	DBusMessageIter *iter;
