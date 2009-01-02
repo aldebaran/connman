@@ -23,6 +23,12 @@ endif
 bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 
+if HUAWEI
+plugin_LTLIBRARIES += huawei.la
+
+huawei_la_SOURCES = huawei.c modem.h modem.
+endif
+
 if HSO
 plugin_LTLIBRARIES += hso.la
 
