@@ -61,6 +61,7 @@ static const char *type2description(enum connman_device_type type)
 		return "Bluetooth";
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		return "Cellular";
 	}
 
@@ -83,6 +84,7 @@ static const char *type2string(enum connman_device_type type)
 		return "bluetooth";
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		return "cellular";
 	}
 
@@ -631,6 +633,7 @@ struct connman_device *connman_device_create(const char *node,
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:

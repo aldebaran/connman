@@ -189,6 +189,7 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		name = strdup(devname);
 		break;
@@ -205,6 +206,7 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
