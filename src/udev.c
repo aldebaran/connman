@@ -41,7 +41,7 @@ static int udev_monitor_enable_receiving(struct udev_monitor *monitor)
 #endif
 
 #ifdef NEED_UDEV_MONITOR_RECEIVE_DEVICE
-static struct udev_device *udev_monitor_receive_device(struct udev_monitor *monitor);
+static struct udev_device *udev_monitor_receive_device(struct udev_monitor *monitor)
 {
 	return udev_monitor_get_device(monitor);
 }
