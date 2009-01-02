@@ -100,10 +100,13 @@ static void add_device(struct udev_device *udev_device)
 	if (type == NULL || interface == NULL)
 		return;
 
-	if (g_str_equal(interface, "ttyUSB0") == FALSE)
+	if (g_str_equal(interface, "ttyUSB0") == FALSE &&
+				g_str_equal(interface, "noz0") == FALSE)
 		return;
 
-	if (g_str_equal(type, "huawei") == TRUE)
+	if (g_str_equal(type, "nozomi") == TRUE)
+		devtype = CONNMAN_DEVICE_TYPE_NOZOMI;
+	else if (g_str_equal(type, "huawei") == TRUE)
 		devtype = CONNMAN_DEVICE_TYPE_HUAWEI;
 	else if (g_str_equal(type, "novatel") == TRUE)
 		devtype = CONNMAN_DEVICE_TYPE_NOVATEL;

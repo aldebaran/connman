@@ -1,6 +1,8 @@
 
 SUBSYSTEM=="net", DRIVERS=="hso", ENV{CONNMAN_TYPE}="hso"
 
+SUBSYSTEM=="tty", KERNEL=="noz[0-9]*", ENV{CONNMAN_TYPE}="nozomi"
+
 SUBSYSTEM=="tty", ATTRS{idVendor}=="12d1", ATTRS{idProduct}=="1003", \
 						ENV{CONNMAN_TYPE}="huawei"
 
