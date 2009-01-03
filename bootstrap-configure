@@ -17,6 +17,7 @@ fi
 		--localstatedir=/var \
 		--sysconfdir=/etc \
 		--enable-loopback \
+		--enable-ethernet \
 		--enable-wifi \
 		--enable-udhcp \
 		--enable-dhclient \

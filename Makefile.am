@@ -7,6 +7,7 @@ pkgconfig_DATA = connman.pc
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-loopback \
+				--enable-ethernet \
 				--enable-wifi \
 				--enable-udhcp \
 				--enable-dhclient \

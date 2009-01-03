@@ -48,6 +48,10 @@ AC_ARG_ENABLE(loopback, AC_HELP_STRING([--enable-loopback],
 		[enable loopback support]), [enable_loopback=${enableval}])
 AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" = "yes")
 
+AC_ARG_ENABLE(ethernet, AC_HELP_STRING([--enable-ethernet],
+		[enable Ethernet support]), [enable_ethernet=${enableval}])
+AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" = "yes")
+
 AC_ARG_ENABLE(wifi, AC_HELP_STRING([--enable-wifi],
 		[enable WiFi support]), [enable_wifi=${enableval}])
 if (test "${enable_wifi}" = "yes"); then

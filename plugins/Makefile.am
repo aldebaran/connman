@@ -1,7 +1,7 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = ethernet.la bluetooth.la ipv4.la
+plugin_LTLIBRARIES = bluetooth.la ipv4.la
 
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
@@ -9,7 +9,11 @@ plugin_LTLIBRARIES += loopback.la
 loopback_la_SOURCES = loopback.c
 endif
 
+if ETHERNET
+plugin_LTLIBRARIES += ethernet.la
+
 ethernet_la_SOURCES = ethernet.c inet.h inet.c
+endif
 
 if WIFI
 plugin_LTLIBRARIES += wifi.la
