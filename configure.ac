@@ -24,8 +24,6 @@ AC_PROG_LIBTOOL
 
 GTK_DOC_CHECK
 
-AC_PATH_PROG([XSLTPROC], [xsltproc])
-
 AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [
 	if (test "${enableval}" = "yes" &&
@@ -58,17 +56,33 @@ if (test "${enable_wifi}" = "yes"); then
 fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 
+AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
+		[Specific udhcpc binary]), [path_udhcpc=${withval}])
+
 AC_ARG_ENABLE(UDHCP, AC_HELP_STRING([--enable-udhcp],
 		[enable uDHCP support]), [enable_udhcp=${enableval}])
 if (test "${enable_udhcp}" = "yes"); then
-	AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
+	if (test -z "${path_udhcpc}"); then
+		AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
+	else
+		UDHCPC="${path_udhcpc}"
+		AC_SUBST(UDHCPC)
+	fi
 fi
 AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" = "yes")
+
+AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
+		[Specific dhclient binary]), [path_dhclient=${withval}])
 
 AC_ARG_ENABLE(DHCLIENT, AC_HELP_STRING([--enable-dhclient],
 		[enable dhclient support]), [enable_dhclient=${enableval}])
 if (test "${enable_dhclient}" = "yes"); then
-	AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
+	if (test -z "${path_dhclient}"); then
+		AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
+	else
+		UDHCPC="${path_dhclient}"
+		AC_SUBST(DHCLIENT)
+	fi
 fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" = "yes")
 
