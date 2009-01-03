@@ -19,6 +19,7 @@ fi
 		--enable-loopback \
 		--enable-ethernet \
 		--enable-wifi \
+		--enable-bluetooth \
 		--enable-udhcp \
 		--enable-dhclient \
 		--enable-resolvconf \

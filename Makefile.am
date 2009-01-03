@@ -9,6 +9,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-loopback \
 				--enable-ethernet \
 				--enable-wifi \
+				--enable-bluetooth \
 				--enable-udhcp \
 				--enable-dhclient \
 				--enable-resolvconf \

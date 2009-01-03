@@ -1,7 +1,7 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = bluetooth.la ipv4.la
+plugin_LTLIBRARIES = ipv4.la
 
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
@@ -22,8 +22,12 @@ wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
 endif
 
+if BLUETOOTH
+plugin_LTLIBRARIES += bluetooth.la
+
 bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
+endif
 
 if NOVATEL
 plugin_LTLIBRARIES += novatel.la
