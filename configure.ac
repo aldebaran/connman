@@ -57,7 +57,7 @@ fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 
 AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
-	[specific location of udhcpc binary]), [path_udhcpc=${withval}])
+	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
 
 AC_ARG_ENABLE(UDHCP, AC_HELP_STRING([--enable-udhcp],
 		[enable uDHCP support]), [enable_udhcp=${enableval}])
@@ -72,7 +72,7 @@ fi
 AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" = "yes")
 
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
-	[specific location of dhclient binary]), [path_dhclient=${withval}])
+	[specify location of dhclient binary]), [path_dhclient=${withval}])
 
 AC_ARG_ENABLE(DHCLIENT, AC_HELP_STRING([--enable-dhclient],
 		[enable dhclient support]), [enable_dhclient=${enableval}])
@@ -87,7 +87,7 @@ fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" = "yes")
 
 AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
-	[specific location of resolvconf binary]), [path_resolvconf=${withval}])
+	[specify location of resolvconf binary]), [path_resolvconf=${withval}])
 
 AC_ARG_ENABLE(RESOLVCONF, AC_HELP_STRING([--enable-resolvconf],
 		[enable resolvconf support]), [enable_resolvconf=${enableval}])
@@ -114,7 +114,7 @@ AC_ARG_ENABLE(hso, AC_HELP_STRING([--enable-hso],
 AM_CONDITIONAL(HSO, test "${enable_hso}" = "yes")
 
 AC_ARG_WITH(pppd, AC_HELP_STRING([--with-pppd=PROGRAM],
-	[specific location of pppd binary]), [path_pppd=${withval}])
+	[specify location of pppd binary]), [path_pppd=${withval}])
 
 AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
 		[enable PPP support]), [enable_ppp=${enableval}])
