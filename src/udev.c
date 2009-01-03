@@ -32,19 +32,19 @@
 
 #include "connman.h"
 
-#ifdef NEED_UDEV_DEVICE_GET_PARENT_WITH_DEVTYPE
-static struct udev_device *udev_device_get_parent_with_devtype(struct udev_device *device,
-								const char *devtype)
-{
-	return NULL;
-}
-#endif
-
 #ifdef NEED_UDEV_ENUMERATE_ADD_MATCH_PROPERTY
 static int udev_enumerate_add_match_property(struct udev_enumerate *enumerate,
 					const char *property, const char *value)
 {
-	return 0;
+	return -EINVAL;
+}
+#endif
+
+#ifdef NEED_UDEV_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE
+static struct udev_device *udev_device_get_parent_with_subsystem_devtype(struct udev_device *device,
+						const char *subsystem, const char *devtype)
+{
+	return NULL;
 }
 #endif
 
@@ -179,12 +179,18 @@ static void print_properties(struct udev_device *device, const char *prefix)
 
 static void print_device(struct udev_device *device, const char *action)
 {
+	const char *subsystem = udev_device_get_subsystem(device);
+	const char *devtype = NULL;
 	struct udev_device *parent;
 
 	connman_debug("=== %s ===", action);
 	print_properties(device, "");
 
-	parent = udev_device_get_parent_with_devtype(device, "usb_device");
+	if (subsystem != NULL && g_str_equal(subsystem, "usb") == TRUE)
+		devtype = "usb_device";
+
+	parent = udev_device_get_parent_with_subsystem_devtype(device,
+							subsystem, devtype);
 	print_properties(parent, "    ");
 }
 

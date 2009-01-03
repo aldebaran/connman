@@ -148,14 +148,15 @@ if (test "${enable_udev}" = "yes"); then
 	AC_DEFINE(HAVE_UDEV, 1, [Define if udev support is available])
 	PKG_CHECK_MODULES(UDEV, libudev >= 129, enable_udev=yes,
 				AC_MSG_ERROR(udev >= 129 is required))
-	AC_CHECK_LIB(udev, udev_device_get_parent_with_devtype, dummy=yes,
-		AC_DEFINE(NEED_UDEV_DEVICE_GET_PARENT_WITH_DEVTYPE, 1,
-			[Define to 1 if you need the
-				udev_device_get_parent_with_devtype() function.]))
 	AC_CHECK_LIB(udev, udev_enumerate_add_match_property, dummy=yes,
 		AC_DEFINE(NEED_UDEV_ENUMERATE_ADD_MATCH_PROPERTY, 1,
 			[Define to 1 if you need the
 				udev_enumerate_add_match_property() function.]))
+	AC_CHECK_LIB(udev, udev_device_get_parent_with_subsystem_devtype, dummy=yes,
+		AC_DEFINE(NEED_UDEV_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE, 1,
+			[Define to 1 if you need the
+				udev_device_get_parent_with_subsystem_devtype()
+									function.]))
 fi
 AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
