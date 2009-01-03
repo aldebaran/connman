@@ -60,6 +60,10 @@ if (test "${enable_wifi}" = "yes"); then
 fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 
+AC_ARG_ENABLE(wimax, AC_HELP_STRING([--enable-wimax],
+		[enable WiMAX support]), [enable_wimax=${enableval}])
+AM_CONDITIONAL(WIMAX, test "${enable_wimax}" = "yes")
+
 AC_ARG_ENABLE(bluetooth, AC_HELP_STRING([--enable-bluetooth],
 		[enable Bluetooth support]), [enable_bluetooth=${enableval}])
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" = "yes")

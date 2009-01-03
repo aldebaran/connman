@@ -22,6 +22,12 @@ wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
 endif
 
+if WIMAX
+plugin_LTLIBRARIES += wimax.la
+
+wimax_la_SOURCES = wimax.c
+endif
+
 if BLUETOOTH
 plugin_LTLIBRARIES += bluetooth.la
 
