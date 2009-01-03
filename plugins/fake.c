@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
 #include <connman/element.h>
