@@ -1,7 +1,7 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = ethernet.la bluetooth.la ipv4.la dnsproxy.la
+plugin_LTLIBRARIES = ethernet.la bluetooth.la ipv4.la
 
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
@@ -64,13 +64,17 @@ pppd_la_SOURCES = pppd.c
 pppd_la_CFLAGS = @GLIB_CFLAGS@ -DPPPD=\"@PPPD@\"
 endif
 
-dnsproxy_la_SOURCES = dnsproxy.c
-
 if RESOLVCONF
 plugin_LTLIBRARIES += resolvconf.la
 
 resolvconf_la_SOURCES = resolvconf.c
 resolvconf_la_CFLAGS = @GLIB_CFLAGS@ -DRESOLVCONF=\"@RESOLVCONF@\"
+endif
+
+if DNSPROXY
+plugin_LTLIBRARIES += dnsproxy.la
+
+dnsproxy_la_SOURCES = dnsproxy.c
 endif
 
 if POLKIT

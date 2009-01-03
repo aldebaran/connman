@@ -21,6 +21,7 @@ fi
 		--enable-udhcp \
 		--enable-dhclient \
 		--enable-resolvconf \
+		--enable-dnsproxy \
 		--enable-novatel \
 		--enable-huawei \
 		--enable-hso \

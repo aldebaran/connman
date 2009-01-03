@@ -101,6 +101,10 @@ if (test "${enable_resolvconf}" = "yes"); then
 fi
 AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" = "yes")
 
+AC_ARG_ENABLE(dnsproxy, AC_HELP_STRING([--enable-dnsproxy],
+		[enable DNS proxy support]), [enable_dnsproxy=${enableval}])
+AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" = "yes")
+
 AC_ARG_ENABLE(novatel, AC_HELP_STRING([--enable-novatel],
 		[enable Novatel support]), [enable_novatel=${enableval}])
 AM_CONDITIONAL(NOVATEL, test "${enable_novatel}" = "yes")
