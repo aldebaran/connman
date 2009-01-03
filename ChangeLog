@@ -1,3 +1,20 @@
+ver 0.6:
+	Add CONNMAN_API_SUBJECT_TO_CHANGE definition.
+	Add detailed configuration options.
+	Add various D-Bus helper functions.
+	Add generic device driver infrastructure.
+	Add generic network driver infrastructure.
+	Add property for WiFi network mode.
+	Add property for network interface name.
+	Add property for global connection policy.
+	Add support for verbose compiler warnings.
+	Add support for device detection via udev.
+	Add support for systems with udhcpc.
+	Add support for Bluetooth PAN networks.
+	Fix WiFi issue with DHCP restart after handshake.
+	Fix exported symbols list creation.
+	Remove deprecated and unused plugins.
+
 ver 0.5:
 	Add support for handling Bluetooth adapters.
 	Add support for activating wpa_supplicant on demand.
