@@ -77,6 +77,9 @@ enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
 
 #include <connman/resolver.h>
 
+int __connman_resolver_init(void);
+void __connman_resolver_cleanup(void);
+
 int __connman_resolver_selftest(void);
 
 #include <connman/driver.h>

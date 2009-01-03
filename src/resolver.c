@@ -23,6 +23,13 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+#include <sys/stat.h>
+
 #include "connman.h"
 
 struct entry_data {
@@ -230,4 +237,59 @@ int __connman_resolver_selftest(void)
 	connman_resolver_unregister(&selftest_resolver);
 
 	return 0;
+}
+
+static int resolvfile_append(const char *interface, const char *domain,
+							const char *server)
+{
+	char *cmd;
+	int fd, len, err;
+
+	DBG("interface %s server %s", interface, server);
+
+	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT,
+					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
+	if (fd < 0)
+		return errno;
+
+	err = ftruncate(fd, 0);
+
+	cmd = g_strdup_printf("nameserver %s\n", server);
+
+	len = write(fd, cmd, strlen(cmd));
+
+	g_free(cmd);
+
+	close(fd);
+
+	return 0;
+}
+
+static int resolvfile_remove(const char *interface, const char *domain,
+							const char *server)
+{
+	DBG("interface %s server %s", interface, server);
+
+	return 0;
+}
+
+static struct connman_resolver resolvfile_resolver = {
+	.name		= "resolvfile",
+	.priority	= CONNMAN_RESOLVER_PRIORITY_LOW,
+	.append		= resolvfile_append,
+	.remove		= resolvfile_remove,
+};
+
+int __connman_resolver_init(void)
+{
+	DBG("");
+
+	return connman_resolver_register(&resolvfile_resolver);
+}
+
+void __connman_resolver_cleanup(void)
+{
+	DBG("");
+
+	connman_resolver_unregister(&resolvfile_resolver);
 }
