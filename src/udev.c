@@ -169,8 +169,10 @@ static void print_properties(struct udev_device *device, const char *prefix)
 
 		if (g_str_has_prefix(name, "CONNMAN") == TRUE ||
 				g_str_has_prefix(name, "ID_MODEM") == TRUE ||
-					g_str_equal(name, "DEVNAME") == TRUE ||
-					g_str_equal(name, "DEVPATH") == TRUE)
+				g_str_equal(name, "ID_VENDOR") == TRUE ||
+				g_str_equal(name, "ID_MODEL") == TRUE ||
+				g_str_equal(name, "DEVNAME") == TRUE ||
+				g_str_equal(name, "DEVPATH") == TRUE)
 			connman_debug("%s%s = %s", prefix, name, value);
 
 		entry = udev_list_entry_get_next(entry);
@@ -179,15 +181,23 @@ static void print_properties(struct udev_device *device, const char *prefix)
 
 static void print_device(struct udev_device *device, const char *action)
 {
-	const char *subsystem = udev_device_get_subsystem(device);
-	const char *devtype = NULL;
+	const char *subsystem, *devtype = NULL;
 	struct udev_device *parent;
 
 	connman_debug("=== %s ===", action);
 	print_properties(device, "");
 
-	if (subsystem != NULL && g_str_equal(subsystem, "usb") == TRUE)
+	parent = udev_device_get_parent(device);
+	if (parent == NULL)
+		return;
+
+	subsystem = udev_device_get_subsystem(parent);
+
+	if (subsystem != NULL &&
+			g_str_equal(subsystem, "usb-serial") == TRUE) {
+		subsystem = "usb";
 		devtype = "usb_device";
+	}
 
 	parent = udev_device_get_parent_with_subsystem_devtype(device,
 							subsystem, devtype);
