@@ -153,13 +153,10 @@ int main(int argc, char *argv[])
 	__connman_dbus_init(conn);
 
 	__connman_storage_init();
-
 	__connman_element_init(conn, option_device);
 
 	__connman_agent_init(conn);
-
 	__connman_manager_init(conn, option_compat);
-
 	__connman_profile_init(conn);
 
 	__connman_rtnl_init();
@@ -186,13 +183,10 @@ int main(int argc, char *argv[])
 	__connman_rtnl_cleanup();
 
 	__connman_profile_cleanup();
-
 	__connman_manager_cleanup();
-
 	__connman_agent_cleanup();
 
 	__connman_element_cleanup();
-
 	__connman_storage_cleanup();
 
 	__connman_dbus_cleanup();
