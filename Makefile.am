@@ -10,6 +10,8 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-wifi \
 				--enable-udhcp \
 				--enable-dhclient \
+				--enable-resolvconf \
+				--enable-dnsproxy \
 				--enable-novatel \
 				--enable-huawei \
 				--enable-hso \
