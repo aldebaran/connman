@@ -57,7 +57,7 @@ fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 
 AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
-		[Specific udhcpc binary]), [path_udhcpc=${withval}])
+	[specific location of udhcpc binary]), [path_udhcpc=${withval}])
 
 AC_ARG_ENABLE(UDHCP, AC_HELP_STRING([--enable-udhcp],
 		[enable uDHCP support]), [enable_udhcp=${enableval}])
@@ -72,7 +72,7 @@ fi
 AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" = "yes")
 
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
-		[Specific dhclient binary]), [path_dhclient=${withval}])
+	[specific location of dhclient binary]), [path_dhclient=${withval}])
 
 AC_ARG_ENABLE(DHCLIENT, AC_HELP_STRING([--enable-dhclient],
 		[enable dhclient support]), [enable_dhclient=${enableval}])
@@ -100,11 +100,19 @@ AC_ARG_ENABLE(hso, AC_HELP_STRING([--enable-hso],
 		[enable HSO support]), [enable_hso=${enableval}])
 AM_CONDITIONAL(HSO, test "${enable_hso}" = "yes")
 
+AC_ARG_WITH(pppd, AC_HELP_STRING([--with-pppd=PROGRAM],
+	[specific location of pppd binary]), [path_pppd=${withval}])
+
 AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
 		[enable PPP support]), [enable_ppp=${enableval}])
 if (test "${enable_ppp}" = "yes" || test "${enable_novatel}" = "yes" ||
 					test "${enable_huawei}" = "yes"); then
-	AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
+	if (test -z "${path_pppd}"); then
+		AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
+	else
+		PPPD="${path_pppd}"
+		AC_SUBST(PPPD)
+	fi
 	AC_CHECK_HEADERS(pppd/pppd.h, enable_ppp=yes,
 			AC_MSG_ERROR(PPP development files are required))
 fi
