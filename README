@@ -22,3 +22,104 @@ Configure automatically searches for all required components and packages.
 
 To compile and install run:
 	make && make install
+
+
+Configuration and options
+=========================
+
+For a working system, certain configuration options need to be enabled:
+
+	--enable-ethernet
+
+		Enable support for Ethernet network cards
+
+	--enable-wifi
+
+		Enable support for WiFi devices (requires wpa_supplicant)
+
+
+	--enable-bluetooth
+
+		Enable support for Bluetooth devices (requires BlueZ)
+
+	--enable-ppp
+
+		Enable PPP support for dialup connections (requires pppd)
+
+		The location of the pppd binary is auto-detected, but it
+		can be overwritten via --with-pppd=<path-to-binary>.
+
+	--enable-udhcp
+
+		Enable DHCP client support for BusyBox based systems
+
+		The location of the udhcpc binary is auto-detected, but it
+		can be overwritten via --with-udhcpc=<path-to-binary>.
+
+	--enable-dhclient
+
+		Enable DHCP client support for ISC dhclient based systems
+
+		The location of the dhclient binary is auto-detected, but it
+		can be overwritten via --with-dhclient=<path-to-binary>.
+
+		At least one DHCP client option should be selected. It is
+		possible to select both and then uDHCP will be tried first
+		before falling back to dhclient.
+
+	--enable-dnsproxy
+
+		Enable DNS proxy support for /etc/resolv.conf abstraction
+
+		The best solution for multiple connections and proper DNS
+		handling is a DNS proxy server. This binds a DNS proxy
+		server to port 53 on the loopback interface (127.0.0.1).
+
+		The /etc/resolv.conf file needs a "nameserver 127.0.0.1"
+		entry, but can now set the immutable bit or be on a read-only
+		filesystem. No further modification to that file will be made.
+
+		It is important that this is not used together with other
+		DNS proxy solution like dnsmasq.
+
+	--enable-resolvconf
+
+		Enable resolvconf support for Debian/Ubuntu based systems
+
+		The resolvconf package from Debian can be used to handle
+		configuration of the /etc/resolv.conf file.
+
+		It is safe to select this option even when resolvconf is not
+		installed. A missing resolvconf will be detected and in that
+		case it falls back to modifying /etc/resolv.conf directly.
+
+		The location of the resolvconf binary is auto-detected, but it
+		can be overwritten via --with-resolvconf=<path-to-binary>.
+
+	--enable-loopback
+
+		Enable setup of loopback device
+
+		For distributions with a really minimal init system and no
+		networking scripts this can take care of setting up the
+		loopback device and enabling it.
+
+		It is safe to select this option even if networking scripts
+		are in place. It detects an already configured loopback
+		device and leaves it as it is.
+
+	--enable-udev
+
+		Enable device detection support via udev
+
+		Network devices are by default detected via the builtin RTNL
+		functionality. This allows to detect TTY based modem devices
+		via udev.
+
+	--enable-polkit
+
+		Enable support for PolicyKit authorization
+
+		This allows to check every D-Bus access against a security
+		policy and so restrict access to certain functionality.
+
