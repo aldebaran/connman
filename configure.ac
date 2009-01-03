@@ -63,7 +63,7 @@ AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
 	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
 
-AC_ARG_ENABLE(UDHCP, AC_HELP_STRING([--enable-udhcp],
+AC_ARG_ENABLE(udhcp, AC_HELP_STRING([--enable-udhcp],
 		[enable uDHCP support]), [enable_udhcp=${enableval}])
 if (test "${enable_udhcp}" = "yes"); then
 	if (test -z "${path_udhcpc}"); then
@@ -78,7 +78,7 @@ AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" = "yes")
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
 	[specify location of dhclient binary]), [path_dhclient=${withval}])
 
-AC_ARG_ENABLE(DHCLIENT, AC_HELP_STRING([--enable-dhclient],
+AC_ARG_ENABLE(dhclient, AC_HELP_STRING([--enable-dhclient],
 		[enable dhclient support]), [enable_dhclient=${enableval}])
 if (test "${enable_dhclient}" = "yes"); then
 	if (test -z "${path_dhclient}"); then
@@ -93,7 +93,7 @@ AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" = "yes")
 AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
 	[specify location of resolvconf binary]), [path_resolvconf=${withval}])
 
-AC_ARG_ENABLE(RESOLVCONF, AC_HELP_STRING([--enable-resolvconf],
+AC_ARG_ENABLE(resolvconf, AC_HELP_STRING([--enable-resolvconf],
 		[enable resolvconf support]), [enable_resolvconf=${enableval}])
 if (test "${enable_resolvconf}" = "yes"); then
 	if (test -z "${path_resolvconf}"); then
