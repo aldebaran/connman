@@ -20,6 +20,7 @@ fi
 		--enable-wifi \
 		--enable-udhcp \
 		--enable-dhclient \
+		--enable-resolvconf \
 		--enable-novatel \
 		--enable-huawei \
 		--enable-hso \

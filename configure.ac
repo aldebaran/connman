@@ -86,7 +86,20 @@ if (test "${enable_dhclient}" = "yes"); then
 fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" = "yes")
 
-AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
+AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
+	[specific location of resolvconf binary]), [path_resolvconf=${withval}])
+
+AC_ARG_ENABLE(RESOLVCONF, AC_HELP_STRING([--enable-resolvconf],
+		[enable resolvconf support]), [enable_resolvconf=${enableval}])
+if (test "${enable_resolvconf}" = "yes"); then
+	if (test -z "${path_resolvconf}"); then
+		AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
+	else
+		UDHCPC="${path_resolvconf}"
+		AC_SUBST(RESOLVCONF)
+	fi
+fi
+AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" = "yes")
 
 AC_ARG_ENABLE(novatel, AC_HELP_STRING([--enable-novatel],
 		[enable Novatel support]), [enable_novatel=${enableval}])
