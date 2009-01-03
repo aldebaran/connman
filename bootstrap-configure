@@ -18,6 +18,8 @@ fi
 		--sysconfdir=/etc \
 		--enable-loopback \
 		--enable-wifi \
+		--enable-udhcp \
+		--enable-dhclient \
 		--enable-novatel \
 		--enable-huawei \
 		--enable-hso \

@@ -46,10 +46,6 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
 		[enable threading support]), [enable_threads=${enableval}])
 
-AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
-AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
-AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
-
 AC_ARG_ENABLE(loopback, AC_HELP_STRING([--enable-loopback],
 		[enable loopback support]), [enable_loopback=${enableval}])
 AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" = "yes")
@@ -61,6 +57,22 @@ if (test "${enable_wifi}" = "yes"); then
 						$PATH:/sbin:/usr/sbin)
 fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
+
+AC_ARG_ENABLE(UDHCP, AC_HELP_STRING([--enable-udhcp],
+		[enable uDHCP support]), [enable_udhcp=${enableval}])
+if (test "${enable_udhcp}" = "yes"); then
+	AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
+fi
+AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" = "yes")
+
+AC_ARG_ENABLE(DHCLIENT, AC_HELP_STRING([--enable-dhclient],
+		[enable dhclient support]), [enable_dhclient=${enableval}])
+if (test "${enable_dhclient}" = "yes"); then
+	AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
+fi
+AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" = "yes")
+
+AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
 
 AC_ARG_ENABLE(novatel, AC_HELP_STRING([--enable-novatel],
 		[enable Novatel support]), [enable_novatel=${enableval}])

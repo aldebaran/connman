@@ -2,8 +2,7 @@
 plugindir = $(libdir)/connman/plugins
 
 plugin_LTLIBRARIES = ethernet.la bluetooth.la \
-				ipv4.la udhcp.la dhclient.la \
-				dnsproxy.la resolvconf.la resolvfile.la
+			ipv4.la dnsproxy.la resolvconf.la resolvfile.la
 
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
@@ -43,13 +42,21 @@ endif
 
 ipv4_la_SOURCES = ipv4.c inet.h inet.c
 
+if UDHCP
+plugin_LTLIBRARIES += udhcp.la
+
 udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
 udhcp_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DUDHCPC=\"@UDHCPC@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+endif
+
+if DHCLIENT
+plugin_LTLIBRARIES += dhclient.la
 
 dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@ -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+endif
 
 if PPPD
 plugin_LTLIBRARIES += pppd.la
