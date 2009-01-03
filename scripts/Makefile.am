@@ -32,6 +32,6 @@ endif
 
 AM_CFLAGS = @DBUS_CFLAGS@
 
-EXTRA_DIST = $(script_DATA)
+EXTRA_DIST = dhclient.conf
 
 MAINTAINERCLEANFILES = Makefile.in
