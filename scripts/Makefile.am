@@ -7,8 +7,7 @@ DISTCLEANFILES = $(init_SCRIPTS)
 
 scriptdir = $(libdir)/connman/scripts
 
-script_DATA = dhclient.conf
-
+script_DATA =
 script_PROGRAMS =
 script_LTLIBRARIES =
 
@@ -19,6 +18,7 @@ udhcpc_script_LDADD = @DBUS_LIBS@
 endif
 
 if DHCLIENT
+script_DATA += dhclient.conf
 script_PROGRAMS += dhclient-script
 
 dhclient_script_LDADD = @DBUS_LIBS@
