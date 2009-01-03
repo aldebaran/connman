@@ -61,6 +61,7 @@ if PPPD
 plugin_LTLIBRARIES += pppd.la
 
 pppd_la_SOURCES = pppd.c
+pppd_la_CFLAGS = @GLIB_CFLAGS@ -DPPPD=\"@PPPD@\"
 endif
 
 dnsproxy_la_SOURCES = dnsproxy.c
