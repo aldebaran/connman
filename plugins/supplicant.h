@@ -69,8 +69,6 @@ struct supplicant_driver {
 int supplicant_register(struct supplicant_driver *driver);
 void supplicant_unregister(struct supplicant_driver *driver);
 
-void __supplicant_activate(DBusConnection *conn);
-
 int __supplicant_start(struct connman_device *device,
 					struct supplicant_callback *callback);
 int __supplicant_stop(struct connman_device *device);
