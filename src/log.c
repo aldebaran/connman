@@ -112,3 +112,8 @@ void __connman_log_cleanup(void)
 
 	closelog();
 }
+
+gboolean __connman_debug_enabled(void)
+{
+	return debug_enabled;
+}
