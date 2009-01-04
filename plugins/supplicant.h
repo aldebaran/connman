@@ -52,7 +52,11 @@ struct supplicant_network {
 	gint32 maxrate;
 };
 
-struct supplicant_callback {
+struct supplicant_driver {
+	const char *name;
+	void (*probe) (void);
+	void (*remove) (void);
+
 	void (*state_change) (struct connman_device *device,
 						enum supplicant_state state);
 	void (*clear_results) (struct connman_device *device);
@@ -60,19 +64,12 @@ struct supplicant_callback {
 					struct supplicant_network *network);
 };
 
-struct supplicant_driver {
-	const char *name;
-	void (*probe) (void);
-	void (*remove) (void);
-};
-
 int supplicant_register(struct supplicant_driver *driver);
 void supplicant_unregister(struct supplicant_driver *driver);
 
-int __supplicant_start(struct connman_device *device,
-					struct supplicant_callback *callback);
-int __supplicant_stop(struct connman_device *device);
-int __supplicant_scan(struct connman_device *device);
+int supplicant_start(struct connman_device *device);
+int supplicant_stop(struct connman_device *device);
+int supplicant_scan(struct connman_device *device);
 
 int __supplicant_connect(struct connman_element *element,
 				const unsigned char *ssid, int ssid_len,

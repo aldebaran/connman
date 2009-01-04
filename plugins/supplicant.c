@@ -43,11 +43,48 @@
 
 static GSList *driver_list = NULL;
 
+static void process_state_change(struct connman_device *device,
+						enum supplicant_state state)
+{
+	GSList *list;
+
+	for (list = driver_list; list; list = list->next) {
+		struct supplicant_driver *driver = list->data;
+
+		if (driver->state_change)
+			driver->state_change(device, state);
+	}
+}
+
+static void process_clear_results(struct connman_device *device)
+{
+	GSList *list;
+
+	for (list = driver_list; list; list = list->next) {
+		struct supplicant_driver *driver = list->data;
+
+		if (driver->clear_results)
+			driver->clear_results(device);
+	}
+}
+
+static void process_scan_result(struct connman_device *device,
+					struct supplicant_network *network)
+{
+	GSList *list;
+
+	for (list = driver_list; list; list = list->next) {
+		struct supplicant_driver *driver = list->data;
+
+		if (driver->scan_result)
+			driver->scan_result(device, network);
+	}
+}
+
 struct supplicant_task {
 	int ifindex;
 	gchar *ifname;
 	struct connman_device *device;
-	struct supplicant_callback *callback;
 	gchar *path;
 	gboolean created;
 	gchar *network;
@@ -735,8 +772,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&dict);
 	}
 
-	if (task->callback && task->callback->scan_result)
-		task->callback->scan_result(task->device, network);
+	process_scan_result(task->device, network);
 
 	g_free(network->identifier);
 	g_free(network->ssid);
@@ -798,8 +834,7 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	if (task->callback && task->callback->clear_results)
-			task->callback->clear_results(task->device);
+	process_clear_results(task->device);
 
 	for (i = 0; i < num_results; i++)
 		get_network_properties(task, results[i]);
@@ -874,8 +909,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
 		task->state = STATE_DISCONNECTED;
 
-	if (task->callback && task->callback->state_change)
-		task->callback->state_change(task->device, task->state);
+	process_state_change(task->device, task->state);
 
 	switch (task->state) {
 	case STATE_COMPLETED:
@@ -921,8 +955,7 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-int __supplicant_start(struct connman_device *device,
-					struct supplicant_callback *callback)
+int supplicant_start(struct connman_device *device)
 {
 	struct supplicant_task *task;
 	int err;
@@ -936,7 +969,6 @@ int __supplicant_start(struct connman_device *device,
 	task->ifindex = connman_device_get_index(device);
 	task->ifname = inet_index2name(task->ifindex);
 	task->device = device;
-	task->callback = callback;
 
 	if (task->ifname == NULL) {
 		g_free(task);
@@ -962,7 +994,7 @@ int __supplicant_start(struct connman_device *device,
 	return 0;
 }
 
-int __supplicant_stop(struct connman_device *device)
+int supplicant_stop(struct connman_device *device)
 {
 	int index = connman_device_get_index(device);
 	struct supplicant_task *task;
@@ -988,7 +1020,7 @@ int __supplicant_stop(struct connman_device *device)
 	return 0;
 }
 
-int __supplicant_scan(struct connman_device *device)
+int supplicant_scan(struct connman_device *device)
 {
 	int index = connman_device_get_index(device);
 	struct supplicant_task *task;

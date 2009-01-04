@@ -171,7 +171,7 @@ static gboolean inactive_scan(gpointer user_data)
 
 	DBG("device %p", device);
 
-	__supplicant_scan(device);
+	supplicant_scan(device);
 
 	data->inactive_timer = 0;
 
@@ -397,12 +397,6 @@ done:
 	g_free(temp);
 }
 
-static struct supplicant_callback wifi_callback = {
-	.state_change	= state_change,
-	.clear_results	= clear_results,
-	.scan_result	= scan_result,
-};
-
 static int wifi_probe(struct connman_device *device)
 {
 	struct wifi_data *data;
@@ -438,13 +432,13 @@ static int wifi_enable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	err = __supplicant_start(device, &wifi_callback);
+	err = supplicant_start(device);
 	if (err < 0)
 		return err;
 
 	connman_device_set_powered(device, TRUE);
 
-	__supplicant_scan(device);
+	supplicant_scan(device);
 
 	return 0;
 }
@@ -480,7 +474,7 @@ static int wifi_disable(struct connman_device *device)
 
 	connman_element_unregister_children((struct connman_element *) device);
 
-	__supplicant_stop(device);
+	supplicant_stop(device);
 
 	connman_device_set_powered(device, FALSE);
 
@@ -491,7 +485,7 @@ static int wifi_scan(struct connman_device *device)
 {
 	DBG("device %p", device);
 
-	__supplicant_scan(device);
+	supplicant_scan(device);
 
 	return 0;
 }
@@ -525,6 +519,10 @@ static struct supplicant_driver supplicant = {
 	.name		= "wifi",
 	.probe		= wifi_register,
 	.remove		= wifi_unregister,
+
+	.state_change	= state_change,
+	.clear_results	= clear_results,
+	.scan_result	= scan_result,
 };
 
 static int wifi_init(void)
