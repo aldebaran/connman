@@ -156,7 +156,7 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 			connman_error("%s", error.message);
 			dbus_error_free(&error);
 		} else
-			connman_error("Wrong arguments for interface");
+			connman_error("Wrong arguments for add interface");
 		goto done;
 	}
 
@@ -226,7 +226,7 @@ static void get_interface_reply(DBusPendingCall *call, void *user_data)
 			connman_error("%s", error.message);
 			dbus_error_free(&error);
 		} else
-			connman_error("Wrong arguments for interface");
+			connman_error("Wrong arguments for get interface");
 		goto done;
 	}
 
