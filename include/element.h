@@ -64,8 +64,8 @@ enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_DHCP       = 9,
 	CONNMAN_ELEMENT_TYPE_BOOTP      = 10,
 	CONNMAN_ELEMENT_TYPE_ZEROCONF   = 11,
-
 	CONNMAN_ELEMENT_TYPE_CONNECTION = 42,
+	CONNMAN_ELEMENT_TYPE_VENDOR     = 10000,
 };
 
 enum connman_element_subtype {

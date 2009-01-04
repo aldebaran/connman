@@ -120,6 +120,8 @@ static const char *type2string(enum connman_element_type type)
 		return "zeroconf";
 	case CONNMAN_ELEMENT_TYPE_CONNECTION:
 		return "connection";
+	case CONNMAN_ELEMENT_TYPE_VENDOR:
+		return "vendor";
 	}
 
 	return NULL;

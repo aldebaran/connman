@@ -45,7 +45,7 @@ enum connman_device_type {
 	CONNMAN_DEVICE_TYPE_NOZOMI    = 16,
 	CONNMAN_DEVICE_TYPE_HUAWEI    = 17,
 	CONNMAN_DEVICE_TYPE_NOVATEL   = 18,
-	CONNMAN_DEVICE_TYPE_VENDOR    = 42,
+	CONNMAN_DEVICE_TYPE_VENDOR    = 10000,
 };
 
 enum connman_device_mode {

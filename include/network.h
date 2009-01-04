@@ -41,6 +41,7 @@ enum connman_network_type {
 	CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN = 8,
 	CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN = 9,
 	CONNMAN_NETWORK_TYPE_HSO           = 23,
+	CONNMAN_NETWORK_TYPE_VENDOR        = 10000,
 };
 
 enum connman_network_protocol {

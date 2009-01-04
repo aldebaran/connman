@@ -259,6 +259,7 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	switch (type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
 		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
