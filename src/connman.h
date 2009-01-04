@@ -39,9 +39,6 @@ DBusMessage *__connman_error_not_supported(DBusMessage *msg);
 
 int __connman_selftest(void);
 
-int __connman_storage_init(void);
-void __connman_storage_cleanup(void);
-
 int __connman_manager_init(DBusConnection *conn, gboolean compat);
 void __connman_manager_cleanup(void);
 
@@ -83,6 +80,11 @@ int __connman_resolver_init(void);
 void __connman_resolver_cleanup(void);
 
 int __connman_resolver_selftest(void);
+
+#include <connman/storage.h>
+
+int __connman_storage_init(void);
+void __connman_storage_cleanup(void);
 
 #include <connman/driver.h>
 

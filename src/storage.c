@@ -25,6 +25,47 @@
 
 #include "connman.h"
 
+static GSList *storage_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_storage *storage1 = a;
+	const struct connman_storage *storage2 = b;
+
+	return storage2->priority - storage1->priority;
+}
+
+/**
+ * connman_storage_register:
+ * @storage: storage module
+ *
+ * Register a new storage module
+ *
+ * Returns: %0 on success
+ */
+int connman_storage_register(struct connman_storage *storage)
+{
+	DBG("storage %p name %s", storage, storage->name);
+
+	storage_list = g_slist_insert_sorted(storage_list, storage,
+							compare_priority);
+
+	return 0;
+}
+
+/**
+ * connman_storage_unregister:
+ * @storage: storage module
+ *
+ * Remove a previously registered storage module
+ */
+void connman_storage_unregister(struct connman_storage *storage)
+{
+	DBG("storage %p name %s", storage, storage->name);
+
+	storage_list = g_slist_remove(storage_list, storage);
+}
+
 int __connman_storage_init(void)
 {
 	DBG("");
