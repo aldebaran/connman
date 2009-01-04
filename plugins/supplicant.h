@@ -72,7 +72,6 @@ void supplicant_unregister(struct supplicant_driver *driver);
 int __supplicant_start(struct connman_device *device,
 					struct supplicant_callback *callback);
 int __supplicant_stop(struct connman_device *device);
-
 int __supplicant_scan(struct connman_device *device);
 
 int __supplicant_connect(struct connman_element *element,

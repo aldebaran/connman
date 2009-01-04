@@ -510,7 +510,8 @@ static void wifi_register(void)
 {
 	DBG("");
 
-	connman_device_driver_register(&wifi_driver);
+	if (connman_device_driver_register(&wifi_driver) < 0)
+		connman_error("Failed to register WiFi driver");
 }
 
 static void wifi_unregister(void)

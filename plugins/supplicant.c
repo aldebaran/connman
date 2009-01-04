@@ -41,6 +41,8 @@
 #define IEEE80211_CAP_IBSS      0x0002
 #define IEEE80211_CAP_PRIVACY   0x0010
 
+static GSList *driver_list = NULL;
+
 struct supplicant_task {
 	int ifindex;
 	gchar *ifname;
@@ -919,54 +921,6 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static int add_filter(struct supplicant_task *task)
-{
-	DBusError error;
-	gchar *filter;
-
-	filter = g_strdup_printf("type=signal,interface=%s.Interface,path=%s",
-						SUPPLICANT_INTF, task->path);
-
-	DBG("filter %s", filter);
-
-	dbus_error_init(&error);
-
-	dbus_bus_add_match(connection, filter, &error);
-
-	g_free(filter);
-
-	if (dbus_error_is_set(&error) == TRUE) {
-		connman_error("Can't add match: %s", error.message);
-		dbus_error_free(&error);
-	}
-
-	return 0;
-}
-
-static int remove_filter(struct supplicant_task *task)
-{
-	DBusError error;
-	gchar *filter;
-
-	filter = g_strdup_printf("type=signal,interface=%s.Interface,path=%s",
-						SUPPLICANT_INTF, task->path);
-
-	DBG("filter %s", filter);
-
-	dbus_error_init(&error);
-
-	dbus_bus_remove_match(connection, filter, &error);
-
-	g_free(filter);
-
-	if (dbus_error_is_set(&error) == TRUE) {
-		connman_error("Can't add match: %s", error.message);
-		dbus_error_free(&error);
-	}
-
-	return 0;
-}
-
 int __supplicant_start(struct connman_device *device,
 					struct supplicant_callback *callback)
 {
@@ -1003,8 +957,6 @@ int __supplicant_start(struct connman_device *device,
 		}
 	}
 
-	add_filter(task);
-
 	set_ap_scan(task);
 
 	return 0;
@@ -1026,8 +978,6 @@ int __supplicant_stop(struct connman_device *device)
 	disable_network(task);
 
 	remove_network(task);
-
-	remove_filter(task);
 
 	remove_interface(task);
 
@@ -1126,8 +1076,6 @@ static void supplicant_activate(DBusConnection *conn)
 	dbus_message_unref(message);
 }
 
-static GSList *driver_list = NULL;
-
 static void supplicant_probe(DBusConnection *conn, void *user_data)
 {
 	GSList *list;
@@ -1160,6 +1108,8 @@ static void supplicant_remove(DBusConnection *conn, void *user_data)
 	}
 }
 
+static const char *supplicant_rule = "type=signal,"
+				"interface=" SUPPLICANT_INTF ".Interface";
 static guint watch;
 
 static int supplicant_create(void)
@@ -1179,6 +1129,9 @@ static int supplicant_create(void)
 		return -EIO;
 	}
 
+	dbus_bus_add_match(connection, supplicant_rule, NULL);
+	dbus_connection_flush(connection);
+
 	watch = g_dbus_add_service_watch(connection, SUPPLICANT_NAME,
 			supplicant_probe, supplicant_remove, NULL, NULL);
 
@@ -1194,6 +1147,9 @@ static void supplicant_destroy(void)
 
 	if (watch > 0)
 		g_dbus_remove_watch(connection, watch);
+
+	dbus_bus_remove_match(connection, supplicant_rule, NULL);
+	dbus_connection_flush(connection);
 
 	dbus_connection_remove_filter(connection, supplicant_filter, NULL);
 
