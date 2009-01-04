@@ -1162,14 +1162,86 @@ static struct connman_driver device_driver = {
 
 static int device_load(struct connman_device *device)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	const char *str;
+
 	DBG("device %p", device);
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							device->element.name);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
+		g_free(pathname);
+		return -ENOENT;
+	}
+
+	g_free(pathname);
+
+	if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE) {
+		g_free(data);
+		return -EILSEQ;
+	}
+
+	g_free(data);
+
+	str = g_key_file_get_string(keyfile, "Configuration", "Policy", NULL);
+	if (str != NULL)
+		device->policy = string2policy(str);
+
+	g_key_file_free(keyfile);
 
 	return 0;
 }
 
 static int device_save(struct connman_device *device)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	const char *str;
+
 	DBG("device %p", device);
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+							device->element.name);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
+		goto update;
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE)
+			goto done;
+	}
+
+	g_free(data);
+
+update:
+	str = policy2string(device->policy);
+	if (str != NULL)
+		g_key_file_set_string(keyfile, "Configuration", "Policy", str);
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	g_file_set_contents(pathname, data, length, NULL);
+
+done:
+	g_free(data);
+
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
 
 	return 0;
 }
