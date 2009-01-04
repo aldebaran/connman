@@ -23,6 +23,7 @@
 #define __CONNMAN_STORAGE_H
 
 #include <connman/device.h>
+#include <connman/network.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -44,6 +45,9 @@ struct connman_storage {
 	enum connman_device_type device_type;
 	int (*device_load) (struct connman_device *device);
 	int (*device_save) (struct connman_device *device);
+	enum connman_network_type network_type;
+	int (*network_load) (struct connman_network *network);
+	int (*network_save) (struct connman_network *network);
 };
 
 extern int connman_storage_register(struct connman_storage *storage);
