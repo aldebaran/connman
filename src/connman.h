@@ -144,6 +144,8 @@ static inline void __connman_udev_cleanup(void)
 int __connman_device_init(void);
 void __connman_device_cleanup(void);
 
+connman_bool_t __connman_device_has_driver(struct connman_device *device);
+
 #include <connman/network.h>
 
 int __connman_network_init(void);

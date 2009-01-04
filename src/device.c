@@ -42,6 +42,8 @@ struct connman_device {
 	struct connman_device_driver *driver;
 	void *driver_data;
 
+	connman_bool_t registered;
+
 	GHashTable *networks;
 };
 
@@ -464,6 +466,8 @@ static int register_interface(struct connman_element *element)
 		return -EIO;
 	}
 
+	device->registered = TRUE;
+
 	emit_devices_signal();
 
 	return 0;
@@ -471,7 +475,11 @@ static int register_interface(struct connman_element *element)
 
 static void unregister_interface(struct connman_element *element)
 {
+	struct connman_device *device = element->device;
+
 	DBG("element %p name %s", element, element->name);
+
+	device->registered = FALSE;
 
 	emit_devices_signal();
 
@@ -510,6 +518,77 @@ static void device_disable(struct connman_device *device)
 		device->driver->disable(device);
 }
 
+static int setup_device(struct connman_device *device)
+{
+	int err;
+
+	DBG("device %p", device);
+
+	err = register_interface(&device->element);
+	if (err < 0) {
+		if (device->driver->remove)
+			device->driver->remove(device);
+		device->driver = NULL;
+		return err;
+	}
+
+	device_enable(device);
+
+	return 0;
+}
+
+static void probe_driver(struct connman_element *element, gpointer user_data)
+{
+	struct connman_device_driver *driver = user_data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->device == NULL)
+		return;
+
+	if (driver->probe(element->device) < 0)
+		return;
+
+	element->device->driver = driver;
+
+	setup_device(element->device);
+}
+
+static void remove_device(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	device_disable(device);
+
+	unregister_interface(&device->element);
+
+	if (device->driver->remove)
+		device->driver->remove(device);
+
+	device->driver = NULL;
+}
+
+static void remove_driver(struct connman_element *element, gpointer user_data)
+{
+	struct connman_device_driver *driver = user_data;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->device == NULL)
+		return;
+
+	if (element->device->driver == driver)
+		remove_device(element->device);
+}
+
+connman_bool_t __connman_device_has_driver(struct connman_device *device)
+{
+	if (device->driver == NULL)
+		return FALSE;
+
+	return device->registered;
+}
+
 static GSList *driver_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -535,28 +614,10 @@ int connman_device_driver_register(struct connman_device_driver *driver)
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
-	//__connman_driver_rescan(&device_driver);
+	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
+						probe_driver, driver);
 
 	return 0;
-}
-
-static void remove_driver(struct connman_element *element, gpointer user_data)
-{
-	struct connman_device_driver *driver = user_data;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (element->device == NULL)
-		return;
-
-	if (element->device->driver == driver) {
-		device_disable(element->device);
-
-		if (driver->remove)
-			driver->remove(element->device);
-
-		element->device->driver = NULL;
-	}
 }
 
 /**
@@ -1044,7 +1105,6 @@ static int device_probe(struct connman_element *element)
 {
 	struct connman_device *device = element->device;
 	GSList *list;
-	int err;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -1068,16 +1128,7 @@ static int device_probe(struct connman_element *element)
 	if (device->driver == NULL)
 		return -ENODEV;
 
-	err = register_interface(element);
-	if (err < 0) {
-		if (device->driver->remove)
-			device->driver->remove(device);
-		return err;
-	}
-
-	device_enable(device);
-
-	return 0;
+	return setup_device(device);
 }
 
 static void device_remove(struct connman_element *element)
@@ -1092,12 +1143,7 @@ static void device_remove(struct connman_element *element)
 	if (device->driver == NULL)
 		return;
 
-	device_disable(device);
-
-	unregister_interface(element);
-
-	if (device->driver->remove)
-		device->driver->remove(device);
+	remove_device(device);
 }
 
 static struct connman_driver device_driver = {
