@@ -61,7 +61,7 @@ static int huawei_disable(struct connman_device *device)
 }
 
 static struct connman_device_driver huawei_driver = {
-	.name		= "huawei-device",
+	.name		= "huawei",
 	.type		= CONNMAN_DEVICE_TYPE_HUAWEI,
 	.probe		= huawei_probe,
 	.remove		= huawei_remove,

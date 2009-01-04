@@ -211,7 +211,7 @@ static int hso_disable(struct connman_device *device)
 }
 
 static struct connman_device_driver hso_driver = {
-	.name		= "hso-device",
+	.name		= "hso",
 	.type		= CONNMAN_DEVICE_TYPE_HSO,
 	.probe		= hso_probe,
 	.remove		= hso_remove,

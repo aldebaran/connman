@@ -497,7 +497,7 @@ static int wifi_scan(struct connman_device *device)
 }
 
 static struct connman_device_driver wifi_driver = {
-	.name		= "wifi-device",
+	.name		= "wifi",
 	.type		= CONNMAN_DEVICE_TYPE_WIFI,
 	.probe		= wifi_probe,
 	.remove		= wifi_remove,

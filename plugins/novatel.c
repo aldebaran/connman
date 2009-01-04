@@ -61,7 +61,7 @@ static int novatel_disable(struct connman_device *device)
 }
 
 static struct connman_device_driver novatel_driver = {
-	.name		= "novatel-device",
+	.name		= "novatel",
 	.type		= CONNMAN_DEVICE_TYPE_NOVATEL,
 	.probe		= novatel_probe,
 	.remove		= novatel_remove,
