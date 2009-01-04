@@ -1001,6 +1001,8 @@ int connman_device_add_network(struct connman_device *device,
 
 	__connman_network_set_device(network, device);
 
+	__connman_storage_load_network(network);
+
 	err = connman_element_register((struct connman_element *) network,
 							&device->element);
 	if (err < 0) {
@@ -1054,6 +1056,8 @@ int connman_device_remove_network(struct connman_device *device,
  */
 int connman_device_register(struct connman_device *device)
 {
+	__connman_storage_load_device(device);
+
 	return connman_element_register(&device->element, NULL);
 }
 
@@ -1065,6 +1069,8 @@ int connman_device_register(struct connman_device *device)
  */
 void connman_device_unregister(struct connman_device *device)
 {
+	__connman_storage_save_device(device);
+
 	connman_element_unregister(&device->element);
 }
 
