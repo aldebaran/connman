@@ -1160,9 +1160,25 @@ static struct connman_driver device_driver = {
 	.remove		= device_remove,
 };
 
+static int device_load(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
+static int device_save(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
 static struct connman_storage device_storage = {
 	.name		= "device",
 	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+	.device_load	= device_load,
+	.device_save	= device_save,
 };
 
 int __connman_device_init(void)

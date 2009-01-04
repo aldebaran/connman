@@ -544,9 +544,25 @@ static struct connman_driver network_driver = {
 	.remove		= network_remove,
 };
 
+static int network_load(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
+static int network_save(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
 static struct connman_storage network_storage = {
 	.name		= "network",
 	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+	.network_load	= network_load,
+	.network_save	= network_save,
 };
 
 int __connman_network_init(void)
