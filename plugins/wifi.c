@@ -31,12 +31,12 @@
 #include <linux/if_arp.h>
 #include <linux/wireless.h>
 
-#include <gdbus.h>
+#include <dbus/dbus.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
+#include <connman/device.h>
 #include <connman/driver.h>
-#include <connman/dbus.h>
 #include <connman/log.h>
 
 #include "inet.h"
@@ -506,62 +506,48 @@ static struct connman_device_driver wifi_driver = {
 	.scan		= wifi_scan,
 };
 
-static void supplicant_connect(DBusConnection *connection, void *user_data)
+static void wifi_register(void)
 {
-	DBG("connection %p", connection);
-
-	__supplicant_init(connection);
+	DBG("");
 
 	connman_device_driver_register(&wifi_driver);
 }
 
-static void supplicant_disconnect(DBusConnection *connection, void *user_data)
+static void wifi_unregister(void)
 {
-	DBG("connection %p", connection);
+	DBG("");
 
 	connman_device_driver_unregister(&wifi_driver);
-
-	__supplicant_exit();
 }
 
-static DBusConnection *connection;
-static guint watch;
+static struct supplicant_driver supplicant = {
+	.name		= "wifi",
+	.probe		= wifi_register,
+	.remove		= wifi_unregister,
+};
 
 static int wifi_init(void)
 {
 	int err;
 
-	connection = connman_dbus_get_connection();
-	if (connection == NULL)
-		return -EIO;
-
 	err = connman_driver_register(&network_driver);
+	if (err < 0)
+		return err;
+
+	err = supplicant_register(&supplicant);
 	if (err < 0) {
-		dbus_connection_unref(connection);
+		connman_driver_unregister(&network_driver);
 		return err;
 	}
-
-	watch = g_dbus_add_service_watch(connection, SUPPLICANT_NAME,
-			supplicant_connect, supplicant_disconnect, NULL, NULL);
-
-	if (g_dbus_check_service(connection, SUPPLICANT_NAME) == TRUE)
-		supplicant_connect(connection, NULL);
-	else
-		__supplicant_activate(connection);
 
 	return 0;
 }
 
 static void wifi_exit(void)
 {
+	supplicant_unregister(&supplicant);
+
 	connman_driver_unregister(&network_driver);
-
-	if (watch > 0)
-		g_dbus_remove_watch(connection, watch);
-
-	supplicant_disconnect(connection, NULL);
-
-	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE(wifi, "WiFi interface plugin", VERSION,

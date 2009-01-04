@@ -25,9 +25,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <dbus/dbus.h>
 
-#include <glib.h>
+#include <gdbus.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/log.h>
@@ -1109,7 +1108,7 @@ int __supplicant_disconnect(struct connman_element *element)
 	return 0;
 }
 
-void __supplicant_activate(DBusConnection *conn)
+static void supplicant_activate(DBusConnection *conn)
 {
 	DBusMessage *message;
 
@@ -1127,24 +1126,108 @@ void __supplicant_activate(DBusConnection *conn)
 	dbus_message_unref(message);
 }
 
-int __supplicant_init(DBusConnection *conn)
+static GSList *driver_list = NULL;
+
+static void supplicant_probe(DBusConnection *conn, void *user_data)
 {
+	GSList *list;
+
 	DBG("conn %p", conn);
 
-	connection = conn;
+	for (list = driver_list; list; list = list->next) {
+		struct supplicant_driver *driver = list->data;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->probe)
+			driver->probe();
+	}
+}
+
+static void supplicant_remove(DBusConnection *conn, void *user_data)
+{
+	GSList *list;
+
+	DBG("conn %p", conn);
+
+	for (list = driver_list; list; list = list->next) {
+		struct supplicant_driver *driver = list->data;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->remove)
+			driver->remove();
+	}
+}
+
+static guint watch;
+
+static int supplicant_create(void)
+{
+	if (g_slist_length(driver_list) > 0)
+		return 0;
+
+	connection = connman_dbus_get_connection();
+	if (connection == NULL)
+		return -EIO;
+
+	DBG("connection %p", connection);
 
 	if (dbus_connection_add_filter(connection,
 				supplicant_filter, NULL, NULL) == FALSE) {
-		dbus_connection_unref(connection);
+		connection = connman_dbus_get_connection();
 		return -EIO;
 	}
+
+	watch = g_dbus_add_service_watch(connection, SUPPLICANT_NAME,
+			supplicant_probe, supplicant_remove, NULL, NULL);
 
 	return 0;
 }
 
-void __supplicant_exit(void)
+static void supplicant_destroy(void)
 {
-	DBG("conn %p", connection);
+	if (g_slist_length(driver_list) > 0)
+		return;
+
+	DBG("connection %p", connection);
+
+	if (watch > 0)
+		g_dbus_remove_watch(connection, watch);
 
 	dbus_connection_remove_filter(connection, supplicant_filter, NULL);
+
+	dbus_connection_unref(connection);
+	connection = NULL;
+}
+
+int supplicant_register(struct supplicant_driver *driver)
+{
+	int err;
+
+	DBG("driver %p name %s", driver, driver->name);
+
+	err = supplicant_create();
+	if (err < 0)
+		return err;
+
+	driver_list = g_slist_append(driver_list, driver);
+
+	if (g_dbus_check_service(connection, SUPPLICANT_NAME) == TRUE)
+		supplicant_probe(connection, NULL);
+	else
+		supplicant_activate(connection);
+
+	return 0;
+}
+
+void supplicant_unregister(struct supplicant_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	supplicant_remove(connection, NULL);
+
+	driver_list = g_slist_remove(driver_list, driver);
+
+	supplicant_destroy();
 }

@@ -60,10 +60,16 @@ struct supplicant_callback {
 					struct supplicant_network *network);
 };
 
-void __supplicant_activate(DBusConnection *conn);
+struct supplicant_driver {
+	const char *name;
+	void (*probe) (void);
+	void (*remove) (void);
+};
 
-int __supplicant_init(DBusConnection *conn);
-void __supplicant_exit(void);
+int supplicant_register(struct supplicant_driver *driver);
+void supplicant_unregister(struct supplicant_driver *driver);
+
+void __supplicant_activate(DBusConnection *conn);
 
 int __supplicant_start(struct connman_device *device,
 					struct supplicant_callback *callback);
