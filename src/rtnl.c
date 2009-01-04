@@ -36,6 +36,74 @@
 
 #include "connman.h"
 
+struct watch_data {
+	unsigned int id;
+	int index;
+	connman_rtnl_link_cb_t newlink;
+	void *user_data;
+};
+
+static GSList *watch_list = NULL;
+static unsigned int watch_id = 0;
+
+/**
+ * connman_rtnl_add_newlink_watch:
+ * @index: network device index
+ * @callback: callback function
+ * @user_data: callback data;
+ *
+ * Add a new RTNL watch for newlink events
+ *
+ * Returns: %0 on failure and a unique id on success
+ */
+unsigned int connman_rtnl_add_newlink_watch(int index,
+			connman_rtnl_link_cb_t callback, void *user_data)
+{
+	struct watch_data *watch;
+
+	watch = g_try_new0(struct watch_data, 1);
+	if (watch == NULL)
+		return 0;
+
+	watch->id = ++watch_id;
+	watch->index = index;
+
+	watch->newlink = callback;
+	watch->user_data = user_data;
+
+	watch_list = g_slist_prepend(watch_list, watch);
+
+	DBG("id %d", watch->id);
+
+	return watch->id;
+}
+
+/**
+ * connman_rtnl_remove_watch:
+ * @id: watch identifier
+ *
+ * Remove the RTNL watch for the identifier
+ */
+void connman_rtnl_remove_watch(unsigned int id)
+{
+	GSList *list;
+
+	DBG("id %d", id);
+
+	if (id == 0)
+		return;
+
+	for (list = watch_list; list; list = list->next) {
+		struct watch_data *watch = list->data;
+
+		if (watch->id  == id) {
+			watch_list = g_slist_remove(watch_list, watch);
+			g_free(watch);
+			break;
+		}
+	}
+}
+
 static GSList *rtnl_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -87,6 +155,16 @@ static void process_newlink(unsigned short type, int index,
 
 		if (rtnl->newlink)
 			rtnl->newlink(type, index, flags, change);
+	}
+
+	for (list = watch_list; list; list = list->next) {
+		struct watch_data *watch = list->data;
+
+		if (watch->index != index)
+			continue;
+
+		if (watch->newlink)
+			watch->newlink(flags, change, watch->user_data);
 	}
 }
 
@@ -686,6 +764,18 @@ void __connman_rtnl_cleanup(void)
 	GSList *list;
 
 	DBG("");
+
+	for (list = watch_list; list; list = list->next) {
+		struct watch_data *watch = list->data;
+
+		DBG("removing watch %d", watch->id);
+
+		g_free(watch);
+		list->data = NULL;
+	}
+
+	g_slist_free(watch_list);
+	watch_list = NULL;
 
 	for (list = request_list; list; list = list->next) {
 		struct rtnl_request *req = list->data;
