@@ -218,7 +218,7 @@ done:
 static int pan_connect(struct connman_network *network)
 {
 	struct network_data *data = connman_network_get_data(network);
-	const char *path = connman_network_get_path(network);
+	const char *path = connman_network_get_string(network, "Node");
 	const char *uuid = "nap";
 	DBusMessage *message;
 	DBusPendingCall *call;
@@ -284,7 +284,7 @@ done:
 static int pan_disconnect(struct connman_network *network)
 {
 	struct network_data *data = connman_network_get_data(network);
-	const char *path = connman_network_get_path(network);
+	const char *path = connman_network_get_string(network, "Node");
 	DBusMessage *message;
 	DBusPendingCall *call;
 
@@ -404,7 +404,7 @@ static int change_powered(DBusConnection *connection, const char *path,
 static int bluetooth_enable(struct connman_device *adapter)
 {
 	struct adapter_data *data = connman_device_get_data(adapter);
-	const char *path = connman_device_get_path(adapter);
+	const char *path = connman_device_get_string(adapter, "Node");
 
 	DBG("adapter %p", adapter);
 
@@ -414,7 +414,7 @@ static int bluetooth_enable(struct connman_device *adapter)
 static int bluetooth_disable(struct connman_device *adapter)
 {
 	struct adapter_data *data = connman_device_get_data(adapter);
-	const char *path = connman_device_get_path(adapter);
+	const char *path = connman_device_get_string(adapter, "Node");
 
 	DBG("adapter %p", adapter);
 
@@ -465,7 +465,8 @@ static struct connman_device *find_adapter(const char *path)
 
 	for (list = adapter_list; list; list = list->next) {
 		struct connman_device *adapter = list->data;
-		const char *adapter_path = connman_device_get_path(adapter);
+		const char *adapter_path = connman_device_get_string(adapter,
+									"Node");
 
 		if (adapter_path == NULL)
 			continue;
@@ -495,7 +496,7 @@ static void device_properties(DBusConnection *connection, const char *path,
 	if (network == NULL)
 		return;
 
-	connman_network_set_path(network, path);
+	connman_network_set_string(network, "Node", path);
 
 	connman_device_add_network(device, network);
 }
@@ -614,7 +615,7 @@ static void adapter_properties(DBusConnection *connection, const char *path,
 	if (adapter == NULL)
 		return;
 
-	connman_device_set_path(adapter, path);
+	connman_device_set_string(adapter, "Node", path);
 
 	if (node != NULL && g_str_has_prefix(node, "hci") == TRUE) {
 		int index;
