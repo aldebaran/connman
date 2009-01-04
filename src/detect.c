@@ -167,7 +167,7 @@ static void detect_newlink(unsigned short type, int index,
 		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
 		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+			devtype = CONNMAN_DEVICE_TYPE_WIFI;
 		else
 			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
 

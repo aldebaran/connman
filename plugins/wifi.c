@@ -36,7 +36,6 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
-#include <connman/rtnl.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
@@ -507,131 +506,20 @@ static struct connman_device_driver wifi_driver = {
 	.scan		= wifi_scan,
 };
 
-static GSList *device_list = NULL;
-
-static void wifi_newlink(unsigned short type, int index,
-					unsigned flags, unsigned change)
-{
-	struct connman_device *device;
-	GSList *list;
-	gboolean exists = FALSE;
-	gchar *name, *devname;
-	struct iwreq iwr;
-	int sk;
-
-	DBG("index %d", index);
-
-	if (type != ARPHRD_ETHER)
-		return;
-
-	devname = inet_index2name(index);
-
-	memset(&iwr, 0, sizeof(iwr));
-	strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-
-	if (ioctl(sk, SIOCGIWNAME, &iwr) < 0) {
-		g_free(devname);
-		close(sk);
-		return;
-	}
-
-	close(sk);
-
-	for (list = device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		if (connman_device_get_index(device) == index) {
-			exists = TRUE;
-			break;
-		}
-	}
-
-	if (exists == TRUE) {
-		g_free(devname);
-		return;
-	}
-
-	name = inet_index2ident(index, "dev_");
-
-	device = connman_device_create(name, CONNMAN_DEVICE_TYPE_WIFI);
-	if (device == NULL) {
-		g_free(devname);
-		g_free(name);
-		return;
-	}
-
-	connman_device_set_index(device, index);
-	connman_device_set_interface(device, devname);
-
-	g_free(devname);
-	g_free(name);
-
-	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
-
-	if (connman_device_register(device) < 0) {
-		connman_device_unregister(device);
-		return;
-	}
-
-	device_list = g_slist_append(device_list, device);
-}
-
-static void wifi_dellink(unsigned short type, int index,
-					unsigned flags, unsigned change)
-{
-	GSList *list;
-
-	DBG("index %d", index);
-
-	for (list = device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		if (connman_device_get_index(device) == index) {
-			device_list = g_slist_remove(device_list, device);
-			connman_device_unregister(device);
-			connman_device_unref(device);
-			break;
-		}
-	}
-}
-
-static struct connman_rtnl wifi_rtnl = {
-	.name		= "wifi",
-	.newlink	= wifi_newlink,
-	.dellink	= wifi_dellink,
-};
-
 static void supplicant_connect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
 
 	__supplicant_init(connection);
 
-	if (connman_rtnl_register(&wifi_rtnl) < 0)
-		return;
-
-	connman_rtnl_send_getlink();
+	connman_device_driver_register(&wifi_driver);
 }
 
 static void supplicant_disconnect(DBusConnection *connection, void *user_data)
 {
-	GSList *list;
-
 	DBG("connection %p", connection);
 
-	connman_rtnl_unregister(&wifi_rtnl);
-
-	for (list = device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		connman_device_unregister(device);
-		connman_device_unref(device);
-	}
-
-	g_slist_free(device_list);
-	device_list = NULL;
+	connman_device_driver_unregister(&wifi_driver);
 
 	__supplicant_exit();
 }
@@ -653,13 +541,6 @@ static int wifi_init(void)
 		return err;
 	}
 
-	err = connman_device_driver_register(&wifi_driver);
-	if (err < 0) {
-		connman_driver_unregister(&network_driver);
-		dbus_connection_unref(connection);
-		return err;
-	}
-
 	watch = g_dbus_add_service_watch(connection, SUPPLICANT_NAME,
 			supplicant_connect, supplicant_disconnect, NULL, NULL);
 
@@ -674,7 +555,6 @@ static int wifi_init(void)
 static void wifi_exit(void)
 {
 	connman_driver_unregister(&network_driver);
-	connman_device_driver_unregister(&wifi_driver);
 
 	if (watch > 0)
 		g_dbus_remove_watch(connection, watch);
