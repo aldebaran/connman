@@ -428,19 +428,9 @@ static void wifi_remove(struct connman_device *device)
 
 static int wifi_enable(struct connman_device *device)
 {
-	int err;
-
 	DBG("device %p", device);
 
-	err = supplicant_start(device);
-	if (err < 0)
-		return err;
-
-	connman_device_set_powered(device, TRUE);
-
-	supplicant_scan(device);
-
-	return 0;
+	return supplicant_start(device);
 }
 
 static int wifi_disable(struct connman_device *device)
@@ -474,20 +464,14 @@ static int wifi_disable(struct connman_device *device)
 
 	connman_element_unregister_children((struct connman_element *) device);
 
-	supplicant_stop(device);
-
-	connman_device_set_powered(device, FALSE);
-
-	return 0;
+	return supplicant_stop(device);
 }
 
 static int wifi_scan(struct connman_device *device)
 {
 	DBG("device %p", device);
 
-	supplicant_scan(device);
-
-	return 0;
+	return supplicant_scan(device);
 }
 
 static struct connman_device_driver wifi_driver = {

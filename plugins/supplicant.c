@@ -95,6 +95,15 @@ static GSList *task_list = NULL;
 
 static DBusConnection *connection;
 
+static void free_task(struct supplicant_task *task)
+{
+	DBG("task %p", task);
+
+	g_free(task->ifname);
+	g_free(task->path);
+	g_free(task);
+}
+
 static struct supplicant_task *find_task_by_index(int index)
 {
 	GSList *list;
@@ -123,11 +132,119 @@ static struct supplicant_task *find_task_by_path(const char *path)
 	return NULL;
 }
 
-static int get_interface(struct supplicant_task *task)
+static void add_interface_reply(DBusPendingCall *call, void *user_data)
 {
-	DBusMessage *message, *reply;
+	struct supplicant_task *task = user_data;
+	DBusMessage *reply;
 	DBusError error;
 	const char *path;
+
+	DBG("task %p", task);
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		goto done;
+
+	dbus_error_init(&error);
+
+	if (dbus_message_get_args(reply, &error, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Wrong arguments for interface");
+		goto done;
+	}
+
+	DBG("path %s", path);
+
+	task->path = g_strdup(path);
+	task->created = TRUE;
+
+	connman_device_set_powered(task->device, TRUE);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int add_interface(struct supplicant_task *task)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("task %p", task);
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, SUPPLICANT_PATH,
+					SUPPLICANT_INTF, "addInterface");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &task->ifname,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to add interface");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, add_interface_reply, task, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static void get_interface_reply(DBusPendingCall *call, void *user_data)
+{
+	struct supplicant_task *task = user_data;
+	DBusMessage *reply;
+	DBusError error;
+	const char *path;
+
+	DBG("task %p", task);
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		add_interface(task);
+		goto done;
+	}
+
+	dbus_error_init(&error);
+
+	if (dbus_message_get_args(reply, &error, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Wrong arguments for interface");
+		goto done;
+	}
+
+	DBG("path %s", path);
+
+	task->path = g_strdup(path);
+	task->created = FALSE;
+
+	connman_device_set_powered(task->device, TRUE);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static int create_interface(struct supplicant_task *task)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
 
 	DBG("task %p", task);
 
@@ -139,109 +256,47 @@ static int get_interface(struct supplicant_task *task)
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &task->ifname,
 							DBUS_TYPE_INVALID);
 
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to get interface");
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to get interface");
 		dbus_message_unref(message);
 		return -EIO;
 	}
 
+	dbus_pending_call_set_notify(call, get_interface_reply, task, NULL);
+
 	dbus_message_unref(message);
 
-	dbus_error_init(&error);
-
-	if (dbus_message_get_args(reply, &error, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID) == FALSE) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Wrong arguments for interface");
-		dbus_message_unref(reply);
-		return -EIO;
-	}
-
-	DBG("path %s", path);
-
-	task->path = g_strdup(path);
-	task->created = FALSE;
-
-	dbus_message_unref(reply);
-
-	return 0;
+	return -EINPROGRESS;
 }
 
-static int add_interface(struct supplicant_task *task)
+static void remove_interface_reply(DBusPendingCall *call, void *user_data)
 {
-	DBusMessage *message, *reply;
-	DBusError error;
-	const char *path;
+	struct supplicant_task *task = user_data;
+	DBusMessage *reply;
 
 	DBG("task %p", task);
 
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, SUPPLICANT_PATH,
-					SUPPLICANT_INTF, "addInterface");
-	if (message == NULL)
-		return -ENOMEM;
+	reply = dbus_pending_call_steal_reply(call);
 
-	dbus_error_init(&error);
+	connman_device_set_powered(task->device, FALSE);
 
-	dbus_message_append_args(message, DBUS_TYPE_STRING, &task->ifname,
-							DBUS_TYPE_INVALID);
-
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to add interface");
-		dbus_message_unref(message);
-		return -EIO;
-	}
-
-	dbus_message_unref(message);
-
-	dbus_error_init(&error);
-
-	if (dbus_message_get_args(reply, &error, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_INVALID) == FALSE) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Wrong arguments for interface");
-		dbus_message_unref(reply);
-		return -EIO;
-	}
-
-	DBG("path %s", path);
-
-	task->path = g_strdup(path);
-	task->created = TRUE;
+	free_task(task);
 
 	dbus_message_unref(reply);
-
-	return 0;
 }
 
 static int remove_interface(struct supplicant_task *task)
 {
-	DBusMessage *message, *reply;
-	DBusError error;
+	DBusMessage *message;
+	DBusPendingCall *call;
 
 	DBG("task %p", task);
 
-	if (task->created == FALSE)
-		return -EINVAL;
+	if (task->created == FALSE) {
+		connman_device_set_powered(task->device, FALSE);
+		return 0;
+	}
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, SUPPLICANT_PATH,
 					SUPPLICANT_INTF, "removeInterface");
@@ -251,27 +306,21 @@ static int remove_interface(struct supplicant_task *task)
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->path,
 							DBUS_TYPE_INVALID);
 
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to remove interface");
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to remove interface");
 		dbus_message_unref(message);
 		return -EIO;
 	}
 
+	dbus_pending_call_set_notify(call, remove_interface_reply, task, NULL);
+
 	dbus_message_unref(message);
 
-	dbus_message_unref(reply);
-
-	return 0;
+	return -EINPROGRESS;
 }
 
+#if 0
 static int set_ap_scan(struct supplicant_task *task)
 {
 	DBusMessage *message, *reply;
@@ -308,6 +357,7 @@ static int set_ap_scan(struct supplicant_task *task)
 
 	return 0;
 }
+#endif
 
 static int add_network(struct supplicant_task *task)
 {
@@ -958,7 +1008,6 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 int supplicant_start(struct connman_device *device)
 {
 	struct supplicant_task *task;
-	int err;
 
 	DBG("device %p", device);
 
@@ -980,18 +1029,7 @@ int supplicant_start(struct connman_device *device)
 
 	task_list = g_slist_append(task_list, task);
 
-	err = get_interface(task);
-	if (err < 0) {
-		err = add_interface(task);
-		if (err < 0) {
-			g_free(task);
-			return err;
-		}
-	}
-
-	set_ap_scan(task);
-
-	return 0;
+	return create_interface(task);
 }
 
 int supplicant_stop(struct connman_device *device)
@@ -1011,13 +1049,7 @@ int supplicant_stop(struct connman_device *device)
 
 	remove_network(task);
 
-	remove_interface(task);
-
-	g_free(task->ifname);
-	g_free(task->path);
-	g_free(task);
-
-	return 0;
+	return remove_interface(task);
 }
 
 int supplicant_scan(struct connman_device *device)
