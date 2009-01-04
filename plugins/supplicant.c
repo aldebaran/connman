@@ -951,7 +951,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	else if (g_str_equal(state, "ASSOCIATED") == TRUE)
 		task->state = STATE_ASSOCIATED;
 	else if (g_str_equal(state, "GROUP_HANDSHAKE") == TRUE)
-		task->state = STATE_4WAY_HANDSHAKE;
+		task->state = STATE_GROUP_HANDSHAKE;
 	else if (g_str_equal(state, "4WAY_HANDSHAKE") == TRUE)
 		task->state = STATE_4WAY_HANDSHAKE;
 	else if (g_str_equal(state, "COMPLETED") == TRUE)
