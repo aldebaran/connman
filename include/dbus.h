@@ -30,6 +30,7 @@ extern "C" {
 
 #define CONNMAN_SERVICE			"org.moblin.connman"
 
+#define CONNMAN_DEBUG_INTERFACE		CONNMAN_SERVICE ".Debug"
 #define CONNMAN_ERROR_INTERFACE		CONNMAN_SERVICE ".Error"
 #define CONNMAN_AGENT_INTERFACE		CONNMAN_SERVICE ".Agent"
 

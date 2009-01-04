@@ -311,6 +311,27 @@ static void set_common_property(struct connman_element *element,
 	__connman_element_unlock(element);
 }
 
+static void emit_element_signal(DBusConnection *conn, const char *member,
+					struct connman_element *element)
+{
+	DBusMessage *signal;
+
+	if (__connman_debug_enabled() == FALSE)
+		return;
+
+	DBG("conn %p member %s", conn, member);
+
+	if (element == NULL)
+		return;
+
+	signal = dbus_message_new_signal(element->path,
+					CONNMAN_DEBUG_INTERFACE, member);
+	if (signal == NULL)
+		return;
+
+	g_dbus_send_message(conn, signal);
+}
+
 static void emit_enabled_signal(DBusConnection *conn,
 					struct connman_element *element)
 {
@@ -1760,6 +1781,8 @@ static void register_element(gpointer data, gpointer user_data)
 		}
 	}
 
+	emit_element_signal(connection, "ElementAdded", element);
+
 	__connman_element_store(element);
 
 	if (started == FALSE)
@@ -1861,6 +1884,8 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 						CONNMAN_NETWORK_INTERFACE);
 	}
 
+	emit_element_signal(connection, "ElementRemoved", element);
+
 	connman_element_unref(element);
 
 	return FALSE;
@@ -1910,6 +1935,8 @@ static gboolean update_element(GNode *node, gpointer user_data)
 					DBUS_TYPE_BYTE, &element->strength);
 		}
 	}
+
+	emit_element_signal(connection, "ElementUpdated", element);
 
 	return FALSE;
 }
