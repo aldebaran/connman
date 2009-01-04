@@ -86,6 +86,11 @@ int __connman_resolver_selftest(void);
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 
+int __connman_storage_load_device(struct connman_device *device);
+int __connman_storage_save_device(struct connman_device *device);
+int __connman_storage_load_network(struct connman_network *network);
+int __connman_storage_save_network(struct connman_network *network);
+
 #include <connman/driver.h>
 
 void __connman_driver_rescan(struct connman_driver *driver);
