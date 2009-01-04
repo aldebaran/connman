@@ -76,8 +76,6 @@ int __connman_storage_load_device(struct connman_device *device)
 		struct connman_storage *storage = list->data;
 
 		if (storage->device_load) {
-			DBG("%s", storage->name);
-
 			if (storage->device_load(device) == 0)
 				return 0;
 		}
@@ -96,8 +94,6 @@ int __connman_storage_save_device(struct connman_device *device)
 		struct connman_storage *storage = list->data;
 
 		if (storage->device_save) {
-			DBG("%s", storage->name);
-
 			if (storage->device_save(device) == 0)
 				return 0;
 		}
@@ -116,8 +112,6 @@ int __connman_storage_load_network(struct connman_network *network)
 		struct connman_storage *storage = list->data;
 
 		if (storage->network_load) {
-			DBG("%s", storage->name);
-
 			if (storage->network_load(network) == 0)
 				return 0;
 		}
@@ -136,8 +130,6 @@ int __connman_storage_save_network(struct connman_network *network)
 		struct connman_storage *storage = list->data;
 
 		if (storage->network_save) {
-			DBG("%s", storage->name);
-
 			if (storage->network_save(network) == 0)
 				return 0;
 		}
