@@ -59,8 +59,6 @@ extern void connman_network_unref(struct connman_network *network);
 
 extern const char *connman_network_get_identifier(struct connman_network *network);
 
-extern void connman_network_set_path(struct connman_network *network,
-							const char *path);
 extern const char *connman_network_get_path(struct connman_network *network);
 extern void connman_network_set_index(struct connman_network *network,
 								int index);
@@ -74,6 +72,8 @@ extern int connman_network_set_connected(struct connman_network *network,
 
 extern int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
+extern const char *connman_network_get_string(struct connman_network *network,
+							const char *key);
 extern int connman_network_set_uint8(struct connman_network *network,
 					const char *key, connman_uint8_t value);
 extern int connman_network_set_blob(struct connman_network *network,

@@ -37,7 +37,7 @@ struct connman_network {
 	connman_uint8_t strength;
 	char *identifier;
 	char *name;
-	char *path;
+	char *node;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -72,6 +72,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (network->device) {
+		const char *path = connman_device_get_path(network->device);
+		if (path != NULL)
+			connman_dbus_dict_append_variant(&dict, "Device",
+						DBUS_TYPE_OBJECT_PATH, &path);
+	}
 
 	if (network->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
@@ -261,7 +268,7 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->wifi.security);
 	g_free(network->wifi.passphrase);
 
-	g_free(network->path);
+	g_free(network->node);
 	g_free(network->name);
 	g_free(network->identifier);
 }
@@ -356,22 +363,6 @@ const char *connman_network_get_identifier(struct connman_network *network)
 }
 
 /**
- * connman_network_set_path:
- * @network: network structure
- * @path: path name
- *
- * Set path name of network
- */
-void connman_network_set_path(struct connman_network *network, const char *path)
-{
-	g_free(network->element.devpath);
-	network->element.devpath = g_strdup(path);
-
-	g_free(network->path);
-	network->path = g_strdup(path);
-}
-
-/**
  * connman_network_get_path:
  * @network: network structure
  *
@@ -379,7 +370,7 @@ void connman_network_set_path(struct connman_network *network, const char *path)
  */
 const char *connman_network_get_path(struct connman_network *network)
 {
-	return network->path;
+	return network->element.path;
 }
 
 /**
@@ -482,6 +473,9 @@ int connman_network_set_string(struct connman_network *network,
 	if (g_str_equal(key, "Name") == TRUE) {
 		g_free(network->name);
 		network->name = g_strdup(value);
+	} else if (g_str_equal(key, "Node") == TRUE) {
+		g_free(network->node);
+		network->node = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.Mode") == TRUE) {
 		g_free(network->wifi.mode);
 		network->wifi.mode = g_strdup(value);
@@ -491,6 +485,30 @@ int connman_network_set_string(struct connman_network *network,
 	}
 
 	return 0;
+}
+
+/**
+ * connman_network_get_string:
+ * @network: network structure
+ * @key: unique identifier
+ *
+ * Get string value for specific key
+ */
+const char *connman_network_get_string(struct connman_network *network,
+							const char *key)
+{
+	DBG("network %p key %s", network);
+
+	if (g_str_equal(key, "Name") == TRUE)
+		return network->name;
+	else if (g_str_equal(key, "Node") == TRUE)
+		return network->node;
+	else if (g_str_equal(key, "WiFi.Mode") == TRUE)
+		return network->wifi.mode;
+	else if (g_str_equal(key, "WiFi.Security") == TRUE)
+		return network->wifi.security;
+
+	return NULL;
 }
 
 /**

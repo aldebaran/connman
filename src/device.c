@@ -36,7 +36,8 @@ struct connman_device {
 	gboolean powered;
 	gboolean carrier;
 	gboolean scanning;
-	char *path;
+	char *name;
+	char *node;
 	char *interface;
 
 	struct connman_device_driver *driver;
@@ -656,7 +657,8 @@ static void device_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_free(device->path);
+	g_free(device->node);
+	g_free(device->name);
 	g_free(device->interface);
 
 	g_hash_table_destroy(device->networks);
@@ -747,22 +749,6 @@ void connman_device_unref(struct connman_device *device)
 }
 
 /**
- * connman_device_set_path:
- * @device: device structure
- * @path: path name
- *
- * Set path name of device
- */
-void connman_device_set_path(struct connman_device *device, const char *path)
-{
-	g_free(device->element.devpath);
-	device->element.devpath = g_strdup(path);
-
-	g_free(device->path);
-	device->path = g_strdup(path);
-}
-
-/**
  * connman_device_get_path:
  * @device: device structure
  *
@@ -770,7 +756,7 @@ void connman_device_set_path(struct connman_device *device, const char *path)
  */
 const char *connman_device_get_path(struct connman_device *device)
 {
-	return device->path;
+	return device->element.path;
 }
 
 /**
@@ -976,6 +962,50 @@ int connman_device_set_scanning(struct connman_device *device,
 	g_dbus_send_message(connection, signal);
 
 	return 0;
+}
+
+/**
+ * connman_device_set_string:
+ * @device: device structure
+ * @key: unique identifier
+ * @value: string value
+ *
+ * Set string value for specific key
+ */
+int connman_device_set_string(struct connman_device *device,
+					const char *key, const char *value)
+{
+	DBG("device %p key %s value %s", device, key, value);
+
+	if (g_str_equal(key, "Name") == TRUE) {
+		g_free(device->name);
+		device->name = g_strdup(value);
+	} else if (g_str_equal(key, "Node") == TRUE) {
+		g_free(device->node);
+		device->node = g_strdup(value);
+	}
+
+	return 0;
+}
+
+/**
+ * connman_device_get_string:
+ * @device: device structure
+ * @key: unique identifier
+ *
+ * Get string value for specific key
+ */
+const char *connman_device_get_string(struct connman_device *device,
+							const char *key)
+{
+	DBG("device %p key %s", device);
+
+	if (g_str_equal(key, "Name") == TRUE)
+		return device->name;
+	else if (g_str_equal(key, "Node") == TRUE)
+		return device->node;
+
+	return NULL;
 }
 
 /**
