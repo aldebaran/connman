@@ -72,6 +72,13 @@ extern void connman_network_set_protocol(struct connman_network *network,
 extern int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected);
 
+extern int connman_network_set_string(struct connman_network *network,
+					const char *key, const char *value);
+extern int connman_network_set_uint8(struct connman_network *network,
+					const char *key, connman_uint8_t value);
+extern int connman_network_set_blob(struct connman_network *network,
+			const char *key, const void *data, unsigned int size);
+
 extern struct connman_device *connman_network_get_device(struct connman_network *network);
 
 extern void *connman_network_get_data(struct connman_network *network);

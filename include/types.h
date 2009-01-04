@@ -34,7 +34,8 @@ extern "C" {
 #define	TRUE	(!FALSE)
 #endif
 
-typedef int	connman_bool_t;
+typedef int		connman_bool_t;
+typedef unsigned char	connman_uint8_t;
 
 #ifdef __cplusplus
 }

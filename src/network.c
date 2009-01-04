@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include <gdbus.h>
 
 #include "connman.h"
@@ -31,14 +33,24 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
-	gboolean connected;
+	connman_bool_t connected;
+	connman_uint8_t strength;
 	char *identifier;
+	char *name;
 	char *path;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
 
 	struct connman_device *device;
+
+	struct {
+		void *ssid;
+		int ssid_len;
+		char *mode;
+		char *security;
+		char *passphrase;
+	} wifi;
 };
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -61,12 +73,33 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	if (network->identifier != NULL)
+	if (network->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
-				DBUS_TYPE_STRING, &network->identifier);
+					DBUS_TYPE_STRING, &network->name);
 
 	connman_dbus_dict_append_variant(&dict, "Connected",
 				DBUS_TYPE_BOOLEAN, &network->connected);
+
+	if (network->strength > 0)
+		connman_dbus_dict_append_variant(&dict, "Strength",
+					DBUS_TYPE_BYTE, &network->strength);
+
+	if (network->wifi.ssid != NULL && network->wifi.ssid_len > 0)
+		connman_dbus_dict_append_array(&dict, "WiFi.SSID",
+				DBUS_TYPE_BYTE, &network->wifi.ssid,
+						network->wifi.ssid_len);
+
+	if (network->wifi.mode != NULL)
+		connman_dbus_dict_append_variant(&dict, "WiFi.Mode",
+				DBUS_TYPE_STRING, &network->wifi.mode);
+
+	if (network->wifi.security != NULL)
+		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
+				DBUS_TYPE_STRING, &network->wifi.security);
+
+	if (network->wifi.passphrase != NULL)
+		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
+				DBUS_TYPE_STRING, &network->wifi.passphrase);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -153,9 +186,6 @@ static int register_interface(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_NETWORK_INTERFACE);
-
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_NETWORK_INTERFACE,
 					network_methods, network_signals,
@@ -226,7 +256,13 @@ static void network_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	g_free(network->wifi.ssid);
+	g_free(network->wifi.mode);
+	g_free(network->wifi.security);
+	g_free(network->wifi.passphrase);
+
 	g_free(network->path);
+	g_free(network->name);
 	g_free(network->identifier);
 }
 
@@ -426,6 +462,79 @@ int connman_network_set_connected(struct connman_network *network,
 		}
 	} else
 		connman_element_unregister_children(&network->element);
+
+	return 0;
+}
+
+/**
+ * connman_network_set_string:
+ * @network: network structure
+ * @key: unique identifier
+ * @value: string value
+ *
+ * Set string value for specific key
+ */
+int connman_network_set_string(struct connman_network *network,
+					const char *key, const char *value)
+{
+	DBG("network %p key %s value %s", network, key, value);
+
+	if (g_str_equal(key, "Name") == TRUE) {
+		g_free(network->name);
+		network->name = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.Mode") == TRUE) {
+		g_free(network->wifi.mode);
+		network->wifi.mode = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.Security") == TRUE) {
+		g_free(network->wifi.security);
+		network->wifi.security = g_strdup(value);
+	}
+
+	return 0;
+}
+
+/**
+ * connman_network_set_uint8:
+ * @network: network structure
+ * @key: unique identifier
+ * @value: integer value
+ *
+ * Set integer value for specific key
+ */
+int connman_network_set_uint8(struct connman_network *network,
+					const char *key, connman_uint8_t value)
+{
+	DBG("network %p key %s value %d", network, key, value);
+
+	if (g_str_equal(key, "Strength") == TRUE)
+		network->strength = value;
+
+	return 0;
+}
+
+/**
+ * connman_network_set_blob:
+ * @network: network structure
+ * @key: unique identifier
+ * @data: blob data
+ * @size: blob size
+ *
+ * Set binary blob value for specific key
+ */
+int connman_network_set_blob(struct connman_network *network,
+			const char *key, const void *data, unsigned int size)
+{
+	DBG("network %p key %s size %d", network, key, size);
+
+	if (g_str_equal(key, "WiFi.SSID") == TRUE) {
+		g_free(network->wifi.ssid);
+		network->wifi.ssid = g_try_malloc(size);
+		if (network->wifi.ssid != NULL) {
+			memcpy(network->wifi.ssid, data, size);
+			network->wifi.ssid_len = size;
+		} else
+			network->wifi.ssid_len = 0;
+	}
 
 	return 0;
 }
