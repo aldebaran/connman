@@ -29,8 +29,9 @@
 #include <gdbus.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
-#include <connman/log.h>
+#include <connman/device.h>
 #include <connman/dbus.h>
+#include <connman/log.h>
 
 #include "inet.h"
 #include "supplicant.h"
@@ -41,45 +42,35 @@
 #define IEEE80211_CAP_IBSS      0x0002
 #define IEEE80211_CAP_PRIVACY   0x0010
 
-static GSList *driver_list = NULL;
+#define SUPPLICANT_NAME  "fi.epitest.hostap.WPASupplicant"
+#define SUPPLICANT_INTF  "fi.epitest.hostap.WPASupplicant"
+#define SUPPLICANT_PATH  "/fi/epitest/hostap/WPASupplicant"
 
-static void process_state_change(struct connman_device *device,
-						enum supplicant_state state)
-{
-	GSList *list;
+enum supplicant_state {
+	STATE_INACTIVE,
+	STATE_SCANNING,
+	STATE_ASSOCIATING,
+	STATE_ASSOCIATED,
+	STATE_4WAY_HANDSHAKE,
+	STATE_GROUP_HANDSHAKE,
+	STATE_COMPLETED,
+	STATE_DISCONNECTED,
+};
 
-	for (list = driver_list; list; list = list->next) {
-		struct supplicant_driver *driver = list->data;
-
-		if (driver->state_change)
-			driver->state_change(device, state);
-	}
-}
-
-static void process_clear_results(struct connman_device *device)
-{
-	GSList *list;
-
-	for (list = driver_list; list; list = list->next) {
-		struct supplicant_driver *driver = list->data;
-
-		if (driver->clear_results)
-			driver->clear_results(device);
-	}
-}
-
-static void process_scan_result(struct connman_device *device,
-					struct supplicant_network *network)
-{
-	GSList *list;
-
-	for (list = driver_list; list; list = list->next) {
-		struct supplicant_driver *driver = list->data;
-
-		if (driver->scan_result)
-			driver->scan_result(device, network);
-	}
-}
+struct supplicant_result {
+	char *identifier;
+	unsigned char *ssid;
+	unsigned int ssid_len;
+	dbus_uint16_t capabilities;
+	gboolean adhoc;
+	gboolean has_wep;
+	gboolean has_wpa;
+	gboolean has_rsn;
+	dbus_int32_t quality;
+	dbus_int32_t noise;
+	dbus_int32_t level;
+	dbus_int32_t maxrate;
+};
 
 struct supplicant_task {
 	int ifindex;
@@ -89,6 +80,7 @@ struct supplicant_task {
 	gboolean created;
 	gchar *network;
 	enum supplicant_state state;
+	GSList *scan_results;
 };
 
 static GSList *task_list = NULL;
@@ -686,8 +678,8 @@ static int initiate_scan(struct supplicant_task *task)
 	return 0;
 }
 
-static void extract_ssid(struct supplicant_network *network,
-						DBusMessageIter *value)
+static void extract_ssid(DBusMessageIter *value,
+					struct supplicant_result *result)
 {
 	DBusMessageIter array;
 	unsigned char *ssid;
@@ -699,22 +691,22 @@ static void extract_ssid(struct supplicant_network *network,
 	if (ssid_len < 1)
 		return;
 
-	network->ssid = g_try_malloc(ssid_len);
-	if (network->ssid == NULL)
+	result->ssid = g_try_malloc(ssid_len);
+	if (result->ssid == NULL)
 		return;
 
-	memcpy(network->ssid, ssid, ssid_len);
-	network->ssid_len = ssid_len;
+	memcpy(result->ssid, ssid, ssid_len);
+	result->ssid_len = ssid_len;
 
-	network->identifier = g_try_malloc0(ssid_len + 1);
-	if (network->identifier == NULL)
+	result->identifier = g_try_malloc0(ssid_len + 1);
+	if (result->identifier == NULL)
 		return;
 
-	memcpy(network->identifier, ssid, ssid_len);
+	memcpy(result->identifier, ssid, ssid_len);
 }
 
-static void extract_wpaie(struct supplicant_network *network,
-						DBusMessageIter *value)
+static void extract_wpaie(DBusMessageIter *value,
+					struct supplicant_result *result)
 {
 	DBusMessageIter array;
 	unsigned char *ie;
@@ -724,11 +716,11 @@ static void extract_wpaie(struct supplicant_network *network,
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
 	if (ie_len > 0)
-		network->has_wpa = TRUE;
+		result->has_wpa = TRUE;
 }
 
-static void extract_rsnie(struct supplicant_network *network,
-						DBusMessageIter *value)
+static void extract_rsnie(DBusMessageIter *value,
+					struct supplicant_result *result)
 {
 	DBusMessageIter array;
 	unsigned char *ie;
@@ -738,37 +730,45 @@ static void extract_rsnie(struct supplicant_network *network,
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
 	if (ie_len > 0)
-		network->has_rsn = TRUE;
+		result->has_rsn = TRUE;
 }
 
-static void extract_capabilites(struct supplicant_network *network,
-						DBusMessageIter *value)
+static void extract_capabilites(DBusMessageIter *value,
+					struct supplicant_result *result)
 {
-	dbus_message_iter_get_basic(value, &network->capabilities);
+	dbus_message_iter_get_basic(value, &result->capabilities);
 
-	if (network->capabilities & IEEE80211_CAP_ESS)
-		network->adhoc = FALSE;
-	else if (network->capabilities & IEEE80211_CAP_IBSS)
-		network->adhoc = TRUE;
+	if (result->capabilities & IEEE80211_CAP_ESS)
+		result->adhoc = FALSE;
+	else if (result->capabilities & IEEE80211_CAP_IBSS)
+		result->adhoc = TRUE;
 
-	if (network->capabilities & IEEE80211_CAP_PRIVACY)
-		network->has_wep = TRUE;
+	if (result->capabilities & IEEE80211_CAP_PRIVACY)
+		result->has_wep = TRUE;
 }
+
+static int get_properties(struct supplicant_task *task);
 
 static void properties_reply(DBusPendingCall *call, void *user_data)
 {
 	struct supplicant_task *task = user_data;
-	struct supplicant_network *network;
+	struct supplicant_result result;
+	struct connman_network *network;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	char *temp = NULL;
+	unsigned char strength;
+	unsigned int i;
 
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL) {
+		get_properties(task);
+		return;
+	}
 
-	network = g_try_new0(struct supplicant_network, 1);
-	if (network == NULL)
-		goto done;
+	memset(&result, 0, sizeof(result));
 
 	dbus_message_iter_init(reply, &array);
 
@@ -802,45 +802,112 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		 */
 
 		if (g_str_equal(key, "ssid") == TRUE)
-			extract_ssid(network, &value);
+			extract_ssid(&value, &result);
 		else if (g_str_equal(key, "wpaie") == TRUE)
-			extract_wpaie(network, &value);
+			extract_wpaie(&value, &result);
 		else if (g_str_equal(key, "rsnie") == TRUE)
-			extract_rsnie(network, &value);
+			extract_rsnie(&value, &result);
 		else if (g_str_equal(key, "capabilities") == TRUE)
-			extract_capabilites(network, &value);
+			extract_capabilites(&value, &result);
 		else if (g_str_equal(key, "quality") == TRUE)
-			dbus_message_iter_get_basic(&value, &network->quality);
+			dbus_message_iter_get_basic(&value, &result.quality);
 		else if (g_str_equal(key, "noise") == TRUE)
-			dbus_message_iter_get_basic(&value, &network->noise);
+			dbus_message_iter_get_basic(&value, &result.noise);
 		else if (g_str_equal(key, "level") == TRUE)
-			dbus_message_iter_get_basic(&value, &network->level);
+			dbus_message_iter_get_basic(&value, &result.level);
 		else if (g_str_equal(key, "maxrate") == TRUE)
-			dbus_message_iter_get_basic(&value, &network->maxrate);
-
+			dbus_message_iter_get_basic(&value, &result.maxrate);
 
 		dbus_message_iter_next(&dict);
 	}
 
-	process_scan_result(task->device, network);
+	if (result.identifier == NULL)
+		goto done;
 
-	g_free(network->identifier);
-	g_free(network->ssid);
-	g_free(network);
+	if (result.identifier[0] == '\0')
+		goto done;
+
+	temp = g_strdup(result.identifier);
+	if (temp == NULL)
+		goto done;
+
+	for (i = 0; i < strlen(temp); i++) {
+		char tmp = temp[i];
+		if ((tmp < '0' || tmp > '9') && (tmp < 'A' || tmp > 'Z') &&
+						(tmp < 'a' || tmp > 'z'))
+			temp[i] = '_';
+	}
+
+	strength = result.quality;
+
+	network = connman_device_get_network(task->device, temp);
+	if (network == NULL) {
+		const char *mode, *security;
+		unsigned char strength;
+
+		network = connman_network_create(temp,
+						CONNMAN_NETWORK_TYPE_WIFI);
+		if (network == NULL)
+			goto done;
+
+		connman_network_set_string(network, "Name", result.identifier);
+
+		connman_network_set_blob(network, "WiFi.SSID",
+						result.ssid, result.ssid_len);
+
+		mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
+		connman_network_set_string(network, "WiFi.Mode", mode);
+
+		if (result.has_rsn == TRUE)
+			security = "wpa2";
+		else if (result.has_wpa == TRUE)
+			security = "wpa";
+		else if (result.has_wep == TRUE)
+			security = "wep";
+		else
+			security = "none";
+		connman_network_set_string(network, "WiFi.Security", security);
+
+		DBG("%s (%s %s) strength %d", result.identifier, mode,
+							security, strength);
+
+		if (connman_device_add_network(task->device, network) < 0) {
+			connman_network_unref(network);
+			goto done;
+		}
+	}
+
+	connman_network_set_uint8(network, "Strength", strength);
 
 done:
+	g_free(result.identifier);
+	g_free(result.ssid);
+	g_free(temp);
+
 	dbus_message_unref(reply);
+
+	get_properties(task);
 }
 
-static int get_network_properties(struct supplicant_task *task,
-							const char *path)
+static int get_properties(struct supplicant_task *task)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
+	char *path;
+
+	path = g_slist_nth_data(task->scan_results, 0);
+	if (path == NULL) {
+		connman_device_set_scanning(task->device, FALSE);
+		return 0;
+	}
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, path,
 						SUPPLICANT_INTF ".BSSID",
 								"properties");
+
+	task->scan_results = g_slist_remove(task->scan_results, path);
+	g_free(path);
+
 	if (message == NULL)
 		return -ENOMEM;
 
@@ -869,6 +936,10 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL) {
+		connman_device_set_scanning(task->device, FALSE);
+		return;
+	}
 
 	dbus_error_init(&error);
 
@@ -881,15 +952,21 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 			dbus_error_free(&error);
 		} else
 			connman_error("Wrong arguments for scan result");
+		connman_device_set_scanning(task->device, FALSE);
 		goto done;
 	}
 
-	process_clear_results(task->device);
+	for (i = 0; i < num_results; i++) {
+		char *path = g_strdup(results[i]);
+		if (path == NULL)
+			continue;
 
-	for (i = 0; i < num_results; i++)
-		get_network_properties(task, results[i]);
+		task->scan_results = g_slist_append(task->scan_results, path);
+	}
 
 	g_strfreev(results);
+
+	get_properties(task);
 
 done:
 	dbus_message_unref(reply);
@@ -914,6 +991,8 @@ static int scan_results_available(struct supplicant_task *task)
 		dbus_message_unref(message);
 		return -EIO;
 	}
+
+	connman_device_set_scanning(task->device, TRUE);
 
 	dbus_pending_call_set_notify(call, scan_results_reply, task, NULL);
 
@@ -959,7 +1038,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
 		task->state = STATE_DISCONNECTED;
 
-	process_state_change(task->device, task->state);
+	if (task->state == STATE_SCANNING)
+		connman_device_set_scanning(task->device, TRUE);
 
 	switch (task->state) {
 	case STATE_COMPLETED:
@@ -1139,6 +1219,8 @@ static void supplicant_activate(DBusConnection *conn)
 
 	dbus_message_unref(message);
 }
+
+static GSList *driver_list = NULL;
 
 static void supplicant_probe(DBusConnection *conn, void *user_data)
 {
