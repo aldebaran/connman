@@ -50,8 +50,8 @@ struct connman_rtnl {
 extern int connman_rtnl_register(struct connman_rtnl *rtnl);
 extern void connman_rtnl_unregister(struct connman_rtnl *rtnl);
 
-int connman_rtnl_send_getlink(void);
-int connman_rtnl_send_getroute(void);
+extern int connman_rtnl_send_getlink(void);
+extern int connman_rtnl_send_getroute(void);
 
 #ifdef __cplusplus
 }
