@@ -349,14 +349,6 @@ static void emit_enabled_signal(DBusConnection *conn,
 		return;
 
 	switch (element->type) {
-	case CONNMAN_ELEMENT_TYPE_DEVICE:
-		iface = CONNMAN_DEVICE_INTERFACE;
-		key = "Powered";
-		break;
-	case CONNMAN_ELEMENT_TYPE_NETWORK:
-		iface = CONNMAN_NETWORK_INTERFACE;
-		key = "Connected";
-		break;
 	case CONNMAN_ELEMENT_TYPE_CONNECTION:
 		iface = CONNMAN_CONNECTION_INTERFACE;
 		key = "Default";
@@ -993,12 +985,6 @@ static void emit_property_changed(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	switch (element->type) {
-	case CONNMAN_ELEMENT_TYPE_DEVICE:
-		iface = CONNMAN_DEVICE_INTERFACE;
-		break;
-	case CONNMAN_ELEMENT_TYPE_NETWORK:
-		iface = CONNMAN_NETWORK_INTERFACE;
-		break;
 	case CONNMAN_ELEMENT_TYPE_CONNECTION:
 		iface = CONNMAN_CONNECTION_INTERFACE;
 		break;
