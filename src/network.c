@@ -544,11 +544,19 @@ static struct connman_driver network_driver = {
 	.remove		= network_remove,
 };
 
+static struct connman_storage network_storage = {
+	.name		= "network",
+	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+};
+
 int __connman_network_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
+
+	if (connman_storage_register(&network_storage) < 0)
+		connman_error("Failed to register network storage");
 
 	return connman_driver_register(&network_driver);
 }
@@ -558,6 +566,8 @@ void __connman_network_cleanup(void)
 	DBG("");
 
 	connman_driver_unregister(&network_driver);
+
+	connman_storage_unregister(&network_storage);
 
 	dbus_connection_unref(connection);
 }

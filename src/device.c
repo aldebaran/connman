@@ -1154,11 +1154,19 @@ static struct connman_driver device_driver = {
 	.remove		= device_remove,
 };
 
+static struct connman_storage device_storage = {
+	.name		= "device",
+	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+};
+
 int __connman_device_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
+
+	if (connman_storage_register(&device_storage) < 0)
+		connman_error("Failed to register device storage");
 
 	return connman_driver_register(&device_driver);
 }
@@ -1168,6 +1176,8 @@ void __connman_device_cleanup(void)
 	DBG("");
 
 	connman_driver_unregister(&device_driver);
+
+	connman_storage_unregister(&device_storage);
 
 	dbus_connection_unref(connection);
 }
