@@ -393,6 +393,9 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 	if (!device->driver || !device->driver->scan)
 		return __connman_error_not_supported(msg);
 
+	if (device->powered == FALSE)
+		return __connman_error_failed(msg);
+
 	err = device->driver->scan(device);
 	if (err < 0)
 		return __connman_error_failed(msg);
