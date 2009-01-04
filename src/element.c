@@ -278,6 +278,7 @@ static void add_common_properties(struct connman_element *element,
 	__connman_element_unlock(element);
 }
 
+#if 0
 static void set_common_property(struct connman_element *element,
 				const char *name, DBusMessageIter *value)
 {
@@ -312,6 +313,7 @@ static void set_common_property(struct connman_element *element,
 
 	__connman_element_unlock(element);
 }
+#endif
 
 static void emit_element_signal(DBusConnection *conn, const char *member,
 					struct connman_element *element)
@@ -460,82 +462,6 @@ static DBusMessage *do_disable(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *network_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	if (element->parent)
-		connman_dbus_dict_append_variant(&dict, "Device",
-				DBUS_TYPE_OBJECT_PATH, &element->parent->path);
-
-	connman_dbus_dict_append_variant(&dict, "Available",
-					DBUS_TYPE_BOOLEAN, &element->available);
-
-	connman_dbus_dict_append_variant(&dict, "Connected",
-					DBUS_TYPE_BOOLEAN, &element->enabled);
-
-	connman_dbus_dict_append_variant(&dict, "Remember",
-					DBUS_TYPE_BOOLEAN, &element->remember);
-
-	add_common_properties(element, &dict);
-
-	dbus_message_iter_close_container(&array, &dict);
-
-	return reply;
-}
-
-static DBusMessage *network_set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessageIter iter;
-	DBusMessageIter value;
-	const char *name;
-
-	DBG("conn %p", conn);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_get_basic(&iter, &name);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (__connman_security_check_privileges(msg) < 0)
-		return __connman_error_permission_denied(msg);
-
-	if (g_str_equal(name, "Remember") == TRUE) {
-		dbus_message_iter_get_basic(&value, &element->remember);
-	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
-		const char *str;
-
-		dbus_message_iter_get_basic(&value, &str);
-		g_free(element->wifi.passphrase);
-		element->wifi.passphrase = g_strdup(str);
-	} else
-		set_common_property(element, name, &value);
-
-	__connman_element_store(element);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
 static DBusMessage *connection_get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -613,14 +539,6 @@ static DBusMessage *connection_set_property(DBusConnection *conn,
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
-
-static GDBusMethodTable network_methods[] = {
-	{ "GetProperties", "",   "a{sv}", network_get_properties },
-	{ "SetProperty",   "sv", "",      network_set_property   },
-	{ "Connect",       "",   "",      do_enable              },
-	{ "Disconnect",    "",   "",      do_disable             },
-	{ },
-};
 
 static GDBusMethodTable connection_methods[] = {
 	{ "GetProperties", "",   "a{sv}", connection_get_properties },
@@ -1572,49 +1490,6 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 	return result;
 }
 
-static void append_networks(struct connman_element *element,
-						DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Networks";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(element, CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
-static void emit_networks_signal(DBusConnection *conn,
-					struct connman_element *device)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry;
-
-	DBG("conn %p", conn);
-
-	if (device == NULL)
-		return;
-
-	signal = dbus_message_new_signal(device->path,
-				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_networks(device, &entry);
-
-	g_dbus_send_message(conn, signal);
-}
-
 static void append_connections(DBusMessageIter *entry)
 {
 	DBusMessageIter value, iter;
@@ -1758,17 +1633,6 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_node_append_data(node, element);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
-		if (g_dbus_register_interface(connection, element->path,
-					CONNMAN_NETWORK_INTERFACE,
-					network_methods, element_signals,
-					NULL, element, NULL) == FALSE)
-			connman_error("Failed to register %s network",
-								element->path);
-		else
-			emit_networks_signal(connection, element->parent);
-	}
-
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
 		if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_CONNECTION_INTERFACE,
@@ -1877,13 +1741,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 
 		g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_CONNECTION_INTERFACE);
-	}
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
-		emit_networks_signal(connection, element->parent);
-
-		g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_NETWORK_INTERFACE);
 	}
 
 	emit_element_signal(connection, "ElementRemoved", element);
