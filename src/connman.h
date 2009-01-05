@@ -62,7 +62,7 @@ gboolean __connman_debug_enabled(void);
 
 #include <connman/plugin.h>
 
-int __connman_plugin_init(void);
+int __connman_plugin_init(const char *pattern);
 void __connman_plugin_cleanup(void);
 
 #include <connman/security.h>

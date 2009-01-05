@@ -60,7 +60,7 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	return TRUE;
 }
 
-int __connman_plugin_init(void)
+int __connman_plugin_init(const char *pattern)
 {
 	GDir *dir;
 	const gchar *file;
@@ -93,6 +93,13 @@ int __connman_plugin_init(void)
 			desc = dlsym(handle, "connman_plugin_desc");
 			if (desc == NULL) {
 				g_warning("Can't load symbol: %s", dlerror());
+				dlclose(handle);
+				continue;
+			}
+
+			if (g_pattern_match_simple(pattern,
+							desc->name) == FALSE) {
+				DBG("ignoring %s", desc->description);
 				dlclose(handle);
 				continue;
 			}

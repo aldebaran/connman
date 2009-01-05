@@ -51,6 +51,7 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 }
 
 static gchar *option_device = NULL;
+static gchar *option_plugin = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_selftest = FALSE;
 static gboolean option_compat = FALSE;
@@ -59,6 +60,8 @@ static gboolean option_debug = FALSE;
 static GOptionEntry options[] = {
 	{ "device", 'i', 0, G_OPTION_ARG_STRING, &option_device,
 				"Specify network device/interface", "DEV" },
+	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
+				"Specify plugins to load", "NAME" },
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
@@ -163,11 +166,12 @@ int main(int argc, char *argv[])
 	__connman_rtnl_init();
 	__connman_udev_init();
 
-	__connman_plugin_init();
+	__connman_plugin_init(option_plugin);
 
 	__connman_element_start();
 
 	g_free(option_device);
+	g_free(option_plugin);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
