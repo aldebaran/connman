@@ -125,8 +125,6 @@ extern void connman_element_update(struct connman_element *element);
 
 extern int connman_element_set_enabled(struct connman_element *element,
 							gboolean enabled);
-extern int connman_element_set_scanning(struct connman_element *element,
-							gboolean scanning);
 
 static inline void *connman_element_get_data(struct connman_element *element)
 {
