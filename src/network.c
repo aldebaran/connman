@@ -712,14 +712,106 @@ static struct connman_driver network_driver = {
 
 static int network_load(struct connman_network *network)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	const char *name;
+
 	DBG("network %p", network);
+
+	name = connman_device_get_name(network->device);
+	if (name == NULL)
+		return -EINVAL;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, name);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
+		g_free(pathname);
+		return -ENOENT;
+	}
+
+	g_free(pathname);
+
+	if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE) {
+		g_free(data);
+		return -EILSEQ;
+	}
+
+	g_free(data);
+
+	network->remember = g_key_file_get_boolean(keyfile,
+					network->identifier, "Remember", NULL);
+
+	g_free(network->wifi.security);
+	network->wifi.security = g_key_file_get_string(keyfile,
+				network->identifier, "WiFi.Security", NULL);
+
+	g_free(network->wifi.passphrase);
+	network->wifi.passphrase = g_key_file_get_string(keyfile,
+				network->identifier, "WiFi.Passphrase", NULL);
+
+	g_key_file_free(keyfile);
 
 	return 0;
 }
 
 static int network_save(struct connman_network *network)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	const char *name;
+
 	DBG("network %p", network);
+
+	name = connman_device_get_name(network->device);
+	if (name == NULL)
+		return -EINVAL;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, name);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
+		goto update;
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE)
+			goto done;
+	}
+
+	g_free(data);
+
+update:
+	g_key_file_set_boolean(keyfile, network->identifier,
+					"Remember", network->remember);
+
+	if (network->wifi.security != NULL)
+		g_key_file_set_string(keyfile, network->identifier,
+				"WiFi.Security", network->wifi.security);
+
+	if (network->wifi.passphrase != NULL)
+		g_key_file_set_string(keyfile, network->identifier,
+				"WiFi.Passphrase", network->wifi.passphrase);
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	g_file_set_contents(pathname, data, length, NULL);
+
+done:
+	g_free(data);
+
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
 
 	return 0;
 }
