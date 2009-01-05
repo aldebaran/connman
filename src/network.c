@@ -154,6 +154,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		network->wifi.passphrase = g_strdup(passphrase);
 	}
 
+	__connman_storage_save_network(network);
+
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 

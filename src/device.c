@@ -347,7 +347,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_failed(msg);
 	}
 
-	__connman_element_store(&device->element);
+	__connman_storage_save_device(device);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
