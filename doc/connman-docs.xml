@@ -101,6 +101,7 @@
     </partintro>
     <xi:include href="xml/log.xml" />
     <xi:include href="xml/plugin.xml" />
+    <xi:include href="xml/storage.xml" />
     <xi:include href="xml/security.xml" />
     <xi:include href="xml/resolver.xml" />
     <!-- <xi:include href="xml/device.xml" /> -->
