@@ -596,6 +596,26 @@ int connman_network_set_blob(struct connman_network *network,
 	return 0;
 }
 
+/**
+ * connman_network_get_blob:
+ * @network: network structure
+ * @key: unique identifier
+ * @size: pointer to blob size
+ *
+ * Get binary blob value for specific key
+ */
+const void *connman_network_get_blob(struct connman_network *network,
+					const char *key, unsigned int *size)
+{
+	if (g_str_equal(key, "WiFi.SSID") == TRUE) {
+		if (size != NULL)
+			*size = network->wifi.ssid_len;
+		return network->wifi.ssid;
+	}
+
+	return NULL;
+}
+
 void __connman_network_set_device(struct connman_network *network,
 					struct connman_device *device)
 {

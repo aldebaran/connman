@@ -78,6 +78,8 @@ extern int connman_network_set_uint8(struct connman_network *network,
 					const char *key, connman_uint8_t value);
 extern int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size);
+extern const void *connman_network_get_blob(struct connman_network *network,
+					const char *key, unsigned int *size);
 
 extern struct connman_device *connman_network_get_device(struct connman_network *network);
 
