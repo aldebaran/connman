@@ -1800,9 +1800,8 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 
 	element_root = g_node_new(element);
 
-	__connman_device_init();
 	__connman_network_init();
-	__connman_connection_init();
+	__connman_device_init();
 
 	return 0;
 }
@@ -1833,6 +1832,7 @@ void __connman_element_start(void)
 
 	started = TRUE;
 
+	__connman_connection_init();
 	__connman_detect_init();
 }
 
@@ -1841,6 +1841,7 @@ void __connman_element_stop(void)
 	DBG("");
 
 	__connman_detect_cleanup();
+	__connman_connection_cleanup();
 }
 
 static gboolean free_driver(GNode *node, gpointer data)
@@ -1879,9 +1880,8 @@ void __connman_element_cleanup(void)
 {
 	DBG("");
 
-	__connman_connection_cleanup();
-	__connman_network_cleanup();
 	__connman_device_cleanup();
+	__connman_network_cleanup();
 
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_driver, NULL);
