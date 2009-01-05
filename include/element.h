@@ -64,7 +64,6 @@ struct connman_element {
 	gchar *path;
 	enum connman_element_type type;
 	gboolean enabled;
-	guint16 priority;
 	guint8 strength;
 	gchar *devpath;
 	gchar *devname;
