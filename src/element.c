@@ -127,6 +127,7 @@ static const char *type2string(enum connman_element_type type)
 	return NULL;
 }
 
+#if 0
 static const char *subtype2string(enum connman_element_subtype type)
 {
 	switch (type) {
@@ -148,6 +149,7 @@ static const char *subtype2string(enum connman_element_subtype type)
 
 	return NULL;
 }
+#endif
 
 const char *__connman_element_policy2string(enum connman_element_policy policy)
 {
@@ -205,6 +207,7 @@ enum connman_ipv4_method __connman_ipv4_string2method(const char *method)
 		return CONNMAN_IPV4_METHOD_UNKNOWN;
 }
 
+#if 0
 static void append_property(DBusMessageIter *dict,
 				struct connman_property *property)
 {
@@ -278,7 +281,6 @@ static void add_common_properties(struct connman_element *element,
 	__connman_element_unlock(element);
 }
 
-#if 0
 static void set_common_property(struct connman_element *element,
 				const char *name, DBusMessageIter *value)
 {
@@ -335,180 +337,6 @@ static void emit_element_signal(DBusConnection *conn, const char *member,
 
 	g_dbus_send_message(conn, signal);
 }
-
-static void emit_enabled_signal(DBusConnection *conn,
-					struct connman_element *element)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *iface, *key;
-
-	DBG("conn %p", conn);
-
-	if (element == NULL)
-		return;
-
-	switch (element->type) {
-	case CONNMAN_ELEMENT_TYPE_CONNECTION:
-		iface = CONNMAN_CONNECTION_INTERFACE;
-		key = "Default";
-		break;
-	default:
-		return;
-	}
-
-	signal = dbus_message_new_signal(element->path,
-						iface, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&element->enabled);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(conn, signal);
-}
-
-static DBusMessage *do_enable(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-
-	DBG("conn %p", conn);
-
-	if (element->enabled == TRUE)
-		return __connman_error_failed(msg);
-
-	if (element->driver && element->driver->enable) {
-		DBG("Calling enable callback");
-		if (element->driver->enable(element) < 0)
-			return __connman_error_failed(msg);
-	}
-
-	element->enabled = TRUE;
-
-	emit_enabled_signal(connection, element);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *do_disable(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-
-	DBG("conn %p", conn);
-
-	if (element->enabled == FALSE)
-		return __connman_error_failed(msg);
-
-	if (element->driver && element->driver->disable) {
-		DBG("Calling disable callback");
-		if (element->driver->disable(element) < 0)
-			return __connman_error_failed(msg);
-	}
-
-	element->enabled = FALSE;
-
-	emit_enabled_signal(connection, element);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *connection_get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	str = subtype2string(element->subtype);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
-						DBUS_TYPE_STRING, &str);
-
-	if (element->devname != NULL)
-		connman_dbus_dict_append_variant(&dict, "Interface",
-					DBUS_TYPE_STRING, &element->devname);
-
-	if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIFI ||
-			element->subtype == CONNMAN_ELEMENT_SUBTYPE_WIMAX)
-		connman_dbus_dict_append_variant(&dict, "Strength",
-					DBUS_TYPE_BYTE, &element->strength);
-
-	connman_dbus_dict_append_variant(&dict, "Default",
-					DBUS_TYPE_BOOLEAN, &element->enabled);
-
-	add_common_properties(element, &dict);
-
-	dbus_message_iter_close_container(&array, &dict);
-
-	return reply;
-}
-
-static DBusMessage *connection_set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessageIter iter, value;
-	const char *name;
-
-	DBG("conn %p", conn);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_get_basic(&iter, &name);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (__connman_security_check_privileges(msg) < 0)
-		return __connman_error_permission_denied(msg);
-
-	if (g_str_equal(name, "Default") == TRUE) {
-		dbus_bool_t enabled;
-
-		dbus_message_iter_get_basic(&value, &enabled);
-
-		if (enabled == TRUE)
-			return do_enable(conn, msg, element);
-		else
-			return do_disable(conn, msg, element);
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static GDBusMethodTable connection_methods[] = {
-	{ "GetProperties", "",   "a{sv}", connection_get_properties },
-	{ "SetProperty",   "sv", "",      connection_set_property   },
-	{ },
-};
-
-static GDBusSignalTable element_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ },
-};
 
 struct foreach_data {
 	enum connman_element_type type;
@@ -691,10 +519,8 @@ static void enable_element(struct connman_element *element)
 		return;
 
 	if (element->driver && element->driver->enable) {
-		if (element->driver->enable(element) == 0) {
+		if (element->driver->enable(element) == 0)
 			element->enabled = TRUE;
-			emit_enabled_signal(connection, element);
-		}
 	}
 }
 
@@ -771,10 +597,8 @@ static void disable_element(struct connman_element *element)
 		return;
 
 	if (element->driver && element->driver->disable) {
-		if (element->driver->disable(element) == 0) {
+		if (element->driver->disable(element) == 0)
 			element->enabled = FALSE;
-			emit_enabled_signal(connection, element);
-		}
 	}
 }
 
@@ -945,53 +769,6 @@ int connman_element_add_static_property(struct connman_element *element,
 	return 0;
 }
 
-static void emit_property_changed(DBusConnection *conn,
-				struct connman_element *element,
-				const char *name, int type, const void *data)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *iface, *sig;
-
-	DBG("conn %p", conn);
-
-	switch (element->type) {
-	case CONNMAN_ELEMENT_TYPE_CONNECTION:
-		iface = CONNMAN_CONNECTION_INTERFACE;
-		break;
-	default:
-		return;
-	}
-
-	signal = dbus_message_new_signal(element->path,
-						iface, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &name);
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		sig = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_BYTE:
-		sig = DBUS_TYPE_BYTE_AS_STRING;
-		break;
-	default:
-		sig = DBUS_TYPE_VARIANT_AS_STRING;
-		break;
-	}
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							sig, &value);
-	dbus_message_iter_append_basic(&value, type, data);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(conn, signal);
-}
-
 int connman_element_set_static_property(struct connman_element *element,
 				const char *name, int type, const void *value)
 {
@@ -1029,8 +806,6 @@ int connman_element_set_static_property(struct connman_element *element,
 	}
 
 	__connman_element_unlock(element);
-
-	emit_property_changed(connection, element, name, type, value);
 
 	return 0;
 }
@@ -1589,17 +1364,9 @@ static void register_element(gpointer data, gpointer user_data)
 	g_node_append_data(node, element);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
-		if (g_dbus_register_interface(connection, element->path,
-					CONNMAN_CONNECTION_INTERFACE,
-					connection_methods, element_signals,
-					NULL, element, NULL) == FALSE)
-			connman_error("Failed to register %s connection",
-								element->path);
-		else {
-			set_signal_strength(element);
-			emit_connections_signal(connection);
-			emit_state_change(connection, "online");
-		}
+		set_signal_strength(element);
+		emit_connections_signal(connection);
+		emit_state_change(connection, "online");
 	}
 
 	emit_element_signal(connection, "ElementAdded", element);
@@ -1691,9 +1458,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
 			emit_state_change(connection, "offline");
 		emit_connections_signal(connection);
-
-		g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_CONNECTION_INTERFACE);
 	}
 
 	emit_element_signal(connection, "ElementRemoved", element);
@@ -1741,11 +1505,8 @@ static gboolean update_element(GNode *node, gpointer user_data)
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION &&
 				root->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
-		if (element->strength != root->strength) {
+		if (element->strength != root->strength)
 			element->strength = root->strength;
-			emit_property_changed(connection, element, "Strength",
-					DBUS_TYPE_BYTE, &element->strength);
-		}
 	}
 
 	emit_element_signal(connection, "ElementUpdated", element);
@@ -1773,8 +1534,6 @@ int connman_element_set_enabled(struct connman_element *element,
 		return 0;
 
 	element->enabled = enabled;
-
-	emit_enabled_signal(connection, element);
 
 	return 0;
 }
