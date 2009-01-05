@@ -1046,7 +1046,7 @@ int connman_device_set_string(struct connman_device *device,
 const char *connman_device_get_string(struct connman_device *device,
 							const char *key)
 {
-	DBG("device %p key %s", device);
+	DBG("device %p key %s", device, key);
 
 	if (g_str_equal(key, "Name") == TRUE)
 		return device->name;
