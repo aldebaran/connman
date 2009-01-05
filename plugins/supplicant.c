@@ -756,7 +756,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	struct connman_network *network;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	char *temp = NULL;
+	char *security, *temp = NULL;
 	unsigned char strength;
 	unsigned int i;
 
@@ -840,6 +840,15 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	strength = result.quality;
 
+	if (result.has_rsn == TRUE)
+		security = "wpa2";
+	else if (result.has_wpa == TRUE)
+		security = "wpa";
+	else if (result.has_wep == TRUE)
+		security = "wep";
+	else
+		security = "none";
+
 	network = connman_device_get_network(task->device, temp);
 	if (network == NULL) {
 		const char *mode, *security;
@@ -858,16 +867,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
 		connman_network_set_string(network, "WiFi.Mode", mode);
 
-		if (result.has_rsn == TRUE)
-			security = "wpa2";
-		else if (result.has_wpa == TRUE)
-			security = "wpa";
-		else if (result.has_wep == TRUE)
-			security = "wep";
-		else
-			security = "none";
-		connman_network_set_string(network, "WiFi.Security", security);
-
 		DBG("%s (%s %s) strength %d", result.identifier, mode,
 							security, strength);
 
@@ -878,6 +877,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	connman_network_set_uint8(network, "Strength", strength);
+
+	connman_network_set_string(network, "WiFi.Security", security);
 
 done:
 	g_free(result.identifier);
