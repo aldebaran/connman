@@ -80,7 +80,6 @@ struct connman_element {
 	enum connman_element_state state;
 	enum connman_element_policy policy;
 	gboolean enabled;
-	gboolean remember;
 	guint16 priority;
 	guint8 strength;
 	gchar *devpath;
