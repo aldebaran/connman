@@ -202,6 +202,7 @@ static int del_route(struct connman_element *element, const char *gateway)
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 
@@ -217,6 +218,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (element->devname != NULL)
+		connman_dbus_dict_append_variant(&dict, "Interface",
+					DBUS_TYPE_STRING, &element->devname);
 
 	dbus_message_iter_close_container(&array, &dict);
 
