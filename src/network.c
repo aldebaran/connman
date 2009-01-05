@@ -34,6 +34,7 @@ struct connman_network {
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
 	connman_bool_t connected;
+	connman_bool_t remember;
 	connman_uint8_t strength;
 	char *identifier;
 	char *name;
@@ -89,6 +90,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Connected",
 				DBUS_TYPE_BOOLEAN, &network->connected);
 
+	connman_dbus_dict_append_variant(&dict, "Remember",
+				DBUS_TYPE_BOOLEAN, &network->remember);
+
 	if (network->strength > 0)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &network->strength);
@@ -118,6 +122,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_network *network = data;
 	DBusMessageIter iter, value;
 	const char *name;
 
@@ -132,6 +137,22 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	if (__connman_security_check_privileges(msg) < 0)
 		return __connman_error_permission_denied(msg);
+
+	if (g_str_equal(name, "Remember") == TRUE) {
+		connman_bool_t remember;
+
+		dbus_message_iter_get_basic(&value, &remember);
+
+		if (network->remember == remember)
+			return __connman_error_invalid_arguments(msg);
+	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
+		const char *passphrase;
+
+		dbus_message_iter_get_basic(&value, &passphrase);
+
+		g_free(network->wifi.passphrase);
+		network->wifi.passphrase = g_strdup(passphrase);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
