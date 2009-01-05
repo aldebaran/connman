@@ -551,6 +551,9 @@ static void probe_driver(struct connman_element *element, gpointer user_data)
 	if (element->device == NULL)
 		return;
 
+	if (element->device->driver != NULL)
+		return;
+
 	if (driver->probe(element->device) < 0)
 		return;
 
@@ -1204,6 +1207,9 @@ static int device_probe(struct connman_element *element)
 
 	if (device == NULL)
 		return -ENODEV;
+
+	if (device->driver != NULL)
+		return -EALREADY;
 
 	for (list = driver_list; list; list = list->next) {
 		struct connman_device_driver *driver = list->data;
