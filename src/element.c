@@ -1033,6 +1033,10 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 				*((char **) value) = property->value;
 				found = TRUE;
 				break;
+			case DBUS_TYPE_BYTE:
+				memcpy(value, property->value, 1);
+				found = TRUE;
+				break;
 			}
 			break;
 		}
