@@ -38,13 +38,6 @@ extern "C" {
  * @short_description: Functions for handling elements
  */
 
-enum connman_element_state {
-	CONNMAN_ELEMENT_STATE_UNKNOWN   = 0,
-	CONNMAN_ELEMENT_STATE_CONNECT   = 1,
-	CONNMAN_ELEMENT_STATE_CONNECTED = 2,
-	CONNMAN_ELEMENT_STATE_CLOSED    = 3,
-};
-
 enum connman_element_policy {
 	CONNMAN_ELEMENT_POLICY_UNKNOWN = 0,
 	CONNMAN_ELEMENT_POLICY_IGNORE  = 1,
@@ -77,7 +70,6 @@ struct connman_element {
 	gchar *name;
 	gchar *path;
 	enum connman_element_type type;
-	enum connman_element_state state;
 	enum connman_element_policy policy;
 	gboolean enabled;
 	guint16 priority;

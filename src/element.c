@@ -603,7 +603,6 @@ struct connman_element *connman_element_create(const char *name)
 
 	element->name    = g_strdup(name);
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-	element->state   = CONNMAN_ELEMENT_STATE_CLOSED;
 	element->policy  = CONNMAN_ELEMENT_POLICY_AUTO;
 	element->index   = -1;
 	element->enabled = FALSE;
