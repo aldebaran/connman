@@ -67,8 +67,6 @@ static int network_disconnect(struct connman_network *network)
 {
 	DBG("network %p", network);
 
-	//connman_element_unregister_children((struct connman_element *) network);
-
 	return supplicant_disconnect(network);
 }
 
@@ -122,8 +120,6 @@ static int wifi_disable(struct connman_device *device)
 	struct wifi_data *data = connman_device_get_data(device);
 
 	DBG("device %p", device);
-
-	//connman_element_unregister_children((struct connman_element *) device);
 
 	data->connected = FALSE;
 
