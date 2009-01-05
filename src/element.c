@@ -58,12 +58,6 @@ static struct {
 		DBUS_TYPE_STRING, "IPv4.Broadcast" },
 	{ CONNMAN_PROPERTY_ID_IPV4_NAMESERVER,
 		DBUS_TYPE_STRING, "IPv4.Nameserver" },
-
-	{ CONNMAN_PROPERTY_ID_WIFI_SECURITY,
-		DBUS_TYPE_STRING, "WiFi.Security" },
-	{ CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE,
-		DBUS_TYPE_STRING, "WiFi.Passphrase" },
-
 	{ }
 };
 
@@ -949,18 +943,6 @@ int connman_element_set_property(struct connman_element *element,
 		element->ipv4.nameserver = g_strdup(*((const char **) value));
 		__connman_element_unlock(element);
 		break;
-	case CONNMAN_PROPERTY_ID_WIFI_SECURITY:
-		__connman_element_lock(element);
-		g_free(element->wifi.security);
-		element->wifi.security = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE:
-		__connman_element_lock(element);
-		g_free(element->wifi.passphrase);
-		element->wifi.passphrase = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
 	default:
 		return -EINVAL;
 	}
@@ -1021,22 +1003,6 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.nameserver;
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_WIFI_SECURITY:
-		if (element->wifi.security == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		__connman_element_lock(element);
-		*((char **) value) = element->wifi.security;
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_WIFI_PASSPHRASE:
-		if (element->wifi.passphrase == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		__connman_element_lock(element);
-		*((char **) value) = element->wifi.passphrase;
 		__connman_element_unlock(element);
 		break;
 	default:

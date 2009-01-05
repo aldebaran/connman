@@ -92,11 +92,6 @@ struct connman_element {
 		gchar *broadcast;
 		gchar *nameserver;
 	} ipv4;
-
-	struct {
-		gchar *security;
-		gchar *passphrase;
-	} wifi;
 };
 
 extern struct connman_element *connman_element_create(const char *name);
