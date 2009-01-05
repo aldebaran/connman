@@ -75,11 +75,12 @@ struct supplicant_result {
 
 struct supplicant_task {
 	int ifindex;
-	gchar *ifname;
+	char *ifname;
 	struct connman_device *device;
-	gchar *path;
+	struct connman_network *network;
+	char *path;
+	char *netpath;
 	gboolean created;
-	gchar *network;
 	enum supplicant_state state;
 	GSList *scan_results;
 };
@@ -360,7 +361,7 @@ static int add_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
-	if (task->network != NULL)
+	if (task->netpath != NULL)
 		return -EALREADY;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
@@ -399,7 +400,7 @@ static int add_network(struct supplicant_task *task)
 
 	DBG("path %s", path);
 
-	task->network = g_strdup(path);
+	task->netpath = g_strdup(path);
 
 	dbus_message_unref(reply);
 
@@ -413,7 +414,7 @@ static int remove_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
-	if (task->network == NULL)
+	if (task->netpath == NULL)
 		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
@@ -421,7 +422,7 @@ static int remove_network(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->network,
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->netpath,
 							DBUS_TYPE_INVALID);
 
 	dbus_error_init(&error);
@@ -442,8 +443,8 @@ static int remove_network(struct supplicant_task *task)
 
 	dbus_message_unref(reply);
 
-	g_free(task->network);
-	task->network = NULL;
+	g_free(task->netpath);
+	task->netpath = NULL;
 
 	return 0;
 }
@@ -455,7 +456,7 @@ static int select_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
-	if (task->network == NULL)
+	if (task->netpath == NULL)
 		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
@@ -463,7 +464,7 @@ static int select_network(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->network,
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->netpath,
 							DBUS_TYPE_INVALID);
 
 	dbus_error_init(&error);
@@ -494,10 +495,10 @@ static int enable_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
-	if (task->network == NULL)
+	if (task->netpath == NULL)
 		return -EINVAL;
 
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->network,
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->netpath,
 					SUPPLICANT_INTF ".Network", "enable");
 	if (message == NULL)
 		return -ENOMEM;
@@ -530,10 +531,10 @@ static int disable_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
-	if (task->network == NULL)
+	if (task->netpath == NULL)
 		return -EINVAL;
 
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->network,
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->netpath,
 					SUPPLICANT_INTF ".Network", "disable");
 	if (message == NULL)
 		return -ENOMEM;
@@ -569,10 +570,10 @@ static int set_network(struct supplicant_task *task,
 
 	DBG("task %p", task);
 
-	if (task->network == NULL)
+	if (task->netpath == NULL)
 		return -EINVAL;
 
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->network,
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->netpath,
 					SUPPLICANT_INTF ".Network", "set");
 	if (message == NULL)
 		return -ENOMEM;
@@ -853,11 +854,18 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	network = connman_device_get_network(task->device, temp);
 	if (network == NULL) {
 		const char *mode;
+		int index;
 
 		network = connman_network_create(temp,
 						CONNMAN_NETWORK_TYPE_WIFI);
 		if (network == NULL)
 			goto done;
+
+		index = connman_device_get_index(task->device);
+		connman_network_set_index(network, index);
+
+		connman_network_set_protocol(network,
+						CONNMAN_NETWORK_PROTOCOL_IP);
 
 		connman_network_set_string(network, "Name", result.identifier);
 
@@ -1045,9 +1053,11 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	switch (task->state) {
 	case STATE_COMPLETED:
 		/* carrier on */
+		connman_network_set_connected(task->network, TRUE);
 		break;
 	case STATE_DISCONNECTED:
 		/* carrier off */
+		connman_network_set_connected(task->network, FALSE);
 		break;
 	default:
 		break;
@@ -1177,11 +1187,21 @@ int supplicant_connect(struct connman_network *network)
 
 	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_len);
 
+	DBG("security %s passphrase %s", security, passphrase);
+
+	if (security == NULL && passphrase == NULL)
+		return -EINVAL;
+
+	if (g_str_equal(security, "none") == FALSE && passphrase == NULL)
+		return -EINVAL;
+
 	index = connman_network_get_index(network);
 
 	task = find_task_by_index(index);
 	if (task == NULL)
 		return -ENODEV;
+
+	task->network = connman_network_ref(network);
 
 	add_network(task);
 
@@ -1211,6 +1231,8 @@ int supplicant_disconnect(struct connman_network *network)
 	disable_network(task);
 
 	remove_network(task);
+
+	connman_network_unref(task->network);
 
 	return 0;
 }
