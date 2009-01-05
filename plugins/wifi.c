@@ -23,7 +23,10 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <dbus/dbus.h>
+#include <glib.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
@@ -53,11 +56,29 @@ static void network_remove(struct connman_network *network)
 	DBG("network %p", network);
 }
 
+static int network_connect(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return supplicant_connect(network);
+}
+
+static int network_disconnect(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	//connman_element_unregister_children((struct connman_element *) network);
+
+	return supplicant_disconnect(network);
+}
+
 static struct connman_network_driver network_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_NETWORK_TYPE_WIFI,
 	.probe		= network_probe,
 	.remove		= network_remove,
+	.connect	= network_connect,
+	.disconnect	= network_disconnect,
 };
 
 static int wifi_probe(struct connman_device *device)
@@ -102,7 +123,7 @@ static int wifi_disable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	connman_element_unregister_children((struct connman_element *) device);
+	//connman_element_unregister_children((struct connman_element *) device);
 
 	data->connected = FALSE;
 

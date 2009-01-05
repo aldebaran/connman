@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -1162,15 +1163,24 @@ int supplicant_scan(struct connman_device *device)
 	return 0;
 }
 
-int __supplicant_connect(struct connman_element *element,
-				const unsigned char *ssid, int ssid_len,
-				const char *security, const char *passphrase)
+int supplicant_connect(struct connman_network *network)
 {
 	struct supplicant_task *task;
+	const char *security, *passphrase;
+	const void *ssid;
+	unsigned int ssid_len;
+	int index;
 
-	DBG("element %p", element);
+	DBG("network %p", network);
 
-	task = find_task_by_index(element->index);
+	security = connman_network_get_string(network, "WiFi.Security");
+	passphrase = connman_network_get_string(network, "WiFi.Passphrase");
+
+	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_len);
+
+	index = connman_network_get_index(network);
+
+	task = find_task_by_index(index);
 	if (task == NULL)
 		return -ENODEV;
 
@@ -1186,13 +1196,16 @@ int __supplicant_connect(struct connman_element *element,
 	return 0;
 }
 
-int __supplicant_disconnect(struct connman_element *element)
+int supplicant_disconnect(struct connman_network *network)
 {
 	struct supplicant_task *task;
+	int index;
 
-	DBG("element %p", element);
+	DBG("network %p", network);
 
-	task = find_task_by_index(element->index);
+	index = connman_network_get_index(network);
+
+	task = find_task_by_index(index);
 	if (task == NULL)
 		return -ENODEV;
 

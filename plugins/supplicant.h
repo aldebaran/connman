@@ -20,7 +20,7 @@
  */
 
 #include <connman/device.h>
-#include <connman/element.h>
+#include <connman/network.h>
 
 struct supplicant_driver {
 	const char *name;
@@ -35,7 +35,5 @@ int supplicant_start(struct connman_device *device);
 int supplicant_stop(struct connman_device *device);
 int supplicant_scan(struct connman_device *device);
 
-int __supplicant_connect(struct connman_element *element,
-				const unsigned char *ssid, int ssid_len,
-				const char *security, const char *passphrase);
-int __supplicant_disconnect(struct connman_element *element);
+int supplicant_connect(struct connman_network *network);
+int supplicant_disconnect(struct connman_network *network);
