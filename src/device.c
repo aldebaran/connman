@@ -33,9 +33,9 @@ struct connman_device {
 	enum connman_device_type type;
 	enum connman_device_mode mode;
 	enum connman_device_policy policy;
-	gboolean powered;
-	gboolean carrier;
-	gboolean scanning;
+	connman_bool_t powered;
+	connman_bool_t carrier;
+	connman_bool_t scanning;
 	char *name;
 	char *node;
 	char *interface;
@@ -128,7 +128,7 @@ static enum connman_device_policy string2policy(const char *policy)
 		return CONNMAN_DEVICE_POLICY_UNKNOWN;
 }
 
-static int set_powered(struct connman_device *device, gboolean powered)
+static int set_powered(struct connman_device *device, connman_bool_t powered)
 {
 	struct connman_device_driver *driver = device->driver;
 	int err;
@@ -321,7 +321,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		return __connman_error_permission_denied(msg);
 
 	if (g_str_equal(name, "Powered") == TRUE) {
-		gboolean powered;
+		connman_bool_t powered;
 		int err;
 
 		dbus_message_iter_get_basic(&value, &powered);
