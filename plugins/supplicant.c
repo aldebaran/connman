@@ -852,8 +852,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	network = connman_device_get_network(task->device, temp);
 	if (network == NULL) {
-		const char *mode, *security;
-		unsigned char strength;
+		const char *mode;
 
 		network = connman_network_create(temp,
 						CONNMAN_NETWORK_TYPE_WIFI);
