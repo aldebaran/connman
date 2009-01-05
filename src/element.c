@@ -510,20 +510,6 @@ static gboolean match_driver(struct connman_element *element,
 	return FALSE;
 }
 
-static void enable_element(struct connman_element *element)
-{
-	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
-		return;
-
-	if (element->policy != CONNMAN_ELEMENT_POLICY_AUTO)
-		return;
-
-	if (element->driver && element->driver->enable) {
-		if (element->driver->enable(element) == 0)
-			element->enabled = TRUE;
-	}
-}
-
 static gboolean probe_driver(GNode *node, gpointer data)
 {
 	struct connman_element *element = node->data;
@@ -538,8 +524,6 @@ static gboolean probe_driver(GNode *node, gpointer data)
 		__connman_element_lock(element);
 		element->driver = driver;
 		__connman_element_unlock(element);
-
-		enable_element(element);
 	}
 
 	return FALSE;
@@ -588,20 +572,6 @@ int connman_driver_register(struct connman_driver *driver)
 	return 0;
 }
 
-static void disable_element(struct connman_element *element)
-{
-	if (element->policy != CONNMAN_ELEMENT_POLICY_AUTO)
-		return;
-
-	if (element->enabled == FALSE)
-		return;
-
-	if (element->driver && element->driver->disable) {
-		if (element->driver->disable(element) == 0)
-			element->enabled = FALSE;
-	}
-}
-
 static gboolean remove_driver(GNode *node, gpointer data)
 {
 	struct connman_element *element = node->data;
@@ -610,8 +580,6 @@ static gboolean remove_driver(GNode *node, gpointer data)
 	DBG("element %p name %s", element, element->name);
 
 	if (element->driver == driver) {
-		disable_element(element);
-
 		if (driver->remove)
 			driver->remove(element);
 
@@ -1324,8 +1292,6 @@ static void probe_element(struct connman_element *element)
 			__connman_element_lock(element);
 			element->driver = driver;
 			__connman_element_unlock(element);
-
-			enable_element(element);
 			break;
 		}
 	}
@@ -1440,8 +1406,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		g_node_unlink(node);
 
 	if (element->driver) {
-		disable_element(element);
-
 		if (element->driver->remove)
 			element->driver->remove(element);
 
@@ -1610,8 +1574,6 @@ static gboolean free_driver(GNode *node, gpointer data)
 	DBG("element %p name %s", element, element->name);
 
 	if (element->driver) {
-		disable_element(element);
-
 		if (element->driver->remove)
 			element->driver->remove(element);
 
