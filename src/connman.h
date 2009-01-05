@@ -131,6 +131,9 @@ static inline void __connman_element_unlock(struct connman_element *element)
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
 
+int __connman_ipv4_init(void);
+void __connman_ipv4_cleanup(void);
+
 int __connman_connection_init(void);
 void __connman_connection_cleanup(void);
 

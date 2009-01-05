@@ -31,21 +31,7 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 
-#define CONNMAN_API_SUBJECT_TO_CHANGE
-#include <connman/plugin.h>
-#include <connman/driver.h>
-#include <connman/resolver.h>
-#include <connman/rtnl.h>
-#include <connman/log.h>
-
-#include "inet.h"
-
-enum connman_ipv4_method {
-	CONNMAN_IPV4_METHOD_UNKNOWN = 0,
-	CONNMAN_IPV4_METHOD_OFF     = 1,
-	CONNMAN_IPV4_METHOD_STATIC  = 2,
-	CONNMAN_IPV4_METHOD_DHCP    = 3,
-};
+#include "connman.h"
 
 struct connman_ipv4 {
 	enum connman_ipv4_method method;
@@ -152,6 +138,31 @@ static int clear_ipv4(struct connman_element *element)
 	return 0;
 }
 
+static char *index2name(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (index < 0)
+		return NULL;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return NULL;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return NULL;
+
+	return strdup(ifr.ifr_name);
+}
+
 static int ipv4_probe(struct connman_element *element)
 {
 	struct connman_element *connection;
@@ -189,7 +200,7 @@ static int ipv4_probe(struct connman_element *element)
 
 	connection->type    = CONNMAN_ELEMENT_TYPE_CONNECTION;
 	connection->index   = element->index;
-	connection->devname = inet_index2name(element->index);
+	connection->devname = index2name(element->index);
 
 	if (connman_element_register(connection, element) < 0)
 		connman_element_unref(connection);
@@ -207,19 +218,17 @@ static void ipv4_remove(struct connman_element *element)
 static struct connman_driver ipv4_driver = {
 	.name		= "ipv4",
 	.type		= CONNMAN_ELEMENT_TYPE_IPV4,
+	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
 	.probe		= ipv4_probe,
 	.remove		= ipv4_remove,
 };
 
-static int ipv4_init(void)
+int __connman_ipv4_init(void)
 {
 	return connman_driver_register(&ipv4_driver);
 }
 
-static void ipv4_exit(void)
+void __connman_ipv4_cleanup(void)
 {
 	connman_driver_unregister(&ipv4_driver);
 }
-
-CONNMAN_PLUGIN_DEFINE(ipv4, "IPv4 configuration plugin", VERSION,
-							ipv4_init, ipv4_exit)

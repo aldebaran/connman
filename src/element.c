@@ -1556,6 +1556,7 @@ void __connman_element_start(void)
 	started = TRUE;
 
 	__connman_connection_init();
+	__connman_ipv4_init();
 	__connman_detect_init();
 }
 
@@ -1564,6 +1565,7 @@ void __connman_element_stop(void)
 	DBG("");
 
 	__connman_detect_cleanup();
+	__connman_ipv4_cleanup();
 	__connman_connection_cleanup();
 }
 

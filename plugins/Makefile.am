@@ -1,7 +1,7 @@
 
 plugindir = $(libdir)/connman/plugins
 
-plugin_LTLIBRARIES = ipv4.la
+plugin_LTLIBRARIES =
 
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
@@ -52,8 +52,6 @@ plugin_LTLIBRARIES += hso.la
 
 hso_la_SOURCES = hso.c modem.h modem.c
 endif
-
-ipv4_la_SOURCES = ipv4.c inet.h inet.c
 
 if UDHCP
 plugin_LTLIBRARIES += udhcp.la
