@@ -1802,6 +1802,7 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 
 	__connman_device_init();
 	__connman_network_init();
+	__connman_connection_init();
 
 	return 0;
 }
@@ -1878,6 +1879,7 @@ void __connman_element_cleanup(void)
 {
 	DBG("");
 
+	__connman_connection_cleanup();
 	__connman_network_cleanup();
 	__connman_device_cleanup();
 

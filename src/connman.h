@@ -131,6 +131,9 @@ static inline void __connman_element_unlock(struct connman_element *element)
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
 
+int __connman_connection_init(void);
+void __connman_connection_cleanup(void);
+
 #ifdef HAVE_UDEV
 int __connman_udev_init(void);
 void __connman_udev_cleanup(void);
