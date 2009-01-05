@@ -120,9 +120,6 @@ const char *__connman_element_subtype2string(enum connman_element_subtype type);
 const char *__connman_element_policy2string(enum connman_element_policy policy);
 enum connman_element_policy __connman_element_string2policy(const char *policy);
 
-int __connman_element_load(struct connman_element *element);
-int __connman_element_store(struct connman_element *element);
-
 static inline void __connman_element_lock(struct connman_element *element)
 {
 }

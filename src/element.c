@@ -1586,8 +1586,6 @@ static void register_element(gpointer data, gpointer user_data)
 
 	DBG("element %p path %s", element, element->path);
 
-	__connman_element_load(element);
-
 	g_node_append_data(node, element);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
@@ -1605,8 +1603,6 @@ static void register_element(gpointer data, gpointer user_data)
 	}
 
 	emit_element_signal(connection, "ElementAdded", element);
-
-	__connman_element_store(element);
 
 	if (started == FALSE)
 		return;
