@@ -1040,6 +1040,10 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 
 	__connman_element_unlock(element);
 
+	if (found == FALSE && element->parent != NULL)
+		return connman_element_get_static_property(element->parent,
+								name, value);
+
 	return found;
 }
 

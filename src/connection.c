@@ -205,7 +205,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	const char *method = NULL;
+	const char *type = NULL, *method = NULL;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 
 	DBG("conn %p", conn);
@@ -220,6 +220,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	connman_element_get_static_property(element, "Type", &type);
+
+	if (type != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &type);
 
 	if (element->devname != NULL)
 		connman_dbus_dict_append_variant(&dict, "Interface",

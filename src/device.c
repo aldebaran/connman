@@ -682,6 +682,7 @@ struct connman_device *connman_device_create(const char *node,
 						enum connman_device_type type)
 {
 	struct connman_device *device;
+	const char *str;
 
 	DBG("node %s type %d", node, type);
 
@@ -699,6 +700,11 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->element.device = device;
 	device->element.destruct = device_destruct;
+
+	str = type2string(type);
+	if (str != NULL)
+		connman_element_add_static_property(&device->element,
+					"Type", DBUS_TYPE_STRING, &str);
 
 	device->type   = type;
 	device->mode   = CONNMAN_DEVICE_MODE_UNKNOWN;

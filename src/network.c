@@ -56,6 +56,24 @@ struct connman_network {
 	} wifi;
 };
 
+static const char *type2string(enum connman_network_type type)
+{
+	switch (type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+		break;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+		return "wifi";
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+		return "bluetooth";
+	case CONNMAN_NETWORK_TYPE_HSO:
+		return "cellular";
+	}
+
+	return NULL;
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -334,6 +352,7 @@ struct connman_network *connman_network_create(const char *identifier,
 						enum connman_network_type type)
 {
 	struct connman_network *network;
+	const char *str;
 
 	DBG("identifier %s type %d", identifier, type);
 
@@ -351,6 +370,11 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	network->element.network = network;
 	network->element.destruct = network_destruct;
+
+	str = type2string(type);
+	if (str != NULL)
+		connman_element_add_static_property(&network->element,
+					"Type", DBUS_TYPE_STRING, &str);
 
 	network->type = type;
 	network->identifier = g_strdup(identifier);
