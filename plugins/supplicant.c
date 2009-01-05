@@ -82,6 +82,7 @@ struct supplicant_task {
 	char *netpath;
 	gboolean created;
 	enum supplicant_state state;
+	gboolean doscan;
 	GSList *scan_results;
 };
 
@@ -906,7 +907,8 @@ static int get_properties(struct supplicant_task *task)
 
 	path = g_slist_nth_data(task->scan_results, 0);
 	if (path == NULL) {
-		connman_device_set_scanning(task->device, FALSE);
+		if (task->doscan == FALSE)
+			connman_device_set_scanning(task->device, FALSE);
 		return 0;
 	}
 
@@ -946,7 +948,8 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 
 	reply = dbus_pending_call_steal_reply(call);
 	if (reply == NULL) {
-		connman_device_set_scanning(task->device, FALSE);
+		if (task->doscan == FALSE)
+			connman_device_set_scanning(task->device, FALSE);
 		return;
 	}
 
@@ -961,7 +964,8 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 			dbus_error_free(&error);
 		} else
 			connman_error("Wrong arguments for scan result");
-		connman_device_set_scanning(task->device, FALSE);
+		if (task->doscan == FALSE)
+			connman_device_set_scanning(task->device, FALSE);
 		goto done;
 	}
 
@@ -1047,8 +1051,13 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
 		task->state = STATE_DISCONNECTED;
 
-	if (task->state == STATE_SCANNING)
+	if (task->state == STATE_SCANNING) {
+		task->doscan = TRUE;
 		connman_device_set_scanning(task->device, TRUE);
+	} else if (task->state == STATE_INACTIVE) {
+		task->doscan = FALSE;
+		connman_device_set_scanning(task->device, FALSE);
+	}
 
 	if (task->network == NULL)
 		return;
