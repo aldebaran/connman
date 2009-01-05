@@ -39,6 +39,7 @@ struct connman_device {
 	char *name;
 	char *node;
 	char *interface;
+	unsigned int connections;
 
 	struct connman_device_driver *driver;
 	void *driver_data;
@@ -884,6 +885,15 @@ int connman_device_set_powered(struct connman_device *device,
 
 	g_dbus_send_message(connection, signal);
 
+	if (powered == FALSE)
+		return 0;
+
+	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
+		return 0;
+
+	if (device->driver->scan)
+		device->driver->scan(device);
+
 	return 0;
 }
 
@@ -932,6 +942,11 @@ int connman_device_set_carrier(struct connman_device *device,
 	return 0;
 }
 
+static void connect_known_network(struct connman_device *device)
+{
+	DBG("device %p", device);
+}
+
 /**
  * connman_device_set_scanning:
  * @device: device structure
@@ -971,6 +986,17 @@ int connman_device_set_scanning(struct connman_device *device,
 	dbus_message_iter_close_container(&entry, &value);
 
 	g_dbus_send_message(connection, signal);
+
+	if (scanning == TRUE)
+		return 0;
+
+	if (device->connections > 0)
+		return 0;
+
+	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
+		return 0;
+
+	connect_known_network(device);
 
 	return 0;
 }
@@ -1017,6 +1043,16 @@ const char *connman_device_get_string(struct connman_device *device,
 		return device->node;
 
 	return NULL;
+}
+
+void __connman_device_increase_connections(struct connman_device *device)
+{
+	device->connections++;
+}
+
+void __connman_device_decrease_connections(struct connman_device *device)
+{
+	device->connections--;
 }
 
 /**

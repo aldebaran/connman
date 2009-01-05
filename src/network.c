@@ -490,6 +490,8 @@ int connman_network_set_connected(struct connman_network *network,
 			break;
 		}
 
+		__connman_device_increase_connections(network->device);
+
 		element = connman_element_create(NULL);
 		if (element != NULL) {
 			element->type    = type;
@@ -497,11 +499,14 @@ int connman_network_set_connected(struct connman_network *network,
 			element->index   = network->element.index;
 
 			if (connman_element_register(element,
-							&network->element) < 0)
+						&network->element) < 0)
 				connman_element_unref(element);
 		}
-	} else
+	} else {
 		connman_element_unregister_children(&network->element);
+
+		__connman_device_decrease_connections(network->device);
+	}
 
 	return 0;
 }
