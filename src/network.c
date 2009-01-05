@@ -521,6 +521,9 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.Security") == TRUE) {
 		g_free(network->wifi.security);
 		network->wifi.security = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.Passphrase") == TRUE) {
+		g_free(network->wifi.passphrase);
+		network->wifi.passphrase = g_strdup(value);
 	}
 
 	return 0;
@@ -536,7 +539,7 @@ int connman_network_set_string(struct connman_network *network,
 const char *connman_network_get_string(struct connman_network *network,
 							const char *key)
 {
-	DBG("network %p key %s", network);
+	DBG("network %p key %s", network, key);
 
 	if (g_str_equal(key, "Name") == TRUE)
 		return network->name;
@@ -546,6 +549,8 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.mode;
 	else if (g_str_equal(key, "WiFi.Security") == TRUE)
 		return network->wifi.security;
+	else if (g_str_equal(key, "WiFi.Passphrase") == TRUE)
+		return network->wifi.passphrase;
 
 	return NULL;
 }
@@ -607,6 +612,8 @@ int connman_network_set_blob(struct connman_network *network,
 const void *connman_network_get_blob(struct connman_network *network,
 					const char *key, unsigned int *size)
 {
+	DBG("network %p key %s", network, key);
+
 	if (g_str_equal(key, "WiFi.SSID") == TRUE) {
 		if (size != NULL)
 			*size = network->wifi.ssid_len;
