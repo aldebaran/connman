@@ -127,34 +127,6 @@ static const char *type2string(enum connman_element_type type)
 	return NULL;
 }
 
-const char *__connman_element_policy2string(enum connman_element_policy policy)
-{
-	switch (policy) {
-	case CONNMAN_ELEMENT_POLICY_UNKNOWN:
-		return "unknown";
-	case CONNMAN_ELEMENT_POLICY_IGNORE:
-		return "ignore";
-	case CONNMAN_ELEMENT_POLICY_AUTO:
-		return "auto";
-	case CONNMAN_ELEMENT_POLICY_ASK:
-		return "ask";
-	}
-
-	return NULL;
-}
-
-enum connman_element_policy __connman_element_string2policy(const char *policy)
-{
-	if (strcasecmp(policy, "ignore") == 0)
-		return CONNMAN_ELEMENT_POLICY_IGNORE;
-	else if (strcasecmp(policy, "auto") == 0)
-		return CONNMAN_ELEMENT_POLICY_AUTO;
-	else if (strcasecmp(policy, "ask") == 0)
-		return CONNMAN_ELEMENT_POLICY_ASK;
-	else
-		return CONNMAN_ELEMENT_POLICY_UNKNOWN;
-}
-
 const char *__connman_ipv4_method2string(enum connman_ipv4_method method)
 {
 	switch (method) {
@@ -603,7 +575,6 @@ struct connman_element *connman_element_create(const char *name)
 
 	element->name    = g_strdup(name);
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-	element->policy  = CONNMAN_ELEMENT_POLICY_AUTO;
 	element->index   = -1;
 	element->enabled = FALSE;
 

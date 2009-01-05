@@ -116,9 +116,6 @@ int __connman_element_count(struct connman_element *element,
 
 const char *__connman_element_type2string(enum connman_element_type type);
 
-const char *__connman_element_policy2string(enum connman_element_policy policy);
-enum connman_element_policy __connman_element_string2policy(const char *policy);
-
 static inline void __connman_element_lock(struct connman_element *element)
 {
 }
