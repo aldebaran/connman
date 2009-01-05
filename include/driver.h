@@ -41,7 +41,6 @@ extern "C" {
 struct connman_driver {
 	const char *name;
 	enum connman_element_type type;
-	enum connman_element_subtype subtype;
 	int priority;
 	int (*probe) (struct connman_element *element);
 	void (*remove) (struct connman_element *element);

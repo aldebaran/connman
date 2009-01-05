@@ -349,23 +349,6 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->element.type = CONNMAN_ELEMENT_TYPE_NETWORK;
 	network->element.index = -1;
 
-	switch (type) {
-	case CONNMAN_NETWORK_TYPE_UNKNOWN:
-	case CONNMAN_NETWORK_TYPE_VENDOR:
-		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
-		break;
-	case CONNMAN_NETWORK_TYPE_WIFI:
-		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_WIFI;
-		break;
-	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
-	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
-		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH;
-		break;
-	case CONNMAN_NETWORK_TYPE_HSO:
-		network->element.subtype = CONNMAN_ELEMENT_SUBTYPE_CELLULAR;
-		break;
-	}
-
 	network->element.network = network;
 	network->element.destruct = network_destruct;
 
@@ -494,9 +477,8 @@ int connman_network_set_connected(struct connman_network *network,
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {
-			element->type    = type;
-			element->subtype = network->element.subtype;
-			element->index   = network->element.index;
+			element->type  = type;
+			element->index = network->element.index;
 
 			if (connman_element_register(element,
 						&network->element) < 0)

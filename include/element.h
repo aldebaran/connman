@@ -68,16 +68,6 @@ enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_VENDOR     = 10000,
 };
 
-enum connman_element_subtype {
-	CONNMAN_ELEMENT_SUBTYPE_UNKNOWN   = 0,
-	CONNMAN_ELEMENT_SUBTYPE_FAKE      = 1,
-	CONNMAN_ELEMENT_SUBTYPE_ETHERNET  = 3,
-	CONNMAN_ELEMENT_SUBTYPE_WIFI      = 4,
-	CONNMAN_ELEMENT_SUBTYPE_WIMAX     = 5,
-	CONNMAN_ELEMENT_SUBTYPE_CELLULAR  = 6,
-	CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH = 7,
-};
-
 struct connman_driver;
 
 struct connman_element {
@@ -86,7 +76,6 @@ struct connman_element {
 	gchar *name;
 	gchar *path;
 	enum connman_element_type type;
-	enum connman_element_subtype subtype;
 	enum connman_element_state state;
 	enum connman_element_policy policy;
 	gboolean enabled;

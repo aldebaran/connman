@@ -127,30 +127,6 @@ static const char *type2string(enum connman_element_type type)
 	return NULL;
 }
 
-#if 0
-static const char *subtype2string(enum connman_element_subtype type)
-{
-	switch (type) {
-	case CONNMAN_ELEMENT_SUBTYPE_UNKNOWN:
-		return "unknown";
-	case CONNMAN_ELEMENT_SUBTYPE_FAKE:
-		return "fake";
-	case CONNMAN_ELEMENT_SUBTYPE_ETHERNET:
-		return "ethernet";
-	case CONNMAN_ELEMENT_SUBTYPE_WIFI:
-		return "wifi";
-	case CONNMAN_ELEMENT_SUBTYPE_WIMAX:
-		return "wimax";
-	case CONNMAN_ELEMENT_SUBTYPE_CELLULAR:
-		return "cellular";
-	case CONNMAN_ELEMENT_SUBTYPE_BLUETOOTH:
-		return "bluetooth";
-	}
-
-	return NULL;
-}
-#endif
-
 const char *__connman_element_policy2string(enum connman_element_policy policy)
 {
 	switch (policy) {
@@ -499,12 +475,8 @@ static gboolean match_driver(struct connman_element *element,
 	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
 		return FALSE;
 
-	if (element->type != driver->type &&
-			driver->type != CONNMAN_ELEMENT_TYPE_UNKNOWN)
-		return FALSE;
-
-	if (element->subtype == driver->subtype ||
-			driver->subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN)
+	if (element->type == driver->type ||
+			driver->type == CONNMAN_ELEMENT_TYPE_UNKNOWN)
 		return TRUE;
 
 	return FALSE;
@@ -631,7 +603,6 @@ struct connman_element *connman_element_create(const char *name)
 
 	element->name    = g_strdup(name);
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-	element->subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
 	element->state   = CONNMAN_ELEMENT_STATE_CLOSED;
 	element->policy  = CONNMAN_ELEMENT_POLICY_AUTO;
 	element->index   = -1;
@@ -1309,9 +1280,6 @@ static void register_element(gpointer data, gpointer user_data)
 		node = g_node_find(element_root, G_PRE_ORDER,
 					G_TRAVERSE_ALL, element->parent);
 		basepath = element->parent->path;
-
-		if (element->subtype == CONNMAN_ELEMENT_SUBTYPE_UNKNOWN)
-			element->subtype = element->parent->subtype;
 	} else {
 		element->parent = element_root->data;
 

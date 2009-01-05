@@ -694,23 +694,6 @@ struct connman_device *connman_device_create(const char *node,
 	device->element.type = CONNMAN_ELEMENT_TYPE_DEVICE;
 	device->element.index = -1;
 
-	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
-		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_UNKNOWN;
-		break;
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-		device->element.subtype = CONNMAN_ELEMENT_SUBTYPE_ETHERNET;
-		break;
-	}
-
 	device->element.device = device;
 	device->element.destruct = device_destruct;
 
@@ -928,9 +911,8 @@ int connman_device_set_carrier(struct connman_device *device,
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {
-			element->type    = CONNMAN_ELEMENT_TYPE_DHCP;
-			element->subtype = device->element.subtype;
-			element->index   = device->element.index;
+			element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
+			element->index = device->element.index;
 
 			if (connman_element_register(element,
 							&device->element) < 0)
