@@ -615,7 +615,7 @@ static int set_network(struct supplicant_task *task,
 					key[i] = (unsigned char) strtol(tmp,
 								NULL, 16);
 				}
-			        connman_dbus_dict_append_array(&dict,
+				connman_dbus_dict_append_array(&dict,
 						"wep_key0", DBUS_TYPE_BYTE,
 							&key, size / 2);
 				free(key);
