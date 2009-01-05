@@ -30,6 +30,7 @@ extern "C" {
 #include <glib.h>
 
 #include <connman/property.h>
+#include <connman/ipv4.h>
 
 /**
  * SECTION:element
@@ -101,6 +102,7 @@ struct connman_element {
 	GSList *properties;
 
 	struct {
+		enum connman_ipv4_method method;
 		gchar *address;
 		gchar *netmask;
 		gchar *gateway;

@@ -1005,6 +1005,14 @@ int connman_element_get_value(struct connman_element *element,
 		return -EINVAL;
 
 	switch (id) {
+	case CONNMAN_PROPERTY_ID_IPV4_METHOD:
+		if (element->ipv4.method == CONNMAN_IPV4_METHOD_UNKNOWN)
+			return connman_element_get_value(element->parent,
+								id, value);
+		__connman_element_lock(element);
+		*((const char **) value) = __connman_ipv4_method2string(element->ipv4.method);
+		__connman_element_unlock(element);
+		break;
 	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
 		if (element->ipv4.address == NULL)
 			return connman_element_get_value(element->parent,
@@ -1350,6 +1358,9 @@ int connman_element_register(struct connman_element *element,
 			return -EINVAL;
 		}
 	}
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_DHCP)
+		element->ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
 
 	element->parent = parent;
 
