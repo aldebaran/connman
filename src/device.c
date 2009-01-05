@@ -749,6 +749,17 @@ void connman_device_unref(struct connman_device *device)
 }
 
 /**
+ * connman_device_get_name:
+ * @device: device structure
+ *
+ * Get unique name of device
+ */
+const char *connman_device_get_name(struct connman_device *device)
+{
+	return device->element.name;
+}
+
+/**
  * connman_device_get_path:
  * @device: device structure
  *
