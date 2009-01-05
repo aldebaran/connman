@@ -223,6 +223,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Interface",
 					DBUS_TYPE_STRING, &element->devname);
 
+	connman_dbus_dict_append_variant(&dict, "Default",
+					DBUS_TYPE_BOOLEAN, &element->enabled);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
