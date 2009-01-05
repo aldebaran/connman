@@ -580,6 +580,10 @@ static gboolean append_path(GNode *node, gpointer user_data)
 			__connman_device_has_driver(element->device) == FALSE)
 		return FALSE;
 
+	if (filter->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
+			__connman_network_has_driver(element->network) == FALSE)
+		return FALSE;
+
 	dbus_message_iter_append_basic(filter->iter,
 				DBUS_TYPE_OBJECT_PATH, &element->path);
 

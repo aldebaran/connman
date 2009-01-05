@@ -42,6 +42,8 @@ struct connman_network {
 	struct connman_network_driver *driver;
 	void *driver_data;
 
+	connman_bool_t registered;
+
 	struct connman_device *device;
 
 	struct {
@@ -201,6 +203,8 @@ static int register_interface(struct connman_element *element)
 		return -EIO;
 	}
 
+	network->registered = TRUE;
+
 	emit_networks_signal();
 
 	return 0;
@@ -208,12 +212,24 @@ static int register_interface(struct connman_element *element)
 
 static void unregister_interface(struct connman_element *element)
 {
+	struct connman_network * network = element->network;
+
 	DBG("element %p name %s", element, element->name);
+
+	network->registered = FALSE;
 
 	emit_networks_signal();
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
+}
+
+connman_bool_t __connman_network_has_driver(struct connman_network *network)
+{
+	if (network == NULL || network->driver == NULL)
+		return FALSE;
+
+	return network->registered;
 }
 
 static GSList *driver_list = NULL;
