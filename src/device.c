@@ -944,7 +944,33 @@ int connman_device_set_carrier(struct connman_device *device,
 
 static void connect_known_network(struct connman_device *device)
 {
+	GHashTableIter iter;
+	gpointer key, value;
+	unsigned int count = 0;
+
 	DBG("device %p", device);
+
+	g_hash_table_iter_init(&iter, device->networks);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_network *network = value;
+		int err;
+
+		count++;
+
+		if (connman_network_get_remember(network) == FALSE)
+			continue;
+
+		err = connman_network_connect(network);
+		if (err == 0 || err == -EINPROGRESS)
+			return;
+	}
+
+	if (count > 0)
+		return;
+
+	if (device->driver && device->driver->scan)
+		device->driver->scan(device);
 }
 
 /**

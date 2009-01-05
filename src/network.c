@@ -512,6 +512,36 @@ int connman_network_set_connected(struct connman_network *network,
 }
 
 /**
+ * connman_network_get_remember:
+ * @network: network structure
+ *
+ * Get network remember setting
+ */
+connman_bool_t connman_network_get_remember(struct connman_network *network)
+{
+	return network->remember;
+}
+
+/**
+ * connman_network_connect:
+ * @network: network structure
+ *
+ * Connect network
+ */
+int connman_network_connect(struct connman_network *network)
+{
+	if (network->connected == TRUE)
+		return -EALREADY;
+
+	if (network->driver && network->driver->connect)
+		return network->driver->connect(network);
+
+	network->connected = TRUE;
+
+	return 0;
+}
+
+/**
  * connman_network_set_string:
  * @network: network structure
  * @key: unique identifier
