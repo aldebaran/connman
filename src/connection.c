@@ -205,6 +205,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	connman_uint8_t strength = 0;
 	const char *type = NULL, *method = NULL;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 
@@ -226,6 +227,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (type != NULL)
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &type);
+
+	connman_element_get_static_property(element, "Strength", &strength);
+	if (strength > 0)
+		connman_dbus_dict_append_variant(&dict, "Strength",
+						DBUS_TYPE_BYTE, &strength);
 
 	if (element->devname != NULL)
 		connman_dbus_dict_append_variant(&dict, "Interface",

@@ -352,6 +352,7 @@ struct connman_network *connman_network_create(const char *identifier,
 						enum connman_network_type type)
 {
 	struct connman_network *network;
+	connman_uint8_t strength = 0;
 	const char *str;
 
 	DBG("identifier %s type %d", identifier, type);
@@ -375,6 +376,9 @@ struct connman_network *connman_network_create(const char *identifier,
 	if (str != NULL)
 		connman_element_add_static_property(&network->element,
 					"Type", DBUS_TYPE_STRING, &str);
+
+	connman_element_add_static_property(&network->element,
+					"Strength", DBUS_TYPE_BYTE, &strength);
 
 	network->type = type;
 	network->identifier = g_strdup(identifier);
@@ -619,8 +623,11 @@ int connman_network_set_uint8(struct connman_network *network,
 {
 	DBG("network %p key %s value %d", network, key, value);
 
-	if (g_str_equal(key, "Strength") == TRUE)
+	if (g_str_equal(key, "Strength") == TRUE) {
 		network->strength = value;
+		connman_element_set_static_property(&network->element,
+					"Strength", DBUS_TYPE_BYTE, &value);
+	}
 
 	return 0;
 }
