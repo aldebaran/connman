@@ -167,11 +167,15 @@ static DBusMessage *do_connect(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (network->connected == TRUE)
+		return __connman_error_failed(msg);
+
 	if (network->driver && network->driver->connect) {
 		err = network->driver->connect(network);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg);
-	}
+	} else
+		network->connected = TRUE;
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -184,11 +188,17 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (network->connected == FALSE)
+		return __connman_error_failed(msg);
+
+	connman_element_unregister_children(&network->element);
+
 	if (network->driver && network->driver->disconnect) {
 		err = network->driver->disconnect(network);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg);
-	}
+	} else
+		network->connected = FALSE;
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
