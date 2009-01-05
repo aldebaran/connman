@@ -587,7 +587,7 @@ static void remove_driver(struct connman_element *element, gpointer user_data)
 
 connman_bool_t __connman_device_has_driver(struct connman_device *device)
 {
-	if (device->driver == NULL)
+	if (device == NULL || device->driver == NULL)
 		return FALSE;
 
 	return device->registered;
