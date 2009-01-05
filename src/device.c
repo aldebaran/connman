@@ -1209,7 +1209,7 @@ static int device_load(struct connman_device *device)
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gsize length;
-	const char *str;
+	char *str;
 
 	DBG("device %p", device);
 
@@ -1236,8 +1236,10 @@ static int device_load(struct connman_device *device)
 	g_free(data);
 
 	str = g_key_file_get_string(keyfile, "Configuration", "Policy", NULL);
-	if (str != NULL)
+	if (str != NULL) {
 		device->policy = string2policy(str);
+		g_free(str);
+	}
 
 	g_key_file_free(keyfile);
 
