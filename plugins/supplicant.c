@@ -1050,6 +1050,9 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	if (task->state == STATE_SCANNING)
 		connman_device_set_scanning(task->device, TRUE);
 
+	if (task->network == NULL)
+		return;
+
 	switch (task->state) {
 	case STATE_COMPLETED:
 		/* carrier on */
