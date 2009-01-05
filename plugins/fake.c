@@ -23,102 +23,87 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/driver.h>
-#include <connman/element.h>
+#include <connman/device.h>
 #include <connman/log.h>
 
-static void create_network(struct connman_element *parent, const char *name)
+static void create_network(struct connman_device *device, const char *name)
 {
-	struct connman_element *element;
+	struct connman_network *network;
 
-	element = connman_element_create(name);
-	element->type = CONNMAN_ELEMENT_TYPE_NETWORK;
-	element->subtype = CONNMAN_ELEMENT_SUBTYPE_FAKE;
+	network = connman_network_create(name, CONNMAN_NETWORK_TYPE_VENDOR);
+	if (network == NULL)
+		return;
 
-	connman_element_register(element, parent);
-	connman_element_unref(element);
+	connman_device_add_network(device, network);
+	connman_network_unref(network);
 }
 
-static int fake_device_probe(struct connman_element *element)
+static int device_probe(struct connman_device *device)
 {
 	DBG("");
 
 	return 0;
 }
 
-static void fake_device_remove(struct connman_element *element)
+static void device_remove(struct connman_device *device)
 {
 	DBG("");
 }
 
-static int fake_device_update(struct connman_element *element)
+static int device_enable(struct connman_device *device)
 {
 	DBG("");
 
-	create_network(element, "network_new");
+	create_network(device, "network_one");
+	create_network(device, "network_two");
 
 	return 0;
 }
 
-static int fake_device_enable(struct connman_element *element)
+static int device_disable(struct connman_device *device)
 {
 	DBG("");
-
-	create_network(element, "network_one");
-	create_network(element, "network_two");
 
 	return 0;
 }
 
-static int fake_device_disable(struct connman_element *element)
-{
-	DBG("");
-
-	connman_element_unregister_children(element);
-
-	return 0;
-}
-
-static struct connman_driver fake_device_driver = {
-	.name		= "fake-device",
-	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.subtype	= CONNMAN_ELEMENT_SUBTYPE_FAKE,
-	.probe		= fake_device_probe,
-	.remove		= fake_device_remove,
-	.update		= fake_device_update,
-	.enable		= fake_device_enable,
-	.disable	= fake_device_disable,
+static struct connman_device_driver device_driver = {
+	.name		= "fake",
+	.type		= CONNMAN_DEVICE_TYPE_VENDOR,
+	.probe		= device_probe,
+	.remove		= device_remove,
+	.enable		= device_enable,
+	.disable	= device_disable,
 };
 
 static void create_device(const char *name)
 {
-	struct connman_element *element;
+	struct connman_device *device;
 
-	element = connman_element_create(name);
-	element->type = CONNMAN_ELEMENT_TYPE_DEVICE;
-	element->subtype = CONNMAN_ELEMENT_SUBTYPE_FAKE;
+	device = connman_device_create(name, CONNMAN_DEVICE_TYPE_VENDOR);
+	if (device == NULL)
+		return;
 
-	//connman_element_define_properties(element,
-	//				CONNMAN_PROPERTY_ID_IPV4_METHOD,
-	//				CONNMAN_PROPERTY_ID_INVALID);
+	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
 
-	connman_element_register(element, NULL);
-	connman_element_unref(element);
+	connman_device_register(device);
+	connman_device_unref(device);
 }
 
 static int fake_init(void)
 {
-	create_device("fakeone");
-	create_device("faketwo");
+	create_device("fake");
 
-	return connman_driver_register(&fake_device_driver);
+	return connman_device_driver_register(&device_driver);
 }
 
 static void fake_exit(void)
 {
-	connman_driver_unregister(&fake_device_driver);
+	connman_device_driver_unregister(&device_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE(fake, "Tesing plugin", VERSION, fake_init, fake_exit)
