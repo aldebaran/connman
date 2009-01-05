@@ -97,7 +97,7 @@ int __connman_plugin_init(const char *pattern)
 				continue;
 			}
 
-			if (g_pattern_match_simple(pattern,
+			if (pattern != NULL && g_pattern_match_simple(pattern,
 							desc->name) == FALSE) {
 				DBG("ignoring %s", desc->description);
 				dlclose(handle);
