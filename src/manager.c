@@ -27,6 +27,44 @@
 
 #include "connman.h"
 
+enum connman_policy {
+	CONNMAN_POLICY_UNKNOWN  = 0,
+	CONNMAN_POLICY_SINGLE   = 1,
+	CONNMAN_POLICY_MULTIPLE = 2,
+	CONNMAN_POLICY_ASK      = 3,
+};
+
+static enum connman_policy global_policy = CONNMAN_POLICY_SINGLE;
+static connman_bool_t global_flightmode = FALSE;
+
+static const char *policy2string(enum connman_policy policy)
+{
+	switch (policy) {
+	case CONNMAN_POLICY_UNKNOWN:
+		break;
+	case CONNMAN_POLICY_SINGLE:
+		return "single";
+	case CONNMAN_POLICY_MULTIPLE:
+		return "multiple";
+	case CONNMAN_POLICY_ASK:
+		return "ask";
+	}
+
+	return NULL;
+}
+
+static enum connman_policy string2policy(const char *policy)
+{
+	if (g_str_equal(policy, "single") == TRUE)
+		return CONNMAN_POLICY_SINGLE;
+	else if (g_str_equal(policy, "multiple") == TRUE)
+		return CONNMAN_POLICY_MULTIPLE;
+	else if (g_str_equal(policy, "ask") == TRUE)
+		return CONNMAN_POLICY_ASK;
+	else
+		return CONNMAN_POLICY_UNKNOWN;
+}
+
 static void append_profiles(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
@@ -110,7 +148,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	const char *state, *policy = "single";
+	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -131,19 +169,68 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	append_connections(&dict);
 
 	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
-		state = "online";
+		str = "online";
 	else
-		state = "offline";
+		str = "offline";
 
 	connman_dbus_dict_append_variant(&dict, "State",
-						DBUS_TYPE_STRING, &state);
+						DBUS_TYPE_STRING, &str);
 
-	connman_dbus_dict_append_variant(&dict, "Policy",
-						DBUS_TYPE_STRING, &policy);
+	str = policy2string(global_policy);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Policy",
+						DBUS_TYPE_STRING, &str);
+
+	connman_dbus_dict_append_variant(&dict, "FlightMode",
+					DBUS_TYPE_BOOLEAN, &global_flightmode);
 
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
+}
+
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter, value;
+	const char *name;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
+
+	if (g_str_equal(name, "Policy") == TRUE) {
+		enum connman_policy policy;
+		const char *str;
+
+		dbus_message_iter_get_basic(&value, &str);
+		policy = string2policy(str);
+		if (policy == CONNMAN_POLICY_UNKNOWN)
+			return __connman_error_invalid_arguments(msg);
+
+		global_policy = policy;
+	} else if (g_str_equal(name, "FlightMode") == TRUE) {
+		connman_bool_t flightmode;
+
+		dbus_message_iter_get_basic(&value, &flightmode);
+
+		if (global_flightmode == flightmode)
+			return __connman_error_invalid_arguments(msg);
+
+		global_flightmode = flightmode;
+
+		__connman_device_set_flightmode(flightmode);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *register_agent(DBusConnection *conn,
@@ -195,9 +282,10 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 }
 
 static GDBusMethodTable manager_methods[] = {
-	{ "GetProperties",   "",  "a{sv}", get_properties   },
-	{ "RegisterAgent",   "o", "",      register_agent   },
-	{ "UnregisterAgent", "o", "",      unregister_agent },
+	{ "GetProperties",   "",   "a{sv}", get_properties   },
+	{ "SetProperty",     "sv", "",      set_property     },
+	{ "RegisterAgent",   "o",  "",      register_agent   },
+	{ "UnregisterAgent", "o",  "",      unregister_agent },
 	{ },
 };
 

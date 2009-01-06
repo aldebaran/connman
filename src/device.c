@@ -1062,6 +1062,35 @@ const char *connman_device_get_string(struct connman_device *device,
 	return NULL;
 }
 
+static void set_flightmode(struct connman_element *element, gpointer user_data)
+{
+	struct connman_device *device = element->device;
+	connman_bool_t flightmode = GPOINTER_TO_UINT(user_data);
+	connman_bool_t powered;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (device == NULL)
+		return;
+
+	powered = (flightmode == TRUE) ? FALSE : TRUE;
+
+	if (device->powered == powered)
+		return;
+
+	set_powered(device, powered);
+}
+
+int __connman_device_set_flightmode(connman_bool_t flightmode)
+{
+	DBG("flightmode %d", flightmode);
+
+	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
+				set_flightmode, GUINT_TO_POINTER(flightmode));
+
+	return 0;
+}
+
 void __connman_device_increase_connections(struct connman_device *device)
 {
 	device->connections++;
