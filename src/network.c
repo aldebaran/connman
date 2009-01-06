@@ -236,8 +236,42 @@ static GDBusSignalTable network_signals[] = {
 
 static DBusConnection *connection;
 
-static void emit_networks_signal(void)
+static void append_networks(struct connman_device *device,
+						DBusMessageIter *entry)
 {
+	DBusMessageIter value, iter;
+	const char *key = "Networks";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+	__connman_element_list((struct connman_element *) device,
+					CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
+static void emit_networks_signal(struct connman_device *device)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	append_networks(device, &entry);
+
+	g_dbus_send_message(connection, signal);
 }
 
 static int register_interface(struct connman_element *element)
@@ -256,7 +290,7 @@ static int register_interface(struct connman_element *element)
 
 	network->registered = TRUE;
 
-	emit_networks_signal();
+	emit_networks_signal(network->device);
 
 	return 0;
 }
@@ -269,7 +303,7 @@ static void unregister_interface(struct connman_element *element)
 
 	network->registered = FALSE;
 
-	emit_networks_signal();
+	emit_networks_signal(network->device);
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
