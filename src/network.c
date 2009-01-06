@@ -532,12 +532,32 @@ void connman_network_set_protocol(struct connman_network *network,
 int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected)
 {
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Connected";
+
 	DBG("network %p connected %d", network, connected);
 
 	if (network->connected == connected)
 		return -EALREADY;
 
 	network->connected = connected;
+
+	signal = dbus_message_new_signal(network->element.path,
+				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return 0;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &connected);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
 
 	if (connected == TRUE) {
 		struct connman_element *element;
