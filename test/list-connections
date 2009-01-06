@@ -18,7 +18,7 @@ for path in properties["Connections"]:
 	print "[ %s ]" % (path)
 
 	for key in properties.keys():
-		if key == "Strength":
+		if key in ["Strength", "Priority"]:
 			val = int(properties[key])
 		else:
 			val = str(properties[key])

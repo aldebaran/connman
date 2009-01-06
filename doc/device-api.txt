@@ -87,6 +87,11 @@ Properties	string Name [readonly]
 			For simple devices like Ethernet cards, setting
 			the "manual" policy might fail.
 
+		uint8 Priority [readwrite]
+
+			The device priority. Higher values indicate the
+			preference for this device.
+
 		boolean Powered [readwrite]
 
 			Switch a device on or off. This will also modify

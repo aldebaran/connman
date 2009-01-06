@@ -37,7 +37,7 @@ def print_properties(key, value):
 					val = "true"
 				else:
 					val = "false"
-			elif key == "Strength":
+			elif key in ["Strength", "Priority"]:
 				val = int(properties[key])
 			else:
 				val = str(properties[key])

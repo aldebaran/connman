@@ -36,6 +36,7 @@ struct connman_device {
 	connman_bool_t powered;
 	connman_bool_t carrier;
 	connman_bool_t scanning;
+	connman_uint8_t priority;
 	char *name;
 	char *node;
 	char *interface;
@@ -277,6 +278,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Policy",
 						DBUS_TYPE_STRING, &str);
 
+	if (device->priority > 0)
+		connman_dbus_dict_append_variant(&dict, "Priority",
+					DBUS_TYPE_BYTE, &device->priority);
+
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
 
@@ -346,6 +351,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 		err = set_policy(conn, device, policy);
 		if (err < 0)
 			return __connman_error_failed(msg);
+	} else if (g_str_equal(name, "Priority") == TRUE) {
+		connman_uint8_t priority;
+
+		dbus_message_iter_get_basic(&value, &priority);
+
+		device->priority = priority;
 	}
 
 	__connman_storage_save_device(device);
@@ -709,6 +720,29 @@ struct connman_device *connman_device_create(const char *node,
 	device->type   = type;
 	device->mode   = CONNMAN_DEVICE_MODE_UNKNOWN;
 	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		device->priority = 0;
+		break;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+		device->priority = 100;
+		break;
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		device->priority = 20;
+		break;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		device->priority = 50;
+		break;
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		device->priority = 60;
+		break;
+	}
 
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_network);
@@ -1295,6 +1329,7 @@ static int device_load(struct connman_device *device)
 	gchar *pathname, *data = NULL;
 	gsize length;
 	char *str;
+	int val;
 
 	DBG("device %p", device);
 
@@ -1325,6 +1360,11 @@ static int device_load(struct connman_device *device)
 		device->policy = string2policy(str);
 		g_free(str);
 	}
+
+	val = g_key_file_get_integer(keyfile, "Configuration",
+							"Priority", NULL);
+	if (val > 0)
+		device->priority = val;
 
 	g_key_file_free(keyfile);
 
@@ -1362,6 +1402,10 @@ update:
 	str = policy2string(device->policy);
 	if (str != NULL)
 		g_key_file_set_string(keyfile, "Configuration", "Policy", str);
+
+	if (device->priority > 0)
+		g_key_file_set_integer(keyfile, "Configuration",
+						"Priority", device->priority);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
