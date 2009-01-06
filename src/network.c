@@ -132,7 +132,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
 				DBUS_TYPE_STRING, &network->wifi.security);
 
-	if (network->wifi.passphrase != NULL)
+	if (network->wifi.passphrase != NULL &&
+			__connman_security_check_privilege(msg,
+				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
 		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
 				DBUS_TYPE_STRING, &network->wifi.passphrase);
 
@@ -170,6 +172,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
 		const char *passphrase;
+
+		if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_SECRET) < 0)
+			return __connman_error_permission_denied(msg);
 
 		dbus_message_iter_get_basic(&value, &passphrase);
 
