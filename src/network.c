@@ -185,6 +185,9 @@ static DBusMessage *do_connect(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
+
 	if (network->connected == TRUE)
 		return __connman_error_failed(msg);
 
@@ -205,6 +208,9 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 	int err;
 
 	DBG("conn %p", conn);
+
+	if (__connman_security_check_privileges(msg) < 0)
+		return __connman_error_permission_denied(msg);
 
 	if (network->connected == FALSE)
 		return __connman_error_failed(msg);
