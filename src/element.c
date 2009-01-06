@@ -1182,20 +1182,6 @@ static void emit_state_change(DBusConnection *conn, const char *state)
 	g_dbus_send_message(conn, signal);
 }
 
-static void set_signal_strength(struct connman_element *connection)
-{
-	struct connman_element *element = connection;
-
-	while (element != NULL) {
-		if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
-			connection->strength = element->strength;
-			break;
-		}
-
-		element = element->parent;
-	}
-}
-
 static void probe_element(struct connman_element *element)
 {
 	GSList *list;
@@ -1249,7 +1235,6 @@ static void register_element(gpointer data, gpointer user_data)
 	g_node_append_data(node, element);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
-		set_signal_strength(element);
 		emit_connections_signal(connection);
 		emit_state_change(connection, "online");
 	}
@@ -1382,18 +1367,11 @@ void connman_element_unregister_children(struct connman_element *element)
 static gboolean update_element(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
-	struct connman_element *root = user_data;
 
 	DBG("element %p name %s", element, element->name);
 
 	if (element->driver && element->driver->update)
 		element->driver->update(element);
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION &&
-				root->type == CONNMAN_ELEMENT_TYPE_NETWORK) {
-		if (element->strength != root->strength)
-			element->strength = root->strength;
-	}
 
 	emit_element_signal(connection, "ElementUpdated", element);
 
