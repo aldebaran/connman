@@ -83,6 +83,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
+		return __connman_error_permission_denied(msg);
+
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
@@ -153,7 +157,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
-	if (__connman_security_check_privileges(msg) < 0)
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
 	if (g_str_equal(name, "Remember") == TRUE) {
@@ -185,7 +190,8 @@ static DBusMessage *do_connect(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privileges(msg) < 0)
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
 	if (network->connected == TRUE)
@@ -209,7 +215,8 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privileges(msg) < 0)
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
 	if (network->connected == FALSE)

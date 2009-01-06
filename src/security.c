@@ -66,7 +66,8 @@ void connman_security_unregister(struct connman_security *security)
 	security_list = g_slist_remove(security_list, security);
 }
 
-int __connman_security_check_privileges(DBusMessage *message)
+int __connman_security_check_privilege(DBusMessage *message,
+				enum connman_security_privilege privilege)
 {
 	GSList *list;
 	const char *sender;
@@ -82,7 +83,7 @@ int __connman_security_check_privileges(DBusMessage *message)
 		DBG("%s", security->name);
 
 		if (security->authorize_sender) {
-			err = security->authorize_sender(sender);
+			err = security->authorize_sender(sender, privilege);
 			break;
 		}
 	}

@@ -67,7 +67,8 @@ void __connman_plugin_cleanup(void);
 
 #include <connman/security.h>
 
-int __connman_security_check_privileges(DBusMessage *message);
+int __connman_security_check_privilege(DBusMessage *message,
+				enum connman_security_privilege privilege);
 
 #include <connman/ipv4.h>
 

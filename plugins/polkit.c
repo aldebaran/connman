@@ -34,19 +34,33 @@
 #include <connman/dbus.h>
 #include <connman/log.h>
 
-#define ACTION "org.moblin.connman.modify"
+#define ACTION_MODIFY "org.moblin.connman.modify"
+#define ACTION_SECRET "org.moblin.connman.secret"
 
 static DBusConnection *connection;
 static PolKitContext *polkit_context;
 
-static int polkit_authorize(const char *sender)
+static int polkit_authorize(const char *sender,
+				enum connman_security_privilege privilege)
 {
 	DBusError error;
 	PolKitCaller *caller;
 	PolKitAction *action;
 	PolKitResult result;
+	const char *id;
 
 	DBG("sender %s", sender);
+
+	switch (privilege) {
+	case CONNMAN_SECURITY_PRIVILEGE_PUBLIC:
+		return 0;
+	case CONNMAN_SECURITY_PRIVILEGE_MODIFY:
+		id = ACTION_MODIFY;
+		break;
+	case CONNMAN_SECURITY_PRIVILEGE_SECRET:
+		id = ACTION_SECRET;
+		break;
+	}
 
 	dbus_error_init(&error);
 
@@ -61,7 +75,7 @@ static int polkit_authorize(const char *sender)
 	}
 
 	action = polkit_action_new();
-	polkit_action_set_action_id(action, ACTION);
+	polkit_action_set_action_id(action, id);
 
 	result = polkit_context_is_caller_authorized(polkit_context,
 						action, caller, TRUE, NULL);

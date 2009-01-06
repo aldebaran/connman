@@ -32,6 +32,12 @@ extern "C" {
  * @short_description: Functions for registering security modules
  */
 
+enum connman_security_privilege {
+	CONNMAN_SECURITY_PRIVILEGE_PUBLIC  = 0,
+	CONNMAN_SECURITY_PRIVILEGE_MODIFY  = 1,
+	CONNMAN_SECURITY_PRIVILEGE_SECRET  = 2,
+};
+
 #define CONNMAN_SECURITY_PRIORITY_LOW      -100
 #define CONNMAN_SECURITY_PRIORITY_DEFAULT     0
 #define CONNMAN_SECURITY_PRIORITY_HIGH      100
@@ -39,7 +45,8 @@ extern "C" {
 struct connman_security {
 	const char *name;
 	int priority;
-	int (*authorize_sender) (const char *sender);
+	int (*authorize_sender) (const char *sender,
+				enum connman_security_privilege privilege);
 };
 
 extern int connman_security_register(struct connman_security *security);
