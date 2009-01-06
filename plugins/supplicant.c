@@ -47,15 +47,101 @@
 #define SUPPLICANT_INTF  "fi.epitest.hostap.WPASupplicant"
 #define SUPPLICANT_PATH  "/fi/epitest/hostap/WPASupplicant"
 
+/* Taken from "WPA Supplicant - Common definitions" */
 enum supplicant_state {
-	STATE_INACTIVE,
-	STATE_SCANNING,
-	STATE_ASSOCIATING,
-	STATE_ASSOCIATED,
-	STATE_4WAY_HANDSHAKE,
-	STATE_GROUP_HANDSHAKE,
-	STATE_COMPLETED,
-	STATE_DISCONNECTED,
+	/**
+	 * WPA_DISCONNECTED - Disconnected state
+	 *
+	 * This state indicates that client is not associated, but is likely to
+	 * start looking for an access point. This state is entered when a
+	 * connection is lost.
+	 */
+	WPA_DISCONNECTED,
+
+	/**
+	 * WPA_INACTIVE - Inactive state (wpa_supplicant disabled)
+	 *
+	 * This state is entered if there are no enabled networks in the
+	 * configuration. wpa_supplicant is not trying to associate with a new
+	 * network and external interaction (e.g., ctrl_iface call to add or
+	 * enable a network) is needed to start association.
+	 */
+	WPA_INACTIVE,
+
+	/**
+	 * WPA_SCANNING - Scanning for a network
+	 *
+	 * This state is entered when wpa_supplicant starts scanning for a
+	 * network.
+	 */
+	WPA_SCANNING,
+
+	/**
+	 * WPA_ASSOCIATING - Trying to associate with a BSS/SSID
+	 *
+	 * This state is entered when wpa_supplicant has found a suitable BSS
+	 * to associate with and the driver is configured to try to associate
+	 * with this BSS in ap_scan=1 mode. When using ap_scan=2 mode, this
+	 * state is entered when the driver is configured to try to associate
+	 * with a network using the configured SSID and security policy.
+	 */
+	WPA_ASSOCIATING,
+
+	/**
+	 * WPA_ASSOCIATED - Association completed
+	 *
+	 * This state is entered when the driver reports that association has
+	 * been successfully completed with an AP. If IEEE 802.1X is used
+	 * (with or without WPA/WPA2), wpa_supplicant remains in this state
+	 * until the IEEE 802.1X/EAPOL authentication has been completed.
+	 */
+	WPA_ASSOCIATED,
+
+	/**
+	 * WPA_4WAY_HANDSHAKE - WPA 4-Way Key Handshake in progress
+	 *
+	 * This state is entered when WPA/WPA2 4-Way Handshake is started. In
+	 * case of WPA-PSK, this happens when receiving the first EAPOL-Key
+	 * frame after association. In case of WPA-EAP, this state is entered
+	 * when the IEEE 802.1X/EAPOL authentication has been completed.
+	 */
+	WPA_4WAY_HANDSHAKE,
+
+	/**
+	 * WPA_GROUP_HANDSHAKE - WPA Group Key Handshake in progress
+	 *
+	 * This state is entered when 4-Way Key Handshake has been completed
+	 * (i.e., when the supplicant sends out message 4/4) and when Group
+	 * Key rekeying is started by the AP (i.e., when supplicant receives
+	 * message 1/2).
+	 */
+	WPA_GROUP_HANDSHAKE,
+
+	/**
+	 * WPA_COMPLETED - All authentication completed
+	 *
+	 * This state is entered when the full authentication process is
+	 * completed. In case of WPA2, this happens when the 4-Way Handshake is
+	 * successfully completed. With WPA, this state is entered after the
+	 * Group Key Handshake; with IEEE 802.1X (non-WPA) connection is
+	 * completed after dynamic keys are received (or if not used, after
+	 * the EAP authentication has been completed). With static WEP keys and
+	 * plaintext connections, this state is entered when an association
+	 * has been completed.
+	 *
+	 * This state indicates that the supplicant has completed its
+	 * processing for the association phase and that data connection is
+	 * fully configured.
+	 */
+	WPA_COMPLETED,
+
+	/**
+	 * WPA_INVALID - Invalid state (parsing error)
+	 *
+	 * This state is returned if the string input is invalid. It is not
+	 * an official wpa_supplicant state.
+	 */
+	WPA_INVALID,
 };
 
 struct supplicant_result {
@@ -82,7 +168,7 @@ struct supplicant_task {
 	char *netpath;
 	gboolean created;
 	enum supplicant_state state;
-	gboolean doscan;
+	gboolean noscan;
 	GSList *scan_results;
 };
 
@@ -750,7 +836,7 @@ static void extract_capabilites(DBusMessageIter *value,
 		result->has_wep = TRUE;
 }
 
-static int get_properties(struct supplicant_task *task);
+static void get_properties(struct supplicant_task *task);
 
 static void properties_reply(DBusPendingCall *call, void *user_data)
 {
@@ -767,6 +853,12 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	reply = dbus_pending_call_steal_reply(call);
 	if (reply == NULL) {
+		get_properties(task);
+		return;
+	}
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		dbus_message_unref(reply);
 		get_properties(task);
 		return;
 	}
@@ -899,18 +991,15 @@ done:
 	get_properties(task);
 }
 
-static int get_properties(struct supplicant_task *task)
+static void get_properties(struct supplicant_task *task)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
 	char *path;
 
 	path = g_slist_nth_data(task->scan_results, 0);
-	if (path == NULL) {
-		if (task->doscan == FALSE)
-			connman_device_set_scanning(task->device, FALSE);
-		return 0;
-	}
+	if (path == NULL)
+		goto noscan;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, path,
 						SUPPLICANT_INTF ".BSSID",
@@ -920,20 +1009,24 @@ static int get_properties(struct supplicant_task *task)
 	g_free(path);
 
 	if (message == NULL)
-		return -ENOMEM;
+		goto noscan;
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get network properties");
 		dbus_message_unref(message);
-		return -EIO;
+		goto noscan;
 	}
 
 	dbus_pending_call_set_notify(call, properties_reply, task, NULL);
 
 	dbus_message_unref(message);
 
-	return 0;
+	return;
+
+noscan:
+	if (task->noscan == FALSE)
+		connman_device_set_scanning(task->device, FALSE);
 }
 
 static void scan_results_reply(DBusPendingCall *call, void *user_data)
@@ -947,11 +1040,11 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL) {
-		if (task->doscan == FALSE)
-			connman_device_set_scanning(task->device, FALSE);
-		return;
-	}
+	if (reply == NULL)
+		goto noscan;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		goto done;
 
 	dbus_error_init(&error);
 
@@ -964,10 +1057,11 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 			dbus_error_free(&error);
 		} else
 			connman_error("Wrong arguments for scan result");
-		if (task->doscan == FALSE)
-			connman_device_set_scanning(task->device, FALSE);
 		goto done;
 	}
+
+	if (num_results == 0)
+		goto done;
 
 	for (i = 0; i < num_results; i++) {
 		char *path = g_strdup(results[i]);
@@ -979,13 +1073,21 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 
 	g_strfreev(results);
 
+	dbus_message_unref(reply);
+
 	get_properties(task);
+
+	return;
 
 done:
 	dbus_message_unref(reply);
+
+noscan:
+	if (task->noscan == FALSE)
+		connman_device_set_scanning(task->device, FALSE);
 }
 
-static int scan_results_available(struct supplicant_task *task)
+static void scan_results_available(struct supplicant_task *task)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
@@ -996,33 +1098,55 @@ static int scan_results_available(struct supplicant_task *task)
 						SUPPLICANT_INTF ".Interface",
 							"scanResults");
 	if (message == NULL)
-		return -ENOMEM;
+		return;
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to request scan result");
-		dbus_message_unref(message);
-		return -EIO;
+		goto done;
 	}
 
-	connman_device_set_scanning(task->device, TRUE);
+	if (task->noscan == FALSE)
+		connman_device_set_scanning(task->device, TRUE);
 
 	dbus_pending_call_set_notify(call, scan_results_reply, task, NULL);
 
+done:
 	dbus_message_unref(message);
+}
 
-	return 0;
+static enum supplicant_state string2state(const char *state)
+{
+	if (g_str_equal(state, "INACTIVE") == TRUE)
+		return WPA_INACTIVE;
+	else if (g_str_equal(state, "SCANNING") == TRUE)
+		return WPA_SCANNING;
+	else if (g_str_equal(state, "ASSOCIATING") == TRUE)
+		return WPA_ASSOCIATING;
+	else if (g_str_equal(state, "ASSOCIATED") == TRUE)
+		return WPA_ASSOCIATED;
+	else if (g_str_equal(state, "GROUP_HANDSHAKE") == TRUE)
+		return WPA_GROUP_HANDSHAKE;
+	else if (g_str_equal(state, "4WAY_HANDSHAKE") == TRUE)
+		return WPA_4WAY_HANDSHAKE;
+	else if (g_str_equal(state, "COMPLETED") == TRUE)
+		return WPA_COMPLETED;
+	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
+		return WPA_DISCONNECTED;
+	else
+		return WPA_INVALID;
 }
 
 static void state_change(struct supplicant_task *task, DBusMessage *msg)
 {
 	DBusError error;
-	const char *state, *previous;
+	const char *newstate, *oldstate;
+	enum supplicant_state state;
 
 	dbus_error_init(&error);
 
-	if (dbus_message_get_args(msg, &error, DBUS_TYPE_STRING, &state,
-						DBUS_TYPE_STRING, &previous,
+	if (dbus_message_get_args(msg, &error, DBUS_TYPE_STRING, &newstate,
+						DBUS_TYPE_STRING, &oldstate,
 						DBUS_TYPE_INVALID) == FALSE) {
 		if (dbus_error_is_set(&error) == TRUE) {
 			connman_error("%s", error.message);
@@ -1032,44 +1156,50 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		return;
 	}
 
-	DBG("state %s ==> %s", previous, state);
+	DBG("state %s ==> %s", oldstate, newstate);
 
-	if (g_str_equal(state, "INACTIVE") == TRUE)
-		task->state = STATE_INACTIVE;
-	else if (g_str_equal(state, "SCANNING") == TRUE)
-		task->state = STATE_SCANNING;
-	else if (g_str_equal(state, "ASSOCIATING") == TRUE)
-		task->state = STATE_ASSOCIATING;
-	else if (g_str_equal(state, "ASSOCIATED") == TRUE)
-		task->state = STATE_ASSOCIATED;
-	else if (g_str_equal(state, "GROUP_HANDSHAKE") == TRUE)
-		task->state = STATE_GROUP_HANDSHAKE;
-	else if (g_str_equal(state, "4WAY_HANDSHAKE") == TRUE)
-		task->state = STATE_4WAY_HANDSHAKE;
-	else if (g_str_equal(state, "COMPLETED") == TRUE)
-		task->state = STATE_COMPLETED;
-	else if (g_str_equal(state, "DISCONNECTED") == TRUE)
-		task->state = STATE_DISCONNECTED;
+	state = string2state(newstate);
+	if (state == WPA_INVALID)
+		return;
 
-	if (task->state == STATE_SCANNING) {
-		task->doscan = TRUE;
+	task->state = state;
+
+	switch (task->state) {
+	case WPA_SCANNING:
+		task->noscan = TRUE;
 		connman_device_set_scanning(task->device, TRUE);
-	} else if (task->state == STATE_INACTIVE) {
-		task->doscan = FALSE;
+		break;
+	case WPA_ASSOCIATING:
+	case WPA_ASSOCIATED:
+	case WPA_4WAY_HANDSHAKE:
+	case WPA_GROUP_HANDSHAKE:
+		task->noscan = TRUE;
+		break;
+	case WPA_COMPLETED:
+	case WPA_DISCONNECTED:
+		task->noscan = FALSE;
+		break;
+	case WPA_INACTIVE:
+		task->noscan = FALSE;
 		connman_device_set_scanning(task->device, FALSE);
+		break;
+	case WPA_INVALID:
+		break;
 	}
 
 	if (task->network == NULL)
 		return;
 
 	switch (task->state) {
-	case STATE_COMPLETED:
+	case WPA_COMPLETED:
 		/* carrier on */
 		connman_network_set_connected(task->network, TRUE);
+		connman_device_set_scanning(task->device, FALSE);
 		break;
-	case STATE_DISCONNECTED:
+	case WPA_DISCONNECTED:
 		/* carrier off */
 		connman_network_set_connected(task->network, FALSE);
+		connman_device_set_scanning(task->device, FALSE);
 		break;
 	default:
 		break;
@@ -1128,7 +1258,8 @@ int supplicant_start(struct connman_device *device)
 	}
 
 	task->created = FALSE;
-	task->state = STATE_INACTIVE;
+	task->noscan = FALSE;
+	task->state = WPA_INVALID;
 
 	task_list = g_slist_append(task_list, task);
 
@@ -1168,12 +1299,12 @@ int supplicant_scan(struct connman_device *device)
 		return -ENODEV;
 
 	switch (task->state) {
-	case STATE_SCANNING:
+	case WPA_SCANNING:
 		return -EALREADY;
-	case STATE_ASSOCIATING:
-	case STATE_ASSOCIATED:
-	case STATE_4WAY_HANDSHAKE:
-	case STATE_GROUP_HANDSHAKE:
+	case WPA_ASSOCIATING:
+	case WPA_ASSOCIATED:
+	case WPA_4WAY_HANDSHAKE:
+	case WPA_GROUP_HANDSHAKE:
 		return -EBUSY;
 	default:
 		break;
