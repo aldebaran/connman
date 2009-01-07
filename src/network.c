@@ -573,6 +573,17 @@ int connman_network_set_available(struct connman_network *network,
 }
 
 /**
+ * connman_network_get_available:
+ * @network: network structure
+ *
+ * Get network available setting
+ */
+connman_bool_t connman_network_get_available(struct connman_network *network)
+{
+	return network->available;
+}
+
+/**
  * connman_network_set_connected:
  * @network: network structure
  * @connected: connected state
