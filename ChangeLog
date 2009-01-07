@@ -1,3 +1,16 @@
+ver 0.7:
+	Add basic support for flight mode.
+	Add support for multiple storage drivers.
+	Add support for RTNL newlink watch API.
+	Add support for different security privileges.
+	Add support for device and network priorities.
+	Add functions for setting network properties.
+	Fix issue with listing devices without a driver.
+	Fix issue with WiFi scanning indication.
+	Fix detection of WiFi security changes.
+	Update WiFi driver to use new network helpers.
+	Install different D-Bus configuration for PolicyKit.
+
 ver 0.6:
 	Add CONNMAN_API_SUBJECT_TO_CHANGE definition.
 	Add detailed configuration options.
