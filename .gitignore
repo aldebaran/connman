@@ -30,6 +30,7 @@ src/connman.ver
 src/connman.conf
 src/connman.service
 src/*-connman.rules
+plugins/connman.policy
 scripts/connman
 scripts/udhcpc-script
 scripts/dhclient-script
