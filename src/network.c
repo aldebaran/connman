@@ -1008,6 +1008,13 @@ static struct connman_driver network_driver = {
 	.remove		= network_remove,
 };
 
+static int network_init(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
 static int network_load(struct connman_network *network)
 {
 	GKeyFile *keyfile;
@@ -1131,6 +1138,7 @@ done:
 static struct connman_storage network_storage = {
 	.name		= "network",
 	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+	.network_init	= network_init,
 	.network_load	= network_load,
 	.network_save	= network_save,
 };

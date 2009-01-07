@@ -66,6 +66,24 @@ void connman_storage_unregister(struct connman_storage *storage)
 	storage_list = g_slist_remove(storage_list, storage);
 }
 
+int __connman_storage_init_device(void)
+{
+	GSList *list;
+
+	DBG("");
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->device_init) {
+			if (storage->device_init() == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
 int __connman_storage_load_device(struct connman_device *device)
 {
 	GSList *list;
@@ -95,6 +113,24 @@ int __connman_storage_save_device(struct connman_device *device)
 
 		if (storage->device_save) {
 			if (storage->device_save(device) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+int __connman_storage_init_network(struct connman_device *device)
+{
+	GSList *list;
+
+	DBG("device %p", device);
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->network_init) {
+			if (storage->network_init(device) == 0)
 				return 0;
 		}
 	}

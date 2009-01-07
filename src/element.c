@@ -1455,6 +1455,8 @@ void __connman_element_start(void)
 
 	started = TRUE;
 
+	__connman_storage_init_device();
+
 	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_detect_init();

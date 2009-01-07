@@ -1250,6 +1250,16 @@ int connman_device_register(struct connman_device *device)
 {
 	__connman_storage_load_device(device);
 
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		break;
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		__connman_storage_init_network(device);
+		break;
+	}
+
 	return connman_element_register(&device->element, NULL);
 }
 

@@ -43,9 +43,11 @@ struct connman_storage {
 	const char *name;
 	int priority;
 	enum connman_device_type device_type;
+	int (*device_init) (void);
 	int (*device_load) (struct connman_device *device);
 	int (*device_save) (struct connman_device *device);
 	enum connman_network_type network_type;
+	int (*network_init) (struct connman_device *device);
 	int (*network_load) (struct connman_network *network);
 	int (*network_save) (struct connman_network *network);
 };
