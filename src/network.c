@@ -36,6 +36,7 @@ struct connman_network {
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t remember;
+	connman_uint8_t priority;
 	connman_uint8_t strength;
 	char *identifier;
 	char *name;
@@ -119,6 +120,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Remember",
 				DBUS_TYPE_BOOLEAN, &network->remember);
 
+	if (network->priority > 0)
+		connman_dbus_dict_append_variant(&dict, "Priority",
+					DBUS_TYPE_BYTE, &network->priority);
+
 	if (network->strength > 0)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &network->strength);
@@ -185,6 +190,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		g_free(network->wifi.passphrase);
 		network->wifi.passphrase = g_strdup(passphrase);
+	} else if (g_str_equal(name, "Priority") == TRUE) {
+		connman_uint8_t priority;
+
+		dbus_message_iter_get_basic(&value, &priority);
+
+		network->priority = priority;
 	}
 
 	__connman_storage_save_network(network);
@@ -981,6 +992,7 @@ static int network_load(struct connman_network *network)
 	gchar *pathname, *data = NULL;
 	gsize length;
 	const char *name;
+	int val;
 
 	DBG("network %p", network);
 
@@ -1011,6 +1023,11 @@ static int network_load(struct connman_network *network)
 
 	network->remember = g_key_file_get_boolean(keyfile,
 					network->identifier, "Remember", NULL);
+
+	val = g_key_file_get_integer(keyfile, network->identifier,
+							"Priority", NULL);
+	if (val > 0)
+		network->priority = val;
 
 	g_free(network->wifi.security);
 	network->wifi.security = g_key_file_get_string(keyfile,
@@ -1058,6 +1075,10 @@ static int network_save(struct connman_network *network)
 update:
 	g_key_file_set_boolean(keyfile, network->identifier,
 					"Remember", network->remember);
+
+	if (network->priority > 0)
+		g_key_file_set_integer(keyfile, network->identifier,
+						"Priority", network->priority);
 
 	if (network->wifi.security != NULL)
 		g_key_file_set_string(keyfile, network->identifier,
