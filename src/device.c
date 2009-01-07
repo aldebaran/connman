@@ -976,6 +976,7 @@ int connman_device_set_carrier(struct connman_device *device,
 
 static void connect_known_network(struct connman_device *device)
 {
+	struct connman_network *network = NULL;
 	GHashTableIter iter;
 	gpointer key, value;
 	unsigned int count = 0;
@@ -985,13 +986,37 @@ static void connect_known_network(struct connman_device *device)
 	g_hash_table_iter_init(&iter, device->networks);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		struct connman_network *network = value;
-		int err;
+		connman_uint8_t old_priority, new_priority;
+		connman_uint8_t old_strength, new_strength;
 
 		count++;
 
-		if (connman_network_get_remember(network) == FALSE)
+		if (connman_network_get_remember(value) == FALSE)
 			continue;
+
+		if (network == NULL) {
+			network = value;
+			continue;
+		}
+
+		old_priority = connman_network_get_uint8(network, "Priority");
+		new_priority = connman_network_get_uint8(value, "Priority");
+
+		if (new_priority != old_priority) {
+			if (new_priority > old_priority)
+				network = value;
+			continue;
+		}
+
+		old_strength = connman_network_get_uint8(network, "Strength");
+		old_strength = connman_network_get_uint8(value, "Strength");
+
+		if (new_strength > old_strength)
+			network = value;
+	}
+
+	if (network != NULL) {
+		int err;
 
 		err = connman_network_connect(network);
 		if (err == 0 || err == -EINPROGRESS)

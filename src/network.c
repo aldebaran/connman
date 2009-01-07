@@ -814,11 +814,33 @@ int connman_network_set_uint8(struct connman_network *network,
 {
 	DBG("network %p key %s value %d", network, key, value);
 
-	if (g_str_equal(key, "Strength") == TRUE) {
+	if (g_str_equal(key, "Priority") == TRUE)
+		network->priority = value;
+	else if (g_str_equal(key, "Strength") == TRUE) {
 		network->strength = value;
 		connman_element_set_static_property(&network->element,
 					"Strength", DBUS_TYPE_BYTE, &value);
 	}
+
+	return 0;
+}
+
+/**
+ * connman_network_get_uint8:
+ * @network: network structure
+ * @key: unique identifier
+ *
+ * Get integer value for specific key
+ */
+connman_uint8_t connman_network_get_uint8(struct connman_network *network,
+							const char *key)
+{
+	DBG("network %p key %s", network, key);
+
+	if (g_str_equal(key, "Priority") == TRUE)
+		return network->priority;
+	else if (g_str_equal(key, "Strength") == TRUE)
+		return network->strength;
 
 	return 0;
 }
