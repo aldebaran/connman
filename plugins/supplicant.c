@@ -977,6 +977,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		}
 	}
 
+	connman_network_set_available(network, TRUE);
 	connman_network_set_uint8(network, "Strength", strength);
 
 	connman_network_set_string(network, "WiFi.Security", security);

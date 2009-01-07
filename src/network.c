@@ -33,6 +33,7 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
+	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t remember;
 	connman_uint8_t strength;
@@ -108,6 +109,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (network->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
 					DBUS_TYPE_STRING, &network->name);
+
+	connman_dbus_dict_append_variant(&dict, "Available",
+				DBUS_TYPE_BOOLEAN, &network->available);
 
 	connman_dbus_dict_append_variant(&dict, "Connected",
 				DBUS_TYPE_BOOLEAN, &network->connected);
@@ -520,6 +524,52 @@ void connman_network_set_protocol(struct connman_network *network,
 					enum connman_network_protocol protocol)
 {
 	network->protocol = protocol;
+}
+
+/**
+ * connman_network_set_available:
+ * @network: network structure
+ * @available: availability state
+ *
+ * Change availability state of network (in range)
+ */
+int connman_network_set_available(struct connman_network *network,
+						connman_bool_t available)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Available";
+
+	DBG("network %p available %d", network, available);
+
+	if (network->available == available)
+		return -EALREADY;
+
+	network->available = available;
+
+	if (network->registered == FALSE)
+		return 0;
+
+	if (network->connected == FALSE && network->remember == FALSE)
+		return 0;
+
+	signal = dbus_message_new_signal(network->element.path,
+				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return 0;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &available);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+
+	return 0;
 }
 
 /**
