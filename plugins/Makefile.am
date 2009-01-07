@@ -122,9 +122,9 @@ AM_CFLAGS = @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 
-EXTRA_DIST = polkit.policy
+CLEANFILES = connman.policy
 
-CLEANFILES = polkit.policy
+EXTRA_DIST = polkit.policy
 
 MAINTAINERCLEANFILES = Makefile.in
 
