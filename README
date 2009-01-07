@@ -4,6 +4,26 @@ Connection Manager
 Copyright (C) 2007-2009  Intel Corporation. All rights reserved.
 
 
+Functionality and features
+==========================
+
+The following features are built-in into Connection Manager:
+	- Generic plugin infrastructure
+	- Device and network abstraction (with basic storage support)
+	- IPv4, routing and DNS configuration
+
+Various plugins can be enabled for networking support:
+	- Ethernet plugin
+	- WiFi plugin with WEP40/WEP128 and WPA/WPA2 (personal only) support
+	- Bluetooth plugin
+
+Also plugins with additional features are available:
+	- DHCP plugins (uDHCP and dhclient)
+	- Resolver plugins (resolvconf and DNS proxy)
+	- Loopback setup
+	- PolicyKit support
+
+
 Compilation and installation
 ============================
 
