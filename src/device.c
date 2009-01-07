@@ -1009,7 +1009,7 @@ static void connect_known_network(struct connman_device *device)
 		}
 
 		old_strength = connman_network_get_uint8(network, "Strength");
-		old_strength = connman_network_get_uint8(value, "Strength");
+		new_strength = connman_network_get_uint8(value, "Strength");
 
 		if (new_strength > old_strength)
 			network = value;
