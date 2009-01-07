@@ -24,7 +24,7 @@ connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
 connmand_DEPENDENCIES = connman.ver
 
-CLEANFILES = connman.ver connman.exp 92-connman.rules
+CLEANFILES = connman.ver connman.exp connman.conf 92-connman.rules
 
 statedir = $(localstatedir)/run/connman
 
@@ -42,7 +42,7 @@ AM_CFLAGS = @UDEV_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
 						-DPLUGINDIR=\""$(plugindir)"\"
 INCLUDES = -I$(top_builddir)/include
 
-EXTRA_DIST = $(dbus_DATA) connman.rules
+EXTRA_DIST = connman-dbus.conf connman-polkit.conf connman.rules
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -53,6 +53,13 @@ connman.ver: connman.exp
 	echo "{ global:" > $@
 	cat $< | sed -e "s/\(.*\)/\1;/" >> $@
 	echo "local: *; };" >> $@
+
+connman.conf: connman-dbus.conf connman-polkit.conf
+if POLKIT
+	cp $(top_srcdir)/src/connman-polkit.conf $@
+else
+	cp $(top_srcdir)/src/connman-dbus.conf $@
+endif
 
 92-connman.rules: connman.rules
 	cp $< $@

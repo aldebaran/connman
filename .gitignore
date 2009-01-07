@@ -27,6 +27,7 @@ src/version.h
 src/connmand
 src/connman.exp
 src/connman.ver
+src/connman.conf
 src/connman.service
 src/*-connman.rules
 scripts/connman
