@@ -209,6 +209,7 @@ AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 		[enable fake device support]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
 
-AC_OUTPUT(Makefile gdbus/Makefile include/Makefile src/Makefile doc/Makefile
-		test/Makefile plugins/Makefile client/Makefile scripts/Makefile
-		scripts/connman src/connman.service doc/version.xml connman.pc)
+AC_OUTPUT(Makefile gdbus/Makefile include/Makefile include/version.h
+		src/Makefile src/connman.service scripts/connman
+		scripts/Makefile plugins/Makefile client/Makefile
+		test/Makefile doc/Makefile doc/version.xml connman.pc)

@@ -22,6 +22,8 @@
 #ifndef __CONNMAN_PLUGIN_H
 #define __CONNMAN_PLUGIN_H
 
+#include <connman/version.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
