@@ -69,7 +69,7 @@ struct connman_plugin_desc {
  * {
  * }
  *
- * CONNMAN_PLUGIN_DEFINE(example, "Example plugin", VERSION,
+ * CONNMAN_PLUGIN_DEFINE(example, "Example plugin", CONNMAN_VERSION,
  * 					example_init, example_exit)
  * ]|
  */

@@ -43,6 +43,9 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	if (desc->init == NULL)
 		return FALSE;
 
+	if (g_str_equal(desc->version, CONNMAN_VERSION) == FALSE)
+		return FALSE;
+
 	plugin = g_try_new0(struct connman_plugin, 1);
 	if (plugin == NULL)
 		return FALSE;

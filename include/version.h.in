@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-#define CONNMAN_VERSION	@VERSION@
+#define CONNMAN_VERSION	"@VERSION@"
 
 #ifdef __cplusplus
 }
