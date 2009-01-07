@@ -14,9 +14,9 @@ all-local:
 	@if [ ! -e connman ]; then \
 	  mkdir connman; \
 	  list='$(include_HEADERS) $(noinst_HEADERS)'; for i in $$list; \
-	    do cp $(top_srcdir)/include/$$i connman/; done; \
+	    do $(LN_S) $(abs_top_srcdir)/include/$$i connman/$$i; done; \
 	  list='$(nodist_include_HEADERS)'; for i in $$list; \
-	    do cp $(top_builddir)/include/$$i connman/; done; \
+	    do $(LN_S) $(abs_top_builddir)/include/$$i connman/$$i; done; \
 	fi
 
 clean-local:
