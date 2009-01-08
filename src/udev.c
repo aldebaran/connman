@@ -168,6 +168,7 @@ static void print_properties(struct udev_device *device, const char *prefix)
 		const char *value = udev_list_entry_get_value(entry);
 
 		if (g_str_has_prefix(name, "CONNMAN") == TRUE ||
+				g_str_has_prefix(name, "RFKILL") == TRUE ||
 				g_str_has_prefix(name, "ID_MODEM") == TRUE ||
 				g_str_equal(name, "ID_VENDOR") == TRUE ||
 				g_str_equal(name, "ID_MODEL") == TRUE ||
