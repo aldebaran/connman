@@ -1,5 +1,5 @@
 
-dbusdir = $(sysconfdir)/dbus-1/system.d
+dbusdir = @DBUS_DATADIR@
 
 dbus_DATA = connman.conf
 

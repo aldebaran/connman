@@ -167,6 +167,13 @@ PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(libdbus is required))
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
+DBUS_DATADIR="`pkg-config --variable=sysconfdir dbus-1`"
+if (test -z "{DBUS_DATADIR}"); then
+	DBUS_DATADIR="${sysconfdir}/dbus-1/system.d"
+else
+	DBUS_DATADIR="$DBUS_DATADIR/dbus-1/system.d"
+fi
+AC_SUBST(DBUS_DATADIR)
 
 AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
 AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
