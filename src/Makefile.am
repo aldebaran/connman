@@ -13,7 +13,7 @@ connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 if UDEV
 connmand_SOURCES += udev.c
 
-rulesdir = $(sysconfdir)/udev/rules.d
+rulesdir = @UDEV_DATADIR@
 
 rules_DATA = 92-connman.rules
 endif

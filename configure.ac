@@ -186,6 +186,11 @@ if (test "${enable_udev}" = "yes"); then
 			[Define to 1 if you need the
 				udev_device_get_parent_with_subsystem_devtype()
 									function.]))
+	UDEV_DATADIR="`pkg-config --variable=rulesdir libudev`"
+	if (test -z "${UDEV_DATADIR}"); then
+		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
+	fi
+	AC_SUBST(UDEV_DATADIR)
 fi
 AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
