@@ -1,0 +1,16 @@
+
+  o Support for WPA/WPA2 Enterprise WiFi authentication
+
+	With wpa_supplicant the support for WPA/WPA2 Enterprise is already
+	present, but it needs properly hooked up. This involves a correct
+	security architecture since it uses personalized credentials.
+
+  o Support for multiple profiles
+
+	Currently only one active profile (the default profile) is supported.
+
+  o Support for static IPv4 configuration
+
+	This is in theory possible, but no D-Bus API has been defined on how
+	to configure it.
+
