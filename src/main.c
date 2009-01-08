@@ -53,9 +53,10 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 static gchar *option_device = NULL;
 static gchar *option_plugin = NULL;
 static gboolean option_detach = TRUE;
-static gboolean option_selftest = FALSE;
 static gboolean option_compat = FALSE;
 static gboolean option_debug = FALSE;
+static gboolean option_selftest = FALSE;
+static gboolean option_version = FALSE;
 
 static GOptionEntry options[] = {
 	{ "device", 'i', 0, G_OPTION_ARG_STRING, &option_device,
@@ -65,12 +66,14 @@ static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
-	{ "selftest", 't', 0, G_OPTION_ARG_NONE, &option_selftest,
-				"Run self testing routines" },
 	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Enable Network Manager compatibility" },
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 				"Enable debug information output" },
+	{ "selftest", 't', 0, G_OPTION_ARG_NONE, &option_selftest,
+				"Run self testing routines" },
+	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
+				"Show version information and exit" },
 	{ NULL },
 };
 
@@ -100,6 +103,11 @@ int main(int argc, char *argv[])
 	}
 
 	g_option_context_free(context);
+
+	if (option_version == TRUE) {
+		printf("%s\n", VERSION);
+		exit(0);
+	}
 
 	if (option_detach == TRUE) {
 		if (daemon(0, 0)) {
