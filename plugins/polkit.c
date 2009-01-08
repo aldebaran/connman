@@ -47,7 +47,7 @@ static int polkit_authorize(const char *sender,
 	PolKitCaller *caller;
 	PolKitAction *action;
 	PolKitResult result;
-	const char *id;
+	const char *id = NULL;
 
 	DBG("sender %s", sender);
 
