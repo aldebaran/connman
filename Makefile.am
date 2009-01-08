@@ -6,6 +6,7 @@ pkgconfigdir = $(libdir)/pkgconfig
 pkgconfig_DATA = connman.pc
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
+				--disable-datafiles \
 				--enable-loopback \
 				--enable-ethernet \
 				--enable-wifi \

@@ -96,9 +96,11 @@ polkit_la_SOURCES = polkit.c
 polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
 polkit_la_CFLAGS = @GLIB_CFLAGS@ @POLKIT_CFLAGS@
 
+if DATAFILES
 policydir = @POLKIT_DATADIR@
 
 policy_DATA = connman.policy
+endif
 endif
 
 if FAKE

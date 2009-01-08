@@ -1,7 +1,9 @@
 
+if DATAFILES
 dbusdir = @DBUS_DATADIR@
 
 dbus_DATA = connman.conf
+endif
 
 sbin_PROGRAMS = connmand
 
@@ -13,9 +15,11 @@ connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 if UDEV
 connmand_SOURCES += udev.c
 
+if DATAFILES
 rulesdir = @UDEV_DATADIR@
 
 rules_DATA = 92-connman.rules
+endif
 endif
 
 connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @UDEV_LIBS@ -ldl

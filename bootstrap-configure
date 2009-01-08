@@ -16,6 +16,7 @@ fi
 		--mandir=/usr/share/man \
 		--localstatedir=/var \
 		--sysconfdir=/etc \
+		--disable-datafiles \
 		--enable-loopback \
 		--enable-ethernet \
 		--enable-wifi \
