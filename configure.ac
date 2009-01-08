@@ -167,7 +167,7 @@ PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(libdbus is required))
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
-DBUS_DATADIR="`pkg-config --variable=sysconfdir dbus-1`"
+DBUS_DATADIR="`$PKG_CONFIG --variable=sysconfdir dbus-1`"
 if (test -z "{DBUS_DATADIR}"); then
 	DBUS_DATADIR="${sysconfdir}/dbus-1/system.d"
 else
@@ -193,7 +193,7 @@ if (test "${enable_udev}" = "yes"); then
 			[Define to 1 if you need the
 				udev_device_get_parent_with_subsystem_devtype()
 									function.]))
-	UDEV_DATADIR="`pkg-config --variable=rulesdir libudev`"
+	UDEV_DATADIR="`$PKG_CONFIG --variable=rulesdir libudev`"
 	if (test -z "${UDEV_DATADIR}"); then
 		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
 	fi
@@ -210,7 +210,7 @@ if (test "${enable_polkit}" = "yes"); then
 				AC_MSG_ERROR(PolicyKit >= 0.7 is required))
 	AC_SUBST(POLKIT_CFLAGS)
 	AC_SUBST(POLKIT_LIBS)
-	POLKIT_DATADIR="`pkg-config --variable=policydir polkit`"
+	POLKIT_DATADIR="`$PKG_CONFIG --variable=policydir polkit`"
 	if (test -z "${POLKIT_DATADIR}"); then
 		POLKIT_DATADIR="${datadir}/PolicyKit/policy"
 	fi
