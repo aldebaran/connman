@@ -198,6 +198,11 @@ if (test "${enable_polkit}" = "yes"); then
 				AC_MSG_ERROR(PolicyKit >= 0.7 is required))
 	AC_SUBST(POLKIT_CFLAGS)
 	AC_SUBST(POLKIT_LIBS)
+	POLKIT_DATADIR="`pkg-config --variable=policydir polkit`"
+	if (test -z "${POLKIT_DATADIR}"); then
+		POLKIT_DATADIR="${datadir}/PolicyKit/policy"
+	fi
+	AC_SUBST(POLKIT_DATADIR)
 fi
 AM_CONDITIONAL(POLKIT, test "${enable_polkit}" = "yes")
 
