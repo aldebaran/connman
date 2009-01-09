@@ -172,6 +172,8 @@ static void print_properties(struct udev_device *device, const char *prefix)
 				g_str_has_prefix(name, "ID_MODEM") == TRUE ||
 				g_str_equal(name, "ID_VENDOR") == TRUE ||
 				g_str_equal(name, "ID_MODEL") == TRUE ||
+				g_str_equal(name, "INTERFACE") == TRUE ||
+				g_str_equal(name, "IFINDEX") == TRUE ||
 				g_str_equal(name, "DEVNAME") == TRUE ||
 				g_str_equal(name, "DEVPATH") == TRUE)
 			connman_debug("%s%s = %s", prefix, name, value);
