@@ -14,3 +14,14 @@
 	This is in theory possible, but no D-Bus API has been defined on how
 	to configure it.
 
+  o Support for interface statistics
+
+	Information about carrier speed etc. should be exported.
+
+  o Support for handling RFKILL events
+
+	The RFKILL events are received via the udev infrastructure, but not
+	acted upon. Current problem is to assign the event to the correct
+	physical device. In case of platform RFKILL switches this is a real
+	problem and not solved yet.
+
