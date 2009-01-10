@@ -206,6 +206,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	connman_uint8_t strength = 0;
+	const char *device, *network;
 	const char *type = NULL, *method = NULL;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 
@@ -243,6 +244,16 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_variant(&dict, "Default",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
+
+	device = __connman_element_get_device(element);
+	if (device != NULL)
+		connman_dbus_dict_append_variant(&dict, "Device",
+					DBUS_TYPE_OBJECT_PATH, &device);
+
+	network = __connman_element_get_network(element);
+	if (network != NULL)
+		connman_dbus_dict_append_variant(&dict, "Network",
+					DBUS_TYPE_OBJECT_PATH, &network);
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_METHOD, &method);

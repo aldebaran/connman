@@ -117,6 +117,9 @@ void __connman_element_list(struct connman_element *element,
 int __connman_element_count(struct connman_element *element,
 					enum connman_element_type type);
 
+const char *__connman_element_get_device(struct connman_element *element);
+const char *__connman_element_get_network(struct connman_element *element);
+
 const char *__connman_element_type2string(enum connman_element_type type);
 
 static inline void __connman_element_lock(struct connman_element *element)
