@@ -1,3 +1,9 @@
+ver 0.8:
+	Add Device and Network property to connection interface.
+	Add option to disable installation of data files.
+	Add command line option to show version number.
+	Fix signal emission for network changes.
+
 ver 0.7:
 	Add basic support for flight mode.
 	Add support for multiple storage drivers.
