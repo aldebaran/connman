@@ -293,11 +293,12 @@ static void append_networks(struct connman_device *device,
 
 static void emit_networks_signal(struct connman_device *device)
 {
+	const char *path = connman_device_get_path(device);
 	DBusMessage *signal;
 	DBusMessageIter entry;
 
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	signal = dbus_message_new_signal(path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return;
 
