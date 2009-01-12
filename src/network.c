@@ -179,6 +179,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		if (network->remember == remember)
 			return __connman_error_invalid_arguments(msg);
+
+		network->remember = remember;
 	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
 		const char *passphrase;
 
