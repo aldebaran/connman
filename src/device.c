@@ -1159,10 +1159,10 @@ const char *connman_device_get_string(struct connman_device *device,
 	return NULL;
 }
 
-static void set_flightmode(struct connman_element *element, gpointer user_data)
+static void set_offlinemode(struct connman_element *element, gpointer user_data)
 {
 	struct connman_device *device = element->device;
-	connman_bool_t flightmode = GPOINTER_TO_UINT(user_data);
+	connman_bool_t offlinemode = GPOINTER_TO_UINT(user_data);
 	connman_bool_t powered;
 
 	DBG("element %p name %s", element, element->name);
@@ -1170,7 +1170,7 @@ static void set_flightmode(struct connman_element *element, gpointer user_data)
 	if (device == NULL)
 		return;
 
-	powered = (flightmode == TRUE) ? FALSE : TRUE;
+	powered = (offlinemode == TRUE) ? FALSE : TRUE;
 
 	if (device->powered == powered)
 		return;
@@ -1178,12 +1178,12 @@ static void set_flightmode(struct connman_element *element, gpointer user_data)
 	set_powered(device, powered);
 }
 
-int __connman_device_set_flightmode(connman_bool_t flightmode)
+int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 {
-	DBG("flightmode %d", flightmode);
+	DBG("offlinmode %d", offlinemode);
 
 	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
-				set_flightmode, GUINT_TO_POINTER(flightmode));
+			set_offlinemode, GUINT_TO_POINTER(offlinemode));
 
 	return 0;
 }

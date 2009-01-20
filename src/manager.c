@@ -35,7 +35,7 @@ enum connman_policy {
 };
 
 static enum connman_policy global_policy = CONNMAN_POLICY_SINGLE;
-static connman_bool_t global_flightmode = FALSE;
+static connman_bool_t global_offlinemode = FALSE;
 
 static const char *policy2string(enum connman_policy policy)
 {
@@ -185,8 +185,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Policy",
 						DBUS_TYPE_STRING, &str);
 
-	connman_dbus_dict_append_variant(&dict, "FlightMode",
-					DBUS_TYPE_BOOLEAN, &global_flightmode);
+	connman_dbus_dict_append_variant(&dict, "OfflineMode",
+				DBUS_TYPE_BOOLEAN, &global_offlinemode);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -222,17 +222,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 
 		global_policy = policy;
-	} else if (g_str_equal(name, "FlightMode") == TRUE) {
-		connman_bool_t flightmode;
+	} else if (g_str_equal(name, "OfflineMode") == TRUE) {
+		connman_bool_t offlinemode;
 
-		dbus_message_iter_get_basic(&value, &flightmode);
+		dbus_message_iter_get_basic(&value, &offlinemode);
 
-		if (global_flightmode == flightmode)
+		if (global_offlinemode == offlinemode)
 			return __connman_error_invalid_arguments(msg);
 
-		global_flightmode = flightmode;
+		global_offlinemode = offlinemode;
 
-		__connman_device_set_flightmode(flightmode);
+		__connman_device_set_offlinemode(offlinemode);
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);

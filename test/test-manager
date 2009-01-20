@@ -54,7 +54,7 @@ def print_properties(key, value):
 for key in properties.keys():
 	if key in ["Profiles", "Devices", "Connections"]:
 		print_properties(key, properties[key])
-	elif key in ["FlightMode"]:
+	elif key in ["OfflineMode"]:
 		print "%s" % (key)
 		if properties[key] == dbus.Boolean(1):
 			print "    true"

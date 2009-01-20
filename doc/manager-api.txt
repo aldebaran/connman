@@ -57,15 +57,15 @@ Properties	string State [readonly]
 			device defines which becomes the default connection
 			when multiple are available.
 
-		boolean FlightMode [readwrite]
+		boolean OfflineMode [readwrite]
 
-			The flight mode indicates the global setting for
-			switching all radios on or off. Changing flight mode
+			The offline mode indicates the global setting for
+			switching all radios on or off. Changing offline mode
 			to true results in powering down all devices. When
-			leaving flight mode the individual policy of each
+			leaving offline mode the individual policy of each
 			device decides to switch the radio back on or not.
 
-			During flight mode, it is still possible to switch
+			During offline mode, it is still possible to switch
 			certain technologies manually back on. For example
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.

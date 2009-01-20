@@ -163,7 +163,7 @@ void __connman_device_decrease_connections(struct connman_device *device);
 
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
-int __connman_device_set_flightmode(connman_bool_t flightmode);
+int __connman_device_set_offlinemode(connman_bool_t offlinemode);
 
 #include <connman/network.h>
 
