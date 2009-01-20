@@ -1030,6 +1030,31 @@ static void connect_known_network(struct connman_device *device)
 		device->driver->scan(device);
 }
 
+static void mark_network_unavailable(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	struct connman_network *network = value;
+
+	if (connman_network_get_remember(network) == TRUE)
+		return;
+
+	connman_network_set_available(network, FALSE);
+}
+
+static gboolean remove_unavailable_network(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	struct connman_network *network = value;
+
+	if (connman_network_get_remember(network) == TRUE)
+		return FALSE;
+
+	if (connman_network_get_available(network) == TRUE)
+		return FALSE;
+
+	return TRUE;
+}
+
 /**
  * connman_device_set_scanning:
  * @device: device structure
@@ -1070,8 +1095,14 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	g_dbus_send_message(connection, signal);
 
-	if (scanning == TRUE)
+	if (scanning == TRUE) {
+		g_hash_table_foreach(device->networks,
+					mark_network_unavailable, NULL);
 		return 0;
+	}
+
+	g_hash_table_foreach_remove(device->networks,
+					remove_unavailable_network, NULL);
 
 	if (device->connections > 0)
 		return 0;
