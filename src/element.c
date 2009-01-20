@@ -40,51 +40,6 @@ static gchar *device_filter = NULL;
 
 static gboolean started = FALSE;
 
-static struct {
-	enum connman_property_id id;
-	int type;
-	const char *name;
-	const void *value;
-} propid_table[] = {
-	{ CONNMAN_PROPERTY_ID_IPV4_METHOD,
-		DBUS_TYPE_STRING, "IPv4.Method", "dhcp" },
-	{ CONNMAN_PROPERTY_ID_IPV4_ADDRESS,
-		DBUS_TYPE_STRING, "IPv4.Address" },
-	{ CONNMAN_PROPERTY_ID_IPV4_NETMASK,
-		DBUS_TYPE_STRING, "IPv4.Netmask" },
-	{ CONNMAN_PROPERTY_ID_IPV4_GATEWAY,
-		DBUS_TYPE_STRING, "IPv4.Gateway" },
-	{ CONNMAN_PROPERTY_ID_IPV4_BROADCAST,
-		DBUS_TYPE_STRING, "IPv4.Broadcast" },
-	{ CONNMAN_PROPERTY_ID_IPV4_NAMESERVER,
-		DBUS_TYPE_STRING, "IPv4.Nameserver" },
-	{ }
-};
-
-static int propid2type(enum connman_property_id id)
-{
-	int i;
-
-	for (i = 0; propid_table[i].name; i++) {
-		if (propid_table[i].id == id)
-			return propid_table[i].type;
-	}
-
-	return DBUS_TYPE_INVALID;
-}
-
-static const char *propid2name(enum connman_property_id id)
-{
-	int i;
-
-	for (i = 0; propid_table[i].name; i++) {
-		if (propid_table[i].id == id)
-			return propid_table[i].name;
-	}
-
-	return NULL;
-}
-
 static const char *type2string(enum connman_element_type type)
 {
 	switch (type) {
@@ -148,116 +103,6 @@ enum connman_ipv4_method __connman_ipv4_string2method(const char *method)
 	else
 		return CONNMAN_IPV4_METHOD_UNKNOWN;
 }
-
-#if 0
-static void append_property(DBusMessageIter *dict,
-				struct connman_property *property)
-{
-	if (property->value == NULL)
-		return;
-
-	switch (property->type) {
-	case DBUS_TYPE_ARRAY:
-		connman_dbus_dict_append_array(dict, property->name,
-			property->subtype, &property->value, property->size);
-		break;
-	case DBUS_TYPE_STRING:
-		connman_dbus_dict_append_variant(dict, property->name,
-					property->type, &property->value);
-		break;
-	default:
-		connman_dbus_dict_append_variant(dict, property->name,
-					property->type, property->value);
-		break;
-	}
-}
-
-static void add_common_properties(struct connman_element *element,
-						DBusMessageIter *dict)
-{
-	const char *address = NULL, *netmask = NULL, *gateway = NULL;
-	GSList *list;
-
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-
-	if (element->priority > 0)
-		connman_dbus_dict_append_variant(dict, "Priority",
-					DBUS_TYPE_UINT16, &element->priority);
-
-	if (address != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Address",
-						DBUS_TYPE_STRING, &address);
-	if (netmask != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Netmask",
-						DBUS_TYPE_STRING, &netmask);
-	if (gateway != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Gateway",
-						DBUS_TYPE_STRING, &gateway);
-
-	if (element->wifi.security != NULL) {
-		const char *passphrase = "";
-
-		connman_dbus_dict_append_variant(dict, "WiFi.Security",
-				DBUS_TYPE_STRING, &element->wifi.security);
-
-		if (element->wifi.passphrase != NULL)
-			passphrase = element->wifi.passphrase;
-
-		connman_dbus_dict_append_variant(dict, "WiFi.Passphrase",
-				DBUS_TYPE_STRING, &passphrase);
-	}
-
-	__connman_element_lock(element);
-
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		append_property(dict, property);
-	}
-
-	__connman_element_unlock(element);
-}
-
-static void set_common_property(struct connman_element *element,
-				const char *name, DBusMessageIter *value)
-{
-	GSList *list;
-
-	if (g_str_equal(name, "Priority") == TRUE) {
-		dbus_message_iter_get_basic(value, &element->priority);
-		return;
-	}
-
-	__connman_element_lock(element);
-
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-		const char *str;
-
-		if (g_str_equal(property->name, name) == FALSE)
-			continue;
-
-		if (property->flags & CONNMAN_PROPERTY_FLAG_STATIC)
-			continue;
-
-		property->flags &= ~CONNMAN_PROPERTY_FLAG_REFERENCE;
-
-		if (property->type == DBUS_TYPE_STRING) {
-			dbus_message_iter_get_basic(value, &str);
-			g_free(property->value);
-			property->value = g_strdup(str);
-		} else
-			property->value = NULL;
-	}
-
-	__connman_element_unlock(element);
-}
-#endif
 
 static void emit_element_signal(DBusConnection *conn, const char *member,
 					struct connman_element *element)
@@ -570,6 +415,34 @@ void connman_driver_unregister(struct connman_driver *driver)
 				G_TRAVERSE_ALL, -1, remove_driver, driver);
 }
 
+static void unregister_property(gpointer data)
+{
+	struct connman_property *property = data;
+
+	DBG("property %p", property);
+
+	if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE))
+		g_free(property->value);
+
+	g_free(property->name);
+	g_free(property);
+}
+
+void __connman_element_initialize(struct connman_element *element)
+{
+	DBG("element %p", element);
+
+	element->refcount = 1;
+
+	element->name    = NULL;
+	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
+	element->index   = -1;
+	element->enabled = FALSE;
+
+	element->properties = g_hash_table_new_full(g_str_hash, g_direct_equal,
+						g_free, unregister_property);
+}
+
 /**
  * connman_element_create:
  * @name: element name
@@ -589,12 +462,7 @@ struct connman_element *connman_element_create(const char *name)
 
 	DBG("element %p", element);
 
-	element->refcount = 1;
-
-	element->name    = g_strdup(name);
-	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-	element->index   = -1;
-	element->enabled = FALSE;
+	__connman_element_initialize(element);
 
 	return element;
 }
@@ -611,24 +479,11 @@ struct connman_element *connman_element_ref(struct connman_element *element)
 
 static void free_properties(struct connman_element *element)
 {
-	GSList *list;
-
 	DBG("element %p name %s", element, element->name);
 
 	__connman_element_lock(element);
 
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE))
-			g_free(property->value);
-
-		g_free(property->name);
-		g_free(property);
-	}
-
-	g_slist_free(element->properties);
-
+	g_hash_table_destroy(element->properties);
 	element->properties = NULL;
 
 	__connman_element_unlock(element);
@@ -689,7 +544,9 @@ int connman_element_add_static_property(struct connman_element *element,
 	}
 
 	__connman_element_lock(element);
-	element->properties = g_slist_append(element->properties, property);
+
+	g_hash_table_insert(element->properties, g_strdup(name), property);
+
 	__connman_element_unlock(element);
 
 	return 0;
@@ -698,7 +555,7 @@ int connman_element_add_static_property(struct connman_element *element,
 int connman_element_set_static_property(struct connman_element *element,
 				const char *name, int type, const void *value)
 {
-	GSList *list;
+	struct connman_property *property;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -707,14 +564,9 @@ int connman_element_set_static_property(struct connman_element *element,
 
 	__connman_element_lock(element);
 
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (g_str_equal(property->name, name) == FALSE)
-			continue;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
-			continue;
+	property = g_hash_table_lookup(element->properties, name);
+	if (property != NULL) {
+		property->flags |= CONNMAN_PROPERTY_FLAG_STATIC;
 
 		property->type = type;
 		g_free(property->value);
@@ -770,166 +622,12 @@ int connman_element_add_static_array_property(struct connman_element *element,
 	}
 
 	__connman_element_lock(element);
-	element->properties = g_slist_append(element->properties, property);
+
+	g_hash_table_insert(element->properties, g_strdup(name), property);
+
 	__connman_element_unlock(element);
 
 	return 0;
-}
-
-static void *get_reference_value(struct connman_element *element,
-						enum connman_property_id id)
-{
-	GSList *list;
-
-	DBG("element %p name %s", element, element->name);
-
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (property->id != id)
-			continue;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE))
-			return property->value;
-	}
-
-	if (element->parent == NULL)
-		return NULL;
-
-	return get_reference_value(element->parent, id);
-}
-
-static void set_reference_properties(struct connman_element *element)
-{
-	GSList *list;
-
-	DBG("element %p name %s", element, element->name);
-
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE))
-			continue;
-
-		property->value = get_reference_value(element->parent,
-								property->id);
-	}
-}
-
-static struct connman_property *create_property(struct connman_element *element,
-						enum connman_property_id id)
-{
-	struct connman_property *property;
-	GSList *list;
-
-	DBG("element %p name %s", element, element->name);
-
-	__connman_element_lock(element);
-
-	for (list = element->properties; list; list = list->next) {
-		property = list->data;
-
-		if (property->id == id)
-			goto unlock;
-	}
-
-	property = g_try_new0(struct connman_property, 1);
-	if (property == NULL)
-		goto unlock;
-
-	property->flags = CONNMAN_PROPERTY_FLAG_REFERENCE;
-	property->id    = id;
-	property->name  = g_strdup(propid2name(id));
-	property->type  = propid2type(id);
-
-	if (property->name == NULL) {
-		g_free(property);
-		property = NULL;
-		goto unlock;
-	}
-
-	element->properties = g_slist_append(element->properties, property);
-
-unlock:
-	__connman_element_unlock(element);
-
-	return property;
-}
-
-static void create_default_properties(struct connman_element *element)
-{
-	struct connman_property *property;
-	int i;
-
-	DBG("element %p name %s", element, element->name);
-
-	for (i = 0; propid_table[i].name; i++) {
-		DBG("property %s", propid_table[i].name);
-
-		property = create_property(element, propid_table[i].id);
-
-		property->flags &= ~CONNMAN_PROPERTY_FLAG_REFERENCE;
-
-		if (propid_table[i].type != DBUS_TYPE_STRING)
-			continue;
-
-		if (propid_table[i].value)
-			property->value = g_strdup(propid_table[i].value);
-		else
-			property->value = g_strdup("");
-	}
-}
-
-static int define_properties_valist(struct connman_element *element,
-								va_list args)
-{
-	enum connman_property_id id;
-
-	DBG("element %p name %s", element, element->name);
-
-	id = va_arg(args, enum connman_property_id);
-
-	while (id != CONNMAN_PROPERTY_ID_INVALID) {
-
-		DBG("property %d", id);
-
-		create_property(element, id);
-
-		id = va_arg(args, enum connman_property_id);
-	}
-
-	return 0;
-}
-
-/**
- * connman_element_define_properties:
- * @element: an element
- * @varargs: list of property identifiers
- *
- * Define the valid properties for an element.
- *
- * Returns: %0 on success
- */
-int connman_element_define_properties(struct connman_element *element, ...)
-{
-	va_list args;
-	int err;
-
-	DBG("element %p name %s", element, element->name);
-
-	va_start(args, element);
-
-	err = define_properties_valist(element, args);
-
-	va_end(args);
-
-	return err;
-}
-
-int connman_element_create_property(struct connman_element *element,
-						const char *name, int type)
-{
-	return -EIO;
 }
 
 int connman_element_set_property(struct connman_element *element,
@@ -1038,19 +736,16 @@ int connman_element_get_value(struct connman_element *element,
 gboolean connman_element_get_static_property(struct connman_element *element,
 						const char *name, void *value)
 {
-	GSList *list;
+	struct connman_property *property;
 	gboolean found = FALSE;
 
 	DBG("element %p name %s", element, element->name);
 
 	__connman_element_lock(element);
 
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
-			continue;
-
+	property = g_hash_table_lookup(element->properties, name);
+	if (property != NULL &&
+			(property->flags & CONNMAN_PROPERTY_FLAG_STATIC)) {
 		if (g_str_equal(property->name, name) == TRUE) {
 			switch (property->type) {
 			case DBUS_TYPE_STRING:
@@ -1062,7 +757,6 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 				found = TRUE;
 				break;
 			}
-			break;
 		}
 	}
 
@@ -1078,24 +772,20 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 gboolean connman_element_get_static_array_property(struct connman_element *element,
 					const char *name, void *value, int *len)
 {
-	GSList *list;
+	struct connman_property *property;
 	gboolean found = FALSE;
 
 	DBG("element %p name %s", element, element->name);
 
 	__connman_element_lock(element);
 
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
-			continue;
-
+	property = g_hash_table_lookup(element->properties, name);
+	if (property != NULL &&
+			(property->flags & CONNMAN_PROPERTY_FLAG_STATIC)) {
 		if (g_str_equal(property->name, name) == TRUE) {
 			*((char **) value) = property->value;
 			*len = property->size;
 			found = TRUE;
-			break;
 		}
 	}
 
@@ -1107,28 +797,20 @@ gboolean connman_element_get_static_array_property(struct connman_element *eleme
 gboolean connman_element_match_static_property(struct connman_element *element,
 					const char *name, const void *value)
 {
-	GSList *list;
+	struct connman_property *property;
 	gboolean result = FALSE;
 
 	DBG("element %p name %s", element, element->name);
 
 	__connman_element_lock(element);
 
-	for (list = element->properties; list; list = list->next) {
-		struct connman_property *property = list->data;
-
-		if (!(property->flags & CONNMAN_PROPERTY_FLAG_STATIC))
-			continue;
-
-		if (g_str_equal(property->name, name) == FALSE)
-			continue;
-
-		if (property->type == DBUS_TYPE_STRING)
+	property = g_hash_table_lookup(element->properties, name);
+	if (property != NULL &&
+			(property->flags & CONNMAN_PROPERTY_FLAG_STATIC)) {
+		if (g_str_equal(property->name, name) == TRUE &&
+					property->type == DBUS_TYPE_STRING)
 			result = g_str_equal(property->value,
 						*((const char **) value));
-
-		if (result == TRUE)
-			break;
 	}
 
 	__connman_element_unlock(element);
@@ -1249,8 +931,6 @@ static void register_element(gpointer data, gpointer user_data)
 	}
 
 	element->path = g_strdup_printf("%s/%s", basepath, element->name);
-
-	set_reference_properties(element);
 
 	__connman_element_unlock(element);
 
@@ -1442,8 +1122,6 @@ int __connman_element_init(DBusConnection *conn, const char *device)
 
 	element->path = g_strdup("/");
 	element->type = CONNMAN_ELEMENT_TYPE_ROOT;
-
-	create_default_properties(element);
 
 	element_root = g_node_new(element);
 

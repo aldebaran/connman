@@ -434,11 +434,10 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	DBG("network %p", network);
 
-	network->element.refcount = 1;
+	__connman_element_initialize(&network->element);
 
 	network->element.name = g_strdup(identifier);
 	network->element.type = CONNMAN_ELEMENT_TYPE_NETWORK;
-	network->element.index = -1;
 
 	network->element.network = network;
 	network->element.destruct = network_destruct;

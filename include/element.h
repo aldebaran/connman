@@ -79,7 +79,7 @@ struct connman_element {
 		struct connman_network *network;
 	};
 
-	GSList *properties;
+	GHashTable *properties;
 
 	struct {
 		enum connman_ipv4_method method;
@@ -102,9 +102,6 @@ extern int connman_element_set_static_property(struct connman_element *element,
 				const char *name, int type, const void *value);
 extern int connman_element_add_static_array_property(struct connman_element *element,
 			const char *name, int type, const void *value, int len);
-extern int connman_element_define_properties(struct connman_element *element, ...);
-extern int connman_element_create_property(struct connman_element *element,
-						const char *name, int type);
 extern int connman_element_set_property(struct connman_element *element,
 				enum connman_property_id id, const void *value);
 extern int connman_element_get_value(struct connman_element *element,

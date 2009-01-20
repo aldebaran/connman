@@ -105,6 +105,8 @@ void __connman_element_start(void);
 void __connman_element_stop(void);
 void __connman_element_cleanup(void);
 
+void __connman_element_initialize(struct connman_element *element);
+
 typedef void (* element_cb_t) (struct connman_element *element,
 							gpointer user_data);
 
