@@ -158,6 +158,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	struct connman_network *network = data;
 	DBusMessageIter iter, value;
 	const char *name;
+	int type;
 
 	DBG("conn %p", conn);
 
@@ -172,8 +173,13 @@ static DBusMessage *set_property(DBusConnection *conn,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
+	type = dbus_message_iter_get_arg_type(&value);
+
 	if (g_str_equal(name, "Remember") == TRUE) {
 		connman_bool_t remember;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
 
 		dbus_message_iter_get_basic(&value, &remember);
 
@@ -183,6 +189,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		network->remember = remember;
 	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
 		const char *passphrase;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
 
 		if (__connman_security_check_privilege(msg,
 					CONNMAN_SECURITY_PRIVILEGE_SECRET) < 0)
@@ -194,6 +203,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		network->wifi.passphrase = g_strdup(passphrase);
 	} else if (g_str_equal(name, "Priority") == TRUE) {
 		connman_uint8_t priority;
+
+		if (type != DBUS_TYPE_BYTE)
+			return __connman_error_invalid_arguments(msg);
 
 		dbus_message_iter_get_basic(&value, &priority);
 

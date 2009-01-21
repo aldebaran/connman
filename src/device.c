@@ -317,6 +317,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	struct connman_device *device = data;
 	DBusMessageIter iter, value;
 	const char *name;
+	int type;
 
 	DBG("conn %p", conn);
 
@@ -331,9 +332,14 @@ static DBusMessage *set_property(DBusConnection *conn,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
+	type = dbus_message_iter_get_arg_type(&value);
+
 	if (g_str_equal(name, "Powered") == TRUE) {
 		connman_bool_t powered;
 		int err;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
 
 		dbus_message_iter_get_basic(&value, &powered);
 
@@ -348,6 +354,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		const char *str;
 		int err;
 
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
 		dbus_message_iter_get_basic(&value, &str);
 		policy = string2policy(str);
 		if (policy == CONNMAN_DEVICE_POLICY_UNKNOWN)
@@ -358,6 +367,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_failed(msg);
 	} else if (g_str_equal(name, "Priority") == TRUE) {
 		connman_uint8_t priority;
+
+		if (type != DBUS_TYPE_BYTE)
+			return __connman_error_invalid_arguments(msg);
 
 		dbus_message_iter_get_basic(&value, &priority);
 

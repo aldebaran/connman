@@ -291,6 +291,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 {
 	DBusMessageIter iter, value;
 	const char *name;
+	int type;
 
 	DBG("conn %p", conn);
 
@@ -304,6 +305,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 	if (__connman_security_check_privilege(msg,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
+
+	type = dbus_message_iter_get_arg_type(&value);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
