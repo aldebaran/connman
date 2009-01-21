@@ -106,6 +106,19 @@ Properties	string Name [readonly]
 			example would be modifications via the "ifconfig"
 			command line utility.
 
+		uint16 ScanInterval [readwrite]
+
+			The scan interval describes the time in seconds
+			between automated scan attempts. Setting this
+			value to 0 will disable the background scanning.
+
+			The default value is 300 and so every 5 minutes
+			a scan procedure will be triggered.
+
+			This property is not available with all types
+			of devices. Some might not support background
+			scanning at all.
+
 		boolean Scanning [readonly]
 
 			Indicates if a device is scanning. Not all device

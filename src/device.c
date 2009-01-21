@@ -38,10 +38,12 @@ struct connman_device {
 	connman_bool_t scanning;
 	connman_bool_t disconnected;
 	connman_uint8_t priority;
+	connman_uint16_t scan_interval;
 	char *name;
 	char *node;
 	char *interface;
 	unsigned int connections;
+	guint scan_timeout;
 
 	struct connman_device_driver *driver;
 	void *driver_data;
@@ -52,6 +54,23 @@ struct connman_device {
 	struct connman_network *network;
 	GHashTable *networks;
 };
+
+static gboolean device_scan_trigger(gpointer user_data)
+{
+	struct connman_device *device = user_data;
+
+	DBG("device %p", device);
+
+	if (device->driver == NULL) {
+		device->scan_timeout = 0;
+		return FALSE;
+	}
+
+	if (device->driver->scan)
+		device->driver->scan(device);
+
+	return TRUE;
+}
 
 static const char *type2description(enum connman_device_type type)
 {
@@ -304,6 +323,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		if (device->scan_interval > 0)
+			connman_dbus_dict_append_variant(&dict, "ScanInterval",
+				DBUS_TYPE_UINT16, &device->scan_interval);
+
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 		append_networks(device, &entry);
@@ -379,6 +402,35 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &priority);
 
 		device->priority = priority;
+	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
+		connman_uint16_t interval;
+
+		switch (device->mode) {
+		case CONNMAN_DEVICE_MODE_UNKNOWN:
+		case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+			return __connman_error_invalid_arguments(msg);
+		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+			break;
+		}
+
+		if (type != DBUS_TYPE_UINT16)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &interval);
+
+		device->scan_interval = interval;
+
+		if (device->scan_timeout > 0) {
+			g_source_remove(device->scan_timeout);
+			device->scan_timeout = 0;
+		}
+
+		if (device->scan_interval > 0) {
+			guint interval = device->scan_interval;
+			device->scan_timeout = g_timeout_add_seconds(interval,
+						device_scan_trigger, device);
+		}
 	} else if (g_str_has_prefix(name, "IPv4") == TRUE) {
 		switch (device->mode) {
 		case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -763,22 +815,27 @@ struct connman_device *connman_device_create(const char *node,
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		device->priority = 0;
+		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 		device->priority = 100;
+		device->scan_interval = 300;
 		break;
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		device->priority = 20;
+		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		device->priority = 50;
+		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		device->priority = 60;
+		device->scan_interval = 0;
 		break;
 	}
 
@@ -965,6 +1022,17 @@ int connman_device_set_powered(struct connman_device *device,
 
 	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
 		return 0;
+
+	if (device->scan_timeout > 0) {
+		g_source_remove(device->scan_timeout);
+		device->scan_timeout = 0;
+	}
+
+	if (device->scan_interval > 0) {
+		guint interval = device->scan_interval;
+		device->scan_timeout = g_timeout_add_seconds(interval,
+					device_scan_trigger, device);
+	}
 
 	if (device->driver->scan)
 		device->driver->scan(device);
@@ -1573,6 +1641,19 @@ static int device_load(struct connman_device *device)
 	if (val > 0)
 		device->priority = val;
 
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		break;
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		val = g_key_file_get_integer(keyfile, "Configuration",
+							"ScanInterval", NULL);
+		if (val > 0)
+			device->scan_interval = val;
+		break;
+	}
+
 	str = g_key_file_get_string(keyfile, "Configuration",
 							"LastNetwork", NULL);
 	if (str != NULL)
@@ -1618,6 +1699,18 @@ update:
 	if (device->priority > 0)
 		g_key_file_set_integer(keyfile, "Configuration",
 						"Priority", device->priority);
+
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		break;
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		if (device->scan_interval > 0)
+			g_key_file_set_integer(keyfile, "Configuration",
+					"ScanInterval", device->scan_interval);
+		break;
+	}
 
 	if (device->last_network != NULL)
 		g_key_file_set_string(keyfile, "Configuration",

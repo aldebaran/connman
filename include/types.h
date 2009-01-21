@@ -36,6 +36,7 @@ extern "C" {
 
 typedef int		connman_bool_t;
 typedef unsigned char	connman_uint8_t;
+typedef unsigned short	connman_uint16_t;
 
 #ifdef __cplusplus
 }
