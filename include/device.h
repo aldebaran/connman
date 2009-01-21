@@ -83,6 +83,7 @@ extern void connman_device_set_policy(struct connman_device *device,
 					enum connman_device_policy policy);
 extern void connman_device_set_mode(struct connman_device *device,
 						enum connman_device_mode mode);
+extern enum connman_device_mode connman_device_get_mode(struct connman_device *device);
 
 extern int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered);

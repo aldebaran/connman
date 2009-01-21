@@ -893,6 +893,17 @@ void connman_device_set_mode(struct connman_device *device,
 }
 
 /**
+ * connman_device_get_mode:
+ * @device: device structure
+ *
+ * Get network mode of device
+ */
+enum connman_device_mode connman_device_get_mode(struct connman_device *device)
+{
+	return device->mode;
+}
+
+/**
  * connman_device_set_powered:
  * @device: device structure
  * @powered: powered state
