@@ -64,6 +64,7 @@ struct connman_element {
 	gchar *path;
 	enum connman_element_type type;
 	gboolean enabled;
+	gboolean configuring;
 	gchar *devname;
 
 	struct connman_element *parent;

@@ -436,6 +436,8 @@ void __connman_element_initialize(struct connman_element *element)
 	element->index   = -1;
 	element->enabled = FALSE;
 
+	element->configuring = FALSE;
+
 	element->properties = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_property);
 }
@@ -988,9 +990,27 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_node_append_data(node, element);
 
+	if (element->type == CONNMAN_ELEMENT_TYPE_DHCP) {
+		element->parent->configuring = TRUE;
+
+		if (__connman_element_count(NULL,
+					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
+			emit_state_change(connection, "connecting");
+	}
+
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
+		struct connman_element *parent = element->parent;
+
+		while (parent) {
+			parent->configuring = FALSE;
+			parent = parent->parent;
+		}
+
 		emit_connections_signal(connection);
-		emit_state_change(connection, "online");
+
+		if (__connman_element_count(NULL,
+					CONNMAN_ELEMENT_TYPE_CONNECTION) == 1)
+			emit_state_change(connection, "online");
 	}
 
 	emit_element_signal(connection, "ElementAdded", element);
@@ -1082,6 +1102,7 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		if (__connman_element_count(NULL,
 					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
 			emit_state_change(connection, "offline");
+
 		emit_connections_signal(connection);
 	}
 

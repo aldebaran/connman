@@ -45,6 +45,10 @@ Properties	string State [readonly]
 			values are "online" if at least one connection exists
 			and "offline" if no device is connected.
 
+			In certain situations the state might change to
+			the value "connected". This can only be seen if
+			previously no connection was present.
+
 		string Policy [readwrite]
 
 			The global connection policy of a system. This
