@@ -462,10 +462,10 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	str = type2string(type);
 	if (str != NULL)
-		connman_element_add_static_property(&network->element,
+		connman_element_set_static_property(&network->element,
 					"Type", DBUS_TYPE_STRING, &str);
 
-	connman_element_add_static_property(&network->element,
+	connman_element_set_static_property(&network->element,
 					"Strength", DBUS_TYPE_BYTE, &strength);
 
 	network->type = type;

@@ -43,20 +43,8 @@ enum connman_property_id {
 	CONNMAN_PROPERTY_ID_IPV4_NAMESERVER,
 };
 
-/**
- * connman_property_flags:
- * @CONNMAN_PROPERTY_FLAG_STATIC: read-only property
- * @CONNMAN_PROPERTY_FLAG_REFERENCE: inheritated value (reference only)
- */
-enum connman_property_flags {
-	CONNMAN_PROPERTY_FLAG_STATIC     = (1 << 0),
-	CONNMAN_PROPERTY_FLAG_REFERENCE  = (1 << 1),
-};
-
 struct connman_property {
-	enum connman_property_flags flags;
 	enum connman_property_id id;
-	char *name;
 	int type;
 	int subtype;
 	void *value;

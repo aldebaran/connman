@@ -421,10 +421,7 @@ static void unregister_property(gpointer data)
 
 	DBG("property %p", property);
 
-	if (!(property->flags & CONNMAN_PROPERTY_FLAG_REFERENCE))
-		g_free(property->value);
-
-	g_free(property->name);
+	g_free(property->value);
 	g_free(property);
 }
 
@@ -439,7 +436,7 @@ void __connman_element_initialize(struct connman_element *element)
 	element->index   = -1;
 	element->enabled = FALSE;
 
-	element->properties = g_hash_table_new_full(g_str_hash, g_direct_equal,
+	element->properties = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_property);
 }
 
@@ -511,7 +508,7 @@ void connman_element_unref(struct connman_element *element)
 	}
 }
 
-int connman_element_add_static_property(struct connman_element *element,
+int connman_element_set_static_property(struct connman_element *element,
 				const char *name, int type, const void *value)
 {
 	struct connman_property *property;
@@ -525,10 +522,8 @@ int connman_element_add_static_property(struct connman_element *element,
 	if (property == NULL)
 		return -ENOMEM;
 
-	property->flags = CONNMAN_PROPERTY_FLAG_STATIC;
-	property->id    = CONNMAN_PROPERTY_ID_INVALID;
-	property->name  = g_strdup(name);
-	property->type  = type;
+	property->id   = CONNMAN_PROPERTY_ID_INVALID;
+	property->type = type;
 
 	DBG("name %s type %d value %p", name, type, value);
 
@@ -545,50 +540,14 @@ int connman_element_add_static_property(struct connman_element *element,
 
 	__connman_element_lock(element);
 
-	g_hash_table_insert(element->properties, g_strdup(name), property);
+	g_hash_table_replace(element->properties, g_strdup(name), property);
 
 	__connman_element_unlock(element);
 
 	return 0;
 }
 
-int connman_element_set_static_property(struct connman_element *element,
-				const char *name, int type, const void *value)
-{
-	struct connman_property *property;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (type != DBUS_TYPE_STRING && type != DBUS_TYPE_BYTE)
-		return -EINVAL;
-
-	__connman_element_lock(element);
-
-	property = g_hash_table_lookup(element->properties, name);
-	if (property != NULL) {
-		property->flags |= CONNMAN_PROPERTY_FLAG_STATIC;
-
-		property->type = type;
-		g_free(property->value);
-
-		switch (type) {
-		case DBUS_TYPE_STRING:
-			property->value = g_strdup(*((const char **) value));
-			break;
-		case DBUS_TYPE_BYTE:
-			property->value = g_try_malloc(1);
-			if (property->value != NULL)
-				memcpy(property->value, value, 1);
-			break;
-		}
-	}
-
-	__connman_element_unlock(element);
-
-	return 0;
-}
-
-int connman_element_add_static_array_property(struct connman_element *element,
+int connman_element_set_static_array_property(struct connman_element *element,
 			const char *name, int type, const void *value, int len)
 {
 	struct connman_property *property;
@@ -602,9 +561,7 @@ int connman_element_add_static_array_property(struct connman_element *element,
 	if (property == NULL)
 		return -ENOMEM;
 
-	property->flags   = CONNMAN_PROPERTY_FLAG_STATIC;
 	property->id      = CONNMAN_PROPERTY_ID_INVALID;
-	property->name    = g_strdup(name);
 	property->type    = DBUS_TYPE_ARRAY;
 	property->subtype = type;
 
@@ -623,7 +580,7 @@ int connman_element_add_static_array_property(struct connman_element *element,
 
 	__connman_element_lock(element);
 
-	g_hash_table_insert(element->properties, g_strdup(name), property);
+	g_hash_table_replace(element->properties, g_strdup(name), property);
 
 	__connman_element_unlock(element);
 
@@ -744,19 +701,16 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 	__connman_element_lock(element);
 
 	property = g_hash_table_lookup(element->properties, name);
-	if (property != NULL &&
-			(property->flags & CONNMAN_PROPERTY_FLAG_STATIC)) {
-		if (g_str_equal(property->name, name) == TRUE) {
-			switch (property->type) {
-			case DBUS_TYPE_STRING:
-				*((char **) value) = property->value;
-				found = TRUE;
-				break;
-			case DBUS_TYPE_BYTE:
-				memcpy(value, property->value, 1);
-				found = TRUE;
-				break;
-			}
+	if (property != NULL) {
+		switch (property->type) {
+		case DBUS_TYPE_STRING:
+			*((char **) value) = property->value;
+			found = TRUE;
+			break;
+		case DBUS_TYPE_BYTE:
+			memcpy(value, property->value, 1);
+			found = TRUE;
+			break;
 		}
 	}
 
@@ -780,13 +734,10 @@ gboolean connman_element_get_static_array_property(struct connman_element *eleme
 	__connman_element_lock(element);
 
 	property = g_hash_table_lookup(element->properties, name);
-	if (property != NULL &&
-			(property->flags & CONNMAN_PROPERTY_FLAG_STATIC)) {
-		if (g_str_equal(property->name, name) == TRUE) {
-			*((char **) value) = property->value;
-			*len = property->size;
-			found = TRUE;
-		}
+	if (property != NULL) {
+		*((char **) value) = property->value;
+		*len = property->size;
+		found = TRUE;
 	}
 
 	__connman_element_unlock(element);
@@ -805,10 +756,8 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 	__connman_element_lock(element);
 
 	property = g_hash_table_lookup(element->properties, name);
-	if (property != NULL &&
-			(property->flags & CONNMAN_PROPERTY_FLAG_STATIC)) {
-		if (g_str_equal(property->name, name) == TRUE &&
-					property->type == DBUS_TYPE_STRING)
+	if (property != NULL) {
+		if (property->type == DBUS_TYPE_STRING)
 			result = g_str_equal(property->value,
 						*((const char **) value));
 	}

@@ -96,11 +96,9 @@ extern struct connman_element *connman_element_create(const char *name);
 extern struct connman_element *connman_element_ref(struct connman_element *element);
 extern void connman_element_unref(struct connman_element *element);
 
-extern int connman_element_add_static_property(struct connman_element *element,
-				const char *name, int type, const void *value);
 extern int connman_element_set_static_property(struct connman_element *element,
 				const char *name, int type, const void *value);
-extern int connman_element_add_static_array_property(struct connman_element *element,
+extern int connman_element_set_static_array_property(struct connman_element *element,
 			const char *name, int type, const void *value, int len);
 extern int connman_element_set_property(struct connman_element *element,
 				enum connman_property_id id, const void *value);

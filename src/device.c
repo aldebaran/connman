@@ -746,7 +746,7 @@ struct connman_device *connman_device_create(const char *node,
 
 	str = type2string(type);
 	if (str != NULL)
-		connman_element_add_static_property(&device->element,
+		connman_element_set_static_property(&device->element,
 					"Type", DBUS_TYPE_STRING, &str);
 
 	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
