@@ -1376,6 +1376,8 @@ int supplicant_disconnect(struct connman_network *network)
 
 	remove_network(task);
 
+	connman_network_set_connected(task->network, FALSE);
+
 	connman_network_unref(task->network);
 
 	return 0;
