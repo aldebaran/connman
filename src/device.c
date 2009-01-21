@@ -1066,6 +1066,9 @@ static void connect_known_network(struct connman_device *device)
 
 		count++;
 
+		if (connman_network_get_available(value) == FALSE)
+			continue;
+
 		name = connman_network_get_string(value, "Name");
 		if (name != NULL && device->last_network != NULL) {
 			if (g_str_equal(name, device->last_network) == TRUE) {
