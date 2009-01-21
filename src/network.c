@@ -233,6 +233,12 @@ static DBusMessage *do_connect(DBusConnection *conn,
 		return __connman_error_failed(msg);
 
 	if (network->driver && network->driver->connect) {
+		enum connman_device_mode mode;
+
+		mode = connman_device_get_mode(network->device);
+		if (mode == CONNMAN_DEVICE_MODE_NETWORK_SINGLE)
+			__connman_device_disconnect(network->device);
+
 		err = network->driver->connect(network);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg);
@@ -684,6 +690,17 @@ int connman_network_set_connected(struct connman_network *network,
 }
 
 /**
+ * connman_network_get_connected:
+ * @network: network structure
+ *
+ * Get network connection status
+ */
+connman_bool_t connman_network_get_connected(struct connman_network *network)
+{
+	return network->connected;
+}
+
+/**
  * connman_network_set_remember:
  * @network: network structure
  * @remember: remember state
@@ -752,6 +769,19 @@ int connman_network_connect(struct connman_network *network)
 		return network->driver->connect(network);
 
 	network->connected = TRUE;
+
+	return 0;
+}
+
+int __connman_network_disconnect(struct connman_network *network)
+{
+	if (network->connected == FALSE)
+		return -ENOTCONN;
+
+	if (network->driver && network->driver->disconnect)
+		return network->driver->disconnect(network);
+
+	network->connected = FALSE;
 
 	return 0;
 }

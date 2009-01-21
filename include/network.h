@@ -72,6 +72,7 @@ extern int connman_network_set_available(struct connman_network *network,
 extern connman_bool_t connman_network_get_available(struct connman_network *network);
 extern int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected);
+extern connman_bool_t connman_network_get_connected(struct connman_network *network);
 extern int connman_network_set_remember(struct connman_network *network,
 						connman_bool_t remember);
 extern connman_bool_t connman_network_get_remember(struct connman_network *network);

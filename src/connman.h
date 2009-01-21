@@ -163,6 +163,8 @@ void __connman_device_cleanup(void);
 void __connman_device_increase_connections(struct connman_device *device);
 void __connman_device_decrease_connections(struct connman_device *device);
 
+void __connman_device_disconnect(struct connman_device *device);
+
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
 int __connman_device_set_offlinemode(connman_bool_t offlinemode);
@@ -174,6 +176,8 @@ void __connman_network_cleanup(void);
 
 void __connman_network_set_device(struct connman_network *network,
 					struct connman_device *device);
+
+int __connman_network_disconnect(struct connman_network *network);
 
 connman_bool_t __connman_network_has_driver(struct connman_network *network);
 
