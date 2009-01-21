@@ -1177,7 +1177,8 @@ int connman_element_set_enabled(struct connman_element *element,
 	return 0;
 }
 
-int __connman_element_init(DBusConnection *conn, const char *device)
+int __connman_element_init(DBusConnection *conn, const char *device,
+							const char *nodevice)
 {
 	struct connman_element *element;
 

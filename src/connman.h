@@ -62,7 +62,7 @@ gboolean __connman_debug_enabled(void);
 
 #include <connman/plugin.h>
 
-int __connman_plugin_init(const char *pattern);
+int __connman_plugin_init(const char *pattern, const char *exclude);
 void __connman_plugin_cleanup(void);
 
 #include <connman/security.h>
@@ -100,7 +100,8 @@ void __connman_driver_rescan(struct connman_driver *driver);
 
 #include <connman/element.h>
 
-int __connman_element_init(DBusConnection *conn, const char *device);
+int __connman_element_init(DBusConnection *conn, const char *device,
+							const char *nodevice);
 void __connman_element_start(void);
 void __connman_element_stop(void);
 void __connman_element_cleanup(void);

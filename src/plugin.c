@@ -43,8 +43,10 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	if (desc->init == NULL)
 		return FALSE;
 
-	if (g_str_equal(desc->version, CONNMAN_VERSION) == FALSE)
+	if (g_str_equal(desc->version, CONNMAN_VERSION) == FALSE) {
+		DBG("version mismatch for %s", desc->description);
 		return FALSE;
+	}
 
 	plugin = g_try_new0(struct connman_plugin, 1);
 	if (plugin == NULL)
@@ -63,7 +65,7 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	return TRUE;
 }
 
-int __connman_plugin_init(const char *pattern)
+int __connman_plugin_init(const char *pattern, const char *exclude)
 {
 	GDir *dir;
 	const gchar *file;
@@ -96,6 +98,13 @@ int __connman_plugin_init(const char *pattern)
 			desc = dlsym(handle, "connman_plugin_desc");
 			if (desc == NULL) {
 				g_warning("Can't load symbol: %s", dlerror());
+				dlclose(handle);
+				continue;
+			}
+
+			if (exclude != NULL && g_pattern_match_simple(exclude,
+							desc->name) == TRUE) {
+				DBG("excluding %s", desc->description);
 				dlclose(handle);
 				continue;
 			}

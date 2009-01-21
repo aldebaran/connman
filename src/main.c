@@ -52,6 +52,8 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 
 static gchar *option_device = NULL;
 static gchar *option_plugin = NULL;
+static gchar *option_nodevice = NULL;
+static gchar *option_noplugin = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_compat = FALSE;
 static gboolean option_debug = FALSE;
@@ -60,9 +62,13 @@ static gboolean option_version = FALSE;
 
 static GOptionEntry options[] = {
 	{ "device", 'i', 0, G_OPTION_ARG_STRING, &option_device,
-				"Specify network device/interface", "DEV" },
+			"Specify networking device or interface", "DEV" },
+	{ "nodevice", 'I', 0, G_OPTION_ARG_STRING, &option_nodevice,
+			"Specify networking interface to ignore", "DEV" },
 	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
 				"Specify plugins to load", "NAME" },
+	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
+				"Specify plugins not to load", "NAME" },
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
@@ -164,7 +170,7 @@ int main(int argc, char *argv[])
 	__connman_dbus_init(conn);
 
 	__connman_storage_init();
-	__connman_element_init(conn, option_device);
+	__connman_element_init(conn, option_device, option_nodevice);
 
 	__connman_agent_init(conn);
 	__connman_manager_init(conn, option_compat);
@@ -174,12 +180,14 @@ int main(int argc, char *argv[])
 	__connman_rtnl_init();
 	__connman_udev_init();
 
-	__connman_plugin_init(option_plugin);
+	__connman_plugin_init(option_plugin, option_noplugin);
 
 	__connman_element_start();
 
 	g_free(option_device);
 	g_free(option_plugin);
+	g_free(option_nodevice);
+	g_free(option_noplugin);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
