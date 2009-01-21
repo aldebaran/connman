@@ -245,8 +245,6 @@ static DBusMessage *do_connect(DBusConnection *conn,
 	} else
 		network->connected = TRUE;
 
-	connman_device_set_disconnected(network->device, FALSE);
-
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
@@ -267,14 +265,14 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 
 	connman_element_unregister_children(&network->element);
 
+	connman_device_set_disconnected(network->device, TRUE);
+
 	if (network->driver && network->driver->disconnect) {
 		err = network->driver->disconnect(network);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg);
 	} else
 		network->connected = FALSE;
-
-	connman_device_set_disconnected(network->device, TRUE);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -679,6 +677,8 @@ int connman_network_set_connected(struct connman_network *network,
 		__connman_device_increase_connections(network->device);
 
 		__connman_device_set_network(network->device, network);
+
+		connman_device_set_disconnected(network->device, FALSE);
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {

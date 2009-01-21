@@ -1036,6 +1036,8 @@ void __connman_device_disconnect(struct connman_device *device)
 
 	DBG("device %p", device);
 
+	connman_device_set_disconnected(device, TRUE);
+
 	g_hash_table_iter_init(&iter, device->networks);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
