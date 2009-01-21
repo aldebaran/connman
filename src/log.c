@@ -90,6 +90,14 @@ void connman_debug(const char *format, ...)
 	va_end(ap);
 }
 
+void __connman_toggle_debug(void)
+{
+	if (debug_enabled == TRUE)
+		debug_enabled = FALSE;
+	else
+		debug_enabled = TRUE;
+}
+
 int __connman_log_init(gboolean detach, gboolean debug)
 {
 	int option = LOG_NDELAY | LOG_PID;

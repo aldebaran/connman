@@ -43,6 +43,11 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static void sig_debug(int sig)
+{
+	__connman_toggle_debug();
+}
+
 static void disconnect_callback(DBusConnection *conn, void *user_data)
 {
 	DBG("D-Bus disconnect");
@@ -193,6 +198,9 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_term;
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
+
+	sa.sa_handler = sig_debug;
+	sigaction(SIGUSR2, &sa, NULL);
 
 	g_main_loop_run(main_loop);
 

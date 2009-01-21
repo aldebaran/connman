@@ -58,6 +58,7 @@ void __connman_profile_list(DBusMessageIter *iter);
 int __connman_log_init(gboolean detach, gboolean debug);
 void __connman_log_cleanup(void);
 
+void __connman_toggle_debug(void);
 gboolean __connman_debug_enabled(void);
 
 #include <connman/plugin.h>
