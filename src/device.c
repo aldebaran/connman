@@ -1118,7 +1118,7 @@ static void mark_network_unavailable(gpointer key, gpointer value,
 {
 	struct connman_network *network = value;
 
-	if (connman_network_get_remember(network) == TRUE)
+	if (connman_network_get_connected(network) == TRUE)
 		return;
 
 	connman_network_set_available(network, FALSE);
@@ -1128,6 +1128,9 @@ static gboolean remove_unavailable_network(gpointer key, gpointer value,
 							gpointer user_data)
 {
 	struct connman_network *network = value;
+
+	if (connman_network_get_connected(network) == TRUE)
+		return FALSE;
 
 	if (connman_network_get_remember(network) == TRUE)
 		return FALSE;
