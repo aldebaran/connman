@@ -211,5 +211,5 @@ static void udhcp_exit(void)
 	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE(dhclient, "uDHCP client plugin", VERSION,
+CONNMAN_PLUGIN_DEFINE(udhcp, "uDHCP client plugin", VERSION,
 						udhcp_init, udhcp_exit)
