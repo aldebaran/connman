@@ -581,7 +581,10 @@ int connman_network_set_available(struct connman_network *network,
 	if (network->registered == FALSE)
 		return 0;
 
-	if (network->connected == FALSE && network->remember == FALSE)
+	if (network->connected == TRUE)
+		return 0;
+
+	if (network->remember == FALSE)
 		return 0;
 
 	signal = dbus_message_new_signal(network->element.path,
