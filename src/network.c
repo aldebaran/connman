@@ -1109,15 +1109,13 @@ static int network_load(struct connman_network *network)
 	if (val > 0)
 		network->priority = val;
 
-	if (network->remember == TRUE) {
-		g_free(network->wifi.security);
-		network->wifi.security = g_key_file_get_string(keyfile,
+	g_free(network->wifi.security);
+	network->wifi.security = g_key_file_get_string(keyfile,
 				network->identifier, "WiFi.Security", NULL);
 
-		g_free(network->wifi.passphrase);
-		network->wifi.passphrase = g_key_file_get_string(keyfile,
+	g_free(network->wifi.passphrase);
+	network->wifi.passphrase = g_key_file_get_string(keyfile,
 				network->identifier, "WiFi.Passphrase", NULL);
-	}
 
 	g_key_file_free(keyfile);
 
@@ -1162,7 +1160,7 @@ update:
 		g_key_file_set_integer(keyfile, network->identifier,
 						"Priority", network->priority);
 
-	if (network->remember == TRUE) {
+	if (network->remember == TRUE || network->connected == TRUE) {
 		if (network->wifi.security != NULL)
 			g_key_file_set_string(keyfile, network->identifier,
 				"WiFi.Security", network->wifi.security);

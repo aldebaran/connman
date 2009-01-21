@@ -47,6 +47,7 @@ struct connman_device {
 
 	connman_bool_t registered;
 
+	char *last_network;
 	struct connman_network *network;
 	GHashTable *networks;
 };
@@ -709,6 +710,8 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->name);
 	g_free(device->interface);
 
+	g_free(device->last_network);
+
 	g_hash_table_destroy(device->networks);
 	device->networks = NULL;
 }
@@ -1056,8 +1059,17 @@ static void connect_known_network(struct connman_device *device)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		connman_uint8_t old_priority, new_priority;
 		connman_uint8_t old_strength, new_strength;
+		const char *name;
 
 		count++;
+
+		name = connman_network_get_string(value, "Name");
+		if (name != NULL && device->last_network != NULL) {
+			if (g_str_equal(name, device->last_network) == TRUE) {
+				network = value;
+				break;
+			}
+		}
 
 		if (connman_network_get_remember(value) == FALSE)
 			continue;
@@ -1342,6 +1354,13 @@ int connman_device_remove_network(struct connman_device *device,
 void __connman_device_set_network(struct connman_device *device,
 					struct connman_network *network)
 {
+	const char *name;
+
+	if (network != NULL) {
+		name = connman_network_get_string(network, "Name");
+		device->last_network = g_strdup(name);
+	}
+
 	device->network = network;
 }
 
@@ -1513,6 +1532,11 @@ static int device_load(struct connman_device *device)
 	if (val > 0)
 		device->priority = val;
 
+	str = g_key_file_get_string(keyfile, "Configuration",
+							"LastNetwork", NULL);
+	if (str != NULL)
+		device->last_network = str;
+
 	g_key_file_free(keyfile);
 
 	return 0;
@@ -1554,6 +1578,10 @@ update:
 		g_key_file_set_integer(keyfile, "Configuration",
 						"Priority", device->priority);
 
+	if (device->last_network != NULL)
+		g_key_file_set_string(keyfile, "Configuration",
+					"LastNetwork", device->last_network);
+
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
 	g_file_set_contents(pathname, data, length, NULL);
@@ -1564,6 +1592,9 @@ done:
 	g_key_file_free(keyfile);
 
 	g_free(pathname);
+
+	if (device->network != NULL)
+		__connman_storage_save_network(device->network);
 
 	return 0;
 }
