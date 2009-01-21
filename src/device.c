@@ -47,6 +47,7 @@ struct connman_device {
 
 	connman_bool_t registered;
 
+	struct connman_network *network;
 	GHashTable *networks;
 };
 
@@ -1008,10 +1009,8 @@ void __connman_device_disconnect(struct connman_device *device)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_network *network = value;
 
-		if (connman_network_get_connected(network) == FALSE)
-			continue;
-
-		__connman_network_disconnect(network);
+		if (connman_network_get_connected(network) == TRUE)
+			__connman_network_disconnect(network);
 	}
 }
 
@@ -1310,6 +1309,12 @@ int connman_device_remove_network(struct connman_device *device,
 	g_hash_table_remove(device->networks, identifier);
 
 	return 0;
+}
+
+void __connman_device_set_network(struct connman_device *device,
+					struct connman_network *network)
+{
+	device->network = network;
 }
 
 /**

@@ -671,6 +671,8 @@ int connman_network_set_connected(struct connman_network *network,
 
 		__connman_device_increase_connections(network->device);
 
+		__connman_device_set_network(network->device, network);
+
 		element = connman_element_create(NULL);
 		if (element != NULL) {
 			element->type  = type;
@@ -682,6 +684,8 @@ int connman_network_set_connected(struct connman_network *network,
 		}
 	} else {
 		connman_element_unregister_children(&network->element);
+
+		__connman_device_set_network(network->device, NULL);
 
 		__connman_device_decrease_connections(network->device);
 	}
