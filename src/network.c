@@ -245,6 +245,8 @@ static DBusMessage *do_connect(DBusConnection *conn,
 	} else
 		network->connected = TRUE;
 
+	connman_device_set_disconnected(network->device, FALSE);
+
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
@@ -271,6 +273,8 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 			return __connman_error_failed(msg);
 	} else
 		network->connected = FALSE;
+
+	connman_device_set_disconnected(network->device, TRUE);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }

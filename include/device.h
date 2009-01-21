@@ -91,6 +91,8 @@ extern int connman_device_set_carrier(struct connman_device *device,
 						connman_bool_t carrier);
 extern int connman_device_set_scanning(struct connman_device *device,
 						connman_bool_t scanning);
+extern int connman_device_set_disconnected(struct connman_device *device,
+						connman_bool_t disconnected);
 
 extern int connman_device_set_string(struct connman_device *device,
 					const char *key, const char *value);

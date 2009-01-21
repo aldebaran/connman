@@ -36,6 +36,7 @@ struct connman_device {
 	connman_bool_t powered;
 	connman_bool_t carrier;
 	connman_bool_t scanning;
+	connman_bool_t disconnected;
 	connman_uint8_t priority;
 	char *name;
 	char *node;
@@ -1187,10 +1188,42 @@ int connman_device_set_scanning(struct connman_device *device,
 	if (device->connections > 0)
 		return 0;
 
+	if (device->disconnected == TRUE)
+		return 0;
+
 	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
 		return 0;
 
 	connect_known_network(device);
+
+	return 0;
+}
+
+/**
+ * connman_device_set_disconnected:
+ * @device: device structure
+ * @disconnected: disconnected state
+ *
+ * Change disconnected state of device (only for device with networks)
+ */
+int connman_device_set_disconnected(struct connman_device *device,
+						connman_bool_t disconnected)
+{
+	DBG("driver %p disconnected %d", device, disconnected);
+
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		return -EINVAL;
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		break;
+	}
+
+	if (device->disconnected == disconnected)
+		return -EALREADY;
+
+	device->disconnected = disconnected;
 
 	return 0;
 }
