@@ -207,8 +207,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	DBusMessageIter array, dict;
 	connman_uint8_t strength = 0;
 	const char *device, *network;
-	const char *type = NULL, *method = NULL;
-	const char *address = NULL, *netmask = NULL, *gateway = NULL;
+	const char *type = NULL;
 
 	DBG("conn %p", conn);
 
@@ -255,31 +254,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Network",
 					DBUS_TYPE_OBJECT_PATH, &network);
 
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_METHOD, &method);
-
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-
-	if (method != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Method",
-						DBUS_TYPE_STRING, &method);
-
-	if (address != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Address",
-						DBUS_TYPE_STRING, &address);
-
-	if (netmask != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Netmask",
-						DBUS_TYPE_STRING, &netmask);
-
-	if (gateway != NULL)
-		connman_dbus_dict_append_variant(&dict, "IPv4.Gateway",
-						DBUS_TYPE_STRING, &gateway);
+	__connman_element_append_ipv4(element, &dict);
 
 	dbus_message_iter_close_container(&array, &dict);
 

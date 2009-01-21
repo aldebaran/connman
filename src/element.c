@@ -818,6 +818,107 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 	return result;
 }
 
+int __connman_element_append_ipv4(struct connman_element *element,
+						DBusMessageIter *dict)
+{
+	const char *method = NULL;
+	const char *address = NULL, *netmask = NULL, *gateway = NULL;
+
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_METHOD, &method);
+
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+
+	if (method != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Method",
+						DBUS_TYPE_STRING, &method);
+
+	if (address != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Address",
+						DBUS_TYPE_STRING, &address);
+
+	if (netmask != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Netmask",
+						DBUS_TYPE_STRING, &netmask);
+
+	if (gateway != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Gateway",
+						DBUS_TYPE_STRING, &gateway);
+
+	return 0;
+}
+
+int __connman_element_set_ipv4(struct connman_element *element,
+				const char *name, DBusMessageIter *value)
+{
+	int type;
+
+	type = dbus_message_iter_get_arg_type(value);
+
+	if (g_str_equal(name, "IPv4.Method") == TRUE) {
+		enum connman_ipv4_method method;
+		const char *str;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &str);
+		method = __connman_ipv4_string2method(str);
+		if (method == CONNMAN_IPV4_METHOD_UNKNOWN)
+			return -EINVAL;
+
+		if (method == element->ipv4.method)
+			return -EALREADY;
+
+		element->ipv4.method = method;
+
+		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.Address") == TRUE) {
+		const char *address;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &address);
+
+		g_free(element->ipv4.address);
+		element->ipv4.address = g_strdup(address);
+
+		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.Netmask") == TRUE) {
+		const char *netmask;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &netmask);
+
+		g_free(element->ipv4.netmask);
+		element->ipv4.netmask = g_strdup(netmask);
+
+		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.Gateway") == TRUE) {
+		const char *gateway;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &gateway);
+
+		g_free(element->ipv4.gateway);
+		element->ipv4.gateway = g_strdup(gateway);
+
+		connman_element_update(element);
+	}
+
+	return 0;
+}
+
 static void append_connections(DBusMessageIter *entry)
 {
 	DBusMessageIter value, iter;

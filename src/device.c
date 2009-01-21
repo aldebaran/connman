@@ -296,7 +296,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
+		break;
 	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		__connman_element_append_ipv4(&device->element, &dict);
 		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
@@ -375,6 +377,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &priority);
 
 		device->priority = priority;
+	} else if (g_str_has_prefix(name, "IPv4") == TRUE) {
+		switch (device->mode) {
+		case CONNMAN_DEVICE_MODE_UNKNOWN:
+		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+			return __connman_error_invalid_arguments(msg);
+		case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+			__connman_element_set_ipv4(&device->element,
+								name, &value);
+			break;
+		}
 	}
 
 	__connman_storage_save_device(device);
@@ -736,6 +749,8 @@ struct connman_device *connman_device_create(const char *node,
 		connman_element_add_static_property(&device->element,
 					"Type", DBUS_TYPE_STRING, &str);
 
+	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
+
 	device->type   = type;
 	device->mode   = CONNMAN_DEVICE_MODE_UNKNOWN;
 	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
@@ -980,11 +995,24 @@ int connman_device_set_carrier(struct connman_device *device,
 	device->carrier = carrier;
 
 	if (carrier == TRUE) {
+		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
+
+		switch (device->element.ipv4.method) {
+		case CONNMAN_IPV4_METHOD_UNKNOWN:
+		case CONNMAN_IPV4_METHOD_OFF:
+			return 0;
+		case CONNMAN_IPV4_METHOD_STATIC:
+			type = CONNMAN_ELEMENT_TYPE_IPV4;
+			break;
+		case CONNMAN_IPV4_METHOD_DHCP:
+			type = CONNMAN_ELEMENT_TYPE_DHCP;
+			break;
+		}
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {
-			element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
+			element->type  = type;
 			element->index = device->element.index;
 
 			if (connman_element_register(element,
