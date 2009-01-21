@@ -1253,6 +1253,17 @@ int connman_device_set_scanning(struct connman_device *device,
 	g_dbus_send_message(connection, signal);
 
 	if (scanning == TRUE) {
+		if (device->scan_timeout > 0) {
+			g_source_remove(device->scan_timeout);
+			device->scan_timeout = 0;
+		}
+
+		if (device->scan_interval > 0) {
+			guint interval = device->scan_interval;
+			device->scan_timeout = g_timeout_add_seconds(interval,
+						device_scan_trigger, device);
+		}
+
 		g_hash_table_foreach(device->networks,
 					mark_network_unavailable, NULL);
 		return 0;
