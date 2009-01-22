@@ -1,3 +1,14 @@
+ver 0.9:
+	Rename FlightMode to OfflineMode.
+	Add static IPv4 setting support for Ethernet devices.
+	Add extra options to exclude devices and plugins.
+	Add support for toggling debug output.
+	Add support for ScanInterval property.
+	Fix handling of disconnect commands from applications.
+	Fix detection of networks that are out of range.
+	Fix setting network remember status.
+	Fix argument type checking of properties.
+
 ver 0.8:
 	Add Device and Network property to connection interface.
 	Add option to disable installation of data files.
