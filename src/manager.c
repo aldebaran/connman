@@ -81,9 +81,7 @@ static void append_profiles(DBusMessageIter *dict)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
 	__connman_profile_list(&iter);
-
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);
@@ -107,9 +105,7 @@ static void append_devices(DBusMessageIter *dict)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
 	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
-
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);
@@ -133,9 +129,7 @@ static void append_connections(DBusMessageIter *dict)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
 	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
-
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);
