@@ -870,44 +870,6 @@ int __connman_element_set_ipv4(struct connman_element *element,
 	return 0;
 }
 
-static void append_connections(DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Connections";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
-static void emit_connections_signal(DBusConnection *conn)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry;
-
-	DBG("conn %p", conn);
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_connections(&entry);
-
-	g_dbus_send_message(conn, signal);
-}
-
 static void append_state(DBusMessageIter *entry, const char *state)
 {
 	DBusMessageIter value;
@@ -1006,8 +968,6 @@ static void register_element(gpointer data, gpointer user_data)
 			parent = parent->parent;
 		}
 
-		emit_connections_signal(connection);
-
 		if (__connman_element_count(NULL,
 					CONNMAN_ELEMENT_TYPE_CONNECTION) == 1)
 			emit_state_change(connection, "online");
@@ -1102,8 +1062,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		if (__connman_element_count(NULL,
 					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
 			emit_state_change(connection, "offline");
-
-		emit_connections_signal(connection);
 	}
 
 	emit_element_signal(connection, "ElementRemoved", element);
@@ -1173,6 +1131,8 @@ int connman_element_set_enabled(struct connman_element *element,
 		return 0;
 
 	element->enabled = enabled;
+
+	connman_element_update(element);
 
 	return 0;
 }
