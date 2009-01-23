@@ -1,3 +1,7 @@
+ver 0.10:
+	Fix races with connection signals.
+	Fix automatic switching of default connection.
+
 ver 0.9:
 	Rename FlightMode to OfflineMode.
 	Add static IPv4 setting support for Ethernet devices.
