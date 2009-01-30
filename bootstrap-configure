@@ -31,5 +31,6 @@ fi
 		--enable-hso \
 		--enable-ppp \
 		--enable-udev \
+		--enable-ospm \
 		--enable-polkit \
 		--enable-client $*

@@ -103,6 +103,13 @@ policy_DATA = connman.policy
 endif
 endif
 
+if OSPM
+plugin_LTLIBRARIES += ospm.la
+
+polkit_la_SOURCES = ospm.c
+polkit_la_CFLAGS = @GDBUS_CFLAGS@
+endif
+
 if FAKE
 plugin_LTLIBRARIES += fake.la
 
