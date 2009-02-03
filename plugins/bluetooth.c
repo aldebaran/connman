@@ -298,8 +298,7 @@ static int pan_disconnect(struct connman_network *network)
 	if (message == NULL)
 		return -ENOMEM;
 
-	dbus_message_append_args(message, DBUS_TYPE_STRING, &data->interface,
-							DBUS_TYPE_INVALID);
+	dbus_message_append_args(message, DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(data->connection, message,
 						&call, TIMEOUT) == FALSE) {
