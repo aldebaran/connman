@@ -496,6 +496,8 @@ static void device_properties(DBusConnection *connection, const char *path,
 	if (network == NULL)
 		return;
 
+	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
+
 	connman_network_set_string(network, "Node", path);
 
 	connman_device_add_network(device, network);
