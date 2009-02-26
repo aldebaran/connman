@@ -66,6 +66,8 @@ static const char *type2string(enum connman_network_type type)
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		return "wifi";
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		return "wimax";
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		return "bluetooth";
