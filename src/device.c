@@ -24,6 +24,8 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
+
 #include <gdbus.h>
 
 #include "connman.h"
