@@ -162,10 +162,12 @@ static void detect_newlink(unsigned short type, int index,
 
 		if (g_str_has_prefix(devname, "bnep") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		else if (g_str_has_prefix(devname, "wmx") == TRUE)
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
 			devtype = CONNMAN_DEVICE_TYPE_WIFI;
 		else
