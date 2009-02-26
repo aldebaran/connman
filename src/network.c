@@ -447,6 +447,8 @@ struct connman_network *connman_network_create(const char *identifier,
 	struct connman_network *network;
 	connman_uint8_t strength = 0;
 	const char *str;
+	char *temp;
+	unsigned int i;
 
 	DBG("identifier %s type %d", identifier, type);
 
@@ -458,7 +460,20 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	__connman_element_initialize(&network->element);
 
-	network->element.name = g_strdup(identifier);
+	temp = g_strdup(identifier);
+	if (temp == NULL) {
+		g_free(network);
+		return NULL;
+	}
+
+	for (i = 0; i < strlen(temp); i++) {
+		char tmp = temp[i];
+		if ((tmp < '0' || tmp > '9') && (tmp < 'A' || tmp > 'Z') &&
+						(tmp < 'a' || tmp > 'z'))
+			temp[i] = '_';
+	}
+
+	network->element.name = temp;
 	network->element.type = CONNMAN_ELEMENT_TYPE_NETWORK;
 
 	network->element.network = network;

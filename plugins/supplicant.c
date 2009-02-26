@@ -845,9 +845,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	struct connman_network *network;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	char *security, *temp = NULL;
+	char *security;
 	unsigned char strength;
-	unsigned int i;
 
 	DBG("task %p", task);
 
@@ -922,17 +921,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (result.identifier[0] == '\0')
 		goto done;
 
-	temp = g_strdup(result.identifier);
-	if (temp == NULL)
-		goto done;
-
-	for (i = 0; i < strlen(temp); i++) {
-		char tmp = temp[i];
-		if ((tmp < '0' || tmp > '9') && (tmp < 'A' || tmp > 'Z') &&
-						(tmp < 'a' || tmp > 'z'))
-			temp[i] = '_';
-	}
-
 	strength = result.quality;
 
 	if (result.has_rsn == TRUE)
@@ -944,12 +932,12 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	else
 		security = "none";
 
-	network = connman_device_get_network(task->device, temp);
+	network = connman_device_get_network(task->device, result.identifier);
 	if (network == NULL) {
 		const char *mode;
 		int index;
 
-		network = connman_network_create(temp,
+		network = connman_network_create(result.identifier,
 						CONNMAN_NETWORK_TYPE_WIFI);
 		if (network == NULL)
 			goto done;
@@ -985,7 +973,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 done:
 	g_free(result.identifier);
 	g_free(result.ssid);
-	g_free(temp);
 
 	dbus_message_unref(reply);
 
