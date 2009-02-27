@@ -36,6 +36,14 @@ struct connman_plugin {
 	struct connman_plugin_desc *desc;
 };
 
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_plugin *plugin1 = a;
+	const struct connman_plugin *plugin2 = b;
+
+	return plugin2->desc->priority - plugin1->desc->priority;
+}
+
 static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 {
 	struct connman_plugin *plugin;
@@ -60,7 +68,7 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 		return FALSE;
 	}
 
-	plugins = g_slist_append(plugins, plugin);
+	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
 
 	return TRUE;
 }

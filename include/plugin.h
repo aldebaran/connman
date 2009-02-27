@@ -33,6 +33,10 @@ extern "C" {
 understanding that ConnMan hasn't reached a stable API."
 #endif
 
+#define CONNMAN_PLUGIN_PRIORITY_LOW      -100
+#define CONNMAN_PLUGIN_PRIORITY_DEFAULT     0
+#define CONNMAN_PLUGIN_PRIORITY_HIGH      100
+
 /**
  * SECTION:plugin
  * @title: Plugin premitives
@@ -43,6 +47,7 @@ struct connman_plugin_desc {
 	const char *name;
 	const char *description;
 	const char *version;
+	int priority;
 	int (*init) (void);
 	void (*exit) (void);
 };
@@ -75,7 +80,8 @@ struct connman_plugin_desc {
  */
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, init, exit) \
 		struct connman_plugin_desc connman_plugin_desc = { \
-			#name, description, version, init, exit \
+			#name, description, version, \
+			CONNMAN_PLUGIN_PRIORITY_DEFAULT, init, exit \
 		};
 
 #ifdef __cplusplus
