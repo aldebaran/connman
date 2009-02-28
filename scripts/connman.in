@@ -1,7 +1,6 @@
 #!/bin/sh
 
 DAEMON=@prefix@/sbin/connmand
-PIDFILE=@localstatedir@/run/connmand.pid
 DESC="Connection Manager"
 
 . /lib/lsb/init-functions
@@ -13,13 +12,11 @@ fi
 set -e
 
 do_start() {
-	start-stop-daemon --start --oknodo \
-		--pidfile $PIDFILE --exec $DAEMON -- $DAEMON_OPTS
+	start-stop-daemon --start --oknodo --exec $DAEMON -- $DAEMON_OPTS
 }
 
 do_stop() {
-	start-stop-daemon --stop --oknodo --quiet \
-		--pidfile $PIDFILE --exec $DAEMON
+	start-stop-daemon --stop --oknodo --quiet --exec $DAEMON
 }
 
 case "$1" in
