@@ -33,6 +33,7 @@ static GSList *plugins = NULL;
 
 struct connman_plugin {
 	void *handle;
+	gboolean active;
 	struct connman_plugin_desc *desc;
 };
 
@@ -61,12 +62,8 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 		return FALSE;
 
 	plugin->handle = handle;
+	plugin->active = FALSE;
 	plugin->desc = desc;
-
-	if (desc->init() < 0) {
-		g_free(plugin);
-		return FALSE;
-	}
 
 	plugins = g_slist_insert_sorted(plugins, plugin, compare_priority);
 
@@ -75,6 +72,7 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 
 int __connman_plugin_init(const char *pattern, const char *exclude)
 {
+	GSList *list;
 	GDir *dir;
 	const gchar *file;
 	gchar *filename;
@@ -131,6 +129,15 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 		g_dir_close(dir);
 	}
 
+	for (list = plugins; list; list = list->next) {
+		struct connman_plugin *plugin = list->data;
+
+		if (plugin->desc->init() < 0)
+			continue;
+
+		plugin->active = TRUE;
+	}
+
 	return 0;
 }
 
@@ -143,7 +150,7 @@ void __connman_plugin_cleanup(void)
 	for (list = plugins; list; list = list->next) {
 		struct connman_plugin *plugin = list->data;
 
-		if (plugin->desc->exit)
+		if (plugin->active == TRUE && plugin->desc->exit)
 			plugin->desc->exit();
 
 		dlclose(plugin->handle);
