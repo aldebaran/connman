@@ -92,7 +92,7 @@ if (test "${enable_dhclient}" = "yes"); then
 	if (test -z "${path_dhclient}"); then
 		AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
 	else
-		UDHCPC="${path_dhclient}"
+		DHCLIENT="${path_dhclient}"
 		AC_SUBST(DHCLIENT)
 	fi
 fi
@@ -107,7 +107,7 @@ if (test "${enable_resolvconf}" = "yes"); then
 	if (test -z "${path_resolvconf}"); then
 		AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
 	else
-		UDHCPC="${path_resolvconf}"
+		RESOLVCONF="${path_resolvconf}"
 		AC_SUBST(RESOLVCONF)
 	fi
 fi
