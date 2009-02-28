@@ -849,4 +849,4 @@ static void bluetooth_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(bluetooth, "Bluetooth technology plugin", VERSION,
-						bluetooth_init, bluetooth_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, bluetooth_init, bluetooth_exit)

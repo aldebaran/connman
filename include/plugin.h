@@ -78,10 +78,9 @@ struct connman_plugin_desc {
  * 					example_init, example_exit)
  * ]|
  */
-#define CONNMAN_PLUGIN_DEFINE(name, description, version, init, exit) \
+#define CONNMAN_PLUGIN_DEFINE(name, description, version, priority, init, exit) \
 		struct connman_plugin_desc connman_plugin_desc = { \
-			#name, description, version, \
-			CONNMAN_PLUGIN_PRIORITY_DEFAULT, init, exit \
+			#name, description, version, priority, init, exit \
 		};
 
 #ifdef __cplusplus

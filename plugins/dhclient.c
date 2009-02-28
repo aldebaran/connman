@@ -364,4 +364,4 @@ static void dhclient_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(dhclient, "ISC DHCP client plugin", VERSION,
-						dhclient_init, dhclient_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, dhclient_init, dhclient_exit)

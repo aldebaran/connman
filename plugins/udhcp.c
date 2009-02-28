@@ -212,4 +212,4 @@ static void udhcp_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(udhcp, "uDHCP client plugin", VERSION,
-						udhcp_init, udhcp_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, udhcp_init, udhcp_exit)

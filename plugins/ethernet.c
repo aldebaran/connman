@@ -150,4 +150,4 @@ static void ethernet_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(ethernet, "Ethernet interface plugin", VERSION,
-						ethernet_init, ethernet_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, ethernet_init, ethernet_exit)

@@ -74,4 +74,4 @@ static void wimax_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(wimax, "WiMAX interface plugin", VERSION,
-						wimax_init, wimax_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, wimax_init, wimax_exit)

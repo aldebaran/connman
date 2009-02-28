@@ -58,4 +58,4 @@ static void pppd_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(pppd, "Point-to-point protocol plugin", VERSION,
-							pppd_init, pppd_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, pppd_init, pppd_exit)

@@ -80,4 +80,4 @@ static void novatel_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(novatel, "Novatel Wireless device plugin", VERSION,
-						novatel_init, novatel_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, novatel_init, novatel_exit)

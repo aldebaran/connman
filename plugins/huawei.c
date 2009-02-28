@@ -80,4 +80,4 @@ static void huawei_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(huawei, "HUAWEI Mobile device plugin", VERSION,
-						huawei_init, huawei_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, huawei_init, huawei_exit)

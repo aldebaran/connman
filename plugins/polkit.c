@@ -176,4 +176,4 @@ static void polkit_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(polkit, "PolicyKit authorization plugin", VERSION,
-						polkit_init, polkit_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, polkit_init, polkit_exit)

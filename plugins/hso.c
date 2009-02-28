@@ -243,4 +243,4 @@ static void hso_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(hso, "Option HSO device plugin", VERSION,
-						hso_init, hso_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, hso_init, hso_exit)

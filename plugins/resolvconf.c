@@ -94,4 +94,4 @@ static void resolvconf_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(resolvconf, "Name resolver plugin", VERSION,
-					resolvconf_init, resolvconf_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, resolvconf_init, resolvconf_exit)

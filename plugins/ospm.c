@@ -37,4 +37,4 @@ static void ospm_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(ospm, "OSPM notification plugin", VERSION,
-							ospm_init, ospm_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, ospm_init, ospm_exit)

@@ -383,4 +383,4 @@ static void dnsproxy_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(dnsproxy, "DNS proxy resolver plugin", VERSION,
-						dnsproxy_init, dnsproxy_exit)
+		 CONNMAN_PLUGIN_PRIORITY_DEFAULT, dnsproxy_init, dnsproxy_exit)

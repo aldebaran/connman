@@ -106,4 +106,4 @@ static void loopback_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(loopback, "Loopback device plugin", VERSION,
-						loopback_init, loopback_exit)
+		CONNMAN_PLUGIN_PRIORITY_HIGH, loopback_init, loopback_exit)
