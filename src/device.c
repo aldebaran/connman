@@ -1003,6 +1003,9 @@ int connman_device_set_powered(struct connman_device *device,
 
 	device->powered = powered;
 
+	if (device->registered == FALSE)
+		return 0;
+
 	signal = dbus_message_new_signal(device->element.path,
 				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
