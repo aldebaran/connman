@@ -654,6 +654,9 @@ static void probe_driver(struct connman_element *element, gpointer user_data)
 	if (element->device->driver != NULL)
 		return;
 
+	if (driver->type != element->device->type)
+		return 0;
+
 	if (driver->probe(element->device) < 0)
 		return;
 
