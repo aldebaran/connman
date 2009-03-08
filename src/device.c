@@ -1451,28 +1451,9 @@ int connman_device_add_network(struct connman_device *device,
 struct connman_network *connman_device_get_network(struct connman_device *device,
 							const char *identifier)
 {
-	struct connman_network *network;
-	char *temp;
-	unsigned int i;
-
 	DBG("device %p identifier %s", device, identifier);
 
-	temp = g_strdup(identifier);
-	if (temp == NULL)
-		return NULL;
-
-	for (i = 0; i < strlen(temp); i++) {
-		char tmp = temp[i];
-		if ((tmp < '0' || tmp > '9') && (tmp < 'A' || tmp > 'Z') &&
-						(tmp < 'a' || tmp > 'z'))
-			temp[i] = '_';
-	}
-
-	network = g_hash_table_lookup(device->networks, temp);
-
-	g_free(temp);
-
-	return network;
+	return g_hash_table_lookup(device->networks, identifier);
 }
 
 /**
