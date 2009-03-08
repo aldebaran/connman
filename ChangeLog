@@ -1,3 +1,9 @@
+ver 0.12:
+	Fix connection state change handling.
+	Fix network list enumeration.
+	Fix broken driver matching for devices.
+	Fix issue with network identifier lookup.
+
 ver 0.11:
 	Add plugin priority handling.
 	Add network type for WiMAX.
