@@ -702,8 +702,10 @@ int connman_network_set_connected(struct connman_network *network,
 
 	network->connected = connected;
 
-	if (network->registered == FALSE)
-		set_connected(network);
+	if (network->registered == FALSE) {
+		g_idle_add(set_connected, network);
+		return 0;
+	}
 
 	signal = dbus_message_new_signal(network->element.path,
 				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
