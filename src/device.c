@@ -237,6 +237,15 @@ static int set_policy(DBusConnection *connection,
 	return 0;
 }
 
+static void append_path(gpointer key, gpointer value, gpointer user_data)
+{
+	struct connman_element *element = value;
+	DBusMessageIter *iter = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+							&element->path);
+}
+
 static void append_networks(struct connman_device *device,
 						DBusMessageIter *entry)
 {
@@ -251,8 +260,7 @@ static void append_networks(struct connman_device *device,
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list((struct connman_element *) device,
-					CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
+	g_hash_table_foreach(device->networks, append_path, &iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(entry, &value);
