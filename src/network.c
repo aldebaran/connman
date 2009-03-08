@@ -658,7 +658,7 @@ int connman_network_set_connected(struct connman_network *network,
 	network->connected = connected;
 
 	if (network->registered == FALSE)
-		return 0;
+		goto connected;
 
 	signal = dbus_message_new_signal(network->element.path,
 				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
@@ -676,6 +676,7 @@ int connman_network_set_connected(struct connman_network *network,
 
 	g_dbus_send_message(connection, signal);
 
+connected:
 	if (connected == TRUE) {
 		struct connman_element *element;
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
