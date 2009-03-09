@@ -148,34 +148,6 @@ AM_CONDITIONAL(PPPD, test "${enable_ppp}" = "yes")
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
-PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
-				AC_MSG_ERROR(GLib >= 2.16 is required))
-AC_SUBST(GLIB_CFLAGS)
-AC_SUBST(GLIB_LIBS)
-
-if (test "${enable_threads}" = "yes"); then
-	AC_DEFINE(NEED_THREADS, 1, [Define if threading support is required])
-	PKG_CHECK_MODULES(GTHREAD, gthread-2.0 >= 2.16, dummy=yes,
-				AC_MSG_ERROR(GThread >= 2.16 is required))
-	GLIB_CFLAGS="$GLIB_CFLAGS $GTHREAD_CFLAGS"
-	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
-fi
-
-PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
-				AC_MSG_ERROR(D-Bus >= 1.0 is required))
-AC_SUBST(DBUS_CFLAGS)
-AC_SUBST(DBUS_LIBS)
-DBUS_DATADIR="`$PKG_CONFIG --variable=sysconfdir dbus-1`"
-if (test -z "{DBUS_DATADIR}"); then
-	DBUS_DATADIR="${sysconfdir}/dbus-1/system.d"
-else
-	DBUS_DATADIR="$DBUS_DATADIR/dbus-1/system.d"
-fi
-AC_SUBST(DBUS_DATADIR)
-
-AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
-AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
-
 AC_ARG_ENABLE(udev, AC_HELP_STRING([--enable-udev],
 		[enable udev support]), [enable_udev=${enableval}])
 if (test "${enable_udev}" = "yes"); then
@@ -208,12 +180,41 @@ AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 AC_ARG_ENABLE(iwmxsdk, AC_HELP_STRING([--enable-iwmxsdk],
 		[enable Intel WiMAX support]), [enable_iwmxsdk=${enableval}])
 if (test "${enable_iwmxsdk}" = "yes"); then
+	enable_threads="yes"
 	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, enable_iwmxsdk=yes,
 				AC_MSG_ERROR(Intel WiMAX SDK is required))
 	AC_SUBST(IWMXSDK_CFLAGS)
 	AC_SUBST(IWMXSDK_LIBS)
 fi
 AM_CONDITIONAL(IWMXSDK, test "${enable_iwmxsdk}" = "yes")
+
+PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
+				AC_MSG_ERROR(GLib >= 2.16 is required))
+AC_SUBST(GLIB_CFLAGS)
+AC_SUBST(GLIB_LIBS)
+
+if (test "${enable_threads}" = "yes"); then
+	AC_DEFINE(NEED_THREADS, 1, [Define if threading support is required])
+	PKG_CHECK_MODULES(GTHREAD, gthread-2.0 >= 2.16, dummy=yes,
+				AC_MSG_ERROR(GThread >= 2.16 is required))
+	GLIB_CFLAGS="$GLIB_CFLAGS $GTHREAD_CFLAGS"
+	GLIB_LIBS="$GLIB_LIBS $GTHREAD_LIBS"
+fi
+
+PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
+				AC_MSG_ERROR(D-Bus >= 1.0 is required))
+AC_SUBST(DBUS_CFLAGS)
+AC_SUBST(DBUS_LIBS)
+DBUS_DATADIR="`$PKG_CONFIG --variable=sysconfdir dbus-1`"
+if (test -z "{DBUS_DATADIR}"); then
+	DBUS_DATADIR="${sysconfdir}/dbus-1/system.d"
+else
+	DBUS_DATADIR="$DBUS_DATADIR/dbus-1/system.d"
+fi
+AC_SUBST(DBUS_DATADIR)
+
+AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
+AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
 
 AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
 		[enable PolicyKit support]), [enable_polkit=${enableval}])
