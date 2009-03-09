@@ -5,8 +5,6 @@ plugin_LTLIBRARIES =
 
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
-
-loopback_la_SOURCES = loopback.c
 endif
 
 if ETHERNET
@@ -66,27 +64,22 @@ endif
 if PPPD
 plugin_LTLIBRARIES += pppd.la
 
-pppd_la_SOURCES = pppd.c
 pppd_la_CFLAGS = $(AM_CFLAGS) -DPPPD=\"@PPPD@\"
 endif
 
 if RESOLVCONF
 plugin_LTLIBRARIES += resolvconf.la
 
-resolvconf_la_SOURCES = resolvconf.c
 resolvconf_la_CFLAGS = $(AM_CFLAGS) -DRESOLVCONF=\"@RESOLVCONF@\"
 endif
 
 if DNSPROXY
 plugin_LTLIBRARIES += dnsproxy.la
-
-dnsproxy_la_SOURCES = dnsproxy.c
 endif
 
 if POLKIT
 plugin_LTLIBRARIES += polkit.la
 
-polkit_la_SOURCES = polkit.c
 polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
 polkit_la_CFLAGS = $(AM_CFLAGS) @POLKIT_CFLAGS@
 
@@ -99,21 +92,16 @@ endif
 
 if IOSPM
 plugin_LTLIBRARIES += iospm.la
-
-iospm_la_SOURCES = iospm.c
-iospm_la_CFLAGS = $(AM_CFLAGS)
 endif
 
 if IWMXSDK
 plugin_LTLIBRARIES += iwmxsdk.la
 
-iwmxsdk_la_SOURCES = iwmxsdk.c
+iwmxsdk_la_SOURCES = iwmxsdk.c inet.h inet.c
 endif
 
 if FAKE
 plugin_LTLIBRARIES += fake.la
-
-fake_la_SOURCES = fake.c
 endif
 
 AM_LDFLAGS = -no-undefined -module -avoid-version
