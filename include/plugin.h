@@ -79,6 +79,8 @@ struct connman_plugin_desc {
  * ]|
  */
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, priority, init, exit) \
+		extern struct connman_plugin_desc connman_plugin_desc \
+				__attribute__ ((visibility("default"))); \
 		struct connman_plugin_desc connman_plugin_desc = { \
 			#name, description, version, priority, init, exit \
 		};
