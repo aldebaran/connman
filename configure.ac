@@ -206,7 +206,13 @@ AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 
 AC_ARG_ENABLE(iwmxsdk, AC_HELP_STRING([--enable-iwmxsdk],
-                [enable Intel WiMAX support]), [enable_iwmxsdk=${enableval}])
+		[enable Intel WiMAX support]), [enable_iwmxsdk=${enableval}])
+if (test "${enable_iwmxsdk}" = "yes"); then
+	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, enable_iwmxsdk=yes,
+				AC_MSG_ERROR(Intel WiMAX SDK is required))
+	AC_SUBST(IWMXSDK_CFLAGS)
+	AC_SUBST(IWMXSDK_LIBS)
+fi
 AM_CONDITIONAL(IWMXSDK, test "${enable_iwmxsdk}" = "yes")
 
 AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
