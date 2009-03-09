@@ -27,14 +27,14 @@
 #include <connman/plugin.h>
 #include <connman/log.h>
 
-static int ospm_init(void)
+static int iospm_init(void)
 {
 	return 0;
 }
 
-static void ospm_exit(void)
+static void iospm_exit(void)
 {
 }
 
-CONNMAN_PLUGIN_DEFINE(ospm, "OSPM notification plugin", VERSION,
-		CONNMAN_PLUGIN_PRIORITY_DEFAULT, ospm_init, ospm_exit)
+CONNMAN_PLUGIN_DEFINE(ospm, "Intel OSPM notification plugin", VERSION,
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, iospm_init, iospm_exit)

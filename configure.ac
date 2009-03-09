@@ -205,9 +205,9 @@ AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
 AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
 
-AC_ARG_ENABLE(ospm, AC_HELP_STRING([--enable-ospm],
-		[enable OSPM support]), [enable_ospm=${enableval}])
-AM_CONDITIONAL(OSPM, test "${enable_ospm}" = "yes")
+AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
+		[enable Intel OSPM support]), [enable_iospm=${enableval}])
+AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 
 AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
 		[enable PolicyKit support]), [enable_polkit=${enableval}])

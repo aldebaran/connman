@@ -103,11 +103,11 @@ policy_DATA = connman.policy
 endif
 endif
 
-if OSPM
-plugin_LTLIBRARIES += ospm.la
+if IOSPM
+plugin_LTLIBRARIES += iospm.la
 
-polkit_la_SOURCES = ospm.c
-polkit_la_CFLAGS = $(AM_CFLAGS)
+iospm_la_SOURCES = iospm.c
+iospm_la_CFLAGS = $(AM_CFLAGS)
 endif
 
 if FAKE
