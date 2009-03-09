@@ -98,6 +98,8 @@ if IWMXSDK
 plugin_LTLIBRARIES += iwmxsdk.la
 
 iwmxsdk_la_SOURCES = iwmxsdk.c inet.h inet.c
+iwmxsdk_la_LIBADD = @IWMXSDK_LIBS@ @GLIB_LIBS@
+iwmxsdk_la_CFLAGS = $(AM_CFLAGS) @IWMXSDK_CFLAGS@
 endif
 
 if FAKE
