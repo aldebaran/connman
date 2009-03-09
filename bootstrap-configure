@@ -20,7 +20,6 @@ fi
 		--enable-loopback \
 		--enable-ethernet \
 		--enable-wifi \
-		--enable-wimax \
 		--enable-bluetooth \
 		--enable-udhcp \
 		--enable-dhclient \
@@ -32,5 +31,6 @@ fi
 		--enable-ppp \
 		--enable-udev \
 		--enable-iospm \
+		--enable-iwmxsdk \
 		--enable-polkit \
 		--enable-client $*

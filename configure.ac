@@ -62,10 +62,6 @@ if (test "${enable_wifi}" = "yes"); then
 fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
 
-AC_ARG_ENABLE(wimax, AC_HELP_STRING([--enable-wimax],
-		[enable WiMAX support]), [enable_wimax=${enableval}])
-AM_CONDITIONAL(WIMAX, test "${enable_wimax}" = "yes")
-
 AC_ARG_ENABLE(bluetooth, AC_HELP_STRING([--enable-bluetooth],
 		[enable Bluetooth support]), [enable_bluetooth=${enableval}])
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" = "yes")
@@ -208,6 +204,10 @@ AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
 AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 		[enable Intel OSPM support]), [enable_iospm=${enableval}])
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
+
+AC_ARG_ENABLE(iwmxsdk, AC_HELP_STRING([--enable-iwmxsdk],
+                [enable Intel WiMAX support]), [enable_iwmxsdk=${enableval}])
+AM_CONDITIONAL(IWMXSDK, test "${enable_iwmxsdk}" = "yes")
 
 AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
 		[enable PolicyKit support]), [enable_polkit=${enableval}])

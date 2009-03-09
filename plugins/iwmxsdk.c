@@ -28,50 +28,50 @@
 #include <connman/device.h>
 #include <connman/log.h>
 
-static int wimax_probe(struct connman_device *device)
+static int iwmxsdk_probe(struct connman_device *device)
 {
 	DBG("device %p", device);
 
 	return 0;
 }
 
-static void wimax_remove(struct connman_device *device)
+static void iwmxsdk_remove(struct connman_device *device)
 {
 	DBG("device %p", device);
 }
 
-static int wimax_enable(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	return 0;
-}
-
-static int wimax_disable(struct connman_device *device)
+static int iwmxsdk_enable(struct connman_device *device)
 {
 	DBG("device %p", device);
 
 	return 0;
 }
 
-static struct connman_device_driver wimax_driver = {
-	.name		= "wimax",
+static int iwmxsdk_disable(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
+static struct connman_device_driver iwmxsdk_driver = {
+	.name		= "iwmxsdk",
 	.type		= CONNMAN_DEVICE_TYPE_WIMAX,
-	.probe		= wimax_probe,
-	.remove		= wimax_remove,
-	.enable		= wimax_enable,
-	.disable	= wimax_disable,
+	.probe		= iwmxsdk_probe,
+	.remove		= iwmxsdk_remove,
+	.enable		= iwmxsdk_enable,
+	.disable	= iwmxsdk_disable,
 };
 
-static int wimax_init(void)
+static int iwmxsdk_init(void)
 {
-	return connman_device_driver_register(&wimax_driver);
+	return connman_device_driver_register(&iwmxsdk_driver);
 }
 
-static void wimax_exit(void)
+static void iwmxsdk_exit(void)
 {
-	connman_device_driver_unregister(&wimax_driver);
+	connman_device_driver_unregister(&iwmxsdk_driver);
 }
 
-CONNMAN_PLUGIN_DEFINE(wimax, "WiMAX interface plugin", VERSION,
-		CONNMAN_PLUGIN_PRIORITY_DEFAULT, wimax_init, wimax_exit)
+CONNMAN_PLUGIN_DEFINE(iwmxsdk, "Intel WiMAX interface plugin", VERSION,
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, iwmxsdk_init, iwmxsdk_exit)
