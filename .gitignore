@@ -20,6 +20,8 @@ ltmain.sh
 missing
 stamp-h1
 autom4te.cache
+shave
+shave-libtool
 
 connman.pc
 include/connman

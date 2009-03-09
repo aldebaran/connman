@@ -25,6 +25,61 @@ AC_DEFUN([COMPILER_FLAGS], [
 	fi
 ])
 
+AC_DEFUN([SHAVE_ARG_ENABLE],
+[
+  AC_ARG_ENABLE([shave],
+    AS_HELP_STRING(
+      [--enable-shave],
+      [use shave to make the build pretty [[default=no]]]),,
+      [enable_shave=no]
+    )
+  AC_CONFIG_FILES(shave shave-libtool)
+])
+
+AC_DEFUN([SHAVE_INIT],
+[
+  if test x"$enable_shave" = xyes; then
+    dnl where can we find the shave scripts?
+    m4_if([$1],,
+      [shavedir="$ac_pwd"],
+      [shavedir="$ac_pwd/$1"])
+    AC_SUBST(shavedir)
+
+    dnl make is now quiet
+    AC_SUBST([MAKEFLAGS], [-s])
+    AC_SUBST([AM_MAKEFLAGS], ['`test -z $V && echo -s`'])
+
+    dnl we need sed
+    AC_CHECK_PROG(SED,sed,sed,false)
+
+    dnl substitute libtool
+    SHAVE_SAVED_LIBTOOL=$LIBTOOL
+    LIBTOOL="${SHELL} ${shavedir}/shave-libtool '${SHAVE_SAVED_LIBTOOL}'"
+    AC_SUBST(LIBTOOL)
+
+    dnl substitute cc/cxx
+    SHAVE_SAVED_CC=$CC
+    SHAVE_SAVED_CXX=$CXX
+    SHAVE_SAVED_FC=$FC
+    SHAVE_SAVED_F77=$F77
+    CC="${SHELL} ${shavedir}/shave cc ${SHAVE_SAVED_CC}"
+    CXX="${SHELL} ${shavedir}/shave cxx ${SHAVE_SAVED_CXX}"
+    FC="${SHELL} ${shavedir}/shave fc ${SHAVE_SAVED_FC}"
+    F77="${SHELL} ${shavedir}/shave f77 ${SHAVE_SAVED_F77}"
+    AC_SUBST(CC)
+    AC_SUBST(CXX)
+    AC_SUBST(FC)
+    AC_SUBST(F77)
+
+    V=@
+  else
+    V=1
+  fi
+  Q='$(V:1=)'
+  AC_SUBST(V)
+  AC_SUBST(Q)
+])
+
 AC_DEFUN([GTK_DOC_CHECK],
 [
   AC_BEFORE([AC_PROG_LIBTOOL],[$0])dnl setup libtool first
