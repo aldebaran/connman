@@ -41,8 +41,9 @@ extern "C" {
 struct connman_notifier {
 	const char *name;
 	int priority;
-	int (*device_powered) (struct connman_device *device,
-			       			connman_bool_t powered);
+	void (*device_enabled) (enum connman_device_type type,
+						connman_bool_t enabled);
+	void (*offline_mode) (connman_bool_t enabled);
 };
 
 extern int connman_notifier_register(struct connman_notifier *notifier);
