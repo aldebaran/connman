@@ -204,6 +204,10 @@ int __connman_profile_remove_network(struct connman_network *network);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
+void __connman_notifier_device_type_increase(enum connman_device_type type);
+void __connman_notifier_device_type_decrease(enum connman_device_type type);
+void __connman_notifier_offline_mode(connman_bool_t enabled);
+
 #include <connman/rtnl.h>
 
 int __connman_rtnl_init(void);

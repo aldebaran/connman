@@ -169,16 +169,18 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 		return -EINVAL;
 
 	if (powered == TRUE) {
-		if (driver->enable)
+		if (driver->enable) {
 			err = driver->enable(device);
-		else
+			__connman_notifier_device_type_increase(device->type);
+		} else
 			err = -EINVAL;
 	} else {
 		g_hash_table_remove_all(device->networks);
 
-		if (driver->disable)
+		if (driver->disable) {
 			err = driver->disable(device);
-		else
+			__connman_notifier_device_type_decrease(device->type);
+		} else
 			err = -EINVAL;
 	}
 
@@ -615,8 +617,10 @@ static void device_enable(struct connman_device *device)
 	if (device->powered == TRUE)
 		return;
 
-	if (device->driver->enable)
+	if (device->driver->enable) {
 		device->driver->enable(device);
+		__connman_notifier_device_type_increase(device->type);
+	}
 }
 
 static void device_disable(struct connman_device *device)
@@ -631,8 +635,10 @@ static void device_disable(struct connman_device *device)
 
 	g_hash_table_remove_all(device->networks);
 
-	if (device->driver->disable)
+	if (device->driver->disable) {
 		device->driver->disable(device);
+		__connman_notifier_device_type_decrease(device->type);
+	}
 }
 
 static int setup_device(struct connman_device *device)
@@ -1428,6 +1434,8 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 
 	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
 			set_offlinemode, GUINT_TO_POINTER(offlinemode));
+
+	__connman_notifier_offline_mode(offlinemode);
 
 	return 0;
 }

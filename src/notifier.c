@@ -66,6 +66,21 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 	notifier_list = g_slist_remove(notifier_list, notifier);
 }
 
+void __connman_notifier_device_type_increase(enum connman_device_type type)
+{
+	DBG("type %d", type);
+}
+
+void __connman_notifier_device_type_decrease(enum connman_device_type type)
+{
+	DBG("type %d", type);
+}
+
+void __connman_notifier_offline_mode(connman_bool_t enabled)
+{
+	DBG("enabled %d", enabled);
+}
+
 int __connman_notifier_init(void)
 {
 	DBG("");
