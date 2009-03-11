@@ -89,6 +89,30 @@ static void append_profiles(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void append_services(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "Services";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+	__connman_profile_list_services(&iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static void append_devices(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
@@ -161,7 +185,13 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
+	str = __connman_profile_active();
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "ActiveProfile",
+						DBUS_TYPE_OBJECT_PATH, &str);
+
 	append_profiles(&dict);
+	append_services(&dict);
 
 	append_devices(&dict);
 	append_connections(&dict);
@@ -227,9 +257,41 @@ static DBusMessage *set_property(DBusConnection *conn,
 		global_offlinemode = offlinemode;
 
 		__connman_device_set_offlinemode(offlinemode);
+	} else if (g_str_equal(name, "ActiveProfile") == TRUE) {
+		const char *str;
+
+		dbus_message_iter_get_basic(&value, &str);
+
+		return __connman_error_not_supported(msg);
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *add_profile(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *name;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
+							DBUS_TYPE_INVALID);
+
+	return __connman_error_not_supported(msg);
+}
+
+static DBusMessage *remove_profile(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *path;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	return __connman_error_not_supported(msg);
 }
 
 static DBusMessage *register_agent(DBusConnection *conn,
@@ -283,6 +345,8 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",   "",   "a{sv}", get_properties   },
 	{ "SetProperty",     "sv", "",      set_property     },
+	{ "AddProfile",      "s",  "o",     add_profile      },
+	{ "RemoveProfile",   "o",  "",      remove_profile   },
 	{ "RegisterAgent",   "o",  "",      register_agent   },
 	{ "UnregisterAgent", "o",  "",      unregister_agent },
 	{ },

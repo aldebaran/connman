@@ -22,6 +22,29 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.DoesNotExist
 
+		object AddProfile(string name)
+
+			Add a new profile with the specified name.
+
+			It is possible to create two profiles with the same
+			name. The identification is done via the object path
+			and not the name of the profile.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void RemoveProfile(object path)
+
+			Remove profile with specified object path.
+
+			It is not possible to remove the current active
+			profile. To remove the active profile a different
+			one must be selected via ActiveProfile property
+			first.
+
+			At minium one profile must be available all the time.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		void RegisterAgent(object path)
 
 			Register new agent for handling user requests.
@@ -74,6 +97,10 @@ Properties	string State [readonly]
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.
 
+		object ActiveProfile [readwrite]
+
+			Object path of the current active profile.
+
 		array{object} Profiles [readonly]
 
 			List of profile object paths.
@@ -81,6 +108,19 @@ Properties	string State [readonly]
 		array{object} Devices [readonly]
 
 			List of device object paths.
+
+		array{object} Services [readonly]
+
+			List of service object paths.
+
+			This list represents the available services for the
+			current selected profile. If the profile gets changed
+			then this list will be updated.
+
+			The same list is available via the profile object
+			itself. It is just provided here for convenience of
+			applications only dealing with the current active
+			profile.
 
 		array{object} Connections [readonly]
 

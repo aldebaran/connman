@@ -56,13 +56,25 @@ int __connman_profile_remove_network(struct connman_network *network)
 	return 0;
 }
 
+const char *__connman_profile_active(void)
+{
+	DBG("");
+
+	return "/profile/default";
+}
+
 void __connman_profile_list(DBusMessageIter *iter)
 {
-	const char *path = "/profile/default";
+	const char *path = __connman_profile_active();
 
 	DBG("");
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+void __connman_profile_list_services(DBusMessageIter *iter)
+{
+	DBG("");
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,

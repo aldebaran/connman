@@ -52,6 +52,8 @@ int __connman_profile_init(DBusConnection *conn);
 void __connman_profile_cleanup(void);
 
 void __connman_profile_list(DBusMessageIter *iter);
+void __connman_profile_list_services(DBusMessageIter *iter);
+const char *__connman_profile_active(void);
 
 #include <connman/log.h>
 
