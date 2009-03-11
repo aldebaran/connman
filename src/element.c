@@ -510,7 +510,7 @@ void connman_element_unref(struct connman_element *element)
 	}
 }
 
-int connman_element_set_static_property(struct connman_element *element,
+static int set_static_property(struct connman_element *element,
 				const char *name, int type, const void *value)
 {
 	struct connman_property *property;
@@ -549,7 +549,7 @@ int connman_element_set_static_property(struct connman_element *element,
 	return 0;
 }
 
-int connman_element_set_static_array_property(struct connman_element *element,
+static int set_static_array_property(struct connman_element *element,
 			const char *name, int type, const void *value, int len)
 {
 	struct connman_property *property;
@@ -589,7 +589,8 @@ int connman_element_set_static_array_property(struct connman_element *element,
 	return 0;
 }
 
-int connman_element_set_property(struct connman_element *element,
+#if 0
+static int set_property(struct connman_element *element,
 				enum connman_property_id id, const void *value)
 {
 	switch (id) {
@@ -629,6 +630,7 @@ int connman_element_set_property(struct connman_element *element,
 
 	return 0;
 }
+#endif
 
 int connman_element_get_value(struct connman_element *element,
 				enum connman_property_id id, void *value)
@@ -692,7 +694,7 @@ int connman_element_get_value(struct connman_element *element,
 	return 0;
 }
 
-gboolean connman_element_get_static_property(struct connman_element *element,
+static gboolean get_static_property(struct connman_element *element,
 						const char *name, void *value)
 {
 	struct connman_property *property;
@@ -719,14 +721,13 @@ gboolean connman_element_get_static_property(struct connman_element *element,
 	__connman_element_unlock(element);
 
 	if (found == FALSE && element->parent != NULL)
-		return connman_element_get_static_property(element->parent,
-								name, value);
+		return get_static_property(element->parent, name, value);
 
 	return found;
 }
 
-gboolean connman_element_get_static_array_property(struct connman_element *element,
-					const char *name, void *value, int *len)
+static gboolean get_static_array_property(struct connman_element *element,
+			const char *name, void *value, unsigned int *len)
 {
 	struct connman_property *property;
 	gboolean found = FALSE;
@@ -747,7 +748,8 @@ gboolean connman_element_get_static_array_property(struct connman_element *eleme
 	return found;
 }
 
-gboolean connman_element_match_static_property(struct connman_element *element,
+#if 0
+static gboolean match_static_property(struct connman_element *element,
 					const char *name, const void *value)
 {
 	struct connman_property *property;
@@ -767,6 +769,106 @@ gboolean connman_element_match_static_property(struct connman_element *element,
 	__connman_element_unlock(element);
 
 	return result;
+}
+#endif
+
+/**
+ * connman_element_set_string:
+ * @element: element structure
+ * @key: unique identifier
+ * @value: string value
+ *
+ * Set string value for specific key
+ */
+int connman_element_set_string(struct connman_element *element,
+					const char *key, const char *value)
+{
+	return set_static_property(element, key, DBUS_TYPE_STRING, &value);
+}
+
+/**
+ * connman_element_get_string:
+ * @element: element structure
+ * @key: unique identifier
+ *
+ * Get string value for specific key
+ */
+const char *connman_element_get_string(struct connman_element *element,
+							const char *key)
+{
+	const char *value;
+
+	if (get_static_property(element, key, &value) == FALSE)
+		return NULL;
+
+	return value;
+}
+
+/**
+ * connman_element_set_uint8:
+ * @element: element structure
+ * @key: unique identifier
+ * @value: integer value
+ *
+ * Set integer value for specific key
+ */
+int connman_element_set_uint8(struct connman_element *element,
+					const char *key, connman_uint8_t value)
+{
+        return set_static_property(element, key, DBUS_TYPE_BYTE, &value);
+}
+
+/**
+ * connman_element_get_uint8:
+ * @element: element structure
+ * @key: unique identifier
+ *
+ * Get integer value for specific key
+ */
+connman_uint8_t connman_element_get_uint8(struct connman_element *element,
+							const char *key)
+{
+	connman_uint8_t value;
+
+	if (get_static_property(element, key, &value) == FALSE)
+                return 0;
+
+	return value;
+}
+
+/**
+ * connman_element_set_blob:
+ * @element: element structure
+ * @key: unique identifier
+ * @data: blob data
+ * @size: blob size
+ *
+ * Set binary blob value for specific key
+ */
+int connman_element_set_blob(struct connman_element *element,
+			const char *key, const void *data, unsigned int size)
+{
+	return set_static_array_property(element, key,
+						DBUS_TYPE_BYTE, data, size);
+}
+
+/**
+ * connman_element_get_blob:
+ * @element: element structure
+ * @key: unique identifier
+ * @size: pointer to blob size
+ *
+ * Get binary blob value for specific key
+ */
+const void *connman_element_get_blob(struct connman_element *element,
+					const char *key, unsigned int *size)
+{
+	void *value;
+
+	if (get_static_array_property(element, key, &value, size) == FALSE)
+		return NULL;
+
+	return value;
 }
 
 int __connman_element_append_ipv4(struct connman_element *element,

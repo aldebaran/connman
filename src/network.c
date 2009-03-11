@@ -481,11 +481,9 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	str = type2string(type);
 	if (str != NULL)
-		connman_element_set_static_property(&network->element,
-					"Type", DBUS_TYPE_STRING, &str);
+		connman_element_set_string(&network->element, "Type", str);
 
-	connman_element_set_static_property(&network->element,
-					"Strength", DBUS_TYPE_BYTE, &strength);
+	connman_element_set_uint8(&network->element, "Strength", strength);
 
 	network->type = type;
 	network->identifier = g_strdup(identifier);
@@ -855,7 +853,7 @@ int connman_network_set_string(struct connman_network *network,
 		network->wifi.passphrase = g_strdup(value);
 	}
 
-	return 0;
+	return connman_element_set_string(&network->element, key, value);
 }
 
 /**
@@ -881,7 +879,7 @@ const char *connman_network_get_string(struct connman_network *network,
 	else if (g_str_equal(key, "WiFi.Passphrase") == TRUE)
 		return network->wifi.passphrase;
 
-	return NULL;
+	return connman_element_get_string(&network->element, key);
 }
 
 /**
@@ -899,13 +897,10 @@ int connman_network_set_uint8(struct connman_network *network,
 
 	if (g_str_equal(key, "Priority") == TRUE)
 		network->priority = value;
-	else if (g_str_equal(key, "Strength") == TRUE) {
+	else if (g_str_equal(key, "Strength") == TRUE)
 		network->strength = value;
-		connman_element_set_static_property(&network->element,
-					"Strength", DBUS_TYPE_BYTE, &value);
-	}
 
-	return 0;
+	return connman_element_set_uint8(&network->element, key, value);
 }
 
 /**
@@ -925,7 +920,7 @@ connman_uint8_t connman_network_get_uint8(struct connman_network *network,
 	else if (g_str_equal(key, "Strength") == TRUE)
 		return network->strength;
 
-	return 0;
+	return connman_element_get_uint8(&network->element, key);
 }
 
 /**
@@ -952,7 +947,7 @@ int connman_network_set_blob(struct connman_network *network,
 			network->wifi.ssid_len = 0;
 	}
 
-	return 0;
+	return connman_element_set_blob(&network->element, key, data, size);
 }
 
 /**
@@ -974,7 +969,7 @@ const void *connman_network_get_blob(struct connman_network *network,
 		return network->wifi.ssid;
 	}
 
-	return NULL;
+	return connman_element_get_blob(&network->element, key, size);
 }
 
 void __connman_network_set_device(struct connman_network *network,

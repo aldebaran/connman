@@ -300,9 +300,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	struct connman_element *element = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	connman_uint8_t strength = 0;
+	connman_uint8_t strength;
 	const char *device, *network;
-	const char *type = NULL;
+	const char *type;
 
 	DBG("conn %p", conn);
 
@@ -321,13 +321,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	connman_element_get_static_property(element, "Type", &type);
-
+	type = connman_element_get_string(element, "Type");
 	if (type != NULL)
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &type);
 
-	connman_element_get_static_property(element, "Strength", &strength);
+	strength = connman_element_get_uint8(element, "Strength");
 	if (strength > 0)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 						DBUS_TYPE_BYTE, &strength);

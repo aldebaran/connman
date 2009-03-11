@@ -43,12 +43,19 @@ enum connman_property_id {
 	CONNMAN_PROPERTY_ID_IPV4_NAMESERVER,
 };
 
+enum connman_property_type {
+	CONNMAN_PROPERTY_TYPE_INVALID = 0,
+	CONNMAN_PROPERTY_TYPE_STRING,
+	CONNMAN_PROPERTY_TYPE_UINT8,
+	CONNMAN_PROPERTY_TYPE_BLOB,
+};
+
 struct connman_property {
 	enum connman_property_id id;
 	int type;
 	int subtype;
 	void *value;
-	int size;
+	unsigned int size;
 };
 
 #ifdef __cplusplus

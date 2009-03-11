@@ -845,8 +845,7 @@ struct connman_device *connman_device_create(const char *node,
 
 	str = type2string(type);
 	if (str != NULL)
-		connman_element_set_static_property(&device->element,
-					"Type", DBUS_TYPE_STRING, &str);
+		connman_element_set_string(&device->element, "Type", str);
 
 	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
 
@@ -1386,7 +1385,7 @@ int connman_device_set_string(struct connman_device *device,
 		device->node = g_strdup(value);
 	}
 
-	return 0;
+	return connman_element_set_string(&device->element, key, value);
 }
 
 /**
@@ -1406,7 +1405,7 @@ const char *connman_device_get_string(struct connman_device *device,
 	else if (g_str_equal(key, "Node") == TRUE)
 		return device->node;
 
-	return NULL;
+	return connman_element_get_string(&device->element, key);
 }
 
 static void set_offlinemode(struct connman_element *element, gpointer user_data)

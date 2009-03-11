@@ -30,6 +30,7 @@ extern "C" {
 #include <glib.h>
 
 #include <connman/property.h>
+#include <connman/types.h>
 #include <connman/ipv4.h>
 
 /**
@@ -97,20 +98,21 @@ extern struct connman_element *connman_element_create(const char *name);
 extern struct connman_element *connman_element_ref(struct connman_element *element);
 extern void connman_element_unref(struct connman_element *element);
 
-extern int connman_element_set_static_property(struct connman_element *element,
-				const char *name, int type, const void *value);
-extern int connman_element_set_static_array_property(struct connman_element *element,
-			const char *name, int type, const void *value, int len);
-extern int connman_element_set_property(struct connman_element *element,
-				enum connman_property_id id, const void *value);
 extern int connman_element_get_value(struct connman_element *element,
 				enum connman_property_id id, void *value);
-extern gboolean connman_element_get_static_property(struct connman_element *element,
-						const char *name, void *value);
-extern gboolean connman_element_get_static_array_property(struct connman_element *element,
-					const char *name, void *value, int *len);
-extern gboolean connman_element_match_static_property(struct connman_element *element,
-					const char *name, const void *value);
+
+extern int connman_element_set_string(struct connman_element *element,
+					const char *key, const char *value);
+extern const char *connman_element_get_string(struct connman_element *element,
+							const char *key);
+extern int connman_element_set_uint8(struct connman_element *element,
+				const char *key, connman_uint8_t value);
+extern connman_uint8_t connman_element_get_uint8(struct connman_element *element,
+							const char *key);
+extern int connman_element_set_blob(struct connman_element *element,
+			const char *key, const void *data, unsigned int size);
+extern const void *connman_element_get_blob(struct connman_element *element,
+					const char *key, unsigned int *size);
 
 extern int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);
