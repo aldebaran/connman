@@ -1,0 +1,22 @@
+Profile hierarchy
+=================
+
+Service		org.moblin.connman
+Interface	org.moblin.connman.Profile
+Object path	[variable prefix]/{profile0,profile1,...}
+
+Methods		dict GetProperties()
+
+			Returns properties for the profile object. See
+			the properties section for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	string Name [readonly]
+
+			Name of this profile.

@@ -38,4 +38,4 @@ EXTRA_DIST = $(DOC_MAIN_SGML_FILE) connman-introduction.xml
 endif
 
 EXTRA_DIST += manager-api.txt device-api.txt network-api.txt service-api.txt \
-				connection-api.txt agent-api.txt plugin-api.txt
+		connection-api.txt profile-api.txt agent-api.txt plugin-api.txt
