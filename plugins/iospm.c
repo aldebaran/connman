@@ -26,7 +26,15 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/notifier.h>
+#include <connman/dbus.h>
 #include <connman/log.h>
+
+#define IOSPM_SERVICE		"com.intel.mid.ospm"
+#define IOSPM_INTERFACE		IOSPM_SERVICE ".MMF"
+
+#define IOSPM_FLIGHT_MODE	"/com/intel/mid/ospm/flight_mode"
+
+static DBusConnection *connection;
 
 static void iospm_device_enabled(enum connman_device_type type,
 						connman_bool_t enabled)
@@ -36,7 +44,26 @@ static void iospm_device_enabled(enum connman_device_type type,
 
 static void iospm_offline_mode(connman_bool_t enabled)
 {
+	DBusMessage *message;
+	const char *method;
+
 	DBG("enabled %d", enabled);
+
+	if (enabled == TRUE)
+		method = "IndicateStart";
+	else
+		method = "IndicateStop";
+
+	message = dbus_message_new_method_call(IOSPM_SERVICE,
+				IOSPM_FLIGHT_MODE, IOSPM_INTERFACE, method);
+	if (message == NULL)
+		return;
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_connection_send(connection, message, NULL);
+
+	dbus_message_unref(message);
 }
 
 static struct connman_notifier iospm_notifier = {
@@ -48,12 +75,16 @@ static struct connman_notifier iospm_notifier = {
 
 static int iospm_init(void)
 {
+	connection = connman_dbus_get_connection();
+
 	return connman_notifier_register(&iospm_notifier);
 }
 
 static void iospm_exit(void)
 {
 	connman_notifier_unregister(&iospm_notifier);
+
+	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE(ospm, "Intel OSPM notification plugin", VERSION,
