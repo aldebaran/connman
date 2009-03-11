@@ -28,9 +28,22 @@
 #include <connman/notifier.h>
 #include <connman/log.h>
 
+static void iospm_device_enabled(enum connman_device_type type,
+						connman_bool_t enabled)
+{
+	DBG("type %d enabled %d", type, enabled);
+}
+
+static void iospm_offline_mode(connman_bool_t enabled)
+{
+	DBG("enabled %d", enabled);
+}
+
 static struct connman_notifier iospm_notifier = {
 	.name		= "iospm",
 	.priority	= CONNMAN_NOTIFIER_PRIORITY_DEFAULT,
+	.device_enabled	= iospm_device_enabled,
+	.offline_mode	= iospm_offline_mode,
 };
 
 static int iospm_init(void)
