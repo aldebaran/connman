@@ -25,15 +25,22 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
+#include <connman/notifier.h>
 #include <connman/log.h>
+
+static struct connman_notifier iospm_notifier = {
+	.name		= "iospm",
+	.priority	= CONNMAN_NOTIFIER_PRIORITY_DEFAULT,
+};
 
 static int iospm_init(void)
 {
-	return 0;
+	return connman_notifier_register(&iospm_notifier);
 }
 
 static void iospm_exit(void)
 {
+	connman_notifier_unregister(&iospm_notifier);
 }
 
 CONNMAN_PLUGIN_DEFINE(ospm, "Intel OSPM notification plugin", VERSION,
