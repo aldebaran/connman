@@ -88,6 +88,8 @@ static const char *type2description(enum connman_device_type type)
 		return "WiMAX";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "Bluetooth";
+	case CONNMAN_DEVICE_TYPE_GPS:
+		return "GPS";
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
@@ -112,6 +114,8 @@ static const char *type2string(enum connman_device_type type)
 		return "wimax";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
+	case CONNMAN_DEVICE_TYPE_GPS:
+		return "gps";
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
@@ -861,6 +865,10 @@ struct connman_device *connman_device_create(const char *node,
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		device->priority = 50;
+		device->scan_interval = 0;
+		break;
+	case CONNMAN_DEVICE_TYPE_GPS:
+		device->priority = 0;
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_HSO:
