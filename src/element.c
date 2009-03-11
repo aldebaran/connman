@@ -1157,6 +1157,7 @@ int __connman_element_init(DBusConnection *conn, const char *device,
 
 	element_root = g_node_new(element);
 
+	__connman_notifier_init();
 	__connman_network_init();
 	__connman_device_init();
 
@@ -1241,6 +1242,7 @@ void __connman_element_cleanup(void)
 
 	__connman_device_cleanup();
 	__connman_network_cleanup();
+	__connman_notifier_cleanup();
 
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_driver, NULL);

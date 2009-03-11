@@ -197,6 +197,11 @@ connman_bool_t __connman_network_has_driver(struct connman_network *network);
 int __connman_profile_add_network(struct connman_network *network);
 int __connman_profile_remove_network(struct connman_network *network);
 
+#include <connman/notifier.h>
+
+int __connman_notifier_init(void);
+void __connman_notifier_cleanup(void);
+
 #include <connman/rtnl.h>
 
 int __connman_rtnl_init(void);

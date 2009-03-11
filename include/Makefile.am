@@ -2,7 +2,7 @@
 includedir = @includedir@/connman
 
 include_HEADERS = types.h log.h plugin.h security.h resolver.h \
-					storage.h device.h network.h
+				storage.h device.h network.h notifier.h
 
 nodist_include_HEADERS = version.h
 
