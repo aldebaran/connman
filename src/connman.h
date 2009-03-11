@@ -179,6 +179,9 @@ connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
 int __connman_device_set_offlinemode(connman_bool_t offlinemode);
 
+int __connman_profile_add_device(struct connman_device *device);
+int __connman_profile_remove_device(struct connman_device *device);
+
 #include <connman/network.h>
 
 int __connman_network_init(void);
@@ -190,6 +193,9 @@ void __connman_network_set_device(struct connman_network *network,
 int __connman_network_disconnect(struct connman_network *network);
 
 connman_bool_t __connman_network_has_driver(struct connman_network *network);
+
+int __connman_profile_add_network(struct connman_network *network);
+int __connman_profile_remove_network(struct connman_network *network);
 
 #include <connman/rtnl.h>
 

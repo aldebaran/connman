@@ -1062,6 +1062,8 @@ static int network_probe(struct connman_element *element)
 		return err;
 	}
 
+	__connman_profile_add_network(network);
+
 	return 0;
 }
 
@@ -1076,6 +1078,8 @@ static void network_remove(struct connman_element *element)
 
 	if (network->driver == NULL)
 		return;
+
+	__connman_profile_remove_network(network);
 
 	unregister_interface(element);
 

@@ -645,6 +645,16 @@ static int setup_device(struct connman_device *device)
 		return err;
 	}
 
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		break;
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		__connman_profile_add_device(device);
+		break;
+	}
+
 	device_enable(device);
 
 	return 0;
@@ -678,6 +688,16 @@ static void remove_device(struct connman_device *device)
 	DBG("device %p", device);
 
 	device_disable(device);
+
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		break;
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		__connman_profile_remove_device(device);
+		break;
+	}
 
 	unregister_interface(&device->element);
 

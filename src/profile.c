@@ -28,6 +28,34 @@
 
 #include "connman.h"
 
+int __connman_profile_add_device(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
+int __connman_profile_remove_device(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
+int __connman_profile_add_network(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
+int __connman_profile_remove_network(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
 void __connman_profile_list(DBusMessageIter *iter)
 {
 	const char *path = "/profile/default";
