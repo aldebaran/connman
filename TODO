@@ -5,6 +5,11 @@
 	present, but it needs properly hooked up. This involves a correct
 	security architecture since it uses personalized credentials.
 
+  o Support for WPS based WiFi authentication
+
+	Newer versions of wpa_supplicant contain support for WPS. For full
+	integration of WPS support, the agent concept needs to be extended.
+
   o Support for multiple profiles
 
 	Currently only one active profile (the default profile) is supported.
