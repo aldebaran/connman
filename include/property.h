@@ -32,6 +32,11 @@ extern "C" {
  * @short_description: Functions for handling properties
  */
 
+#define CONNMAN_PROPERTY_ID_NAME	"Name"
+#define CONNMAN_PROPERTY_ID_TYPE	"Type"
+#define CONNMAN_PROPERTY_ID_PRIORITY	"Priority"
+#define CONNMAN_PROPERTY_ID_STRENGTH	"Strength"
+
 enum connman_property_id {
 	CONNMAN_PROPERTY_ID_INVALID = 0,
 

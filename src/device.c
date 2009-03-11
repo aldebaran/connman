@@ -845,7 +845,8 @@ struct connman_device *connman_device_create(const char *node,
 
 	str = type2string(type);
 	if (str != NULL)
-		connman_element_set_string(&device->element, "Type", str);
+		connman_element_set_string(&device->element,
+					CONNMAN_PROPERTY_ID_TYPE, str);
 
 	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
 
@@ -1186,7 +1187,8 @@ static void connect_known_network(struct connman_device *device)
 		if (connman_network_get_available(value) == FALSE)
 			continue;
 
-		name = connman_network_get_string(value, "Name");
+		name = connman_network_get_string(value,
+						CONNMAN_PROPERTY_ID_NAME);
 		if (name != NULL && device->last_network != NULL) {
 			if (g_str_equal(name, device->last_network) == TRUE) {
 				network = value;
@@ -1202,8 +1204,10 @@ static void connect_known_network(struct connman_device *device)
 			continue;
 		}
 
-		old_priority = connman_network_get_uint8(network, "Priority");
-		new_priority = connman_network_get_uint8(value, "Priority");
+		old_priority = connman_network_get_uint8(network,
+						CONNMAN_PROPERTY_ID_PRIORITY);
+		new_priority = connman_network_get_uint8(value,
+						CONNMAN_PROPERTY_ID_PRIORITY);
 
 		if (new_priority != old_priority) {
 			if (new_priority > old_priority)
@@ -1211,8 +1215,10 @@ static void connect_known_network(struct connman_device *device)
 			continue;
 		}
 
-		old_strength = connman_network_get_uint8(network, "Strength");
-		new_strength = connman_network_get_uint8(value, "Strength");
+		old_strength = connman_network_get_uint8(network,
+						CONNMAN_PROPERTY_ID_STRENGTH);
+		new_strength = connman_network_get_uint8(value,
+						CONNMAN_PROPERTY_ID_STRENGTH);
 
 		if (new_strength > old_strength)
 			network = value;
@@ -1528,7 +1534,8 @@ void __connman_device_set_network(struct connman_device *device,
 	const char *name;
 
 	if (network != NULL) {
-		name = connman_network_get_string(network, "Name");
+		name = connman_network_get_string(network,
+						CONNMAN_PROPERTY_ID_NAME);
 		device->last_network = g_strdup(name);
 	}
 
