@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
 
@@ -235,6 +236,85 @@ static struct connman_resolver dnsproxy_resolver = {
 	.remove		= dnsproxy_remove,
 };
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+struct domain_hdr {
+	uint16_t id;
+	uint8_t rd:1;
+	uint8_t tc:1;
+	uint8_t aa:1;
+	uint8_t opcode:4;
+	uint8_t qr:1;
+	uint8_t rcode:4;
+	uint8_t z:3;
+	uint8_t ra:1;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+} __attribute__ ((packed));
+#elif __BYTE_ORDER == __BIG_ENDIAN
+struct domain_hdr {
+	uint16_t id;
+	uint8_t qr:1;
+	uint8_t opcode:4;
+	uint8_t aa:1;
+	uint8_t tc:1;
+	uint8_t rd:1;
+	uint8_t ra:1;
+	uint8_t z:3;
+	uint8_t rcode:4;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+} __attribute__ ((packed));
+#else
+#error "Unknown byte order"
+#endif
+
+static void parse_request(unsigned char *buf, int len)
+{
+	struct domain_hdr *hdr = (void *) buf;
+	uint16_t qdcount = ntohs(hdr->qdcount);
+	unsigned char *ptr;
+	char name[512];
+	unsigned int remain, used = 0;
+
+	if (len < 12)
+		return;
+
+	DBG("id 0x%04x qr %d opcode %d qdcount %d",
+				hdr->id, hdr->qr, hdr->opcode, qdcount);
+
+	if (hdr->qr != 0 || qdcount != 1)
+		return;
+
+	memset(name, 0, sizeof(name));
+
+	ptr = buf + 12;
+	remain = len - 12;
+
+	while (remain > 0) {
+		uint8_t len = *ptr;
+
+		if (len == 0x00)
+			break;
+
+		if (used + len + 1 > sizeof(name))
+			return;
+
+		strncat(name, (char *) (ptr + 1), len);
+		strcat(name, ".");
+
+		used += len + 1;
+
+		ptr += len + 1;
+		remain -= len + 1;
+	}
+
+	DBG("domain name %s", name);
+}
+
 static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
@@ -254,6 +334,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
+
+	parse_request(buf, len);
 
 	if (g_slist_length(server_list) == 0)
 		return TRUE;
