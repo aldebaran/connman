@@ -20,3 +20,7 @@ Signals		PropertyChanged(string name, variant value)
 Properties	string Name [readonly]
 
 			Name of this profile.
+
+		array{object} Services [readonly]
+
+			List of service objects.
