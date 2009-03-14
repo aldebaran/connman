@@ -1723,10 +1723,12 @@ static int device_load(struct connman_device *device)
 		break;
 	}
 
+#if 0
 	str = g_key_file_get_string(keyfile, "Configuration",
 							"LastNetwork", NULL);
 	if (str != NULL)
 		device->last_network = str;
+#endif
 
 	g_key_file_free(keyfile);
 
