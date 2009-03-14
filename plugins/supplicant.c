@@ -362,6 +362,8 @@ static void remove_interface_reply(DBusPendingCall *call, void *user_data)
 
 	connman_device_set_powered(task->device, FALSE);
 
+	connman_device_unref(task->device);
+
 	free_task(task);
 
 	dbus_message_unref(reply);
@@ -1238,12 +1240,13 @@ int supplicant_start(struct connman_device *device)
 
 	task->ifindex = connman_device_get_index(device);
 	task->ifname = inet_index2name(task->ifindex);
-	task->device = device;
 
 	if (task->ifname == NULL) {
 		g_free(task);
 		return -ENOMEM;
 	}
+
+	task->device = connman_device_ref(device);
 
 	task->created = FALSE;
 	task->noscan = FALSE;
