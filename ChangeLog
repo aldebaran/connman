@@ -1,3 +1,11 @@
+ver 0.13:
+	Add support for notification infrastructure.
+	Add fully dynamic property storage capabilities.
+	Fix broken loading of last network on bootup.
+	Fix crash when unplugging WiFi devices.
+	Rename OSPM plugin to Intel OSPM plugin.
+	Rename WiMAX plugin to Intel WiMAX SDK plugin.
+
 ver 0.12:
 	Fix connection state change handling.
 	Fix network list enumeration.
