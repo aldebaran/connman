@@ -849,7 +849,7 @@ int connman_element_set_blob(struct connman_element *element,
 			const char *key, const void *data, unsigned int size)
 {
 	return set_static_array_property(element, key,
-						DBUS_TYPE_BYTE, data, size);
+						DBUS_TYPE_BYTE, &data, size);
 }
 
 /**
