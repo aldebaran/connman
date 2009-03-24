@@ -1082,12 +1082,40 @@ static void network_remove(struct connman_element *element)
 		network->driver->remove(network);
 }
 
+static void network_change(struct connman_element *element)
+{
+	struct connman_network *network = element->network;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element->state != CONNMAN_ELEMENT_STATE_ERROR)
+		return;
+
+	if (element->error != CONNMAN_ELEMENT_ERROR_DHCP_FAILED)
+		return;
+
+	if (network->connected == FALSE)
+		return;
+
+	connman_element_unregister_children(element);
+
+	connman_device_set_disconnected(network->device, TRUE);
+
+	if (network->driver && network->driver->disconnect) {
+		network->driver->disconnect(network);
+		return;
+	}
+
+	network->connected = FALSE;
+}
+
 static struct connman_driver network_driver = {
 	.name		= "network",
 	.type		= CONNMAN_ELEMENT_TYPE_NETWORK,
 	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
 	.probe		= network_probe,
 	.remove		= network_remove,
+	.change		= network_change,
 };
 
 static int network_init(struct connman_device *device)
