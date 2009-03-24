@@ -433,6 +433,8 @@ void __connman_element_initialize(struct connman_element *element)
 
 	element->name    = NULL;
 	element->type    = CONNMAN_ELEMENT_TYPE_UNKNOWN;
+	element->state   = CONNMAN_ELEMENT_STATE_UNKNOWN;
+	element->error   = CONNMAN_ELEMENT_ERROR_UNKNOWN;
 	element->index   = -1;
 	element->enabled = FALSE;
 
@@ -1237,6 +1239,28 @@ int connman_element_set_enabled(struct connman_element *element,
 	connman_element_update(element);
 
 	return 0;
+}
+
+/**
+ * connman_element_set_error:
+ * @element: element structure
+ * @error: error identifier
+ *
+ * Set error state and specific error identifier
+ */
+void connman_element_set_error(struct connman_element *element,
+					enum connman_element_error error)
+{
+	DBG("element %p error %d", element, error);
+
+	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
+		return;
+
+	element->state = CONNMAN_ELEMENT_STATE_ERROR;
+	element->error = error;
+
+	if (element->driver && element->driver->change)
+		element->driver->change(element);
 }
 
 int __connman_element_init(DBusConnection *conn, const char *device,

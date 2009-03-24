@@ -56,6 +56,19 @@ enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_VENDOR     = 10000,
 };
 
+enum connman_element_state {
+	CONNMAN_ELEMENT_STATE_UNKNOWN = 0,
+	CONNMAN_ELEMENT_STATE_ERROR   = 1,
+	CONNMAN_ELEMENT_STATE_IDLE    = 2,
+	CONNMAN_ELEMENT_STATE_DONE    = 3,
+};
+
+enum connman_element_error {
+	CONNMAN_ELEMENT_ERROR_UNKNOWN     = 0,
+	CONNMAN_ELEMENT_ERROR_FAILED      = 1,
+	CONNMAN_ELEMENT_ERROR_DHCP_FAILED = 2,
+};
+
 struct connman_driver;
 
 struct connman_element {
@@ -64,6 +77,8 @@ struct connman_element {
 	gchar *name;
 	gchar *path;
 	enum connman_element_type type;
+	enum connman_element_state state;
+	enum connman_element_error error;
 	gboolean enabled;
 	gboolean configuring;
 	gchar *devname;
@@ -122,6 +137,8 @@ extern void connman_element_update(struct connman_element *element);
 
 extern int connman_element_set_enabled(struct connman_element *element,
 							gboolean enabled);
+extern void connman_element_set_error(struct connman_element *element,
+					enum connman_element_error error);
 
 static inline void *connman_element_get_data(struct connman_element *element)
 {

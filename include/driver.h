@@ -44,7 +44,8 @@ struct connman_driver {
 	int priority;
 	int (*probe) (struct connman_element *element);
 	void (*remove) (struct connman_element *element);
-	int (*update) (struct connman_element *element);
+	void (*update) (struct connman_element *element);
+	void (*change) (struct connman_element *element);
 };
 
 extern int connman_driver_register(struct connman_driver *driver);
