@@ -215,11 +215,21 @@ static void dhclient_remove(struct connman_element *element)
 	kill_task(task);
 }
 
+static void dhclient_change(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	if (element->state == CONNMAN_ELEMENT_STATE_ERROR)
+		connman_element_set_error(element->parent,
+					CONNMAN_ELEMENT_ERROR_DHCP_FAILED);
+}
+
 static struct connman_driver dhclient_driver = {
 	.name		= "dhclient",
 	.type		= CONNMAN_ELEMENT_TYPE_DHCP,
 	.probe		= dhclient_probe,
 	.remove		= dhclient_remove,
+	.change		= dhclient_change,
 };
 
 static DBusHandlerResult dhclient_filter(DBusConnection *conn,
@@ -306,6 +316,9 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
 				g_ascii_strcasecmp(text, "REBIND") == 0) {
 		connman_element_update(task->element);
+	} else if (g_ascii_strcasecmp(text, "FAIL") == 0) {
+		connman_element_set_error(task->element,
+						CONNMAN_ELEMENT_ERROR_FAILED);
 	} else {
 	}
 
