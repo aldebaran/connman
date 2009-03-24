@@ -126,7 +126,10 @@ To make the gtk-doc process work, the gtk-doc tools need to be installed.
 Every distribution should provide a package for this, but the naming of the
 package might be different:
 
-  Ubuntu/Debian
+  Debian
+    # apt-get install gtk-doc-tools
+
+  Ubuntu
     # apt-get install gtk-doc-utils
 
   Fedora
