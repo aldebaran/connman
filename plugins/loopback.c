@@ -61,7 +61,7 @@ static int loopback_init(void)
 
 	addr = (struct sockaddr_in *) &ifr.ifr_addr;
 	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = inet_addr("127.0.0.0");
+	addr->sin_addr.s_addr = inet_addr("127.0.0.1");
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
 	if (err < 0) {
