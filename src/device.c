@@ -470,6 +470,18 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *join_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBG("conn %p", conn);
+
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
+		return __connman_error_permission_denied(msg);
+
+	return __connman_error_invalid_arguments(msg);
+}
+
 static DBusMessage *create_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -527,6 +539,7 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties", "",      "a{sv}", get_properties },
 	{ "SetProperty",   "sv",    "",      set_property   },
+	{ "JoinNetwork",   "a{sv}", "",      join_network   },
 	{ "CreateNetwork", "a{sv}", "o",     create_network },
 	{ "RemoveNetwork", "o",     "",      remove_network },
 	{ "ProposeScan",   "",      "",      propose_scan   },

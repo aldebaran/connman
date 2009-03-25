@@ -22,6 +22,14 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.DoesNotExist
 
+		void JoinNetwork(dict network)
+
+			Join network specified by the given properties. The
+			properties for WiFi networks can be WiFi.SSID,
+			WiFi.Security and WiFi.Passphrase.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		object CreateNetwork(dict network)
 
 			Creates a network object from the specified
