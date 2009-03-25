@@ -821,6 +821,8 @@ int __connman_network_disconnect(struct connman_network *network)
 	if (network->connected == FALSE)
 		return -ENOTCONN;
 
+	connman_element_unregister_children(&network->element);
+
 	if (network->driver && network->driver->disconnect)
 		return network->driver->disconnect(network);
 
