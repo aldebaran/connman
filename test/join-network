@@ -26,4 +26,5 @@ for path in properties["Devices"]:
 	print "[ %s ]" % (path)
 	print "Attempting to join %s" % (sys.argv[1])
 
-	device.JoinNetwork({ "WiFi.SSID": sys.argv[1] })
+	device.JoinNetwork({ "WiFi.SSID": sys.argv[1],
+				"WiFi.Security": "none" })
