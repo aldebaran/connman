@@ -475,6 +475,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 {
 	struct connman_device *device = data;
 	struct connman_network *network;
+	enum connman_network_type type;
 	DBusMessageIter iter, array;
 	int err, index;
 
@@ -490,7 +491,15 @@ static DBusMessage *join_network(DBusConnection *conn,
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
 
-	network = connman_network_create("_", CONNMAN_NETWORK_TYPE_UNKNOWN);
+	switch (device->type) {
+	case CONNMAN_DEVICE_TYPE_WIFI:
+		type = CONNMAN_NETWORK_TYPE_WIFI;
+		break;
+	default:
+		return __connman_error_not_supported(msg);
+	}
+
+	network = connman_network_create("00_00_00_00_00_00", type);
 	if (network == NULL)
 		return __connman_error_failed(msg);
 
