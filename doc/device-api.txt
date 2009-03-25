@@ -43,7 +43,11 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string Name [readonly]
+Properties	string Address [readonly]
+
+			The address of the device.
+
+		string Name [readonly]
 
 			The device name (for example "Wireless" etc.)
 

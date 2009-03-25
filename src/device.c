@@ -43,6 +43,7 @@ struct connman_device {
 	connman_uint16_t scan_interval;
 	char *name;
 	char *node;
+	char *address;
 	char *interface;
 	unsigned int connections;
 	guint scan_timeout;
@@ -310,6 +311,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
+
+	if (device->address != NULL)
+		connman_dbus_dict_append_variant(&dict, "Address",
+					DBUS_TYPE_STRING, &device->address);
 
 	if (device->interface != NULL)
 		connman_dbus_dict_append_variant(&dict, "Interface",
@@ -804,6 +809,7 @@ static void device_destruct(struct connman_element *element)
 
 	g_free(device->node);
 	g_free(device->name);
+	g_free(device->address);
 	g_free(device->interface);
 
 	g_free(device->last_network);
@@ -1383,7 +1389,10 @@ int connman_device_set_string(struct connman_device *device,
 {
 	DBG("device %p key %s value %s", device, key, value);
 
-	if (g_str_equal(key, "Name") == TRUE) {
+	if (g_str_equal(key, "Address") == TRUE) {
+		g_free(device->address);
+		device->address = g_strdup(value);
+	} else if (g_str_equal(key, "Name") == TRUE) {
 		g_free(device->name);
 		device->name = g_strdup(value);
 	} else if (g_str_equal(key, "Node") == TRUE) {
@@ -1406,7 +1415,9 @@ const char *connman_device_get_string(struct connman_device *device,
 {
 	DBG("device %p key %s", device, key);
 
-	if (g_str_equal(key, "Name") == TRUE)
+	if (g_str_equal(key, "Address") == TRUE)
+		return device->address;
+	else if (g_str_equal(key, "Name") == TRUE)
 		return device->name;
 	else if (g_str_equal(key, "Node") == TRUE)
 		return device->node;
