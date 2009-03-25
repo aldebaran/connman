@@ -133,6 +133,20 @@ static int wifi_scan(struct connman_device *device)
 	return supplicant_scan(device);
 }
 
+static int wifi_join(struct connman_device *device,
+					struct connman_network *network)
+{
+	const char *ssid;
+
+	DBG("device %p", device);
+
+	ssid = connman_network_get_string(network, "WiFi.SSID");
+
+	DBG("SSID %s", ssid);
+
+	return -EIO;
+}
+
 static struct connman_device_driver wifi_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_DEVICE_TYPE_WIFI,
@@ -141,6 +155,7 @@ static struct connman_device_driver wifi_driver = {
 	.enable		= wifi_enable,
 	.disable	= wifi_disable,
 	.scan		= wifi_scan,
+	.join		= wifi_join,
 };
 
 static void wifi_register(void)
