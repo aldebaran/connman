@@ -473,13 +473,55 @@ static DBusMessage *set_property(DBusConnection *conn,
 static DBusMessage *join_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_device *device = data;
+	struct connman_network *network;
+	DBusMessageIter iter, array;
+	int err;
+
 	DBG("conn %p", conn);
 
 	if (__connman_security_check_privilege(msg,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
-	return __connman_error_invalid_arguments(msg);
+	if (!device->driver || !device->driver->join)
+		return __connman_error_not_supported(msg);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	network = connman_network_create("_", CONNMAN_NETWORK_TYPE_UNKNOWN);
+	if (network == NULL)
+		return __connman_error_failed(msg);
+
+	while (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *str;
+
+		dbus_message_iter_recurse(&iter, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		switch (dbus_message_iter_get_arg_type(&value)) {
+		case DBUS_TYPE_STRING:
+			dbus_message_iter_get_basic(&value, &str);
+			connman_network_set_string(network, key, str);
+			break;
+		}
+
+		dbus_message_iter_next(&iter);
+	}
+
+	err = device->driver->join(device, network);
+
+	connman_network_unref(network);
+
+	if (err < 0)
+		return __connman_error_failed(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *create_network(DBusConnection *conn,

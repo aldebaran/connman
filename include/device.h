@@ -122,6 +122,8 @@ struct connman_device_driver {
 	int (*enable) (struct connman_device *device);
 	int (*disable) (struct connman_device *device);
 	int (*scan) (struct connman_device *device);
+	int (*join) (struct connman_device *device,
+					struct connman_network *network);
 };
 
 extern int connman_device_driver_register(struct connman_device_driver *driver);
