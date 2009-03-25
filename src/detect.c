@@ -80,6 +80,49 @@ static char *index2name(int index)
 	return strdup(ifr.ifr_name);
 }
 
+static char *index2addr(int index)
+{
+	struct ifreq ifr;
+	struct ether_addr *eth;
+	char *str;
+	int sk, err;
+
+	if (index < 0)
+		return NULL;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return NULL;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+
+	if (err == 0)
+		err = ioctl(sk, SIOCGIFHWADDR, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return NULL;
+
+	str = malloc(18);
+	if (!str)
+		return NULL;
+
+	eth = (void *) &ifr.ifr_hwaddr.sa_data;
+	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
+						eth->ether_addr_octet[0],
+						eth->ether_addr_octet[1],
+						eth->ether_addr_octet[2],
+						eth->ether_addr_octet[3],
+						eth->ether_addr_octet[4],
+						eth->ether_addr_octet[5]);
+
+	return str;
+}
+
 static char *index2ident(int index, const char *prefix)
 {
 	struct ifreq ifr;
@@ -132,7 +175,7 @@ static void detect_newlink(unsigned short type, int index,
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	struct connman_device *device;
-	gchar *name, *devname;
+	gchar *addr, *name, *devname;
 
 	DBG("type %d index %d", type, index);
 
@@ -187,6 +230,7 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "dev_");
+		addr = index2addr(index);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_GPS:
@@ -196,6 +240,7 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		name = strdup(devname);
+		addr = NULL;
 		break;
 	}
 
@@ -203,6 +248,7 @@ static void detect_newlink(unsigned short type, int index,
 	if (device == NULL) {
 		g_free(devname);
 		g_free(name);
+		g_free(addr);
 		return;
 	}
 
@@ -236,8 +282,11 @@ static void detect_newlink(unsigned short type, int index,
 	connman_device_set_index(device, index);
 	connman_device_set_interface(device, devname);
 
+	connman_device_set_string(device, "Address", addr);
+
 	g_free(devname);
 	g_free(name);
+	g_free(addr);
 
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
