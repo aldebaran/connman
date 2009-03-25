@@ -137,6 +137,7 @@ static int wifi_join(struct connman_device *device,
 					struct connman_network *network)
 {
 	const char *ssid;
+	int err;
 
 	DBG("device %p", device);
 
@@ -144,7 +145,15 @@ static int wifi_join(struct connman_device *device,
 
 	DBG("SSID %s", ssid);
 
-	return -EIO;
+	err = supplicant_connect(network);
+	if (err < 0)
+		return err;
+
+	connman_network_ref(network);
+
+	connman_device_add_network(device, network);
+
+	return 0;
 }
 
 static struct connman_device_driver wifi_driver = {
