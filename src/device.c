@@ -476,7 +476,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 	struct connman_device *device = data;
 	struct connman_network *network;
 	DBusMessageIter iter, array;
-	int err;
+	int err, index;
 
 	DBG("conn %p", conn);
 
@@ -513,6 +513,9 @@ static DBusMessage *join_network(DBusConnection *conn,
 
 		dbus_message_iter_next(&iter);
 	}
+
+	index = connman_device_get_index(device);
+	connman_network_set_index(network, index);
 
 	err = device->driver->join(device, network);
 
