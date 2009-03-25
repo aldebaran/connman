@@ -250,7 +250,7 @@ static int resolvfile_append(const char *interface, const char *domain,
 	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT,
 					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd < 0)
-		return errno;
+		return -errno;
 
 	err = ftruncate(fd, 0);
 
