@@ -209,6 +209,9 @@ static int dnsproxy_append(const char *interface, const char *domain,
 
 	DBG("interface %s server %s", interface, server);
 
+	if (g_str_equal(server, "127.0.0.1") == TRUE)
+		return -ENODEV;
+
 	data = create_server(interface, server);
 	if (data == NULL)
 		return -EIO;
@@ -224,6 +227,9 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 	struct server_data *data;
 
 	DBG("interface %s server %s", interface, server);
+
+	if (g_str_equal(server, "127.0.0.1") == TRUE)
+		return -ENODEV;
 
 	data = find_server(interface, server);
 	if (data == NULL)
@@ -428,6 +434,8 @@ static int create_listener(void)
 	listener_watch = g_io_add_watch(listener_channel, G_IO_IN,
 							listener_event, NULL);
 
+	connman_resolver_append("lo", NULL, "127.0.0.1");
+
 	return 0;
 }
 
@@ -436,6 +444,8 @@ static void destroy_listener(void)
 	GSList *list;
 
 	DBG("");
+
+	connman_resolver_remove_all("lo");
 
 	if (listener_watch > 0)
 		g_source_remove(listener_watch);
