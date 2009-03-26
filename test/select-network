@@ -31,6 +31,9 @@ for path in properties["Devices"]:
 
 		properties = network.GetProperties()
 
+		if "Name" not in properties.keys:
+			continue
+
 		if (properties["Connected"] == dbus.Boolean(1)):
 			continue
 
