@@ -680,11 +680,12 @@ static int set_network(struct supplicant_task *task,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	if (len > 0 && address == NULL) {
-		const char *scan = "1";
-
-		connman_dbus_dict_append_variant(&dict, "scan_ssid",
+	if (len > 0) {
+		if (address == NULL) {
+			const char *scan = "1";
+			connman_dbus_dict_append_variant(&dict, "scan_ssid",
 						DBUS_TYPE_STRING, &scan);
+		}
 
 		connman_dbus_dict_append_array(&dict, "ssid",
 					DBUS_TYPE_BYTE, &network, len);
