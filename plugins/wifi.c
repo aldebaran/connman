@@ -148,6 +148,8 @@ static int wifi_join(struct connman_device *device,
 
 	connman_device_add_network(device, network);
 
+	connman_network_set_available(network, TRUE);
+
 	return 0;
 }
 
