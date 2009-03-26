@@ -136,14 +136,9 @@ static int wifi_scan(struct connman_device *device)
 static int wifi_join(struct connman_device *device,
 					struct connman_network *network)
 {
-	const char *ssid;
 	int err;
 
 	DBG("device %p", device);
-
-	ssid = connman_network_get_string(network, "WiFi.SSID");
-
-	DBG("SSID %s", ssid);
 
 	err = supplicant_connect(network);
 	if (err < 0)
