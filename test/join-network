@@ -4,7 +4,7 @@ import sys
 import dbus
 
 if (len(sys.argv) < 2):
-	print "Usage: %s <ssid>" % (sys.argv[0])
+	print "Usage: %s <ssid> [passphrase] [security]" % (sys.argv[0])
 	sys.exit(1)
 
 bus = dbus.SystemBus()
@@ -26,5 +26,16 @@ for path in properties["Devices"]:
 	print "[ %s ]" % (path)
 	print "Attempting to join %s" % (sys.argv[1])
 
+	if len(sys.argv) > 2:
+		if len(sys.argv) > 3:
+			security = sys.argv[3]
+		else:
+			security = "wpa2"
+		passphrase = sys.argv[2]
+	else:
+		security = "none"
+		passphrase = ""
+
 	device.JoinNetwork({ "WiFi.SSID": sys.argv[1],
-				"WiFi.Security": "none" })
+					"WiFi.Security": security,
+					"WiFi.Passphrase": passphrase })
