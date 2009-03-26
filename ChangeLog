@@ -1,3 +1,12 @@
+ver 0.14:
+	Add support for detecting DHCP failures.
+	Add support for joining hidden WiFi networks.
+	Add support for device and network address property.
+	Add support for default /etc/resolv.conf generation.
+	Fix issue with wrong address setting for loopback.
+	Fix detection of WiFi access point changes.
+	Fix crash with blob properties.
+
 ver 0.13:
 	Add support for notification infrastructure.
 	Add fully dynamic property storage capabilities.
