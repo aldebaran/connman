@@ -39,6 +39,7 @@ struct connman_network {
 	connman_uint8_t priority;
 	connman_uint8_t strength;
 	char *identifier;
+	char *address;
 	char *name;
 	char *node;
 
@@ -108,6 +109,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			connman_dbus_dict_append_variant(&dict, "Device",
 						DBUS_TYPE_OBJECT_PATH, &path);
 	}
+
+	if (network->address != NULL)
+		connman_dbus_dict_append_variant(&dict, "Address",
+					DBUS_TYPE_STRING, &network->address);
 
 	if (network->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
@@ -430,6 +435,7 @@ static void network_destruct(struct connman_element *element)
 
 	g_free(network->node);
 	g_free(network->name);
+	g_free(network->address);
 	g_free(network->identifier);
 }
 
@@ -836,7 +842,10 @@ int connman_network_set_string(struct connman_network *network,
 {
 	DBG("network %p key %s value %s", network, key, value);
 
-	if (g_str_equal(key, "Name") == TRUE) {
+	if (g_str_equal(key, "Address") == TRUE) {
+		g_free(network->address);
+		network->address = g_strdup(value);
+	} else if (g_str_equal(key, "Name") == TRUE) {
 		g_free(network->name);
 		network->name = g_strdup(value);
 	} else if (g_str_equal(key, "Node") == TRUE) {
@@ -868,7 +877,9 @@ const char *connman_network_get_string(struct connman_network *network,
 {
 	DBG("network %p key %s", network, key);
 
-	if (g_str_equal(key, "Name") == TRUE)
+	if (g_str_equal(key, "Address") == TRUE)
+		return network->address;
+	else if (g_str_equal(key, "Name") == TRUE)
 		return network->name;
 	else if (g_str_equal(key, "Node") == TRUE)
 		return network->node;
