@@ -503,11 +503,11 @@ static DBusMessage *join_network(DBusConnection *conn,
 	if (network == NULL)
 		return __connman_error_failed(msg);
 
-	while (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_DICT_ENTRY) {
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
 		const char *key, *str;
 
-		dbus_message_iter_recurse(&iter, &entry);
+		dbus_message_iter_recurse(&array, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
 		dbus_message_iter_next(&entry);
@@ -516,15 +516,21 @@ static DBusMessage *join_network(DBusConnection *conn,
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_STRING:
 			dbus_message_iter_get_basic(&value, &str);
-			connman_network_set_string(network, key, str);
+			if (g_str_equal(key, "WiFi.SSID") == TRUE)
+				connman_network_set_blob(network, key,
+							str, strlen(str));
+			else
+				connman_network_set_string(network, key, str);
 			break;
 		}
 
-		dbus_message_iter_next(&iter);
+		dbus_message_iter_next(&array);
 	}
 
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
+
+	connman_network_set_available(network, TRUE);
 
 	err = device->driver->join(device, network);
 
