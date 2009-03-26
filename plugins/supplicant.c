@@ -23,9 +23,11 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <net/ethernet.h>
 
 #include <gdbus.h>
 
@@ -145,7 +147,9 @@ enum supplicant_state {
 };
 
 struct supplicant_result {
-	char *identifier;
+	char *path;
+	char *name;
+	char *addr;
 	unsigned char *ssid;
 	unsigned int ssid_len;
 	dbus_uint16_t capabilities;
@@ -153,6 +157,7 @@ struct supplicant_result {
 	gboolean has_wep;
 	gboolean has_wpa;
 	gboolean has_rsn;
+	gboolean has_wps;
 	dbus_int32_t quality;
 	dbus_int32_t noise;
 	dbus_int32_t level;
@@ -769,6 +774,47 @@ static int initiate_scan(struct supplicant_task *task)
 	return 0;
 }
 
+static void extract_addr(DBusMessageIter *value,
+					struct supplicant_result *result)
+{
+	DBusMessageIter array;
+	struct ether_addr *eth;
+	unsigned char *addr;
+	int addr_len;
+
+	dbus_message_iter_recurse(value, &array);
+	dbus_message_iter_get_fixed_array(&array, &addr, &addr_len);
+
+	if (addr_len != 6)
+		return;
+
+	eth = (void *) addr;
+
+	result->addr = g_try_malloc0(18);
+	if (result->addr == NULL)
+		return;
+
+	snprintf(result->addr, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
+						eth->ether_addr_octet[0],
+						eth->ether_addr_octet[1],
+						eth->ether_addr_octet[2],
+						eth->ether_addr_octet[3],
+						eth->ether_addr_octet[4],
+						eth->ether_addr_octet[5]);
+
+	result->path = g_try_malloc0(18);
+	if (result->path == NULL)
+		return;
+
+	snprintf(result->path, 18, "%02X_%02X_%02X_%02X_%02X_%02X",
+						eth->ether_addr_octet[0],
+						eth->ether_addr_octet[1],
+						eth->ether_addr_octet[2],
+						eth->ether_addr_octet[3],
+						eth->ether_addr_octet[4],
+						eth->ether_addr_octet[5]);
+}
+
 static void extract_ssid(DBusMessageIter *value,
 					struct supplicant_result *result)
 {
@@ -782,6 +828,9 @@ static void extract_ssid(DBusMessageIter *value,
 	if (ssid_len < 1)
 		return;
 
+	if (ssid[0] == '\0')
+		return;
+
 	result->ssid = g_try_malloc(ssid_len);
 	if (result->ssid == NULL)
 		return;
@@ -789,11 +838,11 @@ static void extract_ssid(DBusMessageIter *value,
 	memcpy(result->ssid, ssid, ssid_len);
 	result->ssid_len = ssid_len;
 
-	result->identifier = g_try_malloc0(ssid_len + 1);
-	if (result->identifier == NULL)
+	result->name = g_try_malloc0(ssid_len + 1);
+	if (result->name == NULL)
 		return;
 
-	memcpy(result->identifier, ssid, ssid_len);
+	memcpy(result->name, ssid, ssid_len);
 }
 
 static void extract_wpaie(DBusMessageIter *value,
@@ -824,6 +873,20 @@ static void extract_rsnie(DBusMessageIter *value,
 		result->has_rsn = TRUE;
 }
 
+static void extract_wpsie(DBusMessageIter *value,
+					struct supplicant_result *result)
+{
+	DBusMessageIter array;
+	unsigned char *ie;
+	int ie_len;
+
+	dbus_message_iter_recurse(value, &array);
+	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
+
+	if (ie_len > 0)
+		result->has_wps = TRUE;
+}
+
 static void extract_capabilites(DBusMessageIter *value,
 					struct supplicant_result *result)
 {
@@ -847,7 +910,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	struct connman_network *network;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	char *security;
+	const char *mode, *security;
 	unsigned char strength;
 
 	DBG("task %p", task);
@@ -889,6 +952,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		 * ssid         : a (97)
 		 * wpaie        : a (97)
 		 * rsnie        : a (97)
+		 * wpsie        : a (97)
 		 * frequency    : i (105)
 		 * capabilities : q (113)
 		 * quality      : i (105)
@@ -897,12 +961,16 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		 * maxrate      : i (105)
 		 */
 
-		if (g_str_equal(key, "ssid") == TRUE)
+		if (g_str_equal(key, "bssid") == TRUE)
+			extract_addr(&value, &result);
+		else if (g_str_equal(key, "ssid") == TRUE)
 			extract_ssid(&value, &result);
 		else if (g_str_equal(key, "wpaie") == TRUE)
 			extract_wpaie(&value, &result);
 		else if (g_str_equal(key, "rsnie") == TRUE)
 			extract_rsnie(&value, &result);
+		else if (g_str_equal(key, "wpsie") == TRUE)
+			extract_wpsie(&value, &result);
 		else if (g_str_equal(key, "capabilities") == TRUE)
 			extract_capabilites(&value, &result);
 		else if (g_str_equal(key, "quality") == TRUE)
@@ -917,10 +985,10 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&dict);
 	}
 
-	if (result.identifier == NULL)
+	if (result.path == NULL)
 		goto done;
 
-	if (result.identifier[0] == '\0')
+	if (result.path[0] == '\0')
 		goto done;
 
 	strength = result.quality;
@@ -934,12 +1002,11 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	else
 		security = "none";
 
-	network = connman_device_get_network(task->device, result.identifier);
+	network = connman_device_get_network(task->device, result.path);
 	if (network == NULL) {
-		const char *mode;
 		int index;
 
-		network = connman_network_create(result.identifier,
+		network = connman_network_create(result.path,
 						CONNMAN_NETWORK_TYPE_WIFI);
 		if (network == NULL)
 			goto done;
@@ -950,16 +1017,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		connman_network_set_protocol(network,
 						CONNMAN_NETWORK_PROTOCOL_IP);
 
-		connman_network_set_string(network, "Name", result.identifier);
-
-		connman_network_set_blob(network, "WiFi.SSID",
-						result.ssid, result.ssid_len);
-
-		mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
-		connman_network_set_string(network, "WiFi.Mode", mode);
-
-		DBG("%s (%s %s) strength %d", result.identifier, mode,
-							security, strength);
+		connman_network_set_string(network, "Address", result.addr);
 
 		if (connman_device_add_network(task->device, network) < 0) {
 			connman_network_unref(network);
@@ -967,13 +1025,27 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		}
 	}
 
+	connman_network_set_string(network, "Name", result.name);
+
+	connman_network_set_blob(network, "WiFi.SSID",
+						result.ssid, result.ssid_len);
+
+	mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
+	connman_network_set_string(network, "WiFi.Mode", mode);
+
+	DBG("%s (%s %s) strength %d (%s)",
+			result.name, mode, security, strength,
+			(result.has_wps == TRUE) ? "WPS" : "no WPS");
+
 	connman_network_set_available(network, TRUE);
 	connman_network_set_uint8(network, "Strength", strength);
 
 	connman_network_set_string(network, "WiFi.Security", security);
 
 done:
-	g_free(result.identifier);
+	g_free(result.path);
+	g_free(result.addr);
+	g_free(result.name);
 	g_free(result.ssid);
 
 	dbus_message_unref(reply);
