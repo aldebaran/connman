@@ -1144,6 +1144,7 @@ static int network_load(struct connman_network *network)
 	gchar *pathname, *data = NULL;
 	gsize length;
 	const char *name;
+	char *str;
 	int val;
 
 	DBG("network %p", network);
@@ -1181,13 +1182,19 @@ static int network_load(struct connman_network *network)
 	if (val > 0)
 		network->priority = val;
 
-	g_free(network->wifi.security);
-	network->wifi.security = g_key_file_get_string(keyfile,
+	str = g_key_file_get_string(keyfile,
 				network->identifier, "WiFi.Security", NULL);
+	if (str != NULL) {
+		g_free(network->wifi.security);
+		network->wifi.security = str;
+	}
 
-	g_free(network->wifi.passphrase);
-	network->wifi.passphrase = g_key_file_get_string(keyfile,
+	str = g_key_file_get_string(keyfile,
 				network->identifier, "WiFi.Passphrase", NULL);
+	if (str != NULL) {
+		g_free(network->wifi.passphrase);
+		network->wifi.passphrase = str;
+	}
 
 	g_key_file_free(keyfile);
 

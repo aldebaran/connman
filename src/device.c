@@ -530,7 +530,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
 
-	connman_network_set_available(network, TRUE);
+	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
 
 	err = device->driver->join(device, network);
 
