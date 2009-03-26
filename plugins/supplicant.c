@@ -1038,7 +1038,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		}
 	}
 
-	connman_network_set_string(network, "Name", result.name);
+	if (result.name != NULL && result.name[0] != '\0')
+		connman_network_set_string(network, "Name", result.name);
 
 	connman_network_set_blob(network, "WiFi.SSID",
 						result.ssid, result.ssid_len);
