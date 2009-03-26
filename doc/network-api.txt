@@ -27,11 +27,19 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string Name [readonly]
+Properties	string Address [readonly]
+
+			The address of the network.
+
+		string Name [readonly]
 
 			The pretty/long version of the network name. For
 			example in case of WiFi this should be the UTF-8
 			valid version of the SSID.
+
+			This property might not be available for every
+			network. For example hidden WiFi networks will
+			not include it.
 
 		boolean Available [readonly]
 
