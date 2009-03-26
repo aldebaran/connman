@@ -36,6 +36,7 @@ for path in properties["Devices"]:
 		security = "none"
 		passphrase = ""
 
-	device.JoinNetwork({ "WiFi.SSID": sys.argv[1],
+	device.JoinNetwork({ "WiFi.Mode": "managed",
+					"WiFi.SSID": sys.argv[1],
 					"WiFi.Security": security,
 					"WiFi.Passphrase": passphrase })
