@@ -22,7 +22,7 @@ for path in properties["Devices"]:
 
 	if properties["Type"] not in ["wifi", "wimax",
 					"bluetooth", "cellular"]:
-		continue;
+		continue
 
 	for path in properties["Networks"]:
 		network = dbus.Interface(bus.get_object("org.moblin.connman", path),
@@ -31,6 +31,9 @@ for path in properties["Devices"]:
 		properties = network.GetProperties()
 
 		dev = path[path.rfind("/") + 1:]
+
+		if "Name" not in properties.keys():
+			continue
 
 		if dev == sys.argv[1] or properties["Name"] == sys.argv[1]:
 			print "Connecting %s" % (path)
