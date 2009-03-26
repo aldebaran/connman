@@ -94,9 +94,16 @@ static struct server_data *find_server(const char *interface,
 static gboolean server_event(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
+	struct server_data *data = user_data;
 	struct request_data *req;
 	unsigned char buf[768];
 	int sk, err, len;
+
+	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		connman_error("Error with server channel");
+		data->watch = 0;
+		return FALSE;
+	}
 
 	sk = g_io_channel_unix_get_fd(channel);
 
@@ -324,6 +331,12 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	struct sockaddr_in sin;
 	socklen_t size = sizeof(sin);
 	int sk, err, len;
+
+	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		connman_error("Error with listener channel");
+		listener_watch = 0;
+		return FALSE;
+	}
 
 	sk = g_io_channel_unix_get_fd(channel);
 
