@@ -1,3 +1,8 @@
+ver 0.15:
+	Detect VMware network interface and ignore them.
+	Fix setting of scan_ssid for hidden networks.
+	Fix empty network name property.
+
 ver 0.14:
 	Add support for detecting DHCP failures.
 	Add support for joining hidden WiFi networks.
