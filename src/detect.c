@@ -207,6 +207,8 @@ static void detect_newlink(unsigned short type, int index,
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(devname, "wmx") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		else if (g_str_has_prefix(devname, "vmnet") == TRUE)
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
