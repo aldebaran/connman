@@ -37,6 +37,7 @@ scripts/connman
 scripts/udhcpc-script
 scripts/dhclient-script
 client/cm
+tools/wifi-scan
 doc/*.bak
 doc/*.stamp
 doc/connman.*

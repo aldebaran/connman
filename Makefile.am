@@ -18,7 +18,8 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-novatel \
 				--enable-huawei \
 				--enable-hso \
-				--enable-client
+				--enable-client \
+				--enable-tools
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 
