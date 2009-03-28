@@ -235,6 +235,16 @@ AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
 		[enable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 
+AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
+                [enable testing tools]), [enable_tools=${enableval}])
+if (test "${enable_tools}" = "yes"); then
+	PKG_CHECK_MODULES(NETLINK, libnl-1, enable_netlink=yes,
+				AC_MSG_ERROR(Netlink library is required))
+	AC_SUBST(NETLINK_CFLAGS)
+	AC_SUBST(NETLINK_LIBS)
+fi
+AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
+
 AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 		[enable fake device support]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
@@ -247,6 +257,8 @@ AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
 SHAVE_INIT
 
 AC_OUTPUT(Makefile gdbus/Makefile include/Makefile include/version.h
-		src/Makefile src/connman.service scripts/connman
-		scripts/Makefile plugins/Makefile client/Makefile
-		test/Makefile doc/Makefile doc/version.xml connman.pc)
+				src/Makefile src/connman.service
+				scripts/connman scripts/Makefile
+				plugins/Makefile client/Makefile
+				tools/Makefile test/Makefile
+				doc/Makefile doc/version.xml connman.pc)

@@ -33,4 +33,5 @@ fi
 		--enable-iospm \
 		--enable-iwmxsdk \
 		--enable-polkit \
-		--enable-client $*
+		--enable-client \
+		--enable-tools $*
