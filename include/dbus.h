@@ -52,6 +52,8 @@ extern void connman_dbus_dict_append_array(DBusMessageIter *dict,
 extern void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 					const char *key, int type, void *val);
 
+extern char *connman_dbus_encode_string(const char *value);
+
 #ifdef __cplusplus
 }
 #endif

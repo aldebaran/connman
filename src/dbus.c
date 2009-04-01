@@ -23,7 +23,35 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include "connman.h"
+
+char *connman_dbus_encode_string(const char *value)
+{
+	GString *str;
+	unsigned int i, size;
+
+	if (value == NULL)
+		return NULL;
+
+	size = strlen(value);
+
+	str = g_string_new(NULL);
+	if (str == NULL)
+		return NULL;
+
+	for (i = 0; i < size; i++) {
+		const char tmp = value[i];
+		if ((tmp < '0' || tmp > '9') && (tmp < 'A' || tmp > 'Z') &&
+						(tmp < 'a' || tmp > 'z'))
+			g_string_append_printf(str, "_%02x", tmp);
+		else
+			str = g_string_append_c(str, tmp);
+	}
+
+	return g_string_free(str, FALSE);
+}
 
 void connman_dbus_property_append_variant(DBusMessageIter *iter,
 					const char *key, int type, void *val)
