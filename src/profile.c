@@ -34,7 +34,10 @@ struct connman_group {
 	char *path;
 	char *type;
 	char *name;
-	GSList *networks;
+	char *mode;
+	char *security;
+	connman_uint8_t strength;
+	struct connman_network *network;
 };
 
 static GHashTable *groups = NULL;
@@ -69,6 +72,18 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Name",
 					DBUS_TYPE_STRING, &group->name);
 
+	if (group->mode != NULL)
+		connman_dbus_dict_append_variant(&dict, "Mode",
+					DBUS_TYPE_STRING, &group->mode);
+
+	if (group->security != NULL)
+		connman_dbus_dict_append_variant(&dict, "Security",
+					DBUS_TYPE_STRING, &group->security);
+
+	if (group->strength > 0)
+		connman_dbus_dict_append_variant(&dict, "Strength",
+					DBUS_TYPE_BYTE, &group->strength);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
@@ -88,6 +103,8 @@ static void free_group(gpointer data)
 	g_dbus_unregister_interface(connection, group->path,
 						CONNMAN_SERVICE_INTERFACE);
 
+	g_free(group->security);
+	g_free(group->mode);
 	g_free(group->name);
 	g_free(group->type);
 	g_free(group->path);
@@ -134,7 +151,8 @@ int __connman_profile_add_device(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	name = g_strdup_printf("device%d", connman_device_get_index(device));
+	name = g_strdup_printf("%s_%d", __connman_device_get_type(device),
+					connman_device_get_index(device));
 	group = lookup_group(name);
 	g_free(name);
 
@@ -154,7 +172,8 @@ int __connman_profile_remove_device(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	name = g_strdup_printf("device%d", connman_device_get_index(device));
+	name = g_strdup_printf("%s_%d", __connman_device_get_type(device),
+					connman_device_get_index(device));
 	group = lookup_group(name);
 	g_free(name);
 
@@ -180,6 +199,17 @@ int __connman_profile_add_network(struct connman_network *network)
 	group->type = g_strdup(__connman_network_get_type(network));
 	group->name = g_strdup(connman_network_get_string(network, "Name"));
 
+	group->strength = connman_network_get_uint8(network, "Strength");
+
+	if (group->network == NULL) {
+		group->network = network;
+
+		group->mode = g_strdup(connman_network_get_string(network,
+								"WiFi.Mode"));
+		group->security = g_strdup(connman_network_get_string(network,
+							"WiFi.Security"));
+	}
+
 	return 0;
 }
 
@@ -192,6 +222,16 @@ int __connman_profile_remove_network(struct connman_network *network)
 	group = lookup_group(__connman_network_get_group(network));
 	if (group == NULL)
 		return -EINVAL;
+
+	if (group->network == network) {
+		g_free(group->security);
+		group->security = NULL;
+
+		g_free(group->mode);
+		group->mode = NULL;
+
+		group->network = NULL;
+	}
 
 	return 0;
 }
