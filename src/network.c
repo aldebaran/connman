@@ -588,6 +588,11 @@ void connman_network_set_group(struct connman_network *network,
 	network->group = g_strdup(group);
 }
 
+const char *__connman_network_get_group(struct connman_network *network)
+{
+	return network->group;
+}
+
 /**
  * connman_network_set_available:
  * @network: network structure

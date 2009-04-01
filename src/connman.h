@@ -196,6 +196,8 @@ int __connman_network_disconnect(struct connman_network *network);
 
 connman_bool_t __connman_network_has_driver(struct connman_network *network);
 
+const char *__connman_network_get_group(struct connman_network *network);
+
 int __connman_profile_add_network(struct connman_network *network);
 int __connman_profile_remove_network(struct connman_network *network);
 
