@@ -26,4 +26,8 @@ Properties	string Name [readonly]
 
 		string Type [readonly]
 
-			The device type (for example "ethernet", "wifi" etc.)
+			The service type (for example "ethernet", "wifi" etc.)
+
+			This information should only be used to determine
+			advanced properties or showing the correct icon
+			to the user.
