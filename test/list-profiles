@@ -17,6 +17,13 @@ for path in properties["Profiles"]:
 
 	properties = profile.GetProperties()
 	for key in properties.keys():
-		print "    %s = %s" % (key, properties[key])
+		if key in ["Services"]:
+			list = ""
+			for path in properties["Services"]:
+				val = str(path)
+				list = list + val[val.rfind("/") + 1:] + " "
+			print "    Services = [ %s]" % (list)
+		else:
+			print "    %s = %s" % (key, properties[key])
 
 	print
