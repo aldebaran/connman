@@ -31,11 +31,48 @@
 #define PROFILE_DEFAULT  "/profile/default"
 
 struct connman_group {
+	char *type;
 	char *path;
 	GSList *networks;
 };
 
 static GHashTable *groups = NULL;
+
+static DBusConnection *connection = NULL;
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_group *group = data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	if (group->type != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+					DBUS_TYPE_STRING, &group->type);
+
+	dbus_message_iter_close_container(&array, &dict);
+
+	return reply;
+}
+
+static GDBusMethodTable service_methods[] = {
+	{ "GetProperties", "", "a{sv}", get_properties },
+	{ },
+};
 
 static void free_group(gpointer data)
 {
@@ -43,6 +80,10 @@ static void free_group(gpointer data)
 
 	DBG("group %p", group);
 
+	g_dbus_unregister_interface(connection, group->path,
+						CONNMAN_SERVICE_INTERFACE);
+
+	g_free(group->type);
 	g_free(group->path);
 	g_free(group);
 }
@@ -64,9 +105,15 @@ static struct connman_group *lookup_group(const char *name)
 	if (group == NULL)
 		return NULL;
 
+	group->type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	group->path = g_strdup_printf("%s/%s", PROFILE_DEFAULT, name);
 
 	g_hash_table_insert(groups, g_strdup(name), group);
+
+	g_dbus_register_interface(connection, group->path,
+						CONNMAN_SERVICE_INTERFACE,
+						service_methods,
+						NULL, NULL, group, NULL);
 
 done:
 	DBG("group %p", group);
@@ -87,6 +134,8 @@ int __connman_profile_add_device(struct connman_device *device)
 
 	if (group == NULL)
 		return -EINVAL;
+
+	group->type = g_strdup(__connman_device_get_type(device));
 
 	return 0;
 }
@@ -117,6 +166,10 @@ int __connman_profile_add_network(struct connman_network *network)
 	group = lookup_group(__connman_network_get_group(network));
 	if (group == NULL)
 		return -EINVAL;
+
+	g_free(group->type);
+
+	group->type = g_strdup(__connman_network_get_type(network));
 
 	return 0;
 }
@@ -190,7 +243,7 @@ static void append_services(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
+static DBusMessage *profile_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *name = "Default";
@@ -221,11 +274,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 }
 
 static GDBusMethodTable profile_methods[] = {
-	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "GetProperties", "", "a{sv}", profile_properties },
 	{ },
 };
-
-static DBusConnection *connection = NULL;
 
 int __connman_profile_init(DBusConnection *conn)
 {
