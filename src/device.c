@@ -996,6 +996,11 @@ void connman_device_unref(struct connman_device *device)
 	connman_element_unref(&device->element);
 }
 
+const char *__connman_device_get_type(struct connman_device *device)
+{
+	return type2string(device->type);
+}
+
 /**
  * connman_device_get_name:
  * @device: device structure

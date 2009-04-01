@@ -179,6 +179,8 @@ void __connman_device_disconnect(struct connman_device *device);
 
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
+const char *__connman_device_get_type(struct connman_device *device);
+
 int __connman_device_set_offlinemode(connman_bool_t offlinemode);
 
 int __connman_profile_add_device(struct connman_device *device);
