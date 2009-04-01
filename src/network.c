@@ -516,6 +516,11 @@ void connman_network_unref(struct connman_network *network)
 	connman_element_unref(&network->element);
 }
 
+const char *__connman_network_get_type(struct connman_network *network)
+{
+	return type2string(network->type);
+}
+
 /**
  * connman_network_get_identifier:
  * @network: network structure
