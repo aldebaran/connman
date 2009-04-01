@@ -42,6 +42,7 @@ struct connman_network {
 	char *address;
 	char *name;
 	char *node;
+	char *group;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -433,6 +434,7 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->wifi.security);
 	g_free(network->wifi.passphrase);
 
+	g_free(network->group);
 	g_free(network->node);
 	g_free(network->name);
 	g_free(network->address);
@@ -578,6 +580,20 @@ void connman_network_set_protocol(struct connman_network *network,
 					enum connman_network_protocol protocol)
 {
 	network->protocol = protocol;
+}
+
+/**
+ * connman_network_set_group:
+ * @network: network structure
+ * @group: group name
+ *
+ * Set group name for automatic clustering
+ */
+void connman_network_set_group(struct connman_network *network,
+							const char *group)
+{
+	g_free(network->group);
+	network->group = g_strdup(group);
 }
 
 /**

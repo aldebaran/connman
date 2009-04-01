@@ -67,6 +67,8 @@ extern int connman_network_get_index(struct connman_network *network);
 
 extern void connman_network_set_protocol(struct connman_network *network,
 					enum connman_network_protocol protocol);
+extern void connman_network_set_group(struct connman_network *network,
+							const char *group);
 
 extern int connman_network_set_available(struct connman_network *network,
 						connman_bool_t available);
