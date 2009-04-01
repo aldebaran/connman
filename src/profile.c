@@ -31,8 +31,9 @@
 #define PROFILE_DEFAULT  "/profile/default"
 
 struct connman_group {
-	char *type;
 	char *path;
+	char *type;
+	char *name;
 	GSList *networks;
 };
 
@@ -64,6 +65,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Type",
 					DBUS_TYPE_STRING, &group->type);
 
+	if (group->name != NULL)
+		connman_dbus_dict_append_variant(&dict, "Name",
+					DBUS_TYPE_STRING, &group->name);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
@@ -83,6 +88,7 @@ static void free_group(gpointer data)
 	g_dbus_unregister_interface(connection, group->path,
 						CONNMAN_SERVICE_INTERFACE);
 
+	g_free(group->name);
 	g_free(group->type);
 	g_free(group->path);
 	g_free(group);
@@ -136,6 +142,7 @@ int __connman_profile_add_device(struct connman_device *device)
 		return -EINVAL;
 
 	group->type = g_strdup(__connman_device_get_type(device));
+	group->name = g_strdup(connman_device_get_string(device, "Name"));
 
 	return 0;
 }
@@ -168,8 +175,10 @@ int __connman_profile_add_network(struct connman_network *network)
 		return -EINVAL;
 
 	g_free(group->type);
+	g_free(group->name);
 
 	group->type = g_strdup(__connman_network_get_type(network));
+	group->name = g_strdup(connman_network_get_string(network, "Name"));
 
 	return 0;
 }

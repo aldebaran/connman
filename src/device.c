@@ -298,14 +298,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	str = type2description(device->type);
-	if (str != NULL && device->interface != NULL) {
-		char *name = g_strdup_printf("%s (%s)", str, device->interface);
-		if (name != NULL)
-			connman_dbus_dict_append_variant(&dict, "Name",
-						DBUS_TYPE_STRING, &name);
-		g_free(name);
-	}
+	if (device->name != NULL)
+		connman_dbus_dict_append_variant(&dict, "Name",
+					DBUS_TYPE_STRING, &device->name);
 
 	str = type2string(device->type);
 	if (str != NULL)
@@ -930,6 +925,7 @@ struct connman_device *connman_device_create(const char *node,
 	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
 
 	device->type   = type;
+	device->name   = g_strdup(type2description(device->type));
 	device->mode   = CONNMAN_DEVICE_MODE_UNKNOWN;
 	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
 
@@ -1061,6 +1057,13 @@ void connman_device_set_interface(struct connman_device *device,
 
 	g_free(device->interface);
 	device->interface = g_strdup(interface);
+
+	if (device->name == NULL) {
+		const char *str = type2description(device->type);
+		if (str != NULL && device->interface != NULL)
+			device->name = g_strdup_printf("%s (%s)", str,
+							device->interface);
+	}
 }
 
 /**
