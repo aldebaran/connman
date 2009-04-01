@@ -9,8 +9,13 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 
 properties = manager.GetProperties()
 
+active = properties["ActiveProfile"]
+
 for path in properties["Profiles"]:
-	print "[ %s ]" % (path)
+	if (active == path):
+		print "[ %s ]  <== active" % (path)
+	else:
+		print "[ %s ]" % (path)
 
 	profile = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Profile")
