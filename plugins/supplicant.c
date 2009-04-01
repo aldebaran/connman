@@ -783,6 +783,29 @@ static int initiate_scan(struct supplicant_task *task)
 	return 0;
 }
 
+static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
+					const char *mode, const char *security)
+{
+	GString *str;
+	unsigned int i;
+
+	if (ssid_len < 1)
+		return NULL;
+
+	str = g_string_sized_new((ssid_len * 2) + 24);
+	if (str == NULL)
+		return NULL;
+
+	g_string_append_printf(str, "wifi_");
+
+	for (i = 0; i < ssid_len; i++)
+		g_string_append_printf(str, "%02x", ssid[i]);
+
+	g_string_append_printf(str, "_%s_%s", mode, security);
+
+	return g_string_free(str, FALSE);
+}
+
 static void extract_addr(DBusMessageIter *value,
 					struct supplicant_result *result)
 {
@@ -919,8 +942,9 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	struct connman_network *network;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	const char *mode, *security;
 	unsigned char strength;
+	const char *mode, *security;
+	char *group;
 
 	DBG("task %p", task);
 
@@ -1042,6 +1066,10 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
 	connman_network_set_string(network, "WiFi.Mode", mode);
+
+	group = build_group(result.ssid, result.ssid_len, mode, security);
+	connman_network_set_group(network, group);
+	g_free(group);
 
 	DBG("%s (%s %s) strength %d (%s)",
 			result.name, mode, security, strength,
