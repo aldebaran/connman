@@ -1,0 +1,88 @@
+Application programming interface
+*********************************
+
+
+Application basics
+==================
+
+All applications should use D-Bus to communicate with Connection Manager. The
+main entry point is the manager object. Currently the manager object is
+located at "/", but this might change to allow full namespacing of the API
+in the future. The manager interface is documented in manager-api.txt and
+contains a set of global properties and methods.
+
+A simple way to retrieve all global properties looks like this:
+
+	bus = dbus.SystemBus()
+
+	manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
+						"org.moblin.connman.Manager")
+
+	properties = manager.GetProperties()
+
+Changing a global property is also pretty simple. For example enabling the
+so called offline mode (aka flight mode) it is enough to just set that
+property:
+
+	manager.SetProperty("OfflineMode", dbus.Boolean(1))
+
+The manager object contains references to profiles, devices, services and
+connections. All these references represent other interfaces that allow
+detailed control of Connection Manager. The profiles and devices interfaces
+are more for advanced features and most applications don't need them at all.
+
+The services are represented as a list of object paths. Every of these object
+paths contains a service interface. A service is a global collection for
+Ethernet devices, WiFi networks, Bluetooth services, WiMAX providers etc. and
+all these different types are treated equally.
+
+Every local Ethernet card will show up as exactly one service. WiFi networks
+will be grouped by SSID, mode and security setting. Bluetooth PAN and DUN
+service will show up per remote device. For WiMAX the provider name will
+be used for grouping different base stations and access providers. This
+creates a simple list that can be directly displayed to the users since these
+are the exact details users should care about.
+
+	properties = manager.GetProperties()
+
+	for path in properties["Services"]:
+		service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+							"org.moblin.connman.Service")
+
+		service_properties = service.GetProperties()
+
+The service interface is documented in service-api.txt and contains common
+properties valid for all services. It also contains method to connect or
+disconnect a specific service. This allows users to select a specific service.
+Connection Manager can also auto-connect services based on his policies or
+via external events (like plugging in an Ethernet cable).
+
+Connecting (or disconnecting) a specific service manually is as simple as
+just telling it to actually connect:
+
+	service.Connect()  or  service.Disconnect()
+
+It is possible to connect multiple service if the underlying technology
+allows it. For example it would be possible to connect to a WiFi network
+and a Bluetooth service at the same time. Trying to connect to a second WiFi
+network with the same WiFi hardware would result in an automatic disconnect
+of the currently connected network. Connection Manager handles all of this
+for the applications in the background. Trying to connect an Ethernet service
+will result in an error if no cable is plugged in. All connection attempts
+can fail for one reason or another. Application should be able to handle
+such errors and will also be notified of changes via signals.
+
+In future versions Connection Manager will interact with an agent to confirm
+certain transaction with the user. This functionality is currently not
+implemented.
+
+To monitor the current status of a service the state property can be used. It
+gives detailed information about the current progress.
+
+	properties = service.GetProperties()
+
+	print properties["State"]
+
+All state changes are also send via the PropertyChanged signal on the
+service interface. This allows asynchronous monitoring with having to poll
+Connection Manager for changes.
