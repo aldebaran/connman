@@ -17,7 +17,11 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string Name [readonly]
+Properties	string State [readonly]
+
+			The service state information.
+
+		string Name [readonly]
 
 			The service name (for example "Wireless" etc.)
 
