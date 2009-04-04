@@ -467,7 +467,8 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	__connman_element_initialize(&network->element);
 
-	temp = connman_dbus_encode_string(identifier);
+	//temp = connman_dbus_encode_string(identifier);
+	temp = g_strdup(identifier);
 	if (temp == NULL) {
 		g_free(network);
 		return NULL;
