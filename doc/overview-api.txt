@@ -2,6 +2,324 @@ Application programming interface
 *********************************
 
 
+Service basics
+==============
+
+Inside Connection Manager there exists one advanced interface to allow the
+user interface an easy access to networking details and user chosen
+preferences. This is the service list and interface.
+
+The basic idea is that Connection Manager maintains a single flat and sorted
+list of all available, preferred or previously used services. A service here
+can be either a Ethernet device, a WiFi network, a WiMAX service provider
+or a remote Bluetooth device (for example a mobile phone).
+
+This list of service is sorted by Connection Manager and there is no need
+for the user interface to implement its own sorting. User decisions will
+need to be done via Connection Manager and it is then responsible to update
+the order of services in this list.
+
+	+---------------------------------------+
+	| Ethernet                              |
+	+---------------------------------------+
+	| Bluetooth phone                       |
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |
+	+---------------------------------------+
+	| Clear WiMAX      (strength 70)        |
+	+---------------------------------------+
+	| Other AP         (strength 70, wpa2)  |
+	+---------------------------------------+
+	| Friends AP       (strength 70, wep)   |
+	+---------------------------------------+
+	| Other WiMAX      (strength 50)        |
+	+---------------------------------------+
+
+If non of the services has been used before the sorting order will be done
+with these priorities:
+
+	1. Ethernet	(lower index numbers first)
+	2. Bluetooth	(last used devices first)
+	3. GSM/UTMS/3G	(if SIM card is present, activated and not roaming)
+	3. WiFi/WiMAX	(signal strength first, then prefer WiMAX over WiFi,
+			 then more secure network first)
+
+The Ethernet devices are always sorted first since they are physically built
+into the system and will be always present. In cases they are switched off
+manually they will not be showing in this list.
+
+Since every Bluetooth device has to be configured/paired first, the user
+already made a choice here that these are important. Connection Manager will
+only show devices with PAN or DUN profile support. While Bluetooth devices
+do have a signal strength, it is mostly unknown since background scanning
+in Bluetooth is too expensive. The choice here is to sort the last used
+Bluetooth device before the others.
+
+The WiFi and WiMAX networks are treated equally since both provide signal
+strength information and networks closer in the proximity should be shown
+before others since it is more likely they are selected first. The signal
+strength value is normalized to 0-100 (effectively a percentage) and allows
+an easy sorting.
+
+If the signal strength is identical than the WiMAX network should be shown
+first since it is a licensed spectrum and more reliable. Also the number
+of WiMAX networks will be smaller than the number of WiFi since that operates
+in an unlicensed spectrum.
+
+WiFi networks with the same signal strength are then sorted by its security
+setting. WPA2 encrypted networks should be preferred over WPA/WEP and also
+unencrypted ones. After that they will be sorted by the SSID in alphabetical
+order.
+
+In the case the WiFi network uses WPS for setup and it is clearly detectable
+that a network waits for Connection Manager to connect to it (for example via
+a push-to-connect button press on the AP), then this network should be shown
+first before any other WiFi or WiMAX network. The reason here is that the
+user already made a choice via the access point. However this depends on
+technical details if it is possible to detect these situations.
+
+
+Service order
+=============
+
+All unused services will have the internal order number of 0 and then will
+be sorted according to the rules above. For Bluetooth the user already made
+the decision to setup their device and by that means select it. However
+until the first connection attempt it might have been setup for total
+different reason (like audio usage) and thus it still counts as unused from
+a networking point of view.
+
+Selecting the "My WiFi AP" and successfully connecting to it makes it a
+favorite device and it will become an order number bigger than 0. All
+order numbers are internally. They are given only to service that are marked
+as favorite. For WiFi, WiMAX and Bluetooth a successful connection attempt
+makes these services automatically a favorite. For Ethernet the plugging
+of a cable makes it a favorite. Disconnecting from a network doesn't remove
+the favorite setting. It is a manual operation and is equal to users pressing
+delete/remove button.
+
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |  order=1 - favorite=yes
+	+---------------------------------------+
+	| Ethernet                              |  order=0
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+Ethernet is special here since the unplugging of the network cable will
+remove the favorite selection.
+
+	+---------------------------------------+
+	| Ethernet with cable                   |  order=1 - favorite=yes
+	+---------------------------------------+
+	| Ethernet without cable                |  order=0 - favorite=no
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+This means that all services with an order > 0 have favorite=yes and all
+other have favorite=no setting. The favorite setting is exposed via a
+property over the service interface. As mentioned above, the order number
+is only used internally.
+
+Within Connection Manager many service can be connected at the same time and
+also have an IP assignment. However only one can have the default route. The
+service with the the default route will always be sorted at the top of the
+list.
+
+	+---------------------------------------+
+	| Ethernet                              |  order=2 - connected=yes
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=yes
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+To change the default connection to your access point, the user needs to
+manually drag the access point service to the top of the list. Connection
+Manager will not take down default routes if there is no reason to do so.
+A working connection is considered top priority.
+
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |  order=2 - connected=yes
+	+---------------------------------------+
+	| Ethernet                              |  order=1 - connected=yes
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+Another possible user interaction would be to unplug the Ethernet cable and
+in this case the favorite setting will be removed and the service falls back
+down in the list.
+
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=yes
+	+---------------------------------------+
+	| Ethernet                              |  order=0
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+If the service on the top of the list changes the default route will be
+automatically adjusted as needed. The user can trigger this by disconnecting
+from a network, if the network becomes unavailable (out of range) or if the
+cable gets unplugged.
+
+As described above, the pure case of disconnecting from a network will not
+remove the favorite setting. So previously selected networks are still present
+and are sorted above all others.
+
+	+---------------------------------------+
+	| Ethernet                              |  order=2 - connected=yes
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=no
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+Unplugging the Ethernet cable will remove the favorite setting, but due to
+the basic ordering of services it will be at the top of the services with an
+order number of 0 (directly after all favorite services).
+
+	+---------------------------------------+
+	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=no
+	+---------------------------------------+
+	| Ethernet                              |  order=0 - connected=no
+	+---------------------------------------+
+	| Guest            (strength 90, none)  |  order=0
+	+---------------------------------------+
+	|                                       |
+
+
+Service tweaks
+==============
+
+The interfaces of Connection Manager will always export all services that are
+currently known. This includes Ethernet devices with no cable plugged into
+them. This is of course suboptimal since the user doesn't need to be bothered
+with a device that he/she can actually physically see.
+
+So in this case the user interface can choose to just not show Ethernet
+devices with a favorite=no setting. This is an advanced tweak that is up
+to the user interface. However it is highly recommended to not show Ethernet
+device until Connection Manager marks them as favorite.
+
+The service interface is not meant for basic device configuration task. So
+switching a device on and off (via RFKILL for example) should be done via
+the device interface.
+
+Due to limited screen size of small devices and the big amount of WiFi
+access points that are deployed right now it might be sensible to not show
+certain WiFi networks in the user interface.
+
+The choice to hide a WiFi network from the user interface should be purely
+done by the signal strength. The optimal cut-off value here still has to be
+determined, but in the end that is a user interface policy.
+
+
+Service naming
+==============
+
+Every service will have a name property that allows the user interface to
+display them directly. All names will be already converted into UTF-8. It
+derives from the netork details.
+
+In case of WiFi this will be the SSID value. The SSID is a binary array and
+will be converted into printable form. Unprintable characters are replaced
+with spaces.
+
+For WiMAX networks the provide name like Clear or X-OHM will be used. This
+name either comes directly from the networks itself or from a provisioning
+database of the WiMAX service.
+
+For Bluetooth the device alias is used. The alias is different since it
+can be overwritten by the user via the Bluetooth service. The identification
+is still done based on its address, but the display name might change. In
+most cases the alias is equal to the Bluetooth remote friendly name.
+
+For Ethernet device no name will be provided. The type property will indicate
+that this service is Ethernet and then it is up to the user interface to
+provide a proper localized name for it.
+
+
+Service states
+==============
+
+Every service can have multiple states that indicate what is currently
+going on with it. The choice to have multiple states instead of a simple
+connected yes/no value comes from the fact that it is important to let the
+user interface name if a service is in process of connecting/disconnecting.
+
+The basic state of every service is "idle". This means that this service
+is not in use at all at the moment. It also is not attempting to connect
+or do anything else.
+
+The "association" state indicates that this service tries to establish a
+low-level connection to the network. For example associating/connecting
+with a WiFi access point.
+
+With the "configuration" state the service indicates that it is trying
+to retrieve/configure IP settings.
+
+Some service might require special authentication procedure like a web based
+confirmation. The "login" should be used for this in the future. Currently
+this is not implemented.
+
+The "ready" state signals a successful connected device. This doesn't mean
+it has the default route, but basic IP operations will succeed.
+
+With the "disconnect" state a service indicates that it is going to terminate
+the current connection and will return to the "idle" state.
+
+In addition a "failure" state indicates a wrong behavior. It is similar to
+the "idle" state since the service is not connected.
+
+		+---------------+
+		| idle          |<-------------------------------+
+		+---------------+                                |
+		      |                      +-------------+     |
+		      +----------------------| failure     |     |
+		      | service.Connect()    +-------------+     |
+		      V                           A              |
+		+---------------+                 |              |
+		| association   |-----------------+              |
+		+---------------+      error      |              |
+		      |                           |              |
+		      | success                   |              |
+		      V                           |              |
+		+---------------+                 |              |
+		| configuration |-----------------+              |
+		+---------------+      error                     |
+		      |                                          |
+		      | success                                  |
+		      V                                          |
+		+---------------+                                |
+		| ready         |<----------------+              |
+		+---------------+                 |              |
+		      |                           |              |
+		      | service.Disconnect()      |              |
+		      V                           |              |
+		+---------------+                 |              |
+		| disconnect    |-----------------+              |
+		+---------------+      error                     |
+		      |                                          |
+		      +------------------------------------------+
+
+The different states should no be used by the user interface to trigger
+advanced actions. The state transitions are provided for the sole purpose
+to give the user feedback on what is currently going on. Especially in
+cases where networks are flaky or DHCP servers take a long time these
+information are helpful for the user.
+
+
 Application basics
 ==================
 
