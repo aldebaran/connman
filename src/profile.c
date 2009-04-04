@@ -166,7 +166,6 @@ int __connman_profile_add_device(struct connman_device *device)
 		return -EINVAL;
 
 	group->type = g_strdup(__connman_device_get_type(device));
-	group->name = g_strdup(connman_device_get_string(device, "Name"));
 
 	return 0;
 }
