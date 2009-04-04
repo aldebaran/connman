@@ -1035,6 +1035,10 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	else
 		security = "none";
 
+	mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
+
+	group = build_group(result.ssid, result.ssid_len, mode, security);
+
 	network = connman_device_get_network(task->device, result.path);
 	if (network == NULL) {
 		int index;
@@ -1052,11 +1056,17 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 		connman_network_set_string(network, "Address", result.addr);
 
+		connman_network_set_group(network, group);
+
 		if (connman_device_add_network(task->device, network) < 0) {
 			connman_network_unref(network);
 			goto done;
 		}
 	}
+
+	connman_network_set_group(network, group);
+
+	g_free(group);
 
 	if (result.name != NULL && result.name[0] != '\0')
 		connman_network_set_string(network, "Name", result.name);
@@ -1064,16 +1074,11 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	connman_network_set_blob(network, "WiFi.SSID",
 						result.ssid, result.ssid_len);
 
-	mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
 	connman_network_set_string(network, "WiFi.Mode", mode);
 
-	group = build_group(result.ssid, result.ssid_len, mode, security);
-	connman_network_set_group(network, group);
-	g_free(group);
-
 	DBG("%s (%s %s) strength %d (%s)",
-			result.name, mode, security, strength,
-			(result.has_wps == TRUE) ? "WPS" : "no WPS");
+				result.name, mode, security, strength,
+				(result.has_wps == TRUE) ? "WPS" : "no WPS");
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_uint8(network, "Strength", strength);
