@@ -41,7 +41,7 @@ Methods		dict GetProperties()
 			one must be selected via ActiveProfile property
 			first.
 
-			At minium one profile must be available all the time.
+			At minimum one profile must be available all the time.
 
 			Possible Errors: [service].Error.InvalidArguments
 
@@ -111,7 +111,10 @@ Properties	string State [readonly]
 
 		array{object} Services [readonly]
 
-			List of service object paths.
+			List of service object paths. The list is sorted
+			internally to have the service with the default
+			route always first and then the favorite services
+			followed by scan results.
 
 			This list represents the available services for the
 			current selected profile. If the profile gets changed

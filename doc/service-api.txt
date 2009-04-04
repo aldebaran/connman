@@ -12,6 +12,66 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void Connect()
+
+			Connect this service. It will attempt to connect
+			WiFi, WiMAX or Bluetooth services.
+
+			For Ethernet devices this method can only be used
+			if it has previously been disconnected. Otherwise
+			the plugging of a cable will trigger connecting
+			automatically. If no cable is plugged in this method
+			will fail.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void Disconnect()
+
+			Disconnect this service. If the service is not
+			connected an error message will be generated.
+
+			On Ethernet devices this will disconnect the IP
+			details from the service. It will not magically
+			unplug the cable. When no cable is plugged in this
+			method will fail.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void Remove()
+
+			A successfully connected service with Favorite=true
+			can be removed this way. If it is connected, it will
+			be automatically disconnected first.
+
+			This is similar to setting the Favorite property
+			to false, but that is currently not supported.
+
+			Calling this method on Ethernet devices will cause
+			an error message. It is not possible to remove these
+			kind of devices.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void MoveBefore(object service)
+
+			If a service has been used before, this allows a
+			reorder of the favorite services.
+
+			The target service object must be part of this
+			profile. Moving between profiles is not supported.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void MoveAfter(object service)
+
+			If a service has been used before, this allows a
+			reorder of the favorite services.
+
+			The target service object must be part of this
+			profile. Moving between profiles is not supported.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -21,12 +81,18 @@ Properties	string State [readonly]
 
 			The service state information.
 
+			Valid states are "idle", "failure", "association",
+			"configuration" and "ready".
+
 		string Name [readonly]
 
 			The service name (for example "Wireless" etc.)
 
 			This name can be used for directly displaying it in
 			the application. It has pure informational purpose.
+
+			For Ethernet device it is not guaranteed that this
+			property is present.
 
 		string Type [readonly]
 
@@ -42,6 +108,9 @@ Properties	string State [readonly]
 			present and contains the mode of the network. The
 			possible values are "managed" or "adhoc".
 
+			This property might be only present for WiFi
+			services.
+
 		string Security [readonly]
 
 			If the service type is WiFi, then this property is
@@ -50,7 +119,23 @@ Properties	string State [readonly]
 
 			Possible values are "none", "wep", "wpa" and "wpa2".
 
+			This property might be only present for WiFi
+			services.
+
 		uint8 Strength [readonly]
 
 			Indicates the signal strength of the service. This
 			is a normalized value between 0 and 100.
+
+			This property will not be present for Ethernet
+			devices.
+
+		boolean Favorite [readonly]
+
+			Will be true if a cable is plugged in or the user
+			selected and successfully connected to this service.
+
+			Setting this property to true has no effect at all
+			and setting it to false is similar to the Remove()
+			method. So for now it will be considered a read
+			only property.
