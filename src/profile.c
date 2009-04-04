@@ -30,6 +30,11 @@
 
 #define PROFILE_DEFAULT  "/profile/default"
 
+enum connman_service_state {
+	CONNMAN_SERVICE_STATE_UNKNOWN = 0,
+	CONNMAN_SERVICE_STATE_IDLE    = 1,
+};
+
 struct connman_group {
 	char *path;
 	char *type;
@@ -38,6 +43,7 @@ struct connman_group {
 	char *security;
 	connman_uint8_t strength;
 	connman_bool_t favorite;
+	enum connman_service_state state;
 	struct connman_network *network;
 };
 
@@ -45,12 +51,25 @@ static GHashTable *groups = NULL;
 
 static DBusConnection *connection = NULL;
 
+static const char *state2string(enum connman_service_state state)
+{
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+		break;
+	case CONNMAN_SERVICE_STATE_IDLE:
+		return "idle";
+	}
+
+	return NULL;
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_group *group = data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -64,6 +83,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	str = state2string(group->state);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "State",
+						DBUS_TYPE_STRING, &str);
 
 	if (group->type != NULL)
 		connman_dbus_dict_append_variant(&dict, "Type",
@@ -176,6 +200,8 @@ static struct connman_group *lookup_group(const char *name)
 	group->path = g_strdup_printf("%s/%s", PROFILE_DEFAULT, name);
 
 	group->favorite = FALSE;
+
+	group->state = CONNMAN_SERVICE_STATE_IDLE;
 
 	g_hash_table_insert(groups, g_strdup(name), group);
 
