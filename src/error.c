@@ -50,3 +50,9 @@ DBusMessage *__connman_error_not_supported(DBusMessage *msg)
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 						".NotSupported", NULL);
 }
+
+DBusMessage *__connman_error_not_implemented(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						".NotImplemented", NULL);
+}
