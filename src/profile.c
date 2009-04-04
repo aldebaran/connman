@@ -36,6 +36,8 @@ enum connman_service_state {
 };
 
 struct connman_group {
+	GSequenceIter *iter;
+	char *id;
 	char *path;
 	char *type;
 	char *name;
@@ -47,7 +49,7 @@ struct connman_group {
 	struct connman_network *network;
 };
 
-static GHashTable *groups = NULL;
+static GSequence *groups = NULL;
 
 static DBusConnection *connection = NULL;
 
@@ -176,11 +178,20 @@ static void free_group(gpointer data)
 	g_free(group->name);
 	g_free(group->type);
 	g_free(group->path);
+	g_free(group->id);
 	g_free(group);
+}
+
+static gint compare_group(gconstpointer a, gconstpointer b, gpointer user_data)
+{
+	struct connman_group *group = (void *) a;
+
+	return g_strcmp0(group->id, user_data);
 }
 
 static struct connman_group *lookup_group(const char *name)
 {
+	GSequenceIter *iter;
 	struct connman_group *group;
 
 	DBG("name %s", name);
@@ -188,13 +199,19 @@ static struct connman_group *lookup_group(const char *name)
 	if (name == NULL)
 		return NULL;
 
-	group = g_hash_table_lookup(groups, name);
-	if (group != NULL)
-		goto done;
+	iter = g_sequence_search(groups, NULL, compare_group, (char *) name);
+	if (g_sequence_iter_is_begin(iter) == FALSE &&
+				g_sequence_iter_is_end(iter) == FALSE) {
+		group = g_sequence_get(iter);
+		if (group != NULL)
+			goto done;
+	}
 
 	group = g_try_new0(struct connman_group, 1);
 	if (group == NULL)
 		return NULL;
+
+	group->id = g_strdup(name);
 
 	group->type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	group->path = g_strdup_printf("%s/%s", PROFILE_DEFAULT, name);
@@ -203,7 +220,7 @@ static struct connman_group *lookup_group(const char *name)
 
 	group->state = CONNMAN_SERVICE_STATE_IDLE;
 
-	g_hash_table_insert(groups, g_strdup(name), group);
+	group->iter = g_sequence_append(groups, group);
 
 	g_dbus_register_interface(connection, group->path,
 					CONNMAN_SERVICE_INTERFACE,
@@ -323,7 +340,7 @@ void __connman_profile_list(DBusMessageIter *iter)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
 
-static void append_path(gpointer key, gpointer value, gpointer user_data)
+static void append_path(gpointer value, gpointer user_data)
 {
 	struct connman_group *group = value;
 	DBusMessageIter *iter = user_data;
@@ -336,7 +353,7 @@ void __connman_profile_list_services(DBusMessageIter *iter)
 {
 	DBG("");
 
-	g_hash_table_foreach(groups, append_path, iter);
+	g_sequence_foreach(groups, append_path, iter);
 }
 
 static void append_services(DBusMessageIter *dict)
@@ -406,8 +423,7 @@ int __connman_profile_init(DBusConnection *conn)
 	if (connection == NULL)
 		return -1;
 
-	groups = g_hash_table_new_full(g_str_hash, g_str_equal,
-							g_free, free_group);
+	groups = g_sequence_new(free_group);
 
 	g_dbus_register_interface(connection, PROFILE_DEFAULT,
 						CONNMAN_PROFILE_INTERFACE,
@@ -424,7 +440,7 @@ void __connman_profile_cleanup(void)
 	g_dbus_unregister_interface(connection, PROFILE_DEFAULT,
 						CONNMAN_PROFILE_INTERFACE);
 
-	g_hash_table_destroy(groups);
+	g_sequence_free(groups);
 	groups = NULL;
 
 	if (connection == NULL)
