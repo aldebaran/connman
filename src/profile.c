@@ -93,8 +93,48 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static DBusMessage *connect_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return __connman_error_not_implemented(msg);
+}
+
+static DBusMessage *disconnect_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return __connman_error_not_implemented(msg);
+}
+
+static DBusMessage *remove_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return __connman_error_not_implemented(msg);
+}
+
+static DBusMessage *move_before(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return __connman_error_not_implemented(msg);
+}
+
+static DBusMessage *move_after(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	return __connman_error_not_implemented(msg);
+}
+
 static GDBusMethodTable service_methods[] = {
-	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "GetProperties", "",  "a{sv}", get_properties     },
+	{ "Connect",       "",  "",      connect_service    },
+	{ "Disconnect",    "",  "",      disconnect_service },
+	{ "Remove",        "",  "",      remove_service     },
+	{ "MoveBefore",    "o", "",      move_before        },
+	{ "MoveAfter",     "o", "",      move_after         },
+	{ },
+};
+
+static GDBusSignalTable service_signals[] = {
+	{ "PropertyChanged", "sv" },
 	{ },
 };
 
@@ -140,9 +180,9 @@ static struct connman_group *lookup_group(const char *name)
 	g_hash_table_insert(groups, g_strdup(name), group);
 
 	g_dbus_register_interface(connection, group->path,
-						CONNMAN_SERVICE_INTERFACE,
-						service_methods,
-						NULL, NULL, group, NULL);
+					CONNMAN_SERVICE_INTERFACE,
+					service_methods, service_signals,
+							NULL, group, NULL);
 
 done:
 	DBG("group %p", group);
