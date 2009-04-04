@@ -37,6 +37,7 @@ struct connman_group {
 	char *mode;
 	char *security;
 	connman_uint8_t strength;
+	connman_bool_t favorite;
 	struct connman_network *network;
 };
 
@@ -84,6 +85,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &group->strength);
 
+	connman_dbus_dict_append_variant(&dict, "Favorite",
+					DBUS_TYPE_BOOLEAN, &group->favorite);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
@@ -130,6 +134,8 @@ static struct connman_group *lookup_group(const char *name)
 
 	group->type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 	group->path = g_strdup_printf("%s/%s", PROFILE_DEFAULT, name);
+
+	group->favorite = FALSE;
 
 	g_hash_table_insert(groups, g_strdup(name), group);
 
