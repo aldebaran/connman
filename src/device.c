@@ -159,6 +159,39 @@ static enum connman_device_policy string2policy(const char *policy)
 		return CONNMAN_DEVICE_POLICY_UNKNOWN;
 }
 
+static int set_carrier(struct connman_device *device, connman_bool_t carrier)
+{
+	if (carrier == TRUE) {
+		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
+		struct connman_element *element;
+
+		switch (device->element.ipv4.method) {
+		case CONNMAN_IPV4_METHOD_UNKNOWN:
+		case CONNMAN_IPV4_METHOD_OFF:
+			return 0;
+		case CONNMAN_IPV4_METHOD_STATIC:
+			type = CONNMAN_ELEMENT_TYPE_IPV4;
+			break;
+		case CONNMAN_IPV4_METHOD_DHCP:
+			type = CONNMAN_ELEMENT_TYPE_DHCP;
+			break;
+		}
+
+		element = connman_element_create(NULL);
+		if (element != NULL) {
+			element->type  = type;
+			element->index = device->element.index;
+
+			if (connman_element_register(element,
+							&device->element) < 0)
+				connman_element_unref(element);
+		}
+	} else
+		connman_element_unregister_children(&device->element);
+
+	return 0;
+}
+
 static int set_powered(struct connman_device *device, connman_bool_t powered)
 {
 	struct connman_device_driver *driver = device->driver;
@@ -177,6 +210,8 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 			err = -EINVAL;
 	} else {
 		g_hash_table_remove_all(device->networks);
+
+		set_carrier(device, FALSE);
 
 		if (driver->disable) {
 			err = driver->disable(device);
@@ -215,6 +250,8 @@ static int set_policy(DBusConnection *connection,
 	case CONNMAN_DEVICE_POLICY_MANUAL:
 		if (device->powered == FALSE)
 			err = set_powered(device, TRUE);
+		else
+			err = set_carrier(device, device->carrier);
 		break;
 	}
 
@@ -1203,35 +1240,17 @@ int connman_device_set_carrier(struct connman_device *device,
 
 	device->carrier = carrier;
 
-	if (carrier == TRUE) {
-		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-		struct connman_element *element;
+	switch (device->policy) {
+	case CONNMAN_DEVICE_POLICY_UNKNOWN:
+	case CONNMAN_DEVICE_POLICY_IGNORE:
+	case CONNMAN_DEVICE_POLICY_OFF:
+		return 0;
+	case CONNMAN_DEVICE_POLICY_AUTO:
+	case CONNMAN_DEVICE_POLICY_MANUAL:
+		break;
+	}
 
-		switch (device->element.ipv4.method) {
-		case CONNMAN_IPV4_METHOD_UNKNOWN:
-		case CONNMAN_IPV4_METHOD_OFF:
-			return 0;
-		case CONNMAN_IPV4_METHOD_STATIC:
-			type = CONNMAN_ELEMENT_TYPE_IPV4;
-			break;
-		case CONNMAN_IPV4_METHOD_DHCP:
-			type = CONNMAN_ELEMENT_TYPE_DHCP;
-			break;
-		}
-
-		element = connman_element_create(NULL);
-		if (element != NULL) {
-			element->type  = type;
-			element->index = device->element.index;
-
-			if (connman_element_register(element,
-							&device->element) < 0)
-				connman_element_unref(element);
-		}
-	} else
-		connman_element_unregister_children(&device->element);
-
-	return 0;
+	return set_carrier(device, device->carrier);
 }
 
 void __connman_device_disconnect(struct connman_device *device)
