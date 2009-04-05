@@ -146,12 +146,22 @@ static DBusMessage *get_properties(DBusConnection *conn,
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_group *group = data;
+
+	if (group->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+		return __connman_error_not_supported(msg);
+
 	return __connman_error_not_implemented(msg);
 }
 
 static DBusMessage *disconnect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_group *group = data;
+
+	if (group->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+		return __connman_error_not_supported(msg);
+
 	return __connman_error_not_implemented(msg);
 }
 
@@ -159,6 +169,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_group *group = data;
+
+	if (group->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+		return __connman_error_not_supported(msg);
 
 	group->favorite = FALSE;
 
@@ -168,12 +181,22 @@ static DBusMessage *remove_service(DBusConnection *conn,
 static DBusMessage *move_before(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_group *group = data;
+
+	if (group->favorite == FALSE)
+		return __connman_error_not_supported(msg);
+
 	return __connman_error_not_implemented(msg);
 }
 
 static DBusMessage *move_after(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	struct connman_group *group = data;
+
+	if (group->favorite == FALSE)
+		return __connman_error_not_supported(msg);
+
 	return __connman_error_not_implemented(msg);
 }
 
