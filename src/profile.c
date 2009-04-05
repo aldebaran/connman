@@ -184,6 +184,20 @@ static void free_group(gpointer data)
 
 static gint compare_group(gconstpointer a, gconstpointer b, gpointer user_data)
 {
+	struct connman_group *group_a = (void *) a;
+	struct connman_group *group_b = (void *) b;
+
+	if (group_a->favorite == TRUE && group_b->favorite == FALSE)
+		return -1;
+
+	if (group_a->favorite == FALSE && group_b->favorite == TRUE)
+		return 1;
+
+	return (gint) group_b->strength - (gint) group_a->strength;
+}
+
+static gint search_group(gconstpointer a, gconstpointer b, gpointer user_data)
+{
 	struct connman_group *group = (void *) a;
 
 	return g_strcmp0(group->id, user_data);
@@ -199,7 +213,7 @@ static struct connman_group *lookup_group(const char *name)
 	if (name == NULL)
 		return NULL;
 
-	iter = g_sequence_search(groups, NULL, compare_group, (char *) name);
+	iter = g_sequence_search(groups, NULL, search_group, (char *) name);
 	if (g_sequence_iter_is_begin(iter) == FALSE &&
 				g_sequence_iter_is_end(iter) == FALSE) {
 		group = g_sequence_get(iter);
@@ -220,7 +234,8 @@ static struct connman_group *lookup_group(const char *name)
 
 	group->state = CONNMAN_SERVICE_STATE_IDLE;
 
-	group->iter = g_sequence_append(groups, group);
+	group->iter = g_sequence_insert_sorted(groups, group,
+						compare_group, NULL);
 
 	g_dbus_register_interface(connection, group->path,
 					CONNMAN_SERVICE_INTERFACE,
@@ -250,6 +265,8 @@ int __connman_profile_add_device(struct connman_device *device)
 
 	group->type = g_strdup(__connman_device_get_type(device));
 
+	g_sequence_sort_changed(group->iter, compare_group, NULL);
+
 	return 0;
 }
 
@@ -267,6 +284,11 @@ int __connman_profile_remove_device(struct connman_device *device)
 
 	if (group == NULL)
 		return -EINVAL;
+
+	g_free(group->type);
+	group->type = NULL;
+
+	g_sequence_sort_changed(group->iter, compare_group, NULL);
 
 	return 0;
 }
@@ -306,6 +328,8 @@ int __connman_profile_add_network(struct connman_network *network)
 							"WiFi.Security"));
 	}
 
+	g_sequence_sort_changed(group->iter, compare_group, NULL);
+
 	return 0;
 }
 
@@ -336,6 +360,11 @@ int __connman_profile_remove_network(struct connman_network *network)
 
 		group->network = NULL;
 	}
+
+	g_free(group->type);
+	group->type = NULL;
+
+	g_sequence_sort_changed(group->iter, compare_group, NULL);
 
 	return 0;
 }
