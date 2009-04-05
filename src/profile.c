@@ -274,10 +274,18 @@ int __connman_profile_remove_device(struct connman_device *device)
 int __connman_profile_add_network(struct connman_network *network)
 {
 	struct connman_group *group;
+	char *name;
 
 	DBG("network %p", network);
 
-	group = lookup_group(__connman_network_get_group(network));
+	if (__connman_network_get_group(network) == NULL)
+		return -EINVAL;
+
+	name = g_strdup_printf("%s_%s", __connman_network_get_type(network),
+					__connman_network_get_group(network));
+	group = lookup_group(name);
+	g_free(name);
+
 	if (group == NULL)
 		return -EINVAL;
 
@@ -304,10 +312,18 @@ int __connman_profile_add_network(struct connman_network *network)
 int __connman_profile_remove_network(struct connman_network *network)
 {
 	struct connman_group *group;
+	char *name;
 
 	DBG("network %p", network);
 
-	group = lookup_group(__connman_network_get_group(network));
+	if (__connman_network_get_group(network) == NULL)
+		return -EINVAL;
+
+	name = g_strdup_printf("%s_%s", __connman_network_get_type(network),
+					__connman_network_get_group(network));
+	group = lookup_group(name);
+	g_free(name);
+
 	if (group == NULL)
 		return -EINVAL;
 
