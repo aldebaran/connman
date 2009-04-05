@@ -1035,6 +1035,17 @@ const char *__connman_device_get_type(struct connman_device *device)
 }
 
 /**
+ * connman_device_get_type:
+ * @device: device structure
+ *
+ * Get type of device
+ */
+enum connman_device_type connman_device_get_type(struct connman_device *device)
+{
+	return device->type;
+}
+
+/**
  * connman_device_get_name:
  * @device: device structure
  *

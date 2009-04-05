@@ -71,6 +71,7 @@ extern struct connman_device *connman_device_create(const char *node,
 extern struct connman_device *connman_device_ref(struct connman_device *device);
 extern void connman_device_unref(struct connman_device *device);
 
+extern enum connman_device_type connman_device_get_type(struct connman_device *device);
 extern const char *connman_device_get_name(struct connman_device *device);
 extern const char *connman_device_get_path(struct connman_device *device);
 extern void connman_device_set_index(struct connman_device *device,
