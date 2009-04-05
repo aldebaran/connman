@@ -58,6 +58,7 @@ extern struct connman_network *connman_network_create(const char *identifier,
 extern struct connman_network *connman_network_ref(struct connman_network *network);
 extern void connman_network_unref(struct connman_network *network);
 
+extern enum connman_network_type connman_network_get_type(struct connman_network *network);
 extern const char *connman_network_get_identifier(struct connman_network *network);
 
 extern const char *connman_network_get_path(struct connman_network *network);

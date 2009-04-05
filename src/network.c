@@ -523,6 +523,17 @@ const char *__connman_network_get_type(struct connman_network *network)
 }
 
 /**
+ * connman_network_get_type:
+ * @network: network structure
+ *
+ * Get type of network
+ */
+enum connman_network_type connman_network_get_type(struct connman_network *network)
+{
+	return network->type;
+}
+
+/**
  * connman_network_get_identifier:
  * @network: network structure
  *
