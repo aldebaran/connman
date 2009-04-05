@@ -164,6 +164,73 @@ static GDBusSignalTable service_signals[] = {
 	{ },
 };
 
+const char *__connman_profile_active(void)
+{
+	DBG("");
+
+	return PROFILE_DEFAULT;
+}
+
+static void append_path(gpointer value, gpointer user_data)
+{
+	struct connman_group *group = value;
+	DBusMessageIter *iter = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+							&group->path);
+}
+
+void __connman_profile_list_services(DBusMessageIter *iter)
+{
+	DBG("");
+
+	g_sequence_foreach(groups, append_path, iter);
+}
+
+static void append_services(DBusMessageIter *entry)
+{
+	DBusMessageIter value, iter;
+	const char *key = "Services";
+
+	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
+		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
+	__connman_profile_list_services(&iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(entry, &value);
+}
+
+static void emit_services_signal(void)
+{
+	const char *path = __connman_profile_active();
+	DBusMessage *signal;
+	DBusMessageIter entry;
+
+	signal = dbus_message_new_signal(path,
+				CONNMAN_PROFILE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+	append_services(&entry);
+	g_dbus_send_message(connection, signal);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+	append_services(&entry);
+	g_dbus_send_message(connection, signal);
+}
+
 static void free_group(gpointer data)
 {
 	struct connman_group *group = data;
@@ -266,6 +333,7 @@ int __connman_profile_add_device(struct connman_device *device)
 	group->type = g_strdup(__connman_device_get_type(device));
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
+	emit_services_signal();
 
 	return 0;
 }
@@ -289,6 +357,7 @@ int __connman_profile_remove_device(struct connman_device *device)
 	group->type = NULL;
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
+	emit_services_signal();
 
 	return 0;
 }
@@ -329,6 +398,7 @@ int __connman_profile_add_network(struct connman_network *network)
 	}
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
+	emit_services_signal();
 
 	return 0;
 }
@@ -365,15 +435,9 @@ int __connman_profile_remove_network(struct connman_network *network)
 	group->type = NULL;
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
+	emit_services_signal();
 
 	return 0;
-}
-
-const char *__connman_profile_active(void)
-{
-	DBG("");
-
-	return PROFILE_DEFAULT;
 }
 
 void __connman_profile_list(DBusMessageIter *iter)
@@ -385,52 +449,12 @@ void __connman_profile_list(DBusMessageIter *iter)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
 }
 
-static void append_path(gpointer value, gpointer user_data)
-{
-	struct connman_group *group = value;
-	DBusMessageIter *iter = user_data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-							&group->path);
-}
-
-void __connman_profile_list_services(DBusMessageIter *iter)
-{
-	DBG("");
-
-	g_sequence_foreach(groups, append_path, iter);
-}
-
-static void append_services(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "Services";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_profile_list_services(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static DBusMessage *profile_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *name = "Default";
 	DBusMessage *reply;
-	DBusMessageIter array, dict;
+	DBusMessageIter array, dict, entry;
 
 	DBG("conn %p", conn);
 
@@ -448,7 +472,10 @@ static DBusMessage *profile_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Name",
 						DBUS_TYPE_STRING, &name);
 
-	append_services(&dict);
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+	append_services(&entry);
+	dbus_message_iter_close_container(&dict, &entry);
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -457,6 +484,11 @@ static DBusMessage *profile_properties(DBusConnection *conn,
 
 static GDBusMethodTable profile_methods[] = {
 	{ "GetProperties", "", "a{sv}", profile_properties },
+	{ },
+};
+
+static GDBusSignalTable profile_signals[] = {
+	{ "PropertyChanged", "sv" },
 	{ },
 };
 
@@ -471,9 +503,9 @@ int __connman_profile_init(DBusConnection *conn)
 	groups = g_sequence_new(free_group);
 
 	g_dbus_register_interface(connection, PROFILE_DEFAULT,
-						CONNMAN_PROFILE_INTERFACE,
-						profile_methods,
-						NULL, NULL, NULL, NULL);
+					CONNMAN_PROFILE_INTERFACE,
+					profile_methods, profile_signals,
+							NULL, NULL, NULL);
 
 	return 0;
 }
