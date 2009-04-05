@@ -30,6 +30,13 @@
 
 #define PROFILE_DEFAULT  "/profile/default"
 
+enum connman_service_type {
+	CONNMAN_SERVICE_TYPE_UNKNOWN  = 0,
+	CONNMAN_SERVICE_TYPE_ETHERNET = 1,
+	CONNMAN_SERVICE_TYPE_WIFI     = 2,
+	CONNMAN_SERVICE_TYPE_WIMAX    = 3,
+};
+
 enum connman_service_state {
 	CONNMAN_SERVICE_STATE_UNKNOWN = 0,
 	CONNMAN_SERVICE_STATE_IDLE    = 1,
@@ -39,12 +46,12 @@ struct connman_group {
 	GSequenceIter *iter;
 	char *id;
 	char *path;
-	char *type;
 	char *name;
 	char *mode;
 	char *security;
 	connman_uint8_t strength;
 	connman_bool_t favorite;
+	enum connman_service_type type;
 	enum connman_service_state state;
 	struct connman_network *network;
 };
@@ -52,6 +59,22 @@ struct connman_group {
 static GSequence *groups = NULL;
 
 static DBusConnection *connection = NULL;
+
+static const char *type2string(enum connman_service_type type)
+{
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		break;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		return "ethernet";
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		return "wifi";
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		return "wimax";
+	}
+
+	return NULL;
+}
 
 static const char *state2string(enum connman_service_state state)
 {
@@ -86,14 +109,15 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
+	str = type2string(group->type);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Type",
+						DBUS_TYPE_STRING, &str);
+
 	str = state2string(group->state);
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "State",
 						DBUS_TYPE_STRING, &str);
-
-	if (group->type != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
-					DBUS_TYPE_STRING, &group->type);
 
 	if (group->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
@@ -134,7 +158,11 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 static DBusMessage *remove_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	return __connman_error_not_implemented(msg);
+	struct connman_group *group = data;
+
+	group->favorite = FALSE;
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *move_before(DBusConnection *conn,
@@ -243,7 +271,6 @@ static void free_group(gpointer data)
 	g_free(group->security);
 	g_free(group->mode);
 	g_free(group->name);
-	g_free(group->type);
 	g_free(group->path);
 	g_free(group->id);
 	g_free(group);
@@ -294,7 +321,7 @@ static struct connman_group *lookup_group(const char *name)
 
 	group->id = g_strdup(name);
 
-	group->type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
+	group->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	group->path = g_strdup_printf("%s/%s", PROFILE_DEFAULT, name);
 
 	group->favorite = FALSE;
@@ -315,6 +342,29 @@ done:
 	return group;
 }
 
+static enum connman_service_type convert_device_type(struct connman_device *device)
+{
+	enum connman_device_type type = connman_device_get_type(device);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		break;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		return CONNMAN_SERVICE_TYPE_ETHERNET;
+	}
+
+	return CONNMAN_SERVICE_TYPE_UNKNOWN;
+}
+
 int __connman_profile_add_device(struct connman_device *device)
 {
 	struct connman_group *group;
@@ -330,7 +380,7 @@ int __connman_profile_add_device(struct connman_device *device)
 	if (group == NULL)
 		return -EINVAL;
 
-	group->type = g_strdup(__connman_device_get_type(device));
+	group->type = convert_device_type(device);
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
 	emit_services_signal();
@@ -353,13 +403,32 @@ int __connman_profile_remove_device(struct connman_device *device)
 	if (group == NULL)
 		return -EINVAL;
 
-	g_free(group->type);
-	group->type = NULL;
+	group->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
 	emit_services_signal();
 
 	return 0;
+}
+
+static enum connman_service_type convert_network_type(struct connman_network *network)
+{
+	enum connman_network_type type = connman_network_get_type(network);
+
+	switch (type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_HSO:
+		break;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+		return CONNMAN_SERVICE_TYPE_WIFI;
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		return CONNMAN_SERVICE_TYPE_WIMAX;
+	}
+
+	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
 int __connman_profile_add_network(struct connman_network *network)
@@ -380,10 +449,9 @@ int __connman_profile_add_network(struct connman_network *network)
 	if (group == NULL)
 		return -EINVAL;
 
-	g_free(group->type);
-	g_free(group->name);
+	group->type = convert_network_type(network);
 
-	group->type = g_strdup(__connman_network_get_type(network));
+	g_free(group->name);
 	group->name = g_strdup(connman_network_get_string(network, "Name"));
 
 	group->strength = connman_network_get_uint8(network, "Strength");
@@ -431,8 +499,7 @@ int __connman_profile_remove_network(struct connman_network *network)
 		group->network = NULL;
 	}
 
-	g_free(group->type);
-	group->type = NULL;
+	group->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
 	emit_services_signal();
