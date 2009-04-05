@@ -796,8 +796,6 @@ static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
 	if (str == NULL)
 		return NULL;
 
-	g_string_append_printf(str, "wifi_");
-
 	for (i = 0; i < ssid_len; i++)
 		g_string_append_printf(str, "%02x", ssid[i]);
 
