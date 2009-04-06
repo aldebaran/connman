@@ -203,6 +203,9 @@ fi
 
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(D-Bus >= 1.0 is required))
+AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
+	AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1,
+		[Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 DBUS_DATADIR="`$PKG_CONFIG --variable=sysconfdir dbus-1`"
