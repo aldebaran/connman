@@ -161,6 +161,8 @@ static enum connman_device_policy string2policy(const char *policy)
 
 static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 {
+	__connman_profile_set_carrier(device, carrier);
+
 	if (carrier == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;

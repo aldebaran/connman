@@ -186,6 +186,8 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode);
 
 int __connman_profile_add_device(struct connman_device *device);
 int __connman_profile_remove_device(struct connman_device *device);
+int __connman_profile_set_carrier(struct connman_device *device,
+						connman_bool_t carrier);
 
 #include <connman/network.h>
 

@@ -313,13 +313,6 @@ static gint compare_group(gconstpointer a, gconstpointer b, gpointer user_data)
 	return (gint) group_b->strength - (gint) group_a->strength;
 }
 
-static gint search_group(gconstpointer a, gconstpointer b, gpointer user_data)
-{
-	struct connman_group *group = (void *) a;
-
-	return g_strcmp0(group->id, user_data);
-}
-
 static struct connman_group *lookup_group(const char *name)
 {
 	GSequenceIter *iter;
@@ -330,11 +323,11 @@ static struct connman_group *lookup_group(const char *name)
 	if (name == NULL)
 		return NULL;
 
-	iter = g_sequence_search(groups, NULL, search_group, (char *) name);
-	if (g_sequence_iter_is_begin(iter) == FALSE &&
-				g_sequence_iter_is_end(iter) == FALSE) {
+	iter = g_sequence_get_begin_iter(groups);
+	while (g_sequence_iter_is_end(iter) == FALSE) {
 		group = g_sequence_get(iter);
-		if (group != NULL)
+
+		if (g_strcmp0(group->id, name) == 0)
 			goto done;
 	}
 
@@ -427,6 +420,33 @@ int __connman_profile_remove_device(struct connman_device *device)
 		return -EINVAL;
 
 	group->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+
+	g_sequence_sort_changed(group->iter, compare_group, NULL);
+	emit_services_signal();
+
+	return 0;
+}
+
+int __connman_profile_set_carrier(struct connman_device *device,
+						connman_bool_t carrier)
+{
+	struct connman_group *group;
+	char *name;
+
+	DBG("device %p carrier %d", device, carrier);
+
+	name = g_strdup_printf("%s_%d", __connman_device_get_type(device),
+					connman_device_get_index(device));
+	group = lookup_group(name);
+	g_free(name);
+
+	if (group == NULL)
+		return -EINVAL;
+
+	if (group->favorite == carrier)
+		return -EALREADY;
+
+	group->favorite = carrier;
 
 	g_sequence_sort_changed(group->iter, compare_group, NULL);
 	emit_services_signal();
