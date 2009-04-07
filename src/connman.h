@@ -209,6 +209,9 @@ int __connman_profile_remove_network(struct connman_network *network);
 
 #include <connman/service.h>
 
+int __connman_service_init(void);
+void __connman_service_cleanup(void);
+
 #include <connman/notifier.h>
 
 int __connman_notifier_init(void);
