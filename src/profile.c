@@ -38,8 +38,13 @@ enum connman_service_type {
 };
 
 enum connman_service_state {
-	CONNMAN_SERVICE_STATE_UNKNOWN = 0,
-	CONNMAN_SERVICE_STATE_IDLE    = 1,
+	CONNMAN_SERVICE_STATE_UNKNOWN       = 0,
+	CONNMAN_SERVICE_STATE_IDLE          = 1,
+	CONNMAN_SERVICE_STATE_ASSOCIATION   = 2,
+	CONNMAN_SERVICE_STATE_CONFIGURATION = 3,
+	CONNMAN_SERVICE_STATE_READY         = 4,
+	CONNMAN_SERVICE_STATE_DISCONNECT    = 5,
+	CONNMAN_SERVICE_STATE_FAILURE       = 6,
 };
 
 struct connman_group {
@@ -83,6 +88,16 @@ static const char *state2string(enum connman_service_state state)
 		break;
 	case CONNMAN_SERVICE_STATE_IDLE:
 		return "idle";
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+		return "association";
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return "configuration";
+	case CONNMAN_SERVICE_STATE_READY:
+		return "ready";
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+		return "disconnect";
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		return "failure";
 	}
 
 	return NULL;
