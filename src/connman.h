@@ -207,6 +207,8 @@ const char *__connman_network_get_group(struct connman_network *network);
 int __connman_profile_add_network(struct connman_network *network);
 int __connman_profile_remove_network(struct connman_network *network);
 
+#include <connman/service.h>
+
 #include <connman/notifier.h>
 
 int __connman_notifier_init(void);
