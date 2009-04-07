@@ -24,3 +24,9 @@
 #endif
 
 #include "connman.h"
+
+struct connman_service {
+	enum connman_service_type type;
+	enum connman_service_state state;
+	char *path;
+};

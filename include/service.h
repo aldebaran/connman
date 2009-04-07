@@ -49,6 +49,8 @@ enum connman_service_state {
 	CONNMAN_SERVICE_STATE_FAILURE       = 6,
 };
 
+struct connman_service;
+
 #ifdef __cplusplus
 }
 #endif
