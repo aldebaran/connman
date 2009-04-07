@@ -39,6 +39,20 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_WIMAX    = 3,
 };
 
+enum connman_service_mode {
+	CONNMAN_SERVICE_MODE_UNKNOWN = 0,
+	CONNMAN_SERVICE_MODE_MANAGED = 1,
+	CONNMAN_SERVICE_MODE_ADHOC   = 2,
+};
+
+enum connman_service_security {
+	CONNMAN_SERVICE_SECURITY_UNKNOWN = 0,
+	CONNMAN_SERVICE_SECURITY_NONE    = 1,
+	CONNMAN_SERVICE_SECURITY_WEP     = 2,
+	CONNMAN_SERVICE_SECURITY_WPA     = 3,
+	CONNMAN_SERVICE_SECURITY_WPA2    = 4,
+};
+
 enum connman_service_state {
 	CONNMAN_SERVICE_STATE_UNKNOWN       = 0,
 	CONNMAN_SERVICE_STATE_IDLE          = 1,
