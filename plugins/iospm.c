@@ -30,32 +30,27 @@
 #include <connman/log.h>
 
 #define IOSPM_SERVICE		"com.intel.mid.ospm"
-#define IOSPM_INTERFACE		IOSPM_SERVICE ".MMF"
+#define IOSPM_INTERFACE		IOSPM_SERVICE ".Comms"
 
+#define IOSPM_BLUETOOTH		"/com/intel/mid/ospm/bluetooth"
 #define IOSPM_FLIGHT_MODE	"/com/intel/mid/ospm/flight_mode"
 
 static DBusConnection *connection;
 
-static void iospm_device_enabled(enum connman_device_type type,
-						connman_bool_t enabled)
-{
-	DBG("type %d enabled %d", type, enabled);
-}
-
-static void iospm_offline_mode(connman_bool_t enabled)
+static void send_indication(const char *path, connman_bool_t enabled)
 {
 	DBusMessage *message;
 	const char *method;
 
-	DBG("enabled %d", enabled);
+	DBG("path %s enabled %d", path, enabled);
 
 	if (enabled == TRUE)
 		method = "IndicateStart";
 	else
 		method = "IndicateStop";
 
-	message = dbus_message_new_method_call(IOSPM_SERVICE,
-				IOSPM_FLIGHT_MODE, IOSPM_INTERFACE, method);
+	message = dbus_message_new_method_call(IOSPM_SERVICE, path,
+						IOSPM_INTERFACE, method);
 	if (message == NULL)
 		return;
 
@@ -64,6 +59,32 @@ static void iospm_offline_mode(connman_bool_t enabled)
 	dbus_connection_send(connection, message, NULL);
 
 	dbus_message_unref(message);
+}
+
+static void iospm_device_enabled(enum connman_device_type type,
+						connman_bool_t enabled)
+{
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		break;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		send_indication(IOSPM_BLUETOOTH, enabled);
+		break;
+	}
+}
+
+static void iospm_offline_mode(connman_bool_t enabled)
+{
+	send_indication(IOSPM_FLIGHT_MODE, enabled);
 }
 
 static struct connman_notifier iospm_notifier = {
