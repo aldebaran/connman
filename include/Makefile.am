@@ -1,13 +1,13 @@
 
 includedir = @includedir@/connman
 
-include_HEADERS = types.h log.h plugin.h security.h resolver.h ipconfig.h \
-				storage.h device.h network.h notifier.h
+include_HEADERS = types.h log.h plugin.h security.h notifier.h \
+					storage.h device.h network.h
 
 nodist_include_HEADERS = version.h
 
 noinst_HEADERS = driver.h element.h property.h ipv4.h rtnl.h dbus.h \
-								service.h
+					resolver.h ipconfig.h service.h
 
 MAINTAINERCLEANFILES = Makefile.in
 
