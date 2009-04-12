@@ -95,7 +95,7 @@ struct connman_service *connman_service_get(const char *identifier)
 	service->identifier = g_strdup(identifier);
 
 	iter = g_sequence_insert_sorted(service_list, service,
-                                                service_compare, NULL);
+						service_compare, NULL);
 
 	g_hash_table_insert(service_hash, service->identifier, iter);
 
