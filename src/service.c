@@ -57,6 +57,81 @@ static void service_free(gpointer data)
 	g_free(service);
 }
 
+void connman_service_put(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (g_atomic_int_dec_and_test(&service->refcount) == TRUE) {
+		GSequenceIter *iter;
+
+		iter = g_hash_table_lookup(service_hash, service->identifier);
+		if (iter != NULL)
+			g_sequence_remove(iter);
+		else
+			service_free(service);
+	}
+}
+
+static void __connman_service_initialize(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	service->refcount = 1;
+
+	service->type     = CONNMAN_SERVICE_TYPE_UNKNOWN;
+	service->mode     = CONNMAN_SERVICE_MODE_UNKNOWN;
+	service->security = CONNMAN_SERVICE_SECURITY_UNKNOWN;
+	service->state    = CONNMAN_SERVICE_STATE_UNKNOWN;
+
+	service->favorite = FALSE;
+}
+
+/**
+ * connman_service_create:
+ *
+ * Allocate a new service.
+ *
+ * Returns: a newly-allocated #connman_service structure
+ */
+struct connman_service *connman_service_create(void)
+{
+	struct connman_service *service;
+
+	service = g_try_new0(struct connman_service, 1);
+	if (service == NULL)
+		return NULL;
+
+	DBG("service %p", service);
+
+	__connman_service_initialize(service);
+
+	return service;
+}
+
+/**
+ * connman_service_ref:
+ * @service: service structure
+ *
+ * Increase reference counter of service
+ */
+struct connman_service *connman_service_ref(struct connman_service *service)
+{
+	g_atomic_int_inc(&service->refcount);
+
+	return service;
+}
+
+/**
+ * connman_service_unref:
+ * @service: service structure
+ *
+ * Decrease reference counter of service
+ */
+void connman_service_unref(struct connman_service *service)
+{
+	connman_service_put(service);
+}
+
 static gint service_compare(gconstpointer a, gconstpointer b,
 							gpointer user_data)
 {
@@ -91,7 +166,8 @@ struct connman_service *connman_service_get(const char *identifier)
 
 	DBG("service %p", service);
 
-	service->refcount = 1;
+	__connman_service_initialize(service);
+
 	service->identifier = g_strdup(identifier);
 
 	iter = g_sequence_insert_sorted(service_list, service,
@@ -100,21 +176,6 @@ struct connman_service *connman_service_get(const char *identifier)
 	g_hash_table_insert(service_hash, service->identifier, iter);
 
 	return service;
-}
-
-void connman_service_put(struct connman_service *service)
-{
-	DBG("service %p", service);
-
-	if (g_atomic_int_dec_and_test(&service->refcount) == TRUE) {
-		GSequenceIter *iter;
-
-		iter = g_hash_table_lookup(service_hash, service->identifier);
-		if (iter != NULL)
-			g_sequence_remove(iter);
-		else
-			service_free(service);
-	}
 }
 
 int __connman_service_init(void)

@@ -65,6 +65,10 @@ enum connman_service_state {
 
 struct connman_service;
 
+extern struct connman_service *connman_service_create(void);
+extern struct connman_service *connman_service_ref(struct connman_service *service);
+extern void connman_service_unref(struct connman_service *service);
+
 extern struct connman_service *connman_service_get(const char *identifier);
 extern void connman_service_put(struct connman_service *service);
 
