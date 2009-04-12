@@ -79,6 +79,8 @@ int __connman_security_check_privilege(DBusMessage *message,
 const char *__connman_ipv4_method2string(enum connman_ipv4_method method);
 enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
 
+#include <connman/ipconfig.h>
+
 #include <connman/resolver.h>
 
 int __connman_resolver_init(void);
