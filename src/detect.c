@@ -203,17 +203,17 @@ static void detect_newlink(unsigned short type, int index,
 
 		sk = socket(PF_INET, SOCK_DGRAM, 0);
 
-		if (g_str_has_prefix(devname, "bnep") == TRUE)
+		if (g_str_has_prefix(devname, "vmnet") == TRUE ||
+				g_str_has_prefix(devname, "vboxnet") == TRUE) {
+			connman_info("Ignoring network interface %s", devname);
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		} else if (g_str_has_prefix(devname, "bnep") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(devname, "wmx") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(devname, "vmnet") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(devname, "vboxnet") == TRUE)
+		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
 			devtype = CONNMAN_DEVICE_TYPE_WIFI;
