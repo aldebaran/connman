@@ -327,6 +327,8 @@ static struct connman_group *lookup_group(const char *name)
 
 		if (g_strcmp0(group->id, name) == 0)
 			goto done;
+
+		iter = g_sequence_iter_next(iter);
 	}
 
 	group = g_try_new0(struct connman_group, 1);
