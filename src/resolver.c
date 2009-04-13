@@ -149,6 +149,9 @@ int connman_resolver_append(const char *interface, const char *domain,
 
 	DBG("interface %s domain %s server %s", interface, domain, server);
 
+	if (server == NULL)
+		return -EINVAL;
+
 	entry = g_try_new0(struct entry_data, 1);
 	if (entry == NULL)
 		return -ENOMEM;
