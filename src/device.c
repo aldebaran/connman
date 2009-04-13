@@ -1913,7 +1913,8 @@ update:
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
-	g_file_set_contents(pathname, data, length, NULL);
+	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
+		connman_error("Failed to store device information");
 
 done:
 	g_free(data);
