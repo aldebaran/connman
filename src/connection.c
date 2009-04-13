@@ -63,6 +63,17 @@ static struct gateway_data *find_gateway(int index, const char *gateway)
 	return NULL;
 }
 
+static void remove_gateway(int index, const char *gateway)
+{
+	struct gateway_data *data;
+
+	data = find_gateway(index, gateway);
+	if (data == NULL)
+		return;
+
+	gateway_list = g_slist_remove(gateway_list, data);
+}
+
 static int set_route(struct connman_element *element, const char *gateway)
 {
 	struct ifreq ifr;
@@ -511,6 +522,8 @@ static void connection_remove(struct connman_element *element)
 
 	if (gateway == NULL)
 		return;
+
+	remove_gateway(element->index, gateway);
 
 	connman_element_set_enabled(element, FALSE);
 	emit_default_signal(element);
