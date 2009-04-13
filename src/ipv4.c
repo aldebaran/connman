@@ -92,6 +92,9 @@ static int set_ipv4(struct connman_element *element,
 
 	close(sk);
 
+	if (nameserver == NULL)
+		connman_error("No nameserver for %s defined", ifr.ifr_name);
+
 	connman_resolver_append(ifr.ifr_name, NULL, nameserver);
 
 	return 0;
