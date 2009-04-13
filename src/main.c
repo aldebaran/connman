@@ -127,11 +127,17 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
-			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (mkdir(STATEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
+		if (errno != EEXIST)
+			perror("Failed to create state directory");
+	}
 
-	mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
-			S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH);
+	if (mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
+		if (errno != EEXIST)
+			perror("Failed to create storage directory");
+	}
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
