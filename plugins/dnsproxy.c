@@ -37,8 +37,45 @@
 
 #include <glib.h>
 
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+struct domain_hdr {
+	uint16_t id;
+	uint8_t rd:1;
+	uint8_t tc:1;
+	uint8_t aa:1;
+	uint8_t opcode:4;
+	uint8_t qr:1;
+	uint8_t rcode:4;
+	uint8_t z:3;
+	uint8_t ra:1;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+} __attribute__ ((packed));
+#elif __BYTE_ORDER == __BIG_ENDIAN
+struct domain_hdr {
+	uint16_t id;
+	uint8_t qr:1;
+	uint8_t opcode:4;
+	uint8_t aa:1;
+	uint8_t tc:1;
+	uint8_t rd:1;
+	uint8_t ra:1;
+	uint8_t z:3;
+	uint8_t rcode:4;
+	uint16_t qdcount;
+	uint16_t ancount;
+	uint16_t nscount;
+	uint16_t arcount;
+} __attribute__ ((packed));
+#else
+#error "Unknown byte order"
+#endif
+
 struct server_data {
 	char *interface;
+	char *domain;
 	char *server;
 	GIOChannel *channel;
 	guint watch;
@@ -47,11 +84,19 @@ struct server_data {
 struct request_data {
 	struct sockaddr_in sin;
 	socklen_t len;
-	guint16 id;
+	guint16 srcid;
+	guint16 dstid;
+	guint16 altid;
+	guint timeout;
+	guint numserv;
+	guint numresp;
+	gpointer resp;
+	gsize resplen;
 };
 
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
+static guint16 request_id = 0x0000;
 
 static GIOChannel *listener_channel = NULL;
 static guint listener_watch = 0;
@@ -61,17 +106,17 @@ static struct request_data *find_request(guint16 id)
 	GSList *list;
 
 	for (list = request_list; list; list = list->next) {
-		struct request_data *data = list->data;
+		struct request_data *req = list->data;
 
-		if (data->id == id)
-			return data;
+		if (req->dstid == id || req->altid == id)
+			return req;
 	}
 
 	return NULL;
 }
 
 static struct server_data *find_server(const char *interface,
-							const char *server)
+					const char *domain, const char *server)
 {
 	GSList *list;
 
@@ -84,8 +129,16 @@ static struct server_data *find_server(const char *interface,
 			continue;
 
 		if (g_str_equal(data->interface, interface) == TRUE &&
-				g_str_equal(data->server, server) == TRUE)
-			return data;
+				g_str_equal(data->server, server) == TRUE) {
+			if (domain == NULL) {
+				if (data->domain == NULL)
+					return data;
+				continue;
+			}
+
+			if (g_str_equal(data->domain, domain) == TRUE)
+				return data;
+		}
 	}
 
 	return NULL;
@@ -97,6 +150,7 @@ static gboolean server_event(GIOChannel *channel, GIOCondition condition,
 	struct server_data *data = user_data;
 	struct request_data *req;
 	unsigned char buf[768];
+	struct domain_hdr *hdr = (void *) &buf;
 	int sk, err, len;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
@@ -108,7 +162,7 @@ static gboolean server_event(GIOChannel *channel, GIOCondition condition,
 	sk = g_io_channel_unix_get_fd(channel);
 
 	len = recv(sk, buf, sizeof(buf), 0);
-	if (len < 2)
+	if (len < 12)
 		return TRUE;
 
 	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
@@ -117,19 +171,46 @@ static gboolean server_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
+	DBG("id 0x%04x rcode %d", hdr->id, hdr->rcode);
+
+	buf[0] = req->srcid & 0xff;
+	buf[1] = req->srcid >> 8;
+
+	req->numresp++;
+
+	if (hdr->rcode == 0 || req->resp == NULL) {
+		g_free(req->resp);
+		req->resplen = 0;
+
+		req->resp = g_try_malloc(len);
+		if (req->resp == NULL)
+			return TRUE;
+
+		memcpy(req->resp, buf, len);
+		req->resplen = len;
+	}
+
+	if (hdr->rcode > 0 && req->numresp < req->numserv)
+		return TRUE;
+
+	if (req->timeout > 0)
+		g_source_remove(req->timeout);
+
 	request_list = g_slist_remove(request_list, req);
 
 	sk = g_io_channel_unix_get_fd(listener_channel);
 
-	err = sendto(sk, buf, len, 0, (struct sockaddr *) &req->sin, req->len);
+	err = sendto(sk, req->resp, req->resplen, 0,
+				(struct sockaddr *) &req->sin, req->len);
 
+	g_free(req->resp);
 	g_free(req);
 
 	return TRUE;
 }
 
 static struct server_data *create_server(const char *interface,
-							const char *server)
+					const char *domain, const char *server)
 {
 	struct server_data *data;
 	struct sockaddr_in sin;
@@ -183,6 +264,7 @@ static struct server_data *create_server(const char *interface,
 							server_event, data);
 
 	data->interface = g_strdup(interface);
+	data->domain = g_strdup(domain);
 	data->server = g_strdup(server);
 
 	return data;
@@ -197,8 +279,9 @@ static void destroy_server(struct server_data *data)
 
 	g_io_channel_unref(data->channel);
 
-	g_free(data->interface);
 	g_free(data->server);
+	g_free(data->domain);
+	g_free(data->interface);
 	g_free(data);
 }
 
@@ -212,7 +295,7 @@ static int dnsproxy_append(const char *interface, const char *domain,
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
-	data = create_server(interface, server);
+	data = create_server(interface, domain, server);
 	if (data == NULL)
 		return -EIO;
 
@@ -231,7 +314,7 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
-	data = find_server(interface, server);
+	data = find_server(interface, domain, server);
 	if (data == NULL)
 		return 0;
 
@@ -249,60 +332,26 @@ static struct connman_resolver dnsproxy_resolver = {
 	.remove		= dnsproxy_remove,
 };
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-struct domain_hdr {
-	uint16_t id;
-	uint8_t rd:1;
-	uint8_t tc:1;
-	uint8_t aa:1;
-	uint8_t opcode:4;
-	uint8_t qr:1;
-	uint8_t rcode:4;
-	uint8_t z:3;
-	uint8_t ra:1;
-	uint16_t qdcount;
-	uint16_t ancount;
-	uint16_t nscount;
-	uint16_t arcount;
-} __attribute__ ((packed));
-#elif __BYTE_ORDER == __BIG_ENDIAN
-struct domain_hdr {
-	uint16_t id;
-	uint8_t qr:1;
-	uint8_t opcode:4;
-	uint8_t aa:1;
-	uint8_t tc:1;
-	uint8_t rd:1;
-	uint8_t ra:1;
-	uint8_t z:3;
-	uint8_t rcode:4;
-	uint16_t qdcount;
-	uint16_t ancount;
-	uint16_t nscount;
-	uint16_t arcount;
-} __attribute__ ((packed));
-#else
-#error "Unknown byte order"
-#endif
-
-static void parse_request(unsigned char *buf, int len)
+static int parse_request(unsigned char *buf, int len,
+					char *name, unsigned int size)
 {
 	struct domain_hdr *hdr = (void *) buf;
 	uint16_t qdcount = ntohs(hdr->qdcount);
 	unsigned char *ptr;
-	char name[512];
+	char *last_label = NULL;
+	int label_count = 0;
 	unsigned int remain, used = 0;
 
 	if (len < 12)
-		return;
+		return -EINVAL;
 
 	DBG("id 0x%04x qr %d opcode %d qdcount %d",
 				hdr->id, hdr->qr, hdr->opcode, qdcount);
 
 	if (hdr->qr != 0 || qdcount != 1)
-		return;
+		return -EINVAL;
 
-	memset(name, 0, sizeof(name));
+	memset(name, 0, size);
 
 	ptr = buf + 12;
 	remain = len - 12;
@@ -310,11 +359,16 @@ static void parse_request(unsigned char *buf, int len)
 	while (remain > 0) {
 		uint8_t len = *ptr;
 
-		if (len == 0x00)
+		if (len == 0x00) {
+			if (label_count > 0)
+				last_label = (char *) (ptr + 1);
 			break;
+		}
 
-		if (used + len + 1 > sizeof(name))
-			return;
+		label_count++;
+
+		if (used + len + 1 > size)
+			return -ENOBUFS;
 
 		strncat(name, (char *) (ptr + 1), len);
 		strcat(name, ".");
@@ -325,7 +379,108 @@ static void parse_request(unsigned char *buf, int len)
 		remain -= len + 1;
 	}
 
-	DBG("domain name %s", name);
+	DBG("query %s (%d labels)", name, label_count);
+
+	return 0;
+}
+
+static void send_response(int sk, unsigned char *buf, int len,
+				const struct sockaddr *to, socklen_t tolen)
+{
+	struct domain_hdr *hdr = (void *) buf;
+	int err;
+
+	if (len < 12)
+		return;
+
+	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
+
+	hdr->qr = 1;
+	hdr->rcode = 2;
+
+	hdr->ancount = 0;
+	hdr->nscount = 0;
+	hdr->arcount = 0;
+
+	err = sendto(sk, buf, len, 0, to, tolen);
+}
+
+static int append_query(unsigned char *buf, unsigned int size,
+				const char *query, const char *domain)
+{
+	unsigned char *ptr = buf;
+	char *offset;
+
+	DBG("query %s domain %s", query, domain);
+
+	offset = (char *) query;
+	while (offset != NULL) {
+		char *tmp;
+
+		tmp = strchr(offset, '.');
+		if (tmp == NULL) {
+			if (strlen(offset) == 0)
+				break;
+			*ptr = strlen(offset);
+			memcpy(ptr + 1, offset, strlen(offset));
+			ptr += strlen(offset) + 1;
+			break;
+		}
+
+		*ptr = tmp - offset;
+		memcpy(ptr + 1, offset, tmp - offset);
+		ptr += tmp - offset + 1;
+
+		offset = tmp + 1;
+	}
+
+	offset = (char *) domain;
+	while (offset != NULL) {
+		char *tmp;
+
+		tmp = strchr(offset, '.');
+		if (tmp == NULL) {
+			if (strlen(offset) == 0)
+				break;
+			*ptr = strlen(offset);
+			memcpy(ptr + 1, offset, strlen(offset));
+			ptr += strlen(offset) + 1;
+			break;
+		}
+
+		*ptr = tmp - offset;
+		memcpy(ptr + 1, offset, tmp - offset);
+		ptr += tmp - offset + 1;
+
+		offset = tmp + 1;
+	}
+
+	*ptr++ = 0x00;
+
+	return ptr - buf;
+}
+
+static gboolean request_timeout(gpointer user_data)
+{
+	struct request_data *req = user_data;
+
+	DBG("id 0x%04x", req->srcid);
+
+	request_list = g_slist_remove(request_list, req);
+
+	if (req->resplen > 0 && req->resp != NULL) {
+		int sk, err;
+
+		sk = g_io_channel_unix_get_fd(listener_channel);
+
+		err = sendto(sk, req->resp, req->resplen, 0,
+				(struct sockaddr *) &req->sin, req->len);
+	}
+
+	g_free(req->resp);
+	g_free(req);
+
+	return FALSE;
 }
 
 static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
@@ -333,6 +488,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 {
 	GSList *list;
 	unsigned char buf[768];
+	char query[512];
 	struct request_data *req;
 	struct sockaddr_in sin;
 	socklen_t size = sizeof(sin);
@@ -354,26 +510,34 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
 
-	parse_request(buf, len);
+	err = parse_request(buf, len, query, sizeof(query));
+	if (err < 0 || g_slist_length(server_list) == 0) {
+		send_response(sk, buf, len, (struct sockaddr *) &sin, size);
+		return TRUE;
+	}
 
-	if (g_slist_length(server_list) == 0)
+	req = g_try_new0(struct request_data, 1);
+	if (req == NULL)
 		return TRUE;
 
-	req = find_request(buf[0] | (buf[1] << 8));
-	if (req == NULL) {
-		req = g_try_new0(struct request_data, 1);
-		if (req == NULL)
-			return TRUE;
+	memcpy(&req->sin, &sin, sizeof(sin));
+	req->len = size;
 
-		memcpy(&req->sin, &sin, sizeof(sin));
-		req->len = size;
-		req->id = buf[0] | (buf[1] << 8);
+	request_id += 2;
+	if (request_id == 0x0000 || request_id == 0xffff)
+		request_id += 2;
 
-		request_list = g_slist_append(request_list, req);
-	} else {
-		memcpy(&req->sin, &sin, sizeof(sin));
-		req->len = size;
-	}
+	req->srcid = buf[0] | (buf[1] << 8);
+	req->dstid = request_id;
+	req->altid = request_id + 1;
+
+	buf[0] = req->dstid & 0xff;
+	buf[1] = req->dstid >> 8;
+
+	request_list = g_slist_append(request_list, req);
+
+	req->numserv = 0;
+	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
@@ -381,6 +545,34 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		sk = g_io_channel_unix_get_fd(data->channel);
 
 		err = send(sk, buf, len, 0);
+
+		req->numserv++;
+
+		if (data->domain != NULL) {
+			unsigned char alt[1024];
+			struct domain_hdr *hdr = (void *) &alt;
+			int altlen;
+
+			alt[0] = req->altid & 0xff;
+			alt[1] = req->altid >> 8;
+
+			memcpy(alt + 2, buf + 2, 10);
+			hdr->qdcount = htons(1);
+
+			altlen = append_query(alt + 12, sizeof(alt) - 12,
+							query, data->domain);
+			if (altlen < 0)
+				continue;
+
+			alt[altlen + 12] = 0x00;
+			alt[altlen + 13] = 0x01;
+			alt[altlen + 14] = 0x00;
+			alt[altlen + 15] = 0x01;
+
+			err = send(sk, alt, altlen + 12 + 4, 0);
+
+			req->numserv++;
+		}
 	}
 
 	return TRUE;
@@ -451,11 +643,13 @@ static void destroy_listener(void)
 		g_source_remove(listener_watch);
 
 	for (list = request_list; list; list = list->next) {
-		struct request_data *data = list->data;
+		struct request_data *req = list->data;
 
-		DBG("Dropping request (id 0x%04x)", data->id);
+		DBG("Dropping request (id 0x%04x -> 0x%04x)",
+						req->srcid, req->dstid);
 
-		g_free(data);
+		g_free(req->resp);
+		g_free(req);
 		list->data = NULL;
 	}
 
