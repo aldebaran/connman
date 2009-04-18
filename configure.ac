@@ -66,6 +66,10 @@ AC_ARG_ENABLE(bluetooth, AC_HELP_STRING([--enable-bluetooth],
 		[enable Bluetooth support]), [enable_bluetooth=${enableval}])
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" = "yes")
 
+AC_ARG_ENABLE(modemmgr, AC_HELP_STRING([--enable-modemmgr],
+                [enable Modem Manager support]), [enable_modemmgr=${enableval}])
+AM_CONDITIONAL(MODEMMGR, test "${enable_modemmgr}" = "yes")
+
 AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
 	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
 

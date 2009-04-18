@@ -21,6 +21,7 @@ fi
 		--enable-ethernet \
 		--enable-wifi \
 		--enable-bluetooth \
+		--enable-modemmgr \
 		--enable-udhcp \
 		--enable-dhclient \
 		--enable-resolvconf \

@@ -27,6 +27,12 @@ bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 endif
 
+if MODEMMGR
+plugin_LTLIBRARIES += modemmgr.la
+
+modemmgr_la_LIBADD = @GDBUS_LIBS@
+endif
+
 if NOVATEL
 plugin_LTLIBRARIES += novatel.la
 
