@@ -272,16 +272,27 @@ int __connman_element_count(struct connman_element *element,
 	return data.count;
 }
 
-const char *__connman_element_get_device_path(struct connman_element *element)
+struct connman_device *__connman_element_get_device(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
 						element->device != NULL)
-		return element->path;
+		return element->device;
 
 	if (element->parent == NULL)
 		return NULL;
 
-	return __connman_element_get_device_path(element->parent);
+	return __connman_element_get_device(element->parent);
+}
+
+const char *__connman_element_get_device_path(struct connman_element *element)
+{
+	struct connman_device *device;
+
+	device = __connman_element_get_device(element);
+	if (device == NULL)
+		return NULL;
+
+	return element->path;
 }
 
 const char *__connman_element_get_network_path(struct connman_element *element)
