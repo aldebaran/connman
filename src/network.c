@@ -1100,7 +1100,18 @@ static int network_probe(struct connman_element *element)
 		return err;
 	}
 
-	__connman_profile_add_network(network);
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_HSO:
+		break;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		__connman_profile_add_network(network);
+		break;
+	}
 
 	return 0;
 }
@@ -1117,7 +1128,18 @@ static void network_remove(struct connman_element *element)
 	if (network->driver == NULL)
 		return;
 
-	__connman_profile_remove_network(network);
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_HSO:
+		break;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		__connman_profile_remove_network(network);
+		break;
+	}
 
 	unregister_interface(element);
 
