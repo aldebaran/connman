@@ -1253,6 +1253,9 @@ int connman_device_set_carrier(struct connman_device *device,
 
 	device->carrier = carrier;
 
+	if (carrier == TRUE)
+		device->disconnected = FALSE;
+
 	switch (device->policy) {
 	case CONNMAN_DEVICE_POLICY_UNKNOWN:
 	case CONNMAN_DEVICE_POLICY_IGNORE:
