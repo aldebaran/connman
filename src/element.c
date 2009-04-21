@@ -272,6 +272,38 @@ int __connman_element_count(struct connman_element *element,
 	return data.count;
 }
 
+struct connman_service *__connman_element_get_service(struct connman_element *element)
+{
+	struct connman_service *service;
+	struct connman_device *device;
+	enum connman_device_type type;
+
+	device = __connman_element_get_device(element);
+	if (device == NULL)
+		return NULL;
+
+	type = connman_device_get_type(device);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		return NULL;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		service = __connman_service_lookup_from_device(device);
+		break;
+	}
+
+	return service;
+}
+
 struct connman_device *__connman_element_get_device(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&

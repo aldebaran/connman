@@ -496,6 +496,30 @@ int __connman_service_indicate_configuration(struct connman_service *service)
 	return 0;
 }
 
+int __connman_service_ready(struct connman_service *service)
+{
+	if (service == NULL)
+		return -EINVAL;
+
+	service->state = CONNMAN_SERVICE_STATE_READY;
+
+	state_changed(service);
+
+	return 0;
+}
+
+int __connman_service_disconnect(struct connman_service *service)
+{
+	if (service == NULL)
+		return -EINVAL;
+
+	service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
+
+	state_changed(service);
+
+	return 0;
+}
+
 /**
  * connman_service_lookup:
  * @identifier: service identifier

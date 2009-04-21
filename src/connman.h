@@ -127,6 +127,7 @@ void __connman_element_list(struct connman_element *element,
 int __connman_element_count(struct connman_element *element,
 					enum connman_element_type type);
 
+struct connman_service *__connman_element_get_service(struct connman_element *element);
 struct connman_device *__connman_element_get_device(struct connman_element *element);
 const char *__connman_element_get_device_path(struct connman_element *element);
 const char *__connman_element_get_network_path(struct connman_element *element);
@@ -226,6 +227,8 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 int __connman_service_set_carrier(struct connman_service *service,
 						connman_bool_t carrier);
 int __connman_service_indicate_configuration(struct connman_service *service);
+int __connman_service_ready(struct connman_service *service);
+int __connman_service_disconnect(struct connman_service *service);
 
 #include <connman/notifier.h>
 

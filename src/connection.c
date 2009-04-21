@@ -467,6 +467,7 @@ static void unregister_interface(struct connman_element *element)
 
 static int connection_probe(struct connman_element *element)
 {
+	struct connman_service *service;
 	const char *gateway = NULL;
 
 	DBG("element %p name %s", element, element->name);
@@ -484,6 +485,9 @@ static int connection_probe(struct connman_element *element)
 
 	if (register_interface(element) < 0)
 		return -ENODEV;
+
+	service = __connman_element_get_service(element);
+	__connman_service_ready(service);
 
 	if (gateway == NULL)
 		return 0;
@@ -509,9 +513,13 @@ done:
 
 static void connection_remove(struct connman_element *element)
 {
+	struct connman_service *service;
 	const char *gateway = NULL;
 
 	DBG("element %p name %s", element, element->name);
+
+	service = __connman_element_get_service(element);
+	__connman_service_disconnect(service);
 
 	unregister_interface(element);
 
