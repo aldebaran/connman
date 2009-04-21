@@ -170,6 +170,18 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
 
+		device->disconnected = TRUE;
+
+		switch (device->policy) {
+		case CONNMAN_DEVICE_POLICY_UNKNOWN:
+		case CONNMAN_DEVICE_POLICY_IGNORE:
+		case CONNMAN_DEVICE_POLICY_OFF:
+		case CONNMAN_DEVICE_POLICY_MANUAL:
+			return 0;
+		case CONNMAN_DEVICE_POLICY_AUTO:
+			break;
+		}
+
 		switch (device->element.ipv4.method) {
 		case CONNMAN_IPV4_METHOD_UNKNOWN:
 		case CONNMAN_IPV4_METHOD_OFF:
@@ -190,6 +202,8 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 			if (connman_element_register(element,
 							&device->element) < 0)
 				connman_element_unref(element);
+
+			device->disconnected = FALSE;
 
 			__connman_service_indicate_configuration(service);
 		}
@@ -1257,19 +1271,6 @@ int connman_device_set_carrier(struct connman_device *device,
 		return -EALREADY;
 
 	device->carrier = carrier;
-
-	if (carrier == TRUE)
-		device->disconnected = FALSE;
-
-	switch (device->policy) {
-	case CONNMAN_DEVICE_POLICY_UNKNOWN:
-	case CONNMAN_DEVICE_POLICY_IGNORE:
-	case CONNMAN_DEVICE_POLICY_OFF:
-		return 0;
-	case CONNMAN_DEVICE_POLICY_AUTO:
-	case CONNMAN_DEVICE_POLICY_MANUAL:
-		break;
-	}
 
 	return set_carrier(device, device->carrier);
 }
