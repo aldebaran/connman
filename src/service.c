@@ -462,6 +462,8 @@ int connman_service_set_favorite(struct connman_service *service,
 int __connman_service_set_carrier(struct connman_service *service,
 						connman_bool_t carrier)
 {
+	DBG("service %p carrier %d", service, carrier);
+
 	if (service == NULL)
 		return -EINVAL;
 
@@ -486,6 +488,8 @@ int __connman_service_set_carrier(struct connman_service *service,
 
 int __connman_service_indicate_configuration(struct connman_service *service)
 {
+	DBG("service %p", service);
+
 	if (service == NULL)
 		return -EINVAL;
 
@@ -498,6 +502,8 @@ int __connman_service_indicate_configuration(struct connman_service *service)
 
 int __connman_service_ready(struct connman_service *service)
 {
+	DBG("service %p", service);
+
 	if (service == NULL)
 		return -EINVAL;
 
@@ -510,6 +516,8 @@ int __connman_service_ready(struct connman_service *service)
 
 int __connman_service_disconnect(struct connman_service *service)
 {
+	DBG("service %p", service);
+
 	if (service == NULL)
 		return -EINVAL;
 
