@@ -141,8 +141,8 @@ static const char *state2string(enum connman_service_state state)
 static void state_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry;
-	const char *str;
+	DBusMessageIter entry, value;
+	const char *str, *key = "State";
 
 	if (service->path == NULL)
 		return;
@@ -157,8 +157,14 @@ static void state_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &entry);
-	connman_dbus_dict_append_variant(&entry, "State",
-						DBUS_TYPE_STRING, &str);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
+	dbus_message_iter_close_container(&entry, &value);
+
 	g_dbus_send_message(connection, signal);
 }
 
