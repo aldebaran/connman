@@ -542,6 +542,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
+		DBG("server %s domain %s", data->server, data->domain);
+
 		sk = g_io_channel_unix_get_fd(data->channel);
 
 		err = send(sk, buf, len, 0);
