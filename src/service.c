@@ -138,6 +138,27 @@ static const char *state2string(enum connman_service_state state)
 	return NULL;
 }
 
+static void state_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry;
+	const char *str;
+
+	str = state2string(service->state);
+	if (str == NULL)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+	connman_dbus_dict_append_variant(&entry, "State",
+						DBUS_TYPE_STRING, &str);
+	g_dbus_send_message(connection, signal);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -205,6 +226,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 			return __connman_error_failed(msg);
 
 		service->state = CONNMAN_SERVICE_STATE_READY;
+
+		state_changed(service);
 	}
 
 	return __connman_error_not_supported(msg);
@@ -220,6 +243,8 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 			return __connman_error_failed(msg);
 
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
+
+		state_changed(service);
 	}
 
 	return __connman_error_not_supported(msg);
@@ -451,6 +476,8 @@ int __connman_service_set_carrier(struct connman_service *service,
 	else
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
 
+	state_changed(service);
+
 	return connman_service_set_favorite(service, carrier);
 }
 
@@ -460,6 +487,8 @@ int __connman_service_indicate_configuration(struct connman_service *service)
 		return -EINVAL;
 
 	service->state = CONNMAN_SERVICE_STATE_CONFIGURATION;
+
+	state_changed(service);
 
 	return 0;
 }
