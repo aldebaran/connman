@@ -1270,6 +1270,9 @@ int __connman_device_connect(struct connman_device *device)
 {
 	DBG("device %p", device);
 
+	if (device->disconnected == FALSE)
+		return -EINVAL;
+
 	return 0;
 }
 
