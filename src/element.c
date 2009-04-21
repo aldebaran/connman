@@ -272,7 +272,7 @@ int __connman_element_count(struct connman_element *element,
 	return data.count;
 }
 
-const char *__connman_element_get_device(struct connman_element *element)
+const char *__connman_element_get_device_path(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
 						element->device != NULL)
@@ -281,10 +281,10 @@ const char *__connman_element_get_device(struct connman_element *element)
 	if (element->parent == NULL)
 		return NULL;
 
-	return __connman_element_get_device(element->parent);
+	return __connman_element_get_device_path(element->parent);
 }
 
-const char *__connman_element_get_network(struct connman_element *element)
+const char *__connman_element_get_network_path(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
 						element->network != NULL)
@@ -293,7 +293,7 @@ const char *__connman_element_get_network(struct connman_element *element)
 	if (element->parent == NULL)
 		return NULL;
 
-	return __connman_element_get_network(element->parent);
+	return __connman_element_get_network_path(element->parent);
 }
 
 static gint compare_priority(gconstpointer a, gconstpointer b)

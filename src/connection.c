@@ -349,12 +349,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Default",
 					DBUS_TYPE_BOOLEAN, &element->enabled);
 
-	device = __connman_element_get_device(element);
+	device = __connman_element_get_device_path(element);
 	if (device != NULL)
 		connman_dbus_dict_append_variant(&dict, "Device",
 					DBUS_TYPE_OBJECT_PATH, &device);
 
-	network = __connman_element_get_network(element);
+	network = __connman_element_get_network_path(element);
 	if (network != NULL)
 		connman_dbus_dict_append_variant(&dict, "Network",
 					DBUS_TYPE_OBJECT_PATH, &network);
