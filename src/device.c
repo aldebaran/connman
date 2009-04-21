@@ -1266,7 +1266,14 @@ int connman_device_set_carrier(struct connman_device *device,
 	return set_carrier(device, device->carrier);
 }
 
-void __connman_device_disconnect(struct connman_device *device)
+int __connman_device_connect(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
+int __connman_device_disconnect(struct connman_device *device)
 {
 	GHashTableIter iter;
 	gpointer key, value;
@@ -1283,6 +1290,8 @@ void __connman_device_disconnect(struct connman_device *device)
 		if (connman_network_get_connected(network) == TRUE)
 			__connman_network_disconnect(network);
 	}
+
+	return 0;
 }
 
 static void connect_known_network(struct connman_device *device)
