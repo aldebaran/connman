@@ -121,6 +121,8 @@ static const char *state2string(enum connman_service_state state)
 		break;
 	case CONNMAN_SERVICE_STATE_IDLE:
 		return "idle";
+	case CONNMAN_SERVICE_STATE_CARRIER:
+		return "carrier";
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 		return "association";
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
@@ -427,6 +429,26 @@ int connman_service_set_favorite(struct connman_service *service,
 	__connman_profile_changed();
 
 	return 0;
+}
+
+int __connman_service_set_carrier(struct connman_service *service,
+						connman_bool_t carrier)
+{
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		return -EINVAL;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		break;
+	}
+
+	if (carrier == TRUE)
+		service->state = CONNMAN_SERVICE_STATE_CARRIER;
+	else
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+
+	return connman_service_set_favorite(service, carrier);
 }
 
 /**

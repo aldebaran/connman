@@ -122,7 +122,7 @@ int __connman_profile_set_carrier(struct connman_device *device,
 	if (service == NULL)
 		return -EINVAL;
 
-	return connman_service_set_favorite(service, carrier);
+	return __connman_service_set_carrier(service, carrier);
 }
 
 int __connman_profile_add_network(struct connman_network *network)
