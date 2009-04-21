@@ -198,10 +198,14 @@ static DBusMessage *connect_service(DBusConnection *conn,
 {
 	struct connman_service *service = data;
 
-	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
-		return __connman_error_not_supported(msg);
+	if (service->device != NULL) {
+		if (__connman_device_connect(service->device) < 0)
+			return __connman_error_failed(msg);
 
-	return __connman_error_not_implemented(msg);
+		service->state = CONNMAN_SERVICE_STATE_READY;
+	}
+
+	return __connman_error_not_supported(msg);
 }
 
 static DBusMessage *disconnect_service(DBusConnection *conn,
@@ -209,10 +213,14 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 {
 	struct connman_service *service = data;
 
-	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
-		return __connman_error_not_supported(msg);
+	if (service->device != NULL) {
+		if (__connman_device_connect(service->device) < 0)
+			return __connman_error_failed(msg);
 
-	return __connman_error_not_implemented(msg);
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+	}
+
+	return __connman_error_not_supported(msg);
 }
 
 static DBusMessage *remove_service(DBusConnection *conn,
@@ -223,7 +231,7 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
 
-	service->favorite = FALSE;
+	connman_service_set_favorite(service, FALSE);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
