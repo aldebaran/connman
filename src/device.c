@@ -161,7 +161,10 @@ static enum connman_device_policy string2policy(const char *policy)
 
 static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 {
-	__connman_profile_set_carrier(device, carrier);
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_device(device);
+	__connman_service_set_carrier(service, carrier);
 
 	if (carrier == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
@@ -187,6 +190,8 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 			if (connman_element_register(element,
 							&device->element) < 0)
 				connman_element_unref(element);
+
+			__connman_service_indicate_configuration(service);
 		}
 	} else
 		connman_element_unregister_children(&device->element);

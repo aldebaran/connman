@@ -111,20 +111,6 @@ int __connman_profile_remove_device(struct connman_device *device)
 	return 0;
 }
 
-int __connman_profile_set_carrier(struct connman_device *device,
-						connman_bool_t carrier)
-{
-	struct connman_service *service;
-
-	DBG("device %p carrier %d", device, carrier);
-
-	service = __connman_service_lookup_from_device(device);
-	if (service == NULL)
-		return -EINVAL;
-
-	return __connman_service_set_carrier(service, carrier);
-}
-
 int __connman_profile_add_network(struct connman_network *network)
 {
 	struct connman_service *service;

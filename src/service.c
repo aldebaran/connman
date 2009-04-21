@@ -434,6 +434,9 @@ int connman_service_set_favorite(struct connman_service *service,
 int __connman_service_set_carrier(struct connman_service *service,
 						connman_bool_t carrier)
 {
+	if (service == NULL)
+		return -EINVAL;
+
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -449,6 +452,16 @@ int __connman_service_set_carrier(struct connman_service *service,
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
 
 	return connman_service_set_favorite(service, carrier);
+}
+
+int __connman_service_indicate_configuration(struct connman_service *service)
+{
+	if (service == NULL)
+		return -EINVAL;
+
+	service->state = CONNMAN_SERVICE_STATE_CONFIGURATION;
+
+	return 0;
 }
 
 /**
