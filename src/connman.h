@@ -53,8 +53,9 @@ int __connman_profile_init(DBusConnection *conn);
 void __connman_profile_cleanup(void);
 
 void __connman_profile_list(DBusMessageIter *iter);
-void __connman_profile_list_services(DBusMessageIter *iter);
 const char *__connman_profile_active(void);
+
+void __connman_profile_changed(void);
 
 #include <connman/log.h>
 
@@ -213,6 +214,14 @@ int __connman_profile_remove_network(struct connman_network *network);
 
 int __connman_service_init(void);
 void __connman_service_cleanup(void);
+
+void __connman_service_list(DBusMessageIter *iter);
+
+struct connman_service *__connman_service_lookup_from_device(struct connman_device *device);
+struct connman_service *__connman_service_create_from_device(struct connman_device *device);
+
+struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
+struct connman_service *__connman_service_create_from_network(struct connman_network *network);
 
 #include <connman/notifier.h>
 

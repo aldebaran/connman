@@ -105,7 +105,7 @@ static void append_services(DBusMessageIter *dict)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_profile_list_services(&iter);
+	__connman_service_list(&iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);

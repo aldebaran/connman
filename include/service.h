@@ -69,6 +69,10 @@ extern struct connman_service *connman_service_create(void);
 extern struct connman_service *connman_service_ref(struct connman_service *service);
 extern void connman_service_unref(struct connman_service *service);
 
+extern int connman_service_set_favorite(struct connman_service *service,
+						connman_bool_t favorite);
+
+extern struct connman_service *connman_service_lookup(const char *identifier);
 extern struct connman_service *connman_service_get(const char *identifier);
 extern void connman_service_put(struct connman_service *service);
 
