@@ -147,6 +147,18 @@ static int setup_hostname(void)
 
 	connman_info("System hostname is %s", name);
 
+	memset(name, 0, sizeof(name));
+
+	if (getdomainname(name, HOST_NAME_MAX) < 0) {
+		connman_error("Failed to get current domainname");
+		return -EIO;
+	}
+
+	if (strcmp(name, "(none)") == 0)
+		return 0;
+
+	connman_info("System domainname is %s", name);
+
 	return 0;
 }
 
