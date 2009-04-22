@@ -56,3 +56,9 @@ DBusMessage *__connman_error_not_implemented(DBusMessage *msg)
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 						".NotImplemented", NULL);
 }
+
+DBusMessage *__connman_error_no_carrier(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+							".NoCarrier", NULL);
+}

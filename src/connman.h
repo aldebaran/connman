@@ -37,6 +37,7 @@ DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg);
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
 DBusMessage *__connman_error_not_supported(DBusMessage *msg);
 DBusMessage *__connman_error_not_implemented(DBusMessage *msg);
+DBusMessage *__connman_error_no_carrier(DBusMessage *msg);
 
 int __connman_selftest(void);
 
