@@ -28,13 +28,111 @@
 #include <limits.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <sys/inotify.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <net/if.h>
 
+#include <glib.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/log.h>
+
+static GIOChannel *inotify_channel = NULL;
+
+static int hostname_descriptor = -1;
+
+static gboolean inotify_event(GIOChannel *channel,
+					GIOCondition condition, gpointer data)
+{
+	unsigned char buf[129], *ptr = buf;
+	gsize len;
+	GIOError err;
+
+	if (condition & (G_IO_HUP | G_IO_ERR))
+		return FALSE;
+
+	memset(buf, 0, sizeof(buf));
+
+	err = g_io_channel_read(channel, (gchar *) buf, sizeof(buf) - 1, &len);
+	if (err != G_IO_ERROR_NONE) {
+		if (err == G_IO_ERROR_AGAIN)
+			return TRUE;
+		connman_error("Reading from inotify channel failed");
+		return FALSE;
+	}
+
+	while (len >= sizeof(struct inotify_event)) {
+		struct inotify_event *evt = (struct inotify_event *) ptr;
+
+		if (evt->wd == hostname_descriptor) {
+			if (evt->mask & (IN_CREATE | IN_MOVED_TO))
+				connman_info("create hostname file");
+
+			if (evt->mask & (IN_DELETE | IN_MOVED_FROM))
+				connman_info("delete hostname file");
+
+			if (evt->mask & (IN_MODIFY | IN_MOVE_SELF))
+				connman_info("modify hostname file");
+		}
+
+		len -= sizeof(struct inotify_event) + evt->len;
+		ptr += sizeof(struct inotify_event) + evt->len;
+	}
+
+	return TRUE;
+}
+
+static int create_watch(void)
+{
+	int fd;
+
+	fd = inotify_init();
+	if (fd < 0) {
+		connman_error("Creation of inotify context failed");
+		return -EIO;
+	}
+
+	inotify_channel = g_io_channel_unix_new(fd);
+	if (inotify_channel == NULL) {
+		connman_error("Creation of inotify channel failed");
+		close(fd);
+		return -EIO;
+	}
+
+	g_io_add_watch(inotify_channel, G_IO_IN | G_IO_ERR | G_IO_HUP,
+							inotify_event, NULL);
+
+	hostname_descriptor = inotify_add_watch(fd, "/etc/hostname",
+				IN_MODIFY | IN_DELETE_SELF | IN_MOVE_SELF);
+	if (hostname_descriptor < 0) {
+		connman_error("Creation of hostname watch failed");
+		g_io_channel_unref(inotify_channel);
+		inotify_channel = NULL;
+		close(fd);
+		return -EIO;
+	}
+
+	return 0;
+}
+
+static void remove_watch(void)
+{
+	int fd;
+
+	if (inotify_channel == NULL)
+		return;
+
+	fd = g_io_channel_unix_get_fd(inotify_channel);
+
+	if (hostname_descriptor >= 0)
+		inotify_rm_watch(fd, hostname_descriptor);
+
+	g_io_channel_unref(inotify_channel);
+
+	close(fd);
+}
 
 static int setup_hostname(void)
 {
@@ -52,7 +150,7 @@ static int setup_hostname(void)
 	return 0;
 }
 
-static int loopback_init(void)
+static int setup_loopback(void)
 {
 	struct ifreq ifr;
 	struct sockaddr_in *addr;
@@ -115,13 +213,23 @@ static int loopback_init(void)
 done:
 	close(sk);
 
+	return err;
+}
+
+static int loopback_init(void)
+{
+	setup_loopback();
+
 	setup_hostname();
 
-	return err;
+	create_watch();
+
+	return 0;
 }
 
 static void loopback_exit(void)
 {
+	remove_watch();
 }
 
 CONNMAN_PLUGIN_DEFINE(loopback, "Loopback device plugin", VERSION,
