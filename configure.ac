@@ -149,6 +149,12 @@ if (test "${enable_ppp}" = "yes" || test "${enable_novatel}" = "yes" ||
 fi
 AM_CONDITIONAL(PPPD, test "${enable_ppp}" = "yes")
 
+AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,
+			AC_MSG_ERROR(inotify header files are required))
+
+AC_CHECK_LIB(c, inotify_init, dummy=yes,
+			AC_MSG_ERROR(inotify library support is required))
+
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
