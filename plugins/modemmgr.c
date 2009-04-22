@@ -65,13 +65,18 @@ static void modemmgr_connect(DBusConnection *connection, void *user_data)
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get modem devices");
-		dbus_message_unref(message);
-		return;
+		goto done;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		goto done;
 	}
 
 	dbus_pending_call_set_notify(call, enumerate_devices_reply,
 							NULL, NULL);
 
+done:
 	dbus_message_unref(message);
 }
 

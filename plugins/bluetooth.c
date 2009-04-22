@@ -117,6 +117,13 @@ static void get_properties(DBusConnection *connection,
 		return;
 	}
 
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		g_free(data);
+		return;
+	}
+
 	data->connection = connection;
 	data->message    = message;
 	data->callback   = callback;
@@ -240,6 +247,12 @@ static int pan_connect(struct connman_network *network)
 		return -EINVAL;
 	}
 
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
 	dbus_pending_call_set_notify(call, connect_reply, network, NULL);
 
 	dbus_message_unref(message);
@@ -303,6 +316,12 @@ static int pan_disconnect(struct connman_network *network)
 	if (dbus_connection_send_with_reply(data->connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to disconnect service");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		return -EINVAL;
 	}
@@ -389,6 +408,12 @@ static int change_powered(DBusConnection *connection, const char *path,
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to change Powered property");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		return -EINVAL;
 	}
@@ -718,13 +743,18 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get Bluetooth adapters");
-		dbus_message_unref(message);
-		return;
+		goto done;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		goto done;
 	}
 
 	dbus_pending_call_set_notify(call, list_adapters_reply,
 							connection, NULL);
 
+done:
 	dbus_message_unref(message);
 }
 

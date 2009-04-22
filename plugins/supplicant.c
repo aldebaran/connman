@@ -279,6 +279,12 @@ static int add_interface(struct supplicant_task *task)
 		return -EIO;
 	}
 
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
 	dbus_pending_call_set_notify(call, add_interface_reply, task, NULL);
 
 	dbus_message_unref(message);
@@ -349,6 +355,12 @@ static int create_interface(struct supplicant_task *task)
 		return -EIO;
 	}
 
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
 	dbus_pending_call_set_notify(call, get_interface_reply, task, NULL);
 
 	dbus_message_unref(message);
@@ -397,6 +409,12 @@ static int remove_interface(struct supplicant_task *task)
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to remove interface");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		return -EIO;
 	}
@@ -1129,6 +1147,12 @@ static void get_properties(struct supplicant_task *task)
 		goto noscan;
 	}
 
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		goto noscan;
+	}
+
 	dbus_pending_call_set_notify(call, properties_reply, task, NULL);
 
 	dbus_message_unref(message);
@@ -1219,6 +1243,11 @@ static void scan_results_available(struct supplicant_task *task)
 
 	if (task->noscan == FALSE)
 		connman_device_set_scanning(task->device, TRUE);
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		goto done;
+	}
 
 	dbus_pending_call_set_notify(call, scan_results_reply, task, NULL);
 
