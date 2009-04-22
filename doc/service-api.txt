@@ -122,6 +122,14 @@ Properties	string State [readonly]
 			This property might be only present for WiFi
 			services.
 
+		string Passphrase [readwrite]
+
+			If the service type is WiFi, then this property
+			can be used to store a passphrase.
+
+			This property is still experimental and might be
+			removed in future version.
+
 		uint8 Strength [readonly]
 
 			Indicates the signal strength of the service. This

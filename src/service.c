@@ -44,7 +44,9 @@ struct connman_service {
 	connman_bool_t favorite;
 	unsigned int order;
 	char *name;
+	char *passphrase;
 	struct connman_device *device;
+	struct connman_network *network;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -220,9 +222,61 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
 
+	if (service->passphrase != NULL &&
+			__connman_security_check_privilege(msg,
+				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
+		connman_dbus_dict_append_variant(&dict, "Passphrase",
+				DBUS_TYPE_STRING, &service->passphrase);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
+}
+
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_service *service = data;
+	DBusMessageIter iter, value;
+	const char *name;
+	int type;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
+		return __connman_error_permission_denied(msg);
+
+	type = dbus_message_iter_get_arg_type(&value);
+
+	if (g_str_equal(name, "Passphrase") == TRUE) {
+		const char *passphrase;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
+		if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_SECRET) < 0)
+			return __connman_error_permission_denied(msg);
+
+		dbus_message_iter_get_basic(&value, &passphrase);
+
+		g_free(service->passphrase);
+		service->passphrase = g_strdup(passphrase);
+
+		if (service->network != NULL)
+			connman_network_set_string(service->network,
+				"WiFi.Passphrase", service->passphrase);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
@@ -295,12 +349,13 @@ static DBusMessage *move_after(DBusConnection *conn,
 }
 
 static GDBusMethodTable service_methods[] = {
-	{ "GetProperties", "",  "a{sv}", get_properties     },
-	{ "Connect",       "",  "",      connect_service    },
-	{ "Disconnect",    "",  "",      disconnect_service },
-	{ "Remove",        "",  "",      remove_service     },
-	{ "MoveBefore",    "o", "",      move_before        },
-	{ "MoveAfter",     "o", "",      move_after         },
+	{ "GetProperties", "",   "a{sv}", get_properties     },
+	{ "SetProperty",   "sv", "",      set_property       },
+	{ "Connect",       "",   "",      connect_service    },
+	{ "Disconnect",    "",   "",      disconnect_service },
+	{ "Remove",        "",   "",      remove_service     },
+	{ "MoveBefore",    "o",  "",      move_before        },
+	{ "MoveAfter",     "o",  "",      move_after         },
 	{ },
 };
 
@@ -328,7 +383,11 @@ static void service_free(gpointer data)
 		g_free(path);
 	}
 
+	if (service->network != NULL)
+		connman_network_unref(service->network);
+
 	g_free(service->name);
+	g_free(service->passphrase);
 	g_free(service->identifier);
 	g_free(service);
 }
@@ -693,7 +752,7 @@ done:
 
 /**
  * connman_service_lookup_from_network:
- * @device: device structure
+ * @network: network structure
  *
  * Look up a service by network (reference count will not be increased)
  */
@@ -765,17 +824,57 @@ static enum connman_service_mode convert_wifi_security(const char *security)
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
 }
 
+static void update_from_network(struct connman_service *service,
+					struct connman_network *network)
+{
+	connman_uint8_t strength = service->strength;
+	GSequenceIter *iter;
+	const char *str;
+
+	str = connman_network_get_string(network, "Name");
+	if (str != NULL) {
+		g_free(service->name);
+		service->name = g_strdup(str);
+	}
+
+	service->strength = connman_network_get_uint8(network, "Strength");
+
+	str = connman_network_get_string(network, "WiFi.Mode");
+	service->mode = convert_wifi_mode(str);
+
+	str = connman_network_get_string(network, "WiFi.Security");
+	service->security = convert_wifi_security(str);
+
+	if (service->strength > strength && service->network != NULL) {
+		connman_network_unref(service->network);
+		service->network = NULL;
+	}
+
+	if (service->network == NULL) {
+		service->network = connman_network_ref(network);
+
+		str = connman_network_get_string(network, "WiFi.Passphrase");
+		if (str != NULL) {
+			g_free(service->passphrase);
+			service->passphrase = g_strdup(str);
+		}
+	}
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL)
+		g_sequence_sort_changed(iter, service_compare, NULL);
+}
+
 /**
  * connman_service_create_from_network:
- * @device: device structure
+ * @network: network structure
  *
  * Look up service by network and if not found, create one
  */
 struct connman_service *__connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
-	GSequenceIter *iter;
-	const char *group, *str;
+	const char *group;
 	char *name;
 
 	group = __connman_network_get_group(network);
@@ -790,6 +889,10 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 		goto done;
 
 	if (service->path != NULL) {
+		update_from_network(service, network);
+
+		__connman_profile_changed();
+
 		connman_service_put(service);
 		service = NULL;
 		goto done;
@@ -797,18 +900,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	service->type = convert_network_type(network);
 
-	service->name = g_strdup(connman_network_get_string(network, "Name"));
-	service->strength = connman_network_get_uint8(network, "Strength");
-
-	str = connman_network_get_string(network, "WiFi.Mode");
-	service->mode = convert_wifi_mode(str);
-
-	str = connman_network_get_string(network, "WiFi.Security");
-	service->security = convert_wifi_security(str);
-
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL)
-		g_sequence_sort_changed(iter, service_compare, NULL);
+	update_from_network(service, network);
 
 	service_register(service);
 
