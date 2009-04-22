@@ -12,6 +12,12 @@ if len(sys.argv) < 2:
 	print "Usage: %s <command>" % (sys.argv[0])
 	print ""
 	print "  state"
+	print "  services"
+	print "  passphrase <service> [passphrase]"
+	print "  connect <service>"
+	print "  disconnect <service>"
+	print "  remove <service>"
+	print ""
 	print "  scan [ <interface> ]"
 	print "  dev <interface>"
 	print "  dev <interface> scan"
@@ -62,7 +68,11 @@ def print_networks(networks):
 		else:
 			connected = " "
 
-		name = properties["Name"]
+		if "Name" in properties.keys():
+			name = properties["Name"]
+		else:
+			name = ""
+
 		strength = int(properties["Strength"])
 
 		details = ""
@@ -78,7 +88,7 @@ def print_networks(networks):
 			if properties["WiFi.Passphrase"] != "":
 				details += "{passphrase present}"
 
-		print "%s %-20s %3d%%  %s" % (connected,
+		print "%s %-26s %3d%%  %s" % (connected,
 						name, strength, details)
 
 def select_network(networks, name):
@@ -132,10 +142,109 @@ def disconnect_network(networks, name):
 			print "Disconnecting from network %s" % (name)
 			network.Disconnect()
 
+def print_services(services):
+	for path in services:
+		service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+		properties = service.GetProperties()
+
+		identifier = path[path.rfind("/") + 1:]
+
+		if properties["Favorite"] == dbus.Boolean(1):
+			favorite = "*"
+		else:
+			favorite = " "
+
+		if "Name" in properties.keys():
+			name = properties["Name"]
+		else:
+			name = "{" + properties["Type"] + "}"
+
+		print "%s %-26s { %s }" % (favorite, name, identifier)
+
 if sys.argv[1] == "state":
 	properties = manager.GetProperties()
 
 	print "System is %s" % (properties["State"])
+
+elif sys.argv[1] in ["services", "list", "show"]:
+	properties = manager.GetProperties()
+
+	print_services(properties["Services"])
+
+elif sys.argv[1] in ["passphrase", "pass"]:
+	if (len(sys.argv) < 3):
+		print "Need at least service parameter"
+		sys.exit(1)
+
+	path = "/profile/default/" + sys.argv[2]
+
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	if (len(sys.argv) > 3):
+		passphrase = sys.argv[3]
+
+		service.SetProperty("Passphrase", passphrase);
+
+		print "Passphrase %s set for %s" % (passphrase, sys.argv[2])
+	else:
+		properties = service.GetProperties()
+
+		if "Name" in properties.keys():
+			name = properties["Name"]
+		else:
+			name = "{" + properties["Type"] + "}"
+
+		if "Passphrase" in properties.keys():
+			passphrase = properties["Passphrase"]
+		else:
+			passphrase = "not set"
+
+		print "Passphrase for %s is %s" % (name, passphrase)
+
+elif sys.argv[1] in ["connect", "conn"]:
+	if (len(sys.argv) < 3):
+		print "Need at least service parameter"
+		sys.exit(1)
+
+	path = "/profile/default/" + sys.argv[2]
+
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	service.Connect()
+
+elif sys.argv[1] in ["disconnect", "disc"]:
+	if (len(sys.argv) < 3):
+		print "Need at least service parameter"
+		sys.exit(1)
+
+	path = "/profile/default/" + sys.argv[2]
+
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	service.Disconnect()
+
+elif sys.argv[1] in ["remove"]:
+	if (len(sys.argv) < 3):
+		print "Need at least service parameter"
+		sys.exit(1)
+
+	path = "/profile/default/" + sys.argv[2]
+
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	properties = service.GetProperties()
+
+	if properties["Favorite"] == dbus.Boolean(0):
+		print "Only favorite services can be removed"
+		sys.exit(1)
+
+	service.Remove()
 
 elif sys.argv[1] == "scan":
 	properties = manager.GetProperties()
