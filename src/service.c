@@ -592,10 +592,14 @@ static int service_register(struct connman_service *service)
 {
 	const char *path = __connman_profile_active();
 
+	DBG("service %p", service);
+
 	if (service->path != NULL)
 		return -EALREADY;
 
 	service->path = g_strdup_printf("%s/%s", path, service->identifier);
+
+	DBG("path %s", service->path);
 
 	g_dbus_register_interface(connection, service->path,
 					CONNMAN_SERVICE_INTERFACE,
@@ -696,10 +700,15 @@ done:
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
+	const char *group;
 	char *name;
 
-	name = g_strdup_printf("%s_%s", __connman_network_get_type(network),
-					__connman_network_get_group(network));
+	group = __connman_network_get_group(network);
+	if (group == NULL)
+		return NULL;
+
+	name = g_strdup_printf("%s_%s",
+				__connman_network_get_type(network), group);
 
 	service = connman_service_lookup(name);
 
@@ -737,10 +746,15 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 struct connman_service *__connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
+	const char *group;
 	char *name;
 
-	name = g_strdup_printf("%s_%s", __connman_network_get_type(network),
-					__connman_network_get_group(network));
+	group = __connman_network_get_group(network);
+	if (group == NULL)
+		return NULL;
+
+	name = g_strdup_printf("%s_%s",
+				__connman_network_get_type(network), group);
 
 	service = connman_service_get(name);
 	if (service == NULL)
