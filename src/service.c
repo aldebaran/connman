@@ -737,6 +737,34 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
+static enum connman_service_mode convert_wifi_mode(const char *mode)
+{
+	if (mode == NULL)
+		return CONNMAN_SERVICE_MODE_UNKNOWN;
+	else if (g_str_equal(mode, "managed") == 0)
+		return CONNMAN_SERVICE_MODE_MANAGED;
+	else if (g_str_equal(mode, "adhoc") == 0)
+		return CONNMAN_SERVICE_MODE_ADHOC;
+	else
+		return CONNMAN_SERVICE_MODE_UNKNOWN;
+}
+
+static enum connman_service_mode convert_wifi_security(const char *security)
+{
+	if (security == NULL)
+		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
+	else if (g_str_equal(security, "none") == 0)
+		return CONNMAN_SERVICE_SECURITY_NONE;
+	else if (g_str_equal(security, "wep") == 0)
+		return CONNMAN_SERVICE_SECURITY_WEP;
+	else if (g_str_equal(security, "wpa") == 0)
+		return CONNMAN_SERVICE_SECURITY_WPA;
+	else if (g_str_equal(security, "wpa2") == 0)
+		return CONNMAN_SERVICE_SECURITY_WPA2;
+	else
+		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
+}
+
 /**
  * connman_service_create_from_network:
  * @device: device structure
@@ -746,7 +774,7 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 struct connman_service *__connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
-	const char *group;
+	const char *group, *str;
 	char *name;
 
 	group = __connman_network_get_group(network);
@@ -767,6 +795,15 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	}
 
 	service->type = convert_network_type(network);
+
+	service->name = g_strdup(connman_network_get_string(network, "Name"));
+	service->strength = connman_network_get_uint8(network, "Strength");
+
+	str = connman_network_get_string(network, "WiFi.Mode");
+	service->mode = convert_wifi_mode(str);
+
+	str = connman_network_get_string(network, "WiFi.Security");
+	service->security = convert_wifi_security(str);
 
 	service_register(service);
 
