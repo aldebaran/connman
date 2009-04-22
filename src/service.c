@@ -284,13 +284,32 @@ static DBusMessage *connect_service(DBusConnection *conn,
 {
 	struct connman_service *service = data;
 
+	if (service->network != NULL) {
+		int err;
+
+		err = connman_network_connect(service->network);
+		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+
+		service->state = CONNMAN_SERVICE_STATE_ASSOCIATION;
+
+		state_changed(service);
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
 	if (service->device != NULL) {
+		if (service->favorite == FALSE)
+			return __connman_error_no_carrier(msg);
+
 		if (__connman_device_connect(service->device) < 0)
 			return __connman_error_failed(msg);
 
 		service->state = CONNMAN_SERVICE_STATE_READY;
 
 		state_changed(service);
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
 	return __connman_error_not_supported(msg);
@@ -301,13 +320,32 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 {
 	struct connman_service *service = data;
 
+	if (service->network != NULL) {
+		int err;
+
+		err = __connman_network_disconnect(service->network);
+		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+
+		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
+
+		state_changed(service);
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
 	if (service->device != NULL) {
+		if (service->favorite == FALSE)
+			return __connman_error_no_carrier(msg);
+
 		if (__connman_device_connect(service->device) < 0)
 			return __connman_error_failed(msg);
 
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
 
 		state_changed(service);
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
 	return __connman_error_not_supported(msg);
@@ -320,6 +358,18 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
+
+	if (service->network != NULL) {
+		int err;
+
+		err = __connman_network_disconnect(service->network);
+		if (err < 0 && err != -EINPROGRESS)
+			return __connman_error_failed(msg);
+
+		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
+
+		state_changed(service);
+	}
 
 	connman_service_set_favorite(service, FALSE);
 
