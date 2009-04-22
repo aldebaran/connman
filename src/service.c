@@ -774,6 +774,7 @@ static enum connman_service_mode convert_wifi_security(const char *security)
 struct connman_service *__connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
+	GSequenceIter *iter;
 	const char *group, *str;
 	char *name;
 
@@ -804,6 +805,10 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	str = connman_network_get_string(network, "WiFi.Security");
 	service->security = convert_wifi_security(str);
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL)
+		g_sequence_sort_changed(iter, service_compare, NULL);
 
 	service_register(service);
 
