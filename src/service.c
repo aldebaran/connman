@@ -741,9 +741,9 @@ static enum connman_service_mode convert_wifi_mode(const char *mode)
 {
 	if (mode == NULL)
 		return CONNMAN_SERVICE_MODE_UNKNOWN;
-	else if (g_str_equal(mode, "managed") == 0)
+	else if (g_str_equal(mode, "managed") == TRUE)
 		return CONNMAN_SERVICE_MODE_MANAGED;
-	else if (g_str_equal(mode, "adhoc") == 0)
+	else if (g_str_equal(mode, "adhoc") == TRUE)
 		return CONNMAN_SERVICE_MODE_ADHOC;
 	else
 		return CONNMAN_SERVICE_MODE_UNKNOWN;
@@ -753,13 +753,13 @@ static enum connman_service_mode convert_wifi_security(const char *security)
 {
 	if (security == NULL)
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
-	else if (g_str_equal(security, "none") == 0)
+	else if (g_str_equal(security, "none") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_NONE;
-	else if (g_str_equal(security, "wep") == 0)
+	else if (g_str_equal(security, "wep") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WEP;
-	else if (g_str_equal(security, "wpa") == 0)
+	else if (g_str_equal(security, "wpa") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WPA;
-	else if (g_str_equal(security, "wpa2") == 0)
+	else if (g_str_equal(security, "wpa2") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WPA2;
 	else
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
