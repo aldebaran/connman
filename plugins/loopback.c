@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <limits.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -34,6 +35,22 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/log.h>
+
+static int setup_hostname(void)
+{
+	char name[HOST_NAME_MAX + 1];
+
+	memset(name, 0, sizeof(name));
+
+	if (gethostname(name, HOST_NAME_MAX) < 0) {
+		connman_error("Failed to get current hostname");
+		return -EIO;
+	}
+
+	connman_info("System hostname is %s", name);
+
+	return 0;
+}
 
 static int loopback_init(void)
 {
@@ -97,6 +114,8 @@ static int loopback_init(void)
 
 done:
 	close(sk);
+
+	setup_hostname();
 
 	return err;
 }
