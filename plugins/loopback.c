@@ -136,6 +136,14 @@ static void remove_watch(void)
 }
 #endif
 
+static void create_hostname(void)
+{
+	const char *name = "localhost";
+
+	if (sethostname(name, strlen(name)) < 0)
+		connman_error("Failed to set hostname to %s", name);
+}
+
 static int setup_hostname(void)
 {
 	char name[HOST_NAME_MAX + 1];
@@ -149,6 +157,8 @@ static int setup_hostname(void)
 
 	if (strlen(name) > 0 && strcmp(name, "(none)") != 0)
 		connman_info("System hostname is %s", name);
+	else
+		create_hostname();
 
 	memset(name, 0, sizeof(name));
 
