@@ -729,10 +729,15 @@ static int service_register(struct connman_service *service)
 struct connman_service *__connman_service_lookup_from_device(struct connman_device *device)
 {
 	struct connman_service *service;
+	const char *ident;
 	char *name;
 
-	name = g_strdup_printf("%s_%d", __connman_device_get_type(device),
-					connman_device_get_index(device));
+	ident = __connman_device_get_ident(device);
+	if (ident == NULL)
+		return NULL;
+
+	name = g_strdup_printf("%s_%s",
+				__connman_device_get_type(device), ident);
 
 	service = connman_service_lookup(name);
 
@@ -773,10 +778,15 @@ static enum connman_service_type convert_device_type(struct connman_device *devi
 struct connman_service *__connman_service_create_from_device(struct connman_device *device)
 {
 	struct connman_service *service;
+	const char *ident;
 	char *name;
 
-	name = g_strdup_printf("%s_%d", __connman_device_get_type(device),
-					connman_device_get_index(device));
+	ident = __connman_device_get_ident(device);
+	if (ident == NULL)
+		return NULL;
+
+	name = g_strdup_printf("%s_%s",
+				__connman_device_get_type(device), ident);
 
 	service = connman_service_get(name);
 	if (service == NULL)
@@ -809,15 +819,19 @@ done:
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
-	const char *group;
+	const char *ident, *group;
 	char *name;
+
+	ident = __connman_network_get_ident(network);
+	if (ident == NULL)
+		return NULL;
 
 	group = __connman_network_get_group(network);
 	if (group == NULL)
 		return NULL;
 
-	name = g_strdup_printf("%s_%s",
-				__connman_network_get_type(network), group);
+	name = g_strdup_printf("%s_%s_%s",
+			__connman_network_get_type(network), ident, group);
 
 	service = connman_service_lookup(name);
 
@@ -924,15 +938,19 @@ static void update_from_network(struct connman_service *service,
 struct connman_service *__connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
-	const char *group;
+	const char *ident, *group;
 	char *name;
+
+	ident = __connman_network_get_ident(network);
+	if (ident == NULL)
+		return NULL;
 
 	group = __connman_network_get_group(network);
 	if (group == NULL)
 		return NULL;
 
-	name = g_strdup_printf("%s_%s",
-				__connman_network_get_type(network), group);
+	name = g_strdup_printf("%s_%s_%s",
+			__connman_network_get_type(network), ident, group);
 
 	service = connman_service_get(name);
 	if (service == NULL)

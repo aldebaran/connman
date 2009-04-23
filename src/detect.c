@@ -157,7 +157,7 @@ static char *index2ident(int index, const char *prefix)
 		return NULL;
 
 	eth = (void *) &ifr.ifr_hwaddr.sa_data;
-	snprintf(str, len, "%s%02X_%02X_%02X_%02X_%02X_%02X",
+	snprintf(str, len, "%s%02x%02x%02x%02x%02x%02x",
 						prefix ? prefix : "",
 						eth->ether_addr_octet[0],
 						eth->ether_addr_octet[1],
@@ -175,7 +175,7 @@ static void detect_newlink(unsigned short type, int index,
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	struct connman_device *device;
-	gchar *addr, *name, *devname;
+	char *addr, *name, *devname, *ident;
 
 	DBG("type %d index %d", type, index);
 
@@ -264,19 +264,24 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_GPS:
 		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
+		ident = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 		mode = CONNMAN_DEVICE_MODE_TRANSPORT_IP;
+		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
+		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
+		ident = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_HSO:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
+		ident = NULL;
 		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
 		break;
 	}
@@ -285,6 +290,11 @@ static void detect_newlink(unsigned short type, int index,
 
 	connman_device_set_index(device, index);
 	connman_device_set_interface(device, devname);
+
+	if (ident != NULL) {
+		connman_device_set_ident(device, ident);
+		g_free(ident);
+	}
 
 	connman_device_set_string(device, "Address", addr);
 
