@@ -39,6 +39,7 @@
 #include <connman/plugin.h>
 #include <connman/log.h>
 
+#if 0
 static GIOChannel *inotify_channel = NULL;
 
 static int hostname_descriptor = -1;
@@ -133,6 +134,7 @@ static void remove_watch(void)
 
 	close(fd);
 }
+#endif
 
 static int setup_hostname(void)
 {
@@ -233,14 +235,14 @@ static int loopback_init(void)
 
 	setup_hostname();
 
-	create_watch();
+	//create_watch();
 
 	return 0;
 }
 
 static void loopback_exit(void)
 {
-	remove_watch();
+	//remove_watch();
 }
 
 CONNMAN_PLUGIN_DEFINE(loopback, "Loopback device plugin", VERSION,
