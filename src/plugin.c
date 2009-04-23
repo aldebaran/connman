@@ -27,6 +27,10 @@
 
 #include <glib.h>
 
+#ifdef CONNMAN_PLUGIN_BUILTIN
+#undef CONNMAN_PLUGIN_BUILTIN
+#endif
+
 #include "connman.h"
 
 static GSList *plugins = NULL;
