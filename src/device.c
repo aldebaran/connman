@@ -45,6 +45,7 @@ struct connman_device {
 	char *node;
 	char *address;
 	char *interface;
+	char *ident;
 	unsigned int connections;
 	guint scan_timeout;
 
@@ -933,6 +934,7 @@ static void device_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	g_free(device->ident);
 	g_free(device->node);
 	g_free(device->name);
 	g_free(device->address);
@@ -1144,6 +1146,25 @@ void connman_device_set_interface(struct connman_device *device,
 const char *connman_device_get_interface(struct connman_device *device)
 {
 	return device->interface;
+}
+
+/**
+ * connman_device_set_ident:
+ * @device: device structure
+ * @ident: unique identifier
+ *
+ * Set unique identifier of device
+ */
+void connman_device_set_ident(struct connman_device *device,
+							const char *ident)
+{
+	g_free(device->ident);
+	device->ident = g_strdup(ident);
+}
+
+const char *__connman_device_get_ident(struct connman_device *device)
+{
+	return device->ident;
 }
 
 /**

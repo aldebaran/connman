@@ -610,6 +610,14 @@ const char *__connman_network_get_group(struct connman_network *network)
 	return network->group;
 }
 
+const char *__connman_network_get_ident(struct connman_network *network)
+{
+	if (network->device == NULL)
+		return NULL;
+
+	return __connman_device_get_ident(network->device);
+}
+
 /**
  * connman_network_set_available:
  * @network: network structure

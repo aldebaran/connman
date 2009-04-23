@@ -81,6 +81,9 @@ extern void connman_device_set_interface(struct connman_device *device,
 							const char *interface);
 extern const char *connman_device_get_interface(struct connman_device *device);
 
+extern void connman_device_set_ident(struct connman_device *device,
+							const char *ident);
+
 extern void connman_device_set_policy(struct connman_device *device,
 					enum connman_device_policy policy);
 extern void connman_device_set_mode(struct connman_device *device,

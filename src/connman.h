@@ -188,6 +188,7 @@ int __connman_device_disconnect(struct connman_device *device);
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
 const char *__connman_device_get_type(struct connman_device *device);
+const char *__connman_device_get_ident(struct connman_device *device);
 
 int __connman_device_set_offlinemode(connman_bool_t offlinemode);
 
@@ -208,6 +209,7 @@ connman_bool_t __connman_network_has_driver(struct connman_network *network);
 
 const char *__connman_network_get_type(struct connman_network *network);
 const char *__connman_network_get_group(struct connman_network *network);
+const char *__connman_network_get_ident(struct connman_network *network);
 
 int __connman_profile_add_network(struct connman_network *network);
 int __connman_profile_remove_network(struct connman_network *network);
