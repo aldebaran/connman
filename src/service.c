@@ -274,6 +274,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (service->network != NULL)
 			connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
+
+		__connman_storage_save_service(service);
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -372,6 +374,8 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	}
 
 	connman_service_set_favorite(service, FALSE);
+
+	__connman_storage_save_service(service);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -688,6 +692,8 @@ struct connman_service *connman_service_get(const char *identifier)
 	__connman_service_initialize(service);
 
 	service->identifier = g_strdup(identifier);
+
+	__connman_storage_load_service(service);
 
 	iter = g_sequence_insert_sorted(service_list, service,
 						service_compare, NULL);
