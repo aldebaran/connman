@@ -978,11 +978,35 @@ done:
 	return service;
 }
 
+static int service_load(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	return 0;
+}
+
+static int service_save(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	return 0;
+}
+
+static struct connman_storage service_storage = {
+	.name		= "service",
+	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+	.service_load	= service_load,
+	.service_save	= service_save,
+};
+
 int __connman_service_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
+
+	if (connman_storage_register(&service_storage) < 0)
+		connman_error("Failed to register service storage");
 
 	service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
@@ -1001,6 +1025,8 @@ void __connman_service_cleanup(void)
 
 	g_hash_table_destroy(service_hash);
 	service_hash = NULL;
+
+	connman_storage_unregister(&service_storage);
 
 	dbus_connection_unref(connection);
 }

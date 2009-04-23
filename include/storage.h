@@ -24,6 +24,7 @@
 
 #include <connman/device.h>
 #include <connman/network.h>
+#include <connman/service.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,9 @@ struct connman_storage {
 	int (*network_init) (struct connman_device *device);
 	int (*network_load) (struct connman_network *network);
 	int (*network_save) (struct connman_network *network);
+	enum connman_service_type service_type;
+	int (*service_load) (struct connman_service *service);
+	int (*service_save) (struct connman_service *service);
 };
 
 extern int connman_storage_register(struct connman_storage *storage);

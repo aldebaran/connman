@@ -174,6 +174,49 @@ int __connman_storage_save_network(struct connman_network *network)
 	return -ENOENT;
 }
 
+int __connman_storage_init_service(void)
+{
+	DBG("");
+
+	return -ENOENT;
+}
+
+int __connman_storage_load_service(struct connman_service *service)
+{
+	GSList *list;
+
+	DBG("service %p", service);
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->service_load) {
+			if (storage->service_load(service) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+int __connman_storage_save_service(struct connman_service *service)
+{
+	GSList *list;
+
+	DBG("service %p", service);
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->service_save) {
+			if (storage->service_save(service) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
 int __connman_storage_init(void)
 {
 	DBG("");

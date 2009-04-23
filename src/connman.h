@@ -98,9 +98,12 @@ void __connman_storage_cleanup(void);
 int __connman_storage_init_device();
 int __connman_storage_load_device(struct connman_device *device);
 int __connman_storage_save_device(struct connman_device *device);
-int __connman_storage_init_network();
+int __connman_storage_init_network(struct connman_device *device);
 int __connman_storage_load_network(struct connman_network *network);
 int __connman_storage_save_network(struct connman_network *network);
+int __connman_storage_init_service();
+int __connman_storage_load_service(struct connman_service *service);
+int __connman_storage_save_service(struct connman_service *service);
 
 #include <connman/driver.h>
 
