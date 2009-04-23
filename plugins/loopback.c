@@ -101,9 +101,6 @@ static int create_watch(void)
 		return -EIO;
 	}
 
-	g_io_add_watch(inotify_channel, G_IO_IN | G_IO_ERR | G_IO_HUP,
-							inotify_event, NULL);
-
 	hostname_descriptor = inotify_add_watch(fd, "/etc/hostname",
 				IN_MODIFY | IN_DELETE_SELF | IN_MOVE_SELF);
 	if (hostname_descriptor < 0) {
@@ -113,6 +110,9 @@ static int create_watch(void)
 		close(fd);
 		return -EIO;
 	}
+
+	g_io_add_watch(inotify_channel, G_IO_IN | G_IO_ERR | G_IO_HUP,
+							inotify_event, NULL);
 
 	return 0;
 }
