@@ -28,15 +28,22 @@
 
 #include "connman.h"
 
-#define PROFILE_DEFAULT  "/profile/default"
+#define PROFILE_DEFAULT_IDENT  "default"
 
 static DBusConnection *connection = NULL;
 
-const char *__connman_profile_active(void)
+const char *__connman_profile_active_ident(void)
 {
 	DBG("");
 
-	return PROFILE_DEFAULT;
+	return PROFILE_DEFAULT_IDENT;
+}
+
+const char *__connman_profile_active_path(void)
+{
+	DBG("");
+
+	return "/profile/" PROFILE_DEFAULT_IDENT;
 }
 
 static void append_services(DBusMessageIter *entry)
@@ -60,7 +67,7 @@ static void append_services(DBusMessageIter *entry)
 
 void __connman_profile_changed(void)
 {
-	const char *path = __connman_profile_active();
+	const char *path = __connman_profile_active_path();
 	DBusMessage *signal;
 	DBusMessageIter entry;
 
@@ -141,7 +148,7 @@ int __connman_profile_remove_network(struct connman_network *network)
 
 void __connman_profile_list(DBusMessageIter *iter)
 {
-	const char *path = __connman_profile_active();
+	const char *path = __connman_profile_active_path();
 
 	DBG("");
 
@@ -193,13 +200,15 @@ static GDBusSignalTable profile_signals[] = {
 
 int __connman_profile_init(DBusConnection *conn)
 {
+	const char *path = __connman_profile_active_path();
+
 	DBG("conn %p", conn);
 
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
 		return -1;
 
-	g_dbus_register_interface(connection, PROFILE_DEFAULT,
+	g_dbus_register_interface(connection, path,
 					CONNMAN_PROFILE_INTERFACE,
 					profile_methods, profile_signals,
 							NULL, NULL, NULL);
@@ -209,9 +218,11 @@ int __connman_profile_init(DBusConnection *conn)
 
 void __connman_profile_cleanup(void)
 {
+	const char *path = __connman_profile_active_path();
+
 	DBG("conn %p", connection);
 
-	g_dbus_unregister_interface(connection, PROFILE_DEFAULT,
+	g_dbus_unregister_interface(connection, path,
 						CONNMAN_PROFILE_INTERFACE);
 
 	if (connection == NULL)

@@ -705,7 +705,7 @@ struct connman_service *connman_service_get(const char *identifier)
 
 static int service_register(struct connman_service *service)
 {
-	const char *path = __connman_profile_active();
+	const char *path = __connman_profile_active_path();
 
 	DBG("service %p", service);
 

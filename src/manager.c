@@ -185,7 +185,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	str = __connman_profile_active();
+	str = __connman_profile_active_path();
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "ActiveProfile",
 						DBUS_TYPE_OBJECT_PATH, &str);
