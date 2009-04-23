@@ -145,7 +145,8 @@ static int setup_hostname(void)
 		return -EIO;
 	}
 
-	connman_info("System hostname is %s", name);
+	if (strlen(name) > 0 && strcmp(name, "(none)") != 0)
+		connman_info("System hostname is %s", name);
 
 	memset(name, 0, sizeof(name));
 
@@ -154,10 +155,8 @@ static int setup_hostname(void)
 		return -EIO;
 	}
 
-	if (strcmp(name, "(none)") == 0)
-		return 0;
-
-	connman_info("System domainname is %s", name);
+	if (strlen(name) > 0 && strcmp(name, "(none)") != 0)
+		connman_info("System domainname is %s", name);
 
 	return 0;
 }
