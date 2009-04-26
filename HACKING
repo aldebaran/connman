@@ -46,7 +46,7 @@ So the normal steps to checkout, build and install such a repository is
 like this:
 
   Checkout repository
-    # git-clone git://git.moblin.org/projects/connman.git
+    # git-clone git://git.kernel.org/pub/scm/network/connman/connman.git
     # cd connman
 
   Configure and build
