@@ -79,7 +79,7 @@ AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
 
 AC_ARG_ENABLE(udhcp, AC_HELP_STRING([--enable-udhcp],
 		[enable uDHCP support]), [enable_udhcp=${enableval}])
-if (test "${enable_udhcp}" = "yes"); then
+if (test "${enable_udhcp}" != "no"); then
 	if (test -z "${path_udhcpc}"); then
 		AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
 	else
@@ -95,7 +95,7 @@ AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
 
 AC_ARG_ENABLE(dhclient, AC_HELP_STRING([--enable-dhclient],
 		[enable dhclient support]), [enable_dhclient=${enableval}])
-if (test "${enable_dhclient}" = "yes"); then
+if (test "${enable_dhclient}" != "no"); then
 	if (test -z "${path_dhclient}"); then
 		AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
 	else
@@ -111,7 +111,7 @@ AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
 
 AC_ARG_ENABLE(resolvconf, AC_HELP_STRING([--enable-resolvconf],
 		[enable resolvconf support]), [enable_resolvconf=${enableval}])
-if (test "${enable_resolvconf}" = "yes"); then
+if (test "${enable_resolvconf}" != "no"); then
 	if (test -z "${path_resolvconf}"); then
 		AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
 	else
