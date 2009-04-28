@@ -7,13 +7,13 @@ builtin_modules =
 builtin_sources =
 
 if LOOPBACK
-plugin_LTLIBRARIES += loopback.la
+builtin_modules += loopback
+builtin_sources += loopback.c
 endif
 
 if ETHERNET
-plugin_LTLIBRARIES += ethernet.la
-
-ethernet_la_SOURCES = ethernet.c inet.h inet.c
+builtin_modules += ethernet
+builtin_sources += ethernet.c inet.h inet.c
 endif
 
 if WIFI
@@ -83,7 +83,8 @@ resolvconf_la_CFLAGS = $(AM_CFLAGS) -DRESOLVCONF=\"@RESOLVCONF@\"
 endif
 
 if DNSPROXY
-plugin_LTLIBRARIES += dnsproxy.la
+builtin_modules += dnsproxy
+builtin_sources += dnsproxy.c
 endif
 
 if POLKIT
@@ -148,7 +149,7 @@ MAINTAINERCLEANFILES = Makefile.in
 builtin.h:
 	echo "" > $@
 	list='$(builtin_modules)'; for i in $$list; \
-	  do echo "extern struct connman_plugin_desc __connman_builtin_$$i;" > $@; done
+	  do echo "extern struct connman_plugin_desc __connman_builtin_$$i;" >> $@; done
 	echo "static struct connman_plugin_desc *__connman_builtin[] = {" >> $@
 	list='$(builtin_modules)'; for i in $$list; \
 	  do echo "&__connman_builtin_$$i," >> $@; done
