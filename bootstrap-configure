@@ -22,8 +22,8 @@ fi
 		--enable-wifi=builtin \
 		--enable-bluetooth=builtin \
 		--enable-modemmgr \
-		--enable-udhcp \
-		--enable-dhclient \
+		--enable-udhcp=builtin \
+		--enable-dhclient=builtin \
 		--enable-resolvconf=builtin \
 		--enable-dnsproxy=builtin \
 		--enable-novatel \

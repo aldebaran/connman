@@ -87,7 +87,8 @@ if (test "${enable_udhcp}" = "yes"); then
 		AC_SUBST(UDHCPC)
 	fi
 fi
-AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" = "yes")
+AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" != "no")
+AM_CONDITIONAL(UDHCP_BUILTIN, test "${enable_udhcp}" = "builtin")
 
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
 	[specify location of dhclient binary]), [path_dhclient=${withval}])
@@ -102,7 +103,8 @@ if (test "${enable_dhclient}" = "yes"); then
 		AC_SUBST(DHCLIENT)
 	fi
 fi
-AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" = "yes")
+AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
+AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
 
 AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
 	[specify location of resolvconf binary]), [path_resolvconf=${withval}])

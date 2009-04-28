@@ -69,17 +69,29 @@ hso_la_SOURCES = hso.c modem.h modem.c
 endif
 
 if UDHCP
+if UDHCP_BUILTIN
+builtin_modules += udhcp
+builtin_sources += udhcp.c inet.h inet.c task.h task.c
+builtin_cflags += -DUDHCPC=\"@UDHCPC@\"
+else
 plugin_LTLIBRARIES += udhcp.la
 udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
 udhcp_la_CFLAGS = $(AM_CFLAGS) -DUDHCPC=\"@UDHCPC@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 endif
+endif
 
 if DHCLIENT
+if DHCLIENT_BUILTIN
+builtin_modules += dhclient
+builtin_sources += dhclient.c inet.h inet.c
+builtin_cflags += -DDHCLIENT=\"@DHCLIENT@\"
+else
 plugin_LTLIBRARIES += dhclient.la
 dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = $(AM_CFLAGS) -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+endif
 endif
 
 if PPPD
@@ -138,7 +150,9 @@ noinst_LTLIBRARIES = libbuiltin.la
 
 libbuiltin_la_SOURCES = $(builtin_sources)
 libbuiltin_la_LDFLAGS =
-libbuiltin_la_CFLAGS = $(AM_CFLAGS) $(builtin_cflags) -DCONNMAN_PLUGIN_BUILTIN
+libbuiltin_la_CFLAGS = $(AM_CFLAGS) \
+		$(builtin_cflags) -DCONNMAN_PLUGIN_BUILTIN \
+		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
 BUILT_SOURCES = builtin.h
 
