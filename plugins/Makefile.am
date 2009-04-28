@@ -7,13 +7,22 @@ builtin_modules =
 builtin_sources =
 
 if LOOPBACK
+if LOOPBACK_BUILTIN
 builtin_modules += loopback
 builtin_sources += loopback.c
+else
+plugin_LTLIBRARIES += loopback.la
+endif
 endif
 
 if ETHERNET
+if ETHERNET_BUILTIN
 builtin_modules += ethernet
 builtin_sources += ethernet.c inet.h inet.c
+else
+plugin_LTLIBRARIES += ethernet.la
+ethernet_la_SOURCES = ethernet.c inet.h inet.c
+endif
 endif
 
 if WIFI
@@ -83,8 +92,12 @@ resolvconf_la_CFLAGS = $(AM_CFLAGS) -DRESOLVCONF=\"@RESOLVCONF@\"
 endif
 
 if DNSPROXY
+if DNSPROXY_BUILTIN
 builtin_modules += dnsproxy
 builtin_sources += dnsproxy.c
+else
+plugin_LTLIBRARIES += dnsproxy.la
+endif
 endif
 
 if POLKIT

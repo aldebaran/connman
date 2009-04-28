@@ -17,15 +17,15 @@ fi
 		--localstatedir=/var \
 		--sysconfdir=/etc \
 		--disable-datafiles \
-		--enable-loopback \
-		--enable-ethernet \
+		--enable-loopback=builtin \
+		--enable-ethernet=builtin \
 		--enable-wifi \
 		--enable-bluetooth \
 		--enable-modemmgr \
 		--enable-udhcp \
 		--enable-dhclient \
 		--enable-resolvconf \
-		--enable-dnsproxy \
+		--enable-dnsproxy=builtin \
 		--enable-novatel \
 		--enable-huawei \
 		--enable-hso \

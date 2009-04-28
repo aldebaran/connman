@@ -48,11 +48,13 @@ AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
 
 AC_ARG_ENABLE(loopback, AC_HELP_STRING([--enable-loopback],
 		[enable loopback support]), [enable_loopback=${enableval}])
-AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" = "yes")
+AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
+AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
 
 AC_ARG_ENABLE(ethernet, AC_HELP_STRING([--enable-ethernet],
 		[enable Ethernet support]), [enable_ethernet=${enableval}])
-AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" = "yes")
+AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" != "no")
+AM_CONDITIONAL(ETHERNET_BUILTIN, test "${enable_ethernet}" = "builtin")
 
 AC_ARG_ENABLE(wifi, AC_HELP_STRING([--enable-wifi],
 		[enable WiFi support]), [enable_wifi=${enableval}])
@@ -117,7 +119,8 @@ AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" = "yes")
 
 AC_ARG_ENABLE(dnsproxy, AC_HELP_STRING([--enable-dnsproxy],
 		[enable DNS proxy support]), [enable_dnsproxy=${enableval}])
-AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" = "yes")
+AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
+AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
 AC_ARG_ENABLE(novatel, AC_HELP_STRING([--enable-novatel],
 		[enable Novatel support]), [enable_novatel=${enableval}])
