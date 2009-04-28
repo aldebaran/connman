@@ -5,6 +5,7 @@ plugin_LTLIBRARIES =
 
 builtin_modules =
 builtin_sources =
+builtin_cflags =
 
 if LOOPBACK
 if LOOPBACK_BUILTIN
@@ -26,46 +27,49 @@ endif
 endif
 
 if WIFI
+if WIFI_BUILTIN
+builtin_modules += wifi
+builtin_sources += wifi.c inet.h inet.c supplicant.h supplicant.c
+else
 plugin_LTLIBRARIES += wifi.la
-
 wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
 endif
+endif
 
 if BLUETOOTH
+if BLUETOOTH_BUILTIN
+builtin_modules += bluetooth
+builtin_sources += bluetooth.c inet.h inet.c
+else
 plugin_LTLIBRARIES += bluetooth.la
-
 bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
+endif
 endif
 
 if MODEMMGR
 plugin_LTLIBRARIES += modemmgr.la
-
 modemmgr_la_LIBADD = @GDBUS_LIBS@
 endif
 
 if NOVATEL
 plugin_LTLIBRARIES += novatel.la
-
 novatel_la_SOURCES = novatel.c modem.h modem.c
 endif
 
 if HUAWEI
 plugin_LTLIBRARIES += huawei.la
-
 huawei_la_SOURCES = huawei.c modem.h modem.c
 endif
 
 if HSO
 plugin_LTLIBRARIES += hso.la
-
 hso_la_SOURCES = hso.c modem.h modem.c
 endif
 
 if UDHCP
 plugin_LTLIBRARIES += udhcp.la
-
 udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
 udhcp_la_CFLAGS = $(AM_CFLAGS) -DUDHCPC=\"@UDHCPC@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
@@ -73,7 +77,6 @@ endif
 
 if DHCLIENT
 plugin_LTLIBRARIES += dhclient.la
-
 dhclient_la_SOURCES = dhclient.c inet.h inet.c
 dhclient_la_CFLAGS = $(AM_CFLAGS) -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
@@ -81,14 +84,18 @@ endif
 
 if PPPD
 plugin_LTLIBRARIES += pppd.la
-
 pppd_la_CFLAGS = $(AM_CFLAGS) -DPPPD=\"@PPPD@\"
 endif
 
 if RESOLVCONF
+if RESOLVCONF_BUILTIN
+builtin_modules += resolvconf
+builtin_sources += resolvconf.c
+builtin_cflags += -DRESOLVCONF=\"@RESOLVCONF@\"
+else
 plugin_LTLIBRARIES += resolvconf.la
-
 resolvconf_la_CFLAGS = $(AM_CFLAGS) -DRESOLVCONF=\"@RESOLVCONF@\"
+endif
 endif
 
 if DNSPROXY
@@ -102,7 +109,6 @@ endif
 
 if POLKIT
 plugin_LTLIBRARIES += polkit.la
-
 polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
 polkit_la_CFLAGS = $(AM_CFLAGS) @POLKIT_CFLAGS@
 
@@ -119,7 +125,6 @@ endif
 
 if IWMXSDK
 plugin_LTLIBRARIES += iwmxsdk.la
-
 iwmxsdk_la_SOURCES = iwmxsdk.c inet.h inet.c
 iwmxsdk_la_LIBADD = @IWMXSDK_LIBS@ @GLIB_LIBS@
 iwmxsdk_la_CFLAGS = $(AM_CFLAGS) @IWMXSDK_CFLAGS@
@@ -133,7 +138,7 @@ noinst_LTLIBRARIES = libbuiltin.la
 
 libbuiltin_la_SOURCES = $(builtin_sources)
 libbuiltin_la_LDFLAGS =
-libbuiltin_la_CFLAGS = $(AM_CFLAGS) -DCONNMAN_PLUGIN_BUILTIN
+libbuiltin_la_CFLAGS = $(AM_CFLAGS) $(builtin_cflags) -DCONNMAN_PLUGIN_BUILTIN
 
 BUILT_SOURCES = builtin.h
 
@@ -163,6 +168,7 @@ builtin.h:
 	echo "" > $@
 	list='$(builtin_modules)'; for i in $$list; \
 	  do echo "extern struct connman_plugin_desc __connman_builtin_$$i;" >> $@; done
+	echo "" >> $@
 	echo "static struct connman_plugin_desc *__connman_builtin[] = {" >> $@
 	list='$(builtin_modules)'; for i in $$list; \
 	  do echo "&__connman_builtin_$$i," >> $@; done

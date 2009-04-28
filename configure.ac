@@ -62,11 +62,13 @@ if (test "${enable_wifi}" = "yes"); then
 	AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], [],
 						$PATH:/sbin:/usr/sbin)
 fi
-AM_CONDITIONAL(WIFI, test "${enable_wifi}" = "yes")
+AM_CONDITIONAL(WIFI, test "${enable_wifi}" != "no")
+AM_CONDITIONAL(WIFI_BUILTIN, test "${enable_wifi}" = "builtin")
 
 AC_ARG_ENABLE(bluetooth, AC_HELP_STRING([--enable-bluetooth],
 		[enable Bluetooth support]), [enable_bluetooth=${enableval}])
-AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" = "yes")
+AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
+AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
 AC_ARG_ENABLE(modemmgr, AC_HELP_STRING([--enable-modemmgr],
                 [enable Modem Manager support]), [enable_modemmgr=${enableval}])
@@ -115,7 +117,8 @@ if (test "${enable_resolvconf}" = "yes"); then
 		AC_SUBST(RESOLVCONF)
 	fi
 fi
-AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" = "yes")
+AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" != "no")
+AM_CONDITIONAL(RESOLVCONF_BUILTIN, test "${enable_resolvconf}" = "builtin")
 
 AC_ARG_ENABLE(dnsproxy, AC_HELP_STRING([--enable-dnsproxy],
 		[enable DNS proxy support]), [enable_dnsproxy=${enableval}])

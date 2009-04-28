@@ -19,12 +19,12 @@ fi
 		--disable-datafiles \
 		--enable-loopback=builtin \
 		--enable-ethernet=builtin \
-		--enable-wifi \
-		--enable-bluetooth \
+		--enable-wifi=builtin \
+		--enable-bluetooth=builtin \
 		--enable-modemmgr \
 		--enable-udhcp \
 		--enable-dhclient \
-		--enable-resolvconf \
+		--enable-resolvconf=builtin \
 		--enable-dnsproxy=builtin \
 		--enable-novatel \
 		--enable-huawei \
