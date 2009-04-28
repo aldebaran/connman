@@ -43,42 +43,49 @@ AC_ARG_ENABLE(pie, AC_HELP_STRING([--enable-pie],
 	fi
 ])
 
-AC_ARG_ENABLE(threads, AC_HELP_STRING([--enable-threads],
-		[enable threading support]), [enable_threads=${enableval}])
+AC_ARG_ENABLE(threads,
+	AC_HELP_STRING([--enable-threads], [enable threading support]),
+			[enable_threads=${enableval}], [enable_threads="no"])
 
-AC_ARG_ENABLE(loopback, AC_HELP_STRING([--enable-loopback],
-		[enable loopback support]), [enable_loopback=${enableval}])
+AC_ARG_ENABLE(loopback,
+	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
+			[enable_loopback=${enableval}], [enable_loopback="no"])
 AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
 AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
 
-AC_ARG_ENABLE(ethernet, AC_HELP_STRING([--enable-ethernet],
-		[enable Ethernet support]), [enable_ethernet=${enableval}])
+AC_ARG_ENABLE(ethernet,
+	AC_HELP_STRING([--enable-ethernet], [enable Ethernet support]),
+			[enable_ethernet=${enableval}], [enable_ethernet="no"])
 AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" != "no")
 AM_CONDITIONAL(ETHERNET_BUILTIN, test "${enable_ethernet}" = "builtin")
 
-AC_ARG_ENABLE(wifi, AC_HELP_STRING([--enable-wifi],
-		[enable WiFi support]), [enable_wifi=${enableval}])
-if (test "${enable_wifi}" = "yes"); then
+AC_ARG_ENABLE(wifi,
+	AC_HELP_STRING([--enable-wifi], [enable WiFi support]),
+			[enable_wifi=${enableval}], [enable_wifi="no"])
+if (test "${enable_wifi}" != "no"); then
 	AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], [],
 						$PATH:/sbin:/usr/sbin)
 fi
 AM_CONDITIONAL(WIFI, test "${enable_wifi}" != "no")
 AM_CONDITIONAL(WIFI_BUILTIN, test "${enable_wifi}" = "builtin")
 
-AC_ARG_ENABLE(bluetooth, AC_HELP_STRING([--enable-bluetooth],
-		[enable Bluetooth support]), [enable_bluetooth=${enableval}])
+AC_ARG_ENABLE(bluetooth,
+	AC_HELP_STRING([--enable-bluetooth], [enable Bluetooth support]),
+			[enable_bluetooth=${enableval}], [enable_bluetooth="no"])
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
 AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
-AC_ARG_ENABLE(modemmgr, AC_HELP_STRING([--enable-modemmgr],
-                [enable Modem Manager support]), [enable_modemmgr=${enableval}])
+AC_ARG_ENABLE(modemmgr,
+	AC_HELP_STRING([--enable-modemmgr], [enable Modem Manager support]),
+			[enable_modemmgr=${enableval}], [enable_modemmgr="no"])
 AM_CONDITIONAL(MODEMMGR, test "${enable_modemmgr}" = "yes")
 
 AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
 	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
 
-AC_ARG_ENABLE(udhcp, AC_HELP_STRING([--enable-udhcp],
-		[enable uDHCP support]), [enable_udhcp=${enableval}])
+AC_ARG_ENABLE(udhcp,
+	AC_HELP_STRING([--enable-udhcp], [enable uDHCP support]),
+			[enable_udhcp=${enableval}], [enable_udhcp="no"])
 if (test "${enable_udhcp}" != "no"); then
 	if (test -z "${path_udhcpc}"); then
 		AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
@@ -93,8 +100,9 @@ AM_CONDITIONAL(UDHCP_BUILTIN, test "${enable_udhcp}" = "builtin")
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
 	[specify location of dhclient binary]), [path_dhclient=${withval}])
 
-AC_ARG_ENABLE(dhclient, AC_HELP_STRING([--enable-dhclient],
-		[enable dhclient support]), [enable_dhclient=${enableval}])
+AC_ARG_ENABLE(dhclient,
+	AC_HELP_STRING([--enable-dhclient], [enable dhclient support]),
+			[enable_dhclient=${enableval}], [enable_dhclient="no"])
 if (test "${enable_dhclient}" != "no"); then
 	if (test -z "${path_dhclient}"); then
 		AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
@@ -109,8 +117,9 @@ AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
 AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
 	[specify location of resolvconf binary]), [path_resolvconf=${withval}])
 
-AC_ARG_ENABLE(resolvconf, AC_HELP_STRING([--enable-resolvconf],
-		[enable resolvconf support]), [enable_resolvconf=${enableval}])
+AC_ARG_ENABLE(resolvconf,
+	AC_HELP_STRING([--enable-resolvconf], [enable resolvconf support]),
+			[enable_resolvconf=${enableval}], [enable_resolvconf="no"])
 if (test "${enable_resolvconf}" != "no"); then
 	if (test -z "${path_resolvconf}"); then
 		AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
@@ -122,8 +131,9 @@ fi
 AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" != "no")
 AM_CONDITIONAL(RESOLVCONF_BUILTIN, test "${enable_resolvconf}" = "builtin")
 
-AC_ARG_ENABLE(dnsproxy, AC_HELP_STRING([--enable-dnsproxy],
-		[enable DNS proxy support]), [enable_dnsproxy=${enableval}])
+AC_ARG_ENABLE(dnsproxy,
+	AC_HELP_STRING([--enable-dnsproxy], [enable DNS proxy support]),
+			[enable_dnsproxy=${enableval}], [enable_dnsproxy="no"])
 AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
 AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
@@ -257,7 +267,7 @@ AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
 AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
-                [enable testing tools]), [enable_tools=${enableval}])
+		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
 	PKG_CHECK_MODULES(NETLINK, libnl-1, enable_netlink=yes,
 				AC_MSG_ERROR(Netlink library is required))
