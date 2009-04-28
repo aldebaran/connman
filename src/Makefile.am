@@ -23,7 +23,8 @@ rules_DATA = 92-connman.rules
 endif
 endif
 
-connmand_LDADD = @GDBUS_LIBS@ @GLIB_LIBS@ @GTHREAD_LIBS@ @UDEV_LIBS@ -ldl
+connmand_LDADD = $(top_builddir)/plugins/libbuiltin.la \
+		@GDBUS_LIBS@ @GLIB_LIBS@ @GTHREAD_LIBS@ @UDEV_LIBS@ -ldl
 
 connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
@@ -46,7 +47,7 @@ AM_CFLAGS = @UDEV_CFLAGS@ @GTHREAD_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
 					-DPLUGINDIR=\""$(plugindir)"\" \
 					-DSTORAGEDIR=\""$(storagedir)\""
 
-INCLUDES = -I$(top_builddir)/include
+INCLUDES = -I$(top_builddir)/include -I$(top_builddir)/plugins
 
 EXTRA_DIST = connman-dbus.conf connman-polkit.conf connman.rules
 

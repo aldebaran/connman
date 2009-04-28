@@ -80,9 +80,7 @@ struct connman_plugin_desc {
  */
 #ifdef CONNMAN_PLUGIN_BUILTIN
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, priority, init, exit) \
-		extern struct connman_plugin_desc connman_builtin_ ## name \
-				__attribute__ ((visibility("default"))); \
-		struct connman_plugin_desc connman_builtin_ ## name = { \
+		struct connman_plugin_desc __connman_builtin_ ## name = { \
 			#name, description, version, priority, init, exit \
 		};
 #else

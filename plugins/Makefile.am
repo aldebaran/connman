@@ -3,6 +3,9 @@ plugindir = $(libdir)/connman/plugins
 
 plugin_LTLIBRARIES =
 
+builtin_modules =
+builtin_sources =
+
 if LOOPBACK
 plugin_LTLIBRARIES += loopback.la
 endif
@@ -112,6 +115,16 @@ if FAKE
 plugin_LTLIBRARIES += fake.la
 endif
 
+noinst_LTLIBRARIES = libbuiltin.la
+
+libbuiltin_la_SOURCES = $(builtin_sources)
+libbuiltin_la_LDFLAGS =
+libbuiltin_la_CFLAGS = $(AM_CFLAGS) -DCONNMAN_PLUGIN_BUILTIN
+
+BUILT_SOURCES = builtin.h
+
+nodist_libbuiltin_la_SOURCES = $(BUILT_SOURCES)
+
 AM_LDFLAGS = -no-undefined -module -avoid-version
 
 statedir = $(localstatedir)/run/connman
@@ -126,11 +139,20 @@ AM_CFLAGS = -fvisibility=hidden @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 
-CLEANFILES = connman.policy
+CLEANFILES = $(BUILT_SOURCES) connman.policy
 
 EXTRA_DIST = polkit.policy
 
 MAINTAINERCLEANFILES = Makefile.in
+
+builtin.h:
+	echo "" > $@
+	list='$(builtin_modules)'; for i in $$list; \
+	  do echo "extern struct connman_plugin_desc __connman_builtin_$$i;" > $@; done
+	echo "static struct connman_plugin_desc *__connman_builtin[] = {" >> $@
+	list='$(builtin_modules)'; for i in $$list; \
+	  do echo "&__connman_builtin_$$i," >> $@; done
+	echo "NULL };" >> $@
 
 connman.policy: polkit.policy
 	cp $< $@

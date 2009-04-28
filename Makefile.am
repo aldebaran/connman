@@ -1,5 +1,5 @@
 
-SUBDIRS = gdbus include src plugins client tools scripts test doc
+SUBDIRS = gdbus include plugins src client tools scripts test doc
 
 pkgconfigdir = $(libdir)/pkgconfig
 

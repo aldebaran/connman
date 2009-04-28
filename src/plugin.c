@@ -74,14 +74,20 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	return TRUE;
 }
 
+#include "builtin.h"
+
 int __connman_plugin_init(const char *pattern, const char *exclude)
 {
 	GSList *list;
 	GDir *dir;
 	const gchar *file;
 	gchar *filename;
+	unsigned int i;
 
 	DBG("");
+
+	for (i = 0; __connman_builtin[i]; i++)
+		add_plugin(NULL, __connman_builtin[i]);
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
 	if (dir != NULL) {
@@ -157,7 +163,8 @@ void __connman_plugin_cleanup(void)
 		if (plugin->active == TRUE && plugin->desc->exit)
 			plugin->desc->exit();
 
-		dlclose(plugin->handle);
+		if (plugin->handle != NULL)
+			dlclose(plugin->handle);
 
 		g_free(plugin);
 	}

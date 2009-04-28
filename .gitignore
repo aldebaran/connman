@@ -33,6 +33,7 @@ src/connman.conf
 src/connman.service
 src/*-connman.rules
 plugins/connman.policy
+plugins/builtin.h
 scripts/connman
 scripts/udhcpc-script
 scripts/dhclient-script
