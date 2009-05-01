@@ -324,7 +324,7 @@ const char *__connman_element_get_device_path(struct connman_element *element)
 	if (device == NULL)
 		return NULL;
 
-	return element->path;
+	return connman_device_get_path(device);
 }
 
 const char *__connman_element_get_network_path(struct connman_element *element)
