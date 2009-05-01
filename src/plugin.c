@@ -76,6 +76,24 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 
 #include "builtin.h"
 
+static gboolean check_plugin(struct connman_plugin_desc *desc,
+				const char *pattern, const char *exclude)
+{
+	if (exclude != NULL &&
+			g_pattern_match_simple(exclude, desc->name) == TRUE) {
+		DBG("excluding %s", desc->description);
+		return FALSE;
+	}
+
+	if (pattern != NULL &&
+			g_pattern_match_simple(pattern, desc->name) == FALSE) {
+		DBG("ignoring %s", desc->description);
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 int __connman_plugin_init(const char *pattern, const char *exclude)
 {
 	GSList *list;
@@ -86,8 +104,13 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 
 	DBG("");
 
-	for (i = 0; __connman_builtin[i]; i++)
+	for (i = 0; __connman_builtin[i]; i++) {
+		if (check_plugin(__connman_builtin[i],
+						pattern, exclude) == FALSE)
+			continue;
+
 		add_plugin(NULL, __connman_builtin[i]);
+	}
 
 	dir = g_dir_open(PLUGINDIR, 0, NULL);
 	if (dir != NULL) {
@@ -118,16 +141,7 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 				continue;
 			}
 
-			if (exclude != NULL && g_pattern_match_simple(exclude,
-							desc->name) == TRUE) {
-				DBG("excluding %s", desc->description);
-				dlclose(handle);
-				continue;
-			}
-
-			if (pattern != NULL && g_pattern_match_simple(pattern,
-							desc->name) == FALSE) {
-				DBG("ignoring %s", desc->description);
+			if (check_plugin(desc, pattern, exclude) == FALSE) {
 				dlclose(handle);
 				continue;
 			}
