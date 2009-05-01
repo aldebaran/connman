@@ -57,7 +57,7 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 		return FALSE;
 
 	if (g_str_equal(desc->version, CONNMAN_VERSION) == FALSE) {
-		DBG("version mismatch for %s", desc->description);
+		connman_error("Version mismatch for %s", desc->description);
 		return FALSE;
 	}
 
@@ -81,13 +81,13 @@ static gboolean check_plugin(struct connman_plugin_desc *desc,
 {
 	if (exclude != NULL &&
 			g_pattern_match_simple(exclude, desc->name) == TRUE) {
-		DBG("excluding %s", desc->description);
+		connman_info("Excluding %s", desc->description);
 		return FALSE;
 	}
 
 	if (pattern != NULL &&
 			g_pattern_match_simple(pattern, desc->name) == FALSE) {
-		DBG("ignoring %s", desc->description);
+		connman_info("Ignoring %s", desc->description);
 		return FALSE;
 	}
 
@@ -126,8 +126,8 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 
 			handle = dlopen(filename, RTLD_NOW);
 			if (handle == NULL) {
-				g_warning("Can't load %s: %s", filename,
-								dlerror());
+				connman_error("Can't load %s: %s",
+							filename, dlerror());
 				g_free(filename);
 				continue;
 			}
@@ -136,7 +136,8 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 
 			desc = dlsym(handle, "connman_plugin_desc");
 			if (desc == NULL) {
-				g_warning("Can't load symbol: %s", dlerror());
+				connman_error("Can't load symbol: %s",
+								dlerror());
 				dlclose(handle);
 				continue;
 			}
