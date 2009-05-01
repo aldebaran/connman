@@ -33,6 +33,7 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
+	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t remember;
@@ -486,7 +487,8 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	connman_element_set_uint8(&network->element, "Strength", strength);
 
-	network->type = type;
+	network->type       = type;
+	network->secondary  = FALSE;
 	network->identifier = g_strdup(identifier);
 
 	return network;
@@ -1108,6 +1110,8 @@ static int network_probe(struct connman_element *element)
 		return err;
 	}
 
+	network->secondary = connman_device_get_secondary(network->device);
+
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
@@ -1117,7 +1121,8 @@ static int network_probe(struct connman_element *element)
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
-		__connman_profile_add_network(network);
+		if (network->secondary == FALSE)
+			__connman_profile_add_network(network);
 		break;
 	}
 
@@ -1145,7 +1150,8 @@ static void network_remove(struct connman_element *element)
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
-		__connman_profile_remove_network(network);
+		if (network->secondary == FALSE)
+			__connman_profile_remove_network(network);
 		break;
 	}
 

@@ -35,6 +35,7 @@ struct connman_device {
 	enum connman_device_type type;
 	enum connman_device_mode mode;
 	enum connman_device_policy policy;
+	connman_bool_t secondary;
 	connman_bool_t powered;
 	connman_bool_t carrier;
 	connman_bool_t scanning;
@@ -793,7 +794,8 @@ static int setup_device(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		break;
 	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		__connman_profile_add_device(device);
+		if (device->secondary == FALSE)
+			__connman_profile_add_device(device);
 		break;
 	}
 
@@ -837,7 +839,8 @@ static void remove_device(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		break;
 	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		__connman_profile_remove_device(device);
+		if (device->secondary == FALSE)
+			__connman_profile_remove_device(device);
 		break;
 	}
 
@@ -984,10 +987,11 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
 
-	device->type   = type;
-	device->name   = g_strdup(type2description(device->type));
-	device->mode   = CONNMAN_DEVICE_MODE_UNKNOWN;
-	device->policy = CONNMAN_DEVICE_POLICY_AUTO;
+	device->type      = type;
+	device->name      = g_strdup(type2description(device->type));
+	device->mode      = CONNMAN_DEVICE_MODE_UNKNOWN;
+	device->policy    = CONNMAN_DEVICE_POLICY_AUTO;
+	device->secondary = FALSE;
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -1202,6 +1206,30 @@ void connman_device_set_mode(struct connman_device *device,
 enum connman_device_mode connman_device_get_mode(struct connman_device *device)
 {
 	return device->mode;
+}
+
+/**
+ * connman_device_set_secondary:
+ * @device: device structure
+ * @secondary: secondary value
+ *
+ * Change secondary value of device
+ */
+void connman_device_set_secondary(struct connman_device *device,
+                                                connman_bool_t secondary)
+{
+	device->secondary = secondary;
+}
+
+/**
+ * connman_device_get_secondary:
+ * @device: device structure
+ *
+ * Get secondary value of device
+ */
+connman_bool_t connman_device_get_secondary(struct connman_device *device)
+{
+	return device->secondary;
 }
 
 /**
