@@ -74,8 +74,6 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 	return TRUE;
 }
 
-#include "builtin.h"
-
 static gboolean check_plugin(struct connman_plugin_desc *desc,
 				const char *pattern, const char *exclude)
 {
@@ -93,6 +91,8 @@ static gboolean check_plugin(struct connman_plugin_desc *desc,
 
 	return TRUE;
 }
+
+#include "builtin.h"
 
 int __connman_plugin_init(const char *pattern, const char *exclude)
 {
