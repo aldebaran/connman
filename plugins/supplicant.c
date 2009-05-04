@@ -381,6 +381,8 @@ static void remove_interface_reply(DBusPendingCall *call, void *user_data)
 
 	connman_device_unref(task->device);
 
+	inet_ifdown(task->ifindex);
+
 	free_task(task);
 
 	dbus_message_unref(reply);
