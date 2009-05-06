@@ -141,7 +141,7 @@ static gboolean modem_event(GIOChannel *channel,
 		return FALSE;
 	}
 
-	DBG("Read %d bytes (offset %d)", len, modem->offset);
+	DBG("Read %zu bytes (offset %d)", len, modem->offset);
 
 	if (g_str_has_suffix(modem->buf, "\r\n") == TRUE) {
 		for (list = modem->callbacks; list; list = list->next) {

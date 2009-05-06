@@ -51,7 +51,7 @@ static void ethernet_newlink(unsigned flags, unsigned change, void *user_data)
 	struct connman_device *device = user_data;
 	struct ethernet_data *ethernet = connman_device_get_data(device);
 
-	DBG("index %d flags %ld change %ld", ethernet->index, flags, change);
+	DBG("index %d flags %d change %d", ethernet->index, flags, change);
 
 	if ((ethernet->flags & IFF_UP) != (flags & IFF_UP)) {
 		if (flags & IFF_UP) {
