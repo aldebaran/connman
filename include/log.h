@@ -32,9 +32,12 @@ extern "C" {
  * @short_description: Functions for logging error and debug information
  */
 
-extern void connman_info(const char *format, ...);
-extern void connman_error(const char *format, ...);
-extern void connman_debug(const char *format, ...);
+extern void connman_info(const char *format, ...)
+				__attribute__((format(printf, 1, 2)));
+extern void connman_error(const char *format, ...)
+				__attribute__((format(printf, 1, 2)));
+extern void connman_debug(const char *format, ...)
+				__attribute__((format(printf, 1, 2)));
 
 /**
  * DBG:
