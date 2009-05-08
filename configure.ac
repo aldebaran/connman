@@ -247,6 +247,9 @@ AC_SUBST(DBUS_DATADIR)
 AC_SUBST([GDBUS_CFLAGS], ['$(DBUS_CFLAGS) -I$(top_srcdir)/gdbus'])
 AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
 
+AC_SUBST([GATCHAT_CFLAGS], ['-I$(top_srcdir)/gatchat'])
+AC_SUBST([GATCHAT_LIBS], ['$(top_builddir)/gatchat/libgatchat.la'])
+
 AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
 		[enable PolicyKit support]), [enable_polkit=${enableval}])
 if (test "${enable_polkit}" = "yes"); then
@@ -287,7 +290,8 @@ AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
 
 SHAVE_INIT
 
-AC_OUTPUT(Makefile gdbus/Makefile include/Makefile include/version.h
+AC_OUTPUT(Makefile gdbus/Makefile gatchat/Makefile
+				include/Makefile include/version.h
 				src/Makefile src/connman.service
 				scripts/connman scripts/Makefile
 				plugins/Makefile client/Makefile
