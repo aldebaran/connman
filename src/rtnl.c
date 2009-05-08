@@ -249,31 +249,31 @@ static inline void print_inet(struct rtattr *attr, const char *name, int family)
 	if (family == AF_INET) {
 		struct in_addr addr;
 		addr = *((struct in_addr *) RTA_DATA(attr));
-		DBG("  attr %s (len %d) %s\n",
-				name, RTA_PAYLOAD(attr), inet_ntoa(addr));
+		DBG("  attr %s (len %d) %s\n", name,
+				(int) RTA_PAYLOAD(attr), inet_ntoa(addr));
 	} else
-		DBG("  attr %s (len %d)\n", name, RTA_PAYLOAD(attr));
+		DBG("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
 }
 
 static inline void print_char(struct rtattr *attr, const char *name)
 {
-	DBG("  attr %s (len %d) %s\n", name, RTA_PAYLOAD(attr),
+	DBG("  attr %s (len %d) %s\n", name, (int) RTA_PAYLOAD(attr),
 						(char *) RTA_DATA(attr));
 }
 
 static inline void print_byte(struct rtattr *attr, const char *name)
 {
-	DBG("  attr %s (len %d) 0x%02x\n", name, RTA_PAYLOAD(attr),
+	DBG("  attr %s (len %d) 0x%02x\n", name, (int) RTA_PAYLOAD(attr),
 					*((unsigned char *) RTA_DATA(attr)));
 }
 
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
 	if (name)
-		DBG("  attr %s (len %d)\n", name, RTA_PAYLOAD(attr));
+		DBG("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
 	else
 		DBG("  attr %d (len %d)\n",
-					attr->rta_type, RTA_PAYLOAD(attr));
+				attr->rta_type, (int) RTA_PAYLOAD(attr));
 }
 
 static void rtnl_link(struct nlmsghdr *hdr)
