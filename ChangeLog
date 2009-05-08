@@ -1,3 +1,15 @@
+ver 0.16:
+	Update Intel OSPM support to latest specification.
+	Add initial support for new service interface.
+	Add support for builtin plugins.
+	Add extra warning if no nameserver is defined.
+	Add error reporting for state and storage directory creation.
+	Add error message for network and device storing failures
+	Fix stale entry in gateway list after connection changes.
+	Fix handling of DHCP results with no nameserver.
+	Fix infinite loop for service lookup.
+	Fix various format string warnings.
+
 ver 0.15:
 	Detect VMware network interface and ignore them.
 	Fix setting of scan_ssid for hidden networks.
