@@ -990,20 +990,93 @@ done:
 
 static int service_load(struct connman_service *service)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	char *str;
+
 	DBG("service %p", service);
 
 	if (service->profile == NULL)
 		return -EINVAL;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, service->profile);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
+		g_free(pathname);
+		return -ENOENT;
+	}
+
+	g_free(pathname);
+
+	if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE) {
+		g_free(data);
+		return -EILSEQ;
+	}
+
+	g_free(data);
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Passphrase", NULL);
+	if (str != NULL) {
+		g_free(service->passphrase);
+		service->passphrase = str;
+	}
+
+	g_key_file_free(keyfile);
 
 	return 0;
 }
 
 static int service_save(struct connman_service *service)
 {
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+
 	DBG("service %p", service);
 
 	if (service->profile == NULL)
 		return -EINVAL;
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, service->profile);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
+		goto update;
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE)
+			goto done;
+	}
+
+	g_free(data);
+
+update:
+	if (service->passphrase != NULL)
+		g_key_file_set_string(keyfile, service->identifier,
+					"Passphrase", service->passphrase);
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
+		connman_error("Failed to store service information");
+
+done:
+	g_free(data);
+
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
 
 	return 0;
 }
