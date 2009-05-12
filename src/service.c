@@ -45,6 +45,7 @@ struct connman_service {
 	unsigned int order;
 	char *name;
 	char *passphrase;
+	char *profile;
 	struct connman_device *device;
 	struct connman_network *network;
 };
@@ -440,6 +441,7 @@ static void service_free(gpointer data)
 	if (service->network != NULL)
 		connman_network_unref(service->network);
 
+	g_free(service->profile);
 	g_free(service->name);
 	g_free(service->passphrase);
 	g_free(service->identifier);
@@ -692,6 +694,8 @@ struct connman_service *connman_service_get(const char *identifier)
 	__connman_service_initialize(service);
 
 	service->identifier = g_strdup(identifier);
+
+	service->profile = g_strdup(__connman_profile_active_ident());
 
 	__connman_storage_load_service(service);
 
@@ -988,12 +992,18 @@ static int service_load(struct connman_service *service)
 {
 	DBG("service %p", service);
 
+	if (service->profile == NULL)
+		return -EINVAL;
+
 	return 0;
 }
 
 static int service_save(struct connman_service *service)
 {
 	DBG("service %p", service);
+
+	if (service->profile == NULL)
+		return -EINVAL;
 
 	return 0;
 }
