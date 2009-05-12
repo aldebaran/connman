@@ -1,0 +1,36 @@
+#!/usr/bin/python
+
+import gobject
+
+import dbus
+import dbus.mainloop.glib
+
+def property_changed(name, value, path, interface):
+	iface = interface[interface.rfind(".") + 1:]
+	if iface not in ["Manager", "Service"]:
+		return
+	if name in ["Profiles", "Services",
+				"Devices", "Networks", "Connections"]:
+		val = "["
+		for i in value:
+			val = val + " " + i[i.rfind("/") + 1:]
+		val = val + " ]"
+	elif name in ["Strength", "Priority"]:
+		val = int(value)
+	else:
+		val = str(value)
+	print "{%s} [%s] %s = %s" % (iface, path, name, val)
+
+if __name__ == '__main__':
+	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
+
+	bus = dbus.SystemBus()
+
+	bus.add_signal_receiver(property_changed,
+					bus_name="org.moblin.connman",
+					signal_name = "PropertyChanged",
+						path_keyword="path",
+						interface_keyword="interface")
+
+	mainloop = gobject.MainLoop()
+	mainloop.run()
