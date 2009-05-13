@@ -207,7 +207,8 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 
 			device->disconnected = FALSE;
 
-			__connman_service_indicate_configuration(service);
+			__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION);
 		}
 	} else
 		connman_element_unregister_children(&device->element);
@@ -452,7 +453,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		err = set_powered(device, powered);
 		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg);
+			return __connman_error_failed(msg, -err);
 	} else if (g_str_equal(name, "Policy") == TRUE) {
 		enum connman_device_policy policy;
 		const char *str;
@@ -468,7 +469,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		err = set_policy(conn, device, policy);
 		if (err < 0)
-			return __connman_error_failed(msg);
+			return __connman_error_failed(msg, -err);
 	} else if (g_str_equal(name, "Priority") == TRUE) {
 		connman_uint8_t priority;
 
@@ -556,7 +557,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 
 	network = connman_network_create("00_00_00_00_00_00", type);
 	if (network == NULL)
-		return __connman_error_failed(msg);
+		return __connman_error_failed(msg, ENOMEM);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -592,7 +593,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 	connman_network_unref(network);
 
 	if (err < 0)
-		return __connman_error_failed(msg);
+		return __connman_error_failed(msg, -err);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -642,11 +643,11 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 		return __connman_error_not_supported(msg);
 
 	if (device->powered == FALSE)
-		return __connman_error_failed(msg);
+		return __connman_error_failed(msg, EINVAL);
 
 	err = device->driver->scan(device);
 	if (err < 0)
-		return __connman_error_failed(msg);
+		return __connman_error_failed(msg, -err);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }

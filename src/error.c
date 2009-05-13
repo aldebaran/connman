@@ -23,14 +23,19 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+#include <string.h>
+
 #include <gdbus.h>
 
 #include "connman.h"
 
-DBusMessage *__connman_error_failed(DBusMessage *msg)
+DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 {
+	const char *str = strerror(errnum);
+
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-							".Failed", NULL);
+							".Failed", str);
 }
 
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg)

@@ -32,7 +32,7 @@
 int __connman_dbus_init(DBusConnection *conn);
 void __connman_dbus_cleanup(void);
 
-DBusMessage *__connman_error_failed(DBusMessage *msg);
+DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum);
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg);
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
 DBusMessage *__connman_error_not_supported(DBusMessage *msg);
@@ -233,9 +233,8 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 int __connman_service_set_carrier(struct connman_service *service,
 						connman_bool_t carrier);
-int __connman_service_indicate_configuration(struct connman_service *service);
-int __connman_service_ready(struct connman_service *service);
-int __connman_service_disconnect(struct connman_service *service);
+int __connman_service_indicate_state(struct connman_service *service,
+					enum connman_service_state state);
 
 #include <connman/notifier.h>
 

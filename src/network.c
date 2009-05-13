@@ -33,6 +33,7 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
+	connman_bool_t associating;
 	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
@@ -239,7 +240,7 @@ static DBusMessage *do_connect(DBusConnection *conn,
 		return __connman_error_permission_denied(msg);
 
 	if (network->connected == TRUE)
-		return __connman_error_failed(msg);
+		return __connman_error_failed(msg, EALREADY);
 
 	if (network->driver && network->driver->connect) {
 		enum connman_device_mode mode;
@@ -250,7 +251,7 @@ static DBusMessage *do_connect(DBusConnection *conn,
 
 		err = network->driver->connect(network);
 		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg);
+			return __connman_error_failed(msg, -err);
 	} else
 		network->connected = TRUE;
 
@@ -270,7 +271,7 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 		return __connman_error_permission_denied(msg);
 
 	if (network->connected == FALSE)
-		return __connman_error_failed(msg);
+		return __connman_error_failed(msg, EINVAL);
 
 	connman_element_unregister_children(&network->element);
 
@@ -279,7 +280,7 @@ static DBusMessage *do_disconnect(DBusConnection *conn,
 	if (network->driver && network->driver->disconnect) {
 		err = network->driver->disconnect(network);
 		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg);
+			return __connman_error_failed(msg, -err);
 	} else
 		network->connected = FALSE;
 
@@ -683,6 +684,9 @@ connman_bool_t connman_network_get_available(struct connman_network *network)
 static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_network(network);
 
 	if (network->connected == TRUE) {
 		struct connman_element *element;
@@ -713,8 +717,14 @@ static gboolean set_connected(gpointer user_data)
 			if (connman_element_register(element,
 						&network->element) < 0)
 				connman_element_unref(element);
+
+			__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION);
 		}
 	} else {
+		__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_IDLE);
+
 		connman_element_unregister_children(&network->element);
 
 		__connman_device_set_network(network->device, NULL);
@@ -723,6 +733,34 @@ static gboolean set_connected(gpointer user_data)
 	}
 
 	return FALSE;
+}
+
+/**
+ * connman_network_set_associating:
+ * @network: network structure
+ * @associating: associating state
+ *
+ * Change associating state of network
+ */
+int connman_network_set_associating(struct connman_network *network,
+						connman_bool_t associating)
+{
+	DBG("network %p associating %d", network, associating);
+
+	if (network->associating == associating)
+		return -EALREADY;
+
+	network->associating = associating;
+
+	if (associating == TRUE) {
+		struct connman_service *service;
+
+		service = __connman_service_lookup_from_network(network);
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_ASSOCIATION);
+	}
+
+	return 0;
 }
 
 /**
@@ -745,6 +783,9 @@ int connman_network_set_connected(struct connman_network *network,
 		return -EALREADY;
 
 	network->connected = connected;
+
+	if (connected == TRUE)
+		network->associating = FALSE;
 
 	if (network->registered == FALSE) {
 		g_idle_add(set_connected, network);

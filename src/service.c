@@ -290,27 +290,20 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (service->network != NULL) {
 		int err;
 
+		connman_network_set_string(service->network,
+				"WiFi.Passphrase", service->passphrase);
+
 		err = connman_network_connect(service->network);
 		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg);
-
-		service->state = CONNMAN_SERVICE_STATE_ASSOCIATION;
-
-		state_changed(service);
+			return __connman_error_failed(msg, -err);
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
-
-	if (service->device != NULL) {
+	} else if (service->device != NULL) {
 		if (service->favorite == FALSE)
 			return __connman_error_no_carrier(msg);
 
 		if (__connman_device_connect(service->device) < 0)
-			return __connman_error_failed(msg);
-
-		service->state = CONNMAN_SERVICE_STATE_READY;
-
-		state_changed(service);
+			return __connman_error_failed(msg, EINVAL);
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
@@ -328,25 +321,18 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 		err = __connman_network_disconnect(service->network);
 		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg);
-
-		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
-
-		state_changed(service);
+			return __connman_error_failed(msg, -err);
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
+	} else if (service->device != NULL) {
+		int err;
 
-	if (service->device != NULL) {
 		if (service->favorite == FALSE)
 			return __connman_error_no_carrier(msg);
 
-		if (__connman_device_connect(service->device) < 0)
-			return __connman_error_failed(msg);
-
-		service->state = CONNMAN_SERVICE_STATE_IDLE;
-
-		state_changed(service);
+		err = __connman_device_disconnect(service->device);
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
@@ -367,11 +353,7 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 		err = __connman_network_disconnect(service->network);
 		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg);
-
-		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
-
-		state_changed(service);
+			return __connman_error_failed(msg, -err);
 	}
 
 	connman_service_set_favorite(service, FALSE);
@@ -597,54 +579,49 @@ int __connman_service_set_carrier(struct connman_service *service,
 		break;
 	}
 
-	if (carrier == TRUE)
-		service->state = CONNMAN_SERVICE_STATE_CARRIER;
-	else
-		service->state = CONNMAN_SERVICE_STATE_IDLE;
+	if (carrier == FALSE) {
+		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
+		state_changed(service);
 
-	state_changed(service);
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+		state_changed(service);
+	} else {
+		service->state = CONNMAN_SERVICE_STATE_CARRIER;
+		state_changed(service);
+	}
 
 	return connman_service_set_favorite(service, carrier);
 }
 
-int __connman_service_indicate_configuration(struct connman_service *service)
+int __connman_service_indicate_state(struct connman_service *service,
+					enum connman_service_state state)
 {
-	DBG("service %p", service);
+	DBG("service %p state %d", service, state);
 
 	if (service == NULL)
 		return -EINVAL;
 
-	service->state = CONNMAN_SERVICE_STATE_CONFIGURATION;
+	if (state == CONNMAN_SERVICE_STATE_CARRIER)
+		return __connman_service_set_carrier(service, TRUE);
 
-	state_changed(service);
+	if (service->state == state)
+		return -EALREADY;
 
-	return 0;
-}
-
-int __connman_service_ready(struct connman_service *service)
-{
-	DBG("service %p", service);
-
-	if (service == NULL)
+	if (service->state == CONNMAN_SERVICE_STATE_IDLE &&
+				state == CONNMAN_SERVICE_STATE_DISCONNECT)
 		return -EINVAL;
 
-	service->state = CONNMAN_SERVICE_STATE_READY;
+	if (state == CONNMAN_SERVICE_STATE_IDLE &&
+			service->state != CONNMAN_SERVICE_STATE_DISCONNECT) {
+		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
+		state_changed(service);
+	}
 
+	service->state = state;
 	state_changed(service);
 
-	return 0;
-}
-
-int __connman_service_disconnect(struct connman_service *service)
-{
-	DBG("service %p", service);
-
-	if (service == NULL)
-		return -EINVAL;
-
-	service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
-
-	state_changed(service);
+	if (state == CONNMAN_SERVICE_STATE_READY)
+		return connman_service_set_favorite(service, TRUE);
 
 	return 0;
 }

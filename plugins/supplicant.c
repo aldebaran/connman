@@ -1343,7 +1343,11 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		connman_network_set_connected(task->network, FALSE);
 		connman_device_set_scanning(task->device, FALSE);
 		break;
+	case WPA_ASSOCIATING:
+		connman_network_set_associating(task->network, TRUE);
+		break;
 	default:
+		connman_network_set_associating(task->network, FALSE);
 		break;
 	}
 }
@@ -1499,6 +1503,8 @@ int supplicant_connect(struct connman_network *network)
 	set_network(task, ssid, ssid_len, address, security, passphrase);
 
 	enable_network(task);
+
+	connman_network_set_associating(task->network, TRUE);
 
 	return 0;
 }
