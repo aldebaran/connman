@@ -21,6 +21,7 @@ fi
 		--enable-ethernet=builtin \
 		--enable-wifi=builtin \
 		--enable-bluetooth=builtin \
+		--enable-ofono=builtin \
 		--enable-modemmgr \
 		--enable-udhcp=builtin \
 		--enable-dhclient=builtin \

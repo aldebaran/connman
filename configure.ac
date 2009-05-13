@@ -75,6 +75,12 @@ AC_ARG_ENABLE(bluetooth,
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
 AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
+AC_ARG_ENABLE(ofono,
+	AC_HELP_STRING([--enable-ofono], [enable oFono support]),
+			[enable_ofono=${enableval}], [enable_ofono="no"])
+AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
+AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
+
 AC_ARG_ENABLE(modemmgr,
 	AC_HELP_STRING([--enable-modemmgr], [enable Modem Manager support]),
 			[enable_modemmgr=${enableval}], [enable_modemmgr="no"])

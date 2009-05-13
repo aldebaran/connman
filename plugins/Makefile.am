@@ -48,6 +48,16 @@ bluetooth_la_LIBADD = @GDBUS_LIBS@
 endif
 endif
 
+if OFONO
+if OFONO_BUILTIN
+builtin_modules += ofono
+builtin_sources += ofono.c
+else
+plugin_LTLIBRARIES += ofono.la
+bluetooth_la_LIBADD = @GDBUS_LIBS@
+endif
+endif
+
 if MODEMMGR
 plugin_LTLIBRARIES += modemmgr.la
 modemmgr_la_LIBADD = @GDBUS_LIBS@
