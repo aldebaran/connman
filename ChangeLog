@@ -1,3 +1,9 @@
+ver 0.17:
+	Add AT chat library implementation.
+	Fix service lookup for WiFi and WiMAX devices.
+	Fix service state signal emission and error handling.
+	Fix storing and loading of configured passphrases for services.
+
 ver 0.16:
 	Update Intel OSPM support to latest specification.
 	Add initial support for new service interface.
