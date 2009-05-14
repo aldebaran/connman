@@ -175,7 +175,7 @@ static void detect_newlink(unsigned short type, int index,
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	struct connman_device *device;
-	char *addr, *name, *devname, *ident;
+	char *addr, *name, *devname, *ident = NULL;
 
 	DBG("type %d index %d", type, index);
 
@@ -264,7 +264,6 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_GPS:
 		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
-		ident = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 		mode = CONNMAN_DEVICE_MODE_TRANSPORT_IP;
@@ -277,11 +276,9 @@ static void detect_newlink(unsigned short type, int index,
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
-		ident = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_HSO:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
-		ident = NULL;
 		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
 		break;
 	}
