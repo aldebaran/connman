@@ -214,7 +214,10 @@ elif sys.argv[1] in ["connect", "conn"]:
 	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Service")
 
-	service.Connect(timeout=60000)
+	try:
+		service.Connect(timeout=60000)
+	except dbus.DBusException, error:
+		print "%s: %s" % (error._dbus_error_name, error.message)
 
 elif sys.argv[1] in ["disconnect", "disc"]:
 	if (len(sys.argv) < 3):
@@ -226,7 +229,10 @@ elif sys.argv[1] in ["disconnect", "disc"]:
 	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Service")
 
-	service.Disconnect()
+	try:
+		service.Disconnect()
+	except dbus.DBusException, error:
+		print "%s: %s" % (error._dbus_error_name, error.message)
 
 elif sys.argv[1] in ["remove"]:
 	if (len(sys.argv) < 3):
@@ -244,7 +250,10 @@ elif sys.argv[1] in ["remove"]:
 		print "Only favorite services can be removed"
 		sys.exit(1)
 
-	service.Remove()
+	try:
+		service.Remove()
+	except dbus.DBusException, error:
+		print "%s: %s" % (error._dbus_error_name, error.message)
 
 elif sys.argv[1] == "scan":
 	properties = manager.GetProperties()
