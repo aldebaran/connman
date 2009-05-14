@@ -74,3 +74,9 @@ DBusMessage *__connman_error_in_progress(DBusMessage *msg)
 							".InProgress", NULL);
 
 }
+
+DBusMessage *__connman_error_operation_aborted(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						"OperationAborted", NULL);
+}
