@@ -80,3 +80,10 @@ DBusMessage *__connman_error_operation_aborted(DBusMessage *msg)
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 						"OperationAborted", NULL);
 }
+
+DBusMessage *__connman_error_operation_timeout(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						"OperationTimeout", NULL);
+}
+
