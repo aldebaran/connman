@@ -75,6 +75,13 @@ DBusMessage *__connman_error_in_progress(DBusMessage *msg)
 
 }
 
+DBusMessage *__connman_error_already_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						".AlreadyConnected", NULL);
+
+}
+
 DBusMessage *__connman_error_operation_aborted(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE

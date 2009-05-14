@@ -39,6 +39,7 @@ DBusMessage *__connman_error_not_supported(DBusMessage *msg);
 DBusMessage *__connman_error_not_implemented(DBusMessage *msg);
 DBusMessage *__connman_error_no_carrier(DBusMessage *msg);
 DBusMessage *__connman_error_in_progress(DBusMessage *msg);
+DBusMessage *__connman_error_already_connected(DBusMessage *msg);
 DBusMessage *__connman_error_operation_aborted(DBusMessage *msg);
 DBusMessage *__connman_error_operation_timeout(DBusMessage *msg);
 
