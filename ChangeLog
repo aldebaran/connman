@@ -1,3 +1,7 @@
+ver 0.18:
+	Add support for asynchronous service connect method.
+	Fix broken storage of service favorite details.
+
 ver 0.17:
 	Add AT chat library implementation.
 	Fix service lookup for WiFi and WiMAX devices.
