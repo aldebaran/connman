@@ -229,6 +229,8 @@ void __connman_service_cleanup(void);
 
 void __connman_service_list(DBusMessageIter *iter);
 
+void __connman_service_put(struct connman_service *service);
+
 struct connman_service *__connman_service_lookup_from_device(struct connman_device *device);
 struct connman_service *__connman_service_create_from_device(struct connman_device *device);
 

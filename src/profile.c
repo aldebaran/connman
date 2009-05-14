@@ -113,7 +113,7 @@ int __connman_profile_remove_device(struct connman_device *device)
 	if (service == NULL)
 		return -EINVAL;
 
-	connman_service_put(service);
+	__connman_service_put(service);
 
 	return 0;
 }
@@ -141,7 +141,7 @@ int __connman_profile_remove_network(struct connman_network *network)
 	if (service == NULL)
 		return -EINVAL;
 
-	connman_service_put(service);
+	__connman_service_put(service);
 
 	return 0;
 }

@@ -491,12 +491,12 @@ static void service_free(gpointer data)
 }
 
 /**
- * connman_service_put:
+ * __connman_service_put:
  * @service: service structure
  *
  * Release service if no longer needed
  */
-void connman_service_put(struct connman_service *service)
+void __connman_service_put(struct connman_service *service)
 {
 	DBG("service %p", service);
 
@@ -570,7 +570,7 @@ struct connman_service *connman_service_ref(struct connman_service *service)
  */
 void connman_service_unref(struct connman_service *service)
 {
-	connman_service_put(service);
+	__connman_service_put(service);
 }
 
 static gint service_compare(gconstpointer a, gconstpointer b,
@@ -717,12 +717,12 @@ int __connman_service_indicate_state(struct connman_service *service,
 }
 
 /**
- * connman_service_lookup:
+ * __connman_service_lookup:
  * @identifier: service identifier
  *
  * Look up a service by identifier (reference count will not be increased)
  */
-struct connman_service *connman_service_lookup(const char *identifier)
+static struct connman_service *__connman_service_lookup(const char *identifier)
 {
 	GSequenceIter *iter;
 
@@ -734,12 +734,12 @@ struct connman_service *connman_service_lookup(const char *identifier)
 }
 
 /**
- * connman_service_get:
+ * __connman_service_get:
  * @identifier: service identifier
  *
  * Look up a service by identifier or create a new one if not found
  */
-struct connman_service *connman_service_get(const char *identifier)
+static struct connman_service *__connman_service_get(const char *identifier)
 {
 	struct connman_service *service;
 	GSequenceIter *iter;
@@ -816,7 +816,7 @@ struct connman_service *__connman_service_lookup_from_device(struct connman_devi
 	name = g_strdup_printf("%s_%s",
 				__connman_device_get_type(device), ident);
 
-	service = connman_service_lookup(name);
+	service = __connman_service_lookup(name);
 
 	g_free(name);
 
@@ -865,12 +865,12 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 	name = g_strdup_printf("%s_%s",
 				__connman_device_get_type(device), ident);
 
-	service = connman_service_get(name);
+	service = __connman_service_get(name);
 	if (service == NULL)
 		goto done;
 
 	if (service->path != NULL) {
-		connman_service_put(service);
+		__connman_service_put(service);
 		service = NULL;
 		goto done;
 	}
@@ -910,7 +910,7 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
 
-	service = connman_service_lookup(name);
+	service = __connman_service_lookup(name);
 
 	g_free(name);
 
@@ -1029,7 +1029,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
 
-	service = connman_service_get(name);
+	service = __connman_service_get(name);
 	if (service == NULL)
 		goto done;
 
@@ -1038,7 +1038,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 		__connman_profile_changed();
 
-		connman_service_put(service);
+		__connman_service_put(service);
 		service = NULL;
 		goto done;
 	}
