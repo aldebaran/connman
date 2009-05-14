@@ -294,6 +294,39 @@ static DBusMessage *remove_profile(DBusConnection *conn,
 	return __connman_error_not_supported(msg);
 }
 
+static DBusMessage *connect_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter, array;
+
+	DBG("conn %p", conn);
+
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
+		return __connman_error_permission_denied(msg);
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&array, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		switch (dbus_message_iter_get_arg_type(&value)) {
+		}
+
+		dbus_message_iter_next(&array);
+	}
+
+	return __connman_error_not_implemented(msg);
+}
+
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -343,12 +376,13 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 }
 
 static GDBusMethodTable manager_methods[] = {
-	{ "GetProperties",   "",   "a{sv}", get_properties   },
-	{ "SetProperty",     "sv", "",      set_property     },
-	{ "AddProfile",      "s",  "o",     add_profile      },
-	{ "RemoveProfile",   "o",  "",      remove_profile   },
-	{ "RegisterAgent",   "o",  "",      register_agent   },
-	{ "UnregisterAgent", "o",  "",      unregister_agent },
+	{ "GetProperties",   "",      "a{sv}", get_properties   },
+	{ "SetProperty",     "sv",    "",      set_property     },
+	{ "AddProfile",      "s",     "o",     add_profile      },
+	{ "RemoveProfile",   "o",     "",      remove_profile   },
+	{ "ConnectService",  "a{sv}", "o",     connect_service  },
+	{ "RegisterAgent",   "o",     "",      register_agent   },
+	{ "UnregisterAgent", "o",     "",      unregister_agent },
 	{ },
 };
 
