@@ -214,7 +214,7 @@ elif sys.argv[1] in ["connect", "conn"]:
 	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
 						"org.moblin.connman.Service")
 
-	service.Connect()
+	service.Connect(timeout=60000)
 
 elif sys.argv[1] in ["disconnect", "disc"]:
 	if (len(sys.argv) < 3):

@@ -8,7 +8,7 @@ import dbus.mainloop.glib
 def property_changed(name, value, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
 	ipath = path[path.rfind("/") + 1:]
-	if iface not in ["Manager", "Service"]:
+	if iface not in ["Service"]:
 		return
 	if name in ["Profiles", "Services",
 				"Devices", "Networks", "Connections"]:

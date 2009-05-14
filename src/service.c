@@ -610,7 +610,7 @@ int connman_service_set_favorite(struct connman_service *service,
 	if (iter == NULL)
 		return -ENOENT;
 
-	if (service->favorite)
+	if (service->favorite == favorite)
 		return -EALREADY;
 
 	service->favorite = favorite;
@@ -777,6 +777,7 @@ static struct connman_service *__connman_service_get(const char *identifier)
 static int service_register(struct connman_service *service)
 {
 	const char *path = __connman_profile_active_path();
+	GSequenceIter *iter;
 
 	DBG("service %p", service);
 
@@ -791,6 +792,12 @@ static int service_register(struct connman_service *service)
 					CONNMAN_SERVICE_INTERFACE,
 					service_methods, service_signals,
 							NULL, service, NULL);
+
+	__connman_storage_load_service(service);
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL)
+		g_sequence_sort_changed(iter, service_compare, NULL);
 
 	__connman_profile_changed();
 
