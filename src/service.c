@@ -357,7 +357,6 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	}
 
 	connman_service_set_favorite(service, FALSE);
-
 	__connman_storage_save_service(service);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -620,8 +619,10 @@ int __connman_service_indicate_state(struct connman_service *service,
 	service->state = state;
 	state_changed(service);
 
-	if (state == CONNMAN_SERVICE_STATE_READY)
-		return connman_service_set_favorite(service, TRUE);
+	if (state == CONNMAN_SERVICE_STATE_READY) {
+		connman_service_set_favorite(service, TRUE);
+		__connman_storage_save_service(service);
+	}
 
 	return 0;
 }
@@ -998,6 +999,17 @@ static int service_load(struct connman_service *service)
 
 	g_free(data);
 
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		service->favorite = g_key_file_get_boolean(keyfile,
+				service->identifier, "Favorite", NULL);
+		break;
+	}
+
 	str = g_key_file_get_string(keyfile,
 				service->identifier, "Passphrase", NULL);
 	if (str != NULL) {
@@ -1039,6 +1051,17 @@ static int service_save(struct connman_service *service)
 	g_free(data);
 
 update:
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		g_key_file_set_boolean(keyfile, service->identifier,
+					"Favorite", service->favorite);
+		break;
+	}
+
 	if (service->passphrase != NULL)
 		g_key_file_set_string(keyfile, service->identifier,
 					"Passphrase", service->passphrase);
