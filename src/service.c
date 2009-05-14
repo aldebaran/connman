@@ -48,6 +48,8 @@ struct connman_service {
 	char *profile;
 	struct connman_device *device;
 	struct connman_network *network;
+	DBusMessage *pending;
+	guint timeout;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -282,10 +284,38 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static gboolean connect_timeout(gpointer user_data)
+{
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
+
+	service->timeout = 0;
+
+	if (service->pending != NULL) {
+		DBusMessage *reply;
+
+		reply = __connman_error_operation_timeout(service->pending);
+		if (reply != NULL)
+			g_dbus_send_message(connection, reply);
+
+		dbus_message_unref(service->pending);
+		service->pending = NULL;
+	}
+
+	return FALSE;
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_service *service = data;
+
+	if (service->pending != NULL)
+		return __connman_error_in_progress(msg);
+
+	if (service->state == CONNMAN_SERVICE_STATE_READY)
+		return __connman_error_already_connected(msg);
 
 	if (service->network != NULL) {
 		int err;
@@ -297,7 +327,12 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg, -err);
 
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		service->pending = dbus_message_ref(msg);
+
+		service->timeout = g_timeout_add_seconds(45,
+						connect_timeout, service);
+
+		return NULL;
 	} else if (service->device != NULL) {
 		if (service->favorite == FALSE)
 			return __connman_error_no_carrier(msg);
@@ -305,7 +340,11 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		if (__connman_device_connect(service->device) < 0)
 			return __connman_error_failed(msg, EINVAL);
 
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		service->pending = dbus_message_ref(msg);
+		service->timeout = g_timeout_add_seconds(15,
+						connect_timeout, service);
+
+		return NULL;
 	}
 
 	return __connman_error_not_supported(msg);
@@ -315,6 +354,19 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_service *service = data;
+
+	if (service->pending != NULL) {
+		DBusMessage *reply;
+
+		reply = __connman_error_operation_aborted(service->pending);
+		if (reply != NULL)
+			g_dbus_send_message(conn, reply);
+
+		dbus_message_unref(service->pending);
+		service->pending = NULL;
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
 
 	if (service->network != NULL) {
 		int err;
@@ -387,7 +439,8 @@ static DBusMessage *move_after(DBusConnection *conn,
 static GDBusMethodTable service_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties     },
 	{ "SetProperty",   "sv", "",      set_property       },
-	{ "Connect",       "",   "",      connect_service    },
+	{ "Connect",       "",   "",      connect_service,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",    "",   "",      disconnect_service },
 	{ "Remove",        "",   "",      remove_service     },
 	{ "MoveBefore",    "o",  "",      move_before        },
@@ -408,6 +461,14 @@ static void service_free(gpointer data)
 	DBG("service %p", service);
 
 	g_hash_table_remove(service_hash, service->identifier);
+
+	if (service->timeout > 0)
+		g_source_remove(service->timeout);
+
+	if (service->pending != NULL) {
+		dbus_message_unref(service->pending);
+		service->pending = NULL;
+	}
 
 	service->path = NULL;
 
@@ -622,6 +683,34 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (state == CONNMAN_SERVICE_STATE_READY) {
 		connman_service_set_favorite(service, TRUE);
 		__connman_storage_save_service(service);
+
+		if (service->timeout > 0)
+			g_source_remove(service->timeout);
+
+		if (service->pending != NULL) {
+			g_dbus_send_reply(connection, service->pending,
+							DBUS_TYPE_INVALID);
+
+			dbus_message_unref(service->pending);
+			service->pending = NULL;
+		}
+
+	}
+
+	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
+		if (service->timeout > 0)
+			g_source_remove(service->timeout);
+
+		if (service->pending != NULL) {
+			DBusMessage *reply;
+
+			reply = __connman_error_failed(service->pending, EIO);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+
+			dbus_message_unref(service->pending);
+			service->pending = NULL;
+		}
 	}
 
 	return 0;

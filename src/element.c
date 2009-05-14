@@ -1312,6 +1312,8 @@ int connman_element_set_enabled(struct connman_element *element,
 void connman_element_set_error(struct connman_element *element,
 					enum connman_element_error error)
 {
+	struct connman_service *service;
+
 	DBG("element %p error %d", element, error);
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
@@ -1322,6 +1324,10 @@ void connman_element_set_error(struct connman_element *element,
 
 	if (element->driver && element->driver->change)
 		element->driver->change(element);
+
+	service = __connman_element_get_service(element);
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
 int __connman_element_init(DBusConnection *conn, const char *device,
