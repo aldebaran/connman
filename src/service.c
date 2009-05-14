@@ -174,14 +174,14 @@ static void state_changed(struct connman_service *service)
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	const char *str;
 
-	DBG("conn %p", conn);
+	DBG("service %p", service);
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
@@ -237,14 +237,14 @@ static DBusMessage *get_properties(DBusConnection *conn,
 }
 
 static DBusMessage *set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
 	DBusMessageIter iter, value;
 	const char *name;
 	int type;
 
-	DBG("conn %p", conn);
+	DBG("service %p", service);
 
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
 		return __connman_error_invalid_arguments(msg);
@@ -307,9 +307,11 @@ static gboolean connect_timeout(gpointer user_data)
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
 
 	if (service->pending != NULL)
 		return __connman_error_in_progress(msg);
@@ -351,9 +353,11 @@ static DBusMessage *connect_service(DBusConnection *conn,
 }
 
 static DBusMessage *disconnect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
 
 	if (service->pending != NULL) {
 		DBusMessage *reply;
@@ -393,9 +397,11 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 }
 
 static DBusMessage *remove_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
 
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
@@ -415,9 +421,11 @@ static DBusMessage *remove_service(DBusConnection *conn,
 }
 
 static DBusMessage *move_before(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
 
 	if (service->favorite == FALSE)
 		return __connman_error_not_supported(msg);
@@ -426,9 +434,11 @@ static DBusMessage *move_before(DBusConnection *conn,
 }
 
 static DBusMessage *move_after(DBusConnection *conn,
-					DBusMessage *msg, void *data)
+					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
 
 	if (service->favorite == FALSE)
 		return __connman_error_not_supported(msg);
@@ -453,9 +463,9 @@ static GDBusSignalTable service_signals[] = {
 	{ },
 };
 
-static void service_free(gpointer data)
+static void service_free(gpointer user_data)
 {
-	struct connman_service *service = data;
+	struct connman_service *service = user_data;
 	char *path = service->path;
 
 	DBG("service %p", service);
