@@ -1,3 +1,11 @@
+ver 0.19:
+	Add hidden networks to the service list.
+	Add support for storing the service name.
+	Fix service list sorting for connected services.
+	Fix missing cancel command when operation times out.
+	Fix various issues with service favorite handling.
+	Remove Available and Remember network properties.
+
 ver 0.18:
 	Add support for asynchronous service connect method.
 	Fix broken storage of service favorite details.
