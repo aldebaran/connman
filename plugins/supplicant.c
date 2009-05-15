@@ -803,21 +803,30 @@ static int initiate_scan(struct supplicant_task *task)
 	return 0;
 }
 
-static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
+static char *build_group(const char *addr,
+			const unsigned char *ssid, unsigned int ssid_len,
 					const char *mode, const char *security)
 {
 	GString *str;
 	unsigned int i;
 
-	if (ssid_len < 1)
-		return NULL;
+	if (ssid_len > 0 && ssid[0] != '\0') {
+		str = g_string_sized_new((ssid_len * 2) + 24);
+		if (str == NULL)
+			return NULL;
 
-	str = g_string_sized_new((ssid_len * 2) + 24);
-	if (str == NULL)
-		return NULL;
+		for (i = 0; i < ssid_len; i++)
+			g_string_append_printf(str, "%02x", ssid[i]);
+	} else {
+		if (addr == NULL)
+			return NULL;
 
-	for (i = 0; i < ssid_len; i++)
-		g_string_append_printf(str, "%02x", ssid[i]);
+		str = g_string_sized_new(15 + 24);
+		if (str == NULL)
+			return NULL;
+
+		g_string_append_printf(str, "hidden_%s", addr);
+	}
 
 	g_string_append_printf(str, "_%s_%s", mode, security);
 
@@ -856,7 +865,7 @@ static void extract_addr(DBusMessageIter *value,
 	if (result->path == NULL)
 		return;
 
-	snprintf(result->path, 18, "%02X_%02X_%02X_%02X_%02X_%02X",
+	snprintf(result->path, 18, "%02x%02x%02x%02x%02x%02x",
 						eth->ether_addr_octet[0],
 						eth->ether_addr_octet[1],
 						eth->ether_addr_octet[2],
@@ -1055,7 +1064,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
 
-	group = build_group(result.ssid, result.ssid_len, mode, security);
+	group = build_group(result.path, result.ssid, result.ssid_len,
+							mode, security);
 
 	network = connman_device_get_network(task->device, result.path);
 	if (network == NULL) {
