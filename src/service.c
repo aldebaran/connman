@@ -592,6 +592,13 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	struct connman_service *service_a = (void *) a;
 	struct connman_service *service_b = (void *) b;
 
+	if (service_a->state != service_b->state) {
+		if (service_a->state == CONNMAN_SERVICE_STATE_READY)
+			return -1;
+		if (service_b->state == CONNMAN_SERVICE_STATE_READY)
+			return 1;
+	}
+
 	if (service_a->order > service_b->order)
 		return -1;
 
@@ -669,6 +676,8 @@ int __connman_service_set_carrier(struct connman_service *service,
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state)
 {
+	GSequenceIter *iter;
+
 	DBG("service %p state %d", service, state);
 
 	if (service == NULL)
@@ -727,6 +736,12 @@ int __connman_service_indicate_state(struct connman_service *service,
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
 		state_changed(service);
 	}
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL)
+		g_sequence_sort_changed(iter, service_compare, NULL);
+
+	__connman_profile_changed();
 
 	return 0;
 }
