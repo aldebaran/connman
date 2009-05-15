@@ -1067,6 +1067,8 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	service->type = convert_network_type(network);
 
+	service->state = CONNMAN_SERVICE_STATE_IDLE;
+
 	update_from_network(service, network);
 
 	service_register(service);
