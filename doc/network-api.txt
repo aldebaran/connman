@@ -41,23 +41,9 @@ Properties	string Address [readonly]
 			network. For example hidden WiFi networks will
 			not include it.
 
-		boolean Available [readonly]
-
-			Indicates that this network is in range and
-			ready to be used.
-
-			The scanning process can change this property.
-
 		boolean Connected [readonly]
 
 			Indicates that this network is currently connected.
-
-		boolean Remember [readwrite]
-
-			Indicates that this network will be remembered.
-
-			For manually created networks this is set by
-			default.
 
 		uint8 Strength [readonly]
 

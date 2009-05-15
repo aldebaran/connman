@@ -121,14 +121,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Name",
 					DBUS_TYPE_STRING, &network->name);
 
-	connman_dbus_dict_append_variant(&dict, "Available",
-				DBUS_TYPE_BOOLEAN, &network->available);
-
 	connman_dbus_dict_append_variant(&dict, "Connected",
 				DBUS_TYPE_BOOLEAN, &network->connected);
-
-	connman_dbus_dict_append_variant(&dict, "Remember",
-				DBUS_TYPE_BOOLEAN, &network->remember);
 
 	if (network->priority > 0)
 		connman_dbus_dict_append_variant(&dict, "Priority",
@@ -185,19 +179,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "Remember") == TRUE) {
-		connman_bool_t remember;
-
-		if (type != DBUS_TYPE_BOOLEAN)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &remember);
-
-		if (network->remember == remember)
-			return __connman_error_invalid_arguments(msg);
-
-		network->remember = remember;
-	} else if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
+	if (g_str_equal(name, "WiFi.Passphrase") == TRUE) {
 		const char *passphrase;
 
 		if (type != DBUS_TYPE_STRING)
@@ -631,41 +613,12 @@ const char *__connman_network_get_ident(struct connman_network *network)
 int connman_network_set_available(struct connman_network *network,
 						connman_bool_t available)
 {
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Available";
-
 	DBG("network %p available %d", network, available);
 
 	if (network->available == available)
 		return -EALREADY;
 
 	network->available = available;
-
-	if (network->registered == FALSE)
-		return 0;
-
-	if (network->connected == TRUE)
-		return 0;
-
-	if (network->remember == FALSE)
-		return 0;
-
-	signal = dbus_message_new_signal(network->element.path,
-				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return 0;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &available);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
 
 	return 0;
 }
@@ -834,35 +787,12 @@ connman_bool_t connman_network_get_connected(struct connman_network *network)
 int connman_network_set_remember(struct connman_network *network,
 						connman_bool_t remember)
 {
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Remember";
-
 	DBG("network %p remember %d", network, remember);
 
 	if (network->remember == remember)
 		return -EALREADY;
 
 	network->remember = remember;
-
-	if (network->registered == FALSE)
-		return 0;
-
-	signal = dbus_message_new_signal(network->element.path,
-				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return 0;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &remember);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
 
 	return 0;
 }
@@ -1281,9 +1211,6 @@ static int network_load(struct connman_network *network)
 
 	g_free(data);
 
-	network->remember = g_key_file_get_boolean(keyfile,
-					network->identifier, "Remember", NULL);
-
 	val = g_key_file_get_integer(keyfile, network->identifier,
 							"Priority", NULL);
 	if (val > 0)
@@ -1339,9 +1266,6 @@ static int network_save(struct connman_network *network)
 	g_free(data);
 
 update:
-	g_key_file_set_boolean(keyfile, network->identifier,
-					"Remember", network->remember);
-
 	if (network->priority > 0)
 		g_key_file_set_integer(keyfile, network->identifier,
 						"Priority", network->priority);
