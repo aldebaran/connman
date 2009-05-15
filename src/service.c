@@ -417,6 +417,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
 
+	if (service->favorite == FALSE)
+		return __connman_error_not_supported(msg);
+
 	if (service->network != NULL) {
 		struct connman_device *device;
 
