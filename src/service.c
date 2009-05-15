@@ -292,6 +292,9 @@ static gboolean connect_timeout(gpointer user_data)
 
 	service->timeout = 0;
 
+	if (service->network != NULL)
+		__connman_network_disconnect(service->network);
+
 	if (service->pending != NULL) {
 		DBusMessage *reply;
 
