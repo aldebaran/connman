@@ -41,56 +41,55 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						".InvalidArguments", NULL);
+				".InvalidArguments", "Invalid arguments");
 }
 
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						".PermissionDenied", NULL);
+				".PermissionDenied", "Permission denied");
 }
 
 DBusMessage *__connman_error_not_supported(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						".NotSupported", NULL);
+					".NotSupported", "Not supported");
 }
 
 DBusMessage *__connman_error_not_implemented(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						".NotImplemented", NULL);
+					".NotImplemented", "Not implemented");
 }
 
 DBusMessage *__connman_error_no_carrier(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-							".NoCarrier", NULL);
+						".NoCarrier", "No carrier");
 }
 
 DBusMessage *__connman_error_in_progress(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-							".InProgress", NULL);
-
+						".InProgress", "In progress");
 }
 
 DBusMessage *__connman_error_already_connected(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						".AlreadyConnected", NULL);
+				".AlreadyConnected", "Already connected");
 
 }
 
 DBusMessage *__connman_error_operation_aborted(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						"OperationAborted", NULL);
+				"OperationAborted", "Operation aborted");
 }
 
 DBusMessage *__connman_error_operation_timeout(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-						"OperationTimeout", NULL);
+				"OperationTimeout", "Operation timeout");
 }
 
