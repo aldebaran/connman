@@ -379,12 +379,7 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	}
 
 	if (service->network != NULL) {
-		struct connman_device *device;
 		int err;
-
-		device = connman_network_get_device(service->network);
-		if (device != NULL)
-			__connman_device_disconnect(device);
 
 		err = __connman_network_disconnect(service->network);
 		if (err < 0 && err != -EINPROGRESS)
