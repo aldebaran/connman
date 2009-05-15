@@ -1157,6 +1157,10 @@ static int service_save(struct connman_service *service)
 	g_free(data);
 
 update:
+	if (service->name != NULL)
+		g_key_file_set_string(keyfile, service->identifier,
+						"Name", service->name);
+
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
