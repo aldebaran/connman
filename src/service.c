@@ -301,6 +301,9 @@ static gboolean connect_timeout(gpointer user_data)
 
 		dbus_message_unref(service->pending);
 		service->pending = NULL;
+
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE);
 	}
 
 	return FALSE;
@@ -704,7 +707,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 			dbus_message_unref(service->pending);
 			service->pending = NULL;
 		}
-
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
@@ -721,6 +723,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 			dbus_message_unref(service->pending);
 			service->pending = NULL;
 		}
+
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+		state_changed(service);
 	}
 
 	return 0;
