@@ -415,15 +415,8 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->favorite == FALSE)
 		return __connman_error_not_supported(msg);
 
-	if (service->network != NULL) {
-		struct connman_device *device;
-
-		device = connman_network_get_device(service->network);
-		if (device != NULL)
-			__connman_device_disconnect(device);
-
+	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
-	}
 
 	connman_service_set_favorite(service, FALSE);
 	__connman_storage_save_service(service);
