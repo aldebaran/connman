@@ -42,6 +42,7 @@ struct connman_service {
 	enum connman_service_state state;
 	connman_uint8_t strength;
 	connman_bool_t favorite;
+	GTimeVal modified;
 	unsigned int order;
 	char *name;
 	char *passphrase;
@@ -474,6 +475,9 @@ static DBusMessage *move_before(DBusConnection *conn,
 
 	DBG("target %s", target->identifier);
 
+	g_get_current_time(&service->modified);
+	__connman_storage_save_service(service);
+
 	src = g_hash_table_lookup(service_hash, service->identifier);
 	dst = g_hash_table_lookup(service_hash, target->identifier);
 
@@ -507,6 +511,9 @@ static DBusMessage *move_after(DBusConnection *conn,
 		return __connman_error_invalid_service(msg);
 
 	DBG("target %s", target->identifier);
+
+	g_get_current_time(&service->modified);
+	__connman_storage_save_service(service);
 
 	return __connman_error_not_implemented(msg);
 }
@@ -778,6 +785,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 			dbus_message_unref(service->pending);
 			service->pending = NULL;
 		}
+
+		g_get_current_time(&service->modified);
+		__connman_storage_save_service(service);
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
@@ -1161,7 +1171,7 @@ static int service_load(struct connman_service *service)
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gsize length;
-	char *str;
+	gchar *str;
 
 	DBG("service %p", service);
 
@@ -1201,6 +1211,13 @@ static int service_load(struct connman_service *service)
 	}
 
 	str = g_key_file_get_string(keyfile,
+				service->identifier, "Modified", NULL);
+	if (str != NULL) {
+		g_time_val_from_iso8601(str, &service->modified);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(keyfile,
 				service->identifier, "Passphrase", NULL);
 	if (str != NULL) {
 		g_free(service->passphrase);
@@ -1217,6 +1234,7 @@ static int service_save(struct connman_service *service)
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gsize length;
+	gchar *str;
 
 	DBG("service %p", service);
 
@@ -1254,6 +1272,13 @@ update:
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
 		break;
+	}
+
+	str = g_time_val_to_iso8601(&service->modified);
+	if (str != NULL) {
+		g_key_file_set_string(keyfile, service->identifier,
+							"Modified", str);
+		g_free(str);
 	}
 
 	if (service->passphrase != NULL)
