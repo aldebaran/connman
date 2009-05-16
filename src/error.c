@@ -93,3 +93,8 @@ DBusMessage *__connman_error_operation_timeout(DBusMessage *msg)
 				"OperationTimeout", "Operation timeout");
 }
 
+DBusMessage *__connman_error_invalid_service(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+					"InvalidService", "Invalid service");
+}
