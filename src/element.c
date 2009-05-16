@@ -1065,6 +1065,16 @@ static void emit_state_change(DBusConnection *conn, const char *state)
 	append_state(&entry, state);
 
 	g_dbus_send_message(conn, signal);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "StateChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &state);
+
+	g_dbus_send_message(conn, signal);
 }
 
 static void probe_element(struct connman_element *element)

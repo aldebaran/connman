@@ -62,6 +62,15 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
+		StateChanged(string state)
+
+			This signal is similar to the PropertyChanged signal
+			for the State property.
+
+			It exists for application state only care about the
+			current state and so can avoid to be woken up when
+			other details changes.
+
 Properties	string State [readonly]
 
 			The global connection state of a system. Possible
