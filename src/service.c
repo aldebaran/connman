@@ -71,6 +71,34 @@ void __connman_service_list(DBusMessageIter *iter)
 	g_sequence_foreach(service_list, append_path, iter);
 }
 
+struct find_data {
+	const char *path;
+	struct connman_service *service;
+};
+
+static void compare_path(gpointer value, gpointer user_data)
+{
+	struct connman_service *service = value;
+	struct find_data *data = user_data;
+
+	if (data->service != NULL)
+		return;
+
+	if (g_strcmp0(service->path, data->path) == 0)
+		data->service = service;
+}
+
+static struct connman_service *find_service(const char *path)
+{
+	struct find_data data = { .path = path, .service = NULL };
+
+	DBG("path %s", path);
+
+	g_sequence_foreach(service_list, compare_path, &data);
+
+	return data.service;
+}
+
 static const char *type2string(enum connman_service_type type)
 {
 	switch (type) {
@@ -428,12 +456,34 @@ static DBusMessage *move_before(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
+	struct connman_service *target;
+	const char *path;
+	GSequenceIter *src, *dst;
 
 	DBG("service %p", service);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
 
 	if (service->favorite == FALSE)
 		return __connman_error_not_supported(msg);
 
+	target = find_service(path);
+	if (target == NULL || target->favorite == FALSE || target == service)
+		return __connman_error_invalid_service(msg);
+
+	DBG("target %s", target->identifier);
+
+	src = g_hash_table_lookup(service_hash, service->identifier);
+	dst = g_hash_table_lookup(service_hash, target->identifier);
+
+#if 0
+	g_sequence_move(src, dst);
+
+	__connman_profile_changed();
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+#endif
 	return __connman_error_not_implemented(msg);
 }
 
@@ -441,11 +491,22 @@ static DBusMessage *move_after(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
+	struct connman_service *target;
+	const char *path;
 
 	DBG("service %p", service);
 
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
 	if (service->favorite == FALSE)
 		return __connman_error_not_supported(msg);
+
+	target = find_service(path);
+	if (target == NULL || target->favorite == FALSE || target == service)
+		return __connman_error_invalid_service(msg);
+
+	DBG("target %s", target->identifier);
 
 	return __connman_error_not_implemented(msg);
 }
