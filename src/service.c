@@ -818,6 +818,13 @@ int __connman_service_indicate_state(struct connman_service *service,
 	return 0;
 }
 
+int __connman_service_indicate_default(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	return 0;
+}
+
 /**
  * __connman_service_lookup:
  * @identifier: service identifier

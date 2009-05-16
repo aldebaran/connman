@@ -114,7 +114,8 @@ static int set_route(struct connman_element *element, const char *gateway)
 
 	err = ioctl(sk, SIOCADDRT, &rt);
 	if (err < 0)
-		DBG("default route setting failed (%s)", strerror(errno));
+		connman_error("Setting default route failed (%s)",
+							strerror(errno));
 
 	close(sk);
 
@@ -161,7 +162,8 @@ static int del_route(struct connman_element *element, const char *gateway)
 
 	err = ioctl(sk, SIOCDELRT, &rt);
 	if (err < 0)
-		DBG("default route removal failed (%s)", strerror(errno));
+		connman_error("Removing default route failed (%s)",
+							strerror(errno));
 
 	close(sk);
 
@@ -228,6 +230,7 @@ static void del_default(struct connman_element *element, gpointer user_data)
 
 static void new_default(struct connman_element *element, gpointer user_data)
 {
+	struct connman_service *service;
 	const char *gateway;
 
 	DBG("element %p name %s", element, element->name);
@@ -243,7 +246,11 @@ static void new_default(struct connman_element *element, gpointer user_data)
 	if (gateway == NULL)
 		return;
 
-	set_route(element, gateway);
+	if (set_route(element, gateway) < 0)
+		return;
+
+	service = __connman_element_get_service(element);
+	__connman_service_indicate_default(service);
 
 	connman_element_set_enabled(element, TRUE);
 	emit_default_signal(element);
@@ -503,9 +510,13 @@ static int connection_probe(struct connman_element *element)
 		return 0;
 	}
 
-	set_route(element, gateway);
+	if (set_route(element, gateway) < 0)
+		return 0;
 
 done:
+	service = __connman_element_get_service(element);
+	__connman_service_indicate_default(service);
+
 	connman_element_set_enabled(element, TRUE);
 	emit_default_signal(element);
 

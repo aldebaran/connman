@@ -242,6 +242,7 @@ int __connman_service_set_carrier(struct connman_service *service,
 						connman_bool_t carrier);
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state);
+int __connman_service_indicate_default(struct connman_service *service);
 
 #include <connman/notifier.h>
 
