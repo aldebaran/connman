@@ -1865,7 +1865,7 @@ static struct connman_driver device_driver = {
 static int device_load(struct connman_device *device)
 {
 	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
+	gchar *pathname, *identifier, *data = NULL;
 	gsize length;
 	char *str;
 	int val;
@@ -1873,7 +1873,7 @@ static int device_load(struct connman_device *device)
 	DBG("device %p", device);
 
 	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
-							device->element.name);
+					__connman_profile_active_ident());
 	if (pathname == NULL)
 		return -ENOMEM;
 
@@ -1894,16 +1894,15 @@ static int device_load(struct connman_device *device)
 
 	g_free(data);
 
-	str = g_key_file_get_string(keyfile, "Configuration", "Policy", NULL);
+	identifier = g_strdup_printf("device_%s", device->element.name);
+	if (identifier == NULL)
+		goto done;
+
+	str = g_key_file_get_string(keyfile, identifier, "Policy", NULL);
 	if (str != NULL) {
 		device->policy = string2policy(str);
 		g_free(str);
 	}
-
-	val = g_key_file_get_integer(keyfile, "Configuration",
-							"Priority", NULL);
-	if (val > 0)
-		device->priority = val;
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -1911,21 +1910,17 @@ static int device_load(struct connman_device *device)
 		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		val = g_key_file_get_integer(keyfile, "Configuration",
+		val = g_key_file_get_integer(keyfile, identifier,
 							"ScanInterval", NULL);
 		if (val > 0)
 			device->scan_interval = val;
 		break;
 	}
 
-#if 0
-	str = g_key_file_get_string(keyfile, "Configuration",
-							"LastNetwork", NULL);
-	if (str != NULL)
-		device->last_network = str;
-#endif
-
+done:
 	g_key_file_free(keyfile);
+
+	g_free(identifier);
 
 	return 0;
 }
@@ -1933,14 +1928,14 @@ static int device_load(struct connman_device *device)
 static int device_save(struct connman_device *device)
 {
 	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
+	gchar *pathname, *identifier = NULL, *data = NULL;
 	gsize length;
 	const char *str;
 
 	DBG("device %p", device);
 
 	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
-							device->element.name);
+					__connman_profile_active_ident());
 	if (pathname == NULL)
 		return -ENOMEM;
 
@@ -1958,13 +1953,13 @@ static int device_save(struct connman_device *device)
 	g_free(data);
 
 update:
+	identifier = g_strdup_printf("device_%s", device->element.name);
+	if (identifier == NULL)
+		goto done;
+
 	str = policy2string(device->policy);
 	if (str != NULL)
-		g_key_file_set_string(keyfile, "Configuration", "Policy", str);
-
-	if (device->priority > 0)
-		g_key_file_set_integer(keyfile, "Configuration",
-						"Priority", device->priority);
+		g_key_file_set_string(keyfile, identifier, "Policy", str);
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -1973,14 +1968,10 @@ update:
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		if (device->scan_interval > 0)
-			g_key_file_set_integer(keyfile, "Configuration",
+			g_key_file_set_integer(keyfile, identifier,
 					"ScanInterval", device->scan_interval);
 		break;
 	}
-
-	if (device->last_network != NULL)
-		g_key_file_set_string(keyfile, "Configuration",
-					"LastNetwork", device->last_network);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
@@ -1992,10 +1983,8 @@ done:
 
 	g_key_file_free(keyfile);
 
+	g_free(identifier);
 	g_free(pathname);
-
-	if (device->network != NULL)
-		__connman_storage_save_network(device->network);
 
 	return 0;
 }

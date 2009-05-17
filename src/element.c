@@ -1116,7 +1116,7 @@ static void register_element(gpointer data, gpointer user_data)
 		element->parent = element_root->data;
 
 		node = element_root;
-		basepath = "";
+		basepath = "/device";
 	}
 
 	element->path = g_strdup_printf("%s/%s", basepath, element->name);

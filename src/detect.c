@@ -233,7 +233,7 @@ static void detect_newlink(unsigned short type, int index,
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
-		name = index2ident(index, "dev_");
+		name = index2ident(index, "");
 		addr = index2addr(index);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
