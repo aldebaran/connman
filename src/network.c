@@ -1168,149 +1168,11 @@ static struct connman_driver network_driver = {
 	.change		= network_change,
 };
 
-static int network_init(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	return 0;
-}
-
-static int network_load(struct connman_network *network)
-{
-	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
-	gsize length;
-	const char *name;
-	char *str;
-	int val;
-
-	DBG("network %p", network);
-
-	name = connman_device_get_name(network->device);
-	if (name == NULL)
-		return -EINVAL;
-
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, name);
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
-		g_free(pathname);
-		return -ENOENT;
-	}
-
-	g_free(pathname);
-
-	if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE) {
-		g_free(data);
-		return -EILSEQ;
-	}
-
-	g_free(data);
-
-	val = g_key_file_get_integer(keyfile, network->identifier,
-							"Priority", NULL);
-	if (val > 0)
-		network->priority = val;
-
-	str = g_key_file_get_string(keyfile,
-				network->identifier, "WiFi.Security", NULL);
-	if (str != NULL) {
-		g_free(network->wifi.security);
-		network->wifi.security = str;
-	}
-
-	str = g_key_file_get_string(keyfile,
-				network->identifier, "WiFi.Passphrase", NULL);
-	if (str != NULL) {
-		g_free(network->wifi.passphrase);
-		network->wifi.passphrase = str;
-	}
-
-	g_key_file_free(keyfile);
-
-	return 0;
-}
-
-static int network_save(struct connman_network *network)
-{
-	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
-	gsize length;
-	const char *name;
-
-	DBG("network %p", network);
-
-	name = connman_device_get_name(network->device);
-	if (name == NULL)
-		return -EINVAL;
-
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, name);
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
-		goto update;
-
-	if (length > 0) {
-		if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE)
-			goto done;
-	}
-
-	g_free(data);
-
-update:
-	if (network->priority > 0)
-		g_key_file_set_integer(keyfile, network->identifier,
-						"Priority", network->priority);
-
-	if (network->remember == TRUE || network->connected == TRUE) {
-		if (network->wifi.security != NULL)
-			g_key_file_set_string(keyfile, network->identifier,
-				"WiFi.Security", network->wifi.security);
-
-		if (network->wifi.passphrase != NULL)
-			g_key_file_set_string(keyfile, network->identifier,
-				"WiFi.Passphrase", network->wifi.passphrase);
-	}
-
-	data = g_key_file_to_data(keyfile, &length, NULL);
-
-	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
-		connman_error("Failed to store network information");
-
-done:
-	g_free(data);
-
-	g_key_file_free(keyfile);
-
-	g_free(pathname);
-
-	return 0;
-}
-
-static struct connman_storage network_storage = {
-	.name		= "network",
-	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
-	.network_init	= network_init,
-	.network_load	= network_load,
-	.network_save	= network_save,
-};
-
 int __connman_network_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-
-	if (connman_storage_register(&network_storage) < 0)
-		connman_error("Failed to register network storage");
 
 	return connman_driver_register(&network_driver);
 }
@@ -1320,8 +1182,6 @@ void __connman_network_cleanup(void)
 	DBG("");
 
 	connman_driver_unregister(&network_driver);
-
-	connman_storage_unregister(&network_storage);
 
 	dbus_connection_unref(connection);
 }
