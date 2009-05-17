@@ -1368,7 +1368,6 @@ static void connect_known_network(struct connman_device *device)
 	g_hash_table_iter_init(&iter, device->networks);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		connman_uint8_t old_priority, new_priority;
 		connman_uint8_t old_strength, new_strength;
 		const char *name;
 
@@ -1386,22 +1385,8 @@ static void connect_known_network(struct connman_device *device)
 			}
 		}
 
-		if (connman_network_get_remember(value) == FALSE)
-			continue;
-
 		if (network == NULL) {
 			network = value;
-			continue;
-		}
-
-		old_priority = connman_network_get_uint8(network,
-						CONNMAN_PROPERTY_ID_PRIORITY);
-		new_priority = connman_network_get_uint8(value,
-						CONNMAN_PROPERTY_ID_PRIORITY);
-
-		if (new_priority != old_priority) {
-			if (new_priority > old_priority)
-				network = value;
 			continue;
 		}
 
@@ -1446,9 +1431,6 @@ static gboolean remove_unavailable_network(gpointer key, gpointer value,
 	struct connman_network *network = value;
 
 	if (connman_network_get_connected(network) == TRUE)
-		return FALSE;
-
-	if (connman_network_get_remember(network) == TRUE)
 		return FALSE;
 
 	if (connman_network_get_available(network) == TRUE)

@@ -37,7 +37,6 @@ struct connman_network {
 	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
-	connman_bool_t remember;
 	connman_uint8_t strength;
 	char *identifier;
 	char *address;
@@ -761,37 +760,6 @@ int connman_network_set_connected(struct connman_network *network,
 connman_bool_t connman_network_get_connected(struct connman_network *network)
 {
 	return network->connected;
-}
-
-/**
- * connman_network_set_remember:
- * @network: network structure
- * @remember: remember state
- *
- * Change remember state of network (known networks)
- */
-int connman_network_set_remember(struct connman_network *network,
-						connman_bool_t remember)
-{
-	DBG("network %p remember %d", network, remember);
-
-	if (network->remember == remember)
-		return -EALREADY;
-
-	network->remember = remember;
-
-	return 0;
-}
-
-/**
- * connman_network_get_remember:
- * @network: network structure
- *
- * Get network remember setting
- */
-connman_bool_t connman_network_get_remember(struct connman_network *network)
-{
-	return network->remember;
 }
 
 /**
