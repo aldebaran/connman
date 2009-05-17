@@ -38,7 +38,6 @@ struct connman_network {
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t remember;
-	connman_uint8_t priority;
 	connman_uint8_t strength;
 	char *identifier;
 	char *address;
@@ -124,10 +123,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Connected",
 				DBUS_TYPE_BOOLEAN, &network->connected);
 
-	if (network->priority > 0)
-		connman_dbus_dict_append_variant(&dict, "Priority",
-					DBUS_TYPE_BYTE, &network->priority);
-
 	if (network->strength > 0)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &network->strength);
@@ -193,15 +188,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		g_free(network->wifi.passphrase);
 		network->wifi.passphrase = g_strdup(passphrase);
-	} else if (g_str_equal(name, "Priority") == TRUE) {
-		connman_uint8_t priority;
-
-		if (type != DBUS_TYPE_BYTE)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &priority);
-
-		network->priority = priority;
 	}
 
 	__connman_storage_save_network(network);
@@ -919,9 +905,7 @@ int connman_network_set_uint8(struct connman_network *network,
 {
 	DBG("network %p key %s value %d", network, key, value);
 
-	if (g_str_equal(key, "Priority") == TRUE)
-		network->priority = value;
-	else if (g_str_equal(key, "Strength") == TRUE)
+	if (g_str_equal(key, "Strength") == TRUE)
 		network->strength = value;
 
 	return connman_element_set_uint8(&network->element, key, value);
@@ -939,9 +923,7 @@ connman_uint8_t connman_network_get_uint8(struct connman_network *network,
 {
 	DBG("network %p key %s", network, key);
 
-	if (g_str_equal(key, "Priority") == TRUE)
-		return network->priority;
-	else if (g_str_equal(key, "Strength") == TRUE)
+	if (g_str_equal(key, "Strength") == TRUE)
 		return network->strength;
 
 	return connman_element_get_uint8(&network->element, key);
