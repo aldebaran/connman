@@ -807,6 +807,7 @@ static struct {
 	char *name;
 	char *value;
 } special_ssid[] = {
+	{ "<hidden>", "hidden" },
 	{ "linksys" },
 	{ "dlink"   },
 	{ }
@@ -828,7 +829,12 @@ static char *build_group(const char *addr, const char *name,
 
 	for (i = 0; special_ssid[i].name; i++) {
 		if (g_strcmp0(special_ssid[i].name, name) == 0) {
-			g_string_append_printf(str, "%s_%s", name, addr);
+			if (special_ssid[i].value == NULL)
+				g_string_append_printf(str, "%s_%s",
+								name, addr);
+			else
+				g_string_append_printf(str, "%s_%s",
+						special_ssid[i].value, addr);
 			goto done;
 		}
 	}
