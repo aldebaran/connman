@@ -808,6 +808,7 @@ static struct {
 	char *value;
 } special_ssid[] = {
 	{ "linksys" },
+	{ "dlink"   },
 	{ }
 };
 
