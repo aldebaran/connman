@@ -141,8 +141,8 @@ static const char *security2string(enum connman_service_security security)
 		return "wep";
 	case CONNMAN_SERVICE_SECURITY_WPA:
 		return "wpa";
-	case CONNMAN_SERVICE_SECURITY_WPA2:
-		return "wpa2";
+	case CONNMAN_SERVICE_SECURITY_RSN:
+		return "rsn";
 	}
 
 	return NULL;
@@ -1075,8 +1075,8 @@ static enum connman_service_mode convert_wifi_security(const char *security)
 		return CONNMAN_SERVICE_SECURITY_WEP;
 	else if (g_str_equal(security, "wpa") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WPA;
-	else if (g_str_equal(security, "wpa2") == TRUE)
-		return CONNMAN_SERVICE_SECURITY_WPA2;
+	else if (g_str_equal(security, "rsn") == TRUE)
+		return CONNMAN_SERVICE_SECURITY_RSN;
 	else
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
 }

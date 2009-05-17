@@ -50,7 +50,7 @@ enum connman_service_security {
 	CONNMAN_SERVICE_SECURITY_NONE    = 1,
 	CONNMAN_SERVICE_SECURITY_WEP     = 2,
 	CONNMAN_SERVICE_SECURITY_WPA     = 3,
-	CONNMAN_SERVICE_SECURITY_WPA2    = 4,
+	CONNMAN_SERVICE_SECURITY_RSN     = 4,
 };
 
 enum connman_service_state {

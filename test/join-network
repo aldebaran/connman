@@ -30,7 +30,7 @@ for path in properties["Devices"]:
 		if len(sys.argv) > 3:
 			security = sys.argv[3]
 		else:
-			security = "wpa2"
+			security = "rsn"
 		passphrase = sys.argv[2]
 	else:
 		security = "none"

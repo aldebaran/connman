@@ -712,7 +712,7 @@ static int set_network(struct supplicant_task *task,
 					DBUS_TYPE_BYTE, &network, len);
 
 	if (g_ascii_strcasecmp(security, "wpa") == 0 ||
-				g_ascii_strcasecmp(security, "wpa2") == 0) {
+				g_ascii_strcasecmp(security, "rsn") == 0) {
 		const char *key_mgmt = "WPA-PSK";
 		connman_dbus_dict_append_variant(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
@@ -1062,7 +1062,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	strength = result.quality;
 
 	if (result.has_rsn == TRUE)
-		security = "wpa2";
+		security = "rsn";
 	else if (result.has_wpa == TRUE)
 		security = "wpa";
 	else if (result.has_wep == TRUE)

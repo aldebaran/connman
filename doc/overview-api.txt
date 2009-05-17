@@ -26,11 +26,11 @@ the order of services in this list.
 	+---------------------------------------+
 	| Guest            (strength 90, none)  |
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |
+	| My WiFi AP       (strength 80, rsn)   |
 	+---------------------------------------+
 	| Clear WiMAX      (strength 70)        |
 	+---------------------------------------+
-	| Other AP         (strength 70, wpa2)  |
+	| Other AP         (strength 70, rsn)   |
 	+---------------------------------------+
 	| Friends AP       (strength 70, wep)   |
 	+---------------------------------------+
@@ -101,7 +101,7 @@ the favorite setting. It is a manual operation and is equal to users pressing
 delete/remove button.
 
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |  order=1 - favorite=yes
+	| My WiFi AP       (strength 80, rsn)   |  order=1 - favorite=yes
 	+---------------------------------------+
 	| Ethernet                              |  order=0
 	+---------------------------------------+
@@ -134,7 +134,7 @@ list.
 	+---------------------------------------+
 	| Ethernet                              |  order=2 - connected=yes
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=yes
+	| My WiFi AP       (strength 80, rsn)   |  order=1 - connected=yes
 	+---------------------------------------+
 	| Guest            (strength 90, none)  |  order=0
 	+---------------------------------------+
@@ -146,7 +146,7 @@ Manager will not take down default routes if there is no reason to do so.
 A working connection is considered top priority.
 
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |  order=2 - connected=yes
+	| My WiFi AP       (strength 80, rsn)   |  order=2 - connected=yes
 	+---------------------------------------+
 	| Ethernet                              |  order=1 - connected=yes
 	+---------------------------------------+
@@ -159,7 +159,7 @@ in this case the favorite setting will be removed and the service falls back
 down in the list.
 
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=yes
+	| My WiFi AP       (strength 80, rsn)   |  order=1 - connected=yes
 	+---------------------------------------+
 	| Ethernet                              |  order=0
 	+---------------------------------------+
@@ -179,7 +179,7 @@ and are sorted above all others.
 	+---------------------------------------+
 	| Ethernet                              |  order=2 - connected=yes
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=no
+	| My WiFi AP       (strength 80, rsn)   |  order=1 - connected=no
 	+---------------------------------------+
 	| Guest            (strength 90, none)  |  order=0
 	+---------------------------------------+
@@ -190,7 +190,7 @@ the basic ordering of services it will be at the top of the services with an
 order number of 0 (directly after all favorite services).
 
 	+---------------------------------------+
-	| My WiFi AP       (strength 80, wpa2)  |  order=1 - connected=no
+	| My WiFi AP       (strength 80, rsn)   |  order=1 - connected=no
 	+---------------------------------------+
 	| Ethernet                              |  order=0 - connected=no
 	+---------------------------------------+

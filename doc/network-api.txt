@@ -80,7 +80,7 @@ Properties	string Address [readonly]
 			case the network was manually created it is also
 			changeable.
 
-			Possible values are "none", "wep", "wpa" and "wpa2".
+			Possible values are "none", "wep", "wpa" and "rsn".
 
 		string WiFi.Passphrase [readwrite]
 
