@@ -807,9 +807,19 @@ static struct {
 	char *name;
 	char *value;
 } special_ssid[] = {
-	{ "<hidden>", "hidden" },
-	{ "linksys" },
-	{ "dlink"   },
+	{ "<hidden>", "hidden"  },
+	{ "default",  "linksys" },
+	{ "wireless"  },
+	{ "linksys"   },
+	{ "netgear"   },
+	{ "dlink"     },
+	{ "2wire"     },
+	{ "compaq"    },
+	{ "tsunami"   },
+	{ "comcomcom" },
+	{ "Symbol",    "symbol"   },
+	{ "Wireless" , "wireless" },
+	{ "WLAN",      "wlan"     },
 	{ }
 };
 
