@@ -156,17 +156,17 @@ if FAKE
 plugin_LTLIBRARIES += fake.la
 endif
 
-noinst_LTLIBRARIES = libbuiltin.la
+noinst_LIBRARIES = libbuiltin.a
 
-libbuiltin_la_SOURCES = $(builtin_sources)
-libbuiltin_la_LDFLAGS =
-libbuiltin_la_CFLAGS = $(AM_CFLAGS) \
+libbuiltin_a_SOURCES = $(builtin_sources)
+libbuiltin_a_LDFLAGS =
+libbuiltin_a_CFLAGS = $(AM_CFLAGS) \
 		$(builtin_cflags) -DCONNMAN_PLUGIN_BUILTIN \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 
 BUILT_SOURCES = builtin.h
 
-nodist_libbuiltin_la_SOURCES = $(BUILT_SOURCES)
+nodist_libbuiltin_a_SOURCES = $(BUILT_SOURCES)
 
 AM_LDFLAGS = -no-undefined -module -avoid-version
 

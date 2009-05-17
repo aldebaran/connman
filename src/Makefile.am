@@ -23,12 +23,12 @@ rules_DATA = 92-connman.rules
 endif
 endif
 
-connmand_LDADD = $(top_builddir)/plugins/libbuiltin.la \
+connmand_LDADD = $(top_builddir)/plugins/libbuiltin.a \
 		@GDBUS_LIBS@ @GLIB_LIBS@ @GTHREAD_LIBS@ @UDEV_LIBS@ -ldl
 
 connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
-connmand_DEPENDENCIES = connman.ver
+connmand_DEPENDENCIES = connman.ver $(top_builddir)/plugins/libbuiltin.a
 
 CLEANFILES = connman.ver connman.exp connman.conf 92-connman.rules
 
