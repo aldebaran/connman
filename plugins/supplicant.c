@@ -803,31 +803,42 @@ static int initiate_scan(struct supplicant_task *task)
 	return 0;
 }
 
-static char *build_group(const char *addr,
+static struct {
+	char *name;
+	char *value;
+} special_ssid[] = {
+	{ "linksys" },
+	{ }
+};
+
+static char *build_group(const char *addr, const char *name,
 			const unsigned char *ssid, unsigned int ssid_len,
 					const char *mode, const char *security)
 {
 	GString *str;
 	unsigned int i;
 
-	if (ssid_len > 0 && ssid[0] != '\0') {
-		str = g_string_sized_new((ssid_len * 2) + 24);
-		if (str == NULL)
-			return NULL;
+	if (addr == NULL)
+		return NULL;
 
-		for (i = 0; i < ssid_len; i++)
-			g_string_append_printf(str, "%02x", ssid[i]);
-	} else {
-		if (addr == NULL)
-			return NULL;
+	str = g_string_sized_new((ssid_len * 2) + 24);
+	if (str == NULL)
+		return NULL;
 
-		str = g_string_sized_new(15 + 24);
-		if (str == NULL)
-			return NULL;
-
-		g_string_append_printf(str, "hidden_%s", addr);
+	for (i = 0; special_ssid[i].name; i++) {
+		if (g_strcmp0(special_ssid[i].name, name) == 0) {
+			g_string_append_printf(str, "%s_%s", name, addr);
+			goto done;
+		}
 	}
 
+	if (ssid_len > 0 && ssid[0] != '\0') {
+		for (i = 0; i < ssid_len; i++)
+			g_string_append_printf(str, "%02x", ssid[i]);
+	} else
+		g_string_append_printf(str, "hidden_%s", addr);
+
+done:
 	g_string_append_printf(str, "_%s_%s", mode, security);
 
 	return g_string_free(str, FALSE);
@@ -885,9 +896,6 @@ static void extract_ssid(DBusMessageIter *value,
 	dbus_message_iter_get_fixed_array(&array, &ssid, &ssid_len);
 
 	if (ssid_len < 1)
-		return;
-
-	if (ssid[0] == '\0')
 		return;
 
 	result->ssid = g_try_malloc(ssid_len);
@@ -1064,7 +1072,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	mode = (result.adhoc == TRUE) ? "adhoc" : "managed";
 
-	group = build_group(result.path, result.ssid, result.ssid_len,
+	group = build_group(result.path, result.name,
+					result.ssid, result.ssid_len,
 							mode, security);
 
 	network = connman_device_get_network(task->device, result.path);
