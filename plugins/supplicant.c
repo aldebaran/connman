@@ -1097,6 +1097,11 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (result.path[0] == '\0')
 		goto done;
 
+	if (result.frequency > 0 && result.frequency < 14)
+		result.frequency = 2407 + (5 * result.frequency);
+	else if (result.frequency == 14)
+		result.frequency = 2484;
+
 	strength = calculate_strength(&result);
 	channel  = calculate_channel(&result);
 
