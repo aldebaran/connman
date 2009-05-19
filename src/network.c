@@ -38,6 +38,7 @@ struct connman_network {
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_uint8_t strength;
+	connman_uint16_t frequency;
 	char *identifier;
 	char *address;
 	char *name;
@@ -125,6 +126,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (network->strength > 0)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &network->strength);
+
+	if (network->frequency > 0)
+		connman_dbus_dict_append_variant(&dict, "Frequency",
+					DBUS_TYPE_UINT16, &network->frequency);
 
 	if (network->wifi.ssid != NULL && network->wifi.ssid_len > 0)
 		connman_dbus_dict_append_array(&dict, "WiFi.SSID",
@@ -923,6 +928,43 @@ connman_uint8_t connman_network_get_uint8(struct connman_network *network,
 		return network->strength;
 
 	return connman_element_get_uint8(&network->element, key);
+}
+
+/**
+ * connman_network_set_uint16:
+ * @network: network structure
+ * @key: unique identifier
+ * @value: integer value
+ *
+ * Set integer value for specific key
+ */
+int connman_network_set_uint16(struct connman_network *network,
+				const char *key, connman_uint16_t value)
+{
+	DBG("network %p key %s value %d", network, key, value);
+
+	if (g_str_equal(key, "Frequency") == TRUE)
+		network->frequency = value;
+
+	return -EINVAL;
+}
+
+/**
+ * connman_network_get_uint16:
+ * @network: network structure
+ * @key: unique identifier
+ *
+ * Get integer value for specific key
+ */
+connman_uint16_t connman_network_get_uint16(struct connman_network *network,
+							const char *key)
+{
+	DBG("network %p key %s", network, key);
+
+	if (g_str_equal(key, "Frequency") == TRUE)
+		return network->frequency;
+
+	return 0;
 }
 
 /**

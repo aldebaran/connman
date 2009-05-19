@@ -158,6 +158,7 @@ struct supplicant_result {
 	gboolean has_wpa;
 	gboolean has_rsn;
 	gboolean has_wps;
+	dbus_int32_t frequency;
 	dbus_int32_t quality;
 	dbus_int32_t noise;
 	dbus_int32_t level;
@@ -995,6 +996,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	unsigned char strength;
+	unsigned short frequency;
 	const char *mode, *security;
 	char *group;
 
@@ -1058,6 +1060,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 			extract_wpsie(&value, &result);
 		else if (g_str_equal(key, "capabilities") == TRUE)
 			extract_capabilites(&value, &result);
+		else if (g_str_equal(key, "frequency") == TRUE)
+			dbus_message_iter_get_basic(&value, &result.frequency);
 		else if (g_str_equal(key, "quality") == TRUE)
 			dbus_message_iter_get_basic(&value, &result.quality);
 		else if (g_str_equal(key, "noise") == TRUE)
@@ -1076,7 +1080,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (result.path[0] == '\0')
 		goto done;
 
-	strength = result.quality;
+	strength  = result.quality;
+	frequency = result.frequency;
 
 	if (result.has_rsn == TRUE)
 		security = "rsn";
@@ -1130,6 +1135,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_uint8(network, "Strength", strength);
+	connman_network_set_uint16(network, "Frequency", frequency);
 
 	connman_network_set_string(network, "WiFi.Security", security);
 
