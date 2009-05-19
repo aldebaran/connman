@@ -1,5 +1,6 @@
 
-EXTRA_DIST = get-state list-profiles list-connections select-connection \
+EXTRA_DIST = get-state list-profiles list-services \
+		list-connections select-connection \
 		list-devices enable-device disable-device start-scanning \
 		list-networks select-network disable-network create-network \
 		set-passphrase set-address set-policy set-priority \

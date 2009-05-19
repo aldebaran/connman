@@ -1,0 +1,27 @@
+#!/usr/bin/python
+
+import dbus
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
+					"org.moblin.connman.Manager")
+
+properties = manager.GetProperties()
+
+for path in properties["Services"]:
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	properties = service.GetProperties()
+
+	print "[ %s ]" % (path)
+
+	for key in properties.keys():
+		if key in ["Strength"]:
+			val = int(properties[key])
+		else:
+			val = str(properties[key])
+		print "    %s = %s" % (key, val)
+
+	print
