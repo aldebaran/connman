@@ -42,6 +42,7 @@ struct connman_service {
 	enum connman_service_state state;
 	connman_uint8_t strength;
 	connman_bool_t favorite;
+	connman_bool_t hidden;
 	GTimeVal modified;
 	unsigned int order;
 	char *name;
@@ -608,6 +609,7 @@ static void __connman_service_initialize(struct connman_service *service)
 	service->state    = CONNMAN_SERVICE_STATE_UNKNOWN;
 
 	service->favorite = FALSE;
+	service->hidden = FALSE;
 
 	service->order = 0;
 }
@@ -1095,6 +1097,11 @@ static void update_from_network(struct connman_service *service,
 	if (str != NULL) {
 		g_free(service->name);
 		service->name = g_strdup(str);
+		service->hidden = FALSE;
+	} else {
+		g_free(service->name);
+		service->name = NULL;
+		service->hidden = TRUE;
 	}
 
 	service->strength = connman_network_get_uint8(network, "Strength");
