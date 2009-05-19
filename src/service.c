@@ -358,7 +358,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (service->network != NULL) {
 		int err;
 
-		if (service->name == NULL)
+		if (service->hidden == TRUE)
 			return __connman_error_invalid_service(msg);
 
 		connman_network_set_string(service->network,
