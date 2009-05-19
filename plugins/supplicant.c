@@ -996,7 +996,10 @@ static unsigned char calculate_strength(struct supplicant_result *result)
 
 static unsigned short calculate_channel(struct supplicant_result *result)
 {
-	return 0;
+	if (result->frequency < 0)
+		return 0;
+
+	return (result->frequency - 2407) / 5;
 }
 
 static void get_properties(struct supplicant_task *task);

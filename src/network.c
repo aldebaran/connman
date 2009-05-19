@@ -56,6 +56,7 @@ struct connman_network {
 		void *ssid;
 		int ssid_len;
 		char *mode;
+		unsigned short channel;
 		char *security;
 		char *passphrase;
 	} wifi;
@@ -139,6 +140,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (network->wifi.mode != NULL)
 		connman_dbus_dict_append_variant(&dict, "WiFi.Mode",
 				DBUS_TYPE_STRING, &network->wifi.mode);
+
+	if (network->wifi.channel > 0)
+		connman_dbus_dict_append_variant(&dict, "WiFi.Channel",
+				DBUS_TYPE_UINT16, &network->wifi.channel);
 
 	if (network->wifi.security != NULL)
 		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
@@ -945,6 +950,8 @@ int connman_network_set_uint16(struct connman_network *network,
 
 	if (g_str_equal(key, "Frequency") == TRUE)
 		network->frequency = value;
+	else if (g_str_equal(key, "WiFi.Channel") == TRUE)
+		network->wifi.channel = value;
 
 	return -EINVAL;
 }
@@ -963,6 +970,8 @@ connman_uint16_t connman_network_get_uint16(struct connman_network *network,
 
 	if (g_str_equal(key, "Frequency") == TRUE)
 		return network->frequency;
+	else if (g_str_equal(key, "WiFi.Channel") == TRUE)
+		return network->wifi.channel;
 
 	return 0;
 }
