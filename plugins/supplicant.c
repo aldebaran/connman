@@ -1110,14 +1110,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 		connman_network_set_string(network, "Address", result.addr);
 
-		if (result.name != NULL && result.name[0] != '\0')
-			connman_network_set_string(network, "Name", result.name);
-
-		connman_network_set_uint8(network, "Strength", strength);
-
-		connman_network_set_string(network, "WiFi.Mode", mode);
-		connman_network_set_string(network, "WiFi.Security", security);
-
 		if (connman_device_add_network(task->device, network) < 0) {
 			connman_network_unref(network);
 			goto done;
