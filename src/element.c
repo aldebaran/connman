@@ -1123,6 +1123,12 @@ static void register_element(gpointer data, gpointer user_data)
 
 	__connman_element_unlock(element);
 
+	if (node == NULL) {
+		connman_error("Element registration for %s failed",
+							element->path);
+		return;
+	}
+
 	DBG("element %p path %s", element, element->path);
 
 	g_node_append_data(node, element);
