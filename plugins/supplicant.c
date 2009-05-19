@@ -260,7 +260,9 @@ done:
 
 static int add_interface(struct supplicant_task *task)
 {
+	const char *driver = "wext";
 	DBusMessage *message;
+	DBusMessageIter array, dict;
 	DBusPendingCall *call;
 
 	DBG("task %p", task);
@@ -270,8 +272,20 @@ static int add_interface(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
-	dbus_message_append_args(message, DBUS_TYPE_STRING, &task->ifname,
-							DBUS_TYPE_INVALID);
+	dbus_message_iter_init_append(message, &array);
+
+	dbus_message_iter_append_basic(&array,
+					DBUS_TYPE_STRING, &task->ifname);
+
+	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+
+	connman_dbus_dict_append_variant(&dict, "driver",
+						DBUS_TYPE_STRING, &driver);
+
+	dbus_message_iter_close_container(&array, &dict);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
