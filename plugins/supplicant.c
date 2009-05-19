@@ -1110,8 +1110,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 		connman_network_set_string(network, "Address", result.addr);
 
-		connman_network_set_group(network, group);
-
 		if (result.name != NULL && result.name[0] != '\0')
 			connman_network_set_string(network, "Name", result.name);
 
@@ -1125,10 +1123,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 			goto done;
 		}
 	}
-
-	connman_network_set_group(network, group);
-
-	g_free(group);
 
 	if (result.name != NULL && result.name[0] != '\0')
 		connman_network_set_string(network, "Name", result.name);
@@ -1146,6 +1140,10 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	connman_network_set_uint8(network, "Strength", strength);
 
 	connman_network_set_string(network, "WiFi.Security", security);
+
+	connman_network_set_group(network, group);
+
+	g_free(group);
 
 done:
 	g_free(result.path);

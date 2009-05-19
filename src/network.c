@@ -571,8 +571,34 @@ void connman_network_set_protocol(struct connman_network *network,
 void connman_network_set_group(struct connman_network *network,
 							const char *group)
 {
-	g_free(network->group);
+	if (network->secondary == TRUE)
+		return;
+
+	if (g_strcmp0(network->group, group) == 0)
+		return;
+
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_HSO:
+		return;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		break;
+	}
+
+	if (network->group != NULL) {
+		__connman_profile_remove_network(network);
+
+		g_free(network->group);
+	}
+
 	network->group = g_strdup(group);
+
+	if (network->group != NULL)
+		__connman_profile_add_network(network);
 }
 
 const char *__connman_network_get_group(struct connman_network *network)
@@ -1044,7 +1070,7 @@ static int network_probe(struct connman_element *element)
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
-		if (network->secondary == FALSE)
+		if (network->group != NULL && network->secondary == FALSE)
 			__connman_profile_add_network(network);
 		break;
 	}
@@ -1073,8 +1099,12 @@ static void network_remove(struct connman_element *element)
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
-		if (network->secondary == FALSE)
+		if (network->group != NULL && network->secondary == FALSE) {
 			__connman_profile_remove_network(network);
+
+			g_free(network->group);
+			network->group = NULL;
+		}
 		break;
 	}
 
