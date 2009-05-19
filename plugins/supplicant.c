@@ -986,6 +986,14 @@ static void extract_capabilites(DBusMessageIter *value,
 		result->has_wep = TRUE;
 }
 
+static unsigned char calculate_strength(struct supplicant_result *result)
+{
+	if (result->quality < 0)
+		return 0;
+
+	return result->quality;
+}
+
 static void get_properties(struct supplicant_task *task);
 
 static void properties_reply(DBusPendingCall *call, void *user_data)
@@ -1015,6 +1023,9 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	memset(&result, 0, sizeof(result));
+	result.quality = -1;
+	result.level = -1;
+	result.noise = -1;
 
 	dbus_message_iter_init(reply, &array);
 
@@ -1080,7 +1091,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (result.path[0] == '\0')
 		goto done;
 
-	strength  = result.quality;
+	strength  = calculate_strength(&result);
 	frequency = result.frequency;
 
 	if (result.has_rsn == TRUE)
