@@ -994,6 +994,11 @@ static unsigned char calculate_strength(struct supplicant_result *result)
 	return result->quality;
 }
 
+static unsigned short calculate_channel(struct supplicant_result *result)
+{
+	return 0;
+}
+
 static void get_properties(struct supplicant_task *task);
 
 static void properties_reply(DBusPendingCall *call, void *user_data)
@@ -1004,7 +1009,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	unsigned char strength;
-	unsigned short frequency;
+	unsigned short channel, frequency;
 	const char *mode, *security;
 	char *group;
 
@@ -1023,6 +1028,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	memset(&result, 0, sizeof(result));
+	result.frequency = -1;
 	result.quality = -1;
 	result.level = -1;
 	result.noise = -1;
@@ -1091,8 +1097,10 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (result.path[0] == '\0')
 		goto done;
 
-	strength  = calculate_strength(&result);
-	frequency = result.frequency;
+	strength = calculate_strength(&result);
+	channel  = calculate_channel(&result);
+
+	frequency = (result.frequency < 0) ? 0 : result.frequency;
 
 	if (result.has_rsn == TRUE)
 		security = "rsn";
@@ -1148,6 +1156,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	connman_network_set_uint8(network, "Strength", strength);
 	connman_network_set_uint16(network, "Frequency", frequency);
 
+	connman_network_set_uint16(network, "WiFi.Channel", channel);
 	connman_network_set_string(network, "WiFi.Security", security);
 
 	connman_network_set_group(network, group);
