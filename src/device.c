@@ -1361,6 +1361,7 @@ static void connect_known_network(struct connman_device *device)
 	struct connman_network *network = NULL;
 	GHashTableIter iter;
 	gpointer key, value;
+	const char *name;
 	unsigned int count = 0;
 
 	DBG("device %p", device);
@@ -1369,7 +1370,6 @@ static void connect_known_network(struct connman_device *device)
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		connman_uint8_t old_strength, new_strength;
-		const char *name;
 
 		count++;
 
@@ -1402,9 +1402,13 @@ static void connect_known_network(struct connman_device *device)
 	if (network != NULL) {
 		int err;
 
-		err = connman_network_connect(network);
-		if (err == 0 || err == -EINPROGRESS)
-			return;
+		name = connman_network_get_string(value,
+						CONNMAN_PROPERTY_ID_NAME);
+		if (name != NULL) {
+			err = connman_network_connect(network);
+			if (err == 0 || err == -EINPROGRESS)
+				return;
+		}
 	}
 
 	if (count > 0)
