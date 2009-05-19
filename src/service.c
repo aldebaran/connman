@@ -357,6 +357,9 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (service->network != NULL) {
 		int err;
 
+		if (service->name == NULL)
+			return __connman_error_invalid_service(msg);
+
 		connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 
