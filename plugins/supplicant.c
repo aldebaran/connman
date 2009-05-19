@@ -1002,8 +1002,19 @@ static void extract_capabilites(DBusMessageIter *value,
 
 static unsigned char calculate_strength(struct supplicant_result *result)
 {
-	if (result->quality < 0)
-		return 0;
+	if (result->quality < 0) {
+		unsigned char strength;
+
+		if (result->level > 0)
+			strength = 100 - result->level;
+		else
+			strength = 120 + result->level;
+
+		if (strength > 100)
+			strength = 100;
+
+		return strength;
+	}
 
 	return result->quality;
 }
@@ -1047,8 +1058,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	memset(&result, 0, sizeof(result));
 	result.frequency = -1;
 	result.quality = -1;
-	result.level = -1;
-	result.noise = -1;
+	result.level = 0;
+	result.noise = 0;
 
 	dbus_message_iter_init(reply, &array);
 
