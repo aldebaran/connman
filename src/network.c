@@ -655,6 +655,34 @@ connman_bool_t connman_network_get_available(struct connman_network *network)
 	return network->available;
 }
 
+/**
+ * connman_network_set_associating:
+ * @network: network structure
+ * @associating: associating state
+ *
+ * Change associating state of network
+ */
+int connman_network_set_associating(struct connman_network *network,
+						connman_bool_t associating)
+{
+	DBG("network %p associating %d", network, associating);
+
+	if (network->associating == associating)
+		return -EALREADY;
+
+	network->associating = associating;
+
+	if (associating == TRUE) {
+		struct connman_service *service;
+
+		service = __connman_service_lookup_from_network(network);
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_ASSOCIATION);
+	}
+
+	return 0;
+}
+
 static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
@@ -707,34 +735,6 @@ static gboolean set_connected(gpointer user_data)
 	}
 
 	return FALSE;
-}
-
-/**
- * connman_network_set_associating:
- * @network: network structure
- * @associating: associating state
- *
- * Change associating state of network
- */
-int connman_network_set_associating(struct connman_network *network,
-						connman_bool_t associating)
-{
-	DBG("network %p associating %d", network, associating);
-
-	if (network->associating == associating)
-		return -EALREADY;
-
-	network->associating = associating;
-
-	if (associating == TRUE) {
-		struct connman_service *service;
-
-		service = __connman_service_lookup_from_network(network);
-		__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_ASSOCIATION);
-	}
-
-	return 0;
 }
 
 /**
@@ -806,32 +806,56 @@ connman_bool_t connman_network_get_connected(struct connman_network *network)
  */
 int __connman_network_connect(struct connman_network *network)
 {
+	int err;
+
+	DBG("network %p", network);
+
 	if (network->connected == TRUE)
 		return -EALREADY;
 
-	if (network->driver && network->driver->connect)
-		return network->driver->connect(network);
+	if (network->driver == NULL)
+		return -EUNATCH;
 
-	network->connected = TRUE;
+	if (network->driver->connect == NULL)
+		return -ENOSYS;
 
-	return 0;
+	err = network->driver->connect(network);
+	if (err == 0) {
+		network->connected = TRUE;
+		set_connected(network);
+	}
+
+	return err;
 }
 
+/**
+ * __connman_network_disconnect:
+ * @network: network structure
+ *
+ * Disconnect network
+ */
 int __connman_network_disconnect(struct connman_network *network)
 {
+	int err;
+
+	DBG("network %p", network);
+
 	if (network->connected == FALSE)
 		return -ENOTCONN;
 
-	__connman_device_set_network(network->device, NULL);
+	if (network->driver == NULL)
+		return -EUNATCH;
 
-	connman_element_unregister_children(&network->element);
+	if (network->driver->disconnect == NULL)
+		return -ENOSYS;
 
-	if (network->driver && network->driver->disconnect)
-		return network->driver->disconnect(network);
+	err = network->driver->disconnect(network);
+	if (err == 0) {
+		network->connected = FALSE;
+		set_connected(network);
+	}
 
-	network->connected = FALSE;
-
-	return 0;
+	return err;
 }
 
 /**
