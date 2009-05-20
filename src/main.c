@@ -59,6 +59,7 @@ static gchar *option_device = NULL;
 static gchar *option_plugin = NULL;
 static gchar *option_nodevice = NULL;
 static gchar *option_noplugin = NULL;
+static gchar *option_wifi = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_compat = FALSE;
 static gboolean option_debug = FALSE;
@@ -74,6 +75,8 @@ static GOptionEntry options[] = {
 				"Specify plugins to load", "NAME" },
 	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
 				"Specify plugins not to load", "NAME" },
+	{ "wifi", 'W', 0, G_OPTION_ARG_STRING, &option_wifi,
+				"Specify driver for WiFi/Supplicant", "NAME" },
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
@@ -87,6 +90,18 @@ static GOptionEntry options[] = {
 				"Show version information and exit" },
 	{ NULL },
 };
+
+const char *connman_option_get_string(const char *key)
+{
+	if (g_strcmp0(key, "wifi") == 0) {
+		if (option_wifi == NULL)
+			return "nl80211,wext";
+		else
+			return option_wifi;
+	}
+
+	return NULL;
+}
 
 int main(int argc, char *argv[])
 {

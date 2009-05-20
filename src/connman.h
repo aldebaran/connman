@@ -72,6 +72,8 @@ void __connman_log_cleanup(void);
 void __connman_toggle_debug(void);
 gboolean __connman_debug_enabled(void);
 
+#include <connman/option.h>
+
 #include <connman/plugin.h>
 
 int __connman_plugin_init(const char *pattern, const char *exclude);

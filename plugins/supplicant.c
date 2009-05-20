@@ -33,6 +33,7 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/device.h>
+#include <connman/option.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
@@ -260,7 +261,7 @@ done:
 
 static int add_interface(struct supplicant_task *task)
 {
-	const char *driver = "wext";
+	const char *driver = connman_option_get_string("wifi");
 	DBusMessage *message;
 	DBusMessageIter array, dict;
 	DBusPendingCall *call;
