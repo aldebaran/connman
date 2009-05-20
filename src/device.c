@@ -1405,7 +1405,7 @@ static void connect_known_network(struct connman_device *device)
 		name = connman_network_get_string(value,
 						CONNMAN_PROPERTY_ID_NAME);
 		if (name != NULL) {
-			err = connman_network_connect(network);
+			err = __connman_network_connect(network);
 			if (err == 0 || err == -EINPROGRESS)
 				return;
 		}

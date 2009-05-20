@@ -799,12 +799,12 @@ connman_bool_t connman_network_get_connected(struct connman_network *network)
 }
 
 /**
- * connman_network_connect:
+ * __connman_network_connect:
  * @network: network structure
  *
  * Connect network
  */
-int connman_network_connect(struct connman_network *network)
+int __connman_network_connect(struct connman_network *network)
 {
 	if (network->connected == TRUE)
 		return -EALREADY;

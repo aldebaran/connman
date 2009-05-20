@@ -364,7 +364,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 
-		err = connman_network_connect(service->network);
+		err = __connman_network_connect(service->network);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg, -err);
 
