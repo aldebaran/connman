@@ -1714,17 +1714,25 @@ void __connman_device_set_network(struct connman_device *device,
 {
 	const char *name;
 
+	if (device->network == network)
+		return;
+
+	if (device->network != NULL)
+		connman_network_unref(device->network);
+
 	if (network != NULL) {
 		name = connman_network_get_string(network,
 						CONNMAN_PROPERTY_ID_NAME);
 		g_free(device->last_network);
 		device->last_network = g_strdup(name);
+
+		device->network = connman_network_ref(network);
 	} else {
 		g_free(device->last_network);
 		device->last_network = NULL;
-	}
 
-	device->network = network;
+		device->network = NULL;
+	}
 }
 
 /**
