@@ -95,7 +95,7 @@ const char *connman_option_get_string(const char *key)
 {
 	if (g_strcmp0(key, "wifi") == 0) {
 		if (option_wifi == NULL)
-			return "nl80211,wext";
+			return "wext,nl80211";
 		else
 			return option_wifi;
 	}
