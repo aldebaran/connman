@@ -819,6 +819,8 @@ int __connman_network_connect(struct connman_network *network)
 	if (network->driver->connect == NULL)
 		return -ENOSYS;
 
+	__connman_device_disconnect(network->device);
+
 	err = network->driver->connect(network);
 	if (err == 0) {
 		network->connected = TRUE;
