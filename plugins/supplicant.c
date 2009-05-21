@@ -1176,7 +1176,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	if (result.name != NULL && result.name[0] != '\0')
-		connman_network_set_string(network, "Name", result.name);
+		connman_network_set_name(network, result.name);
 
 	connman_network_set_blob(network, "WiFi.SSID",
 						result.ssid, result.ssid_len);
@@ -1188,9 +1188,9 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 				(result.has_wps == TRUE) ? "WPS" : "no WPS");
 
 	connman_network_set_available(network, TRUE);
-	connman_network_set_uint8(network, "Strength", strength);
-	connman_network_set_uint16(network, "Frequency", frequency);
+	connman_network_set_strength(network, strength);
 
+	connman_network_set_uint16(network, "Frequency", frequency);
 	connman_network_set_uint16(network, "WiFi.Channel", channel);
 	connman_network_set_string(network, "WiFi.Security", security);
 
