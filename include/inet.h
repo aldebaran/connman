@@ -26,6 +26,10 @@
 extern "C" {
 #endif
 
+#include <connman/device.h>
+
+extern struct connman_device *connman_inet_create_device(int index);
+
 #ifdef __cplusplus
 }
 #endif
