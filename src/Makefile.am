@@ -11,7 +11,7 @@ connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 			element.c device.c network.c connection.c \
 			manager.c profile.c service.c agent.c \
 			security.c resolver.c ipconfig.c notifier.c \
-			storage.c ipv4.c detect.c rtnl.c dbus.c
+			storage.c ipv4.c detect.c rtnl.c inet.c dbus.c
 
 if UDEV
 connmand_SOURCES += udev.c
