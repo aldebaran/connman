@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <string.h>
 
 #include <gdbus.h>
@@ -861,6 +862,38 @@ int __connman_network_disconnect(struct connman_network *network)
 }
 
 /**
+ * connman_network_set_address:
+ * @network: network structure
+ * @address: binary address value
+ * @size: binary address length
+ *
+ * Set unique address value for network
+ */
+int connman_network_set_address(struct connman_network *network,
+				const void *address, unsigned int size)
+{
+	const unsigned char *addr_octet = address;
+	char *str;
+
+	DBG("network %p size %d", network, size);
+
+	if (size != 6)
+		return -EINVAL;
+
+	str = g_strdup_printf("%02X:%02X:%02X:%02X:%02X:%02X",
+				addr_octet[0], addr_octet[1], addr_octet[2],
+				addr_octet[3], addr_octet[4], addr_octet[5]);
+	if (str == NULL)
+		return -ENOMEM;
+
+	g_free(network->address);
+	network->address = str;
+
+	return connman_element_set_string(&network->element,
+						"Address", network->address);
+}
+
+/**
  * connman_network_set_name:
  * @network: network structure
  * @name: name value
@@ -1051,6 +1084,9 @@ int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size)
 {
 	DBG("network %p key %s size %d", network, key, size);
+
+	if (g_strcmp0(key, "Address") == 0)
+		return connman_network_set_address(network, data, size);
 
 	if (g_str_equal(key, "WiFi.SSID") == TRUE) {
 		g_free(network->wifi.ssid);

@@ -150,7 +150,8 @@ enum supplicant_state {
 struct supplicant_result {
 	char *path;
 	char *name;
-	char *addr;
+	unsigned char *addr;
+	unsigned int addr_len;
 	unsigned char *ssid;
 	unsigned int ssid_len;
 	dbus_uint16_t capabilities;
@@ -892,25 +893,20 @@ static void extract_addr(DBusMessageIter *value,
 	if (addr_len != 6)
 		return;
 
-	eth = (void *) addr;
-
-	result->addr = g_try_malloc0(18);
+	result->addr = g_try_malloc(addr_len);
 	if (result->addr == NULL)
 		return;
 
-	snprintf(result->addr, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
-						eth->ether_addr_octet[0],
-						eth->ether_addr_octet[1],
-						eth->ether_addr_octet[2],
-						eth->ether_addr_octet[3],
-						eth->ether_addr_octet[4],
-						eth->ether_addr_octet[5]);
+	memcpy(result->addr, addr, addr_len);
+	result->addr_len = addr_len;
 
-	result->path = g_try_malloc0(18);
+	result->path = g_try_malloc0(13);
 	if (result->path == NULL)
 		return;
 
-	snprintf(result->path, 18, "%02x%02x%02x%02x%02x%02x",
+	eth = (void *) addr;
+
+	snprintf(result->path, 13, "%02x%02x%02x%02x%02x%02x",
 						eth->ether_addr_octet[0],
 						eth->ether_addr_octet[1],
 						eth->ether_addr_octet[2],
@@ -1167,7 +1163,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		connman_network_set_protocol(network,
 						CONNMAN_NETWORK_PROTOCOL_IP);
 
-		connman_network_set_string(network, "Address", result.addr);
+		connman_network_set_address(network, result.addr,
+							result.addr_len);
 
 		if (connman_device_add_network(task->device, network) < 0) {
 			connman_network_unref(network);
