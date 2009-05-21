@@ -861,6 +861,42 @@ int __connman_network_disconnect(struct connman_network *network)
 }
 
 /**
+ * connman_network_set_name:
+ * @network: network structure
+ * @name: name value
+ *
+ * Set display name value for network
+ */
+int connman_network_set_name(struct connman_network *network,
+							const char *name)
+{
+	DBG("network %p name %s", network, name);
+
+	g_free(network->name);
+	network->name = g_strdup(name);
+
+	return connman_element_set_string(&network->element, "Name", name);
+}
+
+/**
+ * connman_network_set_strength:
+ * @network: network structure
+ * @strength: strength value
+ *
+ * Set signal strength value for network
+ */
+int connman_network_set_strength(struct connman_network *network,
+						connman_uint8_t strength)
+{
+	DBG("network %p strengh %d", network, strength);
+
+	network->strength = strength;
+
+	return connman_element_set_uint8(&network->element,
+						"Strength", strength);
+}
+
+/**
  * connman_network_set_string:
  * @network: network structure
  * @key: unique identifier
@@ -873,12 +909,12 @@ int connman_network_set_string(struct connman_network *network,
 {
 	DBG("network %p key %s value %s", network, key, value);
 
+	if (g_strcmp0(key, "Name") == 0)
+		return connman_network_set_name(network, value);
+
 	if (g_str_equal(key, "Address") == TRUE) {
 		g_free(network->address);
 		network->address = g_strdup(value);
-	} else if (g_str_equal(key, "Name") == TRUE) {
-		g_free(network->name);
-		network->name = g_strdup(value);
 	} else if (g_str_equal(key, "Node") == TRUE) {
 		g_free(network->node);
 		network->node = g_strdup(value);
@@ -937,8 +973,8 @@ int connman_network_set_uint8(struct connman_network *network,
 {
 	DBG("network %p key %s value %d", network, key, value);
 
-	if (g_str_equal(key, "Strength") == TRUE)
-		network->strength = value;
+	if (g_strcmp0(key, "Strength") == 0)
+		return connman_network_set_strength(network, value);
 
 	return connman_element_set_uint8(&network->element, key, value);
 }
