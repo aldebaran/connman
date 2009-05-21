@@ -29,10 +29,10 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
+#include <connman/inet.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
-#include "inet.h"
 #include "task.h"
 
 #define UDHCPC_INTF  "net.busybox.udhcpc"
@@ -49,7 +49,7 @@ static int udhcp_probe(struct connman_element *element)
 	if (access(UDHCPC, X_OK) < 0)
 		return -errno;
 
-	ifname = inet_index2name(element->index);
+	ifname = connman_inet_ifname(element->index);
 	if (ifname == NULL)
 		return -ENOMEM;
 
@@ -118,7 +118,7 @@ static void udhcp_bound(DBusMessage *msg, gboolean renew)
 
 	DBG("%s ==> address %s gateway %s", interface, address, gateway);
 
-	index = inet_name2index(interface);
+	index = connman_inet_ifindex(interface);
 	if (index < 0)
 		return;
 

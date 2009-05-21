@@ -34,10 +34,10 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/device.h>
 #include <connman/option.h>
+#include <connman/inet.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
-#include "inet.h"
 #include "supplicant.h"
 
 #define TIMEOUT 5000
@@ -397,7 +397,7 @@ static void remove_interface_reply(DBusPendingCall *call, void *user_data)
 
 	connman_device_unref(task->device);
 
-	inet_ifdown(task->ifindex);
+	connman_inet_ifdown(task->ifindex);
 
 	free_task(task);
 
@@ -1482,7 +1482,7 @@ int supplicant_start(struct connman_device *device)
 		return -ENOMEM;
 
 	task->ifindex = connman_device_get_index(device);
-	task->ifname = inet_index2name(task->ifindex);
+	task->ifname = connman_inet_ifname(task->ifindex);
 
 	if (task->ifname == NULL) {
 		g_free(task);

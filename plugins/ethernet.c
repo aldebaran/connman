@@ -35,10 +35,9 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/device.h>
+#include <connman/inet.h>
 #include <connman/rtnl.h>
 #include <connman/log.h>
-
-#include "inet.h"
 
 struct ethernet_data {
 	int index;
@@ -118,7 +117,7 @@ static int ethernet_enable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	return inet_ifup(ethernet->index);
+	return connman_inet_ifup(ethernet->index);
 }
 
 static int ethernet_disable(struct connman_device *device)
@@ -127,7 +126,7 @@ static int ethernet_disable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	return inet_ifdown(ethernet->index);
+	return connman_inet_ifdown(ethernet->index);
 }
 
 static struct connman_device_driver ethernet_driver = {

@@ -33,7 +33,6 @@
 #include <connman/device.h>
 #include <connman/log.h>
 
-#include "inet.h"
 #include "supplicant.h"
 
 #define CLEANUP_TIMEOUT   8	/* in seconds */

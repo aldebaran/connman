@@ -28,6 +28,12 @@ extern "C" {
 
 #include <connman/device.h>
 
+extern int connman_inet_ifindex(const char *name);
+extern char *connman_inet_ifname(int index);
+
+extern int connman_inet_ifup(int index);
+extern int connman_inet_ifdown(int index);
+
 extern struct connman_device *connman_inet_create_device(int index);
 
 #ifdef __cplusplus

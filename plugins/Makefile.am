@@ -19,20 +19,20 @@ endif
 if ETHERNET
 if ETHERNET_BUILTIN
 builtin_modules += ethernet
-builtin_sources += ethernet.c inet.h inet.c
+builtin_sources += ethernet.c
 else
 plugin_LTLIBRARIES += ethernet.la
-ethernet_la_SOURCES = ethernet.c inet.h inet.c
+ethernet_la_SOURCES = ethernet.c
 endif
 endif
 
 if WIFI
 if WIFI_BUILTIN
 builtin_modules += wifi
-builtin_sources += wifi.c inet.h inet.c supplicant.h supplicant.c
+builtin_sources += wifi.c supplicant.h supplicant.c
 else
 plugin_LTLIBRARIES += wifi.la
-wifi_la_SOURCES = wifi.c inet.h inet.c supplicant.h supplicant.c
+wifi_la_SOURCES = wifi.c supplicant.h supplicant.c
 wifi_la_LIBADD = @GDBUS_LIBS@
 endif
 endif
@@ -40,10 +40,10 @@ endif
 if BLUETOOTH
 if BLUETOOTH_BUILTIN
 builtin_modules += bluetooth
-builtin_sources += bluetooth.c inet.h inet.c
+builtin_sources += bluetooth.c
 else
 plugin_LTLIBRARIES += bluetooth.la
-bluetooth_la_SOURCES = bluetooth.c inet.h inet.c
+bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 endif
 endif
@@ -81,11 +81,11 @@ endif
 if UDHCP
 if UDHCP_BUILTIN
 builtin_modules += udhcp
-builtin_sources += udhcp.c inet.h inet.c task.h task.c
+builtin_sources += udhcp.c task.h task.c
 builtin_cflags += -DUDHCPC=\"@UDHCPC@\"
 else
 plugin_LTLIBRARIES += udhcp.la
-udhcp_la_SOURCES = udhcp.c inet.h inet.c task.h task.c
+udhcp_la_SOURCES = udhcp.c task.h task.c
 udhcp_la_CFLAGS = $(AM_CFLAGS) -DUDHCPC=\"@UDHCPC@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 endif
@@ -94,11 +94,11 @@ endif
 if DHCLIENT
 if DHCLIENT_BUILTIN
 builtin_modules += dhclient
-builtin_sources += dhclient.c inet.h inet.c
+builtin_sources += dhclient.c
 builtin_cflags += -DDHCLIENT=\"@DHCLIENT@\"
 else
 plugin_LTLIBRARIES += dhclient.la
-dhclient_la_SOURCES = dhclient.c inet.h inet.c
+dhclient_la_SOURCES = dhclient.c
 dhclient_la_CFLAGS = $(AM_CFLAGS) -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 endif
@@ -147,7 +147,7 @@ endif
 
 if IWMXSDK
 plugin_LTLIBRARIES += iwmxsdk.la
-iwmxsdk_la_SOURCES = iwmxsdk.c inet.h inet.c
+iwmxsdk_la_SOURCES = iwmxsdk.c
 iwmxsdk_la_LIBADD = @IWMXSDK_LIBS@ @GLIB_LIBS@
 iwmxsdk_la_CFLAGS = $(AM_CFLAGS) @IWMXSDK_CFLAGS@
 endif

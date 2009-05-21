@@ -31,10 +31,9 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/device.h>
+#include <connman/inet.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
-
-#include "inet.h"
 
 #define BLUEZ_SERVICE			"org.bluez"
 #define BLUEZ_MANAGER_INTERFACE		BLUEZ_SERVICE ".Manager"
@@ -213,7 +212,7 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 
 	data->interface = g_strdup(interface);
 
-	index = inet_name2index(interface);
+	index = connman_inet_ifindex(interface);
 
 	connman_network_set_index(network, index);
 	connman_network_set_connected(network, TRUE);

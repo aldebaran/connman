@@ -37,7 +37,32 @@
 
 #include "connman.h"
 
-static char *index2name(int index)
+int connman_inet_ifindex(const char *name)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (name == NULL)
+		return -1;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, name, sizeof(ifr.ifr_name));
+
+	err = ioctl(sk, SIOCGIFINDEX, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return -1;
+
+	return ifr.ifr_ifindex;
+}
+
+char *connman_inet_ifname(int index)
 {
 	struct ifreq ifr;
 	int sk, err;
@@ -60,6 +85,88 @@ static char *index2name(int index)
 		return NULL;
 
 	return strdup(ifr.ifr_name);
+}
+
+int connman_inet_ifup(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ifr.ifr_flags & IFF_UP) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags |= IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
+
+int connman_inet_ifdown(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (!(ifr.ifr_flags & IFF_UP)) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	ifr.ifr_flags &= ~IFF_UP;
+
+	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
+		err = -errno;
+	else
+		err = 0;
+
+done:
+	close(sk);
+
+	return err;
 }
 
 static unsigned short index2type(int index)
@@ -190,7 +297,7 @@ struct connman_device *connman_inet_create_device(int index)
 	if (index < 0)
 		return NULL;
 
-	devname = index2name(index);
+	devname = connman_inet_ifname(index);
 	if (devname == NULL)
 		return NULL;
 

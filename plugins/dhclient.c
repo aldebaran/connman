@@ -30,10 +30,9 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
+#include <connman/inet.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
-
-#include "inet.h"
 
 #define DHCLIENT_INTF "org.isc.dhclient"
 #define DHCLIENT_PATH "/org/isc/dhclient"
@@ -145,7 +144,7 @@ static int dhclient_probe(struct connman_element *element)
 		return -ENOMEM;
 
 	task->ifindex = element->index;
-	task->ifname = inet_index2name(element->index);
+	task->ifname = connman_inet_ifname(element->index);
 	task->element = element;
 
 	if (task->ifname == NULL) {
