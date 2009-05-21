@@ -159,7 +159,6 @@ endif
 noinst_LIBRARIES = libbuiltin.a
 
 libbuiltin_a_SOURCES = $(builtin_sources)
-libbuiltin_a_LDFLAGS =
 libbuiltin_a_CFLAGS = $(AM_CFLAGS) \
 		$(builtin_cflags) -DCONNMAN_PLUGIN_BUILTIN \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
