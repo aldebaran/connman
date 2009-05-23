@@ -32,8 +32,8 @@ fi
 		--enable-hso \
 		--enable-ppp \
 		--enable-udev \
+		--enable-iwmx \
 		--enable-iospm \
-		--enable-iwmxsdk \
 		--enable-polkit \
 		--enable-client \
 		--enable-tools $*

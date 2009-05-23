@@ -141,15 +141,15 @@ policy_DATA = connman.policy
 endif
 endif
 
-if IOSPM
-plugin_LTLIBRARIES += iospm.la
-endif
-
-if IWMXSDK
+if IWMX
 plugin_LTLIBRARIES += iwmxsdk.la
-iwmxsdk_la_SOURCES = iwmxsdk.c
+iwmxsdk_la_SOURCES = iwmx.h iwmx.c iwmxsdk.c
 iwmxsdk_la_LIBADD = @IWMXSDK_LIBS@ @GLIB_LIBS@
 iwmxsdk_la_CFLAGS = $(AM_CFLAGS) @IWMXSDK_CFLAGS@
+endif
+
+if IOSPM
+plugin_LTLIBRARIES += iospm.la
 endif
 
 if FAKE

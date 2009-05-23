@@ -208,20 +208,26 @@ AC_SUBST(UDEV_CFLAGS)
 AC_SUBST(UDEV_LIBS)
 AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
 
-AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
-		[enable Intel OSPM support]), [enable_iospm=${enableval}])
-AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
+AC_ARG_WITH(iwmxsdk, AC_HELP_STRING([--with-iwmxsdk=PATH],
+						[path to Intel WiMAX SDK]),
+				[pkgconfig_iwmxsdk=${withval}/lib/pkgconfig])
 
-AC_ARG_ENABLE(iwmxsdk, AC_HELP_STRING([--enable-iwmxsdk],
-		[enable Intel WiMAX support]), [enable_iwmxsdk=${enableval}])
-if (test "${enable_iwmxsdk}" = "yes"); then
+AC_ARG_ENABLE(iwmx, AC_HELP_STRING([--enable-iwmx],
+		[enable Intel WiMAX support]), [enable_iwmx=${enableval}])
+if (test "${enable_iwmx}" = "yes"); then
 	enable_threads="yes"
-	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, enable_iwmxsdk=yes,
+	export PKG_CONFIG_PATH="${pkgconfig_iwmxsdk}"
+	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, enable_iwmx=yes,
 				AC_MSG_ERROR(Intel WiMAX SDK is required))
+	PKG_CONFIG_PATH=""
 	AC_SUBST(IWMXSDK_CFLAGS)
 	AC_SUBST(IWMXSDK_LIBS)
 fi
-AM_CONDITIONAL(IWMXSDK, test "${enable_iwmxsdk}" = "yes")
+AM_CONDITIONAL(IWMX, test "${enable_iwmx}" = "yes")
+
+AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
+		[enable Intel OSPM support]), [enable_iospm=${enableval}])
+AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
 				AC_MSG_ERROR(GLib >= 2.16 is required))
