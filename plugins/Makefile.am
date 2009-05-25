@@ -5,8 +5,8 @@ plugin_LTLIBRARIES =
 
 builtin_modules =
 builtin_sources =
-builtin_cflags =
 builtin_libadd =
+builtin_cflags =
 
 if LOOPBACK
 if LOOPBACK_BUILTIN
@@ -138,9 +138,16 @@ endif
 endif
 
 if POLKIT
+if POLKIT_BUILTIN
+builtin_modules += polkit
+builtin_sources += polkit.c
+builtin_libadd += @POLKIT_LIBS@
+builtin_cflags += @POLKIT_CFLAGS@
+else
 plugin_LTLIBRARIES += polkit.la
 polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
 polkit_la_CFLAGS = $(AM_CFLAGS) @POLKIT_CFLAGS@
+endif
 
 if DATAFILES
 policydir = @POLKIT_DATADIR@

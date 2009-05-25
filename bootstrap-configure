@@ -34,6 +34,6 @@ fi
 		--enable-udev \
 		--enable-iwmx \
 		--enable-iospm \
-		--enable-polkit \
+		--enable-polkit=builtin \
 		--enable-client \
 		--enable-tools $*

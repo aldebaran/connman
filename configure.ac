@@ -265,10 +265,11 @@ AC_SUBST([GDBUS_LIBS], ['$(top_builddir)/gdbus/libgdbus.la $(DBUS_LIBS)'])
 AC_SUBST([GATCHAT_CFLAGS], ['-I$(top_srcdir)/gatchat'])
 AC_SUBST([GATCHAT_LIBS], ['$(top_builddir)/gatchat/libgatchat.la'])
 
-AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
-		[enable PolicyKit support]), [enable_polkit=${enableval}])
-if (test "${enable_polkit}" = "yes"); then
-	PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, enable_polkit=yes,
+AC_ARG_ENABLE(polkit,
+	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
+			[enable_polkit=${enableval}], [enable_polkit="no"])
+if (test "${enable_polkit}" != "no"); then
+	PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, dummy=yes,
 				AC_MSG_ERROR(PolicyKit >= 0.7 is required))
 	AC_SUBST(POLKIT_CFLAGS)
 	AC_SUBST(POLKIT_LIBS)
@@ -278,7 +279,8 @@ if (test "${enable_polkit}" = "yes"); then
 	fi
 	AC_SUBST(POLKIT_DATADIR)
 fi
-AM_CONDITIONAL(POLKIT, test "${enable_polkit}" = "yes")
+AM_CONDITIONAL(POLKIT, test "${enable_polkit}" != "no")
+AM_CONDITIONAL(POLKIT_BUILTIN, test "${enable_polkit}" = "builtin")
 
 AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
 		[enable command line client]), [enable_client=${enableval}])
