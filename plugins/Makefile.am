@@ -6,6 +6,7 @@ plugin_LTLIBRARIES =
 builtin_modules =
 builtin_sources =
 builtin_cflags =
+builtin_libadd =
 
 if LOOPBACK
 if LOOPBACK_BUILTIN
@@ -77,9 +78,11 @@ if HSO
 if HSO_BUILTIN
 builtin_modules += hso
 builtin_sources += hso.c modem.h modem.c
+builtin_libadd += @GATCHAT_LIBS@
 else
 plugin_LTLIBRARIES += hso.la
 hso_la_SOURCES = hso.c modem.h modem.c
+hso_la_LIBADD = @GATCHAT_LIBS@
 endif
 endif
 
@@ -164,6 +167,7 @@ endif
 noinst_LIBRARIES = libbuiltin.a
 
 libbuiltin_a_SOURCES = $(builtin_sources)
+libbuiltin_a_LIBADD = $(builtin_libadd)
 libbuiltin_a_CFLAGS = $(AM_CFLAGS) \
 		$(builtin_cflags) -DCONNMAN_PLUGIN_BUILTIN \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
@@ -182,7 +186,8 @@ else
 scriptdir = $(libdir)/connman/scripts
 endif
 
-AM_CFLAGS = -fvisibility=hidden @GLIB_CFLAGS@ @GDBUS_CFLAGS@
+AM_CFLAGS = -fvisibility=hidden @GLIB_CFLAGS@ \
+					@GDBUS_CFLAGS@ @GATCHAT_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 
