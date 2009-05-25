@@ -22,7 +22,7 @@ fi
 		--enable-wifi=builtin \
 		--enable-bluetooth=builtin \
 		--enable-ofono=builtin \
-		--enable-modemmgr \
+		--enable-modemmgr=builtin \
 		--enable-udhcp=builtin \
 		--enable-dhclient=builtin \
 		--enable-resolvconf=builtin \

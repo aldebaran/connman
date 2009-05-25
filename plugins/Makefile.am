@@ -60,8 +60,13 @@ endif
 endif
 
 if MODEMMGR
+if MODEMMGR_BUILTIN
+builtin_modules += modemmgr
+builtin_sources += modemmgr.c
+else
 plugin_LTLIBRARIES += modemmgr.la
 modemmgr_la_LIBADD = @GDBUS_LIBS@
+endif
 endif
 
 if NOVATEL
