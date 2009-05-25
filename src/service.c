@@ -203,6 +203,36 @@ static void state_changed(struct connman_service *service)
 	g_dbus_send_message(connection, signal);
 }
 
+static void strength_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Strength";
+
+	if (service->path == NULL)
+		return;
+
+	if (service->strength == 0)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BYTE,
+							&service->strength);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -1115,6 +1145,8 @@ static void update_from_network(struct connman_service *service,
 	if (service->strength > strength && service->network != NULL) {
 		connman_network_unref(service->network);
 		service->network = NULL;
+
+		strength_changed(service);
 	}
 
 	if (service->network == NULL) {
