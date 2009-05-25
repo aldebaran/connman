@@ -29,7 +29,7 @@ fi
 		--enable-dnsproxy=builtin \
 		--enable-novatel \
 		--enable-huawei \
-		--enable-hso \
+		--enable-hso=builtin \
 		--enable-ppp \
 		--enable-udev \
 		--enable-iwmx \

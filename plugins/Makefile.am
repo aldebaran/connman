@@ -74,8 +74,13 @@ huawei_la_SOURCES = huawei.c modem.h modem.c
 endif
 
 if HSO
+if HSO_BUILTIN
+builtin_modules += hso
+builtin_sources += hso.c modem.h modem.c
+else
 plugin_LTLIBRARIES += hso.la
 hso_la_SOURCES = hso.c modem.h modem.c
+endif
 endif
 
 if UDHCP
