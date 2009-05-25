@@ -225,7 +225,7 @@ static void strength_changed(struct connman_service *service)
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
 	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
+					DBUS_TYPE_BYTE_AS_STRING, &value);
 	dbus_message_iter_append_basic(&value, DBUS_TYPE_BYTE,
 							&service->strength);
 	dbus_message_iter_close_container(&entry, &value);
