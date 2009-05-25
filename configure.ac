@@ -189,7 +189,7 @@ AC_ARG_ENABLE(udev, AC_HELP_STRING([--enable-udev],
 		[enable udev support]), [enable_udev=${enableval}])
 if (test "${enable_udev}" = "yes"); then
 	AC_DEFINE(HAVE_UDEV, 1, [Define if udev support is available])
-	PKG_CHECK_MODULES(UDEV, libudev >= 129, enable_udev=yes,
+	PKG_CHECK_MODULES(UDEV, libudev >= 129, dummy=yes,
 				AC_MSG_ERROR(udev >= 129 is required))
 	AC_CHECK_LIB(udev, udev_enumerate_add_match_property, dummy=yes,
 		AC_DEFINE(NEED_UDEV_ENUMERATE_ADD_MATCH_PROPERTY, 1,
@@ -219,7 +219,7 @@ AC_ARG_ENABLE(iwmx, AC_HELP_STRING([--enable-iwmx],
 if (test "${enable_iwmx}" = "yes"); then
 	enable_threads="yes"
 	export PKG_CONFIG_PATH="${pkgconfig_iwmxsdk}"
-	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, enable_iwmx=yes,
+	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, dummy=yes,
 				AC_MSG_ERROR(Intel WiMAX SDK is required))
 	PKG_CONFIG_PATH=""
 	AC_SUBST(IWMXSDK_CFLAGS)
@@ -289,7 +289,7 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
 		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
-	PKG_CHECK_MODULES(NETLINK, libnl-1, enable_netlink=yes,
+	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
 				AC_MSG_ERROR(Netlink library is required))
 	AC_SUBST(NETLINK_CFLAGS)
 	AC_SUBST(NETLINK_LIBS)
