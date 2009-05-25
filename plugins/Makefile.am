@@ -79,10 +79,12 @@ if HSO_BUILTIN
 builtin_modules += hso
 builtin_sources += hso.c modem.h modem.c
 builtin_libadd += @GATCHAT_LIBS@
+builtin_cflags += @GATCHAT_CFLAGS@
 else
 plugin_LTLIBRARIES += hso.la
 hso_la_SOURCES = hso.c modem.h modem.c
 hso_la_LIBADD = @GATCHAT_LIBS@
+hso_la_CFLAGS = $(AM_CFLAGS) @GATCHAT_CFLAGS@
 endif
 endif
 
@@ -193,8 +195,7 @@ else
 scriptdir = $(libdir)/connman/scripts
 endif
 
-AM_CFLAGS = -fvisibility=hidden @GLIB_CFLAGS@ \
-					@GDBUS_CFLAGS@ @GATCHAT_CFLAGS@
+AM_CFLAGS = -fvisibility=hidden @GLIB_CFLAGS@ @GDBUS_CFLAGS@
 
 INCLUDES = -I$(top_builddir)/include
 
