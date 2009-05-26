@@ -33,6 +33,17 @@
 
 #include "connman.h"
 
+/*
+ * Plugins that are using libraries with threads and their own mainloop
+ * will crash on exit. This is a bug inside these libraries, but there is
+ * nothing much that can be done about it.
+ */
+#ifdef NEED_THREADS
+#define PLUGINFLAG (RTLD_NOW | RTLD_NODELETE)
+#else
+#define PLUGINFLAG (RTLD_NOW)
+#endif
+
 static GSList *plugins = NULL;
 
 struct connman_plugin {
@@ -124,7 +135,7 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 
 			filename = g_build_filename(PLUGINDIR, file, NULL);
 
-			handle = dlopen(filename, RTLD_NOW);
+			handle = dlopen(filename, PLUGINFLAG);
 			if (handle == NULL) {
 				connman_error("Can't load %s: %s",
 							filename, dlerror());
