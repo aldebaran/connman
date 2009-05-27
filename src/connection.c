@@ -98,6 +98,28 @@ static int set_route(struct connman_element *element, const char *gateway)
 	DBG("ifname %s", ifr.ifr_name);
 
 	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_HOST;
+
+	addr = (struct sockaddr_in *) &rt.rt_dst;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = inet_addr(gateway);
+
+	addr = (struct sockaddr_in *) &rt.rt_gateway;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	addr = (struct sockaddr_in *) &rt.rt_genmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	rt.rt_dev = ifr.ifr_name;
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	if (err < 0)
+		connman_error("Setting host gateway route failed (%s)",
+							strerror(errno));
+
+	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
 	addr = (struct sockaddr_in *) &rt.rt_dst;
