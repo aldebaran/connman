@@ -214,7 +214,7 @@ static struct supplicant_task *find_task_by_path(const char *path)
 	for (list = task_list; list; list = list->next) {
 		struct supplicant_task *task = list->data;
 
-		if (g_str_equal(task->path, path) == TRUE)
+		if (g_strcmp0(task->path, path) == 0)
 			return task;
 	}
 
