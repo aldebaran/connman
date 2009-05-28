@@ -235,7 +235,7 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
-		goto done;
+		goto failed;
 
 	dbus_error_init(&error);
 
@@ -246,7 +246,7 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 			dbus_error_free(&error);
 		} else
 			connman_error("Wrong arguments for add interface");
-		goto done;
+		goto failed;
 	}
 
 	DBG("path %s", path);
@@ -256,8 +256,16 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 
 	connman_device_set_powered(task->device, TRUE);
 
-done:
 	dbus_message_unref(reply);
+
+	return;
+
+failed:
+	task_list = g_slist_remove(task_list, task);
+
+	connman_device_unref(task->device);
+
+	free_task(task);
 }
 
 static int add_interface(struct supplicant_task *task)
