@@ -91,6 +91,8 @@ enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
 
 #include <connman/inet.h>
 
+#include <connman/rfkill.h>
+
 #include <connman/ipconfig.h>
 
 #include <connman/resolver.h>

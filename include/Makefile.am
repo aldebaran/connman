@@ -7,7 +7,7 @@ include_HEADERS = types.h log.h plugin.h security.h notifier.h \
 nodist_include_HEADERS = version.h
 
 noinst_HEADERS = driver.h element.h property.h ipv4.h rtnl.h dbus.h \
-				resolver.h ipconfig.h service.h option.h
+			rfkill.h resolver.h ipconfig.h service.h option.h
 
 MAINTAINERCLEANFILES = Makefile.in
 
