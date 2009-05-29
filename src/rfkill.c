@@ -28,13 +28,39 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <stdint.h>
 
 #include "connman.h"
+
+enum rfkill_type {
+	RFKILL_TYPE_ALL = 0,
+	RFKILL_TYPE_WLAN,
+	RFKILL_TYPE_BLUETOOTH,
+	RFKILL_TYPE_UWB,
+	RFKILL_TYPE_WIMAX,
+	RFKILL_TYPE_WWAN,
+};
+
+enum rfkill_operation {
+	RFKILL_OP_ADD = 0,
+	RFKILL_OP_DEL,
+	RFKILL_OP_CHANGE,
+	RFKILL_OP_CHANGE_ALL,
+};
+
+struct rfkill_event {
+	uint32_t idx;
+	uint8_t  type;
+	uint8_t  op;
+	uint8_t  soft;
+	uint8_t  hard;
+};
 
 static gboolean rfkill_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
 	unsigned char buf[32];
+	struct rfkill_event *event = (void *) buf;
 	gsize len;
 	GIOError err;
 
@@ -50,7 +76,12 @@ static gboolean rfkill_event(GIOChannel *chan,
 		return FALSE;
 	}
 
-	/* process RFKILL event */
+	if (len != sizeof(struct rfkill_event))
+		return TRUE;
+
+	connman_info("RFKILL event: idx %u type %u op %u soft %u hard %u",
+					event->idx, event->type, event->op,
+						event->soft, event->hard);
 
 	return TRUE;
 }
