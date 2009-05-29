@@ -23,4 +23,70 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <string.h>
+
 #include "connman.h"
+
+static gboolean rfkill_event(GIOChannel *chan,
+				GIOCondition cond, gpointer data)
+{
+	unsigned char buf[32];
+	gsize len;
+	GIOError err;
+
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
+		return FALSE;
+
+	memset(buf, 0, sizeof(buf));
+
+	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
+	if (err) {
+		if (err == G_IO_ERROR_AGAIN)
+			return TRUE;
+		return FALSE;
+	}
+
+	/* process RFKILL event */
+
+	return TRUE;
+}
+
+static GIOChannel *channel = NULL;
+
+int __connman_rfkill_init(void)
+{
+	int fd;
+
+	DBG("");
+
+	fd = open("/dev/rfkill", O_RDWR);
+	if (fd < 0) {
+		connman_error("Failed to open RFKILL control device");
+		return -EIO;
+	}
+
+	channel = g_io_channel_unix_new(fd);
+	g_io_channel_set_close_on_unref(channel, TRUE);
+
+	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+							rfkill_event, NULL);
+
+	return 0;
+}
+
+void __connman_rfkill_cleanup(void)
+{
+	DBG("");
+
+	if (channel == NULL)
+		return;
+
+	g_io_channel_shutdown(channel, TRUE, NULL);
+	g_io_channel_unref(channel);
+
+	channel = NULL;
+}

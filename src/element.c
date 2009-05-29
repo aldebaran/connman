@@ -1405,12 +1405,14 @@ void __connman_element_start(void)
 	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_detect_init();
+	__connman_rfkill_init();
 }
 
 void __connman_element_stop(void)
 {
 	DBG("");
 
+	__connman_rfkill_cleanup();
 	__connman_detect_cleanup();
 	__connman_ipv4_cleanup();
 	__connman_connection_cleanup();
