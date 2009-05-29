@@ -94,6 +94,8 @@ int __connman_detect_init(void)
 {
 	int err;
 
+	DBG("");
+
 	err = connman_rtnl_register(&detect_rtnl);
 	if (err < 0)
 		return err;
@@ -106,6 +108,8 @@ int __connman_detect_init(void)
 void __connman_detect_cleanup(void)
 {
 	GSList *list;
+
+	DBG("");
 
 	connman_rtnl_unregister(&detect_rtnl);
 
