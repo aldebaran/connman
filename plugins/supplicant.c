@@ -844,6 +844,7 @@ static struct {
 	{ "comcomcom", "3com"     },
 	{ "3Com",      "3com"     },
 	{ "Symbol",    "symbol"   },
+	{ "Motorola",  "motorola" },
 	{ "Wireless" , "wireless" },
 	{ "WLAN",      "wlan"     },
 	{ }
