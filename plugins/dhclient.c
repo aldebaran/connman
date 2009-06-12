@@ -299,6 +299,15 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 			task->element->ipv4.nameserver = g_strdup(value);
 		}
 
+		if (g_ascii_strcasecmp(key, "new_domain_name") == 0) {
+		}
+
+		if (g_ascii_strcasecmp(key, "new_domain_search") == 0) {
+		}
+
+		if (g_ascii_strcasecmp(key, "new_host_name") == 0) {
+		}
+
 		dbus_message_iter_next(&dict);
 	}
 
