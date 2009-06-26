@@ -26,6 +26,8 @@
 extern "C" {
 #endif
 
+#include <arpa/inet.h>
+
 #include <connman/device.h>
 
 extern int connman_inet_ifindex(const char *name);
@@ -35,6 +37,11 @@ extern int connman_inet_ifup(int index);
 extern int connman_inet_ifdown(int index);
 
 extern struct connman_device *connman_inet_create_device(int index);
+
+extern int connman_inet_set_address(int index, struct in_addr address,
+			struct in_addr netmask, struct in_addr broadcast);
+extern int connman_inet_clear_address(int index);
+extern int connman_inet_set_gateway(int index, struct in_addr gateway);
 
 #ifdef __cplusplus
 }

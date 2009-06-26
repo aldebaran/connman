@@ -31,6 +31,8 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <arpa/inet.h>
+#include <net/route.h>
 #include <net/ethernet.h>
 #include <linux/if_arp.h>
 #include <linux/wireless.h>
@@ -414,4 +416,162 @@ struct connman_device *connman_inet_create_device(int index)
 	g_free(addr);
 
 	return device;
+}
+
+int connman_inet_set_address(int index, struct in_addr address,
+			struct in_addr netmask, struct in_addr broadcast)
+{
+	struct ifreq ifr;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	addr = (struct sockaddr_in *) &ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = address;
+
+	err = ioctl(sk, SIOCSIFADDR, &ifr);
+
+	if (err < 0)
+		DBG("address setting failed (%s)", strerror(errno));
+
+	addr = (struct sockaddr_in *) &ifr.ifr_netmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = netmask;
+
+	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
+
+	if (err < 0)
+		DBG("netmask setting failed (%s)", strerror(errno));
+
+	addr = (struct sockaddr_in *) &ifr.ifr_broadaddr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = broadcast;
+
+	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
+
+	if (err < 0)
+		DBG("broadcast setting failed (%s)", strerror(errno));
+
+	close(sk);
+
+	return 0;
+}
+
+int connman_inet_clear_address(int index)
+{
+	struct ifreq ifr;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	addr = (struct sockaddr_in *) &ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	//err = ioctl(sk, SIOCDIFADDR, &ifr);
+	err = ioctl(sk, SIOCSIFADDR, &ifr);
+
+	close(sk);
+
+	if (err < 0 && errno != EADDRNOTAVAIL) {
+		DBG("address removal failed (%s)", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
+int connman_inet_set_gateway(int index, struct in_addr gateway)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in *addr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_HOST;
+
+	addr = (struct sockaddr_in *) &rt.rt_dst;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = gateway;
+
+	addr = (struct sockaddr_in *) &rt.rt_gateway;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	addr = (struct sockaddr_in *) &rt.rt_genmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	rt.rt_dev = ifr.ifr_name;
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	if (err < 0)
+		connman_error("Setting host gateway route failed (%s)",
+							strerror(errno));
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
+
+	addr = (struct sockaddr_in *) &rt.rt_dst;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	addr = (struct sockaddr_in *) &rt.rt_gateway;
+	addr->sin_family = AF_INET;
+	addr->sin_addr = gateway;
+
+	addr = (struct sockaddr_in *) &rt.rt_genmask;
+	addr->sin_family = AF_INET;
+	addr->sin_addr.s_addr = INADDR_ANY;
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	if (err < 0)
+		connman_error("Setting default route failed (%s)",
+							strerror(errno));
+
+	close(sk);
+
+	return err;
 }
