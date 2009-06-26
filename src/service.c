@@ -1068,6 +1068,11 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 	return service;
 }
 
+unsigned int __connman_service_get_order(struct connman_service *service)
+{
+	return service->order;
+}
+
 static enum connman_service_type convert_network_type(struct connman_network *network)
 {
 	enum connman_network_type type = connman_network_get_type(network);

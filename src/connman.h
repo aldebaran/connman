@@ -248,6 +248,8 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
 
+unsigned int __connman_service_get_order(struct connman_service *service);
+
 int __connman_service_set_carrier(struct connman_service *service,
 						connman_bool_t carrier);
 int __connman_service_indicate_state(struct connman_service *service,
