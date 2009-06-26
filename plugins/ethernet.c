@@ -129,6 +129,34 @@ static int ethernet_disable(struct connman_device *device)
 	return connman_inet_ifdown(ethernet->index);
 }
 
+static int ethernet_connect(struct connman_device *device)
+{
+	struct ethernet_data *ethernet = connman_device_get_data(device);
+
+	DBG("device %p", device);
+
+	if (!(ethernet->flags & IFF_LOWER_UP))
+		return -ENOTCONN;
+
+	connman_device_set_carrier(device, TRUE);
+
+	return 0;
+}
+
+static int ethernet_disconnect(struct connman_device *device)
+{
+	struct ethernet_data *ethernet = connman_device_get_data(device);
+
+	DBG("device %p", device);
+
+	if (!(ethernet->flags & IFF_LOWER_UP))
+		return -ENOTCONN;
+
+	connman_device_set_carrier(device, FALSE);
+
+	return 0;
+}
+
 static struct connman_device_driver ethernet_driver = {
 	.name		= "ethernet",
 	.type		= CONNMAN_DEVICE_TYPE_ETHERNET,
@@ -136,6 +164,8 @@ static struct connman_device_driver ethernet_driver = {
 	.remove		= ethernet_remove,
 	.enable		= ethernet_enable,
 	.disable	= ethernet_disable,
+	.connect	= ethernet_connect,
+	.disconnect	= ethernet_disconnect,
 };
 
 static int ethernet_init(void)
