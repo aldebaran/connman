@@ -1176,6 +1176,11 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	const char *ident, *group;
 	char *name;
 
+	if (__connman_service_lookup_from_network(network) != NULL) {
+		connman_error("Service already exists");
+		return NULL;
+	}
+
 	ident = __connman_network_get_ident(network);
 	if (ident == NULL)
 		return NULL;
