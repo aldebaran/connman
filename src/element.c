@@ -1043,6 +1043,30 @@ int __connman_element_set_ipv4(struct connman_element *element,
 		element->ipv4.gateway = g_strdup(gateway);
 
 		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.Broadcast") == TRUE) {
+		const char *broadcast;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &broadcast);
+
+		g_free(element->ipv4.broadcast);
+		element->ipv4.broadcast = g_strdup(broadcast);
+
+		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.Nameserver") == TRUE) {
+		const char *nameserver;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &nameserver);
+
+		g_free(element->ipv4.nameserver);
+		element->ipv4.nameserver = g_strdup(nameserver);
+
+		connman_element_update(element);
 	}
 
 	return 0;
