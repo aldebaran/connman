@@ -526,12 +526,35 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
+					const char *mode, const char *security)
+{
+	GString *str;
+	unsigned int i;
+
+	str = g_string_sized_new((ssid_len * 2) + 24);
+	if (str == NULL)
+		return NULL;
+
+	if (ssid_len > 0 && ssid[0] != '\0') {
+		for (i = 0; i < ssid_len; i++)
+			g_string_append_printf(str, "%02x", ssid[i]);
+	}
+
+	g_string_append_printf(str, "_%s_%s", mode, security);
+
+	return g_string_free(str, FALSE);
+}
+
 static DBusMessage *join_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_device *device = data;
 	struct connman_network *network;
 	enum connman_network_type type;
+	unsigned int ssid_size;
+	const char *group, *mode, *security;
+	const void *ssid;
 	DBusMessageIter iter, array;
 	int err, index;
 
@@ -582,6 +605,13 @@ static DBusMessage *join_network(DBusConnection *conn,
 
 		dbus_message_iter_next(&array);
 	}
+
+	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_size);
+	mode = connman_network_get_string(network, "WiFi.Mode");
+	security = connman_network_get_string(network, "WiFi.Security");
+	group = build_group(ssid, ssid_size, mode, security);
+
+	connman_network_set_group(network, group);
 
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
