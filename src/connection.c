@@ -38,6 +38,9 @@
 struct gateway_data {
 	int index;
 	char *gateway;
+	struct connman_element *element;
+	unsigned int order;
+	gboolean active;
 };
 
 static GSList *gateway_list = NULL;
@@ -61,17 +64,6 @@ static struct gateway_data *find_gateway(int index, const char *gateway)
 	}
 
 	return NULL;
-}
-
-static void remove_gateway(int index, const char *gateway)
-{
-	struct gateway_data *data;
-
-	data = find_gateway(index, gateway);
-	if (data == NULL)
-		return;
-
-	gateway_list = g_slist_remove(gateway_list, data);
 }
 
 static int set_route(struct connman_element *element, const char *gateway)
@@ -218,64 +210,45 @@ static void emit_default_signal(struct connman_element *element)
 	g_dbus_send_message(connection, signal);
 }
 
-static void set_default(struct connman_element *element, gpointer user_data)
+static void find_element(struct connman_element *element, gpointer user_data)
 {
 	struct gateway_data *data = user_data;
 
 	DBG("element %p name %s", element, element->name);
 
-	if (element->index != data->index)
+	if (data->element != NULL)
 		return;
-
-	if (element->enabled == TRUE)
-		return;
-
-	connman_element_set_enabled(element, TRUE);
-	emit_default_signal(element);
-}
-
-static void del_default(struct connman_element *element, gpointer user_data)
-{
-	struct gateway_data *data = user_data;
-
-	DBG("element %p name %s", element, element->name);
 
 	if (element->index != data->index)
 		return;
 
-	if (element->enabled == FALSE)
-		return;
-
-	connman_element_set_enabled(element, FALSE);
-	emit_default_signal(element);
+	data->element = element;
 }
 
-static void new_default(struct connman_element *element, gpointer user_data)
+static struct gateway_data *add_gateway(int index, const char *gateway)
 {
+	struct gateway_data *data;
 	struct connman_service *service;
-	const char *gateway;
 
-	DBG("element %p name %s", element, element->name);
+	data = g_try_new0(struct gateway_data, 1);
+	if (data == NULL)
+		return NULL;
 
-	if (g_slist_length(gateway_list) > 0)
-		return;
+	data->index = index;
+	data->gateway = g_strdup(gateway);
+	data->active = FALSE;
+	data->element = NULL;
 
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
+							find_element, data);
 
-	DBG("gateway %s", gateway);
+	service = __connman_element_get_service(data->element);
+	if (service != NULL)
+		data->order = __connman_service_get_order(service);
 
-	if (gateway == NULL)
-		return;
+	gateway_list = g_slist_append(gateway_list, data);
 
-	if (set_route(element, gateway) < 0)
-		return;
-
-	service = __connman_element_get_service(element);
-	__connman_service_indicate_default(service);
-
-	connman_element_set_enabled(element, TRUE);
-	emit_default_signal(element);
+	return data;
 }
 
 static void connection_newgateway(int index, const char *gateway)
@@ -285,20 +258,51 @@ static void connection_newgateway(int index, const char *gateway)
 	DBG("index %d gateway %s", index, gateway);
 
 	data = find_gateway(index, gateway);
-	if (data != NULL)
-		return;
-
-	data = g_try_new0(struct gateway_data, 1);
 	if (data == NULL)
 		return;
 
-	data->index = index;
-	data->gateway = g_strdup(gateway);
+	data->active = TRUE;
+}
 
-	gateway_list = g_slist_append(gateway_list, data);
+static void set_default_gateway(struct gateway_data *data)
+{
+	struct connman_element *element = data->element;
+	struct connman_service *service = NULL;
 
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
-							set_default, data);
+	DBG("gateway %s", data->gateway);
+
+	if (set_route(element, data->gateway) < 0)
+		return;
+
+	service = __connman_element_get_service(element);
+	__connman_service_indicate_default(service);
+}
+
+static struct gateway_data *find_default_gateway(void)
+{
+	struct gateway_data *found = NULL;
+	GSList *list;
+
+	for (list = gateway_list; list; list = list->next) {
+		struct gateway_data *data = list->data;
+		/* just return the last one for now */
+		found = data;
+	}
+
+	return found;
+}
+
+static void remove_gateway(struct gateway_data *data)
+{
+	DBG("gateway %s", data->gateway);
+
+	gateway_list = g_slist_remove(gateway_list, data);
+
+	if (data->active == TRUE)
+		del_route(data->element, data->gateway);
+
+	g_free(data->gateway);
+	g_free(data);
 }
 
 static void connection_delgateway(int index, const char *gateway)
@@ -308,24 +312,12 @@ static void connection_delgateway(int index, const char *gateway)
 	DBG("index %d gateway %s", index, gateway);
 
 	data = find_gateway(index, gateway);
-	if (data == NULL)
-		return;
+	if (data != NULL)
+		data->active = FALSE;
 
-	gateway_list = g_slist_remove(gateway_list, data);
-
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
-							del_default, data);
-
-	g_free(data->gateway);
-	g_free(data);
-
-	if (g_slist_length(gateway_list) > 0)
-		return;
-
-	DBG("selecting new default gateway");
-
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
-							new_default, NULL);
+	data = find_default_gateway();
+	if (data != NULL)
+		set_default_gateway(data);
 }
 
 static struct connman_rtnl connection_rtnl = {
@@ -455,6 +447,8 @@ static void emit_connections_signal(void)
 	DBusMessage *signal;
 	DBusMessageIter entry;
 
+	DBG("");
+
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
@@ -469,7 +463,8 @@ static void emit_connections_signal(void)
 
 static int register_interface(struct connman_element *element)
 {
-	DBG("element %p name %s", element, element->name);
+	DBG("element %p name %s path %s",
+				element, element->name, element->path);
 
 	if (g_dbus_register_interface(connection, element->path,
 					CONNMAN_CONNECTION_INTERFACE,
@@ -494,10 +489,27 @@ static void unregister_interface(struct connman_element *element)
 						CONNMAN_CONNECTION_INTERFACE);
 }
 
+static struct gateway_data *find_active_gateway(void)
+{
+	GSList *list;
+
+	DBG("");
+
+	for (list = gateway_list; list; list = list->next) {
+		struct gateway_data *data = list->data;
+		if (data->active == TRUE)
+			return data;
+	}
+
+	return NULL;
+}
+
 static int connection_probe(struct connman_element *element)
 {
-	struct connman_service *service;
+	struct connman_service *service = NULL;
 	const char *gateway = NULL;
+	struct gateway_data *active_gateway = NULL;
+	struct gateway_data *new_gateway = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -514,33 +526,27 @@ static int connection_probe(struct connman_element *element)
 
 	if (register_interface(element) < 0)
 		return -ENODEV;
-
 	service = __connman_element_get_service(element);
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_READY);
+	connman_element_set_enabled(element, TRUE);
+	emit_default_signal(element);
 
 	if (gateway == NULL)
 		return 0;
 
-	if (find_gateway(element->index, gateway) != NULL) {
-		DBG("previous gateway still present");
-		goto done;
-	}
+	active_gateway = find_active_gateway();
+	new_gateway = add_gateway(element->index, gateway);
 
-	if (g_slist_length(gateway_list) > 0) {
-		DBG("default gateway already present");
+	if (active_gateway == NULL) {
+		set_default_gateway(new_gateway);
 		return 0;
 	}
 
-	if (set_route(element, gateway) < 0)
+	if (new_gateway->order >= active_gateway->order) {
+		del_route(active_gateway->element, active_gateway->gateway);
 		return 0;
-
-done:
-	service = __connman_element_get_service(element);
-	__connman_service_indicate_default(service);
-
-	connman_element_set_enabled(element, TRUE);
-	emit_default_signal(element);
+	}
 
 	return 0;
 }
@@ -549,12 +555,16 @@ static void connection_remove(struct connman_element *element)
 {
 	struct connman_service *service;
 	const char *gateway = NULL;
+	struct gateway_data *data = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
 	service = __connman_element_get_service(element);
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT);
+
+	connman_element_set_enabled(element, FALSE);
+	emit_default_signal(element);
 
 	unregister_interface(element);
 
@@ -566,12 +576,11 @@ static void connection_remove(struct connman_element *element)
 	if (gateway == NULL)
 		return;
 
-	remove_gateway(element->index, gateway);
+	data = find_gateway(element->index, gateway);
+	if (data == NULL)
+		return;
 
-	connman_element_set_enabled(element, FALSE);
-	emit_default_signal(element);
-
-	del_route(element, gateway);
+	remove_gateway(data);
 }
 
 static struct connman_driver connection_driver = {
@@ -620,4 +629,31 @@ void __connman_connection_cleanup(void)
 	gateway_list = NULL;
 
 	dbus_connection_unref(connection);
+}
+
+static void update_order(void)
+{
+	GSList *list = NULL;
+
+	for (list = gateway_list; list; list = list->next) {
+		struct gateway_data *data = list->data;
+		struct connman_service *service;
+
+		service = __connman_element_get_service(data->element);
+
+		data->order = __connman_service_get_order(service);
+	}
+}
+
+void __connman_connection_update_gateway(void)
+{
+	struct gateway_data *active_gateway, *default_gateway;
+
+	update_order();
+
+	active_gateway = find_active_gateway();
+	default_gateway = find_default_gateway();
+
+	if (active_gateway != default_gateway)
+		del_route(active_gateway->element, active_gateway->gateway);
 }

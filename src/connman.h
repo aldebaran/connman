@@ -175,6 +175,8 @@ void __connman_ipv4_cleanup(void);
 int __connman_connection_init(void);
 void __connman_connection_cleanup(void);
 
+void __connman_connection_update_gateway(void);
+
 #ifdef HAVE_UDEV
 int __connman_udev_init(void);
 void __connman_udev_cleanup(void);
