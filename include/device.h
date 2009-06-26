@@ -128,6 +128,8 @@ struct connman_device_driver {
 	void (*remove) (struct connman_device *device);
 	int (*enable) (struct connman_device *device);
 	int (*disable) (struct connman_device *device);
+	int (*connect) (struct connman_device *device);
+	int (*disconnect) (struct connman_device *device);
 	int (*scan) (struct connman_device *device);
 	int (*join) (struct connman_device *device,
 					struct connman_network *network);
