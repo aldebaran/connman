@@ -939,6 +939,7 @@ int __connman_element_append_ipv4(struct connman_element *element,
 {
 	const char *method = NULL;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
+	const char *broadcast = NULL, *nameserver = NULL;
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_METHOD, &method);
@@ -949,6 +950,10 @@ int __connman_element_append_ipv4(struct connman_element *element,
 				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_BROADCAST, &broadcast);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 
 	if (method != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Method",
@@ -965,6 +970,14 @@ int __connman_element_append_ipv4(struct connman_element *element,
 	if (gateway != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Gateway",
 						DBUS_TYPE_STRING, &gateway);
+
+	if (broadcast != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Broadcast",
+						DBUS_TYPE_STRING, &broadcast);
+
+	if (nameserver != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Nameserver",
+						DBUS_TYPE_STRING, &nameserver);
 
 	return 0;
 }
