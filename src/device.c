@@ -1332,6 +1332,9 @@ int __connman_device_connect(struct connman_device *device)
 	if (device->disconnected == FALSE)
 		return -EINVAL;
 
+	if (device->driver && device->driver->connect)
+		device->driver->connect(device);
+
 	return 0;
 }
 
@@ -1352,6 +1355,9 @@ int __connman_device_disconnect(struct connman_device *device)
 		if (connman_network_get_connected(network) == TRUE)
 			__connman_network_disconnect(network);
 	}
+
+	if (device->driver && device->driver->disconnect)
+		device->driver->disconnect(device);
 
 	return 0;
 }
