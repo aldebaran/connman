@@ -303,6 +303,8 @@ struct connman_device *connman_inet_create_device(int index)
 	if (devname == NULL)
 		return NULL;
 
+	__connman_udev_get_devtype(devname);
+
 	if (type == ARPHRD_ETHER) {
 		char bridge_path[PATH_MAX], wimax_path[PATH_MAX];
 		struct stat st;

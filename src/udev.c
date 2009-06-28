@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <sys/types.h>
 
 #define LIBUDEV_I_KNOW_THE_API_IS_SUBJECT_TO_CHANGE
@@ -270,6 +271,30 @@ done:
 static struct udev *udev_ctx;
 static struct udev_monitor *udev_mon;
 static guint udev_watch = 0;
+
+char *__connman_udev_get_devtype(const char *ifname)
+{
+	struct udev_device *device;
+	const char *devtype;
+	char syspath[128];
+
+	snprintf(syspath, sizeof(syspath) - 1, "/sys/class/net/%s", ifname);
+
+	device = udev_device_new_from_syspath(udev_ctx, syspath);
+	if (device == NULL)
+		return NULL;
+
+	devtype = udev_device_get_devtype(device);
+	if (devtype == NULL)
+		goto done;
+
+	connman_info("%s ==> %s", ifname, devtype);
+
+done:
+	udev_device_unref(device);
+
+	return NULL;
+}
 
 int __connman_udev_init(void)
 {
