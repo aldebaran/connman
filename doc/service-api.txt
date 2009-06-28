@@ -84,6 +84,21 @@ Properties	string State [readonly]
 			Valid states are "idle", "failure", "association",
 			"configuration" and "ready".
 
+		string Error [readonly]
+
+			The service error status details.
+
+			When error occur during connection or disconnection
+			the detailed information are represented in this
+			property to help the user interface to present the
+			user with alternate options.
+
+			This property is only valid when the service is in
+			the "failure" state. Otherwise it might be empty or
+			not present at all.
+
+			The detailed error codes will be defined later.
+
 		string Name [readonly]
 
 			The service name (for example "Wireless" etc.)
@@ -91,7 +106,7 @@ Properties	string State [readonly]
 			This name can be used for directly displaying it in
 			the application. It has pure informational purpose.
 
-			For Ethernet devices and hidden WiFi networks  it is
+			For Ethernet devices and hidden WiFi networks it is
 			not guaranteed that this property is present.
 
 		string Type [readonly]
