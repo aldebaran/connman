@@ -71,6 +71,8 @@ void __connman_profile_changed(void)
 	DBusMessage *signal;
 	DBusMessageIter entry;
 
+	__connman_connection_update_gateway();
+
 	signal = dbus_message_new_signal(path,
 				CONNMAN_PROFILE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
