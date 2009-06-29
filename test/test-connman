@@ -23,11 +23,8 @@ if len(sys.argv) < 2:
 	print "  dev <interface> scan"
 	print "  dev <interface> networks"
 	print "  dev <interface> connect <network>"
-	print "  dev <interface> remember <network>"
 	print "  dev <interface> disconnect [network]"
-	print "  dev <interface> policy [ignore|off|auto|manual]"
 	print "  dev <interface> powered [on|off]"
-	print "  dev <interface> priority [0-255]"
 	sys.exit(1)
 
 def print_properties(path, properties):
@@ -108,24 +105,6 @@ def select_network(networks, name):
 		print "Selecting network %s" % (name)
 
 		network.Connect()
-
-def remember_network(networks, name):
-	for path in networks:
-		network = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Network")
-
-		properties = network.GetProperties()
-
-		if properties["Name"] != name:
-			continue
-
-		if properties["Remember"] == dbus.Boolean(1):
-			print "Already a known network %s" % (name)
-			break
-
-		print "Remembering network %s" % (name)
-
-		network.SetProperty("Remember", dbus.Boolean(1))
 
 def disconnect_network(networks, name):
 	for path in networks:
@@ -328,13 +307,6 @@ elif sys.argv[1] == "dev":
 				print "Device can't connect networks"
 		elif command in ["connect", "conn"]:
 			print "Need to specify network"
-		elif command in ["remember", "known"] and value != "":
-			if "Networks" in properties.keys():
-				remember_network(properties["Networks"], value)
-			else:
-				print "Device has no networks"
-		elif command in ["remember", "known"]:
-			print "Need to specify network"
 		elif command in ["disconnect", "disc"] and value != "":
 			if "Networks" in properties.keys():
 				disconnect_network(properties["Networks"], value)
@@ -345,13 +317,6 @@ elif sys.argv[1] == "dev":
 				disconnect_network(properties["Networks"], "")
 			else:
 				print "Device has no networks"
-		elif command == "policy" and value != "":
-			policy = value
-			device.SetProperty("Policy", policy)
-		elif command == "policy":
-			interface = properties["Interface"]
-			policy = properties["Policy"]
-			print "Policy of device %s is %s" % (interface, policy)
 		elif command == "powered" and value != "":
 			if value == "on":
 				powered = dbus.Boolean(1)
@@ -367,13 +332,6 @@ elif sys.argv[1] == "dev":
 			else:
 				powered = "off"
 			print "Device %s is powered %s" % (interface, powered)
-		elif command == "priority" and value != "":
-			priority = int(value)
-			device.SetProperty("Priority", priority)
-		elif command == "priority":
-			interface = properties["Interface"]
-			priority = properties["Priority"]
-			print "Device %s has priority of %d" % (interface, priority)
 		elif command == "list" or command == "":
 			print_properties(path, properties)
 		else:
