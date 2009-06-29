@@ -654,6 +654,6 @@ void __connman_connection_update_gateway(void)
 	active_gateway = find_active_gateway();
 	default_gateway = find_default_gateway();
 
-	if (active_gateway != default_gateway)
+	if (active_gateway && active_gateway != default_gateway)
 		del_route(active_gateway->element, active_gateway->gateway);
 }
