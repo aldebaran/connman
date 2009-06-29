@@ -296,6 +296,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Passphrase",
 				DBUS_TYPE_STRING, &service->passphrase);
 
+	__connman_ipconfig_append_ipv4(service->ipconfig, &dict, "IPv4.");
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;
