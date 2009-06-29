@@ -90,6 +90,9 @@ int __connman_security_check_privilege(DBusMessage *message,
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
 
+int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
+				const char *key, DBusMessageIter *value);
+
 #include <connman/inet.h>
 
 #include <connman/rfkill.h>

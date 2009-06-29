@@ -199,7 +199,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		g_free(network->wifi.passphrase);
 		network->wifi.passphrase = g_strdup(passphrase);
-	}
+	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
+		int err;
+
+		err = __connman_ipconfig_set_ipv4(network->ipconfig,
+							name + 5, &value);
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
+	} else
+		return __connman_error_invalid_property(msg);
 
 	__connman_storage_save_network(network);
 

@@ -410,18 +410,24 @@ static DBusMessage *set_property(DBusConnection *conn,
 			device->scan_timeout = g_timeout_add_seconds(interval,
 						device_scan_trigger, device);
 		}
-	} else if (g_str_has_prefix(name, "IPv4") == TRUE) {
+	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
+		int err;
+
 		switch (device->mode) {
 		case CONNMAN_DEVICE_MODE_UNKNOWN:
 		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 			return __connman_error_invalid_arguments(msg);
 		case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-			__connman_element_set_ipv4(&device->element,
-								name, &value);
 			break;
 		}
-	}
+
+		err = __connman_ipconfig_set_ipv4(device->ipconfig,
+							name + 5, &value);
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
+	} else
+		return __connman_error_invalid_property(msg);
 
 	__connman_storage_save_device(device);
 

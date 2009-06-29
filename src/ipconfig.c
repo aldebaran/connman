@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <gdbus.h>
+
 #include "connman.h"
 
 struct connman_ipconfig {
@@ -76,6 +78,14 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
 		g_free(ipconfig);
 	}
+}
+
+int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
+				const char *key, DBusMessageIter *value)
+{
+	DBG("ipconfig %p key %s", ipconfig, key);
+
+	return -EIO;
 }
 
 static GSList *driver_list = NULL;
