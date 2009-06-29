@@ -162,3 +162,12 @@ Properties	string State [readonly]
 			and setting it to false is similar to the Remove()
 			method. So for now it will be considered a read
 			only property.
+
+		string IPv4.Method [readwrite]
+
+			The IPv4 configuration method. Possible values here
+			are "dhcp" and "static".
+
+		string IPv4.Address [readwrite]
+
+			The current configured IPv4 address.
