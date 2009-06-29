@@ -27,43 +27,7 @@
 
 #include "connman.h"
 
-enum connman_policy {
-	CONNMAN_POLICY_UNKNOWN  = 0,
-	CONNMAN_POLICY_SINGLE   = 1,
-	CONNMAN_POLICY_MULTIPLE = 2,
-	CONNMAN_POLICY_ASK      = 3,
-};
-
-static enum connman_policy global_policy = CONNMAN_POLICY_SINGLE;
 static connman_bool_t global_offlinemode = FALSE;
-
-static const char *policy2string(enum connman_policy policy)
-{
-	switch (policy) {
-	case CONNMAN_POLICY_UNKNOWN:
-		break;
-	case CONNMAN_POLICY_SINGLE:
-		return "single";
-	case CONNMAN_POLICY_MULTIPLE:
-		return "multiple";
-	case CONNMAN_POLICY_ASK:
-		return "ask";
-	}
-
-	return NULL;
-}
-
-static enum connman_policy string2policy(const char *policy)
-{
-	if (g_str_equal(policy, "single") == TRUE)
-		return CONNMAN_POLICY_SINGLE;
-	else if (g_str_equal(policy, "multiple") == TRUE)
-		return CONNMAN_POLICY_MULTIPLE;
-	else if (g_str_equal(policy, "ask") == TRUE)
-		return CONNMAN_POLICY_ASK;
-	else
-		return CONNMAN_POLICY_UNKNOWN;
-}
 
 static void append_profiles(DBusMessageIter *dict)
 {
@@ -204,11 +168,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
-	str = policy2string(global_policy);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Policy",
-						DBUS_TYPE_STRING, &str);
-
 	connman_dbus_dict_append_variant(&dict, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &global_offlinemode);
 
@@ -236,17 +195,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
-	if (g_str_equal(name, "Policy") == TRUE) {
-		enum connman_policy policy;
-		const char *str;
-
-		dbus_message_iter_get_basic(&value, &str);
-		policy = string2policy(str);
-		if (policy == CONNMAN_POLICY_UNKNOWN)
-			return __connman_error_invalid_arguments(msg);
-
-		global_policy = policy;
-	} else if (g_str_equal(name, "OfflineMode") == TRUE) {
+	if (g_str_equal(name, "OfflineMode") == TRUE) {
 		connman_bool_t offlinemode;
 
 		dbus_message_iter_get_basic(&value, &offlinemode);
