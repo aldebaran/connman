@@ -85,10 +85,10 @@ void __connman_plugin_cleanup(void);
 int __connman_security_check_privilege(DBusMessage *message,
 				enum connman_security_privilege privilege);
 
-#include <connman/ipv4.h>
+#include <connman/ipconfig.h>
 
-const char *__connman_ipv4_method2string(enum connman_ipv4_method method);
-enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
+const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
+enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
 
 #include <connman/inet.h>
 
@@ -96,8 +96,6 @@ enum connman_ipv4_method __connman_ipv4_string2method(const char *method);
 
 int __connman_rfkill_init(void);
 void __connman_rfkill_cleanup(void);
-
-#include <connman/ipconfig.h>
 
 #include <connman/resolver.h>
 

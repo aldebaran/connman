@@ -25,43 +25,96 @@
 
 #include "connman.h"
 
-static GSList *ipconfig_list = NULL;
+struct connman_ipconfig {
+	gint refcount;
+	enum connman_ipconfig_method method;
+};
 
-static gint compare_priority(gconstpointer a, gconstpointer b)
+/**
+ * connman_ipconfig_create:
+ *
+ * Allocate a new ipconfig structure.
+ *
+ * Returns: a newly-allocated #connman_ipconfig structure
+ */
+struct connman_ipconfig *connman_ipconfig_create(void)
 {
-	const struct connman_ipconfig *ipconfig1 = a;
-	const struct connman_ipconfig *ipconfig2 = b;
+	struct connman_ipconfig *ipconfig;
 
-	return ipconfig2->priority - ipconfig1->priority;
+	DBG("");
+
+	ipconfig = g_try_new0(struct connman_ipconfig, 1);
+	if (ipconfig == NULL)
+		return NULL;
+
+	DBG("ipconfig %p", ipconfig);
+
+	return ipconfig;
 }
 
 /**
- * connman_ipconfig_register:
- * @ipconfig: IP configuration module
+ * connman_ipconfig_ref:
+ * @ipconfig: ipconfig structure
  *
- * Register a new IP configuration module
+ * Increase reference counter of ipconfig
+ */
+struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
+{
+	g_atomic_int_inc(&ipconfig->refcount);
+
+	return ipconfig;
+}
+
+/**
+ * connman_ipconfig_unref:
+ * @ipconfig: ipconfig structure
+ *
+ * Decrease reference counter of ipconfig
+ */
+void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
+{
+	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
+		g_free(ipconfig);
+	}
+}
+
+static GSList *driver_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_ipconfig_driver *driver1 = a;
+	const struct connman_ipconfig_driver *driver2 = b;
+
+	return driver2->priority - driver1->priority;
+}
+
+/**
+ * connman_ipconfig_driver_register:
+ * @driver: IP configuration driver
+ *
+ * Register a new IP configuration driver
  *
  * Returns: %0 on success
  */
-int connman_ipconfig_register(struct connman_ipconfig *ipconfig)
+int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver)
 {
-	DBG("ipconfig %p name %s", ipconfig, ipconfig->name);
+	DBG("driver %p name %s", driver, driver->name);
 
-	ipconfig_list = g_slist_insert_sorted(ipconfig_list, ipconfig,
+	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
 	return 0;
 }
 
 /**
- * connman_ipconfig_unregister:
- * @ipconfig: IP configuration module
+ * connman_ipconfig_driver_unregister:
+ * @driver: IP configuration driver
  *
- * Remove a previously registered IP configuration module.
+ * Remove a previously registered IP configuration driver.
  */
-void connman_ipconfig_unregister(struct connman_ipconfig *ipconfig)
+void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver)
 {
-	DBG("ipconfig %p name %s", ipconfig, ipconfig->name);
+	DBG("driver %p name %s", driver, driver->name);
 
-	ipconfig_list = g_slist_remove(ipconfig_list, ipconfig);
+	driver_list = g_slist_remove(driver_list, driver);
 }

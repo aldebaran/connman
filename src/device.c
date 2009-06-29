@@ -146,13 +146,13 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 		device->disconnected = TRUE;
 
 		switch (device->element.ipv4.method) {
-		case CONNMAN_IPV4_METHOD_UNKNOWN:
-		case CONNMAN_IPV4_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
 			return 0;
-		case CONNMAN_IPV4_METHOD_STATIC:
+		case CONNMAN_IPCONFIG_METHOD_STATIC:
 			type = CONNMAN_ELEMENT_TYPE_IPV4;
 			break;
-		case CONNMAN_IPV4_METHOD_DHCP:
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
 			type = CONNMAN_ELEMENT_TYPE_DHCP;
 			break;
 		}
@@ -909,7 +909,7 @@ struct connman_device *connman_device_create(const char *node,
 		connman_element_set_string(&device->element,
 					CONNMAN_PROPERTY_ID_TYPE, str);
 
-	device->element.ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
+	device->element.ipv4.method = CONNMAN_IPCONFIG_METHOD_DHCP;
 
 	device->type      = type;
 	device->name      = g_strdup(type2description(device->type));

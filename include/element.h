@@ -31,7 +31,7 @@ extern "C" {
 
 #include <connman/property.h>
 #include <connman/types.h>
-#include <connman/ipv4.h>
+#include <connman/ipconfig.h>
 
 /**
  * SECTION:element
@@ -99,7 +99,7 @@ struct connman_element {
 	GHashTable *properties;
 
 	struct {
-		enum connman_ipv4_method method;
+		enum connman_ipconfig_method method;
 		gchar *address;
 		gchar *netmask;
 		gchar *gateway;

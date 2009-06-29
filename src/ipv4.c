@@ -34,7 +34,7 @@
 #include "connman.h"
 
 struct connman_ipv4 {
-	enum connman_ipv4_method method;
+	enum connman_ipconfig_method method;
 	struct in_addr address;
 	struct in_addr netmask;
 	struct in_addr broadcast;

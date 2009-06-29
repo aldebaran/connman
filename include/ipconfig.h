@@ -32,20 +32,40 @@ extern "C" {
  * @short_description: Functions for registering IP configuration modules
  */
 
+enum connman_ipconfig_type {
+	CONNMAN_IPCONFIG_TYPE_UNKNOWN = 0,
+	CONNMAN_IPCONFIG_TYPE_IPV4    = 1,
+	CONNMAN_IPCONFIG_TYPE_IPV6    = 2,
+};
+
+enum connman_ipconfig_method {
+	CONNMAN_IPCONFIG_METHOD_UNKNOWN = 0,
+	CONNMAN_IPCONFIG_METHOD_OFF     = 1,
+	CONNMAN_IPCONFIG_METHOD_STATIC  = 2,
+	CONNMAN_IPCONFIG_METHOD_DHCP    = 3,
+};
+
+struct connman_ipconfig;
+
+extern struct connman_ipconfig *connman_ipconfig_create(void);
+extern struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
+extern void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
+
 #define CONNMAN_IPCONFIG_PRIORITY_LOW      -100
 #define CONNMAN_IPCONFIG_PRIORITY_DEFAULT     0
 #define CONNMAN_IPCONFIG_PRIORITY_HIGH      100
 
-struct connman_ipconfig {
+struct connman_ipconfig_driver {
 	const char *name;
+	enum connman_ipconfig_type type;
 	int priority;
 	int (*request) (const char *interface);
 	int (*release) (const char *interface);
 	int (*renew) (const char *interface);
 };
 
-extern int connman_ipconfig_register(struct connman_ipconfig *ipconfig);
-extern void connman_ipconfig_unregister(struct connman_ipconfig *ipconfig);
+extern int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver);
+extern void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver);
 
 #ifdef __cplusplus
 }

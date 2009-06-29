@@ -76,32 +76,32 @@ static const char *type2string(enum connman_element_type type)
 	return NULL;
 }
 
-const char *__connman_ipv4_method2string(enum connman_ipv4_method method)
+const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
 {
 	switch (method) {
-	case CONNMAN_IPV4_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		return "unknown";
-	case CONNMAN_IPV4_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
 		return "off";
-	case CONNMAN_IPV4_METHOD_STATIC:
+	case CONNMAN_IPCONFIG_METHOD_STATIC:
 		return "static";
-	case CONNMAN_IPV4_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		return "dhcp";
 	}
 
 	return "unknown";
 }
 
-enum connman_ipv4_method __connman_ipv4_string2method(const char *method)
+enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method)
 {
 	if (strcasecmp(method, "off") == 0)
-		return CONNMAN_IPV4_METHOD_OFF;
+		return CONNMAN_IPCONFIG_METHOD_OFF;
 	else if (strcasecmp(method, "static") == 0)
-		return CONNMAN_IPV4_METHOD_STATIC;
+		return CONNMAN_IPCONFIG_METHOD_STATIC;
 	else if (strcasecmp(method, "dhcp") == 0)
-		return CONNMAN_IPV4_METHOD_DHCP;
+		return CONNMAN_IPCONFIG_METHOD_DHCP;
 	else
-		return CONNMAN_IPV4_METHOD_UNKNOWN;
+		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 }
 
 static void emit_element_signal(DBusConnection *conn, const char *member,
@@ -703,11 +703,11 @@ int connman_element_get_value(struct connman_element *element,
 
 	switch (id) {
 	case CONNMAN_PROPERTY_ID_IPV4_METHOD:
-		if (element->ipv4.method == CONNMAN_IPV4_METHOD_UNKNOWN)
+		if (element->ipv4.method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 			return connman_element_get_value(element->parent,
 								id, value);
 		__connman_element_lock(element);
-		*((const char **) value) = __connman_ipv4_method2string(element->ipv4.method);
+		*((const char **) value) = __connman_ipconfig_method2string(element->ipv4.method);
 		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
@@ -990,15 +990,15 @@ int __connman_element_set_ipv4(struct connman_element *element,
 	type = dbus_message_iter_get_arg_type(value);
 
 	if (g_str_equal(name, "IPv4.Method") == TRUE) {
-		enum connman_ipv4_method method;
+		enum connman_ipconfig_method method;
 		const char *str;
 
 		if (type != DBUS_TYPE_STRING)
 			return -EINVAL;
 
 		dbus_message_iter_get_basic(value, &str);
-		method = __connman_ipv4_string2method(str);
-		if (method == CONNMAN_IPV4_METHOD_UNKNOWN)
+		method = __connman_ipconfig_string2method(str);
+		if (method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 			return -EINVAL;
 
 		if (method == element->ipv4.method)
@@ -1240,7 +1240,7 @@ int connman_element_register(struct connman_element *element,
 	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_DHCP)
-		element->ipv4.method = CONNMAN_IPV4_METHOD_DHCP;
+		element->ipv4.method = CONNMAN_IPCONFIG_METHOD_DHCP;
 
 	element->parent = parent;
 
