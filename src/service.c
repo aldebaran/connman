@@ -112,6 +112,10 @@ static const char *type2string(enum connman_service_type type)
 		return "wifi";
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 		return "wimax";
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		return "bluetooth";
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		return "cellular";
 	}
 
 	return NULL;
@@ -761,6 +765,8 @@ int __connman_service_set_carrier(struct connman_service *service,
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return -EINVAL;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		break;
@@ -1271,6 +1277,8 @@ static int service_load(struct connman_service *service)
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
 		break;
@@ -1335,6 +1343,8 @@ update:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
 		break;
