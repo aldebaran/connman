@@ -84,7 +84,7 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 {
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		return "unknown";
+		break;
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 		return "off";
 	case CONNMAN_IPCONFIG_METHOD_STATIC:
@@ -93,7 +93,7 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 		return "dhcp";
 	}
 
-	return "unknown";
+	return NULL;
 }
 
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method)
