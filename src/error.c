@@ -98,3 +98,9 @@ DBusMessage *__connman_error_invalid_service(DBusMessage *msg)
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 					"InvalidService", "Invalid service");
 }
+
+DBusMessage *__connman_error_invalid_property(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE,
+					"InvalidProperty", "Invalid property");
+}

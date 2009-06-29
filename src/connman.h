@@ -43,6 +43,7 @@ DBusMessage *__connman_error_already_connected(DBusMessage *msg);
 DBusMessage *__connman_error_operation_aborted(DBusMessage *msg);
 DBusMessage *__connman_error_operation_timeout(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_service(DBusMessage *msg);
+DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 
 int __connman_selftest(void);
 
