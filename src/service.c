@@ -40,6 +40,7 @@ struct connman_service {
 	enum connman_service_mode mode;
 	enum connman_service_security security;
 	enum connman_service_state state;
+	enum connman_service_error error;
 	connman_uint8_t strength;
 	connman_bool_t favorite;
 	connman_bool_t hidden;
@@ -873,7 +874,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
 		state_changed(service);
-	}
+	} else
+		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL)
@@ -882,6 +884,20 @@ int __connman_service_indicate_state(struct connman_service *service,
 	__connman_profile_changed();
 
 	return 0;
+}
+
+int __connman_service_indicate_error(struct connman_service *service,
+					enum connman_service_error error)
+{
+	DBG("service %p error %d", service, error);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	service->error = error;
+
+	return __connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
 int __connman_service_indicate_default(struct connman_service *service)
