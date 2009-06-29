@@ -66,7 +66,8 @@ Properties	string Address [readonly]
 			The device name (for example "Wireless" etc.)
 
 			This name can be used for directly displaying it in
-			the application. It has pure informational purpose.
+			the application. It has pure informational purpose
+			and there is not guarantee that it is present.
 
 		string Type [readonly]
 
