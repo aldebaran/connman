@@ -49,6 +49,7 @@ struct connman_device {
 	char *ident;
 	unsigned int connections;
 	guint scan_timeout;
+	struct connman_ipconfig *ipconfig;
 
 	struct connman_device_driver *driver;
 	void *driver_data;
@@ -861,11 +862,23 @@ static void device_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
+	if (device->timeout > 0) {
+		g_source_remove(device->timeout);
+		device->timeout = 0;
+	}
+
+	if (device->pending != NULL) {
+		dbus_message_unref(device->pending);
+		device->pending = NULL;
+	}
+
 	g_free(device->ident);
 	g_free(device->node);
 	g_free(device->name);
 	g_free(device->address);
 	g_free(device->interface);
+
+	connman_ipconfig_unref(device->ipconfig);
 
 	g_free(device->last_network);
 
@@ -942,6 +955,12 @@ struct connman_device *connman_device_create(const char *node,
 		break;
 	}
 
+	device->ipconfig = connman_ipconfig_create();
+	if (device->ipconfig == NULL) {
+		connman_device_unref(device);
+		return NULL;
+	}
+
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_network);
 
@@ -970,16 +989,6 @@ struct connman_device *connman_device_ref(struct connman_device *device)
  */
 void connman_device_unref(struct connman_device *device)
 {
-	if (device->timeout > 0) {
-		g_source_remove(device->timeout);
-		device->timeout = 0;
-	}
-
-	if (device->pending != NULL) {
-		dbus_message_unref(device->pending);
-		device->pending = NULL;
-	}
-
 	connman_element_unref(&device->element);
 }
 

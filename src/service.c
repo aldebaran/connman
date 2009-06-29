@@ -48,6 +48,7 @@ struct connman_service {
 	char *name;
 	char *passphrase;
 	char *profile;
+	struct connman_ipconfig *ipconfig;
 	struct connman_device *device;
 	struct connman_network *network;
 	DBusMessage *pending;
@@ -606,6 +607,8 @@ static void service_free(gpointer user_data)
 	if (service->network != NULL)
 		connman_network_unref(service->network);
 
+	connman_ipconfig_unref(service->ipconfig);
+
 	g_free(service->profile);
 	g_free(service->name);
 	g_free(service->passphrase);
@@ -669,6 +672,12 @@ struct connman_service *connman_service_create(void)
 	DBG("service %p", service);
 
 	__connman_service_initialize(service);
+
+	service->ipconfig = connman_ipconfig_create();
+	if (service->ipconfig == NULL) {
+		g_free(service);
+		return NULL;
+	}
 
 	return service;
 }
@@ -909,13 +918,11 @@ static struct connman_service *__connman_service_get(const char *identifier)
 		return service;
 	}
 
-	service = g_try_new0(struct connman_service, 1);
+	service = connman_service_create();
 	if (service == NULL)
 		return NULL;
 
 	DBG("service %p", service);
-
-	__connman_service_initialize(service);
 
 	service->identifier = g_strdup(identifier);
 

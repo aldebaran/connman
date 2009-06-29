@@ -45,6 +45,7 @@ struct connman_network {
 	char *name;
 	char *node;
 	char *group;
+	struct connman_ipconfig *ipconfig;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -419,6 +420,8 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->name);
 	g_free(network->address);
 	g_free(network->identifier);
+
+	connman_ipconfig_unref(network->ipconfig);
 }
 
 /**
@@ -469,6 +472,12 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->type       = type;
 	network->secondary  = FALSE;
 	network->identifier = g_strdup(identifier);
+
+	network->ipconfig = connman_ipconfig_create();
+	if (network->ipconfig == NULL) {
+		connman_network_unref(network);
+		return NULL;
+	}
 
 	return network;
 }
