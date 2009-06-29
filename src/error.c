@@ -34,6 +34,13 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 {
 	const char *str = strerror(errnum);
 
+	switch (errnum) {
+	case EACCES:
+		return __connman_error_permission_denied(msg);
+	case EINVAL:
+		return __connman_error_invalid_arguments(msg);
+	}
+
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 							".Failed", str);
 }
