@@ -80,12 +80,54 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	}
 }
 
+const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
+{
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		return "unknown";
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		return "off";
+	case CONNMAN_IPCONFIG_METHOD_STATIC:
+		return "static";
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		return "dhcp";
+	}
+
+	return "unknown";
+}
+
+enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method)
+{
+	if (g_strcmp0(method, "off") == 0)
+		return CONNMAN_IPCONFIG_METHOD_OFF;
+	else if (g_strcmp0(method, "static") == 0)
+		return CONNMAN_IPCONFIG_METHOD_STATIC;
+	else if (g_strcmp0(method, "dhcp") == 0)
+		return CONNMAN_IPCONFIG_METHOD_DHCP;
+	else
+		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+}
+
 int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
 				const char *key, DBusMessageIter *value)
 {
-	DBG("ipconfig %p key %s", ipconfig, key);
+	int type = dbus_message_iter_get_arg_type(value);
 
-	return -EIO;
+	DBG("ipconfig %p key %s type %d", ipconfig, key, type);
+
+	if (g_strcmp0(key, "Method") == 0) {
+		const char *method;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &method);
+
+		ipconfig->method = __connman_ipconfig_string2method(method);
+	} else
+		return -EINVAL;
+
+	return 0;
 }
 
 static GSList *driver_list = NULL;

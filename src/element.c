@@ -76,34 +76,6 @@ static const char *type2string(enum connman_element_type type)
 	return NULL;
 }
 
-const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
-{
-	switch (method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		return "unknown";
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-		return "off";
-	case CONNMAN_IPCONFIG_METHOD_STATIC:
-		return "static";
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		return "dhcp";
-	}
-
-	return "unknown";
-}
-
-enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method)
-{
-	if (strcasecmp(method, "off") == 0)
-		return CONNMAN_IPCONFIG_METHOD_OFF;
-	else if (strcasecmp(method, "static") == 0)
-		return CONNMAN_IPCONFIG_METHOD_STATIC;
-	else if (strcasecmp(method, "dhcp") == 0)
-		return CONNMAN_IPCONFIG_METHOD_DHCP;
-	else
-		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
-}
-
 static void emit_element_signal(DBusConnection *conn, const char *member,
 					struct connman_element *element)
 {
