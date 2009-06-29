@@ -40,7 +40,6 @@ struct connman_device {
 	connman_bool_t carrier;
 	connman_bool_t scanning;
 	connman_bool_t disconnected;
-	connman_uint8_t priority;
 	connman_uint16_t scan_interval;
 	char *name;
 	char *node;
@@ -381,10 +380,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Policy",
 						DBUS_TYPE_STRING, &str);
 
-	if (device->priority > 0)
-		connman_dbus_dict_append_variant(&dict, "Priority",
-					DBUS_TYPE_BYTE, &device->priority);
-
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
 
@@ -470,15 +465,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		err = set_policy(conn, device, policy);
 		if (err < 0)
 			return __connman_error_failed(msg, -err);
-	} else if (g_str_equal(name, "Priority") == TRUE) {
-		connman_uint8_t priority;
-
-		if (type != DBUS_TYPE_BYTE)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &priority);
-
-		device->priority = priority;
 	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
 		connman_uint16_t interval;
 
@@ -1027,31 +1013,25 @@ struct connman_device *connman_device_create(const char *node,
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
-		device->priority = 0;
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
-		device->priority = 100;
 		device->scan_interval = 300;
 		break;
 	case CONNMAN_DEVICE_TYPE_WIMAX:
-		device->priority = 20;
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-		device->priority = 50;
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_GPS:
-		device->priority = 0;
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
-		device->priority = 60;
 		device->scan_interval = 0;
 		break;
 	}
