@@ -30,6 +30,8 @@
 
 #include "connman.h"
 
+static DBusConnection *connection = NULL;
+
 struct connman_device {
 	struct connman_element element;
 	enum connman_device_type type;
@@ -57,6 +59,9 @@ struct connman_device {
 	char *last_network;
 	struct connman_network *network;
 	GHashTable *networks;
+
+	DBusMessage *pending;
+	guint timeout;
 };
 
 static gboolean device_scan_trigger(gpointer user_data)
@@ -411,6 +416,28 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+static gboolean powered_timeout(gpointer user_data)
+{
+	struct connman_device *device = user_data;
+
+	DBG("device %p", device);
+
+	device->timeout = 0;
+
+	if (device->pending != NULL) {
+		DBusMessage *reply;
+
+		reply = __connman_error_operation_timeout(device->pending);
+		if (reply != NULL)
+			g_dbus_send_message(connection, reply);
+
+		dbus_message_unref(device->pending);
+		device->pending = NULL;
+	}
+
+	return FALSE;
+}
+
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -446,9 +473,19 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (device->powered == powered)
 			return __connman_error_invalid_arguments(msg);
 
+		if (device->pending != NULL)
+			return __connman_error_in_progress(msg);
+
 		err = set_powered(device, powered);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg, -err);
+
+		device->pending = dbus_message_ref(msg);
+
+		device->timeout = g_timeout_add_seconds(15,
+						powered_timeout, device);
+
+		return NULL;
 	} else if (g_str_equal(name, "Policy") == TRUE) {
 		enum connman_device_policy policy;
 		const char *str;
@@ -670,7 +707,8 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 
 static GDBusMethodTable device_methods[] = {
 	{ "GetProperties", "",      "a{sv}", get_properties },
-	{ "SetProperty",   "sv",    "",      set_property   },
+	{ "SetProperty",   "sv",    "",      set_property,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "JoinNetwork",   "a{sv}", "",      join_network   },
 	{ "CreateNetwork", "a{sv}", "o",     create_network },
 	{ "RemoveNetwork", "o",     "",      remove_network },
@@ -682,8 +720,6 @@ static GDBusSignalTable device_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ },
 };
-
-static DBusConnection *connection;
 
 static void append_devices(DBusMessageIter *entry)
 {
@@ -1064,6 +1100,16 @@ struct connman_device *connman_device_ref(struct connman_device *device)
  */
 void connman_device_unref(struct connman_device *device)
 {
+	if (device->timeout > 0) {
+		g_source_remove(device->timeout);
+		device->timeout = 0;
+	}
+
+	if (device->pending != NULL) {
+		dbus_message_unref(device->pending);
+		device->pending = NULL;
+	}
+
 	connman_element_unref(&device->element);
 }
 
@@ -1258,6 +1304,18 @@ int connman_device_set_powered(struct connman_device *device,
 	const char *key = "Powered";
 
 	DBG("driver %p powered %d", device, powered);
+
+	if (device->timeout > 0) {
+		g_source_remove(device->timeout);
+		device->timeout = 0;
+	}
+
+	if (device->pending != NULL) {
+		g_dbus_send_reply(connection, device->pending,
+							DBUS_TYPE_INVALID);
+
+		dbus_message_unref(device->pending);
+	}
 
 	if (device->powered == powered)
 		return -EALREADY;
