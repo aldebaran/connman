@@ -58,57 +58,56 @@ enum connman_device_mode {
 
 struct connman_device;
 
-extern struct connman_device *connman_device_create(const char *node,
+struct connman_device *connman_device_create(const char *node,
 						enum connman_device_type type);
-extern struct connman_device *connman_device_ref(struct connman_device *device);
-extern void connman_device_unref(struct connman_device *device);
+struct connman_device *connman_device_ref(struct connman_device *device);
+void connman_device_unref(struct connman_device *device);
 
-extern enum connman_device_type connman_device_get_type(struct connman_device *device);
-extern const char *connman_device_get_name(struct connman_device *device);
-extern const char *connman_device_get_path(struct connman_device *device);
-extern void connman_device_set_index(struct connman_device *device,
-								int index);
-extern int connman_device_get_index(struct connman_device *device);
-extern void connman_device_set_interface(struct connman_device *device,
+enum connman_device_type connman_device_get_type(struct connman_device *device);
+const char *connman_device_get_name(struct connman_device *device);
+const char *connman_device_get_path(struct connman_device *device);
+void connman_device_set_index(struct connman_device *device, int index);
+int connman_device_get_index(struct connman_device *device);
+void connman_device_set_interface(struct connman_device *device,
 							const char *interface);
-extern const char *connman_device_get_interface(struct connman_device *device);
+const char *connman_device_get_interface(struct connman_device *device);
 
-extern void connman_device_set_ident(struct connman_device *device,
-							const char *ident);
+void connman_device_set_ident(struct connman_device *device,
+						const char *ident);
 
-extern void connman_device_set_mode(struct connman_device *device,
-						enum connman_device_mode mode);
-extern enum connman_device_mode connman_device_get_mode(struct connman_device *device);
-extern void connman_device_set_secondary(struct connman_device *device,
+void connman_device_set_mode(struct connman_device *device,
+					enum connman_device_mode mode);
+enum connman_device_mode connman_device_get_mode(struct connman_device *device);
+void connman_device_set_secondary(struct connman_device *device,
 						connman_bool_t secondary);
-extern connman_bool_t connman_device_get_secondary(struct connman_device *device);
+connman_bool_t connman_device_get_secondary(struct connman_device *device);
 
-extern int connman_device_set_powered(struct connman_device *device,
+int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered);
-extern int connman_device_set_carrier(struct connman_device *device,
+int connman_device_set_carrier(struct connman_device *device,
 						connman_bool_t carrier);
-extern int connman_device_set_scanning(struct connman_device *device,
+int connman_device_set_scanning(struct connman_device *device,
 						connman_bool_t scanning);
-extern int connman_device_set_disconnected(struct connman_device *device,
+int connman_device_set_disconnected(struct connman_device *device,
 						connman_bool_t disconnected);
 
-extern int connman_device_set_string(struct connman_device *device,
+int connman_device_set_string(struct connman_device *device,
 					const char *key, const char *value);
-extern const char *connman_device_get_string(struct connman_device *device,
+const char *connman_device_get_string(struct connman_device *device,
 							const char *key);
 
-extern int connman_device_add_network(struct connman_device *device,
+int connman_device_add_network(struct connman_device *device,
 					struct connman_network *network);
-extern struct connman_network *connman_device_get_network(struct connman_device *device,
+struct connman_network *connman_device_get_network(struct connman_device *device,
 							const char *identifier);
-extern int connman_device_remove_network(struct connman_device *device,
+int connman_device_remove_network(struct connman_device *device,
 							const char *identifier);
 
-extern int connman_device_register(struct connman_device *device);
-extern void connman_device_unregister(struct connman_device *device);
+int connman_device_register(struct connman_device *device);
+void connman_device_unregister(struct connman_device *device);
 
-extern void *connman_device_get_data(struct connman_device *device);
-extern void connman_device_set_data(struct connman_device *device, void *data);
+void *connman_device_get_data(struct connman_device *device);
+void connman_device_set_data(struct connman_device *device, void *data);
 
 struct connman_device_driver {
 	const char *name;
@@ -125,8 +124,8 @@ struct connman_device_driver {
 					struct connman_network *network);
 };
 
-extern int connman_device_driver_register(struct connman_device_driver *driver);
-extern void connman_device_driver_unregister(struct connman_device_driver *driver);
+int connman_device_driver_register(struct connman_device_driver *driver);
+void connman_device_driver_unregister(struct connman_device_driver *driver);
 
 #ifdef __cplusplus
 }

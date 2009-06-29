@@ -109,35 +109,35 @@ struct connman_element {
 	} ipv4;
 };
 
-extern struct connman_element *connman_element_create(const char *name);
-extern struct connman_element *connman_element_ref(struct connman_element *element);
-extern void connman_element_unref(struct connman_element *element);
+struct connman_element *connman_element_create(const char *name);
+struct connman_element *connman_element_ref(struct connman_element *element);
+void connman_element_unref(struct connman_element *element);
 
-extern int connman_element_get_value(struct connman_element *element,
+int connman_element_get_value(struct connman_element *element,
 				enum connman_property_id id, void *value);
 
-extern int connman_element_set_string(struct connman_element *element,
+int connman_element_set_string(struct connman_element *element,
 					const char *key, const char *value);
-extern const char *connman_element_get_string(struct connman_element *element,
+const char *connman_element_get_string(struct connman_element *element,
 							const char *key);
-extern int connman_element_set_uint8(struct connman_element *element,
+int connman_element_set_uint8(struct connman_element *element,
 				const char *key, connman_uint8_t value);
-extern connman_uint8_t connman_element_get_uint8(struct connman_element *element,
+connman_uint8_t connman_element_get_uint8(struct connman_element *element,
 							const char *key);
-extern int connman_element_set_blob(struct connman_element *element,
+int connman_element_set_blob(struct connman_element *element,
 			const char *key, const void *data, unsigned int size);
-extern const void *connman_element_get_blob(struct connman_element *element,
+const void *connman_element_get_blob(struct connman_element *element,
 					const char *key, unsigned int *size);
 
-extern int connman_element_register(struct connman_element *element,
+int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);
-extern void connman_element_unregister(struct connman_element *element);
-extern void connman_element_unregister_children(struct connman_element *element);
-extern void connman_element_update(struct connman_element *element);
+void connman_element_unregister(struct connman_element *element);
+void connman_element_unregister_children(struct connman_element *element);
+void connman_element_update(struct connman_element *element);
 
-extern int connman_element_set_enabled(struct connman_element *element,
+int connman_element_set_enabled(struct connman_element *element,
 							gboolean enabled);
-extern void connman_element_set_error(struct connman_element *element,
+void connman_element_set_error(struct connman_element *element,
 					enum connman_element_error error);
 
 static inline void *connman_element_get_data(struct connman_element *element)

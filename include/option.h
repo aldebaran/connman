@@ -26,7 +26,7 @@
 extern "C" {
 #endif
 
-extern const char *connman_option_get_string(const char *key);
+const char *connman_option_get_string(const char *key);
 
 #ifdef __cplusplus
 }

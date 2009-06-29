@@ -56,8 +56,8 @@ struct connman_storage {
 	int (*service_save) (struct connman_service *service);
 };
 
-extern int connman_storage_register(struct connman_storage *storage);
-extern void connman_storage_unregister(struct connman_storage *storage);
+int connman_storage_register(struct connman_storage *storage);
+void connman_storage_unregister(struct connman_storage *storage);
 
 #ifdef __cplusplus
 }

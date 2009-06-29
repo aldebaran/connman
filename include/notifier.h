@@ -46,8 +46,8 @@ struct connman_notifier {
 	void (*offline_mode) (connman_bool_t enabled);
 };
 
-extern int connman_notifier_register(struct connman_notifier *notifier);
-extern void connman_notifier_unregister(struct connman_notifier *notifier);
+int connman_notifier_register(struct connman_notifier *notifier);
+void connman_notifier_unregister(struct connman_notifier *notifier);
 
 #ifdef __cplusplus
 }

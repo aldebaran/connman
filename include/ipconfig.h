@@ -47,9 +47,9 @@ enum connman_ipconfig_method {
 
 struct connman_ipconfig;
 
-extern struct connman_ipconfig *connman_ipconfig_create(void);
-extern struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
-extern void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
+struct connman_ipconfig *connman_ipconfig_create(void);
+struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
+void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
 
 #define CONNMAN_IPCONFIG_PRIORITY_LOW      -100
 #define CONNMAN_IPCONFIG_PRIORITY_DEFAULT     0
@@ -64,8 +64,8 @@ struct connman_ipconfig_driver {
 	int (*renew) (const char *interface);
 };
 
-extern int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver);
-extern void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver);
+int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver);
+void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver);
 
 #ifdef __cplusplus
 }

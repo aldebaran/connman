@@ -49,8 +49,8 @@ struct connman_security {
 				enum connman_security_privilege privilege);
 };
 
-extern int connman_security_register(struct connman_security *security);
-extern void connman_security_unregister(struct connman_security *security);
+int connman_security_register(struct connman_security *security);
+void connman_security_unregister(struct connman_security *security);
 
 #ifdef __cplusplus
 }

@@ -48,8 +48,8 @@ struct connman_driver {
 	void (*change) (struct connman_element *element);
 };
 
-extern int connman_driver_register(struct connman_driver *driver);
-extern void connman_driver_unregister(struct connman_driver *driver);
+int connman_driver_register(struct connman_driver *driver);
+void connman_driver_unregister(struct connman_driver *driver);
 
 #ifdef __cplusplus
 }
