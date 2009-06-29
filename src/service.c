@@ -579,8 +579,10 @@ static void service_free(gpointer user_data)
 
 	g_hash_table_remove(service_hash, service->identifier);
 
-	if (service->timeout > 0)
+	if (service->timeout > 0) {
 		g_source_remove(service->timeout);
+		service->timeout = 0;
+	}
 
 	if (service->pending != NULL) {
 		dbus_message_unref(service->pending);
@@ -811,8 +813,10 @@ int __connman_service_indicate_state(struct connman_service *service,
 		connman_service_set_favorite(service, TRUE);
 		__connman_storage_save_service(service);
 
-		if (service->timeout > 0)
+		if (service->timeout > 0) {
 			g_source_remove(service->timeout);
+			service->timeout = 0;
+		}
 
 		if (service->pending != NULL) {
 			g_dbus_send_reply(connection, service->pending,
@@ -827,8 +831,10 @@ int __connman_service_indicate_state(struct connman_service *service,
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
-		if (service->timeout > 0)
+		if (service->timeout > 0) {
 			g_source_remove(service->timeout);
+			service->timeout = 0;
+		}
 
 		if (service->pending != NULL) {
 			DBusMessage *reply;
