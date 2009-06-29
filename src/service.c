@@ -339,7 +339,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 				"WiFi.Passphrase", service->passphrase);
 
 		__connman_storage_save_service(service);
-	}
+	} else
+		return __connman_error_invalid_property(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }

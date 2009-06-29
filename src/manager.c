@@ -263,7 +263,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &str);
 
 		return __connman_error_not_supported(msg);
-	}
+	} else
+		return __connman_error_invalid_property(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
