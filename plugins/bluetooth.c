@@ -652,7 +652,6 @@ static void adapter_properties(DBusConnection *connection, const char *path,
 
 	connman_device_set_interface(adapter, node);
 
-	connman_device_set_policy(adapter, CONNMAN_DEVICE_POLICY_MANUAL);
 	connman_device_set_mode(adapter, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
 
 	if (connman_device_register(adapter) < 0) {

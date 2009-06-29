@@ -36,7 +36,6 @@ struct connman_device {
 	struct connman_element element;
 	enum connman_device_type type;
 	enum connman_device_mode mode;
-	enum connman_device_policy policy;
 	connman_bool_t secondary;
 	connman_bool_t powered;
 	connman_bool_t carrier;
@@ -133,38 +132,6 @@ static const char *type2string(enum connman_device_type type)
 	return NULL;
 }
 
-static const char *policy2string(enum connman_device_policy policy)
-{
-	switch (policy) {
-	case CONNMAN_DEVICE_POLICY_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_POLICY_IGNORE:
-		return "ignore";
-	case CONNMAN_DEVICE_POLICY_OFF:
-		return "off";
-	case CONNMAN_DEVICE_POLICY_AUTO:
-		return "auto";
-	case CONNMAN_DEVICE_POLICY_MANUAL:
-		return "manual";
-	}
-
-	return NULL;
-}
-
-static enum connman_device_policy string2policy(const char *policy)
-{
-	if (g_str_equal(policy, "ignore") == TRUE)
-		return CONNMAN_DEVICE_POLICY_IGNORE;
-	else if (g_str_equal(policy, "off") == TRUE)
-		return CONNMAN_DEVICE_POLICY_OFF;
-	else if (g_str_equal(policy, "auto") == TRUE)
-		return CONNMAN_DEVICE_POLICY_AUTO;
-	else if (g_str_equal(policy, "manual") == TRUE)
-		return CONNMAN_DEVICE_POLICY_MANUAL;
-	else
-		return CONNMAN_DEVICE_POLICY_UNKNOWN;
-}
-
 static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 {
 	struct connman_service *service;
@@ -177,16 +144,6 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 		struct connman_element *element;
 
 		device->disconnected = TRUE;
-
-		switch (device->policy) {
-		case CONNMAN_DEVICE_POLICY_UNKNOWN:
-		case CONNMAN_DEVICE_POLICY_IGNORE:
-		case CONNMAN_DEVICE_POLICY_OFF:
-		case CONNMAN_DEVICE_POLICY_MANUAL:
-			return 0;
-		case CONNMAN_DEVICE_POLICY_AUTO:
-			break;
-		}
 
 		switch (device->element.ipv4.method) {
 		case CONNMAN_IPV4_METHOD_UNKNOWN:
@@ -249,64 +206,6 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	}
 
 	return err;
-}
-
-static int set_policy(DBusConnection *connection,
-				struct connman_device *device,
-					enum connman_device_policy policy)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *str, *key = "Policy";
-	int err = 0;
-
-	DBG("device %p policy %d", device, policy);
-
-	if (device->policy == policy)
-		return 0;
-
-	switch (policy) {
-	case CONNMAN_DEVICE_POLICY_UNKNOWN:
-		return -EINVAL;
-	case CONNMAN_DEVICE_POLICY_IGNORE:
-		break;
-	case CONNMAN_DEVICE_POLICY_OFF:
-		if (device->powered == TRUE)
-			err = set_powered(device, FALSE);
-		break;
-	case CONNMAN_DEVICE_POLICY_AUTO:
-	case CONNMAN_DEVICE_POLICY_MANUAL:
-		if (device->powered == FALSE)
-			err = set_powered(device, TRUE);
-		else
-			err = set_carrier(device, device->carrier);
-		break;
-	}
-
-	if (err < 0)
-		return err;
-
-	device->policy = policy;
-
-	signal = dbus_message_new_signal(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return 0;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	str = policy2string(policy);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
-
-	return 0;
 }
 
 static void append_path(gpointer key, gpointer value, gpointer user_data)
@@ -379,11 +278,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (device->interface != NULL)
 		connman_dbus_dict_append_variant(&dict, "Interface",
 					DBUS_TYPE_STRING, &device->interface);
-
-	str = policy2string(device->policy);
-	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Policy",
-						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_variant(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
@@ -486,22 +380,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 						powered_timeout, device);
 
 		return NULL;
-	} else if (g_str_equal(name, "Policy") == TRUE) {
-		enum connman_device_policy policy;
-		const char *str;
-		int err;
-
-		if (type != DBUS_TYPE_STRING)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &str);
-		policy = string2policy(str);
-		if (policy == CONNMAN_DEVICE_POLICY_UNKNOWN)
-			return __connman_error_invalid_arguments(msg);
-
-		err = set_policy(conn, device, policy);
-		if (err < 0)
-			return __connman_error_failed(msg, -err);
 	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
 		connman_uint16_t interval;
 
@@ -796,10 +674,6 @@ static void device_enable(struct connman_device *device)
 {
 	DBG("device %p", device);
 
-	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE ||
-				device->policy == CONNMAN_DEVICE_POLICY_OFF)
-		return;
-
 	if (device->powered == TRUE)
 		return;
 
@@ -812,9 +686,6 @@ static void device_enable(struct connman_device *device)
 static void device_disable(struct connman_device *device)
 {
 	DBG("device %p", device);
-
-	if (device->policy == CONNMAN_DEVICE_POLICY_IGNORE)
-		return;
 
 	if (device->powered == FALSE)
 		return;
@@ -1043,7 +914,6 @@ struct connman_device *connman_device_create(const char *node,
 	device->type      = type;
 	device->name      = g_strdup(type2description(device->type));
 	device->mode      = CONNMAN_DEVICE_MODE_UNKNOWN;
-	device->policy    = CONNMAN_DEVICE_POLICY_AUTO;
 	device->secondary = FALSE;
 
 	switch (type) {
@@ -1229,19 +1099,6 @@ const char *__connman_device_get_ident(struct connman_device *device)
 }
 
 /**
- * connman_device_set_policy:
- * @device: device structure
- * @policy: power and connection policy
- *
- * Change power and connection policy of device
- */
-void connman_device_set_policy(struct connman_device *device,
-					enum connman_device_policy policy)
-{
-	device->policy = policy;
-}
-
-/**
  * connman_device_set_mode:
  * @device: device structure
  * @mode: network mode
@@ -1342,9 +1199,6 @@ int connman_device_set_powered(struct connman_device *device,
 	g_dbus_send_message(connection, signal);
 
 	if (powered == FALSE)
-		return 0;
-
-	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
 		return 0;
 
 	if (device->scan_timeout > 0) {
@@ -1581,9 +1435,6 @@ int connman_device_set_scanning(struct connman_device *device,
 		return 0;
 
 	if (device->disconnected == TRUE)
-		return 0;
-
-	if (device->policy != CONNMAN_DEVICE_POLICY_AUTO)
 		return 0;
 
 	connect_known_network(device);
@@ -1939,7 +1790,6 @@ static int device_load(struct connman_device *device)
 	GKeyFile *keyfile;
 	gchar *pathname, *identifier, *data = NULL;
 	gsize length;
-	char *str;
 	int val;
 
 	DBG("device %p", device);
@@ -1970,12 +1820,6 @@ static int device_load(struct connman_device *device)
 	if (identifier == NULL)
 		goto done;
 
-	str = g_key_file_get_string(keyfile, identifier, "Policy", NULL);
-	if (str != NULL) {
-		device->policy = string2policy(str);
-		g_free(str);
-	}
-
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
 	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
@@ -2002,7 +1846,6 @@ static int device_save(struct connman_device *device)
 	GKeyFile *keyfile;
 	gchar *pathname, *identifier = NULL, *data = NULL;
 	gsize length;
-	const char *str;
 
 	DBG("device %p", device);
 
@@ -2028,10 +1871,6 @@ update:
 	identifier = g_strdup_printf("device_%s", device->element.name);
 	if (identifier == NULL)
 		goto done;
-
-	str = policy2string(device->policy);
-	if (str != NULL)
-		g_key_file_set_string(keyfile, identifier, "Policy", str);
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:

@@ -119,7 +119,6 @@ static void add_device(struct udev_device *udev_device)
 		return;
 
 	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
-	connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
 
 	connman_device_set_interface(device, interface);
 

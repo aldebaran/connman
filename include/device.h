@@ -56,14 +56,6 @@ enum connman_device_mode {
 	CONNMAN_DEVICE_MODE_TRANSPORT_IP     = 3,
 };
 
-enum connman_device_policy {
-	CONNMAN_DEVICE_POLICY_UNKNOWN = 0,
-	CONNMAN_DEVICE_POLICY_IGNORE  = 1,
-	CONNMAN_DEVICE_POLICY_OFF     = 2,
-	CONNMAN_DEVICE_POLICY_AUTO    = 3,
-	CONNMAN_DEVICE_POLICY_MANUAL  = 4,
-};
-
 struct connman_device;
 
 extern struct connman_device *connman_device_create(const char *node,
@@ -84,8 +76,6 @@ extern const char *connman_device_get_interface(struct connman_device *device);
 extern void connman_device_set_ident(struct connman_device *device,
 							const char *ident);
 
-extern void connman_device_set_policy(struct connman_device *device,
-					enum connman_device_policy policy);
 extern void connman_device_set_mode(struct connman_device *device,
 						enum connman_device_mode mode);
 extern enum connman_device_mode connman_device_get_mode(struct connman_device *device);

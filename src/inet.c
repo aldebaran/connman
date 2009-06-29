@@ -397,7 +397,6 @@ struct connman_device *connman_inet_create_device(int index)
 		break;
 	case CONNMAN_DEVICE_TYPE_HSO:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
-		connman_device_set_policy(device, CONNMAN_DEVICE_POLICY_MANUAL);
 		break;
 	}
 
