@@ -179,6 +179,26 @@ static const char *state2string(enum connman_service_state state)
 	return NULL;
 }
 
+static const char *error2string(enum connman_service_error error)
+{
+	switch (error) {
+	case CONNMAN_SERVICE_ERROR_UNKNOWN:
+		break;
+	case CONNMAN_SERVICE_ERROR_DHCP_FAILED:
+		return "dhcp-failed";
+	}
+
+	return NULL;
+}
+
+static enum connman_service_error string2error(const char *error)
+{
+	if (g_strcmp0(error, "dhcp-failed") == 0)
+		return CONNMAN_SERVICE_ERROR_DHCP_FAILED;
+
+	return CONNMAN_SERVICE_ERROR_UNKNOWN;
+}
+
 static void state_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
@@ -1271,26 +1291,6 @@ done:
 	g_free(name);
 
 	return service;
-}
-
-static const char *error2string(enum connman_service_error error)
-{
-	switch (error) {
-	case CONNMAN_SERVICE_ERROR_UNKNOWN:
-		break;
-	case CONNMAN_SERVICE_ERROR_DHCP_FAILED:
-		return "dhcp-failed";
-	}
-
-	return NULL;
-}
-
-static enum connman_service_error string2error(const char *error)
-{
-	if (g_strcmp0(error, "dhcp-failed") == 0)
-		return CONNMAN_SERVICE_ERROR_DHCP_FAILED;
-
-	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
 
 static int service_load(struct connman_service *service)
