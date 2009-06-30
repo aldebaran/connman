@@ -385,6 +385,34 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *clear_property(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_service *service = user_data;
+	const char *name;
+
+	DBG("service %p", service);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
+							DBUS_TYPE_INVALID);
+
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
+		return __connman_error_permission_denied(msg);
+
+	if (g_str_equal(name, "Error") == TRUE) {
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+		state_changed(service);
+
+		g_get_current_time(&service->modified);
+		__connman_storage_save_service(service);
+	} else
+		return __connman_error_invalid_property(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
@@ -596,6 +624,7 @@ static DBusMessage *move_after(DBusConnection *conn,
 static GDBusMethodTable service_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties     },
 	{ "SetProperty",   "sv", "",      set_property       },
+	{ "ClearProperty", "s",  "",      clear_property     },
 	{ "Connect",       "",   "",      connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "Disconnect",    "",   "",      disconnect_service },

@@ -22,6 +22,13 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.DoesNotExist
 
+		void ClearProperty(string name)
+
+			Clears the value of the specified property.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.DoesNotExist
+
 		void Connect()
 
 			Connect this service. It will attempt to connect
