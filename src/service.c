@@ -893,7 +893,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	if (state == CONNMAN_SERVICE_STATE_READY) {
 		connman_service_set_favorite(service, TRUE);
-		__connman_storage_save_service(service);
 
 		if (service->timeout > 0) {
 			g_source_remove(service->timeout);
