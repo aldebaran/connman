@@ -366,7 +366,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &powered);
 
 		if (device->powered == powered)
-			return __connman_error_invalid_arguments(msg);
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
 		if (device->pending != NULL)
 			return __connman_error_in_progress(msg);
