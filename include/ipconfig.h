@@ -29,7 +29,7 @@ extern "C" {
 /**
  * SECTION:ipconfig
  * @title: IP configuration premitives
- * @short_description: Functions for registering IP configuration modules
+ * @short_description: Functions for IP configuration handling
  */
 
 enum connman_ipconfig_type {
