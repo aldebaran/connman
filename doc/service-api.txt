@@ -97,7 +97,7 @@ Properties	string State [readonly]
 			the "failure" state. Otherwise it might be empty or
 			not present at all.
 
-			The detailed error codes will be defined later.
+			Current defined error code is "dhcp-failed".
 
 		string Name [readonly]
 

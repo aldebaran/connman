@@ -300,6 +300,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
+	str = error2string(service->error);
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "Error",
+						DBUS_TYPE_STRING, &str);
+
 	if (service->strength > 0)
 		connman_dbus_dict_append_variant(&dict, "Strength",
 					DBUS_TYPE_BYTE, &service->strength);
