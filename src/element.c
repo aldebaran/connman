@@ -1327,6 +1327,19 @@ int connman_element_set_enabled(struct connman_element *element,
 	return 0;
 }
 
+static enum connman_service_error convert_error(enum connman_element_error error)
+{
+	switch (error) {
+	case CONNMAN_ELEMENT_ERROR_UNKNOWN:
+	case CONNMAN_ELEMENT_ERROR_FAILED:
+		break;
+	case CONNMAN_ELEMENT_ERROR_DHCP_FAILED:
+		return CONNMAN_SERVICE_ERROR_UNKNOWN;
+	}
+
+	return CONNMAN_SERVICE_ERROR_UNKNOWN;
+}
+
 /**
  * connman_element_set_error:
  * @element: element structure
@@ -1351,8 +1364,7 @@ void connman_element_set_error(struct connman_element *element,
 		element->driver->change(element);
 
 	service = __connman_element_get_service(element);
-	__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE);
+	__connman_service_indicate_error(service, convert_error(error));
 }
 
 int __connman_element_init(DBusConnection *conn, const char *device,
