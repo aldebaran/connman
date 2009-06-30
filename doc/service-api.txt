@@ -20,14 +20,14 @@ Methods		dict GetProperties()
 			will be emitted.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.DoesNotExist
+					 [service].Error.InvalidProperty
 
 		void ClearProperty(string name)
 
 			Clears the value of the specified property.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.DoesNotExist
+					 [service].Error.InvalidProperty
 
 		void Connect()
 

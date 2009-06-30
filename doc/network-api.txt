@@ -20,7 +20,7 @@ Methods		dict GetProperties()
 			will be emitted.
 
 			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.DoesNotExist
+					 [service].Error.InvalidProperty
 
 Signals		PropertyChanged(string name, variant value)
 
