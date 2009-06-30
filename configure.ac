@@ -10,6 +10,9 @@ AC_PREFIX_DEFAULT(/usr/local)
 
 COMPILER_FLAGS
 
+AC_SUBST(abs_top_srcdir)
+AC_SUBST(abs_top_builddir)
+
 AC_LANG_C
 
 AC_PROG_CC
