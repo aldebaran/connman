@@ -1330,6 +1330,9 @@ static int service_load(struct connman_service *service)
 		service->passphrase = str;
 	}
 
+	__connman_ipconfig_load(service->ipconfig, keyfile,
+					service->identifier, "IPv4.");
+
 	g_key_file_free(keyfile);
 
 	return 0;
@@ -1392,6 +1395,9 @@ update:
 	if (service->passphrase != NULL)
 		g_key_file_set_string(keyfile, service->identifier,
 					"Passphrase", service->passphrase);
+
+	__connman_ipconfig_save(service->ipconfig, keyfile,
+					service->identifier, "IPv4.");
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 

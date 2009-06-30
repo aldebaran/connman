@@ -159,6 +159,22 @@ int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
+int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
+		GKeyFile *keyfile, const char *identifier, const char *prefix)
+{
+	DBG("ipconfig %p identifier %s", ipconfig, identifier);
+
+	return 0;
+}
+
+int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
+		GKeyFile *keyfile, const char *identifier, const char *prefix)
+{
+	DBG("ipconfig %p identifier %s", ipconfig, identifier);
+
+	return 0;
+}
+
 static GSList *driver_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)

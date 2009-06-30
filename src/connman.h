@@ -95,6 +95,11 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
 				const char *key, DBusMessageIter *value);
 
+int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
+		GKeyFile *keyfile, const char *identifier, const char *prefix);
+int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
+		GKeyFile *keyfile, const char *identifier, const char *prefix);
+
 #include <connman/inet.h>
 
 #include <connman/rfkill.h>
