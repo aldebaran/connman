@@ -875,8 +875,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 			service->pending = NULL;
 		}
 
-		service->state = CONNMAN_SERVICE_STATE_IDLE;
-		state_changed(service);
+		g_get_current_time(&service->modified);
+		__connman_storage_save_service(service);
 	} else
 		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
@@ -1273,6 +1273,21 @@ done:
 	return service;
 }
 
+static const char *error2string(enum connman_service_error error)
+{
+	switch (error) {
+	case CONNMAN_SERVICE_ERROR_UNKNOWN:
+		break;
+	}
+
+	return NULL;
+}
+
+static enum connman_service_error string2error(const char *error)
+{
+	return CONNMAN_SERVICE_ERROR_UNKNOWN;
+}
+
 static int service_load(struct connman_service *service)
 {
 	GKeyFile *keyfile;
@@ -1316,6 +1331,13 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
+
+		str = g_key_file_get_string(keyfile,
+				service->identifier, "Failure", NULL);
+		if (str != NULL) {
+			service->state = CONNMAN_SERVICE_STATE_FAILURE;
+			service->error = string2error(str);
+		}
 		break;
 	}
 
@@ -1385,6 +1407,17 @@ update:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
+
+		if (service->state == CONNMAN_SERVICE_STATE_FAILURE) {
+			const char *failure = error2string(service->error);
+			if (failure != NULL)
+				g_key_file_set_string(keyfile,
+							service->identifier,
+							"Failure", failure);
+		} else {
+			g_key_file_remove_key(keyfile, service->identifier,
+							"Failure", NULL);
+		}
 		break;
 	}
 
