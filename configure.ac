@@ -162,6 +162,12 @@ AC_ARG_ENABLE(hso,
 AM_CONDITIONAL(HSO, test "${enable_hso}" != "no")
 AM_CONDITIONAL(HSO_BUILTIN, test "${enable_hso}" = "builtin")
 
+AC_ARG_ENABLE(mbm,
+	AC_HELP_STRING([--enable-mbm], [enable MBM support]),
+			[enable_mbm=${enableval}], [enable_mbm="no"])
+AM_CONDITIONAL(MBM, test "${enable_mbm}" != "no")
+AM_CONDITIONAL(MBM_BUILTIN, test "${enable_mbm}" = "builtin")
+
 AC_ARG_WITH(pppd, AC_HELP_STRING([--with-pppd=PROGRAM],
 	[specify location of pppd binary]), [path_pppd=${withval}])
 

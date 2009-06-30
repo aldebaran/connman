@@ -93,6 +93,20 @@ hso_la_CFLAGS = $(AM_CFLAGS) @GATCHAT_CFLAGS@
 endif
 endif
 
+if MBM
+if MBM_BUILTIN
+builtin_modules += mbm
+builtin_sources += mbm.c
+builtin_libadd += @GATCHAT_LIBS@
+builtin_cflags += @GATCHAT_CFLAGS@
+else
+plugin_LTLIBRARIES += mbm.la
+mbm_la_SOURCES = mbm.c
+mbm_la_LIBADD = @GATCHAT_LIBS@
+mbm_la_CFLAGS = $(AM_CFLAGS) @GATCHAT_CFLAGS@
+endif
+endif
+
 if UDHCP
 if UDHCP_BUILTIN
 builtin_modules += udhcp
