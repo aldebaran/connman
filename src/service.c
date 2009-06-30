@@ -689,6 +689,9 @@ struct connman_service *connman_service_create(void)
 		return NULL;
 	}
 
+	connman_ipconfig_set_method(service->ipconfig,
+					CONNMAN_IPCONFIG_METHOD_DHCP);
+
 	return service;
 }
 

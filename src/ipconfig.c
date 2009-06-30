@@ -80,6 +80,21 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	}
 }
 
+/**
+ * connman_ipconfig_set_method:
+ * @ipconfig: ipconfig structure
+ * @method: configuration method
+ *
+ * Set the configuration method
+ */
+int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
+					enum connman_ipconfig_method method)
+{
+	ipconfig->method = method;
+
+	return 0;
+}
+
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
 {
 	switch (method) {

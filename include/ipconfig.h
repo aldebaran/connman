@@ -51,6 +51,9 @@ struct connman_ipconfig *connman_ipconfig_create(void);
 struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
 
+int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
+					enum connman_ipconfig_method method);
+
 #define CONNMAN_IPCONFIG_PRIORITY_LOW      -100
 #define CONNMAN_IPCONFIG_PRIORITY_DEFAULT     0
 #define CONNMAN_IPCONFIG_PRIORITY_HIGH      100
