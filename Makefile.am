@@ -11,6 +11,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-ethernet \
 				--enable-wifi \
 				--enable-bluetooth \
+				--enable-ofono \
 				--enable-udhcp \
 				--enable-dhclient \
 				--enable-resolvconf \
@@ -18,6 +19,9 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-novatel \
 				--enable-huawei \
 				--enable-hso \
+				--enable-mbm \
+				--enable-udev \
+				--enable-polkit \
 				--enable-client \
 				--enable-tools
 
