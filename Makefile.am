@@ -25,5 +25,4 @@ DISTCLEANFILES = $(pkgconfig_DATA)
 
 MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
-	ltmain.sh depcomp compile missing install-sh mkinstalldirs \
-	shave shave-libtool
+	ltmain.sh depcomp compile missing install-sh mkinstalldirs

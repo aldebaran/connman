@@ -30,8 +30,6 @@ AC_PROG_LIBTOOL
 
 GTK_DOC_CHECK
 
-SHAVE_ARG_ENABLE
-
 AC_ARG_ENABLE(debug, AC_HELP_STRING([--enable-debug],
 			[enable compiling with debugging information]), [
 	if (test "${enableval}" = "yes" &&
@@ -316,8 +314,6 @@ AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[don't install configuration and data files]),
 					[enable_datafiles=${enableval}])
 AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
-
-SHAVE_INIT
 
 AC_OUTPUT(Makefile gdbus/Makefile gatchat/Makefile
 				include/Makefile include/version.h
