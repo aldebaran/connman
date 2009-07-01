@@ -1,3 +1,16 @@
+ver 0.20:
+	Add plugin for Intel WiMAX SDK support.
+	Add special handling for default vendor SSIDs.
+	Add support for default gateway in different network.
+	Add support for automatic switching of default gateway.
+	Add support for asynchronous handling of Powered property.
+	Add support for connecting/disconnecting Ethernet services.
+	Add support for more detailed error states of services.
+	Add support for clearing error state via ClearProperty.
+	Fix error code for invalid or unknown properties.
+	Fix various timeout handling issues.
+	Remove Policy and Priority device and network properties.
+
 ver 0.19:
 	Add hidden networks to the service list.
 	Add support for storing the service name.
