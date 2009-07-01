@@ -384,15 +384,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_in_progress(msg);
 
 		err = set_powered(device, powered);
-		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg, -err);
+		if (err < 0) {
+			if (err != -EINPROGRESS)
+				return __connman_error_failed(msg, -err);
 
-		device->pending = dbus_message_ref(msg);
+			device->pending = dbus_message_ref(msg);
 
-		device->timeout = g_timeout_add_seconds(15,
+			device->timeout = g_timeout_add_seconds(15,
 						powered_timeout, device);
 
-		return NULL;
+			return NULL;
+		}
 	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
 		connman_uint16_t interval;
 
@@ -1199,6 +1201,7 @@ int connman_device_set_powered(struct connman_device *device,
 							DBUS_TYPE_INVALID);
 
 		dbus_message_unref(device->pending);
+		device->pending = NULL;
 	}
 
 	if (device->powered == powered)

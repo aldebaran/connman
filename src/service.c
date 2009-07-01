@@ -464,15 +464,17 @@ static DBusMessage *connect_service(DBusConnection *conn,
 				"WiFi.Passphrase", service->passphrase);
 
 		err = __connman_network_connect(service->network);
-		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg, -err);
+		if (err < 0) {
+			if (err != -EINPROGRESS)
+				return __connman_error_failed(msg, -err);
 
-		service->pending = dbus_message_ref(msg);
+			service->pending = dbus_message_ref(msg);
 
-		service->timeout = g_timeout_add_seconds(45,
+			service->timeout = g_timeout_add_seconds(45,
 						connect_timeout, service);
 
-		return NULL;
+			return NULL;
+		}
 	} else if (service->device != NULL) {
 		if (service->favorite == FALSE)
 			return __connman_error_no_carrier(msg);
@@ -485,9 +487,10 @@ static DBusMessage *connect_service(DBusConnection *conn,
 						connect_timeout, service);
 
 		return NULL;
-	}
+	} else
+		return __connman_error_not_supported(msg);
 
-	return __connman_error_not_supported(msg);
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *disconnect_service(DBusConnection *conn,
@@ -516,8 +519,6 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 		err = __connman_network_disconnect(service->network);
 		if (err < 0 && err != -EINPROGRESS)
 			return __connman_error_failed(msg, -err);
-
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	} else if (service->device != NULL) {
 		int err;
 
@@ -527,11 +528,10 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 		err = __connman_device_disconnect(service->device);
 		if (err < 0)
 			return __connman_error_failed(msg, -err);
+	} else
+		return __connman_error_not_supported(msg);
 
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
-
-	return __connman_error_not_supported(msg);
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *remove_service(DBusConnection *conn,
