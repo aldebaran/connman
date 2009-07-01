@@ -138,9 +138,7 @@ static int ethernet_connect(struct connman_device *device)
 	if (!(ethernet->flags & IFF_LOWER_UP))
 		return -ENOTCONN;
 
-	connman_device_set_carrier(device, TRUE);
-
-	return 0;
+	return connman_device_set_connected(device, TRUE);
 }
 
 static int ethernet_disconnect(struct connman_device *device)
@@ -152,9 +150,7 @@ static int ethernet_disconnect(struct connman_device *device)
 	if (!(ethernet->flags & IFF_LOWER_UP))
 		return -ENOTCONN;
 
-	connman_device_set_carrier(device, FALSE);
-
-	return 0;
+	return connman_device_set_connected(device, FALSE);
 }
 
 static struct connman_device_driver ethernet_driver = {

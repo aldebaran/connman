@@ -133,14 +133,10 @@ static const char *type2string(enum connman_device_type type)
 	return NULL;
 }
 
-static int set_carrier(struct connman_device *device, connman_bool_t carrier)
+static int set_connected(struct connman_device *device,
+						connman_bool_t connected)
 {
-	struct connman_service *service;
-
-	service = __connman_service_lookup_from_device(device);
-	__connman_service_set_carrier(service, carrier);
-
-	if (carrier == TRUE) {
+	if (connected == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
 
@@ -160,6 +156,8 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 
 		element = connman_element_create(NULL);
 		if (element != NULL) {
+			struct connman_service *service;
+
 			element->type  = type;
 			element->index = device->element.index;
 
@@ -169,13 +167,27 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 
 			device->disconnected = FALSE;
 
+			service = __connman_service_lookup_from_device(device);
 			__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION);
 		}
-	} else
+	} else {
 		connman_element_unregister_children(&device->element);
 
+		device->disconnected = TRUE;
+	}
+
 	return 0;
+}
+
+static int set_carrier(struct connman_device *device, connman_bool_t carrier)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_device(device);
+	__connman_service_set_carrier(service, carrier);
+
+	return set_connected(device, carrier);
 }
 
 static int set_powered(struct connman_device *device, connman_bool_t powered)
@@ -1243,7 +1255,7 @@ int connman_device_set_powered(struct connman_device *device,
 int connman_device_set_carrier(struct connman_device *device,
 						connman_bool_t carrier)
 {
-	DBG("driver %p carrier %d", device, carrier);
+	DBG("device %p carrier %d", device, carrier);
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -1400,7 +1412,7 @@ int connman_device_set_scanning(struct connman_device *device,
 	DBusMessageIter entry, value;
 	const char *key = "Scanning";
 
-	DBG("driver %p scanning %d", device, scanning);
+	DBG("device %p scanning %d", device, scanning);
 
 	if (!device->driver || !device->driver->scan)
 		return -EINVAL;
@@ -1467,7 +1479,7 @@ int connman_device_set_scanning(struct connman_device *device,
 int connman_device_set_disconnected(struct connman_device *device,
 						connman_bool_t disconnected)
 {
-	DBG("driver %p disconnected %d", device, disconnected);
+	DBG("device %p disconnected %d", device, disconnected);
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -1484,6 +1496,33 @@ int connman_device_set_disconnected(struct connman_device *device,
 	device->disconnected = disconnected;
 
 	return 0;
+}
+
+/**
+ * connman_device_set_connected:
+ * @device: device structure
+ * @connected: connected state
+ *
+ * Change connected state of device (for Ethernet like devices)
+ */
+int connman_device_set_connected(struct connman_device *device,
+						connman_bool_t connected)
+{
+	DBG("device %p connected %d", device, connected);
+
+	switch (device->mode) {
+	case CONNMAN_DEVICE_MODE_UNKNOWN:
+	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
+	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
+		return -EINVAL;
+	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
+		break;
+	}
+
+	if (device->carrier == FALSE)
+		return -ENOTCONN;
+
+	return set_connected(device, connected);
 }
 
 /**

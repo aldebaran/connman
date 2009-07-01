@@ -90,6 +90,8 @@ int connman_device_set_scanning(struct connman_device *device,
 						connman_bool_t scanning);
 int connman_device_set_disconnected(struct connman_device *device,
 						connman_bool_t disconnected);
+int connman_device_set_connected(struct connman_device *device,
+						connman_bool_t connected);
 
 int connman_device_set_string(struct connman_device *device,
 					const char *key, const char *value);
