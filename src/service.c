@@ -1469,6 +1469,9 @@ update:
 	if (service->passphrase != NULL)
 		g_key_file_set_string(keyfile, service->identifier,
 					"Passphrase", service->passphrase);
+	else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Passphrase", NULL);
 
 	__connman_ipconfig_save(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
