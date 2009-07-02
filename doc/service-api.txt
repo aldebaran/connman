@@ -60,6 +60,9 @@ Methods		dict GetProperties()
 			can be removed this way. If it is connected, it will
 			be automatically disconnected first.
 
+			If the service requires a passphrase it will be
+			cleared and forgotten when removing.
+
 			This is similar to setting the Favorite property
 			to false, but that is currently not supported.
 

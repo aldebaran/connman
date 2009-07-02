@@ -550,6 +550,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
 
+	g_free (service->passphrase);
+	service->passphrase = NULL;
+
 	connman_service_set_favorite(service, FALSE);
 	__connman_storage_save_service(service);
 
