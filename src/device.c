@@ -468,6 +468,20 @@ static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
 	return g_string_free(str, FALSE);
 }
 
+static char *build_network_name(const char *ssid, char *name,
+						unsigned int ssid_len)
+{
+	unsigned int i;
+	char *d = name;
+
+	for (i = 0; i < ssid_len; i++)
+		if (g_ascii_isprint(ssid[i]))
+			*d++ = ssid[i];
+
+	*d = '\0';
+	return name;
+}
+
 static DBusMessage *join_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -517,10 +531,22 @@ static DBusMessage *join_network(DBusConnection *conn,
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_STRING:
 			dbus_message_iter_get_basic(&value, &str);
-			if (g_str_equal(key, "WiFi.SSID") == TRUE)
+			if (g_str_equal(key, "WiFi.SSID") == TRUE) {
+				char *name;
+
 				connman_network_set_blob(network, key,
 							str, strlen(str));
-			else
+				name = g_try_malloc0(strlen(str) + 1);
+				if (name == NULL)
+					return __connman_error_failed(msg,
+								      -ENOMEM);
+
+				name = build_network_name((char *) str, name,
+								  strlen(str));
+				connman_network_set_name(network, name);
+				g_free(name);
+
+			} else
 				connman_network_set_string(network, key, str);
 			break;
 		}
