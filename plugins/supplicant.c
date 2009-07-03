@@ -934,7 +934,6 @@ static void extract_ssid(DBusMessageIter *value,
 	DBusMessageIter array;
 	unsigned char *ssid;
 	int ssid_len, i;
-	char *d;
 
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ssid, &ssid_len);
@@ -953,12 +952,12 @@ static void extract_ssid(DBusMessageIter *value,
 	if (result->name == NULL)
 		return;
 
-	d =  result->name;
-	for (i = 0; i < ssid_len; i++)
+	for (i = 0; i < ssid_len; i++) {
 		if (g_ascii_isprint(ssid[i]))
-			*d++ = ssid[i];
-
-	*d = '\0';
+			result->name[i] = ssid[i];
+		else
+			result->name[i] = ' ';
+	}
 }
 
 static void extract_wpaie(DBusMessageIter *value,

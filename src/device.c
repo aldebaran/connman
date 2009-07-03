@@ -468,18 +468,17 @@ static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
 	return g_string_free(str, FALSE);
 }
 
-static char *build_network_name(const char *ssid, char *name,
+static void convert_name(const char *ssid, char *name,
 						unsigned int ssid_len)
 {
 	unsigned int i;
-	char *d = name;
 
-	for (i = 0; i < ssid_len; i++)
+	for (i = 0; i < ssid_len; i++) {
 		if (g_ascii_isprint(ssid[i]))
-			*d++ = ssid[i];
-
-	*d = '\0';
-	return name;
+			name[i] = ssid[i];
+		else
+			name[i] = ' ';
+	}
 }
 
 static DBusMessage *join_network(DBusConnection *conn,
@@ -541,8 +540,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 					return __connman_error_failed(msg,
 								      -ENOMEM);
 
-				name = build_network_name((char *) str, name,
-								  strlen(str));
+				convert_name((char *) str, name, strlen(str));
 				connman_network_set_name(network, name);
 				g_free(name);
 
