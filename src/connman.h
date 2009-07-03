@@ -186,25 +186,9 @@ void __connman_connection_cleanup(void);
 
 void __connman_connection_update_gateway(void);
 
-#ifdef HAVE_UDEV
 int __connman_udev_init(void);
 void __connman_udev_cleanup(void);
 char *__connman_udev_get_devtype(const char *ifname);
-#else
-static inline int __connman_udev_init(void)
-{
-	return 0;
-}
-
-static inline void __connman_udev_cleanup(void)
-{
-}
-
-static inline char *__connman_udev_get_devtype(const char *ifname)
-{
-	return NULL;
-}
-#endif
 
 #include <connman/device.h>
 

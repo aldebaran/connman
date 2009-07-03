@@ -31,7 +31,6 @@ fi
 		--enable-hso=builtin \
 		--enable-mbm=builtin \
 		--enable-ppp \
-		--enable-udev \
 		--enable-iwmx \
 		--enable-iospm \
 		--enable-polkit=builtin \

@@ -15,6 +15,8 @@ connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 
 if UDEV
 connmand_SOURCES += udev.c
+else
+connmand_SOURCES += udev-compat.c
 endif
 
 connmand_LDADD = $(top_builddir)/plugins/libbuiltin.la \

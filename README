@@ -128,14 +128,6 @@ For a working system, certain configuration options need to be enabled:
 		are in place. It detects an already configured loopback
 		device and leaves it as it is.
 
-	--enable-udev
-
-		Enable device detection support via udev
-
-		Network devices are by default detected via the builtin RTNL
-		functionality. This allows to detect TTY based modem devices
-		via udev.
-
 	--enable-polkit
 
 		Enable support for PolicyKit authorization
