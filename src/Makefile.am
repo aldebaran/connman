@@ -15,12 +15,6 @@ connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 
 if UDEV
 connmand_SOURCES += udev.c
-
-if DATAFILES
-rulesdir = @UDEV_DATADIR@
-
-rules_DATA = 92-connman.rules
-endif
 endif
 
 connmand_LDADD = $(top_builddir)/plugins/libbuiltin.la \
@@ -30,7 +24,7 @@ connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=connman.ver
 
 connmand_DEPENDENCIES = connman.ver $(top_builddir)/plugins/libbuiltin.la
 
-CLEANFILES = connman.ver connman.exp connman.conf 92-connman.rules
+CLEANFILES = connman.ver connman.exp connman.conf
 
 statedir = $(localstatedir)/run/connman
 
@@ -49,7 +43,7 @@ AM_CFLAGS = @UDEV_CFLAGS@ @GTHREAD_CFLAGS@ @GLIB_CFLAGS@ @GDBUS_CFLAGS@ \
 
 INCLUDES = -I$(top_builddir)/include -I$(top_builddir)/plugins
 
-EXTRA_DIST = connman-dbus.conf connman-polkit.conf connman.rules
+EXTRA_DIST = connman-dbus.conf connman-polkit.conf
 
 MAINTAINERCLEANFILES = Makefile.in
 
@@ -67,6 +61,3 @@ if POLKIT
 else
 	cp $(top_srcdir)/src/connman-dbus.conf $@
 endif
-
-92-connman.rules: connman.rules
-	cp $< $@
