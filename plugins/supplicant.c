@@ -747,8 +747,12 @@ static int set_network(struct supplicant_task *task,
 						DBUS_TYPE_STRING, &passphrase);
 	} else if (g_ascii_strcasecmp(security, "wep") == 0) {
 		const char *key_mgmt = "NONE", *index = "0";
+		const char *auth_alg = "OPEN SHARED";
 		connman_dbus_dict_append_variant(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
+
+		connman_dbus_dict_append_variant(&dict, "auth_alg",
+						DBUS_TYPE_STRING, &auth_alg);
 
 		if (passphrase) {
 			int size = strlen(passphrase);
