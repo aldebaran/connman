@@ -33,22 +33,6 @@
 
 #include "connman.h"
 
-#ifdef NEED_UDEV_ENUMERATE_ADD_MATCH_PROPERTY
-static int udev_enumerate_add_match_property(struct udev_enumerate *enumerate,
-					const char *property, const char *value)
-{
-	return -EINVAL;
-}
-#endif
-
-#ifdef NEED_UDEV_DEVICE_GET_PARENT_WITH_SUBSYSTEM_DEVTYPE
-static struct udev_device *udev_device_get_parent_with_subsystem_devtype(struct udev_device *device,
-						const char *subsystem, const char *devtype)
-{
-	return NULL;
-}
-#endif
-
 static GSList *device_list = NULL;
 
 static struct connman_device *find_device(const char *interface)
