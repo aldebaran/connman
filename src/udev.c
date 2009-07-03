@@ -292,8 +292,7 @@ int __connman_udev_init(void)
 		return -1;
 	}
 
-	udev_mon = udev_monitor_new_from_socket(udev_ctx,
-						"@/org/moblin/connman/udev");
+	udev_mon = udev_monitor_new_from_netlink(udev_ctx, "udev");
 	if (udev_mon == NULL) {
 		connman_error("Failed to create udev monitor");
 		udev_unref(udev_ctx);
