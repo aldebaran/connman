@@ -201,6 +201,10 @@ if (test "${enable_udev}" = "yes"); then
 	AC_DEFINE(HAVE_UDEV, 1, [Define if udev support is available])
 	PKG_CHECK_MODULES(UDEV, libudev >= 141, dummy=yes,
 				AC_MSG_ERROR(udev >= 141 is required))
+	AC_CHECK_LIB(udev, udev_monitor_filter_update, dummy=yes,
+		AC_DEFINE(NEED_UDEV_MONITOR_FILTER, 1,
+			[Define to 1 if you need the
+				udev_monitor_filter...() functions.]))
 	UDEV_DATADIR="`$PKG_CONFIG --variable=rulesdir libudev`"
 	if (test -z "${UDEV_DATADIR}"); then
 		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
