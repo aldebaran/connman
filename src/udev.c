@@ -183,7 +183,7 @@ static void print_properties(struct udev_device *device, const char *prefix)
 
 static void print_device(struct udev_device *device, const char *action)
 {
-	const char *subsystem, *devtype = NULL;
+	const char *subsystem, *sysname, *devtype = NULL;
 	struct udev_device *parent;
 
 	connman_debug("=== %s ===", action);
@@ -204,6 +204,11 @@ static void print_device(struct udev_device *device, const char *action)
 	parent = udev_device_get_parent_with_subsystem_devtype(device,
 							subsystem, devtype);
 	print_properties(parent, "    ");
+
+	devtype = udev_device_get_devtype(device);
+	sysname = udev_device_get_sysname(device);
+
+	connman_info("%s ==> %s (%s)", sysname, devtype, action);
 }
 
 static void enumerate_devices(struct udev *context)
@@ -215,7 +220,7 @@ static void enumerate_devices(struct udev *context)
 	if (enumerate == NULL)
 		return;
 
-	udev_enumerate_add_match_property(enumerate, "CONNMAN_TYPE", "?*");
+	udev_enumerate_add_match_subsystem(enumerate, "net");
 
 	udev_enumerate_scan_devices(enumerate);
 
@@ -243,11 +248,18 @@ static gboolean udev_event(GIOChannel *channel,
 {
 	struct udev_monitor *monitor = user_data;
 	struct udev_device *device;
-	const char *action;
+	const char *subsystem, *action;
 
 	device = udev_monitor_receive_device(monitor);
 	if (device == NULL)
 		return TRUE;
+
+	subsystem = udev_device_get_subsystem(device);
+	if (subsystem == NULL)
+		goto done;
+
+	if (g_str_equal(subsystem, "net") == FALSE)
+		goto done;
 
 	action = udev_device_get_action(device);
 	if (action == NULL)
