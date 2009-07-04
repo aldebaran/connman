@@ -33,19 +33,22 @@
 
 #include "connman.h"
 
-#ifdef NEED_UDEV_FILTER_MONITOR
-static int udev_monitor_filter_add_match_subsystem_devtype(struct udev_monitor *udev_monitor, const char *subsystem, const char *devtype);
+#ifdef NEED_UDEV_MONITOR_FILTER
+#if 0
+static int udev_monitor_filter_add_match_subsystem_devtype(struct udev_monitor *udev_monitor,
+				const char *subsystem, const char *devtype)
 {
 	return -EINVAL;
 }
-int udev_monitor_filter_update(struct udev_monitor *udev_monitor)
+static int udev_monitor_filter_update(struct udev_monitor *udev_monitor)
 {
 	return -EINVAL;
 }
-int udev_monitor_filter_remove(struct udev_monitor *udev_monitor)
+static int udev_monitor_filter_remove(struct udev_monitor *udev_monitor)
 {
 	return -EINVAL;
 }
+#endif
 #endif
 
 static GSList *device_list = NULL;
