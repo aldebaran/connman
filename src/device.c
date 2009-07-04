@@ -97,6 +97,7 @@ static const char *type2description(enum connman_device_type type)
 		return "Bluetooth";
 	case CONNMAN_DEVICE_TYPE_GPS:
 		return "GPS";
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
@@ -123,6 +124,7 @@ static const char *type2string(enum connman_device_type type)
 		return "bluetooth";
 	case CONNMAN_DEVICE_TYPE_GPS:
 		return "gps";
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
@@ -991,6 +993,7 @@ struct connman_device *connman_device_create(const char *node,
 	case CONNMAN_DEVICE_TYPE_GPS:
 		device->scan_interval = 0;
 		break;
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
