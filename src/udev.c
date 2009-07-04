@@ -24,6 +24,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/types.h>
 
 #define LIBUDEV_I_KNOW_THE_API_IS_SUBJECT_TO_CHANGE
@@ -77,20 +78,26 @@ static struct connman_device *find_device(const char *interface)
 
 static void add_device(struct udev_device *udev_device)
 {
-	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 	struct connman_device *device;
 	struct udev_list_entry *entry;
-	const char *type = NULL, *interface = NULL;
+	const char *type, *interface = NULL;
+	int index = -1;
 
 	DBG("");
+
+	type = udev_device_get_sysattr_value(udev_device, "type");
+	if (atoi(type) != 1)
+		return;
 
 	entry = udev_device_get_properties_list_entry(udev_device);
 	while (entry) {
 		const char *name = udev_list_entry_get_name(entry);
 
-		if (g_str_has_prefix(name, "CONNMAN_TYPE") == TRUE)
-			type = udev_list_entry_get_value(entry);
-		else if (g_str_has_prefix(name, "CONNMAN_INTERFACE") == TRUE)
+		if (g_str_has_prefix(name, "IFINDEX") == TRUE) {
+			const char *value = udev_list_entry_get_value(entry);
+			if (value != NULL)
+				index = atoi(value);
+		} else if (g_str_has_prefix(name, "INTERFACE") == TRUE)
 			interface = udev_list_entry_get_value(entry);
 
 		entry = udev_list_entry_get_next(entry);
@@ -100,29 +107,12 @@ static void add_device(struct udev_device *udev_device)
 	if (device != NULL)
 		return;
 
-	if (type == NULL || interface == NULL)
+	if (index < 0 || interface == NULL)
 		return;
 
-	if (g_str_equal(interface, "ttyUSB0") == FALSE &&
-				g_str_equal(interface, "noz0") == FALSE)
-		return;
-
-	if (g_str_equal(type, "nozomi") == TRUE)
-		devtype = CONNMAN_DEVICE_TYPE_NOZOMI;
-	else if (g_str_equal(type, "huawei") == TRUE)
-		devtype = CONNMAN_DEVICE_TYPE_HUAWEI;
-	else if (g_str_equal(type, "novatel") == TRUE)
-		devtype = CONNMAN_DEVICE_TYPE_NOVATEL;
-	else
-		return;
-
-	device = connman_device_create(interface, devtype);
+	device = connman_inet_create_device(index);
 	if (device == NULL)
 		return;
-
-	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
-
-	connman_device_set_interface(device, interface);
 
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
@@ -144,7 +134,7 @@ static void remove_device(struct udev_device *udev_device)
 	while (entry) {
 		const char *name = udev_list_entry_get_name(entry);
 
-		if (g_str_has_prefix(name, "CONNMAN_INTERFACE") == TRUE)
+		if (g_str_has_prefix(name, "INTERFACE") == TRUE)
 			interface = udev_list_entry_get_value(entry);
 
 		entry = udev_list_entry_get_next(entry);
@@ -219,9 +209,6 @@ static void print_device(struct udev_device *device, const char *action)
 	sysname = udev_device_get_sysname(device);
 
 	driver = udev_device_get_driver(parent);
-
-	connman_info("%s ==> %s [%s] (%s)", sysname, devtype,
-							driver, action);
 }
 
 static void enumerate_devices(struct udev *context)
@@ -234,7 +221,6 @@ static void enumerate_devices(struct udev *context)
 		return;
 
 	udev_enumerate_add_match_subsystem(enumerate, "net");
-	udev_enumerate_add_match_subsystem(enumerate, "tty");
 
 	udev_enumerate_scan_devices(enumerate);
 
@@ -272,8 +258,7 @@ static gboolean udev_event(GIOChannel *channel,
 	if (subsystem == NULL)
 		goto done;
 
-	if (g_str_equal(subsystem, "net") == FALSE &&
-				g_str_equal(subsystem, "tty") == FALSE)
+	if (g_str_equal(subsystem, "net") == FALSE)
 		goto done;
 
 	action = udev_device_get_action(device);
@@ -312,8 +297,6 @@ char *__connman_udev_get_devtype(const char *ifname)
 	devtype = udev_device_get_devtype(device);
 	if (devtype == NULL)
 		goto done;
-
-	connman_info("%s ==> %s", ifname, devtype);
 
 done:
 	udev_device_unref(device);
