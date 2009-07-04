@@ -175,9 +175,6 @@ int __connman_element_append_ipv4(struct connman_element *element,
 int __connman_element_set_ipv4(struct connman_element *element,
 				const char *name, DBusMessageIter *value);
 
-int __connman_detect_init(void);
-void __connman_detect_cleanup(void);
-
 int __connman_ipv4_init(void);
 void __connman_ipv4_cleanup(void);
 
