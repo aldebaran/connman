@@ -288,28 +288,30 @@ static char *index2ident(int index, const char *prefix)
 	return str;
 }
 
-struct connman_device *connman_inet_create_device(int index)
+enum connman_device_type __connman_inet_get_device_type(int index)
 {
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
-	struct connman_device *device;
 	unsigned short type = index2type(index);
-	char *addr, *name, *devname, *ident = NULL;
+	const char *devname;
+	struct ifreq ifr;
+	int sk;
 
-	if (index < 0)
-		return NULL;
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return devtype;
 
-	devname = connman_inet_ifname(index);
-	if (devname == NULL)
-		return NULL;
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
 
-	__connman_udev_get_devtype(devname);
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0)
+		goto done;
+
+	devname = ifr.ifr_name;
 
 	if (type == ARPHRD_ETHER) {
 		char bridge_path[PATH_MAX], wimax_path[PATH_MAX];
 		struct stat st;
 		struct iwreq iwr;
-		int sk;
 
 		snprintf(bridge_path, PATH_MAX,
 					"/sys/class/net/%s/bridge", devname);
@@ -319,11 +321,8 @@ struct connman_device *connman_inet_create_device(int index)
 		memset(&iwr, 0, sizeof(iwr));
 		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
 
-		sk = socket(PF_INET, SOCK_DGRAM, 0);
-
 		if (g_str_has_prefix(devname, "vmnet") == TRUE ||
-				g_str_has_prefix(devname, "vboxnet") == TRUE) {
-			connman_info("Ignoring network interface %s", devname);
+				g_str_has_prefix(ifr.ifr_name, "vboxnet") == TRUE) {
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		} else if (g_str_has_prefix(devname, "bnep") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
@@ -339,15 +338,38 @@ struct connman_device *connman_inet_create_device(int index)
 			devtype = CONNMAN_DEVICE_TYPE_WIFI;
 		else
 			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
-
-		close(sk);
 	} else if (type == ARPHRD_NONE) {
 		if (g_str_has_prefix(devname, "hso") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_HSO;
 	}
 
-	switch (devtype) {
+done:
+	close(sk);
+
+	return devtype;
+}
+
+struct connman_device *connman_inet_create_device(int index)
+{
+	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
+	enum connman_device_type type;
+	struct connman_device *device;
+	char *addr, *name, *devname, *ident = NULL;
+
+	if (index < 0)
+		return NULL;
+
+	devname = connman_inet_ifname(index);
+	if (devname == NULL)
+		return NULL;
+
+	__connman_udev_get_devtype(devname);
+
+	type = __connman_inet_get_device_type(index);
+
+	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+		connman_info("Ignoring network interface %s", devname);
 		g_free(devname);
 		return NULL;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
@@ -369,7 +391,7 @@ struct connman_device *connman_inet_create_device(int index)
 		break;
 	}
 
-	device = connman_device_create(name, devtype);
+	device = connman_device_create(name, type);
 	if (device == NULL) {
 		g_free(devname);
 		g_free(name);
@@ -377,7 +399,7 @@ struct connman_device *connman_inet_create_device(int index)
 		return NULL;
 	}
 
-	switch (devtype) {
+	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
