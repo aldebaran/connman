@@ -69,6 +69,7 @@ enum connman_service_state {
 enum connman_service_error {
 	CONNMAN_SERVICE_ERROR_UNKNOWN     = 0,
 	CONNMAN_SERVICE_ERROR_DHCP_FAILED = 1,
+	CONNMAN_SERVICE_ERROR_PIN_MISSING = 2,
 };
 
 struct connman_service;

@@ -186,6 +186,8 @@ static const char *error2string(enum connman_service_error error)
 		break;
 	case CONNMAN_SERVICE_ERROR_DHCP_FAILED:
 		return "dhcp-failed";
+	case CONNMAN_SERVICE_ERROR_PIN_MISSING:
+		return "pin-missing";
 	}
 
 	return NULL;
@@ -195,6 +197,8 @@ static enum connman_service_error string2error(const char *error)
 {
 	if (g_strcmp0(error, "dhcp-failed") == 0)
 		return CONNMAN_SERVICE_ERROR_DHCP_FAILED;
+	else if (g_strcmp0(error, "pin-missing") == 0)
+		return CONNMAN_SERVICE_ERROR_PIN_MISSING;
 
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
