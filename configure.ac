@@ -202,7 +202,7 @@ if (test "${enable_udev}" = "yes"); then
 		AC_DEFINE(NEED_UDEV_MONITOR_FILTER, 1,
 			[Define to 1 if you need the
 					udev_monitor_filter...() functions.]))
-	UDEV_DATADIR="`$PKG_CONFIG --variable=rulesdir libudev`"
+	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`/rules.d"
 	if (test -z "${UDEV_DATADIR}"); then
 		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
 	fi
