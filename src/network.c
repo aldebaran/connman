@@ -742,14 +742,14 @@ static gboolean set_connected(gpointer user_data)
 					CONNMAN_SERVICE_STATE_CONFIGURATION);
 		}
 	} else {
-		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_IDLE);
-
 		connman_element_unregister_children(&network->element);
 
 		__connman_device_set_network(network->device, NULL);
 
 		__connman_device_decrease_connections(network->device);
+
+		__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_IDLE);
 	}
 
 	return FALSE;
