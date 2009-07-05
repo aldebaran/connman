@@ -1529,6 +1529,17 @@ int connman_device_set_disconnected(struct connman_device *device,
 }
 
 /**
+ * connman_device_get_disconnected:
+ * @device: device structure
+ *
+ * Get device disconnected state
+ */
+connman_bool_t connman_device_get_disconnected(struct connman_device *device)
+{
+	return device->disconnected;
+}
+
+/**
  * connman_device_set_connected:
  * @device: device structure
  * @connected: connected state

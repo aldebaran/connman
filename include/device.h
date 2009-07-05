@@ -91,6 +91,7 @@ int connman_device_set_scanning(struct connman_device *device,
 						connman_bool_t scanning);
 int connman_device_set_disconnected(struct connman_device *device,
 						connman_bool_t disconnected);
+connman_bool_t connman_device_get_disconnected(struct connman_device *device);
 int connman_device_set_connected(struct connman_device *device,
 						connman_bool_t connected);
 
