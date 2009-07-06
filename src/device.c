@@ -483,14 +483,59 @@ static void convert_name(const char *ssid, char *name,
 	}
 }
 
+static struct connman_network *find_network(struct connman_device *device,
+					const void *ssid, const char *address,
+					const char *security, const char *mode)
+{
+	GHashTableIter network_iter;
+	gpointer key, value;
+
+	if (ssid == NULL)
+		return NULL;
+
+	g_hash_table_iter_init(&network_iter, device->networks);
+	while (g_hash_table_iter_next(&network_iter, &key, &value) == TRUE) {
+		const void *tmp_ssid;
+		const char *tmp_security, *tmp_mode, *tmp_address;
+		unsigned int tmp_ssid_size;
+
+		tmp_ssid = connman_network_get_blob(value, "WiFi.SSID",
+							&tmp_ssid_size);
+		tmp_security = connman_network_get_string(value,
+							"WiFi.Security");
+		tmp_mode = connman_network_get_string(value, "WiFi.Mode");
+		tmp_address = connman_network_get_string(value, "Address");
+
+		if (tmp_ssid_size < 1)
+			continue;
+
+		if (tmp_ssid && memcmp(ssid, tmp_ssid, tmp_ssid_size))
+			continue;
+
+		if (security && tmp_security &&
+				g_strcmp0(security, tmp_security))
+			continue;
+
+		if (mode && tmp_mode && g_strcmp0(mode, tmp_mode))
+			continue;
+
+		if (address && tmp_address && g_strcmp0(address, tmp_address))
+			continue;
+
+		return connman_network_ref(value);
+	}
+
+	return NULL;
+}
+
 static DBusMessage *join_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	struct connman_device *device = data;
-	struct connman_network *network;
+	struct connman_network *network, *found_network;
 	enum connman_network_type type;
 	unsigned int ssid_size;
-	const char *group, *mode, *security;
+	const char *group, *mode, *security, *address;
 	const void *ssid;
 	DBusMessageIter iter, array;
 	int err, index;
@@ -555,8 +600,33 @@ static DBusMessage *join_network(DBusConnection *conn,
 	}
 
 	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_size);
-	mode = connman_network_get_string(network, "WiFi.Mode");
 	security = connman_network_get_string(network, "WiFi.Security");
+	mode = connman_network_get_string(network, "WiFi.Mode");
+	address = connman_network_get_string(network, "Address");
+
+	found_network = find_network(device, ssid, address, security, mode);
+	if (found_network != NULL) {
+		const char* passphrase;
+
+		passphrase = connman_network_get_string(network,
+							"WiFi.Passphrase");
+		if (passphrase != NULL)
+			connman_network_set_string(found_network,
+							"WiFi.Passphrase",
+								passphrase);
+		connman_network_unref(network);
+		network = found_network;
+
+		err = __connman_network_connect(found_network);
+
+		connman_network_unref(found_network);
+
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
+
+		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	}
+
 	group = build_group(ssid, ssid_size, mode, security);
 
 	connman_network_set_group(network, group);
