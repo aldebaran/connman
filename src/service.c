@@ -1110,6 +1110,57 @@ static int service_register(struct connman_service *service)
 	return 0;
 }
 
+static connman_bool_t is_connecting(struct connman_service *service)
+{
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_CARRIER:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_READY:
+		break;
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void __connman_service_auto_connect(void)
+{
+	struct connman_service *service;
+	GSequenceIter *iter;
+
+	DBG("");
+
+	iter = g_sequence_get_begin_iter(service_list);
+	if (g_sequence_iter_is_end(iter) == TRUE)
+		return;
+
+	service = g_sequence_get(iter);
+
+	while (service->state == CONNMAN_SERVICE_STATE_FAILURE) {
+		iter = g_sequence_iter_next(iter);
+		if (g_sequence_iter_is_end(iter))
+			return;
+		service = g_sequence_get(iter);
+	}
+
+	if (service->favorite == FALSE)
+		return;
+
+	if (service->state == CONNMAN_SERVICE_STATE_READY)
+		return;
+
+	if (is_connecting(service) == TRUE)
+		return;
+
+	if (service->state == CONNMAN_SERVICE_STATE_IDLE)
+		__connman_service_connect(service);
+}
+
 /**
  * connman_service_lookup_from_device:
  * @device: device structure
@@ -1194,6 +1245,9 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 	service->device = device;
 
 	service_register(service);
+
+	if (service->favorite == TRUE)
+		__connman_service_auto_connect();
 
 done:
 	g_free(name);
@@ -1382,6 +1436,9 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	update_from_network(service, network);
 
 	service_register(service);
+
+	if (service->favorite == TRUE)
+		__connman_service_auto_connect();
 
 done:
 	g_free(name);
