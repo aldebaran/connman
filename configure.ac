@@ -10,6 +10,8 @@ AM_MAINTAINER_MODE
 
 AC_PREFIX_DEFAULT(/usr/local)
 
+PKG_PROG_PKG_CONFIG
+
 COMPILER_FLAGS
 
 AC_SUBST(abs_top_srcdir)
@@ -202,9 +204,11 @@ if (test "${enable_udev}" = "yes"); then
 		AC_DEFINE(NEED_UDEV_MONITOR_FILTER, 1,
 			[Define to 1 if you need the
 					udev_monitor_filter...() functions.]))
-	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`/rules.d"
+	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
 	if (test -z "${UDEV_DATADIR}"); then
 		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
+	else
+		UDEV_DATADIR="${UDEV_DATADIR}/rules.d"
 	fi
 	AC_SUBST(UDEV_DATADIR)
 fi
