@@ -39,9 +39,17 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 		return __connman_error_permission_denied(msg);
 	case EINVAL:
 		return __connman_error_invalid_arguments(msg);
-	case EALREADY:
+	case ENOSYS:
+		return __connman_error_not_implemented(msg);
+	case ENOLINK:
+		return __connman_error_no_carrier(msg);
+	case EOPNOTSUPP:
+		return __connman_error_not_supported(msg);
+	case EISCONN:
 		return __connman_error_already_connected(msg);
-	case EINPROGRESS:
+	case ENOTCONN:
+		return __connman_error_not_connected(msg);
+	case EALREADY:
 		return __connman_error_in_progress(msg);
 	}
 
@@ -92,6 +100,11 @@ DBusMessage *__connman_error_already_connected(DBusMessage *msg)
 
 }
 
+DBusMessage *__connman_error_not_connected(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+					".NotConnected", "Not connected");
+}
 DBusMessage *__connman_error_operation_aborted(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
