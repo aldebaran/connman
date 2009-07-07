@@ -1,3 +1,11 @@
+ver 0.21:
+	Add udev based network device detection.
+	Add support for global auto-connect feature.
+	Add support for basic service drag and drop.
+	Fix missing passphrase cleanup on service removal.
+	Fix potential duplicate network creation.
+	Fix handling of WEP shared keys.
+
 ver 0.20:
 	Add plugin for Intel WiMAX SDK support.
 	Add special handling for default vendor SSIDs.
