@@ -417,6 +417,57 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static connman_bool_t is_connecting(struct connman_service *service)
+{
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_CARRIER:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_READY:
+		break;
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void __connman_service_auto_connect(void)
+{
+	struct connman_service *service;
+	GSequenceIter *iter;
+
+	DBG("");
+
+	iter = g_sequence_get_begin_iter(service_list);
+	if (g_sequence_iter_is_end(iter) == TRUE)
+		return;
+
+	service = g_sequence_get(iter);
+
+	while (service->state == CONNMAN_SERVICE_STATE_FAILURE) {
+		iter = g_sequence_iter_next(iter);
+		if (g_sequence_iter_is_end(iter))
+			return;
+		service = g_sequence_get(iter);
+	}
+
+	if (service->favorite == FALSE)
+		return;
+
+	if (service->state == CONNMAN_SERVICE_STATE_READY)
+		return;
+
+	if (is_connecting(service) == TRUE)
+		return;
+
+	if (service->state == CONNMAN_SERVICE_STATE_IDLE)
+		__connman_service_connect(service);
+}
+
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
@@ -462,6 +513,8 @@ static gboolean connect_timeout(gpointer user_data)
 
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE);
+
+	__connman_service_auto_connect();
 
 	return FALSE;
 }
@@ -1108,57 +1161,6 @@ static int service_register(struct connman_service *service)
 	__connman_profile_changed();
 
 	return 0;
-}
-
-static connman_bool_t is_connecting(struct connman_service *service)
-{
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_CARRIER:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-	case CONNMAN_SERVICE_STATE_READY:
-		break;
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
-static void __connman_service_auto_connect(void)
-{
-	struct connman_service *service;
-	GSequenceIter *iter;
-
-	DBG("");
-
-	iter = g_sequence_get_begin_iter(service_list);
-	if (g_sequence_iter_is_end(iter) == TRUE)
-		return;
-
-	service = g_sequence_get(iter);
-
-	while (service->state == CONNMAN_SERVICE_STATE_FAILURE) {
-		iter = g_sequence_iter_next(iter);
-		if (g_sequence_iter_is_end(iter))
-			return;
-		service = g_sequence_get(iter);
-	}
-
-	if (service->favorite == FALSE)
-		return;
-
-	if (service->state == CONNMAN_SERVICE_STATE_READY)
-		return;
-
-	if (is_connecting(service) == TRUE)
-		return;
-
-	if (service->state == CONNMAN_SERVICE_STATE_IDLE)
-		__connman_service_connect(service);
 }
 
 /**
