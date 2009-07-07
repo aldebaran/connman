@@ -1341,8 +1341,15 @@ static void update_from_network(struct connman_service *service,
 					struct connman_network *network)
 {
 	connman_uint8_t strength = service->strength;
+	connman_bool_t connected = FALSE;
 	GSequenceIter *iter;
 	const char *str;
+
+	if (service->network != NULL)
+		connected = connman_network_get_connected(service->network);
+
+	if (connected == TRUE)
+		return;
 
 	str = connman_network_get_string(network, "Name");
 	if (str != NULL) {
