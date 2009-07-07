@@ -512,13 +512,15 @@ static struct connman_network *find_network(struct connman_device *device,
 		if (tmp_ssid && memcmp(ssid, tmp_ssid, tmp_ssid_size))
 			continue;
 
-		if (g_strcmp0(security, tmp_security) != 0)
+		if (security && tmp_security &&
+				g_strcmp0(security, tmp_security) != 0)
 			continue;
 
-		if (g_strcmp0(mode, tmp_mode) != 0)
+		if (mode && tmp_mode && g_strcmp0(mode, tmp_mode) != 0)
 			continue;
 
-		if (g_strcmp0(address, tmp_address) != 0)
+		if (address && tmp_address &&
+				g_strcmp0(address, tmp_address) != 0)
 			continue;
 
 		return connman_network_ref(value);
