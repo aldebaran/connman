@@ -259,6 +259,9 @@ int __connman_service_indicate_error(struct connman_service *service,
 					enum connman_service_error error);
 int __connman_service_indicate_default(struct connman_service *service);
 
+int __connman_service_connect(struct connman_service *service);
+int __connman_service_disconnect(struct connman_service *service);
+
 #include <connman/notifier.h>
 
 int __connman_notifier_init(void);

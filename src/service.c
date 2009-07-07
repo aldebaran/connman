@@ -449,50 +449,29 @@ static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
+	int err;
 
 	DBG("service %p", service);
 
 	if (service->pending != NULL)
 		return __connman_error_in_progress(msg);
 
-	if (service->state == CONNMAN_SERVICE_STATE_READY)
-		return __connman_error_already_connected(msg);
+	service->pending = dbus_message_ref(msg);
 
-	if (service->network != NULL) {
-		int err;
+	err = __connman_service_connect(service);
+	if (err < 0) {
+		if (err != -EINPROGRESS) {
+			dbus_message_unref(service->pending);
+			service->pending = NULL;
 
-		if (service->hidden == TRUE)
-			return __connman_error_invalid_service(msg);
-
-		connman_network_set_string(service->network,
-				"WiFi.Passphrase", service->passphrase);
-
-		err = __connman_network_connect(service->network);
-		if (err < 0) {
-			if (err != -EINPROGRESS)
-				return __connman_error_failed(msg, -err);
-
-			service->pending = dbus_message_ref(msg);
-
-			service->timeout = g_timeout_add_seconds(45,
-						connect_timeout, service);
-
-			return NULL;
+			return __connman_error_failed(msg, -err);
 		}
-	} else if (service->device != NULL) {
-		if (service->favorite == FALSE)
-			return __connman_error_no_carrier(msg);
-
-		if (__connman_device_connect(service->device) < 0)
-			return __connman_error_failed(msg, EINVAL);
-
-		service->pending = dbus_message_ref(msg);
-		service->timeout = g_timeout_add_seconds(15,
-						connect_timeout, service);
 
 		return NULL;
-	} else
-		return __connman_error_not_supported(msg);
+	}
+
+	dbus_message_unref(service->pending);
+	service->pending = NULL;
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -501,6 +480,7 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
+	int err;
 
 	DBG("service %p", service);
 
@@ -517,23 +497,13 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
-	if (service->network != NULL) {
-		int err;
-
-		err = __connman_network_disconnect(service->network);
-		if (err < 0 && err != -EINPROGRESS)
+	err = __connman_service_disconnect(service);
+	if (err < 0) {
+		if (err != -EINPROGRESS)
 			return __connman_error_failed(msg, -err);
-	} else if (service->device != NULL) {
-		int err;
 
-		if (service->favorite == FALSE)
-			return __connman_error_no_carrier(msg);
-
-		err = __connman_device_disconnect(service->device);
-		if (err < 0)
-			return __connman_error_failed(msg, -err);
-	} else
-		return __connman_error_not_supported(msg);
+		return NULL;
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -554,7 +524,7 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
 
-	g_free (service->passphrase);
+	g_free(service->passphrase);
 	service->passphrase = NULL;
 
 	connman_service_set_favorite(service, FALSE);
@@ -966,6 +936,69 @@ int __connman_service_indicate_error(struct connman_service *service,
 int __connman_service_indicate_default(struct connman_service *service)
 {
 	DBG("service %p", service);
+
+	return 0;
+}
+
+int __connman_service_connect(struct connman_service *service)
+{
+	int err;
+
+	DBG("service %p", service);
+
+	if (service->state == CONNMAN_SERVICE_STATE_READY)
+		return -EISCONN;
+
+	if (service->network != NULL) {
+		if (service->hidden == TRUE)
+			return -EINVAL;
+
+		connman_network_set_string(service->network,
+				"WiFi.Passphrase", service->passphrase);
+
+		err = __connman_network_connect(service->network);
+	} else if (service->device != NULL) {
+		if (service->favorite == FALSE)
+			return -ENOLINK;
+
+		err = __connman_device_connect(service->device);
+	} else
+		return -EOPNOTSUPP;
+
+	if (err < 0) {
+		if (err != -EINPROGRESS)
+			return err;
+
+		service->timeout = g_timeout_add_seconds(45,
+						connect_timeout, service);
+
+		return -EINPROGRESS;
+	}
+
+	return 0;
+}
+
+int __connman_service_disconnect(struct connman_service *service)
+{
+	int err;
+
+	DBG("service %p", service);
+
+	if (service->network != NULL) {
+		err = __connman_network_disconnect(service->network);
+	} else if (service->device != NULL) {
+		if (service->favorite == FALSE)
+			return -ENOLINK;
+		err = __connman_device_disconnect(service->device);
+	} else
+		return -EOPNOTSUPP;
+
+	if (err < 0) {
+		if (err != -EINPROGRESS)
+			return err;
+
+		return -EINPROGRESS;
+	}
 
 	return 0;
 }
