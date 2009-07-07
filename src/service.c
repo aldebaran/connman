@@ -425,8 +425,29 @@ static gboolean connect_timeout(gpointer user_data)
 
 	service->timeout = 0;
 
-	if (service->network != NULL)
+	if (service->network != NULL) {
+		connman_bool_t connected;
+
+		connected = connman_network_get_connected(service->network);
+		if (connected == TRUE) {
+			__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY);
+			return FALSE;
+		}
+
 		__connman_network_disconnect(service->network);
+	} else if (service->device != NULL) {
+		connman_bool_t disconnected;
+
+		disconnected = connman_device_get_disconnected(service->device);
+		if (disconnected == FALSE) {
+			__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY);
+			return FALSE;
+		}
+
+		__connman_device_disconnect(service->device);
+	}
 
 	if (service->pending != NULL) {
 		DBusMessage *reply;
@@ -437,10 +458,10 @@ static gboolean connect_timeout(gpointer user_data)
 
 		dbus_message_unref(service->pending);
 		service->pending = NULL;
-
-		__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE);
 	}
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE);
 
 	return FALSE;
 }
