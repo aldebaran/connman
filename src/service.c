@@ -635,14 +635,11 @@ static DBusMessage *move_before(DBusConnection *conn,
 	src = g_hash_table_lookup(service_hash, service->identifier);
 	dst = g_hash_table_lookup(service_hash, target->identifier);
 
-#if 0
 	g_sequence_move(src, dst);
 
 	__connman_profile_changed();
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-#endif
-	return __connman_error_not_implemented(msg);
 }
 
 static DBusMessage *move_after(DBusConnection *conn,
