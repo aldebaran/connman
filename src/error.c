@@ -39,6 +39,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 		return __connman_error_permission_denied(msg);
 	case EINVAL:
 		return __connman_error_invalid_arguments(msg);
+	case EINPROGRESS:
+		return __connman_error_in_progress(msg);
 	}
 
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
