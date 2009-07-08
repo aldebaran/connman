@@ -1289,6 +1289,9 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 
 unsigned int __connman_service_get_order(struct connman_service *service)
 {
+	if (service == NULL)
+		return 0;
+
 	return service->order;
 }
 
