@@ -471,6 +471,7 @@ static void __connman_service_auto_connect(void)
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
+	connman_bool_t auto_connect = FALSE;
 
 	DBG("service %p", service);
 
@@ -509,12 +510,14 @@ static gboolean connect_timeout(gpointer user_data)
 
 		dbus_message_unref(service->pending);
 		service->pending = NULL;
-	}
+	} else
+		auto_connect = TRUE;
 
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE);
 
-	__connman_service_auto_connect();
+	if (auto_connect == TRUE)
+		__connman_service_auto_connect();
 
 	return FALSE;
 }
