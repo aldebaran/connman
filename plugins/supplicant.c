@@ -24,9 +24,14 @@
 #endif
 
 #include <stdio.h>
+#include <unistd.h>
 #include <errno.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/ioctl.h>
+#include <sys/socket.h>
+#include <linux/if_arp.h>
+#include <linux/wireless.h>
 #include <net/ethernet.h>
 
 #include <gdbus.h>
@@ -178,6 +183,7 @@ struct supplicant_task {
 	enum supplicant_state state;
 	gboolean noscan;
 	GSList *scan_results;
+	struct iw_range *range;
 };
 
 static GSList *task_list = NULL;
@@ -1016,9 +1022,10 @@ static void extract_capabilites(DBusMessageIter *value,
 		result->has_wep = TRUE;
 }
 
-static unsigned char calculate_strength(struct supplicant_result *result)
+static unsigned char calculate_strength(struct supplicant_task *task,
+					struct supplicant_result *result)
 {
-	if (result->quality < 0) {
+	if (task->range->max_qual.qual == 0) {
 		unsigned char strength;
 
 		if (result->level > 0)
@@ -1032,7 +1039,7 @@ static unsigned char calculate_strength(struct supplicant_result *result)
 		return strength;
 	}
 
-	return result->quality;
+	return (result->quality * 100) / task->range->max_qual.qual;
 }
 
 static unsigned short calculate_channel(struct supplicant_result *result)
@@ -1146,7 +1153,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	else if (result.frequency == 14)
 		result.frequency = 2484;
 
-	strength = calculate_strength(&result);
+	strength = calculate_strength(task, &result);
 	channel  = calculate_channel(&result);
 
 	frequency = (result.frequency < 0) ? 0 : result.frequency;
@@ -1486,9 +1493,31 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static int supplicant_get_range(struct supplicant_task *task)
+{
+	int fd, ret;
+	struct iwreq wrq;
+
+	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return -errno;
+
+	memset(&wrq, 0, sizeof(struct iwreq));
+	strncpy(wrq.ifr_name, task->ifname, IFNAMSIZ);
+	wrq.u.data.pointer = task->range;
+	wrq.u.data.length = sizeof(struct iw_range);
+
+	ret = ioctl(fd, SIOCGIWRANGE, &wrq);
+
+	close(fd);
+
+	return ret;
+}
+
 int supplicant_start(struct connman_device *device)
 {
 	struct supplicant_task *task;
+	int err;
 
 	DBG("device %p", device);
 
@@ -1500,9 +1529,19 @@ int supplicant_start(struct connman_device *device)
 	task->ifname = connman_inet_ifname(task->ifindex);
 
 	if (task->ifname == NULL) {
-		g_free(task);
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto err_ifname;
 	}
+
+	task->range = g_try_malloc0(sizeof(struct iw_range));
+	if (task->range == NULL) {
+		err = -ENOMEM;
+		goto err_range;
+	}
+
+	err = supplicant_get_range(task);
+	if (err)
+		goto err_get_range;
 
 	task->device = connman_device_ref(device);
 
@@ -1513,6 +1552,17 @@ int supplicant_start(struct connman_device *device)
 	task_list = g_slist_append(task_list, task);
 
 	return create_interface(task);
+
+err_get_range:
+	g_free(task->range);
+
+err_range:
+	g_free(task->ifname);
+
+err_ifname:
+	g_free(task);
+
+	return err;
 }
 
 int supplicant_stop(struct connman_device *device)
@@ -1525,6 +1575,8 @@ int supplicant_stop(struct connman_device *device)
 	task = find_task_by_index(index);
 	if (task == NULL)
 		return -ENODEV;
+
+	g_free(task->range);
 
 	task_list = g_slist_remove(task_list, task);
 
