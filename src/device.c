@@ -637,6 +637,9 @@ static DBusMessage *join_network(DBusConnection *conn,
 
 	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
 
+	if (connman_device_get_disconnected(device) == FALSE)
+		__connman_device_disconnect(device);
+
 	err = device->driver->join(device, network);
 
 	connman_network_unref(network);
