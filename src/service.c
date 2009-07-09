@@ -435,12 +435,34 @@ static connman_bool_t is_connecting(struct connman_service *service)
 	return FALSE;
 }
 
+static struct connman_service *find_pending_service(void)
+{
+	struct connman_service *service;
+	GSequenceIter *iter;
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+		if (service->pending != NULL)
+			return service;
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return NULL;
+}
+
 static void __connman_service_auto_connect(void)
 {
 	struct connman_service *service;
 	GSequenceIter *iter;
 
 	DBG("");
+
+	service = find_pending_service();
+	if (service != NULL)
+		return;
 
 	iter = g_sequence_get_begin_iter(service_list);
 	if (g_sequence_iter_is_end(iter) == TRUE)
