@@ -1495,23 +1495,23 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 
 static int supplicant_get_range(struct supplicant_task *task)
 {
-	int fd, ret;
 	struct iwreq wrq;
+	int fd, err;
 
 	fd = socket(PF_INET, SOCK_DGRAM, 0);
 	if (fd < 0)
-		return -errno;
+		return -1;
 
 	memset(&wrq, 0, sizeof(struct iwreq));
 	strncpy(wrq.ifr_name, task->ifname, IFNAMSIZ);
 	wrq.u.data.pointer = task->range;
 	wrq.u.data.length = sizeof(struct iw_range);
 
-	ret = ioctl(fd, SIOCGIWRANGE, &wrq);
+	err = ioctl(fd, SIOCGIWRANGE, &wrq);
 
 	close(fd);
 
-	return ret;
+	return err;
 }
 
 int supplicant_start(struct connman_device *device)
@@ -1530,18 +1530,18 @@ int supplicant_start(struct connman_device *device)
 
 	if (task->ifname == NULL) {
 		err = -ENOMEM;
-		goto err_ifname;
+		goto failed;
 	}
 
 	task->range = g_try_malloc0(sizeof(struct iw_range));
 	if (task->range == NULL) {
 		err = -ENOMEM;
-		goto err_range;
+		goto failed;
 	}
 
 	err = supplicant_get_range(task);
-	if (err)
-		goto err_get_range;
+	if (err < 0)
+		goto failed;
 
 	task->device = connman_device_ref(device);
 
@@ -1553,13 +1553,9 @@ int supplicant_start(struct connman_device *device)
 
 	return create_interface(task);
 
-err_get_range:
+failed:
 	g_free(task->range);
-
-err_range:
 	g_free(task->ifname);
-
-err_ifname:
 	g_free(task);
 
 	return err;
