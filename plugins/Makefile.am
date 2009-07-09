@@ -23,7 +23,6 @@ builtin_modules += ethernet
 builtin_sources += ethernet.c
 else
 plugin_LTLIBRARIES += ethernet.la
-ethernet_la_SOURCES = ethernet.c
 endif
 endif
 
@@ -44,7 +43,6 @@ builtin_modules += bluetooth
 builtin_sources += bluetooth.c
 else
 plugin_LTLIBRARIES += bluetooth.la
-bluetooth_la_SOURCES = bluetooth.c
 bluetooth_la_LIBADD = @GDBUS_LIBS@
 endif
 endif
@@ -55,7 +53,7 @@ builtin_modules += ofono
 builtin_sources += ofono.c
 else
 plugin_LTLIBRARIES += ofono.la
-bluetooth_la_LIBADD = @GDBUS_LIBS@
+ofono_la_LIBADD = @GDBUS_LIBS@
 endif
 endif
 
@@ -101,7 +99,6 @@ builtin_libadd += @GATCHAT_LIBS@
 builtin_cflags += @GATCHAT_CFLAGS@
 else
 plugin_LTLIBRARIES += mbm.la
-mbm_la_SOURCES = mbm.c
 mbm_la_LIBADD = @GATCHAT_LIBS@
 mbm_la_CFLAGS = $(AM_CFLAGS) @GATCHAT_CFLAGS@
 endif
@@ -127,7 +124,6 @@ builtin_sources += dhclient.c
 builtin_cflags += -DDHCLIENT=\"@DHCLIENT@\"
 else
 plugin_LTLIBRARIES += dhclient.la
-dhclient_la_SOURCES = dhclient.c
 dhclient_la_CFLAGS = $(AM_CFLAGS) -DDHCLIENT=\"@DHCLIENT@\" \
 		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
 endif
