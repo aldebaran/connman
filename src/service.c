@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <string.h>
 #include <gdbus.h>
 
 #include "connman.h"
@@ -1064,9 +1066,11 @@ int __connman_service_connect(struct connman_service *service)
 		return -EISCONN;
 
 	if (service->network != NULL) {
-		if (service->hidden == TRUE)
-			return -EINVAL;
+		unsigned int ssid_len;
 
+		if (connman_network_get_blob(service->network, "WiFi.SSID",
+					     &ssid_len) == NULL)
+			return -EINVAL;
 		connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 
@@ -1503,6 +1507,8 @@ static int service_load(struct connman_service *service)
 	gchar *pathname, *data = NULL;
 	gsize length;
 	gchar *str;
+	unsigned int ssid_len;
+	int err = 0;
 
 	DBG("service %p", service);
 
@@ -1535,6 +1541,58 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
+		if (service->name == NULL) {
+			gchar *name;
+
+			name = g_key_file_get_string(keyfile,
+						     service->identifier,
+						     "Name", NULL);
+
+			if (name) {
+				g_free(service->name);
+				service->name = g_strdup(name);
+				if (service->network)
+					connman_network_set_name(service->network,
+								 name);
+			}
+
+			g_free(name);
+		}
+
+		if (service->network &&
+		    connman_network_get_blob(service->network, "WiFi.SSID",
+					      &ssid_len) == NULL) {
+			gchar *hex_ssid;
+
+			hex_ssid = g_key_file_get_string(keyfile,
+							 service->identifier,
+							 "WiFi.SSID", NULL);
+
+			if (hex_ssid != NULL) {
+				gchar *ssid;
+				unsigned int i, j = 0, hex;
+				size_t hex_ssid_len = strlen(hex_ssid);
+
+				ssid = g_try_malloc0(hex_ssid_len/2);
+				if (ssid == NULL) {
+					g_free(hex_ssid);
+					err = -ENOMEM;
+					goto done;
+				}
+
+				for (i = 0; i < hex_ssid_len; i += 2) {
+					sscanf(hex_ssid + i, "%02x", &hex);
+					ssid[j++] = hex;
+				}
+
+				connman_network_set_blob(service->network,
+							 "WiFi.SSID",
+							 ssid, hex_ssid_len/2);
+			}
+
+			g_free(hex_ssid);
+
+		}
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -1567,9 +1625,10 @@ static int service_load(struct connman_service *service)
 	__connman_ipconfig_load(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
 
+done:
 	g_key_file_free(keyfile);
 
-	return 0;
+	return err;
 }
 
 static int service_save(struct connman_service *service)
@@ -1578,6 +1637,7 @@ static int service_save(struct connman_service *service)
 	gchar *pathname, *data = NULL;
 	gsize length;
 	gchar *str;
+	int err = 0;
 
 	DBG("service %p", service);
 
@@ -1611,6 +1671,37 @@ update:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
+		if (service->network) {
+			const unsigned char *ssid;
+			unsigned int ssid_len = 0;
+
+			ssid = (unsigned char *)
+				connman_network_get_blob(service->network,
+							 "WiFi.SSID",
+							 &ssid_len);
+
+			if (ssid && ssid_len > 0 && ssid[0] != '\0') {
+				GString *str;
+				char *identifier = service->identifier;
+				unsigned int i;
+
+				str = g_string_sized_new(ssid_len * 2);
+				if (str == NULL) {
+					err = -ENOMEM;
+					goto done;
+				}
+
+				for (i = 0; i < ssid_len; i++)
+					g_string_append_printf(str, "%02x",
+							       ssid[i]);
+
+				g_key_file_set_string(keyfile, identifier,
+						      "WiFi.SSID", str->str);
+
+				g_string_free(str, TRUE);
+			}
+		}
+
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -1659,7 +1750,7 @@ done:
 
 	g_free(pathname);
 
-	return 0;
+	return err;
 }
 
 static struct connman_storage service_storage = {
