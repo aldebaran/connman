@@ -174,9 +174,15 @@ static int set_connected(struct connman_device *device,
 					CONNMAN_SERVICE_STATE_CONFIGURATION);
 		}
 	} else {
+		struct connman_service *service;
+
 		connman_element_unregister_children(&device->element);
 
 		device->disconnected = TRUE;
+
+		service = __connman_service_lookup_from_device(device);
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_IDLE);
 	}
 
 	return 0;
