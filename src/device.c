@@ -636,8 +636,6 @@ static DBusMessage *join_network(DBusConnection *conn,
 
 	group = build_group(ssid, ssid_size, mode, security);
 
-	connman_network_set_group(network, group);
-
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
 

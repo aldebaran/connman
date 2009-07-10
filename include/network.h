@@ -69,6 +69,7 @@ void connman_network_set_protocol(struct connman_network *network,
 					enum connman_network_protocol protocol);
 void connman_network_set_group(struct connman_network *network,
 						const char *group);
+const char *connman_network_get_group(struct connman_network *network);
 
 int connman_network_set_available(struct connman_network *network,
 						connman_bool_t available);

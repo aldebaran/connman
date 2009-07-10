@@ -1313,7 +1313,7 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 	if (ident == NULL)
 		return NULL;
 
-	group = __connman_network_get_group(network);
+	group = connman_network_get_group(network);
 	if (group == NULL)
 		return NULL;
 
@@ -1459,7 +1459,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	if (ident == NULL)
 		return NULL;
 
-	group = __connman_network_get_group(network);
+	group = connman_network_get_group(network);
 	if (group == NULL)
 		return NULL;
 
