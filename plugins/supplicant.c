@@ -715,6 +715,7 @@ static int set_network(struct supplicant_task *task,
 	DBusMessage *message, *reply;
 	DBusMessageIter array, dict;
 	DBusError error;
+	dbus_uint32_t scan_ssid = 1;
 
 	DBG("task %p", task);
 
@@ -733,11 +734,10 @@ static int set_network(struct supplicant_task *task,
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	if (address == NULL) {
-		dbus_uint32_t scan_ssid = 1;
-		connman_dbus_dict_append_variant(&dict, "scan_ssid",
-						DBUS_TYPE_UINT32, &scan_ssid);
-	} else
+	connman_dbus_dict_append_variant(&dict, "scan_ssid",
+					 DBUS_TYPE_UINT32, &scan_ssid);
+
+	if (address)
 		connman_dbus_dict_append_variant(&dict, "bssid",
 						DBUS_TYPE_STRING, &address);
 
