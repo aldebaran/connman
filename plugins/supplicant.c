@@ -177,6 +177,7 @@ struct supplicant_task {
 	char *ifname;
 	struct connman_device *device;
 	struct connman_network *network;
+	struct connman_network *pending_network;
 	char *path;
 	char *netpath;
 	gboolean created;
@@ -184,6 +185,7 @@ struct supplicant_task {
 	gboolean noscan;
 	GSList *scan_results;
 	struct iw_range *range;
+	gboolean disconnecting;
 };
 
 static GSList *task_list = NULL;
@@ -1481,9 +1483,21 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		connman_device_set_scanning(task->device, FALSE);
 		break;
 	case WPA_DISCONNECTED:
-		/* carrier off */
-		connman_network_set_connected(task->network, FALSE);
-		connman_device_set_scanning(task->device, FALSE);
+		if (task->disconnecting == TRUE) {
+			connman_network_set_connected(task->network, FALSE);
+			connman_network_unref(task->network);
+			task->disconnecting = FALSE;
+
+			if (task->pending_network != NULL) {
+				task->network = task->pending_network;
+				task->pending_network = NULL;
+				task_connect(task);
+			}
+		} else {
+			/* carrier off */
+			connman_network_set_connected(task->network, FALSE);
+			connman_device_set_scanning(task->device, FALSE);
+		}
 		break;
 	case WPA_ASSOCIATING:
 		connman_network_set_associating(task->network, TRUE);
@@ -1581,6 +1595,8 @@ int supplicant_start(struct connman_device *device)
 	task->created = FALSE;
 	task->noscan = FALSE;
 	task->state = WPA_INVALID;
+	task->disconnecting = FALSE;
+	task->pending_network = NULL;
 
 	task_list = g_slist_append(task_list, task);
 
@@ -1658,9 +1674,14 @@ int supplicant_connect(struct connman_network *network)
 	if (task == NULL)
 		return -ENODEV;
 
-	task->network = connman_network_ref(network);
+	if (task->disconnecting == TRUE)
+		task->pending_network = connman_network_ref(network);
+	else {
+		task->network = connman_network_ref(network);
+		return task_connect(task);
+	}
 
-	return task_connect(task);
+	return 0;
 }
 
 int supplicant_disconnect(struct connman_network *network)
@@ -1676,13 +1697,14 @@ int supplicant_disconnect(struct connman_network *network)
 	if (task == NULL)
 		return -ENODEV;
 
+	if (task->disconnecting == TRUE)
+		return -EINPROGRESS;
+
 	disable_network(task);
 
 	remove_network(task);
 
-	connman_network_set_connected(task->network, FALSE);
-
-	connman_network_unref(task->network);
+	task->disconnecting = TRUE;
 
 	return 0;
 }
