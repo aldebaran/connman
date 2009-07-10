@@ -1388,6 +1388,39 @@ static enum supplicant_state string2state(const char *state)
 		return WPA_INVALID;
 }
 
+static int task_connect(struct supplicant_task *task)
+{
+	const char *address, *security, *passphrase;
+	const void *ssid;
+	unsigned int ssid_len;
+
+	address = connman_network_get_string(task->network, "Address");
+	security = connman_network_get_string(task->network, "WiFi.Security");
+	passphrase = connman_network_get_string(task->network, "WiFi.Passphrase");
+
+	ssid = connman_network_get_blob(task->network, "WiFi.SSID", &ssid_len);
+
+	DBG("address %s security %s passphrase %s",
+					address, security, passphrase);
+
+	if (security == NULL && passphrase == NULL)
+		return -EINVAL;
+
+	if (g_str_equal(security, "none") == FALSE && passphrase == NULL)
+		return -EINVAL;
+
+	add_network(task);
+
+	select_network(task);
+	disable_network(task);
+
+	set_network(task, ssid, ssid_len, address, security, passphrase);
+
+	enable_network(task);
+
+	return 0;
+}
+
 static void state_change(struct supplicant_task *task, DBusMessage *msg)
 {
 	DBusError error;
@@ -1615,27 +1648,9 @@ int supplicant_scan(struct connman_device *device)
 int supplicant_connect(struct connman_network *network)
 {
 	struct supplicant_task *task;
-	const char *address, *security, *passphrase;
-	const void *ssid;
-	unsigned int ssid_len;
 	int index;
 
 	DBG("network %p", network);
-
-	address = connman_network_get_string(network, "Address");
-	security = connman_network_get_string(network, "WiFi.Security");
-	passphrase = connman_network_get_string(network, "WiFi.Passphrase");
-
-	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_len);
-
-	DBG("address %s security %s passphrase %s",
-					address, security, passphrase);
-
-	if (security == NULL && passphrase == NULL)
-		return -EINVAL;
-
-	if (g_str_equal(security, "none") == FALSE && passphrase == NULL)
-		return -EINVAL;
 
 	index = connman_network_get_index(network);
 
@@ -1645,18 +1660,7 @@ int supplicant_connect(struct connman_network *network)
 
 	task->network = connman_network_ref(network);
 
-	add_network(task);
-
-	select_network(task);
-	disable_network(task);
-
-	set_network(task, ssid, ssid_len, address, security, passphrase);
-
-	enable_network(task);
-
-	connman_network_set_associating(task->network, TRUE);
-
-	return 0;
+	return task_connect(task);
 }
 
 int supplicant_disconnect(struct connman_network *network)
