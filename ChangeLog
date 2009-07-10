@@ -1,3 +1,10 @@
+ver 0.22:
+	Fix wrong auto-connect procedure after user connection.
+	Fix invalid update of already connected network.
+	Fix idle state handling after disconnecting device.
+	Fix disconnect race condition in WiFi supplicant.
+	Fix WiFi signal strength reporting.
+
 ver 0.21:
 	Add udev based network device detection.
 	Add support for global auto-connect feature.
