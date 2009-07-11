@@ -1421,68 +1421,6 @@ int __connman_device_disconnect(struct connman_device *device)
 	return 0;
 }
 
-static void connect_known_network(struct connman_device *device)
-{
-	struct connman_network *network = NULL;
-	GHashTableIter iter;
-	gpointer key, value;
-	const char *name;
-	unsigned int count = 0;
-
-	DBG("device %p", device);
-
-	g_hash_table_iter_init(&iter, device->networks);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		connman_uint8_t old_strength, new_strength;
-
-		count++;
-
-		if (connman_network_get_available(value) == FALSE)
-			continue;
-
-		name = connman_network_get_string(value,
-						CONNMAN_PROPERTY_ID_NAME);
-		if (name != NULL && device->last_network != NULL) {
-			if (g_str_equal(name, device->last_network) == TRUE) {
-				network = value;
-				break;
-			}
-		}
-
-		if (network == NULL) {
-			network = value;
-			continue;
-		}
-
-		old_strength = connman_network_get_uint8(network,
-						CONNMAN_PROPERTY_ID_STRENGTH);
-		new_strength = connman_network_get_uint8(value,
-						CONNMAN_PROPERTY_ID_STRENGTH);
-
-		if (new_strength > old_strength)
-			network = value;
-	}
-
-	if (network != NULL) {
-		int err;
-
-		name = connman_network_get_string(value,
-						CONNMAN_PROPERTY_ID_NAME);
-		if (name != NULL) {
-			err = __connman_network_connect(network);
-			if (err == 0 || err == -EINPROGRESS)
-				return;
-		}
-	}
-
-	if (count > 0)
-		return;
-
-	if (device->driver && device->driver->scan)
-		device->driver->scan(device);
-}
-
 static void mark_network_unavailable(gpointer key, gpointer value,
 							gpointer user_data)
 {
@@ -1573,8 +1511,6 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	if (device->disconnected == TRUE)
 		return 0;
-
-	connect_known_network(device);
 
 	return 0;
 }
