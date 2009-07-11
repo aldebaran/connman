@@ -1545,35 +1545,32 @@ static int service_load(struct connman_service *service)
 			gchar *name;
 
 			name = g_key_file_get_string(keyfile,
-						     service->identifier,
-						     "Name", NULL);
-
-			if (name) {
+					service->identifier, "Name", NULL);
+			if (name != NULL) {
 				g_free(service->name);
-				service->name = g_strdup(name);
-				if (service->network)
-					connman_network_set_name(service->network,
-								 name);
+				service->name = name;
 			}
 
-			g_free(name);
+			if (service->network != NULL)
+				connman_network_set_name(service->network,
+									name);
 		}
 
 		if (service->network &&
-		    connman_network_get_blob(service->network, "WiFi.SSID",
-					      &ssid_len) == NULL) {
+				connman_network_get_blob(service->network,
+					"WiFi.SSID", &ssid_len) == NULL) {
 			gchar *hex_ssid;
 
 			hex_ssid = g_key_file_get_string(keyfile,
-							 service->identifier,
-							 "WiFi.SSID", NULL);
+							service->identifier,
+							"WiFi.SSID", NULL);
 
 			if (hex_ssid != NULL) {
 				gchar *ssid;
 				unsigned int i, j = 0, hex;
 				size_t hex_ssid_len = strlen(hex_ssid);
 
-				ssid = g_try_malloc0(hex_ssid_len/2);
+				ssid = g_try_malloc0(hex_ssid_len / 2);
 				if (ssid == NULL) {
 					g_free(hex_ssid);
 					err = -ENOMEM;
@@ -1586,13 +1583,13 @@ static int service_load(struct connman_service *service)
 				}
 
 				connman_network_set_blob(service->network,
-							 "WiFi.SSID",
-							 ssid, hex_ssid_len/2);
+					"WiFi.SSID", ssid, hex_ssid_len / 2);
 			}
 
 			g_free(hex_ssid);
-
 		}
+		/* fall through */
+
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -1675,14 +1672,12 @@ update:
 			const unsigned char *ssid;
 			unsigned int ssid_len = 0;
 
-			ssid = (unsigned char *)
-				connman_network_get_blob(service->network,
-							 "WiFi.SSID",
-							 &ssid_len);
+			ssid = connman_network_get_blob(service->network,
+							"WiFi.SSID", &ssid_len);
 
-			if (ssid && ssid_len > 0 && ssid[0] != '\0') {
-				GString *str;
+			if (ssid != NULL && ssid_len > 0 && ssid[0] != '\0') {
 				char *identifier = service->identifier;
+				GString *str;
 				unsigned int i;
 
 				str = g_string_sized_new(ssid_len * 2);
@@ -1692,15 +1687,16 @@ update:
 				}
 
 				for (i = 0; i < ssid_len; i++)
-					g_string_append_printf(str, "%02x",
-							       ssid[i]);
+					g_string_append_printf(str,
+							"%02x", ssid[i]);
 
 				g_key_file_set_string(keyfile, identifier,
-						      "WiFi.SSID", str->str);
+							"WiFi.SSID", str->str);
 
 				g_string_free(str, TRUE);
 			}
 		}
+		/* fall through */
 
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
