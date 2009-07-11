@@ -41,6 +41,7 @@ static const char *busname;
 
 struct dhclient_task {
 	GPid pid;
+	gboolean killed;
 	int ifindex;
 	gchar *ifname;
 	struct connman_element *element;
@@ -80,8 +81,13 @@ static void kill_task(struct dhclient_task *task)
 {
 	DBG("task %p name %s pid %d", task, task->ifname, task->pid);
 
-	if (task->pid > 0)
+	if (task->killed == TRUE)
+		return;
+
+	if (task->pid > 0) {
+		task->killed = TRUE;
 		kill(task->pid, SIGTERM);
+	}
 }
 
 static void unlink_task(struct dhclient_task *task)
@@ -126,6 +132,8 @@ static void task_setup(gpointer data)
 	struct dhclient_task *task = data;
 
 	DBG("task %p name %s", task, task->ifname);
+
+	task->killed = FALSE;
 }
 
 static int dhclient_probe(struct connman_element *element)
@@ -203,9 +211,6 @@ static void dhclient_remove(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	task = find_task_by_index(element->index);
-	if (task != NULL)
-		task_list = g_slist_remove(task_list, task);
-
 	if (task == NULL)
 		return;
 
