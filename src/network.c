@@ -629,6 +629,12 @@ void connman_network_set_group(struct connman_network *network,
 		__connman_profile_add_network(network);
 }
 
+/**
+ * connman_network_get_group:
+ * @network: network structure
+ *
+ * Get group name for automatic clustering
+ */
 const char *connman_network_get_group(struct connman_network *network)
 {
 	return network->group;
