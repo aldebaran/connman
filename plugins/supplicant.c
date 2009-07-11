@@ -229,6 +229,63 @@ static struct supplicant_task *find_task_by_path(const char *path)
 	return NULL;
 }
 
+static int get_range(struct supplicant_task *task)
+{
+	struct iwreq wrq;
+	int fd, err;
+
+	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return -1;
+
+	memset(&wrq, 0, sizeof(struct iwreq));
+	strncpy(wrq.ifr_name, task->ifname, IFNAMSIZ);
+	wrq.u.data.pointer = task->range;
+	wrq.u.data.length = sizeof(struct iw_range);
+
+	err = ioctl(fd, SIOCGIWRANGE, &wrq);
+
+	close(fd);
+
+	return err;
+}
+
+static char *get_bssid(struct connman_device *device)
+{
+	char *bssid;
+	unsigned char ioctl_bssid[ETH_ALEN];
+	int fd, ret;
+	struct iwreq wrq;
+
+	if (connman_device_get_type(device) != CONNMAN_DEVICE_TYPE_WIFI)
+		return NULL;
+
+	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return NULL;
+
+	memset(&wrq, 0, sizeof(wrq));
+	strncpy(wrq.ifr_name, connman_device_get_interface(device), IFNAMSIZ);
+
+	ret = ioctl(fd, SIOCGIWAP, &wrq);
+	close(fd);
+	if (ret != 0)
+		return NULL;
+
+	memcpy(ioctl_bssid, wrq.u.ap_addr.sa_data, ETH_ALEN);
+
+	bssid = g_try_malloc0(13);
+	if (bssid == NULL)
+		return NULL;
+
+	snprintf(bssid, 13, "%02x%02x%02x%02x%02x%02x",
+		 ioctl_bssid[0], ioctl_bssid[1],
+		 ioctl_bssid[2], ioctl_bssid[3],
+		 ioctl_bssid[4], ioctl_bssid[5]);
+
+	return bssid;
+}
+
 static void add_interface_reply(DBusPendingCall *call, void *user_data)
 {
 	struct supplicant_task *task = user_data;
@@ -754,13 +811,15 @@ static int set_network(struct supplicant_task *task,
 			connman_dbus_dict_append_variant(&dict, "psk",
 						DBUS_TYPE_STRING, &passphrase);
 	} else if (g_ascii_strcasecmp(security, "wep") == 0) {
-		const char *key_mgmt = "NONE", *index = "0";
+		const char *key_mgmt = "NONE";
 		const char *auth_alg = "OPEN SHARED";
-		connman_dbus_dict_append_variant(&dict, "key_mgmt",
-						DBUS_TYPE_STRING, &key_mgmt);
+		const char *key_index = "0";
 
 		connman_dbus_dict_append_variant(&dict, "auth_alg",
 						DBUS_TYPE_STRING, &auth_alg);
+
+		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+						DBUS_TYPE_STRING, &key_mgmt);
 
 		if (passphrase) {
 			int size = strlen(passphrase);
@@ -784,8 +843,9 @@ static int set_network(struct supplicant_task *task,
 				connman_dbus_dict_append_variant(&dict,
 						"wep_key0", DBUS_TYPE_STRING,
 								&passphrase);
+
 			connman_dbus_dict_append_variant(&dict, "wep_tx_keyidx",
-						DBUS_TYPE_STRING, &index);
+						DBUS_TYPE_STRING, &key_index);
 		}
 	} else {
 		const char *key_mgmt = "NONE";
@@ -1426,43 +1486,6 @@ static int task_connect(struct supplicant_task *task)
 	return 0;
 }
 
-static char *get_bssid(struct connman_device *device)
-{
-	char *bssid;
-	unsigned char ioctl_bssid[ETH_ALEN];
-	int fd, ret;
-	struct iwreq wrq;
-
-	if (connman_device_get_type(device) != CONNMAN_DEVICE_TYPE_WIFI)
-		return NULL;
-
-	fd = socket(PF_INET, SOCK_DGRAM, 0);
-	if (fd < 0)
-		return NULL;
-
-	memset(&wrq, 0, sizeof(wrq));
-	strncpy(wrq.ifr_name, connman_device_get_interface(device), IFNAMSIZ);
-
-	ret = ioctl(fd, SIOCGIWAP, &wrq);
-	close(fd);
-	if (ret != 0)
-		return NULL;
-
-	memcpy(ioctl_bssid, wrq.u.ap_addr.sa_data, ETH_ALEN);
-
-	bssid = g_try_malloc0(13);
-	if (bssid == NULL)
-		return NULL;
-
-	snprintf(bssid, 13, "%02x%02x%02x%02x%02x%02x",
-		 ioctl_bssid[0], ioctl_bssid[1],
-		 ioctl_bssid[2], ioctl_bssid[3],
-		 ioctl_bssid[4], ioctl_bssid[5]);
-
-	return bssid;
-}
-
-
 static void state_change(struct supplicant_task *task, DBusMessage *msg)
 {
 	DBusError error;
@@ -1518,7 +1541,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	switch (task->state) {
 	case WPA_COMPLETED:
-		/* carrier on */
 		if (connman_network_get_group(task->network) == NULL) {
 			const char *name, *mode, *security;
 			char *group, *bssid;
@@ -1530,24 +1552,27 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 			bssid = get_bssid(task->device);
 
 			name = connman_network_get_string(task->network,
-							  "Name");
+								"Name");
 			mode = connman_network_get_string(task->network,
-							  "WiFi.Mode");
+								"WiFi.Mode");
 			security = connman_network_get_string(task->network,
-							      "WiFi.Security");
+							"WiFi.Security");
 
 			if (bssid && name && mode && security) {
 				group = build_group(bssid, name, NULL, 0,
-						    mode, security);
+								mode, security);
 				connman_network_set_group(task->network, group);
 			}
 
 			g_free(bssid);
 			g_free(group);
 		}
+
+		/* carrier on */
 		connman_network_set_connected(task->network, TRUE);
 		connman_device_set_scanning(task->device, FALSE);
 		break;
+
 	case WPA_DISCONNECTED:
 		if (task->disconnecting == TRUE) {
 			connman_network_set_connected(task->network, FALSE);
@@ -1565,9 +1590,11 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 			connman_device_set_scanning(task->device, FALSE);
 		}
 		break;
+
 	case WPA_ASSOCIATING:
 		connman_network_set_associating(task->network, TRUE);
 		break;
+
 	default:
 		connman_network_set_associating(task->network, FALSE);
 		break;
@@ -1606,27 +1633,6 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static int supplicant_get_range(struct supplicant_task *task)
-{
-	struct iwreq wrq;
-	int fd, err;
-
-	fd = socket(PF_INET, SOCK_DGRAM, 0);
-	if (fd < 0)
-		return -1;
-
-	memset(&wrq, 0, sizeof(struct iwreq));
-	strncpy(wrq.ifr_name, task->ifname, IFNAMSIZ);
-	wrq.u.data.pointer = task->range;
-	wrq.u.data.length = sizeof(struct iw_range);
-
-	err = ioctl(fd, SIOCGIWRANGE, &wrq);
-
-	close(fd);
-
-	return err;
-}
-
 int supplicant_start(struct connman_device *device)
 {
 	struct supplicant_task *task;
@@ -1652,7 +1658,7 @@ int supplicant_start(struct connman_device *device)
 		goto failed;
 	}
 
-	err = supplicant_get_range(task);
+	err = get_range(task);
 	if (err < 0)
 		goto failed;
 
