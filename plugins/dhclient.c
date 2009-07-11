@@ -45,6 +45,7 @@ struct dhclient_task {
 	int ifindex;
 	gchar *ifname;
 	struct connman_element *element;
+	struct dhclient_task *pending;
 };
 
 static GSList *task_list = NULL;
@@ -107,6 +108,8 @@ static void unlink_task(struct dhclient_task *task)
 	g_free(pathname);
 }
 
+static int start_dhclient(struct dhclient_task *task);
+
 static void task_died(GPid pid, gint status, gpointer data)
 {
 	struct dhclient_task *task = data;
@@ -123,6 +126,9 @@ static void task_died(GPid pid, gint status, gpointer data)
 
 	unlink_task(task);
 
+	if (task->pending != NULL)
+		start_dhclient(task->pending);
+
 	g_free(task->ifname);
 	g_free(task);
 }
@@ -136,31 +142,10 @@ static void task_setup(gpointer data)
 	task->killed = FALSE;
 }
 
-static int dhclient_probe(struct connman_element *element)
+static int start_dhclient(struct dhclient_task *task)
 {
-	struct dhclient_task *task;
 	char *argv[16], *envp[1], address[128], pidfile[PATH_MAX];
 	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
-
-	DBG("element %p name %s", element, element->name);
-
-	if (access(DHCLIENT, X_OK) < 0)
-		return -errno;
-
-	task = g_try_new0(struct dhclient_task, 1);
-	if (task == NULL)
-		return -ENOMEM;
-
-	task->ifindex = element->index;
-	task->ifname = connman_inet_ifname(element->index);
-	task->element = element;
-
-	if (task->ifname == NULL) {
-		g_free(task);
-		return -ENOMEM;
-	}
-
-	DBG("request %s", task->ifname);
 
 	snprintf(address, sizeof(address) - 1, "BUSNAME=%s", busname);
 	snprintf(pidfile, sizeof(pidfile) - 1,
@@ -202,6 +187,37 @@ static int dhclient_probe(struct connman_element *element)
 	DBG("executed %s with pid %d", DHCLIENT, task->pid);
 
 	return 0;
+}
+
+static int dhclient_probe(struct connman_element *element)
+{
+	struct dhclient_task *task, *previous;
+	DBG("element %p name %s", element, element->name);
+
+	if (access(DHCLIENT, X_OK) < 0)
+		return -errno;
+
+	task = g_try_new0(struct dhclient_task, 1);
+	if (task == NULL)
+		return -ENOMEM;
+
+	task->ifindex = element->index;
+	task->ifname  = connman_inet_ifname(element->index);
+	task->element = element;
+
+	if (task->ifname == NULL) {
+		g_free(task);
+		return -ENOMEM;
+	}
+
+	previous= find_task_by_index(element->index);
+	if (previous != NULL) {
+		previous->pending = task;
+		kill_task(previous);
+		return 0;
+	}
+
+	return start_dhclient(task);
 }
 
 static void dhclient_remove(struct connman_element *element)
