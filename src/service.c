@@ -44,6 +44,7 @@ struct connman_service {
 	connman_uint8_t strength;
 	connman_bool_t favorite;
 	connman_bool_t hidden;
+	connman_bool_t ignore;
 	GTimeVal modified;
 	unsigned int order;
 	char *name;
@@ -453,6 +454,17 @@ static struct connman_service *find_pending_service(void)
 	return NULL;
 }
 
+static connman_bool_t is_ignore(struct connman_service *service)
+{
+	if (service->ignore == TRUE)
+		return TRUE;
+
+	if (service->state == CONNMAN_SERVICE_STATE_FAILURE)
+		return TRUE;
+
+	return FALSE;
+}
+
 static void __connman_service_auto_connect(void)
 {
 	struct connman_service *service;
@@ -470,7 +482,7 @@ static void __connman_service_auto_connect(void)
 
 	service = g_sequence_get(iter);
 
-	while (service->state == CONNMAN_SERVICE_STATE_FAILURE) {
+	while (is_ignore(service) == TRUE) {
 		iter = g_sequence_iter_next(iter);
 		if (g_sequence_iter_is_end(iter))
 			return;
@@ -555,6 +567,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	if (service->pending != NULL)
 		return __connman_error_in_progress(msg);
 
+	service->ignore = FALSE;
+
 	service->pending = dbus_message_ref(msg);
 
 	err = __connman_service_connect(service);
@@ -595,6 +609,8 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
+
+	service->ignore = TRUE;
 
 	err = __connman_service_disconnect(service);
 	if (err < 0) {
@@ -787,6 +803,8 @@ static void __connman_service_initialize(struct connman_service *service)
 
 	service->favorite = FALSE;
 	service->hidden = FALSE;
+
+	service->ignore = FALSE;
 
 	service->order = 0;
 }
