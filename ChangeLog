@@ -1,3 +1,9 @@
+ver 0.23:
+	Fix dhclient probe/remove race condition.
+	Fix handling of disconnected services during auto-connect.
+	Add support for proper group name of hidden networks.
+	Add support for storing SSID details of hidden networks.
+
 ver 0.22:
 	Fix wrong auto-connect procedure after user connection.
 	Fix invalid update of already connected network.
