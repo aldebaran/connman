@@ -57,19 +57,19 @@ static GSList *device_list = NULL;
 static struct connman_device *find_device(const char *interface)
 {
 	GSList *list;
+	int index;
 
 	if (interface == NULL)
 		return NULL;
 
+	index = connman_inet_ifindex(interface);
+	if (index < 0)
+		return NULL;
+
 	for (list = device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
-		const char *device_interface;
 
-		device_interface = connman_device_get_interface(device);
-		if (device_interface == NULL)
-			continue;
-
-		if (g_str_equal(device_interface, interface) == TRUE)
+		if (connman_device_get_index(device) == index)
 			return device;
 	}
 
