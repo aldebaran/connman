@@ -227,6 +227,9 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 			err = -EINVAL;
 	}
 
+	if (err == 0)
+		device->powered = powered;
+
 	return err;
 }
 
@@ -404,8 +407,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 			return NULL;
 		}
-
-		device->powered = powered;
 	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
 		connman_uint16_t interval;
 
