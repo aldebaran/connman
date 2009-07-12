@@ -807,7 +807,8 @@ static void device_enable(struct connman_device *device)
 		return;
 
 	if (device->driver->enable) {
-		device->driver->enable(device);
+		if (device->driver->enable(device) == 0)
+			device->powered = TRUE;
 		__connman_notifier_device_type_increase(device->type);
 	}
 }
@@ -822,7 +823,8 @@ static void device_disable(struct connman_device *device)
 	g_hash_table_remove_all(device->networks);
 
 	if (device->driver->disable) {
-		device->driver->disable(device);
+		if (device->driver->disable(device) == 0)
+			device->powered = FALSE;
 		__connman_notifier_device_type_decrease(device->type);
 	}
 }
