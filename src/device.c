@@ -1203,17 +1203,6 @@ void connman_device_set_interface(struct connman_device *device,
 }
 
 /**
- * connman_device_get_interface:
- * @device: device structure
- *
- * Get interface name of device
- */
-const char *connman_device_get_interface(struct connman_device *device)
-{
-	return device->interface;
-}
-
-/**
  * connman_device_set_ident:
  * @device: device structure
  * @ident: unique identifier
