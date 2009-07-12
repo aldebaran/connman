@@ -1565,7 +1565,7 @@ static int service_load(struct connman_service *service)
 
 			hex_ssid = g_key_file_get_string(keyfile,
 							service->identifier,
-							"WiFi.SSID", NULL);
+								"SSID", NULL);
 
 			if (hex_ssid != NULL) {
 				gchar *ssid;
@@ -1693,7 +1693,7 @@ update:
 							"%02x", ssid[i]);
 
 				g_key_file_set_string(keyfile, identifier,
-							"WiFi.SSID", str->str);
+							"SSID", str->str);
 
 				g_string_free(str, TRUE);
 			}
