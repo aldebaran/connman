@@ -404,6 +404,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 			return NULL;
 		}
+
+		device->powered = powered;
 	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
 		connman_uint16_t interval;
 
