@@ -95,9 +95,9 @@ char *__connman_udev_get_devtype(const char *ifname)
 	return NULL;
 }
 
-connman_bool_t __connman_udev_is_mbm(const char *ifname)
+char *__connman_udev_get_mbm_devnode(const char *ifname)
 {
-	return FALSE;
+	return NULL;
 }
 
 int __connman_udev_init(void)

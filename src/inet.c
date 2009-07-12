@@ -312,6 +312,7 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 		char bridge_path[PATH_MAX], wimax_path[PATH_MAX];
 		struct stat st;
 		struct iwreq iwr;
+		char *devnode;
 
 		snprintf(bridge_path, PATH_MAX,
 					"/sys/class/net/%s/bridge", devname);
@@ -321,9 +322,14 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 		memset(&iwr, 0, sizeof(iwr));
 		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
 
-		if (__connman_udev_is_mbm(devname) == TRUE)
+		devnode = __connman_udev_get_mbm_devnode(devname);
+		if (devnode != NULL) {
 			devtype = CONNMAN_DEVICE_TYPE_MBM;
-		else if (g_str_has_prefix(devname, "vmnet") == TRUE)
+			g_free(devnode);
+			goto done;
+		}
+
+		if (g_str_has_prefix(devname, "vmnet") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(ifr.ifr_name, "vboxnet") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
@@ -355,7 +361,7 @@ struct connman_device *connman_inet_create_device(int index)
 	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	enum connman_device_type type;
 	struct connman_device *device;
-	char *addr, *name, *devname, *ident = NULL;
+	char *addr, *name, *node, *devname, *ident = NULL;
 
 	if (index < 0)
 		return NULL;
@@ -378,10 +384,10 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "");
 		addr = index2addr(index);
+		node = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
@@ -389,16 +395,18 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		name = strdup(devname);
 		addr = NULL;
+		node = NULL;
+		break;
+	case CONNMAN_DEVICE_TYPE_MBM:
+		name = strdup(devname);
+		addr = index2addr(index);
+		node = __connman_udev_get_mbm_devnode(devname);
 		break;
 	}
 
 	device = connman_device_create(name, type);
-	if (device == NULL) {
-		g_free(devname);
-		g_free(name);
-		g_free(addr);
-		return NULL;
-	}
+	if (device == NULL)
+		goto done;
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -430,7 +438,7 @@ struct connman_device *connman_inet_create_device(int index)
 	connman_device_set_mode(device, mode);
 
 	connman_device_set_index(device, index);
-	connman_device_set_interface(device, devname);
+	connman_device_set_interface(device, devname, node);
 
 	if (ident != NULL) {
 		connman_device_set_ident(device, ident);
@@ -439,7 +447,9 @@ struct connman_device *connman_inet_create_device(int index)
 
 	connman_device_set_string(device, "Address", addr);
 
+done:
 	g_free(devname);
+	g_free(node);
 	g_free(name);
 	g_free(addr);
 

@@ -304,16 +304,16 @@ done:
 	return NULL;
 }
 
-connman_bool_t __connman_udev_is_mbm(const char *ifname)
+char *__connman_udev_get_mbm_devnode(const char *ifname)
 {
-	connman_bool_t result = FALSE;
 	struct udev_device *device, *parent, *control;
 	const char *driver, *devpath1, *devpath2;
+	char *devnode = NULL;
 
 	device = udev_device_new_from_subsystem_sysname(udev_ctx,
 							"net", ifname);
 	if (device == NULL)
-		return FALSE;
+		return NULL;
 
 	parent = udev_device_get_parent(device);
 	if (parent == NULL)
@@ -343,12 +343,12 @@ connman_bool_t __connman_udev_is_mbm(const char *ifname)
 	devpath2 = udev_device_get_devpath(parent);
 
 	if (g_strcmp0(devpath1, devpath2) == 0)
-		result = TRUE;
+		devnode = g_strdup(udev_device_get_devnode(control));
 
 done:
 	udev_device_unref(device);
 
-	return result;
+	return devnode;
 }
 
 int __connman_udev_init(void)
