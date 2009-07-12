@@ -321,7 +321,9 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 		memset(&iwr, 0, sizeof(iwr));
 		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
 
-		if (g_str_has_prefix(devname, "vmnet") == TRUE)
+		if (__connman_udev_is_mbm(devname) == TRUE)
+			devtype = CONNMAN_DEVICE_TYPE_MBM;
+		else if (g_str_has_prefix(devname, "vmnet") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(ifr.ifr_name, "vboxnet") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;

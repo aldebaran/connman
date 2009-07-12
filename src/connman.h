@@ -189,6 +189,7 @@ void __connman_connection_update_gateway(void);
 int __connman_udev_init(void);
 void __connman_udev_cleanup(void);
 char *__connman_udev_get_devtype(const char *ifname);
+connman_bool_t __connman_udev_is_mbm(const char *ifname);
 
 #include <connman/device.h>
 

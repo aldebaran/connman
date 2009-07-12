@@ -304,6 +304,53 @@ done:
 	return NULL;
 }
 
+connman_bool_t __connman_udev_is_mbm(const char *ifname)
+{
+	connman_bool_t result = FALSE;
+	struct udev_device *device, *parent, *control;
+	const char *driver, *devpath1, *devpath2;
+
+	device = udev_device_new_from_subsystem_sysname(udev_ctx,
+							"net", ifname);
+	if (device == NULL)
+		return FALSE;
+
+	parent = udev_device_get_parent(device);
+	if (parent == NULL)
+		goto done;
+
+	driver = udev_device_get_driver(parent);
+	if (g_strcmp0(driver, "cdc_ether") != 0)
+		goto done;
+
+	parent = udev_device_get_parent_with_subsystem_devtype(device,
+							"usb", "usb_device");
+	if (parent == NULL)
+		goto done;
+
+	devpath1 = udev_device_get_devpath(parent);
+
+	control = udev_device_new_from_subsystem_sysname(udev_ctx,
+							"usb", "cdc-wdm0");
+	if (control == NULL)
+		goto done;
+
+	parent = udev_device_get_parent_with_subsystem_devtype(control,
+							"usb", "usb_device");
+	if (parent == NULL)
+		goto done;
+
+	devpath2 = udev_device_get_devpath(parent);
+
+	if (g_strcmp0(devpath1, devpath2) == 0)
+		result = TRUE;
+
+done:
+	udev_device_unref(device);
+
+	return result;
+}
+
 int __connman_udev_init(void)
 {
 	GIOChannel *channel;
