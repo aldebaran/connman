@@ -254,22 +254,34 @@ static char *get_bssid(struct connman_device *device)
 {
 	char *bssid;
 	unsigned char ioctl_bssid[ETH_ALEN];
-	int fd, ret;
+	int ifindex;
+	char *ifname;
 	struct iwreq wrq;
+	int fd, err;
 
-	if (connman_device_get_type(device) != CONNMAN_DEVICE_TYPE_WIFI)
+	ifindex = connman_device_get_index(device);
+	if (ifindex < 0)
+		return NULL;
+
+	ifname = connman_inet_ifname(ifindex);
+	if (ifname == NULL)
 		return NULL;
 
 	fd = socket(PF_INET, SOCK_DGRAM, 0);
-	if (fd < 0)
+	if (fd < 0) {
+		g_free(ifname);
 		return NULL;
+	}
 
 	memset(&wrq, 0, sizeof(wrq));
-	strncpy(wrq.ifr_name, connman_device_get_interface(device), IFNAMSIZ);
+	strncpy(wrq.ifr_name, ifname, IFNAMSIZ);
 
-	ret = ioctl(fd, SIOCGIWAP, &wrq);
+	err = ioctl(fd, SIOCGIWAP, &wrq);
+
+	g_free(ifname);
 	close(fd);
-	if (ret != 0)
+
+	if (err < 0)
 		return NULL;
 
 	memcpy(ioctl_bssid, wrq.u.ap_addr.sa_data, ETH_ALEN);
