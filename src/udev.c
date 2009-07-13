@@ -309,6 +309,7 @@ char *__connman_udev_get_mbm_devnode(const char *ifname)
 	struct udev_device *device, *parent, *control;
 	const char *driver, *devpath1, *devpath2;
 	char *devnode = NULL;
+	unsigned int i;
 
 	device = udev_device_new_from_subsystem_sysname(udev_ctx,
 							"net", ifname);
@@ -330,20 +331,28 @@ char *__connman_udev_get_mbm_devnode(const char *ifname)
 
 	devpath1 = udev_device_get_devpath(parent);
 
-	control = udev_device_new_from_subsystem_sysname(udev_ctx,
-							"usb", "cdc-wdm0");
-	if (control == NULL)
-		goto done;
+	for (i = 0; i < 64; i++) {
+		char sysname[16];
 
-	parent = udev_device_get_parent_with_subsystem_devtype(control,
+		snprintf(sysname, sizeof(sysname) - 1, "ttyACM%d", i);
+
+		control = udev_device_new_from_subsystem_sysname(udev_ctx,
+							"tty", sysname);
+		if (control == NULL)
+			continue;
+
+		parent = udev_device_get_parent_with_subsystem_devtype(control,
 							"usb", "usb_device");
-	if (parent == NULL)
-		goto done;
+		if (parent == NULL)
+			continue;
 
-	devpath2 = udev_device_get_devpath(parent);
+		devpath2 = udev_device_get_devpath(parent);
 
-	if (g_strcmp0(devpath1, devpath2) == 0)
-		devnode = g_strdup(udev_device_get_devnode(control));
+		if (g_strcmp0(devpath1, devpath2) == 0) {
+			devnode = g_strdup(udev_device_get_devnode(control));
+			break;
+		}
+	}
 
 done:
 	udev_device_unref(device);
