@@ -291,9 +291,9 @@ static char *get_bssid(struct connman_device *device)
 		return NULL;
 
 	snprintf(bssid, 13, "%02x%02x%02x%02x%02x%02x",
-		 ioctl_bssid[0], ioctl_bssid[1],
-		 ioctl_bssid[2], ioctl_bssid[3],
-		 ioctl_bssid[4], ioctl_bssid[5]);
+					ioctl_bssid[0], ioctl_bssid[1],
+					ioctl_bssid[2], ioctl_bssid[3],
+					ioctl_bssid[4], ioctl_bssid[5]);
 
 	return bssid;
 }
