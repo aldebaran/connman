@@ -432,6 +432,7 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
+		ident = index2ident(index, NULL);
 		break;
 	}
 
