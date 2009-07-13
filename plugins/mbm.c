@@ -112,7 +112,7 @@ static void cfun_callback(gboolean ok, GAtResult *result,
 			connman_network_set_protocol(data->network,
 						CONNMAN_NETWORK_PROTOCOL_IP);
 
-			connman_network_set_group(data->network, "gsm");
+			connman_network_set_group(data->network, "internet");
 
 			connman_device_add_network(device, data->network);
 		}
@@ -245,13 +245,18 @@ static void mbm_remove(struct connman_device *device)
 static int mbm_enable(struct connman_device *device)
 {
 	struct mbm_data *data = connman_device_get_data(device);
+	const char *devnode;
 	GIOChannel *channel;
 	struct termios ti;
 	int fd, index;
 
 	DBG("device %p", device);
 
-	fd = open("/dev/ttyACM2", O_RDWR | O_NOCTTY);
+	devnode = connman_device_get_control(device);
+	if (devnode == NULL)
+		return -EIO;
+
+	fd = open(devnode, O_RDWR | O_NOCTTY);
 	if (fd < 0)
 		return -ENODEV;
 
