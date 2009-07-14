@@ -1555,7 +1555,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	case WPA_COMPLETED:
 		if (connman_network_get_group(task->network) == NULL) {
 			const char *name, *mode, *security;
-			char *group, *bssid;
+			char *bssid;
 
 			/*
 			 * This is a hidden network, we need to set its
@@ -1571,13 +1571,15 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 							"WiFi.Security");
 
 			if (bssid && name && mode && security) {
+				char *group;
+
 				group = build_group(bssid, name, NULL, 0,
 								mode, security);
 				connman_network_set_group(task->network, group);
+				g_free(group);
 			}
 
 			g_free(bssid);
-			g_free(group);
 		}
 
 		/* carrier on */
