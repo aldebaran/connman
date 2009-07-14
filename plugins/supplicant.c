@@ -948,6 +948,11 @@ static char *build_group(const char *addr, const char *name,
 	if (str == NULL)
 		return NULL;
 
+	if (ssid == NULL) {
+		g_string_append_printf(str, "hidden_%s", addr);
+		goto done;
+	}
+
 	for (i = 0; special_ssid[i].name; i++) {
 		if (g_strcmp0(special_ssid[i].name, name) == 0) {
 			if (special_ssid[i].value == NULL)
