@@ -1026,6 +1026,9 @@ static void extract_ssid(DBusMessageIter *value,
 	if (ssid_len < 1)
 		return;
 
+	if (ssid[0] == '\0')
+		return;
+
 	result->ssid = g_try_malloc(ssid_len);
 	if (result->ssid == NULL)
 		return;
