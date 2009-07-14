@@ -1301,7 +1301,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	connman_network_set_uint16(network, "WiFi.Channel", channel);
 	connman_network_set_string(network, "WiFi.Security", security);
 
-	connman_network_set_group(network, group);
+	if (result.ssid != NULL)
+		connman_network_set_group(network, group);
 
 done:
 	g_free(group);
