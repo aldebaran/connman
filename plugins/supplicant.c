@@ -1136,7 +1136,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	unsigned char strength;
 	unsigned short channel, frequency;
 	const char *mode, *security;
-	char *group;
+	char *group = NULL;
 	unsigned int ssid_len;
 
 	DBG("task %p", task);
@@ -1295,9 +1295,9 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	connman_network_set_group(network, group);
 
+done:
 	g_free(group);
 
-done:
 	g_free(result.path);
 	g_free(result.addr);
 	g_free(result.name);
