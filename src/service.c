@@ -187,10 +187,12 @@ static const char *error2string(enum connman_service_error error)
 	switch (error) {
 	case CONNMAN_SERVICE_ERROR_UNKNOWN:
 		break;
-	case CONNMAN_SERVICE_ERROR_DHCP_FAILED:
-		return "dhcp-failed";
 	case CONNMAN_SERVICE_ERROR_PIN_MISSING:
 		return "pin-missing";
+	case CONNMAN_SERVICE_ERROR_DHCP_FAILED:
+		return "dhcp-failed";
+	case CONNMAN_SERVICE_ERROR_CONNECT_FAILED:
+		return "connect-failed";
 	}
 
 	return NULL;
