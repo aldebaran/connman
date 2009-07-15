@@ -199,12 +199,41 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 	return set_connected(device, carrier);
 }
 
+static int powered_changed(struct connman_device *device)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Powered";
+
+	signal = dbus_message_new_signal(device->element.path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&device->powered);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+
+	return 0;
+}
+
 static int set_powered(struct connman_device *device, connman_bool_t powered)
 {
 	struct connman_device_driver *driver = device->driver;
 	int err;
 
 	DBG("device %p powered %d", device, powered);
+
+	if (device->powered == powered)
+		return -EALREADY;
 
 	if (!driver)
 		return -EINVAL;
@@ -227,8 +256,10 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 			err = -EINVAL;
 	}
 
-	if (err == 0)
+	if (err == 0) {
 		device->powered = powered;
+		powered_changed(device);
+	}
 
 	return err;
 }
@@ -1295,10 +1326,6 @@ connman_bool_t connman_device_get_secondary(struct connman_device *device)
 int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered)
 {
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Powered";
-
 	DBG("driver %p powered %d", device, powered);
 
 	if (device->timeout > 0) {
@@ -1322,21 +1349,7 @@ int connman_device_set_powered(struct connman_device *device,
 	if (device->registered == FALSE)
 		return 0;
 
-	signal = dbus_message_new_signal(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return 0;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &powered);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
+	powered_changed(device);
 
 	if (powered == FALSE)
 		return 0;
