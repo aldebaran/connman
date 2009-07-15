@@ -81,6 +81,8 @@ int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected);
 connman_bool_t connman_network_get_connected(struct connman_network *network);
 
+connman_bool_t connman_network_get_associating(struct connman_network *network);
+
 int connman_network_set_address(struct connman_network *network,
 				const void *address, unsigned int size);
 int connman_network_set_name(struct connman_network *network,

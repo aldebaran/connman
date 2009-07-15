@@ -834,6 +834,17 @@ connman_bool_t connman_network_get_connected(struct connman_network *network)
 }
 
 /**
+ * connman_network_get_associating:
+ * @network: network structure
+ *
+ * Get network associating status
+ */
+connman_bool_t connman_network_get_associating(struct connman_network *network)
+{
+	return network->associating;
+}
+
+/**
  * __connman_network_connect:
  * @network: network structure
  *
