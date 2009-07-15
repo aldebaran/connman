@@ -193,6 +193,11 @@ static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 {
 	struct connman_service *service;
 
+	if (carrier == TRUE)
+		__connman_profile_add_device(device);
+	else
+		__connman_profile_remove_device(device);
+
 	service = __connman_service_lookup_from_device(device);
 	__connman_service_set_carrier(service, carrier);
 
@@ -880,7 +885,7 @@ static int setup_device(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		break;
 	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		if (device->secondary == FALSE)
+		if (device->carrier == TRUE && device->secondary == FALSE)
 			__connman_profile_add_device(device);
 		break;
 	}
@@ -1300,7 +1305,7 @@ enum connman_device_mode connman_device_get_mode(struct connman_device *device)
  * Change secondary value of device
  */
 void connman_device_set_secondary(struct connman_device *device,
-                                                connman_bool_t secondary)
+						connman_bool_t secondary)
 {
 	device->secondary = secondary;
 }
