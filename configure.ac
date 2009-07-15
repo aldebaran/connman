@@ -197,25 +197,6 @@ AC_CHECK_LIB(c, inotify_init, dummy=yes,
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
-PKG_CHECK_MODULES(UDEV, libudev >= 141,
-				[enable_udev="yes"], [enable_udev="no"])
-if (test "${enable_udev}" = "yes"); then
-	AC_CHECK_LIB(udev, udev_monitor_filter_update, dummy=yes,
-		AC_DEFINE(NEED_UDEV_MONITOR_FILTER, 1,
-			[Define to 1 if you need the
-					udev_monitor_filter...() functions.]))
-	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
-	if (test -z "${UDEV_DATADIR}"); then
-		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
-	else
-		UDEV_DATADIR="${UDEV_DATADIR}/rules.d"
-	fi
-	AC_SUBST(UDEV_DATADIR)
-fi
-AC_SUBST(UDEV_CFLAGS)
-AC_SUBST(UDEV_LIBS)
-AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
-
 AC_ARG_WITH(iwmxsdk, AC_HELP_STRING([--with-iwmxsdk=PATH],
 						[path to Intel WiMAX SDK]),
 				[pkgconfig_iwmxsdk=${withval}/lib/pkgconfig])
@@ -305,6 +286,30 @@ AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 		[enable fake device support]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
+
+AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
+			[don't use udev support even if available]),
+						[enable_udev=${enableval}])
+if (test "${enable_udev}" != "no"); then
+	PKG_CHECK_MODULES(UDEV, libudev >= 141,
+				[enable_udev="yes"], [enable_udev="no"])
+fi
+if (test "${enable_udev}" = "yes"); then
+	AC_CHECK_LIB(udev, udev_monitor_filter_update, dummy=yes,
+		AC_DEFINE(NEED_UDEV_MONITOR_FILTER, 1,
+			[Define to 1 if you need the
+					udev_monitor_filter...() functions.]))
+	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
+	if (test -z "${UDEV_DATADIR}"); then
+		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
+	else
+		UDEV_DATADIR="${UDEV_DATADIR}/rules.d"
+	fi
+	AC_SUBST(UDEV_DATADIR)
+fi
+AC_SUBST(UDEV_CFLAGS)
+AC_SUBST(UDEV_LIBS)
+AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
 
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[don't install configuration and data files]),
