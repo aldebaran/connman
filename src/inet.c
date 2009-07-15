@@ -361,7 +361,8 @@ struct connman_device *connman_inet_create_device(int index)
 	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	enum connman_device_type type;
 	struct connman_device *device;
-	char *addr, *name, *node, *devname, *ident = NULL;
+	char *devname, *ident = NULL;
+	char *addr = NULL, *name = NULL, *node = NULL;
 
 	if (index < 0)
 		return NULL;
@@ -384,7 +385,6 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "");
 		addr = index2addr(index);
-		node = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_GPS:
@@ -394,8 +394,6 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		name = strdup(devname);
-		addr = NULL;
-		node = NULL;
 		break;
 	case CONNMAN_DEVICE_TYPE_MBM:
 		name = strdup(devname);
