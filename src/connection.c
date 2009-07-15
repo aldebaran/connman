@@ -243,8 +243,7 @@ static struct gateway_data *add_gateway(int index, const char *gateway)
 							find_element, data);
 
 	service = __connman_element_get_service(data->element);
-	if (service != NULL)
-		data->order = __connman_service_get_order(service);
+	data->order = __connman_service_get_order(service);
 
 	gateway_list = g_slist_append(gateway_list, data);
 
@@ -281,12 +280,16 @@ static void set_default_gateway(struct gateway_data *data)
 static struct gateway_data *find_default_gateway(void)
 {
 	struct gateway_data *found = NULL;
+	unsigned int order = 0;
 	GSList *list;
 
 	for (list = gateway_list; list; list = list->next) {
 		struct gateway_data *data = list->data;
-		/* just return the last one for now */
-		found = data;
+
+		if (found == NULL || data->order > order) {
+			found = data;
+			order = data->order;
+		}
 	}
 
 	return found;
@@ -640,7 +643,6 @@ static void update_order(void)
 		struct connman_service *service;
 
 		service = __connman_element_get_service(data->element);
-
 		data->order = __connman_service_get_order(service);
 	}
 }

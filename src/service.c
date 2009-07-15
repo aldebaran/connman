@@ -1333,8 +1333,19 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 
 unsigned int __connman_service_get_order(struct connman_service *service)
 {
+	GSequenceIter *iter;
+
 	if (service == NULL)
 		return 0;
+
+	if (service->favorite == FALSE)
+		return 0;
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL) {
+		if (g_sequence_iter_get_position(iter) == 0)
+			return 1;
+	}
 
 	return service->order;
 }
