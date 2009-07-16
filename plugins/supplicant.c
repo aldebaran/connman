@@ -1356,8 +1356,7 @@ static void get_properties(struct supplicant_task *task)
 	return;
 
 noscan:
-	if (task->noscan == FALSE)
-		connman_device_set_scanning(task->device, FALSE);
+	connman_device_set_scanning(task->device, FALSE);
 }
 
 static void scan_results_reply(DBusPendingCall *call, void *user_data)
@@ -1414,8 +1413,7 @@ done:
 	dbus_message_unref(reply);
 
 noscan:
-	if (task->noscan == FALSE)
-		connman_device_set_scanning(task->device, FALSE);
+	connman_device_set_scanning(task->device, FALSE);
 }
 
 static void scan_results_available(struct supplicant_task *task)
