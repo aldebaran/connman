@@ -105,6 +105,8 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 
 enum connman_device_type __connman_inet_get_device_type(int index);
 
+#include <connman/wifi.h>
+
 #include <connman/rfkill.h>
 
 int __connman_rfkill_init(void);
