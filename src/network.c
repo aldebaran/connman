@@ -890,7 +890,7 @@ int __connman_network_disconnect(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (network->connected == FALSE)
+	if (network->connected == FALSE && network->connecting == FALSE)
 		return -ENOTCONN;
 
 	if (network->driver == NULL)
