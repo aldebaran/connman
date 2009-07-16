@@ -65,18 +65,20 @@ static void append_services(DBusMessageIter *entry)
 	dbus_message_iter_close_container(entry, &value);
 }
 
-void __connman_profile_changed(void)
+static guint changed_timeout = 0;
+
+static gboolean services_changed(gpointer user_data)
 {
 	const char *path = __connman_profile_active_path();
 	DBusMessage *signal;
 	DBusMessageIter entry;
 
-	__connman_connection_update_gateway();
+	changed_timeout = 0;
 
 	signal = dbus_message_new_signal(path,
 				CONNMAN_PROFILE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
-		return;
+		return FALSE;
 
 	dbus_message_iter_init_append(signal, &entry);
 	append_services(&entry);
@@ -85,11 +87,30 @@ void __connman_profile_changed(void)
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
-		return;
+		return FALSE;
 
 	dbus_message_iter_init_append(signal, &entry);
 	append_services(&entry);
 	g_dbus_send_message(connection, signal);
+
+	return FALSE;
+}
+
+void __connman_profile_changed(void)
+{
+	DBG("");
+
+	if (changed_timeout > 0) {
+		g_source_remove(changed_timeout);
+		changed_timeout = 0;
+	}
+
+	if (__connman_connection_update_gateway() == TRUE) {
+		services_changed(NULL);
+		return;
+	}
+
+	changed_timeout = g_timeout_add_seconds(2, services_changed, NULL);
 }
 
 int __connman_profile_add_device(struct connman_device *device)

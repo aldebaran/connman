@@ -656,15 +656,20 @@ static void update_order(void)
 	}
 }
 
-void __connman_connection_update_gateway(void)
+gboolean __connman_connection_update_gateway(void)
 {
 	struct gateway_data *active_gateway, *default_gateway;
+	gboolean updated = FALSE;
 
 	update_order();
 
 	active_gateway = find_active_gateway();
 	default_gateway = find_default_gateway();
 
-	if (active_gateway && active_gateway != default_gateway)
+	if (active_gateway && active_gateway != default_gateway) {
 		del_route(active_gateway->element, active_gateway->gateway);
+		updated = TRUE;
+	}
+
+	return updated;
 }
