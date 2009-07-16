@@ -1503,7 +1503,7 @@ static int task_connect(struct supplicant_task *task)
 
 	enable_network(task);
 
-	return 0;
+	return -EINPROGRESS;
 }
 
 static void state_change(struct supplicant_task *task, DBusMessage *msg)
@@ -1789,7 +1789,7 @@ int supplicant_connect(struct connman_network *network)
 		return task_connect(task);
 	}
 
-	return 0;
+	return -EINPROGRESS;
 }
 
 int supplicant_disconnect(struct connman_network *network)
@@ -1814,7 +1814,7 @@ int supplicant_disconnect(struct connman_network *network)
 
 	task->disconnecting = TRUE;
 
-	return 0;
+	return -EINPROGRESS;
 }
 
 static void supplicant_activate(DBusConnection *conn)
