@@ -125,6 +125,35 @@ static void append_connections(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void append_technologies(gboolean powered, DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key;
+
+	if (powered)
+		key = "EnabledTechnologies";
+	else
+		key = "Technologies";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &iter);
+	__connman_notifier_device_type_list(powered, &iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -170,6 +199,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_variant(&dict, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &global_offlinemode);
+
+	append_technologies(FALSE, &dict);
+	append_technologies(TRUE, &dict);
 
 	dbus_message_iter_close_container(&array, &dict);
 

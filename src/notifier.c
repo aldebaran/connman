@@ -71,16 +71,121 @@ static void device_enabled(enum connman_device_type type,
 {
 	GSList *list;
 
+	DBG("type %d enabled %d", type, enabled);
+
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
 		if (notifier->device_enabled)
 			notifier->device_enabled(type, enabled);
 	}
-
 }
 
-static volatile gint enabled[10];
+static void device_registered(enum connman_device_type type,
+						connman_bool_t registered)
+{
+	DBG("type %d registered %d", type, registered);
+}
+
+static const char *type2string(enum connman_device_type type)
+{
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		break;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		return "ethernet";
+	case CONNMAN_DEVICE_TYPE_WIFI:
+		return "wifi";
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		return "wimax";
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		return "bluetooth";
+	case CONNMAN_DEVICE_TYPE_GPS:
+		return "gps";
+	}
+
+	return NULL;
+}
+
+static volatile gint registered[20];
+static volatile gint enabled[20];
+
+void __connman_notifier_device_type_list(gboolean powered,
+						DBusMessageIter *iter)
+{
+	int i;
+
+	for (i = 0; i < 10; i++) {
+		const char *type = type2string(i);
+		gint count;
+
+		if (type == NULL)
+			continue;
+
+		if (powered == TRUE)
+			count = g_atomic_int_get(&enabled[i]);
+		else
+			count = g_atomic_int_get(&registered[i]);
+
+		if (count > 0)
+			dbus_message_iter_append_basic(iter,
+						DBUS_TYPE_STRING, &type);
+	}
+}
+
+void __connman_notifier_device_type_register(enum connman_device_type type)
+{
+	DBG("type %d", type);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		return;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+		if (g_atomic_int_exchange_and_add(&registered[type], 1) == 0)
+			device_registered(type, TRUE);
+		break;
+	}
+}
+
+void __connman_notifier_device_type_unregister(enum connman_device_type type)
+{
+	DBG("type %d", type);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		return;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+		if (g_atomic_int_dec_and_test(&registered[type]) == TRUE)
+			device_registered(type, FALSE);
+		break;
+	}
+}
 
 void __connman_notifier_device_type_increase(enum connman_device_type type)
 {

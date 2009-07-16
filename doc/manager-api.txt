@@ -108,6 +108,16 @@ Properties	string State [readonly]
 			the value "connected". This can only be seen if
 			previously no connection was present.
 
+		array{string} Technologies [readonly]
+
+			The list of available technologies. The strings
+			are the same as the ones from the service types.
+
+		array{string} EnabledTechnologies [readonly]
+
+			The list of enabled technologies. The strings
+			are the same as the ones from the service types.
+
 		boolean OfflineMode [readwrite]
 
 			The offline mode indicates the global setting for

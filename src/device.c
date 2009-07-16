@@ -1798,6 +1798,8 @@ int connman_device_register(struct connman_device *device)
 		break;
 	}
 
+	__connman_notifier_device_type_register(device->type);
+
 	return connman_element_register(&device->element, NULL);
 }
 
@@ -1810,6 +1812,8 @@ int connman_device_register(struct connman_device *device)
 void connman_device_unregister(struct connman_device *device)
 {
 	__connman_storage_save_device(device);
+
+	__connman_notifier_device_type_unregister(device->type);
 
 	connman_element_unregister(&device->element);
 }

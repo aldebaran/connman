@@ -276,6 +276,10 @@ void __connman_service_auto_connect(void);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
+void __connman_notifier_device_type_list(gboolean powered,
+						DBusMessageIter *iter);
+void __connman_notifier_device_type_register(enum connman_device_type type);
+void __connman_notifier_device_type_unregister(enum connman_device_type type);
 void __connman_notifier_device_type_increase(enum connman_device_type type);
 void __connman_notifier_device_type_decrease(enum connman_device_type type);
 void __connman_notifier_offline_mode(connman_bool_t enabled);
