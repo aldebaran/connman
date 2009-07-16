@@ -23,7 +23,11 @@
 #include <config.h>
 #endif
 
+#include <gdbus.h>
+
 #include "connman.h"
+
+static DBusConnection *connection = NULL;
 
 static GSList *notifier_list = NULL;
 
@@ -70,9 +74,35 @@ static void device_enabled(enum connman_device_type type,
 						connman_bool_t enabled)
 {
 	GSList *list;
+	DBusMessage *signal;
+	DBusMessageIter entry, value, iter;
+	const char *key = "EnabledTechnologies";
 
 	DBG("type %d enabled %d", type, enabled);
 
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		goto done;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &iter);
+	__connman_notifier_device_type_list(TRUE, &iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+
+done:
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
@@ -84,7 +114,33 @@ static void device_enabled(enum connman_device_type type,
 static void device_registered(enum connman_device_type type,
 						connman_bool_t registered)
 {
+	DBusMessage *signal;
+	DBusMessageIter entry, value, iter;
+	const char *key = "Technologies";
+
 	DBG("type %d registered %d", type, registered);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &iter);
+	__connman_notifier_device_type_list(FALSE, &iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
 }
 
 static const char *type2string(enum connman_device_type type)
@@ -255,10 +311,14 @@ int __connman_notifier_init(void)
 {
 	DBG("");
 
+	connection = connman_dbus_get_connection();
+
 	return 0;
 }
 
 void __connman_notifier_cleanup(void)
 {
 	DBG("");
+
+	dbus_connection_unref(connection);
 }
