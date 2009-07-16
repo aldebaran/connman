@@ -310,6 +310,32 @@ static DBusMessage *request_scan(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *enable_technology(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *str;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
+							DBUS_TYPE_INVALID);
+
+	return __connman_error_not_supported(msg);
+}
+
+static DBusMessage *disable_technology(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *str;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
+							DBUS_TYPE_INVALID);
+
+	return __connman_error_not_supported(msg);
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -383,15 +409,17 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 }
 
 static GDBusMethodTable manager_methods[] = {
-	{ "GetProperties",   "",      "a{sv}", get_properties   },
-	{ "SetProperty",     "sv",    "",      set_property     },
-	{ "AddProfile",      "s",     "o",     add_profile      },
-	{ "RemoveProfile",   "o",     "",      remove_profile   },
-	{ "RequestScan",     "s",     "",      request_scan	},
-	{ "ConnectService",  "a{sv}", "o",     connect_service,
+	{ "GetProperties",     "",      "a{sv}", get_properties     },
+	{ "SetProperty",       "sv",    "",      set_property       },
+	{ "AddProfile",        "s",     "o",     add_profile        },
+	{ "RemoveProfile",     "o",     "",      remove_profile     },
+	{ "RequestScan",       "s",     "",      request_scan       },
+	{ "EnableTechnology",  "s",     "",      enable_technology  },
+	{ "DisableTechnology", "s",     "",      disable_technology },
+	{ "ConnectService",    "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "RegisterAgent",   "o",     "",      register_agent   },
-	{ "UnregisterAgent", "o",     "",      unregister_agent },
+	{ "RegisterAgent",     "o",     "",      register_agent     },
+	{ "UnregisterAgent",   "o",     "",      unregister_agent   },
 	{ },
 };
 

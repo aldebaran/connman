@@ -53,6 +53,18 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void EnableTechnology(string type)
+
+			Enable specified type of technologies.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void DisableTechnology(string type)
+
+			Disable specified type of technologies.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		object ConnectService(dict network)
 
 			Connect to a network specified by the given
