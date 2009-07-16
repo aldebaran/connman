@@ -774,7 +774,7 @@ static gboolean get_static_array_property(struct connman_element *element,
 
 	property = g_hash_table_lookup(element->properties, name);
 	if (property != NULL) {
-		*((char **) value) = property->value;
+		*((void **) value) = property->value;
 		*len = property->size;
 		found = TRUE;
 	}
