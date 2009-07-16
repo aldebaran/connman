@@ -973,6 +973,10 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (service->state == state)
 		return -EALREADY;
 
+	if (service->state == CONNMAN_SERVICE_STATE_FAILURE &&
+				state == CONNMAN_SERVICE_STATE_IDLE)
+		return -EINVAL;
+
 	if (service->state == CONNMAN_SERVICE_STATE_IDLE &&
 				state == CONNMAN_SERVICE_STATE_DISCONNECT)
 		return -EINVAL;

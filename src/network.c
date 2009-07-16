@@ -782,10 +782,11 @@ int connman_network_set_connected(struct connman_network *network,
 
 	DBG("network %p connected %d", network, connected);
 
-	if (connected == FALSE && network->connecting == TRUE) {
+	if ((network->connecting || network->associating == TRUE) &&
+							connected == FALSE) {
 		connman_element_set_error(&network->element,
 					CONNMAN_ELEMENT_ERROR_CONNECT_FAILED);
-		network->connecting = FALSE;
+		__connman_network_disconnect(network);
 	}
 
 	if (network->connected == connected)
@@ -890,7 +891,8 @@ int __connman_network_disconnect(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (network->connected == FALSE && network->connecting == FALSE)
+	if (network->connected == FALSE && network->connecting == FALSE &&
+						network->associating == FALSE)
 		return -ENOTCONN;
 
 	if (network->driver == NULL)
