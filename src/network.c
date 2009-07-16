@@ -762,6 +762,7 @@ static gboolean set_connected(gpointer user_data)
 	}
 
 	network->connecting = FALSE;
+	network->associating = FALSE;
 
 	return FALSE;
 }
@@ -789,13 +790,15 @@ int connman_network_set_connected(struct connman_network *network,
 		__connman_network_disconnect(network);
 	}
 
+	if (connected == TRUE) {
+		network->connecting = FALSE;
+		network->associating = FALSE;
+	}
+
 	if (network->connected == connected)
 		return -EALREADY;
 
 	network->connected = connected;
-
-	if (connected == TRUE)
-		network->associating = FALSE;
 
 	if (network->registered == FALSE) {
 		g_idle_add(set_connected, network);
