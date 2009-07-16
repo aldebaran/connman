@@ -176,7 +176,7 @@ static int setup_hostname(void)
 static int setup_loopback(void)
 {
 	struct ifreq ifr;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
@@ -197,9 +197,10 @@ static int setup_loopback(void)
 		goto done;
 	}
 
-	addr = (struct sockaddr_in *) &ifr.ifr_addr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = inet_addr("127.0.0.1");
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
 	if (err < 0) {
@@ -208,9 +209,10 @@ static int setup_loopback(void)
 		goto done;
 	}
 
-	addr = (struct sockaddr_in *) &ifr.ifr_netmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = inet_addr("255.0.0.0");
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr("255.0.0.0");
+	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
 
 	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
 	if (err < 0) {

@@ -44,7 +44,7 @@ static int set_ipv4(struct connman_element *element,
 			struct connman_ipv4 *ipv4, const char *nameserver)
 {
 	struct ifreq ifr;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	DBG("element %p ipv4 %p", element, ipv4);
@@ -63,27 +63,30 @@ static int set_ipv4(struct connman_element *element,
 
 	DBG("ifname %s", ifr.ifr_name);
 
-	addr = (struct sockaddr_in *) &ifr.ifr_addr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = ipv4->address;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = ipv4->address;
+	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
 
 	if (err < 0)
 		DBG("address setting failed (%s)", strerror(errno));
 
-	addr = (struct sockaddr_in *) &ifr.ifr_netmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = ipv4->netmask;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = ipv4->netmask;
+	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
 
 	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
 
 	if (err < 0)
 		DBG("netmask setting failed (%s)", strerror(errno));
 
-	addr = (struct sockaddr_in *) &ifr.ifr_broadaddr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = ipv4->broadcast;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = ipv4->broadcast;
+	memcpy(&ifr.ifr_broadaddr, &addr, sizeof(ifr.ifr_broadaddr));
 
 	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
 
@@ -103,7 +106,7 @@ static int set_ipv4(struct connman_element *element,
 static int clear_ipv4(struct connman_element *element)
 {
 	struct ifreq ifr;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	DBG("element %p", element);
@@ -124,9 +127,10 @@ static int clear_ipv4(struct connman_element *element)
 
 	connman_resolver_remove_all(ifr.ifr_name);
 
-	addr = (struct sockaddr_in *) &ifr.ifr_addr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	//err = ioctl(sk, SIOCDIFADDR, &ifr);
 	err = ioctl(sk, SIOCSIFADDR, &ifr);

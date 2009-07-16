@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
 
@@ -44,12 +45,15 @@ static void notifier_ipup(void *data, int arg)
 {
 	ipcp_options opts = ipcp_gotoptions[0];
 	ipcp_options peer = ipcp_hisoptions[0];
+	struct in_addr ouraddr, hisaddr;
 
 	printf("ipup: data %p arg %d\n", data, arg);
 
-	printf("%s: %s -> %s\n", ifname,
-				inet_ntoa(*((struct in_addr *) &opts.ouraddr)),
-				inet_ntoa(*((struct in_addr *) &peer.hisaddr)));
+	memcpy(&ouraddr, &opts.ouraddr, sizeof(ouraddr));
+	memcpy(&hisaddr, &peer.hisaddr, sizeof(hisaddr));
+
+	printf("%s: %s -> %s\n",
+			ifname, inet_ntoa(ouraddr), inet_ntoa(hisaddr));
 
 	script_unsetenv("USEPEERDNS");
 	script_unsetenv("DNS1");

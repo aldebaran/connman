@@ -185,6 +185,7 @@ struct supplicant_task {
 	gboolean noscan;
 	GSList *scan_results;
 	struct iw_range *range;
+	gboolean connecting;
 	gboolean disconnecting;
 };
 
@@ -981,7 +982,7 @@ static void extract_addr(DBusMessageIter *value,
 					struct supplicant_result *result)
 {
 	DBusMessageIter array;
-	struct ether_addr *eth;
+	struct ether_addr eth;
 	unsigned char *addr;
 	int addr_len;
 
@@ -1002,15 +1003,14 @@ static void extract_addr(DBusMessageIter *value,
 	if (result->path == NULL)
 		return;
 
-	eth = (void *) addr;
-
+	memcpy(&eth, addr, sizeof(eth));
 	snprintf(result->path, 13, "%02x%02x%02x%02x%02x%02x",
-						eth->ether_addr_octet[0],
-						eth->ether_addr_octet[1],
-						eth->ether_addr_octet[2],
-						eth->ether_addr_octet[3],
-						eth->ether_addr_octet[4],
-						eth->ether_addr_octet[5]);
+						eth.ether_addr_octet[0],
+						eth.ether_addr_octet[1],
+						eth.ether_addr_octet[2],
+						eth.ether_addr_octet[3],
+						eth.ether_addr_octet[4],
+						eth.ether_addr_octet[5]);
 }
 
 static void extract_ssid(DBusMessageIter *value,
@@ -1495,6 +1495,8 @@ static int task_connect(struct supplicant_task *task)
 	if (g_str_equal(security, "none") == FALSE && passphrase == NULL)
 		return -EINVAL;
 
+	task->connecting = TRUE;
+
 	add_network(task);
 
 	select_network(task);
@@ -1594,6 +1596,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		/* carrier on */
 		connman_network_set_connected(task->network, TRUE);
 		connman_device_set_scanning(task->device, FALSE);
+		task->connecting = FALSE;
 		break;
 
 	case WPA_DISCONNECTED:
@@ -1611,6 +1614,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 			/* carrier off */
 			connman_network_set_connected(task->network, FALSE);
 			connman_device_set_scanning(task->device, FALSE);
+			task->connecting = FALSE;
 		}
 		break;
 
@@ -1690,6 +1694,7 @@ int supplicant_start(struct connman_device *device)
 	task->created = FALSE;
 	task->noscan = FALSE;
 	task->state = WPA_INVALID;
+	task->connecting = FALSE;
 	task->disconnecting = FALSE;
 	task->pending_network = NULL;
 

@@ -202,7 +202,7 @@ static unsigned short index2type(int index)
 static char *index2addr(int index)
 {
 	struct ifreq ifr;
-	struct ether_addr *eth;
+	struct ether_addr eth;
 	char *str;
 	int sk, err;
 
@@ -230,14 +230,14 @@ static char *index2addr(int index)
 	if (!str)
 		return NULL;
 
-	eth = (void *) &ifr.ifr_hwaddr.sa_data;
+	memcpy(&eth, &ifr.ifr_hwaddr.sa_data, sizeof(eth));
 	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
-						eth->ether_addr_octet[0],
-						eth->ether_addr_octet[1],
-						eth->ether_addr_octet[2],
-						eth->ether_addr_octet[3],
-						eth->ether_addr_octet[4],
-						eth->ether_addr_octet[5]);
+						eth.ether_addr_octet[0],
+						eth.ether_addr_octet[1],
+						eth.ether_addr_octet[2],
+						eth.ether_addr_octet[3],
+						eth.ether_addr_octet[4],
+						eth.ether_addr_octet[5]);
 
 	return str;
 }
@@ -245,7 +245,7 @@ static char *index2addr(int index)
 static char *index2ident(int index, const char *prefix)
 {
 	struct ifreq ifr;
-	struct ether_addr *eth;
+	struct ether_addr eth;
 	char *str;
 	int sk, err, len;
 
@@ -275,15 +275,15 @@ static char *index2ident(int index, const char *prefix)
 	if (!str)
 		return NULL;
 
-	eth = (void *) &ifr.ifr_hwaddr.sa_data;
+	memcpy(&eth, &ifr.ifr_hwaddr.sa_data, sizeof(eth));
 	snprintf(str, len, "%s%02x%02x%02x%02x%02x%02x",
 						prefix ? prefix : "",
-						eth->ether_addr_octet[0],
-						eth->ether_addr_octet[1],
-						eth->ether_addr_octet[2],
-						eth->ether_addr_octet[3],
-						eth->ether_addr_octet[4],
-						eth->ether_addr_octet[5]);
+						eth.ether_addr_octet[0],
+						eth.ether_addr_octet[1],
+						eth.ether_addr_octet[2],
+						eth.ether_addr_octet[3],
+						eth.ether_addr_octet[4],
+						eth.ether_addr_octet[5]);
 
 	return str;
 }
@@ -459,7 +459,7 @@ int connman_inet_set_address(int index, struct in_addr address,
 			struct in_addr netmask, struct in_addr broadcast)
 {
 	struct ifreq ifr;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
@@ -476,27 +476,30 @@ int connman_inet_set_address(int index, struct in_addr address,
 
 	DBG("ifname %s", ifr.ifr_name);
 
-	addr = (struct sockaddr_in *) &ifr.ifr_addr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = address;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = address;
+	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
 
 	if (err < 0)
 		DBG("address setting failed (%s)", strerror(errno));
 
-	addr = (struct sockaddr_in *) &ifr.ifr_netmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = netmask;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = netmask;
+	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
 
 	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
 
 	if (err < 0)
 		DBG("netmask setting failed (%s)", strerror(errno));
 
-	addr = (struct sockaddr_in *) &ifr.ifr_broadaddr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = broadcast;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = broadcast;
+	memcpy(&ifr.ifr_broadaddr, &addr, sizeof(ifr.ifr_broadaddr));
 
 	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
 
@@ -511,7 +514,7 @@ int connman_inet_set_address(int index, struct in_addr address,
 int connman_inet_clear_address(int index)
 {
 	struct ifreq ifr;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
@@ -528,9 +531,10 @@ int connman_inet_clear_address(int index)
 
 	DBG("ifname %s", ifr.ifr_name);
 
-	addr = (struct sockaddr_in *) &ifr.ifr_addr;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	//err = ioctl(sk, SIOCDIFADDR, &ifr);
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
@@ -549,7 +553,7 @@ int connman_inet_set_gateway(int index, struct in_addr gateway)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
@@ -569,17 +573,20 @@ int connman_inet_set_gateway(int index, struct in_addr gateway)
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_HOST;
 
-	addr = (struct sockaddr_in *) &rt.rt_dst;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = gateway;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = gateway;
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
 
-	addr = (struct sockaddr_in *) &rt.rt_gateway;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
 
-	addr = (struct sockaddr_in *) &rt.rt_genmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	rt.rt_dev = ifr.ifr_name;
 
@@ -591,17 +598,20 @@ int connman_inet_set_gateway(int index, struct in_addr gateway)
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
-	addr = (struct sockaddr_in *) &rt.rt_dst;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
 
-	addr = (struct sockaddr_in *) &rt.rt_gateway;
-	addr->sin_family = AF_INET;
-	addr->sin_addr = gateway;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr = gateway;
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
 
-	addr = (struct sockaddr_in *) &rt.rt_genmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	err = ioctl(sk, SIOCADDRT, &rt);
 	if (err < 0)

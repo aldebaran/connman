@@ -70,7 +70,7 @@ static int set_route(struct connman_element *element, const char *gateway)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	DBG("element %p", element);
@@ -92,17 +92,20 @@ static int set_route(struct connman_element *element, const char *gateway)
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_HOST;
 
-	addr = (struct sockaddr_in *) &rt.rt_dst;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = inet_addr(gateway);
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(gateway);
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
 
-	addr = (struct sockaddr_in *) &rt.rt_gateway;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
 
-	addr = (struct sockaddr_in *) &rt.rt_genmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	rt.rt_dev = ifr.ifr_name;
 
@@ -114,17 +117,20 @@ static int set_route(struct connman_element *element, const char *gateway)
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
-	addr = (struct sockaddr_in *) &rt.rt_dst;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
 
-	addr = (struct sockaddr_in *) &rt.rt_gateway;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = inet_addr(gateway);
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(gateway);
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
 
-	addr = (struct sockaddr_in *) &rt.rt_genmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	err = ioctl(sk, SIOCADDRT, &rt);
 	if (err < 0)
@@ -140,7 +146,7 @@ static int del_route(struct connman_element *element, const char *gateway)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
-	struct sockaddr_in *addr;
+	struct sockaddr_in addr;
 	int sk, err;
 
 	DBG("element %p", element);
@@ -162,17 +168,20 @@ static int del_route(struct connman_element *element, const char *gateway)
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
-	addr = (struct sockaddr_in *) &rt.rt_dst;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
 
-	addr = (struct sockaddr_in *) &rt.rt_gateway;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = inet_addr(gateway);
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(gateway);
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
 
-	addr = (struct sockaddr_in *) &rt.rt_genmask;
-	addr->sin_family = AF_INET;
-	addr->sin_addr.s_addr = INADDR_ANY;
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	err = ioctl(sk, SIOCDELRT, &rt);
 	if (err < 0)
