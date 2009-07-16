@@ -40,6 +40,11 @@ Methods		dict GetProperties()
 			automatically. If no cable is plugged in this method
 			will fail.
 
+			This method call will only return in case of an
+			error or when the service is fully connected. So
+			setting a longer D-Bus timeout might be a really
+			good idea.
+
 			Possible Errors: [service].Error.InvalidArguments
 
 		void Disconnect()
