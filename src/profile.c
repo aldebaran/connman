@@ -96,7 +96,7 @@ static gboolean services_changed(gpointer user_data)
 	return FALSE;
 }
 
-void __connman_profile_changed(void)
+void __connman_profile_changed(gboolean delayed)
 {
 	DBG("");
 
@@ -106,6 +106,11 @@ void __connman_profile_changed(void)
 	}
 
 	if (__connman_connection_update_gateway() == TRUE) {
+		services_changed(NULL);
+		return;
+	}
+
+	if (delayed == FALSE) {
 		services_changed(NULL);
 		return;
 	}

@@ -682,7 +682,7 @@ static DBusMessage *move_before(DBusConnection *conn,
 
 	g_sequence_move(src, dst);
 
-	__connman_profile_changed();
+	__connman_profile_changed(FALSE);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -754,7 +754,7 @@ static void service_free(gpointer user_data)
 	service->path = NULL;
 
 	if (path != NULL) {
-		__connman_profile_changed();
+		__connman_profile_changed(TRUE);
 
 		g_dbus_unregister_interface(connection, path,
 						CONNMAN_SERVICE_INTERFACE);
@@ -919,7 +919,7 @@ int connman_service_set_favorite(struct connman_service *service,
 
 	g_sequence_sort_changed(iter, service_compare, NULL);
 
-	__connman_profile_changed();
+	__connman_profile_changed(FALSE);
 
 	return 0;
 }
@@ -1036,7 +1036,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (iter != NULL)
 		g_sequence_sort_changed(iter, service_compare, NULL);
 
-	__connman_profile_changed();
+	__connman_profile_changed(FALSE);
 
 	return 0;
 }
@@ -1307,7 +1307,7 @@ static int service_register(struct connman_service *service)
 	if (iter != NULL)
 		g_sequence_sort_changed(iter, service_compare, NULL);
 
-	__connman_profile_changed();
+	__connman_profile_changed(TRUE);
 
 	return 0;
 }
@@ -1595,7 +1595,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	if (service->path != NULL) {
 		update_from_network(service, network);
 
-		__connman_profile_changed();
+		__connman_profile_changed(TRUE);
 
 		__connman_service_put(service);
 		service = NULL;

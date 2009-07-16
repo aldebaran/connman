@@ -64,7 +64,7 @@ void __connman_profile_list(DBusMessageIter *iter);
 const char *__connman_profile_active_ident(void);
 const char *__connman_profile_active_path(void);
 
-void __connman_profile_changed(void);
+void __connman_profile_changed(gboolean delayed);
 
 #include <connman/log.h>
 
