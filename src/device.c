@@ -715,13 +715,7 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 		break;
 	}
 
-	if (!device->driver || !device->driver->scan)
-		return __connman_error_not_supported(msg);
-
-	if (device->powered == FALSE)
-		return __connman_error_failed(msg, EINVAL);
-
-	err = device->driver->scan(device);
+	err = __connman_device_scan(device);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -1383,6 +1377,17 @@ int connman_device_set_carrier(struct connman_device *device,
 	device->carrier = carrier;
 
 	return set_carrier(device, device->carrier);
+}
+
+int __connman_device_scan(struct connman_device *device)
+{
+	if (!device->driver || !device->driver->scan)
+		return -EOPNOTSUPP;
+
+	if (device->powered == FALSE)
+		return -ENOLINK;
+
+	return device->driver->scan(device);
 }
 
 int __connman_device_connect(struct connman_device *device)

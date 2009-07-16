@@ -45,6 +45,14 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void RequestScan(string type)
+
+			Request to trigger a scan for the specified
+			technology. The empty string "" triggers scanning
+			on all technologies.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		void RegisterAgent(object path)
 
 			Register new agent for handling user requests.

@@ -244,6 +244,40 @@ static DBusMessage *remove_profile(DBusConnection *conn,
 	return __connman_error_not_supported(msg);
 }
 
+static DBusMessage *request_scan(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	enum connman_device_type type;
+	const char *str;
+	int err;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
+							DBUS_TYPE_INVALID);
+
+	if (g_strcmp0(str, "") == 0)
+		type = CONNMAN_DEVICE_TYPE_UNKNOWN;
+	else if (g_strcmp0(str, "wifi") == 0)
+		type = CONNMAN_DEVICE_TYPE_WIFI;
+	else if (g_strcmp0(str, "wimax") == 0)
+		type = CONNMAN_DEVICE_TYPE_WIMAX;
+	else
+		return __connman_error_invalid_arguments(msg);
+
+	err = __connman_element_request_scan(type);
+	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			connman_error("Invalid return code from scan");
+			err = -EINVAL;
+		}
+
+		return __connman_error_failed(msg, -err);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -258,7 +292,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	err = __connman_service_create_and_connect(msg);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
-			connman_error("Invalid return code from callbacks");
+			connman_error("Invalid return code from connect");
 			err = -EINVAL;
 		}
 
@@ -321,6 +355,7 @@ static GDBusMethodTable manager_methods[] = {
 	{ "SetProperty",     "sv",    "",      set_property     },
 	{ "AddProfile",      "s",     "o",     add_profile      },
 	{ "RemoveProfile",   "o",     "",      remove_profile   },
+	{ "RequestScan",     "s",     "",      request_scan	},
 	{ "ConnectService",  "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",   "o",     "",      register_agent   },

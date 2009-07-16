@@ -364,6 +364,55 @@ struct connman_device *__connman_element_find_device(enum connman_device_type ty
 	return data.device;
 }
 
+static gboolean request_scan(GNode *node, gpointer user_data)
+{
+	struct connman_element *element = node->data;
+	struct find_data *data = user_data;
+	enum connman_device_type type;
+
+	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
+		return FALSE;
+
+	if (element->device == NULL)
+		return FALSE;
+
+	type = connman_device_get_type(element->device);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		return FALSE;
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		if (data->type != CONNMAN_DEVICE_TYPE_UNKNOWN &&
+							data->type != type)
+			return FALSE;
+		break;
+	}
+
+	__connman_device_scan(element->device);
+
+	return FALSE;
+}
+
+int __connman_element_request_scan(enum connman_device_type type)
+{
+	struct find_data data = { .type = type, .device = NULL };
+
+	g_node_traverse(element_root, G_PRE_ORDER,
+				G_TRAVERSE_ALL, -1, request_scan, &data);
+
+	return 0;
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_driver *driver1 = a;
