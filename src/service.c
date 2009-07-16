@@ -1140,6 +1140,101 @@ static struct connman_service *__connman_service_lookup(const char *identifier)
 	return NULL;
 }
 
+int __connman_service_create_and_connect(DBusMessage *msg)
+{
+	struct connman_service *service;
+	struct connman_device *device;
+	DBusMessageIter iter, array;
+	const char *mode = "managed", *security = "none";
+	const char *type = NULL, *ssid = NULL, *passphrase = NULL;
+	const char *ident;
+	char *name, *group;
+	int err;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&array, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		switch (dbus_message_iter_get_arg_type(&value)) {
+		case DBUS_TYPE_STRING:
+			if (g_str_equal(key, "Type") == TRUE)
+				dbus_message_iter_get_basic(&value, &type);
+			else if (g_str_equal(key, "WiFi.Mode") == TRUE ||
+					g_str_equal(key, "Mode") == TRUE)
+				dbus_message_iter_get_basic(&value, &mode);
+			else if (g_str_equal(key, "WiFi.Security") == TRUE ||
+					g_str_equal(key, "Security") == TRUE)
+				dbus_message_iter_get_basic(&value, &security);
+			else if (g_str_equal(key, "WiFi.Passphrase") == TRUE ||
+					g_str_equal(key, "Passphrase") == TRUE)
+				dbus_message_iter_get_basic(&value, &passphrase);
+			else if (g_str_equal(key, "WiFi.SSID") == TRUE ||
+					g_str_equal(key, "SSID") == TRUE)
+				dbus_message_iter_get_basic(&value, &ssid);
+		}
+
+		dbus_message_iter_next(&array);
+	}
+
+	if (type == NULL)
+		return -EINVAL;
+
+	if (g_strcmp0(type, "wifi") != 0 || g_strcmp0(mode, "managed") != 0)
+		return -EOPNOTSUPP;
+
+	if (ssid == NULL)
+		return -EINVAL;
+
+	device = __connman_element_find_device(CONNMAN_DEVICE_TYPE_WIFI);
+	if (device == NULL)
+		return -EOPNOTSUPP;
+
+	ident = __connman_device_get_ident(device);
+	if (ident == NULL)
+		return -EOPNOTSUPP;
+
+	group = connman_wifi_build_group_name((unsigned char *) ssid,
+						strlen(ssid), mode, security);
+	if (group == NULL)
+		return -EINVAL;
+
+	name = g_strdup_printf("%s_%s_%s", type, ident, group);
+
+	g_free(group);
+
+	service = __connman_service_lookup(name);
+
+	g_free(name);
+
+	if (service != NULL) {
+		if (passphrase != NULL) {
+			g_free(service->passphrase);
+			service->passphrase = g_strdup(passphrase);
+		}
+
+		err = __connman_service_connect(service);
+		if (err < 0 && err != -EINPROGRESS)
+			return err;
+
+		g_dbus_send_reply(connection, msg,
+					DBUS_TYPE_OBJECT_PATH, &service->path,
+							DBUS_TYPE_INVALID);
+
+		return 0;
+	}
+
+	return -EOPNOTSUPP;
+}
+
 /**
  * __connman_service_get:
  * @identifier: service identifier

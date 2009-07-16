@@ -496,26 +496,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static char *build_group(const unsigned char *ssid, unsigned int ssid_len,
-					const char *mode, const char *security)
-{
-	GString *str;
-	unsigned int i;
-
-	str = g_string_sized_new((ssid_len * 2) + 24);
-	if (str == NULL)
-		return NULL;
-
-	if (ssid_len > 0 && ssid[0] != '\0') {
-		for (i = 0; i < ssid_len; i++)
-			g_string_append_printf(str, "%02x", ssid[i]);
-	}
-
-	g_string_append_printf(str, "_%s_%s", mode, security);
-
-	return g_string_free(str, FALSE);
-}
-
 static void convert_name(const char *ssid, char *name,
 						unsigned int ssid_len)
 {
@@ -674,7 +654,7 @@ static DBusMessage *join_network(DBusConnection *conn,
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
 
-	group = build_group(ssid, ssid_size, mode, security);
+	group = connman_wifi_build_group_name(ssid, ssid_size, mode, security);
 
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);

@@ -266,6 +266,7 @@ int __connman_service_indicate_default(struct connman_service *service);
 
 int __connman_service_connect(struct connman_service *service);
 int __connman_service_disconnect(struct connman_service *service);
+int __connman_service_create_and_connect(DBusMessage *msg);
 
 #include <connman/notifier.h>
 

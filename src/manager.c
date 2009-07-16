@@ -247,7 +247,7 @@ static DBusMessage *remove_profile(DBusConnection *conn,
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessageIter iter, array;
+	int err;
 
 	DBG("conn %p", conn);
 
@@ -255,26 +255,17 @@ static DBusMessage *connect_service(DBusConnection *conn,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
-	dbus_message_iter_init(msg, &iter);
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key;
-
-		dbus_message_iter_recurse(&array, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
-
-		switch (dbus_message_iter_get_arg_type(&value)) {
+	err = __connman_service_create_and_connect(msg);
+	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			connman_error("Invalid return code from callbacks");
+			err = -EINVAL;
 		}
 
-		dbus_message_iter_next(&array);
+		return __connman_error_failed(msg, -err);
 	}
 
-	return __connman_error_not_implemented(msg);
+	return NULL;
 }
 
 static DBusMessage *register_agent(DBusConnection *conn,
