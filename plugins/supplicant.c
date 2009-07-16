@@ -1814,7 +1814,7 @@ int supplicant_disconnect(struct connman_network *network)
 
 	task->disconnecting = TRUE;
 
-	return -EINPROGRESS;
+	return 0;
 }
 
 static void supplicant_activate(DBusConnection *conn)
