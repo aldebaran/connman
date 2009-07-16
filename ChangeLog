@@ -1,3 +1,17 @@
+ver 0.24:
+	Fix handling of initial device powered state.
+	Fix missing Powered property changed signals.
+	Fix canceling of a network connection attempt.
+	Fix stalled configuration issue with supplicant.
+	Fix detection of association errors from supplicant.
+	Fix issue with wrong scanning state information.
+	Fix hidden SSID detection routines.
+	Fix visible Ethernet services even without carrier.
+	Add global method call to request scanning.
+	Add support for global technologies list.
+	Add support for delaying service list updates.
+	Update the overall D-Bus API documentation.
+
 ver 0.23:
 	Fix dhclient probe/remove race condition.
 	Fix handling of disconnected services during auto-connect.
