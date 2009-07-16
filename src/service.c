@@ -469,7 +469,7 @@ static connman_bool_t is_ignore(struct connman_service *service)
 	return FALSE;
 }
 
-static void __connman_service_auto_connect(void)
+void __connman_service_auto_connect(void)
 {
 	struct connman_service *service;
 	GSequenceIter *iter;
