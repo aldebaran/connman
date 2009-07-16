@@ -24,8 +24,8 @@ else:
 	security = "none"
 	passphrase = ""
 
-path = manager.ConnectService(({ "WiFi.Mode": "managed",
-					"WiFi.SSID": sys.argv[1],
-					"WiFi.Security": security,
-					"WiFi.Passphrase": passphrase }));
+path = manager.ConnectService(({ "Type": "wifi", "Mode": "managed",
+					"SSID": sys.argv[1],
+					"Security": security,
+					"Passphrase": passphrase }));
 print "Service path is %s" %(path)
