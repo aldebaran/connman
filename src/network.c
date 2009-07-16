@@ -34,7 +34,6 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
-	connman_bool_t associating;
 	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
@@ -51,6 +50,8 @@ struct connman_network {
 	void *driver_data;
 
 	connman_bool_t registered;
+	connman_bool_t connecting;
+	connman_bool_t associating;
 
 	struct connman_device *device;
 
@@ -760,6 +761,8 @@ static gboolean set_connected(gpointer user_data)
 						CONNMAN_SERVICE_STATE_IDLE);
 	}
 
+	network->connecting = FALSE;
+
 	return FALSE;
 }
 
@@ -778,6 +781,12 @@ int connman_network_set_connected(struct connman_network *network,
 	const char *key = "Connected";
 
 	DBG("network %p connected %d", network, connected);
+
+	if (connected == FALSE && network->connecting == TRUE) {
+		connman_element_set_error(&network->element,
+					CONNMAN_ELEMENT_ERROR_CONNECT_FAILED);
+		network->connecting = FALSE;
+	}
 
 	if (network->connected == connected)
 		return -EALREADY;
@@ -847,6 +856,8 @@ int __connman_network_connect(struct connman_network *network)
 
 	__connman_device_disconnect(network->device);
 
+	network->connecting = TRUE;
+
 	err = network->driver->connect(network);
 	if (err == 0) {
 		network->connected = TRUE;
@@ -876,6 +887,8 @@ int __connman_network_disconnect(struct connman_network *network)
 
 	if (network->driver->disconnect == NULL)
 		return -ENOSYS;
+
+	network->connecting = FALSE;
 
 	err = network->driver->disconnect(network);
 	if (err == 0) {
