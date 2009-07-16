@@ -856,7 +856,7 @@ int __connman_network_connect(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (network->connected == TRUE)
+	if (network->connected == TRUE || network->connecting == TRUE)
 		return -EALREADY;
 
 	if (network->driver == NULL)
