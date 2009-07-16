@@ -1078,8 +1078,9 @@ int __connman_service_connect(struct connman_service *service)
 		unsigned int ssid_len;
 
 		if (connman_network_get_blob(service->network, "WiFi.SSID",
-					     &ssid_len) == NULL)
+						     &ssid_len) == NULL)
 			return -EINVAL;
+
 		connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 
