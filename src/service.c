@@ -1071,6 +1071,9 @@ int __connman_service_connect(struct connman_service *service)
 	if (service->state == CONNMAN_SERVICE_STATE_READY)
 		return -EISCONN;
 
+	if (is_connecting(service) == TRUE)
+		return -EALREADY;
+
 	if (service->network != NULL) {
 		unsigned int ssid_len;
 
