@@ -53,6 +53,25 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		object ConnectService(dict network)
+
+			Connect to a network specified by the given
+			properties.
+
+			For connecting to a hidden WiFi network for example
+			it is required that Type = "wifi" and the SSID
+			properties are provided.
+
+			When successful this method will return object
+			path of the service object.
+
+			This method can also be used to connect to an
+			already existing service. It works exactly the
+			same as executing the Connect method from the
+			service interface.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		void RegisterAgent(object path)
 
 			Register new agent for handling user requests.
