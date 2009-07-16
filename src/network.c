@@ -877,10 +877,15 @@ int __connman_network_connect(struct connman_network *network)
 	network->connecting = TRUE;
 
 	err = network->driver->connect(network);
-	if (err == 0) {
-		network->connected = TRUE;
-		set_connected(network);
+	if (err < 0) {
+		if (err == -EINPROGRESS)
+			connman_network_set_associating(network, TRUE);
+
+		return err;
 	}
+
+	network->connected = TRUE;
+	set_connected(network);
 
 	return err;
 }
