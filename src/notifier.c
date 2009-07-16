@@ -241,6 +241,8 @@ void __connman_notifier_offline_mode(connman_bool_t enabled)
 
 	DBG("enabled %d", enabled);
 
+	__connman_profile_changed(FALSE);
+
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
