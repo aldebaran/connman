@@ -330,6 +330,40 @@ const char *__connman_element_get_network_path(struct connman_element *element)
 	return __connman_element_get_network_path(element->parent);
 }
 
+struct find_data {
+	enum connman_device_type type;
+	struct connman_device *device;
+};
+
+static gboolean find_device(GNode *node, gpointer user_data)
+{
+	struct connman_element *element = node->data;
+	struct find_data *data = user_data;
+
+	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
+		return FALSE;
+
+	if (element->device == NULL)
+		return FALSE;
+
+	if (data->type != connman_device_get_type(element->device))
+		return FALSE;
+
+	data->device = element->device;
+
+	return TRUE;
+}
+
+struct connman_device *__connman_element_find_device(enum connman_device_type type)
+{
+	struct find_data data = { .type = type, .device = NULL };
+
+	g_node_traverse(element_root, G_PRE_ORDER,
+				G_TRAVERSE_ALL, -1, find_device, &data);
+
+	return data.device;
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_driver *driver1 = a;
