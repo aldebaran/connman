@@ -203,14 +203,8 @@ Service tweaks
 ==============
 
 The interfaces of Connection Manager will always export all services that are
-currently known. This includes Ethernet devices with no cable plugged into
-them. This is of course suboptimal since the user doesn't need to be bothered
-with a device that he/she can actually physically see.
-
-So in this case the user interface can choose to just not show Ethernet
-devices with a favorite=no setting. This is an advanced tweak that is up
-to the user interface. However it is highly recommended to not show Ethernet
-device until Connection Manager marks them as favorite.
+currently known. The Ethernet devices with no cable plugged are actually not
+included in this list. They will only show up once a carrier is detected.
 
 The service interface is not meant for basic device configuration task. So
 switching a device on and off (via RFKILL for example) should be done via
