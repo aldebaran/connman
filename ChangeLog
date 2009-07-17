@@ -1,3 +1,7 @@
+ver 0.25:
+	Fix showing of WiFi networks with less than 25% signal strength.
+	Fix potential segmentation fault with network passphrases.
+
 ver 0.24:
 	Fix handling of initial device powered state.
 	Fix missing Powered property changed signals.
