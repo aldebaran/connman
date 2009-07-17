@@ -187,6 +187,8 @@ static const char *error2string(enum connman_service_error error)
 	switch (error) {
 	case CONNMAN_SERVICE_ERROR_UNKNOWN:
 		break;
+	case CONNMAN_SERVICE_ERROR_OUT_OF_RANGE:
+		return "out-of-range";
 	case CONNMAN_SERVICE_ERROR_PIN_MISSING:
 		return "pin-missing";
 	case CONNMAN_SERVICE_ERROR_DHCP_FAILED:
@@ -394,6 +396,13 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static void set_idle(struct connman_service *service)
+{
+	service->state = CONNMAN_SERVICE_STATE_IDLE;
+	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+	state_changed(service);
+}
+
 static DBusMessage *clear_property(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -410,9 +419,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		return __connman_error_permission_denied(msg);
 
 	if (g_str_equal(name, "Error") == TRUE) {
-		service->state = CONNMAN_SERVICE_STATE_IDLE;
-		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
-		state_changed(service);
+		set_idle(service);
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
@@ -755,6 +762,39 @@ static void service_free(gpointer user_data)
 	g_free(service);
 }
 
+static void reply_pending(struct connman_service *service, int error)
+{
+	if (service->timeout > 0) {
+		g_source_remove(service->timeout);
+		service->timeout = 0;
+	}
+
+	if (service->pending != NULL) {
+		if (error > 0) {
+			DBusMessage *reply;
+
+			reply = __connman_error_failed(service->pending,
+								error);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		} else
+			g_dbus_send_reply(connection, service->pending,
+							DBUS_TYPE_INVALID);
+
+		dbus_message_unref(service->pending);
+		service->pending = NULL;
+	}
+}
+
+static gboolean remove_timeout(gpointer user_data)
+{
+	GSequenceIter *iter = user_data;
+
+	g_sequence_remove(iter);
+
+	return FALSE;
+}
+
 /**
  * __connman_service_put:
  * @service: service structure
@@ -769,9 +809,15 @@ void __connman_service_put(struct connman_service *service)
 		GSequenceIter *iter;
 
 		iter = g_hash_table_lookup(service_hash, service->identifier);
-		if (iter != NULL)
-			g_sequence_remove(iter);
-		else
+		if (iter != NULL) {
+			reply_pending(service, EIO);
+
+			service->state = CONNMAN_SERVICE_STATE_FAILURE;
+			service->error = CONNMAN_SERVICE_ERROR_OUT_OF_RANGE;
+
+			service->timeout = g_timeout_add_seconds(5,
+							remove_timeout, iter);
+		} else
 			service_free(service);
 	}
 }
@@ -967,6 +1013,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 			service->state != CONNMAN_SERVICE_STATE_DISCONNECT) {
 		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
 		state_changed(service);
+
+		__connman_service_disconnect(service);
 	}
 
 	service->state = state;
@@ -975,39 +1023,14 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (state == CONNMAN_SERVICE_STATE_READY) {
 		connman_service_set_favorite(service, TRUE);
 
-		if (service->timeout > 0) {
-			g_source_remove(service->timeout);
-			service->timeout = 0;
-		}
-
-		if (service->pending != NULL) {
-			g_dbus_send_reply(connection, service->pending,
-							DBUS_TYPE_INVALID);
-
-			dbus_message_unref(service->pending);
-			service->pending = NULL;
-		}
+		reply_pending(service, 0);
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
-		if (service->timeout > 0) {
-			g_source_remove(service->timeout);
-			service->timeout = 0;
-		}
-
-		if (service->pending != NULL) {
-			DBusMessage *reply;
-
-			reply = __connman_error_failed(service->pending, EIO);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-
-			dbus_message_unref(service->pending);
-			service->pending = NULL;
-		}
+		reply_pending(service, EIO);
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
@@ -1020,9 +1043,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	__connman_profile_changed(FALSE);
 
-	if (service->favorite == TRUE &&
-			service->state == CONNMAN_SERVICE_STATE_IDLE)
-		__connman_service_auto_connect();
+	if (service->state == CONNMAN_SERVICE_STATE_IDLE ||
+			service->state == CONNMAN_SERVICE_STATE_FAILURE)
+		__connman_element_request_scan(CONNMAN_ELEMENT_TYPE_UNKNOWN);
 
 	return 0;
 }
@@ -1552,6 +1575,13 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	service = __connman_service_lookup_from_network(network);
 	if (service != NULL) {
+		if (service->timeout > 0 && service->pending == NULL) {
+			g_source_remove(service->timeout);
+			service->timeout = 0;
+
+			set_idle(service);
+		}
+
 		update_from_network(service, network);
 		return service;
 	}
