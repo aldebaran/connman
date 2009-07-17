@@ -1453,6 +1453,12 @@ static gboolean remove_unavailable_network(gpointer key, gpointer value,
 	return TRUE;
 }
 
+void __connman_device_cleanup_networks(struct connman_device *device)
+{
+	g_hash_table_foreach_remove(device->networks,
+					remove_unavailable_network, NULL);
+}
+
 /**
  * connman_device_set_scanning:
  * @device: device structure
@@ -1510,8 +1516,7 @@ int connman_device_set_scanning(struct connman_device *device,
 		return 0;
 	}
 
-	g_hash_table_foreach_remove(device->networks,
-					remove_unavailable_network, NULL);
+	__connman_device_cleanup_networks(device);
 
 	if (device->connections > 0)
 		return 0;

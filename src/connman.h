@@ -206,6 +206,7 @@ void __connman_device_decrease_connections(struct connman_device *device);
 
 void __connman_device_set_network(struct connman_device *device,
 					struct connman_network *network);
+void __connman_device_cleanup_networks(struct connman_device *device);
 
 int __connman_device_scan(struct connman_device *device);
 int __connman_device_connect(struct connman_device *device);
