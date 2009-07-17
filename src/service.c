@@ -626,11 +626,8 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 	DBG("service %p", service);
 
-	if (service->pending != NULL) {
+	if (service->pending != NULL)
 		reply_pending(service, ECONNABORTED);
-
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-	}
 
 	service->ignore = TRUE;
 
