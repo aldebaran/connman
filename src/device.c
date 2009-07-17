@@ -1519,6 +1519,8 @@ int connman_device_set_scanning(struct connman_device *device,
 	if (device->disconnected == TRUE)
 		return 0;
 
+	__connman_service_auto_connect();
+
 	return 0;
 }
 
