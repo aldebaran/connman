@@ -783,7 +783,7 @@ int connman_network_set_connected(struct connman_network *network,
 
 	DBG("network %p connected %d", network, connected);
 
-	if ((network->connecting || network->associating == TRUE) &&
+	if ((network->connecting == TRUE || network->associating == TRUE) &&
 							connected == FALSE) {
 		connman_element_set_error(&network->element,
 					CONNMAN_ELEMENT_ERROR_CONNECT_FAILED);
