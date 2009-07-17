@@ -1390,6 +1390,32 @@ int __connman_device_scan(struct connman_device *device)
 	return device->driver->scan(device);
 }
 
+int __connman_device_enable(struct connman_device *device)
+{
+	if (!device->driver || !device->driver->enable)
+		return -EOPNOTSUPP;
+
+	if (device->powered == TRUE)
+		return -EALREADY;
+
+	device_enable(device);
+
+	return 0;
+}
+
+int __connman_device_disable(struct connman_device *device)
+{
+	if (!device->driver || !device->driver->disable)
+		return -EOPNOTSUPP;
+
+	if (device->powered == FALSE)
+		return -ENOLINK;
+
+	device_disable(device);
+
+	return 0;
+}
+
 int __connman_device_connect(struct connman_device *device)
 {
 	DBG("device %p", device);

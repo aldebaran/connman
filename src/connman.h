@@ -167,6 +167,8 @@ const char *__connman_element_get_network_path(struct connman_element *element);
 
 struct connman_device *__connman_element_find_device(enum connman_device_type type);
 int __connman_element_request_scan(enum connman_device_type type);
+int __connman_element_enable_technology(enum connman_device_type type);
+int __connman_element_disable_technology(enum connman_device_type type);
 
 const char *__connman_element_type2string(enum connman_element_type type);
 
@@ -209,6 +211,8 @@ void __connman_device_set_network(struct connman_device *device,
 void __connman_device_cleanup_networks(struct connman_device *device);
 
 int __connman_device_scan(struct connman_device *device);
+int __connman_device_enable(struct connman_device *device);
+int __connman_device_disable(struct connman_device *device);
 int __connman_device_connect(struct connman_device *device);
 int __connman_device_disconnect(struct connman_device *device);
 

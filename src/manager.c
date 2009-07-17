@@ -313,27 +313,77 @@ static DBusMessage *request_scan(DBusConnection *conn,
 static DBusMessage *enable_technology(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	enum connman_device_type type;
 	const char *str;
+	int err;
 
 	DBG("conn %p", conn);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
 							DBUS_TYPE_INVALID);
 
-	return __connman_error_not_supported(msg);
+	if (g_strcmp0(str, "ethernet") == 0)
+		type = CONNMAN_DEVICE_TYPE_ETHERNET;
+	else if (g_strcmp0(str, "wifi") == 0)
+		type = CONNMAN_DEVICE_TYPE_WIFI;
+	else if (g_strcmp0(str, "wimax") == 0)
+		type = CONNMAN_DEVICE_TYPE_WIMAX;
+	else if (g_strcmp0(str, "bluetooth") == 0)
+		type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
+	else if (g_strcmp0(str, "gps") == 0)
+		type = CONNMAN_DEVICE_TYPE_GPS;
+	else
+		return __connman_error_invalid_arguments(msg);
+
+	err = __connman_element_enable_technology(type);
+	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			connman_error("Invalid return code from enable");
+			err = -EINVAL;
+		}
+
+		return __connman_error_failed(msg, -err);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *disable_technology(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
+	enum connman_device_type type;
 	const char *str;
+	int err;
 
 	DBG("conn %p", conn);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
 							DBUS_TYPE_INVALID);
 
-	return __connman_error_not_supported(msg);
+	if (g_strcmp0(str, "ethernet") == 0)
+		type = CONNMAN_DEVICE_TYPE_ETHERNET;
+	else if (g_strcmp0(str, "wifi") == 0)
+		type = CONNMAN_DEVICE_TYPE_WIFI;
+	else if (g_strcmp0(str, "wimax") == 0)
+		type = CONNMAN_DEVICE_TYPE_WIMAX;
+	else if (g_strcmp0(str, "bluetooth") == 0)
+		type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
+	else if (g_strcmp0(str, "gps") == 0)
+		type = CONNMAN_DEVICE_TYPE_GPS;
+	else
+		return __connman_error_invalid_arguments(msg);
+
+	err = __connman_element_disable_technology(type);
+	if (err < 0) {
+		if (err == -EINPROGRESS) {
+			connman_error("Invalid return code from disable");
+			err = -EINVAL;
+		}
+
+		return __connman_error_failed(msg, -err);
+	}
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
