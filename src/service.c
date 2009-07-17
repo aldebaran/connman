@@ -495,6 +495,30 @@ void __connman_service_auto_connect(void)
 		__connman_service_connect(service);
 }
 
+static void reply_pending(struct connman_service *service, int error)
+{
+	if (service->timeout > 0) {
+		g_source_remove(service->timeout);
+		service->timeout = 0;
+	}
+
+	if (service->pending != NULL) {
+		if (error > 0) {
+			DBusMessage *reply;
+
+			reply = __connman_error_failed(service->pending,
+								error);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		} else
+			g_dbus_send_reply(connection, service->pending,
+							DBUS_TYPE_INVALID);
+
+		dbus_message_unref(service->pending);
+		service->pending = NULL;
+	}
+}
+
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
@@ -591,19 +615,7 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	DBG("service %p", service);
 
 	if (service->pending != NULL) {
-		DBusMessage *reply;
-
-		if (service->timeout > 0) {
-			g_source_remove(service->timeout);
-			service->timeout = 0;
-		}
-
-		reply = __connman_error_operation_aborted(service->pending);
-		if (reply != NULL)
-			g_dbus_send_message(conn, reply);
-
-		dbus_message_unref(service->pending);
-		service->pending = NULL;
+		reply_pending(service, ECONNABORTED);
 
 		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 	}
@@ -735,20 +747,12 @@ static void service_free(gpointer user_data)
 
 	g_hash_table_remove(service_hash, service->identifier);
 
-	if (service->timeout > 0) {
-		g_source_remove(service->timeout);
-		service->timeout = 0;
-	}
-
-	if (service->pending != NULL) {
-		dbus_message_unref(service->pending);
-		service->pending = NULL;
-	}
+	reply_pending(service, ENOENT);
 
 	service->path = NULL;
 
 	if (path != NULL) {
-		__connman_profile_changed(TRUE);
+		__connman_profile_changed(FALSE);
 
 		g_dbus_unregister_interface(connection, path,
 						CONNMAN_SERVICE_INTERFACE);
@@ -767,39 +771,6 @@ static void service_free(gpointer user_data)
 	g_free(service);
 }
 
-static void reply_pending(struct connman_service *service, int error)
-{
-	if (service->timeout > 0) {
-		g_source_remove(service->timeout);
-		service->timeout = 0;
-	}
-
-	if (service->pending != NULL) {
-		if (error > 0) {
-			DBusMessage *reply;
-
-			reply = __connman_error_failed(service->pending,
-								error);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-		} else
-			g_dbus_send_reply(connection, service->pending,
-							DBUS_TYPE_INVALID);
-
-		dbus_message_unref(service->pending);
-		service->pending = NULL;
-	}
-}
-
-static gboolean remove_timeout(gpointer user_data)
-{
-	GSequenceIter *iter = user_data;
-
-	g_sequence_remove(iter);
-
-	return FALSE;
-}
-
 /**
  * __connman_service_put:
  * @service: service structure
@@ -815,9 +786,7 @@ void __connman_service_put(struct connman_service *service)
 
 		iter = g_hash_table_lookup(service_hash, service->identifier);
 		if (iter != NULL) {
-			guint interval = 1;
-
-			reply_pending(service, EIO);
+			reply_pending(service, ENOENT);
 
 			__connman_service_disconnect(service);
 
@@ -825,8 +794,7 @@ void __connman_service_put(struct connman_service *service)
 			service->error = CONNMAN_SERVICE_ERROR_OUT_OF_RANGE;
 			state_changed(service);
 
-			service->timeout = g_timeout_add_seconds(interval,
-							remove_timeout, iter);
+			g_sequence_remove(iter);
 		} else
 			service_free(service);
 	}
