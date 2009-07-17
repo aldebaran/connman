@@ -1457,15 +1457,20 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 	if (service == NULL)
 		return 0;
 
-	if (service->favorite == FALSE)
-		return 0;
+	if (service->favorite == FALSE) {
+		service->order = 0;
+		goto done;
+	}
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL) {
 		if (g_sequence_iter_get_position(iter) == 0)
-			return 1;
+			service->order = 1;
+		else
+			service->order = 0;
 	}
 
+done:
 	return service->order;
 }
 
