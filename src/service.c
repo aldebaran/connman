@@ -1544,6 +1544,9 @@ static void update_from_network(struct connman_service *service,
 		strength_changed(service);
 	}
 
+	if (service->network == NULL)
+		service->network = connman_network_ref(network);
+
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL)
 		g_sequence_sort_changed(iter, service_compare, NULL);
