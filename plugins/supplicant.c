@@ -250,6 +250,7 @@ static int get_range(struct supplicant_task *task)
 	return err;
 }
 
+#if 0
 static char *get_bssid(struct connman_device *device)
 {
 	char *bssid;
@@ -297,6 +298,7 @@ static char *get_bssid(struct connman_device *device)
 
 	return bssid;
 }
+#endif
 
 static void add_interface_reply(DBusPendingCall *call, void *user_data)
 {
