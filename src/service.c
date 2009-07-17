@@ -812,6 +812,11 @@ void __connman_service_put(struct connman_service *service)
 		if (iter != NULL) {
 			reply_pending(service, EIO);
 
+			if (service->network != NULL) {
+				connman_network_unref(service->network);
+				service->network = NULL;
+			}
+
 			service->state = CONNMAN_SERVICE_STATE_FAILURE;
 			service->error = CONNMAN_SERVICE_ERROR_OUT_OF_RANGE;
 
