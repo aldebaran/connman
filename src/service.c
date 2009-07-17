@@ -1166,9 +1166,8 @@ static struct connman_service *__connman_service_lookup(const char *identifier)
 	return NULL;
 }
 
-static struct connman_service *create_hidden_wifi(struct connman_device *device,
-					const char *group, const char *ssid,
-					const char *mode, const char *security)
+static struct connman_network *create_hidden_wifi(struct connman_device *device,
+		const char *ssid, const char *mode, const char *security)
 {
 	struct connman_network *network;
 	char *name;
@@ -1207,8 +1206,6 @@ static struct connman_service *create_hidden_wifi(struct connman_device *device,
 
 	g_free(name);
 
-	connman_network_set_group(network, group);
-
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
 
@@ -1221,12 +1218,13 @@ static struct connman_service *create_hidden_wifi(struct connman_device *device,
 
 	connman_network_set_available(network, TRUE);
 
-	return __connman_service_lookup_from_network(network);
+	return network;
 }
 
 int __connman_service_create_and_connect(DBusMessage *msg)
 {
 	struct connman_service *service;
+	struct connman_network *network;
 	struct connman_device *device;
 	DBusMessageIter iter, array;
 	const char *mode = "managed", *security = "none";
@@ -1234,6 +1232,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	unsigned int ssid_len = 0;
 	const char *ident;
 	char *name, *group;
+	gboolean created = FALSE;
 	int err;
 
 	dbus_message_iter_init(msg, &iter);
@@ -1300,18 +1299,25 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 
 	service = __connman_service_lookup(name);
 
-	g_free(name);
-
 	if (service != NULL)
 		goto done;
 
-	service = create_hidden_wifi(device, group, ssid, mode, security);
+	network = create_hidden_wifi(device, ssid, mode, security);
+	if (network != NULL) {
+		connman_network_set_group(network, group);
+		created = TRUE;
+	}
+
+	service = __connman_service_lookup(name);
 
 done:
+	g_free(name);
 	g_free(group);
 
-	if (service == NULL)
-		return -EOPNOTSUPP;
+	if (service == NULL) {
+		err = -EOPNOTSUPP;
+		goto failed;
+	}
 
 	if (passphrase != NULL) {
 		g_free(service->passphrase);
@@ -1320,13 +1326,27 @@ done:
 
 	err = __connman_service_connect(service);
 	if (err < 0 && err != -EINPROGRESS)
-		return err;
+		goto failed;
 
 	g_dbus_send_reply(connection, msg,
 				DBUS_TYPE_OBJECT_PATH, &service->path,
 							DBUS_TYPE_INVALID);
 
 	return 0;
+
+failed:
+	if (service != NULL && created == TRUE) {
+		struct connman_network *network = service->network;
+
+		if (network != NULL) {
+			connman_network_set_available(network, FALSE);
+			__connman_device_cleanup_networks(device);
+		}
+
+		__connman_service_put(service);
+	}
+
+	return err;
 }
 
 /**
