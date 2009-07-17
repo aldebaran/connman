@@ -1,3 +1,12 @@
+ver 0.26:
+	Fix broken handling of auto-connect logic.
+	Fix handling of out-of-range access points.
+	Fix support for connecting to hidden networks.
+	Fix reference counting for networks with same SSID.
+	Fix issue with WiFi interfaces not getting switched off.
+	Fix problems with delayed service list updates.
+	Fix disconnect/abort of connection attempts.
+
 ver 0.25:
 	Fix showing of WiFi networks with less than 25% signal strength.
 	Fix potential segmentation fault with network passphrases.
