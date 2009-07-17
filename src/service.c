@@ -823,6 +823,7 @@ void __connman_service_put(struct connman_service *service)
 
 			service->state = CONNMAN_SERVICE_STATE_FAILURE;
 			service->error = CONNMAN_SERVICE_ERROR_OUT_OF_RANGE;
+			state_changed(service);
 
 			service->timeout = g_timeout_add_seconds(interval,
 							remove_timeout, iter);
