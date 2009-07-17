@@ -37,6 +37,7 @@ struct connman_network {
 	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
+	connman_bool_t hidden;
 	connman_uint8_t strength;
 	connman_uint16_t frequency;
 	char *identifier;
@@ -461,7 +462,12 @@ struct connman_network *connman_network_create(const char *identifier,
 	__connman_element_initialize(&network->element);
 
 	//temp = connman_dbus_encode_string(identifier);
-	temp = g_strdup(identifier);
+	if (identifier == NULL) {
+		temp = g_strdup("hidden");
+		network->hidden = TRUE;
+	} else
+		temp = g_strdup(identifier);
+
 	if (temp == NULL) {
 		g_free(network);
 		return NULL;
@@ -481,7 +487,7 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	network->type       = type;
 	network->secondary  = FALSE;
-	network->identifier = g_strdup(identifier);
+	network->identifier = g_strdup(temp);
 
 	network->ipconfig = connman_ipconfig_create();
 	if (network->ipconfig == NULL) {
@@ -702,6 +708,9 @@ int connman_network_set_available(struct connman_network *network,
  */
 connman_bool_t connman_network_get_available(struct connman_network *network)
 {
+	if (network->hidden == TRUE)
+		return TRUE;
+
 	return network->available;
 }
 
@@ -777,6 +786,7 @@ static gboolean set_connected(gpointer user_data)
 		connman_element_unregister_children(&network->element);
 
 		__connman_device_set_network(network->device, NULL);
+		network->hidden = FALSE;
 
 		__connman_device_decrease_connections(network->device);
 
@@ -899,6 +909,8 @@ int __connman_network_connect(struct connman_network *network)
 	if (err < 0) {
 		if (err == -EINPROGRESS)
 			connman_network_set_associating(network, TRUE);
+		else
+			network->hidden = FALSE;
 
 		return err;
 	}

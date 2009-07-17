@@ -1178,8 +1178,7 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 	if (ssid_len < 1)
 		return NULL;
 
-	network = connman_network_create("000000000000",
-						CONNMAN_NETWORK_TYPE_WIFI);
+	network = connman_network_create(NULL, CONNMAN_NETWORK_TYPE_WIFI);
 	if (network == NULL)
 		return NULL;
 
