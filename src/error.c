@@ -45,6 +45,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 		return __connman_error_no_carrier(msg);
 	case EOPNOTSUPP:
 		return __connman_error_not_supported(msg);
+	case ECONNABORTED:
+		return __connman_error_operation_aborted(msg);
 	case EISCONN:
 		return __connman_error_already_connected(msg);
 	case ENOTCONN:
