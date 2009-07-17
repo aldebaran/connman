@@ -814,11 +814,11 @@ void __connman_service_put(struct connman_service *service)
 
 			reply_pending(service, EIO);
 
+			__connman_service_disconnect(service);
+
 			if (service->network != NULL) {
 				connman_network_unref(service->network);
 				service->network = NULL;
-
-				interval = 5;
 			}
 
 			service->state = CONNMAN_SERVICE_STATE_FAILURE;
@@ -1512,6 +1512,17 @@ done:
 	return service;
 }
 
+void __connman_service_remove_from_device(struct connman_device *device)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_device(device);
+	if (service == NULL)
+		return;
+
+	__connman_service_put(service);
+}
+
 /**
  * __connman_service_lookup_from_network:
  * @network: network structure
@@ -1683,10 +1694,10 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 				service->timeout = 0;
 			}
 
-			connman_service_ref(service);
-
 			set_idle(service);
 		}
+
+		connman_service_ref(service);
 
 		update_from_network(service, network);
 		return service;
@@ -1735,6 +1746,17 @@ done:
 	g_free(name);
 
 	return service;
+}
+
+void __connman_service_remove_from_network(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return;
+
+	__connman_service_put(service);
 }
 
 static int service_load(struct connman_service *service)

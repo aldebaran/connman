@@ -254,9 +254,11 @@ void __connman_service_put(struct connman_service *service);
 
 struct connman_service *__connman_service_lookup_from_device(struct connman_device *device);
 struct connman_service *__connman_service_create_from_device(struct connman_device *device);
+void __connman_service_remove_from_device(struct connman_device *device);
 
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
+void __connman_service_remove_from_network(struct connman_network *network);
 
 unsigned int __connman_service_get_order(struct connman_service *service);
 
