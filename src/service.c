@@ -1539,19 +1539,9 @@ static void update_from_network(struct connman_service *service,
 
 	if (service->strength > strength && service->network != NULL) {
 		connman_network_unref(service->network);
-		service->network = NULL;
-
-		strength_changed(service);
-	}
-
-	if (service->network == NULL) {
 		service->network = connman_network_ref(network);
 
-		str = connman_network_get_string(network, "WiFi.Passphrase");
-		if (str != NULL) {
-			g_free(service->passphrase);
-			service->passphrase = g_strdup(str);
-		}
+		strength_changed(service);
 	}
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
