@@ -1575,6 +1575,9 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	if (group == NULL)
 		return NULL;
 
+	if (__connman_network_get_weakness(network) == TRUE)
+		return NULL;
+
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
 

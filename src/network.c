@@ -651,6 +651,29 @@ const char *__connman_network_get_ident(struct connman_network *network)
 	return __connman_device_get_ident(network->device);
 }
 
+connman_bool_t __connman_network_get_weakness(struct connman_network *network)
+{
+	if (network->secondary == TRUE)
+		return FALSE;
+
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_MBM:
+	case CONNMAN_NETWORK_TYPE_HSO:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		break;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+		if (network->strength < 20)
+			return TRUE;
+		break;
+	}
+
+	return FALSE;
+}
+
 /**
  * connman_network_set_available:
  * @network: network structure
