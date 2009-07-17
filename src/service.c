@@ -1319,6 +1319,8 @@ done:
 		goto failed;
 	}
 
+	__connman_device_disconnect(device);
+
 	if (passphrase != NULL) {
 		g_free(service->passphrase);
 		service->passphrase = g_strdup(passphrase);

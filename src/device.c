@@ -1443,9 +1443,7 @@ int __connman_device_disconnect(struct connman_device *device)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_network *network = value;
 
-		if (connman_network_get_connected(network) == TRUE ||
-				connman_network_get_associating(network) == TRUE)
-			__connman_network_disconnect(network);
+		__connman_network_disconnect(network);
 	}
 
 	if (device->driver && device->driver->disconnect)
