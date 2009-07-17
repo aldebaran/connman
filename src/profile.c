@@ -93,8 +93,6 @@ static gboolean services_changed(gpointer user_data)
 	append_services(&entry);
 	g_dbus_send_message(connection, signal);
 
-	__connman_service_auto_connect();
-
 	return FALSE;
 }
 

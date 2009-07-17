@@ -440,24 +440,6 @@ static connman_bool_t is_connecting(struct connman_service *service)
 	return FALSE;
 }
 
-static struct connman_service *find_pending_service(void)
-{
-	struct connman_service *service;
-	GSequenceIter *iter;
-
-	iter = g_sequence_get_begin_iter(service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
-		if (service->pending != NULL)
-			return service;
-
-		iter = g_sequence_iter_next(iter);
-	}
-
-	return NULL;
-}
-
 static connman_bool_t is_ignore(struct connman_service *service)
 {
 	if (service->ignore == TRUE)
@@ -471,38 +453,38 @@ static connman_bool_t is_ignore(struct connman_service *service)
 
 void __connman_service_auto_connect(void)
 {
-	struct connman_service *service;
+	struct connman_service *service = NULL;
 	GSequenceIter *iter;
 
 	DBG("");
 
-	service = find_pending_service();
-	if (service != NULL)
-		return;
-
 	iter = g_sequence_get_begin_iter(service_list);
-	if (g_sequence_iter_is_end(iter) == TRUE)
-		return;
 
-	service = g_sequence_get(iter);
-
-	while (is_ignore(service) == TRUE) {
-		iter = g_sequence_iter_next(iter);
-		if (g_sequence_iter_is_end(iter))
-			return;
+	while (g_sequence_iter_is_end(iter) == FALSE) {
 		service = g_sequence_get(iter);
+
+		if (service->pending != NULL)
+			return;
+
+		if (is_connecting(service) == TRUE)
+			return;
+
+		if (service->favorite == FALSE)
+			return;
+
+		if (service->state == CONNMAN_SERVICE_STATE_READY)
+			return;
+
+		if (is_ignore(service) == FALSE &&
+				service->state == CONNMAN_SERVICE_STATE_IDLE)
+			break;
+
+		service = NULL;
+
+		iter = g_sequence_iter_next(iter);
 	}
 
-	if (service->favorite == FALSE)
-		return;
-
-	if (service->state == CONNMAN_SERVICE_STATE_READY)
-		return;
-
-	if (is_connecting(service) == TRUE)
-		return;
-
-	if (service->state == CONNMAN_SERVICE_STATE_IDLE)
+	if (service != NULL)
 		__connman_service_connect(service);
 }
 
@@ -1037,6 +1019,10 @@ int __connman_service_indicate_state(struct connman_service *service,
 		g_sequence_sort_changed(iter, service_compare, NULL);
 
 	__connman_profile_changed(FALSE);
+
+	if (service->favorite == TRUE &&
+			service->state == CONNMAN_SERVICE_STATE_IDLE)
+		__connman_service_auto_connect();
 
 	return 0;
 }
