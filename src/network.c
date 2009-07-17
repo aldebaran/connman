@@ -785,7 +785,8 @@ static gboolean set_connected(gpointer user_data)
 	}
 
 	network->connecting = FALSE;
-	network->associating = FALSE;
+
+	connman_network_set_associating(network, FALSE);
 
 	return FALSE;
 }
@@ -811,11 +812,6 @@ int connman_network_set_connected(struct connman_network *network,
 		connman_element_set_error(&network->element,
 					CONNMAN_ELEMENT_ERROR_CONNECT_FAILED);
 		__connman_network_disconnect(network);
-	}
-
-	if (connected == TRUE) {
-		network->connecting = FALSE;
-		network->associating = FALSE;
 	}
 
 	if (network->connected == connected)
