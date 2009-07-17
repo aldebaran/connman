@@ -1166,6 +1166,64 @@ static struct connman_service *__connman_service_lookup(const char *identifier)
 	return NULL;
 }
 
+static struct connman_service *create_hidden_wifi(struct connman_device *device,
+					const char *group, const char *ssid,
+					const char *mode, const char *security)
+{
+	struct connman_network *network;
+	char *name;
+	int index;
+	unsigned int i, ssid_len;
+
+	ssid_len = strlen(ssid);
+	if (ssid_len < 1)
+		return NULL;
+
+	network = connman_network_create("000000000000",
+						CONNMAN_NETWORK_TYPE_WIFI);
+	if (network == NULL)
+		return NULL;
+
+	connman_network_set_blob(network, "WiFi.SSID",
+					(unsigned char *) ssid, ssid_len);
+
+	connman_network_set_string(network, "WiFi.Mode", mode);
+	connman_network_set_string(network, "WiFi.Security", security);
+
+	name = g_try_malloc0(ssid_len + 1);
+	if (name == NULL) {
+		connman_network_unref(network);
+		return NULL;
+	}
+
+	for (i = 0; i < ssid_len; i++) {
+		if (g_ascii_isprint(ssid[i]))
+			name[i] = ssid[i];
+		else
+			name[i] = ' ';
+	}
+
+	connman_network_set_name(network, name);
+
+	g_free(name);
+
+	connman_network_set_group(network, group);
+
+	index = connman_device_get_index(device);
+	connman_network_set_index(network, index);
+
+	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
+
+	if (connman_device_add_network(device, network) < 0) {
+		connman_network_unref(network);
+		return NULL;
+	}
+
+	connman_network_set_available(network, TRUE);
+
+	return __connman_service_lookup_from_network(network);
+}
+
 int __connman_service_create_and_connect(DBusMessage *msg)
 {
 	struct connman_service *service;
@@ -1173,6 +1231,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	DBusMessageIter iter, array;
 	const char *mode = "managed", *security = "none";
 	const char *type = NULL, *ssid = NULL, *passphrase = NULL;
+	unsigned int ssid_len = 0;
 	const char *ident;
 	char *name, *group;
 	int err;
@@ -1220,6 +1279,10 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	if (ssid == NULL)
 		return -EINVAL;
 
+	ssid_len = strlen(ssid);
+	if (ssid_len < 1)
+		return -EINVAL;
+
 	device = __connman_element_find_device(CONNMAN_DEVICE_TYPE_WIFI);
 	if (device == NULL)
 		return -EOPNOTSUPP;
@@ -1229,36 +1292,41 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 		return -EOPNOTSUPP;
 
 	group = connman_wifi_build_group_name((unsigned char *) ssid,
-						strlen(ssid), mode, security);
+						ssid_len, mode, security);
 	if (group == NULL)
 		return -EINVAL;
 
 	name = g_strdup_printf("%s_%s_%s", type, ident, group);
 
-	g_free(group);
-
 	service = __connman_service_lookup(name);
 
 	g_free(name);
 
-	if (service != NULL) {
-		if (passphrase != NULL) {
-			g_free(service->passphrase);
-			service->passphrase = g_strdup(passphrase);
-		}
+	if (service != NULL)
+		goto done;
 
-		err = __connman_service_connect(service);
-		if (err < 0 && err != -EINPROGRESS)
-			return err;
+	service = create_hidden_wifi(device, group, ssid, mode, security);
 
-		g_dbus_send_reply(connection, msg,
-					DBUS_TYPE_OBJECT_PATH, &service->path,
-							DBUS_TYPE_INVALID);
+done:
+	g_free(group);
 
-		return 0;
+	if (service == NULL)
+		return -EOPNOTSUPP;
+
+	if (passphrase != NULL) {
+		g_free(service->passphrase);
+		service->passphrase = g_strdup(passphrase);
 	}
 
-	return -EOPNOTSUPP;
+	err = __connman_service_connect(service);
+	if (err < 0 && err != -EINPROGRESS)
+		return err;
+
+	g_dbus_send_reply(connection, msg,
+				DBUS_TYPE_OBJECT_PATH, &service->path,
+							DBUS_TYPE_INVALID);
+
+	return 0;
 }
 
 /**
