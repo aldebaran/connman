@@ -1419,7 +1419,7 @@ static int service_register(struct connman_service *service)
 }
 
 /**
- * connman_service_lookup_from_device:
+ * __connman_service_lookup_from_device:
  * @device: device structure
  *
  * Look up a service by device (reference count will not be increased)
@@ -1469,7 +1469,7 @@ static enum connman_service_type convert_device_type(struct connman_device *devi
 }
 
 /**
- * connman_service_create_from_device:
+ * __connman_service_create_from_device:
  * @device: device structure
  *
  * Look up service by device and if not found, create one
@@ -1513,7 +1513,7 @@ done:
 }
 
 /**
- * connman_service_lookup_from_network:
+ * __connman_service_lookup_from_network:
  * @network: network structure
  *
  * Look up a service by network (reference count will not be increased)
@@ -1664,7 +1664,7 @@ static void update_from_network(struct connman_service *service,
 }
 
 /**
- * connman_service_create_from_network:
+ * __connman_service_create_from_network:
  * @network: network structure
  *
  * Look up service by network and if not found, create one
