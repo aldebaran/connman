@@ -1959,7 +1959,7 @@ update:
 		g_free(str);
 	}
 
-	if (service->passphrase != NULL)
+	if (service->passphrase != NULL && strlen(service->passphrase) > 0)
 		g_key_file_set_string(keyfile, service->identifier,
 					"Passphrase", service->passphrase);
 	else
