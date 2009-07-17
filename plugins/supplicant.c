@@ -488,10 +488,12 @@ static int remove_interface(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
+#if 0
 	if (task->created == FALSE) {
 		connman_device_set_powered(task->device, FALSE);
 		return 0;
 	}
+#endif
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, SUPPLICANT_PATH,
 					SUPPLICANT_INTF, "removeInterface");
