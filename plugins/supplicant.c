@@ -1559,35 +1559,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	switch (task->state) {
 	case WPA_COMPLETED:
-		if (connman_network_get_group(task->network) == NULL) {
-			const char *name, *mode, *security;
-			char *bssid;
-
-			/*
-			 * This is a hidden network, we need to set its
-			 * group based on the BSSID we just joined.
-			 */
-			bssid = get_bssid(task->device);
-
-			name = connman_network_get_string(task->network,
-								"Name");
-			mode = connman_network_get_string(task->network,
-								"WiFi.Mode");
-			security = connman_network_get_string(task->network,
-							"WiFi.Security");
-
-			if (bssid && name && mode && security) {
-				char *group;
-
-				group = build_group(bssid, name, NULL, 0,
-								mode, security);
-				connman_network_set_group(task->network, group);
-				g_free(group);
-			}
-
-			g_free(bssid);
-		}
-
 		/* carrier on */
 		connman_network_set_connected(task->network, TRUE);
 		connman_device_set_scanning(task->device, FALSE);
