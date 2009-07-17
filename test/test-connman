@@ -18,7 +18,10 @@ if len(sys.argv) < 2:
 	print "  disconnect <service>"
 	print "  remove <service>"
 	print ""
-	print "  scan [ <interface> ]"
+	print "  scan [type]"
+	print "  enable <type>"
+	print "  disable <type>"
+	print ""
 	print "  dev <interface>"
 	print "  dev <interface> scan"
 	print "  dev <interface> networks"
@@ -235,34 +238,22 @@ elif sys.argv[1] in ["remove"]:
 		print "%s: %s" % (error._dbus_error_name, error.message)
 
 elif sys.argv[1] == "scan":
-	properties = manager.GetProperties()
-
-	interface = ""
-	found = 0
-
 	if len(sys.argv) > 2:
-		interface = sys.argv[2]
+		manager.RequestScan(sys.argv[2])
+	else:
+		manager.RequestScan("")
 
-	for path in properties["Devices"]:
-		device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Device")
+elif sys.argv[1] == "enable":
+	if len(sys.argv) > 2:
+		manager.EnableTechnology(sys.argv[2])
+	else:
+		manager.EnableTechnology("")
 
-		properties = device.GetProperties()
-
-		if interface != "" and properties["Interface"] != interface:
-			continue
-
-		if properties["Type"] in ["wifi", "wimax"]:
-			interface = properties["Interface"]
-			print "Propose scanning for device %s" % (interface)
-			device.ProposeScan()
-			found = 1
-		elif interface != "":
-			print "No scanning support for device %s" % (interface)
-			found = 1
-
-	if found == 0:
-		print "No such device"
+elif sys.argv[1] == "disable":
+	if len(sys.argv) > 2:
+		manager.DisableTechnology(sys.argv[2])
+	else:
+		manager.DisableTechnology("")
 
 elif sys.argv[1] == "dev":
 	properties = manager.GetProperties()
