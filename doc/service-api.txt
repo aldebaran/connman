@@ -57,6 +57,9 @@ Methods		dict GetProperties()
 			unplug the cable. When no cable is plugged in this
 			method will fail.
 
+			This method can also be used to abort a previous
+			connectiong attempt via the Connect method.
+
 			Possible Errors: [service].Error.InvalidArguments
 
 		void Remove()
