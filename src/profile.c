@@ -115,7 +115,7 @@ void __connman_profile_changed(gboolean delayed)
 		return;
 	}
 
-	changed_timeout = g_timeout_add_seconds(2, services_changed, NULL);
+	changed_timeout = g_timeout_add_seconds(1, services_changed, NULL);
 }
 
 int __connman_profile_add_device(struct connman_device *device)
