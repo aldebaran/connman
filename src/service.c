@@ -577,12 +577,24 @@ static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
+	GSequenceIter *iter;
 	int err;
 
 	DBG("service %p", service);
 
 	if (service->pending != NULL)
 		return __connman_error_in_progress(msg);
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		struct connman_service *service = g_sequence_get(iter);
+
+		if (is_connecting(service) == TRUE)
+			return __connman_error_in_progress(msg);
+
+		iter = g_sequence_iter_next(iter);
+	}
 
 	service->ignore = FALSE;
 
