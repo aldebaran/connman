@@ -1589,9 +1589,13 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	service = __connman_service_lookup_from_network(network);
 	if (service != NULL) {
-		if (service->timeout > 0 && service->pending == NULL) {
-			g_source_remove(service->timeout);
-			service->timeout = 0;
+		if (g_atomic_int_get(&service->refcount) == 0) {
+			if (service->timeout > 0) {
+				g_source_remove(service->timeout);
+				service->timeout = 0;
+			}
+
+			connman_service_ref(service);
 
 			set_idle(service);
 		}
