@@ -593,6 +593,11 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	if (service->pending != NULL) {
 		DBusMessage *reply;
 
+		if (service->timeout > 0) {
+			g_source_remove(service->timeout);
+			service->timeout = 0;
+		}
+
 		reply = __connman_error_operation_aborted(service->pending);
 		if (reply != NULL)
 			g_dbus_send_message(conn, reply);
