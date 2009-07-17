@@ -250,28 +250,26 @@ static int get_range(struct supplicant_task *task)
 	return err;
 }
 
-#if 0
-static char *get_bssid(struct connman_device *device)
+static int get_bssid(struct connman_device *device,
+				unsigned char *bssid, unsigned int *bssid_len)
 {
-	char *bssid;
-	unsigned char ioctl_bssid[ETH_ALEN];
-	int ifindex;
-	char *ifname;
 	struct iwreq wrq;
+	char *ifname;
+	int ifindex;
 	int fd, err;
 
 	ifindex = connman_device_get_index(device);
 	if (ifindex < 0)
-		return NULL;
+		return -EINVAL;
 
 	ifname = connman_inet_ifname(ifindex);
 	if (ifname == NULL)
-		return NULL;
+		return -EINVAL;
 
 	fd = socket(PF_INET, SOCK_DGRAM, 0);
 	if (fd < 0) {
 		g_free(ifname);
-		return NULL;
+		return -EINVAL;
 	}
 
 	memset(&wrq, 0, sizeof(wrq));
@@ -283,22 +281,13 @@ static char *get_bssid(struct connman_device *device)
 	close(fd);
 
 	if (err < 0)
-		return NULL;
+		return -EIO;
 
-	memcpy(ioctl_bssid, wrq.u.ap_addr.sa_data, ETH_ALEN);
+	memcpy(bssid, wrq.u.ap_addr.sa_data, ETH_ALEN);
+	*bssid_len = ETH_ALEN;
 
-	bssid = g_try_malloc0(13);
-	if (bssid == NULL)
-		return NULL;
-
-	snprintf(bssid, 13, "%02x%02x%02x%02x%02x%02x",
-					ioctl_bssid[0], ioctl_bssid[1],
-					ioctl_bssid[2], ioctl_bssid[3],
-					ioctl_bssid[4], ioctl_bssid[5]);
-
-	return bssid;
+	return 0;
 }
-#endif
 
 static void add_interface_reply(DBusPendingCall *call, void *user_data)
 {
@@ -1510,6 +1499,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 {
 	DBusError error;
 	const char *newstate, *oldstate;
+	unsigned char bssid[ETH_ALEN];
+	unsigned int bssid_len;
 	enum supplicant_state state;
 
 	dbus_error_init(&error);
@@ -1561,6 +1552,10 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	switch (task->state) {
 	case WPA_COMPLETED:
+		if (get_bssid(task->device, bssid, &bssid_len) == 0)
+	                connman_network_set_address(task->network,
+							bssid, bssid_len);
+
 		/* carrier on */
 		connman_network_set_connected(task->network, TRUE);
 		connman_device_set_scanning(task->device, FALSE);
