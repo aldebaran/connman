@@ -626,9 +626,6 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 
 	DBG("service %p", service);
 
-	if (service->pending != NULL)
-		reply_pending(service, ECONNABORTED);
-
 	service->ignore = TRUE;
 
 	err = __connman_service_disconnect(service);
@@ -754,9 +751,9 @@ static void service_free(gpointer user_data)
 
 	DBG("service %p", service);
 
-	g_hash_table_remove(service_hash, service->identifier);
-
 	reply_pending(service, ENOENT);
+
+	g_hash_table_remove(service_hash, service->identifier);
 
 	service->path = NULL;
 
@@ -795,8 +792,6 @@ void __connman_service_put(struct connman_service *service)
 
 		iter = g_hash_table_lookup(service_hash, service->identifier);
 		if (iter != NULL) {
-			reply_pending(service, ENOENT);
-
 			__connman_service_disconnect(service);
 
 			service->state = CONNMAN_SERVICE_STATE_FAILURE;
@@ -1107,6 +1102,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	int err;
 
 	DBG("service %p", service);
+
+	reply_pending(service, ECONNABORTED);
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
