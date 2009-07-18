@@ -1,3 +1,7 @@
+ver 0.28:
+	Fix another reference counting imbalance when adding networks.
+	Revert supplicant change to always reset scanning after results.
+
 ver 0.27:
 	Fix missing disarming of the connection timeout.
 	Fix handling of multiple supplicant disconnect attempts.
