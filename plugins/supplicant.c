@@ -1778,7 +1778,7 @@ int supplicant_disconnect(struct connman_network *network)
 		return -ENODEV;
 
 	if (task->disconnecting == TRUE)
-		return -EINPROGRESS;
+		return -EALREADY;
 
 	disable_network(task);
 
