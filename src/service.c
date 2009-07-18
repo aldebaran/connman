@@ -1413,9 +1413,7 @@ struct connman_service *__connman_service_lookup_from_device(struct connman_devi
 
 	name = g_strdup_printf("%s_%s",
 				__connman_device_get_type(device), ident);
-
 	service = __connman_service_lookup(name);
-
 	g_free(name);
 
 	return service;
@@ -1463,15 +1461,15 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 
 	name = g_strdup_printf("%s_%s",
 				__connman_device_get_type(device), ident);
-
 	service = __connman_service_get(name);
+	g_free(name);
+
 	if (service == NULL)
-		goto done;
+		return NULL;
 
 	if (service->path != NULL) {
-		__connman_service_put(service);
-		service = NULL;
-		goto done;
+		__connman_profile_changed(TRUE);
+		return service;
 	}
 
 	service->type = convert_device_type(device);
@@ -1480,11 +1478,10 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 
 	service_register(service);
 
+	__connman_profile_changed(TRUE);
+
 	if (service->favorite == TRUE)
 		__connman_service_auto_connect();
-
-done:
-	g_free(name);
 
 	return service;
 }
@@ -1522,9 +1519,7 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
-
 	service = __connman_service_lookup(name);
-
 	g_free(name);
 
 	return service;
@@ -1663,23 +1658,6 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	const char *ident, *group;
 	char *name;
 
-	service = __connman_service_lookup_from_network(network);
-	if (service != NULL) {
-		if (g_atomic_int_get(&service->refcount) == 0) {
-			if (service->timeout > 0) {
-				g_source_remove(service->timeout);
-				service->timeout = 0;
-			}
-
-			set_idle(service);
-		}
-
-		connman_service_ref(service);
-
-		update_from_network(service, network);
-		return service;
-	}
-
 	ident = __connman_network_get_ident(network);
 	if (ident == NULL)
 		return NULL;
@@ -1688,24 +1666,21 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	if (group == NULL)
 		return NULL;
 
-	if (__connman_network_get_weakness(network) == TRUE)
-		return NULL;
-
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
-
 	service = __connman_service_get(name);
+	g_free(name);
+
 	if (service == NULL)
-		goto done;
+		return NULL;
+
+	if (__connman_network_get_weakness(network) == TRUE)
+		return service;
 
 	if (service->path != NULL) {
 		update_from_network(service, network);
-
 		__connman_profile_changed(TRUE);
-
-		__connman_service_put(service);
-		service = NULL;
-		goto done;
+		return service;
 	}
 
 	service->type = convert_network_type(network);
@@ -1716,11 +1691,10 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	service_register(service);
 
+	__connman_profile_changed(TRUE);
+
 	if (service->favorite == TRUE)
 		__connman_service_auto_connect();
-
-done:
-	g_free(name);
 
 	return service;
 }
