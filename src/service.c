@@ -794,11 +794,6 @@ void __connman_service_put(struct connman_service *service)
 		iter = g_hash_table_lookup(service_hash, service->identifier);
 		if (iter != NULL) {
 			__connman_service_disconnect(service);
-
-			service->state = CONNMAN_SERVICE_STATE_FAILURE;
-			service->error = CONNMAN_SERVICE_ERROR_OUT_OF_RANGE;
-			state_changed(service);
-
 			g_sequence_remove(iter);
 		} else
 			service_free(service);
