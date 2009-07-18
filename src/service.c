@@ -588,9 +588,10 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	iter = g_sequence_get_begin_iter(service_list);
 
 	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *service = g_sequence_get(iter);
+		struct connman_service *temp = g_sequence_get(iter);
 
-		if (is_connecting(service) == TRUE)
+		if (service->type == temp->type &&
+					is_connecting(temp) == TRUE)
 			return __connman_error_in_progress(msg);
 
 		iter = g_sequence_iter_next(iter);
