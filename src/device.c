@@ -82,6 +82,20 @@ static gboolean device_scan_trigger(gpointer user_data)
 	return TRUE;
 }
 
+static void reset_scan_trigger(struct connman_device *device)
+{
+	if (device->scan_timeout > 0) {
+		g_source_remove(device->scan_timeout);
+		device->scan_timeout = 0;
+	}
+
+	if (device->scan_interval > 0) {
+		guint interval = device->scan_interval;
+		device->scan_timeout = g_timeout_add_seconds(interval,
+					device_scan_trigger, device);
+	}
+}
+
 static const char *type2description(enum connman_device_type type)
 {
 	switch (type) {
@@ -460,17 +474,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &interval);
 
-		device->scan_interval = interval;
+		if (device->scan_interval != interval) {
+			device->scan_interval = interval;
 
-		if (device->scan_timeout > 0) {
-			g_source_remove(device->scan_timeout);
-			device->scan_timeout = 0;
-		}
-
-		if (device->scan_interval > 0) {
-			guint interval = device->scan_interval;
-			device->scan_timeout = g_timeout_add_seconds(interval,
-						device_scan_trigger, device);
+			reset_scan_trigger(device);
 		}
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
 		int err;
@@ -1333,16 +1340,7 @@ int connman_device_set_powered(struct connman_device *device,
 	if (powered == FALSE)
 		return 0;
 
-	if (device->scan_timeout > 0) {
-		g_source_remove(device->scan_timeout);
-		device->scan_timeout = 0;
-	}
-
-	if (device->scan_interval > 0) {
-		guint interval = device->scan_interval;
-		device->scan_timeout = g_timeout_add_seconds(interval,
-					device_scan_trigger, device);
-	}
+	reset_scan_trigger(device);
 
 	if (device->driver->scan)
 		device->driver->scan(device);
@@ -1524,19 +1522,11 @@ int connman_device_set_scanning(struct connman_device *device,
 	g_dbus_send_message(connection, signal);
 
 	if (scanning == TRUE) {
-		if (device->scan_timeout > 0) {
-			g_source_remove(device->scan_timeout);
-			device->scan_timeout = 0;
-		}
-
-		if (device->scan_interval > 0) {
-			guint interval = device->scan_interval;
-			device->scan_timeout = g_timeout_add_seconds(interval,
-						device_scan_trigger, device);
-		}
+		reset_scan_trigger(device);
 
 		g_hash_table_foreach(device->networks,
 					mark_network_unavailable, NULL);
+
 		return 0;
 	}
 
