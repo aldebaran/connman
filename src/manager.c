@@ -294,6 +294,26 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *get_state(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *str;
+
+	DBG("conn %p", conn);
+
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
+		return __connman_error_permission_denied(msg);
+
+	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
+		str = "online";
+	else
+		str = "offline";
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &str,
+						DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *add_profile(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -505,6 +525,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property       },
+	{ "GetState",          "",      "s",     get_state          },
 	{ "AddProfile",        "s",     "o",     add_profile        },
 	{ "RemoveProfile",     "o",     "",      remove_profile     },
 	{ "RequestScan",       "s",     "",      request_scan       },
