@@ -1,3 +1,8 @@
+ver 0.29:
+	Fix missing signal emission for offline mode changes.
+	Fix signal emission for changes in technology properties.
+	Rename Technologies property to AvailableTechnologies.
+
 ver 0.28:
 	Fix another reference counting imbalance when adding networks.
 	Revert supplicant change to always reset scanning after results.
