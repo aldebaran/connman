@@ -125,7 +125,7 @@ Properties	string State [readonly]
 			the value "connected". This can only be seen if
 			previously no connection was present.
 
-		array{string} Technologies [readonly]
+		array{string} AvailableTechnologies [readonly]
 
 			The list of available technologies. The strings
 			are the same as the ones from the service types.

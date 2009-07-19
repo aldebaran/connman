@@ -116,7 +116,7 @@ static void technology_registered(enum connman_service_type type,
 {
 	DBusMessage *signal;
 	DBusMessageIter entry, value, iter;
-	const char *key = "Technologies";
+	const char *key = "AvailableTechnologies";
 
 	DBG("type %d registered %d", type, registered);
 

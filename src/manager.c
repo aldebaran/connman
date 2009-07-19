@@ -133,7 +133,7 @@ static void append_technologies(gboolean powered, DBusMessageIter *dict)
 	if (powered)
 		key = "EnabledTechnologies";
 	else
-		key = "Technologies";
+		key = "AvailableTechnologies";
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
