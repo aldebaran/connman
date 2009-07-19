@@ -1733,12 +1733,22 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 
 void __connman_device_increase_connections(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	device->connections++;
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_connect(type);
 }
 
 void __connman_device_decrease_connections(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	device->connections--;
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_disconnect(type);
 }
 
 /**

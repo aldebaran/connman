@@ -286,12 +286,16 @@ void __connman_service_auto_connect(void);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
-void __connman_notifier_list(gboolean powered, DBusMessageIter *iter);
+void __connman_notifier_list_registered(DBusMessageIter *iter);
+void __connman_notifier_list_enabled(DBusMessageIter *iter);
+void __connman_notifier_list_connected(DBusMessageIter *iter);
 
 void __connman_notifier_register(enum connman_service_type type);
 void __connman_notifier_unregister(enum connman_service_type type);
 void __connman_notifier_enable(enum connman_service_type type);
 void __connman_notifier_disable(enum connman_service_type type);
+void __connman_notifier_connect(enum connman_service_type type);
+void __connman_notifier_disconnect(enum connman_service_type type);
 void __connman_notifier_offline_mode(connman_bool_t enabled);
 
 #include <connman/rtnl.h>

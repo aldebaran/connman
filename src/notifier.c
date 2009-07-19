@@ -70,6 +70,80 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 	notifier_list = g_slist_remove(notifier_list, notifier);
 }
 
+static const char *type2string(enum connman_service_type type)
+{
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		break;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		return "ethernet";
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		return "wifi";
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		return "wimax";
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		return "bluetooth";
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		return "cellular";
+	}
+
+	return NULL;
+}
+
+#define MAX_TECHNOLOGIES 10
+
+static volatile gint registered[MAX_TECHNOLOGIES];
+static volatile gint enabled[MAX_TECHNOLOGIES];
+static volatile gint connected[MAX_TECHNOLOGIES];
+
+void __connman_notifier_list_registered(DBusMessageIter *iter)
+{
+	int i;
+
+	for (i = 0; i < 10; i++) {
+		const char *type = type2string(i);
+
+		if (type == NULL)
+			continue;
+
+		if (g_atomic_int_get(&registered[i]) > 0)
+			dbus_message_iter_append_basic(iter,
+						DBUS_TYPE_STRING, &type);
+	}
+}
+
+void __connman_notifier_list_enabled(DBusMessageIter *iter)
+{
+	int i;
+
+	for (i = 0; i < 10; i++) {
+		const char *type = type2string(i);
+
+		if (type == NULL)
+			continue;
+
+		if (g_atomic_int_get(&enabled[i]) > 0)
+			dbus_message_iter_append_basic(iter,
+						DBUS_TYPE_STRING, &type);
+	}
+}
+
+void __connman_notifier_list_connected(DBusMessageIter *iter)
+{
+	int i;
+
+	for (i = 0; i < 10; i++) {
+		const char *type = type2string(i);
+
+		if (type == NULL)
+			continue;
+
+		if (g_atomic_int_get(&connected[i]) > 0)
+			dbus_message_iter_append_basic(iter,
+						DBUS_TYPE_STRING, &type);
+	}
+}
+
 static void technology_enabled(enum connman_device_type type,
 						connman_bool_t enabled)
 {
@@ -95,7 +169,7 @@ static void technology_enabled(enum connman_device_type type,
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list(TRUE, &iter);
+	__connman_notifier_list_registered(&iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);
@@ -135,7 +209,7 @@ static void technology_registered(enum connman_service_type type,
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list(FALSE, &iter);
+	__connman_notifier_list_enabled(&iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);
@@ -143,49 +217,36 @@ static void technology_registered(enum connman_service_type type,
 	g_dbus_send_message(connection, signal);
 }
 
-static const char *type2string(enum connman_service_type type)
+static void technology_connected(enum connman_service_type type,
+						connman_bool_t connected)
 {
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-		break;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-		return "ethernet";
-	case CONNMAN_SERVICE_TYPE_WIFI:
-		return "wifi";
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-		return "wimax";
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-		return "bluetooth";
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		return "cellular";
-	}
+	DBusMessage *signal;
+	DBusMessageIter entry, value, iter;
+	const char *key = "ConnectedTechnologies";
 
-	return NULL;
-}
+	DBG("type %d connected %d", type, connected);
 
-static volatile gint registered[10];
-static volatile gint enabled[10];
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
 
-void __connman_notifier_list(gboolean powered, DBusMessageIter *iter)
-{
-	int i;
+	dbus_message_iter_init_append(signal, &entry);
 
-	for (i = 0; i < 10; i++) {
-		const char *type = type2string(i);
-		gint count;
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
 
-		if (type == NULL)
-			continue;
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
+								&value);
 
-		if (powered == TRUE)
-			count = g_atomic_int_get(&enabled[i]);
-		else
-			count = g_atomic_int_get(&registered[i]);
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &iter);
+	__connman_notifier_list_connected(&iter);
+	dbus_message_iter_close_container(&value, &iter);
 
-		if (count > 0)
-			dbus_message_iter_append_basic(iter,
-						DBUS_TYPE_STRING, &type);
-	}
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
 }
 
 void __connman_notifier_register(enum connman_service_type type)
@@ -262,6 +323,44 @@ void __connman_notifier_disable(enum connman_service_type type)
 
 	if (g_atomic_int_dec_and_test(&enabled[type]) == TRUE)
 		technology_enabled(type, FALSE);
+}
+
+void __connman_notifier_connect(enum connman_service_type type)
+{
+	DBG("type %d", type);
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		return;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	}
+
+	if (g_atomic_int_exchange_and_add(&connected[type], 1) == 0)
+		technology_connected(type, TRUE);
+}
+
+void __connman_notifier_disconnect(enum connman_service_type type)
+{
+	DBG("type %d", type);
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		return;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	}
+
+	if (g_atomic_int_dec_and_test(&connected[type]) == TRUE)
+		technology_connected(type, FALSE);
 }
 
 void __connman_notifier_offline_mode(connman_bool_t enabled)

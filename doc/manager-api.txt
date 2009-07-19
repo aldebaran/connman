@@ -135,6 +135,11 @@ Properties	string State [readonly]
 			The list of enabled technologies. The strings
 			are the same as the ones from the service types.
 
+		array{string} ConnectedTechnologies [readonly]
+
+			The list of connected technologies. The strings
+			are the same as the ones from the service type.
+
 		boolean OfflineMode [readwrite]
 
 			The offline mode indicates the global setting for
