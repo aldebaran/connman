@@ -247,6 +247,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	append_enabled_technologies(&dict);
 	append_connected_technologies(&dict);
 
+	str = __connman_service_default();
+	if (str != NULL)
+		connman_dbus_dict_append_variant(&dict, "DefaultTechnology",
+						DBUS_TYPE_STRING, &str);
+
 	dbus_message_iter_close_container(&array, &dict);
 
 	return reply;

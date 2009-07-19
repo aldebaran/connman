@@ -255,6 +255,7 @@ int __connman_service_init(void);
 void __connman_service_cleanup(void);
 
 void __connman_service_list(DBusMessageIter *iter);
+const char *__connman_service_default(void);
 
 void __connman_service_put(struct connman_service *service);
 

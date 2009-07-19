@@ -147,6 +147,11 @@ Properties	string State [readonly]
 			The list of connected technologies. The strings
 			are the same as the ones from the service type.
 
+		string DefaultTechnology [readonly]
+
+			The current connected technology which holds the
+			default route.
+
 		boolean OfflineMode [readwrite]
 
 			The offline mode indicates the global setting for

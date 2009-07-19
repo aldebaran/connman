@@ -210,6 +210,26 @@ static enum connman_service_error string2error(const char *error)
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
 
+const char *__connman_service_default(void)
+{
+	struct connman_service *service;
+	GSequenceIter *iter;
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	if (g_sequence_iter_is_end(iter) == TRUE)
+		return "";
+
+	service = g_sequence_get(iter);
+	if (service == NULL)
+		return "";
+
+	if (service->state != CONNMAN_SERVICE_STATE_READY)
+		return "";
+
+	return type2string(service->type);
+}
+
 static void state_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
