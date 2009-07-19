@@ -1327,9 +1327,11 @@ static void register_element(gpointer data, gpointer user_data)
 	if (element->type == CONNMAN_ELEMENT_TYPE_DHCP) {
 		element->parent->configuring = TRUE;
 
+#if 0
 		if (__connman_element_count(NULL,
 					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
 			emit_state_change(connection, "connecting");
+#endif
 	}
 
 	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
