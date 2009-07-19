@@ -350,6 +350,8 @@ static int add_interface(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_message_iter_init_append(message, &array);
 
 	dbus_message_iter_append_basic(&array,
@@ -438,6 +440,8 @@ static int create_interface(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &task->ifname,
 							DBUS_TYPE_INVALID);
 
@@ -500,6 +504,8 @@ static int remove_interface(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->path,
 							DBUS_TYPE_INVALID);
 
@@ -536,6 +542,8 @@ static int set_ap_scan(struct supplicant_task *task)
 				SUPPLICANT_INTF ".Interface", "setAPScan");
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_append_args(message, DBUS_TYPE_UINT32, &ap_scan,
 							DBUS_TYPE_INVALID);
@@ -577,6 +585,8 @@ static int add_network(struct supplicant_task *task)
 				SUPPLICANT_INTF ".Interface", "addNetwork");
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_error_init(&error);
 
@@ -631,6 +641,8 @@ static int remove_network(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->netpath,
 							DBUS_TYPE_INVALID);
 
@@ -673,6 +685,8 @@ static int select_network(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &task->netpath,
 							DBUS_TYPE_INVALID);
 
@@ -712,6 +726,8 @@ static int enable_network(struct supplicant_task *task)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_error_init(&error);
 
 	reply = dbus_connection_send_with_reply_and_block(connection,
@@ -747,6 +763,8 @@ static int disable_network(struct supplicant_task *task)
 					SUPPLICANT_INTF ".Network", "disable");
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_error_init(&error);
 
@@ -788,6 +806,8 @@ static int set_network(struct supplicant_task *task,
 					SUPPLICANT_INTF ".Network", "set");
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &array);
 
@@ -892,6 +912,8 @@ static int initiate_scan(struct supplicant_task *task)
 					SUPPLICANT_INTF ".Interface", "scan");
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
@@ -1329,6 +1351,8 @@ static void get_properties(struct supplicant_task *task)
 	if (message == NULL)
 		goto noscan;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get network properties");
@@ -1423,6 +1447,8 @@ static void scan_results_available(struct supplicant_task *task)
 							"scanResults");
 	if (message == NULL)
 		return;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {

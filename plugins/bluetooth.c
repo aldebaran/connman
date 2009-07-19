@@ -108,6 +108,8 @@ static void get_properties(DBusConnection *connection,
 		return;
 	}
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get properties for %s", interface);
@@ -236,6 +238,8 @@ static int pan_connect(struct connman_network *network)
 	if (message == NULL)
 		return -ENOMEM;
 
+	dbus_message_set_auto_start(message, FALSE);
+
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &uuid,
 							DBUS_TYPE_INVALID);
 
@@ -309,6 +313,8 @@ static int pan_disconnect(struct connman_network *network)
 					BLUEZ_NETWORK_INTERFACE, DISCONNECT);
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_append_args(message, DBUS_TYPE_INVALID);
 
@@ -399,6 +405,8 @@ static int change_powered(DBusConnection *connection, const char *path,
 					BLUEZ_ADAPTER_INTERFACE, SET_PROPERTY);
 	if (message == NULL)
 		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
 	connman_dbus_property_append_variant(&iter, "Powered",
@@ -737,6 +745,8 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 				BLUEZ_MANAGER_INTERFACE, LIST_ADAPTERS);
 	if (message == NULL)
 		return;
+
+	dbus_message_set_auto_start(message, FALSE);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
