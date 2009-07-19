@@ -74,6 +74,12 @@ for key in properties.keys():
 			print "    true"
 		else:
 			print "    false"
+	elif key in ["DefaultTechnology"]:
+		print "%s" % (key)
+		if properties[key] == "":
+			print "    <none>"
+		else:
+			print "    %s" % (properties[key])
 	else:
 		print "%s" % (key)
 		print "    %s" % (properties[key])
