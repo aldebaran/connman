@@ -146,7 +146,7 @@ static void append_technologies(gboolean powered, DBusMessageIter *dict)
 
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_device_type_list(powered, &iter);
+	__connman_notifier_list(powered, &iter);
 	dbus_message_iter_close_container(&value, &iter);
 
 	dbus_message_iter_close_container(&entry, &value);

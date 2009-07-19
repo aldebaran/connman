@@ -203,6 +203,8 @@ char *__connman_udev_get_mbm_devnode(const char *ifname);
 int __connman_device_init(void);
 void __connman_device_cleanup(void);
 
+enum connman_service_type __connman_device_get_service_type(struct connman_device *device);
+
 void __connman_device_increase_connections(struct connman_device *device);
 void __connman_device_decrease_connections(struct connman_device *device);
 
@@ -284,12 +286,12 @@ void __connman_service_auto_connect(void);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
-void __connman_notifier_device_type_list(gboolean powered,
-						DBusMessageIter *iter);
-void __connman_notifier_device_type_register(enum connman_device_type type);
-void __connman_notifier_device_type_unregister(enum connman_device_type type);
-void __connman_notifier_device_type_increase(enum connman_device_type type);
-void __connman_notifier_device_type_decrease(enum connman_device_type type);
+void __connman_notifier_list(gboolean powered, DBusMessageIter *iter);
+
+void __connman_notifier_register(enum connman_service_type type);
+void __connman_notifier_unregister(enum connman_service_type type);
+void __connman_notifier_enable(enum connman_service_type type);
+void __connman_notifier_disable(enum connman_service_type type);
 void __connman_notifier_offline_mode(connman_bool_t enabled);
 
 #include <connman/rtnl.h>

@@ -1414,30 +1414,6 @@ struct connman_service *__connman_service_lookup_from_device(struct connman_devi
 	return service;
 }
 
-static enum connman_service_type convert_device_type(struct connman_device *device)
-{
-	enum connman_device_type type = connman_device_get_type(device);
-
-	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
-		break;
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-		return CONNMAN_SERVICE_TYPE_ETHERNET;
-	}
-
-	return CONNMAN_SERVICE_TYPE_UNKNOWN;
-}
-
 /**
  * __connman_service_create_from_device:
  * @device: device structure
@@ -1467,7 +1443,7 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 		return service;
 	}
 
-	service->type = convert_device_type(device);
+	service->type = __connman_device_get_service_type(device);
 
 	service->device = device;
 

@@ -152,6 +152,34 @@ static const char *type2string(enum connman_device_type type)
 	return NULL;
 }
 
+enum connman_service_type __connman_device_get_service_type(struct connman_device *device)
+{
+	enum connman_device_type type = connman_device_get_type(device);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		break;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+		return CONNMAN_SERVICE_TYPE_ETHERNET;
+	case CONNMAN_DEVICE_TYPE_WIFI:
+		return CONNMAN_SERVICE_TYPE_WIFI;
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		return CONNMAN_SERVICE_TYPE_WIMAX;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+		return CONNMAN_SERVICE_TYPE_CELLULAR;
+	}
+
+	return CONNMAN_SERVICE_TYPE_UNKNOWN;
+}
+
 static int set_connected(struct connman_device *device,
 						connman_bool_t connected)
 {
@@ -249,6 +277,7 @@ static int powered_changed(struct connman_device *device)
 static int set_powered(struct connman_device *device, connman_bool_t powered)
 {
 	struct connman_device_driver *driver = device->driver;
+	enum connman_service_type type;
 	int err;
 
 	DBG("device %p powered %d", device, powered);
@@ -259,10 +288,12 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	if (!driver)
 		return -EINVAL;
 
+	type = __connman_device_get_service_type(device);
+
 	if (powered == TRUE) {
 		if (driver->enable) {
 			err = driver->enable(device);
-			__connman_notifier_device_type_increase(device->type);
+			__connman_notifier_enable(type);
 		} else
 			err = -EINVAL;
 	} else {
@@ -272,7 +303,7 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 
 		if (driver->disable) {
 			err = driver->disable(device);
-			__connman_notifier_device_type_decrease(device->type);
+			__connman_notifier_disable(type);
 		} else
 			err = -EINVAL;
 	}
@@ -820,20 +851,26 @@ static void unregister_interface(struct connman_element *element)
 
 static void device_enable(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	DBG("device %p", device);
 
 	if (device->powered == TRUE)
 		return;
 
+	type = __connman_device_get_service_type(device);
+
 	if (device->driver->enable) {
 		if (device->driver->enable(device) == 0)
 			device->powered = TRUE;
-		__connman_notifier_device_type_increase(device->type);
+		__connman_notifier_enable(type);
 	}
 }
 
 static void device_disable(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	DBG("device %p", device);
 
 	if (device->powered == FALSE)
@@ -841,10 +878,12 @@ static void device_disable(struct connman_device *device)
 
 	g_hash_table_remove_all(device->networks);
 
+	type = __connman_device_get_service_type(device);
+
 	if (device->driver->disable) {
 		if (device->driver->disable(device) == 0)
 			device->powered = FALSE;
-		__connman_notifier_device_type_decrease(device->type);
+		__connman_notifier_disable(type);
 	}
 }
 
@@ -1809,6 +1848,8 @@ void __connman_device_set_network(struct connman_device *device,
  */
 int connman_device_register(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	__connman_storage_load_device(device);
 
 	switch (device->mode) {
@@ -1821,7 +1862,8 @@ int connman_device_register(struct connman_device *device)
 		break;
 	}
 
-	__connman_notifier_device_type_register(device->type);
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_register(type);
 
 	return connman_element_register(&device->element, NULL);
 }
@@ -1834,9 +1876,12 @@ int connman_device_register(struct connman_device *device)
  */
 void connman_device_unregister(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	__connman_storage_save_device(device);
 
-	__connman_notifier_device_type_unregister(device->type);
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_unregister(type);
 
 	connman_element_unregister(&device->element);
 }
