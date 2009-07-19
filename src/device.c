@@ -230,6 +230,18 @@ static int set_connected(struct connman_device *device,
 					CONNMAN_SERVICE_STATE_IDLE);
 	}
 
+	if (connected == TRUE) {
+		enum connman_service_type type;
+
+		type = __connman_device_get_service_type(device);
+		__connman_notifier_connect(type);
+	} else {
+		enum connman_service_type type;
+
+		type = __connman_device_get_service_type(device);
+		__connman_notifier_disconnect(type);
+	}
+
 	return 0;
 }
 
