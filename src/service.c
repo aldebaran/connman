@@ -983,6 +983,30 @@ int __connman_service_set_carrier(struct connman_service *service,
 	return connman_service_set_favorite(service, carrier);
 }
 
+static void default_changed(void)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "DefaultTechnology";
+	const char *str = __connman_service_default();
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state)
 {
@@ -998,6 +1022,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	if (service->state == state)
 		return -EALREADY;
+
+	if (service->state == CONNMAN_SERVICE_STATE_READY)
+		default_changed();
 
 	if (service->state == CONNMAN_SERVICE_STATE_FAILURE &&
 				state == CONNMAN_SERVICE_STATE_IDLE)
@@ -1065,6 +1092,8 @@ int __connman_service_indicate_error(struct connman_service *service,
 int __connman_service_indicate_default(struct connman_service *service)
 {
 	DBG("service %p", service);
+
+	default_changed();
 
 	return 0;
 }
