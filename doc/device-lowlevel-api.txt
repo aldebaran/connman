@@ -22,30 +22,6 @@ Methods		dict GetProperties()
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.InvalidProperty
 
-		void JoinNetwork(dict network)
-
-			Join network specified by the given properties. The
-			properties for WiFi networks can be WiFi.SSID,
-			WiFi.Security and WiFi.Passphrase.
-
-			Possible Errors: [service].Error.InvalidArguments
-
-		object CreateNetwork(dict network)
-
-			Creates a network object from the specified
-			properties. Valid properties are WiFi.SSID,
-			WiFi.Security and WiFi.Passphrase. Check the
-			network interface description for details.
-
-			Possible Errors: [service].Error.InvalidArguments
-
-		void RemoveNetwork(object network)
-
-			Removes a previously created network object.
-
-			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.DoesNotExist
-
 		void ProposeScan()
 
 			Proposes to trigger a scan transaction.
