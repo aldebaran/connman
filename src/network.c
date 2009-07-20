@@ -217,71 +217,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *do_connect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_network *network = data;
-	int err;
-
-	DBG("conn %p", conn);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
-	if (network->connected == TRUE)
-		return __connman_error_failed(msg, EALREADY);
-
-	if (network->driver && network->driver->connect) {
-		enum connman_device_mode mode;
-
-		mode = connman_device_get_mode(network->device);
-		if (mode == CONNMAN_DEVICE_MODE_NETWORK_SINGLE)
-			__connman_device_disconnect(network->device);
-
-		err = network->driver->connect(network);
-		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg, -err);
-	} else
-		network->connected = TRUE;
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *do_disconnect(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_network *network = data;
-	int err;
-
-	DBG("conn %p", conn);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
-	if (network->connected == FALSE)
-		return __connman_error_failed(msg, EINVAL);
-
-	connman_element_unregister_children(&network->element);
-
-	connman_device_set_disconnected(network->device, TRUE);
-
-	if (network->driver && network->driver->disconnect) {
-		err = network->driver->disconnect(network);
-		if (err < 0 && err != -EINPROGRESS)
-			return __connman_error_failed(msg, -err);
-	} else
-		network->connected = FALSE;
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
 static GDBusMethodTable network_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties },
 	{ "SetProperty",   "sv", "",      set_property   },
-	{ "Connect",       "",   "",      do_connect     },
-	{ "Disconnect",    "",   "",      do_disconnect  },
 	{ },
 };
 
