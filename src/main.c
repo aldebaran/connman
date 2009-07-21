@@ -50,7 +50,7 @@ static void sig_debug(int sig)
 
 static void disconnect_callback(DBusConnection *conn, void *user_data)
 {
-	DBG("D-Bus disconnect");
+	connman_error("D-Bus disconnect");
 
 	g_main_loop_quit(main_loop);
 }
