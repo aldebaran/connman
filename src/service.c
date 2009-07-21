@@ -64,7 +64,7 @@ static void append_path(gpointer value, gpointer user_data)
 	struct connman_service *service = value;
 	DBusMessageIter *iter = user_data;
 
-	if (service->path == NULL)
+	if (service->path == NULL || service->hidden == TRUE)
 		return;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
