@@ -901,6 +901,30 @@ static int set_network(struct supplicant_task *task,
 	return 0;
 }
 
+static void scan_reply(DBusPendingCall *call, void *user_data)
+{
+	struct supplicant_task *task = user_data;
+	DBusMessage *reply;
+
+	DBG("task %p", task);
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		connman_device_set_scanning(task->device, FALSE);
+		goto done;
+	}
+
+	if (task->scanning == TRUE)
+		connman_device_set_scanning(task->device, TRUE);
+
+done:
+	dbus_message_unref(reply);
+}
+
+
 static int initiate_scan(struct supplicant_task *task)
 {
 	DBusMessage *message;
@@ -922,9 +946,17 @@ static int initiate_scan(struct supplicant_task *task)
 		return -EIO;
 	}
 
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_pending_call_set_notify(call, scan_reply, task, NULL);
+
 	dbus_message_unref(message);
 
-	return 0;
+	return -EINPROGRESS;
 }
 
 static struct {
@@ -1753,6 +1785,9 @@ int supplicant_scan(struct connman_device *device)
 
 	err = initiate_scan(task);
 	if (err < 0) {
+		if (err == -EINPROGRESS)
+			return 0;
+
 		task->scanning = FALSE;
 		return err;
 	}
