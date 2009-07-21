@@ -71,8 +71,6 @@ static gboolean device_scan_trigger(gpointer user_data)
 
 	DBG("device %p", device);
 
-	connman_device_set_scanning(device, FALSE);
-
 	if (device->driver == NULL) {
 		device->scan_timeout = 0;
 		return FALSE;

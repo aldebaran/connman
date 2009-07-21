@@ -182,7 +182,7 @@ struct supplicant_task {
 	char *netpath;
 	gboolean created;
 	enum supplicant_state state;
-	gboolean noscan;
+	gboolean scanning;
 	GSList *scan_results;
 	struct iw_range *range;
 	gboolean disconnecting;
@@ -1373,8 +1373,10 @@ static void get_properties(struct supplicant_task *task)
 	return;
 
 noscan:
-	if (task->noscan == FALSE)
+	if (task->scanning == TRUE) {
 		connman_device_set_scanning(task->device, FALSE);
+		task->scanning = FALSE;
+	}
 }
 
 static void scan_results_reply(DBusPendingCall *call, void *user_data)
@@ -1431,8 +1433,10 @@ done:
 	dbus_message_unref(reply);
 
 noscan:
-	if (task->noscan == FALSE)
+	if (task->scanning == TRUE) {
 		connman_device_set_scanning(task->device, FALSE);
+		task->scanning = FALSE;
+	}
 }
 
 static void scan_results_available(struct supplicant_task *task)
@@ -1456,13 +1460,13 @@ static void scan_results_available(struct supplicant_task *task)
 		goto done;
 	}
 
-	if (task->noscan == FALSE)
-		connman_device_set_scanning(task->device, TRUE);
-
 	if (call == NULL) {
 		connman_error("D-Bus connection not available");
 		goto done;
 	}
+
+	if (task->scanning == TRUE)
+		connman_device_set_scanning(task->device, TRUE);
 
 	dbus_pending_call_set_notify(call, scan_results_reply, task, NULL);
 
@@ -1497,6 +1501,7 @@ static int task_connect(struct supplicant_task *task)
 	const char *address, *security, *passphrase;
 	const void *ssid;
 	unsigned int ssid_len;
+	int err;
 
 	address = connman_network_get_string(task->network, "Address");
 	security = connman_network_get_string(task->network, "WiFi.Security");
@@ -1520,7 +1525,9 @@ static int task_connect(struct supplicant_task *task)
 
 	set_network(task, ssid, ssid_len, address, security, passphrase);
 
-	enable_network(task);
+	err = enable_network(task);
+	if (err < 0)
+		return err;
 
 	return -EINPROGRESS;
 }
@@ -1552,30 +1559,12 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	if (state == WPA_INVALID)
 		return;
 
-	task->state = state;
-
-	switch (task->state) {
-	case WPA_SCANNING:
-		task->noscan = TRUE;
-		connman_device_set_scanning(task->device, TRUE);
-		break;
-	case WPA_ASSOCIATING:
-	case WPA_ASSOCIATED:
-	case WPA_4WAY_HANDSHAKE:
-	case WPA_GROUP_HANDSHAKE:
-		task->noscan = TRUE;
-		break;
-	case WPA_COMPLETED:
-	case WPA_DISCONNECTED:
-		task->noscan = FALSE;
-		break;
-	case WPA_INACTIVE:
-		task->noscan = FALSE;
+	if (task->scanning == TRUE && state != WPA_SCANNING) {
 		connman_device_set_scanning(task->device, FALSE);
-		break;
-	case WPA_INVALID:
-		break;
+		task->scanning = FALSE;
 	}
+
+	task->state = state;
 
 	if (task->network == NULL)
 		return;
@@ -1588,14 +1577,15 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 		/* carrier on */
 		connman_network_set_connected(task->network, TRUE);
-		connman_device_set_scanning(task->device, FALSE);
 		break;
 
 	case WPA_DISCONNECTED:
 		disable_network(task);
 
+		/* carrier off */
+		connman_network_set_connected(task->network, FALSE);
+
 		if (task->disconnecting == TRUE) {
-			connman_network_set_connected(task->network, FALSE);
 			connman_network_unref(task->network);
 			task->disconnecting = FALSE;
 
@@ -1604,10 +1594,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 				task->pending_network = NULL;
 				task_connect(task);
 			}
-		} else {
-			/* carrier off */
-			connman_network_set_connected(task->network, FALSE);
-			connman_device_set_scanning(task->device, FALSE);
 		}
 		break;
 
@@ -1618,8 +1604,9 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	case WPA_INACTIVE:
 		remove_network(task);
 
+		connman_network_set_connected(task->network, FALSE);
+
 		if (task->disconnecting == TRUE) {
-			connman_network_set_connected(task->network, FALSE);
 			connman_network_unref(task->network);
 			task->disconnecting = FALSE;
 
@@ -1701,7 +1688,7 @@ int supplicant_start(struct connman_device *device)
 	task->device = connman_device_ref(device);
 
 	task->created = FALSE;
-	task->noscan = FALSE;
+	task->scanning = FALSE;
 	task->state = WPA_INVALID;
 	task->disconnecting = FALSE;
 	task->pending_network = NULL;
@@ -1764,7 +1751,15 @@ int supplicant_scan(struct connman_device *device)
 		break;
 	}
 
+	task->scanning = TRUE;
+
 	err = initiate_scan(task);
+	if (err < 0) {
+		task->scanning = FALSE;
+		return err;
+	}
+
+	connman_device_set_scanning(task->device, TRUE);
 
 	return 0;
 }
