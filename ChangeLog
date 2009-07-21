@@ -1,3 +1,12 @@
+ver 0.30:
+	Fix issue where hidden network could show up in service list.
+	Fix issue with asynchronous notification of scan requests.
+	Fix message reference leak when adding interface fails.
+	Fix problem when removing network during inactive state.
+	Remove broken and unused callback for joining networks.
+	Remove deprecated device and network interface methods.
+	Remove test scripts for deprecated interface methods.
+
 ver 0.29:
 	Fix missing signal emission for offline mode changes.
 	Fix signal emission for changes in technology properties.
