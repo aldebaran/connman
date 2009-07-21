@@ -329,6 +329,8 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 	return;
 
 failed:
+	dbus_message_unref(reply);
+
 	task_list = g_slist_remove(task_list, task);
 
 	connman_device_unref(task->device);
