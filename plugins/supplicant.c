@@ -1602,8 +1602,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		break;
 
 	case WPA_INACTIVE:
-		remove_network(task);
-
 		connman_network_set_connected(task->network, FALSE);
 
 		if (task->disconnecting == TRUE) {
