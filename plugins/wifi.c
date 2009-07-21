@@ -132,26 +132,6 @@ static int wifi_scan(struct connman_device *device)
 	return supplicant_scan(device);
 }
 
-static int wifi_join(struct connman_device *device,
-					struct connman_network *network)
-{
-	int err;
-
-	DBG("device %p", device);
-
-	err = supplicant_connect(network);
-	if (err < 0)
-		return err;
-
-	connman_network_ref(network);
-
-	connman_device_add_network(device, network);
-
-	connman_network_set_available(network, TRUE);
-
-	return 0;
-}
-
 static struct connman_device_driver wifi_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_DEVICE_TYPE_WIFI,
@@ -160,7 +140,6 @@ static struct connman_device_driver wifi_driver = {
 	.enable		= wifi_enable,
 	.disable	= wifi_disable,
 	.scan		= wifi_scan,
-	.join		= wifi_join,
 };
 
 static void wifi_register(void)
