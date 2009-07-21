@@ -286,11 +286,9 @@ char *__connman_udev_get_devtype(const char *ifname)
 {
 	struct udev_device *device;
 	const char *devtype;
-	char syspath[128];
 
-	snprintf(syspath, sizeof(syspath) - 1, "/sys/class/net/%s", ifname);
-
-	device = udev_device_new_from_syspath(udev_ctx, syspath);
+	device = udev_device_new_from_subsystem_sysname(udev_ctx,
+							"net", ifname);
 	if (device == NULL)
 		return NULL;
 
