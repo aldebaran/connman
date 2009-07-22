@@ -47,8 +47,28 @@ static void detect_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
 	struct connman_device *device;
+	enum connman_device_type devtype;
 
 	DBG("type %d index %d", type, index);
+
+	devtype = __connman_inet_get_device_type(index);
+
+	switch (devtype) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		return;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+		break;
+	}
 
 	device = find_device(index);
 	if (device != NULL)

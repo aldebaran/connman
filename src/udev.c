@@ -73,15 +73,16 @@ static struct connman_device *find_device(int index)
 
 static void add_device(struct udev_device *udev_device)
 {
-	struct connman_device *device;
 	struct udev_list_entry *entry;
-	const char *type;
+	struct connman_device *device;
+	enum connman_device_type devtype;
+	const char *systype;
 	int index = -1;
 
 	DBG("");
 
-	type = udev_device_get_sysattr_value(udev_device, "type");
-	if (type == NULL || atoi(type) != 1)
+	systype = udev_device_get_sysattr_value(udev_device, "type");
+	if (systype == NULL || atoi(systype) != 1)
 		return;
 
 	entry = udev_device_get_properties_list_entry(udev_device);
@@ -99,6 +100,25 @@ static void add_device(struct udev_device *udev_device)
 
 	if (index < 0)
 		return;
+
+	devtype = __connman_inet_get_device_type(index);
+
+	switch (devtype) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_NOZOMI:
+	case CONNMAN_DEVICE_TYPE_HUAWEI:
+	case CONNMAN_DEVICE_TYPE_NOVATEL:
+		return;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_MBM:
+	case CONNMAN_DEVICE_TYPE_HSO:
+		break;
+	}
 
 	device = find_device(index);
 	if (device != NULL)
@@ -118,8 +138,8 @@ static void add_device(struct udev_device *udev_device)
 
 static void remove_device(struct udev_device *udev_device)
 {
-	struct connman_device *device;
 	struct udev_list_entry *entry;
+	struct connman_device *device;
 	int index = -1;
 
 	DBG("");
