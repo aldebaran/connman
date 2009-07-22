@@ -1,3 +1,7 @@
+ver 0.32:
+	Fix broken device unregistration on removal.
+	Fix WiMAX device detection handling.
+
 ver 0.31:
 	Fix missing enforcement of offline mode for new devices.
 	Add support for persistent storage of offline mode.
