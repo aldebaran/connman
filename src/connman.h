@@ -306,7 +306,7 @@ void __connman_notifier_enable(enum connman_service_type type);
 void __connman_notifier_disable(enum connman_service_type type);
 void __connman_notifier_connect(enum connman_service_type type);
 void __connman_notifier_disconnect(enum connman_service_type type);
-void __connman_notifier_offline_mode(connman_bool_t enabled);
+void __connman_notifier_offlinemode(connman_bool_t enabled);
 
 #include <connman/rtnl.h>
 

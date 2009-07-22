@@ -363,7 +363,7 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 		technology_connected(type, FALSE);
 }
 
-static void offline_mode_changed(dbus_bool_t enabled)
+static void offlinemode_changed(dbus_bool_t enabled)
 {
 	DBusMessage *signal;
 	DBusMessageIter entry, value;
@@ -388,7 +388,7 @@ static void offline_mode_changed(dbus_bool_t enabled)
 	g_dbus_send_message(connection, signal);
 }
 
-void __connman_notifier_offline_mode(connman_bool_t enabled)
+void __connman_notifier_offlinemode(connman_bool_t enabled)
 {
 	GSList *list;
 
@@ -396,7 +396,7 @@ void __connman_notifier_offline_mode(connman_bool_t enabled)
 
 	__connman_profile_changed(FALSE);
 
-	offline_mode_changed(enabled);
+	offlinemode_changed(enabled);
 
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;

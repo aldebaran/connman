@@ -1564,7 +1564,7 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
 			set_offlinemode, GUINT_TO_POINTER(offlinemode));
 
-	__connman_notifier_offline_mode(offlinemode);
+	__connman_notifier_offlinemode(offlinemode);
 
 	return 0;
 }
