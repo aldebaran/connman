@@ -1609,6 +1609,9 @@ void __connman_element_start(void)
 
 	started = TRUE;
 
+	__connman_rtnl_init();
+	__connman_udev_init();
+
 	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_rfkill_init();

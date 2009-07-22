@@ -203,8 +203,6 @@ int main(int argc, char *argv[])
 	__connman_profile_init(conn);
 
 	__connman_resolver_init();
-	__connman_rtnl_init();
-	__connman_udev_init();
 
 	__connman_plugin_init(option_plugin, option_noplugin);
 
