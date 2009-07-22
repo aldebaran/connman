@@ -92,10 +92,13 @@ void connman_debug(const char *format, ...)
 
 void __connman_toggle_debug(void)
 {
-	if (debug_enabled == TRUE)
+	if (debug_enabled == TRUE) {
+		connman_info("Disabling debug output");
 		debug_enabled = FALSE;
-	else
+	} else {
+		connman_info("Enabling debug output");
 		debug_enabled = TRUE;
+	}
 }
 
 int __connman_log_init(gboolean detach, gboolean debug)
@@ -109,7 +112,8 @@ int __connman_log_init(gboolean detach, gboolean debug)
 
 	syslog(LOG_INFO, "Connection Manager version %s", VERSION);
 
-	debug_enabled = debug;
+	if (debug == TRUE)
+		__connman_toggle_debug();
 
 	return 0;
 }

@@ -40,6 +40,8 @@ static GMainLoop *main_loop = NULL;
 
 static void sig_term(int sig)
 {
+	connman_info("Terminating");
+
 	g_main_loop_quit(main_loop);
 }
 
