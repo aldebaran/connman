@@ -66,6 +66,42 @@ void connman_storage_unregister(struct connman_storage *storage)
 	storage_list = g_slist_remove(storage_list, storage);
 }
 
+int __connman_storage_load_global(void)
+{
+	GSList *list;
+
+	DBG("");
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->global_load) {
+			if (storage->global_load() == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+int __connman_storage_save_global(void)
+{
+	GSList *list;
+
+	DBG("");
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->global_save) {
+			if (storage->global_save() == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
 int __connman_storage_init_device(void)
 {
 	GSList *list;

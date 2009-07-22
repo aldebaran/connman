@@ -124,6 +124,9 @@ int __connman_resolver_selftest(void);
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 
+int __connman_storage_load_global();
+int __connman_storage_save_global();
+
 int __connman_storage_init_device();
 int __connman_storage_load_device(struct connman_device *device);
 int __connman_storage_save_device(struct connman_device *device);

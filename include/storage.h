@@ -43,6 +43,8 @@ extern "C" {
 struct connman_storage {
 	const char *name;
 	int priority;
+	int (*global_load) (void);
+	int (*global_save) (void);
 	enum connman_device_type device_type;
 	int (*device_init) (void);
 	int (*device_load) (struct connman_device *device);

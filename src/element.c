@@ -1607,6 +1607,8 @@ void __connman_element_start(void)
 
 	started = TRUE;
 
+	__connman_storage_load_global();
+
 	__connman_storage_init_device();
 
 	__connman_connection_init();
@@ -1621,6 +1623,8 @@ void __connman_element_stop(void)
 	__connman_rfkill_cleanup();
 	__connman_ipv4_cleanup();
 	__connman_connection_cleanup();
+
+	__connman_storage_save_global();
 }
 
 static gboolean free_driver(GNode *node, gpointer data)
