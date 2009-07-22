@@ -54,15 +54,10 @@ static int udev_monitor_filter_remove(struct udev_monitor *udev_monitor)
 
 static GSList *device_list = NULL;
 
-static struct connman_device *find_device(const char *interface)
+static struct connman_device *find_device(int index)
 {
 	GSList *list;
-	int index;
 
-	if (interface == NULL)
-		return NULL;
-
-	index = connman_inet_ifindex(interface);
 	if (index < 0)
 		return NULL;
 
@@ -80,13 +75,13 @@ static void add_device(struct udev_device *udev_device)
 {
 	struct connman_device *device;
 	struct udev_list_entry *entry;
-	const char *type, *interface = NULL;
+	const char *type;
 	int index = -1;
 
 	DBG("");
 
 	type = udev_device_get_sysattr_value(udev_device, "type");
-	if (atoi(type) != 1)
+	if (type == NULL || atoi(type) != 1)
 		return;
 
 	entry = udev_device_get_properties_list_entry(udev_device);
@@ -97,17 +92,16 @@ static void add_device(struct udev_device *udev_device)
 			const char *value = udev_list_entry_get_value(entry);
 			if (value != NULL)
 				index = atoi(value);
-		} else if (g_str_has_prefix(name, "INTERFACE") == TRUE)
-			interface = udev_list_entry_get_value(entry);
+		}
 
 		entry = udev_list_entry_get_next(entry);
 	}
 
-	device = find_device(interface);
-	if (device != NULL)
+	if (index < 0)
 		return;
 
-	if (index < 0 || interface == NULL)
+	device = find_device(index);
+	if (device != NULL)
 		return;
 
 	device = connman_inet_create_device(index);
@@ -126,7 +120,7 @@ static void remove_device(struct udev_device *udev_device)
 {
 	struct connman_device *device;
 	struct udev_list_entry *entry;
-	const char *interface = NULL;
+	int index = -1;
 
 	DBG("");
 
@@ -134,13 +128,19 @@ static void remove_device(struct udev_device *udev_device)
 	while (entry) {
 		const char *name = udev_list_entry_get_name(entry);
 
-		if (g_str_has_prefix(name, "INTERFACE") == TRUE)
-			interface = udev_list_entry_get_value(entry);
+		if (g_str_has_prefix(name, "IFINDEX") == TRUE) {
+			const char *value = udev_list_entry_get_value(entry);
+			if (value != NULL)
+				index = atoi(value);
+		}
 
 		entry = udev_list_entry_get_next(entry);
 	}
 
-	device = find_device(interface);
+	if (index < 0)
+		return;
+
+	device = find_device(index);
 	if (device == NULL)
 		return;
 
