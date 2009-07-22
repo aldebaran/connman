@@ -1829,34 +1829,15 @@ static int device_load(struct connman_device *device)
 {
 	GKeyFile *keyfile;
 	GError *error = NULL;
-	gchar *pathname, *identifier, *data = NULL;
-	gsize length;
+	gchar *identifier;
 	connman_bool_t powered;
 	int val;
 
 	DBG("device %p", device);
 
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
-					__connman_profile_active_ident());
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
-		g_free(pathname);
-		return -ENOENT;
-	}
-
-	g_free(pathname);
-
-	if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE) {
-		g_free(data);
-		return -EILSEQ;
-	}
-
-	g_free(data);
+	keyfile = __connman_storage_open();
+	if (keyfile == NULL)
+		return 0;
 
 	identifier = g_strdup_printf("device_%s", device->element.name);
 	if (identifier == NULL)
@@ -1883,9 +1864,9 @@ static int device_load(struct connman_device *device)
 	}
 
 done:
-	g_key_file_free(keyfile);
-
 	g_free(identifier);
+
+	__connman_storage_close(keyfile, FALSE);
 
 	return 0;
 }
@@ -1893,30 +1874,14 @@ done:
 static int device_save(struct connman_device *device)
 {
 	GKeyFile *keyfile;
-	gchar *pathname, *identifier = NULL, *data = NULL;
-	gsize length;
+	gchar *identifier;
 
 	DBG("device %p", device);
 
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
-					__connman_profile_active_ident());
-	if (pathname == NULL)
-		return -ENOMEM;
+	keyfile = __connman_storage_open();
+	if (keyfile == NULL)
+		return 0;
 
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
-		goto update;
-
-	if (length > 0) {
-		if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE)
-			goto done;
-	}
-
-	g_free(data);
-
-update:
 	identifier = g_strdup_printf("device_%s", device->element.name);
 	if (identifier == NULL)
 		goto done;
@@ -1936,18 +1901,10 @@ update:
 		break;
 	}
 
-	data = g_key_file_to_data(keyfile, &length, NULL);
-
-	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
-		connman_error("Failed to store device information");
-
 done:
-	g_free(data);
-
-	g_key_file_free(keyfile);
-
 	g_free(identifier);
-	g_free(pathname);
+
+	__connman_storage_close(keyfile, TRUE);
 
 	return 0;
 }
