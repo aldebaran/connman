@@ -291,6 +291,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		global_offlinemode = offlinemode;
 
+		__connman_storage_save_global();
+
 		__connman_device_set_offlinemode(offlinemode);
 	} else if (g_str_equal(name, "ActiveProfile") == TRUE) {
 		const char *str;
@@ -621,6 +623,57 @@ static GDBusMethodTable nm_methods[] = {
 	{ },
 };
 
+static int manager_load(void)
+{
+	GKeyFile *keyfile;
+	GError *error = NULL;
+	connman_bool_t offlinemode;
+
+	DBG("");
+
+	keyfile = __connman_storage_open();
+	if (keyfile == NULL)
+		return -EIO;
+
+	offlinemode = g_key_file_get_boolean(keyfile, "global",
+						"OfflineMode", &error);
+	if (error == NULL) {
+		global_offlinemode = offlinemode;
+
+		__connman_device_set_offlinemode(offlinemode);
+	}
+	g_clear_error(&error);
+
+	__connman_storage_close(keyfile, FALSE);
+
+	return 0;
+}
+
+static int manager_save(void)
+{
+	GKeyFile *keyfile;
+
+	DBG("");
+
+	keyfile = __connman_storage_open();
+	if (keyfile == NULL)
+		return -EIO;
+
+	g_key_file_set_boolean(keyfile, "global",
+					"OfflineMode", global_offlinemode);
+
+	__connman_storage_close(keyfile, TRUE);
+
+	return 0;
+}
+
+static struct connman_storage manager_storage = {
+	.name		= "manager",
+	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+	.global_load	= manager_load,
+	.global_save	= manager_save,
+};
+
 static DBusConnection *connection = NULL;
 static gboolean nm_compat = FALSE;
 
@@ -631,6 +684,9 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
 		return -1;
+
+	if (connman_storage_register(&manager_storage) < 0)
+		connman_error("Failed to register manager storage");
 
 	g_dbus_register_interface(connection, CONNMAN_MANAGER_PATH,
 					CONNMAN_MANAGER_INTERFACE,
@@ -650,6 +706,8 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 void __connman_manager_cleanup(void)
 {
 	DBG("conn %p", connection);
+
+	connman_storage_unregister(&manager_storage);
 
 	if (nm_compat == TRUE) {
 		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);
