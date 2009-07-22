@@ -1602,12 +1602,12 @@ void __connman_element_start(void)
 {
 	DBG("");
 
+	__connman_storage_load_global();
+
 	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 							probe_node, NULL);
 
 	started = TRUE;
-
-	__connman_storage_load_global();
 
 	__connman_connection_init();
 	__connman_ipv4_init();
