@@ -37,6 +37,7 @@ struct connman_device {
 	enum connman_device_type type;
 	enum connman_device_mode mode;
 	connman_bool_t secondary;
+	connman_bool_t offlinemode;
 	connman_bool_t powered;
 	connman_bool_t powered_persistent;
 	connman_bool_t carrier;
@@ -686,7 +687,8 @@ static int setup_device(struct connman_device *device)
 		break;
 	}
 
-	if (device->powered_persistent == TRUE)
+	if (device->offlinemode == FALSE &&
+				device->powered_persistent == TRUE)
 		__connman_device_enable(device);
 
 	return 0;
@@ -1545,6 +1547,8 @@ static void set_offlinemode(struct connman_element *element, gpointer user_data)
 	if (device == NULL)
 		return;
 
+	device->offlinemode = offlinemode;
+
 	powered = (offlinemode == TRUE) ? FALSE : TRUE;
 
 	if (device->powered == powered)
@@ -1695,6 +1699,8 @@ int connman_device_register(struct connman_device *device)
 	enum connman_service_type type;
 
 	__connman_storage_load_device(device);
+
+	device->offlinemode = __connman_manager_get_offlinemode();
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:

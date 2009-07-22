@@ -48,8 +48,12 @@ DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 
 int __connman_selftest(void);
 
+#include <connman/types.h>
+
 int __connman_manager_init(DBusConnection *conn, gboolean compat);
 void __connman_manager_cleanup(void);
+
+connman_bool_t __connman_manager_get_offlinemode(void);
 
 int __connman_agent_init(DBusConnection *conn);
 void __connman_agent_cleanup(void);

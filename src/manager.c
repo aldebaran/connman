@@ -29,6 +29,11 @@
 
 static connman_bool_t global_offlinemode = FALSE;
 
+connman_bool_t __connman_manager_get_offlinemode(void)
+{
+	return global_offlinemode;
+}
+
 static void append_profiles(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
