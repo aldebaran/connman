@@ -1,3 +1,7 @@
+ver 0.33:
+	Add support for RFKILL changes of the WiFi subsystem.
+	Fix state value of Network Manager compatibility support.
+
 ver 0.32:
 	Fix broken device unregistration on removal.
 	Fix WiMAX device detection handling.
