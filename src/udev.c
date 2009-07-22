@@ -76,7 +76,7 @@ static void add_device(struct udev_device *udev_device)
 	struct udev_list_entry *entry;
 	struct connman_device *device;
 	enum connman_device_type devtype;
-	const char *systype;
+	const char *value, *systype;
 	int index = -1;
 
 	DBG("");
@@ -127,6 +127,10 @@ static void add_device(struct udev_device *udev_device)
 	device = connman_inet_create_device(index);
 	if (device == NULL)
 		return;
+
+	value = udev_device_get_sysattr_value(udev_device, "phy80211/index");
+	if (value != NULL)
+		__connman_device_set_phyindex(device, atoi(value));
 
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
@@ -376,6 +380,42 @@ done:
 	udev_device_unref(device);
 
 	return devnode;
+}
+
+static void phyindex_rfkill(int phyindex, connman_bool_t blocked)
+{
+	GSList *list;
+
+	if (phyindex < 0)
+		return;
+
+	for (list = device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		if (__connman_device_get_phyindex(device) == phyindex)
+			__connman_device_set_blocked(device, blocked);
+	}
+}
+
+void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)
+{
+	struct udev_device *device, *parent;
+	const char *value;
+
+	device = udev_device_new_from_subsystem_sysname(udev_ctx,
+							"rfkill", sysname);
+	if (device == NULL)
+		return;
+
+	parent = udev_device_get_parent(device);
+	if (parent == NULL)
+		return;
+
+	value = udev_device_get_sysattr_value(parent, "index");
+	if (value == NULL)
+		return;
+
+	phyindex_rfkill(atoi(value), blocked);
 }
 
 int __connman_udev_init(void)

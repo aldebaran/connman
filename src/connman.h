@@ -204,6 +204,7 @@ int __connman_udev_init(void);
 void __connman_udev_cleanup(void);
 char *__connman_udev_get_devtype(const char *ifname);
 char *__connman_udev_get_mbm_devnode(const char *ifname);
+void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
 
 #include <connman/device.h>
 
@@ -211,6 +212,13 @@ int __connman_device_init(void);
 void __connman_device_cleanup(void);
 
 enum connman_service_type __connman_device_get_service_type(struct connman_device *device);
+
+int __connman_device_get_phyindex(struct connman_device *device);
+void __connman_device_set_phyindex(struct connman_device *device,
+							int phyindex);
+int __connman_device_set_blocked(struct connman_device *device,
+						connman_bool_t blocked);
+
 
 void __connman_device_increase_connections(struct connman_device *device);
 void __connman_device_decrease_connections(struct connman_device *device);

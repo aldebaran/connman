@@ -61,6 +61,8 @@ static gboolean rfkill_event(GIOChannel *chan,
 {
 	unsigned char buf[32];
 	struct rfkill_event *event = (void *) buf;
+	char sysname[32];
+	connman_bool_t blocked;
 	gsize len;
 	GIOError err;
 
@@ -79,9 +81,22 @@ static gboolean rfkill_event(GIOChannel *chan,
 	if (len != sizeof(struct rfkill_event))
 		return TRUE;
 
-	connman_info("RFKILL event: idx %u type %u op %u soft %u hard %u",
+	DBG("idx %u type %u op %u soft %u hard %u",
 					event->idx, event->type, event->op,
 						event->soft, event->hard);
+
+	snprintf(sysname, sizeof(sysname) - 1, "rfkill%d", event->idx);
+
+	blocked = (event->soft || event->hard) ? TRUE : FALSE;
+
+	switch (event->type) {
+	case RFKILL_TYPE_ALL:
+	case RFKILL_TYPE_WLAN:
+		__connman_udev_rfkill(sysname, blocked);
+		break;
+	default:
+		break;
+	}
 
 	return TRUE;
 }

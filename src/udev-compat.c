@@ -120,6 +120,11 @@ char *__connman_udev_get_mbm_devnode(const char *ifname)
 	return NULL;
 }
 
+void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)
+{
+	DBG("sysname %s blocked %d", sysname, blocked);
+}
+
 int __connman_udev_init(void)
 {
 	int err;

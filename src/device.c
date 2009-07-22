@@ -50,6 +50,7 @@ struct connman_device {
 	char *interface;
 	char *control;
 	char *ident;
+	int phyindex;
 	unsigned int connections;
 	guint scan_timeout;
 	struct connman_ipconfig *ipconfig;
@@ -897,6 +898,8 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->powered_persistent = TRUE;
 
+	device->phyindex = -1;
+
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
@@ -1020,6 +1023,17 @@ void connman_device_set_index(struct connman_device *device, int index)
 int connman_device_get_index(struct connman_device *device)
 {
 	return device->element.index;
+}
+
+int __connman_device_get_phyindex(struct connman_device *device)
+{
+	return device->phyindex;
+}
+
+void __connman_device_set_phyindex(struct connman_device *device,
+							int phyindex)
+{
+	device->phyindex = phyindex;
 }
 
 /**
@@ -1175,6 +1189,24 @@ int connman_device_set_powered(struct connman_device *device,
 		device->driver->scan(device);
 
 	return 0;
+}
+
+int __connman_device_set_blocked(struct connman_device *device,
+						connman_bool_t blocked)
+{
+	connman_bool_t powered;
+
+	DBG("device %p blocked %d", device, blocked);
+
+	if (device->offlinemode == TRUE)
+		return 0;
+
+	if (blocked == FALSE)
+		powered = device->powered_persistent;
+	else
+		powered = FALSE;
+
+	return set_powered(device, powered);
 }
 
 /**
