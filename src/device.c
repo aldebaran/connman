@@ -38,6 +38,7 @@ struct connman_device {
 	enum connman_device_mode mode;
 	connman_bool_t secondary;
 	connman_bool_t offlinemode;
+	connman_bool_t blocked;
 	connman_bool_t powered;
 	connman_bool_t powered_persistent;
 	connman_bool_t carrier;
@@ -1197,6 +1198,11 @@ int __connman_device_set_blocked(struct connman_device *device,
 	connman_bool_t powered;
 
 	DBG("device %p blocked %d", device, blocked);
+
+	if (device->blocked == blocked)
+		return -EALREADY;
+
+	device->blocked = blocked;
 
 	if (device->offlinemode == TRUE)
 		return 0;
