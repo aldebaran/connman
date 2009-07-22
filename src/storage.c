@@ -66,6 +66,72 @@ void connman_storage_unregister(struct connman_storage *storage)
 	storage_list = g_slist_remove(storage_list, storage);
 }
 
+GKeyFile *__connman_storage_open(void)
+{
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gboolean result;
+	gsize length;
+
+	DBG("");
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+					__connman_profile_active_ident());
+	if (pathname == NULL)
+		return NULL;
+
+	result = g_file_get_contents(pathname, &data, &length, NULL);
+
+	g_free(pathname);
+
+	if (result == FALSE)
+		return NULL;
+
+	keyfile = g_key_file_new();
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE)
+			goto done;
+	}
+
+done:
+	g_free(data);
+
+	DBG("keyfile %p", keyfile);
+
+	return keyfile;
+}
+
+void __connman_storage_close(GKeyFile *keyfile, gboolean save)
+{
+	gchar *pathname, *data = NULL;
+	gsize length = 0;
+
+	DBG("keyfile %p save %d", keyfile, save);
+
+	if (save == FALSE) {
+		g_key_file_free(keyfile);
+		return;
+	}
+
+	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
+					__connman_profile_active_ident());
+	if (pathname == NULL)
+		return;
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
+		connman_error("Failed to store information");
+
+	g_free(data);
+
+	g_free(pathname);
+
+	g_key_file_free(keyfile);
+}
+
 int __connman_storage_load_global(void)
 {
 	GSList *list;

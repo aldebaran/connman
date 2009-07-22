@@ -128,6 +128,9 @@ int __connman_resolver_selftest(void);
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 
+GKeyFile *__connman_storage_open(void);
+void __connman_storage_close(GKeyFile *keyfile, gboolean save);
+
 int __connman_storage_load_global();
 int __connman_storage_save_global();
 
