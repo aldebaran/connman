@@ -249,9 +249,5 @@ selftest:
 
 	g_main_loop_unref(main_loop);
 
-	rmdir(STORAGEDIR);
-
-	rmdir(STATEDIR);
-
 	return 0;
 }
