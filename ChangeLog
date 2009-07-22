@@ -1,3 +1,9 @@
+ver 0.31:
+	Fix missing enforcement of offline mode for new devices.
+	Add support for persistent storage of offline mode.
+	Add support for persistent storage of device power state.
+	Remove deprecated and unused network storage callbacks.
+
 ver 0.30:
 	Fix issue where hidden network could show up in service list.
 	Fix issue with asynchronous notification of scan requests.
