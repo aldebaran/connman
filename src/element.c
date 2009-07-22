@@ -1609,8 +1609,6 @@ void __connman_element_start(void)
 
 	__connman_storage_load_global();
 
-	__connman_storage_init_device();
-
 	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_rfkill_init();

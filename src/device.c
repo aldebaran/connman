@@ -1615,8 +1615,6 @@ int connman_device_add_network(struct connman_device *device,
 
 	__connman_network_set_device(network, device);
 
-	__connman_storage_load_network(network);
-
 	err = connman_element_register((struct connman_element *) network,
 							&device->element);
 	if (err < 0) {
@@ -1701,16 +1699,6 @@ int connman_device_register(struct connman_device *device)
 	__connman_storage_load_device(device);
 
 	device->offlinemode = __connman_manager_get_offlinemode();
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		__connman_storage_init_network(device);
-		break;
-	}
 
 	type = __connman_device_get_service_type(device);
 	__connman_notifier_register(type);
