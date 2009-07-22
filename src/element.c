@@ -447,7 +447,7 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 		break;
 	}
 
-	__connman_device_enable(element->device);
+	__connman_device_enable_persistent(element->device);
 
 	return FALSE;
 }
@@ -496,7 +496,7 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 		break;
 	}
 
-	__connman_device_disable(element->device);
+	__connman_device_disable_persistent(element->device);
 
 	return FALSE;
 }
