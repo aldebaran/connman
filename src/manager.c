@@ -608,7 +608,10 @@ static DBusMessage *nm_state(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	state = NM_STATE_DISCONNECTED;
+	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
+		state = NM_STATE_CONNECTED;
+	else
+		state = NM_STATE_DISCONNECTED;
 
 	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &state,
 							DBUS_TYPE_INVALID);
