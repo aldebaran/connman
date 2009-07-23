@@ -391,9 +391,17 @@ static DBusConnection *connection = NULL;
 static enum connman_service_type technology_type;
 static connman_bool_t technology_enabled;
 static DBusMessage *technology_pending = NULL;
+static guint technology_timeout = 0;
 
 static void technology_reply(int error)
 {
+	DBG("");
+
+	if (technology_timeout > 0) {
+		g_source_remove(technology_timeout);
+		technology_timeout = 0;
+	}
+
 	if (technology_reply != NULL) {
 		if (error > 0) {
 			DBusMessage *reply;
@@ -411,6 +419,17 @@ static void technology_reply(int error)
 	}
 
 	technology_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+}
+
+static gboolean technology_abort(gpointer user_data)
+{
+	DBG("");
+
+	technology_timeout = 0;
+
+	technology_reply(ETIMEDOUT);
+
+	return FALSE;
 }
 
 static void technology_notify(enum connman_service_type type,
@@ -466,6 +485,9 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	err = __connman_element_enable_technology(type);
 	if (err < 0 && err != -EINPROGRESS)
 		technology_reply(-err);
+	else
+		technology_timeout = g_timeout_add_seconds(15,
+						technology_abort, NULL);
 
 	return NULL;
 }
@@ -508,6 +530,9 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	err = __connman_element_disable_technology(type);
 	if (err < 0 && err != -EINPROGRESS)
 		technology_reply(-err);
+	else
+		technology_timeout = g_timeout_add_seconds(10,
+						technology_abort, NULL);
 
 	return NULL;
 }
