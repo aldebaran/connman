@@ -1765,8 +1765,6 @@ int supplicant_stop(struct connman_device *device)
 	if (task->scanning == TRUE)
 		connman_device_set_scanning(task->device, FALSE);
 
-	connman_device_set_scanning(task->device, FALSE);
-
 	disable_network(task);
 
 	remove_network(task);
