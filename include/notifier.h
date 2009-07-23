@@ -22,7 +22,7 @@
 #ifndef __CONNMAN_NOTIFIER_H
 #define __CONNMAN_NOTIFIER_H
 
-#include <connman/device.h>
+#include <connman/service.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -41,7 +41,7 @@ extern "C" {
 struct connman_notifier {
 	const char *name;
 	int priority;
-	void (*device_enabled) (enum connman_device_type type,
+	void (*service_enabled) (enum connman_service_type type,
 						connman_bool_t enabled);
 	void (*offline_mode) (connman_bool_t enabled);
 };

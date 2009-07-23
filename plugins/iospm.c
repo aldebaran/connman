@@ -61,23 +61,17 @@ static void send_indication(const char *path, connman_bool_t enabled)
 	dbus_message_unref(message);
 }
 
-static void iospm_device_enabled(enum connman_device_type type,
+static void iospm_service_enabled(enum connman_service_type type,
 						connman_bool_t enabled)
 {
 	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		send_indication(IOSPM_BLUETOOTH, enabled);
 		break;
 	}
@@ -91,7 +85,7 @@ static void iospm_offline_mode(connman_bool_t enabled)
 static struct connman_notifier iospm_notifier = {
 	.name		= "iospm",
 	.priority	= CONNMAN_NOTIFIER_PRIORITY_DEFAULT,
-	.device_enabled	= iospm_device_enabled,
+	.service_enabled= iospm_service_enabled,
 	.offline_mode	= iospm_offline_mode,
 };
 

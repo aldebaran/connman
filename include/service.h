@@ -22,6 +22,8 @@
 #ifndef __CONNMAN_SERVICE_H
 #define __CONNMAN_SERVICE_H
 
+#include <connman/types.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif

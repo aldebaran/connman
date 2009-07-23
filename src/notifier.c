@@ -176,7 +176,7 @@ static void technology_registered(enum connman_service_type type,
 	g_dbus_send_message(connection, signal);
 }
 
-static void technology_enabled(enum connman_device_type type,
+static void technology_enabled(enum connman_service_type type,
 						connman_bool_t enabled)
 {
 	GSList *list;
@@ -212,8 +212,8 @@ done:
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
-		if (notifier->device_enabled)
-			notifier->device_enabled(type, enabled);
+		if (notifier->service_enabled)
+			notifier->service_enabled(type, enabled);
 	}
 }
 
