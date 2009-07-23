@@ -671,6 +671,7 @@ static void unregister_interface(struct connman_element *element)
 
 static int setup_device(struct connman_device *device)
 {
+	enum connman_service_type type;
 	int err;
 
 	DBG("device %p", device);
@@ -682,6 +683,9 @@ static int setup_device(struct connman_device *device)
 		device->driver = NULL;
 		return err;
 	}
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_register(type);
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -726,6 +730,8 @@ static void probe_driver(struct connman_element *element, gpointer user_data)
 
 static void remove_device(struct connman_device *device)
 {
+	enum connman_service_type type;
+
 	DBG("device %p", device);
 
 	__connman_device_disable(device);
@@ -740,6 +746,9 @@ static void remove_device(struct connman_device *device)
 			__connman_profile_remove_device(device);
 		break;
 	}
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_unregister(type);
 
 	unregister_interface(&device->element);
 
@@ -1737,14 +1746,9 @@ void __connman_device_set_network(struct connman_device *device,
  */
 int connman_device_register(struct connman_device *device)
 {
-	enum connman_service_type type;
-
 	__connman_storage_load_device(device);
 
 	device->offlinemode = __connman_manager_get_offlinemode();
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_register(type);
 
 	return connman_element_register(&device->element, NULL);
 }
@@ -1757,12 +1761,7 @@ int connman_device_register(struct connman_device *device)
  */
 void connman_device_unregister(struct connman_device *device)
 {
-	enum connman_service_type type;
-
 	__connman_storage_save_device(device);
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_unregister(type);
 
 	connman_element_unregister(&device->element);
 }
