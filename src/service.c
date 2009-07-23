@@ -1098,6 +1098,36 @@ int __connman_service_indicate_default(struct connman_service *service)
 	return 0;
 }
 
+static connman_bool_t prepare_network(struct connman_service *service)
+{
+	enum connman_network_type type;
+	unsigned int ssid_len;
+
+	type = connman_network_get_type(service->network);
+
+	switch (type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+		return FALSE;
+	case CONNMAN_NETWORK_TYPE_WIFI:
+		if (connman_network_get_blob(service->network, "WiFi.SSID",
+							&ssid_len) == NULL)
+			return FALSE;
+
+		connman_network_set_string(service->network,
+				"WiFi.Passphrase", service->passphrase);
+		break;
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_MBM:
+	case CONNMAN_NETWORK_TYPE_HSO:
+		break;
+	}
+
+	return TRUE;
+}
+
 int __connman_service_connect(struct connman_service *service)
 {
 	int err;
@@ -1111,14 +1141,8 @@ int __connman_service_connect(struct connman_service *service)
 		return -EALREADY;
 
 	if (service->network != NULL) {
-		unsigned int ssid_len;
-
-		if (connman_network_get_blob(service->network, "WiFi.SSID",
-						     &ssid_len) == NULL)
+		if (prepare_network(service) == FALSE)
 			return -EINVAL;
-
-		connman_network_set_string(service->network,
-				"WiFi.Passphrase", service->passphrase);
 
 		err = __connman_network_connect(service->network);
 	} else if (service->device != NULL) {
