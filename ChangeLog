@@ -1,3 +1,11 @@
+ver 0.35:
+	Fix missing auto-connect trigger on Ethernet device removal.
+	Fix availability listing for devices without attached drivers.
+	Fix signals for connected and default technologies.
+	Fix notification to use service types instead of device types.
+	Fix potential pending scan result reply messages after removal.
+	Add support for blocking enable and disable technology changes.
+
 ver 0.34:
 	Fix setup of udev context before loading any plugins.
 	Fix rearming the scan trigger if a device got disabled.
