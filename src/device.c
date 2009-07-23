@@ -255,15 +255,10 @@ static int set_connected(struct connman_device *device,
 
 static int set_carrier(struct connman_device *device, connman_bool_t carrier)
 {
-	struct connman_service *service;
-
 	if (carrier == TRUE)
 		__connman_profile_add_device(device);
 	else
 		__connman_profile_remove_device(device);
-
-	service = __connman_service_lookup_from_device(device);
-	__connman_service_set_carrier(service, carrier);
 
 	return set_connected(device, carrier);
 }
@@ -1629,22 +1624,12 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 
 void __connman_device_increase_connections(struct connman_device *device)
 {
-	enum connman_service_type type;
-
 	device->connections++;
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_connect(type);
 }
 
 void __connman_device_decrease_connections(struct connman_device *device)
 {
-	enum connman_service_type type;
-
 	device->connections--;
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_disconnect(type);
 }
 
 /**

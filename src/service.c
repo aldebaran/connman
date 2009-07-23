@@ -950,39 +950,6 @@ int connman_service_set_favorite(struct connman_service *service,
 	return 0;
 }
 
-int __connman_service_set_carrier(struct connman_service *service,
-						connman_bool_t carrier)
-{
-	DBG("service %p carrier %d", service, carrier);
-
-	if (service == NULL)
-		return -EINVAL;
-
-	switch (service->type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		return -EINVAL;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-		break;
-	}
-
-	if (carrier == FALSE) {
-		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
-		state_changed(service);
-
-		service->state = CONNMAN_SERVICE_STATE_IDLE;
-		state_changed(service);
-	} else {
-		service->state = CONNMAN_SERVICE_STATE_CARRIER;
-		state_changed(service);
-	}
-
-	return connman_service_set_favorite(service, carrier);
-}
-
 static void default_changed(void)
 {
 	DBusMessage *signal;
@@ -1017,14 +984,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (service == NULL)
 		return -EINVAL;
 
-	if (state == CONNMAN_SERVICE_STATE_CARRIER)
-		return __connman_service_set_carrier(service, TRUE);
-
 	if (service->state == state)
 		return -EALREADY;
-
-	if (service->state == CONNMAN_SERVICE_STATE_READY)
-		default_changed();
 
 	if (service->state == CONNMAN_SERVICE_STATE_FAILURE &&
 				state == CONNMAN_SERVICE_STATE_IDLE)
@@ -1052,6 +1013,14 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
+
+		__connman_notifier_connect(service->type);
+
+		default_changed();
+	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
+		default_changed();
+
+		__connman_notifier_disconnect(service->type);
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
@@ -1533,18 +1502,21 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 void __connman_service_remove_from_device(struct connman_device *device)
 {
 	struct connman_service *service;
-	connman_bool_t favorite;
+	enum connman_service_type type;
 
 	service = __connman_service_lookup_from_device(device);
 	if (service == NULL)
 		return;
 
-	favorite = service->favorite;
+	type = service->type;
 
 	__connman_service_put(service);
 
-	if (favorite == TRUE)
-		__connman_service_auto_connect();
+	default_changed();
+
+	__connman_notifier_disconnect(type);
+
+	__connman_service_auto_connect();
 }
 
 /**

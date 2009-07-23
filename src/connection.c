@@ -538,9 +538,11 @@ static int connection_probe(struct connman_element *element)
 
 	if (register_interface(element) < 0)
 		return -ENODEV;
+
 	service = __connman_element_get_service(element);
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_READY);
+
 	connman_element_set_enabled(element, TRUE);
 	emit_default_signal(element);
 
