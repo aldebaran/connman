@@ -406,6 +406,27 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 	}
 }
 
+connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type)
+{
+	DBG("type %d", type);
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		return FALSE;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	}
+
+	if (g_atomic_int_get(&enabled[type]) > 0)
+		return TRUE;
+
+	return FALSE;
+}
+
 int __connman_notifier_init(void)
 {
 	DBG("");
