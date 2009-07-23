@@ -86,12 +86,17 @@ static gboolean device_scan_trigger(gpointer user_data)
 	return TRUE;
 }
 
-static void reset_scan_trigger(struct connman_device *device)
+static void clear_scan_trigger(struct connman_device *device)
 {
 	if (device->scan_timeout > 0) {
 		g_source_remove(device->scan_timeout);
 		device->scan_timeout = 0;
 	}
+}
+
+static void reset_scan_trigger(struct connman_device *device)
+{
+	clear_scan_trigger(device);
 
 	if (device->scan_interval > 0) {
 		guint interval = device->scan_interval;
@@ -312,6 +317,8 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 		} else
 			err = -EINVAL;
 	} else {
+		clear_scan_trigger(device);
+
 		g_hash_table_remove_all(device->networks);
 
 		set_carrier(device, FALSE);
@@ -1303,6 +1310,8 @@ int __connman_device_disable(struct connman_device *device)
 
 	if (device->powered == FALSE)
 		return -ENOLINK;
+
+	clear_scan_trigger(device);
 
 	g_hash_table_remove_all(device->networks);
 
