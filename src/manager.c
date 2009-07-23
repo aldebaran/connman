@@ -355,7 +355,7 @@ static DBusMessage *remove_profile(DBusConnection *conn,
 static DBusMessage *request_scan(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	enum connman_device_type type;
+	enum connman_service_type type;
 	const char *str;
 	int err;
 
@@ -365,11 +365,11 @@ static DBusMessage *request_scan(DBusConnection *conn,
 							DBUS_TYPE_INVALID);
 
 	if (g_strcmp0(str, "") == 0)
-		type = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	else if (g_strcmp0(str, "wifi") == 0)
-		type = CONNMAN_DEVICE_TYPE_WIFI;
+		type = CONNMAN_SERVICE_TYPE_WIFI;
 	else if (g_strcmp0(str, "wimax") == 0)
-		type = CONNMAN_DEVICE_TYPE_WIMAX;
+		type = CONNMAN_SERVICE_TYPE_WIMAX;
 	else
 		return __connman_error_invalid_arguments(msg);
 
@@ -389,7 +389,7 @@ static DBusMessage *request_scan(DBusConnection *conn,
 static DBusMessage *enable_technology(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	enum connman_device_type type;
+	enum connman_service_type type;
 	const char *str;
 	int err;
 
@@ -399,15 +399,15 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 							DBUS_TYPE_INVALID);
 
 	if (g_strcmp0(str, "ethernet") == 0)
-		type = CONNMAN_DEVICE_TYPE_ETHERNET;
+		type = CONNMAN_SERVICE_TYPE_ETHERNET;
 	else if (g_strcmp0(str, "wifi") == 0)
-		type = CONNMAN_DEVICE_TYPE_WIFI;
+		type = CONNMAN_SERVICE_TYPE_WIFI;
 	else if (g_strcmp0(str, "wimax") == 0)
-		type = CONNMAN_DEVICE_TYPE_WIMAX;
+		type = CONNMAN_SERVICE_TYPE_WIMAX;
 	else if (g_strcmp0(str, "bluetooth") == 0)
-		type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
-	else if (g_strcmp0(str, "gps") == 0)
-		type = CONNMAN_DEVICE_TYPE_GPS;
+		type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
+	else if (g_strcmp0(str, "cellular") == 0)
+		type = CONNMAN_SERVICE_TYPE_CELLULAR;
 	else
 		return __connman_error_invalid_arguments(msg);
 
@@ -427,7 +427,7 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 static DBusMessage *disable_technology(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	enum connman_device_type type;
+	enum connman_service_type type;
 	const char *str;
 	int err;
 
@@ -437,15 +437,15 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 							DBUS_TYPE_INVALID);
 
 	if (g_strcmp0(str, "ethernet") == 0)
-		type = CONNMAN_DEVICE_TYPE_ETHERNET;
+		type = CONNMAN_SERVICE_TYPE_ETHERNET;
 	else if (g_strcmp0(str, "wifi") == 0)
-		type = CONNMAN_DEVICE_TYPE_WIFI;
+		type = CONNMAN_SERVICE_TYPE_WIFI;
 	else if (g_strcmp0(str, "wimax") == 0)
-		type = CONNMAN_DEVICE_TYPE_WIMAX;
+		type = CONNMAN_SERVICE_TYPE_WIMAX;
 	else if (g_strcmp0(str, "bluetooth") == 0)
-		type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
-	else if (g_strcmp0(str, "gps") == 0)
-		type = CONNMAN_DEVICE_TYPE_GPS;
+		type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
+	else if (g_strcmp0(str, "cellular") == 0)
+		type = CONNMAN_SERVICE_TYPE_CELLULAR;
 	else
 		return __connman_error_invalid_arguments(msg);
 

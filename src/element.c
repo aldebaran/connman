@@ -331,7 +331,7 @@ const char *__connman_element_get_network_path(struct connman_element *element)
 }
 
 struct find_data {
-	enum connman_device_type type;
+	enum connman_service_type type;
 	struct connman_device *device;
 };
 
@@ -354,7 +354,7 @@ static gboolean find_device(GNode *node, gpointer user_data)
 	return TRUE;
 }
 
-struct connman_device *__connman_element_find_device(enum connman_device_type type)
+struct connman_device *__connman_element_find_device(enum connman_service_type type)
 {
 	struct find_data data = { .type = type, .device = NULL };
 
@@ -368,7 +368,7 @@ static gboolean request_scan(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
 	struct find_data *data = user_data;
-	enum connman_device_type type;
+	enum connman_service_type type;
 
 	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
 		return FALSE;
@@ -376,23 +376,17 @@ static gboolean request_scan(GNode *node, gpointer user_data)
 	if (element->device == NULL)
 		return FALSE;
 
-	type = connman_device_get_type(element->device);
+	type = __connman_device_get_service_type(element->device);
 
 	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return FALSE;
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-		if (data->type != CONNMAN_DEVICE_TYPE_UNKNOWN &&
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		if (data->type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
 							data->type != type)
 			return FALSE;
 		break;
@@ -403,7 +397,7 @@ static gboolean request_scan(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-int __connman_element_request_scan(enum connman_device_type type)
+int __connman_element_request_scan(enum connman_service_type type)
 {
 	struct find_data data = { .type = type, .device = NULL };
 
@@ -417,7 +411,7 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
 	struct find_data *data = user_data;
-	enum connman_device_type type;
+	enum connman_service_type type;
 
 	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
 		return FALSE;
@@ -425,23 +419,17 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 	if (element->device == NULL)
 		return FALSE;
 
-	type = connman_device_get_type(element->device);
+	type = __connman_device_get_service_type(element->device);
 
 	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 		return FALSE;
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_GPS:
-		if (data->type != CONNMAN_DEVICE_TYPE_UNKNOWN &&
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		if (data->type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
 							data->type != type)
 			return FALSE;
 		break;
@@ -452,7 +440,7 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-int __connman_element_enable_technology(enum connman_device_type type)
+int __connman_element_enable_technology(enum connman_service_type type)
 {
 	struct find_data data = { .type = type, .device = NULL };
 
@@ -466,7 +454,7 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 {
 	struct connman_element *element = node->data;
 	struct find_data *data = user_data;
-	enum connman_device_type type;
+	enum connman_service_type type;
 
 	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
 		return FALSE;
@@ -474,23 +462,17 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 	if (element->device == NULL)
 		return FALSE;
 
-	type = connman_device_get_type(element->device);
+	type = __connman_device_get_service_type(element->device);
 
 	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 		return FALSE;
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_GPS:
-		if (data->type != CONNMAN_DEVICE_TYPE_UNKNOWN &&
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		if (data->type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
 							data->type != type)
 			return FALSE;
 		break;
@@ -501,7 +483,7 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-int __connman_element_disable_technology(enum connman_device_type type)
+int __connman_element_disable_technology(enum connman_service_type type)
 {
 	struct find_data data = { .type = type, .device = NULL };
 
