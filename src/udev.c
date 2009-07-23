@@ -35,7 +35,6 @@
 #include "connman.h"
 
 #ifdef NEED_UDEV_MONITOR_FILTER
-#if 0
 static int udev_monitor_filter_add_match_subsystem_devtype(struct udev_monitor *udev_monitor,
 				const char *subsystem, const char *devtype)
 {
@@ -49,7 +48,6 @@ static int udev_monitor_filter_remove(struct udev_monitor *udev_monitor)
 {
 	return -EINVAL;
 }
-#endif
 #endif
 
 static GSList *device_list = NULL;
@@ -480,9 +478,6 @@ void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)
 
 int __connman_udev_init(void)
 {
-	GIOChannel *channel;
-	int fd;
-
 	DBG("");
 
 	udev_ctx = udev_new();
@@ -499,12 +494,26 @@ int __connman_udev_init(void)
 		return -1;
 	}
 
+	udev_monitor_filter_add_match_subsystem_devtype(udev_mon,
+							"net", NULL);
+	udev_monitor_filter_add_match_subsystem_devtype(udev_mon,
+							"rfkill", NULL);
+
+	udev_monitor_filter_update(udev_mon);
+
+	return 0;
+}
+
+void __connman_udev_start(void)
+{
+	GIOChannel *channel;
+	int fd;
+
+	DBG("");
+
 	if (udev_monitor_enable_receiving(udev_mon) < 0) {
 		connman_error("Failed to enable udev monitor");
-		udev_unref(udev_ctx);
-		udev_ctx = NULL;
-		udev_monitor_unref(udev_mon);
-		return -1;
+		return;
 	}
 
 	enumerate_devices(udev_ctx);
@@ -513,13 +522,11 @@ int __connman_udev_init(void)
 
 	channel = g_io_channel_unix_new(fd);
 	if (channel == NULL)
-		return 0;
+		return;
 
 	udev_watch = g_io_add_watch(channel, G_IO_IN, udev_event, udev_mon);
 
 	g_io_channel_unref(channel);
-
-	return 0;
 }
 
 void __connman_udev_cleanup(void)
@@ -543,6 +550,8 @@ void __connman_udev_cleanup(void)
 
 	if (udev_ctx == NULL)
 		return;
+
+	udev_monitor_filter_remove(udev_mon);
 
 	udev_monitor_unref(udev_mon);
 	udev_unref(udev_ctx);

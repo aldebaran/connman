@@ -201,6 +201,7 @@ void __connman_connection_cleanup(void);
 gboolean __connman_connection_update_gateway(void);
 
 int __connman_udev_init(void);
+void __connman_udev_start(void);
 void __connman_udev_cleanup(void);
 char *__connman_udev_get_devtype(const char *ifname);
 char *__connman_udev_get_mbm_devnode(const char *ifname);
@@ -319,6 +320,7 @@ void __connman_notifier_offlinemode(connman_bool_t enabled);
 #include <connman/rtnl.h>
 
 int __connman_rtnl_init(void);
+void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
 int __connman_rtnl_send(const void *buf, size_t len);

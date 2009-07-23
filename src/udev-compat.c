@@ -127,17 +127,16 @@ void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)
 
 int __connman_udev_init(void)
 {
-	int err;
-
 	DBG("");
 
-	err = connman_rtnl_register(&detect_rtnl);
-	if (err < 0)
-		return err;
+	return connman_rtnl_register(&detect_rtnl);
+}
+
+void __connman_udev_start(void)
+{
+	DBG("");
 
 	connman_rtnl_send_getlink();
-
-	return 0;
 }
 
 void __connman_udev_cleanup(void)

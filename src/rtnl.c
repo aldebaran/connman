@@ -759,6 +759,11 @@ int __connman_rtnl_init(void)
 	return 0;
 }
 
+void __connman_rtnl_start(void)
+{
+	DBG("");
+}
+
 void __connman_rtnl_cleanup(void)
 {
 	GSList *list;
