@@ -386,6 +386,48 @@ static DBusMessage *request_scan(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusConnection *connection = NULL;
+
+static enum connman_service_type technology_type;
+static connman_bool_t technology_enabled;
+static DBusMessage *technology_pending = NULL;
+
+static void technology_reply(int error)
+{
+	if (technology_reply != NULL) {
+		if (error > 0) {
+			DBusMessage *reply;
+
+			reply = __connman_error_failed(technology_pending,
+								error);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		} else
+			g_dbus_send_reply(connection, technology_pending,
+							DBUS_TYPE_INVALID);
+
+		dbus_message_unref(technology_pending);
+		technology_pending = NULL;
+	}
+
+	technology_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+}
+
+static void technology_notify(enum connman_service_type type,
+						connman_bool_t enabled)
+{
+	DBG("type %d enabled %d", type, enabled);
+
+	if (type == technology_type && enabled == technology_enabled)
+		technology_reply(0);
+}
+
+static struct connman_notifier technology_notifier = {
+	.name		= "manager",
+	.priority	= CONNMAN_NOTIFIER_PRIORITY_HIGH,
+	.service_enabled= technology_notify,
+};
+
 static DBusMessage *enable_technology(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -394,6 +436,9 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	int err;
 
 	DBG("conn %p", conn);
+
+	if (technology_pending != NULL)
+		return __connman_error_in_progress(msg);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
 							DBUS_TYPE_INVALID);
@@ -411,17 +456,18 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
+	if (__connman_notifier_is_enabled(type) == TRUE)
+		return __connman_error_already_enabled(msg);
+
+	technology_type = type;
+	technology_enabled = TRUE;
+	technology_pending = dbus_message_ref(msg);
+
 	err = __connman_element_enable_technology(type);
-	if (err < 0) {
-		if (err == -EINPROGRESS) {
-			connman_error("Invalid return code from enable");
-			err = -EINVAL;
-		}
+	if (err < 0 && err != -EINPROGRESS)
+		technology_reply(-err);
 
-		return __connman_error_failed(msg, -err);
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	return NULL;
 }
 
 static DBusMessage *disable_technology(DBusConnection *conn,
@@ -433,6 +479,9 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (technology_pending != NULL)
+		return __connman_error_in_progress(msg);
+
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
 							DBUS_TYPE_INVALID);
 
@@ -449,17 +498,18 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
+	if (__connman_notifier_is_enabled(type) == FALSE)
+		return __connman_error_already_disabled(msg);
+
+	technology_type = type;
+	technology_enabled = FALSE;
+	technology_pending = dbus_message_ref(msg);
+
 	err = __connman_element_disable_technology(type);
-	if (err < 0) {
-		if (err == -EINPROGRESS) {
-			connman_error("Invalid return code from disable");
-			err = -EINVAL;
-		}
+	if (err < 0 && err != -EINPROGRESS)
+		technology_reply(-err);
 
-		return __connman_error_failed(msg, -err);
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	return NULL;
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
@@ -541,8 +591,10 @@ static GDBusMethodTable manager_methods[] = {
 	{ "AddProfile",        "s",     "o",     add_profile        },
 	{ "RemoveProfile",     "o",     "",      remove_profile     },
 	{ "RequestScan",       "s",     "",      request_scan       },
-	{ "EnableTechnology",  "s",     "",      enable_technology  },
-	{ "DisableTechnology", "s",     "",      disable_technology },
+	{ "EnableTechnology",  "s",     "",      enable_technology,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "DisableTechnology", "s",     "",      disable_technology,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectService",    "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",     "o",     "",      register_agent     },
@@ -677,7 +729,6 @@ static struct connman_storage manager_storage = {
 	.global_save	= manager_save,
 };
 
-static DBusConnection *connection = NULL;
 static gboolean nm_compat = FALSE;
 
 int __connman_manager_init(DBusConnection *conn, gboolean compat)
@@ -690,6 +741,9 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 
 	if (connman_storage_register(&manager_storage) < 0)
 		connman_error("Failed to register manager storage");
+
+	if (connman_notifier_register(&technology_notifier) < 0)
+		connman_error("Failed to register technology notifier");
 
 	g_dbus_register_interface(connection, CONNMAN_MANAGER_PATH,
 					CONNMAN_MANAGER_INTERFACE,
@@ -709,6 +763,8 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 void __connman_manager_cleanup(void)
 {
 	DBG("conn %p", connection);
+
+	connman_notifier_unregister(&technology_notifier);
 
 	connman_storage_unregister(&manager_storage);
 
