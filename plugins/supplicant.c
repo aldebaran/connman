@@ -184,6 +184,7 @@ struct supplicant_task {
 	enum supplicant_state state;
 	gboolean scanning;
 	GSList *scan_results;
+	DBusPendingCall *scan_call;
 	struct iw_range *range;
 	gboolean disconnecting;
 };
@@ -910,6 +911,8 @@ static void scan_reply(DBusPendingCall *call, void *user_data)
 
 	DBG("task %p", task);
 
+	task->scan_call = NULL;
+
 	reply = dbus_pending_call_steal_reply(call);
 	if (reply == NULL)
 		return;
@@ -930,9 +933,11 @@ done:
 static int initiate_scan(struct supplicant_task *task)
 {
 	DBusMessage *message;
-	DBusPendingCall *call;
 
 	DBG("task %p", task);
+
+	if (task->scan_call != NULL)
+		return -EALREADY;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 					SUPPLICANT_INTF ".Interface", "scan");
@@ -942,19 +947,19 @@ static int initiate_scan(struct supplicant_task *task)
 	dbus_message_set_auto_start(message, FALSE);
 
 	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
+					&task->scan_call, TIMEOUT) == FALSE) {
 		connman_error("Failed to initiate scan");
 		dbus_message_unref(message);
 		return -EIO;
 	}
 
-	if (call == NULL) {
+	if (task->scan_call == NULL) {
 		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		return -EIO;
 	}
 
-	dbus_pending_call_set_notify(call, scan_reply, task, NULL);
+	dbus_pending_call_set_notify(task->scan_call, scan_reply, task, NULL);
 
 	dbus_message_unref(message);
 
@@ -1751,6 +1756,16 @@ int supplicant_stop(struct connman_device *device)
 	g_free(task->range);
 
 	task_list = g_slist_remove(task_list, task);
+
+	if (task->scan_call != NULL) {
+		dbus_pending_call_cancel(task->scan_call);
+		task->scan_call = NULL;
+	}
+
+	if (task->scanning == TRUE)
+		connman_device_set_scanning(task->device, FALSE);
+
+	connman_device_set_scanning(task->device, FALSE);
 
 	disable_network(task);
 
