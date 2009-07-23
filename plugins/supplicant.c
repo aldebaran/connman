@@ -185,6 +185,7 @@ struct supplicant_task {
 	gboolean scanning;
 	GSList *scan_results;
 	DBusPendingCall *scan_call;
+	DBusPendingCall *result_call;
 	struct iw_range *range;
 	gboolean disconnecting;
 };
@@ -1373,7 +1374,6 @@ done:
 static void get_properties(struct supplicant_task *task)
 {
 	DBusMessage *message;
-	DBusPendingCall *call;
 	char *path;
 
 	path = g_slist_nth_data(task->scan_results, 0);
@@ -1393,25 +1393,28 @@ static void get_properties(struct supplicant_task *task)
 	dbus_message_set_auto_start(message, FALSE);
 
 	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
+				&task->result_call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get network properties");
 		dbus_message_unref(message);
 		goto noscan;
 	}
 
-	if (call == NULL) {
+	if (task->result_call == NULL) {
 		connman_error("D-Bus connection not available");
 		dbus_message_unref(message);
 		goto noscan;
 	}
 
-	dbus_pending_call_set_notify(call, properties_reply, task, NULL);
+	dbus_pending_call_set_notify(task->result_call,
+					properties_reply, task, NULL);
 
 	dbus_message_unref(message);
 
 	return;
 
 noscan:
+	task->result_call = NULL;
+
 	if (task->scanning == TRUE) {
 		connman_device_set_scanning(task->device, FALSE);
 		task->scanning = FALSE;
@@ -1472,6 +1475,8 @@ done:
 	dbus_message_unref(reply);
 
 noscan:
+	task->result_call = NULL;
+
 	if (task->scanning == TRUE) {
 		connman_device_set_scanning(task->device, FALSE);
 		task->scanning = FALSE;
@@ -1481,9 +1486,11 @@ noscan:
 static void scan_results_available(struct supplicant_task *task)
 {
 	DBusMessage *message;
-	DBusPendingCall *call;
 
 	DBG("task %p", task);
+
+	if (task->result_call != NULL)
+		return;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 						SUPPLICANT_INTF ".Interface",
@@ -1494,12 +1501,12 @@ static void scan_results_available(struct supplicant_task *task)
 	dbus_message_set_auto_start(message, FALSE);
 
 	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
+				&task->result_call, TIMEOUT) == FALSE) {
 		connman_error("Failed to request scan result");
 		goto done;
 	}
 
-	if (call == NULL) {
+	if (task->result_call == NULL) {
 		connman_error("D-Bus connection not available");
 		goto done;
 	}
@@ -1507,7 +1514,8 @@ static void scan_results_available(struct supplicant_task *task)
 	if (task->scanning == TRUE)
 		connman_device_set_scanning(task->device, TRUE);
 
-	dbus_pending_call_set_notify(call, scan_results_reply, task, NULL);
+	dbus_pending_call_set_notify(task->result_call,
+					scan_results_reply, task, NULL);
 
 done:
 	dbus_message_unref(message);
@@ -1760,6 +1768,11 @@ int supplicant_stop(struct connman_device *device)
 	if (task->scan_call != NULL) {
 		dbus_pending_call_cancel(task->scan_call);
 		task->scan_call = NULL;
+	}
+
+	if (task->result_call != NULL) {
+		dbus_pending_call_cancel(task->result_call);
+		task->result_call = NULL;
 	}
 
 	if (task->scanning == TRUE)
