@@ -1533,12 +1533,18 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 void __connman_service_remove_from_device(struct connman_device *device)
 {
 	struct connman_service *service;
+	connman_bool_t favorite;
 
 	service = __connman_service_lookup_from_device(device);
 	if (service == NULL)
 		return;
 
+	favorite = service->favorite;
+
 	__connman_service_put(service);
+
+	if (favorite == TRUE)
+		__connman_service_auto_connect();
 }
 
 /**
