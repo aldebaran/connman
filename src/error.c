@@ -51,6 +51,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 		return __connman_error_already_connected(msg);
 	case ENOTCONN:
 		return __connman_error_not_connected(msg);
+	case ETIMEDOUT:
+		return __connman_error_operation_timeout(msg);
 	case EALREADY:
 		return __connman_error_in_progress(msg);
 	}
