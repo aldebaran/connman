@@ -95,6 +95,20 @@ DBusMessage *__connman_error_in_progress(DBusMessage *msg)
 						".InProgress", "In progress");
 }
 
+DBusMessage *__connman_error_already_enabled(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+				".AlreadyEnabled", "Already enabled");
+
+}
+
+DBusMessage *__connman_error_already_disabled(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+				".AlreadyDisabled", "Already disabled");
+
+}
+
 DBusMessage *__connman_error_already_connected(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
