@@ -101,21 +101,18 @@ DBusMessage *__connman_error_already_enabled(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 				".AlreadyEnabled", "Already enabled");
-
 }
 
 DBusMessage *__connman_error_already_disabled(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 				".AlreadyDisabled", "Already disabled");
-
 }
 
 DBusMessage *__connman_error_already_connected(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 				".AlreadyConnected", "Already connected");
-
 }
 
 DBusMessage *__connman_error_not_connected(DBusMessage *msg)
@@ -126,23 +123,23 @@ DBusMessage *__connman_error_not_connected(DBusMessage *msg)
 DBusMessage *__connman_error_operation_aborted(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-				"OperationAborted", "Operation aborted");
+				".OperationAborted", "Operation aborted");
 }
 
 DBusMessage *__connman_error_operation_timeout(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-				"OperationTimeout", "Operation timeout");
+				".OperationTimeout", "Operation timeout");
 }
 
 DBusMessage *__connman_error_invalid_service(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-					"InvalidService", "Invalid service");
+				".InvalidService", "Invalid service");
 }
 
 DBusMessage *__connman_error_invalid_property(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE,
-					"InvalidProperty", "Invalid property");
+				".InvalidProperty", "Invalid property");
 }
