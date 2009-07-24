@@ -402,7 +402,7 @@ static void technology_reply(int error)
 		technology_timeout = 0;
 	}
 
-	if (technology_reply != NULL) {
+	if (technology_pending != NULL) {
 		if (error > 0) {
 			DBusMessage *reply;
 
