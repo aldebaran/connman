@@ -1640,7 +1640,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 				task->network = task->pending_network;
 				task->pending_network = NULL;
 				task_connect(task);
-			}
+			} else
+				task->network = NULL;
 		}
 		break;
 
@@ -1659,7 +1660,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 				task->network = task->pending_network;
 				task->pending_network = NULL;
 				task_connect(task);
-			}
+			} else
+				task->network = NULL;
 		}
 		break;
 
