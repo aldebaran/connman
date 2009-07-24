@@ -1,3 +1,8 @@
+ver 0.36:
+	Fix missing reset of network reference when disconnecting.
+	Fix wrong variable reference when sending technology replies.
+	Fix wrong identifiers of D-Bus error names.
+
 ver 0.35:
 	Fix missing auto-connect trigger on Ethernet device removal.
 	Fix availability listing for devices without attached drivers.
