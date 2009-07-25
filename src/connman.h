@@ -267,6 +267,7 @@ const char *__connman_network_get_ident(struct connman_network *network);
 connman_bool_t __connman_network_get_weakness(struct connman_network *network);
 
 int __connman_profile_add_network(struct connman_network *network);
+int __connman_profile_update_network(struct connman_network *network);
 int __connman_profile_remove_network(struct connman_network *network);
 
 #include <connman/service.h>
@@ -285,6 +286,7 @@ void __connman_service_remove_from_device(struct connman_device *device);
 
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
+void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
 
 unsigned int __connman_service_get_order(struct connman_service *service);

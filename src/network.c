@@ -546,9 +546,6 @@ void connman_network_set_group(struct connman_network *network,
 	if (network->secondary == TRUE)
 		return;
 
-	if (g_strcmp0(network->group, group) == 0)
-		return;
-
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
@@ -560,6 +557,12 @@ void connman_network_set_group(struct connman_network *network,
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
+	}
+
+	if (g_strcmp0(network->group, group) == 0) {
+		if (group != NULL)
+			__connman_profile_update_network(network);
+		return;
 	}
 
 	if (network->group != NULL) {

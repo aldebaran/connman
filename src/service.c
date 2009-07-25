@@ -1721,6 +1721,27 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	return service;
 }
 
+void __connman_service_update_from_network(struct connman_network *network)
+{
+	struct connman_service *service;
+	connman_uint8_t strength;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return;
+
+	if (service->network == NULL)
+		return;
+
+	strength = connman_network_get_uint8(service->network, "Strength");
+	if (strength == service->strength)
+		return;
+
+	service->strength = strength;
+
+	strength_changed(service);
+}
+
 void __connman_service_remove_from_network(struct connman_network *network)
 {
 	struct connman_service *service;

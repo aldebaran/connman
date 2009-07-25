@@ -153,6 +153,15 @@ int __connman_profile_add_network(struct connman_network *network)
 	return 0;
 }
 
+int __connman_profile_update_network(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	__connman_service_update_from_network(network);
+
+	return 0;
+}
+
 int __connman_profile_remove_network(struct connman_network *network)
 {
 	DBG("network %p", network);
