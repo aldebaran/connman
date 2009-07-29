@@ -290,12 +290,64 @@ static void strength_changed(struct connman_service *service)
 	g_dbus_send_message(connection, signal);
 }
 
+static void passphrase_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	dbus_bool_t required;
+	const char *key = "PassphraseRequired";
+
+	if (service->path == NULL)
+		return;
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		return;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		required = FALSE;
+
+		switch (service->security) {
+		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+		case CONNMAN_SERVICE_SECURITY_NONE:
+			break;
+		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_WPA:
+		case CONNMAN_SERVICE_SECURITY_RSN:
+			if (service->passphrase == NULL)
+				required = TRUE;
+			break;
+		}
+		break;
+	}
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &required);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	dbus_bool_t required;
 	const char *str;
 
 	DBG("service %p", service);
@@ -347,11 +399,38 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
 
-	if (service->passphrase != NULL &&
-			__connman_security_check_privilege(msg,
-				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
-		connman_dbus_dict_append_variant(&dict, "Passphrase",
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		if (service->passphrase != NULL &&
+				__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
+			connman_dbus_dict_append_variant(&dict, "Passphrase",
 				DBUS_TYPE_STRING, &service->passphrase);
+
+		required = FALSE;
+
+		switch (service->security) {
+		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+		case CONNMAN_SERVICE_SECURITY_NONE:
+			break;
+		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_WPA:
+		case CONNMAN_SERVICE_SECURITY_RSN:
+			if (service->passphrase == NULL)
+				required = TRUE;
+			break;
+		}
+
+		connman_dbus_dict_append_variant(&dict, "PassphraseRequired",
+						DBUS_TYPE_BOOLEAN, &required);
+		break;
+	}
 
 	__connman_ipconfig_append_ipv4(service->ipconfig, &dict, "IPv4.");
 
@@ -398,6 +477,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		g_free(service->passphrase);
 		service->passphrase = g_strdup(passphrase);
 
+		passphrase_changed(service);
+
 		if (service->network != NULL)
 			connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
@@ -442,6 +523,13 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		set_idle(service);
 
 		g_get_current_time(&service->modified);
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Passphrase") == TRUE) {
+		g_free(service->passphrase);
+		service->passphrase = NULL;
+
+		passphrase_changed(service);
+
 		__connman_storage_save_service(service);
 	} else
 		return __connman_error_invalid_property(msg);
@@ -678,6 +766,8 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 	g_free(service->passphrase);
 	service->passphrase = NULL;
+
+	passphrase_changed(service);
 
 	connman_service_set_favorite(service, FALSE);
 	__connman_storage_save_service(service);

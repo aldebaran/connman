@@ -170,8 +170,21 @@ Properties	string State [readonly]
 			If the service type is WiFi, then this property
 			can be used to store a passphrase.
 
-			This property is still experimental and might be
-			removed in future version.
+			No PropertyChanged signals will be send for this
+			property. The PassphraseRequired property should
+			be monitored instead.
+
+			This property might also not always be included
+			since it is protected by a different security policy.
+
+		boolean PassphraseRequired [readonly]
+
+			If the service type is WiFi, then this property
+			indicates if a passphrase is required.
+
+			If a passphrase has been set already or if no
+			passphrase is needed, then this property will
+			be set to false.
 
 		uint8 Strength [readonly]
 
