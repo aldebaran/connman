@@ -1,3 +1,9 @@
+ver 0.37:
+	Fix missing update of signal strength from scan results.
+	Fix error handling in case when passphrase is required.
+	Add support for PassphraseRequired property.
+	Add missing check for WiFi security modes.
+
 ver 0.36:
 	Fix missing reset of network reference when disconnecting.
 	Fix wrong variable reference when sending technology replies.
