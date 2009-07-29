@@ -60,12 +60,6 @@ AC_ARG_ENABLE(threads,
 	AC_HELP_STRING([--enable-threads], [enable threading support]),
 			[enable_threads=${enableval}], [enable_threads="no"])
 
-AC_ARG_ENABLE(loopback,
-	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
-			[enable_loopback=${enableval}], [enable_loopback="no"])
-AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
-AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
-
 AC_ARG_ENABLE(ethernet,
 	AC_HELP_STRING([--enable-ethernet], [enable Ethernet support]),
 			[enable_ethernet=${enableval}], [enable_ethernet="no"])
@@ -151,6 +145,19 @@ fi
 AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" != "no")
 AM_CONDITIONAL(RESOLVCONF_BUILTIN, test "${enable_resolvconf}" = "builtin")
 
+AC_ARG_ENABLE(loopback,
+	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
+			[enable_loopback=${enableval}], [enable_loopback="no"])
+if (test "${enable_loopback}" != "no"); then
+	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,
+			AC_MSG_ERROR(inotify header files are required))
+
+	AC_CHECK_LIB(c, inotify_init, dummy=yes,
+			AC_MSG_ERROR(inotify library support is required))
+fi
+AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
+AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
+
 AC_ARG_ENABLE(dnsproxy,
 	AC_HELP_STRING([--enable-dnsproxy], [enable DNS proxy support]),
 			[enable_dnsproxy=${enableval}], [enable_dnsproxy="no"])
@@ -194,12 +201,6 @@ if (test "${enable_ppp}" = "yes" || test "${enable_novatel}" = "yes" ||
 			AC_MSG_ERROR(PPP development files are required))
 fi
 AM_CONDITIONAL(PPPD, test "${enable_ppp}" = "yes")
-
-AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,
-			AC_MSG_ERROR(inotify header files are required))
-
-AC_CHECK_LIB(c, inotify_init, dummy=yes,
-			AC_MSG_ERROR(inotify library support is required))
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
