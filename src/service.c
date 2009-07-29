@@ -1294,6 +1294,12 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	if (ssid_len < 1)
 		return -EINVAL;
 
+	if (g_strcmp0(security, "none") != 0 &&
+			g_strcmp0(mode, "wep") != 0 &&
+				g_strcmp0(mode, "wpa") != 0 &&
+					g_strcmp0(mode, "rsn") != 0)
+		return -EINVAL;
+
 	device = __connman_element_find_device(CONNMAN_SERVICE_TYPE_WIFI);
 	if (device == NULL)
 		return -EOPNOTSUPP;
