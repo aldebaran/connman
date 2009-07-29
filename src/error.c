@@ -55,6 +55,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 		return __connman_error_operation_timeout(msg);
 	case EALREADY:
 		return __connman_error_in_progress(msg);
+	case ENOKEY:
+		return __connman_error_passphrase_required(msg);
 	}
 
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
@@ -71,6 +73,12 @@ DBusMessage *__connman_error_permission_denied(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 				".PermissionDenied", "Permission denied");
+}
+
+DBusMessage *__connman_error_passphrase_required(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+				".PassphraseRequired", "Passphrase required");
 }
 
 DBusMessage *__connman_error_not_supported(DBusMessage *msg)

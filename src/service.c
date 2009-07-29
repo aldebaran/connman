@@ -1199,6 +1199,29 @@ int __connman_service_connect(struct connman_service *service)
 	if (is_connecting(service) == TRUE)
 		return -EALREADY;
 
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		return -EINVAL;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		switch (service->security) {
+		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+		case CONNMAN_SERVICE_SECURITY_NONE:
+			break;
+		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_WPA:
+		case CONNMAN_SERVICE_SECURITY_RSN:
+			if (service->passphrase == NULL)
+				return -ENOKEY;
+			break;
+		}
+		break;
+	}
+
 	if (service->network != NULL) {
 		if (prepare_network(service) == FALSE)
 			return -EINVAL;
