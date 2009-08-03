@@ -1,3 +1,7 @@
+ver 0.38:
+	Fix broken check for security modes.
+	Fix requirement of inotify when loopback support is disabled.
+
 ver 0.37:
 	Fix missing update of signal strength from scan results.
 	Fix error handling in case when passphrase is required.
