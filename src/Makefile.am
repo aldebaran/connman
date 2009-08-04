@@ -10,8 +10,8 @@ sbin_PROGRAMS = connmand
 connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
 			element.c device.c network.c connection.c \
 			manager.c profile.c service.c agent.c notifier.c \
-			security.c resolver.c ipconfig.c rfkill.c \
-			storage.c ipv4.c rtnl.c inet.c wifi.c dbus.c
+			provider.c security.c resolver.c ipconfig.c ipv4.c \
+			storage.c rfkill.c rtnl.c inet.c wifi.c dbus.c
 
 if UDEV
 connmand_SOURCES += udev.c

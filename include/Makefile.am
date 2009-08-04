@@ -8,7 +8,7 @@ nodist_include_HEADERS = version.h
 
 noinst_HEADERS = driver.h element.h property.h rtnl.h wifi.h \
 			dbus.h rfkill.h option.h resolver.h ipconfig.h \
-							profile.h service.h
+					profile.h service.h provider.h
 
 MAINTAINERCLEANFILES = Makefile.in
 

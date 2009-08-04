@@ -314,6 +314,8 @@ int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_create_and_connect(DBusMessage *msg);
 void __connman_service_auto_connect(void);
 
+#include <connman/provider.h>
+
 #include <connman/notifier.h>
 
 int __connman_notifier_init(void);
