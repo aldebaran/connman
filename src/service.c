@@ -1874,6 +1874,7 @@ void __connman_service_remove_from_network(struct connman_network *network)
 
 static int service_load(struct connman_service *service)
 {
+	const char *ident = service->profile;
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gsize length;
@@ -1883,10 +1884,10 @@ static int service_load(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (service->profile == NULL)
+	if (ident == NULL)
 		return -EINVAL;
 
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, service->profile);
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
 	if (pathname == NULL)
 		return -ENOMEM;
 
@@ -2001,6 +2002,7 @@ done:
 
 static int service_save(struct connman_service *service)
 {
+	const char *ident = service->profile;
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gsize length;
@@ -2009,10 +2011,10 @@ static int service_save(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (service->profile == NULL)
+	if (ident == NULL)
 		return -EINVAL;
 
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR, service->profile);
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
 	if (pathname == NULL)
 		return -ENOMEM;
 

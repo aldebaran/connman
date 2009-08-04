@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <unistd.h>
+
 #include "connman.h"
 
 static GSList *storage_list = NULL;
@@ -66,17 +68,16 @@ void connman_storage_unregister(struct connman_storage *storage)
 	storage_list = g_slist_remove(storage_list, storage);
 }
 
-GKeyFile *__connman_storage_open(void)
+GKeyFile *__connman_storage_open(const char *ident)
 {
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gboolean result;
 	gsize length;
 
-	DBG("");
+	DBG("ident %s", ident);
 
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
-					__connman_profile_active_ident());
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
 	if (pathname == NULL)
 		return NULL;
 
@@ -84,39 +85,36 @@ GKeyFile *__connman_storage_open(void)
 
 	g_free(pathname);
 
-	if (result == FALSE)
-		return NULL;
-
 	keyfile = g_key_file_new();
 
-	if (length > 0) {
-		if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE)
-			goto done;
-	}
+	if (result == FALSE)
+		goto done;
 
-done:
+	if (length > 0)
+		g_key_file_load_from_data(keyfile, data, length, 0, NULL);
+
 	g_free(data);
 
+done:
 	DBG("keyfile %p", keyfile);
 
 	return keyfile;
 }
 
-void __connman_storage_close(GKeyFile *keyfile, gboolean save)
+void __connman_storage_close(const char *ident,
+					GKeyFile *keyfile, gboolean save)
 {
 	gchar *pathname, *data = NULL;
 	gsize length = 0;
 
-	DBG("keyfile %p save %d", keyfile, save);
+	DBG("ident %s keyfile %p save %d", ident, keyfile, save);
 
 	if (save == FALSE) {
 		g_key_file_free(keyfile);
 		return;
 	}
 
-	pathname = g_strdup_printf("%s/%s.conf", STORAGEDIR,
-					__connman_profile_active_ident());
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
 	if (pathname == NULL)
 		return;
 
@@ -132,7 +130,21 @@ void __connman_storage_close(GKeyFile *keyfile, gboolean save)
 	g_key_file_free(keyfile);
 }
 
-int __connman_storage_load_global(void)
+void __connman_storage_delete(const char *ident)
+{
+	gchar *pathname;
+
+	DBG("ident %s", ident);
+
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
+	if (pathname == NULL)
+		return;
+
+	if (unlink(pathname) < 0)
+		connman_error("Failed to remove %s", pathname);
+}
+
+int __connman_storage_init_profile(void)
 {
 	GSList *list;
 
@@ -141,8 +153,8 @@ int __connman_storage_load_global(void)
 	for (list = storage_list; list; list = list->next) {
 		struct connman_storage *storage = list->data;
 
-		if (storage->global_load) {
-			if (storage->global_load() == 0)
+		if (storage->profile_init) {
+			if (storage->profile_init() == 0)
 				return 0;
 		}
 	}
@@ -150,17 +162,17 @@ int __connman_storage_load_global(void)
 	return -ENOENT;
 }
 
-int __connman_storage_save_global(void)
+int __connman_storage_load_profile(struct connman_profile *profile)
 {
 	GSList *list;
 
-	DBG("");
+	DBG("profile %p", profile);
 
 	for (list = storage_list; list; list = list->next) {
 		struct connman_storage *storage = list->data;
 
-		if (storage->global_save) {
-			if (storage->global_save() == 0)
+		if (storage->profile_load) {
+			if (storage->profile_load(profile) == 0)
 				return 0;
 		}
 	}
@@ -168,35 +180,17 @@ int __connman_storage_save_global(void)
 	return -ENOENT;
 }
 
-int __connman_storage_load_device(struct connman_device *device)
+int __connman_storage_save_profile(struct connman_profile *profile)
 {
 	GSList *list;
 
-	DBG("device %p", device);
+	DBG("profile %p", profile);
 
 	for (list = storage_list; list; list = list->next) {
 		struct connman_storage *storage = list->data;
 
-		if (storage->device_load) {
-			if (storage->device_load(device) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_save_device(struct connman_device *device)
-{
-	GSList *list;
-
-	DBG("device %p", device);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->device_save) {
-			if (storage->device_save(device) == 0)
+		if (storage->profile_save) {
+			if (storage->profile_save(profile) == 0)
 				return 0;
 		}
 	}
@@ -233,6 +227,42 @@ int __connman_storage_save_service(struct connman_service *service)
 
 		if (storage->service_save) {
 			if (storage->service_save(service) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+int __connman_storage_load_device(struct connman_device *device)
+{
+	GSList *list;
+
+	DBG("device %p", device);
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->device_load) {
+			if (storage->device_load(device) == 0)
+				return 0;
+		}
+	}
+
+	return -ENOENT;
+}
+
+int __connman_storage_save_device(struct connman_device *device)
+{
+	GSList *list;
+
+	DBG("device %p", device);
+
+	for (list = storage_list; list; list = list->next) {
+		struct connman_storage *storage = list->data;
+
+		if (storage->device_save) {
+			if (storage->device_save(device) == 0)
 				return 0;
 		}
 	}

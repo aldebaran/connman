@@ -29,13 +29,10 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object AddProfile(string name)
+		object CreateProfile(string name)
 
-			Add a new profile with the specified name.
-
-			It is possible to create two profiles with the same
-			name. The identification is done via the object path
-			and not the name of the profile.
+			Create and add new profile with the specified
+			identifier name.
 
 			Possible Errors: [service].Error.InvalidArguments
 

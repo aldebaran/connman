@@ -1584,7 +1584,7 @@ void __connman_element_start(void)
 {
 	DBG("");
 
-	__connman_storage_load_global();
+	__connman_storage_init_profile();
 
 	g_node_traverse(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 							probe_node, NULL);
@@ -1606,8 +1606,6 @@ void __connman_element_stop(void)
 	__connman_rfkill_cleanup();
 	__connman_ipv4_cleanup();
 	__connman_connection_cleanup();
-
-	__connman_storage_save_global();
 }
 
 static gboolean free_driver(GNode *node, gpointer data)

@@ -21,6 +21,12 @@ Properties	string Name [readonly]
 
 			Name of this profile.
 
+		boolean OfflineMode [readwrite]
+
+			The offline mode indicates the setting for switching
+			all radios on or off. Changing offline mode to true
+			results in powering down all devices.
+
 		array{object} Services [readonly]
 
 			List of service objects.

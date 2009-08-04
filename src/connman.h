@@ -38,8 +38,10 @@ DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
 DBusMessage *__connman_error_passphrase_required(DBusMessage *msg);
 DBusMessage *__connman_error_not_supported(DBusMessage *msg);
 DBusMessage *__connman_error_not_implemented(DBusMessage *msg);
+DBusMessage *__connman_error_not_found(DBusMessage *msg);
 DBusMessage *__connman_error_no_carrier(DBusMessage *msg);
 DBusMessage *__connman_error_in_progress(DBusMessage *msg);
+DBusMessage *__connman_error_already_exists(DBusMessage *msg);
 DBusMessage *__connman_error_already_enabled(DBusMessage *msg);
 DBusMessage *__connman_error_already_disabled(DBusMessage *msg);
 DBusMessage *__connman_error_already_connected(DBusMessage *msg);
@@ -56,22 +58,11 @@ int __connman_selftest(void);
 int __connman_manager_init(DBusConnection *conn, gboolean compat);
 void __connman_manager_cleanup(void);
 
-connman_bool_t __connman_manager_get_offlinemode(void);
-
 int __connman_agent_init(DBusConnection *conn);
 void __connman_agent_cleanup(void);
 
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
-
-int __connman_profile_init(DBusConnection *conn);
-void __connman_profile_cleanup(void);
-
-void __connman_profile_list(DBusMessageIter *iter);
-const char *__connman_profile_active_ident(void);
-const char *__connman_profile_active_path(void);
-
-void __connman_profile_changed(gboolean delayed);
 
 #include <connman/log.h>
 
@@ -131,18 +122,18 @@ int __connman_resolver_selftest(void);
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 
-GKeyFile *__connman_storage_open(void);
-void __connman_storage_close(GKeyFile *keyfile, gboolean save);
+GKeyFile *__connman_storage_open(const char *ident);
+void __connman_storage_close(const char *ident,
+					GKeyFile *keyfile, gboolean save);
+void __connman_storage_delete(const char *ident);
 
-int __connman_storage_load_global();
-int __connman_storage_save_global();
-
-int __connman_storage_init_device();
-int __connman_storage_load_device(struct connman_device *device);
-int __connman_storage_save_device(struct connman_device *device);
-int __connman_storage_init_service();
+int __connman_storage_init_profile(void);
+int __connman_storage_load_profile(struct connman_profile *profile);
+int __connman_storage_save_profile(struct connman_profile *profile);
 int __connman_storage_load_service(struct connman_service *service);
 int __connman_storage_save_service(struct connman_service *service);
+int __connman_storage_load_device(struct connman_device *device);
+int __connman_storage_save_device(struct connman_device *device);
 
 #include <connman/driver.h>
 
@@ -246,9 +237,6 @@ const char *__connman_device_get_ident(struct connman_device *device);
 
 int __connman_device_set_offlinemode(connman_bool_t offlinemode);
 
-int __connman_profile_add_device(struct connman_device *device);
-int __connman_profile_remove_device(struct connman_device *device);
-
 #include <connman/network.h>
 
 int __connman_network_init(void);
@@ -266,6 +254,27 @@ const char *__connman_network_get_type(struct connman_network *network);
 const char *__connman_network_get_group(struct connman_network *network);
 const char *__connman_network_get_ident(struct connman_network *network);
 connman_bool_t __connman_network_get_weakness(struct connman_network *network);
+
+#include <connman/profile.h>
+
+int __connman_profile_init(DBusConnection *conn);
+void __connman_profile_cleanup(void);
+
+connman_bool_t __connman_profile_get_offlinemode(void);
+int __connman_profile_set_offlinemode(connman_bool_t offlinemode);
+int __connman_profile_save_default(void);
+
+void __connman_profile_list(DBusMessageIter *iter);
+const char *__connman_profile_active_ident(void);
+const char *__connman_profile_active_path(void);
+
+int __connman_profile_create(const char *name, const char **path);
+int __connman_profile_remove(const char *path);
+
+void __connman_profile_changed(gboolean delayed);
+
+int __connman_profile_add_device(struct connman_device *device);
+int __connman_profile_remove_device(struct connman_device *device);
 
 int __connman_profile_add_network(struct connman_network *network);
 int __connman_profile_update_network(struct connman_network *network);

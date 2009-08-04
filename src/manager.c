@@ -27,13 +27,6 @@
 
 #include "connman.h"
 
-static connman_bool_t global_offlinemode = FALSE;
-
-connman_bool_t __connman_manager_get_offlinemode(void)
-{
-	return global_offlinemode;
-}
-
 static void append_profiles(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
@@ -207,6 +200,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	connman_bool_t offlinemode;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -245,8 +239,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
+	offlinemode = __connman_profile_get_offlinemode();
 	connman_dbus_dict_append_variant(&dict, "OfflineMode",
-				DBUS_TYPE_BOOLEAN, &global_offlinemode);
+					DBUS_TYPE_BOOLEAN, &offlinemode);
 
 	append_available_technologies(&dict);
 	append_enabled_technologies(&dict);
@@ -267,6 +262,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 {
 	DBusMessageIter iter, value;
 	const char *name;
+	int type;
 
 	DBG("conn %p", conn);
 
@@ -281,19 +277,19 @@ static DBusMessage *set_property(DBusConnection *conn,
 					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
 		return __connman_error_permission_denied(msg);
 
+	type = dbus_message_iter_get_arg_type(&value);
+
 	if (g_str_equal(name, "OfflineMode") == TRUE) {
 		connman_bool_t offlinemode;
 
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
 		dbus_message_iter_get_basic(&value, &offlinemode);
 
-		if (global_offlinemode == offlinemode)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		__connman_profile_set_offlinemode(offlinemode);
 
-		global_offlinemode = offlinemode;
-
-		__connman_storage_save_global();
-
-		__connman_device_set_offlinemode(offlinemode);
+		__connman_profile_save_default();
 	} else if (g_str_equal(name, "ActiveProfile") == TRUE) {
 		const char *str;
 
@@ -326,30 +322,49 @@ static DBusMessage *get_state(DBusConnection *conn,
 						DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *add_profile(DBusConnection *conn,
+static DBusMessage *create_profile(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const char *name;
+	const char *name, *path;
+	int err;
 
 	DBG("conn %p", conn);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
 
-	return __connman_error_not_supported(msg);
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
+		return __connman_error_permission_denied(msg);
+
+	err = __connman_profile_create(name, &path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *remove_profile(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *path;
+	int err;
 
 	DBG("conn %p", conn);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	return __connman_error_not_supported(msg);
+	if (__connman_security_check_privilege(msg,
+					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
+		return __connman_error_permission_denied(msg);
+
+	err = __connman_profile_remove(path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *request_scan(DBusConnection *conn,
@@ -613,7 +628,7 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property       },
 	{ "GetState",          "",      "s",     get_state          },
-	{ "AddProfile",        "s",     "o",     add_profile        },
+	{ "CreateProfile",     "s",     "o",     create_profile     },
 	{ "RemoveProfile",     "o",     "",      remove_profile     },
 	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "EnableTechnology",  "s",     "",      enable_technology,
@@ -703,57 +718,6 @@ static GDBusMethodTable nm_methods[] = {
 	{ },
 };
 
-static int manager_load(void)
-{
-	GKeyFile *keyfile;
-	GError *error = NULL;
-	connman_bool_t offlinemode;
-
-	DBG("");
-
-	keyfile = __connman_storage_open();
-	if (keyfile == NULL)
-		return -EIO;
-
-	offlinemode = g_key_file_get_boolean(keyfile, "global",
-						"OfflineMode", &error);
-	if (error == NULL) {
-		global_offlinemode = offlinemode;
-
-		__connman_device_set_offlinemode(offlinemode);
-	}
-	g_clear_error(&error);
-
-	__connman_storage_close(keyfile, FALSE);
-
-	return 0;
-}
-
-static int manager_save(void)
-{
-	GKeyFile *keyfile;
-
-	DBG("");
-
-	keyfile = __connman_storage_open();
-	if (keyfile == NULL)
-		return -EIO;
-
-	g_key_file_set_boolean(keyfile, "global",
-					"OfflineMode", global_offlinemode);
-
-	__connman_storage_close(keyfile, TRUE);
-
-	return 0;
-}
-
-static struct connman_storage manager_storage = {
-	.name		= "manager",
-	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
-	.global_load	= manager_load,
-	.global_save	= manager_save,
-};
-
 static gboolean nm_compat = FALSE;
 
 int __connman_manager_init(DBusConnection *conn, gboolean compat)
@@ -763,9 +727,6 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 	connection = dbus_connection_ref(conn);
 	if (connection == NULL)
 		return -1;
-
-	if (connman_storage_register(&manager_storage) < 0)
-		connman_error("Failed to register manager storage");
 
 	if (connman_notifier_register(&technology_notifier) < 0)
 		connman_error("Failed to register technology notifier");
@@ -790,8 +751,6 @@ void __connman_manager_cleanup(void)
 	DBG("conn %p", connection);
 
 	connman_notifier_unregister(&technology_notifier);
-
-	connman_storage_unregister(&manager_storage);
 
 	if (nm_compat == TRUE) {
 		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);

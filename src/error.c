@@ -35,8 +35,12 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 	const char *str = strerror(errnum);
 
 	switch (errnum) {
+	case ENXIO:
+		return __connman_error_not_found(msg);
 	case EACCES:
 		return __connman_error_permission_denied(msg);
+	case EEXIST:
+		return __connman_error_already_exists(msg);
 	case EINVAL:
 		return __connman_error_invalid_arguments(msg);
 	case ENOSYS:
@@ -93,6 +97,12 @@ DBusMessage *__connman_error_not_implemented(DBusMessage *msg)
 					".NotImplemented", "Not implemented");
 }
 
+DBusMessage *__connman_error_not_found(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+						".NotFound", "Not found");
+}
+
 DBusMessage *__connman_error_no_carrier(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
@@ -103,6 +113,12 @@ DBusMessage *__connman_error_in_progress(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 						".InProgress", "In progress");
+}
+
+DBusMessage *__connman_error_already_exists(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+				".AlreadyExists", "Already exists");
 }
 
 DBusMessage *__connman_error_already_enabled(DBusMessage *msg)

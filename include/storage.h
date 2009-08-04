@@ -22,9 +22,9 @@
 #ifndef __CONNMAN_STORAGE_H
 #define __CONNMAN_STORAGE_H
 
-#include <connman/device.h>
-#include <connman/network.h>
+#include <connman/profile.h>
 #include <connman/service.h>
+#include <connman/device.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -43,14 +43,15 @@ extern "C" {
 struct connman_storage {
 	const char *name;
 	int priority;
-	int (*global_load) (void);
-	int (*global_save) (void);
-	enum connman_device_type device_type;
-	int (*device_load) (struct connman_device *device);
-	int (*device_save) (struct connman_device *device);
+	int (*profile_init) (void);
+	int (*profile_load) (struct connman_profile *profile);
+	int (*profile_save) (struct connman_profile *profile);
 	enum connman_service_type service_type;
 	int (*service_load) (struct connman_service *service);
 	int (*service_save) (struct connman_service *service);
+	enum connman_device_type device_type;
+	int (*device_load) (struct connman_device *device);
+	int (*device_save) (struct connman_device *device);
 };
 
 int connman_storage_register(struct connman_storage *storage);

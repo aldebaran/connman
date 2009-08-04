@@ -331,7 +331,9 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 
 	if (err == 0) {
 		device->powered = powered;
-		powered_changed(device);
+
+		if (device->registered == TRUE)
+			powered_changed(device);
 	}
 
 	return err;
@@ -1748,7 +1750,7 @@ int connman_device_register(struct connman_device *device)
 {
 	__connman_storage_load_device(device);
 
-	device->offlinemode = __connman_manager_get_offlinemode();
+	device->offlinemode = __connman_profile_get_offlinemode();
 
 	return connman_element_register(&device->element, NULL);
 }
@@ -1857,6 +1859,7 @@ static struct connman_driver device_driver = {
 
 static int device_load(struct connman_device *device)
 {
+	const char *ident = __connman_profile_active_ident();
 	GKeyFile *keyfile;
 	GError *error = NULL;
 	gchar *identifier;
@@ -1865,7 +1868,7 @@ static int device_load(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	keyfile = __connman_storage_open();
+	keyfile = __connman_storage_open(ident);
 	if (keyfile == NULL)
 		return 0;
 
@@ -1896,19 +1899,20 @@ static int device_load(struct connman_device *device)
 done:
 	g_free(identifier);
 
-	__connman_storage_close(keyfile, FALSE);
+	__connman_storage_close(ident, keyfile, FALSE);
 
 	return 0;
 }
 
 static int device_save(struct connman_device *device)
 {
+	const char *ident = __connman_profile_active_ident();
 	GKeyFile *keyfile;
 	gchar *identifier;
 
 	DBG("device %p", device);
 
-	keyfile = __connman_storage_open();
+	keyfile = __connman_storage_open(ident);
 	if (keyfile == NULL)
 		return 0;
 
@@ -1934,7 +1938,7 @@ static int device_save(struct connman_device *device)
 done:
 	g_free(identifier);
 
-	__connman_storage_close(keyfile, TRUE);
+	__connman_storage_close(ident, keyfile, TRUE);
 
 	return 0;
 }
