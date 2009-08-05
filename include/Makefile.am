@@ -6,7 +6,7 @@ include_HEADERS = types.h log.h plugin.h security.h notifier.h \
 
 nodist_include_HEADERS = version.h
 
-noinst_HEADERS = driver.h element.h property.h rtnl.h wifi.h \
+noinst_HEADERS = driver.h element.h property.h rtnl.h wifi.h task.h \
 			dbus.h rfkill.h option.h resolver.h ipconfig.h \
 					profile.h service.h provider.h
 

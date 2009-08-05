@@ -79,6 +79,8 @@ gboolean __connman_debug_enabled(void);
 int __connman_plugin_init(const char *pattern, const char *exclude);
 void __connman_plugin_cleanup(void);
 
+#include <connman/task.h>
+
 #include <connman/security.h>
 
 int __connman_security_check_privilege(DBusMessage *message,

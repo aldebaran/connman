@@ -8,7 +8,7 @@ endif
 sbin_PROGRAMS = connmand
 
 connmand_SOURCES = main.c connman.h log.c selftest.c error.c plugin.c \
-			element.c device.c network.c connection.c \
+			task.c element.c device.c network.c connection.c \
 			manager.c profile.c service.c agent.c notifier.c \
 			provider.c security.c resolver.c ipconfig.c ipv4.c \
 			storage.c rfkill.c rtnl.c inet.c wifi.c dbus.c
