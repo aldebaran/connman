@@ -408,5 +408,5 @@ gives detailed information about the current progress.
 	print properties["State"]
 
 All state changes are also send via the PropertyChanged signal on the
-service interface. This allows asynchronous monitoring with having to poll
+service interface. This allows asynchronous monitoring without having to poll
 Connection Manager for changes.
