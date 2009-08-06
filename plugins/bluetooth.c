@@ -534,6 +534,8 @@ static void device_properties(DBusConnection *connection, const char *path,
 	connman_network_set_name(network, node);
 
 	connman_device_add_network(device, network);
+
+	connman_network_set_group(network, node);
 }
 
 static void check_devices(struct connman_device *adapter,
