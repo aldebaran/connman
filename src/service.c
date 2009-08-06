@@ -1009,6 +1009,20 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	if (service_a->favorite == FALSE && service_b->favorite == TRUE)
 		return 1;
 
+	if (service_a->type != service_b->type) {
+		switch (service_a->type) {
+		case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		case CONNMAN_SERVICE_TYPE_ETHERNET:
+			break;
+		case CONNMAN_SERVICE_TYPE_WIFI:
+			return 1;
+		case CONNMAN_SERVICE_TYPE_WIMAX:
+		case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		case CONNMAN_SERVICE_TYPE_CELLULAR:
+			return -1;
+		}
+	}
+
 	return (gint) service_b->strength - (gint) service_a->strength;
 }
 
