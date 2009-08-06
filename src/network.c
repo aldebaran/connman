@@ -549,9 +549,9 @@ void connman_network_set_group(struct connman_network *network,
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
+		return;
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
-		return;
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
 	case CONNMAN_NETWORK_TYPE_WIFI:
@@ -1245,9 +1245,9 @@ static int network_probe(struct connman_element *element)
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
+		break;
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
-		break;
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
 	case CONNMAN_NETWORK_TYPE_WIFI:
@@ -1275,9 +1275,9 @@ static void network_remove(struct connman_element *element)
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
+		break;
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
-		break;
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
 	case CONNMAN_NETWORK_TYPE_WIFI:
