@@ -633,7 +633,8 @@ update:
 	connman_device_set_powered(device, powered);
 	connman_device_set_scanning(device, scanning);
 
-	check_networks(device, &networks);
+	if (powered == TRUE)
+		check_networks(device, &networks);
 
 done:
 	dbus_message_unref(reply);
