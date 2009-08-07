@@ -23,8 +23,11 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <errno.h>
 #include <stdlib.h>
+#include <string.h>
+#include <netinet/ether.h>
 
 #include <gdbus.h>
 
@@ -52,137 +55,29 @@
 #define CONNECT				"Connect"
 #define DISCONNECT			"Disconnect"
 
+#define UUID_NAP	"00001116-0000-1000-8000-00805f9b34fb"
+
 #define TIMEOUT 5000
 
-typedef void (* properties_callback_t) (DBusConnection *connection,
-							const char *path,
-							DBusMessage *message,
-							void *user_data);
+static DBusConnection *connection;
 
-struct properties_data {
-	DBusConnection *connection;
-	DBusMessage *message;
-	properties_callback_t callback;
-	void *user_data;
-};
-
-static void get_properties_reply(DBusPendingCall *call, void *user_data)
-{
-	struct properties_data *data = user_data;
-	DBusMessage *reply;
-	const char *path;
-
-	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		goto done;
-
-	path = dbus_message_get_path(data->message);
-
-	data->callback(data->connection, path, reply, data->user_data);
-
-	dbus_message_unref(reply);
-
-done:
-	dbus_message_unref(data->message);
-	g_free(data);
-}
-
-static void get_properties(DBusConnection *connection,
-				const char *path, const char *interface,
-				properties_callback_t callback, void *user_data)
-{
-	struct properties_data *data;
-	DBusMessage *message;
-	DBusPendingCall *call;
-
-	DBG("path %s interface %s", path, interface);
-
-	data = g_try_new0(struct properties_data, 1);
-	if (data == NULL)
-		return;
-
-	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
-						interface, GET_PROPERTIES);
-	if (message == NULL) {
-		g_free(data);
-		return;
-	}
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get properties for %s", interface);
-		dbus_message_unref(message);
-		g_free(data);
-		return;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		dbus_message_unref(message);
-		g_free(data);
-		return;
-	}
-
-	data->connection = connection;
-	data->message    = message;
-	data->callback   = callback;
-	data->user_data  = user_data;
-
-	dbus_pending_call_set_notify(call, get_properties_reply, data, NULL);
-}
-
-struct adapter_data {
-	DBusConnection *connection;
-};
-
-struct network_data {
-	DBusConnection *connection;
-	char *interface;
-};
+static GHashTable *bluetooth_devices = NULL;
 
 static int pan_probe(struct connman_network *network)
 {
-	struct connman_device *device = connman_network_get_device(network);
-	struct adapter_data *adapter;
-	struct network_data *data;
-
 	DBG("network %p", network);
-
-	if (device == NULL)
-		return -EINVAL;
-
-	adapter = connman_device_get_data(device);
-	if (adapter == NULL)
-		return -EINVAL;
-
-	data = g_try_new0(struct network_data, 1);
-	if (data == NULL)
-		return -ENOMEM;
-
-	data->connection = adapter->connection;
-
-	connman_network_set_data(network, data);
 
 	return 0;
 }
 
 static void pan_remove(struct connman_network *network)
 {
-	struct network_data *data = connman_network_get_data(network);
-
 	DBG("network %p", network);
-
-	connman_network_set_data(network, NULL);
-
-	g_free(data);
 }
 
 static void connect_reply(DBusPendingCall *call, void *user_data)
 {
 	struct connman_network *network = user_data;
-	struct network_data *data = connman_network_get_data(network);
 	DBusMessage *reply;
 	DBusError error;
 	const char *interface = NULL;
@@ -212,8 +107,6 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 
 	DBG("interface %s", interface);
 
-	data->interface = g_strdup(interface);
-
 	index = connman_inet_ifindex(interface);
 
 	connman_network_set_index(network, index);
@@ -225,13 +118,18 @@ done:
 
 static int pan_connect(struct connman_network *network)
 {
-	struct network_data *data = connman_network_get_data(network);
-	const char *path = connman_network_get_string(network, "Node");
+	const char *path = connman_network_get_string(network, "Path");
 	const char *uuid = "nap";
 	DBusMessage *message;
 	DBusPendingCall *call;
 
 	DBG("network %p", network);
+
+	if (path == NULL)
+		return -EINVAL;
+
+	if (connman_network_get_index(network) >= 0)
+		return -EISCONN;
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
 					BLUEZ_NETWORK_INTERFACE, CONNECT);
@@ -243,7 +141,7 @@ static int pan_connect(struct connman_network *network)
 	dbus_message_append_args(message, DBUS_TYPE_STRING, &uuid,
 							DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(data->connection, message,
+	if (dbus_connection_send_with_reply(connection, message,
 					&call, TIMEOUT * 10) == FALSE) {
 		connman_error("Failed to connect service");
 		dbus_message_unref(message);
@@ -266,7 +164,6 @@ static int pan_connect(struct connman_network *network)
 static void disconnect_reply(DBusPendingCall *call, void *user_data)
 {
 	struct connman_network *network = user_data;
-	struct network_data *data = connman_network_get_data(network);
 	DBusMessage *reply;
 	DBusError error;
 
@@ -287,9 +184,6 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 	}
 
-	g_free(data->interface);
-	data->interface = NULL;
-
 	connman_network_set_connected(network, FALSE);
 	connman_network_set_index(network, -1);
 
@@ -299,15 +193,17 @@ done:
 
 static int pan_disconnect(struct connman_network *network)
 {
-	struct network_data *data = connman_network_get_data(network);
-	const char *path = connman_network_get_string(network, "Node");
+	const char *path = connman_network_get_string(network, "Path");
 	DBusMessage *message;
 	DBusPendingCall *call;
 
 	DBG("network %p", network);
 
-	if (data->interface == NULL)
+	if (path == NULL)
 		return -EINVAL;
+
+	if (connman_network_get_index(network) < 0)
+		return -ENOTCONN;
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
 					BLUEZ_NETWORK_INTERFACE, DISCONNECT);
@@ -318,7 +214,7 @@ static int pan_disconnect(struct connman_network *network)
 
 	dbus_message_append_args(message, DBUS_TYPE_INVALID);
 
-	if (dbus_connection_send_with_reply(data->connection, message,
+	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to disconnect service");
 		dbus_message_unref(message);
@@ -335,7 +231,7 @@ static int pan_disconnect(struct connman_network *network)
 
 	dbus_message_unref(message);
 
-	return -EINPROGRESS;
+	return 0;
 }
 
 static struct connman_network_driver pan_driver = {
@@ -347,38 +243,16 @@ static struct connman_network_driver pan_driver = {
 	.disconnect	= pan_disconnect,
 };
 
-static int bluetooth_probe(struct connman_device *adapter)
+static int bluetooth_probe(struct connman_device *device)
 {
-	struct adapter_data *data;
-
-	DBG("adapter %p", adapter);
-
-	data = g_try_new0(struct adapter_data, 1);
-	if (data == NULL)
-		return -ENOMEM;
-
-	data->connection = connman_dbus_get_connection();
-	if (data->connection == NULL) {
-		g_free(data);
-		return -EIO;
-	}
-
-	connman_device_set_data(adapter, data);
+	DBG("device %p", device);
 
 	return 0;
 }
 
-static void bluetooth_remove(struct connman_device *adapter)
+static void bluetooth_remove(struct connman_device *device)
 {
-	struct adapter_data *data = connman_device_get_data(adapter);
-
-	DBG("adapter %p", adapter);
-
-	connman_device_set_data(adapter, NULL);
-
-	dbus_connection_unref(data->connection);
-
-	g_free(data);
+	DBG("device %p", device);
 }
 
 static void powered_reply(DBusPendingCall *call, void *user_data)
@@ -400,6 +274,9 @@ static int change_powered(DBusConnection *connection, const char *path,
 	DBusPendingCall *call;
 
 	DBG("");
+
+	if (path == NULL)
+		return -EINVAL;
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
 					BLUEZ_ADAPTER_INTERFACE, SET_PROPERTY);
@@ -432,31 +309,22 @@ static int change_powered(DBusConnection *connection, const char *path,
 	return -EINPROGRESS;
 }
 
-static int bluetooth_enable(struct connman_device *adapter)
+static int bluetooth_enable(struct connman_device *device)
 {
-	struct adapter_data *data = connman_device_get_data(adapter);
-	const char *path = connman_device_get_string(adapter, "Node");
+	const char *path = connman_device_get_string(device, "Path");
 
-	DBG("adapter %p", adapter);
+	DBG("device %p", device);
 
-	return change_powered(data->connection, path, TRUE);
+	return change_powered(connection, path, TRUE);
 }
 
-static int bluetooth_disable(struct connman_device *adapter)
+static int bluetooth_disable(struct connman_device *device)
 {
-	struct adapter_data *data = connman_device_get_data(adapter);
-	const char *path = connman_device_get_string(adapter, "Node");
+	const char *path = connman_device_get_string(device, "Path");
 
-	DBG("adapter %p", adapter);
+	DBG("device %p", device);
 
-	return change_powered(data->connection, path, FALSE);
-}
-
-static int bluetooth_scan(struct connman_device *adapter)
-{
-	DBG("adapter %p", adapter);
-
-	return -EIO;
+	return change_powered(connection, path, FALSE);
 }
 
 static struct connman_device_driver bluetooth_driver = {
@@ -466,137 +334,16 @@ static struct connman_device_driver bluetooth_driver = {
 	.remove		= bluetooth_remove,
 	.enable		= bluetooth_enable,
 	.disable	= bluetooth_disable,
-	.scan		= bluetooth_scan,
 };
 
-static GSList *adapter_list = NULL;
-
-static void free_adapters(void)
-{
-	GSList *list;
-
-	DBG("");
-
-	for (list = adapter_list; list; list = list->next) {
-		struct connman_device *adapter = list->data;
-
-		connman_device_unregister(adapter);
-		connman_device_unref(adapter);
-	}
-
-	g_slist_free(adapter_list);
-	adapter_list = NULL;
-}
-
-static struct connman_device *find_adapter(const char *path)
-{
-	GSList *list;
-
-	DBG("path %s", path);
-
-	for (list = adapter_list; list; list = list->next) {
-		struct connman_device *adapter = list->data;
-		const char *adapter_path = connman_device_get_string(adapter,
-									"Node");
-
-		if (adapter_path == NULL)
-			continue;
-
-		if (g_str_equal(adapter_path, path) == TRUE)
-			return adapter;
-	}
-
-	return NULL;
-}
-
-static void device_properties(DBusConnection *connection, const char *path,
-				DBusMessage *message, void *user_data)
-{
-	struct connman_device *device = user_data;
-	const char *node = g_basename(path);
-	struct connman_network *network;
-
-	DBG("path %s", path);
-
-	network = connman_device_get_network(device, node);
-	if (network != NULL)
-		return;
-
-	network = connman_network_create(node,
-					CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN);
-	if (network == NULL)
-		return;
-
-	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
-
-	connman_network_set_string(network, "Node", path);
-
-	connman_network_set_name(network, node);
-
-	connman_device_add_network(device, network);
-
-	connman_network_set_group(network, node);
-}
-
-static void check_devices(struct connman_device *adapter,
-			DBusConnection *connection, DBusMessageIter *array)
-{
-	DBusMessageIter value;
-
-	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
-		return;
-
-	dbus_message_iter_recurse(array, &value);
-
-	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_OBJECT_PATH) {
-		const char *path;
-
-		dbus_message_iter_get_basic(&value, &path);
-
-		get_properties(connection, path, BLUEZ_DEVICE_INTERFACE,
-						device_properties, adapter);
-
-		dbus_message_iter_next(&value);
-	}
-}
-
-static void property_changed(DBusConnection *connection, DBusMessage *message)
-{
-	const char *path = dbus_message_get_path(message);
-	struct connman_device *adapter;
-	DBusMessageIter iter, value;
-	const char *key;
-
-	DBG("path %s", path);
-
-	adapter = find_adapter(path);
-	if (adapter == NULL)
-		return;
-
-	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return;
-
-	dbus_message_iter_get_basic(&iter, &key);
-
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (g_str_equal(key, "Powered") == TRUE) {
-		gboolean val;
-
-		dbus_message_iter_get_basic(&value, &val);
-		connman_device_set_powered(adapter, val);
-	} else if (g_str_equal(key, "Discovering") == TRUE) {
-		gboolean val;
-
-		dbus_message_iter_get_basic(&value, &val);
-		connman_device_set_scanning(adapter, val);
-	}
-}
-
-static void parse_adapter_properties(struct connman_device *adapter,
-						DBusConnection *connection,
-							DBusMessage *reply)
+static void extract_properties(DBusMessage *reply, const char **parent,
+						const char **address,
+						const char **name,
+						const char **alias,
+						dbus_bool_t *powered,
+						dbus_bool_t *scanning,
+						DBusMessageIter *uuids,
+						DBusMessageIter *networks)
 {
 	DBusMessageIter array, dict;
 
@@ -618,94 +365,321 @@ static void parse_adapter_properties(struct connman_device *adapter,
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Powered") == TRUE) {
-			gboolean val;
-
-			dbus_message_iter_get_basic(&value, &val);
-			connman_device_set_powered(adapter, val);
+		if (g_str_equal(key, "Adapter") == TRUE) {
+			if (parent != NULL)
+				dbus_message_iter_get_basic(&value, parent);
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			if (address != NULL)
+				dbus_message_iter_get_basic(&value, address);
+		} else if (g_str_equal(key, "Name") == TRUE) {
+			if (name != NULL)
+				dbus_message_iter_get_basic(&value, name);
+		} else if (g_str_equal(key, "Alias") == TRUE) {
+			if (alias != NULL)
+				dbus_message_iter_get_basic(&value, alias);
+		} else if (g_str_equal(key, "Powered") == TRUE) {
+			if (powered != NULL)
+				dbus_message_iter_get_basic(&value, powered);
 		} else if (g_str_equal(key, "Discovering") == TRUE) {
-			gboolean val;
-
-			dbus_message_iter_get_basic(&value, &val);
-			connman_device_set_scanning(adapter, val);
+			if (scanning != NULL)
+				dbus_message_iter_get_basic(&value, scanning);
 		} else if (g_str_equal(key, "Devices") == TRUE) {
-			check_devices(adapter, connection, &value);
+			if (networks != NULL)
+				memcpy(networks, &value, sizeof(value));
+		} else if (g_str_equal(key, "UUIDs") == TRUE) {
+			if (uuids != NULL)
+				memcpy(uuids, &value, sizeof(value));
 		}
 
 		dbus_message_iter_next(&dict);
 	}
 }
 
-static void adapter_properties(DBusConnection *connection, const char *path,
-				DBusMessage *message, void *user_data)
+static dbus_bool_t has_pan(DBusMessageIter *array)
 {
-	const char *node = g_basename(path);
-	struct connman_device *adapter;
+	DBusMessageIter value;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return FALSE;
+
+	dbus_message_iter_recurse(array, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
+		const char *uuid;
+
+		dbus_message_iter_get_basic(&value, &uuid);
+
+		if (g_strcmp0(uuid, UUID_NAP) == 0)
+			return TRUE;
+
+		dbus_message_iter_next(&value);
+	}
+
+	return FALSE;
+}
+
+static void network_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	char *path = user_data;
+	struct connman_device *device;
+	struct connman_network *network;
+	DBusMessage *reply;
+	DBusMessageIter uuids;
+	const char *parent = NULL, *address = NULL, *name = NULL;
+	struct ether_addr addr;
+	char ident[13];
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	extract_properties(reply, &parent, &address, NULL, &name,
+						NULL, NULL, &uuids, NULL);
+
+	if (parent == NULL)
+		goto done;
+
+	device = g_hash_table_lookup(bluetooth_devices, parent);
+	if (device == NULL)
+		goto done;
+
+	if (address == NULL)
+		goto done;
+
+	ether_aton_r(address, &addr);
+
+	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
+						addr.ether_addr_octet[0],
+						addr.ether_addr_octet[1],
+						addr.ether_addr_octet[2],
+						addr.ether_addr_octet[3],
+						addr.ether_addr_octet[4],
+						addr.ether_addr_octet[5]);
+
+	if (has_pan(&uuids) == FALSE)
+		goto done;
+
+	network = connman_device_get_network(device, ident);
+	if (network != NULL)
+		goto done;
+
+	network = connman_network_create(ident,
+					CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN);
+	if (network == NULL)
+		goto done;
+
+	connman_network_set_string(network, "Path", path);
+
+	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
+
+	connman_network_set_name(network, name);
+
+	connman_device_add_network(device, network);
+
+	connman_network_set_group(network, ident);
+
+done:
+	dbus_message_unref(reply);
+}
+
+static void add_network(struct connman_device *device, const char *path)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
 
 	DBG("path %s", path);
 
-	adapter = find_adapter(path);
-	if (adapter != NULL)
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+				BLUEZ_DEVICE_INTERFACE, GET_PROPERTIES);
+	if (message == NULL)
+		return;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to get network properties for %s", path);
 		goto done;
-
-	adapter = connman_device_create(node, CONNMAN_DEVICE_TYPE_BLUETOOTH);
-	if (adapter == NULL)
-		return;
-
-	connman_device_set_string(adapter, "Node", path);
-
-	if (node != NULL && g_str_has_prefix(node, "hci") == TRUE) {
-		int index;
-		errno = 0;
-		index = atoi(node + 3);
-		if (errno == 0)
-			connman_device_set_index(adapter, index);
 	}
 
-	connman_device_set_interface(adapter, node, NULL);
-
-	connman_device_set_ident(adapter, node);
-
-	connman_device_set_mode(adapter, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
-
-	if (connman_device_register(adapter) < 0) {
-		connman_device_unref(adapter);
-		return;
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		goto done;
 	}
 
-	adapter_list = g_slist_append(adapter_list, adapter);
+	dbus_pending_call_set_notify(call, network_properties_reply,
+						g_strdup(path), g_free);
 
 done:
-	parse_adapter_properties(adapter, connection, message);
+	dbus_message_unref(message);
+}
+
+static void check_networks(struct connman_device *device,
+						DBusMessageIter *array)
+{
+	DBusMessageIter value;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_OBJECT_PATH) {
+		const char *path;
+
+		dbus_message_iter_get_basic(&value, &path);
+
+		add_network(device, path);
+
+		dbus_message_iter_next(&value);
+	}
+}
+
+static void adapter_changed(DBusConnection *connection, DBusMessage *message)
+{
+	const char *path = dbus_message_get_path(message);
+	struct connman_device *device;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	DBG("path %s", path);
+
+	device = g_hash_table_lookup(bluetooth_devices, path);
+	if (device == NULL)
+		return;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Powered") == TRUE) {
+		dbus_bool_t val;
+
+		dbus_message_iter_get_basic(&value, &val);
+		connman_device_set_powered(device, val);
+	} else if (g_str_equal(key, "Discovering") == TRUE) {
+		dbus_bool_t val;
+
+		dbus_message_iter_get_basic(&value, &val);
+		connman_device_set_scanning(device, val);
+	} else if (g_str_equal(key, "Devices") == TRUE) {
+		check_networks(device, &value);
+	}
+}
+
+static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	char *path = user_data;
+	struct connman_device *device;
+	DBusMessage *reply;
+	DBusMessageIter networks;
+	const char *address = NULL, *name = NULL;
+	dbus_bool_t powered = FALSE, scanning = FALSE;
+	struct ether_addr addr;
+	char ident[13];
+
+	DBG("path %s", path);
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	if (path == NULL)
+		goto done;
+
+	extract_properties(reply, NULL, &address, &name, NULL,
+					&powered, &scanning, NULL, &networks);
+
+	if (address == NULL)
+		goto done;
+
+	device = g_hash_table_lookup(bluetooth_devices, path);
+	if (device != NULL)
+		goto update;
+
+	ether_aton_r(address, &addr);
+
+	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
+						addr.ether_addr_octet[0],
+						addr.ether_addr_octet[1],
+						addr.ether_addr_octet[2],
+						addr.ether_addr_octet[3],
+						addr.ether_addr_octet[4],
+						addr.ether_addr_octet[5]);
+
+	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_BLUETOOTH);
+	if (device == NULL)
+		goto done;
+
+	connman_device_set_ident(device, ident);
+
+	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
+
+	if (connman_device_register(device) < 0) {
+		connman_device_unref(device);
+		goto done;
+	}
+
+	g_hash_table_insert(bluetooth_devices, g_strdup(path), device);
+
+update:
+	connman_device_set_string(device, "Address", address);
+	connman_device_set_string(device, "Name", name);
+
+	connman_device_set_powered(device, powered);
+	connman_device_set_scanning(device, scanning);
+
+	check_networks(device, &networks);
+
+done:
+	dbus_message_unref(reply);
 }
 
 static void add_adapter(DBusConnection *connection, const char *path)
 {
+	DBusMessage *message;
+	DBusPendingCall *call;
+
 	DBG("path %s", path);
 
-	get_properties(connection, path, BLUEZ_ADAPTER_INTERFACE,
-						adapter_properties, NULL);
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+				BLUEZ_ADAPTER_INTERFACE, GET_PROPERTIES);
+	if (message == NULL)
+		return;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to get adapter properties for %s", path);
+		goto done;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		goto done;
+	}
+
+	dbus_pending_call_set_notify(call, adapter_properties_reply,
+						g_strdup(path), g_free);
+
+done:
+	dbus_message_unref(message);
 }
 
 static void remove_adapter(DBusConnection *connection, const char *path)
 {
-	struct connman_device *adapter;
-
 	DBG("path %s", path);
 
-	adapter = find_adapter(path);
-	if (adapter == NULL)
-		return;
-
-	adapter_list = g_slist_remove(adapter_list, adapter);
-
-	connman_device_unregister(adapter);
-	connman_device_unref(adapter);
+	g_hash_table_remove(bluetooth_devices, path);
 }
 
 static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 {
-	DBusConnection *connection = user_data;
 	DBusMessage *reply;
 	DBusError error;
 	char **adapters;
@@ -714,6 +688,8 @@ static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
 
 	dbus_error_init(&error);
 
@@ -730,14 +706,22 @@ static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	for (i = 0; i < num_adapters; i++)
-		get_properties(connection, adapters[i],
-					BLUEZ_ADAPTER_INTERFACE,
-						adapter_properties, NULL);
+		add_adapter(connection, adapters[i]);
 
 	g_strfreev(adapters);
 
 done:
 	dbus_message_unref(reply);
+}
+
+static void unregister_device(gpointer data)
+{
+	struct connman_device *device = data;
+
+	DBG("");
+
+	connman_device_unregister(device);
+	connman_device_unref(device);
 }
 
 static void bluetooth_connect(DBusConnection *connection, void *user_data)
@@ -746,6 +730,9 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 	DBusPendingCall *call;
 
 	DBG("connection %p", connection);
+
+	bluetooth_devices = g_hash_table_new_full(g_str_hash, g_str_equal,
+						g_free, unregister_device);
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, "/",
 				BLUEZ_MANAGER_INTERFACE, LIST_ADAPTERS);
@@ -765,8 +752,7 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 		goto done;
 	}
 
-	dbus_pending_call_set_notify(call, list_adapters_reply,
-							connection, NULL);
+	dbus_pending_call_set_notify(call, list_adapters_reply, NULL, NULL);
 
 done:
 	dbus_message_unref(message);
@@ -776,23 +762,16 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
 
-	free_adapters();
+	g_hash_table_destroy(bluetooth_devices);
+	bluetooth_devices = NULL;
 }
 
 static DBusHandlerResult bluetooth_signal(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
-	if (dbus_message_has_interface(message,
-			BLUEZ_MANAGER_INTERFACE) == FALSE &&
-				dbus_message_has_interface(message,
-					BLUEZ_ADAPTER_INTERFACE) == FALSE)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
-	DBG("connection %p", connection);
-
 	if (dbus_message_is_signal(message, BLUEZ_ADAPTER_INTERFACE,
 						PROPERTY_CHANGED) == TRUE) {
-		property_changed(connection, message);
+		adapter_changed(connection, message);
 	} else if (dbus_message_is_signal(message, BLUEZ_MANAGER_INTERFACE,
 						ADAPTER_ADDED) == TRUE) {
 		const char *path;
@@ -812,7 +791,6 @@ static DBusHandlerResult bluetooth_signal(DBusConnection *connection,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
-static DBusConnection *connection;
 static guint watch;
 
 static const char *added_rule = "type=signal,member=" ADAPTER_ADDED
@@ -879,7 +857,7 @@ static void bluetooth_exit(void)
 
 	g_dbus_remove_watch(connection, watch);
 
-	free_adapters();
+	bluetooth_disconnect(connection, NULL);
 
 	connman_device_driver_unregister(&bluetooth_driver);
 	connman_network_driver_unregister(&pan_driver);
