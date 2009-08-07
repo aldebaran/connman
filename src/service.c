@@ -804,6 +804,9 @@ static DBusMessage *move_before(DBusConnection *conn,
 
 	DBG("target %s", target->identifier);
 
+	if (target->state != service->state)
+		return __connman_error_invalid_service(msg);
+
 	g_get_current_time(&service->modified);
 	__connman_storage_save_service(service);
 
@@ -837,6 +840,9 @@ static DBusMessage *move_after(DBusConnection *conn,
 		return __connman_error_invalid_service(msg);
 
 	DBG("target %s", target->identifier);
+
+	if (target->state != service->state)
+		return __connman_error_invalid_service(msg);
 
 	g_get_current_time(&service->modified);
 	__connman_storage_save_service(service);
