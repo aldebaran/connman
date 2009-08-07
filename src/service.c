@@ -47,6 +47,7 @@ struct connman_service {
 	connman_bool_t favorite;
 	connman_bool_t hidden;
 	connman_bool_t ignore;
+	connman_bool_t autoconnect;
 	GTimeVal modified;
 	unsigned int order;
 	char *name;
@@ -395,6 +396,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
+	connman_dbus_dict_append_variant(&dict, "AutoConnect",
+				DBUS_TYPE_BOOLEAN, &service->autoconnect);
+
 	if (service->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
@@ -557,6 +561,9 @@ static connman_bool_t is_connecting(struct connman_service *service)
 
 static connman_bool_t is_ignore(struct connman_service *service)
 {
+	if (service->autoconnect == FALSE)
+		return TRUE;
+
 	if (service->ignore == TRUE)
 		return TRUE;
 
@@ -1620,6 +1627,8 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 
 	service->type = __connman_device_get_service_type(device);
 
+	service->autoconnect = FALSE;
+
 	service->device = device;
 
 	service_register(service);
@@ -1840,6 +1849,19 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	}
 
 	service->type = convert_network_type(network);
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		service->autoconnect = FALSE;
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		service->autoconnect = TRUE;
+		break;
+	}
 
 	service->state = CONNMAN_SERVICE_STATE_IDLE;
 

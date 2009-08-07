@@ -204,6 +204,11 @@ Properties	string State [readonly]
 			method. So for now it will be considered a read
 			only property.
 
+		boolean AutoConnect [readonly]
+
+			If set to true, this service will auto-connect
+			when not other connection is available.
+
 		string IPv4.Method [readwrite]
 
 			The IPv4 configuration method. Possible values here
