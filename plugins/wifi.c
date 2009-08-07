@@ -24,6 +24,11 @@
 #endif
 
 #include <errno.h>
+#include <net/if.h>
+
+#ifndef IFF_LOWER_UP
+#define IFF_LOWER_UP	0x10000
+#endif
 
 #include <dbus/dbus.h>
 #include <glib.h>
@@ -31,6 +36,7 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/device.h>
+#include <connman/rtnl.h>
 #include <connman/log.h>
 
 #include "supplicant.h"
@@ -41,6 +47,9 @@
 struct wifi_data {
 	char *identifier;
 	connman_bool_t connected;
+	int index;
+	unsigned flags;
+	unsigned int watch;
 };
 
 static int network_probe(struct connman_network *network)
@@ -78,33 +87,69 @@ static struct connman_network_driver network_driver = {
 	.disconnect	= network_disconnect,
 };
 
+static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
+{
+	struct connman_device *device = user_data;
+	struct wifi_data *wifi = connman_device_get_data(device);
+
+	DBG("index %d flags %d change %d", wifi->index, flags, change);
+
+	if ((wifi->flags & IFF_UP) != (flags & IFF_UP)) {
+		if (flags & IFF_UP) {
+			DBG("power on");
+		} else {
+			DBG("power off");
+		}
+	}
+
+	if ((wifi->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
+		if (flags & IFF_LOWER_UP) {
+			DBG("carrier on");
+		} else {
+			DBG("carrier off");
+		}
+	}
+
+	wifi->flags = flags;
+}
+
 static int wifi_probe(struct connman_device *device)
 {
-	struct wifi_data *data;
+	struct wifi_data *wifi;
 
 	DBG("device %p", device);
 
-	data = g_try_new0(struct wifi_data, 1);
-	if (data == NULL)
+	wifi = g_try_new0(struct wifi_data, 1);
+	if (wifi == NULL)
 		return -ENOMEM;
 
-	data->connected = FALSE;
+	wifi->connected = FALSE;
 
-	connman_device_set_data(device, data);
+	connman_device_set_data(device, wifi);
+
+	wifi->index = connman_device_get_index(device);
+	wifi->flags = 0;
+
+	wifi->watch = connman_rtnl_add_newlink_watch(wifi->index,
+							wifi_newlink, device);
+
+	connman_rtnl_send_getlink();
 
 	return 0;
 }
 
 static void wifi_remove(struct connman_device *device)
 {
-	struct wifi_data *data = connman_device_get_data(device);
+	struct wifi_data *wifi = connman_device_get_data(device);
 
 	DBG("device %p", device);
 
 	connman_device_set_data(device, NULL);
 
-	g_free(data->identifier);
-	g_free(data);
+	connman_rtnl_remove_watch(wifi->watch);
+
+	g_free(wifi->identifier);
+	g_free(wifi);
 }
 
 static int wifi_enable(struct connman_device *device)
@@ -116,11 +161,11 @@ static int wifi_enable(struct connman_device *device)
 
 static int wifi_disable(struct connman_device *device)
 {
-	struct wifi_data *data = connman_device_get_data(device);
+	struct wifi_data *wifi = connman_device_get_data(device);
 
 	DBG("device %p", device);
 
-	data->connected = FALSE;
+	wifi->connected = FALSE;
 
 	return supplicant_stop(device);
 }
