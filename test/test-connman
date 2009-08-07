@@ -14,6 +14,7 @@ if len(sys.argv) < 2:
 	print "  state"
 	print "  services"
 	print "  passphrase <service> [passphrase]"
+	print "  autoconnect <service> [autoconnect]"
 	print "  connect <service>"
 	print "  disconnect <service>"
 	print "  remove <service>"
@@ -186,6 +187,37 @@ elif sys.argv[1] in ["passphrase", "pass"]:
 			passphrase = "not set"
 
 		print "Passphrase for %s is %s" % (name, passphrase)
+
+elif sys.argv[1] in ["autoconnect", "autoconn"]:
+	if (len(sys.argv) < 3):
+		print "Need at least service parameter"
+		sys.exit(1)
+
+	path = "/profile/default/" + sys.argv[2]
+
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	if (len(sys.argv) > 3):
+		autoconnect = dbus.Boolean(sys.argv[3])
+
+		service.SetProperty("AutoConnect", autoconnect);
+
+		print "Auto connect %s for %s" % (autoconnect, sys.argv[2])
+	else:
+		properties = service.GetProperties()
+
+		if "Name" in properties.keys():
+			name = properties["Name"]
+		else:
+			name = "{" + properties["Type"] + "}"
+
+		if "AutoConnect" in properties.keys():
+			autoconnect = properties["AutoConnect"]
+		else:
+			autoconnect = dbus.Boolean(0)
+
+		print "Auto connect %s for %s" % (autoconnect, name)
 
 elif sys.argv[1] in ["connect", "conn"]:
 	if (len(sys.argv) < 3):

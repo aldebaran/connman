@@ -203,10 +203,14 @@ Properties	string State [readonly]
 			it back to false the Remove() method needs to be
 			used.
 
-		boolean AutoConnect [readonly]
+		boolean AutoConnect [readwrite]
 
 			If set to true, this service will auto-connect
 			when not other connection is available.
+
+			For favorite services it is possible to change
+			this value to prevent or permit automatic
+			connection attempts.
 
 		string IPv4.Method [readwrite]
 

@@ -342,6 +342,33 @@ static void passphrase_changed(struct connman_service *service)
 	g_dbus_send_message(connection, signal);
 }
 
+static void autoconnect_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "AutoConnect";
+
+	if (service->path == NULL)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&service->autoconnect);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -490,6 +517,25 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (service->network != NULL)
 			connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_has_prefix(name, "AutoConnect") == TRUE) {
+		connman_bool_t autoconnect;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		if (service->favorite == FALSE)
+			return __connman_error_invalid_service(msg);
+
+		dbus_message_iter_get_basic(&value, &autoconnect);
+
+		if (service->autoconnect == autoconnect)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+		service->autoconnect = autoconnect;
+
+		autoconnect_changed(service);
 
 		__connman_storage_save_service(service);
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
@@ -2015,6 +2061,9 @@ static int service_load(struct connman_service *service)
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
 
+		service->autoconnect = g_key_file_get_boolean(keyfile,
+				service->identifier, "AutoConnect", NULL);
+
 		str = g_key_file_get_string(keyfile,
 				service->identifier, "Failure", NULL);
 		if (str != NULL) {
@@ -2123,6 +2172,10 @@ update:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
+
+		if (service->favorite == TRUE)
+			g_key_file_set_boolean(keyfile, service->identifier,
+					"AutoConnect", service->autoconnect);
 
 		if (service->state == CONNMAN_SERVICE_STATE_FAILURE) {
 			const char *failure = error2string(service->error);
