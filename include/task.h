@@ -32,6 +32,11 @@ extern "C" {
  * @short_description: Functions for handling tasks
  */
 
+struct connman_task;
+
+struct connman_task *connman_task_create(void);
+void connman_task_destroy(struct connman_task *task);
+
 #ifdef __cplusplus
 }
 #endif
