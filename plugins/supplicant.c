@@ -1988,10 +1988,7 @@ int supplicant_register(struct supplicant_driver *driver)
 
 	driver_list = g_slist_append(driver_list, driver);
 
-	if (g_dbus_check_service(connection, SUPPLICANT_NAME) == TRUE)
-		supplicant_probe(connection, NULL);
-	else
-		supplicant_activate(connection);
+	supplicant_activate(connection);
 
 	return 0;
 }

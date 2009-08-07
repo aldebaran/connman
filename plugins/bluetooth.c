@@ -854,9 +854,6 @@ static int bluetooth_init(void)
 		goto remove;
 	}
 
-	if (g_dbus_check_service(connection, BLUEZ_SERVICE) == TRUE)
-		bluetooth_connect(connection, NULL);
-
 	dbus_bus_add_match(connection, added_rule, NULL);
 	dbus_bus_add_match(connection, removed_rule, NULL);
 	dbus_bus_add_match(connection, adapter_rule, NULL);
