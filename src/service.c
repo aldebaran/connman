@@ -396,8 +396,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
-	connman_dbus_dict_append_variant(&dict, "AutoConnect",
+	if (service->favorite == TRUE)
+		connman_dbus_dict_append_variant(&dict, "AutoConnect",
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
+	else
+		connman_dbus_dict_append_variant(&dict, "AutoConnect",
+					DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	if (service->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
