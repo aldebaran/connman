@@ -29,6 +29,7 @@
 #include <string.h>
 #include <assert.h>
 #include <termios.h>
+#include <ctype.h>
 
 #include <glib.h>
 
@@ -77,6 +78,8 @@ struct _GAtChat {
 	struct ring_buffer *buf;		/* Current read buffer */
 	guint read_so_far;			/* Number of bytes processed */
 	gboolean disconnecting;			/* Whether we're disconnecting */
+	GAtDebugFunc debugf;			/* debugging output function */
+	gpointer debug_data;			/* Data to pass to debug func */
 	char *pdu_notify;			/* Unsolicited Resp w/ PDU */
 	GSList *response_lines;			/* char * lines of the response */
 	char *wakeup;				/* command sent to wakeup modem */
@@ -590,6 +593,81 @@ static void new_bytes(GAtChat *p)
 		g_at_chat_shutdown(p);
 }
 
+static void debug_chat(GAtChat *chat, gboolean in, const char *str, gsize len)
+{
+	char type = in ? '<' : '>';
+	gsize escaped = 2; /* Enough for '<', ' ' */
+	char *escaped_str;
+	const char *esc = "<ESC>";
+	gsize esc_size = strlen(esc);
+	const char *ctrlz = "<CtrlZ>";
+	gsize ctrlz_size = strlen(ctrlz);
+	gsize i;
+
+	if (!chat->debugf || !len)
+		return;
+
+	for (i = 0; i < len; i++) {
+		char c = str[i];
+
+		if (isprint(c))
+			escaped += 1;
+		else if (c == '\r' || c == '\t' || c == '\n')
+			escaped += 2;
+		else if (c == 26)
+			escaped += ctrlz_size;
+		else if (c == 25)
+			escaped += esc_size;
+		else
+			escaped += 4;
+	}
+
+	escaped_str = g_malloc(escaped + 1);
+	escaped_str[0] = type;
+	escaped_str[1] = ' ';
+	escaped_str[2] = '\0';
+	escaped_str[escaped] = '\0';
+
+	for (escaped = 2, i = 0; i < len; i++) {
+		char c = str[i];
+
+		switch (c) {
+		case '\r':
+			escaped_str[escaped++] = '\\';
+			escaped_str[escaped++] = 'r';
+			break;
+		case '\t':
+			escaped_str[escaped++] = '\\';
+			escaped_str[escaped++] = 't';
+			break;
+		case '\n':
+			escaped_str[escaped++] = '\\';
+			escaped_str[escaped++] = 'n';
+			break;
+		case 26:
+			strncpy(&escaped_str[escaped], ctrlz, ctrlz_size);
+			escaped += ctrlz_size;
+			break;
+		case 25:
+			strncpy(&escaped_str[escaped], esc, esc_size);
+			escaped += esc_size;
+			break;
+		default:
+			if (isprint(c))
+				escaped_str[escaped++] = c;
+			else {
+				escaped_str[escaped++] = '\\';
+				escaped_str[escaped++] = '0' + ((c >> 6) & 07);
+				escaped_str[escaped++] = '0' + ((c >> 3) & 07);
+				escaped_str[escaped++] = '0' + (c & 07);
+			}
+		}
+	}
+
+	chat->debugf(escaped_str, chat->debug_data);
+	g_free(escaped_str);
+}
+
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 				gpointer data)
 {
@@ -615,6 +693,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		buf = ring_buffer_write_ptr(chat->buf);
 
 		err = g_io_channel_read(channel, (char *) buf, toread, &rbytes);
+		debug_chat(chat, TRUE, (char *)buf, rbytes);
 
 		total_read += rbytes;
 
@@ -741,6 +820,8 @@ static gboolean can_write_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
+	debug_chat(chat, FALSE, cmd->cmd + chat->cmd_bytes_written,
+			bytes_written);
 	chat->cmd_bytes_written += bytes_written;
 
 	if (bytes_written < towrite)
@@ -784,6 +865,7 @@ GAtChat *g_at_chat_new(GIOChannel *channel, GAtSyntax *syntax)
 	chat->ref_count = 1;
 	chat->next_cmd_id = 1;
 	chat->next_notify_id = 1;
+	chat->debugf = NULL;
 
 	chat->buf = ring_buffer_new(4096);
 
@@ -925,6 +1007,17 @@ gboolean g_at_chat_set_disconnect_function(GAtChat *chat,
 
 	chat->user_disconnect = disconnect;
 	chat->user_disconnect_data = user_data;
+
+	return TRUE;
+}
+
+gboolean g_at_chat_set_debug(GAtChat *chat, GAtDebugFunc func, gpointer user)
+{
+	if (chat == NULL)
+		return FALSE;
+
+	chat->debugf = func;
+	chat->debug_data = user;
 
 	return TRUE;
 }

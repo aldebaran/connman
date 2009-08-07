@@ -37,13 +37,7 @@ typedef void (*GAtResultFunc)(gboolean success, GAtResult *result,
 				gpointer user_data);
 typedef void (*GAtNotifyFunc)(GAtResult *result, gpointer user_data);
 typedef void (*GAtDisconnectFunc)(gpointer user_data);
-
-enum _GAtChatFlags {
-	G_AT_CHAT_FLAG_NO_LEADING_CRLF = 1,	/* Some emulators are broken */
-	G_AT_CHAT_FLAG_EXTRA_PDU_CRLF = 2,
-};
-
-typedef enum _GAtChatFlags GAtChatFlags;
+typedef void (*GAtDebugFunc)(const char *str, gpointer user_data);
 
 GAtChat *g_at_chat_new(GIOChannel *channel, GAtSyntax *syntax);
 GAtChat *g_at_chat_new_from_tty(const char *device, GAtSyntax *syntax);
@@ -55,6 +49,13 @@ gboolean g_at_chat_shutdown(GAtChat *chat);
 
 gboolean g_at_chat_set_disconnect_function(GAtChat *chat,
 			GAtDisconnectFunc disconnect, gpointer user_data);
+
+/*!
+ * If the function is not NULL, then on every read/write from the GIOChannel
+ * provided to GAtChat the logging function will be called with the
+ * input/output string and user data
+ */
+gboolean g_at_chat_set_debug(GAtChat *chat, GAtDebugFunc func, gpointer user);
 
 /*!
  * Queue an AT command for execution.  The command contents are given
