@@ -199,10 +199,9 @@ Properties	string State [readonly]
 			Will be true if a cable is plugged in or the user
 			selected and successfully connected to this service.
 
-			Setting this property to true has no effect at all
-			and setting it to false is similar to the Remove()
-			method. So for now it will be considered a read
-			only property.
+			This value is automatically changed and to revert
+			it back to false the Remove() method needs to be
+			used.
 
 		boolean AutoConnect [readonly]
 
