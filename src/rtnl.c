@@ -244,6 +244,99 @@ static void process_delgateway(struct rtmsg *msg, int bytes)
 	g_free(gateway);
 }
 
+static void extract_addr(struct ifaddrmsg *msg, int bytes,
+						const char **label,
+						struct in_addr *local,
+						struct in_addr *address,
+						struct in_addr *broadcast)
+{
+	struct rtattr *attr;
+
+	for (attr = IFA_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case IFA_ADDRESS:
+			if (address != NULL)
+				*address = *((struct in_addr *) RTA_DATA(attr));
+			break;
+		case IFA_LOCAL:
+			if (local != NULL)
+				*local = *((struct in_addr *) RTA_DATA(attr));
+			break;
+		case IFA_BROADCAST:
+			if (broadcast != NULL)
+				*broadcast = *((struct in_addr *) RTA_DATA(attr));
+			break;
+		case IFA_LABEL:
+			if (label != NULL)
+				*label = RTA_DATA(attr);
+			break;
+		}
+	}
+}
+
+static GSList *ipconfig_list = NULL;
+
+static void process_newaddr(int family, int prefixlen, int index,
+					struct ifaddrmsg *msg, int bytes)
+{
+	GSList *list;
+	const char *label;
+	struct in_addr address;
+
+	if (family != AF_INET)
+		return;
+
+	for (list = ipconfig_list; list; list = list->next) {
+		struct connman_ipconfig *ipconfig = list->data;
+
+		if (__connman_ipconfig_get_index(ipconfig) != index)
+			continue;
+
+		extract_addr(msg, bytes, &label, &address, NULL, NULL);
+		__connman_ipconfig_add_address(ipconfig, label, prefixlen,
+						inet_ntoa(address), NULL);
+	}
+}
+
+static void process_deladdr(int family, int prefixlen, int index,
+					struct ifaddrmsg *msg, int bytes)
+{
+	GSList *list;
+	const char *label;
+	struct in_addr address;
+
+	if (family != AF_INET)
+		return;
+
+	for (list = ipconfig_list; list; list = list->next) {
+		struct connman_ipconfig *ipconfig = list->data;
+
+		if (__connman_ipconfig_get_index(ipconfig) != index)
+			continue;
+
+		extract_addr(msg, bytes, &label, &address, NULL, NULL);
+		__connman_ipconfig_del_address(ipconfig, label, prefixlen,
+						inet_ntoa(address), NULL);
+	}
+}
+
+int __connman_rtnl_register_ipconfig(struct connman_ipconfig *ipconfig)
+{
+	DBG("ipconfig %p", ipconfig);
+
+	ipconfig_list = g_slist_append(ipconfig_list, ipconfig);
+
+	return 0;
+}
+
+void __connman_rtnl_unregister_ipconfig(struct connman_ipconfig *ipconfig)
+{
+	DBG("ipconfig %p", ipconfig);
+
+	ipconfig_list = g_slist_remove(ipconfig_list, ipconfig);
+}
+
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
 {
 	if (family == AF_INET) {
@@ -384,6 +477,7 @@ static void rtnl_dellink(struct nlmsghdr *hdr)
 
 static void rtnl_addr(struct nlmsghdr *hdr)
 {
+#if 0
 	struct ifaddrmsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -422,6 +516,35 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 			break;
 		}
 	}
+#endif
+}
+
+static void rtnl_newaddr(struct nlmsghdr *hdr)
+{
+	struct ifaddrmsg *msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
+
+	DBG("ifa_family %d ifa_prefixlen %d ifa_index %d",
+			msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index);
+
+	process_newaddr(msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index,
+						msg, IFA_PAYLOAD(hdr));
+
+	rtnl_addr(hdr);
+}
+
+static void rtnl_deladdr(struct nlmsghdr *hdr)
+{
+	struct ifaddrmsg *msg;
+
+	msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
+
+	DBG("ifa_family %d ifa_prefixlen %d ifa_index %d",
+			msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index);
+
+	process_deladdr(msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index,
+						msg, IFA_PAYLOAD(hdr));
+
+	rtnl_addr(hdr);
 }
 
 static void rtnl_route(struct nlmsghdr *hdr)
@@ -476,9 +599,7 @@ static void rtnl_route(struct nlmsghdr *hdr)
 
 static void rtnl_newroute(struct nlmsghdr *hdr)
 {
-	struct rtmsg *msg;
-
-	msg = (struct rtmsg *) NLMSG_DATA(hdr);
+	struct rtmsg *msg = (struct rtmsg *) NLMSG_DATA(hdr);
 
 	if (msg->rtm_type == RTN_UNICAST && msg->rtm_table == RT_TABLE_MAIN &&
 					msg->rtm_scope == RT_SCOPE_UNIVERSE) {
@@ -493,9 +614,7 @@ static void rtnl_newroute(struct nlmsghdr *hdr)
 
 static void rtnl_delroute(struct nlmsghdr *hdr)
 {
-	struct rtmsg *msg;
-
-	msg = (struct rtmsg *) NLMSG_DATA(hdr);
+	struct rtmsg *msg = (struct rtmsg *) NLMSG_DATA(hdr);
 
 	if (msg->rtm_type == RTN_UNICAST && msg->rtm_table == RT_TABLE_MAIN &&
 					msg->rtm_scope == RT_SCOPE_UNIVERSE) {
@@ -648,8 +767,10 @@ static void rtnl_message(void *buf, size_t len)
 			rtnl_dellink(hdr);
 			break;
 		case RTM_NEWADDR:
+			rtnl_newaddr(hdr);
+			break;
 		case RTM_DELADDR:
-			rtnl_addr(hdr);
+			rtnl_deladdr(hdr);
 			break;
 		case RTM_NEWROUTE:
 			rtnl_newroute(hdr);
@@ -708,6 +829,26 @@ int connman_rtnl_send_getlink(void)
 	return queue_request(req);
 }
 
+static int send_getaddr(void)
+{
+	struct rtnl_request *req;
+
+	DBG("");
+
+	req = g_try_malloc0(RTNL_REQUEST_SIZE);
+	if (req == NULL)
+		return -ENOMEM;
+
+	req->hdr.nlmsg_len = RTNL_REQUEST_SIZE;
+	req->hdr.nlmsg_type = RTM_GETADDR;
+	req->hdr.nlmsg_flags = NLM_F_REQUEST | NLM_F_DUMP;
+	req->hdr.nlmsg_pid = 0;
+	req->hdr.nlmsg_seq = request_seq++;
+	req->msg.rtgen_family = AF_INET;
+
+	return queue_request(req);
+}
+
 int connman_rtnl_send_getroute(void)
 {
 	struct rtnl_request *req;
@@ -741,9 +882,7 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_ROUTE;
-	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR;
-	//addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
+	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
@@ -762,6 +901,8 @@ int __connman_rtnl_init(void)
 void __connman_rtnl_start(void)
 {
 	DBG("");
+
+	send_getaddr();
 }
 
 void __connman_rtnl_cleanup(void)
@@ -769,6 +910,9 @@ void __connman_rtnl_cleanup(void)
 	GSList *list;
 
 	DBG("");
+
+	g_slist_free(ipconfig_list);
+	ipconfig_list = NULL;
 
 	for (list = watch_list; list; list = list->next) {
 		struct watch_data *watch = list->data;

@@ -467,7 +467,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		break;
 	}
 
-	__connman_ipconfig_append_ipv4(service->ipconfig, &dict, "IPv4.");
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_append_ipv4(service->ipconfig,
+							&dict, "IPv4.");
 
 	dbus_message_iter_close_container(&array, &dict);
 
@@ -540,6 +542,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		__connman_storage_save_service(service);
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
 		int err;
+
+		if (service->ipconfig == NULL)
+			return __connman_error_invalid_property(msg);
 
 		err = __connman_ipconfig_set_ipv4(service->ipconfig,
 							name + 5, &value);
@@ -942,7 +947,10 @@ static void service_free(gpointer user_data)
 	if (service->network != NULL)
 		connman_network_unref(service->network);
 
-	connman_ipconfig_unref(service->ipconfig);
+	if (service->ipconfig != NULL) {
+		connman_ipconfig_unref(service->ipconfig);
+		service->ipconfig = NULL;
+	}
 
 	g_free(service->profile);
 	g_free(service->name);
@@ -1010,15 +1018,6 @@ struct connman_service *connman_service_create(void)
 	DBG("service %p", service);
 
 	__connman_service_initialize(service);
-
-	service->ipconfig = connman_ipconfig_create();
-	if (service->ipconfig == NULL) {
-		g_free(service);
-		return NULL;
-	}
-
-	connman_ipconfig_set_method(service->ipconfig,
-					CONNMAN_IPCONFIG_METHOD_DHCP);
 
 	return service;
 }
@@ -2087,7 +2086,8 @@ static int service_load(struct connman_service *service)
 		service->passphrase = str;
 	}
 
-	__connman_ipconfig_load(service->ipconfig, keyfile,
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_load(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
 
 done:
@@ -2204,7 +2204,8 @@ update:
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Passphrase", NULL);
 
-	__connman_ipconfig_save(service->ipconfig, keyfile,
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_save(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
 
 	data = g_key_file_to_data(keyfile, &length, NULL);

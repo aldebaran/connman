@@ -91,6 +91,15 @@ int __connman_security_check_privilege(DBusMessage *message,
 
 #include <connman/ipconfig.h>
 
+int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
+
+void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,
+				const char *label, unsigned int prefixlen,
+				const char *address, const char *broadcast);
+void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
+				const char *label, unsigned int prefixlen,
+				const char *address, const char *broadcast);
+
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
 
@@ -347,3 +356,6 @@ void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
 int __connman_rtnl_send(const void *buf, size_t len);
+
+int __connman_rtnl_register_ipconfig(struct connman_ipconfig *ipconfig);
+void __connman_rtnl_unregister_ipconfig(struct connman_ipconfig *ipconfig);

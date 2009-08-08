@@ -205,6 +205,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
 		int err;
 
+		if (network->ipconfig == NULL)
+			return __connman_error_invalid_property(msg);
+
 		err = __connman_ipconfig_set_ipv4(network->ipconfig,
 							name + 5, &value);
 		if (err < 0)
@@ -368,7 +371,10 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->address);
 	g_free(network->identifier);
 
-	connman_ipconfig_unref(network->ipconfig);
+	if (network->ipconfig) {
+		connman_ipconfig_unref(network->ipconfig);
+		network->ipconfig = NULL;
+	}
 }
 
 /**
@@ -424,12 +430,6 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->type       = type;
 	network->secondary  = FALSE;
 	network->identifier = g_strdup(temp);
-
-	network->ipconfig = connman_ipconfig_create();
-	if (network->ipconfig == NULL) {
-		connman_network_unref(network);
-		return NULL;
-	}
 
 	return network;
 }

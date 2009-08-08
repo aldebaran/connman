@@ -544,6 +544,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
 		int err;
 
+		if (device->ipconfig == NULL)
+			return __connman_error_invalid_property(msg);
+
 		switch (device->mode) {
 		case CONNMAN_DEVICE_MODE_UNKNOWN:
 		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
@@ -862,7 +865,10 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->control);
 	g_free(device->interface);
 
-	connman_ipconfig_unref(device->ipconfig);
+	if (device->ipconfig != NULL) {
+		connman_ipconfig_unref(device->ipconfig);
+		device->ipconfig = NULL;
+	}
 
 	g_free(device->last_network);
 
@@ -942,12 +948,6 @@ struct connman_device *connman_device_create(const char *node,
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		device->scan_interval = 0;
 		break;
-	}
-
-	device->ipconfig = connman_ipconfig_create();
-	if (device->ipconfig == NULL) {
-		connman_device_unref(device);
-		return NULL;
 	}
 
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -1079,6 +1079,11 @@ void connman_device_set_interface(struct connman_device *device,
 			device->name = g_strdup_printf("%s (%s)", str,
 							device->interface);
 	}
+
+	if (device->ipconfig != NULL)
+		connman_ipconfig_unref(device->ipconfig);
+
+	device->ipconfig = connman_ipconfig_create(interface);
 }
 
 const char *connman_device_get_control(struct connman_device *device)
