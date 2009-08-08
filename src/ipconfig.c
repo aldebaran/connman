@@ -29,7 +29,7 @@
 
 struct connman_ipconfig {
 	gint refcount;
-	int index;
+	unsigned int index;
 	char *interface;
 	enum connman_ipconfig_method method;
 };
@@ -41,23 +41,18 @@ struct connman_ipconfig {
  *
  * Returns: a newly-allocated #connman_ipconfig structure
  */
-struct connman_ipconfig *connman_ipconfig_create(const char *interface)
+struct connman_ipconfig *connman_ipconfig_create(unsigned int index)
 {
 	struct connman_ipconfig *ipconfig;
-	int index;
 
 	DBG("");
-
-	index = connman_inet_ifindex(interface);
-	if (index < 0)
-		return NULL;
 
 	ipconfig = g_try_new0(struct connman_ipconfig, 1);
 	if (ipconfig == NULL)
 		return NULL;
 
 	ipconfig->index = index;
-	ipconfig->interface = g_strdup(interface);
+	ipconfig->interface = connman_inet_ifname(index);
 
 	DBG("ipconfig %p", ipconfig);
 

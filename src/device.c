@@ -1029,6 +1029,11 @@ const char *connman_device_get_path(struct connman_device *device)
 void connman_device_set_index(struct connman_device *device, int index)
 {
 	device->element.index = index;
+
+	if (device->ipconfig != NULL)
+		connman_ipconfig_unref(device->ipconfig);
+
+	device->ipconfig = connman_ipconfig_create(index);
 }
 
 /**
@@ -1079,11 +1084,6 @@ void connman_device_set_interface(struct connman_device *device,
 			device->name = g_strdup_printf("%s (%s)", str,
 							device->interface);
 	}
-
-	if (device->ipconfig != NULL)
-		connman_ipconfig_unref(device->ipconfig);
-
-	device->ipconfig = connman_ipconfig_create(interface);
 }
 
 const char *connman_device_get_control(struct connman_device *device)

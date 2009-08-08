@@ -47,7 +47,7 @@ enum connman_ipconfig_method {
 
 struct connman_ipconfig;
 
-struct connman_ipconfig *connman_ipconfig_create(const char *interface);
+struct connman_ipconfig *connman_ipconfig_create(unsigned int index);
 struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
 
