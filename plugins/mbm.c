@@ -224,7 +224,7 @@ static int mbm_probe(struct connman_device *device)
 	data->watch = connman_rtnl_add_newlink_watch(index,
 						mbm_newlink, device);
 
-	connman_rtnl_send_getlink();
+	//connman_rtnl_send_getlink();
 
 	return 0;
 }
