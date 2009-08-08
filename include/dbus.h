@@ -22,11 +22,11 @@
 #ifndef __CONNMAN_DBUS_H
 #define __CONNMAN_DBUS_H
 
+#include <dbus/dbus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
-
-#include <dbus/dbus.h>
 
 #define CONNMAN_SERVICE			"org.moblin.connman"
 
