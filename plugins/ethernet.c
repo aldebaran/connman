@@ -93,8 +93,6 @@ static int ethernet_probe(struct connman_device *device)
 	ethernet->watch = connman_rtnl_add_newlink_watch(ethernet->index,
 						ethernet_newlink, device);
 
-	//connman_rtnl_send_getlink();
-
 	return 0;
 }
 

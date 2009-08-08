@@ -133,8 +133,6 @@ static int wifi_probe(struct connman_device *device)
 	wifi->watch = connman_rtnl_add_newlink_watch(wifi->index,
 							wifi_newlink, device);
 
-	//connman_rtnl_send_getlink();
-
 	return 0;
 }
 

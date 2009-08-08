@@ -47,6 +47,28 @@ struct watch_data {
 static GSList *watch_list = NULL;
 static unsigned int watch_id = 0;
 
+static GHashTable *ipconfig_hash = NULL;
+static GSList *ipconfig_list = NULL;
+
+static void register_ipconfig(struct connman_ipconfig *ipconfig)
+{
+	ipconfig_list = g_slist_append(ipconfig_list, ipconfig);
+}
+
+static void unregister_ipconfig(struct connman_ipconfig *ipconfig)
+{
+	ipconfig_list = g_slist_remove(ipconfig_list, ipconfig);
+}
+
+static void free_ipconfig(gpointer data)
+{
+	struct connman_ipconfig *ipconfig = data;
+
+	unregister_ipconfig(ipconfig);
+
+	connman_ipconfig_unref(ipconfig);
+}
+
 /**
  * connman_rtnl_add_newlink_watch:
  * @index: network device index
@@ -60,6 +82,7 @@ static unsigned int watch_id = 0;
 unsigned int connman_rtnl_add_newlink_watch(int index,
 			connman_rtnl_link_cb_t callback, void *user_data)
 {
+	struct connman_ipconfig *ipconfig;
 	struct watch_data *watch;
 
 	watch = g_try_new0(struct watch_data, 1);
@@ -75,6 +98,14 @@ unsigned int connman_rtnl_add_newlink_watch(int index,
 	watch_list = g_slist_prepend(watch_list, watch);
 
 	DBG("id %d", watch->id);
+
+	ipconfig = g_hash_table_lookup(ipconfig_hash, GINT_TO_POINTER(index));
+	if (ipconfig != NULL) {
+		unsigned int flags = __connman_ipconfig_get_flags(ipconfig);
+
+		if (callback)
+			callback(flags, 0, user_data);
+	}
 
 	return watch->id;
 }
@@ -105,6 +136,23 @@ void connman_rtnl_remove_watch(unsigned int id)
 	}
 }
 
+static void trigger_newlink(gpointer key, gpointer value, gpointer user_data)
+{
+	struct connman_rtnl *rtnl = user_data;
+	struct connman_ipconfig *ipconfig = value;
+	int index = GPOINTER_TO_INT(key);
+
+	if (index < 0 || ipconfig == NULL)
+		return;
+
+	if (rtnl->newlink) {
+		unsigned short type = __connman_ipconfig_get_type(ipconfig);
+		unsigned int flags = __connman_ipconfig_get_flags(ipconfig);
+
+		rtnl->newlink(type, index, flags, 0);
+	}
+}
+
 static GSList *rtnl_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -130,6 +178,8 @@ int connman_rtnl_register(struct connman_rtnl *rtnl)
 	rtnl_list = g_slist_insert_sorted(rtnl_list, rtnl,
 							compare_priority);
 
+	g_hash_table_foreach(ipconfig_hash, trigger_newlink, rtnl);
+
 	return 0;
 }
 
@@ -144,17 +194,6 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 	DBG("rtnl %p name %s", rtnl, rtnl->name);
 
 	rtnl_list = g_slist_remove(rtnl_list, rtnl);
-}
-
-static GHashTable *ipconfig_hash = NULL;
-
-static void free_ipconfig(gpointer data)
-{
-	struct connman_ipconfig *ipconfig = data;
-
-	__connman_rtnl_unregister_ipconfig(ipconfig);
-
-	connman_ipconfig_unref(ipconfig);
 }
 
 static void process_newlink(unsigned short type, int index,
@@ -175,7 +214,7 @@ static void process_newlink(unsigned short type, int index,
 				g_hash_table_insert(ipconfig_hash,
 					GINT_TO_POINTER(index), ipconfig);
 
-				__connman_rtnl_register_ipconfig(ipconfig);
+				register_ipconfig(ipconfig);
 			}
 		}
 
@@ -318,8 +357,6 @@ static void extract_addr(struct ifaddrmsg *msg, int bytes,
 	}
 }
 
-static GSList *ipconfig_list = NULL;
-
 static void process_newaddr(int family, int prefixlen, int index,
 					struct ifaddrmsg *msg, int bytes)
 {
@@ -362,22 +399,6 @@ static void process_deladdr(int family, int prefixlen, int index,
 		__connman_ipconfig_del_address(ipconfig, label, prefixlen,
 						inet_ntoa(address), NULL);
 	}
-}
-
-int __connman_rtnl_register_ipconfig(struct connman_ipconfig *ipconfig)
-{
-	DBG("ipconfig %p", ipconfig);
-
-	ipconfig_list = g_slist_append(ipconfig_list, ipconfig);
-
-	return 0;
-}
-
-void __connman_rtnl_unregister_ipconfig(struct connman_ipconfig *ipconfig)
-{
-	DBG("ipconfig %p", ipconfig);
-
-	ipconfig_list = g_slist_remove(ipconfig_list, ipconfig);
 }
 
 static inline void print_inet(struct rtattr *attr, const char *name, int family)
@@ -852,7 +873,7 @@ static gboolean netlink_event(GIOChannel *chan,
 	return TRUE;
 }
 
-int connman_rtnl_send_getlink(void)
+static int send_getlink(void)
 {
 	struct rtnl_request *req;
 
@@ -948,7 +969,7 @@ void __connman_rtnl_start(void)
 {
 	DBG("");
 
-	connman_rtnl_send_getlink();
+	send_getlink();
 	send_getaddr();
 	connman_rtnl_send_getroute();
 }

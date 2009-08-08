@@ -135,8 +135,6 @@ int __connman_udev_init(void)
 void __connman_udev_start(void)
 {
 	DBG("");
-
-	connman_rtnl_send_getlink();
 }
 
 void __connman_udev_cleanup(void)

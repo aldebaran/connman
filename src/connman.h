@@ -92,6 +92,8 @@ int __connman_security_check_privilege(DBusMessage *message,
 #include <connman/ipconfig.h>
 
 int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
+unsigned short __connman_ipconfig_get_type(struct connman_ipconfig *ipconfig);
+unsigned int __connman_ipconfig_get_flags(struct connman_ipconfig *ipconfig);
 
 void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
 					unsigned flags, unsigned change);
@@ -358,6 +360,3 @@ void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
 int __connman_rtnl_send(const void *buf, size_t len);
-
-int __connman_rtnl_register_ipconfig(struct connman_ipconfig *ipconfig);
-void __connman_rtnl_unregister_ipconfig(struct connman_ipconfig *ipconfig);

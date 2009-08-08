@@ -37,6 +37,7 @@ struct connman_ipconfig {
 	gint refcount;
 	int index;
 	char *interface;
+	unsigned short type;
 	unsigned int flags;
 	enum connman_ipconfig_method method;
 };
@@ -64,8 +65,6 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 	ipconfig->interface = connman_inet_ifname(index);
 
 	DBG("ipconfig %p", ipconfig);
-
-	//__connman_rtnl_register_ipconfig(ipconfig);
 
 	connman_info("%s {create} index %d", ipconfig->interface,
 							ipconfig->index);
@@ -95,8 +94,6 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
-		//__connman_rtnl_unregister_ipconfig(ipconfig);
-
 		connman_info("%s {remove} index %d", ipconfig->interface,
 							ipconfig->index);
 
@@ -123,6 +120,16 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 {
 	return ipconfig->index;
+}
+
+unsigned short __connman_ipconfig_get_type(struct connman_ipconfig *ipconfig)
+{
+	return ipconfig->type;
+}
+
+unsigned int __connman_ipconfig_get_flags(struct connman_ipconfig *ipconfig)
+{
+	return ipconfig->flags;
 }
 
 void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
