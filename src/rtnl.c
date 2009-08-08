@@ -29,6 +29,7 @@
 #include <arpa/inet.h>
 
 #include <linux/if.h>
+#include <linux/if_arp.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
@@ -145,10 +146,42 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 	rtnl_list = g_slist_remove(rtnl_list, rtnl);
 }
 
+static GHashTable *ipconfig_hash = NULL;
+
+static void free_ipconfig(gpointer data)
+{
+	struct connman_ipconfig *ipconfig = data;
+
+	__connman_rtnl_unregister_ipconfig(ipconfig);
+
+	connman_ipconfig_unref(ipconfig);
+}
+
 static void process_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
+	struct connman_ipconfig *ipconfig;
 	GSList *list;
+
+	switch (type) {
+	case ARPHRD_ETHER:
+	case ARPHRD_LOOPBACK:
+	case ARPHRD_NONE:
+		ipconfig = g_hash_table_lookup(ipconfig_hash, &index);
+		if (ipconfig == NULL) {
+			ipconfig = connman_ipconfig_create(index);
+			if (ipconfig != NULL) {
+				g_hash_table_insert(ipconfig_hash,
+							&index, ipconfig);
+
+				__connman_rtnl_register_ipconfig(ipconfig);
+
+				__connman_ipconfig_update_link(ipconfig,
+								flags, change);
+			}
+		}
+		break;
+	}
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
@@ -178,6 +211,14 @@ static void process_dellink(unsigned short type, int index,
 
 		if (rtnl->dellink)
 			rtnl->dellink(type, index, flags, change);
+	}
+
+	switch (type) {
+	case ARPHRD_ETHER:
+	case ARPHRD_LOOPBACK:
+	case ARPHRD_NONE:
+		g_hash_table_remove(ipconfig_hash, &index);
+		break;
 	}
 }
 
@@ -876,6 +917,9 @@ int __connman_rtnl_init(void)
 
 	DBG("");
 
+	ipconfig_hash = g_hash_table_new_full(g_int_hash, g_int_equal,
+							NULL, free_ipconfig);
+
 	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
 	if (sk < 0)
 		return -1;
@@ -902,6 +946,7 @@ void __connman_rtnl_start(void)
 {
 	DBG("");
 
+	connman_rtnl_send_getlink();
 	send_getaddr();
 }
 
@@ -913,6 +958,9 @@ void __connman_rtnl_cleanup(void)
 
 	g_slist_free(ipconfig_list);
 	ipconfig_list = NULL;
+
+	g_hash_table_destroy(ipconfig_hash);
+	ipconfig_hash = NULL;
 
 	for (list = watch_list; list; list = list->next) {
 		struct watch_data *watch = list->data;

@@ -93,11 +93,13 @@ int __connman_security_check_privilege(DBusMessage *message,
 
 int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
 
+void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
+					unsigned flags, unsigned change);
 void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,
-				const char *label, unsigned int prefixlen,
+				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast);
 void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
-				const char *label, unsigned int prefixlen,
+				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast);
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);

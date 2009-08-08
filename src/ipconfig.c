@@ -29,7 +29,7 @@
 
 struct connman_ipconfig {
 	gint refcount;
-	unsigned int index;
+	int index;
 	char *interface;
 	enum connman_ipconfig_method method;
 };
@@ -41,7 +41,7 @@ struct connman_ipconfig {
  *
  * Returns: a newly-allocated #connman_ipconfig structure
  */
-struct connman_ipconfig *connman_ipconfig_create(unsigned int index)
+struct connman_ipconfig *connman_ipconfig_create(int index)
 {
 	struct connman_ipconfig *ipconfig;
 
@@ -51,12 +51,17 @@ struct connman_ipconfig *connman_ipconfig_create(unsigned int index)
 	if (ipconfig == NULL)
 		return NULL;
 
+	ipconfig->refcount = 1;
+
 	ipconfig->index = index;
 	ipconfig->interface = connman_inet_ifname(index);
 
 	DBG("ipconfig %p", ipconfig);
 
-	__connman_rtnl_register_ipconfig(ipconfig);
+	//__connman_rtnl_register_ipconfig(ipconfig);
+
+	connman_info("%s {create} index %d", ipconfig->interface,
+							ipconfig->index);
 
 	return ipconfig;
 }
@@ -83,7 +88,10 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
-		__connman_rtnl_unregister_ipconfig(ipconfig);
+		//__connman_rtnl_unregister_ipconfig(ipconfig);
+
+		connman_info("%s {remove} index %d", ipconfig->interface,
+							ipconfig->index);
 
 		g_free(ipconfig->interface);
 		g_free(ipconfig);
@@ -110,19 +118,26 @@ int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 	return ipconfig->index;
 }
 
+void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
+					unsigned flags, unsigned change)
+{
+	connman_info("%s {update} flags %u change %u", ipconfig->interface,
+							flags, change);
+}
+
 void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,
-				const char *label, unsigned int prefixlen,
+				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast)
 {
-	connman_info("%s {add} address %s/%d label %s", ipconfig->interface,
+	connman_info("%s {add} address %s/%u label %s", ipconfig->interface,
 						address, prefixlen, label);
 }
 
 void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
-				const char *label, unsigned int prefixlen,
+				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast)
 {
-	connman_info("%s {del} address %s/%d label %s", ipconfig->interface,
+	connman_info("%s {del} address %s/%u label %s", ipconfig->interface,
 						address, prefixlen, label);
 }
 
