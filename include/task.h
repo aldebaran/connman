@@ -22,6 +22,8 @@
 #ifndef __CONNMAN_TASK_H
 #define __CONNMAN_TASK_H
 
+#include <dbus/dbus.h>
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -34,8 +36,26 @@ extern "C" {
 
 struct connman_task;
 
-struct connman_task *connman_task_create(void);
+typedef void (* connman_task_exit_t) (struct connman_task *task,
+							void *user_data);
+
+typedef void (* connman_task_notify_t) (struct connman_task *task,
+				DBusMessage *message, void *user_data);
+
+struct connman_task *connman_task_create(const char *program);
 void connman_task_destroy(struct connman_task *task);
+
+int connman_task_add_argument(struct connman_task *task,
+				const char *argument, const char *value);
+int connman_task_add_variable(struct connman_task *task,
+				const char *key, const char *value);
+
+int connman_task_set_notify(struct connman_task *task, const char *member,
+			connman_task_notify_t function, void *user_data);
+
+int connman_task_run(struct connman_task *task,
+			connman_task_exit_t function, void *user_data);
+int connman_task_stop(struct connman_task *task);
 
 #ifdef __cplusplus
 }
