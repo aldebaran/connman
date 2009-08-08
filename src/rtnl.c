@@ -948,6 +948,7 @@ void __connman_rtnl_start(void)
 
 	connman_rtnl_send_getlink();
 	send_getaddr();
+	connman_rtnl_send_getroute();
 }
 
 void __connman_rtnl_cleanup(void)
