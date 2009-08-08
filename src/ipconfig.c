@@ -23,6 +23,12 @@
 #include <config.h>
 #endif
 
+#include <net/if.h>
+
+#ifndef IFF_LOWER_UP
+#define IFF_LOWER_UP	0x10000
+#endif
+
 #include <gdbus.h>
 
 #include "connman.h"
@@ -31,6 +37,7 @@ struct connman_ipconfig {
 	gint refcount;
 	int index;
 	char *interface;
+	unsigned int flags;
 	enum connman_ipconfig_method method;
 };
 
@@ -121,8 +128,32 @@ int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
 					unsigned flags, unsigned change)
 {
-	connman_info("%s {update} flags %u change %u", ipconfig->interface,
-							flags, change);
+	GString *str;
+
+	if (flags == ipconfig->flags)
+		return;
+
+	ipconfig->flags = flags;
+
+	str = g_string_new(NULL);
+	if (str == NULL)
+		return;
+
+	if (flags & IFF_UP)
+		g_string_append(str, "UP");
+	else
+		g_string_append(str, "DOWN");
+
+	if (flags & IFF_RUNNING)
+		g_string_append(str, ",RUNNING");
+
+	if (flags & IFF_LOWER_UP)
+		g_string_append(str, ",LOWER_UP");
+
+	connman_info("%s {update} flags %u change %u <%s>",
+				ipconfig->interface, flags, change, str->str);
+
+	g_string_free(str, TRUE);
 }
 
 void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,

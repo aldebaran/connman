@@ -167,19 +167,21 @@ static void process_newlink(unsigned short type, int index,
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		ipconfig = g_hash_table_lookup(ipconfig_hash, &index);
+		ipconfig = g_hash_table_lookup(ipconfig_hash,
+						GINT_TO_POINTER(index));
 		if (ipconfig == NULL) {
 			ipconfig = connman_ipconfig_create(index);
 			if (ipconfig != NULL) {
 				g_hash_table_insert(ipconfig_hash,
-							&index, ipconfig);
+					GINT_TO_POINTER(index), ipconfig);
 
 				__connman_rtnl_register_ipconfig(ipconfig);
-
-				__connman_ipconfig_update_link(ipconfig,
-								flags, change);
 			}
 		}
+
+		if (ipconfig != NULL)
+			__connman_ipconfig_update_link(ipconfig,
+							flags, change);
 		break;
 	}
 
@@ -217,7 +219,7 @@ static void process_dellink(unsigned short type, int index,
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		g_hash_table_remove(ipconfig_hash, &index);
+		g_hash_table_remove(ipconfig_hash, GINT_TO_POINTER(index));
 		break;
 	}
 }
@@ -917,7 +919,7 @@ int __connman_rtnl_init(void)
 
 	DBG("");
 
-	ipconfig_hash = g_hash_table_new_full(g_int_hash, g_int_equal,
+	ipconfig_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, free_ipconfig);
 
 	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
