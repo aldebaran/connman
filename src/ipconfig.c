@@ -267,7 +267,7 @@ void __connman_ipconfig_del_route(struct connman_ipconfig *ipconfig,
 				unsigned char scope, const char *destination,
 							const char *gateway)
 {
-	connman_info("%s {add} route %s gw %s scope %u <%s>",
+	connman_info("%s {del} route %s gw %s scope %u <%s>",
 					ipconfig->interface, destination,
 					gateway, scope, scope2str(scope));
 }
