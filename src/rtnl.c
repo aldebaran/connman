@@ -425,32 +425,38 @@ static void process_delroute(unsigned char family, unsigned char scope,
 static void process_newgateway(struct rtmsg *msg, int bytes)
 {
 	GSList *list;
-	struct in_addr addr;
+	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
 	int index = -1;
 
-	extract_route(msg, bytes, &index, NULL, &addr);
+	extract_route(msg, bytes, &index, &dst, &gateway);
+
+	if (dst.s_addr != INADDR_ANY)
+		return;
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
 		if (rtnl->newgateway)
-			rtnl->newgateway(index, inet_ntoa(addr));
+			rtnl->newgateway(index, inet_ntoa(gateway));
 	}
 }
 
 static void process_delgateway(struct rtmsg *msg, int bytes)
 {
 	GSList *list;
-	struct in_addr addr;
+	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
 	int index = -1;
 
-	extract_route(msg, bytes, &index, NULL, &addr);
+	extract_route(msg, bytes, &index, &dst, &gateway);
+
+	if (dst.s_addr != INADDR_ANY)
+		return;
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
 		if (rtnl->delgateway)
-			rtnl->delgateway(index, inet_ntoa(addr));
+			rtnl->delgateway(index, inet_ntoa(gateway));
 	}
 }
 
