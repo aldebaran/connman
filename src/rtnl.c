@@ -139,7 +139,7 @@ void connman_rtnl_remove_watch(unsigned int id)
 	}
 }
 
-static void trigger_newlink(gpointer key, gpointer value, gpointer user_data)
+static void trigger_rtnl(gpointer key, gpointer value, gpointer user_data)
 {
 	struct connman_rtnl *rtnl = user_data;
 	struct connman_ipconfig *ipconfig = value;
@@ -153,6 +153,13 @@ static void trigger_newlink(gpointer key, gpointer value, gpointer user_data)
 		unsigned int flags = __connman_ipconfig_get_flags(ipconfig);
 
 		rtnl->newlink(type, index, flags, 0);
+	}
+
+	if (rtnl->newgateway) {
+		const char *gateway = __connman_ipconfig_get_gateway(ipconfig);
+
+		if (gateway != NULL)
+			rtnl->newgateway(index, gateway);
 	}
 }
 
@@ -181,7 +188,7 @@ int connman_rtnl_register(struct connman_rtnl *rtnl)
 	rtnl_list = g_slist_insert_sorted(rtnl_list, rtnl,
 							compare_priority);
 
-	g_hash_table_foreach(ipconfig_hash, trigger_newlink, rtnl);
+	g_hash_table_foreach(ipconfig_hash, trigger_rtnl, rtnl);
 
 	return 0;
 }
@@ -934,7 +941,7 @@ static int send_getaddr(void)
 	return queue_request(req);
 }
 
-int connman_rtnl_send_getroute(void)
+static int send_getroute(void)
 {
 	struct rtnl_request *req;
 
@@ -992,7 +999,7 @@ void __connman_rtnl_start(void)
 
 	send_getlink();
 	send_getaddr();
-	connman_rtnl_send_getroute();
+	send_getroute();
 }
 
 void __connman_rtnl_cleanup(void)

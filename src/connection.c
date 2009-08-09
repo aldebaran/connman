@@ -614,8 +614,6 @@ int __connman_connection_init(void)
 	if (connman_rtnl_register(&connection_rtnl) < 0)
 		connman_error("Failed to setup RTNL gateway driver");
 
-	connman_rtnl_send_getroute();
-
 	return connman_driver_register(&connection_driver);
 }
 

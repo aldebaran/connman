@@ -57,8 +57,6 @@ struct connman_rtnl {
 int connman_rtnl_register(struct connman_rtnl *rtnl);
 void connman_rtnl_unregister(struct connman_rtnl *rtnl);
 
-int connman_rtnl_send_getroute(void);
-
 #ifdef __cplusplus
 }
 #endif

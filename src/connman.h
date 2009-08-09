@@ -94,6 +94,7 @@ int __connman_security_check_privilege(DBusMessage *message,
 int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
 unsigned short __connman_ipconfig_get_type(struct connman_ipconfig *ipconfig);
 unsigned int __connman_ipconfig_get_flags(struct connman_ipconfig *ipconfig);
+const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig);
 
 void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
 					unsigned flags, unsigned change);

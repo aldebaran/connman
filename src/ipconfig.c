@@ -46,6 +46,7 @@ struct connman_ipconfig {
 	unsigned int flags;
 	enum connman_ipconfig_method method;
 	GSList *address_list;
+	char *gateway;
 };
 
 static void free_address_list(struct connman_ipconfig *ipconfig)
@@ -57,7 +58,6 @@ static void free_address_list(struct connman_ipconfig *ipconfig)
 
 		g_free(ipaddress->address);
 		g_free(ipaddress);
-
 		list->data = NULL;
 	}
 
@@ -136,6 +136,8 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 		connman_info("%s {remove} index %d", ipconfig->interface,
 							ipconfig->index);
 
+		g_free(ipconfig->gateway);
+
 		free_address_list(ipconfig);
 
 		g_free(ipconfig->interface);
@@ -171,6 +173,11 @@ unsigned short __connman_ipconfig_get_type(struct connman_ipconfig *ipconfig)
 unsigned int __connman_ipconfig_get_flags(struct connman_ipconfig *ipconfig)
 {
 	return ipconfig->flags;
+}
+
+const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig)
+{
+	return ipconfig->gateway;
 }
 
 void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
@@ -260,6 +267,11 @@ void __connman_ipconfig_add_route(struct connman_ipconfig *ipconfig,
 				unsigned char scope, const char *destination,
 							const char *gateway)
 {
+	if (scope == 0 && g_strcmp0(destination, "0.0.0.0") == 0) {
+		g_free(ipconfig->gateway);
+		ipconfig->gateway = g_strdup(gateway);
+	}
+
 	connman_info("%s {add} route %s gw %s scope %u <%s>",
 					ipconfig->interface, destination,
 					gateway, scope, scope2str(scope));
@@ -269,6 +281,11 @@ void __connman_ipconfig_del_route(struct connman_ipconfig *ipconfig,
 				unsigned char scope, const char *destination,
 							const char *gateway)
 {
+	if (scope == 0 && g_strcmp0(destination, "0.0.0.0") == 0) {
+		g_free(ipconfig->gateway);
+		ipconfig->gateway = NULL;
+	}
+
 	connman_info("%s {del} route %s gw %s scope %u <%s>",
 					ipconfig->interface, destination,
 					gateway, scope, scope2str(scope));
