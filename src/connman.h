@@ -103,6 +103,12 @@ void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
 				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast);
+void __connman_ipconfig_add_route(struct connman_ipconfig *ipconfig,
+				unsigned char scope, const char *destination,
+							const char *gateway);
+void __connman_ipconfig_del_route(struct connman_ipconfig *ipconfig,
+				unsigned char scope, const char *destination,
+							const char *gateway);
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);

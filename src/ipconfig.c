@@ -242,6 +242,36 @@ void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
 						address, prefixlen, label);
 }
 
+static const char *scope2str(unsigned char scope)
+{
+	switch (scope) {
+	case 0:
+		return "UNIVERSE";
+	case 253:
+		return "LINK";
+	}
+
+	return "";
+}
+
+void __connman_ipconfig_add_route(struct connman_ipconfig *ipconfig,
+				unsigned char scope, const char *destination,
+							const char *gateway)
+{
+	connman_info("%s {add} route %s gw %s scope %u <%s>",
+					ipconfig->interface, destination,
+					gateway, scope, scope2str(scope));
+}
+
+void __connman_ipconfig_del_route(struct connman_ipconfig *ipconfig,
+				unsigned char scope, const char *destination,
+							const char *gateway)
+{
+	connman_info("%s {add} route %s gw %s scope %u <%s>",
+					ipconfig->interface, destination,
+					gateway, scope, scope2str(scope));
+}
+
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
 {
 	switch (method) {

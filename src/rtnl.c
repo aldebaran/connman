@@ -37,6 +37,9 @@
 
 #include "connman.h"
 
+#define print(arg...) do { } while (0)
+//#define print(arg...) connman_info(arg)
+
 struct watch_data {
 	unsigned int id;
 	int index;
@@ -263,69 +266,6 @@ static void process_dellink(unsigned short type, int index,
 	}
 }
 
-static char *extract_gateway(struct rtmsg *msg, int bytes, int *index)
-{
-	char *gateway = NULL;
-	struct in_addr addr;
-	struct rtattr *attr;
-
-	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
-					attr = RTA_NEXT(attr, bytes)) {
-		switch (attr->rta_type) {
-		case RTA_GATEWAY:
-			addr = *((struct in_addr *) RTA_DATA(attr));
-			g_free(gateway);
-			gateway = g_strdup(inet_ntoa(addr));
-			break;
-		case RTA_OIF:
-			*index = *((int *) RTA_DATA(attr));
-			break;
-		}
-	}
-
-	return gateway;
-}
-
-static void process_newgateway(struct rtmsg *msg, int bytes)
-{
-	int index = -1;
-	char *gateway;
-	GSList *list;
-
-	gateway = extract_gateway(msg, bytes, &index);
-	if (gateway == NULL || index < 0)
-		return;
-
-	for (list = rtnl_list; list; list = list->next) {
-		struct connman_rtnl *rtnl = list->data;
-
-		if (rtnl->newgateway)
-			rtnl->newgateway(index, gateway);
-	}
-
-	g_free(gateway);
-}
-
-static void process_delgateway(struct rtmsg *msg, int bytes)
-{
-	int index = -1;
-	char *gateway;
-	GSList *list;
-
-	gateway = extract_gateway(msg, bytes, &index);
-	if (gateway == NULL || index < 0)
-		return;
-
-	for (list = rtnl_list; list; list = list->next) {
-		struct connman_rtnl *rtnl = list->data;
-
-		if (rtnl->delgateway)
-			rtnl->delgateway(index, gateway);
-	}
-
-	g_free(gateway);
-}
-
 static void extract_addr(struct ifaddrmsg *msg, int bytes,
 						const char **label,
 						struct in_addr *local,
@@ -357,15 +297,17 @@ static void extract_addr(struct ifaddrmsg *msg, int bytes,
 	}
 }
 
-static void process_newaddr(int family, int prefixlen, int index,
-					struct ifaddrmsg *msg, int bytes)
+static void process_newaddr(unsigned char family, unsigned char prefixlen,
+				int index, struct ifaddrmsg *msg, int bytes)
 {
 	GSList *list;
 	const char *label;
-	struct in_addr address;
+	struct in_addr address = { INADDR_ANY };
 
 	if (family != AF_INET)
 		return;
+
+	extract_addr(msg, bytes, &label, &address, NULL, NULL);
 
 	for (list = ipconfig_list; list; list = list->next) {
 		struct connman_ipconfig *ipconfig = list->data;
@@ -373,21 +315,22 @@ static void process_newaddr(int family, int prefixlen, int index,
 		if (__connman_ipconfig_get_index(ipconfig) != index)
 			continue;
 
-		extract_addr(msg, bytes, &label, &address, NULL, NULL);
 		__connman_ipconfig_add_address(ipconfig, label, prefixlen,
 						inet_ntoa(address), NULL);
 	}
 }
 
-static void process_deladdr(int family, int prefixlen, int index,
-					struct ifaddrmsg *msg, int bytes)
+static void process_deladdr(unsigned char family, unsigned char prefixlen,
+				int index, struct ifaddrmsg *msg, int bytes)
 {
 	GSList *list;
 	const char *label;
-	struct in_addr address;
+	struct in_addr address = { INADDR_ANY };
 
 	if (family != AF_INET)
 		return;
+
+	extract_addr(msg, bytes, &label, &address, NULL, NULL);
 
 	for (list = ipconfig_list; list; list = list->next) {
 		struct connman_ipconfig *ipconfig = list->data;
@@ -395,47 +338,163 @@ static void process_deladdr(int family, int prefixlen, int index,
 		if (__connman_ipconfig_get_index(ipconfig) != index)
 			continue;
 
-		extract_addr(msg, bytes, &label, &address, NULL, NULL);
 		__connman_ipconfig_del_address(ipconfig, label, prefixlen,
 						inet_ntoa(address), NULL);
 	}
 }
 
-static inline void print_inet(struct rtattr *attr, const char *name, int family)
+static void extract_route(struct rtmsg *msg, int bytes, int *index,
+						struct in_addr *dst,
+						struct in_addr *gateway)
+{
+	struct rtattr *attr;
+
+	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case RTA_DST:
+			if (dst != NULL)
+				*dst = *((struct in_addr *) RTA_DATA(attr));
+			break;
+		case RTA_GATEWAY:
+			if (gateway != NULL)
+				*gateway = *((struct in_addr *) RTA_DATA(attr));
+			break;
+		case RTA_OIF:
+			if (index != NULL)
+				*index = *((int *) RTA_DATA(attr));
+			break;
+		}
+	}
+}
+
+static void process_newroute(unsigned char family, unsigned char scope,
+						struct rtmsg *msg, int bytes)
+{
+	GSList *list;
+	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
+	char dststr[16], gatewaystr[16];
+	int index = -1;
+
+	if (family != AF_INET)
+		return;
+
+	extract_route(msg, bytes, &index, &dst, &gateway);
+
+	inet_ntop(family, &dst, dststr, sizeof(dststr));
+	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
+
+	for (list = ipconfig_list; list; list = list->next) {
+		struct connman_ipconfig *ipconfig = list->data;
+
+		if (__connman_ipconfig_get_index(ipconfig) != index)
+			continue;
+
+		__connman_ipconfig_add_route(ipconfig, scope,
+							dststr, gatewaystr);
+	}
+}
+
+static void process_delroute(unsigned char family, unsigned char scope,
+						struct rtmsg *msg, int bytes)
+{
+	GSList *list;
+	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
+	char dststr[16], gatewaystr[16];
+	int index = -1;
+
+	if (family != AF_INET)
+		return;
+
+	extract_route(msg, bytes, &index, &dst, &gateway);
+
+	inet_ntop(family, &dst, dststr, sizeof(dststr));
+	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
+
+	for (list = ipconfig_list; list; list = list->next) {
+		struct connman_ipconfig *ipconfig = list->data;
+
+		if (__connman_ipconfig_get_index(ipconfig) != index)
+			continue;
+
+		__connman_ipconfig_del_route(ipconfig, scope,
+							dststr, gatewaystr);
+	}
+}
+
+static void process_newgateway(struct rtmsg *msg, int bytes)
+{
+	GSList *list;
+	struct in_addr addr;
+	int index = -1;
+
+	extract_route(msg, bytes, &index, NULL, &addr);
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->newgateway)
+			rtnl->newgateway(index, inet_ntoa(addr));
+	}
+}
+
+static void process_delgateway(struct rtmsg *msg, int bytes)
+{
+	GSList *list;
+	struct in_addr addr;
+	int index = -1;
+
+	extract_route(msg, bytes, &index, NULL, &addr);
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->delgateway)
+			rtnl->delgateway(index, inet_ntoa(addr));
+	}
+}
+
+static inline void print_inet(struct rtattr *attr, const char *name,
+							unsigned char family)
 {
 	if (family == AF_INET) {
 		struct in_addr addr;
 		addr = *((struct in_addr *) RTA_DATA(attr));
-		DBG("  attr %s (len %d) %s\n", name,
+		print("  attr %s (len %d) %s\n", name,
 				(int) RTA_PAYLOAD(attr), inet_ntoa(addr));
 	} else
-		DBG("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
+		print("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
 }
 
-static inline void print_char(struct rtattr *attr, const char *name)
+static inline void print_string(struct rtattr *attr, const char *name)
 {
-	DBG("  attr %s (len %d) %s\n", name, (int) RTA_PAYLOAD(attr),
+	print("  attr %s (len %d) %s\n", name, (int) RTA_PAYLOAD(attr),
 						(char *) RTA_DATA(attr));
 }
 
 static inline void print_byte(struct rtattr *attr, const char *name)
 {
-	DBG("  attr %s (len %d) 0x%02x\n", name, (int) RTA_PAYLOAD(attr),
+	print("  attr %s (len %d) 0x%02x\n", name, (int) RTA_PAYLOAD(attr),
 					*((unsigned char *) RTA_DATA(attr)));
+}
+
+static inline void print_integer(struct rtattr *attr, const char *name)
+{
+	print("  attr %s (len %d) %d\n", name, (int) RTA_PAYLOAD(attr),
+						*((int *) RTA_DATA(attr)));
 }
 
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
 	if (name)
-		DBG("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
+		print("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
 	else
-		DBG("  attr %d (len %d)\n",
+		print("  attr %d (len %d)\n",
 				attr->rta_type, (int) RTA_PAYLOAD(attr));
 }
 
 static void rtnl_link(struct nlmsghdr *hdr)
 {
-#if 0
 	struct ifinfomsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -443,7 +502,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 	bytes = IFLA_PAYLOAD(hdr);
 
-	DBG("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
+	print("ifi_index %d ifi_flags 0x%04x", msg->ifi_index, msg->ifi_flags);
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -455,10 +514,10 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			print_attr(attr, "broadcast");
 			break;
 		case IFLA_IFNAME:
-			print_char(attr, "ifname");
+			print_string(attr, "ifname");
 			break;
 		case IFLA_MTU:
-			print_attr(attr, "mtu");
+			print_integer(attr, "mtu");
 			break;
 		case IFLA_LINK:
 			print_attr(attr, "link");
@@ -504,40 +563,30 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			break;
 		}
 	}
-#endif
 }
 
 static void rtnl_newlink(struct nlmsghdr *hdr)
 {
 	struct ifinfomsg *msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 
-	DBG("ifi_type %d ifi_index %d ifi_flags 0x%04x ifi_change 0x%04x",
-					msg->ifi_type, msg->ifi_index,
-					msg->ifi_flags, msg->ifi_change);
+	rtnl_link(hdr);
 
 	process_newlink(msg->ifi_type, msg->ifi_index,
 					msg->ifi_flags, msg->ifi_change);
-
-	rtnl_link(hdr);
 }
 
 static void rtnl_dellink(struct nlmsghdr *hdr)
 {
 	struct ifinfomsg *msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 
-	DBG("ifi_type %d ifi_index %d ifi_flags 0x%04x ifi_change 0x%04x",
-					msg->ifi_type, msg->ifi_index,
-					msg->ifi_flags, msg->ifi_change);
+	rtnl_link(hdr);
 
 	process_dellink(msg->ifi_type, msg->ifi_index,
 					msg->ifi_flags, msg->ifi_change);
-
-	rtnl_link(hdr);
 }
 
 static void rtnl_addr(struct nlmsghdr *hdr)
 {
-#if 0
 	struct ifaddrmsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -545,7 +594,7 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 	msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
 	bytes = IFA_PAYLOAD(hdr);
 
-	DBG("ifa_family %d ifa_index %d", msg->ifa_family, msg->ifa_index);
+	print("ifa_family %d ifa_index %d", msg->ifa_family, msg->ifa_index);
 
 	for (attr = IFA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -557,7 +606,7 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 			print_inet(attr, "local", msg->ifa_family);
 			break;
 		case IFA_LABEL:
-			print_char(attr, "label");
+			print_string(attr, "label");
 			break;
 		case IFA_BROADCAST:
 			print_inet(attr, "broadcast", msg->ifa_family);
@@ -576,38 +625,30 @@ static void rtnl_addr(struct nlmsghdr *hdr)
 			break;
 		}
 	}
-#endif
 }
 
 static void rtnl_newaddr(struct nlmsghdr *hdr)
 {
 	struct ifaddrmsg *msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
 
-	DBG("ifa_family %d ifa_prefixlen %d ifa_index %d",
-			msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index);
+	rtnl_addr(hdr);
 
 	process_newaddr(msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index,
 						msg, IFA_PAYLOAD(hdr));
-
-	rtnl_addr(hdr);
 }
 
 static void rtnl_deladdr(struct nlmsghdr *hdr)
 {
 	struct ifaddrmsg *msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
 
-	DBG("ifa_family %d ifa_prefixlen %d ifa_index %d",
-			msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index);
+	rtnl_addr(hdr);
 
 	process_deladdr(msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index,
 						msg, IFA_PAYLOAD(hdr));
-
-	rtnl_addr(hdr);
 }
 
 static void rtnl_route(struct nlmsghdr *hdr)
 {
-#if 0
 	struct rtmsg *msg;
 	struct rtattr *attr;
 	int bytes;
@@ -615,7 +656,10 @@ static void rtnl_route(struct nlmsghdr *hdr)
 	msg = (struct rtmsg *) NLMSG_DATA(hdr);
 	bytes = RTM_PAYLOAD(hdr);
 
-	DBG("rtm_family %d rtm_flags 0x%04x", msg->rtm_family, msg->rtm_flags);
+	print("rtm_family %d rtm_table %d rtm_protocol %d",
+			msg->rtm_family, msg->rtm_table, msg->rtm_protocol);
+	print("rtm_scope %d rtm_type %d rtm_flags 0x%04x",
+				msg->rtm_scope, msg->rtm_type, msg->rtm_flags);
 
 	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
@@ -627,10 +671,10 @@ static void rtnl_route(struct nlmsghdr *hdr)
 			print_inet(attr, "src", msg->rtm_family);
 			break;
 		case RTA_IIF:
-			print_char(attr, "iif");
+			print_string(attr, "iif");
 			break;
 		case RTA_OIF:
-			print_attr(attr, "oif");
+			print_integer(attr, "oif");
 			break;
 		case RTA_GATEWAY:
 			print_inet(attr, "gateway", msg->rtm_family);
@@ -645,44 +689,49 @@ static void rtnl_route(struct nlmsghdr *hdr)
 			print_attr(attr, "metrics");
 			break;
 		case RTA_TABLE:
-			print_attr(attr, "table");
+			print_integer(attr, "table");
 			break;
 		default:
 			print_attr(attr, NULL);
 			break;
 		}
 	}
-#endif
 }
 
 static void rtnl_newroute(struct nlmsghdr *hdr)
 {
 	struct rtmsg *msg = (struct rtmsg *) NLMSG_DATA(hdr);
 
-	if (msg->rtm_type == RTN_UNICAST && msg->rtm_table == RT_TABLE_MAIN &&
-					msg->rtm_scope == RT_SCOPE_UNIVERSE) {
-		DBG("rtm_table %d rtm_scope %d rtm_type %d rtm_flags 0x%04x",
-					msg->rtm_table, msg->rtm_scope,
-					msg->rtm_type, msg->rtm_flags);
-		process_newgateway(msg, RTM_PAYLOAD(hdr));
-	}
-
 	rtnl_route(hdr);
+
+	if (msg->rtm_table == RT_TABLE_MAIN &&
+				msg->rtm_protocol == RTPROT_BOOT &&
+					msg->rtm_type == RTN_UNICAST) {
+
+		process_newroute(msg->rtm_family, msg->rtm_scope,
+						msg, RTM_PAYLOAD(hdr));
+
+		if (msg->rtm_scope == RT_SCOPE_UNIVERSE)
+			process_newgateway(msg, RTM_PAYLOAD(hdr));
+	}
 }
 
 static void rtnl_delroute(struct nlmsghdr *hdr)
 {
 	struct rtmsg *msg = (struct rtmsg *) NLMSG_DATA(hdr);
 
-	if (msg->rtm_type == RTN_UNICAST && msg->rtm_table == RT_TABLE_MAIN &&
-					msg->rtm_scope == RT_SCOPE_UNIVERSE) {
-		DBG("rtm_table %d rtm_scope %d rtm_type %d rtm_flags 0x%04x",
-					msg->rtm_table, msg->rtm_scope,
-					msg->rtm_type, msg->rtm_flags);
-		process_delgateway(msg, RTM_PAYLOAD(hdr));
-	}
-
 	rtnl_route(hdr);
+
+	if (msg->rtm_table == RT_TABLE_MAIN &&
+				msg->rtm_protocol == RTPROT_BOOT &&
+					msg->rtm_type == RTN_UNICAST) {
+
+		process_delroute(msg->rtm_family, msg->rtm_scope,
+						msg, RTM_PAYLOAD(hdr));
+
+		if (msg->rtm_scope == RT_SCOPE_UNIVERSE)
+			process_delgateway(msg, RTM_PAYLOAD(hdr));
+	}
 }
 
 static const char *type2string(uint16_t type)
