@@ -24,9 +24,12 @@ except:
 interface = dbus.Interface(bus.get_object(WPA_NAME, path),
 					WPA_INTF + ".Interface")
 
-print interface.state()
+print "state = %s" % (interface.state())
 
-print interface.scan()
+try:
+	print "scanning = %s" % (interface.scanning())
+except:
+	pass
 
 print "[ %s ]" % (path)
 
@@ -38,9 +41,18 @@ for key in capabilities.keys():
 		list += " " + value
 	print "    %s =%s" % (key, list)
 
-time.sleep(2)
+interface.scan()
 
-print interface.state()
+time.sleep(1)
+
+try:
+	print "scanning = %s" % (interface.scanning())
+except:
+	pass
+
+time.sleep(1)
+
+print "state = %s" % (interface.state())
 
 results = interface.scanResults()
 
