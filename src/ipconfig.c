@@ -57,6 +57,8 @@ static void free_address_list(struct connman_ipconfig *ipconfig)
 
 		g_free(ipaddress->address);
 		g_free(ipaddress);
+
+		list->data = NULL;
 	}
 
 	g_slist_free(ipconfig->address_list);
