@@ -509,9 +509,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 
 static void rtnl_newlink(struct nlmsghdr *hdr)
 {
-	struct ifinfomsg *msg;
-
-	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
+	struct ifinfomsg *msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 
 	DBG("ifi_type %d ifi_index %d ifi_flags 0x%04x ifi_change 0x%04x",
 					msg->ifi_type, msg->ifi_index,
@@ -525,9 +523,7 @@ static void rtnl_newlink(struct nlmsghdr *hdr)
 
 static void rtnl_dellink(struct nlmsghdr *hdr)
 {
-	struct ifinfomsg *msg;
-
-	msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
+	struct ifinfomsg *msg = (struct ifinfomsg *) NLMSG_DATA(hdr);
 
 	DBG("ifi_type %d ifi_index %d ifi_flags 0x%04x ifi_change 0x%04x",
 					msg->ifi_type, msg->ifi_index,
@@ -598,9 +594,7 @@ static void rtnl_newaddr(struct nlmsghdr *hdr)
 
 static void rtnl_deladdr(struct nlmsghdr *hdr)
 {
-	struct ifaddrmsg *msg;
-
-	msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
+	struct ifaddrmsg *msg = (struct ifaddrmsg *) NLMSG_DATA(hdr);
 
 	DBG("ifa_family %d ifa_prefixlen %d ifa_index %d",
 			msg->ifa_family, msg->ifa_prefixlen, msg->ifa_index);
