@@ -27,9 +27,9 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-
-#include <linux/if.h>
-#include <linux/if_arp.h>
+#include <netinet/ether.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
@@ -449,16 +449,29 @@ static void process_delroute(unsigned char family, unsigned char scope,
 	}
 }
 
+static inline void print_ether(struct rtattr *attr, const char *name)
+{
+	int len = (int) RTA_PAYLOAD(attr);
+
+	if (len == ETH_ALEN) {
+		struct ether_addr eth;
+		memcpy(&eth, RTA_DATA(attr), ETH_ALEN);
+		print("  attr %s (len %d) %s\n", name, len, ether_ntoa(&eth));
+	} else
+		print("  attr %s (len %d)\n", name, len);
+}
+
 static inline void print_inet(struct rtattr *attr, const char *name,
 							unsigned char family)
 {
-	if (family == AF_INET) {
+	int len = (int) RTA_PAYLOAD(attr);
+
+	if (family == AF_INET && len == sizeof(struct in_addr)) {
 		struct in_addr addr;
 		addr = *((struct in_addr *) RTA_DATA(attr));
-		print("  attr %s (len %d) %s\n", name,
-				(int) RTA_PAYLOAD(attr), inet_ntoa(addr));
+		print("  attr %s (len %d) %s\n", name, len, inet_ntoa(addr));
 	} else
-		print("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
+		print("  attr %s (len %d)\n", name, len);
 }
 
 static inline void print_string(struct rtattr *attr, const char *name)
@@ -481,11 +494,12 @@ static inline void print_integer(struct rtattr *attr, const char *name)
 
 static inline void print_attr(struct rtattr *attr, const char *name)
 {
-	if (name)
-		print("  attr %s (len %d)\n", name, (int) RTA_PAYLOAD(attr));
+	int len = (int) RTA_PAYLOAD(attr);
+
+	if (name && len > 0)
+		print("  attr %s (len %d)\n", name, len);
 	else
-		print("  attr %d (len %d)\n",
-				attr->rta_type, (int) RTA_PAYLOAD(attr));
+		print("  attr %d (len %d)\n", attr->rta_type, len);
 }
 
 static void rtnl_link(struct nlmsghdr *hdr)
@@ -503,10 +517,10 @@ static void rtnl_link(struct nlmsghdr *hdr)
 					attr = RTA_NEXT(attr, bytes)) {
 		switch (attr->rta_type) {
 		case IFLA_ADDRESS:
-			print_attr(attr, "address");
+			print_ether(attr, "address");
 			break;
 		case IFLA_BROADCAST:
-			print_attr(attr, "broadcast");
+			print_ether(attr, "broadcast");
 			break;
 		case IFLA_IFNAME:
 			print_string(attr, "ifname");
@@ -539,7 +553,7 @@ static void rtnl_link(struct nlmsghdr *hdr)
 			print_attr(attr, "protinfo");
 			break;
 		case IFLA_TXQLEN:
-			print_attr(attr, "txqlen");
+			print_integer(attr, "txqlen");
 			break;
 		case IFLA_MAP:
 			print_attr(attr, "map");
