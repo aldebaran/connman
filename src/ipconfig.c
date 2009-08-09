@@ -33,6 +33,11 @@
 
 #include "connman.h"
 
+struct connman_ipaddress {
+	unsigned char prefixlen;
+	char *address;
+};
+
 struct connman_ipconfig {
 	gint refcount;
 	int index;
@@ -40,7 +45,39 @@ struct connman_ipconfig {
 	unsigned short type;
 	unsigned int flags;
 	enum connman_ipconfig_method method;
+	GSList *address_list;
 };
+
+static void free_address_list(struct connman_ipconfig *ipconfig)
+{
+	GSList *list;
+
+	for (list = ipconfig->address_list; list; list = list->next) {
+		struct connman_ipaddress *ipaddress = list->data;
+
+		g_free(ipaddress->address);
+		g_free(ipaddress);
+	}
+
+	g_slist_free(ipconfig->address_list);
+	ipconfig->address_list = NULL;
+}
+
+static struct connman_ipaddress *find_ipaddress(struct connman_ipconfig *ipconfig,
+				unsigned char prefixlen, const char *address)
+{
+	GSList *list;
+
+	for (list = ipconfig->address_list; list; list = list->next) {
+		struct connman_ipaddress *ipaddress = list->data;
+
+		if (g_strcmp0(ipaddress->address, address) == 0 &&
+					ipaddress->prefixlen == prefixlen)
+			return ipaddress;
+	}
+
+	return NULL;
+}
 
 /**
  * connman_ipconfig_create:
@@ -96,6 +133,8 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
 		connman_info("%s {remove} index %d", ipconfig->interface,
 							ipconfig->index);
+
+		free_address_list(ipconfig);
 
 		g_free(ipconfig->interface);
 		g_free(ipconfig);
@@ -167,6 +206,18 @@ void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,
 				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast)
 {
+	struct connman_ipaddress *ipaddress;
+
+	ipaddress = g_try_new0(struct connman_ipaddress, 1);
+	if (ipaddress == NULL)
+		return;
+
+	ipaddress->prefixlen = prefixlen;
+	ipaddress->address = g_strdup(address);
+
+	ipconfig->address_list = g_slist_append(ipconfig->address_list,
+								ipaddress);
+
 	connman_info("%s {add} address %s/%u label %s", ipconfig->interface,
 						address, prefixlen, label);
 }
@@ -175,6 +226,18 @@ void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
 				const char *label, unsigned char prefixlen,
 				const char *address, const char *broadcast)
 {
+	struct connman_ipaddress *ipaddress;
+
+	ipaddress = find_ipaddress(ipconfig, prefixlen, address);
+	if (ipaddress == NULL)
+		return;
+
+	ipconfig->address_list = g_slist_remove(ipconfig->address_list,
+								ipaddress);
+
+	g_free(ipaddress->address);
+	g_free(ipaddress);
+
 	connman_info("%s {del} address %s/%u label %s", ipconfig->interface,
 						address, prefixlen, label);
 }
