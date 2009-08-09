@@ -393,6 +393,16 @@ static void process_newroute(unsigned char family, unsigned char scope,
 		__connman_ipconfig_add_route(ipconfig, scope,
 							dststr, gatewaystr);
 	}
+
+	if (scope != RT_SCOPE_UNIVERSE || dst.s_addr != INADDR_ANY)
+		return;
+
+	for (list = rtnl_list; list; list = list->next) {
+		struct connman_rtnl *rtnl = list->data;
+
+		if (rtnl->newgateway)
+			rtnl->newgateway(index, gatewaystr);
+	}
 }
 
 static void process_delroute(unsigned char family, unsigned char scope,
@@ -420,43 +430,15 @@ static void process_delroute(unsigned char family, unsigned char scope,
 		__connman_ipconfig_del_route(ipconfig, scope,
 							dststr, gatewaystr);
 	}
-}
 
-static void process_newgateway(struct rtmsg *msg, int bytes)
-{
-	GSList *list;
-	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
-	int index = -1;
-
-	extract_route(msg, bytes, &index, &dst, &gateway);
-
-	if (dst.s_addr != INADDR_ANY)
-		return;
-
-	for (list = rtnl_list; list; list = list->next) {
-		struct connman_rtnl *rtnl = list->data;
-
-		if (rtnl->newgateway)
-			rtnl->newgateway(index, inet_ntoa(gateway));
-	}
-}
-
-static void process_delgateway(struct rtmsg *msg, int bytes)
-{
-	GSList *list;
-	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
-	int index = -1;
-
-	extract_route(msg, bytes, &index, &dst, &gateway);
-
-	if (dst.s_addr != INADDR_ANY)
+	if (scope != RT_SCOPE_UNIVERSE || dst.s_addr != INADDR_ANY)
 		return;
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
 		if (rtnl->delgateway)
-			rtnl->delgateway(index, inet_ntoa(gateway));
+			rtnl->delgateway(index, gatewaystr);
 	}
 }
 
@@ -712,14 +694,9 @@ static void rtnl_newroute(struct nlmsghdr *hdr)
 
 	if (msg->rtm_table == RT_TABLE_MAIN &&
 				msg->rtm_protocol == RTPROT_BOOT &&
-					msg->rtm_type == RTN_UNICAST) {
-
+						msg->rtm_type == RTN_UNICAST)
 		process_newroute(msg->rtm_family, msg->rtm_scope,
 						msg, RTM_PAYLOAD(hdr));
-
-		if (msg->rtm_scope == RT_SCOPE_UNIVERSE)
-			process_newgateway(msg, RTM_PAYLOAD(hdr));
-	}
 }
 
 static void rtnl_delroute(struct nlmsghdr *hdr)
@@ -730,14 +707,9 @@ static void rtnl_delroute(struct nlmsghdr *hdr)
 
 	if (msg->rtm_table == RT_TABLE_MAIN &&
 				msg->rtm_protocol == RTPROT_BOOT &&
-					msg->rtm_type == RTN_UNICAST) {
-
+						msg->rtm_type == RTN_UNICAST)
 		process_delroute(msg->rtm_family, msg->rtm_scope,
 						msg, RTM_PAYLOAD(hdr));
-
-		if (msg->rtm_scope == RT_SCOPE_UNIVERSE)
-			process_delgateway(msg, RTM_PAYLOAD(hdr));
-	}
 }
 
 static const char *type2string(uint16_t type)
