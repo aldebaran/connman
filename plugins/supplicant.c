@@ -1579,6 +1579,27 @@ static int task_connect(struct supplicant_task *task)
 	return -EINPROGRESS;
 }
 
+static void scanning(struct supplicant_task *task, DBusMessage *msg)
+{
+	DBusError error;
+	dbus_bool_t scanning;
+
+	dbus_error_init(&error);
+
+	if (dbus_message_get_args(msg, &error, DBUS_TYPE_BOOLEAN, &scanning,
+						DBUS_TYPE_INVALID) == FALSE) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Wrong arguments for scanning");
+		return;
+	}
+
+	connman_info("%s scanning %s", task->ifname,
+				scanning == TRUE ? "started" : "finished");
+}
+
 static void state_change(struct supplicant_task *task, DBusMessage *msg)
 {
 	DBusError error;
@@ -1601,6 +1622,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	}
 
 	DBG("state %s ==> %s", oldstate, newstate);
+
+	connman_info("%s %s", task->ifname, newstate);
 
 	state = string2state(newstate);
 	if (state == WPA_INVALID)
@@ -1697,6 +1720,8 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 
 	if (g_str_equal(member, "ScanResultsAvailable") == TRUE)
 		scan_results_available(task);
+	else if (g_str_equal(member, "Scanning") == TRUE)
+		scanning(task, msg);
 	else if (g_str_equal(member, "StateChange") == TRUE)
 		state_change(task, msg);
 
