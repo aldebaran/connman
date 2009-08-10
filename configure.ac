@@ -247,7 +247,7 @@ AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 DBUS_DATADIR="`$PKG_CONFIG --variable=sysconfdir dbus-1`"
-if (test -z "{DBUS_DATADIR}"); then
+if (test -z "${DBUS_DATADIR}"); then
 	DBUS_DATADIR="${sysconfdir}/dbus-1/system.d"
 else
 	DBUS_DATADIR="$DBUS_DATADIR/dbus-1/system.d"
