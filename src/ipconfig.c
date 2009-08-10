@@ -44,6 +44,10 @@ struct connman_ipconfig {
 	char *interface;
 	unsigned short type;
 	unsigned int flags;
+
+	struct connman_ipconfig_ops *ops;
+	void *ops_data;
+
 	enum connman_ipconfig_method method;
 	GSList *address_list;
 	char *gateway;
@@ -143,6 +147,42 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 		g_free(ipconfig->interface);
 		g_free(ipconfig);
 	}
+}
+
+/**
+ * connman_ipconfig_get_data:
+ * @ipconfig: ipconfig structure
+ *
+ * Get private data pointer
+ */
+void *connman_ipconfig_get_data(struct connman_ipconfig *ipconfig)
+{
+	return ipconfig->ops_data;
+}
+
+/**
+ * connman_ipconfig_set_data:
+ * @ipconfig: ipconfig structure
+ * @data: data pointer
+ *
+ * Set private data pointer
+ */
+void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
+{
+	ipconfig->ops_data = data;
+}
+
+/**
+ * connman_ipconfig_set_ops:
+ * @ipconfig: ipconfig structure
+ * @ops: operation callbacks
+ *
+ * Set the operation callbacks
+ */
+void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
+					struct connman_ipconfig_ops *ops)
+{
+	ipconfig->ops = ops;
 }
 
 /**
