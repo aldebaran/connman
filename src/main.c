@@ -205,6 +205,7 @@ int main(int argc, char *argv[])
 	__connman_profile_init(conn);
 
 	__connman_resolver_init();
+	__connman_ipconfig_init();
 	__connman_rtnl_init();
 	__connman_udev_init();
 	__connman_task_init();
@@ -235,6 +236,7 @@ int main(int argc, char *argv[])
 	__connman_task_cleanup();
 	__connman_udev_cleanup();
 	__connman_rtnl_cleanup();
+	__connman_ipconfig_cleanup();
 	__connman_resolver_cleanup();
 
 	__connman_profile_cleanup();

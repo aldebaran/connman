@@ -50,28 +50,6 @@ struct watch_data {
 static GSList *watch_list = NULL;
 static unsigned int watch_id = 0;
 
-static GHashTable *ipconfig_hash = NULL;
-static GSList *ipconfig_list = NULL;
-
-static void register_ipconfig(struct connman_ipconfig *ipconfig)
-{
-	ipconfig_list = g_slist_append(ipconfig_list, ipconfig);
-}
-
-static void unregister_ipconfig(struct connman_ipconfig *ipconfig)
-{
-	ipconfig_list = g_slist_remove(ipconfig_list, ipconfig);
-}
-
-static void free_ipconfig(gpointer data)
-{
-	struct connman_ipconfig *ipconfig = data;
-
-	unregister_ipconfig(ipconfig);
-
-	connman_ipconfig_unref(ipconfig);
-}
-
 /**
  * connman_rtnl_add_newlink_watch:
  * @index: network device index
@@ -85,7 +63,6 @@ static void free_ipconfig(gpointer data)
 unsigned int connman_rtnl_add_newlink_watch(int index,
 			connman_rtnl_link_cb_t callback, void *user_data)
 {
-	struct connman_ipconfig *ipconfig;
 	struct watch_data *watch;
 
 	watch = g_try_new0(struct watch_data, 1);
@@ -102,11 +79,10 @@ unsigned int connman_rtnl_add_newlink_watch(int index,
 
 	DBG("id %d", watch->id);
 
-	ipconfig = g_hash_table_lookup(ipconfig_hash, GINT_TO_POINTER(index));
-	if (ipconfig != NULL) {
-		unsigned int flags = __connman_ipconfig_get_flags(ipconfig);
+	if (callback) {
+		unsigned int flags = __connman_ipconfig_get_flags(index);
 
-		if (callback)
+		if (flags > 0)
 			callback(flags, 0, user_data);
 	}
 
@@ -139,24 +115,19 @@ void connman_rtnl_remove_watch(unsigned int id)
 	}
 }
 
-static void trigger_rtnl(gpointer key, gpointer value, gpointer user_data)
+static void trigger_rtnl(int index, void *user_data)
 {
 	struct connman_rtnl *rtnl = user_data;
-	struct connman_ipconfig *ipconfig = value;
-	int index = GPOINTER_TO_INT(key);
-
-	if (index < 0 || ipconfig == NULL)
-		return;
 
 	if (rtnl->newlink) {
-		unsigned short type = __connman_ipconfig_get_type(ipconfig);
-		unsigned int flags = __connman_ipconfig_get_flags(ipconfig);
+		unsigned short type = __connman_ipconfig_get_type(index);
+		unsigned int flags = __connman_ipconfig_get_flags(index);
 
 		rtnl->newlink(type, index, flags, 0);
 	}
 
 	if (rtnl->newgateway) {
-		const char *gateway = __connman_ipconfig_get_gateway(ipconfig);
+		const char *gateway = __connman_ipconfig_get_gateway(index);
 
 		if (gateway != NULL)
 			rtnl->newgateway(index, gateway);
@@ -188,7 +159,7 @@ int connman_rtnl_register(struct connman_rtnl *rtnl)
 	rtnl_list = g_slist_insert_sorted(rtnl_list, rtnl,
 							compare_priority);
 
-	g_hash_table_foreach(ipconfig_hash, trigger_rtnl, rtnl);
+	__connman_ipconfig_foreach(trigger_rtnl, rtnl);
 
 	return 0;
 }
@@ -209,28 +180,13 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 static void process_newlink(unsigned short type, int index,
 					unsigned flags, unsigned change)
 {
-	struct connman_ipconfig *ipconfig;
 	GSList *list;
 
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		ipconfig = g_hash_table_lookup(ipconfig_hash,
-						GINT_TO_POINTER(index));
-		if (ipconfig == NULL) {
-			ipconfig = connman_ipconfig_create(index);
-			if (ipconfig != NULL) {
-				g_hash_table_insert(ipconfig_hash,
-					GINT_TO_POINTER(index), ipconfig);
-
-				register_ipconfig(ipconfig);
-			}
-		}
-
-		if (ipconfig != NULL)
-			__connman_ipconfig_update_link(ipconfig,
-							flags, change);
+		__connman_ipconfig_newlink(index, type, flags);
 		break;
 	}
 
@@ -268,7 +224,7 @@ static void process_dellink(unsigned short type, int index,
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		g_hash_table_remove(ipconfig_hash, GINT_TO_POINTER(index));
+		__connman_ipconfig_dellink(index);
 		break;
 	}
 }
@@ -307,7 +263,6 @@ static void extract_addr(struct ifaddrmsg *msg, int bytes,
 static void process_newaddr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	GSList *list;
 	const char *label;
 	struct in_addr address = { INADDR_ANY };
 
@@ -316,21 +271,13 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 
 	extract_addr(msg, bytes, &label, &address, NULL, NULL);
 
-	for (list = ipconfig_list; list; list = list->next) {
-		struct connman_ipconfig *ipconfig = list->data;
-
-		if (__connman_ipconfig_get_index(ipconfig) != index)
-			continue;
-
-		__connman_ipconfig_add_address(ipconfig, label, prefixlen,
-						inet_ntoa(address), NULL);
-	}
+	__connman_ipconfig_newaddr(index, label,
+					prefixlen, inet_ntoa(address));
 }
 
 static void process_deladdr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	GSList *list;
 	const char *label;
 	struct in_addr address = { INADDR_ANY };
 
@@ -339,15 +286,8 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 
 	extract_addr(msg, bytes, &label, &address, NULL, NULL);
 
-	for (list = ipconfig_list; list; list = list->next) {
-		struct connman_ipconfig *ipconfig = list->data;
-
-		if (__connman_ipconfig_get_index(ipconfig) != index)
-			continue;
-
-		__connman_ipconfig_del_address(ipconfig, label, prefixlen,
-						inet_ntoa(address), NULL);
-	}
+	__connman_ipconfig_deladdr(index, label,
+					prefixlen, inet_ntoa(address));
 }
 
 static void extract_route(struct rtmsg *msg, int bytes, int *index,
@@ -391,15 +331,7 @@ static void process_newroute(unsigned char family, unsigned char scope,
 	inet_ntop(family, &dst, dststr, sizeof(dststr));
 	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	for (list = ipconfig_list; list; list = list->next) {
-		struct connman_ipconfig *ipconfig = list->data;
-
-		if (__connman_ipconfig_get_index(ipconfig) != index)
-			continue;
-
-		__connman_ipconfig_add_route(ipconfig, scope,
-							dststr, gatewaystr);
-	}
+	__connman_ipconfig_newroute(index, scope, dststr, gatewaystr);
 
 	if (scope != RT_SCOPE_UNIVERSE || dst.s_addr != INADDR_ANY)
 		return;
@@ -428,15 +360,7 @@ static void process_delroute(unsigned char family, unsigned char scope,
 	inet_ntop(family, &dst, dststr, sizeof(dststr));
 	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	for (list = ipconfig_list; list; list = list->next) {
-		struct connman_ipconfig *ipconfig = list->data;
-
-		if (__connman_ipconfig_get_index(ipconfig) != index)
-			continue;
-
-		__connman_ipconfig_del_route(ipconfig, scope,
-							dststr, gatewaystr);
-	}
+	__connman_ipconfig_delroute(index, scope, dststr, gatewaystr);
 
 	if (scope != RT_SCOPE_UNIVERSE || dst.s_addr != INADDR_ANY)
 		return;
@@ -982,9 +906,6 @@ int __connman_rtnl_init(void)
 
 	DBG("");
 
-	ipconfig_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-							NULL, free_ipconfig);
-
 	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
 	if (sk < 0)
 		return -1;
@@ -1021,12 +942,6 @@ void __connman_rtnl_cleanup(void)
 	GSList *list;
 
 	DBG("");
-
-	g_slist_free(ipconfig_list);
-	ipconfig_list = NULL;
-
-	g_hash_table_destroy(ipconfig_hash);
-	ipconfig_hash = NULL;
 
 	for (list = watch_list; list; list = list->next) {
 		struct watch_data *watch = list->data;

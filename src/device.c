@@ -1019,6 +1019,33 @@ const char *connman_device_get_path(struct connman_device *device)
 	return device->element.path;
 }
 
+static void device_up(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s up", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void device_down(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s down", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void device_lower_up(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s lower up", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void device_lower_down(struct connman_ipconfig *ipconfig)
+{
+        connman_info("%s lower down", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static const struct connman_ipconfig_ops device_ops = {
+	.up		= device_up,
+	.down		= device_down,
+	.lower_up	= device_lower_up,
+	.lower_down	= device_lower_down,
+};
+
 /**
  * connman_device_set_index:
  * @device: device structure
@@ -1030,10 +1057,16 @@ void connman_device_set_index(struct connman_device *device, int index)
 {
 	device->element.index = index;
 
-	//if (device->ipconfig != NULL)
-	//	connman_ipconfig_unref(device->ipconfig);
+	if (device->ipconfig != NULL) {
+		if (index == connman_ipconfig_get_index(device->ipconfig))
+			return;
 
-	//device->ipconfig = connman_ipconfig_create(index);
+		connman_ipconfig_unref(device->ipconfig);
+	}
+
+	device->ipconfig = connman_ipconfig_create(index);
+
+	connman_ipconfig_set_ops(device->ipconfig, &device_ops);
 }
 
 /**

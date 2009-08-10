@@ -91,25 +91,26 @@ int __connman_security_check_privilege(DBusMessage *message,
 
 #include <connman/ipconfig.h>
 
-int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
-unsigned short __connman_ipconfig_get_type(struct connman_ipconfig *ipconfig);
-unsigned int __connman_ipconfig_get_flags(struct connman_ipconfig *ipconfig);
-const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_init(void);
+void __connman_ipconfig_cleanup(void);
 
-void __connman_ipconfig_update_link(struct connman_ipconfig *ipconfig,
-					unsigned flags, unsigned change);
-void __connman_ipconfig_add_address(struct connman_ipconfig *ipconfig,
-				const char *label, unsigned char prefixlen,
-				const char *address, const char *broadcast);
-void __connman_ipconfig_del_address(struct connman_ipconfig *ipconfig,
-				const char *label, unsigned char prefixlen,
-				const char *address, const char *broadcast);
-void __connman_ipconfig_add_route(struct connman_ipconfig *ipconfig,
-				unsigned char scope, const char *destination,
-							const char *gateway);
-void __connman_ipconfig_del_route(struct connman_ipconfig *ipconfig,
-				unsigned char scope, const char *destination,
-							const char *gateway);
+void __connman_ipconfig_newlink(int index, unsigned short type,
+							unsigned int flags);
+void __connman_ipconfig_dellink(int index);
+void __connman_ipconfig_newaddr(int index, const char *label,
+				unsigned char prefixlen, const char *address);
+void __connman_ipconfig_deladdr(int index, const char *label,
+				unsigned char prefixlen, const char *address);
+void __connman_ipconfig_newroute(int index, unsigned char scope,
+					const char *dst, const char *gateway);
+void __connman_ipconfig_delroute(int index, unsigned char scope,
+					const char *dst, const char *gateway);
+
+void __connman_ipconfig_foreach(void (*function) (int index, void *user_data),
+							void *user_data);
+unsigned short __connman_ipconfig_get_type(int index);
+unsigned int __connman_ipconfig_get_flags(int index);
+const char *__connman_ipconfig_get_gateway(int index);
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);

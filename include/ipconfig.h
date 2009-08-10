@@ -61,8 +61,11 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
 void *connman_ipconfig_get_data(struct connman_ipconfig *ipconfig);
 void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data);
 
+int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
+const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig);
+
 void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
-					struct connman_ipconfig_ops *ops);
+				const struct connman_ipconfig_ops *ops);
 
 int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method);
