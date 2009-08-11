@@ -24,6 +24,7 @@
 #endif
 
 #include <unistd.h>
+#include <stdarg.h>
 #include <sys/wait.h>
 
 #include <glib.h>
@@ -133,30 +134,47 @@ void connman_task_destroy(struct connman_task *task)
 }
 
 /**
+ * connman_task_get_path:
+ * @task: task structure
+ *
+ * Get object path
+ */
+const char *connman_task_get_path(struct connman_task *task)
+{
+	return task->path;
+}
+
+/**
  * connman_task_add_argument:
  * @task: task structure
- * @argument: argument name
- * @value: optional argument value
+ * @name: argument name
+ * @format: format string
+ * @Varargs: list of arguments
  *
  * Add a new command line argument
  */
 int connman_task_add_argument(struct connman_task *task,
-				const char *argument, const char *value)
+				const char *name, const char *format, ...)
 {
+	va_list ap;
 	char *str;
 
-	DBG("task %p arg %s val %s", task, argument, value);
+	DBG("task %p arg %s", task, name);
 
-	if (argument == NULL)
+	if (name == NULL)
 		return -EINVAL;
 
-	str = g_strdup(argument);
+	str = g_strdup(name);
 	g_ptr_array_add(task->argv, str);
 
-	if (value != NULL) {
-		str = g_strdup(value);
+	va_start(ap, format);
+
+	if (format != NULL) {
+		str = g_strdup_vprintf(format, ap);
 		g_ptr_array_add(task->argv, str);
 	}
+
+	va_end(ap);
 
 	return 0;
 }
@@ -165,22 +183,30 @@ int connman_task_add_argument(struct connman_task *task,
  * connman_task_add_variable:
  * @task: task structure
  * @key: variable name
- * @value: optional variable value
+ * @format: format string
+ * @Varargs: list of arguments
  *
  * Add a new environment variable
  */
 int connman_task_add_variable(struct connman_task *task,
-				const char *key, const char *value)
+				const char *key, const char *format, ...)
 {
-	char *str;
+	va_list ap;
+	char *str, *val;
 
-	DBG("task %p key %s val %s", task, key, value);
+	DBG("task %p key %s", task, key);
 
 	if (key == NULL)
 		return -EINVAL;
 
-	str = g_strdup_printf("%s=%s", key, value ? value : "");
+	va_start(ap, format);
+
+	val = g_strdup_vprintf(format, ap);
+	str = g_strdup_printf("%s=%s", key, format ? format : "");
 	g_ptr_array_add(task->envp, str);
+	g_free(val);
+
+	va_end(ap);
 
 	return 0;
 }

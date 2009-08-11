@@ -45,10 +45,12 @@ typedef void (* connman_task_notify_t) (struct connman_task *task,
 struct connman_task *connman_task_create(const char *program);
 void connman_task_destroy(struct connman_task *task);
 
+const char *connman_task_get_path(struct connman_task *task);
+
 int connman_task_add_argument(struct connman_task *task,
-				const char *argument, const char *value);
+				const char *name, const char *format, ...);
 int connman_task_add_variable(struct connman_task *task,
-				const char *key, const char *value);
+				const char *key, const char *format, ...);
 
 int connman_task_set_notify(struct connman_task *task, const char *member,
 			connman_task_notify_t function, void *user_data);
