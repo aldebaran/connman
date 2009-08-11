@@ -542,8 +542,8 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		break;
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-		return "off";
+	case CONNMAN_IPCONFIG_METHOD_IGNORE:
+		return "ignore";
 	case CONNMAN_IPCONFIG_METHOD_STATIC:
 		return "static";
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
@@ -555,8 +555,8 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method)
 {
-	if (g_strcmp0(method, "off") == 0)
-		return CONNMAN_IPCONFIG_METHOD_OFF;
+	if (g_strcmp0(method, "ignore") == 0)
+		return CONNMAN_IPCONFIG_METHOD_IGNORE;
 	else if (g_strcmp0(method, "static") == 0)
 		return CONNMAN_IPCONFIG_METHOD_STATIC;
 	else if (g_strcmp0(method, "dhcp") == 0)

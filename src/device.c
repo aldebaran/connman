@@ -199,7 +199,7 @@ static int set_connected(struct connman_device *device,
 
 		switch (device->element.ipv4.method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_IGNORE:
 			return 0;
 		case CONNMAN_IPCONFIG_METHOD_STATIC:
 			type = CONNMAN_ELEMENT_TYPE_IPV4;
