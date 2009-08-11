@@ -1,6 +1,6 @@
 
 if TOOLS
-noinst_PROGRAMS = wifi-scan tap-test
+noinst_PROGRAMS = wifi-scan tap-test addr-test
 
 wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 endif
