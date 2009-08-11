@@ -78,9 +78,9 @@ struct connman_ipconfig_driver {
 	const char *name;
 	enum connman_ipconfig_type type;
 	int priority;
-	int (*request) (const char *interface);
-	int (*release) (const char *interface);
-	int (*renew) (const char *interface);
+	int (*request) (struct connman_ipconfig *ipconfig);
+	int (*release) (struct connman_ipconfig *ipconfig);
+	int (*renew) (struct connman_ipconfig *ipconfig);
 };
 
 int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver);
