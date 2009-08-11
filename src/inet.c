@@ -455,8 +455,7 @@ done:
 	return device;
 }
 
-int connman_inet_set_address(int index, struct in_addr address,
-			struct in_addr netmask, struct in_addr broadcast)
+int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 {
 	struct ifreq ifr;
 	struct sockaddr_in addr;
@@ -478,7 +477,7 @@ int connman_inet_set_address(int index, struct in_addr address,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr = address;
+	addr.sin_addr.s_addr = inet_addr(ipaddress->local);
 	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
@@ -488,7 +487,7 @@ int connman_inet_set_address(int index, struct in_addr address,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr = netmask;
+	addr.sin_addr.s_addr = htonl(~(0xfffffffflu >> ipaddress->prefixlen));
 	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
 
 	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
@@ -498,7 +497,7 @@ int connman_inet_set_address(int index, struct in_addr address,
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr = broadcast;
+	addr.sin_addr.s_addr = inet_addr(ipaddress->broadcast);
 	memcpy(&ifr.ifr_broadaddr, &addr, sizeof(ifr.ifr_broadaddr));
 
 	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);

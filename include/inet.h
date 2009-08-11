@@ -22,13 +22,14 @@
 #ifndef __CONNMAN_INET_H
 #define __CONNMAN_INET_H
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #include <arpa/inet.h>
 
 #include <connman/device.h>
+#include <connman/ipconfig.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 int connman_inet_ifindex(const char *name);
 char *connman_inet_ifname(int index);
@@ -38,8 +39,7 @@ int connman_inet_ifdown(int index);
 
 struct connman_device *connman_inet_create_device(int index);
 
-int connman_inet_set_address(int index, struct in_addr address,
-			struct in_addr netmask, struct in_addr broadcast);
+int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress);
 int connman_inet_clear_address(int index);
 int connman_inet_set_gateway(int index, struct in_addr gateway);
 
