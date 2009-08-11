@@ -32,6 +32,18 @@ extern "C" {
  * @short_description: Functions for IP configuration handling
  */
 
+struct connman_ipaddress {
+	unsigned char prefixlen;
+	char *local;
+	char *peer;
+	char *broadcast;
+};
+
+struct connman_ipaddress *connman_ipaddress_alloc(void);
+void connman_ipaddress_free(struct connman_ipaddress *ipaddress);
+void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
+					struct connman_ipaddress *source);
+
 enum connman_ipconfig_type {
 	CONNMAN_IPCONFIG_TYPE_UNKNOWN = 0,
 	CONNMAN_IPCONFIG_TYPE_IPV4    = 1,
@@ -69,6 +81,9 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 
 int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method);
+
+void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
+					struct connman_ipaddress *ipaddress);
 
 #define CONNMAN_IPCONFIG_PRIORITY_LOW      -100
 #define CONNMAN_IPCONFIG_PRIORITY_DEFAULT     0

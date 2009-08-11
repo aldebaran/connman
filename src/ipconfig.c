@@ -34,9 +34,15 @@
 
 #include "connman.h"
 
-struct connman_ipaddress {
-	unsigned char prefixlen;
-	char *address;
+struct connman_ipconfig {
+	gint refcount;
+	int index;
+
+	const struct connman_ipconfig_ops *ops;
+	void *ops_data;
+
+	enum connman_ipconfig_method method;
+	struct connman_ipaddress *address;
 };
 
 struct connman_ipdevice {
@@ -47,20 +53,47 @@ struct connman_ipdevice {
 
 	GSList *address_list;
 	char *gateway;
-};
 
-struct connman_ipconfig {
-	gint refcount;
-	int index;
-
-	const struct connman_ipconfig_ops *ops;
-	void *ops_data;
-
-	enum connman_ipconfig_method method;
+	struct connman_ipconfig *config;
+	struct connman_ipconfig_driver *driver;
 };
 
 static GHashTable *ipdevice_hash = NULL;
 static GList *ipconfig_list = NULL;
+
+struct connman_ipaddress *connman_ipaddress_alloc(void)
+{
+	struct connman_ipaddress *ipaddress;
+
+	ipaddress = g_try_new0(struct connman_ipaddress, 1);
+	if (ipaddress == NULL)
+		return NULL;
+
+	return ipaddress;
+}
+
+void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
+{
+	g_free(ipaddress->broadcast);
+	g_free(ipaddress->peer);
+	g_free(ipaddress->local);
+	g_free(ipaddress);
+}
+
+void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
+					struct connman_ipaddress *source)
+{
+	ipaddress->prefixlen = source->prefixlen;
+
+	g_free(ipaddress->local);
+	ipaddress->local = g_strdup(source->local);
+
+	g_free(ipaddress->peer);
+	ipaddress->peer = g_strdup(source->peer);
+
+	g_free(ipaddress->broadcast);
+	ipaddress->broadcast = g_strdup(source->broadcast);
+}
 
 static void free_address_list(struct connman_ipdevice *ipdevice)
 {
@@ -69,8 +102,7 @@ static void free_address_list(struct connman_ipdevice *ipdevice)
 	for (list = ipdevice->address_list; list; list = list->next) {
 		struct connman_ipaddress *ipaddress = list->data;
 
-		g_free(ipaddress->address);
-		g_free(ipaddress);
+		connman_ipaddress_free(ipaddress);
 		list->data = NULL;
 	}
 
@@ -79,14 +111,14 @@ static void free_address_list(struct connman_ipdevice *ipdevice)
 }
 
 static struct connman_ipaddress *find_ipaddress(struct connman_ipdevice *ipdevice,
-				unsigned char prefixlen, const char *address)
+				unsigned char prefixlen, const char *local)
 {
 	GSList *list;
 
 	for (list = ipdevice->address_list; list; list = list->next) {
 		struct connman_ipaddress *ipaddress = list->data;
 
-		if (g_strcmp0(ipaddress->address, address) == 0 &&
+		if (g_strcmp0(ipaddress->local, local) == 0 &&
 					ipaddress->prefixlen == prefixlen)
 			return ipaddress;
 	}
@@ -131,11 +163,99 @@ static void free_ipdevice(gpointer data)
 	connman_info("%s {remove} index %d", ipdevice->ifname,
 							ipdevice->index);
 
+	if (ipdevice->config != NULL)
+		connman_ipconfig_unref(ipdevice->config);
+
 	free_address_list(ipdevice);
 	g_free(ipdevice->gateway);
 
 	g_free(ipdevice->ifname);
 	g_free(ipdevice);
+}
+
+static GSList *driver_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_ipconfig_driver *driver1 = a;
+	const struct connman_ipconfig_driver *driver2 = b;
+
+	return driver2->priority - driver1->priority;
+}
+
+/**
+ * connman_ipconfig_driver_register:
+ * @driver: IP configuration driver
+ *
+ * Register a new IP configuration driver
+ *
+ * Returns: %0 on success
+ */
+int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_insert_sorted(driver_list, driver,
+							compare_priority);
+
+	return 0;
+}
+
+/**
+ * connman_ipconfig_driver_unregister:
+ * @driver: IP configuration driver
+ *
+ * Remove a previously registered IP configuration driver.
+ */
+void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_remove(driver_list, driver);
+}
+
+static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
+{
+	GSList *list;
+
+	DBG("ipconfig %p", ipdevice->config);
+
+	if (ipdevice->config == NULL)
+		return;
+
+	switch (ipdevice->config->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_IGNORE:
+	case CONNMAN_IPCONFIG_METHOD_STATIC:
+		return;
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		break;
+	}
+
+	if (ipdevice->driver != NULL)
+		return;
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_ipconfig_driver *driver = list->data;
+
+		if (driver->request(ipdevice->config) == 0) {
+			ipdevice->driver = driver;
+			break;
+		}
+	}
+}
+
+static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
+{
+	DBG("ipconfig %p", ipdevice->config);
+
+	if (ipdevice->config == NULL)
+		return;
+
+	if (ipdevice->driver == NULL)
+		return;
+
+	ipdevice->driver->release(ipdevice->config);
 }
 
 void __connman_ipconfig_newlink(int index, unsigned short type,
@@ -160,6 +280,17 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	ipdevice->index = index;
 	ipdevice->ifname = connman_inet_ifname(index);
 	ipdevice->type = type;
+
+	ipdevice->config = connman_ipconfig_create(index);
+	if (ipdevice->config == NULL) {
+		g_free(ipdevice->ifname);
+		g_free(ipdevice);
+		return;
+	}
+
+	if (type == ARPHRD_ETHER)
+		connman_ipconfig_set_method(ipdevice->config,
+					CONNMAN_IPCONFIG_METHOD_IGNORE);
 
 	g_hash_table_insert(ipdevice_hash, GINT_TO_POINTER(index), ipdevice);
 
@@ -227,13 +358,23 @@ update:
 				ipconfig->ops->down(ipconfig);
 		}
 	}
+
+	if (lower_up)
+		__connman_ipconfig_lower_up(ipdevice);
+	if (lower_down)
+		__connman_ipconfig_lower_down(ipdevice);
 }
 
 void __connman_ipconfig_dellink(int index)
 {
+	struct connman_ipdevice *ipdevice;
 	GList *list;
 
 	DBG("index %d", index);
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
+	if (ipdevice == NULL)
+		return;
 
 	for (list = g_list_first(ipconfig_list); list;
 						list = g_list_next(list)) {
@@ -250,6 +391,8 @@ void __connman_ipconfig_dellink(int index)
 			ipconfig->ops->down(ipconfig);
 	}
 
+	__connman_ipconfig_lower_down(ipdevice);
+
 	g_hash_table_remove(ipdevice_hash, GINT_TO_POINTER(index));
 }
 
@@ -265,12 +408,12 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	if (ipdevice == NULL)
 		return;
 
-	ipaddress = g_try_new0(struct connman_ipaddress, 1);
+	ipaddress = connman_ipaddress_alloc();
 	if (ipaddress == NULL)
 		return;
 
 	ipaddress->prefixlen = prefixlen;
-	ipaddress->address = g_strdup(address);
+	ipaddress->local = g_strdup(address);
 
 	ipdevice->address_list = g_slist_append(ipdevice->address_list,
 								ipaddress);
@@ -298,8 +441,7 @@ void __connman_ipconfig_deladdr(int index, const char *label,
 	ipdevice->address_list = g_slist_remove(ipdevice->address_list,
 								ipaddress);
 
-	g_free(ipaddress->address);
-	g_free(ipaddress);
+	connman_ipaddress_free(ipaddress);
 
 	connman_info("%s {del} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
@@ -419,6 +561,12 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 
 	ipconfig->index = index;
 
+	ipconfig->address = connman_ipaddress_alloc();
+	if (ipconfig->address == NULL) {
+		g_free(ipconfig);
+		return NULL;
+	}
+
 	DBG("ipconfig %p", ipconfig);
 
 	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
@@ -450,6 +598,7 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
+		connman_ipaddress_free(ipconfig->address);
 		g_free(ipconfig);
 	}
 }
@@ -535,6 +684,19 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 	ipconfig->method = method;
 
 	return 0;
+}
+
+/**
+ * connman_ipconfig_bind:
+ * @ipconfig: ipconfig structure
+ * @ipaddress: ipaddress structure
+ *
+ * Bind IP address details to configuration
+ */
+void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
+					struct connman_ipaddress *ipaddress)
+{
+	connman_ipaddress_copy(ipconfig->address, ipaddress);
 }
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
@@ -630,47 +792,6 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	DBG("ipconfig %p identifier %s", ipconfig, identifier);
 
 	return 0;
-}
-
-static GSList *driver_list = NULL;
-
-static gint compare_priority(gconstpointer a, gconstpointer b)
-{
-	const struct connman_ipconfig_driver *driver1 = a;
-	const struct connman_ipconfig_driver *driver2 = b;
-
-	return driver2->priority - driver1->priority;
-}
-
-/**
- * connman_ipconfig_driver_register:
- * @driver: IP configuration driver
- *
- * Register a new IP configuration driver
- *
- * Returns: %0 on success
- */
-int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_insert_sorted(driver_list, driver,
-							compare_priority);
-
-	return 0;
-}
-
-/**
- * connman_ipconfig_driver_unregister:
- * @driver: IP configuration driver
- *
- * Remove a previously registered IP configuration driver.
- */
-void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_remove(driver_list, driver);
 }
 
 int __connman_ipconfig_init(void)
