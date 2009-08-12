@@ -64,6 +64,8 @@ struct connman_ipconfig_ops {
 	void (*down) (struct connman_ipconfig *ipconfig);
 	void (*lower_up) (struct connman_ipconfig *ipconfig);
 	void (*lower_down) (struct connman_ipconfig *ipconfig);
+	void (*ip_bound) (struct connman_ipconfig *ipconfig);
+	void (*ip_release) (struct connman_ipconfig *ipconfig);
 };
 
 struct connman_ipconfig *connman_ipconfig_create(int index);

@@ -256,6 +256,8 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 		return;
 
 	ipdevice->driver->release(ipdevice->config);
+
+	connman_inet_clear_address(ipdevice->index);
 }
 
 void __connman_ipconfig_newlink(int index, unsigned short type,
@@ -316,6 +318,8 @@ update:
 		else if ((flags & (IFF_RUNNING | IFF_LOWER_UP)) == 0)
 			lower_down = TRUE;
 	}
+
+	connman_inet_clear_address(index);
 
 	ipdevice->flags = flags;
 
@@ -401,6 +405,7 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 {
 	struct connman_ipdevice *ipdevice;
 	struct connman_ipaddress *ipaddress;
+	GList *list;
 
 	DBG("index %d", index);
 
@@ -420,6 +425,23 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 
 	connman_info("%s {add} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
+
+	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
+		return;
+
+	if (g_slist_length(ipdevice->address_list) > 1)
+		return;
+
+	for (list = g_list_first(ipconfig_list); list;
+						list = g_list_next(list)) {
+		struct connman_ipconfig *ipconfig = list->data;
+
+		if (index != ipconfig->index)
+			continue;
+
+		if (ipconfig->ops && ipconfig->ops->ip_bound)
+			ipconfig->ops->ip_bound(ipconfig);
+	}
 }
 
 void __connman_ipconfig_deladdr(int index, const char *label,
@@ -427,6 +449,7 @@ void __connman_ipconfig_deladdr(int index, const char *label,
 {
 	struct connman_ipdevice *ipdevice;
 	struct connman_ipaddress *ipaddress;
+	GList *list;
 
 	DBG("index %d", index);
 
@@ -445,6 +468,23 @@ void __connman_ipconfig_deladdr(int index, const char *label,
 
 	connman_info("%s {del} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
+
+	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
+		return;
+
+	if (g_slist_length(ipdevice->address_list) > 0)
+		return;
+
+	for (list = g_list_first(ipconfig_list); list;
+						list = g_list_next(list)) {
+		struct connman_ipconfig *ipconfig = list->data;
+
+		if (index != ipconfig->index)
+			continue;
+
+		if (ipconfig->ops && ipconfig->ops->ip_release)
+			ipconfig->ops->ip_release(ipconfig);
+	}
 }
 
 void __connman_ipconfig_newroute(int index, unsigned char scope,
@@ -697,6 +737,8 @@ void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 					struct connman_ipaddress *ipaddress)
 {
 	connman_ipaddress_copy(ipconfig->address, ipaddress);
+
+	connman_inet_set_address(ipconfig->index, ipconfig->address);
 }
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)

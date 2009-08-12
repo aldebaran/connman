@@ -1036,7 +1036,17 @@ static void device_lower_up(struct connman_ipconfig *ipconfig)
 
 static void device_lower_down(struct connman_ipconfig *ipconfig)
 {
-        connman_info("%s lower down", connman_ipconfig_get_ifname(ipconfig));
+	connman_info("%s lower down", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void device_ip_bound(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s ip bound", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void device_ip_release(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s ip release", connman_ipconfig_get_ifname(ipconfig));
 }
 
 static const struct connman_ipconfig_ops device_ops = {
@@ -1044,6 +1054,8 @@ static const struct connman_ipconfig_ops device_ops = {
 	.down		= device_down,
 	.lower_up	= device_lower_up,
 	.lower_down	= device_lower_down,
+	.ip_bound	= device_ip_bound,
+	.ip_release	= device_ip_release,
 };
 
 /**
