@@ -49,6 +49,24 @@ void connman_info(const char *format, ...)
 }
 
 /**
+ * connman_warn:
+ * @format: format string
+ * @Varargs: list of arguments
+ *
+ * Output warning messages
+ */
+void connman_warn(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+
+	vsyslog(LOG_WARNING, format, ap);
+
+	va_end(ap);
+}
+
+/**
  * connman_error:
  * @format: format string
  * @varargs: list of arguments

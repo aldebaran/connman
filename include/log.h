@@ -34,6 +34,8 @@ extern "C" {
 
 void connman_info(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
+void connman_warn(const char *format, ...)
+				__attribute__((format(printf, 1, 2)));
 void connman_error(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 void connman_debug(const char *format, ...)
