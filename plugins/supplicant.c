@@ -1199,7 +1199,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	unsigned short channel, frequency;
 	const char *mode, *security;
 	char *group = NULL;
-	unsigned int ssid_len;
 
 	DBG("task %p", task);
 
