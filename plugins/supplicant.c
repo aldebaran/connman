@@ -1337,10 +1337,8 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	if (result.name != NULL && result.name[0] != '\0')
 		connman_network_set_name(network, result.name);
 
-	if (connman_network_get_blob(network, "WiFi.SSID", &ssid_len) == NULL) {
-		connman_network_set_blob(network, "WiFi.SSID",
-					 result.ssid, result.ssid_len);
-	}
+	connman_network_set_blob(network, "WiFi.SSID",
+						result.ssid, result.ssid_len);
 
 	connman_network_set_string(network, "WiFi.Mode", mode);
 
