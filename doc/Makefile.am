@@ -37,7 +37,10 @@ else
 EXTRA_DIST = $(DOC_MAIN_SGML_FILE) connman-introduction.xml
 endif
 
-EXTRA_DIST += overview-api.txt behavior-api.txt plugin-api.txt \
-			manager-api.txt profile-api.txt service-api.txt \
-			device-lowlevel-api.txt network-lowlevel-api.txt \
-			connection-lowlevel-api.txt agent-api.txt
+EXTRA_DIST += overview-api.txt behavior-api.txt \
+				ipconfig-api.txt plugin-api.txt \
+				manager-api.txt agent-api.txt \
+				profile-api.txt service-api.txt \
+				device-lowlevel-api.txt \
+				network-lowlevel-api.txt \
+				connection-lowlevel-api.txt
