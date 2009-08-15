@@ -350,17 +350,15 @@ update:
 		if (index != ipconfig->index)
 			continue;
 
-		if (ipconfig->ops) {
-			if (up == TRUE && ipconfig->ops->up)
-				ipconfig->ops->up(ipconfig);
-			if (lower_up == TRUE && ipconfig->ops->lower_up)
-				ipconfig->ops->lower_up(ipconfig);
+		if (up == TRUE && ipconfig->ops->up)
+			ipconfig->ops->up(ipconfig);
+		if (lower_up == TRUE && ipconfig->ops->lower_up)
+			ipconfig->ops->lower_up(ipconfig);
 
-			if (lower_down == TRUE && ipconfig->ops->lower_down)
-				ipconfig->ops->lower_down(ipconfig);
-			if (down == TRUE && ipconfig->ops->down)
-				ipconfig->ops->down(ipconfig);
-		}
+		if (lower_down == TRUE && ipconfig->ops->lower_down)
+			ipconfig->ops->lower_down(ipconfig);
+		if (down == TRUE && ipconfig->ops->down)
+			ipconfig->ops->down(ipconfig);
 	}
 
 	if (lower_up)
@@ -389,9 +387,9 @@ void __connman_ipconfig_dellink(int index)
 
 		ipconfig->index = -1;
 
-		if (ipconfig->ops && ipconfig->ops->lower_down)
+		if (ipconfig->ops->lower_down)
 			ipconfig->ops->lower_down(ipconfig);
-		if (ipconfig->ops && ipconfig->ops->down)
+		if (ipconfig->ops->down)
 			ipconfig->ops->down(ipconfig);
 	}
 
@@ -439,7 +437,7 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 		if (index != ipconfig->index)
 			continue;
 
-		if (ipconfig->ops && ipconfig->ops->ip_bound)
+		if (ipconfig->ops->ip_bound)
 			ipconfig->ops->ip_bound(ipconfig);
 	}
 }
@@ -482,7 +480,7 @@ void __connman_ipconfig_deladdr(int index, const char *label,
 		if (index != ipconfig->index)
 			continue;
 
-		if (ipconfig->ops && ipconfig->ops->ip_release)
+		if (ipconfig->ops->ip_release)
 			ipconfig->ops->ip_release(ipconfig);
 	}
 }
@@ -609,8 +607,6 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 
 	DBG("ipconfig %p", ipconfig);
 
-	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
-
 	return ipconfig;
 }
 
@@ -636,7 +632,7 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
-		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
+		connman_ipconfig_set_ops(ipconfig, NULL);
 
 		connman_ipaddress_free(ipconfig->address);
 		g_free(ipconfig);
@@ -708,7 +704,13 @@ const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
 void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 				const struct connman_ipconfig_ops *ops)
 {
+	if (ipconfig->ops != NULL)
+		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
+
 	ipconfig->ops = ops;
+
+	if (ops != NULL)
+		ipconfig_list = g_list_append(ipconfig_list, ipconfig);
 }
 
 /**
