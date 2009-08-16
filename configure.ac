@@ -1,7 +1,7 @@
 AC_PREREQ(2.60)
-AC_INIT()
+AC_INIT(connman, 0.38)
 
-AM_INIT_AUTOMAKE(connman, 0.38)
+AM_INIT_AUTOMAKE([subdir-objects])
 AM_CONFIG_HEADER(config.h)
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
