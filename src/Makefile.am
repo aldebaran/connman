@@ -50,16 +50,16 @@ EXTRA_DIST = connman-dbus.conf connman-polkit.conf
 MAINTAINERCLEANFILES = Makefile.in
 
 connman.exp: $(connmand_OBJECTS)
-	nm -B *.o | awk '{ print $$3 }' | sort -u | grep -E -e '^connman_' > $@
+	$(AM_V_GEN)nm -B *.o | awk '{ print $$3 }' | sort -u | grep -E -e '^connman_' > $@
 
 connman.ver: connman.exp
-	echo "{ global:" > $@
-	cat $< | sed -e "s/\(.*\)/\1;/" >> $@
-	echo "local: *; };" >> $@
+	@echo "{ global:" > $@
+	$(AM_V_GEN)cat $< | sed -e "s/\(.*\)/\1;/" >> $@
+	@echo "local: *; };" >> $@
 
 connman.conf: connman-dbus.conf connman-polkit.conf
 if POLKIT
-	cp $(top_srcdir)/src/connman-polkit.conf $@
+	$(AM_V_GEN)cp $(top_srcdir)/src/connman-polkit.conf $@
 else
-	cp $(top_srcdir)/src/connman-dbus.conf $@
+	$(AM_V_GEN)cp $(top_srcdir)/src/connman-dbus.conf $@
 endif

@@ -221,14 +221,16 @@ EXTRA_DIST = polkit.policy
 MAINTAINERCLEANFILES = Makefile.in
 
 builtin.h:
-	echo "" > $@
-	list='$(builtin_modules)'; for i in $$list; \
+	@echo "" > $@
+	$(AM_V_GEN)list='$(builtin_modules)'; for i in $$list; \
 	  do echo "extern struct connman_plugin_desc __connman_builtin_$$i;" >> $@; done
-	echo "" >> $@
-	echo "static struct connman_plugin_desc *__connman_builtin[] = {" >> $@
-	list='$(builtin_modules)'; for i in $$list; \
+	@echo "" >> $@
+	@echo "static struct connman_plugin_desc *__connman_builtin[] = {" >> $@
+	@list='$(builtin_modules)'; for i in $$list; \
 	  do echo "&__connman_builtin_$$i," >> $@; done
-	echo "NULL };" >> $@
+	@echo "NULL };" >> $@
 
 connman.policy: polkit.policy
-	cp $< $@
+if POLKIT
+	$(AM_V_GEN)cp $< $@
+endif
