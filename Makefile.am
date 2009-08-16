@@ -1,6 +1,8 @@
 
 SUBDIRS = gdbus gatchat include plugins src client tools scripts test doc
 
+AM_MAKEFLAGS = --no-print-directory
+
 pkgconfigdir = $(libdir)/pkgconfig
 
 pkgconfig_DATA = connman.pc
