@@ -1,7 +1,7 @@
 AC_PREREQ(2.60)
 AC_INIT(connman, 0.38)
 
-AM_INIT_AUTOMAKE([subdir-objects])
+AM_INIT_AUTOMAKE([foreign subdir-objects])
 AM_CONFIG_HEADER(config.h)
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -327,10 +327,5 @@ AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 					[enable_datafiles=${enableval}])
 AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
 
-AC_OUTPUT(Makefile gdbus/Makefile gatchat/Makefile
-				include/Makefile include/version.h
-				src/Makefile src/connman.service
-				scripts/connman scripts/Makefile
-				plugins/Makefile client/Makefile
-				tools/Makefile test/Makefile
-				doc/Makefile doc/version.xml connman.pc)
+AC_OUTPUT(Makefile include/version.h src/connman.service
+				scripts/connman doc/version.xml connman.pc)

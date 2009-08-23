@@ -4,6 +4,7 @@
 *.la
 .deps
 .libs
+.dirstamp
 Makefile
 Makefile.in
 aclocal.m4
@@ -26,6 +27,7 @@ autom4te.cache
 connman.pc
 include/connman
 include/version.h
+src/builtin.h
 src/connmand
 src/connman.exp
 src/connman.ver
@@ -33,7 +35,6 @@ src/connman.conf
 src/connman.service
 src/*-connman.rules
 plugins/connman.policy
-plugins/builtin.h
 scripts/connman
 scripts/udhcpc-script
 scripts/dhclient-script

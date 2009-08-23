@@ -1,0 +1,255 @@
+
+plugin_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
+					@DBUS_CFLAGS@ @GLIB_CFLAGS@
+plugin_ldflags = -no-undefined -module -avoid-version
+
+
+if LOOPBACK
+if LOOPBACK_BUILTIN
+builtin_modules += loopback
+builtin_sources += plugins/loopback.c
+else
+plugin_LTLIBRARIES += plugins/loopback.la
+plugin_objects += $(plugins_loopback_la_OBJECTS)
+plugins_loopback_la_CFLAGS = $(plugin_cflags)
+plugins_loopback_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if ETHERNET
+if ETHERNET_BUILTIN
+builtin_modules += ethernet
+builtin_sources += plugins/ethernet.c
+else
+plugin_LTLIBRARIES += plugins/ethernet.la
+plugin_objects += $(plugins_ethernet_la_OBJECTS)
+plugins_ethernet_la_CFLAGS = $(plugin_cflags)
+plugins_ethernet_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if WIFI
+if WIFI_BUILTIN
+builtin_modules += wifi
+builtin_sources += plugins/wifi.c plugins/supplicant.h plugins/supplicant.c
+else
+plugin_LTLIBRARIES += plugins/wifi.la
+plugin_objects += $(plugins_wifi_la_OBJECTS)
+plugins_wifi_la_SOURCES = plugins/wifi.c \
+				plugins/supplicant.h plugins/supplicant.c
+plugins_wifi_la_CFLAGS = $(plugin_cflags)
+plugins_wifi_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if BLUETOOTH
+if BLUETOOTH_BUILTIN
+builtin_modules += bluetooth
+builtin_sources += plugins/bluetooth.c
+else
+plugin_LTLIBRARIES += plugins/bluetooth.la
+plugin_objects += $(plugins_bluetooth_la_OBJECTS)
+plugins_bluetooth_la_CFLAGS = $(plugin_cflags)
+plugins_bluetooth_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if OFONO
+if OFONO_BUILTIN
+builtin_modules += ofono
+builtin_sources += plugins/ofono.c
+else
+plugin_LTLIBRARIES += plugins/ofono.la
+plugin_objects += $(plugins_ofono_la_OBJECTS)
+plugins_ofono_la_CFLAGS = $(plugin_cflags)
+plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if MODEMMGR
+if MODEMMGR_BUILTIN
+builtin_modules += modemmgr
+builtin_sources += plugins/modemmgr.c
+else
+plugin_LTLIBRARIES += plugins/modemmgr.la
+plugin_objects += $(plugins_modemmgr_la_OBJECTS)
+plugins_modemmgr_la_CFLAGS = $(plugin_cflags)
+plugins_modemmgr_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if NOVATEL
+plugin_LTLIBRARIES += plugins/novatel.la
+plugin_objects += $(plugins_novatel_la_OBJECTS)
+plugins_novatel_la_SOURCES = plugins/novatel.c plugins/modem.h plugins/modem.c
+plugins_novatel_la_CFLAGS = $(plugin_cflags)
+plugins_novatel_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+if HUAWEI
+plugin_LTLIBRARIES += plugins/huawei.la
+plugin_objects += $(plugins_huawei_la_OBJECTS)
+plugins_huawei_la_SOURCES = plugins/huawei.c plugins/modem.h plugins/modem.c
+plugins_huawei_la_CFLAGS = $(plugin_cflags)
+plugins_huawei_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+if HSO
+if HSO_BUILTIN
+builtin_modules += hso
+builtin_sources += plugins/hso.c plugins/modem.h plugins/modem.c
+else
+plugin_LTLIBRARIES += plugins/hso.la
+plugin_objects += $(plugins_hso_la_OBJECTS)
+plugins_hso_la_SOURCES = $(gatchat_sources) \
+			plugins/hso.c plugins/modem.h plugins/modem.c
+plugins_hso_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
+plugins_hso_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if MBM
+if MBM_BUILTIN
+builtin_modules += mbm
+builtin_sources += plugins/mbm.c
+else
+plugin_LTLIBRARIES += plugins/mbm.la
+plugin_objects += $(plugins_mbm_la_OBJECTS)
+plugins_mbm_la_SOURCES = $(gatchat_sources) plugins/mbm.c
+plugins_mbm_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
+plugins_mbm_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if UDHCP
+if UDHCP_BUILTIN
+builtin_modules += udhcp
+builtin_sources += plugins/udhcp.c plugins/task.h plugins/task.c
+builtin_cflags += -DUDHCPC=\"@UDHCPC@\"
+else
+plugin_LTLIBRARIES += plugins/udhcp.la
+plugin_objects += $(plugins_udhcp_la_OBJECTS)
+plugins_udhcp_la_SOURCES = plugins/udhcp.c plugins/task.h plugins/task.c
+plugins_udhcp_la_CFLAGS = $(plugin_cflags) -DUDHCPC=\"@UDHCPC@\" \
+		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+plugins_udhcp_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if DHCLIENT
+if DHCLIENT_BUILTIN
+builtin_modules += dhclient
+builtin_sources += plugins/dhclient.c
+builtin_cflags += -DDHCLIENT=\"@DHCLIENT@\"
+else
+plugin_LTLIBRARIES += plugins/dhclient.la
+plugin_objects += $(plugins_dhclient_la_OBJECTS)
+plugins_dhclient_la_CFLAGS = $(plugin_cflags) -DDHCLIENT=\"@DHCLIENT@\" \
+		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if PPPD
+plugin_LTLIBRARIES += plugins/pppd.la
+plugin_objects += $(plugins_pppd_la_OBJECTS)
+plugins_pppd_la_CFLAGS = $(plugin_cflags) -DPPPD=\"@PPPD@\"
+plugins_pppd_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+if RESOLVCONF
+if RESOLVCONF_BUILTIN
+builtin_modules += resolvconf
+builtin_sources += plugins/resolvconf.c
+builtin_cflags += -DRESOLVCONF=\"@RESOLVCONF@\"
+else
+plugin_LTLIBRARIES += plugins/resolvconf.la
+plugin_objects += $(plugins_resolvconf_la_OBJECTS)
+plugins_resolvconf_la_CFLAGS = $(plugin_cflags) -DRESOLVCONF=\"@RESOLVCONF@\"
+plugins_resolvconf_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if DNSPROXY
+if DNSPROXY_BUILTIN
+builtin_modules += dnsproxy
+builtin_sources += plugins/dnsproxy.c
+else
+plugin_LTLIBRARIES += plugins/dnsproxy.la
+plugin_objects += $(plugins_dnsproxy_la_OBJECTS)
+plugins_dnsproxy_la_CFLAGS = $(plugin_cflags)
+plugins_dnsproxy_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if POLKIT
+if POLKIT_BUILTIN
+builtin_modules += polkit
+builtin_sources += plugins/polkit.c
+builtin_libadd += @POLKIT_LIBS@
+builtin_cflags += @POLKIT_CFLAGS@
+else
+plugin_LTLIBRARIES += plugins/polkit.la
+plugin_objects += $(plugins_polkit_la_OBJECTS)
+plugins_polkit_la_CFLAGS = $(plugin_cflags) @POLKIT_CFLAGS@
+plugins_polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
+plugins_polkit_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+if DATAFILES
+policydir = @POLKIT_DATADIR@
+
+policy_DATA = plugins/connman.policy
+endif
+endif
+
+if IWMX
+plugin_LTLIBRARIES += plugins/iwmxsdk.la
+plugin_objects += $(plugins_iwmxsdk_la_OBJECTS)
+plugins_iwmxsdk_la_SOURCES = plugins/iwmx.h plugins/iwmx.c plugins/iwmxsdk.c
+plugins_iwmxsdk_la_CFLAGS = $(plugin_cflags) @IWMXSDK_CFLAGS@
+plugins_iwmxsdk_la_LIBADD = @IWMXSDK_LIBS@ @GLIB_LIBS@
+plugins_iwmxsdk_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+if IOSPM
+plugin_LTLIBRARIES += plugins/iospm.la
+plugin_objects += $(plugins_iospm_la_OBJECTS)
+plugins_iospm_la_CFLAGS = $(plugin_cflags)
+plugins_iospm_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+if FAKE
+plugin_LTLIBRARIES += plugins/fake.la
+plugin_objects += $(plugins_fake_la_OBJECTS)
+plugins_fake_la_CFLAGS = $(plugin_cflags)
+plugins_fake_la_LDFLAGS = $(plugin_ldflags)
+endif
+
+
+if UDHCP
+script_PROGRAMS += scripts/udhcpc-script
+
+scripts_udhcpc_script_LDADD = @DBUS_LIBS@
+endif
+
+if DHCLIENT
+script_DATA += scripts/dhclient.conf
+script_PROGRAMS += scripts/dhclient-script
+
+scripts_dhclient_script_LDADD = @DBUS_LIBS@
+endif
+
+if PPPD
+script_LTLIBRARIES += scripts/pppd-plugin.la
+
+scripts_pppd_plugin_la_LDFLAGS = -module -avoid-version
+endif
+
+
+EXTRA_DIST += plugins/polkit.policy scripts/dhclient.conf
+
+plugins/connman.policy: plugins/polkit.policy
+if POLKIT
+	$(AM_V_GEN)cp $< $@
+endif
