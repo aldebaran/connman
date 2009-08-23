@@ -53,9 +53,9 @@ connman.exp: $(connmand_OBJECTS)
 	$(AM_V_GEN)nm -B *.o | awk '{ print $$3 }' | sort -u | grep -E -e '^connman_' > $@
 
 connman.ver: connman.exp
-	@echo "{ global:" > $@
+	$(AM_V_at)echo "{ global:" > $@
 	$(AM_V_GEN)cat $< | sed -e "s/\(.*\)/\1;/" >> $@
-	@echo "local: *; };" >> $@
+	$(AM_V_at)echo "local: *; };" >> $@
 
 connman.conf: connman-dbus.conf connman-polkit.conf
 if POLKIT
