@@ -216,19 +216,12 @@ INCLUDES = -I$(top_builddir)/include
 
 CLEANFILES = $(BUILT_SOURCES) connman.policy
 
-EXTRA_DIST = polkit.policy
+EXTRA_DIST = polkit.policy genbuiltin
 
 MAINTAINERCLEANFILES = Makefile.in
 
-builtin.h:
-	$(AM_V_at)echo "" > $@
-	$(AM_V_GEN)list='$(builtin_modules)'; for i in $$list; \
-	  do echo "extern struct connman_plugin_desc __connman_builtin_$$i;" >> $@; done
-	$(AM_V_at)echo "" >> $@
-	$(AM_V_at)echo "static struct connman_plugin_desc *__connman_builtin[] = {" >> $@
-	$(AM_V_at)list='$(builtin_modules)'; for i in $$list; \
-	  do echo "&__connman_builtin_$$i," >> $@; done
-	$(AM_V_at)echo "NULL };" >> $@
+builtin.h: genbuiltin $(builtin_sources)
+	$(AM_V_GEN)$(srcdir)/genbuiltin $(builtin_modules) > $@
 
 connman.policy: polkit.policy
 if POLKIT
