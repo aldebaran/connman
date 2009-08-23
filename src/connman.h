@@ -112,6 +112,9 @@ unsigned short __connman_ipconfig_get_type(int index);
 unsigned int __connman_ipconfig_get_flags(int index);
 const char *__connman_ipconfig_get_gateway(int index);
 
+int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
+
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
 

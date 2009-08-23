@@ -703,6 +703,8 @@ static gboolean connect_timeout(gpointer user_data)
 	else if (service->device != NULL)
 		__connman_device_disconnect(service->device);
 
+	__connman_ipconfig_disable(service->ipconfig);
+
 	if (service->pending != NULL) {
 		DBusMessage *reply;
 
@@ -1283,18 +1285,24 @@ int __connman_service_connect(struct connman_service *service)
 		if (prepare_network(service) == FALSE)
 			return -EINVAL;
 
+		__connman_ipconfig_enable(service->ipconfig);
+
 		err = __connman_network_connect(service->network);
 	} else if (service->device != NULL) {
 		if (service->favorite == FALSE)
 			return -ENOLINK;
+
+		__connman_ipconfig_enable(service->ipconfig);
 
 		err = __connman_device_connect(service->device);
 	} else
 		return -EOPNOTSUPP;
 
 	if (err < 0) {
-		if (err != -EINPROGRESS)
+		if (err != -EINPROGRESS) {
+			__connman_ipconfig_disable(service->ipconfig);
 			return err;
+		}
 
 		service->timeout = g_timeout_add_seconds(45,
 						connect_timeout, service);
@@ -1321,6 +1329,8 @@ int __connman_service_disconnect(struct connman_service *service)
 		err = __connman_device_disconnect(service->device);
 	} else
 		return -EOPNOTSUPP;
+
+	__connman_ipconfig_disable(service->ipconfig);
 
 	if (err < 0) {
 		if (err != -EINPROGRESS)
@@ -1608,6 +1618,64 @@ static int service_register(struct connman_service *service)
 	return 0;
 }
 
+static void service_up(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s up", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void service_down(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s down", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void service_lower_up(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s lower up", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void service_lower_down(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s lower down", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void service_ip_bound(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s ip bound", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static void service_ip_release(struct connman_ipconfig *ipconfig)
+{
+	connman_info("%s ip release", connman_ipconfig_get_ifname(ipconfig));
+}
+
+static const struct connman_ipconfig_ops service_ops = {
+	.up		= service_up,
+	.down		= service_down,
+	.lower_up	= service_lower_up,
+	.lower_down	= service_lower_down,
+	.ip_bound	= service_ip_bound,
+	.ip_release	= service_ip_release,
+};
+
+static void setup_ipconfig(struct connman_service *service, int index)
+{
+	if (index < 0)
+		return;
+
+	service->ipconfig = connman_ipconfig_create(index);
+	if (service->ipconfig == NULL)
+		return;
+
+	connman_ipconfig_set_method(service->ipconfig,
+					CONNMAN_IPCONFIG_METHOD_DHCP);
+
+	__connman_storage_load_service(service);
+
+	connman_ipconfig_set_data(service->ipconfig, service);
+
+	connman_ipconfig_set_ops(service->ipconfig, &service_ops);
+}
+
 /**
  * __connman_service_lookup_from_device:
  * @device: device structure
@@ -1666,6 +1734,8 @@ struct connman_service *__connman_service_create_from_device(struct connman_devi
 	service->autoconnect = FALSE;
 
 	service->device = device;
+
+	setup_ipconfig(service, connman_device_get_index(device));
 
 	service_register(service);
 
@@ -1902,6 +1972,8 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	service->state = CONNMAN_SERVICE_STATE_IDLE;
 
 	update_from_network(service, network);
+
+	setup_ipconfig(service, connman_network_get_index(network));
 
 	service_register(service);
 

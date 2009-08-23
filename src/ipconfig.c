@@ -38,6 +38,8 @@ struct connman_ipconfig {
 	gint refcount;
 	int index;
 
+	struct connman_ipconfig *origin;
+
 	const struct connman_ipconfig_ops *ops;
 	void *ops_data;
 
@@ -55,7 +57,9 @@ struct connman_ipdevice {
 	char *gateway;
 
 	struct connman_ipconfig *config;
+
 	struct connman_ipconfig_driver *driver;
+	struct connman_ipconfig *driver_config;
 };
 
 static GHashTable *ipdevice_hash = NULL;
@@ -74,6 +78,9 @@ struct connman_ipaddress *connman_ipaddress_alloc(void)
 
 void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 {
+	if (ipaddress == NULL)
+		return;
+
 	g_free(ipaddress->broadcast);
 	g_free(ipaddress->peer);
 	g_free(ipaddress->local);
@@ -83,6 +90,9 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source)
 {
+	if (ipaddress == NULL || source == NULL)
+		return;
+
 	ipaddress->prefixlen = source->prefixlen;
 
 	g_free(ipaddress->local);
@@ -235,13 +245,22 @@ static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
 	if (ipdevice->driver != NULL)
 		return;
 
+	ipdevice->driver_config = connman_ipconfig_clone(ipdevice->config);
+	if (ipdevice->driver_config == NULL)
+		return;
+
 	for (list = driver_list; list; list = list->next) {
 		struct connman_ipconfig_driver *driver = list->data;
 
-		if (driver->request(ipdevice->config) == 0) {
+		if (driver->request(ipdevice->driver_config) == 0) {
 			ipdevice->driver = driver;
 			break;
 		}
+	}
+
+	if (ipdevice->driver == NULL) {
+		connman_ipconfig_unref(ipdevice->driver_config);
+		ipdevice->driver_config = NULL;
 	}
 }
 
@@ -255,7 +274,12 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 	if (ipdevice->driver == NULL)
 		return;
 
-	ipdevice->driver->release(ipdevice->config);
+	ipdevice->driver->release(ipdevice->driver_config);
+
+	ipdevice->driver = NULL;
+
+	connman_ipconfig_unref(ipdevice->driver_config);
+	ipdevice->driver_config = NULL;
 
 	connman_inet_clear_address(ipdevice->index);
 }
@@ -282,17 +306,6 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	ipdevice->index = index;
 	ipdevice->ifname = connman_inet_ifname(index);
 	ipdevice->type = type;
-
-	ipdevice->config = connman_ipconfig_create(index);
-	if (ipdevice->config == NULL) {
-		g_free(ipdevice->ifname);
-		g_free(ipdevice);
-		return;
-	}
-
-	if (type == ARPHRD_ETHER)
-		connman_ipconfig_set_method(ipdevice->config,
-					CONNMAN_IPCONFIG_METHOD_IGNORE);
 
 	g_hash_table_insert(ipdevice_hash, GINT_TO_POINTER(index), ipdevice);
 
@@ -611,6 +624,32 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 }
 
 /**
+ * connman_ipconfig_clone:
+ *
+ * Clone an ipconfig structure and create new reference.
+ *
+ * Returns: a newly-allocated #connman_ipconfig structure
+ */
+struct connman_ipconfig *connman_ipconfig_clone(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipconfig *ipconfig_clone;
+
+	DBG("ipconfig %p", ipconfig);
+
+	ipconfig_clone = g_try_new0(struct connman_ipconfig, 1);
+	if (ipconfig_clone == NULL)
+		return NULL;
+
+	ipconfig_clone->refcount = 1;
+
+	ipconfig_clone->origin = connman_ipconfig_ref(ipconfig);
+
+	ipconfig_clone->index = -1;
+
+	return ipconfig_clone;
+}
+
+/**
  * connman_ipconfig_ref:
  * @ipconfig: ipconfig structure
  *
@@ -633,6 +672,11 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
 		connman_ipconfig_set_ops(ipconfig, NULL);
+
+		if (ipconfig->origin != NULL) {
+			connman_ipconfig_unref(ipconfig->origin);
+			ipconfig->origin = NULL;
+		}
 
 		connman_ipaddress_free(ipconfig->address);
 		g_free(ipconfig);
@@ -670,6 +714,9 @@ void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
  */
 int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 {
+	if (ipconfig->origin != NULL)
+		return ipconfig->origin->index;
+
 	return ipconfig->index;
 }
 
@@ -738,9 +785,58 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 					struct connman_ipaddress *ipaddress)
 {
-	connman_ipaddress_copy(ipconfig->address, ipaddress);
+	struct connman_ipconfig *origin;
 
-	connman_inet_set_address(ipconfig->index, ipconfig->address);
+	origin = ipconfig->origin ? ipconfig->origin : ipconfig;
+
+	connman_ipaddress_copy(origin->address, ipaddress);
+
+	connman_inet_set_address(origin->index, origin->address);
+}
+
+int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("ipconfig %p", ipconfig);
+
+	if (ipconfig == NULL || ipconfig->index < 0)
+		return -ENODEV;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return -ENXIO;
+
+	if (ipdevice->config != NULL)
+		connman_ipconfig_unref(ipdevice->config);
+
+	ipdevice->config = connman_ipconfig_ref(ipconfig);
+
+	return 0;
+}
+
+int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("ipconfig %p", ipconfig);
+
+	if (ipconfig == NULL || ipconfig->index < 0)
+		return -ENODEV;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return -ENXIO;
+
+	if (ipdevice->config == NULL || ipdevice->config != ipconfig)
+		return -EINVAL;
+
+	connman_ipconfig_unref(ipdevice->config);
+	ipdevice->config = NULL;
+
+	return 0;
 }
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method)
