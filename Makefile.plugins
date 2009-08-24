@@ -1,4 +1,12 @@
 
+noinst_LTLIBRARIES = plugins/libgatchat.la
+
+plugins_libgatchat_la_SOURCES = gatchat/gatchat.h gatchat/gatchat.c \
+				gatchat/gatresult.h gatchat/gatresult.c \
+				gatchat/gatsyntax.h gatchat/gatsyntax.c \
+				gatchat/ringbuffer.h gatchat/ringbuffer.c
+
+
 plugin_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
 					@DBUS_CFLAGS@ @GLIB_CFLAGS@
 plugin_ldflags = -no-undefined -module -avoid-version
@@ -98,12 +106,14 @@ if HSO
 if HSO_BUILTIN
 builtin_modules += hso
 builtin_sources += plugins/hso.c plugins/modem.h plugins/modem.c
+builtin_cflags += -I$(srcdir)/gatchat
+builtin_libadd += plugins/libgatchat.la
 else
 plugin_LTLIBRARIES += plugins/hso.la
 plugin_objects += $(plugins_hso_la_OBJECTS)
-plugins_hso_la_SOURCES = $(gatchat_sources) \
-			plugins/hso.c plugins/modem.h plugins/modem.c
+plugins_hso_la_SOURCES = plugins/hso.c plugins/modem.h plugins/modem.c
 plugins_hso_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
+plugins_hso_la_LIBADD = plugins/libgatchat.la
 plugins_hso_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
@@ -112,11 +122,14 @@ if MBM
 if MBM_BUILTIN
 builtin_modules += mbm
 builtin_sources += plugins/mbm.c
+builtin_cflags += -I$(srcdir)/gatchat
+builtin_libadd += plugins/libgatchat.la
 else
 plugin_LTLIBRARIES += plugins/mbm.la
 plugin_objects += $(plugins_mbm_la_OBJECTS)
-plugins_mbm_la_SOURCES = $(gatchat_sources) plugins/mbm.c
+plugins_mbm_la_SOURCES = plugins/mbm.c
 plugins_mbm_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
+plugins_mbm_la_LIBADD = plugins/libgatchat.la
 plugins_mbm_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif

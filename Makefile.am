@@ -22,11 +22,6 @@ local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/object.c gdbus/watch.c
 
-gatchat_sources = gatchat/gatchat.h gatchat/gatchat.c \
-				gatchat/gatresult.h gatchat/gatresult.c \
-				gatchat/gatsyntax.h gatchat/gatsyntax.c \
-				gatchat/ringbuffer.h gatchat/ringbuffer.c
-
 if DATAFILES
 dbusdir = @DBUS_DATADIR@
 
@@ -46,7 +41,7 @@ noinst_PROGRAMS =
 
 sbin_PROGRAMS = src/connmand
 
-src_connmand_SOURCES = $(gdbus_sources) $(gatchat_sources) $(builtin_sources) \
+src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
@@ -88,8 +83,7 @@ AM_CFLAGS = @UDEV_CFLAGS@ @NETLINK_CFLAGS@ @DBUS_CFLAGS@ \
 					-DSCRIPTDIR=\""$(scriptdir)"\" \
 					-DSTORAGEDIR=\""$(storagedir)\""
 
-INCLUDES = -I$(top_builddir)/include -I$(top_builddir)/src \
-				-I$(srcdir)/gdbus -I$(srcdir)/gatchat
+INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf
 
@@ -167,7 +161,8 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
 src/connman.exp: $(src_connmand_OBJECTS)
-	$(AM_V_GEN)nm -B $^ | awk '{ print $$3 }' | sort -u | grep -E -e '^connman_' > $@
+	$(AM_V_GEN)nm -B $^ | awk '{ print $$3 }' | sort -u | \
+				grep -E -e '^connman_' -e '^g_dbus_' > $@
 
 src/connman.ver: src/connman.exp
 	$(AM_V_at)echo "{ global:" > $@
