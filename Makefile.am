@@ -187,11 +187,11 @@ endif
 $(src_connmand_OBJECTS) $(plugin_objects): $(local_headers)
 
 include/connman/version.h: include/version.h
-	$(AM_V_at)if [ ! -e include/connman ] ; then mkdir include/connman ; fi
+	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
 
 include/connman/%.h: include/%.h
-	$(AM_V_at)if [ ! -e include/connman ] ; then mkdir include/connman ; fi
+	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
 clean-local: include/connman
