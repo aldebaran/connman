@@ -170,7 +170,7 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 
 src/connman.exp: $(src_connmand_OBJECTS)
 	$(AM_V_GEN)$(NM) -B $^ | $(AWK) '{ print $$3 }' | sort -u | \
-				grep -E -e '^connman_' -e '^g_dbus_' > $@
+				$(EGREP) -e '^connman_' -e '^g_dbus_' > $@
 
 src/connman.ver: src/connman.exp
 	$(AM_V_at)echo "{ global:" > $@
