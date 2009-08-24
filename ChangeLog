@@ -1,3 +1,13 @@
+ver 0.39:
+	Fix file permissions for profile storage.
+	Fix service resorting when they are in different states.
+	Fix support for handling Bluetooth PAN devices.
+	Add support for AutoConnect property of services.
+	Add support for creating, modifying and removing profiles.
+	Add support for fully flexible task handling framework.
+	Add support for more generic RTNL handling and notifications.
+	Add support for full non-recursive build.
+
 ver 0.38:
 	Fix broken check for security modes.
 	Fix requirement of inotify when loopback support is disabled.
