@@ -169,12 +169,12 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
 src/connman.exp: $(src_connmand_OBJECTS)
-	$(AM_V_GEN)nm -B $^ | awk '{ print $$3 }' | sort -u | \
+	$(AM_V_GEN)$(NM) -B $^ | $(AWK) '{ print $$3 }' | sort -u | \
 				grep -E -e '^connman_' -e '^g_dbus_' > $@
 
 src/connman.ver: src/connman.exp
 	$(AM_V_at)echo "{ global:" > $@
-	$(AM_V_GEN)cat $< | sed -e "s/\(.*\)/\1;/" >> $@
+	$(AM_V_GEN)cat $< | $(SED) -e "s/\(.*\)/\1;/" >> $@
 	$(AM_V_at)echo "local: *; };" >> $@
 
 src/connman.conf: src/connman-dbus.conf src/connman-polkit.conf
