@@ -1674,6 +1674,7 @@ static void setup_ipconfig(struct connman_service *service, int index)
 	connman_ipconfig_set_data(service->ipconfig, service);
 
 	connman_ipconfig_set_ops(service->ipconfig, &service_ops);
+	connman_ipconfig_set_ops(service->ipconfig, NULL);
 }
 
 /**
