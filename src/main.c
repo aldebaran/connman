@@ -112,6 +112,7 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError err;
 	struct sigaction sa;
+	mode_t old_umask;
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
@@ -155,6 +156,8 @@ int main(int argc, char *argv[])
 		if (errno != EEXIST)
 			perror("Failed to create storage directory");
 	}
+
+	old_umask = umask(077);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
