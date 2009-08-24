@@ -69,19 +69,27 @@ CLEANFILES = src/connman.ver src/connman.exp src/connman.conf \
 
 statedir = $(localstatedir)/run/connman
 
-storagedir = $(localstatedir)/lib/connman
-
 plugindir = $(libdir)/connman/plugins
 
 scriptdir = $(libdir)/connman/scripts
 
+storagedir = $(localstatedir)/lib/connman
+
+if MAINTAINER_MODE
+build_plugindir = $(abs_top_srcdir)/plugins/.libs
+build_scriptdir = $(abs_top_srcdir)/scripts
+else
+build_plugindir = $(plugindir)
+build_scriptdir = $(scriptdir)
+endif
+
 AM_CFLAGS = @UDEV_CFLAGS@ @NETLINK_CFLAGS@ @DBUS_CFLAGS@ \
-			@GLIB_CFLAGS@ @GTHREAD_CFLAGS@ $(builtin_cflags) \
-					-DCONNMAN_PLUGIN_BUILTIN \
-					-DSTATEDIR=\""$(statedir)"\" \
-					-DPLUGINDIR=\""$(plugindir)"\" \
-					-DSCRIPTDIR=\""$(scriptdir)"\" \
-					-DSTORAGEDIR=\""$(storagedir)\""
+		@GLIB_CFLAGS@ @GTHREAD_CFLAGS@ $(builtin_cflags) \
+				-DCONNMAN_PLUGIN_BUILTIN \
+				-DSTATEDIR=\""$(statedir)"\" \
+				-DPLUGINDIR=\""$(build_plugindir)"\" \
+				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
+				-DSTORAGEDIR=\""$(storagedir)\""
 
 INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 

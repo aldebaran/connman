@@ -144,7 +144,8 @@ plugin_LTLIBRARIES += plugins/udhcp.la
 plugin_objects += $(plugins_udhcp_la_OBJECTS)
 plugins_udhcp_la_SOURCES = plugins/udhcp.c plugins/task.h plugins/task.c
 plugins_udhcp_la_CFLAGS = $(plugin_cflags) -DUDHCPC=\"@UDHCPC@\" \
-		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+					-DSTATEDIR=\""$(statedir)"\" \
+					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 plugins_udhcp_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
@@ -158,7 +159,8 @@ else
 plugin_LTLIBRARIES += plugins/dhclient.la
 plugin_objects += $(plugins_dhclient_la_OBJECTS)
 plugins_dhclient_la_CFLAGS = $(plugin_cflags) -DDHCLIENT=\"@DHCLIENT@\" \
-		-DSTATEDIR=\""$(statedir)"\" -DSCRIPTDIR=\""$(scriptdir)"\"
+					-DSTATEDIR=\""$(statedir)"\" \
+					-DSCRIPTDIR=\""$(built_scriptdir)"\"
 plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
