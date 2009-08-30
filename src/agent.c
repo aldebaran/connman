@@ -85,11 +85,11 @@ int __connman_agent_unregister(const char *sender, const char *path)
 	return 0;
 }
 
-int __connman_agent_init(DBusConnection *conn)
+int __connman_agent_init(void)
 {
-	DBG("conn %p", conn);
+	DBG("");
 
-	connection = dbus_connection_ref(conn);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
 
@@ -100,7 +100,10 @@ void __connman_agent_cleanup(void)
 {
 	DBusMessage *msg;
 
-	DBG("conn %p", connection);
+	DBG("");
+
+	if (connection == NULL)
+		return;
 
 	if (agent_watch > 0)
 		g_dbus_remove_watch(connection, agent_watch);

@@ -1535,14 +1535,13 @@ void connman_element_set_error(struct connman_element *element,
 	__connman_service_indicate_error(service, convert_error(error));
 }
 
-int __connman_element_init(DBusConnection *conn, const char *device,
-							const char *nodevice)
+int __connman_element_init(const char *device, const char *nodevice)
 {
 	struct connman_element *element;
 
-	DBG("conn %p", conn);
+	DBG("");
 
-	connection = dbus_connection_ref(conn);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
 
@@ -1657,6 +1656,9 @@ void __connman_element_cleanup(void)
 	element_root = NULL;
 
 	g_free(device_filter);
+
+	if (connection == NULL)
+		return;
 
 	dbus_connection_unref(connection);
 }

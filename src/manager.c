@@ -720,11 +720,11 @@ static GDBusMethodTable nm_methods[] = {
 
 static gboolean nm_compat = FALSE;
 
-int __connman_manager_init(DBusConnection *conn, gboolean compat)
+int __connman_manager_init(gboolean compat)
 {
-	DBG("conn %p", conn);
+	DBG("");
 
-	connection = dbus_connection_ref(conn);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
 
@@ -748,9 +748,12 @@ int __connman_manager_init(DBusConnection *conn, gboolean compat)
 
 void __connman_manager_cleanup(void)
 {
-	DBG("conn %p", connection);
+	DBG("");
 
 	connman_notifier_unregister(&technology_notifier);
+
+	if (connection == NULL)
+		return;
 
 	if (nm_compat == TRUE) {
 		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);

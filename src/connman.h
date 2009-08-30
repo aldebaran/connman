@@ -55,10 +55,10 @@ int __connman_selftest(void);
 
 #include <connman/types.h>
 
-int __connman_manager_init(DBusConnection *conn, gboolean compat);
+int __connman_manager_init(gboolean compat);
 void __connman_manager_cleanup(void);
 
-int __connman_agent_init(DBusConnection *conn);
+int __connman_agent_init(void);
 void __connman_agent_cleanup(void);
 
 int __connman_agent_register(const char *sender, const char *path);
@@ -170,8 +170,7 @@ void __connman_driver_rescan(struct connman_driver *driver);
 
 #include <connman/element.h>
 
-int __connman_element_init(DBusConnection *conn, const char *device,
-							const char *nodevice);
+int __connman_element_init(const char *device, const char *nodevice);
 void __connman_element_start(void);
 void __connman_element_stop(void);
 void __connman_element_cleanup(void);
@@ -286,7 +285,7 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network);
 
 #include <connman/profile.h>
 
-int __connman_profile_init(DBusConnection *conn);
+int __connman_profile_init();
 void __connman_profile_cleanup(void);
 
 connman_bool_t __connman_profile_get_offlinemode(void);

@@ -685,11 +685,11 @@ static struct connman_storage profile_storage = {
 	.profile_save	= profile_save,
 };
 
-int __connman_profile_init(DBusConnection *conn)
+int __connman_profile_init(void)
 {
-	DBG("conn %p", conn);
+	DBG("");
 
-	connection = dbus_connection_ref(conn);
+	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
 
@@ -704,7 +704,7 @@ int __connman_profile_init(DBusConnection *conn)
 
 void __connman_profile_cleanup(void)
 {
-	DBG("conn %p", connection);
+	DBG("");
 
 	if (profiles != NULL) {
 		g_hash_table_destroy(profiles);

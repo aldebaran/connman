@@ -201,11 +201,11 @@ int main(int argc, char *argv[])
 	__connman_dbus_init(conn);
 
 	__connman_storage_init();
-	__connman_element_init(conn, option_device, option_nodevice);
+	__connman_element_init(option_device, option_nodevice);
 
-	__connman_agent_init(conn);
-	__connman_manager_init(conn, option_compat);
-	__connman_profile_init(conn);
+	__connman_agent_init();
+	__connman_manager_init(option_compat);
+	__connman_profile_init();
 
 	__connman_resolver_init();
 	__connman_ipconfig_init();
