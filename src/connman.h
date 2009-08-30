@@ -36,6 +36,7 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum);
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg);
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
 DBusMessage *__connman_error_passphrase_required(DBusMessage *msg);
+DBusMessage *__connman_error_not_registered(DBusMessage *msg);
 DBusMessage *__connman_error_not_supported(DBusMessage *msg);
 DBusMessage *__connman_error_not_implemented(DBusMessage *msg);
 DBusMessage *__connman_error_not_found(DBusMessage *msg);

@@ -579,8 +579,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 static DBusMessage *register_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *sender, *path;
+	int err;
 
 	DBG("conn %p", conn);
 
@@ -589,22 +589,18 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
+	err = __connman_agent_register(sender, path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	__connman_agent_register(sender, path);
-
-	return reply;
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *unregister_agent(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	DBusMessage *reply;
 	const char *sender, *path;
+	int err;
 
 	DBG("conn %p", conn);
 
@@ -613,15 +609,11 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
+	err = __connman_agent_unregister(sender, path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
 
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	__connman_agent_unregister(sender, path);
-
-	return reply;
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static GDBusMethodTable manager_methods[] = {

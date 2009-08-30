@@ -35,6 +35,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 	const char *str = strerror(errnum);
 
 	switch (errnum) {
+	case ESRCH:
+		return __connman_error_not_registered(msg);
 	case ENXIO:
 		return __connman_error_not_found(msg);
 	case EACCES:
@@ -83,6 +85,12 @@ DBusMessage *__connman_error_passphrase_required(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 				".PassphraseRequired", "Passphrase required");
+}
+
+DBusMessage *__connman_error_not_registered(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+					".NotRegistered", "Not registered");
 }
 
 DBusMessage *__connman_error_not_supported(DBusMessage *msg)

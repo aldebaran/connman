@@ -75,7 +75,7 @@ int __connman_agent_unregister(const char *sender, const char *path)
 	DBG("sender %s path %s", sender, path);
 
 	if (agent_path == NULL)
-		return -ENOENT;
+		return -ESRCH;
 
 	if (agent_watch > 0)
 		g_dbus_remove_watch(connection, agent_watch);
