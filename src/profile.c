@@ -706,15 +706,13 @@ void __connman_profile_cleanup(void)
 {
 	DBG("");
 
-	if (profiles != NULL) {
-		g_hash_table_destroy(profiles);
-		profiles = NULL;
-	}
-
-	connman_storage_unregister(&profile_storage);
-
 	if (connection == NULL)
 		return;
+
+	g_hash_table_destroy(profiles);
+	profiles = NULL;
+
+	connman_storage_unregister(&profile_storage);
 
 	dbus_connection_unref(connection);
 }
