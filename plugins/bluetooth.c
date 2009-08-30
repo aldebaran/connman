@@ -763,6 +763,9 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
 
+	if (bluetooth_devices == NULL)
+		return;
+
 	g_hash_table_destroy(bluetooth_devices);
 	bluetooth_devices = NULL;
 }
