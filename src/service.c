@@ -2033,9 +2033,11 @@ static int service_load(struct connman_service *service)
 {
 	const char *ident = service->profile;
 	GKeyFile *keyfile;
+	GError *error = NULL;
 	gchar *pathname, *data = NULL;
 	gsize length;
 	gchar *str;
+	connman_bool_t autoconnect;
 	unsigned int ssid_len;
 	int err = 0;
 
@@ -2125,8 +2127,11 @@ static int service_load(struct connman_service *service)
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
 
-		service->autoconnect = g_key_file_get_boolean(keyfile,
-				service->identifier, "AutoConnect", NULL);
+		autoconnect = g_key_file_get_boolean(keyfile,
+				service->identifier, "AutoConnect", &error);
+		if (error == NULL)
+			service->autoconnect = autoconnect;
+		g_clear_error(&error);
 
 		str = g_key_file_get_string(keyfile,
 				service->identifier, "Failure", NULL);
