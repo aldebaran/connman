@@ -85,6 +85,34 @@ int __connman_agent_unregister(const char *sender, const char *path)
 	return 0;
 }
 
+int __connman_agent_request_passphrase(struct connman_service *service,
+				passphrase_cb_t callback, void *user_data)
+{
+	DBusMessage *message;
+	const char *path;
+
+	DBG("service %p", service);
+
+	if (agent_path == NULL)
+		return -ESRCH;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+				CONNMAN_AGENT_INTERFACE, "RequestPassphrase");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	path = __connman_service_get_path(service);
+
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	g_dbus_send_message(connection, message);
+
+	return -EIO;
+}
+
 int __connman_agent_init(void)
 {
 	DBG("");
@@ -98,7 +126,7 @@ int __connman_agent_init(void)
 
 void __connman_agent_cleanup(void)
 {
-	DBusMessage *msg;
+	DBusMessage *message;
 
 	DBG("");
 
@@ -111,16 +139,14 @@ void __connman_agent_cleanup(void)
 	if (agent_path == NULL)
 		return;
 
-	msg = dbus_message_new_method_call(agent_sender, agent_path,
+	message = dbus_message_new_method_call(agent_sender, agent_path,
 					CONNMAN_AGENT_INTERFACE, "Release");
-	if (msg == NULL)
+	if (message == NULL)
 		return;
 
-	dbus_message_set_no_reply(msg, TRUE);
+	dbus_message_set_no_reply(message, TRUE);
 
-	dbus_connection_send(connection, msg, NULL);
-
-	dbus_message_unref(msg);
+	g_dbus_send_message(connection, message);
 
 	agent_free();
 

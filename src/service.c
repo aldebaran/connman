@@ -756,6 +756,12 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	err = __connman_service_connect(service);
 	if (err < 0) {
+		if (err == -ENOKEY) {
+			if (__connman_agent_request_passphrase(service,
+							NULL, NULL) == 0)
+				return NULL;
+		}
+
 		if (err != -EINPROGRESS) {
 			dbus_message_unref(service->pending);
 			service->pending = NULL;
@@ -1794,6 +1800,11 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 	g_free(name);
 
 	return service;
+}
+
+const char *__connman_service_get_path(struct connman_service *service)
+{
+	return service->path;
 }
 
 unsigned int __connman_service_get_order(struct connman_service *service)

@@ -65,6 +65,14 @@ void __connman_agent_cleanup(void);
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
 
+struct connman_service;
+
+typedef void (* passphrase_cb_t) (struct connman_service *service,
+				const char *passphrase, void *user_data);
+
+int __connman_agent_request_passphrase(struct connman_service *service,
+				passphrase_cb_t callback, void *user_data);
+
 #include <connman/log.h>
 
 int __connman_log_init(gboolean detach, gboolean debug);
@@ -328,6 +336,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
 
+const char *__connman_service_get_path(struct connman_service *service);
 unsigned int __connman_service_get_order(struct connman_service *service);
 
 int __connman_service_set_carrier(struct connman_service *service,
