@@ -12,3 +12,28 @@ Methods		void Release()
 			cleanup tasks. There is no need to unregister the
 			agent, because when this method gets called it has
 			already been unregistered.
+
+		void ReportError(object service, string error)
+
+			This method gets called when an error has to be
+			reported to the user.
+
+			A special return value can be used to trigger a
+			retry of the failed transaction.
+
+			Possible Errors: [service].Error.Retry
+
+		string RequestPassphrase(object service)
+
+			This method gets called when trying to connect to
+			a service and a passphrase is missing.
+
+			The return value should be the passphrase string or
+			an error indicating that the request got cannceled.
+
+			Possible Errors: [service].Error.Canceled
+
+		void Cancel()
+
+			This method gets called to indicate that the agent
+			request failed before a reply was returned.
