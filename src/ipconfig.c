@@ -295,6 +295,9 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 
 	DBG("index %d", index);
 
+	if (type == ARPHRD_LOOPBACK)
+		return;
+
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
 	if (ipdevice != NULL)
 		goto update;
