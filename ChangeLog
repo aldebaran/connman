@@ -1,3 +1,11 @@
+ver 0.40:
+	Fix issue with wrong setting of initial AutoConnect value.
+	Fix issue with IP configuration and loopback devices.
+	Fix issue with build system and include directory.
+	Fix wrong variable for dhclient-script location.
+	Fix disconnect race condition with Bluetooth service.
+	Add support for ignoring bonding Ethernet interfaces.
+
 ver 0.39:
 	Fix file permissions for profile storage.
 	Fix service resorting when they are in different states.
