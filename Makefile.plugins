@@ -160,7 +160,7 @@ plugin_LTLIBRARIES += plugins/dhclient.la
 plugin_objects += $(plugins_dhclient_la_OBJECTS)
 plugins_dhclient_la_CFLAGS = $(plugin_cflags) -DDHCLIENT=\"@DHCLIENT@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
-					-DSCRIPTDIR=\""$(built_scriptdir)"\"
+					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
