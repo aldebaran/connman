@@ -807,15 +807,17 @@ static const char *adapter_rule = "type=signal,member=" PROPERTY_CHANGED
 
 static int bluetooth_init(void)
 {
-	int err = -EIO;
+	int err;
 
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
 
 	if (dbus_connection_add_filter(connection, bluetooth_signal,
-							NULL, NULL) == FALSE)
+						NULL, NULL) == FALSE) {
+		err = -EIO;
 		goto unref;
+	}
 
 	err = connman_network_driver_register(&pan_driver);
 	if (err < 0)
