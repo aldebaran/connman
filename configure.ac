@@ -333,6 +333,10 @@ if (test "${enable_tools}" = "yes"); then
 fi
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 
+AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
+		[enable test/example scripts]), [enable_test=${enableval}])
+AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
+
 AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
 		[enable fake device support]), [enable_fake=${enableval}])
 AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")

@@ -115,7 +115,7 @@ noinst_PROGRAMS += tools/wifi-scan tools/addr-test tools/tap-test
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 endif
 
-EXTRA_DIST += test/get-state test/list-profiles test/list-services \
+test_scripts = test/get-state test/list-profiles test/list-services \
 		test/connect-service test/list-connections \
 		test/select-connection test/list-devices test/enable-device \
 		test/disable-device test/start-scanning test/list-networks \
@@ -123,6 +123,13 @@ EXTRA_DIST += test/get-state test/list-profiles test/list-services \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/monitor-services test/debug-connman
+
+if TEST
+testdir = $(pkglibdir)/test
+test_SCRIPTS = $(test_scripts)
+endif
+
+EXTRA_DIST += $(test_scripts)
 
 EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/ipconfig-api.txt doc/plugin-api.txt \
