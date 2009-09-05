@@ -288,6 +288,36 @@ static char *index2ident(int index, const char *prefix)
 	return str;
 }
 
+connman_bool_t connman_inet_is_mac80211(int index)
+{
+	connman_bool_t result = FALSE;
+	char phy80211_path[PATH_MAX];
+	struct stat st;
+	struct ifreq ifr;
+	int sk;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return FALSE;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0)
+		goto done;
+
+	snprintf(phy80211_path, PATH_MAX,
+				"/sys/class/net/%s/phy80211", ifr.ifr_name);
+
+	if (stat(phy80211_path, &st) == 0 && (st.st_mode & S_IFDIR))
+		result = TRUE;
+
+done:
+	close(sk);
+
+	return result;
+}
+
 enum connman_device_type __connman_inet_get_device_type(int index)
 {
 	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
