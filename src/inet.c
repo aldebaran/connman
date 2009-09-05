@@ -309,6 +309,7 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 	devname = ifr.ifr_name;
 
 	if (type == ARPHRD_ETHER) {
+		char phy80211_path[PATH_MAX];
 		char bonding_path[PATH_MAX];
 		char bridge_path[PATH_MAX];
 		char wimax_path[PATH_MAX];
@@ -316,6 +317,8 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 		struct iwreq iwr;
 		char *devnode;
 
+		snprintf(phy80211_path, PATH_MAX,
+					"/sys/class/net/%s/phy80211", devname);
 		snprintf(bonding_path, PATH_MAX,
 					"/sys/class/net/%s/bonding", devname);
 		snprintf(bridge_path, PATH_MAX,
@@ -347,6 +350,8 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (stat(bonding_path, &st) == 0 && (st.st_mode & S_IFDIR))
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		else if (stat(phy80211_path, &st) == 0 && (st.st_mode & S_IFDIR))
+			devtype = CONNMAN_DEVICE_TYPE_WIFI;
 		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
 			devtype = CONNMAN_DEVICE_TYPE_WIFI;
 		else
