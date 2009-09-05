@@ -533,7 +533,6 @@ static int remove_interface(struct supplicant_task *task)
 	return -EINPROGRESS;
 }
 
-#if 0
 static int set_ap_scan(struct supplicant_task *task)
 {
 	DBusMessage *message, *reply;
@@ -572,7 +571,6 @@ static int set_ap_scan(struct supplicant_task *task)
 
 	return 0;
 }
-#endif
 
 static int add_network(struct supplicant_task *task)
 {
@@ -715,18 +713,15 @@ static int select_network(struct supplicant_task *task)
 	return 0;
 }
 
-static int enable_network(struct supplicant_task *task)
+static int disconnect_network(struct supplicant_task *task)
 {
 	DBusMessage *message, *reply;
 	DBusError error;
 
 	DBG("task %p", task);
 
-	if (task->netpath == NULL)
-		return -EINVAL;
-
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->netpath,
-					SUPPLICANT_INTF ".Network", "enable");
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
+				SUPPLICANT_INTF ".Interface", "disconnect");
 	if (message == NULL)
 		return -ENOMEM;
 
@@ -741,45 +736,7 @@ static int enable_network(struct supplicant_task *task)
 			connman_error("%s", error.message);
 			dbus_error_free(&error);
 		} else
-			connman_error("Failed to enable network");
-		dbus_message_unref(message);
-		return -EIO;
-	}
-
-	dbus_message_unref(message);
-
-	dbus_message_unref(reply);
-
-	return 0;
-}
-
-static int disable_network(struct supplicant_task *task)
-{
-	DBusMessage *message, *reply;
-	DBusError error;
-
-	DBG("task %p", task);
-
-	if (task->netpath == NULL)
-		return -EINVAL;
-
-	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->netpath,
-					SUPPLICANT_INTF ".Network", "disable");
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	dbus_error_init(&error);
-
-	reply = dbus_connection_send_with_reply_and_block(connection,
-							message, -1, &error);
-	if (reply == NULL) {
-		if (dbus_error_is_set(&error) == TRUE) {
-			connman_error("%s", error.message);
-			dbus_error_free(&error);
-		} else
-			connman_error("Failed to disable network");
+			connman_error("Failed to disconnect network");
 		dbus_message_unref(message);
 		return -EIO;
 	}
@@ -1562,14 +1519,15 @@ static int task_connect(struct supplicant_task *task)
 	if (g_str_equal(security, "none") == FALSE && passphrase == NULL)
 		return -EINVAL;
 
-	add_network(task);
+	remove_network(task);
 
-	select_network(task);
-	disable_network(task);
+	set_ap_scan(task);
+
+	add_network(task);
 
 	set_network(task, ssid, ssid_len, address, security, passphrase);
 
-	err = enable_network(task);
+	err = select_network(task);
 	if (err < 0)
 		return err;
 
@@ -1639,7 +1597,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	switch (task->state) {
 	case WPA_COMPLETED:
 		if (get_bssid(task->device, bssid, &bssid_len) == 0)
-	                connman_network_set_address(task->network,
+			connman_network_set_address(task->network,
 							bssid, bssid_len);
 
 		/* carrier on */
@@ -1647,7 +1605,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		break;
 
 	case WPA_DISCONNECTED:
-		disable_network(task);
+		remove_network(task);
 
 		/* carrier off */
 		connman_network_set_connected(task->network, FALSE);
@@ -1802,9 +1760,9 @@ int supplicant_stop(struct connman_device *device)
 	if (task->scanning == TRUE)
 		connman_device_set_scanning(task->device, FALSE);
 
-	disable_network(task);
-
 	remove_network(task);
+
+	disconnect_network(task);
 
 	return remove_interface(task);
 }
@@ -1888,9 +1846,9 @@ int supplicant_disconnect(struct connman_network *network)
 	if (task->disconnecting == TRUE)
 		return -EALREADY;
 
-	disable_network(task);
-
 	remove_network(task);
+
+	disconnect_network(task);
 
 	task->disconnecting = TRUE;
 
