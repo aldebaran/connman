@@ -39,6 +39,9 @@
 #include <connman/plugin.h>
 #include <connman/log.h>
 
+static in_addr_t loopback_address;
+static in_addr_t loopback_netmask;
+
 #if 0
 static GIOChannel *inotify_channel = NULL;
 
@@ -173,6 +176,36 @@ static int setup_hostname(void)
 	return 0;
 }
 
+static gboolean valid_loopback(int sk, struct ifreq *ifr)
+{
+	struct sockaddr_in *addr;
+	int err;
+
+	err = ioctl(sk, SIOCGIFADDR, ifr);
+	if (err < 0) {
+		err = -errno;
+		connman_error("Getting address failed (%s)", strerror(-err));
+		return TRUE;
+	}
+
+	addr = (struct sockaddr_in *) &ifr->ifr_addr;
+	if (addr->sin_addr.s_addr != loopback_address)
+		return FALSE;
+
+	err = ioctl(sk, SIOCGIFNETMASK, ifr);
+	if (err < 0) {
+		err = -errno;
+		connman_error("Getting netmask failed (%s)", strerror(-err));
+		return TRUE;
+	}
+
+	addr = (struct sockaddr_in *) &ifr->ifr_netmask;
+	if (addr->sin_addr.s_addr != loopback_netmask)
+		return FALSE;
+
+	return TRUE;
+}
+
 static int setup_loopback(void)
 {
 	struct ifreq ifr;
@@ -192,9 +225,13 @@ static int setup_loopback(void)
 	}
 
 	if (ifr.ifr_flags & IFF_UP) {
-		err = -EALREADY;
-		connman_info("The loopback interface is already up");
-		goto done;
+		connman_info("Checking loopback interface settings");
+		if (valid_loopback(sk, &ifr) == TRUE) {
+			err = -EALREADY;
+			goto done;
+		}
+
+		connman_warn("Correcting wrong lookback settings");
 	}
 
 	memset(&addr, 0, sizeof(addr));
@@ -243,6 +280,9 @@ done:
 
 static int loopback_init(void)
 {
+	loopback_address = inet_addr("127.0.0.1");
+	loopback_netmask = inet_addr("255.0.0.0");
+
 	setup_loopback();
 
 	setup_hostname();
