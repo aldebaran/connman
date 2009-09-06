@@ -300,8 +300,6 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	if (device->powered_pending == powered)
 		return -EALREADY;
 
-	device->powered_pending = powered;
-
 	if (!driver)
 		return -EINVAL;
 
@@ -309,12 +307,16 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 
 	if (powered == TRUE) {
 		if (driver->enable) {
+			device->powered_pending = powered;
+
 			err = driver->enable(device);
 			if (err == 0)
 				__connman_notifier_enable(type);
 		} else
 			err = -EINVAL;
 	} else {
+		device->powered_pending = powered;
+
 		clear_scan_trigger(device);
 
 		g_hash_table_remove_all(device->networks);
