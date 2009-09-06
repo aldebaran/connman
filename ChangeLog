@@ -1,3 +1,9 @@
+ver 0.41:
+	Fix race condition with WiFi devices and RFKILL.
+	Fix issue with WiFi connect/disconnect and some drivers.
+	Fix issue with WEP encryption and staging drivers.
+	Fix issue with wrong setup of loopback interfaces.
+
 ver 0.40:
 	Fix issue with wrong setting of initial AutoConnect value.
 	Fix issue with IP configuration and loopback devices.
