@@ -405,7 +405,8 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	//temp = connman_dbus_encode_string(identifier);
 	if (identifier == NULL) {
-		temp = g_strdup("hidden");
+		static unsigned int hidden_counter;
+		temp = g_strdup_printf("hidden_%d", hidden_counter++);
 		network->hidden = TRUE;
 	} else
 		temp = g_strdup(identifier);
