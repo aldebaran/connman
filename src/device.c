@@ -106,6 +106,14 @@ static void reset_scan_trigger(struct connman_device *device)
 	}
 }
 
+static void force_scan_trigger(struct connman_device *device)
+{
+	clear_scan_trigger(device);
+
+	device->scan_timeout = g_timeout_add_seconds(5,
+					device_scan_trigger, device);
+}
+
 static const char *type2description(enum connman_device_type type)
 {
 	switch (type) {
@@ -1277,6 +1285,8 @@ int __connman_device_scan(struct connman_device *device)
 	if (device->powered == FALSE)
 		return -ENOLINK;
 
+	reset_scan_trigger(device);
+
 	return device->driver->scan(device);
 }
 
@@ -1517,6 +1527,9 @@ int connman_device_set_disconnected(struct connman_device *device,
 		return -EALREADY;
 
 	device->disconnected = disconnected;
+
+	if (disconnected == TRUE)
+		force_scan_trigger(device);
 
 	return 0;
 }
