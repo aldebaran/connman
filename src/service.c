@@ -48,6 +48,7 @@ struct connman_service {
 	connman_bool_t hidden;
 	connman_bool_t ignore;
 	connman_bool_t autoconnect;
+	connman_bool_t userconnect;
 	GTimeVal modified;
 	unsigned int order;
 	char *name;
@@ -661,8 +662,10 @@ void __connman_service_auto_connect(void)
 		iter = g_sequence_iter_next(iter);
 	}
 
-	if (service != NULL)
+	if (service != NULL) {
+		service->userconnect = FALSE;
 		__connman_service_connect(service);
+	}
 }
 
 static void reply_pending(struct connman_service *service, int error)
@@ -692,7 +695,7 @@ static void reply_pending(struct connman_service *service, int error)
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
-	connman_bool_t auto_connect = FALSE;
+	connman_bool_t autoconnect = FALSE;
 
 	DBG("service %p", service);
 
@@ -715,12 +718,12 @@ static gboolean connect_timeout(gpointer user_data)
 		dbus_message_unref(service->pending);
 		service->pending = NULL;
 	} else
-		auto_connect = TRUE;
+		autoconnect = TRUE;
 
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE);
 
-	if (auto_connect == TRUE)
+	if (autoconnect == TRUE && service->userconnect == FALSE)
 		__connman_service_auto_connect();
 
 	return FALSE;
@@ -751,6 +754,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	}
 
 	service->ignore = FALSE;
+
+	service->userconnect = TRUE;
 
 	service->pending = dbus_message_ref(msg);
 
@@ -986,6 +991,8 @@ static void __connman_service_initialize(struct connman_service *service)
 
 	service->ignore = FALSE;
 
+	service->userconnect = FALSE;
+
 	service->order = 0;
 }
 
@@ -1166,6 +1173,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		reply_pending(service, 0);
 
+		service->userconnect = FALSE;
+
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 
@@ -1180,6 +1189,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
 		reply_pending(service, EIO);
+
+		if (service->userconnect == FALSE)
+			__connman_service_auto_connect();
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
@@ -1529,6 +1541,8 @@ done:
 		g_free(service->passphrase);
 		service->passphrase = g_strdup(passphrase);
 	}
+
+	service->userconnect = TRUE;
 
 	err = __connman_service_connect(service);
 	if (err < 0 && err != -EINPROGRESS)
