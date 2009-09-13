@@ -30,6 +30,8 @@
 
 #include "connman.h"
 
+static unsigned int hidden_counter = 0;
+
 struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
@@ -405,7 +407,6 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	//temp = connman_dbus_encode_string(identifier);
 	if (identifier == NULL) {
-		static unsigned int hidden_counter;
 		temp = g_strdup_printf("hidden_%d", hidden_counter++);
 		network->hidden = TRUE;
 	} else
