@@ -89,6 +89,36 @@ char *connman_inet_ifname(int index)
 	return strdup(ifr.ifr_name);
 }
 
+short int connman_inet_ifflags(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		err = -errno;
+		goto done;
+	}
+
+	err = ifr.ifr_flags;
+
+done:
+	close(sk);
+
+	return err;
+}
+
 int connman_inet_ifup(int index)
 {
 	struct ifreq ifr;
