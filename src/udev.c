@@ -50,6 +50,8 @@ static int udev_monitor_filter_remove(struct udev_monitor *udev_monitor)
 }
 #endif
 
+static gboolean rfkill_processing = FALSE;
+
 static GSList *device_list = NULL;
 
 static struct connman_device *find_device(int index)
@@ -194,6 +196,9 @@ static void change_rfkill_device(struct udev_device *device)
 	connman_bool_t blocked;
 	const char *value, *type = NULL;
 	int state = -1;
+
+	if (rfkill_processing == FALSE)
+		return;
 
 	entry = udev_device_get_properties_list_entry(device);
 	while (entry) {
@@ -378,6 +383,13 @@ done:
 static struct udev *udev_ctx;
 static struct udev_monitor *udev_mon;
 static guint udev_watch = 0;
+
+void __connman_udev_enable_rfkill_processing(void)
+{
+	rfkill_processing = TRUE;
+
+	enumerate_devices(udev_ctx);
+}
 
 char *__connman_udev_get_devtype(const char *ifname)
 {
