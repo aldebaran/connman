@@ -1511,6 +1511,8 @@ static int task_connect(struct supplicant_task *task)
 	unsigned int ssid_len;
 	int err;
 
+	connman_inet_ifup(task->ifindex);
+
 	address = connman_network_get_string(task->network, "Address");
 	security = connman_network_get_string(task->network, "WiFi.Security");
 	passphrase = connman_network_get_string(task->network, "WiFi.Passphrase");
