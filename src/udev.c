@@ -388,6 +388,8 @@ void __connman_udev_enable_rfkill_processing(void)
 {
 	rfkill_processing = TRUE;
 
+	connman_warn("Enabling udev based RFKILL processing");
+
 	enumerate_devices(udev_ctx);
 }
 
