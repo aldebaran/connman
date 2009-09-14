@@ -29,6 +29,8 @@
 
 #include "connman.h"
 
+#define MAX_CONNECT_RETRIES	2
+
 static DBusConnection *connection = NULL;
 
 static GSequence *service_list = NULL;
@@ -51,6 +53,7 @@ struct connman_service {
 	connman_bool_t userconnect;
 	GTimeVal modified;
 	unsigned int order;
+	unsigned int failcounter;
 	char *name;
 	char *passphrase;
 	char *profile;
@@ -756,6 +759,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	service->ignore = FALSE;
 
 	service->userconnect = TRUE;
+	service->failcounter = 0;
 
 	service->pending = dbus_message_ref(msg);
 
@@ -790,6 +794,8 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	int err;
 
 	DBG("service %p", service);
+
+	reply_pending(service, ECONNABORTED);
 
 	service->ignore = TRUE;
 
@@ -968,7 +974,10 @@ void __connman_service_put(struct connman_service *service)
 
 		iter = g_hash_table_lookup(service_hash, service->identifier);
 		if (iter != NULL) {
+			reply_pending(service, ECONNABORTED);
+
 			__connman_service_disconnect(service);
+
 			g_sequence_remove(iter);
 		} else
 			service_free(service);
@@ -1162,6 +1171,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 		service->state = CONNMAN_SERVICE_STATE_DISCONNECT;
 		state_changed(service);
 
+		reply_pending(service, ECONNABORTED);
+
 		__connman_service_disconnect(service);
 	}
 
@@ -1174,6 +1185,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 		reply_pending(service, 0);
 
 		service->userconnect = FALSE;
+		service->failcounter = 0;
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
@@ -1188,6 +1200,14 @@ int __connman_service_indicate_state(struct connman_service *service,
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
+		if (service->failcounter++ < MAX_CONNECT_RETRIES) {
+			connman_warn("Connecting again (try %d)",
+						service->failcounter);
+			__connman_service_disconnect(service);
+			__connman_service_connect(service);
+			return 0;
+		}
+
 		reply_pending(service, EIO);
 
 		if (service->userconnect == FALSE)
@@ -1336,8 +1356,6 @@ int __connman_service_disconnect(struct connman_service *service)
 	int err;
 
 	DBG("service %p", service);
-
-	reply_pending(service, ECONNABORTED);
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
