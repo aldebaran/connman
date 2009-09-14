@@ -28,8 +28,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
-#include <net/if.h>
 #include <net/if_arp.h>
+#include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
@@ -177,9 +177,55 @@ void connman_rtnl_unregister(struct connman_rtnl *rtnl)
 	rtnl_list = g_slist_remove(rtnl_list, rtnl);
 }
 
-static void process_newlink(unsigned short type, int index,
-					unsigned flags, unsigned change)
+static const char *operstate2str(unsigned char operstate)
 {
+	switch (operstate) {
+	case IF_OPER_UNKNOWN:
+		return "UNKNOWN";
+	case IF_OPER_NOTPRESENT:
+		return "NOT-PRESENT";
+	case IF_OPER_DOWN:
+		return "DOWN";
+	case IF_OPER_LOWERLAYERDOWN:
+		return "LOWER-LAYER-DOWN";
+	case IF_OPER_TESTING:
+		return "TESTING";
+	case IF_OPER_DORMANT:
+		return "DORMANT";
+	case IF_OPER_UP:
+		return "UP";
+	}
+
+	return "";
+}
+
+static void extract_link(struct ifinfomsg *msg, int bytes,
+				const char **ifname, unsigned char *operstate)
+{
+	struct rtattr *attr;
+
+	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case IFLA_IFNAME:
+			if (ifname != NULL)
+				*ifname = RTA_DATA(attr);
+			break;
+		case IFLA_OPERSTATE:
+			if (operstate != NULL)
+				*operstate = *((unsigned char *) RTA_DATA(attr));
+			break;
+		case IFLA_LINKMODE:
+			break;
+		}
+	}
+}
+
+static void process_newlink(unsigned short type, int index, unsigned flags,
+			unsigned change, struct ifinfomsg *msg, int bytes)
+{
+	unsigned char operstate = 0xff;
+	const char *ifname = NULL;
 	GSList *list;
 
 	switch (type) {
@@ -189,6 +235,13 @@ static void process_newlink(unsigned short type, int index,
 		__connman_ipconfig_newlink(index, type, flags);
 		break;
 	}
+
+	extract_link(msg, bytes, &ifname, &operstate);
+
+	if (operstate != 0xff)
+		connman_info("%s {state} index %d operstate %d <%s>",
+						ifname, index, operstate,
+						operstate2str(operstate));
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
@@ -208,8 +261,8 @@ static void process_newlink(unsigned short type, int index,
 	}
 }
 
-static void process_dellink(unsigned short type, int index,
-					unsigned flags, unsigned change)
+static void process_dellink(unsigned short type, int index, unsigned flags,
+			unsigned change, struct ifinfomsg *msg, int bytes)
 {
 	GSList *list;
 
@@ -263,8 +316,8 @@ static void extract_addr(struct ifaddrmsg *msg, int bytes,
 static void process_newaddr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	const char *label;
 	struct in_addr address = { INADDR_ANY };
+	const char *label = NULL;
 
 	if (family != AF_INET)
 		return;
@@ -278,8 +331,8 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 static void process_deladdr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	const char *label;
 	struct in_addr address = { INADDR_ANY };
+	const char *label = NULL;
 
 	if (family != AF_INET)
 		return;
@@ -504,8 +557,8 @@ static void rtnl_newlink(struct nlmsghdr *hdr)
 
 	rtnl_link(hdr);
 
-	process_newlink(msg->ifi_type, msg->ifi_index,
-					msg->ifi_flags, msg->ifi_change);
+	process_newlink(msg->ifi_type, msg->ifi_index, msg->ifi_flags,
+				msg->ifi_change, msg, IFA_PAYLOAD(hdr));
 }
 
 static void rtnl_dellink(struct nlmsghdr *hdr)
@@ -514,8 +567,8 @@ static void rtnl_dellink(struct nlmsghdr *hdr)
 
 	rtnl_link(hdr);
 
-	process_dellink(msg->ifi_type, msg->ifi_index,
-					msg->ifi_flags, msg->ifi_change);
+	process_dellink(msg->ifi_type, msg->ifi_index, msg->ifi_flags,
+				msg->ifi_change, msg, IFA_PAYLOAD(hdr));
 }
 
 static void rtnl_addr(struct nlmsghdr *hdr)
