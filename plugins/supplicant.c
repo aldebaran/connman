@@ -898,6 +898,9 @@ static int initiate_scan(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
+	if (task->path == NULL)
+		return -EINVAL;
+
 	if (task->scan_call != NULL)
 		return -EALREADY;
 
