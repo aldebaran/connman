@@ -1240,6 +1240,8 @@ int __connman_device_set_blocked(struct connman_device *device,
 	if (device->offlinemode == TRUE)
 		return 0;
 
+	connman_info("%s {rfkill} blocked %d", device->interface, blocked);
+
 	if (blocked == FALSE)
 		powered = device->powered_persistent;
 	else
