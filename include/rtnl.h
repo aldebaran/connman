@@ -32,11 +32,19 @@ extern "C" {
  * @short_description: Functions for registering RTNL modules
  */
 
+
+typedef void (* connman_rtnl_operstate_cb_t) (unsigned char operstate,
+							void *user_data);
+
 typedef void (* connman_rtnl_link_cb_t) (unsigned flags, unsigned change,
 							void *user_data);
 
+unsigned int connman_rtnl_add_operstate_watch(int index,
+			connman_rtnl_operstate_cb_t callback, void *user_data);
+
 unsigned int connman_rtnl_add_newlink_watch(int index,
 			connman_rtnl_link_cb_t callback, void *user_data);
+
 void connman_rtnl_remove_watch(unsigned int id);
 
 #define CONNMAN_RTNL_PRIORITY_LOW      -100

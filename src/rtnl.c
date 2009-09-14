@@ -43,12 +43,52 @@
 struct watch_data {
 	unsigned int id;
 	int index;
+	connman_rtnl_operstate_cb_t operstate;
 	connman_rtnl_link_cb_t newlink;
 	void *user_data;
 };
 
 static GSList *watch_list = NULL;
 static unsigned int watch_id = 0;
+
+/**
+ * connman_rtnl_add_operstate_watch:
+ * @index: network device index
+ * @callback: callback function
+ * @user_data: callback data;
+ *
+ * Add a new RTNL watch for operation state events
+ *
+ * Returns: %0 on failure and a unique id on success
+ */
+unsigned int connman_rtnl_add_operstate_watch(int index,
+			connman_rtnl_operstate_cb_t callback, void *user_data)
+{
+	struct watch_data *watch;
+
+	watch = g_try_new0(struct watch_data, 1);
+	if (watch == NULL)
+		return 0;
+
+	watch->id = ++watch_id;
+	watch->index = index;
+
+	watch->operstate = callback;
+	watch->user_data = user_data;
+
+	watch_list = g_slist_prepend(watch_list, watch);
+
+	DBG("id %d", watch->id);
+
+	if (callback) {
+		unsigned char operstate = 0;
+
+		if (operstate > 0)
+			callback(operstate, user_data);
+	}
+
+	return watch->id;
+}
 
 /**
  * connman_rtnl_add_newlink_watch:
@@ -239,7 +279,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	extract_link(msg, bytes, &ifname, &operstate);
 
 	if (operstate != 0xff)
-		connman_info("%s {state} index %d operstate %d <%s>",
+		connman_info("%s {newlink} index %d operstate %d <%s>",
 						ifname, index, operstate,
 						operstate2str(operstate));
 
@@ -256,6 +296,9 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		if (watch->index != index)
 			continue;
 
+		if (operstate != 0xff && watch->operstate)
+			watch->operstate(operstate, watch->user_data);
+
 		if (watch->newlink)
 			watch->newlink(flags, change, watch->user_data);
 	}
@@ -264,7 +307,26 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 static void process_dellink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
+	unsigned char operstate = 0xff;
+	const char *ifname = NULL;
 	GSList *list;
+
+	extract_link(msg, bytes, &ifname, &operstate);
+
+	if (operstate != 0xff)
+		connman_info("%s {dellink} index %d operstate %d <%s>",
+						ifname, index, operstate,
+						operstate2str(operstate));
+
+	for (list = watch_list; list; list = list->next) {
+		struct watch_data *watch = list->data;
+
+		if (watch->index != index)
+			continue;
+
+		if (operstate != 0xff && watch->operstate)
+			watch->operstate(operstate, watch->user_data);
+	}
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
