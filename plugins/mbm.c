@@ -55,7 +55,7 @@ struct mbm_data {
 	unsigned flags;
 	unsigned int watch;
 	struct connman_network *network;
-	char *mccmnc;
+	char *imsi;
 	unsigned int cimi_counter;
 	unsigned int creg_status;
 };
@@ -127,7 +127,7 @@ static void cind_callback(gboolean ok, GAtResult *result,
 	g_at_result_iter_next_number(&iter, &strength);
 
 	connman_network_set_strength(data->network, strength * 20);
-	connman_network_set_group(data->network, data->mccmnc);
+	connman_network_set_group(data->network, data->imsi);
 }
 
 static void network_callback(gboolean ok, GAtResult *result,
@@ -136,7 +136,7 @@ static void network_callback(gboolean ok, GAtResult *result,
 	struct connman_device *device = user_data;
 	struct mbm_data *data = connman_device_get_data(device);
 	GAtResultIter iter;
-	char *name;
+	char *name, *mccmnc;
 	const char *oper;
 	int mode, format, tech;
 
@@ -151,7 +151,7 @@ static void network_callback(gboolean ok, GAtResult *result,
 	g_at_result_iter_next_number(&iter, &mode);
 	g_at_result_iter_next_number(&iter, &format);
 	g_at_result_iter_next_string(&iter, &oper);
-	data->mccmnc = g_strdup(oper);
+	mccmnc = g_strdup(oper);
 	g_at_result_iter_next_number(&iter, &tech);
 
 	if (g_at_result_iter_next(&iter, "+COPS:") == FALSE)
@@ -163,7 +163,7 @@ static void network_callback(gboolean ok, GAtResult *result,
 	name = g_strdup(oper);
 	g_at_result_iter_next_number(&iter, &tech);
 
-	data->network = connman_network_create(data->mccmnc,
+	data->network = connman_network_create(mccmnc,
 						CONNMAN_NETWORK_TYPE_MBM);
 	if (data->network != NULL) {
 		char *mcc, *mnc;
@@ -175,21 +175,22 @@ static void network_callback(gboolean ok, GAtResult *result,
 		connman_network_set_protocol(data->network,
 						CONNMAN_NETWORK_PROTOCOL_IP);
 
-		mcc = g_strndup(data->mccmnc, 3);
+		mcc = g_strndup(mccmnc, 3);
 		connman_network_set_string(data->network, "Cellular.MCC", mcc);
 		g_free(mcc);
 
-		mnc = g_strdup(data->mccmnc + 3);
+		mnc = g_strdup(mccmnc + 3);
 		connman_network_set_string(data->network, "Cellular.MNC", mnc);
 		g_free(mnc);
 
 		connman_network_set_name(data->network, name);
-		connman_network_set_group(data->network, data->mccmnc);
+		connman_network_set_group(data->network, data->imsi);
 
 		connman_device_add_network(device, data->network);
 	}
 
 	g_free(name);
+	g_free(mccmnc);
 
 	g_at_chat_send(data->chat, "AT+CIND?", cind_prefix,
 						cind_callback, device, NULL);
@@ -295,7 +296,7 @@ static void ciev_notifier(GAtResult *result, gpointer user_data)
 	g_at_result_iter_next_number(&iter, &strength);
 
 	connman_network_set_strength(data->network, strength * 20);
-	connman_network_set_group(data->network, data->mccmnc);
+	connman_network_set_group(data->network, data->imsi);
 }
 
 static void creg_notifier(GAtResult *result, gpointer user_data)
@@ -346,8 +347,8 @@ static gboolean cimi_timeout(gpointer user_data)
 		return FALSE;
 	}
 
-	g_at_chat_send(data->chat, "AT+CIMI", NULL,
-						cimi_callback, device, NULL);
+	g_at_chat_send(data->chat, "AT+CIMI", NULL, cimi_callback,
+							device, NULL);
 
 	return FALSE;
 }
@@ -355,11 +356,24 @@ static gboolean cimi_timeout(gpointer user_data)
 static void cimi_callback(gboolean ok, GAtResult *result, gpointer user_data)
 {
 	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	const char *imsi;
+	int i;
 
 	if (ok == FALSE) {
 		g_timeout_add_seconds(1, cimi_timeout, device);
 		return;
 	}
+
+	g_at_result_iter_init(&iter, result);
+
+	for (i = 0; i < g_at_result_num_response_lines(result); i++)
+		g_at_result_iter_next(&iter, NULL);
+
+	imsi = g_at_result_iter_raw_line(&iter);
+
+	data->imsi = g_strdup(imsi);
 
 	register_network(device);
 }
@@ -377,8 +391,8 @@ static void cfun_enable(gboolean ok, GAtResult *result,
 
 	connman_device_set_powered(device, TRUE);
 
-	g_at_chat_send(data->chat, "AT+CIMI", NULL,
-						cimi_callback, device, NULL);
+	g_at_chat_send(data->chat, "AT+CIMI", NULL, cimi_callback,
+							device, NULL);
 }
 
 static void cfun_disable(gboolean ok, GAtResult *result,
@@ -410,7 +424,8 @@ static void cfun_query(gboolean ok, GAtResult *result,
 	if (status == 1) {
 		connman_device_set_powered(device, TRUE);
 
-		register_network(device);
+		g_at_chat_send(data->chat, "AT+CIMI", NULL, cimi_callback,
+								device, NULL);
 	} else {
 		g_at_chat_send(data->chat, "AT+CFUN=1", cfun_prefix,
 						cfun_enable, device, NULL);
@@ -536,7 +551,7 @@ static void mbm_remove(struct connman_device *device)
 
 	connman_rtnl_remove_watch(data->watch);
 
-	g_free(data->mccmnc);
+	g_free(data->imsi);
 	g_free(data);
 }
 
