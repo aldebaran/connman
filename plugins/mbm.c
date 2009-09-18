@@ -46,9 +46,10 @@
 #include <gatchat.h>
 
 static const char *cfun_prefix[] = { "+CFUN:", NULL };
-static const char *creg_prefix[] = { "+CREG:", NULL };
-static const char *cops_prefix[] = { "+COPS:", NULL };
 static const char *cind_prefix[] = { "+CIND:", NULL };
+static const char *cops_prefix[] = { "+COPS:", NULL };
+static const char *creg_prefix[] = { "+CREG:", NULL };
+static const char *cgreg_prefix[] = { "+CGREG:", NULL };
 
 struct mbm_data {
 	GAtChat *chat;
@@ -103,6 +104,31 @@ static void cgdcont_callback(gboolean ok, GAtResult *result,
 	g_at_result_iter_init(&iter, result);
 }
 
+static void cgreg_query(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct mbm_data *data = user_data;
+	GAtResultIter iter;
+	int status, mode;
+
+	if (data->network == NULL)
+		return;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+CGREG:") == FALSE)
+		return;
+
+	g_at_result_iter_skip_next(&iter);
+	g_at_result_iter_next_number(&iter, &status);
+	g_at_result_iter_skip_next(&iter);
+	g_at_result_iter_skip_next(&iter);
+	g_at_result_iter_next_number(&iter, &mode);
+
+	connman_network_set_uint8(data->network, "Cellular.Mode", mode);
+	connman_network_set_group(data->network, data->imsi);
+}
+
 static void enap_query(gboolean ok, GAtResult *result,
 						gpointer user_data)
 {
@@ -114,9 +140,13 @@ static void enap_query(gboolean ok, GAtResult *result,
 static void enap_enable(gboolean ok, GAtResult *result,
 						gpointer user_data)
 {
+	struct mbm_data *data = user_data;
 	GAtResultIter iter;
 
 	g_at_result_iter_init(&iter, result);
+
+	g_at_chat_send(data->chat, "AT+CGREG?", cgreg_prefix,
+						cgreg_query, data, NULL);
 }
 
 static void enap_disable(gboolean ok, GAtResult *result,
@@ -278,7 +308,7 @@ static void register_network(struct connman_device *device)
 
 	g_at_chat_send(data->chat, "AT+CREG=1",
 						NULL, NULL, NULL, NULL);
-	g_at_chat_send(data->chat, "AT+CGREG=1",
+	g_at_chat_send(data->chat, "AT+CGREG=2",
 						NULL, NULL, NULL, NULL);
 	g_at_chat_send(data->chat, "AT+CMER=3,0,0,1",
 						NULL, NULL, NULL, NULL);
@@ -359,8 +389,13 @@ static void creg_notifier(GAtResult *result, gpointer user_data)
 
 static void cgreg_notifier(GAtResult *result, gpointer user_data)
 {
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
 	GAtResultIter iter;
-	int status;
+	int status, mode;
+
+	if (data->network == NULL)
+		return;
 
 	g_at_result_iter_init(&iter, result);
 
@@ -368,6 +403,12 @@ static void cgreg_notifier(GAtResult *result, gpointer user_data)
 		return;
 
 	g_at_result_iter_next_number(&iter, &status);
+	g_at_result_iter_skip_next(&iter);
+	g_at_result_iter_skip_next(&iter);
+	g_at_result_iter_next_number(&iter, &mode);
+
+	connman_network_set_uint8(data->network, "Cellular.Mode", mode);
+	connman_network_set_group(data->network, data->imsi);
 }
 
 static void cimi_callback(gboolean ok, GAtResult *result, gpointer user_data);
@@ -515,7 +556,7 @@ static int network_connect(struct connman_network *network)
 	g_free(cmd);
 
 	g_at_chat_send(data->chat, "AT*ENAP=1,1", NULL,
-					enap_enable, NULL, NULL);
+					enap_enable, data, NULL);
 
 	return 0;
 }
@@ -527,7 +568,7 @@ static int network_disconnect(struct connman_network *network)
 	DBG("network %p", network);
 
 	g_at_chat_send(data->chat, "AT*ENAP=0", NULL,
-					enap_disable, NULL, NULL);
+					enap_disable, data, NULL);
 
 	return 0;
 }
