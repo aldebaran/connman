@@ -146,6 +146,12 @@ static const char *mode2string(enum connman_service_mode mode)
 		return "managed";
 	case CONNMAN_SERVICE_MODE_ADHOC:
 		return "adhoc";
+	case CONNMAN_SERVICE_MODE_GPRS:
+		return "gprs";
+	case CONNMAN_SERVICE_MODE_EDGE:
+		return "edge";
+	case CONNMAN_SERVICE_MODE_UMTS:
+		return "umts";
 	}
 
 	return NULL;
@@ -239,6 +245,36 @@ const char *__connman_service_default(void)
 		return "";
 
 	return type2string(service->type);
+}
+
+static void mode_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *str, *key = "Mode";
+
+	if (service->path == NULL)
+		return;
+
+	str = mode2string(service->mode);
+	if (str == NULL)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
 }
 
 static void state_changed(struct connman_service *service)
@@ -2077,6 +2113,24 @@ static enum connman_service_mode convert_wifi_security(const char *security)
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
 }
 
+static enum connman_service_mode convert_cellular_mode(connman_uint8_t mode)
+{
+	switch (mode) {
+	case 0:
+	case 1:
+		return CONNMAN_SERVICE_MODE_GPRS;
+	case 3:
+		return CONNMAN_SERVICE_MODE_EDGE;
+	case 2:
+	case 4:
+	case 5:
+	case 6:
+		return CONNMAN_SERVICE_MODE_UMTS;
+	}
+
+	return CONNMAN_SERVICE_MODE_UNKNOWN;
+}
+
 static void update_from_network(struct connman_service *service,
 					struct connman_network *network)
 {
@@ -2116,6 +2170,13 @@ static void update_from_network(struct connman_service *service,
 	str = connman_network_get_string(network, "Cellular.MNC");
 	g_free(service->mnc);
 	service->mnc = g_strdup(str);
+
+	if (service->type == CONNMAN_SERVICE_TYPE_CELLULAR) {
+		connman_uint8_t value = connman_network_get_uint8(network,
+							"Cellular.Mode");
+
+		service->mode = convert_cellular_mode(value);
+	}
 
 	if (service->strength > strength && service->network != NULL) {
 		connman_network_unref(service->network);
@@ -2203,7 +2264,8 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 void __connman_service_update_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
-	connman_uint8_t strength;
+	enum connman_service_mode mode;
+	connman_uint8_t strength, value;
 
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
@@ -2214,11 +2276,25 @@ void __connman_service_update_from_network(struct connman_network *network)
 
 	strength = connman_network_get_uint8(service->network, "Strength");
 	if (strength == service->strength)
-		return;
+		goto done;
 
 	service->strength = strength;
 
 	strength_changed(service);
+
+done:
+	if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
+		return;
+
+	value = connman_network_get_uint8(service->network, "Cellular.Mode");
+	mode = convert_cellular_mode(value);
+
+	if (mode == service->mode)
+		return;
+
+	service->mode = mode;
+
+	mode_changed(service);
 }
 
 void __connman_service_remove_from_network(struct connman_network *network)
