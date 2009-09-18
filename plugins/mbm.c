@@ -65,11 +65,28 @@ static void mbm_debug(const char *str, void *user_data)
 	connman_info("%s", str);
 }
 
-static void notify_callback(GAtResult *result, gpointer user_data)
+static void emrdy_notifier(GAtResult *result, gpointer user_data)
 {
 	GAtResultIter iter;
 
 	g_at_result_iter_init(&iter, result);
+}
+
+static void erinfo_notifier(GAtResult *result, gpointer user_data)
+{
+	GAtResultIter iter;
+	int mode, gsm, umts;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "*ERINFO:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &mode);
+	g_at_result_iter_next_number(&iter, &gsm);
+	g_at_result_iter_next_number(&iter, &umts);
+
+	connman_info("network capability: GSM %d UMTS %d", gsm, umts);
 }
 
 static void cgdcont_callback(gboolean ok, GAtResult *result,
@@ -265,6 +282,17 @@ static void e2nap_notifier(GAtResult *result, gpointer user_data)
 {
 	struct connman_device *device = user_data;
 	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	int state;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "*E2NAP:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &state);
+
+	connman_info("network connection: state %d", state);
 
 	g_at_chat_send(data->chat, "AT+CIND?", cind_prefix,
 						cind_callback, device, NULL);
@@ -578,10 +606,10 @@ static int mbm_enable(struct connman_device *device)
 	if (getenv("MBM_DEBUG"))
 		g_at_chat_set_debug(data->chat, mbm_debug, NULL);
 
-	g_at_chat_register(data->chat, "*EMRDY:", notify_callback,
-							FALSE, NULL, NULL);
-	g_at_chat_register(data->chat, "*ERINFO:", notify_callback,
-							FALSE, NULL, NULL);
+	g_at_chat_register(data->chat, "*EMRDY:", emrdy_notifier,
+							FALSE, device, NULL);
+	g_at_chat_register(data->chat, "*ERINFO:", erinfo_notifier,
+							FALSE, device, NULL);
 	g_at_chat_register(data->chat, "*E2NAP:", e2nap_notifier,
 							FALSE, device, NULL);
 	g_at_chat_register(data->chat, "+PACSP0", pacsp0_notifier,
@@ -603,7 +631,7 @@ static int mbm_enable(struct connman_device *device)
 	g_at_chat_send(data->chat, "AT*EMRDY?", NULL, NULL, NULL, NULL);
 
 	g_at_chat_send(data->chat, "AT+CFUN?", cfun_prefix,
-					cfun_query, device, NULL);
+						cfun_query, device, NULL);
 
 	return -EINPROGRESS;
 }
