@@ -166,6 +166,7 @@ static void network_callback(gboolean ok, GAtResult *result,
 	data->network = connman_network_create(data->mccmnc,
 						CONNMAN_NETWORK_TYPE_MBM);
 	if (data->network != NULL) {
+		char *mcc, *mnc;
 		int index;
 
 		index = connman_device_get_index(device);
@@ -173,6 +174,14 @@ static void network_callback(gboolean ok, GAtResult *result,
 
 		connman_network_set_protocol(data->network,
 						CONNMAN_NETWORK_PROTOCOL_IP);
+
+		mcc = g_strndup(data->mccmnc, 3);
+		connman_network_set_string(data->network, "Cellular.MCC", mcc);
+		g_free(mcc);
+
+		mnc = g_strdup(data->mccmnc + 3);
+		connman_network_set_string(data->network, "Cellular.MNC", mnc);
+		g_free(mnc);
 
 		connman_network_set_name(data->network, name);
 		connman_network_set_group(data->network, data->mccmnc);
