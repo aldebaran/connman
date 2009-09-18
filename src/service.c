@@ -60,6 +60,7 @@ struct connman_service {
 	char *apn;
 	char *username;
 	char *password;
+	connman_bool_t roaming;
 	struct connman_ipconfig *ipconfig;
 	struct connman_device *device;
 	struct connman_network *network;
@@ -488,6 +489,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		connman_dbus_dict_append_variant(&dict, "Roaming",
+					DBUS_TYPE_BOOLEAN, &service->roaming);
+
 		if (service->apn != NULL) {
 			connman_dbus_dict_append_variant(&dict, "APN",
 					DBUS_TYPE_STRING, &service->apn);
