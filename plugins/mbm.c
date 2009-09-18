@@ -511,7 +511,6 @@ static int mbm_probe(struct connman_device *device)
 	int index;
 
 	DBG("device %p", device);
-	connman_info("mbm probe");
 
 	data = g_try_new0(struct mbm_data, 1);
 	if (data == NULL)
@@ -549,7 +548,6 @@ static int mbm_enable(struct connman_device *device)
 	int index;
 
 	DBG("device %p", device);
-	connman_info("mbm enable");
 
 	devnode = connman_device_get_control(device);
 	if (devnode == NULL)
