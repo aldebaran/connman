@@ -25,10 +25,9 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <fcntl.h>
 #include <unistd.h>
+#include <stdlib.h>
 #include <string.h>
-#include <termios.h>
 #include <net/if.h>
 
 #ifndef IFF_LOWER_UP
@@ -47,40 +46,341 @@
 #include <gatchat.h>
 
 static const char *cfun_prefix[] = { "+CFUN:", NULL };
+static const char *creg_prefix[] = { "+CREG:", NULL };
+static const char *cops_prefix[] = { "+COPS:", NULL };
+static const char *cind_prefix[] = { "+CIND:", NULL };
 
 struct mbm_data {
 	GAtChat *chat;
 	unsigned flags;
 	unsigned int watch;
 	struct connman_network *network;
+	char *mccmnc;
+	unsigned int cimi_counter;
+	unsigned int creg_status;
 };
+
+static void mbm_debug(const char *str, void *user_data)
+{
+	connman_info("%s", str);
+}
 
 static void notify_callback(GAtResult *result, gpointer user_data)
 {
 	GAtResultIter iter;
 
 	g_at_result_iter_init(&iter, result);
-
-	if (g_at_result_iter_next(&iter, NULL) == TRUE)
-		printf("%s\n", g_at_result_iter_raw_line(&iter));
-
-	printf("==> %s\n", g_at_result_final_response(result));
 }
 
-static void generic_callback(gboolean ok, GAtResult *result,
+static void cgdcont_callback(gboolean ok, GAtResult *result,
 						gpointer user_data)
 {
 	GAtResultIter iter;
 
 	g_at_result_iter_init(&iter, result);
-
-	if (g_at_result_iter_next(&iter, NULL) == TRUE)
-		printf("%s\n", g_at_result_iter_raw_line(&iter));
-
-	printf("==> %s (%d)\n", g_at_result_final_response(result), ok);
 }
 
-static void cfun_callback(gboolean ok, GAtResult *result,
+static void enap_query(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	GAtResultIter iter;
+
+	g_at_result_iter_init(&iter, result);
+}
+
+static void enap_enable(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	GAtResultIter iter;
+
+	g_at_result_iter_init(&iter, result);
+}
+
+static void enap_disable(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	GAtResultIter iter;
+
+	g_at_result_iter_init(&iter, result);
+}
+
+static void cind_callback(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	int dummy, strength;
+
+	if (ok == FALSE)
+		return;
+
+	if (data->network == NULL)
+		return;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+CIND:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &dummy);
+	g_at_result_iter_next_number(&iter, &strength);
+
+	connman_network_set_strength(data->network, strength * 20);
+	connman_network_set_group(data->network, data->mccmnc);
+}
+
+static void network_callback(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	char *name;
+	const char *oper;
+	int mode, format, tech;
+
+	if (ok == FALSE)
+		return;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+COPS:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &mode);
+	g_at_result_iter_next_number(&iter, &format);
+	g_at_result_iter_next_string(&iter, &oper);
+	data->mccmnc = g_strdup(oper);
+	g_at_result_iter_next_number(&iter, &tech);
+
+	if (g_at_result_iter_next(&iter, "+COPS:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &mode);
+	g_at_result_iter_next_number(&iter, &format);
+	g_at_result_iter_next_string(&iter, &oper);
+	name = g_strdup(oper);
+	g_at_result_iter_next_number(&iter, &tech);
+
+	data->network = connman_network_create(data->mccmnc,
+						CONNMAN_NETWORK_TYPE_MBM);
+	if (data->network != NULL) {
+		int index;
+
+		index = connman_device_get_index(device);
+		connman_network_set_index(data->network, index);
+
+		connman_network_set_protocol(data->network,
+						CONNMAN_NETWORK_PROTOCOL_IP);
+
+		connman_network_set_name(data->network, name);
+		connman_network_set_group(data->network, data->mccmnc);
+
+		connman_device_add_network(device, data->network);
+	}
+
+	g_free(name);
+
+	g_at_chat_send(data->chat, "AT+CIND?", cind_prefix,
+						cind_callback, device, NULL);
+}
+
+static void network_ready(struct connman_device *device)
+{
+	struct mbm_data *data = connman_device_get_data(device);
+
+	g_at_chat_send(data->chat, "AT*ERINFO?", NULL, NULL, NULL, NULL);
+	g_at_chat_send(data->chat, "AT*E2NAP=1", NULL, NULL, NULL, NULL);
+
+	g_at_chat_send(data->chat, "AT+COPS=3,2;+COPS?;+COPS=3,0;+COPS?",
+				cops_prefix, network_callback, device, NULL);
+}
+
+static void creg_callback(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	int mode, status;
+
+	if (ok == FALSE)
+		return;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+CREG:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &mode);
+	g_at_result_iter_next_number(&iter, &status);
+
+	if (data->creg_status != 1 && data->creg_status != 5 &&
+						(status == 1 || status == 5))
+		network_ready(device);
+
+	data->creg_status = status;
+}
+
+static void cops_callback(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+
+	if (ok == FALSE)
+		return;
+
+	g_at_chat_send(data->chat, "AT+CREG?", creg_prefix,
+						creg_callback, device, NULL);
+}
+
+static void register_network(struct connman_device *device)
+{
+	struct mbm_data *data = connman_device_get_data(device);
+
+	g_at_chat_send(data->chat, "AT+CREG=1",
+						NULL, NULL, NULL, NULL);
+	g_at_chat_send(data->chat, "AT+CGREG=1",
+						NULL, NULL, NULL, NULL);
+	g_at_chat_send(data->chat, "AT+CMER=3,0,0,1",
+						NULL, NULL, NULL, NULL);
+
+	g_at_chat_send(data->chat, "AT+COPS=0", cops_prefix,
+						cops_callback, device, NULL);
+}
+
+static void e2nap_notifier(GAtResult *result, gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+
+	g_at_chat_send(data->chat, "AT+CIND?", cind_prefix,
+						cind_callback, device, NULL);
+}
+
+static void pacsp0_notifier(GAtResult *result, gpointer user_data)
+{
+}
+
+static void ciev_notifier(GAtResult *result, gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	int index, strength;
+
+	if (data->network == NULL)
+		return;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+CIEV:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &index);
+	if (index != 2)
+		return;
+
+	g_at_result_iter_next_number(&iter, &strength);
+
+	connman_network_set_strength(data->network, strength * 20);
+	connman_network_set_group(data->network, data->mccmnc);
+}
+
+static void creg_notifier(GAtResult *result, gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+	GAtResultIter iter;
+	int status;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+CREG:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &status);
+
+	if (data->creg_status != 1 && data->creg_status != 5 &&
+						(status == 1 || status == 5))
+		network_ready(device);
+
+	data->creg_status = status;
+}
+
+static void cgreg_notifier(GAtResult *result, gpointer user_data)
+{
+	GAtResultIter iter;
+	int status;
+
+	g_at_result_iter_init(&iter, result);
+
+	if (g_at_result_iter_next(&iter, "+CGREG:") == FALSE)
+		return;
+
+	g_at_result_iter_next_number(&iter, &status);
+}
+
+static void cimi_callback(gboolean ok, GAtResult *result, gpointer user_data);
+
+static gboolean cimi_timeout(gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+
+	data->cimi_counter++;
+
+	if (data->cimi_counter > 5) {
+		connman_device_set_powered(device, FALSE);
+		return FALSE;
+	}
+
+	g_at_chat_send(data->chat, "AT+CIMI", NULL,
+						cimi_callback, device, NULL);
+
+	return FALSE;
+}
+
+static void cimi_callback(gboolean ok, GAtResult *result, gpointer user_data)
+{
+	struct connman_device *device = user_data;
+
+	if (ok == FALSE) {
+		g_timeout_add_seconds(1, cimi_timeout, device);
+		return;
+	}
+
+	register_network(device);
+}
+
+static void cfun_enable(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
+
+	if (ok == FALSE) {
+		connman_device_set_powered(device, FALSE);
+		return;
+	}
+
+	connman_device_set_powered(device, TRUE);
+
+	g_at_chat_send(data->chat, "AT+CIMI", NULL,
+						cimi_callback, device, NULL);
+}
+
+static void cfun_disable(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	struct connman_device *device = user_data;
+
+	connman_device_set_powered(device, FALSE);
+}
+
+static void cfun_query(gboolean ok, GAtResult *result,
 						gpointer user_data)
 {
 	struct connman_device *device = user_data;
@@ -101,25 +401,10 @@ static void cfun_callback(gboolean ok, GAtResult *result,
 	if (status == 1) {
 		connman_device_set_powered(device, TRUE);
 
-		data->network = connman_network_create("internet",
-						CONNMAN_NETWORK_TYPE_MBM);
-		if (data->network != NULL) {
-			int index;
-
-			index = connman_device_get_index(device);
-			connman_network_set_index(data->network, index);
-
-			connman_network_set_protocol(data->network,
-						CONNMAN_NETWORK_PROTOCOL_IP);
-
-			connman_network_set_group(data->network, "internet");
-
-			connman_device_add_network(device, data->network);
-		}
+		register_network(device);
 	} else {
-		connman_device_set_powered(device, FALSE);
-
-		data->network = NULL;
+		g_at_chat_send(data->chat, "AT+CFUN=1", cfun_prefix,
+						cfun_enable, device, NULL);
 	}
 }
 
@@ -133,11 +418,8 @@ static int network_probe(struct connman_network *network)
 	data = connman_device_get_data(device);
 	connman_network_set_data(network, data);
 
-	g_at_chat_send(data->chat, "AT+CGDCONT=1,\"IP\",\"internet.com\"",
-					NULL, generic_callback, NULL, NULL);
-
 	g_at_chat_send(data->chat, "AT*ENAP?", NULL,
-					generic_callback, NULL, NULL);
+					enap_query, device, NULL);
 
 	return 0;
 }
@@ -152,11 +434,21 @@ static void network_remove(struct connman_network *network)
 static int network_connect(struct connman_network *network)
 {
 	struct mbm_data *data = connman_network_get_data(network);
+	const char *apn;
+	char *cmd;
 
 	DBG("network %p", network);
 
+	apn = connman_network_get_string(network, "Cellular.APN");
+	if (apn == NULL)
+		return -EINVAL;
+
+	cmd = g_strdup_printf("AT+CGDCONT=1,\"IP\",\"%s\"", apn);
+	g_at_chat_send(data->chat, cmd, NULL, cgdcont_callback, NULL, NULL);
+	g_free(cmd);
+
 	g_at_chat_send(data->chat, "AT*ENAP=1,1", NULL,
-					generic_callback, NULL, NULL);
+					enap_enable, NULL, NULL);
 
 	return 0;
 }
@@ -168,7 +460,7 @@ static int network_disconnect(struct connman_network *network)
 	DBG("network %p", network);
 
 	g_at_chat_send(data->chat, "AT*ENAP=0", NULL,
-					generic_callback, NULL, NULL);
+					enap_disable, NULL, NULL);
 
 	return 0;
 }
@@ -194,10 +486,8 @@ static void mbm_newlink(unsigned flags, unsigned change, void *user_data)
 
 	if ((data->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
 		if (flags & IFF_LOWER_UP) {
-			printf("==> connected\n");
 			connman_network_set_connected(data->network, TRUE);
 		} else {
-			printf("==> disconnected\n");
 			connman_network_set_connected(data->network, FALSE);
 		}
 	}
@@ -212,6 +502,7 @@ static int mbm_probe(struct connman_device *device)
 	int index;
 
 	DBG("device %p", device);
+	connman_info("mbm probe");
 
 	data = g_try_new0(struct mbm_data, 1);
 	if (data == NULL)
@@ -237,64 +528,60 @@ static void mbm_remove(struct connman_device *device)
 
 	connman_rtnl_remove_watch(data->watch);
 
+	g_free(data->mccmnc);
 	g_free(data);
 }
 
 static int mbm_enable(struct connman_device *device)
 {
 	struct mbm_data *data = connman_device_get_data(device);
+	GAtSyntax *syntax;
 	const char *devnode;
-	GIOChannel *channel;
-	struct termios ti;
-	int fd, index;
+	int index;
 
 	DBG("device %p", device);
+	connman_info("mbm enable");
 
 	devnode = connman_device_get_control(device);
 	if (devnode == NULL)
 		return -EIO;
 
-	fd = open(devnode, O_RDWR | O_NOCTTY);
-	if (fd < 0)
-		return -ENODEV;
+	syntax = g_at_syntax_new_gsmv1();
+	data->chat = g_at_chat_new_from_tty(devnode, syntax);
+	g_at_syntax_unref(syntax);
 
-	tcflush(fd, TCIOFLUSH);
-
-	/* Switch TTY to raw mode */
-	memset(&ti, 0, sizeof(ti));
-	cfmakeraw(&ti);
-
-	tcsetattr(fd, TCSANOW, &ti);
-
-	channel = g_io_channel_unix_new(fd);
-	if (channel == NULL) {
-		close(fd);
-		return -ENOMEM;
-	}
-
-	data->chat = g_at_chat_new(channel, 0);
 	if (data->chat == NULL)
 		return -EIO;
 
-	g_io_channel_unref(channel);
+	if (getenv("MBM_DEBUG"))
+		g_at_chat_set_debug(data->chat, mbm_debug, NULL);
 
 	g_at_chat_register(data->chat, "*EMRDY:", notify_callback,
 							FALSE, NULL, NULL);
-	g_at_chat_register(data->chat, "*EMWI:", notify_callback,
+	g_at_chat_register(data->chat, "*ERINFO:", notify_callback,
 							FALSE, NULL, NULL);
-	g_at_chat_register(data->chat, "+PACSP", notify_callback,
-							FALSE, NULL, NULL);
+	g_at_chat_register(data->chat, "*E2NAP:", e2nap_notifier,
+							FALSE, device, NULL);
+	g_at_chat_register(data->chat, "+PACSP0", pacsp0_notifier,
+							FALSE, device, NULL);
+	g_at_chat_register(data->chat, "+CIEV:", ciev_notifier,
+							FALSE, device, NULL);
+
+	g_at_chat_register(data->chat, "+CREG:", creg_notifier,
+							FALSE, device, NULL);
+	g_at_chat_register(data->chat, "+CGREG:", cgreg_notifier,
+							FALSE, device, NULL);
 
 	index = connman_device_get_index(device);
 	connman_inet_ifup(index);
 
 	g_at_chat_send(data->chat, "AT&F E0 V1 X4 &C1 +CMEE=1", NULL,
-					generic_callback, NULL, NULL);
+							NULL, NULL, NULL);
+
+	g_at_chat_send(data->chat, "AT*EMRDY?", NULL, NULL, NULL, NULL);
 
 	g_at_chat_send(data->chat, "AT+CFUN?", cfun_prefix,
-					cfun_callback, device, NULL);
-	g_at_chat_send(data->chat, "AT+CFUN=1", NULL,
-					cfun_callback, device, NULL);
+					cfun_query, device, NULL);
 
 	return -EINPROGRESS;
 }
@@ -306,8 +593,12 @@ static int mbm_disable(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	g_at_chat_send(data->chat, "AT+CFUN=4", NULL,
-					cfun_callback, NULL, NULL);
+	g_at_chat_send(data->chat, "AT+CMER=0", NULL, NULL, NULL, NULL);
+	g_at_chat_send(data->chat, "AT+CREG=0", NULL, NULL, NULL, NULL);
+	g_at_chat_send(data->chat, "AT+CGREG=0", NULL, NULL, NULL, NULL);
+
+	g_at_chat_send(data->chat, "AT+CFUN=4", cfun_prefix,
+						cfun_disable, device, NULL);
 
 	index = connman_device_get_index(device);
 	connman_inet_ifdown(index);
