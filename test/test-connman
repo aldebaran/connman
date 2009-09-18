@@ -13,6 +13,7 @@ if len(sys.argv) < 2:
 	print ""
 	print "  state"
 	print "  services"
+	print "  apn <service> [apn]"
 	print "  passphrase <service> [passphrase]"
 	print "  autoconnect <service> [autoconnect]"
 	print "  connect <service>"
@@ -156,6 +157,37 @@ elif sys.argv[1] in ["services", "list", "show"]:
 	properties = manager.GetProperties()
 
 	print_services(properties["Services"])
+
+elif sys.argv[1] in ["apn"]:
+	if (len(sys.argv) < 3):
+		print "Need at least service parameter"
+		sys.exit(1)
+
+	path = "/profile/default/" + sys.argv[2]
+
+	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Service")
+
+	if (len(sys.argv) > 3):
+		apn = sys.argv[3]
+
+		service.SetProperty("APN", apn);
+
+		print "APN %s set for %s" % (apn, sys.argv[2])
+	else:
+		properties = service.GetProperties()
+
+		if "Name" in properties.keys():
+			name = properties["Name"]
+		else:
+			name = "{" + properties["Type"] + "}"
+
+		if "APN" in properties.keys():
+			apn = properties["APN"]
+		else:
+			apn = "not set"
+
+		print "APN for %s is %s" % (name, apn)
 
 elif sys.argv[1] in ["passphrase", "pass"]:
 	if (len(sys.argv) < 3):

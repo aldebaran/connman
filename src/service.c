@@ -57,6 +57,9 @@ struct connman_service {
 	char *name;
 	char *passphrase;
 	char *profile;
+	char *apn;
+	char *username;
+	char *password;
 	struct connman_ipconfig *ipconfig;
 	struct connman_device *device;
 	struct connman_network *network;
@@ -295,6 +298,33 @@ static void strength_changed(struct connman_service *service)
 	g_dbus_send_message(connection, signal);
 }
 
+static void autoconnect_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "AutoConnect";
+
+	if (service->path == NULL)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&service->autoconnect);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static void passphrase_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
@@ -346,14 +376,28 @@ static void passphrase_changed(struct connman_service *service)
 	g_dbus_send_message(connection, signal);
 }
 
-static void autoconnect_changed(struct connman_service *service)
+static void apn_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
 	DBusMessageIter entry, value;
-	const char *key = "AutoConnect";
+	dbus_bool_t required;
+	const char *key = "SetupRequired";
 
 	if (service->path == NULL)
 		return;
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		return;
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	}
+
+	required = (service->apn == NULL) ? TRUE : FALSE;
 
 	signal = dbus_message_new_signal(service->path,
 				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
@@ -366,8 +410,7 @@ static void autoconnect_changed(struct connman_service *service)
 
 	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
 					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&service->autoconnect);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &required);
 	dbus_message_iter_close_container(&entry, &value);
 
 	g_dbus_send_message(connection, signal);
@@ -443,7 +486,17 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		if (service->apn != NULL) {
+			connman_dbus_dict_append_variant(&dict, "APN",
+					DBUS_TYPE_STRING, &service->apn);
+			required = FALSE;
+		} else
+			required = TRUE;
+
+		connman_dbus_dict_append_variant(&dict, "SetupRequired",
+						DBUS_TYPE_BOOLEAN, &required);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->passphrase != NULL &&
@@ -503,7 +556,26 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "Passphrase") == TRUE) {
+	if (g_str_has_prefix(name, "AutoConnect") == TRUE) {
+		connman_bool_t autoconnect;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		if (service->favorite == FALSE)
+			return __connman_error_invalid_service(msg);
+
+		dbus_message_iter_get_basic(&value, &autoconnect);
+
+		if (service->autoconnect == autoconnect)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+		service->autoconnect = autoconnect;
+
+		autoconnect_changed(service);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Passphrase") == TRUE) {
 		const char *passphrase;
 
 		if (type != DBUS_TYPE_STRING)
@@ -525,23 +597,25 @@ static DBusMessage *set_property(DBusConnection *conn,
 				"WiFi.Passphrase", service->passphrase);
 
 		__connman_storage_save_service(service);
-	} else if (g_str_has_prefix(name, "AutoConnect") == TRUE) {
-		connman_bool_t autoconnect;
+	} else if (g_str_equal(name, "APN") == TRUE) {
+		const char *apn;
 
-		if (type != DBUS_TYPE_BOOLEAN)
+		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
-		if (service->favorite == FALSE)
+		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
 
-		dbus_message_iter_get_basic(&value, &autoconnect);
+		dbus_message_iter_get_basic(&value, &apn);
 
-		if (service->autoconnect == autoconnect)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		g_free(service->apn);
+		service->apn = g_strdup(apn);
 
-		service->autoconnect = autoconnect;
+		apn_changed(service);
 
-		autoconnect_changed(service);
+		if (service->network != NULL)
+			connman_network_set_string(service->network,
+						"Cellular.APN", service->apn);
 
 		__connman_storage_save_service(service);
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
@@ -952,6 +1026,9 @@ static void service_free(gpointer user_data)
 		service->ipconfig = NULL;
 	}
 
+	g_free(service->apn);
+	g_free(service->username);
+	g_free(service->passphrase);
 	g_free(service->profile);
 	g_free(service->name);
 	g_free(service->passphrase);
@@ -1276,8 +1353,11 @@ static connman_bool_t prepare_network(struct connman_service *service)
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+		break;
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
+		connman_network_set_string(service->network,
+						"Cellular.APN", service->apn);
 		break;
 	}
 
@@ -1302,7 +1382,10 @@ int __connman_service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		if (service->apn == NULL)
+			return -EINVAL;
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		switch (service->security) {
@@ -2156,6 +2239,9 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		service->apn = g_key_file_get_string(keyfile,
+				service->identifier, "APN", NULL);
+
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
 
@@ -2272,6 +2358,10 @@ update:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		if (service->apn != NULL)
+			g_key_file_set_string(keyfile, service->identifier,
+							"APN", service->apn);
+
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
 
