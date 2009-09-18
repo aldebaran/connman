@@ -67,9 +67,6 @@ static void mbm_debug(const char *str, void *user_data)
 
 static void emrdy_notifier(GAtResult *result, gpointer user_data)
 {
-	GAtResultIter iter;
-
-	g_at_result_iter_init(&iter, result);
 }
 
 static void erinfo_notifier(GAtResult *result, gpointer user_data)
@@ -87,6 +84,15 @@ static void erinfo_notifier(GAtResult *result, gpointer user_data)
 	g_at_result_iter_next_number(&iter, &umts);
 
 	connman_info("network capability: GSM %d UMTS %d", gsm, umts);
+}
+
+static void erinfo_callback(gboolean ok, GAtResult *result,
+						gpointer user_data)
+{
+	if (ok == FALSE)
+		return;
+
+	erinfo_notifier(result, user_data);
 }
 
 static void cgdcont_callback(gboolean ok, GAtResult *result,
@@ -217,11 +223,14 @@ static void network_ready(struct connman_device *device)
 {
 	struct mbm_data *data = connman_device_get_data(device);
 
-	g_at_chat_send(data->chat, "AT*ERINFO?", NULL, NULL, NULL, NULL);
 	g_at_chat_send(data->chat, "AT*E2NAP=1", NULL, NULL, NULL, NULL);
+	g_at_chat_send(data->chat, "AT*ERINFO=1", NULL, NULL, NULL, NULL);
 
 	g_at_chat_send(data->chat, "AT+COPS=3,2;+COPS?;+COPS=3,0;+COPS?",
 				cops_prefix, network_callback, device, NULL);
+
+	g_at_chat_send(data->chat, "AT*ERINFO?", NULL, erinfo_callback,
+								device, NULL);
 }
 
 static void creg_callback(gboolean ok, GAtResult *result,
