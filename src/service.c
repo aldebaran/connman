@@ -1422,10 +1422,11 @@ static connman_bool_t prepare_network(struct connman_service *service)
 	case CONNMAN_NETWORK_TYPE_HSO:
 		connman_network_set_string(service->network,
 						"Cellular.APN", service->apn);
+
 		connman_network_set_string(service->network,
 					"Cellular.Username", service->username);
 		connman_network_set_string(service->network,
-						"Cellular.APN", service->apn);
+					"Cellular.Password", service->password);
 		break;
 	}
 
