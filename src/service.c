@@ -2176,10 +2176,10 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->autoconnect = FALSE;
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->autoconnect = TRUE;
 		break;
 	}
