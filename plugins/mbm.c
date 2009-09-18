@@ -436,8 +436,14 @@ static void cfun_disable(gboolean ok, GAtResult *result,
 						gpointer user_data)
 {
 	struct connman_device *device = user_data;
+	struct mbm_data *data = connman_device_get_data(device);
 
 	connman_device_set_powered(device, FALSE);
+
+	if (data->chat != NULL) {
+		g_at_chat_unref(data->chat);
+		data->chat = NULL;
+	}
 }
 
 static void cfun_query(gboolean ok, GAtResult *result,
@@ -588,6 +594,11 @@ static void mbm_remove(struct connman_device *device)
 
 	connman_rtnl_remove_watch(data->watch);
 
+	if (data->chat != NULL) {
+		g_at_chat_unref(data->chat);
+		data->chat = NULL;
+	}
+
 	g_free(data->imsi);
 	g_free(data);
 }
@@ -661,9 +672,6 @@ static int mbm_disable(struct connman_device *device)
 
 	index = connman_device_get_index(device);
 	connman_inet_ifdown(index);
-
-	g_at_chat_unref(data->chat);
-	data->chat = NULL;
 
 	return -EINPROGRESS;
 }
