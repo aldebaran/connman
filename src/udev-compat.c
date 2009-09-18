@@ -110,6 +110,10 @@ static struct connman_rtnl detect_rtnl = {
 	.dellink	= detect_dellink,
 };
 
+void __connman_udev_enable_rfkill_processing(void)
+{
+}
+
 char *__connman_udev_get_devtype(const char *ifname)
 {
 	return NULL;
