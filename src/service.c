@@ -967,6 +967,17 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 	passphrase_changed(service);
 
+	g_free(service->apn);
+	service->apn = NULL;
+
+	g_free(service->username);
+	service->username = NULL;
+
+	g_free(service->password);
+	service->password = NULL;
+
+	apn_changed(service);
+
 	connman_service_set_favorite(service, FALSE);
 	__connman_storage_save_service(service);
 
