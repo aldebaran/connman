@@ -504,6 +504,17 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		if (service->apn != NULL) {
 			connman_dbus_dict_append_variant(&dict, "APN",
 					DBUS_TYPE_STRING, &service->apn);
+
+			if (service->username != NULL)
+				connman_dbus_dict_append_variant(&dict,
+					"Username", DBUS_TYPE_STRING,
+							&service->username);
+
+			if (service->password != NULL)
+				connman_dbus_dict_append_variant(&dict,
+					"Password", DBUS_TYPE_STRING,
+							&service->password);
+
 			required = FALSE;
 		} else
 			required = TRUE;
@@ -629,6 +640,44 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (service->network != NULL)
 			connman_network_set_string(service->network,
 						"Cellular.APN", service->apn);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Username") == TRUE) {
+		const char *username;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
+		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
+			return __connman_error_invalid_service(msg);
+
+		dbus_message_iter_get_basic(&value, &username);
+
+		g_free(service->username);
+		service->username = g_strdup(username);
+
+		if (service->network != NULL)
+			connman_network_set_string(service->network,
+					"Cellular.Username", service->username);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Password") == TRUE) {
+		const char *password;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
+		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
+			return __connman_error_invalid_service(msg);
+
+		dbus_message_iter_get_basic(&value, &password);
+
+		g_free(service->password);
+		service->password = g_strdup(password);
+
+		if (service->network != NULL)
+			connman_network_set_string(service->network,
+					"Cellular.Password", service->password);
 
 		__connman_storage_save_service(service);
 	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
@@ -1371,6 +1420,10 @@ static connman_bool_t prepare_network(struct connman_service *service)
 		break;
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
+		connman_network_set_string(service->network,
+						"Cellular.APN", service->apn);
+		connman_network_set_string(service->network,
+					"Cellular.Username", service->username);
 		connman_network_set_string(service->network,
 						"Cellular.APN", service->apn);
 		break;
@@ -2263,7 +2316,13 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->apn = g_key_file_get_string(keyfile,
-				service->identifier, "APN", NULL);
+					service->identifier, "APN", NULL);
+
+		service->username = g_key_file_get_string(keyfile,
+					service->identifier, "Username", NULL);
+
+		service->username = g_key_file_get_string(keyfile,
+					service->identifier, "Password", NULL);
 
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
@@ -2384,6 +2443,14 @@ update:
 		if (service->apn != NULL)
 			g_key_file_set_string(keyfile, service->identifier,
 							"APN", service->apn);
+
+		if (service->username != NULL)
+			g_key_file_set_string(keyfile, service->identifier,
+						"Username", service->username);
+
+		if (service->password != NULL)
+			g_key_file_set_string(keyfile, service->identifier,
+						"Password", service->password);
 
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
