@@ -822,6 +822,9 @@ static connman_bool_t is_ignore(struct connman_service *service)
 	if (service->autoconnect == FALSE)
 		return TRUE;
 
+	if (service->roaming == TRUE)
+		return TRUE;
+
 	if (service->ignore == TRUE)
 		return TRUE;
 
