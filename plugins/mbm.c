@@ -267,18 +267,22 @@ static void creg_update(struct connman_device *device, int status)
 {
 	struct mbm_data *data = connman_device_get_data(device);
 
-	if (data->creg_status != 1 && data->creg_status != 5 &&
-					(status == 1 || status == 5)) {
+	if (status != 1 && status != 5)
+		goto done;
+
+	if (data->network != NULL) {
 		if (status == 5)
 			connman_network_set_roaming(data->network, TRUE);
 		else
 			connman_network_set_roaming(data->network, FALSE);
 
 		connman_network_set_group(data->network, data->imsi);
-
-		network_ready(device);
 	}
 
+	if (data->creg_status != 1 && data->creg_status != 5)
+		network_ready(device);
+
+done:
 	data->creg_status = status;
 }
 
