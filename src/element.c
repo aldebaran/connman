@@ -732,6 +732,7 @@ static int set_static_property(struct connman_element *element,
 	case DBUS_TYPE_STRING:
 		property->value = g_strdup(*((const char **) value));
 		break;
+	case DBUS_TYPE_BOOLEAN:
 	case DBUS_TYPE_BYTE:
 		property->value = g_try_malloc(1);
 		if (property->value != NULL)
@@ -910,6 +911,7 @@ static gboolean get_static_property(struct connman_element *element,
 			*((char **) value) = property->value;
 			found = TRUE;
 			break;
+		case DBUS_TYPE_BOOLEAN:
 		case DBUS_TYPE_BYTE:
 			memcpy(value, property->value, 1);
 			found = TRUE;
@@ -1004,6 +1006,38 @@ const char *connman_element_get_string(struct connman_element *element,
 }
 
 /**
+ * connman_element_set_bool:
+ * @element: element structure
+ * @key: unique identifier
+ * @value: boolean value
+ *
+ * Set boolean value for specific key
+ */
+int connman_element_set_bool(struct connman_element *element,
+					const char *key, connman_bool_t value)
+{
+	return set_static_property(element, key, DBUS_TYPE_BOOLEAN, &value);
+}
+
+/**
+ * connman_element_get_bool:
+ * @element: element structure
+ * @key: unique identifier
+ *
+ * Get boolean value for specific key
+ */
+connman_bool_t connman_element_get_bool(struct connman_element *element,
+							const char *key)
+{
+	connman_bool_t value;
+
+	if (get_static_property(element, key, &value) == FALSE)
+		return FALSE;
+
+	return value;
+}
+
+/**
  * connman_element_set_uint8:
  * @element: element structure
  * @key: unique identifier
@@ -1014,7 +1048,7 @@ const char *connman_element_get_string(struct connman_element *element,
 int connman_element_set_uint8(struct connman_element *element,
 					const char *key, connman_uint8_t value)
 {
-        return set_static_property(element, key, DBUS_TYPE_BYTE, &value);
+	return set_static_property(element, key, DBUS_TYPE_BYTE, &value);
 }
 
 /**
@@ -1030,7 +1064,7 @@ connman_uint8_t connman_element_get_uint8(struct connman_element *element,
 	connman_uint8_t value;
 
 	if (get_static_property(element, key, &value) == FALSE)
-                return 0;
+		return 0;
 
 	return value;
 }

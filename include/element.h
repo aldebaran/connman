@@ -121,6 +121,10 @@ int connman_element_set_string(struct connman_element *element,
 					const char *key, const char *value);
 const char *connman_element_get_string(struct connman_element *element,
 							const char *key);
+int connman_element_set_bool(struct connman_element *element,
+				const char *key, connman_bool_t value);
+connman_bool_t connman_element_get_bool(struct connman_element *element,
+							const char *key);
 int connman_element_set_uint8(struct connman_element *element,
 				const char *key, connman_uint8_t value);
 connman_uint8_t connman_element_get_uint8(struct connman_element *element,
