@@ -337,6 +337,33 @@ static void strength_changed(struct connman_service *service)
 	g_dbus_send_message(connection, signal);
 }
 
+static void roaming_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Roaming";
+
+	if (service->path == NULL)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&service->roaming);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static void autoconnect_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
@@ -2156,6 +2183,7 @@ static void update_from_network(struct connman_service *service,
 	}
 
 	service->strength = connman_network_get_uint8(network, "Strength");
+	service->roaming = connman_network_get_bool(network, "Roaming");
 
 	str = connman_network_get_string(network, "WiFi.Mode");
 	service->mode = convert_wifi_mode(str);
@@ -2266,6 +2294,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 	struct connman_service *service;
 	enum connman_service_mode mode;
 	connman_uint8_t strength, value;
+	connman_bool_t roaming;
 
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
@@ -2276,11 +2305,20 @@ void __connman_service_update_from_network(struct connman_network *network)
 
 	strength = connman_network_get_uint8(service->network, "Strength");
 	if (strength == service->strength)
-		goto done;
+		goto roaming;
 
 	service->strength = strength;
 
 	strength_changed(service);
+
+roaming:
+	roaming = connman_network_get_bool(service->network, "Roaming");
+	if (roaming == service->roaming)
+		goto done;
+
+	service->roaming = roaming;
+
+	roaming_changed(service);
 
 done:
 	if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
