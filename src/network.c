@@ -39,6 +39,7 @@ struct connman_network {
 	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
+	connman_bool_t roaming;
 	connman_bool_t hidden;
 	connman_uint8_t strength;
 	connman_uint16_t frequency;
@@ -964,6 +965,24 @@ int connman_network_set_strength(struct connman_network *network,
 }
 
 /**
+ * connman_network_set_roaming:
+ * @network: network structure
+ * @roaming: roaming state
+ *
+ * Set roaming state for network
+ */
+int connman_network_set_roaming(struct connman_network *network,
+						connman_bool_t roaming)
+{
+	DBG("network %p roaming %d", network, roaming);
+
+	network->roaming = roaming;
+
+	return connman_element_set_bool(&network->element,
+						"Roaming", roaming);
+}
+
+/**
  * connman_network_set_string:
  * @network: network structure
  * @key: unique identifier
@@ -1025,6 +1044,43 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.passphrase;
 
 	return connman_element_get_string(&network->element, key);
+}
+
+/**
+ * connman_network_set_bool:
+ * @network: network structure
+ * @key: unique identifier
+ * @value: boolean value
+ *
+ * Set boolean value for specific key
+ */
+int connman_network_set_bool(struct connman_network *network,
+					const char *key, connman_bool_t value)
+{
+	DBG("network %p key %s value %d", network, key, value);
+
+	if (g_strcmp0(key, "Roaming") == 0)
+		return connman_network_set_roaming(network, value);
+
+	return connman_element_set_bool(&network->element, key, value);
+}
+
+/**
+ * connman_network_get_bool:
+ * @network: network structure
+ * @key: unique identifier
+ *
+ * Get boolean value for specific key
+ */
+connman_bool_t connman_network_get_bool(struct connman_network *network,
+							const char *key)
+{
+	DBG("network %p key %s", network, key);
+
+	if (g_str_equal(key, "Roaming") == TRUE)
+		return network->roaming;
+
+	return connman_element_get_bool(&network->element, key);
 }
 
 /**

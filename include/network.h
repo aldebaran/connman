@@ -89,10 +89,16 @@ int connman_network_set_name(struct connman_network *network,
 							const char *name);
 int connman_network_set_strength(struct connman_network *network,
 						connman_uint8_t strength);
+int connman_network_set_roaming(struct connman_network *network,
+						connman_bool_t roaming);
 
 int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
 const char *connman_network_get_string(struct connman_network *network,
+							const char *key);
+int connman_network_set_bool(struct connman_network *network,
+					const char *key, connman_bool_t value);
+connman_bool_t connman_network_get_bool(struct connman_network *network,
 							const char *key);
 int connman_network_set_uint8(struct connman_network *network,
 					const char *key, connman_uint8_t value);
