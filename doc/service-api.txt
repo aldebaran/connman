@@ -147,12 +147,17 @@ Properties	string State [readonly]
 
 		string Mode [readonly]
 
-			If the service type is WiFi, then this property is
-			present and contains the mode of the network. The
-			possible values are "managed" or "adhoc".
+			If the service type is WiFi or Cellular, then this
+			property is present and contains the mode of the
+			network.
 
-			This property might be only present for WiFi
-			services.
+			For WiFi services the possible values are "managed"
+			and "adhoc". For Cellular services it describes the
+			network technology. Possible values are "gprs", "edge"
+			and "umts".
+
+			This property might be only present for WiFi and
+			Cellular services.
 
 		string Security [readonly]
 
@@ -211,6 +216,41 @@ Properties	string State [readonly]
 			For favorite services it is possible to change
 			this value to prevent or permit automatic
 			connection attempts.
+
+		boolean SetupRequired [readonly]
+
+			If the service is Cellular, then this property
+			indicates that some extra setup steps are required.
+
+			In most cases it is required to fill in the APN
+			details.
+
+		string APN [readwrite]
+
+			If the service is Cellular, then this property
+			contains the APN details.
+
+			The APN is network provider specific and even
+			sometimes data plan specific. Possible examples
+			are "isp.cingular" or "internet.t-mobile".
+
+		string MCC [readonly]
+
+			If the service is Cellular, then this property
+			contains the Mobile Country Code.
+
+		string MNC [readonly]
+
+			If the service is Cellular, then this property
+			contains the Mobile Network Code.
+
+		boolean Roaming [readonly]
+
+			This property indicates if this service is roaming.
+
+			In the case of Cellular services this normally
+			indicates connections to a foreign provider when
+			traveling abroad.
 
 		string IPv4.Method [readwrite]
 
