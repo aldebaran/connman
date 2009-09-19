@@ -263,13 +263,31 @@ static void network_ready(struct connman_device *device)
 								device, NULL);
 }
 
-static void creg_callback(gboolean ok, GAtResult *result,
+static void creg_update(struct connman_device *device, int status)
+{
+	struct mbm_data *data = connman_device_get_data(device);
+
+	if (data->creg_status != 1 && data->creg_status != 5 &&
+					(status == 1 || status == 5)) {
+		if (status == 5)
+			connman_network_set_roaming(data->network, TRUE);
+		else
+			connman_network_set_roaming(data->network, FALSE);
+
+		connman_network_set_group(data->network, data->imsi);
+
+		network_ready(device);
+	}
+
+	data->creg_status = status;
+}
+
+static void creg_query(gboolean ok, GAtResult *result,
 						gpointer user_data)
 {
 	struct connman_device *device = user_data;
-	struct mbm_data *data = connman_device_get_data(device);
 	GAtResultIter iter;
-	int mode, status;
+	int status;
 
 	if (ok == FALSE)
 		return;
@@ -279,14 +297,10 @@ static void creg_callback(gboolean ok, GAtResult *result,
 	if (g_at_result_iter_next(&iter, "+CREG:") == FALSE)
 		return;
 
-	g_at_result_iter_next_number(&iter, &mode);
+	g_at_result_iter_skip_next(&iter);
 	g_at_result_iter_next_number(&iter, &status);
 
-	if (data->creg_status != 1 && data->creg_status != 5 &&
-						(status == 1 || status == 5))
-		network_ready(device);
-
-	data->creg_status = status;
+	creg_update(device, status);
 }
 
 static void cops_callback(gboolean ok, GAtResult *result,
@@ -299,7 +313,7 @@ static void cops_callback(gboolean ok, GAtResult *result,
 		return;
 
 	g_at_chat_send(data->chat, "AT+CREG?", creg_prefix,
-						creg_callback, device, NULL);
+						creg_query, device, NULL);
 }
 
 static void register_network(struct connman_device *device)
@@ -369,7 +383,6 @@ static void ciev_notifier(GAtResult *result, gpointer user_data)
 static void creg_notifier(GAtResult *result, gpointer user_data)
 {
 	struct connman_device *device = user_data;
-	struct mbm_data *data = connman_device_get_data(device);
 	GAtResultIter iter;
 	int status;
 
@@ -380,11 +393,7 @@ static void creg_notifier(GAtResult *result, gpointer user_data)
 
 	g_at_result_iter_next_number(&iter, &status);
 
-	if (data->creg_status != 1 && data->creg_status != 5 &&
-						(status == 1 || status == 5))
-		network_ready(device);
-
-	data->creg_status = status;
+	creg_update(device, status);
 }
 
 static void cgreg_notifier(GAtResult *result, gpointer user_data)
