@@ -1442,6 +1442,30 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 					remove_unavailable_network, NULL);
 }
 
+static void scanning_changed(struct connman_device *device)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Scanning";
+
+	signal = dbus_message_new_signal(device->element.path,
+				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&device->scanning);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 /**
  * connman_device_set_scanning:
  * @device: device structure
@@ -1452,10 +1476,6 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 int connman_device_set_scanning(struct connman_device *device,
 						connman_bool_t scanning)
 {
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Scanning";
-
 	DBG("device %p scanning %d", device, scanning);
 
 	if (!device->driver || !device->driver->scan)
@@ -1466,21 +1486,7 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	device->scanning = scanning;
 
-	signal = dbus_message_new_signal(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return 0;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &scanning);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
+	scanning_changed(device);
 
 	if (scanning == TRUE) {
 		reset_scan_trigger(device);
