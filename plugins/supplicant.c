@@ -1594,7 +1594,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		return;
 
 	if (task->scanning == TRUE && state != WPA_SCANNING) {
-		connman_device_set_scanning(task->device, FALSE);
+		connman_device_cleanup_scanning(task->device);
 		task->scanning = FALSE;
 	}
 
