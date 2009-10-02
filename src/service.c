@@ -30,6 +30,7 @@
 #include "connman.h"
 
 #define MAX_CONNECT_RETRIES	2
+#define CONNECT_TIMEOUT		120
 
 static DBusConnection *connection = NULL;
 
@@ -1571,7 +1572,7 @@ int __connman_service_connect(struct connman_service *service)
 			return err;
 		}
 
-		service->timeout = g_timeout_add_seconds(45,
+		service->timeout = g_timeout_add_seconds(CONNECT_TIMEOUT,
 						connect_timeout, service);
 
 		return -EINPROGRESS;
