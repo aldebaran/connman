@@ -44,6 +44,7 @@
 #include <connman/log.h>
 
 #include <gatchat.h>
+#include <gattty.h>
 
 static const char *cfun_prefix[] = { "+CFUN:", NULL };
 static const char *cind_prefix[] = { "+CIND:", NULL };
@@ -661,6 +662,7 @@ static int mbm_enable(struct connman_device *device)
 {
 	struct mbm_data *data = connman_device_get_data(device);
 	GAtSyntax *syntax;
+	GIOChannel *channel;
 	const char *devnode;
 	int index;
 
@@ -670,9 +672,15 @@ static int mbm_enable(struct connman_device *device)
 	if (devnode == NULL)
 		return -EIO;
 
+	channel = g_at_tty_open(devnode, NULL);
+	if (channel == NULL)
+		return -EIO;
+
 	syntax = g_at_syntax_new_gsmv1();
-	data->chat = g_at_chat_new_from_tty(devnode, syntax);
+	data->chat = g_at_chat_new(channel, syntax);
 	g_at_syntax_unref(syntax);
+
+	g_io_channel_unref(channel);
 
 	if (data->chat == NULL)
 		return -EIO;
