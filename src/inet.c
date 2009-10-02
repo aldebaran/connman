@@ -467,7 +467,7 @@ struct connman_device *connman_inet_create_device(int index)
 		name = strdup(devname);
 		break;
 	case CONNMAN_DEVICE_TYPE_MBM:
-		name = strdup(devname);
+		name = index2ident(index, "");
 		addr = index2addr(index);
 		node = __connman_udev_get_mbm_devnode(devname);
 		break;
