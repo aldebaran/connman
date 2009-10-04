@@ -1,3 +1,11 @@
+ver 0.43:
+	Fix issue with missing scanning after power up.
+	Fix issue with udev versus /dev/rfkill event processing.
+	Fix issue with powered down device on connection attempt.
+	Add support for multiple connection attempts.
+	Add support for tracking the operation state.
+	Add full support for Ericsson MBM cellular devices.
+
 ver 0.42:
 	Fix issue with switching between hidden WiFi networks.
 	Fix issue with missing scanning after disconnect.
