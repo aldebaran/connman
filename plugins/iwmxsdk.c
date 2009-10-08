@@ -47,7 +47,14 @@ static struct wmxsdk *g_iwmx_sdk_devs[IWMX_SDK_DEV_MAX];
 
 static struct wmxsdk *deviceid_to_wmxsdk(WIMAX_API_DEVICE_ID *device_id)
 {
-	return container_of(device_id, struct wmxsdk, device_id);
+	unsigned cnt;
+	for (cnt = 0; cnt < IWMX_SDK_DEV_MAX; cnt++) {
+		struct wmxsdk *wmxsdk = g_iwmx_sdk_devs[cnt];
+		if (wmxsdk &&
+		    wmxsdk->device_id.deviceIndex == device_id->deviceIndex)
+			return wmxsdk;
+	}
+	return NULL;
 }
 
 static WIMAX_API_DEVICE_ID g_api;
