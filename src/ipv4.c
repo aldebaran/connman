@@ -199,7 +199,10 @@ static int ipv4_probe(struct connman_element *element)
 	memset(&ipv4, 0, sizeof(ipv4));
 	ipv4.address.s_addr = inet_addr(address);
 	ipv4.netmask.s_addr = inet_addr(netmask);
-	ipv4.broadcast.s_addr = inet_addr(broadcast);
+	if (broadcast)
+		ipv4.broadcast.s_addr = inet_addr(broadcast);
+	else
+		ipv4.broadcast.s_addr = ipv4.address.s_addr | ~ipv4.netmask.s_addr;
 
 	set_ipv4(element, &ipv4, nameserver);
 
