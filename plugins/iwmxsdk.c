@@ -24,6 +24,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <net/if.h>
@@ -42,7 +43,7 @@
 #include "iwmx.h"
 
 /* Yes, this is dirty; see above on IWMX_SDK_DEV_MAX*/
-static struct wmxsdk g_iwmx_sdk_devs[IWMX_SDK_DEV_MAX];
+static struct wmxsdk *g_iwmx_sdk_devs[IWMX_SDK_DEV_MAX];
 
 static struct wmxsdk *deviceid_to_wmxsdk(WIMAX_API_DEVICE_ID *device_id)
 {
@@ -814,10 +815,16 @@ static void iwmx_sdk_dev_add(unsigned idx, unsigned api_idx, const char *name)
 			      idx, IWMX_SDK_DEV_MAX);
 		goto error_bug;
 	}
-	wmxsdk = &g_iwmx_sdk_devs[idx];
-	if (wmxsdk->dev != NULL) {
+	if (g_iwmx_sdk_devs[idx] != NULL) {
 		connman_error("BUG! device index %u already enumerated?\n",
 			      idx);
+		goto error_bug;
+	}
+
+	wmxsdk = malloc(sizeof(*wmxsdk));
+	if (wmxsdk == NULL) {
+		connman_error("Can't allocate %zu bytes\n",
+			      sizeof(*wmxsdk));
 		goto error_bug;
 	}
 
@@ -863,6 +870,7 @@ static void iwmx_sdk_dev_add(unsigned idx, unsigned api_idx, const char *name)
 			      wmxsdk->ifname, result);
 		goto error_dev_add;
 	}
+	g_iwmx_sdk_devs[idx] = wmxsdk;
 	return;
 
 error_dev_add:
@@ -884,7 +892,7 @@ static void iwmx_sdk_dev_rm(unsigned idx)
 			      idx, IWMX_SDK_DEV_MAX);
 		goto error_bug;
 	}
-	wmxsdk = &g_iwmx_sdk_devs[idx];
+	wmxsdk = g_iwmx_sdk_devs[idx];
 	if (wmxsdk->dev == NULL) {
 		DBG("device index %u not enumerated? ignoring\n", idx);
 		goto error_bug;
@@ -894,6 +902,8 @@ static void iwmx_sdk_dev_rm(unsigned idx)
 	wmxsdk->name[0] = 0;
 	connman_device_unref(wmxsdk->dev);
 	memset(wmxsdk, 0, sizeof(*wmxsdk));
+	g_iwmx_sdk_devs[idx] = NULL;
+	free(wmxsdk);
 error_bug:
 	return;
 }
