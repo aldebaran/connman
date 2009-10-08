@@ -19,6 +19,24 @@
  *
  */
 
+/* Fix source compat brakage from 1.4 to 1.5...*/
+#ifndef HAVE_WIMAX_API_DEVICE_ID
+typedef struct WIMAX_API_DEVICE_ID WIMAX_API_DEVICE_ID;
+#endif
+
+#ifndef HAVE_WIMAX_API_CONNECTED_NSP_INFO
+typedef struct WIMAX_API_CONNECTED_NSP_INFO WIMAX_API_CONNECTED_NSP_INFO;
+#endif
+
+#ifndef HAVE_WIMAX_API_NSP_INFO_EX
+typedef struct WIMAX_API_NSP_INFO_EX WIMAX_API_NSP_INFO_EX;
+#endif
+
+#ifndef HAVE_WIMAX_API_HW_DEVICE_ID
+typedef struct WIMAX_API_HW_DEVICE_ID WIMAX_API_HW_DEVICE_ID;
+#endif
+
+
 /*
  *
  * The plugin is broken in two main parts: the glue to connman
@@ -73,7 +91,7 @@
  */
 
 struct wmxsdk {
-	struct WIMAX_API_DEVICE_ID device_id;
+	WIMAX_API_DEVICE_ID device_id;
 	struct connman_device *dev;
 
 	GStaticMutex network_mutex;

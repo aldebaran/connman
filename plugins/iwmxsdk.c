@@ -35,6 +35,7 @@
 #include <connman/inet.h>
 #include <connman/log.h>
 
+#include <WiMaxType.h>
 #include <WiMaxAPI.h>
 #include <WiMaxAPIEx.h>
 
@@ -43,12 +44,12 @@
 /* Yes, this is dirty; see above on IWMX_SDK_DEV_MAX*/
 static struct wmxsdk g_iwmx_sdk_devs[IWMX_SDK_DEV_MAX];
 
-static struct wmxsdk *deviceid_to_wmxsdk(struct WIMAX_API_DEVICE_ID *device_id)
+static struct wmxsdk *deviceid_to_wmxsdk(WIMAX_API_DEVICE_ID *device_id)
 {
 	return container_of(device_id, struct wmxsdk, device_id);
 }
 
-static struct WIMAX_API_DEVICE_ID g_api;
+static WIMAX_API_DEVICE_ID g_api;
 
 
 /*
@@ -185,7 +186,7 @@ struct connman_network *__iwmx_sdk_get_connected_network(struct wmxsdk *wmxsdk)
 {
 	struct connman_network *nw;
 
-	struct WIMAX_API_CONNECTED_NSP_INFO nsp_info;
+	WIMAX_API_CONNECTED_NSP_INFO nsp_info;
 	WIMAX_API_RET r;
 	char errstr[512];
 	UINT32 errstr_size = sizeof(errstr);
@@ -226,8 +227,8 @@ struct connman_network *__iwmx_sdk_get_connected_network(struct wmxsdk *wmxsdk)
  * change callback is called and that will fiddle with the connman
  * internals.
  */
-static void __iwmx_sdk_rf_state_cb(struct WIMAX_API_DEVICE_ID *device_id,
-						WIMAX_API_RF_STATE rf_state)
+static void __iwmx_sdk_rf_state_cb(WIMAX_API_DEVICE_ID *device_id,
+				   WIMAX_API_RF_STATE rf_state)
 {
 	DBG("rf_state changed to %d\n", rf_state);
 }
@@ -341,8 +342,8 @@ error_get_status:
  * from disconnecting to something else); the state change callback is
  * called and that will fiddle with the connman internals.
  */
-static void __iwmx_sdk_connect_cb(struct WIMAX_API_DEVICE_ID *device_id,
-					WIMAX_API_NETWORK_CONNECTION_RESP resp)
+static void __iwmx_sdk_connect_cb(WIMAX_API_DEVICE_ID *device_id,
+				  WIMAX_API_NETWORK_CONNECTION_RESP resp)
 {
 	WIMAX_API_DEVICE_STATUS status;
 	struct wmxsdk *wmxsdk = deviceid_to_wmxsdk(device_id);
@@ -459,8 +460,8 @@ error_get_status:
  * We just update the result of the command and wake up anybody who is
  * waiting for this conditional variable.
  */
-static void __iwmx_sdk_disconnect_cb(struct WIMAX_API_DEVICE_ID *device_id,
-					WIMAX_API_NETWORK_CONNECTION_RESP resp)
+static void __iwmx_sdk_disconnect_cb(WIMAX_API_DEVICE_ID *device_id,
+				     WIMAX_API_NETWORK_CONNECTION_RESP resp)
 {
 	struct wmxsdk *wmxsdk = deviceid_to_wmxsdk(device_id);
 	WIMAX_API_DEVICE_STATUS status;
@@ -549,7 +550,7 @@ error_get_status:
  *
  * Just pass them to the state transition handler
  */
-static void __iwmx_sdk_state_change_cb(struct WIMAX_API_DEVICE_ID *device_id,
+static void __iwmx_sdk_state_change_cb(WIMAX_API_DEVICE_ID *device_id,
 					WIMAX_API_DEVICE_STATUS status,
 					WIMAX_API_STATUS_REASON reason,
 					WIMAX_API_CONNECTION_PROGRESS_INFO pi)
@@ -565,9 +566,9 @@ static void __iwmx_sdk_state_change_cb(struct WIMAX_API_DEVICE_ID *device_id,
  * From here we update the connman core idea of which networks are
  * available.
  */
-static void __iwmx_sdk_scan_common_cb(struct WIMAX_API_DEVICE_ID *device_id,
-					struct WIMAX_API_NSP_INFO_EX *nsp_list,
-							UINT32 nsp_list_size)
+static void __iwmx_sdk_scan_common_cb(WIMAX_API_DEVICE_ID *device_id,
+				      WIMAX_API_NSP_INFO_EX *nsp_list,
+				      UINT32 nsp_list_size)
 {
 	struct wmxsdk *wmxsdk = deviceid_to_wmxsdk(device_id);
 	unsigned itr;
@@ -576,7 +577,7 @@ static void __iwmx_sdk_scan_common_cb(struct WIMAX_API_DEVICE_ID *device_id,
 	g_static_mutex_lock(&wmxsdk->network_mutex);
 	for (itr = 0; itr < nsp_list_size; itr++) {
 		int strength;
-		struct WIMAX_API_NSP_INFO_EX *nsp_info = &nsp_list[itr];
+		WIMAX_API_NSP_INFO_EX *nsp_info = &nsp_list[itr];
 		snprintf(station_name, sizeof(station_name),
 			 "%s", (char *)nsp_info->NSPName);
 		/* CAPI is reporing link quality as zero -- if it is
@@ -605,9 +606,9 @@ static void __iwmx_sdk_scan_common_cb(struct WIMAX_API_DEVICE_ID *device_id,
  *
  * We treat them same as wide, so we just call that.
  */
-static void __iwmx_sdk_wide_scan_cb(struct WIMAX_API_DEVICE_ID *device_id,
-				struct WIMAX_API_NSP_INFO_EX *nsp_list,
-							UINT32 nsp_list_size)
+static void __iwmx_sdk_wide_scan_cb(WIMAX_API_DEVICE_ID *device_id,
+				    WIMAX_API_NSP_INFO_EX *nsp_list,
+				    UINT32 nsp_list_size)
 {
 	__iwmx_sdk_scan_common_cb(device_id, nsp_list, nsp_list_size);
 }
@@ -617,8 +618,8 @@ static void __iwmx_sdk_wide_scan_cb(struct WIMAX_API_DEVICE_ID *device_id,
  *
  * We treat them same as wide, so we just call that.
  */
-static void __iwmx_sdk_scan_cb(struct WIMAX_API_DEVICE_ID *device_id,
-				struct WIMAX_API_NSP_INFO_EX *nsp_list,
+static void __iwmx_sdk_scan_cb(WIMAX_API_DEVICE_ID *device_id,
+				WIMAX_API_NSP_INFO_EX *nsp_list,
 				UINT32 nsp_list_size, UINT32 searchProgress)
 {
 	__iwmx_sdk_scan_common_cb(device_id, nsp_list, nsp_list_size);
@@ -635,7 +636,7 @@ int iwmx_sdk_scan(struct wmxsdk *wmxsdk)
 	int result;
 
 	UINT32 nsp_list_length = 10;
-	struct WIMAX_API_NSP_INFO_EX nsp_list[10];	/* FIXME: up to 32? */
+	WIMAX_API_NSP_INFO_EX nsp_list[10];	/* FIXME: up to 32? */
 
 	WIMAX_API_RET r;
 	char errstr[512];
@@ -897,12 +898,12 @@ error_bug:
 	return;
 }
 
-static void iwmx_sdk_addremove_cb(struct WIMAX_API_DEVICE_ID *devid,
-								BOOL presence)
+static void iwmx_sdk_addremove_cb(WIMAX_API_DEVICE_ID *devid,
+				  BOOL presence)
 {
 	unsigned int cnt;
 	WIMAX_API_RET r;
-	struct WIMAX_API_HW_DEVICE_ID device_id_list[5];
+	WIMAX_API_HW_DEVICE_ID device_id_list[5];
 	UINT32 device_id_list_size = ARRAY_SIZE(device_id_list);
 
 	char errstr[512];
@@ -923,7 +924,7 @@ static void iwmx_sdk_addremove_cb(struct WIMAX_API_DEVICE_ID *devid,
 		DBG("No WiMAX devices reported\n");
 	else
 		for (cnt = 0; cnt < device_id_list_size; cnt++) {
-			struct WIMAX_API_HW_DEVICE_ID *dev =
+			WIMAX_API_HW_DEVICE_ID *dev =
 				device_id_list + cnt;
 			DBG("#%u index #%u device %s\n",
 			    cnt, dev->deviceIndex, dev->deviceName);
@@ -936,7 +937,7 @@ static void iwmx_sdk_addremove_cb(struct WIMAX_API_DEVICE_ID *devid,
 	}
 
 	if (presence) {
-		struct WIMAX_API_HW_DEVICE_ID *dev =
+		WIMAX_API_HW_DEVICE_ID *dev =
 			device_id_list + devid->deviceIndex;
 		iwmx_sdk_dev_add(devid->deviceIndex, dev->deviceIndex,
 			       dev->deviceName);
@@ -957,7 +958,7 @@ int iwmx_sdk_api_init(void)
 	char errstr[512];
 	UINT32 errstr_size = sizeof(errstr);
 
-	struct WIMAX_API_HW_DEVICE_ID device_id_list[5];
+	WIMAX_API_HW_DEVICE_ID device_id_list[5];
 	UINT32 device_id_list_size = ARRAY_SIZE(device_id_list);
 
 	memset(&g_api, 0, sizeof(g_api));
@@ -997,7 +998,7 @@ int iwmx_sdk_api_init(void)
 		DBG("No WiMAX devices reported\n");
 	else
 		for (cnt = 0; cnt < device_id_list_size; cnt++) {
-			struct WIMAX_API_HW_DEVICE_ID *dev =
+			WIMAX_API_HW_DEVICE_ID *dev =
 				device_id_list + cnt;
 			DBG("#%u index #%u device %s\n",
 			    cnt, dev->deviceIndex, dev->deviceName);

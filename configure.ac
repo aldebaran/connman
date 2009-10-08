@@ -223,6 +223,8 @@ if (test "${enable_iwmx}" = "yes"); then
 	PKG_CONFIG_PATH=""
 	AC_SUBST(IWMXSDK_CFLAGS)
 	AC_SUBST(IWMXSDK_LIBS)
+
+        # Fix API compat breakage from 1.4 to 1.5...
         CPPFLAGS_save=$CPPFLAGS
         CPPFLAGS="$IWMXSDK_CFLAGS $CPPFLAGS"
         AH_TEMPLATE([HAVE_IWMXSDK_STATUS_IDLE],
@@ -231,6 +233,36 @@ if (test "${enable_iwmx}" = "yes"); then
                       [AC_DEFINE([HAVE_IWMXSDK_STATUS_IDLE], [1], [])],
                       [],
                       [[#include <WiMaxType.h>]])
+
+        AH_TEMPLATE([HAVE_WIMAX_API_DEVICE_ID],
+                    [WIMAX_API_DEVICE_ID is present])
+        AC_CHECK_TYPE(WIMAX_API_DEVICE_ID,
+                      [AC_DEFINE([HAVE_WIMAX_API_DEVICE_ID], [1], [])],
+                      [],
+                      [[#include <WiMaxType.h>]])
+
+        AH_TEMPLATE([HAVE_WIMAX_API_HW_DEVICE_ID],
+                    [WIMAX_API_HW_DEVICE_ID is present])
+        AC_CHECK_TYPE(WIMAX_API_HW_DEVICE_ID,
+                      [AC_DEFINE([HAVE_WIMAX_API_HW_DEVICE_ID], [1], [])],
+                      [],
+                      [[#include <WiMaxType.h>]])
+
+        AH_TEMPLATE([HAVE_WIMAX_API_NSP_INFO_EX],
+                    [WIMAX_API_NSP_INFO_EX is present])
+        AC_CHECK_TYPE(WIMAX_API_NSP_INFO_EX,
+                      [AC_DEFINE([HAVE_WIMAX_API_NSP_INFO_EX], [1], [])],
+                      [],
+                      [[#include <WiMaxType.h>] 
+                       [#include <WiMaxTypesEx.h>]])
+
+        AH_TEMPLATE([HAVE_WIMAX_API_CONNECTED_NSP_INFO],
+                    [WIMAX_API_CONNECTED_NSP_INFO is present])
+        AC_CHECK_TYPE(WIMAX_API_CONNECTED_NSP_INFO,
+                      [AC_DEFINE([HAVE_WIMAX_API_CONNECTED_NSP_INFO], [1], [])],
+                      [],
+                      [[#include <WiMaxType.h>]])
+
         CPPFLAGS=$CPPFLAGS_save
 fi
 AM_CONDITIONAL(IWMX, test "${enable_iwmx}" = "yes")
