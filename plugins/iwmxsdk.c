@@ -98,8 +98,10 @@ const char *iwmx_sdk_dev_status_to_str(WIMAX_API_DEVICE_STATUS status)
 		return "Connection in progress";
 	case WIMAX_API_DEVICE_STATUS_Data_Connected:
 		return "Layer 2 connected";
+#if HAVE_IWMXSDK_STATUS_IDLE
 	case WIMAX_API_DEVICE_STATUS_Connection_Idle:
 		return "Idle connection";
+#endif /* #if HAVE_IWMXSDK_STATUS_IDLE */
 	default:
 		return "unknown state";
 	}
@@ -298,7 +300,9 @@ int iwmx_sdk_rf_state_set(struct wmxsdk *wmxsdk, WIMAX_API_RF_STATE rf_state)
 	case WIMAX_API_DEVICE_STATUS_Scanning:
 	case WIMAX_API_DEVICE_STATUS_Connecting:
 	case WIMAX_API_DEVICE_STATUS_Data_Connected:
+#if HAVE_IWMXSDK_STATUS_IDLE
 	case WIMAX_API_DEVICE_STATUS_Connection_Idle:
+#endif
 		if (rf_state == WIMAX_API_RF_ON) {
 			result = 0;
 			DBG("radio is already on\n");
@@ -346,7 +350,10 @@ static void __iwmx_sdk_connect_cb(struct WIMAX_API_DEVICE_ID *device_id,
 	status = iwmx_cm_status_get(wmxsdk);
 	if (resp == WIMAX_API_CONNECTION_SUCCESS) {
 		if (status != WIMAX_API_DEVICE_STATUS_Data_Connected
-		    && status != WIMAX_API_DEVICE_STATUS_Connection_Idle)
+#if HAVE_IWMXSDK_STATUS_IDLE
+		    && status != WIMAX_API_DEVICE_STATUS_Connection_Idle
+#endif
+			)
 			connman_error("wmxsdk: error: connect worked, but state"
 				      " didn't change (now it is %d [%s])\n",
 				      status,
@@ -406,7 +413,9 @@ int iwmx_sdk_connect(struct wmxsdk *wmxsdk, struct connman_network *nw)
 		result = -EINPROGRESS;
 		goto error_cant_do;
 	case WIMAX_API_DEVICE_STATUS_Data_Connected:
+#if HAVE_IWMXSDK_STATUS_IDLE
 	case WIMAX_API_DEVICE_STATUS_Connection_Idle:
+#endif
 		connman_error("wmxsdk: BUG? need to disconnect?\n");
 		result = -EINVAL;
 		goto error_cant_do;
@@ -459,7 +468,10 @@ static void __iwmx_sdk_disconnect_cb(struct WIMAX_API_DEVICE_ID *device_id,
 	status = iwmx_cm_status_get(wmxsdk);
 	if (resp == WIMAX_API_CONNECTION_SUCCESS) {
 		if (status == WIMAX_API_DEVICE_STATUS_Data_Connected
-		    || status == WIMAX_API_DEVICE_STATUS_Connection_Idle)
+#if HAVE_IWMXSDK_STATUS_IDLE
+		    || status == WIMAX_API_DEVICE_STATUS_Connection_Idle
+#endif
+			)
 			connman_error("wmxsdk: error: disconnect worked, "
 				      "but state didn't change (now it is "
 				      "%d [%s])\n", status,
@@ -510,7 +522,9 @@ int iwmx_sdk_disconnect(struct wmxsdk *wmxsdk)
 		goto error_cant_do;
 	case WIMAX_API_DEVICE_STATUS_Connecting:
 	case WIMAX_API_DEVICE_STATUS_Data_Connected:
+#if HAVE_IWMXSDK_STATUS_IDLE
 	case WIMAX_API_DEVICE_STATUS_Connection_Idle:
+#endif
 		break;
 	default:
 		g_assert(1);

@@ -299,6 +299,7 @@ void __iwmx_cm_state_change(struct wmxsdk *wmxsdk,
 	 * For practical effects, some states are the same
 	 */
 
+#if HAVE_IWMXSDK_STATUS_IDLE
 	/* Conection_Idle is the same as Data_Connected */
 	if (__old_status == WIMAX_API_DEVICE_STATUS_Connection_Idle)
 		old_status = WIMAX_API_DEVICE_STATUS_Data_Connected;
@@ -308,7 +309,7 @@ void __iwmx_cm_state_change(struct wmxsdk *wmxsdk,
 		new_status = WIMAX_API_DEVICE_STATUS_Data_Connected;
 	else
 		new_status = __new_status;
-
+#endif /* #if HAVE_IWMXSDK_STATUS_IDLE */
 	/* Radio off: all are just RF_OFF_SW (the highest) */
 	switch (__old_status) {
 	case WIMAX_API_DEVICE_STATUS_RF_OFF_HW_SW:

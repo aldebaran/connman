@@ -223,6 +223,15 @@ if (test "${enable_iwmx}" = "yes"); then
 	PKG_CONFIG_PATH=""
 	AC_SUBST(IWMXSDK_CFLAGS)
 	AC_SUBST(IWMXSDK_LIBS)
+        CPPFLAGS_save=$CPPFLAGS
+        CPPFLAGS="$IWMXSDK_CFLAGS $CPPFLAGS"
+        AH_TEMPLATE([HAVE_IWMXSDK_STATUS_IDLE],
+                    [WIMAX_API_DEVICE_STATUS_Connection_Idle is present])
+        AC_CHECK_DECL(WIMAX_API_DEVICE_STATUS_Connection_Idle,
+                      [AC_DEFINE([HAVE_IWMXSDK_STATUS_IDLE], [1], [])],
+                      [],
+                      [[#include <WiMaxType.h>]])
+        CPPFLAGS=$CPPFLAGS_save
 fi
 AM_CONDITIONAL(IWMX, test "${enable_iwmx}" = "yes")
 
