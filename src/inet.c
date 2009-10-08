@@ -512,7 +512,7 @@ struct connman_device *connman_inet_create_device(int index)
 
 	if (ident != NULL) {
 		connman_device_set_ident(device, ident);
-		g_free(ident);
+		free(ident);
 	}
 
 	connman_device_set_string(device, "Address", addr);
@@ -520,8 +520,8 @@ struct connman_device *connman_inet_create_device(int index)
 done:
 	g_free(devname);
 	g_free(node);
-	g_free(name);
-	g_free(addr);
+	free(name);
+	free(addr);
 
 	return device;
 }
