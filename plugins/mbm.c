@@ -264,27 +264,80 @@ static void network_ready(struct connman_device *device)
 								device, NULL);
 }
 
-static void creg_update(struct connman_device *device, int status)
+static gboolean lost_network(int old, int new)
+{
+	if (old != 1 && old != 5)
+		return FALSE;
+
+	if (new == 1 || new == 5)
+		return FALSE;
+
+	return TRUE;
+}
+
+static gboolean get_network(int old, int new)
+{
+	if (old == 1 || old == 5)
+		return FALSE;
+
+	if (new != 1 && new != 5)
+		return FALSE;
+
+	return TRUE;
+}
+
+static void cleanup_network(struct connman_device *device)
+{
+	struct mbm_data *data = connman_device_get_data(device);
+	const char *identifier;
+
+	DBG("");
+
+	connman_network_set_connected(data->network, FALSE);
+
+	identifier = connman_network_get_identifier(data->network);
+
+	connman_device_remove_network(device, identifier);
+
+	data->network = NULL;
+}
+
+static void update_roaming(struct connman_device *device, int status)
 {
 	struct mbm_data *data = connman_device_get_data(device);
 
+	if (data->network == NULL)
+		return;
+
 	if (status != 1 && status != 5)
-		goto done;
+		return;
 
-	if (data->network != NULL) {
-		if (status == 5)
-			connman_network_set_roaming(data->network, TRUE);
-		else
-			connman_network_set_roaming(data->network, FALSE);
+	if (status == 1)
+		connman_network_set_roaming(data->network, FALSE);
+	else
+		connman_network_set_roaming(data->network, TRUE);
 
-		connman_network_set_group(data->network, data->imsi);
+	connman_network_set_group(data->network, data->imsi);
+}
+
+static void creg_update(struct connman_device *device, int status)
+{
+	struct mbm_data *data = connman_device_get_data(device);
+	int old_status = data->creg_status;
+
+	DBG("old_status %d status %d", old_status, status);
+
+	data->creg_status = status;
+
+	if (lost_network(old_status, status) == TRUE) {
+		cleanup_network(device);
+		return;
 	}
 
-	if (data->creg_status != 1 && data->creg_status != 5)
+	if (get_network(old_status, status) == TRUE)
 		network_ready(device);
 
-done:
-	data->creg_status = status;
+	update_roaming(device, status);
 }
 
 static void creg_query(gboolean ok, GAtResult *result,
