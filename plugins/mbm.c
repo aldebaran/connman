@@ -601,7 +601,13 @@ static int network_probe(struct connman_network *network)
 
 static void network_remove(struct connman_network *network)
 {
+	struct connman_device *device = connman_network_get_device(network);
+	struct mbm_data *data;
+
 	DBG("network %p", network);
+
+	data = connman_device_get_data(device);
+	data->network = NULL;
 
 	connman_network_set_data(network, NULL);
 }
