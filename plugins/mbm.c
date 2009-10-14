@@ -293,6 +293,9 @@ static void cleanup_network(struct connman_device *device)
 
 	DBG("");
 
+	if (data->network == NULL)
+		return;
+
 	connman_network_set_connected(data->network, FALSE);
 
 	identifier = connman_network_get_identifier(data->network);
