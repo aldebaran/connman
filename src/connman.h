@@ -223,6 +223,8 @@ int __connman_element_append_ipv4(struct connman_element *element,
 int __connman_element_set_ipv4(struct connman_element *element,
 				const char *name, DBusMessageIter *value);
 
+gboolean __connman_element_device_isfiltered(const char *devname);
+
 int __connman_ipv4_init(void);
 void __connman_ipv4_cleanup(void);
 

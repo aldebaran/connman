@@ -37,6 +37,7 @@ static DBusConnection *connection;
 static GNode *element_root = NULL;
 static GSList *driver_list = NULL;
 static gchar *device_filter = NULL;
+static gchar *nodevice_filter = NULL;
 
 static gboolean started = FALSE;
 
@@ -1371,6 +1372,21 @@ static void register_element(gpointer data, gpointer user_data)
 	probe_element(element);
 }
 
+gboolean __connman_element_device_isfiltered(const char *devname)
+{
+	if (device_filter != NULL &&
+			g_pattern_match_simple(device_filter, devname) == FALSE) {
+		DBG("ignoring device %s (no match)", devname);
+		return TRUE;
+	}
+	if (nodevice_filter != NULL &&
+			g_pattern_match_simple(nodevice_filter, devname) == TRUE) {
+		DBG("ignoring device %s (match no)", devname);
+		return TRUE;
+	}
+	return FALSE;
+}
+
 /**
  * connman_element_register:
  * @element: the element to register
@@ -1389,13 +1405,10 @@ int connman_element_register(struct connman_element *element,
 	if (element->devname == NULL)
 		element->devname = g_strdup(element->name);
 
-	if (device_filter && element->type == CONNMAN_ELEMENT_TYPE_DEVICE) {
-		if (g_pattern_match_simple(device_filter,
-						element->devname) == FALSE) {
-			DBG("ignoring %s [%s] device", element->name,
-							element->devname);
-			return -EPERM;
-		}
+	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
+			__connman_element_device_isfiltered(element->devname) == TRUE) {
+		DBG("ignoring %s [%s] device", element->name, element->devname);
+		return -EPERM;
 	}
 
 	if (connman_element_ref(element) == NULL)
@@ -1580,6 +1593,7 @@ int __connman_element_init(const char *device, const char *nodevice)
 		return -EIO;
 
 	device_filter = g_strdup(device);
+	nodevice_filter = g_strdup(nodevice);
 
 	element = connman_element_create("root");
 
@@ -1692,6 +1706,7 @@ void __connman_element_cleanup(void)
 	g_node_destroy(element_root);
 	element_root = NULL;
 
+	g_free(nodevice_filter);
 	g_free(device_filter);
 
 	if (connection == NULL)

@@ -292,6 +292,7 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	GString *str;
 	gboolean up = FALSE, down = FALSE;
 	gboolean lower_up = FALSE, lower_down = FALSE;
+	char *ifname;
 
 	DBG("index %d", index);
 
@@ -302,12 +303,22 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	if (ipdevice != NULL)
 		goto update;
 
-	ipdevice = g_try_new0(struct connman_ipdevice, 1);
-	if (ipdevice == NULL)
+	ifname = connman_inet_ifname(index);
+	if (__connman_element_device_isfiltered(ifname) == TRUE) {
+		connman_info("Ignoring network interface %s (filtered)",
+		    ifname);
+		g_free(ifname);
 		return;
+	}
+
+	ipdevice = g_try_new0(struct connman_ipdevice, 1);
+	if (ipdevice == NULL) {
+		g_free(ifname);
+		return;
+	}
 
 	ipdevice->index = index;
-	ipdevice->ifname = connman_inet_ifname(index);
+	ipdevice->ifname = ifname;
 	ipdevice->type = type;
 
 	g_hash_table_insert(ipdevice_hash, GINT_TO_POINTER(index), ipdevice);

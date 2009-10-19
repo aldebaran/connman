@@ -441,6 +441,11 @@ struct connman_device *connman_inet_create_device(int index)
 	devname = connman_inet_ifname(index);
 	if (devname == NULL)
 		return NULL;
+	if (__connman_element_device_isfiltered(devname) == TRUE) {
+		connman_info("Ignoring network interface %s (filtered)",
+		    devname);
+		return NULL;
+	}
 
 	__connman_udev_get_devtype(devname);
 
@@ -448,7 +453,8 @@ struct connman_device *connman_inet_create_device(int index)
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-		connman_info("Ignoring network interface %s", devname);
+		connman_info("Ignoring network interface %s (type unknown)",
+		    devname);
 		g_free(devname);
 		return NULL;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
