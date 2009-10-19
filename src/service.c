@@ -2299,6 +2299,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 	enum connman_service_mode mode;
 	connman_uint8_t strength, value;
 	connman_bool_t roaming;
+	GSequenceIter *iter;
 
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
@@ -2323,6 +2324,10 @@ roaming:
 	service->roaming = roaming;
 
 	roaming_changed(service);
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL)
+		g_sequence_sort_changed(iter, service_compare, NULL);
 
 done:
 	if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
