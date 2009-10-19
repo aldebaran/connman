@@ -2189,6 +2189,14 @@ static void update_from_network(struct connman_service *service,
 	service->strength = connman_network_get_uint8(network, "Strength");
 	service->roaming = connman_network_get_bool(network, "Roaming");
 
+	if (service->strength == 0) {
+		/*
+		 * Filter out 0-values; it's unclear what they mean
+		 * and they cause anomalous sorting of the priority list.
+		 */
+		service->strength = strength;
+	}
+
 	str = connman_network_get_string(network, "WiFi.Mode");
 	service->mode = convert_wifi_mode(str);
 
