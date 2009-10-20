@@ -6,6 +6,7 @@ includedir = @includedir@/connman
 include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/security.h include/notifier.h \
 			include/storage.h include/service.h \
+			include/resolver.h include/ipconfig.h \
 			include/device.h include/network.h include/inet.h
 
 nodist_include_HEADERS = include/version.h
@@ -13,7 +14,6 @@ nodist_include_HEADERS = include/version.h
 noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/rtnl.h include/wifi.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
-			include/resolver.h include/ipconfig.h \
 			include/profile.h include/provider.h
 
 local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
