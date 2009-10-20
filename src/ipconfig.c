@@ -304,9 +304,9 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 		goto update;
 
 	ifname = connman_inet_ifname(index);
+
 	if (__connman_element_device_isfiltered(ifname) == TRUE) {
-		connman_info("Ignoring network interface %s (filtered)",
-		    ifname);
+		connman_info("Ignoring interface %s (filtered)", ifname);
 		g_free(ifname);
 		return;
 	}

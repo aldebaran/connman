@@ -1374,16 +1374,23 @@ static void register_element(gpointer data, gpointer user_data)
 
 gboolean __connman_element_device_isfiltered(const char *devname)
 {
-	if (device_filter != NULL &&
-			g_pattern_match_simple(device_filter, devname) == FALSE) {
+	if (device_filter == NULL)
+		goto nodevice;
+
+	if (g_pattern_match_simple(device_filter, devname) == FALSE) {
+		DBG("ignoring device %s (match)", devname);
+		return TRUE;
+	}
+
+nodevice:
+	if (nodevice_filter == NULL)
+		return FALSE;
+
+	if (g_pattern_match_simple(nodevice_filter, devname) == TRUE) {
 		DBG("ignoring device %s (no match)", devname);
 		return TRUE;
 	}
-	if (nodevice_filter != NULL &&
-			g_pattern_match_simple(nodevice_filter, devname) == TRUE) {
-		DBG("ignoring device %s (match no)", devname);
-		return TRUE;
-	}
+
 	return FALSE;
 }
 
@@ -1405,12 +1412,13 @@ int connman_element_register(struct connman_element *element,
 	if (element->devname == NULL)
 		element->devname = g_strdup(element->name);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-			__connman_element_device_isfiltered(element->devname) == TRUE) {
-		DBG("ignoring %s [%s] device", element->name, element->devname);
-		return -EPERM;
-	}
+        if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
+		goto setup;
 
+	if (__connman_element_device_isfiltered(element->devname) == TRUE)
+		return -EPERM;
+
+setup:
 	if (connman_element_ref(element) == NULL)
 		return -EINVAL;
 
