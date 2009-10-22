@@ -1,3 +1,10 @@
+ver 0.44:
+	Fix command line options for device filtering.
+	Fix issue with network reference in MBM support.
+	Fix handling when losing network access in MBM plugin.
+	Fix broken libiWmxSDK callback parameter handling.
+	Add work around Intel WiMAX SDK API breakage.
+
 ver 0.43:
 	Fix issue with missing scanning after power up.
 	Fix issue with udev versus /dev/rfkill event processing.
