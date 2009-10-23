@@ -272,6 +272,10 @@ int __connman_device_disconnect(struct connman_device *device);
 
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
+void __connman_device_set_reconnect(struct connman_device *device,
+						connman_bool_t reconnect);
+connman_bool_t __connman_device_get_reconnect(struct connman_device *device);
+
 const char *__connman_device_get_type(struct connman_device *device);
 const char *__connman_device_get_ident(struct connman_device *device);
 

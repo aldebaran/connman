@@ -45,6 +45,7 @@ struct connman_device {
 	connman_bool_t carrier;
 	connman_bool_t scanning;
 	connman_bool_t disconnected;
+	connman_bool_t reconnect;
 	connman_uint16_t scan_interval;
 	char *name;
 	char *node;
@@ -1788,6 +1789,18 @@ void __connman_device_set_network(struct connman_device *device,
 
 		device->network = NULL;
 	}
+}
+
+void __connman_device_set_reconnect(struct connman_device *device,
+						connman_bool_t reconnect)
+{
+	device->reconnect = reconnect;
+}
+
+connman_bool_t  __connman_device_get_reconnect(
+				struct connman_device *device)
+{
+	return device->reconnect;
 }
 
 /**
