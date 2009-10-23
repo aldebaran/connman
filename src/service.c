@@ -1436,6 +1436,14 @@ int __connman_service_indicate_state(struct connman_service *service,
 	service->state = state;
 	state_changed(service);
 
+	if (state == CONNMAN_SERVICE_STATE_IDLE) {
+		connman_bool_t reconnect;
+
+		reconnect = get_reconnect_state(service);
+		if (reconnect == TRUE)
+			__connman_service_auto_connect();
+	}
+
 	if (state == CONNMAN_SERVICE_STATE_READY) {
 		set_reconnect_state(service, TRUE);
 
