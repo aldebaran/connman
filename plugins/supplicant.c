@@ -781,12 +781,12 @@ static int set_network(struct supplicant_task *task,
 	connman_dbus_dict_append_variant(&dict, "scan_ssid",
 					 DBUS_TYPE_UINT32, &scan_ssid);
 
-	if (address)
+	if (network)
+		connman_dbus_dict_append_array(&dict, "ssid",
+						DBUS_TYPE_BYTE, &network, len);
+	else if (address)
 		connman_dbus_dict_append_variant(&dict, "bssid",
 						DBUS_TYPE_STRING, &address);
-
-	connman_dbus_dict_append_array(&dict, "ssid",
-					DBUS_TYPE_BYTE, &network, len);
 
 	if (g_ascii_strcasecmp(security, "wpa") == 0 ||
 				g_ascii_strcasecmp(security, "rsn") == 0) {
