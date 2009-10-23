@@ -1000,6 +1000,8 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	service->pending = dbus_message_ref(msg);
 
+	set_reconnect_state(service, FALSE);
+
 	err = __connman_service_connect(service);
 	if (err < 0) {
 		if (err == -ENOKEY) {
@@ -1035,6 +1037,8 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	reply_pending(service, ECONNABORTED);
 
 	service->ignore = TRUE;
+
+	set_reconnect_state(service, FALSE);
 
 	err = __connman_service_disconnect(service);
 	if (err < 0) {
@@ -1433,6 +1437,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 	state_changed(service);
 
 	if (state == CONNMAN_SERVICE_STATE_READY) {
+		set_reconnect_state(service, TRUE);
+
 		connman_service_set_favorite(service, TRUE);
 
 		reply_pending(service, 0);
@@ -1816,6 +1822,8 @@ done:
 		err = -EOPNOTSUPP;
 		goto failed;
 	}
+
+	set_reconnect_state(service, FALSE);
 
 	__connman_device_disconnect(device);
 
