@@ -935,6 +935,40 @@ static gboolean connect_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static void set_reconnect_state(struct connman_service *service,
+						connman_bool_t reconnect)
+{
+	if (service->network != NULL) {
+		struct connman_device *device;
+
+		device = connman_network_get_device(service->network);
+
+		__connman_device_set_reconnect(device, reconnect);
+
+		return;
+	}
+
+	if (service->device != NULL)
+		__connman_device_set_reconnect(service->device,
+							reconnect);
+}
+
+static connman_bool_t get_reconnect_state(struct connman_service *service)
+{
+	if (service->network != NULL) {
+		struct connman_device *device;
+
+		device = connman_network_get_device(service->network);
+
+		return __connman_device_get_reconnect(device);
+	}
+
+	if (service->device != NULL)
+		return __connman_device_get_reconnect(service->device);
+
+	return FALSE;
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
