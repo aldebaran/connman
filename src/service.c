@@ -874,12 +874,17 @@ void __connman_service_auto_connect(void)
 	}
 }
 
-static void reply_pending(struct connman_service *service, int error)
+static void remove_timeout(struct connman_service *service)
 {
 	if (service->timeout > 0) {
 		g_source_remove(service->timeout);
 		service->timeout = 0;
 	}
+}
+
+static void reply_pending(struct connman_service *service, int error)
+{
+	remove_timeout(service);
 
 	if (service->pending != NULL) {
 		if (error > 0) {
@@ -1470,6 +1475,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 		if (service->failcounter++ < MAX_CONNECT_RETRIES) {
 			connman_warn("Connecting again (try %d)",
 						service->failcounter);
+			remove_timeout(service);
 			__connman_service_disconnect(service);
 			__connman_service_connect(service);
 			return 0;
