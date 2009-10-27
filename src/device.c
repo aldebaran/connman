@@ -326,6 +326,8 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	} else {
 		device->powered_pending = powered;
 
+		device->reconnect = FALSE;
+
 		clear_scan_trigger(device);
 
 		g_hash_table_remove_all(device->networks);
@@ -1348,6 +1350,8 @@ int __connman_device_disable(struct connman_device *device)
 		return -EALREADY;
 
 	device->powered_pending = FALSE;
+
+	device->reconnect = FALSE;
 
 	clear_scan_trigger(device);
 
