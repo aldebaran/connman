@@ -1,3 +1,7 @@
+ver 0.46:
+	Fix reconnect issue when power off or disabling the device.
+	Remove problematic retry on failure code path.
+
 ver 0.45:
 	Fix crash with connect timeout and second connect attempt.
 	Fix reconnect issues after suspend or roaming attempt.
