@@ -29,7 +29,6 @@
 
 #include "connman.h"
 
-#define MAX_CONNECT_RETRIES	2
 #define CONNECT_TIMEOUT		120
 
 static DBusConnection *connection = NULL;
@@ -54,7 +53,6 @@ struct connman_service {
 	connman_bool_t userconnect;
 	GTimeVal modified;
 	unsigned int order;
-	unsigned int failcounter;
 	char *name;
 	char *passphrase;
 	char *profile;
@@ -1001,7 +999,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	service->ignore = FALSE;
 
 	service->userconnect = TRUE;
-	service->failcounter = 0;
 
 	service->pending = dbus_message_ref(msg);
 
@@ -1457,7 +1454,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 		reply_pending(service, 0);
 
 		service->userconnect = FALSE;
-		service->failcounter = 0;
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
@@ -1472,15 +1468,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
-		if (service->failcounter++ < MAX_CONNECT_RETRIES) {
-			connman_warn("Connecting again (try %d)",
-						service->failcounter);
-			remove_timeout(service);
-			__connman_service_disconnect(service);
-			__connman_service_connect(service);
-			return 0;
-		}
-
 		reply_pending(service, EIO);
 
 		if (service->userconnect == FALSE)
