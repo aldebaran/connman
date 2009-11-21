@@ -866,6 +866,8 @@ static void device_destruct(struct connman_element *element)
 		device->timeout = 0;
 	}
 
+	clear_scan_trigger(device);
+
 	if (device->pending != NULL) {
 		dbus_message_unref(device->pending);
 		device->pending = NULL;
