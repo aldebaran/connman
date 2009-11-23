@@ -109,6 +109,7 @@ struct connman_network *connman_device_get_network(struct connman_device *device
 							const char *identifier);
 int connman_device_remove_network(struct connman_device *device,
 							const char *identifier);
+void connman_device_remove_all_networks(struct connman_device *device);
 
 int connman_device_register(struct connman_device *device);
 void connman_device_unregister(struct connman_device *device);

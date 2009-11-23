@@ -1775,6 +1775,11 @@ int connman_device_remove_network(struct connman_device *device,
 	return 0;
 }
 
+void connman_device_remove_all_networks(struct connman_device *device)
+{
+	g_hash_table_remove_all(device->networks);
+}
+
 void __connman_device_set_network(struct connman_device *device,
 					struct connman_network *network)
 {
