@@ -1536,6 +1536,7 @@ static connman_bool_t prepare_network(struct connman_service *service)
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_CELLULAR:
 		break;
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
@@ -2151,6 +2152,7 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
+	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_HSO:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
