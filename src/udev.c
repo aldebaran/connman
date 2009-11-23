@@ -112,6 +112,7 @@ static void add_net_device(struct udev_device *udev_device)
 	case CONNMAN_DEVICE_TYPE_NOZOMI:
 	case CONNMAN_DEVICE_TYPE_HUAWEI:
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
+	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
