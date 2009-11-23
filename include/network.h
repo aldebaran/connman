@@ -53,6 +53,11 @@ enum connman_network_protocol {
 	CONNMAN_NETWORK_PROTOCOL_PPP     = 2,
 };
 
+enum connman_network_error {
+	CONNMAN_NETWORK_ERROR_UNKNOWN         = 0,
+	CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL  = 1,
+};
+
 struct connman_network;
 
 struct connman_network *connman_network_create(const char *identifier,
@@ -78,6 +83,8 @@ int connman_network_set_available(struct connman_network *network,
 connman_bool_t connman_network_get_available(struct connman_network *network);
 int connman_network_set_associating(struct connman_network *network,
 						connman_bool_t associating);
+void connman_network_set_error(struct connman_network *network,
+					enum connman_network_error error);
 int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected);
 connman_bool_t connman_network_get_connected(struct connman_network *network);

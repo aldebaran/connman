@@ -687,6 +687,35 @@ int connman_network_set_associating(struct connman_network *network,
 	return 0;
 }
 
+static void set_associate_error(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	if (network->associating == FALSE)
+		return ;
+
+	network->associating = FALSE;
+
+	service = __connman_service_lookup_from_network(network);
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE);
+}
+
+void connman_network_set_error(struct connman_network *network,
+					enum connman_network_error error)
+{
+	DBG("nework %p, error %d", network, error);
+
+	switch (error) {
+	case CONNMAN_NETWORK_ERROR_UNKNOWN:
+		return;
+	case CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL:
+		set_associate_error(network);
+		break;
+	}
+}
+
 static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
