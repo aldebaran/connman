@@ -182,7 +182,7 @@ static void config_network_reply(DBusPendingCall *call, void *user_data)
 	struct connman_network *network = user_data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	gboolean internet_type;
+	gboolean internet_type = FALSE;
 
 	DBG("network %p", network);
 
