@@ -75,11 +75,11 @@ int __connman_agent_request_passphrase(struct connman_service *service,
 
 #include <connman/log.h>
 
-int __connman_log_init(gboolean detach, gboolean debug);
+int __connman_log_init(const char *debug, connman_bool_t detach);
 void __connman_log_cleanup(void);
 
-void __connman_toggle_debug(void);
-gboolean __connman_debug_enabled(void);
+void __connman_debug_list_available(DBusMessageIter *iter);
+void __connman_debug_list_enabled(DBusMessageIter *iter);
 
 #include <connman/option.h>
 

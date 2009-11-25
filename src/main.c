@@ -45,11 +45,6 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void sig_debug(int sig)
-{
-	__connman_toggle_debug();
-}
-
 static void disconnect_callback(DBusConnection *conn, void *user_data)
 {
 	connman_error("D-Bus disconnect");
@@ -57,6 +52,7 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 	g_main_loop_quit(main_loop);
 }
 
+static gchar *option_debug = NULL;
 static gchar *option_device = NULL;
 static gchar *option_plugin = NULL;
 static gchar *option_nodevice = NULL;
@@ -64,11 +60,12 @@ static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_compat = FALSE;
-static gboolean option_debug = FALSE;
 static gboolean option_selftest = FALSE;
 static gboolean option_version = FALSE;
 
 static GOptionEntry options[] = {
+	{ "debug", 'd', 0, G_OPTION_ARG_STRING, &option_debug,
+				"Specify debug options to enable", "DEBUG" },
 	{ "device", 'i', 0, G_OPTION_ARG_STRING, &option_device,
 			"Specify networking device or interface", "DEV" },
 	{ "nodevice", 'I', 0, G_OPTION_ARG_STRING, &option_nodevice,
@@ -84,8 +81,6 @@ static GOptionEntry options[] = {
 				"Don't fork daemon to background" },
 	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Enable Network Manager compatibility" },
-	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
-				"Enable debug information output" },
 	{ "selftest", 't', 0, G_OPTION_ARG_NONE, &option_selftest,
 				"Run self testing routines" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
@@ -189,7 +184,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	__connman_log_init(option_detach, option_debug);
+	__connman_log_init(option_debug, option_detach);
 
 	if (option_selftest == TRUE) {
 		if (__connman_selftest() < 0) {
@@ -226,9 +221,6 @@ int main(int argc, char *argv[])
 	sa.sa_handler = sig_term;
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
-
-	sa.sa_handler = sig_debug;
-	sigaction(SIGUSR2, &sa, NULL);
 
 	g_main_loop_run(main_loop);
 

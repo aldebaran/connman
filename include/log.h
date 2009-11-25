@@ -41,6 +41,21 @@ void connman_error(const char *format, ...)
 void connman_debug(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 
+struct connman_debug_desc {
+	const char *name;
+	const char *file;
+#define CONNMAN_DEBUG_FLAG_DEFAULT (0)
+#define CONNMAN_DEBUG_FLAG_PRINT   (1 << 0)
+#define CONNMAN_DEBUG_FLAG_ALIAS   (1 << 1)
+	unsigned int flags;
+} __attribute__((aligned(8)));
+
+#define CONNMAN_DEBUG_DEFINE(name) \
+	static struct connman_debug_desc __debug_alias_ ## name \
+	__attribute__((used, section("__debug"), aligned(8))) = { \
+		#name, __FILE__, CONNMAN_DEBUG_FLAG_ALIAS \
+	};
+
 /**
  * DBG:
  * @fmt: format string
@@ -49,7 +64,15 @@ void connman_debug(const char *format, ...)
  * Simple macro around connman_debug() which also include the function
  * name it is called in.
  */
-#define DBG(fmt, arg...) connman_debug("%s:%s() " fmt, __FILE__, __FUNCTION__ , ## arg)
+#define DBG(fmt, arg...) do { \
+	static struct connman_debug_desc desc \
+	__attribute__((used, section("__debug"), aligned(8))) = { \
+		.file = __FILE__, .flags = CONNMAN_DEBUG_FLAG_DEFAULT, \
+	}; \
+	if (desc.flags & CONNMAN_DEBUG_FLAG_PRINT) \
+		connman_debug("%s:%s() " fmt, \
+					__FILE__, __FUNCTION__ , ## arg); \
+} while (0)
 
 #ifdef __cplusplus
 }

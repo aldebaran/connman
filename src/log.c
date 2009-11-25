@@ -28,8 +28,6 @@
 
 #include "connman.h"
 
-static volatile gboolean debug_enabled = FALSE;
-
 /**
  * connman_info:
  * @format: format string
@@ -90,16 +88,10 @@ void connman_error(const char *format, ...)
  * @varargs: list of arguments
  *
  * Output debug message
- *
- * The actual output of the debug message is controlled via a command line
- * switch. If not enabled, these messages will be ignored.
  */
 void connman_debug(const char *format, ...)
 {
 	va_list ap;
-
-	if (debug_enabled == FALSE)
-		return;
 
 	va_start(ap, format);
 
@@ -108,20 +100,81 @@ void connman_debug(const char *format, ...)
 	va_end(ap);
 }
 
-void __connman_toggle_debug(void)
+extern struct connman_debug_desc __start___debug[];
+extern struct connman_debug_desc __stop___debug[];
+
+void __connman_debug_list_available(DBusMessageIter *iter)
 {
-	if (debug_enabled == TRUE) {
-		connman_info("Disabling debug output");
-		debug_enabled = FALSE;
-	} else {
-		connman_info("Enabling debug output");
-		debug_enabled = TRUE;
+	struct connman_debug_desc *desc;
+
+	for (desc = __start___debug; desc < __stop___debug; desc++) {
+		if ((desc->flags & CONNMAN_DEBUG_FLAG_ALIAS) &&
+						desc->name != NULL)
+			dbus_message_iter_append_basic(iter,
+					DBUS_TYPE_STRING, &desc->name);
 	}
 }
 
-int __connman_log_init(gboolean detach, gboolean debug)
+static gchar **enabled = NULL;
+
+void __connman_debug_list_enabled(DBusMessageIter *iter)
+{
+	int i;
+
+	if (enabled == NULL)
+		return;
+
+	for (i = 0; enabled[i] != NULL; i++)
+		dbus_message_iter_append_basic(iter,
+					DBUS_TYPE_STRING, &enabled[i]);
+}
+
+static connman_bool_t is_enabled(struct connman_debug_desc *desc)
+{
+	int i;
+
+	if (enabled == NULL)
+		return FALSE;
+
+	for (i = 0; enabled[i] != NULL; i++) {
+		if (desc->name != NULL && g_pattern_match_simple(enabled[i],
+							desc->name) == TRUE)
+			return TRUE;
+		if (desc->file != NULL && g_pattern_match_simple(enabled[i],
+							desc->file) == TRUE)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+int __connman_log_init(const char *debug, connman_bool_t detach)
 {
 	int option = LOG_NDELAY | LOG_PID;
+	struct connman_debug_desc *desc;
+	const char *name = NULL, *file = NULL;
+
+	if (debug != NULL)
+		enabled = g_strsplit_set(debug, ":, ", 0);
+
+	for (desc = __start___debug; desc < __stop___debug; desc++) {
+		if (desc->flags & CONNMAN_DEBUG_FLAG_ALIAS) {
+			file = desc->file;
+			name = desc->name;
+			continue;
+		}
+
+		if (file != NULL || name != NULL) {
+			if (g_strcmp0(desc->file, file) == 0) {
+				if (desc->name == NULL)
+					desc->name = name;
+			} else
+				file = NULL;
+		}
+
+		if (is_enabled(desc) == TRUE)
+			desc->flags |= CONNMAN_DEBUG_FLAG_PRINT;
+	}
 
 	if (detach == FALSE)
 		option |= LOG_PERROR;
@@ -129,9 +182,6 @@ int __connman_log_init(gboolean detach, gboolean debug)
 	openlog("connmand", option, LOG_DAEMON);
 
 	syslog(LOG_INFO, "Connection Manager version %s", VERSION);
-
-	if (debug == TRUE)
-		__connman_toggle_debug();
 
 	return 0;
 }
@@ -141,9 +191,6 @@ void __connman_log_cleanup(void)
 	syslog(LOG_INFO, "Exit");
 
 	closelog();
-}
 
-gboolean __connman_debug_enabled(void)
-{
-	return debug_enabled;
+	g_strfreev(enabled);
 }

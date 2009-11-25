@@ -195,6 +195,54 @@ static void append_connected_technologies(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
+static void append_available_debugs(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "AvailableDebugs";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &iter);
+	__connman_debug_list_available(&iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static void append_enabled_debugs(DBusMessageIter *dict)
+{
+	DBusMessageIter entry, value, iter;
+	const char *key = "EnabledDebugs";
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
+								&value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+					DBUS_TYPE_STRING_AS_STRING, &iter);
+	__connman_debug_list_enabled(&iter);
+	dbus_message_iter_close_container(&value, &iter);
+
+	dbus_message_iter_close_container(&entry, &value);
+
+	dbus_message_iter_close_container(dict, &entry);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -251,6 +299,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "DefaultTechnology",
 						DBUS_TYPE_STRING, &str);
+
+	append_available_debugs(&dict);
+	append_enabled_debugs(&dict);
 
 	dbus_message_iter_close_container(&array, &dict);
 

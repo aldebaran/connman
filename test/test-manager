@@ -63,7 +63,8 @@ for key in properties.keys():
 	if key in ["Profiles", "Devices", "Connections", "Services"]:
 		print_properties(key, properties[key])
 	elif key in ["AvailableTechnologies", "EnabledTechnologies",
-						"ConnectedTechnologies"]:
+					"ConnectedTechnologies",
+				"AvailableDebugs", "EnabledDebugs"]:
 		print "%s" % (key)
 		list = ""
 		for val in properties[key]:
