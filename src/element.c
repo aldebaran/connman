@@ -77,27 +77,6 @@ static const char *type2string(enum connman_element_type type)
 	return NULL;
 }
 
-static void emit_element_signal(DBusConnection *conn, const char *member,
-					struct connman_element *element)
-{
-	DBusMessage *signal;
-
-	if (__connman_debug_enabled() == FALSE)
-		return;
-
-	DBG("conn %p member %s", conn, member);
-
-	if (element == NULL)
-		return;
-
-	signal = dbus_message_new_signal(element->path,
-					CONNMAN_DEBUG_INTERFACE, member);
-	if (signal == NULL)
-		return;
-
-	g_dbus_send_message(conn, signal);
-}
-
 struct foreach_data {
 	enum connman_element_type type;
 	element_cb_t callback;
@@ -1365,8 +1344,6 @@ static void register_element(gpointer data, gpointer user_data)
 			emit_state_change(connection, "online");
 	}
 
-	emit_element_signal(connection, "ElementAdded", element);
-
 	if (started == FALSE)
 		return;
 
@@ -1476,8 +1453,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 			emit_state_change(connection, "offline");
 	}
 
-	emit_element_signal(connection, "ElementRemoved", element);
-
 	connman_element_unref(element);
 
 	return FALSE;
@@ -1517,8 +1492,6 @@ static gboolean update_element(GNode *node, gpointer user_data)
 
 	if (element->driver && element->driver->update)
 		element->driver->update(element);
-
-	emit_element_signal(connection, "ElementUpdated", element);
 
 	return FALSE;
 }
