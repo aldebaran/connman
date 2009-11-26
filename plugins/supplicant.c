@@ -1519,8 +1519,7 @@ static int task_connect(struct supplicant_task *task)
 
 	ssid = connman_network_get_blob(task->network, "WiFi.SSID", &ssid_len);
 
-	DBG("address %s security %s passphrase %s",
-					address, security, passphrase);
+	DBG("address %s security %s", address, security);
 
 	if (security == NULL && passphrase == NULL)
 		return -EINVAL;
