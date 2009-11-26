@@ -1,3 +1,12 @@
+ver 0.47:
+	Fix segmentation fault on resolver shutdown.
+	Fix issue with adding nameserver that doesn't exist.
+	Fix issue when no broadcast address is given.
+	Fix issue with missing property changed signal.
+	Add checks for invalid supplicant state transitions.
+	Add initial version of oFono GPRS support.
+	Add support for dynamic debug framework.
+
 ver 0.46:
 	Fix reconnect issue when power off or disabling the device.
 	Remove problematic retry on failure code path.
