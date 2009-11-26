@@ -1570,7 +1570,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	const char *newstate, *oldstate;
 	unsigned char bssid[ETH_ALEN];
 	unsigned int bssid_len;
-	enum supplicant_state state;
+	enum supplicant_state state, prevstate;
 
 	dbus_error_init(&error);
 
@@ -1587,7 +1587,8 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	DBG("state %s ==> %s", oldstate, newstate);
 
-	connman_info("%s %s", task->ifname, newstate);
+	connman_info("%s %s%s", task->ifname, newstate,
+				task->scanning == TRUE ? " (scanning)" : "");
 
 	state = string2state(newstate);
 	if (state == WPA_INVALID)
@@ -1598,6 +1599,7 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		task->scanning = FALSE;
 	}
 
+	prevstate = task->state;
 	task->state = state;
 
 	if (task->network == NULL)
@@ -1605,6 +1607,14 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	switch (task->state) {
 	case WPA_COMPLETED:
+		switch (prevstate) {
+		case WPA_ASSOCIATED:
+		case WPA_GROUP_HANDSHAKE:
+			break;
+		default:
+			goto badstate;
+		}
+
 		/* reset scan trigger and schedule background scan */
 		connman_device_schedule_scan(task->device);
 
@@ -1636,10 +1646,26 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		break;
 
 	case WPA_ASSOCIATING:
-		connman_network_set_associating(task->network, TRUE);
+		switch (prevstate) {
+		case WPA_COMPLETED:
+			break;
+		case WPA_SCANNING:
+			connman_network_set_associating(task->network, TRUE);
+			break;
+		default:
+			goto badstate;
+		}
 		break;
 
 	case WPA_INACTIVE:
+		switch (prevstate) {
+		case WPA_SCANNING:
+		case WPA_DISCONNECTED:
+			break;
+		default:
+			goto badstate;
+		}
+
 		connman_network_set_connected(task->network, FALSE);
 
 		if (task->disconnecting == TRUE) {
@@ -1659,6 +1685,12 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		connman_network_set_associating(task->network, FALSE);
 		break;
 	}
+
+	return;
+
+badstate:
+	connman_error("%s invalid state change %s -> %s", task->ifname,
+							oldstate, newstate);
 }
 
 static DBusHandlerResult supplicant_filter(DBusConnection *conn,
