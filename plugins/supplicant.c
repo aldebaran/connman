@@ -1605,6 +1605,9 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 
 	switch (task->state) {
 	case WPA_COMPLETED:
+		/* reset scan trigger and schedule background scan */
+		connman_device_schedule_scan(task->device);
+
 		if (get_bssid(task->device, bssid, &bssid_len) == 0)
 			connman_network_set_address(task->network,
 							bssid, bssid_len);
