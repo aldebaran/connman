@@ -52,7 +52,7 @@ static void remove_entries(GSList *entries)
 
 		entry_list = g_slist_remove(entry_list, entry);
 
-		if (resolver->remove)
+		if (resolver && resolver->remove)
 			resolver->remove(entry->interface, entry->domain,
 								entry->server);
 
