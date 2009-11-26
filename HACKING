@@ -77,7 +77,12 @@ to use "make install" when testing "connmand". The "bootstrap-configure"
 automatically includes this option.
 
   Run daemon in foreground with debugging
-    # sudo ./src/connmand -n -d
+    # sudo ./src/connmand -n -d 'plugins/*'
+
+The debugging option -d takes an argument. This argument can be a comma
+separated list of file names like 'plugins/wifi.c,plugins/ethernet.c' to
+enable debugs in these files. Simple glob style pattern matching is
+supported in this list.
 
 For production installations or distribution packaging it is important that
 the "--enable-maintainer-mode" option is NOT used.
