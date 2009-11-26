@@ -26,8 +26,6 @@ fi
 		--enable-dhclient=builtin \
 		--enable-resolvconf=builtin \
 		--enable-dnsproxy=builtin \
-		--enable-novatel \
-		--enable-huawei \
 		--enable-hso=builtin \
 		--enable-mbm=builtin \
 		--enable-ppp \

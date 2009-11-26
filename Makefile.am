@@ -154,8 +154,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-dhclient \
 				--enable-resolvconf \
 				--enable-dnsproxy \
-				--enable-novatel \
-				--enable-huawei \
 				--enable-hso \
 				--enable-mbm \
 				--enable-udev \

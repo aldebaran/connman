@@ -168,14 +168,6 @@ AC_ARG_ENABLE(dnsproxy,
 AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
 AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
-AC_ARG_ENABLE(novatel, AC_HELP_STRING([--enable-novatel],
-		[enable Novatel support]), [enable_novatel=${enableval}])
-AM_CONDITIONAL(NOVATEL, test "${enable_novatel}" = "yes")
-
-AC_ARG_ENABLE(huawei, AC_HELP_STRING([--enable-huawei],
-		[enable HUAWEI support]), [enable_huawei=${enableval}])
-AM_CONDITIONAL(HUAWEI, test "${enable_huawei}" = "yes")
-
 AC_ARG_ENABLE(hso,
 	AC_HELP_STRING([--enable-hso], [enable HSO support]),
 			[enable_hso=${enableval}], [enable_hso="no"])
@@ -193,8 +185,7 @@ AC_ARG_WITH(pppd, AC_HELP_STRING([--with-pppd=PROGRAM],
 
 AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
 		[enable PPP support]), [enable_ppp=${enableval}])
-if (test "${enable_ppp}" = "yes" || test "${enable_novatel}" = "yes" ||
-					test "${enable_huawei}" = "yes"); then
+if (test "${enable_ppp}" = "yes"); then
 	if (test -z "${path_pppd}"); then
 		AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
 	else

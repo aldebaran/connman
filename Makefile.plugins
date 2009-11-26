@@ -87,22 +87,6 @@ plugins_modemmgr_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if NOVATEL
-plugin_LTLIBRARIES += plugins/novatel.la
-plugin_objects += $(plugins_novatel_la_OBJECTS)
-plugins_novatel_la_SOURCES = plugins/novatel.c plugins/modem.h plugins/modem.c
-plugins_novatel_la_CFLAGS = $(plugin_cflags)
-plugins_novatel_la_LDFLAGS = $(plugin_ldflags)
-endif
-
-if HUAWEI
-plugin_LTLIBRARIES += plugins/huawei.la
-plugin_objects += $(plugins_huawei_la_OBJECTS)
-plugins_huawei_la_SOURCES = plugins/huawei.c plugins/modem.h plugins/modem.c
-plugins_huawei_la_CFLAGS = $(plugin_cflags)
-plugins_huawei_la_LDFLAGS = $(plugin_ldflags)
-endif
-
 if HSO
 if HSO_BUILTIN
 builtin_modules += hso
