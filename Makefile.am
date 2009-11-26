@@ -157,7 +157,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-hso \
 				--enable-mbm \
 				--enable-udev \
-				--enable-polkit \
 				--enable-client \
 				--enable-tools
 
