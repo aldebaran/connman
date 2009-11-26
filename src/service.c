@@ -1352,6 +1352,33 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	return (gint) service_b->strength - (gint) service_a->strength;
 }
 
+static void favorite_changed(struct connman_service *service)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *key = "Favorite";
+
+	if (service->path == NULL)
+		return;
+
+	signal = dbus_message_new_signal(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
+							&service->favorite);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
 /**
  * connman_service_set_favorite:
  * @service: service structure
@@ -1372,6 +1399,8 @@ int connman_service_set_favorite(struct connman_service *service,
 		return -EALREADY;
 
 	service->favorite = favorite;
+
+	favorite_changed(service);
 
 	g_sequence_sort_changed(iter, service_compare, NULL);
 
