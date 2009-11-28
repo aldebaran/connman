@@ -33,6 +33,7 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/resolver.h>
+#include <connman/notifier.h>
 #include <connman/log.h>
 
 #include <glib.h>
@@ -79,6 +80,7 @@ struct server_data {
 	char *server;
 	GIOChannel *channel;
 	guint watch;
+	gboolean enabled;
 };
 
 struct request_data {
@@ -267,6 +269,9 @@ static struct server_data *create_server(const char *interface,
 	data->domain = g_strdup(domain);
 	data->server = g_strdup(server);
 
+	/* Enable new servers by default */
+	data->enabled = TRUE;
+
 	return data;
 }
 
@@ -330,6 +335,24 @@ static struct connman_resolver dnsproxy_resolver = {
 	.priority	= CONNMAN_RESOLVER_PRIORITY_HIGH,
 	.append		= dnsproxy_append,
 	.remove		= dnsproxy_remove,
+};
+
+static void dnsproxy_offline_mode(connman_bool_t enabled)
+{
+	GSList *list;
+
+	DBG("enabled %d", enabled);
+
+	for (list = server_list; list; list = list->next) {
+		struct server_data *data = list->data;
+
+		data->enabled = enabled ? FALSE : TRUE;
+	}
+}
+
+static struct connman_notifier dnsproxy_notifier = {
+	.name			= "dnsproxy",
+	.offline_mode		= dnsproxy_offline_mode,
 };
 
 static int parse_request(unsigned char *buf, int len,
@@ -542,7 +565,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		DBG("server %s domain %s", data->server, data->domain);
+		DBG("server %s domain %s enabled %d",
+				data->server, data->domain, data->enabled);
+
+		if (data->enabled == FALSE)
+			continue;
 
 		sk = g_io_channel_unix_get_fd(data->channel);
 
@@ -671,16 +698,30 @@ static int dnsproxy_init(void)
 
 	err = connman_resolver_register(&dnsproxy_resolver);
 	if (err < 0)
-		destroy_listener();
+		goto destroy;
+
+	err = connman_notifier_register(&dnsproxy_notifier);
+	if (err < 0)
+		goto unregister;
+
+	return 0;
+
+unregister:
+	connman_resolver_unregister(&dnsproxy_resolver);
+
+destroy:
+	destroy_listener();
 
 	return err;
 }
 
 static void dnsproxy_exit(void)
 {
-	destroy_listener();
+	connman_notifier_unregister(&dnsproxy_notifier);
 
 	connman_resolver_unregister(&dnsproxy_resolver);
+
+	destroy_listener();
 }
 
 CONNMAN_PLUGIN_DEFINE(dnsproxy, "DNS proxy resolver plugin", VERSION,
