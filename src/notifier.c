@@ -70,26 +70,6 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 	notifier_list = g_slist_remove(notifier_list, notifier);
 }
 
-static const char *type2string(enum connman_service_type type)
-{
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-		break;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-		return "ethernet";
-	case CONNMAN_SERVICE_TYPE_WIFI:
-		return "wifi";
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-		return "wimax";
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-		return "bluetooth";
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		return "cellular";
-	}
-
-	return NULL;
-}
-
 #define MAX_TECHNOLOGIES 10
 
 static volatile gint registered[MAX_TECHNOLOGIES];
@@ -101,7 +81,7 @@ void __connman_notifier_list_registered(DBusMessageIter *iter)
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		const char *type = type2string(i);
+		const char *type = __connman_service_type2string(i);
 
 		if (type == NULL)
 			continue;
@@ -117,7 +97,7 @@ void __connman_notifier_list_enabled(DBusMessageIter *iter)
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		const char *type = type2string(i);
+		const char *type = __connman_service_type2string(i);
 
 		if (type == NULL)
 			continue;
@@ -133,7 +113,7 @@ void __connman_notifier_list_connected(DBusMessageIter *iter)
 	int i;
 
 	for (i = 0; i < 10; i++) {
-		const char *type = type2string(i);
+		const char *type = __connman_service_type2string(i);
 
 		if (type == NULL)
 			continue;
