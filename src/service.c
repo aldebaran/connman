@@ -1410,6 +1410,29 @@ enum connman_service_type connman_service_get_type(struct connman_service *servi
 }
 
 /**
+ * connman_service_get_interface:
+ * @service: service structure
+ *
+ * Get network interface of service
+ */
+char *connman_service_get_interface(struct connman_service *service)
+{
+	int index;
+
+	if (service == NULL)
+		return NULL;
+
+	if (service->network != NULL) {
+		index = connman_network_get_index(service->network);
+	} else if (service->device != NULL) {
+		index = connman_device_get_index(service->device);
+	} else
+		return NULL;
+
+	return connman_inet_ifname(index);
+}
+
+/**
  * connman_service_set_favorite:
  * @service: service structure
  * @favorite: favorite value
