@@ -343,6 +343,48 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 		technology_connected(type, FALSE);
 }
 
+static void technology_default(enum connman_service_type type)
+{
+	DBusMessage *signal;
+	DBusMessageIter entry, value;
+	const char *str, *key = "DefaultTechnology";
+
+	str = __connman_service_type2string(type);
+	if (str == NULL)
+		return;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+					DBUS_TYPE_STRING_AS_STRING, &value);
+	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
+	dbus_message_iter_close_container(&entry, &value);
+
+	g_dbus_send_message(connection, signal);
+}
+
+void __connman_notifier_default_changed(struct connman_service *service)
+{
+	enum connman_service_type type = connman_service_get_type(service);
+	GSList *list;
+
+	technology_default(type);
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->default_changed)
+			notifier->default_changed(service);
+	}
+}
+
 static void offlinemode_changed(dbus_bool_t enabled)
 {
 	DBusMessage *signal;

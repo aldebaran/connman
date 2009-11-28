@@ -226,7 +226,7 @@ static enum connman_service_error string2error(const char *error)
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
 
-const char *__connman_service_default(void)
+static struct connman_service *get_default(void)
 {
 	struct connman_service *service;
 	GSequenceIter *iter;
@@ -234,13 +234,29 @@ const char *__connman_service_default(void)
 	iter = g_sequence_get_begin_iter(service_list);
 
 	if (g_sequence_iter_is_end(iter) == TRUE)
-		return "";
+		return NULL;
 
 	service = g_sequence_get(iter);
-	if (service == NULL)
-		return "";
 
 	if (service->state != CONNMAN_SERVICE_STATE_READY)
+		return NULL;
+
+	return service;
+}
+
+static void default_changed(void)
+{
+	struct connman_service *service = get_default();
+
+	__connman_notifier_default_changed(service);
+}
+
+const char *__connman_service_default(void)
+{
+	struct connman_service *service;
+
+	service = get_default();
+	if (service == NULL)
 		return "";
 
 	return __connman_service_type2string(service->type);
@@ -1383,6 +1399,17 @@ static void favorite_changed(struct connman_service *service)
 }
 
 /**
+ * connman_service_get_type:
+ * @service: service structure
+ *
+ * Get the type of service
+ */
+enum connman_service_type connman_service_get_type(struct connman_service *service)
+{
+	return service->type;
+}
+
+/**
  * connman_service_set_favorite:
  * @service: service structure
  * @favorite: favorite value
@@ -1412,29 +1439,6 @@ int connman_service_set_favorite(struct connman_service *service,
 	return 0;
 }
 
-static void default_changed(void)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "DefaultTechnology";
-	const char *str = __connman_service_default();
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
-}
 
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state)

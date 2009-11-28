@@ -41,6 +41,7 @@ extern "C" {
 struct connman_notifier {
 	const char *name;
 	int priority;
+	void (*default_changed) (struct connman_service *service);
 	void (*service_enabled) (enum connman_service_type type,
 						connman_bool_t enabled);
 	void (*offline_mode) (connman_bool_t enabled);

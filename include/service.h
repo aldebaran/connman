@@ -85,6 +85,8 @@ struct connman_service *connman_service_create(void);
 struct connman_service *connman_service_ref(struct connman_service *service);
 void connman_service_unref(struct connman_service *service);
 
+enum connman_service_type connman_service_get_type(struct connman_service *service);
+
 int connman_service_set_favorite(struct connman_service *service,
 						connman_bool_t favorite);
 
