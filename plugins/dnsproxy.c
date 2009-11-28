@@ -337,6 +337,32 @@ static struct connman_resolver dnsproxy_resolver = {
 	.remove		= dnsproxy_remove,
 };
 
+static void dnsproxy_default_changed(struct connman_service *service)
+{
+	GSList *list;
+	char *interface;
+
+	DBG("service %p", service);
+
+	if (service == NULL)
+		return;
+
+	interface = connman_service_get_interface(service);
+	if (interface == NULL)
+		return;
+
+	for (list = server_list; list; list = list->next) {
+		struct server_data *data = list->data;
+
+		if (g_strcmp0(data->interface, interface) == 0)
+			data->enabled = TRUE;
+		else
+			data->enabled = FALSE;
+	}
+
+	g_free(interface);
+}
+
 static void dnsproxy_offline_mode(connman_bool_t enabled)
 {
 	GSList *list;
@@ -352,6 +378,7 @@ static void dnsproxy_offline_mode(connman_bool_t enabled)
 
 static struct connman_notifier dnsproxy_notifier = {
 	.name			= "dnsproxy",
+	.default_changed	= dnsproxy_default_changed,
 	.offline_mode		= dnsproxy_offline_mode,
 };
 
