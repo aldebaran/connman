@@ -1595,6 +1595,7 @@ static connman_bool_t prepare_network(struct connman_service *service)
 		connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 		break;
+	case CONNMAN_NETWORK_TYPE_CABLE:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
@@ -2207,6 +2208,8 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
 		break;
+	case CONNMAN_NETWORK_TYPE_CABLE:
+		return CONNMAN_SERVICE_TYPE_ETHERNET;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		return CONNMAN_SERVICE_TYPE_WIFI;
 	case CONNMAN_NETWORK_TYPE_WIMAX:
