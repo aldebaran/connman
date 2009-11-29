@@ -1406,6 +1406,9 @@ static void favorite_changed(struct connman_service *service)
  */
 enum connman_service_type connman_service_get_type(struct connman_service *service)
 {
+	if (service == NULL)
+		return CONNMAN_SERVICE_TYPE_UNKNOWN;
+
 	return service->type;
 }
 
