@@ -351,7 +351,7 @@ static void technology_default(enum connman_service_type type)
 
 	str = __connman_service_type2string(type);
 	if (str == NULL)
-		return;
+		str = "";
 
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
