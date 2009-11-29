@@ -334,10 +334,6 @@ const char *__connman_service_default(void);
 
 void __connman_service_put(struct connman_service *service);
 
-struct connman_service *__connman_service_lookup_from_device(struct connman_device *device);
-struct connman_service *__connman_service_create_from_device(struct connman_device *device);
-void __connman_service_remove_from_device(struct connman_device *device);
-
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
 void __connman_service_update_from_network(struct connman_network *network);
@@ -346,8 +342,6 @@ void __connman_service_remove_from_network(struct connman_network *network);
 const char *__connman_service_get_path(struct connman_service *service);
 unsigned int __connman_service_get_order(struct connman_service *service);
 
-int __connman_service_set_carrier(struct connman_service *service,
-						connman_bool_t carrier);
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state);
 int __connman_service_indicate_error(struct connman_service *service,

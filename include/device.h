@@ -55,7 +55,6 @@ enum connman_device_mode {
 	CONNMAN_DEVICE_MODE_UNKNOWN          = 0,
 	CONNMAN_DEVICE_MODE_NETWORK_SINGLE   = 1,
 	CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE = 2,
-	CONNMAN_DEVICE_MODE_TRANSPORT_IP     = 3,
 };
 
 struct connman_device;
@@ -86,8 +85,6 @@ connman_bool_t connman_device_get_secondary(struct connman_device *device);
 
 int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered);
-int connman_device_set_carrier(struct connman_device *device,
-						connman_bool_t carrier);
 int connman_device_set_scanning(struct connman_device *device,
 						connman_bool_t scanning);
 void connman_device_cleanup_scanning(struct connman_device *device);

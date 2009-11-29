@@ -43,7 +43,70 @@ struct ethernet_data {
 	int index;
 	unsigned flags;
 	unsigned int watch;
+	struct connman_network *network;
 };
+
+static int cable_probe(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
+static void cable_remove(struct connman_network *network)
+{
+	DBG("network %p", network);
+}
+
+static int cable_connect(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
+static int cable_disconnect(struct connman_network *network)
+{
+	DBG("network %p", network);
+
+	return 0;
+}
+
+static struct connman_network_driver cable_driver = {
+	.name		= "cable",
+	.type		= CONNMAN_NETWORK_TYPE_ETHERNET,
+	.probe		= cable_probe,
+	.remove		= cable_remove,
+	.connect	= cable_connect,
+	.disconnect	= cable_disconnect,
+};
+
+static void add_network(struct connman_device *device)
+{
+	struct connman_network *network;
+	int index;
+
+	network = connman_network_create("carrier",
+					CONNMAN_NETWORK_TYPE_ETHERNET);
+	if (network == NULL)
+		return;
+
+	index = connman_device_get_index(device);
+	connman_network_set_index(network, index);
+
+	connman_network_set_name(network, "Wired");
+	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
+
+	if (connman_device_add_network(device, network) < 0) {
+		connman_network_unref(network);
+		return;
+	}
+
+	connman_network_set_available(network, TRUE);
+	connman_network_set_connected(network, TRUE);
+
+	connman_network_set_group(network, "cable");
+}
 
 static void ethernet_newlink(unsigned flags, unsigned change, void *user_data)
 {
@@ -65,10 +128,10 @@ static void ethernet_newlink(unsigned flags, unsigned change, void *user_data)
 	if ((ethernet->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
 		if (flags & IFF_LOWER_UP) {
 			DBG("carrier on");
-			connman_device_set_carrier(device, TRUE);
+			add_network(device);
 		} else {
 			DBG("carrier off");
-			connman_device_set_carrier(device, FALSE);
+			connman_device_remove_all_networks(device);
 		}
 	}
 
@@ -106,6 +169,8 @@ static void ethernet_remove(struct connman_device *device)
 
 	connman_rtnl_remove_watch(ethernet->watch);
 
+	connman_device_remove_all_networks(device);
+
 	g_free(ethernet);
 }
 
@@ -127,30 +192,6 @@ static int ethernet_disable(struct connman_device *device)
 	return connman_inet_ifdown(ethernet->index);
 }
 
-static int ethernet_connect(struct connman_device *device)
-{
-	struct ethernet_data *ethernet = connman_device_get_data(device);
-
-	DBG("device %p", device);
-
-	if (!(ethernet->flags & IFF_LOWER_UP))
-		return -ENOTCONN;
-
-	return connman_device_set_connected(device, TRUE);
-}
-
-static int ethernet_disconnect(struct connman_device *device)
-{
-	struct ethernet_data *ethernet = connman_device_get_data(device);
-
-	DBG("device %p", device);
-
-	if (!(ethernet->flags & IFF_LOWER_UP))
-		return -ENOTCONN;
-
-	return connman_device_set_connected(device, FALSE);
-}
-
 static struct connman_device_driver ethernet_driver = {
 	.name		= "ethernet",
 	.type		= CONNMAN_DEVICE_TYPE_ETHERNET,
@@ -158,17 +199,29 @@ static struct connman_device_driver ethernet_driver = {
 	.remove		= ethernet_remove,
 	.enable		= ethernet_enable,
 	.disable	= ethernet_disable,
-	.connect	= ethernet_connect,
-	.disconnect	= ethernet_disconnect,
 };
 
 static int ethernet_init(void)
 {
-	return connman_device_driver_register(&ethernet_driver);
+	int err;
+
+	err = connman_network_driver_register(&cable_driver);
+	if (err < 0)
+		return err;
+
+	err = connman_device_driver_register(&ethernet_driver);
+	if (err < 0) {
+		connman_network_driver_unregister(&cable_driver);
+		return err;
+	}
+
+	return 0;
 }
 
 static void ethernet_exit(void)
 {
+	connman_network_driver_unregister(&cable_driver);
+
 	connman_device_driver_unregister(&ethernet_driver);
 }
 

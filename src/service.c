@@ -63,7 +63,6 @@ struct connman_service {
 	char *mnc;
 	connman_bool_t roaming;
 	struct connman_ipconfig *ipconfig;
-	struct connman_device *device;
 	struct connman_network *network;
 	DBusMessage *pending;
 	guint timeout;
@@ -928,8 +927,6 @@ static gboolean connect_timeout(gpointer user_data)
 
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
-	else if (service->device != NULL)
-		__connman_device_disconnect(service->device);
 
 	__connman_ipconfig_disable(service->ipconfig);
 
@@ -957,35 +954,30 @@ static gboolean connect_timeout(gpointer user_data)
 static void set_reconnect_state(struct connman_service *service,
 						connman_bool_t reconnect)
 {
-	if (service->network != NULL) {
-		struct connman_device *device;
+	struct connman_device *device;
 
-		device = connman_network_get_device(service->network);
-
-		__connman_device_set_reconnect(device, reconnect);
-
+	if (service->network == NULL)
 		return;
-	}
 
-	if (service->device != NULL)
-		__connman_device_set_reconnect(service->device,
-							reconnect);
+	device = connman_network_get_device(service->network);
+	if (device == NULL)
+		return;
+
+	__connman_device_set_reconnect(device, reconnect);
 }
 
 static connman_bool_t get_reconnect_state(struct connman_service *service)
 {
-	if (service->network != NULL) {
-		struct connman_device *device;
+	struct connman_device *device;
 
-		device = connman_network_get_device(service->network);
+	if (service->network == NULL)
+		return FALSE;
 
-		return __connman_device_get_reconnect(device);
-	}
+	device = connman_network_get_device(service->network);
+	if (device == NULL)
+		return FALSE;
 
-	if (service->device != NULL)
-		return __connman_device_get_reconnect(service->device);
-
-	return FALSE;
+	return __connman_device_get_reconnect(device);
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
@@ -1425,12 +1417,10 @@ char *connman_service_get_interface(struct connman_service *service)
 	if (service == NULL)
 		return NULL;
 
-	if (service->network != NULL) {
-		index = connman_network_get_index(service->network);
-	} else if (service->device != NULL) {
-		index = connman_device_get_index(service->device);
-	} else
+	if (service->network == NULL)
 		return NULL;
+
+	index = connman_network_get_index(service->network);
 
 	return connman_inet_ifname(index);
 }
@@ -1595,7 +1585,7 @@ static connman_bool_t prepare_network(struct connman_service *service)
 		connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 		break;
-	case CONNMAN_NETWORK_TYPE_CABLE:
+	case CONNMAN_NETWORK_TYPE_ETHERNET:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
@@ -1661,13 +1651,6 @@ int __connman_service_connect(struct connman_service *service)
 		__connman_ipconfig_enable(service->ipconfig);
 
 		err = __connman_network_connect(service->network);
-	} else if (service->device != NULL) {
-		if (service->favorite == FALSE)
-			return -ENOLINK;
-
-		__connman_ipconfig_enable(service->ipconfig);
-
-		err = __connman_device_connect(service->device);
 	} else
 		return -EOPNOTSUPP;
 
@@ -1694,10 +1677,6 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
-	} else if (service->device != NULL) {
-		if (service->favorite == FALSE)
-			return -ENOLINK;
-		err = __connman_device_disconnect(service->device);
 	} else
 		return -EOPNOTSUPP;
 
@@ -2053,97 +2032,6 @@ static void setup_ipconfig(struct connman_service *service, int index)
 }
 
 /**
- * __connman_service_lookup_from_device:
- * @device: device structure
- *
- * Look up a service by device (reference count will not be increased)
- */
-struct connman_service *__connman_service_lookup_from_device(struct connman_device *device)
-{
-	struct connman_service *service;
-	const char *ident;
-	char *name;
-
-	ident = __connman_device_get_ident(device);
-	if (ident == NULL)
-		return NULL;
-
-	name = g_strdup_printf("%s_%s",
-				__connman_device_get_type(device), ident);
-	service = __connman_service_lookup(name);
-	g_free(name);
-
-	return service;
-}
-
-/**
- * __connman_service_create_from_device:
- * @device: device structure
- *
- * Look up service by device and if not found, create one
- */
-struct connman_service *__connman_service_create_from_device(struct connman_device *device)
-{
-	struct connman_service *service;
-	const char *ident;
-	char *name;
-
-	ident = __connman_device_get_ident(device);
-	if (ident == NULL)
-		return NULL;
-
-	name = g_strdup_printf("%s_%s",
-				__connman_device_get_type(device), ident);
-	service = __connman_service_get(name);
-	g_free(name);
-
-	if (service == NULL)
-		return NULL;
-
-	if (service->path != NULL) {
-		__connman_profile_changed(TRUE);
-		return service;
-	}
-
-	service->type = __connman_device_get_service_type(device);
-
-	service->autoconnect = FALSE;
-
-	service->device = device;
-
-	setup_ipconfig(service, connman_device_get_index(device));
-
-	service_register(service);
-
-	__connman_profile_changed(TRUE);
-
-	if (service->favorite == TRUE)
-		__connman_service_auto_connect();
-
-	return service;
-}
-
-void __connman_service_remove_from_device(struct connman_device *device)
-{
-	struct connman_service *service;
-	enum connman_service_type type;
-
-	service = __connman_service_lookup_from_device(device);
-	if (service == NULL)
-		return;
-
-	type = service->type;
-
-	__connman_service_put(service);
-
-	default_changed();
-
-	__connman_notifier_disconnect(type);
-
-	__connman_service_auto_connect();
-}
-
-/**
  * __connman_service_lookup_from_network:
  * @network: network structure
  *
@@ -2154,6 +2042,8 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 	struct connman_service *service;
 	const char *ident, *group;
 	char *name;
+
+	DBG("network %p", network);
 
 	ident = __connman_network_get_ident(network);
 	if (ident == NULL)
@@ -2208,7 +2098,7 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
 		break;
-	case CONNMAN_NETWORK_TYPE_CABLE:
+	case CONNMAN_NETWORK_TYPE_ETHERNET:
 		return CONNMAN_SERVICE_TYPE_ETHERNET;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		return CONNMAN_SERVICE_TYPE_WIFI;
@@ -2278,6 +2168,8 @@ static void update_from_network(struct connman_service *service,
 	connman_uint8_t strength = service->strength;
 	GSequenceIter *iter;
 	const char *str;
+
+	DBG("service %p network %p", service, network);
 
 	if (service->state == CONNMAN_SERVICE_STATE_READY)
 		return;
@@ -2355,6 +2247,8 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	const char *ident, *group;
 	char *name;
 
+	DBG("network %p", network);
+
 	ident = __connman_network_get_ident(network);
 	if (ident == NULL)
 		return NULL;
@@ -2419,6 +2313,8 @@ void __connman_service_update_from_network(struct connman_network *network)
 	connman_bool_t roaming;
 	GSequenceIter *iter;
 
+	DBG("network %p", network);
+
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return;
@@ -2465,6 +2361,8 @@ done:
 void __connman_service_remove_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
+
+	DBG("network %p", network);
 
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)

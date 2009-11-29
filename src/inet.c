@@ -493,7 +493,7 @@ struct connman_device *connman_inet_create_device(int index)
 		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
-		mode = CONNMAN_DEVICE_MODE_TRANSPORT_IP;
+		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:

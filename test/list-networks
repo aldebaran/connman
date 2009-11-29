@@ -26,8 +26,8 @@ for path in properties["Devices"]:
 	properties = device.GetProperties()
 
 	try:
-		if properties["Type"] not in ["wifi", "wimax",
-					"bluetooth", "cellular"]:
+		if properties["Type"] not in ["ethernet", "wifi", "wimax",
+						"bluetooth", "cellular"]:
 			continue
 	except:
 		continue

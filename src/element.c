@@ -258,8 +258,6 @@ struct connman_service *__connman_element_get_service(struct connman_element *el
 	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
-		service = __connman_service_lookup_from_device(device);
-		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:

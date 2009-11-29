@@ -42,7 +42,6 @@ struct connman_device {
 	connman_bool_t powered;
 	connman_bool_t powered_pending;
 	connman_bool_t powered_persistent;
-	connman_bool_t carrier;
 	connman_bool_t scanning;
 	connman_bool_t disconnected;
 	connman_bool_t reconnect;
@@ -56,7 +55,6 @@ struct connman_device {
 	int phyindex;
 	unsigned int connections;
 	guint scan_timeout;
-	struct connman_ipconfig *ipconfig;
 
 	struct connman_device_driver *driver;
 	void *driver_data;
@@ -205,81 +203,6 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
-static int set_connected(struct connman_device *device,
-						connman_bool_t connected)
-{
-	if (connected == TRUE) {
-		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-		struct connman_element *element;
-
-		device->disconnected = TRUE;
-
-		switch (device->element.ipv4.method) {
-		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		case CONNMAN_IPCONFIG_METHOD_IGNORE:
-			return 0;
-		case CONNMAN_IPCONFIG_METHOD_STATIC:
-			type = CONNMAN_ELEMENT_TYPE_IPV4;
-			break;
-		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			type = CONNMAN_ELEMENT_TYPE_DHCP;
-			break;
-		}
-
-		element = connman_element_create(NULL);
-		if (element != NULL) {
-			struct connman_service *service;
-
-			element->type  = type;
-			element->index = device->element.index;
-
-			if (connman_element_register(element,
-							&device->element) < 0)
-				connman_element_unref(element);
-
-			device->disconnected = FALSE;
-
-			service = __connman_service_lookup_from_device(device);
-			__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_CONFIGURATION);
-		}
-	} else {
-		struct connman_service *service;
-
-		connman_element_unregister_children(&device->element);
-
-		device->disconnected = TRUE;
-
-		service = __connman_service_lookup_from_device(device);
-		__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_IDLE);
-	}
-
-	if (connected == TRUE) {
-		enum connman_service_type type;
-
-		type = __connman_device_get_service_type(device);
-		__connman_notifier_connect(type);
-	} else {
-		enum connman_service_type type;
-
-		type = __connman_device_get_service_type(device);
-		__connman_notifier_disconnect(type);
-	}
-
-	return 0;
-}
-
-static int set_carrier(struct connman_device *device, connman_bool_t carrier)
-{
-	if (carrier == TRUE)
-		__connman_profile_add_device(device);
-	else
-		__connman_profile_remove_device(device);
-
-	return set_connected(device, carrier);
-}
-
 static int powered_changed(struct connman_device *device)
 {
 	DBusMessage *signal;
@@ -339,8 +262,6 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 		clear_scan_trigger(device);
 
 		g_hash_table_remove_all(device->networks);
-
-		set_carrier(device, FALSE);
 
 		if (driver->disable) {
 			err = driver->disable(device);
@@ -441,9 +362,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
 		break;
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		__connman_element_append_ipv4(&device->element, &dict);
-		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		if (device->scan_interval > 0)
@@ -543,8 +461,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		switch (device->mode) {
 		case CONNMAN_DEVICE_MODE_UNKNOWN:
-		case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-			return __connman_error_invalid_arguments(msg);
 		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 			break;
@@ -562,25 +478,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 			reset_scan_trigger(device);
 		}
-	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
-		int err;
-
-		if (device->ipconfig == NULL)
-			return __connman_error_invalid_property(msg);
-
-		switch (device->mode) {
-		case CONNMAN_DEVICE_MODE_UNKNOWN:
-		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-			return __connman_error_invalid_arguments(msg);
-		case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-			break;
-		}
-
-		err = __connman_ipconfig_set_ipv4(device->ipconfig,
-							name + 5, &value);
-		if (err < 0)
-			return __connman_error_failed(msg, -err);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -597,7 +494,6 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		return __connman_error_not_supported(msg);
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
@@ -718,10 +614,6 @@ static int setup_device(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		break;
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		if (device->carrier == TRUE && device->secondary == FALSE)
-			__connman_profile_add_device(device);
-		break;
 	}
 
 	if (device->offlinemode == FALSE &&
@@ -766,10 +658,6 @@ static void remove_device(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		if (device->secondary == FALSE)
-			__connman_profile_remove_device(device);
 		break;
 	}
 
@@ -887,11 +775,6 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->address);
 	g_free(device->control);
 	g_free(device->interface);
-
-	if (device->ipconfig != NULL) {
-		connman_ipconfig_unref(device->ipconfig);
-		device->ipconfig = NULL;
-	}
 
 	g_free(device->last_network);
 
@@ -1053,15 +936,6 @@ const char *connman_device_get_path(struct connman_device *device)
 void connman_device_set_index(struct connman_device *device, int index)
 {
 	device->element.index = index;
-
-	if (device->ipconfig != NULL) {
-		if (index == connman_ipconfig_get_index(device->ipconfig))
-			return;
-
-		connman_ipconfig_unref(device->ipconfig);
-	}
-
-	device->ipconfig = connman_ipconfig_create(index);
 }
 
 /**
@@ -1262,35 +1136,6 @@ int __connman_device_set_blocked(struct connman_device *device,
 		powered = FALSE;
 
 	return set_powered(device, powered);
-}
-
-/**
- * connman_device_set_carrier:
- * @device: device structure
- * @carrier: carrier state
- *
- * Change carrier state of device (only for device without scanning)
- */
-int connman_device_set_carrier(struct connman_device *device,
-						connman_bool_t carrier)
-{
-	DBG("device %p carrier %d", device, carrier);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		return -EINVAL;
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		break;
-	}
-
-	if (device->carrier == carrier)
-		return -EALREADY;
-
-	device->carrier = carrier;
-
-	return set_carrier(device, device->carrier);
 }
 
 int __connman_device_scan(struct connman_device *device)
@@ -1558,7 +1403,6 @@ int connman_device_set_disconnected(struct connman_device *device,
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		return -EINVAL;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
@@ -1585,33 +1429,6 @@ int connman_device_set_disconnected(struct connman_device *device,
 connman_bool_t connman_device_get_disconnected(struct connman_device *device)
 {
 	return device->disconnected;
-}
-
-/**
- * connman_device_set_connected:
- * @device: device structure
- * @connected: connected state
- *
- * Change connected state of device (for Ethernet like devices)
- */
-int connman_device_set_connected(struct connman_device *device,
-						connman_bool_t connected)
-{
-	DBG("device %p connected %d", device, connected);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		return -EINVAL;
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
-		break;
-	}
-
-	if (device->carrier == FALSE)
-		return -ENOTCONN;
-
-	return set_connected(device, connected);
 }
 
 /**
@@ -1724,9 +1541,11 @@ int connman_device_add_network(struct connman_device *device,
 
 	DBG("device %p network %p", device, network);
 
+	if (identifier == NULL)
+		return -EINVAL;
+
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		return -EINVAL;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
@@ -1967,7 +1786,6 @@ static int device_load(struct connman_device *device)
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
@@ -2008,7 +1826,6 @@ static int device_save(struct connman_device *device)
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_TRANSPORT_IP:
 		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:

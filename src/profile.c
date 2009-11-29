@@ -285,28 +285,6 @@ void __connman_profile_changed(gboolean delayed)
 	changed_timeout = g_timeout_add_seconds(1, services_changed, NULL);
 }
 
-int __connman_profile_add_device(struct connman_device *device)
-{
-	struct connman_service *service;
-
-	DBG("device %p", device);
-
-	service = __connman_service_create_from_device(device);
-	if (service == NULL)
-		return -EINVAL;
-
-	return 0;
-}
-
-int __connman_profile_remove_device(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	__connman_service_remove_from_device(device);
-
-	return 0;
-}
-
 int __connman_profile_add_network(struct connman_network *network)
 {
 	struct connman_service *service;
