@@ -18,6 +18,12 @@ for path in properties["Devices"]:
 	print "[ %s ]" % (path)
 
 	for key in properties.keys():
-		print "    %s = %s" % (key, properties[key])
+		if key in ["Networks"]:
+			val = ""
+			for i in properties[key]:
+				val += i + " "
+		else:
+			val = str(properties[key])
+		print "    %s = %s" % (key, val)
 
 	print
