@@ -32,5 +32,6 @@ fi
 		--enable-iwmx \
 		--enable-iospm \
 		--enable-polkit=builtin \
+		--enable-capng \
 		--enable-client \
 		--enable-tools $*

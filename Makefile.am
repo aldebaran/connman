@@ -58,7 +58,7 @@ src_connmand_SOURCES += src/udev-compat.c
 endif
 
 src_connmand_LDADD = $(builtin_libadd) \
-				@GLIB_LIBS@ @DBUS_LIBS@ @UDEV_LIBS@ -ldl
+			@GLIB_LIBS@ @DBUS_LIBS@ @CAPNG_LIBS@ @UDEV_LIBS@ -ldl
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=src/connman.ver
 
@@ -83,7 +83,8 @@ build_plugindir = $(plugindir)
 build_scriptdir = $(scriptdir)
 endif
 
-AM_CFLAGS = @UDEV_CFLAGS@ @NETLINK_CFLAGS@ @DBUS_CFLAGS@ \
+AM_CFLAGS = @UDEV_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
+			@DBUS_CFLAGS@ @GLIB_CFLAGS@ $(builtin_cflags) \
 				@GLIB_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \

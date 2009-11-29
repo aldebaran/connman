@@ -34,6 +34,10 @@
 
 #include <gdbus.h>
 
+#ifdef HAVE_CAPNG
+#include <cap-ng.h>
+#endif
+
 #include "connman.h"
 
 static GMainLoop *main_loop = NULL;
@@ -108,6 +112,10 @@ int main(int argc, char *argv[])
 	DBusError err;
 	struct sigaction sa;
 	mode_t old_umask;
+
+#ifdef HAVE_CAPNG
+	/* Drop capabilities */
+#endif
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)
