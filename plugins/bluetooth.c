@@ -629,6 +629,7 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 update:
 	connman_device_set_string(device, "Address", address);
 	connman_device_set_string(device, "Name", name);
+	connman_device_set_string(device, "Path", path);
 
 	connman_device_set_powered(device, powered);
 	connman_device_set_scanning(device, scanning);
