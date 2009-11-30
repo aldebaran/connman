@@ -257,7 +257,7 @@ static void print_properties(struct udev_device *device, const char *prefix)
 				g_str_equal(name, "IFINDEX") == TRUE ||
 				g_str_equal(name, "DEVNAME") == TRUE ||
 				g_str_equal(name, "DEVPATH") == TRUE)
-			connman_debug("%s%s = %s", prefix, name, value);
+			DBG("%s%s = %s", prefix, name, value);
 
 		entry = udev_list_entry_get_next(entry);
 	}
@@ -268,7 +268,7 @@ static void print_device(struct udev_device *device, const char *action)
 	const char *subsystem, *sysname, *driver, *devtype = NULL;
 	struct udev_device *parent;
 
-	connman_debug("=== %s ===", action);
+	DBG("=== %s ===", action);
 	print_properties(device, "");
 
 	parent = udev_device_get_parent(device);
