@@ -298,6 +298,7 @@ const char *__connman_network_get_type(struct connman_network *network);
 const char *__connman_network_get_group(struct connman_network *network);
 const char *__connman_network_get_ident(struct connman_network *network);
 connman_bool_t __connman_network_get_weakness(struct connman_network *network);
+connman_bool_t __connman_network_get_connecting(struct connman_network *network);
 
 #include <connman/profile.h>
 

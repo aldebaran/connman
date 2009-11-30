@@ -629,6 +629,11 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network)
 	return FALSE;
 }
 
+connman_bool_t __connman_network_get_connecting(struct connman_network *network)
+{
+	return network->connecting;
+}
+
 /**
  * connman_network_set_available:
  * @network: network structure
