@@ -242,6 +242,7 @@ static const char *operstate2str(unsigned char operstate)
 static void extract_link(struct ifinfomsg *msg, int bytes,
 				const char **ifname, unsigned char *operstate)
 {
+	struct rtnl_link_stats stats;
 	struct rtattr *attr;
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
@@ -256,6 +257,14 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 				*operstate = *((unsigned char *) RTA_DATA(attr));
 			break;
 		case IFLA_LINKMODE:
+			break;
+		case IFLA_STATS:
+			memcpy(&stats, RTA_DATA(attr),
+					sizeof(struct rtnl_link_stats));
+			connman_info("%s {RX} %d packets %d bytes", *ifname,
+					stats.rx_packets, stats.rx_bytes);
+			connman_info("%s {TX} %d packets %d bytes", *ifname,
+					stats.tx_packets, stats.tx_bytes);
 			break;
 		}
 	}
