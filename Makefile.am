@@ -111,9 +111,12 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wifi-scan tools/addr-test tools/tap-test
+noinst_PROGRAMS += tools/wifi-scan tools/addr-test tools/tap-test \
+							tools/polkit-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
+
+tools_polkit_test_LDADD = @DBUS_LIBS@
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \

@@ -42,6 +42,7 @@ client/cm
 tools/wifi-scan
 tools/addr-test
 tools/tap-test
+tools/polkit-test
 doc/*.bak
 doc/*.stamp
 doc/connman.*
