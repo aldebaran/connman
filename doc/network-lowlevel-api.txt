@@ -12,16 +12,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void SetProperty(string name, variant value)
-
-			Changes the value of the specified property. Only
-			properties that are listed as read-write are
-			changeable. On success a PropertyChanged signal
-			will be emitted.
-
-			Possible Errors: [service].Error.InvalidArguments
-					 [service].Error.InvalidProperty
-
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -60,29 +50,21 @@ Properties	string Address [readonly]
 			If the network type is WiFi, then this property is
 			present and contains the binary SSID value.
 
-		string WiFi.Mode [readonly, readwrite]
+		string WiFi.Mode [readonly]
 
 			If the network type is WiFi, then this property is
 			present and contains the mode of the network. The
 			possible values are "managed" or "adhoc".
 
-			For scanned networks this value is read only, but in
-			case the network was manually created it is also
-			changeable.
-
-		string WiFi.Security [readonly, readwrite]
+		string WiFi.Security [readonly]
 
 			If the network type is WiFi, then this property is
 			present and contains the security method or key
 			management setting.
 
-			For scanned networks this value is read only, but in
-			case the network was manually created it is also
-			changeable.
-
 			Possible values are "none", "wep", "wpa" and "rsn".
 
-		string WiFi.Passphrase [readwrite]
+		string WiFi.Passphrase [readonly]
 
 			If the network type is WiFi and a passhrase is
 			requires, then this property is present and contains
