@@ -74,6 +74,10 @@ Methods		dict GetProperties()
 			This is similar to setting the Favorite property
 			to false, but that is currently not supported.
 
+			In the case a connection attempt failed and the
+			service is in the State=failure, this method can
+			also be used to reset the service.
+
 			Calling this method on Ethernet devices will cause
 			an error message. It is not possible to remove these
 			kind of devices.

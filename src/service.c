@@ -1071,7 +1071,8 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
 
-	if (service->favorite == FALSE)
+	if (service->favorite == FALSE &&
+			service->state != CONNMAN_SERVICE_STATE_FAILURE)
 		return __connman_error_not_supported(msg);
 
 	if (service->network != NULL) {
@@ -1095,6 +1096,8 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	service->password = NULL;
 
 	apn_changed(service);
+
+	set_idle(service);
 
 	connman_service_set_favorite(service, FALSE);
 	__connman_storage_save_service(service);
