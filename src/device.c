@@ -1236,19 +1236,6 @@ int __connman_device_disable_persistent(struct connman_device *device)
 	return __connman_device_disable(device);
 }
 
-int __connman_device_connect(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	if (device->disconnected == FALSE)
-		return -EINVAL;
-
-	if (device->driver && device->driver->connect)
-		device->driver->connect(device);
-
-	return 0;
-}
-
 int __connman_device_disconnect(struct connman_device *device)
 {
 	GHashTableIter iter;
@@ -1281,9 +1268,6 @@ int __connman_device_disconnect(struct connman_device *device)
 
 		__connman_network_disconnect(network);
 	}
-
-	if (device->driver && device->driver->disconnect)
-		device->driver->disconnect(device);
 
 	return 0;
 }
