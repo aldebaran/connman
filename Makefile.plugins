@@ -75,18 +75,6 @@ plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if MODEMMGR
-if MODEMMGR_BUILTIN
-builtin_modules += modemmgr
-builtin_sources += plugins/modemmgr.c
-else
-plugin_LTLIBRARIES += plugins/modemmgr.la
-plugin_objects += $(plugins_modemmgr_la_OBJECTS)
-plugins_modemmgr_la_CFLAGS = $(plugin_cflags)
-plugins_modemmgr_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if HSO
 if HSO_BUILTIN
 builtin_modules += hso

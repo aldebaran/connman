@@ -92,12 +92,6 @@ AC_ARG_ENABLE(ofono,
 AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
 AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
 
-AC_ARG_ENABLE(modemmgr,
-	AC_HELP_STRING([--enable-modemmgr], [enable Modem Manager support]),
-			[enable_modemmgr=${enableval}], [enable_modemmgr="no"])
-AM_CONDITIONAL(MODEMMGR, test "${enable_modemmgr}" != "no")
-AM_CONDITIONAL(MODEMMGR_BUILTIN, test "${enable_modemmgr}" = "builtin")
-
 AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
 	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
 
