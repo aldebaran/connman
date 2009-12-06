@@ -180,8 +180,6 @@ static const char *state2string(enum connman_service_state state)
 		break;
 	case CONNMAN_SERVICE_STATE_IDLE:
 		return "idle";
-	case CONNMAN_SERVICE_STATE_CARRIER:
-		return "carrier";
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 		return "association";
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
@@ -818,7 +816,6 @@ static connman_bool_t is_connecting(struct connman_service *service)
 	switch (service->state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
 	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_CARRIER:
 	case CONNMAN_SERVICE_STATE_FAILURE:
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_READY:

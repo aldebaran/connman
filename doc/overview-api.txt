@@ -256,10 +256,6 @@ The basic state of every service is "idle". This means that this service
 is not in use at all at the moment. It also is not attempting to connect
 or do anything else.
 
-With Ethernet services a special "carrier" state is available. It indicates
-that the cable has been plugged in. This state is only used when the device
-is from type Ethernet.
-
 The "association" state indicates that this service tries to establish a
 low-level connection to the network. For example associating/connecting
 with a WiFi access point.
@@ -283,13 +279,6 @@ the "idle" state since the service is not connected.
 		+---------------+
 		| idle          |<-------------------------------+
 		+---------------+                                |
-		      |    |                                     |
-		      |    +----------------------+              |
-		      |                           |              |
-		      |                           V              |
-		      |                      +-------------+     |
-		      +----------------------| carrier     |<----+
-		      |                      +-------------+     |
 		      |                                          |
 		      |                      +-------------+     |
 		      +----------------------| failure     |     |
