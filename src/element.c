@@ -253,16 +253,13 @@ struct connman_service *__connman_element_get_service(struct connman_element *el
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 		network = __connman_element_get_network(element);
 		if (network == NULL)

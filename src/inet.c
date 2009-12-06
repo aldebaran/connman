@@ -463,13 +463,10 @@ struct connman_device *connman_inet_create_device(int index)
 		addr = index2addr(index);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_CELLULAR:
 	case CONNMAN_DEVICE_TYPE_GPS:
 	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		name = strdup(devname);
 		break;
 	case CONNMAN_DEVICE_TYPE_MBM:
@@ -486,9 +483,6 @@ struct connman_device *connman_inet_create_device(int index)
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 	case CONNMAN_DEVICE_TYPE_GPS:
 		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 		break;
@@ -502,9 +496,9 @@ struct connman_device *connman_inet_create_device(int index)
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
 		break;
+	case CONNMAN_DEVICE_TYPE_CELLULAR:
 	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;

@@ -134,12 +134,9 @@ static const char *type2description(enum connman_device_type type)
 		return "Bluetooth";
 	case CONNMAN_DEVICE_TYPE_GPS:
 		return "GPS";
-	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		return "Cellular";
 	}
 
@@ -162,12 +159,9 @@ static const char *type2string(enum connman_device_type type)
 		return "bluetooth";
 	case CONNMAN_DEVICE_TYPE_GPS:
 		return "gps";
-	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		return "cellular";
 	}
 
@@ -182,9 +176,6 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 		return CONNMAN_SERVICE_TYPE_ETHERNET;
@@ -194,8 +185,8 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 		return CONNMAN_SERVICE_TYPE_WIMAX;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
-	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	}
@@ -847,12 +838,9 @@ struct connman_device *connman_device_create(const char *node,
 	case CONNMAN_DEVICE_TYPE_GPS:
 		device->scan_interval = 0;
 		break;
-	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_MBM:
 	case CONNMAN_DEVICE_TYPE_HSO:
-	case CONNMAN_DEVICE_TYPE_NOZOMI:
-	case CONNMAN_DEVICE_TYPE_HUAWEI:
-	case CONNMAN_DEVICE_TYPE_NOVATEL:
 		device->scan_interval = 0;
 		break;
 	}
