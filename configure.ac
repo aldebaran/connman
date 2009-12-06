@@ -180,23 +180,6 @@ AC_ARG_ENABLE(mbm,
 AM_CONDITIONAL(MBM, test "${enable_mbm}" != "no")
 AM_CONDITIONAL(MBM_BUILTIN, test "${enable_mbm}" = "builtin")
 
-AC_ARG_WITH(pppd, AC_HELP_STRING([--with-pppd=PROGRAM],
-	[specify location of pppd binary]), [path_pppd=${withval}])
-
-AC_ARG_ENABLE(ppp, AC_HELP_STRING([--enable-ppp],
-		[enable PPP support]), [enable_ppp=${enableval}])
-if (test "${enable_ppp}" = "yes"); then
-	if (test -z "${path_pppd}"); then
-		AC_PATH_PROG(PPPD, [pppd], [], $PATH:/sbin:/usr/sbin)
-	else
-		PPPD="${path_pppd}"
-		AC_SUBST(PPPD)
-	fi
-	AC_CHECK_HEADERS(pppd/pppd.h, enable_ppp=yes,
-			AC_MSG_ERROR(PPP development files are required))
-fi
-AM_CONDITIONAL(PPPD, test "${enable_ppp}" = "yes")
-
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 

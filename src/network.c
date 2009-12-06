@@ -688,9 +688,6 @@ static gboolean set_connected(gpointer user_data)
 		case CONNMAN_NETWORK_PROTOCOL_IP:
 			type = CONNMAN_ELEMENT_TYPE_DHCP;
 			break;
-		case CONNMAN_NETWORK_PROTOCOL_PPP:
-			type = CONNMAN_ELEMENT_TYPE_PPP;
-			break;
 		}
 
 		__connman_device_increase_connections(network->device);

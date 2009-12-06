@@ -33,7 +33,6 @@ In order to compile Connection Manager you need following software packages:
 	- D-Bus library
 	- udev library (optional)
 	- PolicyKit (optional)
-	- PPP support (optional)
 
 To configure run:
 	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
@@ -61,13 +60,6 @@ For a working system, certain configuration options need to be enabled:
 	--enable-bluetooth
 
 		Enable support for Bluetooth devices (requires BlueZ)
-
-	--enable-ppp
-
-		Enable PPP support for dialup connections (requires pppd)
-
-		The location of the pppd binary is auto-detected, but it
-		can be overwritten via --with-pppd=<path-to-binary>.
 
 	--enable-udhcp
 

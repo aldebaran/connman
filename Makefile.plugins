@@ -150,13 +150,6 @@ plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if PPPD
-plugin_LTLIBRARIES += plugins/pppd.la
-plugin_objects += $(plugins_pppd_la_OBJECTS)
-plugins_pppd_la_CFLAGS = $(plugin_cflags) -DPPPD=\"@PPPD@\"
-plugins_pppd_la_LDFLAGS = $(plugin_ldflags)
-endif
-
 if RESOLVCONF
 if RESOLVCONF_BUILTIN
 builtin_modules += resolvconf
@@ -238,12 +231,6 @@ script_DATA += scripts/dhclient.conf
 script_PROGRAMS += scripts/dhclient-script
 
 scripts_dhclient_script_LDADD = @DBUS_LIBS@
-endif
-
-if PPPD
-script_LTLIBRARIES += scripts/pppd-plugin.la
-
-scripts_pppd_plugin_la_LDFLAGS = -module -avoid-version
 endif
 
 

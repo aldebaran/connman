@@ -51,7 +51,6 @@ enum connman_network_type {
 enum connman_network_protocol {
 	CONNMAN_NETWORK_PROTOCOL_UNKNOWN = 0,
 	CONNMAN_NETWORK_PROTOCOL_IP      = 1,
-	CONNMAN_NETWORK_PROTOCOL_PPP     = 2,
 };
 
 enum connman_network_error {
