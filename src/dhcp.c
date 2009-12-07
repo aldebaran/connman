@@ -175,6 +175,29 @@ void connman_dhcp_fail(struct connman_dhcp *dhcp)
 					CONNMAN_ELEMENT_ERROR_FAILED);
 }
 
+/**
+ * connman_dhcp_get_data:
+ * @dhcp: DHCP structure
+ *
+ * Get private DHCP data pointer
+ */
+void *connman_dhcp_get_data(struct connman_dhcp *dhcp)
+{
+	return dhcp->driver_data;
+}
+
+/**
+ * connman_dhcp_set_data:
+ * @dhcp: DHCP structure
+ * @data: data pointer
+ *
+ * Set private DHCP data pointer
+ */
+void connman_dhcp_set_data(struct connman_dhcp *dhcp, void *data)
+{
+	dhcp->driver_data = data;
+}
+
 static GSList *driver_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)

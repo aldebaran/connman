@@ -55,6 +55,9 @@ void connman_dhcp_bound(struct connman_dhcp *dhcp);
 void connman_dhcp_renew(struct connman_dhcp *dhcp);
 void connman_dhcp_fail(struct connman_dhcp *dhcp);
 
+void *connman_dhcp_get_data(struct connman_dhcp *dhcp);
+void connman_dhcp_set_data(struct connman_dhcp *dhcp, void *data);
+
 struct connman_dhcp_driver {
 	const char *name;
 	int priority;
