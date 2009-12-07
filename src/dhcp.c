@@ -86,6 +86,38 @@ char *connman_dhcp_get_interface(struct connman_dhcp *dhcp)
 }
 
 /**
+ * connman_dhcp_set_value:
+ * @dhcp: DHCP structure
+ * @key: unique identifier
+ * @value: string value
+ *
+ * Set string value for specific key
+ */
+void connman_dhcp_set_value(struct connman_dhcp *dhcp,
+					const char *key, const char *value)
+{
+	if (g_strcmp0(key, "Address") == 0) {
+		g_free(dhcp->element->ipv4.address);
+		dhcp->element->ipv4.address = g_strdup(value);
+	} else if (g_strcmp0(key, "Netmask") == 0) {
+		g_free(dhcp->element->ipv4.netmask);
+		dhcp->element->ipv4.netmask = g_strdup(value);
+	} else if (g_strcmp0(key, "Gateway") == 0) {
+		g_free(dhcp->element->ipv4.gateway);
+		dhcp->element->ipv4.gateway = g_strdup(value);
+	} else if (g_strcmp0(key, "Network") == 0) {
+		g_free(dhcp->element->ipv4.network);
+		dhcp->element->ipv4.network = g_strdup(value);
+	} else if (g_strcmp0(key, "Broadcast") == 0) {
+		g_free(dhcp->element->ipv4.broadcast);
+		dhcp->element->ipv4.broadcast = g_strdup(value);
+	} else if (g_strcmp0(key, "Nameserver") == 0) {
+		g_free(dhcp->element->ipv4.nameserver);
+		dhcp->element->ipv4.nameserver = g_strdup(value);
+	}
+}
+
+/**
  * connman_dhcp_bound:
  * @dhcp: DHCP structure
  *
