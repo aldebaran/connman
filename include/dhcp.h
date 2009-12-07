@@ -45,6 +45,7 @@ struct connman_dhcp;
 struct connman_dhcp *connman_dhcp_ref(struct connman_dhcp *dhcp);
 void connman_dhcp_unref(struct connman_dhcp *dhcp);
 
+int connman_dhcp_get_index(struct connman_dhcp *dhcp);
 char *connman_dhcp_get_interface(struct connman_dhcp *dhcp);
 
 void connman_dhcp_bound(struct connman_dhcp *dhcp);

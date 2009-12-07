@@ -64,6 +64,17 @@ void connman_dhcp_unref(struct connman_dhcp *dhcp)
 }
 
 /**
+ * connman_dhcp_get_index:
+ * @dhcp: DHCP structure
+ *
+ * Get network index of DHCP
+ */
+int connman_dhcp_get_index(struct connman_dhcp *dhcp)
+{
+	return dhcp->index;
+}
+
+/**
  * connman_dhcp_get_interface:
  * @dhcp: DHCP structure
  *
