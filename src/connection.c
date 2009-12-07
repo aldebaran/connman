@@ -193,32 +193,6 @@ static int del_route(struct connman_element *element, const char *gateway)
 	return err;
 }
 
-static DBusConnection *connection;
-
-static void emit_default_signal(struct connman_element *element)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Default";
-
-	signal = dbus_message_new_signal(element->path,
-			CONNMAN_CONNECTION_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&element->enabled);
-	dbus_message_iter_close_container(&entry, &value);
-
-	g_dbus_send_message(connection, signal);
-}
-
 static void find_element(struct connman_element *element, gpointer user_data)
 {
 	struct gateway_data *data = user_data;
@@ -338,169 +312,6 @@ static struct connman_rtnl connection_rtnl = {
 	.delgateway	= connection_delgateway,
 };
 
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_element *element = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-	connman_uint8_t strength;
-	const char *device, *network;
-	const char *type;
-
-	DBG("conn %p", conn);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
-		return __connman_error_permission_denied(msg);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-
-	type = connman_element_get_string(element, "Type");
-	if (type != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
-						DBUS_TYPE_STRING, &type);
-
-	strength = connman_element_get_uint8(element, "Strength");
-	if (strength > 0)
-		connman_dbus_dict_append_variant(&dict, "Strength",
-						DBUS_TYPE_BYTE, &strength);
-
-	if (element->devname != NULL)
-		connman_dbus_dict_append_variant(&dict, "Interface",
-					DBUS_TYPE_STRING, &element->devname);
-
-	connman_dbus_dict_append_variant(&dict, "Default",
-					DBUS_TYPE_BOOLEAN, &element->enabled);
-
-	device = __connman_element_get_device_path(element);
-	if (device != NULL)
-		connman_dbus_dict_append_variant(&dict, "Device",
-					DBUS_TYPE_OBJECT_PATH, &device);
-
-	network = __connman_element_get_network_path(element);
-	if (network != NULL)
-		connman_dbus_dict_append_variant(&dict, "Network",
-					DBUS_TYPE_OBJECT_PATH, &network);
-
-	__connman_element_append_ipv4(element, &dict);
-
-	dbus_message_iter_close_container(&array, &dict);
-
-	return reply;
-}
-
-static DBusMessage *set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessageIter iter, value;
-	const char *name;
-	int type;
-
-	DBG("conn %p", conn);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_get_basic(&iter, &name);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
-	type = dbus_message_iter_get_arg_type(&value);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static GDBusMethodTable connection_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
-	{ "SetProperty",   "sv", "",      set_property   },
-	{ },
-};
-
-static GDBusSignalTable connection_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ },
-};
-
-static void append_connections(DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Connections";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
-static void emit_connections_signal(void)
-{
-	DBusMessage *signal;
-	DBusMessageIter entry;
-
-	DBG("");
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_connections(&entry);
-
-	g_dbus_send_message(connection, signal);
-}
-
-static int register_interface(struct connman_element *element)
-{
-	DBG("element %p name %s path %s",
-				element, element->name, element->path);
-
-	if (g_dbus_register_interface(connection, element->path,
-					CONNMAN_CONNECTION_INTERFACE,
-					connection_methods, connection_signals,
-					NULL, element, NULL) == FALSE) {
-		connman_error("Failed to register %s connection", element->path);
-		return -EIO;
-	}
-
-	emit_connections_signal();
-
-	return 0;
-}
-
-static void unregister_interface(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	emit_connections_signal();
-
-	g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_CONNECTION_INTERFACE);
-}
-
 static struct gateway_data *find_active_gateway(void)
 {
 	GSList *list;
@@ -536,15 +347,11 @@ static int connection_probe(struct connman_element *element)
 
 	DBG("gateway %s", gateway);
 
-	if (register_interface(element) < 0)
-		return -ENODEV;
-
 	service = __connman_element_get_service(element);
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_READY);
 
 	connman_element_set_enabled(element, TRUE);
-	emit_default_signal(element);
 
 	if (gateway == NULL)
 		return 0;
@@ -578,9 +385,6 @@ static void connection_remove(struct connman_element *element)
 					CONNMAN_SERVICE_STATE_DISCONNECT);
 
 	connman_element_set_enabled(element, FALSE);
-	emit_default_signal(element);
-
-	unregister_interface(element);
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
@@ -608,8 +412,6 @@ static struct connman_driver connection_driver = {
 int __connman_connection_init(void)
 {
 	DBG("");
-
-	connection = connman_dbus_get_connection();
 
 	if (connman_rtnl_register(&connection_rtnl) < 0)
 		connman_error("Failed to setup RTNL gateway driver");
@@ -639,8 +441,6 @@ void __connman_connection_cleanup(void)
 
 	g_slist_free(gateway_list);
 	gateway_list = NULL;
-
-	dbus_connection_unref(connection);
 }
 
 static void update_order(void)

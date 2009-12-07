@@ -189,7 +189,3 @@ Properties	string State [readonly]
 			itself. It is just provided here for convenience of
 			applications only dealing with the current active
 			profile.
-
-		array{object} Connections [readonly]
-
-			List of active connection object paths.

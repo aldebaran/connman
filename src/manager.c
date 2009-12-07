@@ -99,30 +99,6 @@ static void append_devices(DBusMessageIter *dict)
 	dbus_message_iter_close_container(dict, &entry);
 }
 
-static void append_connections(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "Connections";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static void append_available_technologies(DBusMessageIter *dict)
 {
 	DBusMessageIter entry, value, iter;
@@ -277,7 +253,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	append_services(&dict);
 
 	append_devices(&dict);
-	append_connections(&dict);
 
 	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
 		str = "online";
