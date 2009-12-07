@@ -23,243 +23,44 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
-#include <sys/wait.h>
-#include <glib/gstdio.h>
+#include <arpa/inet.h>
+
+#include <glib.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/dhcp.h>
-#include <connman/dbus.h>
+#include <connman/task.h>
 #include <connman/log.h>
 
-#define DHCLIENT_INTF "org.isc.dhclient"
-#define DHCLIENT_PATH "/org/isc/dhclient"
-
-static const char *busname;
-
-struct dhclient_task {
-	GPid pid;
-	gboolean killed;
-	int ifindex;
-	gchar *ifname;
-	struct dhclient_task *pending;
-	struct connman_dhcp *dhcp;
-};
-
-static GSList *task_list = NULL;
-
-static struct dhclient_task *find_task_by_pid(GPid pid)
+#if 0
+static unsigned char netmask2prefixlen(const char *netmask)
 {
-	GSList *list;
+	unsigned char bits = 0;
+	in_addr_t mask = inet_network(netmask);
+	in_addr_t host = ~mask;
 
-	for (list = task_list; list; list = list->next) {
-		struct dhclient_task *task = list->data;
-
-		if (task->pid == pid)
-			return task;
-	}
-
-	return NULL;
-}
-
-static struct dhclient_task *find_task_by_index(int index)
-{
-	GSList *list;
-
-	for (list = task_list; list; list = list->next) {
-		struct dhclient_task *task = list->data;
-
-		if (task->ifindex == index)
-			return task;
-	}
-
-	return NULL;
-}
-
-static void kill_task(struct dhclient_task *task)
-{
-	DBG("task %p name %s pid %d", task, task->ifname, task->pid);
-
-	if (task->killed == TRUE)
-		return;
-
-	if (task->pid > 0) {
-		task->killed = TRUE;
-		kill(task->pid, SIGTERM);
-	}
-}
-
-static void unlink_task(struct dhclient_task *task)
-{
-	gchar *pathname;
-
-	DBG("task %p name %s pid %d", task, task->ifname, task->pid);
-
-	pathname = g_strdup_printf("%s/dhclient.%s.pid",
-						STATEDIR, task->ifname);
-	g_unlink(pathname);
-	g_free(pathname);
-
-	pathname = g_strdup_printf("%s/dhclient.%s.leases",
-						STATEDIR, task->ifname);
-	g_unlink(pathname);
-	g_free(pathname);
-}
-
-static int start_dhclient(struct dhclient_task *task);
-
-static void task_died(GPid pid, gint status, gpointer data)
-{
-	struct dhclient_task *task = data;
-
-	if (WIFEXITED(status))
-		DBG("exit status %d for %s", WEXITSTATUS(status), task->ifname);
-	else
-		DBG("signal %d killed %s", WTERMSIG(status), task->ifname);
-
-	g_spawn_close_pid(pid);
-	task->pid = 0;
-
-	task_list = g_slist_remove(task_list, task);
-
-	unlink_task(task);
-
-	if (task->pending != NULL)
-		start_dhclient(task->pending);
-
-	connman_dhcp_unref(task->dhcp);
-
-	g_free(task->ifname);
-	g_free(task);
-}
-
-static void task_setup(gpointer data)
-{
-	struct dhclient_task *task = data;
-
-	DBG("task %p name %s", task, task->ifname);
-
-	task->killed = FALSE;
-}
-
-static int start_dhclient(struct dhclient_task *task)
-{
-	char *argv[16], *envp[1], address[128], pidfile[PATH_MAX];
-	char leases[PATH_MAX], config[PATH_MAX], script[PATH_MAX];
-
-	snprintf(address, sizeof(address) - 1, "BUSNAME=%s", busname);
-	snprintf(pidfile, sizeof(pidfile) - 1,
-			"%s/dhclient.%s.pid", STATEDIR, task->ifname);
-	snprintf(leases, sizeof(leases) - 1,
-			"%s/dhclient.%s.leases", STATEDIR, task->ifname);
-	snprintf(config, sizeof(config) - 1, "%s/dhclient.conf", SCRIPTDIR);
-	snprintf(script, sizeof(script) - 1, "%s/dhclient-script", SCRIPTDIR);
-
-	argv[0] = DHCLIENT;
-	argv[1] = "-d";
-	argv[2] = "-q";
-	argv[3] = "-e";
-	argv[4] = address;
-	argv[5] = "-pf";
-	argv[6] = pidfile;
-	argv[7] = "-lf";
-	argv[8] = leases;
-	argv[9] = "-cf";
-	argv[10] = config;
-	argv[11] = "-sf";
-	argv[12] = script;
-	argv[13] = task->ifname;
-	argv[14] = "-n";
-	argv[15] = NULL;
-
-	envp[0] = NULL;
-
-	if (g_spawn_async(NULL, argv, envp, G_SPAWN_DO_NOT_REAP_CHILD,
-				task_setup, task, &task->pid, NULL) == FALSE) {
-		connman_error("Failed to spawn dhclient");
+	/* a valid netmask must be 2^n - 1 */
+	if ((host & (host + 1)) != 0)
 		return -1;
-	}
 
-	task_list = g_slist_append(task_list, task);
+	for (; mask; mask <<= 1)
+		++bits;
 
-	g_child_watch_add(task->pid, task_died, task);
-
-	DBG("executed %s with pid %d", DHCLIENT, task->pid);
-
-	return 0;
+	return bits;
 }
+#endif
 
-static int dhclient_request(struct connman_dhcp *dhcp)
+static void dhclient_notify(struct connman_task *task,
+					DBusMessage *msg, void *user_data)
 {
-	struct dhclient_task *task, *previous;
-
-	DBG("dhcp %p", dhcp);
-
-	if (access(DHCLIENT, X_OK) < 0)
-		return -errno;
-
-	task = g_try_new0(struct dhclient_task, 1);
-	if (task == NULL)
-		return -ENOMEM;
-
-	task->ifindex = connman_dhcp_get_index(dhcp);
-	task->ifname  = connman_dhcp_get_interface(dhcp);
-
-	if (task->ifname == NULL) {
-		g_free(task);
-		return -ENOMEM;
-	}
-
-	task->dhcp = connman_dhcp_ref(dhcp);
-
-	previous= find_task_by_index(task->ifindex);
-	if (previous != NULL) {
-		previous->pending = task;
-		kill_task(previous);
-		return 0;
-	}
-
-	return start_dhclient(task);
-}
-
-static int dhclient_release(struct connman_dhcp *dhcp)
-{
-	struct dhclient_task *task;
-	int index;
-
-	DBG("dhcp %p", dhcp);
-
-	index = connman_dhcp_get_index(dhcp);
-
-	task = find_task_by_index(index);
-	if (task == NULL)
-		return -EINVAL;
-
-	DBG("release %s", task->ifname);
-
-	kill_task(task);
-
-	return 0;
-}
-
-static struct connman_dhcp_driver dhclient_driver = {
-	.name		= "dhclient",
-	.request	= dhclient_request,
-	.release	= dhclient_release,
-};
-
-static DBusHandlerResult dhclient_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
-{
+	struct connman_dhcp *dhcp = user_data;
 	DBusMessageIter iter, dict;
 	dbus_uint32_t pid;
-	struct dhclient_task *task;
 	const char *text, *key, *value;
-
-	if (dbus_message_is_method_call(msg, DHCLIENT_INTF, "notify") == FALSE)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -270,11 +71,6 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	dbus_message_iter_next(&iter);
 
 	DBG("change %d to %s", pid, text);
-
-	task = find_task_by_pid(pid);
-
-	if (task == NULL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
 	dbus_message_iter_recurse(&iter, &dict);
 
@@ -289,95 +85,161 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 		DBG("%s = %s", key, value);
 
 		if (g_strcmp0(key, "new_ip_address") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Address", value);
+			connman_dhcp_set_value(dhcp, "Address", value);
 		} else if (g_strcmp0(key, "new_subnet_mask") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Netmask", value);
+			connman_dhcp_set_value(dhcp, "Netmask", value);
 		} else if (g_strcmp0(key, "new_routers") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Gateway", value);
+			connman_dhcp_set_value(dhcp, "Gateway", value);
 		} else if (g_strcmp0(key, "new_network_number") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Network", value);
+			connman_dhcp_set_value(dhcp, "Network", value);
 		} else if (g_strcmp0(key, "new_broadcast_address") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Broadcast", value);
+			connman_dhcp_set_value(dhcp, "Broadcast", value);
 		} else if (g_strcmp0(key, "new_domain_name_servers") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Nameserver", value);
+			connman_dhcp_set_value(dhcp, "Nameserver", value);
 		} else if (g_ascii_strcasecmp(key, "new_domain_name") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Domainname", value);
+			connman_dhcp_set_value(dhcp, "Domainname", value);
 		} else if (g_ascii_strcasecmp(key, "new_domain_search") == 0) {
 		} else if (g_ascii_strcasecmp(key, "new_host_name") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Hostname", value);
+			connman_dhcp_set_value(dhcp, "Hostname", value);
 		} else if (g_ascii_strcasecmp(key, "new_ntp_servers") == 0) {
-			connman_dhcp_set_value(task->dhcp, "Timeserver", value);
+			connman_dhcp_set_value(dhcp, "Timeserver", value);
 		} else if (g_ascii_strcasecmp(key, "new_interface_mtu") == 0) {
-			connman_dhcp_set_value(task->dhcp, "MTU", value);
+			connman_dhcp_set_value(dhcp, "MTU", value);
 		}
 
 		dbus_message_iter_next(&dict);
 	}
 
-	if (g_ascii_strcasecmp(text, "PREINIT") == 0) {
-	} else if (g_ascii_strcasecmp(text, "BOUND") == 0 ||
-				g_ascii_strcasecmp(text, "REBOOT") == 0) {
-		connman_dhcp_bound(task->dhcp);
-	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
-				g_ascii_strcasecmp(text, "REBIND") == 0) {
-		connman_dhcp_renew(task->dhcp);
-	} else if (g_ascii_strcasecmp(text, "FAIL") == 0) {
-		connman_dhcp_fail(task->dhcp);
+	if (g_strcmp0(text, "PREINIT") == 0) {
+	} else if (g_strcmp0(text, "BOUND") == 0 ||
+				g_strcmp0(text, "REBOOT") == 0) {
+		connman_dhcp_bound(dhcp);
+	} else if (g_strcmp0(text, "RENEW") == 0 ||
+				g_strcmp0(text, "REBIND") == 0) {
+		connman_dhcp_renew(dhcp);
+	} else if (g_strcmp0(text, "FAIL") == 0) {
+		connman_dhcp_fail(dhcp);
 	} else {
 	}
-
-	return DBUS_HANDLER_RESULT_HANDLED;
 }
 
-static DBusConnection *connection;
+struct dhclient_data {
+	struct connman_task *task;
+	struct connman_dhcp *dhcp;
+	char *ifname;
+};
 
-static const char *dhclient_rule = "path=" DHCLIENT_PATH
-						",interface=" DHCLIENT_INTF;
-
-static int dhclient_init(void)
+static void dhclient_died(struct connman_task *task, void *user_data)
 {
-	int err;
+	struct dhclient_data *dhclient = user_data;
 
-	connection = connman_dbus_get_connection();
+	connman_dhcp_unref(dhclient->dhcp);
 
-	busname = dbus_bus_get_unique_name(connection);
-	busname = CONNMAN_SERVICE;
+	connman_task_destroy(dhclient->task);
+	dhclient->task = NULL;
 
-	dbus_connection_add_filter(connection, dhclient_filter, NULL, NULL);
+	g_free(dhclient->ifname);
+	g_free(dhclient);
+}
 
-	dbus_bus_add_match(connection, dhclient_rule, NULL);
+static void dhclient_setup(struct connman_task *task, const char *ifname)
+{
+	const char *path, *intf = "org.moblin.connman.Task";
 
-	err = connman_dhcp_driver_register(&dhclient_driver);
-	if (err < 0) {
-		dbus_connection_unref(connection);
-		return err;
+	path = connman_task_get_path(task);
+
+	connman_task_add_argument(task, "-d", NULL);
+	connman_task_add_argument(task, "-q", NULL);
+	connman_task_add_argument(task, "-e", "BUSNAME=org.moblin.connman");
+	connman_task_add_argument(task, "-e", "BUSINTF=%s", intf);
+	connman_task_add_argument(task, "-e", "BUSPATH=%s", path);
+	connman_task_add_argument(task, "-pf", "%s/dhclient.%s.pid",
+							STATEDIR, ifname);
+	connman_task_add_argument(task, "-lf", "%s/dhclient.%s.leases",
+							STATEDIR, ifname);
+	connman_task_add_argument(task, "-cf", "%s/dhclient.conf", SCRIPTDIR);
+	connman_task_add_argument(task, "-sf", "%s/dhclient-script", SCRIPTDIR);
+	connman_task_add_argument(task, ifname, NULL);
+	connman_task_add_argument(task, "-n", NULL);
+}
+
+static void dhclient_unlink(const char *ifname)
+{
+	char *pathname;
+
+	pathname = g_strdup_printf("%s/dhclient.%s.pid",
+						STATEDIR, ifname);
+	unlink(pathname);
+	g_free(pathname);
+
+	pathname = g_strdup_printf("%s/dhclient.%s.leases",
+						STATEDIR, ifname);
+	unlink(pathname);
+	g_free(pathname);
+}
+
+static int dhclient_request(struct connman_dhcp *dhcp)
+{
+	struct dhclient_data *dhclient;
+
+	DBG("dhcp %p", dhcp);
+
+	if (access(DHCLIENT, X_OK) < 0)
+		return -EIO;
+
+	dhclient = g_try_new0(struct dhclient_data, 1);
+	if (dhclient == NULL)
+		return -ENOMEM;
+
+	dhclient->task = connman_task_create(DHCLIENT);
+	if (dhclient->task == NULL) {
+		g_free(dhclient);
+		return -ENOMEM;
 	}
+
+	dhclient->dhcp = connman_dhcp_ref(dhcp);
+	dhclient->ifname = connman_dhcp_get_interface(dhcp);
+
+	dhclient_setup(dhclient->task, dhclient->ifname);
+
+	connman_dhcp_set_data(dhcp, dhclient);
+
+	connman_task_set_notify(dhclient->task, "Notify",
+						dhclient_notify, dhcp);
+
+	connman_task_run(dhclient->task, dhclient_died, dhclient);
 
 	return 0;
 }
 
+static int dhclient_release(struct connman_dhcp *dhcp)
+{
+	struct dhclient_data *dhclient = connman_dhcp_get_data(dhcp);
+
+	DBG("dhcp %p", dhcp);
+
+	if (dhclient->task != NULL)
+		connman_task_stop(dhclient->task);
+
+	dhclient_unlink(dhclient->ifname);
+
+	return 0;
+}
+
+static struct connman_dhcp_driver dhclient_driver = {
+	.name		= "dhclient",
+	.request	= dhclient_request,
+	.release	= dhclient_release,
+};
+
+static int dhclient_init(void)
+{
+	return connman_dhcp_driver_register(&dhclient_driver);
+}
+
 static void dhclient_exit(void)
 {
-	GSList *list;
-
-	for (list = task_list; list; list = list->next) {
-		struct dhclient_task *task = list->data;
-
-		DBG("killing process %d", task->pid);
-
-		kill_task(task);
-		unlink_task(task);
-	}
-
-	g_slist_free(task_list);
-
 	connman_dhcp_driver_unregister(&dhclient_driver);
-
-	dbus_bus_remove_match(connection, dhclient_rule, NULL);
-
-	dbus_connection_remove_filter(connection, dhclient_filter, NULL);
-
-	dbus_connection_unref(connection);
 }
 
 CONNMAN_PLUGIN_DEFINE(dhclient, "ISC DHCP client plugin", VERSION,
