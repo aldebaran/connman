@@ -49,6 +49,8 @@ int connman_dhcp_get_index(struct connman_dhcp *dhcp);
 char *connman_dhcp_get_interface(struct connman_dhcp *dhcp);
 
 void connman_dhcp_bound(struct connman_dhcp *dhcp);
+void connman_dhcp_renew(struct connman_dhcp *dhcp);
+void connman_dhcp_fail(struct connman_dhcp *dhcp);
 
 struct connman_dhcp_driver {
 	const char *name;

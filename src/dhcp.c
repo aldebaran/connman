@@ -93,7 +93,48 @@ char *connman_dhcp_get_interface(struct connman_dhcp *dhcp)
  */
 void connman_dhcp_bound(struct connman_dhcp *dhcp)
 {
+	struct connman_element *element;
+
 	DBG("dhcp %p", dhcp);
+
+	element = connman_element_create(NULL);
+	if (element == NULL)
+		return;
+
+	element->type = CONNMAN_ELEMENT_TYPE_IPV4;
+	element->index = dhcp->index;
+
+	connman_element_update(dhcp->element);
+
+	if (connman_element_register(element, dhcp->element) < 0)
+		connman_element_unref(element);
+}
+
+/**
+ * connman_dhcp_renew:
+ * @dhcp: DHCP structure
+ *
+ * Report successful renew of the interface
+ */
+void connman_dhcp_renew(struct connman_dhcp *dhcp)
+{
+	DBG("dhcp %p", dhcp);
+
+	connman_element_update(dhcp->element);
+}
+
+/**
+ * connman_dhcp_fail:
+ * @dhcp: DHCP structure
+ *
+ * Report DHCP failure of the interface
+ */
+void connman_dhcp_fail(struct connman_dhcp *dhcp)
+{
+	DBG("dhcp %p", dhcp);
+
+	connman_element_set_error(dhcp->element,
+					CONNMAN_ELEMENT_ERROR_FAILED);
 }
 
 static GSList *driver_list = NULL;
@@ -191,12 +232,22 @@ static void dhcp_remove(struct connman_element *element)
 	connman_dhcp_unref(dhcp);
 }
 
+static void dhcp_change(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	if (element->state == CONNMAN_ELEMENT_STATE_ERROR)
+		connman_element_set_error(element->parent,
+					CONNMAN_ELEMENT_ERROR_DHCP_FAILED);
+}
+
 static struct connman_driver dhcp_driver = {
 	.name		= "dhcp",
 	.type		= CONNMAN_ELEMENT_TYPE_DHCP,
 	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
 	.probe		= dhcp_probe,
 	.remove		= dhcp_remove,
+	.change		= dhcp_change,
 };
 
 int __connman_dhcp_init(void)
