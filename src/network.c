@@ -36,7 +36,6 @@ struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
 	enum connman_network_protocol protocol;
-	connman_bool_t secondary;
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t roaming;
@@ -380,7 +379,6 @@ struct connman_network *connman_network_create(const char *identifier,
 	connman_element_set_uint8(&network->element, "Strength", strength);
 
 	network->type       = type;
-	network->secondary  = FALSE;
 	network->identifier = g_strdup(temp);
 
 	return network;
@@ -495,9 +493,6 @@ void connman_network_set_protocol(struct connman_network *network,
 void connman_network_set_group(struct connman_network *network,
 							const char *group)
 {
-	if (network->secondary == TRUE)
-		return;
-
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
@@ -552,9 +547,6 @@ const char *__connman_network_get_ident(struct connman_network *network)
 
 connman_bool_t __connman_network_get_weakness(struct connman_network *network)
 {
-	if (network->secondary == TRUE)
-		return FALSE;
-
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
@@ -1282,8 +1274,6 @@ static int network_probe(struct connman_element *element)
 		return err;
 	}
 
-	network->secondary = connman_device_get_secondary(network->device);
-
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
@@ -1296,7 +1286,7 @@ static int network_probe(struct connman_element *element)
 	case CONNMAN_NETWORK_TYPE_HSO:
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
-		if (network->group != NULL && network->secondary == FALSE)
+		if (network->group != NULL)
 			__connman_profile_add_network(network);
 		break;
 	}
@@ -1328,7 +1318,7 @@ static void network_remove(struct connman_element *element)
 	case CONNMAN_NETWORK_TYPE_HSO:
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
-		if (network->group != NULL && network->secondary == FALSE) {
+		if (network->group != NULL) {
 			__connman_profile_remove_network(network);
 
 			g_free(network->group);

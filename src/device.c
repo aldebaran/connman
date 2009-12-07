@@ -36,7 +36,6 @@ struct connman_device {
 	struct connman_element element;
 	enum connman_device_type type;
 	enum connman_device_mode mode;
-	connman_bool_t secondary;
 	connman_bool_t offlinemode;
 	connman_bool_t blocked;
 	connman_bool_t powered;
@@ -811,10 +810,9 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->element.ipv4.method = CONNMAN_IPCONFIG_METHOD_DHCP;
 
-	device->type      = type;
-	device->name      = g_strdup(type2description(device->type));
-	device->mode      = CONNMAN_DEVICE_MODE_UNKNOWN;
-	device->secondary = FALSE;
+	device->type = type;
+	device->name = g_strdup(type2description(device->type));
+	device->mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 
 	device->powered_persistent = TRUE;
 
@@ -1022,30 +1020,6 @@ void connman_device_set_mode(struct connman_device *device,
 enum connman_device_mode connman_device_get_mode(struct connman_device *device)
 {
 	return device->mode;
-}
-
-/**
- * connman_device_set_secondary:
- * @device: device structure
- * @secondary: secondary value
- *
- * Change secondary value of device
- */
-void connman_device_set_secondary(struct connman_device *device,
-						connman_bool_t secondary)
-{
-	device->secondary = secondary;
-}
-
-/**
- * connman_device_get_secondary:
- * @device: device structure
- *
- * Get secondary value of device
- */
-connman_bool_t connman_device_get_secondary(struct connman_device *device)
-{
-	return device->secondary;
 }
 
 /**

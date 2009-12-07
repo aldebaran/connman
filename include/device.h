@@ -76,9 +76,6 @@ void connman_device_set_ident(struct connman_device *device,
 void connman_device_set_mode(struct connman_device *device,
 					enum connman_device_mode mode);
 enum connman_device_mode connman_device_get_mode(struct connman_device *device);
-void connman_device_set_secondary(struct connman_device *device,
-						connman_bool_t secondary);
-connman_bool_t connman_device_get_secondary(struct connman_device *device);
 
 int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered);
