@@ -23,14 +23,14 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <unistd.h>
 #include <sys/wait.h>
 #include <glib/gstdio.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/driver.h>
-#include <connman/inet.h>
+#include <connman/dhcp.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
@@ -44,8 +44,8 @@ struct dhclient_task {
 	gboolean killed;
 	int ifindex;
 	gchar *ifname;
-	struct connman_element *element;
 	struct dhclient_task *pending;
+	struct connman_dhcp *dhcp;
 };
 
 static GSList *task_list = NULL;
@@ -129,6 +129,8 @@ static void task_died(GPid pid, gint status, gpointer data)
 	if (task->pending != NULL)
 		start_dhclient(task->pending);
 
+	connman_dhcp_unref(task->dhcp);
+
 	g_free(task->ifname);
 	g_free(task);
 }
@@ -189,10 +191,11 @@ static int start_dhclient(struct dhclient_task *task)
 	return 0;
 }
 
-static int dhclient_probe(struct connman_element *element)
+static int dhclient_request(struct connman_dhcp *dhcp)
 {
 	struct dhclient_task *task, *previous;
-	DBG("element %p name %s", element, element->name);
+
+	DBG("dhcp %p", dhcp);
 
 	if (access(DHCLIENT, X_OK) < 0)
 		return -errno;
@@ -201,16 +204,17 @@ static int dhclient_probe(struct connman_element *element)
 	if (task == NULL)
 		return -ENOMEM;
 
-	task->ifindex = element->index;
-	task->ifname  = connman_inet_ifname(element->index);
-	task->element = element;
+	task->ifindex = connman_dhcp_get_index(dhcp);
+	task->ifname  = connman_dhcp_get_interface(dhcp);
 
 	if (task->ifname == NULL) {
 		g_free(task);
 		return -ENOMEM;
 	}
 
-	previous= find_task_by_index(element->index);
+	task->dhcp = connman_dhcp_ref(dhcp);
+
+	previous= find_task_by_index(task->ifindex);
 	if (previous != NULL) {
 		previous->pending = task;
 		kill_task(previous);
@@ -220,36 +224,30 @@ static int dhclient_probe(struct connman_element *element)
 	return start_dhclient(task);
 }
 
-static void dhclient_remove(struct connman_element *element)
+static int dhclient_release(struct connman_dhcp *dhcp)
 {
 	struct dhclient_task *task;
+	int index;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("dhcp %p", dhcp);
 
-	task = find_task_by_index(element->index);
+	index = connman_dhcp_get_index(dhcp);
+
+	task = find_task_by_index(index);
 	if (task == NULL)
-		return;
+		return -EINVAL;
 
 	DBG("release %s", task->ifname);
 
 	kill_task(task);
+
+	return 0;
 }
 
-static void dhclient_change(struct connman_element *element)
-{
-	DBG("element %p name %s", element, element->name);
-
-	if (element->state == CONNMAN_ELEMENT_STATE_ERROR)
-		connman_element_set_error(element->parent,
-					CONNMAN_ELEMENT_ERROR_DHCP_FAILED);
-}
-
-static struct connman_driver dhclient_driver = {
+static struct connman_dhcp_driver dhclient_driver = {
 	.name		= "dhclient",
-	.type		= CONNMAN_ELEMENT_TYPE_DHCP,
-	.probe		= dhclient_probe,
-	.remove		= dhclient_remove,
-	.change		= dhclient_change,
+	.request	= dhclient_request,
+	.release	= dhclient_release,
 };
 
 static DBusHandlerResult dhclient_filter(DBusConnection *conn,
@@ -290,43 +288,21 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 
 		DBG("%s = %s", key, value);
 
-		if (g_ascii_strcasecmp(key, "new_ip_address") == 0) {
-			g_free(task->element->ipv4.address);
-			task->element->ipv4.address = g_strdup(value);
-		}
-
-		if (g_ascii_strcasecmp(key, "new_subnet_mask") == 0) {
-			g_free(task->element->ipv4.netmask);
-			task->element->ipv4.netmask = g_strdup(value);
-		}
-
-		if (g_ascii_strcasecmp(key, "new_routers") == 0) {
-			g_free(task->element->ipv4.gateway);
-			task->element->ipv4.gateway = g_strdup(value);
-		}
-
-		if (g_ascii_strcasecmp(key, "new_network_number") == 0) {
-			g_free(task->element->ipv4.network);
-			task->element->ipv4.network = g_strdup(value);
-		}
-
-		if (g_ascii_strcasecmp(key, "new_broadcast_address") == 0) {
-			g_free(task->element->ipv4.broadcast);
-			task->element->ipv4.broadcast = g_strdup(value);
-		}
-
-		if (g_ascii_strcasecmp(key, "new_domain_name_servers") == 0) {
-			g_free(task->element->ipv4.nameserver);
-			task->element->ipv4.nameserver = g_strdup(value);
-		}
-
-		if (g_ascii_strcasecmp(key, "new_domain_name") == 0) {
-		}
-
-		if (g_ascii_strcasecmp(key, "new_domain_search") == 0) {
-		}
-
-		if (g_ascii_strcasecmp(key, "new_host_name") == 0) {
+		if (g_strcmp0(key, "new_ip_address") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Address", value);
+		} else if (g_ascii_strcasecmp(key, "new_subnet_mask") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Netmask", value);
+		} else if (g_ascii_strcasecmp(key, "new_routers") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Gateway", value);
+		} else if (g_ascii_strcasecmp(key, "new_network_number") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Network", value);
+		} else if (g_ascii_strcasecmp(key, "new_broadcast_address") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Broadcast", value);
+		} else if (g_ascii_strcasecmp(key, "new_domain_name_servers") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Nameserver", value);
+		} else if (g_ascii_strcasecmp(key, "new_domain_name") == 0) {
+		} else if (g_ascii_strcasecmp(key, "new_domain_search") == 0) {
+		} else if (g_ascii_strcasecmp(key, "new_host_name") == 0) {
 		}
 
 		dbus_message_iter_next(&dict);
@@ -335,19 +311,12 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 	if (g_ascii_strcasecmp(text, "PREINIT") == 0) {
 	} else if (g_ascii_strcasecmp(text, "BOUND") == 0 ||
 				g_ascii_strcasecmp(text, "REBOOT") == 0) {
-		struct connman_element *element;
-		element = connman_element_create(NULL);
-		element->type = CONNMAN_ELEMENT_TYPE_IPV4;
-		element->index = task->ifindex;
-		connman_element_update(task->element);
-		if (connman_element_register(element, task->element) < 0)
-			connman_element_unref(element);
+		connman_dhcp_bound(task->dhcp);
 	} else if (g_ascii_strcasecmp(text, "RENEW") == 0 ||
 				g_ascii_strcasecmp(text, "REBIND") == 0) {
-		connman_element_update(task->element);
+		connman_dhcp_renew(task->dhcp);
 	} else if (g_ascii_strcasecmp(text, "FAIL") == 0) {
-		connman_element_set_error(task->element,
-						CONNMAN_ELEMENT_ERROR_FAILED);
+		connman_dhcp_fail(task->dhcp);
 	} else {
 	}
 
@@ -372,7 +341,7 @@ static int dhclient_init(void)
 
 	dbus_bus_add_match(connection, dhclient_rule, NULL);
 
-	err = connman_driver_register(&dhclient_driver);
+	err = connman_dhcp_driver_register(&dhclient_driver);
 	if (err < 0) {
 		dbus_connection_unref(connection);
 		return err;
@@ -396,7 +365,7 @@ static void dhclient_exit(void)
 
 	g_slist_free(task_list);
 
-	connman_driver_unregister(&dhclient_driver);
+	connman_dhcp_driver_unregister(&dhclient_driver);
 
 	dbus_bus_remove_match(connection, dhclient_rule, NULL);
 
