@@ -354,6 +354,9 @@ elif sys.argv[1] == "dev":
 
 		properties = device.GetProperties()
 
+		if "Interface" not in properties.keys():
+			continue
+
 		if interface != "" and properties["Interface"] != interface:
 			continue
 

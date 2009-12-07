@@ -20,8 +20,11 @@ for path in properties["Devices"]:
 
 	properties = device.GetProperties()
 
+	if "Interface" not in properties.keys():
+		continue
+
 	if properties["Interface"] != sys.argv[1]:
-		continue;
+		continue
 
 	print "Enabling device %s" % (path)
 
