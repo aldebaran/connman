@@ -290,15 +290,15 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 
 		if (g_strcmp0(key, "new_ip_address") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Address", value);
-		} else if (g_ascii_strcasecmp(key, "new_subnet_mask") == 0) {
+		} else if (g_strcmp0(key, "new_subnet_mask") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Netmask", value);
-		} else if (g_ascii_strcasecmp(key, "new_routers") == 0) {
+		} else if (g_strcmp0(key, "new_routers") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Gateway", value);
-		} else if (g_ascii_strcasecmp(key, "new_network_number") == 0) {
+		} else if (g_strcmp0(key, "new_network_number") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Network", value);
-		} else if (g_ascii_strcasecmp(key, "new_broadcast_address") == 0) {
+		} else if (g_strcmp0(key, "new_broadcast_address") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Broadcast", value);
-		} else if (g_ascii_strcasecmp(key, "new_domain_name_servers") == 0) {
+		} else if (g_strcmp0(key, "new_domain_name_servers") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Nameserver", value);
 		} else if (g_ascii_strcasecmp(key, "new_domain_name") == 0) {
 		} else if (g_ascii_strcasecmp(key, "new_domain_search") == 0) {
