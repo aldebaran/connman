@@ -114,6 +114,9 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 	} else if (g_strcmp0(key, "Nameserver") == 0) {
 		g_free(dhcp->element->ipv4.nameserver);
 		dhcp->element->ipv4.nameserver = g_strdup(value);
+	} else if (g_strcmp0(key, "Domainname") == 0) {
+	} else if (g_strcmp0(key, "Hostname") == 0) {
+	} else if (g_strcmp0(key, "Timeserver") == 0) {
 	}
 }
 

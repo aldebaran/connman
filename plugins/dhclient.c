@@ -301,8 +301,12 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 		} else if (g_strcmp0(key, "new_domain_name_servers") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Nameserver", value);
 		} else if (g_ascii_strcasecmp(key, "new_domain_name") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Domainname", value);
 		} else if (g_ascii_strcasecmp(key, "new_domain_search") == 0) {
 		} else if (g_ascii_strcasecmp(key, "new_host_name") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Hostname", value);
+		} else if (g_ascii_strcasecmp(key, "new_ntp_servers") == 0) {
+			connman_dhcp_set_value(task->dhcp, "Timeserver", value);
 		}
 
 		dbus_message_iter_next(&dict);
