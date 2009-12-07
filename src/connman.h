@@ -225,6 +225,8 @@ int __connman_element_set_ipv4(struct connman_element *element,
 
 gboolean __connman_element_device_isfiltered(const char *devname);
 
+#include <connman/dhcp.h>
+
 int __connman_dhcp_init(void);
 void __connman_dhcp_cleanup(void);
 
