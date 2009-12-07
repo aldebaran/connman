@@ -117,6 +117,7 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 	} else if (g_strcmp0(key, "Domainname") == 0) {
 	} else if (g_strcmp0(key, "Hostname") == 0) {
 	} else if (g_strcmp0(key, "Timeserver") == 0) {
+	} else if (g_strcmp0(key, "MTU") == 0) {
 	}
 }
 

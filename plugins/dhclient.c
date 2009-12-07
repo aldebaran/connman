@@ -307,6 +307,8 @@ static DBusHandlerResult dhclient_filter(DBusConnection *conn,
 			connman_dhcp_set_value(task->dhcp, "Hostname", value);
 		} else if (g_ascii_strcasecmp(key, "new_ntp_servers") == 0) {
 			connman_dhcp_set_value(task->dhcp, "Timeserver", value);
+		} else if (g_ascii_strcasecmp(key, "new_interface_mtu") == 0) {
+			connman_dhcp_set_value(task->dhcp, "MTU", value);
 		}
 
 		dbus_message_iter_next(&dict);
