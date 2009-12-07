@@ -37,6 +37,7 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
+#include <connman/utsname.h>
 #include <connman/log.h>
 
 static in_addr_t loopback_address;
@@ -278,6 +279,42 @@ done:
 	return err;
 }
 
+static int loopback_set_hostname(const char *hostname)
+{
+	int err;
+
+	if (sethostname(hostname, strlen(hostname)) < 0) {
+		err = -errno;
+		connman_error("Failed to set hostname to %s", hostname);
+		return err;
+	}
+
+	connman_info("Setting hostname to %s", hostname);
+
+	return 0;
+}
+
+static int loopback_set_domainname(const char *domainname)
+{
+	int err;
+
+	if (setdomainname(domainname, strlen(domainname)) < 0) {
+		err = -errno;
+		connman_error("Failed to set domainname to %s", domainname);
+		return err;
+	}
+
+	connman_info("Setting domainname to %s", domainname);
+
+	return 0;
+}
+
+static struct connman_utsname_driver loopback_driver = {
+	.name		= "loopback",
+	.set_hostname	= loopback_set_hostname,
+	.set_domainname	= loopback_set_domainname,
+};
+
 static int loopback_init(void)
 {
 	loopback_address = inet_addr("127.0.0.1");
@@ -289,11 +326,15 @@ static int loopback_init(void)
 
 	//create_watch();
 
+	connman_utsname_driver_register(&loopback_driver);
+
 	return 0;
 }
 
 static void loopback_exit(void)
 {
+	connman_utsname_driver_unregister(&loopback_driver);
+
 	//remove_watch();
 }
 

@@ -14,7 +14,8 @@ nodist_include_HEADERS = include/version.h
 noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/rtnl.h include/wifi.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
-			include/profile.h include/provider.h include/dhcp.h
+			include/profile.h include/provider.h include/dhcp.h \
+			include/utsname.h
 
 local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 			$(noinst_HEADERS), include/connman/$(notdir $(file)))
@@ -49,7 +50,8 @@ src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/agent.c src/notifier.c src/provider.c \
 			src/security.c src/resolver.c src/ipconfig.c \
 			src/ipv4.c src/dhcp.c src/rtnl.c src/inet.c \
-			src/rfkill.c src/wifi.c src/storage.c src/dbus.c
+			src/utsname.c src/rfkill.c src/wifi.c \
+			src/storage.c src/dbus.c
 
 if UDEV
 src_connmand_SOURCES += src/udev.c

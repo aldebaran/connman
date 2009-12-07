@@ -115,7 +115,9 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 		g_free(dhcp->element->ipv4.nameserver);
 		dhcp->element->ipv4.nameserver = g_strdup(value);
 	} else if (g_strcmp0(key, "Domainname") == 0) {
+		__connman_utsname_set_domainname(value);
 	} else if (g_strcmp0(key, "Hostname") == 0) {
+		__connman_utsname_set_hostname(value);
 	} else if (g_strcmp0(key, "Timeserver") == 0) {
 	} else if (g_strcmp0(key, "MTU") == 0) {
 	}
