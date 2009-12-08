@@ -267,12 +267,15 @@ static void task_setup(gpointer user_data)
  * @task: task structure
  * @function: exit callback
  * @user_data: optional exit user data
+ * @fd: optional spawn with pipe
  *
  * Execute program specified by #task
  */
 int connman_task_run(struct connman_task *task,
-			connman_task_exit_t function, void *user_data)
+			connman_task_exit_t function, void *user_data,
+			int *fd, int *standard_output, int *standard_error)
 {
+	gboolean result;
 	GSpawnFlags flags = G_SPAWN_DO_NOT_REAP_CHILD |
 						G_SPAWN_STDOUT_TO_DEV_NULL;
 	char **argv, **envp;
@@ -281,6 +284,11 @@ int connman_task_run(struct connman_task *task,
 
 	if (task->pid > 0)
 		return -EALREADY;
+
+	if (standard_output == NULL)
+		flags |= G_SPAWN_STDOUT_TO_DEV_NULL;
+	if (standard_error == NULL)
+		flags |= G_SPAWN_STDERR_TO_DEV_NULL;
 
 	task->exit_func = function;
 	task->exit_data = user_data;
@@ -312,8 +320,12 @@ int connman_task_run(struct connman_task *task,
 	argv = (char **) task->argv->pdata;
 	envp = (char **) task->envp->pdata;
 
-	if (g_spawn_async(NULL, argv, envp, flags,
-				task_setup, task, &task->pid, NULL) == FALSE) {
+	result = g_spawn_async_with_pipes(NULL, argv, envp,
+					  G_SPAWN_DO_NOT_REAP_CHILD,
+					  task_setup, task, &task->pid,
+					  fd, standard_output,
+					  standard_output, NULL);
+	if (result == FALSE) {
 		connman_error("Failed to spawn %s", argv[0]);
 		return -EIO;
 	}

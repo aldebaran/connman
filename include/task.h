@@ -56,7 +56,8 @@ int connman_task_set_notify(struct connman_task *task, const char *member,
 			connman_task_notify_t function, void *user_data);
 
 int connman_task_run(struct connman_task *task,
-			connman_task_exit_t function, void *user_data);
+			connman_task_exit_t function, void *user_data,
+			int *fd, int *standard_output, int *standard_error);
 int connman_task_stop(struct connman_task *task);
 
 #ifdef __cplusplus

@@ -207,7 +207,8 @@ static int dhclient_request(struct connman_dhcp *dhcp)
 	connman_task_set_notify(dhclient->task, "Notify",
 						dhclient_notify, dhcp);
 
-	connman_task_run(dhclient->task, dhclient_died, dhclient);
+	connman_task_run(dhclient->task, dhclient_died, dhclient,
+						NULL, NULL, NULL);
 
 	return 0;
 }
