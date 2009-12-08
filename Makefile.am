@@ -128,7 +128,8 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/set-passphrase test/set-address test/test-profile \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
-		test/debug-connman
+		test/debug-connman test/connect-vpn \
+		test/disconnect-vpn test/list-providers
 
 if TEST
 testdir = $(pkglibdir)/test
