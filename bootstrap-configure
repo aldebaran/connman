@@ -23,7 +23,7 @@ fi
 		--enable-ofono=builtin \
 		--enable-udhcp=builtin \
 		--enable-dhclient=builtin \
-		--enable-openconnect=buildin \
+		--enable-openconnect=builtin \
 		--enable-resolvconf=builtin \
 		--enable-dnsproxy=builtin \
 		--enable-hso=builtin \
