@@ -235,6 +235,8 @@ void __connman_notifier_register(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -254,6 +256,8 @@ void __connman_notifier_unregister(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -273,6 +277,8 @@ void __connman_notifier_enable(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -292,6 +298,8 @@ void __connman_notifier_disable(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -311,6 +319,8 @@ void __connman_notifier_connect(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -330,6 +340,8 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -434,6 +446,8 @@ connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:

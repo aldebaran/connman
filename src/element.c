@@ -354,9 +354,11 @@ static gboolean request_scan(GNode *node, gpointer user_data)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
@@ -397,6 +399,8 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -440,6 +444,8 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:

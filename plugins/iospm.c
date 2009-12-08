@@ -66,10 +66,12 @@ static void iospm_service_enabled(enum connman_service_type type,
 {
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		send_indication(IOSPM_BLUETOOTH, enabled);

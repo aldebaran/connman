@@ -120,6 +120,8 @@ const char *__connman_service_type2string(enum connman_service_type type)
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 		break;
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+		return "system";
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		return "ethernet";
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -130,6 +132,8 @@ const char *__connman_service_type2string(enum connman_service_type type)
 		return "bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return "cellular";
+	case CONNMAN_SERVICE_TYPE_VPN:
+		return "vpn";
 	}
 
 	return NULL;
@@ -415,10 +419,12 @@ static void passphrase_changed(struct connman_service *service)
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		required = FALSE;
@@ -466,10 +472,12 @@ static void apn_changed(struct connman_service *service)
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
@@ -561,9 +569,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		connman_dbus_dict_append_variant(&dict, "Roaming",
@@ -1349,7 +1359,9 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	if (service_a->type != service_b->type) {
 		switch (service_a->type) {
 		case CONNMAN_SERVICE_TYPE_UNKNOWN:
+		case CONNMAN_SERVICE_TYPE_SYSTEM:
 		case CONNMAN_SERVICE_TYPE_ETHERNET:
+		case CONNMAN_SERVICE_TYPE_VPN:
 			break;
 		case CONNMAN_SERVICE_TYPE_WIFI:
 			return 1;
@@ -1620,6 +1632,8 @@ int __connman_service_connect(struct connman_service *service)
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		return -EINVAL;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
@@ -2278,9 +2292,11 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		service->autoconnect = FALSE;
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -2411,7 +2427,9 @@ static int service_load(struct connman_service *service)
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->name == NULL) {
@@ -2555,7 +2573,9 @@ update:
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->network) {
