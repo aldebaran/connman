@@ -41,6 +41,9 @@ struct gateway_data {
 	struct connman_element *element;
 	unsigned int order;
 	gboolean active;
+	/* VPN extra data */
+	gboolean vpn;
+	char *vpn_ip;
 };
 
 static GSList *gateway_list = NULL;
@@ -66,6 +69,142 @@ static struct gateway_data *find_gateway(int index, const char *gateway)
 	return NULL;
 }
 
+static int add_vpn_host(struct connman_element *element,
+			const char *gateway,
+			const char *host)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in addr;
+	int sk, err;
+
+	DBG("element %p", element);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+	DBG("ifname %s", ifr.ifr_name);
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_HOST | RTF_GATEWAY;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(host);
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(gateway);
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_NONE;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
+
+	rt.rt_dev = ifr.ifr_name;
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	if (err < 0)
+		connman_error("Setting VPN host failed (%s)",
+			      strerror(errno));
+
+	close(sk);
+
+	return err;
+}
+
+static int del_vpn_host(const char *host)
+{
+	struct rtentry rt;
+	struct sockaddr_in addr;
+	int sk, err;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_HOST;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(host);
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
+
+	err = ioctl(sk, SIOCDELRT, &rt);
+	if (err < 0)
+		connman_error("Del vpn route failed (%s)",
+			      strerror(errno));
+
+	close(sk);
+
+	return err;
+}
+
+static int set_vpn_route(struct connman_element *element, const char *gateway)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in addr;
+	int sk, err;
+
+	DBG("set_rout1: element %p", element);
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = element->index;
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(gateway);
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	if (err < 0)
+		connman_error("Setting VPN route failed (%s)",
+			       strerror(errno));
+
+	close(sk);
+
+	return err;
+}
+
 static int set_route(struct connman_element *element, const char *gateway)
 {
 	struct ifreq ifr;
@@ -86,7 +225,6 @@ static int set_route(struct connman_element *element, const char *gateway)
 		close(sk);
 		return -1;
 	}
-
 	DBG("ifname %s", ifr.ifr_name);
 
 	memset(&rt, 0, sizeof(rt));
@@ -113,7 +251,6 @@ static int set_route(struct connman_element *element, const char *gateway)
 	if (err < 0)
 		connman_error("Setting host gateway route failed (%s)",
 							strerror(errno));
-
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_GATEWAY;
 
@@ -193,6 +330,20 @@ static int del_route(struct connman_element *element, const char *gateway)
 	return err;
 }
 
+static int del_route_all(struct gateway_data *data)
+{
+	int err = 0;
+
+	if (data->vpn) {
+		del_vpn_host(data->gateway);
+
+		err = del_route(data->element, data->vpn_ip);
+	} else
+		err = del_route(data->element, data->gateway);
+
+	return err;
+}
+
 static void find_element(struct connman_element *element, gpointer user_data)
 {
 	struct gateway_data *data = user_data;
@@ -221,6 +372,8 @@ static struct gateway_data *add_gateway(int index, const char *gateway)
 	data->gateway = g_strdup(gateway);
 	data->active = FALSE;
 	data->element = NULL;
+	data->vpn_ip = NULL;
+	data->vpn = FALSE;
 
 	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
 							find_element, data);
@@ -253,6 +406,12 @@ static void set_default_gateway(struct gateway_data *data)
 
 	DBG("gateway %s", data->gateway);
 
+	if (data->vpn == TRUE) {
+
+		set_vpn_route(element, data->vpn_ip);
+		/* vpn gateway going away no changes in services */
+		return;
+	}
 	if (set_route(element, data->gateway) < 0)
 		return;
 
@@ -285,9 +444,10 @@ static void remove_gateway(struct gateway_data *data)
 	gateway_list = g_slist_remove(gateway_list, data);
 
 	if (data->active == TRUE)
-		del_route(data->element, data->gateway);
+		del_route_all(data);
 
 	g_free(data->gateway);
+	g_free(data->vpn_ip);
 	g_free(data);
 }
 
@@ -331,6 +491,7 @@ static int connection_probe(struct connman_element *element)
 {
 	struct connman_service *service = NULL;
 	const char *gateway = NULL;
+	const char *vpn_ip = NULL;
 	struct gateway_data *active_gateway = NULL;
 	struct gateway_data *new_gateway = NULL;
 
@@ -344,6 +505,9 @@ static int connection_probe(struct connman_element *element)
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+
+	connman_element_get_value(element,
+				  CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
 
 	DBG("gateway %s", gateway);
 
@@ -359,13 +523,28 @@ static int connection_probe(struct connman_element *element)
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(element->index, gateway);
 
+	if (service == NULL) {
+		new_gateway->vpn = TRUE;
+		new_gateway->vpn_ip = g_strdup(vpn_ip);
+		/* make sure vpn gateway are at higher priority */
+		new_gateway->order = 10;
+	} else
+		new_gateway->vpn = FALSE;
+
 	if (active_gateway == NULL) {
 		set_default_gateway(new_gateway);
 		return 0;
 	}
 
+	if (new_gateway->vpn == TRUE) {
+		add_vpn_host(active_gateway->element,
+			     active_gateway->gateway,
+			     new_gateway->gateway);
+
+	}
+
 	if (new_gateway->order >= active_gateway->order) {
-		del_route(active_gateway->element, active_gateway->gateway);
+		del_route_all(active_gateway);
 		return 0;
 	}
 
@@ -377,6 +556,7 @@ static void connection_remove(struct connman_element *element)
 	struct connman_service *service;
 	const char *gateway = NULL;
 	struct gateway_data *data = NULL;
+	gboolean set_default = FALSE;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -398,7 +578,22 @@ static void connection_remove(struct connman_element *element)
 	if (data == NULL)
 		return;
 
+	set_default = data->vpn;
+
+	if (data->vpn == TRUE)
+		del_vpn_host(data->gateway);
+
 	remove_gateway(data);
+
+	/* with vpn this will be called after the network was deleted,
+	 * we need to call set_default here because we will not recieve any
+	 * gateway delete notification.
+	 */
+	if (set_default) {
+		data = find_default_gateway();
+		if (data != NULL)
+			set_default_gateway(data);
+	}
 }
 
 static struct connman_driver connection_driver = {
@@ -451,6 +646,10 @@ static void update_order(void)
 		struct gateway_data *data = list->data;
 		struct connman_service *service;
 
+		/* vpn gataway is not attached to a service. */
+		if (data->vpn)
+			continue;
+
 		service = __connman_element_get_service(data->element);
 		data->order = __connman_service_get_order(service);
 	}
@@ -467,7 +666,7 @@ gboolean __connman_connection_update_gateway(void)
 	default_gateway = find_default_gateway();
 
 	if (active_gateway && active_gateway != default_gateway) {
-		del_route(active_gateway->element, active_gateway->gateway);
+		del_route_all(active_gateway);
 		updated = TRUE;
 	}
 
