@@ -1579,6 +1579,7 @@ int __connman_element_init(const char *device, const char *nodevice)
 
 	__connman_notifier_init();
 	__connman_service_init();
+	__connman_provider_init();
 	__connman_network_init();
 	__connman_device_init();
 
@@ -1632,6 +1633,7 @@ void __connman_element_stop(void)
 
 	__connman_dhcp_cleanup();
 	__connman_ipv4_cleanup();
+	__connman_provider_cleanup();
 	__connman_connection_cleanup();
 }
 

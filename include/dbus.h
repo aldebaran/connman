@@ -43,6 +43,7 @@ extern "C" {
 #define CONNMAN_DEVICE_INTERFACE	CONNMAN_SERVICE ".Device"
 #define CONNMAN_NETWORK_INTERFACE	CONNMAN_SERVICE ".Network"
 #define CONNMAN_CONNECTION_INTERFACE	CONNMAN_SERVICE ".Connection"
+#define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
 
 DBusConnection *connman_dbus_get_connection(void);
 

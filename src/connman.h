@@ -367,6 +367,16 @@ const char *__connman_service_type2string(enum connman_service_type type);
 
 #include <connman/provider.h>
 
+void __connman_provider_list(DBusMessageIter *iter);
+int __connman_provider_create_and_connect(DBusMessage *msg);
+int __connman_provider_indicate_state(struct connman_provider *provider,
+				     enum connman_provider_state state);
+int __connman_provider_indicate_error(struct connman_provider *provider,
+				     enum connman_provider_error error);
+int __connman_provider_remove(const char *path);
+void __connman_provider_cleanup(void);
+int __connman_provider_init(void);
+
 #include <connman/notifier.h>
 
 int __connman_notifier_init(void);
