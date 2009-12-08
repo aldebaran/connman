@@ -151,6 +151,21 @@ plugins_resolvconf_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if OPENCONNECT
+if OPENCONNECT_BUILTIN
+builtin_modules += openconnect
+builtin_sources += plugins/openconnect.c
+builtin_cflags += -DOPENCONNECT=\"@OPENCONNECT@\"
+else
+plugin_LTLIBRARIES += plugins/openconnect.la
+plugin_objects += $(plugins_openconnect_la_OBJECTS)
+plugins_openconnect_la_CFLAGS = $(plugin_cflags) -DOPENCONNECT=\"@OPENCONNECT@\" \
+					-DSTATEDIR=\""$(statedir)"\" \
+					-DSCRIPTDIR=\""$(build_scriptdir)"\"
+plugins_openconnect_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if DNSPROXY
 if DNSPROXY_BUILTIN
 builtin_modules += dnsproxy
@@ -212,6 +227,12 @@ if UDHCP
 script_PROGRAMS += scripts/udhcpc-script
 
 scripts_udhcpc_script_LDADD = @DBUS_LIBS@
+endif
+
+if OPENCONNECT
+script_PROGRAMS += scripts/openconnect-script
+
+scripts_openconnect_script_LDADD = @DBUS_LIBS@
 endif
 
 if DHCLIENT

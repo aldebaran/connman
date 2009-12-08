@@ -143,6 +143,23 @@ fi
 AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" != "no")
 AM_CONDITIONAL(RESOLVCONF_BUILTIN, test "${enable_resolvconf}" = "builtin")
 
+AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
+        [specify location of openconnect binary]), [path_openconnect=${withval}])
+
+AC_ARG_ENABLE(openconnect,
+        AC_HELP_STRING([--enable-openconnect], [enable openconnect support]),
+                        [enable_openconnect=${enableval}], [enable_openconnect="no"])
+if (test "${enable_openconnect}" != "no"); then
+        if (test -z "${path_openconnect}"); then
+                AC_PATH_PROG(OPENCONNECT, [openconnect], [], $PATH:/sbin:/usr/sbin)
+        else
+                OPENCONNECT="${path_openconnect}"
+                AC_SUBST(OPENCONNECT)
+        fi
+fi
+AM_CONDITIONAL(OPENCONNECT, test "${enable_openconnect}" != "no")
+AM_CONDITIONAL(OPENCONNECT_BUILTIN, test "${enable_openconnect}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
