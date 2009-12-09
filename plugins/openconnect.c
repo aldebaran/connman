@@ -66,7 +66,7 @@ static int kill_tun(char *tun_name)
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
-	sprintf(ifr.ifr_name, tun_name);
+	sprintf(ifr.ifr_name, "%s", tun_name);
 
 	fd = open("/dev/net/tun", O_RDWR);
 	if (fd < 0) {
