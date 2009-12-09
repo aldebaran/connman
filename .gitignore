@@ -38,6 +38,7 @@ plugins/connman.policy
 scripts/connman
 scripts/udhcpc-script
 scripts/dhclient-script
+scripts/openconnect-script
 client/cm
 tools/wifi-scan
 tools/addr-test
