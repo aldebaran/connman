@@ -226,12 +226,15 @@ static struct server_data *create_server(const char *interface,
 		return NULL;
 	}
 
-	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+	if (interface != NULL) {
+		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
 				interface, strlen(interface) + 1) < 0) {
-		connman_error("Failed to bind server %s to interface %s",
+			connman_error("Failed to bind server %s "
+						"to interface %s",
 							server, interface);
-		close(sk);
-		return NULL;
+			close(sk);
+			return NULL;
+		}
 	}
 
 	memset(&sin, 0, sizeof(sin));
@@ -263,7 +266,7 @@ static struct server_data *create_server(const char *interface,
 	g_io_channel_set_close_on_unref(data->channel, TRUE);
 
 	data->watch = g_io_add_watch(data->channel, G_IO_IN,
-							server_event, data);
+						server_event, data);
 
 	data->interface = g_strdup(interface);
 	data->domain = g_strdup(domain);
