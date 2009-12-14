@@ -168,6 +168,10 @@ static const char *security2string(enum connman_service_security security)
 		return "none";
 	case CONNMAN_SERVICE_SECURITY_WEP:
 		return "wep";
+	case CONNMAN_SERVICE_SECURITY_PSK:
+		return "psk";
+	case CONNMAN_SERVICE_SECURITY_8021X:
+		return "ieee8021x";
 	case CONNMAN_SERVICE_SECURITY_WPA:
 		return "wpa";
 	case CONNMAN_SERVICE_SECURITY_RSN:
@@ -432,8 +436,10 @@ static void passphrase_changed(struct connman_service *service)
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
 			if (service->passphrase == NULL)
@@ -619,8 +625,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
 			if (service->passphrase == NULL)
@@ -1647,8 +1655,10 @@ int __connman_service_connect(struct connman_service *service)
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
 			if (service->passphrase == NULL)
@@ -2150,6 +2160,10 @@ static enum connman_service_mode convert_wifi_security(const char *security)
 		return CONNMAN_SERVICE_SECURITY_NONE;
 	else if (g_str_equal(security, "wep") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WEP;
+	else if (g_str_equal(security, "wep") == TRUE)
+		return CONNMAN_SERVICE_SECURITY_PSK;
+	else if (g_str_equal(security, "ieee8021x") == TRUE)
+		return CONNMAN_SERVICE_SECURITY_8021X;
 	else if (g_str_equal(security, "wpa") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WPA;
 	else if (g_str_equal(security, "rsn") == TRUE)
