@@ -272,6 +272,8 @@ static struct server_data *create_server(const char *interface,
 	/* Enable new servers by default */
 	data->enabled = TRUE;
 
+	connman_info("Adding DNS server %s", data->server);
+
 	return data;
 }
 
@@ -283,6 +285,8 @@ static void destroy_server(struct server_data *data)
 		g_source_remove(data->watch);
 
 	g_io_channel_unref(data->channel);
+
+	connman_info("Removing DNS server %s", data->server);
 
 	g_free(data->server);
 	g_free(data->domain);
@@ -346,7 +350,13 @@ static void dnsproxy_offline_mode(connman_bool_t enabled)
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		data->enabled = enabled ? FALSE : TRUE;
+		if (enabled == FALSE) {
+			connman_info("Enabling DNS server %s", data->server);
+			data->enabled = TRUE;
+		} else {
+			connman_info("Disabling DNS server %s", data->server);
+			data->enabled = FALSE;
+		}
 	}
 }
 
@@ -370,10 +380,13 @@ static void dnsproxy_default_changed(struct connman_service *service)
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		if (g_strcmp0(data->interface, interface) == 0)
+		if (g_strcmp0(data->interface, interface) == 0) {
+			connman_info("Enabling DNS server %s", data->server);
 			data->enabled = TRUE;
-		else
+		} else {
+			connman_info("Disabling DNS server %s", data->server);
 			data->enabled = FALSE;
+		}
 	}
 
 	g_free(interface);
