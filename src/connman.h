@@ -170,6 +170,11 @@ void __connman_storage_close_profile(const char *ident,
 					GKeyFile *keyfile, gboolean save);
 void __connman_storage_delete_profile(const char *ident);
 
+GKeyFile *__connman_storage_open_config(const char *ident);
+void __connman_storage_close_config(const char *ident,
+					GKeyFile *keyfile, gboolean save);
+void __connman_storage_delete_config(const char *ident);
+
 int __connman_storage_init_profile(void);
 int __connman_storage_load_profile(struct connman_profile *profile);
 int __connman_storage_save_profile(struct connman_profile *profile);
@@ -315,6 +320,9 @@ const char *__connman_network_get_group(struct connman_network *network);
 const char *__connman_network_get_ident(struct connman_network *network);
 connman_bool_t __connman_network_get_weakness(struct connman_network *network);
 connman_bool_t __connman_network_get_connecting(struct connman_network *network);
+
+int __connman_config_init();
+void __connman_config_cleanup(void);
 
 #include <connman/profile.h>
 

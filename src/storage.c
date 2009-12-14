@@ -28,6 +28,7 @@
 #include "connman.h"
 
 #define PROFILE_SUFFIX	"profile"
+#define CONFIG_SUFFIX	"config"
 
 static GSList *storage_list = NULL;
 
@@ -161,6 +162,22 @@ void __connman_storage_close_profile(const char *ident,
 void __connman_storage_delete_profile(const char *ident)
 {
 	__connman_storage_delete(ident, PROFILE_SUFFIX);
+}
+
+GKeyFile *__connman_storage_open_config(const char *ident)
+{
+	return __connman_storage_open(ident, CONFIG_SUFFIX);
+}
+
+void __connman_storage_close_config(const char *ident,
+					GKeyFile *keyfile, gboolean save)
+{
+	__connman_storage_close(ident, CONFIG_SUFFIX, keyfile, save);
+}
+
+void __connman_storage_delete_config(const char *ident)
+{
+	__connman_storage_delete(ident, CONFIG_SUFFIX);
 }
 
 int __connman_storage_init_profile(void)

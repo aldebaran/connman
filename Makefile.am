@@ -51,7 +51,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/security.c src/resolver.c src/ipconfig.c \
 			src/ipv4.c src/dhcp.c src/rtnl.c src/inet.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
-			src/wifi.c src/storage.c src/dbus.c
+			src/wifi.c src/storage.c src/dbus.c src/config.c
 
 if UDEV
 src_connmand_SOURCES += src/udev.c
