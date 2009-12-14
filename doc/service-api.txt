@@ -169,7 +169,8 @@ Properties	string State [readonly]
 			present and contains the security method or key
 			management setting.
 
-			Possible values are "none", "wep", "wpa" and "rsn".
+			Possible values are "none", "wep", "psk" and
+			also "ieee8021x".
 
 			This property might be only present for WiFi
 			services.
