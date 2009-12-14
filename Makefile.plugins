@@ -190,6 +190,18 @@ plugins_google_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if MOBLIN
+if MOBLIN_BUILTIN
+builtin_modules += moblin
+builtin_sources += plugins/moblin.c
+else
+plugin_LTLIBRARIES += plugins/moblin.la
+plugin_objects += $(plugins_moblin_la_OBJECTS)
+plugins_moblin_la_CFLAGS = $(plugin_cflags)
+plugins_moblin_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if POLKIT
 if POLKIT_BUILTIN
 builtin_modules += polkit

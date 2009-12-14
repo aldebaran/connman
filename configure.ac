@@ -185,6 +185,12 @@ AC_ARG_ENABLE(google,
 AM_CONDITIONAL(GOOGLE, test "${enable_google}" != "no")
 AM_CONDITIONAL(GOOGLE_BUILTIN, test "${enable_google}" = "builtin")
 
+AC_ARG_ENABLE(moblin,
+	AC_HELP_STRING([--enable-moblin], [enable Moblin features support]),
+			[enable_moblin=${enableval}], [enable_moblin="no"])
+AM_CONDITIONAL(MOBLIN, test "${enable_moblin}" != "no")
+AM_CONDITIONAL(MOBLIN_BUILTIN, test "${enable_moblin}" = "builtin")
+
 AC_ARG_ENABLE(hso,
 	AC_HELP_STRING([--enable-hso], [enable HSO support]),
 			[enable_hso=${enableval}], [enable_hso="no"])
