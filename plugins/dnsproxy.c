@@ -610,7 +610,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		if (data->domain != NULL) {
 			unsigned char alt[1024];
 			struct domain_hdr *hdr = (void *) &alt;
-			int altlen;
+			int altlen, domlen;
+
+			domlen = strlen(data->domain) + 1;
+			if (domlen < 5)
+				continue;
 
 			alt[0] = req->altid & 0xff;
 			alt[1] = req->altid >> 8;
@@ -623,12 +627,12 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			if (altlen < 0)
 				continue;
 
-			alt[altlen + 12] = 0x00;
-			alt[altlen + 13] = 0x01;
-			alt[altlen + 14] = 0x00;
-			alt[altlen + 15] = 0x01;
+			altlen += 12;
 
-			err = send(sk, alt, altlen + 12 + 4, 0);
+			memcpy(alt + altlen, buf + altlen - domlen,
+							len - altlen + domlen);
+
+			err = send(sk, alt, altlen + 4, 0);
 
 			req->numserv++;
 		}
