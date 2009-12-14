@@ -160,6 +160,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-dhclient \
 				--enable-resolvconf \
 				--enable-dnsproxy \
+				--enable-google \
 				--enable-hso \
 				--enable-mbm \
 				--enable-udev \
