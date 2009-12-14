@@ -162,6 +162,8 @@ struct supplicant_result {
 	dbus_uint16_t capabilities;
 	gboolean adhoc;
 	gboolean has_wep;
+	gboolean has_psk;
+	gboolean has_8021x;
 	gboolean has_wpa;
 	gboolean has_rsn;
 	gboolean has_wps;
@@ -1066,6 +1068,76 @@ static void extract_ssid(DBusMessageIter *value,
 	}
 }
 
+static unsigned char wifi_oui[3]      = { 0x00, 0x50, 0xf2 };
+static unsigned char ieee80211_oui[3] = { 0x00, 0x0f, 0xac };
+
+static void extract_rsn(struct supplicant_result *result,
+					const unsigned char *buf, int len)
+{
+	uint16_t count;
+	int i;
+
+	/* Version */
+	if (len < 2)
+		return;
+
+	buf += 2;
+	len -= 2;
+
+	/* Group cipher */
+	if (len < 4)
+		return;
+
+	buf += 4;
+	len -= 4;
+
+	/* Pairwise cipher */
+	if (len < 2)
+		return;
+
+	count = buf[0] | (buf[1] << 8);
+	if (2 + (count * 4) > len)
+		return;
+
+	buf += 2 + (count * 4);
+	len -= 2 + (count * 4);
+
+	/* Authentication */
+	if (len < 2)
+		return;
+
+	count = buf[0] | (buf[1] << 8);
+	if (2 + (count * 4) > len)
+		return;
+
+	for (i = 0; i < count; i++) {
+		const unsigned char *ptr = buf + 2 + (i * 4);
+
+		if (memcmp(ptr, wifi_oui, 3) == 0) {
+			switch (ptr[3]) {
+			case 1:
+				result->has_8021x = TRUE;
+				break;
+			case 2:
+				result->has_psk = TRUE;
+				break;
+			}
+		} else if (memcmp(ptr, ieee80211_oui, 3) == 0) {
+			switch (ptr[3]) {
+			case 1:
+				result->has_8021x = TRUE;
+				break;
+			case 2:
+				result->has_psk = TRUE;
+				break;
+			}
+		}
+	}
+
+	buf += 2 + (count * 4);
+	len -= 2 + (count * 4);
+}
+
 static void extract_wpaie(DBusMessageIter *value,
 					struct supplicant_result *result)
 {
@@ -1076,8 +1148,10 @@ static void extract_wpaie(DBusMessageIter *value,
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
-	if (ie_len > 0)
+	if (ie_len > 0) {
 		result->has_wpa = TRUE;
+		extract_rsn(result, ie + 6, ie_len - 6);
+	}
 }
 
 static void extract_rsnie(DBusMessageIter *value,
@@ -1090,8 +1164,10 @@ static void extract_rsnie(DBusMessageIter *value,
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
-	if (ie_len > 0)
+	if (ie_len > 0) {
 		result->has_rsn = TRUE;
+		extract_rsn(result, ie + 2, ie_len - 2);
+	}
 }
 
 static void extract_wpsie(DBusMessageIter *value,
@@ -1258,10 +1334,14 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	frequency = (result.frequency < 0) ? 0 : result.frequency;
 
-	if (result.has_rsn == TRUE)
+	if (result.has_8021x == TRUE)
+		security = "ieee8021x";
+	else if (result.has_rsn == TRUE)
 		security = "rsn";
 	else if (result.has_wpa == TRUE)
 		security = "wpa";
+	else if (result.has_psk == TRUE)
+		security = "psk";
 	else if (result.has_wep == TRUE)
 		security = "wep";
 	else
