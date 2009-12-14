@@ -230,6 +230,8 @@ gboolean __connman_element_device_isfiltered(const char *devname);
 int __connman_utsname_set_hostname(const char *hostname);
 int __connman_utsname_set_domainname(const char *domainname);
 
+#include <connman/timeserver.h>
+
 #include <connman/dhcp.h>
 
 int __connman_dhcp_init(void);
