@@ -34,6 +34,11 @@ extern "C" {
  * @short_description: Functions for handling providers
  */
 
+enum connman_provider_type {
+	CONNMAN_PROVIDER_TYPE_UNKNOWN = 0,
+	CONNMAN_PROVIDER_TYPE_VPN     = 1,
+};
+
 enum connman_provider_state {
 	CONNMAN_PROVIDER_STATE_UNKNOWN       = 0,
 	CONNMAN_PROVIDER_STATE_IDLE          = 1,
@@ -47,7 +52,6 @@ enum connman_provider_error {
 	CONNMAN_PROVIDER_ERROR_UNKNOWN        = 0,
 	CONNMAN_PROVIDER_ERROR_CONNECT_FAILED = 1,
 };
-
 
 struct connman_provider;
 
@@ -79,9 +83,9 @@ void connman_provider_set_dns(struct connman_provider *provider,
 void connman_provider_set_domain(struct connman_provider *provider,
 				 const char *domain);
 
-
 struct connman_provider_driver {
 	const char *name;
+	enum connman_provider_type type;
 	int (*probe) (struct connman_provider *provider);
 	int (*remove) (struct connman_provider *provider);
 	int (*connect) (struct connman_provider *provider);
