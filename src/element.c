@@ -868,6 +868,14 @@ int connman_element_get_value(struct connman_element *element,
 		*((char **) value) = element->ipv4.nameserver;
 		__connman_element_unlock(element);
 		break;
+	case CONNMAN_PROPERTY_ID_IPV4_TIMESERVER:
+		if (element->ipv4.timeserver == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		__connman_element_lock(element);
+		*((char **) value) = element->ipv4.timeserver;
+		__connman_element_unlock(element);
+		break;
 	default:
 		return -EINVAL;
 	}
@@ -1091,6 +1099,7 @@ int __connman_element_append_ipv4(struct connman_element *element,
 	const char *method = NULL;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 	const char *broadcast = NULL, *nameserver = NULL;
+	const char *timeserver = NULL;
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_METHOD, &method);
@@ -1105,6 +1114,8 @@ int __connman_element_append_ipv4(struct connman_element *element,
 			CONNMAN_PROPERTY_ID_IPV4_BROADCAST, &broadcast);
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
 
 	if (method != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Method",
@@ -1129,6 +1140,10 @@ int __connman_element_append_ipv4(struct connman_element *element,
 	if (nameserver != NULL)
 		connman_dbus_dict_append_variant(dict, "IPv4.Nameserver",
 						DBUS_TYPE_STRING, &nameserver);
+
+	if (timeserver != NULL)
+		connman_dbus_dict_append_variant(dict, "IPv4.Timeserver",
+						DBUS_TYPE_STRING, &timeserver);
 
 	return 0;
 }
@@ -1216,6 +1231,18 @@ int __connman_element_set_ipv4(struct connman_element *element,
 
 		g_free(element->ipv4.nameserver);
 		element->ipv4.nameserver = g_strdup(nameserver);
+
+		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.Timeserver") == TRUE) {
+		const char *timeserver;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &timeserver);
+
+		g_free(element->ipv4.timeserver);
+		element->ipv4.nameserver = g_strdup(timeserver);
 
 		connman_element_update(element);
 	}

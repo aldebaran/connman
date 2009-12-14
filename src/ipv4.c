@@ -175,7 +175,7 @@ static int ipv4_probe(struct connman_element *element)
 	struct connman_element *connection;
 	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
-	const char *nameserver = NULL;
+	const char *nameserver = NULL, *timeserver = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -188,6 +188,8 @@ static int ipv4_probe(struct connman_element *element)
 
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
 
 	DBG("address %s", address);
 	DBG("netmask %s", netmask);
@@ -202,9 +204,12 @@ static int ipv4_probe(struct connman_element *element)
 	if (broadcast)
 		ipv4.broadcast.s_addr = inet_addr(broadcast);
 	else
-		ipv4.broadcast.s_addr = ipv4.address.s_addr | ~ipv4.netmask.s_addr;
+		ipv4.broadcast.s_addr = ipv4.address.s_addr |
+						~ipv4.netmask.s_addr;
 
 	set_ipv4(element, &ipv4, nameserver);
+
+	connman_timeserver_append(timeserver);
 
 	connection = connman_element_create(NULL);
 
@@ -220,7 +225,14 @@ static int ipv4_probe(struct connman_element *element)
 
 static void ipv4_remove(struct connman_element *element)
 {
+	const char *timeserver = NULL;
+
 	DBG("element %p name %s", element, element->name);
+
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
+
+	connman_timeserver_remove(timeserver);
 
 	clear_ipv4(element);
 }
