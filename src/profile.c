@@ -535,7 +535,7 @@ int __connman_profile_remove(const char *path)
 	if (profile == NULL)
 		return -ENXIO;
 
-	__connman_storage_delete(profile->ident);
+	__connman_storage_delete_profile(profile->ident);
 
 	g_hash_table_remove(profile_hash, path);
 
@@ -596,7 +596,7 @@ static int profile_load(struct connman_profile *profile)
 
 	DBG("profile %p", profile);
 
-	keyfile = __connman_storage_open(profile->ident);
+	keyfile = __connman_storage_open_profile(profile->ident);
 	if (keyfile == NULL)
 		return -EIO;
 
@@ -612,7 +612,7 @@ static int profile_load(struct connman_profile *profile)
 		profile->offlinemode = offlinemode;
 	g_clear_error(&error);
 
-	__connman_storage_close(profile->ident, keyfile, FALSE);
+	__connman_storage_close_profile(profile->ident, keyfile, FALSE);
 
 	return 0;
 }
@@ -623,7 +623,7 @@ static int profile_save(struct connman_profile *profile)
 
 	DBG("profile %p", profile);
 
-	keyfile = __connman_storage_open(profile->ident);
+	keyfile = __connman_storage_open_profile(profile->ident);
 	if (keyfile == NULL)
 		return -EIO;
 
@@ -634,7 +634,7 @@ static int profile_save(struct connman_profile *profile)
 	g_key_file_set_boolean(keyfile, "global",
 					"OfflineMode", profile->offlinemode);
 
-	__connman_storage_close(profile->ident, keyfile, TRUE);
+	__connman_storage_close_profile(profile->ident, keyfile, TRUE);
 
 	return 0;
 }

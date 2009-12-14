@@ -1732,7 +1732,7 @@ static int device_load(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	keyfile = __connman_storage_open(ident);
+	keyfile = __connman_storage_open_profile(ident);
 	if (keyfile == NULL)
 		return 0;
 
@@ -1762,7 +1762,7 @@ static int device_load(struct connman_device *device)
 done:
 	g_free(identifier);
 
-	__connman_storage_close(ident, keyfile, FALSE);
+	__connman_storage_close_profile(ident, keyfile, FALSE);
 
 	return 0;
 }
@@ -1775,7 +1775,7 @@ static int device_save(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	keyfile = __connman_storage_open(ident);
+	keyfile = __connman_storage_open_profile(ident);
 	if (keyfile == NULL)
 		return 0;
 
@@ -1800,7 +1800,7 @@ static int device_save(struct connman_device *device)
 done:
 	g_free(identifier);
 
-	__connman_storage_close(ident, keyfile, TRUE);
+	__connman_storage_close_profile(ident, keyfile, TRUE);
 
 	return 0;
 }

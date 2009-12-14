@@ -160,10 +160,15 @@ int __connman_resolver_selftest(void);
 int __connman_storage_init(void);
 void __connman_storage_cleanup(void);
 
-GKeyFile *__connman_storage_open(const char *ident);
-void __connman_storage_close(const char *ident,
+GKeyFile *__connman_storage_open(const char *ident, const char *suffix);
+void __connman_storage_close(const char *ident, const char *suffix,
 					GKeyFile *keyfile, gboolean save);
-void __connman_storage_delete(const char *ident);
+void __connman_storage_delete(const char *ident, const char *suffix);
+
+GKeyFile *__connman_storage_open_profile(const char *ident);
+void __connman_storage_close_profile(const char *ident,
+					GKeyFile *keyfile, gboolean save);
+void __connman_storage_delete_profile(const char *ident);
 
 int __connman_storage_init_profile(void);
 int __connman_storage_load_profile(struct connman_profile *profile);

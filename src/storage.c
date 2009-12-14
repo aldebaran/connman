@@ -27,6 +27,8 @@
 
 #include "connman.h"
 
+#define PROFILE_SUFFIX	"profile"
+
 static GSList *storage_list = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -68,16 +70,16 @@ void connman_storage_unregister(struct connman_storage *storage)
 	storage_list = g_slist_remove(storage_list, storage);
 }
 
-GKeyFile *__connman_storage_open(const char *ident)
+GKeyFile *__connman_storage_open(const char *ident, const char *suffix)
 {
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gboolean result;
 	gsize length;
 
-	DBG("ident %s", ident);
+	DBG("ident %s suffix %s", ident, suffix);
 
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
+	pathname = g_strdup_printf("%s/%s.%s", STORAGEDIR, ident, suffix);
 	if (pathname == NULL)
 		return NULL;
 
@@ -101,20 +103,21 @@ done:
 	return keyfile;
 }
 
-void __connman_storage_close(const char *ident,
+void __connman_storage_close(const char *ident, const char *suffix,
 					GKeyFile *keyfile, gboolean save)
 {
 	gchar *pathname, *data = NULL;
 	gsize length = 0;
 
-	DBG("ident %s keyfile %p save %d", ident, keyfile, save);
+	DBG("ident %s suffix %s keyfile %p save %d",
+					ident, suffix, keyfile, save);
 
 	if (save == FALSE) {
 		g_key_file_free(keyfile);
 		return;
 	}
 
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
+	pathname = g_strdup_printf("%s/%s.%s", STORAGEDIR, ident, suffix);
 	if (pathname == NULL)
 		return;
 
@@ -130,18 +133,34 @@ void __connman_storage_close(const char *ident,
 	g_key_file_free(keyfile);
 }
 
-void __connman_storage_delete(const char *ident)
+void __connman_storage_delete(const char *ident, const char *suffix)
 {
 	gchar *pathname;
 
-	DBG("ident %s", ident);
+	DBG("ident %s suffix %s", ident, suffix);
 
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
+	pathname = g_strdup_printf("%s/%s.%s", STORAGEDIR, ident, suffix);
 	if (pathname == NULL)
 		return;
 
 	if (unlink(pathname) < 0)
 		connman_error("Failed to remove %s", pathname);
+}
+
+GKeyFile *__connman_storage_open_profile(const char *ident)
+{
+	return __connman_storage_open(ident, PROFILE_SUFFIX);
+}
+
+void __connman_storage_close_profile(const char *ident,
+					GKeyFile *keyfile, gboolean save)
+{
+	__connman_storage_close(ident, PROFILE_SUFFIX, keyfile, save);
+}
+
+void __connman_storage_delete_profile(const char *ident)
+{
+	__connman_storage_delete(ident, PROFILE_SUFFIX);
 }
 
 int __connman_storage_init_profile(void)
