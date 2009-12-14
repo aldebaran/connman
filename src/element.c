@@ -682,6 +682,7 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.network);
 		g_free(element->ipv4.broadcast);
 		g_free(element->ipv4.nameserver);
+		g_free(element->ipv4.timeserver);
 		g_free(element->devname);
 		g_free(element->path);
 		g_free(element->name);
