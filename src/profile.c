@@ -496,23 +496,6 @@ static int create_profile(const char *ident, const char *name,
 	return 0;
 }
 
-static gboolean validate_ident(const char *ident)
-{
-	unsigned int i;
-
-	for (i = 0; i < strlen(ident); i++) {
-		if (ident[i] >= '0' && ident[i] <= '9')
-			continue;
-		if (ident[i] >= 'a' && ident[i] <= 'z')
-			continue;
-		if (ident[i] >= 'A' && ident[i] <= 'Z')
-			continue;
-		return FALSE;
-	}
-
-	return TRUE;
-}
-
 int __connman_profile_create(const char *name, const char **path)
 {
 	struct connman_profile *profile;
@@ -520,7 +503,7 @@ int __connman_profile_create(const char *name, const char **path)
 
 	DBG("name %s", name);
 
-	if (validate_ident(name) == FALSE)
+	if (connman_dbus_validate_ident(name) == FALSE)
 		return -EINVAL;
 
 	err = create_profile(name, NULL, path);
@@ -587,7 +570,7 @@ static int profile_init(void)
 
 			ident = g_string_free(str, FALSE);
 
-			if (validate_ident(ident) == TRUE)
+			if (connman_dbus_validate_ident(ident) == TRUE)
 				create_profile(ident, NULL, NULL);
 
 			g_free(ident);
