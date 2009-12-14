@@ -39,7 +39,7 @@ struct connman_profile {
 	connman_bool_t offlinemode;
 };
 
-static GHashTable *profiles = NULL;
+static GHashTable *profile_hash = NULL;
 static struct connman_profile *default_profile = NULL;
 
 static DBusConnection *connection = NULL;
@@ -57,7 +57,7 @@ void __connman_profile_list(DBusMessageIter *iter)
 {
 	DBG("");
 
-	g_hash_table_foreach(profiles, append_path, iter);
+	g_hash_table_foreach(profile_hash, append_path, iter);
 }
 
 static void append_profiles(DBusMessageIter *entry)
@@ -427,6 +427,7 @@ static void free_profile(struct connman_profile *profile)
 {
 	g_free(profile->name);
 	g_free(profile->path);
+	g_free(profile->ident);
 	g_free(profile);
 }
 
@@ -466,7 +467,7 @@ static int create_profile(const char *ident, const char *name,
 		return -ENOMEM;
 	}
 
-	if (g_hash_table_lookup(profiles, profile->path) != NULL) {
+	if (g_hash_table_lookup(profile_hash, profile->path) != NULL) {
 		free_profile(profile);
 		return -EEXIST;
 	}
@@ -475,7 +476,7 @@ static int create_profile(const char *ident, const char *name,
 
 	__connman_storage_load_profile(profile);
 
-	g_hash_table_insert(profiles, g_strdup(profile->path), profile);
+	g_hash_table_insert(profile_hash, g_strdup(profile->path), profile);
 
 	connman_info("Adding profile %s", ident);
 
@@ -526,7 +527,7 @@ int __connman_profile_create(const char *name, const char **path)
 	if (err < 0)
 		return err;
 
-	profile = g_hash_table_lookup(profiles, *path);
+	profile = g_hash_table_lookup(profile_hash, *path);
 	if (profile == NULL)
 		return -EIO;
 
@@ -547,13 +548,13 @@ int __connman_profile_remove(const char *path)
 				g_strcmp0(path, default_profile->path) == 0)
 		return -EINVAL;
 
-	profile = g_hash_table_lookup(profiles, path);
+	profile = g_hash_table_lookup(profile_hash, path);
 	if (profile == NULL)
 		return -ENXIO;
 
 	__connman_storage_delete(profile->ident);
 
-	g_hash_table_remove(profiles, path);
+	g_hash_table_remove(profile_hash, path);
 
 	profiles_changed();
 
@@ -595,7 +596,7 @@ static int profile_init(void)
 		g_dir_close(dir);
 	}
 
-	if (g_hash_table_size(profiles) == 0)
+	if (g_hash_table_size(profile_hash) == 0)
 		create_profile(PROFILE_DEFAULT_IDENT, "Default", NULL);
 
 	profiles_changed();
@@ -674,7 +675,7 @@ int __connman_profile_init(void)
 	if (connman_storage_register(&profile_storage) < 0)
 		connman_error("Failed to register profile storage");
 
-	profiles = g_hash_table_new_full(g_str_hash, g_str_equal,
+	profile_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_profile);
 
 	return 0;
@@ -687,8 +688,8 @@ void __connman_profile_cleanup(void)
 	if (connection == NULL)
 		return;
 
-	g_hash_table_destroy(profiles);
-	profiles = NULL;
+	g_hash_table_destroy(profile_hash);
+	profile_hash = NULL;
 
 	connman_storage_unregister(&profile_storage);
 
