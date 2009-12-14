@@ -55,6 +55,7 @@ void connman_dbus_dict_append_array(DBusMessageIter *dict,
 void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 					const char *key, int type, void *val);
 
+dbus_bool_t connman_dbus_validate_ident(const char *ident);
 char *connman_dbus_encode_string(const char *value);
 
 #ifdef __cplusplus
