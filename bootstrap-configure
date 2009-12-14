@@ -26,6 +26,7 @@ fi
 		--enable-openconnect=builtin \
 		--enable-resolvconf=builtin \
 		--enable-dnsproxy=builtin \
+		--enable-google=builtin \
 		--enable-hso=builtin \
 		--enable-mbm=builtin \
 		--enable-iwmx \

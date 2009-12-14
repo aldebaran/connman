@@ -178,6 +178,18 @@ plugins_dnsproxy_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if GOOGLE
+if GOOGLE_BUILTIN
+builtin_modules += google
+builtin_sources += plugins/google.c
+else
+plugin_LTLIBRARIES += plugins/google.la
+plugin_objects += $(plugins_google_la_OBJECTS)
+plugins_google_la_CFLAGS = $(plugin_cflags)
+plugins_google_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if POLKIT
 if POLKIT_BUILTIN
 builtin_modules += polkit
