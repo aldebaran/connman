@@ -151,7 +151,7 @@ static gboolean server_event(GIOChannel *channel, GIOCondition condition,
 {
 	struct server_data *data = user_data;
 	struct request_data *req;
-	unsigned char buf[768];
+	unsigned char buf[4096];
 	struct domain_hdr *hdr = (void *) &buf;
 	int sk, err, len;
 
@@ -390,6 +390,7 @@ static int parse_request(unsigned char *buf, int len,
 {
 	struct domain_hdr *hdr = (void *) buf;
 	uint16_t qdcount = ntohs(hdr->qdcount);
+	uint16_t arcount = ntohs(hdr->arcount);
 	unsigned char *ptr;
 	char *last_label = NULL;
 	int label_count = 0;
@@ -398,8 +399,9 @@ static int parse_request(unsigned char *buf, int len,
 	if (len < 12)
 		return -EINVAL;
 
-	DBG("id 0x%04x qr %d opcode %d qdcount %d",
-				hdr->id, hdr->qr, hdr->opcode, qdcount);
+	DBG("id 0x%04x qr %d opcode %d qdcount %d arcount %d",
+					hdr->id, hdr->qr, hdr->opcode,
+							qdcount, arcount);
 
 	if (hdr->qr != 0 || qdcount != 1)
 		return -EINVAL;
@@ -430,6 +432,28 @@ static int parse_request(unsigned char *buf, int len,
 
 		ptr += len + 1;
 		remain -= len + 1;
+	}
+
+	if (arcount && remain >= 9 && last_label[4] == 0 &&
+				last_label[5] == 0 && last_label[6] == 0x29) {
+		uint16_t edns0_bufsize;
+
+		edns0_bufsize = last_label[7] << 8 | last_label[8];
+
+		DBG("EDNS0 buffer size %u", edns0_bufsize);
+
+		/* This is an evil hack until full TCP support has been
+		 * implemented.
+		 *
+		 * Somtimes the EDNS0 request gets send with a too-small
+		 * buffer size. Since glibc doesn't seem to crash when it
+		 * gets a response biffer then it requested, just bump
+		 * the buffer size up to 4KiB.
+		 */
+		if (edns0_bufsize < 0x1000) {
+			last_label[7] = 0x10;
+			last_label[8] = 0x00;
+		}
 	}
 
 	DBG("query %s (%d labels)", name, label_count);
