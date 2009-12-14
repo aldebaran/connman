@@ -32,6 +32,15 @@ extern "C" {
  * @short_description: Functions for registering resolver modules
  */
 
+int connman_resolver_append(const char *interface, const char *domain,
+							const char *server);
+int connman_resolver_remove(const char *interface, const char *domain,
+							const char *server);
+int connman_resolver_remove_all(const char *interface);
+
+int connman_resolver_append_public_server(const char *server);
+int connman_resolver_remove_public_server(const char *server);
+
 #define CONNMAN_RESOLVER_PRIORITY_LOW      -100
 #define CONNMAN_RESOLVER_PRIORITY_DEFAULT     0
 #define CONNMAN_RESOLVER_PRIORITY_HIGH      100
@@ -47,10 +56,6 @@ struct connman_resolver {
 
 int connman_resolver_register(struct connman_resolver *resolver);
 void connman_resolver_unregister(struct connman_resolver *resolver);
-
-int connman_resolver_append(const char *interface, const char *domain,
-							const char *server);
-int connman_resolver_remove_all(const char *interface);
 
 #ifdef __cplusplus
 }

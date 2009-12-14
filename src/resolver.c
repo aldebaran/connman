@@ -178,6 +178,48 @@ int connman_resolver_append(const char *interface, const char *domain,
 }
 
 /**
+ * connman_resolver_remove:
+ * @interface: network interface
+ * @domain: domain limitation
+ * @server: server address
+ *
+ * Remover resolver server address from current list
+ */
+int connman_resolver_remove(const char *interface, const char *domain,
+							const char *server)
+{
+	GSList *list, *matches = NULL;
+
+	DBG("interface %s domain %s server %s", interface, domain, server);
+
+	if (server == NULL)
+		return -EINVAL;
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (interface != NULL &&
+				g_strcmp0(entry->interface, interface) != 0)
+			continue;
+
+		if (domain != NULL && g_strcmp0(entry->domain, domain) != 0)
+			continue;
+
+		if (g_strcmp0(entry->server, server) != 0)
+			continue;
+
+		matches = g_slist_append(matches, entry);
+	}
+
+	if (matches == NULL)
+		return -ENOENT;
+
+	remove_entries(matches);
+
+	return 0;
+}
+
+/**
  * connman_resolver_remove_all:
  * @interface: network interface
  *
@@ -189,18 +231,50 @@ int connman_resolver_remove_all(const char *interface)
 
 	DBG("interface %s", interface);
 
+	if (interface == NULL)
+		return -EINVAL;
+
 	for (list = entry_list; list; list = list->next) {
 		struct entry_data *entry = list->data;
 
-		if (g_str_equal(entry->interface, interface) == FALSE)
+		if (g_strcmp0(entry->interface, interface) != 0)
 			continue;
 
 		matches = g_slist_append(matches, entry);
 	}
 
+	if (matches == NULL)
+		return -ENOENT;
+
 	remove_entries(matches);
 
 	return 0;
+}
+
+/**
+ * connman_resolver_append_public_server:
+ * @server: server address
+ *
+ * Append public resolver server address to current list
+ */
+int connman_resolver_append_public_server(const char *server)
+{
+	DBG("server %s", server);
+
+	return connman_resolver_append(NULL, NULL, server);
+}
+
+/**
+ * connman_resolver_remove_public_server:
+ * @server: server address
+ *
+ * Remove public resolver server address to current list
+ */
+int connman_resolver_remove_public_server(const char *server)
+{
+	DBG("server %s", server);
+
+	return connman_resolver_remove(NULL, NULL, server);
 }
 
 static int selftest_append(const char *interface, const char *domain,
@@ -234,6 +308,10 @@ int __connman_resolver_selftest(void)
 
 	connman_resolver_append("eth0", "moblin.org", "192.168.42.1");
 	connman_resolver_append("wlan0", "lwn.net", "192.168.0.2");
+
+	connman_resolver_append_public_server("8.8.8.8");
+
+	connman_resolver_remove_public_server("8.8.8.8");
 
 	connman_resolver_remove_all("wlan0");
 
