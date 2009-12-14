@@ -2152,7 +2152,7 @@ static enum connman_service_mode convert_wifi_mode(const char *mode)
 		return CONNMAN_SERVICE_MODE_UNKNOWN;
 }
 
-static enum connman_service_mode convert_wifi_security(const char *security)
+static enum connman_service_security convert_wifi_security(const char *security)
 {
 	if (security == NULL)
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
