@@ -672,7 +672,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			memcpy(alt + altlen, buf + altlen - domlen,
 							len - altlen + domlen);
 
-			err = send(sk, alt, altlen + 4, 0);
+			err = send(sk, alt, len + domlen + 1, 0);
 
 			req->numserv++;
 		}
