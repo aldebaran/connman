@@ -790,7 +790,8 @@ static int set_network(struct supplicant_task *task,
 		connman_dbus_dict_append_variant(&dict, "bssid",
 						DBUS_TYPE_STRING, &address);
 
-	if (g_ascii_strcasecmp(security, "wpa") == 0 ||
+	if (g_ascii_strcasecmp(security, "psk") == 0 ||
+				g_ascii_strcasecmp(security, "wpa") == 0 ||
 				g_ascii_strcasecmp(security, "rsn") == 0) {
 		const char *key_mgmt = "WPA-PSK";
 		connman_dbus_dict_append_variant(&dict, "key_mgmt",
