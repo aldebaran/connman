@@ -346,8 +346,6 @@ update:
 			lower_down = TRUE;
 	}
 
-	connman_inet_clear_address(index);
-
 	ipdevice->flags = flags;
 
 	str = g_string_new(NULL);
