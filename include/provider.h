@@ -59,12 +59,12 @@ struct connman_provider *connman_provider_ref(struct connman_provider *provider)
 void connman_provider_unref(struct connman_provider *provider);
 
 int connman_provider_set_string(struct connman_provider *provider,
-				const char *key, const char *value);
+					const char *key, const char *value);
 const char *connman_provider_get_string(struct connman_provider *provider,
-					const char *key);
+							const char *key);
 
 int connman_provider_set_connected(struct connman_provider *provider,
-				   connman_bool_t connected);
+						connman_bool_t connected);
 
 void connman_provider_set_index(struct connman_provider *provider, int index);
 int connman_provider_get_index(struct connman_provider *provider);
@@ -73,15 +73,15 @@ void connman_provider_set_data(struct connman_provider *provider, void *data);
 void *connman_provider_get_data(struct connman_provider *provider);
 
 void connman_provider_set_gateway(struct connman_provider *provider,
-			          const char *gateway);
+							const char *gateway);
 void connman_provider_set_address(struct connman_provider *provider,
-				  const char *address);
+							const char *address);
 void connman_provider_set_netmask(struct connman_provider *provider,
-				  const char *netmask);
+							const char *netmask);
 void connman_provider_set_dns(struct connman_provider *provider,
-			      const char *dns);
+							const char *dns);
 void connman_provider_set_domain(struct connman_provider *provider,
-				 const char *domain);
+							const char *domain);
 
 struct connman_provider_driver {
 	const char *name;

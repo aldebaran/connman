@@ -110,7 +110,7 @@ static struct connman_provider *connman_provider_lookup(const char *identifier)
 }
 
 static void connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
-					    struct connman_element *element)
+						struct connman_element *element)
 {
 	if (element == NULL || provider == NULL)
 		return;
@@ -149,7 +149,7 @@ void connman_provider_unref(struct connman_provider *provider)
 }
 
 static gboolean match_driver(struct connman_provider *provider,
-			     struct connman_provider_driver *driver)
+				struct connman_provider_driver *driver)
 {
 	if (g_strcmp0(driver->name, provider->type) == 0)
 		return TRUE;
@@ -248,14 +248,13 @@ static int connman_provider_disconnect(struct connman_provider *provider)
 
 	reply_pending(provider, ECONNABORTED);
 
-	if (provider->driver != NULL &&
-	    provider->driver->disconnect != NULL)
+	if (provider->driver != NULL && provider->driver->disconnect != NULL)
 		err = provider->driver->disconnect(provider);
 	else
 		return -EOPNOTSUPP;
 
 	__connman_provider_indicate_state(provider,
-					  CONNMAN_PROVIDER_STATE_DISCONNECT);
+					CONNMAN_PROVIDER_STATE_DISCONNECT);
 	if (err < 0) {
 		if (err != -EINPROGRESS)
 			return err;
@@ -267,7 +266,7 @@ static int connman_provider_disconnect(struct connman_provider *provider)
 }
 
 int __connman_provider_indicate_state(struct connman_provider *provider,
-				      enum connman_provider_state state)
+					enum connman_provider_state state)
 {
 	DBG("provider %p state %d", provider, state);
 
@@ -286,7 +285,7 @@ int __connman_provider_indicate_state(struct connman_provider *provider,
 		return -EINVAL;
 
 	if (state == CONNMAN_PROVIDER_STATE_IDLE &&
-	    provider->state != CONNMAN_PROVIDER_STATE_DISCONNECT) {
+			provider->state != CONNMAN_PROVIDER_STATE_DISCONNECT) {
 		provider->state = CONNMAN_PROVIDER_STATE_DISCONNECT;
 		state_changed(provider);
 
@@ -422,7 +421,7 @@ int __connman_provider_remove(const char *path)
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
-				   DBusMessage *msg, void *user_data)
+					DBusMessage *msg, void *user_data)
 {
 	struct connman_provider *provider = user_data;
 	DBusMessage *reply;
@@ -472,7 +471,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 }
 
 static GDBusMethodTable provider_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties     },
+	{ "GetProperties", "", "a{sv}", get_properties },
 	{ },
 };
 
@@ -482,7 +481,7 @@ static GDBusSignalTable provider_signals[] = {
 };
 
 int connman_provider_set_connected(struct connman_provider *provider,
-				   connman_bool_t connected)
+						connman_bool_t connected)
 {
 	if (connected == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
@@ -584,8 +583,10 @@ static void __connman_provider_initialize(struct connman_provider *provider)
 {
 	DBG("provider %p", provider);
 
-	provider->state    = CONNMAN_PROVIDER_STATE_UNKNOWN;
+	provider->state = CONNMAN_PROVIDER_STATE_UNKNOWN;
+
 	__connman_element_initialize(&provider->element);
+
 	provider->element.private = provider;
 	provider->element.destruct = provider_destruct;
 
@@ -631,9 +632,9 @@ static int provider_register(struct connman_provider *provider)
 	DBG("path %s", provider->path);
 
 	g_dbus_register_interface(connection, provider->path,
-				  CONNMAN_PROVIDER_INTERFACE,
-				  provider_methods, provider_signals,
-				  NULL, provider, NULL);
+					CONNMAN_PROVIDER_INTERFACE,
+					provider_methods, provider_signals,
+					NULL, provider, NULL);
 
 	return 0;
 }
@@ -723,8 +724,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		goto failed;
 	}
 
-	ident = g_strdup_printf("%s_%s",
-				type, name);
+	ident = g_strdup_printf("%s_%s", type, name);
 
 	provider = connman_provider_lookup(ident);
 
@@ -780,9 +780,10 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		goto failed;
 
 	g_dbus_send_reply(connection, msg,
-			  DBUS_TYPE_OBJECT_PATH, &provider->path,
-			  DBUS_TYPE_INVALID);
+				DBUS_TYPE_OBJECT_PATH, &provider->path,
+							DBUS_TYPE_INVALID);
 	return 0;
+
 failed:
 	if (provider != NULL && created == TRUE) {
 		DBG("can not connect delete provider");
@@ -793,7 +794,7 @@ failed:
 }
 
 int connman_provider_set_string(struct connman_provider *provider,
-				const char *key, const char *value)
+					const char *key, const char *value)
 {
 	DBG("provider %p key %s value %s", provider, key, value);
 
@@ -824,7 +825,7 @@ int connman_provider_set_string(struct connman_provider *provider,
 }
 
 const char *connman_provider_get_string(struct connman_provider *provider,
-					const char *key)
+							const char *key)
 {
 	DBG("provider %p key %s", provider, key);
 
@@ -874,7 +875,7 @@ int connman_provider_driver_register(struct connman_provider_driver *driver)
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
-					    compare_priority);
+							compare_priority);
 	return 0;
 }
 
