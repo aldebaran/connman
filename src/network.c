@@ -666,6 +666,9 @@ void connman_network_set_error(struct connman_network *network,
 {
 	DBG("nework %p, error %d", network, error);
 
+	network->connecting = FALSE;
+	network->associating = FALSE;
+
 	switch (error) {
 	case CONNMAN_NETWORK_ERROR_UNKNOWN:
 		return;
