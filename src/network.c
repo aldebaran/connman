@@ -471,6 +471,18 @@ int connman_network_get_index(struct connman_network *network)
 }
 
 /**
+ * connman_network_get_element:
+ * @network: network structure
+ *
+ * Get connman_element of network
+ */
+struct connman_element *connman_network_get_element(
+				struct connman_network *network)
+{
+	return &network->element;
+}
+
+/**
  * connman_network_set_protocol:
  * @network: network structure
  * @protocol: network protocol
