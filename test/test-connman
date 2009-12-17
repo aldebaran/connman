@@ -368,11 +368,8 @@ elif sys.argv[1] == "dev":
 				device.ProposeScan()
 			else:
 				print "No scanning for device %s" % (interface)
-
 		elif command == "scan_interval" and value != "":
 			device.SetProperty("ScanInterval", dbus.UInt16(value))
-			break
-
 		elif command in ["networks", "net"]:
 			if "Networks" in properties.keys():
 				print_networks(properties["Networks"])
@@ -403,7 +400,6 @@ elif sys.argv[1] == "dev":
 			else:
 				powered = dbus.Boolean(value)
 			device.SetProperty("Powered", powered)
-			break
 		elif command == "powered":
 			interface = properties["Interface"]
 			if properties["Powered"] == dbus.Boolean(1):
