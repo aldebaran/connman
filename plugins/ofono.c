@@ -30,6 +30,7 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
+#include <connman/element.h>
 #include <connman/device.h>
 #include <connman/network.h>
 #include <connman/dbus.h>
@@ -1144,7 +1145,41 @@ static void manager_changed(DBusConnection *connection, DBusMessage *message)
 		update_modems(&value);
 }
 
-static void update_settings(DBusMessageIter *array)
+static void get_dns(DBusMessageIter *array, struct connman_element *parent)
+{
+	DBusMessageIter entry;
+	gchar *nameserver = NULL, *nameserver_old = NULL;
+
+	DBG("");
+
+	dbus_message_iter_recurse(array, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *dns;
+
+		dbus_message_iter_get_basic(&entry, &dns);
+
+		DBG("dns %s", dns);
+
+		if (nameserver == NULL) {
+
+			nameserver = g_strdup(dns);
+		} else {
+
+			nameserver_old = nameserver;
+			nameserver = g_strdup_printf("%s %s",
+						nameserver_old, dns);
+			g_free(nameserver_old);
+		}
+
+		dbus_message_iter_next(&entry);
+	}
+
+	parent->ipv4.nameserver = nameserver;
+}
+
+static void update_settings(DBusMessageIter *array,
+			struct connman_element *parent)
 {
 	DBusMessageIter dict;
 	const char *interface = NULL;
@@ -1187,19 +1222,44 @@ static void update_settings(DBusMessageIter *array)
 
 			dbus_message_iter_get_basic(&value, &method);
 			if (g_strcmp0(method, "static") == 0) {
-				DBG("static");
+
+				parent->ipv4.method =
+					CONNMAN_IPCONFIG_METHOD_STATIC;
 			} else if (g_strcmp0(method, "dhcp") == 0) {
-				DBG("dhcp");
+
+				parent->ipv4.method =
+					CONNMAN_IPCONFIG_METHOD_DHCP;
 				break;
 			}
-		} else if (g_str_equal(key, "address") == TRUE) {
+		} else if (g_str_equal(key, "Address") == TRUE) {
 			const char *address;
 
 			dbus_message_iter_get_basic(&value, &address);
 
 			DBG("address %s", address);
+
+			parent->ipv4.address = g_strdup(address);
+		} else if (g_str_equal(key, "Netmask") == TRUE) {
+			const char *netmask;
+
+			dbus_message_iter_get_basic(&value, &netmask);
+
+			DBG("netmask %s", netmask);
+
+			parent->ipv4.netmask = g_strdup(netmask);
+		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+
+			get_dns(&value, parent);
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			const char *gateway;
+
+			dbus_message_iter_get_basic(&value, &gateway);
+
+			DBG("gateway %s", gateway);
+
+			parent->ipv4.gateway = g_strdup(gateway);
 		}
-		/* FIXME: add static setting */
+
 		dbus_message_iter_next(&dict);
 	}
 
@@ -1208,10 +1268,71 @@ static void update_settings(DBusMessageIter *array)
 		connman_network_set_index(pending_network, -1);
 }
 
+static void cleanup_ipconfig(struct connman_element *parent)
+{
+	g_free(parent->ipv4.address);
+	parent->ipv4.address = NULL;
+
+	g_free(parent->ipv4.netmask);
+	parent->ipv4.netmask = NULL;
+
+	g_free(parent->ipv4.nameserver);
+	parent->ipv4.nameserver = NULL;
+
+	g_free(parent->ipv4.gateway);
+	parent->ipv4.gateway = NULL;
+
+	parent->ipv4.method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+}
+
+static int static_network_set_connected(
+		struct connman_network *pending_network,
+				struct connman_element *parent,
+					connman_bool_t connected)
+{
+	if (connected == TRUE) {
+		struct connman_element *element;
+
+		if (parent->ipv4.address == NULL)
+			goto error;
+
+		if (parent->ipv4.netmask == NULL)
+			goto error;
+
+		element = connman_element_create(NULL);
+		if (element == NULL) {
+			connman_error("Can not create connman_element");
+			return -ENOMEM;
+		}
+
+		element->type = CONNMAN_ELEMENT_TYPE_IPV4;
+		element->index = parent->index;
+
+		if (connman_element_register(element, parent) < 0) {
+			connman_element_unref(element);
+			goto error;
+		}
+	} else
+		cleanup_ipconfig(parent);
+
+	connman_network_set_connected(pending_network, connected);
+
+	return 0;
+
+error:
+	connman_network_set_error(pending_network,
+		CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+
+	cleanup_ipconfig(parent);
+
+	return -EINVAL;
+}
+
 static void pri_context_changed(DBusConnection *connection,
 					DBusMessage *message)
 {
 	const char *path = dbus_message_get_path(message);
+	struct connman_element *parent;
 	const char *pending_path;
 	DBusMessageIter iter, value;
 	const char *key;
@@ -1225,6 +1346,8 @@ static void pri_context_changed(DBusConnection *connection,
 	if (g_strcmp0(pending_path, path) != 0)
 		return;
 
+	parent = connman_network_get_element(pending_network);
+
 	if (dbus_message_iter_init(message, &iter) == FALSE)
 		return;
 
@@ -1234,12 +1357,26 @@ static void pri_context_changed(DBusConnection *connection,
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "Settings") == TRUE) {
-		update_settings(&value);
+
+		update_settings(&value, parent);
 	} else if (g_str_equal(key, "Active") == TRUE) {
 		dbus_bool_t active;
 
 		dbus_message_iter_get_basic(&value, &active);
-		connman_network_set_connected(pending_network, active);
+
+		switch (parent->ipv4.method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_IGNORE:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_STATIC:
+			if (static_network_set_connected(
+					pending_network, parent, active) < 0)
+				set_network_active(pending_network, FALSE);
+			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			connman_network_set_connected(pending_network, active);
+			break;
+		}
 
 		pending_network = NULL;
 	}
