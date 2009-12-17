@@ -703,6 +703,19 @@ static gboolean set_connected(gpointer user_data)
 
 		connman_device_set_disconnected(network->device, FALSE);
 
+		if (network->element.ipv4.method ==
+					CONNMAN_IPCONFIG_METHOD_STATIC) {
+
+			network->connecting = FALSE;
+
+			connman_network_set_associating(network, FALSE);
+
+			__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY);
+
+			return TRUE;
+		}
+
 		element = connman_element_create(NULL);
 		if (element != NULL) {
 			element->type  = type;
