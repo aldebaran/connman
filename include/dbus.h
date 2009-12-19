@@ -44,7 +44,8 @@ extern "C" {
 #define CONNMAN_NETWORK_INTERFACE	CONNMAN_SERVICE ".Network"
 #define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
 
-typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter);
+typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter,
+							void *user_data);
 
 DBusConnection *connman_dbus_get_connection(void);
 

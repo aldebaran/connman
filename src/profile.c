@@ -53,10 +53,8 @@ static void append_path(gpointer key, gpointer value, gpointer user_data)
 							&profile->path);
 }
 
-void __connman_profile_list(DBusMessageIter *iter)
+void __connman_profile_list(DBusMessageIter *iter, void *user_data)
 {
-	DBG("");
-
 	g_hash_table_foreach(profile_hash, append_path, iter);
 }
 

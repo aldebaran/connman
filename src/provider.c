@@ -95,7 +95,7 @@ static void append_path(gpointer key, gpointer value, gpointer user_data)
 					&provider->path);
 }
 
-void __connman_provider_list(DBusMessageIter *iter)
+void __connman_provider_list(DBusMessageIter *iter, void *user_data)
 {
 	g_hash_table_foreach(provider_hash, append_path, iter);
 }

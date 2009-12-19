@@ -76,7 +76,7 @@ static volatile gint registered[MAX_TECHNOLOGIES];
 static volatile gint enabled[MAX_TECHNOLOGIES];
 static volatile gint connected[MAX_TECHNOLOGIES];
 
-void __connman_notifier_list_registered(DBusMessageIter *iter)
+void __connman_notifier_list_registered(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 
@@ -92,7 +92,7 @@ void __connman_notifier_list_registered(DBusMessageIter *iter)
 	}
 }
 
-void __connman_notifier_list_enabled(DBusMessageIter *iter)
+void __connman_notifier_list_enabled(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 
@@ -108,7 +108,7 @@ void __connman_notifier_list_enabled(DBusMessageIter *iter)
 	}
 }
 
-void __connman_notifier_list_connected(DBusMessageIter *iter)
+void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 

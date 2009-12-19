@@ -252,7 +252,7 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	return err;
 }
 
-void __connman_device_list(DBusMessageIter *iter)
+void __connman_device_list(DBusMessageIter *iter, void *user_data)
 {
 	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, iter);
 }

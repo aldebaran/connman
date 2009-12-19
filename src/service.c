@@ -80,10 +80,8 @@ static void append_path(gpointer value, gpointer user_data)
 							&service->path);
 }
 
-void __connman_service_list(DBusMessageIter *iter)
+void __connman_service_list(DBusMessageIter *iter, void *user_data)
 {
-	DBG("");
-
 	g_sequence_foreach(service_list, append_path, iter);
 }
 
@@ -385,7 +383,7 @@ static void apn_changed(struct connman_service *service)
 						DBUS_TYPE_BOOLEAN, &required);
 }
 
-static void append_settings(DBusMessageIter *iter)
+static void append_settings(DBusMessageIter *iter, void *user_data)
 {
 	const char *str = "dhcp";
 

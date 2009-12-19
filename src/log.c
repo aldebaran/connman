@@ -103,7 +103,7 @@ void connman_debug(const char *format, ...)
 extern struct connman_debug_desc __start___debug[];
 extern struct connman_debug_desc __stop___debug[];
 
-void __connman_debug_list_available(DBusMessageIter *iter)
+void __connman_debug_list_available(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_debug_desc *desc;
 
@@ -117,7 +117,7 @@ void __connman_debug_list_available(DBusMessageIter *iter)
 
 static gchar **enabled = NULL;
 
-void __connman_debug_list_enabled(DBusMessageIter *iter)
+void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 

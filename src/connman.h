@@ -78,8 +78,8 @@ int __connman_agent_request_passphrase(struct connman_service *service,
 int __connman_log_init(const char *debug, connman_bool_t detach);
 void __connman_log_cleanup(void);
 
-void __connman_debug_list_available(DBusMessageIter *iter);
-void __connman_debug_list_enabled(DBusMessageIter *iter);
+void __connman_debug_list_available(DBusMessageIter *iter, void *user_data);
+void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data);
 
 #include <connman/option.h>
 
@@ -268,7 +268,7 @@ void __connman_udev_enable_rfkill_processing(void);
 int __connman_device_init(void);
 void __connman_device_cleanup(void);
 
-void __connman_device_list(DBusMessageIter *iter);
+void __connman_device_list(DBusMessageIter *iter, void *user_data);
 
 enum connman_service_type __connman_device_get_service_type(struct connman_device *device);
 
@@ -335,7 +335,7 @@ connman_bool_t __connman_profile_get_offlinemode(void);
 int __connman_profile_set_offlinemode(connman_bool_t offlinemode);
 int __connman_profile_save_default(void);
 
-void __connman_profile_list(DBusMessageIter *iter);
+void __connman_profile_list(DBusMessageIter *iter, void *user_data);
 const char *__connman_profile_active_ident(void);
 const char *__connman_profile_active_path(void);
 
@@ -356,7 +356,7 @@ int __connman_profile_remove_network(struct connman_network *network);
 int __connman_service_init(void);
 void __connman_service_cleanup(void);
 
-void __connman_service_list(DBusMessageIter *iter);
+void __connman_service_list(DBusMessageIter *iter, void *user_data);
 const char *__connman_service_default(void);
 
 void __connman_service_put(struct connman_service *service);
@@ -384,7 +384,7 @@ const char *__connman_service_type2string(enum connman_service_type type);
 
 #include <connman/provider.h>
 
-void __connman_provider_list(DBusMessageIter *iter);
+void __connman_provider_list(DBusMessageIter *iter, void *user_data);
 int __connman_provider_create_and_connect(DBusMessage *msg);
 int __connman_provider_indicate_state(struct connman_provider *provider,
 				     enum connman_provider_state state);
@@ -399,9 +399,9 @@ int __connman_provider_init(void);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
-void __connman_notifier_list_registered(DBusMessageIter *iter);
-void __connman_notifier_list_enabled(DBusMessageIter *iter);
-void __connman_notifier_list_connected(DBusMessageIter *iter);
+void __connman_notifier_list_registered(DBusMessageIter *iter, void *user_data);
+void __connman_notifier_list_enabled(DBusMessageIter *iter, void *user_data);
+void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data);
 
 void __connman_notifier_register(enum connman_service_type type);
 void __connman_notifier_unregister(enum connman_service_type type);
