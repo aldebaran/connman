@@ -61,7 +61,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variable_array(&dict, "Providers",
 			DBUS_TYPE_OBJECT_PATH, __connman_provider_list);
 
-	connman_dbus_dict_append_variable_array(&dict, "Providers",
+	connman_dbus_dict_append_variable_array(&dict, "Devices",
 			DBUS_TYPE_OBJECT_PATH, __connman_device_list);
 
 	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
