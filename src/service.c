@@ -385,10 +385,11 @@ static void apn_changed(struct connman_service *service)
 
 static void append_settings(DBusMessageIter *iter, void *user_data)
 {
-	const char *str = "dhcp";
+	struct connman_service *service = user_data;
 
-	connman_dbus_dict_append_basic(iter, "Method",
-						DBUS_TYPE_STRING, &str);
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_append_ipv4(service->ipconfig,
+							iter, "IPv4.");
 }
 
 static void settings_changed(struct connman_service *service)
@@ -530,10 +531,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_dict(&dict, "Settings",
 						append_settings, service);
-
-	if (service->ipconfig != NULL)
-		__connman_ipconfig_append_ipv4(service->ipconfig,
-							&dict, "IPv4.");
 
 	connman_dbus_dict_close(&array, &dict);
 
