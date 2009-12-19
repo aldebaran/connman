@@ -373,15 +373,12 @@ static int add_interface(struct supplicant_task *task)
 	dbus_message_iter_append_basic(&array,
 					DBUS_TYPE_STRING, &task->ifname);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	connman_dbus_dict_append_variant(&dict, "driver",
 						DBUS_TYPE_STRING, &driver);
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
@@ -784,10 +781,7 @@ static int set_network(struct supplicant_task *task,
 
 	dbus_message_iter_init_append(message, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	connman_dbus_dict_append_variant(&dict, "scan_ssid",
 					 DBUS_TYPE_UINT32, &scan_ssid);
@@ -855,7 +849,7 @@ static int set_network(struct supplicant_task *task,
 						DBUS_TYPE_STRING, &key_mgmt);
 	}
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	dbus_error_init(&error);
 
