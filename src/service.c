@@ -385,6 +385,21 @@ static void apn_changed(struct connman_service *service)
 						DBUS_TYPE_BOOLEAN, &required);
 }
 
+static void append_settings(DBusMessageIter *iter)
+{
+	const char *str = "dhcp";
+
+	connman_dbus_dict_append_variant(iter, "Method",
+						DBUS_TYPE_STRING, &str);
+}
+
+static void settings_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_dict(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Settings",
+						append_settings, service);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -514,6 +529,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_BOOLEAN, &required);
 		break;
 	}
+
+	connman_dbus_dict_append_dict(&dict, "Settings", append_settings);
 
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ipv4(service->ipconfig,
@@ -1322,7 +1339,6 @@ int connman_service_set_favorite(struct connman_service *service,
 	return 0;
 }
 
-
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state)
 {
@@ -1376,6 +1392,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
+
+		settings_changed(service);
 
 		__connman_notifier_connect(service->type);
 
