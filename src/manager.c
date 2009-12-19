@@ -55,14 +55,14 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_OBJECT_PATH, &str);
 
 	connman_dbus_dict_append_variable_array(&dict, "Profiles",
-			DBUS_TYPE_OBJECT_PATH, __connman_profile_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
 	connman_dbus_dict_append_variable_array(&dict, "Services",
-			DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 	connman_dbus_dict_append_variable_array(&dict, "Providers",
-			DBUS_TYPE_OBJECT_PATH, __connman_provider_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_provider_list, NULL);
 
 	connman_dbus_dict_append_variable_array(&dict, "Devices",
-			DBUS_TYPE_OBJECT_PATH, __connman_device_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_device_list, NULL);
 
 	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
 		str = "online";
@@ -77,11 +77,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 					DBUS_TYPE_BOOLEAN, &offlinemode);
 
 	connman_dbus_dict_append_variable_array(&dict, "AvailableTechnologies",
-			DBUS_TYPE_STRING, __connman_notifier_list_registered);
+		DBUS_TYPE_STRING, __connman_notifier_list_registered, NULL);
 	connman_dbus_dict_append_variable_array(&dict, "EnabledTechnologies",
-			DBUS_TYPE_STRING, __connman_notifier_list_enabled);
+		DBUS_TYPE_STRING, __connman_notifier_list_enabled, NULL);
 	connman_dbus_dict_append_variable_array(&dict, "ConnectedTechnologies",
-			DBUS_TYPE_STRING, __connman_notifier_list_connected);
+		DBUS_TYPE_STRING, __connman_notifier_list_connected, NULL);
 
 	str = __connman_service_default();
 	if (str != NULL)
@@ -89,9 +89,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_variable_array(&dict, "AvailableDebugs",
-			DBUS_TYPE_STRING, __connman_debug_list_available);
+			DBUS_TYPE_STRING, __connman_debug_list_available, NULL);
 	connman_dbus_dict_append_variable_array(&dict, "EnabledDebugs",
-			DBUS_TYPE_STRING, __connman_debug_list_enabled);
+			DBUS_TYPE_STRING, __connman_debug_list_enabled, NULL);
 
 	connman_dbus_dict_close(&array, &dict);
 

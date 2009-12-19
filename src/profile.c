@@ -269,7 +269,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
 
 	connman_dbus_dict_append_variable_array(&dict, "Services",
-				DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 
 	connman_dbus_dict_close(&array, &dict);
 

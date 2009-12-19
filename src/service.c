@@ -528,7 +528,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		break;
 	}
 
-	connman_dbus_dict_append_dict(&dict, "Settings", append_settings);
+	connman_dbus_dict_append_dict(&dict, "Settings",
+						append_settings, service);
 
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ipv4(service->ipconfig,
