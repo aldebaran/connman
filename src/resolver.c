@@ -32,11 +32,14 @@
 
 #include "connman.h"
 
+#define RESOLVER_FLAG_PUBLIC (1 << 0)
+
 struct entry_data {
 	struct connman_resolver *resolver;
 	char *interface;
 	char *domain;
 	char *server;
+	unsigned int flags;
 };
 
 static GSList *entry_list = NULL;
@@ -133,21 +136,14 @@ void connman_resolver_unregister(struct connman_resolver *resolver)
 	remove_entries(matches);
 }
 
-/**
- * connman_resolver_append:
- * @interface: network interface
- * @domain: domain limitation
- * @server: server address
- *
- * Append resolver server address to current list
- */
-int connman_resolver_append(const char *interface, const char *domain,
-							const char *server)
+static int append_resolver(const char *interface, const char *domain,
+					const char *server, unsigned int flags)
 {
 	struct entry_data *entry;
 	GSList *list;
 
-	DBG("interface %s domain %s server %s", interface, domain, server);
+	DBG("interface %s domain %s server %s flags %d",
+					interface, domain, server, flags);
 
 	if (server == NULL)
 		return -EINVAL;
@@ -159,6 +155,7 @@ int connman_resolver_append(const char *interface, const char *domain,
 	entry->interface = g_strdup(interface);
 	entry->domain = g_strdup(domain);
 	entry->server = g_strdup(server);
+	entry->flags = flags;
 
 	entry_list = g_slist_append(entry_list, entry);
 
@@ -175,6 +172,22 @@ int connman_resolver_append(const char *interface, const char *domain,
 	}
 
 	return 0;
+}
+
+/**
+ * connman_resolver_append:
+ * @interface: network interface
+ * @domain: domain limitation
+ * @server: server address
+ *
+ * Append resolver server address to current list
+ */
+int connman_resolver_append(const char *interface, const char *domain,
+							const char *server)
+{
+	DBG("interface %s domain %s server %s", interface, domain, server);
+
+	return append_resolver(interface, domain, server, 0);
 }
 
 /**
@@ -261,7 +274,7 @@ int connman_resolver_append_public_server(const char *server)
 {
 	DBG("server %s", server);
 
-	return connman_resolver_append(NULL, NULL, server);
+	return append_resolver(NULL, NULL, server, RESOLVER_FLAG_PUBLIC);
 }
 
 /**
