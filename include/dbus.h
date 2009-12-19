@@ -50,6 +50,8 @@ DBusConnection *connman_dbus_get_connection(void);
 
 void connman_dbus_property_append_variant(DBusMessageIter *property,
 					const char *key, int type, void *val);
+void connman_dbus_property_append_fixed_array(DBusMessageIter *iter,
+				const char *key, int type, void *val, int len);
 void connman_dbus_property_append_variable_array(DBusMessageIter *dict,
 		const char *key, int type, connman_dbus_append_cb_t function);
 
