@@ -42,7 +42,6 @@ extern "C" {
 #define CONNMAN_SERVICE_INTERFACE	CONNMAN_SERVICE ".Service"
 #define CONNMAN_DEVICE_INTERFACE	CONNMAN_SERVICE ".Device"
 #define CONNMAN_NETWORK_INTERFACE	CONNMAN_SERVICE ".Network"
-#define CONNMAN_CONNECTION_INTERFACE	CONNMAN_SERVICE ".Connection"
 #define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
 
 typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter);
