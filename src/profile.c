@@ -262,10 +262,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_open(&array, &dict);
 
 	if (profile->name != NULL)
-		connman_dbus_dict_append_variant(&dict, "Name",
+		connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &profile->name);
 
-	connman_dbus_dict_append_variant(&dict, "OfflineMode",
+	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
 
 	connman_dbus_dict_append_variable_array(&dict, "Services",

@@ -309,27 +309,27 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_open(&array, &dict);
 
 	if (device->name != NULL)
-		connman_dbus_dict_append_variant(&dict, "Name",
+		connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &device->name);
 
 	str = type2string(device->type);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
+		connman_dbus_dict_append_basic(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
 	if (device->address != NULL)
-		connman_dbus_dict_append_variant(&dict, "Address",
+		connman_dbus_dict_append_basic(&dict, "Address",
 					DBUS_TYPE_STRING, &device->address);
 
 	if (device->interface != NULL)
-		connman_dbus_dict_append_variant(&dict, "Interface",
+		connman_dbus_dict_append_basic(&dict, "Interface",
 					DBUS_TYPE_STRING, &device->interface);
 
-	connman_dbus_dict_append_variant(&dict, "Powered",
+	connman_dbus_dict_append_basic(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
 
 	if (device->driver && device->driver->scan)
-		connman_dbus_dict_append_variant(&dict, "Scanning",
+		connman_dbus_dict_append_basic(&dict, "Scanning",
 					DBUS_TYPE_BOOLEAN, &device->scanning);
 
 	switch (device->mode) {
@@ -338,7 +338,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		if (device->scan_interval > 0)
-			connman_dbus_dict_append_variant(&dict, "ScanInterval",
+			connman_dbus_dict_append_basic(&dict, "ScanInterval",
 				DBUS_TYPE_UINT16, &device->scan_interval);
 
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,

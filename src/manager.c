@@ -51,7 +51,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	str = __connman_profile_active_path();
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "ActiveProfile",
+		connman_dbus_dict_append_basic(&dict, "ActiveProfile",
 						DBUS_TYPE_OBJECT_PATH, &str);
 
 	connman_dbus_dict_append_variable_array(&dict, "Profiles",
@@ -69,11 +69,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	else
 		str = "offline";
 
-	connman_dbus_dict_append_variant(&dict, "State",
+	connman_dbus_dict_append_basic(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
 	offlinemode = __connman_profile_get_offlinemode();
-	connman_dbus_dict_append_variant(&dict, "OfflineMode",
+	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
 
 	connman_dbus_dict_append_variable_array(&dict, "AvailableTechnologies",
@@ -85,7 +85,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	str = __connman_service_default();
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "DefaultTechnology",
+		connman_dbus_dict_append_basic(&dict, "DefaultTechnology",
 						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_variable_array(&dict, "AvailableDebugs",

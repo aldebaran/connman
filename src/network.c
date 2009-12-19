@@ -116,27 +116,27 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (network->device) {
 		const char *path = connman_device_get_path(network->device);
 		if (path != NULL)
-			connman_dbus_dict_append_variant(&dict, "Device",
+			connman_dbus_dict_append_basic(&dict, "Device",
 						DBUS_TYPE_OBJECT_PATH, &path);
 	}
 
 	if (network->address != NULL)
-		connman_dbus_dict_append_variant(&dict, "Address",
+		connman_dbus_dict_append_basic(&dict, "Address",
 					DBUS_TYPE_STRING, &network->address);
 
 	if (network->name != NULL)
-		connman_dbus_dict_append_variant(&dict, "Name",
+		connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &network->name);
 
-	connman_dbus_dict_append_variant(&dict, "Connected",
+	connman_dbus_dict_append_basic(&dict, "Connected",
 				DBUS_TYPE_BOOLEAN, &network->connected);
 
 	if (network->strength > 0)
-		connman_dbus_dict_append_variant(&dict, "Strength",
+		connman_dbus_dict_append_basic(&dict, "Strength",
 					DBUS_TYPE_BYTE, &network->strength);
 
 	if (network->frequency > 0)
-		connman_dbus_dict_append_variant(&dict, "Frequency",
+		connman_dbus_dict_append_basic(&dict, "Frequency",
 					DBUS_TYPE_UINT16, &network->frequency);
 
 	if (network->wifi.ssid != NULL && network->wifi.ssid_len > 0)
@@ -145,21 +145,21 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						network->wifi.ssid_len);
 
 	if (network->wifi.mode != NULL)
-		connman_dbus_dict_append_variant(&dict, "WiFi.Mode",
+		connman_dbus_dict_append_basic(&dict, "WiFi.Mode",
 				DBUS_TYPE_STRING, &network->wifi.mode);
 
 	if (network->wifi.channel > 0)
-		connman_dbus_dict_append_variant(&dict, "WiFi.Channel",
+		connman_dbus_dict_append_basic(&dict, "WiFi.Channel",
 				DBUS_TYPE_UINT16, &network->wifi.channel);
 
 	if (network->wifi.security != NULL)
-		connman_dbus_dict_append_variant(&dict, "WiFi.Security",
+		connman_dbus_dict_append_basic(&dict, "WiFi.Security",
 				DBUS_TYPE_STRING, &network->wifi.security);
 
 	if (network->wifi.passphrase != NULL &&
 			__connman_security_check_privilege(msg,
 				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
-		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
+		connman_dbus_dict_append_basic(&dict, "WiFi.Passphrase",
 				DBUS_TYPE_STRING, &network->wifi.passphrase);
 
 	connman_dbus_dict_close(&array, &dict);

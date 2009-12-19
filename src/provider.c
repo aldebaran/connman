@@ -423,26 +423,26 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_open(&array, &dict);
 
 	if (provider->name != NULL)
-		connman_dbus_dict_append_variant(&dict, "Name",
+		connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &provider->name);
 
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
+		connman_dbus_dict_append_basic(&dict, "Type",
 						 DBUS_TYPE_STRING,
 						 &provider->type);
 
 	str = state2string(provider->state);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "State",
+		connman_dbus_dict_append_basic(&dict, "State",
 						 DBUS_TYPE_STRING, &str);
 
 	str = error2string(provider->error);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Error",
+		connman_dbus_dict_append_basic(&dict, "Error",
 						 DBUS_TYPE_STRING, &str);
 
 	required = TRUE;
-	connman_dbus_dict_append_variant(&dict, "PassphraseRequired",
+	connman_dbus_dict_append_basic(&dict, "PassphraseRequired",
 					 DBUS_TYPE_BOOLEAN, &required);
 
 	connman_dbus_dict_close(&array, &dict);

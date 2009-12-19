@@ -80,7 +80,7 @@ static inline void connman_dbus_dict_close(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, dict);
 }
 
-static inline void connman_dbus_dict_append_variant(DBusMessageIter *dict,
+static inline void connman_dbus_dict_append_basic(DBusMessageIter *dict,
 					const char *key, int type, void *val)
 {
 	DBusMessageIter entry;

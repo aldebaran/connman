@@ -1118,31 +1118,31 @@ int __connman_element_append_ipv4(struct connman_element *element,
 			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
 
 	if (method != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Method",
+		connman_dbus_dict_append_basic(dict, "IPv4.Method",
 						DBUS_TYPE_STRING, &method);
 
 	if (address != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Address",
+		connman_dbus_dict_append_basic(dict, "IPv4.Address",
 						DBUS_TYPE_STRING, &address);
 
 	if (netmask != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Netmask",
+		connman_dbus_dict_append_basic(dict, "IPv4.Netmask",
 						DBUS_TYPE_STRING, &netmask);
 
 	if (gateway != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Gateway",
+		connman_dbus_dict_append_basic(dict, "IPv4.Gateway",
 						DBUS_TYPE_STRING, &gateway);
 
 	if (broadcast != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Broadcast",
+		connman_dbus_dict_append_basic(dict, "IPv4.Broadcast",
 						DBUS_TYPE_STRING, &broadcast);
 
 	if (nameserver != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Nameserver",
+		connman_dbus_dict_append_basic(dict, "IPv4.Nameserver",
 						DBUS_TYPE_STRING, &nameserver);
 
 	if (timeserver != NULL)
-		connman_dbus_dict_append_variant(dict, "IPv4.Timeserver",
+		connman_dbus_dict_append_basic(dict, "IPv4.Timeserver",
 						DBUS_TYPE_STRING, &timeserver);
 
 	return 0;

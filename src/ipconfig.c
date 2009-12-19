@@ -879,19 +879,19 @@ enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method
 		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 }
 
-static void append_variant(DBusMessageIter *iter, const char *prefix,
+static void append_basic(DBusMessageIter *iter, const char *prefix,
 					const char *key, int type, void *val)
 {
 	char *str;
 
 	if (prefix == NULL) {
-		connman_dbus_dict_append_variant(iter, key, type, val);
+		connman_dbus_dict_append_basic(iter, key, type, val);
 		return;
 	}
 
 	str = g_strdup_printf("%s%s", prefix, key);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(iter, str, type, val);
+		connman_dbus_dict_append_basic(iter, str, type, val);
 
 	g_free(str);
 }
@@ -905,7 +905,7 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 	if (str == NULL)
 		return;
 
-	append_variant(iter, prefix, "Method", DBUS_TYPE_STRING, &str);
+	append_basic(iter, prefix, "Method", DBUS_TYPE_STRING, &str);
 }
 
 int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,

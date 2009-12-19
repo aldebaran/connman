@@ -387,7 +387,7 @@ static void append_settings(DBusMessageIter *iter, void *user_data)
 {
 	const char *str = "dhcp";
 
-	connman_dbus_dict_append_variant(iter, "Method",
+	connman_dbus_dict_append_basic(iter, "Method",
 						DBUS_TYPE_STRING, &str);
 }
 
@@ -419,45 +419,45 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	str = __connman_service_type2string(service->type);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Type",
+		connman_dbus_dict_append_basic(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
 	str = mode2string(service->mode);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Mode",
+		connman_dbus_dict_append_basic(&dict, "Mode",
 						DBUS_TYPE_STRING, &str);
 
 	str = security2string(service->security);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Security",
+		connman_dbus_dict_append_basic(&dict, "Security",
 						DBUS_TYPE_STRING, &str);
 
 	str = state2string(service->state);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "State",
+		connman_dbus_dict_append_basic(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
 	str = error2string(service->error);
 	if (str != NULL)
-		connman_dbus_dict_append_variant(&dict, "Error",
+		connman_dbus_dict_append_basic(&dict, "Error",
 						DBUS_TYPE_STRING, &str);
 
 	if (service->strength > 0)
-		connman_dbus_dict_append_variant(&dict, "Strength",
+		connman_dbus_dict_append_basic(&dict, "Strength",
 					DBUS_TYPE_BYTE, &service->strength);
 
-	connman_dbus_dict_append_variant(&dict, "Favorite",
+	connman_dbus_dict_append_basic(&dict, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	if (service->favorite == TRUE)
-		connman_dbus_dict_append_variant(&dict, "AutoConnect",
+		connman_dbus_dict_append_basic(&dict, "AutoConnect",
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
 	else
-		connman_dbus_dict_append_variant(&dict, "AutoConnect",
+		connman_dbus_dict_append_basic(&dict, "AutoConnect",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	if (service->name != NULL)
-		connman_dbus_dict_append_variant(&dict, "Name",
+		connman_dbus_dict_append_basic(&dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
 
 	switch (service->type) {
@@ -469,27 +469,27 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		connman_dbus_dict_append_variant(&dict, "Roaming",
+		connman_dbus_dict_append_basic(&dict, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
 
 		if (service->mcc != NULL && service->mnc != NULL) {
-			connman_dbus_dict_append_variant(&dict, "MCC",
+			connman_dbus_dict_append_basic(&dict, "MCC",
 					DBUS_TYPE_STRING, &service->mcc);
-			connman_dbus_dict_append_variant(&dict, "MNC",
+			connman_dbus_dict_append_basic(&dict, "MNC",
 					DBUS_TYPE_STRING, &service->mnc);
 		}
 
 		if (service->apn != NULL) {
-			connman_dbus_dict_append_variant(&dict, "APN",
+			connman_dbus_dict_append_basic(&dict, "APN",
 					DBUS_TYPE_STRING, &service->apn);
 
 			if (service->username != NULL)
-				connman_dbus_dict_append_variant(&dict,
+				connman_dbus_dict_append_basic(&dict,
 					"Username", DBUS_TYPE_STRING,
 							&service->username);
 
 			if (service->password != NULL)
-				connman_dbus_dict_append_variant(&dict,
+				connman_dbus_dict_append_basic(&dict,
 					"Password", DBUS_TYPE_STRING,
 							&service->password);
 
@@ -497,14 +497,14 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		} else
 			required = TRUE;
 
-		connman_dbus_dict_append_variant(&dict, "SetupRequired",
+		connman_dbus_dict_append_basic(&dict, "SetupRequired",
 						DBUS_TYPE_BOOLEAN, &required);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->passphrase != NULL &&
 				__connman_security_check_privilege(msg,
 					CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
-			connman_dbus_dict_append_variant(&dict, "Passphrase",
+			connman_dbus_dict_append_basic(&dict, "Passphrase",
 				DBUS_TYPE_STRING, &service->passphrase);
 
 		required = FALSE;
@@ -523,7 +523,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			break;
 		}
 
-		connman_dbus_dict_append_variant(&dict, "PassphraseRequired",
+		connman_dbus_dict_append_basic(&dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
 		break;
 	}

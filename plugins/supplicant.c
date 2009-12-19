@@ -375,7 +375,7 @@ static int add_interface(struct supplicant_task *task)
 
 	connman_dbus_dict_open(&array, &dict);
 
-	connman_dbus_dict_append_variant(&dict, "driver",
+	connman_dbus_dict_append_basic(&dict, "driver",
 						DBUS_TYPE_STRING, &driver);
 
 	connman_dbus_dict_close(&array, &dict);
@@ -783,25 +783,25 @@ static int set_network(struct supplicant_task *task,
 
 	connman_dbus_dict_open(&array, &dict);
 
-	connman_dbus_dict_append_variant(&dict, "scan_ssid",
+	connman_dbus_dict_append_basic(&dict, "scan_ssid",
 					 DBUS_TYPE_UINT32, &scan_ssid);
 
 	if (network)
 		connman_dbus_dict_append_fixed_array(&dict, "ssid",
 						DBUS_TYPE_BYTE, &network, len);
 	else if (address)
-		connman_dbus_dict_append_variant(&dict, "bssid",
+		connman_dbus_dict_append_basic(&dict, "bssid",
 						DBUS_TYPE_STRING, &address);
 
 	if (g_ascii_strcasecmp(security, "psk") == 0 ||
 				g_ascii_strcasecmp(security, "wpa") == 0 ||
 				g_ascii_strcasecmp(security, "rsn") == 0) {
 		const char *key_mgmt = "WPA-PSK";
-		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+		connman_dbus_dict_append_basic(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
 
 		if (passphrase && strlen(passphrase) > 0)
-			connman_dbus_dict_append_variant(&dict, "psk",
+			connman_dbus_dict_append_basic(&dict, "psk",
 						DBUS_TYPE_STRING, &passphrase);
 	} else if (g_ascii_strcasecmp(security, "wep") == 0) {
 		const char *key_mgmt = "NONE";
@@ -811,10 +811,10 @@ static int set_network(struct supplicant_task *task,
 		if (task->mac80211 == TRUE)
 			auth_alg = "OPEN SHARED";
 
-		connman_dbus_dict_append_variant(&dict, "auth_alg",
+		connman_dbus_dict_append_basic(&dict, "auth_alg",
 						DBUS_TYPE_STRING, &auth_alg);
 
-		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+		connman_dbus_dict_append_basic(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
 
 		if (passphrase) {
@@ -836,16 +836,16 @@ static int set_network(struct supplicant_task *task,
 							&key, size / 2);
 				free(key);
 			} else
-				connman_dbus_dict_append_variant(&dict,
+				connman_dbus_dict_append_basic(&dict,
 						"wep_key0", DBUS_TYPE_STRING,
 								&passphrase);
 
-			connman_dbus_dict_append_variant(&dict, "wep_tx_keyidx",
+			connman_dbus_dict_append_basic(&dict, "wep_tx_keyidx",
 						DBUS_TYPE_STRING, &key_index);
 		}
 	} else {
 		const char *key_mgmt = "NONE";
-		connman_dbus_dict_append_variant(&dict, "key_mgmt",
+		connman_dbus_dict_append_basic(&dict, "key_mgmt",
 						DBUS_TYPE_STRING, &key_mgmt);
 	}
 
