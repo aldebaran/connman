@@ -756,9 +756,6 @@ static gboolean set_connected(gpointer user_data)
 int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
 	DBG("network %p connected %d", network, connected);
 
 	if ((network->connecting == TRUE || network->associating == TRUE) &&
@@ -778,16 +775,9 @@ int connman_network_set_connected(struct connman_network *network,
 		return 0;
 	}
 
-	signal = dbus_message_new_signal(network->element.path,
-				CONNMAN_NETWORK_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return 0;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Connected",
-					DBUS_TYPE_BOOLEAN, &connected);
-
-	g_dbus_send_message(connection, signal);
+	connman_dbus_property_changed_basic(network->element.path,
+				CONNMAN_NETWORK_INTERFACE, "Connected",
+						DBUS_TYPE_BOOLEAN, &connected);
 
 	set_connected(network);
 

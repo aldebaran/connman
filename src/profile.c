@@ -81,40 +81,16 @@ static void profiles_changed(void)
 
 static void name_changed(struct connman_profile *profile)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	DBG("profile %p", profile);
-
-	signal = dbus_message_new_signal(profile->path,
-				CONNMAN_PROFILE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Name",
+	connman_dbus_property_changed_basic(profile->path,
+				CONNMAN_PROFILE_INTERFACE, "Name",
 					DBUS_TYPE_STRING, &profile->name);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void offlinemode_changed(struct connman_profile *profile)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	DBG("profile %p", profile);
-
-	signal = dbus_message_new_signal(profile->path,
-				CONNMAN_PROFILE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "OfflineMode",
+	connman_dbus_property_changed_basic(profile->path,
+				CONNMAN_PROFILE_INTERFACE, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
-
-	g_dbus_send_message(connection, signal);
 }
 
 connman_bool_t __connman_profile_get_offlinemode(void)

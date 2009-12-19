@@ -193,23 +193,11 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
-static int powered_changed(struct connman_device *device)
+static void powered_changed(struct connman_device *device)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	signal = dbus_message_new_signal(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return -ENOMEM;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Powered",
+	connman_dbus_property_changed_basic(device->element.path,
+				CONNMAN_DEVICE_INTERFACE, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
-
-	g_dbus_send_message(connection, signal);
-
-	return 0;
 }
 
 static int set_powered(struct connman_device *device, connman_bool_t powered)
@@ -1243,19 +1231,9 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 
 static void scanning_changed(struct connman_device *device)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	signal = dbus_message_new_signal(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Scanning",
+	connman_dbus_property_changed_basic(device->element.path,
+				CONNMAN_DEVICE_INTERFACE, "Scanning",
 					DBUS_TYPE_BOOLEAN, &device->scanning);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void mark_network_available(gpointer key, gpointer value,

@@ -324,24 +324,15 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 
 static void technology_default(enum connman_service_type type)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	const char *str;
 
 	str = __connman_service_type2string(type);
 	if (str == NULL)
 		str = "";
 
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "DefaultTechnology",
+	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "DefaultTechnology",
 						DBUS_TYPE_STRING, &str);
-
-	g_dbus_send_message(connection, signal);
 }
 
 void __connman_notifier_default_changed(struct connman_service *service)
@@ -361,21 +352,11 @@ void __connman_notifier_default_changed(struct connman_service *service)
 
 static void offlinemode_changed(dbus_bool_t enabled)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
 	DBG("enabled %d", enabled);
 
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "OfflineMode",
-					DBUS_TYPE_BOOLEAN, &enabled);
-
-	g_dbus_send_message(connection, signal);
+	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "OfflineMode",
+						DBUS_TYPE_BOOLEAN, &enabled);
 }
 
 void __connman_notifier_offlinemode(connman_bool_t enabled)

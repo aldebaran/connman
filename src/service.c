@@ -269,125 +269,64 @@ const char *__connman_service_default(void)
 
 static void mode_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	const char *str;
-
-	if (service->path == NULL)
-		return;
 
 	str = mode2string(service->mode);
 	if (str == NULL)
 		return;
 
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Mode",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Mode",
 						DBUS_TYPE_STRING, &str);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void state_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	const char *str;
-
-	if (service->path == NULL)
-		return;
 
 	str = state2string(service->state);
 	if (str == NULL)
 		return;
 
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "State",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "State",
 						DBUS_TYPE_STRING, &str);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void strength_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	if (service->path == NULL)
-		return;
-
 	if (service->strength == 0)
 		return;
 
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Strength",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Strength",
 					DBUS_TYPE_BYTE, &service->strength);
+}
 
-	g_dbus_send_message(connection, signal);
+static void favorite_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Favorite",
+					DBUS_TYPE_BOOLEAN, &service->favorite);
 }
 
 static void roaming_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	if (service->path == NULL)
-		return;
-
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Roaming",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void autoconnect_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	if (service->path == NULL)
-		return;
-
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "AutoConnect",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "AutoConnect",
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void passphrase_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	dbus_bool_t required;
-
-	if (service->path == NULL)
-		return;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -417,26 +356,14 @@ static void passphrase_changed(struct connman_service *service)
 		break;
 	}
 
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "PassphraseRequired",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void apn_changed(struct connman_service *service)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	dbus_bool_t required;
-
-	if (service->path == NULL)
-		return;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -453,16 +380,9 @@ static void apn_changed(struct connman_service *service)
 
 	required = (service->apn == NULL) ? TRUE : FALSE;
 
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "SetupRequired",
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "SetupRequired",
 						DBUS_TYPE_BOOLEAN, &required);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -1335,26 +1255,6 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	}
 
 	return (gint) service_b->strength - (gint) service_a->strength;
-}
-
-static void favorite_changed(struct connman_service *service)
-{
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	if (service->path == NULL)
-		return;
-
-	signal = dbus_message_new_signal(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "Favorite",
-					DBUS_TYPE_BOOLEAN, &service->favorite);
-
-	g_dbus_send_message(connection, signal);
 }
 
 /**

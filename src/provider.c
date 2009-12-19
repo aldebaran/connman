@@ -188,27 +188,15 @@ static int provider_probe(struct connman_provider *provider)
 
 static void state_changed(struct connman_provider *provider)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	const char *str;
-
-	if (provider->path == NULL)
-		return;
 
 	str = state2string(provider->state);
 	if (str == NULL)
 		return;
 
-	signal = dbus_message_new_signal(provider->path,
-			CONNMAN_PROVIDER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "State",
+	connman_dbus_property_changed_basic(provider->path,
+				CONNMAN_PROVIDER_INTERFACE, "State",
 						DBUS_TYPE_STRING, &str); 
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void reply_pending(struct connman_provider *provider, int error)

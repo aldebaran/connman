@@ -1255,18 +1255,9 @@ static void emit_state_change(DBusConnection *conn, const char *state)
 	DBusMessage *signal;
 	DBusMessageIter iter;
 
-	DBG("conn %p", conn);
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, "State",
+	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "State",
 						DBUS_TYPE_STRING, &state);
-
-	g_dbus_send_message(conn, signal);
 
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "StateChanged");
