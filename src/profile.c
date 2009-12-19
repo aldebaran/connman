@@ -60,21 +60,9 @@ void __connman_profile_list(DBusMessageIter *iter, void *user_data)
 
 static void profiles_changed(void)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	DBG("");
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variable_array(&iter, "Profiles",
+	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "Profiles",
 			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void name_changed(struct connman_profile *profile)
@@ -151,42 +139,24 @@ static guint changed_timeout = 0;
 static gboolean services_changed(gpointer user_data)
 {
 	struct connman_profile *profile = default_profile;
-	DBusMessage *signal;
-	DBusMessageIter iter;
+	connman_dbus_append_cb_t function = NULL;
 
 	changed_timeout = 0;
 
 	if (profile == NULL)
 		return FALSE;
 
-	signal = dbus_message_new_signal(profile->path,
-				CONNMAN_PROFILE_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return FALSE;
+	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0) {
+		function = __connman_service_list;
 
-	dbus_message_iter_init_append(signal, &iter);
-	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0)
-		connman_dbus_property_append_variable_array(&iter, "Services",
-			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
-	else
-		connman_dbus_property_append_variable_array(&iter, "Services",
-					DBUS_TYPE_OBJECT_PATH, NULL, NULL);
+		connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "Services",
+				DBUS_TYPE_OBJECT_PATH, function, NULL);
+	}
 
-	g_dbus_send_message(connection, signal);
-
-	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) != 0)
-		return FALSE;
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return FALSE;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variable_array(&iter, "Services",
-			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
-
-	g_dbus_send_message(connection, signal);
+	connman_dbus_property_changed_array(profile->path,
+				CONNMAN_PROFILE_INTERFACE, "Services",
+				DBUS_TYPE_OBJECT_PATH, function, NULL);
 
 	return FALSE;
 }

@@ -127,46 +127,24 @@ void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data)
 static void technology_registered(enum connman_service_type type,
 						connman_bool_t registered)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
 	DBG("type %d registered %d", type, registered);
 
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variable_array(&iter,
-				"AvailableTechnologies", DBUS_TYPE_STRING,
-				__connman_notifier_list_registered, NULL);
-
-	g_dbus_send_message(connection, signal);
+	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+		CONNMAN_MANAGER_INTERFACE, "AvailableTechnologies",
+		DBUS_TYPE_STRING, __connman_notifier_list_registered, NULL);
 }
 
 static void technology_enabled(enum connman_service_type type,
 						connman_bool_t enabled)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
 	GSList *list;
 
 	DBG("type %d enabled %d", type, enabled);
 
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		goto done;
+	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+		CONNMAN_MANAGER_INTERFACE, "EnabledTechnologies",
+		DBUS_TYPE_STRING, __connman_notifier_list_enabled, NULL);
 
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variable_array(&iter,
-				"EnabledTechnologies", DBUS_TYPE_STRING,
-				__connman_notifier_list_enabled, NULL);
-
-	g_dbus_send_message(connection, signal);
-
-done:
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
@@ -178,22 +156,11 @@ done:
 static void technology_connected(enum connman_service_type type,
 						connman_bool_t connected)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
 	DBG("type %d connected %d", type, connected);
 
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variable_array(&iter,
-				"ConnectedTechnologies", DBUS_TYPE_STRING,
-				__connman_notifier_list_connected, NULL);
-
-	g_dbus_send_message(connection, signal);
+	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+		CONNMAN_MANAGER_INTERFACE, "ConnectedTechnologies",
+		DBUS_TYPE_STRING, __connman_notifier_list_connected, NULL);
 }
 
 void __connman_notifier_register(enum connman_service_type type)

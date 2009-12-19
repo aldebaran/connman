@@ -480,19 +480,9 @@ static GDBusSignalTable device_signals[] = {
 
 static void emit_devices_signal(void)
 {
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variable_array(&iter, "Devices",
+	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "Devices",
 			DBUS_TYPE_OBJECT_PATH, __connman_device_list, NULL);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static int register_interface(struct connman_element *element)
