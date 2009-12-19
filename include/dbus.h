@@ -45,14 +45,11 @@ extern "C" {
 #define CONNMAN_CONNECTION_INTERFACE	CONNMAN_SERVICE ".Connection"
 #define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
 
+typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter);
+
 DBusConnection *connman_dbus_get_connection(void);
 
 void connman_dbus_property_append_variant(DBusMessageIter *property,
-					const char *key, int type, void *val);
-
-void connman_dbus_dict_append_array(DBusMessageIter *dict,
-				const char *key, int type, void *val, int len);
-void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 					const char *key, int type, void *val);
 
 static inline void connman_dbus_dict_open(DBusMessageIter *iter,
@@ -69,6 +66,14 @@ static inline void connman_dbus_dict_close(DBusMessageIter *iter,
 {
 	dbus_message_iter_close_container(iter, dict);
 }
+
+void connman_dbus_dict_append_variant(DBusMessageIter *dict,
+					const char *key, int type, void *val);
+
+void connman_dbus_dict_append_fixed_array(DBusMessageIter *dict,
+				const char *key, int type, void *val, int len);
+void connman_dbus_dict_append_variable_array(DBusMessageIter *dict,
+		const char *key, int type, connman_dbus_append_cb_t function);
 
 dbus_bool_t connman_dbus_validate_ident(const char *ident);
 char *connman_dbus_encode_string(const char *value);

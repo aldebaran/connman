@@ -143,7 +143,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 					DBUS_TYPE_UINT16, &network->frequency);
 
 	if (network->wifi.ssid != NULL && network->wifi.ssid_len > 0)
-		connman_dbus_dict_append_array(&dict, "WiFi.SSID",
+		connman_dbus_dict_append_fixed_array(&dict, "WiFi.SSID",
 				DBUS_TYPE_BYTE, &network->wifi.ssid,
 						network->wifi.ssid_len);
 

@@ -787,7 +787,7 @@ static int set_network(struct supplicant_task *task,
 					 DBUS_TYPE_UINT32, &scan_ssid);
 
 	if (network)
-		connman_dbus_dict_append_array(&dict, "ssid",
+		connman_dbus_dict_append_fixed_array(&dict, "ssid",
 						DBUS_TYPE_BYTE, &network, len);
 	else if (address)
 		connman_dbus_dict_append_variant(&dict, "bssid",
@@ -831,7 +831,7 @@ static int set_network(struct supplicant_task *task,
 					key[i] = (unsigned char) strtol(tmp,
 								NULL, 16);
 				}
-				connman_dbus_dict_append_array(&dict,
+				connman_dbus_dict_append_fixed_array(&dict,
 						"wep_key0", DBUS_TYPE_BYTE,
 							&key, size / 2);
 				free(key);
