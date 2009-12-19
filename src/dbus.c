@@ -168,7 +168,8 @@ void connman_dbus_property_append_fixed_array(DBusMessageIter *iter,
 }
 
 void connman_dbus_property_append_variable_array(DBusMessageIter *iter,
-		const char *key, int type, connman_dbus_append_cb_t function)
+						const char *key, int type,
+			connman_dbus_append_cb_t function, void *user_data)
 {
 	DBusMessageIter value, array;
 	const char *variant_sig, *array_sig;
@@ -194,7 +195,7 @@ void connman_dbus_property_append_variable_array(DBusMessageIter *iter,
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 							array_sig, &array);
 	if (function)
-		function(&array, NULL);
+		function(&array, user_data);
 	dbus_message_iter_close_container(&value, &array);
 
 	dbus_message_iter_close_container(iter, &value);

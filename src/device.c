@@ -505,7 +505,7 @@ static void emit_devices_signal(void)
 
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variable_array(&iter, "Devices",
-				DBUS_TYPE_OBJECT_PATH, __connman_device_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_device_list, NULL);
 
 	g_dbus_send_message(connection, signal);
 }

@@ -55,8 +55,9 @@ void connman_dbus_property_append_dict(DBusMessageIter *iter, const char *key,
 			connman_dbus_append_cb_t function, void *user_data);
 void connman_dbus_property_append_fixed_array(DBusMessageIter *iter,
 				const char *key, int type, void *val, int len);
-void connman_dbus_property_append_variable_array(DBusMessageIter *dict,
-		const char *key, int type, connman_dbus_append_cb_t function);
+void connman_dbus_property_append_variable_array(DBusMessageIter *iter,
+						const char *key, int type,
+			connman_dbus_append_cb_t function, void *user_data);
 
 dbus_bool_t connman_dbus_property_changed_basic(const char *path,
 				const char *interface, const char *key,
@@ -121,7 +122,7 @@ static inline void connman_dbus_dict_append_variable_array(DBusMessageIter *dict
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 	connman_dbus_property_append_variable_array(&entry, key,
-							type, function);
+							type, function, NULL);
 	dbus_message_iter_close_container(dict, &entry);
 }
 

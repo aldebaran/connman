@@ -72,7 +72,7 @@ static void profiles_changed(void)
 
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variable_array(&iter, "Profiles",
-				DBUS_TYPE_OBJECT_PATH, __connman_profile_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -167,10 +167,10 @@ static gboolean services_changed(gpointer user_data)
 	dbus_message_iter_init_append(signal, &iter);
 	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0)
 		connman_dbus_property_append_variable_array(&iter, "Services",
-				DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 	else
 		connman_dbus_property_append_variable_array(&iter, "Services",
-						DBUS_TYPE_OBJECT_PATH, NULL);
+					DBUS_TYPE_OBJECT_PATH, NULL, NULL);
 
 	g_dbus_send_message(connection, signal);
 
@@ -184,7 +184,7 @@ static gboolean services_changed(gpointer user_data)
 
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variable_array(&iter, "Services",
-				DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 
 	g_dbus_send_message(connection, signal);
 

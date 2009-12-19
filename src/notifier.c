@@ -140,7 +140,7 @@ static void technology_registered(enum connman_service_type type,
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variable_array(&iter,
 				"AvailableTechnologies", DBUS_TYPE_STRING,
-					__connman_notifier_list_registered);
+				__connman_notifier_list_registered, NULL);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -162,7 +162,7 @@ static void technology_enabled(enum connman_service_type type,
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variable_array(&iter,
 				"EnabledTechnologies", DBUS_TYPE_STRING,
-					__connman_notifier_list_enabled);
+				__connman_notifier_list_enabled, NULL);
 
 	g_dbus_send_message(connection, signal);
 
@@ -191,7 +191,7 @@ static void technology_connected(enum connman_service_type type,
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variable_array(&iter,
 				"ConnectedTechnologies", DBUS_TYPE_STRING,
-					__connman_notifier_list_connected);
+				__connman_notifier_list_connected, NULL);
 
 	g_dbus_send_message(connection, signal);
 }
