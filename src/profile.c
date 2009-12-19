@@ -60,29 +60,10 @@ void __connman_profile_list(DBusMessageIter *iter)
 	g_hash_table_foreach(profile_hash, append_path, iter);
 }
 
-static void append_profiles(DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Profiles";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_profile_list(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
 static void profiles_changed(void)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry;
+	DBusMessageIter iter;
 
 	DBG("");
 
@@ -91,16 +72,17 @@ static void profiles_changed(void)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-	append_profiles(&entry);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter, "Profiles",
+				DBUS_TYPE_OBJECT_PATH, __connman_profile_list);
+
 	g_dbus_send_message(connection, signal);
 }
 
 static void name_changed(struct connman_profile *profile)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Name";
+	DBusMessageIter iter;
 
 	DBG("profile %p", profile);
 
@@ -109,15 +91,9 @@ static void name_changed(struct connman_profile *profile)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING,
-							&profile->name);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "Name",
+					DBUS_TYPE_STRING, &profile->name);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -125,8 +101,7 @@ static void name_changed(struct connman_profile *profile)
 static void offlinemode_changed(struct connman_profile *profile)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "OfflineMode";
+	DBusMessageIter iter;
 
 	DBG("profile %p", profile);
 
@@ -135,15 +110,9 @@ static void offlinemode_changed(struct connman_profile *profile)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-						&profile->offlinemode);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "OfflineMode",
+				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -203,36 +172,13 @@ const char *__connman_profile_active_path(void)
 	return default_profile->path;
 }
 
-static void append_services(struct connman_profile *profile,
-						DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Services";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-
-	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0)
-		__connman_service_list(&iter);
-
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
 static guint changed_timeout = 0;
 
 static gboolean services_changed(gpointer user_data)
 {
 	struct connman_profile *profile = default_profile;
 	DBusMessage *signal;
-	DBusMessageIter entry;
+	DBusMessageIter iter;
 
 	changed_timeout = 0;
 
@@ -244,8 +190,14 @@ static gboolean services_changed(gpointer user_data)
 	if (signal == NULL)
 		return FALSE;
 
-	dbus_message_iter_init_append(signal, &entry);
-	append_services(profile, &entry);
+	dbus_message_iter_init_append(signal, &iter);
+	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0)
+		connman_dbus_property_append_variable_array(&iter, "Services",
+				DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+	else
+		connman_dbus_property_append_variable_array(&iter, "Services",
+						DBUS_TYPE_OBJECT_PATH, NULL);
+
 	g_dbus_send_message(connection, signal);
 
 	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) != 0)
@@ -256,8 +208,10 @@ static gboolean services_changed(gpointer user_data)
 	if (signal == NULL)
 		return FALSE;
 
-	dbus_message_iter_init_append(signal, &entry);
-	append_services(profile, &entry);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter, "Services",
+				DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+
 	g_dbus_send_message(connection, signal);
 
 	return FALSE;
@@ -321,7 +275,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	struct connman_profile *profile = data;
 	DBusMessage *reply;
-	DBusMessageIter array, dict, entry;
+	DBusMessageIter array, dict;
 
 	DBG("conn %p", conn);
 
@@ -331,10 +285,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	if (profile->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
@@ -343,12 +294,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
 
-	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-	append_services(profile, &entry);
-	dbus_message_iter_close_container(&dict, &entry);
+	connman_dbus_dict_append_variable_array(&dict, "Services",
+				DBUS_TYPE_OBJECT_PATH, __connman_service_list);
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }

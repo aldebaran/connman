@@ -111,10 +111,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	if (network->device) {
 		const char *path = connman_device_get_path(network->device);
@@ -165,7 +162,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_variant(&dict, "WiFi.Passphrase",
 				DBUS_TYPE_STRING, &network->wifi.passphrase);
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }
@@ -758,8 +755,7 @@ int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Connected";
+	DBusMessageIter iter;
 
 	DBG("network %p connected %d", network, connected);
 
@@ -785,14 +781,9 @@ int connman_network_set_connected(struct connman_network *network,
 	if (signal == NULL)
 		return 0;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &connected);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "Connected",
+					DBUS_TYPE_BOOLEAN, &connected);
 
 	g_dbus_send_message(connection, signal);
 

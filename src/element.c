@@ -1250,23 +1250,10 @@ int __connman_element_set_ipv4(struct connman_element *element,
 	return 0;
 }
 
-static void append_state(DBusMessageIter *entry, const char *state)
-{
-	DBusMessageIter value;
-	const char *key = "State";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &state);
-	dbus_message_iter_close_container(entry, &value);
-}
-
 static void emit_state_change(DBusConnection *conn, const char *state)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry;
+	DBusMessageIter iter;
 
 	DBG("conn %p", conn);
 
@@ -1275,9 +1262,9 @@ static void emit_state_change(DBusConnection *conn, const char *state)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_state(&entry, state);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "State",
+						DBUS_TYPE_STRING, &state);
 
 	g_dbus_send_message(conn, signal);
 
@@ -1286,8 +1273,8 @@ static void emit_state_change(DBusConnection *conn, const char *state)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &state);
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &state);
 
 	g_dbus_send_message(conn, signal);
 }

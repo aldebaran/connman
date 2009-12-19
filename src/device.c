@@ -196,23 +196,16 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 static int powered_changed(struct connman_device *device)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Powered";
+	DBusMessageIter iter;
 
 	signal = dbus_message_new_signal(device->element.path,
 				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return -ENOMEM;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&device->powered);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "Powered",
+					DBUS_TYPE_BOOLEAN, &device->powered);
 
 	g_dbus_send_message(connection, signal);
 
@@ -325,10 +318,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	if (device->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
@@ -370,7 +360,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		break;
 	}
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }
@@ -515,38 +505,19 @@ static GDBusSignalTable device_signals[] = {
 	{ },
 };
 
-static void append_devices(DBusMessageIter *entry)
-{
-	DBusMessageIter value, iter;
-	const char *key = "Devices";
-
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
-}
-
 static void emit_devices_signal(void)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry;
+	DBusMessageIter iter;
 
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_devices(&entry);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter, "Devices",
+				DBUS_TYPE_OBJECT_PATH, __connman_device_list);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -1273,23 +1244,16 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 static void scanning_changed(struct connman_device *device)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Scanning";
+	DBusMessageIter iter;
 
 	signal = dbus_message_new_signal(device->element.path,
 				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&device->scanning);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "Scanning",
+					DBUS_TYPE_BOOLEAN, &device->scanning);
 
 	g_dbus_send_message(connection, signal);
 }

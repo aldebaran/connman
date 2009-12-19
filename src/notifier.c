@@ -128,8 +128,7 @@ static void technology_registered(enum connman_service_type type,
 						connman_bool_t registered)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value, iter;
-	const char *key = "AvailableTechnologies";
+	DBusMessageIter iter;
 
 	DBG("type %d registered %d", type, registered);
 
@@ -138,20 +137,10 @@ static void technology_registered(enum connman_service_type type,
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list_registered(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter,
+				"AvailableTechnologies", DBUS_TYPE_STRING,
+					__connman_notifier_list_registered);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -159,10 +148,9 @@ static void technology_registered(enum connman_service_type type,
 static void technology_enabled(enum connman_service_type type,
 						connman_bool_t enabled)
 {
-	GSList *list;
 	DBusMessage *signal;
-	DBusMessageIter entry, value, iter;
-	const char *key = "EnabledTechnologies";
+	DBusMessageIter iter;
+	GSList *list;
 
 	DBG("type %d enabled %d", type, enabled);
 
@@ -171,20 +159,10 @@ static void technology_enabled(enum connman_service_type type,
 	if (signal == NULL)
 		goto done;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list_enabled(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter,
+				"EnabledTechnologies", DBUS_TYPE_STRING,
+					__connman_notifier_list_enabled);
 
 	g_dbus_send_message(connection, signal);
 
@@ -201,8 +179,7 @@ static void technology_connected(enum connman_service_type type,
 						connman_bool_t connected)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value, iter;
-	const char *key = "ConnectedTechnologies";
+	DBusMessageIter iter;
 
 	DBG("type %d connected %d", type, connected);
 
@@ -211,20 +188,10 @@ static void technology_connected(enum connman_service_type type,
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list_connected(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter,
+				"ConnectedTechnologies", DBUS_TYPE_STRING,
+					__connman_notifier_list_connected);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -358,8 +325,8 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 static void technology_default(enum connman_service_type type)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *str, *key = "DefaultTechnology";
+	DBusMessageIter iter;
+	const char *str;
 
 	str = __connman_service_type2string(type);
 	if (str == NULL)
@@ -370,14 +337,9 @@ static void technology_default(enum connman_service_type type)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "DefaultTechnology",
+						DBUS_TYPE_STRING, &str);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -400,8 +362,7 @@ void __connman_notifier_default_changed(struct connman_service *service)
 static void offlinemode_changed(dbus_bool_t enabled)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "OfflineMode";
+	DBusMessageIter iter;
 
 	DBG("enabled %d", enabled);
 
@@ -410,14 +371,9 @@ static void offlinemode_changed(dbus_bool_t enabled)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &enabled);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "OfflineMode",
+					DBUS_TYPE_BOOLEAN, &enabled);
 
 	g_dbus_send_message(connection, signal);
 }

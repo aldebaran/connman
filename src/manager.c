@@ -27,223 +27,6 @@
 
 #include "connman.h"
 
-static void append_profiles(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "Profiles";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_profile_list(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_services(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "Services";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_service_list(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-
-static void append_providers(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "Providers";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_provider_list(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_devices(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "Devices";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_available_technologies(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "AvailableTechnologies";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list_registered(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_enabled_technologies(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "EnabledTechnologies";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list_enabled(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_connected_technologies(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "ConnectedTechnologies";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_notifier_list_connected(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_available_debugs(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "AvailableDebugs";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_debug_list_available(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-static void append_enabled_debugs(DBusMessageIter *dict)
-{
-	DBusMessageIter entry, value, iter;
-	const char *key = "EnabledDebugs";
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-			DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-					DBUS_TYPE_STRING_AS_STRING, &iter);
-	__connman_debug_list_enabled(&iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -264,21 +47,22 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	str = __connman_profile_active_path();
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "ActiveProfile",
 						DBUS_TYPE_OBJECT_PATH, &str);
 
-	append_profiles(&dict);
-	append_services(&dict);
-	append_providers(&dict);
+	connman_dbus_dict_append_variable_array(&dict, "Profiles",
+			DBUS_TYPE_OBJECT_PATH, __connman_profile_list);
+	connman_dbus_dict_append_variable_array(&dict, "Services",
+			DBUS_TYPE_OBJECT_PATH, __connman_service_list);
+	connman_dbus_dict_append_variable_array(&dict, "Providers",
+			DBUS_TYPE_OBJECT_PATH, __connman_provider_list);
 
-	append_devices(&dict);
+	connman_dbus_dict_append_variable_array(&dict, "Providers",
+			DBUS_TYPE_OBJECT_PATH, __connman_device_list);
 
 	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
 		str = "online";
@@ -292,19 +76,24 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
 
-	append_available_technologies(&dict);
-	append_enabled_technologies(&dict);
-	append_connected_technologies(&dict);
+	connman_dbus_dict_append_variable_array(&dict, "AvailableTechnologies",
+			DBUS_TYPE_STRING, __connman_notifier_list_registered);
+	connman_dbus_dict_append_variable_array(&dict, "EnabledTechnologies",
+			DBUS_TYPE_STRING, __connman_notifier_list_enabled);
+	connman_dbus_dict_append_variable_array(&dict, "ConnectedTechnologies",
+			DBUS_TYPE_STRING, __connman_notifier_list_connected);
 
 	str = __connman_service_default();
 	if (str != NULL)
 		connman_dbus_dict_append_variant(&dict, "DefaultTechnology",
 						DBUS_TYPE_STRING, &str);
 
-	append_available_debugs(&dict);
-	append_enabled_debugs(&dict);
+	connman_dbus_dict_append_variable_array(&dict, "AvailableDebugs",
+			DBUS_TYPE_STRING, __connman_debug_list_available);
+	connman_dbus_dict_append_variable_array(&dict, "EnabledDebugs",
+			DBUS_TYPE_STRING, __connman_debug_list_enabled);
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }

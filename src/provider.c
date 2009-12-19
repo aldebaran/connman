@@ -189,8 +189,8 @@ static int provider_probe(struct connman_provider *provider)
 static void state_changed(struct connman_provider *provider)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *str, *key = "State";
+	DBusMessageIter iter;
+	const char *str;
 
 	if (provider->path == NULL)
 		return;
@@ -204,14 +204,9 @@ static void state_changed(struct connman_provider *provider)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-				DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, "State",
+						DBUS_TYPE_STRING, &str); 
 
 	g_dbus_send_message(connection, signal);
 }
@@ -437,10 +432,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	if (provider->name != NULL)
 		connman_dbus_dict_append_variant(&dict, "Name",
@@ -465,7 +457,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_variant(&dict, "PassphraseRequired",
 					 DBUS_TYPE_BOOLEAN, &required);
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }

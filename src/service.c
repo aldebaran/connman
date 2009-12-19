@@ -286,9 +286,8 @@ static void mode_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-					"Mode", DBUS_TYPE_STRING, &str);
+	connman_dbus_property_append_variant(&iter, "Mode",
+						DBUS_TYPE_STRING, &str);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -312,9 +311,8 @@ static void state_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-					"State", DBUS_TYPE_STRING, &str);
+	connman_dbus_property_append_variant(&iter, "State",
+						DBUS_TYPE_STRING, &str);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -336,9 +334,8 @@ static void strength_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-			"Strength", DBUS_TYPE_BYTE, &service->strength);
+	connman_dbus_property_append_variant(&iter, "Strength",
+					DBUS_TYPE_BYTE, &service->strength);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -357,9 +354,8 @@ static void roaming_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-			"Roaming", DBUS_TYPE_BOOLEAN, &service->roaming);
+	connman_dbus_property_append_variant(&iter, "Roaming",
+					DBUS_TYPE_BOOLEAN, &service->roaming);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -378,9 +374,8 @@ static void autoconnect_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-		"AutoConnect", DBUS_TYPE_BOOLEAN, &service->autoconnect);
+	connman_dbus_property_append_variant(&iter, "AutoConnect",
+				DBUS_TYPE_BOOLEAN, &service->autoconnect);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -428,9 +423,8 @@ static void passphrase_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-			"PassphraseRequired", DBUS_TYPE_BOOLEAN, &required);
+	connman_dbus_property_append_variant(&iter, "PassphraseRequired",
+						DBUS_TYPE_BOOLEAN, &required);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -465,9 +459,8 @@ static void apn_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-			"SetupRequired", DBUS_TYPE_BOOLEAN, &required);
+	connman_dbus_property_append_variant(&iter, "SetupRequired",
+						DBUS_TYPE_BOOLEAN, &required);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -1358,9 +1351,8 @@ static void favorite_changed(struct connman_service *service)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
-
-	connman_dbus_property_append_variant(&iter,
-			"Favorite", DBUS_TYPE_BOOLEAN, &service->favorite);
+	connman_dbus_property_append_variant(&iter, "Favorite",
+					DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	g_dbus_send_message(connection, signal);
 }
