@@ -252,6 +252,15 @@ static int get_range(struct supplicant_task *task)
 
 	close(fd);
 
+	if (err < 0)
+		task->range->max_qual.updated |= IW_QUAL_ALL_INVALID;
+
+	connman_info("%s {scan} capabilities 0x%02x", task->ifname,
+						task->range->scan_capa);
+
+	connman_info("%s {quality} flags 0x%02x", task->ifname,
+					task->range->max_qual.updated);
+
 	return err;
 }
 
@@ -1318,6 +1327,12 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_next(&dict);
 	}
+
+	DBG("capabilties %u frequency %d "
+			"quality %d noise %d level %d maxrate %d",
+					result.capabilities, result.frequency,
+						result.quality, result.noise,
+						result.level, result.maxrate);
 
 	if (result.path == NULL)
 		goto done;
