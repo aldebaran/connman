@@ -328,6 +328,9 @@ static int resolvfile_append(const char *interface, const char *domain,
 
 	DBG("interface %s server %s", interface, server);
 
+	if (interface == NULL)
+		return -ENOENT;
+
 	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT,
 					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd < 0)
