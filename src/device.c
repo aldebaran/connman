@@ -266,24 +266,11 @@ static void append_path(gpointer key, gpointer value, gpointer user_data)
 							&element->path);
 }
 
-static void append_networks(struct connman_device *device,
-						DBusMessageIter *entry)
+static void append_networks(DBusMessageIter *iter, void *user_data)
 {
-	DBusMessageIter value, iter;
-	const char *key = "Networks";
+	struct connman_device *device = user_data;
 
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
-	g_hash_table_foreach(device->networks, append_path, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
+	g_hash_table_foreach(device->networks, append_path, iter);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -291,7 +278,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	struct connman_device *device = data;
 	DBusMessage *reply;
-	DBusMessageIter array, dict, entry;
+	DBusMessageIter array, dict;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -341,10 +328,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			connman_dbus_dict_append_basic(&dict, "ScanInterval",
 				DBUS_TYPE_UINT16, &device->scan_interval);
 
-		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-		append_networks(device, &entry);
-		dbus_message_iter_close_container(&dict, &entry);
+		connman_dbus_dict_append_variable_array(&dict, "Networks",
+				DBUS_TYPE_OBJECT_PATH, append_networks, device);
 		break;
 	}
 

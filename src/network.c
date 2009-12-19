@@ -179,41 +179,28 @@ static GDBusSignalTable network_signals[] = {
 
 static DBusConnection *connection;
 
-static void append_networks(struct connman_device *device,
-						DBusMessageIter *entry)
+static void append_networks(DBusMessageIter *iter, void *user_data)
 {
-	DBusMessageIter value, iter;
-	const char *key = "Networks";
+	struct connman_device *device = user_data;
 
-	dbus_message_iter_append_basic(entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(entry, DBUS_TYPE_VARIANT,
-		DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING,
-								&value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-				DBUS_TYPE_OBJECT_PATH_AS_STRING, &iter);
 	__connman_element_list((struct connman_element *) device,
-					CONNMAN_ELEMENT_TYPE_NETWORK, &iter);
-	dbus_message_iter_close_container(&value, &iter);
-
-	dbus_message_iter_close_container(entry, &value);
+					CONNMAN_ELEMENT_TYPE_NETWORK, iter);
 }
 
 static void emit_networks_signal(struct connman_device *device)
 {
 	const char *path = connman_device_get_path(device);
 	DBusMessage *signal;
-	DBusMessageIter entry;
+	DBusMessageIter iter;
 
 	signal = dbus_message_new_signal(path,
 				CONNMAN_DEVICE_INTERFACE, "PropertyChanged");
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
-
-	append_networks(device, &entry);
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter, "Networks",
+			DBUS_TYPE_OBJECT_PATH, append_networks, device);
 
 	g_dbus_send_message(connection, signal);
 }
