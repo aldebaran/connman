@@ -268,6 +268,8 @@ void __connman_udev_enable_rfkill_processing(void);
 int __connman_device_init(void);
 void __connman_device_cleanup(void);
 
+void __connman_device_list(DBusMessageIter *iter);
+
 enum connman_service_type __connman_device_get_service_type(struct connman_device *device);
 
 int __connman_device_get_phyindex(struct connman_device *device);

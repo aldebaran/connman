@@ -271,6 +271,11 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	return err;
 }
 
+void __connman_device_list(DBusMessageIter *iter)
+{
+	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, iter);
+}
+
 static void append_path(gpointer key, gpointer value, gpointer user_data)
 {
 	struct connman_element *element = value;
