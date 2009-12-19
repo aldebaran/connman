@@ -270,8 +270,8 @@ const char *__connman_service_default(void)
 static void mode_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *str, *key = "Mode";
+	DBusMessageIter iter;
+	const char *str;
 
 	if (service->path == NULL)
 		return;
@@ -285,14 +285,10 @@ static void mode_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+					"Mode", DBUS_TYPE_STRING, &str);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -300,8 +296,8 @@ static void mode_changed(struct connman_service *service)
 static void state_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *str, *key = "State";
+	DBusMessageIter iter;
+	const char *str;
 
 	if (service->path == NULL)
 		return;
@@ -315,14 +311,10 @@ static void state_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+					"State", DBUS_TYPE_STRING, &str);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -330,8 +322,7 @@ static void state_changed(struct connman_service *service)
 static void strength_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Strength";
+	DBusMessageIter iter;
 
 	if (service->path == NULL)
 		return;
@@ -344,15 +335,10 @@ static void strength_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BYTE_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BYTE,
-							&service->strength);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+			"Strength", DBUS_TYPE_BYTE, &service->strength);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -360,8 +346,7 @@ static void strength_changed(struct connman_service *service)
 static void roaming_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Roaming";
+	DBusMessageIter iter;
 
 	if (service->path == NULL)
 		return;
@@ -371,15 +356,10 @@ static void roaming_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&service->roaming);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+			"Roaming", DBUS_TYPE_BOOLEAN, &service->roaming);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -387,8 +367,7 @@ static void roaming_changed(struct connman_service *service)
 static void autoconnect_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "AutoConnect";
+	DBusMessageIter iter;
 
 	if (service->path == NULL)
 		return;
@@ -398,15 +377,10 @@ static void autoconnect_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&service->autoconnect);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+		"AutoConnect", DBUS_TYPE_BOOLEAN, &service->autoconnect);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -414,9 +388,8 @@ static void autoconnect_changed(struct connman_service *service)
 static void passphrase_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
+	DBusMessageIter iter;
 	dbus_bool_t required;
-	const char *key = "PassphraseRequired";
 
 	if (service->path == NULL)
 		return;
@@ -454,14 +427,10 @@ static void passphrase_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &required);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+			"PassphraseRequired", DBUS_TYPE_BOOLEAN, &required);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -469,9 +438,8 @@ static void passphrase_changed(struct connman_service *service)
 static void apn_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
+	DBusMessageIter iter;
 	dbus_bool_t required;
-	const char *key = "SetupRequired";
 
 	if (service->path == NULL)
 		return;
@@ -496,14 +464,10 @@ static void apn_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN, &required);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+			"SetupRequired", DBUS_TYPE_BOOLEAN, &required);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -525,10 +489,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	dbus_message_iter_init_append(reply, &array);
 
-	dbus_message_iter_open_container(&array, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+	connman_dbus_dict_open(&array, &dict);
 
 	str = __connman_service_type2string(service->type);
 	if (str != NULL)
@@ -645,7 +606,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		__connman_ipconfig_append_ipv4(service->ipconfig,
 							&dict, "IPv4.");
 
-	dbus_message_iter_close_container(&array, &dict);
+	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }
@@ -1386,8 +1347,7 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 static void favorite_changed(struct connman_service *service)
 {
 	DBusMessage *signal;
-	DBusMessageIter entry, value;
-	const char *key = "Favorite";
+	DBusMessageIter iter;
 
 	if (service->path == NULL)
 		return;
@@ -1397,15 +1357,10 @@ static void favorite_changed(struct connman_service *service)
 	if (signal == NULL)
 		return;
 
-	dbus_message_iter_init_append(signal, &entry);
+	dbus_message_iter_init_append(signal, &iter);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_BOOLEAN_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_BOOLEAN,
-							&service->favorite);
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variant(&iter,
+			"Favorite", DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	g_dbus_send_message(connection, signal);
 }
