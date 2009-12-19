@@ -1211,7 +1211,7 @@ static void extract_capabilites(DBusMessageIter *value,
 static unsigned char calculate_strength(struct supplicant_task *task,
 					struct supplicant_result *result)
 {
-	if (task->range->max_qual.qual == 0) {
+	if (result->quality == -1 || task->range->max_qual.qual == 0) {
 		unsigned char strength;
 
 		if (result->level > 0)
