@@ -170,7 +170,8 @@ Properties	string State [readonly]
 			management setting.
 
 			Possible values are "none", "wep", "psk" and
-			also "ieee8021x".
+			also "ieee8021x". Alternate values for "psk"
+			can also be "wpa" and "rsn".
 
 			This property might be only present for WiFi
 			services.
