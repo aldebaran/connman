@@ -65,6 +65,9 @@ dbus_bool_t connman_dbus_property_changed_basic(const char *path,
 dbus_bool_t connman_dbus_property_changed_dict(const char *path,
 				const char *interface, const char *key,
 			connman_dbus_append_cb_t function, void *user_data);
+dbus_bool_t connman_dbus_property_changed_array(const char *path,
+			const char *interface, const char *key, int type,
+			connman_dbus_append_cb_t function, void *user_data);
 
 static inline void connman_dbus_dict_open(DBusMessageIter *iter,
 							DBusMessageIter *dict)

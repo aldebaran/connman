@@ -247,6 +247,29 @@ dbus_bool_t connman_dbus_property_changed_dict(const char *path,
 	return TRUE;
 }
 
+dbus_bool_t connman_dbus_property_changed_array(const char *path,
+			const char *interface, const char *key, int type,
+			connman_dbus_append_cb_t function, void *user_data)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	if (path == NULL)
+		return FALSE;
+
+	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
+	if (signal == NULL)
+		return FALSE;
+
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variable_array(&iter, key, type,
+							function, user_data);
+
+	g_dbus_send_message(connection, signal);
+
+	return TRUE;
+}
+
 DBusConnection *connman_dbus_get_connection(void)
 {
 	if (connection == NULL)
