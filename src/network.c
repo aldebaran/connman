@@ -568,6 +568,8 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
+		if (g_strcmp0(network->wifi.mode, "adhoc") == 0)
+			return TRUE;
 		if (network->strength > 0 && network->strength < 20)
 			return TRUE;
 		break;
