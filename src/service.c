@@ -387,6 +387,18 @@ static void append_settings(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return;
+	case CONNMAN_SERVICE_STATE_READY:
+		break;
+	}
+
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ipv4(service->ipconfig,
 							iter, "IPv4.");
