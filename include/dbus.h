@@ -48,8 +48,10 @@ typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter);
 
 DBusConnection *connman_dbus_get_connection(void);
 
-void connman_dbus_property_append_variant(DBusMessageIter *property,
+void connman_dbus_property_append_variant(DBusMessageIter *iter,
 					const char *key, int type, void *val);
+void connman_dbus_property_append_dict(DBusMessageIter *iter, const char *key,
+			connman_dbus_append_cb_t function, void *user_data);
 void connman_dbus_property_append_fixed_array(DBusMessageIter *iter,
 				const char *key, int type, void *val, int len);
 void connman_dbus_property_append_variable_array(DBusMessageIter *dict,
@@ -58,6 +60,9 @@ void connman_dbus_property_append_variable_array(DBusMessageIter *dict,
 dbus_bool_t connman_dbus_property_changed_basic(const char *path,
 				const char *interface, const char *key,
 							int type, void *val);
+dbus_bool_t connman_dbus_property_changed_dict(const char *path,
+				const char *interface, const char *key,
+			connman_dbus_append_cb_t function, void *user_data);
 
 static inline void connman_dbus_dict_open(DBusMessageIter *iter,
 							DBusMessageIter *dict)
@@ -82,6 +87,17 @@ static inline void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 	connman_dbus_property_append_variant(&entry, key, type, val);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static inline void connman_dbus_dict_append_dict(DBusMessageIter *dict,
+			const char *key, connman_dbus_append_cb_t function)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+	connman_dbus_property_append_dict(&entry, key, function, NULL);
 	dbus_message_iter_close_container(dict, &entry);
 }
 

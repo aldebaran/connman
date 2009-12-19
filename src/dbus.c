@@ -118,6 +118,27 @@ void connman_dbus_property_append_variant(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &value);
 }
 
+void connman_dbus_property_append_dict(DBusMessageIter *iter, const char *key,
+			connman_dbus_append_cb_t function, void *user_data)
+{
+	DBusMessageIter value, dict;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &value);
+
+	connman_dbus_dict_open(&value, &dict);
+	if (function)
+		function(&dict);
+	connman_dbus_dict_close(&value, &dict);
+
+	dbus_message_iter_close_container(iter, &value);
+}
+
 void connman_dbus_property_append_fixed_array(DBusMessageIter *iter,
 				const char *key, int type, void *val, int len)
 {
@@ -197,6 +218,28 @@ dbus_bool_t connman_dbus_property_changed_basic(const char *path,
 
 	dbus_message_iter_init_append(signal, &iter);
 	connman_dbus_property_append_variant(&iter, key, type, val);
+
+	g_dbus_send_message(connection, signal);
+
+	return TRUE;
+}
+
+dbus_bool_t connman_dbus_property_changed_dict(const char *path,
+				const char *interface, const char *key,
+			connman_dbus_append_cb_t function, void *user_data)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	if (path == NULL)
+		return FALSE;
+
+	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
+	if (signal == NULL)
+		return FALSE;
+
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_dict(&iter, key, function, user_data);
 
 	g_dbus_send_message(connection, signal);
 
