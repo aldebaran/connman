@@ -179,46 +179,6 @@ void connman_dbus_property_append_variable_array(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &value);
 }
 
-void connman_dbus_dict_append_variant(DBusMessageIter *dict,
-					const char *key, int type, void *val)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	connman_dbus_property_append_variant(&entry, key, type, val);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-void connman_dbus_dict_append_fixed_array(DBusMessageIter *dict,
-				const char *key, int type, void *val, int len)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	connman_dbus_property_append_fixed_array(&entry, key, type, val, len);
-
-	dbus_message_iter_close_container(dict, &entry);
-}
-
-void connman_dbus_dict_append_variable_array(DBusMessageIter *dict,
-		const char *key, int type, connman_dbus_append_cb_t function)
-{
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
-
-	connman_dbus_property_append_variable_array(&entry, key,
-							type, function);
-	
-	dbus_message_iter_close_container(dict, &entry);
-}
-
 static DBusConnection *connection = NULL;
 
 DBusConnection *connman_dbus_get_connection(void)
