@@ -24,7 +24,7 @@
 #endif
 
 #include <string.h>
-#include <dbus/dbus.h>
+#include <gdbus.h>
 
 #include "connman.h"
 
@@ -180,6 +180,28 @@ void connman_dbus_property_append_variable_array(DBusMessageIter *iter,
 }
 
 static DBusConnection *connection = NULL;
+
+dbus_bool_t connman_dbus_property_changed_basic(const char *path,
+				const char *interface, const char *key,
+							int type, void *val)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	if (path == NULL)
+		return FALSE;
+
+	signal = dbus_message_new_signal(path, interface, "PropertyChanged");
+	if (signal == NULL)
+		return FALSE;
+
+	dbus_message_iter_init_append(signal, &iter);
+	connman_dbus_property_append_variant(&iter, key, type, val);
+
+	g_dbus_send_message(connection, signal);
+
+	return TRUE;
+}
 
 DBusConnection *connman_dbus_get_connection(void)
 {

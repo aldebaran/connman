@@ -55,6 +55,10 @@ void connman_dbus_property_append_fixed_array(DBusMessageIter *iter,
 void connman_dbus_property_append_variable_array(DBusMessageIter *dict,
 		const char *key, int type, connman_dbus_append_cb_t function);
 
+dbus_bool_t connman_dbus_property_changed_basic(const char *path,
+				const char *interface, const char *key,
+							int type, void *val);
+
 static inline void connman_dbus_dict_open(DBusMessageIter *iter,
 							DBusMessageIter *dict)
 {
