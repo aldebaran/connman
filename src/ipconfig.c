@@ -906,6 +906,21 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 		return;
 
 	append_basic(iter, prefix, "Method", DBUS_TYPE_STRING, &str);
+
+	if (ipconfig->address == NULL)
+		return;
+
+	if (ipconfig->address->local != NULL) {
+		struct in_addr netmask;
+		char *mask;
+
+		append_basic(iter, prefix, "Address",
+				DBUS_TYPE_STRING, &ipconfig->address->local);
+
+		netmask.s_addr = ~0 << (32 - ipconfig->address->prefixlen);
+		mask = inet_ntoa(netmask);
+		append_basic(iter, prefix, "Netmask", DBUS_TYPE_STRING, &mask);
+	}
 }
 
 int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
