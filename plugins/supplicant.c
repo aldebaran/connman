@@ -1337,10 +1337,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	if (result.has_8021x == TRUE)
 		security = "ieee8021x";
-	else if (result.has_rsn == TRUE)
-		security = "rsn";
-	else if (result.has_wpa == TRUE)
-		security = "wpa";
 	else if (result.has_psk == TRUE)
 		security = "psk";
 	else if (result.has_wep == TRUE)
@@ -1353,6 +1349,13 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	group = build_group(result.path, result.name,
 					result.ssid, result.ssid_len,
 							mode, security);
+
+	if (result.has_psk == TRUE) {
+		if (result.has_rsn == TRUE)
+			security = "rsn";
+		else if (result.has_wpa == TRUE)
+			security = "wpa";
+	}
 
 	network = connman_device_get_network(task->device, result.path);
 	if (network == NULL) {
