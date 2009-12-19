@@ -111,7 +111,7 @@ static int gprs_change_powered(const char *path, dbus_bool_t powered)
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_variant(&iter, "Powered",
+	connman_dbus_property_append_basic(&iter, "Powered",
 						DBUS_TYPE_BOOLEAN, &powered);
 
 	if (dbus_connection_send_with_reply(connection, message,
@@ -382,7 +382,7 @@ static int set_network_active(struct connman_network *network,
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_variant(&iter, "Active",
+	connman_dbus_property_append_basic(&iter, "Active",
 						DBUS_TYPE_BOOLEAN, &active);
 
 	if (dbus_connection_send_with_reply(connection, message,
@@ -718,7 +718,7 @@ static int modem_change_powered(const char *path, dbus_bool_t powered)
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_variant(&iter, "Powered",
+	connman_dbus_property_append_basic(&iter, "Powered",
 						DBUS_TYPE_BOOLEAN, &powered);
 
 	if (dbus_connection_send_with_reply(connection, message,

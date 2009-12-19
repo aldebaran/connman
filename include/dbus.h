@@ -49,7 +49,7 @@ typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter,
 
 DBusConnection *connman_dbus_get_connection(void);
 
-void connman_dbus_property_append_variant(DBusMessageIter *iter,
+void connman_dbus_property_append_basic(DBusMessageIter *iter,
 					const char *key, int type, void *val);
 void connman_dbus_property_append_dict(DBusMessageIter *iter, const char *key,
 			connman_dbus_append_cb_t function, void *user_data);
@@ -87,7 +87,7 @@ static inline void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
-	connman_dbus_property_append_variant(&entry, key, type, val);
+	connman_dbus_property_append_basic(&entry, key, type, val);
 	dbus_message_iter_close_container(dict, &entry);
 }
 

@@ -74,7 +74,7 @@ char *connman_dbus_encode_string(const char *value)
 	return g_string_free(str, FALSE);
 }
 
-void connman_dbus_property_append_variant(DBusMessageIter *iter,
+void connman_dbus_property_append_basic(DBusMessageIter *iter,
 					const char *key, int type, void *val)
 {
 	DBusMessageIter value;
@@ -217,7 +217,7 @@ dbus_bool_t connman_dbus_property_changed_basic(const char *path,
 		return FALSE;
 
 	dbus_message_iter_init_append(signal, &iter);
-	connman_dbus_property_append_variant(&iter, key, type, val);
+	connman_dbus_property_append_basic(&iter, key, type, val);
 
 	g_dbus_send_message(connection, signal);
 

@@ -286,7 +286,7 @@ static int change_powered(DBusConnection *connection, const char *path,
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_variant(&iter, "Powered",
+	connman_dbus_property_append_basic(&iter, "Powered",
 						DBUS_TYPE_BOOLEAN, &powered);
 
 	if (dbus_connection_send_with_reply(connection, message,
