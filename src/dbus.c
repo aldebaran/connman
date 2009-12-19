@@ -118,6 +118,39 @@ void connman_dbus_property_append_variant(DBusMessageIter *iter,
 	dbus_message_iter_close_container(iter, &value);
 }
 
+void connman_dbus_property_append_variable_array(DBusMessageIter *iter,
+		const char *key, int type, connman_dbus_append_cb_t function)
+{
+	DBusMessageIter value, array;
+	const char *variant_sig, *array_sig;
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
+		array_sig = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_OBJECT_PATH:
+		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		array_sig = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		break;
+	default:
+		return;
+	}
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+							variant_sig, &value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+							array_sig, &array);
+	if (function)
+		function(&array);
+	dbus_message_iter_close_container(&value, &array);
+
+	dbus_message_iter_close_container(iter, &value);
+}
+
 void connman_dbus_dict_append_variant(DBusMessageIter *dict,
 					const char *key, int type, void *val)
 {
@@ -167,37 +200,13 @@ void connman_dbus_dict_append_fixed_array(DBusMessageIter *dict,
 void connman_dbus_dict_append_variable_array(DBusMessageIter *dict,
 		const char *key, int type, connman_dbus_append_cb_t function)
 {
-	DBusMessageIter entry, value, array;
-	const char *variant_sig, *array_sig;
-
-	switch (type) {
-	case DBUS_TYPE_STRING:
-		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_STRING_AS_STRING;
-		array_sig = DBUS_TYPE_STRING_AS_STRING;
-		break;
-	case DBUS_TYPE_OBJECT_PATH:
-		variant_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_OBJECT_PATH_AS_STRING;
-		array_sig = DBUS_TYPE_OBJECT_PATH_AS_STRING;
-		break;
-	default:
-		return;
-	}
+	DBusMessageIter entry;
 
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 								NULL, &entry);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
-							variant_sig, &value);
-
-	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
-							array_sig, &array);
-	if (function)
-		function(&array);
-	dbus_message_iter_close_container(&value, &array);
-
-	dbus_message_iter_close_container(&entry, &value);
+	connman_dbus_property_append_variable_array(&entry, key,
+							type, function);
 
 	dbus_message_iter_close_container(dict, &entry);
 }
