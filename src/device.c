@@ -328,7 +328,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			connman_dbus_dict_append_basic(&dict, "ScanInterval",
 				DBUS_TYPE_UINT16, &device->scan_interval);
 
-		connman_dbus_dict_append_variable_array(&dict, "Networks",
+		connman_dbus_dict_append_array(&dict, "Networks",
 				DBUS_TYPE_OBJECT_PATH, append_networks, device);
 		break;
 	}
