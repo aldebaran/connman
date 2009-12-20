@@ -282,13 +282,13 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 static void process_newlink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
-	struct ether_addr address;
+	struct ether_addr address = {{ 0, 0, 0, 0, 0, 0 }};
+	struct ether_addr compare = {{ 0, 0, 0, 0, 0, 0 }};
 	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
 	GSList *list;
 
-	memset(&address, 0, ETH_ALEN);
 	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
 
 	switch (type) {
@@ -300,7 +300,8 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		break;
 	}
 
-	connman_info("%s {newlink} index %d address %s mtu %u",
+	if (memcmp(&address, &compare, ETH_ALEN) != 0)
+		connman_info("%s {newlink} index %d address %s mtu %u",
 				ifname, index, ether_ntoa(&address), mtu);
 
 	if (operstate != 0xff)
