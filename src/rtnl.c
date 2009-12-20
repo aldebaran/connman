@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -287,22 +288,30 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
+	char str[18];
 	GSList *list;
 
 	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
+
+	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
+						address.ether_addr_octet[0],
+                                                address.ether_addr_octet[1],
+                                                address.ether_addr_octet[2],
+                                                address.ether_addr_octet[3],
+                                                address.ether_addr_octet[4],
+                                                address.ether_addr_octet[5]);
 
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		__connman_ipconfig_newlink(index, type, flags,
-						ether_ntoa(&address), mtu);
+		__connman_ipconfig_newlink(index, type, flags, str, mtu);
 		break;
 	}
 
 	if (memcmp(&address, &compare, ETH_ALEN) != 0)
 		connman_info("%s {newlink} index %d address %s mtu %u",
-				ifname, index, ether_ntoa(&address), mtu);
+						ifname, index, str, mtu);
 
 	if (operstate != 0xff)
 		connman_info("%s {newlink} index %d operstate %u <%s>",
