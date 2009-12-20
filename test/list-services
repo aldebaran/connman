@@ -6,10 +6,7 @@ def extract_values(values):
 	val = "{"
 	for key in values.keys():
 		val += " " + key + "="
-		if key in ["MTU"]:
-			val += int(values[key])
-		else:
-			val += str(values[key])
+		val += str(values[key])
 	val += " }"
 	return val
 
