@@ -36,24 +36,6 @@
 #include <connman/task.h>
 #include <connman/log.h>
 
-#if 0
-static unsigned char netmask2prefixlen(const char *netmask)
-{
-	unsigned char bits = 0;
-	in_addr_t mask = inet_network(netmask);
-	in_addr_t host = ~mask;
-
-	/* a valid netmask must be 2^n - 1 */
-	if ((host & (host + 1)) != 0)
-		return -1;
-
-	for (; mask; mask <<= 1)
-		++bits;
-
-	return bits;
-}
-#endif
-
 static void dhclient_notify(struct connman_task *task,
 					DBusMessage *msg, void *user_data)
 {
