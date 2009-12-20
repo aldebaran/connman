@@ -45,6 +45,7 @@ struct connman_ipconfig {
 
 	enum connman_ipconfig_method method;
 	struct connman_ipaddress *address;
+	struct connman_ipaddress *system;
 
 	char *eth;
 	uint16_t mtu;
@@ -88,6 +89,23 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress->peer);
 	g_free(ipaddress->local);
 	g_free(ipaddress);
+}
+
+void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
+{
+	if (ipaddress == NULL)
+		return;
+
+	ipaddress->prefixlen = 0;
+
+	g_free(ipaddress->local);
+	ipaddress->local = NULL;
+
+	g_free(ipaddress->peer);
+	ipaddress->peer = NULL;
+
+	g_free(ipaddress->broadcast);
+	ipaddress->broadcast = NULL;
 }
 
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
@@ -459,6 +477,9 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	connman_info("%s {add} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
 
+	if (ipdevice->config != NULL)
+		connman_ipaddress_copy(ipdevice->config->system, ipaddress);
+
 	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
 		return;
 
@@ -640,6 +661,8 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 		return NULL;
 	}
 
+	ipconfig->system = connman_ipaddress_alloc();
+
 	DBG("ipconfig %p", ipconfig);
 
 	return ipconfig;
@@ -700,6 +723,7 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 			ipconfig->origin = NULL;
 		}
 
+		connman_ipaddress_free(ipconfig->system);
 		connman_ipaddress_free(ipconfig->address);
 		g_free(ipconfig->eth);
 		g_free(ipconfig);
@@ -831,8 +855,11 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 	if (ipdevice == NULL)
 		return -ENXIO;
 
-	if (ipdevice->config != NULL)
+	if (ipdevice->config != NULL) {
+		connman_ipaddress_clear(ipdevice->config->system);
+
 		connman_ipconfig_unref(ipdevice->config);
+	}
 
 	ipdevice->config = connman_ipconfig_ref(ipconfig);
 
@@ -855,6 +882,8 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 
 	if (ipdevice->config == NULL || ipdevice->config != ipconfig)
 		return -EINVAL;
+
+	connman_ipaddress_clear(ipdevice->config->system);
 
 	connman_ipconfig_unref(ipdevice->config);
 	ipdevice->config = NULL;
@@ -901,17 +930,17 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 
 	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
 
-	if (ipconfig->address == NULL)
+	if (ipconfig->system == NULL)
 		return;
 
-	if (ipconfig->address->local != NULL) {
+	if (ipconfig->system->local != NULL) {
 		struct in_addr netmask;
 		char *mask;
 
 		connman_dbus_dict_append_basic(iter, "Address",
-				DBUS_TYPE_STRING, &ipconfig->address->local);
+				DBUS_TYPE_STRING, &ipconfig->system->local);
 
-		netmask.s_addr = ~0 << (32 - ipconfig->address->prefixlen);
+		netmask.s_addr = ~0 << (32 - ipconfig->system->prefixlen);
 		mask = inet_ntoa(netmask);
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
