@@ -934,13 +934,15 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 		return;
 
 	if (ipconfig->system->local != NULL) {
+		in_addr_t addr;
 		struct in_addr netmask;
 		char *mask;
 
 		connman_dbus_dict_append_basic(iter, "Address",
 				DBUS_TYPE_STRING, &ipconfig->system->local);
 
-		netmask.s_addr = ~0 << (32 - ipconfig->system->prefixlen);
+		addr = 0xffffffff << (32 - ipconfig->system->prefixlen);
+		netmask.s_addr = htonl(addr);
 		mask = inet_ntoa(netmask);
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
