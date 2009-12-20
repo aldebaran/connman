@@ -385,11 +385,10 @@ static void apn_changed(struct connman_service *service)
 
 static void append_ethernet(DBusMessageIter *iter, void *user_data)
 {
-	//struct connman_service *service = user_data;
-	const char *method = "auto";
+	struct connman_service *service = user_data;
 
-	connman_dbus_dict_append_basic(iter, "Method",
-						DBUS_TYPE_STRING, &method);
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_append_ethernet(service->ipconfig, iter);
 }
 
 static void append_ipv4(DBusMessageIter *iter, void *user_data)

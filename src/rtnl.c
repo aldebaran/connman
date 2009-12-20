@@ -240,7 +240,8 @@ static const char *operstate2str(unsigned char operstate)
 }
 
 static void extract_link(struct ifinfomsg *msg, int bytes,
-				const char **ifname, unsigned char *operstate)
+				const char **address, const char **ifname,
+				unsigned int *mtu, unsigned char *operstate)
 {
 	struct rtnl_link_stats stats;
 	struct rtattr *attr;
@@ -248,15 +249,17 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
 					attr = RTA_NEXT(attr, bytes)) {
 		switch (attr->rta_type) {
+		case IFLA_ADDRESS:
+			if (address != NULL)
+				*address = RTA_DATA(attr);
+			break;
 		case IFLA_IFNAME:
 			if (ifname != NULL)
 				*ifname = RTA_DATA(attr);
 			break;
-		case IFLA_OPERSTATE:
-			if (operstate != NULL)
-				*operstate = *((unsigned char *) RTA_DATA(attr));
-			break;
-		case IFLA_LINKMODE:
+		case IFLA_MTU:
+			if (mtu != NULL)
+				*mtu = *((unsigned int *) RTA_DATA(attr));
 			break;
 		case IFLA_STATS:
 			memcpy(&stats, RTA_DATA(attr),
@@ -266,6 +269,12 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 			connman_info("%s {TX} %d packets %d bytes", *ifname,
 					stats.tx_packets, stats.tx_bytes);
 			break;
+		case IFLA_OPERSTATE:
+			if (operstate != NULL)
+				*operstate = *((unsigned char *) RTA_DATA(attr));
+			break;
+		case IFLA_LINKMODE:
+			break;
 		}
 	}
 }
@@ -273,22 +282,28 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 static void process_newlink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
-	unsigned char operstate = 0xff;
+	const char *address = NULL;
 	const char *ifname = NULL;
+	unsigned int mtu = 0;
+	unsigned char operstate = 0xff;
 	GSList *list;
+
+	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
 
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		__connman_ipconfig_newlink(index, type, flags);
+		__connman_ipconfig_newlink(index, type, flags, address, mtu);
 		break;
 	}
 
-	extract_link(msg, bytes, &ifname, &operstate);
+	if (address != NULL && strlen(address) > 0)
+		connman_info("%s {newlink} index %d address %s mtu %u",
+						ifname, index, address, mtu);
 
 	if (operstate != 0xff)
-		connman_info("%s {newlink} index %d operstate %d <%s>",
+		connman_info("%s {newlink} index %d operstate %u <%s>",
 						ifname, index, operstate,
 						operstate2str(operstate));
 
@@ -316,14 +331,16 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 static void process_dellink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
-	unsigned char operstate = 0xff;
+	const char *address = NULL;
 	const char *ifname = NULL;
+	unsigned int mtu = 0;
+	unsigned char operstate = 0xff;
 	GSList *list;
 
-	extract_link(msg, bytes, &ifname, &operstate);
+	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
 
 	if (operstate != 0xff)
-		connman_info("%s {dellink} index %d operstate %d <%s>",
+		connman_info("%s {dellink} index %d operstate %u <%s>",
 						ifname, index, operstate,
 						operstate2str(operstate));
 

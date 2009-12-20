@@ -45,6 +45,9 @@ struct connman_ipconfig {
 
 	enum connman_ipconfig_method method;
 	struct connman_ipaddress *address;
+
+	char *eth;
+	uint16_t mtu;
 };
 
 struct connman_ipdevice {
@@ -285,7 +288,8 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 }
 
 void __connman_ipconfig_newlink(int index, unsigned short type,
-							unsigned int flags)
+				unsigned int flags, const char *address,
+							unsigned short mtu)
 {
 	struct connman_ipdevice *ipdevice;
 	GList *list;
@@ -374,6 +378,10 @@ update:
 
 		if (index != ipconfig->index)
 			continue;
+
+		g_free(ipconfig->eth);
+		ipconfig->eth = g_strdup(address);
+		ipconfig->mtu = mtu;
 
 		if (up == TRUE && ipconfig->ops->up)
 			ipconfig->ops->up(ipconfig);
@@ -691,6 +699,7 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 		}
 
 		connman_ipaddress_free(ipconfig->address);
+		g_free(ipconfig->eth);
 		g_free(ipconfig);
 	}
 }
@@ -925,6 +934,25 @@ int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
 		ipconfig->method = __connman_ipconfig_string2method(method);
 	} else
 		return -EINVAL;
+
+	return 0;
+}
+
+int __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter)
+{
+	const char *method = "auto";
+
+	connman_dbus_dict_append_basic(iter, "Method",
+						DBUS_TYPE_STRING, &method);
+
+	if (ipconfig->eth != NULL)
+		connman_dbus_dict_append_basic(iter, "Address",
+					DBUS_TYPE_STRING, &ipconfig->eth);
+
+	if (ipconfig->mtu > 0)
+		connman_dbus_dict_append_basic(iter, "MTU",
+					DBUS_TYPE_UINT16, &ipconfig->mtu);
 
 	return 0;
 }

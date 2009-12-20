@@ -104,7 +104,8 @@ int __connman_ipconfig_init(void);
 void __connman_ipconfig_cleanup(void);
 
 void __connman_ipconfig_newlink(int index, unsigned short type,
-							unsigned int flags);
+				unsigned int flags, const char *address,
+							unsigned short mtu);
 void __connman_ipconfig_dellink(int index);
 void __connman_ipconfig_newaddr(int index, const char *label,
 				unsigned char prefixlen, const char *address);
@@ -131,6 +132,8 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 						DBusMessageIter *iter);
 int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
 				const char *key, DBusMessageIter *value);
+int __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
