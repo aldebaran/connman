@@ -240,7 +240,7 @@ static const char *operstate2str(unsigned char operstate)
 }
 
 static void extract_link(struct ifinfomsg *msg, int bytes,
-				const char **address, const char **ifname,
+				struct ether_addr *address, const char **ifname,
 				unsigned int *mtu, unsigned char *operstate)
 {
 	struct rtnl_link_stats stats;
@@ -251,7 +251,7 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 		switch (attr->rta_type) {
 		case IFLA_ADDRESS:
 			if (address != NULL)
-				*address = RTA_DATA(attr);
+				memcpy(address, RTA_DATA(attr), ETH_ALEN);
 			break;
 		case IFLA_IFNAME:
 			if (ifname != NULL)
@@ -282,25 +282,26 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 static void process_newlink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
-	const char *address = NULL;
+	struct ether_addr address;
+	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
-	unsigned char operstate = 0xff;
 	GSList *list;
 
+	memset(&address, 0, ETH_ALEN);
 	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
 
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		__connman_ipconfig_newlink(index, type, flags, address, mtu);
+		__connman_ipconfig_newlink(index, type, flags,
+						ether_ntoa(&address), mtu);
 		break;
 	}
 
-	if (address != NULL && strlen(address) > 0)
-		connman_info("%s {newlink} index %d address %s mtu %u",
-						ifname, index, address, mtu);
+	connman_info("%s {newlink} index %d address %s mtu %u",
+				ifname, index, ether_ntoa(&address), mtu);
 
 	if (operstate != 0xff)
 		connman_info("%s {newlink} index %d operstate %u <%s>",
@@ -331,13 +332,11 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 static void process_dellink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
-	const char *address = NULL;
-	const char *ifname = NULL;
-	unsigned int mtu = 0;
 	unsigned char operstate = 0xff;
+	const char *ifname = NULL;
 	GSList *list;
 
-	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
+	extract_link(msg, bytes, NULL, &ifname, NULL, &operstate);
 
 	if (operstate != 0xff)
 		connman_info("%s {dellink} index %d operstate %u <%s>",
