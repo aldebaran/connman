@@ -423,6 +423,14 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_ipv4(service->ipconfig, iter);
 }
 
+static void append_ipv4config(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_append_ipv4config(service->ipconfig, iter);
+}
+
 static void settings_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_dict(service->path,
@@ -565,6 +573,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4, service);
 
+	connman_dbus_dict_append_dict(&dict, "IPv4.Configuration",
+						append_ipv4config, service);
+
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
@@ -691,6 +702,18 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (service->network != NULL)
 			connman_network_set_string(service->network,
 					"Cellular.Password", service->password);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
+		int err;
+
+		if (service->ipconfig == NULL)
+			return __connman_error_invalid_property(msg);
+
+		err = __connman_ipconfig_set_ipv4config(service->ipconfig,
+								&value);
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
 
 		__connman_storage_save_service(service);
 	} else

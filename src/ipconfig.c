@@ -91,6 +91,37 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress);
 }
 
+static unsigned char netmask2prefixlen(const char *netmask)
+{
+	unsigned char bits = 0;
+	in_addr_t mask = inet_network(netmask);
+	in_addr_t host = ~mask;
+
+	/* a valid netmask must be 2^n - 1 */
+	if ((host & (host + 1)) != 0)
+		return -1;
+
+	for (; mask; mask <<= 1)
+		++bits;
+
+	return bits;
+}
+
+void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
+				const char *address, const char *netmask)
+{
+	if (ipaddress == NULL)
+		return;
+
+	if (netmask != NULL)
+		ipaddress->prefixlen = netmask2prefixlen(netmask);
+	else
+		ipaddress->prefixlen = 32;
+
+	g_free(ipaddress->local);
+	ipaddress->local = g_strdup(address);
+}
+
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
 {
 	if (ipaddress == NULL)
@@ -920,7 +951,7 @@ enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method
 }
 
 void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
-						DBusMessageIter *iter)
+							DBusMessageIter *iter)
 {
 	const char *str;
 
@@ -949,24 +980,119 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 	}
 }
 
-int __connman_ipconfig_set_ipv4(struct connman_ipconfig *ipconfig,
-				const char *key, DBusMessageIter *value)
+void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter)
 {
-	int type = dbus_message_iter_get_arg_type(value);
+	const char *str;
 
-	DBG("ipconfig %p key %s type %d", ipconfig, key, type);
+	str = __connman_ipconfig_method2string(ipconfig->method);
+	if (str == NULL)
+		return;
 
-	if (g_strcmp0(key, "Method") == 0) {
-		const char *method;
+	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
 
-		if (type != DBUS_TYPE_STRING)
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		return;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		break;
+	}
+
+	if (ipconfig->address == NULL)
+		return;
+
+	if (ipconfig->address->local != NULL) {
+		in_addr_t addr;
+		struct in_addr netmask;
+		char *mask;
+
+		connman_dbus_dict_append_basic(iter, "Address",
+				DBUS_TYPE_STRING, &ipconfig->address->local);
+
+		addr = 0xffffffff << (32 - ipconfig->address->prefixlen);
+		netmask.s_addr = htonl(addr);
+		mask = inet_ntoa(netmask);
+		connman_dbus_dict_append_basic(iter, "Netmask",
+						DBUS_TYPE_STRING, &mask);
+	}
+}
+
+int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *array)
+{
+	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	const char *address = NULL, *netmask = NULL;
+	DBusMessageIter dict;
+
+	DBG("ipconfig %p", ipconfig);
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return -EINVAL;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry;
+		const char *key;
+		int type;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
 			return -EINVAL;
 
-		dbus_message_iter_get_basic(value, &method);
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
 
-		ipconfig->method = __connman_ipconfig_string2method(method);
-	} else
+		type = dbus_message_iter_get_arg_type(&entry);
+
+		if (g_str_equal(key, "Method") == TRUE) {
+			const char *str;
+
+			if (type != DBUS_TYPE_STRING)
+				return -EINVAL;
+
+			dbus_message_iter_get_basic(&entry, &str);
+			method = __connman_ipconfig_string2method(str);
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			if (type != DBUS_TYPE_STRING)
+				return -EINVAL;
+
+			dbus_message_iter_get_basic(&entry, &address);
+		} else if (g_str_equal(key, "Netmask") == TRUE) {
+			if (type != DBUS_TYPE_STRING)
+				return -EINVAL;
+
+			dbus_message_iter_get_basic(&entry, &netmask);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	DBG("method %d address %s netmask %s", method, address, netmask);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
 		return -EINVAL;
+
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		if (address == NULL)
+			return -EINVAL;
+
+		ipconfig->method = method;
+		connman_ipaddress_set(ipconfig->address, address, netmask);
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		if (ipconfig->method == method)
+			return 0;
+
+		ipconfig->method = method;
+		break;
+	}
 
 	return 0;
 }

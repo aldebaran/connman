@@ -287,6 +287,12 @@ Properties	string State [readonly]
 
 				The current configured IPv4 gateway.
 
+		dict IPv4.Configuration [readwrite]
+
+			Same values as IPv4 property. The IPv4 represents
+			the actual system configuration while this allows
+			user configuration.
+
 		dict Ethernet [readonly]
 
 			string Method [readonly]
