@@ -681,8 +681,7 @@ static gboolean set_connected(gpointer user_data)
 		connman_device_set_disconnected(network->device, FALSE);
 
 		if (network->element.ipv4.method ==
-					CONNMAN_IPCONFIG_METHOD_STATIC) {
-
+					CONNMAN_IPCONFIG_METHOD_MANUAL) {
 			network->connecting = FALSE;
 
 			connman_network_set_associating(network, FALSE);

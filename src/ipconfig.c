@@ -256,8 +256,8 @@ static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
 
 	switch (ipdevice->config->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_IGNORE:
-	case CONNMAN_IPCONFIG_METHOD_STATIC:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		return;
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		break;
@@ -896,10 +896,10 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		break;
-	case CONNMAN_IPCONFIG_METHOD_IGNORE:
-		return "ignore";
-	case CONNMAN_IPCONFIG_METHOD_STATIC:
-		return "static";
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		return "off";
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		return "manual";
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		return "dhcp";
 	}
@@ -909,10 +909,10 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method)
 {
-	if (g_strcmp0(method, "ignore") == 0)
-		return CONNMAN_IPCONFIG_METHOD_IGNORE;
-	else if (g_strcmp0(method, "static") == 0)
-		return CONNMAN_IPCONFIG_METHOD_STATIC;
+	if (g_strcmp0(method, "off") == 0)
+		return CONNMAN_IPCONFIG_METHOD_OFF;
+	else if (g_strcmp0(method, "manual") == 0)
+		return CONNMAN_IPCONFIG_METHOD_MANUAL;
 	else if (g_strcmp0(method, "dhcp") == 0)
 		return CONNMAN_IPCONFIG_METHOD_DHCP;
 	else
