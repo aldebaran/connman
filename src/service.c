@@ -47,6 +47,7 @@ struct connman_service {
 	enum connman_service_error error;
 	connman_uint8_t strength;
 	connman_bool_t favorite;
+	connman_bool_t immutable;
 	connman_bool_t hidden;
 	connman_bool_t ignore;
 	connman_bool_t autoconnect;
@@ -488,6 +489,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_basic(&dict, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
+
+	connman_dbus_dict_append_basic(&dict, "Immutable",
+					DBUS_TYPE_BOOLEAN, &service->immutable);
 
 	if (service->favorite == TRUE)
 		connman_dbus_dict_append_basic(&dict, "AutoConnect",
@@ -1216,7 +1220,8 @@ static void __connman_service_initialize(struct connman_service *service)
 	service->security = CONNMAN_SERVICE_SECURITY_UNKNOWN;
 	service->state    = CONNMAN_SERVICE_STATE_UNKNOWN;
 
-	service->favorite = FALSE;
+	service->favorite  = FALSE;
+	service->immutable = FALSE;
 	service->hidden = FALSE;
 
 	service->ignore = FALSE;

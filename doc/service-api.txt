@@ -214,6 +214,15 @@ Properties	string State [readonly]
 			it back to false the Remove() method needs to be
 			used.
 
+		boolean Immutable [readonly]
+
+			This value will be set to true if the service is
+			configured externally via a configuration file.
+
+			The only valid operation are Connect() and of
+			course Disconnect(). The Remove() method will
+			result in an error.
+
 		boolean AutoConnect [readwrite]
 
 			If set to true, this service will auto-connect
