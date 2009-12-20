@@ -400,14 +400,13 @@ static void append_settings(DBusMessageIter *iter, void *user_data)
 	}
 
 	if (service->ipconfig != NULL)
-		__connman_ipconfig_append_ipv4(service->ipconfig,
-							iter, "IPv4.");
+		__connman_ipconfig_append_ipv4(service->ipconfig, iter);
 }
 
 static void settings_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_dict(service->path,
-				CONNMAN_SERVICE_INTERFACE, "Settings",
+				CONNMAN_SERVICE_INTERFACE, "IPv4",
 						append_settings, service);
 }
 

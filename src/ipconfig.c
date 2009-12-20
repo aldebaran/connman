@@ -879,25 +879,8 @@ enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method
 		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 }
 
-static void append_basic(DBusMessageIter *iter, const char *prefix,
-					const char *key, int type, void *val)
-{
-	char *str;
-
-	if (prefix == NULL) {
-		connman_dbus_dict_append_basic(iter, key, type, val);
-		return;
-	}
-
-	str = g_strdup_printf("%s%s", prefix, key);
-	if (str != NULL)
-		connman_dbus_dict_append_basic(iter, str, type, val);
-
-	g_free(str);
-}
-
 void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
-				DBusMessageIter *iter, const char *prefix)
+						DBusMessageIter *iter)
 {
 	const char *str;
 
@@ -905,7 +888,7 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 	if (str == NULL)
 		return;
 
-	append_basic(iter, prefix, "Method", DBUS_TYPE_STRING, &str);
+	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
 
 	if (ipconfig->address == NULL)
 		return;
@@ -914,12 +897,13 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 		struct in_addr netmask;
 		char *mask;
 
-		append_basic(iter, prefix, "Address",
+		connman_dbus_dict_append_basic(iter, "Address",
 				DBUS_TYPE_STRING, &ipconfig->address->local);
 
 		netmask.s_addr = ~0 << (32 - ipconfig->address->prefixlen);
 		mask = inet_ntoa(netmask);
-		append_basic(iter, prefix, "Netmask", DBUS_TYPE_STRING, &mask);
+		connman_dbus_dict_append_basic(iter, "Netmask",
+						DBUS_TYPE_STRING, &mask);
 	}
 }
 
