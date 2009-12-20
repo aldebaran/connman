@@ -331,6 +331,12 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 						index, type, type2str(type));
 
 update:
+	if (ipdevice->config != NULL) {
+		g_free(ipdevice->config->eth);
+		ipdevice->config->eth = g_strdup(address);
+		ipdevice->config->mtu = mtu;
+	}
+
 	if (flags == ipdevice->flags)
 		return;
 
@@ -378,10 +384,6 @@ update:
 
 		if (index != ipconfig->index)
 			continue;
-
-		g_free(ipconfig->eth);
-		ipconfig->eth = g_strdup(address);
-		ipconfig->mtu = mtu;
 
 		if (up == TRUE && ipconfig->ops->up)
 			ipconfig->ops->up(ipconfig);
