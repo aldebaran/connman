@@ -383,7 +383,16 @@ static void apn_changed(struct connman_service *service)
 						DBUS_TYPE_BOOLEAN, &required);
 }
 
-static void append_settings(DBusMessageIter *iter, void *user_data)
+static void append_ethernet(DBusMessageIter *iter, void *user_data)
+{
+	//struct connman_service *service = user_data;
+	const char *method = "auto";
+
+	connman_dbus_dict_append_basic(iter, "Method",
+						DBUS_TYPE_STRING, &method);
+}
+
+static void append_ipv4(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
@@ -406,8 +415,8 @@ static void append_settings(DBusMessageIter *iter, void *user_data)
 static void settings_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_dict(service->path,
-				CONNMAN_SERVICE_INTERFACE, "IPv4",
-						append_settings, service);
+					CONNMAN_SERVICE_INTERFACE, "IPv4",
+							append_ipv4, service);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -475,7 +484,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_VPN:
@@ -537,11 +545,14 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 		connman_dbus_dict_append_basic(&dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
+		/* fall through */
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		connman_dbus_dict_append_dict(&dict, "Ethernet",
+						append_ethernet, service);
 		break;
 	}
 
-	connman_dbus_dict_append_dict(&dict, "Settings",
-						append_settings, service);
+	connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4, service);
 
 	connman_dbus_dict_close(&array, &dict);
 
