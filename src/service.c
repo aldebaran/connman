@@ -681,16 +681,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 					"Cellular.Password", service->password);
 
 		__connman_storage_save_service(service);
-	} else if (g_str_has_prefix(name, "IPv4.") == TRUE) {
-		int err;
-
-		if (service->ipconfig == NULL)
-			return __connman_error_invalid_property(msg);
-
-		err = __connman_ipconfig_set_ipv4(service->ipconfig,
-							name + 5, &value);
-		if (err < 0)
-			return __connman_error_failed(msg, -err);
 	} else
 		return __connman_error_invalid_property(msg);
 
