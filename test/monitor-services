@@ -11,7 +11,7 @@ def property_changed(name, value, path, interface):
 	if iface not in ["Service"]:
 		return
 	if name in ["Profiles", "Services", "Providers",
-				"Devices", "Networks", "Connections"]:
+						"Devices", "Networks"]:
 		val = "["
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
