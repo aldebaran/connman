@@ -258,11 +258,61 @@ Properties	string State [readonly]
 			indicates connections to a foreign provider when
 			traveling abroad.
 
-		string IPv4.Method [readwrite]
+		array{string} Nameservers [readwrite]
 
-			The IPv4 configuration method. Possible values here
-			are "dhcp" and "static".
+			The list of manually configured domain name
+			servers. Some 3G networks don't provide correct
+			name servers and this allows for an override.
 
-		string IPv4.Address [readwrite]
+		array{string} Domains [readwrite]
 
-			The current configured IPv4 address.
+			The list of manually configured search domains.
+
+		dict IPv4 [readonly]
+
+			string Method [readonly]
+
+				Possible values are "dhcp", "manual"
+				and "off".
+
+			string Address [readonly]
+
+				The current configured IPv4 address.
+
+			string Netmask [readonly]
+
+				The current configured IPv4 netmask.
+
+			string Gateway [readonly]
+
+				The current configured IPv4 gateway.
+
+		dict Ethernet [readonly]
+
+			string Method [readonly]
+
+				Possible values are "auto" and "manual".
+
+			string Address [readonly]
+
+				Ethernet device address (MAC address).
+
+			uint16 MTU [readonly]
+
+				The Ethernet MTU (default is 1500).
+
+			uint16 Speed [readonly]
+
+				Selected speed of the line.
+
+				This information might not always be
+				available.
+
+			string Duplex [readonly]
+
+				Selected duplex settings of the line.
+
+				Possible values are "half" and "full".
+
+				This information might not always be
+				available.
