@@ -2,6 +2,17 @@
 
 import dbus
 
+def extract_values(values):
+	val = "{"
+	for key in values.keys():
+		val += " " + key + "="
+		if key in ["MTU"]:
+			val += int(values[key])
+		else:
+			val += str(values[key])
+	val += " }"
+	return val
+
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
@@ -18,7 +29,15 @@ for path in properties["Services"]:
 	print "[ %s ]" % (path)
 
 	for key in properties.keys():
-		if key in ["Strength"]:
+		if key in ["IPv4", "Ethernet"]:
+			val = extract_values(properties[key])
+		elif key in ["Favorite", "AutoConnect",
+				"SetupRequired", "PassphraseRequired"]:
+			if properties[key] == dbus.Boolean(1):
+				val = "true"
+			else:
+				val = "false"
+		elif key in ["Strength"]:
 			val = int(properties[key])
 		else:
 			val = str(properties[key])
