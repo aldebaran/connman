@@ -65,6 +65,13 @@ struct connman_network {
 		unsigned short channel;
 		char *security;
 		char *passphrase;
+		char *eap;
+		char *identity;
+		char *ca_cert_path;
+		char *client_cert_path;
+		char *private_key_path;
+		char *private_key_passphrase;
+		char *phase2_auth;
 	} wifi;
 };
 
@@ -152,9 +159,16 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_basic(&dict, "WiFi.Channel",
 				DBUS_TYPE_UINT16, &network->wifi.channel);
 
-	if (network->wifi.security != NULL)
+	if (network->wifi.security != NULL) {
 		connman_dbus_dict_append_basic(&dict, "WiFi.Security",
 				DBUS_TYPE_STRING, &network->wifi.security);
+
+		if (g_strcmp0(network->wifi.security, "ieee8021x") == 0 &&
+						    network->wifi.eap != NULL)
+			connman_dbus_dict_append_basic(&dict, "WiFi.EAP",
+					DBUS_TYPE_STRING, &network->wifi.eap);
+	}
+
 
 	if (network->wifi.passphrase != NULL &&
 			__connman_security_check_privilege(msg,
@@ -977,6 +991,27 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.Passphrase") == TRUE) {
 		g_free(network->wifi.passphrase);
 		network->wifi.passphrase = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.EAP") == TRUE) {
+		g_free(network->wifi.eap);
+		network->wifi.eap = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.Identity") == TRUE) {
+		g_free(network->wifi.identity);
+		network->wifi.identity = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.CACertFile") == TRUE) {
+		g_free(network->wifi.ca_cert_path);
+		network->wifi.ca_cert_path = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.ClientCertFile") == TRUE) {
+		g_free(network->wifi.client_cert_path);
+		network->wifi.client_cert_path = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.PrivateKeyFile") == TRUE) {
+		g_free(network->wifi.private_key_path);
+		network->wifi.private_key_path = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.PrivateKeyPassphrase") == TRUE) {
+		g_free(network->wifi.private_key_passphrase);
+		network->wifi.private_key_passphrase = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.Phase2") == TRUE) {
+		g_free(network->wifi.phase2_auth);
+		network->wifi.phase2_auth = g_strdup(value);
 	}
 
 	return connman_element_set_string(&network->element, key, value);
@@ -1006,6 +1041,20 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.security;
 	else if (g_str_equal(key, "WiFi.Passphrase") == TRUE)
 		return network->wifi.passphrase;
+	else if (g_str_equal(key, "WiFi.EAP") == TRUE)
+		return network->wifi.eap;
+	else if (g_str_equal(key, "WiFi.Identity") == TRUE)
+		return network->wifi.identity;
+	else if (g_str_equal(key, "WiFi.CACertFile") == TRUE)
+		return network->wifi.ca_cert_path;
+	else if (g_str_equal(key, "WiFi.ClientCertFile") == TRUE)
+		return network->wifi.client_cert_path;
+	else if (g_str_equal(key, "WiFi.PrivateKeyFile") == TRUE)
+		return network->wifi.private_key_path;
+	else if (g_str_equal(key, "WiFi.PrivateKeyPassphrase") == TRUE)
+		return network->wifi.private_key_passphrase;
+	else if (g_str_equal(key, "WiFi.Phase2") == TRUE)
+		return network->wifi.phase2_auth;
 
 	return connman_element_get_string(&network->element, key);
 }
