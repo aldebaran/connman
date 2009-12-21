@@ -1224,7 +1224,7 @@ static void update_settings(DBusMessageIter *array,
 			if (g_strcmp0(method, "static") == 0) {
 
 				parent->ipv4.method =
-					CONNMAN_IPCONFIG_METHOD_MANUAL;
+					CONNMAN_IPCONFIG_METHOD_FIXED;
 			} else if (g_strcmp0(method, "dhcp") == 0) {
 
 				parent->ipv4.method =
@@ -1367,8 +1367,9 @@ static void pri_context_changed(DBusConnection *connection,
 		switch (parent->ipv4.method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
-			break;
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
 			if (static_network_set_connected(
 					pending_network, parent, active) < 0)
 				set_network_active(pending_network, FALSE);

@@ -288,6 +288,7 @@ static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
 	switch (ipdevice->config->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		return;
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
@@ -929,6 +930,8 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 		break;
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 		return "off";
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		return "fixed";
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		return "manual";
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
@@ -942,6 +945,8 @@ enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method
 {
 	if (g_strcmp0(method, "off") == 0)
 		return CONNMAN_IPCONFIG_METHOD_OFF;
+	else if (g_strcmp0(method, "fixed") == 0)
+		return CONNMAN_IPCONFIG_METHOD_FIXED;
 	else if (g_strcmp0(method, "manual") == 0)
 		return CONNMAN_IPCONFIG_METHOD_MANUAL;
 	else if (g_strcmp0(method, "dhcp") == 0)
@@ -994,6 +999,7 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		return;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -1076,6 +1082,7 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
 		return -EINVAL;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
