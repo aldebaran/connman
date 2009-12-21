@@ -435,6 +435,9 @@ update:
 		if (index != ipconfig->index)
 			continue;
 
+		if (ipconfig->ops == NULL)
+			continue;
+
 		if (up == TRUE && ipconfig->ops->up)
 			ipconfig->ops->up(ipconfig);
 		if (lower_up == TRUE && ipconfig->ops->lower_up)
@@ -471,6 +474,9 @@ void __connman_ipconfig_dellink(int index)
 			continue;
 
 		ipconfig->index = -1;
+
+		if (ipconfig->ops == NULL)
+			continue;
 
 		if (ipconfig->ops->lower_down)
 			ipconfig->ops->lower_down(ipconfig);
@@ -525,6 +531,9 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 		if (index != ipconfig->index)
 			continue;
 
+		if (ipconfig->ops == NULL)
+			continue;
+
 		if (ipconfig->ops->ip_bound)
 			ipconfig->ops->ip_bound(ipconfig);
 	}
@@ -566,6 +575,9 @@ void __connman_ipconfig_deladdr(int index, const char *label,
 		struct connman_ipconfig *ipconfig = list->data;
 
 		if (index != ipconfig->index)
+			continue;
+
+		if (ipconfig->ops == NULL)
 			continue;
 
 		if (ipconfig->ops->ip_release)
@@ -748,6 +760,8 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
 	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
+		__connman_ipconfig_disable(ipconfig);
+
 		connman_ipconfig_set_ops(ipconfig, NULL);
 
 		if (ipconfig->origin != NULL) {
@@ -830,13 +844,7 @@ const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
 void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 				const struct connman_ipconfig_ops *ops)
 {
-	if (ipconfig->ops != NULL)
-		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
-
 	ipconfig->ops = ops;
-
-	if (ops != NULL)
-		ipconfig_list = g_list_append(ipconfig_list, ipconfig);
 }
 
 /**
@@ -888,12 +896,16 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 		return -ENXIO;
 
 	if (ipdevice->config != NULL) {
+		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
+
 		connman_ipaddress_clear(ipdevice->config->system);
 
 		connman_ipconfig_unref(ipdevice->config);
 	}
 
 	ipdevice->config = connman_ipconfig_ref(ipconfig);
+
+	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
 
 	return 0;
 }
@@ -914,6 +926,8 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 
 	if (ipdevice->config == NULL || ipdevice->config != ipconfig)
 		return -EINVAL;
+
+	ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
 	connman_ipaddress_clear(ipdevice->config->system);
 

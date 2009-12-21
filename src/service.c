@@ -1440,8 +1440,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 
-		settings_changed(service);
-
 		__connman_notifier_connect(service->type);
 
 		default_changed();
@@ -1931,12 +1929,20 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 
 static void service_ip_bound(struct connman_ipconfig *ipconfig)
 {
+	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+
 	connman_info("%s ip bound", connman_ipconfig_get_ifname(ipconfig));
+
+	settings_changed(service);
 }
 
 static void service_ip_release(struct connman_ipconfig *ipconfig)
 {
+	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+
 	connman_info("%s ip release", connman_ipconfig_get_ifname(ipconfig));
+
+	settings_changed(service);
 }
 
 static const struct connman_ipconfig_ops service_ops = {
@@ -1965,7 +1971,6 @@ static void setup_ipconfig(struct connman_service *service, int index)
 	connman_ipconfig_set_data(service->ipconfig, service);
 
 	connman_ipconfig_set_ops(service->ipconfig, &service_ops);
-	connman_ipconfig_set_ops(service->ipconfig, NULL);
 }
 
 /**
