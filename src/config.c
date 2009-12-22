@@ -166,3 +166,10 @@ void __connman_config_cleanup(void)
 	g_hash_table_destroy(config_hash);
 	config_hash = NULL;
 }
+
+int __connman_config_provision_service(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	return 0;
+}

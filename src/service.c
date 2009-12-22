@@ -1867,8 +1867,6 @@ static struct connman_service *__connman_service_get(const char *identifier)
 
 	service->profile = g_strdup(__connman_profile_active_ident());
 
-	__connman_storage_load_service(service);
-
 	iter = g_sequence_insert_sorted(service_list, service,
 						service_compare, NULL);
 
@@ -1891,12 +1889,14 @@ static int service_register(struct connman_service *service)
 
 	DBG("path %s", service->path);
 
+	__connman_config_provision_service(service);
+
+	__connman_storage_load_service(service);
+
 	g_dbus_register_interface(connection, service->path,
 					CONNMAN_SERVICE_INTERFACE,
 					service_methods, service_signals,
 							NULL, service, NULL);
-
-	__connman_storage_load_service(service);
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL)
@@ -1965,8 +1965,6 @@ static void setup_ipconfig(struct connman_service *service, int index)
 
 	connman_ipconfig_set_method(service->ipconfig,
 					CONNMAN_IPCONFIG_METHOD_DHCP);
-
-	__connman_storage_load_service(service);
 
 	connman_ipconfig_set_data(service->ipconfig, service);
 
@@ -2244,8 +2242,6 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	setup_ipconfig(service, connman_network_get_index(network));
 
 	service_register(service);
-
-	__connman_profile_changed(TRUE);
 
 	if (service->favorite == TRUE)
 		__connman_service_auto_connect();

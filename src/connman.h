@@ -331,6 +331,8 @@ connman_bool_t __connman_network_get_connecting(struct connman_network *network)
 int __connman_config_init();
 void __connman_config_cleanup(void);
 
+int __connman_config_provision_service(struct connman_service *service);
+
 #include <connman/profile.h>
 
 int __connman_profile_init();
