@@ -757,6 +757,118 @@ static int disconnect_network(struct supplicant_task *task)
 	return 0;
 }
 
+static int set_network_tls(struct connman_network *network,
+			   DBusMessageIter *dict)
+{
+	const char *private_key, *client_cert, *ca_cert;
+	const char *private_key_password;
+
+	/*
+	 * For TLS, we at least need a key, the client cert,
+	 * and a passhprase.
+	 * Server cert is optional.
+	 */
+	client_cert = connman_network_get_string(network,
+						"WiFi.ClientCertFile");
+	if (client_cert == NULL)
+		return -EINVAL;
+
+	private_key = connman_network_get_string(network,
+						"WiFi.PrivateKeyFile");
+	if (private_key == NULL)
+		return -EINVAL;
+
+	private_key_password = connman_network_get_string(network,
+						"WiFi.PrivateKeyPassphrase");
+	if (private_key_password == NULL)
+		return -EINVAL;
+
+	ca_cert = connman_network_get_string(network, "WiFi.CACertFile");
+	if (ca_cert)
+		connman_dbus_dict_append_basic(dict, "ca_cert",
+						DBUS_TYPE_STRING, &ca_cert);
+
+	DBG("client cert %s private key %s", client_cert, private_key);
+
+	connman_dbus_dict_append_basic(dict, "private_key",
+						DBUS_TYPE_STRING, &private_key);
+	connman_dbus_dict_append_basic(dict, "private_key_passwd",
+							DBUS_TYPE_STRING,
+							&private_key_password);
+	connman_dbus_dict_append_basic(dict, "client_cert",
+						DBUS_TYPE_STRING, &client_cert);
+
+	return 0;
+}
+
+static int set_network_peap(struct connman_network *network,
+			    DBusMessageIter *dict, const char *passphrase)
+{
+	const char *client_cert, *ca_cert, *phase2;
+	char *phase2_auth;
+
+	/*
+	 * For PEAP, we at least need the sever cert, a 2nd
+	 * phase authentication and a passhprase.
+	 * Client cert is optional although strongly required
+	 * When setting the client cert, we then need a private
+	 * key as well.
+	 */
+	ca_cert = connman_network_get_string(network, "WiFi.CACertFile");
+	if (ca_cert == NULL)
+		return -EINVAL;
+
+	phase2 = connman_network_get_string(network, "WiFi.Phase2");
+	if (phase2 == NULL)
+		return -EINVAL;
+
+	DBG("CA cert %s phase2 auth %s", ca_cert, phase2);
+
+	client_cert = connman_network_get_string(network,
+							"WiFi.ClientCertFile");
+	if (client_cert) {
+		const char *private_key, *private_key_password;
+
+		private_key = connman_network_get_string(network,
+							"WiFi.PrivateKeyFile");
+		if (private_key == NULL)
+			return -EINVAL;
+
+		private_key_password =
+			connman_network_get_string(network,
+						"WiFi.PrivateKeyPassphrase");
+		if (private_key_password == NULL)
+			return -EINVAL;
+
+		connman_dbus_dict_append_basic(dict, "client_cert",
+						DBUS_TYPE_STRING, &client_cert);
+
+		connman_dbus_dict_append_basic(dict, "private_key",
+						DBUS_TYPE_STRING, &private_key);
+
+		connman_dbus_dict_append_basic(dict, "private_key_passwd",
+							DBUS_TYPE_STRING,
+							&private_key_password);
+
+		DBG("client cert %s private key %s", client_cert, private_key);
+	}
+
+	phase2_auth = g_strdup_printf("\"auth=%s\"", phase2);
+
+	connman_dbus_dict_append_basic(dict, "password",
+						DBUS_TYPE_STRING, &passphrase);
+
+	connman_dbus_dict_append_basic(dict, "ca_cert",
+						DBUS_TYPE_STRING, &ca_cert);
+
+	connman_dbus_dict_append_basic(dict, "phase2",
+						DBUS_TYPE_STRING, &phase2_auth);
+
+	g_free(phase2_auth);
+
+	return 0;
+}
+
 static int set_network(struct supplicant_task *task,
 				const unsigned char *network, int len,
 				const char *address, const char *security,
@@ -803,6 +915,63 @@ static int set_network(struct supplicant_task *task,
 		if (passphrase && strlen(passphrase) > 0)
 			connman_dbus_dict_append_basic(&dict, "psk",
 						DBUS_TYPE_STRING, &passphrase);
+	} else if (g_ascii_strcasecmp(security, "ieee8021x") == 0) {
+		struct connman_network *network = task->network;
+		const char *key_mgmt = "WPA-EAP", *eap, *identity;
+
+		/*
+		 * If our private key password is unset,
+		 * we use the supplied passphrase. That is needed
+		 * for PEAP where 2 passphrases (identity and client
+		 * cert may have to be provided.
+		 */
+		if (connman_network_get_string(network,
+					"WiFi.PrivateKeyPassphrase") == NULL)
+			connman_network_set_string(network,
+						"WiFi.PrivateKeyPassphrase",
+								passphrase);
+
+		eap = connman_network_get_string(network, "WiFi.EAP");
+		if (eap == NULL)
+			goto invalid;
+
+		/* We must have an identity for both PEAP and TLS */
+		identity = connman_network_get_string(network, "WiFi.Identity");
+		if (identity == NULL)
+			goto invalid;
+
+		DBG("key_mgmt %s eap %s identity %s", key_mgmt, eap, identity);
+
+		if (g_strcmp0(eap, "tls") == 0) {
+			int err;
+
+			err = set_network_tls(network, &dict);
+			if (err < 0) {
+				dbus_message_unref(message);
+				return err;
+			}
+		} else if (g_strcmp0(eap, "peap") == 0) {
+			int err;
+
+			err = set_network_peap(network, &dict, passphrase);
+			if (err < 0) {
+				dbus_message_unref(message);
+				return err;
+			}
+		} else {
+			connman_error("Unknown EAP %s", eap);
+			goto invalid;
+		}
+
+		connman_dbus_dict_append_basic(&dict, "key_mgmt",
+							DBUS_TYPE_STRING,
+							&key_mgmt);
+		connman_dbus_dict_append_basic(&dict, "eap",
+							DBUS_TYPE_STRING, &eap);
+		connman_dbus_dict_append_basic(&dict, "identity",
+							DBUS_TYPE_STRING,
+							&identity);
+
 	} else if (g_ascii_strcasecmp(security, "wep") == 0) {
 		const char *key_mgmt = "NONE";
 		const char *auth_alg = "OPEN";
@@ -870,6 +1039,10 @@ static int set_network(struct supplicant_task *task,
 	dbus_message_unref(reply);
 
 	return 0;
+
+invalid:
+	dbus_message_unref(message);
+	return -EINVAL;
 }
 
 static void scan_reply(DBusPendingCall *call, void *user_data)
@@ -1626,7 +1799,9 @@ static int task_connect(struct supplicant_task *task)
 
 	add_network(task);
 
-	set_network(task, ssid, ssid_len, address, security, passphrase);
+	err = set_network(task, ssid, ssid_len, address, security, passphrase);
+	if (err < 0)
+		return err;
 
 	err = select_network(task);
 	if (err < 0)
