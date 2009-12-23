@@ -146,7 +146,7 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/profile-api.txt doc/service-api.txt \
 				doc/device-lowlevel-api.txt \
 				doc/network-lowlevel-api.txt \
-				advanced-configuration.txt
+				doc/advanced-configuration.txt
 
 pkgconfigdir = $(libdir)/pkgconfig
 
