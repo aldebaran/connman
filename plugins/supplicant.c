@@ -918,6 +918,7 @@ static int set_network(struct supplicant_task *task,
 	} else if (g_ascii_strcasecmp(security, "ieee8021x") == 0) {
 		struct connman_network *network = task->network;
 		const char *key_mgmt = "WPA-EAP", *eap, *identity;
+		char *eap_value;
 
 		/*
 		 * If our private key password is unset,
@@ -963,14 +964,20 @@ static int set_network(struct supplicant_task *task,
 			goto invalid;
 		}
 
+		/* wpa_supplicant only accepts upper case EAPs */
+		eap_value = g_ascii_strup(eap, -1);
+
 		connman_dbus_dict_append_basic(&dict, "key_mgmt",
 							DBUS_TYPE_STRING,
 							&key_mgmt);
 		connman_dbus_dict_append_basic(&dict, "eap",
-							DBUS_TYPE_STRING, &eap);
+							DBUS_TYPE_STRING,
+							&eap_value);
 		connman_dbus_dict_append_basic(&dict, "identity",
 							DBUS_TYPE_STRING,
 							&identity);
+
+		g_free(eap_value);
 
 	} else if (g_ascii_strcasecmp(security, "wep") == 0) {
 		const char *key_mgmt = "NONE";
