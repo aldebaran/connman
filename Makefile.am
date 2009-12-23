@@ -87,7 +87,6 @@ endif
 
 AM_CFLAGS = @UDEV_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
 			@DBUS_CFLAGS@ @GLIB_CFLAGS@ $(builtin_cflags) \
-				@GLIB_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
 				-DPLUGINDIR=\""$(build_plugindir)"\" \
