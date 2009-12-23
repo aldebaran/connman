@@ -350,12 +350,12 @@ static void passphrase_changed(struct connman_service *service)
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
-		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		case CONNMAN_SERVICE_SECURITY_WEP:
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->passphrase == NULL)
 				required = TRUE;
 			break;
@@ -563,12 +563,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
-		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		case CONNMAN_SERVICE_SECURITY_WEP:
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->passphrase == NULL)
 				required = TRUE;
 			break;
@@ -1593,6 +1593,41 @@ static connman_bool_t prepare_network(struct connman_service *service)
 	return TRUE;
 }
 
+static void prepare_8021x(struct connman_service *service)
+{
+	if (service->eap)
+		connman_network_set_string(service->network, "WiFi.EAP",
+								service->eap);
+
+	if (service->identity)
+		connman_network_set_string(service->network, "WiFi.Identity",
+							service->identity);
+
+	if (service->ca_cert_file)
+		connman_network_set_string(service->network, "WiFi.CACertFile",
+							service->ca_cert_file);
+
+	if (service->client_cert_file)
+		connman_network_set_string(service->network,
+						"WiFi.ClientCertFile",
+						service->client_cert_file);
+
+	if (service->private_key_file)
+		connman_network_set_string(service->network,
+						"WiFi.PrivateKeyFile",
+						service->private_key_file);
+
+	if (service->private_key_passphrase)
+		connman_network_set_string(service->network,
+					"WiFi.PrivateKeyPassphrase",
+					service->private_key_passphrase);
+
+	if (service->phase2)
+		connman_network_set_string(service->network, "WiFi.Phase2",
+							service->phase2);
+}
+
+
 int __connman_service_connect(struct connman_service *service)
 {
 	int err;
@@ -1622,12 +1657,12 @@ int __connman_service_connect(struct connman_service *service)
 		switch (service->security) {
 		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
 		case CONNMAN_SERVICE_SECURITY_NONE:
-		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		case CONNMAN_SERVICE_SECURITY_WEP:
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->passphrase == NULL)
 				return -ENOKEY;
 			break;
@@ -1638,6 +1673,19 @@ int __connman_service_connect(struct connman_service *service)
 	if (service->network != NULL) {
 		if (prepare_network(service) == FALSE)
 			return -EINVAL;
+
+		switch (service->security) {
+		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+		case CONNMAN_SERVICE_SECURITY_NONE:
+		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_PSK:
+		case CONNMAN_SERVICE_SECURITY_WPA:
+		case CONNMAN_SERVICE_SECURITY_RSN:
+			break;
+		case CONNMAN_SERVICE_SECURITY_8021X:
+			prepare_8021x(service);
+			break;
+		}
 
 		__connman_ipconfig_enable(service->ipconfig);
 
@@ -1819,7 +1867,8 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 				g_strcmp0(security, "wep") != 0 &&
 				g_strcmp0(security, "psk") != 0 &&
 				g_strcmp0(security, "wpa") != 0 &&
-				g_strcmp0(security, "rsn") != 0)
+				g_strcmp0(security, "rsn") != 0 &&
+				g_strcmp0(security, "ieee8021x") != 0)
 		return -EINVAL;
 
 	device = __connman_element_find_device(CONNMAN_DEVICE_TYPE_WIFI);
