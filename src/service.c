@@ -1630,7 +1630,6 @@ static void prepare_8021x(struct connman_service *service)
 							service->phase2);
 }
 
-
 int __connman_service_connect(struct connman_service *service)
 {
 	int err;

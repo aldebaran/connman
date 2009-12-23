@@ -108,20 +108,22 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 		service->ca_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "ClientCertFile", NULL);
+	str = g_key_file_get_string(keyfile, "service",
+						"ClientCertFile", NULL);
 	if (str != NULL) {
 		g_free(service->client_cert_file);
 		service->client_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "PrivateKeyFile", NULL);
+	str = g_key_file_get_string(keyfile, "service",
+						"PrivateKeyFile", NULL);
 	if (str != NULL) {
 		g_free(service->private_key_file);
 		service->private_key_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "PrivateKeyPassphrase",
-				    NULL);
+	str = g_key_file_get_string(keyfile, "service",
+						"PrivateKeyPassphrase", NULL);
 	if (str != NULL) {
 		g_free(service->private_key_passphrase);
 		service->private_key_passphrase = str;
@@ -143,7 +145,6 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 						"PassphraseFromFsid", &error);
 	if (error == NULL)
 		service->passphrase_from_fsid = pass_from_fsid;
-
 
 	return 0;
 }
@@ -318,19 +319,19 @@ static void config_service_setup(struct connman_service *service,
 
 	if (config->identity)
 		__connman_service_set_string(service, "Identity",
-					     config->identity);
+							config->identity);
 
 	if (config->ca_cert_file)
 		__connman_service_set_string(service, "CACertFile",
-					     config->ca_cert_file);
+							config->ca_cert_file);
 
 	if (config->client_cert_file)
 		__connman_service_set_string(service, "ClientCertFile",
-					     config->client_cert_file);
+						config->client_cert_file);
 
 	if (config->private_key_file)
 		__connman_service_set_string(service, "PrivateKeyFile",
-					     config->private_key_file);
+						config->private_key_file);
 
 	if (config->passphrase_from_fsid == TRUE &&
 					config->private_key_file) {
@@ -346,7 +347,7 @@ static void config_service_setup(struct connman_service *service,
 
 	if (config->private_key_passphrase) {
 		__connman_service_set_string(service, "PrivateKeyPassphrase",
-					     config->private_key_passphrase);
+						config->private_key_passphrase);
 		/*
 		 * TODO: Support for PEAP with both identity and key passwd.
 		 * In that case, we should check if both of them are found
@@ -355,7 +356,7 @@ static void config_service_setup(struct connman_service *service,
 		 * additional passphrase.
 		 */
 		__connman_service_set_string(service, "Passphrase",
-					     config->private_key_passphrase);
+						config->private_key_passphrase);
 	}
 
 	if (config->phase2)
@@ -404,16 +405,17 @@ int __connman_config_provision_service(struct connman_service *service)
 	}
 
 	g_hash_table_iter_init(&iter, config_hash);
+
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		config = value;
 
-		/* For now we only support wifi services entries */
+		/* For now only WiFi service entries are supported */
 		if (config->service &&
 				g_strcmp0(config->service->type, "wifi") == 0 &&
 				ssid_len == config->service->ssid_len)
 			if (config->service->ssid &&
 					memcmp(config->service->ssid, ssid,
-					       ssid_len) == 0)
+								ssid_len) == 0)
 				break;
 	}
 
