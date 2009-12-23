@@ -65,6 +65,14 @@ struct connman_service {
 	connman_bool_t roaming;
 	struct connman_ipconfig *ipconfig;
 	struct connman_network *network;
+	/* 802.1x settings from the config files */
+	char *eap;
+	char *identity;
+	char *ca_cert_file;
+	char *client_cert_file;
+	char *private_key_file;
+	char *private_key_passphrase;
+	char *phase2;
 	DBusMessage *pending;
 	guint timeout;
 };
@@ -1181,6 +1189,13 @@ static void service_free(gpointer user_data)
 	g_free(service->name);
 	g_free(service->passphrase);
 	g_free(service->identifier);
+	g_free(service->eap);
+	g_free(service->identity);
+	g_free(service->ca_cert_file);
+	g_free(service->client_cert_file);
+	g_free(service->private_key_file);
+	g_free(service->private_key_passphrase);
+	g_free(service->phase2);
 	g_free(service);
 }
 
@@ -1357,6 +1372,21 @@ char *connman_service_get_interface(struct connman_service *service)
 }
 
 /**
+ * connman_service_get_network:
+ * @service: service structure
+ *
+ * Get the service network
+ */
+struct connman_network *
+__connman_service_get_network(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->network;
+}
+
+/**
  * connman_service_set_favorite:
  * @service: service structure
  * @favorite: favorite value
@@ -1384,6 +1414,33 @@ int connman_service_set_favorite(struct connman_service *service,
 	__connman_profile_changed(FALSE);
 
 	return 0;
+}
+
+void __connman_service_set_string(struct connman_service *service,
+				  const char *key, const char *value)
+{
+	if (g_str_equal(key, "EAP") == TRUE) {
+		g_free(service->eap);
+		service->eap = g_strdup(value);
+	} else if (g_str_equal(key, "Identity") == TRUE) {
+		g_free(service->identity);
+		service->identity = g_strdup(value);
+	} else if (g_str_equal(key, "CACertFile") == TRUE) {
+		g_free(service->ca_cert_file);
+		service->ca_cert_file = g_strdup(value);
+	} else if (g_str_equal(key, "ClientCertFile") == TRUE) {
+		g_free(service->client_cert_file);
+		service->client_cert_file = g_strdup(value);
+	} else if (g_str_equal(key, "PrivateKeyFile") == TRUE) {
+		g_free(service->private_key_file);
+		service->private_key_file = g_strdup(value);
+	} else if (g_str_equal(key, "PrivateKeyPassphrase") == TRUE) {
+		g_free(service->private_key_passphrase);
+		service->private_key_passphrase = g_strdup(value);
+	} else if (g_str_equal(key, "Phase2") == TRUE) {
+		g_free(service->phase2);
+		service->phase2 = g_strdup(value);
+	}
 }
 
 int __connman_service_indicate_state(struct connman_service *service,
