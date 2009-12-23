@@ -72,7 +72,7 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 		service->type = str;
 	}
 
-	hex_ssid = g_key_file_get_string(keyfile, "service", "Type", NULL);
+	hex_ssid = g_key_file_get_string(keyfile, "service", "SSID", NULL);
 	if (hex_ssid != NULL) {
 		char *ssid;
 		unsigned int i, j = 0, hex;
