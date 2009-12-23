@@ -68,7 +68,7 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 
 	str = g_key_file_get_string(keyfile, "service", "Type", NULL);
 	if (str != NULL) {
-		g_free(service->ssid);
+		g_free(service->type);
 		service->type = str;
 	}
 
@@ -91,7 +91,7 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 
 		g_free(hex_ssid);
 
-		g_free(service->type);
+		g_free(service->ssid);
 		service->ssid = ssid;
 		service->ssid_len = hex_ssid_len / 2;
 	}
@@ -415,11 +415,11 @@ int __connman_config_provision_service(struct connman_service *service)
 				ssid_len == config->service->ssid_len)
 			if (config->service->ssid &&
 					memcmp(config->service->ssid, ssid,
-								ssid_len) == 0)
+							ssid_len) == 0) {
+				config_service_setup(service, config->service);
 				break;
+			}
 	}
-
-	config_service_setup(service, config->service);
 
 	return 0;
 }
