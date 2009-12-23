@@ -113,10 +113,12 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wifi-scan tools/addr-test tools/tap-test \
-							tools/polkit-test
+noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test \
+			tools/addr-test tools/tap-test tools/polkit-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
+
+tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
 endif

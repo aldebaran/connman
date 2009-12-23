@@ -44,6 +44,7 @@ tools/wifi-scan
 tools/addr-test
 tools/tap-test
 tools/polkit-test
+tools/supplicant-test
 doc/*.bak
 doc/*.stamp
 doc/connman.*
