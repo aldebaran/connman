@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <sys/vfs.h>
 #include <glib.h>
 
 #include "connman.h"
@@ -40,6 +41,7 @@ struct connman_config_service {
 	char *private_key_file;
 	char *private_key_passphrase;
 	char *phase2;
+	connman_bool_t passphrase_from_fsid;
 };
 
 struct connman_config {
@@ -55,6 +57,8 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 {
 	char *str, *hex_ssid;
 	struct connman_config_service *service;
+	gboolean pass_from_fsid;
+	GError *error = NULL;
 
 	service = g_try_new0(struct connman_config_service, 1);
 	if (service == NULL)
@@ -134,6 +138,11 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 		g_free(service->phase2);
 		service->phase2 = str;
 	}
+
+	pass_from_fsid = g_key_file_get_boolean(keyfile, "service",
+						"PassphraseFromFsid", &error);
+	if (error == NULL)
+		service->passphrase_from_fsid = pass_from_fsid;
 
 
 	return 0;
@@ -278,6 +287,26 @@ static int config_init(void)
 	return 0;
 }
 
+static char *config_pem_fsid(char *pem_file)
+{
+	struct statfs buf;
+	unsigned *fsid = (unsigned *) &buf.f_fsid;
+	unsigned long long fsid64;
+
+	if (pem_file == NULL)
+		return NULL;
+
+	if (statfs(pem_file, &buf) < 0) {
+		connman_error("statfs error %s for %s",
+						strerror(errno), pem_file);
+		return NULL;
+	}
+
+	fsid64 = ((unsigned long long) fsid[0] << 32) | fsid[1];
+
+	return g_strdup_printf("%llx", fsid64);
+}
+
 static void config_service_setup(struct connman_service *service,
 				 struct connman_config_service *config)
 {
@@ -303,9 +332,31 @@ static void config_service_setup(struct connman_service *service,
 		__connman_service_set_string(service, "PrivateKeyFile",
 					     config->private_key_file);
 
-	if (config->private_key_passphrase)
+	if (config->passphrase_from_fsid == TRUE &&
+					config->private_key_file) {
+		char *fsid;
+
+		fsid = config_pem_fsid(config->private_key_file);
+		if (fsid == NULL)
+			return;
+
+		g_free(config->private_key_passphrase);
+		config->private_key_passphrase = fsid;
+	}
+
+	if (config->private_key_passphrase) {
 		__connman_service_set_string(service, "PrivateKeyPassphrase",
 					     config->private_key_passphrase);
+		/*
+		 * TODO: Support for PEAP with both identity and key passwd.
+		 * In that case, we should check if both of them are found
+		 * from the config file. If not, we should not set the
+		 * service passphrase in order for the UI to request for an
+		 * additional passphrase.
+		 */
+		__connman_service_set_string(service, "Passphrase",
+					     config->private_key_passphrase);
+	}
 
 	if (config->phase2)
 		__connman_service_set_string(service, "Phase2", config->phase2);

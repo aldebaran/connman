@@ -1440,6 +1440,9 @@ void __connman_service_set_string(struct connman_service *service,
 	} else if (g_str_equal(key, "Phase2") == TRUE) {
 		g_free(service->phase2);
 		service->phase2 = g_strdup(value);
+	} else if (g_str_equal(key, "Passphrase") == TRUE) {
+		g_free(service->passphrase);
+		service->passphrase = g_strdup(value);
 	}
 }
 
