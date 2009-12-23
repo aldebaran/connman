@@ -31,9 +31,7 @@
 
 #include <gdbus.h>
 
-#define DBG(fmt, arg...) do { \
-	syslog(LOG_DEBUG, "%s:%s() " fmt, __FILE__, __FUNCTION__ , ## arg); \
-} while (0)
+#include "supplicant.h"
 
 static GMainLoop *main_loop = NULL;
 
@@ -82,8 +80,16 @@ int main(int argc, char *argv[])
 
 	syslog(LOG_INFO, "Startup");
 
+	if (supplicant_init() < 0) {
+		syslog(LOG_ERR, "Failed to init supplicant");
+		goto done;
+	}
+
 	g_main_loop_run(main_loop);
 
+	supplicant_exit();
+
+done:
 	syslog(LOG_INFO, "Exit");
 
 	dbus_connection_unref(conn);
