@@ -23,7 +23,74 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <signal.h>
+#include <syslog.h>
+
+#include <gdbus.h>
+
+#define DBG(fmt, arg...) do { \
+	syslog(LOG_DEBUG, "%s:%s() " fmt, __FILE__, __FUNCTION__ , ## arg); \
+} while (0)
+
+static GMainLoop *main_loop = NULL;
+
+static void sig_term(int sig)
+{
+	syslog(LOG_INFO, "Terminating");
+
+	g_main_loop_quit(main_loop);
+}
+
+static void disconnect_callback(DBusConnection *conn, void *user_data)
+{
+	syslog(LOG_ERR, "D-Bus disconnect");
+
+	g_main_loop_quit(main_loop);
+}
+
 int main(int argc, char *argv[])
 {
+	DBusConnection *conn;
+	DBusError err;
+	struct sigaction sa;
+
+	main_loop = g_main_loop_new(NULL, FALSE);
+
+	dbus_error_init(&err);
+
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &err);
+	if (conn == NULL) {
+		if (dbus_error_is_set(&err) == TRUE) {
+			fprintf(stderr, "%s\n", err.message);
+			dbus_error_free(&err);
+		} else
+			fprintf(stderr, "Can't register with system bus\n");
+		exit(1);
+	}
+
+	openlog("supplicant", LOG_NDELAY | LOG_PERROR, LOG_USER);
+
+	g_dbus_set_disconnect_function(conn, disconnect_callback, NULL, NULL);
+
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sig_term;
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
+
+	syslog(LOG_INFO, "Startup");
+
+	g_main_loop_run(main_loop);
+
+	syslog(LOG_INFO, "Exit");
+
+	dbus_connection_unref(conn);
+
+	g_main_loop_unref(main_loop);
+
+	closelog();
+
 	return 0;
 }
