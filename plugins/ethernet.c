@@ -103,9 +103,10 @@ static void add_network(struct connman_device *device)
 	}
 
 	connman_network_set_available(network, TRUE);
-	connman_network_set_connected(network, TRUE);
 
 	connman_network_set_group(network, "cable");
+
+	connman_network_set_connected(network, TRUE);
 }
 
 static void ethernet_newlink(unsigned flags, unsigned change, void *user_data)
