@@ -1294,10 +1294,10 @@ static int static_network_set_connected(
 		struct connman_element *element;
 
 		if (parent->ipv4.address == NULL)
-			goto error;
+			goto failed;
 
 		if (parent->ipv4.netmask == NULL)
-			goto error;
+			goto failed;
 
 		element = connman_element_create(NULL);
 		if (element == NULL) {
@@ -1310,7 +1310,7 @@ static int static_network_set_connected(
 
 		if (connman_element_register(element, parent) < 0) {
 			connman_element_unref(element);
-			goto error;
+			goto failed;
 		}
 	} else
 		cleanup_ipconfig(parent);
@@ -1319,7 +1319,7 @@ static int static_network_set_connected(
 
 	return 0;
 
-error:
+failed:
 	connman_network_set_error(pending_network,
 		CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 
