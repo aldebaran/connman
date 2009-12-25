@@ -151,6 +151,9 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 
 static void free_service(struct connman_config_service *service)
 {
+	if (service == NULL)
+		return;
+
 	g_free(service->type);
 	g_free(service->ssid);
 	g_free(service->eap);
