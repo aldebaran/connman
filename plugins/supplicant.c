@@ -2230,7 +2230,8 @@ static int supplicant_create(void)
 
 	if (dbus_connection_add_filter(connection,
 				supplicant_filter, NULL, NULL) == FALSE) {
-		connection = connman_dbus_get_connection();
+		dbus_connection_unref(connection);
+		connection = NULL;
 		return -EIO;
 	}
 
