@@ -203,10 +203,10 @@ done:
 
 static void free_config(struct connman_config *config)
 {
+	free_service(config->service);
 	g_free(config->description);
 	g_free(config->name);
 	g_free(config->ident);
-	free_service(config->service);
 	g_free(config);
 }
 
@@ -386,7 +386,6 @@ int __connman_config_provision_service(struct connman_service *service)
 	GHashTableIter iter;
 	gpointer value, key;
 	struct connman_network *network;
-	struct connman_config *config = NULL;
 	const void *ssid;
 	unsigned int ssid_len;
 
@@ -407,18 +406,23 @@ int __connman_config_provision_service(struct connman_service *service)
 	g_hash_table_iter_init(&iter, config_hash);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		config = value;
+		struct connman_config *config = value;
+
+		if (config->service == NULL)
+			continue;
 
 		/* For now only WiFi service entries are supported */
-		if (config->service &&
-				g_strcmp0(config->service->type, "wifi") == 0 &&
-				ssid_len == config->service->ssid_len)
-			if (config->service->ssid &&
-					memcmp(config->service->ssid, ssid,
-							ssid_len) == 0) {
-				config_service_setup(service, config->service);
-				break;
-			}
+		if (g_strcmp0(config->service->type, "wifi") != 0)
+			continue;
+
+		if (config->service->ssid == NULL ||
+				ssid_len != config->service->ssid_len)
+			continue;
+
+		if (memcmp(config->service->ssid, ssid, ssid_len) == 0) {
+			config_service_setup(service, config->service);
+			break;
+		}
 	}
 
 	return 0;
