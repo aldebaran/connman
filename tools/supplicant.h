@@ -19,5 +19,12 @@
  *
  */
 
-int supplicant_init(void);
-void supplicant_exit(void);
+struct supplicant_interface;
+
+struct supplicant_callbacks {
+	void (*interface_added) (const struct supplicant_interface *interface);
+	void (*interface_removed) (const struct supplicant_interface *interface);
+};
+
+int supplicant_register(const struct supplicant_callbacks *callbacks);
+void supplicant_unregister(const struct supplicant_callbacks *callbacks);

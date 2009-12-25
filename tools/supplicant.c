@@ -24,8 +24,10 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 #include <syslog.h>
 
+#include <glib.h>
 #include <gdbus.h>
 
 #include "supplicant.h"
@@ -42,6 +44,8 @@
 
 static DBusConnection *connection;
 
+static const struct supplicant_callbacks *callbacks_pointer;
+
 static void show_property(const char *key, DBusMessageIter *iter)
 {
 	DBusMessageIter array;
@@ -50,10 +54,12 @@ static void show_property(const char *key, DBusMessageIter *iter)
 
 	switch (dbus_message_iter_get_arg_type(iter)) {
 	case DBUS_TYPE_STRING:
+	case DBUS_TYPE_OBJECT_PATH:
 		dbus_message_iter_get_basic(iter, &str);
 		DBG("%s = %s", key, str);
 		break;
 	case DBUS_TYPE_BYTE:
+	case DBUS_TYPE_BOOLEAN:
 		dbus_message_iter_get_basic(iter, &byte);
 		DBG("%s = %u", key, byte);
 		break;
@@ -174,7 +180,51 @@ static int properties_get_all(const char *path, const char *interface)
 	return 0;
 }
 
-int supplicant_init(void)
+static DBusHandlerResult supplicant_filter(DBusConnection *conn,
+						DBusMessage *msg, void *data)
+{
+	int prefixlen = strlen(SUPPLICANT_INTERFACE);
+	const char *interface, *member, *path;
+
+	interface = dbus_message_get_interface(msg);
+	if (interface == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	if (g_str_has_prefix(interface, SUPPLICANT_INTERFACE) == FALSE)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	member = dbus_message_get_member(msg);
+	if (member == NULL)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	path = dbus_message_get_path(msg);
+
+	syslog(LOG_DEBUG, "[ %s ]%s.%s", path, interface + prefixlen, member);
+
+	if (g_str_equal(member, "PropertiesChanged") == TRUE) {
+		DBusMessageIter iter;
+
+		if (dbus_message_iter_init(msg, &iter) == TRUE)
+			properties_decode(&iter);
+	}
+
+	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+static const char *supplicant_rule1 = "type=signal,"
+			"interface=" SUPPLICANT_INTERFACE;
+static const char *supplicant_rule2 = "type=signal,"
+			"interface=" SUPPLICANT_INTERFACE ".Interface";
+static const char *supplicant_rule3 = "type=signal,"
+			"interface=" SUPPLICANT_INTERFACE ".Interface.WPS";
+static const char *supplicant_rule4 = "type=signal,"
+			"interface=" SUPPLICANT_INTERFACE ".Interface.BSS";
+static const char *supplicant_rule5 = "type=signal,"
+			"interface=" SUPPLICANT_INTERFACE ".Interface.Network";
+static const char *supplicant_rule6 = "type=signal,"
+			"interface=" SUPPLICANT_INTERFACE ".Interface.Blob";
+
+int supplicant_register(const struct supplicant_callbacks *callbacks)
 {
 	DBG("");
 
@@ -182,15 +232,47 @@ int supplicant_init(void)
 	if (connection == NULL)
 		return -EIO;
 
+	if (dbus_connection_add_filter(connection,
+				supplicant_filter, NULL, NULL) == FALSE) {
+		dbus_connection_unref(connection);
+		connection = NULL;
+		return -EIO;
+	}
+
+	callbacks_pointer = callbacks;
+
+	dbus_bus_add_match(connection, supplicant_rule1, NULL);
+	dbus_bus_add_match(connection, supplicant_rule2, NULL);
+	dbus_bus_add_match(connection, supplicant_rule3, NULL);
+	dbus_bus_add_match(connection, supplicant_rule4, NULL);
+	dbus_bus_add_match(connection, supplicant_rule5, NULL);
+	dbus_bus_add_match(connection, supplicant_rule6, NULL);
+	dbus_connection_flush(connection);
+
 	properties_get_all(SUPPLICANT_PATH, SUPPLICANT_INTERFACE);
 
 	return 0;
 }
 
-void supplicant_exit(void)
+void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 {
 	DBG("");
 
-	if (connection != NULL)
+	if (connection != NULL) {
+		dbus_bus_remove_match(connection, supplicant_rule6, NULL);
+		dbus_bus_remove_match(connection, supplicant_rule5, NULL);
+		dbus_bus_remove_match(connection, supplicant_rule4, NULL);
+		dbus_bus_remove_match(connection, supplicant_rule3, NULL);
+		dbus_bus_remove_match(connection, supplicant_rule2, NULL);
+		dbus_bus_remove_match(connection, supplicant_rule1, NULL);
+		dbus_connection_flush(connection);
+
+		dbus_connection_remove_filter(connection,
+						supplicant_filter, NULL);
+
 		dbus_connection_unref(connection);
+		connection = NULL;
+	}
+
+	callbacks_pointer = NULL;
 }
