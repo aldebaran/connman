@@ -56,6 +56,8 @@ static void network_added(struct supplicant_network *network)
 	const char *name = supplicant_network_get_name(network);
 
 	DBG("name %s", name);
+
+	DBG("%s", supplicant_network_get_identifier(network));
 }
 
 static void network_removed(struct supplicant_network *network)

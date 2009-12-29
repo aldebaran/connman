@@ -32,6 +32,20 @@
 #define SUPPLICANT_CAPABILITY_SCAN_PASSIVE	(1 << 1)
 #define SUPPLICANT_CAPABILITY_SCAN_SSID		(1 << 2)
 
+enum supplicant_mode {
+	SUPPLICANT_MODE_UNKNOWN,
+	SUPPLICANT_MODE_INFRA,
+	SUPPLICANT_MODE_IBSS,
+};
+
+enum supplicant_security {
+	SUPPLICANT_SECURITY_UNKNOWN,
+	SUPPLICANT_SECURITY_NONE,
+	SUPPLICANT_SECURITY_WEP,
+	SUPPLICANT_SECURITY_PSK,
+	SUPPLICANT_SECURITY_IEEE8021X,
+};
+
 enum supplicant_state {
 	SUPPLICANT_STATE_UNKNOWN,
 	SUPPLICANT_STATE_DISCONNECTED,
@@ -51,15 +65,10 @@ const char *supplicant_interface_get_ifname(struct supplicant_interface *interfa
 
 struct supplicant_network;
 
-enum supplicant_network_mode {
-	SUPPLICANT_NETWORK_MODE_UNKNOWN,
-	SUPPLICANT_NETWORK_MODE_INFRA,
-	SUPPLICANT_NETWORK_MODE_ADHOC,
-};
-
 struct supplicant_interface *supplicant_network_get_interface(struct supplicant_network *network);
 const char *supplicant_network_get_name(struct supplicant_network *network);
-enum supplicant_network_mode supplicant_network_get_mode(struct supplicant_network *network);
+const char *supplicant_network_get_identifier(struct supplicant_network *network);
+enum supplicant_mode supplicant_network_get_mode(struct supplicant_network *network);
 
 struct supplicant_callbacks {
 	void (*interface_added) (struct supplicant_interface *interface);

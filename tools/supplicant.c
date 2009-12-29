@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <stdint.h>
 #include <syslog.h>
 
 #include <glib.h>
@@ -38,6 +39,10 @@
 } while (0)
 
 #define TIMEOUT 5000
+
+#define IEEE80211_CAP_ESS	0x0001
+#define IEEE80211_CAP_IBSS	0x0002
+#define IEEE80211_CAP_PRIVACY	0x0010
 
 static DBusConnection *connection;
 
@@ -89,7 +94,7 @@ struct supplicant_network {
 	struct supplicant_interface *interface;
 	char *group;
 	char *name;
-	enum supplicant_network_mode mode;
+	enum supplicant_mode mode;
 	GHashTable *bss_table;
 };
 
@@ -100,7 +105,44 @@ struct supplicant_bss {
 	unsigned char ssid[32];
 	unsigned int ssid_len;
 	unsigned int frequency;
+	enum supplicant_mode mode;
+	enum supplicant_security security;
+	dbus_bool_t privacy;
+	dbus_bool_t psk;
+	dbus_bool_t ieee8021x;
 };
+
+static const char *mode2string(enum supplicant_mode mode)
+{
+	switch (mode) {
+	case SUPPLICANT_MODE_UNKNOWN:
+		break;
+	case SUPPLICANT_MODE_INFRA:
+		return "managed";
+	case SUPPLICANT_MODE_IBSS:
+		return "adhoc";
+	}
+
+	return NULL;
+}
+
+static const char *security2string(enum supplicant_security security)
+{
+	switch (security) {
+	case SUPPLICANT_SECURITY_UNKNOWN:
+		break;
+	case SUPPLICANT_SECURITY_NONE:
+		return "none";
+	case SUPPLICANT_SECURITY_WEP:
+		return "wep";
+	case SUPPLICANT_SECURITY_PSK:
+		return "psk";
+	case SUPPLICANT_SECURITY_IEEE8021X:
+		return "ieee8021x";
+	}
+
+	return NULL;
+}
 
 static enum supplicant_state string2state(const char *state)
 {
@@ -287,10 +329,18 @@ const char *supplicant_network_get_name(struct supplicant_network *network)
 	return network->name;
 }
 
-enum supplicant_network_mode supplicant_network_get_mode(struct supplicant_network *network)
+const char *supplicant_network_get_identifier(struct supplicant_network *network)
+{
+	if (network == NULL || network->group == NULL)
+		return "";
+
+	return network->group;
+}
+
+enum supplicant_mode supplicant_network_get_mode(struct supplicant_network *network)
 {
 	if (network == NULL)
-		return SUPPLICANT_NETWORK_MODE_UNKNOWN;
+		return SUPPLICANT_MODE_UNKNOWN;
 
 	return network->mode;
 }
@@ -312,9 +362,22 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	if (path == NULL)
 		return;
 
+	DBG("path %s", path);
+
 	supplicant_dbus_property_get_all(path,
 				SUPPLICANT_INTERFACE ".Interface.Network",
 						network_property, NULL);
+}
+
+static void interface_network_removed(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = NULL;
+
+	dbus_message_iter_get_basic(iter, &path);
+	if (path == NULL)
+		return;
+
+	DBG("path %s", path);
 }
 
 static char *create_name(unsigned char *ssid, int ssid_len)
@@ -340,17 +403,15 @@ static char *create_name(unsigned char *ssid, int ssid_len)
 	return name;
 }
 
-static void add_bss_to_network(struct supplicant_bss *bss)
+static char *create_group(struct supplicant_bss *bss)
 {
-	struct supplicant_interface *interface = bss->interface;
-	struct supplicant_network *network;
 	GString *str;
-	char *group;
 	unsigned int i;
+	const char *mode, *security;
 
 	str = g_string_sized_new((bss->ssid_len * 2) + 24);
 	if (str == NULL)
-		return;
+		return NULL;
 
 	if (bss->ssid_len > 0 && bss->ssid[0] != '\0') {
 		for (i = 0; i < bss->ssid_len; i++)
@@ -358,7 +419,26 @@ static void add_bss_to_network(struct supplicant_bss *bss)
 	} else
 		g_string_append_printf(str, "hidden");
 
-	group = g_string_free(str, FALSE);
+	mode = mode2string(bss->mode);
+	if (mode != NULL)
+		g_string_append_printf(str, "_%s", mode);
+
+	security = security2string(bss->security);
+	if (security != NULL)
+		g_string_append_printf(str, "_%s", security);
+
+	return g_string_free(str, FALSE);
+}
+
+static void add_bss_to_network(struct supplicant_bss *bss)
+{
+	struct supplicant_interface *interface = bss->interface;
+	struct supplicant_network *network;
+	char *group;
+
+	group = create_group(bss);
+	if (group == NULL)
+		return;
 
 	network = g_hash_table_lookup(interface->network_table, group);
 	if (network != NULL) {
@@ -374,6 +454,7 @@ static void add_bss_to_network(struct supplicant_bss *bss)
 
 	network->group = group;
 	network->name = create_name(bss->ssid, bss->ssid_len);
+	network->mode = bss->mode;
 
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_bss);
@@ -388,6 +469,76 @@ done:
 	g_hash_table_replace(network->bss_table, bss->path, bss);
 }
 
+static unsigned char wifi_oui[3]      = { 0x00, 0x50, 0xf2 };
+static unsigned char ieee80211_oui[3] = { 0x00, 0x0f, 0xac };
+
+static void extract_rsn(struct supplicant_bss *bss,
+					const unsigned char *buf, int len)
+{
+	uint16_t count;
+	int i;
+
+	/* Version */
+	if (len < 2)
+		return;
+
+	buf += 2;
+	len -= 2;
+
+	/* Group cipher */
+	if (len < 4)
+		return;
+
+	buf += 4;
+	len -= 4;
+
+	/* Pairwise cipher */
+	if (len < 2)
+		return;
+
+	count = buf[0] | (buf[1] << 8);
+	if (2 + (count * 4) > len)
+		return;
+
+	buf += 2 + (count * 4);
+	len -= 2 + (count * 4);
+
+	/* Authentication */
+	if (len < 2)
+		return;
+
+	count = buf[0] | (buf[1] << 8);
+	if (2 + (count * 4) > len)
+		return;
+
+	for (i = 0; i < count; i++) {
+		const unsigned char *ptr = buf + 2 + (i * 4);
+
+		if (memcmp(ptr, wifi_oui, 3) == 0) {
+			switch (ptr[3]) {
+			case 1:
+				bss->ieee8021x = TRUE;
+				break;
+			case 2:
+				bss->psk = TRUE;
+				break;
+			}
+		} else if (memcmp(ptr, ieee80211_oui, 3) == 0) {
+			switch (ptr[3]) {
+			case 1:
+				bss->ieee8021x = TRUE;
+				break;
+			case 2:
+				bss->psk = TRUE;
+				break;
+			}
+		}
+	}
+
+	buf += 2 + (count * 4);
+	len -= 2 + (count * 4);
+}
+
 static void bss_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -397,6 +548,15 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 		return;
 
 	if (key == NULL) {
+		if (bss->ieee8021x == TRUE)
+			bss->security = SUPPLICANT_SECURITY_IEEE8021X;
+		else if (bss->psk == TRUE)
+			bss->security = SUPPLICANT_SECURITY_PSK;
+		else if (bss->privacy == TRUE)
+			bss->security = SUPPLICANT_SECURITY_WEP;
+		else
+			bss->security = SUPPLICANT_SECURITY_NONE;
+
 		add_bss_to_network(bss);
 		return;
 	}
@@ -427,9 +587,17 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 			bss->ssid_len = 0;
 		}
 	} else if (g_strcmp0(key, "Capabilities") == 0) {
-		unsigned char capabilities = 0x00;
+		dbus_uint16_t capabilities = 0x0000;
 
 		dbus_message_iter_get_basic(iter, &capabilities);
+
+		if (capabilities & IEEE80211_CAP_ESS)
+			bss->mode = SUPPLICANT_MODE_INFRA;
+		else if (capabilities & IEEE80211_CAP_IBSS)
+			bss->mode = SUPPLICANT_MODE_IBSS;
+
+		if (capabilities & IEEE80211_CAP_PRIVACY)
+			bss->privacy = TRUE;
 	} else if (g_strcmp0(key, "Frequency") == 0) {
 		dbus_int32_t frequency = 0;
 
@@ -450,6 +618,9 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 
 		dbus_message_iter_recurse(iter, &array);
 		dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
+
+		if (ie_len > 2)
+			extract_rsn(bss, ie + 2, ie_len - 2);
 	} else if (g_strcmp0(key, "WPAIE") == 0) {
 		DBusMessageIter array;
 		unsigned char *ie;
@@ -457,6 +628,9 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 
 		dbus_message_iter_recurse(iter, &array);
 		dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
+
+		if (ie_len > 6)
+			extract_rsn(bss, ie + 6, ie_len - 6);
 	} else if (g_strcmp0(key, "WPSIE") == 0) {
 		DBusMessageIter array;
 		unsigned char *ie;
@@ -733,17 +907,44 @@ static void signal_bss_removed(const char *path, DBusMessageIter *iter)
 	interface_bss_removed(iter, interface);
 }
 
+static void signal_network_added(const char *path, DBusMessageIter *iter)
+{
+	struct supplicant_interface *interface;
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	interface_network_added(iter, interface);
+}
+
+static void signal_network_removed(const char *path, DBusMessageIter *iter)
+{
+	struct supplicant_interface *interface;
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	interface_network_removed(iter, interface);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
 	void (*function) (const char *path, DBusMessageIter *iter);
 } signal_map[] = {
 	{ DBUS_INTERFACE_DBUS,  "NameOwnerChanged", signal_name_owner_changed },
+
 	{ SUPPLICANT_INTERFACE, "InterfaceAdded",   signal_interface_added    },
 	{ SUPPLICANT_INTERFACE, "InterfaceCreated", signal_interface_added    },
 	{ SUPPLICANT_INTERFACE, "InterfaceRemoved", signal_interface_removed  },
-	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",   signal_bss_added   },
-	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved", signal_bss_removed },
+
+	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",       signal_bss_added       },
+	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",     signal_bss_removed     },
+	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",   signal_network_added   },
+	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved", signal_network_removed },
+
 	{ }
 };
 
@@ -826,7 +1027,9 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 	dbus_bus_add_match(connection, supplicant_rule6, NULL);
 	dbus_connection_flush(connection);
 
-	supplicant_bootstrap();
+	if (dbus_bus_name_has_owner(connection,
+					SUPPLICANT_SERVICE, NULL) == TRUE)
+		supplicant_bootstrap();
 
 	return 0;
 }
