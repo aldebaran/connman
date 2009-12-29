@@ -1034,7 +1034,8 @@ static void ofono_disconnect(DBusConnection *connection, void *user_data)
 	modem_hash = NULL;
 }
 
-static void modem_changed(DBusConnection *connection, DBusMessage *message)
+static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
 	struct modem_data *modem;
@@ -1045,10 +1046,10 @@ static void modem_changed(DBusConnection *connection, DBusMessage *message)
 
 	modem = g_hash_table_lookup(modem_hash, path);
 	if (modem == NULL)
-		return;
+		return TRUE;
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return;
+		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
 
@@ -1060,7 +1061,7 @@ static void modem_changed(DBusConnection *connection, DBusMessage *message)
 
 		dbus_message_iter_get_basic(&value, &powered);
 		if (powered == TRUE)
-			return;
+			return TRUE;
 
 		modem_remove_device(modem);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
@@ -1070,9 +1071,12 @@ static void modem_changed(DBusConnection *connection, DBusMessage *message)
 		} else if (modem->device != NULL)
 			modem_remove_device(modem);
 	}
+
+	return TRUE;
 }
 
-static void gprs_changed(DBusConnection *connection, DBusMessage *message)
+static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
 	struct modem_data *modem;
@@ -1083,10 +1087,10 @@ static void gprs_changed(DBusConnection *connection, DBusMessage *message)
 
 	modem = g_hash_table_lookup(modem_hash, path);
 	if (modem == NULL)
-		return;
+		return TRUE;
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return;
+		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
 
@@ -1118,14 +1122,17 @@ static void gprs_changed(DBusConnection *connection, DBusMessage *message)
 		dbus_bool_t powered;
 
 		if (modem->device == NULL)
-			return;
+			return TRUE;
 
 		dbus_message_iter_get_basic(&value, &powered);
 		connman_device_set_powered(modem->device, powered);
 	}
+
+	return TRUE;
 }
 
-static void manager_changed(DBusConnection *connection, DBusMessage *message)
+static gboolean manager_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
 	DBusMessageIter iter, value;
@@ -1134,7 +1141,7 @@ static void manager_changed(DBusConnection *connection, DBusMessage *message)
 	DBG("path %s", path);
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return;
+		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
 
@@ -1143,6 +1150,8 @@ static void manager_changed(DBusConnection *connection, DBusMessage *message)
 
 	if (g_str_equal(key, "Modems") == TRUE)
 		update_modems(&value);
+
+	return TRUE;
 }
 
 static void get_dns(DBusMessageIter *array, struct connman_element *parent)
@@ -1328,8 +1337,8 @@ failed:
 	return -EINVAL;
 }
 
-static void pri_context_changed(DBusConnection *connection,
-					DBusMessage *message)
+static gboolean pri_context_changed(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
 	struct connman_element *parent;
@@ -1340,16 +1349,16 @@ static void pri_context_changed(DBusConnection *connection,
 	DBG("pending_network %p, path %s", pending_network, path);
 
 	if (pending_network == NULL)
-		return;
+		return TRUE;
 
 	pending_path = connman_network_get_string(pending_network, "Path");
 	if (g_strcmp0(pending_path, path) != 0)
-		return;
+		return TRUE;
 
 	parent = connman_network_get_element(pending_network);
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return;
+		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
 
@@ -1383,38 +1392,15 @@ static void pri_context_changed(DBusConnection *connection,
 
 		pending_network = NULL;
 	}
+
+	return TRUE;
 }
-
-static DBusHandlerResult ofono_signal(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	if (dbus_message_is_signal(message, OFONO_MODEM_INTERFACE,
-						PROPERTY_CHANGED) == TRUE) {
-		modem_changed(connection, message);
-	} else if (dbus_message_is_signal(message, OFONO_GPRS_INTERFACE,
-						PROPERTY_CHANGED) == TRUE) {
-		gprs_changed(connection, message);
-	} else if (dbus_message_is_signal(message, OFONO_MANAGER_INTERFACE,
-						PROPERTY_CHANGED) == TRUE) {
-		manager_changed(connection, message);
-	} else if (dbus_message_is_signal(message, OFONO_PRI_CONTEXT_INTERFACE,
-						PROPERTY_CHANGED) == TRUE) {
-		pri_context_changed(connection, message);
-	}
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
-static const char *gprs_rule = "type=signal, member=" PROPERTY_CHANGED
-					",interface=" OFONO_GPRS_INTERFACE;
-static const char *modem_rule = "type=signal,member=" PROPERTY_CHANGED
-					",interface=" OFONO_MODEM_INTERFACE;
-static const char *manager_rule = "type=signal,member=" PROPERTY_CHANGED
-					",interface=" OFONO_MANAGER_INTERFACE;
-static const char *pri_context_rule = "type=signal,member=" PROPERTY_CHANGED
-				", interface=" OFONO_PRI_CONTEXT_INTERFACE;
 
 static guint watch;
+static guint gprs_watch;
+static guint modem_watch;
+static guint manager_watch;
+static guint context_watch;
 
 static int ofono_init(void)
 {
@@ -1424,10 +1410,37 @@ static int ofono_init(void)
 	if (connection == NULL)
 		return -EIO;
 
-	if (dbus_connection_add_filter(connection, ofono_signal,
-						NULL, NULL) == FALSE) {
+	watch = g_dbus_add_service_watch(connection, OFONO_SERVICE,
+			ofono_connect, ofono_disconnect, NULL, NULL);
+
+	gprs_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_GPRS_INTERFACE,
+						PROPERTY_CHANGED,
+						gprs_changed,
+						NULL, NULL);
+
+	modem_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_MODEM_INTERFACE,
+						PROPERTY_CHANGED,
+						modem_changed,
+						NULL, NULL);
+
+	manager_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_MANAGER_INTERFACE,
+						PROPERTY_CHANGED,
+						manager_changed,
+						NULL, NULL);
+
+	context_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_PRI_CONTEXT_INTERFACE,
+						PROPERTY_CHANGED,
+						pri_context_changed,
+						NULL, NULL);
+
+	if (watch == 0 || gprs_watch == 0 || modem_watch == 0 ||
+			manager_watch == 0 || context_watch == 0) {
 		err = -EIO;
-		goto unref;
+		goto remove;
 	}
 
 	err = connman_network_driver_register(&network_driver);
@@ -1440,24 +1453,15 @@ static int ofono_init(void)
 		goto remove;
 	}
 
-	watch = g_dbus_add_service_watch(connection, OFONO_SERVICE,
-			ofono_connect, ofono_disconnect, NULL, NULL);
-	if (watch == 0) {
-		err = -EIO;
-		goto remove;
-	}
-
-	dbus_bus_add_match(connection, modem_rule, NULL);
-	dbus_bus_add_match(connection, gprs_rule, NULL);
-	dbus_bus_add_match(connection, manager_rule, NULL);
-	dbus_bus_add_match(connection, pri_context_rule, NULL);
-
 	return 0;
 
 remove:
-	dbus_connection_remove_filter(connection, ofono_signal, NULL);
+	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, gprs_watch);
+	g_dbus_remove_watch(connection, modem_watch);
+	g_dbus_remove_watch(connection, manager_watch);
+	g_dbus_remove_watch(connection, context_watch);
 
-unref:
 	dbus_connection_unref(connection);
 
 	return err;
@@ -1465,19 +1469,16 @@ unref:
 
 static void ofono_exit(void)
 {
-	dbus_bus_remove_match(connection, modem_rule, NULL);
-	dbus_bus_remove_match(connection, gprs_rule, NULL);
-	dbus_bus_remove_match(connection, manager_rule, NULL);
-	dbus_bus_remove_match(connection, pri_context_rule, NULL);
-
 	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, gprs_watch);
+	g_dbus_remove_watch(connection, modem_watch);
+	g_dbus_remove_watch(connection, manager_watch);
+	g_dbus_remove_watch(connection, context_watch);
 
 	ofono_disconnect(connection, NULL);
 
 	connman_device_driver_unregister(&modem_driver);
 	connman_network_driver_unregister(&network_driver);
-
-	dbus_connection_remove_filter(connection, ofono_signal, NULL);
 
 	dbus_connection_unref(connection);
 }
