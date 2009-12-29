@@ -26,6 +26,8 @@
 #include <stdio.h>
 #include <unistd.h>
 
+#include <gdbus.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/driver.h>
@@ -161,25 +163,25 @@ static void udhcp_bound(DBusMessage *msg, gboolean renew)
 		connman_element_unref(element);
 }
 
-static DBusHandlerResult udhcp_filter(DBusConnection *conn,
+static gboolean udhcp_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	if (dbus_message_is_method_call(msg, UDHCPC_INTF, "bound") == TRUE) {
 		udhcp_bound(msg, FALSE);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return TRUE;
 	}
 
 	if (dbus_message_is_method_call(msg, UDHCPC_INTF, "renew") == TRUE) {
 		udhcp_bound(msg, TRUE);
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return TRUE;
 	}
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return TRUE;
 }
 
 static DBusConnection *connection;
 
-static const char *udhcp_rule = "path=" UDHCPC_PATH ",interface=" UDHCPC_INTF;
+static guint watch;
 
 static int udhcp_init(void)
 {
@@ -187,9 +189,11 @@ static int udhcp_init(void)
 
 	connection = connman_dbus_get_connection();
 
-	dbus_connection_add_filter(connection, udhcp_filter, NULL, NULL);
-
-	dbus_bus_add_match(connection, udhcp_rule, NULL);
+	watch = g_dbus_add_signal_watch(connection, NULL, UDHCPC_PATH,
+					UDHCPC_INTF, NULL, udhcp_filter,
+					NULL, NULL);
+	if (watch == 0)
+		return -EIO;
 
 	err = connman_driver_register(&udhcp_driver);
 	if (err < 0) {
@@ -204,9 +208,7 @@ static void udhcp_exit(void)
 {
 	connman_driver_unregister(&udhcp_driver);
 
-	dbus_bus_remove_match(connection, udhcp_rule, NULL);
-
-	dbus_connection_remove_filter(connection, udhcp_filter, NULL);
+	g_dbus_remove_watch(connection, watch);
 
 	dbus_connection_unref(connection);
 }
