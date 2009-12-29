@@ -591,7 +591,7 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
-static void interface_path(DBusMessageIter *iter, void *user_data)
+static void interface_added(DBusMessageIter *iter, void *user_data)
 {
 	struct supplicant_interface *interface;
 	const char *path = NULL;
@@ -621,6 +621,17 @@ static void interface_path(DBusMessageIter *iter, void *user_data)
 						interface_property, interface);
 }
 
+static void interface_removed(DBusMessageIter *iter, void *user_data)
+{
+	const char *path = NULL;
+
+	dbus_message_iter_get_basic(iter, &path);
+	if (path == NULL)
+		return;
+
+	g_hash_table_remove(interface_table, path);
+}
+
 static void eap_method(DBusMessageIter *iter, void *user_data)
 {
 	const char *str = NULL;
@@ -644,7 +655,7 @@ static void service_property(const char *key, DBusMessageIter *iter,
 		return;
 
 	if (g_strcmp0(key, "Interfaces") == 0)
-		supplicant_dbus_array_foreach(iter, interface_path, user_data);
+		supplicant_dbus_array_foreach(iter, interface_added, user_data);
 	else if (g_strcmp0(key, "EapMethods") == 0) {
 		supplicant_dbus_array_foreach(iter, eap_method, user_data);
 		debug_eap_methods();
@@ -652,14 +663,52 @@ static void service_property(const char *key, DBusMessageIter *iter,
 	}
 }
 
+static void supplicant_bootstrap(void)
+{
+	supplicant_dbus_property_get_all(SUPPLICANT_PATH,
+						SUPPLICANT_INTERFACE,
+						service_property, NULL);
+}
+
+static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
+{
+	const char *name = NULL, *old = NULL, *new = NULL;
+
+	if (g_strcmp0(path, DBUS_PATH_DBUS) != 0)
+		return;
+
+	dbus_message_iter_get_basic(iter, &name);
+	if (name == NULL)
+		return;
+
+	if (g_strcmp0(name, SUPPLICANT_SERVICE) != 0)
+		return;
+
+	dbus_message_iter_next(iter);
+	dbus_message_iter_get_basic(iter, &old);
+	dbus_message_iter_next(iter);
+	dbus_message_iter_get_basic(iter, &new);
+
+	if (old == NULL || new == NULL)
+		return;
+
+	if (strlen(old) > 0 && strlen(new) == 0)
+		g_hash_table_remove_all(interface_table);
+
+	if (strlen(new) > 0 && strlen(old) == 0)
+		supplicant_bootstrap();
+}
+
 static void signal_interface_added(const char *path, DBusMessageIter *iter)
 {
-	interface_path(iter, NULL);
+	if (g_strcmp0(path, SUPPLICANT_PATH) == 0)
+		interface_added(iter, NULL);
 }
 
 static void signal_interface_removed(const char *path, DBusMessageIter *iter)
 {
-	DBG("path %s", path);
+	if (g_strcmp0(path, SUPPLICANT_PATH) == 0)
+		interface_removed(iter, NULL);
 }
 
 static void signal_bss_added(const char *path, DBusMessageIter *iter)
@@ -689,7 +738,9 @@ static struct {
 	const char *member;
 	void (*function) (const char *path, DBusMessageIter *iter);
 } signal_map[] = {
+	{ DBUS_INTERFACE_DBUS,  "NameOwnerChanged", signal_name_owner_changed },
 	{ SUPPLICANT_INTERFACE, "InterfaceAdded",   signal_interface_added    },
+	{ SUPPLICANT_INTERFACE, "InterfaceCreated", signal_interface_added    },
 	{ SUPPLICANT_INTERFACE, "InterfaceRemoved", signal_interface_removed  },
 	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",   signal_bss_added   },
 	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved", signal_bss_removed },
@@ -726,6 +777,12 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+static const char *supplicant_rule0 = "type=signal,"
+					"path=" DBUS_PATH_DBUS ","
+					"sender=" DBUS_SERVICE_DBUS ","
+					"interface=" DBUS_INTERFACE_DBUS ","
+					"member=NameOwnerChanged,"
+					"arg0=" SUPPLICANT_SERVICE;
 static const char *supplicant_rule1 = "type=signal,"
 			"interface=" SUPPLICANT_INTERFACE;
 static const char *supplicant_rule2 = "type=signal,"
@@ -760,6 +817,7 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 
 	supplicant_dbus_setup(connection);
 
+	dbus_bus_add_match(connection, supplicant_rule0, NULL);
 	dbus_bus_add_match(connection, supplicant_rule1, NULL);
 	dbus_bus_add_match(connection, supplicant_rule2, NULL);
 	dbus_bus_add_match(connection, supplicant_rule3, NULL);
@@ -768,9 +826,7 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 	dbus_bus_add_match(connection, supplicant_rule6, NULL);
 	dbus_connection_flush(connection);
 
-	supplicant_dbus_property_get_all(SUPPLICANT_PATH,
-						SUPPLICANT_INTERFACE,
-						service_property, NULL);
+	supplicant_bootstrap();
 
 	return 0;
 }
@@ -784,6 +840,7 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 		dbus_bus_remove_match(connection, supplicant_rule3, NULL);
 		dbus_bus_remove_match(connection, supplicant_rule2, NULL);
 		dbus_bus_remove_match(connection, supplicant_rule1, NULL);
+		dbus_bus_remove_match(connection, supplicant_rule0, NULL);
 		dbus_connection_flush(connection);
 
 		dbus_connection_remove_filter(connection,
