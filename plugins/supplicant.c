@@ -1953,27 +1953,23 @@ badstate:
 							oldstate, newstate);
 }
 
-static DBusHandlerResult supplicant_filter(DBusConnection *conn,
+static gboolean supplicant_filter(DBusConnection *conn,
 						DBusMessage *msg, void *data)
 {
 	struct supplicant_task *task;
 	const char *member, *path;
 
-	if (dbus_message_has_interface(msg,
-				SUPPLICANT_INTF ".Interface") == FALSE)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-
 	member = dbus_message_get_member(msg);
 	if (member == NULL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return TRUE;
 
 	path = dbus_message_get_path(msg);
 	if (path == NULL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return TRUE;
 
 	task = find_task_by_path(path);
 	if (task == NULL)
-		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+		return TRUE;
 
 	DBG("task %p member %s", task, member);
 
@@ -1984,7 +1980,7 @@ static DBusHandlerResult supplicant_filter(DBusConnection *conn,
 	else if (g_str_equal(member, "StateChange") == TRUE)
 		state_change(task, msg);
 
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+	return TRUE;
 }
 
 int supplicant_start(struct connman_device *device)
@@ -2215,9 +2211,8 @@ static void supplicant_remove(DBusConnection *conn, void *user_data)
 	}
 }
 
-static const char *supplicant_rule = "type=signal,"
-				"interface=" SUPPLICANT_INTF ".Interface";
 static guint watch;
+static guint iface_watch;
 
 static int supplicant_create(void)
 {
@@ -2230,18 +2225,19 @@ static int supplicant_create(void)
 
 	DBG("connection %p", connection);
 
-	if (dbus_connection_add_filter(connection,
-				supplicant_filter, NULL, NULL) == FALSE) {
-		dbus_connection_unref(connection);
-		connection = NULL;
-		return -EIO;
-	}
-
-	dbus_bus_add_match(connection, supplicant_rule, NULL);
-	dbus_connection_flush(connection);
-
 	watch = g_dbus_add_service_watch(connection, SUPPLICANT_NAME,
 			supplicant_probe, supplicant_remove, NULL, NULL);
+
+	iface_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						SUPPLICANT_INTF ".Interface",
+						NULL, supplicant_filter,
+						NULL, NULL);
+
+	if (watch == 0 || iface_watch == 0) {
+		g_dbus_remove_watch(connection, watch);
+		g_dbus_remove_watch(connection, iface_watch);
+		return -EIO;
+	}
 
 	return 0;
 }
@@ -2253,13 +2249,8 @@ static void supplicant_destroy(void)
 
 	DBG("connection %p", connection);
 
-	if (watch > 0)
-		g_dbus_remove_watch(connection, watch);
-
-	dbus_bus_remove_match(connection, supplicant_rule, NULL);
-	dbus_connection_flush(connection);
-
-	dbus_connection_remove_filter(connection, supplicant_filter, NULL);
+	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, iface_watch);
 
 	dbus_connection_unref(connection);
 	connection = NULL;
