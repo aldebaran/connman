@@ -1332,7 +1332,7 @@ static void extract_wpaie(DBusMessageIter *value,
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
-	if (ie_len > 0) {
+	if (ie_len > 6) {
 		result->has_wpa = TRUE;
 		extract_rsn(result, ie + 6, ie_len - 6);
 	}
@@ -1348,7 +1348,7 @@ static void extract_rsnie(DBusMessageIter *value,
 	dbus_message_iter_recurse(value, &array);
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
 
-	if (ie_len > 0) {
+	if (ie_len > 2) {
 		result->has_rsn = TRUE;
 		extract_rsn(result, ie + 2, ie_len - 2);
 	}
