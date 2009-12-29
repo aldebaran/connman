@@ -118,7 +118,8 @@ noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test \
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
-					tools/supplicant.h tools/supplicant.c
+			tools/supplicant-dbus.h tools/supplicant-dbus.c \
+			tools/supplicant.h tools/supplicant.c
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_polkit_test_LDADD = @DBUS_LIBS@

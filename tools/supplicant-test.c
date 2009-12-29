@@ -37,19 +37,39 @@
 	syslog(LOG_DEBUG, "%s() " fmt, __FUNCTION__ , ## arg); \
 } while (0)
 
-static void interface_added(const struct supplicant_interface *interface)
+static void interface_added(struct supplicant_interface *interface)
 {
-	DBG("interface %p", interface);
+	const char *ifname = supplicant_interface_get_ifname(interface);
+
+	DBG("ifname %s", ifname);
 }
 
-static void interface_removed(const struct supplicant_interface *interface)
+static void interface_removed(struct supplicant_interface *interface)
 {
-	DBG("interface %p", interface);
+	const char *ifname = supplicant_interface_get_ifname(interface);
+
+	DBG("ifname %s", ifname);
+}
+
+static void network_added(struct supplicant_network *network)
+{
+	const char *name = supplicant_network_get_name(network);
+
+	DBG("name %s", name);
+}
+
+static void network_removed(struct supplicant_network *network)
+{
+	const char *name = supplicant_network_get_name(network);
+
+	DBG("name %s", name);
 }
 
 static const struct supplicant_callbacks callbacks = {
 	.interface_added	= interface_added,
 	.interface_removed	= interface_removed,
+	.network_added		= network_added,
+	.network_removed	= network_removed,
 };
 
 static GMainLoop *main_loop = NULL;

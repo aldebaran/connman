@@ -19,11 +19,53 @@
  *
  */
 
+#define SUPPLICANT_EAP_METHOD_MD5	(1 << 0)
+#define SUPPLICANT_EAP_METHOD_TLS	(1 << 1)
+#define SUPPLICANT_EAP_METHOD_MSCHAPV2	(1 << 2)
+#define SUPPLICANT_EAP_METHOD_PEAP	(1 << 3)
+#define SUPPLICANT_EAP_METHOD_TTLS	(1 << 4)
+#define SUPPLICANT_EAP_METHOD_GTC	(1 << 5)
+#define SUPPLICANT_EAP_METHOD_OTP	(1 << 6)
+#define SUPPLICANT_EAP_METHOD_LEAP	(1 << 7)
+
+#define SUPPLICANT_CAPABILITY_SCAN_ACTIVE	(1 << 0)
+#define SUPPLICANT_CAPABILITY_SCAN_PASSIVE	(1 << 1)
+#define SUPPLICANT_CAPABILITY_SCAN_SSID		(1 << 2)
+
+enum supplicant_state {
+	SUPPLICANT_STATE_UNKNOWN,
+	SUPPLICANT_STATE_DISCONNECTED,
+	SUPPLICANT_STATE_INACTIVE,
+	SUPPLICANT_STATE_SCANNING,
+	SUPPLICANT_STATE_AUTHENTICATING,
+	SUPPLICANT_STATE_ASSOCIATING,
+	SUPPLICANT_STATE_ASSOCIATED,
+	SUPPLICANT_STATE_4WAY_HANDSHAKE,
+	SUPPLICANT_STATE_GROUP_HANDSHAKE,
+	SUPPLICANT_STATE_COMPLETED,
+};
+
 struct supplicant_interface;
 
+const char *supplicant_interface_get_ifname(struct supplicant_interface *interface);
+
+struct supplicant_network;
+
+enum supplicant_network_mode {
+	SUPPLICANT_NETWORK_MODE_UNKNOWN,
+	SUPPLICANT_NETWORK_MODE_INFRA,
+	SUPPLICANT_NETWORK_MODE_ADHOC,
+};
+
+struct supplicant_interface *supplicant_network_get_interface(struct supplicant_network *network);
+const char *supplicant_network_get_name(struct supplicant_network *network);
+enum supplicant_network_mode supplicant_network_get_mode(struct supplicant_network *network);
+
 struct supplicant_callbacks {
-	void (*interface_added) (const struct supplicant_interface *interface);
-	void (*interface_removed) (const struct supplicant_interface *interface);
+	void (*interface_added) (struct supplicant_interface *interface);
+	void (*interface_removed) (struct supplicant_interface *interface);
+	void (*network_added) (struct supplicant_network *network);
+	void (*network_removed) (struct supplicant_network *network);
 };
 
 int supplicant_register(const struct supplicant_callbacks *callbacks);
