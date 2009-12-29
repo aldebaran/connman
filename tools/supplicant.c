@@ -50,10 +50,12 @@ static const struct supplicant_callbacks *callbacks_pointer;
 
 static unsigned int eap_methods;
 
-static struct {
+struct strvalmap {
 	const char *str;
 	unsigned int val;
-} eap_method_map[] = {
+};
+
+static struct strvalmap eap_method_map[] = {
 	{ "MD5",	SUPPLICANT_EAP_METHOD_MD5	},
 	{ "TLS",	SUPPLICANT_EAP_METHOD_TLS	},
 	{ "MSCHAPV2",	SUPPLICANT_EAP_METHOD_MSCHAPV2	},
@@ -65,13 +67,24 @@ static struct {
 	{ }
 };
 
-static struct {
-	const char *str;
-	unsigned int val;
-} scan_capa_map[] = {
+static struct strvalmap auth_capa_map[] = {
+	{ "open",	SUPPLICANT_CAPABILITY_AUTH_OPEN		},
+	{ "shared",	SUPPLICANT_CAPABILITY_AUTH_SHARED	},
+	{ "leap",	SUPPLICANT_CAPABILITY_AUTH_LEAP		},
+	{ }
+};
+
+static struct strvalmap scan_capa_map[] = {
 	{ "active",	SUPPLICANT_CAPABILITY_SCAN_ACTIVE	},
 	{ "passive",	SUPPLICANT_CAPABILITY_SCAN_PASSIVE	},
 	{ "ssid",	SUPPLICANT_CAPABILITY_SCAN_SSID		},
+	{ }
+};
+
+static struct strvalmap mode_capa_map[] = {
+	{ "infrastructure",	SUPPLICANT_CAPABILITY_MODE_INFRA	},
+	{ "ad-hoc",		SUPPLICANT_CAPABILITY_MODE_IBSS		},
+	{ "ap",			SUPPLICANT_CAPABILITY_MODE_AP		},
 	{ }
 };
 
@@ -79,7 +92,9 @@ static GHashTable *interface_table;
 
 struct supplicant_interface {
 	char *path;
+	unsigned int auth_capa;
 	unsigned int scan_capa;
+	unsigned int mode_capa;
 	enum supplicant_state state;
 	dbus_bool_t scanning;
 	int apscan;
@@ -252,24 +267,32 @@ static void remove_bss(gpointer data)
 	g_free(bss);
 }
 
-static void debug_eap_methods(void)
+static void debug_strvalmap(const char *label, struct strvalmap *map,
+							unsigned int val)
 {
 	int i;
 
-	for (i = 0; eap_method_map[i].str != NULL; i++) {
-		if (eap_methods & eap_method_map[i].val)
-			DBG("EAP Method: %s", eap_method_map[i].str);
+	for (i = 0; map[i].str != NULL; i++) {
+		if (val & map[i].val)
+			DBG("%s: %s", label, map[i].str);
 	}
 }
 
-static void debug_scan_capabilities(struct supplicant_interface *interface)
+static void interface_capability_auth(DBusMessageIter *iter, void *user_data)
 {
+	struct supplicant_interface *interface = user_data;
+	const char *str = NULL;
 	int i;
 
-	for (i = 0; scan_capa_map[i].str != NULL; i++) {
-		if (interface->scan_capa & scan_capa_map[i].val)
-			DBG("Scan Capability: %s", scan_capa_map[i].str);
-	}
+	dbus_message_iter_get_basic(iter, &str);
+	if (str == NULL)
+		return;
+
+	for (i = 0; auth_capa_map[i].str != NULL; i++)
+		if (strcmp(str, auth_capa_map[i].str) == 0) {
+			interface->auth_capa |= auth_capa_map[i].val;
+			break;
+		}
 }
 
 static void interface_capability_scan(DBusMessageIter *iter, void *user_data)
@@ -289,6 +312,23 @@ static void interface_capability_scan(DBusMessageIter *iter, void *user_data)
 		}
 }
 
+static void interface_capability_mode(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_interface *interface = user_data;
+	const char *str = NULL;
+	int i;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (str == NULL)
+		return;
+
+	for (i = 0; mode_capa_map[i].str != NULL; i++)
+		if (strcmp(str, mode_capa_map[i].str) == 0) {
+			interface->mode_capa |= mode_capa_map[i].val;
+			break;
+		}
+}
+
 static void interface_capability(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -297,8 +337,14 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 	if (key == NULL)
 		return;
 
-	if (g_strcmp0(key, "Scan") == 0)
+	if (g_strcmp0(key, "AuthAlg") == 0)
+		supplicant_dbus_array_foreach(iter, interface_capability_auth,
+								interface);
+	else if (g_strcmp0(key, "Scan") == 0)
 		supplicant_dbus_array_foreach(iter, interface_capability_scan,
+								interface);
+	else if (g_strcmp0(key, "Modes") == 0)
+		supplicant_dbus_array_foreach(iter, interface_capability_mode,
 								interface);
 	else
 		DBG("key %s type %c",
@@ -703,7 +749,12 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		return;
 
 	if (key == NULL) {
-		debug_scan_capabilities(interface);
+		debug_strvalmap("Auth capability", auth_capa_map,
+							interface->auth_capa);
+		debug_strvalmap("Scan capability", scan_capa_map,
+							interface->scan_capa);
+		debug_strvalmap("Mode capability", mode_capa_map,
+							interface->mode_capa);
 
 		g_hash_table_replace(interface_table,
 					interface->path, interface);
@@ -832,7 +883,7 @@ static void service_property(const char *key, DBusMessageIter *iter,
 		supplicant_dbus_array_foreach(iter, interface_added, user_data);
 	else if (g_strcmp0(key, "EapMethods") == 0) {
 		supplicant_dbus_array_foreach(iter, eap_method, user_data);
-		debug_eap_methods();
+		debug_strvalmap("EAP method", eap_method_map, eap_methods);
 	} else if (g_strcmp0(key, "DebugParams") == 0) {
 	}
 }
