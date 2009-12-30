@@ -538,7 +538,8 @@ static void check_networks(struct connman_device *device,
 	}
 }
 
-static void adapter_changed(DBusConnection *connection, DBusMessage *message)
+static gboolean adapter_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
 	struct connman_device *device;
@@ -549,10 +550,10 @@ static void adapter_changed(DBusConnection *connection, DBusMessage *message)
 
 	device = g_hash_table_lookup(bluetooth_devices, path);
 	if (device == NULL)
-		return;
+		return TRUE;
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return;
+		return TRUE;
 
 	dbus_message_iter_get_basic(&iter, &key);
 
@@ -572,6 +573,8 @@ static void adapter_changed(DBusConnection *connection, DBusMessage *message)
 	} else if (g_str_equal(key, "Devices") == TRUE) {
 		check_networks(device, &value);
 	}
+
+	return TRUE;
 }
 
 static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
@@ -676,11 +679,33 @@ done:
 	dbus_message_unref(message);
 }
 
+static gboolean adapter_added(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
+{
+	const char *path;
+
+	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+	add_adapter(connection, path);
+	return TRUE;
+}
+
 static void remove_adapter(DBusConnection *connection, const char *path)
 {
 	DBG("path %s", path);
 
 	g_hash_table_remove(bluetooth_devices, path);
+}
+
+static gboolean adapter_removed(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
+{
+	const char *path;
+
+	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+	remove_adapter(connection, path);
+	return TRUE;
 }
 
 static void list_adapters_reply(DBusPendingCall *call, void *user_data)
@@ -774,40 +799,10 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 	bluetooth_devices = NULL;
 }
 
-static DBusHandlerResult bluetooth_signal(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	if (dbus_message_is_signal(message, BLUEZ_ADAPTER_INTERFACE,
-						PROPERTY_CHANGED) == TRUE) {
-		adapter_changed(connection, message);
-	} else if (dbus_message_is_signal(message, BLUEZ_MANAGER_INTERFACE,
-						ADAPTER_ADDED) == TRUE) {
-		const char *path;
-		dbus_message_get_args(message, NULL,
-					DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-		add_adapter(connection, path);
-	} else if (dbus_message_is_signal(message, BLUEZ_MANAGER_INTERFACE,
-						ADAPTER_REMOVED) == TRUE) {
-		const char *path;
-		dbus_message_get_args(message, NULL,
-					DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-		remove_adapter(connection, path);
-	}
-
-	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
-}
-
 static guint watch;
-
-static const char *added_rule = "type=signal,member=" ADAPTER_ADDED
-					",interface=" BLUEZ_MANAGER_INTERFACE;
-static const char *removed_rule = "type=signal,member=" ADAPTER_REMOVED
-					",interface=" BLUEZ_MANAGER_INTERFACE;
-
-static const char *adapter_rule = "type=signal,member=" PROPERTY_CHANGED
-					",interface=" BLUEZ_ADAPTER_INTERFACE;
+static guint added_watch;
+static guint removed_watch;
+static guint adapter_watch;
 
 static int bluetooth_init(void)
 {
@@ -817,10 +812,28 @@ static int bluetooth_init(void)
 	if (connection == NULL)
 		return -EIO;
 
-	if (dbus_connection_add_filter(connection, bluetooth_signal,
-						NULL, NULL) == FALSE) {
+	watch = g_dbus_add_service_watch(connection, BLUEZ_SERVICE,
+			bluetooth_connect, bluetooth_disconnect, NULL, NULL);
+
+	added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						BLUEZ_MANAGER_INTERFACE,
+						ADAPTER_ADDED, adapter_added,
+						NULL, NULL);
+
+	removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						BLUEZ_MANAGER_INTERFACE,
+						ADAPTER_REMOVED, adapter_removed,
+						NULL, NULL);
+
+	adapter_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						BLUEZ_MANAGER_INTERFACE,
+						PROPERTY_CHANGED, adapter_changed,
+						NULL, NULL);
+
+	if (watch == 0 || added_watch == 0 || removed_watch == 0
+			|| adapter_watch == 0) {
 		err = -EIO;
-		goto unref;
+		goto remove;
 	}
 
 	err = connman_network_driver_register(&pan_driver);
@@ -833,26 +846,14 @@ static int bluetooth_init(void)
 		goto remove;
 	}
 
-	watch = g_dbus_add_service_watch(connection, BLUEZ_SERVICE,
-			bluetooth_connect, bluetooth_disconnect, NULL, NULL);
-	if (watch == 0) {
-		connman_device_driver_unregister(&bluetooth_driver);
-		connman_network_driver_unregister(&pan_driver);
-		err = -EIO;
-		goto remove;
-	}
-
-	dbus_bus_add_match(connection, added_rule, NULL);
-	dbus_bus_add_match(connection, removed_rule, NULL);
-	dbus_bus_add_match(connection, adapter_rule, NULL);
-	dbus_connection_flush(connection);
-
 	return 0;
 
 remove:
-	dbus_connection_remove_filter(connection, bluetooth_signal, NULL);
+	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, added_watch);
+	g_dbus_remove_watch(connection, removed_watch);
+	g_dbus_remove_watch(connection, adapter_watch);
 
-unref:
 	dbus_connection_unref(connection);
 
 	return err;
@@ -860,19 +861,15 @@ unref:
 
 static void bluetooth_exit(void)
 {
-	dbus_bus_remove_match(connection, adapter_rule, NULL);
-	dbus_bus_remove_match(connection, removed_rule, NULL);
-	dbus_bus_remove_match(connection, added_rule, NULL);
-	dbus_connection_flush(connection);
-
 	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, added_watch);
+	g_dbus_remove_watch(connection, removed_watch);
+	g_dbus_remove_watch(connection, adapter_watch);
 
 	bluetooth_disconnect(connection, NULL);
 
 	connman_device_driver_unregister(&bluetooth_driver);
 	connman_network_driver_unregister(&pan_driver);
-
-	dbus_connection_remove_filter(connection, bluetooth_signal, NULL);
 
 	dbus_connection_unref(connection);
 }
