@@ -1,3 +1,23 @@
+ver 0.48:
+	Fix signal strength calculation when quality is not provided.
+	Fix issues with wpa_supplicant state tracking.
+	Fix faulty removal of IP address from interface.
+	Fix permissions of newly created /etc/resolv.conf file.
+	Fix DNS proxy handling when in offline mode.
+	Add support for EDNS0 resolver option.
+	Add workaround for large EDNS0 queries.
+	Add workaround for DHCP startup failures with WiFi networks.
+	Add support for handling hostnames and domainnames.
+	Add support for IPv4 configuration via service interface.
+	Add support for fixed and manual IPv4 configuration.
+	Add support for default service changed notifier.
+	Add support for clearing failure state via service removal.
+	Add support for OpenConnect VPN connections.
+	Add support for IEEE 802.1x WiFi networks.
+	Add support for roaming between WPA and WPA2 networks.
+	Add various generic D-Bus helpers and use them.
+	Remove special handling of Ethernet devices.
+
 ver 0.47:
 	Fix segmentation fault on resolver shutdown.
 	Fix issue with adding nameserver that doesn't exist.
