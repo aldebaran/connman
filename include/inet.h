@@ -44,7 +44,8 @@ connman_bool_t connman_inet_is_mac80211(int index);
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress);
 int connman_inet_clear_address(int index);
-int connman_inet_set_gateway(int index, struct in_addr gateway);
+int connman_inet_set_gateway_interface(int index);
+int connman_inet_set_gateway_address(int index, const char *gateway);
 
 #ifdef __cplusplus
 }
