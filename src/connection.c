@@ -205,80 +205,6 @@ static int set_vpn_route(struct connman_element *element, const char *gateway)
 	return err;
 }
 
-static int set_route(struct connman_element *element, const char *gateway)
-{
-	struct ifreq ifr;
-	struct rtentry rt;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	DBG("element %p", element);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_HOST;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(gateway);
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
-	rt.rt_dev = ifr.ifr_name;
-
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Setting host gateway route failed (%s)",
-							strerror(errno));
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_GATEWAY;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(gateway);
-	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Setting default route failed (%s)",
-							strerror(errno));
-
-	close(sk);
-
-	return err;
-}
-
 static int del_route(struct connman_element *element, const char *gateway)
 {
 	struct ifreq ifr;
@@ -403,6 +329,7 @@ static void set_default_gateway(struct gateway_data *data)
 {
 	struct connman_element *element = data->element;
 	struct connman_service *service = NULL;
+	short int ifflags;
 
 	DBG("gateway %s", data->gateway);
 
@@ -412,9 +339,23 @@ static void set_default_gateway(struct gateway_data *data)
 		/* vpn gateway going away no changes in services */
 		return;
 	}
-	if (set_route(element, data->gateway) < 0)
+
+	ifflags = connman_inet_ifflags(element->index);
+	if (ifflags < 0) {
+		connman_error("Fail to get network interface flags");
+		return;
+	}
+
+	if (ifflags & IFF_POINTOPOINT) {
+		if (connman_inet_set_gateway_interface(element->index) < 0)
+			return;
+		goto done;
+	}
+
+	if (connman_inet_set_gateway_address(element->index, data->gateway) < 0)
 		return;
 
+done:
 	service = __connman_element_get_service(element);
 	__connman_service_indicate_default(service);
 }
