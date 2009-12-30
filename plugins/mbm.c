@@ -670,7 +670,7 @@ static void mbm_newlink(unsigned flags, unsigned change, void *user_data)
 
 	if ((data->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
 		if (flags & IFF_LOWER_UP) {
-			connman_network_set_method(network,
+			connman_network_set_method(data->network,
 					CONNMAN_IPCONFIG_METHOD_DHCP);
 			connman_network_set_connected(data->network, TRUE);
 		} else {
