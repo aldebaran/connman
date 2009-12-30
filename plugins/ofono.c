@@ -1375,6 +1375,8 @@ static void pri_context_changed(DBusConnection *connection,
 				set_network_active(pending_network, FALSE);
 			break;
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			connman_network_set_method(pending_network,
+						CONNMAN_IPCONFIG_METHOD_DHCP);
 			connman_network_set_connected(pending_network, active);
 			break;
 		}

@@ -110,6 +110,9 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 	index = connman_inet_ifindex(interface);
 
 	connman_network_set_index(network, index);
+
+	connman_network_set_method(network, CONNMAN_IPCONFIG_METHOD_DHCP);
+
 	connman_network_set_connected(network, TRUE);
 
 done:
