@@ -24,6 +24,7 @@
 
 #include <connman/types.h>
 #include <connman/device.h>
+#include <connman/ipconfig.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -93,6 +94,9 @@ int connman_network_set_connected(struct connman_network *network,
 connman_bool_t connman_network_get_connected(struct connman_network *network);
 
 connman_bool_t connman_network_get_associating(struct connman_network *network);
+
+void connman_network_set_method(struct connman_network *network,
+					enum connman_ipconfig_method method);
 
 int connman_network_set_address(struct connman_network *network,
 				const void *address, unsigned int size);

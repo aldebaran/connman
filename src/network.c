@@ -652,6 +652,12 @@ static void set_associate_error(struct connman_network *network)
 					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
+void connman_network_set_method(struct connman_network *network,
+					enum connman_ipconfig_method method)
+{
+	network->element.ipv4.method = method;
+}
+
 void connman_network_set_error(struct connman_network *network,
 					enum connman_network_error error)
 {
