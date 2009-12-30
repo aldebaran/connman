@@ -1141,6 +1141,13 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 	eap_methods = 0;
 }
 
+static void debug_level_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	if (error != NULL)
+		DBG("debug level failure: %s", error);
+}
+
 static void add_debug_level(DBusMessageIter *iter, void *user_data)
 {
 	dbus_int32_t level = GPOINTER_TO_UINT(user_data);
@@ -1161,8 +1168,8 @@ static void add_debug_level(DBusMessageIter *iter, void *user_data)
 void supplicant_set_debug_level(unsigned int level)
 {
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
-				"DebugParams", "(ibb)",
-				add_debug_level, GUINT_TO_POINTER(level));
+				"DebugParams", "(ibb)", add_debug_level,
+				debug_level_result, GUINT_TO_POINTER(level));
 }
 
 static void add_show_timestamps(DBusMessageIter *iter, void *user_data)
@@ -1185,6 +1192,6 @@ static void add_show_timestamps(DBusMessageIter *iter, void *user_data)
 void supplicant_set_debug_show_timestamps(dbus_bool_t enabled)
 {
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
-				"DebugParams", "(ibb)",
-				add_show_timestamps, GUINT_TO_POINTER(enabled));
+				"DebugParams", "(ibb)", add_show_timestamps,
+					NULL, GUINT_TO_POINTER(enabled));
 }

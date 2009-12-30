@@ -180,24 +180,40 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 }
 
 struct property_set_data {
+	supplicant_dbus_result_function function;
 	void *user_data;
 };
 
 static void property_set_reply(DBusPendingCall *call, void *user_data)
 {
-	//struct property_set_data *data = user_data;
+	struct property_set_data *data = user_data;
 	DBusMessage *reply;
+	DBusMessageIter iter;
+	const char *error;
 
 	reply = dbus_pending_call_steal_reply(call);
 	if (reply == NULL)
 		return;
 
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		error = dbus_message_get_error_name(reply);
+	else
+		error = NULL;
+
+	if (dbus_message_iter_init(reply, &iter) == FALSE)
+		goto done;
+
+	if (data->function != NULL)
+		data->function(error, &iter, data->user_data);
+
+done:
 	dbus_message_unref(reply);
 }
 
 int supplicant_dbus_property_set(const char *path, const char *interface,
 				const char *key, const char *signature,
-				supplicant_dbus_value_function function,
+				supplicant_dbus_setup_function setup,
+				supplicant_dbus_result_function function,
 							void *user_data)
 {
 	struct property_set_data *data;
@@ -206,6 +222,9 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	DBusPendingCall *call;
 
 	if (path == NULL || interface == NULL)
+		return -EINVAL;
+
+	if (key == NULL || signature == NULL || setup == NULL)
 		return -EINVAL;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -227,8 +246,7 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
 							signature, &value);
-	if (function != NULL)
-		function(&value, user_data);
+	setup(&value, user_data);
 	dbus_message_iter_close_container(&iter, &value);
 
 	if (dbus_connection_send_with_reply(connection, message,
@@ -244,6 +262,7 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 		return -EIO;
 	}
 
+	data->function = function;
 	data->user_data = user_data;
 
 	dbus_pending_call_set_notify(call, property_set_reply,

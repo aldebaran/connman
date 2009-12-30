@@ -31,8 +31,11 @@ typedef void (* supplicant_dbus_array_function) (DBusMessageIter *iter,
 typedef void (* supplicant_dbus_property_function) (const char *key,
 				DBusMessageIter *iter, void *user_data);
 
-typedef void (* supplicant_dbus_value_function) (DBusMessageIter *iter,
+typedef void (* supplicant_dbus_setup_function) (DBusMessageIter *iter,
 							void *user_data);
+
+typedef void (* supplicant_dbus_result_function) (const char *error,
+				DBusMessageIter *iter, void *user_data);
 
 void supplicant_dbus_setup(DBusConnection *conn);
 
@@ -50,5 +53,6 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 
 int supplicant_dbus_property_set(const char *path, const char *interface,
 				const char *key, const char *signature,
-				supplicant_dbus_value_function function,
+				supplicant_dbus_setup_function setup,
+				supplicant_dbus_result_function function,
 							void *user_data);
