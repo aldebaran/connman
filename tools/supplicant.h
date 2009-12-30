@@ -87,3 +87,6 @@ struct supplicant_callbacks {
 
 int supplicant_register(const struct supplicant_callbacks *callbacks);
 void supplicant_unregister(const struct supplicant_callbacks *callbacks);
+
+void supplicant_set_debug_level(unsigned int level);
+void supplicant_set_debug_show_timestamps(dbus_bool_t enabled);

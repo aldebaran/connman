@@ -48,6 +48,10 @@ static DBusConnection *connection;
 
 static const struct supplicant_callbacks *callbacks_pointer;
 
+static dbus_int32_t debug_level = 0;
+static dbus_bool_t debug_show_timestamps = FALSE;
+static dbus_bool_t debug_show_keys = FALSE;
+
 static unsigned int eap_methods;
 
 struct strvalmap {
@@ -879,12 +883,25 @@ static void service_property(const char *key, DBusMessageIter *iter,
 	if (key == NULL)
 		return;
 
-	if (g_strcmp0(key, "Interfaces") == 0)
+	if (g_strcmp0(key, "DebugParams") == 0) {
+		DBusMessageIter list;
+
+		dbus_message_iter_recurse(iter, &list);
+		dbus_message_iter_get_basic(&list, &debug_level);
+
+		dbus_message_iter_next(&list);
+		dbus_message_iter_get_basic(&list, &debug_show_timestamps);
+
+		dbus_message_iter_next(&list);
+		dbus_message_iter_get_basic(&list, &debug_show_keys);
+
+		DBG("Debug level %d (timestamps %u keys %u)", debug_level,
+				debug_show_timestamps, debug_show_keys);
+	} else if (g_strcmp0(key, "Interfaces") == 0) {
 		supplicant_dbus_array_foreach(iter, interface_added, user_data);
-	else if (g_strcmp0(key, "EapMethods") == 0) {
+	} else if (g_strcmp0(key, "EapMethods") == 0) {
 		supplicant_dbus_array_foreach(iter, eap_method, user_data);
 		debug_strvalmap("EAP method", eap_method_map, eap_methods);
-	} else if (g_strcmp0(key, "DebugParams") == 0) {
 	}
 }
 
@@ -922,6 +939,14 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 
 	if (strlen(new) > 0 && strlen(old) == 0)
 		supplicant_bootstrap();
+}
+
+static void signal_properties_changed(const char *path, DBusMessageIter *iter)
+{
+	if (g_strcmp0(path, SUPPLICANT_PATH) != 0)
+		return;
+
+	supplicant_dbus_property_foreach(iter, service_property, NULL);
 }
 
 static void signal_interface_added(const char *path, DBusMessageIter *iter)
@@ -985,11 +1010,12 @@ static struct {
 	const char *member;
 	void (*function) (const char *path, DBusMessageIter *iter);
 } signal_map[] = {
-	{ DBUS_INTERFACE_DBUS,  "NameOwnerChanged", signal_name_owner_changed },
+	{ DBUS_INTERFACE_DBUS,  "NameOwnerChanged",  signal_name_owner_changed },
 
-	{ SUPPLICANT_INTERFACE, "InterfaceAdded",   signal_interface_added    },
-	{ SUPPLICANT_INTERFACE, "InterfaceCreated", signal_interface_added    },
-	{ SUPPLICANT_INTERFACE, "InterfaceRemoved", signal_interface_removed  },
+	{ SUPPLICANT_INTERFACE, "PropertiesChanged", signal_properties_changed },
+	{ SUPPLICANT_INTERFACE, "InterfaceAdded",    signal_interface_added    },
+	{ SUPPLICANT_INTERFACE, "InterfaceCreated",  signal_interface_added    },
+	{ SUPPLICANT_INTERFACE, "InterfaceRemoved",  signal_interface_removed  },
 
 	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",       signal_bss_added       },
 	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",     signal_bss_removed     },
@@ -1113,4 +1139,52 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 
 	callbacks_pointer = NULL;
 	eap_methods = 0;
+}
+
+static void add_debug_level(DBusMessageIter *iter, void *user_data)
+{
+	dbus_int32_t level = GPOINTER_TO_UINT(user_data);
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_INT32, &level);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
+						&debug_show_timestamps);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
+						&debug_show_keys);
+
+	dbus_message_iter_close_container(iter, &entry);
+}
+
+void supplicant_set_debug_level(unsigned int level)
+{
+	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
+				"DebugParams", "(ibb)",
+				add_debug_level, GUINT_TO_POINTER(level));
+}
+
+static void add_show_timestamps(DBusMessageIter *iter, void *user_data)
+{
+	dbus_bool_t show_timestamps = GPOINTER_TO_UINT(user_data);
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
+							NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_INT32, &debug_level);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
+							&show_timestamps);
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
+							&debug_show_keys);
+
+	dbus_message_iter_close_container(iter, &entry);
+}
+
+void supplicant_set_debug_show_timestamps(dbus_bool_t enabled)
+{
+	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
+				"DebugParams", "(ibb)",
+				add_show_timestamps, GUINT_TO_POINTER(enabled));
 }

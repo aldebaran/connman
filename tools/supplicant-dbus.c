@@ -98,14 +98,14 @@ void supplicant_dbus_property_foreach(DBusMessageIter *iter,
 	}
 }
 
-struct property_data {
+struct property_get_data {
 	supplicant_dbus_property_function function;
 	void *user_data;
 };
 
 static void property_get_all_reply(DBusPendingCall *call, void *user_data)
 {
-	struct property_data *data = user_data;
+	struct property_get_data *data = user_data;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 
@@ -133,7 +133,7 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 				supplicant_dbus_property_function function,
 							void *user_data)
 {
-	struct property_data *data;
+	struct property_get_data *data;
 	DBusMessage *message;
 	DBusPendingCall *call;
 
@@ -172,6 +172,81 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 	data->user_data = user_data;
 
 	dbus_pending_call_set_notify(call, property_get_all_reply,
+							data, dbus_free);
+
+	dbus_message_unref(message);
+
+	return 0;
+}
+
+struct property_set_data {
+	void *user_data;
+};
+
+static void property_set_reply(DBusPendingCall *call, void *user_data)
+{
+	//struct property_set_data *data = user_data;
+	DBusMessage *reply;
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	dbus_message_unref(reply);
+}
+
+int supplicant_dbus_property_set(const char *path, const char *interface,
+				const char *key, const char *signature,
+				supplicant_dbus_value_function function,
+							void *user_data)
+{
+	struct property_set_data *data;
+	DBusMessage *message;
+	DBusMessageIter iter, value;
+	DBusPendingCall *call;
+
+	if (path == NULL || interface == NULL)
+		return -EINVAL;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
+					DBUS_INTERFACE_PROPERTIES, "Set");
+	if (message == NULL) {
+		dbus_free(data);
+		return -ENOMEM;
+	}
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_iter_init_append(message, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &interface);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
+							signature, &value);
+	if (function != NULL)
+		function(&value, user_data);
+	dbus_message_iter_close_container(&iter, &value);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		dbus_message_unref(message);
+		dbus_free(data);
+		return -EIO;
+	}
+
+	if (call == NULL) {
+		dbus_message_unref(message);
+		dbus_free(data);
+		return -EIO;
+	}
+
+	data->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, property_set_reply,
 							data, dbus_free);
 
 	dbus_message_unref(message);
