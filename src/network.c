@@ -674,62 +674,100 @@ void connman_network_set_error(struct connman_network *network,
 	}
 }
 
-static gboolean set_connected(gpointer user_data)
+static void set_connected_manual(struct connman_network *network)
 {
-	struct connman_network *network = user_data;
 	struct connman_service *service;
+
+	DBG("");
+
+	__connman_device_increase_connections(network->device);
+
+	__connman_device_set_network(network->device, network);
+
+	connman_device_set_disconnected(network->device, FALSE);
 
 	service = __connman_service_lookup_from_network(network);
 
+	network->connecting = FALSE;
+
+	connman_network_set_associating(network, FALSE);
+
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
+}
+
+static int set_connected_dhcp(struct connman_network *network)
+{
+	struct connman_element *element;
+	struct connman_service *service;
+	int error;
+
+	DBG("network %p", network);
+
+	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
+		return -EINVAL;
+
+	service = __connman_service_lookup_from_network(network);
+
+	DBG("a");
+	element = connman_element_create(NULL);
+	if (element == NULL)
+		return -ENOMEM;
+
+	element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
+	element->index = network->element.index;
+
+	error = connman_element_register(element, &network->element);
+	if (error < 0) {
+		connman_element_unref(element);
+		return error;
+	}
+
+	__connman_device_increase_connections(network->device);
+
+	__connman_device_set_network(network->device, network);
+
+	connman_device_set_disconnected(network->device, FALSE);
+
+	__connman_service_indicate_state(service,
+			CONNMAN_SERVICE_STATE_CONFIGURATION);
+
+	return 0;
+}
+
+static gboolean set_connected(gpointer user_data)
+{
+	struct connman_network *network = user_data;
+
+	DBG("network method %d", network->element.ipv4.method);
+
 	if (network->connected == TRUE) {
-		struct connman_element *element;
-		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-
-		switch (network->protocol) {
-		case CONNMAN_NETWORK_PROTOCOL_UNKNOWN:
-			return 0;
-		case CONNMAN_NETWORK_PROTOCOL_IP:
-			type = CONNMAN_ELEMENT_TYPE_DHCP;
-			break;
-		}
-
-		__connman_device_increase_connections(network->device);
-
-		__connman_device_set_network(network->device, network);
-
-		connman_device_set_disconnected(network->device, FALSE);
-
-		if (network->element.ipv4.method ==
-					CONNMAN_IPCONFIG_METHOD_MANUAL) {
-			network->connecting = FALSE;
-
-			connman_network_set_associating(network, FALSE);
-
-			__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY);
-
+		switch (network->element.ipv4.method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+			return FALSE;
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+			set_connected_manual(network);
 			return TRUE;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			if (set_connected_dhcp(network) < 0) {
+				connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+				return FALSE;
+			}
 		}
 
-		element = connman_element_create(NULL);
-		if (element != NULL) {
-			element->type  = type;
-			element->index = network->element.index;
-
-			if (connman_element_register(element,
-						&network->element) < 0)
-				connman_element_unref(element);
-
-			__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_CONFIGURATION);
-		}
 	} else {
+		struct connman_service *service;
+
 		connman_element_unregister_children(&network->element);
 
 		__connman_device_set_network(network->device, NULL);
 		network->hidden = FALSE;
 
 		__connman_device_decrease_connections(network->device);
+
+		service = __connman_service_lookup_from_network(network);
 
 		__connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_IDLE);
