@@ -52,8 +52,8 @@ static dbus_bool_t system_available = FALSE;
 static dbus_bool_t system_ready = FALSE;
 
 static dbus_int32_t debug_level = 0;
-static dbus_bool_t debug_show_timestamps = FALSE;
-static dbus_bool_t debug_show_keys = FALSE;
+static dbus_bool_t debug_timestamp = FALSE;
+static dbus_bool_t debug_showkeys = FALSE;
 
 static unsigned int eap_methods;
 
@@ -144,13 +144,26 @@ struct supplicant_bss {
 	unsigned char bssid[6];
 	unsigned char ssid[32];
 	unsigned int ssid_len;
-	unsigned int frequency;
+	dbus_uint16_t frequency;
 	enum supplicant_mode mode;
 	enum supplicant_security security;
 	dbus_bool_t privacy;
 	dbus_bool_t psk;
 	dbus_bool_t ieee8021x;
 };
+
+static enum supplicant_mode string2mode(const char *mode)
+{
+	if (mode == NULL)
+		return SUPPLICANT_MODE_UNKNOWN;
+
+	if (g_str_equal(mode, "infrastructure") == TRUE)
+		return SUPPLICANT_MODE_INFRA;
+	else if (g_str_equal(mode, "ad-hoc") == TRUE)
+		return SUPPLICANT_MODE_IBSS;
+
+	return SUPPLICANT_MODE_UNKNOWN;
+}
 
 static const char *mode2string(enum supplicant_mode mode)
 {
@@ -741,19 +754,33 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 
 		if (capabilities & IEEE80211_CAP_PRIVACY)
 			bss->privacy = TRUE;
+	} else if (g_strcmp0(key, "Mode") == 0) {
+		const char *mode = NULL;
+
+		dbus_message_iter_get_basic(iter, &mode);
+		bss->mode = string2mode(mode);
 	} else if (g_strcmp0(key, "Frequency") == 0) {
-		dbus_int32_t frequency = 0;
+		dbus_uint16_t frequency = 0;
 
 		dbus_message_iter_get_basic(iter, &frequency);
 		bss->frequency = frequency;
+	} else if (g_strcmp0(key, "Signal") == 0) {
+		dbus_int16_t signal = 0;
+
+		dbus_message_iter_get_basic(iter, &signal);
 	} else if (g_strcmp0(key, "Level") == 0) {
 		dbus_int32_t level = 0;
 
 		dbus_message_iter_get_basic(iter, &level);
 	} else if (g_strcmp0(key, "MaxRate") == 0) {
-		dbus_int32_t maxrate = 0;
+		dbus_uint16_t maxrate = 0;
 
 		dbus_message_iter_get_basic(iter, &maxrate);
+	} else if (g_strcmp0(key, "Privacy") == 0) {
+		dbus_bool_t privacy = FALSE;
+
+		dbus_message_iter_get_basic(iter, &privacy);
+		bss->privacy = privacy;
 	} else if (g_strcmp0(key, "RSNIE") == 0) {
 		DBusMessageIter array;
 		unsigned char *ie;
@@ -1005,19 +1032,30 @@ static void service_property(const char *key, DBusMessageIter *iter,
 		dbus_message_iter_get_basic(&list, &debug_level);
 
 		dbus_message_iter_next(&list);
-		dbus_message_iter_get_basic(&list, &debug_show_timestamps);
+		dbus_message_iter_get_basic(&list, &debug_timestamp);
 
 		dbus_message_iter_next(&list);
-		dbus_message_iter_get_basic(&list, &debug_show_keys);
+		dbus_message_iter_get_basic(&list, &debug_showkeys);
 
-		DBG("Debug level %d (timestamps %u keys %u)", debug_level,
-				debug_show_timestamps, debug_show_keys);
+		DBG("Debug level %d (timestamp %u show keys %u)",
+				debug_level, debug_timestamp, debug_showkeys);
+	} else if (g_strcmp0(key, "DebugLevel") == 0) {
+		dbus_message_iter_get_basic(iter, &debug_level);
+		DBG("Debug level %d", debug_level);
+	} else if (g_strcmp0(key, "DebugTimeStamp") == 0) {
+		dbus_message_iter_get_basic(iter, &debug_timestamp);
+		DBG("Debug timestamp %u", debug_timestamp);
+	} else if (g_strcmp0(key, "DebugShowKeys") == 0) {
+		dbus_message_iter_get_basic(iter, &debug_showkeys);
+		DBG("Debug show keys %u", debug_showkeys);
 	} else if (g_strcmp0(key, "Interfaces") == 0) {
 		supplicant_dbus_array_foreach(iter, interface_added, NULL);
 	} else if (g_strcmp0(key, "EapMethods") == 0) {
 		supplicant_dbus_array_foreach(iter, eap_method, NULL);
 		debug_strvalmap("EAP method", eap_method_map, eap_methods);
-	}
+	} else
+		DBG("key %s type %c",
+				key, dbus_message_iter_get_arg_type(iter));
 }
 
 static void supplicant_bootstrap(void)
@@ -1283,9 +1321,9 @@ static void add_debug_level(DBusMessageIter *iter, void *user_data)
 
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_INT32, &level);
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
-						&debug_show_timestamps);
+						&debug_timestamp);
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
-						&debug_show_keys);
+						&debug_showkeys);
 
 	dbus_message_iter_close_container(iter, &entry);
 }
@@ -1298,33 +1336,6 @@ void supplicant_set_debug_level(unsigned int level)
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
 				"DebugParams", "(ibb)", add_debug_level,
 				debug_level_result, GUINT_TO_POINTER(level));
-}
-
-static void add_show_timestamps(DBusMessageIter *iter, void *user_data)
-{
-	dbus_bool_t show_timestamps = GPOINTER_TO_UINT(user_data);
-	DBusMessageIter entry;
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
-							NULL, &entry);
-
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_INT32, &debug_level);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
-							&show_timestamps);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
-							&debug_show_keys);
-
-	dbus_message_iter_close_container(iter, &entry);
-}
-
-void supplicant_set_debug_show_timestamps(dbus_bool_t enabled)
-{
-	if (system_available == FALSE)
-		return;
-
-	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
-				"DebugParams", "(ibb)", add_show_timestamps,
-					NULL, GUINT_TO_POINTER(enabled));
 }
 
 struct interface_create_data {
