@@ -37,46 +37,57 @@
 	syslog(LOG_DEBUG, "%s() " fmt, __FUNCTION__ , ## arg); \
 } while (0)
 
+static void create_callback(int result, struct supplicant_interface *interface,
+							void *user_data)
+{
+	DBG("* result %d ifname %s", result,
+				supplicant_interface_get_ifname(interface));
+
+	if (result < 0)
+		return;
+}
+
 static void system_ready(void)
 {
-	DBG("");
+	DBG("*");
 
-	//supplicant_set_debug_level(1);
+	supplicant_interface_create("wlan0", "nl80211",
+						create_callback, NULL);
 }
 
 static void system_killed(void)
 {
-	DBG("");
+	DBG("*");
 }
 
 static void interface_added(struct supplicant_interface *interface)
 {
 	const char *ifname = supplicant_interface_get_ifname(interface);
 
-	DBG("ifname %s", ifname);
+	DBG("* ifname %s", ifname);
 }
 
 static void interface_removed(struct supplicant_interface *interface)
 {
 	const char *ifname = supplicant_interface_get_ifname(interface);
 
-	DBG("ifname %s", ifname);
+	DBG("* ifname %s", ifname);
 }
 
 static void network_added(struct supplicant_network *network)
 {
 	const char *name = supplicant_network_get_name(network);
 
-	DBG("name %s", name);
+	DBG("* name %s", name);
 
-	DBG("%s", supplicant_network_get_identifier(network));
+	DBG("* %s", supplicant_network_get_identifier(network));
 }
 
 static void network_removed(struct supplicant_network *network)
 {
 	const char *name = supplicant_network_get_name(network);
 
-	DBG("name %s", name);
+	DBG("* name %s", name);
 }
 
 static const struct supplicant_callbacks callbacks = {

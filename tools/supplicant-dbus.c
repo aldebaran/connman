@@ -32,7 +32,7 @@
 
 #define TIMEOUT 5000
 
-static DBusConnection *connection;
+static DBusConnection *connection = NULL;
 
 void supplicant_dbus_setup(DBusConnection *conn)
 {
@@ -137,6 +137,9 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 	DBusMessage *message;
 	DBusPendingCall *call;
 
+	if (connection == NULL)
+		return -EINVAL;
+
 	if (path == NULL || interface == NULL)
 		return -EINVAL;
 
@@ -221,6 +224,9 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	DBusMessageIter iter, value;
 	DBusPendingCall *call;
 
+	if (connection == NULL)
+		return -EINVAL;
+
 	if (path == NULL || interface == NULL)
 		return -EINVAL;
 
@@ -271,4 +277,139 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 	dbus_message_unref(message);
 
 	return 0;
+}
+
+struct method_call_data {
+	supplicant_dbus_result_function function;
+	void *user_data;
+};
+
+static void method_call_reply(DBusPendingCall *call, void *user_data)
+{
+	struct method_call_data *data = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+	const char *error;
+
+	reply = dbus_pending_call_steal_reply(call);
+	if (reply == NULL)
+		return;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		error = dbus_message_get_error_name(reply);
+	else
+		error = NULL;
+
+	if (dbus_message_iter_init(reply, &iter) == FALSE)
+		goto done;
+
+	if (data->function != NULL)
+		data->function(error, &iter, data->user_data);
+
+done:
+	dbus_message_unref(reply);
+}
+
+int supplicant_dbus_method_call(const char *path,
+				const char *interface, const char *method,
+				supplicant_dbus_setup_function setup,
+				supplicant_dbus_result_function function,
+							void *user_data)
+{
+	struct method_call_data *data;
+	DBusMessage *message;
+	DBusMessageIter iter;
+	DBusPendingCall *call;
+
+	if (connection == NULL)
+		return -EINVAL;
+
+	if (path == NULL || interface == NULL)
+		return -EINVAL;
+
+	if (method == NULL || setup == NULL)
+		return -EINVAL;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
+							interface, method);
+	if (message == NULL) {
+		dbus_free(data);
+		return -ENOMEM;
+	}
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_iter_init_append(message, &iter);
+	setup(&iter, user_data);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		dbus_message_unref(message);
+		dbus_free(data);
+		return -EIO;
+	}
+
+	if (call == NULL) {
+		dbus_message_unref(message);
+		dbus_free(data);
+		return -EIO;
+	}
+
+	data->function = function;
+	data->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, method_call_reply,
+							data, dbus_free);
+
+	dbus_message_unref(message);
+
+	return 0;
+}
+
+void supplicant_dbus_property_append_basic(DBusMessageIter *iter,
+					const char *key, int type, void *val)
+{
+	DBusMessageIter value;
+	const char *signature;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+
+	switch (type) {
+	case DBUS_TYPE_BOOLEAN:
+		signature = DBUS_TYPE_BOOLEAN_AS_STRING;
+		break;
+	case DBUS_TYPE_STRING:
+		signature = DBUS_TYPE_STRING_AS_STRING;
+		break;
+	case DBUS_TYPE_BYTE:
+		signature = DBUS_TYPE_BYTE_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT16:
+		signature = DBUS_TYPE_UINT16_AS_STRING;
+		break;
+	case DBUS_TYPE_INT16:
+		signature = DBUS_TYPE_INT16_AS_STRING;
+		break;
+	case DBUS_TYPE_UINT32:
+		signature = DBUS_TYPE_UINT32_AS_STRING;
+		break;
+	case DBUS_TYPE_INT32:
+		signature = DBUS_TYPE_INT32_AS_STRING;
+		break;
+	case DBUS_TYPE_OBJECT_PATH:
+		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+		break;
+	default:
+		signature = DBUS_TYPE_VARIANT_AS_STRING;
+		break;
+	}
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+							signature, &value);
+	dbus_message_iter_append_basic(&value, type, val);
+	dbus_message_iter_close_container(iter, &value);
 }

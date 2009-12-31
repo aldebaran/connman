@@ -56,3 +56,38 @@ int supplicant_dbus_property_set(const char *path, const char *interface,
 				supplicant_dbus_setup_function setup,
 				supplicant_dbus_result_function function,
 							void *user_data);
+
+int supplicant_dbus_method_call(const char *path,
+				const char *interface, const char *method,
+				supplicant_dbus_setup_function setup,
+				supplicant_dbus_result_function function,
+							void *user_data);
+
+void supplicant_dbus_property_append_basic(DBusMessageIter *iter,
+					const char *key, int type, void *val);
+
+static inline void supplicant_dbus_dict_open(DBusMessageIter *iter,
+							DBusMessageIter *dict)
+{
+	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, dict);
+}
+
+static inline void supplicant_dbus_dict_close(DBusMessageIter *iter,
+							DBusMessageIter *dict)
+{
+	dbus_message_iter_close_container(iter, dict);
+}
+
+static inline void supplicant_dbus_dict_append_basic(DBusMessageIter *dict,
+					const char *key, int type, void *val)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+	supplicant_dbus_property_append_basic(&entry, key, type, val);
+	dbus_message_iter_close_container(dict, &entry);
+}

@@ -28,9 +28,19 @@
 #define SUPPLICANT_EAP_METHOD_OTP	(1 << 6)
 #define SUPPLICANT_EAP_METHOD_LEAP	(1 << 7)
 
-#define SUPPLICANT_CAPABILITY_AUTH_OPEN		(1 << 0)
-#define SUPPLICANT_CAPABILITY_AUTH_SHARED	(1 << 1)
-#define SUPPLICANT_CAPABILITY_AUTH_LEAP		(1 << 2)
+#define SUPPLICANT_CAPABILITY_KEYMGMT_NONE	(1 << 0)
+#define SUPPLICANT_CAPABILITY_KEYMGMT_IEEE8021X	(1 << 1)
+#define SUPPLICANT_CAPABILITY_KEYMGMT_WPA_NONE	(1 << 2)
+#define SUPPLICANT_CAPABILITY_KEYMGMT_WPA_PSK	(1 << 3)
+#define SUPPLICANT_CAPABILITY_KEYMGMT_WPA_EAP	(1 << 4)
+#define SUPPLICANT_CAPABILITY_KEYMGMT_WPS	(1 << 5)
+
+#define SUPPLICANT_CAPABILITY_AUTHALG_OPEN	(1 << 0)
+#define SUPPLICANT_CAPABILITY_AUTHALG_SHARED	(1 << 1)
+#define SUPPLICANT_CAPABILITY_AUTHALG_LEAP	(1 << 2)
+
+#define SUPPLICANT_CAPABILITY_PROTO_WPA		(1 << 0)
+#define SUPPLICANT_CAPABILITY_PROTO_RSN		(1 << 1)
 
 #define SUPPLICANT_CAPABILITY_SCAN_ACTIVE	(1 << 0)
 #define SUPPLICANT_CAPABILITY_SCAN_PASSIVE	(1 << 1)
@@ -68,6 +78,19 @@ enum supplicant_state {
 };
 
 struct supplicant_interface;
+
+typedef void (* supplicant_interface_create_callback) (int result,
+				struct supplicant_interface *interface,
+							void *user_data);
+typedef void (* supplicant_interface_remove_callback) (int result,
+							void *user_data);
+
+int supplicant_interface_create(const char *ifname, const char *driver,
+			supplicant_interface_create_callback callback,
+							void *user_data);
+int supplicant_interface_remove(struct supplicant_interface *interface,
+			supplicant_interface_remove_callback callback,
+							void *user_data);
 
 const char *supplicant_interface_get_ifname(struct supplicant_interface *interface);
 

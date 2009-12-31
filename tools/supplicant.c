@@ -49,6 +49,7 @@ static DBusConnection *connection;
 static const struct supplicant_callbacks *callbacks_pointer;
 
 static dbus_bool_t system_available = FALSE;
+static dbus_bool_t system_ready = FALSE;
 
 static dbus_int32_t debug_level = 0;
 static dbus_bool_t debug_show_timestamps = FALSE;
@@ -73,10 +74,26 @@ static struct strvalmap eap_method_map[] = {
 	{ }
 };
 
-static struct strvalmap auth_capa_map[] = {
-	{ "open",	SUPPLICANT_CAPABILITY_AUTH_OPEN		},
-	{ "shared",	SUPPLICANT_CAPABILITY_AUTH_SHARED	},
-	{ "leap",	SUPPLICANT_CAPABILITY_AUTH_LEAP		},
+static struct strvalmap keymgmt_capa_map[] = {
+	{ "none",	SUPPLICANT_CAPABILITY_KEYMGMT_NONE	},
+	{ "ieee8021x",	SUPPLICANT_CAPABILITY_KEYMGMT_IEEE8021X	},
+	{ "wpa-none",	SUPPLICANT_CAPABILITY_KEYMGMT_WPA_NONE	},
+	{ "wpa-psk",	SUPPLICANT_CAPABILITY_KEYMGMT_WPA_PSK	},
+	{ "wpa-eap",	SUPPLICANT_CAPABILITY_KEYMGMT_WPA_EAP	},
+	{ "wps",	SUPPLICANT_CAPABILITY_KEYMGMT_WPS	},
+	{ }
+};
+
+static struct strvalmap authalg_capa_map[] = {
+	{ "open",	SUPPLICANT_CAPABILITY_AUTHALG_OPEN	},
+	{ "shared",	SUPPLICANT_CAPABILITY_AUTHALG_SHARED	},
+	{ "leap",	SUPPLICANT_CAPABILITY_AUTHALG_LEAP	},
+	{ }
+};
+
+static struct strvalmap proto_capa_map[] = {
+	{ "wpa",	SUPPLICANT_CAPABILITY_PROTO_WPA		},
+	{ "rsn",	SUPPLICANT_CAPABILITY_PROTO_RSN		},
 	{ }
 };
 
@@ -98,7 +115,9 @@ static GHashTable *interface_table;
 
 struct supplicant_interface {
 	char *path;
-	unsigned int auth_capa;
+	unsigned int keymgmt_capa;
+	unsigned int authalg_capa;
+	unsigned int proto_capa;
 	unsigned int scan_capa;
 	unsigned int mode_capa;
 	enum supplicant_state state;
@@ -196,6 +215,11 @@ static enum supplicant_state string2state(const char *state)
 
 static void callback_system_ready(void)
 {
+	if (system_ready == TRUE)
+		return;
+
+	system_ready = TRUE;
+
 	if (callbacks_pointer == NULL)
 		return;
 
@@ -207,6 +231,8 @@ static void callback_system_ready(void)
 
 static void callback_system_killed(void)
 {
+	system_ready = FALSE;
+
 	if (callbacks_pointer == NULL)
 		return;
 
@@ -264,10 +290,10 @@ static void remove_interface(gpointer data)
 {
 	struct supplicant_interface *interface = data;
 
-	callback_interface_removed(interface);
-
 	g_hash_table_destroy(interface->bss_mapping);
 	g_hash_table_destroy(interface->network_table);
+
+	callback_interface_removed(interface);
 
 	g_free(interface->path);
 	g_free(interface->ifname);
@@ -306,7 +332,7 @@ static void debug_strvalmap(const char *label, struct strvalmap *map,
 	}
 }
 
-static void interface_capability_auth(DBusMessageIter *iter, void *user_data)
+static void interface_capability_keymgmt(DBusMessageIter *iter, void *user_data)
 {
 	struct supplicant_interface *interface = user_data;
 	const char *str = NULL;
@@ -316,9 +342,43 @@ static void interface_capability_auth(DBusMessageIter *iter, void *user_data)
 	if (str == NULL)
 		return;
 
-	for (i = 0; auth_capa_map[i].str != NULL; i++)
-		if (strcmp(str, auth_capa_map[i].str) == 0) {
-			interface->auth_capa |= auth_capa_map[i].val;
+	for (i = 0; keymgmt_capa_map[i].str != NULL; i++)
+		if (strcmp(str, keymgmt_capa_map[i].str) == 0) {
+			interface->keymgmt_capa |= keymgmt_capa_map[i].val;
+			break;
+		}
+}
+
+static void interface_capability_authalg(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_interface *interface = user_data;
+	const char *str = NULL;
+	int i;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (str == NULL)
+		return;
+
+	for (i = 0; authalg_capa_map[i].str != NULL; i++)
+		if (strcmp(str, authalg_capa_map[i].str) == 0) {
+			interface->authalg_capa |= authalg_capa_map[i].val;
+			break;
+		}
+}
+
+static void interface_capability_proto(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_interface *interface = user_data;
+	const char *str = NULL;
+	int i;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (str == NULL)
+		return;
+
+	for (i = 0; proto_capa_map[i].str != NULL; i++)
+		if (strcmp(str, proto_capa_map[i].str) == 0) {
+			interface->proto_capa |= proto_capa_map[i].val;
 			break;
 		}
 }
@@ -365,8 +425,14 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 	if (key == NULL)
 		return;
 
-	if (g_strcmp0(key, "AuthAlg") == 0)
-		supplicant_dbus_array_foreach(iter, interface_capability_auth,
+	if (g_strcmp0(key, "KeyMgmt") == 0)
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_keymgmt, interface);
+	else if (g_strcmp0(key, "AuthAlg") == 0)
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_authalg, interface);
+	else if (g_strcmp0(key, "Protocol") == 0)
+		supplicant_dbus_array_foreach(iter, interface_capability_proto,
 								interface);
 	else if (g_strcmp0(key, "Scan") == 0)
 		supplicant_dbus_array_foreach(iter, interface_capability_scan,
@@ -434,6 +500,9 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL)
+		return;
+
+	if (g_strcmp0(path, "/") == 0)
 		return;
 
 	DBG("path %s", path);
@@ -728,6 +797,9 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	if (path == NULL)
 		return;
 
+	if (g_strcmp0(path, "/") == 0)
+		return;
+
 	network = g_hash_table_lookup(interface->bss_mapping, path);
 	if (network != NULL) {
 		bss = g_hash_table_lookup(network->bss_table, path);
@@ -777,15 +849,16 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		return;
 
 	if (key == NULL) {
-		debug_strvalmap("Auth capability", auth_capa_map,
-							interface->auth_capa);
+		debug_strvalmap("KeyMgmt capability", keymgmt_capa_map,
+						interface->keymgmt_capa);
+		debug_strvalmap("AuthAlg capability", authalg_capa_map,
+						interface->authalg_capa);
+		debug_strvalmap("Protocol capability", proto_capa_map,
+							interface->proto_capa);
 		debug_strvalmap("Scan capability", scan_capa_map,
 							interface->scan_capa);
 		debug_strvalmap("Mode capability", mode_capa_map,
 							interface->mode_capa);
-
-		g_hash_table_replace(interface_table,
-					interface->path, interface);
 
 		callback_interface_added(interface);
 		return;
@@ -844,6 +917,27 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
+static struct supplicant_interface *interface_alloc(const char *path)
+{
+	struct supplicant_interface *interface;
+
+	interface = g_try_new0(struct supplicant_interface, 1);
+	if (interface == NULL)
+		return NULL;
+
+	interface->path = g_strdup(path);
+
+	interface->network_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+							NULL, remove_network);
+
+	interface->bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
+								NULL, NULL);
+
+	g_hash_table_replace(interface_table, interface->path, interface);
+
+	return interface;
+}
+
 static void interface_added(DBusMessageIter *iter, void *user_data)
 {
 	struct supplicant_interface *interface;
@@ -853,21 +947,16 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 	if (path == NULL)
 		return;
 
+	if (g_strcmp0(path, "/") == 0)
+		return;
+
 	interface = g_hash_table_lookup(interface_table, path);
 	if (interface != NULL)
 		return;
 
-	interface = g_try_new0(struct supplicant_interface, 1);
+	interface = interface_alloc(path);
 	if (interface == NULL)
 		return;
-
-	interface->path = g_strdup(path);
-
-	interface->network_table = g_hash_table_new_full(g_str_hash, g_str_equal,
-							NULL, remove_network);
-
-	interface->bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
-								NULL, NULL);
 
 	supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
@@ -924,9 +1013,9 @@ static void service_property(const char *key, DBusMessageIter *iter,
 		DBG("Debug level %d (timestamps %u keys %u)", debug_level,
 				debug_show_timestamps, debug_show_keys);
 	} else if (g_strcmp0(key, "Interfaces") == 0) {
-		supplicant_dbus_array_foreach(iter, interface_added, user_data);
+		supplicant_dbus_array_foreach(iter, interface_added, NULL);
 	} else if (g_strcmp0(key, "EapMethods") == 0) {
-		supplicant_dbus_array_foreach(iter, eap_method, user_data);
+		supplicant_dbus_array_foreach(iter, eap_method, NULL);
 		debug_strvalmap("EAP method", eap_method_map, eap_methods);
 	}
 }
@@ -1203,6 +1292,9 @@ static void add_debug_level(DBusMessageIter *iter, void *user_data)
 
 void supplicant_set_debug_level(unsigned int level)
 {
+	if (system_available == FALSE)
+		return;
+
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
 				"DebugParams", "(ibb)", add_debug_level,
 				debug_level_result, GUINT_TO_POINTER(level));
@@ -1227,7 +1319,189 @@ static void add_show_timestamps(DBusMessageIter *iter, void *user_data)
 
 void supplicant_set_debug_show_timestamps(dbus_bool_t enabled)
 {
+	if (system_available == FALSE)
+		return;
+
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
 				"DebugParams", "(ibb)", add_show_timestamps,
 					NULL, GUINT_TO_POINTER(enabled));
+}
+
+struct interface_create_data {
+	const char *ifname;
+	const char *driver;
+	struct supplicant_interface *interface;
+	supplicant_interface_create_callback callback;
+	void *user_data;
+};
+
+static void interface_create_property(const char *key, DBusMessageIter *iter,
+							void *user_data)
+{
+	struct interface_create_data *data = user_data;
+	struct supplicant_interface *interface = data->interface;
+
+	if (key == NULL) {
+		if (data->callback != NULL)
+			data->callback(0, data->interface, data->user_data);
+
+		dbus_free(data);
+	}
+
+	interface_property(key, iter, interface);
+}
+
+static void interface_create_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_create_data *data = user_data;
+	const char *path = NULL;
+	int err;
+
+	if (error != NULL) {
+		err = -EIO;
+		goto done;
+	}
+
+	dbus_message_iter_get_basic(iter, &path);
+	if (path == NULL) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	if (system_available == FALSE) {
+		err = -EFAULT;
+		goto done;
+	}
+
+	data->interface = g_hash_table_lookup(interface_table, path);
+	if (data->interface == NULL) {
+		data->interface = interface_alloc(path);
+		if (data->interface == NULL) {
+			err = -ENOMEM;
+			goto done;
+		}
+	}
+
+	err = supplicant_dbus_property_get_all(path,
+					SUPPLICANT_INTERFACE ".Interface",
+					interface_create_property, data);
+	if (err == 0)
+		return;
+
+done:
+	if (data->callback != NULL)
+		data->callback(err, NULL, data->user_data);
+
+	dbus_free(data);
+}
+
+static void interface_create_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_create_data *data = user_data;
+	DBusMessageIter dict;
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	supplicant_dbus_dict_append_basic(&dict, "Ifname",
+					DBUS_TYPE_STRING, &data->ifname);
+	supplicant_dbus_dict_append_basic(&dict, "Driver",
+					DBUS_TYPE_STRING, &data->driver);
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+static void interface_get_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_create_data *data = user_data;
+	struct supplicant_interface *interface;
+	const char *path = NULL;
+	int err;
+
+	if (error != NULL) {
+		err = -EIO;
+		goto create;
+	}
+
+	dbus_message_iter_get_basic(iter, &path);
+	if (path == NULL) {
+		err = -EINVAL;
+		goto done;
+	}
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL) {
+		err = -ENOENT;
+		goto done;
+	}
+
+	if (data->callback != NULL)
+		data->callback(0, interface, data->user_data);
+
+	dbus_free(data);
+
+	return;
+
+create:
+	if (system_available == FALSE) {
+		err = -EFAULT;
+		goto done;
+	}
+
+	err = supplicant_dbus_method_call(SUPPLICANT_PATH,
+						SUPPLICANT_INTERFACE,
+						"CreateInterface",
+						interface_create_params,
+						interface_create_result, data);
+	if (err == 0)
+		return;
+
+done:
+	if (data->callback != NULL)
+		data->callback(err, NULL, data->user_data);
+
+	dbus_free(data);
+}
+
+static void interface_get_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_create_data *data = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &data->ifname);
+}
+
+int supplicant_interface_create(const char *ifname, const char *driver,
+			supplicant_interface_create_callback callback,
+							void *user_data)
+{
+	struct interface_create_data *data;
+
+	if (system_available == FALSE)
+		return -EFAULT;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->ifname = ifname;
+	data->driver = driver;
+	data->callback = callback;
+	data->user_data = user_data;
+
+	return supplicant_dbus_method_call(SUPPLICANT_PATH,
+						SUPPLICANT_INTERFACE,
+						"GetInterface",
+						interface_get_params,
+						interface_get_result, data);
+}
+
+int supplicant_interface_remove(struct supplicant_interface *interface,
+			supplicant_interface_remove_callback callback,
+							void *user_data)
+{
+	if (system_available == FALSE)
+		return -EFAULT;
+
+	return 0;
 }
