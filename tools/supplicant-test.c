@@ -37,6 +37,18 @@
 	syslog(LOG_DEBUG, "%s() " fmt, __FUNCTION__ , ## arg); \
 } while (0)
 
+static void system_ready(void)
+{
+	DBG("");
+
+	//supplicant_set_debug_level(1);
+}
+
+static void system_killed(void)
+{
+	DBG("");
+}
+
 static void interface_added(struct supplicant_interface *interface)
 {
 	const char *ifname = supplicant_interface_get_ifname(interface);
@@ -68,6 +80,8 @@ static void network_removed(struct supplicant_network *network)
 }
 
 static const struct supplicant_callbacks callbacks = {
+	.system_ready		= system_ready,
+	.system_killed		= system_killed,
 	.interface_added	= interface_added,
 	.interface_removed	= interface_removed,
 	.network_added		= network_added,

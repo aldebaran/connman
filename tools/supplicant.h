@@ -79,6 +79,8 @@ const char *supplicant_network_get_identifier(struct supplicant_network *network
 enum supplicant_mode supplicant_network_get_mode(struct supplicant_network *network);
 
 struct supplicant_callbacks {
+	void (*system_ready) (void);
+	void (*system_killed) (void);
 	void (*interface_added) (struct supplicant_interface *interface);
 	void (*interface_removed) (struct supplicant_interface *interface);
 	void (*network_added) (struct supplicant_network *network);

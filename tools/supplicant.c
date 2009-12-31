@@ -48,6 +48,8 @@ static DBusConnection *connection;
 
 static const struct supplicant_callbacks *callbacks_pointer;
 
+static dbus_bool_t system_available = FALSE;
+
 static dbus_int32_t debug_level = 0;
 static dbus_bool_t debug_show_timestamps = FALSE;
 static dbus_bool_t debug_show_keys = FALSE;
@@ -190,6 +192,28 @@ static enum supplicant_state string2state(const char *state)
 		return SUPPLICANT_STATE_COMPLETED;
 
 	return SUPPLICANT_STATE_UNKNOWN;
+}
+
+static void callback_system_ready(void)
+{
+	if (callbacks_pointer == NULL)
+		return;
+
+	if (callbacks_pointer->system_ready == NULL)
+		return;
+
+	callbacks_pointer->system_ready();
+}
+
+static void callback_system_killed(void)
+{
+	if (callbacks_pointer == NULL)
+		return;
+
+	if (callbacks_pointer->system_killed == NULL)
+		return;
+
+	callbacks_pointer->system_killed();
 }
 
 static void callback_interface_added(struct supplicant_interface *interface)
@@ -880,8 +904,10 @@ static void eap_method(DBusMessageIter *iter, void *user_data)
 static void service_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
-	if (key == NULL)
+	if (key == NULL) {
+		callback_system_ready();
 		return;
+	}
 
 	if (g_strcmp0(key, "DebugParams") == 0) {
 		DBusMessageIter list;
@@ -934,11 +960,16 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 	if (old == NULL || new == NULL)
 		return;
 
-	if (strlen(old) > 0 && strlen(new) == 0)
+	if (strlen(old) > 0 && strlen(new) == 0) {
+		system_available = FALSE;
 		g_hash_table_remove_all(interface_table);
+		callback_system_killed();
+	}
 
-	if (strlen(new) > 0 && strlen(old) == 0)
+	if (strlen(new) > 0 && strlen(old) == 0) {
+		system_available = TRUE;
 		supplicant_bootstrap();
+	}
 }
 
 static void signal_properties_changed(const char *path, DBusMessageIter *iter)
@@ -1105,8 +1136,10 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 	dbus_connection_flush(connection);
 
 	if (dbus_bus_name_has_owner(connection,
-					SUPPLICANT_SERVICE, NULL) == TRUE)
+					SUPPLICANT_SERVICE, NULL) == TRUE) {
+		system_available = TRUE;
 		supplicant_bootstrap();
+	}
 
 	return 0;
 }
@@ -1131,6 +1164,9 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 		g_hash_table_destroy(interface_table);
 		interface_table = NULL;
 	}
+
+	if (system_available == TRUE)
+		callback_system_killed();
 
 	if (connection != NULL) {
 		dbus_connection_unref(connection);
