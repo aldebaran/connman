@@ -110,8 +110,6 @@ static void property_get_all_reply(DBusPendingCall *call, void *user_data)
 	DBusMessageIter iter;
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		goto done;
@@ -127,6 +125,8 @@ static void property_get_all_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 int supplicant_dbus_property_get_all(const char *path, const char *interface,
@@ -195,8 +195,6 @@ static void property_set_reply(DBusPendingCall *call, void *user_data)
 	const char *error;
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		error = dbus_message_get_error_name(reply);
@@ -211,6 +209,8 @@ static void property_set_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 int supplicant_dbus_property_set(const char *path, const char *interface,
@@ -292,8 +292,6 @@ static void method_call_reply(DBusPendingCall *call, void *user_data)
 	const char *error;
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		error = dbus_message_get_error_name(reply);
@@ -308,6 +306,8 @@ static void method_call_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 int supplicant_dbus_method_call(const char *path,
