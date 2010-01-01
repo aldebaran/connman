@@ -97,6 +97,21 @@ static struct strvalmap proto_capa_map[] = {
 	{ }
 };
 
+static struct strvalmap group_capa_map[] = {
+	{ "wep40",	SUPPLICANT_CAPABILITY_GROUP_WEP40	},
+	{ "wep104",	SUPPLICANT_CAPABILITY_GROUP_WEP104	},
+	{ "tkip",	SUPPLICANT_CAPABILITY_GROUP_TKIP	},
+	{ "ccmp",	SUPPLICANT_CAPABILITY_GROUP_CCMP	},
+	{ }
+};
+
+static struct strvalmap pairwise_capa_map[] = {
+	{ "none",	SUPPLICANT_CAPABILITY_PAIRWISE_NONE	},
+	{ "tkip",	SUPPLICANT_CAPABILITY_PAIRWISE_TKIP	},
+	{ "ccmp",	SUPPLICANT_CAPABILITY_PAIRWISE_CCMP	},
+	{ }
+};
+
 static struct strvalmap scan_capa_map[] = {
 	{ "active",	SUPPLICANT_CAPABILITY_SCAN_ACTIVE	},
 	{ "passive",	SUPPLICANT_CAPABILITY_SCAN_PASSIVE	},
@@ -118,6 +133,8 @@ struct supplicant_interface {
 	unsigned int keymgmt_capa;
 	unsigned int authalg_capa;
 	unsigned int proto_capa;
+	unsigned int group_capa;
+	unsigned int pairwise_capa;
 	unsigned int scan_capa;
 	unsigned int mode_capa;
 	enum supplicant_state state;
@@ -171,7 +188,7 @@ static const char *mode2string(enum supplicant_mode mode)
 	case SUPPLICANT_MODE_UNKNOWN:
 		break;
 	case SUPPLICANT_MODE_INFRA:
-		return "managed";
+		return "infra";
 	case SUPPLICANT_MODE_IBSS:
 		return "adhoc";
 	}
@@ -396,6 +413,40 @@ static void interface_capability_proto(DBusMessageIter *iter, void *user_data)
 		}
 }
 
+static void interface_capability_pairwise(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_interface *interface = user_data;
+	const char *str = NULL;
+	int i;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (str == NULL)
+		return;
+
+	for (i = 0; pairwise_capa_map[i].str != NULL; i++)
+		if (strcmp(str, pairwise_capa_map[i].str) == 0) {
+			interface->pairwise_capa |= pairwise_capa_map[i].val;
+			break;
+		}
+}
+
+static void interface_capability_group(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_interface *interface = user_data;
+	const char *str = NULL;
+	int i;
+
+	dbus_message_iter_get_basic(iter, &str);
+	if (str == NULL)
+		return;
+
+	for (i = 0; group_capa_map[i].str != NULL; i++)
+		if (strcmp(str, group_capa_map[i].str) == 0) {
+			interface->group_capa |= group_capa_map[i].val;
+			break;
+		}
+}
+
 static void interface_capability_scan(DBusMessageIter *iter, void *user_data)
 {
 	struct supplicant_interface *interface = user_data;
@@ -445,14 +496,20 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 		supplicant_dbus_array_foreach(iter,
 				interface_capability_authalg, interface);
 	else if (g_strcmp0(key, "Protocol") == 0)
-		supplicant_dbus_array_foreach(iter, interface_capability_proto,
-								interface);
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_proto, interface);
+	else if (g_strcmp0(key, "Pairwise") == 0)
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_pairwise, interface);
+	else if (g_strcmp0(key, "Group") == 0)
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_group, interface);
 	else if (g_strcmp0(key, "Scan") == 0)
-		supplicant_dbus_array_foreach(iter, interface_capability_scan,
-								interface);
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_scan, interface);
 	else if (g_strcmp0(key, "Modes") == 0)
-		supplicant_dbus_array_foreach(iter, interface_capability_mode,
-								interface);
+		supplicant_dbus_array_foreach(iter,
+				interface_capability_mode, interface);
 	else
 		DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
@@ -894,11 +951,15 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		debug_strvalmap("AuthAlg capability", authalg_capa_map,
 						interface->authalg_capa);
 		debug_strvalmap("Protocol capability", proto_capa_map,
-							interface->proto_capa);
+						interface->proto_capa);
+		debug_strvalmap("Pairwise capability", pairwise_capa_map,
+						interface->pairwise_capa);
+		debug_strvalmap("Group capability", group_capa_map,
+						interface->group_capa);
 		debug_strvalmap("Scan capability", scan_capa_map,
-							interface->scan_capa);
+						interface->scan_capa);
 		debug_strvalmap("Mode capability", mode_capa_map,
-							interface->mode_capa);
+						interface->mode_capa);
 
 		callback_interface_added(interface);
 		return;
