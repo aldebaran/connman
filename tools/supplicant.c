@@ -504,11 +504,12 @@ static void network_property(const char *key, DBusMessageIter *iter,
 	if (key == NULL)
 		return;
 
-	DBG("key %s type %c", key, dbus_message_iter_get_arg_type(iter));
+	//DBG("key %s type %c", key, dbus_message_iter_get_arg_type(iter));
 }
 
 static void interface_network_added(DBusMessageIter *iter, void *user_data)
 {
+	//struct supplicant_interface *interface = user_data;
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
@@ -518,7 +519,12 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	if (g_strcmp0(path, "/") == 0)
 		return;
 
-	DBG("path %s", path);
+	dbus_message_iter_next(iter);
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+		supplicant_dbus_property_foreach(iter, network_property, NULL);
+		network_property(NULL, NULL, NULL);
+		return;
+	}
 
 	supplicant_dbus_property_get_all(path,
 				SUPPLICANT_INTERFACE ".Interface.Network",
@@ -841,6 +847,13 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	bss->interface = interface;
 	bss->path = g_strdup(path);
 
+	dbus_message_iter_next(iter);
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+		supplicant_dbus_property_foreach(iter, bss_property, bss);
+		bss_property(NULL, NULL, bss);
+		return;
+	}
+
 	supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface.BSS",
 							bss_property, bss);
@@ -984,6 +997,14 @@ static void interface_added(DBusMessageIter *iter, void *user_data)
 	interface = interface_alloc(path);
 	if (interface == NULL)
 		return;
+
+	dbus_message_iter_next(iter);
+	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
+		supplicant_dbus_property_foreach(iter, interface_property,
+								interface);
+		interface_property(NULL, NULL, interface);
+		return;
+	}
 
 	supplicant_dbus_property_get_all(path,
 					SUPPLICANT_INTERFACE ".Interface",
