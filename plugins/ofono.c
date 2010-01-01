@@ -90,6 +90,8 @@ static void powered_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int gprs_change_powered(const char *path, dbus_bool_t powered)
@@ -188,8 +190,6 @@ static void config_network_reply(DBusPendingCall *call, void *user_data)
 	DBG("network %p", network);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		goto done;
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
@@ -249,6 +249,8 @@ static void config_network_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void config_network(struct connman_network *network, const char *path)
@@ -336,12 +338,10 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 
 	DBG("network %p", network);
 
-	if (pending_network_is_available(network) == FALSE)
-		return;
-
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
+
+	if (pending_network_is_available(network) == FALSE)
+		goto done;
 
 	dbus_error_init(&error);
 	if (dbus_set_error_from_message(&error, reply)) {
@@ -357,7 +357,10 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 	} else
 		pending_network = network;
 
+done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int set_network_active(struct connman_network *network,
@@ -496,8 +499,6 @@ static void check_networks_reply(DBusPendingCall *call, void *user_data)
 	DBG("device %p", device);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		goto done;
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
@@ -545,6 +546,8 @@ static void check_networks_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void check_networks(struct modem_data *modem)
@@ -633,8 +636,6 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 	DBG("path %s", path);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
@@ -665,6 +666,8 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void get_imsi(const char *path)
@@ -797,8 +800,6 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 	DBG("path %s", path);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		goto done;
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
@@ -836,6 +837,8 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void get_modem_properties(struct modem_data *modem)
@@ -931,8 +934,6 @@ static void manager_properties_reply(DBusPendingCall *call, void *user_data)
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		goto done;
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
@@ -962,6 +963,8 @@ static void manager_properties_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void modem_remove_device(struct modem_data *modem)

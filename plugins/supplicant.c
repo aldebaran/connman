@@ -313,8 +313,6 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		goto failed;
@@ -340,10 +338,14 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_unref(reply);
 
+	dbus_pending_call_unref(call);
+
 	return;
 
 failed:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 
 	task_list = g_slist_remove(task_list, task);
 
@@ -410,8 +412,6 @@ static void get_interface_reply(DBusPendingCall *call, void *user_data)
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		add_interface(task);
@@ -439,6 +439,8 @@ static void get_interface_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int create_interface(struct supplicant_task *task)
@@ -496,6 +498,8 @@ static void remove_interface_reply(DBusPendingCall *call, void *user_data)
 	free_task(task);
 
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int remove_interface(struct supplicant_task *task)
@@ -1062,8 +1066,6 @@ static void scan_reply(DBusPendingCall *call, void *user_data)
 	task->scan_call = NULL;
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		connman_device_set_scanning(task->device, FALSE);
@@ -1075,6 +1077,8 @@ static void scan_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 
@@ -1427,16 +1431,9 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL) {
-		get_properties(task);
-		return;
-	}
 
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
-		dbus_message_unref(reply);
-		get_properties(task);
-		return;
-	}
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		goto unref;
 
 	memset(&result, 0, sizeof(result));
 	result.frequency = -1;
@@ -1600,7 +1597,10 @@ done:
 	g_free(result.name);
 	g_free(result.ssid);
 
+unref:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 
 	get_properties(task);
 }
@@ -1666,8 +1666,6 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 	DBG("task %p", task);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		goto noscan;
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		goto done;
@@ -1701,6 +1699,8 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_message_unref(reply);
 
+	dbus_pending_call_unref(call);
+
 	get_properties(task);
 
 	return;
@@ -1708,7 +1708,8 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 done:
 	dbus_message_unref(reply);
 
-noscan:
+	dbus_pending_call_unref(call);
+
 	task->result_call = NULL;
 
 	if (task->scanning == TRUE) {

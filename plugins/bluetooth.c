@@ -86,8 +86,6 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 	DBG("network %p", network);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	dbus_error_init(&error);
 
@@ -117,6 +115,8 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int pan_connect(struct connman_network *network)
@@ -173,8 +173,6 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 	DBG("network %p", network);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	dbus_error_init(&error);
 
@@ -192,6 +190,8 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int pan_disconnect(struct connman_network *network)
@@ -267,6 +267,8 @@ static void powered_reply(DBusPendingCall *call, void *user_data)
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static int change_powered(DBusConnection *connection, const char *path,
@@ -433,8 +435,6 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 	char ident[13];
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	extract_properties(reply, &parent, &address, NULL, &name,
 						NULL, NULL, &uuids, NULL);
@@ -483,6 +483,8 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void add_network(struct connman_device *device, const char *path)
@@ -591,8 +593,6 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 	DBG("path %s", path);
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	if (path == NULL)
 		goto done;
@@ -645,6 +645,8 @@ update:
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void add_adapter(DBusConnection *connection, const char *path)
@@ -718,8 +720,6 @@ static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
-	if (reply == NULL)
-		return;
 
 	dbus_error_init(&error);
 
@@ -742,6 +742,8 @@ static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
 }
 
 static void unregister_device(gpointer data)
