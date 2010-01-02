@@ -51,7 +51,7 @@ static void system_ready(void)
 {
 	DBG("*");
 
-	supplicant_interface_create("wlan0", "nl80211",
+	supplicant_interface_create("wlan0", "nl80211,wext",
 						create_callback, NULL);
 }
 
@@ -63,11 +63,29 @@ static void system_killed(void)
 static void interface_added(struct supplicant_interface *interface)
 {
 	const char *ifname = supplicant_interface_get_ifname(interface);
+	const char *driver = supplicant_interface_get_driver(interface);
+
+	DBG("* ifname %s driver %s", ifname, driver);
+
+	if (supplicant_interface_scan(interface) < 0)
+		DBG("scan failed");
+}
+
+static void interface_removed(struct supplicant_interface *interface)
+{
+	const char *ifname = supplicant_interface_get_ifname(interface);
 
 	DBG("* ifname %s", ifname);
 }
 
-static void interface_removed(struct supplicant_interface *interface)
+static void scan_started(struct supplicant_interface *interface)
+{
+	const char *ifname = supplicant_interface_get_ifname(interface);
+
+	DBG("* ifname %s", ifname);
+}
+
+static void scan_finished(struct supplicant_interface *interface)
 {
 	const char *ifname = supplicant_interface_get_ifname(interface);
 
@@ -95,6 +113,8 @@ static const struct supplicant_callbacks callbacks = {
 	.system_killed		= system_killed,
 	.interface_added	= interface_added,
 	.interface_removed	= interface_removed,
+	.scan_started		= scan_started,
+	.scan_finished		= scan_finished,
 	.network_added		= network_added,
 	.network_removed	= network_removed,
 };

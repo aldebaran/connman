@@ -298,13 +298,11 @@ static void method_call_reply(DBusPendingCall *call, void *user_data)
 	else
 		error = NULL;
 
-	if (dbus_message_iter_init(reply, &iter) == FALSE)
-		goto done;
+	dbus_message_iter_init(reply, &iter);
 
 	if (data->function != NULL)
 		data->function(error, &iter, data->user_data);
 
-done:
 	dbus_message_unref(reply);
 
 	dbus_pending_call_unref(call);
@@ -324,10 +322,7 @@ int supplicant_dbus_method_call(const char *path,
 	if (connection == NULL)
 		return -EINVAL;
 
-	if (path == NULL || interface == NULL)
-		return -EINVAL;
-
-	if (method == NULL || setup == NULL)
+	if (path == NULL || interface == NULL || method == NULL)
 		return -EINVAL;
 
 	data = dbus_malloc0(sizeof(*data));
@@ -344,7 +339,8 @@ int supplicant_dbus_method_call(const char *path,
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	setup(&iter, user_data);
+	if (setup != NULL)
+		setup(&iter, user_data);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {

@@ -27,6 +27,7 @@
 #define SUPPLICANT_EAP_METHOD_GTC	(1 << 5)
 #define SUPPLICANT_EAP_METHOD_OTP	(1 << 6)
 #define SUPPLICANT_EAP_METHOD_LEAP	(1 << 7)
+#define SUPPLICANT_EAP_METHOD_WSC	(1 << 8)
 
 #define SUPPLICANT_CAPABILITY_KEYMGMT_NONE	(1 << 0)
 #define SUPPLICANT_CAPABILITY_KEYMGMT_IEEE8021X	(1 << 1)
@@ -100,8 +101,11 @@ int supplicant_interface_create(const char *ifname, const char *driver,
 int supplicant_interface_remove(struct supplicant_interface *interface,
 			supplicant_interface_remove_callback callback,
 							void *user_data);
+int supplicant_interface_scan(struct supplicant_interface *interface);
+int supplicant_interface_disconnect(struct supplicant_interface *interface);
 
 const char *supplicant_interface_get_ifname(struct supplicant_interface *interface);
+const char *supplicant_interface_get_driver(struct supplicant_interface *interface);
 
 struct supplicant_network;
 
@@ -115,6 +119,8 @@ struct supplicant_callbacks {
 	void (*system_killed) (void);
 	void (*interface_added) (struct supplicant_interface *interface);
 	void (*interface_removed) (struct supplicant_interface *interface);
+	void (*scan_started) (struct supplicant_interface *interface);
+	void (*scan_finished) (struct supplicant_interface *interface);
 	void (*network_added) (struct supplicant_network *network);
 	void (*network_removed) (struct supplicant_network *network);
 };

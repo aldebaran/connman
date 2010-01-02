@@ -71,6 +71,7 @@ static struct strvalmap eap_method_map[] = {
 	{ "GTC",	SUPPLICANT_EAP_METHOD_GTC	},
 	{ "OTP",	SUPPLICANT_EAP_METHOD_OTP	},
 	{ "LEAP",	SUPPLICANT_EAP_METHOD_LEAP	},
+	{ "WSC",	SUPPLICANT_EAP_METHOD_WSC	},
 	{ }
 };
 
@@ -292,6 +293,28 @@ static void callback_interface_removed(struct supplicant_interface *interface)
 		return;
 
 	callbacks_pointer->interface_removed(interface);
+}
+
+static void callback_scan_started(struct supplicant_interface *interface)
+{
+	if (callbacks_pointer == NULL)
+		return;
+
+	if (callbacks_pointer->scan_started == NULL)
+		return;
+
+	callbacks_pointer->scan_started(interface);
+}
+
+static void callback_scan_finished(struct supplicant_interface *interface)
+{
+	if (callbacks_pointer == NULL)
+		return;
+
+	if (callbacks_pointer->scan_finished == NULL)
+		return;
+
+	callbacks_pointer->scan_finished(interface);
 }
 
 static void callback_network_added(struct supplicant_network *network)
@@ -523,6 +546,14 @@ const char *supplicant_interface_get_ifname(struct supplicant_interface *interfa
 	return interface->ifname;
 }
 
+const char *supplicant_interface_get_driver(struct supplicant_interface *interface)
+{
+	if (interface == NULL)
+		return NULL;
+
+	return interface->driver;
+}
+
 struct supplicant_interface *supplicant_network_get_interface(struct supplicant_network *network)
 {
 	if (network == NULL)
@@ -582,6 +613,8 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 		network_property(NULL, NULL, NULL);
 		return;
 	}
+
+	DBG("path %s", path);
 
 	supplicant_dbus_property_get_all(path,
 				SUPPLICANT_INTERFACE ".Interface.Network",
@@ -979,8 +1012,13 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 
 		dbus_message_iter_get_basic(iter, &scanning);
 		interface->scanning = scanning;
+
+		DBG("scanning %u", interface->scanning);
+
+		if (interface->scanning == TRUE)
+			callback_scan_started(interface);
 	} else if (g_strcmp0(key, "ApScan") == 0) {
-		int apscan;
+		int apscan = 1;
 
 		dbus_message_iter_get_basic(iter, &apscan);
 		interface->apscan = apscan;
@@ -1201,6 +1239,20 @@ static void signal_interface_removed(const char *path, DBusMessageIter *iter)
 		interface_removed(iter, NULL);
 }
 
+static void signal_scan_done(const char *path, DBusMessageIter *iter)
+{
+	struct supplicant_interface *interface;
+	dbus_bool_t success = FALSE;
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	dbus_message_iter_get_basic(iter, &success);
+
+	callback_scan_finished(interface);
+}
+
 static void signal_bss_added(const char *path, DBusMessageIter *iter)
 {
 	struct supplicant_interface *interface;
@@ -1257,6 +1309,7 @@ static struct {
 	{ SUPPLICANT_INTERFACE, "InterfaceCreated",  signal_interface_added    },
 	{ SUPPLICANT_INTERFACE, "InterfaceRemoved",  signal_interface_removed  },
 
+	{ SUPPLICANT_INTERFACE ".Interface", "ScanDone",       signal_scan_done       },
 	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",       signal_bss_added       },
 	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",     signal_bss_removed     },
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",   signal_network_added   },
@@ -1597,4 +1650,51 @@ int supplicant_interface_remove(struct supplicant_interface *interface,
 		return -EFAULT;
 
 	return 0;
+}
+
+static void interface_scan_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	DBG("error %s", error);
+}
+
+static void interface_scan_params(DBusMessageIter *iter, void *user_data)
+{
+	DBusMessageIter dict;
+	const char *type = "passive";
+
+	DBG("");
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	supplicant_dbus_dict_append_basic(&dict, "Type",
+						DBUS_TYPE_STRING, &type);
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+int supplicant_interface_scan(struct supplicant_interface *interface)
+{
+	if (system_available == FALSE)
+		return -EFAULT;
+
+	return supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface", "Scan",
+			interface_scan_params, interface_scan_result, NULL);
+}
+
+static void interface_disconnect_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	DBG("error %s", error);
+}
+
+int supplicant_interface_disconnect(struct supplicant_interface *interface)
+{
+	if (system_available == FALSE)
+		return -EFAULT;
+
+	return supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface", "Disconnect",
+				NULL, interface_disconnect_result, NULL);
 }
