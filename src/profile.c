@@ -77,6 +77,13 @@ static void offlinemode_changed(struct connman_profile *profile)
 	connman_dbus_property_changed_basic(profile->path,
 				CONNMAN_PROFILE_INTERFACE, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
+
+	if (profile != default_profile)
+		return;
+
+	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "OfflineMode",
+				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
 }
 
 connman_bool_t __connman_profile_get_offlinemode(void)
