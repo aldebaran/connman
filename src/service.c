@@ -447,6 +447,15 @@ static void settings_changed(struct connman_service *service)
 							append_ipv4, service);
 }
 
+static void ipv4_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE,
+							"IPv4.Configuration",
+							append_ipv4config,
+							service);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -726,6 +735,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 								&value);
 		if (err < 0)
 			return __connman_error_failed(msg, -err);
+
+		ipv4_configuration_changed(service);
 
 		__connman_storage_save_service(service);
 	} else
