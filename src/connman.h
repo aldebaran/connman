@@ -406,6 +406,9 @@ int __connman_provider_init(void);
 
 #include <connman/notifier.h>
 
+int __connman_technology_init(void);
+void __connman_technology_cleanup(void);
+
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
