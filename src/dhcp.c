@@ -122,6 +122,7 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 		g_free(dhcp->element->ipv4.timeserver);
 		dhcp->element->ipv4.timeserver = g_strdup(value);
 	} else if (g_strcmp0(key, "MTU") == 0) {
+	} else if (g_strcmp0(key, "PAC") == 0) {
 	}
 }
 

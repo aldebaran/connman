@@ -87,6 +87,8 @@ static void dhclient_notify(struct connman_task *task,
 			connman_dhcp_set_value(dhcp, "Timeserver", value);
 		} else if (g_ascii_strcasecmp(key, "new_interface_mtu") == 0) {
 			connman_dhcp_set_value(dhcp, "MTU", value);
+		} else if (g_ascii_strcasecmp(key, "new_proxy_auto_config") == 0) {
+			connman_dhcp_set_value(dhcp, "PAC", value);
 		}
 
 		dbus_message_iter_next(&dict);

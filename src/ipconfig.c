@@ -1118,7 +1118,16 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
-int __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
+void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter)
+{
+	const char *method = "direct";
+
+	connman_dbus_dict_append_basic(iter, "Method",
+						DBUS_TYPE_STRING, &method);
+}
+
+void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter)
 {
 	const char *method = "auto";
@@ -1133,8 +1142,6 @@ int __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 	if (ipconfig->mtu > 0)
 		connman_dbus_dict_append_basic(iter, "MTU",
 					DBUS_TYPE_UINT16, &ipconfig->mtu);
-
-	return 0;
 }
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,

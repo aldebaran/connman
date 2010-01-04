@@ -440,6 +440,26 @@ static void append_ipv4config(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_ipv4config(service->ipconfig, iter);
 }
 
+static void append_proxy(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return;
+	case CONNMAN_SERVICE_STATE_READY:
+		break;
+	}
+
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_append_proxy(service->ipconfig, iter);
+}
+
 static void settings_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_dict(service->path,
@@ -596,6 +616,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_dict(&dict, "IPv4.Configuration",
 						append_ipv4config, service);
+
+	connman_dbus_dict_append_dict(&dict, "Proxy", append_proxy, service);
 
 	connman_dbus_dict_close(&array, &dict);
 

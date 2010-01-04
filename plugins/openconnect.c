@@ -188,6 +188,9 @@ static void openconnect_task_notify(struct connman_task *task,
 		if (!strcmp(key, "INTERNAL_IP4_DNS"))
 			connman_provider_set_string(provider, "DNS", value);
 
+		if (!strcmp(key, "CISCO_PROXY_PAC"))
+			connman_provider_set_string(provider, "PAC", value);
+
 		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN"))
 			domain = value;
 

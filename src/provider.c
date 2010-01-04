@@ -43,6 +43,7 @@ struct connman_provider {
 	enum connman_provider_error error;
 	char *name;
 	char *type;
+	char *pac;
 	char *dns;
 	char *domain;
 	DBusMessage *pending;
@@ -538,6 +539,7 @@ static void provider_free(gpointer user_data)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_free(provider->dns);
+	g_free(provider->pac);
 }
 
 static void unregister_provider(gpointer data)
@@ -577,6 +579,7 @@ static void __connman_provider_initialize(struct connman_provider *provider)
 
 	provider->name = NULL;
 	provider->type = NULL;
+	provider->pac = NULL;
 	provider->dns = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
@@ -793,10 +796,13 @@ int connman_provider_set_string(struct connman_provider *provider,
 	} else if (g_str_equal(key, "Netmask") == TRUE) {
 		g_free(provider->element.ipv4.netmask);
 		provider->element.ipv4.netmask = g_strdup(value);
+	} else if (g_str_equal(key, "PAC") == TRUE) {
+		g_free(provider->pac);
+		provider->pac = g_strdup(value);
 	} else if (g_str_equal(key, "DNS") == TRUE) {
 		g_free(provider->dns);
 		provider->dns = g_strdup(value);
-	} else if (g_str_equal(key, "Domain")) {
+	} else if (g_str_equal(key, "Domain") == TRUE) {
 		g_free(provider->domain);
 		provider->domain = g_strdup(value);
 	}

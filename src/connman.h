@@ -134,7 +134,9 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *value);
-int __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
+void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,

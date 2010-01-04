@@ -302,6 +302,28 @@ Properties	string State [readonly]
 			the actual system configuration while this allows
 			user configuration.
 
+		dict Proxy [readonly]
+
+			string Method [readonly]
+
+				Possible values are "direct", "auto",
+				"manual" and "auto-config".
+
+				If the DHCP server provides an automatic
+				configuration URL, then this value is set
+				to "auto-config". The PAC file will be
+				referenced by the URL value.
+
+				If no automatic configuration is available,
+				then "direct" is set.
+
+				The values "auto" and "manual" are not yet
+				supported.
+
+			string URL [readonly]
+
+				Automatic proxy configuration URL.
+
 		dict Ethernet [readonly]
 
 			string Method [readonly]
