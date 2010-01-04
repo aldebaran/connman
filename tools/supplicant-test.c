@@ -45,6 +45,8 @@ static void create_callback(int result, struct supplicant_interface *interface,
 
 	if (result < 0)
 		return;
+
+	//supplicant_set_debug_level(1);
 }
 
 static void system_ready(void)
@@ -60,6 +62,14 @@ static void system_killed(void)
 	DBG("*");
 }
 
+static void scan_callback(int result, void *user_data)
+{
+	DBG("* result %d", result);
+
+	if (result < 0)
+		return;
+}
+
 static void interface_added(struct supplicant_interface *interface)
 {
 	const char *ifname = supplicant_interface_get_ifname(interface);
@@ -67,7 +77,7 @@ static void interface_added(struct supplicant_interface *interface)
 
 	DBG("* ifname %s driver %s", ifname, driver);
 
-	if (supplicant_interface_scan(interface) < 0)
+	if (supplicant_interface_scan(interface, scan_callback, NULL) < 0)
 		DBG("scan failed");
 }
 

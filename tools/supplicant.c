@@ -55,6 +55,10 @@ static dbus_int32_t debug_level = 0;
 static dbus_bool_t debug_timestamp = FALSE;
 static dbus_bool_t debug_showkeys = FALSE;
 
+static const char *debug_strings[] = {
+	"msgdump", "debug", "info", "warning", "error", NULL
+};
+
 static unsigned int eap_methods;
 
 struct strvalmap {
@@ -138,8 +142,11 @@ struct supplicant_interface {
 	unsigned int pairwise_capa;
 	unsigned int scan_capa;
 	unsigned int mode_capa;
+	dbus_bool_t ready;
 	enum supplicant_state state;
 	dbus_bool_t scanning;
+	supplicant_interface_scan_callback scan_callback;
+	void *scan_data;
 	int apscan;
 	char *ifname;
 	char *driver;
@@ -994,6 +1001,7 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		debug_strvalmap("Mode capability", mode_capa_map,
 						interface->mode_capa);
 
+		interface->ready = TRUE;
 		callback_interface_added(interface);
 		return;
 	}
@@ -1007,16 +1015,20 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		dbus_message_iter_get_basic(iter, &str);
 		if (str != NULL)
 			interface->state = string2state(str);
+
+		DBG("state %s (%d)", str, interface->state);
 	} else if (g_strcmp0(key, "Scanning") == 0) {
 		dbus_bool_t scanning = FALSE;
 
 		dbus_message_iter_get_basic(iter, &scanning);
 		interface->scanning = scanning;
 
-		DBG("scanning %u", interface->scanning);
-
-		if (interface->scanning == TRUE)
-			callback_scan_started(interface);
+		if (interface->ready == TRUE) {
+			if (interface->scanning == TRUE)
+				callback_scan_started(interface);
+			else
+				callback_scan_finished(interface);
+		}
 	} else if (g_strcmp0(key, "ApScan") == 0) {
 		int apscan = 1;
 
@@ -1145,24 +1157,18 @@ static void service_property(const char *key, DBusMessageIter *iter,
 		return;
 	}
 
-	if (g_strcmp0(key, "DebugParams") == 0) {
-		DBusMessageIter list;
+	if (g_strcmp0(key, "DebugLevel") == 0) {
+		const char *str = NULL;
+		int i;
 
-		dbus_message_iter_recurse(iter, &list);
-		dbus_message_iter_get_basic(&list, &debug_level);
-
-		dbus_message_iter_next(&list);
-		dbus_message_iter_get_basic(&list, &debug_timestamp);
-
-		dbus_message_iter_next(&list);
-		dbus_message_iter_get_basic(&list, &debug_showkeys);
-
-		DBG("Debug level %d (timestamp %u show keys %u)",
-				debug_level, debug_timestamp, debug_showkeys);
-	} else if (g_strcmp0(key, "DebugLevel") == 0) {
-		dbus_message_iter_get_basic(iter, &debug_level);
+		dbus_message_iter_get_basic(iter, &str);
+		for (i = 0; debug_strings[i] != NULL; i++)
+			if (g_strcmp0(debug_strings[i], str) == 0) {
+				debug_level = i;
+				break;
+			}
 		DBG("Debug level %d", debug_level);
-	} else if (g_strcmp0(key, "DebugTimeStamp") == 0) {
+	} else if (g_strcmp0(key, "DebugTimestamp") == 0) {
 		dbus_message_iter_get_basic(iter, &debug_timestamp);
 		DBG("Debug timestamp %u", debug_timestamp);
 	} else if (g_strcmp0(key, "DebugShowKeys") == 0) {
@@ -1239,6 +1245,17 @@ static void signal_interface_removed(const char *path, DBusMessageIter *iter)
 		interface_removed(iter, NULL);
 }
 
+static void signal_properties(const char *path, DBusMessageIter *iter)
+{
+	struct supplicant_interface *interface;
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	supplicant_dbus_property_foreach(iter, interface_property, interface);
+}
+
 static void signal_scan_done(const char *path, DBusMessageIter *iter)
 {
 	struct supplicant_interface *interface;
@@ -1250,7 +1267,17 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 
 	dbus_message_iter_get_basic(iter, &success);
 
-	callback_scan_finished(interface);
+	if (interface->scan_callback != NULL) {
+		int result = 0;
+
+		if (success == FALSE)
+			result = -EIO;
+
+		interface->scan_callback(result, interface->scan_data);
+	}
+
+	interface->scan_callback = NULL;
+	interface->scan_data = NULL;
 }
 
 static void signal_bss_added(const char *path, DBusMessageIter *iter)
@@ -1309,11 +1336,12 @@ static struct {
 	{ SUPPLICANT_INTERFACE, "InterfaceCreated",  signal_interface_added    },
 	{ SUPPLICANT_INTERFACE, "InterfaceRemoved",  signal_interface_removed  },
 
-	{ SUPPLICANT_INTERFACE ".Interface", "ScanDone",       signal_scan_done       },
-	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",       signal_bss_added       },
-	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",     signal_bss_removed     },
-	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",   signal_network_added   },
-	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved", signal_network_removed },
+	{ SUPPLICANT_INTERFACE ".Interface", "PropertiesChanged", signal_properties      },
+	{ SUPPLICANT_INTERFACE ".Interface", "ScanDone",          signal_scan_done       },
+	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",          signal_bss_added       },
+	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",        signal_bss_removed     },
+	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",      signal_network_added   },
+	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed },
 
 	{ }
 };
@@ -1446,21 +1474,17 @@ static void debug_level_result(const char *error,
 		DBG("debug level failure: %s", error);
 }
 
-static void add_debug_level(DBusMessageIter *iter, void *user_data)
+static void debug_level_params(DBusMessageIter *iter, void *user_data)
 {
-	dbus_int32_t level = GPOINTER_TO_UINT(user_data);
-	DBusMessageIter entry;
+	guint level = GPOINTER_TO_UINT(user_data);
+	const char *str;
 
-	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT,
-							NULL, &entry);
+	if (level > 4)
+		level = 4;
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_INT32, &level);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
-						&debug_timestamp);
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_BOOLEAN,
-						&debug_showkeys);
+	str = debug_strings[level];
 
-	dbus_message_iter_close_container(iter, &entry);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &str);
 }
 
 void supplicant_set_debug_level(unsigned int level)
@@ -1469,8 +1493,9 @@ void supplicant_set_debug_level(unsigned int level)
 		return;
 
 	supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
-				"DebugParams", "(ibb)", add_debug_level,
-				debug_level_result, GUINT_TO_POINTER(level));
+				"DebugLevel", DBUS_TYPE_STRING_AS_STRING,
+				debug_level_params, debug_level_result,
+						GUINT_TO_POINTER(level));
 }
 
 struct interface_create_data {
@@ -1551,7 +1576,9 @@ static void interface_create_params(DBusMessageIter *iter, void *user_data)
 
 	supplicant_dbus_dict_append_basic(&dict, "Ifname",
 					DBUS_TYPE_STRING, &data->ifname);
-	supplicant_dbus_dict_append_basic(&dict, "Driver",
+
+	if (data->driver != NULL)
+		supplicant_dbus_dict_append_basic(&dict, "Driver",
 					DBUS_TYPE_STRING, &data->driver);
 
 	supplicant_dbus_dict_close(iter, &dict);
@@ -1623,6 +1650,9 @@ int supplicant_interface_create(const char *ifname, const char *driver,
 {
 	struct interface_create_data *data;
 
+	if (ifname == NULL)
+		return -EINVAL;
+
 	if (system_available == FALSE)
 		return -EFAULT;
 
@@ -1646,24 +1676,41 @@ int supplicant_interface_remove(struct supplicant_interface *interface,
 			supplicant_interface_remove_callback callback,
 							void *user_data)
 {
+	if (interface == NULL)
+		return -EINVAL;
+
 	if (system_available == FALSE)
 		return -EFAULT;
 
 	return 0;
 }
 
+struct interface_scan_data {
+	struct supplicant_interface *interface;
+	supplicant_interface_scan_callback callback;
+	void *user_data;
+};
+
 static void interface_scan_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
-	DBG("error %s", error);
+	struct interface_scan_data *data = user_data;
+
+	if (error != NULL) {
+		if (data->callback != NULL)
+			data->callback(-EIO, data->user_data);
+	} else {
+		data->interface->scan_callback = data->callback;
+		data->interface->scan_data = data->user_data;
+	}
+
+	dbus_free(data);
 }
 
 static void interface_scan_params(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
 	const char *type = "passive";
-
-	DBG("");
 
 	supplicant_dbus_dict_open(iter, &dict);
 
@@ -1673,28 +1720,74 @@ static void interface_scan_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
-int supplicant_interface_scan(struct supplicant_interface *interface)
+int supplicant_interface_scan(struct supplicant_interface *interface,
+			supplicant_interface_scan_callback callback,
+							void *user_data)
 {
+	struct interface_scan_data *data;
+
+	if (interface == NULL)
+		return -EINVAL;
+
 	if (system_available == FALSE)
 		return -EFAULT;
 
+	if (interface->scanning == TRUE)
+		return -EALREADY;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->interface = interface;
+	data->callback = callback;
+	data->user_data = user_data;
+
 	return supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "Scan",
-			interface_scan_params, interface_scan_result, NULL);
+			interface_scan_params, interface_scan_result, data);
 }
+
+struct interface_disconnect_data {
+	supplicant_interface_disconnect_callback callback;
+	void *user_data;
+};
 
 static void interface_disconnect_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
-	DBG("error %s", error);
+	struct interface_disconnect_data *data = user_data;
+	int result = 0;
+
+	if (error != NULL)
+		result = -EIO;
+
+	if (data->callback != NULL)
+		data->callback(result, data->user_data);
+
+	dbus_free(data);
 }
 
-int supplicant_interface_disconnect(struct supplicant_interface *interface)
+int supplicant_interface_disconnect(struct supplicant_interface *interface,
+			supplicant_interface_disconnect_callback callback,
+							void *user_data)
 {
+	struct interface_disconnect_data *data;
+
+	if (interface == NULL)
+		return -EINVAL;
+
 	if (system_available == FALSE)
 		return -EFAULT;
 
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->callback = callback;
+	data->user_data = user_data;
+
 	return supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "Disconnect",
-				NULL, interface_disconnect_result, NULL);
+				NULL, interface_disconnect_result, data);
 }

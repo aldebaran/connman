@@ -94,6 +94,10 @@ typedef void (* supplicant_interface_create_callback) (int result,
 							void *user_data);
 typedef void (* supplicant_interface_remove_callback) (int result,
 							void *user_data);
+typedef void (* supplicant_interface_scan_callback) (int result,
+							void *user_data);
+typedef void (* supplicant_interface_disconnect_callback) (int result,
+							void *user_data);
 
 int supplicant_interface_create(const char *ifname, const char *driver,
 			supplicant_interface_create_callback callback,
@@ -101,8 +105,12 @@ int supplicant_interface_create(const char *ifname, const char *driver,
 int supplicant_interface_remove(struct supplicant_interface *interface,
 			supplicant_interface_remove_callback callback,
 							void *user_data);
-int supplicant_interface_scan(struct supplicant_interface *interface);
-int supplicant_interface_disconnect(struct supplicant_interface *interface);
+int supplicant_interface_scan(struct supplicant_interface *interface,
+			supplicant_interface_scan_callback callback,
+							void *user_data);
+int supplicant_interface_disconnect(struct supplicant_interface *interface,
+			supplicant_interface_disconnect_callback callback,
+							void *user_data);
 
 const char *supplicant_interface_get_ifname(struct supplicant_interface *interface);
 const char *supplicant_interface_get_driver(struct supplicant_interface *interface);
