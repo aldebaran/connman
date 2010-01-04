@@ -755,49 +755,6 @@ static int set_static_array_property(struct connman_element *element,
 	return 0;
 }
 
-#if 0
-static int set_property(struct connman_element *element,
-				enum connman_property_id id, const void *value)
-{
-	switch (id) {
-	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
-		__connman_element_lock(element);
-		g_free(element->ipv4.address);
-		element->ipv4.address = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
-		__connman_element_lock(element);
-		g_free(element->ipv4.netmask);
-		element->ipv4.netmask = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
-		__connman_element_lock(element);
-		g_free(element->ipv4.gateway);
-		element->ipv4.gateway = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_BROADCAST:
-		__connman_element_lock(element);
-		g_free(element->ipv4.broadcast);
-		element->ipv4.broadcast = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
-		__connman_element_lock(element);
-		g_free(element->ipv4.nameserver);
-		element->ipv4.nameserver = g_strdup(*((const char **) value));
-		__connman_element_unlock(element);
-		break;
-	default:
-		return -EINVAL;
-	}
-
-	return 0;
-}
-#endif
-
 int connman_element_get_value(struct connman_element *element,
 				enum connman_property_id id, void *value)
 {
@@ -906,30 +863,6 @@ static gboolean get_static_array_property(struct connman_element *element,
 
 	return found;
 }
-
-#if 0
-static gboolean match_static_property(struct connman_element *element,
-					const char *name, const void *value)
-{
-	struct connman_property *property;
-	gboolean result = FALSE;
-
-	DBG("element %p name %s", element, element->name);
-
-	__connman_element_lock(element);
-
-	property = g_hash_table_lookup(element->properties, name);
-	if (property != NULL) {
-		if (property->type == DBUS_TYPE_STRING)
-			result = g_str_equal(property->value,
-						*((const char **) value));
-	}
-
-	__connman_element_unlock(element);
-
-	return result;
-}
-#endif
 
 /**
  * connman_element_set_string:
