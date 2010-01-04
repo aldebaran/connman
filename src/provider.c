@@ -43,7 +43,6 @@ struct connman_provider {
 	enum connman_provider_error error;
 	char *name;
 	char *type;
-	char *pac;
 	char *dns;
 	char *domain;
 	DBusMessage *pending;
@@ -132,6 +131,9 @@ static void connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
 
 	g_free(element->ipv4.broadcast);
 	element->ipv4.broadcast = g_strdup(provider->element.ipv4.broadcast);
+
+	g_free(element->ipv4.pac);
+	element->ipv4.pac = g_strdup(provider->element.ipv4.pac);
 
 	DBG("VPN exist");
 }
@@ -361,11 +363,13 @@ static int connman_provider_connect(struct connman_provider *provider)
 	g_free(provider->element.ipv4.netmask);
 	g_free(provider->element.ipv4.gateway);
 	g_free(provider->element.ipv4.broadcast);
+	g_free(provider->element.ipv4.pac);
 
 	provider->element.ipv4.address = NULL;
 	provider->element.ipv4.netmask = NULL;
 	provider->element.ipv4.gateway = NULL;
 	provider->element.ipv4.broadcast = NULL;
+	provider->element.ipv4.pac = NULL;
 
 	if (provider->driver != NULL && provider->driver->connect != NULL)
 		err = provider->driver->connect(provider);
@@ -539,7 +543,6 @@ static void provider_free(gpointer user_data)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_free(provider->dns);
-	g_free(provider->pac);
 }
 
 static void unregister_provider(gpointer data)
@@ -576,10 +579,10 @@ static void __connman_provider_initialize(struct connman_provider *provider)
 	provider->element.ipv4.netmask = NULL;
 	provider->element.ipv4.gateway = NULL;
 	provider->element.ipv4.broadcast = NULL;
+	provider->element.ipv4.pac = NULL;
 
 	provider->name = NULL;
 	provider->type = NULL;
-	provider->pac = NULL;
 	provider->dns = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
@@ -797,8 +800,8 @@ int connman_provider_set_string(struct connman_provider *provider,
 		g_free(provider->element.ipv4.netmask);
 		provider->element.ipv4.netmask = g_strdup(value);
 	} else if (g_str_equal(key, "PAC") == TRUE) {
-		g_free(provider->pac);
-		provider->pac = g_strdup(value);
+		g_free(provider->element.ipv4.pac);
+		provider->element.ipv4.pac = g_strdup(value);
 	} else if (g_str_equal(key, "DNS") == TRUE) {
 		g_free(provider->dns);
 		provider->dns = g_strdup(value);

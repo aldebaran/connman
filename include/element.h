@@ -107,6 +107,7 @@ struct connman_element {
 		gchar *broadcast;
 		gchar *nameserver;
 		gchar *timeserver;
+		gchar *pac;
 	} ipv4;
 };
 

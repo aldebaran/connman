@@ -683,6 +683,7 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.broadcast);
 		g_free(element->ipv4.nameserver);
 		g_free(element->ipv4.timeserver);
+		g_free(element->ipv4.pac);
 		g_free(element->devname);
 		g_free(element->path);
 		g_free(element->name);
@@ -874,6 +875,14 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.timeserver;
+		__connman_element_unlock(element);
+		break;
+	case CONNMAN_PROPERTY_ID_IPV4_PAC:
+		if (element->ipv4.pac == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		__connman_element_lock(element);
+		*((char **) value) = element->ipv4.pac;
 		__connman_element_unlock(element);
 		break;
 	default:
@@ -1099,7 +1108,7 @@ int __connman_element_append_ipv4(struct connman_element *element,
 	const char *method = NULL;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 	const char *broadcast = NULL, *nameserver = NULL;
-	const char *timeserver = NULL;
+	const char *timeserver = NULL, *pac = NULL;
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_METHOD, &method);
@@ -1116,6 +1125,8 @@ int __connman_element_append_ipv4(struct connman_element *element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_PAC, &pac);
 
 	if (method != NULL)
 		connman_dbus_dict_append_basic(dict, "IPv4.Method",
@@ -1144,6 +1155,10 @@ int __connman_element_append_ipv4(struct connman_element *element,
 	if (timeserver != NULL)
 		connman_dbus_dict_append_basic(dict, "IPv4.Timeserver",
 						DBUS_TYPE_STRING, &timeserver);
+
+	if (pac != NULL)
+		connman_dbus_dict_append_basic(dict, "IPv4.PAC",
+						DBUS_TYPE_STRING, &pac);
 
 	return 0;
 }
@@ -1242,7 +1257,19 @@ int __connman_element_set_ipv4(struct connman_element *element,
 		dbus_message_iter_get_basic(value, &timeserver);
 
 		g_free(element->ipv4.timeserver);
-		element->ipv4.nameserver = g_strdup(timeserver);
+		element->ipv4.timeserver = g_strdup(timeserver);
+
+		connman_element_update(element);
+	} else if (g_str_equal(name, "IPv4.PAC") == TRUE) {
+		const char *pac;
+
+		if (type != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(value, &pac);
+
+		g_free(element->ipv4.pac);
+		element->ipv4.pac = g_strdup(pac);
 
 		connman_element_update(element);
 	}
