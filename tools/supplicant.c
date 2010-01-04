@@ -152,15 +152,18 @@ struct supplicant_interface {
 	char *driver;
 	char *bridge;
 	GHashTable *network_table;
+	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
 };
 
 struct supplicant_network {
 	struct supplicant_interface *interface;
+	char *path;
 	char *group;
 	char *name;
 	enum supplicant_mode mode;
 	GHashTable *bss_table;
+	GHashTable *config_table;
 };
 
 struct supplicant_bss {
@@ -170,6 +173,7 @@ struct supplicant_bss {
 	unsigned char ssid[32];
 	unsigned int ssid_len;
 	dbus_uint16_t frequency;
+	dbus_uint32_t maxrate;
 	enum supplicant_mode mode;
 	enum supplicant_security security;
 	dbus_bool_t privacy;
@@ -351,6 +355,7 @@ static void remove_interface(gpointer data)
 	struct supplicant_interface *interface = data;
 
 	g_hash_table_destroy(interface->bss_mapping);
+	g_hash_table_destroy(interface->net_mapping);
 	g_hash_table_destroy(interface->network_table);
 
 	callback_interface_removed(interface);
@@ -366,7 +371,11 @@ static void remove_network(gpointer data)
 {
 	struct supplicant_network *network = data;
 
+	g_hash_table_destroy(network->bss_table);
+
 	callback_network_removed(network);
+
+	g_hash_table_destroy(network->config_table);
 
 	g_free(network->group);
 	g_free(network->name);
@@ -593,18 +602,84 @@ enum supplicant_mode supplicant_network_get_mode(struct supplicant_network *netw
 	return network->mode;
 }
 
+static void merge_network(struct supplicant_network *network)
+{
+	GString *str;
+	const char *ssid, *mode, *key_mgmt;
+	unsigned int i, ssid_len;
+	char *group;
+
+	ssid = g_hash_table_lookup(network->config_table, "ssid");
+	mode = g_hash_table_lookup(network->config_table, "mode");
+	key_mgmt = g_hash_table_lookup(network->config_table, "key_mgmt");
+
+	DBG("ssid %s mode %s", ssid, mode);
+
+	if (ssid != NULL)
+		ssid_len = strlen(ssid);
+	else
+		ssid_len = 0;
+
+	str = g_string_sized_new((ssid_len * 2) + 24);
+	if (str == NULL)
+		return;
+
+	for (i = 0; i < ssid_len; i++)
+		g_string_append_printf(str, "%02x", ssid[i]);
+
+	if (g_strcmp0(mode, "0") == 0)
+		g_string_append_printf(str, "_infra");
+	else if (g_strcmp0(mode, "1") == 0)
+		g_string_append_printf(str, "_adhoc");
+
+	if (g_strcmp0(key_mgmt, "WPA-PSK") == 0)
+		g_string_append_printf(str, "_psk");
+
+	group = g_string_free(str, FALSE);
+
+	DBG("%s", group);
+
+	g_free(group);
+
+	g_hash_table_destroy(network->config_table);
+
+	g_free(network->path);
+	g_free(network);
+}
+
 static void network_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
-	if (key == NULL)
+	struct supplicant_network *network = user_data;
+
+	if (network->interface == NULL)
 		return;
 
-	//DBG("key %s type %c", key, dbus_message_iter_get_arg_type(iter));
+	if (key == NULL) {
+		merge_network(network);
+		return;
+	}
+
+	if (g_strcmp0(key, "Enabled") == 0) {
+		dbus_bool_t enabled = FALSE;
+
+		dbus_message_iter_get_basic(iter, &enabled);
+	} else if (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_STRING) {
+		const char *str = NULL;
+
+		dbus_message_iter_get_basic(iter, &str);
+		if (str != NULL)
+			g_hash_table_replace(network->config_table,
+						g_strdup(key), g_strdup(str));
+	} else
+		DBG("key %s type %c",
+				key, dbus_message_iter_get_arg_type(iter));
 }
 
 static void interface_network_added(DBusMessageIter *iter, void *user_data)
 {
-	//struct supplicant_interface *interface = user_data;
+	struct supplicant_interface *interface = user_data;
+	struct supplicant_network *network;
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
@@ -614,29 +689,48 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	if (g_strcmp0(path, "/") == 0)
 		return;
 
+	network = g_hash_table_lookup(interface->net_mapping, path);
+	if (network != NULL)
+		return;
+
+	network = g_try_new0(struct supplicant_network, 1);
+	if (network == NULL)
+		return;
+
+	network->interface = interface;
+	network->path = g_strdup(path);
+
+	network->config_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+							g_free, g_free);
+
 	dbus_message_iter_next(iter);
 	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
-		supplicant_dbus_property_foreach(iter, network_property, NULL);
-		network_property(NULL, NULL, NULL);
+		supplicant_dbus_property_foreach(iter, network_property,
+								network);
+		network_property(NULL, NULL, network);
 		return;
 	}
 
-	DBG("path %s", path);
-
 	supplicant_dbus_property_get_all(path,
 				SUPPLICANT_INTERFACE ".Interface.Network",
-						network_property, NULL);
+						network_property, network);
 }
 
 static void interface_network_removed(DBusMessageIter *iter, void *user_data)
 {
+	struct supplicant_interface *interface = user_data;
+	struct supplicant_network *network;
 	const char *path = NULL;
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL)
 		return;
 
-	DBG("path %s", path);
+	network = g_hash_table_lookup(interface->net_mapping, path);
+	if (network == NULL)
+		return;
+
+	g_hash_table_remove(interface->net_mapping, path);
 }
 
 static char *create_name(unsigned char *ssid, int ssid_len)
@@ -718,6 +812,9 @@ static void add_bss_to_network(struct supplicant_bss *bss)
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_bss);
 
+	network->config_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+							g_free, g_free);
+
 	g_hash_table_replace(interface->network_table,
 						network->group, network);
 
@@ -798,6 +895,19 @@ static void extract_rsn(struct supplicant_bss *bss,
 	len -= 2 + (count * 4);
 }
 
+static void bss_rates(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_bss *bss = user_data;
+	dbus_uint32_t rate = 0;
+
+	dbus_message_iter_get_basic(iter, &rate);
+	if (rate == 0)
+		return;
+
+	if (rate > bss->maxrate)
+		bss->maxrate = rate;
+}
+
 static void bss_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -875,10 +985,14 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 		dbus_int32_t level = 0;
 
 		dbus_message_iter_get_basic(iter, &level);
+	} else if (g_strcmp0(key, "Rates") == 0) {
+		supplicant_dbus_array_foreach(iter, bss_rates, bss);
 	} else if (g_strcmp0(key, "MaxRate") == 0) {
-		dbus_uint16_t maxrate = 0;
+		dbus_uint32_t maxrate = 0;
 
 		dbus_message_iter_get_basic(iter, &maxrate);
+		if (maxrate != 0)
+			bss->maxrate =maxrate;
 	} else if (g_strcmp0(key, "Privacy") == 0) {
 		dbus_bool_t privacy = FALSE;
 
@@ -1081,6 +1195,8 @@ static struct supplicant_interface *interface_alloc(const char *path)
 	interface->network_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_network);
 
+	interface->net_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
+								NULL, NULL);
 	interface->bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
 
