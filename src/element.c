@@ -505,9 +505,7 @@ static gboolean probe_driver(GNode *node, gpointer data)
 		if (driver->probe(element) < 0)
 			return FALSE;
 
-		__connman_element_lock(element);
 		element->driver = driver;
-		__connman_element_unlock(element);
 	}
 
 	return FALSE;
@@ -567,9 +565,7 @@ static gboolean remove_driver(GNode *node, gpointer data)
 		if (driver->remove)
 			driver->remove(element);
 
-		__connman_element_lock(element);
 		element->driver = NULL;
-		__connman_element_unlock(element);
 	}
 
 	return FALSE;
@@ -659,12 +655,8 @@ static void free_properties(struct connman_element *element)
 {
 	DBG("element %p name %s", element, element->name);
 
-	__connman_element_lock(element);
-
 	g_hash_table_destroy(element->properties);
 	element->properties = NULL;
-
-	__connman_element_unlock(element);
 }
 
 void connman_element_unref(struct connman_element *element)
@@ -722,11 +714,7 @@ static int set_static_property(struct connman_element *element,
 		break;
 	}
 
-	__connman_element_lock(element);
-
 	g_hash_table_replace(element->properties, g_strdup(name), property);
-
-	__connman_element_unlock(element);
 
 	return 0;
 }
@@ -762,11 +750,7 @@ static int set_static_array_property(struct connman_element *element,
 		break;
 	}
 
-	__connman_element_lock(element);
-
 	g_hash_table_replace(element->properties, g_strdup(name), property);
-
-	__connman_element_unlock(element);
 
 	return 0;
 }
@@ -825,65 +809,49 @@ int connman_element_get_value(struct connman_element *element,
 		if (element->ipv4.method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((const char **) value) = __connman_ipconfig_method2string(element->ipv4.method);
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
 		if (element->ipv4.address == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.address;
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
 		if (element->ipv4.netmask == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.netmask;
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
 		if (element->ipv4.gateway == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.gateway;
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_BROADCAST:
 		if (element->ipv4.broadcast == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.broadcast;
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
 		if (element->ipv4.nameserver == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.nameserver;
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_TIMESERVER:
 		if (element->ipv4.timeserver == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.timeserver;
-		__connman_element_unlock(element);
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_PAC:
 		if (element->ipv4.pac == NULL)
 			return connman_element_get_value(element->parent,
 								id, value);
-		__connman_element_lock(element);
 		*((char **) value) = element->ipv4.pac;
-		__connman_element_unlock(element);
 		break;
 	default:
 		return -EINVAL;
@@ -900,8 +868,6 @@ static gboolean get_static_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	__connman_element_lock(element);
-
 	property = g_hash_table_lookup(element->properties, name);
 	if (property != NULL) {
 		switch (property->type) {
@@ -917,8 +883,6 @@ static gboolean get_static_property(struct connman_element *element,
 		}
 	}
 
-	__connman_element_unlock(element);
-
 	if (found == FALSE && element->parent != NULL)
 		return get_static_property(element->parent, name, value);
 
@@ -933,16 +897,12 @@ static gboolean get_static_array_property(struct connman_element *element,
 
 	DBG("element %p name %s", element, element->name);
 
-	__connman_element_lock(element);
-
 	property = g_hash_table_lookup(element->properties, name);
 	if (property != NULL) {
 		*((void **) value) = property->value;
 		*len = property->size;
 		found = TRUE;
 	}
-
-	__connman_element_unlock(element);
 
 	return found;
 }
@@ -1137,9 +1097,7 @@ static void probe_element(struct connman_element *element)
 		DBG("driver %p name %s", driver, driver->name);
 
 		if (driver->probe(element) == 0) {
-			__connman_element_lock(element);
 			element->driver = driver;
-			__connman_element_unlock(element);
 			break;
 		}
 	}
@@ -1150,8 +1108,6 @@ static void register_element(gpointer data, gpointer user_data)
 	struct connman_element *element = data;
 	const gchar *basepath;
 	GNode *node;
-
-	__connman_element_lock(element);
 
 	if (element->parent) {
 		node = g_node_find(element_root, G_PRE_ORDER,
@@ -1165,8 +1121,6 @@ static void register_element(gpointer data, gpointer user_data)
 	}
 
 	element->path = g_strdup_printf("%s/%s", basepath, element->name);
-
-	__connman_element_unlock(element);
 
 	if (node == NULL) {
 		connman_error("Element registration for %s failed",
@@ -1257,12 +1211,9 @@ setup:
 	if (connman_element_ref(element) == NULL)
 		return -EINVAL;
 
-	__connman_element_lock(element);
-
 	if (element->name == NULL) {
 		element->name = g_strdup(type2string(element->type));
 		if (element->name == NULL) {
-			__connman_element_unlock(element);
 			return -EINVAL;
 		}
 	}
@@ -1271,8 +1222,6 @@ setup:
 		element->ipv4.method = CONNMAN_IPCONFIG_METHOD_DHCP;
 
 	element->parent = parent;
-
-	__connman_element_unlock(element);
 
 	register_element(element, NULL);
 
@@ -1296,9 +1245,7 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		if (element->driver->remove)
 			element->driver->remove(element);
 
-		__connman_element_lock(element);
 		element->driver = NULL;
-		__connman_element_unlock(element);
 	}
 
 	if (node != NULL)
@@ -1512,9 +1459,7 @@ static gboolean free_driver(GNode *node, gpointer data)
 		if (element->driver->remove)
 			element->driver->remove(element);
 
-		__connman_element_lock(element);
 		element->driver = NULL;
-		__connman_element_unlock(element);
 	}
 
 	return FALSE;

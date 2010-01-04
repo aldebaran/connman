@@ -225,14 +225,6 @@ int __connman_element_request_scan(enum connman_service_type type);
 int __connman_element_enable_technology(enum connman_service_type type);
 int __connman_element_disable_technology(enum connman_service_type type);
 
-static inline void __connman_element_lock(struct connman_element *element)
-{
-}
-
-static inline void __connman_element_unlock(struct connman_element *element)
-{
-}
-
 gboolean __connman_element_device_isfiltered(const char *devname);
 
 #include <connman/utsname.h>
