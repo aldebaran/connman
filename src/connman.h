@@ -225,8 +225,6 @@ int __connman_element_request_scan(enum connman_service_type type);
 int __connman_element_enable_technology(enum connman_service_type type);
 int __connman_element_disable_technology(enum connman_service_type type);
 
-const char *__connman_element_type2string(enum connman_element_type type);
-
 static inline void __connman_element_lock(struct connman_element *element)
 {
 }
