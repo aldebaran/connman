@@ -234,7 +234,7 @@ static void iwmx_cm_dev_connected(struct wmxsdk *wmxsdk)
 	}
 	wmxsdk->nw = connman_network_ref(nw);
 	wmxsdk->connecting_nw = NULL;
-	connman_network_set_method(network, CONNMAN_IPCONFIG_METHOD_DHCP);
+	connman_network_set_method(nw, CONNMAN_IPCONFIG_METHOD_DHCP);
 	connman_network_set_connected(nw, TRUE);
 	DBG("connected to network %s\n",
 	    connman_network_get_identifier(nw));
