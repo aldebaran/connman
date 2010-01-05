@@ -80,9 +80,9 @@ struct connman_element {
 	enum connman_element_state state;
 	enum connman_element_error error;
 	gboolean enabled;
-	gboolean configuring;
 	gchar *devname;
 
+	GHashTable *children;
 	struct connman_element *parent;
 
 	struct connman_driver *driver;

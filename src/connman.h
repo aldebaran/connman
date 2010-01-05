@@ -219,8 +219,6 @@ void __connman_element_foreach(struct connman_element *element,
 void __connman_element_list(struct connman_element *element,
 					enum connman_element_type type,
 							DBusMessageIter *iter);
-int __connman_element_count(struct connman_element *element,
-					enum connman_element_type type);
 
 struct connman_service *__connman_element_get_service(struct connman_element *element);
 struct connman_device *__connman_element_get_device(struct connman_element *element);
@@ -420,6 +418,8 @@ void __connman_notifier_offlinemode(connman_bool_t enabled);
 void __connman_notifier_default_changed(struct connman_service *service);
 
 connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type);
+unsigned int __connman_notifier_count_connected(void);
+const char *__connman_notifier_get_state(void);
 
 #include <connman/rtnl.h>
 

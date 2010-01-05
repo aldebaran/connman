@@ -64,11 +64,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_array(&dict, "Devices",
 			DBUS_TYPE_OBJECT_PATH, __connman_device_list, NULL);
 
-	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
-		str = "online";
-	else
-		str = "offline";
-
+	str = __connman_notifier_get_state();
 	connman_dbus_dict_append_basic(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
@@ -154,10 +150,7 @@ static DBusMessage *get_state(DBusConnection *conn,
 					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
 		return __connman_error_permission_denied(msg);
 
-	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
-		str = "online";
-	else
-		str = "offline";
+	str = __connman_notifier_get_state();
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &str,
 						DBUS_TYPE_INVALID);
@@ -627,7 +620,7 @@ static DBusMessage *nm_state(DBusConnection *conn,
 	if (reply == NULL)
 		return NULL;
 
-	if (__connman_element_count(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION) > 0)
+	if (__connman_notifier_count_connected() > 0)
 		state = NM_STATE_CONNECTED;
 	else
 		state = NM_STATE_DISCONNECTED;

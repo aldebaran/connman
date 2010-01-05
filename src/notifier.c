@@ -80,7 +80,7 @@ void __connman_notifier_list_registered(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
 		const char *type = __connman_service_type2string(i);
 
 		if (type == NULL)
@@ -96,7 +96,7 @@ void __connman_notifier_list_enabled(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
 		const char *type = __connman_service_type2string(i);
 
 		if (type == NULL)
@@ -112,7 +112,7 @@ void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data)
 {
 	int i;
 
-	for (i = 0; i < 10; i++) {
+	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
 		const char *type = __connman_service_type2string(i);
 
 		if (type == NULL)
@@ -153,6 +153,54 @@ static void technology_enabled(enum connman_service_type type,
 	}
 }
 
+unsigned int __connman_notifier_count_connected(void)
+{
+	unsigned int i, count = 0;
+
+	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
+		if (g_atomic_int_get(&connected[i]) > 0)
+			count++;
+	}
+
+	return count;
+}
+
+const char *__connman_notifier_get_state(void)
+{
+	unsigned int count = __connman_notifier_count_connected();
+
+	if (count > 0)
+		return "online";
+
+	return "offline";
+}
+
+static void state_changed(void)
+{
+	unsigned int count = __connman_notifier_count_connected();
+	char *state = "offline";
+	DBusMessage *signal;
+
+	if (count > 1)
+		return;
+
+	if (count > 0)
+		state = "online";
+
+	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "State",
+						DBUS_TYPE_STRING, &state);
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "StateChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_append_args(signal, DBUS_TYPE_STRING, &state, NULL);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static void technology_connected(enum connman_service_type type,
 						connman_bool_t connected)
 {
@@ -161,6 +209,8 @@ static void technology_connected(enum connman_service_type type,
 	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
 		CONNMAN_MANAGER_INTERFACE, "ConnectedTechnologies",
 		DBUS_TYPE_STRING, __connman_notifier_list_connected, NULL);
+
+	state_changed();
 }
 
 void __connman_notifier_register(enum connman_service_type type)

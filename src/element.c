@@ -176,52 +176,6 @@ void __connman_element_list(struct connman_element *element,
 						append_path, &filter);
 }
 
-struct count_data {
-	enum connman_element_type type;
-	int count;
-};
-
-static gboolean count_element(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-	struct count_data *data = user_data;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
-		return FALSE;
-
-	if (data->type != CONNMAN_ELEMENT_TYPE_UNKNOWN &&
-					data->type != element->type)
-		return FALSE;
-
-	data->count++;
-
-	return FALSE;
-}
-
-int __connman_element_count(struct connman_element *element,
-					enum connman_element_type type)
-{
-	struct count_data data = { type, 0 };
-	GNode *node;
-
-	DBG("");
-
-	if (element != NULL) {
-		node = g_node_find(element_root, G_PRE_ORDER,
-						G_TRAVERSE_ALL, element);
-		if (node == NULL)
-			return 0;
-	} else
-		node = element_root;
-
-	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
-						count_element, &data);
-
-	return data.count;
-}
-
 static struct connman_network *__connman_element_get_network(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
@@ -601,6 +555,15 @@ static void unregister_property(gpointer data)
 	g_free(property);
 }
 
+static void unregister_child(gpointer data)
+{
+	struct connman_element *element = data;
+
+	DBG("element %p", element);
+
+	connman_element_unref(element);
+}
+
 void __connman_element_initialize(struct connman_element *element)
 {
 	DBG("element %p", element);
@@ -614,7 +577,8 @@ void __connman_element_initialize(struct connman_element *element)
 	element->index   = -1;
 	element->enabled = FALSE;
 
-	element->configuring = FALSE;
+	element->children = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, unregister_child);
 
 	element->properties = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_property);
@@ -662,6 +626,14 @@ static void free_properties(struct connman_element *element)
 	element->properties = NULL;
 }
 
+static void free_children(struct connman_element *element)
+{
+	DBG("element %p name %s", element, element->name);
+
+	g_hash_table_destroy(element->children);
+	element->children = NULL;
+}
+
 void connman_element_unref(struct connman_element *element)
 {
 	DBG("element %p name %s refcount %d", element, element->name,
@@ -670,6 +642,7 @@ void connman_element_unref(struct connman_element *element)
 	if (g_atomic_int_dec_and_test(&element->refcount) == TRUE) {
 		if (element->destruct)
 			element->destruct(element);
+		free_children(element);
 		free_properties(element);
 		g_free(element->ipv4.address);
 		g_free(element->ipv4.netmask);
@@ -998,26 +971,6 @@ const void *connman_element_get_blob(struct connman_element *element,
 	return value;
 }
 
-static void emit_state_change(DBusConnection *conn, const char *state)
-{
-	DBusMessage *signal;
-	DBusMessageIter iter;
-
-	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "State",
-						DBUS_TYPE_STRING, &state);
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "StateChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_iter_init_append(signal, &iter);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &state);
-
-	g_dbus_send_message(conn, signal);
-}
-
 static void probe_element(struct connman_element *element)
 {
 	GSList *list;
@@ -1068,29 +1021,6 @@ static void register_element(gpointer data, gpointer user_data)
 
 	g_node_append_data(node, element);
 
-	if (element->type == CONNMAN_ELEMENT_TYPE_DHCP) {
-		element->parent->configuring = TRUE;
-
-#if 0
-		if (__connman_element_count(NULL,
-					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
-			emit_state_change(connection, "connecting");
-#endif
-	}
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
-		struct connman_element *parent = element->parent;
-
-		while (parent) {
-			parent->configuring = FALSE;
-			parent = parent->parent;
-		}
-
-		if (__connman_element_count(NULL,
-					CONNMAN_ELEMENT_TYPE_CONNECTION) == 1)
-			emit_state_change(connection, "online");
-	}
-
 	if (started == FALSE)
 		return;
 
@@ -1137,7 +1067,7 @@ int connman_element_register(struct connman_element *element,
 	if (element->devname == NULL)
 		element->devname = g_strdup(element->name);
 
-        if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
+	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
 		goto setup;
 
 	if (__connman_element_device_isfiltered(element->devname) == TRUE)
@@ -1186,12 +1116,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 
 	if (node != NULL)
 		g_node_destroy(node);
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_CONNECTION) {
-		if (__connman_element_count(NULL,
-					CONNMAN_ELEMENT_TYPE_CONNECTION) == 0)
-			emit_state_change(connection, "offline");
-	}
 
 	connman_element_unref(element);
 
