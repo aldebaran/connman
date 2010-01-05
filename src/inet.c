@@ -785,9 +785,6 @@ int connman_inet_set_gateway_interface(int index)
 	DBG("ifname %s", ifr.ifr_name);
 
 	memset(&rt, 0, sizeof(rt));
-
-	rt.rt_dev = ifr.ifr_name;
-
 	rt.rt_flags = RTF_UP;
 
 	memset(&addr, 0, sizeof(addr));
@@ -795,15 +792,66 @@ int connman_inet_set_gateway_interface(int index)
 	addr.sin_addr.s_addr = INADDR_ANY;
 
 	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
 	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
 	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
+
+	rt.rt_dev = ifr.ifr_name;
 
 	err = ioctl(sk, SIOCADDRT, &rt);
 	if (err < 0)
 		connman_error("Setting default interface route failed (%s)",
 							strerror(errno));
+	close(sk);
+
+	return err;
+}
+
+int connman_inet_clear_gateway_address(int index, const char *gateway)
+{
+	struct ifreq ifr;
+	struct rtentry rt;
+	struct sockaddr_in addr;
+	int sk, err;
+
+	DBG("");
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return -1;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return -1;
+	}
+
+	DBG("ifname %s", ifr.ifr_name);
+
+	memset(&rt, 0, sizeof(rt));
+	rt.rt_flags = RTF_UP | RTF_GATEWAY;
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = inet_addr(gateway);
+	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
+
+	memset(&addr, 0, sizeof(addr));
+	addr.sin_family = AF_INET;
+	addr.sin_addr.s_addr = INADDR_ANY;
+	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
+
+	err = ioctl(sk, SIOCDELRT, &rt);
+	if (err < 0)
+		connman_error("Removing default gateway route failed (%s)",
+							strerror(errno));
+
 	close(sk);
 
 	return err;

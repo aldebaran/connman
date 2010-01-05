@@ -23,13 +23,7 @@
 #include <config.h>
 #endif
 
-#include <errno.h>
-#include <unistd.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <arpa/inet.h>
 #include <net/if.h>
-#include <net/route.h>
 
 #include <gdbus.h>
 
@@ -69,205 +63,18 @@ static struct gateway_data *find_gateway(int index, const char *gateway)
 	return NULL;
 }
 
-static int add_vpn_host(struct connman_element *element,
-			const char *gateway,
-			const char *host)
+static int del_routes(struct gateway_data *data)
 {
-	struct ifreq ifr;
-	struct rtentry rt;
-	struct sockaddr_in addr;
-	int sk, err;
+	const char *address;
 
-	DBG("element %p", element);
+	connman_inet_del_host_route(data->index, data->gateway);
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
+	if (data->vpn)
+		address = data->vpn_ip;
+	else
+		address = data->gateway;
 
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_HOST | RTF_GATEWAY;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(host);
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(gateway);
-	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_NONE;
-	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
-	rt.rt_dev = ifr.ifr_name;
-
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Setting VPN host failed (%s)",
-			      strerror(errno));
-
-	close(sk);
-
-	return err;
-}
-
-static int del_vpn_host(const char *host)
-{
-	struct rtentry rt;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_HOST;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(host);
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	err = ioctl(sk, SIOCDELRT, &rt);
-	if (err < 0)
-		connman_error("Del vpn route failed (%s)",
-			      strerror(errno));
-
-	close(sk);
-
-	return err;
-}
-
-static int set_vpn_route(struct connman_element *element, const char *gateway)
-{
-	struct ifreq ifr;
-	struct rtentry rt;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	DBG("set_rout1: element %p", element);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_GATEWAY;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(gateway);
-	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Setting VPN route failed (%s)",
-			       strerror(errno));
-
-	close(sk);
-
-	return err;
-}
-
-static int del_route(struct connman_element *element, const char *gateway)
-{
-	struct ifreq ifr;
-	struct rtentry rt;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	DBG("element %p", element);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_GATEWAY;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(gateway);
-	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
-	err = ioctl(sk, SIOCDELRT, &rt);
-	if (err < 0)
-		connman_error("Removing default route failed (%s)",
-							strerror(errno));
-
-	close(sk);
-
-	return err;
-}
-
-static int del_route_all(struct gateway_data *data)
-{
-	int err = 0;
-
-	if (data->vpn) {
-		del_vpn_host(data->gateway);
-
-		err = del_route(data->element, data->vpn_ip);
-	} else
-		err = del_route(data->element, data->gateway);
-
-	return err;
+	return connman_inet_clear_gateway_address(data->index, address);
 }
 
 static void find_element(struct connman_element *element, gpointer user_data)
@@ -334,8 +141,7 @@ static void set_default_gateway(struct gateway_data *data)
 	DBG("gateway %s", data->gateway);
 
 	if (data->vpn == TRUE) {
-
-		set_vpn_route(element, data->vpn_ip);
+		connman_inet_set_gateway_address(data->index, data->vpn_ip);
 		/* vpn gateway going away no changes in services */
 		return;
 	}
@@ -387,7 +193,7 @@ static void remove_gateway(struct gateway_data *data)
 	gateway_list = g_slist_remove(gateway_list, data);
 
 	if (data->active == TRUE)
-		del_route_all(data);
+		del_routes(data);
 
 	g_free(data->gateway);
 	g_free(data->vpn_ip);
@@ -480,14 +286,15 @@ static int connection_probe(struct connman_element *element)
 	}
 
 	if (new_gateway->vpn == TRUE) {
-		add_vpn_host(active_gateway->element,
-			     active_gateway->gateway,
-			     new_gateway->gateway);
+		connman_inet_add_host_route(active_gateway->index,
+						active_gateway->gateway);
 
+		connman_inet_set_gateway_address(new_gateway->index,
+							new_gateway->gateway);
 	}
 
 	if (new_gateway->order >= active_gateway->order) {
-		del_route_all(active_gateway);
+		del_routes(active_gateway);
 		return 0;
 	}
 
@@ -524,7 +331,7 @@ static void connection_remove(struct connman_element *element)
 	set_default = data->vpn;
 
 	if (data->vpn == TRUE)
-		del_vpn_host(data->gateway);
+		connman_inet_del_host_route(data->index, data->gateway);
 
 	remove_gateway(data);
 
@@ -609,7 +416,7 @@ gboolean __connman_connection_update_gateway(void)
 	default_gateway = find_default_gateway();
 
 	if (active_gateway && active_gateway != default_gateway) {
-		del_route_all(active_gateway);
+		del_routes(active_gateway);
 		updated = TRUE;
 	}
 
