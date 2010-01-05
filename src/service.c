@@ -1510,6 +1510,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 		__connman_service_disconnect(service);
 	}
 
+	if (state == CONNMAN_SERVICE_STATE_CONFIGURATION)
+		__connman_ipconfig_enable(service->ipconfig);
+
 	service->state = state;
 	state_changed(service);
 
