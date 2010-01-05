@@ -25,6 +25,7 @@
 
 #include <net/if.h>
 #include <net/if_arp.h>
+#include <linux/if_link.h>
 
 #ifndef IFF_LOWER_UP
 #define IFF_LOWER_UP	0x10000
@@ -46,9 +47,6 @@ struct connman_ipconfig {
 	enum connman_ipconfig_method method;
 	struct connman_ipaddress *address;
 	struct connman_ipaddress *system;
-
-	char *eth;
-	uint16_t mtu;
 };
 
 struct connman_ipdevice {
@@ -56,6 +54,10 @@ struct connman_ipdevice {
 	char *ifname;
 	unsigned short type;
 	unsigned int flags;
+	char *address;
+	uint16_t mtu;
+	uint32_t tx_bytes;
+	uint32_t rx_bytes;
 
 	GSList *address_list;
 	char *gateway;
@@ -231,6 +233,7 @@ static void free_ipdevice(gpointer data)
 	free_address_list(ipdevice);
 	g_free(ipdevice->gateway);
 
+	g_free(ipdevice->address);
 	g_free(ipdevice->ifname);
 	g_free(ipdevice);
 }
@@ -337,9 +340,30 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 	connman_inet_clear_address(ipdevice->index);
 }
 
+static void update_stats(struct connman_ipdevice *ipdevice,
+						struct rtnl_link_stats *stats)
+{
+	if (stats->rx_packets == 0 && stats->tx_packets == 0)
+		return;
+
+	connman_info("%s {RX} %u packets %u bytes", ipdevice->ifname,
+					stats->rx_packets, stats->rx_bytes);
+	connman_info("%s {TX} %u packets %u bytes", ipdevice->ifname,
+					stats->tx_packets, stats->tx_bytes);
+
+	if (ipdevice->config == NULL)
+		return;
+
+	ipdevice->rx_bytes = stats->rx_bytes;
+	ipdevice->tx_bytes = stats->tx_bytes;
+
+	__connman_counter_notify(ipdevice->rx_bytes, ipdevice->tx_bytes);
+}
+
 void __connman_ipconfig_newlink(int index, unsigned short type,
 				unsigned int flags, const char *address,
-							unsigned short mtu)
+							unsigned short mtu,
+						struct rtnl_link_stats *stats)
 {
 	struct connman_ipdevice *ipdevice;
 	GList *list;
@@ -375,17 +399,17 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	ipdevice->ifname = ifname;
 	ipdevice->type = type;
 
+	ipdevice->address = g_strdup(address);
+
 	g_hash_table_insert(ipdevice_hash, GINT_TO_POINTER(index), ipdevice);
 
 	connman_info("%s {create} index %d type %d <%s>", ipdevice->ifname,
 						index, type, type2str(type));
 
 update:
-	if (ipdevice->config != NULL) {
-		g_free(ipdevice->config->eth);
-		ipdevice->config->eth = g_strdup(address);
-		ipdevice->config->mtu = mtu;
-	}
+	ipdevice->mtu = mtu;
+
+	update_stats(ipdevice, stats);
 
 	if (flags == ipdevice->flags)
 		return;
@@ -455,7 +479,7 @@ update:
 		__connman_ipconfig_lower_down(ipdevice);
 }
 
-void __connman_ipconfig_dellink(int index)
+void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats)
 {
 	struct connman_ipdevice *ipdevice;
 	GList *list;
@@ -465,6 +489,8 @@ void __connman_ipconfig_dellink(int index)
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
 	if (ipdevice == NULL)
 		return;
+
+	update_stats(ipdevice, stats);
 
 	for (list = g_list_first(ipconfig_list); list;
 						list = g_list_next(list)) {
@@ -771,7 +797,6 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 
 		connman_ipaddress_free(ipconfig->system);
 		connman_ipaddress_free(ipconfig->address);
-		g_free(ipconfig->eth);
 		g_free(ipconfig);
 	}
 }
@@ -1139,14 +1164,6 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 	connman_dbus_dict_append_basic(iter, "Method",
 						DBUS_TYPE_STRING, &method);
 
-	if (ipconfig->eth != NULL)
-		connman_dbus_dict_append_basic(iter, "Address",
-					DBUS_TYPE_STRING, &ipconfig->eth);
-
-	if (ipconfig->mtu > 0)
-		connman_dbus_dict_append_basic(iter, "MTU",
-					DBUS_TYPE_UINT16, &ipconfig->mtu);
-
 	ipdevice = g_hash_table_lookup(ipdevice_hash,
 					GINT_TO_POINTER(ipconfig->index));
 	if (ipdevice == NULL)
@@ -1155,6 +1172,14 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 	if (ipdevice->ifname != NULL)
 		connman_dbus_dict_append_basic(iter, "Interface",
 					DBUS_TYPE_STRING, &ipdevice->ifname);
+
+	if (ipdevice->address != NULL)
+		connman_dbus_dict_append_basic(iter, "Address",
+					DBUS_TYPE_STRING, &ipdevice->address);
+
+	if (ipdevice->mtu > 0)
+		connman_dbus_dict_append_basic(iter, "MTU",
+					DBUS_TYPE_UINT16, &ipdevice->mtu);
 }
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,

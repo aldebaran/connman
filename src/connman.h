@@ -69,6 +69,8 @@ int __connman_counter_register(const char *owner, const char *path,
 						unsigned int interval);
 int __connman_counter_unregister(const char *owner, const char *path);
 
+void __connman_counter_notify(unsigned int rx_bytes, unsigned int tx_bytes);
+
 int __connman_counter_init(void);
 void __connman_counter_cleanup(void);
 
@@ -110,10 +112,13 @@ int __connman_security_check_privilege(DBusMessage *message,
 int __connman_ipconfig_init(void);
 void __connman_ipconfig_cleanup(void);
 
+struct rtnl_link_stats;
+
 void __connman_ipconfig_newlink(int index, unsigned short type,
 				unsigned int flags, const char *address,
-							unsigned short mtu);
-void __connman_ipconfig_dellink(int index);
+							unsigned short mtu,
+						struct rtnl_link_stats *stats);
+void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats);
 void __connman_ipconfig_newaddr(int index, const char *label,
 				unsigned char prefixlen, const char *address);
 void __connman_ipconfig_deladdr(int index, const char *label,
@@ -427,4 +432,5 @@ int __connman_rtnl_init(void);
 void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
+int __connman_rtnl_request_update(void);
 int __connman_rtnl_send(const void *buf, size_t len);

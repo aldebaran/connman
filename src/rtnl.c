@@ -242,9 +242,9 @@ static const char *operstate2str(unsigned char operstate)
 
 static void extract_link(struct ifinfomsg *msg, int bytes,
 				struct ether_addr *address, const char **ifname,
-				unsigned int *mtu, unsigned char *operstate)
+				unsigned int *mtu, unsigned char *operstate,
+						struct rtnl_link_stats *stats)
 {
-	struct rtnl_link_stats stats;
 	struct rtattr *attr;
 
 	for (attr = IFLA_RTA(msg); RTA_OK(attr, bytes);
@@ -263,12 +263,9 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 				*mtu = *((unsigned int *) RTA_DATA(attr));
 			break;
 		case IFLA_STATS:
-			memcpy(&stats, RTA_DATA(attr),
+			if (stats != NULL)
+				memcpy(stats, RTA_DATA(attr),
 					sizeof(struct rtnl_link_stats));
-			connman_info("%s {RX} %d packets %d bytes", *ifname,
-					stats.rx_packets, stats.rx_bytes);
-			connman_info("%s {TX} %d packets %d bytes", *ifname,
-					stats.tx_packets, stats.tx_bytes);
 			break;
 		case IFLA_OPERSTATE:
 			if (operstate != NULL)
@@ -285,27 +282,30 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 {
 	struct ether_addr address = {{ 0, 0, 0, 0, 0, 0 }};
 	struct ether_addr compare = {{ 0, 0, 0, 0, 0, 0 }};
+	struct rtnl_link_stats stats;
 	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
 	char str[18];
 	GSList *list;
 
-	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate);
+	memset(&stats, 0, sizeof(stats));
+	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate, &stats);
 
 	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
 						address.ether_addr_octet[0],
-                                                address.ether_addr_octet[1],
-                                                address.ether_addr_octet[2],
-                                                address.ether_addr_octet[3],
-                                                address.ether_addr_octet[4],
-                                                address.ether_addr_octet[5]);
+						address.ether_addr_octet[1],
+						address.ether_addr_octet[2],
+						address.ether_addr_octet[3],
+						address.ether_addr_octet[4],
+						address.ether_addr_octet[5]);
 
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		__connman_ipconfig_newlink(index, type, flags, str, mtu);
+		__connman_ipconfig_newlink(index, type, flags,
+							str, mtu, &stats);
 		break;
 	}
 
@@ -342,11 +342,13 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 static void process_dellink(unsigned short type, int index, unsigned flags,
 			unsigned change, struct ifinfomsg *msg, int bytes)
 {
+	struct rtnl_link_stats stats;
 	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	GSList *list;
 
-	extract_link(msg, bytes, NULL, &ifname, NULL, &operstate);
+	memset(&stats, 0, sizeof(stats));
+	extract_link(msg, bytes, NULL, &ifname, NULL, &operstate, &stats);
 
 	if (operstate != 0xff)
 		connman_info("%s {dellink} index %d operstate %u <%s>",
@@ -374,7 +376,7 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHRD_NONE:
-		__connman_ipconfig_dellink(index);
+		__connman_ipconfig_dellink(index, &stats);
 		break;
 	}
 }
@@ -1047,6 +1049,11 @@ static int send_getroute(void)
 	req->msg.rtgen_family = AF_INET;
 
 	return queue_request(req);
+}
+
+int __connman_rtnl_request_update(void)
+{
+	return send_getlink();
 }
 
 int __connman_rtnl_init(void)

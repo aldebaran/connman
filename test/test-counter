@@ -14,9 +14,11 @@ class Counter(dbus.service.Object):
 		mainloop.quit()
 
 	@dbus.service.method("org.moblin.connman.Counter",
-					in_signature='', out_signature='')
-	def Usage(self):
-		print("Usage")
+					in_signature='a{sv}', out_signature='')
+	def Usage(self, stats):
+		for key in stats.keys():
+			val = int(stats[key])
+			print "%s = %s" % (key, val)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)

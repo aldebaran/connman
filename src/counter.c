@@ -37,6 +37,8 @@ struct connman_counter {
 	char *path;
 	guint timeout;
 	guint watch;
+	unsigned int rx_bytes;
+	unsigned int tx_bytes;
 };
 
 static void remove_counter(gpointer user_data)
@@ -69,18 +71,10 @@ static void owner_disconnect(DBusConnection *connection, void *user_data)
 static gboolean counter_timeout(gpointer user_data)
 {
 	struct connman_counter *counter = user_data;
-	DBusMessage *message;
 
 	DBG("owner %s path %s", counter->owner, counter->path);
 
-	message = dbus_message_new_method_call(counter->owner, counter->path,
-					CONNMAN_COUNTER_INTERFACE, "Usage");
-	if (message == NULL)
-		return TRUE;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	g_dbus_send_message(connection, message);
+	__connman_rtnl_request_update();
 
 	return TRUE;
 }
@@ -132,6 +126,49 @@ int __connman_counter_unregister(const char *owner, const char *path)
 	g_hash_table_remove(counter_table, counter->path);
 
 	return 0;
+}
+
+static void send_usage(struct connman_counter *counter)
+{
+	DBusMessage *message;
+	DBusMessageIter array, dict;
+
+	message = dbus_message_new_method_call(counter->owner, counter->path,
+					CONNMAN_COUNTER_INTERFACE, "Usage");
+	if (message == NULL)
+		return;
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	dbus_message_iter_init_append(message, &array);
+
+	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_basic(&dict, "RX.Bytes",
+					DBUS_TYPE_UINT32, &counter->rx_bytes);
+	connman_dbus_dict_append_basic(&dict, "TX.Bytes",
+					DBUS_TYPE_UINT32, &counter->tx_bytes);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	g_dbus_send_message(connection, message);
+}
+
+void __connman_counter_notify(unsigned int rx_bytes, unsigned int tx_bytes)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init(&iter, counter_table);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_counter *counter = value;
+
+		counter->rx_bytes = rx_bytes;
+		counter->tx_bytes = tx_bytes;
+
+		send_usage(counter);
+	}
 }
 
 static void release_counter(gpointer key, gpointer value, gpointer user_data)
