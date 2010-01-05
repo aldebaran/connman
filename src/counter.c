@@ -164,6 +164,10 @@ void __connman_counter_notify(unsigned int rx_bytes, unsigned int tx_bytes)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_counter *counter = value;
 
+		if (counter->rx_bytes == rx_bytes &&
+					counter->tx_bytes == tx_bytes)
+			continue;
+
 		counter->rx_bytes = rx_bytes;
 		counter->tx_bytes = tx_bytes;
 
