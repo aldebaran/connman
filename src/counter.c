@@ -86,6 +86,9 @@ int __connman_counter_register(const char *owner, const char *path,
 
 	DBG("owner %s path %s interval %u", owner, path, interval);
 
+	if (interval < 1)
+		return -EINVAL;
+
 	counter = g_hash_table_lookup(counter_table, path);
 	if (counter != NULL)
 		return -EEXIST;
@@ -105,6 +108,8 @@ int __connman_counter_register(const char *owner, const char *path,
 
 	counter->watch = g_dbus_add_disconnect_watch(connection, owner,
 					owner_disconnect, counter, NULL);
+
+	__connman_rtnl_request_update();
 
 	return 0;
 }
