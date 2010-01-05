@@ -548,8 +548,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
@@ -612,6 +610,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_BOOLEAN, &required);
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		connman_dbus_dict_append_dict(&dict, "Ethernet",
 						append_ethernet, service);
 		break;
