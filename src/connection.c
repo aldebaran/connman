@@ -352,7 +352,7 @@ static void set_default_gateway(struct gateway_data *data)
 		goto done;
 	}
 
-	connman_inet_set_host_route(element->index, data->gateway);
+	connman_inet_add_host_route(element->index, data->gateway);
 
 	if (connman_inet_set_gateway_address(element->index, data->gateway) < 0)
 		return;
