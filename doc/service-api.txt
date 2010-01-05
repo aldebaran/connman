@@ -330,6 +330,10 @@ Properties	string State [readonly]
 
 				Possible values are "auto" and "manual".
 
+			string Interface [readonly]
+
+				Interface name (for example eth0).
+
 			string Address [readonly]
 
 				Ethernet device address (MAC address).

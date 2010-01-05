@@ -1133,6 +1133,7 @@ void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter)
 {
+	struct connman_ipdevice *ipdevice;
 	const char *method = "auto";
 
 	connman_dbus_dict_append_basic(iter, "Method",
@@ -1145,6 +1146,15 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 	if (ipconfig->mtu > 0)
 		connman_dbus_dict_append_basic(iter, "MTU",
 					DBUS_TYPE_UINT16, &ipconfig->mtu);
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return;
+
+	if (ipdevice->ifname != NULL)
+		connman_dbus_dict_append_basic(iter, "Interface",
+					DBUS_TYPE_STRING, &ipdevice->ifname);
 }
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
