@@ -139,6 +139,8 @@ const char *__connman_service_type2string(enum connman_service_type type)
 		return "bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return "cellular";
+	case CONNMAN_SERVICE_TYPE_GPS:
+		return "gps";
 	case CONNMAN_SERVICE_TYPE_VPN:
 		return "vpn";
 	}
@@ -342,6 +344,7 @@ static void passphrase_changed(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -379,6 +382,7 @@ static void apn_changed(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		return;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -546,6 +550,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -1355,6 +1360,7 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 		case CONNMAN_SERVICE_TYPE_UNKNOWN:
 		case CONNMAN_SERVICE_TYPE_SYSTEM:
 		case CONNMAN_SERVICE_TYPE_ETHERNET:
+		case CONNMAN_SERVICE_TYPE_GPS:
 		case CONNMAN_SERVICE_TYPE_VPN:
 			break;
 		case CONNMAN_SERVICE_TYPE_WIFI:
@@ -1681,6 +1687,7 @@ int __connman_service_connect(struct connman_service *service)
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		return -EINVAL;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
@@ -2370,6 +2377,7 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		service->autoconnect = FALSE;
 		break;
@@ -2501,6 +2509,7 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -2647,6 +2656,7 @@ update:
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:

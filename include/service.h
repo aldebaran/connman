@@ -42,7 +42,8 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_WIMAX     = 4,
 	CONNMAN_SERVICE_TYPE_BLUETOOTH = 5,
 	CONNMAN_SERVICE_TYPE_CELLULAR  = 6,
-	CONNMAN_SERVICE_TYPE_VPN       = 7,
+	CONNMAN_SERVICE_TYPE_GPS       = 7,
+	CONNMAN_SERVICE_TYPE_VPN       = 8,
 };
 
 enum connman_service_mode {
