@@ -196,7 +196,8 @@ static void state_changed(void)
 	if (signal == NULL)
 		return;
 
-	dbus_message_append_args(signal, DBUS_TYPE_STRING, &state, NULL);
+	dbus_message_append_args(signal, DBUS_TYPE_STRING, &state,
+							DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(connection, signal);
 }
