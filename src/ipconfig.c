@@ -895,6 +895,9 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 	if (ipdevice == NULL)
 		return -ENXIO;
 
+	if (ipdevice->config == ipconfig)
+		return -EALREADY;
+
 	if (ipdevice->config != NULL) {
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
