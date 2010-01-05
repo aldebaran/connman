@@ -52,7 +52,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/ipv4.c src/dhcp.c src/rtnl.c src/inet.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
-			src/technology.c
+			src/technology.c src/counter.c
 
 if UDEV
 src_connmand_SOURCES += src/udev.c
@@ -137,7 +137,7 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/list-providers \
-		test/monitor-manager
+		test/monitor-manager test/test-counter
 
 if TEST
 testdir = $(pkglibdir)/test

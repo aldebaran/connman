@@ -65,6 +65,13 @@ void __connman_agent_cleanup(void);
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
 
+int __connman_counter_register(const char *owner, const char *path,
+						unsigned int interval);
+int __connman_counter_unregister(const char *owner, const char *path);
+
+int __connman_counter_init(void);
+void __connman_counter_cleanup(void);
+
 struct connman_service;
 
 typedef void (* passphrase_cb_t) (struct connman_service *service,

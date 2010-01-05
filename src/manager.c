@@ -504,6 +504,48 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *register_counter(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender, *path;
+	unsigned int interval;
+	int err;
+
+	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_UINT32, &interval,
+							DBUS_TYPE_INVALID);
+
+	err = __connman_counter_register(sender, path, interval);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *unregister_counter(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender, *path;
+	int err;
+
+	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	err = __connman_counter_unregister(sender, path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property       },
@@ -522,6 +564,8 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",     "o",     "",      register_agent     },
 	{ "UnregisterAgent",   "o",     "",      unregister_agent   },
+	{ "RegisterCounter",   "ou",    "",      register_counter   },
+	{ "UnregisterCounter", "o",     "",      unregister_counter },
 	{ },
 };
 

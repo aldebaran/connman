@@ -105,6 +105,18 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void RegisterCounter(object path, uint32 interval)
+
+			Register a new counter for user notifications.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void UnregisterCounter(object path)
+
+			Unregister an existing counter.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
