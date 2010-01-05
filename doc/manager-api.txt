@@ -109,6 +109,11 @@ Methods		dict GetProperties()
 
 			Register a new counter for user notifications.
 
+			If the interval is zero then no timer for updates
+			will be started. Only kernel events can then
+			trigger updates. Otherwise the kernel will be
+			polled every n seconds for an update.
+
 			Possible Errors: [service].Error.InvalidArguments
 
 		void UnregisterCounter(object path)
