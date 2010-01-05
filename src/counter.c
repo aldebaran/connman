@@ -146,8 +146,8 @@ int __connman_counter_unregister(const char *owner, const char *path)
 	return 0;
 }
 
-static void send_usage(struct connman_counter *counter, const char *interface,
-				unsigned int rx_bytes, unsigned int tx_bytes)
+static void send_usage(struct connman_counter *counter,
+					struct connman_stats *stats)
 {
 	DBusMessage *message;
 	DBusMessageIter array, dict;
@@ -164,11 +164,11 @@ static void send_usage(struct connman_counter *counter, const char *interface,
 	connman_dbus_dict_open(&array, &dict);
 
 	connman_dbus_dict_append_basic(&dict, "Interface",
-						DBUS_TYPE_STRING, &interface);
+					DBUS_TYPE_STRING, &stats->interface);
 	connman_dbus_dict_append_basic(&dict, "RX.Bytes",
-						DBUS_TYPE_UINT32, &rx_bytes);
+					DBUS_TYPE_UINT32, &stats->rx_bytes);
 	connman_dbus_dict_append_basic(&dict, "TX.Bytes",
-						DBUS_TYPE_UINT32, &tx_bytes);
+					DBUS_TYPE_UINT32, &stats->tx_bytes);
 
 	connman_dbus_dict_close(&array, &dict);
 
@@ -206,8 +206,7 @@ update:
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_counter *counter = value;
 
-		send_usage(counter, stats->interface,
-					stats->rx_bytes, stats->tx_bytes);
+		send_usage(counter, stats);
 	}
 }
 
