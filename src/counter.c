@@ -195,7 +195,7 @@ void __connman_counter_notify(const char *interface,
 	g_hash_table_replace(stats_table, stats->interface, stats);
 
 update:
-	if (stats->rx_bytes == rx_bytes && stats->rx_bytes == tx_bytes)
+	if (stats->rx_bytes == rx_bytes && stats->tx_bytes == tx_bytes)
 		return;
 
 	stats->rx_bytes = rx_bytes;
