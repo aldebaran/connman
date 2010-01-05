@@ -29,17 +29,30 @@
 
 static DBusConnection *connection;
 
+static GHashTable *stats_table;
 static GHashTable *counter_table;
 static GHashTable *owner_mapping;
+
+struct connman_stats {
+	char *interface;
+	unsigned int rx_bytes;
+	unsigned int tx_bytes;
+};
 
 struct connman_counter {
 	char *owner;
 	char *path;
 	guint timeout;
 	guint watch;
-	unsigned int rx_bytes;
-	unsigned int tx_bytes;
 };
+
+static void remove_stats(gpointer user_data)
+{
+	struct connman_stats *stats = user_data;
+
+	g_free(stats->interface);
+	g_free(stats);
+}
 
 static void remove_counter(gpointer user_data)
 {
@@ -133,7 +146,8 @@ int __connman_counter_unregister(const char *owner, const char *path)
 	return 0;
 }
 
-static void send_usage(struct connman_counter *counter)
+static void send_usage(struct connman_counter *counter, const char *interface,
+				unsigned int rx_bytes, unsigned int tx_bytes)
 {
 	DBusMessage *message;
 	DBusMessageIter array, dict;
@@ -149,34 +163,51 @@ static void send_usage(struct connman_counter *counter)
 
 	connman_dbus_dict_open(&array, &dict);
 
+	connman_dbus_dict_append_basic(&dict, "Interface",
+						DBUS_TYPE_STRING, &interface);
 	connman_dbus_dict_append_basic(&dict, "RX.Bytes",
-					DBUS_TYPE_UINT32, &counter->rx_bytes);
+						DBUS_TYPE_UINT32, &rx_bytes);
 	connman_dbus_dict_append_basic(&dict, "TX.Bytes",
-					DBUS_TYPE_UINT32, &counter->tx_bytes);
+						DBUS_TYPE_UINT32, &tx_bytes);
 
 	connman_dbus_dict_close(&array, &dict);
 
 	g_dbus_send_message(connection, message);
 }
 
-void __connman_counter_notify(unsigned int rx_bytes, unsigned int tx_bytes)
+void __connman_counter_notify(const char *interface,
+				unsigned int rx_bytes, unsigned int tx_bytes)
 {
+	struct connman_stats *stats;
 	GHashTableIter iter;
 	gpointer key, value;
+
+	stats = g_hash_table_lookup(stats_table, interface);
+	if (stats != NULL)
+		goto update;
+
+	stats = g_try_new0(struct connman_stats, 1);
+	if (stats == NULL)
+		return;
+
+	stats->interface = g_strdup(interface);
+
+	g_hash_table_replace(stats_table, stats->interface, stats);
+
+update:
+	if (stats->rx_bytes == rx_bytes && stats->rx_bytes == tx_bytes)
+		return;
+
+	stats->rx_bytes = rx_bytes;
+	stats->tx_bytes = tx_bytes;
 
 	g_hash_table_iter_init(&iter, counter_table);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_counter *counter = value;
 
-		if (counter->rx_bytes == rx_bytes &&
-					counter->tx_bytes == tx_bytes)
-			continue;
-
-		counter->rx_bytes = rx_bytes;
-		counter->tx_bytes = tx_bytes;
-
-		send_usage(counter);
+		send_usage(counter, stats->interface,
+					stats->rx_bytes, stats->tx_bytes);
 	}
 }
 
@@ -205,6 +236,9 @@ int __connman_counter_init(void)
 	if (connection == NULL)
 		return -1;
 
+	stats_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+							NULL, remove_stats);
+
 	counter_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_counter);
 	owner_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -224,6 +258,8 @@ void __connman_counter_cleanup(void)
 
 	g_hash_table_destroy(owner_mapping);
 	g_hash_table_destroy(counter_table);
+
+	g_hash_table_destroy(stats_table);
 
 	dbus_connection_unref(connection);
 }

@@ -17,7 +17,10 @@ class Counter(dbus.service.Object):
 					in_signature='a{sv}', out_signature='')
 	def Usage(self, stats):
 		for key in stats.keys():
-			val = int(stats[key])
+			if key in ["Interface"]:
+				val = str(stats[key])
+			else:
+				val = int(stats[key])
 			print "%s = %s" % (key, val)
 
 if __name__ == '__main__':

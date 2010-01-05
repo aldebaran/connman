@@ -69,7 +69,8 @@ int __connman_counter_register(const char *owner, const char *path,
 						unsigned int interval);
 int __connman_counter_unregister(const char *owner, const char *path);
 
-void __connman_counter_notify(unsigned int rx_bytes, unsigned int tx_bytes);
+void __connman_counter_notify(const char *interface,
+				unsigned int rx_bytes, unsigned int tx_bytes);
 
 int __connman_counter_init(void);
 void __connman_counter_cleanup(void);
