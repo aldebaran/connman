@@ -674,11 +674,11 @@ void connman_network_set_error(struct connman_network *network,
 	}
 }
 
-static void set_connected_manual(struct connman_network *network)
+static void set_configuration(struct connman_network *network)
 {
 	struct connman_service *service;
 
-	DBG("");
+	DBG("network %p", network);
 
 	__connman_device_increase_connections(network->device);
 
@@ -687,18 +687,29 @@ static void set_connected_manual(struct connman_network *network)
 	connman_device_set_disconnected(network->device, FALSE);
 
 	service = __connman_service_lookup_from_network(network);
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION);
+}
+
+static void set_connected_manual(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	DBG("network %p", network);
+
+	set_configuration(network);
 
 	network->connecting = FALSE;
 
 	connman_network_set_associating(network, FALSE);
 
+	service = __connman_service_lookup_from_network(network);
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
 }
 
 static int set_connected_dhcp(struct connman_network *network)
 {
 	struct connman_element *element;
-	struct connman_service *service;
 	int error;
 
 	DBG("network %p", network);
@@ -706,9 +717,6 @@ static int set_connected_dhcp(struct connman_network *network)
 	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
 		return -EINVAL;
 
-	service = __connman_service_lookup_from_network(network);
-
-	DBG("a");
 	element = connman_element_create(NULL);
 	if (element == NULL)
 		return -ENOMEM;
@@ -722,14 +730,7 @@ static int set_connected_dhcp(struct connman_network *network)
 		return error;
 	}
 
-	__connman_device_increase_connections(network->device);
-
-	__connman_device_set_network(network->device, network);
-
-	connman_device_set_disconnected(network->device, FALSE);
-
-	__connman_service_indicate_state(service,
-			CONNMAN_SERVICE_STATE_CONFIGURATION);
+	set_configuration(network);
 
 	return 0;
 }
