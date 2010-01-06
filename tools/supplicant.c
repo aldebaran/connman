@@ -132,6 +132,7 @@ static struct strvalmap mode_capa_map[] = {
 };
 
 static GHashTable *interface_table;
+static GHashTable *bss_mapping;
 
 struct supplicant_interface {
 	char *path;
@@ -823,6 +824,8 @@ static void add_bss_to_network(struct supplicant_bss *bss)
 done:
 	g_hash_table_replace(interface->bss_mapping, bss->path, network);
 	g_hash_table_replace(network->bss_table, bss->path, bss);
+
+	g_hash_table_replace(bss_mapping, bss->path, interface);
 }
 
 static unsigned char wifi_oui[3]      = { 0x00, 0x50, 0xf2 };
@@ -1084,6 +1087,8 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 	if (network == NULL)
 		return;
 
+	g_hash_table_remove(bss_mapping, path);
+
 	g_hash_table_remove(interface->bss_mapping, path);
 	g_hash_table_remove(network->bss_table, path);
 
@@ -1331,6 +1336,7 @@ static void signal_name_owner_changed(const char *path, DBusMessageIter *iter)
 
 	if (strlen(old) > 0 && strlen(new) == 0) {
 		system_available = FALSE;
+		g_hash_table_remove_all(bss_mapping);
 		g_hash_table_remove_all(interface_table);
 		callback_system_killed();
 	}
@@ -1361,7 +1367,7 @@ static void signal_interface_removed(const char *path, DBusMessageIter *iter)
 		interface_removed(iter, NULL);
 }
 
-static void signal_properties(const char *path, DBusMessageIter *iter)
+static void signal_interface_changed(const char *path, DBusMessageIter *iter)
 {
 	struct supplicant_interface *interface;
 
@@ -1440,6 +1446,27 @@ static void signal_network_removed(const char *path, DBusMessageIter *iter)
 	interface_network_removed(iter, interface);
 }
 
+static void signal_bss_changed(const char *path, DBusMessageIter *iter)
+{
+	struct supplicant_interface *interface;
+	struct supplicant_network *network;
+	struct supplicant_bss *bss;
+
+	interface = g_hash_table_lookup(bss_mapping, path);
+	if (interface == NULL)
+		return;
+
+	network = g_hash_table_lookup(interface->bss_mapping, path);
+	if (network == NULL)
+		return;
+
+	bss = g_hash_table_lookup(network->bss_table, path);
+	if (bss == NULL)
+		return;
+
+	supplicant_dbus_property_foreach(iter, bss_property, bss);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -1452,12 +1479,14 @@ static struct {
 	{ SUPPLICANT_INTERFACE, "InterfaceCreated",  signal_interface_added    },
 	{ SUPPLICANT_INTERFACE, "InterfaceRemoved",  signal_interface_removed  },
 
-	{ SUPPLICANT_INTERFACE ".Interface", "PropertiesChanged", signal_properties      },
-	{ SUPPLICANT_INTERFACE ".Interface", "ScanDone",          signal_scan_done       },
-	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",          signal_bss_added       },
-	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",        signal_bss_removed     },
-	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",      signal_network_added   },
-	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed },
+	{ SUPPLICANT_INTERFACE ".Interface", "PropertiesChanged", signal_interface_changed },
+	{ SUPPLICANT_INTERFACE ".Interface", "ScanDone",          signal_scan_done         },
+	{ SUPPLICANT_INTERFACE ".Interface", "BSSAdded",          signal_bss_added         },
+	{ SUPPLICANT_INTERFACE ".Interface", "BSSRemoved",        signal_bss_removed       },
+	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",      signal_network_added     },
+	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed   },
+
+	{ SUPPLICANT_INTERFACE ".Interface.BSS", "PropertiesChanged", signal_bss_changed   },
 
 	{ }
 };
@@ -1530,6 +1559,9 @@ int supplicant_register(const struct supplicant_callbacks *callbacks)
 	interface_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, remove_interface);
 
+	bss_mapping = g_hash_table_new_full(g_str_hash, g_str_equal,
+								NULL, NULL);
+
 	supplicant_dbus_setup(connection);
 
 	dbus_bus_add_match(connection, supplicant_rule0, NULL);
@@ -1564,6 +1596,11 @@ void supplicant_unregister(const struct supplicant_callbacks *callbacks)
 
 		dbus_connection_remove_filter(connection,
 						supplicant_filter, NULL);
+	}
+
+	if (bss_mapping != NULL) {
+		g_hash_table_destroy(bss_mapping);
+		bss_mapping = NULL;
 	}
 
 	if (interface_table != NULL) {
