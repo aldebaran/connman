@@ -44,6 +44,7 @@ tools/wifi-scan
 tools/addr-test
 tools/tap-test
 tools/polkit-test
+tools/portal-test
 tools/supplicant-test
 tools/dbus-test
 doc/*.bak
