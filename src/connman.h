@@ -374,6 +374,10 @@ void __connman_service_remove_from_network(struct connman_network *network);
 const char *__connman_service_get_path(struct connman_service *service);
 unsigned int __connman_service_get_order(struct connman_service *service);
 struct connman_network *__connman_service_get_network(struct connman_service *service);
+int __connman_service_set_favorite(struct connman_service *service,
+						connman_bool_t favorite);
+int __connman_service_set_immutable(struct connman_service *service,
+						connman_bool_t immutable);
 
 void __connman_service_set_string(struct connman_service *service,
 					const char *key, const char *value);

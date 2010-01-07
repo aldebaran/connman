@@ -314,13 +314,29 @@ static void strength_changed(struct connman_service *service)
 
 static void favorite_changed(struct connman_service *service)
 {
+	if (service->path == NULL)
+		return;
+
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 }
 
+static void immutable_changed(struct connman_service *service)
+{
+	if (service->path == NULL)
+		return;
+
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Immutable",
+					DBUS_TYPE_BOOLEAN, &service->immutable);
+}
+
 static void roaming_changed(struct connman_service *service)
 {
+	if (service->path == NULL)
+		return;
+
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
@@ -328,6 +344,9 @@ static void roaming_changed(struct connman_service *service)
 
 static void autoconnect_changed(struct connman_service *service)
 {
+	if (service->path == NULL)
+		return;
+
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "AutoConnect",
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
@@ -1097,7 +1116,7 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 	set_idle(service);
 
-	connman_service_set_favorite(service, FALSE);
+	__connman_service_set_favorite(service, FALSE);
 	__connman_storage_save_service(service);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
@@ -1426,13 +1445,13 @@ __connman_service_get_network(struct connman_service *service)
 }
 
 /**
- * connman_service_set_favorite:
+ * __connman_service_set_favorite:
  * @service: service structure
  * @favorite: favorite value
  *
  * Change the favorite setting of service
  */
-int connman_service_set_favorite(struct connman_service *service,
+int __connman_service_set_favorite(struct connman_service *service,
 						connman_bool_t favorite)
 {
 	GSequenceIter *iter;
@@ -1451,6 +1470,16 @@ int connman_service_set_favorite(struct connman_service *service,
 	g_sequence_sort_changed(iter, service_compare, NULL);
 
 	__connman_profile_changed(FALSE);
+
+	return 0;
+}
+
+int __connman_service_set_immutable(struct connman_service *service,
+						connman_bool_t immutable)
+{
+	service->immutable = immutable;
+
+	immutable_changed(service);
 
 	return 0;
 }
@@ -1533,7 +1562,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (state == CONNMAN_SERVICE_STATE_READY) {
 		set_reconnect_state(service, TRUE);
 
-		connman_service_set_favorite(service, TRUE);
+		__connman_service_set_favorite(service, TRUE);
 
 		reply_pending(service, 0);
 

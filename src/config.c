@@ -392,6 +392,9 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 	if (memcmp(config->ssid, ssid, ssid_len) != 0)
 		return;
 
+	__connman_service_set_immutable(service, TRUE);
+	__connman_service_set_favorite(service, TRUE);
+
 	if (config->eap)
 		__connman_service_set_string(service, "EAP", config->eap);
 
