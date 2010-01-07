@@ -31,6 +31,8 @@
 #include "connman.h"
 
 struct connman_config_service {
+	char *ident;
+	char *name;
 	char *type;
 	void *ssid;
 	unsigned int ssid_len;
@@ -48,31 +50,82 @@ struct connman_config {
 	char *ident;
 	char *name;
 	char *description;
-	struct connman_config_service *service;
+	GHashTable *service_table;
 };
 
-static GHashTable *config_hash = NULL;
+static GHashTable *config_table = NULL;
 
-static int load_service(GKeyFile *keyfile, struct connman_config *config)
+static void unregister_config(gpointer data)
 {
-	char *str, *hex_ssid;
+	struct connman_config *config = data;
+
+	connman_info("Removing configuration %s", config->ident);
+
+	g_hash_table_destroy(config->service_table);
+
+	g_free(config->description);
+	g_free(config->name);
+	g_free(config->ident);
+	g_free(config);
+}
+
+static void unregister_service(gpointer data)
+{
+	struct connman_config_service *service = data;
+
+	connman_info("Removing service configuration %s", service->ident);
+
+	g_free(service->ident);
+	g_free(service->type);
+	g_free(service->name);
+	g_free(service->ssid);
+	g_free(service->eap);
+	g_free(service->identity);
+	g_free(service->ca_cert_file);
+	g_free(service->client_cert_file);
+	g_free(service->private_key_file);
+	g_free(service->private_key_passphrase);
+	g_free(service->phase2);
+	g_free(service);
+}
+
+static int load_service(GKeyFile *keyfile, const char *group,
+						struct connman_config *config)
+{
 	struct connman_config_service *service;
+	const char *ident;
+	char *str, *hex_ssid;
 	gboolean pass_from_fsid;
 	GError *error = NULL;
 
-	service = g_try_new0(struct connman_config_service, 1);
-	if (service == NULL)
-		return -ENOMEM;
+	/* Strip off "service_" prefix */
+	ident = group + 8;
 
-	config->service = service;
+	if (strlen(ident) < 1)
+		return -EINVAL;
 
-	str = g_key_file_get_string(keyfile, "service", "Type", NULL);
+	service = g_hash_table_lookup(config->service_table, ident);
+	if (service == NULL) {
+		service = g_try_new0(struct connman_config_service, 1);
+		if (service == NULL)
+			return -ENOMEM;
+
+		service->ident = g_strdup(ident);
+	}
+
+	str = g_key_file_get_string(keyfile, group, "Type", NULL);
 	if (str != NULL) {
 		g_free(service->type);
 		service->type = str;
 	}
 
-	hex_ssid = g_key_file_get_string(keyfile, "service", "SSID", NULL);
+	str = g_key_file_get_string(keyfile, group, "Name", NULL);
+	if (str != NULL) {
+		g_free(service->type);
+		service->name = str;
+	}
+
+	hex_ssid = g_key_file_get_string(keyfile, group, "SSID", NULL);
 	if (hex_ssid != NULL) {
 		char *ssid;
 		unsigned int i, j = 0, hex;
@@ -94,83 +147,83 @@ static int load_service(GKeyFile *keyfile, struct connman_config *config)
 		g_free(service->ssid);
 		service->ssid = ssid;
 		service->ssid_len = hex_ssid_len / 2;
+	} else if (service->name != NULL) {
+		char *ssid;
+		unsigned int ssid_len;
+
+		ssid_len = strlen(service->name);
+		ssid = g_try_malloc0(ssid_len);
+		if (ssid == NULL)
+			return -ENOMEM;
+
+		memcpy(ssid, service->name, ssid_len);
+		g_free(service->ssid);
+		service->ssid = ssid;
+		service->ssid_len = ssid_len;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "EAP", NULL);
+	str = g_key_file_get_string(keyfile, group, "EAP", NULL);
 	if (str != NULL) {
 		g_free(service->eap);
 		service->eap = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "CACertFile", NULL);
+	str = g_key_file_get_string(keyfile, group, "CACertFile", NULL);
 	if (str != NULL) {
 		g_free(service->ca_cert_file);
 		service->ca_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service",
-						"ClientCertFile", NULL);
+	str = g_key_file_get_string(keyfile, group, "ClientCertFile", NULL);
 	if (str != NULL) {
 		g_free(service->client_cert_file);
 		service->client_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service",
-						"PrivateKeyFile", NULL);
+	str = g_key_file_get_string(keyfile, group, "PrivateKeyFile", NULL);
 	if (str != NULL) {
 		g_free(service->private_key_file);
 		service->private_key_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service",
+	str = g_key_file_get_string(keyfile, group,
 						"PrivateKeyPassphrase", NULL);
 	if (str != NULL) {
 		g_free(service->private_key_passphrase);
 		service->private_key_passphrase = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "Identity", NULL);
+	str = g_key_file_get_string(keyfile, group, "Identity", NULL);
 	if (str != NULL) {
 		g_free(service->identity);
 		service->identity = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "service", "Phase2", NULL);
+	str = g_key_file_get_string(keyfile, group, "Phase2", NULL);
 	if (str != NULL) {
 		g_free(service->phase2);
 		service->phase2 = str;
 	}
 
-	pass_from_fsid = g_key_file_get_boolean(keyfile, "service",
+	pass_from_fsid = g_key_file_get_boolean(keyfile, group,
 						"PassphraseFromFsid", &error);
 	if (error == NULL)
 		service->passphrase_from_fsid = pass_from_fsid;
 
+	g_hash_table_replace(config->service_table, service->ident, service);
+
+	connman_info("Adding service configuration %s", service->ident);
+
 	return 0;
-}
-
-static void free_service(struct connman_config_service *service)
-{
-	if (service == NULL)
-		return;
-
-	g_free(service->type);
-	g_free(service->ssid);
-	g_free(service->eap);
-	g_free(service->identity);
-	g_free(service->ca_cert_file);
-	g_free(service->client_cert_file);
-	g_free(service->private_key_file);
-	g_free(service->private_key_passphrase);
-	g_free(service->phase2);
-	g_free(service);
 }
 
 static int load_config(struct connman_config *config)
 {
 	GKeyFile *keyfile;
+	gsize length;
+	char **groups;
 	char *str;
-	int err;
+	int i;
 
 	DBG("config %p", config);
 
@@ -190,36 +243,18 @@ static int load_config(struct connman_config *config)
 		config->description = str;
 	}
 
-	if (g_key_file_has_group(keyfile, "service") == TRUE) {
-		err = load_service(keyfile, config);
-		if (err < 0)
-			goto done;
+	groups = g_key_file_get_groups(keyfile, &length);
+
+	for (i = 0; groups[i] != NULL; i++) {
+		if (g_str_has_prefix(groups[i], "service_") == TRUE)
+			load_service(keyfile, groups[i], config);
 	}
 
-	err = 0;
+	g_strfreev(groups);
 
-done:
 	__connman_storage_close_config(config->ident, keyfile, FALSE);
 
-	return err;
-}
-
-static void free_config(struct connman_config *config)
-{
-	free_service(config->service);
-	g_free(config->description);
-	g_free(config->name);
-	g_free(config->ident);
-	g_free(config);
-}
-
-static void unregister_config(gpointer data)
-{
-	struct connman_config *config = data;
-
-	connman_info("Removing configuration %s", config->ident);
-
-	free_config(config);
+	return 0;
 }
 
 static int create_config(const char *ident)
@@ -228,23 +263,19 @@ static int create_config(const char *ident)
 
 	DBG("ident %s", ident);
 
+	if (g_hash_table_lookup(config_table, ident) != NULL)
+		return -EEXIST;
+
 	config = g_try_new0(struct connman_config, 1);
 	if (config == NULL)
 		return -ENOMEM;
 
 	config->ident = g_strdup(ident);
 
-	if (config->ident == NULL) {
-		free_config(config);
-		return -ENOMEM;
-	}
+	config->service_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, unregister_service);
 
-	if (g_hash_table_lookup(config_hash, config->ident) != NULL) {
-		free_config(config);
-		return -EEXIST;
-	}
-
-	g_hash_table_insert(config_hash, g_strdup(config->ident), config);
+	g_hash_table_insert(config_table, config->ident, config);
 
 	connman_info("Adding configuration %s", config->ident);
 
@@ -253,15 +284,16 @@ static int create_config(const char *ident)
 	return 0;
 }
 
-static int config_init(void)
+static int read_configs(void)
 {
 	GDir *dir;
-	const gchar *file;
 
 	DBG("");
 
 	dir = g_dir_open(STORAGEDIR, 0, NULL);
 	if (dir != NULL) {
+		const gchar *file;
+
 		while ((file = g_dir_read_name(dir)) != NULL) {
 			GString *str;
 			gchar *ident;
@@ -291,7 +323,25 @@ static int config_init(void)
 	return 0;
 }
 
-static char *config_pem_fsid(char *pem_file)
+int __connman_config_init(void)
+{
+	DBG("");
+
+	config_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, unregister_config);
+
+	return read_configs();
+}
+
+void __connman_config_cleanup(void)
+{
+	DBG("");
+
+	g_hash_table_destroy(config_table);
+	config_table = NULL;
+}
+
+static char *config_pem_fsid(const char *pem_file)
 {
 	struct statfs buf;
 	unsigned *fsid = (unsigned *) &buf.f_fsid;
@@ -311,10 +361,34 @@ static char *config_pem_fsid(char *pem_file)
 	return g_strdup_printf("%llx", fsid64);
 }
 
-static void config_service_setup(struct connman_service *service,
-				 struct connman_config_service *config)
+static void provision_service(gpointer key, gpointer value, gpointer user_data)
 {
-	if (config == NULL)
+	struct connman_service *service = user_data;
+	struct connman_config_service *config = value;
+	struct connman_network *network;
+	const void *ssid;
+	unsigned int ssid_len;
+
+	/* For now only WiFi service entries are supported */
+	if (g_strcmp0(config->type, "wifi") != 0)
+		return;
+
+	network = __connman_service_get_network(service);
+	if (network == NULL) {
+		connman_error("Service has no network set");
+		return;
+	}
+
+	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_len);
+	if (ssid == NULL) {
+		connman_error("Network SSID not set");
+		return;
+	}
+
+	if (config->ssid == NULL || ssid_len != config->ssid_len)
+		return;
+
+	if (memcmp(config->ssid, ssid, ssid_len) != 0)
 		return;
 
 	if (config->eap)
@@ -337,7 +411,7 @@ static void config_service_setup(struct connman_service *service,
 						config->private_key_file);
 
 	if (config->passphrase_from_fsid == TRUE &&
-					config->private_key_file) {
+						config->private_key_file) {
 		char *fsid;
 
 		fsid = config_pem_fsid(config->private_key_file);
@@ -366,66 +440,26 @@ static void config_service_setup(struct connman_service *service,
 		__connman_service_set_string(service, "Phase2", config->phase2);
 }
 
-int __connman_config_init(void)
-{
-	DBG("");
-
-	config_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, unregister_config);
-
-	return config_init();
-}
-
-void __connman_config_cleanup(void)
-{
-	DBG("");
-
-	g_hash_table_destroy(config_hash);
-	config_hash = NULL;
-}
-
 int __connman_config_provision_service(struct connman_service *service)
 {
+	enum connman_service_type type;
 	GHashTableIter iter;
 	gpointer value, key;
-	struct connman_network *network;
-	const void *ssid;
-	unsigned int ssid_len;
 
 	DBG("service %p", service);
 
-	network = __connman_service_get_network(service);
-	if (network == NULL) {
-		connman_error("Network not set");
-		return -EINVAL;
-	}
+	/* For now only WiFi services are supported */
+	type = connman_service_get_type(service);
+	if (type != CONNMAN_SERVICE_TYPE_WIFI)
+		return -ENOSYS;
 
-	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_len);
-	if (ssid == NULL) {
-		connman_error("Network SSID not set");
-		return -EINVAL;
-	}
-
-	g_hash_table_iter_init(&iter, config_hash);
+	g_hash_table_iter_init(&iter, config_table);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_config *config = value;
 
-		if (config->service == NULL)
-			continue;
-
-		/* For now only WiFi service entries are supported */
-		if (g_strcmp0(config->service->type, "wifi") != 0)
-			continue;
-
-		if (config->service->ssid == NULL ||
-				ssid_len != config->service->ssid_len)
-			continue;
-
-		if (memcmp(config->service->ssid, ssid, ssid_len) == 0) {
-			config_service_setup(service, config->service);
-			break;
-		}
+		g_hash_table_foreach(config->service_table,
+						provision_service, service);
 	}
 
 	return 0;
