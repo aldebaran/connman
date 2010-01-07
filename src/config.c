@@ -42,8 +42,8 @@ struct connman_config_service {
 	char *client_cert_file;
 	char *private_key_file;
 	char *private_key_passphrase;
+	char *private_key_passphrase_type;
 	char *phase2;
-	connman_bool_t passphrase_from_fsid;
 };
 
 struct connman_config {
@@ -85,6 +85,7 @@ static void unregister_service(gpointer data)
 	g_free(service->client_cert_file);
 	g_free(service->private_key_file);
 	g_free(service->private_key_passphrase);
+	g_free(service->private_key_passphrase_type);
 	g_free(service->phase2);
 	g_free(service);
 }
@@ -95,8 +96,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	struct connman_config_service *service;
 	const char *ident;
 	char *str, *hex_ssid;
-	gboolean pass_from_fsid;
-	GError *error = NULL;
 
 	/* Strip off "service_" prefix */
 	ident = group + 8;
@@ -193,6 +192,13 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		service->private_key_passphrase = str;
 	}
 
+	str = g_key_file_get_string(keyfile, group,
+					"PrivateKeyPassphraseType", NULL);
+	if (str != NULL) {
+		g_free(service->private_key_passphrase_type);
+		service->private_key_passphrase_type = str;
+	}
+
 	str = g_key_file_get_string(keyfile, group, "Identity", NULL);
 	if (str != NULL) {
 		g_free(service->identity);
@@ -204,11 +210,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		g_free(service->phase2);
 		service->phase2 = str;
 	}
-
-	pass_from_fsid = g_key_file_get_boolean(keyfile, group,
-						"PassphraseFromFsid", &error);
-	if (error == NULL)
-		service->passphrase_from_fsid = pass_from_fsid;
 
 	g_hash_table_replace(config->service_table, service->ident, service);
 
@@ -410,7 +411,7 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 		__connman_service_set_string(service, "PrivateKeyFile",
 						config->private_key_file);
 
-	if (config->passphrase_from_fsid == TRUE &&
+	if (g_strcmp0(config->private_key_passphrase_type, "fsid") == 0 &&
 						config->private_key_file) {
 		char *fsid;
 
