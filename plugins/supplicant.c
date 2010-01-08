@@ -1795,10 +1795,11 @@ static int task_connect(struct supplicant_task *task)
 
 	DBG("address %s security %s", address, security);
 
-	if (security == NULL && passphrase == NULL)
+	if (security == NULL)
 		return -EINVAL;
 
-	if (g_str_equal(security, "none") == FALSE && passphrase == NULL)
+	if (passphrase == NULL && g_str_equal(security, "none") == FALSE &&
+				g_str_equal(security, "ieee8021x") == FALSE)
 		return -EINVAL;
 
 	remove_network(task);

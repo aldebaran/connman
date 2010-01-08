@@ -377,9 +377,10 @@ static void passphrase_changed(struct connman_service *service)
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
-		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->passphrase == NULL)
 				required = TRUE;
+			break;
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		}
 		break;
@@ -619,9 +620,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
-		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->passphrase == NULL)
 				required = TRUE;
+			break;
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		}
 
@@ -1669,34 +1671,34 @@ static connman_bool_t prepare_network(struct connman_service *service)
 
 static void prepare_8021x(struct connman_service *service)
 {
-	if (service->eap)
+	if (service->eap != NULL)
 		connman_network_set_string(service->network, "WiFi.EAP",
 								service->eap);
 
-	if (service->identity)
+	if (service->identity != NULL)
 		connman_network_set_string(service->network, "WiFi.Identity",
 							service->identity);
 
-	if (service->ca_cert_file)
+	if (service->ca_cert_file != NULL)
 		connman_network_set_string(service->network, "WiFi.CACertFile",
 							service->ca_cert_file);
 
-	if (service->client_cert_file)
+	if (service->client_cert_file != NULL)
 		connman_network_set_string(service->network,
 						"WiFi.ClientCertFile",
 						service->client_cert_file);
 
-	if (service->private_key_file)
+	if (service->private_key_file != NULL)
 		connman_network_set_string(service->network,
 						"WiFi.PrivateKeyFile",
 						service->private_key_file);
 
-	if (service->private_key_passphrase)
+	if (service->private_key_passphrase != NULL)
 		connman_network_set_string(service->network,
 					"WiFi.PrivateKeyPassphrase",
 					service->private_key_passphrase);
 
-	if (service->phase2)
+	if (service->phase2 != NULL)
 		connman_network_set_string(service->network, "WiFi.Phase2",
 							service->phase2);
 }
@@ -1736,9 +1738,10 @@ int __connman_service_connect(struct connman_service *service)
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
-		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->passphrase == NULL)
 				return -ENOKEY;
+			break;
+		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
 		}
 		break;

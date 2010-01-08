@@ -120,7 +120,7 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	str = g_key_file_get_string(keyfile, group, "Name", NULL);
 	if (str != NULL) {
-		g_free(service->type);
+		g_free(service->name);
 		service->name = str;
 	}
 
@@ -395,27 +395,27 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 	__connman_service_set_immutable(service, TRUE);
 	__connman_service_set_favorite(service, TRUE);
 
-	if (config->eap)
+	if (config->eap != NULL)
 		__connman_service_set_string(service, "EAP", config->eap);
 
-	if (config->identity)
+	if (config->identity != NULL)
 		__connman_service_set_string(service, "Identity",
 							config->identity);
 
-	if (config->ca_cert_file)
+	if (config->ca_cert_file != NULL)
 		__connman_service_set_string(service, "CACertFile",
 							config->ca_cert_file);
 
-	if (config->client_cert_file)
+	if (config->client_cert_file != NULL)
 		__connman_service_set_string(service, "ClientCertFile",
 						config->client_cert_file);
 
-	if (config->private_key_file)
+	if (config->private_key_file != NULL)
 		__connman_service_set_string(service, "PrivateKeyFile",
 						config->private_key_file);
 
 	if (g_strcmp0(config->private_key_passphrase_type, "fsid") == 0 &&
-						config->private_key_file) {
+					config->private_key_file != NULL) {
 		char *fsid;
 
 		fsid = config_pem_fsid(config->private_key_file);
@@ -426,7 +426,7 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 		config->private_key_passphrase = fsid;
 	}
 
-	if (config->private_key_passphrase) {
+	if (config->private_key_passphrase != NULL) {
 		__connman_service_set_string(service, "PrivateKeyPassphrase",
 						config->private_key_passphrase);
 		/*
@@ -436,11 +436,9 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 		 * service passphrase in order for the UI to request for an
 		 * additional passphrase.
 		 */
-		__connman_service_set_string(service, "Passphrase",
-						config->private_key_passphrase);
 	}
 
-	if (config->phase2)
+	if (config->phase2 != NULL)
 		__connman_service_set_string(service, "Phase2", config->phase2);
 }
 
