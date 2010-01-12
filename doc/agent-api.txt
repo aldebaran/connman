@@ -23,13 +23,22 @@ Methods		void Release()
 
 			Possible Errors: [service].Error.Retry
 
-		string RequestPassphrase(object service)
+		dict RequestInput(object service, dict fields)
 
 			This method gets called when trying to connect to
-			a service and a passphrase is missing.
+			a service and some extra input is required. For
+			example a passphrase or the name of a hidden network.
 
-			The return value should be the passphrase string or
-			an error indicating that the request got cannceled.
+			The return value should be a dictionary where the
+			keys are the field names and the values are the
+			actual fields. Alternative an error indicating that
+			the request got cannceled can be returned.
+
+			Most common return field names are "Name" and of
+			course "Passphrase".
+
+			The dictionary arguments contains field names with
+			their input parameters.
 
 			Possible Errors: [service].Error.Canceled
 
@@ -37,3 +46,66 @@ Methods		void Release()
 
 			This method gets called to indicate that the agent
 			request failed before a reply was returned.
+
+Fields		string Name
+
+			The name of a network. This field will be requested
+			when trying to connect to a hidden network.
+
+		array{byte} SSID
+
+			This field is an alternative to "Name" for WiFi
+			networks and can be used to return the exact binary
+			representation of a network name.
+
+			Normally returning the "Name" field is the better
+			option here.
+
+		string Passphrase
+
+			The passphrase for a network. For example a WEP
+			key or a PSK passphrase.
+
+Arguments	string Type
+
+			Contains the type of a field. For example "psk",
+			"wep", "ssid" or plain "string".
+
+		string Requirement
+
+			Contains the requirement option. Valid values are
+			"mandatory", "optional" or "alternate".
+
+			The "alternate" specifies that this field can be
+			return as an alternative to another one. An example
+			would be the network name or SSID.
+
+			All "mandatory" fields must be returned, while the
+			"optional" can be returned if available.
+
+		array{string} Alternates
+
+			Contains the list of alternate field names this
+			field can be represented by.
+
+Examples	Requesting a passphrase for WPA2 network
+
+			RequestInput("/service1",
+				{ "Passphrase" : { "Type" : "psk",
+						   "Requirement" : "mandatory"
+						 }
+				}
+			==> { "Passphrase" : "secret123" }
+
+		Requesting name for hidden network
+
+			RequestInput("/service2",
+				{ "Name" : { "Type"        : "string",
+					     "Requirement" : "mandatory",
+					     "Alternates"  : [ "SSID" ]
+					   },
+				  "SSID" : { "Type" : "ssid",
+				             "Requirement" : "alternate"
+				           }
+				}
+			==> { "Name" : "My hidden network" }
