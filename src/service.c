@@ -2013,9 +2013,8 @@ failed:
 		if (network != NULL) {
 			connman_network_set_available(network, FALSE);
 			__connman_device_cleanup_networks(device);
-		}
-
-		__connman_service_put(service);
+		} else
+			__connman_service_put(service);
 	}
 
 	return err;
