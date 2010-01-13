@@ -873,8 +873,10 @@ int __connman_network_connect(struct connman_network *network)
 	if (err < 0) {
 		if (err == -EINPROGRESS)
 			connman_network_set_associating(network, TRUE);
-		else
+		else {
+			network->connecting = FALSE;
 			network->hidden = FALSE;
+		}
 
 		return err;
 	}
