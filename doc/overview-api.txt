@@ -297,7 +297,13 @@ the "idle" state since the service is not connected.
 		      | success                                  |
 		      V                                          |
 		+---------------+                                |
-		| ready         |<----------------+              |
+		| ready         |                                |
+		+---------------+                                |
+		      |                                          |
+		      | success                                  |
+		      V                                          |
+		+---------------+                                |
+		| online        |<----------------+              |
 		+---------------+                 |              |
 		      |                           |              |
 		      | service.Disconnect()      |              |
