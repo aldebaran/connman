@@ -155,12 +155,64 @@ static void remove_net_device(struct udev_device *udev_device)
 	connman_device_unref(device);
 }
 
+static GSList *rfkill_list = NULL;
+
+struct rfkill_data {
+	int phyindex;
+	connman_bool_t blocked;
+};
+
+connman_bool_t __connman_udev_get_blocked(int phyindex)
+{
+	GSList *list;
+
+	if (phyindex < 0)
+		return FALSE;
+
+	for (list = rfkill_list; list; list = rfkill_list->next) {
+		struct rfkill_data *block = list->data;
+
+		if (block->phyindex == phyindex)
+			return block->blocked;
+	}
+
+	return FALSE;
+}
+
+static void update_rfkill_state(int phyindex, connman_bool_t blocked)
+{
+	GSList *list;
+	struct rfkill_data *block;
+
+	DBG("index %d blocked %d", phyindex, blocked);
+
+	for (list = rfkill_list; list; list = rfkill_list->next) {
+		block = list->data;
+
+		if (block->phyindex == phyindex) {
+			block->blocked = blocked;
+			return;
+		}
+	}
+
+	block = g_try_new0(struct rfkill_data, 1);
+	if (block == NULL)
+		return;
+
+	block->phyindex = phyindex;
+	block->blocked = blocked;
+
+	rfkill_list = g_slist_prepend(rfkill_list, block);
+}
+
 static void phyindex_rfkill(int phyindex, connman_bool_t blocked)
 {
 	GSList *list;
 
 	if (phyindex < 0)
 		return;
+
+	update_rfkill_state(phyindex, blocked);
 
 	for (list = device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
@@ -542,6 +594,14 @@ void __connman_udev_cleanup(void)
 
 	g_slist_free(device_list);
 	device_list = NULL;
+
+	for (list = rfkill_list; list; list = list->next) {
+		struct rfkill_data *block = list->data;
+		g_free(block);
+	}
+
+	g_slist_free(rfkill_list);
+	rfkill_list = NULL;
 
 	if (udev_ctx == NULL)
 		return;

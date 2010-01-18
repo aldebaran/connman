@@ -127,6 +127,11 @@ void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)
 	DBG("sysname %s blocked %d", sysname, blocked);
 }
 
+connman_bool_t __connman_udev_get_blocked(int phyindex)
+{
+	return FALSE;
+}
+
 int __connman_udev_init(void)
 {
 	DBG("");
