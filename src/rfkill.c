@@ -101,13 +101,10 @@ static GIOStatus rfkill_process(GIOChannel *chan)
 static gboolean rfkill_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
-	GIOStatus status;
-
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
-	status = rfkill_process(chan);
-	if (status == G_IO_STATUS_ERROR)
+	if (rfkill_process(chan) == G_IO_STATUS_ERROR)
 		return FALSE;
 
 	return TRUE;
@@ -136,8 +133,7 @@ int __connman_rfkill_init(void)
 	g_io_channel_set_flags(channel, flags, NULL);
 
 	/* Process current RFKILL events sent on device open */
-	while (rfkill_process(channel) == G_IO_STATUS_NORMAL)
-		;
+	while (rfkill_process(channel) == G_IO_STATUS_NORMAL);
 
 	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 							rfkill_event, NULL);
