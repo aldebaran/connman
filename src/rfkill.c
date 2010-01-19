@@ -56,34 +56,31 @@ struct rfkill_event {
 	uint8_t  hard;
 };
 
-static gboolean rfkill_event(GIOChannel *chan,
-				GIOCondition cond, gpointer data)
+static GIOStatus rfkill_process(GIOChannel *chan)
 {
+	GIOStatus status = G_IO_STATUS_NORMAL;
 	unsigned char buf[32];
 	struct rfkill_event *event = (void *) buf;
 	char sysname[32];
 	connman_bool_t blocked;
 	gsize len;
-	GIOError err;
 
-	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
-		return FALSE;
+	DBG("");
 
 	memset(buf, 0, sizeof(buf));
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err) {
-		if (err == G_IO_ERROR_AGAIN)
-			return TRUE;
-		return FALSE;
-	}
+	status = g_io_channel_read_chars(chan, (gchar *) buf,
+			sizeof(struct rfkill_event), &len, NULL);
+
+	if (status != G_IO_STATUS_NORMAL)
+		return status;
 
 	if (len != sizeof(struct rfkill_event))
-		return TRUE;
+		return status;
 
 	DBG("idx %u type %u op %u soft %u hard %u",
-					event->idx, event->type, event->op,
-						event->soft, event->hard);
+				event->idx, event->type, event->op,
+					event->soft, event->hard);
 
 	snprintf(sysname, sizeof(sysname) - 1, "rfkill%d", event->idx);
 
@@ -98,6 +95,21 @@ static gboolean rfkill_event(GIOChannel *chan,
 		break;
 	}
 
+	return status;
+}
+
+static gboolean rfkill_event(GIOChannel *chan,
+				GIOCondition cond, gpointer data)
+{
+	GIOStatus status;
+
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
+		return FALSE;
+
+	status = rfkill_process(chan);
+	if (status == G_IO_STATUS_ERROR)
+		return FALSE;
+
 	return TRUE;
 }
 
@@ -105,6 +117,7 @@ static GIOChannel *channel = NULL;
 
 int __connman_rfkill_init(void)
 {
+	GIOFlags flags;
 	int fd;
 
 	DBG("");
@@ -117,6 +130,14 @@ int __connman_rfkill_init(void)
 
 	channel = g_io_channel_unix_new(fd);
 	g_io_channel_set_close_on_unref(channel, TRUE);
+
+	flags = g_io_channel_get_flags(channel);
+	flags |= G_IO_FLAG_NONBLOCK;
+	g_io_channel_set_flags(channel, flags, NULL);
+
+	/* Process current RFKILL events sent on device open */
+	while (rfkill_process(channel) == G_IO_STATUS_NORMAL)
+		;
 
 	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 							rfkill_event, NULL);
