@@ -913,7 +913,7 @@ int __connman_network_disconnect(struct connman_network *network)
 
 	err = network->driver->disconnect(network);
 	if (err == 0) {
-		network->connected = FALSE;
+		connman_network_set_connected(network, FALSE);
 		set_connected(network);
 	}
 
