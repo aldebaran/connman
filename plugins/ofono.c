@@ -48,8 +48,12 @@
 #define PROPERTY_CHANGED		"PropertyChanged"
 #define GET_PROPERTIES			"GetProperties"
 #define SET_PROPERTY			"SetProperty"
+#define CREATE_CONTEXT			"CreateContext"
 
 #define TIMEOUT 5000
+
+#define CONTEXT_NAME "3G Connection"
+#define CONTEXT_TYPE "internet"
 
 static DBusConnection *connection;
 
@@ -489,6 +493,75 @@ static void add_networks(struct connman_device *device, DBusMessageIter *array)
 	}
 }
 
+static void create_context_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+	DBusError error;
+
+	DBG("");
+
+	dbus_error_init(&error);
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static void add_default_context(DBusMessageIter *array,
+		const char *path, const char *name, const char *type)
+{
+	DBusMessageIter entry;
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	if (path == NULL)
+		return;
+
+	DBG("");
+
+	dbus_message_iter_recurse(array, &entry);
+
+	if (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_OBJECT_PATH)
+		return;
+
+	DBG("path %s, name %s, type %s", path, name, type);
+
+	message = dbus_message_new_method_call(OFONO_SERVICE, path,
+					OFONO_GPRS_INTERFACE, CREATE_CONTEXT);
+	if (message == NULL)
+		return;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING,
+					&name, DBUS_TYPE_STRING,
+						&type, DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to create default context");
+		dbus_message_unref(message);
+		return;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return;
+	}
+
+	dbus_pending_call_set_notify(call, create_context_reply, NULL, NULL);
+
+	dbus_message_unref(message);
+}
+
 static void check_networks_reply(DBusPendingCall *call, void *user_data)
 {
 	struct connman_device *device = user_data;
@@ -524,7 +597,12 @@ static void check_networks_reply(DBusPendingCall *call, void *user_data)
 			dbus_message_iter_get_basic(&value, &attached);
 			DBG("Attached %d", attached);
 		} else if (g_str_equal(key, "PrimaryContexts") == TRUE) {
+			const char *path;
+
+			path = connman_device_get_string(device, "Path");
 			contexts = value;
+			add_default_context(&contexts, path,
+					CONTEXT_NAME, CONTEXT_TYPE);
 		} else if (g_str_equal(key, "Status") == TRUE) {
 			const char *status;
 
