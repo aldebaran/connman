@@ -45,6 +45,9 @@ static int resolvconf_append(const char *interface, const char *domain,
 	if (access(RESOLVCONF, X_OK) < 0)
 		return -errno;
 
+	if (interface == NULL)
+		return 0;
+
 	cmd = g_strdup_printf("echo \"nameserver %s\" | %s -a %s",
 						server, RESOLVCONF, interface);
 
@@ -64,6 +67,9 @@ static int resolvconf_remove(const char *interface, const char *domain,
 	int err;
 
 	DBG("interface %s server %s", interface, server);
+
+	if (interface == NULL)
+		return 0;
 
 	cmd = g_strdup_printf("%s -d %s", RESOLVCONF, interface);
 
