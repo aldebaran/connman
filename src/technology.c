@@ -171,8 +171,8 @@ static struct connman_technology *technology_find(enum connman_service_type type
 
 static struct connman_technology *technology_get(enum connman_service_type type)
 {
-	static unsigned int counter = 0;
 	struct connman_technology *technology;
+	const char *str;
 
 	DBG("type %d", type);
 
@@ -182,6 +182,10 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 		goto done;
 	}
 
+	str = __connman_service_type2string(type);
+	if (str == NULL)
+		return NULL;
+
 	technology = g_try_new0(struct connman_technology, 1);
 	if (technology == NULL)
 		return NULL;
@@ -189,8 +193,8 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->refcount = 1;
 
 	technology->type = type;
-	technology->path = g_strdup_printf("%s/technology%d",
-						CONNMAN_PATH, counter++);
+	technology->path = g_strdup_printf("%s/technology/%s",
+							CONNMAN_PATH, str);
 
 	if (g_dbus_register_interface(connection, technology->path,
 					CONNMAN_TECHNOLOGY_INTERFACE,
