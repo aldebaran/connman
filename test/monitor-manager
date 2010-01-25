@@ -6,7 +6,7 @@ import dbus
 import dbus.mainloop.glib
 
 def property_changed(name, value):
-	if name in ["Profiles", "Services", "Providers",
+	if name in ["Profiles", "Services", "Providers", "Technologies",
 						"Devices", "Networks"]:
 		val = "["
 		for i in value:

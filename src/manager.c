@@ -60,9 +60,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Providers",
 			DBUS_TYPE_OBJECT_PATH, __connman_provider_list, NULL);
-
-	connman_dbus_dict_append_array(&dict, "Devices",
-			DBUS_TYPE_OBJECT_PATH, __connman_device_list, NULL);
+	connman_dbus_dict_append_array(&dict, "Technologies",
+			DBUS_TYPE_OBJECT_PATH, __connman_technology_list, NULL);
 
 	str = __connman_notifier_get_state();
 	connman_dbus_dict_append_basic(&dict, "State",

@@ -478,13 +478,6 @@ static GDBusSignalTable device_signals[] = {
 	{ },
 };
 
-static void emit_devices_signal(void)
-{
-	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
-			CONNMAN_MANAGER_INTERFACE, "Devices",
-			DBUS_TYPE_OBJECT_PATH, __connman_device_list, NULL);
-}
-
 static int register_interface(struct connman_element *element)
 {
 	struct connman_device *device = element->device;
@@ -501,8 +494,6 @@ static int register_interface(struct connman_element *element)
 
 	device->registered = TRUE;
 
-	emit_devices_signal();
-
 	return 0;
 }
 
@@ -513,8 +504,6 @@ static void unregister_interface(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	device->registered = FALSE;
-
-	emit_devices_signal();
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_DEVICE_INTERFACE);
@@ -534,6 +523,8 @@ static int setup_device(struct connman_device *device)
 		device->driver = NULL;
 		return err;
 	}
+
+	__connman_technology_add_device(device);
 
 	type = __connman_device_get_service_type(device);
 	__connman_notifier_register(type);
@@ -595,6 +586,8 @@ static void remove_device(struct connman_device *device)
 
 	type = __connman_device_get_service_type(device);
 	__connman_notifier_unregister(type);
+
+	__connman_technology_remove_device(device);
 
 	unregister_interface(&device->element);
 

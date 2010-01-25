@@ -153,7 +153,7 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/ipconfig-api.txt doc/plugin-api.txt \
 				doc/manager-api.txt doc/agent-api.txt \
 				doc/profile-api.txt doc/service-api.txt \
-				doc/counter-api.txt \
+				doc/technology-api.txt doc/counter-api.txt \
 				doc/device-lowlevel-api.txt \
 				doc/network-lowlevel-api.txt \
 				doc/advanced-configuration.txt

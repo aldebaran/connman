@@ -269,6 +269,11 @@ connman_bool_t __connman_udev_get_blocked(int phyindex);
 
 #include <connman/device.h>
 
+void __connman_technology_list(DBusMessageIter *iter, void *user_data);
+
+int __connman_technology_add_device(struct connman_device *device);
+int __connman_technology_remove_device(struct connman_device *device);
+
 int __connman_device_init(void);
 void __connman_device_cleanup(void);
 
@@ -281,7 +286,6 @@ void __connman_device_set_phyindex(struct connman_device *device,
 							int phyindex);
 int __connman_device_set_blocked(struct connman_device *device,
 						connman_bool_t blocked);
-
 
 void __connman_device_increase_connections(struct connman_device *device);
 void __connman_device_decrease_connections(struct connman_device *device);

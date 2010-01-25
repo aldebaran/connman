@@ -9,21 +9,27 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 
 properties = manager.GetProperties()
 
-for path in properties["Devices"]:
-	device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Device")
+for path in properties["Technologies"]:
+	technology = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Technology")
 
-	properties = device.GetProperties()
+	properties = technology.GetProperties()
 
-	print "[ %s ]" % (path)
+	for path in properties["Devices"]:
+		device = dbus.Interface(bus.get_object("org.moblin.connman", path),
+							"org.moblin.connman.Device")
 
-	for key in properties.keys():
-		if key in ["Networks"]:
-			val = ""
-			for i in properties[key]:
-				val += i + " "
-		else:
-			val = str(properties[key])
-		print "    %s = %s" % (key, val)
+		properties = device.GetProperties()
 
-	print
+		print "[ %s ]" % (path)
+
+		for key in properties.keys():
+			if key in ["Networks"]:
+				val = ""
+				for i in properties[key]:
+					val += i + " "
+			else:
+				val = str(properties[key])
+			print "    %s = %s" % (key, val)
+
+		print

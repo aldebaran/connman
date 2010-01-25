@@ -29,6 +29,7 @@ extern "C" {
 #endif
 
 #define CONNMAN_SERVICE			"org.moblin.connman"
+#define CONNMAN_PATH			"/org/moblin/connman"
 
 #define CONNMAN_DEBUG_INTERFACE		CONNMAN_SERVICE ".Debug"
 #define CONNMAN_ERROR_INTERFACE		CONNMAN_SERVICE ".Error"
@@ -44,6 +45,7 @@ extern "C" {
 #define CONNMAN_DEVICE_INTERFACE	CONNMAN_SERVICE ".Device"
 #define CONNMAN_NETWORK_INTERFACE	CONNMAN_SERVICE ".Network"
 #define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
+#define CONNMAN_TECHNOLOGY_INTERFACE	CONNMAN_SERVICE ".Technology"
 
 typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter,
 							void *user_data);

@@ -1,0 +1,34 @@
+Technology hierarchy
+====================
+
+Service		org.moblin.connman
+Interface	org.moblin.connman.Technology
+Object path	[variable prefix]/{technology0,technology1,...}
+
+Methods		dict GetProperties()
+
+			Returns properties for the technology object. See
+			the properties section for available properties.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
+Properties	string Name [readonly]
+
+			Name of this technology.
+
+		string Type [readonly]
+
+			The technology type (for example "ethernet" etc.)
+
+			This information should only be used to determine
+			advanced properties or showing the correct icon
+			to the user.
+
+		array{object} Devices [readonly]
+
+			List of device objects.

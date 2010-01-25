@@ -187,9 +187,9 @@ Properties	string State [readonly]
 
 			List of profile object paths.
 
-		array{object} Devices [readonly]
+		array{object} Technologies [readonly]
 
-			List of device object paths.
+			List of technology object paths.
 
 		array{object} Services [readonly]
 
