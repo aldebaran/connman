@@ -32,9 +32,18 @@ static DBusConnection *connection;
 static GHashTable *device_table;
 static GSList *technology_list = NULL;
 
+enum connman_technology_state {
+	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
+	CONNMAN_TECHNOLOGY_STATE_OFFLINE   = 1,
+	CONNMAN_TECHNOLOGY_STATE_AVAILABLE = 2,
+	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 3,
+	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 4,
+};
+
 struct connman_technology {
 	gint refcount;
 	enum connman_service_type type;
+	enum connman_technology_state state;
 	char *path;
 	GSList *device_list;
 };
@@ -86,6 +95,37 @@ static void devices_changed(struct connman_technology *technology)
 			DBUS_TYPE_OBJECT_PATH, device_list, technology);
 }
 
+static const char *state2string(enum connman_technology_state state)
+{
+	switch (state) {
+	case CONNMAN_TECHNOLOGY_STATE_UNKNOWN:
+		break;
+	case CONNMAN_TECHNOLOGY_STATE_OFFLINE:
+		return "offline";
+	case CONNMAN_TECHNOLOGY_STATE_AVAILABLE:
+		return "available";
+	case CONNMAN_TECHNOLOGY_STATE_ENABLED:
+		return "enabled";
+	case CONNMAN_TECHNOLOGY_STATE_CONNECTED:
+		return "connected";
+	}
+
+	return NULL;
+}
+
+static void state_changed(struct connman_technology *technology)
+{
+	const char *str;
+
+	str = state2string(technology->state);
+	if (str == NULL)
+		return;
+
+	connman_dbus_property_changed_basic(technology->path,
+				CONNMAN_TECHNOLOGY_INTERFACE, "State",
+						DBUS_TYPE_STRING, &str);
+}
+
 static const char *get_name(enum connman_service_type type)
 {
 	switch (type) {
@@ -124,6 +164,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_init_append(reply, &array);
 
 	connman_dbus_dict_open(&array, &dict);
+
+	str = state2string(technology->state);
+	if (str != NULL)
+		connman_dbus_dict_append_basic(&dict, "State",
+						DBUS_TYPE_STRING, &str);
 
 	str = get_name(technology->type);
 	if (str != NULL)
@@ -257,9 +302,13 @@ int __connman_technology_add_device(struct connman_device *device)
 
 	g_hash_table_insert(device_table, device, technology);
 
+	if (technology->device_list == NULL) {
+		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+		state_changed(technology);
+	}
+
 	technology->device_list = g_slist_append(technology->device_list,
 								device);
-
 	devices_changed(technology);
 
 	return 0;
@@ -277,8 +326,12 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
-
 	devices_changed(technology);
+
+	if (technology->device_list == NULL) {
+		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
+		state_changed(technology);
+	}
 
 	g_hash_table_remove(device_table, device);
 

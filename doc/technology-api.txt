@@ -17,7 +17,14 @@ Signals		PropertyChanged(string name, variant value)
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string Name [readonly]
+Properties	string State [readonly]
+
+			The technology state information.
+
+			Valid states are "offline", "available", "enabled"
+			and "connected".
+
+		string Name [readonly]
 
 			Name of this technology.
 
