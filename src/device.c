@@ -203,7 +203,6 @@ static void powered_changed(struct connman_device *device)
 static int set_powered(struct connman_device *device, connman_bool_t powered)
 {
 	struct connman_device_driver *driver = device->driver;
-	enum connman_service_type type;
 	int err;
 
 	DBG("device %p powered %d", device, powered);
@@ -214,15 +213,13 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 	if (!driver)
 		return -EINVAL;
 
-	type = __connman_device_get_service_type(device);
-
 	if (powered == TRUE) {
 		if (driver->enable) {
 			device->powered_pending = powered;
 
 			err = driver->enable(device);
 			if (err == 0)
-				__connman_notifier_enable(type);
+				__connman_technology_enable_device(device);
 		} else
 			err = -EINVAL;
 	} else {
@@ -237,7 +234,7 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 		if (driver->disable) {
 			err = driver->disable(device);
 			if (err == 0)
-				__connman_notifier_disable(type);
+				__connman_technology_disable_device(device);
 		} else
 			err = -EINVAL;
 	}
@@ -511,7 +508,6 @@ static void unregister_interface(struct connman_element *element)
 
 static int setup_device(struct connman_device *device)
 {
-	enum connman_service_type type;
 	int err;
 
 	DBG("device %p", device);
@@ -525,9 +521,6 @@ static int setup_device(struct connman_device *device)
 	}
 
 	__connman_technology_add_device(device);
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_register(type);
 
 	switch (device->mode) {
 	case CONNMAN_DEVICE_MODE_UNKNOWN:
@@ -571,8 +564,6 @@ static void probe_driver(struct connman_element *element, gpointer user_data)
 
 static void remove_device(struct connman_device *device)
 {
-	enum connman_service_type type;
-
 	DBG("device %p", device);
 
 	__connman_device_disable(device);
@@ -583,9 +574,6 @@ static void remove_device(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		break;
 	}
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_unregister(type);
 
 	__connman_technology_remove_device(device);
 
@@ -967,8 +955,6 @@ enum connman_device_mode connman_device_get_mode(struct connman_device *device)
 int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered)
 {
-	enum connman_service_type type;
-
 	DBG("driver %p powered %d", device, powered);
 
 	if (device->timeout > 0) {
@@ -990,12 +976,10 @@ int connman_device_set_powered(struct connman_device *device,
 	device->powered = powered;
 	device->powered_pending = powered;
 
-	type = __connman_device_get_service_type(device);
-
 	if (device->powered == TRUE)
-		__connman_notifier_enable(type);
+		__connman_technology_enable_device(device);
 	else
-		__connman_notifier_disable(type);
+		__connman_technology_disable_device(device);
 
 	if (device->registered == FALSE)
 		return 0;
@@ -1050,7 +1034,6 @@ int __connman_device_scan(struct connman_device *device)
 
 int __connman_device_enable(struct connman_device *device)
 {
-	enum connman_service_type type;
 	int err;
 
 	DBG("device %p", device);
@@ -1069,8 +1052,7 @@ int __connman_device_enable(struct connman_device *device)
 
 	device->powered = TRUE;
 
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_enable(type);
+	__connman_technology_enable_device(device);
 
 	return 0;
 }
@@ -1088,7 +1070,6 @@ int __connman_device_enable_persistent(struct connman_device *device)
 
 int __connman_device_disable(struct connman_device *device)
 {
-	enum connman_service_type type;
 	int err;
 
 	DBG("device %p", device);
@@ -1116,8 +1097,7 @@ int __connman_device_disable(struct connman_device *device)
 
 	device->powered = FALSE;
 
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_disable(type);
+	__connman_technology_disable_device(device);
 
 	return 0;
 }

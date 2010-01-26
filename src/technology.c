@@ -53,6 +53,7 @@ struct connman_technology {
 	char *path;
 	GHashTable *rfkill_list;
 	GSList *device_list;
+	gint enabled;
 };
 
 static void free_rfkill(gpointer data)
@@ -316,6 +317,7 @@ int __connman_technology_add_device(struct connman_device *device)
 	DBG("device %p", device);
 
 	type = __connman_device_get_service_type(device);
+	__connman_notifier_register(type);
 
 	technology = technology_get(type);
 	if (technology == NULL)
@@ -338,8 +340,12 @@ int __connman_technology_add_device(struct connman_device *device)
 int __connman_technology_remove_device(struct connman_device *device)
 {
 	struct connman_technology *technology;
+	enum connman_service_type type;
 
 	DBG("device %p", device);
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_unregister(type);
 
 	technology = g_hash_table_lookup(device_table, device);
 	if (technology == NULL)
@@ -355,6 +361,50 @@ int __connman_technology_remove_device(struct connman_device *device)
 	}
 
 	g_hash_table_remove(device_table, device);
+
+	return 0;
+}
+
+int __connman_technology_enable_device(struct connman_device *device)
+{
+	struct connman_technology *technology;
+	enum connman_service_type type;
+
+	DBG("device %p", device);
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_enable(type);
+
+	technology = g_hash_table_lookup(device_table, device);
+	if (technology == NULL)
+		return -ENXIO;
+
+	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
+		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
+		state_changed(technology);
+	}
+
+	return 0;
+}
+
+int __connman_technology_disable_device(struct connman_device *device)
+{
+	struct connman_technology *technology;
+	enum connman_service_type type;
+
+	DBG("device %p", device);
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_disable(type);
+
+	technology = g_hash_table_lookup(device_table, device);
+	if (technology == NULL)
+		return -ENXIO;
+
+	if (g_atomic_int_dec_and_test(&technology->enabled) == TRUE) {
+		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+		state_changed(technology);
+	}
 
 	return 0;
 }

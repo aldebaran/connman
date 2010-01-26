@@ -273,6 +273,8 @@ void __connman_technology_list(DBusMessageIter *iter, void *user_data);
 
 int __connman_technology_add_device(struct connman_device *device);
 int __connman_technology_remove_device(struct connman_device *device);
+int __connman_technology_enable_device(struct connman_device *device);
+int __connman_technology_disable_device(struct connman_device *device);
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,
 						connman_bool_t softblock,
