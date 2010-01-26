@@ -65,11 +65,11 @@ struct connman_debug_desc {
  * name it is called in.
  */
 #define DBG(fmt, arg...) do { \
-	static struct connman_debug_desc desc \
+	static struct connman_debug_desc __connman_debug_desc \
 	__attribute__((used, section("__debug"), aligned(8))) = { \
 		.file = __FILE__, .flags = CONNMAN_DEBUG_FLAG_DEFAULT, \
 	}; \
-	if (desc.flags & CONNMAN_DEBUG_FLAG_PRINT) \
+	if (__connman_debug_desc.flags & CONNMAN_DEBUG_FLAG_PRINT) \
 		connman_debug("%s:%s() " fmt, \
 					__FILE__, __FUNCTION__ , ## arg); \
 } while (0)
