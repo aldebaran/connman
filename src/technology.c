@@ -29,8 +29,14 @@
 
 static DBusConnection *connection;
 
+static GHashTable *rfkill_table;
 static GHashTable *device_table;
 static GSList *technology_list = NULL;
+
+struct connman_rfkill {
+	unsigned int index;
+	enum connman_service_type type;
+};
 
 enum connman_technology_state {
 	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
@@ -45,8 +51,16 @@ struct connman_technology {
 	enum connman_service_type type;
 	enum connman_technology_state state;
 	char *path;
+	GHashTable *rfkill_list;
 	GSList *device_list;
 };
+
+static void free_rfkill(gpointer data)
+{
+	struct connman_rfkill *rfkill = data;
+
+	g_free(rfkill);
+}
 
 void __connman_technology_list(DBusMessageIter *iter, void *user_data)
 {
@@ -241,6 +255,12 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->path = g_strdup_printf("%s/technology/%s",
 							CONNMAN_PATH, str);
 
+	technology->rfkill_list = g_hash_table_new_full(g_int_hash, g_int_equal,
+							NULL, free_rfkill);
+	technology->device_list = NULL;
+
+	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
+
 	if (g_dbus_register_interface(connection, technology->path,
 					CONNMAN_TECHNOLOGY_INTERFACE,
 					technology_methods, technology_signals,
@@ -274,15 +294,16 @@ static void technology_put(struct connman_technology *technology)
 	g_dbus_unregister_interface(connection, technology->path,
 						CONNMAN_TECHNOLOGY_INTERFACE);
 
+	g_slist_free(technology->device_list);
+	g_hash_table_destroy(technology->rfkill_list);
+
 	g_free(technology->path);
 	g_free(technology);
 }
 
-static void unregister_device(gpointer data)
+static void unregister_technology(gpointer data)
 {
 	struct connman_technology *technology = data;
-
-	DBG("technology %p", technology);
 
 	technology_put(technology);
 }
@@ -338,14 +359,79 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
+int __connman_technology_add_rfkill(unsigned int index,
+					enum connman_service_type type,
+						connman_bool_t softblock,
+						connman_bool_t hardblock)
+{
+	struct connman_technology *technology;
+	struct connman_rfkill *rfkill;
+
+	DBG("index %u type %d soft %u hard %u", index, type,
+							softblock, hardblock);
+
+	rfkill = g_try_new0(struct connman_rfkill, 1);
+	if (rfkill == NULL)
+		return -ENOMEM;
+
+	rfkill->index = index;
+	rfkill->type = type;
+
+	technology = technology_get(type);
+	if (technology == NULL) {
+		g_free(rfkill);
+		return -ENXIO;
+	}
+
+	g_hash_table_replace(rfkill_table, &index, technology);
+
+	g_hash_table_replace(technology->rfkill_list, &index, rfkill);
+
+	return 0;
+}
+
+int __connman_technology_update_rfkill(unsigned int index,
+						connman_bool_t softblock,
+						connman_bool_t hardblock)
+{
+	struct connman_technology *technology;
+
+	DBG("index %u soft %u hard %u", index, softblock, hardblock);
+
+	technology = g_hash_table_lookup(rfkill_table, &index);
+	if (technology == NULL)
+		return -ENXIO;
+
+	return 0;
+}
+
+int __connman_technology_remove_rfkill(unsigned int index)
+{
+	struct connman_technology *technology;
+
+	DBG("index %u", index);
+
+	technology = g_hash_table_lookup(rfkill_table, &index);
+	if (technology == NULL)
+		return -ENXIO;
+
+	g_hash_table_remove(technology->rfkill_list, &index);
+
+	g_hash_table_remove(rfkill_table, &index);
+
+	return 0;
+}
+
 int __connman_technology_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
 
+	rfkill_table = g_hash_table_new_full(g_int_hash, g_int_equal,
+						NULL, unregister_technology);
 	device_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-						NULL, unregister_device);
+						NULL, unregister_technology);
 
 	return 0;
 }
@@ -355,6 +441,7 @@ void __connman_technology_cleanup(void)
 	DBG("");
 
 	g_hash_table_destroy(device_table);
+	g_hash_table_destroy(rfkill_table);
 
 	dbus_connection_unref(connection);
 }
