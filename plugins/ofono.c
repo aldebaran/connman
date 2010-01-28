@@ -570,8 +570,6 @@ static int network_connect(struct connman_network *network)
 	if (connman_network_get_index(network) >= 0)
 		return -EISCONN;
 
-	set_apn(network);
-
 	return set_network_active(network, TRUE);
 }
 
@@ -588,6 +586,16 @@ static void network_remove(struct connman_network *network)
 	DBG("network %p", network);
 }
 
+static int network_setup(struct connman_network *network, const char *key)
+{
+	DBG("");
+
+	if (g_strcmp0(key, "Cellular.APN") == 0)
+		set_apn(network);
+
+	return 0;
+}
+
 static struct connman_network_driver network_driver = {
 	.name		= "network",
 	.type		= CONNMAN_NETWORK_TYPE_CELLULAR,
@@ -595,6 +603,7 @@ static struct connman_network_driver network_driver = {
 	.remove		= network_remove,
 	.connect	= network_connect,
 	.disconnect	= network_disconnect,
+	.setup		= network_setup,
 };
 
 static void add_network(struct connman_device *device, const char *path)

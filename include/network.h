@@ -141,6 +141,7 @@ struct connman_network_driver {
 	void (*remove) (struct connman_network *network);
 	int (*connect) (struct connman_network *network);
 	int (*disconnect) (struct connman_network *network);
+	int (*setup) (struct connman_network *network, const char *key);
 };
 
 int connman_network_driver_register(struct connman_network_driver *driver);
