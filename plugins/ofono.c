@@ -44,6 +44,7 @@
 #define OFONO_GPRS_INTERFACE		OFONO_SERVICE ".DataConnectionManager"
 #define OFONO_SIM_INTERFACE		OFONO_SERVICE ".SimManager"
 #define OFONO_PRI_CONTEXT_INTERFACE	OFONO_SERVICE ".PrimaryDataContext"
+#define OFONO_REGISTRATION_INTERFACE	OFONO_SERVICE ".NetworkRegistration"
 
 #define PROPERTY_CHANGED		"PropertyChanged"
 #define GET_PROPERTIES			"GetProperties"
@@ -184,6 +185,106 @@ static char *get_ident(const char *path)
 	return ident;
 }
 
+static void create_service(struct connman_network *network)
+{
+	const char *path;
+	char *group;
+
+	DBG("");
+
+	path = connman_network_get_string(network, "Path");
+
+	group = get_ident(path);
+
+	connman_network_set_group(network, group);
+
+	g_free(group);
+}
+
+static void set_network_name_reply(DBusPendingCall *call, void *user_data)
+{
+	struct connman_network *network = user_data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+
+	DBG("network %p", network);
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Operator") == TRUE) {
+			const char *name;
+
+			dbus_message_iter_get_basic(&value, &name);
+			connman_network_set_name(network, name);
+			create_service(network);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static void set_network_name(struct connman_network *network)
+{
+	struct connman_device *device;
+	DBusMessage *message;
+	DBusPendingCall *call;
+	const char *path;
+
+	device = connman_network_get_device(network);
+
+	path = connman_device_get_string(device, "Path");
+	if (path == NULL)
+		return;
+
+	DBG("path %s", path);
+
+	message = dbus_message_new_method_call(OFONO_SERVICE, path,
+				OFONO_REGISTRATION_INTERFACE, GET_PROPERTIES);
+	if (message == NULL)
+		return;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to get operator");
+		goto done;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		goto done;
+	}
+
+	dbus_pending_call_set_notify(call, set_network_name_reply,
+						(void *)network, NULL);
+
+done:
+	dbus_message_unref(message);
+}
+
 static void config_network_reply(DBusPendingCall *call, void *user_data)
 {
 	struct connman_network *network = user_data;
@@ -213,12 +314,7 @@ static void config_network_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Name") == TRUE) {
-			const char *name;
-
-			dbus_message_iter_get_basic(&value, &name);
-			connman_network_set_name(network, name);
-		} else if (g_str_equal(key, "Type") == TRUE) {
+		if (g_str_equal(key, "Type") == TRUE) {
 			const char *type;
 
 			dbus_message_iter_get_basic(&value, &type);
@@ -227,6 +323,7 @@ static void config_network_reply(DBusPendingCall *call, void *user_data)
 
 				connman_network_set_protocol(network,
 						CONNMAN_NETWORK_PROTOCOL_IP);
+				set_network_name(network);
 			} else {
 				internet_type = FALSE;
 
@@ -236,19 +333,6 @@ static void config_network_reply(DBusPendingCall *call, void *user_data)
 		}
 
 		dbus_message_iter_next(&dict);
-	}
-
-	if (internet_type == TRUE) {
-		const char *path;
-		char *group;
-
-		path = connman_network_get_string(network, "Path");
-
-		group = get_ident(path);
-
-		connman_network_set_group(network, group);
-
-		g_free(group);
 	}
 
 done:
