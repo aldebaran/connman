@@ -116,6 +116,10 @@ Properties	string State [readonly]
 			Valid states are "idle", "failure", "association",
 			"configuration" and "ready".
 
+			Also "login" and "online" states are used. The
+			state "online" signals that an Internet connection
+			is available and has been verified.
+
 		string Error [readonly]
 
 			The service error status details.

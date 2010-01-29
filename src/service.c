@@ -203,6 +203,8 @@ static const char *state2string(enum connman_service_state state)
 		return "configuration";
 	case CONNMAN_SERVICE_STATE_READY:
 		return "ready";
+	case CONNMAN_SERVICE_STATE_LOGIN:
+		return "login";
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		return "online";
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
@@ -431,6 +433,7 @@ static void append_ethernet(DBusMessageIter *iter, void *user_data)
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
 	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	}
@@ -452,6 +455,7 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
 		return;
 	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	}
@@ -481,6 +485,7 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
 		return;
 	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	}
@@ -846,6 +851,7 @@ static connman_bool_t is_connecting(struct connman_service *service)
 	case CONNMAN_SERVICE_STATE_FAILURE:
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
