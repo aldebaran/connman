@@ -1250,6 +1250,7 @@ int __connman_element_init(const char *device, const char *nodevice)
 
 	__connman_technology_init();
 	__connman_notifier_init();
+	__connman_location_init();
 	__connman_service_init();
 	__connman_provider_init();
 	__connman_network_init();
@@ -1344,6 +1345,7 @@ void __connman_element_cleanup(void)
 	__connman_device_cleanup();
 	__connman_network_cleanup();
 	__connman_service_cleanup();
+	__connman_location_cleanup();
 	__connman_notifier_cleanup();
 	__connman_technology_cleanup();
 

@@ -75,6 +75,7 @@ struct connman_service {
 	char *phase2;
 	DBusMessage *pending;
 	guint timeout;
+	struct connman_location *location;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -1251,6 +1252,9 @@ static void service_free(gpointer user_data)
 		service->ipconfig = NULL;
 	}
 
+	if (service->location != NULL)
+		connman_location_unref(service->location);
+
 	g_free(service->mcc);
 	g_free(service->mnc);
 	g_free(service->apn);
@@ -1336,7 +1340,14 @@ struct connman_service *connman_service_create(void)
 
 	__connman_service_initialize(service);
 
+	service->location = __connman_location_create(service);
+
 	return service;
+}
+
+struct connman_location *__connman_service_get_location(struct connman_service *service)
+{
+	return service->location;
 }
 
 /**
@@ -1588,7 +1599,11 @@ int __connman_service_indicate_state(struct connman_service *service,
 		__connman_notifier_connect(service->type);
 
 		default_changed();
+
+		__connman_location_detect(service);
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
+		__connman_location_finish(service);
+
 		default_changed();
 
 		__connman_notifier_disconnect(service->type);

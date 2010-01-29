@@ -409,6 +409,17 @@ void __connman_service_auto_connect(void);
 
 const char *__connman_service_type2string(enum connman_service_type type);
 
+#include <connman/location.h>
+
+int __connman_location_init(void);
+void __connman_location_cleanup(void);
+
+struct connman_location *__connman_location_create(struct connman_service *service);
+struct connman_location *__connman_service_get_location(struct connman_service *service);
+
+int __connman_location_detect(struct connman_service *service);
+int __connman_location_finish(struct connman_service *service);
+
 #include <connman/provider.h>
 
 void __connman_provider_list(DBusMessageIter *iter, void *user_data);
