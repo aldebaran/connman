@@ -5,6 +5,14 @@ import gobject
 import dbus
 import dbus.mainloop.glib
 
+def extract_values(values):
+	val = "{"
+	for key in values.keys():
+		val += " " + key + "="
+		val += str(values[key])
+	val += " }"
+	return val
+
 def property_changed(name, value, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
 	ipath = path[path.rfind("/") + 1:]
@@ -16,6 +24,8 @@ def property_changed(name, value, path, interface):
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
 		val = val + " ]"
+	elif name in ["IPv4", "IPv4.Configuration", "Proxy", "Ethernet"]:
+		val = extract_values(value)
 	elif name in ["Strength", "Priority"]:
 		val = int(value)
 	else:
