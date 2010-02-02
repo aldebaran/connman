@@ -318,7 +318,7 @@ static char *index2ident(int index, const char *prefix)
 	return str;
 }
 
-connman_bool_t connman_inet_is_mac80211(int index)
+connman_bool_t connman_inet_is_cfg80211(int index)
 {
 	connman_bool_t result = FALSE;
 	char phy80211_path[PATH_MAX];

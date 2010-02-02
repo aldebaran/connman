@@ -177,7 +177,7 @@ struct supplicant_result {
 struct supplicant_task {
 	int ifindex;
 	char *ifname;
-	gboolean mac80211;
+	gboolean cfg80211;
 	struct connman_device *device;
 	struct connman_network *network;
 	struct connman_network *pending_network;
@@ -988,7 +988,7 @@ static int set_network(struct supplicant_task *task,
 		const char *auth_alg = "OPEN";
 		const char *key_index = "0";
 
-		if (task->mac80211 == TRUE)
+		if (task->cfg80211 == TRUE)
 			auth_alg = "OPEN SHARED";
 
 		connman_dbus_dict_append_basic(&dict, "auth_alg",
@@ -2004,8 +2004,8 @@ int supplicant_start(struct connman_device *device)
 		goto failed;
 	}
 
-	task->mac80211 = connman_inet_is_mac80211(task->ifindex);
-	if (task->mac80211 == FALSE)
+	task->cfg80211 = connman_inet_is_cfg80211(task->ifindex);
+	if (task->cfg80211 == FALSE)
 		connman_warn("Enabling quirks for unsupported driver");
 
 	task->range = g_try_malloc0(sizeof(struct iw_range));

@@ -40,7 +40,7 @@ int connman_inet_ifup(int index);
 int connman_inet_ifdown(int index);
 
 struct connman_device *connman_inet_create_device(int index);
-connman_bool_t connman_inet_is_mac80211(int index);
+connman_bool_t connman_inet_is_cfg80211(int index);
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress);
 int connman_inet_clear_address(int index);
