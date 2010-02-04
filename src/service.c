@@ -1137,8 +1137,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *move_before(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static DBusMessage *move_service(DBusConnection *conn,
+					DBusMessage *msg, void *user_data,
+								gboolean before)
 {
 	struct connman_service *service = user_data;
 	struct connman_service *target;
@@ -1168,41 +1169,23 @@ static DBusMessage *move_before(DBusConnection *conn,
 	src = g_hash_table_lookup(service_hash, service->identifier);
 	dst = g_hash_table_lookup(service_hash, target->identifier);
 
-	g_sequence_move(src, dst);
+	before ? g_sequence_move(src, dst) : g_sequence_move(dst, src);
 
 	__connman_profile_changed(FALSE);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *move_before(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	return move_service(conn, msg, user_data, TRUE);
+}
+
 static DBusMessage *move_after(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
-	struct connman_service *service = user_data;
-	struct connman_service *target;
-	const char *path;
-
-	DBG("service %p", service);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-
-	if (service->favorite == FALSE)
-		return __connman_error_not_supported(msg);
-
-	target = find_service(path);
-	if (target == NULL || target->favorite == FALSE || target == service)
-		return __connman_error_invalid_service(msg);
-
-	DBG("target %s", target->identifier);
-
-	if (target->state != service->state)
-		return __connman_error_invalid_service(msg);
-
-	g_get_current_time(&service->modified);
-	__connman_storage_save_service(service);
-
-	return __connman_error_not_implemented(msg);
+	return move_service(conn, msg, user_data, FALSE);
 }
 
 static GDBusMethodTable service_methods[] = {
