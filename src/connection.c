@@ -286,8 +286,9 @@ static int connection_probe(struct connman_element *element)
 	}
 
 	if (new_gateway->vpn == TRUE) {
-		connman_inet_add_host_route(active_gateway->index,
-						active_gateway->gateway);
+		connman_inet_add_host_route_vpn(active_gateway->index,
+						active_gateway->gateway,
+						new_gateway->gateway);
 
 		connman_inet_set_gateway_address(new_gateway->index,
 							new_gateway->gateway);
