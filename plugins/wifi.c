@@ -97,9 +97,10 @@ static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
 	if ((wifi->flags & IFF_UP) != (flags & IFF_UP)) {
 		if (flags & IFF_UP) {
 			DBG("power on");
-
+			connman_device_set_powered(device, TRUE);
 			supplicant_scan(device);
 		} else {
+			connman_device_set_powered(device, FALSE);
 			DBG("power off");
 		}
 	}
