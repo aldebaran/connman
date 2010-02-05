@@ -9,17 +9,22 @@ manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
 
 properties = manager.GetProperties()
 
-for path in properties["Devices"]:
-	device = dbus.Interface(bus.get_object('org.moblin.connman', path),
-						'org.moblin.connman.Device')
-
-	properties = device.GetProperties()
+for path in properties["Technologies"]:
+	technology = dbus.Interface(bus.get_object('org.moblin.connman', path),
+						'org.moblin.connman.Technology')
+	properties = technology.GetProperties()
 
 	print "[ %s ]" % (path)
 
 	if properties["Type"] in ["wifi", "wimax"]:
+
 		print "   Started scanning"
-		device.ProposeScan()
+
+		for path in properties["Devices"]:
+			device = dbus.Interface(bus.get_object('org.moblin.connman', path),
+								'org.moblin.connman.Device')
+
+			device.ProposeScan()
 	else:
 		print "   No scanning"
 
