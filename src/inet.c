@@ -547,6 +547,11 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 
 	DBG("ifname %s", ifr.ifr_name);
 
+	if (ipaddress->local == NULL) {
+		close(sk);
+		return -1;
+	}
+
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = inet_addr(ipaddress->local);
@@ -569,7 +574,13 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(ipaddress->broadcast);
+
+	if (ipaddress->broadcast != NULL)
+		addr.sin_addr.s_addr = inet_addr(ipaddress->broadcast);
+	else
+		addr.sin_addr.s_addr = inet_addr(ipaddress->local) |
+				htonl(0xfffffffflu >> ipaddress->prefixlen);
+
 	memcpy(&ifr.ifr_broadaddr, &addr, sizeof(ifr.ifr_broadaddr));
 
 	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
