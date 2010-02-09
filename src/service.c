@@ -1062,9 +1062,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 		return NULL;
 	}
 
-	dbus_message_unref(service->pending);
-	service->pending = NULL;
-
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
