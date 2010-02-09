@@ -1231,7 +1231,35 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix)
 {
+	const char *method;
+	char *key;
+
 	DBG("ipconfig %p identifier %s", ipconfig, identifier);
+
+	key = g_strdup_printf("%smethod", prefix);
+	method = g_key_file_get_string(keyfile, identifier, key, NULL);
+	ipconfig->method = __connman_ipconfig_string2method(method);
+	g_free(key);
+
+	key = g_strdup_printf("%snetmask_prefixlen", prefix);
+	ipconfig->address->prefixlen = g_key_file_get_integer(
+				keyfile, identifier, key, NULL);
+	g_free(key);
+
+	key = g_strdup_printf("%slocal_address", prefix);
+	ipconfig->address->local = g_key_file_get_string(
+			keyfile, identifier, key, NULL);
+	g_free(key);
+
+	key = g_strdup_printf("%speer_address", prefix);
+	ipconfig->address->peer = g_key_file_get_string(
+				keyfile, identifier, key, NULL);
+	g_free(key);
+
+	key = g_strdup_printf("%sbroadcast_address", prefix);
+	ipconfig->address->broadcast = g_key_file_get_string(
+				keyfile, identifier, key, NULL);
+	g_free(key);
 
 	return 0;
 }
@@ -1239,7 +1267,39 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix)
 {
+	const char *method;
+	char *key;
+
 	DBG("ipconfig %p identifier %s", ipconfig, identifier);
+
+	method = __connman_ipconfig_method2string(ipconfig->method);
+
+	key = g_strdup_printf("%smethod", prefix);
+	g_key_file_set_string(keyfile, identifier, key, method);
+	g_free(key);
+
+	key = g_strdup_printf("%snetmask_prefixlen", prefix);
+	g_key_file_set_integer(keyfile, identifier,
+			key, ipconfig->address->prefixlen);
+	g_free(key);
+
+	key = g_strdup_printf("%slocal_address", prefix);
+	if (ipconfig->address->local != NULL)
+		g_key_file_set_string(keyfile, identifier,
+				key, ipconfig->address->local);
+	g_free(key);
+
+	key = g_strdup_printf("%speer_address", prefix);
+	if (ipconfig->address->peer != NULL)
+		g_key_file_set_string(keyfile, identifier,
+				key, ipconfig->address->peer);
+	g_free(key);
+
+	key = g_strdup_printf("%sbroadcast_address", prefix);
+	if (ipconfig->address->broadcast != NULL)
+		g_key_file_set_string(keyfile, identifier,
+			"broadcast_address", ipconfig->address->broadcast);
+	g_free(key);
 
 	return 0;
 }
