@@ -1452,6 +1452,15 @@ __connman_service_get_network(struct connman_service *service)
 	return service->network;
 }
 
+struct connman_ipconfig *
+__connman_service_get_ipconfig(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->ipconfig;
+}
+
 /**
  * __connman_service_set_favorite:
  * @service: service structure
@@ -2161,6 +2170,15 @@ static void setup_ipconfig(struct connman_service *service, int index)
 	connman_ipconfig_set_data(service->ipconfig, service);
 
 	connman_ipconfig_set_ops(service->ipconfig, &service_ops);
+}
+
+void __connman_service_create_ipconfig(struct connman_service *service,
+								int index)
+{
+	if (service->ipconfig != NULL)
+		return;
+
+	setup_ipconfig(service, index);
 }
 
 /**
