@@ -20,9 +20,6 @@ for path in properties["Services"]:
 
 	properties = service.GetProperties()
 
-	if properties["State"] != "ready":
-		continue
-
 	print "Setting address %s for %s" % (sys.argv[1], path)
 
 	if len(sys.argv) > 2:
