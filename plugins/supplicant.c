@@ -1899,8 +1899,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 							bssid, bssid_len);
 
 		/* carrier on */
-		connman_network_set_method(task->network,
-				CONNMAN_IPCONFIG_METHOD_DHCP);
 		connman_network_set_connected(task->network, TRUE);
 		break;
 

@@ -1812,6 +1812,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	} else
 		return -EOPNOTSUPP;
 
+	__connman_ipconfig_clear_address(service->ipconfig);
+
 	__connman_ipconfig_disable(service->ipconfig);
 
 	if (err < 0) {

@@ -445,6 +445,19 @@ const char *connman_network_get_path(struct connman_network *network)
  */
 void connman_network_set_index(struct connman_network *network, int index)
 {
+	if (network->element.index < 0) {
+		struct connman_service *service;
+
+		/*
+		 * This is needed for plugins that havent set their ipconfig
+		 * layer yet, due to not being able to get a network index
+		 * prior to creating a service.
+		 */
+		service = __connman_service_lookup_from_network(network);
+		if (service != NULL)
+			__connman_service_create_ipconfig(service, index);
+	}
+
 	network->element.index = index;
 }
 
@@ -652,10 +665,35 @@ static void set_associate_error(struct connman_network *network)
 					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
+static void set_configure_error(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	network->connecting = FALSE;
+
+	service = __connman_service_lookup_from_network(network);
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE);
+}
+
 void connman_network_set_method(struct connman_network *network,
 					enum connman_ipconfig_method method)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+
 	network->element.ipv4.method = method;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return;
+
+	ipconfig = __connman_service_get_ipconfig(service);
+	if (ipconfig == NULL)
+		return;
+
+	connman_ipconfig_set_method(ipconfig, method);
 }
 
 void connman_network_set_error(struct connman_network *network,
@@ -670,6 +708,9 @@ void connman_network_set_error(struct connman_network *network,
 		return;
 	case CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL:
 		set_associate_error(network);
+		break;
+	case CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL:
+		set_configure_error(network);
 		break;
 	}
 }
@@ -694,16 +735,28 @@ static void set_configuration(struct connman_network *network)
 static void set_connected_manual(struct connman_network *network)
 {
 	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+	int err;
 
 	DBG("network %p", network);
 
+	service = __connman_service_lookup_from_network(network);
+
+	ipconfig = __connman_service_get_ipconfig(service);
+
 	set_configuration(network);
+
+	err = __connman_ipconfig_set_address(ipconfig);
+	if (err < 0) {
+		connman_network_set_error(network,
+			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+		return;
+	}
 
 	network->connecting = FALSE;
 
 	connman_network_set_associating(network, FALSE);
 
-	service = __connman_service_lookup_from_network(network);
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
 }
 
@@ -738,11 +791,20 @@ static int set_connected_dhcp(struct connman_network *network)
 static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+	enum connman_ipconfig_method method;
 
-	DBG("network method %d", network->element.ipv4.method);
+	service = __connman_service_lookup_from_network(network);
+
+	ipconfig = __connman_service_get_ipconfig(service);
+
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	DBG("method %d", method);
 
 	if (network->connected == TRUE) {
-		switch (network->element.ipv4.method) {
+		switch (method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 			return FALSE;

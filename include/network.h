@@ -57,6 +57,7 @@ enum connman_network_protocol {
 enum connman_network_error {
 	CONNMAN_NETWORK_ERROR_UNKNOWN         = 0,
 	CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL  = 1,
+	CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL  = 2,
 };
 
 struct connman_network;

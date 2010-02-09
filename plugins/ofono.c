@@ -1619,6 +1619,9 @@ static gboolean pri_context_changed(DBusConnection *connection,
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
+			connman_network_set_method(pending_network,
+						CONNMAN_IPCONFIG_METHOD_FIXED);
+
 			if (static_network_set_connected(
 					pending_network, parent, active) < 0)
 				set_network_active(pending_network, FALSE);
