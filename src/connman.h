@@ -151,6 +151,10 @@ void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
+enum connman_ipconfig_method __connman_ipconfig_get_method(
+				struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);

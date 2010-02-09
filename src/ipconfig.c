@@ -888,6 +888,15 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
+enum connman_ipconfig_method __connman_ipconfig_get_method(
+				struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+
+	return ipconfig->method;
+}
+
 /**
  * connman_ipconfig_bind:
  * @ipconfig: ipconfig structure
@@ -905,6 +914,42 @@ void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 	connman_ipaddress_copy(origin->address, ipaddress);
 
 	connman_inet_set_address(origin->index, origin->address);
+}
+
+int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
+{
+	DBG("");
+
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		break;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		return connman_inet_set_address(ipconfig->index,
+						ipconfig->address);
+	}
+
+	return 0;
+}
+
+int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
+{
+	DBG("");
+
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		break;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		return connman_inet_clear_address(ipconfig->index);
+	}
+
+	return 0;
+
 }
 
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
