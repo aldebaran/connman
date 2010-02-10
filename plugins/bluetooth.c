@@ -246,101 +246,6 @@ static struct connman_network_driver pan_driver = {
 	.disconnect	= pan_disconnect,
 };
 
-static int bluetooth_probe(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	return 0;
-}
-
-static void bluetooth_remove(struct connman_device *device)
-{
-	DBG("device %p", device);
-}
-
-static void powered_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusMessage *reply;
-
-	DBG("");
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
-}
-
-static int change_powered(DBusConnection *connection, const char *path,
-							dbus_bool_t powered)
-{
-	DBusMessage *message;
-	DBusMessageIter iter;
-	DBusPendingCall *call;
-
-	DBG("");
-
-	if (path == NULL)
-		return -EINVAL;
-
-	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
-					BLUEZ_ADAPTER_INTERFACE, SET_PROPERTY);
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_basic(&iter, "Powered",
-						DBUS_TYPE_BOOLEAN, &powered);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to change Powered property");
-		dbus_message_unref(message);
-		return -EINVAL;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		dbus_message_unref(message);
-		return -EINVAL;
-	}
-
-	dbus_pending_call_set_notify(call, powered_reply, NULL, NULL);
-
-	dbus_message_unref(message);
-
-	return -EINPROGRESS;
-}
-
-static int bluetooth_enable(struct connman_device *device)
-{
-	const char *path = connman_device_get_string(device, "Path");
-
-	DBG("device %p", device);
-
-	return change_powered(connection, path, TRUE);
-}
-
-static int bluetooth_disable(struct connman_device *device)
-{
-	const char *path = connman_device_get_string(device, "Path");
-
-	DBG("device %p", device);
-
-	return change_powered(connection, path, FALSE);
-}
-
-static struct connman_device_driver bluetooth_driver = {
-	.name		= "bluetooth",
-	.type		= CONNMAN_DEVICE_TYPE_BLUETOOTH,
-	.probe		= bluetooth_probe,
-	.remove		= bluetooth_remove,
-	.enable		= bluetooth_enable,
-	.disable	= bluetooth_disable,
-};
-
 static void extract_properties(DBusMessage *reply, const char **parent,
 						const char **address,
 						const char **name,
@@ -802,6 +707,104 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 	g_hash_table_destroy(bluetooth_devices);
 	bluetooth_devices = NULL;
 }
+
+static int bluetooth_probe(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	return 0;
+}
+
+static void bluetooth_remove(struct connman_device *device)
+{
+	DBG("device %p", device);
+}
+
+static void powered_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+
+	DBG("");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+
+	add_adapter(connection, user_data);
+}
+
+static int change_powered(DBusConnection *connection, const char *path,
+							dbus_bool_t powered)
+{
+	DBusMessage *message;
+	DBusMessageIter iter;
+	DBusPendingCall *call;
+
+	DBG("");
+
+	if (path == NULL)
+		return -EINVAL;
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+					BLUEZ_ADAPTER_INTERFACE, SET_PROPERTY);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_iter_init_append(message, &iter);
+	connman_dbus_property_append_basic(&iter, "Powered",
+						DBUS_TYPE_BOOLEAN, &powered);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to change Powered property");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, powered_reply,
+					g_strdup(path), g_free);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static int bluetooth_enable(struct connman_device *device)
+{
+	const char *path = connman_device_get_string(device, "Path");
+
+	DBG("device %p", device);
+
+	return change_powered(connection, path, TRUE);
+}
+
+static int bluetooth_disable(struct connman_device *device)
+{
+	const char *path = connman_device_get_string(device, "Path");
+
+	DBG("device %p", device);
+
+	return change_powered(connection, path, FALSE);
+}
+
+static struct connman_device_driver bluetooth_driver = {
+	.name		= "bluetooth",
+	.type		= CONNMAN_DEVICE_TYPE_BLUETOOTH,
+	.probe		= bluetooth_probe,
+	.remove		= bluetooth_remove,
+	.enable		= bluetooth_enable,
+	.disable	= bluetooth_disable,
+};
 
 static guint watch;
 static guint added_watch;
