@@ -625,6 +625,8 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 
 	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
 
+	connman_device_set_string(device, "Path", path);
+
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
 		goto done;
