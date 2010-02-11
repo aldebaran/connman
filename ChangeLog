@@ -1,3 +1,12 @@
+ver 0.49:
+	Fix issue with WiFi power changes.
+	Fix issue with Bluetooth device startup.
+	Fix issue with host route settings for VPN.
+	Fix issue with processing of RFKILL events.
+	Fix some WPA Enterprise privacy issues.
+	Add support for basic Ethernet information.
+	Add support for static IP settings.
+
 ver 0.48:
 	Fix signal strength calculation when quality is not provided.
 	Fix issues with wpa_supplicant state tracking.
