@@ -19,36 +19,42 @@ def convert_ssid(ssid_list):
 			ssid = ssid + "."
 	return ssid
 
-for path in properties["Devices"]:
-	device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Device")
+for path in properties["Technologies"]:
+	technology = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Technology")
 
-	properties = device.GetProperties()
+	properties = technology.GetProperties()
 
-	try:
-		if properties["Type"] not in ["ethernet", "wifi", "wimax",
-						"bluetooth", "cellular"]:
-			continue
-	except:
-		continue
+	for path in properties["Devices"]:
+                device = dbus.Interface(bus.get_object("org.moblin.connman", path),
+                                                        "org.moblin.connman.Device")
 
-	print "[ %s ]" % (path)
+                properties = device.GetProperties()
 
-	for path in properties["Networks"]:
-		network = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Network")
+                try:
+                        if properties["Type"] not in ["ethernet", "wifi", "wimax",
+                                                        "bluetooth", "cellular"]:
+                                continue
+                except:
+                        continue
 
-		properties = network.GetProperties()
+                print "[ %s ]" % (path)
 
-		print "    [ %s ]" % (path)
+                for path in properties["Networks"]:
+                        network = dbus.Interface(bus.get_object("org.moblin.connman", path),
+                                                        "org.moblin.connman.Network")
 
-		for key in properties.keys():
-			if key == "WiFi.SSID":
-				ssid = convert_ssid(properties[key])
-				print "        %s = [ %s ]" % (key, ssid)
-			elif key in ["Strength", "Priority"]:
-				print "        %s = %d" % (key, properties[key])
-			else:
-				print "        %s = %s" % (key, properties[key])
+                        properties = network.GetProperties()
 
-	print
+                        print "    [ %s ]" % (path)
+
+                        for key in properties.keys():
+                                if key == "WiFi.SSID":
+                                        ssid = convert_ssid(properties[key])
+                                        print "        %s = [ %s ]" % (key, ssid)
+                                elif key in ["Strength", "Priority"]:
+                                        print "        %s = %d" % (key, properties[key])
+                                else:
+                                        print "        %s = %s" % (key, properties[key])
+
+                print
