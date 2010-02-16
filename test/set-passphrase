@@ -14,24 +14,30 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 
 properties = manager.GetProperties()
 
-for path in properties["Devices"]:
-	device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Device")
+for path in properties["Technologies"]:
+	technology = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Technology")
 
-	properties = device.GetProperties()
+	properties = technology.GetProperties()
 
-	if (properties["Type"] != "wifi" and properties["Type"] != "wimax"):
-		continue;
+	for path in properties["Devices"]:
+		device = dbus.Interface(bus.get_object("org.moblin.connman", path),
+							"org.moblin.connman.Device")
 
-	for path in properties["Networks"]:
-		network = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Network")
+		properties = device.GetProperties()
 
-		properties = network.GetProperties()
+		if (properties["Type"] != "wifi" and properties["Type"] != "wimax"):
+			continue;
 
-		if "Name" not in properties:
-			continue
+		for path in properties["Networks"]:
+			network = dbus.Interface(bus.get_object("org.moblin.connman", path),
+							"org.moblin.connman.Network")
 
-		if properties["Name"] == sys.argv[1]:
-			print "Setting passphrase for %s" % (path)
-			network.SetProperty("WiFi.Passphrase", sys.argv[2])
+			properties = network.GetProperties()
+
+			if "Name" not in properties:
+				continue
+
+			if properties["Name"] == sys.argv[1]:
+				print "Setting passphrase for %s" % (path)
+				network.SetProperty("WiFi.Passphrase", sys.argv[2])

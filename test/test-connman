@@ -149,6 +149,72 @@ def print_services(services):
 
 		print "%s %-26s { %s }" % (favorite, name, identifier)
 
+def device_handle(devices, interface):
+	for path in devices:
+		device = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Device")
+
+		properties = device.GetProperties()
+
+		if "Interface" not in properties.keys():
+			continue
+
+		if interface != "" and properties["Interface"] != interface:
+			continue
+
+		if command == "scan":
+			if properties["Type"] in ["wifi", "wimax"]:
+				interface = properties["Interface"]
+				print "Scan for device %s" % (interface)
+				device.ProposeScan()
+			else:
+				print "No scanning for device %s" % (interface)
+		elif command == "scan_interval" and value != "":
+			device.SetProperty("ScanInterval", dbus.UInt16(value))
+		elif command in ["networks", "net"]:
+			if "Networks" in properties.keys():
+				print_networks(properties["Networks"])
+			else:
+				print "Device has no networks"
+		elif command in ["connect", "conn"] and value != "":
+			if "Networks" in properties.keys():
+				select_network(properties["Networks"], value)
+			else:
+				print "Device can't connect networks"
+		elif command in ["connect", "conn"]:
+			print "Need to specify network"
+		elif command in ["disconnect", "disc"] and value != "":
+			if "Networks" in properties.keys():
+				disconnect_network(properties["Networks"], value)
+			else:
+				print "Device has no networks"
+		elif command in ["discconnect", "disc"]:
+			if "Networks" in properties.keys():
+				disconnect_network(properties["Networks"], "")
+			else:
+				print "Device has no networks"
+		elif command == "powered" and value != "":
+			if value == "on":
+				powered = dbus.Boolean(1)
+			elif value == "off":
+				powered = dbus.Boolean(0)
+			else:
+				powered = dbus.Boolean(value)
+			device.SetProperty("Powered", powered)
+		elif command == "powered":
+			interface = properties["Interface"]
+			if properties["Powered"] == dbus.Boolean(1):
+				powered = "on"
+			else:
+				powered = "off"
+			print "Device %s is powered %s" % (interface, powered)
+		elif command == "list" or command == "":
+			print_properties(path, properties)
+		else:
+			print "Unknown command"
+
+
+
 if sys.argv[1] == "state":
 	properties = manager.GetProperties()
 
@@ -349,68 +415,13 @@ elif sys.argv[1] == "dev":
 			if len(sys.argv) > 4:
 				value = sys.argv[4]
 
-	for path in properties["Devices"]:
-		device = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Device")
+	for path in properties["Technologies"]:
+		technology = dbus.Interface(bus.get_object("org.moblin.connman", path),
+							"org.moblin.connman.Technology")
 
-		properties = device.GetProperties()
+		properties = technology.GetProperties()
 
-		if "Interface" not in properties.keys():
-			continue
-
-		if interface != "" and properties["Interface"] != interface:
-			continue
-
-		if command == "scan":
-			if properties["Type"] in ["wifi", "wimax"]:
-				interface = properties["Interface"]
-				print "Scan for device %s" % (interface)
-				device.ProposeScan()
-			else:
-				print "No scanning for device %s" % (interface)
-		elif command == "scan_interval" and value != "":
-			device.SetProperty("ScanInterval", dbus.UInt16(value))
-		elif command in ["networks", "net"]:
-			if "Networks" in properties.keys():
-				print_networks(properties["Networks"])
-			else:
-				print "Device has no networks"
-		elif command in ["connect", "conn"] and value != "":
-			if "Networks" in properties.keys():
-				select_network(properties["Networks"], value)
-			else:
-				print "Device can't connect networks"
-		elif command in ["connect", "conn"]:
-			print "Need to specify network"
-		elif command in ["disconnect", "disc"] and value != "":
-			if "Networks" in properties.keys():
-				disconnect_network(properties["Networks"], value)
-			else:
-				print "Device has no networks"
-		elif command in ["discconnect", "disc"]:
-			if "Networks" in properties.keys():
-				disconnect_network(properties["Networks"], "")
-			else:
-				print "Device has no networks"
-		elif command == "powered" and value != "":
-			if value == "on":
-				powered = dbus.Boolean(1)
-			elif value == "off":
-				powered = dbus.Boolean(0)
-			else:
-				powered = dbus.Boolean(value)
-			device.SetProperty("Powered", powered)
-		elif command == "powered":
-			interface = properties["Interface"]
-			if properties["Powered"] == dbus.Boolean(1):
-				powered = "on"
-			else:
-				powered = "off"
-			print "Device %s is powered %s" % (interface, powered)
-		elif command == "list" or command == "":
-			print_properties(path, properties)
-		else:
-			print "Unknown command"
+		device_handle(properties["Devices"], interface)
 
 else:
 	print "Unknown command"

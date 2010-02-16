@@ -14,18 +14,24 @@ manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
 
 properties = manager.GetProperties()
 
-for path in properties["Devices"]:
-	device = dbus.Interface(bus.get_object('org.moblin.connman', path),
-						'org.moblin.connman.Device')
+for path in properties["Technologies"]:
+	technology = dbus.Interface(bus.get_object("org.moblin.connman", path),
+						"org.moblin.connman.Technology")
 
-	properties = device.GetProperties()
+	properties = technology.GetProperties()
 
-	if "Interface" not in properties.keys():
-		continue
+	for path in properties["Devices"]:
+		device = dbus.Interface(bus.get_object('org.moblin.connman', path),
+							'org.moblin.connman.Device')
 
-	if properties["Interface"] != sys.argv[1]:
-		continue
+		properties = device.GetProperties()
 
-	print "Enabling device %s" % (path)
+		if "Interface" not in properties.keys():
+			continue
 
-	device.SetProperty("Powered", dbus.Boolean(1));
+		if properties["Interface"] != sys.argv[1]:
+			continue
+
+		print "Enabling device %s" % (path)
+
+		device.SetProperty("Powered", dbus.Boolean(1));
