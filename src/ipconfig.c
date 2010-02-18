@@ -1238,7 +1238,10 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 
 	key = g_strdup_printf("%smethod", prefix);
 	method = g_key_file_get_string(keyfile, identifier, key, NULL);
-	ipconfig->method = __connman_ipconfig_string2method(method);
+	if (method == NULL)
+		ipconfig->method = CONNMAN_IPCONFIG_METHOD_DHCP;
+	else
+		ipconfig->method = __connman_ipconfig_string2method(method);
 	g_free(key);
 
 	key = g_strdup_printf("%snetmask_prefixlen", prefix);
