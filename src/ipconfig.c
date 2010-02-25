@@ -938,6 +938,11 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 {
 	DBG("");
 
+	if (ipconfig == NULL)
+		return 0;
+
+	DBG("method %d", ipconfig->method);
+
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
