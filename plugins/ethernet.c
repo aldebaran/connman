@@ -106,8 +106,6 @@ static void add_network(struct connman_device *device)
 
 	connman_network_set_group(network, "cable");
 
-	connman_network_set_method(network, CONNMAN_IPCONFIG_METHOD_DHCP);
-
 	connman_network_set_connected(network, TRUE);
 }
 
