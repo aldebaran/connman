@@ -266,7 +266,6 @@ int __connman_udev_init(void);
 void __connman_udev_start(void);
 void __connman_udev_cleanup(void);
 char *__connman_udev_get_devtype(const char *ifname);
-char *__connman_udev_get_mbm_devnode(const char *ifname);
 void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
 void __connman_udev_enable_rfkill_processing(void);
 connman_bool_t __connman_udev_get_blocked(int phyindex);

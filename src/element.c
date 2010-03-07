@@ -211,7 +211,6 @@ struct connman_service *__connman_element_get_service(struct connman_element *el
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_MBM:
 		network = __connman_element_get_network(element);
 		if (network == NULL)
 			return NULL;

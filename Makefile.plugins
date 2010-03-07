@@ -77,22 +77,6 @@ plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if MBM
-if MBM_BUILTIN
-builtin_modules += mbm
-builtin_sources += plugins/mbm.c
-builtin_cflags += -I$(srcdir)/gatchat
-builtin_libadd += plugins/libgatchat.la
-else
-plugin_LTLIBRARIES += plugins/mbm.la
-plugin_objects += $(plugins_mbm_la_OBJECTS)
-plugins_mbm_la_SOURCES = plugins/mbm.c
-plugins_mbm_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
-plugins_mbm_la_LIBADD = plugins/libgatchat.la
-plugins_mbm_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if UDHCP
 if UDHCP_BUILTIN
 builtin_modules += udhcp

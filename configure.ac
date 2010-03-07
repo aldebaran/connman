@@ -191,12 +191,6 @@ AC_ARG_ENABLE(meego,
 AM_CONDITIONAL(MEEGO, test "${enable_meego}" != "no")
 AM_CONDITIONAL(MEEGO_BUILTIN, test "${enable_meego}" = "builtin")
 
-AC_ARG_ENABLE(mbm,
-	AC_HELP_STRING([--enable-mbm], [enable MBM support]),
-			[enable_mbm=${enableval}], [enable_mbm="no"])
-AM_CONDITIONAL(MBM, test "${enable_mbm}" != "no")
-AM_CONDITIONAL(MBM_BUILTIN, test "${enable_mbm}" = "builtin")
-
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 

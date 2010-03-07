@@ -91,7 +91,6 @@ static const char *type2string(enum connman_network_type type)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		return "bluetooth";
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
 		return "cellular";
 	}
 
@@ -514,7 +513,6 @@ void connman_network_set_group(struct connman_network *network,
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
@@ -566,7 +564,6 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
@@ -1436,7 +1433,6 @@ static int network_probe(struct connman_element *element)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		if (network->group != NULL)
@@ -1467,7 +1463,6 @@ static void network_remove(struct connman_element *element)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		if (network->group != NULL) {

@@ -375,7 +375,6 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 		char wimax_path[PATH_MAX];
 		struct stat st;
 		struct iwreq iwr;
-		char *devnode;
 
 		snprintf(phy80211_path, PATH_MAX,
 					"/sys/class/net/%s/phy80211", devname);
@@ -388,13 +387,6 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 
 		memset(&iwr, 0, sizeof(iwr));
 		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
-
-		devnode = __connman_udev_get_mbm_devnode(devname);
-		if (devnode != NULL) {
-			devtype = CONNMAN_DEVICE_TYPE_MBM;
-			g_free(devnode);
-			goto done;
-		}
 
 		if (g_str_has_prefix(devname, "vmnet") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
@@ -465,11 +457,6 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		name = strdup(devname);
 		break;
-	case CONNMAN_DEVICE_TYPE_MBM:
-		name = index2ident(index, "");
-		addr = index2addr(index);
-		node = __connman_udev_get_mbm_devnode(devname);
-		break;
 	}
 
 	device = connman_device_create(name, type);
@@ -495,7 +482,6 @@ struct connman_device *connman_inet_create_device(int index)
 		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_MBM:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
