@@ -176,7 +176,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-resolvconf \
 				--enable-dnsproxy \
 				--enable-google \
-				--enable-moblin \
+				--enable-meego \
 				--enable-hso \
 				--enable-mbm \
 				--enable-udev \

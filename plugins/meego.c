@@ -26,14 +26,14 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 
-static int moblin_init(void)
+static int meego_init(void)
 {
 	return 0;
 }
 
-static void moblin_exit(void)
+static void meego_exit(void)
 {
 }
 
-CONNMAN_PLUGIN_DEFINE(moblin, "Moblin features plugin", VERSION,
-			CONNMAN_PLUGIN_PRIORITY_LOW, moblin_init, moblin_exit)
+CONNMAN_PLUGIN_DEFINE(meego, "MeeGo features plugin", VERSION,
+			CONNMAN_PLUGIN_PRIORITY_LOW, meego_init, meego_exit)

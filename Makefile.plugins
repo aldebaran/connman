@@ -192,15 +192,15 @@ plugins_google_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if MOBLIN
-if MOBLIN_BUILTIN
-builtin_modules += moblin
-builtin_sources += plugins/moblin.c
+if MEEGO
+if MEEGO_BUILTIN
+builtin_modules += meego
+builtin_sources += plugins/meego.c
 else
-plugin_LTLIBRARIES += plugins/moblin.la
-plugin_objects += $(plugins_moblin_la_OBJECTS)
-plugins_moblin_la_CFLAGS = $(plugin_cflags)
-plugins_moblin_la_LDFLAGS = $(plugin_ldflags)
+plugin_LTLIBRARIES += plugins/meego.la
+plugin_objects += $(plugins_meego_la_OBJECTS)
+plugins_meego_la_CFLAGS = $(plugin_cflags)
+plugins_meego_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
