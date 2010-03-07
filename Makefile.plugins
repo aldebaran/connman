@@ -1,15 +1,4 @@
 
-noinst_LTLIBRARIES = plugins/libgatchat.la
-
-plugins_libgatchat_la_SOURCES = gatchat/gatchat.h gatchat/gatchat.c \
-				gatchat/gatresult.h gatchat/gatresult.c \
-				gatchat/gatsyntax.h gatchat/gatsyntax.c \
-				gatchat/ringbuffer.h gatchat/ringbuffer.c \
-				gatchat/gattty.h gatchat/gattty.c \
-				gatchat/gatutil.h gatchat/gatutil.c \
-				gatchat/gat.h
-
-
 plugin_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
 					@DBUS_CFLAGS@ @GLIB_CFLAGS@
 plugin_ldflags = -no-undefined -module -avoid-version
