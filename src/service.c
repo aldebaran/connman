@@ -1671,7 +1671,6 @@ static connman_bool_t prepare_network(struct connman_service *service)
 		break;
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_MBM:
-	case CONNMAN_NETWORK_TYPE_HSO:
 		connman_network_set_string(service->network,
 						"Cellular.APN", service->apn);
 
@@ -2258,7 +2257,6 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_MBM:
-	case CONNMAN_NETWORK_TYPE_HSO:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	}
 

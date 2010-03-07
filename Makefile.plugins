@@ -77,22 +77,6 @@ plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if HSO
-if HSO_BUILTIN
-builtin_modules += hso
-builtin_sources += plugins/hso.c
-builtin_cflags += -I$(srcdir)/gatchat
-builtin_libadd += plugins/libgatchat.la
-else
-plugin_LTLIBRARIES += plugins/hso.la
-plugin_objects += $(plugins_hso_la_OBJECTS)
-plugins_hso_la_SOURCES = plugins/hso.c
-plugins_hso_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
-plugins_hso_la_LIBADD = plugins/libgatchat.la
-plugins_hso_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if MBM
 if MBM_BUILTIN
 builtin_modules += mbm

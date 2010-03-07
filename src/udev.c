@@ -97,7 +97,6 @@ static void add_net_device(struct udev_device *udev_device)
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		break;
 	}
 

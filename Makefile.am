@@ -177,7 +177,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-dnsproxy \
 				--enable-google \
 				--enable-meego \
-				--enable-hso \
 				--enable-mbm \
 				--enable-udev \
 				--enable-client \

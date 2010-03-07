@@ -28,7 +28,6 @@ fi
 		--enable-dnsproxy=builtin \
 		--enable-google=builtin \
 		--enable-meego=builtin \
-		--enable-hso=builtin \
 		--enable-mbm=builtin \
 		--enable-iwmx \
 		--enable-iospm \

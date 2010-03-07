@@ -191,12 +191,6 @@ AC_ARG_ENABLE(meego,
 AM_CONDITIONAL(MEEGO, test "${enable_meego}" != "no")
 AM_CONDITIONAL(MEEGO_BUILTIN, test "${enable_meego}" = "builtin")
 
-AC_ARG_ENABLE(hso,
-	AC_HELP_STRING([--enable-hso], [enable HSO support]),
-			[enable_hso=${enableval}], [enable_hso="no"])
-AM_CONDITIONAL(HSO, test "${enable_hso}" != "no")
-AM_CONDITIONAL(HSO_BUILTIN, test "${enable_hso}" = "builtin")
-
 AC_ARG_ENABLE(mbm,
 	AC_HELP_STRING([--enable-mbm], [enable MBM support]),
 			[enable_mbm=${enableval}], [enable_mbm="no"])

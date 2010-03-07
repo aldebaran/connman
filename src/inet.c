@@ -416,9 +416,6 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 			devtype = CONNMAN_DEVICE_TYPE_WIFI;
 		else
 			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
-	} else if (type == ARPHRD_NONE) {
-		if (g_str_has_prefix(devname, "hso") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_HSO;
 	}
 
 done:
@@ -465,7 +462,6 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_HSO:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		name = strdup(devname);
 		break;
@@ -500,7 +496,6 @@ struct connman_device *connman_inet_create_device(int index)
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
