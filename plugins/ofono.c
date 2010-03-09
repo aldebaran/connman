@@ -609,7 +609,8 @@ static struct connman_network_driver network_driver = {
 static void add_network(struct connman_device *device, const char *path)
 {
 	struct connman_network *network;
-	char *ident;
+	char *ident, *mcc, *mnc;
+	const char *mcc_mnc;
 
 	DBG("device %p path %s", device, path);
 
@@ -629,6 +630,17 @@ static void add_network(struct connman_device *device, const char *path)
 	connman_network_set_string(network, "Path", path);
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
+
+	mcc_mnc = connman_device_get_string(device, "MCC_MNC");
+
+	mcc = g_strndup(mcc_mnc, 3);
+	connman_network_set_string(network, "Cellular.MCC", mcc);
+	g_free(mcc);
+
+	mnc = g_strdup(mcc_mnc + 3);
+	connman_network_set_string(network, "Cellular.MNC", mnc);
+	g_free(mnc);
+
 	connman_device_add_network(device, network);
 }
 
@@ -827,17 +839,22 @@ done:
 	dbus_message_unref(message);
 }
 
-static void add_device(const char *path, const char *imsi)
+static void add_device(const char *path, const char *imsi,
+					unsigned char mnc_length)
 {
 	struct modem_data *modem;
 	struct connman_device *device;
+	char *mcc_mnc;
 
-	DBG("path %s imsi %s", path, imsi);
+	DBG("path %s imsi %s mnc_length %d", path, imsi, mnc_length);
 
 	if (path == NULL)
 		return;
 
 	if (imsi == NULL)
+		return;
+
+	if (mnc_length != 2 && mnc_length != 3)
 		return;
 
 	modem = g_hash_table_lookup(modem_hash, path);
@@ -854,6 +871,10 @@ static void add_device(const char *path, const char *imsi)
 
 	connman_device_set_string(device, "Path", path);
 
+	mcc_mnc = g_strndup(imsi, mnc_length + 3);
+	connman_device_set_string(device, "MCC_MNC", mcc_mnc);
+	g_free(mcc_mnc);
+
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
 		return;
@@ -867,6 +888,8 @@ static void add_device(const char *path, const char *imsi)
 static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	const char *path = user_data;
+	const char *imsi;
+	unsigned char mnc_length;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 
@@ -884,7 +907,7 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
-		const char *key, *imsi;
+		const char *key;
 
 		dbus_message_iter_recurse(&dict, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
@@ -892,14 +915,16 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
+		if (g_str_equal(key, "SubscriberIdentity") == TRUE)
 			dbus_message_iter_get_basic(&value, &imsi);
-
-			add_device(path, imsi);
-		}
+		else if (g_str_equal(key, "MobileNetworkCodeLength") == TRUE)
+			dbus_message_iter_get_basic(&value,
+						(void *) &mnc_length);
 
 		dbus_message_iter_next(&dict);
 	}
+
+	add_device(path, imsi, mnc_length);
 
 done:
 	dbus_message_unref(reply);
