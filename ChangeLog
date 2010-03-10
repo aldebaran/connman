@@ -1,3 +1,6 @@
+ver 0.50.1:
+	Export MCC and MNC for cellular services.
+
 ver 0.50:
 	Fix configuration loading for unknown services.
 	Fix IP method setting of Ethernet plugin.
