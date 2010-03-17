@@ -2281,7 +2281,7 @@ static enum connman_service_security convert_wifi_security(const char *security)
 		return CONNMAN_SERVICE_SECURITY_NONE;
 	else if (g_str_equal(security, "wep") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_WEP;
-	else if (g_str_equal(security, "wep") == TRUE)
+	else if (g_str_equal(security, "psk") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_PSK;
 	else if (g_str_equal(security, "ieee8021x") == TRUE)
 		return CONNMAN_SERVICE_SECURITY_8021X;
