@@ -1,3 +1,7 @@
+ver 0.50.2:
+	Handle the case that MobileNetworkCodeLength is not provided.
+	Correct the modem properties key name.
+	Fix convert_wifi_security for psk string.
 ver 0.50.1:
 	Export MCC and MNC for cellular services.
 
