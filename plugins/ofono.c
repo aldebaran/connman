@@ -1089,7 +1089,7 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 				modem_change_powered(path, TRUE);
 				break;
 			}
-		} else if (g_str_equal(key, "Interface") == TRUE) {
+		} else if (g_str_equal(key, "Interfaces") == TRUE) {
 			if (modem_has_gprs(&value) == TRUE)
 				get_imsi(path);
 		}
