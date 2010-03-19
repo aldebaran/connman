@@ -632,14 +632,15 @@ static void add_network(struct connman_device *device, const char *path)
 	connman_network_set_index(network, -1);
 
 	mcc_mnc = connman_device_get_string(device, "MCC_MNC");
+	if (mcc_mnc != NULL) {
+		mcc = g_strndup(mcc_mnc, 3);
+		connman_network_set_string(network, "Cellular.MCC", mcc);
+		g_free(mcc);
 
-	mcc = g_strndup(mcc_mnc, 3);
-	connman_network_set_string(network, "Cellular.MCC", mcc);
-	g_free(mcc);
-
-	mnc = g_strdup(mcc_mnc + 3);
-	connman_network_set_string(network, "Cellular.MNC", mnc);
-	g_free(mnc);
+		mnc = g_strdup(mcc_mnc + 3);
+		connman_network_set_string(network, "Cellular.MNC", mnc);
+		g_free(mnc);
+	}
 
 	connman_device_add_network(device, network);
 }
@@ -854,9 +855,6 @@ static void add_device(const char *path, const char *imsi,
 	if (imsi == NULL)
 		return;
 
-	if (mnc_length != 2 && mnc_length != 3)
-		return;
-
 	modem = g_hash_table_lookup(modem_hash, path);
 	if (modem == NULL)
 		return;
@@ -871,9 +869,11 @@ static void add_device(const char *path, const char *imsi,
 
 	connman_device_set_string(device, "Path", path);
 
-	mcc_mnc = g_strndup(imsi, mnc_length + 3);
-	connman_device_set_string(device, "MCC_MNC", mcc_mnc);
-	g_free(mcc_mnc);
+	if (mnc_length == 2 || mnc_length == 3) {
+		mcc_mnc = g_strndup(imsi, mnc_length + 3);
+		connman_device_set_string(device, "MCC_MNC", mcc_mnc);
+		g_free(mcc_mnc);
+	}
 
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
@@ -889,7 +889,8 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	const char *path = user_data;
 	const char *imsi;
-	unsigned char mnc_length;
+	/* If MobileNetworkCodeLength is not provided, mnc_length is 0 */
+	unsigned char mnc_length = 0;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 
