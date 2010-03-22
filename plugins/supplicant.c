@@ -509,6 +509,9 @@ static int remove_interface(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
+	if (task->path == NULL)
+		return 0;
+
 #if 0
 	if (task->created == FALSE) {
 		connman_device_set_powered(task->device, FALSE);
@@ -648,7 +651,7 @@ static int remove_network(struct supplicant_task *task)
 
 	DBG("task %p", task);
 
-	if (task->netpath == NULL)
+	if (task->netpath == NULL || task->path == NULL)
 		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
@@ -732,6 +735,9 @@ static int disconnect_network(struct supplicant_task *task)
 	DBusError error;
 
 	DBG("task %p", task);
+
+	if (task->path == NULL)
+		return -EINVAL;
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 				SUPPLICANT_INTF ".Interface", "disconnect");
