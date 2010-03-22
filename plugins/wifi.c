@@ -94,6 +94,9 @@ static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
 
 	DBG("index %d flags %d change %d", wifi->index, flags, change);
 
+	if (!change)
+		return;
+
 	if ((wifi->flags & IFF_UP) != (flags & IFF_UP)) {
 		if (flags & IFF_UP) {
 			DBG("power on");
