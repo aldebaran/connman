@@ -54,6 +54,30 @@ static struct connman_device *find_device(int index)
 	return NULL;
 }
 
+static enum connman_device_type string2devtype(const char *devtype)
+{
+	if (g_strcmp0(devtype, "wlan") == 0)
+		return CONNMAN_DEVICE_TYPE_WIFI;
+	else if (g_strcmp0(devtype, "wimax") == 0)
+		return CONNMAN_DEVICE_TYPE_WIMAX;
+	else if (g_strcmp0(devtype, "wwan") == 0)
+		return CONNMAN_DEVICE_TYPE_CELLULAR;
+
+	return CONNMAN_DEVICE_TYPE_UNKNOWN;
+}
+
+static enum connman_device_type get_device_type(
+		struct udev_device *udev_device, int index)
+{
+	const char *devtype;
+
+	devtype = udev_device_get_devtype(udev_device);
+	if (devtype == NULL)
+		return __connman_inet_get_device_type(index);
+
+	return string2devtype(devtype);
+}
+
 static void add_net_device(struct udev_device *udev_device)
 {
 	struct udev_list_entry *entry;
@@ -84,7 +108,9 @@ static void add_net_device(struct udev_device *udev_device)
 	if (index < 0)
 		return;
 
-	devtype = __connman_inet_get_device_type(index);
+	devtype = get_device_type(udev_device, index);
+
+	DBG("devtype %d", devtype);
 
 	switch (devtype) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -325,6 +351,9 @@ static void print_device(struct udev_device *device, const char *action)
 	}
 
 	devtype = udev_device_get_devtype(device);
+
+	DBG("devtype %s", devtype);
+
 	sysname = udev_device_get_sysname(device);
 
 	driver = udev_device_get_driver(parent);
