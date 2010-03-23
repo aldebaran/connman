@@ -398,8 +398,10 @@ static gboolean pending_network_is_available(
 
 	/* Modem may be removed during waiting for active reply */
 	device  = connman_network_get_device(pending_network);
-	if (device == NULL)
+	if (device == NULL) {
+		DBG("Modem is removed");
 		return FALSE;
+	}
 
 	identifier = connman_network_get_identifier(pending_network);
 

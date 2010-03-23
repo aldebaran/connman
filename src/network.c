@@ -239,7 +239,8 @@ static void unregister_interface(struct connman_element *element)
 
 	network->registered = FALSE;
 
-	emit_networks_signal(network->device);
+	if (network->device != NULL)
+		emit_networks_signal(network->device);
 
 	g_dbus_unregister_interface(connection, element->path,
 						CONNMAN_NETWORK_INTERFACE);
