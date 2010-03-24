@@ -179,6 +179,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-meego \
 				--enable-udev \
 				--enable-client \
+				--enable-portal \
 				--enable-tools
 
 DISTCLEANFILES = $(pkgconfig_DATA)

@@ -28,6 +28,10 @@
 extern "C" {
 #endif
 
+#define CONNMAN_LOCATION_PRIORITY_LOW          -100
+#define CONNMAN_LOCATION_PRIORITY_DEFAULT      0
+#define CONNMAN_LOCATION_PRIORITY_HIGH         100
+
 /**
  * SECTION:location
  * @title: Location premitives

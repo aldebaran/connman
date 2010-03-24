@@ -160,6 +160,12 @@ fi
 AM_CONDITIONAL(OPENCONNECT, test "${enable_openconnect}" != "no")
 AM_CONDITIONAL(OPENCONNECT_BUILTIN, test "${enable_openconnect}" = "builtin")
 
+AC_ARG_ENABLE(portal,
+        AC_HELP_STRING([--enable-portal], [enable portal detection support]),
+                        [enable_portal=${enableval}], [enable_portal="no"])
+AM_CONDITIONAL(PORTAL, test "${enable_portal}" != "no")
+AM_CONDITIONAL(PORTAL_BUILTIN, test "${enable_portal}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
