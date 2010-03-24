@@ -1589,7 +1589,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		default_changed();
 
-		__connman_location_detect(service);
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
 
@@ -1641,6 +1640,8 @@ int __connman_service_indicate_default(struct connman_service *service)
 	DBG("service %p", service);
 
 	default_changed();
+
+	__connman_location_detect(service);
 
 	return 0;
 }
