@@ -257,6 +257,8 @@ int __connman_location_finish(struct connman_service *service)
 	if (location == NULL)
 		return -EINVAL;
 
+	location->result = CONNMAN_LOCATION_RESULT_UNKNOWN;
+
 	if (location->driver) {
 		location->driver->finish(location);
 		location->driver = NULL;
