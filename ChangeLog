@@ -1,7 +1,13 @@
+ver 0.50.3:
+	Enable/Disable device when toggling the powered state
+	Use udev_device_get_devtype before __connman_inet_get_device_type
+	Set network->device as NULL when the device is removed
+
 ver 0.50.2:
 	Handle the case that MobileNetworkCodeLength is not provided.
 	Correct the modem properties key name.
 	Fix convert_wifi_security for psk string.
+
 ver 0.50.1:
 	Export MCC and MNC for cellular services.
 
