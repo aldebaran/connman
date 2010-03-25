@@ -28,6 +28,7 @@ fi
 		--enable-dnsproxy=builtin \
 		--enable-google=builtin \
 		--enable-meego=builtin \
+		--enable-portal=builtin \
 		--enable-iwmx \
 		--enable-iospm \
 		--enable-polkit=builtin \
