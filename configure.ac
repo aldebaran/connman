@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT(connman, 0.50)
+AC_INIT(connman, 0.51)
 
 AM_INIT_AUTOMAKE([foreign subdir-objects])
 AM_CONFIG_HEADER(config.h)

@@ -1,3 +1,11 @@
+ver 0.51:
+	Fix issue with missing device power toggling.
+	Fix issue with D-Bus object path on device removal.
+	Add support for WiFi portal detection.
+	Add support for configuring static gateways.
+	Remove unneeded plugin for Option HSO support.
+	Remove unneeded plugin for Ericsson MBM support.
+
 ver 0.50:
 	Fix configuration loading for unknown services.
 	Fix IP method setting of Ethernet plugin.
