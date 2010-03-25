@@ -37,12 +37,13 @@ struct connman_ipaddress {
 	char *local;
 	char *peer;
 	char *broadcast;
+	char *gateway;
 };
 
 struct connman_ipaddress *connman_ipaddress_alloc(void);
 void connman_ipaddress_free(struct connman_ipaddress *ipaddress);
 void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
-				const char *address, const char *netmask);
+		const char *address, const char *netmask, const char *gateway);
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress);
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source);
