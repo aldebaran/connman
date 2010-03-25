@@ -748,6 +748,8 @@ static void set_connected_manual(struct connman_network *network)
 		return;
 	}
 
+	__connman_ipconfig_set_gateway(ipconfig, &network->element);
+
 	network->connecting = FALSE;
 
 	connman_network_set_associating(network, FALSE);

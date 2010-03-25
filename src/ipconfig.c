@@ -926,6 +926,24 @@ void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 	connman_inet_set_address(origin->index, origin->address);
 }
 
+/* FIXME: The element soulution should be removed in the future */
+int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
+						struct connman_element *parent)
+{
+	struct connman_element *connection;
+
+	connection = connman_element_create(NULL);
+
+	connection->type  = CONNMAN_ELEMENT_TYPE_CONNECTION;
+	connection->index = ipconfig->index;
+	connection->ipv4.gateway = ipconfig->address->gateway;
+
+	if (connman_element_register(connection, parent) < 0)
+		connman_element_unref(connection);
+
+	return 0;
+}
+
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
 {
 	DBG("");
