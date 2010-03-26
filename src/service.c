@@ -1902,7 +1902,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	struct connman_network *network;
 	struct connman_device *device;
 	DBusMessageIter iter, array;
-	const char *mode = "managed", *security = "none";
+	const char *mode = "managed", *security = "none", *group_security;
 	const char *type = NULL, *ssid = NULL, *passphrase = NULL;
 	unsigned int ssid_len = 0;
 	const char *ident;
@@ -1973,8 +1973,15 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	if (ident == NULL)
 		return -EOPNOTSUPP;
 
+
+	if (!g_strcmp0(security, "wpa") ||
+		!g_strcmp0(security, "rsn"))
+		group_security = "psk";
+	else
+		group_security = security;
+
 	group = connman_wifi_build_group_name((unsigned char *) ssid,
-						ssid_len, mode, security);
+						ssid_len, mode, group_security);
 	if (group == NULL)
 		return -EINVAL;
 
