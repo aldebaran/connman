@@ -54,6 +54,18 @@ plugins_bluetooth_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if HH2SERIAL_GPS
+if HH2SERIAL_GPS_BUILTIN
+builtin_modules += hh2serial_gps
+builtin_sources += plugins/hh2serial-gps.c
+else
+plugin_LTLIBRARIES += plugins/hh2serial-gps.la
+plugin_objects += $(plugins_hh2serial_gps_la_OBJECTS)
+plugins_hh2serial_gps_la_CFLAGS = $(plugin_cflags)
+plugins_hh2serial_gps_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if OFONO
 if OFONO_BUILTIN
 builtin_modules += ofono

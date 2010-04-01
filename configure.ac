@@ -86,6 +86,12 @@ AC_ARG_ENABLE(bluetooth,
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
 AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
+AC_ARG_ENABLE(hh2serial-gps,
+        AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
+                        [enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
+AM_CONDITIONAL(HH2SERIAL_GPS, test "${enable_hh2serial_gps}" != "no")
+AM_CONDITIONAL(HH2SERIAL_GPS_BUILTIN, test "${enable_hh2serial_gps}" = "builtin")
+
 AC_ARG_ENABLE(ofono,
 	AC_HELP_STRING([--enable-ofono], [enable oFono support]),
 			[enable_ofono=${enableval}], [enable_ofono="no"])
