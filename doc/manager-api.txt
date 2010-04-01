@@ -122,6 +122,21 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		string RequestSession(string bearer)
+
+			Request a networking session.
+
+			If the bearer is an empty string the best available
+			service will be picked.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void ReleaseSession()
+
+			Release a networking session.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
