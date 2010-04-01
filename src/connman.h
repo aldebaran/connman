@@ -475,3 +475,8 @@ void __connman_rtnl_cleanup(void);
 
 int __connman_rtnl_request_update(void);
 int __connman_rtnl_send(const void *buf, size_t len);
+
+int __connman_session_release(const char *owner);
+struct connman_service *__connman_session_request(const char *bearer, const char *owner);
+int __connman_session_init(void);
+void __connman_session_cleanup(void);
