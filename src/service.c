@@ -245,6 +245,44 @@ static enum connman_service_error string2error(const char *error)
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
 
+static connman_bool_t is_connecting(struct connman_service *service)
+{
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		break;
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static connman_bool_t is_connected(const struct connman_service *service)
+{
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		break;
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static struct connman_service *get_default(void)
 {
 	struct connman_service *service;
@@ -257,7 +295,7 @@ static struct connman_service *get_default(void)
 
 	service = g_sequence_get(iter);
 
-	if (service->state != CONNMAN_SERVICE_STATE_READY)
+	if (is_connected(service) == FALSE)
 		return NULL;
 
 	return service;
@@ -425,19 +463,9 @@ static void append_ethernet(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	if (is_connecting(service) == FALSE &&
+			is_connected(service) == FALSE)
 		return;
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	}
 
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ethernet(service->ipconfig, iter);
@@ -447,19 +475,8 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	if (is_connected(service) == FALSE)
 		return;
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	}
 
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ipv4(service->ipconfig, iter);
@@ -477,19 +494,8 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	if (is_connected(service) == FALSE)
 		return;
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	}
 
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_proxy(service->ipconfig, iter);
@@ -844,25 +850,6 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static connman_bool_t is_connecting(struct connman_service *service)
-{
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
 static connman_bool_t is_ignore(struct connman_service *service)
 {
 	if (service->autoconnect == FALSE)
@@ -901,7 +888,7 @@ void __connman_service_auto_connect(void)
 		if (service->favorite == FALSE)
 			return;
 
-		if (service->state == CONNMAN_SERVICE_STATE_READY)
+		if (is_connected(service) == TRUE)
 			return;
 
 		if (is_ignore(service) == FALSE &&
@@ -1361,9 +1348,9 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	struct connman_service *service_b = (void *) b;
 
 	if (service_a->state != service_b->state) {
-		if (service_a->state == CONNMAN_SERVICE_STATE_READY)
+		if (is_connected(service_a) == TRUE)
 			return -1;
-		if (service_b->state == CONNMAN_SERVICE_STATE_READY)
+		if (is_connected(service_b) == TRUE)
 			return 1;
 	}
 
@@ -1573,7 +1560,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 			__connman_service_auto_connect();
 	}
 
-	if (state == CONNMAN_SERVICE_STATE_READY) {
+	if (state == CONNMAN_SERVICE_STATE_READY ||
+			state == CONNMAN_SERVICE_STATE_ONLINE) {
 		set_reconnect_state(service, TRUE);
 
 		__connman_service_set_favorite(service, TRUE);
@@ -1724,7 +1712,7 @@ int __connman_service_connect(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (service->state == CONNMAN_SERVICE_STATE_READY)
+	if (is_connected(service) == TRUE)
 		return -EISCONN;
 
 	if (is_connecting(service) == TRUE)
@@ -2328,7 +2316,7 @@ static void update_from_network(struct connman_service *service,
 
 	DBG("service %p network %p", service, network);
 
-	if (service->state == CONNMAN_SERVICE_STATE_READY)
+	if (is_connected(service) == TRUE)
 		return;
 
 	if (is_connecting(service) == TRUE)
