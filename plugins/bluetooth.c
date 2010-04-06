@@ -131,9 +131,6 @@ static int pan_connect(struct connman_network *network)
 	if (path == NULL)
 		return -EINVAL;
 
-	if (connman_network_get_index(network) >= 0)
-		return -EISCONN;
-
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
 					BLUEZ_NETWORK_INTERFACE, CONNECT);
 	if (message == NULL)
@@ -186,7 +183,6 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	connman_network_set_connected(network, FALSE);
-	connman_network_set_index(network, -1);
 
 done:
 	dbus_message_unref(reply);
@@ -204,9 +200,6 @@ static int pan_disconnect(struct connman_network *network)
 
 	if (path == NULL)
 		return -EINVAL;
-
-	if (connman_network_get_index(network) < 0)
-		return -ENOTCONN;
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
 					BLUEZ_NETWORK_INTERFACE, DISCONNECT);
