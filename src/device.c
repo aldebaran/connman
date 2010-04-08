@@ -662,8 +662,6 @@ static void unregister_network(gpointer data)
 	connman_element_unregister((struct connman_element *) network);
 
 	connman_network_unref(network);
-
-	__connman_network_set_device(network, NULL);
 }
 
 static void device_destruct(struct connman_element *element)
@@ -1475,6 +1473,9 @@ void __connman_device_set_network(struct connman_device *device,
 					struct connman_network *network)
 {
 	const char *name;
+
+	if (device == NULL)
+		return;
 
 	if (device->network == network)
 		return;

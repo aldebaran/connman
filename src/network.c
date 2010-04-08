@@ -316,6 +316,8 @@ static void network_destruct(struct connman_element *element)
 		connman_ipconfig_unref(network->ipconfig);
 		network->ipconfig = NULL;
 	}
+
+	network->device = NULL;
 }
 
 /**
