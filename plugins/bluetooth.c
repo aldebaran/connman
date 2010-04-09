@@ -188,6 +188,8 @@ done:
 	dbus_message_unref(reply);
 
 	dbus_pending_call_unref(call);
+
+	connman_network_unref(network);
 }
 
 static int pan_disconnect(struct connman_network *network)
@@ -222,6 +224,8 @@ static int pan_disconnect(struct connman_network *network)
 		dbus_message_unref(message);
 		return -EINVAL;
 	}
+
+	connman_network_ref(network);
 
 	dbus_pending_call_set_notify(call, disconnect_reply, network, NULL);
 
