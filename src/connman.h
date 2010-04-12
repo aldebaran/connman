@@ -215,6 +215,7 @@ void __connman_ipconfig_foreach(void (*function) (int index, void *user_data),
 unsigned short __connman_ipconfig_get_type(int index);
 unsigned int __connman_ipconfig_get_flags(int index);
 const char *__connman_ipconfig_get_gateway(int index);
+void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index);
 
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
