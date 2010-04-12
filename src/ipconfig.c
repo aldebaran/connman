@@ -705,6 +705,11 @@ const char *__connman_ipconfig_get_gateway(int index)
 	return ipdevice->gateway;
 }
 
+void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index)
+{
+	ipconfig->index = index;
+}
+
 /**
  * connman_ipconfig_create:
  *
