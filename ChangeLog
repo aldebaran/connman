@@ -1,3 +1,14 @@
+ver 0.50.4:
+	Remove erroneous DHCP method setting from bluetooth plugin
+	Load ipconfig setting from __connman_service_create_ipconfig()
+	Reset ipconfig index
+	Add __connman_ipconfig_set_index() helper
+	Reference PAN network before disconnecting
+	Reset connman_network device pointer when it is no longer referenced
+	Do not set network index from PAN disconnect reply
+	ONLINE and LOGIN are also "connected" states
+	Use psk for building hidden WPA SSID group
+
 ver 0.50.3:
 	Enable/Disable device when toggling the powered state
 	Use udev_device_get_devtype before __connman_inet_get_device_type
