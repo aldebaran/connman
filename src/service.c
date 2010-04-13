@@ -2226,10 +2226,24 @@ static void setup_ipconfig(struct connman_service *service, int index)
 void __connman_service_create_ipconfig(struct connman_service *service,
 								int index)
 {
+	const char *ident = service->profile;
+	GKeyFile *keyfile;
+
 	if (service->ipconfig != NULL)
 		return;
 
 	setup_ipconfig(service, index);
+
+	if (ident == NULL)
+		return;
+
+	keyfile = __connman_storage_open_profile(ident);
+	if (keyfile == NULL)
+		return;
+
+	__connman_ipconfig_load(service->ipconfig, keyfile,
+					service->identifier, "IPv4.");
+	g_key_file_free(keyfile);
 }
 
 /**
