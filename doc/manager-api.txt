@@ -122,12 +122,15 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		string RequestSession(string bearer)
+		object RequestSession(string bearer)
 
 			Request a networking session.
 
 			If the bearer is an empty string the best available
 			service will be picked.
+
+			When successful this method will return the object
+			path of the corresponding service.
 
 			Possible Errors: [service].Error.InvalidArguments
 
