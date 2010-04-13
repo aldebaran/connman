@@ -448,19 +448,31 @@ const char *connman_network_get_path(struct connman_network *network)
  */
 void connman_network_set_index(struct connman_network *network, int index)
 {
-	if (network->element.index < 0) {
-		struct connman_service *service;
+	struct connman_service *service;
 
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		goto done;
+
+	if (network->element.index < 0)
 		/*
 		 * This is needed for plugins that havent set their ipconfig
 		 * layer yet, due to not being able to get a network index
 		 * prior to creating a service.
 		 */
-		service = __connman_service_lookup_from_network(network);
-		if (service != NULL)
-			__connman_service_create_ipconfig(service, index);
+		__connman_service_create_ipconfig(service, index);
+	else {
+		struct connman_ipconfig *ipconfig;
+
+		/* If index changed, the index of ipconfig must be reset. */
+		ipconfig = __connman_service_get_ipconfig(service);
+		if (ipconfig == NULL)
+			goto done;
+
+		__connman_ipconfig_set_index(ipconfig, index);
 	}
 
+done:
 	network->element.index = index;
 }
 
