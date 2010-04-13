@@ -210,7 +210,7 @@ struct connman_service *__connman_session_request(const char *bearer_name,
 		/* we only support one bearer per process */
 		if (bearer_name_len &&
 			g_strcmp0(session->bearer->name, bearer_name))
-			return NULL;
+				return NULL;
 
 		g_atomic_int_inc(&session->refcount);
 
