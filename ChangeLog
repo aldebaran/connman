@@ -1,3 +1,11 @@
+ver 0.52:
+	Fix issue with new "connected" states.
+	Fix issue with hidden networks and PSK.
+	Fix issue with DHCP and Bluetooth PAN.
+	Fix issue when disconnecting PAN networks.
+	Add support for application sessions.
+	Add plugin for hh2serial GPS support.
+
 ver 0.51:
 	Fix issue with missing device power toggling.
 	Fix issue with D-Bus object path on device removal.
