@@ -777,11 +777,6 @@ static void check_networks_reply(DBusPendingCall *call, void *user_data)
 			contexts = value;
 			add_default_context(&contexts, path,
 					CONTEXT_NAME, CONTEXT_TYPE);
-		} else if (g_str_equal(key, "Status") == TRUE) {
-			const char *status;
-
-			dbus_message_iter_get_basic(&value, &status);
-			/* FIXME: add roaming support */
 		} else if (g_str_equal(key, "Powered") == TRUE) {
 			dbus_bool_t powered;
 
@@ -1377,13 +1372,6 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 		else if (modem->device != NULL)
 			connman_device_remove_all_networks(modem->device);
 
-	} else if (g_str_equal(key, "Status") == TRUE) {
-		const char *status;
-		dbus_message_iter_get_basic(&value, &status);
-
-		DBG("status %s", status);
-
-		/* FIXME: add roaming support */
 	} else if (g_str_equal(key, "PrimaryContexts") == TRUE) {
 		check_networks(modem);
 	} else if (g_str_equal(key, "Powered") == TRUE) {
