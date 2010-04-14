@@ -229,7 +229,12 @@ static void set_network_name_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Operator") == TRUE) {
+		/*
+		 * 'Operator' is deprecated since version 0.20, but
+		 * keep it here for backward compatibility reasons.
+		 */
+		if (g_str_equal(key, "Operator") == TRUE ||
+				g_str_equal(key, "Name") == TRUE) {
 			const char *name;
 
 			dbus_message_iter_get_basic(&value, &name);
