@@ -1876,11 +1876,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 	if (state == WPA_INVALID)
 		return;
 
-	if (task->scanning == TRUE && state != WPA_SCANNING) {
-		connman_device_cleanup_scanning(task->device);
-		task->scanning = FALSE;
-	}
-
 	prevstate = task->state;
 	task->state = state;
 
