@@ -1,3 +1,8 @@
+ver 0.52.1:
+	Remove supplicant and device scanning state cleaning
+	ofono API refactoring: Rename netreg Operator property to Name
+	ConnMan 0.52 code merge
+
 ver 0.50.4:
 	Remove erroneous DHCP method setting from bluetooth plugin
 	Load ipconfig setting from __connman_service_create_ipconfig()
