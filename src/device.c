@@ -134,8 +134,6 @@ static const char *type2description(enum connman_device_type type)
 	case CONNMAN_DEVICE_TYPE_GPS:
 		return "GPS";
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		return "Cellular";
 	}
 
@@ -159,8 +157,6 @@ static const char *type2string(enum connman_device_type type)
 	case CONNMAN_DEVICE_TYPE_GPS:
 		return "gps";
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		return "cellular";
 	}
 
@@ -185,8 +181,6 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	}
 
@@ -760,8 +754,6 @@ struct connman_device *connman_device_create(const char *node,
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		device->scan_interval = 0;
 		break;
 	}

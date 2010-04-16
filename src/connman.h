@@ -108,60 +108,6 @@ void __connman_task_cleanup(void);
 int __connman_security_check_privilege(DBusMessage *message,
 				enum connman_security_privilege privilege);
 
-#include <connman/ipconfig.h>
-
-int __connman_ipconfig_init(void);
-void __connman_ipconfig_cleanup(void);
-
-struct rtnl_link_stats;
-
-void __connman_ipconfig_newlink(int index, unsigned short type,
-				unsigned int flags, const char *address,
-							unsigned short mtu,
-						struct rtnl_link_stats *stats);
-void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats);
-void __connman_ipconfig_newaddr(int index, const char *label,
-				unsigned char prefixlen, const char *address);
-void __connman_ipconfig_deladdr(int index, const char *label,
-				unsigned char prefixlen, const char *address);
-void __connman_ipconfig_newroute(int index, unsigned char scope,
-					const char *dst, const char *gateway);
-void __connman_ipconfig_delroute(int index, unsigned char scope,
-					const char *dst, const char *gateway);
-
-void __connman_ipconfig_foreach(void (*function) (int index, void *user_data),
-							void *user_data);
-unsigned short __connman_ipconfig_get_type(int index);
-unsigned int __connman_ipconfig_get_flags(int index);
-const char *__connman_ipconfig_get_gateway(int index);
-void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index);
-
-int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
-int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
-
-const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
-enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
-
-void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
-void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
-int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *value);
-void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
-void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
-enum connman_ipconfig_method __connman_ipconfig_get_method(
-				struct connman_ipconfig *ipconfig);
-int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
-int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
-
-int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
-		GKeyFile *keyfile, const char *identifier, const char *prefix);
-int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
-		GKeyFile *keyfile, const char *identifier, const char *prefix);
-
 #include <connman/inet.h>
 
 enum connman_device_type __connman_inet_get_device_type(int index);
@@ -243,6 +189,62 @@ int __connman_element_disable_technology(enum connman_service_type type);
 
 gboolean __connman_element_device_isfiltered(const char *devname);
 
+#include <connman/ipconfig.h>
+
+int __connman_ipconfig_init(void);
+void __connman_ipconfig_cleanup(void);
+
+struct rtnl_link_stats;
+
+void __connman_ipconfig_newlink(int index, unsigned short type,
+				unsigned int flags, const char *address,
+							unsigned short mtu,
+						struct rtnl_link_stats *stats);
+void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats);
+void __connman_ipconfig_newaddr(int index, const char *label,
+				unsigned char prefixlen, const char *address);
+void __connman_ipconfig_deladdr(int index, const char *label,
+				unsigned char prefixlen, const char *address);
+void __connman_ipconfig_newroute(int index, unsigned char scope,
+					const char *dst, const char *gateway);
+void __connman_ipconfig_delroute(int index, unsigned char scope,
+					const char *dst, const char *gateway);
+
+void __connman_ipconfig_foreach(void (*function) (int index, void *user_data),
+							void *user_data);
+unsigned short __connman_ipconfig_get_type(int index);
+unsigned int __connman_ipconfig_get_flags(int index);
+const char *__connman_ipconfig_get_gateway(int index);
+void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index);
+
+int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
+
+const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
+enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
+
+void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *value);
+void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+enum connman_ipconfig_method __connman_ipconfig_get_method(
+				struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
+					struct connman_element *parent);
+int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
+int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
+
+int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
+		GKeyFile *keyfile, const char *identifier, const char *prefix);
+int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
+		GKeyFile *keyfile, const char *identifier, const char *prefix);
+
 #include <connman/utsname.h>
 
 int __connman_utsname_set_hostname(const char *hostname);
@@ -267,7 +269,6 @@ int __connman_udev_init(void);
 void __connman_udev_start(void);
 void __connman_udev_cleanup(void);
 char *__connman_udev_get_devtype(const char *ifname);
-char *__connman_udev_get_mbm_devnode(const char *ifname);
 void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
 void __connman_udev_enable_rfkill_processing(void);
 connman_bool_t __connman_udev_get_blocked(int phyindex);
@@ -415,6 +416,7 @@ int __connman_service_connect(struct connman_service *service);
 int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_create_and_connect(DBusMessage *msg);
 void __connman_service_auto_connect(void);
+struct connman_service *__connman_service_connect_type(enum connman_service_type type);
 
 const char *__connman_service_type2string(enum connman_service_type type);
 
@@ -474,3 +476,8 @@ void __connman_rtnl_cleanup(void);
 
 int __connman_rtnl_request_update(void);
 int __connman_rtnl_send(const void *buf, size_t len);
+
+int __connman_session_release(const char *owner);
+struct connman_service *__connman_session_request(const char *bearer, const char *owner);
+int __connman_session_init(void);
+void __connman_session_cleanup(void);

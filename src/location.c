@@ -182,12 +182,12 @@ void connman_location_report_result(struct connman_location *location,
 	case CONNMAN_LOCATION_RESULT_UNKNOWN:
 		return;
 	case CONNMAN_LOCATION_RESULT_PORTAL:
-		//__connman_service_indicate_state(location->service,
-		//				CONNMAN_SERVICE_STATE_LOGIN);
+		__connman_service_indicate_state(location->service,
+						CONNMAN_SERVICE_STATE_LOGIN);
 		break;
 	case CONNMAN_LOCATION_RESULT_ONLINE:
-		//__connman_service_indicate_state(location->service,
-		//				CONNMAN_SERVICE_STATE_ONLINE);
+		__connman_service_indicate_state(location->service,
+						CONNMAN_SERVICE_STATE_ONLINE);
 		break;
 	}
 }
@@ -256,6 +256,8 @@ int __connman_location_finish(struct connman_service *service)
 	location = __connman_service_get_location(service);
 	if (location == NULL)
 		return -EINVAL;
+
+	location->result = CONNMAN_LOCATION_RESULT_UNKNOWN;
 
 	if (location->driver) {
 		location->driver->finish(location);

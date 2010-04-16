@@ -249,8 +249,9 @@ static int connection_probe(struct connman_element *element)
 	if (element->parent == NULL)
 		return -ENODEV;
 
-	if (element->parent->type != CONNMAN_ELEMENT_TYPE_IPV4)
-		return -ENODEV;
+	/* FIXME: Remove temporarily for the static gateway support */
+	/* if (element->parent->type != CONNMAN_ELEMENT_TYPE_IPV4)
+		return -ENODEV; */
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);

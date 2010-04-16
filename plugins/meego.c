@@ -1,8 +1,8 @@
 /*
  *
- *  AT chat library with GLib integration
+ *  Connection Manager
  *
- *  Copyright (C) 2008-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -19,18 +19,21 @@
  *
  */
 
-#ifndef __GAT_H
-#define __GAT_H
-
-#ifdef __cplusplus
-extern "C" {
+#ifdef HAVE_CONFIG_H
+#include <config.h>
 #endif
 
-typedef void (*GAtDisconnectFunc)(gpointer user_data);
-typedef void (*GAtDebugFunc)(const char *str, gpointer user_data);
+#define CONNMAN_API_SUBJECT_TO_CHANGE
+#include <connman/plugin.h>
 
-#ifdef __cplusplus
+static int meego_init(void)
+{
+	return 0;
 }
-#endif
 
-#endif /* __GAT_H */
+static void meego_exit(void)
+{
+}
+
+CONNMAN_PLUGIN_DEFINE(meego, "MeeGo features plugin", VERSION,
+			CONNMAN_PLUGIN_PRIORITY_LOW, meego_init, meego_exit)

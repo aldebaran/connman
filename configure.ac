@@ -86,6 +86,12 @@ AC_ARG_ENABLE(bluetooth,
 AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
 AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
+AC_ARG_ENABLE(hh2serial-gps,
+        AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
+                        [enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
+AM_CONDITIONAL(HH2SERIAL_GPS, test "${enable_hh2serial_gps}" != "no")
+AM_CONDITIONAL(HH2SERIAL_GPS_BUILTIN, test "${enable_hh2serial_gps}" = "builtin")
+
 AC_ARG_ENABLE(ofono,
 	AC_HELP_STRING([--enable-ofono], [enable oFono support]),
 			[enable_ofono=${enableval}], [enable_ofono="no"])
@@ -160,6 +166,12 @@ fi
 AM_CONDITIONAL(OPENCONNECT, test "${enable_openconnect}" != "no")
 AM_CONDITIONAL(OPENCONNECT_BUILTIN, test "${enable_openconnect}" = "builtin")
 
+AC_ARG_ENABLE(portal,
+        AC_HELP_STRING([--enable-portal], [enable portal detection support]),
+                        [enable_portal=${enableval}], [enable_portal="no"])
+AM_CONDITIONAL(PORTAL, test "${enable_portal}" != "no")
+AM_CONDITIONAL(PORTAL_BUILTIN, test "${enable_portal}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
@@ -185,23 +197,11 @@ AC_ARG_ENABLE(google,
 AM_CONDITIONAL(GOOGLE, test "${enable_google}" != "no")
 AM_CONDITIONAL(GOOGLE_BUILTIN, test "${enable_google}" = "builtin")
 
-AC_ARG_ENABLE(moblin,
-	AC_HELP_STRING([--enable-moblin], [enable Moblin features support]),
-			[enable_moblin=${enableval}], [enable_moblin="no"])
-AM_CONDITIONAL(MOBLIN, test "${enable_moblin}" != "no")
-AM_CONDITIONAL(MOBLIN_BUILTIN, test "${enable_moblin}" = "builtin")
-
-AC_ARG_ENABLE(hso,
-	AC_HELP_STRING([--enable-hso], [enable HSO support]),
-			[enable_hso=${enableval}], [enable_hso="no"])
-AM_CONDITIONAL(HSO, test "${enable_hso}" != "no")
-AM_CONDITIONAL(HSO_BUILTIN, test "${enable_hso}" = "builtin")
-
-AC_ARG_ENABLE(mbm,
-	AC_HELP_STRING([--enable-mbm], [enable MBM support]),
-			[enable_mbm=${enableval}], [enable_mbm="no"])
-AM_CONDITIONAL(MBM, test "${enable_mbm}" != "no")
-AM_CONDITIONAL(MBM_BUILTIN, test "${enable_mbm}" = "builtin")
+AC_ARG_ENABLE(meego,
+	AC_HELP_STRING([--enable-meego], [enable MeeGo features support]),
+			[enable_meego=${enableval}], [enable_meego="no"])
+AM_CONDITIONAL(MEEGO, test "${enable_meego}" != "no")
+AM_CONDITIONAL(MEEGO_BUILTIN, test "${enable_meego}" = "builtin")
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))

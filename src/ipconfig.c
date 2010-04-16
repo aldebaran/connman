@@ -90,6 +90,7 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress->broadcast);
 	g_free(ipaddress->peer);
 	g_free(ipaddress->local);
+	g_free(ipaddress->gateway);
 	g_free(ipaddress);
 }
 
@@ -110,7 +111,7 @@ static unsigned char netmask2prefixlen(const char *netmask)
 }
 
 void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
-				const char *address, const char *netmask)
+		const char *address, const char *netmask, const char *gateway)
 {
 	if (ipaddress == NULL)
 		return;
@@ -122,6 +123,9 @@ void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
 
 	g_free(ipaddress->local);
 	ipaddress->local = g_strdup(address);
+
+	g_free(ipaddress->gateway);
+	ipaddress->gateway = g_strdup(gateway);
 }
 
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
@@ -139,6 +143,9 @@ void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
 
 	g_free(ipaddress->broadcast);
 	ipaddress->broadcast = NULL;
+
+	g_free(ipaddress->gateway);
+	ipaddress->gateway = NULL;
 }
 
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
@@ -157,6 +164,9 @@ void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 
 	g_free(ipaddress->broadcast);
 	ipaddress->broadcast = g_strdup(source->broadcast);
+
+	g_free(ipaddress->gateway);
+	ipaddress->gateway = g_strdup(source->gateway);
 }
 
 static void free_address_list(struct connman_ipdevice *ipdevice)
@@ -921,6 +931,24 @@ void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 	connman_inet_set_address(origin->index, origin->address);
 }
 
+/* FIXME: The element soulution should be removed in the future */
+int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
+						struct connman_element *parent)
+{
+	struct connman_element *connection;
+
+	connection = connman_element_create(NULL);
+
+	connection->type  = CONNMAN_ELEMENT_TYPE_CONNECTION;
+	connection->index = ipconfig->index;
+	connection->ipv4.gateway = ipconfig->address->gateway;
+
+	if (connman_element_register(connection, parent) < 0)
+		connman_element_unref(connection);
+
+	return 0;
+}
+
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
 {
 	DBG("");
@@ -1127,7 +1155,7 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *array)
 {
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
-	const char *address = NULL, *netmask = NULL;
+	const char *address = NULL, *netmask = NULL, *gateway = NULL;
 	DBusMessageIter dict;
 
 	DBG("ipconfig %p", ipconfig);
@@ -1170,12 +1198,17 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 				return -EINVAL;
 
 			dbus_message_iter_get_basic(&entry, &netmask);
-		}
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			if (type != DBUS_TYPE_STRING)
+				return -EINVAL;
 
+			dbus_message_iter_get_basic(&entry, &gateway);
+		}
 		dbus_message_iter_next(&dict);
 	}
 
-	DBG("method %d address %s netmask %s", method, address, netmask);
+	DBG("method %d address %s netmask %s gateway %s",
+				method, address, netmask, gateway);
 
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
@@ -1188,7 +1221,8 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 			return -EINVAL;
 
 		ipconfig->method = method;
-		connman_ipaddress_set(ipconfig->address, address, netmask);
+		connman_ipaddress_set(ipconfig->address,
+				address, netmask, gateway);
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
@@ -1274,6 +1308,11 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 				keyfile, identifier, key, NULL);
 	g_free(key);
 
+	key = g_strdup_printf("%sgateway", prefix);
+	ipconfig->address->gateway = g_key_file_get_string(
+				keyfile, identifier, key, NULL);
+	g_free(key);
+
 	return 0;
 }
 
@@ -1311,7 +1350,13 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	key = g_strdup_printf("%sbroadcast_address", prefix);
 	if (ipconfig->address->broadcast != NULL)
 		g_key_file_set_string(keyfile, identifier,
-			"broadcast_address", ipconfig->address->broadcast);
+			key, ipconfig->address->broadcast);
+	g_free(key);
+
+	key = g_strdup_printf("%sgateway", prefix);
+	if (ipconfig->address->gateway != NULL)
+		g_key_file_set_string(keyfile, identifier,
+			key, ipconfig->address->gateway);
 	g_free(key);
 
 	return 0;

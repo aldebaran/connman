@@ -1,15 +1,4 @@
 
-noinst_LTLIBRARIES = plugins/libgatchat.la
-
-plugins_libgatchat_la_SOURCES = gatchat/gatchat.h gatchat/gatchat.c \
-				gatchat/gatresult.h gatchat/gatresult.c \
-				gatchat/gatsyntax.h gatchat/gatsyntax.c \
-				gatchat/ringbuffer.h gatchat/ringbuffer.c \
-				gatchat/gattty.h gatchat/gattty.c \
-				gatchat/gatutil.h gatchat/gatutil.c \
-				gatchat/gat.h
-
-
 plugin_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
 					@DBUS_CFLAGS@ @GLIB_CFLAGS@
 plugin_ldflags = -no-undefined -module -avoid-version
@@ -65,6 +54,18 @@ plugins_bluetooth_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if HH2SERIAL_GPS
+if HH2SERIAL_GPS_BUILTIN
+builtin_modules += hh2serial_gps
+builtin_sources += plugins/hh2serial-gps.c
+else
+plugin_LTLIBRARIES += plugins/hh2serial-gps.la
+plugin_objects += $(plugins_hh2serial_gps_la_OBJECTS)
+plugins_hh2serial_gps_la_CFLAGS = $(plugin_cflags)
+plugins_hh2serial_gps_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if OFONO
 if OFONO_BUILTIN
 builtin_modules += ofono
@@ -74,38 +75,6 @@ plugin_LTLIBRARIES += plugins/ofono.la
 plugin_objects += $(plugins_ofono_la_OBJECTS)
 plugins_ofono_la_CFLAGS = $(plugin_cflags)
 plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
-if HSO
-if HSO_BUILTIN
-builtin_modules += hso
-builtin_sources += plugins/hso.c
-builtin_cflags += -I$(srcdir)/gatchat
-builtin_libadd += plugins/libgatchat.la
-else
-plugin_LTLIBRARIES += plugins/hso.la
-plugin_objects += $(plugins_hso_la_OBJECTS)
-plugins_hso_la_SOURCES = plugins/hso.c
-plugins_hso_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
-plugins_hso_la_LIBADD = plugins/libgatchat.la
-plugins_hso_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
-if MBM
-if MBM_BUILTIN
-builtin_modules += mbm
-builtin_sources += plugins/mbm.c
-builtin_cflags += -I$(srcdir)/gatchat
-builtin_libadd += plugins/libgatchat.la
-else
-plugin_LTLIBRARIES += plugins/mbm.la
-plugin_objects += $(plugins_mbm_la_OBJECTS)
-plugins_mbm_la_SOURCES = plugins/mbm.c
-plugins_mbm_la_CFLAGS = $(plugin_cflags) -I$(srcdir)/gatchat
-plugins_mbm_la_LIBADD = plugins/libgatchat.la
-plugins_mbm_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
@@ -168,6 +137,18 @@ plugins_openconnect_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if PORTAL
+if PORTAL_BUILTIN
+builtin_modules += portal
+builtin_sources += plugins/portal.c
+else
+plugin_LTLIBRARIES += plugins/portal.la
+plugin_objects += $(plugins_portal_la_OBJECTS)
+plugins_portal_la_CFLAGS = $(plugin_cflags)
+plugins_portal_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if DNSPROXY
 if DNSPROXY_BUILTIN
 builtin_modules += dnsproxy
@@ -192,15 +173,15 @@ plugins_google_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if MOBLIN
-if MOBLIN_BUILTIN
-builtin_modules += moblin
-builtin_sources += plugins/moblin.c
+if MEEGO
+if MEEGO_BUILTIN
+builtin_modules += meego
+builtin_sources += plugins/meego.c
 else
-plugin_LTLIBRARIES += plugins/moblin.la
-plugin_objects += $(plugins_moblin_la_OBJECTS)
-plugins_moblin_la_CFLAGS = $(plugin_cflags)
-plugins_moblin_la_LDFLAGS = $(plugin_ldflags)
+plugin_LTLIBRARIES += plugins/meego.la
+plugin_objects += $(plugins_meego_la_OBJECTS)
+plugins_meego_la_CFLAGS = $(plugin_cflags)
+plugins_meego_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 

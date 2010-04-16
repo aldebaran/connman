@@ -63,8 +63,6 @@ static void detect_newlink(unsigned short type, int index,
 		return;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		break;
 	}
 
@@ -113,11 +111,6 @@ void __connman_udev_enable_rfkill_processing(void)
 }
 
 char *__connman_udev_get_devtype(const char *ifname)
-{
-	return NULL;
-}
-
-char *__connman_udev_get_mbm_devnode(const char *ifname)
 {
 	return NULL;
 }

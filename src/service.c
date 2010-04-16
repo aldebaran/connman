@@ -999,6 +999,64 @@ static connman_bool_t get_reconnect_state(struct connman_service *service)
 	return __connman_device_get_reconnect(device);
 }
 
+struct connman_service *
+__connman_service_connect_type(enum connman_service_type type)
+{
+	struct connman_service *service;
+	GSequenceIter *iter;
+	int err;
+
+	DBG("type %d", type);
+
+	/*
+	 * We go through the already sorted service list.
+	 * We pick the first one matching our type, or just
+	 * the first available one if we have no type.
+	 */
+	iter = g_sequence_get_begin_iter(service_list);
+	service = g_sequence_get(iter);
+
+	/*
+	 * If the first service is connected or about to be
+	 * connected, we return it, regardless of the type.
+	 */
+	if ((g_sequence_iter_is_end(iter) == FALSE) &&
+		(is_connecting(service) == TRUE ||
+			is_connected(service) == TRUE))
+		return service;
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		if (service->type == type ||
+			type == CONNMAN_SERVICE_TYPE_UNKNOWN)
+			break;
+
+		iter = g_sequence_iter_next(iter);
+		service = g_sequence_get(iter);
+	}
+
+	if (g_sequence_iter_is_end(iter))
+		return NULL;
+
+	service->ignore = FALSE;
+
+	service->userconnect = TRUE;
+
+	set_reconnect_state(service, FALSE);
+
+	err = __connman_service_connect(service);
+	if (err < 0) {
+		if (err == -ENOKEY)
+			if (__connman_agent_request_passphrase(service,
+								NULL, NULL))
+				return service;
+
+		if (err != -EINPROGRESS)
+			return NULL;
+	}
+
+	return service;
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -1577,7 +1635,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		default_changed();
 
-		__connman_location_detect(service);
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
 
@@ -1630,6 +1687,8 @@ int __connman_service_indicate_default(struct connman_service *service)
 
 	default_changed();
 
+	__connman_location_detect(service);
+
 	return 0;
 }
 
@@ -1658,8 +1717,6 @@ static connman_bool_t prepare_network(struct connman_service *service)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		break;
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
-	case CONNMAN_NETWORK_TYPE_HSO:
 		connman_network_set_string(service->network,
 						"Cellular.APN", service->apn);
 
@@ -2266,8 +2323,6 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_MBM:
-	case CONNMAN_NETWORK_TYPE_HSO:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	}
 

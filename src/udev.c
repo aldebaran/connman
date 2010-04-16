@@ -122,8 +122,6 @@ static void add_net_device(struct udev_device *udev_device)
 		return;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_MBM:
-	case CONNMAN_DEVICE_TYPE_HSO:
 		break;
 	}
 
@@ -473,62 +471,6 @@ done:
 	udev_device_unref(device);
 
 	return NULL;
-}
-
-char *__connman_udev_get_mbm_devnode(const char *ifname)
-{
-	struct udev_device *device, *parent, *control;
-	const char *driver, *devpath1, *devpath2;
-	char *devnode = NULL;
-	unsigned int i;
-
-	device = udev_device_new_from_subsystem_sysname(udev_ctx,
-							"net", ifname);
-	if (device == NULL)
-		return NULL;
-
-	parent = udev_device_get_parent(device);
-	if (parent == NULL)
-		goto done;
-
-	driver = udev_device_get_driver(parent);
-	if (g_strcmp0(driver, "cdc_ether") != 0)
-		goto done;
-
-	parent = udev_device_get_parent_with_subsystem_devtype(device,
-							"usb", "usb_device");
-	if (parent == NULL)
-		goto done;
-
-	devpath1 = udev_device_get_devpath(parent);
-
-	for (i = 0; i < 64; i++) {
-		char sysname[16];
-
-		snprintf(sysname, sizeof(sysname) - 1, "ttyACM%d", i);
-
-		control = udev_device_new_from_subsystem_sysname(udev_ctx,
-							"tty", sysname);
-		if (control == NULL)
-			continue;
-
-		parent = udev_device_get_parent_with_subsystem_devtype(control,
-							"usb", "usb_device");
-		if (parent == NULL)
-			continue;
-
-		devpath2 = udev_device_get_devpath(parent);
-
-		if (g_strcmp0(devpath1, devpath2) == 0) {
-			devnode = g_strdup(udev_device_get_devnode(control));
-			break;
-		}
-	}
-
-done:
-	udev_device_unref(device);
-
-	return devnode;
 }
 
 void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)

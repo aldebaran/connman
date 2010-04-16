@@ -27,9 +27,8 @@ fi
 		--enable-resolvconf=builtin \
 		--enable-dnsproxy=builtin \
 		--enable-google=builtin \
-		--enable-moblin=builtin \
-		--enable-hso=builtin \
-		--enable-mbm=builtin \
+		--enable-meego=builtin \
+		--enable-portal=builtin \
 		--enable-iwmx \
 		--enable-iospm \
 		--enable-polkit=builtin \

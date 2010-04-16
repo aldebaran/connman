@@ -5,28 +5,52 @@ import gobject
 import dbus
 import dbus.service
 import dbus.mainloop.glib
+import sys
 
 class Canceled(dbus.DBusException):
 	_dbus_error_name = "org.moblin.connman.Error.Canceled"
 
 class Agent(dbus.service.Object):
+	passphrase = ""
+
 	@dbus.service.method("org.moblin.connman.Agent",
 					in_signature='', out_signature='')
 	def Release(self):
 		print("Release")
 		mainloop.quit()
+
 	@dbus.service.method("org.moblin.connman.Agent",
-					in_signature='o', out_signature='s')
-	def RequestPassphrase(self, service):
-		print "PassphraseRequested (%s)" % (service)
-		raise Canceled("Canceled")
+					in_signature='o', out_signature='')
+	def RequestPassphrase(self, path):
+		print "PassphraseRequested (%s)" % (path)
+
+		service = dbus.Interface(bus.get_object("org.moblin.connman",
+							path),
+					 "org.moblin.connman.Service")
+
+		try:
+			print "setting passphrase (%s)" % (self.passphrase)
+
+			service.SetProperty("Passphrase",
+					    dbus.String(self.passphrase,
+							variant_level=1))
+
+			service.Connect(timeout=60000)
+		except dbus.DBusException, error:
+			print "%s: %s" % (error._dbus_error_name, error.message)
 
 	@dbus.service.method("org.moblin.connman.Agent",
 					in_signature='', out_signature='')
 	def Cancel(self):
 		print "Cancel"
 
+
+
 if __name__ == '__main__':
+	if len(sys.argv) < 2:
+		print "Usage: %s <passphrase>" % (sys.argv[0])
+		sys.exit(1)
+
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
@@ -35,6 +59,7 @@ if __name__ == '__main__':
 
 	path = "/test/agent"
 	object = Agent(bus, path)
+	object.passphrase = sys.argv[1]
 
 	manager.RegisterAgent(path)
 
