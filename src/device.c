@@ -1184,24 +1184,6 @@ static void scanning_changed(struct connman_device *device)
 					DBUS_TYPE_BOOLEAN, &device->scanning);
 }
 
-static void mark_network_available(gpointer key, gpointer value,
-						gpointer user_data)
-{
-	struct connman_network *network = value;
-
-	connman_network_set_available(network, TRUE);
-}
-
-void connman_device_cleanup_scanning(struct connman_device *device)
-{
-	device->scanning = FALSE;
-
-	scanning_changed(device);
-
-	g_hash_table_foreach(device->networks,
-				mark_network_available, NULL);
-}
-
 /**
  * connman_device_set_scanning:
  * @device: device structure
