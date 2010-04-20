@@ -142,6 +142,7 @@ static void set_default_gateway(struct gateway_data *data)
 
 	if (data->vpn == TRUE) {
 		connman_inet_set_gateway_address(data->index, data->vpn_ip);
+		data->active = TRUE;
 		/* vpn gateway going away no changes in services */
 		return;
 	}
