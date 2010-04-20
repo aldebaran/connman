@@ -38,6 +38,7 @@ struct gateway_data {
 	/* VPN extra data */
 	gboolean vpn;
 	char *vpn_ip;
+	int vpn_phy_index;
 };
 
 static GSList *gateway_list = NULL;
@@ -67,13 +68,15 @@ static int del_routes(struct gateway_data *data)
 {
 	const char *address;
 
-	connman_inet_del_host_route(data->index, data->gateway);
-
-	if (data->vpn)
+	if (data->vpn) {
+		if (data->vpn_phy_index >= 0)
+			connman_inet_del_host_route(data->vpn_phy_index,
+							data->gateway);
 		address = data->vpn_ip;
-	else
+	} else {
+		connman_inet_del_host_route(data->index, data->gateway);
 		address = data->gateway;
-
+	}
 	return connman_inet_clear_gateway_address(data->index, address);
 }
 
@@ -107,6 +110,7 @@ static struct gateway_data *add_gateway(int index, const char *gateway)
 	data->element = NULL;
 	data->vpn_ip = NULL;
 	data->vpn = FALSE;
+	data->vpn_phy_index = -1;
 
 	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
 							find_element, data);
@@ -279,6 +283,8 @@ static int connection_probe(struct connman_element *element)
 		new_gateway->vpn_ip = g_strdup(vpn_ip);
 		/* make sure vpn gateway are at higher priority */
 		new_gateway->order = 10;
+		if (active_gateway)
+			new_gateway->vpn_phy_index = active_gateway->index;
 	} else
 		new_gateway->vpn = FALSE;
 
@@ -291,9 +297,6 @@ static int connection_probe(struct connman_element *element)
 		connman_inet_add_host_route_vpn(active_gateway->index,
 						active_gateway->gateway,
 						new_gateway->gateway);
-
-		connman_inet_set_gateway_address(new_gateway->index,
-							new_gateway->gateway);
 	}
 
 	if (new_gateway->order >= active_gateway->order) {
@@ -333,8 +336,8 @@ static void connection_remove(struct connman_element *element)
 
 	set_default = data->vpn;
 
-	if (data->vpn == TRUE)
-		connman_inet_del_host_route(data->index, data->gateway);
+	if (data->vpn == TRUE && data->vpn_phy_index >= 0)
+		connman_inet_del_host_route(data->vpn_phy_index, data->gateway);
 
 	remove_gateway(data);
 
