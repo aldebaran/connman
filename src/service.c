@@ -2693,7 +2693,7 @@ static int service_load(struct connman_service *service)
 		service->username = g_key_file_get_string(keyfile,
 					service->identifier, "Username", NULL);
 
-		service->username = g_key_file_get_string(keyfile,
+		service->password = g_key_file_get_string(keyfile,
 					service->identifier, "Password", NULL);
 
 		service->favorite = g_key_file_get_boolean(keyfile,
