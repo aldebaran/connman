@@ -96,6 +96,8 @@ char *connman_dhcp_get_interface(struct connman_dhcp *dhcp)
 void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 					const char *key, const char *value)
 {
+	char **nameservers;
+
 	if (g_strcmp0(key, "Address") == 0) {
 		g_free(dhcp->element->ipv4.address);
 		dhcp->element->ipv4.address = g_strdup(value);
@@ -113,7 +115,14 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 		dhcp->element->ipv4.broadcast = g_strdup(value);
 	} else if (g_strcmp0(key, "Nameserver") == 0) {
 		g_free(dhcp->element->ipv4.nameserver);
-		dhcp->element->ipv4.nameserver = g_strdup(value);
+		nameservers = g_strsplit_set(value, " ", 0);
+		/* FIXME: The ipv4 structure can only hold one nameserver, so
+		 * we are only able to pass along the first nameserver sent by
+		 * the DHCP server.  If this situation changes, we should
+		 * retain all of them.
+		 */
+		dhcp->element->ipv4.nameserver = g_strdup(nameservers[0]);
+		g_strfreev(nameservers);
 	} else if (g_strcmp0(key, "Domainname") == 0) {
 		__connman_utsname_set_domainname(value);
 	} else if (g_strcmp0(key, "Hostname") == 0) {
