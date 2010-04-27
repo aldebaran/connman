@@ -89,6 +89,12 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
+
 	if (dbus_message_get_args(reply, &error,
 					DBUS_TYPE_STRING, &interface,
 						DBUS_TYPE_INVALID) == FALSE) {
@@ -170,6 +176,12 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 	reply = dbus_pending_call_steal_reply(call);
 
 	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
 
 	if (dbus_message_get_args(reply, &error, DBUS_TYPE_INVALID) == FALSE) {
 		if (dbus_error_is_set(&error) == TRUE) {
@@ -625,6 +637,12 @@ static void list_adapters_reply(DBusPendingCall *call, void *user_data)
 
 	dbus_error_init(&error);
 
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
+
 	if (dbus_message_get_args(reply, &error,
 				DBUS_TYPE_ARRAY, DBUS_TYPE_OBJECT_PATH,
 						&adapters, &num_adapters,
@@ -717,14 +735,24 @@ static void bluetooth_remove(struct connman_device *device)
 
 static void powered_reply(DBusPendingCall *call, void *user_data)
 {
+	DBusError error;
 	DBusMessage *reply;
 
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
 
-	dbus_message_unref(reply);
+	dbus_error_init(&error);
 
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		dbus_message_unref(reply);
+		dbus_pending_call_unref(call);
+		return;
+	}
+
+	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 
 	add_adapter(connection, user_data);
