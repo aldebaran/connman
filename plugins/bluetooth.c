@@ -237,6 +237,8 @@ static int pan_disconnect(struct connman_network *network)
 
 	connman_network_ref(network);
 
+	connman_network_set_associating(network, FALSE);
+
 	dbus_pending_call_set_notify(call, disconnect_reply, network, NULL);
 
 	dbus_message_unref(message);
