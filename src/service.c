@@ -619,6 +619,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 		connman_dbus_dict_append_basic(&dict, "SetupRequired",
 						DBUS_TYPE_BOOLEAN, &required);
+		connman_dbus_dict_append_dict(&dict, "Ethernet",
+						append_ethernet, service);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->passphrase != NULL &&
