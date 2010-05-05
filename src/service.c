@@ -1620,8 +1620,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 			__connman_service_auto_connect();
 	}
 
-	if (state == CONNMAN_SERVICE_STATE_READY ||
-			state == CONNMAN_SERVICE_STATE_ONLINE) {
+	if (state == CONNMAN_SERVICE_STATE_READY) {
 		set_reconnect_state(service, TRUE);
 
 		__connman_service_set_favorite(service, TRUE);
