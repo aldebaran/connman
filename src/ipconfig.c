@@ -1148,6 +1148,9 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 		mask = inet_ntoa(netmask);
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
+
+		connman_dbus_dict_append_basic(iter, "Gateway",
+				DBUS_TYPE_STRING, &ipconfig->address->gateway);
 	}
 }
 
