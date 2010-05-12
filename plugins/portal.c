@@ -399,9 +399,19 @@ static int location_detect(struct connman_location *location)
 	enum connman_service_type service_type;
 
 	service_type = connman_location_get_type(location);
-	if (service_type != CONNMAN_SERVICE_TYPE_WIFI &&
-		service_type != CONNMAN_SERVICE_TYPE_ETHERNET)
-		return 0;
+	switch (service_type) {
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+		return -EOPNOTSUPP;
+	}
 
 	data = g_try_new0(struct server_data, 1);
 	if (data == NULL)
