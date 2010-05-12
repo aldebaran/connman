@@ -401,10 +401,8 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 	}
 }
 
-connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type)
+static connman_bool_t technology_supported(enum connman_service_type type)
 {
-	DBG("type %d", type);
-
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -418,6 +416,29 @@ connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
 	}
+
+	return TRUE;
+}
+
+connman_bool_t __connman_notifier_is_registered(enum connman_service_type type)
+{
+	DBG("type %d", type);
+
+	if (technology_supported(type) == FALSE)
+		return FALSE;
+
+	if (g_atomic_int_get(&registered[type]) > 0)
+		return TRUE;
+
+	return FALSE;
+}
+
+connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type)
+{
+	DBG("type %d", type);
+
+	if (technology_supported(type) == FALSE)
+		return FALSE;
 
 	if (g_atomic_int_get(&enabled[type]) > 0)
 		return TRUE;

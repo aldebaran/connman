@@ -345,6 +345,9 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
+	if (__connman_notifier_is_registered(type) == FALSE)
+		return __connman_error_not_registered(msg);
+
 	if (__connman_notifier_is_enabled(type) == TRUE)
 		return __connman_error_already_enabled(msg);
 
@@ -389,6 +392,9 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 		type = CONNMAN_SERVICE_TYPE_CELLULAR;
 	else
 		return __connman_error_invalid_arguments(msg);
+
+	if (__connman_notifier_is_registered(type) == FALSE)
+		return __connman_error_not_registered(msg);
 
 	if (__connman_notifier_is_enabled(type) == FALSE)
 		return __connman_error_already_disabled(msg);
