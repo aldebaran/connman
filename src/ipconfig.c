@@ -634,8 +634,23 @@ void __connman_ipconfig_newroute(int index, unsigned char scope,
 		return;
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
+		GSList *list;
+
 		g_free(ipdevice->gateway);
 		ipdevice->gateway = g_strdup(gateway);
+
+		if (ipdevice->config != NULL &&
+					ipdevice->config->system != NULL) {
+			g_free(ipdevice->config->system->gateway);
+			ipdevice->config->system->gateway = g_strdup(gateway);
+		}
+
+		for (list = ipdevice->address_list; list; list = list->next) {
+			struct connman_ipaddress *ipaddress = list->data;
+
+			g_free(ipaddress->gateway);
+			ipaddress->gateway = g_strdup(gateway);
+		}
 	}
 
 	connman_info("%s {add} route %s gw %s scope %u <%s>",
@@ -655,8 +670,23 @@ void __connman_ipconfig_delroute(int index, unsigned char scope,
 		return;
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
+		GSList *list;
+
 		g_free(ipdevice->gateway);
 		ipdevice->gateway = NULL;
+
+		if (ipdevice->config != NULL &&
+					ipdevice->config->system != NULL) {
+			g_free(ipdevice->config->system->gateway);
+			ipdevice->config->system->gateway = NULL;
+		}
+
+		for (list = ipdevice->address_list; list; list = list->next) {
+			struct connman_ipaddress *ipaddress = list->data;
+
+			g_free(ipaddress->gateway);
+			ipaddress->gateway = NULL;
+		}
 	}
 
 	connman_info("%s {del} route %s gw %s scope %u <%s>",
@@ -909,8 +939,7 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
-enum connman_ipconfig_method __connman_ipconfig_get_method(
-				struct connman_ipconfig *ipconfig)
+enum connman_ipconfig_method __connman_ipconfig_get_method(struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL)
 		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
@@ -1118,7 +1147,7 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 
 	if (ipconfig->system->gateway != NULL)
 		connman_dbus_dict_append_basic(iter, "Gateway",
-				DBUS_TYPE_STRING, &ipconfig->address->gateway);
+				DBUS_TYPE_STRING, &ipconfig->system->gateway);
 }
 
 void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
