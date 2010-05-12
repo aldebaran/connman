@@ -10,6 +10,13 @@ def extract_values(values):
 	val += " }"
 	return val
 
+def extract_list(list):
+	val = "["
+	for i in list:
+		val += " " + str(i)
+	val += " ]"
+	return val
+
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
@@ -28,6 +35,8 @@ for path in properties["Services"]:
 	for key in properties.keys():
 		if key in ["IPv4", "IPv4.Configuration", "Proxy", "Ethernet"]:
 			val = extract_values(properties[key])
+		elif key in ["Nameservers", "Nameservers.Configuration"]:
+			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
 				"SetupRequired", "PassphraseRequired"]:
 			if properties[key] == dbus.Boolean(1):

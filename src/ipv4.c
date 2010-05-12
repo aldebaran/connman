@@ -40,8 +40,7 @@ struct connman_ipv4 {
 	struct in_addr broadcast;
 };
 
-static int set_ipv4(struct connman_element *element,
-			struct connman_ipv4 *ipv4, const char *nameserver)
+static int set_ipv4(struct connman_element *element, struct connman_ipv4 *ipv4)
 {
 	struct ifreq ifr;
 	struct sockaddr_in addr;
@@ -95,11 +94,6 @@ static int set_ipv4(struct connman_element *element,
 
 	close(sk);
 
-	if (nameserver == NULL)
-		connman_error("No nameserver for %s defined", ifr.ifr_name);
-	else
-		connman_resolver_append(ifr.ifr_name, NULL, nameserver);
-
 	return 0;
 }
 
@@ -124,8 +118,6 @@ static int clear_ipv4(struct connman_element *element)
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
-
-	connman_resolver_remove_all(ifr.ifr_name);
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -207,7 +199,14 @@ static int ipv4_probe(struct connman_element *element)
 		ipv4.broadcast.s_addr = ipv4.address.s_addr |
 						~ipv4.netmask.s_addr;
 
-	set_ipv4(element, &ipv4, nameserver);
+	set_ipv4(element, &ipv4);
+
+	if (nameserver != NULL) {
+		struct connman_service *service;
+
+		service = __connman_element_get_service(element);
+		__connman_service_append_nameserver(service, nameserver);
+	}
 
 	connman_timeserver_append(timeserver);
 
@@ -225,14 +224,23 @@ static int ipv4_probe(struct connman_element *element)
 
 static void ipv4_remove(struct connman_element *element)
 {
-	const char *timeserver = NULL;
+	const char *nameserver = NULL, *timeserver = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
 	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
+	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
 
 	connman_timeserver_remove(timeserver);
+
+	if (nameserver != NULL) {
+		struct connman_service *service;
+
+		service = __connman_element_get_service(element);
+		__connman_service_remove_nameserver(service, nameserver);
+	}
 
 	clear_ipv4(element);
 }
