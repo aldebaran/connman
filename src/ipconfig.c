@@ -848,6 +848,9 @@ void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
  */
 int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 {
+	if (ipconfig == NULL)
+		return -1;
+
 	if (ipconfig->origin != NULL)
 		return ipconfig->origin->index;
 
@@ -863,6 +866,9 @@ int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
+
+	if (ipconfig == NULL)
+		return NULL;
 
 	if (ipconfig->index < 0)
 		return NULL;
@@ -1109,6 +1115,10 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
 	}
+
+	if (ipconfig->system->gateway != NULL)
+		connman_dbus_dict_append_basic(iter, "Gateway",
+				DBUS_TYPE_STRING, &ipconfig->address->gateway);
 }
 
 void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
@@ -1148,10 +1158,11 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 		mask = inet_ntoa(netmask);
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
+	}
 
+	if (ipconfig->address->gateway != NULL)
 		connman_dbus_dict_append_basic(iter, "Gateway",
 				DBUS_TYPE_STRING, &ipconfig->address->gateway);
-	}
 }
 
 int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
