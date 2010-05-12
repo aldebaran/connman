@@ -43,6 +43,8 @@
 static in_addr_t loopback_address;
 static in_addr_t loopback_netmask;
 
+static char system_hostname[HOST_NAME_MAX + 1];
+
 #if 0
 static GIOChannel *inotify_channel = NULL;
 
@@ -146,21 +148,24 @@ static void create_hostname(void)
 
 	if (sethostname(name, strlen(name)) < 0)
 		connman_error("Failed to set hostname to %s", name);
+
+	strncpy(system_hostname, name, HOST_NAME_MAX);
 }
 
 static int setup_hostname(void)
 {
 	char name[HOST_NAME_MAX + 1];
 
-	memset(name, 0, sizeof(name));
+	memset(system_hostname, 0, sizeof(system_hostname));
 
-	if (gethostname(name, HOST_NAME_MAX) < 0) {
+	if (gethostname(system_hostname, HOST_NAME_MAX) < 0) {
 		connman_error("Failed to get current hostname");
 		return -EIO;
 	}
 
-	if (strlen(name) > 0 && strcmp(name, "(none)") != 0)
-		connman_info("System hostname is %s", name);
+	if (strlen(system_hostname) > 0 &&
+				strcmp(system_hostname, "(none)") != 0)
+		connman_info("System hostname is %s", system_hostname);
 	else
 		create_hostname();
 
@@ -279,6 +284,11 @@ done:
 	return err;
 }
 
+static const char *loopback_get_hostname(void)
+{
+	return system_hostname;
+}
+
 static int loopback_set_hostname(const char *hostname)
 {
 	int err;
@@ -314,6 +324,7 @@ static int loopback_set_domainname(const char *domainname)
 
 static struct connman_utsname_driver loopback_driver = {
 	.name		= "loopback",
+	.get_hostname	= loopback_get_hostname,
 	.set_hostname	= loopback_set_hostname,
 	.set_domainname	= loopback_set_domainname,
 };
