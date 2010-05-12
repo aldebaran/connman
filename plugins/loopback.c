@@ -283,6 +283,9 @@ static int loopback_set_hostname(const char *hostname)
 {
 	int err;
 
+	if (g_strcmp0(hostname, "<hostname>") == 0)
+		return 0;
+
 	if (sethostname(hostname, strlen(hostname)) < 0) {
 		err = -errno;
 		connman_error("Failed to set hostname to %s", hostname);
