@@ -35,7 +35,8 @@ for path in properties["Services"]:
 	for key in properties.keys():
 		if key in ["IPv4", "IPv4.Configuration", "Proxy", "Ethernet"]:
 			val = extract_values(properties[key])
-		elif key in ["Nameservers", "Nameservers.Configuration"]:
+		elif key in ["Nameservers", "Nameservers.Configuration",
+					"Domains", "Domains.Configuration"]:
 			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
 				"SetupRequired", "PassphraseRequired"]:

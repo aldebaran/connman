@@ -67,6 +67,7 @@ struct connman_service {
 	struct connman_network *network;
 	char **nameservers;
 	char *nameserver;
+	char **domains;
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
@@ -592,6 +593,27 @@ static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
 				DBUS_TYPE_STRING, &service->nameservers[i]);
 }
 
+static void append_domain(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	if (is_connected(service) == FALSE)
+		return;
+}
+
+static void append_domainconfig(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	int i;
+
+	if (service->domains == NULL)
+		return;
+
+	for (i = 0; service->domains[i]; i++)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->domains[i]);
+}
+
 static void append_proxy(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -637,6 +659,14 @@ static void dns_configuration_changed(struct connman_service *service)
 				DBUS_TYPE_STRING, append_dnsconfig, service);
 
 	dns_changed(service);
+}
+
+static void domain_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_array(service->path,
+				CONNMAN_SERVICE_INTERFACE,
+				"Domains.Configuration",
+				DBUS_TYPE_STRING, append_domainconfig, service);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -789,6 +819,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_array(&dict, "Nameservers.Configuration",
 				DBUS_TYPE_STRING, append_dnsconfig, service);
+
+	connman_dbus_dict_append_array(&dict, "Domains",
+				DBUS_TYPE_STRING, append_domain, service);
+
+	connman_dbus_dict_append_array(&dict, "Domains.Configuration",
+				DBUS_TYPE_STRING, append_domainconfig, service);
 
 	connman_dbus_dict_append_dict(&dict, "Proxy", append_proxy, service);
 
@@ -954,6 +990,42 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		update_nameservers(service);
 		dns_configuration_changed(service);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
+		DBusMessageIter entry;
+		GString *str;
+
+		if (type != DBUS_TYPE_ARRAY)
+			return __connman_error_invalid_arguments(msg);
+
+		str = g_string_new(NULL);
+		if (str == NULL)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_recurse(&value, &entry);
+
+		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+			const char *val;
+			dbus_message_iter_get_basic(&entry, &val);
+			dbus_message_iter_next(&entry);
+			if (str->len > 0)
+				g_string_append_printf(str, " %s", val);
+			else
+				g_string_append(str, val);
+		}
+
+		g_strfreev(service->domains);
+
+		if (str->len > 0)
+			service->domains = g_strsplit_set(str->str, " ", 0);
+		else
+			service->domains = NULL;
+
+		g_string_free(str, TRUE);
+
+		//update_domains(service);
+		domain_configuration_changed(service);
 
 		__connman_storage_save_service(service);
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
@@ -2910,6 +2982,13 @@ static int service_load(struct connman_service *service)
 		service->nameservers = NULL;
 	}
 
+	service->domains = g_key_file_get_string_list(keyfile,
+			service->identifier, "Domains", &length, NULL);
+	if (service->domains != NULL && length == 0) {
+		g_strfreev(service->domains);
+		service->domains = NULL;
+	}
+
 done:
 	g_key_file_free(keyfile);
 
@@ -3052,6 +3131,16 @@ update:
 	} else
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Nameservers", NULL);
+
+	if (service->domains != NULL) {
+		guint len = g_strv_length(service->domains);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+								"Domains",
+				(const gchar **) service->domains, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Domains", NULL);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
