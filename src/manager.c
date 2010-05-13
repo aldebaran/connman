@@ -457,7 +457,7 @@ static DBusMessage *lookup_service(DBusConnection *conn,
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &path,
+	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 }
 
