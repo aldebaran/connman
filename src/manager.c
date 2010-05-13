@@ -413,6 +413,35 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *get_services(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_OBJECT_PATH_AS_STRING
+			DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
+
+	__connman_service_list_struct(&array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
+}
+
 static DBusMessage *lookup_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -615,6 +644,7 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "DisableTechnology", "s",     "",      disable_technology,
 						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "GetServices",       "",      "a(oa{sv})", get_services   },
 	{ "LookupService",     "s",     "o",     lookup_service,    },
 	{ "ConnectService",    "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },

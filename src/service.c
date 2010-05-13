@@ -669,69 +669,56 @@ static void domain_configuration_changed(struct connman_service *service)
 				DBUS_TYPE_STRING, append_domainconfig, service);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
+					struct connman_service *service)
 {
-	struct connman_service *service = user_data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
 	dbus_bool_t required;
 	const char *str;
 
-	DBG("service %p", service);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	connman_dbus_dict_open(&array, &dict);
-
 	str = __connman_service_type2string(service->type);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Type",
+		connman_dbus_dict_append_basic(dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
 	str = mode2string(service->mode);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Mode",
+		connman_dbus_dict_append_basic(dict, "Mode",
 						DBUS_TYPE_STRING, &str);
 
 	str = security2string(service->security);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Security",
+		connman_dbus_dict_append_basic(dict, "Security",
 						DBUS_TYPE_STRING, &str);
 
 	str = state2string(service->state);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "State",
+		connman_dbus_dict_append_basic(dict, "State",
 						DBUS_TYPE_STRING, &str);
 
 	str = error2string(service->error);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Error",
+		connman_dbus_dict_append_basic(dict, "Error",
 						DBUS_TYPE_STRING, &str);
 
 	if (service->strength > 0)
-		connman_dbus_dict_append_basic(&dict, "Strength",
+		connman_dbus_dict_append_basic(dict, "Strength",
 					DBUS_TYPE_BYTE, &service->strength);
 
-	connman_dbus_dict_append_basic(&dict, "Favorite",
+	connman_dbus_dict_append_basic(dict, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
-	connman_dbus_dict_append_basic(&dict, "Immutable",
+	connman_dbus_dict_append_basic(dict, "Immutable",
 					DBUS_TYPE_BOOLEAN, &service->immutable);
 
 	if (service->favorite == TRUE)
-		connman_dbus_dict_append_basic(&dict, "AutoConnect",
+		connman_dbus_dict_append_basic(dict, "AutoConnect",
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
 	else
-		connman_dbus_dict_append_basic(&dict, "AutoConnect",
+		connman_dbus_dict_append_basic(dict, "AutoConnect",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	if (service->name != NULL)
-		connman_dbus_dict_append_basic(&dict, "Name",
+		connman_dbus_dict_append_basic(dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
 
 	switch (service->type) {
@@ -741,27 +728,27 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		connman_dbus_dict_append_basic(&dict, "Roaming",
+		connman_dbus_dict_append_basic(dict, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
 
 		if (service->mcc != NULL && service->mnc != NULL) {
-			connman_dbus_dict_append_basic(&dict, "MCC",
+			connman_dbus_dict_append_basic(dict, "MCC",
 					DBUS_TYPE_STRING, &service->mcc);
-			connman_dbus_dict_append_basic(&dict, "MNC",
+			connman_dbus_dict_append_basic(dict, "MNC",
 					DBUS_TYPE_STRING, &service->mnc);
 		}
 
 		if (service->apn != NULL) {
-			connman_dbus_dict_append_basic(&dict, "APN",
+			connman_dbus_dict_append_basic(dict, "APN",
 					DBUS_TYPE_STRING, &service->apn);
 
 			if (service->username != NULL)
-				connman_dbus_dict_append_basic(&dict,
+				connman_dbus_dict_append_basic(dict,
 					"Username", DBUS_TYPE_STRING,
 							&service->username);
 
 			if (service->password != NULL)
-				connman_dbus_dict_append_basic(&dict,
+				connman_dbus_dict_append_basic(dict,
 					"Password", DBUS_TYPE_STRING,
 							&service->password);
 
@@ -769,16 +756,14 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		} else
 			required = TRUE;
 
-		connman_dbus_dict_append_basic(&dict, "SetupRequired",
+		connman_dbus_dict_append_basic(dict, "SetupRequired",
 						DBUS_TYPE_BOOLEAN, &required);
-		connman_dbus_dict_append_dict(&dict, "Ethernet",
+		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
-		if (service->passphrase != NULL &&
-				__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
-			connman_dbus_dict_append_basic(&dict, "Passphrase",
+		if (service->passphrase != NULL && limited == FALSE)
+			connman_dbus_dict_append_basic(dict, "Passphrase",
 				DBUS_TYPE_STRING, &service->passphrase);
 
 		required = FALSE;
@@ -798,36 +783,85 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			break;
 		}
 
-		connman_dbus_dict_append_basic(&dict, "PassphraseRequired",
+		connman_dbus_dict_append_basic(dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-		connman_dbus_dict_append_dict(&dict, "Ethernet",
+		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);
 		break;
 	}
 
-	connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4, service);
+	connman_dbus_dict_append_dict(dict, "IPv4", append_ipv4, service);
 
-	connman_dbus_dict_append_dict(&dict, "IPv4.Configuration",
+	connman_dbus_dict_append_dict(dict, "IPv4.Configuration",
 						append_ipv4config, service);
 
-	connman_dbus_dict_append_array(&dict, "Nameservers",
+	connman_dbus_dict_append_array(dict, "Nameservers",
 				DBUS_TYPE_STRING, append_dns, service);
 
-	connman_dbus_dict_append_array(&dict, "Nameservers.Configuration",
+	connman_dbus_dict_append_array(dict, "Nameservers.Configuration",
 				DBUS_TYPE_STRING, append_dnsconfig, service);
 
-	connman_dbus_dict_append_array(&dict, "Domains",
+	connman_dbus_dict_append_array(dict, "Domains",
 				DBUS_TYPE_STRING, append_domain, service);
 
-	connman_dbus_dict_append_array(&dict, "Domains.Configuration",
+	connman_dbus_dict_append_array(dict, "Domains.Configuration",
 				DBUS_TYPE_STRING, append_domainconfig, service);
 
-	connman_dbus_dict_append_dict(&dict, "Proxy", append_proxy, service);
+	connman_dbus_dict_append_dict(dict, "Proxy", append_proxy, service);
+}
 
+static void append_struct(gpointer value, gpointer user_data)
+{
+	struct connman_service *service = value;
+	DBusMessageIter *iter = user_data;
+	DBusMessageIter entry, dict;
+
+	if (service->path == NULL || service->hidden == TRUE)
+		return;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
+							&service->path);
+
+	connman_dbus_dict_open(&entry, &dict);
+	append_properties(&dict, TRUE, service);
+	connman_dbus_dict_close(&entry, &dict);
+
+	dbus_message_iter_close_container(iter, &entry);
+}
+
+void __connman_service_list_struct(DBusMessageIter *iter)
+{
+	g_sequence_foreach(service_list, append_struct, iter);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_service *service = user_data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	dbus_bool_t limited = TRUE;
+
+	DBG("service %p", service);
+
+	if (__connman_security_check_privilege(msg,
+				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
+		limited = FALSE;
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	connman_dbus_dict_open(&array, &dict);
+	append_properties(&dict, limited, service);
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;

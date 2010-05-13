@@ -69,6 +69,16 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		arracy{object,dict} GetServices()
+
+			Returns a sorted list of tuples with service
+			object path and dictionary of service properties.
+
+			This list will not contain sensitive information
+			like passphrases etc.
+
+			Possible Errors: [service].Error.InvalidArguments
+
 		object LookupService(string pattern)
 
 			Lookup a service matching the specific pattern.
