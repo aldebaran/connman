@@ -413,6 +413,25 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *lookup_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *pattern, *path;
+	int err;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+							DBUS_TYPE_INVALID);
+
+	err = __connman_service_lookup(pattern, &path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &path,
+							DBUS_TYPE_INVALID);
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -596,6 +615,7 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "DisableTechnology", "s",     "",      disable_technology,
 						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "LookupService",     "s",     "o",     lookup_service,    },
 	{ "ConnectService",    "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,

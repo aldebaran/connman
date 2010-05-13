@@ -143,7 +143,7 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/list-providers \
 		test/monitor-manager test/test-counter test/set-ip-method \
-		test/set-nameservers test/set-domains
+		test/set-nameservers test/set-domains test/find-service
 
 if TEST
 testdir = $(pkglibdir)/test

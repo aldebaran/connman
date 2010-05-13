@@ -2115,6 +2115,34 @@ int __connman_service_disconnect(struct connman_service *service)
 }
 
 /**
+ * __connman_service_lookup:
+ * @pattern: search pattern
+ * @path: return object path
+ *
+ * Look up a service path from a search pattern
+ */
+int __connman_service_lookup(const char *pattern, const char **path)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init(&iter, service_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		GSequenceIter *iter = value;
+		struct connman_service *service = g_sequence_get(iter);
+
+		if (g_strcmp0(service->identifier, pattern) == 0 ||
+				g_strcmp0(service->name, pattern) == 0) {
+			*path = (const char *) service->path;
+			return 0;
+		}
+	}
+
+	return -ENXIO;
+}
+
+/**
  * lookup_by_identifier:
  * @identifier: service identifier
  *
