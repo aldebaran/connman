@@ -147,8 +147,10 @@ static void dhclient_setup(struct connman_task *task, const char *ifname)
 	connman_task_add_argument(task, "-sf", "%s/dhclient-script", SCRIPTDIR);
 
 	hostname = connman_utsname_get_hostname();
+#ifdef HAVE_DHCLIENT_HOSTNAME
 	if (hostname != NULL)
 		connman_task_add_argument(task, "-H", hostname);
+#endif
 
 	connman_task_add_argument(task, ifname, NULL);
 	connman_task_add_argument(task, "-n", NULL);

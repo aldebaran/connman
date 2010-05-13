@@ -128,6 +128,12 @@ if (test "${enable_dhclient}" != "no"); then
 		DHCLIENT="${path_dhclient}"
 		AC_SUBST(DHCLIENT)
 	fi
+	AC_MSG_CHECKING(dhclient major version)
+	version_dhclient=`${DHCLIENT} --version 2>&1 | sed '/^isc-dhclient-*/!d; s///; s/\..*//;q'`
+	AC_MSG_RESULT(${version_dhclient})
+	if (test "${version_dhclient}" = "4"); then
+		AC_DEFINE(HAVE_DHCLIENT_HOSTNAME, 1, [Define to 1 if you have dhclient hostname support.])
+	fi
 fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
 AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
