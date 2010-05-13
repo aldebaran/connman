@@ -49,6 +49,8 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 		return __connman_error_not_implemented(msg);
 	case ENOLINK:
 		return __connman_error_no_carrier(msg);
+	case ENOTUNIQ:
+		return __connman_error_not_unique(msg);
 	case EOPNOTSUPP:
 		return __connman_error_not_supported(msg);
 	case ECONNABORTED:
@@ -91,6 +93,12 @@ DBusMessage *__connman_error_not_registered(DBusMessage *msg)
 {
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 					".NotRegistered", "Not registered");
+}
+
+DBusMessage *__connman_error_not_unique(DBusMessage *msg)
+{
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
+					".NotUnique", "Not unique");
 }
 
 DBusMessage *__connman_error_not_supported(DBusMessage *msg)
