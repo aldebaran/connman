@@ -87,8 +87,8 @@ AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
 AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
 AC_ARG_ENABLE(hh2serial-gps,
-        AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
-                        [enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
+	AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
+			[enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
 AM_CONDITIONAL(HH2SERIAL_GPS, test "${enable_hh2serial_gps}" != "no")
 AM_CONDITIONAL(HH2SERIAL_GPS_BUILTIN, test "${enable_hh2serial_gps}" = "builtin")
 
@@ -159,22 +159,22 @@ AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
 
 AC_ARG_ENABLE(openconnect,
-        AC_HELP_STRING([--enable-openconnect], [enable openconnect support]),
-                        [enable_openconnect=${enableval}], [enable_openconnect="no"])
+	AC_HELP_STRING([--enable-openconnect], [enable openconnect support]),
+			[enable_openconnect=${enableval}], [enable_openconnect="no"])
 if (test "${enable_openconnect}" != "no"); then
-        if (test -z "${path_openconnect}"); then
-                AC_PATH_PROG(OPENCONNECT, [openconnect], [], $PATH:/sbin:/usr/sbin)
-        else
-                OPENCONNECT="${path_openconnect}"
-                AC_SUBST(OPENCONNECT)
-        fi
+	if (test -z "${path_openconnect}"); then
+		AC_PATH_PROG(OPENCONNECT, [openconnect], [], $PATH:/sbin:/usr/sbin)
+	else
+		OPENCONNECT="${path_openconnect}"
+		AC_SUBST(OPENCONNECT)
+	fi
 fi
 AM_CONDITIONAL(OPENCONNECT, test "${enable_openconnect}" != "no")
 AM_CONDITIONAL(OPENCONNECT_BUILTIN, test "${enable_openconnect}" = "builtin")
 
 AC_ARG_ENABLE(portal,
-        AC_HELP_STRING([--enable-portal], [enable portal detection support]),
-                        [enable_portal=${enableval}], [enable_portal="no"])
+	AC_HELP_STRING([--enable-portal], [enable portal detection support]),
+			[enable_portal=${enableval}], [enable_portal="no"])
 AM_CONDITIONAL(PORTAL, test "${enable_portal}" != "no")
 AM_CONDITIONAL(PORTAL_BUILTIN, test "${enable_portal}" = "builtin")
 
