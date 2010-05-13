@@ -487,7 +487,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 
 static DBusMessage *connect_provider(DBusConnection *conn,
-				     DBusMessage *msg, void *data)
+					DBusMessage *msg, void *data)
 {
 	int err;
 
