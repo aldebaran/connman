@@ -2115,12 +2115,12 @@ int __connman_service_disconnect(struct connman_service *service)
 }
 
 /**
- * __connman_service_lookup:
+ * lookup_by_identifier:
  * @identifier: service identifier
  *
  * Look up a service by identifier (reference count will not be increased)
  */
-static struct connman_service *__connman_service_lookup(const char *identifier)
+static struct connman_service *lookup_by_identifier(const char *identifier)
 {
 	GSequenceIter *iter;
 
@@ -2276,7 +2276,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 
 	name = g_strdup_printf("%s_%s_%s", type, ident, group);
 
-	service = __connman_service_lookup(name);
+	service = lookup_by_identifier(name);
 
 	if (service != NULL)
 		goto done;
@@ -2287,7 +2287,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 		created = TRUE;
 	}
 
-	service = __connman_service_lookup(name);
+	service = lookup_by_identifier(name);
 
 done:
 	g_free(name);
@@ -2513,7 +2513,7 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
-	service = __connman_service_lookup(name);
+	service = lookup_by_identifier(name);
 	g_free(name);
 
 	return service;
