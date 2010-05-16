@@ -116,8 +116,8 @@ endif
 
 if TOOLS
 noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dbus-test \
-			tools/addr-test tools/tap-test tools/polkit-test \
-							tools/portal-test
+			tools/addr-test tools/tap-test tools/resolv-test \
+					tools/polkit-test tools/portal-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -128,6 +128,8 @@ tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_resolv_test_LDADD = -lresolv
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
 

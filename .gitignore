@@ -43,6 +43,7 @@ client/cm
 tools/wifi-scan
 tools/addr-test
 tools/tap-test
+tools/resolv-test
 tools/polkit-test
 tools/portal-test
 tools/supplicant-test
