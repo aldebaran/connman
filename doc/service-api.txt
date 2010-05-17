@@ -300,6 +300,11 @@ Properties	string State [readonly]
 			nameservers are configured, then it is useful
 			to configure this setting.
 
+			Changes to the domain name servers can be done
+			at any time. It will not cause a disconnect of
+			the service. However there might be small window
+			where name resolution might fail.
+
 		array{string} Domains [readonly]
 
 			The list of currently used search domains.
@@ -332,6 +337,11 @@ Properties	string State [readonly]
 			Same values as IPv4 property. The IPv4 represents
 			the actual system configuration while this allows
 			user configuration.
+
+			Changing these settings will cause a state change
+			of the service. The service will become unavailable
+			until the new configuration has been successfully
+			installed.
 
 		dict Proxy [readonly]
 
