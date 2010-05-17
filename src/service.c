@@ -1553,7 +1553,9 @@ static void service_free(gpointer user_data)
 		connman_location_unref(service->location);
 
 	g_strfreev(service->nameservers);
+	g_strfreev(service->domains);
 
+	g_free(service->nameserver);
 	g_free(service->mcc);
 	g_free(service->mnc);
 	g_free(service->apn);
