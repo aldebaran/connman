@@ -783,16 +783,29 @@ static void rtnl_route(struct nlmsghdr *hdr)
 	}
 }
 
+static connman_bool_t is_route_rtmsg(struct rtmsg *msg)
+{
+
+	if (msg->rtm_table != RT_TABLE_MAIN)
+		return FALSE;
+
+	if (msg->rtm_protocol != RTPROT_BOOT &&
+			msg->rtm_protocol != RTPROT_KERNEL)
+		return FALSE;
+
+	if (msg->rtm_type != RTN_UNICAST)
+		return FALSE;
+
+	return TRUE;
+}
+
 static void rtnl_newroute(struct nlmsghdr *hdr)
 {
 	struct rtmsg *msg = (struct rtmsg *) NLMSG_DATA(hdr);
 
 	rtnl_route(hdr);
 
-	if (msg->rtm_table == RT_TABLE_MAIN &&
-		(msg->rtm_protocol == RTPROT_BOOT ||
-			msg->rtm_protocol == RTPROT_KERNEL) &&
-						msg->rtm_type == RTN_UNICAST)
+	if (is_route_rtmsg(msg))
 		process_newroute(msg->rtm_family, msg->rtm_scope,
 						msg, RTM_PAYLOAD(hdr));
 }
@@ -803,10 +816,7 @@ static void rtnl_delroute(struct nlmsghdr *hdr)
 
 	rtnl_route(hdr);
 
-	if (msg->rtm_table == RT_TABLE_MAIN &&
-		(msg->rtm_protocol == RTPROT_BOOT ||
-			msg->rtm_protocol == RTPROT_KERNEL) &&
-						msg->rtm_type == RTN_UNICAST)
+	if (is_route_rtmsg(msg))
 		process_delroute(msg->rtm_family, msg->rtm_scope,
 						msg, RTM_PAYLOAD(hdr));
 }
