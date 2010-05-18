@@ -993,6 +993,122 @@ int __connman_network_disconnect(struct connman_network *network)
 	return err;
 }
 
+static int dhcp_start(struct connman_network *network)
+{
+	struct connman_element *element;
+	int error;
+
+	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
+		return -EINVAL;
+
+	element = connman_element_create(NULL);
+	if (element == NULL)
+		return -ENOMEM;
+
+	element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
+	element->index = network->element.index;
+
+	error = connman_element_register(element, &network->element);
+	if (error < 0) {
+		connman_element_unref(element);
+		return error;
+	}
+
+	return 0;
+}
+
+static int dhcp_stop(struct connman_network *network)
+{
+	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
+		return -EINVAL;
+
+	connman_element_unregister_children_type(&network->element,
+					CONNMAN_ELEMENT_TYPE_CONNECTION);
+	connman_element_unregister_children_type(&network->element,
+						CONNMAN_ELEMENT_TYPE_IPV4);
+	connman_element_unregister_children_type(&network->element,
+						CONNMAN_ELEMENT_TYPE_DHCP);
+
+	return 0;
+}
+
+static int manual_ipv4_set(struct connman_network *network,
+				struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service;
+	int err;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	err = __connman_ipconfig_set_address(ipconfig);
+	if (err < 0) {
+		connman_network_set_error(network,
+			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+		return err;
+	}
+
+	__connman_ipconfig_set_gateway(ipconfig, &network->element);
+
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
+
+	return 0;
+}
+
+int __connman_network_clear_ipconfig(struct connman_network *network,
+					struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service;
+	enum connman_ipconfig_method method;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		return -EINVAL;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		connman_element_unregister_children_type(&network->element,
+					CONNMAN_ELEMENT_TYPE_CONNECTION);
+		__connman_ipconfig_clear_address(ipconfig);
+		break;
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		dhcp_stop(network);
+		break;
+	}
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION);
+
+	return 0;
+}
+
+int __connman_network_set_ipconfig(struct connman_network *network, struct connman_ipconfig *ipconfig)
+{
+	enum connman_ipconfig_method method;
+
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		return -EINVAL;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		return manual_ipv4_set(network, ipconfig);
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		return dhcp_start(network);
+	}
+
+	return 0;
+}
+
 /**
  * connman_network_set_address:
  * @network: network structure
