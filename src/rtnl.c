@@ -790,7 +790,8 @@ static void rtnl_newroute(struct nlmsghdr *hdr)
 	rtnl_route(hdr);
 
 	if (msg->rtm_table == RT_TABLE_MAIN &&
-				msg->rtm_protocol == RTPROT_BOOT &&
+		(msg->rtm_protocol == RTPROT_BOOT ||
+			msg->rtm_protocol == RTPROT_KERNEL) &&
 						msg->rtm_type == RTN_UNICAST)
 		process_newroute(msg->rtm_family, msg->rtm_scope,
 						msg, RTM_PAYLOAD(hdr));
@@ -803,7 +804,8 @@ static void rtnl_delroute(struct nlmsghdr *hdr)
 	rtnl_route(hdr);
 
 	if (msg->rtm_table == RT_TABLE_MAIN &&
-				msg->rtm_protocol == RTPROT_BOOT &&
+		(msg->rtm_protocol == RTPROT_BOOT ||
+			msg->rtm_protocol == RTPROT_KERNEL) &&
 						msg->rtm_type == RTN_UNICAST)
 		process_delroute(msg->rtm_family, msg->rtm_scope,
 						msg, RTM_PAYLOAD(hdr));
