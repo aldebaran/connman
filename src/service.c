@@ -1069,7 +1069,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_property(msg);
 
 		if (is_connecting(service) ||
-			is_connected(service))
+				is_connected(service))
 			__connman_network_clear_ipconfig(service->network,
 							service->ipconfig);
 
@@ -1077,7 +1077,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 								&value);
 		if (err < 0) {
 			if (is_connected(service) ||
-				is_connecting(service))
+					is_connecting(service))
 				__connman_network_set_ipconfig(service->network,
 							service->ipconfig);
 
@@ -1087,7 +1087,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		ipv4_configuration_changed(service);
 
 		if (is_connecting(service) ||
-			is_connected(service))
+				is_connected(service))
 			__connman_network_set_ipconfig(service->network,
 							service->ipconfig);
 
