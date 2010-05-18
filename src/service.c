@@ -1068,12 +1068,28 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (service->ipconfig == NULL)
 			return __connman_error_invalid_property(msg);
 
+		if (is_connecting(service) ||
+			is_connected(service))
+			__connman_network_clear_ipconfig(service->network,
+							service->ipconfig);
+
 		err = __connman_ipconfig_set_ipv4config(service->ipconfig,
 								&value);
-		if (err < 0)
+		if (err < 0) {
+			if (is_connected(service) ||
+				is_connecting(service))
+				__connman_network_set_ipconfig(service->network,
+							service->ipconfig);
+
 			return __connman_error_failed(msg, -err);
+		}
 
 		ipv4_configuration_changed(service);
+
+		if (is_connecting(service) ||
+			is_connected(service))
+			__connman_network_set_ipconfig(service->network,
+							service->ipconfig);
 
 		__connman_storage_save_service(service);
 	} else
