@@ -39,6 +39,7 @@ passphrase. The PrivateKeyPassphrase field is ignored when this field is set
 to fsid.
 - Identity: Identity string for EAP.
 - Phase2: Phase2 (inner authentication with TLS tunnel) parameters.
+- Passphrase: RSN/WPA/WPA2 Passphrase
 
 
 Example
