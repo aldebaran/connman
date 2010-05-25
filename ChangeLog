@@ -1,3 +1,16 @@
+ver 0.53:
+	Fix issue with supplicant and device scanning state cleaning.
+	Fix issue with Bluetooth PAN networks stay in connected state.
+	Fix issue with reference counting and connected state.
+	Fix issue with technology disabling on device removal.
+	Fix issue with two default gateways when using VPN.
+	Fix issue with static IPv4 configuration and signals.
+	Add support for splitting DHCP provided nameserver results.
+	Add support multiple nameservers in /etc/resolv.conf.
+	Add support for setting manual DNS server configuration.
+	Add support for exporting IPv4 gateway information.
+	Add support for newer versions of oFono API.
+
 ver 0.52:
 	Fix issue with new "connected" states.
 	Fix issue with hidden networks and PSK.
