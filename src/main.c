@@ -67,7 +67,8 @@ static gboolean option_compat = FALSE;
 static gboolean option_selftest = FALSE;
 static gboolean option_version = FALSE;
 
-static gboolean parse_debug(const char *key, const char *value, gpointer user_data, GError **error)
+static gboolean parse_debug(const char *key, const char *value,
+					gpointer user_data, GError **error)
 {
 	if (value)
 		option_debug = g_strdup(value);
