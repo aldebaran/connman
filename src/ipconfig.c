@@ -381,7 +381,6 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	GString *str;
 	gboolean up = FALSE, down = FALSE;
 	gboolean lower_up = FALSE, lower_down = FALSE;
-	char *ifname;
 
 	DBG("index %d", index);
 
@@ -392,22 +391,12 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	if (ipdevice != NULL)
 		goto update;
 
-	ifname = connman_inet_ifname(index);
-
-	if (__connman_element_device_isfiltered(ifname) == TRUE) {
-		connman_info("Ignoring interface %s (filtered)", ifname);
-		g_free(ifname);
-		return;
-	}
-
 	ipdevice = g_try_new0(struct connman_ipdevice, 1);
-	if (ipdevice == NULL) {
-		g_free(ifname);
+	if (ipdevice == NULL)
 		return;
-	}
 
 	ipdevice->index = index;
-	ipdevice->ifname = ifname;
+	ipdevice->ifname = connman_inet_ifname(index);
 	ipdevice->type = type;
 
 	ipdevice->address = g_strdup(address);
