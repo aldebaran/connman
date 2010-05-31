@@ -32,14 +32,16 @@ extern "C" {
  * @short_description: Functions for handling time servers (including NTP)
  */
 
-int connman_timeserver_append(const char *server);
-int connman_timeserver_remove(const char *server);
+int connman_timeserver_append(char *server);
+int connman_timeserver_remove(char *server);
+void connman_timeserver_sync(void);
 
 struct connman_timeserver_driver {
 	const char *name;
 	int priority;
-	int (*append) (const char *server);
-	int (*remove) (const char *server);
+	int (*append) (char *server);
+	int (*remove) (char *server);
+	void (*sync) (void);
 };
 
 int connman_timeserver_driver_register(struct connman_timeserver_driver *driver);

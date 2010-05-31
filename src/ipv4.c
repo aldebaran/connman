@@ -167,7 +167,8 @@ static int ipv4_probe(struct connman_element *element)
 	struct connman_element *connection;
 	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
-	const char *nameserver = NULL, *timeserver = NULL;
+	const char *nameserver = NULL;
+	char *timeserver = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -224,7 +225,8 @@ static int ipv4_probe(struct connman_element *element)
 
 static void ipv4_remove(struct connman_element *element)
 {
-	const char *nameserver = NULL, *timeserver = NULL;
+	const char *nameserver = NULL;
+	char *timeserver = NULL;
 
 	DBG("element %p name %s", element, element->name);
 
