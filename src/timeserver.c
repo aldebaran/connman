@@ -75,7 +75,7 @@ void connman_timeserver_driver_unregister(struct connman_timeserver_driver *driv
  *
  * Append time server server address to current list
  */
-int connman_timeserver_append(char *server)
+int connman_timeserver_append(const char *server)
 {
 	GSList *list;
 
@@ -90,12 +90,17 @@ int connman_timeserver_append(char *server)
 
 	for (list = driver_list; list; list = list->next) {
 		struct connman_timeserver_driver *driver = list->data;
+		char *new_server;
 
 		if (driver->append == NULL)
 			continue;
 
+		new_server = g_strdup(server);
+		if (new_server == NULL)
+			return -ENOMEM;
+
 		if (driver->append(server) == 0) {
-			g_hash_table_insert(server_hash, server, driver);
+			g_hash_table_insert(server_hash, new_server, driver);
 			return 0;
 		}
 	}
@@ -109,7 +114,7 @@ int connman_timeserver_append(char *server)
  *
  * Remover time server server address from current list
  */
-int connman_timeserver_remove(char *server)
+int connman_timeserver_remove(const char *server)
 {
 	struct connman_timeserver_driver *driver;
 
@@ -121,6 +126,8 @@ int connman_timeserver_remove(char *server)
 	driver = g_hash_table_lookup(server_hash, server);
 	if (driver == NULL)
 		return -EINVAL;
+
+	g_hash_table_remove(server_hash, server);
 
 	if (driver->remove == NULL)
 		return -ENOENT;
@@ -149,7 +156,7 @@ int __connman_timeserver_init(void)
 	DBG("");
 
 	server_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						NULL, NULL);
+						g_free, NULL);
 
 	return 0;
 }

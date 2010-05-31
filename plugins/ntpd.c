@@ -47,11 +47,41 @@ static GList *pending_peers = NULL;
 #define NTPD_PORT 123
 #define DEFAULT_NTP_PEER "ntp.meego.com"
 
+struct ntpd_peer {
+	char *server;
+	gint refcount;
+};
+
 struct ntpdate_task {
 	struct connman_task *task;
 	gint conf_fd;
 	char *conf_path;
 };
+
+static struct ntpd_peer *find_peer(GList *peer_list, const char* server)
+{
+	GList *list;
+	struct ntpd_peer *peer;
+
+	for (list = peer_list; list; list = list->next) {
+		peer = list->data;
+
+		if (g_str_equal(peer->server, server))
+			return peer;
+	}
+
+	return NULL;
+}
+
+static void remove_peer(GList *peer_list, struct ntpd_peer *peer)
+{
+	if (!g_atomic_int_dec_and_test(&peer->refcount))
+		return;
+
+	g_free(peer->server);
+	g_free(peer);
+	peer_list = g_list_remove(peer_list, peer);
+}
 
 static connman_bool_t ntpd_running(void)
 {
@@ -113,6 +143,7 @@ static int ntpdate(void)
 	int err;
 	GError *g_err;
 	GList *list;
+	struct ntpd_peer *peer;
 	struct ntpdate_task *ntpdate;
 
 	DBG("");
@@ -146,11 +177,17 @@ static int ntpdate(void)
 	if (pending_peers == NULL && peers == NULL)
 		ntpdate_add_peer(ntpdate, DEFAULT_NTP_PEER);
 
-	for (list = pending_peers; list; list = list->next)
-		ntpdate_add_peer(ntpdate, list->data);
+	for (list = pending_peers; list; list = list->next) {
+		peer = list->data;
 
-	for (list = peers; list; list = list->next)
-		ntpdate_add_peer(ntpdate, list->data);
+		ntpdate_add_peer(ntpdate, peer->server);
+	}
+
+	for (list = peers; list; list = list->next) {
+		peer = list->data;
+
+		ntpdate_add_peer(ntpdate, peer->server);
+	}
 
 	close(ntpdate->conf_fd);
 
@@ -188,9 +225,9 @@ static void ntpd_sync(void)
 
 	list = g_list_first(pending_peers);
 	while(list) {
-		char *peer = list->data;
+		struct ntpd_peer *peer = list->data;
 
-		err = ntpd_add_peer(peer);
+		err = ntpd_add_peer(peer->server);
 		if (err)
 			continue;
 
@@ -202,23 +239,61 @@ static void ntpd_sync(void)
 	};
 }
 
-static int ntpd_append(char *server)
+static int ntpd_append(const char *server)
 {
+	struct ntpd_peer *peer;
+
 	DBG("");
 
-	pending_peers = g_list_prepend(pending_peers, server);
+	if (server == NULL)
+		return 0;
+
+	if ((peer = find_peer(pending_peers, server)) ||
+			(peer = find_peer(peers, server))) {
+		g_atomic_int_inc(&peer->refcount);
+		return 0;
+	}
+
+	peer = g_try_new0(struct ntpd_peer, 1);
+	if (peer == NULL)
+		return -ENOMEM;
+
+	peer->server = g_strdup(server);
+	if (peer->server == NULL) {
+		g_free(peer);
+		return -ENOMEM;
+	}
+
+	peer->refcount = 1;
+
+	pending_peers = g_list_prepend(pending_peers, peer);
 
 	return 0;
 }
 
-static int ntpd_remove(char *server)
+static int ntpd_remove(const char *server)
 {
+	struct ntpd_peer *peer;
+
 	DBG("");
 
-	peers = g_list_remove(peers, server);
+	if (server == NULL)
+		return 0;
+
+	peer = find_peer(peers, server);
+	if (peer == NULL)
+		goto remove;
+
+	remove_peer(peers, peer);
+
+remove:
 	/* TODO: send ntpd remove command */
 
-	pending_peers = g_list_remove(pending_peers, server);
+	peer = find_peer(pending_peers, server);
+	if (peer == NULL)
+		return 0;
+
+	remove_peer(pending_peers, peer);
 
 	return 0;
 }
