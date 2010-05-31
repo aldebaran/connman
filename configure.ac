@@ -280,6 +280,24 @@ AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 		[enable Intel OSPM support]), [enable_iospm=${enableval}])
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 
+AC_ARG_WITH(ntpd, AC_HELP_STRING([--with-=PROGRAM],
+	[specify ntpd binary location]), [path_ntpd=${withval}])
+
+AC_ARG_ENABLE(ntpd,
+	AC_HELP_STRING([--enable-ntpd], [enable ntpd support]),
+			[enable_ntpd=${enableval}], [enable_ntpd="no"])
+
+if (test "${enable_ntpd}" != "no"); then
+	if (test -z "${path_ntpd}"); then
+		AC_PATH_PROG(NTPD, [ntpd], [], $PATH:/sbin:/usr/sbin)
+	else
+		NTPD="${path_ntpd}"
+		AC_SUBST(NTPD)
+	fi
+fi
+AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
+AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
+
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
 				AC_MSG_ERROR(GLib >= 2.16 is required))
 AC_SUBST(GLIB_CFLAGS)

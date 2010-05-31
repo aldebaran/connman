@@ -1901,6 +1901,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 	service->state = state;
 	state_changed(service);
 
+	if (state == CONNMAN_SERVICE_STATE_ONLINE)
+		connman_timeserver_sync();
+
 	if (state == CONNMAN_SERVICE_STATE_IDLE) {
 		connman_bool_t reconnect;
 
