@@ -24,15 +24,19 @@
 #endif
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
+#include <connman/timeserver.h>
 #include <connman/plugin.h>
+
+#define MEEGO_NTP_SERVER "ntp.meego.com"
 
 static int meego_init(void)
 {
-	return 0;
+	return connman_timeserver_append(MEEGO_NTP_SERVER);
 }
 
 static void meego_exit(void)
 {
+	connman_timeserver_remove(MEEGO_NTP_SERVER);
 }
 
 CONNMAN_PLUGIN_DEFINE(meego, "MeeGo features plugin", VERSION,

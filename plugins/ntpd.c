@@ -45,7 +45,6 @@ static GList *peers = NULL;
 static GList *pending_peers = NULL;
 
 #define NTPD_PORT 123
-#define DEFAULT_NTP_PEER "ntp.meego.com"
 
 struct ntpd_peer {
 	char *server;
@@ -174,9 +173,6 @@ static int ntpdate(void)
 
 	DBG("conf path %s", ntpdate->conf_path);
 
-	if (pending_peers == NULL && peers == NULL)
-		ntpdate_add_peer(ntpdate, DEFAULT_NTP_PEER);
-
 	for (list = pending_peers; list; list = list->next) {
 		peer = list->data;
 
@@ -215,6 +211,10 @@ static void ntpd_sync(void)
 	GList *list;
 
 	DBG("");
+
+	if (g_list_length(pending_peers) == 0 &&
+			g_list_length(peers) == 0)
+		return;
 
 	if (!ntpd_running()) {
 		ntpdate();
