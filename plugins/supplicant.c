@@ -41,6 +41,7 @@
 #include <connman/option.h>
 #include <connman/inet.h>
 #include <connman/dbus.h>
+#include <connman/wifi.h>
 #include <connman/log.h>
 
 #include "supplicant.h"
@@ -174,6 +175,13 @@ struct supplicant_result {
 	dbus_int32_t maxrate;
 };
 
+struct supplicant_block {
+	unsigned char *ssid;
+	char *netpath;
+	gboolean enabled;
+	int num_scans;
+};
+
 struct supplicant_task {
 	int ifindex;
 	char *ifname;
@@ -183,6 +191,7 @@ struct supplicant_task {
 	struct connman_network *pending_network;
 	char *path;
 	char *netpath;
+	GHashTable *hidden_blocks;
 	gboolean created;
 	enum supplicant_state state;
 	gboolean scanning;
@@ -204,6 +213,16 @@ static void free_task(struct supplicant_task *task)
 	g_free(task->ifname);
 	g_free(task->path);
 	g_free(task);
+}
+
+static void remove_block(gpointer user_data)
+{
+	struct supplicant_block *block = user_data;
+
+	DBG("");
+
+	g_free(block->ssid);
+	g_free(block->netpath);
 }
 
 static struct supplicant_task *find_task_by_index(int index)
@@ -303,12 +322,258 @@ static int get_bssid(struct connman_device *device,
 	return 0;
 }
 
+static int enable_network(struct supplicant_task *task, const char *netpath,
+			  connman_bool_t enable)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+	char *enable_string;
+
+	DBG("enable %d", enable);
+
+	enable_string = enable ? "enable" : "disable";
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, netpath,
+				SUPPLICANT_INTF ".Network", enable_string);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Failed to select network");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_message_unref(message);
+
+	return 0;
+}
+
+static int set_hidden_network(struct supplicant_task *task, const char *netpath,
+				const unsigned char *ssid, int ssid_len)
+{
+	DBusMessage *message, *reply;
+	DBusMessageIter array, dict;
+	DBusError error;
+	dbus_uint32_t scan_ssid = 1;
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, netpath,
+					SUPPLICANT_INTF ".Network", "set");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_iter_init_append(message, &array);
+
+	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_basic(&dict, "scan_ssid",
+					 DBUS_TYPE_UINT32, &scan_ssid);
+
+	connman_dbus_dict_append_fixed_array(&dict, "ssid",
+					DBUS_TYPE_BYTE, &ssid, ssid_len);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Failed to set network options");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_message_unref(message);
+
+	return 0;
+}
+
+static void block_reset(gpointer key, gpointer value, gpointer user_data)
+{
+	struct supplicant_block *block = value;
+	struct supplicant_task *task = user_data;
+
+	block->num_scans = 0;
+	if (block->enabled)
+		enable_network(task, block->netpath, FALSE);
+
+	block->enabled = FALSE;
+}
+
+#define MAX_BLOCK_SCANS 2
+static void hidden_block_enable(struct supplicant_task *task)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+	struct supplicant_block *block;
+
+	DBG("network %p", task->network);
+
+	if (g_hash_table_size(task->hidden_blocks) == 0)
+		return;
+
+	/*
+	 * If we're associated or associating, we no longer need to
+	 * look for hidden networks.
+	 */
+	if (task->network)
+		return;
+
+	/*
+	 * We go through the block list and:
+	 * - If we scanned it more than twice, we disable it and move
+	 *   on to the next block.
+	 * - If the next block is not enabled, we enable it, start
+	 *   the scan counter, and return. This routine will be called
+	 *   again when the next scan results are available.
+	 * - If we're done with all the blocks there, we just reset them.
+	 */
+	g_hash_table_iter_init(&iter, task->hidden_blocks);
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		block = value;
+
+		DBG("%s num of scans %d enabled %d",
+			block->ssid, block->num_scans, block->enabled);
+
+		if (block->num_scans > MAX_BLOCK_SCANS) {
+			if (block->enabled == FALSE)
+				continue;
+
+			enable_network(task, block->netpath, FALSE);
+			block->enabled = FALSE;
+			continue;
+		}
+
+		if (block->enabled == FALSE) {
+			enable_network(task, block->netpath, TRUE);
+			block->enabled = TRUE;
+		}
+
+		block->num_scans++;
+
+		return;
+	}
+
+	g_hash_table_foreach(task->hidden_blocks, block_reset, task);
+}
+
+static int add_hidden_network(struct supplicant_task *task,
+				const unsigned char *ssid, int ssid_len)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+	const char *path;
+	struct supplicant_block *block;
+	char *netpath = NULL;
+	int ret, i;
+
+	DBG("task %p", task);
+
+	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
+				SUPPLICANT_INTF ".Interface", "addNetwork");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Failed to add network");
+		dbus_message_unref(message);
+		return -EIO;
+	}
+
+	dbus_error_init(&error);
+
+	if (dbus_message_get_args(reply, &error, DBUS_TYPE_OBJECT_PATH, &path,
+						DBUS_TYPE_INVALID) == FALSE) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			connman_error("%s", error.message);
+			dbus_error_free(&error);
+		} else
+			connman_error("Wrong arguments for network");
+		dbus_message_unref(reply);
+		return -EIO;
+	}
+
+	netpath = g_strdup(path);
+
+	ret = set_hidden_network(task, netpath, ssid, ssid_len);
+	if (ret < 0)
+		goto done;
+
+	block = g_try_new0(struct supplicant_block, 1);
+	if (block == NULL)
+		goto done;
+
+	block->ssid = g_try_malloc0(ssid_len + 1);
+	if (block->ssid == NULL) {
+		g_free(block);
+		goto done;
+	}
+
+	for (i = 0; i < ssid_len; i++) {
+		if (g_ascii_isprint(ssid[i]))
+			block->ssid[i] = ssid[i];
+		else
+			block->ssid[i] = ' ';
+	}
+
+	block->netpath = netpath;
+	block->enabled = FALSE;
+	block->num_scans = 0;
+
+	DBG("path %s ssid %s", block->netpath, block->ssid);
+
+	g_hash_table_replace(task->hidden_blocks, block->ssid, block);
+
+	return 0;
+done:
+	g_free(netpath);
+
+	dbus_message_unref(reply);
+
+	dbus_message_unref(message);
+
+	return ret;
+}
+
 static void add_interface_reply(DBusPendingCall *call, void *user_data)
 {
 	struct supplicant_task *task = user_data;
 	DBusMessage *reply;
 	DBusError error;
 	const char *path;
+	char **hex_ssids, *hex_ssid;
+	int i;
 
 	DBG("task %p", task);
 
@@ -335,6 +600,31 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 	task->created = TRUE;
 
 	connman_device_set_powered(task->device, TRUE);
+
+	hex_ssids = connman_wifi_load_ssid();
+
+	for (i = 0; hex_ssids[i]; i++) {
+		unsigned char *ssid;
+		unsigned int j, k = 0, hex;
+		size_t hex_ssid_len;
+
+		hex_ssid = hex_ssids[i];
+		hex_ssid_len = strlen(hex_ssid);
+
+		ssid = g_try_malloc0(hex_ssid_len / 2 + 1);
+		if (ssid == NULL)
+			break;
+
+		for (j = 0, k = 0; j < hex_ssid_len; j += 2) {
+			sscanf(hex_ssid + j, "%02x", &hex);
+			ssid[k++] = hex;
+		}
+
+		if (add_hidden_network(task, ssid, hex_ssid_len / 2) < 0)
+			break;
+	}
+
+	g_strfreev(hex_ssids);
 
 	dbus_message_unref(reply);
 
@@ -1437,6 +1727,7 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 {
 	struct supplicant_task *task = user_data;
 	struct supplicant_result result;
+	struct supplicant_block *block;
 	struct connman_network *network;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
@@ -1527,6 +1818,14 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 
 	if (result.path[0] == '\0')
 		goto done;
+
+	if (result.name) {
+		block = g_hash_table_lookup(task->hidden_blocks, result.name);
+		if (block) {
+			enable_network(task, block->netpath, FALSE);
+			g_hash_table_remove(task->hidden_blocks, block->ssid);
+		}
+	}
 
 	if (result.frequency > 0 && result.frequency < 14)
 		result.frequency = 2407 + (5 * result.frequency);
@@ -1629,8 +1928,14 @@ static void get_properties(struct supplicant_task *task)
 	char *path;
 
 	path = g_slist_nth_data(task->scan_results, 0);
-	if (path == NULL)
+	if (path == NULL) {
+		/*
+		 * We're done with regular scanning, let's enable the missing
+		 * network blocks.
+		 */
+		hidden_block_enable(task);
 		goto noscan;
+	}
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, path,
 						SUPPLICANT_INTF ".BSSID",
@@ -1802,6 +2107,8 @@ static int task_connect(struct supplicant_task *task)
 	const void *ssid;
 	unsigned int ssid_len;
 	int err;
+
+	g_hash_table_foreach(task->hidden_blocks, block_reset, task);
 
 	connman_inet_ifup(task->ifindex);
 
@@ -2036,7 +2343,8 @@ int supplicant_start(struct connman_device *device)
 	task->state = WPA_INVALID;
 	task->disconnecting = FALSE;
 	task->pending_network = NULL;
-
+	task->hidden_blocks = g_hash_table_new_full(g_str_hash, g_str_equal,
+							NULL, remove_block);
 	task_list = g_slist_append(task_list, task);
 
 	return create_interface(task);
@@ -2063,6 +2371,7 @@ int supplicant_stop(struct connman_device *device)
 	g_free(task->range);
 
 	task_list = g_slist_remove(task_list, task);
+	g_hash_table_destroy(task->hidden_blocks);
 
 	if (task->scan_call != NULL) {
 		dbus_pending_call_cancel(task->scan_call);
