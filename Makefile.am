@@ -227,5 +227,5 @@ include/connman/%.h: include/%.h
 	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
-clean-local: include/connman
-	@$(RM) -r $<
+clean-local:
+	@$(RM) -rf include/connman
