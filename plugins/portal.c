@@ -167,6 +167,7 @@ static gboolean tcp_event(GIOChannel *channel, GIOCondition condition,
 		return FALSE;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		connman_error("TCP event error %d", condition);
 		remove_timeout(data);
 		data->watch = 0;
 		if (data->get_page)
@@ -257,11 +258,15 @@ static int get_html(struct connman_location *location, int ms_time)
 	int ret;
 	char *ip = NULL;
 
+	DBG("");
+
 	data = connman_location_get_data(location);
 	data->connection_ready = 0;
 	data->sock = create_socket();
 	if (data->sock < 0)
 		goto error;
+
+	DBG("proxy %s port %d", data->proxy, data->proxy_port);
 
 	if (strlen(data->proxy) > 0)
 		ip = get_ip_from_host(data->proxy);
@@ -341,14 +346,18 @@ static int get_status(struct server_data *data, char *page, int len)
 	str = g_strrstr(lines[0], "200 OK");
 	if (str != NULL) {
 		for (i = 0; lines[i] != NULL && i < 12; i++) {
+			DBG("%s", lines[i]);
 			str = g_strstr_len(lines[i], 12, "Set-Cookie");
 			if (str != NULL) {
 				g_strfreev(lines);
+				DBG("success");
 				return GET_PAGE_SUCCESS;
 			}
 		}
 	}
 	g_strfreev(lines);
+
+	DBG("redirection");
 
 	return GET_PAGE_REDIRECTED;
 }
@@ -365,6 +374,8 @@ static int get_page_cb(struct connman_location *location, char *page, int len,
 		ret = get_status(data, page, len);
 	else
 		ret = status;
+
+	DBG("status %d", status);
 
 	switch (ret) {
 	case GET_PAGE_SUCCESS:
@@ -399,6 +410,9 @@ static int location_detect(struct connman_location *location)
 	enum connman_service_type service_type;
 
 	service_type = connman_location_get_type(location);
+
+	DBG("service type %d", service_type);
+
 	switch (service_type) {
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
