@@ -3,7 +3,8 @@ Connman configuration file format
 
 Connman uses configuration files to provision existing services. Connman will
 be looking for its configuration files at STORAGEDIR which by default points
-to /var/lib/connman/.
+to /var/lib/connman/. Configuration file names should follow the *.config
+pattern.
 Those configuration files are text files with a simple format and we typically
 have one file per provisioned network.
 
@@ -47,8 +48,10 @@ Example
 
 This is a configuration file for a network providing both EAP-TLS and
 EAP-PEAP services.
-The respective SSIDs are tls_ssid and peap_ssid.
+The respective SSIDs are tls_ssid and peap_ssid and the file name is
+example.config.
 
+example@example:[~]$ cat /var/lib/connman/example.config
 [global]
 Name = Example
 Description = Example network configuration
