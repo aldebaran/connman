@@ -191,18 +191,22 @@ static struct gateway_data *find_default_gateway(void)
 	return found;
 }
 
-static void remove_gateway(struct gateway_data *data)
+static int remove_gateway(struct gateway_data *data)
 {
+	int ret;
+
 	DBG("gateway %s", data->gateway);
 
 	gateway_list = g_slist_remove(gateway_list, data);
 
 	if (data->active == TRUE)
-		del_routes(data);
+		ret = del_routes(data);
 
 	g_free(data->gateway);
 	g_free(data->vpn_ip);
 	g_free(data);
+
+	return ret;
 }
 
 static void connection_delgateway(int index, const char *gateway)
@@ -313,6 +317,7 @@ static void connection_remove(struct connman_element *element)
 	const char *gateway = NULL;
 	struct gateway_data *data = NULL;
 	gboolean set_default = FALSE;
+	int ret;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -339,13 +344,14 @@ static void connection_remove(struct connman_element *element)
 	if (data->vpn == TRUE && data->vpn_phy_index >= 0)
 		connman_inet_del_host_route(data->vpn_phy_index, data->gateway);
 
-	remove_gateway(data);
+	ret = remove_gateway(data);
 
 	/* with vpn this will be called after the network was deleted,
 	 * we need to call set_default here because we will not recieve any
 	 * gateway delete notification.
+	 * We hit the same issue if remove_gateway() fails.
 	 */
-	if (set_default) {
+	if (set_default || ret) {
 		data = find_default_gateway();
 		if (data != NULL)
 			set_default_gateway(data);
