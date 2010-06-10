@@ -915,6 +915,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (__connman_security_check_privilege(msg,
 					CONNMAN_SECURITY_PRIVILEGE_SECRET) < 0)
 			return __connman_error_permission_denied(msg);
@@ -937,6 +940,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
 
@@ -958,6 +964,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
 
@@ -976,6 +985,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
+
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
 
 		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
@@ -1126,6 +1138,9 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 	} else if (g_str_equal(name, "Passphrase") == TRUE) {
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		g_free(service->passphrase);
 		service->passphrase = NULL;
 
@@ -1431,6 +1446,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	DBG("service %p", service);
 
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+		return __connman_error_not_supported(msg);
+
+	if (service->immutable == TRUE)
 		return __connman_error_not_supported(msg);
 
 	if (service->favorite == FALSE &&
