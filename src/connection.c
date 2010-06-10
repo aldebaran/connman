@@ -201,6 +201,8 @@ static int remove_gateway(struct gateway_data *data)
 
 	if (data->active == TRUE)
 		err = del_routes(data);
+	else
+		err = 0;
 
 	g_free(data->gateway);
 	g_free(data->vpn_ip);
