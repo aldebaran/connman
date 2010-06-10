@@ -77,8 +77,14 @@ char **connman_wifi_load_ssid(void)
 
 	for (i = 0, j = 0; groups[i]; i++) {
 		gchar *hex_ssid;
+		gboolean favorite;
 
 		group = groups[i];
+
+		favorite = g_key_file_get_boolean(key_file, group,
+							"Favorite", NULL);
+		if (favorite == FALSE)
+			continue;
 
 		hex_ssid = g_key_file_get_string(key_file, group,
 							"SSID", NULL);
