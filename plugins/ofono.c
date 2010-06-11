@@ -1574,42 +1574,12 @@ static int static_network_set_connected(
 				struct connman_element *parent,
 					connman_bool_t connected)
 {
-	if (connected == TRUE) {
-		struct connman_element *element;
-
-		if (parent->ipv4.address == NULL)
-			goto failed;
-
-		if (parent->ipv4.netmask == NULL)
-			goto failed;
-
-		element = connman_element_create(NULL);
-		if (element == NULL) {
-			connman_error("Can not create connman_element");
-			return -ENOMEM;
-		}
-
-		element->type = CONNMAN_ELEMENT_TYPE_IPV4;
-		element->index = parent->index;
-
-		if (connman_element_register(element, parent) < 0) {
-			connman_element_unref(element);
-			goto failed;
-		}
-	} else
+	if (connected == FALSE)
 		cleanup_ipconfig(parent);
 
 	connman_network_set_connected(pending_network, connected);
 
 	return 0;
-
-failed:
-	connman_network_set_error(pending_network,
-		CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
-
-	cleanup_ipconfig(parent);
-
-	return -EINVAL;
 }
 
 static gboolean pri_context_changed(DBusConnection *connection,
