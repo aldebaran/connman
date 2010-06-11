@@ -745,6 +745,7 @@ static void set_connected_manual(struct connman_network *network)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
+	const char *nameserver = NULL;
 	int err;
 
 	DBG("network %p", network);
@@ -761,6 +762,11 @@ static void set_connected_manual(struct connman_network *network)
 			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
 		return;
 	}
+
+	connman_element_get_value(&network->element,
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
+	if (nameserver != NULL)
+		__connman_service_append_nameserver(service, nameserver);
 
 	__connman_ipconfig_set_gateway(ipconfig, &network->element);
 
