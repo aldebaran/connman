@@ -191,6 +191,7 @@ struct supplicant_task {
 	struct connman_network *pending_network;
 	char *path;
 	char *netpath;
+	gboolean hidden_found;
 	GHashTable *hidden_blocks;
 	gboolean created;
 	enum supplicant_state state;
@@ -1835,6 +1836,9 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		}
 	}
 
+	if (result.ssid == NULL)
+		task->hidden_found = TRUE;
+
 	if (result.frequency > 0 && result.frequency < 14)
 		result.frequency = 2407 + (5 * result.frequency);
 	else if (result.frequency == 14)
@@ -1936,10 +1940,10 @@ static void get_properties(struct supplicant_task *task)
 	char *path;
 
 	path = g_slist_nth_data(task->scan_results, 0);
-	if (path == NULL) {
+	if (path == NULL && task->hidden_found == TRUE) {
 		/*
 		 * We're done with regular scanning, let's enable the missing
-		 * network blocks.
+		 * network blocks if there are hidden SSIDs around.
 		 */
 		hidden_block_enable(task);
 		goto noscan;
@@ -2025,6 +2029,8 @@ static void scan_results_reply(DBusPendingCall *call, void *user_data)
 
 		task->scan_results = g_slist_append(task->scan_results, path);
 	}
+
+	task->hidden_found = FALSE;
 
 	g_strfreev(results);
 
