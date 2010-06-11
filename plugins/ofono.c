@@ -170,19 +170,16 @@ static struct connman_device_driver modem_driver = {
 
 static char *get_ident(const char *path)
 {
-	char *ident, *pos;
+	char *pos;
 
 	if (*path != '/')
 		return NULL;
 
-	ident = g_strdup(path + 1);
+	pos = strrchr(path, '/');
+	if (pos == NULL)
+		return NULL;
 
-	pos = ident;
-
-	while ((pos = strchr(pos, '/')) != NULL)
-		*pos = '_';
-
-	return ident;
+	return g_strdup(pos + 1);
 }
 
 static void create_service(struct connman_network *network)
