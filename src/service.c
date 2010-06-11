@@ -2874,6 +2874,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 	connman_uint8_t strength, value;
 	connman_bool_t roaming;
 	GSequenceIter *iter;
+	const char *name;
 
 	DBG("network %p", network);
 
@@ -2883,6 +2884,15 @@ void __connman_service_update_from_network(struct connman_network *network)
 
 	if (service->network == NULL)
 		return;
+
+	name = connman_network_get_string(service->network, "Name");
+	if (g_strcmp0(service->name, name) != 0) {
+		g_free(service->name);
+		service->name = g_strdup(name);
+		connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Name",
+				DBUS_TYPE_STRING, &service->name);
+	}
 
 	strength = connman_network_get_uint8(service->network, "Strength");
 	if (strength == service->strength)
