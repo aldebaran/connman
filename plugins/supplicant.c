@@ -368,6 +368,7 @@ static int set_hidden_network(struct supplicant_task *task, const char *netpath,
 	DBusMessageIter array, dict;
 	DBusError error;
 	dbus_uint32_t scan_ssid = 1;
+	const char *invalid_address = "ff:ff:ff:ff:ff:ff";
 
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, netpath,
 					SUPPLICANT_INTF ".Network", "set");
@@ -385,6 +386,13 @@ static int set_hidden_network(struct supplicant_task *task, const char *netpath,
 
 	connman_dbus_dict_append_fixed_array(&dict, "ssid",
 					DBUS_TYPE_BYTE, &ssid, ssid_len);
+
+	/*
+	 * We're setting an invalid BSSID to prevent wpa_s from associating
+	 * automatically to this block once it's found.
+	 */
+	connman_dbus_dict_append_basic(&dict, "bssid",
+					DBUS_TYPE_STRING, &invalid_address);
 
 	connman_dbus_dict_close(&array, &dict);
 
