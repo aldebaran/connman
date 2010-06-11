@@ -375,9 +375,51 @@ done:
 	dbus_message_unref(message);
 }
 
+static gboolean registration_changed(DBusConnection *connection,
+					DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct connman_network *network = user_data;
+	DBusMessageIter iter, value;
+	const char *key, *name;
+
+	DBG("path %s", path);
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	DBG("key %s", key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_strcmp0(key, "Name") == 0 ||
+			g_strcmp0(key, "Operator") == 0) {
+		dbus_message_iter_get_basic(&value, &name);
+		DBG("name %s", name);
+		connman_network_set_name(network, name);
+		create_service(network);
+	}
+
+	return TRUE;
+}
+
 static int network_probe(struct connman_network *network)
 {
 	const char *path;
+	guint reg_watch;
+
+	reg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_REGISTRATION_INTERFACE,
+						PROPERTY_CHANGED,
+						registration_changed,
+						network, NULL);
+	if (reg_watch == 0)
+		return -EIO;
+
+	connman_network_set_data(network, GUINT_TO_POINTER(reg_watch));
 
 	path = connman_network_get_string(network, "Path");
 
@@ -587,7 +629,12 @@ static int network_disconnect(struct connman_network *network)
 
 static void network_remove(struct connman_network *network)
 {
+	guint reg_watch;
+
 	DBG("network %p", network);
+
+	reg_watch = GPOINTER_TO_UINT(connman_network_get_data(network));
+	g_dbus_remove_watch(connection, reg_watch);
 }
 
 static int network_setup(struct connman_network *network, const char *key)
