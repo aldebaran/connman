@@ -1940,12 +1940,15 @@ static void get_properties(struct supplicant_task *task)
 	char *path;
 
 	path = g_slist_nth_data(task->scan_results, 0);
-	if (path == NULL && task->hidden_found == TRUE) {
-		/*
-		 * We're done with regular scanning, let's enable the missing
-		 * network blocks if there are hidden SSIDs around.
-		 */
-		hidden_block_enable(task);
+	if (path == NULL) {
+		if (task->hidden_found == TRUE) {
+			/*
+			 * We're done with regular scanning, let's enable
+			 * the missing network blocks if there are hidden
+			 * SSIDs around.
+			 */
+			hidden_block_enable(task);
+		}
 		goto noscan;
 	}
 
