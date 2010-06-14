@@ -485,7 +485,12 @@ static void process_newroute(unsigned char family, unsigned char scope,
 
 	__connman_ipconfig_newroute(index, scope, dststr, gatewaystr);
 
-	if (scope != RT_SCOPE_UNIVERSE || dst.s_addr != INADDR_ANY)
+	/* skip host specific routes */
+	if (scope != RT_SCOPE_UNIVERSE &&
+			!(scope == RT_SCOPE_LINK && dst.s_addr == INADDR_ANY))
+		return;
+
+	if (dst.s_addr != INADDR_ANY)
 		return;
 
 	for (list = rtnl_list; list; list = list->next) {
@@ -514,7 +519,12 @@ static void process_delroute(unsigned char family, unsigned char scope,
 
 	__connman_ipconfig_delroute(index, scope, dststr, gatewaystr);
 
-	if (scope != RT_SCOPE_UNIVERSE || dst.s_addr != INADDR_ANY)
+	/* skip host specific routes */
+	if (scope != RT_SCOPE_UNIVERSE &&
+			!(scope == RT_SCOPE_LINK && dst.s_addr == INADDR_ANY))
+		return;
+
+	if (dst.s_addr != INADDR_ANY)
 		return;
 
 	for (list = rtnl_list; list; list = list->next) {

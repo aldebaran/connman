@@ -66,18 +66,19 @@ static struct gateway_data *find_gateway(int index, const char *gateway)
 
 static int del_routes(struct gateway_data *data)
 {
-	const char *address;
-
 	if (data->vpn) {
 		if (data->vpn_phy_index >= 0)
 			connman_inet_del_host_route(data->vpn_phy_index,
 							data->gateway);
-		address = data->vpn_ip;
+		return connman_inet_clear_gateway_address(data->index,
+							data->vpn_ip);
+	} else if (g_strcmp0(data->gateway, "0.0.0.0") == 0) {
+		return connman_inet_clear_gateway_interface(data->index);
 	} else {
 		connman_inet_del_host_route(data->index, data->gateway);
-		address = data->gateway;
+		return connman_inet_clear_gateway_address(data->index,
+							data->gateway);
 	}
-	return connman_inet_clear_gateway_address(data->index, address);
 }
 
 static void find_element(struct connman_element *element, gpointer user_data)
@@ -140,7 +141,6 @@ static void set_default_gateway(struct gateway_data *data)
 {
 	struct connman_element *element = data->element;
 	struct connman_service *service = NULL;
-	short int ifflags;
 
 	DBG("gateway %s", data->gateway);
 
@@ -151,13 +151,7 @@ static void set_default_gateway(struct gateway_data *data)
 		return;
 	}
 
-	ifflags = connman_inet_ifflags(element->index);
-	if (ifflags < 0) {
-		connman_error("Fail to get network interface flags");
-		return;
-	}
-
-	if (ifflags & IFF_POINTOPOINT) {
+	if (g_strcmp0(data->gateway, "0.0.0.0") == 0) {
 		if (connman_inet_set_gateway_interface(element->index) < 0)
 			return;
 		goto done;
@@ -240,6 +234,7 @@ static struct gateway_data *find_active_gateway(void)
 
 	for (list = gateway_list; list; list = list->next) {
 		struct gateway_data *data = list->data;
+
 		if (data->active == TRUE)
 			return data;
 	}
@@ -272,14 +267,20 @@ static int connection_probe(struct connman_element *element)
 
 	DBG("gateway %s", gateway);
 
+	/*
+	 * If gateway is NULL, it's a point to point link and the default
+	 * gateway is 0.0.0.0, meaning the interface.
+	 */
+	if (gateway == NULL) {
+		gateway = "0.0.0.0";
+		element->ipv4.gateway = g_strdup(gateway);
+	}
+
 	service = __connman_element_get_service(element);
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_READY);
 
 	connman_element_set_enabled(element, TRUE);
-
-	if (gateway == NULL)
-		return 0;
 
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(element->index, gateway);
