@@ -381,7 +381,7 @@ static gboolean registration_changed(DBusConnection *connection,
 	const char *path = dbus_message_get_path(message);
 	struct connman_network *network = user_data;
 	DBusMessageIter iter, value;
-	const char *key, *name;
+	const char *key;
 
 	DBG("path %s", path);
 
@@ -397,9 +397,17 @@ static gboolean registration_changed(DBusConnection *connection,
 
 	if (g_strcmp0(key, "Name") == 0 ||
 			g_strcmp0(key, "Operator") == 0) {
+		const char *name;
+
 		dbus_message_iter_get_basic(&value, &name);
 		DBG("name %s", name);
 		connman_network_set_name(network, name);
+		create_service(network);
+	} else if (g_strcmp0(key, "Strength") == 0) {
+		connman_uint8_t strength;
+
+		dbus_message_iter_get_basic(&value, &strength);
+		connman_network_set_strength(network, strength);
 		create_service(network);
 	}
 
