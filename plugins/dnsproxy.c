@@ -401,6 +401,8 @@ static struct connman_notifier dnsproxy_notifier = {
 	.offline_mode		= dnsproxy_offline_mode,
 };
 
+static unsigned char opt_edns0_type[2] = { 0x00, 0x29 };
+
 static int parse_request(unsigned char *buf, int len,
 					char *name, unsigned int size)
 {
@@ -423,8 +425,8 @@ static int parse_request(unsigned char *buf, int len,
 
 	memset(name, 0, size);
 
-	ptr = buf + 12;
-	remain = len - 12;
+	ptr = buf + sizeof(struct domain_hdr);
+	remain = len - sizeof(struct domain_hdr);
 
 	while (remain > 0) {
 		uint8_t len = *ptr;
@@ -447,7 +449,7 @@ static int parse_request(unsigned char *buf, int len,
 	}
 
 	if (last_label && arcount && remain >= 9 && last_label[4] == 0 &&
-				last_label[5] == 0 && last_label[6] == 0x29) {
+				!memcmp(last_label + 5, opt_edns0_type, 2)) {
 		uint16_t edns0_bufsize;
 
 		edns0_bufsize = last_label[7] << 8 | last_label[8];
