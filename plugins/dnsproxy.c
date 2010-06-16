@@ -409,7 +409,6 @@ static int parse_request(unsigned char *buf, int len,
 	uint16_t arcount = ntohs(hdr->arcount);
 	unsigned char *ptr;
 	char *last_label = NULL;
-	int label_count = 0;
 	unsigned int remain, used = 0;
 
 	if (len < 12)
@@ -431,12 +430,9 @@ static int parse_request(unsigned char *buf, int len,
 		uint8_t len = *ptr;
 
 		if (len == 0x00) {
-			if (label_count > 0)
-				last_label = (char *) (ptr + 1);
+			last_label = (char *) (ptr + 1);
 			break;
 		}
-
-		label_count++;
 
 		if (used + len + 1 > size)
 			return -ENOBUFS;
@@ -450,7 +446,7 @@ static int parse_request(unsigned char *buf, int len,
 		remain -= len + 1;
 	}
 
-	if (arcount && remain >= 9 && last_label[4] == 0 &&
+	if (last_label && arcount && remain >= 9 && last_label[4] == 0 &&
 				last_label[5] == 0 && last_label[6] == 0x29) {
 		uint16_t edns0_bufsize;
 
@@ -472,7 +468,7 @@ static int parse_request(unsigned char *buf, int len,
 		}
 	}
 
-	DBG("query %s (%d labels)", name, label_count);
+	DBG("query %s", name);
 
 	return 0;
 }
