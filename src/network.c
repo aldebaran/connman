@@ -1565,6 +1565,27 @@ void connman_network_set_data(struct connman_network *network, void *data)
 	network->driver_data = data;
 }
 
+void connman_network_update(struct connman_network *network)
+{
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+		return;
+	case CONNMAN_NETWORK_TYPE_ETHERNET:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_CELLULAR:
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		break;
+	}
+
+	if (network->group != NULL)
+		__connman_service_update_from_network(network);
+
+	return;
+}
+
 static gboolean match_driver(struct connman_network *network,
 					struct connman_network_driver *driver)
 {
