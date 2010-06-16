@@ -408,7 +408,7 @@ static gboolean registration_changed(DBusConnection *connection,
 
 		dbus_message_iter_get_basic(&value, &strength);
 		connman_network_set_strength(network, strength);
-		create_service(network);
+		connman_network_update(network);
 	}
 
 	return TRUE;
