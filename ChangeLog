@@ -1,3 +1,16 @@
+ver 0.54:
+	Fix issue with root requests and EDNS0 OPT records.
+	Fix issue with default gateway when route deletion fails.
+	Fix issue with group identifiers for cellular networks.
+	Fix issue with fixed IP settings from cellular networks.
+	Fix issue with nameserver settings and manual configuration.
+	Add support for cellular network name changes.
+	Add support for cellular signal strength changes.
+	Add support for actively scanning for hidden networks.
+	Add support for ASCII based WEP keys.
+	Add support for NTP timeserver updates.
+	Add support for PPP default route settings.
+
 ver 0.53:
 	Fix issue with supplicant and device scanning state cleaning.
 	Fix issue with Bluetooth PAN networks stay in connected state.
