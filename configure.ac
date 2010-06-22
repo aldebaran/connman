@@ -87,8 +87,8 @@ AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
 AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
 
 AC_ARG_ENABLE(hh2serial-gps,
-        AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
-                        [enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
+	AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
+			[enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
 AM_CONDITIONAL(HH2SERIAL_GPS, test "${enable_hh2serial_gps}" != "no")
 AM_CONDITIONAL(HH2SERIAL_GPS_BUILTIN, test "${enable_hh2serial_gps}" = "builtin")
 
@@ -128,6 +128,12 @@ if (test "${enable_dhclient}" != "no"); then
 		DHCLIENT="${path_dhclient}"
 		AC_SUBST(DHCLIENT)
 	fi
+	AC_MSG_CHECKING(dhclient major version)
+	version_dhclient=`${DHCLIENT} --version 2>&1 | sed '/^isc-dhclient-*/!d; s///; s/\..*//;q'`
+	AC_MSG_RESULT(${version_dhclient})
+	if (test "${version_dhclient}" = "4"); then
+		AC_DEFINE(HAVE_DHCLIENT_HOSTNAME, 1, [Define to 1 if you have dhclient hostname support.])
+	fi
 fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
 AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
@@ -153,22 +159,22 @@ AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
 
 AC_ARG_ENABLE(openconnect,
-        AC_HELP_STRING([--enable-openconnect], [enable openconnect support]),
-                        [enable_openconnect=${enableval}], [enable_openconnect="no"])
+	AC_HELP_STRING([--enable-openconnect], [enable openconnect support]),
+			[enable_openconnect=${enableval}], [enable_openconnect="no"])
 if (test "${enable_openconnect}" != "no"); then
-        if (test -z "${path_openconnect}"); then
-                AC_PATH_PROG(OPENCONNECT, [openconnect], [], $PATH:/sbin:/usr/sbin)
-        else
-                OPENCONNECT="${path_openconnect}"
-                AC_SUBST(OPENCONNECT)
-        fi
+	if (test -z "${path_openconnect}"); then
+		AC_PATH_PROG(OPENCONNECT, [openconnect], [], $PATH:/sbin:/usr/sbin)
+	else
+		OPENCONNECT="${path_openconnect}"
+		AC_SUBST(OPENCONNECT)
+	fi
 fi
 AM_CONDITIONAL(OPENCONNECT, test "${enable_openconnect}" != "no")
 AM_CONDITIONAL(OPENCONNECT_BUILTIN, test "${enable_openconnect}" = "builtin")
 
 AC_ARG_ENABLE(portal,
-        AC_HELP_STRING([--enable-portal], [enable portal detection support]),
-                        [enable_portal=${enableval}], [enable_portal="no"])
+	AC_HELP_STRING([--enable-portal], [enable portal detection support]),
+			[enable_portal=${enableval}], [enable_portal="no"])
 AM_CONDITIONAL(PORTAL, test "${enable_portal}" != "no")
 AM_CONDITIONAL(PORTAL_BUILTIN, test "${enable_portal}" = "builtin")
 
@@ -188,6 +194,12 @@ AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
 AC_ARG_ENABLE(dnsproxy,
 	AC_HELP_STRING([--enable-dnsproxy], [enable DNS proxy support]),
 			[enable_dnsproxy=${enableval}], [enable_dnsproxy="no"])
+if (test "${enable_dnsproxy}" != "no"); then
+	AC_CHECK_HEADERS(resolv.h, dummy=yes,
+			AC_MSG_ERROR(resolver header files are required))
+	AC_CHECK_LIB(resolv, ns_initparse, dummy=yes,
+			AC_MSG_ERROR(resolver library support is required))
+fi
 AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
 AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
@@ -267,6 +279,24 @@ AM_CONDITIONAL(IWMX, test "${enable_iwmx}" = "yes")
 AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 		[enable Intel OSPM support]), [enable_iospm=${enableval}])
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
+
+AC_ARG_WITH(ntpd, AC_HELP_STRING([--with-=PROGRAM],
+	[specify ntpd binary location]), [path_ntpd=${withval}])
+
+AC_ARG_ENABLE(ntpd,
+	AC_HELP_STRING([--enable-ntpd], [enable ntpd support]),
+			[enable_ntpd=${enableval}], [enable_ntpd="no"])
+
+if (test "${enable_ntpd}" != "no"); then
+	if (test -z "${path_ntpd}"); then
+		AC_PATH_PROG(NTPD, [ntpd], [], $PATH:/sbin:/usr/sbin)
+	else
+		NTPD="${path_ntpd}"
+		AC_SUBST(NTPD)
+	fi
+fi
+AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
+AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
 
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
 				AC_MSG_ERROR(GLib >= 2.16 is required))

@@ -67,8 +67,20 @@ static gboolean option_compat = FALSE;
 static gboolean option_selftest = FALSE;
 static gboolean option_version = FALSE;
 
+static gboolean parse_debug(const char *key, const char *value,
+					gpointer user_data, GError **error)
+{
+	if (value)
+		option_debug = g_strdup(value);
+	else
+		option_debug = g_strdup("*");
+
+	return TRUE;
+}
+
 static GOptionEntry options[] = {
-	{ "debug", 'd', 0, G_OPTION_ARG_STRING, &option_debug,
+	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_debug,
 				"Specify debug options to enable", "DEBUG" },
 	{ "device", 'i', 0, G_OPTION_ARG_STRING, &option_device,
 			"Specify networking device or interface", "DEV" },
@@ -218,6 +230,7 @@ int main(int argc, char *argv[])
 	__connman_udev_init();
 	__connman_task_init();
 	__connman_session_init();
+	__connman_timeserver_init();
 
 	__connman_plugin_init(option_plugin, option_noplugin);
 
@@ -239,6 +252,7 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_cleanup();
 
+	__connman_timeserver_cleanup();
 	__connman_session_cleanup();
 	__connman_task_cleanup();
 	__connman_udev_cleanup();

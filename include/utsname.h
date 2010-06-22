@@ -32,9 +32,12 @@ extern "C" {
  * @short_description: Functions for handling utsname
  */
 
+const char *connman_utsname_get_hostname(void);
+
 struct connman_utsname_driver {
 	const char *name;
 	int priority;
+	const char * (*get_hostname) (void);
 	int (*set_hostname) (const char *hostname);
 	int (*set_domainname) (const char *domainname);
 };

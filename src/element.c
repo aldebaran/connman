@@ -1120,6 +1120,45 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
+struct unregister_type {
+	struct connman_element *root;
+	enum connman_element_type type;
+};
+
+static gboolean remove_element_type(GNode *node, gpointer user_data)
+{
+	struct unregister_type *children_type = user_data;
+	struct connman_element *root = children_type->root;
+	struct connman_element *element = node->data;
+	enum connman_element_type type = children_type->type;
+
+	DBG("element %p name %s", element, element->name);
+
+	if (element == root)
+		return FALSE;
+
+	if(element->type != type)
+		return FALSE;
+
+	if (node != NULL)
+		g_node_unlink(node);
+
+	if (element->driver) {
+		if (element->driver->remove)
+			element->driver->remove(element);
+
+		element->driver = NULL;
+	}
+
+	if (node != NULL)
+		g_node_destroy(node);
+
+	connman_element_unref(element);
+
+	return FALSE;
+}
+
+
 void connman_element_unregister(struct connman_element *element)
 {
 	GNode *node;
@@ -1145,6 +1184,25 @@ void connman_element_unregister_children(struct connman_element *element)
 		g_node_traverse(node, G_POST_ORDER,
 				G_TRAVERSE_ALL, -1, remove_element, element);
 }
+
+void connman_element_unregister_children_type(struct connman_element *element, enum connman_element_type type)
+{
+	GNode *node;
+
+	DBG("element %p name %s", element, element->name);
+
+	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
+
+	if (node != NULL) {
+		struct unregister_type children_type;
+
+		children_type.root = element;
+		children_type.type = type;
+		g_node_traverse(node, G_POST_ORDER,
+				G_TRAVERSE_ALL, -1, remove_element_type, &children_type);
+	}
+}
+
 
 static gboolean update_element(GNode *node, gpointer user_data)
 {

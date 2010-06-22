@@ -132,6 +132,8 @@ struct connman_device *connman_network_get_device(struct connman_network *networ
 void *connman_network_get_data(struct connman_network *network);
 void connman_network_set_data(struct connman_network *network, void *data);
 
+void connman_network_update(struct connman_network *network);
+
 struct connman_network_driver {
 	const char *name;
 	enum connman_network_type type;

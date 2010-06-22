@@ -741,10 +741,51 @@ static void set_configuration(struct connman_network *network)
 					CONNMAN_SERVICE_STATE_CONFIGURATION);
 }
 
+static int set_connected_fixed(struct connman_network *network)
+{
+	struct connman_service *service;
+	struct connman_element *parent, *element;
+
+	DBG("");
+
+	service = __connman_service_lookup_from_network(network);
+
+	parent = connman_network_get_element(network);
+
+	set_configuration(network);
+
+	if (parent->ipv4.address == NULL)
+		return -EINVAL;
+
+	if (parent->ipv4.netmask == NULL)
+		return -EINVAL;
+
+	element = connman_element_create(NULL);
+	if (element == NULL) {
+		connman_error("Can not create connman_element");
+		return -ENOMEM;
+	}
+
+	element->type = CONNMAN_ELEMENT_TYPE_IPV4;
+	element->index = parent->index;
+
+	if (connman_element_register(element, parent) < 0) {
+		connman_error("Can not register connman_element");
+		return -EINVAL;
+	}
+
+	network->connecting = FALSE;
+
+	connman_network_set_associating(network, FALSE);
+
+	return 0;
+}
+
 static void set_connected_manual(struct connman_network *network)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
+	const char *nameserver = NULL;
 	int err;
 
 	DBG("network %p", network);
@@ -761,6 +802,11 @@ static void set_connected_manual(struct connman_network *network)
 			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
 		return;
 	}
+
+	connman_element_get_value(&network->element,
+			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
+	if (nameserver != NULL)
+		__connman_service_append_nameserver(service, nameserver);
 
 	__connman_ipconfig_set_gateway(ipconfig, &network->element);
 
@@ -819,8 +865,14 @@ static gboolean set_connected(gpointer user_data)
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 			return FALSE;
-		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
+			if (set_connected_fixed(network) < 0) {
+				connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+				return FALSE;
+			}
+			return TRUE;
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			set_connected_manual(network);
 			return TRUE;
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
@@ -991,6 +1043,122 @@ int __connman_network_disconnect(struct connman_network *network)
 	}
 
 	return err;
+}
+
+static int dhcp_start(struct connman_network *network)
+{
+	struct connman_element *element;
+	int error;
+
+	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
+		return -EINVAL;
+
+	element = connman_element_create(NULL);
+	if (element == NULL)
+		return -ENOMEM;
+
+	element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
+	element->index = network->element.index;
+
+	error = connman_element_register(element, &network->element);
+	if (error < 0) {
+		connman_element_unref(element);
+		return error;
+	}
+
+	return 0;
+}
+
+static int dhcp_stop(struct connman_network *network)
+{
+	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
+		return -EINVAL;
+
+	connman_element_unregister_children_type(&network->element,
+					CONNMAN_ELEMENT_TYPE_CONNECTION);
+	connman_element_unregister_children_type(&network->element,
+						CONNMAN_ELEMENT_TYPE_IPV4);
+	connman_element_unregister_children_type(&network->element,
+						CONNMAN_ELEMENT_TYPE_DHCP);
+
+	return 0;
+}
+
+static int manual_ipv4_set(struct connman_network *network,
+				struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service;
+	int err;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	err = __connman_ipconfig_set_address(ipconfig);
+	if (err < 0) {
+		connman_network_set_error(network,
+			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+		return err;
+	}
+
+	__connman_ipconfig_set_gateway(ipconfig, &network->element);
+
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
+
+	return 0;
+}
+
+int __connman_network_clear_ipconfig(struct connman_network *network,
+					struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service;
+	enum connman_ipconfig_method method;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		return -EINVAL;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		connman_element_unregister_children_type(&network->element,
+					CONNMAN_ELEMENT_TYPE_CONNECTION);
+		__connman_ipconfig_clear_address(ipconfig);
+		break;
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		dhcp_stop(network);
+		break;
+	}
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION);
+
+	return 0;
+}
+
+int __connman_network_set_ipconfig(struct connman_network *network, struct connman_ipconfig *ipconfig)
+{
+	enum connman_ipconfig_method method;
+
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		return -EINVAL;
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		return manual_ipv4_set(network, ipconfig);
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		return dhcp_start(network);
+	}
+
+	return 0;
 }
 
 /**
@@ -1395,6 +1563,27 @@ void *connman_network_get_data(struct connman_network *network)
 void connman_network_set_data(struct connman_network *network, void *data)
 {
 	network->driver_data = data;
+}
+
+void connman_network_update(struct connman_network *network)
+{
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+		return;
+	case CONNMAN_NETWORK_TYPE_ETHERNET:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_CELLULAR:
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		break;
+	}
+
+	if (network->group != NULL)
+		__connman_service_update_from_network(network);
+
+	return;
 }
 
 static gboolean match_driver(struct connman_network *network,

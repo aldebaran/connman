@@ -345,6 +345,9 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
+	if (__connman_notifier_is_registered(type) == FALSE)
+		return __connman_error_not_registered(msg);
+
 	if (__connman_notifier_is_enabled(type) == TRUE)
 		return __connman_error_already_enabled(msg);
 
@@ -390,6 +393,9 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
+	if (__connman_notifier_is_registered(type) == FALSE)
+		return __connman_error_not_registered(msg);
+
 	if (__connman_notifier_is_enabled(type) == FALSE)
 		return __connman_error_already_disabled(msg);
 
@@ -405,6 +411,54 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 						technology_abort, NULL);
 
 	return NULL;
+}
+
+static DBusMessage *get_services(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_OBJECT_PATH_AS_STRING
+			DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
+
+	__connman_service_list_struct(&array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
+}
+
+static DBusMessage *lookup_service(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *pattern, *path;
+	int err;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &pattern,
+							DBUS_TYPE_INVALID);
+
+	err = __connman_service_lookup(pattern, &path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
@@ -433,7 +487,7 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 
 static DBusMessage *connect_provider(DBusConnection *conn,
-				     DBusMessage *msg, void *data)
+					DBusMessage *msg, void *data)
 {
 	int err;
 
@@ -590,6 +644,8 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "DisableTechnology", "s",     "",      disable_technology,
 						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "GetServices",       "",      "a(oa{sv})", get_services   },
+	{ "LookupService",     "s",     "o",     lookup_service,    },
 	{ "ConnectService",    "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,

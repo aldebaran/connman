@@ -37,6 +37,7 @@ DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg);
 DBusMessage *__connman_error_permission_denied(DBusMessage *msg);
 DBusMessage *__connman_error_passphrase_required(DBusMessage *msg);
 DBusMessage *__connman_error_not_registered(DBusMessage *msg);
+DBusMessage *__connman_error_not_unique(DBusMessage *msg);
 DBusMessage *__connman_error_not_supported(DBusMessage *msg);
 DBusMessage *__connman_error_not_implemented(DBusMessage *msg);
 DBusMessage *__connman_error_not_found(DBusMessage *msg);
@@ -252,6 +253,9 @@ int __connman_utsname_set_domainname(const char *domainname);
 
 #include <connman/timeserver.h>
 
+int __connman_timeserver_init(void);
+void __connman_timeserver_cleanup(void);
+
 #include <connman/dhcp.h>
 
 int __connman_dhcp_init(void);
@@ -338,6 +342,10 @@ void __connman_network_set_device(struct connman_network *network,
 
 int __connman_network_connect(struct connman_network *network);
 int __connman_network_disconnect(struct connman_network *network);
+int __connman_network_clear_ipconfig(struct connman_network *network,
+					struct connman_ipconfig *ipconfig);
+int __connman_network_set_ipconfig(struct connman_network *network,
+					struct connman_ipconfig *ipconfig);
 
 connman_bool_t __connman_network_has_driver(struct connman_network *network);
 
@@ -383,6 +391,7 @@ int __connman_service_init(void);
 void __connman_service_cleanup(void);
 
 void __connman_service_list(DBusMessageIter *iter, void *user_data);
+void __connman_service_list_struct(DBusMessageIter *iter);
 const char *__connman_service_default(void);
 
 void __connman_service_put(struct connman_service *service);
@@ -412,6 +421,7 @@ int __connman_service_indicate_error(struct connman_service *service,
 					enum connman_service_error error);
 int __connman_service_indicate_default(struct connman_service *service);
 
+int __connman_service_lookup(const char *pattern, const char **path);
 int __connman_service_connect(struct connman_service *service);
 int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_create_and_connect(DBusMessage *msg);
@@ -419,6 +429,11 @@ void __connman_service_auto_connect(void);
 struct connman_service *__connman_service_connect_type(enum connman_service_type type);
 
 const char *__connman_service_type2string(enum connman_service_type type);
+
+void __connman_service_append_nameserver(struct connman_service *service,
+						const char *nameserver);
+void __connman_service_remove_nameserver(struct connman_service *service,
+						const char *nameserver);
 
 #include <connman/location.h>
 
@@ -464,6 +479,7 @@ void __connman_notifier_disconnect(enum connman_service_type type);
 void __connman_notifier_offlinemode(connman_bool_t enabled);
 void __connman_notifier_default_changed(struct connman_service *service);
 
+connman_bool_t __connman_notifier_is_registered(enum connman_service_type type);
 connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type);
 unsigned int __connman_notifier_count_connected(void);
 const char *__connman_notifier_get_state(void);

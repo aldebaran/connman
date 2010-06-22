@@ -32,6 +32,7 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
+#include <connman/utsname.h>
 #include <connman/dhcp.h>
 #include <connman/task.h>
 #include <connman/log.h>
@@ -129,6 +130,7 @@ static void dhclient_died(struct connman_task *task, void *user_data)
 static void dhclient_setup(struct connman_task *task, const char *ifname)
 {
 	const char *path, *intf = "org.moblin.connman.Task";
+	const char *hostname;
 
 	path = connman_task_get_path(task);
 
@@ -143,6 +145,13 @@ static void dhclient_setup(struct connman_task *task, const char *ifname)
 							STATEDIR, ifname);
 	connman_task_add_argument(task, "-cf", "%s/dhclient.conf", SCRIPTDIR);
 	connman_task_add_argument(task, "-sf", "%s/dhclient-script", SCRIPTDIR);
+
+	hostname = connman_utsname_get_hostname();
+#ifdef HAVE_DHCLIENT_HOSTNAME
+	if (hostname != NULL)
+		connman_task_add_argument(task, "-H", hostname);
+#endif
+
 	connman_task_add_argument(task, ifname, NULL);
 	connman_task_add_argument(task, "-n", NULL);
 }

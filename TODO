@@ -1,32 +1,10 @@
 
-  o Support for WPA/WPA2 Enterprise WiFi authentication
-
-	With wpa_supplicant the support for WPA/WPA2 Enterprise is already
-	present, but it needs properly hooked up. This involves a correct
-	security architecture since it uses personalized credentials.
-
   o Support for WPS based WiFi authentication
 
 	Newer versions of wpa_supplicant contain support for WPS. For full
 	integration of WPS support, the agent concept needs to be extended.
 
-  o Support for multiple profiles
-
-	Currently only one active profile (the default profile) is supported.
-
-  o Support for static IPv4 configuration
-
-	This is in theory possible, but no D-Bus API has been defined on how
-	to configure it.
-
   o Support for interface statistics
 
 	Information about carrier speed etc. should be exported.
-
-  o Support for handling RFKILL events
-
-	The RFKILL events are received via the udev infrastructure, but not
-	acted upon. Current problem is to assign the event to the correct
-	physical device. In case of platform RFKILL switches this is a real
-	problem and not solved yet.
 

@@ -139,6 +139,8 @@ int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);
 void connman_element_unregister(struct connman_element *element);
 void connman_element_unregister_children(struct connman_element *element);
+void connman_element_unregister_children_type(struct connman_element *element,
+						enum connman_element_type type);
 void connman_element_update(struct connman_element *element);
 
 int connman_element_set_enabled(struct connman_element *element,

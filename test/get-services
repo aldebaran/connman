@@ -19,16 +19,14 @@ def extract_list(list):
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-					"org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object('org.moblin.connman', '/'),
+					'org.moblin.connman.Manager')
 
-properties = manager.GetProperties()
+services = manager.GetServices()
 
-for path in properties["Services"]:
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
-
-	properties = service.GetProperties()
+for entry in services:
+	path = entry[0]
+	properties = entry[1]
 
 	print "[ %s ]" % (path)
 

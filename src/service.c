@@ -65,6 +65,9 @@ struct connman_service {
 	connman_bool_t roaming;
 	struct connman_ipconfig *ipconfig;
 	struct connman_network *network;
+	char **nameservers;
+	char *nameserver;
+	char **domains;
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
@@ -283,6 +286,69 @@ static connman_bool_t is_connected(const struct connman_service *service)
 	return FALSE;
 }
 
+static void update_nameservers(struct connman_service *service)
+{
+	const char *ifname = connman_ipconfig_get_ifname(service->ipconfig);
+
+	if (ifname == NULL)
+		return;
+
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return;
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+		connman_resolver_remove_all(ifname);
+		return;
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_LOGIN:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		break;
+	}
+
+	connman_resolver_remove_all(ifname);
+
+	if (service->nameservers != NULL) {
+		int i;
+
+		for (i = 0; service->nameservers[i]; i++)
+			connman_resolver_append(ifname, NULL,
+						service->nameservers[i]);
+	} else if (service->nameserver != NULL)
+		connman_resolver_append(ifname, NULL, service->nameserver);
+}
+
+void __connman_service_append_nameserver(struct connman_service *service,
+						const char *nameserver)
+{
+	DBG("service %p nameserver %s", service, nameserver);
+
+	if (nameserver == NULL)
+		return;
+
+	g_free(service->nameserver);
+	service->nameserver = g_strdup(nameserver);
+
+	update_nameservers(service);
+}
+
+void __connman_service_remove_nameserver(struct connman_service *service,
+						const char *nameserver)
+{
+	DBG("service %p nameserver %s", service, nameserver);
+
+	if (nameserver == NULL)
+		return;
+
+	g_free(service->nameserver);
+	service->nameserver = NULL;
+
+	update_nameservers(service);
+}
+
 static struct connman_service *get_default(void)
 {
 	struct connman_service *service;
@@ -490,6 +556,64 @@ static void append_ipv4config(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_ipv4config(service->ipconfig, iter);
 }
 
+static void append_dns(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	if (is_connected(service) == FALSE)
+		return;
+
+	if (service->nameservers != NULL) {
+		int i;
+
+		for (i = 0; service->nameservers[i]; i++)
+			dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->nameservers[i]);
+
+		return;
+	}
+
+	if (service->nameserver == NULL)
+		return;
+
+	dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->nameserver);
+}
+
+static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	int i;
+
+	if (service->nameservers == NULL)
+		return;
+
+	for (i = 0; service->nameservers[i]; i++)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->nameservers[i]);
+}
+
+static void append_domain(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	if (is_connected(service) == FALSE)
+		return;
+}
+
+static void append_domainconfig(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	int i;
+
+	if (service->domains == NULL)
+		return;
+
+	for (i = 0; service->domains[i]; i++)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->domains[i]);
+}
+
 static void append_proxy(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -517,69 +641,84 @@ static void ipv4_configuration_changed(struct connman_service *service)
 							service);
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static void dns_changed(struct connman_service *service)
 {
-	struct connman_service *service = user_data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
+	if (is_connected(service) == FALSE)
+		return;
+
+	connman_dbus_property_changed_array(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Nameservers",
+					DBUS_TYPE_STRING, append_dns, service);
+}
+
+static void dns_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_array(service->path,
+				CONNMAN_SERVICE_INTERFACE,
+				"Nameservers.Configuration",
+				DBUS_TYPE_STRING, append_dnsconfig, service);
+
+	dns_changed(service);
+}
+
+static void domain_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_array(service->path,
+				CONNMAN_SERVICE_INTERFACE,
+				"Domains.Configuration",
+				DBUS_TYPE_STRING, append_domainconfig, service);
+}
+
+static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
+					struct connman_service *service)
+{
 	dbus_bool_t required;
 	const char *str;
 
-	DBG("service %p", service);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	connman_dbus_dict_open(&array, &dict);
-
 	str = __connman_service_type2string(service->type);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Type",
+		connman_dbus_dict_append_basic(dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
 	str = mode2string(service->mode);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Mode",
+		connman_dbus_dict_append_basic(dict, "Mode",
 						DBUS_TYPE_STRING, &str);
 
 	str = security2string(service->security);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Security",
+		connman_dbus_dict_append_basic(dict, "Security",
 						DBUS_TYPE_STRING, &str);
 
 	str = state2string(service->state);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "State",
+		connman_dbus_dict_append_basic(dict, "State",
 						DBUS_TYPE_STRING, &str);
 
 	str = error2string(service->error);
 	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Error",
+		connman_dbus_dict_append_basic(dict, "Error",
 						DBUS_TYPE_STRING, &str);
 
 	if (service->strength > 0)
-		connman_dbus_dict_append_basic(&dict, "Strength",
+		connman_dbus_dict_append_basic(dict, "Strength",
 					DBUS_TYPE_BYTE, &service->strength);
 
-	connman_dbus_dict_append_basic(&dict, "Favorite",
+	connman_dbus_dict_append_basic(dict, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
-	connman_dbus_dict_append_basic(&dict, "Immutable",
+	connman_dbus_dict_append_basic(dict, "Immutable",
 					DBUS_TYPE_BOOLEAN, &service->immutable);
 
 	if (service->favorite == TRUE)
-		connman_dbus_dict_append_basic(&dict, "AutoConnect",
+		connman_dbus_dict_append_basic(dict, "AutoConnect",
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
 	else
-		connman_dbus_dict_append_basic(&dict, "AutoConnect",
+		connman_dbus_dict_append_basic(dict, "AutoConnect",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
 
 	if (service->name != NULL)
-		connman_dbus_dict_append_basic(&dict, "Name",
+		connman_dbus_dict_append_basic(dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
 
 	switch (service->type) {
@@ -589,27 +728,27 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		connman_dbus_dict_append_basic(&dict, "Roaming",
+		connman_dbus_dict_append_basic(dict, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
 
 		if (service->mcc != NULL && service->mnc != NULL) {
-			connman_dbus_dict_append_basic(&dict, "MCC",
+			connman_dbus_dict_append_basic(dict, "MCC",
 					DBUS_TYPE_STRING, &service->mcc);
-			connman_dbus_dict_append_basic(&dict, "MNC",
+			connman_dbus_dict_append_basic(dict, "MNC",
 					DBUS_TYPE_STRING, &service->mnc);
 		}
 
 		if (service->apn != NULL) {
-			connman_dbus_dict_append_basic(&dict, "APN",
+			connman_dbus_dict_append_basic(dict, "APN",
 					DBUS_TYPE_STRING, &service->apn);
 
 			if (service->username != NULL)
-				connman_dbus_dict_append_basic(&dict,
+				connman_dbus_dict_append_basic(dict,
 					"Username", DBUS_TYPE_STRING,
 							&service->username);
 
 			if (service->password != NULL)
-				connman_dbus_dict_append_basic(&dict,
+				connman_dbus_dict_append_basic(dict,
 					"Password", DBUS_TYPE_STRING,
 							&service->password);
 
@@ -617,14 +756,14 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		} else
 			required = TRUE;
 
-		connman_dbus_dict_append_basic(&dict, "SetupRequired",
+		connman_dbus_dict_append_basic(dict, "SetupRequired",
 						DBUS_TYPE_BOOLEAN, &required);
+		connman_dbus_dict_append_dict(dict, "Ethernet",
+						append_ethernet, service);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
-		if (service->passphrase != NULL &&
-				__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
-			connman_dbus_dict_append_basic(&dict, "Passphrase",
+		if (service->passphrase != NULL && limited == FALSE)
+			connman_dbus_dict_append_basic(dict, "Passphrase",
 				DBUS_TYPE_STRING, &service->passphrase);
 
 		required = FALSE;
@@ -644,24 +783,85 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			break;
 		}
 
-		connman_dbus_dict_append_basic(&dict, "PassphraseRequired",
+		connman_dbus_dict_append_basic(dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-		connman_dbus_dict_append_dict(&dict, "Ethernet",
+		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);
 		break;
 	}
 
-	connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4, service);
+	connman_dbus_dict_append_dict(dict, "IPv4", append_ipv4, service);
 
-	connman_dbus_dict_append_dict(&dict, "IPv4.Configuration",
+	connman_dbus_dict_append_dict(dict, "IPv4.Configuration",
 						append_ipv4config, service);
 
-	connman_dbus_dict_append_dict(&dict, "Proxy", append_proxy, service);
+	connman_dbus_dict_append_array(dict, "Nameservers",
+				DBUS_TYPE_STRING, append_dns, service);
 
+	connman_dbus_dict_append_array(dict, "Nameservers.Configuration",
+				DBUS_TYPE_STRING, append_dnsconfig, service);
+
+	connman_dbus_dict_append_array(dict, "Domains",
+				DBUS_TYPE_STRING, append_domain, service);
+
+	connman_dbus_dict_append_array(dict, "Domains.Configuration",
+				DBUS_TYPE_STRING, append_domainconfig, service);
+
+	connman_dbus_dict_append_dict(dict, "Proxy", append_proxy, service);
+}
+
+static void append_struct(gpointer value, gpointer user_data)
+{
+	struct connman_service *service = value;
+	DBusMessageIter *iter = user_data;
+	DBusMessageIter entry, dict;
+
+	if (service->path == NULL || service->hidden == TRUE)
+		return;
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &entry);
+
+	dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
+							&service->path);
+
+	connman_dbus_dict_open(&entry, &dict);
+	append_properties(&dict, TRUE, service);
+	connman_dbus_dict_close(&entry, &dict);
+
+	dbus_message_iter_close_container(iter, &entry);
+}
+
+void __connman_service_list_struct(DBusMessageIter *iter)
+{
+	g_sequence_foreach(service_list, append_struct, iter);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_service *service = user_data;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	dbus_bool_t limited = TRUE;
+
+	DBG("service %p", service);
+
+	if (__connman_security_check_privilege(msg,
+				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
+		limited = FALSE;
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	connman_dbus_dict_open(&array, &dict);
+	append_properties(&dict, limited, service);
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
@@ -715,6 +915,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (__connman_security_check_privilege(msg,
 					CONNMAN_SECURITY_PRIVILEGE_SECRET) < 0)
 			return __connman_error_permission_denied(msg);
@@ -737,6 +940,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
 
@@ -758,6 +964,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
 
@@ -777,6 +986,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
 			return __connman_error_invalid_service(msg);
 
@@ -790,18 +1002,106 @@ static DBusMessage *set_property(DBusConnection *conn,
 					"Cellular.Password", service->password);
 
 		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Nameservers.Configuration") == TRUE) {
+		DBusMessageIter entry;
+		GString *str;
+
+		if (type != DBUS_TYPE_ARRAY)
+			return __connman_error_invalid_arguments(msg);
+
+		str = g_string_new(NULL);
+		if (str == NULL)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_recurse(&value, &entry);
+
+		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+			const char *val;
+			dbus_message_iter_get_basic(&entry, &val);
+			dbus_message_iter_next(&entry);
+			if (str->len > 0)
+				g_string_append_printf(str, " %s", val);
+			else
+				g_string_append(str, val);
+		}
+
+		g_strfreev(service->nameservers);
+
+		if (str->len > 0)
+			service->nameservers = g_strsplit_set(str->str, " ", 0);
+		else
+			service->nameservers = NULL;
+
+		g_string_free(str, TRUE);
+
+		update_nameservers(service);
+		dns_configuration_changed(service);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
+		DBusMessageIter entry;
+		GString *str;
+
+		if (type != DBUS_TYPE_ARRAY)
+			return __connman_error_invalid_arguments(msg);
+
+		str = g_string_new(NULL);
+		if (str == NULL)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_recurse(&value, &entry);
+
+		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+			const char *val;
+			dbus_message_iter_get_basic(&entry, &val);
+			dbus_message_iter_next(&entry);
+			if (str->len > 0)
+				g_string_append_printf(str, " %s", val);
+			else
+				g_string_append(str, val);
+		}
+
+		g_strfreev(service->domains);
+
+		if (str->len > 0)
+			service->domains = g_strsplit_set(str->str, " ", 0);
+		else
+			service->domains = NULL;
+
+		g_string_free(str, TRUE);
+
+		//update_domains(service);
+		domain_configuration_changed(service);
+
+		__connman_storage_save_service(service);
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
 		int err;
 
 		if (service->ipconfig == NULL)
 			return __connman_error_invalid_property(msg);
 
+		if (is_connecting(service) ||
+				is_connected(service))
+			__connman_network_clear_ipconfig(service->network,
+							service->ipconfig);
+
 		err = __connman_ipconfig_set_ipv4config(service->ipconfig,
 								&value);
-		if (err < 0)
+		if (err < 0) {
+			if (is_connected(service) ||
+					is_connecting(service))
+				__connman_network_set_ipconfig(service->network,
+							service->ipconfig);
+
 			return __connman_error_failed(msg, -err);
+		}
 
 		ipv4_configuration_changed(service);
+
+		if (is_connecting(service) ||
+				is_connected(service))
+			__connman_network_set_ipconfig(service->network,
+							service->ipconfig);
 
 		__connman_storage_save_service(service);
 	} else
@@ -838,6 +1138,9 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 	} else if (g_str_equal(name, "Passphrase") == TRUE) {
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		g_free(service->passphrase);
 		service->passphrase = NULL;
 
@@ -1145,6 +1448,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
 
+	if (service->immutable == TRUE)
+		return __connman_error_not_supported(msg);
+
 	if (service->favorite == FALSE &&
 			service->state != CONNMAN_SERVICE_STATE_FAILURE)
 		return __connman_error_not_supported(msg);
@@ -1280,6 +1586,10 @@ static void service_free(gpointer user_data)
 	if (service->location != NULL)
 		connman_location_unref(service->location);
 
+	g_strfreev(service->nameservers);
+	g_strfreev(service->domains);
+
+	g_free(service->nameserver);
 	g_free(service->mcc);
 	g_free(service->mnc);
 	g_free(service->apn);
@@ -1494,8 +1804,7 @@ __connman_service_get_network(struct connman_service *service)
 	return service->network;
 }
 
-struct connman_ipconfig *
-__connman_service_get_ipconfig(struct connman_service *service)
+struct connman_ipconfig *__connman_service_get_ipconfig(struct connman_service *service)
 {
 	if (service == NULL)
 		return NULL;
@@ -1610,6 +1919,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 	service->state = state;
 	state_changed(service);
 
+	if (state == CONNMAN_SERVICE_STATE_ONLINE)
+		connman_timeserver_sync();
+
 	if (state == CONNMAN_SERVICE_STATE_IDLE) {
 		connman_bool_t reconnect;
 
@@ -1630,14 +1942,19 @@ int __connman_service_indicate_state(struct connman_service *service,
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 
+		update_nameservers(service);
+		dns_changed(service);
+
 		__connman_notifier_connect(service->type);
 
 		default_changed();
-
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
 
 		default_changed();
+
+		update_nameservers(service);
+		dns_changed(service);
 
 		__connman_notifier_disconnect(service->type);
 	}
@@ -1872,11 +2189,39 @@ int __connman_service_disconnect(struct connman_service *service)
 
 /**
  * __connman_service_lookup:
+ * @pattern: search pattern
+ * @path: return object path
+ *
+ * Look up a service path from a search pattern
+ */
+int __connman_service_lookup(const char *pattern, const char **path)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init(&iter, service_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		GSequenceIter *iter = value;
+		struct connman_service *service = g_sequence_get(iter);
+
+		if (g_strcmp0(service->identifier, pattern) == 0 ||
+				g_strcmp0(service->name, pattern) == 0) {
+			*path = (const char *) service->path;
+			return 0;
+		}
+	}
+
+	return -ENXIO;
+}
+
+/**
+ * lookup_by_identifier:
  * @identifier: service identifier
  *
  * Look up a service by identifier (reference count will not be increased)
  */
-static struct connman_service *__connman_service_lookup(const char *identifier)
+static struct connman_service *lookup_by_identifier(const char *identifier)
 {
 	GSequenceIter *iter;
 
@@ -2032,7 +2377,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 
 	name = g_strdup_printf("%s_%s_%s", type, ident, group);
 
-	service = __connman_service_lookup(name);
+	service = lookup_by_identifier(name);
 
 	if (service != NULL)
 		goto done;
@@ -2043,7 +2388,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 		created = TRUE;
 	}
 
-	service = __connman_service_lookup(name);
+	service = lookup_by_identifier(name);
 
 done:
 	g_free(name);
@@ -2269,7 +2614,7 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
-	service = __connman_service_lookup(name);
+	service = lookup_by_identifier(name);
 	g_free(name);
 
 	return service;
@@ -2529,6 +2874,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 	connman_uint8_t strength, value;
 	connman_bool_t roaming;
 	GSequenceIter *iter;
+	const char *name;
 
 	DBG("network %p", network);
 
@@ -2538,6 +2884,15 @@ void __connman_service_update_from_network(struct connman_network *network)
 
 	if (service->network == NULL)
 		return;
+
+	name = connman_network_get_string(service->network, "Name");
+	if (g_strcmp0(service->name, name) != 0) {
+		g_free(service->name);
+		service->name = g_strdup(name);
+		connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Name",
+				DBUS_TYPE_STRING, &service->name);
+	}
 
 	strength = connman_network_get_uint8(service->network, "Strength");
 	if (strength == service->strength)
@@ -2731,6 +3086,20 @@ static int service_load(struct connman_service *service)
 		__connman_ipconfig_load(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
 
+	service->nameservers = g_key_file_get_string_list(keyfile,
+			service->identifier, "Nameservers", &length, NULL);
+	if (service->nameservers != NULL && length == 0) {
+		g_strfreev(service->nameservers);
+		service->nameservers = NULL;
+	}
+
+	service->domains = g_key_file_get_string_list(keyfile,
+			service->identifier, "Domains", &length, NULL);
+	if (service->domains != NULL && length == 0) {
+		g_strfreev(service->domains);
+		service->domains = NULL;
+	}
+
 done:
 	g_key_file_free(keyfile);
 
@@ -2863,6 +3232,26 @@ update:
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_save(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
+
+	if (service->nameservers != NULL) {
+		guint len = g_strv_length(service->nameservers);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+								"Nameservers",
+				(const gchar **) service->nameservers, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Nameservers", NULL);
+
+	if (service->domains != NULL) {
+		guint len = g_strv_length(service->domains);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+								"Domains",
+				(const gchar **) service->domains, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Domains", NULL);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 

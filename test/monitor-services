@@ -13,6 +13,13 @@ def extract_values(values):
 	val += " }"
 	return val
 
+def extract_list(list):
+	val = "["
+	for i in list:
+		val += " " + str(i)
+	val += " ]"
+	return val
+
 def property_changed(name, value, path):
 	service = path[path.rfind("/") + 1:]
 	if name in ["Profiles", "Services", "Providers", "Technologies",
@@ -23,6 +30,9 @@ def property_changed(name, value, path):
 		val = val + " ]"
 	elif name in ["IPv4", "IPv4.Configuration", "Proxy", "Ethernet"]:
 		val = extract_values(value)
+	elif name in ["Nameservers", "Nameservers.Configuration",
+					"Domains", "Domains.Configuration"]:
+		val = extract_list(value)
 	elif name in ["Strength", "Priority"]:
 		val = int(value)
 	else:

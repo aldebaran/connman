@@ -249,6 +249,18 @@ script_PROGRAMS += scripts/dhclient-script
 scripts_dhclient_script_LDADD = @DBUS_LIBS@
 endif
 
+if NTPD
+if NTPD_BUILTIN
+builtin_modules += ntpd
+builtin_sources += plugins/ntpd.c
+builtin_cflags += -DNTPD=\"@NTPD@\"
+else
+plugin_LTLIBRARIES += plugins/ntpd.la
+plugin_objects += $(plugins_ntpd_la_OBJECTS)
+plugins_ntpd_la_CFLAGS = $(plugin_cflags) -DNTPD=\"@NTPD@\"
+plugins_ntpd_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
 
 EXTRA_DIST += plugins/polkit.policy scripts/dhclient.conf
 

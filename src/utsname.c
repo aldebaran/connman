@@ -68,6 +68,34 @@ void connman_utsname_driver_unregister(struct connman_utsname_driver *driver)
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+/**
+ * connman_utsname_get_hostname:
+ *
+ * Returns current hostname
+ */
+const char *connman_utsname_get_hostname(void)
+{
+	GSList *list;
+
+	DBG("");
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_utsname_driver *driver = list->data;
+		const char *hostname;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->get_hostname == NULL)
+			continue;
+
+		hostname = driver->get_hostname();
+		if (hostname != NULL)
+			return hostname;
+	}
+
+	return NULL;
+}
+
 int __connman_utsname_set_hostname(const char *hostname)
 {
 	GSList *list;

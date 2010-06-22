@@ -271,13 +271,45 @@ Properties	string State [readonly]
 			indicates connections to a foreign provider when
 			traveling abroad.
 
-		array{string} Nameservers [readwrite]
+		array{string} Nameservers [readonly]
+
+			The list of currently active nameservers for this
+			service. If the server is not in READY, LOGIN or
+			ONLINE state than this list will be empty.
+
+			Global nameservers are automatically added to this
+			list. The array represents a sorted list of the
+			current nameservers. The first one has the highest
+			priority and is used by default.
+
+			When using DHCP this array represents the nameservers
+			provided by the network. In case of manual settings,
+			the ones from Nameservers.Configuration are used.
+
+		array{string} Nameservers.Configuration [readwrite]
 
 			The list of manually configured domain name
 			servers. Some 3G networks don't provide correct
 			name servers and this allows for an override.
 
-		array{string} Domains [readwrite]
+			This array is sorted by priority and the first
+			entry in the list represents the nameserver with
+			the highest priority.
+
+			When using manual configuration and no global
+			nameservers are configured, then it is useful
+			to configure this setting.
+
+			Changes to the domain name servers can be done
+			at any time. It will not cause a disconnect of
+			the service. However there might be small window
+			where name resolution might fail.
+
+		array{string} Domains [readonly]
+
+			The list of currently used search domains.
+
+		array{string} Domains.Configuration [readwrite]
 
 			The list of manually configured search domains.
 
@@ -287,6 +319,10 @@ Properties	string State [readonly]
 
 				Possible values are "dhcp", "manual"
 				and "off".
+
+				The value "fixed" indicates an IP address
+				that can not be modified. For example
+				cellular networks return fixed information.
 
 			string Address [readonly]
 
@@ -305,6 +341,11 @@ Properties	string State [readonly]
 			Same values as IPv4 property. The IPv4 represents
 			the actual system configuration while this allows
 			user configuration.
+
+			Changing these settings will cause a state change
+			of the service. The service will become unavailable
+			until the new configuration has been successfully
+			installed.
 
 		dict Proxy [readonly]
 

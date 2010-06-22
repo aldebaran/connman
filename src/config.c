@@ -44,6 +44,7 @@ struct connman_config_service {
 	char *private_key_passphrase;
 	char *private_key_passphrase_type;
 	char *phase2;
+	char *passphrase;
 };
 
 struct connman_config {
@@ -87,6 +88,7 @@ static void unregister_service(gpointer data)
 	g_free(service->private_key_passphrase);
 	g_free(service->private_key_passphrase_type);
 	g_free(service->phase2);
+	g_free(service->passphrase);
 	g_free(service);
 }
 
@@ -209,6 +211,12 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	if (str != NULL) {
 		g_free(service->phase2);
 		service->phase2 = str;
+	}
+
+	str = g_key_file_get_string(keyfile, group, "Passphrase", NULL);
+	if (str != NULL) {
+		g_free(service->passphrase);
+		service->passphrase = str;
 	}
 
 	g_hash_table_replace(config->service_table, service->ident, service);
@@ -440,6 +448,9 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 
 	if (config->phase2 != NULL)
 		__connman_service_set_string(service, "Phase2", config->phase2);
+
+	if (config->passphrase != NULL)
+		__connman_service_set_string(service, "Passphrase", config->passphrase);
 }
 
 int __connman_config_provision_service(struct connman_service *service)

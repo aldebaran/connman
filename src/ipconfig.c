@@ -381,7 +381,6 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	GString *str;
 	gboolean up = FALSE, down = FALSE;
 	gboolean lower_up = FALSE, lower_down = FALSE;
-	char *ifname;
 
 	DBG("index %d", index);
 
@@ -392,22 +391,12 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	if (ipdevice != NULL)
 		goto update;
 
-	ifname = connman_inet_ifname(index);
-
-	if (__connman_element_device_isfiltered(ifname) == TRUE) {
-		connman_info("Ignoring interface %s (filtered)", ifname);
-		g_free(ifname);
-		return;
-	}
-
 	ipdevice = g_try_new0(struct connman_ipdevice, 1);
-	if (ipdevice == NULL) {
-		g_free(ifname);
+	if (ipdevice == NULL)
 		return;
-	}
 
 	ipdevice->index = index;
-	ipdevice->ifname = ifname;
+	ipdevice->ifname = connman_inet_ifname(index);
 	ipdevice->type = type;
 
 	ipdevice->address = g_strdup(address);
@@ -634,8 +623,23 @@ void __connman_ipconfig_newroute(int index, unsigned char scope,
 		return;
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
+		GSList *list;
+
 		g_free(ipdevice->gateway);
 		ipdevice->gateway = g_strdup(gateway);
+
+		if (ipdevice->config != NULL &&
+					ipdevice->config->system != NULL) {
+			g_free(ipdevice->config->system->gateway);
+			ipdevice->config->system->gateway = g_strdup(gateway);
+		}
+
+		for (list = ipdevice->address_list; list; list = list->next) {
+			struct connman_ipaddress *ipaddress = list->data;
+
+			g_free(ipaddress->gateway);
+			ipaddress->gateway = g_strdup(gateway);
+		}
 	}
 
 	connman_info("%s {add} route %s gw %s scope %u <%s>",
@@ -655,8 +659,23 @@ void __connman_ipconfig_delroute(int index, unsigned char scope,
 		return;
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
+		GSList *list;
+
 		g_free(ipdevice->gateway);
 		ipdevice->gateway = NULL;
+
+		if (ipdevice->config != NULL &&
+					ipdevice->config->system != NULL) {
+			g_free(ipdevice->config->system->gateway);
+			ipdevice->config->system->gateway = NULL;
+		}
+
+		for (list = ipdevice->address_list; list; list = list->next) {
+			struct connman_ipaddress *ipaddress = list->data;
+
+			g_free(ipaddress->gateway);
+			ipaddress->gateway = NULL;
+		}
 	}
 
 	connman_info("%s {del} route %s gw %s scope %u <%s>",
@@ -848,6 +867,9 @@ void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
  */
 int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 {
+	if (ipconfig == NULL)
+		return -1;
+
 	if (ipconfig->origin != NULL)
 		return ipconfig->origin->index;
 
@@ -863,6 +885,9 @@ int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
+
+	if (ipconfig == NULL)
+		return NULL;
 
 	if (ipconfig->index < 0)
 		return NULL;
@@ -903,8 +928,7 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
-enum connman_ipconfig_method __connman_ipconfig_get_method(
-				struct connman_ipconfig *ipconfig)
+enum connman_ipconfig_method __connman_ipconfig_get_method(struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL)
 		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
@@ -1109,6 +1133,10 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
 	}
+
+	if (ipconfig->system->gateway != NULL)
+		connman_dbus_dict_append_basic(iter, "Gateway",
+				DBUS_TYPE_STRING, &ipconfig->system->gateway);
 }
 
 void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
@@ -1149,6 +1177,10 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 		connman_dbus_dict_append_basic(iter, "Netmask",
 						DBUS_TYPE_STRING, &mask);
 	}
+
+	if (ipconfig->address->gateway != NULL)
+		connman_dbus_dict_append_basic(iter, "Gateway",
+				DBUS_TYPE_STRING, &ipconfig->address->gateway);
 }
 
 int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,

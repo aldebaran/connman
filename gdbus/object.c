@@ -308,8 +308,10 @@ static void invalidate_parent_data(DBusConnection *conn, const char *child_path)
 		goto done;
 
 	if (!dbus_connection_get_object_path_data(conn, parent_path,
-							(void *) &data))
+							(void *) &data)) {
+		invalidate_parent_data(conn, parent_path);
 		goto done;
+	}
 
 	if (!data)
 		goto done;
@@ -514,8 +516,10 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 	if (data == NULL)
 		return FALSE;
 
-	if (find_interface(data->interfaces, name))
+	if (find_interface(data->interfaces, name)) {
+		object_path_unref(connection, path);
 		return FALSE;
+	}
 
 	add_interface(data, name, methods, signals,
 			properties, user_data, destroy);

@@ -62,6 +62,7 @@
 static DBusConnection *connection;
 
 static GHashTable *bluetooth_devices = NULL;
+static GHashTable *bluetooth_networks = NULL;
 
 static int pan_probe(struct connman_network *network)
 {
@@ -255,6 +256,43 @@ static struct connman_network_driver pan_driver = {
 	.disconnect	= pan_disconnect,
 };
 
+static gboolean network_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct connman_network *network;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	DBG("path %s", path);
+
+	network = g_hash_table_lookup(bluetooth_networks, path);
+	if (network == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Connected") == TRUE) {
+		dbus_bool_t connected;
+
+		dbus_message_iter_get_basic(&value, &connected);
+
+		if (connected == TRUE)
+			return TRUE;
+
+		connman_network_set_associating(network, FALSE);
+		connman_network_set_connected(network, FALSE);
+	}
+
+	return TRUE;
+}
+
 static void extract_properties(DBusMessage *reply, const char **parent,
 						const char **address,
 						const char **name,
@@ -394,6 +432,8 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 	connman_device_add_network(device, network);
 
 	connman_network_set_group(network, ident);
+
+	g_hash_table_insert(bluetooth_networks, g_strdup(path), network);
 
 done:
 	dbus_message_unref(reply);
@@ -688,6 +728,9 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 	bluetooth_devices = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_device);
 
+	bluetooth_networks = g_hash_table_new_full(g_str_hash, g_str_equal,
+						g_free, NULL);
+
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, "/",
 				BLUEZ_MANAGER_INTERFACE, LIST_ADAPTERS);
 	if (message == NULL)
@@ -719,6 +762,7 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 	if (bluetooth_devices == NULL)
 		return;
 
+	g_hash_table_destroy(bluetooth_networks);
 	g_hash_table_destroy(bluetooth_devices);
 	bluetooth_devices = NULL;
 }
@@ -835,6 +879,7 @@ static guint watch;
 static guint added_watch;
 static guint removed_watch;
 static guint adapter_watch;
+static guint network_watch;
 
 static int bluetooth_init(void)
 {
@@ -862,8 +907,13 @@ static int bluetooth_init(void)
 						PROPERTY_CHANGED, adapter_changed,
 						NULL, NULL);
 
+	network_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						BLUEZ_NETWORK_INTERFACE,
+						PROPERTY_CHANGED, network_changed,
+						NULL, NULL);
+
 	if (watch == 0 || added_watch == 0 || removed_watch == 0
-			|| adapter_watch == 0) {
+			|| adapter_watch == 0 || network_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -885,6 +935,7 @@ remove:
 	g_dbus_remove_watch(connection, added_watch);
 	g_dbus_remove_watch(connection, removed_watch);
 	g_dbus_remove_watch(connection, adapter_watch);
+	g_dbus_remove_watch(connection, network_watch);
 
 	dbus_connection_unref(connection);
 
@@ -897,6 +948,7 @@ static void bluetooth_exit(void)
 	g_dbus_remove_watch(connection, added_watch);
 	g_dbus_remove_watch(connection, removed_watch);
 	g_dbus_remove_watch(connection, adapter_watch);
+	g_dbus_remove_watch(connection, network_watch);
 
 	bluetooth_disconnect(connection, NULL);
 

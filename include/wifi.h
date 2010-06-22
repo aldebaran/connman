@@ -31,6 +31,8 @@ char *connman_wifi_build_group_name(const unsigned char *ssid,
 							const char *mode,
 							const char *security);
 
+char **connman_wifi_load_ssid(void);
+
 #ifdef __cplusplus
 }
 #endif

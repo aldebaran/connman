@@ -116,8 +116,8 @@ endif
 
 if TOOLS
 noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dbus-test \
-			tools/addr-test tools/tap-test tools/polkit-test \
-							tools/portal-test
+			tools/addr-test tools/tap-test tools/resolv-test \
+					tools/polkit-test tools/portal-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -128,6 +128,8 @@ tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_resolv_test_LDADD = -lresolv
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
@@ -142,7 +144,9 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/list-providers \
-		test/monitor-manager test/test-counter test/set-ip-method
+		test/monitor-manager test/test-counter test/set-ip-method \
+		test/set-nameservers test/set-domains test/find-service \
+		test/get-services
 
 if TEST
 testdir = $(pkglibdir)/test
@@ -182,6 +186,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-client \
 				--enable-portal \
 				--enable-hh2serial-gps \
+				--enable-ntpd \
 				--enable-tools
 
 DISTCLEANFILES = $(pkgconfig_DATA)
@@ -222,5 +227,5 @@ include/connman/%.h: include/%.h
 	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
 
-clean-local: include/connman
-	@$(RM) -r $<
+clean-local:
+	@$(RM) -rf include/connman

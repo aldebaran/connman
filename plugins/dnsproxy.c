@@ -401,6 +401,8 @@ static struct connman_notifier dnsproxy_notifier = {
 	.offline_mode		= dnsproxy_offline_mode,
 };
 
+static unsigned char opt_edns0_type[2] = { 0x00, 0x29 };
+
 static int parse_request(unsigned char *buf, int len,
 					char *name, unsigned int size)
 {
@@ -409,7 +411,6 @@ static int parse_request(unsigned char *buf, int len,
 	uint16_t arcount = ntohs(hdr->arcount);
 	unsigned char *ptr;
 	char *last_label = NULL;
-	int label_count = 0;
 	unsigned int remain, used = 0;
 
 	if (len < 12)
@@ -424,19 +425,16 @@ static int parse_request(unsigned char *buf, int len,
 
 	memset(name, 0, size);
 
-	ptr = buf + 12;
-	remain = len - 12;
+	ptr = buf + sizeof(struct domain_hdr);
+	remain = len - sizeof(struct domain_hdr);
 
 	while (remain > 0) {
 		uint8_t len = *ptr;
 
 		if (len == 0x00) {
-			if (label_count > 0)
-				last_label = (char *) (ptr + 1);
+			last_label = (char *) (ptr + 1);
 			break;
 		}
-
-		label_count++;
 
 		if (used + len + 1 > size)
 			return -ENOBUFS;
@@ -450,8 +448,8 @@ static int parse_request(unsigned char *buf, int len,
 		remain -= len + 1;
 	}
 
-	if (arcount && remain >= 9 && last_label[4] == 0 &&
-				last_label[5] == 0 && last_label[6] == 0x29) {
+	if (last_label && arcount && remain >= 9 && last_label[4] == 0 &&
+				!memcmp(last_label + 5, opt_edns0_type, 2)) {
 		uint16_t edns0_bufsize;
 
 		edns0_bufsize = last_label[7] << 8 | last_label[8];
@@ -472,7 +470,7 @@ static int parse_request(unsigned char *buf, int len,
 		}
 	}
 
-	DBG("query %s (%d labels)", name, label_count);
+	DBG("query %s", name);
 
 	return 0;
 }

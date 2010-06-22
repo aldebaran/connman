@@ -69,6 +69,30 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		arracy{object,dict} GetServices()
+
+			Returns a sorted list of tuples with service
+			object path and dictionary of service properties.
+
+			This list will not contain sensitive information
+			like passphrases etc.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		object LookupService(string pattern)
+
+			Lookup a service matching the specific pattern.
+
+			Examples are interface names like "eth0", "wlan0"
+			etc. or service names like "hotspot" etc.
+
+			In case of multiple services match the the pattern
+			an error is returned.
+
+			Possible Errors: [service].Error.InvalidArguments
+			                 [service].Error.NotUnique
+			                 [service].Error.NotFound
+
 		object ConnectService(dict network)
 
 			Connect to a network specified by the given

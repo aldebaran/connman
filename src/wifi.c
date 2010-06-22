@@ -23,6 +23,9 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <string.h>
+
 #include <glib.h>
 
 #include "connman.h"
@@ -47,4 +50,52 @@ char *connman_wifi_build_group_name(const unsigned char *ssid,
 	g_string_append_printf(str, "_%s_%s", mode, security);
 
 	return g_string_free(str, FALSE);
+}
+
+char **connman_wifi_load_ssid(void)
+{
+	GKeyFile *key_file;
+	const char * profile;
+	gchar **groups, *group;
+	gsize num_groups;
+	char **hex_ssids;
+	int i, j;
+
+	profile = __connman_profile_active_ident();
+
+	key_file = __connman_storage_open_profile(profile);
+	if (key_file == NULL)
+		return NULL;
+
+	groups = g_key_file_get_groups(key_file, &num_groups);
+	if (groups == NULL) {
+		hex_ssids = NULL;
+		goto done;
+	}
+
+	hex_ssids = g_try_malloc0(sizeof(*hex_ssids) * num_groups);
+
+	for (i = 0, j = 0; groups[i]; i++) {
+		gchar *hex_ssid;
+		gboolean favorite;
+
+		group = groups[i];
+
+		favorite = g_key_file_get_boolean(key_file, group,
+							"Favorite", NULL);
+		if (favorite == FALSE)
+			continue;
+
+		hex_ssid = g_key_file_get_string(key_file, group,
+							"SSID", NULL);
+		if (hex_ssid == NULL)
+			continue;
+
+		hex_ssids[j++] = hex_ssid;
+	}
+
+done:
+	__connman_storage_close_profile(profile, key_file, FALSE);
+
+	return hex_ssids;
 }
