@@ -1,3 +1,6 @@
+ver 0.54.1:
+	ConnMan 0.54 code merge
+
 ver 0.52.1:
 	Remove supplicant and device scanning state cleaning
 	ofono API refactoring: Rename netreg Operator property to Name
