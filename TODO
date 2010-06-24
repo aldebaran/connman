@@ -1,10 +1,129 @@
+Background
+==========
 
-  o Support for WPS based WiFi authentication
+- Priority scale: High, Medium and Low
 
-	Newer versions of wpa_supplicant contain support for WPS. For full
-	integration of WPS support, the agent concept needs to be extended.
+- Complexity scale: C1, C2, C4 and C8.
+   The complexity scale is exponential, with complexity 1 being the
+   lowest complexity. Complexity is a function of both task 'complexity'
+   and task 'scope'.
 
-  o Support for interface statistics
+Core
+====
 
-	Information about carrier speed etc. should be exported.
+- connman_element removal
 
+   Priority: Low
+   Complexity: C8
+
+
+- DHCP lib
+
+   Priority: High
+   Complexity: C8
+   Owner: Martin Xu <martin.xu@intel.com>
+
+
+- IPv6
+
+   Priority: High
+   Complexity: C4
+   Dependencies: Core:DHCP Lib
+   Owner: Martin Xu <martin.xu@intel.com>
+
+
+- On demand connection
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+
+- Avahi-zeroconf
+
+   Priority: Medium
+   Complexity: C4
+
+
+- OpenVPN
+
+   Priority: Low
+   Complexity: C2
+
+
+- VPNc
+
+   Priority: Low
+   Complexity: C2
+
+
+- Tethering
+
+   Priority: Medium
+   Complexity: C8
+
+
+- WAPD - Web Proxy Autodiscovery Protocol
+
+   Priority: Medium
+   Complexity: C2
+   Dependencies: Core:HTTP proxy
+
+
+- Agent callbacks
+
+   Priority: Medium
+   Complexity: C2
+
+
+- HTTP proxy
+
+   Priority: Medium
+   Complexity: C1
+
+
+
+
+WiFi
+====
+
+- WPS
+
+   Priority: Low
+   Complexity: C2
+   Dependencies: Core:Agent callbacks
+
+
+- Ad-Hoc support
+
+   Priority: Medium
+   Complexity: C2
+   Dependencies: Core:Avahi-zeroconf
+
+
+- libsupplicant
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+- Fast Connect
+
+   Priority: Low
+   Complexity: C4
+   Dependencies: WiFi:libsupplicant
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+- TTLS EAP support
+
+   Priority: Low
+   Complexity: C2
+
+
+Bluetooth
+=========
+
+- DUN client
+
+   Priority: Low
+   Complexity: C4
