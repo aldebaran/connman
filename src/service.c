@@ -371,6 +371,8 @@ static void __connman_service_stats_start(struct connman_service *service)
 	service->stats.time_start = service->stats.time;
 
 	g_timer_start(service->stats.timer);
+
+	__connman_counter_add_service(service);
 }
 
 static void __connman_service_stats_stop(struct connman_service *service)
@@ -381,6 +383,8 @@ static void __connman_service_stats_stop(struct connman_service *service)
 
 	if (service->stats.timer == NULL)
 		return;
+
+	__connman_counter_remove_service(service);
 
 	g_timer_stop(service->stats.timer);
 

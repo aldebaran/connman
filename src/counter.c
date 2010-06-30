@@ -33,26 +33,12 @@ static GHashTable *stats_table;
 static GHashTable *counter_table;
 static GHashTable *owner_mapping;
 
-struct connman_stats {
-	char *interface;
-	unsigned int rx_bytes;
-	unsigned int tx_bytes;
-};
-
 struct connman_counter {
 	char *owner;
 	char *path;
 	unsigned int interval;
 	guint watch;
 };
-
-static void remove_stats(gpointer user_data)
-{
-	struct connman_stats *stats = user_data;
-
-	g_free(stats->interface);
-	g_free(stats);
-}
 
 static void remove_counter(gpointer user_data)
 {
@@ -130,10 +116,14 @@ int __connman_counter_unregister(const char *owner, const char *path)
 }
 
 static void send_usage(struct connman_counter *counter,
-					struct connman_stats *stats)
+				struct connman_service *service)
 {
 	DBusMessage *message;
 	DBusMessageIter array, dict;
+	const char *service_path;
+	unsigned long rx_bytes;
+	unsigned long tx_bytes;
+	unsigned long time;
 
 	message = dbus_message_new_method_call(counter->owner, counter->path,
 					CONNMAN_COUNTER_INTERFACE, "Usage");
@@ -142,54 +132,48 @@ static void send_usage(struct connman_counter *counter,
 
 	dbus_message_set_no_reply(message, TRUE);
 
+	service_path = __connman_service_get_path(service);
+	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH,
+					&service_path, DBUS_TYPE_INVALID);
+
 	dbus_message_iter_init_append(message, &array);
 
 	connman_dbus_dict_open(&array, &dict);
 
-	connman_dbus_dict_append_basic(&dict, "Interface",
-					DBUS_TYPE_STRING, &stats->interface);
-	connman_dbus_dict_append_basic(&dict, "RX.Bytes",
-					DBUS_TYPE_UINT32, &stats->rx_bytes);
-	connman_dbus_dict_append_basic(&dict, "TX.Bytes",
-					DBUS_TYPE_UINT32, &stats->tx_bytes);
+	rx_bytes = __connman_service_stats_get_rx_bytes(service);
+	tx_bytes = __connman_service_stats_get_tx_bytes(service);
+	time = __connman_service_stats_get_time(service);
+
+	connman_dbus_dict_append_basic(&dict, "RX.Bytes", DBUS_TYPE_UINT32,
+				&rx_bytes);
+	connman_dbus_dict_append_basic(&dict, "TX.Bytes", DBUS_TYPE_UINT32,
+				&tx_bytes);
+	connman_dbus_dict_append_basic(&dict, "Time", DBUS_TYPE_UINT32,
+				&time);
 
 	connman_dbus_dict_close(&array, &dict);
 
 	g_dbus_send_message(connection, message);
 }
 
-void __connman_counter_notify(const char *interface,
+void __connman_counter_notify(struct connman_ipconfig *config,
 				unsigned int rx_bytes, unsigned int tx_bytes)
 {
-	struct connman_stats *stats;
+	struct connman_service *service;
 	GHashTableIter iter;
 	gpointer key, value;
 
-	stats = g_hash_table_lookup(stats_table, interface);
-	if (stats != NULL)
-		goto update;
-
-	stats = g_try_new0(struct connman_stats, 1);
-	if (stats == NULL)
+	service = g_hash_table_lookup(stats_table, config);
+	if (service == NULL)
 		return;
 
-	stats->interface = g_strdup(interface);
-
-	g_hash_table_replace(stats_table, stats->interface, stats);
-
-update:
-	if (stats->rx_bytes == rx_bytes && stats->tx_bytes == tx_bytes)
-		return;
-
-	stats->rx_bytes = rx_bytes;
-	stats->tx_bytes = tx_bytes;
+	__connman_service_stats_update(service, rx_bytes, tx_bytes);
 
 	g_hash_table_iter_init(&iter, counter_table);
-
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_counter *counter = value;
 
-		send_usage(counter, stats);
+		send_usage(counter, service);
 	}
 }
 
@@ -210,6 +194,24 @@ static void release_counter(gpointer key, gpointer value, gpointer user_data)
 	g_dbus_send_message(connection, message);
 }
 
+int __connman_counter_add_service(struct connman_service *service)
+{
+	struct connman_ipconfig *config;
+
+	config = __connman_service_get_ipconfig(service);
+	g_hash_table_replace(stats_table, config, service);
+
+	return 0;
+}
+
+void __connman_counter_remove_service(struct connman_service *service)
+{
+	struct connman_ipconfig *config;
+
+	config = __connman_service_get_ipconfig(service);
+	g_hash_table_remove(stats_table, config);
+}
+
 int __connman_counter_init(void)
 {
 	DBG("");
@@ -218,8 +220,8 @@ int __connman_counter_init(void)
 	if (connection == NULL)
 		return -1;
 
-	stats_table = g_hash_table_new_full(g_str_hash, g_str_equal,
-							NULL, remove_stats);
+	stats_table = g_hash_table_new_full(g_direct_hash, g_str_equal,
+							NULL, NULL);
 
 	counter_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_counter);

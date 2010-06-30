@@ -12,3 +12,22 @@ Methods		void Release()
 			cleanup tasks. There is no need to unregister the
 			counter, because when this method gets called it has
 			already been unregistered.
+
+		Usage(object service, dict)
+
+			This signal indicates a change in the counter values
+			for the service object. The counter is reset by calling
+			the service ResetCounters method.
+
+			The dict argument contains following entries:
+
+				TX.Bytes
+
+					Total number of bytes sent.
+
+				RX.Bytes
+
+					Total number of bytes received.
+
+				Time
+					Total number of seconds online.

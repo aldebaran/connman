@@ -367,7 +367,7 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	ipdevice->rx_bytes = stats->rx_bytes;
 	ipdevice->tx_bytes = stats->tx_bytes;
 
-	__connman_counter_notify(ipdevice->ifname,
+	__connman_counter_notify(ipdevice->config,
 				ipdevice->rx_bytes, ipdevice->tx_bytes);
 }
 

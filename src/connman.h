@@ -66,17 +66,22 @@ void __connman_agent_cleanup(void);
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
 
+struct connman_service;
+struct connman_ipconfig;
+
 int __connman_counter_register(const char *owner, const char *path,
 						unsigned int interval);
 int __connman_counter_unregister(const char *owner, const char *path);
 
-void __connman_counter_notify(const char *interface,
+void __connman_counter_notify(struct connman_ipconfig *config,
 				unsigned int rx_bytes, unsigned int tx_bytes);
+
+int __connman_counter_add_service(struct connman_service *service);
+void __connman_counter_remove_service(struct connman_service *service);
 
 int __connman_counter_init(void);
 void __connman_counter_cleanup(void);
 
-struct connman_service;
 
 typedef void (* passphrase_cb_t) (struct connman_service *service,
 				const char *passphrase, void *user_data);
