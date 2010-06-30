@@ -52,6 +52,10 @@ struct watch_data {
 static GSList *watch_list = NULL;
 static unsigned int watch_id = 0;
 
+static GSList *update_list = NULL;
+static guint update_interval = G_MAXUINT;
+static guint update_timeout = 0;
+
 /**
  * connman_rtnl_add_operstate_watch:
  * @index: network device index
@@ -1073,6 +1077,73 @@ static int send_getroute(void)
 	return queue_request(req);
 }
 
+static gboolean update_timeout_cb(gpointer user_data)
+{
+	__connman_rtnl_request_update();
+
+	return TRUE;
+}
+
+static void update_interval_callback(guint min)
+{
+	if (update_timeout > 0)
+		g_source_remove(update_timeout);
+
+	if (min < G_MAXUINT) {
+		update_interval = min;
+		update_timeout = g_timeout_add_seconds(update_interval,
+						update_timeout_cb, NULL);
+	} else {
+		update_timeout = 0;
+		update_interval = G_MAXUINT;
+	}
+}
+
+static gint compare_interval(gconstpointer a, gconstpointer b)
+{
+	guint val_a = GPOINTER_TO_UINT(a);
+	guint val_b = GPOINTER_TO_UINT(b);
+
+	return val_a - val_b;
+}
+
+unsigned int __connman_rtnl_update_interval_add(unsigned int interval)
+{
+	guint min;
+
+	if (interval == 0)
+		return 0;
+
+	update_list = g_slist_insert_sorted(update_list,
+			GUINT_TO_POINTER(interval), compare_interval);
+
+	min = GPOINTER_TO_UINT(g_slist_nth_data(update_list, 0));
+	if (min < update_interval) {
+		update_interval_callback(min);
+		__connman_rtnl_request_update();
+	}
+
+	return update_interval;
+}
+
+unsigned int __connman_rtnl_update_interval_remove(unsigned int interval)
+{
+	guint min = G_MAXUINT;
+
+	if (interval == 0)
+		return 0;
+
+	update_list = g_slist_remove(update_list, GINT_TO_POINTER(interval));
+
+	if (update_list != NULL)
+		min = GPOINTER_TO_UINT(g_slist_nth_data(update_list, 0));
+
+	if (min > update_interval)
+		update_interval_callback(min);
+
+	return min;
+}
+
 int __connman_rtnl_request_update(void)
 {
 	return send_getlink();
@@ -1133,6 +1204,9 @@ void __connman_rtnl_cleanup(void)
 
 	g_slist_free(watch_list);
 	watch_list = NULL;
+
+	g_slist_free(update_list);
+	update_list = NULL;
 
 	for (list = request_list; list; list = list->next) {
 		struct rtnl_request *req = list->data;

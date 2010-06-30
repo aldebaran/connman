@@ -42,7 +42,7 @@ struct connman_stats {
 struct connman_counter {
 	char *owner;
 	char *path;
-	guint timeout;
+	unsigned int interval;
 	guint watch;
 };
 
@@ -63,8 +63,7 @@ static void remove_counter(gpointer user_data)
 	if (counter->watch > 0)
 		g_dbus_remove_watch(connection, counter->watch);
 
-	if (counter->timeout > 0)
-		g_source_remove(counter->timeout);
+	__connman_rtnl_update_interval_remove(counter->interval);
 
 	g_free(counter->owner);
 	g_free(counter->path);
@@ -79,17 +78,6 @@ static void owner_disconnect(DBusConnection *connection, void *user_data)
 
 	g_hash_table_remove(owner_mapping, counter->owner);
 	g_hash_table_remove(counter_table, counter->path);
-}
-
-static gboolean counter_timeout(gpointer user_data)
-{
-	struct connman_counter *counter = user_data;
-
-	DBG("owner %s path %s", counter->owner, counter->path);
-
-	__connman_rtnl_request_update();
-
-	return TRUE;
 }
 
 int __connman_counter_register(const char *owner, const char *path,
@@ -113,14 +101,11 @@ int __connman_counter_register(const char *owner, const char *path,
 	g_hash_table_replace(counter_table, counter->path, counter);
 	g_hash_table_replace(owner_mapping, counter->owner, counter);
 
-	if (interval > 0)
-		counter->timeout = g_timeout_add_seconds(interval,
-						counter_timeout, counter);
+	counter->interval = interval;
+	__connman_rtnl_update_interval_add(counter->interval);
 
 	counter->watch = g_dbus_add_disconnect_watch(connection, owner,
 					owner_disconnect, counter, NULL);
-
-	__connman_rtnl_request_update();
 
 	return 0;
 }

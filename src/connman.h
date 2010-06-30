@@ -490,6 +490,8 @@ int __connman_rtnl_init(void);
 void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
+unsigned int __connman_rtnl_update_interval_add(unsigned int interval);
+unsigned int __connman_rtnl_update_interval_remove(unsigned int interval);
 int __connman_rtnl_request_update(void);
 int __connman_rtnl_send(const void *buf, size_t len);
 
