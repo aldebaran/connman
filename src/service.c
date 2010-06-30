@@ -36,6 +36,17 @@ static DBusConnection *connection = NULL;
 static GSequence *service_list = NULL;
 static GHashTable *service_hash = NULL;
 
+struct connman_stats {
+	connman_bool_t valid;
+	unsigned int rx_bytes_last;
+	unsigned int tx_bytes_last;
+	unsigned int rx_bytes;
+	unsigned int tx_bytes;
+	unsigned int time_start;
+	unsigned int time;
+	GTimer *timer;
+};
+
 struct connman_service {
 	gint refcount;
 	char *identifier;
@@ -79,6 +90,7 @@ struct connman_service {
 	DBusMessage *pending;
 	guint timeout;
 	struct connman_location *location;
+	struct connman_stats stats;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -347,6 +359,87 @@ void __connman_service_remove_nameserver(struct connman_service *service,
 	service->nameserver = NULL;
 
 	update_nameservers(service);
+}
+
+static void __connman_service_stats_start(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (service->stats.timer == NULL)
+		return;
+
+	service->stats.time_start = service->stats.time;
+
+	g_timer_start(service->stats.timer);
+}
+
+static void __connman_service_stats_stop(struct connman_service *service)
+{
+	unsigned int seconds;
+
+	DBG("service %p", service);
+
+	if (service->stats.timer == NULL)
+		return;
+
+	g_timer_stop(service->stats.timer);
+
+	seconds = g_timer_elapsed(service->stats.timer, NULL);
+	service->stats.time = service->stats.time_start + seconds;
+}
+
+static int __connman_service_stats_load(struct connman_service *service,
+		GKeyFile *keyfile, const char *identifier)
+{
+	service->stats.rx_bytes = g_key_file_get_integer(keyfile,
+				identifier, "rx_bytes", NULL);
+	service->stats.tx_bytes = g_key_file_get_integer(keyfile,
+				identifier, "tx_bytes", NULL);
+	service->stats.time = g_key_file_get_integer(keyfile,
+				identifier, "time", NULL);
+
+	return 0;
+}
+
+static int __connman_service_stats_save(struct connman_service *service,
+		GKeyFile *keyfile, const char *identifier)
+{
+	g_key_file_set_integer(keyfile, identifier, "rx_bytes",
+			service->stats.rx_bytes);
+	g_key_file_set_integer(keyfile, identifier, "tx_bytes",
+			service->stats.tx_bytes);
+	g_key_file_set_integer(keyfile, identifier, "time",
+			service->stats.time);
+
+	return 0;
+}
+
+static void __connman_service_reset_stats(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	service->stats.valid = FALSE;
+	service->stats.rx_bytes = 0;
+	service->stats.tx_bytes = 0;
+	service->stats.time = 0;
+	service->stats.time_start = 0;
+	g_timer_reset(service->stats.timer);
+
+}
+
+unsigned long __connman_service_stats_get_tx_bytes(struct connman_service *service)
+{
+	return service->stats.tx_bytes;
+}
+
+unsigned long __connman_service_stats_get_rx_bytes(struct connman_service *service)
+{
+	return service->stats.rx_bytes;
+}
+
+unsigned long __connman_service_stats_get_time(struct connman_service *service)
+{
+	return service->stats.time;
 }
 
 static struct connman_service *get_default(void)
@@ -1536,6 +1629,16 @@ static DBusMessage *move_after(DBusConnection *conn,
 	return move_service(conn, msg, user_data, FALSE);
 }
 
+static DBusMessage *reset_stats(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	__connman_service_reset_stats(service);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable service_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties     },
 	{ "SetProperty",   "sv", "",      set_property       },
@@ -1546,6 +1649,7 @@ static GDBusMethodTable service_methods[] = {
 	{ "Remove",        "",   "",      remove_service     },
 	{ "MoveBefore",    "o",  "",      move_before        },
 	{ "MoveAfter",     "o",  "",      move_after         },
+	{ "ResetCounters", "",   "",      reset_stats        },
 	{ },
 };
 
@@ -1606,6 +1710,10 @@ static void service_free(gpointer user_data)
 	g_free(service->private_key_file);
 	g_free(service->private_key_passphrase);
 	g_free(service->phase2);
+
+	if (service->stats.timer != NULL)
+		g_timer_destroy(service->stats.timer);
+
 	g_free(service);
 }
 
@@ -1654,6 +1762,9 @@ static void __connman_service_initialize(struct connman_service *service)
 	service->userconnect = FALSE;
 
 	service->order = 0;
+
+	service->stats.valid = FALSE;
+	service->stats.timer = g_timer_new();
 }
 
 /**
@@ -1947,6 +2058,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		__connman_notifier_connect(service->type);
 
+		__connman_service_stats_start(service);
+
 		default_changed();
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
@@ -1957,6 +2070,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 		dns_changed(service);
 
 		__connman_notifier_disconnect(service->type);
+
+		__connman_service_stats_stop(service);
+		__connman_storage_save_service(service);
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
@@ -2505,7 +2621,11 @@ static int service_register(struct connman_service *service)
 
 static void service_up(struct connman_ipconfig *ipconfig)
 {
+	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+
 	connman_info("%s up", connman_ipconfig_get_ifname(ipconfig));
+
+	service->stats.valid = FALSE;
 }
 
 static void service_down(struct connman_ipconfig *ipconfig)
@@ -2943,6 +3063,34 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	__connman_service_put(service);
 }
 
+void __connman_service_stats_update(struct connman_service *service,
+					unsigned long rx_bytes,
+					unsigned long tx_bytes)
+{
+	unsigned int seconds;
+	struct connman_stats *stats = &service->stats;
+
+	DBG("service %p", service);
+
+	if (is_connected(service) == FALSE)
+		return;
+
+	if (stats->valid == TRUE) {
+		stats->rx_bytes +=
+			rx_bytes - stats->rx_bytes_last;
+		stats->tx_bytes +=
+			tx_bytes - stats->tx_bytes_last;
+	} else {
+		stats->valid = TRUE;
+	}
+
+	stats->rx_bytes_last = rx_bytes;
+	stats->tx_bytes_last = tx_bytes;
+
+	seconds = g_timer_elapsed(stats->timer, NULL);
+	stats->time = stats->time_start + seconds;
+}
+
 static int service_load(struct connman_service *service)
 {
 	const char *ident = service->profile;
@@ -3100,6 +3248,7 @@ static int service_load(struct connman_service *service)
 		service->domains = NULL;
 	}
 
+	__connman_service_stats_load(service, keyfile, service->identifier);
 done:
 	g_key_file_free(keyfile);
 
@@ -3252,6 +3401,8 @@ update:
 	} else
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Domains", NULL);
+
+	__connman_service_stats_save(service, keyfile, service->identifier);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
