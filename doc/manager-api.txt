@@ -221,6 +221,13 @@ Properties	string State [readonly]
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.
 
+		boolean Tethering [readwrite]
+
+			This option allows to enable or disable the support
+			for tethering. When tethering is enabled then the
+			default service is bridged to all client where
+			connection sharing is supported.
+
 		object ActiveProfile [readwrite]
 
 			Object path of the current active profile.

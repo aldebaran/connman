@@ -87,7 +87,7 @@ for key in properties.keys():
 		for val in properties[key]:
 			list = list + val + " "
 		print "    [ %s]" % (list)
-	elif key in ["OfflineMode"]:
+	elif key in ["OfflineMode", "Tethering"]:
 		print "%s" % (key)
 		if properties[key] == dbus.Boolean(1):
 			print "    true"

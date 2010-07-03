@@ -54,7 +54,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/location.c \
-			src/session.c
+			src/session.c src/tethering.c
 
 if UDEV
 src_connmand_SOURCES += src/udev.c
@@ -146,7 +146,8 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/connect-vpn test/disconnect-vpn test/list-providers \
 		test/monitor-manager test/test-counter test/set-ip-method \
 		test/set-nameservers test/set-domains test/find-service \
-		test/get-services
+		test/get-services \
+		test/enable-tethering test/disable-tethering
 
 if TEST
 testdir = $(pkglibdir)/test

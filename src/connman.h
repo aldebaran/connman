@@ -390,6 +390,13 @@ int __connman_profile_add_network(struct connman_network *network);
 int __connman_profile_update_network(struct connman_network *network);
 int __connman_profile_remove_network(struct connman_network *network);
 
+int __connman_tethering_init(void);
+void __connman_tethering_cleanup(void);
+
+connman_bool_t __connman_tethering_get_status(void);
+int __connman_tethering_set_status(connman_bool_t status);
+void __connman_tethering_update_interface(const char *interface);
+
 #include <connman/service.h>
 
 int __connman_service_init(void);
