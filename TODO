@@ -38,6 +38,14 @@ Core
    Complexity: C4
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
+   With on demand connection applications get connectivity access
+   simply by trying to reach the network. They don't need to
+   specifically request for a service connection, but ConnMan
+   establishes it on their behalf.
+   This feature counter part is idle disconnect. ConnMan needs to be
+   able to close the on demand established connections by monitoring
+   the link activity. This requires kernel support with e.g. the
+   netfilter IDLETIMER target.
 
 - Avahi-zeroconf
 
@@ -61,6 +69,7 @@ Core
 
    Priority: Medium
    Complexity: C8
+   Owner: Marcel Holtmann <marcel@hotlmann.org>
 
 
 - WAPD - Web Proxy Autodiscovery Protocol
@@ -81,7 +90,16 @@ Core
    Priority: Medium
    Complexity: C1
 
+- Moving DNS proxy code to ConnMan core
 
+   Priority: Medium
+   Complexity: C2
+
+   Supporting DNS proxy or resolv.conf direct editing seems more than
+   plenty as far as resolving is concerned. So the idea is to move the
+   dnsproxy plugin code to ConnMan core and have an additional command
+   line option in case one would like to stick with the current
+   resolver.c code for editing resolv.conf.
 
 
 WiFi
