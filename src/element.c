@@ -1350,8 +1350,7 @@ void __connman_element_start(void)
 	__connman_ipv4_init();
 	__connman_dhcp_init();
 
-	if (__connman_rfkill_init() < 0)
-		__connman_udev_enable_rfkill_processing();
+	__connman_rfkill_init();
 }
 
 void __connman_element_stop(void)
