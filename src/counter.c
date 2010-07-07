@@ -40,6 +40,11 @@ struct connman_counter {
 	guint watch;
 };
 
+struct counter_data {
+	struct connman_service *service;
+	connman_bool_t first_update;
+};
+
 static void remove_counter(gpointer user_data)
 {
 	struct connman_counter *counter = user_data;
@@ -54,6 +59,13 @@ static void remove_counter(gpointer user_data)
 	g_free(counter->owner);
 	g_free(counter->path);
 	g_free(counter);
+}
+
+static void remove_data(gpointer user_data)
+{
+	struct counter_data *data = user_data;
+
+	g_free(data);
 }
 
 static void owner_disconnect(DBusConnection *connection, void *user_data)
@@ -159,21 +171,26 @@ static void send_usage(struct connman_counter *counter,
 void __connman_counter_notify(struct connman_ipconfig *config,
 				unsigned int rx_bytes, unsigned int tx_bytes)
 {
-	struct connman_service *service;
+	struct counter_data *data;
 	GHashTableIter iter;
 	gpointer key, value;
 
-	service = g_hash_table_lookup(stats_table, config);
-	if (service == NULL)
+	data = g_hash_table_lookup(stats_table, config);
+	if (data == NULL)
 		return;
 
-	__connman_service_stats_update(service, rx_bytes, tx_bytes);
+	__connman_service_stats_update(data->service, rx_bytes, tx_bytes);
+
+	if (data->first_update == TRUE) {
+		data->first_update = FALSE;
+		return;
+	}
 
 	g_hash_table_iter_init(&iter, counter_table);
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_counter *counter = value;
 
-		send_usage(counter, service);
+		send_usage(counter, data->service);
 	}
 }
 
@@ -197,9 +214,23 @@ static void release_counter(gpointer key, gpointer value, gpointer user_data)
 int __connman_counter_add_service(struct connman_service *service)
 {
 	struct connman_ipconfig *config;
+	struct counter_data *data;
+
+	data = g_try_new0(struct counter_data, 1);
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->service = service;
+	data->first_update = TRUE;
 
 	config = __connman_service_get_ipconfig(service);
-	g_hash_table_replace(stats_table, config, service);
+	g_hash_table_replace(stats_table, config, data);
+
+	/*
+	 * Trigger a first update to intialize the offset counters
+	 * in the service.
+	 */
+	__connman_rtnl_request_update();
 
 	return 0;
 }
@@ -221,7 +252,7 @@ int __connman_counter_init(void)
 		return -1;
 
 	stats_table = g_hash_table_new_full(g_direct_hash, g_str_equal,
-							NULL, NULL);
+							NULL, remove_data);
 
 	counter_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_counter);
