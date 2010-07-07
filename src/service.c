@@ -2062,8 +2062,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		__connman_notifier_connect(service->type);
 
-		__connman_service_stats_start(service);
-
 		default_changed();
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
@@ -2074,9 +2072,6 @@ int __connman_service_indicate_state(struct connman_service *service,
 		dns_changed(service);
 
 		__connman_notifier_disconnect(service->type);
-
-		__connman_service_stats_stop(service);
-		__connman_storage_save_service(service);
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
@@ -2639,12 +2634,21 @@ static void service_down(struct connman_ipconfig *ipconfig)
 
 static void service_lower_up(struct connman_ipconfig *ipconfig)
 {
+	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+
 	connman_info("%s lower up", connman_ipconfig_get_ifname(ipconfig));
+
+	__connman_service_stats_start(service);
 }
 
 static void service_lower_down(struct connman_ipconfig *ipconfig)
 {
+	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+
 	connman_info("%s lower down", connman_ipconfig_get_ifname(ipconfig));
+
+	__connman_service_stats_stop(service);
+	__connman_storage_save_service(service);
 }
 
 static void service_ip_bound(struct connman_ipconfig *ipconfig)

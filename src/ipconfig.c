@@ -1017,6 +1017,8 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
+	gboolean up = FALSE, down = FALSE;
+	gboolean lower_up = FALSE, lower_down = FALSE;
 
 	DBG("ipconfig %p", ipconfig);
 
@@ -1042,6 +1044,27 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 	ipdevice->config = connman_ipconfig_ref(ipconfig);
 
 	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
+
+	if (ipdevice->flags & IFF_UP)
+		up = TRUE;
+	else
+		down = TRUE;
+
+	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) ==
+			(IFF_RUNNING | IFF_LOWER_UP))
+		lower_up = TRUE;
+	else if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) == 0)
+		lower_down = TRUE;
+
+	if (up == TRUE && ipconfig->ops->up)
+		ipconfig->ops->up(ipconfig);
+	if (lower_up == TRUE && ipconfig->ops->lower_up)
+		ipconfig->ops->lower_up(ipconfig);
+
+	if (lower_down == TRUE && ipconfig->ops->lower_down)
+		ipconfig->ops->lower_down(ipconfig);
+	if (down == TRUE && ipconfig->ops->down)
+		ipconfig->ops->down(ipconfig);
 
 	return 0;
 }
