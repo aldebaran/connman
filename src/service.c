@@ -38,10 +38,22 @@ static GHashTable *service_hash = NULL;
 
 struct connman_stats {
 	connman_bool_t valid;
+	unsigned int rx_packets_last;
+	unsigned int tx_packets_last;
+	unsigned int rx_packets;
+	unsigned int tx_packets;
 	unsigned int rx_bytes_last;
 	unsigned int tx_bytes_last;
 	unsigned int rx_bytes;
 	unsigned int tx_bytes;
+	unsigned int rx_errors_last;
+	unsigned int tx_errors_last;
+	unsigned int rx_errors;
+	unsigned int tx_errors;
+	unsigned int rx_dropped_last;
+	unsigned int tx_dropped_last;
+	unsigned int rx_dropped;
+	unsigned int tx_dropped;
 	unsigned int time_start;
 	unsigned int time;
 	GTimer *timer;
@@ -395,10 +407,22 @@ static void __connman_service_stats_stop(struct connman_service *service)
 static int __connman_service_stats_load(struct connman_service *service,
 		GKeyFile *keyfile, const char *identifier)
 {
+	service->stats.rx_packets = g_key_file_get_integer(keyfile,
+				identifier, "rx_packets", NULL);
+	service->stats.tx_packets = g_key_file_get_integer(keyfile,
+				identifier, "tx_packets", NULL);
 	service->stats.rx_bytes = g_key_file_get_integer(keyfile,
 				identifier, "rx_bytes", NULL);
 	service->stats.tx_bytes = g_key_file_get_integer(keyfile,
 				identifier, "tx_bytes", NULL);
+	service->stats.rx_errors = g_key_file_get_integer(keyfile,
+				identifier, "rx_errors", NULL);
+	service->stats.tx_errors = g_key_file_get_integer(keyfile,
+				identifier, "tx_errors", NULL);
+	service->stats.rx_dropped = g_key_file_get_integer(keyfile,
+				identifier, "rx_dropped", NULL);
+	service->stats.tx_dropped = g_key_file_get_integer(keyfile,
+				identifier, "tx_dropped", NULL);
 	service->stats.time = g_key_file_get_integer(keyfile,
 				identifier, "time", NULL);
 
@@ -408,10 +432,22 @@ static int __connman_service_stats_load(struct connman_service *service,
 static int __connman_service_stats_save(struct connman_service *service,
 		GKeyFile *keyfile, const char *identifier)
 {
+	g_key_file_set_integer(keyfile, identifier, "rx_packets",
+			service->stats.rx_packets);
+	g_key_file_set_integer(keyfile, identifier, "tx_packets",
+			service->stats.tx_packets);
 	g_key_file_set_integer(keyfile, identifier, "rx_bytes",
 			service->stats.rx_bytes);
 	g_key_file_set_integer(keyfile, identifier, "tx_bytes",
 			service->stats.tx_bytes);
+	g_key_file_set_integer(keyfile, identifier, "rx_errors",
+			service->stats.rx_errors);
+	g_key_file_set_integer(keyfile, identifier, "tx_errors",
+			service->stats.tx_errors);
+	g_key_file_set_integer(keyfile, identifier, "rx_dropped",
+			service->stats.rx_dropped);
+	g_key_file_set_integer(keyfile, identifier, "tx_dropped",
+			service->stats.tx_dropped);
 	g_key_file_set_integer(keyfile, identifier, "time",
 			service->stats.time);
 
@@ -423,12 +459,33 @@ static void __connman_service_reset_stats(struct connman_service *service)
 	DBG("service %p", service);
 
 	service->stats.valid = FALSE;
+	service->stats.rx_packets = 0;
+	service->stats.tx_packets = 0;
 	service->stats.rx_bytes = 0;
 	service->stats.tx_bytes = 0;
+	service->stats.rx_errors = 0;
+	service->stats.tx_errors = 0;
+	service->stats.rx_dropped = 0;
+	service->stats.tx_dropped = 0;
 	service->stats.time = 0;
 	service->stats.time_start = 0;
 	g_timer_reset(service->stats.timer);
 
+}
+
+unsigned long __connman_service_stats_get_rx_packets(struct connman_service *service)
+{
+	return service->stats.rx_packets;
+}
+
+unsigned long __connman_service_stats_get_tx_packets(struct connman_service *service)
+{
+	return service->stats.tx_packets;
+}
+
+unsigned long __connman_service_stats_get_rx_bytes(struct connman_service *service)
+{
+	return service->stats.rx_bytes;
 }
 
 unsigned long __connman_service_stats_get_tx_bytes(struct connman_service *service)
@@ -436,9 +493,24 @@ unsigned long __connman_service_stats_get_tx_bytes(struct connman_service *servi
 	return service->stats.tx_bytes;
 }
 
-unsigned long __connman_service_stats_get_rx_bytes(struct connman_service *service)
+unsigned long __connman_service_stats_get_rx_errors(struct connman_service *service)
 {
-	return service->stats.rx_bytes;
+	return service->stats.rx_errors;
+}
+
+unsigned long __connman_service_stats_get_tx_errors(struct connman_service *service)
+{
+	return service->stats.tx_errors;
+}
+
+unsigned long __connman_service_stats_get_rx_dropped(struct connman_service *service)
+{
+	return service->stats.rx_dropped;
+}
+
+unsigned long __connman_service_stats_get_tx_dropped(struct connman_service *service)
+{
+	return service->stats.tx_dropped;
 }
 
 unsigned long __connman_service_stats_get_time(struct connman_service *service)
@@ -3075,8 +3147,10 @@ void __connman_service_remove_from_network(struct connman_network *network)
 }
 
 void __connman_service_stats_update(struct connman_service *service,
-					unsigned long rx_bytes,
-					unsigned long tx_bytes)
+				unsigned int rx_packets, unsigned int tx_packets,
+				unsigned int rx_bytes, unsigned int tx_bytes,
+				unsigned int rx_errors, unsigned int tx_errors,
+				unsigned int rx_dropped, unsigned int tx_dropped)
 {
 	unsigned int seconds;
 	struct connman_stats *stats = &service->stats;
@@ -3087,16 +3161,34 @@ void __connman_service_stats_update(struct connman_service *service,
 		return;
 
 	if (stats->valid == TRUE) {
+		stats->rx_packets +=
+			rx_packets - stats->rx_packets_last;
+		stats->tx_packets +=
+			tx_packets - stats->tx_packets_last;
 		stats->rx_bytes +=
 			rx_bytes - stats->rx_bytes_last;
 		stats->tx_bytes +=
 			tx_bytes - stats->tx_bytes_last;
+		stats->rx_errors +=
+			rx_errors - stats->rx_errors_last;
+		stats->tx_errors +=
+			tx_errors - stats->tx_errors_last;
+		stats->rx_dropped +=
+			rx_dropped - stats->rx_dropped_last;
+		stats->tx_dropped +=
+			tx_dropped - stats->tx_dropped_last;
 	} else {
 		stats->valid = TRUE;
 	}
 
+	stats->rx_packets_last = rx_packets;
+	stats->tx_packets_last = tx_packets;
 	stats->rx_bytes_last = rx_bytes;
 	stats->tx_bytes_last = tx_bytes;
+	stats->rx_errors_last = rx_errors;
+	stats->tx_errors_last = tx_errors;
+	stats->rx_dropped_last = rx_dropped;
+	stats->tx_dropped_last = tx_dropped;
 
 	seconds = g_timer_elapsed(stats->timer, NULL);
 	stats->time = stats->time_start + seconds;

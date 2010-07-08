@@ -133,8 +133,14 @@ static void send_usage(struct connman_counter *counter,
 	DBusMessage *message;
 	DBusMessageIter array, dict;
 	const char *service_path;
+	unsigned long rx_packets;
+	unsigned long tx_packets;
 	unsigned long rx_bytes;
 	unsigned long tx_bytes;
+	unsigned long rx_errors;
+	unsigned long tx_errors;
+	unsigned long rx_dropped;
+	unsigned long tx_dropped;
 	unsigned long time;
 
 	message = dbus_message_new_method_call(counter->owner, counter->path,
@@ -152,14 +158,32 @@ static void send_usage(struct connman_counter *counter,
 
 	connman_dbus_dict_open(&array, &dict);
 
+	rx_packets = __connman_service_stats_get_rx_packets(service);
+	tx_packets = __connman_service_stats_get_tx_packets(service);
 	rx_bytes = __connman_service_stats_get_rx_bytes(service);
 	tx_bytes = __connman_service_stats_get_tx_bytes(service);
+	rx_errors = __connman_service_stats_get_rx_errors(service);
+	tx_errors = __connman_service_stats_get_tx_errors(service);
+	rx_dropped = __connman_service_stats_get_rx_dropped(service);
+	tx_dropped = __connman_service_stats_get_tx_dropped(service);
 	time = __connman_service_stats_get_time(service);
 
+	connman_dbus_dict_append_basic(&dict, "RX.Packets", DBUS_TYPE_UINT32,
+				&rx_packets);
+	connman_dbus_dict_append_basic(&dict, "TX.Packets", DBUS_TYPE_UINT32,
+				&tx_packets);
 	connman_dbus_dict_append_basic(&dict, "RX.Bytes", DBUS_TYPE_UINT32,
 				&rx_bytes);
 	connman_dbus_dict_append_basic(&dict, "TX.Bytes", DBUS_TYPE_UINT32,
 				&tx_bytes);
+	connman_dbus_dict_append_basic(&dict, "RX.Errors", DBUS_TYPE_UINT32,
+				&rx_errors);
+	connman_dbus_dict_append_basic(&dict, "TX.Errors", DBUS_TYPE_UINT32,
+				&tx_errors);
+	connman_dbus_dict_append_basic(&dict, "RX.Dropped", DBUS_TYPE_UINT32,
+				&rx_dropped);
+	connman_dbus_dict_append_basic(&dict, "TX.Dropped", DBUS_TYPE_UINT32,
+				&tx_dropped);
 	connman_dbus_dict_append_basic(&dict, "Time", DBUS_TYPE_UINT32,
 				&time);
 
@@ -169,7 +193,10 @@ static void send_usage(struct connman_counter *counter,
 }
 
 void __connman_counter_notify(struct connman_ipconfig *config,
-				unsigned int rx_bytes, unsigned int tx_bytes)
+			unsigned int rx_packets, unsigned int tx_packets,
+			unsigned int rx_bytes, unsigned int tx_bytes,
+			unsigned int rx_errors, unsigned int tx_errors,
+			unsigned int rx_dropped, unsigned int tx_dropped)
 {
 	struct counter_data *data;
 	GHashTableIter iter;
@@ -179,7 +206,11 @@ void __connman_counter_notify(struct connman_ipconfig *config,
 	if (data == NULL)
 		return;
 
-	__connman_service_stats_update(data->service, rx_bytes, tx_bytes);
+	__connman_service_stats_update(data->service,
+				rx_packets, tx_packets,
+				rx_bytes, tx_bytes,
+				rx_errors, tx_errors,
+				rx_dropped, tx_dropped);
 
 	if (data->first_update == TRUE) {
 		data->first_update = FALSE;

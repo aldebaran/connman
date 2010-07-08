@@ -34,7 +34,11 @@ class Counter(dbus.service.Object):
 					in_signature='oa{sv}', out_signature='')
 	def Usage(self, path, stats):
 		print "%s" % (path)
-		for key in stats.keys():
+
+		keys = stats.keys()
+		keys.sort()
+
+		for key in keys:
 			val = int(stats[key])
 			str = "  %s = %s" % (key, val)
 

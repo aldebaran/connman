@@ -56,8 +56,14 @@ struct connman_ipdevice {
 	unsigned int flags;
 	char *address;
 	uint16_t mtu;
-	uint32_t tx_bytes;
+	uint32_t rx_packets;
+	uint32_t tx_packets;
 	uint32_t rx_bytes;
+	uint32_t tx_bytes;
+	uint32_t rx_errors;
+	uint32_t tx_errors;
+	uint32_t rx_dropped;
+	uint32_t tx_dropped;
 
 	GSList *address_list;
 	char *gateway;
@@ -364,11 +370,20 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	if (ipdevice->config == NULL)
 		return;
 
+	ipdevice->rx_packets = stats->rx_packets;
+	ipdevice->tx_packets = stats->tx_packets;
 	ipdevice->rx_bytes = stats->rx_bytes;
 	ipdevice->tx_bytes = stats->tx_bytes;
+	ipdevice->rx_errors = stats->rx_errors;
+	ipdevice->tx_errors = stats->tx_errors;
+	ipdevice->rx_dropped = stats->rx_dropped;
+	ipdevice->tx_dropped = stats->tx_dropped;
 
 	__connman_counter_notify(ipdevice->config,
-				ipdevice->rx_bytes, ipdevice->tx_bytes);
+				ipdevice->rx_packets, ipdevice->tx_packets,
+				ipdevice->rx_bytes, ipdevice->tx_bytes,
+				ipdevice->rx_errors, ipdevice->tx_errors,
+				ipdevice->rx_dropped, ipdevice->tx_dropped);
 }
 
 void __connman_ipconfig_newlink(int index, unsigned short type,

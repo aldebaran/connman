@@ -21,13 +21,41 @@ Methods		void Release()
 
 			The dict argument contains following entries:
 
+				RX.Packets
+
+					Total number of packets received.
+
 				TX.Bytes
 
-					Total number of bytes sent.
+					Total number of packets sent.
 
 				RX.Bytes
 
 					Total number of bytes received.
+
+				TX.Bytes
+
+					Total number of bytes sent.
+
+				RX.Errors
+
+					Total number of erronous packets
+					received.
+
+				TX.Errors
+
+					Total number of erronous packets
+					sent.
+
+				RX.Dropped
+
+					Total number of dropped packets
+					while receiving.
+
+				TX.Dropped
+
+					Total number of dropped packets
+					while sending.
 
 				Time
 					Total number of seconds online.

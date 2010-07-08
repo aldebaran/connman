@@ -74,7 +74,10 @@ int __connman_counter_register(const char *owner, const char *path,
 int __connman_counter_unregister(const char *owner, const char *path);
 
 void __connman_counter_notify(struct connman_ipconfig *config,
-				unsigned int rx_bytes, unsigned int tx_bytes);
+			unsigned int rx_packets, unsigned int tx_packets,
+			unsigned int rx_bytes, unsigned int tx_bytes,
+			unsigned int rx_error, unsigned int tx_error,
+			unsigned int rx_dropped, unsigned int tx_dropped);
 
 int __connman_counter_add_service(struct connman_service *service);
 void __connman_counter_remove_service(struct connman_service *service);
@@ -446,12 +449,20 @@ void __connman_service_append_nameserver(struct connman_service *service,
 void __connman_service_remove_nameserver(struct connman_service *service,
 						const char *nameserver);
 
-unsigned long __connman_service_stats_get_tx_bytes(struct connman_service *service);
+unsigned long __connman_service_stats_get_rx_packets(struct connman_service *service);
+unsigned long __connman_service_stats_get_tx_packets(struct connman_service *service);
 unsigned long __connman_service_stats_get_rx_bytes(struct connman_service *service);
+unsigned long __connman_service_stats_get_tx_bytes(struct connman_service *service);
+unsigned long __connman_service_stats_get_rx_errors(struct connman_service *service);
+unsigned long __connman_service_stats_get_tx_errors(struct connman_service *service);
+unsigned long __connman_service_stats_get_rx_dropped(struct connman_service *service);
+unsigned long __connman_service_stats_get_tx_dropped(struct connman_service *service);
 unsigned long __connman_service_stats_get_time(struct connman_service *service);
 void __connman_service_stats_update(struct connman_service *service,
-					unsigned long rx_bytes,
-					unsigned long tx_bytes);
+				unsigned int rx_packets, unsigned int tx_packets,
+				unsigned int rx_bytes, unsigned int tx_bytes,
+				unsigned int rx_error, unsigned int tx_error,
+				unsigned int rx_dropped, unsigned int tx_dropped);
 
 #include <connman/location.h>
 
