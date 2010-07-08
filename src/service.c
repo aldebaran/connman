@@ -1673,6 +1673,9 @@ static void service_free(gpointer user_data)
 
 	g_hash_table_remove(service_hash, service->identifier);
 
+	__connman_service_stats_stop(service);
+	__connman_storage_save_service(service);
+
 	service->path = NULL;
 
 	if (path != NULL) {
