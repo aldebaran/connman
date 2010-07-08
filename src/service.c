@@ -374,6 +374,41 @@ void __connman_service_remove_nameserver(struct connman_service *service,
 	update_nameservers(service);
 }
 
+void __connman_service_nameserver_add_routes(struct connman_service *service,
+						const char *gw)
+{
+	int index;
+
+	index = connman_network_get_index(service->network);
+
+	if (service->nameservers != NULL) {
+		int i;
+
+		for (i = 0; service->nameservers[i]; i++)
+			connman_inet_add_host_route(index,
+						service->nameservers[i], gw);
+	} else if (service->nameserver != NULL) {
+		connman_inet_add_host_route(index, service->nameserver, gw);
+	}
+}
+
+void __connman_service_nameserver_del_routes(struct connman_service *service)
+{
+	int index;
+
+	index = connman_network_get_index(service->network);
+
+	if (service->nameservers != NULL) {
+		int i;
+
+		for (i = 0; service->nameservers[i]; i++)
+			connman_inet_del_host_route(index,
+						service->nameservers[i]);
+	} else if (service->nameserver != NULL) {
+		connman_inet_del_host_route(index, service->nameserver);
+	}
+}
+
 static void __connman_service_stats_start(struct connman_service *service)
 {
 	DBG("service %p", service);

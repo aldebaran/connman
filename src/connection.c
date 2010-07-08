@@ -157,8 +157,6 @@ static void set_default_gateway(struct gateway_data *data)
 		goto done;
 	}
 
-	connman_inet_add_host_route(element->index, data->gateway, NULL);
-
 	if (connman_inet_set_gateway_address(element->index, data->gateway) < 0)
 		return;
 
@@ -276,14 +274,20 @@ static int connection_probe(struct connman_element *element)
 		element->ipv4.gateway = g_strdup(gateway);
 	}
 
-	service = __connman_element_get_service(element);
-	__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_READY);
-
 	connman_element_set_enabled(element, TRUE);
 
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(element->index, gateway);
+	service = __connman_element_get_service(element);
+
+	if (new_gateway) {
+		connman_inet_add_host_route(element->index,
+						new_gateway->gateway, NULL);
+		__connman_service_nameserver_add_routes(service,
+							new_gateway->gateway);
+	}
+
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
 
 	if (service == NULL) {
 		new_gateway->vpn = TRUE;
@@ -325,6 +329,7 @@ static void connection_remove(struct connman_element *element)
 	DBG("element %p name %s", element, element->name);
 
 	service = __connman_element_get_service(element);
+	__connman_service_nameserver_del_routes(service);
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT);
 

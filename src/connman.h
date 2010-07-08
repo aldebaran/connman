@@ -448,6 +448,9 @@ void __connman_service_append_nameserver(struct connman_service *service,
 						const char *nameserver);
 void __connman_service_remove_nameserver(struct connman_service *service,
 						const char *nameserver);
+void __connman_service_nameserver_add_routes(struct connman_service *service,
+						const char *gw);
+void __connman_service_nameserver_del_routes(struct connman_service *service);
 
 unsigned long __connman_service_stats_get_rx_packets(struct connman_service *service);
 unsigned long __connman_service_stats_get_tx_packets(struct connman_service *service);
