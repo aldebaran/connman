@@ -612,58 +612,7 @@ int connman_inet_clear_address(int index)
 	return 0;
 }
 
-int connman_inet_add_host_route_vpn(int index, const char *gateway, const char *host)
-{
-	struct ifreq ifr;
-	struct rtentry rt;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_HOST | RTF_GATEWAY;
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(host);
-	memcpy(&rt.rt_dst, &addr, sizeof(rt.rt_dst));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(gateway);;
-	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
-
-	rt.rt_dev = ifr.ifr_name;
-
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Adding host route failed (%s)",
-							strerror(errno));
-
-	close(sk);
-
-	return err;
-}
-
-int connman_inet_add_host_route(int index, const char *host)
+int connman_inet_add_host_route(int index, const char *host, const char *gateway)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
@@ -686,6 +635,8 @@ int connman_inet_add_host_route(int index, const char *host)
 
 	memset(&rt, 0, sizeof(rt));
 	rt.rt_flags = RTF_UP | RTF_HOST;
+	if (gateway != NULL)
+		rt.rt_flags |= RTF_GATEWAY;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -694,7 +645,10 @@ int connman_inet_add_host_route(int index, const char *host)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
+	if (gateway != NULL)
+		addr.sin_addr.s_addr = inet_addr(gateway);
+	else
+		addr.sin_addr.s_addr = INADDR_ANY;
 	memcpy(&rt.rt_gateway, &addr, sizeof(rt.rt_gateway));
 
 	memset(&addr, 0, sizeof(addr));

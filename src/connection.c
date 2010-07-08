@@ -157,7 +157,7 @@ static void set_default_gateway(struct gateway_data *data)
 		goto done;
 	}
 
-	connman_inet_add_host_route(element->index, data->gateway);
+	connman_inet_add_host_route(element->index, data->gateway, NULL);
 
 	if (connman_inet_set_gateway_address(element->index, data->gateway) < 0)
 		return;
@@ -301,9 +301,9 @@ static int connection_probe(struct connman_element *element)
 	}
 
 	if (new_gateway->vpn == TRUE) {
-		connman_inet_add_host_route_vpn(active_gateway->index,
-						active_gateway->gateway,
-						new_gateway->gateway);
+		connman_inet_add_host_route(active_gateway->index,
+						new_gateway->gateway,
+						active_gateway->gateway);
 	}
 
 	if (new_gateway->order >= active_gateway->order) {
