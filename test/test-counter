@@ -7,6 +7,22 @@ import dbus
 import dbus.service
 import dbus.mainloop.glib
 
+def make_bytes_readable(bytes):
+	SUFFIXES = [ 'KiB', 'MiB', 'GiB', 'TiB', 'PiB', 'EiB', 'ZiB', 'YiB' ]
+	size = 1024
+
+	if bytes < size:
+		return ''
+
+	for suffix in SUFFIXES:
+		if bytes > size * 1024:
+			size = size * 1024
+			continue
+
+		return '%.1f %s' % (bytes / float(size), suffix)
+
+	return ''
+
 class Counter(dbus.service.Object):
 	@dbus.service.method("org.moblin.connman.Counter",
 					in_signature='', out_signature='')
@@ -20,7 +36,14 @@ class Counter(dbus.service.Object):
 		print "%s" % (path)
 		for key in stats.keys():
 			val = int(stats[key])
-			print "  %s = %s" % (key, val)
+			str = "  %s = %s" % (key, val)
+
+			if key in ["RX.Bytes", "TX.Bytes"]:
+				hstr = make_bytes_readable(val)
+				if hstr:
+					str = "%s (%s)" % (str, hstr)
+
+			print str
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
