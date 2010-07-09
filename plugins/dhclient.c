@@ -226,6 +226,7 @@ static int dhclient_release(struct connman_dhcp *dhcp)
 
 static struct connman_dhcp_driver dhclient_driver = {
 	.name		= "dhclient",
+	.priority	= CONNMAN_DHCP_PRIORITY_HIGH,
 	.request	= dhclient_request,
 	.release	= dhclient_release,
 };

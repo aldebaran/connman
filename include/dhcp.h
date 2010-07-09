@@ -40,6 +40,10 @@ enum connman_dhcp_state {
 	CONNMAN_DHCP_STATE_FAIL     = 4,
 };
 
+#define CONNMAN_DHCP_PRIORITY_LOW      -100
+#define CONNMAN_DHCP_PRIORITY_DEFAULT     0
+#define CONNMAN_DHCP_PRIORITY_HIGH      100
+
 struct connman_dhcp;
 
 struct connman_dhcp *connman_dhcp_ref(struct connman_dhcp *dhcp);
