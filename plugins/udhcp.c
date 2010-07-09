@@ -23,92 +23,41 @@
 #include <config.h>
 #endif
 
-#include <stdio.h>
+#include <errno.h>
 #include <unistd.h>
 
 #include <gdbus.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/driver.h>
-#include <connman/inet.h>
-#include <connman/dbus.h>
+#include <connman/utsname.h>
+#include <connman/dhcp.h>
+#include <connman/task.h>
 #include <connman/log.h>
 
-#include "task.h"
-
-#define UDHCPC_INTF  "net.busybox.udhcpc"
-#define UDHCPC_PATH  "/net/busybox/udhcpc"
-
-static int udhcp_probe(struct connman_element *element)
-{
-	struct task_data *task;
-	char *argv[9], *envp[2], *ifname;
-	char pidfile[PATH_MAX], script[PATH_MAX];
-
-	DBG("element %p name %s", element, element->name);
-
-	if (access(UDHCPC, X_OK) < 0)
-		return -errno;
-
-	ifname = connman_inet_ifname(element->index);
-	if (ifname == NULL)
-		return -ENOMEM;
-
-	snprintf(pidfile, sizeof(pidfile) - 1,
-				"%s/udhcpc.%s.pid", STATEDIR, ifname);
-	snprintf(script, sizeof(script) - 1, "%s/udhcpc-script", SCRIPTDIR);
-
-	argv[0] = UDHCPC;
-	argv[1] = "-f";
-	argv[2] = "-i";
-	argv[3] = ifname;
-	argv[4] = "-p";
-	argv[5] = pidfile;
-	argv[6] = "-s";
-	argv[7] = script;
-	argv[8] = NULL;
-
-	envp[0] = NULL;
-
-	task = task_spawn(element->index, argv, envp, NULL, element);
-	if (task == NULL) {
-		g_free(ifname);
-		return -EIO;
-	}
-
-	g_free(ifname);
-
-	return 0;
-}
-
-static void udhcp_remove(struct connman_element *element)
-{
-	struct task_data *task;
-
-	DBG("element %p name %s", element, element->name);
-
-	task = task_find_by_index(element->index);
-	if (task == NULL)
-		return;
-
-	task_kill(task);
-}
-
-static struct connman_driver udhcp_driver = {
-	.name		= "udhcp",
-	.type		= CONNMAN_ELEMENT_TYPE_DHCP,
-	.priority	= CONNMAN_DRIVER_PRIORITY_HIGH,
-	.probe		= udhcp_probe,
-	.remove		= udhcp_remove,
+struct udhcp_data {
+	struct connman_task *task;
+	struct connman_dhcp *dhcp;
+	char *ifname;
 };
 
-static void udhcp_bound(DBusMessage *msg, gboolean renew)
+static void udhcp_unlink(const char *ifname)
 {
-	struct task_data *task;
-	struct connman_element *element, *parent;
-	const char *interface, *address, *netmask, *broadcast, *gateway, *dns;
-	int index;
+	char *pathname;
+
+	pathname = g_strdup_printf("%s/udhcpc.%s.pid",
+						STATEDIR, ifname);
+	unlink(pathname);
+	g_free(pathname);
+}
+
+static void udhcp_notify(struct connman_task *task,
+				DBusMessage *msg, void *user_data)
+{
+	struct connman_dhcp *dhcp = user_data;
+	const char *interface, *address, *netmask, *broadcast, *gateway, *dns, *action;
+
+	DBG("");
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &interface,
 					DBUS_TYPE_STRING, &address,
@@ -116,102 +65,135 @@ static void udhcp_bound(DBusMessage *msg, gboolean renew)
 					DBUS_TYPE_STRING, &broadcast,
 					DBUS_TYPE_STRING, &gateway,
 					DBUS_TYPE_STRING, &dns,
+					DBUS_TYPE_STRING, &action,
 							DBUS_TYPE_INVALID);
 
-	DBG("%s ==> address %s gateway %s", interface, address, gateway);
+	DBG("%s address %s gateway %s", action, address, gateway);
 
-	index = connman_inet_ifindex(interface);
-	if (index < 0)
-		return;
+	connman_dhcp_set_value(dhcp, "Address", address);
+	connman_dhcp_set_value(dhcp, "Netmask", netmask);
+	connman_dhcp_set_value(dhcp, "Gateway", gateway);
+	connman_dhcp_set_value(dhcp, "Broadcast", broadcast);
+	connman_dhcp_set_value(dhcp, "Nameserver", dns);
 
-	task = task_find_by_index(index);
-	if (task == NULL)
-		return;
-
-	parent = task_get_data(task);
-	if (parent == NULL)
-		return;
-
-	g_free(parent->ipv4.address);
-	parent->ipv4.address = g_strdup(address);
-
-	g_free(parent->ipv4.netmask);
-	parent->ipv4.netmask = g_strdup(netmask);
-
-	g_free(parent->ipv4.broadcast);
-	parent->ipv4.broadcast = g_strdup(broadcast);
-
-	g_free(parent->ipv4.gateway);
-	parent->ipv4.gateway = g_strdup(gateway);
-
-	g_free(parent->ipv4.nameserver);
-	parent->ipv4.nameserver = g_strdup(dns);
-
-	connman_element_update(parent);
-
-	if (renew == TRUE)
-		return;
-
-	element = connman_element_create(NULL);
-	if (element == NULL)
-		return;
-
-	element->type = CONNMAN_ELEMENT_TYPE_IPV4;
-	element->index = index;
-
-	if (connman_element_register(element, parent) < 0)
-		connman_element_unref(element);
+	if (g_strcmp0(action, "bound") == 0) {
+		connman_dhcp_bound(dhcp);
+	} else if (g_strcmp0(action, "renew") == 0) {
+		connman_dhcp_bound(dhcp);
+	} else {
+		connman_error("Unknown action %s", action);
+	}
 }
 
-static gboolean udhcp_filter(DBusConnection *conn,
-						DBusMessage *msg, void *data)
+static void udhcp_died(struct connman_task *task, void *user_data)
 {
-	if (dbus_message_is_method_call(msg, UDHCPC_INTF, "bound") == TRUE) {
-		udhcp_bound(msg, FALSE);
-		return TRUE;
-	}
+	struct udhcp_data *udhcpc = user_data;
 
-	if (dbus_message_is_method_call(msg, UDHCPC_INTF, "renew") == TRUE) {
-		udhcp_bound(msg, TRUE);
-		return TRUE;
-	}
+	connman_dhcp_set_data(udhcpc->dhcp, NULL);
 
-	return TRUE;
+	connman_dhcp_unref(udhcpc->dhcp);
+
+	connman_task_destroy(udhcpc->task);
+	udhcpc->task = NULL;
+
+	udhcp_unlink(udhcpc->ifname);
+
+	g_free(udhcpc->ifname);
+	g_free(udhcpc);
 }
 
-static DBusConnection *connection;
 
-static guint watch;
-
-static int udhcp_init(void)
+static void udhcp_setup(struct connman_task *task, const char *ifname)
 {
-	int err;
+	const char *path, *hostname;
 
-	connection = connman_dbus_get_connection();
+	path = connman_task_get_path(task);
 
-	watch = g_dbus_add_signal_watch(connection, NULL, UDHCPC_PATH,
-					UDHCPC_INTF, NULL, udhcp_filter,
-					NULL, NULL);
-	if (watch == 0)
+	DBG("path %s", path);
+
+	connman_task_add_argument(task, "-f", NULL);
+	connman_task_add_argument(task, "-i", "%s", ifname);
+	connman_task_add_argument(task, "-p", "%s/udhcpc.%s.pid", STATEDIR, ifname);
+	connman_task_add_argument(task, "-s", "%s/udhcpc-script", SCRIPTDIR);
+
+	hostname = connman_utsname_get_hostname();
+	if (hostname != NULL)
+		connman_task_add_argument(task, "-H", hostname);
+
+	connman_task_add_variable(task, "PATH", path);
+
+}
+
+
+static int udhcp_request(struct connman_dhcp *dhcp)
+{
+	struct udhcp_data *udhcpc;
+
+	DBG("dhcp %p %s", dhcp, UDHCPC);
+
+	if (access(UDHCPC, X_OK) < 0)
 		return -EIO;
 
-	err = connman_driver_register(&udhcp_driver);
-	if (err < 0) {
-		dbus_connection_unref(connection);
-		return err;
+	udhcpc = g_try_new0(struct udhcp_data, 1);
+	if (udhcpc == NULL)
+		return -ENOMEM;
+
+	udhcpc->task = connman_task_create(UDHCPC);
+	if (udhcpc->task == NULL) {
+		g_free(udhcpc);
+		return -ENOMEM;
 	}
+
+	udhcpc->dhcp = connman_dhcp_ref(dhcp);
+	udhcpc->ifname = connman_dhcp_get_interface(dhcp);
+
+	udhcp_setup(udhcpc->task, udhcpc->ifname);
+
+	connman_dhcp_set_data(dhcp, udhcpc);
+
+	connman_task_set_notify(udhcpc->task, "Notify",
+						udhcp_notify, dhcp);
+
+	connman_task_run(udhcpc->task, udhcp_died, udhcpc,
+					NULL, NULL, NULL);
 
 	return 0;
 }
 
+static int udhcp_release(struct connman_dhcp *dhcp)
+{
+	struct udhcp_data *udhcpc = connman_dhcp_get_data(dhcp);
+
+	DBG("udhcp %p", udhcpc);
+
+	if (udhcpc == NULL)
+		return -ESRCH;
+
+	if (udhcpc->task != NULL)
+		connman_task_stop(udhcpc->task);
+
+	udhcp_unlink(udhcpc->ifname);
+
+	return 0;
+}
+
+
+static struct connman_dhcp_driver udhcp_driver = {
+	.name		= "udhcp",
+	.priority	= CONNMAN_DHCP_PRIORITY_LOW,
+	.request	= udhcp_request,
+	.release	= udhcp_release,
+};
+
+static int udhcp_init(void)
+{
+	return connman_dhcp_driver_register(&udhcp_driver);
+}
+
 static void udhcp_exit(void)
 {
-	connman_driver_unregister(&udhcp_driver);
-
-	g_dbus_remove_watch(connection, watch);
-
-	dbus_connection_unref(connection);
+	connman_dhcp_driver_unregister(&udhcp_driver);
 }
 
 CONNMAN_PLUGIN_DEFINE(udhcp, "uDHCP client plugin", VERSION,
-		CONNMAN_PLUGIN_PRIORITY_DEFAULT, udhcp_init, udhcp_exit)
+		CONNMAN_PLUGIN_PRIORITY_LOW, udhcp_init, udhcp_exit)

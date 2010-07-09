@@ -39,6 +39,7 @@ int main(int argc, char *argv[])
 	DBusMessage *msg;
 	char *busname, *interface, *address, *netmask, *broadcast;
 	char *gateway, *dns;
+	char *path;
 
 	if (argc < 2)
 		return 0;
@@ -49,6 +50,10 @@ int main(int argc, char *argv[])
 	busname = "org.moblin.connman";
 
 	interface = getenv("interface");
+
+	path = getenv("PATH");
+	if (path == NULL)
+		path = "";
 
 	address = getenv("ip");
 	if (address == NULL)
@@ -82,8 +87,9 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	msg = dbus_message_new_method_call(busname, UDHCPC_PATH,
-						UDHCPC_INTF, argv[1]);
+	msg = dbus_message_new_method_call(busname, path,
+						"org.moblin.connman.Task",
+						"Notify");
 	if (msg == NULL) {
 		dbus_connection_unref(conn);
 		fprintf(stderr, "Failed to allocate method call\n");
@@ -98,6 +104,7 @@ int main(int argc, char *argv[])
 					DBUS_TYPE_STRING, &broadcast,
 					DBUS_TYPE_STRING, &gateway,
 					DBUS_TYPE_STRING, &dns,
+					DBUS_TYPE_STRING, &argv[1],
 							DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send(conn, msg, NULL) == FALSE)
