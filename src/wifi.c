@@ -68,12 +68,10 @@ char **connman_wifi_load_ssid(void)
 		return NULL;
 
 	groups = g_key_file_get_groups(key_file, &num_groups);
-	if (groups == NULL) {
-		hex_ssids = NULL;
-		goto done;
-	}
 
-	hex_ssids = g_try_malloc0(sizeof(*hex_ssids) * num_groups);
+	hex_ssids = g_try_malloc0(sizeof(*hex_ssids) * (num_groups + 1));
+	if (hex_ssids == NULL)
+		goto done;
 
 	for (i = 0, j = 0; groups[i]; i++) {
 		gchar *hex_ssid;
@@ -94,7 +92,11 @@ char **connman_wifi_load_ssid(void)
 		hex_ssids[j++] = hex_ssid;
 	}
 
+	hex_ssids[j] = NULL;
+
 done:
+	g_strfreev(groups);
+
 	__connman_storage_close_profile(profile, key_file, FALSE);
 
 	return hex_ssids;
