@@ -610,7 +610,13 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 
 	connman_device_set_powered(task->device, TRUE);
 
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+
 	hex_ssids = connman_wifi_load_ssid();
+	if (hex_ssids == NULL)
+		return;
 
 	for (i = 0; hex_ssids[i]; i++) {
 		unsigned char *ssid;
@@ -634,10 +640,6 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	g_strfreev(hex_ssids);
-
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
 
 	return;
 
