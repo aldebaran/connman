@@ -38,6 +38,7 @@ static GHashTable *service_hash = NULL;
 
 struct connman_stats {
 	connman_bool_t valid;
+	connman_bool_t enabled;
 	unsigned int rx_packets_last;
 	unsigned int tx_packets_last;
 	unsigned int rx_packets;
@@ -380,6 +381,8 @@ static void __connman_service_stats_start(struct connman_service *service)
 	if (service->stats.timer == NULL)
 		return;
 
+	service->stats.enabled = TRUE;
+
 	service->stats.time_start = service->stats.time;
 
 	g_timer_start(service->stats.timer);
@@ -396,12 +399,17 @@ static void __connman_service_stats_stop(struct connman_service *service)
 	if (service->stats.timer == NULL)
 		return;
 
+	if (service->stats.enabled == FALSE)
+		return;
+
 	__connman_counter_remove_service(service);
 
 	g_timer_stop(service->stats.timer);
 
 	seconds = g_timer_elapsed(service->stats.timer, NULL);
 	service->stats.time = service->stats.time_start + seconds;
+
+	service->stats.enabled = FALSE;
 }
 
 static int __connman_service_stats_load(struct connman_service *service,
@@ -1843,6 +1851,7 @@ static void __connman_service_initialize(struct connman_service *service)
 	service->order = 0;
 
 	service->stats.valid = FALSE;
+	service->stats.enabled = FALSE;
 	service->stats.timer = g_timer_new();
 }
 
