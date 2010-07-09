@@ -114,14 +114,33 @@ struct dhclient_data {
 	char *ifname;
 };
 
+static void dhclient_unlink(const char *ifname)
+{
+	char *pathname;
+
+	pathname = g_strdup_printf("%s/dhclient.%s.pid",
+						STATEDIR, ifname);
+	unlink(pathname);
+	g_free(pathname);
+
+	pathname = g_strdup_printf("%s/dhclient.%s.leases",
+						STATEDIR, ifname);
+	unlink(pathname);
+	g_free(pathname);
+}
+
 static void dhclient_died(struct connman_task *task, void *user_data)
 {
 	struct dhclient_data *dhclient = user_data;
+
+	connman_dhcp_set_data(dhclient->dhcp, NULL);
 
 	connman_dhcp_unref(dhclient->dhcp);
 
 	connman_task_destroy(dhclient->task);
 	dhclient->task = NULL;
+
+	dhclient_unlink(dhclient->ifname);
 
 	g_free(dhclient->ifname);
 	g_free(dhclient);
@@ -154,21 +173,6 @@ static void dhclient_setup(struct connman_task *task, const char *ifname)
 
 	connman_task_add_argument(task, ifname, NULL);
 	connman_task_add_argument(task, "-n", NULL);
-}
-
-static void dhclient_unlink(const char *ifname)
-{
-	char *pathname;
-
-	pathname = g_strdup_printf("%s/dhclient.%s.pid",
-						STATEDIR, ifname);
-	unlink(pathname);
-	g_free(pathname);
-
-	pathname = g_strdup_printf("%s/dhclient.%s.leases",
-						STATEDIR, ifname);
-	unlink(pathname);
-	g_free(pathname);
 }
 
 static int dhclient_request(struct connman_dhcp *dhcp)
@@ -212,10 +216,10 @@ static int dhclient_release(struct connman_dhcp *dhcp)
 
 	DBG("dhcp %p", dhcp);
 
-	if (dhclient->task != NULL)
-		connman_task_stop(dhclient->task);
+	if (dhclient == NULL)
+		return -ESRCH;
 
-	dhclient_unlink(dhclient->ifname);
+	connman_task_stop(dhclient->task);
 
 	return 0;
 }
