@@ -81,12 +81,12 @@ endif
 if UDHCP
 if UDHCP_BUILTIN
 builtin_modules += udhcp
-builtin_sources += plugins/udhcp.c plugins/task.h plugins/task.c
+builtin_sources += plugins/udhcp.c
 builtin_cflags += -DUDHCPC=\"@UDHCPC@\"
 else
 plugin_LTLIBRARIES += plugins/udhcp.la
 plugin_objects += $(plugins_udhcp_la_OBJECTS)
-plugins_udhcp_la_SOURCES = plugins/udhcp.c plugins/task.h plugins/task.c
+plugins_udhcp_la_SOURCES = plugins/udhcp.c
 plugins_udhcp_la_CFLAGS = $(plugin_cflags) -DUDHCPC=\"@UDHCPC@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
