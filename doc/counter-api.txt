@@ -13,7 +13,7 @@ Methods		void Release()
 			counter, because when this method gets called it has
 			already been unregistered.
 
-		Usage(object service, dict)
+		void Usage(object service, dict)
 
 			This signal indicates a change in the counter values
 			for the service object. The counter is reset by calling
@@ -58,4 +58,5 @@ Methods		void Release()
 					while sending.
 
 				Time
+
 					Total number of seconds online.
