@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <net/if.h>
 
 #include <gdbus.h>
@@ -100,6 +101,9 @@ static struct gateway_data *add_gateway(int index, const char *gateway)
 {
 	struct gateway_data *data;
 	struct connman_service *service;
+
+	if (strlen(gateway) == 0)
+		return NULL;
 
 	data = g_try_new0(struct gateway_data, 1);
 	if (data == NULL)
@@ -278,14 +282,15 @@ static int connection_probe(struct connman_element *element)
 
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(element->index, gateway);
+	if (new_gateway == NULL)
+		return 0;
+
 	service = __connman_element_get_service(element);
 
-	if (new_gateway) {
-		connman_inet_add_host_route(element->index,
-						new_gateway->gateway, NULL);
-		__connman_service_nameserver_add_routes(service,
-							new_gateway->gateway);
-	}
+	connman_inet_add_host_route(element->index,
+					new_gateway->gateway, NULL);
+	__connman_service_nameserver_add_routes(service,
+						new_gateway->gateway);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
 
