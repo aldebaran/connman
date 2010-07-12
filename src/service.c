@@ -384,10 +384,25 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 	if (service->nameservers != NULL) {
 		int i;
 
-		for (i = 0; service->nameservers[i]; i++)
+		/*
+		 * We add nameservers host routes for nameservers that
+		 * are not on our subnet. For those who are, the subnet
+		 * route will be installed by the time the dns proxy code
+		 * tries to reach them. The subnet route is installed
+		 * when setting the interface IP address.
+		 */
+		for (i = 0; service->nameservers[i]; i++) {
+			if (connman_inet_compare_subnet(index,
+							service->nameservers[i]))
+				continue;
+
 			connman_inet_add_host_route(index,
 						service->nameservers[i], gw);
+		}
 	} else if (service->nameserver != NULL) {
+		if (connman_inet_compare_subnet(index, service->nameserver))
+			return;
+
 		connman_inet_add_host_route(index, service->nameserver, gw);
 	}
 }

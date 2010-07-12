@@ -898,3 +898,50 @@ int connman_inet_clear_gateway_interface(int index)
 
 	return err;
 }
+
+connman_bool_t connman_inet_compare_subnet(int index, const char *host)
+{
+	struct ifreq ifr;
+	struct in_addr _host_addr;
+	in_addr_t host_addr, netmask_addr, if_addr;
+	struct sockaddr_in *netmask, *addr;
+	int sk;
+
+	DBG("host %s", host);
+
+	if (host == NULL)
+		return FALSE;
+
+	if (inet_aton(host, &_host_addr) == 0)
+		return -1;
+	host_addr = _host_addr.s_addr;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return FALSE;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		close(sk);
+		return FALSE;
+	}
+
+	if (ioctl(sk, SIOCGIFNETMASK, &ifr) < 0) {
+		close(sk);
+		return FALSE;
+	}
+
+	netmask = (struct sockaddr_in *)&ifr.ifr_netmask;
+	netmask_addr = netmask->sin_addr.s_addr;
+
+	if (ioctl(sk, SIOCGIFADDR, &ifr) < 0) {
+		close(sk);
+		return FALSE;
+	}
+	addr = (struct sockaddr_in *)&ifr.ifr_addr;
+	if_addr = addr->sin_addr.s_addr;
+
+	return ((if_addr & netmask_addr) == (host_addr & netmask_addr));
+}

@@ -50,6 +50,7 @@ int connman_inet_set_gateway_address(int index, const char *gateway);
 int connman_inet_clear_gateway_address(int index, const char *gateway);
 int connman_inet_set_gateway_interface(int index);
 int connman_inet_clear_gateway_interface(int index);
+connman_bool_t connman_inet_compare_subnet(int index, const char *host);
 
 #ifdef __cplusplus
 }
