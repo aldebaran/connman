@@ -746,7 +746,14 @@ const char *__connman_ipconfig_get_gateway(int index)
 	if (ipdevice == NULL)
 		return NULL;
 
-	return ipdevice->gateway;
+	if (ipdevice->gateway != NULL)
+		return ipdevice->gateway;
+
+	if (ipdevice->config != NULL &&
+			ipdevice->config->address != NULL)
+		return ipdevice->config->address->gateway;
+
+	return NULL;
 }
 
 void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index)
