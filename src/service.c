@@ -1232,6 +1232,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "Nameservers.Configuration") == TRUE) {
 		DBusMessageIter entry;
 		GString *str;
+		int index;
+		const char *gw;
 
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
@@ -1239,6 +1241,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 		str = g_string_new(NULL);
 		if (str == NULL)
 			return __connman_error_invalid_arguments(msg);
+
+		index = connman_network_get_index(service->network);
+		gw = __connman_ipconfig_get_gateway(index);
+
+		if (gw && strlen(gw))
+			__connman_service_nameserver_del_routes(service);
 
 		dbus_message_iter_recurse(&value, &entry);
 
@@ -1260,6 +1268,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 			service->nameservers = NULL;
 
 		g_string_free(str, TRUE);
+
+		if (gw && strlen(gw))
+			__connman_service_nameserver_add_routes(service, gw);
 
 		update_nameservers(service);
 		dns_configuration_changed(service);
