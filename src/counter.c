@@ -156,6 +156,7 @@ static void send_usage(struct connman_counter *counter,
 
 	dbus_message_iter_init_append(message, &array);
 
+	/* home counter */
 	connman_dbus_dict_open(&array, &dict);
 
 	rx_packets = __connman_service_stats_get_rx_packets(service);
@@ -186,6 +187,11 @@ static void send_usage(struct connman_counter *counter,
 				&tx_dropped);
 	connman_dbus_dict_append_basic(&dict, "Time", DBUS_TYPE_UINT32,
 				&time);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	/* roaming counter */
+	connman_dbus_dict_open(&array, &dict);
 
 	connman_dbus_dict_close(&array, &dict);
 
