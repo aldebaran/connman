@@ -13,13 +13,21 @@ Methods		void Release()
 			counter, because when this method gets called it has
 			already been unregistered.
 
-		void Usage(object service, dict)
+		void Usage(object service, dict home, dict roaming)
 
 			This signal indicates a change in the counter values
 			for the service object. The counter is reset by calling
 			the service ResetCounters method.
 
-			The dict argument contains following entries:
+			When registering a new counter this method will be
+			called once with all details for "home" and "roaming"
+			counters filled in. Every further method call will
+			only include the changed values.
+
+			When "home" counter is active, then "roaming" counter
+			will contain an empty dictionary and vise-versa.
+
+			The dictionary argument contains following entries:
 
 				RX.Packets
 
