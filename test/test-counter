@@ -23,31 +23,34 @@ def make_bytes_readable(bytes):
 
 	return ''
 
+def print_stats(stats):
+	keys = stats.keys()
+	keys.sort()
+
+	for key in keys:
+		val = int(stats[key])
+		str = "  %s = %s" % (key, val)
+
+		if key in ["RX.Bytes", "TX.Bytes"]:
+			hstr = make_bytes_readable(val)
+			if hstr:
+				str = "%s (%s)" % (str, hstr)
+
+		print str
+
 class Counter(dbus.service.Object):
 	@dbus.service.method("org.moblin.connman.Counter",
-					in_signature='', out_signature='')
+				in_signature='', out_signature='')
 	def Release(self):
 		print("Release")
 		mainloop.quit()
 
 	@dbus.service.method("org.moblin.connman.Counter",
-					in_signature='oa{sv}', out_signature='')
-	def Usage(self, path, stats):
+				in_signature='oa{sv}a{sv}', out_signature='')
+	def Usage(self, path, home, roaming):
 		print "%s" % (path)
-
-		keys = stats.keys()
-		keys.sort()
-
-		for key in keys:
-			val = int(stats[key])
-			str = "  %s = %s" % (key, val)
-
-			if key in ["RX.Bytes", "TX.Bytes"]:
-				hstr = make_bytes_readable(val)
-				if hstr:
-					str = "%s (%s)" % (str, hstr)
-
-			print str
+		print_stats(home)
+		print_stats(roaming)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
