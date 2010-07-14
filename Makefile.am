@@ -117,7 +117,8 @@ endif
 if TOOLS
 noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dbus-test \
 			tools/addr-test tools/tap-test tools/resolv-test \
-					tools/polkit-test tools/portal-test
+					tools/polkit-test tools/portal-test \
+						tools/iptables-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -134,6 +135,8 @@ tools_resolv_test_LDADD = -lresolv
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
 tools_portal_test_LDADD = @GLIB_LIBS@
+
+tools_iptables_test_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@ -liptc -lxtables
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \
