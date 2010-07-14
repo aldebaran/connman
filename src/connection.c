@@ -32,7 +32,7 @@
 
 struct gateway_data {
 	int index;
-	char *gateway;
+	char *ipv4_gateway;
 	struct connman_element *element;
 	unsigned int order;
 	gboolean active;
@@ -54,11 +54,12 @@ static struct gateway_data *find_gateway(int index, const char *gateway)
 	for (list = gateway_list; list; list = list->next) {
 		struct gateway_data *data = list->data;
 
-		if (data->gateway == NULL)
+		if (data->ipv4_gateway == NULL)
 			continue;
 
 		if (data->index == index &&
-				g_str_equal(data->gateway, gateway) == TRUE)
+				g_str_equal(data->ipv4_gateway, gateway)
+								== TRUE)
 			return data;
 	}
 
@@ -70,15 +71,15 @@ static int del_routes(struct gateway_data *data)
 	if (data->vpn) {
 		if (data->vpn_phy_index >= 0)
 			connman_inet_del_host_route(data->vpn_phy_index,
-							data->gateway);
+							data->ipv4_gateway);
 		return connman_inet_clear_gateway_address(data->index,
 							data->vpn_ip);
-	} else if (g_strcmp0(data->gateway, "0.0.0.0") == 0) {
+	} else if (g_strcmp0(data->ipv4_gateway, "0.0.0.0") == 0) {
 		return connman_inet_clear_gateway_interface(data->index);
 	} else {
-		connman_inet_del_host_route(data->index, data->gateway);
+		connman_inet_del_host_route(data->index, data->ipv4_gateway);
 		return connman_inet_clear_gateway_address(data->index,
-							data->gateway);
+							data->ipv4_gateway);
 	}
 }
 
@@ -110,7 +111,7 @@ static struct gateway_data *add_gateway(int index, const char *gateway)
 		return NULL;
 
 	data->index = index;
-	data->gateway = g_strdup(gateway);
+	data->ipv4_gateway = g_strdup(gateway);
 	data->active = FALSE;
 	data->element = NULL;
 	data->vpn_ip = NULL;
@@ -146,7 +147,7 @@ static void set_default_gateway(struct gateway_data *data)
 	struct connman_element *element = data->element;
 	struct connman_service *service = NULL;
 
-	DBG("gateway %s", data->gateway);
+	DBG("gateway %s", data->ipv4_gateway);
 
 	if (data->vpn == TRUE) {
 		connman_inet_set_gateway_address(data->index, data->vpn_ip);
@@ -155,13 +156,14 @@ static void set_default_gateway(struct gateway_data *data)
 		return;
 	}
 
-	if (g_strcmp0(data->gateway, "0.0.0.0") == 0) {
+	if (g_strcmp0(data->ipv4_gateway, "0.0.0.0") == 0) {
 		if (connman_inet_set_gateway_interface(element->index) < 0)
 			return;
 		goto done;
 	}
 
-	if (connman_inet_set_gateway_address(element->index, data->gateway) < 0)
+	if (connman_inet_set_gateway_address(element->index,
+					data->ipv4_gateway) < 0)
 		return;
 
 done:
@@ -191,7 +193,7 @@ static int remove_gateway(struct gateway_data *data)
 {
 	int err;
 
-	DBG("gateway %s", data->gateway);
+	DBG("gateway %s", data->ipv4_gateway);
 
 	gateway_list = g_slist_remove(gateway_list, data);
 
@@ -200,7 +202,7 @@ static int remove_gateway(struct gateway_data *data)
 	else
 		err = 0;
 
-	g_free(data->gateway);
+	g_free(data->ipv4_gateway);
 	g_free(data->vpn_ip);
 	g_free(data);
 
@@ -288,9 +290,9 @@ static int connection_probe(struct connman_element *element)
 	service = __connman_element_get_service(element);
 
 	connman_inet_add_host_route(element->index,
-					new_gateway->gateway, NULL);
+					new_gateway->ipv4_gateway, NULL);
 	__connman_service_nameserver_add_routes(service,
-						new_gateway->gateway);
+						new_gateway->ipv4_gateway);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
 
@@ -311,8 +313,8 @@ static int connection_probe(struct connman_element *element)
 
 	if (new_gateway->vpn == TRUE) {
 		connman_inet_add_host_route(active_gateway->index,
-						new_gateway->gateway,
-						active_gateway->gateway);
+						new_gateway->ipv4_gateway,
+						active_gateway->ipv4_gateway);
 	}
 
 	if (new_gateway->order >= active_gateway->order) {
@@ -355,8 +357,8 @@ static void connection_remove(struct connman_element *element)
 	set_default = data->vpn;
 
 	if (data->vpn == TRUE && data->vpn_phy_index >= 0)
-		connman_inet_del_host_route(data->vpn_phy_index, data->gateway);
-
+		connman_inet_del_host_route(data->vpn_phy_index,
+						data->ipv4_gateway);
 	err = remove_gateway(data);
 
 	/* with vpn this will be called after the network was deleted,
@@ -402,9 +404,9 @@ void __connman_connection_cleanup(void)
 	for (list = gateway_list; list; list = list->next) {
 		struct gateway_data *data = list->data;
 
-		DBG("index %d gateway %s", data->index, data->gateway);
+		DBG("index %d gateway %s", data->index, data->ipv4_gateway);
 
-		g_free(data->gateway);
+		g_free(data->ipv4_gateway);
 		g_free(data);
 		list->data = NULL;
 	}
