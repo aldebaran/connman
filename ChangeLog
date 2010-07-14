@@ -1,3 +1,9 @@
+ver 0.54.2
+	Fix SEGV at first startup
+	Fix connman_wifi_load_ssid
+	Fix crash in dhclient release
+	Create service ipconfig only when it's NULL
+
 ver 0.54.1:
 	ConnMan 0.54 code merge
 
