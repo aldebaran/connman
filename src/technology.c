@@ -100,6 +100,79 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+void __connman_technology_add_interface(enum connman_service_type type,
+						int index, const char *name)
+{
+	GSList *list;
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+		return;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+		break;
+	}
+
+	connman_info("Create interface %s [ %s ]", name,
+				__connman_service_type2string(type));
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->type != type)
+			continue;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->add_interface)
+			technology->driver->add_interface(technology,
+								index, name);
+	}
+}
+
+void __connman_technology_remove_interface(enum connman_service_type type,
+						int index, const char *name)
+{
+	GSList *list;
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+		return;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+		break;
+	}
+
+	connman_info("Remove interface %s [ %s ]", name,
+				__connman_service_type2string(type));
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->type != type)
+			continue;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->remove_interface)
+			technology->driver->remove_interface(technology, index);
+	}
+}
+
 static int set_tethering(connman_bool_t enabled)
 {
 	GSList *list;

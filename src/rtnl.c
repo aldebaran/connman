@@ -68,8 +68,8 @@ static void free_interface(gpointer data)
 {
 	struct interface_data *interface = data;
 
-	connman_info("Remove interface %s [ %s ]", interface->name,
-			__connman_service_type2string(interface->type));
+	__connman_technology_remove_interface(interface->type,
+					interface->index, interface->name);
 
 	g_free(interface->name);
 	g_free(interface);
@@ -388,8 +388,8 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 
 		read_uevent(interface);
 
-		connman_info("Create interface %s [ %s ]", interface->name,
-			__connman_service_type2string(interface->type));
+		__connman_technology_add_interface(interface->type,
+					interface->index, interface->name);
 	}
 
 	for (list = rtnl_list; list; list = list->next) {
