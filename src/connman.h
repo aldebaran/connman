@@ -301,6 +301,9 @@ int __connman_technology_update_rfkill(unsigned int index,
 						connman_bool_t hardblock);
 int __connman_technology_remove_rfkill(unsigned int index);
 
+int __connman_technology_enable_tethering(void);
+int __connman_technology_disable_tethering(void);
+
 #include <connman/device.h>
 
 int __connman_device_init(void);
