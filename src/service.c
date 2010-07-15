@@ -87,6 +87,7 @@ struct connman_service {
 	char *mcc;
 	char *mnc;
 	connman_bool_t roaming;
+	connman_bool_t login_required;
 	struct connman_ipconfig *ipconfig;
 	struct connman_network *network;
 	char **nameservers;
@@ -232,8 +233,6 @@ static const char *state2string(enum connman_service_state state)
 		return "configuration";
 	case CONNMAN_SERVICE_STATE_READY:
 		return "ready";
-	case CONNMAN_SERVICE_STATE_LOGIN:
-		return "login";
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		return "online";
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
@@ -281,7 +280,6 @@ static connman_bool_t is_connecting(struct connman_service *service)
 	case CONNMAN_SERVICE_STATE_FAILURE:
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
@@ -303,7 +301,6 @@ static connman_bool_t is_connected(const struct connman_service *service)
 	case CONNMAN_SERVICE_STATE_FAILURE:
 		break;
 	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		return TRUE;
 	}
@@ -329,7 +326,6 @@ static void update_nameservers(struct connman_service *service)
 		connman_resolver_remove_all(ifname);
 		return;
 	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_LOGIN:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	}
@@ -727,6 +723,18 @@ static void passphrase_changed(struct connman_service *service)
 						DBUS_TYPE_BOOLEAN, &required);
 }
 
+static void login_changed(struct connman_service *service)
+{
+	dbus_bool_t required = service->login_required;
+
+	if (service->path == NULL)
+		return;
+
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "LoginRequired",
+						DBUS_TYPE_BOOLEAN, &required);
+}
+
 static void apn_changed(struct connman_service *service)
 {
 	dbus_bool_t required;
@@ -947,6 +955,9 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	if (service->name != NULL)
 		connman_dbus_dict_append_basic(dict, "Name",
 					DBUS_TYPE_STRING, &service->name);
+
+	connman_dbus_dict_append_basic(dict, "LoginRequired",
+				DBUS_TYPE_BOOLEAN, &service->login_required);
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -2179,8 +2190,14 @@ int __connman_service_indicate_state(struct connman_service *service,
 	service->state = state;
 	state_changed(service);
 
-	if (state == CONNMAN_SERVICE_STATE_ONLINE)
+	if (state == CONNMAN_SERVICE_STATE_ONLINE) {
+		if (service->login_required == TRUE) {
+			service->login_required = FALSE;
+			login_changed(service);
+		}
+
 		connman_timeserver_sync();
+	}
 
 	if (state == CONNMAN_SERVICE_STATE_IDLE) {
 		connman_bool_t reconnect;
@@ -2264,6 +2281,19 @@ int __connman_service_indicate_default(struct connman_service *service)
 	default_changed();
 
 	__connman_location_detect(service);
+
+	return 0;
+}
+
+int __connman_service_request_login(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	service->login_required = TRUE;
+	login_changed(service);
 
 	return 0;
 }

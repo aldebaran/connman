@@ -186,6 +186,12 @@ Properties	string State [readonly]
 			This property might be only present for WiFi
 			services.
 
+		boolean LoginRequired [readonly]
+
+			This property indicates that an additional login
+			step is needed before the connection establishment
+			can proceed.
+
 		string Passphrase [readwrite]
 
 			If the service type is WiFi, then this property
@@ -280,8 +286,8 @@ Properties	string State [readonly]
 		array{string} Nameservers [readonly]
 
 			The list of currently active nameservers for this
-			service. If the server is not in READY, LOGIN or
-			ONLINE state than this list will be empty.
+			service. If the server is not in READY or ONLINE
+			state than this list will be empty.
 
 			Global nameservers are automatically added to this
 			list. The array represents a sorted list of the
