@@ -54,7 +54,51 @@ struct connman_technology {
 	GHashTable *rfkill_list;
 	GSList *device_list;
 	gint enabled;
+
+	struct connman_technology_driver *driver;
+	void *driver_data;
 };
+
+static GSList *driver_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_technology_driver *driver1 = a;
+	const struct connman_technology_driver *driver2 = b;
+
+	return driver2->priority - driver1->priority;
+}
+
+/**
+ * connman_technology_driver_register:
+ * @driver: Technology driver definition
+ *
+ * Register a new technology driver
+ *
+ * Returns: %0 on success
+ */
+int connman_technology_driver_register(struct connman_technology_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_insert_sorted(driver_list, driver,
+							compare_priority);
+
+	return 0;
+}
+
+/**
+ * connman_technology_driver_unregister:
+ * @driver: Technology driver definition
+ *
+ * Remove a previously registered technology driver
+ */
+void connman_technology_driver_unregister(struct connman_technology_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_remove(driver_list, driver);
+}
 
 static void free_rfkill(gpointer data)
 {
@@ -233,6 +277,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 {
 	struct connman_technology *technology;
 	const char *str;
+	GSList *list;
 
 	DBG("type %d", type);
 
@@ -275,6 +320,23 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technologies_changed();
 
+	if (technology->driver != NULL)
+		goto done;
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_technology_driver *driver = list->data;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->type != technology->type)
+			continue;
+
+		if (driver->probe(technology) == 0) {
+			technology->driver = driver;
+			break;
+		}
+	}
+
 done:
 	DBG("technology %p", technology);
 
@@ -287,6 +349,11 @@ static void technology_put(struct connman_technology *technology)
 
 	if (g_atomic_int_dec_and_test(&technology->refcount) == FALSE)
 		return;
+
+	if (technology->driver) {
+		technology->driver->remove(technology);
+		technology->driver = NULL;
+	}
 
 	technology_list = g_slist_remove(technology_list, technology);
 

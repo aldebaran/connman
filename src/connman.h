@@ -284,7 +284,7 @@ char *__connman_udev_get_devtype(const char *ifname);
 void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
 connman_bool_t __connman_udev_get_blocked(int phyindex);
 
-#include <connman/device.h>
+#include <connman/technology.h>
 
 void __connman_technology_list(DBusMessageIter *iter, void *user_data);
 
@@ -300,6 +300,8 @@ int __connman_technology_update_rfkill(unsigned int index,
 						connman_bool_t softblock,
 						connman_bool_t hardblock);
 int __connman_technology_remove_rfkill(unsigned int index);
+
+#include <connman/device.h>
 
 int __connman_device_init(void);
 void __connman_device_cleanup(void);
