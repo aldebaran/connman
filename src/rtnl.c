@@ -75,6 +75,22 @@ static void free_interface(gpointer data)
 	g_free(interface);
 }
 
+static connman_bool_t ether_blacklisted(const char *name)
+{
+	if (name == NULL)
+		return TRUE;
+
+	/* virtual interface from VMware */
+	if (g_str_has_prefix(name, "vmnet") == TRUE)
+		return TRUE;
+
+	/* virtual interface from VirtualBox */
+	if (g_str_has_prefix(name, "vboxnet") == TRUE)
+		return TRUE;
+
+	return FALSE;
+}
+
 static void read_uevent(struct interface_data *interface)
 {
 	char *filename, line[128];
@@ -377,16 +393,23 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 						ifname, index, operstate,
 						operstate2str(operstate));
 
-	if (g_hash_table_lookup(interface_list, &index) == NULL) {
+	if (g_hash_table_lookup(interface_list,
+					GINT_TO_POINTER(index)) == NULL) {
 		struct interface_data *interface;
 
 		interface = g_new0(struct interface_data, 1);
 		interface->index = index;
 		interface->name = g_strdup(ifname);
 
-		g_hash_table_insert(interface_list, &index, interface);
+		g_hash_table_insert(interface_list,
+					GINT_TO_POINTER(index), interface);
 
 		read_uevent(interface);
+
+		if (interface->type == CONNMAN_SERVICE_TYPE_UNKNOWN &&
+					type == ARPHRD_ETHER &&
+					ether_blacklisted(ifname) == FALSE)
+			interface->type = CONNMAN_SERVICE_TYPE_ETHERNET;
 
 		__connman_technology_add_interface(interface->type,
 					interface->index, interface->name);
@@ -454,7 +477,7 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 		break;
 	}
 
-	g_hash_table_remove(interface_list, &index);
+	g_hash_table_remove(interface_list, GINT_TO_POINTER(index));
 }
 
 static void extract_addr(struct ifaddrmsg *msg, int bytes,
@@ -1228,7 +1251,7 @@ int __connman_rtnl_init(void)
 
 	DBG("");
 
-	interface_list = g_hash_table_new_full(g_int_hash, g_int_equal,
+	interface_list = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, free_interface);
 
 	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
