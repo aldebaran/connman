@@ -59,6 +59,7 @@ static guint update_timeout = 0;
 struct interface_data {
 	int index;
 	char *name;
+	char *ident;
 	enum connman_service_type type;
 };
 
@@ -69,8 +70,9 @@ static void free_interface(gpointer data)
 	struct interface_data *interface = data;
 
 	__connman_technology_remove_interface(interface->type,
-					interface->index, interface->name);
+			interface->index, interface->name, interface->ident);
 
+	g_free(interface->ident);
 	g_free(interface->name);
 	g_free(interface);
 }
@@ -371,11 +373,19 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
-	char str[18];
+	char ident[13], str[18];
 	GSList *list;
 
 	memset(&stats, 0, sizeof(stats));
 	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate, &stats);
+
+	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
+						address.ether_addr_octet[0],
+						address.ether_addr_octet[1],
+						address.ether_addr_octet[2],
+						address.ether_addr_octet[3],
+						address.ether_addr_octet[4],
+						address.ether_addr_octet[5]);
 
 	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
 						address.ether_addr_octet[0],
@@ -410,6 +420,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		interface = g_new0(struct interface_data, 1);
 		interface->index = index;
 		interface->name = g_strdup(ifname);
+		interface->ident = g_strdup(ident);
 
 		g_hash_table_insert(interface_list,
 					GINT_TO_POINTER(index), interface);
@@ -418,7 +429,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 			read_uevent(interface);
 
 		__connman_technology_add_interface(interface->type,
-					interface->index, interface->name);
+			interface->index, interface->name, interface->ident);
 	}
 
 	for (list = rtnl_list; list; list = list->next) {

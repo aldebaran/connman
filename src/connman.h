@@ -302,9 +302,9 @@ int __connman_technology_update_rfkill(unsigned int index,
 int __connman_technology_remove_rfkill(unsigned int index);
 
 void __connman_technology_add_interface(enum connman_service_type type,
-						int index, const char *name);
+				int index, const char *name, const char *ident);
 void __connman_technology_remove_interface(enum connman_service_type type,
-						int index, const char *name);
+				int index, const char *name, const char *ident);
 int __connman_technology_enable_tethering(void);
 int __connman_technology_disable_tethering(void);
 

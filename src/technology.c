@@ -101,7 +101,7 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 }
 
 void __connman_technology_add_interface(enum connman_service_type type,
-						int index, const char *name)
+				int index, const char *name, const char *ident)
 {
 	GSList *list;
 
@@ -133,12 +133,12 @@ void __connman_technology_add_interface(enum connman_service_type type,
 
 		if (technology->driver->add_interface)
 			technology->driver->add_interface(technology,
-								index, name);
+							index, name, ident);
 	}
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
-						int index, const char *name)
+				int index, const char *name, const char *ident)
 {
 	GSList *list;
 
