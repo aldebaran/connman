@@ -33,6 +33,7 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
+#include <connman/technology.h>
 #include <connman/device.h>
 #include <connman/inet.h>
 #include <connman/dbus.h>
@@ -875,6 +876,29 @@ static struct connman_device_driver bluetooth_driver = {
 	.disable	= bluetooth_disable,
 };
 
+static int tech_probe(struct connman_technology *technology)
+{
+	return 0;
+}
+
+static void tech_remove(struct connman_technology *technology)
+{
+}
+
+static int tech_set_tethering(struct connman_technology *technology,
+						connman_bool_t enabled)
+{
+	return 0;
+}
+
+static struct connman_technology_driver tech_driver = {
+	.name		= "bluetooth",
+	.type		= CONNMAN_SERVICE_TYPE_BLUETOOTH,
+	.probe		= tech_probe,
+	.remove		= tech_remove,
+	.set_tethering	= tech_set_tethering,
+};
+
 static guint watch;
 static guint added_watch;
 static guint removed_watch;
@@ -928,6 +952,13 @@ static int bluetooth_init(void)
 		goto remove;
 	}
 
+	err = connman_technology_driver_register(&tech_driver);
+	if (err < 0) {
+		connman_device_driver_unregister(&bluetooth_driver);
+		connman_network_driver_unregister(&pan_driver);
+		return err;
+	}
+
 	return 0;
 
 remove:
@@ -951,6 +982,8 @@ static void bluetooth_exit(void)
 	g_dbus_remove_watch(connection, network_watch);
 
 	bluetooth_disconnect(connection, NULL);
+
+	connman_technology_driver_unregister(&tech_driver);
 
 	connman_device_driver_unregister(&bluetooth_driver);
 	connman_network_driver_unregister(&pan_driver);
