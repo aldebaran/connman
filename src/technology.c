@@ -100,7 +100,7 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
-int __connman_technology_enable_tethering(void)
+static int set_tethering(connman_bool_t enabled)
 {
 	GSList *list;
 
@@ -109,23 +109,22 @@ int __connman_technology_enable_tethering(void)
 
 		if (technology->driver == NULL)
 			continue;
+
+		if (technology->driver->set_tethering)
+			technology->driver->set_tethering(technology, enabled);
 	}
 
 	return 0;
 }
 
+int __connman_technology_enable_tethering(void)
+{
+	return set_tethering(TRUE);
+}
+
 int __connman_technology_disable_tethering(void)
 {
-	GSList *list;
-
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
-
-		if (technology->driver == NULL)
-			continue;
-	}
-
-	return 0;
+	return set_tethering(FALSE);
 }
 
 static void free_rfkill(gpointer data)

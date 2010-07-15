@@ -42,6 +42,8 @@ struct connman_technology_driver {
 	int priority;
 	int (*probe) (struct connman_technology *technology);
 	void (*remove) (struct connman_technology *technology);
+	int (*set_tethering) (struct connman_technology *technology,
+						connman_bool_t enabled);
 };
 
 int connman_technology_driver_register(struct connman_technology_driver *driver);
