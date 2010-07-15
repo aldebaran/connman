@@ -96,10 +96,18 @@ static void read_uevent(struct interface_data *interface)
 	char *filename, line[128];
 	FILE *f;
 
+	if (ether_blacklisted(interface->name) == TRUE)
+		interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+	else
+		interface->type = CONNMAN_SERVICE_TYPE_ETHERNET;
+
 	filename = g_strdup_printf("/sys/class/net/%s/uevent",
 						interface->name);
 
 	f = fopen(filename, "re");
+
+	g_free(filename);
+
 	if (f == NULL)
 		return;
 
@@ -122,6 +130,8 @@ static void read_uevent(struct interface_data *interface)
 			interface->type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
 		else if (strcmp(line + 8, "wimax") == 0)
 			interface->type = CONNMAN_SERVICE_TYPE_WIMAX;
+		else
+			interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	}
 
 	fclose(f);
@@ -404,12 +414,8 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		g_hash_table_insert(interface_list,
 					GINT_TO_POINTER(index), interface);
 
-		read_uevent(interface);
-
-		if (interface->type == CONNMAN_SERVICE_TYPE_UNKNOWN &&
-					type == ARPHRD_ETHER &&
-					ether_blacklisted(ifname) == FALSE)
-			interface->type = CONNMAN_SERVICE_TYPE_ETHERNET;
+		if (type == ARPHRD_ETHER)
+			read_uevent(interface);
 
 		__connman_technology_add_interface(interface->type,
 					interface->index, interface->name);
