@@ -56,6 +56,61 @@ static GSList *update_list = NULL;
 static guint update_interval = G_MAXUINT;
 static guint update_timeout = 0;
 
+struct interface_data {
+	int index;
+	char *name;
+	enum connman_service_type type;
+};
+
+static GHashTable *interface_list = NULL;
+
+static void free_interface(gpointer data)
+{
+	struct interface_data *interface = data;
+
+	connman_info("Remove interface %s [ %s ]", interface->name,
+			__connman_service_type2string(interface->type));
+
+	g_free(interface->name);
+	g_free(interface);
+}
+
+static void read_uevent(struct interface_data *interface)
+{
+	char *filename, line[128];
+	FILE *f;
+
+	filename = g_strdup_printf("/sys/class/net/%s/uevent",
+						interface->name);
+
+	f = fopen(filename, "re");
+	if (f == NULL)
+		return;
+
+	while (fgets(line, sizeof(line), f)) {
+		char *pos;
+
+		pos = strchr(line, '\n');
+		if (pos == NULL)
+			continue;
+		pos[0] = '\0';
+
+		if (strncmp(line, "DEVTYPE=", 8) != 0)
+			continue;
+
+		if (strcmp(line + 8, "wlan") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_WIFI;
+		else if (strcmp(line + 8, "wwan") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_CELLULAR;
+		else if (strcmp(line + 8, "bluetooth") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
+		else if (strcmp(line + 8, "wimax") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_WIMAX;
+	}
+
+	fclose(f);
+}
+
 /**
  * connman_rtnl_add_operstate_watch:
  * @index: network device index
@@ -322,6 +377,21 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 						ifname, index, operstate,
 						operstate2str(operstate));
 
+	if (g_hash_table_lookup(interface_list, &index) == NULL) {
+		struct interface_data *interface;
+
+		interface = g_new0(struct interface_data, 1);
+		interface->index = index;
+		interface->name = g_strdup(ifname);
+
+		g_hash_table_insert(interface_list, &index, interface);
+
+		read_uevent(interface);
+
+		connman_info("Create interface %s [ %s ]", interface->name,
+			__connman_service_type2string(interface->type));
+	}
+
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
 
@@ -383,6 +453,8 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 		__connman_ipconfig_dellink(index, &stats);
 		break;
 	}
+
+	g_hash_table_remove(interface_list, &index);
 }
 
 static void extract_addr(struct ifaddrmsg *msg, int bytes,
@@ -1156,6 +1228,9 @@ int __connman_rtnl_init(void)
 
 	DBG("");
 
+	interface_list = g_hash_table_new_full(g_int_hash, g_int_equal,
+							NULL, free_interface);
+
 	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
 	if (sk < 0)
 		return -1;
@@ -1227,4 +1302,6 @@ void __connman_rtnl_cleanup(void)
 	g_io_channel_unref(channel);
 
 	channel = NULL;
+
+	g_hash_table_destroy(interface_list);
 }
