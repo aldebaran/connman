@@ -68,8 +68,8 @@ Identity = user
 
 [service_peap]
 Type = wifi
-SSID = peap_ssid
+Name = peap_ssid
 EAP = peap
-CACert = /home/user/.cert/ca.pem
+CACertFile = /home/user/.cert/ca.pem
 Phase2 = MSCHAPV2
 Identity = user
