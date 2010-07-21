@@ -375,6 +375,9 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 {
 	int index;
 
+	if (service == NULL)
+		return;
+
 	index = connman_network_get_index(service->network);
 
 	if (service->nameservers != NULL) {
@@ -406,6 +409,9 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 void __connman_service_nameserver_del_routes(struct connman_service *service)
 {
 	int index;
+
+	if (service == NULL)
+		return;
 
 	index = connman_network_get_index(service->network);
 
