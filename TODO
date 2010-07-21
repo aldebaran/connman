@@ -53,6 +53,17 @@ Core
    Complexity: C4
 
 
+- VPN service
+
+   Priority: Medium
+   Complexity: C2
+
+   Create a service for every VPN and link it to the topmost one for
+   now.
+   The default route should be set accordingly when UIs move the
+   topmost service up and down.
+
+
 - OpenVPN
 
    Priority: Low
@@ -89,6 +100,16 @@ Core
 
    Priority: Medium
    Complexity: C1
+
+
+- PAC export
+
+   Priority: Low
+   Complexity: C1
+
+   When receiving an automatic configuration URL, we should set the
+   service proxy dictionary accordingly (method and URL).
+
 
 - Moving DNS proxy code to ConnMan core
 
