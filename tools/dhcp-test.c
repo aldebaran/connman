@@ -120,6 +120,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	for (list = option_value; list; list = list->next)
 		printf("routers %s\n", (char *) list->data);
 
+	option_value = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
+	for (list = option_value; list; list = list->next)
+		printf("hostname %s\n", (char *) list->data);
+
 	print_timestamp();
 }
 
