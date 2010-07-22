@@ -829,9 +829,13 @@ static char *malloc_option_value_string(uint8_t *option, GDHCPOptionType type)
 	len = option[OPT_LEN - OPT_DATA];
 	type &= OPTION_TYPE_MASK;
 	optlen = dhcp_option_lengths[type];
+	if (optlen == 0)
+		return NULL;
 	upper_length = len_of_option_as_string[type] *
 			((unsigned)len / (unsigned)optlen);
 	dest = ret = malloc(upper_length + 1);
+	if (ret == NULL)
+		return NULL;
 
 	while (len >= optlen) {
 		switch (type) {
@@ -908,6 +912,9 @@ static void get_request(GDHCPClient *dhcp_client, struct dhcp_packet *packet)
 		type =  dhcp_get_code_type(code);
 
 		option_value = malloc_option_value_string(option, type);
+		if (option_value == NULL)
+			g_hash_table_remove(dhcp_client->code_value_hash,
+						GINT_TO_POINTER((int) code));
 
 		value_list = get_option_value_list(option_value);
 
