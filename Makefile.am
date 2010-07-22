@@ -118,10 +118,10 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dbus-test \
+noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dhcp-test \
 			tools/addr-test tools/tap-test tools/resolv-test \
-					tools/polkit-test tools/portal-test \
-						tools/iptables-test
+			tools/dbus-test tools/polkit-test tools/portal-test \
+							tools/iptables-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -129,6 +129,9 @@ tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \
 			tools/supplicant.h tools/supplicant.c
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
+tools_dhcp_test_LDADD = @GLIB_LIBS@
 
 tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
