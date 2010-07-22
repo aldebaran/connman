@@ -24,6 +24,8 @@ local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/object.c gdbus/watch.c
 
+gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c
+
 if DATAFILES
 dbusdir = @DBUS_DATADIR@
 
@@ -43,7 +45,7 @@ noinst_PROGRAMS =
 
 sbin_PROGRAMS = src/connmand
 
-src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
+src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(builtin_sources) \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
@@ -96,7 +98,8 @@ AM_CFLAGS = @UDEV_CFLAGS@ @IPTC_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\""
 
-INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
+INCLUDES = -I$(builddir)/include -I$(builddir)/src \
+					-I$(srcdir)/gdbus -I$(srcdir)/gdhcp
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf
 
