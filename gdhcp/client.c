@@ -1185,7 +1185,7 @@ GDHCPClientError g_dhcp_client_set_send(GDHCPClient *dhcp_client,
 	uint8_t *binary_option;
 	const char *hostname;
 
-	if (option_code == DHCP_HOST_NAME) {
+	if (option_code == G_DHCP_HOST_NAME) {
 		hostname = get_hostname(option_value);
 
 		binary_option = alloc_dhcp_option(option_code, hostname, 0);

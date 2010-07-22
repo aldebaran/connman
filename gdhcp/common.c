@@ -37,6 +37,7 @@ static const DHCPOption client_options[] = {
 	{ OPTION_IP,			0x01 }, /* subnet-mask */
 	{ OPTION_IP | OPTION_LIST,	0x03 }, /* routers */
 	{ OPTION_IP | OPTION_LIST,	0x06 }, /* domain-name-servers */
+	{ OPTION_STRING,		0x0c }, /* hostname */
 	{ OPTION_STRING,		0x0f }, /* domain-name */
 	{ OPTION_IP | OPTION_LIST,	0x2a }, /* ntp-servers */
 	{ OPTION_U32,			0x33 }, /* dhcp-lease-time */
