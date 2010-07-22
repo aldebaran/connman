@@ -68,7 +68,7 @@ static void handle_error(GDHCPClientError error)
 	case G_DHCP_CLIENT_ERROR_NONE:
 		printf("dhcp client ok\n");
 		break;
-	case G_DHCP_CLIENT_ERROR_INERFACE_UNAVAILABLE:
+	case G_DHCP_CLIENT_ERROR_INTERFACE_UNAVAILABLE:
 		printf("Interface unavailable\n");
 		break;
 	case G_DHCP_CLIENT_ERROR_INTERFACE_IN_USE:

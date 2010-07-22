@@ -372,7 +372,7 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 
 	dhcp_client->interface = get_interface_name(ifindex);
 	if (dhcp_client->interface == NULL) {
-		*error = G_DHCP_CLIENT_ERROR_INERFACE_UNAVAILABLE;
+		*error = G_DHCP_CLIENT_ERROR_INTERFACE_UNAVAILABLE;
 		goto error;
 	}
 
