@@ -41,11 +41,13 @@ scripts/dhclient-script
 scripts/openconnect-script
 client/cm
 tools/wifi-scan
+tools/dhcp-test
 tools/addr-test
 tools/tap-test
 tools/resolv-test
 tools/polkit-test
 tools/portal-test
+tools/iptables-test
 tools/supplicant-test
 tools/dbus-test
 doc/*.bak
