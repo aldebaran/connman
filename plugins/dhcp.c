@@ -23,28 +23,121 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/dhcp.h>
+#include <connman/utsname.h>
 #include <connman/log.h>
+
+#include <gdhcp.h>
+
+static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcp *dhcp = user_data;
+
+	DBG("No Lease Available!");
+
+	connman_dhcp_fail(dhcp);
+}
+
+static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcp *dhcp = user_data;
+	GList *list, *option = NULL;
+	char *address, *nameservers;
+	size_t ns_strlen = 0;
+
+	address = g_dhcp_client_get_address(dhcp_client);
+	if (address != NULL)
+		connman_dhcp_set_value(dhcp, "Address", address);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
+	if (option != NULL)
+		connman_dhcp_set_value(dhcp, "Netmask", (char *) option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
+	for (list = option; list; list = list->next)
+		ns_strlen += strlen((char *) list->data) + 2;
+	nameservers = g_try_malloc0(ns_strlen);
+	if (nameservers) {
+		char *ns_index = nameservers;
+
+		for (list = option; list; list = list->next) {
+			sprintf(ns_index, "%s ", (char *) list->data);
+			ns_index += strlen((char *) list->data) + 1;
+		}
+
+		connman_dhcp_set_value(dhcp, "Nameserver", nameservers);
+	}
+	g_free(nameservers);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
+	if (option != NULL)
+		connman_dhcp_set_value(dhcp, "Gateway", (char *) option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
+	if (option != NULL)
+		connman_dhcp_set_value(dhcp, "Hostname", (char *) option->data);
+
+	connman_dhcp_bound(dhcp);
+}
 
 static int dhcp_request(struct connman_dhcp *dhcp)
 {
+	GDHCPClient *dhcp_client;
+	GDHCPClientError error;
+	int index;
+
 	DBG("dhcp %p", dhcp);
 
-	return -1;
+	index = connman_dhcp_get_index(dhcp);
+
+	dhcp_client = g_dhcp_client_new(G_DHCP_IPV4, index, &error);
+	if (error != G_DHCP_CLIENT_ERROR_NONE)
+		return -EINVAL;
+
+	g_dhcp_client_set_send(dhcp_client, G_DHCP_HOST_NAME,
+				connman_utsname_get_hostname());
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_HOST_NAME);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_SUBNET);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_DNS_SERVER);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_NTP_SERVER);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_ROUTER);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_LEASE_AVAILABLE,
+						lease_available_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_NO_LEASE, no_lease_cb, dhcp);
+
+	connman_dhcp_set_data(dhcp, dhcp_client);
+
+	g_dhcp_client_ref(dhcp_client);
+
+	return g_dhcp_client_start(dhcp_client);
 }
 
 static int dhcp_release(struct connman_dhcp *dhcp)
 {
+	GDHCPClient *dhcp_client = connman_dhcp_get_data(dhcp);
+
 	DBG("dhcp %p", dhcp);
 
-	return -1;
+	g_dhcp_client_stop(dhcp_client);
+	g_dhcp_client_unref(dhcp_client);
+
+	return 0;
 }
 
 static struct connman_dhcp_driver dhcp_driver = {
 	.name		= "dhcp",
-	.priority	= CONNMAN_DHCP_PRIORITY_LOW,
+	.priority	= CONNMAN_DHCP_PRIORITY_DEFAULT,
 	.request	= dhcp_request,
 	.release	= dhcp_release,
 };
