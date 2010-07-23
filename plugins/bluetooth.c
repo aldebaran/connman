@@ -927,7 +927,7 @@ static int bluetooth_init(void)
 						NULL, NULL);
 
 	adapter_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						BLUEZ_MANAGER_INTERFACE,
+						BLUEZ_ADAPTER_INTERFACE,
 						PROPERTY_CHANGED, adapter_changed,
 						NULL, NULL);
 
