@@ -340,6 +340,8 @@ static void update_nameservers(struct connman_service *service)
 						service->nameservers[i]);
 	} else if (service->nameserver != NULL)
 		connman_resolver_append(ifname, NULL, service->nameserver);
+
+	connman_resolver_flush();
 }
 
 void __connman_service_append_nameserver(struct connman_service *service,

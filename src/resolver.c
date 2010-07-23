@@ -291,6 +291,27 @@ int connman_resolver_remove_public_server(const char *server)
 	return connman_resolver_remove(NULL, NULL, server);
 }
 
+/**
+ * connman_resolver_flush:
+ *
+ * Flush pending resolver requests
+ */
+void connman_resolver_flush(void)
+{
+	GSList *list;
+
+	for (list = resolver_list; list; list = list->next) {
+		struct connman_resolver *resolver = list->data;
+
+		if (resolver->flush == NULL)
+			continue;
+
+		resolver->flush();
+	}
+
+	return;
+}
+
 static int selftest_append(const char *interface, const char *domain,
 							const char *server)
 {
