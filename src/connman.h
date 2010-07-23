@@ -541,3 +541,6 @@ int __connman_session_release(const char *owner);
 struct connman_service *__connman_session_request(const char *bearer, const char *owner);
 int __connman_session_init(void);
 void __connman_session_cleanup(void);
+
+int __connman_ondemand_init(void);
+void __connman_ondemand_cleanup(void);
