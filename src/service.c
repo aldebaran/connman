@@ -1574,6 +1574,8 @@ __connman_service_connect_type(enum connman_service_type type)
 	 * the first available one if we have no type.
 	 */
 	iter = g_sequence_get_begin_iter(service_list);
+	if (g_sequence_iter_is_end(iter))
+		return NULL;
 	service = g_sequence_get(iter);
 
 	/*
