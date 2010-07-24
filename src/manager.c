@@ -572,7 +572,7 @@ static DBusMessage *register_counter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *sender, *path;
-	unsigned int interval;
+	unsigned int accuracy, period;
 	int err;
 
 	DBG("conn %p", conn);
@@ -580,10 +580,13 @@ static DBusMessage *register_counter(DBusConnection *conn,
 	sender = dbus_message_get_sender(msg);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_UINT32, &interval,
+						DBUS_TYPE_UINT32, &accuracy,
+						DBUS_TYPE_UINT32, &period,
 							DBUS_TYPE_INVALID);
 
-	err = __connman_counter_register(sender, path, interval);
+	/* FIXME: add handling of accuracy parameter */
+
+	err = __connman_counter_register(sender, path, period);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -670,7 +673,7 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",     "o",     "",      register_agent     },
 	{ "UnregisterAgent",   "o",     "",      unregister_agent   },
-	{ "RegisterCounter",   "ou",    "",      register_counter   },
+	{ "RegisterCounter",   "ouu",   "",      register_counter   },
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
 	{ "RequestSession",    "s",     "o",     request_session    },
 	{ "ReleaseSession",    "s",     "",      release_session    },

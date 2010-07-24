@@ -129,14 +129,24 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void RegisterCounter(object path, uint32 interval)
+		void RegisterCounter(object path, uint32 accuracy, uint32 period)
 
 			Register a new counter for user notifications.
 
-			If the interval is zero then no timer for updates
-			will be started. Only kernel events can then
-			trigger updates. Otherwise the kernel will be
-			polled every n seconds for an update.
+			The accuracy is specified in kilo-bytes and defines
+			a threshold for counter updates. Together with the
+			period value it defines how often user space needs
+			to be updated. The period value is in seconds.
+
+			This interface is not meant for time tracking. If
+			the time needs to be tracked down to the second, it
+			is better to have a real timer running inside the
+			application than using this interface.
+
+			Also getting notified for every kilo-byte is a bad
+			choice (even if the interface supports it). Something
+			like 10 kilo-byte units or better 1 mega-byte seems
+			to be a lot more reasonable and better for the user.
 
 			Possible Errors: [service].Error.InvalidArguments
 
