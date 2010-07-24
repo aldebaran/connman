@@ -55,7 +55,8 @@ gboolean connman_ondemand_connected(void)
 {
 	DBG("connected %d", connected);
 
-	return connected;
+	return TRUE;
+//	return connected;
 }
 
 int connman_ondemand_start(const char *bearer, unsigned int idle_timeout)
@@ -68,6 +69,8 @@ int connman_ondemand_start(const char *bearer, unsigned int idle_timeout)
 	g_atomic_int_inc(&started);
 
 	ondemand_service = __connman_session_request(bearer, "__ondemand__");
+	if (ondemand_service == NULL)
+		g_atomic_int_set(&started, 0);
 
 	/* TODO:
 	 * 1) Set IDLETIMER target.
