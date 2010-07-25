@@ -1,3 +1,11 @@
+ver 0.55:
+	Fix issue with 3G roaming status indication.
+	Fix issue with using -H option with dhclient.
+	Fix issue with loading WiFi SSID details for scanning.
+	Add support for setting host routes for DNS servers.
+	Add support for more detailed statistics counters.
+	Add support for internal DHCP client library.
+
 ver 0.54:
 	Fix issue with root requests and EDNS0 OPT records.
 	Fix issue with default gateway when route deletion fails.
