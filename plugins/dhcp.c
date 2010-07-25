@@ -39,9 +39,14 @@ static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	struct connman_dhcp *dhcp = user_data;
 
-	DBG("No Lease Available!");
+	DBG("No lease available");
 
 	connman_dhcp_fail(dhcp);
+}
+
+static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	DBG("Lease lost");
 }
 
 static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -50,6 +55,8 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	GList *list, *option = NULL;
 	char *address, *nameservers;
 	size_t ns_strlen = 0;
+
+	DBG("Lease available");
 
 	address = g_dhcp_client_get_address(dhcp_client);
 	if (address != NULL)
@@ -112,6 +119,9 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	g_dhcp_client_register_event(dhcp_client,
 			G_DHCP_CLIENT_EVENT_LEASE_AVAILABLE,
 						lease_available_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_LEASE_LOST, lease_lost_cb, dhcp);
 
 	g_dhcp_client_register_event(dhcp_client,
 			G_DHCP_CLIENT_EVENT_NO_LEASE, no_lease_cb, dhcp);
