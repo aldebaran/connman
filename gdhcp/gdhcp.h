@@ -71,7 +71,7 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type, int index,
 int g_dhcp_client_start(GDHCPClient *client);
 void g_dhcp_client_stop(GDHCPClient *client);
 
-void g_dhcp_client_ref(GDHCPClient *client);
+GDHCPClient *g_dhcp_client_ref(GDHCPClient *client);
 void g_dhcp_client_unref(GDHCPClient *client);
 
 void g_dhcp_client_register_event(GDHCPClient *client,

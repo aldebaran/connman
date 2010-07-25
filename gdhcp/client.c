@@ -1204,13 +1204,21 @@ GDHCPClientError g_dhcp_client_set_send(GDHCPClient *dhcp_client,
 	return G_DHCP_CLIENT_ERROR_NONE;
 }
 
-void g_dhcp_client_ref(GDHCPClient *dhcp_client)
+GDHCPClient *g_dhcp_client_ref(GDHCPClient *dhcp_client)
 {
+	if (dhcp_client == NULL)
+		return NULL;
+
 	g_atomic_int_inc(&dhcp_client->ref_count);
+
+	return dhcp_client;
 }
 
 void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 {
+	if (dhcp_client == NULL)
+		return;
+
 	if (g_atomic_int_dec_and_test(&dhcp_client->ref_count) == FALSE)
 		return;
 
@@ -1231,6 +1239,9 @@ void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 void g_dhcp_client_set_debug(GDHCPClient *dhcp_client,
 				GDHCPDebugFunc func, gpointer data)
 {
+	if (dhcp_client == NULL)
+		return;
+
 	dhcp_client->debug_func = func;
 	dhcp_client->debug_data = data;
 }
