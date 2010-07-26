@@ -68,8 +68,8 @@ else
 src_connmand_SOURCES += src/udev-compat.c
 endif
 
-src_connmand_LDADD = $(builtin_libadd) \
-			@GLIB_LIBS@ @DBUS_LIBS@ @CAPNG_LIBS@ @UDEV_LIBS@ -ldl
+src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
+					@CAPNG_LIBS@ @UDEV_LIBS@ -lresolv -ldl
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=src/connman.ver
 
@@ -133,13 +133,14 @@ tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant.h tools/supplicant.c
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
+tools_resolv_test_SOURCES = $(gresolv_sources) tools/resolv-test.c
+tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
+
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
 tools_dhcp_test_LDADD = @GLIB_LIBS@
 
 tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
-
-tools_resolv_test_LDADD = -lresolv
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
