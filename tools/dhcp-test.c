@@ -35,7 +35,7 @@
 #include <net/ethernet.h>
 #include <linux/if_arp.h>
 
-#include <gdhcp.h>
+#include <gdhcp/gdhcp.h>
 
 static GTimer *timer;
 

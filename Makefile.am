@@ -102,8 +102,7 @@ AM_CFLAGS = @UDEV_CFLAGS@ @IPTC_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\""
 
-INCLUDES = -I$(builddir)/include -I$(builddir)/src \
-					-I$(srcdir)/gdbus -I$(srcdir)/gdhcp
+INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf
 

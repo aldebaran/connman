@@ -33,7 +33,7 @@
 #include <connman/utsname.h>
 #include <connman/log.h>
 
-#include <gdhcp.h>
+#include <gdhcp/gdhcp.h>
 
 static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
