@@ -48,6 +48,8 @@ int g_resolv_add_nameserver(GResolv *resolv, const char *address,
 					uint16_t port, unsigned long flags);
 void g_resolv_flush_nameservers(GResolv *resolv);
 
+int g_resolv_lookup_hostname(GResolv *resolv, const char *hostname);
+
 #ifdef __cplusplus
 }
 #endif
