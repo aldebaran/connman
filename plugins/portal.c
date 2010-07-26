@@ -159,6 +159,7 @@ static gboolean tcp_event(GIOChannel *channel, GIOCondition condition,
 {
 	struct connman_location *location = user_data;
 	struct server_data *data = connman_location_get_data(location);
+	enum get_page_status status;
 	char buf[BUFSIZ+1];
 	int len;
 	int sk;
@@ -168,24 +169,26 @@ static gboolean tcp_event(GIOChannel *channel, GIOCondition condition,
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		connman_error("TCP event error %d", condition);
-		remove_timeout(data);
-		data->watch = 0;
-		if (data->get_page)
-			data->get_page(location, NULL, 0, GET_PAGE_FAILED);
-
-		return FALSE;
+		len = 0;
+		status = GET_PAGE_FAILED;
+		goto done;
 	}
 
 	sk = g_io_channel_unix_get_fd(channel);
 	len = recv(sk, buf, BUFSIZ, 0);
 
-	if (len > 0) {
-		remove_timeout(data);
-		if (data->get_page)
-			data->get_page(location, buf, len, GET_PAGE_SUCCESS);
-	}
+	if (len > 0)
+		status = GET_PAGE_SUCCESS;
+	else
+		status = GET_PAGE_FAILED;
 
-	return TRUE;
+done:
+	remove_timeout(data);
+	data->watch = 0;
+	if (data->get_page)
+		data->get_page(location, buf, len, status);
+
+	return FALSE;
 }
 
 static gboolean socket_event(GIOChannel *channel, GIOCondition condition,
@@ -224,7 +227,7 @@ static gboolean socket_event(GIOChannel *channel, GIOCondition condition,
 		}
 		g_free(query);
 	} else if (condition & G_IO_IN)
-		tcp_event(channel, condition, user_data);
+		return tcp_event(channel, condition, user_data);
 
 	return TRUE;
 }
@@ -370,7 +373,7 @@ static int get_page_cb(struct connman_location *location, char *page, int len,
 
 	remove_connection(location);
 
-	if (page)
+	if (page && len > 0)
 		ret = get_status(data, page, len);
 	else
 		ret = status;
