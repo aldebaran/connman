@@ -22,6 +22,8 @@
 #ifndef __G_RESOLV_H
 #define __G_RESOLV_H
 
+#include <stdint.h>
+
 #include <glib.h>
 
 #ifdef __cplusplus
@@ -41,6 +43,10 @@ void g_resolv_unref(GResolv *resolv);
 
 void g_resolv_set_debug(GResolv *resolv,
 				GResolvDebugFunc func, gpointer data);
+
+int g_resolv_add_nameserver(GResolv *resolv, const char *address,
+					uint16_t port, unsigned long flags);
+void g_resolv_flush_nameservers(GResolv *resolv);
 
 #ifdef __cplusplus
 }
