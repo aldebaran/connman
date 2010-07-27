@@ -35,7 +35,10 @@
 #include "gresolv.h"
 
 struct resolv_query {
+	GResolv *resolv;
+
 	guint id;
+	guint timeout;
 
 	uint16_t msgid;
 
@@ -85,7 +88,27 @@ static inline void debug(GResolv *resolv, const char *format, ...)
 
 static void destroy_query(struct resolv_query *query)
 {
+	if (query->timeout > 0)
+		g_source_remove(query->timeout);
+
 	g_free(query);
+}
+
+static gboolean query_timeout(gpointer user_data)
+{
+	struct resolv_query *query = user_data;
+	GResolv *resolv = query->resolv;
+
+	query->timeout = 0;
+
+	if (query->result_func != NULL)
+		query->result_func(G_RESOLV_STATUS_ERROR,
+						NULL, query->result_data);
+
+	destroy_query(query);
+	g_queue_remove(resolv->query_queue, query);
+
+	return FALSE;
 }
 
 static void free_nameserver(struct resolv_nameserver *nameserver)
@@ -408,7 +431,11 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 		return -EIO;
 	}
 
+	query->resolv = resolv;
+
 	g_queue_push_tail(resolv->query_queue, query);
+
+	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
 
 	return 0;
 }
