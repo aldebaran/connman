@@ -329,13 +329,13 @@ void g_resolv_unref(GResolv *resolv)
 }
 
 void g_resolv_set_debug(GResolv *resolv,
-                                GResolvDebugFunc func, gpointer data)
+                                GResolvDebugFunc func, gpointer user_data)
 {
 	if (resolv == NULL)
 		return;
 
 	resolv->debug_func = func;
-	resolv->debug_data = data;
+	resolv->debug_data = user_data;
 }
 
 int g_resolv_add_nameserver(GResolv *resolv, const char *address,

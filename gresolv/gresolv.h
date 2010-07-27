@@ -50,7 +50,7 @@ GResolv *g_resolv_ref(GResolv *resolv);
 void g_resolv_unref(GResolv *resolv);
 
 void g_resolv_set_debug(GResolv *resolv,
-				GResolvDebugFunc func, gpointer data);
+				GResolvDebugFunc func, gpointer user_data);
 
 int g_resolv_add_nameserver(GResolv *resolv, const char *address,
 					uint16_t port, unsigned long flags);
