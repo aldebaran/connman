@@ -34,6 +34,14 @@ struct _GResolv;
 
 typedef struct _GResolv GResolv;
 
+typedef enum {
+	G_RESOLV_STATUS_SUCCESS,
+	G_RESOLV_STATUS_ERROR,
+} GResolvResultStatus;
+
+typedef void (*GResolvResultFunc)(GResolvResultStatus status,
+					char **results, gpointer user_data);
+
 typedef void (*GResolvDebugFunc)(const char *str, gpointer user_data);
 
 GResolv *g_resolv_new(int index);
@@ -48,7 +56,8 @@ int g_resolv_add_nameserver(GResolv *resolv, const char *address,
 					uint16_t port, unsigned long flags);
 void g_resolv_flush_nameservers(GResolv *resolv);
 
-int g_resolv_lookup_hostname(GResolv *resolv, const char *hostname);
+guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
+				GResolvResultFunc func, gpointer user_data);
 
 #ifdef __cplusplus
 }

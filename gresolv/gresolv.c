@@ -34,6 +34,15 @@
 
 #include "gresolv.h"
 
+struct resolv_query {
+	guint id;
+
+	uint16_t msgid;
+
+	GResolvResultFunc result_func;
+	gpointer result_data;
+};
+
 struct resolv_nameserver {
 	GResolv *resolv;
 
@@ -47,6 +56,9 @@ struct resolv_nameserver {
 
 struct _GResolv {
 	gint ref_count;
+
+	guint next_query_id;
+	GQueue *query_queue;
 
 	int index;
 	GList *nameserver_list;
@@ -69,6 +81,11 @@ static inline void debug(GResolv *resolv, const char *format, ...)
 		resolv->debug_func(str, resolv->debug_data);
 
 	va_end(ap);
+}
+
+static void destroy_query(struct resolv_query *query)
+{
+	g_free(query);
 }
 
 static void free_nameserver(struct resolv_nameserver *nameserver)
@@ -121,24 +138,45 @@ static int send_query(GResolv *resolv, const unsigned char *buf, int len)
 	return 0;
 }
 
+static gint compare_msgid(gconstpointer a, gconstpointer b)
+{
+	const struct resolv_query *query = a;
+	uint16_t msgid = GPOINTER_TO_UINT(b);
+
+	if (query->msgid < msgid)
+		return -1;
+
+	if (query->msgid > msgid)
+		return 1;
+
+	return 0;
+}
+
 static void parse_response(struct resolv_nameserver *nameserver,
 					const unsigned char *buf, int len)
 {
 	GResolv *resolv = nameserver->resolv;
+	GList *list;
+	char **results;
 	ns_msg msg;
 	ns_rr rr;
-	int i, rcode;
+	int i, n, rcode, count;
 
 	debug(resolv, "response from %s", nameserver->address);
 
 	ns_initparse(buf, len, &msg);
 
 	rcode = ns_msg_getflag(msg, ns_f_rcode);
+	count = ns_msg_count(msg, ns_s_an);
 
 	debug(resolv, "msg id: 0x%04x rcode: %d count: %d",
-			ns_msg_id(msg), rcode, ns_msg_count(msg, ns_s_an));
+					ns_msg_id(msg), rcode, count);
 
-	for (i = 0; i < ns_msg_count(msg, ns_s_an); i++) {
+	results = g_try_new(char *, count + 1);
+	if (results == NULL)
+		return;
+
+	for (i = 0, n = 0; i < count; i++) {
 		char result[100];
 
 		ns_parserr(&msg, ns_s_an, i, &rr);
@@ -154,8 +192,26 @@ static void parse_response(struct resolv_nameserver *nameserver,
 
 		inet_ntop(AF_INET, ns_rr_rdata(rr), result, sizeof(result));
 
-		debug(resolv, "result: %s", result);
+		results[n++] = g_strdup(result);
 	}
+
+	results[n] = NULL;
+
+	list = g_queue_find_custom(resolv->query_queue,
+			GUINT_TO_POINTER(ns_msg_id(msg)), compare_msgid);
+
+	if (list != NULL) {
+		struct resolv_query *query = list->data;
+
+		if (query->result_func != NULL)
+			query->result_func(G_RESOLV_STATUS_SUCCESS,
+						results, query->result_data);
+
+		destroy_query(query);
+		g_queue_remove(resolv->query_queue, query);
+	}
+
+	g_strfreev(results);
 }
 
 static gboolean received_udp_data(GIOChannel *channel, GIOCondition cond,
@@ -228,6 +284,14 @@ GResolv *g_resolv_new(int index)
 
 	resolv->ref_count = 1;
 
+	resolv->next_query_id = 1;
+	resolv->query_queue = g_queue_new();
+
+	if (resolv->query_queue == NULL) {
+		g_free(resolv);
+		return NULL;
+	}
+
 	resolv->index = index;
 	resolv->nameserver_list = NULL;
 
@@ -246,11 +310,18 @@ GResolv *g_resolv_ref(GResolv *resolv)
 
 void g_resolv_unref(GResolv *resolv)
 {
+	struct resolv_query *query;
+
 	if (resolv == NULL)
 		return;
 
 	if (g_atomic_int_dec_and_test(&resolv->ref_count) == FALSE)
 		return;
+
+	while ((query = g_queue_pop_head(resolv->query_queue)))
+		destroy_query(query);
+
+	g_queue_free(resolv->query_queue);
 
 	flush_nameservers(resolv);
 
@@ -306,18 +377,38 @@ void g_resolv_flush_nameservers(GResolv *resolv)
 	flush_nameservers(resolv);
 }
 
-int g_resolv_lookup_hostname(GResolv *resolv, const char *hostname)
+guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
+				GResolvResultFunc func, gpointer user_data)
 {
+	struct resolv_query *query;
 	unsigned char buf[4096];
 	int len;
 
 	debug(resolv, "lookup hostname %s", hostname);
 
+	if (resolv == NULL)
+		return 0;
+
+	query = g_try_new0(struct resolv_query, 1);
+	if (query == NULL)
+		return 0;
+
+	query->id = resolv->next_query_id++;
+
 	len = res_mkquery(ns_o_query, hostname, ns_c_in, ns_t_a,
 					NULL, 0, NULL, buf, sizeof(buf));
 
-	if (send_query(resolv, buf, len) < 0)
+	query->msgid = buf[0] << 8 | buf[1];
+
+	query->result_func = func;
+	query->result_data = user_data;
+
+	if (send_query(resolv, buf, len) < 0) {
+		g_free(query);
 		return -EIO;
+	}
+
+	g_queue_push_tail(resolv->query_queue, query);
 
 	return 0;
 }
