@@ -41,6 +41,21 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static void resolv_result(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+	int i;
+
+	g_print("status: %d\n", status);
+
+	if (results != NULL) {
+		for (i = 0; results[i]; i++)
+			g_print("result: %s\n", results[i]);
+	}
+
+	g_main_loop_quit(main_loop);
+}
+
 int main(int argc, char *argv[])
 {
 	struct sigaction sa;
@@ -70,7 +85,7 @@ int main(int argc, char *argv[])
 	} else
 		g_resolv_add_nameserver(resolv, "127.0.0.1", 53, 0);
 
-	g_resolv_lookup_hostname(resolv, argv[1]);
+	g_resolv_lookup_hostname(resolv, argv[1], resolv_result, NULL);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
