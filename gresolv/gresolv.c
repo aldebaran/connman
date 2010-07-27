@@ -338,17 +338,17 @@ void g_resolv_set_debug(GResolv *resolv,
 	resolv->debug_data = user_data;
 }
 
-int g_resolv_add_nameserver(GResolv *resolv, const char *address,
+gboolean g_resolv_add_nameserver(GResolv *resolv, const char *address,
 					uint16_t port, unsigned long flags)
 {
 	struct resolv_nameserver *nameserver;
 
 	if (resolv == NULL)
-		return -EINVAL;
+		return FALSE;
 
 	nameserver = g_try_new0(struct resolv_nameserver, 1);
 	if (nameserver == NULL)
-		return -ENOMEM;
+		return FALSE;
 
 	nameserver->address = g_strdup(address);
 	nameserver->port = port;
@@ -356,7 +356,7 @@ int g_resolv_add_nameserver(GResolv *resolv, const char *address,
 
 	if (connect_udp_channel(nameserver) < 0) {
 		free_nameserver(nameserver);
-		return -EIO;
+		return FALSE;
 	}
 
 	nameserver->resolv = resolv;
@@ -366,7 +366,7 @@ int g_resolv_add_nameserver(GResolv *resolv, const char *address,
 
 	debug(resolv, "setting nameserver %s", address);
 
-	return 0;
+	return TRUE;
 }
 
 void g_resolv_flush_nameservers(GResolv *resolv)
