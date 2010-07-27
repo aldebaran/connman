@@ -1,3 +1,7 @@
+ver 0.54.3
+	Return html fetching error when recv returns 0 (Fixes BCM #3697)
+	Fix PATH of adapter_watch in bluetooth plugin (Fixes BCM #3897)
+
 ver 0.54.2
 	Fix SEGV at first startup
 	Fix connman_wifi_load_ssid
