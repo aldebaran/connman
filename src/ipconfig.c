@@ -71,7 +71,8 @@ struct connman_ipdevice {
 	uint32_t tx_dropped;
 
 	GSList *address_list;
-	char *gateway;
+	char *ipv4_gateway;
+	char *ipv6_gateway;
 
 	struct connman_ipconfig *config;
 
@@ -299,7 +300,8 @@ static void free_ipdevice(gpointer data)
 		connman_ipconfig_unref(ipdevice->config);
 
 	free_address_list(ipdevice);
-	g_free(ipdevice->gateway);
+	g_free(ipdevice->ipv4_gateway);
+	g_free(ipdevice->ipv6_gateway);
 
 	g_free(ipdevice->address);
 	g_free(ipdevice->ifname);
@@ -701,8 +703,13 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
 
-		g_free(ipdevice->gateway);
-		ipdevice->gateway = g_strdup(gateway);
+		if (family == AF_INET6) {
+			g_free(ipdevice->ipv6_gateway);
+			ipdevice->ipv6_gateway = g_strdup(gateway);
+		} else {
+			g_free(ipdevice->ipv4_gateway);
+			ipdevice->ipv4_gateway = g_strdup(gateway);
+		}
 
 		if (ipdevice->config != NULL &&
 					ipdevice->config->system != NULL) {
@@ -737,8 +744,13 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
 
-		g_free(ipdevice->gateway);
-		ipdevice->gateway = NULL;
+		if (family == AF_INET6) {
+			g_free(ipdevice->ipv6_gateway);
+			ipdevice->ipv6_gateway = NULL;
+		} else {
+			g_free(ipdevice->ipv4_gateway);
+			ipdevice->ipv4_gateway = NULL;
+		}
 
 		if (ipdevice->config != NULL &&
 					ipdevice->config->system != NULL) {
@@ -807,8 +819,8 @@ const char *__connman_ipconfig_get_gateway(int index)
 	if (ipdevice == NULL)
 		return NULL;
 
-	if (ipdevice->gateway != NULL)
-		return ipdevice->gateway;
+	if (ipdevice->ipv4_gateway != NULL)
+		return ipdevice->ipv4_gateway;
 
 	if (ipdevice->config != NULL &&
 			ipdevice->config->address != NULL)
