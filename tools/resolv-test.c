@@ -30,7 +30,9 @@
 
 #include <gresolv/gresolv.h>
 
-static GMainLoop *main_loop = NULL;
+static GTimer *timer;
+
+static GMainLoop *main_loop;
 
 static void resolv_debug(const char *str, void *data)
 {
@@ -45,7 +47,12 @@ static void sig_term(int sig)
 static void resolv_result(GResolvResultStatus status,
 					char **results, gpointer user_data)
 {
+	gdouble elapsed;
 	int i;
+
+	elapsed = g_timer_elapsed(timer, NULL);
+
+	g_print("elapse: %f seconds\n", elapsed);
 
 	g_print("status: %d\n", status);
 
@@ -111,6 +118,8 @@ int main(int argc, char *argv[])
 	} else
 		g_resolv_add_nameserver(resolv, "127.0.0.1", 53, 0);
 
+	timer = g_timer_new();
+
 	g_resolv_lookup_hostname(resolv, argv[1], resolv_result, NULL);
 
 	memset(&sa, 0, sizeof(sa));
@@ -119,6 +128,8 @@ int main(int argc, char *argv[])
 	sigaction(SIGTERM, &sa, NULL);
 
 	g_main_loop_run(main_loop);
+
+	g_timer_destroy(timer);
 
 	g_resolv_unref(resolv);
 
