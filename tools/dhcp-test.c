@@ -39,7 +39,7 @@
 
 static GTimer *timer;
 
-static GMainLoop *main_loop = NULL;
+static GMainLoop *main_loop;
 
 static void sig_term(int sig)
 {
@@ -184,6 +184,8 @@ int main(int argc, char *argv[])
 	g_dhcp_client_unref(dhcp_client);
 
 	g_main_loop_unref(main_loop);
+
+	g_timer_destroy(timer);
 
 	return 0;
 }
