@@ -102,7 +102,7 @@ static gboolean query_timeout(gpointer user_data)
 	query->timeout = 0;
 
 	if (query->result_func != NULL)
-		query->result_func(G_RESOLV_STATUS_ERROR,
+		query->result_func(G_RESOLV_RESULT_STATUS_NO_RESPONSE,
 						NULL, query->result_data);
 
 	destroy_query(query);
@@ -210,10 +210,29 @@ static void parse_response(struct resolv_nameserver *nameserver,
 	debug(resolv, "msg id: 0x%04x rcode: %d count: %d",
 					ns_msg_id(msg), rcode, count);
 
-	if (rcode == 0)
-		status = G_RESOLV_STATUS_SUCCESS;
-	else
-		status = G_RESOLV_STATUS_ERROR;
+	switch (rcode) {
+	case 0:
+		status = G_RESOLV_RESULT_STATUS_SUCCESS;
+		break;
+	case 1:
+		status = G_RESOLV_RESULT_STATUS_FORMAT_ERROR;
+		break;
+	case 2:
+		status = G_RESOLV_RESULT_STATUS_SERVER_FAILURE;
+		break;
+	case 3:
+		status = G_RESOLV_RESULT_STATUS_NAME_ERROR;
+		break;
+	case 4:
+		status = G_RESOLV_RESULT_STATUS_NOT_IMPLEMENTED;
+		break;
+	case 5:
+		status = G_RESOLV_RESULT_STATUS_REFUSED;
+		break;
+	default:
+		status = G_RESOLV_RESULT_STATUS_ERROR;
+		break;
+	}
 
 	results = g_try_new(char *, count + 1);
 	if (results == NULL)
