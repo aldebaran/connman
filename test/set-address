@@ -4,7 +4,7 @@ import sys
 import dbus
 
 if (len(sys.argv) < 3):
-	print "Usage: %s <address> <netmask> <gateway>" % (sys.argv[0])
+	print "Usage: %s <address> <netmask | prefix length> <gateway> [version]" % (sys.argv[0])
 	sys.exit(1)
 
 bus = dbus.SystemBus()
@@ -20,10 +20,26 @@ for path in properties["Services"]:
 
 	properties = service.GetProperties()
 
-	print "Setting address %s for %s" % (sys.argv[1], path)
 
-	service.SetProperty("IPv4.Configuration",
-		{ "Method": "manual", "Address": sys.argv[1],
-			"Netmask": sys.argv[2], "Gateway": sys.argv[3]})
+
+	if (len(sys.argv) == 5 and sys.argv[4] == "ipv6"):
+		ipv = 6
+	else:
+		ipv = 4
+
+	print "Setting IPv%d address %s for %s" % (ipv, sys.argv[1], path)
+
+	if (ipv == 4):
+		service.SetProperty("IPv4.Configuration",
+					{ "Method": "manual",
+						"Address": sys.argv[1],
+						"Netmask": sys.argv[2],
+							"Gateway": sys.argv[3]})
+	else:
+		service.SetProperty("IPv6.Configuration",
+					{ "Method": "manual",
+						"Address": sys.argv[1],
+						"PrefixLength": sys.argv[2],
+							"Gateway": sys.argv[3]})
 
 	print

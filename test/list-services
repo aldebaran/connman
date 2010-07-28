@@ -6,7 +6,10 @@ def extract_values(values):
 	val = "{"
 	for key in values.keys():
 		val += " " + key + "="
-		val += str(values[key])
+		if key in ["PrefixLength"]:
+			val += "%s" % (int(values[key]))
+		else:
+			val += str(values[key])
 	val += " }"
 	return val
 
@@ -33,7 +36,9 @@ for path in properties["Services"]:
 	print "[ %s ]" % (path)
 
 	for key in properties.keys():
-		if key in ["IPv4", "IPv4.Configuration", "Proxy", "Ethernet"]:
+		if key in ["IPv4", "IPv4.Configuration",
+				"IPv6", "IPv6.Configuration",
+					"Proxy", "Ethernet"]:
 			val = extract_values(properties[key])
 		elif key in ["Nameservers", "Nameservers.Configuration",
 					"Domains", "Domains.Configuration"]:
