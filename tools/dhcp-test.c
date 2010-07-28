@@ -46,16 +46,9 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void print_timestamp(void)
+static void print_elapsed(void)
 {
-	GTimeVal timestamp;
 	gdouble elapsed;
-	char *str;
-
-	g_get_current_time(&timestamp);
-	str = g_time_val_to_iso8601(&timestamp);
-	printf("=== %s ===\n", str);
-	g_free(str);
 
 	elapsed = g_timer_elapsed(timer, NULL);
 
@@ -91,9 +84,9 @@ static void handle_error(GDHCPClientError error)
 
 static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
-	printf("No Lease Available!\n");
+	print_elapsed();
 
-	print_timestamp();
+	printf("No lease available\n");
 
 	g_main_loop_quit(main_loop);
 }
@@ -102,6 +95,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	GList *list, *option_value = NULL;
 	char *address;
+
+	print_elapsed();
+
+	printf("Leave available\n");
 
 	address = g_dhcp_client_get_address(dhcp_client);
 	printf("address %s\n", address);
@@ -123,8 +120,6 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	option_value = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
 	for (list = option_value; list; list = list->next)
 		printf("hostname %s\n", (char *) list->data);
-
-	print_timestamp();
 }
 
 int main(int argc, char *argv[])
@@ -142,8 +137,6 @@ int main(int argc, char *argv[])
 	index = atoi(argv[1]);
 
 	printf("Create DHCP client for interface %d\n", index);
-
-	timer = g_timer_new();
 
 	dhcp_client = g_dhcp_client_new(G_DHCP_IPV4, index, &error);
 	if (dhcp_client == NULL) {
@@ -168,9 +161,9 @@ int main(int argc, char *argv[])
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	print_timestamp();
-
 	printf("Start DHCP operation\n");
+
+	timer = g_timer_new();
 
 	g_dhcp_client_start(dhcp_client);
 
@@ -181,11 +174,11 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
+	g_timer_destroy(timer);
+
 	g_dhcp_client_unref(dhcp_client);
 
 	g_main_loop_unref(main_loop);
-
-	g_timer_destroy(timer);
 
 	return 0;
 }
