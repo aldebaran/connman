@@ -66,9 +66,15 @@ int main(int argc, char *argv[])
 	busintf = getenv("BUSINTF");
 	buspath = getenv("BUSPATH");
 
+	if (busname == NULL || busintf == NULL || buspath == NULL)
+		return 0;
+
 	pid = atoi(getenv("pid"));
 	reason = getenv("reason");
 	interface = getenv("interface");
+
+	if (pid == 0 || reason == NULL)
+		return 0;
 
 	dbus_error_init(&error);
 
