@@ -98,23 +98,6 @@ AC_ARG_ENABLE(ofono,
 AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
 AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
 
-AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
-	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
-
-AC_ARG_ENABLE(udhcp,
-	AC_HELP_STRING([--enable-udhcp], [enable uDHCP support]),
-			[enable_udhcp=${enableval}], [enable_udhcp="no"])
-if (test "${enable_udhcp}" != "no"); then
-	if (test -z "${path_udhcpc}"); then
-		AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
-	else
-		UDHCPC="${path_udhcpc}"
-		AC_SUBST(UDHCPC)
-	fi
-fi
-AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" != "no")
-AM_CONDITIONAL(UDHCP_BUILTIN, test "${enable_udhcp}" = "builtin")
-
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
 	[specify location of dhclient binary]), [path_dhclient=${withval}])
 

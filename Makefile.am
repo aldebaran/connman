@@ -190,7 +190,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-wifi \
 				--enable-bluetooth \
 				--enable-ofono \
-				--enable-udhcp \
 				--enable-dhclient \
 				--enable-dnsproxy \
 				--enable-google \

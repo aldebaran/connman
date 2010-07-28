@@ -18,7 +18,7 @@ Various plugins can be enabled for networking support:
 	- Bluetooth plugin
 
 Also plugins with additional features are available:
-	- DHCP plugins (uDHCP and dhclient)
+	- DHCP plugin (dhclient)
 	- Resolver plugin (DNS proxy)
 	- Loopback setup
 	- PolicyKit support
@@ -60,13 +60,6 @@ For a working system, certain configuration options need to be enabled:
 	--enable-bluetooth
 
 		Enable support for Bluetooth devices (requires BlueZ)
-
-	--enable-udhcp
-
-		Enable DHCP client support for BusyBox based systems
-
-		The location of the udhcpc binary is auto-detected, but it
-		can be overwritten via --with-udhcpc=<path-to-binary>.
 
 	--enable-dhclient
 
