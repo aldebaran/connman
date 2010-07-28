@@ -583,7 +583,7 @@ void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats)
 	g_hash_table_remove(ipdevice_hash, GINT_TO_POINTER(index));
 }
 
-void __connman_ipconfig_newaddr(int index, const char *label,
+void __connman_ipconfig_newaddr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address)
 {
 	struct connman_ipdevice *ipdevice;
@@ -609,8 +609,14 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	connman_info("%s {add} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
 
-	if (ipdevice->config != NULL)
-		connman_ipaddress_copy(ipdevice->config->system, ipaddress);
+	if (ipdevice->config != NULL) {
+		if (family == AF_INET6 && ipdevice->config->ipv6 != NULL)
+			connman_ipaddress_copy(ipdevice->config->ipv6->system,
+							ipaddress);
+		else
+			connman_ipaddress_copy(ipdevice->config->system,
+							ipaddress);
+	}
 
 	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
 		return;
@@ -633,7 +639,7 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	}
 }
 
-void __connman_ipconfig_deladdr(int index, const char *label,
+void __connman_ipconfig_deladdr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address)
 {
 	struct connman_ipdevice *ipdevice;

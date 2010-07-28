@@ -497,7 +497,7 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 	g_hash_table_remove(interface_list, GINT_TO_POINTER(index));
 }
 
-static void extract_addr(struct ifaddrmsg *msg, int bytes,
+static void extract_ipv4_addr(struct ifaddrmsg *msg, int bytes,
 						const char **label,
 						struct in_addr *local,
 						struct in_addr *address,
@@ -528,34 +528,83 @@ static void extract_addr(struct ifaddrmsg *msg, int bytes,
 	}
 }
 
+static void extract_ipv6_addr(struct ifaddrmsg *msg, int bytes,
+						struct in6_addr *addr,
+						struct in6_addr *local)
+{
+	struct rtattr *attr;
+
+	for (attr = IFA_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case IFA_ADDRESS:
+			if (addr != NULL)
+				*addr = *((struct in6_addr *) RTA_DATA(attr));
+			break;
+		case IFA_LOCAL:
+			if (local != NULL)
+				*local = *((struct in6_addr *) RTA_DATA(attr));
+			break;
+		}
+	}
+}
+
 static void process_newaddr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	struct in_addr address = { INADDR_ANY };
 	const char *label = NULL;
+	void *src;
+	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET)
+	if (family != AF_INET && family != AF_INET6)
 		return;
 
-	extract_addr(msg, bytes, &label, &address, NULL, NULL);
+	if (family == AF_INET) {
+		struct in_addr ipv4_addr = { INADDR_ANY };
 
-	__connman_ipconfig_newaddr(index, label,
-					prefixlen, inet_ntoa(address));
+		extract_ipv4_addr(msg, bytes, &label, &ipv4_addr, NULL, NULL);
+		src = &ipv4_addr;
+	} else if (family == AF_INET6) {
+		struct in6_addr ipv6_address, ipv6_local;
+
+		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
+		src = &ipv6_address;
+	}
+
+	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
+		return;
+
+	__connman_ipconfig_newaddr(index, family, label,
+					prefixlen, ip_string);
 }
 
 static void process_deladdr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	struct in_addr address = { INADDR_ANY };
 	const char *label = NULL;
+	void *src;
+	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET)
+	if (family != AF_INET && family != AF_INET6)
 		return;
 
-	extract_addr(msg, bytes, &label, &address, NULL, NULL);
+	if (family == AF_INET) {
+		struct in_addr ipv4_addr = { INADDR_ANY };
 
-	__connman_ipconfig_deladdr(index, label,
-					prefixlen, inet_ntoa(address));
+		extract_ipv4_addr(msg, bytes, &label, &ipv4_addr, NULL, NULL);
+		src = &ipv4_addr;
+	} else if (family == AF_INET6) {
+		struct in6_addr ipv6_address, ipv6_local;
+
+		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
+		src = &ipv6_address;
+	}
+
+	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
+		return;
+
+	__connman_ipconfig_deladdr(index, family, label,
+					prefixlen, ip_string);
 }
 
 static void extract_route(struct rtmsg *msg, int bytes, int *index,
@@ -1277,7 +1326,8 @@ int __connman_rtnl_init(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
+	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+				RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);

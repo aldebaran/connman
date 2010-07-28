@@ -210,9 +210,9 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 							unsigned short mtu,
 						struct rtnl_link_stats *stats);
 void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats);
-void __connman_ipconfig_newaddr(int index, const char *label,
+void __connman_ipconfig_newaddr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address);
-void __connman_ipconfig_deladdr(int index, const char *label,
+void __connman_ipconfig_deladdr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address);
 void __connman_ipconfig_newroute(int index, unsigned char scope,
 					const char *dst, const char *gateway);
