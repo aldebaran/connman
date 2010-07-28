@@ -791,12 +791,45 @@ static void append_ipv4(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_ipv4(service->ipconfig, iter);
 }
 
+static void append_ipv6(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	struct connman_ipconfig *ipv6config;
+
+	if (is_connected(service) == FALSE)
+		return;
+
+	if (service->ipconfig == NULL)
+		return;
+
+	ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
+	if (ipv6config == NULL)
+		return;
+
+	__connman_ipconfig_append_ipv6(ipv6config, iter);
+}
+
 static void append_ipv4config(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ipv4config(service->ipconfig, iter);
+}
+
+static void append_ipv6config(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	struct connman_ipconfig *ipv6config;
+
+	if (service->ipconfig == NULL)
+		return;
+
+	ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
+	if (ipv6config == NULL)
+		return;
+
+	__connman_ipconfig_append_ipv6config(ipv6config, iter);
 }
 
 static void append_dns(DBusMessageIter *iter, void *user_data)
@@ -873,6 +906,10 @@ static void settings_changed(struct connman_service *service)
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "IPv4",
 							append_ipv4, service);
+
+	connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE, "IPv6",
+							append_ipv6, service);
 }
 
 static void ipv4_configuration_changed(struct connman_service *service)
@@ -881,6 +918,15 @@ static void ipv4_configuration_changed(struct connman_service *service)
 					CONNMAN_SERVICE_INTERFACE,
 							"IPv4.Configuration",
 							append_ipv4config,
+							service);
+}
+
+static void ipv6_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE,
+							"IPv6.Configuration",
+							append_ipv6config,
 							service);
 }
 
@@ -1044,6 +1090,11 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 
 	connman_dbus_dict_append_dict(dict, "IPv4.Configuration",
 						append_ipv4config, service);
+
+	connman_dbus_dict_append_dict(dict, "IPv6", append_ipv6, service);
+
+	connman_dbus_dict_append_dict(dict, "IPv6.Configuration",
+						append_ipv6config, service);
 
 	connman_dbus_dict_append_array(dict, "Nameservers",
 				DBUS_TYPE_STRING, append_dns, service);
@@ -1331,29 +1382,51 @@ static DBusMessage *set_property(DBusConnection *conn,
 		domain_configuration_changed(service);
 
 		__connman_storage_save_service(service);
-	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
-		int err;
+	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||
+			g_str_equal(name, "IPv6.Configuration")) {
 
+		enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
+		int err = 0;
+		struct connman_ipconfig *ipv6config;
+
+		DBG("%s", name);
+
+		ipv6config = connman_ipconfig_get_ipv6config(
+						service->ipconfig);
 		if (service->ipconfig == NULL)
 			return __connman_error_invalid_property(msg);
 
 		if (is_connecting(service) ||
-				is_connected(service))
+				is_connected(service)) {
 			__connman_network_clear_ipconfig(service->network,
 							service->ipconfig);
+			__connman_network_clear_ipconfig(service->network,
+								ipv6config);
+		}
 
-		err = __connman_ipconfig_set_ipv4config(service->ipconfig,
-								&value);
+		if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
+			type = CONNMAN_IPCONFIG_TYPE_IPV4;
+			err = __connman_ipconfig_set_config(
+					service->ipconfig, type, &value);
+		} else if (g_str_equal(name, "IPv6.Configuration") == TRUE) {
+			type = CONNMAN_IPCONFIG_TYPE_IPV6;
+			err = __connman_ipconfig_set_config(
+						ipv6config, type, &value);
+		}
+
 		if (err < 0) {
 			if (is_connected(service) ||
 					is_connecting(service))
-				__connman_network_set_ipconfig(service->network,
+				__connman_network_set_ipconfig(
+							service->network,
 							service->ipconfig);
-
 			return __connman_error_failed(msg, -err);
 		}
 
-		ipv4_configuration_changed(service);
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			ipv4_configuration_changed(service);
+		else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			ipv6_configuration_changed(service);
 
 		if (is_connecting(service) ||
 				is_connected(service))
@@ -2464,6 +2537,7 @@ int __connman_service_connect(struct connman_service *service)
 
 int __connman_service_disconnect(struct connman_service *service)
 {
+	struct connman_ipconfig *ipv6config;
 	int err;
 
 	DBG("service %p", service);
@@ -2474,6 +2548,10 @@ int __connman_service_disconnect(struct connman_service *service)
 		return -EOPNOTSUPP;
 
 	__connman_ipconfig_clear_address(service->ipconfig);
+
+	ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
+
+	__connman_ipconfig_clear_address(ipv6config);
 
 	__connman_ipconfig_disable(service->ipconfig);
 
@@ -2883,6 +2961,7 @@ static void setup_ipconfig(struct connman_service *service, int index)
 void __connman_service_create_ipconfig(struct connman_service *service,
 								int index)
 {
+	struct connman_ipconfig *ipv6config;
 	const char *ident = service->profile;
 	GKeyFile *keyfile;
 
@@ -2897,6 +2976,12 @@ void __connman_service_create_ipconfig(struct connman_service *service,
 	keyfile = __connman_storage_open_profile(ident);
 	if (keyfile == NULL)
 		return;
+
+
+	ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
+	if (ipv6config != NULL)
+		__connman_ipconfig_load(ipv6config, keyfile,
+					service->identifier, "IPv6.");
 
 	__connman_ipconfig_load(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
@@ -3443,9 +3528,18 @@ static int service_load(struct connman_service *service)
 		service->passphrase = str;
 	}
 
-	if (service->ipconfig != NULL)
+	if (service->ipconfig != NULL) {
+		struct connman_ipconfig *ipv6config;
+
+		ipv6config = connman_ipconfig_get_ipv6config(
+						service->ipconfig);
+		if (ipv6config != NULL)
+			__connman_ipconfig_load(ipv6config, keyfile,
+					service->identifier, "IPv6.");
+
 		__connman_ipconfig_load(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
+	}
 
 	service->nameservers = g_key_file_get_string_list(keyfile,
 			service->identifier, "Nameservers", &length, NULL);
@@ -3591,9 +3685,17 @@ update:
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Passphrase", NULL);
 
-	if (service->ipconfig != NULL)
+	if (service->ipconfig != NULL) {
+		struct connman_ipconfig *ipv6config;
+
+		ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
+		if (ipv6config != NULL)
+			__connman_ipconfig_save(ipv6config, keyfile,
+						service->identifier, "IPv6.");
+
 		__connman_ipconfig_save(service->ipconfig, keyfile,
 					service->identifier, "IPv4.");
+	}
 
 	if (service->nameservers != NULL) {
 		guint len = g_strv_length(service->nameservers);

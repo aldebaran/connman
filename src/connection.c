@@ -33,6 +33,7 @@
 struct gateway_data {
 	int index;
 	char *ipv4_gateway;
+	char *ipv6_gateway;
 	struct connman_element *element;
 	unsigned int order;
 	gboolean active;
@@ -77,6 +78,10 @@ static int del_routes(struct gateway_data *data)
 	} else if (g_strcmp0(data->ipv4_gateway, "0.0.0.0") == 0) {
 		return connman_inet_clear_gateway_interface(data->index);
 	} else {
+		connman_inet_del_ipv6_host_route(data->index,
+						data->ipv6_gateway);
+		connman_inet_clear_ipv6_gateway_address(data->index,
+							data->ipv6_gateway);
 		connman_inet_del_host_route(data->index, data->ipv4_gateway);
 		return connman_inet_clear_gateway_address(data->index,
 							data->ipv4_gateway);
@@ -98,10 +103,14 @@ static void find_element(struct connman_element *element, gpointer user_data)
 	data->element = element;
 }
 
-static struct gateway_data *add_gateway(int index, const char *gateway)
+static struct gateway_data *add_gateway(int index, const char *gateway,
+						const char *ipv6_gateway)
 {
 	struct gateway_data *data;
 	struct connman_service *service;
+
+	DBG("index %d gateway %s ipv6_gateway %s", index, gateway,
+							ipv6_gateway);
 
 	if (strlen(gateway) == 0)
 		return NULL;
@@ -112,6 +121,7 @@ static struct gateway_data *add_gateway(int index, const char *gateway)
 
 	data->index = index;
 	data->ipv4_gateway = g_strdup(gateway);
+	data->ipv6_gateway = g_strdup(ipv6_gateway);
 	data->active = FALSE;
 	data->element = NULL;
 	data->vpn_ip = NULL;
@@ -162,6 +172,8 @@ static void set_default_gateway(struct gateway_data *data)
 		goto done;
 	}
 
+	connman_inet_set_ipv6_gateway_address(element->index,
+						data->ipv6_gateway);
 	if (connman_inet_set_gateway_address(element->index,
 					data->ipv4_gateway) < 0)
 		return;
@@ -249,7 +261,7 @@ static struct gateway_data *find_active_gateway(void)
 static int connection_probe(struct connman_element *element)
 {
 	struct connman_service *service = NULL;
-	const char *gateway = NULL;
+	const char *gateway = NULL, *ipv6_gateway = NULL;
 	const char *vpn_ip = NULL;
 	struct gateway_data *active_gateway = NULL;
 	struct gateway_data *new_gateway = NULL;
@@ -265,11 +277,13 @@ static int connection_probe(struct connman_element *element)
 
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV6_GATEWAY, &ipv6_gateway);
 
 	connman_element_get_value(element,
 				  CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
 
-	DBG("gateway %s", gateway);
+	DBG("gateway %s, ipv6_gateway %s", gateway, ipv6_gateway);
 
 	/*
 	 * If gateway is NULL, it's a point to point link and the default
@@ -283,12 +297,14 @@ static int connection_probe(struct connman_element *element)
 	connman_element_set_enabled(element, TRUE);
 
 	active_gateway = find_active_gateway();
-	new_gateway = add_gateway(element->index, gateway);
+	new_gateway = add_gateway(element->index, gateway, ipv6_gateway);
 	if (new_gateway == NULL)
 		return 0;
 
 	service = __connman_element_get_service(element);
 
+	connman_inet_add_ipv6_host_route(element->index,
+					new_gateway->ipv6_gateway, NULL);
 	connman_inet_add_host_route(element->index,
 					new_gateway->ipv4_gateway, NULL);
 	__connman_service_nameserver_add_routes(service,

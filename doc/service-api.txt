@@ -359,6 +359,42 @@ Properties	string State [readonly]
 			until the new configuration has been successfully
 			installed.
 
+		dict IPv6 [readonly]
+
+			string Method [readonly]
+
+				Possible values are "dhcp", "manual"
+				and "off".
+
+				The value "fixed" indicates an IP address
+				that can not be modified. For example
+				cellular networks return fixed information.
+
+				"dhcp" is not supported currently.
+
+			string Address [readonly]
+
+				The current configured IPv6 address.
+
+			uint8 PrefixLength [readonly]
+
+				The prefix length of the IPv6 address.
+
+			string Gateway [readonly]
+
+				The current configured IPv6 gateway.
+
+		dict IPv6.Configuration [readwrite]
+
+			Same values as IPv6 property. The IPv6 represents
+			the actual system configuration while this allows
+			user configuration.
+
+			Changing these settings will cause a state change
+			of the service. The service will become unavailable
+			until the new configuration has been successfully
+			installed.
+
 		dict Proxy [readonly]
 
 			string Method [readonly]

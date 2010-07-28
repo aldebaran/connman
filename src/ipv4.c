@@ -164,6 +164,8 @@ static char *index2name(int index)
 
 static int ipv4_probe(struct connman_element *element)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
 	struct connman_element *connection;
 	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
@@ -202,12 +204,10 @@ static int ipv4_probe(struct connman_element *element)
 
 	set_ipv4(element, &ipv4);
 
-	if (nameserver != NULL) {
-		struct connman_service *service;
+	service = __connman_element_get_service(element);
 
-		service = __connman_element_get_service(element);
+	if (nameserver != NULL)
 		__connman_service_append_nameserver(service, nameserver);
-	}
 
 	connman_timeserver_append(timeserver);
 
@@ -216,6 +216,11 @@ static int ipv4_probe(struct connman_element *element)
 	connection->type    = CONNMAN_ELEMENT_TYPE_CONNECTION;
 	connection->index   = element->index;
 	connection->devname = index2name(element->index);
+
+	ipconfig = __connman_service_get_ipconfig(service);
+	if (ipconfig != NULL)
+		__connman_ipconfig_set_element_ipv6_gateway(
+						ipconfig, connection);
 
 	if (connman_element_register(connection, element) < 0)
 		connman_element_unref(connection);

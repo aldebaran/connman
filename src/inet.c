@@ -508,6 +508,47 @@ done:
 	return device;
 }
 
+struct in6_ifreq {
+	struct in6_addr ifr6_addr;
+	__u32 ifr6_prefixlen;
+	unsigned int ifr6_ifindex;
+};
+
+int connman_inet_set_ipv6_address(int index,
+		struct connman_ipaddress *ipaddress)
+{
+	int sk, err;
+	struct in6_ifreq ifr6;
+
+	DBG("index %d ipaddress->local %s", index, ipaddress->local);
+
+	if (ipaddress->local == NULL)
+		return 0;
+
+	sk = socket(PF_INET6, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	memset(&ifr6, 0, sizeof(ifr6));
+
+	err = inet_pton(AF_INET6, ipaddress->local, &ifr6.ifr6_addr);
+	if (err < 0)
+		goto out;
+
+	ifr6.ifr6_ifindex = index;
+	ifr6.ifr6_prefixlen = ipaddress->prefixlen;
+
+	err = ioctl(sk, SIOCSIFADDR, &ifr6);
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Set IPv6 address error");
+
+	return err;
+}
+
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 {
 	struct ifreq ifr;
@@ -574,8 +615,42 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 	return 0;
 }
 
+int connman_inet_clear_ipv6_address(int index, const char *address,
+							int prefix_len)
+{
+	struct in6_ifreq ifr6;
+	int sk, err;
+
+	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
+
+	memset(&ifr6, 0, sizeof(ifr6));
+
+	err = inet_pton(AF_INET6, address, &ifr6.ifr6_addr);
+	if (err < 0)
+		goto out;
+
+	ifr6.ifr6_ifindex = index;
+	ifr6.ifr6_prefixlen = prefix_len;
+
+	sk = socket(PF_INET6, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(sk, SIOCDIFADDR, &ifr6);
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Clear IPv6 address error");
+
+	return err;
+}
+
 int connman_inet_clear_address(int index)
 {
+
+
 	struct ifreq ifr;
 	struct sockaddr_in addr;
 	int sk, err;
@@ -705,6 +780,160 @@ int connman_inet_del_host_route(int index, const char *host)
 							strerror(errno));
 
 	close(sk);
+
+	return err;
+}
+
+int connman_inet_del_ipv6_host_route(int index, const char *host)
+{
+	struct in6_rtmsg rt;
+	int sk, err;
+
+	DBG("index %d host %s", index, host);
+
+	if (host == NULL)
+		return -EINVAL;
+
+	memset(&rt, 0, sizeof(rt));
+
+	rt.rtmsg_dst_len = 128;
+
+	err = inet_pton(AF_INET6, host, &rt.rtmsg_dst);
+	if (err < 0)
+		goto out;
+
+	rt.rtmsg_flags = RTF_UP | RTF_HOST;
+
+	rt.rtmsg_metric = 1;
+	rt.rtmsg_ifindex = index;
+
+	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(sk, SIOCDELRT, &rt);
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Del IPv6 host route error");
+
+	return err;
+}
+
+int connman_inet_add_ipv6_host_route(int index, const char *host,
+						const char *gateway)
+{
+	struct in6_rtmsg rt;
+	int sk, err;
+
+	DBG("index %d host %s gateway %s", index, host, gateway);
+
+	if (host == NULL)
+		return -EINVAL;
+
+	memset(&rt, 0, sizeof(rt));
+
+	rt.rtmsg_dst_len = 128;
+
+	err = inet_pton(AF_INET6, host, &rt.rtmsg_dst);
+	if (err < 0)
+		goto out;
+
+	rt.rtmsg_flags = RTF_UP | RTF_HOST;
+
+	if (gateway != NULL) {
+		rt.rtmsg_flags |= RTF_GATEWAY;
+		inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway);
+	}
+
+	rt.rtmsg_metric = 1;
+	rt.rtmsg_ifindex = index;
+
+	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Set IPv6 host route error");
+
+	return err;
+}
+
+int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
+{
+	struct in6_rtmsg rt;
+	int sk, err;
+
+	DBG("index %d, gateway %s", index, gateway);
+
+	if (gateway == NULL)
+		return -EINVAL;
+
+	memset(&rt, 0, sizeof(rt));
+
+	err = inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway);
+	if (err < 0)
+		goto out;
+
+	rt.rtmsg_flags = RTF_UP | RTF_GATEWAY;
+	rt.rtmsg_metric = 1;
+	rt.rtmsg_dst_len = 0;
+	rt.rtmsg_ifindex = index;
+
+	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(sk, SIOCADDRT, &rt);
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Set default IPv6 gateway error");
+
+	return err;
+}
+
+int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
+{
+	struct in6_rtmsg rt;
+	int sk, err;
+
+	DBG("index %d, gateway %s", index, gateway);
+
+	if (gateway == NULL)
+		return -EINVAL;
+
+	memset(&rt, 0, sizeof(rt));
+
+	err = inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway);
+	if (err < 0)
+		goto out;
+
+	rt.rtmsg_flags = RTF_UP | RTF_GATEWAY;
+	rt.rtmsg_metric = 1;
+	rt.rtmsg_dst_len = 0;
+	rt.rtmsg_ifindex = index;
+
+	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	err = ioctl(sk, SIOCDELRT, &rt);
+	close(sk);
+out:
+	if (err < 0)
+		connman_error("Clear default IPv6 gateway error");
 
 	return err;
 }

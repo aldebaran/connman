@@ -236,14 +236,23 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
-int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *value);
+void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter);
+int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
+		enum connman_ipconfig_type type, DBusMessageIter *array);
 void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 enum connman_ipconfig_method __connman_ipconfig_get_method(
 				struct connman_ipconfig *ipconfig);
+
+void __connman_ipconfig_set_element_ipv6_gateway(
+			struct connman_ipconfig *ipconfig,
+				struct connman_element *element);
+
 int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 					struct connman_element *parent);
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);

@@ -784,6 +784,13 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		*((char **) value) = element->ipv4.pac;
 		break;
+	case CONNMAN_PROPERTY_ID_IPV6_GATEWAY:
+		if (element->ipv6.gateway == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->ipv6.gateway;
+		break;
+
 	default:
 		return -EINVAL;
 	}

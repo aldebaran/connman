@@ -51,6 +51,18 @@ int connman_inet_clear_gateway_address(int index, const char *gateway);
 int connman_inet_set_gateway_interface(int index);
 int connman_inet_clear_gateway_interface(int index);
 connman_bool_t connman_inet_compare_subnet(int index, const char *host);
+int connman_inet_set_ipv6_address(int index,
+		struct connman_ipaddress *ipaddress);
+int connman_inet_clear_ipv6_address(int index,
+		const char *address, int prefix_len);
+int connman_inet_add_ipv6_host_route(int index, const char *host,
+						const char *gateway);
+int connman_inet_del_ipv6_host_route(int index, const char *host);
+int connman_inet_set_ipv6_gateway_address(int index, const char *gateway);
+int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway);
+
+void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
+		const char *address, const char *netmask, const char *gateway);
 
 #ifdef __cplusplus
 }
