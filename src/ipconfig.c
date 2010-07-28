@@ -82,7 +82,7 @@ struct connman_ipdevice {
 static GHashTable *ipdevice_hash = NULL;
 static GList *ipconfig_list = NULL;
 
-struct connman_ipaddress *connman_ipaddress_alloc(void)
+struct connman_ipaddress *connman_ipaddress_alloc(int family)
 {
 	struct connman_ipaddress *ipaddress;
 
@@ -90,6 +90,7 @@ struct connman_ipaddress *connman_ipaddress_alloc(void)
 	if (ipaddress == NULL)
 		return NULL;
 
+	ipaddress->family = family;
 	ipaddress->prefixlen = 0;
 	ipaddress->local = NULL;
 	ipaddress->peer = NULL;
@@ -210,6 +211,7 @@ void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 	if (ipaddress == NULL || source == NULL)
 		return;
 
+	ipaddress->family = source->family;
 	ipaddress->prefixlen = source->prefixlen;
 
 	g_free(ipaddress->local);
@@ -596,7 +598,7 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 	if (ipdevice == NULL)
 		return;
 
-	ipaddress = connman_ipaddress_alloc();
+	ipaddress = connman_ipaddress_alloc(family);
 	if (ipaddress == NULL)
 		return;
 
@@ -836,13 +838,13 @@ static struct connman_ipconfig *create_ipv6config(int index)
 	ipv6config->index = index;
 	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
 
-	ipv6config->address = connman_ipaddress_alloc();
+	ipv6config->address = connman_ipaddress_alloc(AF_INET6);
 	if (ipv6config->address == NULL) {
 		g_free(ipv6config);
 		return NULL;
 	}
 
-	ipv6config->system = connman_ipaddress_alloc();
+	ipv6config->system = connman_ipaddress_alloc(AF_INET6);
 
 	ipv6config->ipv6 = NULL;
 
@@ -873,13 +875,13 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 	ipconfig->index = index;
 	ipconfig->type = CONNMAN_IPCONFIG_TYPE_IPV4;
 
-	ipconfig->address = connman_ipaddress_alloc();
+	ipconfig->address = connman_ipaddress_alloc(AF_INET);
 	if (ipconfig->address == NULL) {
 		g_free(ipconfig);
 		return NULL;
 	}
 
-	ipconfig->system = connman_ipaddress_alloc();
+	ipconfig->system = connman_ipaddress_alloc(AF_INET);
 
 	ipconfig->ipv6 = create_ipv6config(index);
 

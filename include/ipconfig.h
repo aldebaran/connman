@@ -33,6 +33,7 @@ extern "C" {
  */
 
 struct connman_ipaddress {
+	int family;
 	unsigned char prefixlen;
 	char *local;
 	char *peer;
@@ -40,7 +41,7 @@ struct connman_ipaddress {
 	char *gateway;
 };
 
-struct connman_ipaddress *connman_ipaddress_alloc(void);
+struct connman_ipaddress *connman_ipaddress_alloc(int family);
 void connman_ipaddress_free(struct connman_ipaddress *ipaddress);
 void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
 		const char *address, const char *netmask, const char *gateway);
