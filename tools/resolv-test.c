@@ -44,6 +44,30 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static const char *status2str(GResolvResultStatus status)
+{
+	switch (status) {
+	case G_RESOLV_RESULT_STATUS_SUCCESS:
+		return "success";
+	case G_RESOLV_RESULT_STATUS_ERROR:
+		return "error";
+	case G_RESOLV_RESULT_STATUS_NO_RESPONSE:
+		return "no response";
+	case G_RESOLV_RESULT_STATUS_FORMAT_ERROR:
+		return "format error";
+	case G_RESOLV_RESULT_STATUS_SERVER_FAILURE:
+		return "server failure";
+	case G_RESOLV_RESULT_STATUS_NAME_ERROR:
+		return "name error";
+	case G_RESOLV_RESULT_STATUS_NOT_IMPLEMENTED:
+		return "not implemented";
+	case G_RESOLV_RESULT_STATUS_REFUSED:
+		return "refused";
+	}
+
+	return NULL;
+}
+
 static void resolv_result(GResolvResultStatus status,
 					char **results, gpointer user_data)
 {
@@ -54,7 +78,7 @@ static void resolv_result(GResolvResultStatus status,
 
 	g_print("elapse: %f seconds\n", elapsed);
 
-	g_print("status: %d\n", status);
+	g_print("status: %s\n", status2str(status));
 
 	if (results != NULL) {
 		for (i = 0; results[i]; i++)
