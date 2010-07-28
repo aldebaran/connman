@@ -59,6 +59,8 @@ void g_resolv_flush_nameservers(GResolv *resolv);
 guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 				GResolvResultFunc func, gpointer user_data);
 
+gboolean g_resolv_cancel_lookup(GResolv *resolv, guint tag);
+
 #ifdef __cplusplus
 }
 #endif

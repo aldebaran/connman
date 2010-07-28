@@ -161,7 +161,21 @@ static int send_query(GResolv *resolv, const unsigned char *buf, int len)
 	return 0;
 }
 
-static gint compare_msgid(gconstpointer a, gconstpointer b)
+static gint compare_query_id(gconstpointer a, gconstpointer b)
+{
+	const struct resolv_query *query = a;
+	guint id = GPOINTER_TO_UINT(b);
+
+	if (query->id < id)
+		return -1;
+
+	if (query->id > id)
+		return 1;
+
+	return 0;
+}
+
+static gint compare_query_msgid(gconstpointer a, gconstpointer b)
 {
 	const struct resolv_query *query = a;
 	uint16_t msgid = GPOINTER_TO_UINT(b);
@@ -221,7 +235,7 @@ static void parse_response(struct resolv_nameserver *nameserver,
 	results[n] = NULL;
 
 	list = g_queue_find_custom(resolv->query_queue,
-			GUINT_TO_POINTER(ns_msg_id(msg)), compare_msgid);
+			GUINT_TO_POINTER(ns_msg_id(msg)), compare_query_msgid);
 
 	if (list != NULL) {
 		struct resolv_query *query = list->data;
@@ -438,4 +452,20 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
 
 	return 0;
+}
+
+gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
+{
+	GList *list;
+
+	list = g_queue_find_custom(resolv->query_queue,
+				GUINT_TO_POINTER(id), compare_query_id);
+
+	if (list == NULL)
+		return FALSE;
+
+	destroy_query(list->data);
+	g_queue_remove(resolv->query_queue, list->data);
+
+	return TRUE;
 }
