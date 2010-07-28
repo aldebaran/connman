@@ -193,6 +193,7 @@ static void parse_response(struct resolv_nameserver *nameserver,
 					const unsigned char *buf, int len)
 {
 	GResolv *resolv = nameserver->resolv;
+	GResolvResultStatus status;
 	GList *list;
 	char **results;
 	ns_msg msg;
@@ -208,6 +209,11 @@ static void parse_response(struct resolv_nameserver *nameserver,
 
 	debug(resolv, "msg id: 0x%04x rcode: %d count: %d",
 					ns_msg_id(msg), rcode, count);
+
+	if (rcode == 0)
+		status = G_RESOLV_STATUS_SUCCESS;
+	else
+		status = G_RESOLV_STATUS_ERROR;
 
 	results = g_try_new(char *, count + 1);
 	if (results == NULL)
@@ -241,8 +247,8 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		struct resolv_query *query = list->data;
 
 		if (query->result_func != NULL)
-			query->result_func(G_RESOLV_STATUS_SUCCESS,
-						results, query->result_data);
+			query->result_func(status, results,
+						query->result_data);
 
 		destroy_query(query);
 		g_queue_remove(resolv->query_queue, query);
