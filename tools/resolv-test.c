@@ -24,6 +24,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 
@@ -56,11 +57,35 @@ static void resolv_result(GResolvResultStatus status,
 	g_main_loop_quit(main_loop);
 }
 
+static gboolean option_debug = FALSE;
+
+static GOptionEntry options[] = {
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
+					"Enable debug output" },
+	{ NULL },
+};
+
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
+	GError *error = NULL;
 	struct sigaction sa;
 	GResolv *resolv;
 	int index = 0;
+
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			g_error_free(error);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(1);
+	}
+
+	g_option_context_free(context);
 
 	if (argc < 2) {
 		printf("missing argument\n");
@@ -73,7 +98,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	g_resolv_set_debug(resolv, resolv_debug, "RESOLV");
+	if (option_debug == TRUE)
+		g_resolv_set_debug(resolv, resolv_debug, "RESOLV");
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
