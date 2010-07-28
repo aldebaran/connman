@@ -648,7 +648,7 @@ static void process_newroute(unsigned char family, unsigned char scope,
 	inet_ntop(family, &dst, dststr, sizeof(dststr));
 	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	__connman_ipconfig_newroute(index, scope, dststr, gatewaystr);
+	__connman_ipconfig_newroute(index, family, scope, dststr, gatewaystr);
 
 	/* skip host specific routes */
 	if (scope != RT_SCOPE_UNIVERSE &&
@@ -682,7 +682,7 @@ static void process_delroute(unsigned char family, unsigned char scope,
 	inet_ntop(family, &dst, dststr, sizeof(dststr));
 	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	__connman_ipconfig_delroute(index, scope, dststr, gatewaystr);
+	__connman_ipconfig_delroute(index, family, scope, dststr, gatewaystr);
 
 	/* skip host specific routes */
 	if (scope != RT_SCOPE_UNIVERSE &&

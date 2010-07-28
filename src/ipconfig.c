@@ -687,7 +687,7 @@ void __connman_ipconfig_deladdr(int index, int family, const char *label,
 	}
 }
 
-void __connman_ipconfig_newroute(int index, unsigned char scope,
+void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 					const char *dst, const char *gateway)
 {
 	struct connman_ipdevice *ipdevice;
@@ -723,7 +723,7 @@ void __connman_ipconfig_newroute(int index, unsigned char scope,
 						scope, scope2str(scope));
 }
 
-void __connman_ipconfig_delroute(int index, unsigned char scope,
+void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 					const char *dst, const char *gateway)
 {
 	struct connman_ipdevice *ipdevice;
