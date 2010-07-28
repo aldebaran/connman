@@ -451,7 +451,7 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 
 	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
 
-	return 0;
+	return query->id;
 }
 
 gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
