@@ -112,19 +112,6 @@ plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if RESOLVCONF
-if RESOLVCONF_BUILTIN
-builtin_modules += resolvconf
-builtin_sources += plugins/resolvconf.c
-builtin_cflags += -DRESOLVCONF=\"@RESOLVCONF@\"
-else
-plugin_LTLIBRARIES += plugins/resolvconf.la
-plugin_objects += $(plugins_resolvconf_la_OBJECTS)
-plugins_resolvconf_la_CFLAGS = $(plugin_cflags) -DRESOLVCONF=\"@RESOLVCONF@\"
-plugins_resolvconf_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
 builtin_modules += openconnect

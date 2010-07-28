@@ -132,23 +132,6 @@ fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
 AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
 
-AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
-	[specify location of resolvconf binary]), [path_resolvconf=${withval}])
-
-AC_ARG_ENABLE(resolvconf,
-	AC_HELP_STRING([--enable-resolvconf], [enable resolvconf support]),
-			[enable_resolvconf=${enableval}], [enable_resolvconf="no"])
-if (test "${enable_resolvconf}" != "no"); then
-	if (test -z "${path_resolvconf}"); then
-		AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
-	else
-		RESOLVCONF="${path_resolvconf}"
-		AC_SUBST(RESOLVCONF)
-	fi
-fi
-AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" != "no")
-AM_CONDITIONAL(RESOLVCONF_BUILTIN, test "${enable_resolvconf}" = "builtin")
-
 AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
 

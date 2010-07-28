@@ -19,7 +19,7 @@ Various plugins can be enabled for networking support:
 
 Also plugins with additional features are available:
 	- DHCP plugins (uDHCP and dhclient)
-	- Resolver plugins (resolvconf and DNS proxy)
+	- Resolver plugin (DNS proxy)
 	- Loopback setup
 	- PolicyKit support
 
@@ -93,20 +93,6 @@ For a working system, certain configuration options need to be enabled:
 
 		It is important that this is not used together with other
 		DNS proxy solution like dnsmasq.
-
-	--enable-resolvconf
-
-		Enable resolvconf support for Debian/Ubuntu based systems
-
-		The resolvconf package from Debian can be used to handle
-		configuration of the /etc/resolv.conf file.
-
-		It is safe to select this option even when resolvconf is not
-		installed. A missing resolvconf will be detected and in that
-		case it falls back to modifying /etc/resolv.conf directly.
-
-		The location of the resolvconf binary is auto-detected, but it
-		can be overwritten via --with-resolvconf=<path-to-binary>.
 
 	--enable-loopback
 
