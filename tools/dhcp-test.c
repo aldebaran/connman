@@ -98,7 +98,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	print_elapsed();
 
-	printf("Leave available\n");
+	printf("Lease available\n");
 
 	address = g_dhcp_client_get_address(dhcp_client);
 	printf("address %s\n", address);
