@@ -1606,9 +1606,12 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 
 	key = g_strdup_printf("%smethod", prefix);
 	method = g_key_file_get_string(keyfile, identifier, key, NULL);
-	if (method == NULL)
-		ipconfig->method = CONNMAN_IPCONFIG_METHOD_DHCP;
-	else
+	if (method == NULL) {
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			ipconfig->method = CONNMAN_IPCONFIG_METHOD_DHCP;
+		else
+			ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
+	} else
 		ipconfig->method = __connman_ipconfig_string2method(method);
 	g_free(key);
 
