@@ -91,7 +91,7 @@ GList *g_dhcp_client_get_option(GDHCPClient *client,
 int g_dhcp_client_get_index(GDHCPClient *client);
 
 void g_dhcp_client_set_debug(GDHCPClient *client,
-					GDHCPDebugFunc func, gpointer data);
+				GDHCPDebugFunc func, gpointer user_data);
 
 #ifdef __cplusplus
 }

@@ -101,6 +101,22 @@ struct _GDHCPClient {
 
 static GTimer *timer = NULL;
 
+static inline void debug(GDHCPClient *client, const char *format, ...)
+{
+	char str[256];
+	va_list ap;
+
+	if (client->debug_func == NULL)
+		return;
+
+	va_start(ap, format);
+
+	if (vsnprintf(str, sizeof(str), format, ap) > 0)
+		client->debug_func(str, client->debug_data);
+
+	va_end(ap);
+}
+
 /* Initialize the packet with the proper defaults */
 static void init_packet(GDHCPClient *dhcp_client,
 		struct dhcp_packet *packet, char type)
@@ -151,6 +167,8 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 {
 	struct dhcp_packet packet;
 
+	debug(dhcp_client, "sending DHCP discover request");
+
 	init_packet(dhcp_client, &packet, DHCPDISCOVER);
 
 	packet.xid = dhcp_client->xid;
@@ -176,6 +194,8 @@ static int send_select(GDHCPClient *dhcp_client)
 	struct dhcp_packet packet;
 	struct in_addr addr;
 
+	debug(dhcp_client, "sending DHCP select request");
+
 	init_packet(dhcp_client, &packet, DHCPREQUEST);
 
 	packet.xid = dhcp_client->xid;
@@ -199,6 +219,8 @@ static int send_renew(GDHCPClient *dhcp_client)
 {
 	struct dhcp_packet packet;
 
+	debug(dhcp_client, "sending DHCP renew request");
+
 	init_packet(dhcp_client , &packet, DHCPREQUEST);
 	packet.xid = dhcp_client->xid;
 	packet.ciaddr = dhcp_client->requested_ip;
@@ -215,6 +237,8 @@ static int send_renew(GDHCPClient *dhcp_client)
 static int send_rebound(GDHCPClient *dhcp_client)
 {
 	struct dhcp_packet packet;
+
+	debug(dhcp_client, "sending DHCP rebound request");
 
 	init_packet(dhcp_client , &packet, DHCPREQUEST);
 	packet.xid = dhcp_client->xid;
@@ -233,6 +257,8 @@ static int send_release(GDHCPClient *dhcp_client,
 			uint32_t server, uint32_t ciaddr)
 {
 	struct dhcp_packet packet;
+
+	debug(dhcp_client, "sending DHCP release request");
 
 	init_packet(dhcp_client, &packet, DHCPRELEASE);
 	packet.xid = rand();
@@ -1237,11 +1263,11 @@ void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 }
 
 void g_dhcp_client_set_debug(GDHCPClient *dhcp_client,
-				GDHCPDebugFunc func, gpointer data)
+				GDHCPDebugFunc func, gpointer user_data)
 {
 	if (dhcp_client == NULL)
 		return;
 
 	dhcp_client->debug_func = func;
-	dhcp_client->debug_data = data;
+	dhcp_client->debug_data = user_data;
 }
