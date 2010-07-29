@@ -88,6 +88,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	}
 	g_free(nameservers);
 
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
+	if (option != NULL)
+		connman_dhcp_set_value(dhcp, "Domainname", (char *) option->data);
+
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
 	if (option != NULL)
 		connman_dhcp_set_value(dhcp, "Gateway", (char *) option->data);
@@ -122,6 +126,7 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_HOST_NAME);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_SUBNET);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_DNS_SERVER);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_DOMAIN_NAME);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_NTP_SERVER);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_ROUTER);
 
