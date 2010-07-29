@@ -977,6 +977,9 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		/* No message type option, ignore pakcage */
 		return TRUE;
 
+	debug(dhcp_client, "received DHCP packet (current state %d)",
+							dhcp_client->state);
+
 	switch (dhcp_client->state) {
 	case INIT_SELECTING:
 		if (*message_type != DHCPOFFER)
@@ -1038,6 +1041,9 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	default:
 		break;
 	}
+
+	debug(dhcp_client, "processed DHCP packet (new state %d)",
+							dhcp_client->state);
 
 	return TRUE;
 }
