@@ -124,7 +124,7 @@ if TOOLS
 noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dhcp-test \
 			tools/addr-test tools/tap-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test tools/portal-test \
-			tools/iptables-test tools/dhclient-test
+			tools/iptables-test tools/dhclient-test tools/wpad-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -135,6 +135,9 @@ tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_resolv_test_SOURCES = $(gresolv_sources) tools/resolv-test.c
 tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
+
+tools_wpad_test_SOURCES = $(gresolv_sources) tools/wpad-test.c
+tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
 tools_dhcp_test_LDADD = @GLIB_LIBS@

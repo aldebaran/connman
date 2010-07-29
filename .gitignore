@@ -43,6 +43,7 @@ tools/wifi-scan
 tools/dhcp-test
 tools/addr-test
 tools/tap-test
+tools/wpad-test
 tools/resolv-test
 tools/polkit-test
 tools/portal-test
