@@ -568,6 +568,9 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 		struct in6_addr ipv6_address, ipv6_local;
 
 		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
+		if (IN6_IS_ADDR_LINKLOCAL(&ipv6_address))
+			return;
+
 		src = &ipv6_address;
 	}
 
@@ -597,6 +600,9 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 		struct in6_addr ipv6_address, ipv6_local;
 
 		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
+		if (IN6_IS_ADDR_LINKLOCAL(&ipv6_address))
+			return;
+
 		src = &ipv6_address;
 	}
 
