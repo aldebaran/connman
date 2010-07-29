@@ -26,6 +26,7 @@
 #include <stdio.h>
 #include <errno.h>
 #include <string.h>
+#include <stdlib.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
@@ -34,6 +35,11 @@
 #include <connman/log.h>
 
 #include <gdhcp/gdhcp.h>
+
+static void dhcp_debug(const char *str, void *data)
+{
+	connman_info("%s: %s\n", (const char *) data, str);
+}
 
 static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
@@ -106,6 +112,9 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	dhcp_client = g_dhcp_client_new(G_DHCP_IPV4, index, &error);
 	if (error != G_DHCP_CLIENT_ERROR_NONE)
 		return -EINVAL;
+
+	if (getenv("CONNMAN_DHCP_DEBUG"))
+		g_dhcp_client_set_debug(dhcp_client, dhcp_debug, "DHCP");
 
 	g_dhcp_client_set_send(dhcp_client, G_DHCP_HOST_NAME,
 				connman_utsname_get_hostname());
