@@ -391,7 +391,7 @@ int __connman_profile_init();
 void __connman_profile_cleanup(void);
 
 connman_bool_t __connman_profile_get_offlinemode(void);
-int __connman_profile_set_offlinemode(connman_bool_t offlinemode);
+int __connman_profile_set_offlinemode(connman_bool_t offlinemode, connman_bool_t all_devices);
 int __connman_profile_save_default(void);
 
 void __connman_profile_list(DBusMessageIter *iter, void *user_data);

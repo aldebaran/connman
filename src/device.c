@@ -1060,6 +1060,9 @@ int __connman_device_enable_persistent(struct connman_device *device)
 
 	device->powered_persistent = TRUE;
 
+	if (__connman_profile_get_offlinemode() == TRUE)
+		__connman_profile_set_offlinemode(FALSE, FALSE);
+
 	__connman_storage_save_device(device);
 
 	return __connman_device_enable(device);

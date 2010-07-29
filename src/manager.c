@@ -127,7 +127,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &offlinemode);
 
-		__connman_profile_set_offlinemode(offlinemode);
+		__connman_profile_set_offlinemode(offlinemode, TRUE);
 
 		__connman_profile_save_default();
 	} else if (g_str_equal(name, "Tethering") == TRUE) {
