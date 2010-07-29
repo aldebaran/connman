@@ -70,7 +70,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
 	if (option != NULL)
-		connman_dhcp_set_value(dhcp, "Netmask", (char *) option->data);
+		connman_dhcp_set_value(dhcp, "Netmask", option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
 	for (list = option; list; list = list->next)
@@ -90,15 +90,15 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
 	if (option != NULL)
-		connman_dhcp_set_value(dhcp, "Domainname", (char *) option->data);
+		connman_dhcp_set_value(dhcp, "Domainname", option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
 	if (option != NULL)
-		connman_dhcp_set_value(dhcp, "Gateway", (char *) option->data);
+		connman_dhcp_set_value(dhcp, "Gateway", option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
 	if (option != NULL)
-		connman_dhcp_set_value(dhcp, "Hostname", (char *) option->data);
+		connman_dhcp_set_value(dhcp, "Hostname", option->data);
 
 	connman_dhcp_bound(dhcp);
 }
