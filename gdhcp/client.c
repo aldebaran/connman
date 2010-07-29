@@ -99,8 +99,6 @@ struct _GDHCPClient {
 	gpointer debug_data;
 };
 
-static GTimer *timer = NULL;
-
 static inline void debug(GDHCPClient *client, const char *format, ...)
 {
 	char str[256];
@@ -769,12 +767,6 @@ static void start_rebound(GDHCPClient *dhcp_client)
 static gboolean start_renew_timeout(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
-	gdouble elapse;
-	gulong microseconds;
-
-	elapse = g_timer_elapsed(timer, &microseconds);
-
-	g_timer_start(timer);
 
 	dhcp_client->state = RENEWING;
 
@@ -801,11 +793,7 @@ static void start_bound(GDHCPClient *dhcp_client)
 {
 	dhcp_client->state = BOUND;
 
-	if (timer == NULL)
-		timer = g_timer_new();
-
-	dhcp_client->timeout =
-			g_timeout_add_seconds_full(G_PRIORITY_HIGH,
+	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
 					dhcp_client->lease_seconds >> 1,
 					start_renew_timeout, dhcp_client,
 							NULL);
