@@ -113,6 +113,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	for (list = option_value; list; list = list->next)
 		printf("domain-name-servers %s\n", (char *) list->data);
 
+	option_value = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
+	for (list = option_value; list; list = list->next)
+		printf("domain-name %s\n", (char *) list->data);
+
 	option_value = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
 	for (list = option_value; list; list = list->next)
 		printf("routers %s\n", (char *) list->data);
@@ -149,6 +153,7 @@ int main(int argc, char *argv[])
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_HOST_NAME);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_SUBNET);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_DNS_SERVER);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_DOMAIN_NAME);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_NTP_SERVER);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_ROUTER);
 
