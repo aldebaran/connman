@@ -73,6 +73,7 @@ struct connman_ipdevice {
 	GSList *address_list;
 	char *ipv4_gateway;
 	char *ipv6_gateway;
+	char *pac;
 
 	struct connman_ipconfig *config;
 
@@ -302,6 +303,7 @@ static void free_ipdevice(gpointer data)
 	free_address_list(ipdevice);
 	g_free(ipdevice->ipv4_gateway);
 	g_free(ipdevice->ipv6_gateway);
+	g_free(ipdevice->pac);
 
 	g_free(ipdevice->address);
 	g_free(ipdevice->ifname);
@@ -1563,8 +1565,23 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter)
 {
+	struct connman_ipdevice *ipdevice;
 	const char *method = "direct";
 
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+                                        GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		goto done;
+
+	if (ipdevice->pac == NULL)
+		goto done;
+
+	method = "auto-config";
+
+	connman_dbus_dict_append_basic(iter, "URL",
+					DBUS_TYPE_STRING, &ipdevice->pac);
+
+done:
 	connman_dbus_dict_append_basic(iter, "Method",
 						DBUS_TYPE_STRING, &method);
 }
