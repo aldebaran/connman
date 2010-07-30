@@ -913,6 +913,12 @@ static void append_domain(DBusMessageIter *iter, void *user_data)
 
 	if (is_connected(service) == FALSE)
 		return;
+
+	if (service->domainname == NULL)
+		return;
+
+	dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->domainname);
 }
 
 static void append_domainconfig(DBusMessageIter *iter, void *user_data)
