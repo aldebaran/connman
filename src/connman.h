@@ -258,6 +258,9 @@ int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
 
+int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
+							const char *url);
+
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
 int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
@@ -481,6 +484,8 @@ void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname);
 const char *__connman_service_get_domainname(struct connman_service *service);
 const char *__connman_service_get_nameserver(struct connman_service *service);
+void __connman_service_set_proxy_autoconfig(struct connman_service *service,
+							const char *url);
 
 unsigned long __connman_service_stats_get_rx_packets(struct connman_service *service);
 unsigned long __connman_service_stats_get_tx_packets(struct connman_service *service);

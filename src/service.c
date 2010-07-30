@@ -996,6 +996,16 @@ static void domain_configuration_changed(struct connman_service *service)
 				DBUS_TYPE_STRING, append_domainconfig, service);
 }
 
+static void proxy_changed(struct connman_service *service)
+{
+	if (is_connected(service) == FALSE)
+		return;
+
+	connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE, "Proxy",
+							append_proxy, service);
+}
+
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
@@ -1173,6 +1183,19 @@ static void append_struct(gpointer value, gpointer user_data)
 void __connman_service_list_struct(DBusMessageIter *iter)
 {
 	g_sequence_foreach(service_list, append_struct, iter);
+}
+
+void __connman_service_set_proxy_autoconfig(struct connman_service *service,
+                                                        const char *url)
+{
+	if (service == NULL)
+		return;
+
+	if (__connman_ipconfig_set_proxy_autoconfig(service->ipconfig,
+								url) < 0)
+		return;
+
+	proxy_changed(service);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
