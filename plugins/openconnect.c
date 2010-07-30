@@ -382,6 +382,8 @@ static int oc_disconnect(struct connman_provider *provider)
 	data->watch = 0;
 	connman_task_stop(data->task);
 
+	connman_provider_unref(provider);
+
 	return 0;
 }
 
@@ -398,6 +400,8 @@ static int oc_remove(struct connman_provider *provider)
 		connman_rtnl_remove_watch(data->watch);
 	data->watch = 0;
 	connman_task_stop(data->task);
+
+	connman_provider_unref(provider);
 
 	g_usleep(G_USEC_PER_SEC);
 	kill_tun(data->if_name);
