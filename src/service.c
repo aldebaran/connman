@@ -429,6 +429,17 @@ void __connman_service_nameserver_del_routes(struct connman_service *service)
 	}
 }
 
+int __connman_service_get_index(struct connman_service *service)
+{
+	if (service == NULL)
+		return -1;
+
+	if (service->network == NULL)
+		return -1;
+
+	return connman_network_get_index(service->network);
+}
+
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname)
 {
