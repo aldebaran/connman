@@ -2305,6 +2305,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 		update_nameservers(service);
 		dns_changed(service);
 
+		__connman_wpad_start(service);
+
 		__connman_notifier_connect(service->type);
 
 		default_changed();
@@ -2312,6 +2314,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 		__connman_location_finish(service);
 
 		default_changed();
+
+		__connman_wpad_stop(service);
 
 		update_nameservers(service);
 		dns_changed(service);

@@ -293,6 +293,11 @@ char *__connman_udev_get_devtype(const char *ifname);
 void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
 connman_bool_t __connman_udev_get_blocked(int phyindex);
 
+int __connman_wpad_init(void);
+void __connman_wpad_cleanup(void);
+void __connman_wpad_start(struct connman_service *service);
+void __connman_wpad_stop(struct connman_service *service);
+
 #include <connman/technology.h>
 
 void __connman_technology_list(DBusMessageIter *iter, void *user_data);

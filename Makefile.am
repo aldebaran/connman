@@ -60,7 +60,8 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/location.c \
-			src/session.c src/tethering.c src/ondemand.c
+			src/session.c src/tethering.c src/ondemand.c \
+			src/wpad.c
 
 if UDEV
 src_connmand_SOURCES += src/udev.c
