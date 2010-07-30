@@ -109,7 +109,7 @@ static struct gateway_data *add_gateway(int index, const char *gateway,
 	struct gateway_data *data;
 	struct connman_service *service;
 
-	DBG("index %d gateway %s ipv6_gateway %s", index, gateway,
+	DBG("index %d ipv4 gateway %s ipv6 gateway %s", index, gateway,
 							ipv6_gateway);
 
 	if (strlen(gateway) == 0)
@@ -263,6 +263,7 @@ static int connection_probe(struct connman_element *element)
 	struct connman_service *service = NULL;
 	const char *gateway = NULL, *ipv6_gateway = NULL;
 	const char *vpn_ip = NULL;
+	const char *domainname = NULL;
 	struct gateway_data *active_gateway = NULL;
 	struct gateway_data *new_gateway = NULL;
 
@@ -281,9 +282,13 @@ static int connection_probe(struct connman_element *element)
 			CONNMAN_PROPERTY_ID_IPV6_GATEWAY, &ipv6_gateway);
 
 	connman_element_get_value(element,
-				  CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
+			CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
 
-	DBG("gateway %s, ipv6_gateway %s", gateway, ipv6_gateway);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_DOMAINNAME, &domainname);
+
+	DBG("ipv4 gateway %s ipv6 gateway %s domainname %s",
+				gateway, ipv6_gateway, domainname);
 
 	/*
 	 * If gateway is NULL, it's a point to point link and the default
@@ -309,6 +314,7 @@ static int connection_probe(struct connman_element *element)
 					new_gateway->ipv4_gateway, NULL);
 	__connman_service_nameserver_add_routes(service,
 						new_gateway->ipv4_gateway);
+	__connman_service_set_domainname(service, domainname);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
 

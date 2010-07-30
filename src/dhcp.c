@@ -126,10 +126,12 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 	} else if (g_strcmp0(key, "Domainname") == 0) {
 		g_free(dhcp->element->domainname);
 		dhcp->element->domainname = g_strdup(value);
+
 		__connman_utsname_set_domainname(value);
 	} else if (g_strcmp0(key, "Hostname") == 0) {
 		g_free(dhcp->element->hostname);
 		dhcp->element->hostname = g_strdup(value);
+
 		__connman_utsname_set_hostname(value);
 	} else if (g_strcmp0(key, "Timeserver") == 0) {
 		g_free(dhcp->element->ipv4.timeserver);
