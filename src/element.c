@@ -740,6 +740,18 @@ int connman_element_get_value(struct connman_element *element,
 		return -EINVAL;
 
 	switch (id) {
+	case CONNMAN_PROPERTY_ID_HOSTNAME:
+		if (element->hostname == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->hostname;
+		break;
+	case CONNMAN_PROPERTY_ID_DOMAINNAME:
+		if (element->domainname == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->domainname;
+		break;
 	case CONNMAN_PROPERTY_ID_IPV4_METHOD:
 		if (element->ipv4.method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 			return connman_element_get_value(element->parent,
