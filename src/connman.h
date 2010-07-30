@@ -480,6 +480,7 @@ int __connman_service_get_index(struct connman_service *service);
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname);
 const char *__connman_service_get_domainname(struct connman_service *service);
+const char *__connman_service_get_nameserver(struct connman_service *service);
 
 unsigned long __connman_service_stats_get_rx_packets(struct connman_service *service);
 unsigned long __connman_service_stats_get_tx_packets(struct connman_service *service);

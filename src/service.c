@@ -458,6 +458,14 @@ const char *__connman_service_get_domainname(struct connman_service *service)
 	return service->domainname;
 }
 
+const char *__connman_service_get_nameserver(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->nameserver;
+}
+
 static void __connman_service_stats_start(struct connman_service *service)
 {
 	DBG("service %p", service);
