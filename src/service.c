@@ -429,43 +429,6 @@ void __connman_service_nameserver_del_routes(struct connman_service *service)
 	}
 }
 
-int __connman_service_get_index(struct connman_service *service)
-{
-	if (service == NULL)
-		return -1;
-
-	if (service->network == NULL)
-		return -1;
-
-	return connman_network_get_index(service->network);
-}
-
-void __connman_service_set_domainname(struct connman_service *service,
-						const char *domainname)
-{
-	if (service == NULL)
-		return;
-
-	g_free(service->domainname);
-	service->domainname = g_strdup(domainname);
-}
-
-const char *__connman_service_get_domainname(struct connman_service *service)
-{
-	if (service == NULL)
-		return NULL;
-
-	return service->domainname;
-}
-
-const char *__connman_service_get_nameserver(struct connman_service *service)
-{
-	if (service == NULL)
-		return NULL;
-
-	return service->nameserver;
-}
-
 static void __connman_service_stats_start(struct connman_service *service)
 {
 	DBG("service %p", service);
@@ -911,7 +874,7 @@ static void append_domain(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	if (is_connected(service) == FALSE)
+	if (is_connected(service) == FALSE && is_connecting(service) == FALSE)
 		return;
 
 	if (service->domainname == NULL)
@@ -976,9 +939,6 @@ static void ipv6_configuration_changed(struct connman_service *service)
 
 static void dns_changed(struct connman_service *service)
 {
-	if (is_connected(service) == FALSE)
-		return;
-
 	connman_dbus_property_changed_array(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Nameservers",
 					DBUS_TYPE_STRING, append_dns, service);
@@ -994,6 +954,13 @@ static void dns_configuration_changed(struct connman_service *service)
 	dns_changed(service);
 }
 
+static void domain_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_array(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Domains",
+				DBUS_TYPE_STRING, append_domain, service);
+}
+
 static void domain_configuration_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_array(service->path,
@@ -1004,9 +971,6 @@ static void domain_configuration_changed(struct connman_service *service)
 
 static void proxy_changed(struct connman_service *service)
 {
-	if (is_connected(service) == FALSE)
-		return;
-
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Proxy",
 							append_proxy, service);
@@ -1189,6 +1153,45 @@ static void append_struct(gpointer value, gpointer user_data)
 void __connman_service_list_struct(DBusMessageIter *iter)
 {
 	g_sequence_foreach(service_list, append_struct, iter);
+}
+
+int __connman_service_get_index(struct connman_service *service)
+{
+	if (service == NULL)
+		return -1;
+
+	if (service->network == NULL)
+		return -1;
+
+	return connman_network_get_index(service->network);
+}
+
+void __connman_service_set_domainname(struct connman_service *service,
+						const char *domainname)
+{
+	if (service == NULL)
+		return;
+
+	g_free(service->domainname);
+	service->domainname = g_strdup(domainname);
+
+	domain_changed(service);
+}
+
+const char *__connman_service_get_domainname(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->domainname;
+}
+
+const char *__connman_service_get_nameserver(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->nameserver;
 }
 
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
