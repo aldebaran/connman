@@ -98,6 +98,9 @@ struct connman_element {
 
 	GHashTable *properties;
 
+	gchar *hostname;
+	gchar *domainname;
+
 	struct {
 		enum connman_ipconfig_method method;
 		gchar *address;

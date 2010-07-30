@@ -642,6 +642,8 @@ void connman_element_unref(struct connman_element *element)
 			element->destruct(element);
 		free_children(element);
 		free_properties(element);
+		g_free(element->hostname);
+		g_free(element->domainname);
 		g_free(element->ipv4.address);
 		g_free(element->ipv4.netmask);
 		g_free(element->ipv4.gateway);
