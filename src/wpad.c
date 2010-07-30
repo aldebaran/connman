@@ -24,6 +24,7 @@
 #endif
 
 #include <stdlib.h>
+#include <string.h>
 
 #include <gresolv/gresolv.h>
 
@@ -56,6 +57,8 @@ static void wpad_result(GResolvResultStatus status,
 					char **results, gpointer user_data)
 {
 	struct connman_wpad *wpad = user_data;
+	const char *ptr;
+	char *hostname;
 
 	DBG("status %d", status);
 
@@ -65,7 +68,29 @@ static void wpad_result(GResolvResultStatus status,
 		url = g_strdup_printf("http://%s/wpad.dat", wpad->hostname);
 		__connman_service_set_proxy_autoconfig(wpad->service, url);
 		g_free(url);
+
+		return;
 	}
+
+	hostname = wpad->hostname;
+
+	if (strlen(hostname) < 6)
+		return;
+
+	ptr = strchr(hostname + 5, '.');
+	if (ptr == NULL || strlen(ptr) < 2)
+		return;
+
+	if (strchr(ptr + 1, '.') == NULL)
+		return;
+
+	wpad->hostname = g_strdup_printf("wpad.%s", ptr + 1);
+	g_free(hostname);
+
+	DBG("hostname %s", wpad->hostname);
+
+	g_resolv_lookup_hostname(wpad->resolv, wpad->hostname,
+							wpad_result, wpad);
 }
 
 void __connman_wpad_start(struct connman_service *service)
@@ -109,10 +134,12 @@ void __connman_wpad_start(struct connman_service *service)
 
 	wpad->hostname = g_strdup_printf("wpad.%s", domainname);
 
+	DBG("hostname %s", wpad->hostname);
+
 	g_resolv_lookup_hostname(wpad->resolv, wpad->hostname,
 							wpad_result, wpad);
 
-	g_hash_table_insert(wpad_list, GINT_TO_POINTER(index), wpad);
+	g_hash_table_replace(wpad_list, GINT_TO_POINTER(index), wpad);
 }
 
 void __connman_wpad_stop(struct connman_service *service)
