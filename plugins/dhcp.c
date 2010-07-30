@@ -100,6 +100,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		connman_dhcp_set_value(dhcp, "Hostname", option->data);
 
+	option = g_dhcp_client_get_option(dhcp_client, 252);
+	if (option != NULL)
+		connman_dhcp_set_value(dhcp, "PAC", option->data);
+
 	connman_dhcp_bound(dhcp);
 }
 
@@ -129,6 +133,7 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_DOMAIN_NAME);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_NTP_SERVER);
 	g_dhcp_client_set_request(dhcp_client, G_DHCP_ROUTER);
+	g_dhcp_client_set_request(dhcp_client, 252);
 
 	g_dhcp_client_register_event(dhcp_client,
 			G_DHCP_CLIENT_EVENT_LEASE_AVAILABLE,
