@@ -59,8 +59,13 @@ static void wpad_result(GResolvResultStatus status,
 
 	DBG("status %d", status);
 
-	if (status == G_RESOLV_RESULT_STATUS_SUCCESS)
-		connman_info("PAC: http://%s/wpad.dat", wpad->hostname);
+	if (status == G_RESOLV_RESULT_STATUS_SUCCESS) {
+		char *url;
+
+		url = g_strdup_printf("http://%s/wpad.dat", wpad->hostname);
+		__connman_service_set_proxy_autoconfig(wpad->service, url);
+		g_free(url);
+	}
 }
 
 void __connman_wpad_start(struct connman_service *service)
