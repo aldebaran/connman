@@ -425,6 +425,19 @@ connman_bool_t __connman_tethering_get_status(void);
 int __connman_tethering_set_status(connman_bool_t status);
 void __connman_tethering_update_interface(const char *interface);
 
+#include <connman/provider.h>
+
+void __connman_provider_list(DBusMessageIter *iter, void *user_data);
+int __connman_provider_create_and_connect(DBusMessage *msg);
+const char * __connman_provider_get_ident(struct connman_provider *provider);
+int __connman_provider_indicate_state(struct connman_provider *provider,
+				     enum connman_provider_state state);
+int __connman_provider_indicate_error(struct connman_provider *provider,
+				     enum connman_provider_error error);
+int __connman_provider_remove(const char *path);
+void __connman_provider_cleanup(void);
+int __connman_provider_init(void);
+
 #include <connman/service.h>
 
 int __connman_service_init(void);
@@ -438,6 +451,7 @@ void __connman_service_put(struct connman_service *service);
 
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
+struct connman_service *__connman_service_create_from_provider(struct connman_provider *provider);
 void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
 
@@ -512,18 +526,6 @@ struct connman_location *__connman_service_get_location(struct connman_service *
 
 int __connman_location_detect(struct connman_service *service);
 int __connman_location_finish(struct connman_service *service);
-
-#include <connman/provider.h>
-
-void __connman_provider_list(DBusMessageIter *iter, void *user_data);
-int __connman_provider_create_and_connect(DBusMessage *msg);
-int __connman_provider_indicate_state(struct connman_provider *provider,
-				     enum connman_provider_state state);
-int __connman_provider_indicate_error(struct connman_provider *provider,
-				     enum connman_provider_error error);
-int __connman_provider_remove(const char *path);
-void __connman_provider_cleanup(void);
-int __connman_provider_init(void);
 
 #include <connman/notifier.h>
 

@@ -37,6 +37,7 @@ static GSList *driver_list = NULL;
 
 struct connman_provider {
 	struct connman_element element;
+	struct connman_service *vpn_service;
 	char *identifier;
 	char *path;
 	enum connman_provider_state state;
@@ -140,6 +141,8 @@ static void connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
 
 struct connman_provider *connman_provider_ref(struct connman_provider *provider)
 {
+	DBG("provider %p", provider);
+
 	if (connman_element_ref(&provider->element) == NULL)
 		return NULL;
 
@@ -148,6 +151,8 @@ struct connman_provider *connman_provider_ref(struct connman_provider *provider)
 
 void connman_provider_unref(struct connman_provider *provider)
 {
+	DBG("provider %p", provider);
+
 	connman_element_unref(&provider->element);
 }
 
@@ -241,6 +246,9 @@ static int connman_provider_disconnect(struct connman_provider *provider)
 
 	__connman_provider_indicate_state(provider,
 					CONNMAN_PROVIDER_STATE_DISCONNECT);
+
+	__connman_service_indicate_state(provider->vpn_service,
+					CONNMAN_SERVICE_STATE_DISCONNECT);
 	if (err < 0) {
 		if (err != -EINPROGRESS)
 			return err;
@@ -512,11 +520,15 @@ int connman_provider_set_connected(struct connman_provider *provider,
 		}
 		__connman_provider_indicate_state(provider,
 						  CONNMAN_PROVIDER_STATE_READY);
+		__connman_service_indicate_state(provider->vpn_service,
+						CONNMAN_SERVICE_STATE_READY);
 	} else {
 		reply_pending(provider, ECONNABORTED);
 		connman_element_unregister_children(&provider->element);
 		__connman_provider_indicate_state(provider,
 					CONNMAN_PROVIDER_STATE_DISCONNECT);
+		__connman_service_indicate_state(provider->vpn_service,
+					CONNMAN_SERVICE_STATE_DISCONNECT);
 	}
 
 	return 0;
@@ -543,6 +555,7 @@ static void provider_free(gpointer user_data)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_free(provider->dns);
+	__connman_service_put(provider->vpn_service);
 }
 
 static void unregister_provider(gpointer data)
@@ -560,6 +573,8 @@ static void unregister_provider(gpointer data)
 static void provider_destruct(struct connman_element *element)
 {
 	struct connman_provider *provider = element->private;
+
+	DBG("provider %p", provider);
 
 	provider_free(provider);
 }
@@ -768,6 +783,10 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	g_dbus_send_reply(connection, msg,
 				DBUS_TYPE_OBJECT_PATH, &provider->path,
 							DBUS_TYPE_INVALID);
+
+	provider->vpn_service =
+			__connman_service_create_from_provider(provider);
+
 	return 0;
 
 failed:
@@ -777,6 +796,14 @@ failed:
 	}
 
 	return err;
+}
+
+const char * __connman_provider_get_ident(struct connman_provider *provider)
+{
+	if (provider == NULL)
+		return NULL;
+
+	return provider->identifier;
 }
 
 int connman_provider_set_string(struct connman_provider *provider,

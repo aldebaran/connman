@@ -90,6 +90,7 @@ struct connman_service {
 	connman_bool_t login_required;
 	struct connman_ipconfig *ipconfig;
 	struct connman_network *network;
+	struct connman_provider *provider;
 	char **nameservers;
 	char *nameserver;
 	char **domains;
@@ -3275,7 +3276,7 @@ static void update_from_network(struct connman_service *service,
  *
  * Look up service by network and if not found, create one
  */
-struct connman_service *__connman_service_create_from_network(struct connman_network *network)
+struct connman_service * __connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
 	const char *ident, *group;
@@ -3414,6 +3415,68 @@ void __connman_service_remove_from_network(struct connman_network *network)
 		return;
 
 	__connman_service_put(service);
+}
+
+/**
+ * __connman_service_create_from_provider:
+ * @provider: provider structure
+ *
+ * Look up service by provider and if not found, create one
+ */
+struct connman_service *
+__connman_service_create_from_provider(struct connman_provider *provider)
+{
+	struct connman_service *service;
+	const char *ident, *str;
+	char *name;
+	int index = connman_provider_get_index(provider);
+
+	DBG("provider %p", provider);
+
+	ident = __connman_provider_get_ident(provider);
+	if (ident == NULL)
+		return NULL;
+
+	name = g_strdup_printf("vpn_%s", ident);
+	service = __connman_service_get(name);
+	g_free(name);
+
+	if (service == NULL)
+		return NULL;
+
+	service->type = CONNMAN_SERVICE_TYPE_VPN;
+	service->provider = provider;
+	service->autoconnect = FALSE;
+
+	service->state = CONNMAN_SERVICE_STATE_IDLE;
+
+	str = connman_provider_get_string(provider, "Name");
+	if (str != NULL) {
+		g_free(service->name);
+		service->name = g_strdup(str);
+		service->hidden = FALSE;
+	} else {
+		g_free(service->name);
+		service->name = NULL;
+		service->hidden = TRUE;
+	}
+
+	service->strength = 0;
+
+	service->ipconfig = connman_ipconfig_create(index);
+	if (service->ipconfig == NULL)
+		return service;
+
+	connman_ipconfig_set_method(service->ipconfig,
+					CONNMAN_IPCONFIG_METHOD_MANUAL);
+
+	connman_ipconfig_set_data(service->ipconfig, service);
+
+	connman_ipconfig_set_ops(service->ipconfig, &service_ops);
+
+	service_register(service);
+
+	return service;
 }
 
 void __connman_service_stats_update(struct connman_service *service,
