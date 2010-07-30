@@ -93,6 +93,7 @@ struct connman_service {
 	char **nameservers;
 	char *nameserver;
 	char **domains;
+	char *domainname;
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
@@ -426,6 +427,24 @@ void __connman_service_nameserver_del_routes(struct connman_service *service)
 	} else if (service->nameserver != NULL) {
 		connman_inet_del_host_route(index, service->nameserver);
 	}
+}
+
+void __connman_service_set_domainname(struct connman_service *service,
+						const char *domainname)
+{
+	if (service == NULL)
+		return;
+
+	g_free(service->domainname);
+	service->domainname = g_strdup(domainname);
+}
+
+const char *__connman_service_get_domainname(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->domainname;
 }
 
 static void __connman_service_stats_start(struct connman_service *service)
@@ -1936,6 +1955,7 @@ static void service_free(gpointer user_data)
 	g_strfreev(service->domains);
 
 	g_free(service->nameserver);
+	g_free(service->domainname);
 	g_free(service->mcc);
 	g_free(service->mnc);
 	g_free(service->apn);
