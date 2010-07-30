@@ -28,7 +28,9 @@ def property_changed(name, value, path):
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
 		val = val + " ]"
-	elif name in ["IPv4", "IPv4.Configuration", "Proxy", "Ethernet"]:
+	elif name in ["IPv4", "IPv4.Configuration",
+				"IPv6", "IPv6.Configuration",
+						"Proxy", "Ethernet"]:
 		val = extract_values(value)
 	elif name in ["Nameservers", "Nameservers.Configuration",
 					"Domains", "Domains.Configuration"]:
