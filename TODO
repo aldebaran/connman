@@ -83,11 +83,11 @@ Core
    Owner: Marcel Holtmann <marcel@holtmann.org>
 
 
-- WAPD - Web Proxy Autodiscovery Protocol
+- WPAD - Web Proxy Autodiscovery Protocol
 
    Priority: Medium
    Complexity: C2
-   Dependencies: Core:HTTP proxy
+   Owner: Marcel Holtmann <marcel@holtmann.org>
 
 
 - Agent callbacks
@@ -106,6 +106,7 @@ Core
 
    Priority: Low
    Complexity: C1
+   Owner: Marcel Holtmann <marcel@holtmann.org>
 
    When receiving an automatic configuration URL, we should set the
    service proxy dictionary accordingly (method and URL).
