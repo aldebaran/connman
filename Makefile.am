@@ -29,6 +29,8 @@ gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c
 
 gresolv_sources = gresolv/gresolv.h gresolv/gresolv.c
 
+gweb_sources = gweb/gweb.h gweb/gweb.c
+
 if DATAFILES
 dbusdir = @DBUS_DATADIR@
 
@@ -48,8 +50,8 @@ noinst_PROGRAMS =
 
 sbin_PROGRAMS = src/connmand
 
-src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
-				$(gresolv_sources) $(builtin_sources) \
+src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
+					$(gweb_sources) $(builtin_sources) \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
