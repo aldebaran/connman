@@ -34,6 +34,7 @@ struct connman_wpad {
 	struct connman_service *service;
 	GResolv *resolv;
 	char *hostname;
+	char **addrlist;
 };
 
 static GHashTable *wpad_list = NULL;
@@ -49,8 +50,13 @@ static void free_wpad(gpointer data)
 
 	g_resolv_unref(wpad->resolv);
 
+	g_strfreev(wpad->addrlist);
 	g_free(wpad->hostname);
         g_free(wpad);
+}
+
+static void download_pac(struct connman_wpad *wpad, const char *target)
+{
 }
 
 static void wpad_result(GResolvResultStatus status,
@@ -69,7 +75,13 @@ static void wpad_result(GResolvResultStatus status,
 			return;
 
 		url = g_strdup_printf("http://%s/wpad.dat", wpad->hostname);
+
 		__connman_service_set_proxy_autoconfig(wpad->service, url);
+
+		wpad->addrlist = g_strdupv(results);
+		if (wpad->addrlist != NULL)
+			download_pac(wpad, "wpad.dat");
+
 		g_free(url);
 
 		return;
