@@ -144,7 +144,11 @@ int main(int argc, char *argv[])
 
 	timer = g_timer_new();
 
-	g_resolv_lookup_hostname(resolv, argv[1], resolv_result, NULL);
+	if (g_resolv_lookup_hostname(resolv, argv[1],
+					resolv_result, NULL) == 0) {
+		printf("failed to start lookup\n");
+		return 1;
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
