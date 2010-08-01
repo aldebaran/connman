@@ -44,6 +44,19 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+static void web_result(uint16_t status, gpointer user_data)
+{
+	gdouble elapsed;
+
+	elapsed = g_timer_elapsed(timer, NULL);
+
+	g_print("elapse: %f seconds\n", elapsed);
+
+	g_print("status: %03u\n", status);
+
+	g_main_loop_quit(main_loop);
+}
+
 static gboolean option_debug = FALSE;
 
 static GOptionEntry options[] = {
@@ -58,6 +71,7 @@ int main(int argc, char *argv[])
 	GError *error = NULL;
 	struct sigaction sa;
 	GWeb *web;
+	int index = 0;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -78,7 +92,7 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	web = g_web_new();
+	web = g_web_new(index);
 	if (web == NULL) {
 		printf("failed to web service\n");
 		return 1;
@@ -90,6 +104,12 @@ int main(int argc, char *argv[])
 	main_loop = g_main_loop_new(NULL, FALSE);
 
 	timer = g_timer_new();
+
+	if (g_web_request(web, G_WEB_METHOD_GET, argv[1],
+					web_result, NULL) == 0) {
+		printf("failed to start request\n");
+		return 1;
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
