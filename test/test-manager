@@ -2,6 +2,24 @@
 
 import dbus
 
+def extract_values(values):
+	val = "{"
+	for key in values.keys():
+		val += " " + key + "="
+		if key in ["PrefixLength"]:
+			val += "%s" % (int(values[key]))
+		else:
+			val += str(values[key])
+	val += " }"
+	return val
+
+def extract_list(list):
+	val = "["
+	for i in list:
+		val += " " + str(i)
+	val += " ]"
+	return val
+
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
@@ -34,12 +52,25 @@ def print_properties(key, value):
 						"Providers", "Technologies"]:
 				continue
 
-			if key in ["Powered", "Scanning", "Connected",
-					"Available", "Remember", "Default"]:
+			elif key in ["Powered", "Scanning", "Connected",
+					"Available", "Remember", "Default",
+					"Favorite", "Immutable", "AutoConnect",
+						"LoginRequired", "SetupRequired",
+							"PassphraseRequired"]:
 				if properties[key] == dbus.Boolean(1):
 					val = "true"
 				else:
 					val = "false"
+
+			elif key in ["IPv4", "IPv4.Configuration",
+					"IPv6", "IPv6.Configuration",
+						"Proxy", "Ethernet", "Provider"]:
+				val = extract_values(properties[key])
+
+			elif key in ["Nameservers", "Nameservers.Configuration",
+					"Domains", "Domains.Configuration"]:
+				val = extract_list(properties[key])
+
 			elif key in ["Strength", "Priority"]:
 				val = int(properties[key])
 			else:
