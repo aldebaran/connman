@@ -909,6 +909,20 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_proxy(service->ipconfig, iter);
 }
 
+static void append_provider(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	DBG("%p %p", service, service->provider);
+
+	if (is_connected(service) == FALSE)
+		return;
+
+	if (service->provider != NULL)
+		__connman_provider_append_properties(service->provider, iter);
+}
+
+
 static void settings_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_dict(service->path,
@@ -1128,6 +1142,8 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 				DBUS_TYPE_STRING, append_domainconfig, service);
 
 	connman_dbus_dict_append_dict(dict, "Proxy", append_proxy, service);
+
+	connman_dbus_dict_append_dict(dict, "Provider", append_provider, service);
 }
 
 static void append_struct(gpointer value, gpointer user_data)
@@ -2080,6 +2096,8 @@ static void __connman_service_initialize(struct connman_service *service)
 	service->stats.valid = FALSE;
 	service->stats.enabled = FALSE;
 	service->stats.timer = g_timer_new();
+
+	service->provider = NULL;
 }
 
 /**
@@ -2545,11 +2563,11 @@ int __connman_service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
 		return -EINVAL;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_VPN:
 		break;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		if (service->apn == NULL)
@@ -2593,7 +2611,10 @@ int __connman_service_connect(struct connman_service *service)
 		__connman_ipconfig_enable(service->ipconfig);
 
 		err = __connman_network_connect(service->network);
-	} else
+	} else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
+					service->provider != NULL)
+		err = __connman_provider_connect(service->provider);
+	else
 		return -EOPNOTSUPP;
 
 	if (err < 0) {
@@ -2620,7 +2641,10 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
-	} else
+	} else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
+					service->provider != NULL)
+		err = __connman_provider_disconnect(service->provider);
+	else
 		return -EOPNOTSUPP;
 
 	__connman_ipconfig_clear_address(service->ipconfig);
