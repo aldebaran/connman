@@ -14,10 +14,8 @@ def print_properties(key, value):
 		interface = "org.moblin.connman.Profile"
 	elif key == "Devices":
 		interface = "org.moblin.connman.Device"
-	elif key == "Services":
+	elif key in ["Services", "Providers"]:
 		interface = "org.moblin.connman.Service"
-	elif key == "Providers":
-		interface = "org.moblin.connman.Provider"
 	elif key == "Technologies":
 		interface = "org.moblin.connman.Technology"
 	else:
