@@ -417,6 +417,16 @@ Properties	string State [readonly]
 
 				Automatic proxy configuration URL.
 
+		dict Provider [readonly]
+
+			string Name [readonly]
+
+			       VPN provider Name.
+
+			string Type [readonly]
+
+			       VPN provider type.
+
 		dict Ethernet [readonly]
 
 			string Method [readonly]
