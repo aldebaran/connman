@@ -50,8 +50,6 @@ struct connman_provider {
 void __connman_provider_append_properties(struct connman_provider *provider,
 							DBusMessageIter *iter)
 {
-	dbus_bool_t required;
-
 	if (provider->name != NULL)
 		connman_dbus_dict_append_basic(iter, "Name",
 					DBUS_TYPE_STRING, &provider->name);
@@ -59,10 +57,6 @@ void __connman_provider_append_properties(struct connman_provider *provider,
 	if (provider->type != NULL)
 		connman_dbus_dict_append_basic(iter, "Type", DBUS_TYPE_STRING,
 						 &provider->type);
-
-	required = TRUE;
-	connman_dbus_dict_append_basic(iter, "PassphraseRequired",
-					 DBUS_TYPE_BOOLEAN, &required);
 }
 
 static void append_path(gpointer key, gpointer value, gpointer user_data)
