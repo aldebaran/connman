@@ -58,8 +58,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Services",
 			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
-	connman_dbus_dict_append_array(&dict, "Providers",
-			DBUS_TYPE_OBJECT_PATH, __connman_provider_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Technologies",
 			DBUS_TYPE_OBJECT_PATH, __connman_technology_list, NULL);
 

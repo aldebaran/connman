@@ -59,25 +59,6 @@ void __connman_provider_append_properties(struct connman_provider *provider,
 						 &provider->type);
 }
 
-static void append_path(gpointer key, gpointer value, gpointer user_data)
-{
-	struct connman_provider *provider = value;
-	DBusMessageIter *iter = user_data;
-	const char *service_path;
-
-	service_path = __connman_service_get_path(provider->vpn_service);
-	if (service_path == NULL)
-		return;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-							&service_path);
-}
-
-void __connman_provider_list(DBusMessageIter *iter, void *user_data)
-{
-	g_hash_table_foreach(provider_hash, append_path, iter);
-}
-
 static struct connman_provider *connman_provider_lookup(const char *identifier)
 {
 	struct connman_provider *provider = NULL;
