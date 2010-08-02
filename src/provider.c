@@ -302,7 +302,7 @@ int connman_provider_set_connected(struct connman_provider *provider,
 	} else {
 		connman_element_unregister_children(&provider->element);
 		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_DISCONNECT);
+						CONNMAN_SERVICE_STATE_IDLE);
 	}
 
 	return 0;
