@@ -63,8 +63,8 @@ int connman_provider_set_string(struct connman_provider *provider,
 const char *connman_provider_get_string(struct connman_provider *provider,
 							const char *key);
 
-int connman_provider_set_connected(struct connman_provider *provider,
-						connman_bool_t connected);
+int connman_provider_set_state(struct connman_provider *provider,
+					enum connman_provider_state state);
 
 void connman_provider_set_index(struct connman_provider *provider, int index);
 int connman_provider_get_index(struct connman_provider *provider);

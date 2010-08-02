@@ -227,8 +227,8 @@ int __connman_provider_remove(const char *path)
 	return 0;
 }
 
-int connman_provider_set_connected(struct connman_provider *provider,
-						connman_bool_t connected)
+static int set_connected(struct connman_provider *provider,
+					connman_bool_t connected)
 {
 	if (connected == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
@@ -281,6 +281,33 @@ int connman_provider_set_connected(struct connman_provider *provider,
 	}
 
 	return 0;
+}
+
+int connman_provider_set_state(struct connman_provider *provider,
+					enum connman_provider_state state)
+{
+	if (provider == NULL || provider->vpn_service == NULL)
+		return -EINVAL;
+
+	switch (state) {
+	case CONNMAN_PROVIDER_STATE_UNKNOWN:
+		return -EINVAL;
+	case CONNMAN_PROVIDER_STATE_IDLE:
+		return set_connected(provider, FALSE);
+	case CONNMAN_PROVIDER_STATE_CONNECT:
+		return __connman_service_indicate_state(provider->vpn_service,
+					CONNMAN_SERVICE_STATE_ASSOCIATION);
+	case CONNMAN_PROVIDER_STATE_READY:
+		return set_connected(provider, TRUE);
+	case CONNMAN_PROVIDER_STATE_DISCONNECT:
+		return __connman_service_indicate_state(provider->vpn_service,
+					CONNMAN_SERVICE_STATE_DISCONNECT);
+	case CONNMAN_PROVIDER_STATE_FAILURE:
+		return __connman_service_indicate_state(provider->vpn_service,
+					CONNMAN_SERVICE_STATE_FAILURE);
+	}
+
+	return -EINVAL;
 }
 
 static void provider_free(gpointer user_data)
