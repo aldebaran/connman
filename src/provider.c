@@ -68,16 +68,13 @@ static struct connman_provider *connman_provider_lookup(const char *identifier)
 	return provider;
 }
 
-static void connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
+static int connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
 						struct connman_element *element)
 {
 	if (element == NULL || provider == NULL)
-		return;
+		return -EINVAL;
 
 	DBG("set vpn type %d", element->type);
-
-	if (provider == NULL)
-		return;
 
 	g_free(element->ipv4.address);
 	element->ipv4.address = g_strdup(provider->element.ipv4.address);
@@ -94,7 +91,7 @@ static void connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
 	g_free(element->ipv4.pac);
 	element->ipv4.pac = g_strdup(provider->element.ipv4.pac);
 
-	DBG("VPN exist");
+	return connman_element_register(element, &provider->element);
 }
 
 struct connman_provider *connman_provider_ref(struct connman_provider *provider)
@@ -230,53 +227,55 @@ int __connman_provider_remove(const char *path)
 static int set_connected(struct connman_provider *provider,
 					connman_bool_t connected)
 {
+	struct connman_service *service = provider->vpn_service;
+
+	if (service == NULL)
+		return -ENODEV;
+
 	if (connected == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
+		char *nameservers = NULL, *name = NULL;
+		const char *value;
 
 		type = CONNMAN_ELEMENT_TYPE_IPV4;
 
 		element = connman_element_create(NULL);
-		if (element != NULL) {
-			element->type  = type;
-			element->index = provider->element.index;
+		if (element == NULL)
+			return -ENOMEM;
 
-			connman_provider_setup_vpn_ipv4(provider, element);
+		element->type  = type;
+		element->index = provider->element.index;
 
-			if (connman_element_register(element,
-					&provider->element) < 0)
-				connman_element_unref(element);
-			else {
-				char *nameservers = NULL;
-				const char *value;
-				char *name = NULL;
+		__connman_service_set_domainname(service, provider->domain);
 
-				DBG("set dns");
-				nameservers = g_strdup(provider->dns);
-				value = nameservers;
-				name = connman_inet_ifname(
-						provider->element.index);
-				while (value) {
-					char *next = strchr(value, ' ');
-					if (next)
-						*(next++) = 0;
+		nameservers = g_strdup(provider->dns);
+		value = nameservers;
+		name = connman_inet_ifname(provider->element.index);
+		while (value) {
+			char *next = strchr(value, ' ');
+			if (next)
+				*(next++) = 0;
 
-					connman_resolver_append(name,
-							provider->domain,
-							value);
-					value = next;
-				}
-				DBG("free extra");
-				g_free(nameservers);
-				g_free(name);
-			}
-
+			__connman_service_append_nameserver(service, value);
+			value = next;
 		}
-		__connman_service_indicate_state(provider->vpn_service,
+
+		g_free(nameservers);
+		g_free(name);
+
+		if (connman_provider_setup_vpn_ipv4(provider, element) < 0) {
+			connman_element_unref(element);
+
+			__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_FAILURE);
+		}
+
+		__connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_READY);
 	} else {
 		connman_element_unregister_children(&provider->element);
-		__connman_service_indicate_state(provider->vpn_service,
+		__connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_IDLE);
 	}
 
