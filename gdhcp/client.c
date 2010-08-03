@@ -1190,32 +1190,15 @@ static uint8_t *alloc_dhcp_option(int code, const char *str, int extra)
 	return storage;
 }
 
-static const char *get_hostname(const char *host)
-{
-	char local_host_name[HOST_NAME_MAX + 1];
-
-	if (g_strcmp0("<hostname>", host) != 0)
-		return g_strdup(host);
-
-	if (gethostname(local_host_name, HOST_NAME_MAX) != 0)
-		return NULL;
-
-	local_host_name[HOST_NAME_MAX] = 0;
-
-	return g_strdup(local_host_name);
-}
-
 /* Now only support send hostname */
 GDHCPClientError g_dhcp_client_set_send(GDHCPClient *dhcp_client,
 		unsigned char option_code, const char *option_value)
 {
 	uint8_t *binary_option;
-	const char *hostname;
 
-	if (option_code == G_DHCP_HOST_NAME) {
-		hostname = get_hostname(option_value);
-
-		binary_option = alloc_dhcp_option(option_code, hostname, 0);
+	if (option_code == G_DHCP_HOST_NAME && option_value != NULL) {
+		binary_option = alloc_dhcp_option(option_code,
+							option_value, 0);
 
 		g_hash_table_insert(dhcp_client->send_value_hash,
 			GINT_TO_POINTER((int) option_code), binary_option);
