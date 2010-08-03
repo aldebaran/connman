@@ -44,10 +44,10 @@
 #include "common.h"
 
 #define DISCOVER_TIMEOUT 3
-#define DISCOVER_RETRIES 3
+#define DISCOVER_RETRIES 5
 
 #define REQUEST_TIMEOUT 3
-#define REQUEST_RETRIES 3
+#define REQUEST_RETRIES 5
 
 typedef enum _listen_mode {
 	L_NONE,
