@@ -44,6 +44,7 @@ static const DHCPOption client_options[] = {
 	/* Options below will not be exposed to user */
 	{ OPTION_IP,			0x32 }, /* requested-ip */
 	{ OPTION_U8,			0x35 }, /* message-type */
+	{ OPTION_U32,			0x36 }, /* server-id */
 	{ OPTION_U16,			0x39 }, /* max-size */
 	{ OPTION_STRING,		0x3c }, /* vendor */
 	{ OPTION_STRING,		0x3d }, /* client-id */
