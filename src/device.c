@@ -206,6 +206,9 @@ int __connman_device_enable(struct connman_device *device)
 	if (device->powered_pending == TRUE)
 		return -EALREADY;
 
+	if (device->blocked == TRUE)
+		return -ENOLINK;
+
 	err = device->driver->enable(device);
 	if (err < 0) {
 		if (err == -EINPROGRESS)
