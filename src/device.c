@@ -194,53 +194,73 @@ static void powered_changed(struct connman_device *device)
 					DBUS_TYPE_BOOLEAN, &device->powered);
 }
 
-static int set_powered(struct connman_device *device, connman_bool_t powered)
+int __connman_device_enable(struct connman_device *device)
 {
-	struct connman_device_driver *driver = device->driver;
 	int err;
 
-	DBG("device %p powered %d", device, powered);
+	DBG("device %p", device);
 
-	if (device->powered_pending == powered)
+	if (!device->driver || !device->driver->enable)
+		return -EOPNOTSUPP;
+
+	if (device->powered_pending == TRUE)
 		return -EALREADY;
 
-	if (!driver)
-		return -EINVAL;
+	device->powered_pending = TRUE;
 
-	if (powered == TRUE) {
-		if (driver->enable) {
-			device->powered_pending = powered;
+	err = device->driver->enable(device);
+	if (err < 0)
+		return err;
 
-			err = driver->enable(device);
-			if (err == 0)
-				__connman_technology_enable_device(device);
-		} else
-			err = -EINVAL;
-	} else {
-		device->powered_pending = powered;
+	device->powered = TRUE;
 
-		device->reconnect = FALSE;
+	__connman_technology_enable_device(device);
 
-		clear_scan_trigger(device);
+	return 0;
+}
 
-		g_hash_table_remove_all(device->networks);
+int __connman_device_disable(struct connman_device *device)
+{
+	int err;
 
-		if (driver->disable) {
-			err = driver->disable(device);
-			if (err == 0)
-				__connman_technology_disable_device(device);
-		} else
-			err = -EINVAL;
-	}
+	DBG("device %p", device);
 
-	if (err == 0) {
-		device->powered = powered;
+	if (!device->driver || !device->driver->disable)
+		return -EOPNOTSUPP;
 
-		if (device->registered == TRUE)
-			powered_changed(device);
-	}
+	if (device->powered == FALSE)
+		return -ENOLINK;
 
-	return err;
+	if (device->powered_pending == FALSE)
+		return -EALREADY;
+
+	device->powered_pending = FALSE;
+
+	device->reconnect = FALSE;
+
+	clear_scan_trigger(device);
+
+	g_hash_table_remove_all(device->networks);
+
+	err = device->driver->disable(device);
+	if (err < 0)
+		return err;
+
+	device->powered = FALSE;
+
+	__connman_technology_disable_device(device);
+
+	return 0;
+}
+
+static int set_powered(struct connman_device *device, connman_bool_t powered)
+{
+	DBG("device %p powered %d", device, powered);
+
+	if (powered == TRUE)
+		return __connman_device_enable(device);
+	else
+		return __connman_device_disable(device);
 }
 
 void __connman_device_list(DBusMessageIter *iter, void *user_data)
@@ -1029,31 +1049,6 @@ int __connman_device_scan(struct connman_device *device)
 	return device->driver->scan(device);
 }
 
-int __connman_device_enable(struct connman_device *device)
-{
-	int err;
-
-	DBG("device %p", device);
-
-	if (!device->driver || !device->driver->enable)
-		return -EOPNOTSUPP;
-
-	if (device->powered_pending == TRUE)
-		return -EALREADY;
-
-	device->powered_pending = TRUE;
-
-	err = device->driver->enable(device);
-	if (err < 0)
-		return err;
-
-	device->powered = TRUE;
-
-	__connman_technology_enable_device(device);
-
-	return 0;
-}
-
 int __connman_device_enable_persistent(struct connman_device *device)
 {
 	int err;
@@ -1072,40 +1067,6 @@ int __connman_device_enable_persistent(struct connman_device *device)
 	}
 
 	return err;
-}
-
-int __connman_device_disable(struct connman_device *device)
-{
-	int err;
-
-	DBG("device %p", device);
-
-	if (!device->driver || !device->driver->disable)
-		return -EOPNOTSUPP;
-
-	if (device->powered == FALSE)
-		return -ENOLINK;
-
-	if (device->powered_pending == FALSE)
-		return -EALREADY;
-
-	device->powered_pending = FALSE;
-
-	device->reconnect = FALSE;
-
-	clear_scan_trigger(device);
-
-	g_hash_table_remove_all(device->networks);
-
-	err = device->driver->disable(device);
-	if (err < 0)
-		return err;
-
-	device->powered = FALSE;
-
-	__connman_technology_disable_device(device);
-
-	return 0;
 }
 
 int __connman_device_disable_persistent(struct connman_device *device)
