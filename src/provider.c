@@ -237,6 +237,7 @@ static int set_connected(struct connman_provider *provider,
 		struct connman_element *element;
 		char *nameservers = NULL, *name = NULL;
 		const char *value;
+		int err;
 
 		type = CONNMAN_ELEMENT_TYPE_IPV4;
 
@@ -264,11 +265,14 @@ static int set_connected(struct connman_provider *provider,
 		g_free(nameservers);
 		g_free(name);
 
-		if (connman_provider_setup_vpn_ipv4(provider, element) < 0) {
+		err = connman_provider_setup_vpn_ipv4(provider, element);
+		if (err < 0) {
 			connman_element_unref(element);
 
 			__connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_FAILURE);
+
+			return err;
 		}
 
 		__connman_service_indicate_state(service,
