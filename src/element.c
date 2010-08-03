@@ -259,6 +259,7 @@ const char *__connman_element_get_network_path(struct connman_element *element)
 struct find_data {
 	enum connman_service_type type;
 	struct connman_device *device;
+	connman_bool_t error;
 };
 
 static gboolean find_device(GNode *node, gpointer user_data)
@@ -341,6 +342,7 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 	struct connman_element *element = node->data;
 	struct find_data *data = user_data;
 	enum connman_service_type type;
+	int err;
 
 	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
 		return FALSE;
@@ -367,17 +369,22 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 		break;
 	}
 
-	__connman_device_enable_persistent(element->device);
+	err = __connman_device_enable_persistent(element->device);
+	if (err == 0 || (err < 0 && err == -EINPROGRESS))
+		data->error = FALSE;
 
 	return FALSE;
 }
 
 int __connman_element_enable_technology(enum connman_service_type type)
 {
-	struct find_data data = { .type = type, .device = NULL };
+	struct find_data data = { .type = type, .device = NULL, .error = TRUE };
 
 	g_node_traverse(element_root, G_PRE_ORDER,
 				G_TRAVERSE_ALL, -1, enable_technology, &data);
+
+	if (data.error == TRUE)
+		return -ENODEV;
 
 	return 0;
 }
@@ -387,6 +394,7 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 	struct connman_element *element = node->data;
 	struct find_data *data = user_data;
 	enum connman_service_type type;
+	int err;
 
 	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
 		return FALSE;
@@ -413,17 +421,22 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 		break;
 	}
 
-	__connman_device_disable_persistent(element->device);
+	err = __connman_device_disable_persistent(element->device);
+	if (err == 0 || (err < 0 && err == -EINPROGRESS))
+		data->error = FALSE;
 
 	return FALSE;
 }
 
 int __connman_element_disable_technology(enum connman_service_type type)
 {
-	struct find_data data = { .type = type, .device = NULL };
+	struct find_data data = { .type = type, .device = NULL, .error = TRUE };
 
 	g_node_traverse(element_root, G_PRE_ORDER,
 				G_TRAVERSE_ALL, -1, disable_technology, &data);
+
+	if (data.error == TRUE)
+		return -ENODEV;
 
 	return 0;
 }
