@@ -620,6 +620,28 @@ void connman_provider_set_data(struct connman_provider *provider, void *data)
 
 void connman_provider_set_index(struct connman_provider *provider, int index)
 {
+	struct connman_service *service = provider->vpn_service;
+	struct connman_ipconfig *ipconfig;
+
+	DBG("");
+
+	ipconfig = __connman_service_get_ipconfig(service);
+
+	if (ipconfig == NULL) {
+		__connman_service_create_ipconfig(service, index);
+
+		ipconfig = __connman_service_get_ipconfig(service);
+		if (ipconfig == NULL) {
+			DBG("Couldnt create ipconfig");
+			goto done;
+		}
+	}
+
+	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_FIXED);
+	__connman_ipconfig_set_index(ipconfig, index);
+
+
+done:
 	provider->element.index = index;
 }
 
