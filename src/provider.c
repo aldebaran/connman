@@ -239,6 +239,9 @@ static int set_connected(struct connman_provider *provider,
 		const char *value;
 		int err;
 
+		__connman_service_indicate_state(provider->vpn_service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION);
+
 		type = CONNMAN_ELEMENT_TYPE_IPV4;
 
 		element = connman_element_create(NULL);
