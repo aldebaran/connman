@@ -206,12 +206,14 @@ int __connman_device_enable(struct connman_device *device)
 	if (device->powered_pending == TRUE)
 		return -EALREADY;
 
-	device->powered_pending = TRUE;
-
 	err = device->driver->enable(device);
-	if (err < 0)
+	if (err < 0) {
+		if (err == -EINPROGRESS)
+			device->powered_pending = TRUE;
 		return err;
+	}
 
+	device->powered_pending = TRUE;
 	device->powered = TRUE;
 
 	__connman_technology_enable_device(device);
@@ -234,8 +236,6 @@ int __connman_device_disable(struct connman_device *device)
 	if (device->powered_pending == FALSE)
 		return -EALREADY;
 
-	device->powered_pending = FALSE;
-
 	device->reconnect = FALSE;
 
 	clear_scan_trigger(device);
@@ -243,9 +243,13 @@ int __connman_device_disable(struct connman_device *device)
 	g_hash_table_remove_all(device->networks);
 
 	err = device->driver->disable(device);
-	if (err < 0)
+	if (err < 0) {
+		if (err == -EINPROGRESS)
+			device->powered_pending = FALSE;
 		return err;
+	}
 
+	device->powered_pending = FALSE;
 	device->powered = FALSE;
 
 	__connman_technology_disable_device(device);
