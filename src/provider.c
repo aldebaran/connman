@@ -251,6 +251,19 @@ static int set_connected(struct connman_provider *provider,
 		element->type  = type;
 		element->index = provider->element.index;
 
+		err = connman_provider_setup_vpn_ipv4(provider, element);
+		if (err < 0) {
+			connman_element_unref(element);
+
+			__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_FAILURE);
+
+			return err;
+		}
+
+		__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY);
+
 		__connman_service_set_domainname(service, provider->domain);
 
 		nameservers = g_strdup(provider->dns);
@@ -268,18 +281,6 @@ static int set_connected(struct connman_provider *provider,
 		g_free(nameservers);
 		g_free(name);
 
-		err = connman_provider_setup_vpn_ipv4(provider, element);
-		if (err < 0) {
-			connman_element_unref(element);
-
-			__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_FAILURE);
-
-			return err;
-		}
-
-		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY);
 	} else {
 		connman_element_unregister_children(&provider->element);
 		__connman_service_indicate_state(service,
