@@ -1,3 +1,15 @@
+ver 0.56:
+	Fix issues with offline mode handling.
+	Fix service integration with VPN providers.
+	Add internal asynchronous resolver library.
+	Add internal DHCP client library.
+	Add support for using internal DHCP client.
+	Add support for WPAD proxy auto-configuration.
+	Add support for static IPv6 configuration.
+	Add support for DHCP provided domain names.
+	Add initial support for on-demand connections.
+	Remove uDHCP and resolvconf plugins.
+
 ver 0.55:
 	Fix issue with 3G roaming status indication.
 	Fix issue with using -H option with dhclient.
