@@ -682,20 +682,65 @@ void connman_provider_driver_unregister(struct connman_provider_driver *driver)
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+static void provider_disconnect(gpointer key, gpointer value,
+						gpointer user_data)
+{
+	struct connman_provider *provider = value;
+
+	__connman_provider_disconnect(provider);
+}
+
+static void provider_offline_mode(connman_bool_t enabled)
+{
+	DBG("enabled %d", enabled);
+
+	if (enabled == TRUE)
+		g_hash_table_foreach(provider_hash, provider_disconnect, NULL);
+
+}
+
+static void provider_default_changed(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (service == NULL) {
+		/* When no services are active, then disconnect all VPNs */
+		provider_offline_mode(TRUE);
+		return;
+	}
+}
+
+static struct connman_notifier provider_notifier = {
+	.name			= "provider",
+	.default_changed	= provider_default_changed,
+	.offline_mode		= provider_offline_mode,
+};
+
 int __connman_provider_init(void)
 {
+	int err;
+
 	DBG("");
 
 	connection = connman_dbus_get_connection();
 
 	provider_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, unregister_provider);
-	return 0;
+
+	err = connman_notifier_register(&provider_notifier);
+	if (err < 0) {
+		g_hash_table_destroy(provider_hash);
+		dbus_connection_unref(connection);
+	}
+
+	return err;
 }
 
 void __connman_provider_cleanup(void)
 {
 	DBG("");
+
+	connman_notifier_unregister(&provider_notifier);
 
 	g_hash_table_foreach(provider_hash, clean_provider, NULL);
 
