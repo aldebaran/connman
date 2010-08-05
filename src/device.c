@@ -1007,6 +1007,11 @@ int connman_device_set_powered(struct connman_device *device,
 	else
 		__connman_technology_disable_device(device);
 
+	if (device->offlinemode == TRUE && powered == TRUE) {
+		powered_changed(device);
+		return connman_device_set_powered(device, FALSE);
+	}
+
 	if (device->registered == FALSE)
 		return 0;
 
@@ -1070,8 +1075,10 @@ int __connman_device_enable_persistent(struct connman_device *device)
 
 	err = __connman_device_enable(device);
 	if (err == 0 || err == -EINPROGRESS) {
-		if (__connman_profile_get_offlinemode() == TRUE)
+		if (__connman_profile_get_offlinemode() == TRUE) {
+			device->offlinemode = FALSE;
 			__connman_profile_set_offlinemode(FALSE, FALSE);
+		}
 
 	}
 
