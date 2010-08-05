@@ -319,20 +319,6 @@ int connman_provider_set_state(struct connman_provider *provider,
 	return -EINVAL;
 }
 
-static void provider_free(gpointer user_data)
-{
-	struct connman_provider *provider = user_data;
-
-	DBG("provider %p", provider);
-
-	g_free(provider->name);
-	g_free(provider->type);
-	g_free(provider->domain);
-	g_free(provider->identifier);
-	g_free(provider->dns);
-	__connman_service_put(provider->vpn_service);
-}
-
 static void unregister_provider(gpointer data)
 {
 	struct connman_provider *provider = data;
@@ -351,7 +337,12 @@ static void provider_destruct(struct connman_element *element)
 
 	DBG("provider %p", provider);
 
-	provider_free(provider);
+	g_free(provider->name);
+	g_free(provider->type);
+	g_free(provider->domain);
+	g_free(provider->identifier);
+	g_free(provider->dns);
+	__connman_service_put(provider->vpn_service);
 }
 
 static void __connman_provider_initialize(struct connman_provider *provider)
