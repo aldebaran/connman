@@ -586,6 +586,8 @@ int connman_provider_set_string(struct connman_provider *provider,
 	} else if (g_str_equal(key, "PAC") == TRUE) {
 		g_free(provider->element.ipv4.pac);
 		provider->element.ipv4.pac = g_strdup(value);
+		__connman_service_set_proxy_autoconfig(provider->vpn_service,
+									value);
 	} else if (g_str_equal(key, "DNS") == TRUE) {
 		g_free(provider->dns);
 		provider->dns = g_strdup(value);
