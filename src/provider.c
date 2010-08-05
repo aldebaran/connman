@@ -381,13 +381,6 @@ static struct connman_provider *connman_provider_new(void)
 	return provider;
 }
 
-static int provider_register(struct connman_provider *provider)
-{
-	DBG("provider %p", provider);
-
-	return 0;
-}
-
 static struct connman_provider *connman_provider_get(const char *identifier)
 {
 	struct connman_provider *provider;
@@ -408,20 +401,6 @@ static struct connman_provider *connman_provider_get(const char *identifier)
 
 	provider->element.name = g_strdup(identifier);
 	connman_element_register(&provider->element, NULL);
-
-	return provider;
-}
-
-static struct connman_provider *connman_provider_create(const char *name)
-{
-	struct connman_provider *provider;
-
-	provider = connman_provider_get(name);
-
-	if (provider == NULL)
-		return NULL;
-
-	provider_register(provider);
 
 	return provider;
 }
@@ -476,7 +455,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 	if (provider == NULL) {
 		created = TRUE;
-		provider = connman_provider_create(ident);
+		provider = connman_provider_get(ident);
 		if (provider) {
 			provider->name = g_strdup(name);
 			provider->type = g_strdup(type);
