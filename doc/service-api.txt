@@ -419,6 +419,14 @@ Properties	string State [readonly]
 
 		dict Provider [readonly]
 
+			string Host [readonly]
+
+			       VPN host IP.
+
+			string Domain [readonly]
+
+			       VPN Domain.
+
 			string Name [readonly]
 
 			       VPN provider Name.

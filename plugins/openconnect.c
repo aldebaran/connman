@@ -248,9 +248,9 @@ static int oc_connect(struct connman_provider *provider)
 
 	connman_provider_set_data(provider, data);
 
-	vpnhost = connman_provider_get_string(provider, "OpenConnect.Host");
+	vpnhost = connman_provider_get_string(provider, "Host");
 	if (!vpnhost) {
-		connman_error("OpenConnect.Host not set; cannot enable VPN");
+		connman_error("Host not set; cannot enable VPN");
 		ret = -EINVAL;
 		goto exist_err;
 	}

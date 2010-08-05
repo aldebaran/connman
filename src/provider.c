@@ -41,6 +41,7 @@ struct connman_provider {
 	char *identifier;
 	char *name;
 	char *type;
+	char *host;
 	char *dns;
 	char *domain;
 	struct connman_provider_driver *driver;
@@ -50,9 +51,13 @@ struct connman_provider {
 void __connman_provider_append_properties(struct connman_provider *provider,
 							DBusMessageIter *iter)
 {
-	if (provider->name != NULL)
-		connman_dbus_dict_append_basic(iter, "Name",
-					DBUS_TYPE_STRING, &provider->name);
+	if (provider->host != NULL)
+		connman_dbus_dict_append_basic(iter, "Host",
+					DBUS_TYPE_STRING, &provider->host);
+
+	if (provider->domain != NULL)
+		connman_dbus_dict_append_basic(iter, "Domain",
+					DBUS_TYPE_STRING, &provider->domain);
 
 	if (provider->type != NULL)
 		connman_dbus_dict_append_basic(iter, "Type", DBUS_TYPE_STRING,
@@ -405,11 +410,21 @@ static struct connman_provider *connman_provider_get(const char *identifier)
 	return provider;
 }
 
+static void provider_dbus_ident(char *ident)
+{
+	int i, len = strlen(ident);
+
+	for (i = 0; i < len; i++)
+		if (ident[i] == '.')
+			ident[i] = '_';
+}
+
 int __connman_provider_create_and_connect(DBusMessage *msg)
 {
 	struct connman_provider *provider;
 	DBusMessageIter iter, array;
 	const char *type = NULL, *name = NULL, *service_path = NULL;
+	const char *host = NULL, *domain = NULL;
 	char *ident;
 	gboolean created = FALSE;
 	int err;
@@ -433,13 +448,19 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 				dbus_message_iter_get_basic(&value, &type);
 			else if (g_str_equal(key, "Name") == TRUE)
 				dbus_message_iter_get_basic(&value, &name);
+			else if (g_str_equal(key, "Host") == TRUE)
+				dbus_message_iter_get_basic(&value, &host);
+			else if (g_str_equal(key, "VPN.Domain") == TRUE)
+				dbus_message_iter_get_basic(&value, &domain);
 			break;
 		}
 
-		if (type != NULL && name != NULL)
-			break;
-
 		dbus_message_iter_next(&array);
+	}
+
+	if (host == NULL && domain == NULL) {
+		err = -EINVAL;
+		goto failed;
 	}
 
 	DBG("Type %s name %s", type, name);
@@ -449,7 +470,10 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		goto failed;
 	}
 
-	ident = g_strdup_printf("%s_%s", type, name);
+	ident = g_strdup_printf("%s_%s", host, domain);
+	provider_dbus_ident(ident);
+
+	DBG("ident %s", ident);
 
 	provider = connman_provider_lookup(ident);
 
@@ -457,6 +481,8 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		created = TRUE;
 		provider = connman_provider_get(ident);
 		if (provider) {
+			provider->host = g_strdup(host);
+			provider->domain = g_strdup(domain);
 			provider->name = g_strdup(name);
 			provider->type = g_strdup(type);
 		}
