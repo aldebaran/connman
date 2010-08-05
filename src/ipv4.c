@@ -169,7 +169,7 @@ static int ipv4_probe(struct connman_element *element)
 	struct connman_element *connection;
 	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
-	const char *nameserver = NULL;
+	const char *nameserver = NULL, *pac = NULL;
 	char *timeserver = NULL;
 
 	DBG("element %p name %s", element, element->name);
@@ -185,6 +185,8 @@ static int ipv4_probe(struct connman_element *element)
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_PAC, &pac);
 
 	DBG("address %s", address);
 	DBG("netmask %s", netmask);
@@ -205,6 +207,9 @@ static int ipv4_probe(struct connman_element *element)
 	set_ipv4(element, &ipv4);
 
 	service = __connman_element_get_service(element);
+
+	if (pac != NULL)
+		__connman_service_set_proxy_autoconfig(service, pac);
 
 	if (nameserver != NULL)
 		__connman_service_append_nameserver(service, nameserver);
