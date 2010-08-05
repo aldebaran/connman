@@ -989,8 +989,10 @@ int connman_device_set_powered(struct connman_device *device,
 		device->pending = NULL;
 	}
 
-	if (device->powered == powered)
+	if (device->powered == powered) {
+		device->powered_pending = powered;
 		return -EALREADY;
+	}
 
 	if (powered == TRUE)
 		__connman_device_enable(device);
