@@ -481,7 +481,7 @@ static int profile_init(void)
 		g_dir_close(dir);
 	}
 
-	if (g_hash_table_size(profile_hash) == 0)
+	if (default_profile == NULL)
 		create_profile(PROFILE_DEFAULT_IDENT, "Default", NULL);
 
 	profiles_changed();
