@@ -1,3 +1,14 @@
+ver 0.54.4
+	Always create a default profile (Fixes BMC #5024)
+	Disable offline devices upon device_set_connected(TRUE) calls
+	Set powered_pending from device_set_powered (Fixes BMC #3398)
+	Forward device_enable() error from enable_technolgy()
+	Do not try to enable a device if it's rfkill blocked (Fixes BMC #3719)
+	Toggle the powered_pending device flag if op succeeds (Fixes BMC #2640)
+	Use __connman_device_[enable|disable] from set_powered
+	Toggle offline mode only if device enablement succeeds
+	Disable offline mode when enabling a technology from offline mode
+
 ver 0.54.3
 	Return html fetching error when recv returns 0 (Fixes BCM #3697)
 	Fix PATH of adapter_watch in bluetooth plugin (Fixes BCM #3897)
