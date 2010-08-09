@@ -1062,6 +1062,11 @@ int __connman_device_set_blocked(struct connman_device *device,
 	return set_powered(device, powered);
 }
 
+connman_bool_t __connman_device_get_blocked(struct connman_device *device)
+{
+	return device->blocked;
+}
+
 int __connman_device_scan(struct connman_device *device)
 {
 	if (!device->driver || !device->driver->scan)

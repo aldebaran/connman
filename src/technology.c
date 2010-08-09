@@ -42,8 +42,9 @@ enum connman_technology_state {
 	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
 	CONNMAN_TECHNOLOGY_STATE_OFFLINE   = 1,
 	CONNMAN_TECHNOLOGY_STATE_AVAILABLE = 2,
-	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 3,
-	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 4,
+	CONNMAN_TECHNOLOGY_STATE_BLOCKED   = 3,
+	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 4,
+	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 5,
 };
 
 struct connman_technology {
@@ -263,6 +264,8 @@ static const char *state2string(enum connman_technology_state state)
 		return "offline";
 	case CONNMAN_TECHNOLOGY_STATE_AVAILABLE:
 		return "available";
+	case CONNMAN_TECHNOLOGY_STATE_BLOCKED:
+		return "blocked";
 	case CONNMAN_TECHNOLOGY_STATE_ENABLED:
 		return "enabled";
 	case CONNMAN_TECHNOLOGY_STATE_CONNECTED:
@@ -493,8 +496,18 @@ int __connman_technology_add_device(struct connman_device *device)
 	g_hash_table_insert(device_table, device, technology);
 
 	if (technology->device_list == NULL) {
-		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+		if (__connman_device_get_blocked(device) == TRUE)
+			technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		else
+			technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+
 		state_changed(technology);
+	} else {
+		if (technology->state == CONNMAN_TECHNOLOGY_STATE_BLOCKED &&
+				__connman_device_get_blocked(device) == FALSE) {
+			technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+			state_changed(technology);
+		}
 	}
 
 	technology->device_list = g_slist_append(technology->device_list,
@@ -559,6 +572,7 @@ int __connman_technology_disable_device(struct connman_device *device)
 {
 	struct connman_technology *technology;
 	enum connman_service_type type;
+	GSList *list;
 
 	DBG("device %p", device);
 
@@ -573,6 +587,16 @@ int __connman_technology_disable_device(struct connman_device *device)
 		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
 		state_changed(technology);
 	}
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		if (__connman_device_get_blocked(device) == FALSE)
+			return 0;
+	}
+
+	technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+	state_changed(technology);
 
 	return 0;
 }
