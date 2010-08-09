@@ -62,6 +62,7 @@ enum oc_state {
 };
 
 struct oc_data {
+	struct connman_provider *provider;
 	char *if_name;
 	unsigned flags;
 	unsigned int watch;
@@ -120,6 +121,7 @@ static void openconnect_died(struct connman_task *task, void *user_data)
 	kill_tun(data->if_name);
 	connman_provider_set_data(provider, NULL);
 	connman_rtnl_remove_watch(data->watch);
+	connman_provider_unref(data->provider);
 	g_free(data);
 
  oc_exit:
@@ -131,7 +133,6 @@ static void openconnect_died(struct connman_task *task, void *user_data)
 						CONNMAN_PROVIDER_STATE_IDLE);
 
 	connman_provider_set_index(provider, -1);
-	connman_provider_unref(provider);
 	connman_task_destroy(task);
 }
 
@@ -241,6 +242,7 @@ static int oc_connect(struct connman_provider *provider)
 	if (data == NULL)
 		return -ENOMEM;
 
+	data->provider = connman_provider_ref(provider);
 	data->watch = 0;
 	data->flags = 0;
 	data->task = NULL;
@@ -373,8 +375,6 @@ static int oc_connect(struct connman_provider *provider)
 		goto exist_err;
 	}
 
-	connman_provider_ref(provider);
-
 	data->state = OC_STATE_CONNECT;
 
 	return -EINPROGRESS;
@@ -382,6 +382,7 @@ static int oc_connect(struct connman_provider *provider)
  exist_err:
 	connman_provider_set_index(provider, -1);
 	connman_provider_set_data(provider, NULL);
+	connman_provider_unref(data->provider);
 	g_free(data);
 
 	return ret;
@@ -408,8 +409,6 @@ static int oc_disconnect(struct connman_provider *provider)
 	data->state = OC_STATE_DISCONNECT;
 	connman_task_stop(data->task);
 
-	connman_provider_unref(provider);
-
 	return 0;
 }
 
@@ -426,8 +425,6 @@ static int oc_remove(struct connman_provider *provider)
 		connman_rtnl_remove_watch(data->watch);
 	data->watch = 0;
 	connman_task_stop(data->task);
-
-	connman_provider_unref(provider);
 
 	g_usleep(G_USEC_PER_SEC);
 	kill_tun(data->if_name);

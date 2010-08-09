@@ -330,7 +330,7 @@ static void unregister_provider(gpointer data)
 
 	DBG("provider %p", provider);
 
-	__connman_provider_disconnect(provider);
+	__connman_service_put(provider->vpn_service);
 
 	connman_element_unregister(&provider->element);
 	connman_provider_unref(provider);
@@ -347,7 +347,6 @@ static void provider_destruct(struct connman_element *element)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_free(provider->dns);
-	__connman_service_put(provider->vpn_service);
 }
 
 static void __connman_provider_initialize(struct connman_provider *provider)

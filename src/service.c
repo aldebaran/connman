@@ -2011,6 +2011,9 @@ static void service_free(gpointer user_data)
 	if (service->network != NULL)
 		connman_network_unref(service->network);
 
+	if (service->provider != NULL)
+		connman_provider_unref(service->provider);
+
 	if (service->ipconfig != NULL) {
 		connman_ipconfig_unref(service->ipconfig);
 		service->ipconfig = NULL;
@@ -3469,7 +3472,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 		return NULL;
 
 	service->type = CONNMAN_SERVICE_TYPE_VPN;
-	service->provider = provider;
+	service->provider = connman_provider_ref(provider);
 	service->autoconnect = FALSE;
 
 	service->state = CONNMAN_SERVICE_STATE_IDLE;
