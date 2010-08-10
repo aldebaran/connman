@@ -534,6 +534,31 @@ static gboolean adapter_changed(DBusConnection *connection,
 	return TRUE;
 }
 
+static gboolean device_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	DBusMessageIter iter, value;
+	const char *key;
+
+	DBG("path %s", path);
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	DBG("key %s", key);
+
+	if (g_str_equal(key, "UUIDs") == TRUE)
+		add_network(NULL, path);
+
+	return TRUE;
+}
+
 static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	char *path = user_data;
@@ -903,6 +928,7 @@ static guint watch;
 static guint added_watch;
 static guint removed_watch;
 static guint adapter_watch;
+static guint device_watch;
 static guint network_watch;
 
 static int bluetooth_init(void)
@@ -931,13 +957,19 @@ static int bluetooth_init(void)
 						PROPERTY_CHANGED, adapter_changed,
 						NULL, NULL);
 
+	device_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						BLUEZ_DEVICE_INTERFACE,
+						PROPERTY_CHANGED, device_changed,
+						NULL, NULL);
+
 	network_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
 						BLUEZ_NETWORK_INTERFACE,
 						PROPERTY_CHANGED, network_changed,
 						NULL, NULL);
 
 	if (watch == 0 || added_watch == 0 || removed_watch == 0
-			|| adapter_watch == 0 || network_watch == 0) {
+			|| adapter_watch == 0 || network_watch == 0
+				|| device_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -966,6 +998,7 @@ remove:
 	g_dbus_remove_watch(connection, added_watch);
 	g_dbus_remove_watch(connection, removed_watch);
 	g_dbus_remove_watch(connection, adapter_watch);
+	g_dbus_remove_watch(connection, device_watch);
 	g_dbus_remove_watch(connection, network_watch);
 
 	dbus_connection_unref(connection);
@@ -979,6 +1012,7 @@ static void bluetooth_exit(void)
 	g_dbus_remove_watch(connection, added_watch);
 	g_dbus_remove_watch(connection, removed_watch);
 	g_dbus_remove_watch(connection, adapter_watch);
+	g_dbus_remove_watch(connection, device_watch);
 	g_dbus_remove_watch(connection, network_watch);
 
 	bluetooth_disconnect(connection, NULL);
