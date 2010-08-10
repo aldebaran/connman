@@ -69,7 +69,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		arracy{object,dict} GetServices()
+		array{object,dict} GetServices()
 
 			Returns a sorted list of tuples with service
 			object path and dictionary of service properties.
