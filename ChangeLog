@@ -1,3 +1,11 @@
+ver 0.57:
+	Fix missing default profile creation.
+	Fix missing service integration of VPN providers.
+	Fix missing export of PAC information retrieved from DHCP.
+	Fix issue with detection of new Bluetooth devices.
+	Fix issue with offline mode handling.
+	Fix issue with device power handling.
+
 ver 0.56:
 	Fix issues with offline mode handling.
 	Fix service integration with VPN providers.
