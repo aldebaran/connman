@@ -457,7 +457,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		dbus_message_iter_next(&array);
 	}
 
-	if (host == NULL && domain == NULL) {
+	if (host == NULL || domain == NULL) {
 		err = -EINVAL;
 		goto failed;
 	}
