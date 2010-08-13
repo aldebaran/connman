@@ -26,6 +26,8 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <linux/if_link.h>
+#include <string.h>
+#include <stdlib.h>
 
 #ifndef IFF_LOWER_UP
 #define IFF_LOWER_UP	0x10000
@@ -38,6 +40,7 @@
 struct connman_ipconfig {
 	gint refcount;
 	int index;
+	enum connman_ipconfig_type type;
 
 	struct connman_ipconfig *origin;
 
@@ -47,6 +50,8 @@ struct connman_ipconfig {
 	enum connman_ipconfig_method method;
 	struct connman_ipaddress *address;
 	struct connman_ipaddress *system;
+
+	struct connman_ipconfig *ipv6;
 };
 
 struct connman_ipdevice {
@@ -56,11 +61,19 @@ struct connman_ipdevice {
 	unsigned int flags;
 	char *address;
 	uint16_t mtu;
-	uint32_t tx_bytes;
+	uint32_t rx_packets;
+	uint32_t tx_packets;
 	uint32_t rx_bytes;
+	uint32_t tx_bytes;
+	uint32_t rx_errors;
+	uint32_t tx_errors;
+	uint32_t rx_dropped;
+	uint32_t tx_dropped;
 
 	GSList *address_list;
-	char *gateway;
+	char *ipv4_gateway;
+	char *ipv6_gateway;
+	char *pac;
 
 	struct connman_ipconfig *config;
 
@@ -71,13 +84,20 @@ struct connman_ipdevice {
 static GHashTable *ipdevice_hash = NULL;
 static GList *ipconfig_list = NULL;
 
-struct connman_ipaddress *connman_ipaddress_alloc(void)
+struct connman_ipaddress *connman_ipaddress_alloc(int family)
 {
 	struct connman_ipaddress *ipaddress;
 
 	ipaddress = g_try_new0(struct connman_ipaddress, 1);
 	if (ipaddress == NULL)
 		return NULL;
+
+	ipaddress->family = family;
+	ipaddress->prefixlen = 0;
+	ipaddress->local = NULL;
+	ipaddress->peer = NULL;
+	ipaddress->broadcast = NULL;
+	ipaddress->gateway = NULL;
 
 	return ipaddress;
 }
@@ -110,7 +130,46 @@ static unsigned char netmask2prefixlen(const char *netmask)
 	return bits;
 }
 
-void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
+static gboolean check_ipv6_address(const char *address)
+{
+	unsigned char buf[sizeof(struct in6_addr)];
+	int err;
+
+	err = inet_pton(AF_INET6, address, buf);
+	if (err > 0)
+		return TRUE;
+
+	return FALSE;
+}
+
+int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
+				const char *address, const char *gateway,
+						unsigned char prefix_length)
+{
+	if (ipaddress == NULL)
+		return -EINVAL;
+
+	if (check_ipv6_address(address) == FALSE)
+		return -EINVAL;
+
+	if (check_ipv6_address(gateway) == FALSE)
+		return -EINVAL;
+
+	DBG("prefix_len %d address %s gateway %s",
+			prefix_length, address, gateway);
+
+	ipaddress->prefixlen = prefix_length;
+
+	g_free(ipaddress->local);
+	ipaddress->local = g_strdup(address);
+
+	g_free(ipaddress->gateway);
+	ipaddress->gateway = g_strdup(gateway);
+
+	return 0;
+}
+
+void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 		const char *address, const char *netmask, const char *gateway)
 {
 	if (ipaddress == NULL)
@@ -154,6 +213,7 @@ void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 	if (ipaddress == NULL || source == NULL)
 		return;
 
+	ipaddress->family = source->family;
 	ipaddress->prefixlen = source->prefixlen;
 
 	g_free(ipaddress->local);
@@ -241,7 +301,9 @@ static void free_ipdevice(gpointer data)
 		connman_ipconfig_unref(ipdevice->config);
 
 	free_address_list(ipdevice);
-	g_free(ipdevice->gateway);
+	g_free(ipdevice->ipv4_gateway);
+	g_free(ipdevice->ipv6_gateway);
+	g_free(ipdevice->pac);
 
 	g_free(ipdevice->address);
 	g_free(ipdevice->ifname);
@@ -348,6 +410,9 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 	ipdevice->driver_config = NULL;
 
 	connman_inet_clear_address(ipdevice->index);
+	connman_inet_clear_ipv6_address(ipdevice->index,
+			ipdevice->driver_config->address->local,
+			ipdevice->driver_config->address->prefixlen);
 }
 
 static void update_stats(struct connman_ipdevice *ipdevice,
@@ -364,11 +429,20 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	if (ipdevice->config == NULL)
 		return;
 
+	ipdevice->rx_packets = stats->rx_packets;
+	ipdevice->tx_packets = stats->tx_packets;
 	ipdevice->rx_bytes = stats->rx_bytes;
 	ipdevice->tx_bytes = stats->tx_bytes;
+	ipdevice->rx_errors = stats->rx_errors;
+	ipdevice->tx_errors = stats->tx_errors;
+	ipdevice->rx_dropped = stats->rx_dropped;
+	ipdevice->tx_dropped = stats->tx_dropped;
 
-	__connman_counter_notify(ipdevice->ifname,
-				ipdevice->rx_bytes, ipdevice->tx_bytes);
+	__connman_counter_notify(ipdevice->config,
+				ipdevice->rx_packets, ipdevice->tx_packets,
+				ipdevice->rx_bytes, ipdevice->tx_bytes,
+				ipdevice->rx_errors, ipdevice->tx_errors,
+				ipdevice->rx_dropped, ipdevice->tx_dropped);
 }
 
 void __connman_ipconfig_newlink(int index, unsigned short type,
@@ -515,7 +589,7 @@ void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats)
 	g_hash_table_remove(ipdevice_hash, GINT_TO_POINTER(index));
 }
 
-void __connman_ipconfig_newaddr(int index, const char *label,
+void __connman_ipconfig_newaddr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address)
 {
 	struct connman_ipdevice *ipdevice;
@@ -528,7 +602,7 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	if (ipdevice == NULL)
 		return;
 
-	ipaddress = connman_ipaddress_alloc();
+	ipaddress = connman_ipaddress_alloc(family);
 	if (ipaddress == NULL)
 		return;
 
@@ -541,8 +615,14 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	connman_info("%s {add} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
 
-	if (ipdevice->config != NULL)
-		connman_ipaddress_copy(ipdevice->config->system, ipaddress);
+	if (ipdevice->config != NULL) {
+		if (family == AF_INET6 && ipdevice->config->ipv6 != NULL)
+			connman_ipaddress_copy(ipdevice->config->ipv6->system,
+							ipaddress);
+		else
+			connman_ipaddress_copy(ipdevice->config->system,
+							ipaddress);
+	}
 
 	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
 		return;
@@ -565,7 +645,7 @@ void __connman_ipconfig_newaddr(int index, const char *label,
 	}
 }
 
-void __connman_ipconfig_deladdr(int index, const char *label,
+void __connman_ipconfig_deladdr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address)
 {
 	struct connman_ipdevice *ipdevice;
@@ -611,7 +691,7 @@ void __connman_ipconfig_deladdr(int index, const char *label,
 	}
 }
 
-void __connman_ipconfig_newroute(int index, unsigned char scope,
+void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 					const char *dst, const char *gateway)
 {
 	struct connman_ipdevice *ipdevice;
@@ -625,8 +705,13 @@ void __connman_ipconfig_newroute(int index, unsigned char scope,
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
 
-		g_free(ipdevice->gateway);
-		ipdevice->gateway = g_strdup(gateway);
+		if (family == AF_INET6) {
+			g_free(ipdevice->ipv6_gateway);
+			ipdevice->ipv6_gateway = g_strdup(gateway);
+		} else {
+			g_free(ipdevice->ipv4_gateway);
+			ipdevice->ipv4_gateway = g_strdup(gateway);
+		}
 
 		if (ipdevice->config != NULL &&
 					ipdevice->config->system != NULL) {
@@ -647,7 +732,7 @@ void __connman_ipconfig_newroute(int index, unsigned char scope,
 						scope, scope2str(scope));
 }
 
-void __connman_ipconfig_delroute(int index, unsigned char scope,
+void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 					const char *dst, const char *gateway)
 {
 	struct connman_ipdevice *ipdevice;
@@ -661,8 +746,13 @@ void __connman_ipconfig_delroute(int index, unsigned char scope,
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
 
-		g_free(ipdevice->gateway);
-		ipdevice->gateway = NULL;
+		if (family == AF_INET6) {
+			g_free(ipdevice->ipv6_gateway);
+			ipdevice->ipv6_gateway = NULL;
+		} else {
+			g_free(ipdevice->ipv4_gateway);
+			ipdevice->ipv4_gateway = NULL;
+		}
 
 		if (ipdevice->config != NULL &&
 					ipdevice->config->system != NULL) {
@@ -731,12 +821,51 @@ const char *__connman_ipconfig_get_gateway(int index)
 	if (ipdevice == NULL)
 		return NULL;
 
-	return ipdevice->gateway;
+	if (ipdevice->ipv4_gateway != NULL)
+		return ipdevice->ipv4_gateway;
+
+	if (ipdevice->config != NULL &&
+			ipdevice->config->address != NULL)
+		return ipdevice->config->address->gateway;
+
+	return NULL;
 }
 
 void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index)
 {
 	ipconfig->index = index;
+
+	if (ipconfig->ipv6 != NULL)
+		ipconfig->ipv6->index = index;
+}
+
+static struct connman_ipconfig *create_ipv6config(int index)
+{
+	struct connman_ipconfig *ipv6config;
+
+	DBG("index %d", index);
+
+	ipv6config = g_try_new0(struct connman_ipconfig, 1);
+	if (ipv6config == NULL)
+		return NULL;
+
+	ipv6config->index = index;
+	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
+	ipv6config->method = CONNMAN_IPCONFIG_METHOD_OFF;
+
+	ipv6config->address = connman_ipaddress_alloc(AF_INET6);
+	if (ipv6config->address == NULL) {
+		g_free(ipv6config);
+		return NULL;
+	}
+
+	ipv6config->system = connman_ipaddress_alloc(AF_INET6);
+
+	ipv6config->ipv6 = NULL;
+
+	DBG("ipconfig %p", ipv6config);
+
+	return ipv6config;
 }
 
 /**
@@ -759,14 +888,17 @@ struct connman_ipconfig *connman_ipconfig_create(int index)
 	ipconfig->refcount = 1;
 
 	ipconfig->index = index;
+	ipconfig->type = CONNMAN_IPCONFIG_TYPE_IPV4;
 
-	ipconfig->address = connman_ipaddress_alloc();
+	ipconfig->address = connman_ipaddress_alloc(AF_INET);
 	if (ipconfig->address == NULL) {
 		g_free(ipconfig);
 		return NULL;
 	}
 
-	ipconfig->system = connman_ipaddress_alloc();
+	ipconfig->system = connman_ipaddress_alloc(AF_INET);
+
+	ipconfig->ipv6 = create_ipv6config(index);
 
 	DBG("ipconfig %p", ipconfig);
 
@@ -812,6 +944,17 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 	return ipconfig;
 }
 
+static void  free_ipv6config(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return;
+
+	connman_ipconfig_set_ops(ipconfig, NULL);
+	connman_ipaddress_free(ipconfig->system);
+	connman_ipaddress_free(ipconfig->address);
+	g_free(ipconfig->ipv6);
+}
+
 /**
  * connman_ipconfig_unref:
  * @ipconfig: ipconfig structure
@@ -832,6 +975,7 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 
 		connman_ipaddress_free(ipconfig->system);
 		connman_ipaddress_free(ipconfig->address);
+		free_ipv6config(ipconfig->ipv6);
 		g_free(ipconfig);
 	}
 }
@@ -913,6 +1057,15 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 	ipconfig->ops = ops;
 }
 
+struct connman_ipconfig *connman_ipconfig_get_ipv6config(
+				struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return NULL;
+
+	return ipconfig->ipv6;
+}
+
 /**
  * connman_ipconfig_set_method:
  * @ipconfig: ipconfig structure
@@ -955,7 +1108,17 @@ void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 	connman_inet_set_address(origin->index, origin->address);
 }
 
-/* FIXME: The element soulution should be removed in the future */
+void __connman_ipconfig_set_element_ipv6_gateway(
+			struct connman_ipconfig *ipconfig,
+				struct connman_element *element)
+{
+	element->ipv6.gateway = ipconfig->ipv6->address->gateway;
+}
+
+/*
+ * FIXME: The element soulution should be removed in the future
+ * Set IPv4 and IPv6 gateway
+ */
 int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 						struct connman_element *parent)
 {
@@ -963,9 +1126,12 @@ int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 
 	connection = connman_element_create(NULL);
 
+	DBG("ipconfig %p", ipconfig);
+
 	connection->type  = CONNMAN_ELEMENT_TYPE_CONNECTION;
 	connection->index = ipconfig->index;
 	connection->ipv4.gateway = ipconfig->address->gateway;
+	connection->ipv6.gateway = ipconfig->ipv6->address->gateway;
 
 	if (connman_element_register(connection, parent) < 0)
 		connman_element_unref(connection);
@@ -984,8 +1150,12 @@ int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		return connman_inet_set_address(ipconfig->index,
-						ipconfig->address);
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			return connman_inet_set_address(ipconfig->index,
+							ipconfig->address);
+		else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			return connman_inet_set_ipv6_address(
+					ipconfig->index, ipconfig->address);
 	}
 
 	return 0;
@@ -1007,16 +1177,44 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		return connman_inet_clear_address(ipconfig->index);
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			return connman_inet_clear_address(ipconfig->index);
+		else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			return connman_inet_clear_ipv6_address(
+						ipconfig->index,
+						ipconfig->address->local,
+						ipconfig->address->prefixlen);
 	}
 
 	return 0;
+}
 
+int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
+                                                        const char *url)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("ipconfig %p", ipconfig);
+
+	if (ipconfig == NULL || ipconfig->index < 0)
+		return -ENODEV;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return -ENXIO;
+
+	g_free(ipdevice->pac);
+	ipdevice->pac = g_strdup(url);
+
+	return 0;
 }
 
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
+	gboolean up = FALSE, down = FALSE;
+	gboolean lower_up = FALSE, lower_down = FALSE;
 
 	DBG("ipconfig %p", ipconfig);
 
@@ -1043,6 +1241,27 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 
 	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
 
+	if (ipdevice->flags & IFF_UP)
+		up = TRUE;
+	else
+		down = TRUE;
+
+	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) ==
+			(IFF_RUNNING | IFF_LOWER_UP))
+		lower_up = TRUE;
+	else if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) == 0)
+		lower_down = TRUE;
+
+	if (up == TRUE && ipconfig->ops->up)
+		ipconfig->ops->up(ipconfig);
+	if (lower_up == TRUE && ipconfig->ops->lower_up)
+		ipconfig->ops->lower_up(ipconfig);
+
+	if (lower_down == TRUE && ipconfig->ops->lower_down)
+		ipconfig->ops->lower_down(ipconfig);
+	if (down == TRUE && ipconfig->ops->down)
+		ipconfig->ops->down(ipconfig);
+
 	return 0;
 }
 
@@ -1066,6 +1285,7 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 	ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
 	connman_ipaddress_clear(ipdevice->config->system);
+	connman_ipaddress_clear(ipdevice->config->ipv6->system);
 
 	connman_ipconfig_unref(ipdevice->config);
 	ipdevice->config = NULL;
@@ -1110,6 +1330,8 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 {
 	const char *str;
 
+	DBG("");
+
 	str = __connman_ipconfig_method2string(ipconfig->method);
 	if (str == NULL)
 		return;
@@ -1139,10 +1361,80 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 				DBUS_TYPE_STRING, &ipconfig->system->gateway);
 }
 
+void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter)
+{
+	const char *str;
+
+	DBG("");
+
+	str = __connman_ipconfig_method2string(ipconfig->method);
+	if (str == NULL)
+		return;
+
+	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
+
+	if (ipconfig->system == NULL)
+		return;
+
+	if (ipconfig->system->local != NULL) {
+		connman_dbus_dict_append_basic(iter, "Address",
+				DBUS_TYPE_STRING, &ipconfig->system->local);
+		connman_dbus_dict_append_basic(iter, "PrefixLength",
+						DBUS_TYPE_BYTE,
+						&ipconfig->system->prefixlen);
+	}
+
+	if (ipconfig->system->gateway != NULL)
+		connman_dbus_dict_append_basic(iter, "Gateway",
+				DBUS_TYPE_STRING, &ipconfig->system->gateway);
+}
+
+void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter)
+{
+	const char *str;
+
+	DBG("");
+
+	str = __connman_ipconfig_method2string(ipconfig->method);
+	if (str == NULL)
+		return;
+
+	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
+
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		return;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		break;
+	}
+
+	if (ipconfig->address == NULL)
+		return;
+
+	if (ipconfig->address->local != NULL) {
+		connman_dbus_dict_append_basic(iter, "Address",
+				DBUS_TYPE_STRING, &ipconfig->address->local);
+		connman_dbus_dict_append_basic(iter, "PrefixLength",
+						DBUS_TYPE_BYTE,
+						&ipconfig->address->prefixlen);
+	}
+
+	if (ipconfig->address->gateway != NULL)
+		connman_dbus_dict_append_basic(iter, "Gateway",
+				DBUS_TYPE_STRING, &ipconfig->address->gateway);
+}
+
 void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter)
 {
 	const char *str;
+
+	DBG("");
 
 	str = __connman_ipconfig_method2string(ipconfig->method);
 	if (str == NULL)
@@ -1183,14 +1475,20 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 				DBUS_TYPE_STRING, &ipconfig->address->gateway);
 }
 
-int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *array)
+int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
+		enum connman_ipconfig_type type, DBusMessageIter *array)
 {
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
-	const char *address = NULL, *netmask = NULL, *gateway = NULL;
+	const char *address = NULL, *netmask = NULL, *gateway = NULL,
+			*prefix_length_string = NULL;
+	int prefix_length = 0;
 	DBusMessageIter dict;
 
-	DBG("ipconfig %p", ipconfig);
+	DBG("ipconfig %p type %d", ipconfig, type);
+
+	if (type != CONNMAN_IPCONFIG_TYPE_IPV4 &&
+			type != CONNMAN_IPCONFIG_TYPE_IPV6)
+		return -EINVAL;
 
 	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
 		return -EINVAL;
@@ -1225,6 +1523,17 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 				return -EINVAL;
 
 			dbus_message_iter_get_basic(&entry, &address);
+		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
+			if (type != DBUS_TYPE_STRING)
+				return -EINVAL;
+
+			dbus_message_iter_get_basic(&entry,
+							&prefix_length_string);
+
+			prefix_length = atoi(prefix_length_string);
+			if (prefix_length < 0 || prefix_length > 128)
+				return -EINVAL;
+
 		} else if (g_str_equal(key, "Netmask") == TRUE) {
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
@@ -1239,8 +1548,8 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 		dbus_message_iter_next(&dict);
 	}
 
-	DBG("method %d address %s netmask %s gateway %s",
-				method, address, netmask, gateway);
+	DBG("method %d address %s netmask %s gateway %s prefix_length %d",
+			method, address, netmask, gateway, prefix_length);
 
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
@@ -1253,8 +1562,14 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 			return -EINVAL;
 
 		ipconfig->method = method;
-		connman_ipaddress_set(ipconfig->address,
-				address, netmask, gateway);
+
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			connman_ipaddress_set_ipv4(ipconfig->address,
+						address, netmask, gateway);
+		else
+			return connman_ipaddress_set_ipv6(
+					ipconfig->address, address,
+						gateway, prefix_length);
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
@@ -1271,8 +1586,23 @@ int __connman_ipconfig_set_ipv4config(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter)
 {
+	struct connman_ipdevice *ipdevice;
 	const char *method = "direct";
 
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+                                        GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		goto done;
+
+	if (ipdevice->pac == NULL)
+		goto done;
+
+	method = "auto-config";
+
+	connman_dbus_dict_append_basic(iter, "URL",
+					DBUS_TYPE_STRING, &ipdevice->pac);
+
+done:
 	connman_dbus_dict_append_basic(iter, "Method",
 						DBUS_TYPE_STRING, &method);
 }
@@ -1314,9 +1644,12 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 
 	key = g_strdup_printf("%smethod", prefix);
 	method = g_key_file_get_string(keyfile, identifier, key, NULL);
-	if (method == NULL)
-		ipconfig->method = CONNMAN_IPCONFIG_METHOD_DHCP;
-	else
+	if (method == NULL) {
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			ipconfig->method = CONNMAN_IPCONFIG_METHOD_DHCP;
+		else
+			ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
+	} else
 		ipconfig->method = __connman_ipconfig_string2method(method);
 	g_free(key);
 

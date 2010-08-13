@@ -39,6 +39,7 @@ struct notify_data {
 struct connman_task {
 	char *path;
 	pid_t pid;
+	guint child_watch;
 	GPtrArray *argv;
 	GPtrArray *envp;
 	connman_task_exit_t exit_func;
@@ -68,6 +69,9 @@ static void free_task(gpointer data)
 
 	if (task->pid > 0)
 		kill(task->pid, SIGTERM);
+
+	if (task->child_watch > 0)
+		g_source_remove(task->child_watch);
 
 	g_ptr_array_foreach(task->envp, free_pointer, NULL);
 	g_ptr_array_free(task->envp, TRUE);
@@ -251,6 +255,8 @@ static void task_died(GPid pid, gint status, gpointer user_data)
 	g_spawn_close_pid(pid);
 	task->pid = -1;
 
+	task->child_watch = 0;
+
 	if (task->exit_func)
 		task->exit_func(task, task->exit_data);
 }
@@ -328,7 +334,7 @@ int connman_task_run(struct connman_task *task,
 		return -EIO;
 	}
 
-	g_child_watch_add(task->pid, task_died, task);
+	task->child_watch = g_child_watch_add(task->pid, task_died, task);
 
 	return 0;
 }

@@ -70,6 +70,15 @@ Properties	string Address [readonly]
 			example would be modifications via the "ifconfig"
 			command line utility.
 
+		boolean Blocked [readonly]
+
+			Indicates if a device transmission capability is
+			blocked or not. This property is a translation of
+			the device rfkill status. If it is hard or soft
+			blocked, this property will be true.
+
+			Once a device is blocked, enabling it will fail.
+
 		uint16 ScanInterval [readwrite]
 
 			The scan interval describes the time in seconds

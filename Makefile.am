@@ -7,7 +7,8 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/security.h include/notifier.h \
 			include/storage.h include/service.h \
 			include/resolver.h include/ipconfig.h \
-			include/device.h include/network.h include/inet.h
+			include/device.h include/network.h include/inet.h \
+			include/ondemand.h
 
 nodist_include_HEADERS = include/version.h
 
@@ -16,13 +17,19 @@ noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/dbus.h include/rfkill.h include/option.h \
 			include/profile.h include/provider.h include/dhcp.h \
 			include/utsname.h include/timeserver.h \
-			include/location.h
+			include/location.h include/technology.h
 
 local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 			$(noinst_HEADERS), include/connman/$(notdir $(file)))
 
 
 gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/object.c gdbus/watch.c
+
+gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c
+
+gresolv_sources = gresolv/gresolv.h gresolv/gresolv.c
+
+gweb_sources = gweb/gweb.h gweb/gweb.c
 
 if DATAFILES
 dbusdir = @DBUS_DATADIR@
@@ -43,7 +50,8 @@ noinst_PROGRAMS =
 
 sbin_PROGRAMS = src/connmand
 
-src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
+src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
+					$(gweb_sources) $(builtin_sources) \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
@@ -54,7 +62,8 @@ src_connmand_SOURCES = $(gdbus_sources) $(builtin_sources) \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/location.c \
-			src/session.c
+			src/session.c src/tethering.c src/ondemand.c \
+			src/wpad.c
 
 if UDEV
 src_connmand_SOURCES += src/udev.c
@@ -62,8 +71,8 @@ else
 src_connmand_SOURCES += src/udev-compat.c
 endif
 
-src_connmand_LDADD = $(builtin_libadd) \
-			@GLIB_LIBS@ @DBUS_LIBS@ @CAPNG_LIBS@ @UDEV_LIBS@ -ldl
+src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
+					@CAPNG_LIBS@ @UDEV_LIBS@ -lresolv -ldl
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=src/connman.ver
 
@@ -88,7 +97,7 @@ build_plugindir = $(plugindir)
 build_scriptdir = $(scriptdir)
 endif
 
-AM_CFLAGS = @UDEV_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
+AM_CFLAGS = @UDEV_CFLAGS@ @IPTC_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
 			@DBUS_CFLAGS@ @GLIB_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
@@ -115,9 +124,10 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dbus-test \
-			tools/addr-test tools/tap-test tools/resolv-test \
-					tools/polkit-test tools/portal-test
+noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dhcp-test \
+			tools/addr-test tools/web-test tools/resolv-test \
+			tools/dbus-test tools/polkit-test tools/portal-test \
+			tools/iptables-test tools/tap-test tools/wpad-test
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -126,14 +136,36 @@ tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant.h tools/supplicant.c
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
+tools_web_test_SOURCES = $(gweb_sources) tools/web-test.c
+tools_web_test_LDADD = @GLIB_LIBS@
+
+tools_resolv_test_SOURCES = $(gresolv_sources) tools/resolv-test.c
+tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
+
+tools_wpad_test_SOURCES = $(gresolv_sources) tools/wpad-test.c
+tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
+
+tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
+tools_dhcp_test_LDADD = @GLIB_LIBS@
+
 tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
-
-tools_resolv_test_LDADD = -lresolv
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
 tools_portal_test_LDADD = @GLIB_LIBS@
+
+tools_iptables_test_LDADD = @IPTC_LIBS@ -lip4tc -lxtables
+
+if DHCLIENT
+noinst_PROGRAMS += tools/dhclient-test
+
+tools_dhclient_test_SOURCES = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
+							tools/dhclient-test.c
+tools_dhclient_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_dhclient_test_CFLAGS = $(AM_CFLAGS) -DDHCLIENT=\"@DHCLIENT@\"
+endif
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \
@@ -146,7 +178,8 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/connect-vpn test/disconnect-vpn test/list-providers \
 		test/monitor-manager test/test-counter test/set-ip-method \
 		test/set-nameservers test/set-domains test/find-service \
-		test/get-services
+		test/get-services test/get-proxy-autoconfig \
+		test/enable-tethering test/disable-tethering
 
 if TEST
 testdir = $(pkglibdir)/test
@@ -176,9 +209,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-wifi \
 				--enable-bluetooth \
 				--enable-ofono \
-				--enable-udhcp \
 				--enable-dhclient \
-				--enable-resolvconf \
 				--enable-dnsproxy \
 				--enable-google \
 				--enable-meego \
@@ -203,7 +234,7 @@ src/builtin.h: src/genbuiltin $(builtin_sources)
 
 src/connman.exp: $(src_connmand_OBJECTS)
 	$(AM_V_GEN)$(NM) $^ | $(AWK) '{ print $$3 }' | sort -u | \
-				$(EGREP) -e '^connman_' -e '^g_dbus_' > $@
+		$(EGREP) -e '^connman_' -e '^g_dbus_' -e '^g_dhcp_' > $@
 
 src/connman.ver: src/connman.exp
 	$(AM_V_at)echo "{ global:" > $@

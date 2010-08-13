@@ -194,6 +194,13 @@ static void powered_changed(struct connman_device *device)
 					DBUS_TYPE_BOOLEAN, &device->powered);
 }
 
+static void blocked_changed(struct connman_device *device)
+{
+	connman_dbus_property_changed_basic(device->element.path,
+				CONNMAN_DEVICE_INTERFACE, "Blocked",
+					DBUS_TYPE_BOOLEAN, &device->blocked);
+}
+
 int __connman_device_enable(struct connman_device *device)
 {
 	int err;
@@ -332,6 +339,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_append_basic(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &device->powered);
+
+	connman_dbus_dict_append_basic(&dict, "Blocked",
+					DBUS_TYPE_BOOLEAN, &device->blocked);
 
 	if (device->driver && device->driver->scan)
 		connman_dbus_dict_append_basic(&dict, "Scanning",
@@ -1037,6 +1047,8 @@ int __connman_device_set_blocked(struct connman_device *device,
 
 	device->blocked = blocked;
 
+	blocked_changed(device);
+
 	if (device->offlinemode == TRUE)
 		return 0;
 
@@ -1048,6 +1060,11 @@ int __connman_device_set_blocked(struct connman_device *device,
 		powered = FALSE;
 
 	return set_powered(device, powered);
+}
+
+connman_bool_t __connman_device_get_blocked(struct connman_device *device)
+{
+	return device->blocked;
 }
 
 int __connman_device_scan(struct connman_device *device)
@@ -1075,11 +1092,9 @@ int __connman_device_enable_persistent(struct connman_device *device)
 
 	err = __connman_device_enable(device);
 	if (err == 0 || err == -EINPROGRESS) {
-		if (__connman_profile_get_offlinemode() == TRUE) {
-			device->offlinemode = FALSE;
+		device->offlinemode = FALSE;
+		if (__connman_profile_get_offlinemode() == TRUE)
 			__connman_profile_set_offlinemode(FALSE, FALSE);
-		}
-
 	}
 
 	return err;

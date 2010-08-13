@@ -42,8 +42,9 @@ enum connman_technology_state {
 	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
 	CONNMAN_TECHNOLOGY_STATE_OFFLINE   = 1,
 	CONNMAN_TECHNOLOGY_STATE_AVAILABLE = 2,
-	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 3,
-	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 4,
+	CONNMAN_TECHNOLOGY_STATE_BLOCKED   = 3,
+	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 4,
+	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 5,
 };
 
 struct connman_technology {
@@ -54,7 +55,151 @@ struct connman_technology {
 	GHashTable *rfkill_list;
 	GSList *device_list;
 	gint enabled;
+
+	struct connman_technology_driver *driver;
+	void *driver_data;
 };
+
+static GSList *driver_list = NULL;
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_technology_driver *driver1 = a;
+	const struct connman_technology_driver *driver2 = b;
+
+	return driver2->priority - driver1->priority;
+}
+
+/**
+ * connman_technology_driver_register:
+ * @driver: Technology driver definition
+ *
+ * Register a new technology driver
+ *
+ * Returns: %0 on success
+ */
+int connman_technology_driver_register(struct connman_technology_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_insert_sorted(driver_list, driver,
+							compare_priority);
+
+	return 0;
+}
+
+/**
+ * connman_technology_driver_unregister:
+ * @driver: Technology driver definition
+ *
+ * Remove a previously registered technology driver
+ */
+void connman_technology_driver_unregister(struct connman_technology_driver *driver)
+{
+	DBG("driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_remove(driver_list, driver);
+}
+
+void __connman_technology_add_interface(enum connman_service_type type,
+				int index, const char *name, const char *ident)
+{
+	GSList *list;
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+		return;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+		break;
+	}
+
+	connman_info("Create interface %s [ %s ]", name,
+				__connman_service_type2string(type));
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->type != type)
+			continue;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->add_interface)
+			technology->driver->add_interface(technology,
+							index, name, ident);
+	}
+}
+
+void __connman_technology_remove_interface(enum connman_service_type type,
+				int index, const char *name, const char *ident)
+{
+	GSList *list;
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+		return;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+		break;
+	}
+
+	connman_info("Remove interface %s [ %s ]", name,
+				__connman_service_type2string(type));
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->type != type)
+			continue;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->remove_interface)
+			technology->driver->remove_interface(technology, index);
+	}
+}
+
+static int set_tethering(connman_bool_t enabled)
+{
+	GSList *list;
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->set_tethering)
+			technology->driver->set_tethering(technology, enabled);
+	}
+
+	return 0;
+}
+
+int __connman_technology_enable_tethering(void)
+{
+	return set_tethering(TRUE);
+}
+
+int __connman_technology_disable_tethering(void)
+{
+	return set_tethering(FALSE);
+}
 
 static void free_rfkill(gpointer data)
 {
@@ -119,6 +264,8 @@ static const char *state2string(enum connman_technology_state state)
 		return "offline";
 	case CONNMAN_TECHNOLOGY_STATE_AVAILABLE:
 		return "available";
+	case CONNMAN_TECHNOLOGY_STATE_BLOCKED:
+		return "blocked";
 	case CONNMAN_TECHNOLOGY_STATE_ENABLED:
 		return "enabled";
 	case CONNMAN_TECHNOLOGY_STATE_CONNECTED:
@@ -233,6 +380,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 {
 	struct connman_technology *technology;
 	const char *str;
+	GSList *list;
 
 	DBG("type %d", type);
 
@@ -275,6 +423,23 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technologies_changed();
 
+	if (technology->driver != NULL)
+		goto done;
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_technology_driver *driver = list->data;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->type != technology->type)
+			continue;
+
+		if (driver->probe(technology) == 0) {
+			technology->driver = driver;
+			break;
+		}
+	}
+
 done:
 	DBG("technology %p", technology);
 
@@ -287,6 +452,11 @@ static void technology_put(struct connman_technology *technology)
 
 	if (g_atomic_int_dec_and_test(&technology->refcount) == FALSE)
 		return;
+
+	if (technology->driver) {
+		technology->driver->remove(technology);
+		technology->driver = NULL;
+	}
 
 	technology_list = g_slist_remove(technology_list, technology);
 
@@ -326,8 +496,18 @@ int __connman_technology_add_device(struct connman_device *device)
 	g_hash_table_insert(device_table, device, technology);
 
 	if (technology->device_list == NULL) {
-		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+		if (__connman_device_get_blocked(device) == TRUE)
+			technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		else
+			technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+
 		state_changed(technology);
+	} else {
+		if (technology->state == CONNMAN_TECHNOLOGY_STATE_BLOCKED &&
+				__connman_device_get_blocked(device) == FALSE) {
+			technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+			state_changed(technology);
+		}
 	}
 
 	technology->device_list = g_slist_append(technology->device_list,
@@ -392,6 +572,7 @@ int __connman_technology_disable_device(struct connman_device *device)
 {
 	struct connman_technology *technology;
 	enum connman_service_type type;
+	GSList *list;
 
 	DBG("device %p", device);
 
@@ -406,6 +587,16 @@ int __connman_technology_disable_device(struct connman_device *device)
 		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
 		state_changed(technology);
 	}
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		if (__connman_device_get_blocked(device) == FALSE)
+			return 0;
+	}
+
+	technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+	state_changed(technology);
 
 	return 0;
 }

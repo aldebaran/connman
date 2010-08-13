@@ -845,6 +845,31 @@ static int set_connected_dhcp(struct connman_network *network)
 	return 0;
 }
 
+static int manual_ipv6_set(struct connman_network *network,
+				struct connman_ipconfig *ipconfig_ipv6)
+{
+	struct connman_service *service;
+	int err;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	err = __connman_ipconfig_set_address(ipconfig_ipv6);
+	if (err < 0) {
+		connman_network_set_error(network,
+			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+		return err;
+	}
+
+	/*
+	 * READY state will be indicated by IPV4 setting
+	 * gateway will be set by IPV4 setting
+	 */
+
+	return 0;
+}
+
 static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
@@ -861,6 +886,29 @@ static gboolean set_connected(gpointer user_data)
 	DBG("method %d", method);
 
 	if (network->connected == TRUE) {
+		enum connman_ipconfig_method ipv6_method;
+		struct connman_ipconfig *ipv6config;
+		int ret;
+
+		ipv6config = connman_ipconfig_get_ipv6config(ipconfig);
+		ipv6_method = __connman_ipconfig_get_method(ipv6config);
+		switch (ipv6_method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			ret = manual_ipv6_set(network, ipv6config);
+			if (ret != 0) {
+				connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+				return FALSE;
+			}
+			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			break;
+		}
+
 		switch (method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
@@ -974,6 +1022,7 @@ connman_bool_t connman_network_get_associating(struct connman_network *network)
  */
 int __connman_network_connect(struct connman_network *network)
 {
+	struct connman_service *service;
 	int err;
 
 	DBG("network %p", network);
@@ -993,6 +1042,8 @@ int __connman_network_connect(struct connman_network *network)
 	__connman_device_disconnect(network->device);
 
 	network->connecting = TRUE;
+
+	service = __connman_service_lookup_from_network(network);
 
 	err = network->driver->connect(network);
 	if (err < 0) {
@@ -1141,9 +1192,31 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	return 0;
 }
 
-int __connman_network_set_ipconfig(struct connman_network *network, struct connman_ipconfig *ipconfig)
+int __connman_network_set_ipconfig(struct connman_network *network,
+					struct connman_ipconfig *ipconfig)
 {
+	struct connman_ipconfig *ipv6config;
 	enum connman_ipconfig_method method;
+	int ret;
+
+	ipv6config = connman_ipconfig_get_ipv6config(ipconfig);
+	method = __connman_ipconfig_get_method(ipv6config);
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		break;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		ret = manual_ipv6_set(network, ipv6config);
+		if (ret != 0) {
+			connman_network_set_error(network,
+				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+			return FALSE;
+		}
+		break;
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		break;
+	}
 
 	method = __connman_ipconfig_get_method(ipconfig);
 

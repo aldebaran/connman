@@ -1,10 +1,169 @@
+Background
+==========
 
-  o Support for WPS based WiFi authentication
+- Priority scale: High, Medium and Low
 
-	Newer versions of wpa_supplicant contain support for WPS. For full
-	integration of WPS support, the agent concept needs to be extended.
+- Complexity scale: C1, C2, C4 and C8.
+   The complexity scale is exponential, with complexity 1 being the
+   lowest complexity. Complexity is a function of both task 'complexity'
+   and task 'scope'.
 
-  o Support for interface statistics
+Core
+====
 
-	Information about carrier speed etc. should be exported.
+- connman_element removal
 
+   Priority: Low
+   Complexity: C8
+
+
+- DHCP lib
+
+   Priority: High
+   Complexity: C8
+   Owner: Martin Xu <martin.xu@intel.com>
+
+
+- IPv6
+
+   Priority: High
+   Complexity: C4
+   Dependencies: Core:DHCP Lib
+   Owner: Martin Xu <martin.xu@intel.com>
+
+
+- On demand connection
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   With on demand connection applications get connectivity access
+   simply by trying to reach the network. They don't need to
+   specifically request for a service connection, but ConnMan
+   establishes it on their behalf.
+   This feature counter part is idle disconnect. ConnMan needs to be
+   able to close the on demand established connections by monitoring
+   the link activity. This requires kernel support with e.g. the
+   netfilter IDLETIMER target.
+
+- Avahi-zeroconf
+
+   Priority: Medium
+   Complexity: C4
+
+
+- VPN service
+
+   Priority: Medium
+   Complexity: C2
+
+   Create a service for every VPN and link it to the topmost one for
+   now.
+   The default route should be set accordingly when UIs move the
+   topmost service up and down.
+
+
+- OpenVPN
+
+   Priority: Low
+   Complexity: C2
+
+
+- VPNc
+
+   Priority: Low
+   Complexity: C2
+
+
+- Tethering
+
+   Priority: Medium
+   Complexity: C8
+   Owner: Marcel Holtmann <marcel@holtmann.org>
+
+
+- WPAD - Web Proxy Autodiscovery Protocol
+
+   Priority: Medium
+   Complexity: C2
+   Owner: Marcel Holtmann <marcel@holtmann.org>
+
+
+- Agent callbacks
+
+   Priority: Medium
+   Complexity: C2
+
+
+- HTTP proxy
+
+   Priority: Medium
+   Complexity: C1
+
+
+- PAC export
+
+   Priority: Low
+   Complexity: C1
+   Owner: Marcel Holtmann <marcel@holtmann.org>
+
+   When receiving an automatic configuration URL, we should set the
+   service proxy dictionary accordingly (method and URL).
+
+
+- Moving DNS proxy code to ConnMan core
+
+   Priority: Medium
+   Complexity: C2
+
+   Supporting DNS proxy or resolv.conf direct editing seems more than
+   plenty as far as resolving is concerned. So the idea is to move the
+   dnsproxy plugin code to ConnMan core and have an additional command
+   line option in case one would like to stick with the current
+   resolver.c code for editing resolv.conf.
+
+
+WiFi
+====
+
+- WPS
+
+   Priority: Low
+   Complexity: C2
+   Dependencies: Core:Agent callbacks
+
+
+- Ad-Hoc support
+
+   Priority: Medium
+   Complexity: C2
+   Dependencies: Core:Avahi-zeroconf
+
+
+- libsupplicant
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+- Fast Connect
+
+   Priority: Low
+   Complexity: C4
+   Dependencies: WiFi:libsupplicant
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+- TTLS EAP support
+
+   Priority: Low
+   Complexity: C2
+
+
+Bluetooth
+=========
+
+- DUN client
+
+   Priority: Low
+   Complexity: C4

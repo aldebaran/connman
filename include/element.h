@@ -98,6 +98,9 @@ struct connman_element {
 
 	GHashTable *properties;
 
+	gchar *hostname;
+	gchar *domainname;
+
 	struct {
 		enum connman_ipconfig_method method;
 		gchar *address;
@@ -109,6 +112,14 @@ struct connman_element {
 		gchar *timeserver;
 		gchar *pac;
 	} ipv4;
+
+	struct {
+		enum connman_ipconfig_method method;
+		gchar *address;
+		int prefix_len;
+		gchar *gateway;
+		gchar *network;
+	} ipv6;
 };
 
 struct connman_element *connman_element_create(const char *name);

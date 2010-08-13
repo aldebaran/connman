@@ -298,7 +298,8 @@ elif sys.argv[1] in ["autoconnect", "autoconn"]:
 						"org.moblin.connman.Service")
 
 	if (len(sys.argv) > 3):
-		autoconnect = dbus.Boolean(sys.argv[3])
+		flag = sys.argv[3].strip().lower()
+		autoconnect = dbus.Boolean(flag not in ['false', 'f', 'n', '0'])
 
 		service.SetProperty("AutoConnect", autoconnect);
 

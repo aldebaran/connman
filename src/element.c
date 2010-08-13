@@ -655,6 +655,8 @@ void connman_element_unref(struct connman_element *element)
 			element->destruct(element);
 		free_children(element);
 		free_properties(element);
+		g_free(element->hostname);
+		g_free(element->domainname);
 		g_free(element->ipv4.address);
 		g_free(element->ipv4.netmask);
 		g_free(element->ipv4.gateway);
@@ -663,6 +665,8 @@ void connman_element_unref(struct connman_element *element)
 		g_free(element->ipv4.nameserver);
 		g_free(element->ipv4.timeserver);
 		g_free(element->ipv4.pac);
+		g_free(element->ipv6.address);
+		g_free(element->ipv6.network);
 		g_free(element->devname);
 		g_free(element->path);
 		g_free(element->name);
@@ -749,6 +753,18 @@ int connman_element_get_value(struct connman_element *element,
 		return -EINVAL;
 
 	switch (id) {
+	case CONNMAN_PROPERTY_ID_HOSTNAME:
+		if (element->hostname == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->hostname;
+		break;
+	case CONNMAN_PROPERTY_ID_DOMAINNAME:
+		if (element->domainname == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->domainname;
+		break;
 	case CONNMAN_PROPERTY_ID_IPV4_METHOD:
 		if (element->ipv4.method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 			return connman_element_get_value(element->parent,
@@ -797,6 +813,13 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		*((char **) value) = element->ipv4.pac;
 		break;
+	case CONNMAN_PROPERTY_ID_IPV6_GATEWAY:
+		if (element->ipv6.gateway == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->ipv6.gateway;
+		break;
+
 	default:
 		return -EINVAL;
 	}
@@ -1362,9 +1385,9 @@ void __connman_element_start(void)
 	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_dhcp_init();
+	__connman_wpad_init();
 
-	if (__connman_rfkill_init() < 0)
-		__connman_udev_enable_rfkill_processing();
+	__connman_rfkill_init();
 }
 
 void __connman_element_stop(void)
@@ -1373,6 +1396,7 @@ void __connman_element_stop(void)
 
 	__connman_rfkill_cleanup();
 
+	__connman_wpad_cleanup();
 	__connman_dhcp_cleanup();
 	__connman_ipv4_cleanup();
 	__connman_provider_cleanup();

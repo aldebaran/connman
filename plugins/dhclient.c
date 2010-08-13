@@ -149,7 +149,6 @@ static void dhclient_died(struct connman_task *task, void *user_data)
 static void dhclient_setup(struct connman_task *task, const char *ifname)
 {
 	const char *path, *intf = "org.moblin.connman.Task";
-	const char *hostname;
 
 	path = connman_task_get_path(task);
 
@@ -164,13 +163,6 @@ static void dhclient_setup(struct connman_task *task, const char *ifname)
 							STATEDIR, ifname);
 	connman_task_add_argument(task, "-cf", "%s/dhclient.conf", SCRIPTDIR);
 	connman_task_add_argument(task, "-sf", "%s/dhclient-script", SCRIPTDIR);
-
-	hostname = connman_utsname_get_hostname();
-#ifdef HAVE_DHCLIENT_HOSTNAME
-	if (hostname != NULL)
-		connman_task_add_argument(task, "-H", hostname);
-#endif
-
 	connman_task_add_argument(task, ifname, NULL);
 	connman_task_add_argument(task, "-n", NULL);
 }
@@ -226,6 +218,7 @@ static int dhclient_release(struct connman_dhcp *dhcp)
 
 static struct connman_dhcp_driver dhclient_driver = {
 	.name		= "dhclient",
+	.priority	= CONNMAN_DHCP_PRIORITY_HIGH,
 	.request	= dhclient_request,
 	.release	= dhclient_release,
 };

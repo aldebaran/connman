@@ -158,6 +158,7 @@ static int ntpdate(void)
 		goto error_task;
 	}
 
+	connman_task_add_argument(ntpdate->task, "-g", NULL);
 	connman_task_add_argument(ntpdate->task, "-q", NULL);
 
 	/* The servers are added through a temp configuration file */

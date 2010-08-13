@@ -237,6 +237,22 @@ static void set_network_name_reply(DBusPendingCall *call, void *user_data)
 			dbus_message_iter_get_basic(&value, &name);
 			connman_network_set_name(network, name);
 			create_service(network);
+		} else if (g_strcmp0(key, "Status") == 0) {
+			const char *status;
+			connman_bool_t roaming;
+
+			dbus_message_iter_get_basic(&value, &status);
+			if (g_strcmp0(status, "roaming") == 0)
+				roaming = TRUE;
+			else if (g_strcmp0(status, "registered") == 0)
+				roaming = FALSE;
+			else {
+				dbus_message_iter_next(&dict);
+				continue;
+			}
+
+			connman_network_set_roaming(network, roaming);
+			connman_network_update(network);
 		}
 
 		dbus_message_iter_next(&dict);
@@ -408,6 +424,20 @@ static gboolean registration_changed(DBusConnection *connection,
 
 		dbus_message_iter_get_basic(&value, &strength);
 		connman_network_set_strength(network, strength);
+		connman_network_update(network);
+	} else if (g_strcmp0(key, "Status") == 0) {
+		const char *status;
+		connman_bool_t roaming;
+
+		dbus_message_iter_get_basic(&value, &status);
+		if (g_strcmp0(status, "roaming") == 0)
+			roaming = TRUE;
+		else if (g_strcmp0(status, "registered") == 0)
+			roaming = FALSE;
+		else
+			return TRUE;
+
+		connman_network_set_roaming(network, roaming);
 		connman_network_update(network);
 	}
 

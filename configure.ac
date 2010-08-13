@@ -98,23 +98,6 @@ AC_ARG_ENABLE(ofono,
 AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
 AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
 
-AC_ARG_WITH(udhcpc, AC_HELP_STRING([--with-udhcpc=PROGRAM],
-	[specify location of udhcpc binary]), [path_udhcpc=${withval}])
-
-AC_ARG_ENABLE(udhcp,
-	AC_HELP_STRING([--enable-udhcp], [enable uDHCP support]),
-			[enable_udhcp=${enableval}], [enable_udhcp="no"])
-if (test "${enable_udhcp}" != "no"); then
-	if (test -z "${path_udhcpc}"); then
-		AC_PATH_PROG(UDHCPC, [udhcpc], [], $PATH:/sbin:/usr/sbin)
-	else
-		UDHCPC="${path_udhcpc}"
-		AC_SUBST(UDHCPC)
-	fi
-fi
-AM_CONDITIONAL(UDHCP, test "${enable_udhcp}" != "no")
-AM_CONDITIONAL(UDHCP_BUILTIN, test "${enable_udhcp}" = "builtin")
-
 AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
 	[specify location of dhclient binary]), [path_dhclient=${withval}])
 
@@ -128,32 +111,9 @@ if (test "${enable_dhclient}" != "no"); then
 		DHCLIENT="${path_dhclient}"
 		AC_SUBST(DHCLIENT)
 	fi
-	AC_MSG_CHECKING(dhclient major version)
-	version_dhclient=`${DHCLIENT} --version 2>&1 | sed '/^isc-dhclient-*/!d; s///; s/\..*//;q'`
-	AC_MSG_RESULT(${version_dhclient})
-	if (test "${version_dhclient}" = "4"); then
-		AC_DEFINE(HAVE_DHCLIENT_HOSTNAME, 1, [Define to 1 if you have dhclient hostname support.])
-	fi
 fi
 AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
 AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
-
-AC_ARG_WITH(resolvconf, AC_HELP_STRING([--with-resolvconf=PROGRAM],
-	[specify location of resolvconf binary]), [path_resolvconf=${withval}])
-
-AC_ARG_ENABLE(resolvconf,
-	AC_HELP_STRING([--enable-resolvconf], [enable resolvconf support]),
-			[enable_resolvconf=${enableval}], [enable_resolvconf="no"])
-if (test "${enable_resolvconf}" != "no"); then
-	if (test -z "${path_resolvconf}"); then
-		AC_PATH_PROG(RESOLVCONF, [resolvconf], [], $PATH:/sbin:/usr/sbin)
-	else
-		RESOLVCONF="${path_resolvconf}"
-		AC_SUBST(RESOLVCONF)
-	fi
-fi
-AM_CONDITIONAL(RESOLVCONF, test "${enable_resolvconf}" != "no")
-AM_CONDITIONAL(RESOLVCONF_BUILTIN, test "${enable_resolvconf}" = "builtin")
 
 AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
@@ -353,6 +313,11 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
 		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
+	PKG_CHECK_MODULES(IPTC, libiptc, dummy=yes,
+				AC_MSG_ERROR(iptables library is required))
+	AC_SUBST(IPTC_CFLAGS)
+	AC_SUBST(IPTC_LIBS)
+
 	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
 				AC_MSG_ERROR(Netlink library is required))
 	AC_SUBST(NETLINK_CFLAGS)

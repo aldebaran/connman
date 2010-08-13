@@ -52,10 +52,21 @@
 
 #include "inet.h"
 
+enum oc_state {
+	OC_STATE_UNKNOWN       = 0,
+	OC_STATE_IDLE          = 1,
+	OC_STATE_CONNECT       = 2,
+	OC_STATE_READY         = 3,
+	OC_STATE_DISCONNECT    = 4,
+	OC_STATE_FAILURE       = 5,
+};
+
 struct oc_data {
+	struct connman_provider *provider;
 	char *if_name;
 	unsigned flags;
 	unsigned int watch;
+	unsigned int state;
 	struct connman_task *task;
 };
 
@@ -100,6 +111,7 @@ static void openconnect_died(struct connman_task *task, void *user_data)
 {
 	struct connman_provider *provider = user_data;
 	struct oc_data *data = connman_provider_get_data(provider);
+	int state = data->state;
 
 	DBG("provider %p data %p", provider, data);
 
@@ -109,12 +121,18 @@ static void openconnect_died(struct connman_task *task, void *user_data)
 	kill_tun(data->if_name);
 	connman_provider_set_data(provider, NULL);
 	connman_rtnl_remove_watch(data->watch);
+	connman_provider_unref(data->provider);
 	g_free(data);
 
  oc_exit:
-	connman_provider_set_connected(provider, FALSE);
+	if (state != OC_STATE_READY && state != OC_STATE_DISCONNECT)
+		connman_provider_set_state(provider,
+						CONNMAN_PROVIDER_STATE_FAILURE);
+	else
+		connman_provider_set_state(provider,
+						CONNMAN_PROVIDER_STATE_IDLE);
+
 	connman_provider_set_index(provider, -1);
-	connman_provider_unref(provider);
 	connman_task_destroy(task);
 }
 
@@ -124,8 +142,11 @@ static void vpn_newlink(unsigned flags, unsigned change, void *user_data)
 	struct oc_data *data = connman_provider_get_data(provider);
 
 	if ((data->flags & IFF_UP) != (flags & IFF_UP)) {
-		if (flags & IFF_UP)
-			connman_provider_set_connected(provider, TRUE);
+		if (flags & IFF_UP) {
+			data->state = OC_STATE_READY;
+			connman_provider_set_state(provider,
+					CONNMAN_PROVIDER_STATE_READY);
+		}
 	}
 	data->flags = flags;
 }
@@ -157,7 +178,8 @@ static void openconnect_task_notify(struct connman_task *task,
 	}
 
 	if (strcmp(reason, "connect")) {
-		connman_provider_set_connected(provider, FALSE);
+		connman_provider_set_state(provider,
+					CONNMAN_PROVIDER_STATE_DISCONNECT);
 		return;
 	}
 
@@ -220,15 +242,17 @@ static int oc_connect(struct connman_provider *provider)
 	if (data == NULL)
 		return -ENOMEM;
 
+	data->provider = connman_provider_ref(provider);
 	data->watch = 0;
 	data->flags = 0;
 	data->task = NULL;
+	data->state = OC_STATE_IDLE;
 
 	connman_provider_set_data(provider, data);
 
-	vpnhost = connman_provider_get_string(provider, "OpenConnect.Host");
+	vpnhost = connman_provider_get_string(provider, "Host");
 	if (!vpnhost) {
-		connman_error("OpenConnect.Host not set; cannot enable VPN");
+		connman_error("Host not set; cannot enable VPN");
 		ret = -EINVAL;
 		goto exist_err;
 	}
@@ -351,12 +375,14 @@ static int oc_connect(struct connman_provider *provider)
 		goto exist_err;
 	}
 
-	connman_provider_ref(provider);
+	data->state = OC_STATE_CONNECT;
+
 	return -EINPROGRESS;
 
  exist_err:
 	connman_provider_set_index(provider, -1);
 	connman_provider_set_data(provider, NULL);
+	connman_provider_unref(data->provider);
 	g_free(data);
 
 	return ret;
@@ -380,6 +406,7 @@ static int oc_disconnect(struct connman_provider *provider)
 		connman_rtnl_remove_watch(data->watch);
 
 	data->watch = 0;
+	data->state = OC_STATE_DISCONNECT;
 	connman_task_stop(data->task);
 
 	return 0;

@@ -19,17 +19,20 @@
  *
  */
 
-#include <sys/types.h>
+#ifndef __CONNMAN_ONDEMAND_H
+#define __CONNMAN_ONDEMAND_H
 
-struct task_data;
+#include <glib.h>
 
-typedef void (* task_cb_t) (int index, void *user_data);
+#ifdef __cplusplus
+extern "C" {
+#endif
 
-struct task_data *task_find_by_pid(pid_t pid);
-struct task_data *task_find_by_index(int index);
+gboolean connman_ondemand_connected(void);
+int connman_ondemand_start(const char *pref_bearer, unsigned int idle_timeout);
 
-struct task_data *task_spawn(int index, char **argv, char **envp,
-					task_cb_t callback, void *user_data);
-int task_kill(struct task_data *task);
+#ifdef __cplusplus
+}
+#endif
 
-void *task_get_data(struct task_data *task);
+#endif /* __CONNMAN_ONDEMAND_H */

@@ -4,6 +4,9 @@ plugin_cflags = -fvisibility=hidden -I$(srcdir)/gdbus \
 plugin_ldflags = -no-undefined -module -avoid-version
 
 
+builtin_modules += dhcp
+builtin_sources += plugins/dhcp.c
+
 if LOOPBACK
 if LOOPBACK_BUILTIN
 builtin_modules += loopback
@@ -78,22 +81,6 @@ plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if UDHCP
-if UDHCP_BUILTIN
-builtin_modules += udhcp
-builtin_sources += plugins/udhcp.c plugins/task.h plugins/task.c
-builtin_cflags += -DUDHCPC=\"@UDHCPC@\"
-else
-plugin_LTLIBRARIES += plugins/udhcp.la
-plugin_objects += $(plugins_udhcp_la_OBJECTS)
-plugins_udhcp_la_SOURCES = plugins/udhcp.c plugins/task.h plugins/task.c
-plugins_udhcp_la_CFLAGS = $(plugin_cflags) -DUDHCPC=\"@UDHCPC@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
-					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_udhcp_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if DHCLIENT
 if DHCLIENT_BUILTIN
 builtin_modules += dhclient
@@ -106,19 +93,6 @@ plugins_dhclient_la_CFLAGS = $(plugin_cflags) -DDHCLIENT=\"@DHCLIENT@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
-if RESOLVCONF
-if RESOLVCONF_BUILTIN
-builtin_modules += resolvconf
-builtin_sources += plugins/resolvconf.c
-builtin_cflags += -DRESOLVCONF=\"@RESOLVCONF@\"
-else
-plugin_LTLIBRARIES += plugins/resolvconf.la
-plugin_objects += $(plugins_resolvconf_la_OBJECTS)
-plugins_resolvconf_la_CFLAGS = $(plugin_cflags) -DRESOLVCONF=\"@RESOLVCONF@\"
-plugins_resolvconf_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
@@ -229,12 +203,6 @@ plugins_fake_la_CFLAGS = $(plugin_cflags)
 plugins_fake_la_LDFLAGS = $(plugin_ldflags)
 endif
 
-
-if UDHCP
-script_PROGRAMS += scripts/udhcpc-script
-
-scripts_udhcpc_script_LDADD = @DBUS_LIBS@
-endif
 
 if OPENCONNECT
 script_PROGRAMS += scripts/openconnect-script

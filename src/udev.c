@@ -33,8 +33,6 @@
 
 #include "connman.h"
 
-static gboolean rfkill_processing = FALSE;
-
 static GSList *device_list = NULL;
 
 static struct connman_device *find_device(int index)
@@ -246,55 +244,6 @@ static void phyindex_rfkill(int phyindex, connman_bool_t blocked)
 	}
 }
 
-static void change_rfkill_device(struct udev_device *device)
-{
-	struct udev_device *parent;
-	struct udev_list_entry *entry;
-	connman_bool_t blocked;
-	const char *value, *type = NULL;
-	int state = -1;
-
-	if (rfkill_processing == FALSE)
-		return;
-
-	entry = udev_device_get_properties_list_entry(device);
-	while (entry) {
-		const char *name = udev_list_entry_get_name(entry);
-
-		if (g_str_has_prefix(name, "RFKILL_STATE") == TRUE) {
-			value = udev_list_entry_get_value(entry);
-			if (value != NULL)
-				state = atoi(value);
-		} else if (g_str_has_prefix(name, "RFKILL_TYPE") == TRUE)
-			type = udev_list_entry_get_value(entry);
-
-		entry = udev_list_entry_get_next(entry);
-	}
-
-	if (type == NULL || state < 0)
-		return;
-
-	if (g_str_equal(type, "wlan") == FALSE)
-		return;
-
-	parent = udev_device_get_parent(device);
-	if (parent == NULL)
-		return;
-
-	value = udev_device_get_sysattr_value(parent, "index");
-	if (value == NULL)
-		return;
-
-	blocked = (state != 1) ? TRUE : FALSE;
-
-	phyindex_rfkill(atoi(value), blocked);
-}
-
-static void add_rfkill_device(struct udev_device *device)
-{
-	change_rfkill_device(device);
-}
-
 static void print_properties(struct udev_device *device, const char *prefix)
 {
 	struct udev_list_entry *entry;
@@ -369,7 +318,6 @@ static void enumerate_devices(struct udev *context)
 		return;
 
 	udev_enumerate_add_match_subsystem(enumerate, "net");
-	udev_enumerate_add_match_subsystem(enumerate, "rfkill");
 
 	udev_enumerate_scan_devices(enumerate);
 
@@ -388,8 +336,6 @@ static void enumerate_devices(struct udev *context)
 
 			if (g_strcmp0(subsystem, "net") == 0)
 				add_net_device(device);
-			else if (g_strcmp0(subsystem, "rfkill") == 0)
-				add_rfkill_device(device);
 
 			udev_device_unref(device);
 		}
@@ -424,14 +370,9 @@ static gboolean udev_event(GIOChannel *channel,
 	if (g_str_equal(action, "add") == TRUE) {
 		if (g_str_equal(subsystem, "net") == TRUE)
 			add_net_device(device);
-		else if (g_str_equal(subsystem, "rfkill") == TRUE)
-			add_rfkill_device(device);
 	} else if (g_str_equal(action, "remove") == TRUE) {
 		if (g_str_equal(subsystem, "net") == TRUE)
 			remove_net_device(device);
-	} else if (g_str_equal(action, "change") == TRUE) {
-		if (g_str_equal(subsystem, "rfkill") == TRUE)
-			change_rfkill_device(device);
 	}
 
 done:
@@ -443,15 +384,6 @@ done:
 static struct udev *udev_ctx;
 static struct udev_monitor *udev_mon;
 static guint udev_watch = 0;
-
-void __connman_udev_enable_rfkill_processing(void)
-{
-	rfkill_processing = TRUE;
-
-	connman_warn("Enabling udev based RFKILL processing");
-
-	enumerate_devices(udev_ctx);
-}
 
 char *__connman_udev_get_devtype(const char *ifname)
 {
@@ -514,8 +446,6 @@ int __connman_udev_init(void)
 
 	udev_monitor_filter_add_match_subsystem_devtype(udev_mon,
 							"net", NULL);
-	udev_monitor_filter_add_match_subsystem_devtype(udev_mon,
-							"rfkill", NULL);
 
 	udev_monitor_filter_update(udev_mon);
 

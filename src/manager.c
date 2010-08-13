@@ -32,7 +32,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	connman_bool_t offlinemode;
+	connman_bool_t offlinemode, tethering;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -58,8 +58,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Services",
 			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
-	connman_dbus_dict_append_array(&dict, "Providers",
-			DBUS_TYPE_OBJECT_PATH, __connman_provider_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Technologies",
 			DBUS_TYPE_OBJECT_PATH, __connman_technology_list, NULL);
 
@@ -70,6 +68,10 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	offlinemode = __connman_profile_get_offlinemode();
 	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
+
+	tethering = __connman_tethering_get_status();
+	connman_dbus_dict_append_basic(&dict, "Tethering",
+					DBUS_TYPE_BOOLEAN, &tethering);
 
 	connman_dbus_dict_append_array(&dict, "AvailableTechnologies",
 		DBUS_TYPE_STRING, __connman_notifier_list_registered, NULL);
@@ -126,6 +128,20 @@ static DBusMessage *set_property(DBusConnection *conn,
 		__connman_profile_set_offlinemode(offlinemode, TRUE);
 
 		__connman_profile_save_default();
+	} else if (g_str_equal(name, "Tethering") == TRUE) {
+		connman_bool_t tethering;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &tethering);
+
+		if (__connman_tethering_set_status(tethering) < 0)
+			return __connman_error_invalid_arguments(msg);
+
+		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+					CONNMAN_MANAGER_INTERFACE, "Tethering",
+						DBUS_TYPE_BOOLEAN, &tethering);
 	} else if (g_str_equal(name, "ActiveProfile") == TRUE) {
 		const char *str;
 
@@ -554,7 +570,7 @@ static DBusMessage *register_counter(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
 	const char *sender, *path;
-	unsigned int interval;
+	unsigned int accuracy, period;
 	int err;
 
 	DBG("conn %p", conn);
@@ -562,10 +578,13 @@ static DBusMessage *register_counter(DBusConnection *conn,
 	sender = dbus_message_get_sender(msg);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-						DBUS_TYPE_UINT32, &interval,
+						DBUS_TYPE_UINT32, &accuracy,
+						DBUS_TYPE_UINT32, &period,
 							DBUS_TYPE_INVALID);
 
-	err = __connman_counter_register(sender, path, interval);
+	/* FIXME: add handling of accuracy parameter */
+
+	err = __connman_counter_register(sender, path, period);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -652,7 +671,7 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",     "o",     "",      register_agent     },
 	{ "UnregisterAgent",   "o",     "",      unregister_agent   },
-	{ "RegisterCounter",   "ou",    "",      register_counter   },
+	{ "RegisterCounter",   "ouu",   "",      register_counter   },
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
 	{ "RequestSession",    "s",     "o",     request_session    },
 	{ "ReleaseSession",    "s",     "",      release_session    },

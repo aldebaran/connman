@@ -182,8 +182,7 @@ void connman_location_report_result(struct connman_location *location,
 	case CONNMAN_LOCATION_RESULT_UNKNOWN:
 		return;
 	case CONNMAN_LOCATION_RESULT_PORTAL:
-		__connman_service_indicate_state(location->service,
-						CONNMAN_SERVICE_STATE_LOGIN);
+		__connman_service_request_login(location->service);
 		break;
 	case CONNMAN_LOCATION_RESULT_ONLINE:
 		__connman_service_indicate_state(location->service,

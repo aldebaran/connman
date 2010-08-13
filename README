@@ -18,8 +18,8 @@ Various plugins can be enabled for networking support:
 	- Bluetooth plugin
 
 Also plugins with additional features are available:
-	- DHCP plugins (uDHCP and dhclient)
-	- Resolver plugins (resolvconf and DNS proxy)
+	- DHCP plugin (dhclient)
+	- Resolver plugin (DNS proxy)
 	- Loopback setup
 	- PolicyKit support
 
@@ -61,13 +61,6 @@ For a working system, certain configuration options need to be enabled:
 
 		Enable support for Bluetooth devices (requires BlueZ)
 
-	--enable-udhcp
-
-		Enable DHCP client support for BusyBox based systems
-
-		The location of the udhcpc binary is auto-detected, but it
-		can be overwritten via --with-udhcpc=<path-to-binary>.
-
 	--enable-dhclient
 
 		Enable DHCP client support for ISC dhclient based systems
@@ -93,20 +86,6 @@ For a working system, certain configuration options need to be enabled:
 
 		It is important that this is not used together with other
 		DNS proxy solution like dnsmasq.
-
-	--enable-resolvconf
-
-		Enable resolvconf support for Debian/Ubuntu based systems
-
-		The resolvconf package from Debian can be used to handle
-		configuration of the /etc/resolv.conf file.
-
-		It is safe to select this option even when resolvconf is not
-		installed. A missing resolvconf will be detected and in that
-		case it falls back to modifying /etc/resolv.conf directly.
-
-		The location of the resolvconf binary is auto-detected, but it
-		can be overwritten via --with-resolvconf=<path-to-binary>.
 
 	--enable-loopback
 

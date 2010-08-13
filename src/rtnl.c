@@ -52,6 +52,93 @@ struct watch_data {
 static GSList *watch_list = NULL;
 static unsigned int watch_id = 0;
 
+static GSList *update_list = NULL;
+static guint update_interval = G_MAXUINT;
+static guint update_timeout = 0;
+
+struct interface_data {
+	int index;
+	char *name;
+	char *ident;
+	enum connman_service_type type;
+};
+
+static GHashTable *interface_list = NULL;
+
+static void free_interface(gpointer data)
+{
+	struct interface_data *interface = data;
+
+	__connman_technology_remove_interface(interface->type,
+			interface->index, interface->name, interface->ident);
+
+	g_free(interface->ident);
+	g_free(interface->name);
+	g_free(interface);
+}
+
+static connman_bool_t ether_blacklisted(const char *name)
+{
+	if (name == NULL)
+		return TRUE;
+
+	/* virtual interface from VMware */
+	if (g_str_has_prefix(name, "vmnet") == TRUE)
+		return TRUE;
+
+	/* virtual interface from VirtualBox */
+	if (g_str_has_prefix(name, "vboxnet") == TRUE)
+		return TRUE;
+
+	return FALSE;
+}
+
+static void read_uevent(struct interface_data *interface)
+{
+	char *filename, line[128];
+	FILE *f;
+
+	if (ether_blacklisted(interface->name) == TRUE)
+		interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+	else
+		interface->type = CONNMAN_SERVICE_TYPE_ETHERNET;
+
+	filename = g_strdup_printf("/sys/class/net/%s/uevent",
+						interface->name);
+
+	f = fopen(filename, "re");
+
+	g_free(filename);
+
+	if (f == NULL)
+		return;
+
+	while (fgets(line, sizeof(line), f)) {
+		char *pos;
+
+		pos = strchr(line, '\n');
+		if (pos == NULL)
+			continue;
+		pos[0] = '\0';
+
+		if (strncmp(line, "DEVTYPE=", 8) != 0)
+			continue;
+
+		if (strcmp(line + 8, "wlan") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_WIFI;
+		else if (strcmp(line + 8, "wwan") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_CELLULAR;
+		else if (strcmp(line + 8, "bluetooth") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
+		else if (strcmp(line + 8, "wimax") == 0)
+			interface->type = CONNMAN_SERVICE_TYPE_WIMAX;
+		else
+			interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+	}
+
+	fclose(f);
+}
+
 /**
  * connman_rtnl_add_operstate_watch:
  * @index: network device index
@@ -286,11 +373,19 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	unsigned char operstate = 0xff;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
-	char str[18];
+	char ident[13], str[18];
 	GSList *list;
 
 	memset(&stats, 0, sizeof(stats));
 	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate, &stats);
+
+	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
+						address.ether_addr_octet[0],
+						address.ether_addr_octet[1],
+						address.ether_addr_octet[2],
+						address.ether_addr_octet[3],
+						address.ether_addr_octet[4],
+						address.ether_addr_octet[5]);
 
 	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
 						address.ether_addr_octet[0],
@@ -317,6 +412,25 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		connman_info("%s {newlink} index %d operstate %u <%s>",
 						ifname, index, operstate,
 						operstate2str(operstate));
+
+	if (g_hash_table_lookup(interface_list,
+					GINT_TO_POINTER(index)) == NULL) {
+		struct interface_data *interface;
+
+		interface = g_new0(struct interface_data, 1);
+		interface->index = index;
+		interface->name = g_strdup(ifname);
+		interface->ident = g_strdup(ident);
+
+		g_hash_table_insert(interface_list,
+					GINT_TO_POINTER(index), interface);
+
+		if (type == ARPHRD_ETHER)
+			read_uevent(interface);
+
+		__connman_technology_add_interface(interface->type,
+			interface->index, interface->name, interface->ident);
+	}
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
@@ -379,9 +493,11 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 		__connman_ipconfig_dellink(index, &stats);
 		break;
 	}
+
+	g_hash_table_remove(interface_list, GINT_TO_POINTER(index));
 }
 
-static void extract_addr(struct ifaddrmsg *msg, int bytes,
+static void extract_ipv4_addr(struct ifaddrmsg *msg, int bytes,
 						const char **label,
 						struct in_addr *local,
 						struct in_addr *address,
@@ -412,34 +528,89 @@ static void extract_addr(struct ifaddrmsg *msg, int bytes,
 	}
 }
 
+static void extract_ipv6_addr(struct ifaddrmsg *msg, int bytes,
+						struct in6_addr *addr,
+						struct in6_addr *local)
+{
+	struct rtattr *attr;
+
+	for (attr = IFA_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case IFA_ADDRESS:
+			if (addr != NULL)
+				*addr = *((struct in6_addr *) RTA_DATA(attr));
+			break;
+		case IFA_LOCAL:
+			if (local != NULL)
+				*local = *((struct in6_addr *) RTA_DATA(attr));
+			break;
+		}
+	}
+}
+
 static void process_newaddr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	struct in_addr address = { INADDR_ANY };
 	const char *label = NULL;
+	void *src;
+	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET)
+	if (family != AF_INET && family != AF_INET6)
 		return;
 
-	extract_addr(msg, bytes, &label, &address, NULL, NULL);
+	if (family == AF_INET) {
+		struct in_addr ipv4_addr = { INADDR_ANY };
 
-	__connman_ipconfig_newaddr(index, label,
-					prefixlen, inet_ntoa(address));
+		extract_ipv4_addr(msg, bytes, &label, &ipv4_addr, NULL, NULL);
+		src = &ipv4_addr;
+	} else if (family == AF_INET6) {
+		struct in6_addr ipv6_address, ipv6_local;
+
+		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
+		if (IN6_IS_ADDR_LINKLOCAL(&ipv6_address))
+			return;
+
+		src = &ipv6_address;
+	}
+
+	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
+		return;
+
+	__connman_ipconfig_newaddr(index, family, label,
+					prefixlen, ip_string);
 }
 
 static void process_deladdr(unsigned char family, unsigned char prefixlen,
 				int index, struct ifaddrmsg *msg, int bytes)
 {
-	struct in_addr address = { INADDR_ANY };
 	const char *label = NULL;
+	void *src;
+	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET)
+	if (family != AF_INET && family != AF_INET6)
 		return;
 
-	extract_addr(msg, bytes, &label, &address, NULL, NULL);
+	if (family == AF_INET) {
+		struct in_addr ipv4_addr = { INADDR_ANY };
 
-	__connman_ipconfig_deladdr(index, label,
-					prefixlen, inet_ntoa(address));
+		extract_ipv4_addr(msg, bytes, &label, &ipv4_addr, NULL, NULL);
+		src = &ipv4_addr;
+	} else if (family == AF_INET6) {
+		struct in6_addr ipv6_address, ipv6_local;
+
+		extract_ipv6_addr(msg, bytes, &ipv6_address, &ipv6_local);
+		if (IN6_IS_ADDR_LINKLOCAL(&ipv6_address))
+			return;
+
+		src = &ipv6_address;
+	}
+
+	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
+		return;
+
+	__connman_ipconfig_deladdr(index, family, label,
+					prefixlen, ip_string);
 }
 
 static void extract_route(struct rtmsg *msg, int bytes, int *index,
@@ -483,7 +654,7 @@ static void process_newroute(unsigned char family, unsigned char scope,
 	inet_ntop(family, &dst, dststr, sizeof(dststr));
 	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	__connman_ipconfig_newroute(index, scope, dststr, gatewaystr);
+	__connman_ipconfig_newroute(index, family, scope, dststr, gatewaystr);
 
 	/* skip host specific routes */
 	if (scope != RT_SCOPE_UNIVERSE &&
@@ -517,7 +688,7 @@ static void process_delroute(unsigned char family, unsigned char scope,
 	inet_ntop(family, &dst, dststr, sizeof(dststr));
 	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	__connman_ipconfig_delroute(index, scope, dststr, gatewaystr);
+	__connman_ipconfig_delroute(index, family, scope, dststr, gatewaystr);
 
 	/* skip host specific routes */
 	if (scope != RT_SCOPE_UNIVERSE &&
@@ -1073,6 +1244,73 @@ static int send_getroute(void)
 	return queue_request(req);
 }
 
+static gboolean update_timeout_cb(gpointer user_data)
+{
+	__connman_rtnl_request_update();
+
+	return TRUE;
+}
+
+static void update_interval_callback(guint min)
+{
+	if (update_timeout > 0)
+		g_source_remove(update_timeout);
+
+	if (min < G_MAXUINT) {
+		update_interval = min;
+		update_timeout = g_timeout_add_seconds(update_interval,
+						update_timeout_cb, NULL);
+	} else {
+		update_timeout = 0;
+		update_interval = G_MAXUINT;
+	}
+}
+
+static gint compare_interval(gconstpointer a, gconstpointer b)
+{
+	guint val_a = GPOINTER_TO_UINT(a);
+	guint val_b = GPOINTER_TO_UINT(b);
+
+	return val_a - val_b;
+}
+
+unsigned int __connman_rtnl_update_interval_add(unsigned int interval)
+{
+	guint min;
+
+	if (interval == 0)
+		return 0;
+
+	update_list = g_slist_insert_sorted(update_list,
+			GUINT_TO_POINTER(interval), compare_interval);
+
+	min = GPOINTER_TO_UINT(g_slist_nth_data(update_list, 0));
+	if (min < update_interval) {
+		update_interval_callback(min);
+		__connman_rtnl_request_update();
+	}
+
+	return update_interval;
+}
+
+unsigned int __connman_rtnl_update_interval_remove(unsigned int interval)
+{
+	guint min = G_MAXUINT;
+
+	if (interval == 0)
+		return 0;
+
+	update_list = g_slist_remove(update_list, GINT_TO_POINTER(interval));
+
+	if (update_list != NULL)
+		min = GPOINTER_TO_UINT(g_slist_nth_data(update_list, 0));
+
+	if (min > update_interval)
+		update_interval_callback(min);
+
+	return min;
+}
+
 int __connman_rtnl_request_update(void)
 {
 	return send_getlink();
@@ -1085,13 +1323,17 @@ int __connman_rtnl_init(void)
 
 	DBG("");
 
+	interface_list = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+							NULL, free_interface);
+
 	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
 	if (sk < 0)
 		return -1;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
-	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE;
+	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
+				RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
@@ -1134,6 +1376,9 @@ void __connman_rtnl_cleanup(void)
 	g_slist_free(watch_list);
 	watch_list = NULL;
 
+	g_slist_free(update_list);
+	update_list = NULL;
+
 	for (list = request_list; list; list = list->next) {
 		struct rtnl_request *req = list->data;
 
@@ -1153,4 +1398,6 @@ void __connman_rtnl_cleanup(void)
 	g_io_channel_unref(channel);
 
 	channel = NULL;
+
+	g_hash_table_destroy(interface_list);
 }

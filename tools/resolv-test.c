@@ -23,112 +23,145 @@
 #include <config.h>
 #endif
 
-#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
-#include <resolv.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <arpa/nameser.h>
+#include <signal.h>
 
-static int do_connect(const char *server)
+#include <gresolv/gresolv.h>
+
+static GTimer *timer;
+
+static GMainLoop *main_loop;
+
+static void resolv_debug(const char *str, void *data)
 {
-	struct sockaddr_in sin;
-	int sk;
+	g_print("%s: %s\n", (const char *) data, str);
+}
 
-	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	//sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sk < 0)
-		return -1;
+static void sig_term(int sig)
+{
+	g_main_loop_quit(main_loop);
+}
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr(server);
-
-	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		close(sk);
-		return -1;
+static const char *status2str(GResolvResultStatus status)
+{
+	switch (status) {
+	case G_RESOLV_RESULT_STATUS_SUCCESS:
+		return "success";
+	case G_RESOLV_RESULT_STATUS_ERROR:
+		return "error";
+	case G_RESOLV_RESULT_STATUS_NO_RESPONSE:
+		return "no response";
+	case G_RESOLV_RESULT_STATUS_FORMAT_ERROR:
+		return "format error";
+	case G_RESOLV_RESULT_STATUS_SERVER_FAILURE:
+		return "server failure";
+	case G_RESOLV_RESULT_STATUS_NAME_ERROR:
+		return "name error";
+	case G_RESOLV_RESULT_STATUS_NOT_IMPLEMENTED:
+		return "not implemented";
+	case G_RESOLV_RESULT_STATUS_REFUSED:
+		return "refused";
 	}
 
-	return sk;
+	return NULL;
 }
+
+static void resolv_result(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+	gdouble elapsed;
+	int i;
+
+	elapsed = g_timer_elapsed(timer, NULL);
+
+	g_print("elapse: %f seconds\n", elapsed);
+
+	g_print("status: %s\n", status2str(status));
+
+	if (results != NULL) {
+		for (i = 0; results[i]; i++)
+			g_print("result: %s\n", results[i]);
+	}
+
+	g_main_loop_quit(main_loop);
+}
+
+static gboolean option_debug = FALSE;
+
+static GOptionEntry options[] = {
+	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
+					"Enable debug output" },
+	{ NULL },
+};
 
 int main(int argc, char *argv[])
 {
-	ns_msg msg;
-	ns_rr rr;
-	int rcode;
-	const char *nameserver;
-	unsigned char buf[4096];
-	int i, sk, err, len, off = 0;
+	GOptionContext *context;
+	GError *error = NULL;
+	struct sigaction sa;
+	GResolv *resolv;
+	int index = 0;
+
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			g_error_free(error);
+		} else
+			g_printerr("An unknown error occurred\n");
+		exit(1);
+	}
+
+	g_option_context_free(context);
 
 	if (argc < 2) {
 		printf("missing argument\n");
 		return 1;
 	}
 
-	if (argc > 2)
-		nameserver = argv[2];
-	else
-		nameserver = "127.0.0.1";
-
-	sk = do_connect(nameserver);
-	if (sk < 0) {
-		printf("Can't connect\n");
+	resolv = g_resolv_new(index);
+	if (resolv == NULL) {
+		printf("failed to create resolver\n");
 		return 1;
 	}
 
-	len = res_mkquery(ns_o_query, argv[1], ns_c_in, ns_t_a,
-				NULL, 0, NULL, buf + off, sizeof(buf) - off);
-	printf("query len: %d\n", len);
+	if (option_debug == TRUE)
+		g_resolv_set_debug(resolv, resolv_debug, "RESOLV");
 
-	if (off > 0) {
-		buf[0] = len >> 8;
-		buf[1] = len & 0xff;
+	main_loop = g_main_loop_new(NULL, FALSE);
+
+	if (argc > 2) {
+		int i;
+
+		for (i = 2; i < argc; i++)
+			g_resolv_add_nameserver(resolv, argv[i], 53, 0);
+	} else
+		g_resolv_add_nameserver(resolv, "127.0.0.1", 53, 0);
+
+	timer = g_timer_new();
+
+	if (g_resolv_lookup_hostname(resolv, argv[1],
+					resolv_result, NULL) == 0) {
+		printf("failed to start lookup\n");
+		return 1;
 	}
 
-	//for (i = 0; i < len + off; i++)
-	//	printf("%02x ", buf[i]);
-	//printf("\n");
+	memset(&sa, 0, sizeof(sa));
+	sa.sa_handler = sig_term;
+	sigaction(SIGINT, &sa, NULL);
+	sigaction(SIGTERM, &sa, NULL);
 
-	err = send(sk, buf, len + off, 0);
-	printf("send result: %d\n", err);
+	g_main_loop_run(main_loop);
 
-	len = recv(sk, buf, sizeof(buf), 0);
-	printf("answer len: %d\n", len);
+	g_timer_destroy(timer);
 
-	//for (i = 0; i < len + off; i++)
-	//	printf("%02x ", buf[i]);
-	//printf("\n");
+	g_resolv_unref(resolv);
 
-	close(sk);
-
-	ns_initparse(buf + off, len - off, &msg);
-
-	rcode = ns_msg_getflag(msg, ns_f_rcode);
-
-	printf("msg id: 0x%04x\n", ns_msg_id(msg));
-	printf("msg rcode: %d\n", rcode);
-	printf("msg count: %d\n", ns_msg_count(msg, ns_s_an));
-
-	for (i = 0; i < ns_msg_count(msg, ns_s_an); i++) {
-		char result[100];
-
-		ns_parserr(&msg, ns_s_an, i, &rr);
-
-		if (ns_rr_class(rr) != ns_c_in)
-			continue;
-
-		if (ns_rr_type(rr) != ns_t_a)
-			continue;
-
-		if (ns_rr_rdlen(rr) != NS_INADDRSZ)
-			continue;
-
-		inet_ntop(AF_INET, ns_rr_rdata(rr), result, sizeof(result));
-
-		printf("result: %s\n", result);
-	}
+	g_main_loop_unref(main_loop);
 
 	return 0;
 }

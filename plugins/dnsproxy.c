@@ -34,6 +34,7 @@
 #include <connman/plugin.h>
 #include <connman/resolver.h>
 #include <connman/notifier.h>
+#include <connman/ondemand.h>
 #include <connman/log.h>
 
 #include <glib.h>
@@ -92,12 +93,16 @@ struct request_data {
 	guint timeout;
 	guint numserv;
 	guint numresp;
+	gpointer request;
+	gsize request_len;
+	gpointer name;
 	gpointer resp;
 	gsize resplen;
 };
 
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
+static GSList *request_pending_list = NULL;
 static guint16 request_id = 0x0000;
 
 static GIOChannel *listener_channel = NULL;
@@ -297,6 +302,144 @@ static void destroy_server(struct server_data *data)
 	g_free(data);
 }
 
+static int append_query(unsigned char *buf, unsigned int size,
+				const char *query, const char *domain)
+{
+	unsigned char *ptr = buf;
+	char *offset;
+
+	DBG("query %s domain %s", query, domain);
+
+	offset = (char *) query;
+	while (offset != NULL) {
+		char *tmp;
+
+		tmp = strchr(offset, '.');
+		if (tmp == NULL) {
+			if (strlen(offset) == 0)
+				break;
+			*ptr = strlen(offset);
+			memcpy(ptr + 1, offset, strlen(offset));
+			ptr += strlen(offset) + 1;
+			break;
+		}
+
+		*ptr = tmp - offset;
+		memcpy(ptr + 1, offset, tmp - offset);
+		ptr += tmp - offset + 1;
+
+		offset = tmp + 1;
+	}
+
+	offset = (char *) domain;
+	while (offset != NULL) {
+		char *tmp;
+
+		tmp = strchr(offset, '.');
+		if (tmp == NULL) {
+			if (strlen(offset) == 0)
+				break;
+			*ptr = strlen(offset);
+			memcpy(ptr + 1, offset, strlen(offset));
+			ptr += strlen(offset) + 1;
+			break;
+		}
+
+		*ptr = tmp - offset;
+		memcpy(ptr + 1, offset, tmp - offset);
+		ptr += tmp - offset + 1;
+
+		offset = tmp + 1;
+	}
+
+	*ptr++ = 0x00;
+
+	return ptr - buf;
+}
+
+static gboolean request_timeout(gpointer user_data)
+{
+	struct request_data *req = user_data;
+
+	DBG("id 0x%04x", req->srcid);
+
+	request_list = g_slist_remove(request_list, req);
+
+	if (req->resplen > 0 && req->resp != NULL) {
+		int sk, err;
+
+		sk = g_io_channel_unix_get_fd(listener_channel);
+
+		err = sendto(sk, req->resp, req->resplen, 0,
+				(struct sockaddr *) &req->sin, req->len);
+	}
+
+	g_free(req->resp);
+	g_free(req);
+
+	return FALSE;
+}
+
+static gboolean resolv(struct request_data *req,
+				gpointer request, gpointer name)
+{
+	int sk, err;
+	GSList *list;
+
+	request_list = g_slist_append(request_list, req);
+
+	req->numserv = 0;
+	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
+
+	for (list = server_list; list; list = list->next) {
+		struct server_data *data = list->data;
+
+		DBG("server %s domain %s enabled %d",
+				data->server, data->domain, data->enabled);
+
+		if (data->enabled == FALSE)
+			continue;
+
+		sk = g_io_channel_unix_get_fd(data->channel);
+
+		err = send(sk, request, req->request_len, 0);
+
+		req->numserv++;
+
+		if (data->domain != NULL) {
+			unsigned char alt[1024];
+			struct domain_hdr *hdr = (void *) &alt;
+			int altlen, domlen;
+
+			domlen = strlen(data->domain) + 1;
+			if (domlen < 5)
+				continue;
+
+			alt[0] = req->altid & 0xff;
+			alt[1] = req->altid >> 8;
+
+			memcpy(alt + 2, request + 2, 10);
+			hdr->qdcount = htons(1);
+
+			altlen = append_query(alt + 12, sizeof(alt) - 12,
+						name, data->domain);
+			if (altlen < 0)
+				continue;
+
+			altlen += 12;
+
+			memcpy(alt + altlen, request + altlen - domlen,
+					req->request_len - altlen + domlen);
+
+			err = send(sk, alt, req->request_len + domlen + 1, 0);
+
+			req->numserv++;
+		}
+	}
+
+	return TRUE;
+}
+
 static int dnsproxy_append(const char *interface, const char *domain,
 							const char *server)
 {
@@ -337,11 +480,30 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 	return 0;
 }
 
+static void dnsproxy_flush(void)
+{
+	GSList *list;
+
+	list = request_pending_list;
+	while (list) {
+		struct request_data *req = list->data;
+
+		list = list->next;
+
+		request_pending_list =
+				g_slist_remove(request_pending_list, req);
+		resolv(req, req->request, req->name);
+		g_free(req->request);
+		g_free(req->name);
+	}
+}
+
 static struct connman_resolver dnsproxy_resolver = {
 	.name		= "dnsproxy",
 	.priority	= CONNMAN_RESOLVER_PRIORITY_HIGH,
 	.append		= dnsproxy_append,
 	.remove		= dnsproxy_remove,
+	.flush		= dnsproxy_flush,
 };
 
 static void dnsproxy_offline_mode(connman_bool_t enabled)
@@ -496,88 +658,9 @@ static void send_response(int sk, unsigned char *buf, int len,
 	err = sendto(sk, buf, len, 0, to, tolen);
 }
 
-static int append_query(unsigned char *buf, unsigned int size,
-				const char *query, const char *domain)
-{
-	unsigned char *ptr = buf;
-	char *offset;
-
-	DBG("query %s domain %s", query, domain);
-
-	offset = (char *) query;
-	while (offset != NULL) {
-		char *tmp;
-
-		tmp = strchr(offset, '.');
-		if (tmp == NULL) {
-			if (strlen(offset) == 0)
-				break;
-			*ptr = strlen(offset);
-			memcpy(ptr + 1, offset, strlen(offset));
-			ptr += strlen(offset) + 1;
-			break;
-		}
-
-		*ptr = tmp - offset;
-		memcpy(ptr + 1, offset, tmp - offset);
-		ptr += tmp - offset + 1;
-
-		offset = tmp + 1;
-	}
-
-	offset = (char *) domain;
-	while (offset != NULL) {
-		char *tmp;
-
-		tmp = strchr(offset, '.');
-		if (tmp == NULL) {
-			if (strlen(offset) == 0)
-				break;
-			*ptr = strlen(offset);
-			memcpy(ptr + 1, offset, strlen(offset));
-			ptr += strlen(offset) + 1;
-			break;
-		}
-
-		*ptr = tmp - offset;
-		memcpy(ptr + 1, offset, tmp - offset);
-		ptr += tmp - offset + 1;
-
-		offset = tmp + 1;
-	}
-
-	*ptr++ = 0x00;
-
-	return ptr - buf;
-}
-
-static gboolean request_timeout(gpointer user_data)
-{
-	struct request_data *req = user_data;
-
-	DBG("id 0x%04x", req->srcid);
-
-	request_list = g_slist_remove(request_list, req);
-
-	if (req->resplen > 0 && req->resp != NULL) {
-		int sk, err;
-
-		sk = g_io_channel_unix_get_fd(listener_channel);
-
-		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->len);
-	}
-
-	g_free(req->resp);
-	g_free(req);
-
-	return FALSE;
-}
-
 static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
-	GSList *list;
 	unsigned char buf[768];
 	char query[512];
 	struct request_data *req;
@@ -602,7 +685,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
 
 	err = parse_request(buf, len, query, sizeof(query));
-	if (err < 0 || g_slist_length(server_list) == 0) {
+	if (err < 0 || (g_slist_length(server_list) == 0 &&
+				connman_ondemand_connected())) {
 		send_response(sk, buf, len, (struct sockaddr *) &sin, size);
 		return TRUE;
 	}
@@ -621,62 +705,39 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	req->srcid = buf[0] | (buf[1] << 8);
 	req->dstid = request_id;
 	req->altid = request_id + 1;
+	req->request_len = len;
 
 	buf[0] = req->dstid & 0xff;
 	buf[1] = req->dstid >> 8;
 
-	request_list = g_slist_append(request_list, req);
+	if (!connman_ondemand_connected()) {
+		DBG("Starting on demand connection");
+		/*
+		 * We're not connected, let's queue the request and start
+		 * an on-demand connection.
+		 */
+		req->request = g_try_malloc0(req->request_len);
+		if (req->request == NULL)
+			return TRUE;
 
-	req->numserv = 0;
-	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
+		memcpy(req->request, buf, req->request_len);
 
-	for (list = server_list; list; list = list->next) {
-		struct server_data *data = list->data;
-
-		DBG("server %s domain %s enabled %d",
-				data->server, data->domain, data->enabled);
-
-		if (data->enabled == FALSE)
-			continue;
-
-		sk = g_io_channel_unix_get_fd(data->channel);
-
-		err = send(sk, buf, len, 0);
-
-		req->numserv++;
-
-		if (data->domain != NULL) {
-			unsigned char alt[1024];
-			struct domain_hdr *hdr = (void *) &alt;
-			int altlen, domlen;
-
-			domlen = strlen(data->domain) + 1;
-			if (domlen < 5)
-				continue;
-
-			alt[0] = req->altid & 0xff;
-			alt[1] = req->altid >> 8;
-
-			memcpy(alt + 2, buf + 2, 10);
-			hdr->qdcount = htons(1);
-
-			altlen = append_query(alt + 12, sizeof(alt) - 12,
-							query, data->domain);
-			if (altlen < 0)
-				continue;
-
-			altlen += 12;
-
-			memcpy(alt + altlen, buf + altlen - domlen,
-							len - altlen + domlen);
-
-			err = send(sk, alt, len + domlen + 1, 0);
-
-			req->numserv++;
+		req->name = g_try_malloc0(sizeof(query));
+		if (req->name == NULL) {
+			g_free(req->request);
+			return TRUE;
 		}
+		memcpy(req->name, query, sizeof(query));
+
+		request_pending_list = g_slist_append(request_pending_list,
+									req);
+
+		connman_ondemand_start("", 300);
+
+		return TRUE;
 	}
 
-	return TRUE;
+	return resolv(req, buf, query);
 }
 
 static int create_listener(void)
@@ -743,6 +804,22 @@ static void destroy_listener(void)
 	if (listener_watch > 0)
 		g_source_remove(listener_watch);
 
+	for (list = request_pending_list; list; list = list->next) {
+		struct request_data *req = list->data;
+
+		DBG("Dropping pending request (id 0x%04x -> 0x%04x)",
+						req->srcid, req->dstid);
+
+		g_free(req->resp);
+		g_free(req->request);
+		g_free(req->name);
+		g_free(req);
+		list->data = NULL;
+	}
+
+	g_slist_free(request_pending_list);
+	request_pending_list = NULL;
+
 	for (list = request_list; list; list = list->next) {
 		struct request_data *req = list->data;
 
@@ -750,6 +827,8 @@ static void destroy_listener(void)
 						req->srcid, req->dstid);
 
 		g_free(req->resp);
+		g_free(req->request);
+		g_free(req->name);
 		g_free(req);
 		list->data = NULL;
 	}

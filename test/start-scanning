@@ -23,8 +23,10 @@ for path in properties["Technologies"]:
 		for path in properties["Devices"]:
 			device = dbus.Interface(bus.get_object('org.moblin.connman', path),
 								'org.moblin.connman.Device')
-
-			device.ProposeScan()
+			try:
+				device.ProposeScan()
+			except dbus.DBusException, error:
+				print "   %s: %s" % (error._dbus_error_name, error.message)
 	else:
 		print "   No scanning"
 
