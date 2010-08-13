@@ -1,3 +1,6 @@
+ver 0.57.1
+	ConnMan 0.57 code merge
+
 ver 0.54.4
 	Always create a default profile (Fixes BMC #5024)
 	Disable offline devices upon device_set_connected(TRUE) calls
