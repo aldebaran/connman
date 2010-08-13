@@ -525,7 +525,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 	DBG("device %p", device);
 
 	type = __connman_device_get_service_type(device);
-	__connman_notifier_disable(type);
 	__connman_notifier_unregister(type);
 
 	technology = g_hash_table_lookup(device_table, device);
