@@ -1,3 +1,7 @@
+ver 0.57.2
+	Bluetooth network removal when adapter is unplugged (Fixes BMC #5119)
+	Disable technology when removing device
+
 ver 0.57.1
 	ConnMan 0.57 code merge
 
