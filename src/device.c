@@ -1097,8 +1097,11 @@ int __connman_device_enable_persistent(struct connman_device *device)
 	err = __connman_device_enable(device);
 	if (err == 0 || err == -EINPROGRESS) {
 		device->offlinemode = FALSE;
-		if (__connman_profile_get_offlinemode() == TRUE)
+		if (__connman_profile_get_offlinemode() == TRUE) {
 			__connman_profile_set_offlinemode(FALSE, FALSE);
+
+			__connman_profile_save_default();
+		}
 	}
 
 	return err;
