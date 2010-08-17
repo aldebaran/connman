@@ -154,12 +154,7 @@ AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
 AC_ARG_ENABLE(dnsproxy,
 	AC_HELP_STRING([--enable-dnsproxy], [enable DNS proxy support]),
 			[enable_dnsproxy=${enableval}], [enable_dnsproxy="no"])
-if (test "${enable_dnsproxy}" != "no"); then
-	AC_CHECK_HEADERS(resolv.h, dummy=yes,
-			AC_MSG_ERROR(resolver header files are required))
-	AC_CHECK_LIB(resolv, ns_initparse, dummy=yes,
-			AC_MSG_ERROR(resolver library support is required))
-fi
+
 AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
 AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
@@ -174,6 +169,11 @@ AC_ARG_ENABLE(meego,
 			[enable_meego=${enableval}], [enable_meego="no"])
 AM_CONDITIONAL(MEEGO, test "${enable_meego}" != "no")
 AM_CONDITIONAL(MEEGO_BUILTIN, test "${enable_meego}" = "builtin")
+
+AC_CHECK_HEADERS(resolv.h, dummy=yes,
+	AC_MSG_ERROR(resolver header files are required))
+AC_CHECK_LIB(resolv, ns_initparse, dummy=yes,
+	AC_MSG_ERROR(resolver library support is required))
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
