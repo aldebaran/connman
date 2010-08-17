@@ -600,6 +600,9 @@ static gboolean request_timeout(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
 
+	debug(dhcp_client, "request timeout (retries %d)",
+					dhcp_client->retry_times);
+
 	dhcp_client->retry_times++;
 
 	start_request(dhcp_client);
@@ -615,6 +618,9 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 {
 	GIOChannel *listener_channel;
 	int listener_sockfd;
+
+	debug(dhcp_client, "switch listening mode (%d ==> %d)",
+				dhcp_client->listen_mode, listen_mode);
 
 	if (dhcp_client->listen_mode == listen_mode)
 		return 0;
@@ -665,6 +671,9 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 
 static void start_request(GDHCPClient *dhcp_client)
 {
+	debug(dhcp_client, "start request (retries %d)",
+					dhcp_client->retry_times);
+
 	if (dhcp_client->retry_times == REQUEST_RETRIES) {
 		dhcp_client->state = INIT_SELECTING;
 
@@ -710,6 +719,8 @@ static uint32_t get_lease(struct dhcp_packet *packet)
 
 static void restart_dhcp(GDHCPClient *dhcp_client, int retry_times)
 {
+	debug(dhcp_client, "restart DHCP (retries %d)", retry_times);
+
 	if (dhcp_client->timeout > 0) {
 		g_source_remove(dhcp_client->timeout);
 		dhcp_client->timeout = 0;
@@ -725,6 +736,8 @@ static void restart_dhcp(GDHCPClient *dhcp_client, int retry_times)
 static gboolean start_rebound_timeout(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
+
+	debug(dhcp_client, "start rebound timeout");
 
 	switch_listening_mode(dhcp_client, L2);
 
@@ -755,6 +768,8 @@ static gboolean start_rebound_timeout(gpointer user_data)
 
 static void start_rebound(GDHCPClient *dhcp_client)
 {
+	debug(dhcp_client, "start rebound");
+
 	dhcp_client->state = REBINDING;
 
 	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
@@ -767,6 +782,8 @@ static void start_rebound(GDHCPClient *dhcp_client)
 static gboolean start_renew_timeout(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
+
+	debug(dhcp_client, "start renew timeout");
 
 	dhcp_client->state = RENEWING;
 
@@ -791,6 +808,8 @@ static gboolean start_renew_timeout(gpointer user_data)
 
 static void start_bound(GDHCPClient *dhcp_client)
 {
+	debug(dhcp_client, "start bound");
+
 	dhcp_client->state = BOUND;
 
 	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
@@ -802,6 +821,8 @@ static void start_bound(GDHCPClient *dhcp_client)
 static gboolean restart_dhcp_timeout(gpointer user_data)
 {
 	GDHCPClient *dhcp_client = user_data;
+
+	debug(dhcp_client, "restart DHCP timeout");
 
 	dhcp_client->ack_retry_times++;
 
