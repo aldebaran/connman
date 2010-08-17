@@ -179,7 +179,7 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/monitor-manager test/test-counter test/set-ip-method \
 		test/set-nameservers test/set-domains test/find-service \
 		test/get-services test/get-proxy-autoconfig \
-		test/enable-tethering test/disable-tethering
+		test/enable-tethering test/disable-tethering test/backtrace
 
 if TEST
 testdir = $(pkglibdir)/test
