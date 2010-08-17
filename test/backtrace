@@ -18,18 +18,19 @@ log_file = open(sys.argv[2], 'r')
 
 # Extract addresses
 for line in log_file:
-    matchobj = re.compile(r'\[(0x[0-9a-f]+)\]$').search(line)
-    if matchobj:
-        addrs.append(matchobj.group(1))
+	matchobj = re.compile(r'\[(0x[0-9a-f]+)\]$').search(line)
+	if matchobj:
+		addrs.append(matchobj.group(1))
 
 log_file.close()
 
 # Feed into addr2line
-command = ['addr2line', '--demangle', '--functions', '--basename', '-e', binary]
+command = ['addr2line', '--demangle', '--functions', '--basename',
+							'-e', binary]
 command.extend(addrs)
 
 p = subprocess.Popen(command, shell=False, bufsize=0,
-          stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
+		stdin=subprocess.PIPE, stdout=subprocess.PIPE, close_fds=True)
 (child_stdin, child_stdout) = (p.stdin, p.stdout)
 
 child_stdin.close()
@@ -37,11 +38,12 @@ child_stdin.close()
 # Backtrace display
 for line in child_stdout:
 
-    if line.startswith("??"): continue
+	if line.startswith("??"):
+		continue
 
-    line = line.strip()
+	line = line.strip()
 
-    frames.append(line)
+	frames.append(line)
 
 child_stdout.close()
 
@@ -50,6 +52,6 @@ frame_count = len(frames);
 count = 0
 print "-------- ConnMan backtrace --------"
 while count < frame_count:
-    print "[%d]: %s() [%s]" % (count/2, frames[count], frames[count + 1])
-    count = count + 2
+	print "[%d]: %s() [%s]" % (count/2, frames[count], frames[count + 1])
+	count = count + 2
 print "-----------------------------------"
