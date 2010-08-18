@@ -349,7 +349,7 @@ static void provider_destruct(struct connman_element *element)
 	g_free(provider->dns);
 }
 
-static void __connman_provider_initialize(struct connman_provider *provider)
+static void provider_initialize(struct connman_provider *provider)
 {
 	DBG("provider %p", provider);
 
@@ -380,7 +380,7 @@ static struct connman_provider *connman_provider_new(void)
 		return NULL;
 
 	DBG("provider %p", provider);
-	__connman_provider_initialize(provider);
+	provider_initialize(provider);
 
 	return provider;
 }

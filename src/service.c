@@ -430,7 +430,7 @@ void __connman_service_nameserver_del_routes(struct connman_service *service)
 	}
 }
 
-static void __connman_service_stats_start(struct connman_service *service)
+static void stats_start(struct connman_service *service)
 {
 	DBG("service %p", service);
 
@@ -446,7 +446,7 @@ static void __connman_service_stats_start(struct connman_service *service)
 	__connman_counter_add_service(service);
 }
 
-static void __connman_service_stats_stop(struct connman_service *service)
+static void stats_stop(struct connman_service *service)
 {
 	unsigned int seconds;
 
@@ -468,7 +468,7 @@ static void __connman_service_stats_stop(struct connman_service *service)
 	service->stats.enabled = FALSE;
 }
 
-static int __connman_service_stats_load(struct connman_service *service,
+static int stats_load(struct connman_service *service,
 		GKeyFile *keyfile, const char *identifier)
 {
 	service->stats.rx_packets = g_key_file_get_integer(keyfile,
@@ -493,7 +493,7 @@ static int __connman_service_stats_load(struct connman_service *service,
 	return 0;
 }
 
-static int __connman_service_stats_save(struct connman_service *service,
+static int stats_save(struct connman_service *service,
 		GKeyFile *keyfile, const char *identifier)
 {
 	g_key_file_set_integer(keyfile, identifier, "rx_packets",
@@ -518,7 +518,7 @@ static int __connman_service_stats_save(struct connman_service *service,
 	return 0;
 }
 
-static void __connman_service_reset_stats(struct connman_service *service)
+static void reset_stats(struct connman_service *service)
 {
 	DBG("service %p", service);
 
@@ -1955,12 +1955,12 @@ static DBusMessage *move_after(DBusConnection *conn,
 	return move_service(conn, msg, user_data, FALSE);
 }
 
-static DBusMessage *reset_stats(DBusConnection *conn,
+static DBusMessage *reset_counters(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	__connman_service_reset_stats(service);
+	reset_stats(service);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1975,7 +1975,7 @@ static GDBusMethodTable service_methods[] = {
 	{ "Remove",        "",   "",      remove_service     },
 	{ "MoveBefore",    "o",  "",      move_before        },
 	{ "MoveAfter",     "o",  "",      move_after         },
-	{ "ResetCounters", "",   "",      reset_stats        },
+	{ "ResetCounters", "",   "",      reset_counters     },
 	{ },
 };
 
@@ -1995,7 +1995,7 @@ static void service_free(gpointer user_data)
 
 	g_hash_table_remove(service_hash, service->identifier);
 
-	__connman_service_stats_stop(service);
+	stats_stop(service);
 	__connman_storage_save_service(service);
 
 	service->path = NULL;
@@ -2075,7 +2075,7 @@ void __connman_service_put(struct connman_service *service)
 	}
 }
 
-static void __connman_service_initialize(struct connman_service *service)
+static void service_initialize(struct connman_service *service)
 {
 	DBG("service %p", service);
 
@@ -2120,7 +2120,7 @@ struct connman_service *connman_service_create(void)
 
 	DBG("service %p", service);
 
-	__connman_service_initialize(service);
+	service_initialize(service);
 
 	service->location = __connman_location_create(service);
 
@@ -2921,7 +2921,7 @@ failed:
  *
  * Look up a service by identifier or create a new one if not found
  */
-static struct connman_service *__connman_service_get(const char *identifier)
+static struct connman_service *service_get(const char *identifier)
 {
 	struct connman_service *service;
 	GSequenceIter *iter;
@@ -3004,7 +3004,7 @@ static void service_lower_up(struct connman_ipconfig *ipconfig)
 
 	connman_info("%s lower up", connman_ipconfig_get_ifname(ipconfig));
 
-	__connman_service_stats_start(service);
+	stats_start(service);
 }
 
 static void service_lower_down(struct connman_ipconfig *ipconfig)
@@ -3013,7 +3013,7 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 
 	connman_info("%s lower down", connman_ipconfig_get_ifname(ipconfig));
 
-	__connman_service_stats_stop(service);
+	stats_stop(service);
 	__connman_storage_save_service(service);
 }
 
@@ -3321,7 +3321,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	name = g_strdup_printf("%s_%s_%s",
 			__connman_network_get_type(network), ident, group);
-	service = __connman_service_get(name);
+	service = service_get(name);
 	g_free(name);
 
 	if (service == NULL)
@@ -3465,7 +3465,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 		return NULL;
 
 	name = g_strdup_printf("vpn_%s", ident);
-	service = __connman_service_get(name);
+	service = service_get(name);
 	g_free(name);
 
 	if (service == NULL)
@@ -3720,7 +3720,7 @@ static int service_load(struct connman_service *service)
 		service->domains = NULL;
 	}
 
-	__connman_service_stats_load(service, keyfile, service->identifier);
+	stats_load(service, keyfile, service->identifier);
 done:
 	g_key_file_free(keyfile);
 
@@ -3882,7 +3882,7 @@ update:
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Domains", NULL);
 
-	__connman_service_stats_save(service, keyfile, service->identifier);
+	stats_save(service, keyfile, service->identifier);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
