@@ -3,8 +3,8 @@ Connman configuration file format
 
 Connman uses configuration files to provision existing services. Connman will
 be looking for its configuration files at STORAGEDIR which by default points
-to /var/lib/connman/. Configuration file names should follow the *.config
-pattern.
+to /var/lib/connman/. Configuration file names must not include other
+characters than letters or numbers and must have a .config suffix.
 Those configuration files are text files with a simple format and we typically
 have one file per provisioned network.
 
