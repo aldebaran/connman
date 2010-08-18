@@ -38,10 +38,6 @@ struct connman_counter {
 	char *path;
 	unsigned int interval;
 	guint watch;
-};
-
-struct counter_data {
-	struct connman_service *service;
 	connman_bool_t first_update;
 };
 
@@ -59,13 +55,6 @@ static void remove_counter(gpointer user_data)
 	g_free(counter->owner);
 	g_free(counter->path);
 	g_free(counter);
-}
-
-static void remove_data(gpointer user_data)
-{
-	struct counter_data *data = user_data;
-
-	g_free(data);
 }
 
 static void owner_disconnect(DBusConnection *connection, void *user_data)
@@ -95,6 +84,7 @@ int __connman_counter_register(const char *owner, const char *path,
 
 	counter->owner = g_strdup(owner);
 	counter->path = g_strdup(path);
+	counter->first_update = TRUE;
 
 	g_hash_table_replace(counter_table, counter->path, counter);
 	g_hash_table_replace(owner_mapping, counter->owner, counter);
@@ -131,17 +121,7 @@ static void send_usage(struct connman_counter *counter,
 				struct connman_service *service)
 {
 	DBusMessage *message;
-	DBusMessageIter array, dict;
 	const char *service_path;
-	unsigned long rx_packets;
-	unsigned long tx_packets;
-	unsigned long rx_bytes;
-	unsigned long tx_bytes;
-	unsigned long rx_errors;
-	unsigned long tx_errors;
-	unsigned long rx_dropped;
-	unsigned long tx_dropped;
-	unsigned long time;
 
 	message = dbus_message_new_method_call(counter->owner, counter->path,
 					CONNMAN_COUNTER_INTERFACE, "Usage");
@@ -154,46 +134,9 @@ static void send_usage(struct connman_counter *counter,
 	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH,
 					&service_path, DBUS_TYPE_INVALID);
 
-	dbus_message_iter_init_append(message, &array);
+	__connman_service_stats_append(service, message, counter->first_update);
 
-	/* home counter */
-	connman_dbus_dict_open(&array, &dict);
-
-	rx_packets = __connman_service_stats_get_rx_packets(service);
-	tx_packets = __connman_service_stats_get_tx_packets(service);
-	rx_bytes = __connman_service_stats_get_rx_bytes(service);
-	tx_bytes = __connman_service_stats_get_tx_bytes(service);
-	rx_errors = __connman_service_stats_get_rx_errors(service);
-	tx_errors = __connman_service_stats_get_tx_errors(service);
-	rx_dropped = __connman_service_stats_get_rx_dropped(service);
-	tx_dropped = __connman_service_stats_get_tx_dropped(service);
-	time = __connman_service_stats_get_time(service);
-
-	connman_dbus_dict_append_basic(&dict, "RX.Packets", DBUS_TYPE_UINT32,
-				&rx_packets);
-	connman_dbus_dict_append_basic(&dict, "TX.Packets", DBUS_TYPE_UINT32,
-				&tx_packets);
-	connman_dbus_dict_append_basic(&dict, "RX.Bytes", DBUS_TYPE_UINT32,
-				&rx_bytes);
-	connman_dbus_dict_append_basic(&dict, "TX.Bytes", DBUS_TYPE_UINT32,
-				&tx_bytes);
-	connman_dbus_dict_append_basic(&dict, "RX.Errors", DBUS_TYPE_UINT32,
-				&rx_errors);
-	connman_dbus_dict_append_basic(&dict, "TX.Errors", DBUS_TYPE_UINT32,
-				&tx_errors);
-	connman_dbus_dict_append_basic(&dict, "RX.Dropped", DBUS_TYPE_UINT32,
-				&rx_dropped);
-	connman_dbus_dict_append_basic(&dict, "TX.Dropped", DBUS_TYPE_UINT32,
-				&tx_dropped);
-	connman_dbus_dict_append_basic(&dict, "Time", DBUS_TYPE_UINT32,
-				&time);
-
-	connman_dbus_dict_close(&array, &dict);
-
-	/* roaming counter */
-	connman_dbus_dict_open(&array, &dict);
-
-	connman_dbus_dict_close(&array, &dict);
+	counter->first_update = FALSE;
 
 	g_dbus_send_message(connection, message);
 }
@@ -204,22 +147,20 @@ void __connman_counter_notify(struct connman_ipconfig *config,
 			unsigned int rx_errors, unsigned int tx_errors,
 			unsigned int rx_dropped, unsigned int tx_dropped)
 {
-	struct counter_data *data;
+	struct connman_service *service;
 	GHashTableIter iter;
 	gpointer key, value;
 
-	data = g_hash_table_lookup(stats_table, config);
-	if (data == NULL)
+	service = g_hash_table_lookup(stats_table, config);
+	if (service == NULL)
 		return;
 
-	__connman_service_stats_update(data->service,
+	if (__connman_service_stats_update(service,
 				rx_packets, tx_packets,
 				rx_bytes, tx_bytes,
 				rx_errors, tx_errors,
-				rx_dropped, tx_dropped);
-
-	if (data->first_update == TRUE) {
-		data->first_update = FALSE;
+				rx_dropped, tx_dropped) == FALSE) {
+		/* first update, counters are now initialized */
 		return;
 	}
 
@@ -227,7 +168,7 @@ void __connman_counter_notify(struct connman_ipconfig *config,
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_counter *counter = value;
 
-		send_usage(counter, data->service);
+		send_usage(counter, service);
 	}
 }
 
@@ -251,17 +192,9 @@ static void release_counter(gpointer key, gpointer value, gpointer user_data)
 int __connman_counter_add_service(struct connman_service *service)
 {
 	struct connman_ipconfig *config;
-	struct counter_data *data;
-
-	data = g_try_new0(struct counter_data, 1);
-	if (data == NULL)
-		return -ENOMEM;
-
-	data->service = service;
-	data->first_update = TRUE;
 
 	config = __connman_service_get_ipconfig(service);
-	g_hash_table_replace(stats_table, config, data);
+	g_hash_table_replace(stats_table, config, service);
 
 	/*
 	 * Trigger a first update to intialize the offset counters
@@ -289,7 +222,7 @@ int __connman_counter_init(void)
 		return -1;
 
 	stats_table = g_hash_table_new_full(g_direct_hash, g_str_equal,
-							NULL, remove_data);
+							NULL, NULL);
 
 	counter_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_counter);
