@@ -1354,7 +1354,7 @@ const char *__connman_service_get_nameserver(struct connman_service *service)
 }
 
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
-                                                        const char *url)
+							const char *url)
 {
 	if (service == NULL)
 		return;
