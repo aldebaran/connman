@@ -1,3 +1,6 @@
+ver 0.57.3
+	Save profile when enabling device while offline (Fixes BMC #5286)
+
 ver 0.57.2
 	Bluetooth network removal when adapter is unplugged (Fixes BMC #5119)
 	Disable technology when removing device
