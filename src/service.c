@@ -2594,6 +2594,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	__connman_profile_changed(FALSE);
 
+	if (service->state == CONNMAN_SERVICE_STATE_ONLINE)
+		default_changed();
+
 	if (service->state == CONNMAN_SERVICE_STATE_IDLE ||
 			service->state == CONNMAN_SERVICE_STATE_FAILURE)
 		__connman_element_request_scan(CONNMAN_ELEMENT_TYPE_UNKNOWN);
