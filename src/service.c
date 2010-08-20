@@ -3277,6 +3277,25 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 	return service;
 }
 
+struct connman_service *__connman_service_lookup_from_index(int index)
+{
+	struct connman_service *service;
+	GSequenceIter *iter;
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+
+		if (connman_ipconfig_get_index(service->ipconfig) == index)
+			return service;
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return NULL;
+}
+
 const char *__connman_service_get_path(struct connman_service *service)
 {
 	return service->path;

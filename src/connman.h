@@ -454,6 +454,7 @@ const char *__connman_service_default(void);
 void __connman_service_put(struct connman_service *service);
 
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
+struct connman_service *__connman_service_lookup_from_index(int index);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_provider(struct connman_provider *provider);
 void __connman_service_update_from_network(struct connman_network *network);
