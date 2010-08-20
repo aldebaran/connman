@@ -162,7 +162,13 @@ static void set_default_gateway(struct gateway_data *data)
 	if (data->vpn == TRUE) {
 		connman_inet_set_gateway_address(data->index, data->vpn_ip);
 		data->active = TRUE;
-		/* vpn gateway going away no changes in services */
+
+		service = __connman_service_lookup_from_index(data->index);
+		if (service == NULL)
+			return;
+
+		__connman_service_indicate_default(service);
+
 		return;
 	}
 
@@ -444,12 +450,13 @@ static void update_order(void)
 	for (list = gateway_list; list; list = list->next) {
 		struct gateway_data *data = list->data;
 		struct connman_service *service;
+		int index = data->index;
 
-		/* vpn gataway is not attached to a service. */
 		if (data->vpn)
-			continue;
+			service = __connman_service_lookup_from_index(index);
+		else
+			service = __connman_element_get_service(data->element);
 
-		service = __connman_element_get_service(data->element);
 		data->order = __connman_service_get_order(service);
 	}
 }
