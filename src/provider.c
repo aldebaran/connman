@@ -241,7 +241,8 @@ static int set_connected(struct connman_provider *provider,
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
 		char *nameservers = NULL, *name = NULL;
-		const char *value, *first;
+		const char *value;
+		char *second_ns;
 		int err;
 
 		__connman_service_indicate_state(provider->vpn_service,
@@ -271,11 +272,16 @@ static int set_connected(struct connman_provider *provider,
 
 		__connman_service_set_domainname(service, provider->domain);
 
+		name = connman_inet_ifname(provider->element.index);
+
 		nameservers = g_strdup(provider->dns);
 		value = nameservers;
-		first = strchr(value, ' ');
-		__connman_service_append_nameserver(service, first);
-		name = connman_inet_ifname(provider->element.index);
+		second_ns = strchr(value, ' ');
+		if (second_ns)
+			*(second_ns++) = 0;
+		__connman_service_append_nameserver(service, value);
+		value = second_ns;
+
 		while (value) {
 			char *next = strchr(value, ' ');
 			if (next)
