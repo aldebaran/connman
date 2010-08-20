@@ -2597,6 +2597,15 @@ int __connman_service_indicate_state(struct connman_service *service,
 	if (service->state == CONNMAN_SERVICE_STATE_ONLINE)
 		default_changed();
 
+	if (service->state == CONNMAN_SERVICE_STATE_DISCONNECT) {
+		struct connman_service *def_service = get_default();
+
+		if (__connman_notifier_count_connected() == 0 &&
+			def_service != NULL &&
+				def_service->provider != NULL)
+			__connman_provider_disconnect(def_service->provider);
+	}
+
 	if (service->state == CONNMAN_SERVICE_STATE_IDLE ||
 			service->state == CONNMAN_SERVICE_STATE_FAILURE)
 		__connman_element_request_scan(CONNMAN_ELEMENT_TYPE_UNKNOWN);

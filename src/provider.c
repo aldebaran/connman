@@ -699,20 +699,8 @@ static void provider_offline_mode(connman_bool_t enabled)
 
 }
 
-static void provider_default_changed(struct connman_service *service)
-{
-	DBG("service %p", service);
-
-	if (service == NULL) {
-		/* When no services are active, then disconnect all VPNs */
-		provider_offline_mode(TRUE);
-		return;
-	}
-}
-
 static struct connman_notifier provider_notifier = {
 	.name			= "provider",
-	.default_changed	= provider_default_changed,
 	.offline_mode		= provider_offline_mode,
 };
 
