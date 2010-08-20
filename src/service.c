@@ -3323,6 +3323,8 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 	if (iter != NULL) {
 		if (g_sequence_iter_get_position(iter) == 0)
 			service->order = 1;
+		else if (service->type == CONNMAN_SERVICE_TYPE_VPN)
+			service->order = 10;
 		else
 			service->order = 0;
 	}
