@@ -68,7 +68,7 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 	}
 
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-							".Failed", str);
+					".Failed", "%s", str);
 }
 
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg)
