@@ -2383,6 +2383,12 @@ char *connman_service_get_interface(struct connman_service *service)
 	if (service == NULL)
 		return NULL;
 
+	if (service->type == CONNMAN_SERVICE_TYPE_VPN) {
+		index = connman_ipconfig_get_index(service->ipconfig);
+
+		return connman_inet_ifname(index);
+	}
+
 	if (service->network == NULL)
 		return NULL;
 
