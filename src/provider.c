@@ -420,7 +420,7 @@ static void provider_dbus_ident(char *ident)
 	int i, len = strlen(ident);
 
 	for (i = 0; i < len; i++)
-		if (ident[i] == '.')
+		if (ident[i] == '.' || ident[i] == ':')
 			ident[i] = '_';
 }
 
