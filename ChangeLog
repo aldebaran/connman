@@ -1,3 +1,10 @@
+ver 0.58:
+	Fix various issues around offline mode.
+	Fix various issues with VPN nameserver handling.
+	Add support for home/roaming network statistics.
+	Add support for EAP-TTLS WiFi configuration.
+	Add support for creating backtraces.
+
 ver 0.57:
 	Fix missing default profile creation.
 	Fix missing service integration of VPN providers.
