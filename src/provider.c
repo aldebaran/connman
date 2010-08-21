@@ -419,9 +419,15 @@ static void provider_dbus_ident(char *ident)
 {
 	int i, len = strlen(ident);
 
-	for (i = 0; i < len; i++)
-		if (ident[i] == '.' || ident[i] == ':')
-			ident[i] = '_';
+	for (i = 0; i < len; i++) {
+		if (ident[i] >= '0' && ident[i] <= '9')
+			continue;
+		if (ident[i] >= 'a' && ident[i] <= 'z')
+			continue;
+		if (ident[i] >= 'A' && ident[i] <= 'Z')
+			continue;
+		ident[i] = '_';
+	}
 }
 
 int __connman_provider_create_and_connect(DBusMessage *msg)
