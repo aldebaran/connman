@@ -1,3 +1,6 @@
+ver 0.59:
+	Fix issue with D-Bus object paths of VPN providers.
+
 ver 0.58:
 	Fix various issues around offline mode.
 	Fix various issues with VPN nameserver handling.
