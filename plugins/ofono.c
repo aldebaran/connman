@@ -498,31 +498,11 @@ static struct connman_network *pending_network;
 
 static gboolean pending_network_is_available(struct connman_network *network)
 {
-	struct connman_device *device;
-	struct connman_network *temp_network;
-	const char *identifier;
-	char *ident;
-
-	/* Modem may be removed during waiting for active reply */
-	device  = connman_network_get_device(network);
-	if (device == NULL) {
-		DBG("Modem is removed");
+	/* Modem or network may be removed during waiting for active reply */
+	if (connman_network_get_device(network) == NULL) {
+		DBG("Modem or network was removed");
 		return FALSE;
 	}
-
-	identifier = connman_network_get_identifier(network);
-
-	ident = g_strdup(identifier);
-
-	connman_network_unref(network);
-
-	/* network may be removed during waiting for active reply */
-	temp_network = connman_device_get_network(device, ident);
-
-	g_free(ident);
-
-	if (temp_network == NULL)
-		return FALSE;
 
 	return TRUE;
 }
