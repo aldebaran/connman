@@ -771,12 +771,20 @@ static void add_default_context(DBusMessageIter *array,
 
 static void check_networks_reply(DBusPendingCall *call, void *user_data)
 {
-	struct connman_device *device = user_data;
+	char *path = user_data;
+	struct modem_data *modem;
+	struct connman_device *device;
 	DBusMessage *reply;
 	DBusMessageIter array, dict, contexts;
 	dbus_bool_t attached;
 
-	DBG("device %p", device);
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL || modem->device == NULL)
+		return;
+
+	device = modem->device;
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -834,15 +842,13 @@ static void check_networks(struct modem_data *modem)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
-	struct connman_device *device;
 
 	DBG("modem %p", modem);
 
 	if (modem == NULL)
 		return;
 
-	device = modem->device;
-	if (device == NULL)
+	if (modem->device == NULL)
 		return;
 
 	message = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
@@ -864,7 +870,7 @@ static void check_networks(struct modem_data *modem)
 	}
 
 	dbus_pending_call_set_notify(call, check_networks_reply,
-						(void *)device, NULL);
+					g_strdup(modem->path), g_free);
 
 done:
 	dbus_message_unref(message);
@@ -1008,7 +1014,7 @@ static void get_imsi(const char *path)
 	}
 
 	dbus_pending_call_set_notify(call, sim_properties_reply,
-						(void *)path, NULL);
+					g_strdup(path), g_free);
 
 done:
 	dbus_message_unref(message);
@@ -1159,7 +1165,7 @@ static void get_modem_properties(struct modem_data *modem)
 	}
 
 	dbus_pending_call_set_notify(call, modem_properties_reply,
-						(void *)modem->path, NULL);
+					g_strdup(modem->path), g_free);
 
 done:
 	dbus_message_unref(message);
