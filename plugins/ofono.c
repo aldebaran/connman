@@ -927,24 +927,30 @@ static struct modem_data *add_modem(const char *path)
 	return modem;
 }
 
-static gboolean modem_has_gprs(DBusMessageIter *array)
+static gboolean modem_has_interface(DBusMessageIter *array,
+					char const *interface)
 {
 	DBusMessageIter entry;
 
 	dbus_message_iter_recurse(array, &entry);
 
 	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
-		const char *interface;
+		const char *element;
 
-		dbus_message_iter_get_basic(&entry, &interface);
+		dbus_message_iter_get_basic(&entry, &element);
 
-		if (g_strcmp0(OFONO_GPRS_INTERFACE, interface) == 0)
+		if (g_strcmp0(interface, element) == 0)
 			return TRUE;
 
 		dbus_message_iter_next(&entry);
 	}
 
 	return FALSE;
+}
+
+static gboolean modem_has_gprs(DBusMessageIter *array)
+{
+	return modem_has_interface(array, OFONO_GPRS_INTERFACE);
 }
 
 static void modem_properties_reply(DBusPendingCall *call, void *user_data)
