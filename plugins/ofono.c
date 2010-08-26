@@ -64,7 +64,12 @@ static GHashTable *modem_hash = NULL;
 struct modem_data {
 	char *path;
 	struct connman_device *device;
+	gboolean has_sim;
+	gboolean has_gprs;
 	gboolean available;
+	gboolean pending_online;
+	gboolean requested_online;
+	gboolean online;
 };
 
 static int modem_probe(struct connman_device *device)
@@ -205,13 +210,62 @@ static int set_property(const char *path, const char *interface,
 	return -EINPROGRESS;
 }
 
-static int gprs_change_powered(const char *path, dbus_bool_t powered)
+static void update_modem_online(struct modem_data *modem,
+				connman_bool_t online)
 {
-	DBG("path %s powered %d", path, powered);
+	DBG("modem %p path %s online %d", modem, modem->path, online);
 
-	return set_property(path, OFONO_GPRS_INTERFACE, "Powered",
-				DBUS_TYPE_BOOLEAN, &powered,
-				NULL, NULL, NULL);
+	modem->online = online;
+	modem->requested_online = online;
+	modem->pending_online = FALSE;
+
+	if (modem->device)
+		connman_device_set_powered(modem->device, online);
+}
+
+static void set_online_reply(DBusPendingCall *call, void *user_data)
+{
+	struct modem_data *modem;
+	DBusMessage *reply;
+	DBusError error;
+	gboolean result;
+
+	DBG("path %s", (char *)user_data);
+
+	if (modem_hash == NULL)
+		return;
+
+	modem = g_hash_table_lookup(modem_hash, user_data);
+	if (modem == NULL)
+		return;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("SetProperty(Online): %s: %s",
+				error.name, error.message);
+		dbus_error_free(&error);
+
+		result = modem->online;
+	} else
+		result = modem->requested_online;
+
+	if (modem->pending_online)
+		update_modem_online(modem, result);
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static int modem_change_online(char const *path, dbus_bool_t online)
+{
+	return set_property(path, OFONO_MODEM_INTERFACE, "Online",
+				DBUS_TYPE_BOOLEAN, &online,
+				set_online_reply,
+				(void *)g_strdup(path), g_free);
 }
 
 static int modem_enable(struct connman_device *device)
@@ -220,16 +274,16 @@ static int modem_enable(struct connman_device *device)
 
 	DBG("device %p, path, %s", device, path);
 
-	return gprs_change_powered(path, TRUE);
+	return modem_change_online(path, TRUE);
 }
 
 static int modem_disable(struct connman_device *device)
 {
 	const char *path = connman_device_get_string(device, "Path");
 
-	DBG("device %p, path %s", device, path);
+	DBG("device %p, path, %s", device, path);
 
-	return gprs_change_powered(path, FALSE);
+	return modem_change_online(path, FALSE);
 }
 
 static struct connman_device_driver modem_driver = {
@@ -240,6 +294,31 @@ static struct connman_device_driver modem_driver = {
 	.enable		= modem_enable,
 	.disable	= modem_disable,
 };
+
+static void modem_remove_device(struct modem_data *modem)
+{
+	DBG("modem %p path %s device %p", modem, modem->path, modem->device);
+
+	if (modem->device == NULL)
+		return;
+
+	connman_device_remove_all_networks(modem->device);
+	connman_device_unregister(modem->device);
+	connman_device_unref(modem->device);
+
+	modem->device = NULL;
+}
+
+static void remove_modem(gpointer data)
+{
+	struct modem_data *modem = data;
+
+	modem_remove_device(modem);
+
+	g_free(modem->path);
+
+	g_free(modem);
+}
 
 static char *get_ident(const char *path)
 {
@@ -769,12 +848,6 @@ static void check_networks_reply(DBusPendingCall *call, void *user_data)
 			contexts = value;
 			add_default_context(&contexts, path,
 					CONTEXT_NAME, CONTEXT_TYPE);
-		} else if (g_str_equal(key, "Powered") == TRUE) {
-			dbus_bool_t powered;
-
-			dbus_message_iter_get_basic(&value, &powered);
-
-			connman_device_set_powered(device, powered);
 		}
 
 		dbus_message_iter_next(&dict);
@@ -817,6 +890,16 @@ static void add_device(const char *path, const char *imsi)
 	if (modem == NULL)
 		return;
 
+	if (modem->device) {
+		if (g_str_equal(imsi, connman_device_get_ident(modem->device)))
+			return;
+
+		modem_remove_device(modem);
+	}
+
+	if (strlen(imsi) == 0)
+		return;
+
 	device = connman_device_create(imsi, CONNMAN_DEVICE_TYPE_CELLULAR);
 	if (device == NULL)
 		return;
@@ -834,7 +917,8 @@ static void add_device(const char *path, const char *imsi)
 
 	modem->device = device;
 
-	check_networks(modem);
+	if (modem->has_gprs)
+		check_networks(modem);
 }
 
 static void sim_properties_reply(DBusPendingCall *call, void *user_data)
@@ -948,6 +1032,11 @@ static gboolean modem_has_interface(DBusMessageIter *array,
 	return FALSE;
 }
 
+static gboolean modem_has_sim(DBusMessageIter *array)
+{
+	return modem_has_interface(array, OFONO_SIM_INTERFACE);
+}
+
 static gboolean modem_has_gprs(DBusMessageIter *array)
 {
 	return modem_has_interface(array, OFONO_GPRS_INTERFACE);
@@ -960,6 +1049,9 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 	DBusMessageIter array, dict;
 	const char *path = user_data;
 	dbus_bool_t powered = FALSE;
+	dbus_bool_t online = FALSE;
+	dbus_bool_t has_online = FALSE;
+	gboolean has_sim = FALSE;
 	gboolean has_gprs = FALSE;
 	struct modem_data *new_modem;
 
@@ -999,8 +1091,13 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 
 		if (g_str_equal(key, "Powered") == TRUE)
 			dbus_message_iter_get_basic(&value, &powered);
-		else if (g_str_equal(key, "Interfaces") == TRUE)
+		else if (g_str_equal(key, "Online") == TRUE) {
+			has_online = TRUE;
+			dbus_message_iter_get_basic(&value, &online);
+		} else if (g_str_equal(key, "Interfaces") == TRUE) {
+			has_sim = modem_has_sim(&value);
 			has_gprs = modem_has_gprs(&value);
+		}
 
 		dbus_message_iter_next(&dict);
 	}
@@ -1012,7 +1109,12 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 	if (!powered)
 		modem_change_powered(path, TRUE);
 
-	if (has_gprs)
+	new_modem->has_sim = has_sim;
+	new_modem->has_gprs = has_gprs;
+
+	update_modem_online(new_modem, online);
+
+	if (has_sim)
 		get_imsi(path);
 
 done:
@@ -1136,28 +1238,6 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static void modem_remove_device(struct modem_data *modem)
-{
-	if (modem->device == NULL)
-		return;
-
-	connman_device_unregister(modem->device);
-	connman_device_unref(modem->device);
-
-	modem->device = NULL;
-}
-
-static void remove_modem(gpointer data)
-{
-	struct modem_data *modem = data;
-
-	g_free(modem->path);
-
-	modem_remove_device(modem);
-
-	g_free(modem);
-}
-
 static void ofono_connect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
@@ -1211,13 +1291,74 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (powered == TRUE)
 			return TRUE;
 
+		modem->has_sim = FALSE;
+		modem->has_gprs = FALSE;
+
 		modem_remove_device(modem);
+	} else if (g_str_equal(key, "Online") == TRUE) {
+		dbus_bool_t online;
+
+		dbus_message_iter_get_basic(&value, &online);
+
+		update_modem_online(modem, online);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
-		if (modem_has_gprs(&value) == TRUE) {
-			if (modem->device == NULL)
+		gboolean has_sim = modem_has_sim(&value);
+		gboolean has_gprs = modem_has_gprs(&value);
+
+		modem->has_sim = has_sim;
+		modem->has_gprs = has_gprs;
+
+		if (modem->device == NULL) {
+			if (has_sim)
 				get_imsi(modem->path);
-		} else if (modem->device != NULL)
+		} else if (!has_sim) {
 			modem_remove_device(modem);
+		}
+	}
+
+	return TRUE;
+}
+
+static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
+		char *imsi;
+
+		dbus_message_iter_get_basic(&value, &imsi);
+
+		add_device(path, imsi);
+	} else if (g_str_equal(key, "Present") == TRUE) {
+		dbus_bool_t present;
+
+		dbus_message_iter_get_basic(&value, &present);
+
+		if (present)
+			return TRUE;
+
+		if (modem->device != NULL)
+			modem_remove_device(modem);
+
+		modem->has_gprs = FALSE;
 	}
 
 	return TRUE;
@@ -1259,14 +1400,6 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 
 	} else if (g_str_equal(key, "PrimaryContexts") == TRUE) {
 		check_networks(modem);
-	} else if (g_str_equal(key, "Powered") == TRUE) {
-		dbus_bool_t powered;
-
-		if (modem->device == NULL)
-			return TRUE;
-
-		dbus_message_iter_get_basic(&value, &powered);
-		connman_device_set_powered(modem->device, powered);
 	}
 
 	return TRUE;
@@ -1510,6 +1643,7 @@ static gboolean pri_context_changed(DBusConnection *connection,
 }
 
 static guint watch;
+static guint sim_watch;
 static guint gprs_watch;
 static guint modem_watch;
 static guint manager_watch;
@@ -1538,6 +1672,12 @@ static int ofono_init(void)
 						modem_changed,
 						NULL, NULL);
 
+	sim_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_SIM_INTERFACE,
+						PROPERTY_CHANGED,
+						sim_changed,
+						NULL, NULL);
+
 	manager_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
 						OFONO_MANAGER_INTERFACE,
 						PROPERTY_CHANGED,
@@ -1551,6 +1691,7 @@ static int ofono_init(void)
 						NULL, NULL);
 
 	if (watch == 0 || gprs_watch == 0 || modem_watch == 0 ||
+			sim_watch == 0 ||
 			manager_watch == 0 || context_watch == 0) {
 		err = -EIO;
 		goto remove;
@@ -1570,6 +1711,7 @@ static int ofono_init(void)
 
 remove:
 	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, sim_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
 	g_dbus_remove_watch(connection, modem_watch);
 	g_dbus_remove_watch(connection, manager_watch);
@@ -1583,6 +1725,7 @@ remove:
 static void ofono_exit(void)
 {
 	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, sim_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
 	g_dbus_remove_watch(connection, modem_watch);
 	g_dbus_remove_watch(connection, manager_watch);
