@@ -252,7 +252,7 @@ static char *get_ident(const char *path)
 	if (pos == NULL)
 		return NULL;
 
-	return g_strdup(pos + 1);
+	return pos + 1;
 }
 
 static void create_service(struct connman_network *network)
@@ -267,8 +267,6 @@ static void create_service(struct connman_network *network)
 	group = get_ident(path);
 
 	connman_network_set_group(network, group);
-
-	g_free(group);
 }
 
 static void set_network_name_reply(DBusPendingCall *call, void *user_data)
@@ -666,8 +664,6 @@ static void add_network(struct connman_device *device, const char *path)
 					CONNMAN_NETWORK_TYPE_CELLULAR);
 	if (network == NULL)
 		return;
-
-	g_free(ident);
 
 	connman_network_set_string(network, "Path", path);
 	connman_network_set_available(network, TRUE);
