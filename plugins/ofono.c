@@ -79,6 +79,56 @@ static void modem_remove(struct connman_device *device)
 	DBG("device %p", device);
 }
 
+static int call_ofono(const char *path,
+			const char *interface, const char *method,
+			DBusPendingCallNotifyFunction notify, void *user_data,
+			DBusFreeFunction free_function,
+			int type, ...)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+	dbus_bool_t ok;
+	va_list va;
+
+	DBG("path %s %s.%s", path, interface, method);
+
+	if (path == NULL)
+		return -EINVAL;
+
+	message = dbus_message_new_method_call(OFONO_SERVICE, path,
+					interface, method);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	va_start(va, type);
+	ok = dbus_message_append_args_valist(message, type, va);
+	va_end(va);
+
+	if (!ok)
+		return -ENOMEM;
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to call %s.%s", interface, method);
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, notify, user_data, free_function);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
 static void set_property_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
@@ -289,8 +339,6 @@ done:
 static void set_network_name(struct connman_network *network)
 {
 	struct connman_device *device;
-	DBusMessage *message;
-	DBusPendingCall *call;
 	const char *path;
 
 	device = connman_network_get_device(network);
@@ -301,29 +349,9 @@ static void set_network_name(struct connman_network *network)
 
 	DBG("path %s", path);
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-				OFONO_REGISTRATION_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get operator name");
-		goto done;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		goto done;
-	}
-
-	dbus_pending_call_set_notify(call, set_network_name_reply,
-						(void *)network, NULL);
-
-done:
-	dbus_message_unref(message);
+	call_ofono(path, OFONO_REGISTRATION_INTERFACE, GET_PROPERTIES,
+			set_network_name_reply, network, NULL,
+			DBUS_TYPE_INVALID);
 }
 
 static void config_network_reply(DBusPendingCall *call, void *user_data)
@@ -384,34 +412,11 @@ done:
 
 static void config_network(struct connman_network *network, const char *path)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
-
 	DBG("path %s", path);
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-				OFONO_PRI_CONTEXT_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get Primary Context");
-		goto done;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		goto done;
-	}
-
-	dbus_pending_call_set_notify(call, config_network_reply,
-						(void *)network, NULL);
-
-done:
-	dbus_message_unref(message);
+	call_ofono(path, OFONO_PRI_CONTEXT_INTERFACE, GET_PROPERTIES,
+			config_network_reply, network, NULL,
+			DBUS_TYPE_INVALID);
 }
 
 static gboolean registration_changed(DBusConnection *connection,
@@ -725,8 +730,6 @@ static void add_default_context(DBusMessageIter *array,
 		const char *path, const char *name, const char *type)
 {
 	DBusMessageIter entry;
-	DBusMessage *message;
-	DBusPendingCall *call;
 
 	if (path == NULL)
 		return;
@@ -740,33 +743,11 @@ static void add_default_context(DBusMessageIter *array,
 
 	DBG("path %s, name %s, type %s", path, name, type);
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-					OFONO_GPRS_INTERFACE, CREATE_CONTEXT);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	dbus_message_append_args(message, DBUS_TYPE_STRING,
-					&name, DBUS_TYPE_STRING,
-						&type, DBUS_TYPE_INVALID);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to create default context");
-		dbus_message_unref(message);
-		return;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		dbus_message_unref(message);
-		return;
-	}
-
-	dbus_pending_call_set_notify(call, create_context_reply, NULL, NULL);
-
-	dbus_message_unref(message);
+	call_ofono(path, OFONO_GPRS_INTERFACE, CREATE_CONTEXT,
+			create_context_reply, NULL, NULL,
+			DBUS_TYPE_STRING, &name,
+			DBUS_TYPE_STRING, &type,
+			DBUS_TYPE_INVALID);
 }
 
 static void check_networks_reply(DBusPendingCall *call, void *user_data)
@@ -840,40 +821,13 @@ done:
 
 static void check_networks(struct modem_data *modem)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
+	char const *path = modem->path;
 
-	DBG("modem %p", modem);
+	DBG("modem %p path %s", modem, path);
 
-	if (modem == NULL)
-		return;
-
-	if (modem->device == NULL)
-		return;
-
-	message = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
-					OFONO_GPRS_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get ofono GPRS");
-		goto done;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		goto done;
-	}
-
-	dbus_pending_call_set_notify(call, check_networks_reply,
-					g_strdup(modem->path), g_free);
-
-done:
-	dbus_message_unref(message);
+	call_ofono(path, OFONO_GPRS_INTERFACE, GET_PROPERTIES,
+			check_networks_reply, g_strdup(path), g_free,
+			DBUS_TYPE_INVALID);
 }
 
 static void add_device(const char *path, const char *imsi,
@@ -990,34 +944,11 @@ done:
 
 static void get_imsi(const char *path)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
-
 	DBG("path %s", path);
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-				OFONO_SIM_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get ofono modem sim");
-		goto done;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		goto done;
-	}
-
-	dbus_pending_call_set_notify(call, sim_properties_reply,
-					g_strdup(path), g_free);
-
-done:
-	dbus_message_unref(message);
+	call_ofono(path, OFONO_SIM_INTERFACE, GET_PROPERTIES,
+			sim_properties_reply, g_strdup(path), g_free,
+			DBUS_TYPE_INVALID);
 }
 
 static int modem_change_powered(const char *path, dbus_bool_t powered)
@@ -1148,37 +1079,11 @@ done:
 
 static void get_modem_properties(const char *path)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
-
 	DBG("path %s", path);
 
-	if (path == NULL)
-		return;
-
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-				OFONO_MODEM_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get ofono modem");
-		goto done;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		goto done;
-	}
-
-	dbus_pending_call_set_notify(call, modem_properties_reply,
-					g_strdup(path), g_free);
-
-done:
-	dbus_message_unref(message);
+	call_ofono(path, OFONO_MODEM_INTERFACE, GET_PROPERTIES,
+			modem_properties_reply, g_strdup(path), g_free,
+			DBUS_TYPE_INVALID);
 }
 
 static void mask_unavailable(gpointer key, gpointer value, gpointer user_data)
@@ -1311,38 +1216,14 @@ static void remove_modem(gpointer data)
 
 static void ofono_connect(DBusConnection *connection, void *user_data)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
-
 	DBG("connection %p", connection);
 
 	modem_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, remove_modem);
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, "/",
-				OFONO_MANAGER_INTERFACE, GET_PROPERTIES);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get ofono modems");
-		goto done;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		goto done;
-	}
-
-	dbus_pending_call_set_notify(call, manager_properties_reply,
-								NULL, NULL);
-
-done:
-	dbus_message_unref(message);
-
+	call_ofono("/", OFONO_MANAGER_INTERFACE, GET_PROPERTIES,
+			manager_properties_reply, NULL, NULL,
+			DBUS_TYPE_INVALID);
 }
 
 static void ofono_disconnect(DBusConnection *connection, void *user_data)
