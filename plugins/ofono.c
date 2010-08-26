@@ -628,8 +628,6 @@ static void add_network(struct connman_device *device, const char *path)
 {
 	struct connman_network *network;
 	char *ident;
-	const char *mcc;
-	const char *mnc;
 
 	DBG("device %p path %s", device, path);
 
@@ -648,14 +646,6 @@ static void add_network(struct connman_device *device, const char *path)
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
-
-	mcc = connman_device_get_string(device, "MCC");
-	if (mcc != NULL)
-		connman_network_set_string(network, "Cellular.MCC", mcc);
-
-	mnc = connman_device_get_string(device, "MNC");
-	if (mnc != NULL)
-		connman_network_set_string(network, "Cellular.MNC", mnc);
 
 	if (connman_device_add_network(device, network) == 0)
 		return;
@@ -810,8 +800,7 @@ static void check_networks(struct modem_data *modem)
 			DBUS_TYPE_INVALID);
 }
 
-static void add_device(const char *path, const char *imsi,
-				const char *mcc, const char *mnc)
+static void add_device(const char *path, const char *imsi)
 {
 	struct modem_data *modem;
 	struct connman_device *device;
@@ -837,10 +826,6 @@ static void add_device(const char *path, const char *imsi,
 	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
 
 	connman_device_set_string(device, "Path", path);
-	if (mcc != NULL)
-		connman_device_set_string(device, "MCC", mcc);
-	if (mnc != NULL)
-		connman_device_set_string(device, "MNC", mnc);
 
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
@@ -856,10 +841,6 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	const char *path = user_data;
 	const char *imsi;
-	char *mcc = NULL;
-	char *mnc = NULL;
-	/* If MobileNetworkCodeLength is not provided, mnc_length is 0 */
-	unsigned char mnc_length = 0;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 
@@ -885,35 +866,12 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "SubscriberIdentity") == TRUE)
+		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
 			dbus_message_iter_get_basic(&value, &imsi);
-		/*
-		 * 'MobileNetworkCodeLength' is deprecated since version 0.20, but
-		 * keep it here for backward compatibility reasons.
-		 */
-		else if (g_str_equal(key, "MobileNetworkCodeLength") == TRUE)
-			dbus_message_iter_get_basic(&value,
-						(void *) &mnc_length);
-		else if (g_str_equal(key, "MobileCountryCode") == TRUE)
-			dbus_message_iter_get_basic(&value,
-						(void *) &mcc);
-		else if (g_str_equal(key, "MobileNetworkCode") == TRUE)
-			dbus_message_iter_get_basic(&value,
-						(void *) &mnc);
+			add_device(path, imsi);
+		}
 
 		dbus_message_iter_next(&dict);
-	}
-
-	if (mnc_length == 2 || mnc_length == 3) {
-		mcc = g_strndup(imsi, 3);
-		mnc = g_strndup(imsi + 3, mnc_length);
-	}
-
-	add_device(path, imsi, mcc, mnc);
-
-	if (mnc_length == 2 || mnc_length == 3) {
-		g_free(mcc);
-		g_free(mnc);
 	}
 
 done:
