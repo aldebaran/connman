@@ -564,7 +564,7 @@ const char *__connman_network_get_ident(struct connman_network *network)
 	if (network->device == NULL)
 		return NULL;
 
-	return __connman_device_get_ident(network->device);
+	return connman_device_get_ident(network->device);
 }
 
 connman_bool_t __connman_network_get_weakness(struct connman_network *network)

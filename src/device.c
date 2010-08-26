@@ -950,7 +950,7 @@ void connman_device_set_ident(struct connman_device *device,
 	device->ident = g_strdup(ident);
 }
 
-const char *__connman_device_get_ident(struct connman_device *device)
+const char *connman_device_get_ident(struct connman_device *device)
 {
 	return device->ident;
 }

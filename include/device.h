@@ -70,6 +70,7 @@ const char *connman_device_get_control(struct connman_device *device);
 
 void connman_device_set_ident(struct connman_device *device,
 						const char *ident);
+const char *connman_device_get_ident(struct connman_device *device);
 
 void connman_device_set_mode(struct connman_device *device,
 					enum connman_device_mode mode);

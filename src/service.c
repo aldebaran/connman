@@ -3003,7 +3003,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	if (device == NULL)
 		return -EOPNOTSUPP;
 
-	ident = __connman_device_get_ident(device);
+	ident = connman_device_get_ident(device);
 	if (ident == NULL)
 		return -EOPNOTSUPP;
 
