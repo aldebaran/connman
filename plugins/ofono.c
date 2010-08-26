@@ -654,18 +654,19 @@ static void add_network(struct connman_device *device, const char *path)
 
 	DBG("device %p path %s", device, path);
 
-	network = connman_device_get_network(device, path);
+	ident = get_ident(path);
+
+	network = connman_device_get_network(device, ident);
 	if (network != NULL)
 		return;
 
-	ident = get_ident(path);
-
-	network = connman_network_create(ident,
-					CONNMAN_NETWORK_TYPE_CELLULAR);
+	network = connman_network_create(ident, CONNMAN_NETWORK_TYPE_CELLULAR);
 	if (network == NULL)
 		return;
 
-	connman_network_set_string(network, "Path", path);
+	if (connman_network_set_string(network, "Path", path) != 0)
+		goto error;
+
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
 
@@ -677,7 +678,11 @@ static void add_network(struct connman_device *device, const char *path)
 	if (mnc != NULL)
 		connman_network_set_string(network, "Cellular.MNC", mnc);
 
-	connman_device_add_network(device, network);
+	if (connman_device_add_network(device, network) == 0)
+		return;
+
+error:
+	connman_network_unref(network);
 }
 
 static void add_networks(struct connman_device *device, DBusMessageIter *array)
