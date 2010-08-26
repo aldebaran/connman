@@ -696,6 +696,8 @@ static void unregister_network(gpointer data)
 
 	connman_element_unregister((struct connman_element *) network);
 
+	__connman_network_set_device(network, NULL);
+
 	connman_network_unref(network);
 }
 
