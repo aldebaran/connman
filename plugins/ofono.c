@@ -1365,12 +1365,13 @@ static void get_dns(DBusMessageIter *array, struct connman_element *parent)
 }
 
 static void update_settings(DBusMessageIter *array,
-			struct connman_element *parent)
+				struct connman_network *network)
 {
+	struct connman_element *parent = connman_network_get_element(network);
 	DBusMessageIter dict;
 	const char *interface = NULL;
 
-	DBG("");
+	DBG("network %p", network);
 
 	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
 		return;
@@ -1384,6 +1385,8 @@ static void update_settings(DBusMessageIter *array,
 		dbus_message_iter_recurse(&dict, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
+		DBG("key %s", key);
+
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
@@ -1396,8 +1399,7 @@ static void update_settings(DBusMessageIter *array,
 
 			index = connman_inet_ifindex(interface);
 			if (index >= 0) {
-				connman_network_set_index(
-					pending_network, index);
+				connman_network_set_index(network, index);
 			} else {
 				connman_error("Can not find interface %s",
 								interface);
@@ -1451,11 +1453,13 @@ static void update_settings(DBusMessageIter *array,
 
 	/* deactive, oFono send NULL inteface before deactive signal */
 	if (interface == NULL)
-		connman_network_set_index(pending_network, -1);
+		connman_network_set_index(network, -1);
 }
 
-static void cleanup_ipconfig(struct connman_element *parent)
+static void cleanup_ipconfig(struct connman_network *network)
 {
+	struct connman_element *parent = connman_network_get_element(network);
+
 	g_free(parent->ipv4.address);
 	parent->ipv4.address = NULL;
 
@@ -1471,23 +1475,40 @@ static void cleanup_ipconfig(struct connman_element *parent)
 	parent->ipv4.method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 }
 
-static int static_network_set_connected(struct connman_network *network,
-					struct connman_element *parent,
-					connman_bool_t connected)
+
+static void set_connected(struct connman_network *network,
+				connman_bool_t connected)
 {
-	if (connected == FALSE)
-		cleanup_ipconfig(parent);
+	struct connman_element *parent = connman_network_get_element(network);
+	enum connman_ipconfig_method method = parent->ipv4.method;
 
-	connman_network_set_connected(network, connected);
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		return;
 
-	return 0;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		connman_network_set_method(network, method);
+
+		if (connected == FALSE)
+			cleanup_ipconfig(network);
+
+		connman_network_set_connected(network, connected);
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		connman_network_set_method(network, method);
+
+		connman_network_set_connected(network, connected);
+		break;
+	}
 }
 
 static gboolean pri_context_changed(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
-	struct connman_element *parent;
 	const char *pending_path;
 	DBusMessageIter iter, value;
 	const char *key;
@@ -1501,8 +1522,6 @@ static gboolean pri_context_changed(DBusConnection *connection,
 	if (g_strcmp0(pending_path, path) != 0)
 		return TRUE;
 
-	parent = connman_network_get_element(pending_network);
-
 	if (dbus_message_iter_init(message, &iter) == FALSE)
 		return TRUE;
 
@@ -1511,33 +1530,14 @@ static gboolean pri_context_changed(DBusConnection *connection,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
-	if (g_str_equal(key, "Settings") == TRUE) {
-
-		update_settings(&value, parent);
-	} else if (g_str_equal(key, "Active") == TRUE) {
+	if (g_str_equal(key, "Settings") == TRUE)
+		update_settings(&value, pending_network);
+	else if (g_str_equal(key, "Active") == TRUE) {
 		dbus_bool_t active;
 
 		dbus_message_iter_get_basic(&value, &active);
 
-		switch (parent->ipv4.method) {
-		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		case CONNMAN_IPCONFIG_METHOD_OFF:
-		case CONNMAN_IPCONFIG_METHOD_MANUAL:
-			break;
-		case CONNMAN_IPCONFIG_METHOD_FIXED:
-			connman_network_set_method(pending_network,
-						CONNMAN_IPCONFIG_METHOD_FIXED);
-
-			if (static_network_set_connected(
-					pending_network, parent, active) < 0)
-				set_network_active(pending_network, FALSE);
-			break;
-		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			connman_network_set_method(pending_network,
-						CONNMAN_IPCONFIG_METHOD_DHCP);
-			connman_network_set_connected(pending_network, active);
-			break;
-		}
+		set_connected(pending_network, active);
 
 		pending_network = NULL;
 	}
