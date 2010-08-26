@@ -1033,6 +1033,8 @@ static struct modem_data *add_modem(const char *path)
 {
 	struct modem_data *modem;
 
+	DBG("path %s", path);
+
 	if (path == NULL)
 		return NULL;
 
@@ -1082,10 +1084,16 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 	DBusError error;
 	DBusMessageIter array, dict;
 	const char *path = user_data;
+	dbus_bool_t powered = FALSE;
+	gboolean has_gprs = FALSE;
+	struct modem_data *new_modem;
 
 	DBG("path %s", path);
 
 	reply = dbus_pending_call_steal_reply(call);
+
+	if (g_hash_table_lookup(modem_hash, path))
+		goto done;
 
 	dbus_error_init(&error);
 
@@ -1107,7 +1115,6 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
 		const char *key;
-		dbus_bool_t powered;
 
 		dbus_message_iter_recurse(&dict, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
@@ -1115,20 +1122,23 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Powered") == TRUE) {
+		if (g_str_equal(key, "Powered") == TRUE)
 			dbus_message_iter_get_basic(&value, &powered);
-
-			if (powered == FALSE) {
-				modem_change_powered(path, TRUE);
-				break;
-			}
-		} else if (g_str_equal(key, "Interfaces") == TRUE) {
-			if (modem_has_gprs(&value) == TRUE)
-				get_imsi(path);
-		}
+		else if (g_str_equal(key, "Interfaces") == TRUE)
+			has_gprs = modem_has_gprs(&value);
 
 		dbus_message_iter_next(&dict);
 	}
+
+	new_modem = add_modem(path);
+	if (new_modem == NULL)
+		goto done;
+
+	if (!powered)
+		modem_change_powered(path, TRUE);
+
+	if (has_gprs)
+		get_imsi(path);
 
 done:
 	dbus_message_unref(reply);
@@ -1136,17 +1146,17 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static void get_modem_properties(struct modem_data *modem)
+static void get_modem_properties(const char *path)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
 
-	DBG("path %s", modem->path);
+	DBG("path %s", path);
 
-	if (modem->path == NULL)
+	if (path == NULL)
 		return;
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
+	message = dbus_message_new_method_call(OFONO_SERVICE, path,
 				OFONO_MODEM_INTERFACE, GET_PROPERTIES);
 	if (message == NULL)
 		return;
@@ -1165,7 +1175,7 @@ static void get_modem_properties(struct modem_data *modem)
 	}
 
 	dbus_pending_call_set_notify(call, modem_properties_reply,
-					g_strdup(modem->path), g_free);
+					g_strdup(path), g_free);
 
 done:
 	dbus_message_unref(message);
@@ -1200,6 +1210,8 @@ static void update_modems(DBusMessageIter *array)
 {
 	DBusMessageIter entry;
 
+	DBG("");
+
 	dbus_message_iter_recurse(array, &entry);
 
 	modems_set_unavailable();
@@ -1211,9 +1223,12 @@ static void update_modems(DBusMessageIter *array)
 
 		dbus_message_iter_get_basic(&entry, &path);
 
-		modem = add_modem(path);
-		if (modem != NULL)
-			get_modem_properties(modem);
+		modem = g_hash_table_lookup(modem_hash, path);
+
+		if (modem)
+			modem->available = TRUE;
+		else
+			get_modem_properties(path);
 
 		dbus_message_iter_next(&entry);
 	}
