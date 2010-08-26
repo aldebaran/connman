@@ -496,33 +496,32 @@ static int network_probe(struct connman_network *network)
 
 static struct connman_network *pending_network;
 
-static gboolean pending_network_is_available(
-		struct connman_network *pending_network)
+static gboolean pending_network_is_available(struct connman_network *network)
 {
 	struct connman_device *device;
-	struct connman_network *network;
+	struct connman_network *temp_network;
 	const char *identifier;
 	char *ident;
 
 	/* Modem may be removed during waiting for active reply */
-	device  = connman_network_get_device(pending_network);
+	device  = connman_network_get_device(network);
 	if (device == NULL) {
 		DBG("Modem is removed");
 		return FALSE;
 	}
 
-	identifier = connman_network_get_identifier(pending_network);
+	identifier = connman_network_get_identifier(network);
 
 	ident = g_strdup(identifier);
 
-	connman_network_unref(pending_network);
+	connman_network_unref(network);
 
 	/* network may be removed during waiting for active reply */
-	network = connman_device_get_network(device, ident);
+	temp_network = connman_device_get_network(device, ident);
 
 	g_free(ident);
 
-	if (network == NULL)
+	if (temp_network == NULL)
 		return FALSE;
 
 	return TRUE;
@@ -1492,15 +1491,14 @@ static void cleanup_ipconfig(struct connman_element *parent)
 	parent->ipv4.method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 }
 
-static int static_network_set_connected(
-		struct connman_network *pending_network,
-				struct connman_element *parent,
+static int static_network_set_connected(struct connman_network *network,
+					struct connman_element *parent,
 					connman_bool_t connected)
 {
 	if (connected == FALSE)
 		cleanup_ipconfig(parent);
 
-	connman_network_set_connected(pending_network, connected);
+	connman_network_set_connected(network, connected);
 
 	return 0;
 }
