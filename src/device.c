@@ -1340,6 +1340,9 @@ static void set_offlinemode(struct connman_element *element, gpointer user_data)
 
 	device->offlinemode = offlinemode;
 
+	if (device->blocked == TRUE)
+		return;
+
 	powered = (offlinemode == TRUE) ? FALSE : TRUE;
 
 	if (device->powered == powered)
