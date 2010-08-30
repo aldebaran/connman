@@ -3651,12 +3651,6 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	if (service == NULL)
 		return;
 
-	if (service->network == NULL)
-		return;
-
-	connman_network_unref(service->network);
-	service->network = NULL;
-
 	__connman_service_put(service);
 }
 
