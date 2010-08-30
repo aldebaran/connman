@@ -1042,6 +1042,9 @@ int __connman_network_connect(struct connman_network *network)
 	if (network->driver->connect == NULL)
 		return -ENOSYS;
 
+	if (network->device == NULL)
+		return -ENODEV;
+
 	__connman_device_disconnect(network->device);
 
 	network->connecting = TRUE;
