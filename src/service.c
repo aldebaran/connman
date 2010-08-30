@@ -2298,6 +2298,8 @@ struct connman_location *__connman_service_get_location(struct connman_service *
  */
 struct connman_service *connman_service_ref(struct connman_service *service)
 {
+	DBG("%p", service);
+
 	g_atomic_int_inc(&service->refcount);
 
 	return service;
@@ -3108,7 +3110,7 @@ static struct connman_service *service_get(const char *identifier)
 	if (iter != NULL) {
 		service = g_sequence_get(iter);
 		if (service != NULL)
-			g_atomic_int_inc(&service->refcount);
+			connman_service_ref(service);
 		return service;
 	}
 
