@@ -241,7 +241,8 @@ static int set_connected(struct connman_provider *provider,
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
 		char *nameservers = NULL, *name = NULL;
-		const char *value, *first;
+		const char *value;
+		char *second_ns;
 		int err;
 
 		__connman_service_indicate_state(provider->vpn_service,
@@ -271,11 +272,16 @@ static int set_connected(struct connman_provider *provider,
 
 		__connman_service_set_domainname(service, provider->domain);
 
+		name = connman_inet_ifname(provider->element.index);
+
 		nameservers = g_strdup(provider->dns);
 		value = nameservers;
-		first = strchr(value, ' ');
-		__connman_service_append_nameserver(service, first);
-		name = connman_inet_ifname(provider->element.index);
+		second_ns = strchr(value, ' ');
+		if (second_ns)
+			*(second_ns++) = 0;
+		__connman_service_append_nameserver(service, value);
+		value = second_ns;
+
 		while (value) {
 			char *next = strchr(value, ' ');
 			if (next)
@@ -349,7 +355,7 @@ static void provider_destruct(struct connman_element *element)
 	g_free(provider->dns);
 }
 
-static void __connman_provider_initialize(struct connman_provider *provider)
+static void provider_initialize(struct connman_provider *provider)
 {
 	DBG("provider %p", provider);
 
@@ -380,7 +386,7 @@ static struct connman_provider *connman_provider_new(void)
 		return NULL;
 
 	DBG("provider %p", provider);
-	__connman_provider_initialize(provider);
+	provider_initialize(provider);
 
 	return provider;
 }
@@ -413,9 +419,15 @@ static void provider_dbus_ident(char *ident)
 {
 	int i, len = strlen(ident);
 
-	for (i = 0; i < len; i++)
-		if (ident[i] == '.')
-			ident[i] = '_';
+	for (i = 0; i < len; i++) {
+		if (ident[i] >= '0' && ident[i] <= '9')
+			continue;
+		if (ident[i] >= 'a' && ident[i] <= 'z')
+			continue;
+		if (ident[i] >= 'A' && ident[i] <= 'Z')
+			continue;
+		ident[i] = '_';
+	}
 }
 
 int __connman_provider_create_and_connect(DBusMessage *msg)
@@ -699,20 +711,8 @@ static void provider_offline_mode(connman_bool_t enabled)
 
 }
 
-static void provider_default_changed(struct connman_service *service)
-{
-	DBG("service %p", service);
-
-	if (service == NULL) {
-		/* When no services are active, then disconnect all VPNs */
-		provider_offline_mode(TRUE);
-		return;
-	}
-}
-
 static struct connman_notifier provider_notifier = {
 	.name			= "provider",
-	.default_changed	= provider_default_changed,
 	.offline_mode		= provider_offline_mode,
 };
 

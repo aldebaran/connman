@@ -29,7 +29,7 @@ def print_stats(stats):
 
 	for key in keys:
 		val = int(stats[key])
-		str = "  %s = %s" % (key, val)
+		str = "    %s = %s" % (key, val)
 
 		if key in ["RX.Bytes", "TX.Bytes"]:
 			hstr = make_bytes_readable(val)
@@ -49,8 +49,13 @@ class Counter(dbus.service.Object):
 				in_signature='oa{sv}a{sv}', out_signature='')
 	def Usage(self, path, home, roaming):
 		print "%s" % (path)
-		print_stats(home)
-		print_stats(roaming)
+
+		if len(home) > 0:
+			print "  Home"
+			print_stats(home)
+		if len(roaming) > 0:
+			print "  Roaming"
+			print_stats(roaming)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)

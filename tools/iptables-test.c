@@ -110,7 +110,7 @@ static struct ipt_entry *build_quota_drop_entry(void)
 		return NULL;
 	m->m->u.match_size = match_size;
 	strcpy(m->m->u.user.name, m->name);
-	xtables_set_revision(m->m->u.user.name, m->revision);
+	m->m->u.user.revision = m->revision;
 	if (m->init != NULL)
 		m->init(m->m);
 
@@ -125,7 +125,7 @@ static struct ipt_entry *build_quota_drop_entry(void)
 	t->t = xtables_calloc(1, target_size);
 	t->t->u.target_size = target_size;
 	strcpy(t->t->u.user.name, "DROP");
-	xtables_set_revision(t->t->u.user.name, t->revision);
+	t->t->u.user.revision = t->revision;
 	if (t->init != NULL)
 		t->init(t->t);
 

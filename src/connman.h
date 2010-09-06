@@ -454,6 +454,7 @@ const char *__connman_service_default(void);
 void __connman_service_put(struct connman_service *service);
 
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);
+struct connman_service *__connman_service_lookup_from_index(int index);
 struct connman_service *__connman_service_create_from_network(struct connman_network *network);
 struct connman_service *__connman_service_create_from_provider(struct connman_provider *provider);
 void __connman_service_update_from_network(struct connman_network *network);
@@ -505,16 +506,10 @@ const char *__connman_service_get_nameserver(struct connman_service *service);
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url);
 
-unsigned long __connman_service_stats_get_rx_packets(struct connman_service *service);
-unsigned long __connman_service_stats_get_tx_packets(struct connman_service *service);
-unsigned long __connman_service_stats_get_rx_bytes(struct connman_service *service);
-unsigned long __connman_service_stats_get_tx_bytes(struct connman_service *service);
-unsigned long __connman_service_stats_get_rx_errors(struct connman_service *service);
-unsigned long __connman_service_stats_get_tx_errors(struct connman_service *service);
-unsigned long __connman_service_stats_get_rx_dropped(struct connman_service *service);
-unsigned long __connman_service_stats_get_tx_dropped(struct connman_service *service);
-unsigned long __connman_service_stats_get_time(struct connman_service *service);
-void __connman_service_stats_update(struct connman_service *service,
+void __connman_service_stats_append(struct connman_service *service,
+						DBusMessage *msg,
+						connman_bool_t append_all);
+connman_bool_t __connman_service_stats_update(struct connman_service *service,
 				unsigned int rx_packets, unsigned int tx_packets,
 				unsigned int rx_bytes, unsigned int tx_bytes,
 				unsigned int rx_error, unsigned int tx_error,

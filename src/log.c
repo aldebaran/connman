@@ -23,8 +23,12 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdarg.h>
 #include <syslog.h>
+#include <stdlib.h>
+#include <execinfo.h>
+#include <dlfcn.h>
 
 #include "connman.h"
 
@@ -98,6 +102,49 @@ void connman_debug(const char *format, ...)
 	vsyslog(LOG_DEBUG, format, ap);
 
 	va_end(ap);
+}
+
+static void signal_handler(int signo)
+{
+	void *frames[64];
+	char **symbols;
+	size_t n_ptrs;
+	unsigned int i;
+
+	n_ptrs = backtrace(frames, G_N_ELEMENTS(frames));
+	symbols = backtrace_symbols(frames, n_ptrs);
+	if (symbols == NULL) {
+		connman_error("No backtrace symbols");
+		exit(1);
+	}
+
+	connman_error("Aborting (signal %d)", signo);
+	connman_error("++++++++ backtrace ++++++++");
+
+	for (i = 1; i < n_ptrs; i++)
+		connman_error("[%d]: %s", i - 1, symbols[i]);
+
+	connman_error("+++++++++++++++++++++++++++");
+
+	g_free(symbols);
+	exit(1);
+}
+
+static void signal_setup(sighandler_t handler)
+{
+	struct sigaction sa;
+	sigset_t mask;
+
+	sigemptyset(&mask);
+	sa.sa_handler = handler;
+	sa.sa_mask = mask;
+	sa.sa_flags = 0;
+	sigaction(SIGBUS, &sa, NULL);
+	sigaction(SIGILL, &sa, NULL);
+	sigaction(SIGFPE, &sa, NULL);
+	sigaction(SIGSEGV, &sa, NULL);
+	sigaction(SIGABRT, &sa, NULL);
+	sigaction(SIGPIPE, &sa, NULL);
 }
 
 extern struct connman_debug_desc __start___debug[];
@@ -179,6 +226,8 @@ int __connman_log_init(const char *debug, connman_bool_t detach)
 	if (detach == FALSE)
 		option |= LOG_PERROR;
 
+	signal_setup(signal_handler);
+
 	openlog("connmand", option, LOG_DAEMON);
 
 	syslog(LOG_INFO, "Connection Manager version %s", VERSION);
@@ -191,6 +240,8 @@ void __connman_log_cleanup(void)
 	syslog(LOG_INFO, "Exit");
 
 	closelog();
+
+	signal_setup(SIG_DFL);
 
 	g_strfreev(enabled);
 }

@@ -1262,7 +1262,8 @@ static int set_network(struct supplicant_task *task,
 				dbus_message_unref(message);
 				return err;
 			}
-		} else if (g_strcmp0(eap, "peap") == 0) {
+		} else if (g_strcmp0(eap, "peap") == 0 ||
+				   g_strcmp0(eap, "ttls") == 0) {
 			int err;
 
 			err = set_network_peap(network, &dict, passphrase);

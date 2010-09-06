@@ -696,6 +696,8 @@ static void unregister_network(gpointer data)
 
 	connman_element_unregister((struct connman_element *) network);
 
+	__connman_network_set_device(network, NULL);
+
 	connman_network_unref(network);
 }
 
@@ -1339,6 +1341,9 @@ static void set_offlinemode(struct connman_element *element, gpointer user_data)
 		return;
 
 	device->offlinemode = offlinemode;
+
+	if (device->blocked == TRUE)
+		return;
 
 	powered = (offlinemode == TRUE) ? FALSE : TRUE;
 

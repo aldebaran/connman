@@ -176,7 +176,7 @@ void __connman_element_list(struct connman_element *element,
 						append_path, &filter);
 }
 
-static struct connman_network *__connman_element_get_network(struct connman_element *element)
+static struct connman_network *get_network(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
 						element->network != NULL)
@@ -185,7 +185,7 @@ static struct connman_network *__connman_element_get_network(struct connman_elem
 	if (element->parent == NULL)
 		return NULL;
 
-	return __connman_element_get_network(element->parent);
+	return get_network(element->parent);
 }
 
 struct connman_service *__connman_element_get_service(struct connman_element *element)
@@ -211,7 +211,7 @@ struct connman_service *__connman_element_get_service(struct connman_element *el
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-		network = __connman_element_get_network(element);
+		network = get_network(element);
 		if (network == NULL)
 			return NULL;
 		service = __connman_service_lookup_from_network(network);

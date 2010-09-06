@@ -68,7 +68,7 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 	}
 
 	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
-							".Failed", str);
+					".Failed", "%s", str);
 }
 
 DBusMessage *__connman_error_invalid_arguments(DBusMessage *msg)
@@ -180,6 +180,6 @@ DBusMessage *__connman_error_invalid_service(DBusMessage *msg)
 
 DBusMessage *__connman_error_invalid_property(DBusMessage *msg)
 {
-	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE,
+	return g_dbus_create_error(msg, CONNMAN_ERROR_INTERFACE
 				".InvalidProperty", "Invalid property");
 }

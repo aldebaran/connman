@@ -165,9 +165,9 @@ void dhcp_init_header(struct dhcp_packet *packet, char type);
 int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
 			uint32_t source_ip, int source_port,
 			uint32_t dest_ip, int dest_port,
-			const uint8_t *dest_arp, int ifindex) ;
+			const uint8_t *dest_arp, int ifindex);
 int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 			uint32_t source_ip, int source_port,
-			uint32_t dest_ip, int dest_port) ;
+			uint32_t dest_ip, int dest_port);
 int dhcp_l3_socket(int port, const char *interface);
 int dhcp_recv_l3_packet(struct dhcp_packet *packet, int fd);
