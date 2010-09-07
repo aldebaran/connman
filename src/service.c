@@ -2823,6 +2823,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	else
 		return -EOPNOTSUPP;
 
+	__connman_ipconfig_set_proxy_autoconfig(service->ipconfig, NULL);
+
 	__connman_ipconfig_clear_address(service->ipconfig);
 
 	ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
