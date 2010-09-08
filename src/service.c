@@ -834,10 +834,6 @@ static void append_ethernet(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	if (is_connecting(service) == FALSE &&
-			is_connected(service) == FALSE)
-		return;
-
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ethernet(service->ipconfig, iter);
 }
@@ -1049,6 +1045,13 @@ static void proxy_changed(struct connman_service *service)
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Proxy",
 							append_proxy, service);
+}
+
+static void link_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE, "Ethernet",
+						append_ethernet, service);
 }
 
 static void stats_append(DBusMessageIter *dict,
@@ -3164,6 +3167,8 @@ static void service_up(struct connman_ipconfig *ipconfig)
 	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
 
 	connman_info("%s up", connman_ipconfig_get_ifname(ipconfig));
+
+	link_changed(service);
 
 	service->stats.valid = FALSE;
 	service->stats_roaming.valid = FALSE;
