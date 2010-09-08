@@ -1,3 +1,12 @@
+ver 0.60:
+	Fix issue with missing reset of proxy settings.
+	Fix issue with missing Ethernet property changed signal.
+	Fix issue with offline operation on already blocked devices.
+	Fix issue with offline mode and device powered changes.
+	Fix issue with portal detection and DHCP renewals.
+	Fix issue with connection attempts for removed networks.
+	Fix issue with stale pointers of networks.
+
 ver 0.59:
 	Fix issue with D-Bus object paths of VPN providers.
 
