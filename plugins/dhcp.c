@@ -184,4 +184,4 @@ static void dhcp_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(dhcp, "Generic DHCP plugin", VERSION,
-			CONNMAN_PLUGIN_PRIORITY_LOW, dhcp_init, dhcp_exit)
+			CONNMAN_PLUGIN_PRIORITY_DEFAULT, dhcp_init, dhcp_exit)
