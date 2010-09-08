@@ -218,13 +218,20 @@ int __connman_device_enable(struct connman_device *device)
 
 	err = device->driver->enable(device);
 	if (err < 0) {
-		if (err == -EINPROGRESS)
+		if (err == -EINPROGRESS) {
 			device->powered_pending = TRUE;
+			device->offlinemode = FALSE;
+			if (__connman_profile_get_offlinemode() == TRUE)
+				__connman_profile_set_offlinemode(FALSE, FALSE);
+		}
 		return err;
 	}
 
 	device->powered_pending = TRUE;
 	device->powered = TRUE;
+	device->offlinemode = FALSE;
+	if (__connman_profile_get_offlinemode() == TRUE)
+		__connman_profile_set_offlinemode(FALSE, FALSE);
 
 	__connman_technology_enable_device(device);
 
