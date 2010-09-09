@@ -27,13 +27,13 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/security.h>
+#include <connman/dbus.h>
 
 static const GDBusSecurityTable polkit_security[] = {
-	{ CONNMAN_SECURITY_PRIVILEGE_MODIFY, "org.moblin.connman.modify",
+	{ CONNMAN_PRIVILEGE_MODIFY, "org.moblin.connman.modify",
 				G_DBUS_SECURITY_FLAG_BUILTIN |
 				G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION },
-	{ CONNMAN_SECURITY_PRIVILEGE_SECRET, "org.moblin.connman.secret",
+	{ CONNMAN_PRIVILEGE_SECRET, "org.moblin.connman.secret",
 				G_DBUS_SECURITY_FLAG_BUILTIN |
 				G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION },
 	{ }

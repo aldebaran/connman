@@ -47,6 +47,9 @@ extern "C" {
 #define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
 #define CONNMAN_TECHNOLOGY_INTERFACE	CONNMAN_SERVICE ".Technology"
 
+#define CONNMAN_PRIVILEGE_MODIFY	1
+#define CONNMAN_PRIVILEGE_SECRET	2
+
 typedef void (* connman_dbus_append_cb_t) (DBusMessageIter *iter,
 							void *user_data);
 
