@@ -288,7 +288,7 @@ static int modem_disable(struct connman_device *device)
 {
 	const char *path = connman_device_get_string(device, "Path");
 
-	DBG("device %p, path, %s", device, path);
+	DBG("device %p path %s", device, path);
 
 	return modem_change_online(path, FALSE);
 }
