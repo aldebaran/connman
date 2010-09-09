@@ -1375,13 +1375,8 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	struct connman_service *service = user_data;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	dbus_bool_t limited = TRUE;
 
 	DBG("service %p", service);
-
-	if (__connman_security_check_privilege(msg,
-				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
-		limited = FALSE;
 
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
@@ -1390,7 +1385,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_init_append(reply, &array);
 
 	connman_dbus_dict_open(&array, &dict);
-	append_properties(&dict, limited, service);
+	append_properties(&dict, FALSE, service);
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
@@ -1412,10 +1407,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	dbus_message_iter_get_basic(&iter, &name);
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
 
 	type = dbus_message_iter_get_arg_type(&value);
 
@@ -1446,10 +1437,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		if (service->immutable == TRUE)
 			return __connman_error_not_supported(msg);
-
-		if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_SECRET) < 0)
-			return __connman_error_permission_denied(msg);
 
 		dbus_message_iter_get_basic(&value, &passphrase);
 
@@ -1689,10 +1676,6 @@ static DBusMessage *clear_property(DBusConnection *conn,
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
 
 	if (g_str_equal(name, "Error") == TRUE) {
 		set_idle(service);

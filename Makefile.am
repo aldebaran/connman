@@ -4,7 +4,7 @@ AM_MAKEFLAGS = --no-print-directory
 includedir = @includedir@/connman
 
 include_HEADERS = include/types.h include/log.h include/plugin.h \
-			include/security.h include/notifier.h \
+			include/notifier.h \
 			include/storage.h include/service.h \
 			include/resolver.h include/ipconfig.h \
 			include/device.h include/network.h include/inet.h \
@@ -58,7 +58,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
 			src/device.c src/network.c src/connection.c \
 			src/manager.c src/profile.c src/service.c \
 			src/agent.c src/notifier.c src/provider.c \
-			src/security.c src/resolver.c src/ipconfig.c \
+			src/resolver.c src/ipconfig.c \
 			src/ipv4.c src/dhcp.c src/rtnl.c src/inet.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \

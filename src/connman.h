@@ -112,11 +112,6 @@ void __connman_plugin_cleanup(void);
 int __connman_task_init(void);
 void __connman_task_cleanup(void);
 
-#include <connman/security.h>
-
-int __connman_security_check_privilege(DBusMessage *message,
-				enum connman_security_privilege privilege);
-
 #include <connman/inet.h>
 
 enum connman_device_type __connman_inet_get_device_type(int index);
