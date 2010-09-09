@@ -54,7 +54,7 @@
 #define CONTEXT_REMOVED			"ContextRemoved"
 #define ADD_CONTEXT			"AddContext"
 
-#define TIMEOUT 5000
+#define TIMEOUT 40000
 
 #define CONTEXT_NAME "3G Connection"
 #define CONTEXT_TYPE "internet"
