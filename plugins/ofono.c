@@ -53,6 +53,10 @@
 #define CONTEXT_ADDED			"ContextAdded"
 #define CONTEXT_REMOVED			"ContextRemoved"
 #define ADD_CONTEXT			"AddContext"
+#define GET_MODEMS			"GetModems"
+#define MODEM_ADDED			"ModemAdded"
+#define MODEM_REMOVED			"ModemRemoved"
+
 
 #define TIMEOUT 40000
 
@@ -960,34 +964,6 @@ static int modem_change_powered(const char *path, dbus_bool_t powered)
 				NULL, NULL, NULL);
 }
 
-static struct modem_data *add_modem(const char *path)
-{
-	struct modem_data *modem;
-
-	DBG("path %s", path);
-
-	if (path == NULL)
-		return NULL;
-
-	modem = g_hash_table_lookup(modem_hash, path);
-	if (modem != NULL) {
-		modem->available = TRUE;
-
-		return modem;
-	}
-
-	modem = g_try_new0(struct modem_data, 1);
-	if (modem == NULL)
-		return NULL;
-
-	modem->path = g_strdup(path);
-	modem->device = NULL;
-	modem->available = TRUE;
-
-	g_hash_table_insert(modem_hash, g_strdup(path), modem);
-
-	return modem;
-}
 
 static gboolean modem_has_interface(DBusMessageIter *array,
 					char const *interface)
@@ -1025,43 +1001,33 @@ static gboolean modem_has_gprs(DBusMessageIter *array)
 	return modem_has_interface(array, OFONO_GPRS_INTERFACE);
 }
 
-static void modem_properties_reply(DBusPendingCall *call, void *user_data)
+static void add_modem(const char *path, DBusMessageIter *properties)
 {
-	DBusMessage *reply;
-	DBusError error;
-	DBusMessageIter array, dict;
-	const char *path = user_data;
+	struct modem_data *modem;
+	DBusMessageIter dict;
 	dbus_bool_t powered = FALSE;
 	dbus_bool_t online = FALSE;
 	dbus_bool_t has_online = FALSE;
 	gboolean has_sim = FALSE;
 	gboolean has_reg = FALSE;
 	gboolean has_gprs = FALSE;
-	struct modem_data *new_modem;
 
-	DBG("path %s", path);
+	modem = g_hash_table_lookup(modem_hash, path);
 
-	reply = dbus_pending_call_steal_reply(call);
+	if (modem != NULL)
+		return;
 
-	if (g_hash_table_lookup(modem_hash, path))
-		goto done;
+	modem = g_try_new0(struct modem_data, 1);
+	if (modem == NULL)
+		return;
 
-	dbus_error_init(&error);
+	modem->path = g_strdup(path);
+	modem->device = NULL;
+	modem->available = TRUE;
 
-	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("Modem.GetProperties(%s) %s %s",
-				path, error.name, error.message);
-		dbus_error_free(&error);
-		goto done;
-	}
+	g_hash_table_insert(modem_hash, g_strdup(path), modem);
 
-	if (dbus_message_iter_init(reply, &array) == FALSE)
-		goto done;
-
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		goto done;
-
-	dbus_message_iter_recurse(&array, &dict);
+	dbus_message_iter_recurse(properties, &dict);
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -1087,93 +1053,20 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&dict);
 	}
 
-	new_modem = add_modem(path);
-	if (new_modem == NULL)
-		goto done;
-
 	if (!powered)
 		modem_change_powered(path, TRUE);
 
-	new_modem->has_sim = has_sim;
-	new_modem->has_reg = has_reg;
-	new_modem->has_gprs = has_gprs;
+	modem->has_sim = has_sim;
+	modem->has_reg = has_reg;
+	modem->has_gprs = has_gprs;
 
-	update_modem_online(new_modem, online);
+	update_modem_online(modem, online);
 
 	if (has_sim)
 		get_imsi(path);
-
-done:
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
 }
 
-static void get_modem_properties(const char *path)
-{
-	DBG("path %s", path);
-
-	call_ofono(path, OFONO_MODEM_INTERFACE, GET_PROPERTIES,
-			modem_properties_reply, g_strdup(path), g_free,
-			DBUS_TYPE_INVALID);
-}
-
-static void mask_unavailable(gpointer key, gpointer value, gpointer user_data)
-{
-	struct modem_data *modem = value;
-
-	modem->available = FALSE;
-}
-
-static void modems_set_unavailable()
-{
-	g_hash_table_foreach(modem_hash, mask_unavailable, NULL);
-}
-
-static void cleanup_modem(gpointer key, gpointer value, gpointer user_data)
-{
-	struct modem_data *modem = value;
-
-	if (modem->available == FALSE)
-		g_hash_table_remove(modem_hash, key);
-}
-
-static void cleanup_modems()
-{
-	g_hash_table_foreach(modem_hash, cleanup_modem, NULL);
-}
-
-static void update_modems(DBusMessageIter *array)
-{
-	DBusMessageIter entry;
-
-	DBG("");
-
-	dbus_message_iter_recurse(array, &entry);
-
-	modems_set_unavailable();
-
-	while (dbus_message_iter_get_arg_type(&entry) ==
-					DBUS_TYPE_OBJECT_PATH) {
-		const char *path;
-		struct modem_data *modem;
-
-		dbus_message_iter_get_basic(&entry, &path);
-
-		modem = g_hash_table_lookup(modem_hash, path);
-
-		if (modem)
-			modem->available = TRUE;
-		else
-			get_modem_properties(path);
-
-		dbus_message_iter_next(&entry);
-	}
-
-	cleanup_modems();
-}
-
-static void manager_properties_reply(DBusPendingCall *call, void *user_data)
+static void manager_modems_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
 	DBusError error;
@@ -1183,10 +1076,13 @@ static void manager_properties_reply(DBusPendingCall *call, void *user_data)
 
 	reply = dbus_pending_call_steal_reply(call);
 
+	if (dbus_message_has_signature(reply, "a(oa{sv})") == FALSE)
+		goto done;
+
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("ModemManager.GetProperties() %s %s",
+		connman_error("ModemManager.GetModems() %s %s",
 				error.name, error.message);
 		dbus_error_free(&error);
 		goto done;
@@ -1195,25 +1091,20 @@ static void manager_properties_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
 
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		goto done;
-
 	dbus_message_iter_recurse(&array, &dict);
 
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key;
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter value, properties;
+		const char *modem_path;
 
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_recurse(&dict, &value);
+		dbus_message_iter_get_basic(&value, &modem_path);
 
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
+		dbus_message_iter_next(&value);
+		dbus_message_iter_recurse(&value, &properties);
 
-		if (g_str_equal(key, "Modems") == TRUE) {
-			update_modems(&value);
-			break;
-		}
+		/* Add modem */
+		add_modem(modem_path, &properties);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -1234,8 +1125,8 @@ static void ofono_connect(DBusConnection *connection, void *user_data)
 	network_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, remove_network);
 
-	call_ofono("/", OFONO_MANAGER_INTERFACE, GET_PROPERTIES,
-			manager_properties_reply, NULL, NULL,
+	call_ofono("/", OFONO_MANAGER_INTERFACE, GET_MODEMS,
+			manager_modems_reply, NULL, NULL,
 			DBUS_TYPE_INVALID);
 }
 
@@ -1403,28 +1294,18 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
-static gboolean manager_changed(DBusConnection *connection,
+static gboolean modem_added(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	const char *path = dbus_message_get_path(message);
-	DBusMessageIter iter, value;
-	const char *key;
-
-	DBG("path %s", path);
-
-	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return TRUE;
-
-	dbus_message_iter_get_basic(&iter, &key);
-
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (g_str_equal(key, "Modems") == TRUE)
-		update_modems(&value);
-
 	return TRUE;
 }
+
+static gboolean modem_removed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	return TRUE;
+}
+
 
 static void get_dns(DBusMessageIter *array, struct connman_element *parent)
 {
@@ -1645,7 +1526,8 @@ static guint reg_watch;
 static guint sim_watch;
 static guint gprs_watch;
 static guint modem_watch;
-static guint manager_watch;
+static guint modem_added_watch;
+static guint modem_removed_watch;
 static guint context_watch;
 
 static int ofono_init(void)
@@ -1683,10 +1565,16 @@ static int ofono_init(void)
 						sim_changed,
 						NULL, NULL);
 
-	manager_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	modem_added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
 						OFONO_MANAGER_INTERFACE,
-						PROPERTY_CHANGED,
-						manager_changed,
+						MODEM_ADDED,
+						modem_added,
+						NULL, NULL);
+
+	modem_removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_MANAGER_INTERFACE,
+						MODEM_ADDED,
+						modem_removed,
 						NULL, NULL);
 
 	context_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
@@ -1697,7 +1585,8 @@ static int ofono_init(void)
 
 	if (watch == 0 || gprs_watch == 0 || modem_watch == 0 ||
 			reg_watch == 0 || sim_watch == 0 ||
-			manager_watch == 0 || context_watch == 0) {
+			modem_added_watch == 0 || modem_removed_watch == 0 ||
+				context_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -1720,7 +1609,8 @@ remove:
 	g_dbus_remove_watch(connection, reg_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
 	g_dbus_remove_watch(connection, modem_watch);
-	g_dbus_remove_watch(connection, manager_watch);
+	g_dbus_remove_watch(connection, modem_added_watch);
+	g_dbus_remove_watch(connection, modem_removed_watch);
 	g_dbus_remove_watch(connection, context_watch);
 
 	dbus_connection_unref(connection);
@@ -1735,7 +1625,8 @@ static void ofono_exit(void)
 	g_dbus_remove_watch(connection, reg_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
 	g_dbus_remove_watch(connection, modem_watch);
-	g_dbus_remove_watch(connection, manager_watch);
+	g_dbus_remove_watch(connection, modem_added_watch);
+	g_dbus_remove_watch(connection, modem_removed_watch);
 	g_dbus_remove_watch(connection, context_watch);
 
 	ofono_disconnect(connection, NULL);
