@@ -1573,7 +1573,7 @@ static int ofono_init(void)
 
 	modem_removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
 						OFONO_MANAGER_INTERFACE,
-						MODEM_ADDED,
+						MODEM_REMOVED,
 						modem_removed,
 						NULL, NULL);
 
