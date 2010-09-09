@@ -1297,12 +1297,39 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 static gboolean modem_added(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	DBusMessageIter iter, properties;
+	const char *modem_path;
+
+	DBG("");
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &modem_path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &properties);
+
+	add_modem(modem_path, &properties);
+
 	return TRUE;
 }
 
 static gboolean modem_removed(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	DBusMessageIter iter;
+	const char *modem_path;
+
+	DBG("");
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &modem_path);
+
+	g_hash_table_remove(modem_hash, modem_path);
+
 	return TRUE;
 }
 
