@@ -42,15 +42,17 @@
 
 #define OFONO_MANAGER_INTERFACE		OFONO_SERVICE ".Manager"
 #define OFONO_MODEM_INTERFACE		OFONO_SERVICE ".Modem"
-#define OFONO_GPRS_INTERFACE		OFONO_SERVICE ".DataConnectionManager"
+#define OFONO_GPRS_INTERFACE		OFONO_SERVICE ".ConnectionManager"
+#define OFONO_CONTEXT_INTERFACE		OFONO_SERVICE ".ConnectionContext"
 #define OFONO_SIM_INTERFACE		OFONO_SERVICE ".SimManager"
-#define OFONO_PRI_CONTEXT_INTERFACE	OFONO_SERVICE ".PrimaryDataContext"
 #define OFONO_REGISTRATION_INTERFACE	OFONO_SERVICE ".NetworkRegistration"
 
 #define PROPERTY_CHANGED		"PropertyChanged"
 #define GET_PROPERTIES			"GetProperties"
 #define SET_PROPERTY			"SetProperty"
-#define CREATE_CONTEXT			"CreateContext"
+#define CONTEXT_ADDED			"ContextAdded"
+#define CONTEXT_REMOVED			"ContextRemoved"
+#define ADD_CONTEXT			"AddContext"
 
 #define TIMEOUT 5000
 
@@ -61,15 +63,20 @@ static DBusConnection *connection;
 
 static GHashTable *modem_hash = NULL;
 
+static GHashTable *network_hash;
+
 struct modem_data {
 	char *path;
 	struct connman_device *device;
 	gboolean has_sim;
+	gboolean has_reg;
 	gboolean has_gprs;
 	gboolean available;
 	gboolean pending_online;
 	gboolean requested_online;
 	gboolean online;
+
+	uint8_t strength, has_strength;
 };
 
 static int modem_probe(struct connman_device *device)
@@ -320,6 +327,11 @@ static void remove_modem(gpointer data)
 	g_free(modem);
 }
 
+static void remove_network(gpointer data)
+{
+	connman_network_unref(data);
+}
+
 static char *get_ident(const char *path)
 {
 	char *pos;
@@ -348,237 +360,16 @@ static void create_service(struct connman_network *network)
 	connman_network_set_group(network, group);
 }
 
-static void set_network_name_reply(DBusPendingCall *call, void *user_data)
-{
-	struct connman_network *network = user_data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-
-	DBG("network %p", network);
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	if (dbus_message_iter_init(reply, &array) == FALSE)
-		goto done;
-
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		goto done;
-
-	dbus_message_iter_recurse(&array, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
-
-		/*
-		 * 'Operator' is deprecated since version 0.20, but
-		 * keep it here for backward compatibility reasons.
-		 */
-		if (g_str_equal(key, "Operator") == TRUE ||
-				g_str_equal(key, "Name") == TRUE) {
-			const char *name;
-
-			dbus_message_iter_get_basic(&value, &name);
-			connman_network_set_name(network, name);
-			create_service(network);
-		} else if (g_strcmp0(key, "Status") == 0) {
-			const char *status;
-			connman_bool_t roaming;
-
-			dbus_message_iter_get_basic(&value, &status);
-			if (g_strcmp0(status, "roaming") == 0)
-				roaming = TRUE;
-			else if (g_strcmp0(status, "registered") == 0)
-				roaming = FALSE;
-			else {
-				dbus_message_iter_next(&dict);
-				continue;
-			}
-
-			connman_network_set_roaming(network, roaming);
-			connman_network_update(network);
-		}
-
-		dbus_message_iter_next(&dict);
-	}
-done:
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
-}
-
-static void set_network_name(struct connman_network *network)
-{
-	struct connman_device *device;
-	const char *path;
-
-	device = connman_network_get_device(network);
-
-	path = connman_device_get_string(device, "Path");
-	if (path == NULL)
-		return;
-
-	DBG("path %s", path);
-
-	call_ofono(path, OFONO_REGISTRATION_INTERFACE, GET_PROPERTIES,
-			set_network_name_reply, network, NULL,
-			DBUS_TYPE_INVALID);
-}
-
-static void config_network_reply(DBusPendingCall *call, void *user_data)
-{
-	struct connman_network *network = user_data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-	gboolean internet_type = FALSE;
-
-	DBG("network %p", network);
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	if (dbus_message_iter_init(reply, &array) == FALSE)
-		goto done;
-
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		goto done;
-
-	dbus_message_iter_recurse(&array, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
-
-		if (g_str_equal(key, "Type") == TRUE) {
-			const char *type;
-
-			dbus_message_iter_get_basic(&value, &type);
-			if (g_strcmp0(type, "internet") == 0) {
-				internet_type = TRUE;
-
-				connman_network_set_protocol(network,
-						CONNMAN_NETWORK_PROTOCOL_IP);
-				set_network_name(network);
-			} else {
-				internet_type = FALSE;
-
-				connman_network_set_protocol(network,
-					CONNMAN_NETWORK_PROTOCOL_UNKNOWN);
-			}
-		}
-
-		dbus_message_iter_next(&dict);
-	}
-
-done:
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
-}
-
-static void config_network(struct connman_network *network, const char *path)
-{
-	DBG("path %s", path);
-
-	call_ofono(path, OFONO_PRI_CONTEXT_INTERFACE, GET_PROPERTIES,
-			config_network_reply, network, NULL,
-			DBUS_TYPE_INVALID);
-}
-
-static gboolean registration_changed(DBusConnection *connection,
-					DBusMessage *message, void *user_data)
-{
-	const char *path = dbus_message_get_path(message);
-	struct connman_network *network = user_data;
-	DBusMessageIter iter, value;
-	const char *key;
-
-	DBG("path %s", path);
-
-	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return TRUE;
-
-	dbus_message_iter_get_basic(&iter, &key);
-
-	DBG("key %s", key);
-
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (g_strcmp0(key, "Name") == 0 ||
-			g_strcmp0(key, "Operator") == 0) {
-		const char *name;
-
-		dbus_message_iter_get_basic(&value, &name);
-		DBG("name %s", name);
-		connman_network_set_name(network, name);
-		create_service(network);
-	} else if (g_strcmp0(key, "Strength") == 0) {
-		connman_uint8_t strength;
-
-		dbus_message_iter_get_basic(&value, &strength);
-		connman_network_set_strength(network, strength);
-		connman_network_update(network);
-	} else if (g_strcmp0(key, "Status") == 0) {
-		const char *status;
-		connman_bool_t roaming;
-
-		dbus_message_iter_get_basic(&value, &status);
-		if (g_strcmp0(status, "roaming") == 0)
-			roaming = TRUE;
-		else if (g_strcmp0(status, "registered") == 0)
-			roaming = FALSE;
-		else
-			return TRUE;
-
-		connman_network_set_roaming(network, roaming);
-		connman_network_update(network);
-	}
-
-	return TRUE;
-}
-
 static int network_probe(struct connman_network *network)
 {
-	const char *path;
-	guint reg_watch;
-
-	reg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						OFONO_REGISTRATION_INTERFACE,
-						PROPERTY_CHANGED,
-						registration_changed,
-						network, NULL);
-	if (reg_watch == 0)
-		return -EIO;
-
-	connman_network_set_data(network, GUINT_TO_POINTER(reg_watch));
-
-	path = connman_network_get_string(network, "Path");
-
-	DBG("network %p path %s", network, path);
-
-	config_network(network, path);
-
+	create_service(network);
 	return 0;
 }
 
-static struct connman_network *pending_network;
-
 static gboolean pending_network_is_available(struct connman_network *network)
 {
-	/* Modem or network may be removed during waiting for active reply */
-	if (connman_network_get_device(network) == NULL) {
+	/* Modem or network may be removed */
+	if (network == NULL || connman_network_get_device(network) == NULL) {
 		DBG("Modem or network was removed");
 		return FALSE;
 	}
@@ -588,31 +379,32 @@ static gboolean pending_network_is_available(struct connman_network *network)
 
 static void set_active_reply(DBusPendingCall *call, void *user_data)
 {
+	char const *path = user_data;
 	DBusMessage *reply;
 	DBusError error;
-	struct connman_network *network = user_data;
+	struct connman_network *network;
 
-	DBG("network %p", network);
+	network = g_hash_table_lookup(network_hash, path);
+
+	DBG("path %s network %p", path, network);
 
 	reply = dbus_pending_call_steal_reply(call);
 
-	if (pending_network_is_available(network) == FALSE)
+	if (!pending_network_is_available(network))
 		goto done;
 
 	dbus_error_init(&error);
+
 	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("SetProperty(Active) %s %s",
+				error.name, error.message);
+
 		if (connman_network_get_index(network) < 0)
 			connman_network_set_error(network,
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 
-		pending_network = NULL;
-
-		connman_error("SetProperty(Active) %s %s",
-				error.name, error.message);
-
 		dbus_error_free(&error);
-	} else
-		pending_network = network;
+	}
 
 done:
 	dbus_message_unref(reply);
@@ -629,9 +421,10 @@ static int set_network_active(struct connman_network *network,
 
 	DBG("network %p, path %s, active %d", network, path, active);
 
-	error = set_property(path, OFONO_PRI_CONTEXT_INTERFACE,
+	error = set_property(path, OFONO_CONTEXT_INTERFACE,
 				"Active", DBUS_TYPE_BOOLEAN, &active,
-				set_active_reply, network, NULL);
+				set_active_reply, g_strdup(path), NULL);
+
 	if (active == FALSE && error == -EINPROGRESS)
 		error = 0;
 
@@ -652,13 +445,15 @@ static void set_apn(struct connman_network *network)
 
 	DBG("path %s, apn %s", path, apn);
 
-	set_property(path, OFONO_PRI_CONTEXT_INTERFACE,
+	set_property(path, OFONO_CONTEXT_INTERFACE,
 			"AccessPointName", DBUS_TYPE_STRING, &apn,
 			NULL, NULL, NULL);
 }
 
 static int network_connect(struct connman_network *network)
 {
+	DBG("network %p", network);
+
 	if (connman_network_get_index(network) >= 0)
 		return -EISCONN;
 
@@ -667,6 +462,8 @@ static int network_connect(struct connman_network *network)
 
 static int network_disconnect(struct connman_network *network)
 {
+	DBG("network %p", network);
+
 	if (connman_network_get_index(network) < 0)
 		return -ENOTCONN;
 
@@ -675,18 +472,15 @@ static int network_disconnect(struct connman_network *network)
 
 static void network_remove(struct connman_network *network)
 {
-	guint reg_watch;
+	char const *path = connman_network_get_string(network, "Path");
 
-	DBG("network %p", network);
+	DBG("network %p path %s", network, path);
 
-	reg_watch = GPOINTER_TO_UINT(connman_network_get_data(network));
-	g_dbus_remove_watch(connection, reg_watch);
+	g_hash_table_remove(network_hash, path);
 }
 
 static int network_setup(struct connman_network *network, const char *key)
 {
-	DBG("");
-
 	if (g_strcmp0(key, "Cellular.APN") == 0)
 		set_apn(network);
 
@@ -703,158 +497,154 @@ static struct connman_network_driver network_driver = {
 	.setup		= network_setup,
 };
 
-static void add_network(struct connman_device *device, const char *path)
+static void update_settings(DBusMessageIter *array,
+				struct connman_network *network);
+
+static void set_connected(struct connman_network *network,
+				connman_bool_t connected);
+
+static int add_network(struct connman_device *device,
+			const char *path, DBusMessageIter *dict)
 {
+	struct modem_data *modem = connman_device_get_data(device);
 	struct connman_network *network;
 	char *ident;
+	const char *hash_path;
+	char const *operator;
+	char const *reg_status;
+	dbus_bool_t active = FALSE;
 
-	DBG("device %p path %s", device, path);
+	DBG("modem %p device %p path %s", modem, device, path);
 
 	ident = get_ident(path);
 
 	network = connman_device_get_network(device, ident);
 	if (network != NULL)
-		return;
+		return -EALREADY;
+
+	network = g_hash_table_lookup(network_hash, path);
+	if (network != NULL) {
+		DBG("path %p already exists with device %p", path,
+			connman_network_get_device(network));
+		if (connman_network_get_device(network))
+			return -EALREADY;
+		g_hash_table_remove(network_hash, path);
+	}
 
 	network = connman_network_create(ident, CONNMAN_NETWORK_TYPE_CELLULAR);
 	if (network == NULL)
-		return;
+		return -ENOMEM;
 
-	if (connman_network_set_string(network, "Path", path) != 0)
+	connman_network_set_string(network, "Path", path);
+	hash_path = connman_network_get_string(network, "Path");
+	if (hash_path == NULL)
 		goto error;
+	connman_network_ref(network);
+	g_hash_table_insert(network_hash, (char *)hash_path, network);
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
 
-	if (connman_device_add_network(device, network) == 0)
-		return;
+	operator = connman_device_get_string(device, "Operator");
+	if (operator)
+		connman_network_set_name(network, operator);
+
+	if (modem->has_strength)
+		connman_network_set_strength(network, modem->strength);
+
+	reg_status = connman_device_get_string(device, "RegistrationStatus");
+
+	if (!g_strcmp0(reg_status, "roaming"))
+		connman_network_set_roaming(network, TRUE);
+	else if (!g_strcmp0(reg_status, "registered"))
+		connman_network_set_roaming(network, FALSE);
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Type")) {
+			const char *type;
+
+			dbus_message_iter_get_basic(&value, &type);
+			if (g_strcmp0(type, "internet") == 0) {
+				connman_network_set_protocol(network,
+						CONNMAN_NETWORK_PROTOCOL_IP);
+			} else {
+				DBG("path %p type %s", path, type);
+				goto error;
+			}
+		} else if (g_str_equal(key, "AccessPointName")) {
+			const char *ap;
+
+			dbus_message_iter_get_basic(&value, &ap);
+
+			connman_network_set_string(network, "Cellular.APN", ap);
+		} else if (g_str_equal(key, "Settings"))
+			update_settings(&value, network);
+		else if (g_str_equal(key, "Active") == TRUE)
+			dbus_message_iter_get_basic(&value, &active);
+
+		dbus_message_iter_next(dict);
+	}
+
+	if (connman_device_add_network(device, network) != 0)
+		goto error;
+
+	if (active)
+		set_connected(network, active);
+
+	return 0;
 
 error:
 	connman_network_unref(network);
-}
-
-static void add_networks(struct connman_device *device, DBusMessageIter *array)
-{
-	DBusMessageIter entry;
-
-	DBG("");
-
-	dbus_message_iter_recurse(array, &entry);
-
-	while (dbus_message_iter_get_arg_type(&entry) ==
-					DBUS_TYPE_OBJECT_PATH) {
-		const char *path;
-
-		dbus_message_iter_get_basic(&entry, &path);
-
-		add_network(device, path);
-
-		dbus_message_iter_next(&entry);
-	}
-}
-
-static void create_context_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusMessage *reply;
-	DBusError error;
-
-	DBG("");
-
-	dbus_error_init(&error);
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("CreateContext() %s %s",
-				error.name, error.message);
-		dbus_error_free(&error);
-	}
-
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
-}
-
-static void add_default_context(DBusMessageIter *array,
-		const char *path, const char *name, const char *type)
-{
-	DBusMessageIter entry;
-
-	if (path == NULL)
-		return;
-
-	DBG("");
-
-	dbus_message_iter_recurse(array, &entry);
-
-	if (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_OBJECT_PATH)
-		return;
-
-	DBG("path %s, name %s, type %s", path, name, type);
-
-	call_ofono(path, OFONO_GPRS_INTERFACE, CREATE_CONTEXT,
-			create_context_reply, NULL, NULL,
-			DBUS_TYPE_STRING, &name,
-			DBUS_TYPE_STRING, &type,
-			DBUS_TYPE_INVALID);
+	g_hash_table_remove(network_hash, hash_path);
+	return -EIO;
 }
 
 static void check_networks_reply(DBusPendingCall *call, void *user_data)
 {
 	char *path = user_data;
 	struct modem_data *modem;
-	struct connman_device *device;
 	DBusMessage *reply;
-	DBusMessageIter array, dict, contexts;
-	dbus_bool_t attached;
+	DBusMessageIter array, entry, value, properties;
 
 	DBG("path %s", path);
 
 	modem = g_hash_table_lookup(modem_hash, path);
-	if (modem == NULL || modem->device == NULL)
+	if (modem == NULL)
 		return;
-
-	device = modem->device;
+	if (modem->device == NULL)
+		return;
 
 	reply = dbus_pending_call_steal_reply(call);
 
-	if (dbus_message_iter_init(reply, &array) == FALSE)
+	if (dbus_message_has_signature(reply, "a(oa{sv})") == FALSE)
 		goto done;
 
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
-		goto done;
+	dbus_message_iter_init(reply, &array);
 
-	dbus_message_iter_recurse(&array, &dict);
+	dbus_message_iter_recurse(&array, &entry);
 
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key;
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRUCT) {
+		char const *network_path;
 
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_recurse(&entry, &value);
+		dbus_message_iter_get_basic(&value, &network_path);
+
+		dbus_message_iter_next(&value);
+		dbus_message_iter_recurse(&value, &properties);
+
+		add_network(modem->device, network_path, &properties);
 
 		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
-
-		DBG("key %s", key);
-
-		if (g_str_equal(key, "Attached") == TRUE) {
-			dbus_message_iter_get_basic(&value, &attached);
-			DBG("Attached %d", attached);
-		} else if (g_str_equal(key, "PrimaryContexts") == TRUE) {
-			const char *path;
-
-			path = connman_device_get_string(device, "Path");
-			contexts = value;
-			add_default_context(&contexts, path,
-					CONTEXT_NAME, CONTEXT_TYPE);
-		}
-
-		dbus_message_iter_next(&dict);
 	}
-
-	if (attached == TRUE)
-		add_networks(device, &contexts);
 
 done:
 	dbus_message_unref(reply);
@@ -868,8 +658,183 @@ static void check_networks(struct modem_data *modem)
 
 	DBG("modem %p path %s", modem, path);
 
-	call_ofono(path, OFONO_GPRS_INTERFACE, GET_PROPERTIES,
+	call_ofono(path, OFONO_GPRS_INTERFACE, "GetContexts",
 			check_networks_reply, g_strdup(path), g_free,
+			DBUS_TYPE_INVALID);
+}
+
+static void modem_operator_name_changed(struct modem_data *modem,
+					char const *name)
+{
+	struct connman_device *device = modem->device;
+	GHashTableIter i;
+	gpointer value;
+
+	if (device == NULL)
+		return;
+
+	connman_device_set_string(device, "Operator", name);
+
+	for (g_hash_table_iter_init(&i, network_hash);
+	     g_hash_table_iter_next(&i, NULL, &value);) {
+		struct connman_network *network = value;
+
+		if (connman_network_get_device(network) == device) {
+			connman_network_set_name(network, name);
+			connman_network_update(network);
+		}
+	}
+}
+
+static void modem_strength_changed(struct modem_data *modem, uint8_t strength)
+{
+	struct connman_device *device = modem->device;
+	GHashTableIter i;
+	gpointer value;
+
+	modem->strength = strength;
+	modem->has_strength = TRUE;
+
+	if (device == NULL)
+		return;
+
+	for (g_hash_table_iter_init(&i, network_hash);
+	     g_hash_table_iter_next(&i, NULL, &value);) {
+		struct connman_network *network = value;
+
+		if (connman_network_get_device(network) == device) {
+			connman_network_set_strength(network, strength);
+			connman_network_update(network);
+		}
+	}
+}
+
+static void modem_roaming_changed(struct modem_data *modem,
+					char const *status)
+{
+	struct connman_device *device = modem->device;
+	connman_bool_t roaming;
+	GHashTableIter i;
+	gpointer value;
+
+	connman_device_set_string(device, "RegistrationStatus", status);
+
+	if (g_str_equal(status, "roaming"))
+		roaming = TRUE;
+	else if (g_str_equal(status, "registered"))
+		roaming = FALSE;
+	else
+		return;
+
+	if (device == NULL)
+		return;
+
+	for (g_hash_table_iter_init(&i, network_hash);
+	     g_hash_table_iter_next(&i, NULL, &value);) {
+		struct connman_network *network = value;
+
+		if (connman_network_get_device(network) == device) {
+			connman_network_set_roaming(network, roaming);
+			connman_network_update(network);
+		}
+	}
+}
+
+static void modem_registration_changed(struct modem_data *modem,
+					DBusMessageIter *entry)
+{
+	DBusMessageIter iter;
+	const char *key;
+	int type;
+	struct {
+		char const *str;
+		connman_uint8_t byte;
+	} value;
+
+	dbus_message_iter_get_basic(entry, &key);
+
+	DBG("key %s", key);
+
+	dbus_message_iter_next(entry);
+
+	dbus_message_iter_recurse(entry, &iter);
+
+	type = dbus_message_iter_get_arg_type(&iter);
+	if (type != DBUS_TYPE_BYTE && type != DBUS_TYPE_STRING)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &value);
+
+	if (g_str_equal(key, "Name") && type == DBUS_TYPE_STRING)
+		modem_operator_name_changed(modem, value.str);
+	else if (g_str_equal(key, "Strength") && type == DBUS_TYPE_BYTE)
+		modem_strength_changed(modem, value.byte);
+	else if (g_str_equal(key, "Status") && type == DBUS_TYPE_STRING)
+		modem_roaming_changed(modem, value.str);
+
+}
+
+static gboolean reg_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter;
+
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter))
+		modem_registration_changed(modem, &iter);
+
+	return TRUE;
+}
+
+static void check_registration_reply(DBusPendingCall *call, void *user_data)
+{
+	char const *path = user_data;
+	struct modem_data *modem;
+	DBusMessage *reply;
+	DBusMessageIter array, dict, entry;
+
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		dbus_message_iter_recurse(&dict, &entry);
+		modem_registration_changed(modem, &entry);
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static void check_registration(struct modem_data *modem)
+{
+	char const *path = modem->path;
+
+	DBG("modem %p path %s", modem, path);
+
+	call_ofono(path, OFONO_REGISTRATION_INTERFACE, GET_PROPERTIES,
+			check_registration_reply, g_strdup(path), g_free,
 			DBUS_TYPE_INVALID);
 }
 
@@ -891,7 +856,7 @@ static void add_device(const char *path, const char *imsi)
 		return;
 
 	if (modem->device) {
-		if (g_str_equal(imsi, connman_device_get_ident(modem->device)))
+		if (!g_strcmp0(imsi, connman_device_get_ident(modem->device)))
 			return;
 
 		modem_remove_device(modem);
@@ -910,6 +875,8 @@ static void add_device(const char *path, const char *imsi)
 
 	connman_device_set_string(device, "Path", path);
 
+	connman_device_set_data(device, modem);
+
 	if (connman_device_register(device) < 0) {
 		connman_device_unref(device);
 		return;
@@ -917,6 +884,8 @@ static void add_device(const char *path, const char *imsi)
 
 	modem->device = device;
 
+	if (modem->has_reg)
+		check_registration(modem);
 	if (modem->has_gprs)
 		check_networks(modem);
 }
@@ -924,7 +893,7 @@ static void add_device(const char *path, const char *imsi)
 static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	const char *path = user_data;
-	const char *imsi;
+	const char *imsi = NULL;
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
 
@@ -950,7 +919,7 @@ static void sim_properties_reply(DBusPendingCall *call, void *user_data)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
+		if (g_str_equal(key, "SubscriberIdentity")) {
 			dbus_message_iter_get_basic(&value, &imsi);
 			add_device(path, imsi);
 		}
@@ -1037,6 +1006,11 @@ static gboolean modem_has_sim(DBusMessageIter *array)
 	return modem_has_interface(array, OFONO_SIM_INTERFACE);
 }
 
+static gboolean modem_has_reg(DBusMessageIter *array)
+{
+	return modem_has_interface(array, OFONO_REGISTRATION_INTERFACE);
+}
+
 static gboolean modem_has_gprs(DBusMessageIter *array)
 {
 	return modem_has_interface(array, OFONO_GPRS_INTERFACE);
@@ -1052,6 +1026,7 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 	dbus_bool_t online = FALSE;
 	dbus_bool_t has_online = FALSE;
 	gboolean has_sim = FALSE;
+	gboolean has_reg = FALSE;
 	gboolean has_gprs = FALSE;
 	struct modem_data *new_modem;
 
@@ -1096,6 +1071,7 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 			dbus_message_iter_get_basic(&value, &online);
 		} else if (g_str_equal(key, "Interfaces") == TRUE) {
 			has_sim = modem_has_sim(&value);
+			has_reg = modem_has_reg(&value);
 			has_gprs = modem_has_gprs(&value);
 		}
 
@@ -1110,6 +1086,7 @@ static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 		modem_change_powered(path, TRUE);
 
 	new_modem->has_sim = has_sim;
+	new_modem->has_reg = has_reg;
 	new_modem->has_gprs = has_gprs;
 
 	update_modem_online(new_modem, online);
@@ -1245,6 +1222,9 @@ static void ofono_connect(DBusConnection *connection, void *user_data)
 	modem_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, remove_modem);
 
+	network_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, remove_network);
+
 	call_ofono("/", OFONO_MANAGER_INTERFACE, GET_PROPERTIES,
 			manager_properties_reply, NULL, NULL,
 			DBUS_TYPE_INVALID);
@@ -1292,6 +1272,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 			return TRUE;
 
 		modem->has_sim = FALSE;
+		modem->has_reg = FALSE;
 		modem->has_gprs = FALSE;
 
 		modem_remove_device(modem);
@@ -1303,9 +1284,13 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		update_modem_online(modem, online);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		gboolean has_sim = modem_has_sim(&value);
+		gboolean has_reg = modem_has_reg(&value);
+		gboolean added_reg = has_reg && !modem->has_reg;
 		gboolean has_gprs = modem_has_gprs(&value);
+		gboolean added_gprs = has_gprs && !modem->has_gprs;
 
 		modem->has_sim = has_sim;
+		modem->has_reg = has_reg;
 		modem->has_gprs = has_gprs;
 
 		if (modem->device == NULL) {
@@ -1313,6 +1298,11 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 				get_imsi(modem->path);
 		} else if (!has_sim) {
 			modem_remove_device(modem);
+		} else {
+			if (added_reg)
+				check_registration(modem);
+			if (added_gprs)
+				check_registration(modem);
 		}
 	}
 
@@ -1359,6 +1349,7 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 			modem_remove_device(modem);
 
 		modem->has_gprs = FALSE;
+		modem->has_reg = FALSE;
 	}
 
 	return TRUE;
@@ -1398,8 +1389,6 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 		else if (modem->device != NULL)
 			connman_device_remove_all_networks(modem->device);
 
-	} else if (g_str_equal(key, "PrimaryContexts") == TRUE) {
-		check_networks(modem);
 	}
 
 	return TRUE;
@@ -1602,22 +1591,24 @@ static void set_connected(struct connman_network *network,
 	}
 }
 
-static gboolean pri_context_changed(DBusConnection *connection,
+static gboolean context_changed(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
-	const char *pending_path;
+	struct connman_network *network;
 	DBusMessageIter iter, value;
 	const char *key;
 
-	DBG("pending_network %p, path %s", pending_network, path);
+	DBG("path %s", path);
 
-	if (pending_network == NULL)
+	network = g_hash_table_lookup(network_hash, path);
+	if (network == NULL)
 		return TRUE;
 
-	pending_path = connman_network_get_string(pending_network, "Path");
-	if (g_strcmp0(pending_path, path) != 0)
+	if (!pending_network_is_available(network)) {
+		remove_network(network);
 		return TRUE;
+	}
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
 		return TRUE;
@@ -1628,21 +1619,20 @@ static gboolean pri_context_changed(DBusConnection *connection,
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "Settings") == TRUE)
-		update_settings(&value, pending_network);
+		update_settings(&value, network);
 	else if (g_str_equal(key, "Active") == TRUE) {
 		dbus_bool_t active;
 
 		dbus_message_iter_get_basic(&value, &active);
 
-		set_connected(pending_network, active);
-
-		pending_network = NULL;
+		set_connected(network, active);
 	}
 
 	return TRUE;
 }
 
 static guint watch;
+static guint reg_watch;
 static guint sim_watch;
 static guint gprs_watch;
 static guint modem_watch;
@@ -1659,6 +1649,12 @@ static int ofono_init(void)
 
 	watch = g_dbus_add_service_watch(connection, OFONO_SERVICE,
 			ofono_connect, ofono_disconnect, NULL, NULL);
+
+	reg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_REGISTRATION_INTERFACE,
+						PROPERTY_CHANGED,
+						reg_changed,
+						NULL, NULL);
 
 	gprs_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
 						OFONO_GPRS_INTERFACE,
@@ -1685,13 +1681,13 @@ static int ofono_init(void)
 						NULL, NULL);
 
 	context_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						OFONO_PRI_CONTEXT_INTERFACE,
+						OFONO_CONTEXT_INTERFACE,
 						PROPERTY_CHANGED,
-						pri_context_changed,
+						context_changed,
 						NULL, NULL);
 
 	if (watch == 0 || gprs_watch == 0 || modem_watch == 0 ||
-			sim_watch == 0 ||
+			reg_watch == 0 || sim_watch == 0 ||
 			manager_watch == 0 || context_watch == 0) {
 		err = -EIO;
 		goto remove;
@@ -1712,6 +1708,7 @@ static int ofono_init(void)
 remove:
 	g_dbus_remove_watch(connection, watch);
 	g_dbus_remove_watch(connection, sim_watch);
+	g_dbus_remove_watch(connection, reg_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
 	g_dbus_remove_watch(connection, modem_watch);
 	g_dbus_remove_watch(connection, manager_watch);
@@ -1726,6 +1723,7 @@ static void ofono_exit(void)
 {
 	g_dbus_remove_watch(connection, watch);
 	g_dbus_remove_watch(connection, sim_watch);
+	g_dbus_remove_watch(connection, reg_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
 	g_dbus_remove_watch(connection, modem_watch);
 	g_dbus_remove_watch(connection, manager_watch);
