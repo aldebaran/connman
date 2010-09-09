@@ -92,8 +92,8 @@ static void set_property_reply(DBusPendingCall *call, void *user_data)
 	reply = dbus_pending_call_steal_reply(call);
 
 	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("SetProperty(\"%s\") %s", name,
-				error.message);
+		connman_error("SetProperty(%s) %s %s", name,
+				error.name, error.message);
 		dbus_error_free(&error);
 	}
 
@@ -310,7 +310,7 @@ static void set_network_name(struct connman_network *network)
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to get operator");
+		connman_error("Failed to get operator name");
 		goto done;
 	}
 
@@ -546,7 +546,8 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 
 		pending_network = NULL;
 
-		connman_error("%s", error.message);
+		connman_error("SetProperty(Active) %s %s",
+				error.name, error.message);
 
 		dbus_error_free(&error);
 	} else
@@ -710,7 +711,8 @@ static void create_context_reply(DBusPendingCall *call, void *user_data)
 	reply = dbus_pending_call_steal_reply(call);
 
 	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("%s", error.message);
+		connman_error("CreateContext() %s %s",
+				error.name, error.message);
 		dbus_error_free(&error);
 	}
 
@@ -1071,12 +1073,22 @@ static gboolean modem_has_gprs(DBusMessageIter *array)
 static void modem_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
+	DBusError error;
 	DBusMessageIter array, dict;
 	const char *path = user_data;
 
 	DBG("path %s", path);
 
 	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("Modem.GetProperties(%s) %s %s",
+				path, error.name, error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
@@ -1206,11 +1218,21 @@ static void update_modems(DBusMessageIter *array)
 static void manager_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
+	DBusError error;
 	DBusMessageIter array, dict;
 
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("ModemManager.GetProperties() %s %s",
+				error.name, error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
 
 	if (dbus_message_iter_init(reply, &array) == FALSE)
 		goto done;
