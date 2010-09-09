@@ -251,7 +251,7 @@ static void set_online_reply(DBusPendingCall *call, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("SetProperty(Online): %s: %s",
+		connman_error("SetProperty(Online) %s %s",
 				error.name, error.message);
 		dbus_error_free(&error);
 
