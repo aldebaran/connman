@@ -3,6 +3,7 @@
  *  Connection Manager
  *
  *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -78,10 +79,11 @@ static void modem_remove(struct connman_device *device)
 	DBG("device %p", device);
 }
 
-static void powered_reply(DBusPendingCall *call, void *user_data)
+static void set_property_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
 	DBusError error;
+	char const *name = user_data;
 
 	DBG("");
 
@@ -90,7 +92,8 @@ static void powered_reply(DBusPendingCall *call, void *user_data)
 	reply = dbus_pending_call_steal_reply(call);
 
 	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("%s", error.message);
+		connman_error("SetProperty(\"%s\") %s", name,
+				error.message);
 		dbus_error_free(&error);
 	}
 
@@ -99,31 +102,36 @@ static void powered_reply(DBusPendingCall *call, void *user_data)
 	dbus_pending_call_unref(call);
 }
 
-static int gprs_change_powered(const char *path, dbus_bool_t powered)
+static int set_property(const char *path, const char *interface,
+			const char *property, int type, void *value,
+			DBusPendingCallNotifyFunction notify, void *user_data,
+			DBusFreeFunction free_function)
 {
 	DBusMessage *message;
 	DBusMessageIter iter;
 	DBusPendingCall *call;
 
-	DBG("path %s powered %d", path, powered);
+	DBG("path %s %s.%s", path, interface, property);
+
+	g_assert(notify == NULL ? free_function == NULL : 1);
 
 	if (path == NULL)
 		return -EINVAL;
 
 	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-					OFONO_GPRS_INTERFACE, SET_PROPERTY);
+					interface, SET_PROPERTY);
 	if (message == NULL)
 		return -ENOMEM;
 
 	dbus_message_set_auto_start(message, FALSE);
 
 	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_basic(&iter, "Powered",
-						DBUS_TYPE_BOOLEAN, &powered);
+	connman_dbus_property_append_basic(&iter, property, type, value);
 
 	if (dbus_connection_send_with_reply(connection, message,
 						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to change powered property");
+		connman_error("Failed to change \"%s\" property on %s",
+				property, interface);
 		dbus_message_unref(message);
 		return -EINVAL;
 	}
@@ -134,11 +142,26 @@ static int gprs_change_powered(const char *path, dbus_bool_t powered)
 		return -EINVAL;
 	}
 
-	dbus_pending_call_set_notify(call, powered_reply, (void *)path, NULL);
+	if (notify == NULL) {
+		notify = set_property_reply;
+		user_data = (void *)property;
+		free_function = NULL;
+	}
+
+	dbus_pending_call_set_notify(call, notify, user_data, free_function);
 
 	dbus_message_unref(message);
 
 	return -EINPROGRESS;
+}
+
+static int gprs_change_powered(const char *path, dbus_bool_t powered)
+{
+	DBG("path %s powered %d", path, powered);
+
+	return set_property(path, OFONO_GPRS_INTERFACE, "Powered",
+				DBUS_TYPE_BOOLEAN, &powered,
+				NULL, NULL, NULL);
 }
 
 static int modem_enable(struct connman_device *device)
@@ -538,77 +561,23 @@ done:
 static int set_network_active(struct connman_network *network,
 						dbus_bool_t active)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
-	DBusMessageIter iter;
+	int error;
 
 	const char *path = connman_network_get_string(network, "Path");
 
 	DBG("network %p, path %s, active %d", network, path, active);
 
-	if (path == NULL)
-		return -EINVAL;
+	error = set_property(path, OFONO_PRI_CONTEXT_INTERFACE,
+				"Active", DBUS_TYPE_BOOLEAN, &active,
+				set_active_reply, network, NULL);
+	if (active == FALSE && error == -EINPROGRESS)
+		error = 0;
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-				OFONO_PRI_CONTEXT_INTERFACE, SET_PROPERTY);
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_basic(&iter, "Active",
-						DBUS_TYPE_BOOLEAN, &active);
-
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, TIMEOUT * 10) == FALSE) {
-		connman_error("Failed to connect service");
-		dbus_message_unref(message);
-		return -EINVAL;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		dbus_message_unref(message);
-		return -EINVAL;
-	}
-
-	connman_network_ref(network);
-
-	dbus_pending_call_set_notify(call, set_active_reply, network, NULL);
-
-	dbus_message_unref(message);
-
-	if (active == TRUE)
-		return -EINPROGRESS;
-
-	return 0;
-}
-
-static void set_apn_reply(DBusPendingCall *call, void *user_data)
-{
-	DBusMessage *reply;
-	DBusError error;
-
-	reply = dbus_pending_call_steal_reply(call);
-
-	dbus_error_init(&error);
-	if (dbus_set_error_from_message(&error, reply)) {
-		connman_error("%s", error.message);
-
-		dbus_error_free(&error);
-	}
-
-	dbus_message_unref(reply);
-
-	dbus_pending_call_unref(call);
+	return error;
 }
 
 static void set_apn(struct connman_network *network)
 {
-	DBusMessage *message;
-	DBusPendingCall *call;
-	DBusMessageIter iter;
 	const char *apn, *path;
 
 	apn = connman_network_get_string(network, "Cellular.APN");
@@ -621,32 +590,9 @@ static void set_apn(struct connman_network *network)
 
 	DBG("path %s, apn %s", path, apn);
 
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-				OFONO_PRI_CONTEXT_INTERFACE, SET_PROPERTY);
-	if (message == NULL)
-		return;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_basic(&iter, "AccessPointName",
-						DBUS_TYPE_STRING, &apn);
-
-	if (dbus_connection_send_with_reply(connection, message,
-					&call, TIMEOUT) == FALSE) {
-		dbus_message_unref(message);
-		return;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		dbus_message_unref(message);
-		return;
-	}
-
-	dbus_pending_call_set_notify(call, set_apn_reply, NULL, NULL);
-
-	dbus_message_unref(message);
+	set_property(path, OFONO_PRI_CONTEXT_INTERFACE,
+			"AccessPointName", DBUS_TYPE_STRING, &apn,
+			NULL, NULL, NULL);
 }
 
 static int network_connect(struct connman_network *network)
@@ -1068,44 +1014,11 @@ done:
 
 static int modem_change_powered(const char *path, dbus_bool_t powered)
 {
-	DBusMessage *message;
-	DBusMessageIter iter;
-	DBusPendingCall *call;
-
 	DBG("path %s powered %d", path, powered);
 
-	if (path == NULL)
-		return -EINVAL;
-
-	message = dbus_message_new_method_call(OFONO_SERVICE, path,
-					OFONO_MODEM_INTERFACE, SET_PROPERTY);
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_message_set_auto_start(message, FALSE);
-
-	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_basic(&iter, "Powered",
-						DBUS_TYPE_BOOLEAN, &powered);
-
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, TIMEOUT) == FALSE) {
-		connman_error("Failed to change powered property");
-		dbus_message_unref(message);
-		return -EINVAL;
-	}
-
-	if (call == NULL) {
-		connman_error("D-Bus connection not available");
-		dbus_message_unref(message);
-		return -EINVAL;
-	}
-
-	dbus_pending_call_set_notify(call, powered_reply, NULL, NULL);
-
-	dbus_message_unref(message);
-
-	return -EINPROGRESS;
+	return set_property(path, OFONO_MODEM_INTERFACE, "Powered",
+				DBUS_TYPE_BOOLEAN, &powered,
+				NULL, NULL, NULL);
 }
 
 static struct modem_data *add_modem(const char *path)
