@@ -293,13 +293,10 @@ AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
 			[enable_polkit=${enableval}], [enable_polkit="no"])
 if (test "${enable_polkit}" != "no"); then
-	PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, dummy=yes,
-				AC_MSG_ERROR(PolicyKit >= 0.7 is required))
-	AC_SUBST(POLKIT_CFLAGS)
-	AC_SUBST(POLKIT_LIBS)
-	POLKIT_DATADIR="`$PKG_CONFIG --variable=policydir polkit`"
+	POLKIT_DATADIR="`$PKG_CONFIG --variable=actiondir polkit`"
+	POLKIT_DATADIR=""
 	if (test -z "${POLKIT_DATADIR}"); then
-		POLKIT_DATADIR="${datadir}/PolicyKit/policy"
+		POLKIT_DATADIR="${datadir}/polkit-1/actions"
 	fi
 	AC_SUBST(POLKIT_DATADIR)
 fi

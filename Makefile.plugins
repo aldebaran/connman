@@ -163,13 +163,10 @@ if POLKIT
 if POLKIT_BUILTIN
 builtin_modules += polkit
 builtin_sources += plugins/polkit.c
-builtin_libadd += @POLKIT_LIBS@
-builtin_cflags += @POLKIT_CFLAGS@
 else
 plugin_LTLIBRARIES += plugins/polkit.la
 plugin_objects += $(plugins_polkit_la_OBJECTS)
-plugins_polkit_la_CFLAGS = $(plugin_cflags) @POLKIT_CFLAGS@
-plugins_polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
+plugins_polkit_la_CFLAGS = $(plugin_cflags)
 plugins_polkit_la_LDFLAGS = $(plugin_ldflags)
 endif
 
