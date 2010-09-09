@@ -942,6 +942,15 @@ static void get_imsi(const char *path)
 			DBUS_TYPE_INVALID);
 }
 
+static int gprs_change_powered(const char *path, dbus_bool_t powered)
+{
+	DBG("path %s powered %d", path, powered);
+
+	return set_property(path, OFONO_GPRS_INTERFACE, "Powered",
+				DBUS_TYPE_BOOLEAN, &powered,
+				NULL, NULL, NULL);
+}
+
 static int modem_change_powered(const char *path, dbus_bool_t powered)
 {
 	DBG("path %s powered %d", path, powered);
@@ -1302,7 +1311,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 			if (added_reg)
 				check_registration(modem);
 			if (added_gprs)
-				check_registration(modem);
+				gprs_change_powered(modem->path, TRUE);
 		}
 	}
 
