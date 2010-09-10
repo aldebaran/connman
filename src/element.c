@@ -1138,8 +1138,7 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 	if (element == root)
 		return FALSE;
 
-	if (node != NULL)
-		g_node_unlink(node);
+	g_node_unlink(node);
 
 	if (element->driver) {
 		if (element->driver->remove)
@@ -1148,8 +1147,7 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 		element->driver = NULL;
 	}
 
-	if (node != NULL)
-		g_node_destroy(node);
+	g_node_destroy(node);
 
 	connman_element_unref(element);
 
@@ -1176,8 +1174,7 @@ static gboolean remove_element_type(GNode *node, gpointer user_data)
 	if(element->type != type)
 		return FALSE;
 
-	if (node != NULL)
-		g_node_unlink(node);
+	g_node_unlink(node);
 
 	if (element->driver) {
 		if (element->driver->remove)
@@ -1186,8 +1183,7 @@ static gboolean remove_element_type(GNode *node, gpointer user_data)
 		element->driver = NULL;
 	}
 
-	if (node != NULL)
-		g_node_destroy(node);
+	g_node_destroy(node);
 
 	connman_element_unref(element);
 
