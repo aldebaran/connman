@@ -1,3 +1,8 @@
+ver 0.61:
+	Add support for using the internal DHCP client by default.
+	Add support for latest PolicyKit framework.
+	Add support for new oFono D-Bus interfaces.
+
 ver 0.60:
 	Fix issue with missing reset of proxy settings.
 	Fix issue with missing Ethernet property changed signal.
