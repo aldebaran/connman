@@ -60,9 +60,6 @@
 
 #define TIMEOUT 40000
 
-#define CONTEXT_NAME "3G Connection"
-#define CONTEXT_TYPE "internet"
-
 static DBusConnection *connection;
 
 static GHashTable *modem_hash = NULL;
