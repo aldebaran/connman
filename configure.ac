@@ -172,8 +172,9 @@ AM_CONDITIONAL(MEEGO_BUILTIN, test "${enable_meego}" = "builtin")
 
 AC_CHECK_HEADERS(resolv.h, dummy=yes,
 	AC_MSG_ERROR(resolver header files are required))
-AC_CHECK_LIB(resolv, ns_initparse, dummy=yes,
-	AC_MSG_ERROR(resolver library support is required))
+AC_CHECK_LIB(resolv, ns_initparse, dummy=yes,[
+	AC_CHECK_LIB(resolv, __ns_initparse, dummy=yes,
+		AC_MSG_ERROR(resolver library support is required))])
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
