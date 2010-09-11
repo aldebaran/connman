@@ -913,6 +913,9 @@ static GList *get_option_value_list(char *value)
 	char *pos = value;
 	GList *list = NULL;
 
+	if (pos == NULL)
+		return NULL;
+
 	while ((pos = strchr(pos, ' ')) != NULL) {
 		*pos = '\0';
 
