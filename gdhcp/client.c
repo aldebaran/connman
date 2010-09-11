@@ -919,12 +919,12 @@ static GList *get_option_value_list(char *value)
 	while ((pos = strchr(pos, ' ')) != NULL) {
 		*pos = '\0';
 
-		list =  g_list_append(list, g_strdup(value));
+		list = g_list_append(list, g_strdup(value));
 
 		value = ++pos;
 	}
 
-	list =  g_list_append(list, g_strdup(value));
+	list = g_list_append(list, g_strdup(value));
 
 	return list;
 }
