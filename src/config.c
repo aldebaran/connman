@@ -73,6 +73,28 @@ static GHashTable *config_table = NULL;
 #define SERVICE_KEY_PHASE2             "Phase2"
 #define SERVICE_KEY_PASSPHRASE         "Passphrase"
 
+static const char *config_possible_keys[] = {
+	CONFIG_KEY_NAME,
+	CONFIG_KEY_DESC,
+	NULL,
+};
+
+static const char *service_possible_keys[] = {
+	SERVICE_KEY_TYPE,
+	SERVICE_KEY_NAME,
+	SERVICE_KEY_SSID,
+	SERVICE_KEY_EAP,
+	SERVICE_KEY_CA_CERT,
+	SERVICE_KEY_CL_CERT,
+	SERVICE_KEY_PRV_KEY,
+	SERVICE_KEY_PRV_KEY_PASS,
+	SERVICE_KEY_PRV_KEY_PASS_TYPE,
+	SERVICE_KEY_IDENTITY,
+	SERVICE_KEY_PHASE2,
+	SERVICE_KEY_PASSPHRASE,
+	NULL,
+};
+
 static void unregister_config(gpointer data)
 {
 	struct connman_config *config = data;
@@ -109,6 +131,33 @@ static void unregister_service(gpointer data)
 	g_free(service);
 }
 
+static void check_keys(GKeyFile *keyfile, const char *group,
+			const char **possible_keys)
+{
+	char **avail_keys;
+	gsize nb_avail_keys, i, j;
+
+	avail_keys = g_key_file_get_keys(keyfile, group, &nb_avail_keys, NULL);
+	if (avail_keys == NULL)
+		return;
+
+	/*
+	 * For each key in the configuration file,
+	 * verify it is understood by connman
+	 */
+	for (i = 0 ; i < nb_avail_keys; i++) {
+		for (j = 0; possible_keys[j] ; j++)
+			if (g_strcmp0(avail_keys[i], possible_keys[j]) == 0)
+				break;
+
+		if (possible_keys[j] == NULL)
+			connman_warn("Unknown configuration key %s in [%s]",
+					avail_keys[i], group);
+	}
+
+	g_strfreev(avail_keys);
+}
+
 static int load_service(GKeyFile *keyfile, const char *group,
 						struct connman_config *config)
 {
@@ -121,6 +170,9 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	if (strlen(ident) < 1)
 		return -EINVAL;
+
+	/* Verify that provided keys are good */
+	check_keys(keyfile, group, service_possible_keys);
 
 	service = g_hash_table_lookup(config->service_table, ident);
 	if (service == NULL) {
@@ -258,6 +310,9 @@ static int load_config(struct connman_config *config)
 	keyfile = __connman_storage_open_config(config->ident);
 	if (keyfile == NULL)
 		return -EIO;
+
+	/* Verify keys validity of the global section */
+	check_keys(keyfile, "global", config_possible_keys);
 
 	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
 	if (str != NULL) {
