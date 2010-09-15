@@ -1324,6 +1324,8 @@ const char *connman_device_get_string(struct connman_device *device,
 		return device->name;
 	else if (g_str_equal(key, "Node") == TRUE)
 		return device->node;
+	else if (g_str_equal(key, "Interface") == TRUE)
+		return device->interface;
 
 	return connman_element_get_string(&device->element, key);
 }
