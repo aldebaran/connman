@@ -52,6 +52,10 @@ enum connman_device_mode {
 	CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE = 2,
 };
 
+#define CONNMAN_DEVICE_PRIORITY_LOW      -100
+#define CONNMAN_DEVICE_PRIORITY_DEFAULT     0
+#define CONNMAN_DEVICE_PRIORITY_HIGH      100
+
 struct connman_device;
 
 struct connman_device *connman_device_create(const char *node,

@@ -58,6 +58,10 @@ enum connman_network_error {
 	CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL  = 2,
 };
 
+#define CONNMAN_NETWORK_PRIORITY_LOW      -100
+#define CONNMAN_NETWORK_PRIORITY_DEFAULT     0
+#define CONNMAN_NETWORK_PRIORITY_HIGH      100
+
 struct connman_network;
 
 struct connman_network *connman_network_create(const char *identifier,

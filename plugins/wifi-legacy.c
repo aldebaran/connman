@@ -81,6 +81,7 @@ static int network_disconnect(struct connman_network *network)
 static struct connman_network_driver network_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_NETWORK_TYPE_WIFI,
+	.priority	= CONNMAN_NETWORK_PRIORITY_HIGH,
 	.probe		= network_probe,
 	.remove		= network_remove,
 	.connect	= network_connect,
@@ -181,6 +182,7 @@ static int wifi_scan(struct connman_device *device)
 static struct connman_device_driver wifi_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_DEVICE_TYPE_WIFI,
+	.priority	= CONNMAN_DEVICE_PRIORITY_HIGH,
 	.probe		= wifi_probe,
 	.remove		= wifi_remove,
 	.enable		= wifi_enable,
