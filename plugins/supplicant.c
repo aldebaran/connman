@@ -1075,29 +1075,44 @@ static int set_network_tls(struct connman_network *network,
 	const char *private_key_password;
 
 	/*
-	 * For TLS, we at least need a key, the client cert,
-	 * and a passhprase.
-	 * Server cert is optional.
+	 * For TLS, we at least need:
+	 *              The client certificate
+	 *              The client private key file
+	 *              The client private key file password
+	 *
+	 * The Authority certificate is optional.
 	 */
 	client_cert = connman_network_get_string(network,
 						"WiFi.ClientCertFile");
-	if (client_cert == NULL)
+	if (client_cert == NULL) {
+		connman_error("Error in TLS authentication: "
+			      "a ClientCertFile must be defined\n");
 		return -EINVAL;
+	}
 
 	private_key = connman_network_get_string(network,
 						"WiFi.PrivateKeyFile");
-	if (private_key == NULL)
+	if (private_key == NULL) {
+		connman_error("Error in TLS authentication: "
+			      "a PrivateKeyFile must be defined\n");
 		return -EINVAL;
+	}
 
 	private_key_password = connman_network_get_string(network,
 						"WiFi.PrivateKeyPassphrase");
-	if (private_key_password == NULL)
+	if (private_key_password == NULL) {
+		connman_error("Error in TLS authentication: "
+			      "a PrivateKeyPassphrase must be defined\n");
 		return -EINVAL;
+	}
 
 	ca_cert = connman_network_get_string(network, "WiFi.CACertFile");
 	if (ca_cert)
 		connman_dbus_dict_append_basic(dict, "ca_cert",
 						DBUS_TYPE_STRING, &ca_cert);
+	else
+		connman_info("No CACertFile has been provided "
+			     "to do the TLS authentication\n");
 
 	DBG("client cert %s private key %s", client_cert, private_key);
 
@@ -1119,19 +1134,29 @@ static int set_network_peap(struct connman_network *network,
 	char *phase2_auth;
 
 	/*
-	 * For PEAP, we at least need the sever cert, a 2nd
-	 * phase authentication and a passhprase.
-	 * Client cert is optional although strongly required
-	 * When setting the client cert, we then need a private
-	 * key as well.
+	 * For PEAP/TTLS, we at least need
+	 *              The authority certificate
+	 *              The 2nd phase authentication method
+	 *              The 2nd phase passphrase
+	 *
+	 * The Client certificate is optional although strongly required
+	 * When setting it, we need in addition
+	 *              The Client private key file
+	 *              The Client private key file password
 	 */
 	ca_cert = connman_network_get_string(network, "WiFi.CACertFile");
-	if (ca_cert == NULL)
+	if (ca_cert == NULL) {
+		connman_error("Error in PEAP/TTLS authentication: "
+			      "CACertFile must be defined\n");
 		return -EINVAL;
+	}
 
 	phase2 = connman_network_get_string(network, "WiFi.Phase2");
-	if (phase2 == NULL)
+	if (phase2 == NULL) {
+		connman_error("Error in PEAP/TTLS authentication: "
+			      "Phase2 must be defined\n");
 		return -EINVAL;
+	}
 
 	DBG("CA cert %s phase2 auth %s", ca_cert, phase2);
 
@@ -1142,14 +1167,22 @@ static int set_network_peap(struct connman_network *network,
 
 		private_key = connman_network_get_string(network,
 							"WiFi.PrivateKeyFile");
-		if (private_key == NULL)
+		if (private_key == NULL) {
+			connman_error("Error in PEAP/TTLS authentication: "
+				      "with ClientCertFile, "
+				      "PrivateKeyFile must be defined\n");
 			return -EINVAL;
+		}
 
 		private_key_password =
 			connman_network_get_string(network,
 						"WiFi.PrivateKeyPassphrase");
-		if (private_key_password == NULL)
+		if (private_key_password == NULL) {
+			connman_error("Error in PEAP/TTLS authentication: "
+				      "with ClientCertFile, "
+				      "PrivateKeyPassphrase must be defined\n");
 			return -EINVAL;
+		}
 
 		connman_dbus_dict_append_basic(dict, "client_cert",
 						DBUS_TYPE_STRING, &client_cert);
@@ -1162,7 +1195,9 @@ static int set_network_peap(struct connman_network *network,
 							&private_key_password);
 
 		DBG("client cert %s private key %s", client_cert, private_key);
-	}
+	} else
+		connman_info("No client certificate has been provided "
+			     "to do the PEAP/TTLS authentication\n");
 
 	phase2_auth = g_strdup_printf("\"auth=%s\"", phase2);
 
