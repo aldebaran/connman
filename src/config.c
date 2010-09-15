@@ -56,6 +56,23 @@ struct connman_config {
 
 static GHashTable *config_table = NULL;
 
+/* Definition of possible strings in the .config files */
+#define CONFIG_KEY_NAME                "Name"
+#define CONFIG_KEY_DESC                "Description"
+
+#define SERVICE_KEY_TYPE               "Type"
+#define SERVICE_KEY_NAME               "Name"
+#define SERVICE_KEY_SSID               "SSID"
+#define SERVICE_KEY_EAP                "EAP"
+#define SERVICE_KEY_CA_CERT            "CACertFile"
+#define SERVICE_KEY_CL_CERT            "ClientCertFile"
+#define SERVICE_KEY_PRV_KEY            "PrivateKeyFile"
+#define SERVICE_KEY_PRV_KEY_PASS       "PrivateKeyPassphrase"
+#define SERVICE_KEY_PRV_KEY_PASS_TYPE  "PrivateKeyPassphraseType"
+#define SERVICE_KEY_IDENTITY           "Identity"
+#define SERVICE_KEY_PHASE2             "Phase2"
+#define SERVICE_KEY_PASSPHRASE         "Passphrase"
+
 static void unregister_config(gpointer data)
 {
 	struct connman_config *config = data;
@@ -114,19 +131,20 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		service->ident = g_strdup(ident);
 	}
 
-	str = g_key_file_get_string(keyfile, group, "Type", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_TYPE, NULL);
 	if (str != NULL) {
 		g_free(service->type);
 		service->type = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "Name", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
 	if (str != NULL) {
 		g_free(service->name);
 		service->name = str;
 	}
 
-	hex_ssid = g_key_file_get_string(keyfile, group, "SSID", NULL);
+	hex_ssid = g_key_file_get_string(keyfile, group, SERVICE_KEY_SSID,
+					 NULL);
 	if (hex_ssid != NULL) {
 		char *ssid;
 		unsigned int i, j = 0, hex;
@@ -163,57 +181,58 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		service->ssid_len = ssid_len;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "EAP", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
 	if (str != NULL) {
 		g_free(service->eap);
 		service->eap = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "CACertFile", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_CA_CERT, NULL);
 	if (str != NULL) {
 		g_free(service->ca_cert_file);
 		service->ca_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "ClientCertFile", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_CL_CERT, NULL);
 	if (str != NULL) {
 		g_free(service->client_cert_file);
 		service->client_cert_file = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "PrivateKeyFile", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PRV_KEY, NULL);
 	if (str != NULL) {
 		g_free(service->private_key_file);
 		service->private_key_file = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group,
-						"PrivateKeyPassphrase", NULL);
+						SERVICE_KEY_PRV_KEY_PASS, NULL);
 	if (str != NULL) {
 		g_free(service->private_key_passphrase);
 		service->private_key_passphrase = str;
 	}
 
 	str = g_key_file_get_string(keyfile, group,
-					"PrivateKeyPassphraseType", NULL);
+					SERVICE_KEY_PRV_KEY_PASS_TYPE, NULL);
 	if (str != NULL) {
 		g_free(service->private_key_passphrase_type);
 		service->private_key_passphrase_type = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "Identity", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IDENTITY, NULL);
 	if (str != NULL) {
 		g_free(service->identity);
 		service->identity = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "Phase2", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PHASE2, NULL);
 	if (str != NULL) {
 		g_free(service->phase2);
 		service->phase2 = str;
 	}
 
-	str = g_key_file_get_string(keyfile, group, "Passphrase", NULL);
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_PASSPHRASE,
+					NULL);
 	if (str != NULL) {
 		g_free(service->passphrase);
 		service->passphrase = str;
@@ -240,13 +259,13 @@ static int load_config(struct connman_config *config)
 	if (keyfile == NULL)
 		return -EIO;
 
-	str = g_key_file_get_string(keyfile, "global", "Name", NULL);
+	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_NAME, NULL);
 	if (str != NULL) {
 		g_free(config->name);
 		config->name = str;
 	}
 
-	str = g_key_file_get_string(keyfile, "global", "Description", NULL);
+	str = g_key_file_get_string(keyfile, "global", CONFIG_KEY_DESC, NULL);
 	if (str != NULL) {
 		g_free(config->description);
 		config->description = str;
