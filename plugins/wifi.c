@@ -538,13 +538,50 @@ static GSupplicantSecurity network_security(const char *security)
 	return G_SUPPLICANT_SECURITY_UNKNOWN;
 }
 
+static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
+{
+	const char *security;
+
+	memset(ssid, 0, sizeof(*ssid));
+	ssid->ssid = connman_network_get_blob(network, "WiFi.SSID",
+						&ssid->ssid_len);
+	security = connman_network_get_string(network, "WiFi.Security");
+	ssid->security = network_security(security);
+	ssid->passphrase = connman_network_get_string(network,
+							"WiFi.Passphrase");
+	ssid->eap = connman_network_get_string(network, "WiFi.EAP");
+
+	/*
+	 * If our private key password is unset,
+	 * we use the supplied passphrase. That is needed
+	 * for PEAP where 2 passphrases (identity and client
+	 * cert may have to be provided.
+	 */
+	if (connman_network_get_string(network,
+					"WiFi.PrivateKeyPassphrase") == NULL)
+		connman_network_set_string(network,
+						"WiFi.PrivateKeyPassphrase",
+						ssid->passphrase);
+	/* We must have an identity for both PEAP and TLS */
+	ssid->identity = connman_network_get_string(network, "WiFi.Identity");
+	ssid->ca_cert_path = connman_network_get_string(network,
+							"WiFi.CACertFile");
+	ssid->client_cert_path = connman_network_get_string(network,
+							"WiFi.ClientCertFile");
+	ssid->private_key_path = connman_network_get_string(network,
+							"WiFi.PrivateKeyFile");
+	ssid->private_key_passphrase = connman_network_get_string(network,
+						"WiFi.PrivateKeyPassphrase");
+	ssid->phase2_auth = connman_network_get_string(network, "WiFi.Phase2");
+
+}
+
 static int network_connect(struct connman_network *network)
 {
 	struct connman_device *device = connman_network_get_device(network);
 	struct wifi_data *wifi;
 	GSupplicantInterface *interface;
 	GSupplicantSSID ssid;
-	const char *security;
 
 	DBG("network %p", network);
 
@@ -557,13 +594,7 @@ static int network_connect(struct connman_network *network)
 
 	interface = wifi->interface;
 
-	memset(&ssid, 0, sizeof(ssid));
-	ssid.ssid = connman_network_get_blob(network, "WiFi.SSID",
-						&ssid.ssid_len);
-	security = connman_network_get_string(network, "WiFi.Security");
-	ssid.security = network_security(security);
-	ssid.passphrase = connman_network_get_string(network,
-							"WiFi.Passphrase");
+	ssid_init(&ssid, network);
 
 	wifi->network = connman_network_ref(network);
 

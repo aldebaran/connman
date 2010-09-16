@@ -2063,6 +2063,126 @@ static void add_network_security_psk(DBusMessageIter *dict,
 							&ssid->passphrase);
 }
 
+static void add_network_security_tls(DBusMessageIter *dict,
+					GSupplicantSSID *ssid)
+{
+	/*
+	 * For TLS, we at least need:
+	 *              The client certificate
+	 *              The client private key file
+	 *              The client private key file password
+	 *
+	 * The Authority certificate is optional.
+	 */
+	if (ssid->client_cert_path == NULL)
+		return;
+
+	if (ssid->private_key_path == NULL)
+		return;
+
+	if (ssid->private_key_passphrase == NULL)
+		return;
+
+	if (ssid->ca_cert_path)
+		supplicant_dbus_dict_append_basic(dict, "ca_cert",
+					DBUS_TYPE_STRING, &ssid->ca_cert_path);
+
+	supplicant_dbus_dict_append_basic(dict, "private_key",
+						DBUS_TYPE_STRING,
+						&ssid->private_key_path);
+	supplicant_dbus_dict_append_basic(dict, "private_key_passwd",
+						DBUS_TYPE_STRING,
+						&ssid->private_key_passphrase);
+	supplicant_dbus_dict_append_basic(dict, "client_cert",
+						DBUS_TYPE_STRING,
+						&ssid->client_cert_path);
+}
+
+static void add_network_security_peap(DBusMessageIter *dict,
+					GSupplicantSSID *ssid)
+{
+	char *phase2_auth;
+
+	/*
+	 * For PEAP/TTLS, we at least need
+	 *              The authority certificate
+	 *              The 2nd phase authentication method
+	 *              The 2nd phase passphrase
+	 *
+	 * The Client certificate is optional although strongly required
+	 * When setting it, we need in addition
+	 *              The Client private key file
+	 *              The Client private key file password
+	 */
+	if (ssid->passphrase == NULL)
+		return;
+
+	if (ssid->ca_cert_path == NULL)
+		return;
+
+	if (ssid->phase2_auth == NULL)
+		return;
+
+	if (ssid->client_cert_path) {
+		if (ssid->private_key_path == NULL)
+			return;
+
+		if (ssid->private_key_passphrase == NULL)
+			return;
+
+		supplicant_dbus_dict_append_basic(dict, "client_cert",
+						DBUS_TYPE_STRING,
+						&ssid->client_cert_path);
+
+		supplicant_dbus_dict_append_basic(dict, "private_key",
+						DBUS_TYPE_STRING,
+						&ssid->private_key_path);
+
+		supplicant_dbus_dict_append_basic(dict, "private_key_passwd",
+						DBUS_TYPE_STRING,
+						&ssid->private_key_passphrase);
+
+	}
+
+	phase2_auth = g_strdup_printf("\"auth=%s\"", ssid->phase2_auth);
+
+	supplicant_dbus_dict_append_basic(dict, "password",
+						DBUS_TYPE_STRING,
+						&ssid->passphrase);
+
+	supplicant_dbus_dict_append_basic(dict, "ca_cert",
+						DBUS_TYPE_STRING,
+						&ssid->ca_cert_path);
+
+	supplicant_dbus_dict_append_basic(dict, "phase2",
+						DBUS_TYPE_STRING,
+						&ssid->phase2_auth);
+
+	g_free(phase2_auth);
+}
+
+static void add_network_security_eap(DBusMessageIter *dict,
+					GSupplicantSSID *ssid)
+{
+	if (ssid->eap == NULL || ssid->identity == NULL)
+		return;
+
+	if (g_strcmp0(ssid->eap, "tls") == 0) {
+		add_network_security_tls(dict, ssid);
+	} else if (g_strcmp0(ssid->eap, "peap") == 0 ||
+				g_strcmp0(ssid->eap, "ttls") == 0) {
+		add_network_security_peap(dict, ssid);
+	} else
+		return;
+
+	supplicant_dbus_dict_append_basic(dict, "eap",
+						DBUS_TYPE_STRING,
+						&ssid->eap);
+	supplicant_dbus_dict_append_basic(dict, "identity",
+						DBUS_TYPE_STRING,
+						&ssid->identity);
+}
+
 static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 {
 	char *key_mgmt;
@@ -2080,6 +2200,7 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 		break;
 	case G_SUPPLICANT_SECURITY_IEEE8021X:
 		key_mgmt = "WPA-EAP";
+		add_network_security_eap(dict, ssid);
 		break;
 	}
 

@@ -102,14 +102,14 @@ struct _GSupplicantSSID {
 	unsigned int ssid_len;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
-	unsigned int eap_method;
+	const char *eap;
 	const char *passphrase;
-	char *identity;
-	char *ca_cert_path;
-	char *client_cert_path;
-	char *private_key_path;
-	char *private_key_passphrase;
-	char *phase2_auth;
+	const char *identity;
+	const char *ca_cert_path;
+	const char *client_cert_path;
+	const char *private_key_path;
+	const char *private_key_passphrase;
+	const char *phase2_auth;
 };
 
 typedef struct _GSupplicantSSID GSupplicantSSID;
