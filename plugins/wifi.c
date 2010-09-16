@@ -562,6 +562,8 @@ static int network_connect(struct connman_network *network)
 						&ssid.ssid_len);
 	security = connman_network_get_string(network, "WiFi.Security");
 	ssid.security = network_security(security);
+	ssid.passphrase = connman_network_get_string(network,
+							"WiFi.Passphrase");
 
 	wifi->network = connman_network_ref(network);
 

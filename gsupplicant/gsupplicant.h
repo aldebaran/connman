@@ -103,7 +103,7 @@ struct _GSupplicantSSID {
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
 	unsigned int eap_method;
-	char *passphrase;
+	const char *passphrase;
 	char *identity;
 	char *ca_cert_path;
 	char *client_cert_path;
