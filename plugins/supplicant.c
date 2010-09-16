@@ -1125,6 +1125,12 @@ static int set_network_peap(struct connman_network *network,
 	 * When setting the client cert, we then need a private
 	 * key as well.
 	 */
+	if (passphrase == NULL) {
+		connman_error("Error in PEAP/TTLS authentication: "
+			      "a phase2 passphrase must be defined\n");
+		return -EINVAL;
+	}
+
 	ca_cert = connman_network_get_string(network, "WiFi.CACertFile");
 	if (ca_cert == NULL)
 		return -EINVAL;
