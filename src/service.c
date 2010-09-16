@@ -834,10 +834,6 @@ static void append_ethernet(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
 
-	if (is_connecting(service) == FALSE &&
-			is_connected(service) == FALSE)
-		return;
-
 	if (service->ipconfig != NULL)
 		__connman_ipconfig_append_ethernet(service->ipconfig, iter);
 }
@@ -1049,6 +1045,13 @@ static void proxy_changed(struct connman_service *service)
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Proxy",
 							append_proxy, service);
+}
+
+static void link_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE, "Ethernet",
+						append_ethernet, service);
 }
 
 static void stats_append(DBusMessageIter *dict,
@@ -2295,6 +2298,8 @@ struct connman_location *__connman_service_get_location(struct connman_service *
  */
 struct connman_service *connman_service_ref(struct connman_service *service)
 {
+	DBG("%p", service);
+
 	g_atomic_int_inc(&service->refcount);
 
 	return service;
@@ -2823,6 +2828,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	else
 		return -EOPNOTSUPP;
 
+	__connman_ipconfig_set_proxy_autoconfig(service->ipconfig, NULL);
+
 	__connman_ipconfig_clear_address(service->ipconfig);
 
 	ipv6config = connman_ipconfig_get_ipv6config(service->ipconfig);
@@ -3103,7 +3110,7 @@ static struct connman_service *service_get(const char *identifier)
 	if (iter != NULL) {
 		service = g_sequence_get(iter);
 		if (service != NULL)
-			g_atomic_int_inc(&service->refcount);
+			connman_service_ref(service);
 		return service;
 	}
 
@@ -3162,6 +3169,8 @@ static void service_up(struct connman_ipconfig *ipconfig)
 	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
 
 	connman_info("%s up", connman_ipconfig_get_ifname(ipconfig));
+
+	link_changed(service);
 
 	service->stats.valid = FALSE;
 	service->stats_roaming.valid = FALSE;
@@ -3643,12 +3652,6 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return;
-
-	if (service->network == NULL)
-		return;
-
-	connman_network_unref(service->network);
-	service->network = NULL;
 
 	__connman_service_put(service);
 }

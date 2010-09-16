@@ -534,21 +534,24 @@ void connman_network_set_group(struct connman_network *network,
 	}
 
 	if (g_strcmp0(network->group, group) == 0) {
-		if (group != NULL)
+		if (group != NULL && network->registered)
 			__connman_profile_update_network(network);
 		return;
 	}
 
 	if (network->group != NULL) {
-		__connman_profile_remove_network(network);
+		if (network->registered)
+			__connman_profile_remove_network(network);
 
 		g_free(network->group);
 	}
 
 	network->group = g_strdup(group);
 
-	if (network->group != NULL)
-		__connman_profile_add_network(network);
+	if (network->group != NULL) {
+		if (network->registered)
+			__connman_profile_add_network(network);
+	}
 }
 
 /**
@@ -1038,6 +1041,9 @@ int __connman_network_connect(struct connman_network *network)
 
 	if (network->driver->connect == NULL)
 		return -ENOSYS;
+
+	if (network->device == NULL)
+		return -ENODEV;
 
 	__connman_device_disconnect(network->device);
 
@@ -1745,7 +1751,8 @@ static void network_remove(struct connman_element *element)
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		if (network->group != NULL) {
-			__connman_profile_remove_network(network);
+			if (network->registered)
+				__connman_profile_remove_network(network);
 
 			g_free(network->group);
 			network->group = NULL;

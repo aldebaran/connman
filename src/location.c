@@ -225,8 +225,15 @@ int __connman_location_detect(struct connman_service *service)
 	if (location == NULL)
 		return -EINVAL;
 
-	if (location->driver)
-		return -EBUSY;
+	if (location->driver) {
+		location->result = CONNMAN_LOCATION_RESULT_UNKNOWN;
+		location->driver->finish(location);
+
+		if (location->driver->detect(location) == 0)
+			return 0;
+
+		location->driver = NULL;
+	}
 
 	for (list = driver_list; list; list = list->next) {
 		struct connman_location_driver *driver = list->data;
