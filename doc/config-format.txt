@@ -50,6 +50,10 @@ This is a configuration file for a network providing EAP-TLS, EAP-TTLS and
 EAP-PEAP services.
 The respective SSIDs are tls_ssid, ttls_ssid and peap_ssid and the file name
 is example.config.
+Please note that the SSID entry is for hexadecimal encoded SSID (e.g. "SSID =
+746c735f73736964"). If your SSID does not contain any exotic character then
+you should use the Name entry instead (e.g. "Name = tls_ssid").
+
 
 example@example:[~]$ cat /var/lib/connman/example.config
 [global]
