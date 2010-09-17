@@ -2408,6 +2408,14 @@ struct connman_ipconfig *__connman_service_get_ipconfig(struct connman_service *
 	return service->ipconfig;
 }
 
+enum connman_service_security __connman_service_get_security(struct connman_service *service)
+{
+	if (service == NULL)
+		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
+
+	return service->security;
+}
+
 /**
  * __connman_service_set_favorite:
  * @service: service structure
