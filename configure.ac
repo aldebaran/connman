@@ -158,6 +158,13 @@ AC_ARG_ENABLE(dnsproxy,
 AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
 AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
+AC_ARG_ENABLE(pacrunner,
+	AC_HELP_STRING([--enable-pacrunner], [enable PAC runner support]),
+			[enable_pacrunner=${enableval}], [enable_pacrunner="no"])
+
+AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
+AM_CONDITIONAL(PACRUNNER_BUILTIN, test "${enable_pacrunner}" = "builtin")
+
 AC_ARG_ENABLE(google,
 	AC_HELP_STRING([--enable-google], [enable Google Public DNS support]),
 			[enable_google=${enableval}], [enable_google="no"])

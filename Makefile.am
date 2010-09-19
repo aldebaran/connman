@@ -212,6 +212,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-ofono \
 				--enable-dhclient \
 				--enable-dnsproxy \
+				--enable-pacrunner \
 				--enable-google \
 				--enable-meego \
 				--enable-udev \

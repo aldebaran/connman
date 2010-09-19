@@ -135,6 +135,18 @@ plugins_dnsproxy_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if PACRUNNER
+if PACRUNNER_BUILTIN
+builtin_modules += pacrunner
+builtin_sources += plugins/pacrunner.c
+else
+plugin_LTLIBRARIES += plugins/pacrunner.la
+plugin_objects += $(plugins_pacrunner_la_OBJECTS)
+plugins_pacrunner_la_CFLAGS = $(plugin_cflags)
+plugins_pacrunner_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if GOOGLE
 if GOOGLE_BUILTIN
 builtin_modules += google
