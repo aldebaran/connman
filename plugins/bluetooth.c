@@ -616,6 +616,9 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 	if (address == NULL)
 		goto done;
 
+	if (g_strcmp0(address, "00:00:00:00:00:00") == 0)
+		goto done;
+
 	device = g_hash_table_lookup(bluetooth_devices, path);
 	if (device != NULL)
 		goto update;
