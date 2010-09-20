@@ -438,7 +438,7 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	ipdevice->rx_dropped = stats->rx_dropped;
 	ipdevice->tx_dropped = stats->tx_dropped;
 
-	__connman_counter_notify(ipdevice->config,
+	__connman_service_notify(ipdevice->config,
 				ipdevice->rx_packets, ipdevice->tx_packets,
 				ipdevice->rx_bytes, ipdevice->tx_bytes,
 				ipdevice->rx_errors, ipdevice->tx_errors,

@@ -35,38 +35,48 @@ static DBusConnection *connection = NULL;
 
 static GSequence *service_list = NULL;
 static GHashTable *service_hash = NULL;
+static GSList *counter_list = NULL;
 
 struct connman_stats {
 	connman_bool_t valid;
 	connman_bool_t enabled;
-	unsigned int rx_packets_update;
-	unsigned int tx_packets_update;
 	unsigned int rx_packets_last;
 	unsigned int tx_packets_last;
 	unsigned int rx_packets;
 	unsigned int tx_packets;
-	unsigned int rx_bytes_update;
-	unsigned int tx_bytes_update;
 	unsigned int rx_bytes_last;
 	unsigned int tx_bytes_last;
 	unsigned int rx_bytes;
 	unsigned int tx_bytes;
-	unsigned int rx_errors_update;
-	unsigned int tx_errors_update;
 	unsigned int rx_errors_last;
 	unsigned int tx_errors_last;
 	unsigned int rx_errors;
 	unsigned int tx_errors;
-	unsigned int rx_dropped_update;
-	unsigned int tx_dropped_update;
 	unsigned int rx_dropped_last;
 	unsigned int tx_dropped_last;
 	unsigned int rx_dropped;
 	unsigned int tx_dropped;
 	unsigned int time_start;
-	unsigned int time_update;
 	unsigned int time;
 	GTimer *timer;
+};
+
+struct connman_stats_update {
+	unsigned int rx_packets;
+	unsigned int tx_packets;
+	unsigned int rx_bytes;
+	unsigned int tx_bytes;
+	unsigned int rx_errors;
+	unsigned int tx_errors;
+	unsigned int rx_dropped;
+	unsigned int tx_dropped;
+	unsigned int time;
+};
+
+struct connman_stats_counter {
+	connman_bool_t append_all;
+	struct connman_stats_update stats;
+	struct connman_stats_update stats_roaming;
 };
 
 struct connman_service {
@@ -117,6 +127,7 @@ struct connman_service {
 	struct connman_location *location;
 	struct connman_stats stats;
 	struct connman_stats stats_roaming;
+	GHashTable *counter_table;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -468,8 +479,6 @@ static void stats_start(struct connman_service *service)
 	stats->time_start = stats->time;
 
 	g_timer_start(stats->timer);
-
-	__connman_counter_add_service(service);
 }
 
 static void stats_stop(struct connman_service *service)
@@ -484,8 +493,6 @@ static void stats_stop(struct connman_service *service)
 
 	if (stats->enabled == FALSE)
 		return;
-
-	__connman_counter_remove_service(service);
 
 	g_timer_stop(stats->timer);
 
@@ -603,16 +610,6 @@ static void reset_stats(struct connman_service *service)
 	service->stats.time = 0;
 	service->stats.time_start = 0;
 
-	service->stats.rx_packets_update = 0;
-	service->stats.tx_packets_update = 0;
-	service->stats.rx_bytes_update = 0;
-	service->stats.tx_bytes_update = 0;
-	service->stats.rx_errors_update = 0;
-	service->stats.tx_errors_update = 0;
-	service->stats.rx_dropped_update = 0;
-	service->stats.tx_dropped_update = 0;
-	service->stats.time_update = 0;
-
 	g_timer_reset(service->stats.timer);
 
 	/* roaming */
@@ -628,16 +625,6 @@ static void reset_stats(struct connman_service *service)
 	service->stats_roaming.tx_dropped = 0;
 	service->stats_roaming.time = 0;
 	service->stats_roaming.time_start = 0;
-
-	service->stats_roaming.rx_packets_update = 0;
-	service->stats_roaming.tx_packets_update = 0;
-	service->stats_roaming.rx_bytes_update = 0;
-	service->stats_roaming.tx_bytes_update = 0;
-	service->stats_roaming.rx_errors_update = 0;
-	service->stats_roaming.tx_errors_update = 0;
-	service->stats_roaming.rx_dropped_update = 0;
-	service->stats_roaming.tx_dropped_update = 0;
-	service->stats_roaming.time_update = 0;
 
 	g_timer_reset(service->stats_roaming.timer);
 }
@@ -1054,86 +1041,232 @@ static void link_changed(struct connman_service *service)
 						append_ethernet, service);
 }
 
-static void stats_append(DBusMessageIter *dict,
+static void stats_append_counters(DBusMessageIter *dict,
 			struct connman_stats *stats,
+			struct connman_stats_update *counters,
 			connman_bool_t append_all)
 {
-	if (stats->rx_packets_update != stats->rx_packets || append_all) {
-		stats->rx_packets_update = stats->rx_packets;
+	if (counters->rx_packets != stats->rx_packets || append_all) {
+		counters->rx_packets = stats->rx_packets;
 		connman_dbus_dict_append_basic(dict, "RX.Packets",
 					DBUS_TYPE_UINT32, &stats->rx_packets);
 	}
 
-	if (stats->tx_packets_update != stats->tx_packets || append_all) {
-		stats->tx_packets_update = stats->tx_packets;
+	if (counters->tx_packets != stats->tx_packets || append_all) {
+		counters->tx_packets = stats->tx_packets;
 		connman_dbus_dict_append_basic(dict, "TX.Packets",
 					DBUS_TYPE_UINT32, &stats->tx_packets);
 	}
 
-	if (stats->rx_bytes_update != stats->rx_bytes || append_all) {
-		stats->rx_bytes_update = stats->rx_bytes;
+	if (counters->rx_bytes != stats->rx_bytes || append_all) {
+		counters->rx_bytes = stats->rx_bytes;
 		connman_dbus_dict_append_basic(dict, "RX.Bytes",
 					DBUS_TYPE_UINT32, &stats->rx_bytes);
 	}
 
-	if (stats->tx_bytes_update != stats->tx_bytes || append_all) {
-		stats->tx_bytes_update = stats->tx_bytes;
+	if (counters->tx_bytes != stats->tx_bytes || append_all) {
+		counters->tx_bytes = stats->tx_bytes;
 		connman_dbus_dict_append_basic(dict, "TX.Bytes",
 					DBUS_TYPE_UINT32, &stats->tx_bytes);
 	}
 
-	if (stats->rx_errors_update != stats->rx_errors || append_all) {
-		stats->rx_errors_update = stats->rx_errors;
+	if (counters->rx_errors != stats->rx_errors || append_all) {
+		counters->rx_errors = stats->rx_errors;
 		connman_dbus_dict_append_basic(dict, "RX.Errors",
 					DBUS_TYPE_UINT32, &stats->rx_errors);
 	}
 
-	if (stats->tx_errors_update != stats->tx_errors || append_all) {
-		stats->tx_errors_update = stats->tx_errors;
+	if (counters->tx_errors != stats->tx_errors || append_all) {
+		counters->tx_errors = stats->tx_errors;
 		connman_dbus_dict_append_basic(dict, "TX.Errors",
 					DBUS_TYPE_UINT32, &stats->tx_errors);
 	}
 
-	if (stats->rx_dropped_update != stats->rx_dropped || append_all) {
-		stats->rx_dropped_update = stats->rx_dropped;
+	if (counters->rx_dropped != stats->rx_dropped || append_all) {
+		counters->rx_dropped = stats->rx_dropped;
 		connman_dbus_dict_append_basic(dict, "RX.Dropped",
 					DBUS_TYPE_UINT32, &stats->rx_dropped);
 	}
 
-	if (stats->tx_dropped_update != stats->tx_dropped || append_all) {
-		stats->tx_dropped_update = stats->tx_dropped;
+	if (counters->tx_dropped != stats->tx_dropped || append_all) {
+		counters->tx_dropped = stats->tx_dropped;
 		connman_dbus_dict_append_basic(dict, "TX.Dropped",
 					DBUS_TYPE_UINT32, &stats->tx_dropped);
 	}
 
-	if (stats->time_update != stats->time || append_all) {
-		stats->time_update = stats->time;
+	if (counters->time != stats->time || append_all) {
+		counters->time = stats->time;
 		connman_dbus_dict_append_basic(dict, "Time",
 					DBUS_TYPE_UINT32, &stats->time);
 	}
 }
 
-void __connman_service_stats_append(struct connman_service *service,
-						DBusMessage *msg,
-						connman_bool_t append_all)
+static void stats_append(struct connman_service *service,
+				const char *counter,
+				struct connman_stats_counter *counters,
+				connman_bool_t append_all)
 {
 	DBusMessageIter array, dict;
+	DBusMessage *msg;
+
+	DBG("service %p counter %s", service, counter);
+
+	msg = dbus_message_new(DBUS_MESSAGE_TYPE_METHOD_CALL);
+	if (msg == NULL)
+		return;
+
+	dbus_message_append_args(msg, DBUS_TYPE_OBJECT_PATH,
+				&service->path, DBUS_TYPE_INVALID);
 
 	dbus_message_iter_init_append(msg, &array);
 
 	/* home counter */
 	connman_dbus_dict_open(&array, &dict);
 
-	stats_append(&dict, &service->stats, append_all);
+	stats_append_counters(&dict, &service->stats,
+				&counters->stats, append_all);
 
 	connman_dbus_dict_close(&array, &dict);
 
 	/* roaming counter */
 	connman_dbus_dict_open(&array, &dict);
 
-	stats_append(&dict, &service->stats_roaming, append_all);
+	stats_append_counters(&dict, &service->stats_roaming,
+				&counters->stats_roaming, append_all);
 
 	connman_dbus_dict_close(&array, &dict);
+
+	__connman_counter_send_usage(counter, msg);
+}
+
+static void stats_update(struct connman_service *service,
+				unsigned int rx_packets, unsigned int tx_packets,
+				unsigned int rx_bytes, unsigned int tx_bytes,
+				unsigned int rx_errors, unsigned int tx_errors,
+				unsigned int rx_dropped, unsigned int tx_dropped)
+{
+	struct connman_stats *stats = stats_get(service);
+	unsigned int seconds;
+
+	DBG("service %p", service);
+
+	if (stats->valid == TRUE) {
+		stats->rx_packets +=
+			rx_packets - stats->rx_packets_last;
+		stats->tx_packets +=
+			tx_packets - stats->tx_packets_last;
+		stats->rx_bytes +=
+			rx_bytes - stats->rx_bytes_last;
+		stats->tx_bytes +=
+			tx_bytes - stats->tx_bytes_last;
+		stats->rx_errors +=
+			rx_errors - stats->rx_errors_last;
+		stats->tx_errors +=
+			tx_errors - stats->tx_errors_last;
+		stats->rx_dropped +=
+			rx_dropped - stats->rx_dropped_last;
+		stats->tx_dropped +=
+			tx_dropped - stats->tx_dropped_last;
+	} else {
+		stats->valid = TRUE;
+	}
+
+	stats->rx_packets_last = rx_packets;
+	stats->tx_packets_last = tx_packets;
+	stats->rx_bytes_last = rx_bytes;
+	stats->tx_bytes_last = tx_bytes;
+	stats->rx_errors_last = rx_errors;
+	stats->tx_errors_last = tx_errors;
+	stats->rx_dropped_last = rx_dropped;
+	stats->tx_dropped_last = tx_dropped;
+
+	seconds = g_timer_elapsed(stats->timer, NULL);
+	stats->time = stats->time_start + seconds;
+}
+
+void __connman_service_notify(struct connman_ipconfig *ipconfig,
+			unsigned int rx_packets, unsigned int tx_packets,
+			unsigned int rx_bytes, unsigned int tx_bytes,
+			unsigned int rx_errors, unsigned int tx_errors,
+			unsigned int rx_dropped, unsigned int tx_dropped)
+{
+	struct connman_service *service;
+	GHashTableIter iter;
+	gpointer key, value;
+	const char *counter;
+	struct connman_stats_counter *counters;
+
+	service = connman_ipconfig_get_data(ipconfig);
+	if (service == NULL)
+		return;
+
+	if (is_connected(service) == FALSE)
+		return;
+
+	stats_update(service,
+		rx_packets, tx_packets,
+		rx_bytes, tx_bytes,
+		rx_errors, tx_errors,
+		rx_dropped, tx_dropped);
+
+	g_hash_table_iter_init(&iter, service->counter_table);
+	while (g_hash_table_iter_next(&iter, &key, &value)) {
+		counter = key;
+		counters = value;
+
+		stats_append(service, counter, counters, counters->append_all);
+		counters->append_all = FALSE;
+	}
+}
+
+int __connman_service_counter_register(const char *counter)
+{
+	struct connman_service *service = NULL;
+	GSequenceIter *iter;
+	struct connman_stats_counter *counters;
+
+	DBG("counter %s", counter);
+
+	counter_list = g_slist_append(counter_list, (gpointer)counter);
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+
+		counters = g_try_new0(struct connman_stats_counter, 1);
+		if (counters == NULL)
+			return -ENOMEM;
+
+		counters->append_all = TRUE;
+
+		g_hash_table_replace(service->counter_table, (gpointer)counter,
+					counters);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return 0;
+}
+
+void __connman_service_counter_unregister(const char *counter)
+{
+	struct connman_service *service = NULL;
+	GSequenceIter *iter;
+
+	DBG("counter %s", counter);
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+
+		g_hash_table_remove(service->counter_table, counter);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	counter_list = g_slist_remove(counter_list, counter);
 }
 
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
@@ -2016,6 +2149,8 @@ static DBusMessage *remove_service(DBusConnection *conn,
 		__connman_network_disconnect(service->network);
 	}
 
+	g_hash_table_destroy(service->counter_table);
+
 	g_free(service->passphrase);
 	service->passphrase = NULL;
 
@@ -2261,6 +2396,10 @@ static void service_initialize(struct connman_service *service)
  */
 struct connman_service *connman_service_create(void)
 {
+	GSList *list;
+	struct connman_stats_counter *counters;
+	const char *counter;
+
 	struct connman_service *service;
 
 	service = g_try_new0(struct connman_service, 1);
@@ -2268,6 +2407,25 @@ struct connman_service *connman_service_create(void)
 		return NULL;
 
 	DBG("service %p", service);
+
+	service->counter_table = g_hash_table_new_full(g_str_hash,
+						g_str_equal, NULL, g_free);
+
+	for (list = counter_list; list; list = list->next) {
+		counter = list->data;
+
+		counters = g_try_new0(struct connman_stats_counter, 1);
+		if (counters == NULL) {
+			g_hash_table_destroy(service->counter_table);
+			g_free(service);
+			return NULL;
+		}
+
+		counters->append_all = TRUE;
+
+		g_hash_table_replace(service->counter_table, (gpointer)counter,
+				counters);
+	}
 
 	service_initialize(service);
 
@@ -3717,57 +3875,6 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	return service;
 }
 
-connman_bool_t __connman_service_stats_update(struct connman_service *service,
-				unsigned int rx_packets, unsigned int tx_packets,
-				unsigned int rx_bytes, unsigned int tx_bytes,
-				unsigned int rx_errors, unsigned int tx_errors,
-				unsigned int rx_dropped, unsigned int tx_dropped)
-{
-	unsigned int seconds;
-	struct connman_stats *stats = stats_get(service);
-	gboolean valid = stats->valid;
-
-	DBG("service %p", service);
-
-	if (is_connected(service) == FALSE)
-		return valid;
-
-	if (valid == TRUE) {
-		stats->rx_packets +=
-			rx_packets - stats->rx_packets_last;
-		stats->tx_packets +=
-			tx_packets - stats->tx_packets_last;
-		stats->rx_bytes +=
-			rx_bytes - stats->rx_bytes_last;
-		stats->tx_bytes +=
-			tx_bytes - stats->tx_bytes_last;
-		stats->rx_errors +=
-			rx_errors - stats->rx_errors_last;
-		stats->tx_errors +=
-			tx_errors - stats->tx_errors_last;
-		stats->rx_dropped +=
-			rx_dropped - stats->rx_dropped_last;
-		stats->tx_dropped +=
-			tx_dropped - stats->tx_dropped_last;
-	} else {
-		stats->valid = TRUE;
-	}
-
-	stats->rx_packets_last = rx_packets;
-	stats->tx_packets_last = tx_packets;
-	stats->rx_bytes_last = rx_bytes;
-	stats->tx_bytes_last = tx_bytes;
-	stats->rx_errors_last = rx_errors;
-	stats->tx_errors_last = tx_errors;
-	stats->rx_dropped_last = rx_dropped;
-	stats->tx_dropped_last = tx_dropped;
-
-	seconds = g_timer_elapsed(stats->timer, NULL);
-	stats->time = stats->time_start + seconds;
-
-	return valid;
-}
-
 static int service_load(struct connman_service *service)
 {
 	const char *ident = service->profile;
@@ -4146,6 +4253,9 @@ void __connman_service_cleanup(void)
 
 	g_hash_table_destroy(service_hash);
 	service_hash = NULL;
+
+	g_slist_free(counter_list);
+	counter_list = NULL;
 
 	connman_storage_unregister(&service_storage);
 

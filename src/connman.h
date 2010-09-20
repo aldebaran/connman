@@ -66,25 +66,16 @@ void __connman_agent_cleanup(void);
 int __connman_agent_register(const char *sender, const char *path);
 int __connman_agent_unregister(const char *sender, const char *path);
 
-struct connman_service;
-struct connman_ipconfig;
-
+void __connman_counter_send_usage(const char *path,
+					DBusMessage *message);
 int __connman_counter_register(const char *owner, const char *path,
 						unsigned int interval);
 int __connman_counter_unregister(const char *owner, const char *path);
 
-void __connman_counter_notify(struct connman_ipconfig *config,
-			unsigned int rx_packets, unsigned int tx_packets,
-			unsigned int rx_bytes, unsigned int tx_bytes,
-			unsigned int rx_error, unsigned int tx_error,
-			unsigned int rx_dropped, unsigned int tx_dropped);
-
-int __connman_counter_add_service(struct connman_service *service);
-void __connman_counter_remove_service(struct connman_service *service);
-
 int __connman_counter_init(void);
 void __connman_counter_cleanup(void);
 
+struct connman_service *service;
 
 typedef void (* passphrase_cb_t) (struct connman_service *service,
 				const char *passphrase, void *user_data);
@@ -502,14 +493,14 @@ const char *__connman_service_get_nameserver(struct connman_service *service);
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url);
 
-void __connman_service_stats_append(struct connman_service *service,
-						DBusMessage *msg,
-						connman_bool_t append_all);
-connman_bool_t __connman_service_stats_update(struct connman_service *service,
-				unsigned int rx_packets, unsigned int tx_packets,
-				unsigned int rx_bytes, unsigned int tx_bytes,
-				unsigned int rx_error, unsigned int tx_error,
-				unsigned int rx_dropped, unsigned int tx_dropped);
+void __connman_service_notify(struct connman_ipconfig *ipconfig,
+			unsigned int rx_packets, unsigned int tx_packets,
+			unsigned int rx_bytes, unsigned int tx_bytes,
+			unsigned int rx_error, unsigned int tx_error,
+			unsigned int rx_dropped, unsigned int tx_dropped);
+
+int __connman_service_counter_register(const char *counter);
+void __connman_service_counter_unregister(const char *counter);
 
 #include <connman/location.h>
 
