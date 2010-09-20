@@ -266,7 +266,17 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
  */
 int connman_network_driver_register(struct connman_network_driver *driver)
 {
+	GSList *list;
+
 	DBG("driver %p name %s", driver, driver->name);
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_network_driver *tmp = list->data;
+
+		if (tmp->type == driver->type)
+			return -EALREADY;
+
+	}
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
