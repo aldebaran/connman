@@ -475,7 +475,7 @@ static void network_removed(GSupplicantNetwork *network)
 
 static void debug(const char *str)
 {
-	connman_debug("gsupplicant: %s", str);
+	connman_debug("%s", str);
 }
 
 static const GSupplicantCallbacks callbacks = {
