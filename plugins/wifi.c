@@ -473,6 +473,11 @@ static void network_removed(GSupplicantNetwork *network)
 	DBG("* name %s", name);
 }
 
+static void debug(const char *str)
+{
+	connman_debug("gsupplicant: %s", str);
+}
+
 static const GSupplicantCallbacks callbacks = {
 	.system_ready		= system_ready,
 	.system_killed		= system_killed,
@@ -483,6 +488,7 @@ static const GSupplicantCallbacks callbacks = {
 	.scan_finished		= scan_finished,
 	.network_added		= network_added,
 	.network_removed	= network_removed,
+	.debug			= debug,
 };
 
 
