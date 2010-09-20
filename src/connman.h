@@ -255,6 +255,7 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
 
 int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
 							const char *url);
+const char *__connman_ipconfig_get_proxy_autoconfig(struct connman_ipconfig *ipconfig);
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);

@@ -1210,6 +1210,23 @@ int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
 	return 0;
 }
 
+const char *__connman_ipconfig_get_proxy_autoconfig(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("ipconfig %p", ipconfig);
+
+	if (ipconfig == NULL || ipconfig->index < 0)
+		return NULL;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return NULL;
+
+	return ipdevice->pac;
+}
+
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;

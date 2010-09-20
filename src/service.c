@@ -1369,6 +1369,14 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 	proxy_changed(service);
 }
 
+const char *connman_service_get_proxy_autoconfig(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return __connman_ipconfig_get_proxy_autoconfig(service->ipconfig);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
