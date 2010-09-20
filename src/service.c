@@ -37,46 +37,30 @@ static GSequence *service_list = NULL;
 static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 
+struct connman_stats_data {
+	unsigned int rx_packets;
+	unsigned int tx_packets;
+	unsigned int rx_bytes;
+	unsigned int tx_bytes;
+	unsigned int rx_errors;
+	unsigned int tx_errors;
+	unsigned int rx_dropped;
+	unsigned int tx_dropped;
+	unsigned int time;
+};
+
 struct connman_stats {
 	connman_bool_t valid;
 	connman_bool_t enabled;
-	unsigned int rx_packets_last;
-	unsigned int tx_packets_last;
-	unsigned int rx_packets;
-	unsigned int tx_packets;
-	unsigned int rx_bytes_last;
-	unsigned int tx_bytes_last;
-	unsigned int rx_bytes;
-	unsigned int tx_bytes;
-	unsigned int rx_errors_last;
-	unsigned int tx_errors_last;
-	unsigned int rx_errors;
-	unsigned int tx_errors;
-	unsigned int rx_dropped_last;
-	unsigned int tx_dropped_last;
-	unsigned int rx_dropped;
-	unsigned int tx_dropped;
-	unsigned int time_start;
-	unsigned int time;
+	struct connman_stats_data data_last;
+	struct connman_stats_data data;
 	GTimer *timer;
-};
-
-struct connman_stats_update {
-	unsigned int rx_packets;
-	unsigned int tx_packets;
-	unsigned int rx_bytes;
-	unsigned int tx_bytes;
-	unsigned int rx_errors;
-	unsigned int tx_errors;
-	unsigned int rx_dropped;
-	unsigned int tx_dropped;
-	unsigned int time;
 };
 
 struct connman_stats_counter {
 	connman_bool_t append_all;
-	struct connman_stats_update stats;
-	struct connman_stats_update stats_roaming;
+	struct connman_stats stats;
+	struct connman_stats stats_roaming;
 };
 
 struct connman_service {
@@ -476,7 +460,7 @@ static void stats_start(struct connman_service *service)
 		return;
 
 	stats->enabled = TRUE;
-	stats->time_start = stats->time;
+	stats->data_last.time = stats->data.time;
 
 	g_timer_start(stats->timer);
 }
@@ -497,51 +481,55 @@ static void stats_stop(struct connman_service *service)
 	g_timer_stop(stats->timer);
 
 	seconds = g_timer_elapsed(stats->timer, NULL);
-	stats->time = stats->time_start + seconds;
+	stats->data.time = stats->data_last.time + seconds;
 
 	stats->enabled = FALSE;
 }
 
 static int stats_load(struct connman_service *service, GKeyFile *keyfile)
 {
+	struct connman_stats_data *data;
+
 	/* home */
-	service->stats.rx_packets = g_key_file_get_integer(keyfile,
+	data = &service->stats.data;
+	data->rx_packets = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.rx_packets", NULL);
-	service->stats.tx_packets = g_key_file_get_integer(keyfile,
+	data->tx_packets = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.tx_packets", NULL);
-	service->stats.rx_bytes = g_key_file_get_integer(keyfile,
+	data->rx_bytes = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.rx_bytes", NULL);
-	service->stats.tx_bytes = g_key_file_get_integer(keyfile,
+	data->tx_bytes = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.tx_bytes", NULL);
-	service->stats.rx_errors = g_key_file_get_integer(keyfile,
+	data->rx_errors = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.rx_errors", NULL);
-	service->stats.tx_errors = g_key_file_get_integer(keyfile,
+	data->tx_errors = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.tx_errors", NULL);
-	service->stats.rx_dropped = g_key_file_get_integer(keyfile,
+	data->rx_dropped = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.rx_dropped", NULL);
-	service->stats.tx_dropped = g_key_file_get_integer(keyfile,
+	data->tx_dropped = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.tx_dropped", NULL);
-	service->stats.time = g_key_file_get_integer(keyfile,
+	data->time = g_key_file_get_integer(keyfile,
 			service->identifier, "Home.time", NULL);
 
 	/* roaming */
-	service->stats_roaming.rx_packets = g_key_file_get_integer(keyfile,
+	data = &service->stats_roaming.data;
+	data->rx_packets = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.rx_packets", NULL);
-	service->stats_roaming.tx_packets = g_key_file_get_integer(keyfile,
+	data->tx_packets = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.tx_packets", NULL);
-	service->stats_roaming.rx_bytes = g_key_file_get_integer(keyfile,
+	data->rx_bytes = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.rx_bytes", NULL);
-	service->stats_roaming.tx_bytes = g_key_file_get_integer(keyfile,
+	data->tx_bytes = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.tx_bytes", NULL);
-	service->stats_roaming.rx_errors = g_key_file_get_integer(keyfile,
+	data->rx_errors = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.rx_errors", NULL);
-	service->stats_roaming.tx_errors = g_key_file_get_integer(keyfile,
+	data->tx_errors = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.tx_errors", NULL);
-	service->stats_roaming.rx_dropped = g_key_file_get_integer(keyfile,
+	data->rx_dropped = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.rx_dropped", NULL);
-	service->stats_roaming.tx_dropped = g_key_file_get_integer(keyfile,
+	data->tx_dropped = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.tx_dropped", NULL);
-	service->stats_roaming.time = g_key_file_get_integer(keyfile,
+	data->time = g_key_file_get_integer(keyfile,
 			service->identifier, "Roaming.time", NULL);
 
 	return 0;
@@ -549,45 +537,49 @@ static int stats_load(struct connman_service *service, GKeyFile *keyfile)
 
 static int stats_save(struct connman_service *service, GKeyFile *keyfile)
 {
+	struct connman_stats_data *data;
+
 	/* home */
+	data = &service->stats.data;
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_packets", service->stats.rx_packets);
+		"Home.rx_packets", data->rx_packets);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_packets", service->stats.tx_packets);
+		"Home.tx_packets", data->tx_packets);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_bytes", service->stats.rx_bytes);
+		"Home.rx_bytes", data->rx_bytes);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_bytes", service->stats.tx_bytes);
+		"Home.tx_bytes", data->tx_bytes);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_errors", service->stats.rx_errors);
+		"Home.rx_errors", data->rx_errors);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_errors", service->stats.tx_errors);
+		"Home.tx_errors", data->tx_errors);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_dropped", service->stats.rx_dropped);
+		"Home.rx_dropped", data->rx_dropped);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_dropped", service->stats.tx_dropped);
+		"Home.tx_dropped", data->tx_dropped);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.time", service->stats.time);
+		"Home.time", data->time);
 
 	/* roaming */
+	data = &service->stats_roaming.data;
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_packets", service->stats_roaming.rx_packets);
+		"Roaming.rx_packets", data->rx_packets);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_packets", service->stats_roaming.tx_packets);
+		"Roaming.tx_packets", data->tx_packets);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_bytes", service->stats_roaming.rx_bytes);
+		"Roaming.rx_bytes", data->rx_bytes);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_bytes", service->stats_roaming.tx_bytes);
+		"Roaming.tx_bytes", data->tx_bytes);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_errors", service->stats_roaming.rx_errors);
+		"Roaming.rx_errors", data->rx_errors);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_errors", service->stats_roaming.tx_errors);
+		"Roaming.tx_errors", data->tx_errors);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_dropped", service->stats_roaming.rx_dropped);
+		"Roaming.rx_dropped", data->rx_dropped);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_dropped", service->stats_roaming.tx_dropped);
+		"Roaming.tx_dropped", data->tx_dropped);
 	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.time", service->stats_roaming.time);
+		"Roaming.time", data->time);
 
 	return 0;
 }
@@ -599,32 +591,32 @@ static void reset_stats(struct connman_service *service)
 	/* home */
 	service->stats.valid = FALSE;
 
-	service->stats.rx_packets = 0;
-	service->stats.tx_packets = 0;
-	service->stats.rx_bytes = 0;
-	service->stats.tx_bytes = 0;
-	service->stats.rx_errors = 0;
-	service->stats.tx_errors = 0;
-	service->stats.rx_dropped = 0;
-	service->stats.tx_dropped = 0;
-	service->stats.time = 0;
-	service->stats.time_start = 0;
+	service->stats.data.rx_packets = 0;
+	service->stats.data.tx_packets = 0;
+	service->stats.data.rx_bytes = 0;
+	service->stats.data.tx_bytes = 0;
+	service->stats.data.rx_errors = 0;
+	service->stats.data.tx_errors = 0;
+	service->stats.data.rx_dropped = 0;
+	service->stats.data.tx_dropped = 0;
+	service->stats.data.time = 0;
+	service->stats.data_last.time = 0;
 
 	g_timer_reset(service->stats.timer);
 
 	/* roaming */
 	service->stats_roaming.valid = FALSE;
 
-	service->stats_roaming.rx_packets = 0;
-	service->stats_roaming.tx_packets = 0;
-	service->stats_roaming.rx_bytes = 0;
-	service->stats_roaming.tx_bytes = 0;
-	service->stats_roaming.rx_errors = 0;
-	service->stats_roaming.tx_errors = 0;
-	service->stats_roaming.rx_dropped = 0;
-	service->stats_roaming.tx_dropped = 0;
-	service->stats_roaming.time = 0;
-	service->stats_roaming.time_start = 0;
+	service->stats_roaming.data.rx_packets = 0;
+	service->stats_roaming.data.tx_packets = 0;
+	service->stats_roaming.data.rx_bytes = 0;
+	service->stats_roaming.data.tx_bytes = 0;
+	service->stats_roaming.data.rx_errors = 0;
+	service->stats_roaming.data.tx_errors = 0;
+	service->stats_roaming.data.rx_dropped = 0;
+	service->stats_roaming.data.tx_dropped = 0;
+	service->stats_roaming.data.time = 0;
+	service->stats_roaming.data_last.time = 0;
 
 	g_timer_reset(service->stats_roaming.timer);
 }
@@ -1042,8 +1034,8 @@ static void link_changed(struct connman_service *service)
 }
 
 static void stats_append_counters(DBusMessageIter *dict,
-			struct connman_stats *stats,
-			struct connman_stats_update *counters,
+			struct connman_stats_data *stats,
+			struct connman_stats_data *counters,
 			connman_bool_t append_all)
 {
 	if (counters->rx_packets != stats->rx_packets || append_all) {
@@ -1123,16 +1115,16 @@ static void stats_append(struct connman_service *service,
 	/* home counter */
 	connman_dbus_dict_open(&array, &dict);
 
-	stats_append_counters(&dict, &service->stats,
-				&counters->stats, append_all);
+	stats_append_counters(&dict, &service->stats.data,
+				&counters->stats.data, append_all);
 
 	connman_dbus_dict_close(&array, &dict);
 
 	/* roaming counter */
 	connman_dbus_dict_open(&array, &dict);
 
-	stats_append_counters(&dict, &service->stats_roaming,
-				&counters->stats_roaming, append_all);
+	stats_append_counters(&dict, &service->stats_roaming.data,
+				&counters->stats_roaming.data, append_all);
 
 	connman_dbus_dict_close(&array, &dict);
 
@@ -1146,42 +1138,44 @@ static void stats_update(struct connman_service *service,
 				unsigned int rx_dropped, unsigned int tx_dropped)
 {
 	struct connman_stats *stats = stats_get(service);
+	struct connman_stats_data *data_last = &stats->data_last;
+	struct connman_stats_data *data = &stats->data;
 	unsigned int seconds;
 
 	DBG("service %p", service);
 
 	if (stats->valid == TRUE) {
-		stats->rx_packets +=
-			rx_packets - stats->rx_packets_last;
-		stats->tx_packets +=
-			tx_packets - stats->tx_packets_last;
-		stats->rx_bytes +=
-			rx_bytes - stats->rx_bytes_last;
-		stats->tx_bytes +=
-			tx_bytes - stats->tx_bytes_last;
-		stats->rx_errors +=
-			rx_errors - stats->rx_errors_last;
-		stats->tx_errors +=
-			tx_errors - stats->tx_errors_last;
-		stats->rx_dropped +=
-			rx_dropped - stats->rx_dropped_last;
-		stats->tx_dropped +=
-			tx_dropped - stats->tx_dropped_last;
+		data->rx_packets +=
+			rx_packets - data_last->rx_packets;
+		data->tx_packets +=
+			tx_packets - data_last->tx_packets;
+		data->rx_bytes +=
+			rx_bytes - data_last->rx_bytes;
+		data->tx_bytes +=
+			tx_bytes - data_last->tx_bytes;
+		data->rx_errors +=
+			rx_errors - data_last->rx_errors;
+		data->tx_errors +=
+			tx_errors - data_last->tx_errors;
+		data->rx_dropped +=
+			rx_dropped - data_last->rx_dropped;
+		data->tx_dropped +=
+			tx_dropped - data_last->tx_dropped;
 	} else {
 		stats->valid = TRUE;
 	}
 
-	stats->rx_packets_last = rx_packets;
-	stats->tx_packets_last = tx_packets;
-	stats->rx_bytes_last = rx_bytes;
-	stats->tx_bytes_last = tx_bytes;
-	stats->rx_errors_last = rx_errors;
-	stats->tx_errors_last = tx_errors;
-	stats->rx_dropped_last = rx_dropped;
-	stats->tx_dropped_last = tx_dropped;
+	data_last->rx_packets = rx_packets;
+	data_last->tx_packets = tx_packets;
+	data_last->rx_bytes = rx_bytes;
+	data_last->tx_bytes = tx_bytes;
+	data_last->rx_errors = rx_errors;
+	data_last->tx_errors = tx_errors;
+	data_last->rx_dropped = rx_dropped;
+	data_last->tx_dropped = tx_dropped;
 
 	seconds = g_timer_elapsed(stats->timer, NULL);
-	stats->time = stats->time_start + seconds;
+	stats->data.time = stats->data_last.time + seconds;
 }
 
 void __connman_service_notify(struct connman_ipconfig *ipconfig,
