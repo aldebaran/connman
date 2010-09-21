@@ -2284,7 +2284,9 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 				task_connect(task);
 			} else
 				task->network = NULL;
-		}
+		} else
+			remove_network(task);
+
 		break;
 
 	default:
