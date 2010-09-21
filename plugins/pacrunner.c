@@ -67,40 +67,30 @@ done:
 	dbus_message_unref(reply);
 }
 
-static void add_dict_with_string_value(DBusMessageIter *iter,
+static void add_string_entry(DBusMessageIter *iter,
 					const char *key, const char *str)
 {
-	DBusMessageIter dict, entry, value;
+	DBusMessageIter value;
 
-	dbus_message_iter_open_container(iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
 
-	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(&entry, DBUS_TYPE_VARIANT,
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
 					DBUS_TYPE_STRING_AS_STRING, &value);
 	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(&entry, &value);
-
-	dbus_message_iter_close_container(&dict, &entry);
-	dbus_message_iter_close_container(iter, &dict);
+	dbus_message_iter_close_container(iter, &value);
 }
 
-static void create_proxy_configuration(const char *url)
+static void create_proxy_configuration(const char *interface, const char *url)
 {
 	DBusMessage *msg;
-	DBusMessageIter iter;
+	DBusMessageIter iter, dict, entry;
 	DBusPendingCall *call;
 	dbus_bool_t result;
 
 	if (url == NULL)
 		return;
 
-	DBG("url %s", url);
+	DBG("interface %s url %s", interface, url);
 
 	msg = dbus_message_new_method_call(PACRUNNER_SERVICE, PACRUNNER_PATH,
 			PACRUNNER_INTERFACE, "CreateProxyConfiguration");
@@ -110,7 +100,21 @@ static void create_proxy_configuration(const char *url)
 	dbus_message_set_auto_start(msg, FALSE);
 
 	dbus_message_iter_init_append(msg, &iter);
-	add_dict_with_string_value(&iter, "URL", url);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
+        dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+
+	if (interface != NULL)
+		add_string_entry(&entry, "Interface", interface);
+
+	add_string_entry(&entry, "URL", url);
+
+	dbus_message_iter_close_container(&dict, &entry);
+	dbus_message_iter_close_container(&iter, &dict);
 
 	result = dbus_connection_send_with_reply(connection, msg,
 							&call, DBUS_TIMEOUT);
@@ -176,6 +180,7 @@ static void destroy_proxy_configuration(void)
 
 static void default_service_changed(struct connman_service *service)
 {
+	char *interface;
 	const char *url;
 
 	DBG("service %p", service);
@@ -187,8 +192,12 @@ static void default_service_changed(struct connman_service *service)
 
 	destroy_proxy_configuration();
 
+	interface = connman_service_get_interface(service);
+
 	url = connman_service_get_proxy_autoconfig(service);
-	create_proxy_configuration(url);
+	create_proxy_configuration(interface, url);
+
+	g_free(interface);
 }
 
 static struct connman_notifier pacrunner_notifier = {
@@ -198,12 +207,17 @@ static struct connman_notifier pacrunner_notifier = {
 
 static void pacrunner_connect(DBusConnection *conn, void *user_data)
 {
+	char *interface;
 	const char *url;
 
 	DBG("");
 
+	interface = connman_service_get_interface(default_service);
+
 	url = connman_service_get_proxy_autoconfig(default_service);
-	create_proxy_configuration(url);
+	create_proxy_configuration(interface, url);
+
+	g_free(interface);
 }
 
 static void pacrunner_disconnect(DBusConnection *conn, void *user_data)
