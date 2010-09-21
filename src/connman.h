@@ -80,8 +80,6 @@ struct connman_service *service;
 typedef void (* passphrase_cb_t) (struct connman_service *service,
 				const char *passphrase, void *user_data);
 
-int __connman_agent_request_passphrase(struct connman_service *service,
-				passphrase_cb_t callback, void *user_data);
 int __connman_agent_request_input(struct connman_service *service,
 				passphrase_cb_t callback, void *user_data);
 
