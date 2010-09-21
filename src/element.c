@@ -273,7 +273,7 @@ static gboolean find_device(GNode *node, gpointer user_data)
 	if (element->device == NULL)
 		return FALSE;
 
-	if (data->type != connman_device_get_type(element->device))
+	if (data->type != __connman_device_get_service_type(element->device))
 		return FALSE;
 
 	data->device = element->device;
