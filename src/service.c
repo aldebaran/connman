@@ -1504,6 +1504,22 @@ const char *connman_service_get_proxy_autoconfig(struct connman_service *service
 	return __connman_ipconfig_get_proxy_autoconfig(service->ipconfig);
 }
 
+static void connman_service_set_passphrase(struct connman_service *service,
+					const char* passphrase)
+{
+	g_free(service->passphrase);
+	service->passphrase = g_strdup(passphrase);
+
+	passphrase_changed(service);
+
+	if (service->network != NULL)
+		connman_network_set_string(service->network,
+					"WiFi.Passphrase",
+					service->passphrase);
+
+	__connman_storage_save_service(service);
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -1575,16 +1591,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &passphrase);
 
-		g_free(service->passphrase);
-		service->passphrase = g_strdup(passphrase);
-
-		passphrase_changed(service);
-
-		if (service->network != NULL)
-			connman_network_set_string(service->network,
-				"WiFi.Passphrase", service->passphrase);
-
-		__connman_storage_save_service(service);
+		connman_service_set_passphrase(service, passphrase);
 	} else if (g_str_equal(name, "APN") == TRUE) {
 		const char *apn;
 
