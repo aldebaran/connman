@@ -36,9 +36,9 @@ gsupplicant_sources = gsupplicant/gsupplicant.h gsupplicant/dbus.h \
 			gsupplicant/supplicant.c gsupplicant/dbus.c
 
 if DATAFILES
-dbusdir = @DBUS_DATADIR@
+dbusconfdir = @DBUS_CONFDIR@
 
-dbus_DATA = src/connman.conf
+dbusconf_DATA = src/connman.conf
 endif
 
 plugin_LTLIBRARIES =
