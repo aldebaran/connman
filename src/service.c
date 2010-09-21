@@ -1989,6 +1989,17 @@ static connman_bool_t get_reconnect_state(struct connman_service *service)
 	return __connman_device_get_reconnect(device);
 }
 
+static void request_input_cb (struct connman_service *service,
+			const char *passphrase, void *user_data)
+{
+	DBG ("RequestInput return, %p", service);
+
+	if (passphrase == NULL)
+		return;
+	connman_service_set_passphrase(service, passphrase);
+	__connman_service_connect(service);
+}
+
 struct connman_service *
 __connman_service_connect_type(enum connman_service_type type)
 {
@@ -2038,8 +2049,9 @@ __connman_service_connect_type(enum connman_service_type type)
 	err = __connman_service_connect(service);
 	if (err < 0) {
 		if (err == -ENOKEY)
-			if (__connman_agent_request_passphrase(service,
-								NULL, NULL))
+			if ( __connman_agent_request_input(service,
+							request_input_cb,
+							NULL))
 				return service;
 
 		if (err != -EINPROGRESS)
@@ -2084,8 +2096,9 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	err = __connman_service_connect(service);
 	if (err < 0) {
 		if (err == -ENOKEY) {
-			if (__connman_agent_request_passphrase(service,
-							NULL, NULL) == 0)
+			if (__connman_agent_request_input(service,
+							request_input_cb,
+							NULL) == 0)
 				return NULL;
 		}
 
