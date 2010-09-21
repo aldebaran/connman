@@ -454,6 +454,7 @@ void __connman_service_create_ipconfig(struct connman_service *service,
 								int index);
 struct connman_ipconfig *__connman_service_get_ipconfig(
 				struct connman_service *service);
+const char *__connman_service_get_ident(struct connman_service *service);
 const char *__connman_service_get_path(struct connman_service *service);
 unsigned int __connman_service_get_order(struct connman_service *service);
 struct connman_network *__connman_service_get_network(struct connman_service *service);
@@ -561,3 +562,26 @@ void __connman_session_cleanup(void);
 
 int __connman_ondemand_init(void);
 void __connman_ondemand_cleanup(void);
+
+struct connman_stats_data {
+	unsigned int rx_packets;
+	unsigned int tx_packets;
+	unsigned int rx_bytes;
+	unsigned int tx_bytes;
+	unsigned int rx_errors;
+	unsigned int tx_errors;
+	unsigned int rx_dropped;
+	unsigned int tx_dropped;
+	unsigned int time;
+};
+
+int __connman_stats_init(void);
+void __connman_stats_cleanup(void);
+int __connman_stats_service_register(struct connman_service *service);
+void __connman_stats_service_unregister(struct connman_service *service);
+int  __connman_stats_update(struct connman_service *service,
+				connman_bool_t roaming,
+				struct connman_stats_data *data);
+int __connman_stats_get(struct connman_service *service,
+				connman_bool_t roaming,
+				struct connman_stats_data *data);

@@ -37,18 +37,6 @@ static GSequence *service_list = NULL;
 static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 
-struct connman_stats_data {
-	unsigned int rx_packets;
-	unsigned int tx_packets;
-	unsigned int rx_bytes;
-	unsigned int tx_bytes;
-	unsigned int rx_errors;
-	unsigned int tx_errors;
-	unsigned int rx_dropped;
-	unsigned int tx_dropped;
-	unsigned int time;
-};
-
 struct connman_stats {
 	connman_bool_t valid;
 	connman_bool_t enabled;
@@ -484,104 +472,6 @@ static void stats_stop(struct connman_service *service)
 	stats->data.time = stats->data_last.time + seconds;
 
 	stats->enabled = FALSE;
-}
-
-static int stats_load(struct connman_service *service, GKeyFile *keyfile)
-{
-	struct connman_stats_data *data;
-
-	/* home */
-	data = &service->stats.data;
-	data->rx_packets = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.rx_packets", NULL);
-	data->tx_packets = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.tx_packets", NULL);
-	data->rx_bytes = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.rx_bytes", NULL);
-	data->tx_bytes = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.tx_bytes", NULL);
-	data->rx_errors = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.rx_errors", NULL);
-	data->tx_errors = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.tx_errors", NULL);
-	data->rx_dropped = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.rx_dropped", NULL);
-	data->tx_dropped = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.tx_dropped", NULL);
-	data->time = g_key_file_get_integer(keyfile,
-			service->identifier, "Home.time", NULL);
-
-	/* roaming */
-	data = &service->stats_roaming.data;
-	data->rx_packets = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.rx_packets", NULL);
-	data->tx_packets = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.tx_packets", NULL);
-	data->rx_bytes = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.rx_bytes", NULL);
-	data->tx_bytes = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.tx_bytes", NULL);
-	data->rx_errors = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.rx_errors", NULL);
-	data->tx_errors = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.tx_errors", NULL);
-	data->rx_dropped = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.rx_dropped", NULL);
-	data->tx_dropped = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.tx_dropped", NULL);
-	data->time = g_key_file_get_integer(keyfile,
-			service->identifier, "Roaming.time", NULL);
-
-	return 0;
-}
-
-static int stats_save(struct connman_service *service, GKeyFile *keyfile)
-{
-	struct connman_stats_data *data;
-
-	/* home */
-	data = &service->stats.data;
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_packets", data->rx_packets);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_packets", data->tx_packets);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_bytes", data->rx_bytes);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_bytes", data->tx_bytes);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_errors", data->rx_errors);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_errors", data->tx_errors);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.rx_dropped", data->rx_dropped);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.tx_dropped", data->tx_dropped);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Home.time", data->time);
-
-	/* roaming */
-	data = &service->stats_roaming.data;
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_packets", data->rx_packets);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_packets", data->tx_packets);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_bytes", data->rx_bytes);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_bytes", data->tx_bytes);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_errors", data->rx_errors);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_errors", data->tx_errors);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.rx_dropped", data->rx_dropped);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.tx_dropped", data->tx_dropped);
-	g_key_file_set_integer(keyfile, service->identifier,
-		"Roaming.time", data->time);
-
-	return 0;
 }
 
 static void reset_stats(struct connman_service *service)
@@ -1206,6 +1096,8 @@ void __connman_service_notify(struct connman_ipconfig *ipconfig,
 	gpointer key, value;
 	const char *counter;
 	struct connman_stats_counter *counters;
+	struct connman_stats_data *data;
+	int err;
 
 	service = connman_ipconfig_get_data(ipconfig);
 	if (service == NULL)
@@ -1219,6 +1111,12 @@ void __connman_service_notify(struct connman_ipconfig *ipconfig,
 		rx_bytes, tx_bytes,
 		rx_errors, tx_errors,
 		rx_dropped, tx_dropped);
+
+	data = &stats_get(service)->data;
+	err = __connman_stats_update(service, service->roaming, data);
+	if (err < 0)
+		connman_error("Failed to store statistics for %s",
+				service->identifier);
 
 	g_hash_table_iter_init(&iter, service->counter_table);
 	while (g_hash_table_iter_next(&iter, &key, &value)) {
@@ -2317,6 +2215,7 @@ static void service_free(gpointer user_data)
 
 	stats_stop(service);
 	__connman_storage_save_service(service);
+	__connman_stats_service_unregister(service);
 
 	service->path = NULL;
 
@@ -3356,6 +3255,10 @@ static int service_register(struct connman_service *service)
 
 	__connman_storage_load_service(service);
 
+	__connman_stats_service_register(service);
+	__connman_stats_get(service, FALSE, &service->stats.data);
+	__connman_stats_get(service, TRUE, &service->stats_roaming.data);
+
 	g_dbus_register_interface(connection, service->path,
 					CONNMAN_SERVICE_INTERFACE,
 					service_methods, service_signals,
@@ -3527,6 +3430,11 @@ struct connman_service *__connman_service_lookup_from_index(int index)
 	}
 
 	return NULL;
+}
+
+const char *__connman_service_get_ident(struct connman_service *service)
+{
+	return service->identifier;
 }
 
 const char *__connman_service_get_path(struct connman_service *service)
@@ -4090,7 +3998,6 @@ static int service_load(struct connman_service *service)
 		service->domains = NULL;
 	}
 
-	stats_load(service, keyfile);
 done:
 	g_key_file_free(keyfile);
 
@@ -4251,8 +4158,6 @@ update:
 	} else
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Domains", NULL);
-
-	stats_save(service, keyfile);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 

@@ -264,6 +264,17 @@ fi
 AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
 AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
 
+AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
+				 [Maximal size of a statistics round robin file]),
+				 [stats_max_file_size=${withval}])
+
+if (test -z "${stats_max_file_size}"); then
+   # default size is 512 kByte
+   stats_max_file_size="512 * 8 * 128"
+fi
+
+AC_DEFINE_UNQUOTED([STATS_MAX_FILE_SIZE], (${stats_max_file_size}), [Maximal size of a statistics round robin file])
+
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
 				AC_MSG_ERROR(GLib >= 2.16 is required))
 AC_SUBST(GLIB_CFLAGS)
