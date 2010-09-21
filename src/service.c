@@ -3167,7 +3167,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 				g_strcmp0(security, "ieee8021x") != 0)
 		return -EINVAL;
 
-	device = __connman_element_find_device(CONNMAN_DEVICE_TYPE_WIFI);
+	device = __connman_element_find_device(CONNMAN_SERVICE_TYPE_WIFI);
 	if (device == NULL)
 		return -EOPNOTSUPP;
 
