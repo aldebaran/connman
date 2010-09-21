@@ -55,7 +55,7 @@ noinst_PROGRAMS =
 sbin_PROGRAMS = src/connmand
 
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
-					$(gweb_sources) $(builtin_sources) \
+			$(gweb_sources) $(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
@@ -82,9 +82,8 @@ endif
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 					@CAPNG_LIBS@ @UDEV_LIBS@ -lresolv -ldl
 
-src_connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=src/connman.ver
-
-src_connmand_DEPENDENCIES = src/connman.ver
+src_connmand_LDFLAGS = -Wl,--export-dynamic \
+				-Wl,--version-script=$(srcdir)/src/connman.ver
 
 CLEANFILES = src/connman.conf src/builtin.h $(local_headers)
 
