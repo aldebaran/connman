@@ -29,8 +29,6 @@ include/connman
 include/version.h
 src/builtin.h
 src/connmand
-src/connman.exp
-src/connman.ver
 src/connman.conf
 src/connman.service
 src/*-connman.rules

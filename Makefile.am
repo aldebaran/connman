@@ -86,8 +86,7 @@ src_connmand_LDFLAGS = -Wl,--export-dynamic -Wl,--version-script=src/connman.ver
 
 src_connmand_DEPENDENCIES = src/connman.ver
 
-CLEANFILES = src/connman.ver src/connman.exp src/connman.conf \
-						src/builtin.h $(local_headers)
+CLEANFILES = src/connman.conf src/builtin.h $(local_headers)
 
 statedir = $(localstatedir)/run/connman
 
@@ -240,15 +239,6 @@ src/plugin.$(OBJEXT): src/builtin.h
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
-
-src/connman.exp: $(src_connmand_OBJECTS)
-	$(AM_V_GEN)$(NM) $^ | $(AWK) '{ print $$3 }' | sort -u | \
-		$(EGREP) -e '^connman_' -e '^g_dbus_' -e '^g_dhcp_' > $@
-
-src/connman.ver: src/connman.exp
-	$(AM_V_at)echo "{ global:" > $@
-	$(AM_V_GEN)$(SED) -e "s/\(.*\)/\1;/" $< >> $@
-	$(AM_V_at)echo "local: *; };" >> $@
 
 src/connman.conf: src/connman-dbus.conf src/connman-polkit.conf
 if POLKIT
