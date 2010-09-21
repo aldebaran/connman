@@ -49,6 +49,8 @@ void g_web_unref(GWeb *web);
 
 void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data);
 
+gboolean g_web_add_nameserver(GWeb *web, const char *address);
+
 guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 				GWebResultFunc func, gpointer user_data);
 

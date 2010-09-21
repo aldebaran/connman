@@ -143,8 +143,8 @@ tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant.h tools/supplicant.c
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
-tools_web_test_SOURCES = $(gweb_sources) tools/web-test.c
-tools_web_test_LDADD = @GLIB_LIBS@
+tools_web_test_SOURCES = $(gresolv_sources) $(gweb_sources) tools/web-test.c
+tools_web_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_resolv_test_SOURCES = $(gresolv_sources) tools/resolv-test.c
 tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv

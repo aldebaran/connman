@@ -58,10 +58,13 @@ static void web_result(uint16_t status, gpointer user_data)
 }
 
 static gboolean option_debug = FALSE;
+static gchar *option_nameserver = NULL;
 
 static GOptionEntry options[] = {
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 					"Enable debug output" },
+	{ "nameserver", 'n', 0, G_OPTION_ARG_STRING, &option_nameserver,
+					"Specify nameserver", "ADDRESS" },
 	{ NULL },
 };
 
@@ -102,6 +105,12 @@ int main(int argc, char *argv[])
 		g_web_set_debug(web, web_debug, "WEB");
 
 	main_loop = g_main_loop_new(NULL, FALSE);
+
+	if (option_nameserver != NULL) {
+		g_web_add_nameserver(web, option_nameserver);
+		g_free(option_nameserver);
+	} else
+		g_web_add_nameserver(web, "127.0.0.1");
 
 	timer = g_timer_new();
 
