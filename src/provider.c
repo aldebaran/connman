@@ -165,7 +165,8 @@ int __connman_provider_disconnect(struct connman_provider *provider)
 	else
 		return -EOPNOTSUPP;
 
-	__connman_service_indicate_state(provider->vpn_service,
+	if (provider->vpn_service != NULL)
+		__connman_service_indicate_state(provider->vpn_service,
 					CONNMAN_SERVICE_STATE_DISCONNECT);
 	if (err < 0) {
 		if (err != -EINPROGRESS)
@@ -333,10 +334,12 @@ int connman_provider_set_state(struct connman_provider *provider,
 static void unregister_provider(gpointer data)
 {
 	struct connman_provider *provider = data;
+	struct connman_service *service = provider->vpn_service;
 
 	DBG("provider %p", provider);
 
-	__connman_service_put(provider->vpn_service);
+	provider->vpn_service = NULL;
+	__connman_service_put(service);
 
 	connman_element_unregister(&provider->element);
 	connman_provider_unref(provider);
@@ -537,7 +540,8 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	if (created == TRUE)
 		provider_probe(provider);
 
-	provider->vpn_service =
+	if (provider->vpn_service == NULL)
+		provider->vpn_service =
 			__connman_service_create_from_provider(provider);
 	if (provider->vpn_service == NULL) {
 		err = -EOPNOTSUPP;
@@ -559,8 +563,10 @@ failed:
 		DBG("can not connect delete provider");
 		connman_provider_unref(provider);
 
-		if (provider->vpn_service != NULL)
+		if (provider->vpn_service != NULL) {
 			__connman_service_put(provider->vpn_service);
+			provider->vpn_service = NULL;
+		}
 	}
 
 	return err;
@@ -640,6 +646,9 @@ void connman_provider_set_index(struct connman_provider *provider, int index)
 
 	DBG("");
 
+	if (service == NULL)
+		return;
+
 	ipconfig = __connman_service_get_ipconfig(service);
 
 	if (ipconfig == NULL) {
@@ -694,12 +703,12 @@ void connman_provider_driver_unregister(struct connman_provider_driver *driver)
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
-static void provider_disconnect(gpointer key, gpointer value,
+static void provider_remove(gpointer key, gpointer value,
 						gpointer user_data)
 {
 	struct connman_provider *provider = value;
 
-	__connman_provider_disconnect(provider);
+	g_hash_table_remove(provider_hash, provider->identifier);
 }
 
 static void provider_offline_mode(connman_bool_t enabled)
@@ -707,7 +716,7 @@ static void provider_offline_mode(connman_bool_t enabled)
 	DBG("enabled %d", enabled);
 
 	if (enabled == TRUE)
-		g_hash_table_foreach(provider_hash, provider_disconnect, NULL);
+		g_hash_table_foreach(provider_hash, provider_remove, NULL);
 
 }
 

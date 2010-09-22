@@ -121,8 +121,6 @@ static void openconnect_died(struct connman_task *task, void *user_data)
 	kill_tun(data->if_name);
 	connman_provider_set_data(provider, NULL);
 	connman_rtnl_remove_watch(data->watch);
-	connman_provider_unref(data->provider);
-	g_free(data);
 
  oc_exit:
 	if (state != OC_STATE_READY && state != OC_STATE_DISCONNECT)
@@ -133,6 +131,9 @@ static void openconnect_died(struct connman_task *task, void *user_data)
 						CONNMAN_PROVIDER_STATE_IDLE);
 
 	connman_provider_set_index(provider, -1);
+	connman_provider_unref(data->provider);
+	g_free(data);
+
 	connman_task_destroy(task);
 }
 
