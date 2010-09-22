@@ -1,3 +1,11 @@
+ver 0.60.3
+	Fix bug to remove vpn services if offline mode is on (Fixes BMC # 6591)
+	Schedule delayed scan if disconnected from an AP (Fixes BMC #6831)
+	Use proper definition for finding device structure
+	Use __connman_device_get_service_type for getting service type
+	Call remove_network() on unsolicited disconnect
+	Fix ConnMan crash while disable wifi device (Fixes BMC #6772)
+
 ver 0.60.2
 	Ignore Bluetooth adapter if its MAC is zeroed (Fixes BMC #6211, #6906,
 	#5796)
