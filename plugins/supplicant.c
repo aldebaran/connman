@@ -2191,6 +2191,15 @@ static void scanning(struct supplicant_task *task, DBusMessage *msg)
 				scanning == TRUE ? "started" : "finished");
 }
 
+static gboolean delayed_scan(gpointer user_data)
+{
+	struct supplicant_task *task = user_data;
+
+	supplicant_scan(task->device);
+
+	return FALSE;
+}
+
 static void state_change(struct supplicant_task *task, DBusMessage *msg)
 {
 	DBusError error;
@@ -2284,8 +2293,12 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 				task_connect(task);
 			} else
 				task->network = NULL;
-		} else
+		} else {
+			if (task->state == WPA_DISCONNECTED)
+				g_timeout_add_seconds(10, delayed_scan, task);
+
 			remove_network(task);
+		}
 
 		break;
 
