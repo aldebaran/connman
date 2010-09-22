@@ -944,6 +944,14 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 		__connman_ipconfig_append_proxy(service->ipconfig, iter);
 }
 
+static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	if (service->ipconfig != NULL)
+		__connman_ipconfig_append_proxyconfig(service->ipconfig, iter);
+}
+
 static void append_provider(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -1024,6 +1032,15 @@ static void proxy_changed(struct connman_service *service)
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Proxy",
 							append_proxy, service);
+}
+
+static void proxy_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_dict(service->path,
+			CONNMAN_SERVICE_INTERFACE, "Proxy.Configuration",
+						append_proxyconfig, service);
+
+	proxy_changed(service);
 }
 
 static void link_changed(struct connman_service *service)
@@ -1415,7 +1432,11 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 
 	connman_dbus_dict_append_dict(dict, "Proxy", append_proxy, service);
 
-	connman_dbus_dict_append_dict(dict, "Provider", append_provider, service);
+	connman_dbus_dict_append_dict(dict, "Proxy.Configuration",
+						append_proxyconfig, service);
+
+	connman_dbus_dict_append_dict(dict, "Provider",
+						append_provider, service);
 }
 
 static void append_struct(gpointer value, gpointer user_data)
@@ -1741,6 +1762,20 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		//update_domains(service);
 		domain_configuration_changed(service);
+
+		__connman_storage_save_service(service);
+	} else if (g_str_equal(name, "Proxy.Configuration") == TRUE) {
+		int err;
+
+		if (service->ipconfig == NULL)
+			return __connman_error_invalid_property(msg);
+
+		err = __connman_ipconfig_set_proxyconfig(service->ipconfig,
+								&value);
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
+
+		proxy_configuration_changed(service);
 
 		__connman_storage_save_service(service);
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||

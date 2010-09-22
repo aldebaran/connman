@@ -73,6 +73,8 @@ struct connman_ipdevice {
 	GSList *address_list;
 	char *ipv4_gateway;
 	char *ipv6_gateway;
+
+	char *proxy;
 	char *pac;
 
 	struct connman_ipconfig *config;
@@ -303,6 +305,7 @@ static void free_ipdevice(gpointer data)
 	free_address_list(ipdevice);
 	g_free(ipdevice->ipv4_gateway);
 	g_free(ipdevice->ipv6_gateway);
+	g_free(ipdevice->proxy);
 	g_free(ipdevice->pac);
 
 	g_free(ipdevice->address);
@@ -1622,6 +1625,88 @@ void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
 done:
 	connman_dbus_dict_append_basic(iter, "Method",
 						DBUS_TYPE_STRING, &method);
+}
+
+void __connman_ipconfig_append_proxyconfig(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *iter)
+{
+	struct connman_ipdevice *ipdevice;
+	const char *method = "auto";
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		goto done;
+
+	if (ipdevice->proxy == NULL)
+		goto done;
+
+	method = ipdevice->proxy;
+
+done:
+	connman_dbus_dict_append_basic(iter, "Method",
+						DBUS_TYPE_STRING, &method);
+}
+
+int __connman_ipconfig_set_proxyconfig(struct connman_ipconfig *ipconfig,
+							DBusMessageIter *array)
+{
+	struct connman_ipdevice *ipdevice;
+	DBusMessageIter dict;
+	const char *method;
+
+	DBG("ipconfig %p", ipconfig);
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return -ENXIO;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return -EINVAL;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry;
+		const char *key;
+		int type;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		type = dbus_message_iter_get_arg_type(&entry);
+
+		if (g_str_equal(key, "Method") == TRUE) {
+			if (type != DBUS_TYPE_STRING)
+				return -EINVAL;
+
+			dbus_message_iter_get_basic(&entry, &method);
+			if (strlen(method) == 0)
+				method = NULL;
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	DBG("method %s", method);
+
+	if (method == NULL)
+		return -EINVAL;
+
+	if (g_str_equal(method, "auto") == FALSE &&
+				g_str_equal(method, "direct") == FALSE)
+		return -EINVAL;
+
+	g_free(ipdevice->proxy);
+	ipdevice->proxy = g_strdup(method);
+
+	return 0;
 }
 
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
