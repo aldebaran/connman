@@ -66,6 +66,8 @@ struct _GResolv {
 	int index;
 	GList *nameserver_list;
 
+	struct __res_state res;
+
 	GResolvDebugFunc debug_func;
 	gpointer debug_data;
 };
@@ -357,6 +359,8 @@ GResolv *g_resolv_new(int index)
 	resolv->index = index;
 	resolv->nameserver_list = NULL;
 
+	res_ninit(&resolv->res);
+
 	return resolv;
 }
 
@@ -386,6 +390,8 @@ void g_resolv_unref(GResolv *resolv)
 	g_queue_free(resolv->query_queue);
 
 	flush_nameservers(resolv);
+
+	res_nclose(&resolv->res);
 
 	g_free(resolv);
 }
@@ -450,6 +456,19 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 
 	if (resolv == NULL)
 		return 0;
+
+	if (resolv->nameserver_list == NULL) {
+		int i;
+
+		for (i = 0; i < resolv->res.nscount; i++) {
+			struct sockaddr_in *addr = &resolv->res.nsaddr_list[i];
+			g_resolv_add_nameserver(resolv,
+					inet_ntoa(addr->sin_addr), 53, 0);
+		}
+
+		if (resolv->nameserver_list == NULL)
+			g_resolv_add_nameserver(resolv, "127.0.0.1", 53, 0);
+	}
 
 	query = g_try_new0(struct resolv_query, 1);
 	if (query == NULL)
