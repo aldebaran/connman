@@ -1371,11 +1371,17 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 
 void __connman_device_increase_connections(struct connman_device *device)
 {
+	if (device == NULL)
+		return;
+
 	device->connections++;
 }
 
 void __connman_device_decrease_connections(struct connman_device *device)
 {
+	if (device == NULL)
+		return;
+
 	device->connections--;
 }
 
