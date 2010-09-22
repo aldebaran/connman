@@ -93,6 +93,8 @@ void connman_service_unref(struct connman_service *service);
 enum connman_service_type connman_service_get_type(struct connman_service *service);
 char *connman_service_get_interface(struct connman_service *service);
 
+const char *connman_service_get_domainname(struct connman_service *service);
+const char *connman_service_get_nameserver(struct connman_service *service);
 const char *connman_service_get_proxy_autoconfig(struct connman_service *service);
 
 #ifdef __cplusplus

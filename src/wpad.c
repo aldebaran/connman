@@ -123,11 +123,11 @@ void __connman_wpad_start(struct connman_service *service)
 	if (index < 0)
 		return;
 
-	domainname = __connman_service_get_domainname(service);
+	domainname = connman_service_get_domainname(service);
 	if (domainname == NULL)
 		return;
 
-	nameserver = __connman_service_get_nameserver(service);
+	nameserver = connman_service_get_nameserver(service);
 	if (nameserver == NULL)
 		return;
 

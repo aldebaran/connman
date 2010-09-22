@@ -1467,7 +1467,7 @@ void __connman_service_set_domainname(struct connman_service *service,
 	domain_changed(service);
 }
 
-const char *__connman_service_get_domainname(struct connman_service *service)
+const char *connman_service_get_domainname(struct connman_service *service)
 {
 	if (service == NULL)
 		return NULL;
@@ -1475,7 +1475,7 @@ const char *__connman_service_get_domainname(struct connman_service *service)
 	return service->domainname;
 }
 
-const char *__connman_service_get_nameserver(struct connman_service *service)
+const char *connman_service_get_nameserver(struct connman_service *service)
 {
 	if (service == NULL)
 		return NULL;
