@@ -109,8 +109,7 @@ int main(int argc, char *argv[])
 	if (option_nameserver != NULL) {
 		g_web_add_nameserver(web, option_nameserver);
 		g_free(option_nameserver);
-	} else
-		g_web_add_nameserver(web, "127.0.0.1");
+	}
 
 	timer = g_timer_new();
 
