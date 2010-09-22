@@ -40,6 +40,7 @@
 #define DBUS_TIMEOUT	5000
 
 static DBusConnection *connection;
+static dbus_bool_t daemon_running = FALSE;
 
 static struct connman_service *default_service = NULL;
 static char *current_config = NULL;
@@ -67,30 +68,24 @@ done:
 	dbus_message_unref(reply);
 }
 
-static void add_string_entry(DBusMessageIter *iter,
-					const char *key, const char *str)
+static void append_string(DBusMessageIter *iter, void *user_data)
 {
-	DBusMessageIter value;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
-
-	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
-					DBUS_TYPE_STRING_AS_STRING, &value);
-	dbus_message_iter_append_basic(&value, DBUS_TYPE_STRING, &str);
-	dbus_message_iter_close_container(iter, &value);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, user_data);
 }
 
-static void create_proxy_configuration(const char *interface, const char *url)
+static void create_proxy_configuration(void)
 {
 	DBusMessage *msg;
-	DBusMessageIter iter, dict, entry;
+	DBusMessageIter iter, dict;
 	DBusPendingCall *call;
 	dbus_bool_t result;
+	char *interface;
+	const char *str;
 
-	if (url == NULL)
+	if (default_service == NULL)
 		return;
 
-	DBG("interface %s url %s", interface, url);
+	DBG("");
 
 	msg = dbus_message_new_method_call(PACRUNNER_SERVICE, PACRUNNER_PATH,
 			PACRUNNER_INTERFACE, "CreateProxyConfiguration");
@@ -100,21 +95,39 @@ static void create_proxy_configuration(const char *interface, const char *url)
 	dbus_message_set_auto_start(msg, FALSE);
 
 	dbus_message_iter_init_append(msg, &iter);
+	connman_dbus_dict_open(&iter, &dict);
 
-	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
-			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
-			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
-        dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
-								NULL, &entry);
+	interface = connman_service_get_interface(default_service);
+	if (interface != NULL) {
+		connman_dbus_dict_append_basic(&dict, "Interface",
+						DBUS_TYPE_STRING, &interface);
+		g_free(interface);
+	}
 
-	if (interface != NULL)
-		add_string_entry(&entry, "Interface", interface);
+	str = connman_service_get_proxy_autoconfig(default_service);
+	if (str != NULL) {
+		const char *method = "auto";
+		connman_dbus_dict_append_basic(&dict, "Method",
+						DBUS_TYPE_STRING, &method);
+		connman_dbus_dict_append_basic(&dict, "URL",
+						DBUS_TYPE_STRING, &str);
+	} else {
+		const char *method = "direct";
+		connman_dbus_dict_append_basic(&dict, "Method",
+						DBUS_TYPE_STRING, &method);
+	}
 
-	add_string_entry(&entry, "URL", url);
+	str = connman_service_get_domainname(default_service);
+	if (str != NULL)
+		connman_dbus_dict_append_array(&dict, "Domains",
+					DBUS_TYPE_STRING, append_string, &str);
 
-	dbus_message_iter_close_container(&dict, &entry);
-	dbus_message_iter_close_container(&iter, &dict);
+	str = connman_service_get_nameserver(default_service);
+	if (str != NULL)
+		connman_dbus_dict_append_array(&dict, "Nameservers",
+					DBUS_TYPE_STRING, append_string, &str);
+
+	connman_dbus_dict_close(&iter, &dict);
 
 	result = dbus_connection_send_with_reply(connection, msg,
 							&call, DBUS_TIMEOUT);
@@ -180,9 +193,6 @@ static void destroy_proxy_configuration(void)
 
 static void default_service_changed(struct connman_service *service)
 {
-	char *interface;
-	const char *url;
-
 	DBG("service %p", service);
 
 	if (service == default_service)
@@ -190,14 +200,12 @@ static void default_service_changed(struct connman_service *service)
 
 	default_service = service;
 
+	if (daemon_running == FALSE)
+		return;
+
 	destroy_proxy_configuration();
 
-	interface = connman_service_get_interface(service);
-
-	url = connman_service_get_proxy_autoconfig(service);
-	create_proxy_configuration(interface, url);
-
-	g_free(interface);
+	create_proxy_configuration();
 }
 
 static struct connman_notifier pacrunner_notifier = {
@@ -207,22 +215,18 @@ static struct connman_notifier pacrunner_notifier = {
 
 static void pacrunner_connect(DBusConnection *conn, void *user_data)
 {
-	char *interface;
-	const char *url;
-
 	DBG("");
 
-	interface = connman_service_get_interface(default_service);
+	daemon_running = TRUE;
 
-	url = connman_service_get_proxy_autoconfig(default_service);
-	create_proxy_configuration(interface, url);
-
-	g_free(interface);
+	create_proxy_configuration();
 }
 
 static void pacrunner_disconnect(DBusConnection *conn, void *user_data)
 {
 	DBG("");
+
+	daemon_running = FALSE;
 
 	g_free(current_config);
 	current_config = NULL;
