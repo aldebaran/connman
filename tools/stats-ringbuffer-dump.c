@@ -118,7 +118,7 @@ static void stats_print_record(struct stats_record *rec)
 	printf("%p %s %d %d %d %d %d %d %d %d %d\n", rec, buffer,
 		rec->data.rx_packets,
 		rec->data.tx_packets,
-		rec->data.tx_bytes,
+		rec->data.rx_bytes,
 		rec->data.tx_bytes,
 		rec->data.rx_errors,
 		rec->data.tx_errors,
