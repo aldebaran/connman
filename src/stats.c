@@ -250,11 +250,12 @@ static int stats_open_file(struct connman_service *service,
 				struct stats_file *file,
 				connman_bool_t roaming)
 {
-	struct stat stat;
+	struct stat st;
 	char *name;
 	int err;
 	size_t size;
 	struct stats_file_header *hdr;
+	connman_bool_t new_file = FALSE;
 
 	if (roaming == FALSE) {
 		name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
@@ -265,9 +266,16 @@ static int stats_open_file(struct connman_service *service,
 	}
 
 	file->name = name;
+
+	err = stat(file->name, &st);
+	if (err < 0) {
+		/* according documentation the only possible error is ENOENT */
+		new_file = TRUE;
+	}
+
 	file->fd = open(name, O_RDWR | O_CREAT, 0644);
 
-	if (file->fd == -1) {
+	if (file->fd < 0) {
 		connman_error("open error %s for %s",
 				strerror(errno), file->name);
 		return -errno;
@@ -275,14 +283,10 @@ static int stats_open_file(struct connman_service *service,
 
 	file->max_len = STATS_MAX_FILE_SIZE;
 
-	err = fstat(file->fd, &stat);
-	if (err < 0)
-		return -errno;
-
-	if (stat.st_size < sysconf(_SC_PAGESIZE))
+	if (st.st_size < sysconf(_SC_PAGESIZE))
 		size = sysconf(_SC_PAGESIZE);
 	else
-		size = (size_t)stat.st_size;
+		size = st.st_size;
 
 	err = stats_file_remap(file, size);
 	if (err < 0)
@@ -295,7 +299,15 @@ static int stats_open_file(struct connman_service *service,
 			hdr->end < sizeof(struct stats_file_header) ||
 			hdr->begin > file->len ||
 			hdr->end > file->len) {
-		connman_warn("invalid file header for %s", file->name);
+		if (new_file == FALSE) {
+			/*
+			 * A newly created file can't have a correct
+			 * header so we only warn if the file already
+			 * existed and doesn't have a proper
+			 * header.
+			 */
+			connman_warn("invalid file header for %s", file->name);
+		}
 
 		hdr->magic = MAGIC;
 		hdr->begin = sizeof(struct stats_file_header);
