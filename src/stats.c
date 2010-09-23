@@ -257,10 +257,10 @@ static int stats_open_file(struct connman_service *service,
 	struct stats_file_header *hdr;
 
 	if (roaming == FALSE) {
-		name = g_strdup_printf("%s/%s.data", STORAGEDIR,
+		name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
 					__connman_service_get_ident(service));
 	} else {
-		name = g_strdup_printf("%s/%s-roaming.data", STORAGEDIR,
+		name = g_strdup_printf("%s/stats/%s-roaming.data", STORAGEDIR,
 					__connman_service_get_ident(service));
 	}
 
