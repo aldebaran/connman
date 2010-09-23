@@ -38,6 +38,10 @@
 
 #include "connman.h"
 
+#ifndef ARPHDR_PHONET_PIPE
+#define ARPHDR_PHONET_PIPE (821)
+#endif
+
 #define print(arg...) do { } while (0)
 //#define print(arg...) connman_info(arg)
 
@@ -398,6 +402,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
+	case ARPHDR_PHONET_PIPE:
 	case ARPHRD_NONE:
 		__connman_ipconfig_newlink(index, type, flags,
 							str, mtu, &stats);
