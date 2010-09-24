@@ -90,6 +90,7 @@ struct server_data {
 struct request_data {
 	struct sockaddr_in sin;
 	int client_sk;
+	int protocol;
 	socklen_t len;
 	guint16 srcid;
 	guint16 dstid;
@@ -454,7 +455,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 			struct request_data *req = list->data;
 			struct domain_hdr *hdr = (void *) (req->request + 2);
 
-			if (!req->client_sk)
+			if (req->protocol == IPPROTO_UDP)
 				continue;
 
 			/*
@@ -492,7 +493,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 		for (list = request_list; list; list = list->next) {
 			struct request_data *req = list->data;
 
-			if (!req->client_sk)
+			if (req->protocol == IPPROTO_UDP)
 				continue;
 
 			DBG("Sending req %s over TCP", (char *)req->name);
@@ -939,6 +940,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	memcpy(&req->sin, (struct sockaddr_in *)&client_addr, sizeof(req->sin));
 	req->client_sk = client_sk;
+	req->protocol = IPPROTO_TCP;
 	req->len = client_addr_len;
 
 	request_id += 2;
@@ -1039,6 +1041,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	memcpy(&req->sin, &sin, sizeof(sin));
 	req->client_sk = 0;
+	req->protocol = IPPROTO_UDP;
 	req->len = size;
 
 	request_id += 2;
