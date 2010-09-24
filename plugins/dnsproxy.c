@@ -354,6 +354,42 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	return err;
 }
 
+static void send_response(int sk, unsigned char *buf, int len,
+				const struct sockaddr *to, socklen_t tolen,
+				int protocol)
+{
+	struct domain_hdr *hdr;
+	int err, offset;
+
+	switch (protocol) {
+	case IPPROTO_UDP:
+		offset = 0;
+		break;
+
+	case IPPROTO_TCP:
+		offset = 2;
+		break;
+
+	default:
+		return;
+	}
+
+	if (len < 12)
+		return;
+
+	hdr = (void*) (buf + offset);
+
+	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
+
+	hdr->qr = 1;
+	hdr->rcode = 2;
+
+	hdr->ancount = 0;
+	hdr->nscount = 0;
+	hdr->arcount = 0;
+
+	err = sendto(sk, buf, len, 0, to, tolen);
+}
 
 static void destroy_server(struct server_data *server)
 {
@@ -410,7 +446,31 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 		return FALSE;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		GSList *list;
+
 		DBG("TCP server channel closed");
+
+		for (list = request_list; list; list = list->next) {
+			struct request_data *req = list->data;
+			struct domain_hdr *hdr = (void *) (req->request + 2);
+
+			if (!req->client_sk)
+				continue;
+
+			/*
+			 * If we're not waiting for any further response
+			 * from another name server, then we send an error
+			 * response to the client.
+			 */
+			if (req->numserv && --(req->numserv))
+				continue;
+
+			hdr->id = req->srcid;
+			send_response(req->client_sk, req->request,
+					req->request_len, NULL, 0, IPPROTO_TCP);
+
+			request_list = g_slist_remove(request_list, req);
+		}
 
 		server_list = g_slist_remove(server_list, server);
 		destroy_server(server);
@@ -826,27 +886,6 @@ static int parse_request(unsigned char *buf, int len,
 	return 0;
 }
 
-static void send_response(int sk, unsigned char *buf, int len,
-				const struct sockaddr *to, socklen_t tolen)
-{
-	struct domain_hdr *hdr = (void *) buf;
-	int err;
-
-	if (len < 12)
-		return;
-
-	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
-
-	hdr->qr = 1;
-	hdr->rcode = 2;
-
-	hdr->ancount = 0;
-	hdr->nscount = 0;
-	hdr->arcount = 0;
-
-	err = sendto(sk, buf, len, 0, to, tolen);
-}
-
 static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
@@ -890,7 +929,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	err = parse_request(buf + 2, len - 2, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0 &&
 				connman_ondemand_connected())) {
-		send_response(client_sk, buf, len, NULL, 0);
+		send_response(client_sk, buf, len, NULL, 0, IPPROTO_TCP);
 		return TRUE;
 	}
 
@@ -989,7 +1028,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	err = parse_request(buf, len, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0 &&
 				connman_ondemand_connected())) {
-		send_response(sk, buf, len, (struct sockaddr *) &sin, size);
+		send_response(sk, buf, len, (struct sockaddr *) &sin, size,
+				IPPROTO_UDP);
 		return TRUE;
 	}
 
