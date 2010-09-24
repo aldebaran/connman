@@ -116,6 +116,21 @@ static guint udp_listener_watch = 0;
 static GIOChannel *tcp_listener_channel = NULL;
 static guint tcp_listener_watch = 0;
 
+static int protocol_offset(int protocol)
+{
+	switch (protocol) {
+	case IPPROTO_UDP:
+		return 0;
+
+	case IPPROTO_TCP:
+		return 2;
+
+	default:
+		return -EINVAL;
+	}
+
+}
+
 static struct request_data *find_request(guint16 id)
 {
 	GSList *list;
@@ -167,22 +182,12 @@ static void send_response(int sk, unsigned char *buf, int len,
 				int protocol)
 {
 	struct domain_hdr *hdr;
-	int err, offset;
+	int err, offset = protocol_offset(protocol);
 
 	DBG("");
 
-	switch (protocol) {
-	case IPPROTO_UDP:
-		offset = 0;
-		break;
-
-	case IPPROTO_TCP:
-		offset = 2;
-		break;
-
-	default:
+	if (offset < 0)
 		return;
-	}
 
 	if (len < 12)
 		return;
@@ -350,21 +355,10 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 {
 	struct domain_hdr *hdr;
 	struct request_data *req;
-	unsigned char offset;
-	int dns_id, sk, err;
+	int dns_id, sk, err, offset = protocol_offset(protocol);
 
-	switch (protocol) {
-	case IPPROTO_UDP:
-		offset = 0;
-		break;
-
-	case IPPROTO_TCP:
-		offset = 2;
-		break;
-
-	default:
-		return -EINVAL;
-	}
+	if (offset < 0)
+		return offset;
 
 	hdr = (void *)(reply + offset);
 	dns_id = reply[offset] | reply[offset + 1] << 8;
