@@ -557,7 +557,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 		while (total_bytes_recv < reply_len) {
 			bytes_recv = recv(sk, reply + 2, reply_len, 0);
 			if (bytes_recv < 0)
-				return TRUE;
+				break;
 
 			total_bytes_recv += bytes_recv;
 		}
@@ -565,6 +565,8 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 		forward_dns_reply(reply, reply_len + 2, IPPROTO_TCP);
 
 		g_free(reply);
+
+		return FALSE;
 	}
 
 	return TRUE;
@@ -608,8 +610,14 @@ static struct server_data *create_server(const char *interface,
 	}
 
 	data = find_server(interface, domain, server, protocol);
-	if (data)
+	if (data) {
+		if (data->watch > 0)
+			g_source_remove(data->watch);
+		data->watch = g_io_add_watch(data->channel,
+			G_IO_OUT | G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
+						tcp_server_event, data);
 		return data;
+	}
 
 	sk = socket(AF_INET, type, protocol);
 	if (sk < 0) {
