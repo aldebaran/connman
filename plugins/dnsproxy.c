@@ -862,8 +862,12 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	DBG("condition 0x%x", condition);
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		connman_error("Error with TCP listener channel");
+		if (tcp_listener_watch > 0)
+			g_source_remove(tcp_listener_watch);
 		tcp_listener_watch = 0;
+
+		connman_error("Error with TCP listener channel");
+
 		return FALSE;
 	}
 
