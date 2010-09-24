@@ -1044,23 +1044,39 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	return resolv(req, buf, query);
 }
 
-static int create_tcp_listener(void)
+static int create_dns_listener(int protocol)
 {
-	const char *ifname = "lo";
+	GIOChannel *channel;
+	const char *ifname = "lo", *proto;
 	struct sockaddr_in sin;
-	int sk;
+	int sk, type;
 
 	DBG("");
 
-	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	switch (protocol) {
+	case IPPROTO_UDP:
+		proto = "UDP";
+		type = SOCK_DGRAM;
+		break;
+
+	case IPPROTO_TCP:
+		proto = "TCP";
+		type = SOCK_STREAM;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	sk = socket(AF_INET, type, protocol);
 	if (sk < 0) {
-		connman_error("Failed to create TCP listener socket");
+		connman_error("Failed to create %s listener socket", proto);
 		return -EIO;
 	}
 
 	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
 					ifname, strlen(ifname) + 1) < 0) {
-		connman_error("Failed to bind TCP listener interface");
+		connman_error("Failed to bind %s listener interface", proto);
 		close(sk);
 		return -EIO;
 	}
@@ -1072,79 +1088,35 @@ static int create_tcp_listener(void)
 	sin.sin_addr.s_addr = htonl(INADDR_ANY);
 
 	if (bind(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		connman_error("Failed to bind TCP listener socket");
+		connman_error("Failed to bind %s listener socket", proto);
 		close(sk);
 		return -EIO;
 	}
 
-	if (listen(sk, 10) < 0) {
+	if (protocol == IPPROTO_TCP && listen(sk, 10) < 0) {
 		connman_error("Failed to listen on TCP socket");
 		close(sk);
 		return -EIO;
 	}
 
-	tcp_listener_channel = g_io_channel_unix_new(sk);
-	if (tcp_listener_channel == NULL) {
-		connman_error("Failed to create listener channel");
+	channel = g_io_channel_unix_new(sk);
+	if (channel == NULL) {
+		connman_error("Failed to create %s listener channel", proto);
 		close(sk);
 		return -EIO;
 	}
 
-	g_io_channel_set_close_on_unref(tcp_listener_channel, TRUE);
+	g_io_channel_set_close_on_unref(channel, TRUE);
 
-	tcp_listener_watch = g_io_add_watch(tcp_listener_channel, G_IO_IN,
-						tcp_listener_event, NULL);
-
-	return 0;
-}
-
-static int create_udp_listener(void)
-{
-	const char *ifname = "lo";
-	struct sockaddr_in sin;
-	int sk;
-
-	DBG("");
-
-	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (sk < 0) {
-		connman_error("Failed to create UDP listener socket");
-		return -EIO;
+	if (protocol == IPPROTO_TCP) {
+		tcp_listener_channel = channel;
+		tcp_listener_watch = g_io_add_watch(channel,
+					G_IO_IN, tcp_listener_event, NULL);
+	} else {
+		udp_listener_channel = channel;
+		udp_listener_watch = g_io_add_watch(channel,
+					G_IO_IN, udp_listener_event, NULL);
 	}
-
-	//setsockopt(sk, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
-	//setsockopt(sk, SOL_IP, IP_PKTINFO, &opt, sizeof(opt));
-
-	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-					ifname, strlen(ifname) + 1) < 0) {
-		connman_error("Failed to bind UDP listener interface");
-		close(sk);
-		return -EIO;
-	}
-
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr("127.0.0.1");
-	//sin.sin_addr.s_addr = INADDR_ANY;
-
-	if (bind(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		connman_error("Failed to bind UDP listener socket");
-		close(sk);
-		return -EIO;
-	}
-
-	udp_listener_channel = g_io_channel_unix_new(sk);
-	if (udp_listener_channel == NULL) {
-		connman_error("Failed to create UDP listener channel");
-		close(sk);
-		return -EIO;
-	}
-
-	g_io_channel_set_close_on_unref(udp_listener_channel, TRUE);
-
-	udp_listener_watch = g_io_add_watch(udp_listener_channel, G_IO_IN,
-						udp_listener_event, NULL);
 
 	return 0;
 }
@@ -1173,11 +1145,11 @@ static int create_listener(void)
 {
 	int err;
 
-	err = create_udp_listener();
+	err = create_dns_listener(IPPROTO_UDP);
 	if (err < 0)
 		return err;
 
-	err = create_tcp_listener();
+	err = create_dns_listener(IPPROTO_TCP);
 	if (err < 0) {
 		destroy_udp_listener();
 		return err;
