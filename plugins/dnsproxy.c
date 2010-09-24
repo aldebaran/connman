@@ -79,18 +79,23 @@ struct server_data {
 	char *interface;
 	char *domain;
 	char *server;
+	int protocol;
 	GIOChannel *channel;
 	guint watch;
+	guint timeout;
 	gboolean enabled;
+	gboolean connected;
 };
 
 struct request_data {
 	struct sockaddr_in sin;
+	int client_sk;
 	socklen_t len;
 	guint16 srcid;
 	guint16 dstid;
 	guint16 altid;
 	guint timeout;
+	guint watch;
 	guint numserv;
 	guint numresp;
 	gpointer request;
@@ -105,8 +110,10 @@ static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
 static guint16 request_id = 0x0000;
 
-static GIOChannel *listener_channel = NULL;
-static guint listener_watch = 0;
+static GIOChannel *udp_listener_channel = NULL;
+static guint udp_listener_watch = 0;
+static GIOChannel *tcp_listener_channel = NULL;
+static guint tcp_listener_watch = 0;
 
 static struct request_data *find_request(guint16 id)
 {
@@ -123,7 +130,8 @@ static struct request_data *find_request(guint16 id)
 }
 
 static struct server_data *find_server(const char *interface,
-					const char *domain, const char *server)
+					const char *domain, const char *server,
+						int protocol)
 {
 	GSList *list;
 
@@ -136,7 +144,8 @@ static struct server_data *find_server(const char *interface,
 			continue;
 
 		if (g_str_equal(data->interface, interface) == TRUE &&
-				g_str_equal(data->server, server) == TRUE) {
+				g_str_equal(data->server, server) == TRUE &&
+				data->protocol == protocol) {
 			if (domain == NULL) {
 				if (data->domain == NULL)
 					return data;
@@ -151,155 +160,27 @@ static struct server_data *find_server(const char *interface,
 	return NULL;
 }
 
-static gboolean server_event(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+static gboolean request_timeout(gpointer user_data)
 {
-	struct server_data *data = user_data;
-	struct request_data *req;
-	unsigned char buf[4096];
-	struct domain_hdr *hdr = (void *) &buf;
-	int sk, err, len;
+	struct request_data *req = user_data;
 
-	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		connman_error("Error with server channel");
-		data->watch = 0;
-		return FALSE;
-	}
-
-	sk = g_io_channel_unix_get_fd(channel);
-
-	len = recv(sk, buf, sizeof(buf), 0);
-	if (len < 12)
-		return TRUE;
-
-	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
-
-	req = find_request(buf[0] | buf[1] << 8);
-	if (req == NULL)
-		return TRUE;
-
-	DBG("id 0x%04x rcode %d", hdr->id, hdr->rcode);
-
-	buf[0] = req->srcid & 0xff;
-	buf[1] = req->srcid >> 8;
-
-	req->numresp++;
-
-	if (hdr->rcode == 0 || req->resp == NULL) {
-		g_free(req->resp);
-		req->resplen = 0;
-
-		req->resp = g_try_malloc(len);
-		if (req->resp == NULL)
-			return TRUE;
-
-		memcpy(req->resp, buf, len);
-		req->resplen = len;
-	}
-
-	if (hdr->rcode > 0 && req->numresp < req->numserv)
-		return TRUE;
-
-	if (req->timeout > 0)
-		g_source_remove(req->timeout);
+	DBG("id 0x%04x", req->srcid);
 
 	request_list = g_slist_remove(request_list, req);
 
-	sk = g_io_channel_unix_get_fd(listener_channel);
+	if (req->resplen > 0 && req->resp != NULL) {
+		int sk, err;
 
-	err = sendto(sk, req->resp, req->resplen, 0,
+		sk = g_io_channel_unix_get_fd(udp_listener_channel);
+
+		err = sendto(sk, req->resp, req->resplen, 0,
 				(struct sockaddr *) &req->sin, req->len);
+	}
 
 	g_free(req->resp);
 	g_free(req);
 
-	return TRUE;
-}
-
-static struct server_data *create_server(const char *interface,
-					const char *domain, const char *server)
-{
-	struct server_data *data;
-	struct sockaddr_in sin;
-	int sk;
-
-	DBG("interface %s server %s", interface, server);
-
-	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (sk < 0) {
-		connman_error("Failed to create server %s socket", server);
-		return NULL;
-	}
-
-	if (interface != NULL) {
-		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-				interface, strlen(interface) + 1) < 0) {
-			connman_error("Failed to bind server %s "
-						"to interface %s",
-							server, interface);
-			close(sk);
-			return NULL;
-		}
-	}
-
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr(server);
-
-	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		connman_error("Failed to connect server %s", server);
-		close(sk);
-		return NULL;
-	}
-
-	data = g_try_new0(struct server_data, 1);
-	if (data == NULL) {
-		connman_error("Failed to allocate server %s data", server);
-		close(sk);
-		return NULL;
-	}
-
-	data->channel = g_io_channel_unix_new(sk);
-	if (data->channel == NULL) {
-		connman_error("Failed to create server %s channel", server);
-		close(sk);
-		g_free(data);
-		return NULL;
-	}
-
-	g_io_channel_set_close_on_unref(data->channel, TRUE);
-
-	data->watch = g_io_add_watch(data->channel, G_IO_IN,
-						server_event, data);
-
-	data->interface = g_strdup(interface);
-	data->domain = g_strdup(domain);
-	data->server = g_strdup(server);
-
-	/* Enable new servers by default */
-	data->enabled = TRUE;
-
-	connman_info("Adding DNS server %s", data->server);
-
-	return data;
-}
-
-static void destroy_server(struct server_data *data)
-{
-	DBG("interface %s server %s", data->interface, data->server);
-
-	if (data->watch > 0)
-		g_source_remove(data->watch);
-
-	g_io_channel_unref(data->channel);
-
-	connman_info("Removing DNS server %s", data->server);
-
-	g_free(data->server);
-	g_free(data->domain);
-	g_free(data->interface);
-	g_free(data);
+	return FALSE;
 }
 
 static int append_query(unsigned char *buf, unsigned int size,
@@ -357,39 +238,375 @@ static int append_query(unsigned char *buf, unsigned int size,
 	return ptr - buf;
 }
 
-static gboolean request_timeout(gpointer user_data)
+static int ns_resolv(struct server_data *server, struct request_data *req,
+				gpointer request, gpointer name)
 {
-	struct request_data *req = user_data;
+	int sk, err;
 
-	DBG("id 0x%04x", req->srcid);
+	sk = g_io_channel_unix_get_fd(server->channel);
+
+	err = send(sk, request, req->request_len, 0);
+
+	req->numserv++;
+
+	if (server->domain != NULL && server->protocol == IPPROTO_UDP) {
+		unsigned char alt[1024];
+		struct domain_hdr *hdr = (void *) &alt;
+		int altlen, domlen;
+
+		domlen = strlen(server->domain) + 1;
+		if (domlen < 5)
+			return -EINVAL;
+
+		alt[0] = req->altid & 0xff;
+		alt[1] = req->altid >> 8;
+
+		memcpy(alt + 2, request + 2, 10);
+		hdr->qdcount = htons(1);
+
+		altlen = append_query(alt + 12, sizeof(alt) - 12,
+					name, server->domain);
+		if (altlen < 0)
+			return -EINVAL;
+
+		altlen += 12;
+
+		memcpy(alt + altlen, request + altlen - domlen,
+				req->request_len - altlen + domlen);
+
+		err = send(sk, alt, req->request_len + domlen + 1, 0);
+
+		req->numserv++;
+	}
+
+	return 0;
+}
+
+static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
+{
+	struct domain_hdr *hdr;
+	struct request_data *req;
+	unsigned char offset;
+	int dns_id, sk, err;
+
+	switch (protocol) {
+	case IPPROTO_UDP:
+		offset = 0;
+		break;
+
+	case IPPROTO_TCP:
+		offset = 2;
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	hdr = (void *)(reply + offset);
+	dns_id = reply[offset] | reply[offset + 1] << 8;
+
+	DBG("Received %d bytes (id 0x%04x)", reply_len, dns_id);
+
+	req = find_request(dns_id);
+	if (req == NULL)
+		return -EINVAL;
+
+	DBG("id 0x%04x rcode %d", hdr->id, hdr->rcode);
+
+	reply[offset] = req->srcid & 0xff;
+	reply[offset + 1] = req->srcid >> 8;
+
+	req->numresp++;
+
+	if (hdr->rcode == 0 || req->resp == NULL) {
+		g_free(req->resp);
+		req->resplen = 0;
+
+		req->resp = g_try_malloc(reply_len);
+		if (req->resp == NULL)
+			return -ENOMEM;
+
+		memcpy(req->resp, reply, reply_len);
+		req->resplen = reply_len;
+	}
+
+	if (hdr->rcode > 0 && req->numresp < req->numserv)
+		return -EINVAL;
+
+	if (req->timeout > 0)
+		g_source_remove(req->timeout);
 
 	request_list = g_slist_remove(request_list, req);
 
-	if (req->resplen > 0 && req->resp != NULL) {
-		int sk, err;
-
-		sk = g_io_channel_unix_get_fd(listener_channel);
-
+	if (protocol == IPPROTO_UDP) {
+		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 		err = sendto(sk, req->resp, req->resplen, 0,
 				(struct sockaddr *) &req->sin, req->len);
+	} else {
+		sk = req->client_sk;
+		err = send(sk, req->resp, req->resplen, 0);
+		close(sk);
 	}
 
 	g_free(req->resp);
 	g_free(req);
 
+	return err;
+}
+
+
+static void destroy_server(struct server_data *server)
+{
+	DBG("interface %s server %s", server->interface, server->server);
+
+	if (server->watch > 0)
+		g_source_remove(server->watch);
+
+	if (server->timeout > 0)
+		g_source_remove(server->timeout);
+
+	g_io_channel_unref(server->channel);
+
+	connman_info("Removing DNS server %s", server->server);
+
+	g_free(server->server);
+	g_free(server->domain);
+	g_free(server->interface);
+	g_free(server);
+}
+
+static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
+							gpointer user_data)
+{
+	struct server_data *data = user_data;
+	unsigned char buf[4096];
+	int sk, err, len;
+
+	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		connman_error("Error with server channel");
+		data->watch = 0;
+		return FALSE;
+	}
+
+	sk = g_io_channel_unix_get_fd(channel);
+
+	len = recv(sk, buf, sizeof(buf), 0);
+	if (len < 12)
+		return TRUE;
+
+	err = forward_dns_reply(buf, len, IPPROTO_UDP);
+
+	return TRUE;
+}
+
+static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
+							gpointer user_data)
+{
+	int sk;
+	struct server_data *server = user_data;
+
+	sk = g_io_channel_unix_get_fd(channel);
+	if (sk == 0)
+		return FALSE;
+
+	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		DBG("TCP server channel closed");
+
+		server_list = g_slist_remove(server_list, server);
+		destroy_server(server);
+
+		return FALSE;
+	}
+
+	if ((condition & G_IO_OUT) && !server->connected) {
+		GSList *list;
+
+		server->connected = TRUE;
+		server_list = g_slist_append(server_list, server);
+
+		if (server->timeout > 0) {
+			g_source_remove(server->timeout);
+			server->timeout = 0;
+		}
+
+		for (list = request_list; list; list = list->next) {
+			struct request_data *req = list->data;
+
+			if (!req->client_sk)
+				continue;
+
+			DBG("Sending req %s over TCP", (char *)req->name);
+
+			if (req->timeout > 0)
+				g_source_remove(req->timeout);
+
+			req->timeout = g_timeout_add_seconds(30,
+						request_timeout, req);
+			ns_resolv(server, req, req->request, req->name);
+		}
+
+	} else if (condition & G_IO_IN) {
+		int len, bytes_recv, total_bytes_recv;
+		unsigned char reply_len_buf[2];
+		uint16_t reply_len;
+		unsigned char *reply;
+
+		len = recv(sk, reply_len_buf, 2, 0);
+		if (len < 2)
+			return TRUE;
+
+		reply_len = reply_len_buf[1] | reply_len_buf[0] << 8;
+
+		DBG("TCP reply %d bytes", reply_len);
+
+		reply = g_try_malloc(reply_len + 2);
+		if (reply == NULL)
+			return TRUE;
+
+		reply[0] = reply_len_buf[0];
+		reply[1] = reply_len_buf[1];
+
+		total_bytes_recv = bytes_recv = 0;
+		while (total_bytes_recv < reply_len) {
+			bytes_recv = recv(sk, reply + 2, reply_len, 0);
+			if (bytes_recv < 0)
+				return TRUE;
+
+			total_bytes_recv += bytes_recv;
+		}
+
+		forward_dns_reply(reply, reply_len + 2, IPPROTO_TCP);
+
+		g_free(reply);
+	}
+
+	return TRUE;
+}
+
+static gboolean tcp_idle_timeout(gpointer user_data)
+{
+	struct server_data *server = user_data;
+
+	DBG("");
+
+	if (server == NULL)
+		return FALSE;
+
+	destroy_server(server);
+
 	return FALSE;
+}
+
+static struct server_data *create_server(const char *interface,
+					const char *domain, const char *server,
+					int protocol)
+{
+	struct server_data *data;
+	struct sockaddr_in sin;
+	int sk, type, ret;
+
+	DBG("interface %s server %s", interface, server);
+
+	switch (protocol) {
+	case IPPROTO_UDP:
+		type = SOCK_DGRAM;
+		break;
+
+	case IPPROTO_TCP:
+		type = SOCK_STREAM;
+		break;
+
+	default:
+		return NULL;
+	}
+
+	data = find_server(interface, domain, server, protocol);
+	if (data)
+		return data;
+
+	sk = socket(AF_INET, type, protocol);
+	if (sk < 0) {
+		connman_error("Failed to create server %s socket", server);
+		return NULL;
+	}
+
+	if (interface != NULL) {
+		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+				interface, strlen(interface) + 1) < 0) {
+			connman_error("Failed to bind server %s "
+						"to interface %s",
+							server, interface);
+			close(sk);
+			return NULL;
+		}
+	}
+
+	data = g_try_new0(struct server_data, 1);
+	if (data == NULL) {
+		connman_error("Failed to allocate server %s data", server);
+		close(sk);
+		return NULL;
+	}
+
+	data->channel = g_io_channel_unix_new(sk);
+	if (data->channel == NULL) {
+		connman_error("Failed to create server %s channel", server);
+		close(sk);
+		g_free(data);
+		return NULL;
+	}
+
+	g_io_channel_set_close_on_unref(data->channel, TRUE);
+
+	if (protocol == IPPROTO_TCP) {
+		g_io_channel_set_flags(data->channel, G_IO_FLAG_NONBLOCK, NULL);
+		data->watch = g_io_add_watch(data->channel,
+			G_IO_OUT | G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
+						tcp_server_event, data);
+		data->timeout = g_timeout_add_seconds(30, tcp_idle_timeout,
+								data);
+	} else
+		data->watch = g_io_add_watch(data->channel, G_IO_IN,
+						udp_server_event, data);
+
+	data->interface = g_strdup(interface);
+	data->domain = g_strdup(domain);
+	data->server = g_strdup(server);
+	data->protocol = protocol;
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(53);
+	sin.sin_addr.s_addr = inet_addr(server);
+
+	ret = connect(sk, (struct sockaddr *) &sin, sizeof(sin));
+	if (ret < 0) {
+		if ((protocol == IPPROTO_TCP && errno != EINPROGRESS) ||
+				protocol == IPPROTO_UDP) {
+			connman_error("Failed to connect to server %s", server);
+			close(sk);
+			g_free(data);
+			return NULL;
+		}
+	}
+
+	if (protocol == IPPROTO_UDP) {
+		/* Enable new servers by default */
+		data->enabled = TRUE;
+		connman_info("Adding DNS server %s", data->server);
+
+		server_list = g_slist_append(server_list, data);
+
+		return data;
+	}
+
+	return NULL;
 }
 
 static gboolean resolv(struct request_data *req,
 				gpointer request, gpointer name)
 {
-	int sk, err;
 	GSList *list;
-
-	request_list = g_slist_append(request_list, req);
-
-	req->numserv = 0;
-	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
@@ -400,41 +617,8 @@ static gboolean resolv(struct request_data *req,
 		if (data->enabled == FALSE)
 			continue;
 
-		sk = g_io_channel_unix_get_fd(data->channel);
-
-		err = send(sk, request, req->request_len, 0);
-
-		req->numserv++;
-
-		if (data->domain != NULL) {
-			unsigned char alt[1024];
-			struct domain_hdr *hdr = (void *) &alt;
-			int altlen, domlen;
-
-			domlen = strlen(data->domain) + 1;
-			if (domlen < 5)
-				continue;
-
-			alt[0] = req->altid & 0xff;
-			alt[1] = req->altid >> 8;
-
-			memcpy(alt + 2, request + 2, 10);
-			hdr->qdcount = htons(1);
-
-			altlen = append_query(alt + 12, sizeof(alt) - 12,
-						name, data->domain);
-			if (altlen < 0)
-				continue;
-
-			altlen += 12;
-
-			memcpy(alt + altlen, request + altlen - domlen,
-					req->request_len - altlen + domlen);
-
-			err = send(sk, alt, req->request_len + domlen + 1, 0);
-
-			req->numserv++;
-		}
+		if (ns_resolv(data, req, request, name) < 0)
+			continue;
 	}
 
 	return TRUE;
@@ -450,32 +634,37 @@ static int dnsproxy_append(const char *interface, const char *domain,
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
-	data = create_server(interface, domain, server);
+	data = create_server(interface, domain, server, IPPROTO_UDP);
 	if (data == NULL)
 		return -EIO;
 
-	server_list = g_slist_append(server_list, data);
-
 	return 0;
+}
+
+static void remove_server(const char *interface, const char *domain,
+			const char *server, int protocol)
+{
+	struct server_data *data;
+
+	data = find_server(interface, domain, server, protocol);
+	if (data == NULL)
+		return;
+
+	server_list = g_slist_remove(server_list, data);
+
+	destroy_server(data);
 }
 
 static int dnsproxy_remove(const char *interface, const char *domain,
 							const char *server)
 {
-	struct server_data *data;
-
 	DBG("interface %s server %s", interface, server);
 
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
-	data = find_server(interface, domain, server);
-	if (data == NULL)
-		return 0;
-
-	server_list = g_slist_remove(server_list, data);
-
-	destroy_server(data);
+	remove_server(interface, domain, server, IPPROTO_UDP);
+	remove_server(interface, domain, server, IPPROTO_TCP);
 
 	return 0;
 }
@@ -658,7 +847,116 @@ static void send_response(int sk, unsigned char *buf, int len,
 	err = sendto(sk, buf, len, 0, to, tolen);
 }
 
-static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
+static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
+							gpointer user_data)
+{
+	unsigned char buf[768];
+	char query[512];
+	struct request_data *req;
+	struct server_data *server;
+	int sk, client_sk, len, err;
+	struct sockaddr client_addr;
+	socklen_t client_addr_len;
+	GSList *list;
+
+	DBG("condition 0x%x", condition);
+
+	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		connman_error("Error with TCP listener channel");
+		tcp_listener_watch = 0;
+		return FALSE;
+	}
+
+	sk = g_io_channel_unix_get_fd(channel);
+
+	client_addr_len = sizeof(struct sockaddr);
+	client_sk = accept(sk, &client_addr, &client_addr_len);
+	if (client_sk < 0) {
+		connman_error("Accept failure on TCP listener");
+		tcp_listener_watch = 0;
+		return FALSE;
+	}
+
+	len = recv(client_sk, buf, sizeof(buf), 0);
+	if (len < 2)
+		return TRUE;
+
+	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
+
+	err = parse_request(buf + 2, len - 2, query, sizeof(query));
+	if (err < 0 || (g_slist_length(server_list) == 0 &&
+				connman_ondemand_connected())) {
+		send_response(client_sk, buf, len, NULL, 0);
+		return TRUE;
+	}
+
+	req = g_try_new0(struct request_data, 1);
+	if (req == NULL)
+		return TRUE;
+
+	memcpy(&req->sin, (struct sockaddr_in *)&client_addr, sizeof(req->sin));
+	req->client_sk = client_sk;
+	req->len = client_addr_len;
+
+	request_id += 2;
+	if (request_id == 0x0000 || request_id == 0xffff)
+		request_id += 2;
+
+	req->srcid = buf[2] | (buf[3] << 8);
+	req->dstid = request_id;
+	req->altid = request_id + 1;
+	req->request_len = len;
+
+	buf[2] = req->dstid & 0xff;
+	buf[3] = req->dstid >> 8;
+
+	req->numserv = 0;
+	request_list = g_slist_append(request_list, req);
+
+	for (list = server_list; list; list = list->next) {
+		struct server_data *data = list->data;
+
+		if (data->protocol != IPPROTO_UDP || data->enabled == FALSE)
+			continue;
+
+		server = create_server(data->interface, data->domain,
+					data->server, IPPROTO_TCP);
+
+		/*
+		 * If server is NULL, we're not connected yet.
+		 * Copy the relevant buffers and continue with
+		 * the next nameserver.
+		 * The request will actually be sent once we're
+		 * properly connected over TCP to this nameserver.
+		 */
+		if (server == NULL) {
+			req->request = g_try_malloc0(req->request_len);
+			if (req->request == NULL)
+				return TRUE;
+
+			memcpy(req->request, buf, req->request_len);
+
+			req->name = g_try_malloc0(sizeof(query));
+			if (req->name == NULL) {
+				g_free(req->request);
+				return TRUE;
+			}
+			memcpy(req->name, query, sizeof(query));
+
+			continue;
+		}
+
+		if (req->timeout > 0)
+			g_source_remove(req->timeout);
+
+		req->timeout = g_timeout_add_seconds(30, request_timeout, req);
+		ns_resolv(server, req, buf, query);
+	}
+
+	return TRUE;
+}
+
+static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
 	unsigned char buf[768];
@@ -669,8 +967,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	int sk, err, len;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		connman_error("Error with listener channel");
-		listener_watch = 0;
+		connman_error("Error with UDP listener channel");
+		udp_listener_watch = 0;
 		return FALSE;
 	}
 
@@ -696,6 +994,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	memcpy(&req->sin, &sin, sizeof(sin));
+	req->client_sk = 0;
 	req->len = size;
 
 	request_id += 2;
@@ -737,10 +1036,69 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 	}
 
+
+	req->numserv = 0;
+	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
+	request_list = g_slist_append(request_list, req);
+
 	return resolv(req, buf, query);
 }
 
-static int create_listener(void)
+static int create_tcp_listener(void)
+{
+	const char *ifname = "lo";
+	struct sockaddr_in sin;
+	int sk;
+
+	DBG("");
+
+	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	if (sk < 0) {
+		connman_error("Failed to create TCP listener socket");
+		return -EIO;
+	}
+
+	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+					ifname, strlen(ifname) + 1) < 0) {
+		connman_error("Failed to bind TCP listener interface");
+		close(sk);
+		return -EIO;
+	}
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(53);
+	sin.sin_addr.s_addr = inet_addr("127.0.0.1");
+	sin.sin_addr.s_addr = htonl(INADDR_ANY);
+
+	if (bind(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+		connman_error("Failed to bind TCP listener socket");
+		close(sk);
+		return -EIO;
+	}
+
+	if (listen(sk, 10) < 0) {
+		connman_error("Failed to listen on TCP socket");
+		close(sk);
+		return -EIO;
+	}
+
+	tcp_listener_channel = g_io_channel_unix_new(sk);
+	if (tcp_listener_channel == NULL) {
+		connman_error("Failed to create listener channel");
+		close(sk);
+		return -EIO;
+	}
+
+	g_io_channel_set_close_on_unref(tcp_listener_channel, TRUE);
+
+	tcp_listener_watch = g_io_add_watch(tcp_listener_channel, G_IO_IN,
+						tcp_listener_event, NULL);
+
+	return 0;
+}
+
+static int create_udp_listener(void)
 {
 	const char *ifname = "lo";
 	struct sockaddr_in sin;
@@ -750,7 +1108,7 @@ static int create_listener(void)
 
 	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 	if (sk < 0) {
-		connman_error("Failed to create listener socket");
+		connman_error("Failed to create UDP listener socket");
 		return -EIO;
 	}
 
@@ -759,7 +1117,7 @@ static int create_listener(void)
 
 	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
 					ifname, strlen(ifname) + 1) < 0) {
-		connman_error("Failed to bind listener interface");
+		connman_error("Failed to bind UDP listener interface");
 		close(sk);
 		return -EIO;
 	}
@@ -771,22 +1129,59 @@ static int create_listener(void)
 	//sin.sin_addr.s_addr = INADDR_ANY;
 
 	if (bind(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		connman_error("Failed to bind listener socket");
+		connman_error("Failed to bind UDP listener socket");
 		close(sk);
 		return -EIO;
 	}
 
-	listener_channel = g_io_channel_unix_new(sk);
-	if (listener_channel == NULL) {
-		connman_error("Failed to create listener channel");
+	udp_listener_channel = g_io_channel_unix_new(sk);
+	if (udp_listener_channel == NULL) {
+		connman_error("Failed to create UDP listener channel");
 		close(sk);
 		return -EIO;
 	}
 
-	g_io_channel_set_close_on_unref(listener_channel, TRUE);
+	g_io_channel_set_close_on_unref(udp_listener_channel, TRUE);
 
-	listener_watch = g_io_add_watch(listener_channel, G_IO_IN,
-							listener_event, NULL);
+	udp_listener_watch = g_io_add_watch(udp_listener_channel, G_IO_IN,
+						udp_listener_event, NULL);
+
+	return 0;
+}
+
+static void destroy_udp_listener(void)
+{
+	DBG("");
+
+	if (udp_listener_watch > 0)
+		g_source_remove(udp_listener_watch);
+
+	g_io_channel_unref(udp_listener_channel);
+}
+
+static void destroy_tcp_listener(void)
+{
+	DBG("");
+
+	if (tcp_listener_watch > 0)
+		g_source_remove(tcp_listener_watch);
+
+	g_io_channel_unref(tcp_listener_channel);
+}
+
+static int create_listener(void)
+{
+	int err;
+
+	err = create_udp_listener();
+	if (err < 0)
+		return err;
+
+	err = create_tcp_listener();
+	if (err < 0) {
+		destroy_udp_listener();
+		return err;
+	}
 
 	connman_resolver_append("lo", NULL, "127.0.0.1");
 
@@ -797,12 +1192,7 @@ static void destroy_listener(void)
 {
 	GSList *list;
 
-	DBG("");
-
 	connman_resolver_remove_all("lo");
-
-	if (listener_watch > 0)
-		g_source_remove(listener_watch);
 
 	for (list = request_pending_list; list; list = list->next) {
 		struct request_data *req = list->data;
@@ -836,7 +1226,8 @@ static void destroy_listener(void)
 	g_slist_free(request_list);
 	request_list = NULL;
 
-	g_io_channel_unref(listener_channel);
+	destroy_tcp_listener();
+	destroy_udp_listener();
 }
 
 static int dnsproxy_init(void)
