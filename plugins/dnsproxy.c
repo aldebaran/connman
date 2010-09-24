@@ -318,30 +318,42 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 	req->numserv++;
 
-	if (server->domain != NULL && server->protocol == IPPROTO_UDP) {
+	if (server->domain != NULL) {
 		unsigned char alt[1024];
 		struct domain_hdr *hdr = (void *) &alt;
-		int altlen, domlen;
+		int altlen, domlen, offset;
+
+		offset = protocol_offset(server->protocol);
+		if (offset < 0)
+			return offset;
 
 		domlen = strlen(server->domain) + 1;
 		if (domlen < 5)
 			return -EINVAL;
 
-		alt[0] = req->altid & 0xff;
-		alt[1] = req->altid >> 8;
+		alt[offset] = req->altid & 0xff;
+		alt[offset + 1] = req->altid >> 8;
 
-		memcpy(alt + 2, request + 2, 10);
+		memcpy(alt + offset + 2, request + offset + 2, 10);
 		hdr->qdcount = htons(1);
 
-		altlen = append_query(alt + 12, sizeof(alt) - 12,
+		altlen = append_query(alt + offset + 12, sizeof(alt) - 12,
 					name, server->domain);
 		if (altlen < 0)
 			return -EINVAL;
 
 		altlen += 12;
 
-		memcpy(alt + altlen, request + altlen - domlen,
+		memcpy(alt + offset + altlen,
+			request + offset + altlen - domlen,
 				req->request_len - altlen + domlen);
+
+		if (server->protocol == IPPROTO_TCP) {
+			int req_len = req->request_len + domlen - 1;
+
+			alt[0] = (req_len >> 8) & 0xff;
+			alt[1] = req_len & 0xff;
+		}
 
 		err = send(sk, alt, req->request_len + domlen + 1, 0);
 
