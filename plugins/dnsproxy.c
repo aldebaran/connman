@@ -885,7 +885,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (len < 2)
 		return TRUE;
 
-	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
+	DBG("Received %d bytes (id 0x%04x)", len, buf[2] | buf[3] << 8);
 
 	err = parse_request(buf + 2, len - 2, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0 &&
