@@ -422,6 +422,8 @@ static void destroy_server(struct server_data *server)
 {
 	DBG("interface %s server %s", server->interface, server->server);
 
+	server_list = g_slist_remove(server_list, server);
+
 	if (server->watch > 0)
 		g_source_remove(server->watch);
 
@@ -430,7 +432,8 @@ static void destroy_server(struct server_data *server)
 
 	g_io_channel_unref(server->channel);
 
-	connman_info("Removing DNS server %s", server->server);
+	if (server->protocol == IPPROTO_UDP)
+		connman_info("Removing DNS server %s", server->server);
 
 	g_free(server->server);
 	g_free(server->domain);
@@ -499,7 +502,6 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 			request_list = g_slist_remove(request_list, req);
 		}
 
-		server_list = g_slist_remove(server_list, server);
 		destroy_server(server);
 
 		return FALSE;
@@ -565,6 +567,8 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 		forward_dns_reply(reply, reply_len + 2, IPPROTO_TCP);
 
 		g_free(reply);
+
+		destroy_server(server);
 
 		return FALSE;
 	}
@@ -744,8 +748,6 @@ static void remove_server(const char *interface, const char *domain,
 	data = find_server(interface, domain, server, protocol);
 	if (data == NULL)
 		return;
-
-	server_list = g_slist_remove(server_list, data);
 
 	destroy_server(data);
 }
