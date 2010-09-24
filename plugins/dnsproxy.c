@@ -482,9 +482,12 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 		for (list = request_list; list; list = list->next) {
 			struct request_data *req = list->data;
-			struct domain_hdr *hdr = (void *) (req->request + 2);
+			struct domain_hdr *hdr;
 
 			if (req->protocol == IPPROTO_UDP)
+				continue;
+
+			if (req->request == NULL)
 				continue;
 
 			/*
@@ -495,6 +498,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 			if (req->numserv && --(req->numserv))
 				continue;
 
+			hdr = (void *) (req->request + 2);
 			hdr->id = req->srcid;
 			send_response(req->client_sk, req->request,
 					req->request_len, NULL, 0, IPPROTO_TCP);
