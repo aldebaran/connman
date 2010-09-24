@@ -86,18 +86,26 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 }
 
 static gboolean check_plugin(struct connman_plugin_desc *desc,
-				const char *pattern, const char *exclude)
+				char **patterns, char **excludes)
 {
-	if (exclude != NULL &&
-			g_pattern_match_simple(exclude, desc->name) == TRUE) {
-		connman_info("Excluding %s", desc->description);
-		return FALSE;
+	if (excludes) {
+		for (; *excludes; excludes++)
+			if (g_pattern_match_simple(*excludes, desc->name))
+				break;
+		if (*excludes) {
+			connman_info("Excluding %s", desc->description);
+			return FALSE;
+		}
 	}
 
-	if (pattern != NULL &&
-			g_pattern_match_simple(pattern, desc->name) == FALSE) {
-		connman_info("Ignoring %s", desc->description);
-		return FALSE;
+	if (patterns) {
+		for (; *patterns; patterns++)
+			if (g_pattern_match_simple(*patterns, desc->name))
+				break;
+		if (!*patterns) {
+			connman_info("Ignoring %s", desc->description);
+			return FALSE;
+		}
 	}
 
 	return TRUE;
@@ -107,6 +115,8 @@ static gboolean check_plugin(struct connman_plugin_desc *desc,
 
 int __connman_plugin_init(const char *pattern, const char *exclude)
 {
+	gchar **patterns = NULL;
+	gchar **excludes = NULL;
 	GSList *list;
 	GDir *dir;
 	const gchar *file;
@@ -115,9 +125,15 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 
 	DBG("");
 
+	if (pattern)
+		patterns = g_strsplit_set(pattern, ", ", -1);
+
+	if (exclude)
+		excludes = g_strsplit_set(exclude, ", ", -1);
+
 	for (i = 0; __connman_builtin[i]; i++) {
 		if (check_plugin(__connman_builtin[i],
-						pattern, exclude) == FALSE)
+						patterns, excludes) == FALSE)
 			continue;
 
 		add_plugin(NULL, __connman_builtin[i]);
@@ -153,7 +169,7 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 				continue;
 			}
 
-			if (check_plugin(desc, pattern, exclude) == FALSE) {
+			if (check_plugin(desc, patterns, excludes) == FALSE) {
 				dlclose(handle);
 				continue;
 			}
