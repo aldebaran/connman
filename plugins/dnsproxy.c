@@ -161,13 +161,57 @@ static struct server_data *find_server(const char *interface,
 	return NULL;
 }
 
+
+static void send_response(int sk, unsigned char *buf, int len,
+				const struct sockaddr *to, socklen_t tolen,
+				int protocol)
+{
+	struct domain_hdr *hdr;
+	int err, offset;
+
+	DBG("");
+
+	switch (protocol) {
+	case IPPROTO_UDP:
+		offset = 0;
+		break;
+
+	case IPPROTO_TCP:
+		offset = 2;
+		break;
+
+	default:
+		return;
+	}
+
+	if (len < 12)
+		return;
+
+	hdr = (void*) (buf + offset);
+
+	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
+
+	hdr->qr = 1;
+	hdr->rcode = 2;
+
+	hdr->ancount = 0;
+	hdr->nscount = 0;
+	hdr->arcount = 0;
+
+	err = sendto(sk, buf, len, 0, to, tolen);
+}
+
 static gboolean request_timeout(gpointer user_data)
 {
 	struct request_data *req = user_data;
 
 	DBG("id 0x%04x", req->srcid);
 
+	if (req == NULL)
+		return FALSE;
+
 	request_list = g_slist_remove(request_list, req);
+	req->numserv--;
 
 	if (req->resplen > 0 && req->resp != NULL) {
 		int sk, err;
@@ -176,6 +220,25 @@ static gboolean request_timeout(gpointer user_data)
 
 		err = sendto(sk, req->resp, req->resplen, 0,
 				(struct sockaddr *) &req->sin, req->len);
+	} else if (req->request && req->numserv == 0) {
+		struct domain_hdr *hdr;
+
+		if (req->protocol == IPPROTO_TCP) {
+			hdr = (void *) (req->request + 2);
+			hdr->id = req->srcid;
+			send_response(req->client_sk, req->request,
+					req->request_len, NULL, 0, IPPROTO_TCP);
+
+		} else if (req->protocol == IPPROTO_UDP) {
+			int sk;
+
+			hdr = (void *) (req->request);
+			hdr->id = req->srcid;
+			sk = g_io_channel_unix_get_fd(udp_listener_channel);
+			send_response(sk, req->request, req->request_len,
+					(struct sockaddr *)&req->sin,
+						sizeof(req->sin), IPPROTO_UDP);
+		}
 	}
 
 	g_free(req->resp);
@@ -353,43 +416,6 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	g_free(req);
 
 	return err;
-}
-
-static void send_response(int sk, unsigned char *buf, int len,
-				const struct sockaddr *to, socklen_t tolen,
-				int protocol)
-{
-	struct domain_hdr *hdr;
-	int err, offset;
-
-	switch (protocol) {
-	case IPPROTO_UDP:
-		offset = 0;
-		break;
-
-	case IPPROTO_TCP:
-		offset = 2;
-		break;
-
-	default:
-		return;
-	}
-
-	if (len < 12)
-		return;
-
-	hdr = (void*) (buf + offset);
-
-	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
-
-	hdr->qr = 1;
-	hdr->rcode = 2;
-
-	hdr->ancount = 0;
-	hdr->nscount = 0;
-	hdr->arcount = 0;
-
-	err = sendto(sk, buf, len, 0, to, tolen);
 }
 
 static void destroy_server(struct server_data *server)
