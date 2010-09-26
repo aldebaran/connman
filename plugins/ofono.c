@@ -718,6 +718,9 @@ static void modem_roaming_changed(struct modem_data *modem,
 	GHashTableIter i;
 	gpointer value;
 
+	if (device == NULL)
+		return;
+
 	connman_device_set_string(device, "RegistrationStatus", status);
 
 	if (g_str_equal(status, "roaming"))
@@ -725,9 +728,6 @@ static void modem_roaming_changed(struct modem_data *modem,
 	else if (g_str_equal(status, "registered"))
 		roaming = FALSE;
 	else
-		return;
-
-	if (device == NULL)
 		return;
 
 	for (g_hash_table_iter_init(&i, network_hash);
