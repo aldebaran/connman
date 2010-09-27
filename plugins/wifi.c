@@ -231,12 +231,7 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 
 	DBG("result %d", result);
 
-	if (result < 0) {
-		connman_device_set_scanning(device, FALSE);
-		return;
-	}
-
-	connman_device_set_scanning(device, TRUE);
+	connman_device_set_scanning(device, FALSE);
 }
 
 static int wifi_scan(struct connman_device *device)
