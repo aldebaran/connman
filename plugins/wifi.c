@@ -337,10 +337,12 @@ static void interface_state(GSupplicantInterface *interface)
 		break;
 
 	case G_SUPPLICANT_STATE_DISCONNECTED:
+		connman_network_set_associating(network, FALSE);
 		connman_network_set_connected(network, FALSE);
 		break;
 
 	case G_SUPPLICANT_STATE_INACTIVE:
+		connman_network_set_associating(network, FALSE);
 		break;
 
 	case G_SUPPLICANT_STATE_UNKNOWN:
