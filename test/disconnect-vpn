@@ -4,7 +4,7 @@ import sys
 import dbus
 
 if (len(sys.argv) < 2):
-	print "Usage: %s <provider name> " % (sys.argv[0])
+	print "Usage: %s <VPN service path> " % (sys.argv[0])
 	sys.exit(1)
 
 bus = dbus.SystemBus()
@@ -18,5 +18,4 @@ print "remove path is %s" %(path)
 
 manager.RemoveProvider(sys.argv[1])
 
-print "remove path is %s" %(path)
 
