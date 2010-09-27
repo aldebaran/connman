@@ -231,7 +231,7 @@ static const char *mode2string(GSupplicantMode mode)
 	case G_SUPPLICANT_MODE_UNKNOWN:
 		break;
 	case G_SUPPLICANT_MODE_INFRA:
-		return "infra";
+		return "managed";
 	case G_SUPPLICANT_MODE_IBSS:
 		return "adhoc";
 	}
@@ -736,7 +736,7 @@ static void merge_network(GSupplicantNetwork *network)
 		g_string_append_printf(str, "%02x", ssid[i]);
 
 	if (g_strcmp0(mode, "0") == 0)
-		g_string_append_printf(str, "_infra");
+		g_string_append_printf(str, "_managed");
 	else if (g_strcmp0(mode, "1") == 0)
 		g_string_append_printf(str, "_adhoc");
 
