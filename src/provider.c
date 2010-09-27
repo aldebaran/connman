@@ -216,18 +216,30 @@ int __connman_provider_connect(struct connman_provider *provider)
 int __connman_provider_remove(const char *path)
 {
 	struct connman_provider *provider;
+	GHashTableIter iter;
+	gpointer value, key;
 
 	DBG("path %s", path);
 
-	provider = g_hash_table_lookup(provider_hash, path);
-	if (provider == NULL) {
-		DBG("patch %s not found", path);
-		return -ENXIO;
+	g_hash_table_iter_init(&iter, provider_hash);
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		const char *srv_path;
+		provider = value;
+
+		if (provider->vpn_service == NULL)
+			continue;
+
+		srv_path = __connman_service_get_path(provider->vpn_service);
+
+		if (g_strcmp0(srv_path, path) == 0) {
+			DBG("Removing VPN %s", provider->identifier);
+			g_hash_table_remove(provider_hash,
+						provider->identifier);
+			return 0;
+		}
 	}
 
-	g_hash_table_remove(provider_hash, path);
-
-	return 0;
+	return -ENXIO;
 }
 
 static int set_connected(struct connman_provider *provider,
