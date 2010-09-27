@@ -45,6 +45,7 @@
 #include <connman/device.h>
 #include <connman/rtnl.h>
 #include <connman/log.h>
+#include <connman/option.h>
 
 #include <gsupplicant/gsupplicant.h>
 
@@ -201,10 +202,11 @@ static int wifi_enable(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
 	const char *interface = connman_device_get_string(device, "Interface");
+	const char *driver = connman_option_get_string("wifi");
 
 	DBG("device %p %p", device, wifi);
 
-	return g_supplicant_interface_create(interface, "nl80211,wext",
+	return g_supplicant_interface_create(interface, driver,
 						interface_create_callback,
 							wifi);
 }
