@@ -281,7 +281,7 @@ static void interface_added(GSupplicantInterface *interface)
 	const char *driver = g_supplicant_interface_get_driver(interface);
 	struct wifi_data *wifi;
 
-	wifi = (struct wifi_data *)g_supplicant_interface_get_data(interface);
+	wifi = g_supplicant_interface_get_data(interface);
 
 	DBG("ifname %s driver %s wifi %p", ifname, driver, wifi);
 
@@ -303,7 +303,7 @@ static void interface_state(GSupplicantInterface *interface)
 	unsigned char bssid[ETH_ALEN];
 	unsigned int bssid_len;
 
-	wifi = (struct wifi_data *) g_supplicant_interface_get_data(interface);
+	wifi = g_supplicant_interface_get_data(interface);
 
 	DBG("wifi %p interface state %d", wifi, state);
 
@@ -362,7 +362,7 @@ static void interface_removed(GSupplicantInterface *interface)
 
 	DBG("ifname %s", ifname);
 
-	wifi = (struct wifi_data *)g_supplicant_interface_get_data(interface);
+	wifi = g_supplicant_interface_get_data(interface);
 
 	if (wifi == NULL || wifi->device == NULL) {
 		connman_error("Wrong wifi pointer");
@@ -378,7 +378,7 @@ static void scan_started(GSupplicantInterface *interface)
 
 	DBG("");
 
-	wifi = (struct wifi_data *)g_supplicant_interface_get_data(interface);
+	wifi = g_supplicant_interface_get_data(interface);
 
 	if (wifi == NULL)
 		return;
@@ -393,7 +393,7 @@ static void scan_finished(GSupplicantInterface *interface)
 
 	DBG("");
 
-	wifi = (struct wifi_data *)g_supplicant_interface_get_data(interface);
+	wifi = g_supplicant_interface_get_data(interface);
 
 	if (wifi == NULL)
 		return;
@@ -422,7 +422,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	DBG("");
 
 	interface = g_supplicant_network_get_interface(supplicant_network);
-	wifi = (struct wifi_data *) g_supplicant_interface_get_data(interface);
+	wifi = g_supplicant_interface_get_data(interface);
 	name = g_supplicant_network_get_name(supplicant_network);
 	path = g_supplicant_network_get_path(supplicant_network);
 	identifier = g_supplicant_network_get_identifier(supplicant_network);
