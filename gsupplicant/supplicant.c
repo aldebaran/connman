@@ -608,7 +608,7 @@ void g_supplicant_interface_set_data(GSupplicantInterface *interface,
 	interface->data = data;
 }
 
-const void *g_supplicant_interface_get_data(GSupplicantInterface *interface)
+void *g_supplicant_interface_get_data(GSupplicantInterface *interface)
 {
 	if (interface == NULL)
 		return NULL;

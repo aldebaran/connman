@@ -144,7 +144,7 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
 								void *data);
-const void *g_supplicant_interface_get_data(GSupplicantInterface *interface);
+void *g_supplicant_interface_get_data(GSupplicantInterface *interface);
 const char *g_supplicant_interface_get_ifname(GSupplicantInterface *interface);
 const char *g_supplicant_interface_get_driver(GSupplicantInterface *interface);
 GSupplicantState g_supplicant_interface_get_state(GSupplicantInterface *interface);
