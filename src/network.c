@@ -1442,6 +1442,34 @@ const char *connman_network_get_string(struct connman_network *network,
 }
 
 /**
+ * connman_network_set_passphrase:
+ * @network: network structure
+ * @passphrase: network passphrase
+ *
+ * Set network passphrase.
+ * If the network is linked to a service, the latter gets his passphrase
+ * set as well.
+ */
+int connman_network_set_passphrase(struct connman_network *network,
+						const char* passphrase)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL) {
+		connman_network_set_string(network, "WiFi.Passphrase",
+						passphrase);
+
+		return 0;
+	}
+
+	__connman_service_set_passphrase(service, passphrase);
+
+	return 0;
+}
+
+
+/**
  * connman_network_set_bool:
  * @network: network structure
  * @key: unique identifier
