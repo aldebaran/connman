@@ -498,6 +498,9 @@ const char *__connman_service_get_nameserver(struct connman_service *service);
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url);
 
+void __connman_service_set_passphrase(struct connman_service *service,
+					const char* passphrase);
+
 void __connman_service_notify(struct connman_ipconfig *ipconfig,
 			unsigned int rx_packets, unsigned int tx_packets,
 			unsigned int rx_bytes, unsigned int tx_bytes,

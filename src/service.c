@@ -1423,9 +1423,12 @@ const char *connman_service_get_proxy_autoconfig(struct connman_service *service
 	return __connman_ipconfig_get_proxy_autoconfig(service->ipconfig);
 }
 
-static void connman_service_set_passphrase(struct connman_service *service,
+void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase)
 {
+	if (service->immutable == TRUE)
+		return;
+
 	g_free(service->passphrase);
 	service->passphrase = g_strdup(passphrase);
 
@@ -1510,7 +1513,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &passphrase);
 
-		connman_service_set_passphrase(service, passphrase);
+		__connman_service_set_passphrase(service, passphrase);
 	} else if (g_str_equal(name, "APN") == TRUE) {
 		const char *apn;
 
@@ -1929,7 +1932,7 @@ static void request_input_cb (struct connman_service *service,
 
 	if (passphrase == NULL)
 		return;
-	connman_service_set_passphrase(service, passphrase);
+	__connman_service_set_passphrase(service, passphrase);
 	__connman_service_connect(service);
 }
 
