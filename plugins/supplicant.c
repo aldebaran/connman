@@ -2189,6 +2189,9 @@ static void scanning(struct supplicant_task *task, DBusMessage *msg)
 
 	connman_info("%s scanning %s", task->ifname,
 				scanning == TRUE ? "started" : "finished");
+
+	if (scanning == TRUE)
+		task->scanning = TRUE;
 }
 
 static gboolean delayed_scan(gpointer user_data)
