@@ -2522,6 +2522,25 @@ int supplicant_disconnect(struct connman_network *network)
 	return 0;
 }
 
+void supplicant_remove_network(struct connman_network *network)
+{
+	struct supplicant_task *task;
+	int index;
+
+	DBG("network %p", network);
+
+	index = connman_network_get_index(network);
+
+	task = find_task_by_index(index);
+	if (task == NULL)
+		return;
+
+	if (task->network != network)
+		return;
+
+	remove_network(task);
+}
+
 static void supplicant_activate(DBusConnection *conn)
 {
 	DBusMessage *message;

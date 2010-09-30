@@ -37,3 +37,5 @@ int supplicant_scan(struct connman_device *device);
 
 int supplicant_connect(struct connman_network *network);
 int supplicant_disconnect(struct connman_network *network);
+
+void supplicant_remove_network(struct connman_network *network);
