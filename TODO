@@ -163,16 +163,45 @@ WiFi
    through its pcsc-lite API.
 
 
+- EAP-Fast
+
+   Priority: Low
+   Complexity: C1
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+
+- EAP-GTC
+
+   Priority: Low
+   Complexity: C1
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+
 - WiFi p2p
 
    Priority: Medium
    Complexity: C2
 
 
+- WiFi CRDA setting through 3G country
+
+   Priority: Low
+   Complexity: C2
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   Setting the 802.11 country based on the 3G MNC/MCC.
+
+
 Bluetooth
 =========
 
 - DUN client
+
+   Priority: Low
+   Complexity: C4
+
+
+- DUN server
 
    Priority: Low
    Complexity: C4
