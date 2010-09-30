@@ -62,6 +62,8 @@ static int network_probe(struct connman_network *network)
 static void network_remove(struct connman_network *network)
 {
 	DBG("network %p", network);
+
+	supplicant_remove_network(network);
 }
 
 static int network_connect(struct connman_network *network)
