@@ -224,8 +224,8 @@ static DBusMessage *remove_provider(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &path,
-			      DBUS_TYPE_INVALID);
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
 
 	if (__connman_security_check_privilege(msg,
 				CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
@@ -657,7 +657,7 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetState",          "",      "s",     get_state          },
 	{ "CreateProfile",     "s",     "o",     create_profile     },
 	{ "RemoveProfile",     "o",     "",      remove_profile     },
-	{ "RemoveProvider",    "s",     "",      remove_provider    },
+	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "EnableTechnology",  "s",     "",      enable_technology,
 						G_DBUS_METHOD_FLAG_ASYNC },
