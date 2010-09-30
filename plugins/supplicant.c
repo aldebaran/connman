@@ -2312,13 +2312,6 @@ static void state_change(struct supplicant_task *task, DBusMessage *msg)
 		/* carrier off */
 		connman_network_set_connected(task->network, FALSE);
 
-		/*
-		 * Reset the passphrase if we're being disconnected before
-		 * association/handshake completes.
-		 */
-		if (prevstate != WPA_COMPLETED && state == WPA_DISCONNECTED)
-			connman_network_set_passphrase(task->network, NULL);
-
 		if (task->disconnecting == TRUE) {
 			connman_network_unref(task->network);
 			task->disconnecting = FALSE;
