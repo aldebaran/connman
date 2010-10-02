@@ -1,4 +1,11 @@
-[D-BUS Service]
-Name=org.moblin.connman
-Exec=@prefix@/sbin/connmand
-User=root
+[Unit]
+Description=Connection service
+After=syslog.target
+
+[Service]
+Type=dbus
+BusName=org.moblin.connman
+ExecStart=@prefix@/sbin/connmand -n
+
+[Install]
+WantedBy=multi-user.target

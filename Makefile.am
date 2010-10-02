@@ -40,9 +40,11 @@ dbusconfdir = @DBUS_CONFDIR@
 
 dbusconf_DATA = src/connman.conf
 
-dbusdatadir = @DBUS_DATADIR@
+if SYSTEMD
+systemdunitdir = @SYSTEMD_UNITDIR@
 
-dbusdata_DATA = src/connman.service
+systemdunit_DATA = src/connman.service
+endif
 endif
 
 plugin_LTLIBRARIES =
