@@ -39,6 +39,10 @@ if DATAFILES
 dbusconfdir = @DBUS_CONFDIR@
 
 dbusconf_DATA = src/connman.conf
+
+dbusdatadir = @DBUS_DATADIR@
+
+dbusdata_DATA = src/connman.service
 endif
 
 plugin_LTLIBRARIES =

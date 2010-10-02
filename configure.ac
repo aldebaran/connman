@@ -306,6 +306,16 @@ else
 fi
 AC_SUBST(DBUS_CONFDIR)
 
+AC_ARG_WITH(dbusdatadir, AC_HELP_STRING([--with-dbusdatadir=PATH],
+	[path to D-Bus data directory]), [path_dbusdata=${withval}],
+		[path_dbusdata="`$PKG_CONFIG --variable=datadir dbus-1`"])
+if (test -z "${path_dbusdata}"); then
+	DBUS_DATADIR="${datadir}/dbus-1/system-services"
+else
+	DBUS_DATADIR="${path_dbusdata}/dbus-1/system-services"
+fi
+AC_SUBST(DBUS_DATADIR)
+
 AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
 			[enable_polkit=${enableval}], [enable_polkit="no"])
