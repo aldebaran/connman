@@ -1,3 +1,19 @@
+ver 0.62:
+	Fix crash with non-existent or extra DHCP result options.
+	Fix crash when doing PEAP/TTLS authentication.
+	Fix issue with handling multiple data counters.
+	Fix issue with Bluetooth adapters without address.
+	Fix issue with multiple scanning attempts after disconnects.
+	Fix issue with VPN services when switching into offline mode.
+	Add support for storing statistics information in separate files.
+	Add support for verification of configuration file parameters.
+	Add support for handling time server values from DHCP.
+	Add support for allowing DNS over TCP within the DNS proxy.
+	Add support for loading proxy configurations into PACrunner.
+	Add support for WiFi plugin using new WPA Supplicant D-Bus API.
+	Add support for requesting passphrases via agents.
+	Remove default support for EDNS0 option.
+
 ver 0.61:
 	Add support for using the internal DHCP client by default.
 	Add support for latest PolicyKit framework.
