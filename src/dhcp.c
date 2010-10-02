@@ -134,6 +134,8 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 
 		__connman_utsname_set_hostname(value);
 	} else if (g_strcmp0(key, "Timeserver") == 0) {
+		connman_info("Timeserver %s", value);
+
 		g_free(dhcp->element->ipv4.timeserver);
 		dhcp->element->ipv4.timeserver = g_strdup(value);
 	} else if (g_strcmp0(key, "MTU") == 0) {
