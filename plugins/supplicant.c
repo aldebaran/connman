@@ -1454,6 +1454,8 @@ static int initiate_scan(struct supplicant_task *task)
 	if (task->scan_call != NULL)
 		return -EALREADY;
 
+	connman_info("%s initiating scan", task->ifname);
+
 	message = dbus_message_new_method_call(SUPPLICANT_NAME, task->path,
 					SUPPLICANT_INTF ".Interface", "scan");
 	if (message == NULL)
