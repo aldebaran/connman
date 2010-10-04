@@ -28,7 +28,7 @@
 #include <string.h>
 #include <signal.h>
 
-#include <gresolv/gresolv.h>
+#include <gweb/gresolv.h>
 
 static GTimer *timer;
 

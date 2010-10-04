@@ -32,8 +32,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
-#include <gresolv/gresolv.h>
-
+#include "gresolv.h"
 #include "gweb.h"
 
 struct web_session {

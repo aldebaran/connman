@@ -28,9 +28,7 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 
 gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c
 
-gresolv_sources = gresolv/gresolv.h gresolv/gresolv.c
-
-gweb_sources = gweb/gweb.h gweb/gweb.c
+gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c
 
 gsupplicant_sources = gsupplicant/gsupplicant.h gsupplicant/dbus.h \
 			gsupplicant/supplicant.c gsupplicant/dbus.c
@@ -60,7 +58,7 @@ noinst_PROGRAMS =
 
 sbin_PROGRAMS = src/connmand
 
-src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
+src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			$(gweb_sources) $(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
@@ -143,13 +141,13 @@ tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant.h tools/supplicant.c
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
-tools_web_test_SOURCES = $(gresolv_sources) $(gweb_sources) tools/web-test.c
+tools_web_test_SOURCES = $(gweb_sources) tools/web-test.c
 tools_web_test_LDADD = @GLIB_LIBS@ -lresolv
 
-tools_resolv_test_SOURCES = $(gresolv_sources) tools/resolv-test.c
+tools_resolv_test_SOURCES = $(gweb_sources) tools/resolv-test.c
 tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
 
-tools_wpad_test_SOURCES = $(gresolv_sources) tools/wpad-test.c
+tools_wpad_test_SOURCES = $(gweb_sources) tools/wpad-test.c
 tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
