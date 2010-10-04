@@ -118,11 +118,6 @@ int __connman_detect_init(void)
 	return connman_rtnl_register(&detect_rtnl);
 }
 
-void __connman_detect_start(void)
-{
-	DBG("");
-}
-
 void __connman_detect_cleanup(void)
 {
 	GSList *list;
