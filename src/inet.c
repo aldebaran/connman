@@ -436,8 +436,6 @@ struct connman_device *connman_inet_create_device(int index)
 		return NULL;
 	}
 
-	__connman_udev_get_devtype(devname);
-
 	type = __connman_inet_get_device_type(index);
 
 	switch (type) {

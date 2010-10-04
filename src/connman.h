@@ -184,6 +184,12 @@ int __connman_element_disable_technology(enum connman_service_type type);
 
 gboolean __connman_element_device_isfiltered(const char *devname);
 
+int __connman_detect_init(void);
+void __connman_detect_start(void);
+void __connman_detect_cleanup(void);
+
+connman_bool_t __connman_detect_get_blocked(int phyindex);
+
 #include <connman/ipconfig.h>
 
 int __connman_ipconfig_init(void);
@@ -279,13 +285,6 @@ int __connman_connection_init(void);
 void __connman_connection_cleanup(void);
 
 gboolean __connman_connection_update_gateway(void);
-
-int __connman_udev_init(void);
-void __connman_udev_start(void);
-void __connman_udev_cleanup(void);
-char *__connman_udev_get_devtype(const char *ifname);
-void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
-connman_bool_t __connman_udev_get_blocked(int phyindex);
 
 int __connman_wpad_init(void);
 void __connman_wpad_cleanup(void);

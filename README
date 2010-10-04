@@ -31,7 +31,6 @@ In order to compile Connection Manager you need following software packages:
 	- GCC compiler
 	- GLib library
 	- D-Bus library
-	- udev library (optional)
 	- PolicyKit (optional)
 
 To configure run:

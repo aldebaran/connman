@@ -125,7 +125,7 @@ static GIOStatus rfkill_process(GIOChannel *chan)
 	switch (event->type) {
 	case RFKILL_TYPE_ALL:
 	case RFKILL_TYPE_WLAN:
-		__connman_udev_rfkill(sysname, blocked);
+		/* FIXME: unblock device */
 		break;
 	default:
 		break;

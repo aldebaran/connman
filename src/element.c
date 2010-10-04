@@ -1385,7 +1385,7 @@ void __connman_element_start(void)
 	started = TRUE;
 
 	__connman_rtnl_start();
-	__connman_udev_start();
+	__connman_detect_start();
 
 	__connman_connection_init();
 	__connman_ipv4_init();

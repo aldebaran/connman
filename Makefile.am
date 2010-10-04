@@ -67,7 +67,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
 			src/device.c src/network.c src/connection.c \
 			src/manager.c src/profile.c src/service.c \
 			src/agent.c src/notifier.c src/provider.c \
-			src/resolver.c src/ipconfig.c \
+			src/resolver.c src/ipconfig.c src/detect.c \
 			src/ipv4.c src/dhcp.c src/rtnl.c src/inet.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
@@ -75,18 +75,12 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gresolv_sources) \
 			src/session.c src/tethering.c src/ondemand.c \
 			src/wpad.c src/stats.c
 
-if UDEV
-src_connmand_SOURCES += src/udev.c
-else
-src_connmand_SOURCES += src/udev-compat.c
-endif
-
 if WIFI
 src_connmand_SOURCES += $(gsupplicant_sources)
 endif
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
-					@CAPNG_LIBS@ @UDEV_LIBS@ -lresolv -ldl
+						@CAPNG_LIBS@ -lresolv -ldl
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
@@ -109,7 +103,7 @@ build_plugindir = $(plugindir)
 build_scriptdir = $(scriptdir)
 endif
 
-AM_CFLAGS = @UDEV_CFLAGS@ @IPTC_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
+AM_CFLAGS = @IPTC_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
 			@DBUS_CFLAGS@ @GLIB_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
@@ -227,7 +221,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-pacrunner \
 				--enable-google \
 				--enable-meego \
-				--enable-udev \
 				--enable-client \
 				--enable-portal \
 				--enable-hh2serial-gps \
