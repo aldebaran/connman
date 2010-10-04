@@ -106,11 +106,6 @@ static struct connman_rtnl detect_rtnl = {
 	.dellink	= detect_dellink,
 };
 
-connman_bool_t __connman_detect_get_blocked(int phyindex)
-{
-	return FALSE;
-}
-
 int __connman_detect_init(void)
 {
 	DBG("");

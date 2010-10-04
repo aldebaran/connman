@@ -187,8 +187,6 @@ gboolean __connman_element_device_isfiltered(const char *devname);
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
 
-connman_bool_t __connman_detect_get_blocked(int phyindex);
-
 #include <connman/ipconfig.h>
 
 int __connman_ipconfig_init(void);

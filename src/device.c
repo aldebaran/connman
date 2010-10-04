@@ -559,9 +559,6 @@ static int setup_device(struct connman_device *device)
 		break;
 	}
 
-	if (__connman_detect_get_blocked(device->phyindex) == TRUE)
-		return 0;
-
 	if (device->offlinemode == FALSE &&
 				device->powered_persistent == TRUE)
 		__connman_device_enable(device);
