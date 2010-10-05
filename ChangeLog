@@ -1,3 +1,7 @@
+ver 0.60.5
+	Remove EDNS0 option (Fixes BMC #4818)
+	Implement DNS over TCP for dnsproxy
+
 ver 0.60.4
 	Do not remove wifi network upon disconnection (Fixes BMC #7730, #7734)
 	Set WiFi task scanning flag when receiving a Scanning event
