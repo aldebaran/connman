@@ -707,6 +707,7 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
+		GList *config_list;
 
 		if (family == AF_INET6) {
 			g_free(ipdevice->ipv6_gateway);
@@ -728,6 +729,20 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 			g_free(ipaddress->gateway);
 			ipaddress->gateway = g_strdup(gateway);
 		}
+
+		for (config_list = g_list_first(ipconfig_list); config_list;
+					config_list = g_list_next(config_list)) {
+			struct connman_ipconfig *ipconfig = config_list->data;
+
+			if (index != ipconfig->index)
+				continue;
+
+			if (ipconfig->ops == NULL)
+				continue;
+
+			if (ipconfig->ops->ip_bound)
+				ipconfig->ops->ip_bound(ipconfig);
+		}
 	}
 
 	connman_info("%s {add} route %s gw %s scope %u <%s>",
@@ -748,6 +763,7 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
+		GList *config_list;
 
 		if (family == AF_INET6) {
 			g_free(ipdevice->ipv6_gateway);
@@ -768,6 +784,20 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 
 			g_free(ipaddress->gateway);
 			ipaddress->gateway = NULL;
+		}
+
+		for (config_list = g_list_first(ipconfig_list); config_list;
+					config_list = g_list_next(config_list)) {
+			struct connman_ipconfig *ipconfig = config_list->data;
+
+			if (index != ipconfig->index)
+				continue;
+
+			if (ipconfig->ops == NULL)
+				continue;
+
+			if (ipconfig->ops->ip_release)
+				ipconfig->ops->ip_release(ipconfig);
 		}
 	}
 
