@@ -392,6 +392,8 @@ enum connman_device_type __connman_inet_get_device_type(int index)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(ifr.ifr_name, "vboxnet") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		else if (g_str_has_prefix(ifr.ifr_name, "virbr") == TRUE)
+			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(devname, "bnep") == TRUE)
 			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
 		else if (g_str_has_prefix(devname, "wmx") == TRUE)

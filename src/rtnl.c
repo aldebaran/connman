@@ -94,6 +94,10 @@ static connman_bool_t ether_blacklisted(const char *name)
 	if (g_str_has_prefix(name, "vboxnet") == TRUE)
 		return TRUE;
 
+	/* virtual interface from Virtual Machine Manager */
+	if (g_str_has_prefix(name, "virbr") == TRUE)
+		return TRUE;
+
 	return FALSE;
 }
 
