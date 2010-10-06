@@ -626,9 +626,9 @@ int __connman_technology_add_rfkill(unsigned int index,
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	g_hash_table_replace(rfkill_table, &index, technology);
+	g_hash_table_replace(rfkill_table, &rfkill->index, technology);
 
-	g_hash_table_replace(technology->rfkill_list, &index, rfkill);
+	g_hash_table_replace(technology->rfkill_list, &rfkill->index, rfkill);
 
 	return 0;
 }
