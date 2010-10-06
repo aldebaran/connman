@@ -36,6 +36,8 @@ static GSList *technology_list = NULL;
 struct connman_rfkill {
 	unsigned int index;
 	enum connman_service_type type;
+	connman_bool_t softblock;
+	connman_bool_t hardblock;
 };
 
 enum connman_technology_state {
@@ -611,18 +613,18 @@ int __connman_technology_add_rfkill(unsigned int index,
 	DBG("index %u type %d soft %u hard %u", index, type,
 							softblock, hardblock);
 
+	technology = technology_get(type);
+	if (technology == NULL)
+		return -ENXIO;
+
 	rfkill = g_try_new0(struct connman_rfkill, 1);
 	if (rfkill == NULL)
 		return -ENOMEM;
 
 	rfkill->index = index;
 	rfkill->type = type;
-
-	technology = technology_get(type);
-	if (technology == NULL) {
-		g_free(rfkill);
-		return -ENXIO;
-	}
+	rfkill->softblock = softblock;
+	rfkill->hardblock = hardblock;
 
 	g_hash_table_replace(rfkill_table, &index, technology);
 
@@ -636,12 +638,20 @@ int __connman_technology_update_rfkill(unsigned int index,
 						connman_bool_t hardblock)
 {
 	struct connman_technology *technology;
+	struct connman_rfkill *rfkill;
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
 	technology = g_hash_table_lookup(rfkill_table, &index);
 	if (technology == NULL)
 		return -ENXIO;
+
+	rfkill = g_hash_table_lookup(technology->rfkill_list, &index);
+	if (rfkill == NULL)
+		return -ENXIO;
+
+	rfkill->softblock = softblock;
+	rfkill->hardblock = hardblock;
 
 	return 0;
 }
