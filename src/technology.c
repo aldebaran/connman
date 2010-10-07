@@ -57,6 +57,7 @@ struct connman_technology {
 	GHashTable *rfkill_list;
 	GSList *device_list;
 	gint enabled;
+	gint blocked;
 
 	struct connman_technology_driver *driver;
 	void *driver_data;
@@ -497,20 +498,14 @@ int __connman_technology_add_device(struct connman_device *device)
 
 	g_hash_table_insert(device_table, device, technology);
 
-	if (technology->device_list == NULL) {
-		if (__connman_device_get_blocked(device) == TRUE)
-			technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
-		else
-			technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+	if (g_atomic_int_get(&technology->blocked))
+		goto done;
 
-		state_changed(technology);
-	} else {
-		if (technology->state == CONNMAN_TECHNOLOGY_STATE_BLOCKED &&
-				__connman_device_get_blocked(device) == FALSE) {
-			technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
-			state_changed(technology);
-		}
-	}
+	technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+
+	state_changed(technology);
+
+done:
 
 	technology->device_list = g_slist_append(technology->device_list,
 								device);
@@ -554,12 +549,15 @@ int __connman_technology_enable_device(struct connman_device *device)
 
 	DBG("device %p", device);
 
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_enable(type);
-
 	technology = g_hash_table_lookup(device_table, device);
 	if (technology == NULL)
 		return -ENXIO;
+
+	if (g_atomic_int_get(&technology->blocked))
+		return -ERFKILL;
+
+	type = __connman_device_get_service_type(device);
+	__connman_notifier_enable(type);
 
 	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
 		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
@@ -602,6 +600,18 @@ int __connman_technology_disable_device(struct connman_device *device)
 	return 0;
 }
 
+static void technology_blocked(struct connman_technology *technology,
+				connman_bool_t blocked)
+{
+	GSList *list;
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		__connman_device_set_blocked(device, blocked);
+	}
+}
+
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,
 						connman_bool_t softblock,
@@ -609,6 +619,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
+	connman_bool_t blocked;
 
 	DBG("index %u type %d soft %u hard %u", index, type,
 							softblock, hardblock);
@@ -630,6 +641,17 @@ int __connman_technology_add_rfkill(unsigned int index,
 
 	g_hash_table_replace(technology->rfkill_list, &rfkill->index, rfkill);
 
+	blocked = (softblock || hardblock) ? TRUE : FALSE;
+	if (blocked == FALSE)
+		return 0;
+
+	if (g_atomic_int_exchange_and_add(&technology->blocked, 1) == 0) {
+		technology_blocked(technology, TRUE);
+
+		technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		state_changed(technology);
+	}
+
 	return 0;
 }
 
@@ -639,6 +661,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
+	connman_bool_t blocked;
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
@@ -652,6 +675,28 @@ int __connman_technology_update_rfkill(unsigned int index,
 
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
+
+	blocked = (softblock || hardblock) ? TRUE : FALSE;
+
+	if (blocked) {
+		guint n_blocked;
+
+		n_blocked =
+			g_atomic_int_exchange_and_add(&technology->blocked, 1);
+		if (n_blocked != g_hash_table_size(technology->rfkill_list) - 1)
+			return 0;
+
+		technology_blocked(technology, blocked);
+		technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		state_changed(technology);
+	} else {
+		if (g_atomic_int_dec_and_test(&technology->blocked) == FALSE)
+			return 0;
+
+		technology_blocked(technology, blocked);
+		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+		state_changed(technology);
+	}
 
 	return 0;
 }
@@ -669,6 +714,12 @@ int __connman_technology_remove_rfkill(unsigned int index)
 	g_hash_table_remove(technology->rfkill_list, &index);
 
 	g_hash_table_remove(rfkill_table, &index);
+
+	if (g_atomic_int_dec_and_test(&technology->blocked) == TRUE) {
+		technology_blocked(technology, FALSE);
+		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
+		state_changed(technology);
+	}
 
 	return 0;
 }
