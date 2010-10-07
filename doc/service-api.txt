@@ -402,20 +402,34 @@ Properties	string State [readonly]
 				Possible values are "direct", "auto",
 				"manual" and "auto-config".
 
-				If the DHCP server provides an automatic
-				configuration URL, then this value is set
-				to "auto-config". The PAC file will be
+				If the DHCP server, or WPAD protocol, provides
+				an automatic configuration URL, then this value
+				is set to "auto-config". The PAC file will be
 				referenced by the URL value.
 
 				If no automatic configuration is available,
-				then "direct" is set.
-
-				The values "auto" and "manual" are not yet
-				supported.
+				then "direct" is set, unless "manual" or "auto"
+				method was set.
 
 			string URL [readonly]
 
-				Automatic proxy configuration URL.
+				Automatic proxy configuration URL. Used by
+				"auto" and "auto-config" methods.
+
+			array{string} Servers [readonly]
+
+				Used when "manual" method is set.
+
+				List of proxy URIs. The URI without a protocol
+				will be interpreted as the generic proxy URI.
+				All others will target a specific protocol and
+				only once.
+
+			array{string} Excludes [readonly]
+
+				Used when "manual" method is set.
+
+				List of hosts which can be accessed directly.
 
 		dict Proxy.Configuration [readwrite]
 
@@ -423,8 +437,10 @@ Properties	string State [readonly]
 			the actual system configuration while this allows
 			user configuration.
 
-			Currently only setting Method to either "direct"
-			or "auto" is supported.
+			If "auto" method is set with an empty URL, then
+			WPAD protocol will be ran.
+
+			All methods are supported but "auto-config".
 
 		dict Provider [readonly]
 
