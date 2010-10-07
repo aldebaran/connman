@@ -9,7 +9,10 @@ def extract_values(values):
 	val = "{"
 	for key in values.keys():
 		val += " " + key + "="
-		val += str(values[key])
+		if key in ["Servers", "Excludes"]:
+			val += extract_list(values[key])
+		else:
+			val += str(values[key])
 	val += " }"
 	return val
 
