@@ -205,7 +205,7 @@ int __connman_device_enable(struct connman_device *device)
 {
 	int err;
 
-	DBG("device %p", device);
+	DBG("device %p %d", device, device->blocked);
 
 	if (!device->driver || !device->driver->enable)
 		return -EOPNOTSUPP;
@@ -742,6 +742,7 @@ struct connman_device *connman_device_create(const char *node,
 {
 	struct connman_device *device;
 	const char *str;
+	enum connman_service_type service_type;
 
 	DBG("node %s type %d", node, type);
 
@@ -773,6 +774,9 @@ struct connman_device *connman_device_create(const char *node,
 	device->powered_persistent = TRUE;
 
 	device->phyindex = -1;
+
+	service_type = __connman_device_get_service_type(device);
+	device->blocked = __connman_technology_get_blocked(service_type);
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
