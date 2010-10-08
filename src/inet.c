@@ -201,34 +201,6 @@ done:
 	return err;
 }
 
-static unsigned short index2type(int index)
-{
-	struct ifreq ifr;
-	int sk, err;
-
-	if (index < 0)
-		return ARPHRD_VOID;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return ARPHRD_VOID;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	if (err == 0)
-		err = ioctl(sk, SIOCGIFHWADDR, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return ARPHRD_VOID;
-
-	return ifr.ifr_hwaddr.sa_family;
-}
-
 static char *index2addr(int index)
 {
 	struct ifreq ifr;
@@ -348,76 +320,6 @@ done:
 	return result;
 }
 
-enum connman_device_type __connman_inet_get_device_type(int index)
-{
-	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-	unsigned short type = index2type(index);
-	const char *devname;
-	struct ifreq ifr;
-	int sk;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return devtype;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0)
-		goto done;
-
-	devname = ifr.ifr_name;
-
-	if (type == ARPHRD_ETHER) {
-		char phy80211_path[PATH_MAX];
-		char bonding_path[PATH_MAX];
-		char bridge_path[PATH_MAX];
-		char wimax_path[PATH_MAX];
-		struct stat st;
-		struct iwreq iwr;
-
-		snprintf(phy80211_path, PATH_MAX,
-					"/sys/class/net/%s/phy80211", devname);
-		snprintf(bonding_path, PATH_MAX,
-					"/sys/class/net/%s/bonding", devname);
-		snprintf(bridge_path, PATH_MAX,
-					"/sys/class/net/%s/bridge", devname);
-		snprintf(wimax_path, PATH_MAX,
-					"/sys/class/net/%s/wimax", devname);
-
-		memset(&iwr, 0, sizeof(iwr));
-		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
-
-		if (g_str_has_prefix(devname, "vmnet") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(ifr.ifr_name, "vboxnet") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(ifr.ifr_name, "virbr") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(devname, "bnep") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(devname, "wmx") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
-		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
-		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (stat(bonding_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (stat(phy80211_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_WIFI;
-		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
-			devtype = CONNMAN_DEVICE_TYPE_WIFI;
-		else
-			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
-	}
-
-done:
-	close(sk);
-
-	return devtype;
-}
-
 struct connman_device *connman_inet_create_device(int index)
 {
 	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
@@ -438,7 +340,7 @@ struct connman_device *connman_inet_create_device(int index)
 		return NULL;
 	}
 
-	type = __connman_inet_get_device_type(index);
+	type = __connman_rtnl_get_device_type(index);
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:

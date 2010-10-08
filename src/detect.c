@@ -51,7 +51,7 @@ static void detect_newlink(unsigned short type, int index,
 
 	DBG("type %d index %d", type, index);
 
-	devtype = __connman_inet_get_device_type(index);
+	devtype = __connman_rtnl_get_device_type(index);
 
 	switch (devtype) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
