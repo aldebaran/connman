@@ -45,9 +45,6 @@ static void remove_counter(gpointer user_data)
 
 	DBG("owner %s path %s", counter->owner, counter->path);
 
-	if (counter->watch > 0)
-		g_dbus_remove_watch(connection, counter->watch);
-
 	__connman_rtnl_update_interval_remove(counter->interval);
 
 	__connman_service_counter_unregister(counter->path);
@@ -119,6 +116,9 @@ int __connman_counter_unregister(const char *owner, const char *path)
 	if (g_strcmp0(owner, counter->owner) != 0)
 		return -EACCES;
 
+	if (counter->watch > 0)
+		g_dbus_remove_watch(connection, counter->watch);
+
 	g_hash_table_remove(owner_mapping, counter->owner);
 	g_hash_table_remove(counter_table, counter->path);
 
@@ -149,6 +149,9 @@ static void release_counter(gpointer key, gpointer value, gpointer user_data)
 	DBusMessage *message;
 
 	DBG("owner %s path %s", counter->owner, counter->path);
+
+	if (counter->watch > 0)
+		g_dbus_remove_watch(connection, counter->watch);
 
 	message = dbus_message_new_method_call(counter->owner, counter->path,
 					CONNMAN_COUNTER_INTERFACE, "Release");
