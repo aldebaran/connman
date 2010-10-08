@@ -402,18 +402,15 @@ Properties	string State [readonly]
 				Possible values are "direct", "auto" and
 				"manual".
 
-				If the DHCP server, or WPAD protocol, provides
-				an automatic configuration URL, then this value
-				is set to "auto" in case "auto" is configured"
-				referenced by the URL value. If "auto" is
-				configured and DHCP and WPAD auto-discover
-				methods fails then method will be "direct".
+				In case of "auto" method, the URL file can be
+				provided unless you want to let DHCP/WPAD
+				auto-discover to be tried. In such case if DHCP
+				and WPAD auto-discover methods fails then
+				method will be "direct".
 
-				In case of "auto" method, the URL file has
-				to be provided. In case of "direct" no
-				additional information are provided. For
-				the "manual" method the Servers have to
-				be set.
+				In case of "direct" no additional information
+				are provided. For the "manual" method the
+				Servers have to be set, Excludes is optional.
 
 			string URL [readonly]
 
@@ -445,8 +442,8 @@ Properties	string State [readonly]
 			user configuration.
 
 			If "auto" method is set with an empty URL, then
-			WPAD protocol will be ran. Otherwise the specified
-			URL will be used.
+			DHCP/WPAD auto-discover will be tried. Otherwise the
+			specified URL will be used.
 
 		dict Provider [readonly]
 
