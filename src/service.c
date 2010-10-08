@@ -1130,7 +1130,7 @@ void __connman_service_notify(struct connman_ipconfig *ipconfig,
 
 int __connman_service_counter_register(const char *counter)
 {
-	struct connman_service *service = NULL;
+	struct connman_service *service;
 	GSequenceIter *iter;
 	struct connman_stats_counter *counters;
 
@@ -1160,7 +1160,7 @@ int __connman_service_counter_register(const char *counter)
 
 void __connman_service_counter_unregister(const char *counter)
 {
-	struct connman_service *service = NULL;
+	struct connman_service *service;
 	GSequenceIter *iter;
 
 	DBG("counter %s", counter);
