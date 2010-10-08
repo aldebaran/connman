@@ -661,7 +661,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
-	connman_bool_t blocked;
+	connman_bool_t blocked, old_blocked;
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
@@ -673,10 +673,14 @@ int __connman_technology_update_rfkill(unsigned int index,
 	if (rfkill == NULL)
 		return -ENXIO;
 
+	old_blocked = (rfkill->softblock || rfkill->hardblock) ? TRUE : FALSE;
+	blocked = (softblock || hardblock) ? TRUE : FALSE;
+
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	blocked = (softblock || hardblock) ? TRUE : FALSE;
+	if (blocked == old_blocked)
+		return 0;
 
 	if (blocked) {
 		guint n_blocked;
