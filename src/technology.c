@@ -728,6 +728,20 @@ int __connman_technology_remove_rfkill(unsigned int index)
 	return 0;
 }
 
+connman_bool_t __connman_technology_get_blocked(enum connman_service_type type)
+{
+	struct connman_technology *technology;
+
+	technology = technology_get(type);
+	if (technology == NULL)
+		return FALSE;
+
+	if (g_atomic_int_get(&technology->blocked))
+		return TRUE;
+
+	return FALSE;
+}
+
 int __connman_technology_init(void)
 {
 	DBG("");

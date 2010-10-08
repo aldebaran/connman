@@ -312,6 +312,8 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 int __connman_technology_enable_tethering(void);
 int __connman_technology_disable_tethering(void);
 
+connman_bool_t __connman_technology_get_blocked(enum connman_service_type type);
+
 #include <connman/device.h>
 
 int __connman_device_init(void);
