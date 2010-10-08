@@ -551,6 +551,7 @@ int __connman_rtnl_init(void);
 void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
+enum connman_device_type __connman_rtnl_get_device_type(int index);
 unsigned int __connman_rtnl_update_interval_add(unsigned int interval);
 unsigned int __connman_rtnl_update_interval_remove(unsigned int interval);
 int __connman_rtnl_request_update(void);

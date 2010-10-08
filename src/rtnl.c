@@ -63,7 +63,8 @@ struct interface_data {
 	int index;
 	char *name;
 	char *ident;
-	enum connman_service_type type;
+	enum connman_service_type service_type;
+	enum connman_device_type device_type;
 };
 
 static GHashTable *interface_list = NULL;
@@ -72,7 +73,7 @@ static void free_interface(gpointer data)
 {
 	struct interface_data *interface = data;
 
-	__connman_technology_remove_interface(interface->type,
+	__connman_technology_remove_interface(interface->service_type,
 			interface->index, interface->name, interface->ident);
 
 	g_free(interface->ident);
@@ -105,10 +106,13 @@ static void read_uevent(struct interface_data *interface)
 	char *filename, line[128];
 	FILE *f;
 
-	if (ether_blacklisted(interface->name) == TRUE)
-		interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
-	else
-		interface->type = CONNMAN_SERVICE_TYPE_ETHERNET;
+	if (ether_blacklisted(interface->name) == TRUE) {
+		interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+		interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
+	} else {
+		interface->service_type = CONNMAN_SERVICE_TYPE_ETHERNET;
+		interface->device_type = CONNMAN_DEVICE_TYPE_ETHERNET;
+	}
 
 	filename = g_strdup_printf("/sys/class/net/%s/uevent",
 						interface->name);
@@ -131,19 +135,37 @@ static void read_uevent(struct interface_data *interface)
 		if (strncmp(line, "DEVTYPE=", 8) != 0)
 			continue;
 
-		if (strcmp(line + 8, "wlan") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_WIFI;
-		else if (strcmp(line + 8, "wwan") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_CELLULAR;
-		else if (strcmp(line + 8, "bluetooth") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
-		else if (strcmp(line + 8, "wimax") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_WIMAX;
-		else
-			interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+		if (strcmp(line + 8, "wlan") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
+			interface->device_type = CONNMAN_DEVICE_TYPE_WIFI;
+		} else if (strcmp(line + 8, "wwan") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_CELLULAR;
+			interface->device_type = CONNMAN_DEVICE_TYPE_CELLULAR;
+		} else if (strcmp(line + 8, "bluetooth") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
+			interface->device_type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
+		} else if (strcmp(line + 8, "wimax") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_WIMAX;
+			interface->device_type = CONNMAN_DEVICE_TYPE_WIMAX;
+		} else {
+			interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+			interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		}
 	}
 
 	fclose(f);
+}
+
+enum connman_device_type __connman_rtnl_get_device_type(int index)
+{
+	struct interface_data *interface;
+
+	interface = g_hash_table_lookup(interface_list,
+					GINT_TO_POINTER(index));
+	if (interface == NULL)
+		return CONNMAN_DEVICE_TYPE_UNKNOWN;
+
+	return interface->device_type;
 }
 
 /**
@@ -397,7 +419,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		if (type == ARPHRD_ETHER)
 			read_uevent(interface);
 
-		__connman_technology_add_interface(interface->type,
+		__connman_technology_add_interface(interface->service_type,
 			interface->index, interface->name, interface->ident);
 	}
 
