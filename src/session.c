@@ -104,9 +104,6 @@ static void remove_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
 
-	if (session->watch > 0)
-		g_dbus_remove_watch(connection, session->watch);
-
 	session->bearer = NULL;
 	if (session->service)
 		connman_service_unref(session->service);
@@ -151,6 +148,9 @@ static int session_disconnect(struct connman_session *session)
 
 		g_hash_table_remove(bearer_hash, bearer);
 	}
+
+	if (session->watch > 0)
+		g_dbus_remove_watch(connection, session->watch);
 
 	g_hash_table_remove(session_hash, session);
 
