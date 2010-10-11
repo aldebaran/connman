@@ -76,12 +76,16 @@ int __connman_inet_modify_address(int cmd, int flags,
 	struct nlmsghdr *header;
 	struct sockaddr_nl nl_addr;
 	struct ifaddrmsg *ifaddrmsg;
+	struct in6_addr ipv6_addr;
 	struct in_addr ipv4_addr, ipv4_bcast;
 	int sk, err;
 
 	DBG("");
 
 	if (address == NULL)
+		return -1;
+
+	if (family != AF_INET && family != AF_INET6)
 		return -1;
 
 	memset(&request, 0, sizeof(request));
@@ -116,8 +120,14 @@ int __connman_inet_modify_address(int cmd, int flags,
 		if ((err = add_rtattr(header, sizeof(request), IFA_BROADCAST,
 				&ipv4_bcast, sizeof(ipv4_bcast))) < 0)
 			return err;
-	} else {
-		return -1;
+
+	} else if (family == AF_INET6) {
+		if (inet_pton(AF_INET6, address, &ipv6_addr) < 1)
+			return -1;
+
+		if ((err = add_rtattr(header, sizeof(request), IFA_LOCAL,
+				&ipv6_addr, sizeof(ipv6_addr))) < 0)
+			return err;
 	}
 
 	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
@@ -519,36 +529,25 @@ struct in6_ifreq {
 int connman_inet_set_ipv6_address(int index,
 		struct connman_ipaddress *ipaddress)
 {
-	int sk, err;
-	struct in6_ifreq ifr6;
-
-	DBG("index %d ipaddress->local %s", index, ipaddress->local);
+	unsigned char prefix_len;
+	const char *address;
 
 	if (ipaddress->local == NULL)
 		return 0;
 
-	sk = socket(PF_INET6, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		err = -1;
-		goto out;
+	prefix_len = ipaddress->prefixlen;
+	address = ipaddress->local;
+
+	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
+
+	if ((__connman_inet_modify_address(RTM_NEWADDR,
+			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET6,
+			address, prefix_len, NULL)) < 0) {
+		connman_error("Set IPv6 address error");
+		return -1;
 	}
 
-	memset(&ifr6, 0, sizeof(ifr6));
-
-	err = inet_pton(AF_INET6, ipaddress->local, &ifr6.ifr6_addr);
-	if (err < 0)
-		goto out;
-
-	ifr6.ifr6_ifindex = index;
-	ifr6.ifr6_prefixlen = ipaddress->prefixlen;
-
-	err = ioctl(sk, SIOCSIFADDR, &ifr6);
-	close(sk);
-out:
-	if (err < 0)
-		connman_error("Set IPv6 address error");
-
-	return err;
+	return 0;
 }
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
@@ -578,33 +577,15 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 int connman_inet_clear_ipv6_address(int index, const char *address,
 							int prefix_len)
 {
-	struct in6_ifreq ifr6;
-	int sk, err;
-
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	memset(&ifr6, 0, sizeof(ifr6));
-
-	err = inet_pton(AF_INET6, address, &ifr6.ifr6_addr);
-	if (err < 0)
-		goto out;
-
-	ifr6.ifr6_ifindex = index;
-	ifr6.ifr6_prefixlen = prefix_len;
-
-	sk = socket(PF_INET6, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		err = -1;
-		goto out;
+	if ((__connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET6,
+			address, prefix_len, NULL)) < 0) {
+		connman_error("Clear IPv6 address error");
+		return -1;
 	}
 
-	err = ioctl(sk, SIOCDIFADDR, &ifr6);
-	close(sk);
-out:
-	if (err < 0)
-		connman_error("Clear IPv6 address error");
-
-	return err;
+	return 0;
 }
 
 int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
