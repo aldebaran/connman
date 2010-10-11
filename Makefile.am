@@ -183,7 +183,7 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/connect-vpn test/disconnect-vpn test/list-providers \
 		test/monitor-manager test/test-counter test/set-ip-method \
 		test/set-nameservers test/set-domains test/find-service \
-		test/get-services test/get-proxy-autoconfig \
+		test/get-services test/get-proxy-autoconfig test/set-proxy \
 		test/enable-tethering test/disable-tethering test/backtrace
 
 if TEST
