@@ -116,7 +116,7 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress);
 }
 
-static unsigned char netmask2prefixlen(const char *netmask)
+unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask)
 {
 	unsigned char bits = 0;
 	in_addr_t mask = inet_network(netmask);
@@ -178,7 +178,8 @@ void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 		return;
 
 	if (netmask != NULL)
-		ipaddress->prefixlen = netmask2prefixlen(netmask);
+		ipaddress->prefixlen =
+			__connman_ipconfig_netmask_prefix_len(netmask);
 	else
 		ipaddress->prefixlen = 32;
 
@@ -412,7 +413,7 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 	connman_ipconfig_unref(ipdevice->driver_config);
 	ipdevice->driver_config = NULL;
 
-	connman_inet_clear_address(ipdevice->index);
+	connman_inet_clear_address(ipdevice->index, ipdevice->config->address);
 	connman_inet_clear_ipv6_address(ipdevice->index,
 			ipdevice->driver_config->address->local,
 			ipdevice->driver_config->address->prefixlen);
@@ -1211,7 +1212,8 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
-			return connman_inet_clear_address(ipconfig->index);
+			return connman_inet_clear_address(ipconfig->index,
+							ipconfig->address);
 		else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
 			return connman_inet_clear_ipv6_address(
 						ipconfig->index,

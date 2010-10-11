@@ -23,6 +23,8 @@
 #define __CONNMAN_INET_H
 
 #include <arpa/inet.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 
 #include <connman/device.h>
 #include <connman/ipconfig.h>
@@ -43,7 +45,7 @@ struct connman_device *connman_inet_create_device(int index);
 connman_bool_t connman_inet_is_cfg80211(int index);
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress);
-int connman_inet_clear_address(int index);
+int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress);
 int connman_inet_add_host_route(int index, const char *host, const char *gateway);
 int connman_inet_del_host_route(int index, const char *host);
 int connman_inet_set_gateway_address(int index, const char *gateway);

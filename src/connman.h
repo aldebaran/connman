@@ -105,6 +105,11 @@ void __connman_task_cleanup(void);
 
 #include <connman/inet.h>
 
+int __connman_inet_modify_address(int cmd, int flags, int index, int family,
+				const char *address,
+				unsigned char prefixlen,
+				const char *broadcast);
+
 #include <connman/wifi.h>
 
 #include <connman/rfkill.h>
@@ -248,6 +253,7 @@ int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 					struct connman_element *parent);
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
+unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask);
 
 int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
 							const char *url);

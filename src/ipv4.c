@@ -30,112 +30,11 @@
 #include <netinet/in.h>
 #include <arpa/inet.h>
 #include <net/if.h>
+#include <asm/types.h>
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
 
 #include "connman.h"
-
-struct connman_ipv4 {
-	enum connman_ipconfig_method method;
-	struct in_addr address;
-	struct in_addr netmask;
-	struct in_addr broadcast;
-};
-
-static int set_ipv4(struct connman_element *element, struct connman_ipv4 *ipv4)
-{
-	struct ifreq ifr;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	DBG("element %p ipv4 %p", element, ipv4);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = ipv4->address;
-	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
-
-	err = ioctl(sk, SIOCSIFADDR, &ifr);
-
-	if (err < 0)
-		DBG("address setting failed (%s)", strerror(errno));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = ipv4->netmask;
-	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
-
-	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
-
-	if (err < 0)
-		DBG("netmask setting failed (%s)", strerror(errno));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr = ipv4->broadcast;
-	memcpy(&ifr.ifr_broadaddr, &addr, sizeof(ifr.ifr_broadaddr));
-
-	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
-
-	if (err < 0)
-		DBG("broadcast setting failed (%s)", strerror(errno));
-
-	close(sk);
-
-	return 0;
-}
-
-static int clear_ipv4(struct connman_element *element)
-{
-	struct ifreq ifr;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	DBG("element %p", element);
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = element->index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
-
-	//err = ioctl(sk, SIOCDIFADDR, &ifr);
-	err = ioctl(sk, SIOCSIFADDR, &ifr);
-
-	close(sk);
-
-	if (err < 0 && errno != EADDRNOTAVAIL) {
-		DBG("address removal failed (%s)", strerror(errno));
-		return -1;
-	}
-
-	return 0;
-}
 
 static char *index2name(int index)
 {
@@ -167,13 +66,12 @@ static int ipv4_probe(struct connman_element *element)
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
 	struct connman_element *connection;
-	struct connman_ipv4 ipv4;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
 	const char *nameserver = NULL, *pac = NULL;
 	char *timeserver = NULL;
+	unsigned char prefixlen;
 
 	DBG("element %p name %s", element, element->name);
-
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
 	connman_element_get_value(element,
@@ -195,16 +93,12 @@ static int ipv4_probe(struct connman_element *element)
 	if (address == NULL || netmask == NULL)
 		return -EINVAL;
 
-	memset(&ipv4, 0, sizeof(ipv4));
-	ipv4.address.s_addr = inet_addr(address);
-	ipv4.netmask.s_addr = inet_addr(netmask);
-	if (broadcast)
-		ipv4.broadcast.s_addr = inet_addr(broadcast);
-	else
-		ipv4.broadcast.s_addr = ipv4.address.s_addr |
-						~ipv4.netmask.s_addr;
+	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 
-	set_ipv4(element, &ipv4);
+	if ((__connman_inet_modify_address(RTM_NEWADDR,
+			NLM_F_REPLACE | NLM_F_ACK, element->index,
+			AF_INET, address, prefixlen, broadcast)) < 0)
+		DBG("address setting failed");
 
 	service = __connman_element_get_service(element);
 
@@ -235,10 +129,19 @@ static int ipv4_probe(struct connman_element *element)
 
 static void ipv4_remove(struct connman_element *element)
 {
+	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
 	const char *nameserver = NULL;
 	char *timeserver = NULL;
+	unsigned char prefixlen;
 
 	DBG("element %p name %s", element, element->name);
+
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &address);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_BROADCAST, &broadcast);
 
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
@@ -247,6 +150,10 @@ static void ipv4_remove(struct connman_element *element)
 
 	connman_timeserver_remove(timeserver);
 
+	DBG("address %s", address);
+	DBG("netmask %s", netmask);
+	DBG("broadcast %s", broadcast);
+
 	if (nameserver != NULL) {
 		struct connman_service *service;
 
@@ -254,7 +161,11 @@ static void ipv4_remove(struct connman_element *element)
 		__connman_service_remove_nameserver(service, nameserver);
 	}
 
-	clear_ipv4(element);
+	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
+
+	if ((__connman_inet_modify_address(RTM_DELADDR, 0, element->index,
+			AF_INET, address, prefixlen, broadcast) < 0))
+		DBG("address removal failed");
 }
 
 static struct connman_driver ipv4_driver = {
