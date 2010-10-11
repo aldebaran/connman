@@ -20,24 +20,17 @@ class Agent(dbus.service.Object):
 		mainloop.quit()
 
 	@dbus.service.method("org.moblin.connman.Agent",
-					in_signature='o', out_signature='')
-	def RequestPassphrase(self, path):
-		print "PassphraseRequested (%s)" % (path)
+					in_signature='oa{sv}',
+					out_signature='a{sv}')
+	def RequestInput(self, path, fields):
+		print "RequestInput (%s,%s)" % (path, fields)
 
-		service = dbus.Interface(bus.get_object("org.moblin.connman",
-							path),
-					 "org.moblin.connman.Service")
+		response = {}
+		response["Passphrase"] = self.passphrase
 
-		try:
-			print "setting passphrase (%s)" % (self.passphrase)
+		print "returning (%s)" % (response)
 
-			service.SetProperty("Passphrase",
-					    dbus.String(self.passphrase,
-							variant_level=1))
-
-			service.Connect(timeout=60000)
-		except dbus.DBusException, error:
-			print "%s: %s" % (error._dbus_error_name, error.message)
+		return response
 
 	@dbus.service.method("org.moblin.connman.Agent",
 					in_signature='', out_signature='')
