@@ -349,6 +349,8 @@ int __connman_stats_service_register(struct connman_service *service)
 			return err;
 
 		handle = g_hash_table_lookup(stats_hash, service);
+	} else {
+		return -EALREADY;
 	}
 
 	err = stats_open(service, handle);

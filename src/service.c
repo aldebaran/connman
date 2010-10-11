@@ -1874,6 +1874,7 @@ static gboolean connect_timeout(gpointer user_data)
 		__connman_network_disconnect(service->network);
 
 	__connman_ipconfig_disable(service->ipconfig);
+	__connman_stats_service_unregister(service);
 
 	if (service->pending != NULL) {
 		DBusMessage *reply;
@@ -2218,7 +2219,6 @@ static void service_free(gpointer user_data)
 
 	stats_stop(service);
 	__connman_storage_save_service(service);
-	__connman_stats_service_unregister(service);
 
 	service->path = NULL;
 
@@ -2634,8 +2634,16 @@ int __connman_service_indicate_state(struct connman_service *service,
 		__connman_service_disconnect(service);
 	}
 
-	if (state == CONNMAN_SERVICE_STATE_CONFIGURATION)
+	if (state == CONNMAN_SERVICE_STATE_CONFIGURATION) {
+		if (__connman_stats_service_register(service) == 0) {
+			__connman_stats_get(service, FALSE,
+						&service->stats.data);
+			__connman_stats_get(service, TRUE,
+						&service->stats_roaming.data);
+		}
+
 		__connman_ipconfig_enable(service->ipconfig);
+	}
 
 	service->state = state;
 	state_changed(service);
@@ -2897,6 +2905,13 @@ int __connman_service_connect(struct connman_service *service)
 			break;
 		}
 
+		if (__connman_stats_service_register(service) == 0) {
+			__connman_stats_get(service, FALSE,
+						&service->stats.data);
+			__connman_stats_get(service, TRUE,
+						&service->stats_roaming.data);
+		}
+
 		__connman_ipconfig_enable(service->ipconfig);
 
 		err = __connman_network_connect(service->network);
@@ -2909,6 +2924,7 @@ int __connman_service_connect(struct connman_service *service)
 	if (err < 0) {
 		if (err != -EINPROGRESS) {
 			__connman_ipconfig_disable(service->ipconfig);
+			__connman_stats_service_unregister(service);
 			return err;
 		}
 
@@ -2945,6 +2961,7 @@ int __connman_service_disconnect(struct connman_service *service)
 	__connman_ipconfig_clear_address(ipv6config);
 
 	__connman_ipconfig_disable(service->ipconfig);
+	__connman_stats_service_unregister(service);
 
 	if (err < 0) {
 		if (err != -EINPROGRESS)
@@ -3257,10 +3274,6 @@ static int service_register(struct connman_service *service)
 	__connman_config_provision_service(service);
 
 	__connman_storage_load_service(service);
-
-	__connman_stats_service_register(service);
-	__connman_stats_get(service, FALSE, &service->stats.data);
-	__connman_stats_get(service, TRUE, &service->stats_roaming.data);
 
 	g_dbus_register_interface(connection, service->path,
 					CONNMAN_SERVICE_INTERFACE,
