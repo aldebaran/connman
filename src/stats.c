@@ -270,6 +270,7 @@ static int stats_open_file(struct connman_service *service,
 	err = stat(file->name, &st);
 	if (err < 0) {
 		/* according documentation the only possible error is ENOENT */
+		st.st_size = 0;
 		new_file = TRUE;
 	}
 
