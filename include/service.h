@@ -84,6 +84,13 @@ enum connman_service_error {
 	CONNMAN_SERVICE_ERROR_CONNECT_FAILED = 4,
 };
 
+enum connman_service_proxy_method {
+	CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN     = 0,
+	CONNMAN_SERVICE_PROXY_METHOD_DIRECT      = 1,
+	CONNMAN_SERVICE_PROXY_METHOD_MANUAL      = 2,
+	CONNMAN_SERVICE_PROXY_METHOD_AUTO        = 3,
+};
+
 struct connman_service;
 
 struct connman_service *connman_service_create(void);
