@@ -30,14 +30,13 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
-
-#include <sys/time.h>
+#include <limits.h>
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 
-#define MAGIC 0xFA00B915
+#define MAGIC 0xFA00B916
 
 struct connman_stats_data {
 	unsigned int rx_packets;
@@ -55,10 +54,13 @@ struct stats_file_header {
 	unsigned int magic;
 	unsigned int begin;
 	unsigned int end;
+	unsigned int home;
+	unsigned int roaming;
 };
 
 struct stats_record {
 	time_t ts;
+	unsigned int roaming;
 	struct connman_stats_data data;
 };
 
@@ -73,6 +75,8 @@ struct stats_file {
 	int nr;
 	struct stats_record *first;
 	struct stats_record *last;
+	struct stats_record *home_first;
+	struct stats_record *roaming_first;
 };
 
 static struct stats_file_header *get_hdr(struct stats_file *file)
@@ -92,6 +96,30 @@ static struct stats_record *get_end(struct stats_file *file)
 	unsigned int off = get_hdr(file)->end;
 
 	return (struct stats_record *)(file->addr + off);
+}
+
+static struct stats_record *get_home(struct stats_file *file)
+{
+	struct stats_file_header *hdr;
+
+	hdr = get_hdr(file);
+
+	if (hdr->home == UINT_MAX)
+		return NULL;
+
+	return (struct stats_record *)(file->addr + hdr->home);
+}
+
+static struct stats_record *get_roaming(struct stats_file *file)
+{
+	struct stats_file_header *hdr;
+
+	hdr = get_hdr(file);
+
+	if (hdr->roaming == UINT_MAX)
+		return NULL;
+
+	return (struct stats_record *)(file->addr + hdr->roaming);
 }
 
 static struct stats_record *get_next(struct stats_file *file,
@@ -115,7 +143,8 @@ static void stats_print_record(struct stats_record *rec)
 	char buffer[30];
 
 	strftime(buffer, 30, "%d-%m-%Y %T", localtime(&rec->ts));
-	printf("%p %s %d %d %d %d %d %d %d %d %d\n", rec, buffer,
+	printf("%p %s %01d %d %d %d %d %d %d %d %d %d\n", rec, buffer,
+		rec->roaming,
 		rec->data.rx_packets,
 		rec->data.tx_packets,
 		rec->data.rx_bytes,
@@ -130,11 +159,24 @@ static void stats_print_record(struct stats_record *rec)
 static void stats_hdr_info(struct stats_file *file)
 {
 	struct stats_file_header *hdr;
-	struct stats_record *begin, *end;
+	struct stats_record *begin, *end, *home, *roaming;
+	unsigned int home_idx, roaming_idx;
 
 	hdr = get_hdr(file);
 	begin = get_begin(file);
 	end = get_end(file);
+
+	home = get_home(file);
+	if (home == NULL)
+		home_idx = UINT_MAX;
+	else
+		home_idx = get_index(file, home);
+
+	roaming = get_roaming(file);
+	if (roaming == NULL)
+		roaming_idx = UINT_MAX;
+	else
+		roaming_idx = get_index(file, roaming);
 
 	printf("Data Structure Sizes\n");
 	printf("  sizeof header   %zd/0x%02zx\n",
@@ -155,13 +197,20 @@ static void stats_hdr_info(struct stats_file *file)
 	printf("  magic           0x%08x\n", hdr->magic);
 	printf("  begin           [%d] 0x%08x\n",
 		get_index(file, begin), hdr->begin);
-	printf("  end             [%d] 0x%08x\n\n",
+	printf("  end             [%d] 0x%08x\n",
 		get_index(file, end), hdr->end);
+	printf("  home            [%d] 0x%08x\n",
+		home_idx, hdr->home);
+	printf("  roaming         [%d] 0x%08x\n\n",
+		roaming_idx, hdr->roaming);
+
 
 	printf("Pointers\n");
 	printf("  hdr             %p\n", hdr);
 	printf("  begin           %p\n", begin);
 	printf("  end             %p\n", end);
+	printf("  home            %p\n", home);
+	printf("  romaing         %p\n", roaming);
 	printf("  first           %p\n", file->first);
 	printf("  last            %p\n\n", file->last);
 }
@@ -171,7 +220,7 @@ static void stats_print_entries(struct stats_file *file)
 	struct stats_record *it;
 	int i;
 
-	printf("[ idx] ptr ts rx_packets tx_packets rx_bytes "
+	printf("[ idx] ptr ts roaming rx_packets tx_packets rx_bytes "
 		"tx_bytes rx_errors tx_errors rx_dropped tx_dropped time\n\n");
 
 	for (i = 0, it = file->first; it <= file->last; it++, i++) {
@@ -180,22 +229,9 @@ static void stats_print_entries(struct stats_file *file)
 	}
 }
 
-static void stats_print_diff(struct stats_file *file)
+static void stats_print_rec_diff(struct stats_record *begin,
+					struct stats_record *end)
 {
-	struct stats_record *begin, *end;
-
-	begin = get_begin(file);
-	begin = get_next(file, begin);
-	end = get_end(file);
-
-	printf("\n(begin + 1)\n");
-	printf("\t[%04d] ", get_index(file, begin));
-	stats_print_record(begin);
-	printf("end\n");
-	printf("\t[%04d] ", get_index(file, end));
-	stats_print_record(end);
-
-	printf("\nend - (begin + 1):\n");
 	printf("\trx_packets: %d\n",
 		end->data.rx_packets - begin->data.rx_packets);
 	printf("\ttx_packets: %d\n",
@@ -214,6 +250,32 @@ static void stats_print_diff(struct stats_file *file)
 		end->data.tx_dropped - begin->data.tx_dropped);
 	printf("\ttime:       %d\n",
 		end->data.time - begin->data.time);
+}
+
+static void stats_print_diff(struct stats_file *file)
+{
+	struct stats_record *begin, *end;
+
+	begin = get_begin(file);
+	begin = get_next(file, begin);
+	end = get_end(file);
+
+	printf("\n(begin + 1)\n");
+	printf("\t[%04d] ", get_index(file, begin));
+	stats_print_record(begin);
+	printf("end\n");
+	printf("\t[%04d] ", get_index(file, end));
+	stats_print_record(end);
+
+	if (file->home_first) {
+		printf("\nhome\n");
+		stats_print_rec_diff(file->home_first, get_home(file));
+	}
+
+	if (file->roaming_first) {
+		printf("\roaming\n");
+		stats_print_rec_diff(file->roaming_first, get_roaming(file));
+	}
 }
 
 static void update_max_nr_entries(struct stats_file *file)
@@ -256,11 +318,22 @@ static void update_last(struct stats_file *file)
 
 static int stats_file_update_cache(struct stats_file *file)
 {
+	struct stats_record *it;
+
 	update_max_nr_entries(file);
 	update_nr_entries(file);
 	update_first(file);
 	update_last(file);
 
+	for (it = file->first; it <= file->last &&
+		     (file->home_first == NULL ||
+			     file->roaming_first == NULL); it++) {
+		if (file->home_first == NULL && it->roaming == 0)
+			file->home_first = it;
+
+		if (file->roaming_first == NULL && it->roaming == 1)
+			file->roaming_first = it;
+	}
 	return 0;
 }
 
