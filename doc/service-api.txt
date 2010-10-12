@@ -120,11 +120,12 @@ Properties	string State [readonly]
 			The service state information.
 
 			Valid states are "idle", "failure", "association",
-			"configuration" and "ready".
+			"configuration", "ready" and "online".
 
-			Also "login" and "online" states are used. The
-			state "online" signals that an Internet connection
-			is available and has been verified.
+			The "ready" state signals a successfully
+			connected device. "online" signals that an
+			Internet connection is available and has been
+			verified.
 
 		string Error [readonly]
 
@@ -189,8 +190,8 @@ Properties	string State [readonly]
 		boolean LoginRequired [readonly]
 
 			This property indicates that an additional login
-			step is needed before the connection establishment
-			can proceed.
+			step, like web based authentication, is needed
+			before the connection establishment can proceed.
 
 		string Passphrase [readwrite]
 

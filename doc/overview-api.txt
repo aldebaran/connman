@@ -263,10 +263,6 @@ with a WiFi access point.
 With the "configuration" state the service indicates that it is trying
 to retrieve/configure IP settings.
 
-Some service might require special authentication procedure like a web based
-confirmation. The "login" should be used for this in the future. Currently
-this is not implemented.
-
 The "ready" state signals a successful connected device. This doesn't mean
 it has the default route, but basic IP operations will succeed.
 
@@ -292,18 +288,16 @@ the "idle" state since the service is not connected.
 		      V                           |              |
 		+---------------+                 |              |
 		| configuration |-----------------+              |
-		+---------------+      error      |              |
-		      |                           |              |
-		      | success                   |              |
-		      V                           |              |
-		+---------------+            +-------------+     |
-		| ready         |----------->| login       |     |
-		+---------------+            +-------------+     |
-		      |                           |              |
-		      | success                   |              |
-		      |                           |              |
-		      +---------------------------+              |
-		      |           authentication                 |
+		+---------------+      error                     |
+		      |                                          |
+		      | success                                  |
+		      V                                          |
+		+---------------+                                |
+		| ready         |                                |
+		+---------------+                                |
+		      |                                          |
+		      | success                                  |
+		      |                                          |
 		      V                                          |
 		+---------------+                                |
 		| online        |<----------------+              |
@@ -322,6 +316,10 @@ advanced actions. The state transitions are provided for the sole purpose
 to give the user feedback on what is currently going on. Especially in
 cases where networks are flaky or DHCP servers take a long time these
 information are helpful for the user.
+
+Some services might require special authentication procedure like a web
+based confirmation. The LoginRequired property should be used to check
+for this.
 
 
 Application basics
