@@ -31,10 +31,11 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <string.h>
+#include <limits.h>
 
 #include "connman.h"
 
-#define MAGIC 0xFA00B915
+#define MAGIC 0xFA00B916
 
 /*
  * Statistics counters are stored into a ring buffer which is stored
@@ -45,20 +46,25 @@
  *   Initialy only the smallest possible amount of disk space is allocated
  *   The files grow to the configured maximal size
  *   The grows by _SC_PAGESIZE step size
- *   For each service home and service roaming counter set a file is created
+ *   For each service a file is created
  *   Each file has a header where the indexes are stored
  *
  * Entries properties:
- *   The entries are fixed sized (stats_record)
  *   Each entry has a timestamp
+ *   A flag to mark if the entry is either home (0) or roaming (1) entry
+ *   The entries are fixed sized (stats_record)
  *
  * Ring buffer properties:
- *   There are to indexes 'begin' and 'end'
+ *   There are to indexes 'begin', 'end', 'home' and 'roaming'
  *   'begin' points to the oldest entry
  *   'end' points to the newest/current entry
+ *   'home' points to the current home entry
+ *   'roaming' points to the current roaming entry
  *   If 'begin' == 'end' then the buffer is empty
  *   If 'end' + 1 == 'begin then it's full
  *   The ring buffer is valid in the range (begin, end]
+ *   If 'home' has the value UINT_MAX', 'home' is invalid
+ *   if 'roaming' has the value UINT_MAX', 'roaming' is invalid
  *   'first' points to the first entry in the ring buffer
  *   'last' points to the last entry in the ring buffer
  */
@@ -67,10 +73,13 @@ struct stats_file_header {
 	unsigned int magic;
 	unsigned int begin;
 	unsigned int end;
+	unsigned int home;
+	unsigned int roaming;
 };
 
 struct stats_record {
 	time_t ts;
+	unsigned int roaming;
 	struct connman_stats_data data;
 };
 
@@ -84,11 +93,8 @@ struct stats_file {
 	/* cached values */
 	struct stats_record *first;
 	struct stats_record *last;
-};
-
-struct stats_handle {
-	struct stats_file home;
-	struct stats_file roaming;
+	struct stats_record *home;
+	struct stats_record *roaming;
 };
 
 GHashTable *stats_hash = NULL;
@@ -112,6 +118,30 @@ static struct stats_record *get_end(struct stats_file *file)
 	return (struct stats_record *)(file->addr + off);
 }
 
+static struct stats_record *get_home(struct stats_file *file)
+{
+	struct stats_file_header *hdr;
+
+	hdr = get_hdr(file);
+
+	if (hdr->home == UINT_MAX)
+		return NULL;
+
+	return (struct stats_record *)(file->addr + hdr->home);
+}
+
+static struct stats_record *get_roaming(struct stats_file *file)
+{
+	struct stats_file_header *hdr;
+
+	hdr = get_hdr(file);
+
+	if (hdr->roaming == UINT_MAX)
+		return NULL;
+
+	return (struct stats_record *)(file->addr + hdr->roaming);
+}
+
 static void set_begin(struct stats_file *file, struct stats_record *begin)
 {
 	struct stats_file_header *hdr;
@@ -128,6 +158,22 @@ static void set_end(struct stats_file *file, struct stats_record *end)
 	hdr->end = (char *)end - file->addr;
 }
 
+static void set_home(struct stats_file *file, struct stats_record *home)
+{
+	struct stats_file_header *hdr;
+
+	hdr = get_hdr(file);
+	hdr->home = (char *)home - file->addr;
+}
+
+static void set_roaming(struct stats_file *file, struct stats_record *roaming)
+{
+	struct stats_file_header *hdr;
+
+	hdr = get_hdr(file);
+	hdr->roaming = (char *)roaming - file->addr;
+}
+
 static struct stats_record *get_next(struct stats_file *file,
 					struct stats_record *cur)
 {
@@ -139,21 +185,10 @@ static struct stats_record *get_next(struct stats_file *file,
 	return cur;
 }
 
-static struct stats_file *stats_file_get(struct stats_handle *handle,
-						connman_bool_t roaming)
+static void stats_free(gpointer user_data)
 {
-	struct stats_file *file;
+	struct stats_file *file = user_data;
 
-	if (roaming == FALSE)
-		file = &handle->home;
-	else
-		file = &handle->roaming;
-
-	return file;
-}
-
-static void stats_close_file(struct stats_file *file)
-{
 	msync(file->addr, file->len, MS_SYNC);
 
 	munmap(file->addr, file->len);
@@ -163,27 +198,18 @@ static void stats_close_file(struct stats_file *file)
 	file->fd = -1;
 
 	g_free(file->name);
-}
-
-static void stats_free(gpointer user_data)
-{
-	struct stats_handle *handle = user_data;
-
-	stats_close_file(&handle->home);
-	stats_close_file(&handle->roaming);
-
-	g_free(handle);
+	g_free(file);
 }
 
 static int stats_create(struct connman_service *service)
 {
-	struct stats_handle *handle;
+	struct stats_file *file;
 
-	handle = g_try_new0(struct stats_handle, 1);
-	if (handle == NULL)
+	file = g_try_new0(struct stats_file, 1);
+	if (file == NULL)
 		return -ENOMEM;
 
-	g_hash_table_insert(stats_hash, service, handle);
+	g_hash_table_insert(stats_hash, service, file);
 
 	return 0;
 }
@@ -203,10 +229,22 @@ static void update_last(struct stats_file *file)
 	file->last = file->first + max_entries - 1;
 }
 
+static void update_home(struct stats_file *file)
+{
+	file->home = get_home(file);
+}
+
+static void update_roaming(struct stats_file *file)
+{
+	file->roaming = get_roaming(file);
+}
+
 static void stats_file_update_cache(struct stats_file *file)
 {
 	update_first(file);
 	update_last(file);
+	update_home(file);
+	update_roaming(file);
 }
 
 static int stats_file_remap(struct stats_file *file, size_t size)
@@ -246,26 +284,17 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	return 0;
 }
 
-static int stats_open_file(struct connman_service *service,
-				struct stats_file *file,
-				connman_bool_t roaming)
+static int stats_open(struct connman_service *service,
+			struct stats_file *file)
 {
 	struct stat st;
-	char *name;
 	int err;
 	size_t size;
 	struct stats_file_header *hdr;
 	connman_bool_t new_file = FALSE;
 
-	if (roaming == FALSE) {
-		name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
-					__connman_service_get_ident(service));
-	} else {
-		name = g_strdup_printf("%s/stats/%s-roaming.data", STORAGEDIR,
-					__connman_service_get_ident(service));
-	}
-
-	file->name = name;
+	file->name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
+			__connman_service_get_ident(service));
 
 	err = stat(file->name, &st);
 	if (err < 0) {
@@ -274,7 +303,7 @@ static int stats_open_file(struct connman_service *service,
 		new_file = TRUE;
 	}
 
-	file->fd = open(name, O_RDWR | O_CREAT, 0644);
+	file->fd = open(file->name, O_RDWR | O_CREAT, 0644);
 
 	if (file->fd < 0) {
 		connman_error("open error %s for %s",
@@ -298,6 +327,8 @@ static int stats_open_file(struct connman_service *service,
 	if (hdr->magic != MAGIC ||
 			hdr->begin < sizeof(struct stats_file_header) ||
 			hdr->end < sizeof(struct stats_file_header) ||
+			hdr->home < sizeof(struct stats_file_header) ||
+			hdr->roaming < sizeof(struct stats_file_header) ||
 			hdr->begin > file->len ||
 			hdr->end > file->len) {
 		if (new_file == FALSE) {
@@ -313,47 +344,35 @@ static int stats_open_file(struct connman_service *service,
 		hdr->magic = MAGIC;
 		hdr->begin = sizeof(struct stats_file_header);
 		hdr->end = sizeof(struct stats_file_header);
+		hdr->home = UINT_MAX;
+		hdr->roaming = UINT_MAX;
+
+		stats_file_update_cache(file);
 	}
-
-	return 0;
-}
-
-static int stats_open(struct connman_service *service,
-			struct stats_handle *handle)
-{
-	int err;
-
-	err = stats_open_file(service, &handle->home, FALSE);
-	if (err < 0)
-		return err;
-
-	err = stats_open_file(service, &handle->roaming, TRUE);
-	if (err < 0)
-		return err;
 
 	return 0;
 }
 
 int __connman_stats_service_register(struct connman_service *service)
 {
-	struct stats_handle *handle;
+	struct stats_file *file;
 	int err;
 
 	DBG("service %p", service);
 
-	handle = g_hash_table_lookup(stats_hash, service);
-	if (handle == NULL) {
+	file = g_hash_table_lookup(stats_hash, service);
+	if (file == NULL) {
 		err = stats_create(service);
 
 		if (err < 0)
 			return err;
 
-		handle = g_hash_table_lookup(stats_hash, service);
+		file = g_hash_table_lookup(stats_hash, service);
 	} else {
 		return -EALREADY;
 	}
 
-	err = stats_open(service, handle);
+	err = stats_open(service, file);
 	if (err < 0)
 		g_hash_table_remove(stats_hash, service);
 
@@ -371,16 +390,13 @@ int  __connman_stats_update(struct connman_service *service,
 				connman_bool_t roaming,
 				struct connman_stats_data *data)
 {
-	struct stats_handle *handle;
 	struct stats_file *file;
 	struct stats_record *next;
 	int err;
 
-	handle = g_hash_table_lookup(stats_hash, service);
-	if (handle == NULL)
+	file = g_hash_table_lookup(stats_hash, service);
+	if (file == NULL)
 		return -EEXIST;
-
-	file = stats_file_get(handle, roaming);
 
 	if (file->len < file->max_len &&
 			file->last == get_end(file)) {
@@ -397,7 +413,13 @@ int  __connman_stats_update(struct connman_service *service,
 		set_begin(file, get_next(file, next));
 
 	next->ts = time(NULL);
+	next->roaming = roaming;
 	memcpy(&next->data, data, sizeof(struct connman_stats_data));
+
+	if (roaming != TRUE)
+		set_home(file, next);
+	else
+		set_roaming(file, next);
 
 	set_end(file, next);
 
@@ -408,19 +430,20 @@ int __connman_stats_get(struct connman_service *service,
 				connman_bool_t roaming,
 				struct connman_stats_data *data)
 {
-	struct stats_handle *handle;
 	struct stats_file *file;
-	struct stats_file_header *hdr;
+	struct stats_record *rec;
 
-	handle = g_hash_table_lookup(stats_hash, service);
-	if (handle == NULL)
+	file = g_hash_table_lookup(stats_hash, service);
+	if (file == NULL)
 		return -EEXIST;
 
-	file = stats_file_get(handle, roaming);
-	hdr = get_hdr(file);
+	if (roaming != TRUE)
+		rec = file->home;
+	else
+		rec = file->roaming;
 
-	if (hdr->begin != hdr->end) {
-		memcpy(data, &get_end(file)->data,
+	if (rec != NULL) {
+		memcpy(data, &rec->data,
 			sizeof(struct connman_stats_data));
 	}
 
