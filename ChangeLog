@@ -1,3 +1,8 @@
+ver 0.62.2
+	Fix a session and counter memory corruption (double free).
+	Create less stats file and less often.
+	Initialize stats file sze properly.
+
 ver 0.62.1
 	ConnMan 0.62 code merge
 
