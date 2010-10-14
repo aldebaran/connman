@@ -1,3 +1,6 @@
+ver 0.62.1
+	ConnMan 0.62 code merge
+
 ver 0.60.5
 	Remove EDNS0 option (Fixes BMC #4818)
 	Implement DNS over TCP for dnsproxy
