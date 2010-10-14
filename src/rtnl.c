@@ -104,6 +104,7 @@ static connman_bool_t ether_blacklisted(const char *name)
 static void read_uevent(struct interface_data *interface)
 {
 	char *filename, line[128];
+	connman_bool_t found_devtype;
 	FILE *f;
 
 	if (ether_blacklisted(interface->name) == TRUE) {
@@ -124,6 +125,7 @@ static void read_uevent(struct interface_data *interface)
 	if (f == NULL)
 		return;
 
+	found_devtype = FALSE;
 	while (fgets(line, sizeof(line), f)) {
 		char *pos;
 
@@ -134,6 +136,8 @@ static void read_uevent(struct interface_data *interface)
 
 		if (strncmp(line, "DEVTYPE=", 8) != 0)
 			continue;
+
+		found_devtype = TRUE;
 
 		if (strcmp(line + 8, "wlan") == 0) {
 			interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
@@ -154,6 +158,22 @@ static void read_uevent(struct interface_data *interface)
 	}
 
 	fclose(f);
+
+	if (found_devtype)
+		return;
+
+	/* We haven't got a DEVTYPE, let's check if it's a wireless device */
+	filename = g_strdup_printf("/sys/class/net/%s/wireless/",
+						interface->name);
+
+	f = fopen(filename, "re");
+
+	g_free(filename);
+
+	if (f != NULL) {
+		interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
+		interface->device_type = CONNMAN_DEVICE_TYPE_WIFI;
+	}
 }
 
 enum connman_device_type __connman_rtnl_get_device_type(int index)
