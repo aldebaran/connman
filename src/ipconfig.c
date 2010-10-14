@@ -117,14 +117,21 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 
 unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask)
 {
-	unsigned char bits = 0;
-	in_addr_t mask = inet_network(netmask);
-	in_addr_t host = ~mask;
+	unsigned char bits;
+	in_addr_t mask;
+	in_addr_t host;
+
+	if (netmask == NULL)
+		return 32;
+
+	mask = inet_network(netmask);
+	host = ~mask;
 
 	/* a valid netmask must be 2^n - 1 */
 	if ((host & (host + 1)) != 0)
 		return -1;
 
+	bits = 0;
 	for (; mask; mask <<= 1)
 		++bits;
 
@@ -176,11 +183,7 @@ void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 	if (ipaddress == NULL)
 		return;
 
-	if (netmask != NULL)
-		ipaddress->prefixlen =
-			__connman_ipconfig_netmask_prefix_len(netmask);
-	else
-		ipaddress->prefixlen = 32;
+	ipaddress->prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 
 	g_free(ipaddress->local);
 	ipaddress->local = g_strdup(address);
