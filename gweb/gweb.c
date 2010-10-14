@@ -32,6 +32,8 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include <gresolv/gresolv.h>
+
 #include "gweb.h"
 
 struct web_session {
@@ -44,6 +46,12 @@ struct web_session {
 
 	GIOChannel *transport_channel;
 	guint transport_watch;
+
+	guint resolv_action;
+	char *request;
+
+	GWebResultFunc result_func;
+	gpointer result_data;
 };
 
 struct _GWeb {
@@ -53,6 +61,8 @@ struct _GWeb {
 
 	int index;
 	GList *session_list;
+
+	GResolv *resolv;
 
 	GWebDebugFunc debug_func;
 	gpointer debug_data;
@@ -76,8 +86,15 @@ static inline void debug(GWeb *web, const char *format, ...)
 
 static void free_session(struct web_session *session)
 {
+	GWeb *web = session->web;
+
 	if (session == NULL)
 		return;
+
+	g_free(session->request);
+
+	if (session->resolv_action > 0)
+		g_resolv_cancel_lookup(web->resolv, session->resolv_action);
 
 	if (session->transport_watch > 0)
 		g_source_remove(session->transport_watch);
@@ -120,6 +137,12 @@ GWeb *g_web_new(int index)
 	web->index = index;
 	web->session_list = NULL;
 
+	web->resolv = g_resolv_new(index);
+	if (web->resolv == NULL) {
+		g_free(web);
+		return NULL;
+	}
+
 	return web;
 }
 
@@ -143,6 +166,8 @@ void g_web_unref(GWeb *web)
 
 	flush_sessions(web);
 
+	g_resolv_unref(web->resolv);
+
 	g_free(web);
 }
 
@@ -153,6 +178,18 @@ void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data)
 
 	web->debug_func = func;
 	web->debug_data = user_data;
+
+	g_resolv_set_debug(web->resolv, func, user_data);
+}
+
+gboolean g_web_add_nameserver(GWeb *web, const char *address)
+{
+	if (web == NULL)
+		return FALSE;
+
+	g_resolv_add_nameserver(web->resolv, address, 53, 0);
+
+	return TRUE;
 }
 
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
@@ -164,6 +201,8 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		session->transport_watch = 0;
+		if (session->result_func != NULL)
+			session->result_func(400, session->result_data);
 		return FALSE;
 	}
 
@@ -172,6 +211,12 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	memset(buf, 0, sizeof(buf));
 	len = recv(sk, buf, sizeof(buf) - 1, 0);
 
+	if (len == 0) {
+		session->transport_watch = 0;
+		if (session->result_func != NULL)
+			session->result_func(200, session->result_data);
+		return FALSE;
+	}
 	printf("%s", buf);
 
 	return TRUE;
@@ -211,19 +256,20 @@ static int connect_session_transport(struct web_session *session)
 	return 0;
 }
 
-static void start_request(struct web_session *session, const char *request)
+static void start_request(struct web_session *session)
 {
 	GString *buf;
 	char *str;
 	ssize_t len;
 	int sk;
 
-	debug(session->web, "request %s from %s", request, session->host);
+	debug(session->web, "request %s from %s",
+					session->request, session->host);
 
 	sk = g_io_channel_unix_get_fd(session->transport_channel);
 
 	buf = g_string_new(NULL);
-	g_string_append_printf(buf, "GET %s HTTP/1.1\r\n", request);
+	g_string_append_printf(buf, "GET %s HTTP/1.1\r\n", session->request);
 	g_string_append_printf(buf, "Host: %s\r\n", session->host);
 	g_string_append_printf(buf, "User-Agent: ConnMan/%s\r\n", VERSION);
 	g_string_append(buf, "Accept: */*\r\n");
@@ -237,13 +283,13 @@ static void start_request(struct web_session *session, const char *request)
 	g_free(str);
 }
 
-static char *parse_url(struct web_session *session, const char *url)
+static int parse_url(struct web_session *session, const char *url)
 {
-	char *scheme, *host, *port, *path, *request;
+	char *scheme, *host, *port, *path;
 
 	scheme = g_strdup(url);
 	if (scheme == NULL)
-		return NULL;
+		return -EINVAL;
 
 	host = strstr(scheme, "://");
 	if (host != NULL) {
@@ -256,7 +302,7 @@ static char *parse_url(struct web_session *session, const char *url)
 			session->port = 80;
 		else {
 			g_free(scheme);
-			return NULL;
+			return -EINVAL;
 		}
 	} else {
 		host = scheme;
@@ -267,7 +313,7 @@ static char *parse_url(struct web_session *session, const char *url)
 	if (path != NULL)
 		*(path++) = '\0';
 
-	request = g_strdup_printf("/%s", path ? path : "");
+	session->request = g_strdup_printf("/%s", path ? path : "");
 
 	port = strrchr(host, ':');
 	if (port != NULL) {
@@ -284,14 +330,46 @@ static char *parse_url(struct web_session *session, const char *url)
 
 	g_free(scheme);
 
-	return request;
+	return 0;
+}
+
+static void resolv_result(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+	struct web_session *session = user_data;
+
+	if (results == NULL || results[0] == NULL) {
+		if (session->result_func != NULL)
+			session->result_func(404, session->result_data);
+		return;
+	}
+
+	debug(session->web, "address %s", results[0]);
+
+	if (inet_aton(results[0], NULL) == 0) {
+		if (session->result_func != NULL)
+			session->result_func(400, session->result_data);
+		return;
+	}
+
+	session->address = g_strdup(results[0]);
+
+	if (connect_session_transport(session) < 0) {
+		if (session->result_func != NULL)
+			session->result_func(409, session->result_data);
+		return;
+	}
+
+	debug(session->web, "creating session %s:%u",
+					session->address, session->port);
+
+	start_request(session);
 }
 
 guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 				GWebResultFunc func, gpointer user_data)
 {
 	struct web_session *session;
-	char *request;
 
 	if (web == NULL || url == NULL)
 		return 0;
@@ -302,36 +380,26 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	if (session == NULL)
 		return 0;
 
-	request = parse_url(session, url);
-	if (request == NULL) {
-		g_free(session);
+	if (parse_url(session, url) < 0) {
+		free_session(session);
 		return 0;
 	}
-
-	if (inet_aton(session->host, NULL) == 0) {
-		g_free(session);
-		return 0;
-	}
-
-	session->address = g_strdup(session->host);
 
 	debug(web, "host %s:%u", session->host, session->port);
 
-	if (connect_session_transport(session) < 0) {
-		g_free(request);
-		free_session(session);
-		return FALSE;
-	}
-
 	session->web = web;
 
+	session->result_func = func;
+	session->result_data = user_data;
+
+	session->resolv_action = g_resolv_lookup_hostname(web->resolv,
+					session->host, resolv_result, session);
+	if (session->resolv_action == 0) {
+		free_session(session);
+		return 0;
+	}
+
 	web->session_list = g_list_append(web->session_list, session);
-
-	debug(web, "creating session %s:%u", session->address, session->port);
-
-	start_request(session, request);
-
-	g_free(request);
 
 	return web->next_query_id++;
 }

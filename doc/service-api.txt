@@ -417,6 +417,15 @@ Properties	string State [readonly]
 
 				Automatic proxy configuration URL.
 
+		dict Proxy.Configuration [readwrite]
+
+			Same values as Proxy property. The Proxy represents
+			the actual system configuration while this allows
+			user configuration.
+
+			Currently only setting Method to either "direct"
+			or "auto" is supported.
+
 		dict Provider [readonly]
 
 			string Host [readonly]

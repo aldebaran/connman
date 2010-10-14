@@ -315,10 +315,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
-		return __connman_error_permission_denied(msg);
-
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
@@ -411,10 +407,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	dbus_message_iter_get_basic(&iter, &name);
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
 
 	type = dbus_message_iter_get_arg_type(&value);
 
@@ -958,7 +950,7 @@ void connman_device_set_ident(struct connman_device *device,
 	device->ident = g_strdup(ident);
 }
 
-const char *__connman_device_get_ident(struct connman_device *device)
+const char *connman_device_get_ident(struct connman_device *device)
 {
 	return device->ident;
 }
@@ -1332,6 +1324,8 @@ const char *connman_device_get_string(struct connman_device *device,
 		return device->name;
 	else if (g_str_equal(key, "Node") == TRUE)
 		return device->node;
+	else if (g_str_equal(key, "Interface") == TRUE)
+		return device->interface;
 
 	return connman_element_get_string(&device->element, key);
 }

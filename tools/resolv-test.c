@@ -139,8 +139,7 @@ int main(int argc, char *argv[])
 
 		for (i = 2; i < argc; i++)
 			g_resolv_add_nameserver(resolv, argv[i], 53, 0);
-	} else
-		g_resolv_add_nameserver(resolv, "127.0.0.1", 53, 0);
+	}
 
 	timer = g_timer_new();
 

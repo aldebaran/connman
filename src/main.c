@@ -172,6 +172,12 @@ int main(int argc, char *argv[])
 			perror("Failed to create storage directory");
 	}
 
+	if (mkdir(STORAGEDIR "/stats", S_IRUSR | S_IWUSR | S_IXUSR |
+				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
+		if (errno != EEXIST)
+			perror("Failed to create statistics directory");
+	}
+
 	old_umask = umask(077);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
@@ -225,6 +231,7 @@ int main(int argc, char *argv[])
 	__connman_manager_init(option_compat);
 	__connman_profile_init();
 	__connman_config_init();
+	__connman_stats_init();
 
 	__connman_resolver_init();
 	__connman_ipconfig_init();
@@ -262,6 +269,7 @@ int main(int argc, char *argv[])
 	__connman_ipconfig_cleanup();
 	__connman_resolver_cleanup();
 
+	__connman_stats_cleanup();
 	__connman_config_cleanup();
 	__connman_profile_cleanup();
 	__connman_manager_cleanup();

@@ -58,6 +58,10 @@ enum connman_network_error {
 	CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL  = 2,
 };
 
+#define CONNMAN_NETWORK_PRIORITY_LOW      -100
+#define CONNMAN_NETWORK_PRIORITY_DEFAULT     0
+#define CONNMAN_NETWORK_PRIORITY_HIGH      100
+
 struct connman_network;
 
 struct connman_network *connman_network_create(const char *identifier,
@@ -110,6 +114,8 @@ int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
 const char *connman_network_get_string(struct connman_network *network,
 							const char *key);
+int connman_network_set_passphrase(struct connman_network *network,
+					const char* passphrase);
 int connman_network_set_bool(struct connman_network *network,
 					const char *key, connman_bool_t value);
 connman_bool_t connman_network_get_bool(struct connman_network *network,

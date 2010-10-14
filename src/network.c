@@ -106,10 +106,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
-		return __connman_error_permission_denied(msg);
-
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
@@ -168,9 +164,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	}
 
 
-	if (network->wifi.passphrase != NULL &&
-			__connman_security_check_privilege(msg,
-				CONNMAN_SECURITY_PRIVILEGE_SECRET) == 0)
+	if (network->wifi.passphrase != NULL)
 		connman_dbus_dict_append_basic(&dict, "WiFi.Passphrase",
 				DBUS_TYPE_STRING, &network->wifi.passphrase);
 
@@ -272,7 +266,17 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
  */
 int connman_network_driver_register(struct connman_network_driver *driver)
 {
+	GSList *list;
+
 	DBG("driver %p name %s", driver, driver->name);
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_network_driver *tmp = list->data;
+
+		if (tmp->type == driver->type)
+			return -EALREADY;
+
+	}
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
@@ -570,7 +574,7 @@ const char *__connman_network_get_ident(struct connman_network *network)
 	if (network->device == NULL)
 		return NULL;
 
-	return __connman_device_get_ident(network->device);
+	return connman_device_get_ident(network->device);
 }
 
 connman_bool_t __connman_network_get_weakness(struct connman_network *network)
@@ -1436,6 +1440,34 @@ const char *connman_network_get_string(struct connman_network *network,
 
 	return connman_element_get_string(&network->element, key);
 }
+
+/**
+ * connman_network_set_passphrase:
+ * @network: network structure
+ * @passphrase: network passphrase
+ *
+ * Set network passphrase.
+ * If the network is linked to a service, the latter gets his passphrase
+ * set as well.
+ */
+int connman_network_set_passphrase(struct connman_network *network,
+						const char* passphrase)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL) {
+		connman_network_set_string(network, "WiFi.Passphrase",
+						passphrase);
+
+		return 0;
+	}
+
+	__connman_service_set_passphrase(service, passphrase);
+
+	return 0;
+}
+
 
 /**
  * connman_network_set_bool:

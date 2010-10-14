@@ -52,6 +52,10 @@ enum connman_device_mode {
 	CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE = 2,
 };
 
+#define CONNMAN_DEVICE_PRIORITY_LOW      -100
+#define CONNMAN_DEVICE_PRIORITY_DEFAULT     0
+#define CONNMAN_DEVICE_PRIORITY_HIGH      100
+
 struct connman_device;
 
 struct connman_device *connman_device_create(const char *node,
@@ -70,6 +74,7 @@ const char *connman_device_get_control(struct connman_device *device);
 
 void connman_device_set_ident(struct connman_device *device,
 						const char *ident);
+const char *connman_device_get_ident(struct connman_device *device);
 
 void connman_device_set_mode(struct connman_device *device,
 					enum connman_device_mode mode);

@@ -272,10 +272,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
 	type = dbus_message_iter_get_arg_type(&value);
 
 	if (g_str_equal(name, "Name") == TRUE) {

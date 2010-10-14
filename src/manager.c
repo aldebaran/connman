@@ -37,10 +37,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
-		return __connman_error_permission_denied(msg);
-
 	reply = dbus_message_new_method_return(msg);
 	if (reply == NULL)
 		return NULL;
@@ -111,10 +107,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
 	type = dbus_message_iter_get_arg_type(&value);
 
 	if (g_str_equal(name, "OfflineMode") == TRUE) {
@@ -161,10 +153,6 @@ static DBusMessage *get_state(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_PUBLIC) < 0)
-		return __connman_error_permission_denied(msg);
-
 	str = __connman_notifier_get_state();
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &str,
@@ -181,10 +169,6 @@ static DBusMessage *create_profile(DBusConnection *conn,
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
-
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
 
 	err = __connman_profile_create(name, &path);
 	if (err < 0)
@@ -205,10 +189,6 @@ static DBusMessage *remove_profile(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
 	err = __connman_profile_remove(path);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
@@ -226,10 +206,6 @@ static DBusMessage *remove_provider(DBusConnection *conn,
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
-
-	if (__connman_security_check_privilege(msg,
-				CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
 
 	err = __connman_provider_remove(path);
 	if (err < 0)
@@ -484,10 +460,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
-	if (__connman_security_check_privilege(msg,
-					CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
-
 	err = __connman_service_create_and_connect(msg);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
@@ -508,10 +480,6 @@ static DBusMessage *connect_provider(DBusConnection *conn,
 	int err;
 
 	DBG("conn %p", conn);
-
-	if (__connman_security_check_privilege(msg,
-				CONNMAN_SECURITY_PRIVILEGE_MODIFY) < 0)
-		return __connman_error_permission_denied(msg);
 
 	err = __connman_provider_create_and_connect(msg);
 	if (err < 0) {

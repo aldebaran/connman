@@ -17,18 +17,10 @@ Core
    Complexity: C8
 
 
-- DHCP lib
-
-   Priority: High
-   Complexity: C8
-   Owner: Martin Xu <martin.xu@intel.com>
-
-
-- IPv6
+- DHCP lib server
 
    Priority: High
    Complexity: C4
-   Dependencies: Core:DHCP Lib
    Owner: Martin Xu <martin.xu@intel.com>
 
 
@@ -52,17 +44,7 @@ Core
    Priority: Medium
    Complexity: C4
 
-
-- VPN service
-
-   Priority: Medium
-   Complexity: C2
-
-   Create a service for every VPN and link it to the topmost one for
-   now.
-   The default route should be set accordingly when UIs move the
-   topmost service up and down.
-
+   The IPv4 Link Local part should be integrated into DHCP-lib.
 
 - OpenVPN
 
@@ -76,18 +58,35 @@ Core
    Complexity: C2
 
 
+- iptables wrapper
+
+   Priority: High
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   ConnMan needs to be able to set iptables rules and tables for both
+   tethering and on demand connection.
+   The main idea is to define an internal API for talking to the
+   netfilter socket in order to set our tables and rules. Being in
+   sync with the actual iptables library might be problematic.
+   A less elegant solution would be a process based one, that would
+   simply call the iptables executable.
+
 - Tethering
 
    Priority: Medium
    Complexity: C8
    Owner: Marcel Holtmann <marcel@holtmann.org>
+   Dependencies: Core:iptables wrapper
+   Dependencies: Core:DHCP lib server
 
-
-- WPAD - Web Proxy Autodiscovery Protocol
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Marcel Holtmann <marcel@holtmann.org>
+   Bluetooth, USB and WiFi tethering.
+   The tethering framework would typically allow sharing the 3G data
+   link between WiFi, Bluetooth or USB clients.
+   A bridge needs to be setup and all tethering connections are added
+   to it. A DHCP server and a DNS proxy will be running on the bridge.
+   Then IP forwarding and masquerading will be set between the default
+   service and the bridge interface.
 
 
 - Agent callbacks
@@ -96,20 +95,23 @@ Core
    Complexity: C2
 
 
-- HTTP proxy
+- pacrunner
 
-   Priority: Medium
-   Complexity: C1
+   Priority: High
+   Complexity: C4
+   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
 
-
-- PAC export
-
-   Priority: Low
-   Complexity: C1
-   Owner: Marcel Holtmann <marcel@holtmann.org>
-
-   When receiving an automatic configuration URL, we should set the
-   service proxy dictionary accordingly (method and URL).
+   pacrunner is a standalone daemon that downloads and interpret PAC
+   files through a JavaScript interpreter. Once the interpretation is
+   done, pacrunner is able to associate a proxy with an URL.
+   pacrunner D-Bus interface exports a configuration API for passing
+   it the PAC URLs. It also provide a FindProxyForURL() API for
+   application to know which proxies to use.
+   ConnMan will use pacrunner for both auto and manual proxy
+   configurations. Then applications should talk to pacrunner (through
+   libproxy for example) to find the right proxies.
+   ConnMan will also use the FindProxyForURL() pacruner API for a more
+   stable and accurate online detection code.
 
 
 - Moving DNS proxy code to ConnMan core
@@ -141,12 +143,6 @@ WiFi
    Dependencies: Core:Avahi-zeroconf
 
 
-- libsupplicant
-
-   Priority: Medium
-   Complexity: C4
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
 - Fast Connect
 
    Priority: Low
@@ -154,16 +150,58 @@ WiFi
    Dependencies: WiFi:libsupplicant
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
-- TTLS EAP support
+
+- EAP-AKA/SIM
+
+   Priority: Medium
+   Complexity: C2
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   This EAP is needed for SIM card based network authentication.
+   ConnMan here plays a minor role: Once wpa_supplicant is set up for
+   starting and EAP-AKA/SIM authentication, it will talk to a SIM card
+   through its pcsc-lite API.
+
+
+- EAP-Fast
+
+   Priority: Low
+   Complexity: C1
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+
+- EAP-GTC
+
+   Priority: Low
+   Complexity: C1
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+
+- WiFi p2p
+
+   Priority: Medium
+   Complexity: C2
+
+
+- WiFi CRDA setting through 3G country
 
    Priority: Low
    Complexity: C2
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   Setting the 802.11 country based on the 3G MNC/MCC.
 
 
 Bluetooth
 =========
 
 - DUN client
+
+   Priority: Low
+   Complexity: C4
+
+
+- DUN server
 
    Priority: Low
    Complexity: C4

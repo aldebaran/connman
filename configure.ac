@@ -23,8 +23,6 @@ AC_PROG_CC
 AM_PROG_CC_C_O
 AC_PROG_CC_PIE
 AC_PROG_INSTALL
-AC_PROG_SED
-AC_PROG_AWK
 AM_PROG_MKDIR_P
 
 m4_define([_LT_AC_TAGCONFIG], [])
@@ -32,7 +30,6 @@ m4_ifdef([AC_LIBTOOL_TAGS], [AC_LIBTOOL_TAGS([])])
 
 AC_DISABLE_STATIC
 AC_PROG_LIBTOOL
-AC_PROG_NM
 
 AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
 			[disable code optimization through compiler]), [
@@ -158,6 +155,13 @@ AC_ARG_ENABLE(dnsproxy,
 AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
 AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
+AC_ARG_ENABLE(pacrunner,
+	AC_HELP_STRING([--enable-pacrunner], [enable PAC runner support]),
+			[enable_pacrunner=${enableval}], [enable_pacrunner="no"])
+
+AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
+AM_CONDITIONAL(PACRUNNER_BUILTIN, test "${enable_pacrunner}" = "builtin")
+
 AC_ARG_ENABLE(google,
 	AC_HELP_STRING([--enable-google], [enable Google Public DNS support]),
 			[enable_google=${enableval}], [enable_google="no"])
@@ -172,8 +176,10 @@ AM_CONDITIONAL(MEEGO_BUILTIN, test "${enable_meego}" = "builtin")
 
 AC_CHECK_HEADERS(resolv.h, dummy=yes,
 	AC_MSG_ERROR(resolver header files are required))
-AC_CHECK_LIB(resolv, ns_initparse, dummy=yes,
-	AC_MSG_ERROR(resolver library support is required))
+AC_CHECK_LIB(resolv, ns_initparse, dummy=yes, [
+	AC_CHECK_LIB(resolv, __ns_initparse, dummy=yes,
+		AC_MSG_ERROR(resolver library support is required))
+])
 
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
@@ -258,6 +264,17 @@ fi
 AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
 AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
 
+AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
+				 [Maximal size of a statistics round robin file]),
+				 [stats_max_file_size=${withval}])
+
+if (test -z "${stats_max_file_size}"); then
+   # default size is 512 kByte
+   stats_max_file_size="512 * 8 * 128"
+fi
+
+AC_DEFINE_UNQUOTED([STATS_MAX_FILE_SIZE], (${stats_max_file_size}), [Maximal size of a statistics round robin file])
+
 PKG_CHECK_MODULES(GLIB, glib-2.0 >= 2.16, dummy=yes,
 				AC_MSG_ERROR(GLib >= 2.16 is required))
 AC_SUBST(GLIB_CFLAGS)
@@ -279,27 +296,24 @@ AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
-AC_ARG_WITH(dbusconf, AC_HELP_STRING([--with-dbusconf=PATH],
+AC_ARG_WITH(dbusconfdir, AC_HELP_STRING([--with-dbusconfdir=PATH],
 	[path to D-Bus config directory]), [path_dbusconf=${withval}],
 		[path_dbusconf="`$PKG_CONFIG --variable=sysconfdir dbus-1`"])
 if (test -z "${path_dbusconf}"); then
-	DBUS_DATADIR="${sysconfdir}/dbus-1/system.d"
+	DBUS_CONFDIR="${sysconfdir}/dbus-1/system.d"
 else
-	DBUS_DATADIR="${path_dbusconf}/dbus-1/system.d"
+	DBUS_CONFDIR="${path_dbusconf}/dbus-1/system.d"
 fi
-AC_SUBST(DBUS_DATADIR)
+AC_SUBST(DBUS_CONFDIR)
 
 AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
 			[enable_polkit=${enableval}], [enable_polkit="no"])
 if (test "${enable_polkit}" != "no"); then
-	PKG_CHECK_MODULES(POLKIT, polkit-dbus >= 0.7, dummy=yes,
-				AC_MSG_ERROR(PolicyKit >= 0.7 is required))
-	AC_SUBST(POLKIT_CFLAGS)
-	AC_SUBST(POLKIT_LIBS)
-	POLKIT_DATADIR="`$PKG_CONFIG --variable=policydir polkit`"
+	POLKIT_DATADIR="`$PKG_CONFIG --variable=actiondir polkit`"
+	POLKIT_DATADIR=""
 	if (test -z "${POLKIT_DATADIR}"); then
-		POLKIT_DATADIR="${datadir}/PolicyKit/policy"
+		POLKIT_DATADIR="${datadir}/polkit-1/actions"
 	fi
 	AC_SUBST(POLKIT_DATADIR)
 fi
@@ -347,10 +361,8 @@ AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
 			[don't use udev support even if available]),
 						[enable_udev=${enableval}])
 if (test "${enable_udev}" != "no"); then
-	PKG_CHECK_MODULES(UDEV, libudev >= 143,
-				[enable_udev="yes"], [enable_udev="no"])
-fi
-if (test "${enable_udev}" = "yes"); then
+	PKG_CHECK_MODULES(UDEV, libudev >= 143, [enable_udev="yes"],
+				AC_MSG_ERROR(libudev >= 143 is required))
 	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
 	if (test -z "${UDEV_DATADIR}"); then
 		UDEV_DATADIR="${sysconfdir}/udev/rules.d"

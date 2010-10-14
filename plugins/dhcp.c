@@ -100,6 +100,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		connman_dhcp_set_value(dhcp, "Hostname", option->data);
 
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
+	if (option != NULL)
+		connman_dhcp_set_value(dhcp, "Timeserver", option->data);
+
 	option = g_dhcp_client_get_option(dhcp_client, 252);
 	if (option != NULL)
 		connman_dhcp_set_value(dhcp, "PAC", option->data);
@@ -184,4 +188,4 @@ static void dhcp_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(dhcp, "Generic DHCP plugin", VERSION,
-			CONNMAN_PLUGIN_PRIORITY_LOW, dhcp_init, dhcp_exit)
+			CONNMAN_PLUGIN_PRIORITY_DEFAULT, dhcp_init, dhcp_exit)

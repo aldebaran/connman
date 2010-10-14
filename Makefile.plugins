@@ -34,14 +34,24 @@ endif
 if WIFI
 if WIFI_BUILTIN
 builtin_modules += wifi
-builtin_sources += plugins/wifi.c plugins/supplicant.h plugins/supplicant.c
+builtin_sources += plugins/wifi.c
+builtin_modules += wifi_legacy
+builtin_sources += plugins/wifi-legacy.c \
+			plugins/supplicant.h plugins/supplicant.c
 else
 plugin_LTLIBRARIES += plugins/wifi.la
 plugin_objects += $(plugins_wifi_la_OBJECTS)
-plugins_wifi_la_SOURCES = plugins/wifi.c \
-				plugins/supplicant.h plugins/supplicant.c
+plugins_wifi_la_SOURCES = plugins/wifi.c
 plugins_wifi_la_CFLAGS = $(plugin_cflags)
 plugins_wifi_la_LDFLAGS = $(plugin_ldflags)
+
+plugin_LTLIBRARIES += plugins/wifi_legacy.la
+plugin_objects += $(plugins_wifi_legacy_la_OBJECTS)
+plugins_wifi_legacy_la_SOURCES = plugins/wifi-legacy.c \
+				plugins/supplicant.h plugins/supplicant.c
+plugins_wifi_legacy_la_CFLAGS = $(plugin_cflags)
+plugins_wifi_legacy_la_LDFLAGS = $(plugin_ldflags)
+
 endif
 endif
 
@@ -135,6 +145,18 @@ plugins_dnsproxy_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if PACRUNNER
+if PACRUNNER_BUILTIN
+builtin_modules += pacrunner
+builtin_sources += plugins/pacrunner.c
+else
+plugin_LTLIBRARIES += plugins/pacrunner.la
+plugin_objects += $(plugins_pacrunner_la_OBJECTS)
+plugins_pacrunner_la_CFLAGS = $(plugin_cflags)
+plugins_pacrunner_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 if GOOGLE
 if GOOGLE_BUILTIN
 builtin_modules += google
@@ -163,13 +185,10 @@ if POLKIT
 if POLKIT_BUILTIN
 builtin_modules += polkit
 builtin_sources += plugins/polkit.c
-builtin_libadd += @POLKIT_LIBS@
-builtin_cflags += @POLKIT_CFLAGS@
 else
 plugin_LTLIBRARIES += plugins/polkit.la
 plugin_objects += $(plugins_polkit_la_OBJECTS)
-plugins_polkit_la_CFLAGS = $(plugin_cflags) @POLKIT_CFLAGS@
-plugins_polkit_la_LIBADD = @POLKIT_LIBS@ @GLIB_LIBS@
+plugins_polkit_la_CFLAGS = $(plugin_cflags)
 plugins_polkit_la_LDFLAGS = $(plugin_ldflags)
 endif
 

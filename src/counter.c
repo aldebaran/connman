@@ -29,7 +29,6 @@
 
 static DBusConnection *connection;
 
-static GHashTable *stats_table;
 static GHashTable *counter_table;
 static GHashTable *owner_mapping;
 
@@ -38,7 +37,6 @@ struct connman_counter {
 	char *path;
 	unsigned int interval;
 	guint watch;
-	connman_bool_t first_update;
 };
 
 static void remove_counter(gpointer user_data)
@@ -51,6 +49,8 @@ static void remove_counter(gpointer user_data)
 		g_dbus_remove_watch(connection, counter->watch);
 
 	__connman_rtnl_update_interval_remove(counter->interval);
+
+	__connman_service_counter_unregister(counter->path);
 
 	g_free(counter->owner);
 	g_free(counter->path);
@@ -71,6 +71,7 @@ int __connman_counter_register(const char *owner, const char *path,
 						unsigned int interval)
 {
 	struct connman_counter *counter;
+	int err;
 
 	DBG("owner %s path %s interval %u", owner, path, interval);
 
@@ -84,7 +85,14 @@ int __connman_counter_register(const char *owner, const char *path,
 
 	counter->owner = g_strdup(owner);
 	counter->path = g_strdup(path);
-	counter->first_update = TRUE;
+
+	err = __connman_service_counter_register(counter->path);
+	if (err < 0) {
+		g_free(counter->owner);
+		g_free(counter->path);
+		g_free(counter);
+		return err;
+	}
 
 	g_hash_table_replace(counter_table, counter->path, counter);
 	g_hash_table_replace(owner_mapping, counter->owner, counter);
@@ -117,59 +125,22 @@ int __connman_counter_unregister(const char *owner, const char *path)
 	return 0;
 }
 
-static void send_usage(struct connman_counter *counter,
-				struct connman_service *service)
+void __connman_counter_send_usage(const char *path,
+					DBusMessage *message)
 {
-	DBusMessage *message;
-	const char *service_path;
+	struct connman_counter *counter;
 
-	message = dbus_message_new_method_call(counter->owner, counter->path,
-					CONNMAN_COUNTER_INTERFACE, "Usage");
-	if (message == NULL)
+	counter = g_hash_table_lookup(counter_table, path);
+	if (counter == NULL)
 		return;
 
+	dbus_message_set_destination(message, counter->owner);
+	dbus_message_set_path(message, counter->path);
+	dbus_message_set_interface(message, CONNMAN_COUNTER_INTERFACE);
+	dbus_message_set_member(message, "Usage");
 	dbus_message_set_no_reply(message, TRUE);
 
-	service_path = __connman_service_get_path(service);
-	dbus_message_append_args(message, DBUS_TYPE_OBJECT_PATH,
-					&service_path, DBUS_TYPE_INVALID);
-
-	__connman_service_stats_append(service, message, counter->first_update);
-
-	counter->first_update = FALSE;
-
 	g_dbus_send_message(connection, message);
-}
-
-void __connman_counter_notify(struct connman_ipconfig *config,
-			unsigned int rx_packets, unsigned int tx_packets,
-			unsigned int rx_bytes, unsigned int tx_bytes,
-			unsigned int rx_errors, unsigned int tx_errors,
-			unsigned int rx_dropped, unsigned int tx_dropped)
-{
-	struct connman_service *service;
-	GHashTableIter iter;
-	gpointer key, value;
-
-	service = g_hash_table_lookup(stats_table, config);
-	if (service == NULL)
-		return;
-
-	if (__connman_service_stats_update(service,
-				rx_packets, tx_packets,
-				rx_bytes, tx_bytes,
-				rx_errors, tx_errors,
-				rx_dropped, tx_dropped) == FALSE) {
-		/* first update, counters are now initialized */
-		return;
-	}
-
-	g_hash_table_iter_init(&iter, counter_table);
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		struct connman_counter *counter = value;
-
-		send_usage(counter, service);
-	}
 }
 
 static void release_counter(gpointer key, gpointer value, gpointer user_data)
@@ -189,30 +160,6 @@ static void release_counter(gpointer key, gpointer value, gpointer user_data)
 	g_dbus_send_message(connection, message);
 }
 
-int __connman_counter_add_service(struct connman_service *service)
-{
-	struct connman_ipconfig *config;
-
-	config = __connman_service_get_ipconfig(service);
-	g_hash_table_replace(stats_table, config, service);
-
-	/*
-	 * Trigger a first update to intialize the offset counters
-	 * in the service.
-	 */
-	__connman_rtnl_request_update();
-
-	return 0;
-}
-
-void __connman_counter_remove_service(struct connman_service *service)
-{
-	struct connman_ipconfig *config;
-
-	config = __connman_service_get_ipconfig(service);
-	g_hash_table_remove(stats_table, config);
-}
-
 int __connman_counter_init(void)
 {
 	DBG("");
@@ -220,9 +167,6 @@ int __connman_counter_init(void)
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
-
-	stats_table = g_hash_table_new_full(g_direct_hash, g_str_equal,
-							NULL, NULL);
 
 	counter_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_counter);
@@ -243,8 +187,6 @@ void __connman_counter_cleanup(void)
 
 	g_hash_table_destroy(owner_mapping);
 	g_hash_table_destroy(counter_table);
-
-	g_hash_table_destroy(stats_table);
 
 	dbus_connection_unref(connection);
 }

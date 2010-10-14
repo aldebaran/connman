@@ -55,6 +55,13 @@ typedef void (* GDBusDestroyFunction) (void *user_data);
 typedef DBusMessage * (* GDBusMethodFunction) (DBusConnection *connection,
 					DBusMessage *message, void *user_data);
 
+typedef guint32 GDBusPendingReply;
+
+typedef void (* GDBusSecurityFunction) (DBusConnection *connection,
+						const char *action,
+						gboolean interaction,
+						GDBusPendingReply pending);
+
 typedef enum {
 	G_DBUS_METHOD_FLAG_DEPRECATED = (1 << 0),
 	G_DBUS_METHOD_FLAG_NOREPLY    = (1 << 1),
@@ -69,12 +76,19 @@ typedef enum {
 	G_DBUS_PROPERTY_FLAG_DEPRECATED = (1 << 0),
 } GDBusPropertyFlags;
 
+typedef enum {
+	G_DBUS_SECURITY_FLAG_DEPRECATED        = (1 << 0),
+	G_DBUS_SECURITY_FLAG_BUILTIN           = (1 << 1),
+	G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION = (1 << 2),
+} GDBusSecurityFlags;
+
 typedef struct {
 	const char *name;
 	const char *signature;
 	const char *reply;
 	GDBusMethodFunction function;
 	GDBusMethodFlags flags;
+	unsigned int privilege;
 } GDBusMethodTable;
 
 typedef struct {
@@ -89,6 +103,13 @@ typedef struct {
 	GDBusPropertyFlags flags;
 } GDBusPropertyTable;
 
+typedef struct {
+	unsigned int privilege;
+	const char *action;
+	GDBusSecurityFlags flags;
+	GDBusSecurityFunction function;
+} GDBusSecurityTable;
+
 gboolean g_dbus_register_interface(DBusConnection *connection,
 					const char *path, const char *name,
 					const GDBusMethodTable *methods,
@@ -98,6 +119,19 @@ gboolean g_dbus_register_interface(DBusConnection *connection,
 					GDBusDestroyFunction destroy);
 gboolean g_dbus_unregister_interface(DBusConnection *connection,
 					const char *path, const char *name);
+
+gboolean g_dbus_register_security(const GDBusSecurityTable *security);
+gboolean g_dbus_unregister_security(const GDBusSecurityTable *security);
+
+void g_dbus_pending_success(DBusConnection *connection,
+					GDBusPendingReply pending);
+void g_dbus_pending_error(DBusConnection *connection,
+				GDBusPendingReply pending,
+				const char *name, const char *format, ...)
+					__attribute__((format(printf, 4, 5)));
+void g_dbus_pending_error_valist(DBusConnection *connection,
+				GDBusPendingReply pending, const char *name,
+					const char *format, va_list args);
 
 DBusMessage *g_dbus_create_error(DBusMessage *message, const char *name,
 						const char *format, ...)
