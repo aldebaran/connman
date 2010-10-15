@@ -27,12 +27,14 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 #include <net/if_arp.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <linux/wireless.h>
 
 #include <glib.h>
 
@@ -101,6 +103,28 @@ static connman_bool_t ether_blacklisted(const char *name)
 	return FALSE;
 }
 
+static connman_bool_t wext_interface(char *ifname)
+{
+	struct iwreq wrq;
+	int fd, err;
+
+	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return FALSE;
+
+	memset(&wrq, 0, sizeof(wrq));
+	strncpy(wrq.ifr_name, ifname, IFNAMSIZ);
+
+	err = ioctl(fd, SIOCGIWNAME, &wrq);
+
+	close(fd);
+
+	if (err < 0)
+		return FALSE;
+
+	return TRUE;
+}
+
 static void read_uevent(struct interface_data *interface)
 {
 	char *filename, line[128];
@@ -163,16 +187,12 @@ static void read_uevent(struct interface_data *interface)
 		return;
 
 	/* We haven't got a DEVTYPE, let's check if it's a wireless device */
-	filename = g_strdup_printf("/sys/class/net/%s/wireless/",
-						interface->name);
-
-	f = fopen(filename, "re");
-
-	g_free(filename);
-
-	if (f != NULL) {
+	if (wext_interface(interface->name)) {
 		interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
 		interface->device_type = CONNMAN_DEVICE_TYPE_WIFI;
+
+		connman_error("%s runs an unsupported 802.11 driver",
+				interface->name);
 	}
 }
 
