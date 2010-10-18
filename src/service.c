@@ -1527,6 +1527,33 @@ const char *connman_service_get_nameserver(struct connman_service *service)
 	return service->nameserver;
 }
 
+enum connman_service_proxy_method connman_service_get_proxy_method(
+					struct connman_service *service)
+{
+	if (service == NULL)
+		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
+
+	return service->proxy;
+}
+
+char **connman_service_get_proxy_servers(struct connman_service *service)
+{
+	return g_strdupv(service->proxies);
+}
+
+char **connman_service_get_proxy_excludes(struct connman_service *service)
+{
+	return g_strdupv(service->excludes);
+}
+
+const char *connman_service_get_proxy_url(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->pac;
+}
+
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url)
 {

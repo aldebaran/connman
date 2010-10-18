@@ -102,6 +102,10 @@ char *connman_service_get_interface(struct connman_service *service);
 
 const char *connman_service_get_domainname(struct connman_service *service);
 const char *connman_service_get_nameserver(struct connman_service *service);
+enum connman_service_proxy_method connman_service_get_proxy_method(struct connman_service *service);
+char **connman_service_get_proxy_servers(struct connman_service *service);
+char **connman_service_get_proxy_excludes(struct connman_service *service);
+const char *connman_service_get_proxy_url(struct connman_service *service);
 const char *connman_service_get_proxy_autoconfig(struct connman_service *service);
 
 #ifdef __cplusplus
