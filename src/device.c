@@ -586,6 +586,8 @@ static void probe_driver(struct connman_element *element, gpointer user_data)
 
 	element->device->driver = driver;
 
+	__connman_element_set_driver(element);
+
 	setup_device(element->device);
 }
 
