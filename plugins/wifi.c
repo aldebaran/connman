@@ -410,7 +410,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	struct connman_network *network;
 	GSupplicantInterface *interface;
 	struct wifi_data *wifi;
-	const char *name, *path, *identifier, *mode, *security, *group;
+	const char *name, *identifier, *mode, *security, *group;
 	const unsigned char *ssid;
 	unsigned int ssid_len;
 
@@ -419,7 +419,6 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	interface = g_supplicant_network_get_interface(supplicant_network);
 	wifi = g_supplicant_interface_get_data(interface);
 	name = g_supplicant_network_get_name(supplicant_network);
-	path = g_supplicant_network_get_path(supplicant_network);
 	identifier = g_supplicant_network_get_identifier(supplicant_network);
 	mode = g_supplicant_network_get_mode(supplicant_network);
 	security = g_supplicant_network_get_security(supplicant_network);
@@ -430,7 +429,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 
 	ssid = g_supplicant_network_get_ssid(supplicant_network, &ssid_len);
 
-	network = connman_device_get_network(wifi->device, path);
+	network = connman_device_get_network(wifi->device, identifier);
 
 	if (network == NULL) {
 		network = connman_network_create(identifier,
