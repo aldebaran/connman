@@ -686,6 +686,11 @@ int connman_provider_get_index(struct connman_provider *provider)
 	return provider->element.index;
 }
 
+const char *connman_provider_get_driver_name(struct connman_provider *provider)
+{
+	return provider->driver->name;
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	return 0;
