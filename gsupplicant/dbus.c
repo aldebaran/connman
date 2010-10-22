@@ -182,6 +182,90 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 	return 0;
 }
 
+static void property_get_reply(DBusPendingCall *call, void *user_data)
+{
+	struct property_get_data *data = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		goto done;
+
+	if (dbus_message_iter_init(reply, &iter) == FALSE)
+		goto done;
+
+	if (dbus_message_iter_get_arg_type(&iter) == DBUS_TYPE_VARIANT) {
+		DBusMessageIter variant;
+
+		dbus_message_iter_recurse(&iter, &variant);
+
+		if (data->function != NULL)
+			data->function(NULL, &variant, data->user_data);
+	}
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+int supplicant_dbus_property_get(const char *path, const char *interface,
+				const char *method,
+				supplicant_dbus_property_function function,
+							void *user_data)
+{
+	struct property_get_data *data;
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	if (connection == NULL)
+		return -EINVAL;
+
+	if (path == NULL || interface == NULL || method == NULL)
+		return -EINVAL;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	message = dbus_message_new_method_call(SUPPLICANT_SERVICE, path,
+					DBUS_INTERFACE_PROPERTIES, "Get");
+
+	if (message == NULL) {
+		dbus_free(data);
+		return -ENOMEM;
+	}
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &interface,
+					DBUS_TYPE_STRING, &method, NULL);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		dbus_message_unref(message);
+		dbus_free(data);
+		return -EIO;
+	}
+
+	if (call == NULL) {
+		dbus_message_unref(message);
+		dbus_free(data);
+		return -EIO;
+	}
+
+	data->function = function;
+	data->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, property_get_reply,
+							data, dbus_free);
+
+	dbus_message_unref(message);
+
+	return 0;
+}
+
 struct property_set_data {
 	supplicant_dbus_result_function function;
 	void *user_data;

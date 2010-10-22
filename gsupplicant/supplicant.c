@@ -1300,6 +1300,45 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
+static void scan_network_update(DBusMessageIter *iter, void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+	GSupplicantNetwork *network;
+	char *path;
+
+	if (iter == NULL)
+		return;
+
+	dbus_message_iter_get_basic(iter, &path);
+
+	if (path == NULL)
+		return;
+
+	if (g_strcmp0(path, "/") == 0)
+		return;
+
+	/* Update the network details based on scan BSS data */
+	network = g_hash_table_lookup(interface->bss_mapping, path);
+	if (network != NULL)
+		callback_network_added(network);
+}
+
+static void scan_bss_data(const char *key, DBusMessageIter *iter,
+				void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+
+	if (iter)
+		supplicant_dbus_array_foreach(iter, scan_network_update,
+						interface);
+
+	if (interface->scan_callback != NULL)
+		interface->scan_callback(0, interface, interface->scan_data);
+
+	interface->scan_callback = NULL;
+	interface->scan_data = NULL;
+}
+
 static GSupplicantInterface *interface_alloc(const char *path)
 {
 	GSupplicantInterface *interface;
@@ -1511,18 +1550,23 @@ static void signal_scan_done(const char *path, DBusMessageIter *iter)
 
 	dbus_message_iter_get_basic(iter, &success);
 
-	if (interface->scan_callback != NULL) {
-		int result = 0;
-
-		if (success == FALSE)
-			result = -EIO;
-
-		interface->scan_callback(result, interface,
+	/*
+	 * If scan is unsuccessful return -EIO else get the scanned BSSs
+	 * and update the network details accordingly
+	 */
+	if (success == FALSE) {
+		if (interface->scan_callback != NULL)
+			interface->scan_callback(-EIO, interface,
 						interface->scan_data);
+
+		interface->scan_callback = NULL;
+		interface->scan_data = NULL;
+
+		return;
 	}
 
-	interface->scan_callback = NULL;
-	interface->scan_data = NULL;
+	supplicant_dbus_property_get(path, SUPPLICANT_INTERFACE ".Interface",
+					"BSSs", scan_bss_data, interface);
 }
 
 static void signal_bss_added(const char *path, DBusMessageIter *iter)

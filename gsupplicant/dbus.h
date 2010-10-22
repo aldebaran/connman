@@ -51,6 +51,11 @@ int supplicant_dbus_property_get_all(const char *path, const char *interface,
 				supplicant_dbus_property_function function,
 							void *user_data);
 
+int supplicant_dbus_property_get(const char *path, const char *interface,
+				const char *method,
+				supplicant_dbus_property_function function,
+							void *user_data);
+
 int supplicant_dbus_property_set(const char *path, const char *interface,
 				const char *key, const char *signature,
 				supplicant_dbus_setup_function setup,
