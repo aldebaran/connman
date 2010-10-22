@@ -101,7 +101,7 @@ build_plugindir = $(plugindir)
 build_scriptdir = $(scriptdir)
 endif
 
-AM_CFLAGS = @IPTC_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
+AM_CFLAGS = @XTABLES_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
 			@DBUS_CFLAGS@ @GLIB_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
@@ -160,7 +160,7 @@ tools_polkit_test_LDADD = @DBUS_LIBS@
 
 tools_portal_test_LDADD = @GLIB_LIBS@
 
-tools_iptables_test_LDADD = @IPTC_LIBS@ -lip4tc -lxtables
+tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
 
 if DHCLIENT
 noinst_PROGRAMS += tools/dhclient-test
