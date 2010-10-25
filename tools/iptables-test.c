@@ -696,11 +696,12 @@ int main(int argc, char *argv[])
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	int c;
 	size_t size;
-	gboolean dump;
+	gboolean dump, invert;
 
 	xtables_init_all(&connman_iptables_globals, NFPROTO_IPV4);
 
 	dump = FALSE;
+	invert = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
 	table = NULL;
 	xt_m = NULL;
@@ -781,13 +782,29 @@ int main(int argc, char *argv[])
 			table_name = optarg;
 			break;
 
+		case 1:
+			if (optarg[0] == '!' && optarg[1] == '\0') {
+				if (invert)
+					printf("Consecutive ! not allowed\n");
+
+				invert = TRUE;
+				optarg[0] = '\0';
+				continue;
+			}
+
+			printf("Invalid option\n");
+
+			return -1;
+
 		default:
 			if (xt_t == NULL || xt_t->parse == NULL ||
-			    !xt_t->parse(c - xt_t->option_offset, argv, 0, &xt_t->tflags, NULL, &xt_t->t)) {
+			    !xt_t->parse(c - xt_t->option_offset, argv, invert,
+					&xt_t->tflags, NULL, &xt_t->t)) {
 				if (xt_m == NULL || xt_m->parse == NULL)
 					break;
 
-				xt_m->parse(c - xt_m->option_offset, argv, 0, &xt_m->mflags, NULL, &xt_m->m);
+				xt_m->parse(c - xt_m->option_offset, argv,
+					invert, &xt_m->mflags, NULL, &xt_m->m);
 			}
 
 			break;
@@ -824,8 +841,7 @@ int main(int argc, char *argv[])
 
 		printf("Adding %s to %s (match %s)\n", target_name, chain, match_name);
 
-		connman_iptables_add_rule(table, chain,
-					target_name, xt_t,
+		connman_iptables_add_rule(table, chain, target_name, xt_t,
 					match_name, xt_m);
 
 		goto commit;
