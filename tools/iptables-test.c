@@ -18,6 +18,7 @@
  *
  */
 
+#include <getopt.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
@@ -398,8 +399,6 @@ connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 	if (chain_tail == NULL)
 		return -EINVAL;
 
-	printf("Chains found\n");
-
 	new_entry = new_rule(target_name, target_argc, target_argv,
 				match_name, match_argc, match_argv);
 	if (new_entry == NULL)
@@ -618,6 +617,15 @@ static void connman_iptables_cleanup(struct connman_iptables *table)
 	g_free(table);
 }
 
+static int connman_iptables_commit(struct connman_iptables *table)
+{
+	struct ipt_replace *repl;
+
+	repl = connman_iptables_blob(table);
+
+	return connman_iptables_replace(table, repl);
+}
+
 static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 {
 	return connman_add_entry(table, entry, NULL);
@@ -675,10 +683,24 @@ err:
 	return NULL;
 }
 
+
+static struct option connman_iptables_opts[] = {
+	{.name = "append",        .has_arg = 1, .val = 'A'},
+	{.name = "list",          .has_arg = 2, .val = 'L'},
+	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
+	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
+	{.name = "jump",          .has_arg = 1, .val = 'j'},
+	{.name = "match",         .has_arg = 1, .val = 'm'},
+	{.name = "out-interface", .has_arg = 1, .val = 'o'},
+	{NULL},
+};
+
 int main(int argc, char *argv[])
 {
-	struct ipt_replace *repl;
 	struct connman_iptables *table;
+	char *chain, *new_chain, *match_name, *target_name;
+	int c;
+	gboolean dump;
 
 	xtables_init();
 	xtables_set_nfproto(NFPROTO_IPV4);
@@ -687,19 +709,77 @@ int main(int argc, char *argv[])
 	if (table == NULL)
 		return -1;
 
-	connman_iptables_dump(table);
+	dump = FALSE;
+	chain = new_chain = match_name = target_name = NULL;
 
-	if (argv[1]) {
-		connman_iptables_add_chain(table, argv[1]);
+	while ((c = getopt_long(argc, argv,
+	   "-A:L::N:j:i:m:o:", connman_iptables_opts, NULL)) != -1) {
+		switch (c) {
+		case 'A':
+			chain = optarg;
+			break;
 
-		connman_iptables_add_rule(table, argv[1],
-					"ACCEPT", 0, NULL,
-					NULL, 0, NULL);
+		case 'L':
+			dump = TRUE;
+			break;
 
-		repl = connman_iptables_blob(table);
+		case 'N':
+			new_chain = optarg;
+			break;
 
-		connman_iptables_replace(table, repl);
+		case 'j':
+			target_name = optarg;
+			break;
+
+		case 'i':
+			break;
+
+		case 'm':
+			match_name = optarg;
+			break;
+
+		case 'o':
+			break;
+
+		default:
+			printf("default %s\n", optarg);
+
+		}
 	}
+
+	if (dump) {
+		connman_iptables_dump(table);
+
+		return 0;
+	}
+
+	if (chain && new_chain)
+		return -1;
+
+	if (new_chain) {
+		printf("New chain %s\n", new_chain);
+
+		connman_iptables_add_chain(table, new_chain);
+
+		goto commit;
+	}
+
+	if (chain) {
+		if (target_name == NULL)
+			return -1;
+
+		printf("Adding %s to %s (match %s)\n", target_name, chain, match_name);
+
+		connman_iptables_add_rule(table, chain,
+					target_name, 0, NULL,
+					match_name, 0, NULL);
+
+		goto commit;
+	}
+
+commit:
+
+	connman_iptables_commit(table);
 
 	connman_iptables_cleanup(table);
 
