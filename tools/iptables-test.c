@@ -692,28 +692,25 @@ static struct option connman_iptables_opts[] = {
 	{.name = "jump",          .has_arg = 1, .val = 'j'},
 	{.name = "match",         .has_arg = 1, .val = 'm'},
 	{.name = "out-interface", .has_arg = 1, .val = 'o'},
+	{.name = "table",         .has_arg = 1, .val = 't'},
 	{NULL},
 };
 
 int main(int argc, char *argv[])
 {
 	struct connman_iptables *table;
-	char *chain, *new_chain, *match_name, *target_name;
+	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	int c;
 	gboolean dump;
 
 	xtables_init();
 	xtables_set_nfproto(NFPROTO_IPV4);
 
-	table = connman_iptables_init("filter");
-	if (table == NULL)
-		return -1;
-
 	dump = FALSE;
-	chain = new_chain = match_name = target_name = NULL;
+	table_name = chain = new_chain = match_name = target_name = NULL;
 
 	while ((c = getopt_long(argc, argv,
-	   "-A:L::N:j:i:m:o:", connman_iptables_opts, NULL)) != -1) {
+	   "-A:L::N:j:i:m:o:t:", connman_iptables_opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
@@ -741,11 +738,22 @@ int main(int argc, char *argv[])
 		case 'o':
 			break;
 
+		case 't':
+			table_name = optarg;
+			break;
+
 		default:
 			printf("default %s\n", optarg);
 
 		}
 	}
+
+	if (table_name == NULL)
+		table_name = "filter";
+
+	table = connman_iptables_init(table_name);
+	if (table == NULL)
+		return -1;
 
 	if (dump) {
 		connman_iptables_dump(table);
