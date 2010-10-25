@@ -313,24 +313,18 @@ err:
 }
 
 static struct ipt_entry *
-new_builtin_rule(char *target_name,
-		char *match_name, int match_argc, char **match_argv)
+new_builtin_rule(char *target_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
 	size_t match_size, target_size;
-	struct xtables_match *xt_m;
+	struct xt_entry_match *entry_match;
 	struct xt_standard_target *target;
 
-	xt_m = NULL;
-	match_size = 0;
 
-	if (match_name) {
-		xt_m = xtables_find_match(match_name, XTF_TRY_LOAD, NULL);
-		if (xt_m == NULL)
-			return NULL;
-
-		match_size = ALIGN(sizeof(struct xt_entry_match)) + xt_m->size;
-	}
+	if (xt_m)
+		match_size = xt_m->m->u.match_size;
+	else
+		match_size = 0;
 
 	target_size = ALIGN(sizeof(struct xt_standard_target));
 
@@ -344,14 +338,8 @@ new_builtin_rule(char *target_name,
 								match_size;
 
 	if (xt_m) {
-		struct xt_entry_match *entry_match;
-
 		entry_match = (struct xt_entry_match *)new_entry->elems;
-		entry_match->u.match_size = match_size;
-		strcpy(entry_match->u.user.name, xt_m->name);
-		entry_match->u.user.revision = xt_m->revision;
-		if (xt_m->init != NULL)
-			xt_m->init(entry_match);
+		memcpy(entry_match, xt_m->m, match_size);
 	}
 
 	target = (struct xt_standard_target *)(new_entry->elems + match_size);
@@ -364,33 +352,29 @@ new_builtin_rule(char *target_name,
 }
 
 static struct ipt_entry *
-new_custom_rule(char *target_name, int target_argc, char **target_argv,
-		char *match_name, int match_argc, char **match_argv)
+new_custom_rule(struct xtables_target *xt_t, struct xtables_match *xt_m)
 {
 	return NULL;
 }
 
 static struct ipt_entry *
-new_rule(char *target_name, int target_argc, char **target_argv,
-		char *match_name, int match_argc, char **match_argv)
+new_rule(char *target_name, struct xtables_target *xt_t,
+		char *match_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
 
 	if (is_builtin_target(target_name))
-		new_entry = new_builtin_rule(target_name,
-					match_name, match_argc, match_argv);
+		new_entry = new_builtin_rule(target_name, xt_m);
 	else
-		new_entry = new_custom_rule(target_name,
-					target_argc, target_argv,
-					match_name, match_argc, match_argv);
+		new_entry = new_custom_rule(xt_t, xt_m);
 
 	return new_entry;
 }
 
 static int
 connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
-			char *target_name, int target_argc, char **target_argv,
-			char *match_name, int match_argc, char **match_argv)
+				char *target_name, struct xtables_target *xt_t,
+				char *match_name, struct xtables_match *xt_m)
 {
 	GList *chain_tail;
 	struct ipt_entry *new_entry;
@@ -399,8 +383,8 @@ connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 	if (chain_tail == NULL)
 		return -EINVAL;
 
-	new_entry = new_rule(target_name, target_argc, target_argv,
-				match_name, match_argc, match_argv);
+	new_entry = new_rule(target_name, xt_t,
+				match_name, xt_m);
 	if (new_entry == NULL)
 		return -EINVAL;
 
@@ -615,6 +599,8 @@ static void connman_iptables_cleanup(struct connman_iptables *table)
 	g_free(table->info);
 	g_free(table->blob_entries);
 	g_free(table);
+
+	xtables_free_opts(1);
 }
 
 static int connman_iptables_commit(struct connman_iptables *table)
@@ -696,21 +682,32 @@ static struct option connman_iptables_opts[] = {
 	{NULL},
 };
 
+struct xtables_globals connman_iptables_globals = {
+	.option_offset = 0,
+	.opts = connman_iptables_opts,
+	.orig_opts = connman_iptables_opts,
+};
+
 int main(int argc, char *argv[])
 {
 	struct connman_iptables *table;
+	struct xtables_match *xt_m;
+	struct xtables_target *xt_t;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	int c;
+	size_t size;
 	gboolean dump;
 
-	xtables_init();
-	xtables_set_nfproto(NFPROTO_IPV4);
+	xtables_init_all(&connman_iptables_globals, NFPROTO_IPV4);
 
 	dump = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
+	table = NULL;
+	xt_m = NULL;
+	xt_t = NULL;
 
 	while ((c = getopt_long(argc, argv,
-	   "-A:L::N:j:i:m:o:t:", connman_iptables_opts, NULL)) != -1) {
+	   "-A:L::N:j:i:m:o:t:", connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
@@ -726,6 +723,28 @@ int main(int argc, char *argv[])
 
 		case 'j':
 			target_name = optarg;
+			xt_t = xtables_find_target(target_name, XTF_TRY_LOAD);
+
+			if (xt_t == NULL)
+				break;
+
+			size = ALIGN(sizeof(struct ipt_entry_target)) + xt_t->size;
+
+			xt_t->t = g_try_malloc0(size);
+			if (xt_t->t == NULL)
+				goto out;
+			xt_t->t->u.target_size = size;
+			strcpy(xt_t->t->u.user.name, target_name);
+			xt_t->t->u.user.revision = xt_t->revision;
+			if (xt_t->init != NULL)
+				xt_t->init(xt_t->t);
+			connman_iptables_globals.opts =
+				xtables_merge_options(connman_iptables_globals.opts,
+						     xt_t->extra_opts,
+						     &xt_t->option_offset);
+			if (connman_iptables_globals.opts == NULL)
+				goto out;
+
 			break;
 
 		case 'i':
@@ -733,6 +752,26 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			match_name = optarg;
+
+			xt_m = xtables_find_match(optarg, XTF_LOAD_MUST_SUCCEED, NULL);
+			size = ALIGN(sizeof(struct ipt_entry_match)) + xt_m->size;
+			xt_m->m = g_try_malloc0(size);
+			if (xt_m == NULL)
+				goto out;
+			xt_m->m->u.match_size = size;
+			strcpy(xt_m->m->u.user.name, xt_m->name);
+			xt_m->m->u.user.revision = xt_m->revision;
+			if (xt_m->init != NULL)
+				xt_m->init(xt_m->m);
+			if (xt_m != xt_m->next) {
+				connman_iptables_globals.opts =
+					xtables_merge_options(connman_iptables_globals.opts,
+						xt_m->extra_opts,
+						&xt_m->option_offset);
+				if (connman_iptables_globals.opts == NULL)
+					goto out;
+			}
+
 			break;
 
 		case 'o':
@@ -743,8 +782,15 @@ int main(int argc, char *argv[])
 			break;
 
 		default:
-			printf("default %s\n", optarg);
+			if (xt_t == NULL || xt_t->parse == NULL ||
+			    !xt_t->parse(c - xt_t->option_offset, argv, 0, &xt_t->tflags, NULL, &xt_t->t)) {
+				if (xt_m == NULL || xt_m->parse == NULL)
+					break;
 
+				xt_m->parse(c - xt_m->option_offset, argv, 0, &xt_m->mflags, NULL, &xt_m->m);
+			}
+
+			break;
 		}
 	}
 
@@ -779,8 +825,8 @@ int main(int argc, char *argv[])
 		printf("Adding %s to %s (match %s)\n", target_name, chain, match_name);
 
 		connman_iptables_add_rule(table, chain,
-					target_name, 0, NULL,
-					match_name, 0, NULL);
+					target_name, xt_t,
+					match_name, xt_m);
 
 		goto commit;
 	}
@@ -789,7 +835,14 @@ commit:
 
 	connman_iptables_commit(table);
 
+out:
 	connman_iptables_cleanup(table);
+
+	if (xt_t)
+		g_free(xt_t->t);
+
+	if (xt_m)
+		g_free(xt_m->m);
 
 	return 0;
 }
