@@ -1656,7 +1656,7 @@ static int device_load(struct connman_device *device)
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
 		val = g_key_file_get_integer(keyfile, identifier,
 						"ScanInterval", &error);
-		if (error == NULL && val > 0)
+		if (error == NULL)
 			device->scan_interval = val;
 		g_clear_error(&error);
 		break;
@@ -1694,8 +1694,7 @@ static int device_save(struct connman_device *device)
 		break;
 	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
 	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		if (device->scan_interval > 0)
-			g_key_file_set_integer(keyfile, identifier,
+		g_key_file_set_integer(keyfile, identifier,
 					"ScanInterval", device->scan_interval);
 		break;
 	}
