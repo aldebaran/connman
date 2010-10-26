@@ -90,7 +90,7 @@ static int ipv4_probe(struct connman_element *element)
 	DBG("netmask %s", netmask);
 	DBG("broadcast %s", broadcast);
 
-	if (address == NULL || netmask == NULL)
+	if (address == NULL)
 		return -EINVAL;
 
 	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
