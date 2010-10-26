@@ -320,7 +320,6 @@ new_builtin_rule(char *target_name, struct xtables_match *xt_m)
 	struct xt_entry_match *entry_match;
 	struct xt_standard_target *target;
 
-
 	if (xt_m)
 		match_size = xt_m->m->u.match_size;
 	else
@@ -336,7 +335,6 @@ new_builtin_rule(char *target_name, struct xtables_match *xt_m)
 	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
 	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
 								match_size;
-
 	if (xt_m) {
 		entry_match = (struct xt_entry_match *)new_entry->elems;
 		memcpy(entry_match, xt_m->m, match_size);
@@ -354,7 +352,41 @@ new_builtin_rule(char *target_name, struct xtables_match *xt_m)
 static struct ipt_entry *
 new_custom_rule(struct xtables_target *xt_t, struct xtables_match *xt_m)
 {
-	return NULL;
+	struct ipt_entry *new_entry;
+	size_t match_size, target_size;
+	struct xt_entry_match *entry_match;
+	struct xt_entry_target *entry_target;
+
+	if (xt_m)
+		match_size = xt_m->m->u.match_size;
+	else
+		match_size = 0;
+
+	if (xt_t)
+		target_size = ALIGN(xt_t->t->u.target_size);
+	else
+		target_size = 0;
+
+	new_entry = g_try_malloc0(sizeof(struct ipt_entry) + target_size +
+								match_size);
+	if (new_entry == NULL)
+		return NULL;
+
+	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
+	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
+								match_size;
+	if (xt_m) {
+		entry_match = (struct xt_entry_match *)new_entry->elems;
+		memcpy(entry_match, xt_m->m, match_size);
+	}
+
+	if (xt_t) {
+		entry_target = (struct xt_entry_target *)(new_entry->elems +
+								match_size);
+		memcpy(entry_target, xt_t->t, target_size);
+	}
+
+	return new_entry;
 }
 
 static struct ipt_entry *
@@ -483,14 +515,17 @@ static void dump_target(struct connman_iptables *table,
 		if(xt_t->print != NULL)
 			xt_t->print(NULL, target, 1);
 	} else {
-		printf("\ttarget %s\n", target->u.user.name);
-
 		xt_t = xtables_find_target(target->u.user.name, XTF_TRY_LOAD);
-		if (xt_t == NULL)
+		if (xt_t == NULL) {
+			printf("\ttarget %s\n", target->u.user.name);
 			return;
+		}
 
-		if(xt_t->print != NULL)
+		if(xt_t->print != NULL) {
+			printf("\ttarget ");
 			xt_t->print(NULL, target, 1);
+			printf("\n");
+		}
 	}
 }
 
@@ -498,6 +533,9 @@ static void dump_match(struct connman_iptables *table, struct ipt_entry *entry)
 {
 	struct xtables_match *xt_m;
 	struct xt_entry_match *match;
+
+	if (entry->elems == (unsigned char *)entry + entry->target_offset)
+		return;
 
 	match = (struct xt_entry_match *) entry->elems;
 
