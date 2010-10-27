@@ -223,6 +223,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-portal \
 				--enable-hh2serial-gps \
 				--enable-ntpd \
+				--enable-openconnect \
 				--enable-tools
 
 DISTCLEANFILES = $(pkgconfig_DATA)

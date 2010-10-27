@@ -34,7 +34,7 @@
 #include <linux/if_tun.h>
 #include <net/if.h>
 
-#include <dbus.h>
+#include <dbus/dbus.h>
 
 #include <glib/ghash.h>
 #include <glib/gprintf.h>
