@@ -109,7 +109,7 @@ endif
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
 builtin_modules += openconnect
-builtin_sources += plugins/vpn.c plugins/openconnect.c
+builtin_sources += plugins/vpn.c plugins/openconnect.c plugins/vpn.h
 builtin_cflags += -DOPENCONNECT=\"@OPENCONNECT@\"
 else
 plugin_LTLIBRARIES += plugins/openconnect.la
