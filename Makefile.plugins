@@ -114,6 +114,8 @@ builtin_cflags += -DOPENCONNECT=\"@OPENCONNECT@\"
 else
 plugin_LTLIBRARIES += plugins/openconnect.la
 plugin_objects += $(plugins_openconnect_la_OBJECTS)
+plugins_openconnect_la_SOURCES = plugins/vpn.h plugins/vpn.c \
+						plugins/openconnect.c
 plugins_openconnect_la_CFLAGS = $(plugin_cflags) -DOPENCONNECT=\"@OPENCONNECT@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
