@@ -2344,7 +2344,7 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 	return -EINPROGRESS;
 }
 
-static void interface_disconnect_result(const char *error,
+static void network_remove_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_data *data = user_data;
@@ -2359,6 +2359,42 @@ static void interface_disconnect_result(const char *error,
 		data->callback(result, data->interface, data->user_data);
 
 	dbus_free(data);
+}
+
+static void network_remove_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_data *data = user_data;
+	const char *path = data->interface->network_path;
+
+	SUPPLICANT_DBG("path %s", path);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static int network_remove(struct interface_data *data)
+{
+	GSupplicantInterface *interface = data->interface;
+
+	SUPPLICANT_DBG("");
+
+	return supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface", "RemoveNetwork",
+			network_remove_params, network_remove_result, data);
+}
+
+static void interface_disconnect_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_data *data = user_data;
+
+	SUPPLICANT_DBG("");
+
+	if (error != NULL && data->callback != NULL) {
+		data->callback(-EIO, data->interface, data->user_data);
+		return;
+	}
+
+	network_remove(data);
 }
 
 int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
