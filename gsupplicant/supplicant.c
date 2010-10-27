@@ -138,6 +138,7 @@ static GHashTable *bss_mapping;
 
 struct _GSupplicantInterface {
 	char *path;
+	char *network_path;
 	unsigned int keymgmt_capa;
 	unsigned int authalg_capa;
 	unsigned int proto_capa;
@@ -2022,39 +2023,53 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 static void interface_select_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
+	struct interface_connect_data *data = user_data;
+
 	SUPPLICANT_DBG("");
+
+	dbus_free(data);
 }
 
 static void interface_select_network_params(DBusMessageIter *iter,
 							void *user_data)
 {
-	char *path = user_data;
+	struct interface_connect_data *data = user_data;
+	GSupplicantInterface *interface = data->interface;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+					&interface->network_path);
 }
 
 static void interface_add_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_connect_data *data = user_data;
-	char *path = NULL;
+	GSupplicantInterface *interface = data->interface;
+	const char *path;
 
 	if (error != NULL)
-		goto done;
+		goto error;
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL)
-		goto done;
+		goto error;
 
 	SUPPLICANT_DBG("PATH: %s", path);
+
+	g_free(interface->network_path);
+	interface->network_path = g_strdup(path);
 
 	supplicant_dbus_method_call(data->interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "SelectNetwork",
 			interface_select_network_params,
-			interface_select_network_result, path);
+			interface_select_network_result, data);
 
-done:
-	dbus_free(data);
+	return;
+
+error:
+	g_free(interface->network_path);
+	interface->network_path = NULL;
+	g_free(data);
 }
 
 static void add_network_security_wep(DBusMessageIter *dict,
