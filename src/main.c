@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
 	__connman_element_init(option_device, option_nodevice);
 
 	__connman_agent_init();
+	__connman_iptables_init();
 	__connman_tethering_init();
 	__connman_counter_init();
 	__connman_ondemand_init();
@@ -277,6 +278,7 @@ int main(int argc, char *argv[])
 	__connman_counter_cleanup();
 	__connman_agent_cleanup();
 	__connman_tethering_cleanup();
+	__connman_iptables_cleanup();
 
 	__connman_element_cleanup();
 	__connman_storage_cleanup();

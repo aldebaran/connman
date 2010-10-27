@@ -316,6 +316,12 @@ else
 fi
 AC_SUBST(DBUS_DATADIR)
 
+PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
+			AC_MSG_ERROR(xtables library is required))
+AC_SUBST(XTABLES_CFLAGS)
+AC_SUBST(XTABLES_LIBS)
+
+
 AC_ARG_ENABLE(systemd, AC_HELP_STRING([--enable-systemd],
 		[enable systemd support]), [enable_systemd=${enableval}])
 if (test "${enable_systemd}" = "yes"); then
@@ -350,11 +356,6 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
 		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
-	PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
-				AC_MSG_ERROR(xtables library is required))
-	AC_SUBST(XTABLES_CFLAGS)
-	AC_SUBST(XTABLES_LIBS)
-
 	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
 				AC_MSG_ERROR(Netlink library is required))
 	AC_SUBST(NETLINK_CFLAGS)

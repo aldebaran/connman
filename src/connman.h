@@ -587,3 +587,8 @@ int  __connman_stats_update(struct connman_service *service,
 int __connman_stats_get(struct connman_service *service,
 				connman_bool_t roaming,
 				struct connman_stats_data *data);
+
+int __connman_iptables_init(void);
+void __connman_iptables_cleanup(void);
+int __connman_iptables_command(char *command);
+int __connman_iptables_commit(char *table_name);
