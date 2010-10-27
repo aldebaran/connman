@@ -617,6 +617,8 @@ static int network_disconnect(struct connman_network *network)
 	if (wifi == NULL || wifi->interface == NULL)
 		return -ENODEV;
 
+	connman_network_set_associating(network, FALSE);
+
 	return g_supplicant_interface_disconnect(wifi->interface,
 						disconnect_callback, wifi);
 }
