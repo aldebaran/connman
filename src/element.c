@@ -1322,6 +1322,28 @@ void connman_element_set_error(struct connman_element *element,
 	__connman_service_indicate_error(service, convert_error(error));
 }
 
+void __connman_element_set_driver(struct connman_element *element)
+{
+	GSList *list;
+
+	DBG("element %p name %s driver %p", element, element->name,
+						element->driver);
+
+	if (element->driver)
+		return;
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_driver *driver = list->data;
+
+		if (match_driver(element, driver) == FALSE)
+			continue;
+
+		element->driver = driver;
+
+		break;
+	}
+}
+
 int __connman_element_init(const char *device, const char *nodevice)
 {
 	struct connman_element *element;

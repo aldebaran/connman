@@ -184,6 +184,8 @@ int __connman_element_disable_technology(enum connman_service_type type);
 
 gboolean __connman_element_device_isfiltered(const char *devname);
 
+void __connman_element_set_driver(struct connman_element *element);
+
 #include <connman/ipconfig.h>
 
 int __connman_ipconfig_init(void);
