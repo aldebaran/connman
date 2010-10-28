@@ -2223,6 +2223,8 @@ static void add_network_security_peap(DBusMessageIter *dict,
 static void add_network_security_eap(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
+	char *eap_value;
+
 	if (ssid->eap == NULL || ssid->identity == NULL)
 		return;
 
@@ -2234,12 +2236,16 @@ static void add_network_security_eap(DBusMessageIter *dict,
 	} else
 		return;
 
+	eap_value = g_ascii_strup(ssid->eap, -1);
+
 	supplicant_dbus_dict_append_basic(dict, "eap",
 						DBUS_TYPE_STRING,
-						&ssid->eap);
+						&eap_value);
 	supplicant_dbus_dict_append_basic(dict, "identity",
 						DBUS_TYPE_STRING,
 						&ssid->identity);
+
+	g_free(eap_value);
 }
 
 static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
