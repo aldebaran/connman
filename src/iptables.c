@@ -918,13 +918,23 @@ out:
 	return ret;
 }
 
-int __connman_iptables_command(char *command)
+int __connman_iptables_command(const char *format, ...)
 {
-	char **argv, **arguments;
+	char **argv, **arguments, *command;
 	int argc, i, ret;
+	va_list args;
+
+	if (format == NULL)
+		return -EINVAL;
+
+	va_start(args, format);
+
+	command = g_strdup_vprintf(format, args);
+
+	va_end(args);
 
 	if (command == NULL)
-		return -EINVAL;
+		return -ENOMEM;
 
 	arguments = g_strsplit_set(command, " ", -1);
 
@@ -934,6 +944,7 @@ int __connman_iptables_command(char *command)
 
 	argv = g_try_malloc0(argc * sizeof(char *));
 	if (argv == NULL) {
+		g_free(command);
 		g_strfreev(arguments);
 		return -ENOMEM;
 	}
@@ -944,6 +955,7 @@ int __connman_iptables_command(char *command)
 
 	ret = iptables_command(argc, argv);
 
+	g_free(command);
 	g_strfreev(arguments);
 	g_free(argv);
 
@@ -951,7 +963,7 @@ int __connman_iptables_command(char *command)
 }
 
 
-int __connman_iptables_commit(char *table_name)
+int __connman_iptables_commit(const char *table_name)
 {
 	struct connman_iptables *table;
 	struct ipt_replace *repl;

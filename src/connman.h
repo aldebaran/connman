@@ -590,5 +590,5 @@ int __connman_stats_get(struct connman_service *service,
 
 int __connman_iptables_init(void);
 void __connman_iptables_cleanup(void);
-int __connman_iptables_command(char *command);
-int __connman_iptables_commit(char *table_name);
+int __connman_iptables_command(const char *format, ...);
+int __connman_iptables_commit(const char *table_name);
