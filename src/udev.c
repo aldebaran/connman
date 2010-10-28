@@ -191,7 +191,7 @@ connman_bool_t __connman_udev_get_blocked(int phyindex)
 	if (phyindex < 0)
 		return FALSE;
 
-	for (list = rfkill_list; list; list = rfkill_list->next) {
+	for (list = rfkill_list; list; list = list->next) {
 		struct rfkill_data *block = list->data;
 
 		if (block->phyindex == phyindex)
@@ -208,7 +208,7 @@ static void update_rfkill_state(int phyindex, connman_bool_t blocked)
 
 	DBG("index %d blocked %d", phyindex, blocked);
 
-	for (list = rfkill_list; list; list = rfkill_list->next) {
+	for (list = rfkill_list; list; list = list->next) {
 		block = list->data;
 
 		if (block->phyindex == phyindex) {
