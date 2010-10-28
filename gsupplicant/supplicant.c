@@ -2393,6 +2393,23 @@ static const char *g_supplicant_rule5 = "type=signal,"
 static const char *g_supplicant_rule6 = "type=signal,"
 			"interface=" SUPPLICANT_INTERFACE ".Interface.Blob";
 
+static void invoke_introspect_method(void)
+{
+	DBusMessage *message;
+
+	message = dbus_message_new_method_call(SUPPLICANT_SERVICE,
+					SUPPLICANT_PATH,
+					DBUS_INTERFACE_INTROSPECTABLE,
+					"Introspect");
+
+	if (message == NULL)
+		return;
+
+	dbus_message_set_no_reply(message, TRUE);
+	dbus_connection_send(connection, message, NULL);
+	dbus_message_unref(message);
+}
+
 int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 {
 	connection = dbus_bus_get(DBUS_BUS_SYSTEM, NULL);
@@ -2432,7 +2449,8 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 		supplicant_dbus_property_get_all(SUPPLICANT_PATH,
 						SUPPLICANT_INTERFACE,
 						service_property, NULL);
-	}
+	} else
+		invoke_introspect_method();
 
 	return 0;
 }
