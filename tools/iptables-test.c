@@ -722,7 +722,17 @@ static int connman_iptables_replace(struct connman_iptables *table,
 
 static void connman_iptables_cleanup(struct connman_iptables *table)
 {
+	GList *list;
+	struct connman_iptables_entry *entry;
+
 	close(table->ipt_sock);
+
+	for (list = table->entries; list; list = list->next) {
+		entry = list->data;
+
+		g_free(entry->entry);
+	}
+
 	g_free(table->info);
 	g_free(table->blob_entries);
 	g_free(table);
@@ -741,7 +751,15 @@ static int connman_iptables_commit(struct connman_iptables *table)
 
 static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 {
-	return connman_add_entry(table, entry, NULL);
+	struct ipt_entry *new_entry;
+
+	new_entry = g_try_malloc0(entry->next_offset);
+	if (new_entry == NULL)
+		return -ENOMEM;
+
+	memcpy(new_entry, entry, entry->next_offset);
+
+	return connman_add_entry(table, new_entry, NULL);
 }
 
 static struct connman_iptables *connman_iptables_init(const char *table_name)
