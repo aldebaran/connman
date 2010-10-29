@@ -317,7 +317,7 @@ fi
 AC_SUBST(DBUS_DATADIR)
 
 PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
-			AC_MSG_ERROR(xtables library is required))
+				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)
 
@@ -360,6 +360,11 @@ if (test "${enable_tools}" = "yes"); then
 				AC_MSG_ERROR(Netlink library is required))
 	AC_SUBST(NETLINK_CFLAGS)
 	AC_SUBST(NETLINK_LIBS)
+
+	PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
+				AC_MSG_ERROR(GnuTLS library is required))
+	AC_SUBST(GNUTLS_CFLAGS)
+	AC_SUBST(GNUTLS_LIBS)
 fi
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 

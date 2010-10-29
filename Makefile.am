@@ -78,8 +78,7 @@ src_connmand_SOURCES += $(gsupplicant_sources)
 endif
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
-						@CAPNG_LIBS@ @XTABLES_LIBS@ \
-							-lresolv -ldl
+				@CAPNG_LIBS@ @XTABLES_LIBS@ -lresolv -ldl
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
@@ -102,8 +101,8 @@ build_plugindir = $(plugindir)
 build_scriptdir = $(scriptdir)
 endif
 
-AM_CFLAGS = @XTABLES_CFLAGS@ @NETLINK_CFLAGS@ @CAPNG_CFLAGS@ \
-			@DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
+AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ @XTABLES_CFLAGS@ \
+				@NETLINK_CFLAGS@ @GNUTLS_CFLAGS@ \
 				$(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
