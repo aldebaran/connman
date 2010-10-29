@@ -345,6 +345,39 @@ static int connman_add_entry(struct connman_iptables *table,
 	return 0;
 }
 
+static int connman_iptables_delete_chain(struct connman_iptables *table,
+						char *name)
+{
+	GList *chain_head, *chain_tail, *list, *next;
+	struct connman_iptables_entry *entry;
+
+	chain_head = find_chain_head(table, name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	chain_tail = find_chain_tail(table, name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	list = chain_head;
+
+	while (list != chain_tail) {
+		entry = list->data;
+		next = g_list_next(list);
+
+		table->num_entries--;
+		table->size -= entry->entry->next_offset;
+
+		table->entries = g_list_remove(table->entries, list->data);
+
+		list = next;
+	}
+
+	update_offsets(table);
+
+	return 0;
+}
+
 static int connman_iptables_add_chain(struct connman_iptables *table,
 					char *name)
 {
@@ -819,6 +852,7 @@ static struct option connman_iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
+	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
 	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
 	{.name = "jump",          .has_arg = 1, .val = 'j'},
 	{.name = "match",         .has_arg = 1, .val = 'm'},
@@ -839,32 +873,40 @@ int main(int argc, char *argv[])
 	struct xtables_match *xt_m;
 	struct xtables_target *xt_t;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
+	char *delete_chain;
 	int c;
 	size_t size;
-	gboolean dump, invert;
+	gboolean dump, invert, delete;
 
 	xtables_init_all(&connman_iptables_globals, NFPROTO_IPV4);
 
 	dump = FALSE;
 	invert = FALSE;
+	delete = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
+	delete_chain = NULL;
 	table = NULL;
 	xt_m = NULL;
 	xt_t = NULL;
 
 	while ((c = getopt_long(argc, argv,
-	   "-A:L::N:j:i:m:o:t:", connman_iptables_globals.opts, NULL)) != -1) {
+	   "-A:L::N:X:j:i:m:o:t:", connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
 			break;
 
 		case 'L':
-			dump = TRUE;
+			dump = true;
 			break;
 
 		case 'N':
 			new_chain = optarg;
+			break;
+
+		case 'X':
+			delete = true;
+			delete_chain = optarg;
 			break;
 
 		case 'j':
@@ -962,6 +1004,17 @@ int main(int argc, char *argv[])
 	table = connman_iptables_init(table_name);
 	if (table == NULL)
 		return -1;
+
+	if (delete) {
+		if (delete_chain == NULL)
+			goto out;
+
+		printf("Delete chain %s\n", delete_chain);
+
+		connman_iptables_delete_chain(table, delete_chain);
+
+		goto commit;
+	}
 
 	if (dump) {
 		connman_iptables_dump(table);
