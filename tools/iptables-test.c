@@ -313,49 +313,12 @@ err:
 }
 
 static struct ipt_entry *
-new_builtin_rule(char *target_name, struct xtables_match *xt_m)
+new_rule(char *target_name, struct xtables_target *xt_t,
+		char *match_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
 	size_t match_size, target_size;
-	struct xt_entry_match *entry_match;
-	struct xt_standard_target *target;
-
-	if (xt_m)
-		match_size = xt_m->m->u.match_size;
-	else
-		match_size = 0;
-
-	target_size = ALIGN(sizeof(struct xt_standard_target));
-
-	new_entry = g_try_malloc0(sizeof(struct ipt_entry) + target_size +
-								match_size);
-	if (new_entry == NULL)
-		return NULL;
-
-	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
-	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
-								match_size;
-	if (xt_m) {
-		entry_match = (struct xt_entry_match *)new_entry->elems;
-		memcpy(entry_match, xt_m->m, match_size);
-	}
-
-	target = (struct xt_standard_target *)(new_entry->elems + match_size);
-	strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
-	target->target.u.user.target_size =
-				ALIGN(sizeof(struct ipt_standard_target));
-	target->verdict = target_to_verdict(target_name);
-
-	return new_entry;
-}
-
-static struct ipt_entry *
-new_custom_rule(struct xtables_target *xt_t, struct xtables_match *xt_m)
-{
-	struct ipt_entry *new_entry;
-	size_t match_size, target_size;
-	struct xt_entry_match *entry_match;
-	struct xt_entry_target *entry_target;
+	int is_builtin = is_builtin_target(target_name);
 
 	if (xt_m)
 		match_size = xt_m->m->u.match_size;
@@ -376,29 +339,26 @@ new_custom_rule(struct xtables_target *xt_t, struct xtables_match *xt_m)
 	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
 								match_size;
 	if (xt_m) {
+		struct xt_entry_match *entry_match;
+
 		entry_match = (struct xt_entry_match *)new_entry->elems;
 		memcpy(entry_match, xt_m->m, match_size);
 	}
 
 	if (xt_t) {
-		entry_target = (struct xt_entry_target *)(new_entry->elems +
-								match_size);
+		struct xt_entry_target *entry_target;
+
+		if (is_builtin) {
+			struct xt_standard_target *target;
+
+			target = (struct xt_standard_target *)(xt_t->t);
+			strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
+			target->verdict = target_to_verdict(target_name);
+		}
+
+		entry_target = ipt_get_target(new_entry);
 		memcpy(entry_target, xt_t->t, target_size);
 	}
-
-	return new_entry;
-}
-
-static struct ipt_entry *
-new_rule(char *target_name, struct xtables_target *xt_t,
-		char *match_name, struct xtables_match *xt_m)
-{
-	struct ipt_entry *new_entry;
-
-	if (is_builtin_target(target_name))
-		new_entry = new_builtin_rule(target_name, xt_m);
-	else
-		new_entry = new_custom_rule(xt_t, xt_m);
 
 	return new_entry;
 }
