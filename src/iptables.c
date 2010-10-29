@@ -88,7 +88,7 @@ struct ipt_error_target {
 };
 
 struct connman_iptables_entry {
-	int jump_offset;
+	int offset;
 
 	struct ipt_entry *entry;
 };
@@ -226,6 +226,29 @@ static GList *find_chain_tail(struct connman_iptables *table,
 	return g_list_last(table->entries);
 }
 
+
+static void update_offsets(struct connman_iptables *table)
+{
+	GList *list, *prev;
+	struct connman_iptables_entry *entry, *prev_entry;
+
+	for (list = table->entries; list; list = list->next) {
+		entry = list->data;
+
+		if (list == table->entries) {
+			entry->offset = 0;
+
+			continue;
+		}
+
+		prev = list->prev;
+		prev_entry = prev->data;
+
+		entry->offset = prev_entry->offset +
+					prev_entry->entry->next_offset;
+	}
+}
+
 static int iptables_add_entry(struct connman_iptables *table,
 				struct ipt_entry *entry, GList *before)
 {
@@ -243,6 +266,8 @@ static int iptables_add_entry(struct connman_iptables *table,
 	table->entries = g_list_insert_before(table->entries, before, e);
 	table->num_entries++;
 	table->size += entry->next_offset;
+
+	update_offsets(table);
 
 	return 0;
 }
