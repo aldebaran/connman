@@ -246,7 +246,7 @@ AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 		[enable Intel OSPM support]), [enable_iospm=${enableval}])
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 
-AC_ARG_WITH(ntpd, AC_HELP_STRING([--with-=PROGRAM],
+AC_ARG_WITH(ntpd, AC_HELP_STRING([--with-ntpd=PROGRAM],
 	[specify ntpd binary location]), [path_ntpd=${withval}])
 
 AC_ARG_ENABLE(ntpd,
@@ -265,8 +265,8 @@ AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
 AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
 
 AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
-				 [Maximal size of a statistics round robin file]),
-				 [stats_max_file_size=${withval}])
+			[Maximal size of a statistics round robin file]),
+			[stats_max_file_size=${withval}])
 
 if (test -z "${stats_max_file_size}"); then
    # default size is 512 kByte
