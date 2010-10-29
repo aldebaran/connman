@@ -163,6 +163,33 @@ static gboolean is_builtin_target(char *target_name)
 	return FALSE;
 }
 
+static gboolean is_jump(struct connman_iptables_entry *e)
+{
+	struct xt_entry_target *target;
+
+	target = ipt_get_target(e->entry);
+
+	if (!strcmp(target->u.user.name, IPT_STANDARD_TARGET)) {
+		struct xt_standard_target *t;
+
+		t = (struct xt_standard_target *)target;
+
+		switch (t->verdict) {
+		case XT_RETURN:
+		case -NF_ACCEPT - 1:
+		case -NF_DROP - 1:
+		case -NF_QUEUE - 1:
+		case -NF_STOP - 1:
+			return false;
+
+		default:
+			return true;
+		}
+	}
+
+	return false;
+}
+
 static gboolean is_chain(struct connman_iptables *table,
 				struct connman_iptables_entry *e)
 {
@@ -180,6 +207,34 @@ static gboolean is_chain(struct connman_iptables *table,
 		return TRUE;
 
 	return FALSE;
+}
+
+static GList *find_chain_head(struct connman_iptables *table,
+				char *chain_name)
+{
+	GList *list;
+	struct connman_iptables_entry *head;
+	struct ipt_entry *entry;
+	struct xt_entry_target *target;
+	int builtin;
+
+	for (list = table->entries; list; list = list->next) {
+		head = list->data;
+		entry = head->entry;
+
+		/* Buit-in chain */
+		builtin = is_hook_entry(table, entry);
+		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
+			break;
+
+		/* User defined chain */
+		target = ipt_get_target(entry);
+		if (!strcmp(target->u.user.name, IPT_ERROR_TARGET) &&
+		    !strcmp((char *)target->data, chain_name))
+			break;
+	}
+
+	return list;
 }
 
 static GList *find_chain_tail(struct connman_iptables *table,
@@ -252,7 +307,9 @@ static void update_offsets(struct connman_iptables *table)
 static int iptables_add_entry(struct connman_iptables *table,
 				struct ipt_entry *entry, GList *before)
 {
-	struct connman_iptables_entry *e;
+	GList *list;
+	struct connman_iptables_entry *e, *tmp, *entry_before;
+	struct xt_standard_target *t;
 
 	if (table == NULL)
 		return -1;
@@ -266,6 +323,30 @@ static int iptables_add_entry(struct connman_iptables *table,
 	table->entries = g_list_insert_before(table->entries, before, e);
 	table->num_entries++;
 	table->size += entry->next_offset;
+
+	if (before == NULL) {
+		e->offset = table->size - entry->next_offset;
+
+		return 0;
+	}
+
+	entry_before = before->data;
+
+	/*
+	 * We've just insterted a new entry. All references before it
+	 * should be bumped accordingly.
+	 */
+	for (list = table->entries; list != before; list = list->next) {
+		tmp = list->data;
+
+		if (!is_jump(tmp))
+			continue;
+
+		t = (struct xt_standard_target *)ipt_get_target(tmp->entry);
+
+		if (t->verdict >= entry_before->offset)
+			t->verdict += entry->next_offset;
+	}
 
 	update_offsets(table);
 
@@ -343,7 +424,8 @@ err:
 }
 
 static struct ipt_entry *
-new_rule(char *target_name, struct xtables_target *xt_t,
+new_rule(struct connman_iptables *table,
+		char *target_name, struct xtables_target *xt_t,
 		char *match_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
@@ -358,7 +440,7 @@ new_rule(char *target_name, struct xtables_target *xt_t,
 	if (xt_t)
 		target_size = ALIGN(xt_t->t->u.target_size);
 	else
-		target_size = 0;
+		target_size = ALIGN(sizeof(struct xt_standard_target));
 
 	new_entry = g_try_malloc0(sizeof(struct ipt_entry) + target_size +
 								match_size);
@@ -388,6 +470,30 @@ new_rule(char *target_name, struct xtables_target *xt_t,
 
 		entry_target = ipt_get_target(new_entry);
 		memcpy(entry_target, xt_t->t, target_size);
+	} else {
+		struct connman_iptables_entry *target_rule;
+		struct xt_standard_target *target;
+		GList *chain_head;
+
+		/*
+		 * This is a user defined target, i.e. a chain jump.
+		 * We search for the chain head, and the target verdict
+		 * is the first rule's offset on this chain.
+		 * The offset is from the beginning of the table.
+		 */
+
+		chain_head = find_chain_head(table, target_name);
+		if (chain_head == NULL || chain_head->next == NULL) {
+			g_free(new_entry);
+			return NULL;
+		}
+
+		target_rule = chain_head->next->data;
+
+		target = (struct xt_standard_target *)ipt_get_target(new_entry);
+		strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
+		target->target.u.user.target_size = target_size;
+		target->verdict = target_rule->offset;
 	}
 
 	return new_entry;
@@ -405,7 +511,8 @@ iptables_add_rule(struct connman_iptables *table, char *chain_name,
 	if (chain_tail == NULL)
 		return -EINVAL;
 
-	new_entry = new_rule(target_name, xt_t,
+	new_entry = new_rule(table,
+				target_name, xt_t,
 				match_name, xt_m);
 	if (new_entry == NULL)
 		return -EINVAL;
