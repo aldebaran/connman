@@ -129,11 +129,15 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wifi-scan tools/supplicant-test tools/dhcp-test \
+noinst_PROGRAMS += tools/wispr tools/wifi-scan \
+			tools/supplicant-test tools/dhcp-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test tools/portal-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-ringbuffer-dump
+
+tools_wispr_SOURCES = tools/wispr.c
+tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
