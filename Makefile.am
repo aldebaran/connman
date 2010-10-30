@@ -136,7 +136,7 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-ringbuffer-dump
 
-tools_wispr_SOURCES = tools/wispr.c
+tools_wispr_SOURCES = tools/wispr.c gweb/giognutls.h gweb/giognutls.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
