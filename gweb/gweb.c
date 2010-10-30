@@ -32,8 +32,11 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 
+#include "giognutls.h"
 #include "gresolv.h"
 #include "gweb.h"
+
+#define SESSION_FLAG_USE_TLS	(1 << 0)
 
 struct _GWebResult {
 };
@@ -200,8 +203,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct web_session *session = user_data;
-	unsigned char buf[4096];
-	int sk, len;
+	gchar buf[4096];
+	gsize bytes_read;
+	GIOStatus status;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		session->transport_watch = 0;
@@ -210,17 +214,19 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
-	sk = g_io_channel_unix_get_fd(session->transport_channel);
-
 	memset(buf, 0, sizeof(buf));
-	len = recv(sk, buf, sizeof(buf) - 1, 0);
+	status = g_io_channel_read_chars(channel, buf, sizeof(buf) - 1,
+						&bytes_read, NULL);
 
-	if (len == 0) {
+	debug(session->web, "status %u bytes read %zu", status, bytes_read);
+
+	if (bytes_read == 0) {
 		session->transport_watch = 0;
 		if (session->result_func != NULL)
 			session->result_func(200, NULL, session->result_data);
 		return FALSE;
 	}
+
 	printf("%s", buf);
 
 	return TRUE;
@@ -245,7 +251,13 @@ static int connect_session_transport(struct web_session *session)
 		return -EIO;
 	}
 
-	session->transport_channel = g_io_channel_unix_new(sk);
+	debug(session->web, "flags %lu", session->flags);
+
+	if (session->flags & SESSION_FLAG_USE_TLS)
+		session->transport_channel = g_io_channel_gnutls_new(sk);
+	else
+		session->transport_channel = g_io_channel_unix_new(sk);
+
 	if (session->transport_channel == NULL) {
 		close(sk);
 		return -ENOMEM;
@@ -263,14 +275,12 @@ static int connect_session_transport(struct web_session *session)
 static void start_request(struct web_session *session)
 {
 	GString *buf;
-	char *str;
-	ssize_t len;
-	int sk;
+	gchar *str;
+	gsize bytes_written;
+	GIOStatus status;
 
 	debug(session->web, "request %s from %s",
 					session->request, session->host);
-
-	sk = g_io_channel_unix_get_fd(session->transport_channel);
 
 	buf = g_string_new(NULL);
 	g_string_append_printf(buf, "GET %s HTTP/1.1\r\n", session->request);
@@ -280,7 +290,11 @@ static void start_request(struct web_session *session)
 	g_string_append(buf, "\r\n");
 	str = g_string_free(buf, FALSE);
 
-	len = send(sk, str, strlen(str), 0);
+	status = g_io_channel_write_chars(session->transport_channel,
+				str, strlen(str), &bytes_written, NULL);
+
+	debug(session->web, "status %u bytes written %zu",
+						status, bytes_written);
 
 	printf("%s", str);
 
@@ -300,11 +314,12 @@ static int parse_url(struct web_session *session, const char *url)
 		*host = '\0';
 		host += 3;
 
-		if (strcasecmp(scheme, "https") == 0)
+		if (strcasecmp(scheme, "https") == 0) {
 			session->port = 443;
-		else if (strcasecmp(scheme, "http") == 0)
+			session->flags |= SESSION_FLAG_USE_TLS;
+		} else if (strcasecmp(scheme, "http") == 0) {
 			session->port = 80;
-		else {
+		} else {
 			g_free(scheme);
 			return -EINVAL;
 		}
@@ -390,6 +405,7 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	}
 
 	debug(web, "host %s:%u", session->host, session->port);
+	debug(web, "flags %lu", session->flags);
 
 	session->web = web;
 
