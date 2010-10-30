@@ -342,6 +342,20 @@ static int connect_session_transport(struct web_session *session)
 	return 0;
 }
 
+static int create_transport(struct web_session *session)
+{
+	int err;
+
+	err = connect_session_transport(session);
+	if (err < 0)
+		return err;
+
+	debug(session->web, "creating session %s:%u",
+					session->address, session->port);
+
+	return 0;
+}
+
 static void start_request(struct web_session *session)
 {
 	GString *buf;
@@ -361,6 +375,7 @@ static void start_request(struct web_session *session)
 	if (session->web->accept_option != NULL)
 		g_string_append_printf(buf, "Accept: %s\r\n",
 						session->web->accept_option);
+	g_string_append(buf, "Connection: close\r\n");
 	g_string_append(buf, "\r\n");
 	str = g_string_free(buf, FALSE);
 
@@ -451,14 +466,11 @@ static void resolv_result(GResolvResultStatus status,
 
 	session->address = g_strdup(results[0]);
 
-	if (connect_session_transport(session) < 0) {
+	if (create_transport(session) < 0) {
 		if (session->result_func != NULL)
 			session->result_func(409, NULL, session->result_data);
 		return;
 	}
-
-	debug(session->web, "creating session %s:%u",
-					session->address, session->port);
 
 	start_request(session);
 }
@@ -490,11 +502,22 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	session->result_func = func;
 	session->result_data = user_data;
 
-	session->resolv_action = g_resolv_lookup_hostname(web->resolv,
+	if (inet_aton(session->host, NULL) == 0) {
+		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
 					session->host, resolv_result, session);
-	if (session->resolv_action == 0) {
-		free_session(session);
-		return 0;
+		if (session->resolv_action == 0) {
+			free_session(session);
+			return 0;
+		}
+	} else {
+		session->address = g_strdup(session->host);
+
+		if (create_transport(session) < 0) {
+			free_session(session);
+			return 0;
+		}
+
+		start_request(session);
 	}
 
 	web->session_list = g_list_append(web->session_list, session);
