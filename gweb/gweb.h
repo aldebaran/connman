@@ -67,6 +67,8 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 
 gboolean g_web_cancel(GWeb *web, guint id);
 
+guint16 g_web_result_get_status(GWebResult *result);
+
 gboolean g_web_result_get_chunk(GWebResult *result,
 				const guint8 **chunk, gsize *length);
 

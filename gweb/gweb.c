@@ -41,6 +41,7 @@
 #define SESSION_FLAG_USE_TLS	(1 << 0)
 
 struct _GWebResult {
+	guint status;
 	const guint8 *buffer;
 	gsize length;
 };
@@ -340,6 +341,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	while (str != NULL) {
 		char *start = session->current_line;
+		unsigned int code;
 
 		*str = '\0';
 		count = strlen(start);
@@ -361,6 +363,11 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		}
 
 		//printf("[ %s ]\n", start);
+
+		if (session->result.status == 0) {
+			if (sscanf(start, "HTTP/%*s %u %*s", &code) == 1)
+				session->result.status = code;
+		}
 
 		str = memchr(session->current_line, '\n',
 					bytes_read - consumed);
@@ -626,6 +633,14 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	web->session_list = g_list_append(web->session_list, session);
 
 	return web->next_query_id++;
+}
+
+guint16 g_web_result_get_status(GWebResult *result)
+{
+	if (result == NULL)
+		return 0;
+
+	return result->status;
 }
 
 gboolean g_web_result_get_chunk(GWebResult *result,
