@@ -59,6 +59,9 @@ gboolean g_web_set_accept(GWeb *web, const char *format, ...)
 gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
 
+void g_web_set_close_connection(GWeb *web, gboolean enabled);
+gboolean g_web_get_close_connection(GWeb *web);
+
 guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 				GWebResultFunc func, gpointer user_data);
 

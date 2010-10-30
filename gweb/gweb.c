@@ -72,6 +72,7 @@ struct _GWeb {
 	GResolv *resolv;
 	char *accept_option;
 	char *user_agent;
+	gboolean close_connection;
 
 	GWebDebugFunc debug_func;
 	gpointer debug_data;
@@ -154,6 +155,7 @@ GWeb *g_web_new(int index)
 
 	web->accept_option = g_strdup("*/*");
 	web->user_agent = g_strdup_printf("GWeb/%s", VERSION);
+	web->close_connection = FALSE;
 
 	return web;
 }
@@ -266,6 +268,22 @@ gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 	return result;
 }
 
+void g_web_set_close_connection(GWeb *web, gboolean enabled)
+{
+	if (web == NULL)
+		return;
+
+	web->close_connection = enabled;
+}
+
+gboolean g_web_get_close_connection(GWeb *web)
+{
+	if (web == NULL)
+		return FALSE;
+
+	return web->close_connection;
+}
+
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -375,7 +393,8 @@ static void start_request(struct web_session *session)
 	if (session->web->accept_option != NULL)
 		g_string_append_printf(buf, "Accept: %s\r\n",
 						session->web->accept_option);
-	g_string_append(buf, "Connection: close\r\n");
+	if (session->web->close_connection == TRUE)
+		g_string_append(buf, "Connection: close\r\n");
 	g_string_append(buf, "\r\n");
 	str = g_string_free(buf, FALSE);
 
