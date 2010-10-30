@@ -24,76 +24,51 @@
 #endif
 
 #include <stdio.h>
-#include <errno.h>
-#include <unistd.h>
 #include <string.h>
 #include <signal.h>
-#include <sys/socket.h>
-#include <arpa/inet.h>
 
-#include "gweb/giognutls.h"
+#include <gweb/gweb.h>
+
+static GTimer *timer;
 
 static GMainLoop *main_loop;
+
+static void web_debug(const char *str, void *data)
+{
+	g_print("%s: %s\n", (const char *) data, str);
+}
 
 static void sig_term(int sig)
 {
 	g_main_loop_quit(main_loop);
 }
 
-static int create_connection(const char *address, unsigned short port)
+static guint request_id;
+
+static void web_result(guint16 status, GWebResult *result, gpointer user_data)
 {
-	struct sockaddr_in sin;
-	int sk;
+	gdouble elapsed;
 
-	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sk < 0)
-		return -EIO;
+	elapsed = g_timer_elapsed(timer, NULL);
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(port);
-	sin.sin_addr.s_addr = inet_addr(address);
+	g_print("elapse: %f seconds\n", elapsed);
 
-	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		close(sk);
-		return -EIO;
-	}
+	g_print("status: %03u\n", status);
 
-	return sk;
-}
-
-static gboolean received_data(GIOChannel *channel, GIOCondition cond,
-							gpointer user_data)
-{
-	gchar buf[2048];
-	gsize bytes_read;
-	GIOStatus status;
-
-	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	memset(buf, 0, sizeof(buf));
-
-	status = g_io_channel_read_chars(channel, buf, sizeof(buf) - 1,
-							&bytes_read, NULL);
-
-	printf("%s\n", buf);
-
-	if (bytes_read == 0) {
-		g_main_loop_quit(main_loop);
-		return FALSE;
-	}
-
-	return TRUE;
+	g_main_loop_quit(main_loop);
 }
 
 static gboolean option_debug = FALSE;
+static gchar *option_nameserver = NULL;
+static gchar *option_url = NULL;
 
 static GOptionEntry options[] = {
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 					"Enable debug output" },
+	{ "nameserver", 'n', 0, G_OPTION_ARG_STRING, &option_nameserver,
+					"Specify nameserver", "ADDRESS" },
+	{ "url", 'u', 0, G_OPTION_ARG_STRING, &option_url,
+					"Specify arbitrary request", "URL" },
 	{ NULL },
 };
 
@@ -102,9 +77,8 @@ int main(int argc, char *argv[])
 	GOptionContext *context;
 	GError *error = NULL;
 	struct sigaction sa;
-	GIOChannel *channel;
-	gsize written;
-	int sk;
+	GWeb *web;
+	int index = 0;
 
 	context = g_option_context_new(NULL);
 	g_option_context_add_main_entries(context, options, NULL);
@@ -120,39 +94,52 @@ int main(int argc, char *argv[])
 
 	g_option_context_free(context);
 
-	sk = create_connection("140.211.169.100", 443);
-	if (sk < 0) {
-		fprintf(stderr, "Failed to create connection\n");
+	web = g_web_new(index);
+	if (web == NULL) {
+		fprintf(stderr, "Failed to create web service\n");
 		return 1;
 	}
+
+	if (option_debug == TRUE)
+		g_web_set_debug(web, web_debug, "WEB");
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
-	channel = g_io_channel_gnutls_new(sk);
-	if (channel == NULL) {
-		fprintf(stderr, "Failed to create GnuTLS IO channel\n");
-		return 1;
+	if (option_nameserver != NULL) {
+		g_web_add_nameserver(web, option_nameserver);
+		g_free(option_nameserver);
 	}
 
-	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_web_set_accept(web, NULL);
+	g_web_set_user_agent(web, "SmartClient/%s wispr", VERSION);
+
+	if (option_url == NULL)
+		option_url = g_strdup("http://connman.net/");
+
+	timer = g_timer_new();
+
+	request_id = g_web_request(web, G_WEB_METHOD_GET, option_url,
+							web_result, NULL);
+
+	g_free(option_url);
+
+	if (request_id == 0) {
+		fprintf(stderr, "Failed to start request\n");
+		return 1;
+	}
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;
 	sigaction(SIGINT, &sa, NULL);
 	sigaction(SIGTERM, &sa, NULL);
 
-	g_io_add_watch(channel, G_IO_IN | G_IO_ERR | G_IO_HUP,
-						received_data, NULL);
-
-#define MSG "GET / HTTP/1.0\r\n\r\n"
-
-	g_io_channel_write_chars(channel, MSG, strlen(MSG), &written, NULL);
-
 	g_main_loop_run(main_loop);
 
-	g_main_loop_unref(main_loop);
+	g_timer_destroy(timer);
 
-	g_io_channel_unref(channel);
+	g_web_unref(web);
+
+	g_main_loop_unref(main_loop);
 
 	return 0;
 }
