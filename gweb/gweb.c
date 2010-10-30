@@ -36,9 +36,13 @@
 #include "gresolv.h"
 #include "gweb.h"
 
+#define LINE_CHUNK_SIZE  2048
+
 #define SESSION_FLAG_USE_TLS	(1 << 0)
 
 struct _GWebResult {
+	const guint8 *buffer;
+	gsize length;
 };
 
 struct web_session {
@@ -55,7 +59,13 @@ struct web_session {
 	guint resolv_action;
 	char *request;
 
-	GWebResult *result;
+	char *line_buffer;
+	char *line_offset;
+	unsigned int line_space;
+	char *current_line;
+	gboolean header_done;
+
+	GWebResult result;
 
 	GWebResultFunc result_func;
 	gpointer result_data;
@@ -111,6 +121,8 @@ static void free_session(struct web_session *session)
 
 	if (session->transport_channel != NULL)
 		g_io_channel_unref(session->transport_channel);
+
+	g_free(session->line_buffer);
 
 	g_free(session->host);
 	g_free(session->address);
@@ -284,35 +296,106 @@ gboolean g_web_get_close_connection(GWeb *web)
 	return web->close_connection;
 }
 
+static inline void call_result_func(struct web_session *session, guint status)
+{
+	if (session->result_func == NULL)
+		return;
+
+	session->result_func(status, &session->result, session->result_data);
+}
+
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct web_session *session = user_data;
-	gchar buf[4096];
-	gsize bytes_read;
+	gsize bytes_read, consumed = 0;
 	GIOStatus status;
+	size_t count;
+	char *str;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		session->transport_watch = 0;
-		if (session->result_func != NULL)
-			session->result_func(400, NULL, session->result_data);
+		call_result_func(session, 400);
 		return FALSE;
 	}
 
-	memset(buf, 0, sizeof(buf));
-	status = g_io_channel_read_chars(channel, buf, sizeof(buf) - 1,
-						&bytes_read, NULL);
+	status = g_io_channel_read_chars(channel, session->line_offset,
+				session->line_space, &bytes_read, NULL);
 
 	debug(session->web, "status %u bytes read %zu", status, bytes_read);
 
 	if (status != G_IO_STATUS_NORMAL) {
 		session->transport_watch = 0;
-		if (session->result_func != NULL)
-			session->result_func(200, NULL, session->result_data);
+		call_result_func(session, 200);
 		return FALSE;
 	}
 
-	printf("%s", buf);
+	if (session->header_done == TRUE) {
+		session->result.length = bytes_read;
+		call_result_func(session, 100);
+		return TRUE;
+	}
+
+	str = memchr(session->line_offset, '\n', bytes_read);
+
+	while (str != NULL) {
+		char *start = session->current_line;
+
+		*str = '\0';
+		count = strlen(start);
+		if (count > 0 && start[count - 1] == '\r') {
+			start[--count] = '\0';
+			consumed++;
+		}
+
+		session->current_line = str + 1;
+		consumed += count + 1;
+
+		if (count == 0) {
+			const void *ptr = session->current_line;
+			session->header_done = TRUE;
+			session->result.buffer = ptr;
+			session->result.length = bytes_read - consumed;
+			call_result_func(session, 100);
+			break;
+		}
+
+		//printf("[ %s ]\n", start);
+
+		str = memchr(session->current_line, '\n',
+					bytes_read - consumed);
+	}
+
+	if (session->header_done == TRUE) {
+		gsize size = session->line_offset - session->line_buffer;
+
+		session->line_offset = session->line_buffer;
+		session->line_space += size;
+
+		session->result.buffer = (const guint8 *) session->line_offset;
+		return TRUE;
+	}
+
+	session->line_offset += bytes_read;
+	session->line_space -= bytes_read;
+
+	if (session->line_space < 32) {
+		gsize size = session->line_offset - session->line_buffer;
+		gsize pos = session->current_line - session->line_buffer;
+		char *buf;
+
+		printf("realloc, space %u size %zu\n",
+					session->line_space, size);
+
+		buf = g_try_realloc(session->line_buffer,
+						size + LINE_CHUNK_SIZE);
+		if (buf != NULL) {
+			session->line_buffer = buf;
+			session->line_offset = buf + size;
+			session->line_space = LINE_CHUNK_SIZE;
+			session->current_line = buf + pos;
+		}
+	}
 
 	return TRUE;
 }
@@ -406,7 +489,7 @@ static void start_request(struct web_session *session)
 	debug(session->web, "status %u bytes written %zu",
 						status, bytes_written);
 
-	printf("%s", str);
+	//printf("%s", str);
 
 	g_free(str);
 }
@@ -468,24 +551,21 @@ static void resolv_result(GResolvResultStatus status,
 	struct web_session *session = user_data;
 
 	if (results == NULL || results[0] == NULL) {
-		if (session->result_func != NULL)
-			session->result_func(404, NULL, session->result_data);
+		call_result_func(session, 404);
 		return;
 	}
 
 	debug(session->web, "address %s", results[0]);
 
 	if (inet_aton(results[0], NULL) == 0) {
-		if (session->result_func != NULL)
-			session->result_func(400, NULL, session->result_data);
+		call_result_func(session, 400);
 		return;
 	}
 
 	session->address = g_strdup(results[0]);
 
 	if (create_transport(session) < 0) {
-		if (session->result_func != NULL)
-			session->result_func(409, NULL, session->result_data);
+		call_result_func(session, 409);
 		return;
 	}
 
@@ -519,6 +599,12 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	session->result_func = func;
 	session->result_data = user_data;
 
+	session->line_buffer = g_try_malloc(LINE_CHUNK_SIZE);
+	session->line_offset = session->line_buffer;
+	session->line_space = LINE_CHUNK_SIZE;
+	session->current_line = session->line_buffer;
+	session->header_done = FALSE;
+
 	if (inet_aton(session->host, NULL) == 0) {
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
 					session->host, resolv_result, session);
@@ -540,4 +626,21 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	web->session_list = g_list_append(web->session_list, session);
 
 	return web->next_query_id++;
+}
+
+gboolean g_web_result_get_chunk(GWebResult *result,
+				const guint8 **chunk, gsize *length)
+{
+	if (result == NULL)
+		return FALSE;
+
+	if (chunk == NULL)
+		return FALSE;
+
+	*chunk = result->buffer;
+
+	if (length != NULL)
+		*length = result->length;
+
+	return TRUE;
 }
