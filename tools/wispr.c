@@ -112,6 +112,7 @@ int main(int argc, char *argv[])
 
 	g_web_set_accept(web, NULL);
 	g_web_set_user_agent(web, "SmartClient/%s wispr", VERSION);
+	g_web_set_close_connection(web, TRUE);
 
 	if (option_url == NULL)
 		option_url = g_strdup("http://connman.net/");
