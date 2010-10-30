@@ -24,7 +24,6 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 
@@ -85,19 +84,19 @@ int main(int argc, char *argv[])
 			g_error_free(error);
 		} else
 			g_printerr("An unknown error occurred\n");
-		exit(1);
+		return 1;
 	}
 
 	g_option_context_free(context);
 
 	if (argc < 2) {
-		printf("missing argument\n");
+		fprintf(stderr, "Missing argument\n");
 		return 1;
 	}
 
 	web = g_web_new(index);
 	if (web == NULL) {
-		printf("failed to web service\n");
+		fprintf(stderr, "Failed to create web service\n");
 		return 1;
 	}
 
@@ -117,7 +116,7 @@ int main(int argc, char *argv[])
 
 	if (g_web_request(web, G_WEB_METHOD_GET, argv[1],
 					web_result, NULL) == 0) {
-		printf("failed to start request\n");
+		fprintf(stderr, "Failed to start request\n");
 		return 1;
 	}
 
