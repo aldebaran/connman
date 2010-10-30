@@ -263,6 +263,9 @@ static int connect_session_transport(struct web_session *session)
 		return -ENOMEM;
 	}
 
+	g_io_channel_set_encoding(session->transport_channel, NULL, NULL);
+	g_io_channel_set_buffered(session->transport_channel, FALSE);
+
 	g_io_channel_set_close_on_unref(session->transport_channel, TRUE);
 
 	session->transport_watch = g_io_add_watch(session->transport_channel,
@@ -276,7 +279,7 @@ static void start_request(struct web_session *session)
 {
 	GString *buf;
 	gchar *str;
-	gsize bytes_written;
+	gsize count, bytes_written;
 	GIOStatus status;
 
 	debug(session->web, "request %s from %s",
@@ -290,8 +293,12 @@ static void start_request(struct web_session *session)
 	g_string_append(buf, "\r\n");
 	str = g_string_free(buf, FALSE);
 
+	count = strlen(str);
+
+	debug(session->web, "bytes to write %zu", count);
+
 	status = g_io_channel_write_chars(session->transport_channel,
-				str, strlen(str), &bytes_written, NULL);
+					str, count, &bytes_written, NULL);
 
 	debug(session->web, "status %u bytes written %zu",
 						status, bytes_written);
