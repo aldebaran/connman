@@ -70,6 +70,7 @@ struct _GWeb {
 	GList *session_list;
 
 	GResolv *resolv;
+	char *accept_option;
 	char *user_agent;
 
 	GWebDebugFunc debug_func;
@@ -151,6 +152,9 @@ GWeb *g_web_new(int index)
 		return NULL;
 	}
 
+	web->accept_option = g_strdup("*/*");
+	web->user_agent = g_strdup_printf("GWeb/%s", VERSION);
+
 	return web;
 }
 
@@ -176,6 +180,7 @@ void g_web_unref(GWeb *web)
 
 	g_resolv_unref(web->resolv);
 
+	g_free(web->accept_option);
 	g_free(web->user_agent);
 	g_free(web);
 }
@@ -201,12 +206,47 @@ gboolean g_web_add_nameserver(GWeb *web, const char *address)
 	return TRUE;
 }
 
+static gboolean set_accept_option(GWeb *web, const char *format, va_list args)
+{
+	g_free(web->accept_option);
+
+	if (format == NULL) {
+		web->accept_option = NULL;
+		debug(web, "clearing accept option");
+	} else {
+		web->accept_option = g_strdup_vprintf(format, args);
+		debug(web, "setting accept %s", web->accept_option);
+	}
+
+	return TRUE;
+}
+
+gboolean g_web_set_accept(GWeb *web, const char *format, ...)
+{
+	va_list args;
+	gboolean result;
+
+	if (web == NULL)
+		return FALSE;
+
+	va_start(args, format);
+	result = set_accept_option(web, format, args);
+	va_end(args);
+
+	return result;
+}
+
 static gboolean set_user_agent(GWeb *web, const char *format, va_list args)
 {
 	g_free(web->user_agent);
-	web->user_agent = g_strdup_vprintf(format, args);
 
-	debug(web, "user agent %s", web->user_agent);
+	if (format == NULL) {
+		web->user_agent = NULL;
+		debug(web, "clearing user agent");
+	} else {
+		web->user_agent = g_strdup_vprintf(format, args);
+		debug(web, "setting user agent %s", web->user_agent);
+	}
 
 	return TRUE;
 }
@@ -315,12 +355,12 @@ static void start_request(struct web_session *session)
 	buf = g_string_new(NULL);
 	g_string_append_printf(buf, "GET %s HTTP/1.1\r\n", session->request);
 	g_string_append_printf(buf, "Host: %s\r\n", session->host);
-	if (session->web->user_agent == NULL)
-		g_string_append_printf(buf, "User-Agent: GWeb/%s\r\n", VERSION);
-	else
+	if (session->web->user_agent != NULL)
 		g_string_append_printf(buf, "User-Agent: %s\r\n",
 						session->web->user_agent);
-	g_string_append(buf, "Accept: */*\r\n");
+	if (session->web->accept_option != NULL)
+		g_string_append_printf(buf, "Accept: %s\r\n",
+						session->web->accept_option);
 	g_string_append(buf, "\r\n");
 	str = g_string_free(buf, FALSE);
 
