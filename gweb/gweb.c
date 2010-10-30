@@ -220,7 +220,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	debug(session->web, "status %u bytes read %zu", status, bytes_read);
 
-	if (bytes_read == 0) {
+	if (status != G_IO_STATUS_NORMAL) {
 		session->transport_watch = 0;
 		if (session->result_func != NULL)
 			session->result_func(200, NULL, session->result_data);
@@ -266,8 +266,8 @@ static int connect_session_transport(struct web_session *session)
 	g_io_channel_set_close_on_unref(session->transport_channel, TRUE);
 
 	session->transport_watch = g_io_add_watch(session->transport_channel,
-							G_IO_IN, received_data,
-								session);
+				G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
+						received_data, session);
 
 	return 0;
 }
