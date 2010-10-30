@@ -28,7 +28,8 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 
 gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c
 
-gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c
+gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
+					gweb/giognutls.h gweb/giognutls.c
 
 gsupplicant_sources = gsupplicant/gsupplicant.h gsupplicant/dbus.h \
 			gsupplicant/supplicant.c gsupplicant/dbus.c
@@ -59,7 +60,8 @@ noinst_PROGRAMS =
 sbin_PROGRAMS = src/connmand
 
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
-			$(gweb_sources) $(builtin_sources) src/connman.ver \
+			gweb/gresolv.h gweb/gresolv.c \
+			$(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
@@ -136,8 +138,8 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-ringbuffer-dump
 
-tools_wispr_SOURCES = tools/wispr.c gweb/giognutls.h gweb/giognutls.c
-tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@
+tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
+tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
 
 tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
@@ -147,12 +149,12 @@ tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 tools_supplicant_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_web_test_SOURCES = $(gweb_sources) tools/web-test.c
-tools_web_test_LDADD = @GLIB_LIBS@ -lresolv
+tools_web_test_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
 
-tools_resolv_test_SOURCES = $(gweb_sources) tools/resolv-test.c
+tools_resolv_test_SOURCES = gweb/gresolv.h gweb/gresolv.c tools/resolv-test.c
 tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
 
-tools_wpad_test_SOURCES = $(gweb_sources) tools/wpad-test.c
+tools_wpad_test_SOURCES = gweb/gresolv.h gweb/gresolv.c tools/wpad-test.c
 tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
