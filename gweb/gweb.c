@@ -70,6 +70,7 @@ struct _GWeb {
 	GList *session_list;
 
 	GResolv *resolv;
+	char *user_agent;
 
 	GWebDebugFunc debug_func;
 	gpointer debug_data;
@@ -175,6 +176,7 @@ void g_web_unref(GWeb *web)
 
 	g_resolv_unref(web->resolv);
 
+	g_free(web->user_agent);
 	g_free(web);
 }
 
@@ -197,6 +199,31 @@ gboolean g_web_add_nameserver(GWeb *web, const char *address)
 	g_resolv_add_nameserver(web->resolv, address, 53, 0);
 
 	return TRUE;
+}
+
+static gboolean set_user_agent(GWeb *web, const char *format, va_list args)
+{
+	g_free(web->user_agent);
+	web->user_agent = g_strdup_vprintf(format, args);
+
+	debug(web, "user agent %s", web->user_agent);
+
+	return TRUE;
+}
+
+gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
+{
+	va_list args;
+	gboolean result;
+
+	if (web == NULL)
+		return FALSE;
+
+	va_start(args, format);
+	result = set_user_agent(web, format, args);
+	va_end(args);
+
+	return result;
 }
 
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
@@ -288,7 +315,11 @@ static void start_request(struct web_session *session)
 	buf = g_string_new(NULL);
 	g_string_append_printf(buf, "GET %s HTTP/1.1\r\n", session->request);
 	g_string_append_printf(buf, "Host: %s\r\n", session->host);
-	g_string_append_printf(buf, "User-Agent: ConnMan/%s\r\n", VERSION);
+	if (session->web->user_agent == NULL)
+		g_string_append_printf(buf, "User-Agent: GWeb/%s\r\n", VERSION);
+	else
+		g_string_append_printf(buf, "User-Agent: %s\r\n",
+						session->web->user_agent);
 	g_string_append(buf, "Accept: */*\r\n");
 	g_string_append(buf, "\r\n");
 	str = g_string_free(buf, FALSE);
