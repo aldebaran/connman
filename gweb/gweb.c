@@ -316,6 +316,8 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		session->transport_watch = 0;
+		session->result.buffer = NULL;
+		session->result.length = 0;
 		call_result_func(session, 400);
 		return FALSE;
 	}
@@ -327,6 +329,8 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	if (status != G_IO_STATUS_NORMAL) {
 		session->transport_watch = 0;
+		session->result.buffer = NULL;
+		session->result.length = 0;
 		call_result_func(session, 200);
 		return FALSE;
 	}
