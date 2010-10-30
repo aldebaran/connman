@@ -323,7 +323,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	}
 
 	status = g_io_channel_read_chars(channel, session->line_offset,
-				session->line_space, &bytes_read, NULL);
+				session->line_space - 1, &bytes_read, NULL);
 
 	debug(session->web, "status %u bytes read %zu", status, bytes_read);
 
@@ -336,6 +336,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	}
 
 	if (session->header_done == TRUE) {
+		session->line_buffer[bytes_read] = '\0';
 		session->result.length = bytes_read;
 		call_result_func(session, 100);
 		return TRUE;
@@ -359,6 +360,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 		if (count == 0) {
 			const void *ptr = session->current_line;
+			session->current_line[bytes_read - consumed] = '\0';
 			session->header_done = TRUE;
 			session->result.buffer = ptr;
 			session->result.length = bytes_read - consumed;
