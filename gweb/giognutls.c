@@ -373,8 +373,7 @@ GIOChannel *g_io_channel_gnutls_new(int fd)
 	channel->is_readable = TRUE;
 	channel->is_writeable = TRUE;
 
-	g_io_channel_set_encoding(channel, NULL, NULL);
-	g_io_channel_set_buffered(channel, FALSE);
+	channel->do_encode = FALSE;
 
 	g_io_gnutls_global_init();
 
