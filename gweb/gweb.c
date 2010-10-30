@@ -35,6 +35,9 @@
 #include "gresolv.h"
 #include "gweb.h"
 
+struct _GWebResult {
+};
+
 struct web_session {
 	GWeb *web;
 
@@ -48,6 +51,8 @@ struct web_session {
 
 	guint resolv_action;
 	char *request;
+
+	GWebResult *result;
 
 	GWebResultFunc result_func;
 	gpointer result_data;
@@ -201,7 +206,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		session->transport_watch = 0;
 		if (session->result_func != NULL)
-			session->result_func(400, session->result_data);
+			session->result_func(400, NULL, session->result_data);
 		return FALSE;
 	}
 
@@ -213,7 +218,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	if (len == 0) {
 		session->transport_watch = 0;
 		if (session->result_func != NULL)
-			session->result_func(200, session->result_data);
+			session->result_func(200, NULL, session->result_data);
 		return FALSE;
 	}
 	printf("%s", buf);
@@ -339,7 +344,7 @@ static void resolv_result(GResolvResultStatus status,
 
 	if (results == NULL || results[0] == NULL) {
 		if (session->result_func != NULL)
-			session->result_func(404, session->result_data);
+			session->result_func(404, NULL, session->result_data);
 		return;
 	}
 
@@ -347,7 +352,7 @@ static void resolv_result(GResolvResultStatus status,
 
 	if (inet_aton(results[0], NULL) == 0) {
 		if (session->result_func != NULL)
-			session->result_func(400, session->result_data);
+			session->result_func(400, NULL, session->result_data);
 		return;
 	}
 
@@ -355,7 +360,7 @@ static void resolv_result(GResolvResultStatus status,
 
 	if (connect_session_transport(session) < 0) {
 		if (session->result_func != NULL)
-			session->result_func(409, session->result_data);
+			session->result_func(409, NULL, session->result_data);
 		return;
 	}
 

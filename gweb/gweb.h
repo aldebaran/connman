@@ -31,14 +31,17 @@ extern "C" {
 #endif
 
 struct _GWeb;
+struct _GWebResult;
 
 typedef struct _GWeb GWeb;
+typedef struct _GWebResult GWebResult;
 
 typedef enum {
 	G_WEB_METHOD_GET,
 } GWebMethod;
 
-typedef void (*GWebResultFunc)(uint16_t status, gpointer user_data);
+typedef void (*GWebResultFunc)(guint16 status, GWebResult *result,
+						gpointer user_data);
 
 typedef void (*GWebDebugFunc)(const char *str, gpointer user_data);
 

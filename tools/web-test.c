@@ -44,7 +44,7 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void web_result(uint16_t status, gpointer user_data)
+static void web_result(guint16 status, GWebResult *result, gpointer user_data)
 {
 	gdouble elapsed;
 
