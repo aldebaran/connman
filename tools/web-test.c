@@ -111,6 +111,8 @@ int main(int argc, char *argv[])
 		g_free(option_nameserver);
 	}
 
+	g_web_set_user_agent(web, "ConnMan/%s", VERSION);
+
 	timer = g_timer_new();
 
 	if (g_web_request(web, G_WEB_METHOD_GET, argv[1],
