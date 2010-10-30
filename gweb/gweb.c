@@ -336,8 +336,6 @@ static int connect_session_transport(struct web_session *session)
 		return -EIO;
 	}
 
-	debug(session->web, "flags %lu", session->flags);
-
 	if (session->flags & SESSION_FLAG_USE_TLS)
 		session->transport_channel = g_io_channel_gnutls_new(sk);
 	else
