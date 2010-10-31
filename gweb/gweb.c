@@ -36,7 +36,7 @@
 #include "gresolv.h"
 #include "gweb.h"
 
-#define LINE_CHUNK_SIZE  2048
+#define DEFAULT_BUFFER_SIZE  2048
 
 #define SESSION_FLAG_USE_TLS	(1 << 0)
 
@@ -60,10 +60,9 @@ struct web_session {
 	guint resolv_action;
 	char *request;
 
-	char *line_buffer;
-	char *line_offset;
-	unsigned int line_space;
-	char *current_line;
+	guint8 *receive_buffer;
+	gsize receive_space;
+	GString *current_header;
 	gboolean header_done;
 
 	GWebResult result;
@@ -123,7 +122,8 @@ static void free_session(struct web_session *session)
 	if (session->transport_channel != NULL)
 		g_io_channel_unref(session->transport_channel);
 
-	g_free(session->line_buffer);
+	g_string_free(session->current_header, TRUE);
+	g_free(session->receive_buffer);
 
 	g_free(session->host);
 	g_free(session->address);
@@ -309,10 +309,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
 	struct web_session *session = user_data;
-	gsize bytes_read, consumed = 0;
+	guint8 *ptr = session->receive_buffer;
+	gsize bytes_read;
 	GIOStatus status;
-	size_t count;
-	char *str;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		session->transport_watch = 0;
@@ -322,10 +321,11 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
-	status = g_io_channel_read_chars(channel, session->line_offset,
-				session->line_space - 1, &bytes_read, NULL);
+	status = g_io_channel_read_chars(channel,
+				(gchar *) session->receive_buffer,
+				session->receive_space - 1, &bytes_read, NULL);
 
-	debug(session->web, "status %u bytes read %zu", status, bytes_read);
+	debug(session->web, "bytes read %zu", bytes_read);
 
 	if (status != G_IO_STATUS_NORMAL) {
 		session->transport_watch = 0;
@@ -335,79 +335,60 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
+	session->receive_buffer[bytes_read] = '\0';
+
 	if (session->header_done == TRUE) {
-		session->line_buffer[bytes_read] = '\0';
+		session->result.buffer = session->receive_buffer;
 		session->result.length = bytes_read;
 		call_result_func(session, 100);
 		return TRUE;
 	}
 
-	str = memchr(session->line_offset, '\n', bytes_read);
+	while (bytes_read > 0) {
+		guint8 *pos;
+		gsize count;
+		char *str;
 
-	while (str != NULL) {
-		char *start = session->current_line;
-		unsigned int code;
-
-		*str = '\0';
-		count = strlen(start);
-		if (count > 0 && start[count - 1] == '\r') {
-			start[--count] = '\0';
-			consumed++;
+		pos = memchr(ptr, '\n', bytes_read);
+		if (pos == NULL) {
+			g_string_append_len(session->current_header,
+						(gchar *) ptr, bytes_read);
+			return TRUE;
 		}
 
-		session->current_line = str + 1;
-		consumed += count + 1;
+		*pos = '\0';
+		count = strlen((char *) ptr);
+		if (count > 0 && ptr[count - 1] == '\r') {
+			ptr[--count] = '\0';
+			bytes_read--;
+		}
 
-		if (count == 0) {
-			const void *ptr = session->current_line;
-			session->current_line[bytes_read - consumed] = '\0';
+		g_string_append_len(session->current_header,
+						(gchar *) ptr, count);
+
+		bytes_read -= count + 1;
+		ptr = pos + 1;
+
+		if (session->current_header->len == 0) {
 			session->header_done = TRUE;
-			session->result.buffer = ptr;
-			session->result.length = bytes_read - consumed;
+			session->result.buffer = pos + 1;
+			session->result.length = bytes_read;
 			call_result_func(session, 100);
 			break;
 		}
 
-		//printf("[ %s ]\n", start);
+		str = session->current_header->str;
 
 		if (session->result.status == 0) {
-			if (sscanf(start, "HTTP/%*s %u %*s", &code) == 1)
+			unsigned int code;
+
+			if (sscanf(str, "HTTP/%*s %u %*s", &code) == 1)
 				session->result.status = code;
 		}
 
-		str = memchr(session->current_line, '\n',
-					bytes_read - consumed);
-	}
+		debug(session->web, "[header] %s", str);
 
-	if (session->header_done == TRUE) {
-		gsize size = session->line_offset - session->line_buffer;
-
-		session->line_offset = session->line_buffer;
-		session->line_space += size;
-
-		session->result.buffer = (const guint8 *) session->line_offset;
-		return TRUE;
-	}
-
-	session->line_offset += bytes_read;
-	session->line_space -= bytes_read;
-
-	if (session->line_space < 32) {
-		gsize size = session->line_offset - session->line_buffer;
-		gsize pos = session->current_line - session->line_buffer;
-		char *buf;
-
-		printf("realloc, space %u size %zu\n",
-					session->line_space, size);
-
-		buf = g_try_realloc(session->line_buffer,
-						size + LINE_CHUNK_SIZE);
-		if (buf != NULL) {
-			session->line_buffer = buf;
-			session->line_offset = buf + size;
-			session->line_space = LINE_CHUNK_SIZE;
-			session->current_line = buf + pos;
-		}
+		g_string_truncate(session->current_header, 0);
 	}
 
 	return TRUE;
@@ -612,10 +593,14 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	session->result_func = func;
 	session->result_data = user_data;
 
-	session->line_buffer = g_try_malloc(LINE_CHUNK_SIZE);
-	session->line_offset = session->line_buffer;
-	session->line_space = LINE_CHUNK_SIZE;
-	session->current_line = session->line_buffer;
+	session->receive_buffer = g_try_malloc(DEFAULT_BUFFER_SIZE);
+	if (session->receive_buffer == NULL) {
+		free_session(session);
+		return 0;
+	}
+
+	session->receive_space = DEFAULT_BUFFER_SIZE;
+	session->current_header = g_string_sized_new(0);
 	session->header_done = FALSE;
 
 	if (inet_aton(session->host, NULL) == 0) {
