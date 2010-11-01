@@ -240,10 +240,11 @@ static void parser_callback(const char *str, gpointer user_data)
 static guint request_id;
 static GWebParser *request_parser;
 
-static void web_result(guint16 status, GWebResult *result, gpointer user_data)
+static void web_result(GWebResult *result, gpointer user_data)
 {
 	const guint8 *chunk;
 	gsize length;
+	guint16 status;
 	gdouble elapsed;
 
 	status = g_web_result_get_status(result);

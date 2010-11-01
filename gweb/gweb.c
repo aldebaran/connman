@@ -41,7 +41,7 @@
 #define SESSION_FLAG_USE_TLS	(1 << 0)
 
 struct _GWebResult {
-	guint status;
+	guint16 status;
 	const guint8 *buffer;
 	gsize length;
 };
@@ -297,12 +297,15 @@ gboolean g_web_get_close_connection(GWeb *web)
 	return web->close_connection;
 }
 
-static inline void call_result_func(struct web_session *session, guint status)
+static inline void call_result_func(struct web_session *session, guint16 status)
 {
 	if (session->result_func == NULL)
 		return;
 
-	session->result_func(status, &session->result, session->result_data);
+	if (status != 0)
+		session->result.status = status;
+
+	session->result_func(&session->result, session->result_data);
 }
 
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
@@ -331,7 +334,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		session->transport_watch = 0;
 		session->result.buffer = NULL;
 		session->result.length = 0;
-		call_result_func(session, 200);
+		call_result_func(session, 0);
 		return FALSE;
 	}
 
@@ -340,7 +343,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	if (session->header_done == TRUE) {
 		session->result.buffer = session->receive_buffer;
 		session->result.length = bytes_read;
-		call_result_func(session, 100);
+		call_result_func(session, 0);
 		return TRUE;
 	}
 
@@ -373,7 +376,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 			session->header_done = TRUE;
 			session->result.buffer = pos + 1;
 			session->result.length = bytes_read;
-			call_result_func(session, 100);
+			call_result_func(session, 0);
 			break;
 		}
 
