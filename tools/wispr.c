@@ -46,6 +46,16 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+enum wispr_pages {
+	WISPR_PAGE_NONE,
+	WISPR_PAGE_REDIRECT,
+	WISPR_PAGE_PROXY,
+	WISPR_PAGE_AUTHENTICATION_REPLY,
+	WISPR_PAGE_AUTHENTICATION_POLL_REPLY,
+	WISPR_PAGE_LOGOFF_REPLY,
+	WISPR_PAGE_ABORT_LOGIN_REPLY,
+};
+
 enum wispr_elements {
 	WISPR_NONE,
 	WISPR_ACCESS_PROCEDURE,
@@ -62,6 +72,7 @@ enum wispr_elements {
 	WISPR_LOGOFF_URL,
 };
 
+static enum wispr_pages current_page = WISPR_NONE;
 static enum wispr_elements current_element = WISPR_NONE;
 
 static void start_element_handler(GMarkupParseContext *context,
@@ -70,6 +81,21 @@ static void start_element_handler(GMarkupParseContext *context,
 					const gchar **attribute_values,
 					gpointer user_data, GError **error)
 {
+	if (g_str_equal(element_name, "Redirect") == TRUE)
+		current_page = WISPR_PAGE_REDIRECT;
+	else if (g_str_equal(element_name, "Proxy") == TRUE)
+		current_page = WISPR_PAGE_PROXY;
+	else if (g_str_equal(element_name, "AuthenticationReply") == TRUE)
+		current_page = WISPR_PAGE_AUTHENTICATION_REPLY;
+	else if (g_str_equal(element_name, "AuthenticationPollReply") == TRUE)
+		current_page = WISPR_PAGE_AUTHENTICATION_POLL_REPLY;
+	else if (g_str_equal(element_name, "LogoffReply") == TRUE)
+		current_page = WISPR_PAGE_LOGOFF_REPLY;
+	else if (g_str_equal(element_name, "AbortLoginReply") == TRUE)
+		current_page = WISPR_PAGE_ABORT_LOGIN_REPLY;
+	else
+		current_page = WISPR_PAGE_NONE;
+
 	if (g_str_equal(element_name, "AccessProcedure") == TRUE)
 		current_element = WISPR_ACCESS_PROCEDURE;
 	else if (g_str_equal(element_name, "AccessLocation") == TRUE)
@@ -94,12 +120,16 @@ static void start_element_handler(GMarkupParseContext *context,
 		current_element = WISPR_LOGIN_RESULTS_URL;
 	else if (g_str_equal(element_name, "LogoffURL") == TRUE)
 		current_element = WISPR_LOGOFF_URL;
+	else
+		current_element = WISPR_NONE;
 }
 
 static void end_element_handler(GMarkupParseContext *context,
 					const gchar *element_name,
 					gpointer user_data, GError **error)
 {
+	current_page = WISPR_PAGE_NONE;
+
 	current_element = WISPR_NONE;
 }
 
@@ -108,6 +138,29 @@ static void text_handler(GMarkupParseContext *context,
 					gpointer user_data, GError **error)
 {
 	int value;
+
+	switch (current_page) {
+	case WISPR_PAGE_NONE:
+		break;
+	case WISPR_PAGE_REDIRECT:
+		printf("[ Redirect ]\n");
+		break;
+	case WISPR_PAGE_PROXY:
+		printf("[ Proxy ]\n");
+		break;
+	case WISPR_PAGE_AUTHENTICATION_REPLY:
+		printf("[ Authentication reply ]\n");
+		break;
+	case WISPR_PAGE_AUTHENTICATION_POLL_REPLY:
+		printf("[ Authentication poll reply ]\n");
+		break;
+	case WISPR_PAGE_LOGOFF_REPLY:
+		printf("[ Logoff reply ]\n");
+		break;
+	case WISPR_PAGE_ABORT_LOGIN_REPLY:
+		printf("[ Abort login reply ]\n");
+		break;
+	}
 
 	switch (current_element) {
 	case WISPR_NONE:
