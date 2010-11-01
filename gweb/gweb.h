@@ -42,7 +42,7 @@ typedef enum {
 	G_WEB_METHOD_GET,
 } GWebMethod;
 
-typedef void (*GWebResultFunc)(GWebResult *result, gpointer user_data);
+typedef gboolean (*GWebResultFunc)(GWebResult *result, gpointer user_data);
 
 typedef void (*GWebDebugFunc)(const char *str, gpointer user_data);
 

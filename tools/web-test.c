@@ -43,7 +43,7 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void web_result(GWebResult *result, gpointer user_data)
+static gboolean web_result(GWebResult *result, gpointer user_data)
 {
 	guint16 status;
 	gdouble elapsed;
@@ -57,6 +57,8 @@ static void web_result(GWebResult *result, gpointer user_data)
 	g_print("status: %03u\n", status);
 
 	g_main_loop_quit(main_loop);
+
+	return FALSE;
 }
 
 static gboolean option_debug = FALSE;

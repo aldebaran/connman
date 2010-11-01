@@ -240,7 +240,7 @@ static void parser_callback(const char *str, gpointer user_data)
 static guint request_id;
 static GWebParser *request_parser;
 
-static void web_result(GWebResult *result, gpointer user_data)
+static gboolean web_result(GWebResult *result, gpointer user_data)
 {
 	const guint8 *chunk;
 	gsize length;
@@ -256,7 +256,7 @@ static void web_result(GWebResult *result, gpointer user_data)
 	if (length > 0) {
 		//printf("%s\n", (char *) chunk);
 		g_web_parser_feed_data(request_parser, chunk, length);
-		return;
+		return TRUE;
 	}
 
 	g_web_parser_end_data(request_parser);
@@ -269,6 +269,8 @@ done:
 	g_print("elapse: %f seconds\n", elapsed);
 
 	g_main_loop_quit(main_loop);
+
+	return FALSE;
 }
 
 static gboolean option_debug = FALSE;
