@@ -54,6 +54,9 @@ struct web_session {
 	uint16_t port;
 	unsigned long flags;
 
+	char *content_type;
+	gsize content_length;
+
 	GIOChannel *transport_channel;
 	guint transport_watch;
 
@@ -124,6 +127,8 @@ static void free_session(struct web_session *session)
 
 	g_string_free(session->current_header, TRUE);
 	g_free(session->receive_buffer);
+
+	g_free(session->content_type);
 
 	g_free(session->host);
 	g_free(session->address);
@@ -463,7 +468,12 @@ static void start_request(struct web_session *session)
 					session->request, session->host);
 
 	buf = g_string_new(NULL);
-	g_string_append_printf(buf, "GET %s HTTP/1.1\r\n", session->request);
+	if (session->content_type == NULL)
+		g_string_append_printf(buf, "GET %s HTTP/1.1\r\n",
+							session->request);
+	else
+		g_string_append_printf(buf, "POST %s HTTP/1.1\r\n",
+							session->request);
 	g_string_append_printf(buf, "Host: %s\r\n", session->host);
 	if (session->web->user_agent != NULL)
 		g_string_append_printf(buf, "User-Agent: %s\r\n",
@@ -471,6 +481,12 @@ static void start_request(struct web_session *session)
 	if (session->web->accept_option != NULL)
 		g_string_append_printf(buf, "Accept: %s\r\n",
 						session->web->accept_option);
+	if (session->content_type != NULL) {
+		g_string_append_printf(buf, "Content-Length: %zu\r\n",
+						session->content_length);
+		g_string_append_printf(buf, "Content-Type: %s\r\n",
+						session->content_type);
+	}
 	if (session->web->close_connection == TRUE)
 		g_string_append(buf, "Connection: close\r\n");
 	g_string_append(buf, "\r\n");
@@ -569,7 +585,8 @@ static void resolv_result(GResolvResultStatus status,
 	start_request(session);
 }
 
-guint g_web_request_get(GWeb *web, const char *url,
+static guint do_request(GWeb *web, const char *url,
+				const char *type, guint8 *data, gsize length,
 				GWebResultFunc func, gpointer user_data)
 {
 	struct web_session *session;
@@ -590,6 +607,14 @@ guint g_web_request_get(GWeb *web, const char *url,
 
 	debug(web, "host %s:%u", session->host, session->port);
 	debug(web, "flags %lu", session->flags);
+
+	if (type != NULL) {
+		session->content_type = g_strdup(type);
+		session->content_length = length;
+
+		debug(web, "content-type %s", session->content_type);
+		debug(web, "content-length %zu", session->content_length);
+	}
 
 	session->web = web;
 
@@ -629,14 +654,17 @@ guint g_web_request_get(GWeb *web, const char *url,
 	return web->next_query_id++;
 }
 
+guint g_web_request_get(GWeb *web, const char *url,
+				GWebResultFunc func, gpointer user_data)
+{
+	return do_request(web, url, NULL, NULL, 0, func, user_data);
+}
+
 guint g_web_request_post(GWeb *web, const char *url,
 				const char *type, guint8 *data, gsize length,
 				GWebResultFunc func, gpointer user_data)
 {
-	if (web == NULL || url == NULL)
-		return 0;
-
-	return 0;
+	return do_request(web, url, type, data, length, func, user_data);
 }
 
 gboolean g_web_cancel_request(GWeb *web, guint id)
