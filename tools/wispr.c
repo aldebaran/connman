@@ -24,10 +24,13 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 
 #include <gweb/gweb.h>
+
+#define DEFAULT_URL  "http://www.connman.net/online/status.html"
 
 static GTimer *timer;
 
@@ -43,17 +46,226 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
+enum wispr_elements {
+	WISPR_NONE,
+	WISPR_ACCESS_PROCEDURE,
+	WISPR_ACCESS_LOCATION,
+	WISPR_LOCATION_NAME,
+	WISPR_LOGIN_URL,
+	WISPR_ABORT_LOGIN_URL,
+	WISPR_MESSAGE_TYPE,
+	WISPR_RESPONSE_CODE,
+	WISPR_NEXT_URL,
+	WISPR_DELAY,
+	WISPR_REPLY_MESSAGE,
+	WISPR_LOGIN_RESULTS_URL,
+	WISPR_LOGOFF_URL,
+};
+
+static enum wispr_elements current_element = WISPR_NONE;
+
+static void start_element_handler(GMarkupParseContext *context,
+					const gchar *element_name,
+					const gchar **attribute_names,
+					const gchar **attribute_values,
+					gpointer user_data, GError **error)
+{
+	if (g_str_equal(element_name, "AccessProcedure") == TRUE)
+		current_element = WISPR_ACCESS_PROCEDURE;
+	else if (g_str_equal(element_name, "AccessLocation") == TRUE)
+		current_element = WISPR_ACCESS_LOCATION;
+	else if (g_str_equal(element_name, "LocationName") == TRUE)
+		current_element = WISPR_LOCATION_NAME;
+	else if (g_str_equal(element_name, "LoginURL") == TRUE)
+		current_element = WISPR_LOGIN_URL;
+	else if (g_str_equal(element_name, "AbortLoginURL") == TRUE)
+		current_element = WISPR_ABORT_LOGIN_URL;
+	else if (g_str_equal(element_name, "MessageType") == TRUE)
+		current_element = WISPR_MESSAGE_TYPE;
+	else if (g_str_equal(element_name, "ResponseCode") == TRUE)
+		current_element = WISPR_RESPONSE_CODE;
+	else if (g_str_equal(element_name, "NextURL") == TRUE)
+		current_element = WISPR_NEXT_URL;
+	else if (g_str_equal(element_name, "Delay") == TRUE)
+		current_element = WISPR_DELAY;
+	else if (g_str_equal(element_name, "ReplyMessage") == TRUE)
+		current_element = WISPR_REPLY_MESSAGE;
+	else if (g_str_equal(element_name, "LoginResultsURL") == TRUE)
+		current_element = WISPR_LOGIN_RESULTS_URL;
+	else if (g_str_equal(element_name, "LogoffURL") == TRUE)
+		current_element = WISPR_LOGOFF_URL;
+}
+
+static void end_element_handler(GMarkupParseContext *context,
+					const gchar *element_name,
+					gpointer user_data, GError **error)
+{
+	current_element = WISPR_NONE;
+}
+
+static void text_handler(GMarkupParseContext *context,
+					const gchar *text, gsize text_len,
+					gpointer user_data, GError **error)
+{
+	int value;
+
+	switch (current_element) {
+	case WISPR_NONE:
+		break;
+	case WISPR_ACCESS_PROCEDURE:
+		printf("Access procedure: %s\n", text);
+		break;
+	case WISPR_ACCESS_LOCATION:
+		printf("Access location: %s\n", text);
+		break;
+	case WISPR_LOCATION_NAME:
+		printf("Location name: %s\n", text);
+		break;
+	case WISPR_LOGIN_URL:
+		printf("Login URL: %s\n", text);
+		break;
+	case WISPR_ABORT_LOGIN_URL:
+		printf("Abort login URL: %s\n", text);
+		break;
+	case WISPR_MESSAGE_TYPE:
+		value = atoi(text);
+		printf("Message type: %d\n", value);
+		switch (value) {
+		case 100:
+			printf("  Initial redirect message\n");
+			break;
+		case 110:
+			printf("  Proxy notification\n");
+			break;
+		case 120:
+			printf("  Authentication notification\n");
+			break;
+		case 130:
+			printf("  Logoff notification\n");
+			break;
+		case 140:
+			printf("  Response to Authentication Poll\n");
+			break;
+		case 150:
+			printf("  Response to Abort Login\n");
+			break;
+		}
+		break;
+	case WISPR_RESPONSE_CODE:
+		value = atoi(text);
+		printf("Response code: %d\n", value);
+		switch (value) {
+		case 0:
+			printf("  No error\n");
+			break;
+		case 50:
+			printf("  Login succeeded (Access ACCEPT)\n");
+			break;
+		case 100:
+			printf("  Login failed (Access REJECT)\n");
+			break;
+		case 102:
+			printf("  RADIUS server error/timeout\n");
+			break;
+		case 105:
+			printf("  RADIUS server not enabled\n");
+			break;
+		case 150:
+			printf("  Logoff succeeded\n");
+			break;
+		case 151:
+			printf("  Login aborted\n");
+			break;
+		case 200:
+			printf("  Proxy detection/repeat operation\n");
+			break;
+		case 201:
+			printf("  Authentication pending\n");
+			break;
+		case 255:
+			printf("  Access gateway internal error\n");
+			break;
+		}
+		break;
+	case WISPR_NEXT_URL:
+		printf("Next URL: %s\n", text);
+		break;
+	case WISPR_DELAY:
+		value = atoi(text);
+		printf("Delay: %d seconds\n", value);
+		break;
+	case WISPR_REPLY_MESSAGE:
+		printf("Reply message: %s\n", text);
+		break;
+	case WISPR_LOGIN_RESULTS_URL:
+		printf("Login results URL: %s\n", text);
+		break;
+	case WISPR_LOGOFF_URL:
+		printf("Logoff URL: %s\n", text);
+		break;
+	}
+}
+
+static void error_handler(GMarkupParseContext *context,
+					GError *error, gpointer user_data)
+{
+	printf("%s\n", error->message);
+}
+
+static const GMarkupParser wispr_parser = {
+	start_element_handler,
+	end_element_handler,
+	text_handler,
+	NULL,
+	error_handler,
+};
+
+static void parser_callback(const char *str, gpointer user_data)
+{
+	GMarkupParseContext *context;
+	gboolean result;
+
+	//printf("%s\n", str);
+
+	context = g_markup_parse_context_new(&wispr_parser,
+				G_MARKUP_TREAT_CDATA_AS_TEXT, NULL, NULL);
+
+	result = g_markup_parse_context_parse(context, str, strlen(str), NULL);
+
+	result = g_markup_parse_context_end_parse(context, NULL);
+
+	g_markup_parse_context_free(context);
+}
+
 static guint request_id;
+static GWebParser *request_parser;
 
 static void web_result(guint16 status, GWebResult *result, gpointer user_data)
 {
+	const guint8 *chunk;
+	gsize length;
 	gdouble elapsed;
+
+	status = g_web_result_get_status(result);
+	if (status == 200)
+		goto done;
+
+	g_web_result_get_chunk(result, &chunk, &length);
+
+	if (length > 0) {
+		//printf("%s\n", (char *) chunk);
+		g_web_parser_feed_data(request_parser, chunk, length);
+		return;
+	}
+
+	g_web_parser_end_data(request_parser);
+
+done:
+	g_print("status: %03u\n", status);
 
 	elapsed = g_timer_elapsed(timer, NULL);
 
 	g_print("elapse: %f seconds\n", elapsed);
-
-	g_print("status: %03u\n", status);
 
 	g_main_loop_quit(main_loop);
 }
@@ -115,9 +327,16 @@ int main(int argc, char *argv[])
 	g_web_set_close_connection(web, TRUE);
 
 	if (option_url == NULL)
-		option_url = g_strdup("http://connman.net/");
+		option_url = g_strdup(DEFAULT_URL);
 
 	timer = g_timer_new();
+
+	request_parser = g_web_parser_new("<WISPAccessGatewayParam",
+						"WISPAccessGatewayParam>",
+						parser_callback, NULL);
+
+	g_web_parser_ref(request_parser);
+	g_web_parser_unref(request_parser);
 
 	request_id = g_web_request(web, G_WEB_METHOD_GET, option_url,
 							web_result, NULL);
