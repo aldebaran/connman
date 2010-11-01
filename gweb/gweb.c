@@ -650,3 +650,154 @@ gboolean g_web_result_get_chunk(GWebResult *result,
 
 	return TRUE;
 }
+
+struct _GWebParser {
+	gint ref_count;
+	char *begin_token;
+	char *end_token;
+	const char *token_str;
+	size_t token_len;
+	size_t token_pos;
+	gboolean intoken;
+	GString *content;
+	GWebParserFunc func;
+	gpointer user_data;
+};
+
+GWebParser *g_web_parser_new(const char *begin, const char *end,
+				GWebParserFunc func, gpointer user_data)
+{
+	GWebParser *parser;
+
+	parser = g_try_new0(GWebParser, 1);
+	if (parser == NULL)
+		return NULL;
+
+	parser->ref_count = 1;
+
+	parser->begin_token = g_strdup(begin);
+	parser->end_token = g_strdup(end);
+
+	if (parser->begin_token == NULL) {
+		g_free(parser);
+		return NULL;
+	}
+
+	parser->func = func;
+	parser->user_data = user_data;
+
+	parser->token_str = parser->begin_token;
+	parser->token_len = strlen(parser->token_str);
+	parser->token_pos = 0;
+
+	parser->intoken = FALSE;
+	parser->content = g_string_sized_new(0);
+
+	return parser;
+}
+
+GWebParser *g_web_parser_ref(GWebParser *parser)
+{
+	if (parser == NULL)
+		return NULL;
+
+	g_atomic_int_inc(&parser->ref_count);
+
+	return parser;
+}
+
+void g_web_parser_unref(GWebParser *parser)
+{
+	if (parser == NULL)
+		return;
+
+	if (g_atomic_int_dec_and_test(&parser->ref_count) == FALSE)
+		return;
+
+	g_string_free(parser->content, TRUE);
+
+	g_free(parser->begin_token);
+	g_free(parser->end_token);
+	g_free(parser);
+}
+
+void g_web_parser_feed_data(GWebParser *parser,
+				const guint8 *data, gsize length)
+{
+	const guint8 *ptr = data;
+
+	if (parser == NULL)
+		return;
+
+	while (length > 0) {
+		guint8 chr = parser->token_str[parser->token_pos];
+
+		if (parser->token_pos == 0) {
+			guint8 *pos;
+
+			pos = memchr(ptr, chr, length);
+			if (pos == NULL) {
+				if (parser->intoken == TRUE)
+					g_string_append_len(parser->content,
+							(gchar *) ptr, length);
+				break;
+			}
+
+			if (parser->intoken == TRUE)
+				g_string_append_len(parser->content,
+						(gchar *) ptr, (pos - ptr) + 1);
+
+			length -= (pos - ptr) + 1;
+			ptr = pos + 1;
+
+			parser->token_pos++;
+			continue;
+		}
+
+		if (parser->intoken == TRUE)
+			g_string_append_c(parser->content, ptr[0]);
+
+		if (ptr[0] != chr) {
+			length--;
+			ptr++;
+
+			parser->token_pos = 0;
+			continue;
+		}
+
+		length--;
+		ptr++;
+
+		parser->token_pos++;
+
+		if (parser->token_pos == parser->token_len) {
+			if (parser->intoken == FALSE) {
+				g_string_append(parser->content,
+							parser->token_str);
+
+				parser->intoken = TRUE;
+				parser->token_str = parser->end_token;
+				parser->token_len = strlen(parser->end_token);
+				parser->token_pos = 0;
+			} else {
+				char *str;
+				str = g_string_free(parser->content, FALSE);
+				parser->content = g_string_sized_new(0);
+				if (parser->func)
+					parser->func(str, parser->user_data);
+				g_free(str);
+
+				parser->intoken = FALSE;
+				parser->token_str = parser->begin_token;
+				parser->token_len = strlen(parser->begin_token);
+				parser->token_pos = 0;
+			}
+		}
+	}
+}
+
+void g_web_parser_end_data(GWebParser *parser)
+{
+	if (parser == NULL)
+		return;
+}

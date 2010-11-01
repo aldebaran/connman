@@ -32,9 +32,11 @@ extern "C" {
 
 struct _GWeb;
 struct _GWebResult;
+struct _GWebParser;
 
 typedef struct _GWeb GWeb;
 typedef struct _GWebResult GWebResult;
+typedef struct _GWebParser GWebParser;
 
 typedef enum {
 	G_WEB_METHOD_GET,
@@ -71,6 +73,18 @@ guint16 g_web_result_get_status(GWebResult *result);
 
 gboolean g_web_result_get_chunk(GWebResult *result,
 				const guint8 **chunk, gsize *length);
+
+typedef void (*GWebParserFunc)(const char *str, gpointer user_data);
+
+GWebParser *g_web_parser_new(const char *begin, const char *end,
+				GWebParserFunc func, gpointer user_data);
+
+GWebParser *g_web_parser_ref(GWebParser *parser);
+void g_web_parser_unref(GWebParser *parser);
+
+void g_web_parser_feed_data(GWebParser *parser,
+				const guint8 *data, gsize length);
+void g_web_parser_end_data(GWebParser *parser);
 
 #ifdef __cplusplus
 }
