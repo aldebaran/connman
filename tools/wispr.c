@@ -394,8 +394,7 @@ int main(int argc, char *argv[])
 	g_web_parser_ref(request_parser);
 	g_web_parser_unref(request_parser);
 
-	request_id = g_web_request(web, G_WEB_METHOD_GET, option_url,
-							web_result, NULL);
+	request_id = g_web_request_get(web, option_url, web_result, NULL);
 
 	g_free(option_url);
 

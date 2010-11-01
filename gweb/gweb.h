@@ -38,10 +38,6 @@ typedef struct _GWeb GWeb;
 typedef struct _GWebResult GWebResult;
 typedef struct _GWebParser GWebParser;
 
-typedef enum {
-	G_WEB_METHOD_GET,
-} GWebMethod;
-
 typedef gboolean (*GWebResultFunc)(GWebResult *result, gpointer user_data);
 
 typedef void (*GWebDebugFunc)(const char *str, gpointer user_data);
@@ -63,10 +59,13 @@ gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 void g_web_set_close_connection(GWeb *web, gboolean enabled);
 gboolean g_web_get_close_connection(GWeb *web);
 
-guint g_web_request(GWeb *web, GWebMethod method, const char *url,
+guint g_web_request_get(GWeb *web, const char *url,
+				GWebResultFunc func, gpointer user_data);
+guint g_web_request_post(GWeb *web, const char *url,
+				const char *type, guint8 *data, gsize length,
 				GWebResultFunc func, gpointer user_data);
 
-gboolean g_web_cancel(GWeb *web, guint id);
+gboolean g_web_cancel_request(GWeb *web, guint id);
 
 guint16 g_web_result_get_status(GWebResult *result);
 

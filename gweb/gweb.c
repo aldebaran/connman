@@ -569,7 +569,7 @@ static void resolv_result(GResolvResultStatus status,
 	start_request(session);
 }
 
-guint g_web_request(GWeb *web, GWebMethod method, const char *url,
+guint g_web_request_get(GWeb *web, const char *url,
 				GWebResultFunc func, gpointer user_data)
 {
 	struct web_session *session;
@@ -627,6 +627,24 @@ guint g_web_request(GWeb *web, GWebMethod method, const char *url,
 	web->session_list = g_list_append(web->session_list, session);
 
 	return web->next_query_id++;
+}
+
+guint g_web_request_post(GWeb *web, const char *url,
+				const char *type, guint8 *data, gsize length,
+				GWebResultFunc func, gpointer user_data)
+{
+	if (web == NULL || url == NULL)
+		return 0;
+
+	return 0;
+}
+
+gboolean g_web_cancel_request(GWeb *web, guint id)
+{
+	if (web == NULL)
+		return FALSE;
+
+	return TRUE;
 }
 
 guint16 g_web_result_get_status(GWebResult *result)

@@ -119,8 +119,7 @@ int main(int argc, char *argv[])
 
 	timer = g_timer_new();
 
-	if (g_web_request(web, G_WEB_METHOD_GET, argv[1],
-					web_result, NULL) == 0) {
+	if (g_web_request_get(web, argv[1], web_result, NULL) == 0) {
 		fprintf(stderr, "Failed to start request\n");
 		return 1;
 	}
