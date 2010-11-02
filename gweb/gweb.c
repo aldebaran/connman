@@ -55,7 +55,6 @@ struct web_session {
 	unsigned long flags;
 
 	char *content_type;
-	gsize content_length;
 
 	GIOChannel *transport_channel;
 	guint transport_watch;
@@ -71,7 +70,8 @@ struct web_session {
 	GWebResult result;
 
 	GWebResultFunc result_func;
-	gpointer result_data;
+	GWebInputFunc input_func;
+	gpointer user_data;
 };
 
 struct _GWeb {
@@ -310,7 +310,7 @@ static inline void call_result_func(struct web_session *session, guint16 status)
 	if (status != 0)
 		session->result.status = status;
 
-	session->result_func(&session->result, session->result_data);
+	session->result_func(&session->result, session->user_data);
 }
 
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
@@ -461,6 +461,8 @@ static void start_request(struct web_session *session)
 {
 	GString *buf;
 	gchar *str;
+	const guint8 *body;
+	gsize length;
 	gsize count, bytes_written;
 	GIOStatus status;
 
@@ -468,6 +470,7 @@ static void start_request(struct web_session *session)
 					session->request, session->host);
 
 	buf = g_string_new(NULL);
+
 	if (session->content_type == NULL)
 		g_string_append_printf(buf, "GET %s HTTP/1.1\r\n",
 							session->request);
@@ -482,17 +485,27 @@ static void start_request(struct web_session *session)
 		g_string_append_printf(buf, "Accept: %s\r\n",
 						session->web->accept_option);
 	if (session->content_type != NULL) {
-		g_string_append_printf(buf, "Content-Length: %zu\r\n",
-						session->content_length);
 		g_string_append_printf(buf, "Content-Type: %s\r\n",
 						session->content_type);
+		if (session->input_func != NULL)
+			session->input_func(&body, &length, session->user_data);
+		else
+			length = 0;
+
+		g_string_append_printf(buf, "Content-Length: %zu\r\n", length);
 	}
 	if (session->web->close_connection == TRUE)
 		g_string_append(buf, "Connection: close\r\n");
 	g_string_append(buf, "\r\n");
-	str = g_string_free(buf, FALSE);
 
-	count = strlen(str);
+	count = buf->len;
+
+	if (session->content_type != NULL && length > 0) {
+		g_string_append_len(buf, (char *) body, length);
+		count += length;
+	}
+
+	str = g_string_free(buf, FALSE);
 
 	debug(session->web, "bytes to write %zu", count);
 
@@ -586,7 +599,7 @@ static void resolv_result(GResolvResultStatus status,
 }
 
 static guint do_request(GWeb *web, const char *url,
-				const char *type, guint8 *data, gsize length,
+				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data)
 {
 	struct web_session *session;
@@ -610,16 +623,15 @@ static guint do_request(GWeb *web, const char *url,
 
 	if (type != NULL) {
 		session->content_type = g_strdup(type);
-		session->content_length = length;
 
 		debug(web, "content-type %s", session->content_type);
-		debug(web, "content-length %zu", session->content_length);
 	}
 
 	session->web = web;
 
 	session->result_func = func;
-	session->result_data = user_data;
+	session->input_func = input;
+	session->user_data = user_data;
 
 	session->receive_buffer = g_try_malloc(DEFAULT_BUFFER_SIZE);
 	if (session->receive_buffer == NULL) {
@@ -657,14 +669,14 @@ static guint do_request(GWeb *web, const char *url,
 guint g_web_request_get(GWeb *web, const char *url,
 				GWebResultFunc func, gpointer user_data)
 {
-	return do_request(web, url, NULL, NULL, 0, func, user_data);
+	return do_request(web, url, NULL, NULL, func, user_data);
 }
 
 guint g_web_request_post(GWeb *web, const char *url,
-				const char *type, guint8 *data, gsize length,
+				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data)
 {
-	return do_request(web, url, type, data, length, func, user_data);
+	return do_request(web, url, type, input, func, user_data);
 }
 
 gboolean g_web_cancel_request(GWeb *web, guint id)
