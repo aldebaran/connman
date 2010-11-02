@@ -219,7 +219,10 @@ static void text_handler(GMarkupParseContext *context,
 		case WISPR_ELEMENT_DELAY:
 		case WISPR_ELEMENT_REPLY_MESSAGE:
 		case WISPR_ELEMENT_LOGIN_RESULTS_URL:
+			break;
 		case WISPR_ELEMENT_LOGOFF_URL:
+			g_free(msg->logoff_url);
+			msg->logoff_url = g_strdup(text);
 			break;
 		}
 	}
