@@ -101,6 +101,9 @@ struct wispr_msg {
 	int response_code;
 	char *login_url;
 	char *logoff_url;
+	char *access_procedure;
+	char *access_location;
+	char *location_name;
 };
 
 static inline void wispr_msg_init(struct wispr_msg *msg)
@@ -116,6 +119,15 @@ static inline void wispr_msg_init(struct wispr_msg *msg)
 
 	g_free(msg->logoff_url);
 	msg->logoff_url = NULL;
+
+	g_free(msg->access_procedure);
+	msg->access_procedure = NULL;
+
+	g_free(msg->access_location);
+	msg->access_location = NULL;
+
+	g_free(msg->location_name);
+	msg->location_name = NULL;
 }
 
 struct wispr_session {
@@ -200,8 +212,14 @@ static void text_handler(GMarkupParseContext *context,
 		switch (wispr_element_map[i].element) {
 		case WISPR_ELEMENT_NONE:
 		case WISPR_ELEMENT_ACCESS_PROCEDURE:
+			g_free(msg->access_procedure);
+			msg->access_procedure = g_strdup(text);
 		case WISPR_ELEMENT_ACCESS_LOCATION:
+			g_free(msg->access_location);
+			msg->access_location = g_strdup(text);
 		case WISPR_ELEMENT_LOCATION_NAME:
+			g_free(msg->location_name);
+			msg->location_name = g_strdup(text);
 			break;
 		case WISPR_ELEMENT_LOGIN_URL:
 			g_free(msg->login_url);
@@ -313,6 +331,12 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 	printf("Response code: %s (%d)\n",
 			response_code_to_string(wispr->msg.response_code),
 						wispr->msg.response_code);
+	if (wispr->msg.access_procedure != NULL)
+		printf("Access procedure: %s\n", wispr->msg.access_procedure);
+	if (wispr->msg.access_location != NULL)
+		printf("Access location: %s\n", wispr->msg.access_location);
+	if (wispr->msg.location_name != NULL)
+		printf("Location name: %s\n", wispr->msg.location_name);
 	if (wispr->msg.login_url != NULL)
 		printf("Login URL: %s\n", wispr->msg.login_url);
 	if (wispr->msg.logoff_url != NULL)
