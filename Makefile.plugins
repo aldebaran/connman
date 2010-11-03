@@ -109,7 +109,7 @@ endif
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
 builtin_modules += openconnect
-builtin_sources += plugins/vpn.c plugins/openconnect.c plugins/vpn.h
+builtin_sources += plugins/openconnect.c
 builtin_cflags += -DOPENCONNECT=\"@OPENCONNECT@\"
 else
 plugin_LTLIBRARIES += plugins/openconnect.la
@@ -120,6 +120,31 @@ plugins_openconnect_la_CFLAGS = $(plugin_cflags) -DOPENCONNECT=\"@OPENCONNECT@\"
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
 plugins_openconnect_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if OPENVPN
+if OPENVPN_BUILTIN
+builtin_modules += openvpn
+builtin_sources += plugins/openvpn.c
+builtin_cflags += -DOPENVPN=\"@OPENVPN@\"
+else
+plugin_LTLIBRARIES += plugins/openvpn.la
+plugin_objects += $(plugins_openvpn_la_OBJECTS)
+plugins_openvpn_la_SOURCES = plugins/vpn.h plugins/vpn.c \
+						plugins/openvpn.c
+plugins_openvpn_la_CFLAGS = $(plugin_cflags) -DOPENVPN=\"@OPENVPN@\" \
+					-DSTATEDIR=\""$(statedir)"\" \
+					-DSCRIPTDIR=\""$(build_scriptdir)"\"
+plugins_openvpn_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
+if OPENCONNECT_BUILTIN
+builtin_sources += plugins/vpn.c plugins/vpn.h
+else
+if OPENVPN_BUILTIN
+builtin_sources += plugins/vpn.c plugins/vpn.h
 endif
 endif
 
@@ -224,11 +249,16 @@ plugins_fake_la_CFLAGS = $(plugin_cflags)
 plugins_fake_la_LDFLAGS = $(plugin_ldflags)
 endif
 
-
 if OPENCONNECT
 script_PROGRAMS += scripts/openconnect-script
 
 scripts_openconnect_script_LDADD = @DBUS_LIBS@
+endif
+
+if OPENVPN
+script_PROGRAMS += scripts/openvpn-script
+
+scripts_openvpn_script_LDADD = @DBUS_LIBS@
 endif
 
 if DHCLIENT

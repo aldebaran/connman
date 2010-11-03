@@ -135,6 +135,23 @@ AC_ARG_ENABLE(portal,
 AM_CONDITIONAL(PORTAL, test "${enable_portal}" != "no")
 AM_CONDITIONAL(PORTAL_BUILTIN, test "${enable_portal}" = "builtin")
 
+AC_ARG_WITH(openvpn, AC_HELP_STRING([--with-openvpn=PROGRAM],
+        [specify location of openvpn binary]), [path_openvpn=${withval}])
+
+AC_ARG_ENABLE(openvpn,
+	AC_HELP_STRING([--enable-openvpn], [enable openvpn support]),
+			[enable_openvpn=${enableval}], [enable_openvpn="no"])
+if (test "${enable_openvpn}" != "no"); then
+	if (test -z "${path_openvpn}"); then
+		AC_PATH_PROG(OPENVPN, [openvpn], [], $PATH:/sbin:/usr/sbin)
+	else
+		OPENVPN="${path_openvpn}"
+		AC_SUBST(OPENVPN)
+	fi
+fi
+AM_CONDITIONAL(OPENVPN, test "${enable_openvpn}" != "no")
+AM_CONDITIONAL(OPENVPN_BUILTIN, test "${enable_openvpn}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
