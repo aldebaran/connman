@@ -107,6 +107,7 @@ void __connman_task_cleanup(void);
 
 int __connman_inet_modify_address(int cmd, int flags, int index, int family,
 				const char *address,
+				const char *peer,
 				unsigned char prefixlen,
 				const char *broadcast);
 

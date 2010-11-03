@@ -67,7 +67,7 @@ static int ipv4_probe(struct connman_element *element)
 	struct connman_ipconfig *ipconfig;
 	struct connman_element *connection;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
-	const char *nameserver = NULL, *pac = NULL;
+	const char *peer = NULL, *nameserver = NULL, *pac = NULL;
 	char *timeserver = NULL;
 	unsigned char prefixlen;
 
@@ -78,6 +78,8 @@ static int ipv4_probe(struct connman_element *element)
 				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_BROADCAST, &broadcast);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_PEER, &peer);
 
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
@@ -87,6 +89,7 @@ static int ipv4_probe(struct connman_element *element)
 			CONNMAN_PROPERTY_ID_IPV4_PAC, &pac);
 
 	DBG("address %s", address);
+	DBG("peer %s", peer);
 	DBG("netmask %s", netmask);
 	DBG("broadcast %s", broadcast);
 
@@ -97,7 +100,7 @@ static int ipv4_probe(struct connman_element *element)
 
 	if ((__connman_inet_modify_address(RTM_NEWADDR,
 			NLM_F_REPLACE | NLM_F_ACK, element->index,
-			AF_INET, address, prefixlen, broadcast)) < 0)
+			AF_INET, address, peer, prefixlen, broadcast)) < 0)
 		DBG("address setting failed");
 
 	service = __connman_element_get_service(element);
@@ -130,7 +133,7 @@ static int ipv4_probe(struct connman_element *element)
 static void ipv4_remove(struct connman_element *element)
 {
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
-	const char *nameserver = NULL;
+	const char *peer = NULL, *nameserver = NULL;
 	char *timeserver = NULL;
 	unsigned char prefixlen;
 
@@ -142,6 +145,8 @@ static void ipv4_remove(struct connman_element *element)
 				CONNMAN_PROPERTY_ID_IPV4_NETMASK, &netmask);
 	connman_element_get_value(element,
 				CONNMAN_PROPERTY_ID_IPV4_BROADCAST, &broadcast);
+	connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_PEER, &peer);
 
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
@@ -151,6 +156,7 @@ static void ipv4_remove(struct connman_element *element)
 	connman_timeserver_remove(timeserver);
 
 	DBG("address %s", address);
+	DBG("peer %s", peer);
 	DBG("netmask %s", netmask);
 	DBG("broadcast %s", broadcast);
 
@@ -164,7 +170,7 @@ static void ipv4_remove(struct connman_element *element)
 	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 
 	if ((__connman_inet_modify_address(RTM_DELADDR, 0, element->index,
-			AF_INET, address, prefixlen, broadcast) < 0))
+			AF_INET, address, peer, prefixlen, broadcast) < 0))
 		DBG("address removal failed");
 }
 
