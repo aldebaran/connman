@@ -3967,7 +3967,8 @@ static int service_load(struct connman_service *service)
 		str = g_key_file_get_string(keyfile,
 				service->identifier, "Failure", NULL);
 		if (str != NULL) {
-			service->state = CONNMAN_SERVICE_STATE_FAILURE;
+			if (service->favorite == FALSE)
+				service->state = CONNMAN_SERVICE_STATE_FAILURE;
 			service->error = string2error(str);
 		}
 		break;
