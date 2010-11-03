@@ -2538,6 +2538,9 @@ int supplicant_disconnect(struct connman_network *network)
 	if (task->disconnecting == TRUE)
 		return -EALREADY;
 
+	if (task->network != network)
+		return -EINVAL;
+
 	remove_network(task);
 
 	disconnect_network(task);
