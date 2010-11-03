@@ -1,3 +1,17 @@
+ver 0.63:
+	Change to use nl80211/cfg80211 WiFi management by default.
+	Fix various issues with new WPA Supplicant interface.
+	Fix issue with not connecting failed networks at boot.
+	Fix issue with properly tracking RFKILL blocked state.
+	Fix issue with missing signals for IPv4/IPv6 gateway details.
+	Add support for using RTNL for setting IPv4/IPv6 details.
+	Add support for using PHONET_PIPE GPRS interfaces.
+	Add support for setting manual proxy configurations.
+	Add support for exporting proxy configurations to PACrunner.
+	Add support for combined home and roaming statistics.
+	Add support for OpenVPN connections.
+	Remove dependency on udev.
+
 ver 0.62:
 	Fix crash with non-existent or extra DHCP result options.
 	Fix crash when doing PEAP/TTLS authentication.
