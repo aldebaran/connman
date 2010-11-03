@@ -1,3 +1,10 @@
+ver 0.62.3
+	gsupplicant fixes (Fixes BMC#8750, #8792, #8324, #8363)
+	supplicant fix for autoconnecting after a failure.
+	Autoconnection of previously failed networks (Partly fixes BMC #8946).
+	udev rfkill list traversal fix (Fixes BMC #7915).
+	device fix (Fixes BMC #8075).
+
 ver 0.62.2
 	Fix a session and counter memory corruption (double free).
 	Create less stats file and less often.
