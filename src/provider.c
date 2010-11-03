@@ -84,6 +84,9 @@ static int connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
 	g_free(element->ipv4.address);
 	element->ipv4.address = g_strdup(provider->element.ipv4.address);
 
+	g_free(element->ipv4.peer);
+	element->ipv4.peer = g_strdup(provider->element.ipv4.peer);
+
 	g_free(element->ipv4.netmask);
 	element->ipv4.netmask = g_strdup(provider->element.ipv4.netmask);
 
@@ -185,12 +188,14 @@ int __connman_provider_connect(struct connman_provider *provider)
 	DBG("provider %p", provider);
 
 	g_free(provider->element.ipv4.address);
+	g_free(provider->element.ipv4.peer);
 	g_free(provider->element.ipv4.netmask);
 	g_free(provider->element.ipv4.gateway);
 	g_free(provider->element.ipv4.broadcast);
 	g_free(provider->element.ipv4.pac);
 
 	provider->element.ipv4.address = NULL;
+	provider->element.ipv4.peer = NULL;
 	provider->element.ipv4.netmask = NULL;
 	provider->element.ipv4.gateway = NULL;
 	provider->element.ipv4.broadcast = NULL;
@@ -609,6 +614,9 @@ int connman_provider_set_string(struct connman_provider *provider,
 	} else if (g_str_equal(key, "Address") == TRUE) {
 		g_free(provider->element.ipv4.address);
 		provider->element.ipv4.address = g_strdup(value);
+	} else if (g_str_equal(key, "Peer") == TRUE) {
+		g_free(provider->element.ipv4.peer);
+		provider->element.ipv4.peer = g_strdup(value);
 	} else if (g_str_equal(key, "Netmask") == TRUE) {
 		g_free(provider->element.ipv4.netmask);
 		provider->element.ipv4.netmask = g_strdup(value);
