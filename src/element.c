@@ -777,6 +777,12 @@ int connman_element_get_value(struct connman_element *element,
 								id, value);
 		*((char **) value) = element->ipv4.address;
 		break;
+	case CONNMAN_PROPERTY_ID_IPV4_PEER:
+		if (element->ipv4.peer == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->ipv4.peer;
+		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
 		if (element->ipv4.netmask == NULL)
 			return connman_element_get_value(element->parent,

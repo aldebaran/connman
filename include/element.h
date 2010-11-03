@@ -104,6 +104,7 @@ struct connman_element {
 	struct {
 		enum connman_ipconfig_method method;
 		gchar *address;
+		gchar *peer;
 		gchar *netmask;
 		gchar *gateway;
 		gchar *network;
