@@ -872,8 +872,6 @@ static void add_device(const char *path, const char *imsi)
 
 	connman_device_set_ident(device, imsi);
 
-	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
-
 	connman_device_set_string(device, "Path", path);
 
 	connman_device_set_data(device, modem);

@@ -35,7 +35,6 @@ static DBusConnection *connection = NULL;
 struct connman_device {
 	struct connman_element element;
 	enum connman_device_type type;
-	enum connman_device_mode mode;
 	connman_bool_t offlinemode;
 	connman_bool_t blocked;
 	connman_bool_t powered;
@@ -350,19 +349,12 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_basic(&dict, "Scanning",
 					DBUS_TYPE_BOOLEAN, &device->scanning);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		if (device->scan_interval > 0)
-			connman_dbus_dict_append_basic(&dict, "ScanInterval",
+	if (device->scan_interval > 0)
+		connman_dbus_dict_append_basic(&dict, "ScanInterval",
 				DBUS_TYPE_UINT16, &device->scan_interval);
 
-		connman_dbus_dict_append_array(&dict, "Networks",
+	connman_dbus_dict_append_array(&dict, "Networks",
 				DBUS_TYPE_OBJECT_PATH, append_networks, device);
-		break;
-	}
 
 	connman_dbus_dict_close(&array, &dict);
 
@@ -444,13 +436,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
 		connman_uint16_t interval;
 
-		switch (device->mode) {
-		case CONNMAN_DEVICE_MODE_UNKNOWN:
-		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-			break;
-		}
-
 		if (type != DBUS_TYPE_UINT16)
 			return __connman_error_invalid_arguments(msg);
 
@@ -476,14 +461,6 @@ static DBusMessage *propose_scan(DBusConnection *conn,
 	int err;
 
 	DBG("conn %p", conn);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		return __connman_error_not_supported(msg);
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
 
 	err = __connman_device_scan(device);
 	if (err < 0)
@@ -552,13 +529,6 @@ static int setup_device(struct connman_device *device)
 
 	__connman_technology_add_device(device);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
-
 	if (device->offlinemode == FALSE &&
 				device->powered_persistent == TRUE)
 		__connman_device_enable(device);
@@ -600,13 +570,6 @@ static void remove_device(struct connman_device *device)
 	err = __connman_device_disable(device);
 	if (err < 0 && err == -EINPROGRESS)
 		__connman_technology_disable_device(device);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
 
 	__connman_technology_remove_device(device);
 
@@ -771,7 +734,6 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
-	device->mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 
 	device->powered_persistent = TRUE;
 
@@ -956,30 +918,6 @@ void connman_device_set_ident(struct connman_device *device,
 const char *connman_device_get_ident(struct connman_device *device)
 {
 	return device->ident;
-}
-
-/**
- * connman_device_set_mode:
- * @device: device structure
- * @mode: network mode
- *
- * Change network mode of device
- */
-void connman_device_set_mode(struct connman_device *device,
-						enum connman_device_mode mode)
-{
-	device->mode = mode;
-}
-
-/**
- * connman_device_get_mode:
- * @device: device structure
- *
- * Get network mode of device
- */
-enum connman_device_mode connman_device_get_mode(struct connman_device *device)
-{
-	return device->mode;
 }
 
 /**
@@ -1252,14 +1190,6 @@ int connman_device_set_disconnected(struct connman_device *device,
 {
 	DBG("device %p disconnected %d", device, disconnected);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		return -EINVAL;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
-
 	if (device->disconnected == disconnected)
 		return -EALREADY;
 
@@ -1405,14 +1335,6 @@ int connman_device_add_network(struct connman_device *device,
 
 	if (identifier == NULL)
 		return -EINVAL;
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		return -EINVAL;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
 
 	__connman_network_set_device(network, device);
 
@@ -1649,18 +1571,11 @@ static int device_load(struct connman_device *device)
 		device->powered_persistent = powered;
 	g_clear_error(&error);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		val = g_key_file_get_integer(keyfile, identifier,
+	val = g_key_file_get_integer(keyfile, identifier,
 						"ScanInterval", &error);
-		if (error == NULL)
-			device->scan_interval = val;
-		g_clear_error(&error);
-		break;
-	}
+	if (error == NULL)
+		device->scan_interval = val;
+	g_clear_error(&error);
 
 done:
 	g_free(identifier);
@@ -1689,15 +1604,8 @@ static int device_save(struct connman_device *device)
 	g_key_file_set_boolean(keyfile, identifier,
 					"Powered", device->powered_persistent);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		g_key_file_set_integer(keyfile, identifier,
+	g_key_file_set_integer(keyfile, identifier,
 					"ScanInterval", device->scan_interval);
-		break;
-	}
 
 done:
 	g_free(identifier);

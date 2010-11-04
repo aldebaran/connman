@@ -46,12 +46,6 @@ enum connman_device_type {
 	CONNMAN_DEVICE_TYPE_VENDOR    = 10000,
 };
 
-enum connman_device_mode {
-	CONNMAN_DEVICE_MODE_UNKNOWN          = 0,
-	CONNMAN_DEVICE_MODE_NETWORK_SINGLE   = 1,
-	CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE = 2,
-};
-
 #define CONNMAN_DEVICE_PRIORITY_LOW      -100
 #define CONNMAN_DEVICE_PRIORITY_DEFAULT     0
 #define CONNMAN_DEVICE_PRIORITY_HIGH      100
@@ -75,10 +69,6 @@ const char *connman_device_get_control(struct connman_device *device);
 void connman_device_set_ident(struct connman_device *device,
 						const char *ident);
 const char *connman_device_get_ident(struct connman_device *device);
-
-void connman_device_set_mode(struct connman_device *device,
-					enum connman_device_mode mode);
-enum connman_device_mode connman_device_get_mode(struct connman_device *device);
 
 int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered);

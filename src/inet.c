@@ -444,7 +444,6 @@ done:
 
 struct connman_device *connman_inet_create_device(int index)
 {
-	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	enum connman_device_type type;
 	struct connman_device *device;
 	char *devname, *ident = NULL;
@@ -491,27 +490,20 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_GPS:
-		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	}
-
-	connman_device_set_mode(device, mode);
 
 	connman_device_set_index(device, index);
 	connman_device_set_interface(device, devname, node);
