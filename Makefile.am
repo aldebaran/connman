@@ -31,9 +31,6 @@ gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c
 gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
 					gweb/giognutls.h gweb/giognutls.c
 
-gsupplicant_sources = gsupplicant/gsupplicant.h gsupplicant/dbus.h \
-			gsupplicant/supplicant.c gsupplicant/dbus.c
-
 if DATAFILES
 dbusconfdir = @DBUS_CONFDIR@
 
@@ -74,10 +71,6 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/technology.c src/counter.c src/location.c \
 			src/session.c src/tethering.c src/ondemand.c \
 			src/wpad.c src/stats.c src/iptables.c
-
-if WIFI
-src_connmand_SOURCES += $(gsupplicant_sources)
-endif
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 				@CAPNG_LIBS@ @XTABLES_LIBS@ -lresolv -ldl
