@@ -427,8 +427,6 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 
 	connman_network_set_string(network, "Path", path);
 
-	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
-
 	connman_network_set_name(network, name);
 
 	connman_device_add_network(device, network);

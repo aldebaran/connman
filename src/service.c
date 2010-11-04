@@ -3388,8 +3388,6 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
 
-	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
-
 	if (connman_device_add_network(device, network) < 0) {
 		connman_network_unref(network);
 		return NULL;

@@ -1929,9 +1929,6 @@ static void properties_reply(DBusPendingCall *call, void *user_data)
 		index = connman_device_get_index(task->device);
 		connman_network_set_index(network, index);
 
-		connman_network_set_protocol(network,
-						CONNMAN_NETWORK_PROTOCOL_IP);
-
 		connman_network_set_address(network, result.addr,
 							result.addr_len);
 

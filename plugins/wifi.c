@@ -439,9 +439,6 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 
 		connman_network_set_index(network, wifi->index);
 
-		connman_network_set_protocol(network,
-						CONNMAN_NETWORK_PROTOCOL_IP);
-
 		if (connman_device_add_network(wifi->device, network) < 0) {
 			connman_network_unref(network);
 			return;

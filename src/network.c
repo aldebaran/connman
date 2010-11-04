@@ -35,7 +35,6 @@ static unsigned int hidden_counter = 0;
 struct connman_network {
 	struct connman_element element;
 	enum connman_network_type type;
-	enum connman_network_protocol protocol;
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t roaming;
@@ -502,19 +501,6 @@ struct connman_element *connman_network_get_element(
 }
 
 /**
- * connman_network_set_protocol:
- * @network: network structure
- * @protocol: network protocol
- *
- * Change protocol of network
- */
-void connman_network_set_protocol(struct connman_network *network,
-					enum connman_network_protocol protocol)
-{
-	network->protocol = protocol;
-}
-
-/**
  * connman_network_set_group:
  * @network: network structure
  * @group: group name
@@ -831,9 +817,6 @@ static int set_connected_dhcp(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
-		return -EINVAL;
-
 	element = connman_element_create(NULL);
 	if (element == NULL)
 		return -ENOMEM;
@@ -1111,9 +1094,6 @@ static int dhcp_start(struct connman_network *network)
 	struct connman_element *element;
 	int error;
 
-	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
-		return -EINVAL;
-
 	element = connman_element_create(NULL);
 	if (element == NULL)
 		return -ENOMEM;
@@ -1132,9 +1112,6 @@ static int dhcp_start(struct connman_network *network)
 
 static int dhcp_stop(struct connman_network *network)
 {
-	if (network->protocol != CONNMAN_NETWORK_PROTOCOL_IP)
-		return -EINVAL;
-
 	connman_element_unregister_children_type(&network->element,
 					CONNMAN_ELEMENT_TYPE_CONNECTION);
 	connman_element_unregister_children_type(&network->element,

@@ -574,10 +574,7 @@ static int add_network(struct connman_device *device,
 			const char *type;
 
 			dbus_message_iter_get_basic(&value, &type);
-			if (g_strcmp0(type, "internet") == 0) {
-				connman_network_set_protocol(network,
-						CONNMAN_NETWORK_PROTOCOL_IP);
-			} else {
+			if (g_strcmp0(type, "internet") != 0) {
 				DBG("path %p type %s", path, type);
 				goto error;
 			}
