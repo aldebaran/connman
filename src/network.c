@@ -51,7 +51,6 @@ struct connman_network {
 	struct connman_network_driver *driver;
 	void *driver_data;
 
-	connman_bool_t registered;
 	connman_bool_t connecting;
 	connman_bool_t associating;
 
@@ -96,153 +95,12 @@ static const char *type2string(enum connman_network_type type)
 	return NULL;
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_network *network = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	connman_dbus_dict_open(&array, &dict);
-
-	if (network->device) {
-		const char *path = connman_device_get_path(network->device);
-		if (path != NULL)
-			connman_dbus_dict_append_basic(&dict, "Device",
-						DBUS_TYPE_OBJECT_PATH, &path);
-	}
-
-	if (network->address != NULL)
-		connman_dbus_dict_append_basic(&dict, "Address",
-					DBUS_TYPE_STRING, &network->address);
-
-	if (network->name != NULL)
-		connman_dbus_dict_append_basic(&dict, "Name",
-					DBUS_TYPE_STRING, &network->name);
-
-	connman_dbus_dict_append_basic(&dict, "Connected",
-				DBUS_TYPE_BOOLEAN, &network->connected);
-
-	if (network->strength > 0)
-		connman_dbus_dict_append_basic(&dict, "Strength",
-					DBUS_TYPE_BYTE, &network->strength);
-
-	if (network->frequency > 0)
-		connman_dbus_dict_append_basic(&dict, "Frequency",
-					DBUS_TYPE_UINT16, &network->frequency);
-
-	if (network->wifi.ssid != NULL && network->wifi.ssid_len > 0)
-		connman_dbus_dict_append_fixed_array(&dict, "WiFi.SSID",
-				DBUS_TYPE_BYTE, &network->wifi.ssid,
-						network->wifi.ssid_len);
-
-	if (network->wifi.mode != NULL)
-		connman_dbus_dict_append_basic(&dict, "WiFi.Mode",
-				DBUS_TYPE_STRING, &network->wifi.mode);
-
-	if (network->wifi.channel > 0)
-		connman_dbus_dict_append_basic(&dict, "WiFi.Channel",
-				DBUS_TYPE_UINT16, &network->wifi.channel);
-
-	if (network->wifi.security != NULL) {
-		connman_dbus_dict_append_basic(&dict, "WiFi.Security",
-				DBUS_TYPE_STRING, &network->wifi.security);
-
-		if (g_strcmp0(network->wifi.security, "ieee8021x") == 0 &&
-						    network->wifi.eap != NULL)
-			connman_dbus_dict_append_basic(&dict, "WiFi.EAP",
-					DBUS_TYPE_STRING, &network->wifi.eap);
-	}
-
-
-	if (network->wifi.passphrase != NULL)
-		connman_dbus_dict_append_basic(&dict, "WiFi.Passphrase",
-				DBUS_TYPE_STRING, &network->wifi.passphrase);
-
-	connman_dbus_dict_close(&array, &dict);
-
-	return reply;
-}
-
-static GDBusMethodTable network_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
-	{ },
-};
-
-static GDBusSignalTable network_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ },
-};
-
-static DBusConnection *connection;
-
-static void append_networks(DBusMessageIter *iter, void *user_data)
-{
-	struct connman_device *device = user_data;
-
-	__connman_element_list((struct connman_element *) device,
-					CONNMAN_ELEMENT_TYPE_NETWORK, iter);
-}
-
-static void emit_networks_signal(struct connman_device *device)
-{
-	const char *path = connman_device_get_path(device);
-
-	connman_dbus_property_changed_array(path,
-			CONNMAN_DEVICE_INTERFACE, "Networks",
-			DBUS_TYPE_OBJECT_PATH, append_networks, device);
-}
-
-static int register_interface(struct connman_element *element)
-{
-	struct connman_network *network = element->network;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (g_dbus_register_interface(connection, element->path,
-					CONNMAN_NETWORK_INTERFACE,
-					network_methods, network_signals,
-					NULL, network, NULL) == FALSE) {
-		connman_error("Failed to register %s network", element->path);
-		return -EIO;
-	}
-
-	network->registered = TRUE;
-
-	emit_networks_signal(network->device);
-
-	return 0;
-}
-
-static void unregister_interface(struct connman_element *element)
-{
-	struct connman_network * network = element->network;
-
-	DBG("element %p name %s", element, element->name);
-
-	network->registered = FALSE;
-
-	if (network->device != NULL)
-		emit_networks_signal(network->device);
-
-	g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_NETWORK_INTERFACE);
-}
-
 connman_bool_t __connman_network_has_driver(struct connman_network *network)
 {
 	if (network == NULL || network->driver == NULL)
 		return FALSE;
 
-	return network->registered;
+	return TRUE;
 }
 
 static GSList *driver_list = NULL;
@@ -524,24 +382,21 @@ void connman_network_set_group(struct connman_network *network,
 	}
 
 	if (g_strcmp0(network->group, group) == 0) {
-		if (group != NULL && network->registered)
+		if (group != NULL)
 			__connman_profile_update_network(network);
 		return;
 	}
 
 	if (network->group != NULL) {
-		if (network->registered)
-			__connman_profile_remove_network(network);
+		__connman_profile_remove_network(network);
 
 		g_free(network->group);
 	}
 
 	network->group = g_strdup(group);
 
-	if (network->group != NULL) {
-		if (network->registered)
+	if (network->group != NULL)
 			__connman_profile_add_network(network);
-	}
 }
 
 /**
@@ -967,15 +822,6 @@ int connman_network_set_connected(struct connman_network *network,
 		return -EALREADY;
 
 	network->connected = connected;
-
-	if (network->registered == FALSE) {
-		g_idle_add(set_connected, network);
-		return 0;
-	}
-
-	connman_dbus_property_changed_basic(network->element.path,
-				CONNMAN_NETWORK_INTERFACE, "Connected",
-						DBUS_TYPE_BOOLEAN, &connected);
 
 	set_connected(network);
 
@@ -1688,7 +1534,6 @@ static int network_probe(struct connman_element *element)
 {
 	struct connman_network *network = element->network;
 	GSList *list;
-	int err;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -1711,13 +1556,6 @@ static int network_probe(struct connman_element *element)
 
 	if (network->driver == NULL)
 		return -ENODEV;
-
-	err = register_interface(element);
-	if (err < 0) {
-		if (network->driver->remove)
-			network->driver->remove(network);
-		return err;
-	}
 
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
@@ -1760,16 +1598,13 @@ static void network_remove(struct connman_element *element)
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		if (network->group != NULL) {
-			if (network->registered)
-				__connman_profile_remove_network(network);
+			__connman_profile_remove_network(network);
 
 			g_free(network->group);
 			network->group = NULL;
 		}
 		break;
 	}
-
-	unregister_interface(element);
 
 	if (network->driver->remove)
 		network->driver->remove(network);
@@ -1815,8 +1650,6 @@ int __connman_network_init(void)
 {
 	DBG("");
 
-	connection = connman_dbus_get_connection();
-
 	return connman_driver_register(&network_driver);
 }
 
@@ -1825,6 +1658,4 @@ void __connman_network_cleanup(void)
 	DBG("");
 
 	connman_driver_unregister(&network_driver);
-
-	dbus_connection_unref(connection);
 }
