@@ -233,31 +233,6 @@ static void technologies_changed(void)
 			DBUS_TYPE_OBJECT_PATH, __connman_technology_list, NULL);
 }
 
-static void device_list(DBusMessageIter *iter, void *user_data)
-{
-	struct connman_technology *technology = user_data;
-	GSList *list;
-
-	for (list = technology->device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-		const char *path;
-
-		path = connman_device_get_path(device);
-		if (path == NULL)
-			continue;
-
-		dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-									&path);
-	}
-}
-
-static void devices_changed(struct connman_technology *technology)
-{
-	connman_dbus_property_changed_array(technology->path,
-			CONNMAN_TECHNOLOGY_INTERFACE, "Devices",
-			DBUS_TYPE_OBJECT_PATH, device_list, technology);
-}
-
 static const char *state2string(enum connman_technology_state state)
 {
 	switch (state) {
@@ -344,9 +319,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	if (str != NULL)
 		connman_dbus_dict_append_basic(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
-
-	connman_dbus_dict_append_array(&dict, "Devices",
-			DBUS_TYPE_OBJECT_PATH, device_list, technology);
 
 	connman_dbus_dict_close(&array, &dict);
 
@@ -509,7 +481,6 @@ done:
 
 	technology->device_list = g_slist_append(technology->device_list,
 								device);
-	devices_changed(technology);
 
 	return 0;
 }
@@ -530,8 +501,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
-	devices_changed(technology);
-
 	if (technology->device_list == NULL) {
 		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
