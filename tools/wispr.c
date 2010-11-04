@@ -337,6 +337,9 @@ static gboolean keyboard_input(GIOChannel *channel, GIOCondition condition,
 
 	g_string_append_c(data->str, buf[0]);
 
+	if (data->hidden == TRUE)
+		len = write(data->fd, "*", 1);
+
 	return TRUE;
 }
 
