@@ -361,7 +361,7 @@ static gboolean user_input(const char *label, gboolean hidden,
 	data->user_data = user_data;
 	data->hidden = hidden;
 
-	data->fd = open("/dev/tty", O_RDWR | O_NOCTTY | O_CLOEXEC);
+	data->fd = open("/dev/tty", O_RDWR | O_NOCTTY);
 	if (data->fd < 0)
 		goto error;
 
