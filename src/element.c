@@ -233,29 +233,6 @@ struct connman_device *__connman_element_get_device(struct connman_element *elem
 	return __connman_element_get_device(element->parent);
 }
 
-const char *__connman_element_get_device_path(struct connman_element *element)
-{
-	struct connman_device *device;
-
-	device = __connman_element_get_device(element);
-	if (device == NULL)
-		return NULL;
-
-	return connman_device_get_path(device);
-}
-
-const char *__connman_element_get_network_path(struct connman_element *element)
-{
-	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
-						element->network != NULL)
-		return element->path;
-
-	if (element->parent == NULL)
-		return NULL;
-
-	return __connman_element_get_network_path(element->parent);
-}
-
 struct find_data {
 	enum connman_service_type type;
 	struct connman_device *device;

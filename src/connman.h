@@ -178,8 +178,6 @@ void __connman_element_list(struct connman_element *element,
 
 struct connman_service *__connman_element_get_service(struct connman_element *element);
 struct connman_device *__connman_element_get_device(struct connman_element *element);
-const char *__connman_element_get_device_path(struct connman_element *element);
-const char *__connman_element_get_network_path(struct connman_element *element);
 
 struct connman_device *__connman_element_find_device(enum connman_service_type type);
 int __connman_element_request_scan(enum connman_service_type type);
