@@ -549,17 +549,6 @@ const char *connman_device_get_name(struct connman_device *device)
 }
 
 /**
- * connman_device_get_path:
- * @device: device structure
- *
- * Get path name of device
- */
-const char *connman_device_get_path(struct connman_device *device)
-{
-	return device->element.path;
-}
-
-/**
  * connman_device_set_index:
  * @device: device structure
  * @index: index number
