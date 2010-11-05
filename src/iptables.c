@@ -564,6 +564,17 @@ iptables_blob(struct connman_iptables *table)
 	return r;
 }
 
+static void dump_ip(struct ipt_entry *entry)
+{
+	struct ipt_ip *ip = &entry->ip;
+
+	if (strlen(ip->iniface))
+		connman_info("\tin %s", ip->iniface);
+
+	if (strlen(ip->outiface))
+		connman_info("\tout %s", ip->outiface);
+}
+
 static void dump_target(struct connman_iptables *table,
 				struct ipt_entry *entry)
 
@@ -692,6 +703,7 @@ static int dump_entry(struct ipt_entry *entry,
 
 	dump_match(table, entry);
 	dump_target(table, entry);
+	dump_ip(entry);
 
 	return 0;
 }
