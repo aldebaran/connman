@@ -26,8 +26,6 @@
 #include <errno.h>
 #include <string.h>
 
-#include <gdbus.h>
-
 #include "connman.h"
 
 static unsigned int hidden_counter = 0;
@@ -205,7 +203,6 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	__connman_element_initialize(&network->element);
 
-	//temp = connman_dbus_encode_string(identifier);
 	if (identifier == NULL) {
 		temp = g_strdup_printf("hidden_%d", hidden_counter++);
 		network->hidden = TRUE;

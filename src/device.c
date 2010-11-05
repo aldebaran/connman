@@ -26,11 +26,7 @@
 #include <errno.h>
 #include <string.h>
 
-#include <gdbus.h>
-
 #include "connman.h"
-
-static DBusConnection *connection = NULL;
 
 struct connman_device {
 	struct connman_element element;
@@ -1324,8 +1320,6 @@ int __connman_device_init(void)
 {
 	DBG("");
 
-	connection = connman_dbus_get_connection();
-
 	if (connman_storage_register(&device_storage) < 0)
 		connman_error("Failed to register device storage");
 
@@ -1339,6 +1333,4 @@ void __connman_device_cleanup(void)
 	connman_driver_unregister(&device_driver);
 
 	connman_storage_unregister(&device_storage);
-
-	dbus_connection_unref(connection);
 }
