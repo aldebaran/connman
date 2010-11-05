@@ -424,7 +424,7 @@ err:
 }
 
 static struct ipt_entry *
-new_rule(struct connman_iptables *table,
+new_rule(struct connman_iptables *table, struct ipt_ip *ip,
 		char *target_name, struct xtables_target *xt_t,
 		char *match_name, struct xtables_match *xt_m)
 {
@@ -446,6 +446,8 @@ new_rule(struct connman_iptables *table,
 								match_size);
 	if (new_entry == NULL)
 		return NULL;
+
+	memcpy(&new_entry->ip, ip, sizeof(struct ipt_ip));
 
 	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
 	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
@@ -500,7 +502,8 @@ new_rule(struct connman_iptables *table,
 }
 
 static int
-iptables_add_rule(struct connman_iptables *table, char *chain_name,
+iptables_add_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
 {
@@ -511,7 +514,7 @@ iptables_add_rule(struct connman_iptables *table, char *chain_name,
 	if (chain_tail == NULL)
 		return -EINVAL;
 
-	new_entry = new_rule(table,
+	new_entry = new_rule(table, ip,
 				target_name, xt_t,
 				match_name, xt_m);
 	if (new_entry == NULL)
@@ -850,8 +853,9 @@ static int iptables_command(int argc, char *argv[])
 	struct connman_iptables *table;
 	struct xtables_match *xt_m;
 	struct xtables_target *xt_t;
+	struct ipt_ip ip;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
-	int c, ret;
+	int c, ret, in_len, out_len;
 	size_t size;
 	gboolean dump, invert;
 
@@ -861,6 +865,7 @@ static int iptables_command(int argc, char *argv[])
 	dump = FALSE;
 	invert = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
+	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_m = NULL;
 	xt_t = NULL;
@@ -881,6 +886,17 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'N':
 			new_chain = optarg;
+			break;
+
+		case 'i':
+			in_len = strlen(optarg);
+
+			if (in_len + 1 > IFNAMSIZ)
+				break;
+
+			strcpy(ip.iniface, optarg);
+			memset(ip.iniface_mask, 0xff, in_len + 1);
+
 			break;
 
 		case 'j':
@@ -910,9 +926,6 @@ static int iptables_command(int argc, char *argv[])
 
 			break;
 
-		case 'i':
-			break;
-
 		case 'm':
 			match_name = optarg;
 
@@ -939,6 +952,14 @@ static int iptables_command(int argc, char *argv[])
 			break;
 
 		case 'o':
+			out_len = strlen(optarg);
+
+			if (out_len + 1 > IFNAMSIZ)
+				break;
+
+			strcpy(ip.outiface, optarg);
+			memset(ip.outiface_mask, 0xff, out_len + 1);
+
 			break;
 
 		case 't':
@@ -1007,7 +1028,7 @@ static int iptables_command(int argc, char *argv[])
 		DBG("Adding %s to %s (match %s)",
 				target_name, chain, match_name);
 
-		ret = iptables_add_rule(table, chain, target_name, xt_t,
+		ret = iptables_add_rule(table, &ip, chain, target_name, xt_t,
 					match_name, xt_m);
 
 		goto out;
