@@ -35,7 +35,3 @@ Properties	string State [readonly]
 			This information should only be used to determine
 			advanced properties or showing the correct icon
 			to the user.
-
-		array{object} Devices [readonly]
-
-			List of device objects.
