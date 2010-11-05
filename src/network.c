@@ -285,17 +285,6 @@ const char *connman_network_get_identifier(struct connman_network *network)
 }
 
 /**
- * connman_network_get_path:
- * @network: network structure
- *
- * Get path name of network
- */
-const char *connman_network_get_path(struct connman_network *network)
-{
-	return network->element.path;
-}
-
-/**
  * connman_network_set_index:
  * @network: network structure
  * @index: index number
