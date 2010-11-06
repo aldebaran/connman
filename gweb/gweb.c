@@ -99,6 +99,7 @@ struct _GWeb {
 	GList *session_list;
 
 	GResolv *resolv;
+	char *proxy;
 	char *accept_option;
 	char *user_agent;
 	gboolean close_connection;
@@ -219,8 +220,11 @@ void g_web_unref(GWeb *web)
 
 	g_resolv_unref(web->resolv);
 
+	g_free(web->proxy);
+
 	g_free(web->accept_option);
 	g_free(web->user_agent);
+
 	g_free(web);
 }
 
@@ -233,6 +237,17 @@ void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data)
 	web->debug_data = user_data;
 
 	g_resolv_set_debug(web->resolv, func, user_data);
+}
+
+gboolean g_web_set_proxy(GWeb *web, const char *proxy)
+{
+	if (web == NULL)
+		return FALSE;
+
+	g_free(web->proxy);
+	web->proxy = g_strdup(proxy);
+
+	return TRUE;
 }
 
 gboolean g_web_add_nameserver(GWeb *web, const char *address)
