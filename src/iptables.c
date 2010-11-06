@@ -570,12 +570,24 @@ iptables_blob(struct connman_iptables *table)
 static void dump_ip(struct ipt_entry *entry)
 {
 	struct ipt_ip *ip = &entry->ip;
+	char ip_string[INET6_ADDRSTRLEN];
+	char ip_mask[INET6_ADDRSTRLEN];
 
 	if (strlen(ip->iniface))
 		connman_info("\tin %s", ip->iniface);
 
 	if (strlen(ip->outiface))
 		connman_info("\tout %s", ip->outiface);
+
+	if (inet_ntop(AF_INET, &ip->src, ip_string, INET6_ADDRSTRLEN) != NULL &&
+			inet_ntop(AF_INET, &ip->smsk,
+					ip_mask, INET6_ADDRSTRLEN) != NULL)
+		connman_info("\tsrc %s/%s", ip_string, ip_mask);
+
+	if (inet_ntop(AF_INET, &ip->dst, ip_string, INET6_ADDRSTRLEN) != NULL &&
+			inet_ntop(AF_INET, &ip->dmsk,
+					ip_mask, INET6_ADDRSTRLEN) != NULL)
+		connman_info("\tdst %s/%s", ip_string, ip_mask);
 }
 
 static void dump_target(struct connman_iptables *table,
@@ -834,10 +846,12 @@ static struct option iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
+	{.name = "destination",   .has_arg = 1, .val = 'd'},
 	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
 	{.name = "jump",          .has_arg = 1, .val = 'j'},
 	{.name = "match",         .has_arg = 1, .val = 'm'},
 	{.name = "out-interface", .has_arg = 1, .val = 'o'},
+	{.name = "source",        .has_arg = 1, .val = 's'},
 	{.name = "table",         .has_arg = 1, .val = 't'},
 	{NULL},
 };
@@ -858,6 +872,7 @@ static int iptables_command(int argc, char *argv[])
 	int c, ret, in_len, out_len;
 	size_t size;
 	gboolean dump, invert;
+	struct in_addr src, dst;
 
 	if (argc == 0)
 		return -EINVAL;
@@ -874,7 +889,7 @@ static int iptables_command(int argc, char *argv[])
 	optind = 0;
 
 	while ((c = getopt_long(argc, argv,
-	   "-A:L::N:j:i:m:o:t:", iptables_globals.opts, NULL)) != -1) {
+	   "-A:L::N:d:j:i:m:o:s:t:", iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
@@ -886,6 +901,15 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'N':
 			new_chain = optarg;
+			break;
+
+		case 'd':
+			if (!inet_pton(AF_INET, optarg, &dst))
+				break;
+
+			ip.dst = dst;
+			inet_pton(AF_INET, "255.255.255.255", &ip.dmsk);
+
 			break;
 
 		case 'i':
@@ -959,6 +983,15 @@ static int iptables_command(int argc, char *argv[])
 
 			strcpy(ip.outiface, optarg);
 			memset(ip.outiface_mask, 0xff, out_len + 1);
+
+			break;
+
+		case 's':
+			if (!inet_pton(AF_INET, optarg, &src))
+				break;
+
+			ip.src = src;
+			inet_pton(AF_INET, "255.255.255.255", &ip.smsk);
 
 			break;
 
