@@ -40,10 +40,18 @@
 
 #define SESSION_FLAG_USE_TLS	(1 << 0)
 
+enum chunk_state {
+	CHUNK_SIZE,
+	CHUNK_R_BODY,
+	CHUNK_N_BODY,
+	CHUNK_DATA,
+};
+
 struct _GWebResult {
 	guint16 status;
 	const guint8 *buffer;
 	gsize length;
+	gboolean use_chunk;
 };
 
 struct web_session {
@@ -69,6 +77,11 @@ struct web_session {
 	gboolean header_done;
 	gboolean more_data;
 	gboolean request_started;
+
+	enum chunk_state chunck_state;
+	gsize chunk_size;
+	gsize chunk_left;
+	gsize total_len;
 
 	GWebResult result;
 
@@ -456,6 +469,125 @@ static gboolean send_data(GIOChannel *channel, GIOCondition cond,
 	return FALSE;
 }
 
+static int decode_chunked(struct web_session *session,
+					const guint8 *buf, gsize len)
+{
+	const guint8 *ptr = buf;
+	gsize counter;
+
+	while (len > 0) {
+		guint8 *pos;
+		gsize count;
+		char *str;
+
+		switch (session->chunck_state) {
+		case CHUNK_SIZE:
+			pos = memchr(ptr, '\n', len);
+			if (pos == NULL) {
+				g_string_append_len(session->current_header,
+						(gchar *) ptr, len);
+				return 0;
+			}
+
+			count = pos - ptr;
+			if (count < 1 || ptr[count - 1] != '\r')
+				return -EILSEQ;
+
+			g_string_append_len(session->current_header,
+						(gchar *) ptr, count);
+
+			len -= count + 1;
+			ptr = pos + 1;
+
+			str = session->current_header->str;
+
+			counter = strtoul(str, NULL, 16);
+			if ((counter == 0 && errno == EINVAL) ||
+						counter == ULONG_MAX)
+				return -EILSEQ;
+
+			session->chunk_size = counter;
+			session->chunk_left = counter;
+
+			session->chunck_state = CHUNK_DATA;
+			break;
+		case CHUNK_R_BODY:
+			if (*ptr != '\r')
+				return -EILSEQ;
+			ptr++;
+			len--;
+			session->chunck_state = CHUNK_N_BODY;
+			break;
+		case CHUNK_N_BODY:
+			if (*ptr != '\n')
+				return -EILSEQ;
+			ptr++;
+			len--;
+			session->chunck_state = CHUNK_SIZE;
+			break;
+		case CHUNK_DATA:
+			if (session->chunk_size == 0) {
+				debug(session->web, "Download Done in chunk");
+				g_string_truncate(session->current_header, 0);
+				return 0;
+			}
+
+			if (session->chunk_left <= len) {
+				session->result.buffer = ptr;
+				session->result.length = session->chunk_left;
+				call_result_func(session, 0);
+
+				len -= session->chunk_left;
+				ptr += session->chunk_left;
+
+				session->total_len += session->chunk_left;
+				session->chunk_left = 0;
+
+				g_string_truncate(session->current_header, 0);
+				session->chunck_state = CHUNK_R_BODY;
+				break;
+			}
+			/* more data */
+			session->result.buffer = ptr;
+			session->result.length = len;
+			call_result_func(session, 0);
+
+			session->chunk_left -= len;
+			session->total_len += len;
+
+			len -= len;
+			ptr += len;
+			break;
+		}
+	}
+
+	return 0;
+}
+
+static int handle_body(struct web_session *session,
+				const guint8 *buf, gsize len)
+{
+	int err;
+
+	if (session->result.use_chunk == FALSE) {
+		session->result.buffer = buf;
+		session->result.length = len;
+		call_result_func(session, 0);
+		return 0;
+	}
+
+	err = decode_chunked(session, buf, len);
+	if (err < 0) {
+		debug(session->web, "Error in chunk decode %d", err);
+
+		session->result.buffer = NULL;
+		session->result.length = 0;
+		call_result_func(session, 400);
+	}
+
+	return err;
+}
+
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -489,9 +621,11 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	session->receive_buffer[bytes_read] = '\0';
 
 	if (session->header_done == TRUE) {
-		session->result.buffer = session->receive_buffer;
-		session->result.length = bytes_read;
-		call_result_func(session, 0);
+		if (handle_body(session,
+				session->receive_buffer, bytes_read) < 0) {
+			session->transport_watch = 0;
+			return FALSE;
+		}
 		return TRUE;
 	}
 
@@ -518,13 +652,17 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 						(gchar *) ptr, count);
 
 		bytes_read -= count + 1;
-		ptr = pos + 1;
+		if (bytes_read > 0)
+			ptr = pos + 1;
+		else
+			ptr = NULL;
 
 		if (session->current_header->len == 0) {
 			session->header_done = TRUE;
-			session->result.buffer = pos + 1;
-			session->result.length = bytes_read;
-			call_result_func(session, 0);
+			if (handle_body(session, ptr, bytes_read) < 0) {
+				session->transport_watch = 0;
+				return FALSE;
+			}
 			break;
 		}
 
@@ -535,6 +673,20 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 			if (sscanf(str, "HTTP/%*s %u %*s", &code) == 1)
 				session->result.status = code;
+		} else if (session->result.use_chunk == FALSE &&
+				g_ascii_strncasecmp("Transfer-Encoding:",
+								str, 18) == 0) {
+			char *val;
+
+			val = g_strrstr(str + 18, "chunked");
+			if (val != NULL) {
+				session->result.use_chunk = TRUE;
+
+				session->chunck_state = CHUNK_SIZE;
+				session->chunk_left = 0;
+				session->chunk_left = 0;
+				session->total_len = 0;
+			}
 		}
 
 		debug(session->web, "[header] %s", str);
