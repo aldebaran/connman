@@ -538,17 +538,6 @@ enum connman_device_type connman_device_get_type(struct connman_device *device)
 }
 
 /**
- * connman_device_get_name:
- * @device: device structure
- *
- * Get unique name of device
- */
-const char *connman_device_get_name(struct connman_device *device)
-{
-	return device->element.name;
-}
-
-/**
  * connman_device_set_index:
  * @device: device structure
  * @index: index number
