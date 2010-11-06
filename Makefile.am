@@ -57,7 +57,9 @@ noinst_PROGRAMS =
 sbin_PROGRAMS = src/connmand
 
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
+			gweb/gweb.h gweb/gweb.c \
 			gweb/gresolv.h gweb/gresolv.c \
+			gweb/giognutls.h gweb/gionotls.c \
 			$(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c src/selftest.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
