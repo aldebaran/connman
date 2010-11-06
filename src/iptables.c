@@ -910,6 +910,9 @@ static int iptables_command(int argc, char *argv[])
 			ip.dst = dst;
 			inet_pton(AF_INET, "255.255.255.255", &ip.dmsk);
 
+			if (invert)
+				ip.invflags |= IPT_INV_DSTIP;
+
 			break;
 
 		case 'i':
@@ -920,6 +923,9 @@ static int iptables_command(int argc, char *argv[])
 
 			strcpy(ip.iniface, optarg);
 			memset(ip.iniface_mask, 0xff, in_len + 1);
+
+			if (invert)
+				ip.invflags |= IPT_INV_VIA_IN;
 
 			break;
 
@@ -984,6 +990,9 @@ static int iptables_command(int argc, char *argv[])
 			strcpy(ip.outiface, optarg);
 			memset(ip.outiface_mask, 0xff, out_len + 1);
 
+			if (invert)
+				ip.invflags |= IPT_INV_VIA_OUT;
+
 			break;
 
 		case 's':
@@ -992,6 +1001,9 @@ static int iptables_command(int argc, char *argv[])
 
 			ip.src = src;
 			inet_pton(AF_INET, "255.255.255.255", &ip.smsk);
+
+			if (invert)
+				ip.invflags |= IPT_INV_SRCIP;
 
 			break;
 
@@ -1024,6 +1036,8 @@ static int iptables_command(int argc, char *argv[])
 
 			break;
 		}
+
+		invert = FALSE;
 	}
 
 	if (table_name == NULL)
