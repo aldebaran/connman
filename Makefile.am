@@ -126,10 +126,10 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wispr tools/wifi-scan \
-			tools/supplicant-test tools/dhcp-test \
-			tools/addr-test tools/web-test tools/resolv-test \
-			tools/dbus-test tools/polkit-test tools/portal-test \
+noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
+			tools/dhcp-test tools/addr-test \
+			tools/web-test tools/resolv-test \
+			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-ringbuffer-dump
 
@@ -159,8 +159,6 @@ tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
-
-tools_portal_test_LDADD = @GLIB_LIBS@
 
 tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
 

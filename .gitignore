@@ -46,7 +46,6 @@ tools/web-test
 tools/wpad-test
 tools/resolv-test
 tools/polkit-test
-tools/portal-test
 tools/iptables-test
 tools/dhclient-test
 tools/supplicant-test
