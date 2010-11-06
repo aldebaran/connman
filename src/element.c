@@ -1395,6 +1395,7 @@ void __connman_element_start(void)
 	__connman_ipv4_init();
 	__connman_dhcp_init();
 	__connman_wpad_init();
+	__connman_wispr_init();
 
 	__connman_rfkill_init();
 }
@@ -1405,6 +1406,7 @@ void __connman_element_stop(void)
 
 	__connman_rfkill_cleanup();
 
+	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
 	__connman_dhcp_cleanup();
 	__connman_ipv4_cleanup();
