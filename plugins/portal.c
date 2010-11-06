@@ -37,14 +37,16 @@
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/location.h>
+#include <connman/proxy.h>
 #include <connman/log.h>
 
+#define STATUS_URL  "http://www.connman.net/online/status.html"
+
+#define HOST "www.connman.net"
 #define PORT 80
-#define PROXY_PORT 911
-#define PAGE "/"
-#define HOST "connman.net"
-#define USER_APP "connman"
-#define CONNMAN_NET_IP "174.36.13.145"
+#define PAGE "/online/status.html"
+
+#define CONNMAN_NET_IP "62.75.245.128"
 #define CONNMAN_MAX_IP_LENGTH	15
 #define CONNECT_TIMEOUT		120
 #define MAX_COUNTER		80
@@ -117,15 +119,10 @@ failed:
 static char *build_get_query(char *host, char *page)
 {
 	char *query;
-	char *host_page = page;
-	char *tpl = "GET /%s HTTP/1.0\r\nHost: %s\r\nUser-Agent: %s\r\n\r\n";
 
-	if (host_page[0] == '/')
-		host_page = host_page + 1;
-
-	query = g_try_malloc0(strlen(host) + strlen(host_page) +
-					strlen(USER_APP) + strlen(tpl) - 5);
-	sprintf(query, tpl, host_page, host, USER_APP);
+	query = g_strdup_printf("GET %s HTTP/1.0\r\nHost: %s\r\n"
+				"User-Agent: ConnMan/%s\r\n\r\n",
+				page, host, VERSION);
 
 	return query;
 }
@@ -350,7 +347,7 @@ static int get_status(struct server_data *data, char *page, int len)
 	if (str != NULL) {
 		for (i = 0; lines[i] != NULL && i < 12; i++) {
 			DBG("%s", lines[i]);
-			str = g_strstr_len(lines[i], 12, "Set-Cookie");
+			str = g_strstr_len(lines[i], 12, "X-ConnMan");
 			if (str != NULL) {
 				g_strfreev(lines);
 				DBG("success");
@@ -406,11 +403,44 @@ static int get_page_cb(struct connman_location *location, char *page, int len,
 	return ret;
 }
 
+static void proxy_callback(const char *proxy, void *user_data)
+{
+	struct connman_location *location = user_data;
+
+	DBG("proxy %s", proxy);
+
+	if (proxy == NULL)
+		proxy = getenv("http_proxy");
+
+	if (proxy != NULL) {
+		struct server_data *data = connman_location_get_data(location);
+		char *delim;
+
+		if (strncmp(proxy, "http://", PROXY_HEADER_LENGTH) == 0)
+			strcpy(data->proxy, proxy + PROXY_HEADER_LENGTH);
+		else
+			strcpy(data->proxy, proxy);
+
+		delim = strchr(data->proxy, ':');
+		if (delim) {
+			int len;
+
+			len = delim - data->proxy;
+			data->proxy[len] = '\0';
+
+			data->proxy_port = atoi(delim + 1);
+		} else
+			data->proxy_port = PORT;
+	}
+
+	get_html(location, CONNECT_TIMEOUT);
+}
+
 static int location_detect(struct connman_location *location)
 {
-	char *proxy;
 	struct server_data *data;
 	enum connman_service_type service_type;
+	const char *interface;
 
 	service_type = connman_location_get_type(location);
 
@@ -430,6 +460,10 @@ static int location_detect(struct connman_location *location)
 		return -EOPNOTSUPP;
 	}
 
+	interface = connman_location_get_interface(location);
+	if (interface == NULL)
+		return -EINVAL;
+
 	data = g_try_new0(struct server_data, 1);
 	if (data == NULL)
 		return -ENOMEM;
@@ -439,30 +473,12 @@ static int location_detect(struct connman_location *location)
 	data->get_page = get_page_cb;
 	data->timeout = 0;
 
-	proxy = getenv("http_proxy");
-	if (proxy) {
-		char *delim;
-
-		if (strncmp(proxy, "http://", PROXY_HEADER_LENGTH) == 0)
-			strcpy(data->proxy, proxy + PROXY_HEADER_LENGTH);
-		else
-			strcpy(data->proxy, proxy);
-
-		delim = strchr(data->proxy, ':');
-		if (delim) {
-			int len;
-
-			len = delim - data->proxy;
-			data->proxy[len] = '\0';
-
-			data->proxy_port = atoi(delim + 1);
-		} else
-			data->proxy_port = PROXY_PORT;
-	}
-
 	connman_location_set_data(location, data);
 
-	return get_html(location, CONNECT_TIMEOUT);
+	connman_proxy_lookup(interface, STATUS_URL,
+					proxy_callback, location);
+
+	return 0;
 }
 
 static int location_finish(struct connman_location *location)
