@@ -447,7 +447,7 @@ struct connman_device *connman_inet_create_device(int index)
 	enum connman_device_type type;
 	struct connman_device *device;
 	char *devname, *ident = NULL;
-	char *addr = NULL, *name = NULL, *node = NULL;
+	char *addr = NULL, *name = NULL;
 
 	if (index < 0)
 		return NULL;
@@ -506,7 +506,7 @@ struct connman_device *connman_inet_create_device(int index)
 	}
 
 	connman_device_set_index(device, index);
-	connman_device_set_interface(device, devname, node);
+	connman_device_set_interface(device, devname);
 
 	if (ident != NULL) {
 		connman_device_set_ident(device, ident);
@@ -517,7 +517,6 @@ struct connman_device *connman_inet_create_device(int index)
 
 done:
 	g_free(devname);
-	g_free(node);
 	free(name);
 	free(addr);
 

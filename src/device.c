@@ -44,7 +44,6 @@ struct connman_device {
 	char *node;
 	char *address;
 	char *interface;
-	char *control;
 	char *ident;
 	int phyindex;
 	unsigned int connections;
@@ -409,7 +408,6 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->node);
 	g_free(device->name);
 	g_free(device->address);
-	g_free(device->control);
 	g_free(device->interface);
 
 	g_free(device->last_network);
@@ -575,21 +573,17 @@ void __connman_device_set_phyindex(struct connman_device *device,
  * connman_device_set_interface:
  * @device: device structure
  * @interface: interface name
- * @control: control interface
  *
  * Set interface name of device
  */
 void connman_device_set_interface(struct connman_device *device,
-				const char *interface, const char *control)
+						const char *interface)
 {
 	g_free(device->element.devname);
 	device->element.devname = g_strdup(interface);
 
 	g_free(device->interface);
 	device->interface = g_strdup(interface);
-
-	g_free(device->control);
-	device->control = g_strdup(control);
 
 	if (device->name == NULL) {
 		const char *str = type2description(device->type);
