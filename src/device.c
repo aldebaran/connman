@@ -599,11 +599,6 @@ void connman_device_set_interface(struct connman_device *device,
 	}
 }
 
-const char *connman_device_get_control(struct connman_device *device)
-{
-	return device->control;
-}
-
 /**
  * connman_device_set_ident:
  * @device: device structure

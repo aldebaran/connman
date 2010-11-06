@@ -62,7 +62,6 @@ void connman_device_set_index(struct connman_device *device, int index);
 int connman_device_get_index(struct connman_device *device);
 void connman_device_set_interface(struct connman_device *device,
 				const char *interface, const char *control);
-const char *connman_device_get_control(struct connman_device *device);
 
 void connman_device_set_ident(struct connman_device *device,
 						const char *ident);
