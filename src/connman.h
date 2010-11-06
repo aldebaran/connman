@@ -191,6 +191,11 @@ void __connman_detect_cleanup(void);
 
 void __connman_element_set_driver(struct connman_element *element);
 
+#include <connman/proxy.h>
+
+int __connman_proxy_init(void);
+void __connman_proxy_cleanup(void);
+
 #include <connman/ipconfig.h>
 
 int __connman_ipconfig_init(void);

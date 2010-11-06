@@ -238,6 +238,7 @@ int main(int argc, char *argv[])
 	__connman_ipconfig_init();
 	__connman_rtnl_init();
 	__connman_task_init();
+	__connman_proxy_init();
 	__connman_detect_init();
 	__connman_session_init();
 	__connman_timeserver_init();
@@ -265,6 +266,7 @@ int main(int argc, char *argv[])
 	__connman_timeserver_cleanup();
 	__connman_session_cleanup();
 	__connman_detect_cleanup();
+	__connman_proxy_cleanup();
 	__connman_task_cleanup();
 	__connman_rtnl_cleanup();
 	__connman_ipconfig_cleanup();
