@@ -719,17 +719,13 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 static int connect_session_transport(struct web_session *session)
 {
+	GIOFlags flags;
 	struct sockaddr_in sin;
 	int sk;
 
 	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 	if (sk < 0)
 		return -EIO;
-
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(session->port);
-	sin.sin_addr.s_addr = inet_addr(session->address);
 
 	if (session->flags & SESSION_FLAG_USE_TLS)
 		session->transport_channel = g_io_channel_gnutls_new(sk);
@@ -741,12 +737,19 @@ static int connect_session_transport(struct web_session *session)
 		return -ENOMEM;
 	}
 
+	flags = g_io_channel_get_flags(session->transport_channel);
 	g_io_channel_set_flags(session->transport_channel,
-					G_IO_FLAG_NONBLOCK, NULL);
+					flags | G_IO_FLAG_NONBLOCK, NULL);
+
 	g_io_channel_set_encoding(session->transport_channel, NULL, NULL);
 	g_io_channel_set_buffered(session->transport_channel, FALSE);
 
 	g_io_channel_set_close_on_unref(session->transport_channel, TRUE);
+
+	memset(&sin, 0, sizeof(sin));
+	sin.sin_family = AF_INET;
+	sin.sin_port = htons(session->port);
+	sin.sin_addr.s_addr = inet_addr(session->address);
 
 	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
 		if (errno != EINPROGRESS) {
