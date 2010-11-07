@@ -73,8 +73,10 @@ struct web_session {
 
 	guint8 *receive_buffer;
 	gsize receive_space;
+	GString *send_buffer;
 	GString *current_header;
 	gboolean header_done;
+	gboolean body_done;
 	gboolean more_data;
 	gboolean request_started;
 
@@ -145,6 +147,7 @@ static void free_session(struct web_session *session)
 	if (session->transport_channel != NULL)
 		g_io_channel_unref(session->transport_channel);
 
+	g_string_free(session->send_buffer, TRUE);
 	g_string_free(session->current_header, TRUE);
 	g_free(session->receive_buffer);
 
@@ -347,14 +350,42 @@ static inline void call_result_func(struct web_session *session, guint16 status)
 	session->result_func(&session->result, session->user_data);
 }
 
-static void process_next_chunk(struct web_session *session)
+static gboolean process_send_buffer(struct web_session *session)
 {
-	GString *buf;
-	gchar *str;
-	const guint8 *body;
-	gsize length;
+	GString *buf = session->send_buffer;
 	gsize count, bytes_written;
 	GIOStatus status;
+
+	count = buf->len;
+
+	if (count == 0) {
+		if (session->more_data == FALSE)
+			session->body_done = TRUE;
+
+		return FALSE;
+	}
+
+	debug(session->web, "bytes to write %zu", count);
+
+	status = g_io_channel_write_chars(session->transport_channel,
+					buf->str, count, &bytes_written, NULL);
+
+	debug(session->web, "status %u bytes written %zu",
+					status, bytes_written);
+
+	if (status != G_IO_STATUS_NORMAL && status != G_IO_STATUS_AGAIN)
+		return FALSE;
+
+	g_string_erase(buf, 0, bytes_written);
+
+	return TRUE;
+}
+
+static void process_next_chunk(struct web_session *session)
+{
+	GString *buf = session->send_buffer;
+	const guint8 *body;
+	gsize length;
 
 	if (session->input_func == NULL) {
 		session->more_data = FALSE;
@@ -364,8 +395,6 @@ static void process_next_chunk(struct web_session *session)
 	session->more_data = session->input_func(&body, &length,
 						session->user_data);
 
-	buf = g_string_new(NULL);
-
 	if (length > 0) {
 		g_string_append_printf(buf, "%zx\r\n", length);
 		g_string_append_len(buf, (char *) body, length);
@@ -374,34 +403,18 @@ static void process_next_chunk(struct web_session *session)
 
 	if (session->more_data == FALSE)
 		g_string_append(buf, "0\r\n\r\n");
-
-	count = buf->len;
-	str = g_string_free(buf, FALSE);
-
-	if (count > 0) {
-		status = g_io_channel_write_chars(session->transport_channel,
-					str, count, &bytes_written, NULL);
-
-		debug(session->web, "status %u bytes written %zu",
-						status, bytes_written);
-	}
-
-	g_free(str);
 }
 
 static void start_request(struct web_session *session)
 {
-	GString *buf;
-	gchar *str;
+	GString *buf = session->send_buffer;
 	const guint8 *body;
 	gsize length;
-	gsize count, bytes_written;
-	GIOStatus status;
 
 	debug(session->web, "request %s from %s",
 					session->request, session->host);
 
-	buf = g_string_new(NULL);
+	g_string_truncate(buf, 0);
 
 	if (session->content_type == NULL)
 		g_string_append_printf(buf, "GET %s HTTP/1.1\r\n",
@@ -443,21 +456,6 @@ static void start_request(struct web_session *session)
 		} else
 			g_string_append_len(buf, (char *) body, length);
 	}
-
-	count = buf->len;
-	str = g_string_free(buf, FALSE);
-
-	debug(session->web, "bytes to write %zu", count);
-
-	status = g_io_channel_write_chars(session->transport_channel,
-					str, count, &bytes_written, NULL);
-
-	debug(session->web, "status %u bytes written %zu",
-					status, bytes_written);
-
-	//printf("%s", str);
-
-	g_free(str);
 }
 
 static gboolean send_data(GIOChannel *channel, GIOCondition cond,
@@ -470,18 +468,23 @@ static gboolean send_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
+	if (process_send_buffer(session) == TRUE)
+		return TRUE;
+
 	if (session->request_started == FALSE) {
 		session->request_started = TRUE;
 		start_request(session);
 	} else if (session->more_data == TRUE)
 		process_next_chunk(session);
 
-	if (session->more_data == TRUE)
-		return TRUE;
+	process_send_buffer(session);
 
-	session->send_watch = 0;
+	if (session->body_done == TRUE) {
+		session->send_watch = 0;
+		return FALSE;
+	}
 
-	return FALSE;
+	return TRUE;
 }
 
 static int decode_chunked(struct web_session *session,
@@ -625,7 +628,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 	debug(session->web, "bytes read %zu", bytes_read);
 
-	if (status != G_IO_STATUS_NORMAL) {
+	if (status != G_IO_STATUS_NORMAL && status != G_IO_STATUS_AGAIN) {
 		session->transport_watch = 0;
 		session->result.buffer = NULL;
 		session->result.length = 0;
@@ -893,8 +896,10 @@ static guint do_request(GWeb *web, const char *url,
 	}
 
 	session->receive_space = DEFAULT_BUFFER_SIZE;
+	session->send_buffer = g_string_sized_new(0);
 	session->current_header = g_string_sized_new(0);
 	session->header_done = FALSE;
+	session->body_done = FALSE;
 
 	if (inet_aton(session->host, NULL) == 0) {
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
