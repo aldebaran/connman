@@ -72,12 +72,18 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 
 static gboolean option_debug = FALSE;
 static gchar *option_nameserver = NULL;
+static gchar *option_user_agent = NULL;
+static gchar *option_http_version = NULL;
 
 static GOptionEntry options[] = {
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 					"Enable debug output" },
 	{ "nameserver", 'n', 0, G_OPTION_ARG_STRING, &option_nameserver,
 					"Specify nameserver", "ADDRESS" },
+	{ "user-agent", 'A', 0, G_OPTION_ARG_STRING, &option_user_agent,
+					"Specific user agent", "STRING" },
+	{ "http-version", 'H', 0, G_OPTION_ARG_STRING, &option_http_version,
+					"Specific HTTP version", "STRING" },
 	{ NULL },
 };
 
@@ -124,7 +130,15 @@ int main(int argc, char *argv[])
 		g_free(option_nameserver);
 	}
 
-	g_web_set_user_agent(web, "ConnMan/%s", VERSION);
+	if (option_user_agent != NULL) {
+		g_web_set_user_agent(web, option_user_agent);
+		g_free(option_user_agent);
+	}
+
+	if (option_http_version != NULL) {
+		g_web_set_http_version(web, option_http_version);
+		g_free(option_http_version);
+	}
 
 	timer = g_timer_new();
 
