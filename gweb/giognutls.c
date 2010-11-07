@@ -44,6 +44,7 @@ struct _GIOGnuTLSChannel {
 	gnutls_certificate_credentials_t cred;
 	gnutls_session session;
 	gboolean established;
+	gboolean again;
 };
 
 struct _GIOGnuTLSWatch {
@@ -68,14 +69,17 @@ static GIOStatus check_handshake(GIOChannel *channel, GError **err)
 
 	DBG("channel %p", channel);
 
-again:
 	if (gnutls_channel->established == TRUE)
 		return G_IO_STATUS_NORMAL;
 
+again:
 	result = gnutls_handshake(gnutls_channel->session);
 
 	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
 		GIOFlags flags = g_io_channel_get_flags(channel);
+
+		if (gnutls_channel->again == TRUE)
+			return G_IO_STATUS_AGAIN;
 
 		if (flags & G_IO_FLAG_NONBLOCK)
 			return G_IO_STATUS_AGAIN;
@@ -124,6 +128,9 @@ again:
 	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
 		GIOFlags flags = g_io_channel_get_flags(channel);
 
+		if (gnutls_channel->again == TRUE)
+			return G_IO_STATUS_AGAIN;
+
 		if (flags & G_IO_FLAG_NONBLOCK)
 			return G_IO_STATUS_AGAIN;
 
@@ -171,6 +178,9 @@ again:
 
 	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
 		GIOFlags flags = g_io_channel_get_flags(channel);
+
+		if (gnutls_channel->again == TRUE)
+			return G_IO_STATUS_AGAIN;
 
 		if (flags & G_IO_FLAG_NONBLOCK)
 			return G_IO_STATUS_AGAIN;
@@ -352,6 +362,11 @@ static ssize_t g_io_gnutls_push_func(gnutls_transport_ptr_t transport_data,
 
 	result = write(fd, buf, count);
 
+	if (result < 0 && errno == EAGAIN)
+		gnutls_channel->again = TRUE;
+	else
+		gnutls_channel->again = FALSE;
+
 	DBG("result %zd", result);
 
 	return result;
@@ -369,6 +384,11 @@ static ssize_t g_io_gnutls_pull_func(gnutls_transport_ptr_t transport_data,
 	fd = g_io_channel_unix_get_fd(gnutls_channel->transport);
 
 	result = read(fd, buf, count);
+
+	if (result < 0 && errno == EAGAIN)
+		gnutls_channel->again = TRUE;
+	else
+		gnutls_channel->again = FALSE;
 
 	DBG("result %zd", result);
 
