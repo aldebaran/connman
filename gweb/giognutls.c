@@ -61,19 +61,33 @@ static inline void g_io_gnutls_global_init(void)
 		gnutls_global_init();
 }
 
-static GIOStatus check_handshake(GIOChannel *channel, GError **error)
+static GIOStatus check_handshake(GIOChannel *channel, GError **err)
 {
 	GIOGnuTLSChannel *gnutls_channel = (GIOGnuTLSChannel *) channel;
-	int err;
+	int result;
 
 	DBG("channel %p", channel);
 
+again:
 	if (gnutls_channel->established == TRUE)
 		return G_IO_STATUS_NORMAL;
 
-        err = gnutls_handshake(gnutls_channel->session);
-	if (err < 0)
-		return G_IO_STATUS_AGAIN;
+	result = gnutls_handshake(gnutls_channel->session);
+
+	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
+		GIOFlags flags = g_io_channel_get_flags(channel);
+
+		if (flags & G_IO_FLAG_NONBLOCK)
+			return G_IO_STATUS_AGAIN;
+
+		goto again;
+	}
+
+	if (result < 0) {
+		g_set_error(err, G_IO_CHANNEL_ERROR,
+				G_IO_CHANNEL_ERROR_FAILED, "Handshake failed");
+		return G_IO_STATUS_ERROR;
+	}
 
 	gnutls_channel->established = TRUE;
 
@@ -107,8 +121,14 @@ again:
 		goto again;
 	}
 
-	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN)
+	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
+		GIOFlags flags = g_io_channel_get_flags(channel);
+
+		if (flags & G_IO_FLAG_NONBLOCK)
+			return G_IO_STATUS_AGAIN;
+
 		goto again;
+	}
 
 	if (result == GNUTLS_E_UNEXPECTED_PACKET_LENGTH)
 		return G_IO_STATUS_EOF;
@@ -149,8 +169,14 @@ again:
 		goto again;
 	}
 
-	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN)
+	if (result == GNUTLS_E_INTERRUPTED || result == GNUTLS_E_AGAIN) {
+		GIOFlags flags = g_io_channel_get_flags(channel);
+
+		if (flags & G_IO_FLAG_NONBLOCK)
+			return G_IO_STATUS_AGAIN;
+
 		goto again;
+	}
 
 	if (result < 0) {
 		g_set_error(err, G_IO_CHANNEL_ERROR,
