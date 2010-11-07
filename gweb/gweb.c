@@ -587,6 +587,8 @@ static int handle_body(struct web_session *session,
 {
 	int err;
 
+	debug(session->web, "[body] length %zu", len);
+
 	if (session->result.use_chunk == FALSE) {
 		session->result.buffer = buf;
 		session->result.length = len;
@@ -639,8 +641,8 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	session->receive_buffer[bytes_read] = '\0';
 
 	if (session->header_done == TRUE) {
-		if (handle_body(session,
-				session->receive_buffer, bytes_read) < 0) {
+		if (handle_body(session, session->receive_buffer,
+							bytes_read) < 0) {
 			session->transport_watch = 0;
 			return FALSE;
 		}
