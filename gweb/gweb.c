@@ -361,13 +361,18 @@ gboolean g_web_get_close_connection(GWeb *web)
 
 static inline void call_result_func(struct web_session *session, guint16 status)
 {
+	gboolean result;
+
 	if (session->result_func == NULL)
 		return;
 
 	if (status != 0)
 		session->result.status = status;
 
-	session->result_func(&session->result, session->user_data);
+	result = session->result_func(&session->result, session->user_data);
+
+	debug(session->web, "[result function] %s",
+					result == TRUE ? "continue" : "stop");
 }
 
 static gboolean process_send_buffer(struct web_session *session)
