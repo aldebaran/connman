@@ -45,16 +45,25 @@ static void sig_term(int sig)
 
 static gboolean web_result(GWebResult *result, gpointer user_data)
 {
+	const guint8 *chunk;
+	gsize length;
 	guint16 status;
 	gdouble elapsed;
 
+	g_web_result_get_chunk(result, &chunk, &length);
+
+	if (length > 0) {
+		printf("%s\n", (char *) chunk);
+		return TRUE;
+	}
+
 	status = g_web_result_get_status(result);
+
+	g_print("status: %03u\n", status);
 
 	elapsed = g_timer_elapsed(timer, NULL);
 
 	g_print("elapse: %f seconds\n", elapsed);
-
-	g_print("status: %03u\n", status);
 
 	g_main_loop_quit(main_loop);
 
