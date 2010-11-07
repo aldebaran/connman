@@ -104,6 +104,7 @@ struct _GWeb {
 	char *proxy;
 	char *accept_option;
 	char *user_agent;
+	char *http_version;
 	gboolean close_connection;
 
 	GWebDebugFunc debug_func;
@@ -227,6 +228,7 @@ void g_web_unref(GWeb *web)
 
 	g_free(web->accept_option);
 	g_free(web->user_agent);
+	g_free(web->http_version);
 
 	g_free(web);
 }
@@ -323,6 +325,24 @@ gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 	return result;
 }
 
+gboolean g_web_set_http_version(GWeb *web, const char *version)
+{
+	if (web == NULL)
+		return FALSE;
+
+	g_free(web->http_version);
+
+	if (version == NULL) {
+		web->http_version = NULL;
+		debug(web, "clearing HTTP version");
+	} else {
+		web->http_version = g_strdup(version);
+                debug(web, "setting HTTP version %s", web->http_version);
+	}
+
+	return TRUE;
+}
+
 void g_web_set_close_connection(GWeb *web, gboolean enabled)
 {
 	if (web == NULL)
@@ -408,6 +428,7 @@ static void process_next_chunk(struct web_session *session)
 static void start_request(struct web_session *session)
 {
 	GString *buf = session->send_buffer;
+	const char *version;
 	const guint8 *body;
 	gsize length;
 
@@ -416,19 +437,28 @@ static void start_request(struct web_session *session)
 
 	g_string_truncate(buf, 0);
 
-	if (session->content_type == NULL)
-		g_string_append_printf(buf, "GET %s HTTP/1.1\r\n",
-							session->request);
+	if (session->web->http_version == NULL)
+		version = "1.1";
 	else
-		g_string_append_printf(buf, "POST %s HTTP/1.1\r\n",
-							session->request);
+		version = session->web->http_version;
+
+	if (session->content_type == NULL)
+		g_string_append_printf(buf, "GET %s HTTP/%s\r\n",
+						session->request, version);
+	else
+		g_string_append_printf(buf, "POST %s HTTP/%s\r\n",
+						session->request, version);
+
 	g_string_append_printf(buf, "Host: %s\r\n", session->host);
+
 	if (session->web->user_agent != NULL)
 		g_string_append_printf(buf, "User-Agent: %s\r\n",
 						session->web->user_agent);
+
 	if (session->web->accept_option != NULL)
 		g_string_append_printf(buf, "Accept: %s\r\n",
 						session->web->accept_option);
+
 	if (session->content_type != NULL) {
 		g_string_append_printf(buf, "Content-Type: %s\r\n",
 							session->content_type);
@@ -444,8 +474,10 @@ static void start_request(struct web_session *session)
 		else
 			g_string_append(buf, "Transfer-Encoding: chunked\r\n");
 	}
+
 	if (session->web->close_connection == TRUE)
 		g_string_append(buf, "Connection: close\r\n");
+
 	g_string_append(buf, "\r\n");
 
 	if (session->content_type != NULL && length > 0) {
