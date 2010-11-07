@@ -434,14 +434,25 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 						gpointer user_data)
 {
 	struct wispr_session *wispr = user_data;
+	GString *buf;
+	gsize count;
+
+	buf = g_string_sized_new(100);
+
+	g_string_append(buf, "button=Login&UserName=");
+	g_string_append_uri_escaped(buf, wispr->username, NULL, FALSE);
+	g_string_append(buf, "&Password=");
+	g_string_append_uri_escaped(buf, wispr->password, NULL, FALSE);
+	g_string_append(buf, "&FNAME=0&OriginatingServer=");
+	g_string_append_uri_escaped(buf, wispr->originurl, NULL, FALSE);
+
+	count = buf->len;
 
 	g_free(wispr->formdata);
-	wispr->formdata = g_strdup_printf("button=Login&UserName=%s&"
-			"Password=%s&FNAME=0&OriginatingServer=%s",
-			wispr->username, wispr->password, wispr->originurl);
+	wispr->formdata = g_string_free(buf, FALSE);
 
 	*data = (guint8 *) wispr->formdata;
-	*length = strlen(wispr->formdata);
+	*length = count;
 
 	return FALSE;
 }
