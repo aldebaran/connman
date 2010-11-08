@@ -628,9 +628,11 @@ static int handle_body(struct web_session *session,
 	debug(session->web, "[body] length %zu", len);
 
 	if (session->result.use_chunk == FALSE) {
-		session->result.buffer = buf;
-		session->result.length = len;
-		call_result_func(session, 0);
+		if (len > 0) {
+			session->result.buffer = buf;
+			session->result.length = len;
+			call_result_func(session, 0);
+		}
 		return 0;
 	}
 
