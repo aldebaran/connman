@@ -86,9 +86,9 @@ int __connman_tethering_set_status(connman_bool_t status)
 
 	if (status == TRUE) {
 		create_bridge(BRIDGE_NAME);
-		__connman_technology_enable_tethering();
+		__connman_technology_enable_tethering(BRIDGE_NAME);
 	} else {
-		__connman_technology_disable_tethering();
+		__connman_technology_disable_tethering(BRIDGE_NAME);
 		remove_bridge(BRIDGE_NAME);
 	}
 

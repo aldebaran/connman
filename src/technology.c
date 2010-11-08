@@ -177,7 +177,7 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	}
 }
 
-static int set_tethering(connman_bool_t enabled)
+static int set_tethering(const char *bridge, connman_bool_t enabled)
 {
 	GSList *list;
 
@@ -188,20 +188,20 @@ static int set_tethering(connman_bool_t enabled)
 			continue;
 
 		if (technology->driver->set_tethering)
-			technology->driver->set_tethering(technology, enabled);
+			technology->driver->set_tethering(technology, bridge, enabled);
 	}
 
 	return 0;
 }
 
-int __connman_technology_enable_tethering(void)
+int __connman_technology_enable_tethering(const char *bridge)
 {
-	return set_tethering(TRUE);
+	return set_tethering(bridge, TRUE);
 }
 
-int __connman_technology_disable_tethering(void)
+int __connman_technology_disable_tethering(const char *bridge)
 {
-	return set_tethering(FALSE);
+	return set_tethering(bridge, FALSE);
 }
 
 static void free_rfkill(gpointer data)

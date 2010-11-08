@@ -316,8 +316,8 @@ void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
-int __connman_technology_enable_tethering(void);
-int __connman_technology_disable_tethering(void);
+int __connman_technology_enable_tethering(const char *bridge);
+int __connman_technology_disable_tethering(const char *bridge);
 
 connman_bool_t __connman_technology_get_blocked(enum connman_service_type type);
 

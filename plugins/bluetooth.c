@@ -943,7 +943,7 @@ static void tech_remove(struct connman_technology *technology)
 }
 
 static int tech_set_tethering(struct connman_technology *technology,
-						connman_bool_t enabled)
+				const char *bridge, connman_bool_t enabled)
 {
 	return 0;
 }
