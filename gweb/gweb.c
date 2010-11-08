@@ -384,7 +384,8 @@ static gboolean process_send_buffer(struct web_session *session)
 	count = buf->len;
 
 	if (count == 0) {
-		if (session->more_data == FALSE)
+		if (session->request_started == TRUE &&
+					session->more_data == FALSE)
 			session->body_done = TRUE;
 
 		return FALSE;
