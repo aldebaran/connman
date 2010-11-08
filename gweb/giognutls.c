@@ -25,7 +25,7 @@
 
 #include <stdio.h>
 #include <errno.h>
-#include <ctype.h>
+#include <fcntl.h>
 #include <unistd.h>
 
 #include <gnutls/gnutls.h>
@@ -40,7 +40,7 @@ typedef struct _GIOGnuTLSWatch GIOGnuTLSWatch;
 
 struct _GIOGnuTLSChannel {
 	GIOChannel channel;
-	GIOChannel *transport;
+	gint fd;
 	gnutls_certificate_credentials_t cred;
 	gnutls_session session;
 	gboolean established;
@@ -202,25 +202,29 @@ again:
 static GIOStatus g_io_gnutls_seek(GIOChannel *channel, gint64 offset,
 						GSeekType type, GError **err)
 {
-	GIOGnuTLSChannel *gnutls_channel = (GIOGnuTLSChannel *) channel;
-	GIOChannel *transport = gnutls_channel->transport;
-
 	DBG("channel %p", channel);
 
-	return transport->funcs->io_seek(transport, offset, type, err);
+	g_set_error_literal(err, G_IO_CHANNEL_ERROR,
+				G_IO_CHANNEL_ERROR_FAILED, "Not supported");
+	return G_IO_STATUS_ERROR;
 }
 
 static GIOStatus g_io_gnutls_close(GIOChannel *channel, GError **err)
 {
 	GIOGnuTLSChannel *gnutls_channel = (GIOGnuTLSChannel *) channel;
-	GIOChannel *transport = gnutls_channel->transport;
 
 	DBG("channel %p", channel);
 
 	if (gnutls_channel->established == TRUE)
 		gnutls_bye(gnutls_channel->session, GNUTLS_SHUT_RDWR);
 
-	return transport->funcs->io_close(transport, err);
+	if (close(gnutls_channel->fd) < 0) {
+		g_set_error_literal(err, G_IO_CHANNEL_ERROR,
+				G_IO_CHANNEL_ERROR_FAILED, "Closing failed");
+		return G_IO_STATUS_ERROR;
+	}
+
+	return G_IO_STATUS_NORMAL;
 }
 
 static void g_io_gnutls_free(GIOChannel *channel)
@@ -228,8 +232,6 @@ static void g_io_gnutls_free(GIOChannel *channel)
 	GIOGnuTLSChannel *gnutls_channel = (GIOGnuTLSChannel *) channel;
 
 	DBG("channel %p", channel);
-
-	g_io_channel_unref(gnutls_channel->transport);
 
 	gnutls_deinit(gnutls_channel->session);
 
@@ -242,21 +244,38 @@ static GIOStatus g_io_gnutls_set_flags(GIOChannel *channel,
 						GIOFlags flags, GError **err)
 {
 	GIOGnuTLSChannel *gnutls_channel = (GIOGnuTLSChannel *) channel;
-	GIOChannel *transport = gnutls_channel->transport;
+	glong fcntl_flags = 0;
 
 	DBG("channel %p flags %u", channel, flags);
 
-	return transport->funcs->io_set_flags(transport, flags, err);
+	if (flags & G_IO_FLAG_NONBLOCK)
+		fcntl_flags |= O_NONBLOCK;
+
+	if (fcntl(gnutls_channel->fd, F_SETFL, fcntl_flags) < 0) {
+		g_set_error_literal(err, G_IO_CHANNEL_ERROR,
+			G_IO_CHANNEL_ERROR_FAILED, "Setting flags failed");
+		return G_IO_STATUS_ERROR;
+	}
+
+	return G_IO_STATUS_NORMAL;
 }
 
 static GIOFlags g_io_gnutls_get_flags(GIOChannel *channel)
 {
 	GIOGnuTLSChannel *gnutls_channel = (GIOGnuTLSChannel *) channel;
-	GIOChannel *transport = gnutls_channel->transport;
+	GIOFlags flags = 0;
+	glong fcntl_flags;
 
 	DBG("channel %p", channel);
 
-	return transport->funcs->io_get_flags(transport);
+	fcntl_flags = fcntl(gnutls_channel->fd, F_GETFL);
+	if (fcntl_flags < 0)
+		return 0;
+
+	if (fcntl_flags & O_NONBLOCK)
+		flags |= G_IO_FLAG_NONBLOCK;
+
+	return flags;
 }
 
 static gboolean g_io_gnutls_prepare(GSource *source, gint *timeout)
@@ -330,7 +349,7 @@ static GSource *g_io_gnutls_create_watch(GIOChannel *channel,
 
 	watch->condition = condition;
 
-	watch->pollfd.fd = g_io_channel_unix_get_fd(gnutls_channel->transport);
+	watch->pollfd.fd = gnutls_channel->fd;
 	watch->pollfd.events = condition;
 
 	g_source_add_poll(source, &watch->pollfd);
@@ -354,13 +373,10 @@ static ssize_t g_io_gnutls_push_func(gnutls_transport_ptr_t transport_data,
 {
 	GIOGnuTLSChannel *gnutls_channel = transport_data;
 	ssize_t result;
-	int fd;
 
-	DBG("transport %p count %zu", gnutls_channel->transport, count);
+	DBG("count %zu", count);
 
-	fd = g_io_channel_unix_get_fd(gnutls_channel->transport);
-
-	result = write(fd, buf, count);
+	result = write(gnutls_channel->fd, buf, count);
 
 	if (result < 0 && errno == EAGAIN)
 		gnutls_channel->again = TRUE;
@@ -377,13 +393,10 @@ static ssize_t g_io_gnutls_pull_func(gnutls_transport_ptr_t transport_data,
 {
 	GIOGnuTLSChannel *gnutls_channel = transport_data;
 	ssize_t result;
-	int fd;
 
-	DBG("transport %p count %zu", gnutls_channel->transport, count);
+	DBG("count %zu", count);
 
-	fd = g_io_channel_unix_get_fd(gnutls_channel->transport);
-
-	result = read(fd, buf, count);
+	result = read(gnutls_channel->fd, buf, count);
 
 	if (result < 0 && errno == EAGAIN)
 		gnutls_channel->again = TRUE;
@@ -410,10 +423,7 @@ GIOChannel *g_io_channel_gnutls_new(int fd)
 	g_io_channel_init(channel);
 	channel->funcs = &gnutls_channel_funcs;
 
-	gnutls_channel->transport = g_io_channel_unix_new(fd);
-
-	g_io_channel_set_encoding(gnutls_channel->transport, NULL, NULL);
-	g_io_channel_set_buffered(gnutls_channel->transport, FALSE);
+	gnutls_channel->fd = fd;
 
 	channel->is_seekable = FALSE;
 	channel->is_readable = TRUE;
@@ -443,7 +453,7 @@ GIOChannel *g_io_channel_gnutls_new(int fd)
 	gnutls_credentials_set(gnutls_channel->session,
 				GNUTLS_CRD_CERTIFICATE, gnutls_channel->cred);
 
-	DBG("channel %p transport %p", channel, gnutls_channel->transport);
+	DBG("channel %p", channel);
 
 	return channel;
 }
