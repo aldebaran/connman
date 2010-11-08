@@ -32,9 +32,6 @@ gresolv_sources = gresolv/gresolv.h gresolv/gresolv.c
 
 gweb_sources = gweb/gweb.h gweb/gweb.c
 
-gsupplicant_sources = gsupplicant/gsupplicant.h gsupplicant/dbus.h \
-			gsupplicant/supplicant.c gsupplicant/dbus.c
-
 if DATAFILES
 dbusconfdir = @DBUS_CONFDIR@
 
@@ -73,10 +70,6 @@ if UDEV
 src_connmand_SOURCES += src/udev.c
 else
 src_connmand_SOURCES += src/udev-compat.c
-endif
-
-if WIFI
-src_connmand_SOURCES += $(gsupplicant_sources)
 endif
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
