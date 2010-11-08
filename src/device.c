@@ -299,13 +299,9 @@ static void probe_driver(struct connman_element *element, gpointer user_data)
 
 static void remove_device(struct connman_device *device)
 {
-	int err;
-
 	DBG("device %p", device);
 
-	err = __connman_device_disable(device);
-	if (err < 0 && err == -EINPROGRESS)
-		__connman_technology_disable_device(device);
+	__connman_device_disable(device);
 
 	__connman_technology_remove_device(device);
 
