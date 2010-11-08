@@ -764,10 +764,13 @@ static int connect_session_transport(struct web_session *session)
 	if (sk < 0)
 		return -EIO;
 
-	if (session->flags & SESSION_FLAG_USE_TLS)
+	if (session->flags & SESSION_FLAG_USE_TLS) {
+		debug(session->web, "using TLS encryption");
 		session->transport_channel = g_io_channel_gnutls_new(sk);
-	else
+	} else {
+		debug(session->web, "no encryption");
 		session->transport_channel = g_io_channel_unix_new(sk);
+	}
 
 	if (session->transport_channel == NULL) {
 		close(sk);
