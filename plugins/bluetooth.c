@@ -44,6 +44,7 @@
 #define BLUEZ_ADAPTER_INTERFACE		BLUEZ_SERVICE ".Adapter"
 #define BLUEZ_DEVICE_INTERFACE		BLUEZ_SERVICE ".Device"
 #define BLUEZ_NETWORK_INTERFACE		BLUEZ_SERVICE ".Network"
+#define BLUEZ_NETWORK_SERVER		BLUEZ_SERVICE ".NetworkServer"
 
 #define LIST_ADAPTERS			"ListAdapters"
 #define ADAPTER_ADDED			"AdapterAdded"
@@ -56,6 +57,9 @@
 
 #define CONNECT				"Connect"
 #define DISCONNECT			"Disconnect"
+
+#define REGISTER			"Register"
+#define UNREGISTER			"Unregister"
 
 #define UUID_NAP	"00001116-0000-1000-8000-00805f9b34fb"
 
@@ -942,9 +946,117 @@ static void tech_remove(struct connman_technology *technology)
 {
 }
 
+static void server_register_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError error;
+	DBusMessage *reply;
+
+	DBG("");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		dbus_message_unref(reply);
+		dbus_pending_call_unref(call);
+		return;
+	}
+
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+
+}
+
+static void server_register(const char *path, const char *uuid,
+				const char *bridge, connman_bool_t enabled)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+	char *command;
+
+	DBG("path %s enabled %d", path, enabled);
+
+	command = enabled ? REGISTER : UNREGISTER;
+
+	message = dbus_message_new_method_call(BLUEZ_SERVICE, path,
+					BLUEZ_NETWORK_SERVER, command);
+	if (message == NULL)
+		return;
+
+	dbus_message_set_auto_start(message, FALSE);
+
+	dbus_message_append_args(message, DBUS_TYPE_STRING, &uuid,
+							DBUS_TYPE_INVALID);
+
+	if (enabled == TRUE)
+		dbus_message_append_args(message, DBUS_TYPE_STRING, &bridge,
+							DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to enable PAN server");
+		dbus_message_unref(message);
+		return;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return;
+	}
+
+	dbus_pending_call_set_notify(call, server_register_reply,
+					g_strdup(path), g_free);
+
+	dbus_message_unref(message);
+}
+
+static void enable_nap(gpointer key, gpointer value,
+						gpointer user_data)
+{
+	struct connman_device *device = value;
+	const char *bridge = user_data;
+	const char *path;
+
+	path = connman_device_get_string(device, "Path");
+
+	server_register(path, "nap", bridge, TRUE);
+}
+
+static void disable_nap(gpointer key, gpointer value,
+						gpointer user_data)
+{
+	struct connman_device *device = value;
+	const char *bridge = user_data;
+	const char *path;
+
+	path = connman_device_get_string(device, "Path");
+
+	server_register(path, "nap", bridge, FALSE);
+}
+
 static int tech_set_tethering(struct connman_technology *technology,
 				const char *bridge, connman_bool_t enabled)
 {
+	char *bridge_name = g_strdup(bridge);
+
+	DBG("bridge %s", bridge);
+
+	if (bridge_name == NULL)
+		return -ENOMEM;
+
+	if (enabled)
+		g_hash_table_foreach(bluetooth_devices,
+					enable_nap, bridge_name);
+	else
+		g_hash_table_foreach(bluetooth_devices,
+					disable_nap, bridge_name);
+
+	g_free(bridge_name);
+
 	return 0;
 }
 
