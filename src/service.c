@@ -4529,9 +4529,9 @@ update:
 							"Domains", NULL);
 
 	cst_str = proxymethod2string(service->proxy);
-	if (str != NULL)
+	if (cst_str != NULL)
 		g_key_file_set_string(keyfile, service->identifier,
-				"Proxy.Method", str);
+				"Proxy.Method", cst_str);
 
 	if (service->proxies != NULL) {
 		guint len = g_strv_length(service->proxies);
