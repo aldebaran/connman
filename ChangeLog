@@ -1,3 +1,9 @@
+ver 0.62.4
+	DNS proxy fix (Fixes BMC#9834)
+	Technology disabling fix (Fixes BMC#8074)
+	get-proxy-autoconfig fix (Fixes BMC#9178)
+	WiFi plugin build fix.
+
 ver 0.62.3
 	gsupplicant fixes (Fixes BMC#8750, #8792, #8324, #8363)
 	supplicant fix for autoconnecting after a failure.
