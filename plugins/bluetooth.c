@@ -36,6 +36,7 @@
 #include <connman/technology.h>
 #include <connman/device.h>
 #include <connman/inet.h>
+#include <connman/tethering.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
@@ -968,7 +969,34 @@ static void server_register_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 
+	connman_tethering_enabled();
 }
+
+static void server_unregister_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusError error;
+	DBusMessage *reply;
+
+	DBG("");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		dbus_message_unref(reply);
+		dbus_pending_call_unref(call);
+		return;
+	}
+
+	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
+
+	connman_tethering_disabled();
+}
+
 
 static void server_register(const char *path, const char *uuid,
 				const char *bridge, connman_bool_t enabled)
@@ -1008,8 +1036,12 @@ static void server_register(const char *path, const char *uuid,
 		return;
 	}
 
-	dbus_pending_call_set_notify(call, server_register_reply,
-					g_strdup(path), g_free);
+	if (enabled == TRUE)
+		dbus_pending_call_set_notify(call, server_register_reply,
+						NULL, NULL);
+	else
+		dbus_pending_call_set_notify(call, server_unregister_reply,
+						NULL, NULL);
 
 	dbus_message_unref(message);
 }
@@ -1020,6 +1052,8 @@ static void enable_nap(gpointer key, gpointer value,
 	struct connman_device *device = value;
 	const char *bridge = user_data;
 	const char *path;
+
+	DBG("");
 
 	path = connman_device_get_string(device, "Path");
 
@@ -1032,6 +1066,8 @@ static void disable_nap(gpointer key, gpointer value,
 	struct connman_device *device = value;
 	const char *bridge = user_data;
 	const char *path;
+
+	DBG("");
 
 	path = connman_device_get_string(device, "Path");
 

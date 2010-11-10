@@ -30,9 +30,12 @@
 
 #include "connman.h"
 
+#include <connman/tethering.h>
+
 #define BRIDGE_NAME "tether"
 
 static connman_bool_t tethering_status = FALSE;
+gint tethering_enabled;
 
 connman_bool_t __connman_tethering_get_status(void)
 {
@@ -79,6 +82,32 @@ static int remove_bridge(const char *name)
 	return 0;
 }
 
+void connman_tethering_enabled(void)
+{
+	if (tethering_status == FALSE)
+		return;
+
+	DBG("enabled %d", tethering_enabled + 1);
+
+	if (g_atomic_int_exchange_and_add(&tethering_enabled, 1) == 0) {
+		/* TODO Start DHCP server and DNS proxy on the bridge */
+		DBG("tethering started");
+	}
+}
+
+void connman_tethering_disabled(void)
+{
+	if (tethering_status == FALSE)
+		return;
+
+	DBG("enabled %d", tethering_enabled - 1);
+
+	if (g_atomic_int_dec_and_test(&tethering_enabled) == 0) {
+		/* TODO Stop DHCP server and DNS proxy on the bridge */
+		DBG("tethering stopped");
+	}
+}
+
 int __connman_tethering_set_status(connman_bool_t status)
 {
 	if (status == tethering_status)
@@ -105,6 +134,8 @@ void __connman_tethering_update_interface(const char *interface)
 int __connman_tethering_init(void)
 {
 	DBG("");
+
+	tethering_enabled = 0;
 
 	return 0;
 }
