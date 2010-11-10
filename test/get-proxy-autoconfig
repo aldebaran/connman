@@ -28,7 +28,7 @@ for entry in services:
 		method = proxy["Method"]
 		print "Method = %s" % (method)
 
-		if method in ["auto-config"]:
+		if method in ["auto"]:
 			url = proxy["URL"]
 			print "URL = %s" % (url)
 			print
