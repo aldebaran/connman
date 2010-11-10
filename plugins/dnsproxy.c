@@ -558,7 +558,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 		DBG("TCP reply %d bytes", reply_len);
 
-		reply = g_try_malloc(reply_len + 2);
+		reply = g_try_malloc0(reply_len + 2);
 		if (reply == NULL)
 			return TRUE;
 
@@ -567,14 +567,25 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 		total_bytes_recv = bytes_recv = 0;
 		while (total_bytes_recv < reply_len) {
-			bytes_recv = recv(sk, reply + 2, reply_len, 0);
-			if (bytes_recv < 0)
+			bytes_recv = recv(sk, reply + 2 + total_bytes_recv,
+					reply_len - total_bytes_recv, 0);
+			if (bytes_recv < 0) {
+				if (errno == EAGAIN || errno == EWOULDBLOCK)
+					continue;
+
+				connman_error("DNS proxy error %s",
+							strerror(errno));
+
 				break;
+			}
 
 			total_bytes_recv += bytes_recv;
 		}
 
-		forward_dns_reply(reply, reply_len + 2, IPPROTO_TCP);
+		if (total_bytes_recv > reply_len)
+			total_bytes_recv = reply_len;
+
+		forward_dns_reply(reply, total_bytes_recv + 2, IPPROTO_TCP);
 
 		g_free(reply);
 
