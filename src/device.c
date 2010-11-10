@@ -646,7 +646,7 @@ int connman_device_set_powered(struct connman_device *device,
 
 	reset_scan_trigger(device);
 
-	if (device->driver->scan)
+	if (device->driver && device->driver->scan)
 		device->driver->scan(device);
 
 	return 0;
