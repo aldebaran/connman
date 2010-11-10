@@ -634,16 +634,6 @@ static struct server_data *create_server(const char *interface,
 		return NULL;
 	}
 
-	data = find_server(interface, domain, server, protocol);
-	if (data) {
-		if (data->watch > 0)
-			g_source_remove(data->watch);
-		data->watch = g_io_add_watch(data->channel,
-			G_IO_OUT | G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
-						tcp_server_event, data);
-		return data;
-	}
-
 	sk = socket(AF_INET, type, protocol);
 	if (sk < 0) {
 		connman_error("Failed to create server %s socket", server);
