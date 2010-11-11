@@ -83,6 +83,7 @@ struct ipt_error_target {
 
 struct connman_iptables_entry {
 	int offset;
+	int builtin;
 
 	struct ipt_entry *entry;
 };
@@ -96,6 +97,9 @@ struct connman_iptables {
 	unsigned int num_entries;
 	unsigned int old_entries;
 	unsigned int size;
+
+	unsigned int underflow[NF_INET_NUMHOOKS];
+	unsigned int hook_entry[NF_INET_NUMHOOKS];
 
 	GList *entries;
 };
@@ -186,13 +190,11 @@ static gboolean is_jump(struct connman_iptables_entry *e)
 static gboolean is_chain(struct connman_iptables *table,
 				struct connman_iptables_entry *e)
 {
-	int builtin;
 	struct ipt_entry *entry;
 	struct xt_entry_target *target;
 
 	entry = e->entry;
-	builtin = is_hook_entry(table, entry);
-	if (builtin >= 0)
+	if (e->builtin >= 0)
 		return TRUE;
 
 	target = ipt_get_target(entry);
@@ -216,7 +218,7 @@ static GList *find_chain_head(struct connman_iptables *table,
 		entry = head->entry;
 
 		/* Buit-in chain */
-		builtin = is_hook_entry(table, entry);
+		builtin = head->builtin;
 		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
 			break;
 
@@ -245,7 +247,7 @@ static GList *find_chain_tail(struct connman_iptables *table,
 		entry = head->entry;
 
 		/* Buit-in chain */
-		builtin = is_hook_entry(table, entry);
+		builtin = head->builtin;
 		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
 			break;
 
@@ -297,7 +299,8 @@ static void update_offsets(struct connman_iptables *table)
 }
 
 static int connman_add_entry(struct connman_iptables *table,
-				struct ipt_entry *entry, GList *before)
+				struct ipt_entry *entry, GList *before,
+					int builtin)
 {
 	GList *list;
 	struct connman_iptables_entry *e, *tmp, *entry_before;
@@ -311,6 +314,7 @@ static int connman_add_entry(struct connman_iptables *table,
 		return -1;
 
 	e->entry = entry;
+	e->builtin = builtin;
 
 	table->entries = g_list_insert_before(table->entries, before, e);
 	table->num_entries++;
@@ -356,7 +360,7 @@ static int connman_iptables_delete_chain(struct connman_iptables *table,
 		return -EINVAL;
 
 	chain_tail = find_chain_tail(table, name);
-	if (chain_head == NULL)
+	if (chain_tail == NULL)
 		return -EINVAL;
 
 	list = chain_head;
@@ -416,7 +420,7 @@ static int connman_iptables_add_chain(struct connman_iptables *table,
 	error->t.u.user.target_size = ALIGN(sizeof(struct ipt_error_target));
 	strcpy(error->error, name);
 
-	if (connman_add_entry(table, entry_head, last) < 0)
+	if (connman_add_entry(table, entry_head, last, -1) < 0)
 		goto err;
 
 	/* tail entry */
@@ -436,7 +440,7 @@ static int connman_iptables_add_chain(struct connman_iptables *table,
 				ALIGN(sizeof(struct ipt_standard_target));
 	standard->verdict = XT_RETURN;
 
-	if (connman_add_entry(table, entry_return, last) < 0)
+	if (connman_add_entry(table, entry_return, last, -1) < 0)
 		goto err;
 
 	return 0;
@@ -524,13 +528,45 @@ new_rule(struct connman_iptables *table,
 	return new_entry;
 }
 
+static void update_hooks(struct connman_iptables *table, GList *chain_head, struct ipt_entry *entry)
+{
+	GList *list;
+	struct connman_iptables_entry *head, *e;
+	int builtin;
+
+	if (chain_head == NULL)
+		return;
+
+	head = chain_head->data;
+
+	builtin = head->builtin;
+	if (builtin < 0)
+		return;
+
+	table->underflow[builtin] += entry->next_offset;
+
+	for (list = chain_head->next; list; list = list->next) {
+		e = list->data;
+
+		builtin = e->builtin;
+		if (builtin < 0)
+			continue;
+
+		table->hook_entry[builtin] += entry->next_offset;
+	}
+}
+
 static int
 connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
 {
-	GList *chain_tail;
+	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
+		return -EINVAL;
 
 	chain_tail = find_chain_tail(table, chain_name);
 	if (chain_tail == NULL)
@@ -542,7 +578,9 @@ connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 	if (new_entry == NULL)
 		return -EINVAL;
 
-	return connman_add_entry(table, new_entry, chain_tail->prev);
+	update_hooks(table, chain_head, new_entry);
+
+	return connman_add_entry(table, new_entry, chain_tail, -1);
 }
 
 static struct ipt_replace *
@@ -573,10 +611,8 @@ connman_iptables_blob(struct connman_iptables *table)
 	r->num_counters = table->old_entries;
 	r->valid_hooks  = table->info->valid_hooks;
 
-	memcpy(r->hook_entry, table->info->hook_entry,
-				sizeof(table->info->hook_entry));
-	memcpy(r->underflow, table->info->underflow,
-				sizeof(table->info->underflow));
+	memcpy(r->hook_entry, table->hook_entry, sizeof(table->hook_entry));
+	memcpy(r->underflow, table->underflow, sizeof(table->underflow));
 
 	entry_index = (unsigned char *)r->entries;
 	for (list = table->entries; list; list = list->next) {
@@ -723,12 +759,30 @@ static int connman_iptables_dump_entry(struct ipt_entry *entry,
 	return 0;
 }
 
+static void connman_iptables_dump_hook(struct connman_iptables *table)
+{
+	int i;
+	printf("hooks: \n");
+	for (i = 0; i < NF_INET_NUMHOOKS; i++) {
+		if ((table->info->valid_hooks & (1 << i)))
+			printf("%s entry 0x%x underflow 0x%x (0x%x)\n",
+				hooknames[i],
+				(unsigned int)table->blob_entries->entrytable +
+						table->info->hook_entry[i],
+				(unsigned int)table->blob_entries->entrytable +
+						table->info->underflow[i],
+					table->info->underflow[i]);
+	}
+}
+
 static void connman_iptables_dump(struct connman_iptables *table)
 {
 	printf("%s valid_hooks=0x%08x, num_entries=%u, size=%u\n",
 		table->info->name,
 		table->info->valid_hooks, table->info->num_entries,
 		table->info->size);
+
+	connman_iptables_dump_hook(table);
 
 	ENTRY_ITERATE(table->blob_entries->entrytable,
 			table->blob_entries->size,
@@ -785,6 +839,7 @@ static int connman_iptables_commit(struct connman_iptables *table)
 static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 {
 	struct ipt_entry *new_entry;
+	int builtin;
 
 	new_entry = g_try_malloc0(entry->next_offset);
 	if (new_entry == NULL)
@@ -792,7 +847,9 @@ static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 
 	memcpy(new_entry, entry, entry->next_offset);
 
-	return connman_add_entry(table, new_entry, NULL);
+	builtin = is_hook_entry(table, entry);
+
+	return connman_add_entry(table, new_entry, NULL, builtin);
 }
 
 static struct connman_iptables *connman_iptables_init(const char *table_name)
@@ -832,6 +889,11 @@ static struct connman_iptables *connman_iptables_init(const char *table_name)
 	table->num_entries = 0;
 	table->old_entries = table->info->num_entries;
 	table->size = 0;
+
+	memcpy(table->underflow, table->info->underflow,
+				sizeof(table->info->underflow));
+	memcpy(table->hook_entry, table->info->hook_entry,
+				sizeof(table->info->hook_entry));
 
 	ENTRY_ITERATE(table->blob_entries->entrytable,
 			table->blob_entries->size,
