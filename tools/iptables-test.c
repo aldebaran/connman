@@ -553,6 +553,7 @@ static void update_hooks(struct connman_iptables *table, GList *chain_head, stru
 			continue;
 
 		table->hook_entry[builtin] += entry->next_offset;
+		table->underflow[builtin] += entry->next_offset;
 	}
 }
 
@@ -563,6 +564,8 @@ connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 {
 	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
+	struct connman_iptables_entry *head;
+	int builtin = -1;
 
 	chain_head = find_chain_head(table, chain_name);
 	if (chain_head == NULL)
@@ -580,7 +583,20 @@ connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 
 	update_hooks(table, chain_head, new_entry);
 
-	return connman_add_entry(table, new_entry, chain_tail, -1);
+	/*
+	 * If the chain is builtin, and does not have any rule,
+	 * then the one that we're inserting is becoming the head
+	 * and thus needs the builtin flag.
+	 */
+	head = chain_head->data;
+	if (head->builtin < 0)
+		builtin = -1;
+	else if (chain_head == chain_tail->prev) {
+		head->builtin = -1;
+		builtin = head->builtin;
+	}
+
+	return connman_add_entry(table, new_entry, chain_tail->prev, builtin);
 }
 
 static struct ipt_replace *
