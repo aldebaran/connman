@@ -91,10 +91,14 @@ static void proxy_callback(const char *proxy, void *user_data)
 	if (proxy == NULL)
 		proxy = getenv("http_proxy");
 
-	g_web_set_proxy(data->web, proxy);
+	if (data != NULL) {
+		g_web_set_proxy(data->web, proxy);
 
-	data->request_id = g_web_request_get(data->web, STATUS_URL,
+		data->request_id = g_web_request_get(data->web, STATUS_URL,
 							web_result, location);
+	}
+
+	connman_location_unref(location);
 }
 
 static int location_detect(struct connman_location *location)
@@ -146,8 +150,9 @@ static int location_detect(struct connman_location *location)
 	g_web_set_user_agent(data->web, "ConnMan/%s", VERSION);
 	g_web_set_close_connection(data->web, TRUE);
 
-	connman_proxy_lookup(interface, STATUS_URL,
-					proxy_callback, location);
+	if (connman_proxy_lookup(interface, STATUS_URL,
+					proxy_callback, location) > 0)
+		connman_location_ref(location);
 
 	return 0;
 }
