@@ -89,6 +89,7 @@ struct ipt_error_target {
 
 struct connman_iptables_entry {
 	int offset;
+	int builtin;
 
 	struct ipt_entry *entry;
 };
@@ -102,6 +103,9 @@ struct connman_iptables {
 	unsigned int num_entries;
 	unsigned int old_entries;
 	unsigned int size;
+
+	unsigned int underflow[NF_INET_NUMHOOKS];
+	unsigned int hook_entry[NF_INET_NUMHOOKS];
 
 	GList *entries;
 };
@@ -193,13 +197,11 @@ static gboolean is_jump(struct connman_iptables_entry *e)
 static gboolean is_chain(struct connman_iptables *table,
 				struct connman_iptables_entry *e)
 {
-	int builtin;
 	struct ipt_entry *entry;
 	struct xt_entry_target *target;
 
 	entry = e->entry;
-	builtin = is_hook_entry(table, entry);
-	if (builtin >= 0)
+	if (e->builtin >= 0)
 		return TRUE;
 
 	target = ipt_get_target(entry);
@@ -223,7 +225,7 @@ static GList *find_chain_head(struct connman_iptables *table,
 		entry = head->entry;
 
 		/* Buit-in chain */
-		builtin = is_hook_entry(table, entry);
+		builtin = head->builtin;
 		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
 			break;
 
@@ -252,7 +254,7 @@ static GList *find_chain_tail(struct connman_iptables *table,
 		entry = head->entry;
 
 		/* Buit-in chain */
-		builtin = is_hook_entry(table, entry);
+		builtin = head->builtin;
 		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
 			break;
 
@@ -305,7 +307,8 @@ static void update_offsets(struct connman_iptables *table)
 }
 
 static int iptables_add_entry(struct connman_iptables *table,
-				struct ipt_entry *entry, GList *before)
+				struct ipt_entry *entry, GList *before,
+					int builtin)
 {
 	GList *list;
 	struct connman_iptables_entry *e, *tmp, *entry_before;
@@ -319,6 +322,7 @@ static int iptables_add_entry(struct connman_iptables *table,
 		return -1;
 
 	e->entry = entry;
+	e->builtin = builtin;
 
 	table->entries = g_list_insert_before(table->entries, before, e);
 	table->num_entries++;
@@ -391,7 +395,7 @@ static int iptables_add_chain(struct connman_iptables *table,
 	error->t.u.user.target_size = ALIGN(sizeof(struct ipt_error_target));
 	strcpy(error->error, name);
 
-	if (iptables_add_entry(table, entry_head, last) < 0)
+	if (iptables_add_entry(table, entry_head, last, -1) < 0)
 		goto err;
 
 	/* tail entry */
@@ -411,7 +415,7 @@ static int iptables_add_chain(struct connman_iptables *table,
 				ALIGN(sizeof(struct ipt_standard_target));
 	standard->verdict = XT_RETURN;
 
-	if (iptables_add_entry(table, entry_return, last) < 0)
+	if (iptables_add_entry(table, entry_return, last, -1) < 0)
 		goto err;
 
 	return 0;
@@ -501,17 +505,53 @@ new_rule(struct connman_iptables *table, struct ipt_ip *ip,
 	return new_entry;
 }
 
+static void update_hooks(struct connman_iptables *table, GList *chain_head,
+				struct ipt_entry *entry)
+{
+	GList *list;
+	struct connman_iptables_entry *head, *e;
+	int builtin;
+
+	if (chain_head == NULL)
+		return;
+
+	head = chain_head->data;
+
+	builtin = head->builtin;
+	if (builtin < 0)
+		return;
+
+	table->underflow[builtin] += entry->next_offset;
+
+	for (list = chain_head->next; list; list = list->next) {
+		e = list->data;
+
+		builtin = e->builtin;
+		if (builtin < 0)
+			continue;
+
+		table->hook_entry[builtin] += entry->next_offset;
+		table->underflow[builtin] += entry->next_offset;
+	}
+}
+
 static int
 iptables_add_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
 {
-	GList *chain_tail;
+	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
+	struct connman_iptables_entry *head;
+	int builtin = -1;
 
 	chain_tail = find_chain_tail(table, chain_name);
 	if (chain_tail == NULL)
+		return -EINVAL;
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
 		return -EINVAL;
 
 	new_entry = new_rule(table, ip,
@@ -520,7 +560,22 @@ iptables_add_rule(struct connman_iptables *table,
 	if (new_entry == NULL)
 		return -EINVAL;
 
-	return iptables_add_entry(table, new_entry, chain_tail->prev);
+	update_hooks(table, chain_head, new_entry);
+
+	/*
+	 * If the chain is builtin, and does not have any rule,
+	 * then the one that we're inserting is becoming the head
+	 * and thus needs the builtin flag.
+	 */
+	head = chain_head->data;
+	if (head->builtin < 0)
+		builtin = -1;
+	else if (chain_head == chain_tail->prev) {
+		head->builtin = -1;
+		builtin = head->builtin;
+	}
+
+	return iptables_add_entry(table, new_entry, chain_tail->prev, builtin);
 }
 
 static struct ipt_replace *
@@ -551,10 +606,8 @@ iptables_blob(struct connman_iptables *table)
 	r->num_counters = table->old_entries;
 	r->valid_hooks  = table->info->valid_hooks;
 
-	memcpy(r->hook_entry, table->info->hook_entry,
-				sizeof(table->info->hook_entry));
-	memcpy(r->underflow, table->info->underflow,
-				sizeof(table->info->underflow));
+	memcpy(r->hook_entry, table->hook_entry, sizeof(table->hook_entry));
+	memcpy(r->underflow, table->underflow, sizeof(table->underflow));
 
 	entry_index = (unsigned char *)r->entries;
 	for (list = table->entries; list; list = list->next) {
@@ -756,6 +809,7 @@ static int iptables_replace(struct connman_iptables *table,
 static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 {
 	struct ipt_entry *new_entry;
+	int builtin;
 
 	new_entry = g_try_malloc0(entry->next_offset);
 	if (new_entry == NULL)
@@ -763,7 +817,9 @@ static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 
 	memcpy(new_entry, entry, entry->next_offset);
 
-	return iptables_add_entry(table, new_entry, NULL);
+	builtin = is_hook_entry(table, entry);
+
+	return iptables_add_entry(table, new_entry, NULL, builtin);
 }
 
 static void table_cleanup(struct connman_iptables *table)
@@ -826,6 +882,11 @@ static struct connman_iptables *iptables_init(char *table_name)
 	table->num_entries = 0;
 	table->old_entries = table->info->num_entries;
 	table->size = 0;
+
+	memcpy(table->underflow, table->info->underflow,
+				sizeof(table->info->underflow));
+	memcpy(table->hook_entry, table->info->hook_entry,
+				sizeof(table->info->hook_entry));
 
 	ENTRY_ITERATE(table->blob_entries->entrytable,
 			table->blob_entries->size,
