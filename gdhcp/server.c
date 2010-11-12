@@ -685,7 +685,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			send_offer(dhcp_server, &packet, lease, requested_nip);
 		break;
 		case DHCPREQUEST:
-			debug(dhcp_server, "Received REQUEST");
+			debug(dhcp_server, "Received REQUEST NIP %d",
+							requested_nip);
 			if (requested_nip == 0) {
 				requested_nip = packet.ciaddr;
 				if (requested_nip == 0)
@@ -693,13 +694,16 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			}
 
 			if (lease && requested_nip == lease->lease_nip) {
+				debug(dhcp_server, "Sending ACK");
 				send_ACK(dhcp_server, &packet,
 						lease->lease_nip);
 				break;
 			}
 
-			if (server_id_option)
+			if (server_id_option || lease == NULL) {
+				debug(dhcp_server, "Sending NAK");
 				send_NAK(dhcp_server, &packet);
+			}
 
 		break;
 		case DHCPDECLINE:
