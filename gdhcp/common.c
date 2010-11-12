@@ -22,11 +22,15 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
+#include <sys/ioctl.h>
 #include <stdint.h>
 #include <string.h>
 #include <endian.h>
+#include <net/if_arp.h>
+#include <linux/if.h>
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
 
@@ -416,4 +420,69 @@ int dhcp_l3_socket(int port, const char *interface)
 	}
 
 	return fd;
+}
+
+char *get_interface_name(int index)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (index < 0)
+		return NULL;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		perror("Open socket error");
+		return NULL;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+	if (err < 0) {
+		perror("Get interface name error");
+		close(sk);
+		return NULL;
+	}
+
+	close(sk);
+
+	return g_strdup(ifr.ifr_name);
+}
+
+gboolean interface_is_up(int index)
+{
+	int sk, err;
+	struct ifreq ifr;
+	gboolean ret = FALSE;
+
+	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	if (sk < 0) {
+		perror("Open socket error");
+		return FALSE;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+	if (err < 0) {
+		perror("Get interface name error");
+		goto done;
+	}
+
+	err = ioctl(sk, SIOCGIFFLAGS, &ifr);
+	if (err < 0) {
+		perror("Get interface flags error");
+		goto done;
+	}
+
+	if (ifr.ifr_flags & IFF_UP)
+		ret = TRUE;
+
+done:
+	close(sk);
+
+	return ret;
 }
