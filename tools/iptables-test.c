@@ -781,11 +781,11 @@ static void connman_iptables_dump_hook(struct connman_iptables *table)
 	printf("hooks: \n");
 	for (i = 0; i < NF_INET_NUMHOOKS; i++) {
 		if ((table->info->valid_hooks & (1 << i)))
-			printf("%s entry 0x%x underflow 0x%x (0x%x)\n",
+			printf("%s entry %p underflow %p (%#x)\n",
 				hooknames[i],
-				(unsigned int)table->blob_entries->entrytable +
+				table->blob_entries->entrytable +
 						table->info->hook_entry[i],
-				(unsigned int)table->blob_entries->entrytable +
+				table->blob_entries->entrytable +
 						table->info->underflow[i],
 					table->info->underflow[i]);
 	}
