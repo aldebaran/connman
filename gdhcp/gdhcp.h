@@ -1,6 +1,6 @@
 /*
  *
- *  DHCP client library with GLib integration
+ *  DHCP library with GLib integration
  *
  *  Copyright (C) 2009-2010  Intel Corporation. All rights reserved.
  *
@@ -28,6 +28,7 @@
 extern "C" {
 #endif
 
+/* DHCP Client part*/
 struct _GDHCPClient;
 
 typedef struct _GDHCPClient GDHCPClient;
@@ -94,6 +95,44 @@ int g_dhcp_client_get_index(GDHCPClient *client);
 void g_dhcp_client_set_debug(GDHCPClient *client,
 				GDHCPDebugFunc func, gpointer user_data);
 
+/* DHCP Server */
+typedef enum {
+	G_DHCP_SERVER_ERROR_NONE,
+	G_DHCP_SERVER_ERROR_INTERFACE_UNAVAILABLE,
+	G_DHCP_SERVER_ERROR_INTERFACE_IN_USE,
+	G_DHCP_SERVER_ERROR_INTERFACE_DOWN,
+	G_DHCP_SERVER_ERROR_NOMEM,
+	G_DHCP_SERVER_ERROR_INVALID_INDEX,
+	G_DHCP_SERVER_ERROR_INVALID_OPTION,
+	G_DHCP_SERVER_ERROR_IP_ADDRESS_INVALID
+} GDHCPServerError;
+
+typedef void (*GDHCPSaveLeaseFunc) (unsigned char *mac,
+			unsigned int nip, unsigned int expire);
+struct _GDHCPServer;
+
+typedef struct _GDHCPServer GDHCPServer;
+
+GDHCPServer *g_dhcp_server_new(GDHCPType type,
+		int ifindex, GDHCPServerError *error);
+int g_dhcp_server_start(GDHCPServer *server);
+void g_dhcp_server_stop(GDHCPServer *server);
+
+GDHCPServer *g_dhcp_server_ref(GDHCPServer *server);
+void g_dhcp_server_unref(GDHCPServer *server);
+
+int g_dhcp_server_set_option(GDHCPServer *server,
+		unsigned char option_code, const char *option_value);
+int g_dhcp_server_set_ip_range(GDHCPServer *server,
+		const char *start_ip, const char *end_ip);
+void g_dhcp_server_load_lease(GDHCPServer *dhcp_server, unsigned int expire,
+				unsigned char *mac, unsigned int lease_ip);
+void g_dhcp_server_set_debug(GDHCPServer *server,
+				GDHCPDebugFunc func, gpointer user_data);
+void g_dhcp_server_set_lease_time(GDHCPServer *dhcp_server,
+						unsigned int lease_time);
+void g_dhcp_server_set_save_lease(GDHCPServer *dhcp_server,
+				GDHCPSaveLeaseFunc func, gpointer user_data);
 #ifdef __cplusplus
 }
 #endif
