@@ -103,21 +103,22 @@ static int enable_ip_forward(connman_bool_t enable)
 
 static int enable_nat(const char *interface)
 {
-	int ret;
+	int err;
 
 	if (interface == NULL)
 		return 0;
 
 	/* Enable IPv4 forwarding */
-	ret = enable_ip_forward(TRUE);
-	if (ret < 0)
-		return ret;
+	err = enable_ip_forward(TRUE);
+	if (err < 0)
+		return err;
 
 	/* TODO: Flush nat POSTROUTING chain */
 	/* Enable masquerading */
-	ret = __connman_iptables_command("-t nat -A POSTROUTING -o %s -j MASQUERADE", interface);
-	if (ret < 0)
-		return ret;
+	err = __connman_iptables_command("-t nat -A POSTROUTING "
+					"-o %s -j MASQUERADE", interface);
+	if (err < 0)
+		return err;
 
 	return __connman_iptables_commit("nat");
 }
