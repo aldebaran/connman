@@ -128,8 +128,8 @@ endif
 
 if TOOLS
 noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
-			tools/dhcp-test tools/addr-test \
-			tools/web-test tools/resolv-test \
+			tools/dhcp-test tools/dhcp-server-test \
+			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-ringbuffer-dump
@@ -155,6 +155,9 @@ tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
 tools_dhcp_test_LDADD = @GLIB_LIBS@
+
+tools_dhcp_server_test_SOURCES = $(gdhcp_sources) tools/dhcp-server-test.c
+tools_dhcp_server_test_LDADD = @GLIB_LIBS@
 
 tools_dbus_test_SOURCES = $(gdbus_sources) tools/dbus-test.c
 tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
