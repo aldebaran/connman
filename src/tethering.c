@@ -86,11 +86,15 @@ static int enable_ip_forward(connman_bool_t enable)
 {
 
 	FILE *f;
-	int ip_forward = enable ? 1 : 0;
 
 	f = fopen("/proc/sys/net/ipv4/ip_forward", "r+");
+	if (f == NULL)
+		return -errno;
 
-	fprintf(f, "%d", ip_forward);
+	if (enable == TRUE)
+		fprintf(f, "1");
+	else
+		fprintf(f, "0");
 
 	fclose(f);
 
