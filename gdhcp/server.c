@@ -292,7 +292,7 @@ static void lease_set_expire(GDHCPServer *dhcp_server,
 							lease, compare_expire);
 }
 
-static void distroy_lease_table(GDHCPServer *dhcp_server)
+static void destroy_lease_table(GDHCPServer *dhcp_server)
 {
 	GList *list;
 
@@ -853,7 +853,7 @@ void g_dhcp_server_unref(GDHCPServer *dhcp_server)
 
 	g_hash_table_destroy(dhcp_server->option_hash);
 
-	distroy_lease_table(dhcp_server);
+	destroy_lease_table(dhcp_server);
 
 	g_free(dhcp_server->interface);
 
