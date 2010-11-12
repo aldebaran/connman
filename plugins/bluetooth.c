@@ -948,6 +948,7 @@ static void tech_remove(struct connman_technology *technology)
 
 static void server_register_reply(DBusPendingCall *call, void *user_data)
 {
+	struct connman_technology *technology = user_data;
 	DBusError error;
 	DBusMessage *reply;
 
@@ -968,11 +969,12 @@ static void server_register_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 
-	connman_technology_tethering_notify(NULL, TRUE);
+	connman_technology_tethering_notify(technology, TRUE);
 }
 
 static void server_unregister_reply(DBusPendingCall *call, void *user_data)
 {
+	struct connman_technology *technology = user_data;
 	DBusError error;
 	DBusMessage *reply;
 
@@ -993,11 +995,12 @@ static void server_unregister_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 
-	connman_technology_tethering_notify(NULL, FALSE);
+	connman_technology_tethering_notify(technology, FALSE);
 }
 
 
 static void server_register(const char *path, const char *uuid,
+				struct connman_technology *technology,
 				const char *bridge, connman_bool_t enabled)
 {
 	DBusMessage *message;
@@ -1037,60 +1040,59 @@ static void server_register(const char *path, const char *uuid,
 
 	if (enabled == TRUE)
 		dbus_pending_call_set_notify(call, server_register_reply,
-						NULL, NULL);
+						technology, NULL);
 	else
 		dbus_pending_call_set_notify(call, server_unregister_reply,
-						NULL, NULL);
+						technology, NULL);
 
 	dbus_message_unref(message);
 }
 
-static void enable_nap(gpointer key, gpointer value,
-						gpointer user_data)
+struct tethering_info {
+	struct connman_technology *technology;
+	const char *bridge;
+};
+
+static void enable_nap(gpointer key, gpointer value, gpointer user_data)
 {
+	struct tethering_info *info = user_data;
 	struct connman_device *device = value;
-	const char *bridge = user_data;
 	const char *path;
 
 	DBG("");
 
 	path = connman_device_get_string(device, "Path");
 
-	server_register(path, "nap", bridge, TRUE);
+	server_register(path, "nap", info->technology, info->bridge, TRUE);
 }
 
-static void disable_nap(gpointer key, gpointer value,
-						gpointer user_data)
+static void disable_nap(gpointer key, gpointer value, gpointer user_data)
 {
+	struct tethering_info *info = user_data;
 	struct connman_device *device = value;
-	const char *bridge = user_data;
 	const char *path;
 
 	DBG("");
 
 	path = connman_device_get_string(device, "Path");
 
-	server_register(path, "nap", bridge, FALSE);
+	server_register(path, "nap", info->technology, info->bridge, FALSE);
 }
 
 static int tech_set_tethering(struct connman_technology *technology,
 				const char *bridge, connman_bool_t enabled)
 {
-	char *bridge_name = g_strdup(bridge);
+	struct tethering_info info = {
+		.technology	= technology,
+		.bridge		= bridge,
+	};
 
 	DBG("bridge %s", bridge);
 
-	if (bridge_name == NULL)
-		return -ENOMEM;
-
 	if (enabled)
-		g_hash_table_foreach(bluetooth_devices,
-					enable_nap, bridge_name);
+		g_hash_table_foreach(bluetooth_devices, enable_nap, &info);
 	else
-		g_hash_table_foreach(bluetooth_devices,
-					disable_nap, bridge_name);
-
-	g_free(bridge_name);
+		g_hash_table_foreach(bluetooth_devices, disable_nap, &info);
 
 	return 0;
 }
