@@ -37,7 +37,7 @@
 
 static connman_bool_t tethering_status = FALSE;
 static const char *default_interface = NULL;
-gint tethering_enabled;
+static volatile gint tethering_enabled;
 
 connman_bool_t __connman_tethering_get_status(void)
 {
