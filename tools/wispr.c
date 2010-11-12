@@ -103,6 +103,7 @@ struct wispr_msg {
 	int message_type;
 	int response_code;
 	char *login_url;
+	char *abort_login_url;
 	char *logoff_url;
 	char *access_procedure;
 	char *access_location;
@@ -119,6 +120,9 @@ static inline void wispr_msg_init(struct wispr_msg *msg)
 
 	g_free(msg->login_url);
 	msg->login_url = NULL;
+
+	g_free(msg->abort_login_url);
+	msg->abort_login_url = NULL;
 
 	g_free(msg->logoff_url);
 	msg->logoff_url = NULL;
@@ -231,6 +235,8 @@ static void text_handler(GMarkupParseContext *context,
 			msg->login_url = g_strdup(text);
 			break;
 		case WISPR_ELEMENT_ABORT_LOGIN_URL:
+			g_free(msg->abort_login_url);
+			msg->abort_login_url = g_strdup(text);
 			break;
 		case WISPR_ELEMENT_MESSAGE_TYPE:
 			msg->message_type = atoi(text);
@@ -500,6 +506,8 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		printf("Location name: %s\n", wispr->msg.location_name);
 	if (wispr->msg.login_url != NULL)
 		printf("Login URL: %s\n", wispr->msg.login_url);
+	if (wispr->msg.abort_login_url != NULL)
+		printf("Abort login URL: %s\n", wispr->msg.abort_login_url);
 	if (wispr->msg.logoff_url != NULL)
 		printf("Logoff URL: %s\n", wispr->msg.logoff_url);
 	printf("\n");
