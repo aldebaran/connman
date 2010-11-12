@@ -546,12 +546,14 @@ iptables_add_rule(struct connman_iptables *table,
 	struct connman_iptables_entry *head;
 	int builtin = -1;
 
-	chain_tail = find_chain_tail(table, chain_name);
-	if (chain_tail == NULL)
-		return -EINVAL;
+	DBG("");
 
 	chain_head = find_chain_head(table, chain_name);
 	if (chain_head == NULL)
+		return -EINVAL;
+
+	chain_tail = find_chain_tail(table, chain_name);
+	if (chain_tail == NULL)
 		return -EINVAL;
 
 	new_entry = new_rule(table, ip,
@@ -846,6 +848,8 @@ static struct connman_iptables *iptables_init(char *table_name)
 	struct connman_iptables *table;
 	socklen_t s;
 
+	DBG("%s", table_name);
+
 	table = g_hash_table_lookup(table_hash, table_name);
 	if (table != NULL)
 		return table;
@@ -892,7 +896,7 @@ static struct connman_iptables *iptables_init(char *table_name)
 			table->blob_entries->size,
 				add_entry, table);
 
-	g_hash_table_insert(table_hash, table_name, table);
+	g_hash_table_insert(table_hash, g_strdup(table_name), table);
 
 	return table;
 
@@ -1202,6 +1206,8 @@ int __connman_iptables_commit(const char *table_name)
 	struct connman_iptables *table;
 	struct ipt_replace *repl;
 
+	DBG("%s", table_name);
+
 	table = g_hash_table_lookup(table_hash, table_name);
 	if (table == NULL)
 		return -EINVAL;
@@ -1223,7 +1229,7 @@ int __connman_iptables_init(void)
 	DBG("");
 
 	table_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						NULL, remove_table);
+						g_free, remove_table);
 
 	xtables_init_all(&iptables_globals, NFPROTO_IPV4);
 
