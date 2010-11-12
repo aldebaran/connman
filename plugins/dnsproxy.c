@@ -450,12 +450,13 @@ static void destroy_server(struct server_data *server)
 static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
 {
-	struct server_data *data = user_data;
 	unsigned char buf[4096];
 	int sk, err, len;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		connman_error("Error with server channel");
+		struct server_data *data = user_data;
+
+		connman_error("Error with UDP server %s", data->server);
 		data->watch = 0;
 		return FALSE;
 	}
@@ -676,7 +677,8 @@ static struct server_data *create_server(const char *interface,
 		data->timeout = g_timeout_add_seconds(30, tcp_idle_timeout,
 								data);
 	} else
-		data->watch = g_io_add_watch(data->channel, G_IO_IN,
+		data->watch = g_io_add_watch(data->channel,
+			G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 						udp_server_event, data);
 
 	data->interface = g_strdup(interface);
@@ -726,6 +728,11 @@ static gboolean resolv(struct request_data *req,
 
 		if (data->enabled == FALSE)
 			continue;
+
+		if (data->watch == 0 && data->protocol == IPPROTO_UDP)
+			data->watch = g_io_add_watch(data->channel,
+				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+						udp_server_event, data);
 
 		if (ns_resolv(data, req, request, name) < 0)
 			continue;
