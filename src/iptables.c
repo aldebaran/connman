@@ -573,8 +573,8 @@ iptables_add_rule(struct connman_iptables *table,
 	if (head->builtin < 0)
 		builtin = -1;
 	else if (chain_head == chain_tail->prev) {
-		head->builtin = -1;
 		builtin = head->builtin;
+		head->builtin = -1;
 	}
 
 	return iptables_add_entry(table, new_entry, chain_tail->prev, builtin);
