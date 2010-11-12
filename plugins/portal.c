@@ -106,6 +106,7 @@ static int location_detect(struct connman_location *location)
 	struct server_data *data;
 	enum connman_service_type service_type;
 	const char *interface;
+	int err;
 
 	DBG("location %p", location);
 
@@ -150,9 +151,12 @@ static int location_detect(struct connman_location *location)
 	g_web_set_user_agent(data->web, "ConnMan/%s", VERSION);
 	g_web_set_close_connection(data->web, TRUE);
 
-	if (connman_proxy_lookup(interface, STATUS_URL,
-					proxy_callback, location) > 0)
-		connman_location_ref(location);
+	err = connman_proxy_lookup(interface, STATUS_URL,
+					proxy_callback, location);
+	if (err < 0)
+		return err;
+
+	connman_location_ref(location);
 
 	return 0;
 }
