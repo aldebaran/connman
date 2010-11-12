@@ -36,6 +36,9 @@ extern "C" {
 
 struct connman_technology;
 
+void connman_technology_tethering_notify(struct connman_technology *technology,
+							connman_bool_t enabled);
+
 struct connman_technology_driver {
 	const char *name;
 	enum connman_service_type type;

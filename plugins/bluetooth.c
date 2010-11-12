@@ -36,7 +36,6 @@
 #include <connman/technology.h>
 #include <connman/device.h>
 #include <connman/inet.h>
-#include <connman/tethering.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
@@ -969,7 +968,7 @@ static void server_register_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 
-	connman_tethering_enabled();
+	connman_technology_tethering_notify(NULL, TRUE);
 }
 
 static void server_unregister_reply(DBusPendingCall *call, void *user_data)
@@ -994,7 +993,7 @@ static void server_unregister_reply(DBusPendingCall *call, void *user_data)
 	dbus_message_unref(reply);
 	dbus_pending_call_unref(call);
 
-	connman_tethering_disabled();
+	connman_technology_tethering_notify(NULL, FALSE);
 }
 
 

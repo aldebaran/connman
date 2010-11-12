@@ -420,6 +420,8 @@ void __connman_tethering_cleanup(void);
 connman_bool_t __connman_tethering_get_status(void);
 int __connman_tethering_set_status(connman_bool_t status);
 void __connman_tethering_update_interface(const char *interface);
+void __connman_tethering_set_enabled(void);
+void __connman_tethering_set_disabled(void);
 
 #include <connman/provider.h>
 
@@ -428,9 +430,9 @@ void __connman_provider_list(DBusMessageIter *iter, void *user_data);
 int __connman_provider_create_and_connect(DBusMessage *msg);
 const char * __connman_provider_get_ident(struct connman_provider *provider);
 int __connman_provider_indicate_state(struct connman_provider *provider,
-				     enum connman_provider_state state);
+					enum connman_provider_state state);
 int __connman_provider_indicate_error(struct connman_provider *provider,
-				     enum connman_provider_error error);
+					enum connman_provider_error error);
 int __connman_provider_connect(struct connman_provider *provider);
 int __connman_provider_disconnect(struct connman_provider *provider);
 int __connman_provider_remove(const char *path);

@@ -177,6 +177,17 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	}
 }
 
+void connman_technology_tethering_notify(struct connman_technology *technology,
+							connman_bool_t enabled)
+{
+	DBG("technology %p enabled %u", technology, enabled);
+
+	if (enabled == TRUE)
+		__connman_tethering_set_enabled();
+	else
+		__connman_tethering_set_disabled();
+}
+
 static int set_tethering(const char *bridge, connman_bool_t enabled)
 {
 	GSList *list;

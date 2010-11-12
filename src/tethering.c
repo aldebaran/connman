@@ -31,8 +31,6 @@
 
 #include "connman.h"
 
-#include <connman/tethering.h>
-
 #define BRIDGE_NAME "tether"
 
 static connman_bool_t tethering_status = FALSE;
@@ -128,7 +126,7 @@ static void disable_nat(const char *interface)
 	/* TODO: Flush nat POSTROUTING chain */
 }
 
-void connman_tethering_enabled(void)
+void __connman_tethering_set_enabled(void)
 {
 	if (tethering_status == FALSE)
 		return;
@@ -143,7 +141,7 @@ void connman_tethering_enabled(void)
 	}
 }
 
-void connman_tethering_disabled(void)
+void __connman_tethering_set_disabled(void)
 {
 	if (tethering_status == FALSE)
 		return;
