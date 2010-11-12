@@ -188,7 +188,8 @@ static int set_tethering(const char *bridge, connman_bool_t enabled)
 			continue;
 
 		if (technology->driver->set_tethering)
-			technology->driver->set_tethering(technology, bridge, enabled);
+			technology->driver->set_tethering(technology,
+							bridge, enabled);
 	}
 
 	return 0;
