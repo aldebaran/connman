@@ -113,7 +113,11 @@ static int enable_nat(const char *interface)
 	if (err < 0)
 		return err;
 
-	/* TODO: Flush nat POSTROUTING chain */
+	/* POSTROUTING flush */
+	err = __connman_iptables_command("-t nat -F POSTROUTING");
+	if (err < 0)
+		return err;
+
 	/* Enable masquerading */
 	err = __connman_iptables_command("-t nat -A POSTROUTING "
 					"-o %s -j MASQUERADE", interface);
@@ -125,10 +129,17 @@ static int enable_nat(const char *interface)
 
 static void disable_nat(const char *interface)
 {
+	int err;
+
 	/* Disable IPv4 forwarding */
 	enable_ip_forward(FALSE);
 
-	/* TODO: Flush nat POSTROUTING chain */
+	/* POSTROUTING flush */
+	err = __connman_iptables_command("-t nat -F POSTROUTING");
+	if (err < 0)
+		return;
+
+	__connman_iptables_commit("nat");
 }
 
 void __connman_tethering_set_enabled(void)
