@@ -357,6 +357,73 @@ static int iptables_add_entry(struct connman_iptables *table,
 	return 0;
 }
 
+static int iptables_flush_chain(struct connman_iptables *table,
+						char *name)
+{
+	GList *chain_head, *chain_tail, *list, *next;
+	struct connman_iptables_entry *entry;
+	int builtin, removed = 0;
+
+	chain_head = find_chain_head(table, name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	chain_tail = find_chain_tail(table, name);
+	if (chain_tail == NULL)
+		return -EINVAL;
+
+	entry = chain_head->data;
+	builtin = entry->builtin;
+
+	if (builtin >= 0)
+		list = chain_head;
+	else
+		list = chain_head->next;
+
+	if (list == chain_tail->prev)
+		return 0;
+
+	while (list != chain_tail->prev) {
+		entry = list->data;
+		next = g_list_next(list);
+
+		table->num_entries--;
+		table->size -= entry->entry->next_offset;
+		removed += entry->entry->next_offset;
+
+		g_free(entry->entry);
+
+		table->entries = g_list_remove(table->entries, list->data);
+
+		list = next;
+	}
+
+	if (builtin >= 0) {
+		struct connman_iptables_entry *e;
+
+		entry = list->data;
+
+		entry->builtin = builtin;
+
+		table->underflow[builtin] -= removed;
+
+		for (list = chain_tail; list; list = list->next) {
+			e = list->data;
+
+			builtin = e->builtin;
+			if (builtin < 0)
+				continue;
+
+			table->hook_entry[builtin] -= removed;
+			table->underflow[builtin] -= removed;
+		}
+	}
+
+	update_offsets(table);
+
+	return 0;
+}
+
 static int iptables_add_chain(struct connman_iptables *table,
 					char *name)
 {
@@ -595,7 +662,7 @@ iptables_blob(struct connman_iptables *table)
 	memset(r, 0, sizeof(*r) + table->size);
 
 	r->counters = g_try_malloc0(sizeof(struct xt_counters)
-				* table->num_entries);
+				* table->old_entries);
 	if (r->counters == NULL) {
 		g_free(r);
 		return NULL;
@@ -909,6 +976,7 @@ err:
 
 static struct option iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
+	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
 	{.name = "destination",   .has_arg = 1, .val = 'd'},
@@ -934,6 +1002,7 @@ static int iptables_command(int argc, char *argv[])
 	struct xtables_target *xt_t;
 	struct ipt_ip ip;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
+	char *flush_chain;
 	int c, ret, in_len, out_len;
 	size_t size;
 	gboolean dump, invert;
@@ -945,6 +1014,7 @@ static int iptables_command(int argc, char *argv[])
 	dump = FALSE;
 	invert = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
+	flush_chain = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_m = NULL;
@@ -954,10 +1024,14 @@ static int iptables_command(int argc, char *argv[])
 	optind = 0;
 
 	while ((c = getopt_long(argc, argv,
-	   "-A:L::N:d:j:i:m:o:s:t:", iptables_globals.opts, NULL)) != -1) {
+	   "-A:F:L::N:d:j:i:m:o:s:t:", iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
+			break;
+
+		case 'F':
+			flush_chain = optarg;
 			break;
 
 		case 'L':
@@ -1121,6 +1195,14 @@ static int iptables_command(int argc, char *argv[])
 		goto out;
 	}
 
+	if (flush_chain) {
+		DBG("Flush chain %s", flush_chain);
+
+		iptables_flush_chain(table, flush_chain);
+
+		goto out;
+	}
+
 	if (chain && new_chain) {
 		ret = -EINVAL;
 		goto out;
@@ -1177,8 +1259,9 @@ int __connman_iptables_command(const char *format, ...)
 	arguments = g_strsplit_set(command, " ", -1);
 
 	for (argc = 0; arguments[argc]; argc++);
+	++argc;
 
-	DBG("command %s argc %d", command, ++argc);
+	DBG("command %s argc %d", command, argc);
 
 	argv = g_try_malloc0(argc * sizeof(char *));
 	if (argv == NULL) {
