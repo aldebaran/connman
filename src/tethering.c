@@ -32,6 +32,9 @@
 #include "connman.h"
 
 #define BRIDGE_NAME "tether"
+#define BRIDGE_IP "192.168.218.1"
+#define BRIDGE_BCAST "192.168.218.255"
+#define BRIDGE_SUBNET "255.255.255.0"
 
 static connman_bool_t tethering_status = FALSE;
 static const char *default_interface = NULL;
@@ -80,6 +83,34 @@ static int remove_bridge(const char *name)
 		return -EOPNOTSUPP;
 
 	return 0;
+}
+
+static int enable_bridge(const char *name)
+{
+	int err, index;
+
+	index = connman_inet_ifindex(name);
+	if (index < 0)
+		return index;
+
+	err = __connman_inet_modify_address(RTM_NEWADDR,
+			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
+					    BRIDGE_IP, NULL, 24, BRIDGE_BCAST);
+	if (err < 0)
+		return err;
+
+	return connman_inet_ifup(index);
+}
+
+static int disable_bridge(const char *name)
+{
+	int index;
+
+	index = connman_inet_ifindex(name);
+	if (index < 0)
+		return index;
+
+	return connman_inet_ifdown(index);
 }
 
 static int enable_ip_forward(connman_bool_t enable)
@@ -144,15 +175,22 @@ static void disable_nat(const char *interface)
 
 void __connman_tethering_set_enabled(void)
 {
+	int err;
+
 	if (tethering_status == FALSE)
 		return;
 
 	DBG("enabled %d", tethering_enabled + 1);
 
 	if (g_atomic_int_exchange_and_add(&tethering_enabled, 1) == 0) {
+		err = enable_bridge(BRIDGE_NAME);
+		if (err < 0)
+			return;
+
 		/* TODO Start DHCP server and DNS proxy on the bridge */
 
 		enable_nat(default_interface);
+
 		DBG("tethering started");
 	}
 }
@@ -168,6 +206,9 @@ void __connman_tethering_set_disabled(void)
 		/* TODO Stop DHCP server and DNS proxy on the bridge */
 
 		disable_nat(default_interface);
+
+		disable_bridge(BRIDGE_NAME);
+
 		DBG("tethering stopped");
 	}
 }
@@ -222,6 +263,8 @@ void __connman_tethering_cleanup(void)
 {
 	DBG("");
 
-	if (tethering_status == TRUE)
+	if (tethering_status == TRUE) {
+		disable_bridge(BRIDGE_NAME);
 		remove_bridge(BRIDGE_NAME);
+	}
 }
