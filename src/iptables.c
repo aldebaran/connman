@@ -1302,7 +1302,12 @@ int __connman_iptables_commit(const char *table_name)
 
 	g_free(repl);
 
-	return err;
+	if (err < 0)
+	    return err;
+
+	g_hash_table_remove(table_hash, table_name);
+
+	return 0;
 }
 
 static void remove_table(gpointer user_data)
