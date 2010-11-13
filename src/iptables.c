@@ -1288,6 +1288,7 @@ int __connman_iptables_commit(const char *table_name)
 {
 	struct connman_iptables *table;
 	struct ipt_replace *repl;
+	int err;
 
 	DBG("%s", table_name);
 
@@ -1297,7 +1298,11 @@ int __connman_iptables_commit(const char *table_name)
 
 	repl = iptables_blob(table);
 
-	return iptables_replace(table, repl);
+	err = iptables_replace(table, repl);
+
+	g_free(repl);
+
+	return err;
 }
 
 static void remove_table(gpointer user_data)
