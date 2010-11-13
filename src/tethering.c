@@ -197,7 +197,7 @@ void __connman_tethering_set_enabled(void)
 
 void __connman_tethering_set_disabled(void)
 {
-	if (tethering_status == FALSE)
+	if (tethering_status == TRUE)
 		return;
 
 	DBG("enabled %d", tethering_enabled - 1);
