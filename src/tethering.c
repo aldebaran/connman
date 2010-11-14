@@ -42,7 +42,7 @@
 #define BRIDGE_DNS "8.8.8.8"
 
 static connman_bool_t tethering_status = FALSE;
-static const char *default_interface = NULL;
+static char *default_interface = NULL;
 static volatile gint tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
 
@@ -327,13 +327,15 @@ void __connman_tethering_update_interface(const char *interface)
 {
 	DBG("interface %s", interface);
 
-	default_interface = interface;
+	g_free(default_interface);
 
 	if (interface == NULL) {
 		disable_nat(interface);
 
 		return;
 	}
+
+	default_interface = g_strdup(interface);
 
 	if (tethering_status == FALSE ||
 			!g_atomic_int_get(&tethering_enabled))
