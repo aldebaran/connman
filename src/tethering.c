@@ -31,18 +31,102 @@
 
 #include "connman.h"
 
+#include <gdhcp/gdhcp.h>
+
 #define BRIDGE_NAME "tether"
 #define BRIDGE_IP "192.168.218.1"
 #define BRIDGE_BCAST "192.168.218.255"
 #define BRIDGE_SUBNET "255.255.255.0"
+#define BRIDGE_IP_START "192.168.218.100"
+#define BRIDGE_IP_END "192.168.218.200"
+#define BRIDGE_DNS "8.8.8.8"
 
 static connman_bool_t tethering_status = FALSE;
 static const char *default_interface = NULL;
 static volatile gint tethering_enabled;
+static GDHCPServer *tethering_dhcp_server = NULL;
 
 connman_bool_t __connman_tethering_get_status(void)
 {
 	return tethering_status;
+}
+
+
+static void dhcp_server_debug(const char *str, void *data)
+{
+	connman_info("%s: %s\n", (const char *) data, str);
+}
+
+static void dhcp_server_error(GDHCPServerError error)
+{
+	switch (error) {
+	case G_DHCP_SERVER_ERROR_NONE:
+		connman_error("OK");
+		break;
+	case G_DHCP_SERVER_ERROR_INTERFACE_UNAVAILABLE:
+		connman_error("Interface unavailable");
+		break;
+	case G_DHCP_SERVER_ERROR_INTERFACE_IN_USE:
+		connman_error("Interface in use");
+		break;
+	case G_DHCP_SERVER_ERROR_INTERFACE_DOWN:
+		connman_error("Interface down");
+		break;
+	case G_DHCP_SERVER_ERROR_NOMEM:
+		connman_error("No memory");
+		break;
+	case G_DHCP_SERVER_ERROR_INVALID_INDEX:
+		connman_error("Invalid index");
+		break;
+	case G_DHCP_SERVER_ERROR_INVALID_OPTION:
+		connman_error("Invalid option");
+		break;
+	case G_DHCP_SERVER_ERROR_IP_ADDRESS_INVALID:
+		connman_error("Invalid address");
+		break;
+	}
+}
+
+static GDHCPServer *dhcp_server_start(const char *bridge,
+				const char *router, const char* subnet,
+				const char *start_ip, const char *end_ip,
+				unsigned int lease_time, const char *dns)
+{
+	GDHCPServerError error;
+	GDHCPServer *dhcp_server;
+	int index;
+
+	DBG("");
+
+	index = connman_inet_ifindex(bridge);
+	if (index < 0)
+		return NULL;
+
+	dhcp_server = g_dhcp_server_new(G_DHCP_IPV4, index, &error);
+	if (dhcp_server == NULL) {
+		dhcp_server_error(error);
+		return NULL;
+	}
+
+	g_dhcp_server_set_debug(dhcp_server, dhcp_server_debug, "DHCP server");
+
+	g_dhcp_server_set_lease_time(dhcp_server, lease_time);
+	g_dhcp_server_set_option(dhcp_server, G_DHCP_SUBNET, subnet);
+	g_dhcp_server_set_option(dhcp_server, G_DHCP_ROUTER, router);
+	g_dhcp_server_set_option(dhcp_server, G_DHCP_DNS_SERVER, dns);
+	g_dhcp_server_set_ip_range(dhcp_server, start_ip, end_ip);
+
+	g_dhcp_server_start(dhcp_server);
+
+	return dhcp_server;
+}
+
+static void dhcp_server_stop(GDHCPServer *server)
+{
+	if (server == NULL)
+		return;
+
+	g_dhcp_server_unref(server);
 }
 
 static int create_bridge(const char *name)
@@ -187,7 +271,15 @@ void __connman_tethering_set_enabled(void)
 		if (err < 0)
 			return;
 
-		/* TODO Start DHCP server and DNS proxy on the bridge */
+		tethering_dhcp_server =
+			dhcp_server_start(BRIDGE_NAME,
+						BRIDGE_IP, BRIDGE_SUBNET,
+						BRIDGE_IP_START, BRIDGE_IP_END,
+							24 * 3600, BRIDGE_DNS);
+		if (tethering_dhcp_server == NULL) {
+			disable_bridge(BRIDGE_NAME);
+			return;
+		}
 
 		enable_nat(default_interface);
 
@@ -203,9 +295,9 @@ void __connman_tethering_set_disabled(void)
 	DBG("enabled %d", tethering_enabled - 1);
 
 	if (g_atomic_int_dec_and_test(&tethering_enabled) == 0) {
-		/* TODO Stop DHCP server and DNS proxy on the bridge */
-
 		disable_nat(default_interface);
+
+		dhcp_server_stop(tethering_dhcp_server);
 
 		disable_bridge(BRIDGE_NAME);
 
@@ -264,6 +356,8 @@ void __connman_tethering_cleanup(void)
 	DBG("");
 
 	if (tethering_status == TRUE) {
+		if (tethering_dhcp_server)
+			dhcp_server_stop(tethering_dhcp_server);
 		disable_bridge(BRIDGE_NAME);
 		remove_bridge(BRIDGE_NAME);
 	}
