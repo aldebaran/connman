@@ -82,7 +82,7 @@ static const char *hooknames[] = {
 
 #define ALIGN(s) (((s) + ((MIN_ALIGN)-1)) & ~((MIN_ALIGN)-1))
 
-struct ipt_error_target {
+struct error_target {
 	struct xt_entry_target t;
 	char error[IPT_TABLE_MAXNAMELEN];
 };
@@ -430,7 +430,7 @@ static int iptables_add_chain(struct connman_iptables *table,
 	GList *last;
 	struct ipt_entry *entry_head;
 	struct ipt_entry *entry_return;
-	struct ipt_error_target *error;
+	struct error_target *error;
 	struct ipt_standard_target *standard;
 	u_int16_t entry_head_size, entry_return_size;
 
@@ -447,7 +447,7 @@ static int iptables_add_chain(struct connman_iptables *table,
 
 	/* head entry */
 	entry_head_size = sizeof(struct ipt_entry) +
-				sizeof(struct ipt_error_target);
+				sizeof(struct error_target);
 	entry_head = g_try_malloc0(entry_head_size);
 	if (entry_head == NULL)
 		goto err;
@@ -457,9 +457,9 @@ static int iptables_add_chain(struct connman_iptables *table,
 	entry_head->target_offset = sizeof(struct ipt_entry);
 	entry_head->next_offset = entry_head_size;
 
-	error = (struct ipt_error_target *) entry_head->elems;
+	error = (struct error_target *) entry_head->elems;
 	strcpy(error->t.u.user.name, IPT_ERROR_TARGET);
-	error->t.u.user.target_size = ALIGN(sizeof(struct ipt_error_target));
+	error->t.u.user.target_size = ALIGN(sizeof(struct error_target));
 	strcpy(error->error, name);
 
 	if (iptables_add_entry(table, entry_head, last, -1) < 0)
