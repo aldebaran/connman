@@ -77,6 +77,8 @@ static int network_disconnect(struct connman_network *network)
 {
 	DBG("network %p", network);
 
+	connman_network_set_associating(network, FALSE);
+
 	return supplicant_disconnect(network);
 }
 
