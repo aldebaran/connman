@@ -331,6 +331,7 @@ void __connman_tethering_update_interface(const char *interface)
 
 	if (interface == NULL) {
 		disable_nat(interface);
+		default_interface = NULL;
 
 		return;
 	}
