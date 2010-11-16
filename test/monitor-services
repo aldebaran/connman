@@ -25,7 +25,7 @@ def extract_list(list):
 
 def property_changed(name, value, path):
 	service = path[path.rfind("/") + 1:]
-	if name in ["Profiles", "Services", "Providers", "Technologies"]
+	if name in ["Profiles", "Services", "Providers", "Technologies"]:
 		val = "["
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
