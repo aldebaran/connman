@@ -75,6 +75,12 @@ struct domain_hdr {
 #error "Unknown byte order"
 #endif
 
+struct partial_reply {
+	uint16_t len;
+	uint16_t received;
+	unsigned char buf[];
+};
+
 struct server_data {
 	char *interface;
 	char *domain;
@@ -85,6 +91,7 @@ struct server_data {
 	guint timeout;
 	gboolean enabled;
 	gboolean connected;
+	struct partial_reply *incoming_reply;
 };
 
 struct request_data {
@@ -441,6 +448,7 @@ static void destroy_server(struct server_data *server)
 	if (server->protocol == IPPROTO_UDP)
 		connman_info("Removing DNS server %s", server->server);
 
+	g_free(server->incoming_reply);
 	g_free(server->server);
 	g_free(server->domain);
 	g_free(server->interface);
@@ -484,8 +492,15 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		GSList *list;
-
+	hangup:
 		DBG("TCP server channel closed");
+
+		/*
+		 * Discard any partial response which is buffered; better
+		 * to get a proper response from a working server.
+		 */
+		g_free(server->incoming_reply);
+		server->incoming_reply = NULL;
 
 		for (list = request_list; list; list = list->next) {
 			struct request_data *req = list->data;
@@ -546,49 +561,62 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 		}
 
 	} else if (condition & G_IO_IN) {
-		int len, bytes_recv, total_bytes_recv;
-		unsigned char reply_len_buf[2];
-		uint16_t reply_len;
-		unsigned char *reply;
+		struct partial_reply *reply = server->incoming_reply;
+		int bytes_recv;
 
-		len = recv(sk, reply_len_buf, 2, 0);
-		if (len < 2)
-			return TRUE;
+		if (!reply) {
+			unsigned char reply_len_buf[2];
+			uint16_t reply_len;
 
-		reply_len = reply_len_buf[1] | reply_len_buf[0] << 8;
-
-		DBG("TCP reply %d bytes", reply_len);
-
-		reply = g_try_malloc0(reply_len + 2);
-		if (reply == NULL)
-			return TRUE;
-
-		reply[0] = reply_len_buf[0];
-		reply[1] = reply_len_buf[1];
-
-		total_bytes_recv = bytes_recv = 0;
-		while (total_bytes_recv < reply_len) {
-			bytes_recv = recv(sk, reply + 2 + total_bytes_recv,
-					reply_len - total_bytes_recv, 0);
-			if (bytes_recv < 0) {
+			bytes_recv = recv(sk, reply_len_buf, 2, MSG_PEEK);
+			if (!bytes_recv) {
+				goto hangup;
+			} else if (bytes_recv < 0) {
 				if (errno == EAGAIN || errno == EWOULDBLOCK)
-					continue;
+					return TRUE;
 
 				connman_error("DNS proxy error %s",
-							strerror(errno));
+						strerror(errno));
+				goto hangup;
+			} else if (bytes_recv < 2)
+				return TRUE;
 
-				break;
-			}
+			reply_len = reply_len_buf[1] | reply_len_buf[0] << 8;
+			reply_len += 2;
 
-			total_bytes_recv += bytes_recv;
+			DBG("TCP reply %d bytes", reply_len);
+
+			reply = g_try_malloc(sizeof(*reply) + reply_len + 2);
+			if (!reply)
+				return TRUE;
+
+			reply->len = reply_len;
+			reply->received = 0;
+
+			server->incoming_reply = reply;
 		}
 
-		if (total_bytes_recv > reply_len)
-			total_bytes_recv = reply_len;
+		while (reply->received < reply->len) {
+			bytes_recv = recv(sk, reply->buf + reply->received,
+					reply->len - reply->received, 0);
+			if (!bytes_recv) {
+				connman_error("DNS proxy TCP disconnect");
+				break;
+			} else if (bytes_recv < 0) {
+				if (errno == EAGAIN || errno == EWOULDBLOCK)
+					return TRUE;
 
-		forward_dns_reply(reply, total_bytes_recv + 2, IPPROTO_TCP);
+				connman_error("DNS proxy error %s",
+						strerror(errno));
+				break;
+			}
+			reply->received += bytes_recv;
+		}
+
+		forward_dns_reply(reply->buf, reply->received, IPPROTO_TCP);
 
 		g_free(reply);
+		server->incoming_reply = NULL;
 
 		destroy_server(server);
 
