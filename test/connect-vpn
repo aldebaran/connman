@@ -6,7 +6,7 @@ import dbus
 if (len(sys.argv) < 4):
 	print "Usage: %s <type> ... " % (sys.argv[0])
 	print "  type: openconnect"
-	print "      <name> <host> <domain> <cookie> [cafile]"
+	print "      <name> <host> <domain> <cookie> [servercert]"
 	print "  type: openvpn"
 	print "      <name> <host> <domain> <cafile> <certfile> <keyfile>"
 	sys.exit(1)

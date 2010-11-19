@@ -124,7 +124,7 @@ static int oc_connect(struct connman_provider *provider,
 						"OpenConnect.ServerCert");
 	if (certsha1)
 		connman_task_add_argument(task, "--servercert",
-					  (char *)certsha1);
+							(char *)certsha1);
 
 	cafile = connman_provider_get_string(provider, "OpenConnect.CACert");
 	mtu = connman_provider_get_string(provider, "VPN.MTU");
