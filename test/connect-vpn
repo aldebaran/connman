@@ -18,7 +18,7 @@ if (len(sys.argv) > 4):
 	path = manager.ConnectProvider(({ "Type": "openconnect", "Name": sys.argv[1],
 				"Host": sys.argv[2],
 				"OpenConnect.Cookie": sys.argv[3],
-				"OpenConnect.CACert": sys.argv[4],
+				"OpenConnect.ServerCert": sys.argv[4],
 				"VPN.Domain": "intel.com"}))
 else:
 	path = manager.ConnectProvider(({ "Type": "openconnect", "Name": sys.argv[1],

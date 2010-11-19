@@ -233,7 +233,7 @@ static int oc_connect(struct connman_provider *provider)
 	struct oc_data *data = connman_provider_get_data(provider);
 	struct ifreq ifr;
 	int oc_fd, fd, i, index;
-	const char *vpnhost, *vpncookie, *cafile, *mtu;
+	const char *vpnhost, *vpncookie, *cafile, *certsha1, *mtu;
 	int ret = 0;
 
 	if (data != NULL)
@@ -265,6 +265,8 @@ static int oc_connect(struct connman_provider *provider)
 		goto exist_err;
 	}
 
+	certsha1 = connman_provider_get_string(provider,
+						"OpenConnect.ServerCert");
 	cafile = connman_provider_get_string(provider, "OpenConnect.CACert");
 	mtu = connman_provider_get_string(provider, "VPN.MTU");
 
@@ -337,6 +339,9 @@ static int oc_connect(struct connman_provider *provider)
 		goto exist_err;
 	}
 
+	if (certsha1)
+		connman_task_add_argument(data->task, "--servercert",
+							(char *)certsha1);
 	if (cafile)
 		connman_task_add_argument(data->task, "--cafile",
 							(char *)cafile);
