@@ -1,3 +1,7 @@
+ver 0.62.5
+	DNS proxy fix (Fixes BMC#9960)
+	Openconnect plugin security fix
+
 ver 0.62.4
 	DNS proxy fix (Fixes BMC#9834)
 	Technology disabling fix (Fixes BMC#8074)
