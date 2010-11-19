@@ -824,7 +824,7 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	}
 
 	supplicant_dbus_property_get_all(path,
-				SUPPLICANT_INTERFACE ".Interface.Network",
+				SUPPLICANT_INTERFACE ".Network",
 						network_property, network);
 }
 
@@ -1177,7 +1177,7 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	}
 
 	supplicant_dbus_property_get_all(path,
-					SUPPLICANT_INTERFACE ".Interface.BSS",
+					SUPPLICANT_INTERFACE ".BSS",
 							bss_property, bss);
 }
 
@@ -1664,7 +1664,7 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",      signal_network_added     },
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed   },
 
-	{ SUPPLICANT_INTERFACE ".Interface.BSS", "PropertiesChanged", signal_bss_changed   },
+	{ SUPPLICANT_INTERFACE ".BSS", "PropertiesChanged", signal_bss_changed   },
 
 	{ }
 };
@@ -2438,11 +2438,9 @@ static const char *g_supplicant_rule2 = "type=signal,"
 static const char *g_supplicant_rule3 = "type=signal,"
 			"interface=" SUPPLICANT_INTERFACE ".Interface.WPS";
 static const char *g_supplicant_rule4 = "type=signal,"
-			"interface=" SUPPLICANT_INTERFACE ".Interface.BSS";
+			"interface=" SUPPLICANT_INTERFACE ".BSS";
 static const char *g_supplicant_rule5 = "type=signal,"
-			"interface=" SUPPLICANT_INTERFACE ".Interface.Network";
-static const char *g_supplicant_rule6 = "type=signal,"
-			"interface=" SUPPLICANT_INTERFACE ".Interface.Blob";
+			"interface=" SUPPLICANT_INTERFACE ".Network";
 
 static void invoke_introspect_method(void)
 {
@@ -2491,7 +2489,6 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 	dbus_bus_add_match(connection, g_supplicant_rule3, NULL);
 	dbus_bus_add_match(connection, g_supplicant_rule4, NULL);
 	dbus_bus_add_match(connection, g_supplicant_rule5, NULL);
-	dbus_bus_add_match(connection, g_supplicant_rule6, NULL);
 	dbus_connection_flush(connection);
 
 	if (dbus_bus_name_has_owner(connection,
@@ -2533,7 +2530,6 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 	SUPPLICANT_DBG("");
 
 	if (connection != NULL) {
-		dbus_bus_remove_match(connection, g_supplicant_rule6, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule5, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule4, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule3, NULL);
