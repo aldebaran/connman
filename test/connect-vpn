@@ -19,13 +19,13 @@ manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
 print "Attempting to connect service %s" % (sys.argv[3])
 
 if sys.argv[1] == "openconnect":
-	if (len(sys.argv) > 5):
+	if (len(sys.argv) > 6):
 		path = manager.ConnectProvider(({ "Type": "openconnect",
 					"Name": sys.argv[2],
 					"Host": sys.argv[3],
 					"VPN.Domain": sys.argv[4],
 					"OpenConnect.Cookie": sys.argv[5],
-					"OpenConnect.CACert": sys.argv[6]}))
+					"OpenConnect.ServerCert": sys.argv[6]}))
 	else:
 		path = manager.ConnectProvider(({ "Type": "openconnect",
 					"Name": sys.argv[2],

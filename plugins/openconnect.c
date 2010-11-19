@@ -105,7 +105,7 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 static int oc_connect(struct connman_provider *provider,
 			struct connman_task *task, const char *if_name)
 {
-	const char *vpnhost, *vpncookie, *cafile, *mtu;
+	const char *vpnhost, *vpncookie, *cafile, *certsha1, *mtu;
 	int fd, err;
 
 	vpnhost = connman_provider_get_string(provider, "Host");
@@ -119,6 +119,12 @@ static int oc_connect(struct connman_provider *provider,
 		connman_error("OpenConnect.Cookie not set; cannot enable VPN");
 		return -EINVAL;
 	}
+
+	certsha1 = connman_provider_get_string(provider,
+						"OpenConnect.ServerCert");
+	if (certsha1)
+		connman_task_add_argument(task, "--servercert",
+					  (char *)certsha1);
 
 	cafile = connman_provider_get_string(provider, "OpenConnect.CACert");
 	mtu = connman_provider_get_string(provider, "VPN.MTU");
