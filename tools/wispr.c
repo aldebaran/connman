@@ -148,7 +148,7 @@ struct wispr_session {
 	char *formdata;
 };
 
-static void execute_login(struct wispr_session *wispr);
+static gboolean execute_login(gpointer user_data);
 
 static struct {
 	const char *str;
@@ -525,7 +525,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 			return FALSE;
 		}
 
-		execute_login(wispr);
+		g_idle_add(execute_login, wispr);
 		return FALSE;
 	} else if (status == 200 && wispr->msg.message_type == 120) {
 		int code = wispr->msg.response_code;
@@ -539,13 +539,17 @@ done:
 	return FALSE;
 }
 
-static void execute_login(struct wispr_session *wispr)
+static gboolean execute_login(gpointer user_data)
 {
+	struct wispr_session *wispr = user_data;
+
 	wispr->request = g_web_request_post(wispr->web, wispr->msg.login_url,
 					"application/x-www-form-urlencoded",
 					wispr_input, wispr_result, wispr);
 
 	wispr_msg_init(&wispr->msg);
+
+	return FALSE;
 }
 
 static gboolean option_debug = FALSE;
