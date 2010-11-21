@@ -131,7 +131,7 @@ int main(int argc, char *argv[])
 	}
 
 	if (option_user_agent != NULL) {
-		g_web_set_user_agent(web, option_user_agent);
+		g_web_set_user_agent(web, "%s", option_user_agent);
 		g_free(option_user_agent);
 	}
 
