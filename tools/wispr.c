@@ -223,9 +223,11 @@ static void text_handler(GMarkupParseContext *context,
 		case WISPR_ELEMENT_ACCESS_PROCEDURE:
 			g_free(msg->access_procedure);
 			msg->access_procedure = g_strdup(text);
+			break;
 		case WISPR_ELEMENT_ACCESS_LOCATION:
 			g_free(msg->access_location);
 			msg->access_location = g_strdup(text);
+			break;
 		case WISPR_ELEMENT_LOCATION_NAME:
 			g_free(msg->location_name);
 			msg->location_name = g_strdup(text);
