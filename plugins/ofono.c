@@ -363,7 +363,6 @@ static void create_service(struct connman_network *network)
 
 static int network_probe(struct connman_network *network)
 {
-	create_service(network);
 	return 0;
 }
 
@@ -540,6 +539,9 @@ static int add_network(struct connman_device *device,
 	hash_path = connman_network_get_string(network, "Path");
 	if (hash_path == NULL)
 		goto error;
+
+	create_service(network);
+
 	connman_network_ref(network);
 	g_hash_table_insert(network_hash, (char *)hash_path, network);
 
