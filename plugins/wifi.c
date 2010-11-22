@@ -163,6 +163,8 @@ static void wifi_remove(struct connman_device *device)
 	connman_device_unref(wifi->device);
 	connman_rtnl_remove_watch(wifi->watch);
 
+	g_supplicant_interface_set_data(wifi->interface, NULL);
+
 	g_free(wifi->identifier);
 	g_free(wifi);
 }
