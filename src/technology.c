@@ -689,6 +689,8 @@ int __connman_technology_update_rfkill(unsigned int index,
 int __connman_technology_remove_rfkill(unsigned int index)
 {
 	struct connman_technology *technology;
+	struct connman_rfkill *rfkill;
+	connman_bool_t blocked;
 
 	DBG("index %u", index);
 
@@ -696,11 +698,18 @@ int __connman_technology_remove_rfkill(unsigned int index)
 	if (technology == NULL)
 		return -ENXIO;
 
+	rfkill = g_hash_table_lookup(technology->rfkill_list, &index);
+	if (rfkill == NULL)
+		return -ENXIO;
+
+	blocked = (rfkill->softblock || rfkill->hardblock) ? TRUE : FALSE;
+
 	g_hash_table_remove(technology->rfkill_list, &index);
 
 	g_hash_table_remove(rfkill_table, &index);
 
-	if (g_atomic_int_dec_and_test(&technology->blocked) == TRUE) {
+	if (blocked &&
+		g_atomic_int_dec_and_test(&technology->blocked) == TRUE) {
 		technology_blocked(technology, FALSE);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
 		state_changed(technology);
