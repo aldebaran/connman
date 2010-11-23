@@ -36,31 +36,6 @@
 
 #include "connman.h"
 
-static char *index2name(int index)
-{
-	struct ifreq ifr;
-	int sk, err;
-
-	if (index < 0)
-		return NULL;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return NULL;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return NULL;
-
-	return strdup(ifr.ifr_name);
-}
-
 static int ipv4_probe(struct connman_element *element)
 {
 	struct connman_service *service;
@@ -117,7 +92,7 @@ static int ipv4_probe(struct connman_element *element)
 
 	connection->type    = CONNMAN_ELEMENT_TYPE_CONNECTION;
 	connection->index   = element->index;
-	connection->devname = index2name(element->index);
+	connection->devname = connman_inet_ifname(element->index);
 
 	ipconfig = __connman_service_get_ipconfig(service);
 	if (ipconfig != NULL)
