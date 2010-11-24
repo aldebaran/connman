@@ -129,6 +129,31 @@ static void dhcp_server_stop(GDHCPServer *server)
 	g_dhcp_server_unref(server);
 }
 
+static int set_forward_delay(const char *name, unsigned int delay)
+{
+	FILE *f;
+	char *forward_delay_path;
+
+	forward_delay_path =
+		g_strdup_printf("/sys/class/net/%s/bridge/forward_delay", name);
+
+	if (forward_delay_path == NULL)
+		return -ENOMEM;
+
+	f = fopen(forward_delay_path, "r+");
+
+	g_free(forward_delay_path);
+
+	if (f == NULL)
+		return -errno;
+
+	fprintf(f, "%d", delay);
+
+	fclose(f);
+
+	return 0;
+}
+
 static int create_bridge(const char *name)
 {
 	int sk, err;
@@ -141,12 +166,17 @@ static int create_bridge(const char *name)
 
 	err = ioctl(sk, SIOCBRADDBR, name);
 
-	close(sk);
-
 	if (err < 0)
 		return -EOPNOTSUPP;
 
-	return 0;
+	err = set_forward_delay(name, 0);
+
+	if (err < 0)
+		ioctl(sk, SIOCBRDELBR, name);
+
+	close(sk);
+
+	return err;
 }
 
 static int remove_bridge(const char *name)
