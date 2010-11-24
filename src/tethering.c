@@ -324,7 +324,7 @@ void __connman_tethering_set_disabled(void)
 
 	DBG("enabled %d", tethering_enabled - 1);
 
-	if (g_atomic_int_dec_and_test(&tethering_enabled) == 0) {
+	if (g_atomic_int_dec_and_test(&tethering_enabled) == TRUE) {
 		disable_nat(default_interface);
 
 		dhcp_server_stop(tethering_dhcp_server);
