@@ -182,10 +182,10 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/set-address test/test-profile \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
-		test/connect-vpn test/disconnect-vpn test/list-providers \
-		test/monitor-manager test/test-counter test/set-ip-method \
-		test/set-nameservers test/set-domains test/find-service \
-		test/get-services test/get-proxy-autoconfig test/set-proxy \
+		test/connect-vpn test/disconnect-vpn test/monitor-manager \
+		test/test-counter test/set-ip-method test/set-nameservers \
+		test/set-domains test/find-service test/get-services \
+		test/get-proxy-autoconfig test/set-proxy \
 		test/enable-tethering test/disable-tethering test/backtrace
 
 if TEST

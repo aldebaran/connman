@@ -33,7 +33,7 @@ properties = manager.GetProperties()
 def print_properties(key, value):
 	if key == "Profiles":
 		interface = "org.moblin.connman.Profile"
-	elif key in ["Services", "Providers"]:
+	elif key == "Services":
 		interface = "org.moblin.connman.Service"
 	elif key == "Technologies":
 		interface = "org.moblin.connman.Technology"
@@ -49,7 +49,7 @@ def print_properties(key, value):
 		properties = obj.GetProperties()
 
 		for key in properties.keys():
-			if key in ["Services", "Providers", "Technologies"]:
+			if key in ["Services", "Technologies"]:
 				continue
 
 			elif key in ["Powered", "Scanning", "Connected",
@@ -85,16 +85,10 @@ def print_properties(key, value):
 				val = str(path)
 				list = list + val[val.rfind("/") + 1:] + " "
 			print "        Services = [ %s]" % (list)
-		if "Providers" in properties.keys():
-			list = ""
-			for path in properties["Providers"]:
-				val = str(path)
-				list = list + val[val.rfind("/") + 1:] + " "
-			print "        Providers = [ %s]" % (list)
 
 
 for key in properties.keys():
-	if key in ["Profiles", "Services", "Providers", "Technologies"]:
+	if key in ["Profiles", "Services", "Technologies"]:
 		print_properties(key, properties[key])
 	elif key in ["AvailableTechnologies", "EnabledTechnologies",
 					"ConnectedTechnologies",

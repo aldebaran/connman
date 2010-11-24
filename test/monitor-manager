@@ -6,7 +6,7 @@ import dbus
 import dbus.mainloop.glib
 
 def property_changed(name, value):
-	if name in ["Profiles", "Services", "Providers", "Technologies"]:
+	if name in ["Profiles", "Services", "Technologies"]:
 		val = "["
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
