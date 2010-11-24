@@ -43,7 +43,7 @@
 #include "common.h"
 
 #define DISCOVER_TIMEOUT 3
-#define DISCOVER_RETRIES 5
+#define DISCOVER_RETRIES 10
 
 #define REQUEST_TIMEOUT 3
 #define REQUEST_RETRIES 5
