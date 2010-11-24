@@ -297,9 +297,15 @@ void __connman_tethering_set_enabled(void)
 	DBG("enabled %d", tethering_enabled + 1);
 
 	if (g_atomic_int_exchange_and_add(&tethering_enabled, 1) == 0) {
-		err = enable_bridge(BRIDGE_NAME);
+		err = create_bridge(BRIDGE_NAME);
 		if (err < 0)
 			return;
+
+		err = enable_bridge(BRIDGE_NAME);
+		if (err < 0) {
+			remove_bridge(BRIDGE_NAME);
+			return;
+		}
 
 		tethering_dhcp_server =
 			dhcp_server_start(BRIDGE_NAME,
@@ -308,6 +314,7 @@ void __connman_tethering_set_enabled(void)
 							24 * 3600, BRIDGE_DNS);
 		if (tethering_dhcp_server == NULL) {
 			disable_bridge(BRIDGE_NAME);
+			remove_bridge(BRIDGE_NAME);
 			return;
 		}
 
@@ -331,6 +338,8 @@ void __connman_tethering_set_disabled(void)
 
 		disable_bridge(BRIDGE_NAME);
 
+		remove_bridge(BRIDGE_NAME);
+
 		DBG("tethering stopped");
 	}
 }
@@ -340,13 +349,10 @@ int __connman_tethering_set_status(connman_bool_t status)
 	if (status == tethering_status)
 		return -EALREADY;
 
-	if (status == TRUE) {
-		create_bridge(BRIDGE_NAME);
+	if (status == TRUE)
 		__connman_technology_enable_tethering(BRIDGE_NAME);
-	} else {
+	else
 		__connman_technology_disable_tethering(BRIDGE_NAME);
-		remove_bridge(BRIDGE_NAME);
-	}
 
 	tethering_status = status;
 
