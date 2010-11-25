@@ -1001,6 +1001,7 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	dbus_bool_t powered = FALSE;
 	dbus_bool_t online = FALSE;
 	dbus_bool_t has_online = FALSE;
+	dbus_bool_t locked = FALSE;
 	gboolean has_sim = FALSE;
 	gboolean has_reg = FALSE;
 	gboolean has_gprs = FALSE;
@@ -1032,6 +1033,8 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 
 		if (g_str_equal(key, "Powered") == TRUE)
 			dbus_message_iter_get_basic(&value, &powered);
+		else if (g_str_equal(key, "Lockdown") == TRUE)
+			dbus_message_iter_get_basic(&value, &locked);
 		else if (g_str_equal(key, "Online") == TRUE) {
 			has_online = TRUE;
 			dbus_message_iter_get_basic(&value, &online);
@@ -1043,6 +1046,9 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 
 		dbus_message_iter_next(prop);
 	}
+
+	if (locked)
+		return;
 
 	if (!powered)
 		modem_change_powered(path, TRUE);
@@ -1173,6 +1179,14 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &online);
 
 		update_modem_online(modem, online);
+	} else if (g_str_equal(key, "Lockdown") == TRUE) {
+		dbus_bool_t locked;
+
+		dbus_message_iter_get_basic(&value, &locked);
+
+		if (!locked)
+			modem_change_powered(path, TRUE);
+
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		gboolean has_sim = modem_has_sim(&value);
 		gboolean has_reg = modem_has_reg(&value);
