@@ -192,7 +192,7 @@ int __connman_device_enable(struct connman_device *device)
 		return -ENOLINK;
 
 	err = device->driver->enable(device);
-	if (err < 0) {
+	if (err < 0 && err != -EALREADY) {
 		if (err == -EINPROGRESS) {
 			device->powered_pending = TRUE;
 			device->offlinemode = FALSE;
@@ -235,7 +235,7 @@ int __connman_device_disable(struct connman_device *device)
 	g_hash_table_remove_all(device->networks);
 
 	err = device->driver->disable(device);
-	if (err < 0) {
+	if (err < 0 && err != -EALREADY) {
 		if (err == -EINPROGRESS)
 			device->powered_pending = FALSE;
 		return err;
@@ -618,6 +618,8 @@ const char *connman_device_get_ident(struct connman_device *device)
 int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered)
 {
+	int err;
+
 	DBG("driver %p powered %d", device, powered);
 
 	if (device->powered == powered) {
@@ -626,9 +628,12 @@ int connman_device_set_powered(struct connman_device *device,
 	}
 
 	if (powered == TRUE)
-		__connman_device_enable(device);
+		err = __connman_device_enable(device);
 	else
-		__connman_device_disable(device);
+		err = __connman_device_disable(device);
+
+	if (err < 0 && err != -EINPROGRESS)
+		return err;
 
 	device->powered = powered;
 	device->powered_pending = powered;
