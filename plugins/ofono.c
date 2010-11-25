@@ -995,10 +995,9 @@ static gboolean modem_has_gprs(DBusMessageIter *array)
 	return modem_has_interface(array, OFONO_GPRS_INTERFACE);
 }
 
-static void add_modem(const char *path, DBusMessageIter *properties)
+static void add_modem(const char *path, DBusMessageIter *prop)
 {
 	struct modem_data *modem;
-	DBusMessageIter dict;
 	dbus_bool_t powered = FALSE;
 	dbus_bool_t online = FALSE;
 	dbus_bool_t has_online = FALSE;
@@ -1021,13 +1020,11 @@ static void add_modem(const char *path, DBusMessageIter *properties)
 
 	g_hash_table_insert(modem_hash, g_strdup(path), modem);
 
-	dbus_message_iter_recurse(properties, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+	while (dbus_message_iter_get_arg_type(prop) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
 		const char *key;
 
-		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_recurse(prop, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
 		dbus_message_iter_next(&entry);
@@ -1044,7 +1041,7 @@ static void add_modem(const char *path, DBusMessageIter *properties)
 			has_gprs = modem_has_gprs(&value);
 		}
 
-		dbus_message_iter_next(&dict);
+		dbus_message_iter_next(prop);
 	}
 
 	if (!powered)
