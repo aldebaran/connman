@@ -41,6 +41,9 @@ Core
 
    Priority: Medium
    Complexity: C2
+   Owner: Patrik Flykt <patrik.flykt@nokia.com>
+
+   Implement Agent API according to doc/agent-api.txt
 
 
 - Moving DNS proxy code to ConnMan core
