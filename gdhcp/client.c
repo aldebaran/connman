@@ -844,13 +844,16 @@ static char *malloc_option_value_string(uint8_t *option, GDHCPOptionType type)
 	return ret;
 }
 
-static GList *get_option_value_list(char *value)
+static GList *get_option_value_list(char *value, GDHCPOptionType type)
 {
 	char *pos = value;
 	GList *list = NULL;
 
 	if (pos == NULL)
 		return NULL;
+
+	if (type == OPTION_STRING)
+		return g_list_append(list, g_strdup(value));
 
 	while ((pos = strchr(pos, ' ')) != NULL) {
 		*pos = '\0';
@@ -890,7 +893,7 @@ static void get_request(GDHCPClient *dhcp_client, struct dhcp_packet *packet)
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 
-		value_list = get_option_value_list(option_value);
+		value_list = get_option_value_list(option_value, type);
 
 		g_free(option_value);
 
