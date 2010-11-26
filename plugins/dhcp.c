@@ -111,15 +111,6 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	connman_dhcp_bound(dhcp);
 }
 
-static gboolean start_dhcp(gpointer user_data)
-{
-	GDHCPClient *dhcp_client = user_data;
-
-	g_dhcp_client_start(dhcp_client);
-
-	return FALSE;
-}
-
 static int dhcp_request(struct connman_dhcp *dhcp)
 {
 	GDHCPClient *dhcp_client;
@@ -164,9 +155,7 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	g_dhcp_client_ref(dhcp_client);
 
-	g_timeout_add_seconds(0, start_dhcp, dhcp_client);
-
-	return 0;
+	return g_dhcp_client_start(dhcp_client);
 }
 
 static int dhcp_release(struct connman_dhcp *dhcp)
