@@ -148,13 +148,13 @@ static void dhclient_died(struct connman_task *task, void *user_data)
 
 static void dhclient_setup(struct connman_task *task, const char *ifname)
 {
-	const char *path, *intf = "org.moblin.connman.Task";
+	const char *path, *intf = "net.connman.Task";
 
 	path = connman_task_get_path(task);
 
 	connman_task_add_argument(task, "-d", NULL);
 	connman_task_add_argument(task, "-q", NULL);
-	connman_task_add_argument(task, "-e", "BUSNAME=org.moblin.connman");
+	connman_task_add_argument(task, "-e", "BUSNAME=net.connman");
 	connman_task_add_argument(task, "-e", "BUSINTF=%s", intf);
 	connman_task_add_argument(task, "-e", "BUSPATH=%s", path);
 	connman_task_add_argument(task, "-pf", "%s/dhclient.%s.pid",

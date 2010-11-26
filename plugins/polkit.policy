@@ -8,7 +8,7 @@
   <vendor>Connection Manager</vendor>
   <icon_name>network-wireless</icon_name>
 
-  <action id="org.moblin.connman.modify">
+  <action id="net.connman.modify">
     <description>Settings configuration</description>
     <message>Policy prevents modification of settings</message>
     <defaults>
@@ -17,7 +17,7 @@
     </defaults>
   </action>
 
-  <action id="org.moblin.connman.secret">
+  <action id="net.connman.secret">
     <description>Secrets configuration</description>
     <message>Policy prevents modification of secrets</message>
     <defaults>

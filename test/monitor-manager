@@ -30,8 +30,8 @@ if __name__ == '__main__':
 	bus = dbus.SystemBus()
 
 	bus.add_signal_receiver(property_changed,
-				bus_name="org.moblin.connman",
-				dbus_interface="org.moblin.connman.Manager",
+				bus_name="net.connman",
+				dbus_interface="net.connman.Manager",
 					signal_name = "PropertyChanged")
 
 	mainloop = gobject.MainLoop()

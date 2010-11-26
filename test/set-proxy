@@ -14,8 +14,8 @@ if (len(sys.argv) < 2):
 
 bus = dbus.SystemBus()
 path = "/profile/default/" + sys.argv[1]
-service = dbus.Interface(bus.get_object('org.moblin.connman', path),
-					'org.moblin.connman.Service')
+service = dbus.Interface(bus.get_object('net.connman', path),
+					'net.connman.Service')
 
 values = { "Method" : sys.argv[2] }
 

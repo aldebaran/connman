@@ -2,7 +2,7 @@ Counter hierarchy
 =================
 
 Service		unique name
-Interface	org.moblin.connman.Counter
+Interface	net.connman.Counter
 Object path	freely definable
 
 Methods		void Release()

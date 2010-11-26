@@ -28,8 +28,8 @@
 extern "C" {
 #endif
 
-#define CONNMAN_SERVICE			"org.moblin.connman"
-#define CONNMAN_PATH			"/org/moblin/connman"
+#define CONNMAN_SERVICE			"net.connman"
+#define CONNMAN_PATH			"/net/connman"
 
 #define CONNMAN_DEBUG_INTERFACE		CONNMAN_SERVICE ".Debug"
 #define CONNMAN_ERROR_INTERFACE		CONNMAN_SERVICE ".Error"

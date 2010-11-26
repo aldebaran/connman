@@ -96,7 +96,7 @@ static void start_dhclient(DBusConnection *conn, const char *ifname)
 	const char *busname;
 
 	busname = dbus_bus_get_unique_name(conn);
-	busname = "org.moblin.connman";
+	busname = "net.connman";
 
 	argv = g_ptr_array_new();
 	add_argument(argv, DHCLIENT, NULL);
@@ -215,7 +215,7 @@ int main(int argc, char *argv[])
 
 	dbus_error_init(&err);
 
-	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, "org.moblin.connman", &err);
+	conn = g_dbus_setup_bus(DBUS_BUS_SYSTEM, "net.connman", &err);
 	if (conn == NULL) {
 		if (dbus_error_is_set(&err) == TRUE) {
 			fprintf(stderr, "%s\n", err.message);

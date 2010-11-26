@@ -1,8 +1,8 @@
 Manager hierarchy
 =================
 
-Service		org.moblin.connman
-Interface	org.moblin.connman.Manager
+Service		net.connman
+Interface	net.connman.Manager
 Object path	/
 
 Methods		dict GetProperties()

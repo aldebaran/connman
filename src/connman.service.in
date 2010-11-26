@@ -4,7 +4,7 @@ After=syslog.target
 
 [Service]
 Type=dbus
-BusName=org.moblin.connman
+BusName=net.connman
 ExecStart=@prefix@/sbin/connmand -n
 
 [Install]

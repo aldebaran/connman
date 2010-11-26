@@ -5,8 +5,8 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-					"org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("net.connman", "/"),
+					"net.connman.Manager")
 
 if len(sys.argv) < 2:
 	print "Usage: %s <command>" % (sys.argv[0])
@@ -28,8 +28,8 @@ if len(sys.argv) < 2:
 
 def print_services(services):
 	for path in services:
-		service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+		service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 		properties = service.GetProperties()
 
@@ -64,8 +64,8 @@ elif sys.argv[1] in ["apn"]:
 
 	path = "/profile/default/" + sys.argv[2]
 
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	if (len(sys.argv) > 3):
 		apn = sys.argv[3]
@@ -95,8 +95,8 @@ elif sys.argv[1] in ["passphrase", "pass"]:
 
 	path = "/profile/default/" + sys.argv[2]
 
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	if (len(sys.argv) > 3):
 		passphrase = sys.argv[3]
@@ -126,8 +126,8 @@ elif sys.argv[1] in ["autoconnect", "autoconn"]:
 
 	path = "/profile/default/" + sys.argv[2]
 
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	if (len(sys.argv) > 3):
 		flag = sys.argv[3].strip().lower()
@@ -158,8 +158,8 @@ elif sys.argv[1] in ["connect", "conn"]:
 
 	path = "/profile/default/" + sys.argv[2]
 
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	try:
 		service.Connect(timeout=60000)
@@ -173,8 +173,8 @@ elif sys.argv[1] in ["disconnect", "disc"]:
 
 	path = "/profile/default/" + sys.argv[2]
 
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	try:
 		service.Disconnect()
@@ -188,8 +188,8 @@ elif sys.argv[1] in ["remove"]:
 
 	path = "/profile/default/" + sys.argv[2]
 
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	properties = service.GetProperties()
 

@@ -30,10 +30,10 @@
 #include <connman/dbus.h>
 
 static const GDBusSecurityTable polkit_security[] = {
-	{ CONNMAN_PRIVILEGE_MODIFY, "org.moblin.connman.modify",
+	{ CONNMAN_PRIVILEGE_MODIFY, "net.connman.modify",
 				G_DBUS_SECURITY_FLAG_BUILTIN |
 				G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION },
-	{ CONNMAN_PRIVILEGE_SECRET, "org.moblin.connman.secret",
+	{ CONNMAN_PRIVILEGE_SECRET, "net.connman.secret",
 				G_DBUS_SECURITY_FLAG_BUILTIN |
 				G_DBUS_SECURITY_FLAG_ALLOW_INTERACTION },
 	{ }

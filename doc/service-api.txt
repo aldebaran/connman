@@ -1,8 +1,8 @@
 Service hierarchy
 =================
 
-Service		org.moblin.connman
-Interface	org.moblin.connman.Service
+Service		net.connman
+Interface	net.connman.Service
 Object path	[variable prefix]/{service0,service1,...}
 
 Methods		dict GetProperties()

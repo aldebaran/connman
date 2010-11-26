@@ -1,8 +1,8 @@
 Technology hierarchy
 ====================
 
-Service		org.moblin.connman
-Interface	org.moblin.connman.Technology
+Service		net.connman
+Interface	net.connman.Technology
 Object path	[variable prefix]/{technology0,technology1,...}
 
 Methods		dict GetProperties()
