@@ -18,7 +18,6 @@ Various plugins can be enabled for networking support:
 	- Bluetooth plugin
 
 Also plugins with additional features are available:
-	- DHCP plugin (dhclient)
 	- Resolver plugin (DNS proxy)
 	- Loopback setup
 	- PolicyKit support
@@ -59,17 +58,6 @@ For a working system, certain configuration options need to be enabled:
 	--enable-bluetooth
 
 		Enable support for Bluetooth devices (requires BlueZ)
-
-	--enable-dhclient
-
-		Enable DHCP client support for ISC dhclient based systems
-
-		The location of the dhclient binary is auto-detected, but it
-		can be overwritten via --with-dhclient=<path-to-binary>.
-
-		At least one DHCP client option should be selected. It is
-		possible to select both and then uDHCP will be tried first
-		before falling back to dhclient.
 
 	--enable-dnsproxy
 

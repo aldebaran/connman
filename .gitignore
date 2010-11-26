@@ -34,7 +34,6 @@ src/connman.service
 src/*-connman.rules
 plugins/connman.policy
 scripts/connman
-scripts/dhclient-script
 scripts/openconnect-script
 client/cm
 tools/wispr
@@ -47,7 +46,6 @@ tools/wpad-test
 tools/resolv-test
 tools/polkit-test
 tools/iptables-test
-tools/dhclient-test
 tools/supplicant-test
 tools/dbus-test
 doc/*.bak

@@ -95,23 +95,6 @@ AC_ARG_ENABLE(ofono,
 AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
 AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
 
-AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
-	[specify location of dhclient binary]), [path_dhclient=${withval}])
-
-AC_ARG_ENABLE(dhclient,
-	AC_HELP_STRING([--enable-dhclient], [enable dhclient support]),
-			[enable_dhclient=${enableval}], [enable_dhclient="no"])
-if (test "${enable_dhclient}" != "no"); then
-	if (test -z "${path_dhclient}"); then
-		AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
-	else
-		DHCLIENT="${path_dhclient}"
-		AC_SUBST(DHCLIENT)
-	fi
-fi
-AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
-AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
-
 AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
 

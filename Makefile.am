@@ -165,16 +165,6 @@ tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
 tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
-
-if DHCLIENT
-noinst_PROGRAMS += tools/dhclient-test
-
-tools_dhclient_test_SOURCES = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
-							tools/dhclient-test.c
-tools_dhclient_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
-
-tools_dhclient_test_CFLAGS = $(AM_CFLAGS) -DDHCLIENT=\"@DHCLIENT@\"
-endif
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \
@@ -214,7 +204,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-wifi \
 				--enable-bluetooth \
 				--enable-ofono \
-				--enable-dhclient \
 				--enable-dnsproxy \
 				--enable-pacrunner \
 				--enable-google \

@@ -95,21 +95,6 @@ plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if DHCLIENT
-if DHCLIENT_BUILTIN
-builtin_modules += dhclient
-builtin_sources += plugins/dhclient.c
-builtin_cflags += -DDHCLIENT=\"@DHCLIENT@\"
-else
-plugin_LTLIBRARIES += plugins/dhclient.la
-plugin_objects += $(plugins_dhclient_la_OBJECTS)
-plugins_dhclient_la_CFLAGS = $(plugin_cflags) -DDHCLIENT=\"@DHCLIENT@\" \
-					-DSTATEDIR=\""$(statedir)"\" \
-					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_dhclient_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
 builtin_modules += openconnect
@@ -265,13 +250,6 @@ script_PROGRAMS += scripts/openvpn-script
 scripts_openvpn_script_LDADD = @DBUS_LIBS@
 endif
 
-if DHCLIENT
-script_DATA += scripts/dhclient.conf
-script_PROGRAMS += scripts/dhclient-script
-
-scripts_dhclient_script_LDADD = @DBUS_LIBS@
-endif
-
 if NTPD
 if NTPD_BUILTIN
 builtin_modules += ntpd
@@ -285,7 +263,7 @@ plugins_ntpd_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-EXTRA_DIST += plugins/polkit.policy scripts/dhclient.conf
+EXTRA_DIST += plugins/polkit.policy
 
 plugins/connman.policy: plugins/polkit.policy
 if POLKIT
