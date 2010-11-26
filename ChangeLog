@@ -1,3 +1,18 @@
+ver 0.64:
+	Update service name to net.connman domain.
+	Fix issue with disabling a technology twice.
+	Fix issue with using wrong string for Proxy.Method.
+	Fix issue with TCP connection lookup and DNS proxy.
+	Fix issue with TCP receive busy waits and DNS proxy.
+	Fix various issues with WPA Supplicant interaction.
+	Add support for chunk encoding to HTTP client.
+	Add support for internal HTTP client for portal detection.
+	Add support for internal DHCP server setup.
+	Add support for internal NAT and IP forwarding setup.
+	Add support for Bluetooth Tethering functionality.
+	Remove deprecated device and network D-Bus interfaces.
+	Remove support for dhclient plugin.
+
 ver 0.63:
 	Change to use nl80211/cfg80211 WiFi management by default.
 	Fix various issues with new WPA Supplicant interface.
