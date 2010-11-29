@@ -435,6 +435,7 @@ static int dhcp_l2_socket(int ifindex)
 		setsockopt(fd, SOL_SOCKET, SO_ATTACH_FILTER, &filter_prog,
 							sizeof(filter_prog));
 
+	memset(&sock, 0, sizeof(sock));
 	sock.sll_family = AF_PACKET;
 	sock.sll_protocol = htons(ETH_P_IP);
 	sock.sll_ifindex = ifindex;
