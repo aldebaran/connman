@@ -632,7 +632,7 @@ int connman_device_set_powered(struct connman_device *device,
 	else
 		err = __connman_device_disable(device);
 
-	if (err < 0 && err != -EINPROGRESS)
+	if (err < 0 && err != -EINPROGRESS && err != -EALREADY)
 		return err;
 
 	device->powered = powered;
