@@ -44,6 +44,7 @@
 #include <connman/inet.h>
 #include <connman/device.h>
 #include <connman/rtnl.h>
+#include <connman/technology.h>
 #include <connman/log.h>
 #include <connman/option.h>
 
@@ -632,6 +633,28 @@ static struct connman_network_driver network_driver = {
 	.disconnect	= network_disconnect,
 };
 
+static int tech_probe(struct connman_technology *technology)
+{
+	return 0;
+}
+
+static void tech_remove(struct connman_technology *technology)
+{
+}
+
+static int tech_set_regdom(struct connman_technology *technology, const char *alpha2)
+{
+	return 0;
+}
+
+static struct connman_technology_driver tech_driver = {
+	.name		= "bluetooth",
+	.type		= CONNMAN_SERVICE_TYPE_BLUETOOTH,
+	.probe		= tech_probe,
+	.remove		= tech_remove,
+	.set_regdom	= tech_set_regdom,
+};
+
 static int wifi_init(void)
 {
 	int err;
@@ -646,12 +669,21 @@ static int wifi_init(void)
 		return err;
 	}
 
+	err = connman_technology_driver_register(&tech_driver);
+	if (err < 0) {
+		g_supplicant_unregister(&callbacks);
+		connman_network_driver_unregister(&network_driver);
+		return err;
+	}
+
 	return 0;
 }
 
 static void wifi_exit(void)
 {
 	DBG();
+
+	connman_technology_driver_unregister(&tech_driver);
 
 	g_supplicant_unregister(&callbacks);
 
