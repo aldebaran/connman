@@ -216,6 +216,23 @@ int __connman_technology_disable_tethering(const char *bridge)
 	return set_tethering(bridge, FALSE);
 }
 
+int __connman_technology_set_regdom(const char *alpha2)
+{
+	GSList *list;
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->set_regdom)
+			technology->driver->set_regdom(technology, alpha2);
+	}
+
+	return 0;
+}
+
 static void free_rfkill(gpointer data)
 {
 	struct connman_rfkill *rfkill = data;
