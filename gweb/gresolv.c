@@ -250,13 +250,14 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		if (ns_rr_class(rr) != ns_c_in)
 			continue;
 
-		if (ns_rr_type(rr) != ns_t_a)
+		if (ns_rr_type(rr) == ns_t_a &&
+		    ns_rr_rdlen(rr) == NS_INADDRSZ) {
+			inet_ntop(AF_INET, ns_rr_rdata(rr), result, sizeof(result));
+		} else if (ns_rr_type(rr) == ns_t_aaaa &&
+			   ns_rr_rdlen(rr) == NS_IN6ADDRSZ) {
+			inet_ntop(AF_INET6, ns_rr_rdata(rr), result, sizeof(result));
+		} else
 			continue;
-
-		if (ns_rr_rdlen(rr) != NS_INADDRSZ)
-			continue;
-
-		inet_ntop(AF_INET, ns_rr_rdata(rr), result, sizeof(result));
 
 		results[n++] = g_strdup(result);
 	}
@@ -269,6 +270,9 @@ static void parse_response(struct resolv_nameserver *nameserver,
 	if (list != NULL) {
 		struct resolv_query *query = list->data;
 
+		/* FIXME: This set of results is *only* for a single A or AAAA
+		   query; we need to merge both results together and then sort
+		   them according to RFC3484. While honouring /etc/gai.conf */
 		if (query->result_func != NULL)
 			query->result_func(status, results,
 						query->result_data);
@@ -505,6 +509,8 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 
 	query->id = resolv->next_query_id++;
 
+	/* FIXME: Send ns_t_aaaa query too, and see the FIXME in
+	   parse_response() re merging and sorting the results */
 	len = res_mkquery(ns_o_query, hostname, ns_c_in, ns_t_a,
 					NULL, 0, NULL, buf, sizeof(buf));
 
