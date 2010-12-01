@@ -36,10 +36,25 @@
 
 #include "gresolv.h"
 
+struct resolv_lookup {
+	GResolv *resolv;
+	guint id;
+
+	char **results;
+
+	struct resolv_query *ipv4_query;
+	struct resolv_query *ipv6_query;
+
+	guint ipv4_status;
+	guint ipv6_status;
+
+	GResolvResultFunc result_func;
+	gpointer result_data;
+};
+
 struct resolv_query {
 	GResolv *resolv;
 
-	guint id;
 	guint timeout;
 
 	uint16_t msgid;
@@ -62,7 +77,8 @@ struct resolv_nameserver {
 struct _GResolv {
 	gint ref_count;
 
-	guint next_query_id;
+	guint next_lookup_id;
+	GQueue *lookup_queue;
 	GQueue *query_queue;
 
 	int index;
@@ -96,6 +112,20 @@ static void destroy_query(struct resolv_query *query)
 		g_source_remove(query->timeout);
 
 	g_free(query);
+}
+
+static void destroy_lookup(struct resolv_lookup *lookup)
+{
+	if (lookup->ipv4_query) {
+		destroy_query(lookup->ipv4_query);
+		g_queue_remove(lookup->resolv->query_queue, lookup->ipv4_query);
+	}
+	if (lookup->ipv6_query) {
+		destroy_query(lookup->ipv6_query);
+		g_queue_remove(lookup->resolv->query_queue, lookup->ipv4_query);
+	}
+	g_strfreev(lookup->results);
+	g_free(lookup);
 }
 
 static gboolean query_timeout(gpointer user_data)
@@ -165,15 +195,15 @@ static int send_query(GResolv *resolv, const unsigned char *buf, int len)
 	return 0;
 }
 
-static gint compare_query_id(gconstpointer a, gconstpointer b)
+static gint compare_lookup_id(gconstpointer a, gconstpointer b)
 {
-	const struct resolv_query *query = a;
+	const struct resolv_lookup *lookup = a;
 	guint id = GPOINTER_TO_UINT(b);
 
-	if (query->id < id)
+	if (lookup->id < id)
 		return -1;
 
-	if (query->id > id)
+	if (lookup->id > id)
 		return 1;
 
 	return 0;
@@ -371,10 +401,17 @@ GResolv *g_resolv_new(int index)
 
 	resolv->ref_count = 1;
 
-	resolv->next_query_id = 1;
-	resolv->query_queue = g_queue_new();
+	resolv->next_lookup_id = 1;
 
+	resolv->query_queue = g_queue_new();
 	if (resolv->query_queue == NULL) {
+		g_free(resolv);
+		return NULL;
+	}
+
+	resolv->lookup_queue = g_queue_new();
+	if (resolv->lookup_queue == NULL) {
+		g_queue_free(resolv->query_queue);
 		g_free(resolv);
 		return NULL;
 	}
@@ -411,6 +448,7 @@ void g_resolv_unref(GResolv *resolv)
 		destroy_query(query);
 
 	g_queue_free(resolv->query_queue);
+	g_queue_free(resolv->lookup_queue);
 
 	flush_nameservers(resolv);
 
@@ -468,12 +506,113 @@ void g_resolv_flush_nameservers(GResolv *resolv)
 	flush_nameservers(resolv);
 }
 
+static int count_results(char **results)
+{
+	int i;
+
+	if (!results)
+		return 0;
+
+	for (i = 0; results[i]; i++)
+		;
+
+	return i;
+}
+
+static void add_result(struct resolv_lookup *lookup, char **results)
+{
+	int nr_new_results = count_results(results);
+	int nr_old_results = count_results(lookup->results);
+	GResolvResultStatus status;
+
+	if (nr_new_results) {
+		lookup->results = g_realloc(lookup->results, sizeof(char *) *
+					    (nr_new_results + nr_old_results + 1));
+
+		while (nr_new_results) {
+			lookup->results[nr_old_results++] = results[0];
+			results[0] = NULL;
+			results++;
+			nr_new_results--;
+		}
+		lookup->results[nr_old_results] = NULL;
+	}
+	if (lookup->ipv4_query || lookup->ipv6_query)
+		return;
+
+	/* FIXME: Sort results according to RFC3484 and /etc/gai.conf */
+
+	status = lookup->ipv4_status;
+	if (status == G_RESOLV_RESULT_STATUS_SUCCESS)
+		status = lookup->ipv6_status;
+
+	lookup->result_func(status, lookup->results, lookup->result_data);
+
+	g_queue_remove(lookup->resolv->lookup_queue, lookup);
+	destroy_lookup(lookup);
+}
+
+static void ipv4_result(GResolvResultStatus status, char **results, gpointer data)
+{
+	struct resolv_lookup *lookup = data;
+
+	lookup->ipv4_status = status;
+	lookup->ipv4_query = NULL;
+
+	add_result(lookup, results);
+}
+
+static void ipv6_result(GResolvResultStatus status, char **results, gpointer data)
+{
+	struct resolv_lookup *lookup = data;
+
+	lookup->ipv6_status = status;
+	lookup->ipv6_query = NULL;
+
+	add_result(lookup, results);
+}
+
+
+static gint add_query(struct resolv_lookup *lookup, const char *hostname, int type)
+{
+	struct resolv_query *query = g_try_new0(struct resolv_query, 1);
+	unsigned char buf[4096];
+	int len;
+
+	if (query == NULL)
+		return -ENOMEM;
+
+	len = res_mkquery(ns_o_query, hostname, ns_c_in, type,
+					NULL, 0, NULL, buf, sizeof(buf));
+
+	query->msgid = buf[0] << 8 | buf[1];
+
+	query->result_data = lookup;
+
+	if (send_query(lookup->resolv, buf, len) < 0)
+		return -EIO;
+
+	query->resolv = lookup->resolv;
+
+	g_queue_push_tail(lookup->resolv->query_queue, query);
+
+	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
+
+	if (type == ns_t_aaaa) {
+		query->result_func = ipv6_result;
+		lookup->ipv6_query = query;
+	} else {
+		query->result_func = ipv4_result;
+		lookup->ipv4_query = query;
+	}
+
+	return 0;
+}
+
 guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 				GResolvResultFunc func, gpointer user_data)
 {
-	struct resolv_query *query;
-	unsigned char buf[4096];
-	int len;
+	struct resolv_lookup *lookup;
 
 	debug(resolv, "lookup hostname %s", hostname);
 
@@ -503,47 +642,41 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 			g_resolv_add_nameserver(resolv, "127.0.0.1", 53, 0);
 	}
 
-	query = g_try_new0(struct resolv_query, 1);
-	if (query == NULL)
+	lookup = g_try_new0(struct resolv_lookup, 1);
+	if (!lookup)
 		return 0;
 
-	query->id = resolv->next_query_id++;
+	lookup->resolv = resolv;
+	lookup->result_func = func;
+	lookup->result_data = user_data;
+	lookup->id = resolv->next_lookup_id++;
 
-	/* FIXME: Send ns_t_aaaa query too, and see the FIXME in
-	   parse_response() re merging and sorting the results */
-	len = res_mkquery(ns_o_query, hostname, ns_c_in, ns_t_a,
-					NULL, 0, NULL, buf, sizeof(buf));
-
-	query->msgid = buf[0] << 8 | buf[1];
-
-	query->result_func = func;
-	query->result_data = user_data;
-
-	if (send_query(resolv, buf, len) < 0) {
-		g_free(query);
+	if (add_query(lookup, hostname, ns_t_a)) {
+		g_free(lookup);
+		return -EIO;
+	}
+	if (add_query(lookup, hostname, ns_t_aaaa)) {
+		destroy_query(lookup->ipv4_query);
+		g_queue_remove(resolv->query_queue, lookup->ipv4_query);
+		g_free(lookup);
 		return -EIO;
 	}
 
-	query->resolv = resolv;
-
-	g_queue_push_tail(resolv->query_queue, query);
-
-	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
-
-	return query->id;
+	g_queue_push_tail(resolv->lookup_queue, lookup);
+	return lookup->id;
 }
 
 gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 {
 	GList *list;
 
-	list = g_queue_find_custom(resolv->query_queue,
-				GUINT_TO_POINTER(id), compare_query_id);
+	list = g_queue_find_custom(resolv->lookup_queue,
+				GUINT_TO_POINTER(id), compare_lookup_id);
 
 	if (list == NULL)
 		return FALSE;
 
-	destroy_query(list->data);
+	destroy_lookup(list->data);
 	g_queue_remove(resolv->query_queue, list->data);
 
 	return TRUE;
