@@ -28,7 +28,9 @@
 #include <stdarg.h>
 #include <string.h>
 #include <resolv.h>
+#include <sys/types.h>
 #include <sys/socket.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
 
@@ -303,22 +305,39 @@ static gboolean received_udp_data(GIOChannel *channel, GIOCondition cond,
 
 static int connect_udp_channel(struct resolv_nameserver *nameserver)
 {
-	struct sockaddr_in sin;
-	int sk;
+	struct addrinfo hints, *rp;
+	char portnr[6];
+	int err, sk;
 
-	sk = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
-	if (sk < 0)
-		return -EIO;
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_socktype = SOCK_DGRAM;
+	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_NUMERICHOST;
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(nameserver->port);
-	sin.sin_addr.s_addr = inet_addr(nameserver->address);
+	sprintf(portnr, "%d", nameserver->port);
+	err = getaddrinfo(nameserver->address, portnr, &hints, &rp);
+	if (err)
+		return -EINVAL;
 
-	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
-		close(sk);
+	/* Do not blindly copy this code elsewhere; it doesn't loop over the
+	   results using ->ai_next as it should. That's OK in *this* case
+	   because it was a numeric lookup; we *know* there's only one. */
+	if (!rp)
+		return -EINVAL;
+
+	sk = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
+	if (sk < 0) {
+		freeaddrinfo(rp);
 		return -EIO;
 	}
+
+	if (connect(sk, rp->ai_addr, rp->ai_addrlen) < 0) {
+		close(sk);
+		freeaddrinfo(rp);
+		return -EIO;
+	}
+
+	freeaddrinfo(rp);
 
 	nameserver->udp_channel = g_io_channel_unix_new(sk);
 	if (nameserver->udp_channel == NULL) {
@@ -461,9 +480,19 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 		int i;
 
 		for (i = 0; i < resolv->res.nscount; i++) {
-			struct sockaddr_in *addr = &resolv->res.nsaddr_list[i];
-			g_resolv_add_nameserver(resolv,
-					inet_ntoa(addr->sin_addr), 53, 0);
+			char buf[100];
+			int family = resolv->res.nsaddr_list[i].sin_family;
+			void *sa_addr = &resolv->res.nsaddr_list[i].sin_addr;
+
+			if (family != AF_INET && resolv->res._u._ext.nsaddrs[i]) {
+				family = AF_INET6;
+				sa_addr = &resolv->res._u._ext.nsaddrs[i]->sin6_addr;
+			}
+			if (family != AF_INET && family != AF_INET6)
+				continue;
+
+			if (inet_ntop(family, sa_addr, buf, sizeof(buf)))
+				g_resolv_add_nameserver(resolv, buf, 53, 0);
 		}
 
 		if (resolv->nameserver_list == NULL)
