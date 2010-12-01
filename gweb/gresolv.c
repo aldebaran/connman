@@ -329,8 +329,8 @@ static int connect_udp_channel(struct resolv_nameserver *nameserver)
 	g_io_channel_set_close_on_unref(nameserver->udp_channel, TRUE);
 
 	nameserver->udp_watch = g_io_add_watch(nameserver->udp_channel,
-						G_IO_IN, received_udp_data,
-								nameserver);
+			       G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+			       received_udp_data, nameserver);
 
 	return 0;
 }
