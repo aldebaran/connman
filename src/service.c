@@ -2942,6 +2942,17 @@ static void service_complete(struct connman_service *service)
 	__connman_storage_save_service(service);
 }
 
+static void report_error_cb(struct connman_service *service,
+			gboolean retry, void *user_data)
+{
+	if (retry == TRUE)
+		__connman_service_connect(service);
+	else {
+		service_complete(service);
+		__connman_profile_changed(FALSE);
+	}
+}
+
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state)
 {
@@ -3038,6 +3049,11 @@ int __connman_service_indicate_state(struct connman_service *service,
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
+		if (service->userconnect == TRUE &&
+			__connman_agent_report_error(service,
+					error2string(service->error),
+					report_error_cb, NULL) == -EIO)
+			return 0;
 		service_complete(service);
 	} else
 		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
@@ -3258,7 +3274,12 @@ int __connman_service_connect(struct connman_service *service)
 		if (err != -EINPROGRESS) {
 			__connman_ipconfig_disable(service->ipconfig);
 			__connman_stats_service_unregister(service);
-			return err;
+			if (service->userconnect == TRUE)
+				return __connman_agent_report_error(service,
+						error2string(service->error),
+						report_error_cb, NULL);
+			else
+				return err;
 		}
 
 		service->timeout = g_timeout_add_seconds(CONNECT_TIMEOUT,
