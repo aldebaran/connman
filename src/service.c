@@ -2950,6 +2950,7 @@ static void report_error_cb(struct connman_service *service,
 	else {
 		service_complete(service);
 		__connman_profile_changed(FALSE);
+		__connman_element_request_scan(CONNMAN_ELEMENT_TYPE_UNKNOWN);
 	}
 }
 
