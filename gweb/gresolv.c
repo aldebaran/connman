@@ -36,11 +36,30 @@
 
 #include "gresolv.h"
 
+struct sort_result {
+	int precedence;
+	int scope;
+	gboolean reachable;
+	union {
+		struct sockaddr sa;
+		struct sockaddr_in sin;
+		struct sockaddr_in6 sin6;
+	} src;
+	union {
+		struct sockaddr sa;
+		struct sockaddr_in sin;
+		struct sockaddr_in6 sin6;
+	} dst;
+};
+
+struct resolv_query;
+
 struct resolv_lookup {
 	GResolv *resolv;
 	guint id;
 
-	char **results;
+	int nr_results;
+	struct sort_result *results;
 
 	struct resolv_query *ipv4_query;
 	struct resolv_query *ipv6_query;
@@ -59,8 +78,7 @@ struct resolv_query {
 
 	uint16_t msgid;
 
-	GResolvResultFunc result_func;
-	gpointer result_data;
+	struct resolv_lookup *lookup;
 };
 
 struct resolv_nameserver {
@@ -89,6 +107,8 @@ struct _GResolv {
 	GResolvDebugFunc debug_func;
 	gpointer debug_data;
 };
+
+static void sort_and_return_results(struct resolv_lookup *lookup);
 
 static inline void debug(GResolv *resolv, const char *format, ...)
 {
@@ -124,20 +144,27 @@ static void destroy_lookup(struct resolv_lookup *lookup)
 		destroy_query(lookup->ipv6_query);
 		g_queue_remove(lookup->resolv->query_queue, lookup->ipv4_query);
 	}
-	g_strfreev(lookup->results);
+	g_free(lookup->results);
 	g_free(lookup);
 }
 
 static gboolean query_timeout(gpointer user_data)
 {
 	struct resolv_query *query = user_data;
+	struct resolv_lookup *lookup = query->lookup;
 	GResolv *resolv = query->resolv;
 
 	query->timeout = 0;
 
-	if (query->result_func != NULL)
-		query->result_func(G_RESOLV_RESULT_STATUS_NO_RESPONSE,
-						NULL, query->result_data);
+	if (query == lookup->ipv4_query) {
+		lookup->ipv4_status = G_RESOLV_RESULT_STATUS_NO_RESPONSE;
+		lookup->ipv4_query = NULL;
+	} else if (query == lookup->ipv6_query) {
+		lookup->ipv6_status = G_RESOLV_RESULT_STATUS_NO_RESPONSE;
+		lookup->ipv6_query = NULL;
+	}
+	if (!lookup->ipv4_query && !lookup->ipv4_query)
+		sort_and_return_results(lookup);
 
 	destroy_query(query);
 	g_queue_remove(resolv->query_queue, query);
@@ -223,13 +250,29 @@ static gint compare_query_msgid(gconstpointer a, gconstpointer b)
 	return 0;
 }
 
+static void add_result(struct resolv_lookup *lookup, int family, const void *data)
+{
+	int n = lookup->nr_results++;
+	lookup->results = g_realloc(lookup->results,
+				    sizeof(struct sort_result) * (n+1));
+
+	memset(&lookup->results[n], 0, sizeof(struct sort_result));
+
+	lookup->results[n].dst.sa.sa_family = family;
+	if (family == AF_INET)
+		memcpy(&lookup->results[n].dst.sin.sin_addr, data, NS_INADDRSZ);
+	else
+		memcpy(&lookup->results[n].dst.sin6.sin6_addr, data, NS_IN6ADDRSZ);
+}
+
 static void parse_response(struct resolv_nameserver *nameserver,
 					const unsigned char *buf, int len)
 {
 	GResolv *resolv = nameserver->resolv;
 	GResolvResultStatus status;
+	struct resolv_query *query;
+	struct resolv_lookup *lookup;
 	GList *list;
-	char **results;
 	ns_msg msg;
 	ns_rr rr;
 	int i, n, rcode, count;
@@ -268,50 +311,45 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		break;
 	}
 
-	results = g_try_new(char *, count + 1);
-	if (results == NULL)
+	list = g_queue_find_custom(resolv->query_queue,
+			GUINT_TO_POINTER(ns_msg_id(msg)), compare_query_msgid);
+	if (!list)
 		return;
 
-	for (i = 0, n = 0; i < count; i++) {
-		char result[100];
+	query = list->data;
+	lookup = query->lookup;
 
+	if (query == lookup->ipv6_query) {
+		lookup->ipv6_status = status;
+		lookup->ipv6_query = NULL;
+	} else if (query == lookup->ipv4_query) {
+		lookup->ipv4_status = status;
+		lookup->ipv4_query = NULL;
+	}
+
+	for (i = 0, n = 0; i < count; i++) {
 		ns_parserr(&msg, ns_s_an, i, &rr);
 
 		if (ns_rr_class(rr) != ns_c_in)
 			continue;
 
+		g_assert(offsetof(struct sockaddr_in, sin_addr) ==
+			 offsetof(struct sockaddr_in6, sin6_flowinfo));
+
 		if (ns_rr_type(rr) == ns_t_a &&
 		    ns_rr_rdlen(rr) == NS_INADDRSZ) {
-			inet_ntop(AF_INET, ns_rr_rdata(rr), result, sizeof(result));
+			add_result(lookup, AF_INET, ns_rr_rdata(rr));
 		} else if (ns_rr_type(rr) == ns_t_aaaa &&
 			   ns_rr_rdlen(rr) == NS_IN6ADDRSZ) {
-			inet_ntop(AF_INET6, ns_rr_rdata(rr), result, sizeof(result));
-		} else
-			continue;
-
-		results[n++] = g_strdup(result);
+			add_result(lookup, AF_INET6, ns_rr_rdata(rr));
+		}
 	}
 
-	results[n] = NULL;
+	if (!lookup->ipv4_query && !lookup->ipv6_query)
+		sort_and_return_results(lookup);
 
-	list = g_queue_find_custom(resolv->query_queue,
-			GUINT_TO_POINTER(ns_msg_id(msg)), compare_query_msgid);
-
-	if (list != NULL) {
-		struct resolv_query *query = list->data;
-
-		/* FIXME: This set of results is *only* for a single A or AAAA
-		   query; we need to merge both results together and then sort
-		   them according to RFC3484. While honouring /etc/gai.conf */
-		if (query->result_func != NULL)
-			query->result_func(status, results,
-						query->result_data);
-
-		destroy_query(query);
-		g_queue_remove(resolv->query_queue, query);
-	}
-
-	g_strfreev(results);
+	destroy_query(query);
+	g_queue_remove(resolv->query_queue, query);
 }
 
 static gboolean received_udp_data(GIOChannel *channel, GIOCondition cond,
@@ -506,72 +544,44 @@ void g_resolv_flush_nameservers(GResolv *resolv)
 	flush_nameservers(resolv);
 }
 
-static int count_results(char **results)
+static void sort_and_return_results(struct resolv_lookup *lookup)
 {
-	int i;
+	char buf[100];
+	GResolvResultStatus status;
+	char **results = g_try_new0(char *, lookup->nr_results + 1);
+	int i, n = 0;
 
 	if (!results)
-		return 0;
-
-	for (i = 0; results[i]; i++)
-		;
-
-	return i;
-}
-
-static void add_result(struct resolv_lookup *lookup, char **results)
-{
-	int nr_new_results = count_results(results);
-	int nr_old_results = count_results(lookup->results);
-	GResolvResultStatus status;
-
-	if (nr_new_results) {
-		lookup->results = g_realloc(lookup->results, sizeof(char *) *
-					    (nr_new_results + nr_old_results + 1));
-
-		while (nr_new_results) {
-			lookup->results[nr_old_results++] = results[0];
-			results[0] = NULL;
-			results++;
-			nr_new_results--;
-		}
-		lookup->results[nr_old_results] = NULL;
-	}
-	if (lookup->ipv4_query || lookup->ipv6_query)
 		return;
 
-	/* FIXME: Sort results according to RFC3484 and /etc/gai.conf */
+	/* FIXME: Now sort them properly according to RFC3484 and /etc/gai.conf */
+
+	for (i = 0; i < lookup->nr_results; i++) {
+		if (lookup->results[i].dst.sa.sa_family == AF_INET) {
+			if (!inet_ntop(AF_INET, &lookup->results[i].dst.sin.sin_addr,
+				       buf, sizeof(buf)))
+				continue;
+		} else if (lookup->results[i].dst.sa.sa_family == AF_INET6) {
+			if (!inet_ntop(AF_INET6, &lookup->results[i].dst.sin6.sin6_addr,
+				       buf, sizeof(buf)))
+				continue;
+		} else
+			continue;
+
+		results[n++] = strdup(buf);
+	}
+	results[n++] = NULL;
 
 	status = lookup->ipv4_status;
 	if (status == G_RESOLV_RESULT_STATUS_SUCCESS)
 		status = lookup->ipv6_status;
 
-	lookup->result_func(status, lookup->results, lookup->result_data);
+	lookup->result_func(status, results, lookup->result_data);
 
+	g_strfreev(results);
 	g_queue_remove(lookup->resolv->lookup_queue, lookup);
 	destroy_lookup(lookup);
 }
-
-static void ipv4_result(GResolvResultStatus status, char **results, gpointer data)
-{
-	struct resolv_lookup *lookup = data;
-
-	lookup->ipv4_status = status;
-	lookup->ipv4_query = NULL;
-
-	add_result(lookup, results);
-}
-
-static void ipv6_result(GResolvResultStatus status, char **results, gpointer data)
-{
-	struct resolv_lookup *lookup = data;
-
-	lookup->ipv6_status = status;
-	lookup->ipv6_query = NULL;
-
-	add_result(lookup, results);
-}
-
 
 static gint add_query(struct resolv_lookup *lookup, const char *hostname, int type)
 {
@@ -587,24 +597,20 @@ static gint add_query(struct resolv_lookup *lookup, const char *hostname, int ty
 
 	query->msgid = buf[0] << 8 | buf[1];
 
-	query->result_data = lookup;
-
 	if (send_query(lookup->resolv, buf, len) < 0)
 		return -EIO;
 
 	query->resolv = lookup->resolv;
+	query->lookup = lookup;
 
 	g_queue_push_tail(lookup->resolv->query_queue, query);
 
 	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
 
-	if (type == ns_t_aaaa) {
-		query->result_func = ipv6_result;
+	if (type == ns_t_aaaa)
 		lookup->ipv6_query = query;
-	} else {
-		query->result_func = ipv4_result;
+	else
 		lookup->ipv4_query = query;
-	}
 
 	return 0;
 }
