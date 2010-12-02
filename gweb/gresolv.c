@@ -920,6 +920,41 @@ static int rfc3484_compare(const void *__one, const void *__two)
 		return one->dst_scope - two->dst_scope;
 
 	/* Rule 9: Use longest matching prefix */
+	if (one->dst.sa.sa_family == AF_INET) {
+		/* Rule 9 is meaningless and counterproductive for Legacy IP
+		   unless perhaps we can tell that it's actually on the local
+		   subnet. But we don't (yet) have local interface config
+		   information, so do nothing here for Legacy IP for now. */
+	} else {
+		int i;
+
+		for (i = 0; i < 4; i++) {
+			guint32 cmp_one, cmp_two;
+
+			cmp_one = one->src.sin6.sin6_addr.s6_addr32[i] ^
+				one->dst.sin6.sin6_addr.s6_addr32[i];
+			cmp_two = two->src.sin6.sin6_addr.s6_addr32[i] ^
+				two->dst.sin6.sin6_addr.s6_addr32[i];
+
+			if (!cmp_two && !cmp_one)
+				continue;
+
+			if (cmp_one && !cmp_two)
+				return 1;
+			if (cmp_two && !cmp_one)
+				return -1;
+
+			/* g_bit_storage() is effectively fls() */
+			cmp_one = g_bit_storage(ntohl(cmp_one));
+			cmp_two = g_bit_storage(ntohl(cmp_two));
+
+			if (cmp_one == cmp_two)
+				break;
+
+			return cmp_one - cmp_two;
+		}
+	}
+
 
 	/* Rule 10: Otherwise, leave the order unchanged */
 	if (one < two)
