@@ -39,6 +39,8 @@
 struct sort_result {
 	int precedence;
 	int scope;
+	int src_label;
+	int dst_label;
 	gboolean reachable;
 	union {
 		struct sockaddr sa;
@@ -109,6 +111,7 @@ struct _GResolv {
 };
 
 static void sort_and_return_results(struct resolv_lookup *lookup);
+static void rfc3484_sort_results(struct resolv_lookup *lookup);
 
 static inline void debug(GResolv *resolv, const char *format, ...)
 {
@@ -554,7 +557,7 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 	if (!results)
 		return;
 
-	/* FIXME: Now sort them properly according to RFC3484 and /etc/gai.conf */
+	rfc3484_sort_results(lookup);
 
 	for (i = 0; i < lookup->nr_results; i++) {
 		if (lookup->results[i].dst.sa.sa_family == AF_INET) {
@@ -686,4 +689,158 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 	g_queue_remove(resolv->query_queue, list->data);
 
 	return TRUE;
+}
+
+static void find_srcaddr(struct sort_result *res)
+{
+	int fd;
+	socklen_t sl = sizeof(res->src);
+
+	fd = socket(res->dst.sa.sa_family, SOCK_DGRAM, IPPROTO_IP);
+	if (fd < 0)
+		return;
+
+	if (connect(fd, &res->dst.sa, sizeof(res->dst))) {
+		close(fd);
+		return;
+	}
+	if (getsockname(fd, &res->src.sa, &sl)) {
+		close(fd);
+		return;
+	}
+	res->reachable = TRUE;
+	close(fd);
+}
+
+struct gai_table
+{
+	unsigned char addr[NS_IN6ADDRSZ];
+	int mask;
+	int value;
+};
+
+static const struct gai_table gai_labels[] = {
+	{
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 },
+		.mask = 128,
+		.value = 0,
+	}, {
+		.addr = { 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 16,
+		.value = 2,
+	}, {
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 96,
+		.value = 3,
+	}, {
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 96,
+		.value = 4,
+	}, {
+		/* Variations from RFC 3484, matching glibc behaviour */
+		.addr = { 0xfe, 0xc0, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 10,
+		.value = 5,
+	}, {
+		.addr = { 0xfc, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 7,
+		.value = 6,
+	}, {
+		.addr = { 0x20, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 32,
+		.value = 7,
+	}, {
+		/* catch-all */
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 0,
+		.value = 1,
+	}
+};
+
+static const struct gai_table gai_precedences[] = {
+	{
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01 },
+		.mask = 128,
+		.value = 50,
+	}, {
+		.addr = { 0x20, 0x02, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 16,
+		.value = 30,
+	}, {
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 96,
+		.value = 20,
+	}, {
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 96,
+		.value = 10,
+	}, {
+		.addr = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+			  0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 },
+		.mask = 0,
+		.value = 40,
+	}
+};
+
+static unsigned char v4mapped[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+				    0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 };
+
+static gboolean mask_compare(const unsigned char *one, const unsigned char *two, int mask)
+{
+	if (mask > 8) {
+		if (memcmp(one, two, mask / 8))
+			return FALSE;
+		one += mask / 8;
+		two += mask / 8;
+		mask %= 8;
+	}
+	if (mask && ((*one ^ *two) >> (8-mask)))
+	    return FALSE;
+
+	return TRUE;
+}
+
+static int match_gai_table(struct sockaddr *sa, const struct gai_table *tbl)
+{
+	struct sockaddr_in *sin = (void *)sa;
+	struct sockaddr_in6 *sin6 = (void *)sa;
+	void *addr;
+
+	if (sa->sa_family == AF_INET) {
+		addr = v4mapped;
+		memcpy(v4mapped+12, &sin->sin_addr, NS_INADDRSZ);
+	} else
+		addr = &sin6->sin6_addr;
+
+	while (1) {
+		if (mask_compare(addr, tbl->addr, tbl->mask))
+			return tbl->value;
+		tbl++;
+	}
+}
+
+static void rfc3484_sort_results(struct resolv_lookup *lookup)
+{
+	int i;
+
+	for (i = 0; i < lookup->nr_results; i++) {
+		struct sort_result *res = &lookup->results[i];
+		find_srcaddr(res);
+		res->precedence = match_gai_table(&res->dst.sa, gai_precedences);
+		res->dst_label = match_gai_table(&res->dst.sa, gai_labels);
+		res->src_label = match_gai_table(&res->src.sa, gai_labels);
+	}
+	/* FIXME: Actually *sort* them... */
 }
