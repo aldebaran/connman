@@ -39,7 +39,8 @@
 
 struct sort_result {
 	int precedence;
-	int scope;
+	int src_scope;
+	int dst_scope;
 	int src_label;
 	int dst_label;
 	gboolean reachable;
@@ -832,6 +833,49 @@ static int match_gai_table(struct sockaddr *sa, const struct gai_table *tbl)
 	}
 }
 
+#define DQUAD(_a,_b,_c,_d) ( ((_a)<<24) | ((_b)<<16) | ((_c)<<8) | (_d) )
+#define V4MATCH(addr, a,b,c,d, m) ( ((addr) ^ DQUAD(a,b,c,d)) >> (32 - (m)) )
+
+#define RFC3484_SCOPE_LINK	2
+#define RFC3484_SCOPE_SITE	5
+#define RFC3484_SCOPE_GLOBAL	14
+
+static int addr_scope(struct sockaddr *sa)
+{
+	if (sa->sa_family == AF_INET) {
+		struct sockaddr_in *sin = (void *)sa;
+		guint32 addr = ntohl(sin->sin_addr.s_addr);
+
+		if (V4MATCH(addr, 169,254,0,0, 16) ||
+		    V4MATCH(addr, 127,0,0,0,   8))
+			return RFC3484_SCOPE_LINK;
+
+		/* Site-local */
+		if (V4MATCH(addr, 10,0,0,0,    8) ||
+		    V4MATCH(addr, 172,16,0,0,  12) ||
+		    V4MATCH(addr, 192,168,0,0, 16))
+			return RFC3484_SCOPE_SITE;
+
+		/* Global */
+		return RFC3484_SCOPE_GLOBAL;
+	} else {
+		struct sockaddr_in6 *sin6 = (void *)sa;
+
+		/* Multicast addresses have a 4-bit scope field */
+		if (IN6_IS_ADDR_MULTICAST(&sin6->sin6_addr))
+			return sin6->sin6_addr.s6_addr[1] & 0xf;
+
+		if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) ||
+		    IN6_IS_ADDR_LOOPBACK(&sin6->sin6_addr))
+			return RFC3484_SCOPE_LINK;
+
+		if (IN6_IS_ADDR_SITELOCAL(&sin6->sin6_addr))
+			return RFC3484_SCOPE_SITE;
+
+		return RFC3484_SCOPE_GLOBAL;
+	}
+}
+
 static int rfc3484_compare(const void *__one, const void *__two)
 {
 	const struct sort_result *one = __one;
@@ -844,6 +888,12 @@ static int rfc3484_compare(const void *__one, const void *__two)
 		return 1;
 
 	/* Rule 2: Prefer matching scope */
+	if (one->dst_scope == one->src_scope &&
+	    two->dst_scope != two->src_scope)
+		return -1;
+	else if (two->dst_scope == two->src_scope &&
+		 one->dst_scope != one->src_scope)
+		return 1;
 
 	/* Rule 3: Avoid deprecated addresses */
 
@@ -866,6 +916,8 @@ static int rfc3484_compare(const void *__one, const void *__two)
 	/* Rule 7: Prefer native transport */
 
 	/* Rule 8: Prefer smaller scope */
+	if (one->dst_scope != two->dst_scope)
+		return one->dst_scope - two->dst_scope;
 
 	/* Rule 9: Use longest matching prefix */
 
@@ -886,6 +938,8 @@ static void rfc3484_sort_results(struct resolv_lookup *lookup)
 		res->precedence = match_gai_table(&res->dst.sa, gai_precedences);
 		res->dst_label = match_gai_table(&res->dst.sa, gai_labels);
 		res->src_label = match_gai_table(&res->src.sa, gai_labels);
+		res->dst_scope = addr_scope(&res->dst.sa);
+		res->src_scope = addr_scope(&res->src.sa);
 	}
 
 	qsort(lookup->results, lookup->nr_results, sizeof(struct sort_result),
