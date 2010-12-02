@@ -53,8 +53,6 @@ DBusMessage *__connman_error_operation_timeout(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_service(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 
-int __connman_selftest(void);
-
 #include <connman/types.h>
 
 int __connman_manager_init(gboolean compat);
@@ -127,8 +125,6 @@ void __connman_rfkill_cleanup(void);
 
 int __connman_resolver_init(void);
 void __connman_resolver_cleanup(void);
-
-int __connman_resolver_selftest(void);
 
 #include <connman/storage.h>
 

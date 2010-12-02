@@ -62,7 +62,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			gweb/gresolv.h gweb/gresolv.c \
 			gweb/giognutls.h gweb/gionotls.c \
 			$(builtin_sources) src/connman.ver \
-			src/main.c src/connman.h src/log.c src/selftest.c \
+			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
 			src/manager.c src/profile.c src/service.c \

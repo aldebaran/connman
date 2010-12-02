@@ -312,49 +312,6 @@ void connman_resolver_flush(void)
 	return;
 }
 
-static int selftest_append(const char *interface, const char *domain,
-							const char *server)
-{
-	DBG("server %s", server);
-
-	return 0;
-}
-
-static int selftest_remove(const char *interface, const char *domain,
-							const char *server)
-{
-	DBG("server %s", server);
-
-	return 0;
-}
-
-static struct connman_resolver selftest_resolver = {
-	.name     = "selftest",
-	.priority = CONNMAN_RESOLVER_PRIORITY_HIGH + 42,
-	.append   = selftest_append,
-	.remove   = selftest_remove,
-};
-
-int __connman_resolver_selftest(void)
-{
-	connman_resolver_append("wlan0", "lwn.net", "192.168.0.1");
-
-	connman_resolver_register(&selftest_resolver);
-
-	connman_resolver_append("eth0", "connman.net", "192.168.42.1");
-	connman_resolver_append("wlan0", "lwn.net", "192.168.0.2");
-
-	connman_resolver_append_public_server("8.8.8.8");
-
-	connman_resolver_remove_public_server("8.8.8.8");
-
-	connman_resolver_remove_all("wlan0");
-
-	connman_resolver_unregister(&selftest_resolver);
-
-	return 0;
-}
-
 struct resolvfile_entry {
 	char *interface;
 	char *domain;
