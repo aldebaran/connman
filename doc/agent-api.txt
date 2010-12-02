@@ -21,7 +21,7 @@ Methods		void Release()
 			A special return value can be used to trigger a
 			retry of the failed transaction.
 
-			Possible Errors: [service].Error.Retry
+			Possible Errors: net.connman.Agent.Error.Retry
 
 		dict RequestInput(object service, dict fields)
 
@@ -40,7 +40,7 @@ Methods		void Release()
 			The dictionary arguments contains field names with
 			their input parameters.
 
-			Possible Errors: [service].Error.Canceled
+			Possible Errors: net.connman.Agent.Error.Canceled
 
 		void Cancel()
 
