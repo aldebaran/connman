@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <string.h>
+#include <stdlib.h>
 #include <resolv.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -831,6 +832,50 @@ static int match_gai_table(struct sockaddr *sa, const struct gai_table *tbl)
 	}
 }
 
+static int rfc3484_compare(const void *__one, const void *__two)
+{
+	const struct sort_result *one = __one;
+	const struct sort_result *two = __two;
+
+	/* Rule 1: Avoid unusable destinations */
+	if (one->reachable && !two->reachable)
+		return -1;
+	else if (two->reachable && !one->reachable)
+		return 1;
+
+	/* Rule 2: Prefer matching scope */
+
+	/* Rule 3: Avoid deprecated addresses */
+
+	/* Rule 4: Prefer home addresses */
+
+	/* Rule 5: Prefer matching label */
+	if (one->dst_label == one->src_label &&
+	    two->dst_label != two->src_label)
+		return -1;
+	else if (two->dst_label == two->src_label &&
+		 one->dst_label != one->src_label)
+		return 1;
+
+	/* Rule 6: Prefer higher precedence */
+	if (one->precedence > two->precedence)
+		return -1;
+	else if (two->precedence > one->precedence)
+		return 1;
+
+	/* Rule 7: Prefer native transport */
+
+	/* Rule 8: Prefer smaller scope */
+
+	/* Rule 9: Use longest matching prefix */
+
+	/* Rule 10: Otherwise, leave the order unchanged */
+	if (one < two)
+		return -1;
+	else
+		return 1;
+}
+
 static void rfc3484_sort_results(struct resolv_lookup *lookup)
 {
 	int i;
@@ -842,5 +887,7 @@ static void rfc3484_sort_results(struct resolv_lookup *lookup)
 		res->dst_label = match_gai_table(&res->dst.sa, gai_labels);
 		res->src_label = match_gai_table(&res->src.sa, gai_labels);
 	}
-	/* FIXME: Actually *sort* them... */
+
+	qsort(lookup->results, lookup->nr_results, sizeof(struct sort_result),
+	      rfc3484_compare);
 }
