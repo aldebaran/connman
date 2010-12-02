@@ -2931,6 +2931,17 @@ void __connman_service_set_string(struct connman_service *service,
 	}
 }
 
+static void service_complete(struct connman_service *service)
+{
+	reply_pending(service, EIO);
+
+	if (service->userconnect == FALSE)
+		__connman_service_auto_connect();
+
+	g_get_current_time(&service->modified);
+	__connman_storage_save_service(service);
+}
+
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state)
 {
@@ -3027,13 +3038,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_FAILURE) {
-		reply_pending(service, EIO);
-
-		if (service->userconnect == FALSE)
-			__connman_service_auto_connect();
-
-		g_get_current_time(&service->modified);
-		__connman_storage_save_service(service);
+		service_complete(service);
 	} else
 		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
