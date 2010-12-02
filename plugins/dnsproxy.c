@@ -29,6 +29,9 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
@@ -644,28 +647,43 @@ static struct server_data *create_server(const char *interface,
 					const char *domain, const char *server,
 					int protocol)
 {
+	struct addrinfo hints, *rp;
 	struct server_data *data;
-	struct sockaddr_in sin;
-	int sk, type, ret;
+	int sk, ret;
 
 	DBG("interface %s server %s", interface, server);
 
+	memset(&hints, 0, sizeof(hints));
+
 	switch (protocol) {
 	case IPPROTO_UDP:
-		type = SOCK_DGRAM;
+		hints.ai_socktype = SOCK_DGRAM;
 		break;
 
 	case IPPROTO_TCP:
-		type = SOCK_STREAM;
+		hints.ai_socktype = SOCK_STREAM;
 		break;
 
 	default:
 		return NULL;
 	}
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_NUMERICHOST;
 
-	sk = socket(AF_INET, type, protocol);
+	ret = getaddrinfo(server, "53", &hints, &rp);
+	if (ret) {
+		connman_error("Failed to parse server %s address: %s\n",
+			      server, gai_strerror(ret));
+		return NULL;
+	}
+	/* Do not blindly copy this code elsewhere; it doesn't loop over the
+	   results using ->ai_next as it should. That's OK in *this* case
+	   because it was a numeric lookup; we *know* there's only one. */
+
+	sk = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 	if (sk < 0) {
 		connman_error("Failed to create server %s socket", server);
+		freeaddrinfo(rp);
 		return NULL;
 	}
 
@@ -675,6 +693,7 @@ static struct server_data *create_server(const char *interface,
 			connman_error("Failed to bind server %s "
 						"to interface %s",
 							server, interface);
+			freeaddrinfo(rp);
 			close(sk);
 			return NULL;
 		}
@@ -683,6 +702,7 @@ static struct server_data *create_server(const char *interface,
 	data = g_try_new0(struct server_data, 1);
 	if (data == NULL) {
 		connman_error("Failed to allocate server %s data", server);
+		freeaddrinfo(rp);
 		close(sk);
 		return NULL;
 	}
@@ -690,6 +710,7 @@ static struct server_data *create_server(const char *interface,
 	data->channel = g_io_channel_unix_new(sk);
 	if (data->channel == NULL) {
 		connman_error("Failed to create server %s channel", server);
+		freeaddrinfo(rp);
 		close(sk);
 		g_free(data);
 		return NULL;
@@ -714,12 +735,8 @@ static struct server_data *create_server(const char *interface,
 	data->server = g_strdup(server);
 	data->protocol = protocol;
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr(server);
-
-	ret = connect(sk, (struct sockaddr *) &sin, sizeof(sin));
+	ret = connect(sk, rp->ai_addr, rp->ai_addrlen);
+	freeaddrinfo(rp);
 	if (ret < 0) {
 		if ((protocol == IPPROTO_TCP && errno != EINPROGRESS) ||
 				protocol == IPPROTO_UDP) {
