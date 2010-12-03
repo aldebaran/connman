@@ -30,6 +30,7 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
+#include <netinet/icmp6.h>
 #include <net/if_arp.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
@@ -1020,6 +1021,63 @@ static void rtnl_delroute(struct nlmsghdr *hdr)
 						msg, RTM_PAYLOAD(hdr));
 }
 
+static void rtnl_nd_opt_rdnss(char *interface, struct nd_opt_hdr *opt)
+{
+	guint32 *optint = (void *)opt;
+	guint32 lifetime;
+	char buf[80];
+	int i;
+
+	if (opt->nd_opt_len < 3)
+		return;
+
+	lifetime = ntohl(optint[1]);
+	if (!lifetime)
+		return;
+
+	optint += 2;
+	for (i = 0; i < opt->nd_opt_len / 2; i++, optint += 4) {
+		if (inet_ntop(AF_INET6, optint, buf, sizeof(buf)))
+			connman_resolver_append_lifetime(interface, NULL,
+							 buf, lifetime);
+	}
+}
+
+static void rtnl_newnduseropt(struct nlmsghdr *hdr)
+{
+	struct nduseroptmsg *msg = (struct nduseroptmsg *) NLMSG_DATA(hdr);
+	struct nd_opt_hdr *opt = (void *)&msg[1];
+	int msglen = msg->nduseropt_opts_len;
+	char *interface;
+
+	DBG("family %02x index %x len %04x type %02x code %02x",
+	    msg->nduseropt_family, msg->nduseropt_ifindex,
+	    msg->nduseropt_opts_len, msg->nduseropt_icmp_type,
+	    msg->nduseropt_icmp_code);
+
+	if (msg->nduseropt_family != AF_INET6 ||
+	    msg->nduseropt_icmp_type != ND_ROUTER_ADVERT ||
+	    msg->nduseropt_icmp_code != 0)
+		return;
+
+	interface = connman_inet_ifname(msg->nduseropt_ifindex);
+	if (!interface)
+		return;
+
+	for (opt = (void *)&msg[1];
+	     msglen >= 2 && msglen >= opt->nd_opt_len && opt->nd_opt_len;
+	     msglen -= opt->nd_opt_len,
+		     opt = ((void *)opt) + opt->nd_opt_len*8) {
+
+		DBG("nd opt type %d len %d\n",
+		    opt->nd_opt_type, opt->nd_opt_len);
+
+		if (opt->nd_opt_type == 25)
+			rtnl_nd_opt_rdnss(interface, opt);
+	}
+	g_free(interface);
+}
+
 static const char *type2string(uint16_t type)
 {
 	switch (type) {
@@ -1047,6 +1105,8 @@ static const char *type2string(uint16_t type)
 		return "NEWROUTE";
 	case RTM_DELROUTE:
 		return "DELROUTE";
+	case RTM_NEWNDUSEROPT:
+		return "NEWNDUSEROPT";
 	default:
 		return "UNKNOWN";
 	}
@@ -1170,6 +1230,9 @@ static void rtnl_message(void *buf, size_t len)
 			break;
 		case RTM_DELROUTE:
 			rtnl_delroute(hdr);
+			break;
+		case RTM_NEWNDUSEROPT:
+			rtnl_newnduseropt(hdr);
 			break;
 		}
 
@@ -1351,7 +1414,8 @@ int __connman_rtnl_init(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
 	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
-				RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
+				RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
+				(1<<(RTNLGRP_ND_USEROPT-1));
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);
