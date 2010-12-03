@@ -746,10 +746,8 @@ static void modem_registration_changed(struct modem_data *modem,
 	DBusMessageIter iter;
 	const char *key;
 	int type;
-	struct {
-		char const *str;
-		connman_uint8_t byte;
-	} value;
+	connman_uint8_t strength;
+	char const *name, *status;
 
 	dbus_message_iter_get_basic(entry, &key);
 
@@ -763,14 +761,16 @@ static void modem_registration_changed(struct modem_data *modem,
 	if (type != DBUS_TYPE_BYTE && type != DBUS_TYPE_STRING)
 		return;
 
-	dbus_message_iter_get_basic(&iter, &value);
-
-	if (g_str_equal(key, "Name") && type == DBUS_TYPE_STRING)
-		modem_operator_name_changed(modem, value.str);
-	else if (g_str_equal(key, "Strength") && type == DBUS_TYPE_BYTE)
-		modem_strength_changed(modem, value.byte);
-	else if (g_str_equal(key, "Status") && type == DBUS_TYPE_STRING)
-		modem_roaming_changed(modem, value.str);
+	if (g_str_equal(key, "Name") && type == DBUS_TYPE_STRING) {
+		dbus_message_iter_get_basic(&iter, &name);
+		modem_operator_name_changed(modem, name);
+	} else if (g_str_equal(key, "Strength") && type == DBUS_TYPE_BYTE) {
+		dbus_message_iter_get_basic(&iter, &strength);
+		modem_strength_changed(modem, strength);
+	} else if (g_str_equal(key, "Status") && type == DBUS_TYPE_STRING) {
+		dbus_message_iter_get_basic(&iter, &status);
+		modem_roaming_changed(modem, status);
+	}
 
 }
 
