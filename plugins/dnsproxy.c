@@ -793,6 +793,9 @@ static int dnsproxy_append(const char *interface, const char *domain,
 
 	DBG("interface %s server %s", interface, server);
 
+	if (server == NULL)
+		return -EINVAL;
+
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
@@ -819,6 +822,9 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 							const char *server)
 {
 	DBG("interface %s server %s", interface, server);
+
+	if (server == NULL)
+		return -EINVAL;
 
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
