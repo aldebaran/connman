@@ -41,6 +41,7 @@ struct entry_data {
 	char *domain;
 	char *server;
 	unsigned int flags;
+	guint timeout;
 };
 
 static GSList *entry_list = NULL;
@@ -60,6 +61,8 @@ static void remove_entries(GSList *entries)
 			resolver->remove(entry->interface, entry->domain,
 								entry->server);
 
+		if (entry->timeout)
+			g_source_remove(entry->timeout);
 		g_free(entry->server);
 		g_free(entry->domain);
 		g_free(entry->interface);
@@ -137,14 +140,29 @@ void connman_resolver_unregister(struct connman_resolver *resolver)
 	remove_entries(matches);
 }
 
+static gboolean resolver_expire_cb(gpointer user_data)
+{
+	struct entry_data *entry = user_data;
+	GSList *list;
+
+	DBG("interface %s domain %s server %s",
+	    entry->interface, entry->domain, entry->server);
+
+	list = g_slist_append(NULL, entry);
+	remove_entries(list);
+
+	return FALSE;
+}
+
 static int append_resolver(const char *interface, const char *domain,
-					const char *server, unsigned int flags)
+			   const char *server, unsigned int lifetime,
+			   unsigned int flags)
 {
 	struct entry_data *entry;
 	GSList *list;
 
-	DBG("interface %s domain %s server %s flags %d",
-					interface, domain, server, flags);
+	DBG("interface %s domain %s server %s lifetime %d flags %d",
+	    interface, domain, server, lifetime, flags);
 
 	if (server == NULL)
 		return -EINVAL;
@@ -157,6 +175,10 @@ static int append_resolver(const char *interface, const char *domain,
 	entry->domain = g_strdup(domain);
 	entry->server = g_strdup(server);
 	entry->flags = flags;
+	if (lifetime)
+		entry->timeout = g_timeout_add_seconds(lifetime,
+						       resolver_expire_cb,
+						       entry);
 
 	entry_list = g_slist_append(entry_list, entry);
 
@@ -188,7 +210,45 @@ int connman_resolver_append(const char *interface, const char *domain,
 {
 	DBG("interface %s domain %s server %s", interface, domain, server);
 
-	return append_resolver(interface, domain, server, 0);
+	return append_resolver(interface, domain, server, 0, 0);
+}
+
+/**
+ * connman_resolver_append_lifetime:
+ * @interface: network interface
+ * @domain: domain limitation
+ * @server: server address
+ * @timeout: server lifetime in seconds
+ *
+ * Append resolver server address to current list
+ */
+int connman_resolver_append_lifetime(const char *interface, const char *domain,
+				     const char *server, unsigned int lifetime)
+{
+	GSList *list;
+
+	DBG("interface %s domain %s server %s lifetime %d",
+	    interface, domain, server, lifetime);
+
+	if (server == NULL)
+		return -EINVAL;
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (!entry->timeout ||
+		    g_strcmp0(entry->interface, interface) ||
+		    g_strcmp0(entry->domain, domain) ||
+		    g_strcmp0(entry->server, server))
+			continue;
+
+		g_source_remove(entry->timeout);
+		entry->timeout = g_timeout_add_seconds(lifetime,
+						       resolver_expire_cb,
+						       entry);
+		return 0;
+	}
+	return append_resolver(interface, domain, server, lifetime, 0);
 }
 
 /**
@@ -275,7 +335,7 @@ int connman_resolver_append_public_server(const char *server)
 {
 	DBG("server %s", server);
 
-	return append_resolver(NULL, NULL, server, RESOLVER_FLAG_PUBLIC);
+	return append_resolver(NULL, NULL, server, 0, RESOLVER_FLAG_PUBLIC);
 }
 
 /**
