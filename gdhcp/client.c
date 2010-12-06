@@ -33,7 +33,6 @@
 
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
-#include <net/if_arp.h>
 
 #include <linux/if.h>
 #include <linux/filter.h>
@@ -44,7 +43,7 @@
 #include "common.h"
 
 #define DISCOVER_TIMEOUT 3
-#define DISCOVER_RETRIES 5
+#define DISCOVER_RETRIES 10
 
 #define REQUEST_TIMEOUT 3
 #define REQUEST_RETRIES 5
@@ -268,70 +267,7 @@ static int send_release(GDHCPClient *dhcp_client,
 						server, SERVER_PORT);
 }
 
-static gboolean interface_is_up(int index)
-{
-	int sk, err;
-	struct ifreq ifr;
-	gboolean ret = FALSE;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		perror("Open socket error");
-		return FALSE;
-	}
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-	if (err < 0) {
-		perror("Get interface name error");
-		goto done;
-	}
-
-	err = ioctl(sk, SIOCGIFFLAGS, &ifr);
-	if (err < 0) {
-		perror("Get interface flags error");
-		goto done;
-	}
-
-	if (ifr.ifr_flags & IFF_UP)
-		ret = TRUE;
-
-done:
-	close(sk);
-
-	return ret;
-}
-
-static char *get_interface_name(int index)
-{
-	struct ifreq ifr;
-	int sk, err;
-
-	if (index < 0)
-		return NULL;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		perror("Open socket error");
-		return NULL;
-	}
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-	if (err < 0) {
-		perror("Get interface name error");
-		close(sk);
-		return NULL;
-	}
-
-	close(sk);
-
-	return g_strdup(ifr.ifr_name);
-}
 
 static void get_interface_mac_address(int index, uint8_t *mac_address)
 {
@@ -908,13 +844,16 @@ static char *malloc_option_value_string(uint8_t *option, GDHCPOptionType type)
 	return ret;
 }
 
-static GList *get_option_value_list(char *value)
+static GList *get_option_value_list(char *value, GDHCPOptionType type)
 {
 	char *pos = value;
 	GList *list = NULL;
 
 	if (pos == NULL)
 		return NULL;
+
+	if (type == OPTION_STRING)
+		return g_list_append(list, g_strdup(value));
 
 	while ((pos = strchr(pos, ' ')) != NULL) {
 		*pos = '\0';
@@ -954,7 +893,7 @@ static void get_request(GDHCPClient *dhcp_client, struct dhcp_packet *packet)
 			g_hash_table_remove(dhcp_client->code_value_hash,
 						GINT_TO_POINTER((int) code));
 
-		value_list = get_option_value_list(option_value);
+		value_list = get_option_value_list(option_value, type);
 
 		g_free(option_value);
 

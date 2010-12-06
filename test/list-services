@@ -9,7 +9,10 @@ def extract_values(values):
 		if key in ["PrefixLength"]:
 			val += "%s" % (int(values[key]))
 		else:
-			val += str(values[key])
+			if key in ["Servers", "Excludes"]:
+				val += extract_list(values[key])
+			else:
+				val += str(values[key])
 	val += " }"
 	return val
 
@@ -22,14 +25,14 @@ def extract_list(list):
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-					"org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("net.connman", "/"),
+					"net.connman.Manager")
 
 properties = manager.GetProperties()
 
 for path in properties["Services"]:
-	service = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Service")
+	service = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Service")
 
 	properties = service.GetProperties()
 

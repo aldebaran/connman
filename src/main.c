@@ -87,9 +87,9 @@ static GOptionEntry options[] = {
 	{ "nodevice", 'I', 0, G_OPTION_ARG_STRING, &option_nodevice,
 			"Specify networking interface to ignore", "DEV" },
 	{ "plugin", 'p', 0, G_OPTION_ARG_STRING, &option_plugin,
-				"Specify plugins to load", "NAME" },
+				"Specify plugins to load", "NAME,..." },
 	{ "noplugin", 'P', 0, G_OPTION_ARG_STRING, &option_noplugin,
-				"Specify plugins not to load", "NAME" },
+				"Specify plugins not to load", "NAME,..." },
 	{ "wifi", 'W', 0, G_OPTION_ARG_STRING, &option_wifi,
 				"Specify driver for WiFi/Supplicant", "NAME" },
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
@@ -108,7 +108,7 @@ const char *connman_option_get_string(const char *key)
 {
 	if (g_strcmp0(key, "wifi") == 0) {
 		if (option_wifi == NULL)
-			return "wext";
+			return "nl80211,wext";
 		else
 			return option_wifi;
 	}
@@ -225,6 +225,7 @@ int main(int argc, char *argv[])
 	__connman_element_init(option_device, option_nodevice);
 
 	__connman_agent_init();
+	__connman_iptables_init();
 	__connman_tethering_init();
 	__connman_counter_init();
 	__connman_ondemand_init();
@@ -236,8 +237,9 @@ int main(int argc, char *argv[])
 	__connman_resolver_init();
 	__connman_ipconfig_init();
 	__connman_rtnl_init();
-	__connman_udev_init();
 	__connman_task_init();
+	__connman_proxy_init();
+	__connman_detect_init();
 	__connman_session_init();
 	__connman_timeserver_init();
 
@@ -263,8 +265,9 @@ int main(int argc, char *argv[])
 
 	__connman_timeserver_cleanup();
 	__connman_session_cleanup();
+	__connman_detect_cleanup();
+	__connman_proxy_cleanup();
 	__connman_task_cleanup();
-	__connman_udev_cleanup();
 	__connman_rtnl_cleanup();
 	__connman_ipconfig_cleanup();
 	__connman_resolver_cleanup();
@@ -277,6 +280,7 @@ int main(int argc, char *argv[])
 	__connman_counter_cleanup();
 	__connman_agent_cleanup();
 	__connman_tethering_cleanup();
+	__connman_iptables_cleanup();
 
 	__connman_element_cleanup();
 	__connman_storage_cleanup();

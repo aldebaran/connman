@@ -341,7 +341,7 @@ int __connman_resolver_selftest(void)
 
 	connman_resolver_register(&selftest_resolver);
 
-	connman_resolver_append("eth0", "moblin.org", "192.168.42.1");
+	connman_resolver_append("eth0", "connman.net", "192.168.42.1");
 	connman_resolver_append("wlan0", "lwn.net", "192.168.0.2");
 
 	connman_resolver_append_public_server("8.8.8.8");

@@ -95,7 +95,6 @@ static void add_network(struct connman_device *device)
 	connman_network_set_index(network, index);
 
 	connman_network_set_name(network, "Wired");
-	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
 
 	if (connman_device_add_network(device, network) < 0) {
 		connman_network_unref(network);

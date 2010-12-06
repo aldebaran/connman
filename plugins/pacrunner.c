@@ -73,6 +73,16 @@ static void append_string(DBusMessageIter *iter, void *user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, user_data);
 }
 
+static void append_string_list(DBusMessageIter *iter, void *user_data)
+{
+	char **list = user_data;
+	int i;
+
+	for (i = 0; list[i] != NULL; i++)
+		dbus_message_iter_append_basic(iter,
+					DBUS_TYPE_STRING, &list[i]);
+}
+
 static void create_proxy_configuration(void)
 {
 	DBusMessage *msg;
@@ -80,7 +90,9 @@ static void create_proxy_configuration(void)
 	DBusPendingCall *call;
 	dbus_bool_t result;
 	char *interface;
+	const char *method;
 	const char *str;
+	char **str_list;
 
 	if (default_service == NULL)
 		return;
@@ -97,24 +109,58 @@ static void create_proxy_configuration(void)
 	dbus_message_iter_init_append(msg, &iter);
 	connman_dbus_dict_open(&iter, &dict);
 
+	switch(connman_service_get_proxy_method(default_service)) {
+	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		goto done;
+	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
+		method= "direct";
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
+		method = "manual";
+
+		str_list = connman_service_get_proxy_servers(default_service);
+		if (str_list == NULL)
+			goto done;
+
+		connman_dbus_dict_append_array(&dict, "Servers",
+					DBUS_TYPE_STRING, append_string_list,
+					str_list);
+		g_strfreev(str_list);
+
+		str_list = connman_service_get_proxy_excludes(default_service);
+		if (str_list == NULL)
+			break;
+
+		connman_dbus_dict_append_array(&dict, "Excludes",
+					DBUS_TYPE_STRING, append_string_list,
+					str_list);
+		g_strfreev(str_list);
+
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_AUTO:
+		method = "auto";
+
+		str = connman_service_get_proxy_url(default_service);
+		if (str == NULL) {
+			str = connman_service_get_proxy_autoconfig(
+							default_service);
+			if (str == NULL)
+				goto done;
+		}
+
+		connman_dbus_dict_append_basic(&dict, "URL",
+					DBUS_TYPE_STRING, &str);
+		break;
+	}
+
+	connman_dbus_dict_append_basic(&dict, "Method",
+				DBUS_TYPE_STRING, &method);
+
 	interface = connman_service_get_interface(default_service);
 	if (interface != NULL) {
 		connman_dbus_dict_append_basic(&dict, "Interface",
 						DBUS_TYPE_STRING, &interface);
 		g_free(interface);
-	}
-
-	str = connman_service_get_proxy_autoconfig(default_service);
-	if (str != NULL) {
-		const char *method = "auto";
-		connman_dbus_dict_append_basic(&dict, "Method",
-						DBUS_TYPE_STRING, &method);
-		connman_dbus_dict_append_basic(&dict, "URL",
-						DBUS_TYPE_STRING, &str);
-	} else {
-		const char *method = "direct";
-		connman_dbus_dict_append_basic(&dict, "Method",
-						DBUS_TYPE_STRING, &method);
 	}
 
 	str = connman_service_get_domainname(default_service);
@@ -132,14 +178,15 @@ static void create_proxy_configuration(void)
 	result = dbus_connection_send_with_reply(connection, msg,
 							&call, DBUS_TIMEOUT);
 
-	dbus_message_unref(msg);
-
 	if (result == FALSE || call == NULL)
-		return;
+		goto done;
 
 	dbus_pending_call_set_notify(call, create_config_reply, NULL, NULL);
 
 	dbus_pending_call_unref(call);
+
+done:
+	dbus_message_unref(msg);
 }
 
 static void destroy_config_reply(DBusPendingCall *call, void *user_data)

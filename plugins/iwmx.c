@@ -134,7 +134,6 @@ struct connman_network *__iwmx_cm_network_available(
 		nw = connman_network_create(station_name,
 					    CONNMAN_NETWORK_TYPE_WIMAX);
 		connman_network_set_index(nw, connman_device_get_index(dev));
-		connman_network_set_protocol(nw, CONNMAN_NETWORK_PROTOCOL_IP);
 		connman_network_set_name(nw, station_name);
 		connman_network_set_blob(nw, "WiMAX.NSP.name",
 					 sdk_nspname, sdk_nspname_size);

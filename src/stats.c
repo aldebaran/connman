@@ -201,19 +201,6 @@ static void stats_free(gpointer user_data)
 	g_free(file);
 }
 
-static int stats_create(struct connman_service *service)
-{
-	struct stats_file *file;
-
-	file = g_try_new0(struct stats_file, 1);
-	if (file == NULL)
-		return -ENOMEM;
-
-	g_hash_table_insert(stats_hash, service, file);
-
-	return 0;
-}
-
 static void update_first(struct stats_file *file)
 {
 	file->first = (struct stats_record *)
@@ -362,12 +349,11 @@ int __connman_stats_service_register(struct connman_service *service)
 
 	file = g_hash_table_lookup(stats_hash, service);
 	if (file == NULL) {
-		err = stats_create(service);
+		file = g_try_new0(struct stats_file, 1);
+		if (file == NULL)
+			return -ENOMEM;
 
-		if (err < 0)
-			return err;
-
-		file = g_hash_table_lookup(stats_hash, service);
+		g_hash_table_insert(stats_hash, service, file);
 	} else {
 		return -EALREADY;
 	}

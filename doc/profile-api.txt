@@ -1,8 +1,8 @@
 Profile hierarchy
 =================
 
-Service		org.moblin.connman
-Interface	org.moblin.connman.Profile
+Service		net.connman
+Interface	net.connman.Profile
 Object path	[variable prefix]/{profile0,profile1,...}
 
 Methods		dict GetProperties()

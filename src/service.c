@@ -100,6 +100,10 @@ struct connman_service {
 	struct connman_stats stats;
 	struct connman_stats stats_roaming;
 	GHashTable *counter_table;
+	enum connman_service_proxy_method proxy;
+	char **proxies;
+	char **excludes;
+	char *pac;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -265,6 +269,34 @@ static enum connman_service_error string2error(const char *error)
 		return CONNMAN_SERVICE_ERROR_PIN_MISSING;
 
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
+}
+
+static const char *proxymethod2string(enum connman_service_proxy_method method)
+{
+	switch (method) {
+	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
+		return "direct";
+	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
+		return "manual";
+	case CONNMAN_SERVICE_PROXY_METHOD_AUTO:
+		return "auto";
+	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		break;
+	}
+
+	return NULL;
+}
+
+static enum connman_service_proxy_method string2proxymethod(const char *method)
+{
+	if (g_strcmp0(method, "direct") == 0)
+		return CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
+	else if (g_strcmp0(method, "auto") == 0)
+		return CONNMAN_SERVICE_PROXY_METHOD_AUTO;
+	else if (g_strcmp0(method, "manual") == 0)
+		return CONNMAN_SERVICE_PROXY_METHOD_MANUAL;
+	else
+		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 }
 
 static connman_bool_t is_connecting(struct connman_service *service)
@@ -823,23 +855,116 @@ static void append_domainconfig(DBusMessageIter *iter, void *user_data)
 				DBUS_TYPE_STRING, &service->domains[i]);
 }
 
+static void append_proxies(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	int i;
+
+	if (service->proxies == NULL)
+		return;
+
+	for (i = 0; service->proxies[i]; i++)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->proxies[i]);
+}
+
+static void append_excludes(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	int i;
+
+	if (service->excludes == NULL)
+		return;
+
+	for (i = 0; service->excludes[i]; i++)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->excludes[i]);
+}
+
 static void append_proxy(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
+	const char *pac = NULL;
+	const char *method = proxymethod2string(
+		CONNMAN_SERVICE_PROXY_METHOD_DIRECT);
+
+	DBG("");
 
 	if (is_connected(service) == FALSE)
 		return;
 
-	if (service->ipconfig != NULL)
-		__connman_ipconfig_append_proxy(service->ipconfig, iter);
+	switch (service->proxy) {
+	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
+		/* fall through */
+	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
+		goto done;
+	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
+		connman_dbus_dict_append_array(iter, "Servers",
+					DBUS_TYPE_STRING, append_proxies,
+					service);
+
+		connman_dbus_dict_append_array(iter, "Excludes",
+					DBUS_TYPE_STRING, append_excludes,
+					service);
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_AUTO:
+		/* Maybe DHCP, or WPAD,  has provided an url for a pac file */
+		if (service->ipconfig != NULL)
+			pac = __connman_ipconfig_get_proxy_autoconfig(
+				service->ipconfig);
+
+		if (service->pac == NULL && pac == NULL)
+			goto done;
+
+		if (service->pac != NULL)
+			pac = service->pac;
+
+		connman_dbus_dict_append_basic(iter, "URL",
+					DBUS_TYPE_STRING, &pac);
+		break;
+	}
+
+	method = proxymethod2string(service->proxy);
+
+done:
+	connman_dbus_dict_append_basic(iter, "Method",
+					DBUS_TYPE_STRING, &method);
 }
 
 static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
+	const char *method;
 
-	if (service->ipconfig != NULL)
-		__connman_ipconfig_append_proxyconfig(service->ipconfig, iter);
+	switch (service->proxy) {
+	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
+		if (service->proxies != NULL)
+			connman_dbus_dict_append_array(iter, "Servers",
+						DBUS_TYPE_STRING,
+						append_proxies, service);
+
+		if (service->excludes != NULL)
+			connman_dbus_dict_append_array(iter, "Excludes",
+						DBUS_TYPE_STRING,
+						append_excludes, service);
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_AUTO:
+		if (service->pac != NULL)
+			connman_dbus_dict_append_basic(iter, "URL",
+					DBUS_TYPE_STRING, &service->pac);
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_AUTO;
+		break;
+	}
+
+	method = proxymethod2string(service->proxy);
+
+	connman_dbus_dict_append_basic(iter, "Method",
+				DBUS_TYPE_STRING, &method);
 }
 
 static void append_provider(DBusMessageIter *iter, void *user_data)
@@ -1130,7 +1255,7 @@ void __connman_service_notify(struct connman_ipconfig *ipconfig,
 
 int __connman_service_counter_register(const char *counter)
 {
-	struct connman_service *service = NULL;
+	struct connman_service *service;
 	GSequenceIter *iter;
 	struct connman_stats_counter *counters;
 
@@ -1160,7 +1285,7 @@ int __connman_service_counter_register(const char *counter)
 
 void __connman_service_counter_unregister(const char *counter)
 {
-	struct connman_service *service = NULL;
+	struct connman_service *service;
 	GSequenceIter *iter;
 
 	DBG("counter %s", counter);
@@ -1402,6 +1527,33 @@ const char *connman_service_get_nameserver(struct connman_service *service)
 	return service->nameserver;
 }
 
+enum connman_service_proxy_method connman_service_get_proxy_method(
+					struct connman_service *service)
+{
+	if (service == NULL)
+		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
+
+	return service->proxy;
+}
+
+char **connman_service_get_proxy_servers(struct connman_service *service)
+{
+	return g_strdupv(service->proxies);
+}
+
+char **connman_service_get_proxy_excludes(struct connman_service *service)
+{
+	return g_strdupv(service->excludes);
+}
+
+const char *connman_service_get_proxy_url(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->pac;
+}
+
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url)
 {
@@ -1462,6 +1614,179 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
+}
+
+static int update_proxy_configuration(struct connman_service *service,
+				DBusMessageIter *array)
+{
+	DBusMessageIter dict;
+	enum connman_service_proxy_method method;
+	GString *servers_str = NULL;
+	GString *excludes_str = NULL;
+	const char *url = NULL;
+
+	method = CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, variant;
+		const char *key;
+		int type;
+
+		dbus_message_iter_recurse(&dict, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			goto error;
+
+		dbus_message_iter_get_basic(&entry, &key);
+		dbus_message_iter_next(&entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) !=
+							DBUS_TYPE_VARIANT)
+			goto error;
+
+		dbus_message_iter_recurse(&entry, &variant);
+		type = dbus_message_iter_get_arg_type(&variant);
+
+		if (g_str_equal(key, "Method") == TRUE) {
+			const char *val;
+
+			if (type != DBUS_TYPE_STRING)
+				goto error;
+
+			dbus_message_iter_get_basic(&variant, &val);
+			method = string2proxymethod(val);
+		} else if (g_str_equal(key, "URL") == TRUE) {
+			if (type != DBUS_TYPE_STRING)
+				goto error;
+
+			dbus_message_iter_get_basic(&variant, &url);
+		} else if (g_str_equal(key, "Servers") == TRUE) {
+			DBusMessageIter str_array;
+
+			if (type != DBUS_TYPE_ARRAY)
+				goto error;
+
+			servers_str = g_string_new(NULL);
+			if (servers_str == NULL)
+				goto error;
+
+			dbus_message_iter_recurse(&variant, &str_array);
+
+			while (dbus_message_iter_get_arg_type(&str_array) ==
+							DBUS_TYPE_STRING) {
+				char *val = NULL;
+
+				dbus_message_iter_get_basic(&str_array, &val);
+
+				if (servers_str->len > 0)
+					g_string_append_printf(servers_str,
+							" %s", val);
+				else
+					g_string_append(servers_str, val);
+
+				dbus_message_iter_next(&str_array);
+			}
+		} else if (g_str_equal(key, "Excludes") == TRUE) {
+			DBusMessageIter str_array;
+
+			if (type != DBUS_TYPE_ARRAY)
+				goto error;
+
+			excludes_str = g_string_new(NULL);
+			if (excludes_str == NULL)
+				goto error;
+
+			dbus_message_iter_recurse(&variant, &str_array);
+
+			while (dbus_message_iter_get_arg_type(&str_array) ==
+							DBUS_TYPE_STRING) {
+				char *val = NULL;
+
+				dbus_message_iter_get_basic(&str_array, &val);
+
+				if (excludes_str->len > 0)
+					g_string_append_printf(excludes_str,
+							" %s", val);
+				else
+					g_string_append(excludes_str, val);
+
+				dbus_message_iter_next(&str_array);
+			}
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	switch (method) {
+	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
+		if (servers_str == NULL && service->proxies == NULL)
+			goto error;
+
+		if (servers_str != NULL) {
+			g_strfreev(service->proxies);
+
+			if (servers_str->len > 0)
+				service->proxies = g_strsplit_set(
+					servers_str->str, " ", 0);
+			else
+				service->proxies = NULL;
+		}
+
+		if (excludes_str != NULL) {
+			g_strfreev(service->excludes);
+
+			if (excludes_str->len > 0)
+				service->excludes = g_strsplit_set(
+					excludes_str->str, " ", 0);
+			else
+				service->excludes = NULL;
+		}
+
+		if (service->proxies == NULL)
+			method = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
+
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_AUTO:
+		g_free(service->pac);
+
+		if (url != NULL && strlen(url) > 0)
+			service->pac = g_strdup(url);
+		else
+			service->pac = NULL;
+
+		/* if we are connected:
+		   - if service->pac == NULL
+		   - if __connman_ipconfig_get_proxy_autoconfig(
+		   service->ipconfig) == NULL
+		   --> We should start WPAD */
+
+		break;
+	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		goto error;
+	}
+
+	if (servers_str != NULL)
+		g_string_free(servers_str, TRUE);
+
+	if (excludes_str != NULL)
+		g_string_free(excludes_str, TRUE);
+
+	service->proxy = method;
+
+	return 0;
+
+error:
+	if (servers_str != NULL)
+		g_string_free(servers_str, TRUE);
+
+	if (excludes_str != NULL)
+		g_string_free(excludes_str, TRUE);
+
+	return -EINVAL;
 }
 
 static DBusMessage *set_property(DBusConnection *conn,
@@ -1668,11 +1993,11 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "Proxy.Configuration") == TRUE) {
 		int err;
 
-		if (service->ipconfig == NULL)
-			return __connman_error_invalid_property(msg);
+		if (type != DBUS_TYPE_ARRAY)
+			return __connman_error_invalid_arguments(msg);
 
-		err = __connman_ipconfig_set_proxyconfig(service->ipconfig,
-								&value);
+		err = update_proxy_configuration(service, &value);
+
 		if (err < 0)
 			return __connman_error_failed(msg, -err);
 
@@ -2246,9 +2571,12 @@ static void service_free(gpointer user_data)
 
 	g_strfreev(service->nameservers);
 	g_strfreev(service->domains);
+	g_strfreev(service->proxies);
+	g_strfreev(service->excludes);
 
 	g_free(service->nameserver);
 	g_free(service->domainname);
+	g_free(service->pac);
 	g_free(service->mcc);
 	g_free(service->mnc);
 	g_free(service->apn);
@@ -3059,8 +3387,6 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
-
-	connman_network_set_protocol(network, CONNMAN_NETWORK_PROTOCOL_IP);
 
 	if (connman_device_add_network(device, network) < 0) {
 		connman_network_unref(network);
@@ -4015,6 +4341,31 @@ static int service_load(struct connman_service *service)
 		service->domains = NULL;
 	}
 
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Proxy.Method", NULL);
+	service->proxy = string2proxymethod(str);
+
+	service->proxies = g_key_file_get_string_list(keyfile,
+			service->identifier, "Proxy.Servers", &length, NULL);
+	if (service->proxies != NULL && length == 0) {
+		g_strfreev(service->proxies);
+		service->proxies = NULL;
+	}
+
+	service->excludes = g_key_file_get_string_list(keyfile,
+			service->identifier, "Proxy.Excludes", &length, NULL);
+	if (service->excludes != NULL && length == 0) {
+		g_strfreev(service->excludes);
+		service->excludes = NULL;
+	}
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Proxy.URL", NULL);
+	if (str != NULL) {
+		g_free(service->pac);
+		service->pac = str;
+	}
+
 done:
 	g_key_file_free(keyfile);
 
@@ -4028,6 +4379,7 @@ static int service_save(struct connman_service *service)
 	gchar *pathname, *data = NULL;
 	gsize length;
 	gchar *str;
+	const char *cst_str = NULL;
 	int err = 0;
 
 	DBG("service %p", service);
@@ -4175,6 +4527,38 @@ update:
 	} else
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Domains", NULL);
+
+	cst_str = proxymethod2string(service->proxy);
+	if (cst_str != NULL)
+		g_key_file_set_string(keyfile, service->identifier,
+				"Proxy.Method", cst_str);
+
+	if (service->proxies != NULL) {
+		guint len = g_strv_length(service->proxies);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+				"Proxy.Servers",
+				(const gchar **) service->proxies, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+						"Proxy.Servers", NULL);
+
+	if (service->excludes != NULL) {
+		guint len = g_strv_length(service->excludes);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+				"Proxy.Excludes",
+				(const gchar **) service->excludes, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+						"Proxy.Excludes", NULL);
+
+	if (service->pac != NULL && strlen(service->pac) > 0)
+		g_key_file_set_string(keyfile, service->identifier,
+					"Proxy.URL", service->pac);
+	else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Proxy.URL", NULL);
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 

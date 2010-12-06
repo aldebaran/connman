@@ -4,8 +4,8 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-					"org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("net.connman", "/"),
+					"net.connman.Manager")
 
 properties = manager.GetProperties()
 
@@ -17,8 +17,8 @@ for path in properties["Profiles"]:
 	else:
 		print "[ %s ]" % (path)
 
-	profile = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Profile")
+	profile = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Profile")
 
 	properties = profile.GetProperties()
 	for key in properties.keys():

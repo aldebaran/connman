@@ -95,23 +95,6 @@ AC_ARG_ENABLE(ofono,
 AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
 AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
 
-AC_ARG_WITH(dhclient, AC_HELP_STRING([--with-dhclient=PROGRAM],
-	[specify location of dhclient binary]), [path_dhclient=${withval}])
-
-AC_ARG_ENABLE(dhclient,
-	AC_HELP_STRING([--enable-dhclient], [enable dhclient support]),
-			[enable_dhclient=${enableval}], [enable_dhclient="no"])
-if (test "${enable_dhclient}" != "no"); then
-	if (test -z "${path_dhclient}"); then
-		AC_PATH_PROG(DHCLIENT, [dhclient], [], $PATH:/sbin:/usr/sbin)
-	else
-		DHCLIENT="${path_dhclient}"
-		AC_SUBST(DHCLIENT)
-	fi
-fi
-AM_CONDITIONAL(DHCLIENT, test "${enable_dhclient}" != "no")
-AM_CONDITIONAL(DHCLIENT_BUILTIN, test "${enable_dhclient}" = "builtin")
-
 AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
 
@@ -134,6 +117,23 @@ AC_ARG_ENABLE(portal,
 			[enable_portal=${enableval}], [enable_portal="no"])
 AM_CONDITIONAL(PORTAL, test "${enable_portal}" != "no")
 AM_CONDITIONAL(PORTAL_BUILTIN, test "${enable_portal}" = "builtin")
+
+AC_ARG_WITH(openvpn, AC_HELP_STRING([--with-openvpn=PROGRAM],
+        [specify location of openvpn binary]), [path_openvpn=${withval}])
+
+AC_ARG_ENABLE(openvpn,
+	AC_HELP_STRING([--enable-openvpn], [enable openvpn support]),
+			[enable_openvpn=${enableval}], [enable_openvpn="no"])
+if (test "${enable_openvpn}" != "no"); then
+	if (test -z "${path_openvpn}"); then
+		AC_PATH_PROG(OPENVPN, [openvpn], [], $PATH:/sbin:/usr/sbin)
+	else
+		OPENVPN="${path_openvpn}"
+		AC_SUBST(OPENVPN)
+	fi
+fi
+AM_CONDITIONAL(OPENVPN, test "${enable_openvpn}" != "no")
+AM_CONDITIONAL(OPENVPN_BUILTIN, test "${enable_openvpn}" = "builtin")
 
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
@@ -306,6 +306,35 @@ else
 fi
 AC_SUBST(DBUS_CONFDIR)
 
+AC_ARG_WITH(dbusdatadir, AC_HELP_STRING([--with-dbusdatadir=PATH],
+	[path to D-Bus data directory]), [path_dbusdata=${withval}],
+		[path_dbusdata="`$PKG_CONFIG --variable=datadir dbus-1`"])
+if (test -z "${path_dbusdata}"); then
+	DBUS_DATADIR="${datadir}/dbus-1/system-services"
+else
+	DBUS_DATADIR="${path_dbusdata}/dbus-1/system-services"
+fi
+AC_SUBST(DBUS_DATADIR)
+
+PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
+				AC_MSG_ERROR(Xtables library is required))
+AC_SUBST(XTABLES_CFLAGS)
+AC_SUBST(XTABLES_LIBS)
+
+
+AC_ARG_ENABLE(systemd, AC_HELP_STRING([--enable-systemd],
+		[enable systemd support]), [enable_systemd=${enableval}])
+if (test "${enable_systemd}" = "yes"); then
+	PKG_CHECK_MODULES(SYSTEMD, systemd, dummy=yes,
+				AC_MSG_ERROR(systemd is required))
+	SYSTEMD_UNITDIR="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
+	if (test -z "${SYSTEM_UNITDIR}"); then
+		SYSTEMD_UNITDIR="/lib/systemd/system"
+	fi
+	AC_SUBST(SYSTEMD_UNITDIR)
+fi
+AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" = "yes")
+
 AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
 			[enable_polkit=${enableval}], [enable_polkit="no"])
@@ -327,15 +356,15 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
 		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
-	PKG_CHECK_MODULES(IPTC, libiptc, dummy=yes,
-				AC_MSG_ERROR(iptables library is required))
-	AC_SUBST(IPTC_CFLAGS)
-	AC_SUBST(IPTC_LIBS)
-
 	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
 				AC_MSG_ERROR(Netlink library is required))
 	AC_SUBST(NETLINK_CFLAGS)
 	AC_SUBST(NETLINK_LIBS)
+
+	PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
+				AC_MSG_ERROR(GnuTLS library is required))
+	AC_SUBST(GNUTLS_CFLAGS)
+	AC_SUBST(GNUTLS_LIBS)
 fi
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 
@@ -356,24 +385,6 @@ if (test "${enable_capng}" = "yes"); then
 	AC_SUBST(CAPNG_LIBS)
 	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
 fi
-
-AC_ARG_ENABLE(udev, AC_HELP_STRING([--disable-udev],
-			[don't use udev support even if available]),
-						[enable_udev=${enableval}])
-if (test "${enable_udev}" != "no"); then
-	PKG_CHECK_MODULES(UDEV, libudev >= 143, [enable_udev="yes"],
-				AC_MSG_ERROR(libudev >= 143 is required))
-	UDEV_DATADIR="`$PKG_CONFIG --variable=udevdir udev`"
-	if (test -z "${UDEV_DATADIR}"); then
-		UDEV_DATADIR="${sysconfdir}/udev/rules.d"
-	else
-		UDEV_DATADIR="${UDEV_DATADIR}/rules.d"
-	fi
-	AC_SUBST(UDEV_DATADIR)
-fi
-AC_SUBST(UDEV_CFLAGS)
-AC_SUBST(UDEV_LIBS)
-AM_CONDITIONAL(UDEV, test "${enable_udev}" = "yes")
 
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 			[don't install configuration and data files]),

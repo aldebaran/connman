@@ -15,41 +15,20 @@ Core
 
    Priority: Low
    Complexity: C8
-
-
-- DHCP lib server
-
-   Priority: High
-   Complexity: C4
-   Owner: Martin Xu <martin.xu@intel.com>
-
-
-- On demand connection
-
-   Priority: Medium
-   Complexity: C4
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
-   With on demand connection applications get connectivity access
-   simply by trying to reach the network. They don't need to
-   specifically request for a service connection, but ConnMan
-   establishes it on their behalf.
-   This feature counter part is idle disconnect. ConnMan needs to be
-   able to close the on demand established connections by monitoring
-   the link activity. This requires kernel support with e.g. the
-   netfilter IDLETIMER target.
 
-- Avahi-zeroconf
+- IPv4LL
 
    Priority: Medium
    Complexity: C4
+   Owner: Julien Massot <jmassot@aldebaran-robotics.com>
 
-   The IPv4 Link Local part should be integrated into DHCP-lib.
-
-- OpenVPN
-
-   Priority: Low
-   Complexity: C2
+   The IPv4 Link Local support should be integrated into DHCP-lib.
+   IPv4LL should be started when DHCP failed, and then DHCP should
+   be scheduled for periodic trials.
+   Also, there should be no default route going through an IPv4LL
+   interface.
 
 
 - VPNc
@@ -58,60 +37,13 @@ Core
    Complexity: C2
 
 
-- iptables wrapper
-
-   Priority: High
-   Complexity: C4
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-   ConnMan needs to be able to set iptables rules and tables for both
-   tethering and on demand connection.
-   The main idea is to define an internal API for talking to the
-   netfilter socket in order to set our tables and rules. Being in
-   sync with the actual iptables library might be problematic.
-   A less elegant solution would be a process based one, that would
-   simply call the iptables executable.
-
-- Tethering
-
-   Priority: Medium
-   Complexity: C8
-   Owner: Marcel Holtmann <marcel@holtmann.org>
-   Dependencies: Core:iptables wrapper
-   Dependencies: Core:DHCP lib server
-
-   Bluetooth, USB and WiFi tethering.
-   The tethering framework would typically allow sharing the 3G data
-   link between WiFi, Bluetooth or USB clients.
-   A bridge needs to be setup and all tethering connections are added
-   to it. A DHCP server and a DNS proxy will be running on the bridge.
-   Then IP forwarding and masquerading will be set between the default
-   service and the bridge interface.
-
-
 - Agent callbacks
 
    Priority: Medium
    Complexity: C2
+   Owner: Patrik Flykt <patrik.flykt@nokia.com>
 
-
-- pacrunner
-
-   Priority: High
-   Complexity: C4
-   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
-
-   pacrunner is a standalone daemon that downloads and interpret PAC
-   files through a JavaScript interpreter. Once the interpretation is
-   done, pacrunner is able to associate a proxy with an URL.
-   pacrunner D-Bus interface exports a configuration API for passing
-   it the PAC URLs. It also provide a FindProxyForURL() API for
-   application to know which proxies to use.
-   ConnMan will use pacrunner for both auto and manual proxy
-   configurations. Then applications should talk to pacrunner (through
-   libproxy for example) to find the right proxies.
-   ConnMan will also use the FindProxyForURL() pacruner API for a more
-   stable and accurate online detection code.
+   Implement Agent API according to doc/agent-api.txt
 
 
 - Moving DNS proxy code to ConnMan core
@@ -126,6 +58,63 @@ Core
    resolver.c code for editing resolv.conf.
 
 
+- WiFi tethering
+   Priority: Medium
+   Complexity: C4
+
+   WiFi tethering should be done through an extended wpa_supplicant
+   D-Bus API, as STA and AP modes are typically mutually exclusive.
+
+
+- Session API implementation
+
+   Priority: High
+   Complexity: C4
+   Owner: Daniel Wagner <daniel.wagner@bmw-carit.de>
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   The session API should provide a connection abstraction in order to
+   prioritize applications network accesses, prevent or allow network
+   and bearer roaming, or provide applications with a way to request
+   for periodic network connections. On-demand connections will be
+   implemented through this API as well.
+   See http://www.mail-archive.com/connman@connman.net/msg01653.html
+
+
+- Provisioning D-Bus API
+
+   Priority: Medium
+   Complexity: C2
+   Owner: Lucio Maciel <lucio.maciel@hp.com>
+
+   The current service provisioning lacks inotify support for adding
+   new provision files on the fly, and a D-Bus interface for modifying
+   existing ones.
+
+
+- WiSPR support
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Marcel Holtmann <marcel@holtmann.org>
+
+   Based on the portal detection parsing results, and provisioned
+   credentials, ConnMan should be able to initiate a WiSPR authentication.
+
+
+- IPv6 enhancements
+
+   Priority: High
+   Complexity: C8
+   Owner: Jukka Rissanen <jukka.rissanen@nokia.com>
+
+   Support IPv6 only networks so that system can go online even if
+   there is no IPv4 address. Also support more than one IPv6 address
+   in one device so that the addresses are reported correctly via
+   dbus interface. The autoconf IPv6 addresses need also some tweaking
+   so that system will go online properly.
+
+
 WiFi
 ====
 
@@ -134,20 +123,23 @@ WiFi
    Priority: Low
    Complexity: C2
    Dependencies: Core:Agent callbacks
+   Owner: Tomasz Bursztyka <tomasz.bursztyka@nokia.com>
+
+   Support in gsupplicant and connman core (network/service).
 
 
 - Ad-Hoc support
 
    Priority: Medium
    Complexity: C2
-   Dependencies: Core:Avahi-zeroconf
+   Dependencies: Core:IPv4LL
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
 - Fast Connect
 
    Priority: Low
    Complexity: C4
-   Dependencies: WiFi:libsupplicant
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
@@ -167,14 +159,12 @@ WiFi
 
    Priority: Low
    Complexity: C1
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
 - EAP-GTC
 
    Priority: Low
    Complexity: C1
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
 - WiFi p2p
@@ -185,7 +175,7 @@ WiFi
 
 - WiFi CRDA setting through 3G country
 
-   Priority: Low
+   Priority: Medium
    Complexity: C2
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 

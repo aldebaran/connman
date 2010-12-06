@@ -363,7 +363,6 @@ static void create_service(struct connman_network *network)
 
 static int network_probe(struct connman_network *network)
 {
-	create_service(network);
 	return 0;
 }
 
@@ -540,6 +539,9 @@ static int add_network(struct connman_device *device,
 	hash_path = connman_network_get_string(network, "Path");
 	if (hash_path == NULL)
 		goto error;
+
+	create_service(network);
+
 	connman_network_ref(network);
 	g_hash_table_insert(network_hash, (char *)hash_path, network);
 
@@ -574,10 +576,7 @@ static int add_network(struct connman_device *device,
 			const char *type;
 
 			dbus_message_iter_get_basic(&value, &type);
-			if (g_strcmp0(type, "internet") == 0) {
-				connman_network_set_protocol(network,
-						CONNMAN_NETWORK_PROTOCOL_IP);
-			} else {
+			if (g_strcmp0(type, "internet") != 0) {
 				DBG("path %p type %s", path, type);
 				goto error;
 			}
@@ -872,8 +871,6 @@ static void add_device(const char *path, const char *imsi)
 
 	connman_device_set_ident(device, imsi);
 
-	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE);
-
 	connman_device_set_string(device, "Path", path);
 
 	connman_device_set_data(device, modem);
@@ -998,10 +995,9 @@ static gboolean modem_has_gprs(DBusMessageIter *array)
 	return modem_has_interface(array, OFONO_GPRS_INTERFACE);
 }
 
-static void add_modem(const char *path, DBusMessageIter *properties)
+static void add_modem(const char *path, DBusMessageIter *prop)
 {
 	struct modem_data *modem;
-	DBusMessageIter dict;
 	dbus_bool_t powered = FALSE;
 	dbus_bool_t online = FALSE;
 	dbus_bool_t has_online = FALSE;
@@ -1024,13 +1020,11 @@ static void add_modem(const char *path, DBusMessageIter *properties)
 
 	g_hash_table_insert(modem_hash, g_strdup(path), modem);
 
-	dbus_message_iter_recurse(properties, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+	while (dbus_message_iter_get_arg_type(prop) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
 		const char *key;
 
-		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_recurse(prop, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
 
 		dbus_message_iter_next(&entry);
@@ -1047,7 +1041,7 @@ static void add_modem(const char *path, DBusMessageIter *properties)
 			has_gprs = modem_has_gprs(&value);
 		}
 
-		dbus_message_iter_next(&dict);
+		dbus_message_iter_next(prop);
 	}
 
 	if (!powered)

@@ -3,6 +3,7 @@
  *  Connection Manager
  *
  *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2010  BMW Car IT GmbH. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -59,23 +60,18 @@ int main(int argc, char *argv[])
 	DBusError error;
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
-	dbus_uint32_t pid;
-	char **envp, *busname, *busintf, *buspath, *reason, *interface;
+	char **envp, *busname, *interface, *path, *reason;
 
-	busname = getenv("BUSNAME");
-	busintf = getenv("BUSINTF");
-	buspath = getenv("BUSPATH");
+	busname = getenv("CONNMAN_BUSNAME");
+	interface = getenv("CONNMAN_INTERFACE");
+	path = getenv("CONNMAN_PATH");
 
-	if (busname == NULL || busintf == NULL || buspath == NULL)
-		return 0;
+	reason = getenv("script_type");
 
-	pid = atoi(getenv("pid"));
-	reason = getenv("reason");
-	interface = getenv("interface");
-
-	if (pid == 0 || reason == NULL)
-		return 0;
-
+	if (!busname || !interface || !path || !reason) {
+		fprintf(stderr, "Required environment variables not set\n");
+		return 1;
+	}
 	dbus_error_init(&error);
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
@@ -88,8 +84,8 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	msg = dbus_message_new_method_call(busname, buspath,
-							busintf, "Notify");
+	msg = dbus_message_new_method_call(busname, path,
+						interface, "notify");
 	if (msg == NULL) {
 		dbus_connection_unref(conn);
 		fprintf(stderr, "Failed to allocate method call\n");
@@ -98,8 +94,9 @@ int main(int argc, char *argv[])
 
 	dbus_message_set_no_reply(msg, TRUE);
 
-	dbus_message_append_args(msg, DBUS_TYPE_UINT32, &pid,
-				DBUS_TYPE_STRING, &reason, DBUS_TYPE_INVALID);
+	dbus_message_append_args(msg,
+				 DBUS_TYPE_STRING, &reason,
+				 DBUS_TYPE_INVALID);
 
 	dbus_message_iter_init_append(msg, &iter);
 
@@ -108,15 +105,8 @@ int main(int argc, char *argv[])
 			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_STRING_AS_STRING
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, &dict);
 
-	for (envp = environ; envp && *envp; envp++) {
-		if (strlen(*envp) < 5)
-			continue;
-
-		if (strncmp(*envp, "new_", 4) == 0 ||
-				strncmp(*envp, "old_", 4) == 0 ||
-					strncmp(*envp, "alia", 4) == 0)
-			append(&dict, *envp);
-	}
+	for (envp = environ; envp && *envp; envp++)
+		append(&dict, *envp);
 
 	dbus_message_iter_close_container(&iter, &dict);
 

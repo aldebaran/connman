@@ -102,16 +102,6 @@ Running the daemon with debugging information in the foreground is quite
 verbose and sometimes not really helpful. The "monitor-connman" script
 allows to monitor "PropertyChanged" D-Bus signals from various interfaces.
 
-  During start of daemon
-    {Manager} [/] Devices = dbus.Array([dbus.ObjectPath('/dev_00_90_CC ...
-    {Device} [/dev_00_90_CC_xx_xx_xx] Powered = 1
-    {Device} [/dev_00_90_CC_xx_xx_xx] Networks = dbus.Array( ...
-
-  During shutdown of daemon
-    {Device} [/dev_00_90_CC_xx_xx_xx] Networks = dbus.Array( ...
-    {Device} [/dev_00_90_CC_xx_xx_xx] Powered = 0
-    {Manager} [/] Devices = dbus.Array([], ...
-
 Every "PropertyChanged" signal will generate a line of output. Some of them
 can get very complex. The first detail inside "{ ... }" is the interface
 name (without its service name prefix). The second detail inside "[ ... ]"

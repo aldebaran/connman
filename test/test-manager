@@ -9,7 +9,10 @@ def extract_values(values):
 		if key in ["PrefixLength"]:
 			val += "%s" % (int(values[key]))
 		else:
-			val += str(values[key])
+			if key in ["Servers", "Excludes"]:
+				val += extract_list(values[key])
+			else:
+				val += str(values[key])
 	val += " }"
 	return val
 
@@ -22,34 +25,31 @@ def extract_list(list):
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-					"org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("net.connman", "/"),
+					"net.connman.Manager")
 
 properties = manager.GetProperties()
 
 def print_properties(key, value):
 	if key == "Profiles":
-		interface = "org.moblin.connman.Profile"
-	elif key == "Devices":
-		interface = "org.moblin.connman.Device"
-	elif key in ["Services", "Providers"]:
-		interface = "org.moblin.connman.Service"
+		interface = "net.connman.Profile"
+	elif key == "Services":
+		interface = "net.connman.Service"
 	elif key == "Technologies":
-		interface = "org.moblin.connman.Technology"
+		interface = "net.connman.Technology"
 	else:
 		return
 
 	print "%s" % (key)
 	for path in value:
 		print "    %s" % (path)
-		obj = dbus.Interface(bus.get_object("org.moblin.connman", path),
+		obj = dbus.Interface(bus.get_object("net.connman", path),
 								interface)
 
 		properties = obj.GetProperties()
 
 		for key in properties.keys():
-			if key in ["Devices", "Networks", "Services",
-						"Providers", "Technologies"]:
+			if key in ["Services", "Technologies"]:
 				continue
 
 			elif key in ["Powered", "Scanning", "Connected",
@@ -64,7 +64,8 @@ def print_properties(key, value):
 
 			elif key in ["IPv4", "IPv4.Configuration",
 					"IPv6", "IPv6.Configuration",
-						"Proxy", "Ethernet", "Provider"]:
+						"Proxy", "Proxy.Configuration",
+							"Ethernet", "Provider"]:
 				val = extract_values(properties[key])
 
 			elif key in ["Nameservers", "Nameservers.Configuration",
@@ -78,35 +79,16 @@ def print_properties(key, value):
 
 			print "        %s = %s" % (key, val)
 
-		if "Devices" in properties.keys():
-			list = ""
-			for path in properties["Devices"]:
-				val = str(path)
-				list = list + val[val.rfind("/") + 1:] + " "
-			print "        Devices = [ %s]" % (list)
-		if "Networks" in properties.keys():
-			list = ""
-			for path in properties["Networks"]:
-				val = str(path)
-				list = list + val[val.rfind("/") + 1:] + " "
-			print "        Networks = [ %s]" % (list)
 		if "Services" in properties.keys():
 			list = ""
 			for path in properties["Services"]:
 				val = str(path)
 				list = list + val[val.rfind("/") + 1:] + " "
 			print "        Services = [ %s]" % (list)
-		if "Providers" in properties.keys():
-			list = ""
-			for path in properties["Providers"]:
-				val = str(path)
-				list = list + val[val.rfind("/") + 1:] + " "
-			print "        Providers = [ %s]" % (list)
 
 
 for key in properties.keys():
-	if key in ["Profiles", "Devices", "Services", "Providers",
-							"Technologies"]:
+	if key in ["Profiles", "Services", "Technologies"]:
 		print_properties(key, properties[key])
 	elif key in ["AvailableTechnologies", "EnabledTechnologies",
 					"ConnectedTechnologies",

@@ -2,7 +2,7 @@ Agent hierarchy
 ===============
 
 Service		unique name
-Interface	org.moblin.connman.Agent
+Interface	net.connman.Agent
 Object path	freely definable
 
 Methods		void Release()

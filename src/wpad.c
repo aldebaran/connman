@@ -26,7 +26,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include <gresolv/gresolv.h>
+#include <gweb/gresolv.h>
 
 #include "connman.h"
 

@@ -74,7 +74,6 @@ struct connman_ipdevice {
 	char *ipv4_gateway;
 	char *ipv6_gateway;
 
-	char *proxy;
 	char *pac;
 
 	struct connman_ipconfig *config;
@@ -116,16 +115,23 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress);
 }
 
-static unsigned char netmask2prefixlen(const char *netmask)
+unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask)
 {
-	unsigned char bits = 0;
-	in_addr_t mask = inet_network(netmask);
-	in_addr_t host = ~mask;
+	unsigned char bits;
+	in_addr_t mask;
+	in_addr_t host;
+
+	if (netmask == NULL)
+		return 32;
+
+	mask = inet_network(netmask);
+	host = ~mask;
 
 	/* a valid netmask must be 2^n - 1 */
 	if ((host & (host + 1)) != 0)
 		return -1;
 
+	bits = 0;
 	for (; mask; mask <<= 1)
 		++bits;
 
@@ -177,10 +183,7 @@ void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 	if (ipaddress == NULL)
 		return;
 
-	if (netmask != NULL)
-		ipaddress->prefixlen = netmask2prefixlen(netmask);
-	else
-		ipaddress->prefixlen = 32;
+	ipaddress->prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 
 	g_free(ipaddress->local);
 	ipaddress->local = g_strdup(address);
@@ -305,7 +308,6 @@ static void free_ipdevice(gpointer data)
 	free_address_list(ipdevice);
 	g_free(ipdevice->ipv4_gateway);
 	g_free(ipdevice->ipv6_gateway);
-	g_free(ipdevice->proxy);
 	g_free(ipdevice->pac);
 
 	g_free(ipdevice->address);
@@ -412,7 +414,7 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 	connman_ipconfig_unref(ipdevice->driver_config);
 	ipdevice->driver_config = NULL;
 
-	connman_inet_clear_address(ipdevice->index);
+	connman_inet_clear_address(ipdevice->index, ipdevice->config->address);
 	connman_inet_clear_ipv6_address(ipdevice->index,
 			ipdevice->driver_config->address->local,
 			ipdevice->driver_config->address->prefixlen);
@@ -707,6 +709,7 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
+		GList *config_list;
 
 		if (family == AF_INET6) {
 			g_free(ipdevice->ipv6_gateway);
@@ -728,6 +731,20 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 			g_free(ipaddress->gateway);
 			ipaddress->gateway = g_strdup(gateway);
 		}
+
+		for (config_list = g_list_first(ipconfig_list); config_list;
+					config_list = g_list_next(config_list)) {
+			struct connman_ipconfig *ipconfig = config_list->data;
+
+			if (index != ipconfig->index)
+				continue;
+
+			if (ipconfig->ops == NULL)
+				continue;
+
+			if (ipconfig->ops->ip_bound)
+				ipconfig->ops->ip_bound(ipconfig);
+		}
 	}
 
 	connman_info("%s {add} route %s gw %s scope %u <%s>",
@@ -748,6 +765,7 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 
 	if (scope == 0 && g_strcmp0(dst, "0.0.0.0") == 0) {
 		GSList *list;
+		GList *config_list;
 
 		if (family == AF_INET6) {
 			g_free(ipdevice->ipv6_gateway);
@@ -768,6 +786,20 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 
 			g_free(ipaddress->gateway);
 			ipaddress->gateway = NULL;
+		}
+
+		for (config_list = g_list_first(ipconfig_list); config_list;
+					config_list = g_list_next(config_list)) {
+			struct connman_ipconfig *ipconfig = config_list->data;
+
+			if (index != ipconfig->index)
+				continue;
+
+			if (ipconfig->ops == NULL)
+				continue;
+
+			if (ipconfig->ops->ip_release)
+				ipconfig->ops->ip_release(ipconfig);
 		}
 	}
 
@@ -1181,7 +1213,8 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
-			return connman_inet_clear_address(ipconfig->index);
+			return connman_inet_clear_address(ipconfig->index,
+							ipconfig->address);
 		else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
 			return connman_inet_clear_ipv6_address(
 						ipconfig->index,
@@ -1599,112 +1632,6 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		ipconfig->method = method;
 		break;
 	}
-
-	return 0;
-}
-
-void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter)
-{
-	struct connman_ipdevice *ipdevice;
-	const char *method = "direct";
-
-	ipdevice = g_hash_table_lookup(ipdevice_hash,
-                                        GINT_TO_POINTER(ipconfig->index));
-	if (ipdevice == NULL)
-		goto done;
-
-	if (ipdevice->pac == NULL)
-		goto done;
-
-	method = "auto-config";
-
-	connman_dbus_dict_append_basic(iter, "URL",
-					DBUS_TYPE_STRING, &ipdevice->pac);
-
-done:
-	connman_dbus_dict_append_basic(iter, "Method",
-						DBUS_TYPE_STRING, &method);
-}
-
-void __connman_ipconfig_append_proxyconfig(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter)
-{
-	struct connman_ipdevice *ipdevice;
-	const char *method = "auto";
-
-	ipdevice = g_hash_table_lookup(ipdevice_hash,
-					GINT_TO_POINTER(ipconfig->index));
-	if (ipdevice == NULL)
-		goto done;
-
-	if (ipdevice->proxy == NULL)
-		goto done;
-
-	method = ipdevice->proxy;
-
-done:
-	connman_dbus_dict_append_basic(iter, "Method",
-						DBUS_TYPE_STRING, &method);
-}
-
-int __connman_ipconfig_set_proxyconfig(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *array)
-{
-	struct connman_ipdevice *ipdevice;
-	DBusMessageIter dict;
-	const char *method;
-
-	DBG("ipconfig %p", ipconfig);
-
-	ipdevice = g_hash_table_lookup(ipdevice_hash,
-					GINT_TO_POINTER(ipconfig->index));
-	if (ipdevice == NULL)
-		return -ENXIO;
-
-	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
-		return -EINVAL;
-
-	dbus_message_iter_recurse(array, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry;
-		const char *key;
-		int type;
-
-		dbus_message_iter_recurse(&dict, &entry);
-
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			return -EINVAL;
-
-		dbus_message_iter_get_basic(&entry, &key);
-		dbus_message_iter_next(&entry);
-
-		type = dbus_message_iter_get_arg_type(&entry);
-
-		if (g_str_equal(key, "Method") == TRUE) {
-			if (type != DBUS_TYPE_STRING)
-				return -EINVAL;
-
-			dbus_message_iter_get_basic(&entry, &method);
-			if (strlen(method) == 0)
-				method = NULL;
-		}
-
-		dbus_message_iter_next(&dict);
-	}
-
-	DBG("method %s", method);
-
-	if (method == NULL)
-		return -EINVAL;
-
-	if (g_str_equal(method, "auto") == FALSE &&
-				g_str_equal(method, "direct") == FALSE)
-		return -EINVAL;
-
-	g_free(ipdevice->proxy);
-	ipdevice->proxy = g_strdup(method);
 
 	return 0;
 }

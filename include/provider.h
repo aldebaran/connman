@@ -83,6 +83,8 @@ void connman_provider_set_dns(struct connman_provider *provider,
 void connman_provider_set_domain(struct connman_provider *provider,
 							const char *domain);
 
+const char *connman_provider_get_driver_name(struct connman_provider *provider);
+
 struct connman_provider_driver {
 	const char *name;
 	enum connman_provider_type type;

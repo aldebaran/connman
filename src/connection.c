@@ -288,7 +288,13 @@ static int connection_probe(struct connman_element *element)
 			CONNMAN_PROPERTY_ID_IPV6_GATEWAY, &ipv6_gateway);
 
 	connman_element_get_value(element,
-			CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
+			CONNMAN_PROPERTY_ID_IPV4_PEER, &vpn_ip);
+
+	if (vpn_ip == NULL)
+		connman_element_get_value(element,
+				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
+
+	DBG("vpn_ip %s", vpn_ip);
 
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_DOMAINNAME, &domainname);

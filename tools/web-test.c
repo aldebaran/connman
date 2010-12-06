@@ -24,7 +24,6 @@
 #endif
 
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <signal.h>
 
@@ -44,27 +43,47 @@ static void sig_term(int sig)
 	g_main_loop_quit(main_loop);
 }
 
-static void web_result(uint16_t status, gpointer user_data)
+static gboolean web_result(GWebResult *result, gpointer user_data)
 {
+	const guint8 *chunk;
+	gsize length;
+	guint16 status;
 	gdouble elapsed;
+
+	g_web_result_get_chunk(result, &chunk, &length);
+
+	if (length > 0) {
+		printf("%s\n", (char *) chunk);
+		return TRUE;
+	}
+
+	status = g_web_result_get_status(result);
+
+	g_print("status: %03u\n", status);
 
 	elapsed = g_timer_elapsed(timer, NULL);
 
 	g_print("elapse: %f seconds\n", elapsed);
 
-	g_print("status: %03u\n", status);
-
 	g_main_loop_quit(main_loop);
+
+	return FALSE;
 }
 
 static gboolean option_debug = FALSE;
 static gchar *option_nameserver = NULL;
+static gchar *option_user_agent = NULL;
+static gchar *option_http_version = NULL;
 
 static GOptionEntry options[] = {
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 					"Enable debug output" },
 	{ "nameserver", 'n', 0, G_OPTION_ARG_STRING, &option_nameserver,
 					"Specify nameserver", "ADDRESS" },
+	{ "user-agent", 'A', 0, G_OPTION_ARG_STRING, &option_user_agent,
+					"Specific user agent", "STRING" },
+	{ "http-version", 'H', 0, G_OPTION_ARG_STRING, &option_http_version,
+					"Specific HTTP version", "STRING" },
 	{ NULL },
 };
 
@@ -85,19 +104,19 @@ int main(int argc, char *argv[])
 			g_error_free(error);
 		} else
 			g_printerr("An unknown error occurred\n");
-		exit(1);
+		return 1;
 	}
 
 	g_option_context_free(context);
 
 	if (argc < 2) {
-		printf("missing argument\n");
+		fprintf(stderr, "Missing argument\n");
 		return 1;
 	}
 
 	web = g_web_new(index);
 	if (web == NULL) {
-		printf("failed to web service\n");
+		fprintf(stderr, "Failed to create web service\n");
 		return 1;
 	}
 
@@ -111,11 +130,20 @@ int main(int argc, char *argv[])
 		g_free(option_nameserver);
 	}
 
+	if (option_user_agent != NULL) {
+		g_web_set_user_agent(web, "%s", option_user_agent);
+		g_free(option_user_agent);
+	}
+
+	if (option_http_version != NULL) {
+		g_web_set_http_version(web, option_http_version);
+		g_free(option_http_version);
+	}
+
 	timer = g_timer_new();
 
-	if (g_web_request(web, G_WEB_METHOD_GET, argv[1],
-					web_result, NULL) == 0) {
-		printf("failed to start request\n");
+	if (g_web_request_get(web, argv[1], web_result, NULL) == 0) {
+		fprintf(stderr, "Failed to start request\n");
 		return 1;
 	}
 

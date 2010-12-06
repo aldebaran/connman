@@ -79,9 +79,7 @@ static GIOStatus rfkill_process(GIOChannel *chan)
 	GIOStatus status = G_IO_STATUS_NORMAL;
 	unsigned char buf[32];
 	struct rfkill_event *event = (void *) buf;
-	char sysname[32];
 	enum connman_service_type type;
-	connman_bool_t blocked;
 	gsize len;
 
 	DBG("");
@@ -113,19 +111,6 @@ static GIOStatus rfkill_process(GIOChannel *chan)
 	case RFKILL_OP_CHANGE:
 		__connman_technology_update_rfkill(event->idx, event->soft,
 								event->hard);
-		break;
-	default:
-		break;
-	}
-
-	snprintf(sysname, sizeof(sysname) - 1, "rfkill%d", event->idx);
-
-	blocked = (event->soft || event->hard) ? TRUE : FALSE;
-
-	switch (event->type) {
-	case RFKILL_TYPE_ALL:
-	case RFKILL_TYPE_WLAN:
-		__connman_udev_rfkill(sysname, blocked);
 		break;
 	default:
 		break;

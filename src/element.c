@@ -233,29 +233,6 @@ struct connman_device *__connman_element_get_device(struct connman_element *elem
 	return __connman_element_get_device(element->parent);
 }
 
-const char *__connman_element_get_device_path(struct connman_element *element)
-{
-	struct connman_device *device;
-
-	device = __connman_element_get_device(element);
-	if (device == NULL)
-		return NULL;
-
-	return connman_device_get_path(device);
-}
-
-const char *__connman_element_get_network_path(struct connman_element *element)
-{
-	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
-						element->network != NULL)
-		return element->path;
-
-	if (element->parent == NULL)
-		return NULL;
-
-	return __connman_element_get_network_path(element->parent);
-}
-
 struct find_data {
 	enum connman_service_type type;
 	struct connman_device *device;
@@ -776,6 +753,12 @@ int connman_element_get_value(struct connman_element *element,
 			return connman_element_get_value(element->parent,
 								id, value);
 		*((char **) value) = element->ipv4.address;
+		break;
+	case CONNMAN_PROPERTY_ID_IPV4_PEER:
+		if (element->ipv4.peer == NULL)
+			return connman_element_get_value(element->parent,
+								id, value);
+		*((char **) value) = element->ipv4.peer;
 		break;
 	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
 		if (element->ipv4.netmask == NULL)
@@ -1407,12 +1390,12 @@ void __connman_element_start(void)
 	started = TRUE;
 
 	__connman_rtnl_start();
-	__connman_udev_start();
 
 	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_dhcp_init();
 	__connman_wpad_init();
+	__connman_wispr_init();
 
 	__connman_rfkill_init();
 }
@@ -1423,6 +1406,7 @@ void __connman_element_stop(void)
 
 	__connman_rfkill_cleanup();
 
+	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
 	__connman_dhcp_cleanup();
 	__connman_ipv4_cleanup();

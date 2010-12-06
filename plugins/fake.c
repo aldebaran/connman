@@ -88,8 +88,6 @@ static void create_device(const char *name)
 	if (device == NULL)
 		return;
 
-	connman_device_set_mode(device, CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
-
 	connman_device_register(device);
 	connman_device_unref(device);
 }

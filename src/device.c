@@ -26,16 +26,11 @@
 #include <errno.h>
 #include <string.h>
 
-#include <gdbus.h>
-
 #include "connman.h"
-
-static DBusConnection *connection = NULL;
 
 struct connman_device {
 	struct connman_element element;
 	enum connman_device_type type;
-	enum connman_device_mode mode;
 	connman_bool_t offlinemode;
 	connman_bool_t blocked;
 	connman_bool_t powered;
@@ -49,7 +44,6 @@ struct connman_device {
 	char *node;
 	char *address;
 	char *interface;
-	char *control;
 	char *ident;
 	int phyindex;
 	unsigned int connections;
@@ -58,14 +52,9 @@ struct connman_device {
 	struct connman_device_driver *driver;
 	void *driver_data;
 
-	connman_bool_t registered;
-
 	char *last_network;
 	struct connman_network *network;
 	GHashTable *networks;
-
-	DBusMessage *pending;
-	guint timeout;
 };
 
 static gboolean device_scan_trigger(gpointer user_data)
@@ -187,25 +176,11 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
-static void powered_changed(struct connman_device *device)
-{
-	connman_dbus_property_changed_basic(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "Powered",
-					DBUS_TYPE_BOOLEAN, &device->powered);
-}
-
-static void blocked_changed(struct connman_device *device)
-{
-	connman_dbus_property_changed_basic(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "Blocked",
-					DBUS_TYPE_BOOLEAN, &device->blocked);
-}
-
 int __connman_device_enable(struct connman_device *device)
 {
 	int err;
 
-	DBG("device %p", device);
+	DBG("device %p %d", device, device->blocked);
 
 	if (!device->driver || !device->driver->enable)
 		return -EOPNOTSUPP;
@@ -284,283 +259,11 @@ static int set_powered(struct connman_device *device, connman_bool_t powered)
 		return __connman_device_disable(device);
 }
 
-void __connman_device_list(DBusMessageIter *iter, void *user_data)
-{
-	__connman_element_list(NULL, CONNMAN_ELEMENT_TYPE_DEVICE, iter);
-}
-
-static void append_path(gpointer key, gpointer value, gpointer user_data)
-{
-	struct connman_element *element = value;
-	DBusMessageIter *iter = user_data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-							&element->path);
-}
-
-static void append_networks(DBusMessageIter *iter, void *user_data)
-{
-	struct connman_device *device = user_data;
-
-	g_hash_table_foreach(device->networks, append_path, iter);
-}
-
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_device *device = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	connman_dbus_dict_open(&array, &dict);
-
-	if (device->name != NULL)
-		connman_dbus_dict_append_basic(&dict, "Name",
-					DBUS_TYPE_STRING, &device->name);
-
-	str = type2string(device->type);
-	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "Type",
-						DBUS_TYPE_STRING, &str);
-
-	if (device->address != NULL)
-		connman_dbus_dict_append_basic(&dict, "Address",
-					DBUS_TYPE_STRING, &device->address);
-
-	if (device->interface != NULL)
-		connman_dbus_dict_append_basic(&dict, "Interface",
-					DBUS_TYPE_STRING, &device->interface);
-
-	connman_dbus_dict_append_basic(&dict, "Powered",
-					DBUS_TYPE_BOOLEAN, &device->powered);
-
-	connman_dbus_dict_append_basic(&dict, "Blocked",
-					DBUS_TYPE_BOOLEAN, &device->blocked);
-
-	if (device->driver && device->driver->scan)
-		connman_dbus_dict_append_basic(&dict, "Scanning",
-					DBUS_TYPE_BOOLEAN, &device->scanning);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		if (device->scan_interval > 0)
-			connman_dbus_dict_append_basic(&dict, "ScanInterval",
-				DBUS_TYPE_UINT16, &device->scan_interval);
-
-		connman_dbus_dict_append_array(&dict, "Networks",
-				DBUS_TYPE_OBJECT_PATH, append_networks, device);
-		break;
-	}
-
-	connman_dbus_dict_close(&array, &dict);
-
-	return reply;
-}
-
-static gboolean powered_timeout(gpointer user_data)
-{
-	struct connman_device *device = user_data;
-
-	DBG("device %p", device);
-
-	device->timeout = 0;
-
-	if (device->pending != NULL) {
-		DBusMessage *reply;
-
-		reply = __connman_error_operation_timeout(device->pending);
-		if (reply != NULL)
-			g_dbus_send_message(connection, reply);
-
-		dbus_message_unref(device->pending);
-		device->pending = NULL;
-	}
-
-	return FALSE;
-}
-
-static DBusMessage *set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_device *device = data;
-	DBusMessageIter iter, value;
-	const char *name;
-	int type;
-
-	DBG("conn %p", conn);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_get_basic(&iter, &name);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	type = dbus_message_iter_get_arg_type(&value);
-
-	if (g_str_equal(name, "Powered") == TRUE) {
-		connman_bool_t powered;
-		int err;
-
-		if (type != DBUS_TYPE_BOOLEAN)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &powered);
-
-		device->powered_persistent = powered;
-
-		__connman_storage_save_device(device);
-
-		if (device->powered == powered)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
-		if (device->pending != NULL)
-			return __connman_error_in_progress(msg);
-
-		err = set_powered(device, powered);
-		if (err < 0) {
-			if (err != -EINPROGRESS)
-				return __connman_error_failed(msg, -err);
-
-			device->pending = dbus_message_ref(msg);
-
-			device->timeout = g_timeout_add_seconds(15,
-						powered_timeout, device);
-
-			return NULL;
-		}
-	} else if (g_str_equal(name, "ScanInterval") == TRUE) {
-		connman_uint16_t interval;
-
-		switch (device->mode) {
-		case CONNMAN_DEVICE_MODE_UNKNOWN:
-		case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-		case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-			break;
-		}
-
-		if (type != DBUS_TYPE_UINT16)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &interval);
-
-		if (device->scan_interval != interval) {
-			device->scan_interval = interval;
-
-			__connman_storage_save_device(device);
-
-			reset_scan_trigger(device);
-		}
-	} else
-		return __connman_error_invalid_property(msg);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *propose_scan(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_device *device = data;
-	int err;
-
-	DBG("conn %p", conn);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		return __connman_error_not_supported(msg);
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
-
-	err = __connman_device_scan(device);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static GDBusMethodTable device_methods[] = {
-	{ "GetProperties", "",      "a{sv}", get_properties },
-	{ "SetProperty",   "sv",    "",      set_property,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "ProposeScan",   "",      "",      propose_scan   },
-	{ },
-};
-
-static GDBusSignalTable device_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ },
-};
-
-static int register_interface(struct connman_element *element)
-{
-	struct connman_device *device = element->device;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (g_dbus_register_interface(connection, element->path,
-					CONNMAN_DEVICE_INTERFACE,
-					device_methods, device_signals,
-					NULL, device, NULL) == FALSE) {
-		connman_error("Failed to register %s device", element->path);
-		return -EIO;
-	}
-
-	device->registered = TRUE;
-
-	return 0;
-}
-
-static void unregister_interface(struct connman_element *element)
-{
-	struct connman_device *device = element->device;
-
-	DBG("element %p name %s", element, element->name);
-
-	device->registered = FALSE;
-
-	g_dbus_unregister_interface(connection, element->path,
-						CONNMAN_DEVICE_INTERFACE);
-}
-
 static int setup_device(struct connman_device *device)
 {
-	int err;
-
 	DBG("device %p", device);
 
-	err = register_interface(&device->element);
-	if (err < 0) {
-		if (device->driver->remove)
-			device->driver->remove(device);
-		device->driver = NULL;
-		return err;
-	}
-
 	__connman_technology_add_device(device);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
-
-	if (__connman_udev_get_blocked(device->phyindex) == TRUE)
-		return 0;
 
 	if (device->offlinemode == FALSE &&
 				device->powered_persistent == TRUE)
@@ -600,16 +303,7 @@ static void remove_device(struct connman_device *device)
 
 	__connman_device_disable(device);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
-
 	__connman_technology_remove_device(device);
-
-	unregister_interface(&device->element);
 
 	if (device->driver->remove)
 		device->driver->remove(device);
@@ -635,7 +329,7 @@ connman_bool_t __connman_device_has_driver(struct connman_device *device)
 	if (device == NULL || device->driver == NULL)
 		return FALSE;
 
-	return device->registered;
+	return TRUE;
 }
 
 static GSList *driver_list = NULL;
@@ -704,23 +398,12 @@ static void device_destruct(struct connman_element *element)
 
 	DBG("element %p name %s", element, element->name);
 
-	if (device->timeout > 0) {
-		g_source_remove(device->timeout);
-		device->timeout = 0;
-	}
-
 	clear_scan_trigger(device);
-
-	if (device->pending != NULL) {
-		dbus_message_unref(device->pending);
-		device->pending = NULL;
-	}
 
 	g_free(device->ident);
 	g_free(device->node);
 	g_free(device->name);
 	g_free(device->address);
-	g_free(device->control);
 	g_free(device->interface);
 
 	g_free(device->last_network);
@@ -743,6 +426,7 @@ struct connman_device *connman_device_create(const char *node,
 {
 	struct connman_device *device;
 	const char *str;
+	enum connman_service_type service_type;
 
 	DBG("node %s type %d", node, type);
 
@@ -769,11 +453,13 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
-	device->mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 
 	device->powered_persistent = TRUE;
 
 	device->phyindex = -1;
+
+	service_type = __connman_device_get_service_type(device);
+	device->blocked = __connman_technology_get_blocked(service_type);
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -846,28 +532,6 @@ enum connman_device_type connman_device_get_type(struct connman_device *device)
 }
 
 /**
- * connman_device_get_name:
- * @device: device structure
- *
- * Get unique name of device
- */
-const char *connman_device_get_name(struct connman_device *device)
-{
-	return device->element.name;
-}
-
-/**
- * connman_device_get_path:
- * @device: device structure
- *
- * Get path name of device
- */
-const char *connman_device_get_path(struct connman_device *device)
-{
-	return device->element.path;
-}
-
-/**
  * connman_device_set_index:
  * @device: device structure
  * @index: index number
@@ -905,12 +569,11 @@ void __connman_device_set_phyindex(struct connman_device *device,
  * connman_device_set_interface:
  * @device: device structure
  * @interface: interface name
- * @control: control interface
  *
  * Set interface name of device
  */
 void connman_device_set_interface(struct connman_device *device,
-				const char *interface, const char *control)
+						const char *interface)
 {
 	g_free(device->element.devname);
 	device->element.devname = g_strdup(interface);
@@ -918,20 +581,12 @@ void connman_device_set_interface(struct connman_device *device,
 	g_free(device->interface);
 	device->interface = g_strdup(interface);
 
-	g_free(device->control);
-	device->control = g_strdup(control);
-
 	if (device->name == NULL) {
 		const char *str = type2description(device->type);
 		if (str != NULL && device->interface != NULL)
 			device->name = g_strdup_printf("%s (%s)", str,
 							device->interface);
 	}
-}
-
-const char *connman_device_get_control(struct connman_device *device)
-{
-	return device->control;
 }
 
 /**
@@ -954,30 +609,6 @@ const char *connman_device_get_ident(struct connman_device *device)
 }
 
 /**
- * connman_device_set_mode:
- * @device: device structure
- * @mode: network mode
- *
- * Change network mode of device
- */
-void connman_device_set_mode(struct connman_device *device,
-						enum connman_device_mode mode)
-{
-	device->mode = mode;
-}
-
-/**
- * connman_device_get_mode:
- * @device: device structure
- *
- * Get network mode of device
- */
-enum connman_device_mode connman_device_get_mode(struct connman_device *device)
-{
-	return device->mode;
-}
-
-/**
  * connman_device_set_powered:
  * @device: device structure
  * @powered: powered state
@@ -988,19 +619,6 @@ int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered)
 {
 	DBG("driver %p powered %d", device, powered);
-
-	if (device->timeout > 0) {
-		g_source_remove(device->timeout);
-		device->timeout = 0;
-	}
-
-	if (device->pending != NULL) {
-		g_dbus_send_reply(connection, device->pending,
-							DBUS_TYPE_INVALID);
-
-		dbus_message_unref(device->pending);
-		device->pending = NULL;
-	}
 
 	if (device->powered == powered) {
 		device->powered_pending = powered;
@@ -1020,15 +638,8 @@ int connman_device_set_powered(struct connman_device *device,
 	else
 		__connman_technology_disable_device(device);
 
-	if (device->offlinemode == TRUE && powered == TRUE) {
-		powered_changed(device);
+	if (device->offlinemode == TRUE && powered == TRUE)
 		return connman_device_set_powered(device, FALSE);
-	}
-
-	if (device->registered == FALSE)
-		return 0;
-
-	powered_changed(device);
 
 	if (powered == FALSE)
 		return 0;
@@ -1049,8 +660,6 @@ int __connman_device_set_blocked(struct connman_device *device,
 	DBG("device %p blocked %d", device, blocked);
 
 	device->blocked = blocked;
-
-	blocked_changed(device);
 
 	if (device->offlinemode == TRUE)
 		return 0;
@@ -1184,13 +793,6 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 					remove_unavailable_network, NULL);
 }
 
-static void scanning_changed(struct connman_device *device)
-{
-	connman_dbus_property_changed_basic(device->element.path,
-				CONNMAN_DEVICE_INTERFACE, "Scanning",
-					DBUS_TYPE_BOOLEAN, &device->scanning);
-}
-
 /**
  * connman_device_set_scanning:
  * @device: device structure
@@ -1210,8 +812,6 @@ int connman_device_set_scanning(struct connman_device *device,
 		return -EALREADY;
 
 	device->scanning = scanning;
-
-	scanning_changed(device);
 
 	if (scanning == TRUE) {
 		reset_scan_trigger(device);
@@ -1246,14 +846,6 @@ int connman_device_set_disconnected(struct connman_device *device,
 						connman_bool_t disconnected)
 {
 	DBG("device %p disconnected %d", device, disconnected);
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		return -EINVAL;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
 
 	if (device->disconnected == disconnected)
 		return -EALREADY;
@@ -1400,14 +992,6 @@ int connman_device_add_network(struct connman_device *device,
 
 	if (identifier == NULL)
 		return -EINVAL;
-
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		return -EINVAL;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		break;
-	}
 
 	__connman_network_set_device(network, device);
 
@@ -1644,18 +1228,11 @@ static int device_load(struct connman_device *device)
 		device->powered_persistent = powered;
 	g_clear_error(&error);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		val = g_key_file_get_integer(keyfile, identifier,
+	val = g_key_file_get_integer(keyfile, identifier,
 						"ScanInterval", &error);
-		if (error == NULL && val > 0)
-			device->scan_interval = val;
-		g_clear_error(&error);
-		break;
-	}
+	if (error == NULL)
+		device->scan_interval = val;
+	g_clear_error(&error);
 
 done:
 	g_free(identifier);
@@ -1684,16 +1261,8 @@ static int device_save(struct connman_device *device)
 	g_key_file_set_boolean(keyfile, identifier,
 					"Powered", device->powered_persistent);
 
-	switch (device->mode) {
-	case CONNMAN_DEVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_DEVICE_MODE_NETWORK_SINGLE:
-	case CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE:
-		if (device->scan_interval > 0)
-			g_key_file_set_integer(keyfile, identifier,
+	g_key_file_set_integer(keyfile, identifier,
 					"ScanInterval", device->scan_interval);
-		break;
-	}
 
 done:
 	g_free(identifier);
@@ -1714,8 +1283,6 @@ int __connman_device_init(void)
 {
 	DBG("");
 
-	connection = connman_dbus_get_connection();
-
 	if (connman_storage_register(&device_storage) < 0)
 		connman_error("Failed to register device storage");
 
@@ -1729,6 +1296,4 @@ void __connman_device_cleanup(void)
 	connman_driver_unregister(&device_driver);
 
 	connman_storage_unregister(&device_storage);
-
-	dbus_connection_unref(connection);
 }

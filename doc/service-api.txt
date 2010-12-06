@@ -1,8 +1,8 @@
 Service hierarchy
 =================
 
-Service		org.moblin.connman
-Interface	org.moblin.connman.Service
+Service		net.connman
+Interface	net.connman.Service
 Object path	[variable prefix]/{service0,service1,...}
 
 Methods		dict GetProperties()
@@ -120,11 +120,12 @@ Properties	string State [readonly]
 			The service state information.
 
 			Valid states are "idle", "failure", "association",
-			"configuration" and "ready".
+			"configuration", "ready" and "online".
 
-			Also "login" and "online" states are used. The
-			state "online" signals that an Internet connection
-			is available and has been verified.
+			The "ready" state signals a successfully
+			connected device. "online" signals that an
+			Internet connection is available and has been
+			verified.
 
 		string Error [readonly]
 
@@ -189,8 +190,8 @@ Properties	string State [readonly]
 		boolean LoginRequired [readonly]
 
 			This property indicates that an additional login
-			step is needed before the connection establishment
-			can proceed.
+			step, like web based authentication, is needed
+			before the connection establishment can proceed.
 
 		string Passphrase [readwrite]
 
@@ -399,23 +400,41 @@ Properties	string State [readonly]
 
 			string Method [readonly]
 
-				Possible values are "direct", "auto",
-				"manual" and "auto-config".
+				Possible values are "direct", "auto" and
+				"manual".
 
-				If the DHCP server provides an automatic
-				configuration URL, then this value is set
-				to "auto-config". The PAC file will be
-				referenced by the URL value.
+				In case of "auto" method, the URL file can be
+				provided unless you want to let DHCP/WPAD
+				auto-discover to be tried. In such case if DHCP
+				and WPAD auto-discover methods fails then
+				method will be "direct".
 
-				If no automatic configuration is available,
-				then "direct" is set.
-
-				The values "auto" and "manual" are not yet
-				supported.
+				In case of "direct" no additional information
+				are provided. For the "manual" method the
+				Servers have to be set, Excludes is optional.
 
 			string URL [readonly]
 
-				Automatic proxy configuration URL.
+				Automatic proxy configuration URL. Used by
+				"auto" method.
+
+			array{string} Servers [readonly]
+
+				Used when "manual" method is set.
+
+				List of proxy URIs. The URI without a protocol
+				will be interpreted as the generic proxy URI.
+				All others will target a specific protocol and
+				only once.
+
+				Example for generic proxy server entry would
+				be like this: "server.example.com:911".
+
+			array{string} Excludes [readonly]
+
+				Used when "manual" method is set.
+
+				List of hosts which can be accessed directly.
 
 		dict Proxy.Configuration [readwrite]
 
@@ -423,8 +442,9 @@ Properties	string State [readonly]
 			the actual system configuration while this allows
 			user configuration.
 
-			Currently only setting Method to either "direct"
-			or "auto" is supported.
+			If "auto" method is set with an empty URL, then
+			DHCP/WPAD auto-discover will be tried. Otherwise the
+			specified URL will be used.
 
 		dict Provider [readonly]
 

@@ -95,8 +95,6 @@ static int hh2serial_init(void)
 	if (hh2serial_device == NULL)
 		return -ENODEV;
 
-	connman_device_set_mode(hh2serial_device,
-					CONNMAN_DEVICE_MODE_NETWORK_SINGLE);
 	connman_device_register(hh2serial_device);
 
 	return 0;

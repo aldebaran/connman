@@ -138,6 +138,7 @@ static GHashTable *bss_mapping;
 
 struct _GSupplicantInterface {
 	char *path;
+	char *network_path;
 	unsigned int keymgmt_capa;
 	unsigned int authalg_capa;
 	unsigned int proto_capa;
@@ -823,7 +824,7 @@ static void interface_network_added(DBusMessageIter *iter, void *user_data)
 	}
 
 	supplicant_dbus_property_get_all(path,
-				SUPPLICANT_INTERFACE ".Interface.Network",
+				SUPPLICANT_INTERFACE ".Network",
 						network_property, network);
 }
 
@@ -1176,7 +1177,7 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	}
 
 	supplicant_dbus_property_get_all(path,
-					SUPPLICANT_INTERFACE ".Interface.BSS",
+					SUPPLICANT_INTERFACE ".BSS",
 							bss_property, bss);
 }
 
@@ -1663,7 +1664,7 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkAdded",      signal_network_added     },
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed   },
 
-	{ SUPPLICANT_INTERFACE ".Interface.BSS", "PropertiesChanged", signal_bss_changed   },
+	{ SUPPLICANT_INTERFACE ".BSS", "PropertiesChanged", signal_bss_changed   },
 
 	{ }
 };
@@ -2022,39 +2023,53 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 static void interface_select_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
+	struct interface_connect_data *data = user_data;
+
 	SUPPLICANT_DBG("");
+
+	dbus_free(data);
 }
 
 static void interface_select_network_params(DBusMessageIter *iter,
 							void *user_data)
 {
-	char *path = user_data;
+	struct interface_connect_data *data = user_data;
+	GSupplicantInterface *interface = data->interface;
 
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
+					&interface->network_path);
 }
 
 static void interface_add_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_connect_data *data = user_data;
-	char *path = NULL;
+	GSupplicantInterface *interface = data->interface;
+	const char *path;
 
 	if (error != NULL)
-		goto done;
+		goto error;
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL)
-		goto done;
+		goto error;
 
 	SUPPLICANT_DBG("PATH: %s", path);
+
+	g_free(interface->network_path);
+	interface->network_path = g_strdup(path);
 
 	supplicant_dbus_method_call(data->interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "SelectNetwork",
 			interface_select_network_params,
-			interface_select_network_result, path);
+			interface_select_network_result, data);
 
-done:
-	dbus_free(data);
+	return;
+
+error:
+	g_free(interface->network_path);
+	interface->network_path = NULL;
+	g_free(data);
 }
 
 static void add_network_security_wep(DBusMessageIter *dict,
@@ -2329,7 +2344,7 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 	return -EINPROGRESS;
 }
 
-static void interface_disconnect_result(const char *error,
+static void network_remove_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_data *data = user_data;
@@ -2344,6 +2359,42 @@ static void interface_disconnect_result(const char *error,
 		data->callback(result, data->interface, data->user_data);
 
 	dbus_free(data);
+}
+
+static void network_remove_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_data *data = user_data;
+	const char *path = data->interface->network_path;
+
+	SUPPLICANT_DBG("path %s", path);
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &path);
+}
+
+static int network_remove(struct interface_data *data)
+{
+	GSupplicantInterface *interface = data->interface;
+
+	SUPPLICANT_DBG("");
+
+	return supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface", "RemoveNetwork",
+			network_remove_params, network_remove_result, data);
+}
+
+static void interface_disconnect_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_data *data = user_data;
+
+	SUPPLICANT_DBG("");
+
+	if (error != NULL && data->callback != NULL) {
+		data->callback(-EIO, data->interface, data->user_data);
+		return;
+	}
+
+	network_remove(data);
 }
 
 int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
@@ -2387,11 +2438,9 @@ static const char *g_supplicant_rule2 = "type=signal,"
 static const char *g_supplicant_rule3 = "type=signal,"
 			"interface=" SUPPLICANT_INTERFACE ".Interface.WPS";
 static const char *g_supplicant_rule4 = "type=signal,"
-			"interface=" SUPPLICANT_INTERFACE ".Interface.BSS";
+			"interface=" SUPPLICANT_INTERFACE ".BSS";
 static const char *g_supplicant_rule5 = "type=signal,"
-			"interface=" SUPPLICANT_INTERFACE ".Interface.Network";
-static const char *g_supplicant_rule6 = "type=signal,"
-			"interface=" SUPPLICANT_INTERFACE ".Interface.Blob";
+			"interface=" SUPPLICANT_INTERFACE ".Network";
 
 static void invoke_introspect_method(void)
 {
@@ -2440,7 +2489,6 @@ int g_supplicant_register(const GSupplicantCallbacks *callbacks)
 	dbus_bus_add_match(connection, g_supplicant_rule3, NULL);
 	dbus_bus_add_match(connection, g_supplicant_rule4, NULL);
 	dbus_bus_add_match(connection, g_supplicant_rule5, NULL);
-	dbus_bus_add_match(connection, g_supplicant_rule6, NULL);
 	dbus_connection_flush(connection);
 
 	if (dbus_bus_name_has_owner(connection,
@@ -2482,7 +2530,6 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 	SUPPLICANT_DBG("");
 
 	if (connection != NULL) {
-		dbus_bus_remove_match(connection, g_supplicant_rule6, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule5, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule4, NULL);
 		dbus_bus_remove_match(connection, g_supplicant_rule3, NULL);

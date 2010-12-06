@@ -47,8 +47,12 @@ do {						\
 
 #define EXTEND_FOR_BUGGY_SERVERS 80
 
-static const uint8_t MAC_BCAST_ADDR[6] __attribute__((aligned(2))) = {
+static const uint8_t MAC_BCAST_ADDR[ETH_ALEN] __attribute__((aligned(2))) = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff
+};
+
+static const uint8_t MAC_ANY_ADDR[ETH_ALEN] __attribute__((aligned(2))) = {
+	0x00, 0x00, 0x00, 0x00, 0x00, 0x00
 };
 
 /* DHCP packet */
@@ -171,3 +175,5 @@ int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 			uint32_t dest_ip, int dest_port);
 int dhcp_l3_socket(int port, const char *interface);
 int dhcp_recv_l3_packet(struct dhcp_packet *packet, int fd);
+char *get_interface_name(int index);
+gboolean interface_is_up(int index);

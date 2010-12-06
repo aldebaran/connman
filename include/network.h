@@ -47,11 +47,6 @@ enum connman_network_type {
 	CONNMAN_NETWORK_TYPE_VENDOR        = 10000,
 };
 
-enum connman_network_protocol {
-	CONNMAN_NETWORK_PROTOCOL_UNKNOWN = 0,
-	CONNMAN_NETWORK_PROTOCOL_IP      = 1,
-};
-
 enum connman_network_error {
 	CONNMAN_NETWORK_ERROR_UNKNOWN         = 0,
 	CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL  = 1,
@@ -72,15 +67,11 @@ void connman_network_unref(struct connman_network *network);
 enum connman_network_type connman_network_get_type(struct connman_network *network);
 const char *connman_network_get_identifier(struct connman_network *network);
 
-const char *connman_network_get_path(struct connman_network *network);
-
 struct connman_element *connman_network_get_element(
 				struct connman_network *network);
 void connman_network_set_index(struct connman_network *network, int index);
 int connman_network_get_index(struct connman_network *network);
 
-void connman_network_set_protocol(struct connman_network *network,
-					enum connman_network_protocol protocol);
 void connman_network_set_group(struct connman_network *network,
 						const char *group);
 const char *connman_network_get_group(struct connman_network *network);

@@ -84,6 +84,13 @@ enum connman_service_error {
 	CONNMAN_SERVICE_ERROR_CONNECT_FAILED = 4,
 };
 
+enum connman_service_proxy_method {
+	CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN     = 0,
+	CONNMAN_SERVICE_PROXY_METHOD_DIRECT      = 1,
+	CONNMAN_SERVICE_PROXY_METHOD_MANUAL      = 2,
+	CONNMAN_SERVICE_PROXY_METHOD_AUTO        = 3,
+};
+
 struct connman_service;
 
 struct connman_service *connman_service_create(void);
@@ -95,6 +102,10 @@ char *connman_service_get_interface(struct connman_service *service);
 
 const char *connman_service_get_domainname(struct connman_service *service);
 const char *connman_service_get_nameserver(struct connman_service *service);
+enum connman_service_proxy_method connman_service_get_proxy_method(struct connman_service *service);
+char **connman_service_get_proxy_servers(struct connman_service *service);
+char **connman_service_get_proxy_excludes(struct connman_service *service);
+const char *connman_service_get_proxy_url(struct connman_service *service);
 const char *connman_service_get_proxy_autoconfig(struct connman_service *service);
 
 #ifdef __cplusplus

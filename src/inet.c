@@ -39,6 +39,128 @@
 
 #include "connman.h"
 
+#define NLMSG_TAIL(nmsg)				\
+	((struct rtattr *) (((uint8_t*) (nmsg)) +	\
+	NLMSG_ALIGN((nmsg)->nlmsg_len)))
+
+static int add_rtattr(struct nlmsghdr *n, size_t max_length, int type,
+				const void *data, size_t data_length)
+{
+	size_t length;
+	struct rtattr *rta;
+
+	length = RTA_LENGTH(data_length);
+
+	if (NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(length) > max_length)
+		return -E2BIG;
+
+	rta = NLMSG_TAIL(n);
+	rta->rta_type = type;
+	rta->rta_len = length;
+	memcpy(RTA_DATA(rta), data, data_length);
+	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + RTA_ALIGN(length);
+
+	return 0;
+}
+
+int __connman_inet_modify_address(int cmd, int flags,
+				int index, int family,
+				const char *address,
+				const char *peer,
+				unsigned char prefixlen,
+				const char *broadcast)
+{
+	uint8_t request[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+			NLMSG_ALIGN(sizeof(struct ifaddrmsg)) +
+			RTA_LENGTH(sizeof(struct in6_addr)) +
+			RTA_LENGTH(sizeof(struct in6_addr))];
+
+	struct nlmsghdr *header;
+	struct sockaddr_nl nl_addr;
+	struct ifaddrmsg *ifaddrmsg;
+	struct in6_addr ipv6_addr;
+	struct in_addr ipv4_addr, ipv4_dest, ipv4_bcast;
+	int sk, err;
+
+	DBG("");
+
+	if (address == NULL)
+		return -1;
+
+	if (family != AF_INET && family != AF_INET6)
+		return -1;
+
+	memset(&request, 0, sizeof(request));
+
+	header = (struct nlmsghdr *)request;
+	header->nlmsg_len = NLMSG_LENGTH(sizeof(struct ifaddrmsg));
+	header->nlmsg_type = cmd;
+	header->nlmsg_flags = NLM_F_REQUEST | flags;
+	header->nlmsg_seq = 1;
+
+	ifaddrmsg = NLMSG_DATA(header);
+	ifaddrmsg->ifa_family = family;
+	ifaddrmsg->ifa_prefixlen = prefixlen;
+	ifaddrmsg->ifa_flags = IFA_F_PERMANENT;
+	ifaddrmsg->ifa_scope = RT_SCOPE_UNIVERSE;
+	ifaddrmsg->ifa_index = index;
+
+	if (family == AF_INET) {
+		if (inet_pton(AF_INET, address, &ipv4_addr) < 1)
+			return -1;
+
+		if (broadcast != NULL)
+			inet_pton(AF_INET, broadcast, &ipv4_bcast);
+		else
+			ipv4_bcast.s_addr = ipv4_addr.s_addr |
+				htonl(0xfffffffflu >> prefixlen);
+
+		if (peer != NULL) {
+			if (inet_pton(AF_INET, peer, &ipv4_dest) < 1)
+				return -1;
+
+			if ((err = add_rtattr(header, sizeof(request),
+					IFA_ADDRESS,
+					&ipv4_dest, sizeof(ipv4_dest))) < 0)
+			return err;
+		}
+
+		if ((err = add_rtattr(header, sizeof(request), IFA_LOCAL,
+				&ipv4_addr, sizeof(ipv4_addr))) < 0)
+			return err;
+
+		if ((err = add_rtattr(header, sizeof(request), IFA_BROADCAST,
+				&ipv4_bcast, sizeof(ipv4_bcast))) < 0)
+			return err;
+
+	} else if (family == AF_INET6) {
+		if (inet_pton(AF_INET6, address, &ipv6_addr) < 1)
+			return -1;
+
+		if ((err = add_rtattr(header, sizeof(request), IFA_LOCAL,
+				&ipv6_addr, sizeof(ipv6_addr))) < 0)
+			return err;
+	}
+
+	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	if (sk < 0)
+		return -1;
+
+	memset(&nl_addr, 0, sizeof(nl_addr));
+	nl_addr.nl_family = AF_NETLINK;
+
+	if ((err = sendto(sk, request, header->nlmsg_len, 0,
+			(struct sockaddr *) &nl_addr, sizeof(nl_addr))) < 0)
+		goto done;
+
+	err = 0;
+
+done:
+	close(sk);
+
+	return err;
+}
+
 int connman_inet_ifindex(const char *name)
 {
 	struct ifreq ifr;
@@ -201,34 +323,6 @@ done:
 	return err;
 }
 
-static unsigned short index2type(int index)
-{
-	struct ifreq ifr;
-	int sk, err;
-
-	if (index < 0)
-		return ARPHRD_VOID;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return ARPHRD_VOID;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	err = ioctl(sk, SIOCGIFNAME, &ifr);
-
-	if (err == 0)
-		err = ioctl(sk, SIOCGIFHWADDR, &ifr);
-
-	close(sk);
-
-	if (err < 0)
-		return ARPHRD_VOID;
-
-	return ifr.ifr_hwaddr.sa_family;
-}
-
 static char *index2addr(int index)
 {
 	struct ifreq ifr;
@@ -348,81 +442,12 @@ done:
 	return result;
 }
 
-enum connman_device_type __connman_inet_get_device_type(int index)
-{
-	enum connman_device_type devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-	unsigned short type = index2type(index);
-	const char *devname;
-	struct ifreq ifr;
-	int sk;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return devtype;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0)
-		goto done;
-
-	devname = ifr.ifr_name;
-
-	if (type == ARPHRD_ETHER) {
-		char phy80211_path[PATH_MAX];
-		char bonding_path[PATH_MAX];
-		char bridge_path[PATH_MAX];
-		char wimax_path[PATH_MAX];
-		struct stat st;
-		struct iwreq iwr;
-
-		snprintf(phy80211_path, PATH_MAX,
-					"/sys/class/net/%s/phy80211", devname);
-		snprintf(bonding_path, PATH_MAX,
-					"/sys/class/net/%s/bonding", devname);
-		snprintf(bridge_path, PATH_MAX,
-					"/sys/class/net/%s/bridge", devname);
-		snprintf(wimax_path, PATH_MAX,
-					"/sys/class/net/%s/wimax", devname);
-
-		memset(&iwr, 0, sizeof(iwr));
-		strncpy(iwr.ifr_ifrn.ifrn_name, devname, IFNAMSIZ);
-
-		if (g_str_has_prefix(devname, "vmnet") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(ifr.ifr_name, "vboxnet") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(devname, "bnep") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (g_str_has_prefix(devname, "wmx") == TRUE)
-			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
-		else if (stat(wimax_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_WIMAX;
-		else if (stat(bridge_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (stat(bonding_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_UNKNOWN;
-		else if (stat(phy80211_path, &st) == 0 && (st.st_mode & S_IFDIR))
-			devtype = CONNMAN_DEVICE_TYPE_WIFI;
-		else if (ioctl(sk, SIOCGIWNAME, &iwr) == 0)
-			devtype = CONNMAN_DEVICE_TYPE_WIFI;
-		else
-			devtype = CONNMAN_DEVICE_TYPE_ETHERNET;
-	}
-
-done:
-	close(sk);
-
-	return devtype;
-}
-
 struct connman_device *connman_inet_create_device(int index)
 {
-	enum connman_device_mode mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 	enum connman_device_type type;
 	struct connman_device *device;
 	char *devname, *ident = NULL;
-	char *addr = NULL, *name = NULL, *node = NULL;
+	char *addr = NULL, *name = NULL;
 
 	if (index < 0)
 		return NULL;
@@ -436,9 +461,7 @@ struct connman_device *connman_inet_create_device(int index)
 		return NULL;
 	}
 
-	__connman_udev_get_devtype(devname);
-
-	type = __connman_inet_get_device_type(index);
+	type = __connman_rtnl_get_device_type(index);
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -467,30 +490,23 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_GPS:
-		mode = CONNMAN_DEVICE_MODE_UNKNOWN;
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_MULTIPLE;
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
-		mode = CONNMAN_DEVICE_MODE_NETWORK_SINGLE;
 		ident = index2ident(index, NULL);
 		break;
 	}
 
-	connman_device_set_mode(device, mode);
-
 	connman_device_set_index(device, index);
-	connman_device_set_interface(device, devname, node);
+	connman_device_set_interface(device, devname);
 
 	if (ident != NULL) {
 		connman_device_set_ident(device, ident);
@@ -501,7 +517,6 @@ struct connman_device *connman_inet_create_device(int index)
 
 done:
 	g_free(devname);
-	g_free(node);
 	free(name);
 	free(addr);
 
@@ -517,100 +532,48 @@ struct in6_ifreq {
 int connman_inet_set_ipv6_address(int index,
 		struct connman_ipaddress *ipaddress)
 {
-	int sk, err;
-	struct in6_ifreq ifr6;
-
-	DBG("index %d ipaddress->local %s", index, ipaddress->local);
+	unsigned char prefix_len;
+	const char *address;
 
 	if (ipaddress->local == NULL)
 		return 0;
 
-	sk = socket(PF_INET6, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		err = -1;
-		goto out;
+	prefix_len = ipaddress->prefixlen;
+	address = ipaddress->local;
+
+	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
+
+	if ((__connman_inet_modify_address(RTM_NEWADDR,
+			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET6,
+				address, NULL, prefix_len, NULL)) < 0) {
+		connman_error("Set IPv6 address error");
+		return -1;
 	}
 
-	memset(&ifr6, 0, sizeof(ifr6));
-
-	err = inet_pton(AF_INET6, ipaddress->local, &ifr6.ifr6_addr);
-	if (err < 0)
-		goto out;
-
-	ifr6.ifr6_ifindex = index;
-	ifr6.ifr6_prefixlen = ipaddress->prefixlen;
-
-	err = ioctl(sk, SIOCSIFADDR, &ifr6);
-	close(sk);
-out:
-	if (err < 0)
-		connman_error("Set IPv6 address error");
-
-	return err;
+	return 0;
 }
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 {
-	struct ifreq ifr;
-	struct sockaddr_in addr;
-	int sk, err;
+	unsigned char prefix_len;
+	const char *address, *broadcast, *peer;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
+	if (ipaddress->local == NULL)
 		return -1;
 
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
+	prefix_len = ipaddress->prefixlen;
+	address = ipaddress->local;
+	broadcast = ipaddress->broadcast;
+	peer = ipaddress->peer;
 
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
+	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	DBG("ifname %s", ifr.ifr_name);
-
-	if (ipaddress->local == NULL) {
-		close(sk);
+	if ((__connman_inet_modify_address(RTM_NEWADDR,
+			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
+				address, peer, prefix_len, broadcast)) < 0) {
+		DBG("address setting failed");
 		return -1;
 	}
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr(ipaddress->local);
-	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
-
-	err = ioctl(sk, SIOCSIFADDR, &ifr);
-
-	if (err < 0)
-		DBG("address setting failed (%s)", strerror(errno));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = htonl(~(0xfffffffflu >> ipaddress->prefixlen));
-	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
-
-	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
-
-	if (err < 0)
-		DBG("netmask setting failed (%s)", strerror(errno));
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-
-	if (ipaddress->broadcast != NULL)
-		addr.sin_addr.s_addr = inet_addr(ipaddress->broadcast);
-	else
-		addr.sin_addr.s_addr = inet_addr(ipaddress->local) |
-				htonl(0xfffffffflu >> ipaddress->prefixlen);
-
-	memcpy(&ifr.ifr_broadaddr, &addr, sizeof(ifr.ifr_broadaddr));
-
-	err = ioctl(sk, SIOCSIFBRDADDR, &ifr);
-
-	if (err < 0)
-		DBG("broadcast setting failed (%s)", strerror(errno));
-
-	close(sk);
 
 	return 0;
 }
@@ -618,69 +581,32 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 int connman_inet_clear_ipv6_address(int index, const char *address,
 							int prefix_len)
 {
-	struct in6_ifreq ifr6;
-	int sk, err;
+	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
+
+	if ((__connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET6,
+					address, NULL, prefix_len, NULL)) < 0) {
+		connman_error("Clear IPv6 address error");
+		return -1;
+	}
+
+	return 0;
+}
+
+int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
+{
+	unsigned char prefix_len;
+	const char *address, *broadcast, *peer;
+
+	prefix_len = ipaddress->prefixlen;
+	address = ipaddress->local;
+	broadcast = ipaddress->broadcast;
+	peer = ipaddress->peer;
 
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	memset(&ifr6, 0, sizeof(ifr6));
-
-	err = inet_pton(AF_INET6, address, &ifr6.ifr6_addr);
-	if (err < 0)
-		goto out;
-
-	ifr6.ifr6_ifindex = index;
-	ifr6.ifr6_prefixlen = prefix_len;
-
-	sk = socket(PF_INET6, SOCK_DGRAM, 0);
-	if (sk < 0) {
-		err = -1;
-		goto out;
-	}
-
-	err = ioctl(sk, SIOCDIFADDR, &ifr6);
-	close(sk);
-out:
-	if (err < 0)
-		connman_error("Clear IPv6 address error");
-
-	return err;
-}
-
-int connman_inet_clear_address(int index)
-{
-
-
-	struct ifreq ifr;
-	struct sockaddr_in addr;
-	int sk, err;
-
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
-	if (sk < 0)
-		return -1;
-
-	memset(&ifr, 0, sizeof(ifr));
-	ifr.ifr_ifindex = index;
-
-	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
-		close(sk);
-		return -1;
-	}
-
-	DBG("ifname %s", ifr.ifr_name);
-
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = INADDR_ANY;
-	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
-
-	//err = ioctl(sk, SIOCDIFADDR, &ifr);
-	err = ioctl(sk, SIOCSIFADDR, &ifr);
-
-	close(sk);
-
-	if (err < 0 && errno != EADDRNOTAVAIL) {
-		DBG("address removal failed (%s)", strerror(errno));
+	if ((__connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET,
+				address, peer, prefix_len, broadcast)) < 0) {
+		DBG("address removal failed");
 		return -1;
 	}
 

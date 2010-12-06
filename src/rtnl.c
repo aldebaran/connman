@@ -27,16 +27,22 @@
 #include <unistd.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
 #include <net/if_arp.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
+#include <linux/wireless.h>
 
 #include <glib.h>
 
 #include "connman.h"
+
+#ifndef ARPHDR_PHONET_PIPE
+#define ARPHDR_PHONET_PIPE (821)
+#endif
 
 #define print(arg...) do { } while (0)
 //#define print(arg...) connman_info(arg)
@@ -44,7 +50,6 @@
 struct watch_data {
 	unsigned int id;
 	int index;
-	connman_rtnl_operstate_cb_t operstate;
 	connman_rtnl_link_cb_t newlink;
 	void *user_data;
 };
@@ -60,7 +65,8 @@ struct interface_data {
 	int index;
 	char *name;
 	char *ident;
-	enum connman_service_type type;
+	enum connman_service_type service_type;
+	enum connman_device_type device_type;
 };
 
 static GHashTable *interface_list = NULL;
@@ -69,7 +75,7 @@ static void free_interface(gpointer data)
 {
 	struct interface_data *interface = data;
 
-	__connman_technology_remove_interface(interface->type,
+	__connman_technology_remove_interface(interface->service_type,
 			interface->index, interface->name, interface->ident);
 
 	g_free(interface->ident);
@@ -90,18 +96,48 @@ static connman_bool_t ether_blacklisted(const char *name)
 	if (g_str_has_prefix(name, "vboxnet") == TRUE)
 		return TRUE;
 
+	/* virtual interface from Virtual Machine Manager */
+	if (g_str_has_prefix(name, "virbr") == TRUE)
+		return TRUE;
+
 	return FALSE;
+}
+
+static connman_bool_t wext_interface(char *ifname)
+{
+	struct iwreq wrq;
+	int fd, err;
+
+	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	if (fd < 0)
+		return FALSE;
+
+	memset(&wrq, 0, sizeof(wrq));
+	strncpy(wrq.ifr_name, ifname, IFNAMSIZ);
+
+	err = ioctl(fd, SIOCGIWNAME, &wrq);
+
+	close(fd);
+
+	if (err < 0)
+		return FALSE;
+
+	return TRUE;
 }
 
 static void read_uevent(struct interface_data *interface)
 {
 	char *filename, line[128];
+	connman_bool_t found_devtype;
 	FILE *f;
 
-	if (ether_blacklisted(interface->name) == TRUE)
-		interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
-	else
-		interface->type = CONNMAN_SERVICE_TYPE_ETHERNET;
+	if (ether_blacklisted(interface->name) == TRUE) {
+		interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+		interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
+	} else {
+		interface->service_type = CONNMAN_SERVICE_TYPE_ETHERNET;
+		interface->device_type = CONNMAN_DEVICE_TYPE_ETHERNET;
+	}
 
 	filename = g_strdup_printf("/sys/class/net/%s/uevent",
 						interface->name);
@@ -113,6 +149,7 @@ static void read_uevent(struct interface_data *interface)
 	if (f == NULL)
 		return;
 
+	found_devtype = FALSE;
 	while (fgets(line, sizeof(line), f)) {
 		char *pos;
 
@@ -124,58 +161,51 @@ static void read_uevent(struct interface_data *interface)
 		if (strncmp(line, "DEVTYPE=", 8) != 0)
 			continue;
 
-		if (strcmp(line + 8, "wlan") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_WIFI;
-		else if (strcmp(line + 8, "wwan") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_CELLULAR;
-		else if (strcmp(line + 8, "bluetooth") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
-		else if (strcmp(line + 8, "wimax") == 0)
-			interface->type = CONNMAN_SERVICE_TYPE_WIMAX;
-		else
-			interface->type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+		found_devtype = TRUE;
+
+		if (strcmp(line + 8, "wlan") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
+			interface->device_type = CONNMAN_DEVICE_TYPE_WIFI;
+		} else if (strcmp(line + 8, "wwan") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_CELLULAR;
+			interface->device_type = CONNMAN_DEVICE_TYPE_CELLULAR;
+		} else if (strcmp(line + 8, "bluetooth") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
+			interface->device_type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
+		} else if (strcmp(line + 8, "wimax") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_WIMAX;
+			interface->device_type = CONNMAN_DEVICE_TYPE_WIMAX;
+		} else {
+			interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+			interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
+		}
 	}
 
 	fclose(f);
+
+	if (found_devtype)
+		return;
+
+	/* We haven't got a DEVTYPE, let's check if it's a wireless device */
+	if (wext_interface(interface->name)) {
+		interface->service_type = CONNMAN_SERVICE_TYPE_WIFI;
+		interface->device_type = CONNMAN_DEVICE_TYPE_WIFI;
+
+		connman_error("%s runs an unsupported 802.11 driver",
+				interface->name);
+	}
 }
 
-/**
- * connman_rtnl_add_operstate_watch:
- * @index: network device index
- * @callback: callback function
- * @user_data: callback data;
- *
- * Add a new RTNL watch for operation state events
- *
- * Returns: %0 on failure and a unique id on success
- */
-unsigned int connman_rtnl_add_operstate_watch(int index,
-			connman_rtnl_operstate_cb_t callback, void *user_data)
+enum connman_device_type __connman_rtnl_get_device_type(int index)
 {
-	struct watch_data *watch;
+	struct interface_data *interface;
 
-	watch = g_try_new0(struct watch_data, 1);
-	if (watch == NULL)
-		return 0;
+	interface = g_hash_table_lookup(interface_list,
+					GINT_TO_POINTER(index));
+	if (interface == NULL)
+		return CONNMAN_DEVICE_TYPE_UNKNOWN;
 
-	watch->id = ++watch_id;
-	watch->index = index;
-
-	watch->operstate = callback;
-	watch->user_data = user_data;
-
-	watch_list = g_slist_prepend(watch_list, watch);
-
-	DBG("id %d", watch->id);
-
-	if (callback) {
-		unsigned char operstate = 0;
-
-		if (operstate > 0)
-			callback(operstate, user_data);
-	}
-
-	return watch->id;
+	return interface->device_type;
 }
 
 /**
@@ -398,6 +428,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	switch (type) {
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
+	case ARPHDR_PHONET_PIPE:
 	case ARPHRD_NONE:
 		__connman_ipconfig_newlink(index, type, flags,
 							str, mtu, &stats);
@@ -428,7 +459,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		if (type == ARPHRD_ETHER)
 			read_uevent(interface);
 
-		__connman_technology_add_interface(interface->type,
+		__connman_technology_add_interface(interface->service_type,
 			interface->index, interface->name, interface->ident);
 	}
 
@@ -444,9 +475,6 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 
 		if (watch->index != index)
 			continue;
-
-		if (operstate != 0xff && watch->operstate)
-			watch->operstate(operstate, watch->user_data);
 
 		if (watch->newlink)
 			watch->newlink(flags, change, watch->user_data);
@@ -468,16 +496,6 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 		connman_info("%s {dellink} index %d operstate %u <%s>",
 						ifname, index, operstate,
 						operstate2str(operstate));
-
-	for (list = watch_list; list; list = list->next) {
-		struct watch_data *watch = list->data;
-
-		if (watch->index != index)
-			continue;
-
-		if (operstate != 0xff && watch->operstate)
-			watch->operstate(operstate, watch->user_data);
-	}
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;

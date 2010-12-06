@@ -31,14 +31,17 @@ extern "C" {
 #endif
 
 struct _GWeb;
+struct _GWebResult;
+struct _GWebParser;
 
 typedef struct _GWeb GWeb;
+typedef struct _GWebResult GWebResult;
+typedef struct _GWebParser GWebParser;
 
-typedef enum {
-	G_WEB_METHOD_GET,
-} GWebMethod;
+typedef gboolean (*GWebResultFunc)(GWebResult *result, gpointer user_data);
 
-typedef void (*GWebResultFunc)(uint16_t status, gpointer user_data);
+typedef gboolean (*GWebInputFunc)(const guint8 **data, gsize *length,
+							gpointer user_data);
 
 typedef void (*GWebDebugFunc)(const char *str, gpointer user_data);
 
@@ -49,12 +52,43 @@ void g_web_unref(GWeb *web);
 
 void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data);
 
+gboolean g_web_set_proxy(GWeb *web, const char *proxy);
+
 gboolean g_web_add_nameserver(GWeb *web, const char *address);
 
-guint g_web_request(GWeb *web, GWebMethod method, const char *url,
+gboolean g_web_set_accept(GWeb *web, const char *format, ...)
+				__attribute__((format(printf, 2, 3)));
+gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
+				__attribute__((format(printf, 2, 3)));
+gboolean g_web_set_http_version(GWeb *web, const char *version);
+
+void g_web_set_close_connection(GWeb *web, gboolean enabled);
+gboolean g_web_get_close_connection(GWeb *web);
+
+guint g_web_request_get(GWeb *web, const char *url,
+				GWebResultFunc func, gpointer user_data);
+guint g_web_request_post(GWeb *web, const char *url,
+				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data);
 
-gboolean g_web_cancel(GWeb *web, guint id);
+gboolean g_web_cancel_request(GWeb *web, guint id);
+
+guint16 g_web_result_get_status(GWebResult *result);
+
+gboolean g_web_result_get_chunk(GWebResult *result,
+				const guint8 **chunk, gsize *length);
+
+typedef void (*GWebParserFunc)(const char *str, gpointer user_data);
+
+GWebParser *g_web_parser_new(const char *begin, const char *end,
+				GWebParserFunc func, gpointer user_data);
+
+GWebParser *g_web_parser_ref(GWebParser *parser);
+void g_web_parser_unref(GWebParser *parser);
+
+void g_web_parser_feed_data(GWebParser *parser,
+				const guint8 *data, gsize length);
+void g_web_parser_end_data(GWebParser *parser);
 
 #ifdef __cplusplus
 }

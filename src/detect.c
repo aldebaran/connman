@@ -51,7 +51,7 @@ static void detect_newlink(unsigned short type, int index,
 
 	DBG("type %d index %d", type, index);
 
-	devtype = __connman_inet_get_device_type(index);
+	devtype = __connman_rtnl_get_device_type(index);
 
 	switch (devtype) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -106,34 +106,14 @@ static struct connman_rtnl detect_rtnl = {
 	.dellink	= detect_dellink,
 };
 
-char *__connman_udev_get_devtype(const char *ifname)
-{
-	return NULL;
-}
-
-void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked)
-{
-	DBG("sysname %s blocked %d", sysname, blocked);
-}
-
-connman_bool_t __connman_udev_get_blocked(int phyindex)
-{
-	return FALSE;
-}
-
-int __connman_udev_init(void)
+int __connman_detect_init(void)
 {
 	DBG("");
 
 	return connman_rtnl_register(&detect_rtnl);
 }
 
-void __connman_udev_start(void)
-{
-	DBG("");
-}
-
-void __connman_udev_cleanup(void)
+void __connman_detect_cleanup(void)
 {
 	GSList *list;
 

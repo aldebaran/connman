@@ -105,7 +105,11 @@ void __connman_task_cleanup(void);
 
 #include <connman/inet.h>
 
-enum connman_device_type __connman_inet_get_device_type(int index);
+int __connman_inet_modify_address(int cmd, int flags, int index, int family,
+				const char *address,
+				const char *peer,
+				unsigned char prefixlen,
+				const char *broadcast);
 
 #include <connman/wifi.h>
 
@@ -174,8 +178,6 @@ void __connman_element_list(struct connman_element *element,
 
 struct connman_service *__connman_element_get_service(struct connman_element *element);
 struct connman_device *__connman_element_get_device(struct connman_element *element);
-const char *__connman_element_get_device_path(struct connman_element *element);
-const char *__connman_element_get_network_path(struct connman_element *element);
 
 struct connman_device *__connman_element_find_device(enum connman_service_type type);
 int __connman_element_request_scan(enum connman_service_type type);
@@ -184,7 +186,15 @@ int __connman_element_disable_technology(enum connman_service_type type);
 
 gboolean __connman_element_device_isfiltered(const char *devname);
 
+int __connman_detect_init(void);
+void __connman_detect_cleanup(void);
+
 void __connman_element_set_driver(struct connman_element *element);
+
+#include <connman/proxy.h>
+
+int __connman_proxy_init(void);
+void __connman_proxy_cleanup(void);
 
 #include <connman/ipconfig.h>
 
@@ -230,12 +240,6 @@ void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		enum connman_ipconfig_type type, DBusMessageIter *array);
-void __connman_ipconfig_append_proxy(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
-void __connman_ipconfig_append_proxyconfig(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
-int __connman_ipconfig_set_proxyconfig(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *array);
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 enum connman_ipconfig_method __connman_ipconfig_get_method(
@@ -249,6 +253,7 @@ int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 					struct connman_element *parent);
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
+unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask);
 
 int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
 							const char *url);
@@ -282,17 +287,13 @@ void __connman_connection_cleanup(void);
 
 gboolean __connman_connection_update_gateway(void);
 
-int __connman_udev_init(void);
-void __connman_udev_start(void);
-void __connman_udev_cleanup(void);
-char *__connman_udev_get_devtype(const char *ifname);
-void __connman_udev_rfkill(const char *sysname, connman_bool_t blocked);
-connman_bool_t __connman_udev_get_blocked(int phyindex);
-
 int __connman_wpad_init(void);
 void __connman_wpad_cleanup(void);
 void __connman_wpad_start(struct connman_service *service);
 void __connman_wpad_stop(struct connman_service *service);
+
+int __connman_wispr_init(void);
+void __connman_wispr_cleanup(void);
 
 #include <connman/technology.h>
 
@@ -315,8 +316,10 @@ void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
-int __connman_technology_enable_tethering(void);
-int __connman_technology_disable_tethering(void);
+int __connman_technology_enable_tethering(const char *bridge);
+int __connman_technology_disable_tethering(const char *bridge);
+
+connman_bool_t __connman_technology_get_blocked(enum connman_service_type type);
 
 #include <connman/device.h>
 
@@ -417,6 +420,8 @@ void __connman_tethering_cleanup(void);
 connman_bool_t __connman_tethering_get_status(void);
 int __connman_tethering_set_status(connman_bool_t status);
 void __connman_tethering_update_interface(const char *interface);
+void __connman_tethering_set_enabled(void);
+void __connman_tethering_set_disabled(void);
 
 #include <connman/provider.h>
 
@@ -425,9 +430,9 @@ void __connman_provider_list(DBusMessageIter *iter, void *user_data);
 int __connman_provider_create_and_connect(DBusMessage *msg);
 const char * __connman_provider_get_ident(struct connman_provider *provider);
 int __connman_provider_indicate_state(struct connman_provider *provider,
-				     enum connman_provider_state state);
+					enum connman_provider_state state);
 int __connman_provider_indicate_error(struct connman_provider *provider,
-				     enum connman_provider_error error);
+					enum connman_provider_error error);
 int __connman_provider_connect(struct connman_provider *provider);
 int __connman_provider_disconnect(struct connman_provider *provider);
 int __connman_provider_remove(const char *path);
@@ -555,6 +560,7 @@ int __connman_rtnl_init(void);
 void __connman_rtnl_start(void);
 void __connman_rtnl_cleanup(void);
 
+enum connman_device_type __connman_rtnl_get_device_type(int index);
 unsigned int __connman_rtnl_update_interval_add(unsigned int interval);
 unsigned int __connman_rtnl_update_interval_remove(unsigned int interval);
 int __connman_rtnl_request_update(void);
@@ -590,3 +596,9 @@ int  __connman_stats_update(struct connman_service *service,
 int __connman_stats_get(struct connman_service *service,
 				connman_bool_t roaming,
 				struct connman_stats_data *data);
+
+int __connman_iptables_init(void);
+void __connman_iptables_cleanup(void);
+int __connman_iptables_command(const char *format, ...)
+				__attribute__((format(printf, 1, 2)));
+int __connman_iptables_commit(const char *table_name);

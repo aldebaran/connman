@@ -30,7 +30,7 @@
 
 #include <dbus/dbus.h>
 
-#define CONNMAN_SERVICE			"org.moblin.connman"
+#define CONNMAN_SERVICE			"net.connman"
 
 #define CONNMAN_MANAGER_INTERFACE	CONNMAN_SERVICE ".Manager"
 #define CONNMAN_MANAGER_PATH		"/"

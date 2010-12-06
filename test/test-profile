@@ -5,8 +5,8 @@ import dbus
 
 bus = dbus.SystemBus()
 
-manager = dbus.Interface(bus.get_object("org.moblin.connman", "/"),
-					"org.moblin.connman.Manager")
+manager = dbus.Interface(bus.get_object("net.connman", "/"),
+					"net.connman.Manager")
 
 if len(sys.argv) < 2:
 	print "Usage: %s <command>" % (sys.argv[0])
@@ -20,8 +20,8 @@ if len(sys.argv) < 2:
 
 def print_profiles(profiles, active):
 	for path in profiles:
-		profile = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Profile")
+		profile = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Profile")
 
 		properties = profile.GetProperties()
 
@@ -51,8 +51,8 @@ elif sys.argv[1] in ["name"]:
 
 	path = "/profile/" + sys.argv[2]
 
-	profile = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Profile")
+	profile = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Profile")
 
 	if (len(sys.argv) > 3):
 		name = sys.argv[3]
@@ -79,8 +79,8 @@ elif sys.argv[1] in ["create", "add"]:
 
 	print "New profile created at %s" % (path)
 
-	profile = dbus.Interface(bus.get_object("org.moblin.connman", path),
-						"org.moblin.connman.Profile")
+	profile = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Profile")
 
 	if (len(sys.argv) > 3):
 		name = sys.argv[3]

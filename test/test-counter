@@ -39,13 +39,13 @@ def print_stats(stats):
 		print str
 
 class Counter(dbus.service.Object):
-	@dbus.service.method("org.moblin.connman.Counter",
+	@dbus.service.method("net.connman.Counter",
 				in_signature='', out_signature='')
 	def Release(self):
 		print("Release")
 		mainloop.quit()
 
-	@dbus.service.method("org.moblin.connman.Counter",
+	@dbus.service.method("net.connman.Counter",
 				in_signature='oa{sv}a{sv}', out_signature='')
 	def Usage(self, path, home, roaming):
 		print "%s" % (path)
@@ -61,8 +61,8 @@ if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
 	bus = dbus.SystemBus()
-	manager = dbus.Interface(bus.get_object('org.moblin.connman', "/"),
-					'org.moblin.connman.Manager')
+	manager = dbus.Interface(bus.get_object('net.connman', "/"),
+					'net.connman.Manager')
 
 	period = 2
 	if len(sys.argv) > 1:

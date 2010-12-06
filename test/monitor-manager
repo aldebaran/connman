@@ -6,8 +6,7 @@ import dbus
 import dbus.mainloop.glib
 
 def property_changed(name, value):
-	if name in ["Profiles", "Services", "Providers", "Technologies",
-						"Devices", "Networks"]:
+	if name in ["Profiles", "Services", "Technologies"]:
 		val = "["
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
@@ -31,8 +30,8 @@ if __name__ == '__main__':
 	bus = dbus.SystemBus()
 
 	bus.add_signal_receiver(property_changed,
-				bus_name="org.moblin.connman",
-				dbus_interface="org.moblin.connman.Manager",
+				bus_name="net.connman",
+				dbus_interface="net.connman.Manager",
 					signal_name = "PropertyChanged")
 
 	mainloop = gobject.MainLoop()
