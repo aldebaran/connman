@@ -648,8 +648,8 @@ static int tech_set_regdom(struct connman_technology *technology, const char *al
 }
 
 static struct connman_technology_driver tech_driver = {
-	.name		= "bluetooth",
-	.type		= CONNMAN_SERVICE_TYPE_BLUETOOTH,
+	.name		= "wifi",
+	.type		= CONNMAN_SERVICE_TYPE_WIFI,
 	.probe		= tech_probe,
 	.remove		= tech_remove,
 	.set_regdom	= tech_set_regdom,
