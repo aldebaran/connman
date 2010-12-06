@@ -1,3 +1,6 @@
+ver 0.64.1
+	ConnMan 0.64 code merge
+
 ver 0.62.5
 	DNS proxy fix (Fixes BMC#9960)
 	Openconnect plugin security fix
