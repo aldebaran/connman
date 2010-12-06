@@ -1,3 +1,9 @@
+ver 0.64.2
+	Already powered devices fix (Fixes BMC#10397).
+	gdhcp socket initialisation fix.
+	gresolv UDP socket error handling.
+	oFono signal strength proper reporting.
+
 ver 0.64.1
 	ConnMan 0.64 code merge
 
