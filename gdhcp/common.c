@@ -52,6 +52,7 @@ static const DHCPOption client_options[] = {
 	{ OPTION_U16,			0x39 }, /* max-size */
 	{ OPTION_STRING,		0x3c }, /* vendor */
 	{ OPTION_STRING,		0x3d }, /* client-id */
+	{ OPTION_STRING,		0xfc }, /* UNOFFICIAL proxy-pac */
 	{ OPTION_UNKNOWN,		0x00 },
 };
 
