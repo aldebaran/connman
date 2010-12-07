@@ -86,7 +86,7 @@ struct partial_reply {
 
 struct server_data {
 	char *interface;
-	char *domain;
+	GList *domains;
 	char *server;
 	int protocol;
 	GIOChannel *channel;
@@ -156,7 +156,7 @@ static struct request_data *find_request(guint16 id)
 }
 
 static struct server_data *find_server(const char *interface,
-					const char *domain, const char *server,
+					const char *server,
 						int protocol)
 {
 	GSList *list;
@@ -171,16 +171,8 @@ static struct server_data *find_server(const char *interface,
 
 		if (g_str_equal(data->interface, interface) == TRUE &&
 				g_str_equal(data->server, server) == TRUE &&
-				data->protocol == protocol) {
-			if (domain == NULL) {
-				if (data->domain == NULL)
-					return data;
-				continue;
-			}
-
-			if (g_str_equal(data->domain, domain) == TRUE)
-				return data;
-		}
+				data->protocol == protocol)
+			return data;
 	}
 
 	return NULL;
@@ -320,6 +312,7 @@ static int append_query(unsigned char *buf, unsigned int size,
 static int ns_resolv(struct server_data *server, struct request_data *req,
 				gpointer request, gpointer name)
 {
+	GList *list;
 	int sk, err;
 
 	sk = g_io_channel_unix_get_fd(server->channel);
@@ -328,16 +321,22 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 	req->numserv++;
 
-	if (server->domain != NULL) {
+	for (list = server->domains; list; list = list->next) {
+		char *domain;
 		unsigned char alt[1024];
 		struct domain_hdr *hdr = (void *) &alt;
 		int altlen, domlen, offset;
+
+		domain = list->data;
+
+		if (domain == NULL)
+			continue;
 
 		offset = protocol_offset(server->protocol);
 		if (offset < 0)
 			return offset;
 
-		domlen = strlen(server->domain) + 1;
+		domlen = strlen(domain) + 1;
 		if (domlen < 5)
 			return -EINVAL;
 
@@ -348,7 +347,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		hdr->qdcount = htons(1);
 
 		altlen = append_query(alt + offset + 12, sizeof(alt) - 12,
-					name, server->domain);
+					name, domain);
 		if (altlen < 0)
 			return -EINVAL;
 
@@ -436,6 +435,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 
 static void destroy_server(struct server_data *server)
 {
+	GList *list;
+
 	DBG("interface %s server %s", server->interface, server->server);
 
 	server_list = g_slist_remove(server_list, server);
@@ -453,7 +454,12 @@ static void destroy_server(struct server_data *server)
 
 	g_free(server->incoming_reply);
 	g_free(server->server);
-	g_free(server->domain);
+	for (list = server->domains; list; list = list->next) {
+		char *domain = list->data;
+
+		server->domains = g_list_remove(server->domains, domain);
+		g_free(domain);
+	}
 	g_free(server->interface);
 	g_free(server);
 }
@@ -538,6 +544,23 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 	if ((condition & G_IO_OUT) && !server->connected) {
 		GSList *list;
+		GList *domains;
+		struct server_data *udp_server;
+
+		udp_server = find_server(server->interface, server->server,
+								IPPROTO_UDP);
+		if (udp_server != NULL) {
+			for (domains = udp_server->domains; domains;
+						domains = domains->next) {
+				char *dom = domains->data;
+
+				DBG("Adding domain %s to %s",
+						dom, server->server);
+
+				server->domains = g_list_append(server->domains,
+								g_strdup(dom));
+			}
+		}
 
 		server->connected = TRUE;
 		server_list = g_slist_append(server_list, server);
@@ -731,7 +754,8 @@ static struct server_data *create_server(const char *interface,
 						udp_server_event, data);
 
 	data->interface = g_strdup(interface);
-	data->domain = g_strdup(domain);
+	if (domain)
+		data->domains = g_list_append(data->domains, g_strdup(domain));
 	data->server = g_strdup(server);
 	data->protocol = protocol;
 
@@ -768,8 +792,7 @@ static gboolean resolv(struct request_data *req,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		DBG("server %s domain %s enabled %d",
-				data->server, data->domain, data->enabled);
+		DBG("server %s enabled %d", data->server, data->enabled);
 
 		if (data->enabled == FALSE)
 			continue;
@@ -786,6 +809,38 @@ static gboolean resolv(struct request_data *req,
 	return TRUE;
 }
 
+static void append_domain(const char *interface, const char *domain)
+{
+	GSList *list;
+
+	DBG("interface %s domain %s", interface, domain);
+
+	for (list = server_list; list; list = list->next) {
+		struct server_data *data = list->data;
+		GList *dom_list;
+		char *dom;
+		gboolean dom_found = FALSE;
+
+		if (data->interface == NULL)
+			continue;
+
+		if (g_str_equal(data->interface, interface) == FALSE)
+			continue;
+
+		for (dom_list = data->domains; dom_list; dom_list = dom_list->next) {
+			dom = dom_list->data;
+
+			if (g_str_equal(dom, domain)) {
+				dom_found = TRUE;
+				break;
+			}
+		}
+
+		if (dom_found == FALSE)
+			data->domains = g_list_append(data->domains, g_strdup(domain));
+	}
+}
+
 static int dnsproxy_append(const char *interface, const char *domain,
 							const char *server)
 {
@@ -793,11 +848,23 @@ static int dnsproxy_append(const char *interface, const char *domain,
 
 	DBG("interface %s server %s", interface, server);
 
-	if (server == NULL)
+	if (server == NULL && domain == NULL)
 		return -EINVAL;
+
+	if (server == NULL) {
+		append_domain(interface, domain);
+
+		return 0;
+	}
 
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
+
+	data = find_server(interface, server, IPPROTO_UDP);
+	if (data != NULL) {
+		append_domain(interface, domain);
+		return 0;
+	}
 
 	data = create_server(interface, domain, server, IPPROTO_UDP);
 	if (data == NULL)
@@ -811,7 +878,7 @@ static void remove_server(const char *interface, const char *domain,
 {
 	struct server_data *data;
 
-	data = find_server(interface, domain, server, protocol);
+	data = find_server(interface, server, protocol);
 	if (data == NULL)
 		return;
 
@@ -1065,11 +1132,12 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
+		GList *domains;
 
 		if (data->protocol != IPPROTO_UDP || data->enabled == FALSE)
 			continue;
 
-		server = create_server(data->interface, data->domain,
+		server = create_server(data->interface, NULL,
 					data->server, IPPROTO_TCP);
 
 		/*
@@ -1098,6 +1166,15 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 		if (req->timeout > 0)
 			g_source_remove(req->timeout);
+
+		for (domains = data->domains; domains; domains = domains->next) {
+			char *dom = domains->data;
+
+			DBG("Adding domain %s to %s", dom, server->server);
+
+			server->domains = g_list_append(server->domains,
+						g_strdup(dom));
+		}
 
 		req->timeout = g_timeout_add_seconds(30, request_timeout, req);
 		ns_resolv(server, req, buf, query);
