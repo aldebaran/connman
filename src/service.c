@@ -368,6 +368,15 @@ static void update_nameservers(struct connman_service *service)
 	} else if (service->nameserver != NULL)
 		connman_resolver_append(ifname, NULL, service->nameserver);
 
+	if (service->domains != NULL) {
+		int i;
+
+		for (i = 0; service->domains[i]; i++)
+			connman_resolver_append(ifname,	service->domains[i],
+						NULL);
+	} else if (service->domainname != NULL)
+		connman_resolver_append(ifname, service->domainname, NULL);
+
 	connman_resolver_flush();
 }
 
@@ -1516,7 +1525,10 @@ const char *connman_service_get_domainname(struct connman_service *service)
 	if (service == NULL)
 		return NULL;
 
-	return service->domainname;
+	if (service->domains != NULL)
+		return service->domains[0];
+	else
+		return service->domainname;
 }
 
 const char *connman_service_get_nameserver(struct connman_service *service)
@@ -1986,7 +1998,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		g_string_free(str, TRUE);
 
-		//update_domains(service);
+		update_nameservers(service);
 		domain_configuration_changed(service);
 
 		__connman_storage_save_service(service);
@@ -3030,6 +3042,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		update_nameservers(service);
 		dns_changed(service);
+		domain_changed(service);
 
 		__connman_wpad_start(service);
 
@@ -3045,6 +3058,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		update_nameservers(service);
 		dns_changed(service);
+		domain_changed(service);
 
 		__connman_notifier_disconnect(service->type);
 	}
