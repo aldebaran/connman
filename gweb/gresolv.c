@@ -147,7 +147,7 @@ static void destroy_lookup(struct resolv_lookup *lookup)
 	}
 	if (lookup->ipv6_query) {
 		destroy_query(lookup->ipv6_query);
-		g_queue_remove(lookup->resolv->query_queue, lookup->ipv4_query);
+		g_queue_remove(lookup->resolv->query_queue, lookup->ipv6_query);
 	}
 	g_free(lookup->results);
 	g_free(lookup);
