@@ -742,7 +742,7 @@ connman_bool_t __connman_technology_get_blocked(enum connman_service_type type)
 {
 	struct connman_technology *technology;
 
-	technology = technology_get(type);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return FALSE;
 
