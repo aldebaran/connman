@@ -764,8 +764,23 @@ static struct server_data *create_server(const char *interface,
 	if (ret < 0) {
 		if ((protocol == IPPROTO_TCP && errno != EINPROGRESS) ||
 				protocol == IPPROTO_UDP) {
+			GList *list;
+
 			connman_error("Failed to connect to server %s", server);
 			close(sk);
+			if (data->watch > 0)
+				g_source_remove(data->watch);
+			if (data->timeout > 0)
+				g_source_remove(data->timeout);
+			g_free(data->server);
+			g_free(data->interface);
+			for (list = data->domains; list; list = list->next) {
+				char *domain = list->data;
+
+				data->domains = g_list_remove(data->domains,
+									domain);
+				g_free(domain);
+			}
 			g_free(data);
 			return NULL;
 		}
