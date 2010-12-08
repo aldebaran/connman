@@ -65,6 +65,8 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway);
 
 void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 		const char *address, const char *netmask, const char *gateway);
+int connman_inet_add_to_bridge(int index, const char *bridge);
+int connman_inet_remove_from_bridge(int index, const char *bridge);
 
 #ifdef __cplusplus
 }

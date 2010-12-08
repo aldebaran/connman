@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <linux/sockios.h>
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <net/ethernet.h>
@@ -1099,4 +1100,62 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 	if_addr = addr->sin_addr.s_addr;
 
 	return ((if_addr & netmask_addr) == (host_addr & netmask_addr));
+}
+
+int connman_inet_remove_from_bridge(int index, const char *bridge)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (bridge == NULL)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return sk;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCBRDELIF, &ifr);
+
+	close(sk);
+
+	if (err < 0) {
+		connman_error("Remove interface from bridge error %s",
+							strerror(errno));
+		return err;
+	}
+
+	return 0;
+}
+
+int connman_inet_add_to_bridge(int index, const char *bridge)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (bridge == NULL)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return sk;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCBRADDIF, &ifr);
+
+	close(sk);
+
+	if (err < 0) {
+		connman_error("Add interface to bridge error %s",
+							strerror(errno));
+		return err;
+	}
+
+	return 0;
 }
