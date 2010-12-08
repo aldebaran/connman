@@ -328,7 +328,7 @@ if (test "${enable_systemd}" = "yes"); then
 	PKG_CHECK_MODULES(SYSTEMD, systemd, dummy=yes,
 				AC_MSG_ERROR(systemd is required))
 	SYSTEMD_UNITDIR="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
-	if (test -z "${SYSTEM_UNITDIR}"); then
+	if (test -z "${SYSTEMD_UNITDIR}"); then
 		SYSTEMD_UNITDIR="/lib/systemd/system"
 	fi
 	AC_SUBST(SYSTEMD_UNITDIR)
