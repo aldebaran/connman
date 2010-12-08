@@ -470,6 +470,7 @@ struct connman_device *connman_inet_create_device(int index)
 		g_free(devname);
 		return NULL;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "");
@@ -493,6 +494,7 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_GPS:
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:

@@ -205,6 +205,7 @@ struct connman_service *__connman_element_get_service(struct connman_element *el
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
@@ -290,6 +291,7 @@ static gboolean request_scan(GNode *node, gpointer user_data)
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
@@ -334,6 +336,7 @@ static gboolean enable_technology(GNode *node, gpointer user_data)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
@@ -386,6 +389,7 @@ static gboolean disable_technology(GNode *node, gpointer user_data)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		return FALSE;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:

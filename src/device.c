@@ -124,6 +124,9 @@ static const char *type2description(enum connman_device_type type)
 		return "GPS";
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return "Cellular";
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		return "Gadget";
+
 	}
 
 	return NULL;
@@ -147,6 +150,9 @@ static const char *type2string(enum connman_device_type type)
 		return "gps";
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return "cellular";
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		return "gadget";
+
 	}
 
 	return NULL;
@@ -171,6 +177,9 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		return CONNMAN_SERVICE_TYPE_GADGET;
+
 	}
 
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
@@ -480,6 +489,9 @@ struct connman_device *connman_device_create(const char *node,
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+		device->scan_interval = 0;
+		break;
+	case CONNMAN_DEVICE_TYPE_GADGET:
 		device->scan_interval = 0;
 		break;
 	}

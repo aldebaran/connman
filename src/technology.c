@@ -120,6 +120,7 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	}
 
@@ -157,6 +158,7 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	}
 
@@ -302,6 +304,7 @@ static const char *get_name(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		return "Wired";

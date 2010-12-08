@@ -73,6 +73,7 @@ static void iospm_service_enabled(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		send_indication(IOSPM_BLUETOOTH, enabled);

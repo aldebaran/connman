@@ -44,6 +44,7 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_CELLULAR  = 6,
 	CONNMAN_SERVICE_TYPE_GPS       = 7,
 	CONNMAN_SERVICE_TYPE_VPN       = 8,
+	CONNMAN_SERVICE_TYPE_GADGET    = 9,
 };
 
 enum connman_service_mode {

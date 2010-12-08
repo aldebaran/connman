@@ -63,6 +63,7 @@ static void detect_newlink(unsigned short type, int index,
 		return;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 		break;
 	}
 

@@ -123,6 +123,7 @@ static int location_detect(struct connman_location *location)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EOPNOTSUPP;
 	}
 
