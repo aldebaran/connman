@@ -83,10 +83,23 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
  */
 int connman_technology_driver_register(struct connman_technology_driver *driver)
 {
+	GSList *list;
+	struct connman_technology *technology;
+
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
+
+	for (list = technology_list; list; list = list->next) {
+		technology = list->data;
+
+		if (technology->driver != NULL)
+			continue;
+
+		if (technology->type == driver->type)
+			technology->driver = driver;
+	}
 
 	return 0;
 }
@@ -99,7 +112,22 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
  */
 void connman_technology_driver_unregister(struct connman_technology_driver *driver)
 {
+	GSList *list;
+	struct connman_technology *technology;
+
 	DBG("driver %p name %s", driver, driver->name);
+
+	for (list = technology_list; list; list = list->next) {
+		technology = list->data;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->type == driver->type) {
+			technology->driver->remove(technology);
+			technology->driver = NULL;
+		}
+	}
 
 	driver_list = g_slist_remove(driver_list, driver);
 }
