@@ -1400,15 +1400,11 @@ void __connman_element_start(void)
 	__connman_dhcp_init();
 	__connman_wpad_init();
 	__connman_wispr_init();
-
-	__connman_rfkill_init();
 }
 
 void __connman_element_stop(void)
 {
 	DBG("");
-
-	__connman_rfkill_cleanup();
 
 	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
