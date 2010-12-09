@@ -285,13 +285,11 @@ static void property_set_reply(DBusPendingCall *call, void *user_data)
 	else
 		error = NULL;
 
-	if (dbus_message_iter_init(reply, &iter) == FALSE)
-		goto done;
+	dbus_message_iter_init(reply, &iter);
 
 	if (data->function != NULL)
 		data->function(error, &iter, data->user_data);
 
-done:
 	dbus_message_unref(reply);
 
 	dbus_pending_call_unref(call);
