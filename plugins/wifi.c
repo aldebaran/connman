@@ -53,6 +53,8 @@
 #define CLEANUP_TIMEOUT   8	/* in seconds */
 #define INACTIVE_TIMEOUT  12	/* in seconds */
 
+struct connman_technology *wifi_technology = NULL;
+
 struct wifi_data {
 	char *identifier;
 	struct connman_device *device;
@@ -635,16 +637,31 @@ static struct connman_network_driver network_driver = {
 
 static int tech_probe(struct connman_technology *technology)
 {
+	wifi_technology = technology;
+
 	return 0;
 }
 
 static void tech_remove(struct connman_technology *technology)
 {
+	wifi_technology = NULL;
+}
+
+static void regdom_callback(void *user_data)
+{
+	char *alpha2 = user_data;
+
+	DBG("");
+
+	if (wifi_technology == NULL)
+		return;
+
+	connman_technology_regdom_notify(wifi_technology, alpha2);
 }
 
 static int tech_set_regdom(struct connman_technology *technology, const char *alpha2)
 {
-	return 0;
+	return g_supplicant_set_country(alpha2, regdom_callback, alpha2);
 }
 
 static struct connman_technology_driver tech_driver = {
