@@ -406,6 +406,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	struct ether_addr compare = {{ 0, 0, 0, 0, 0, 0 }};
 	struct rtnl_link_stats stats;
 	unsigned char operstate = 0xff;
+	struct interface_data *interface;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
 	char ident[13], str[18];
@@ -449,10 +450,8 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 						ifname, index, operstate,
 						operstate2str(operstate));
 
-	if (g_hash_table_lookup(interface_list,
-					GINT_TO_POINTER(index)) == NULL) {
-		struct interface_data *interface;
-
+	interface = g_hash_table_lookup(interface_list, GINT_TO_POINTER(index));
+	if (interface == NULL) {
 		interface = g_new0(struct interface_data, 1);
 		interface->index = index;
 		interface->name = g_strdup(ifname);
@@ -463,9 +462,6 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 
 		if (type == ARPHRD_ETHER)
 			read_uevent(interface);
-
-		__connman_technology_add_interface(interface->service_type,
-			interface->index, interface->name, interface->ident);
 	}
 
 	for (list = rtnl_list; list; list = list->next) {
@@ -474,6 +470,9 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		if (rtnl->newlink)
 			rtnl->newlink(type, index, flags, change);
 	}
+
+	__connman_technology_add_interface(interface->service_type,
+			interface->index, interface->name, interface->ident);
 
 	for (list = watch_list; list; list = list->next) {
 		struct watch_data *watch = list->data;
