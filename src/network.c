@@ -44,7 +44,6 @@ struct connman_network {
 	char *name;
 	char *node;
 	char *group;
-	struct connman_ipconfig *ipconfig;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -168,11 +167,6 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->name);
 	g_free(network->address);
 	g_free(network->identifier);
-
-	if (network->ipconfig) {
-		connman_ipconfig_unref(network->ipconfig);
-		network->ipconfig = NULL;
-	}
 
 	network->device = NULL;
 }
