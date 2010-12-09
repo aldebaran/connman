@@ -1567,6 +1567,9 @@ void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
 
 	DBG("");
 
+	if (ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
+		return;
+
 	str = __connman_ipconfig_method2string(ipconfig->method);
 	if (str == NULL)
 		return;
