@@ -294,16 +294,25 @@ void connman_network_set_index(struct connman_network *network, int index)
 	if (service == NULL)
 		goto done;
 
-	ipconfig = __connman_service_get_ipconfig(service);
+	ipconfig = __connman_service_get_ip4config(service);
 
-	if (network->element.index < 0 && ipconfig == NULL)
-		/*
-		 * This is needed for plugins that havent set their ipconfig
-		 * layer yet, due to not being able to get a network index
-		 * prior to creating a service.
-		 */
-		__connman_service_create_ipconfig(service, index);
-	else {
+	DBG("index %d service %p ip4config %p", network->element.index,
+		service, ipconfig);
+
+	if (network->element.index < 0 && ipconfig == NULL) {
+
+		ipconfig = __connman_service_get_ip4config(service);
+		if (ipconfig == NULL)
+			/*
+			 * This is needed for plugins that havent set their
+			 * ipconfig layer yet, due to not being able to get
+			 * a network index prior to creating a service.
+			 */
+			__connman_service_create_ip4config(service, index);
+		else
+			__connman_ipconfig_set_index(ipconfig, index);
+
+	} else {
 		/* If index changed, the index of ipconfig must be reset. */
 		if (ipconfig == NULL)
 			goto done;
@@ -514,7 +523,7 @@ static void set_configure_error(struct connman_network *network)
 					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
-void connman_network_set_method(struct connman_network *network,
+void connman_network_set_ipv4_method(struct connman_network *network,
 					enum connman_ipconfig_method method)
 {
 	struct connman_service *service;
@@ -526,7 +535,26 @@ void connman_network_set_method(struct connman_network *network,
 	if (service == NULL)
 		return;
 
-	ipconfig = __connman_service_get_ipconfig(service);
+	ipconfig = __connman_service_get_ip4config(service);
+	if (ipconfig == NULL)
+		return;
+
+	connman_ipconfig_set_method(ipconfig, method);
+}
+
+void connman_network_set_ipv6_method(struct connman_network *network,
+					enum connman_ipconfig_method method)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+
+	network->element.ipv6.method = method;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return;
+
+	ipconfig = __connman_service_get_ip6config(service);
 	if (ipconfig == NULL)
 		return;
 
@@ -620,7 +648,7 @@ static void set_connected_manual(struct connman_network *network)
 
 	service = __connman_service_lookup_from_network(network);
 
-	ipconfig = __connman_service_get_ipconfig(service);
+	ipconfig = __connman_service_get_ip4config(service);
 
 	set_configuration(network);
 
@@ -699,31 +727,39 @@ static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
 	struct connman_service *service;
-	struct connman_ipconfig *ipconfig;
-	enum connman_ipconfig_method method;
+	struct connman_ipconfig *ipconfig_ipv4, *ipconfig_ipv6;
+	enum connman_ipconfig_method ipv4_method, ipv6_method;
 
 	service = __connman_service_lookup_from_network(network);
 
-	ipconfig = __connman_service_get_ipconfig(service);
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+	ipconfig_ipv6 = __connman_service_get_ip6config(service);
 
-	method = __connman_ipconfig_get_method(ipconfig);
+	DBG("service %p ipv4 %p ipv6 %p", service, ipconfig_ipv4,
+		ipconfig_ipv6);
 
-	DBG("method %d", method);
+	if (ipconfig_ipv4)
+		ipv4_method = __connman_ipconfig_get_method(ipconfig_ipv4);
+	else
+		ipv4_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+
+	if (ipconfig_ipv6)
+		ipv6_method = __connman_ipconfig_get_method(ipconfig_ipv6);
+	else
+		ipv6_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+
+	DBG("method ipv4 %d ipv6 %d", ipv4_method, ipv6_method);
+	DBG("network connected %d", network->connected);
 
 	if (network->connected == TRUE) {
-		enum connman_ipconfig_method ipv6_method;
-		struct connman_ipconfig *ipv6config;
 		int ret;
 
-		ipv6config = connman_ipconfig_get_ipv6config(ipconfig);
-		ipv6_method = __connman_ipconfig_get_method(ipv6config);
 		switch (ipv6_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
-			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
-			ret = manual_ipv6_set(network, ipv6config);
+			ret = manual_ipv6_set(network, ipconfig_ipv6);
 			if (ret != 0) {
 				connman_network_set_error(network,
 					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
@@ -734,7 +770,7 @@ static gboolean set_connected(gpointer user_data)
 			break;
 		}
 
-		switch (method) {
+		switch (ipv4_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 			return FALSE;
@@ -1007,42 +1043,46 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 }
 
 int __connman_network_set_ipconfig(struct connman_network *network,
-					struct connman_ipconfig *ipconfig)
+					struct connman_ipconfig *ipconfig_ipv4,
+					struct connman_ipconfig *ipconfig_ipv6)
 {
-	struct connman_ipconfig *ipv6config;
 	enum connman_ipconfig_method method;
 	int ret;
 
-	ipv6config = connman_ipconfig_get_ipv6config(ipconfig);
-	method = __connman_ipconfig_get_method(ipv6config);
-	switch (method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-		break;
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		ret = manual_ipv6_set(network, ipv6config);
-		if (ret != 0) {
-			connman_network_set_error(network,
-				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
-			return FALSE;
+	if (ipconfig_ipv6) {
+		method = __connman_ipconfig_get_method(ipconfig_ipv6);
+
+		switch (method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			ret = manual_ipv6_set(network, ipconfig_ipv6);
+			if (ret != 0) {
+				connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+				return FALSE;
+			}
+			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			break;
 		}
-		break;
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		break;
 	}
 
-	method = __connman_ipconfig_get_method(ipconfig);
+	if (ipconfig_ipv4) {
+		method = __connman_ipconfig_get_method(ipconfig_ipv4);
 
-	switch (method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		return -EINVAL;
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		return manual_ipv4_set(network, ipconfig);
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		return dhcp_start(network);
+		switch (method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+			return -EINVAL;
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			return manual_ipv4_set(network, ipconfig_ipv4);
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			return dhcp_start(network);
+		}
 	}
 
 	return 0;

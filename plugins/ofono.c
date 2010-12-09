@@ -1497,7 +1497,7 @@ static void set_connected(struct connman_network *network,
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		connman_network_set_method(network, method);
+		connman_network_set_ipv4_method(network, method);
 
 		if (connected == FALSE)
 			cleanup_ipconfig(network);
@@ -1506,7 +1506,7 @@ static void set_connected(struct connman_network *network,
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		connman_network_set_method(network, method);
+		connman_network_set_ipv4_method(network, method);
 
 		connman_network_set_connected(network, connected);
 		break;

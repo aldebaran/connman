@@ -94,7 +94,7 @@ static int ipv4_probe(struct connman_element *element)
 	connection->index   = element->index;
 	connection->devname = connman_inet_ifname(element->index);
 
-	ipconfig = __connman_service_get_ipconfig(service);
+	ipconfig = __connman_service_get_ip6config(service);
 	if (ipconfig != NULL)
 		__connman_ipconfig_set_element_ipv6_gateway(
 						ipconfig, connection);

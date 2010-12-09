@@ -89,7 +89,9 @@ connman_bool_t connman_network_get_connected(struct connman_network *network);
 
 connman_bool_t connman_network_get_associating(struct connman_network *network);
 
-void connman_network_set_method(struct connman_network *network,
+void connman_network_set_ipv4_method(struct connman_network *network,
+					enum connman_ipconfig_method method);
+void connman_network_set_ipv6_method(struct connman_network *network,
 					enum connman_ipconfig_method method);
 
 int connman_network_set_address(struct connman_network *network,
