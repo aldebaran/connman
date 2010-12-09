@@ -200,6 +200,9 @@ int __connman_device_enable(struct connman_device *device)
 	if (device->blocked == TRUE)
 		return -ENOLINK;
 
+	connman_device_set_disconnected(device, FALSE);
+	device->scanning = FALSE;
+
 	err = device->driver->enable(device);
 	if (err < 0 && err != -EALREADY) {
 		if (err == -EINPROGRESS) {
