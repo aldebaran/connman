@@ -1455,6 +1455,11 @@ static void service_property(const char *key, DBusMessageIter *iter,
 	} else if (g_strcmp0(key, "EapMethods") == 0) {
 		supplicant_dbus_array_foreach(iter, eap_method, NULL);
 		debug_strvalmap("EAP method", eap_method_map, eap_methods);
+	} else if (g_strcmp0(key, "Country") == 0) {
+		const char *country = NULL;
+
+		dbus_message_iter_get_basic(iter, &country);
+		SUPPLICANT_DBG("Country %s", country);
 	} else
 		SUPPLICANT_DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
@@ -1697,6 +1702,69 @@ static DBusHandlerResult g_supplicant_filter(DBusConnection *conn,
 	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+}
+
+struct supplicant_regdom {
+	GSupplicantCountryCallback callback;
+	const void *user_data;
+};
+
+static void country_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_regdom *regdom = user_data;
+	char *alpha2;
+
+	SUPPLICANT_DBG("Country setting result");
+
+	if (user_data == NULL)
+		return;
+
+	if (error == NULL) {
+		alpha2 = (char *)regdom->user_data;
+	} else {
+		SUPPLICANT_DBG("Country setting failure %s", error);
+		alpha2 = NULL;
+	}
+
+	if (regdom->callback)
+		regdom->callback(alpha2);
+
+	g_free(regdom);
+}
+
+static void country_params(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_regdom *regdom = user_data;
+	const char *country;
+
+	country = regdom->user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &country);
+}
+
+int g_supplicant_set_country(const char *alpha2,
+				GSupplicantCountryCallback callback,
+					const void *user_data)
+{
+	struct supplicant_regdom *regdom;
+
+	SUPPLICANT_DBG("Country setting %s", alpha2);
+
+	if (system_available == FALSE)
+		return -EFAULT;
+
+	regdom = dbus_malloc0(sizeof(*regdom));
+	if (regdom == NULL)
+		return -ENOMEM;
+
+	regdom->callback = callback;
+	regdom->user_data = user_data;
+
+	return supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
+					"Country", DBUS_TYPE_STRING_AS_STRING,
+					country_params, country_result,
+						regdom);
 }
 
 struct interface_data {
