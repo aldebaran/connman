@@ -35,6 +35,12 @@
 
 #include "connman.h"
 
+#ifdef TEMP_FAILURE_RETRY
+#define TFR TEMP_FAILURE_RETRY
+#else
+#define TFR
+#endif
+
 #define MAGIC 0xFA00B916
 
 /*
@@ -67,7 +73,13 @@
  *   if 'roaming' has the value UINT_MAX', 'roaming' is invalid
  *   'first' points to the first entry in the ring buffer
  *   'last' points to the last entry in the ring buffer
+ *
+ * History file:
+ *   Same format as the ring buffer file
+ *   For a period of at least 2 months dayly records are keept
+ *   If older, then only a monthly record is keept
  */
+
 
 struct stats_file_header {
 	unsigned int magic;
@@ -95,6 +107,17 @@ struct stats_file {
 	struct stats_record *last;
 	struct stats_record *home;
 	struct stats_record *roaming;
+
+	/* history */
+	char *history_name;
+	int account_period_offset;
+};
+
+struct stats_iter {
+	struct stats_file *file;
+	struct stats_record *begin;
+	struct stats_record *end;
+	struct stats_record *it;
 };
 
 GHashTable *stats_hash = NULL;
@@ -142,14 +165,6 @@ static struct stats_record *get_roaming(struct stats_file *file)
 	return (struct stats_record *)(file->addr + hdr->roaming);
 }
 
-static void set_begin(struct stats_file *file, struct stats_record *begin)
-{
-	struct stats_file_header *hdr;
-
-	hdr = get_hdr(file);
-	hdr->begin = (char *)begin - file->addr;
-}
-
 static void set_end(struct stats_file *file, struct stats_record *end)
 {
 	struct stats_file_header *hdr;
@@ -185,6 +200,16 @@ static struct stats_record *get_next(struct stats_file *file,
 	return cur;
 }
 
+static struct stats_record *get_iterator_begin(struct stats_file *file)
+{
+	return get_next(file, get_begin(file));
+}
+
+static struct stats_record *get_iterator_end(struct stats_file *file)
+{
+	return get_next(file, get_end(file));
+}
+
 static void stats_free(gpointer user_data)
 {
 	struct stats_file *file = user_data;
@@ -194,9 +219,11 @@ static void stats_free(gpointer user_data)
 	munmap(file->addr, file->len);
 	file->addr = NULL;
 
-	close(file->fd);
+	TFR(close(file->fd));
 	file->fd = -1;
 
+	if (file->history_name != NULL)
+		g_free(file->history_name);
 	g_free(file->name);
 	g_free(file);
 }
@@ -271,43 +298,68 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	return 0;
 }
 
-static int stats_open(struct connman_service *service,
-			struct stats_file *file)
+static int stats_open(struct stats_file *file,
+			const char *name)
 {
-	struct stat st;
-	int err;
-	size_t size;
-	struct stats_file_header *hdr;
-	connman_bool_t new_file = FALSE;
+	file->name = g_strdup(name);
 
-	file->name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
-			__connman_service_get_ident(service));
-
-	err = stat(file->name, &st);
-	if (err < 0) {
-		/* according documentation the only possible error is ENOENT */
-		st.st_size = 0;
-		new_file = TRUE;
-	}
-
-	file->fd = open(file->name, O_RDWR | O_CREAT, 0644);
-
+	file->fd = TFR(open(file->name, O_RDWR | O_CREAT, 0644));
 	if (file->fd < 0) {
 		connman_error("open error %s for %s",
 				strerror(errno), file->name);
+		g_free(file->name);
 		return -errno;
 	}
 
+	return 0;
+}
+
+static int stats_open_temp(struct stats_file *file)
+{
+	file->name = g_strdup_printf("%s/stats/stats.XXXXXX.tmp",
+					STORAGEDIR);
+	file->fd = g_mkstemp_full(file->name, O_RDWR | O_CREAT, 0644);
+	if (file->fd < 0) {
+		connman_error("create tempory file error %s for %s",
+				strerror(errno), file->name);
+		g_free(file->name);
+		return -errno;
+	}
+
+	return 0;
+}
+
+static int stats_file_setup(struct stats_file *file)
+{
+	struct stats_file_header *hdr;
+	struct stat st;
+	size_t size = 0;
+	int err;
+
+	err = fstat(file->fd, &st);
+	if (err < 0) {
+		connman_error("fstat error %s for %s\n",
+			strerror(errno), file->name);
+
+		TFR(close(file->fd));
+		g_free(file->name);
+
+		return -errno;
+	}
+
+	size = (size_t)st.st_size;
 	file->max_len = STATS_MAX_FILE_SIZE;
 
-	if (st.st_size < sysconf(_SC_PAGESIZE))
+	if (size < (size_t)sysconf(_SC_PAGESIZE))
 		size = sysconf(_SC_PAGESIZE);
-	else
-		size = st.st_size;
 
 	err = stats_file_remap(file, size);
-	if (err < 0)
+	if (err < 0) {
+		TFR(close(file->fd));
+		g_free(file->name);
+
 		return err;
+	}
 
 	hdr = get_hdr(file);
 
@@ -318,16 +370,6 @@ static int stats_open(struct connman_service *service,
 			hdr->roaming < sizeof(struct stats_file_header) ||
 			hdr->begin > file->len ||
 			hdr->end > file->len) {
-		if (new_file == FALSE) {
-			/*
-			 * A newly created file can't have a correct
-			 * header so we only warn if the file already
-			 * existed and doesn't have a proper
-			 * header.
-			 */
-			connman_warn("invalid file header for %s", file->name);
-		}
-
 		hdr->magic = MAGIC;
 		hdr->begin = sizeof(struct stats_file_header);
 		hdr->end = sizeof(struct stats_file_header);
@@ -340,9 +382,257 @@ static int stats_open(struct connman_service *service,
 	return 0;
 }
 
+
+static struct stats_record *get_next_record(struct stats_iter *iter)
+{
+	if (iter->it != iter->end) {
+		struct stats_record *tmp;
+
+		tmp = iter->it;
+		iter->it = get_next(iter->file, iter->it);
+
+		return tmp;
+	}
+
+	return NULL;
+}
+
+static int append_record(struct stats_file *file,
+				struct stats_record *rec)
+{
+	struct stats_record *cur, *next;
+	int err;
+
+	if (file->last == get_end(file)) {
+		err = stats_file_remap(file, file->len +
+					sysconf(_SC_PAGESIZE));
+		if (err < 0)
+			return err;
+
+		stats_file_update_cache(file);
+	}
+
+	cur = get_end(file);
+	next = get_next(file, cur);
+
+	memcpy(next, rec, sizeof(struct stats_record));
+
+	set_end(file, next);
+
+	return 0;
+}
+
+static struct stats_record *process_file(struct stats_iter *iter,
+					struct stats_file *temp_file,
+					struct stats_record *cur,
+					GDate *date_change_step_size,
+					int account_period_offset)
+{
+	struct stats_record *home, *roaming;
+	struct stats_record *next;
+
+	home = NULL;
+	roaming = NULL;
+
+	if (cur == NULL)
+		cur = get_next_record(iter);
+	next = get_next_record(iter);
+
+	while (next != NULL) {
+		GDate date_cur;
+		GDate date_next;
+		int append;
+
+		append = FALSE;
+
+		if (cur->roaming == TRUE)
+			roaming = cur;
+		else
+			home = cur;
+
+		g_date_set_time_t(&date_cur, cur->ts);
+		g_date_set_time_t(&date_next, next->ts);
+
+		if (g_date_compare(&date_cur, date_change_step_size) < 0) {
+			/* month period size */
+			GDateDay day_cur, day_next;
+			GDateMonth month_cur, month_next;
+
+			month_cur = g_date_get_month(&date_cur);
+			month_next = g_date_get_month(&date_next);
+
+			day_cur = g_date_get_day(&date_cur);
+			day_next = g_date_get_day(&date_next);
+
+			if (day_cur == day_next && month_cur != month_next) {
+				append = TRUE;
+			} else if (day_cur < account_period_offset &&
+					day_next >= account_period_offset) {
+				append = TRUE;
+			}
+		} else {
+			/* day period size */
+			if (g_date_days_between(&date_cur, &date_next) > 0)
+				append = TRUE;
+		}
+
+		if (append == TRUE) {
+			if (home != NULL) {
+				append_record(temp_file, home);
+				home = NULL;
+			}
+
+			if (roaming != NULL) {
+				append_record(temp_file, roaming);
+				roaming = NULL;
+			}
+		}
+
+		cur = next;
+		next = get_next_record(iter);
+	}
+
+	return cur;
+}
+
+static int summarize(struct stats_file *data_file,
+			struct stats_file *history_file,
+			struct stats_file *temp_file)
+{
+	struct stats_iter data_iter;
+	struct stats_iter history_iter;
+	struct stats_record *cur, *next;
+
+	GDate today, date_change_step_size;
+
+	/*
+	 * First calculate the date when switch from monthly
+	 * accounting period size to daily size
+	 */
+	g_date_set_time_t(&today, time(NULL));
+
+	date_change_step_size = today;
+	if (g_date_get_day(&today) - data_file->account_period_offset >= 0)
+		g_date_subtract_months(&date_change_step_size, 2);
+	else
+		g_date_subtract_months(&date_change_step_size, 3);
+
+	g_date_set_day(&date_change_step_size,
+			data_file->account_period_offset);
+
+
+	/* Now process history file */
+	cur = NULL;
+
+	if (history_file != NULL) {
+		history_iter.file = history_file;
+		history_iter.begin = get_iterator_begin(history_iter.file);
+		history_iter.end = get_iterator_end(history_iter.file);
+		history_iter.it = history_iter.begin;
+
+		cur = process_file(&history_iter, temp_file, NULL,
+					&date_change_step_size,
+					data_file->account_period_offset);
+	}
+
+	data_iter.file = data_file;
+	data_iter.begin = get_iterator_begin(data_iter.file);
+	data_iter.end = get_iterator_end(data_iter.file);
+	data_iter.it = data_iter.begin;
+
+	/*
+	 * Ensure date_file records are newer than the history_file
+	 * record
+	 */
+	if (cur != NULL) {
+		next = get_next_record(&data_iter);
+		while (next != NULL && cur->ts > next->ts)
+			next = get_next_record(&data_iter);
+	}
+
+	/* And finally process the new data records */
+	cur = process_file(&data_iter, temp_file, cur,
+				&date_change_step_size,
+				data_file->account_period_offset);
+
+	if (cur != NULL)
+		append_record(temp_file, cur);
+
+	return 0;
+}
+
+static void stats_file_unmap(struct stats_file *file)
+{
+	msync(file->addr, file->len, MS_SYNC);
+	munmap(file->addr, file->len);
+	file->addr = NULL;
+}
+
+static void stats_file_cleanup(struct stats_file *file)
+{
+	file->fd = -1;
+	g_free(file->name);
+}
+
+static int stats_file_close_swap(struct stats_file *history_file,
+					struct stats_file *temp_file)
+{
+	int err;
+
+	stats_file_unmap(history_file);
+	stats_file_unmap(temp_file);
+
+	TFR(close(temp_file->fd));
+
+	unlink(history_file->name);
+
+	err = link(temp_file->name, history_file->name);
+
+	unlink(temp_file->name);
+
+	TFR(close(history_file->fd));
+
+	stats_file_cleanup(history_file);
+	stats_file_cleanup(temp_file);
+
+	return err;
+}
+
+static int stats_file_history_update(struct stats_file *data_file)
+{
+	struct stats_file _history_file, *history_file;
+	struct stats_file _temp_file, *temp_file;
+	int err;
+
+	history_file = &_history_file;
+	temp_file = &_temp_file;
+
+	bzero(history_file, sizeof(struct stats_file));
+	bzero(temp_file, sizeof(struct stats_file));
+
+	err = stats_open(history_file, data_file->history_name);
+	if (err < 0)
+		return err;
+	stats_file_setup(history_file);
+
+	err = stats_open_temp(temp_file);
+	if (err < 0) {
+		stats_free(history_file);
+		return err;
+	}
+	stats_file_setup(temp_file);
+
+	summarize(data_file, history_file, temp_file);
+
+	err = stats_file_close_swap(history_file, temp_file);
+
+	return err;
+}
+
 int __connman_stats_service_register(struct connman_service *service)
 {
 	struct stats_file *file;
+	char *name;
 	int err;
 
 	DBG("service %p", service);
@@ -358,9 +648,27 @@ int __connman_stats_service_register(struct connman_service *service)
 		return -EALREADY;
 	}
 
-	err = stats_open(service, file);
+	name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
+				__connman_service_get_ident(service));
+	file->history_name = g_strdup_printf("%s/stats/%s.history", STORAGEDIR,
+				__connman_service_get_ident(service));
+
+	/* TODO: Use a global config file instead of hard coded value. */
+	file->account_period_offset = 1;
+
+	err = stats_open(file, name);
+	g_free(name);
 	if (err < 0)
-		g_hash_table_remove(stats_hash, service);
+		goto err;
+
+	err = stats_file_setup(file);
+	if (err < 0)
+		goto err;
+
+	return 0;
+
+err:
+	g_hash_table_remove(stats_hash, service);
 
 	return err;
 }
@@ -395,8 +703,14 @@ int  __connman_stats_update(struct connman_service *service,
 
 	next = get_next(file, get_end(file));
 
-	if (next == get_begin(file))
-		set_begin(file, get_next(file, next));
+	if (next == get_begin(file)) {
+		DBG("ring buffer is full, update history file");
+
+		if (stats_file_history_update(file) < 0) {
+			connman_warn("history file update failed %s",
+					file->history_name);
+		}
+	}
 
 	next->ts = time(NULL);
 	next->roaming = roaming;
