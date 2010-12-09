@@ -594,6 +594,17 @@ void __connman_ipconfig_dellink(int index, struct rtnl_link_stats *stats)
 	g_hash_table_remove(ipdevice_hash, GINT_TO_POINTER(index));
 }
 
+static inline gint check_duplicate_address(gconstpointer a, gconstpointer b)
+{
+	const struct connman_ipaddress *addr1 = a;
+	const struct connman_ipaddress *addr2 = b;
+
+	if (addr1->prefixlen != addr2->prefixlen)
+		return addr2->prefixlen - addr1->prefixlen;
+
+	return g_strcmp0(addr1->local, addr2->local);
+}
+
 void __connman_ipconfig_newaddr(int index, int family, const char *label,
 				unsigned char prefixlen, const char *address)
 {
@@ -613,6 +624,12 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 
 	ipaddress->prefixlen = prefixlen;
 	ipaddress->local = g_strdup(address);
+
+	if (g_slist_find_custom(ipdevice->address_list, ipaddress,
+					check_duplicate_address)) {
+		connman_ipaddress_free(ipaddress);
+		return;
+	}
 
 	ipdevice->address_list = g_slist_append(ipdevice->address_list,
 								ipaddress);
