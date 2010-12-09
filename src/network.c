@@ -770,8 +770,6 @@ static gboolean set_connected(gpointer user_data)
 		__connman_device_set_network(network->device, NULL);
 		network->hidden = FALSE;
 
-		__connman_device_decrease_connections(network->device);
-
 		service = __connman_service_lookup_from_network(network);
 
 		__connman_service_indicate_state(service,
@@ -806,6 +804,9 @@ int connman_network_set_connected(struct connman_network *network,
 
 	if (network->connected == connected)
 		return -EALREADY;
+
+	if (connected == FALSE)
+		__connman_device_decrease_connections(network->device);
 
 	network->connected = connected;
 

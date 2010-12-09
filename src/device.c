@@ -250,6 +250,8 @@ int __connman_device_disable(struct connman_device *device)
 		return err;
 	}
 
+	device->connections = 0;
+
 	device->powered_pending = FALSE;
 	device->powered = FALSE;
 
