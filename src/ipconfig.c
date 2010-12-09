@@ -649,9 +649,6 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
 		return;
 
-	if (g_slist_length(ipdevice->address_list) > 1)
-		return;
-
 	for (list = g_list_first(ipconfig_list); list;
 						list = g_list_next(list)) {
 		struct connman_ipconfig *ipconfig = list->data;
