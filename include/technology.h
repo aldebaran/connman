@@ -38,6 +38,8 @@ struct connman_technology;
 
 void connman_technology_tethering_notify(struct connman_technology *technology,
 							connman_bool_t enabled);
+void connman_technology_regdom_notify(struct connman_technology *technology,
+							const char *alpha2);
 
 struct connman_technology_driver {
 	const char *name;

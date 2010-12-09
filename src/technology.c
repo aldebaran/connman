@@ -58,6 +58,7 @@ struct connman_technology {
 	GSList *device_list;
 	gint enabled;
 	gint blocked;
+	char *regdom;
 
 	struct connman_technology_driver *driver;
 	void *driver_data;
@@ -244,6 +245,20 @@ int __connman_technology_enable_tethering(const char *bridge)
 int __connman_technology_disable_tethering(const char *bridge)
 {
 	return set_tethering(bridge, FALSE);
+}
+
+void connman_technology_regdom_notify(struct connman_technology *technology,
+							const char *alpha2)
+{
+	DBG("");
+
+	if (alpha2 == NULL)
+		connman_error("Failed to set regulatory domain");
+	else
+		DBG("Regulatory domain set to %s", alpha2);
+
+	g_free(technology->regdom);
+	technology->regdom = g_strdup(alpha2);
 }
 
 int __connman_technology_set_regdom(const char *alpha2)
@@ -504,6 +519,7 @@ static void technology_put(struct connman_technology *technology)
 	g_hash_table_destroy(technology->rfkill_list);
 
 	g_free(technology->path);
+	g_free(technology->regdom);
 	g_free(technology);
 }
 
