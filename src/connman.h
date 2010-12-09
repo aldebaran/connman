@@ -510,7 +510,7 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase);
 
-void __connman_service_notify(struct connman_ipconfig *ipconfig,
+void __connman_service_notify(struct connman_service *service,
 			unsigned int rx_packets, unsigned int tx_packets,
 			unsigned int rx_bytes, unsigned int tx_bytes,
 			unsigned int rx_error, unsigned int tx_error,

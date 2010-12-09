@@ -1223,13 +1223,12 @@ static void stats_update(struct connman_service *service,
 	stats->data.time = stats->data_last.time + seconds;
 }
 
-void __connman_service_notify(struct connman_ipconfig *ipconfig,
+void __connman_service_notify(struct connman_service *service,
 			unsigned int rx_packets, unsigned int tx_packets,
 			unsigned int rx_bytes, unsigned int tx_bytes,
 			unsigned int rx_errors, unsigned int tx_errors,
 			unsigned int rx_dropped, unsigned int tx_dropped)
 {
-	struct connman_service *service;
 	GHashTableIter iter;
 	gpointer key, value;
 	const char *counter;
@@ -1237,7 +1236,6 @@ void __connman_service_notify(struct connman_ipconfig *ipconfig,
 	struct connman_stats_data *data;
 	int err;
 
-	service = connman_ipconfig_get_data(ipconfig);
 	if (service == NULL)
 		return;
 

@@ -423,6 +423,8 @@ static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 static void update_stats(struct connman_ipdevice *ipdevice,
 						struct rtnl_link_stats *stats)
 {
+	struct connman_service *service;
+
 	if (stats->rx_packets == 0 && stats->tx_packets == 0)
 		return;
 
@@ -434,6 +436,10 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	if (ipdevice->config == NULL)
 		return;
 
+	service = connman_ipconfig_get_data(ipdevice->config);
+	if (service == NULL)
+		return;
+
 	ipdevice->rx_packets = stats->rx_packets;
 	ipdevice->tx_packets = stats->tx_packets;
 	ipdevice->rx_bytes = stats->rx_bytes;
@@ -443,7 +449,7 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 	ipdevice->rx_dropped = stats->rx_dropped;
 	ipdevice->tx_dropped = stats->tx_dropped;
 
-	__connman_service_notify(ipdevice->config,
+	__connman_service_notify(service,
 				ipdevice->rx_packets, ipdevice->tx_packets,
 				ipdevice->rx_bytes, ipdevice->tx_bytes,
 				ipdevice->rx_errors, ipdevice->tx_errors,
