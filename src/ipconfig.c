@@ -998,7 +998,8 @@ static void  free_ipv6config(struct connman_ipconfig *ipconfig)
  */
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
-	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
+	if (ipconfig &&
+		g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
 		__connman_ipconfig_disable(ipconfig);
 
 		connman_ipconfig_set_ops(ipconfig, NULL);
