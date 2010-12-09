@@ -1254,7 +1254,8 @@ void __connman_ipconfig_set_element_ipv6_gateway(
 			struct connman_ipconfig *ipconfig,
 				struct connman_element *element)
 {
-	element->ipv6.gateway = ipconfig->address->gateway;
+	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		element->ipv6.gateway = ipconfig->address->gateway;
 }
 
 /*
