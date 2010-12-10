@@ -597,8 +597,8 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 
 	g_io_channel_set_close_on_unref(listener_channel, TRUE);
 	dhcp_client->listener_watch =
-			g_io_add_watch_full(listener_channel,
-						G_PRIORITY_HIGH, G_IO_IN,
+			g_io_add_watch_full(listener_channel, G_PRIORITY_HIGH,
+				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 						listener_event, dhcp_client,
 								NULL);
 	g_io_channel_unref(dhcp_client->listener_channel);
