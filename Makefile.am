@@ -27,7 +27,7 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
 
 gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c \
-		gdhcp/server.c
+		gdhcp/server.c gdhcp/ipv4ll.h gdhcp/ipv4ll.c
 
 gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
 					gweb/giognutls.h gweb/giognutls.c
