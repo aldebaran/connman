@@ -86,10 +86,11 @@ endif
 if OFONO
 if OFONO_BUILTIN
 builtin_modules += ofono
-builtin_sources += plugins/ofono.c
+builtin_sources += plugins/mcc.h plugins/ofono.c
 else
 plugin_LTLIBRARIES += plugins/ofono.la
 plugin_objects += $(plugins_ofono_la_OBJECTS)
+plugins_ofono_la_SOURCES = plugins/mcc.h plugins/ofono.c
 plugins_ofono_la_CFLAGS = $(plugin_cflags)
 plugins_ofono_la_LDFLAGS = $(plugin_ldflags)
 endif

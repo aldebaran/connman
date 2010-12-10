@@ -25,6 +25,7 @@
 #endif
 
 #include <errno.h>
+#include <stdlib.h>
 
 #include <gdbus.h>
 #include <string.h>
@@ -36,7 +37,10 @@
 #include <connman/network.h>
 #include <connman/dbus.h>
 #include <connman/inet.h>
+#include <connman/technology.h>
 #include <connman/log.h>
+
+#include "mcc.h"
 
 #define OFONO_SERVICE			"org.ofono"
 
@@ -747,7 +751,7 @@ static void modem_registration_changed(struct modem_data *modem,
 	const char *key;
 	int type;
 	connman_uint8_t strength;
-	char const *name, *status;
+	char const *name, *status, *mcc_s;
 
 	dbus_message_iter_get_basic(entry, &key);
 
@@ -770,6 +774,19 @@ static void modem_registration_changed(struct modem_data *modem,
 	} else if (g_str_equal(key, "Status") && type == DBUS_TYPE_STRING) {
 		dbus_message_iter_get_basic(&iter, &status);
 		modem_roaming_changed(modem, status);
+	} else if (g_str_equal(key, "MobileCountryCode") &&
+					type == DBUS_TYPE_STRING) {
+		int mcc;
+		char *alpha2;
+
+		dbus_message_iter_get_basic(&iter, &mcc_s);
+
+		mcc = atoi(mcc_s);
+		if (mcc > 799)
+			return;
+
+		alpha2 = mcc_country_codes[mcc - 200];
+		connman_technology_set_regdom(alpha2);
 	}
 
 }
