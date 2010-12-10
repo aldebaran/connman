@@ -261,7 +261,7 @@ void connman_technology_regdom_notify(struct connman_technology *technology,
 	technology->regdom = g_strdup(alpha2);
 }
 
-int __connman_technology_set_regdom(const char *alpha2)
+int connman_technology_set_regdom(const char *alpha2)
 {
 	GSList *list;
 
