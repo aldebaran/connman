@@ -132,7 +132,7 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
-			tools/stats-ringbuffer-dump
+			tools/stats-tool
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
@@ -152,6 +152,8 @@ tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_wpad_test_SOURCES = gweb/gresolv.h gweb/gresolv.c tools/wpad-test.c
 tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
+
+tools_stats_tool_LDADD = @GLIB_LIBS@
 
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
 tools_dhcp_test_LDADD = @GLIB_LIBS@
