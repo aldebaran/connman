@@ -938,7 +938,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	message_type = dhcp_get_option(&packet, DHCP_MESSAGE_TYPE);
 	if (message_type == NULL)
-		/* No message type option, ignore pakcage */
+		/* No message type option, ignore package */
 		return TRUE;
 
 	debug(dhcp_client, "received DHCP packet (current state %d)",
