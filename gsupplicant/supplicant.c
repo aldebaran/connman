@@ -2007,6 +2007,21 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 	if (interface->scanning == TRUE)
 		return -EALREADY;
 
+	switch (interface->state) {
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+		return -EBUSY;
+	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISCONNECTED:
+	case G_SUPPLICANT_STATE_INACTIVE:
+	case G_SUPPLICANT_STATE_SCANNING:
+	case G_SUPPLICANT_STATE_COMPLETED:
+		break;
+	}
+
 	data = dbus_malloc0(sizeof(*data));
 	if (data == NULL)
 		return -ENOMEM;
