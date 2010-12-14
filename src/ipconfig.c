@@ -1199,15 +1199,6 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 	ipconfig->ops = ops;
 }
 
-struct connman_ipconfig *connman_ipconfig_get_ipv6config(
-				struct connman_ipconfig *ipconfig)
-{
-	if (ipconfig == NULL || ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
-		return NULL;
-
-	return ipconfig;
-}
-
 /**
  * connman_ipconfig_set_method:
  * @ipconfig: ipconfig structure

@@ -91,8 +91,6 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 				const char *address, const char *gateway,
 						unsigned char prefix_length);
-struct connman_ipconfig *connman_ipconfig_get_ipv6config(
-				struct connman_ipconfig *ipconfig);
 int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method);
 void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
