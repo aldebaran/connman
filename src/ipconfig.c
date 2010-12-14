@@ -76,12 +76,6 @@ struct connman_ipdevice {
 
 	struct connman_ipconfig *config_ipv4;
 	struct connman_ipconfig *config_ipv6;
-
-	struct connman_ipconfig_driver *driver_ipv4;
-	struct connman_ipconfig *driver_config_ipv4;
-
-	struct connman_ipconfig_driver *driver_ipv6;
-	struct connman_ipconfig *driver_config_ipv6;
 };
 
 static GHashTable *ipdevice_hash = NULL;
@@ -324,164 +318,16 @@ static void free_ipdevice(gpointer data)
 	g_free(ipdevice);
 }
 
-static GSList *driver_list = NULL;
-
-static gint compare_priority(gconstpointer a, gconstpointer b)
-{
-	const struct connman_ipconfig_driver *driver1 = a;
-	const struct connman_ipconfig_driver *driver2 = b;
-
-	return driver2->priority - driver1->priority;
-}
-
-/**
- * connman_ipconfig_driver_register:
- * @driver: IP configuration driver
- *
- * Register a new IP configuration driver
- *
- * Returns: %0 on success
- */
-int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_insert_sorted(driver_list, driver,
-							compare_priority);
-
-	return 0;
-}
-
-/**
- * connman_ipconfig_driver_unregister:
- * @driver: IP configuration driver
- *
- * Remove a previously registered IP configuration driver.
- */
-void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_remove(driver_list, driver);
-}
-
 static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
 {
-	GSList *list;
-	int is_dhcpv4 = 0, is_dhcpv6 = 0;
-	int found = 0;
-
 	DBG("ipconfig ipv4 %p ipv6 %p", ipdevice->config_ipv4,
 					ipdevice->config_ipv6);
-
-	if (ipdevice->config_ipv4 == NULL && ipdevice->config_ipv6 == NULL)
-		return;
-
-	if (ipdevice->driver_ipv4 != NULL && ipdevice->driver_ipv6 != NULL)
-		return;
-
-	if (ipdevice->config_ipv4) {
-		switch (ipdevice->config_ipv4->method) {
-		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		case CONNMAN_IPCONFIG_METHOD_OFF:
-		case CONNMAN_IPCONFIG_METHOD_FIXED:
-		case CONNMAN_IPCONFIG_METHOD_MANUAL:
-			break;
-		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			is_dhcpv4 = 1;
-			break;
-		}
-	}
-
-	if (ipdevice->config_ipv6) {
-		switch (ipdevice->config_ipv6->method) {
-		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-		case CONNMAN_IPCONFIG_METHOD_OFF:
-		case CONNMAN_IPCONFIG_METHOD_FIXED:
-		case CONNMAN_IPCONFIG_METHOD_MANUAL:
-			break;
-		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			is_dhcpv6 = 1;
-			break;
-		}
-	}
-
-	if (is_dhcpv4 && ipdevice->config_ipv4) {
-		ipdevice->driver_config_ipv4 = connman_ipconfig_clone(
-							ipdevice->config_ipv4);
-		if (ipdevice->driver_config_ipv4 == NULL)
-			return;
-	}
-
-	if (is_dhcpv6 && ipdevice->config_ipv6) {
-		ipdevice->driver_config_ipv6 = connman_ipconfig_clone(
-							ipdevice->config_ipv6);
-		if (ipdevice->driver_config_ipv6 == NULL)
-			return;
-	}
-
-	for (list = driver_list; list; list = list->next) {
-		struct connman_ipconfig_driver *driver = list->data;
-
-		if (is_dhcpv4 && ipdevice->driver_ipv4 != NULL) {
-			if (!driver->request(ipdevice->driver_config_ipv4)) {
-				ipdevice->driver_ipv4 = driver;
-				found++;
-			}
-		}
-
-		if (is_dhcpv6 && ipdevice->driver_ipv6 != NULL) {
-			if (!driver->request(ipdevice->driver_config_ipv6)) {
-				ipdevice->driver_ipv6 = driver;
-				found++;
-			}
-		}
-
-		if (found > 1)
-			break;
-	}
-
-	if (ipdevice->driver_ipv4 == NULL) {
-		connman_ipconfig_unref(ipdevice->driver_config_ipv4);
-		ipdevice->driver_config_ipv4 = NULL;
-	}
-
-	if (ipdevice->driver_ipv6 == NULL) {
-		connman_ipconfig_unref(ipdevice->driver_config_ipv6);
-		ipdevice->driver_config_ipv6 = NULL;
-	}
 }
 
 static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
 {
 	DBG("ipconfig ipv4 %p ipv6 %p", ipdevice->config_ipv4,
 					ipdevice->config_ipv6);
-
-	if (ipdevice->config_ipv4 == NULL && ipdevice->config_ipv6 == NULL)
-		return;
-
-	if (ipdevice->driver_ipv4 == NULL && ipdevice->driver_ipv6 == NULL)
-		return;
-
-	if (ipdevice->driver_ipv4) {
-		ipdevice->driver_ipv4->release(ipdevice->driver_config_ipv4);
-		ipdevice->driver_ipv4 = NULL;
-	}
-
-	if (ipdevice->driver_ipv6) {
-		ipdevice->driver_ipv6->release(ipdevice->driver_config_ipv6);
-		ipdevice->driver_ipv6 = NULL;
-	}
-
-	if (ipdevice->driver_config_ipv4) {
-		connman_ipconfig_unref(ipdevice->driver_config_ipv4);
-		ipdevice->driver_config_ipv4 = NULL;
-	}
-
-	if (ipdevice->driver_config_ipv6) {
-		connman_ipconfig_unref(ipdevice->driver_config_ipv6);
-		ipdevice->driver_config_ipv6 = NULL;
-	}
 
 	if (ipdevice->config_ipv4)
 		connman_inet_clear_address(ipdevice->index,

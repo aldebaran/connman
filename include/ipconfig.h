@@ -96,22 +96,6 @@ int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 					struct connman_ipaddress *ipaddress);
 
-#define CONNMAN_IPCONFIG_PRIORITY_LOW      -100
-#define CONNMAN_IPCONFIG_PRIORITY_DEFAULT     0
-#define CONNMAN_IPCONFIG_PRIORITY_HIGH      100
-
-struct connman_ipconfig_driver {
-	const char *name;
-	enum connman_ipconfig_type type;
-	int priority;
-	int (*request) (struct connman_ipconfig *ipconfig);
-	int (*release) (struct connman_ipconfig *ipconfig);
-	int (*renew) (struct connman_ipconfig *ipconfig);
-};
-
-int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver);
-void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver);
-
 #ifdef __cplusplus
 }
 #endif
