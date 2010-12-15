@@ -8,7 +8,7 @@ backtrace will be dumped to syslog.
 The ConnMan backtraces start with the following line:
 	++++++++ ConnMan backtrace ++++++++
 and will try to display function names if those can be resolved from the stack
-addresses. All static functions name will not appeared for example.
+addresses. All static functions name will not appear for example.
 
 For a more complete and useful stack frame output you can use the
 test/backtrace script. It takes the actual binary that crashed and the

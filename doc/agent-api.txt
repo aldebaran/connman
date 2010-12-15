@@ -31,8 +31,8 @@ Methods		void Release()
 
 			The return value should be a dictionary where the
 			keys are the field names and the values are the
-			actual fields. Alternative an error indicating that
-			the request got cannceled can be returned.
+			actual fields. Alternatively an error indicating that
+			the request got canceled can be returned.
 
 			Most common return field names are "Name" and of
 			course "Passphrase".
@@ -76,8 +76,8 @@ Arguments	string Type
 			Contains the requirement option. Valid values are
 			"mandatory", "optional" or "alternate".
 
-			The "alternate" specifies that this field can be
-			return as an alternative to another one. An example
+			The "alternate" value specifies that this field can be
+			returned as an alternative to another one. An example
 			would be the network name or SSID.
 
 			All "mandatory" fields must be returned, while the

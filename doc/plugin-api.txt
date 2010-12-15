@@ -7,7 +7,7 @@ Plugin basics
 
 The Connection Manager supports plugins for various actions. The basic plugin
 contains of plugin description via CONNMAN_PLUGIN_DEFINE and also init/exit
-callbacks definied through that description.
+callbacks defined through that description.
 
 #include <connman/plugin.h>
 

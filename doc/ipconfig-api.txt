@@ -5,7 +5,7 @@ IP configuration handling
 IP basics
 =========
 
-The core IP handling is designed around network interfaces or more precise
+The core IP handling is designed around network interfaces or more precisely
 what the Linux kernel handles as struct net_device. Via RTNL every interface
 is tracked and an IP device created for it.
 
