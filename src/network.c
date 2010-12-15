@@ -757,6 +757,7 @@ static gboolean set_connected(gpointer user_data)
 		switch (ipv6_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
+			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			ret = manual_ipv6_set(network, ipconfig_ipv6);
