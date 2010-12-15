@@ -6,7 +6,7 @@ crashing signals. Regardless of the debug level you started connmand with, the
 backtrace will be dumped to syslog.
 
 The ConnMan backtraces start with the following line:
-	++++++++ ConnMan backtrace ++++++++
+	-------- backtrace --------
 and will try to display function names if those can be resolved from the stack
 addresses. All static functions name will not appear for example.
 
@@ -18,7 +18,7 @@ backtrace.
 Here is an example of the backtrace script usage:
 
 me@localhost:[~]$ backtrace /sbin/connmand connman.log
--------- ConnMan backtrace --------
+-------- backtrace --------
 [0]: __connman_debug_list_available() [log.c:117]
 [1]: connman_driver_register() [element.c:515]
 [2]: __connman_driver_rescan() [element.c:490]
