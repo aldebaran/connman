@@ -98,7 +98,10 @@ struct server_data {
 };
 
 struct request_data {
-	struct sockaddr_in sin;
+	union {
+		struct sockaddr_in6 __sin6; /* Only for the length */
+		struct sockaddr sa;
+	};
 	socklen_t sa_len;
 	int client_sk;
 	int protocol;
@@ -226,7 +229,7 @@ static gboolean request_timeout(gpointer user_data)
 		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 
 		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->sa_len);
+			     &req->sa, req->sa_len);
 	} else if (req->request && req->numserv == 0) {
 		struct domain_hdr *hdr;
 
@@ -243,8 +246,7 @@ static gboolean request_timeout(gpointer user_data)
 			hdr->id = req->srcid;
 			sk = g_io_channel_unix_get_fd(udp_listener_channel);
 			send_response(sk, req->request, req->request_len,
-					(struct sockaddr *)&req->sin,
-						sizeof(req->sin), IPPROTO_UDP);
+				      &req->sa, req->sa_len, IPPROTO_UDP);
 		}
 	}
 
@@ -420,7 +422,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	if (protocol == IPPROTO_UDP) {
 		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->sa_len);
+			     &req->sa, req->sa_len);
 	} else {
 		sk = req->client_sk;
 		err = send(sk, req->resp, req->resplen, 0);
@@ -1082,8 +1084,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	struct request_data *req;
 	struct server_data *server;
 	int sk, client_sk, len, err;
-	struct sockaddr client_addr;
-	socklen_t client_addr_len;
+	struct sockaddr_in6 client_addr;
+	socklen_t client_addr_len = sizeof(client_addr);
 	GSList *list;
 
 	DBG("condition 0x%x", condition);
@@ -1100,8 +1102,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	sk = g_io_channel_unix_get_fd(channel);
 
-	client_addr_len = sizeof(struct sockaddr);
-	client_sk = accept(sk, &client_addr, &client_addr_len);
+	client_sk = accept(sk, (void *)&client_addr, &client_addr_len);
 	if (client_sk < 0) {
 		connman_error("Accept failure on TCP listener");
 		tcp_listener_watch = 0;
@@ -1125,7 +1126,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
-	memcpy(&req->sin, (struct sockaddr_in *)&client_addr, sizeof(req->sin));
+	memcpy(&req->sa, &client_addr, client_addr_len);
 	req->sa_len = client_addr_len;
 	req->client_sk = client_sk;
 	req->protocol = IPPROTO_TCP;
@@ -1204,8 +1205,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	unsigned char buf[768];
 	char query[512];
 	struct request_data *req;
-	struct sockaddr_in sin;
-	socklen_t size = sizeof(sin);
+	struct sockaddr_in6 client_addr;
+	socklen_t client_addr_len = sizeof(client_addr);
 	int sk, err, len;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
@@ -1216,9 +1217,9 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	sk = g_io_channel_unix_get_fd(channel);
 
-	memset(&sin, 0, sizeof(sin));
-	len = recvfrom(sk, buf, sizeof(buf), 0,
-					(struct sockaddr *) &sin, &size);
+	memset(&client_addr, 0, client_addr_len);
+	len = recvfrom(sk, buf, sizeof(buf), 0, (void *)&client_addr,
+		       &client_addr_len);
 	if (len < 2)
 		return TRUE;
 
@@ -1227,8 +1228,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	err = parse_request(buf, len, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0 &&
 				connman_ondemand_connected())) {
-		send_response(sk, buf, len, (struct sockaddr *) &sin, size,
-				IPPROTO_UDP);
+		send_response(sk, buf, len, (void *)&client_addr,
+			      client_addr_len, IPPROTO_UDP);
 		return TRUE;
 	}
 
@@ -1236,8 +1237,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
-	memcpy(&req->sin, &sin, sizeof(sin));
-	req->sa_len = size;
+	memcpy(&req->sa, &client_addr, client_addr_len);
+	req->sa_len = client_addr_len;
 	req->client_sk = 0;
 	req->protocol = IPPROTO_UDP;
 
