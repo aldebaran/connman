@@ -99,9 +99,9 @@ struct server_data {
 
 struct request_data {
 	struct sockaddr_in sin;
+	socklen_t sa_len;
 	int client_sk;
 	int protocol;
-	socklen_t len;
 	guint16 srcid;
 	guint16 dstid;
 	guint16 altid;
@@ -226,7 +226,7 @@ static gboolean request_timeout(gpointer user_data)
 		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 
 		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->len);
+				(struct sockaddr *) &req->sin, req->sa_len);
 	} else if (req->request && req->numserv == 0) {
 		struct domain_hdr *hdr;
 
@@ -420,7 +420,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	if (protocol == IPPROTO_UDP) {
 		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->len);
+				(struct sockaddr *) &req->sin, req->sa_len);
 	} else {
 		sk = req->client_sk;
 		err = send(sk, req->resp, req->resplen, 0);
@@ -1126,9 +1126,9 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	memcpy(&req->sin, (struct sockaddr_in *)&client_addr, sizeof(req->sin));
+	req->sa_len = client_addr_len;
 	req->client_sk = client_sk;
 	req->protocol = IPPROTO_TCP;
-	req->len = client_addr_len;
 
 	request_id += 2;
 	if (request_id == 0x0000 || request_id == 0xffff)
@@ -1237,9 +1237,9 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	memcpy(&req->sin, &sin, sizeof(sin));
+	req->sa_len = size;
 	req->client_sk = 0;
 	req->protocol = IPPROTO_UDP;
-	req->len = size;
 
 	request_id += 2;
 	if (request_id == 0x0000 || request_id == 0xffff)
