@@ -1293,8 +1293,14 @@ static int create_dns_listener(int protocol)
 {
 	GIOChannel *channel;
 	const char *ifname = "lo", *proto;
-	struct sockaddr_in sin;
-	int sk, type;
+	union {
+		struct sockaddr sa;
+		struct sockaddr_in6 sin6;
+		struct sockaddr_in sin;
+	} s;
+	socklen_t slen;
+	int sk, type, v6only = 0;
+	int family = AF_INET6;
 
 	DBG("");
 
@@ -1313,7 +1319,12 @@ static int create_dns_listener(int protocol)
 		return -EINVAL;
 	}
 
-	sk = socket(AF_INET, type, protocol);
+	sk = socket(family, type, protocol);
+	if (sk < 0 && family == AF_INET6 && errno == EAFNOSUPPORT) {
+		connman_error("No IPv6 support; DNS proxy listening only on Legacy IP");
+		family = AF_INET;
+		sk = socket(family, type, protocol);
+	}
 	if (sk < 0) {
 		connman_error("Failed to create %s listener socket", proto);
 		return -EIO;
@@ -1325,14 +1336,30 @@ static int create_dns_listener(int protocol)
 		close(sk);
 		return -EIO;
 	}
+	/* Ensure it accepts Legacy IP connections too */
+	if (family == AF_INET6 &&
+	    setsockopt(sk, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) < 0) {
+		connman_error("Failed to clear V6ONLY on %s listener socket",
+			      proto);
+		close(sk);
+		return -EIO;
+	}
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr("127.0.0.1");
-	sin.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (family == AF_INET) {
+		memset(&s.sin, 0, sizeof(s.sin));
+		s.sin.sin_family = AF_INET;
+		s.sin.sin_port = htons(53);
+		s.sin.sin_addr.s_addr = htonl(INADDR_ANY);
+		slen = sizeof(s.sin);
+	} else {
+		memset(&s.sin6, 0, sizeof(s.sin6));
+		s.sin6.sin6_family = AF_INET6;
+		s.sin6.sin6_port = htons(53);
+		s.sin6.sin6_addr = in6addr_any;
+		slen = sizeof(s.sin6);
+	}
 
-	if (bind(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+	if (bind(sk, &s.sa, slen) < 0) {
 		connman_error("Failed to bind %s listener socket", proto);
 		close(sk);
 		return -EIO;
