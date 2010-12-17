@@ -130,6 +130,8 @@ static int ov_connect(struct connman_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
 	const char *vpnhost, *cafile, *mtu, *certfile, *keyfile;
+	const char *proto, *port, *auth_user_pass;
+	const char *tls_remote, *cipher, *auth, *comp_lzo;
 	int err, fd;
 
 	vpnhost = connman_provider_get_string(provider, "Host");
@@ -142,9 +144,42 @@ static int ov_connect(struct connman_provider *provider,
 	certfile = connman_provider_get_string(provider, "OpenVPN.Cert");
 	keyfile = connman_provider_get_string(provider, "OpenVPN.Key");
 	mtu = connman_provider_get_string(provider, "VPN.MTU");
+	proto = connman_provider_get_string(provider, "OpenVPN.Proto");
+	port = connman_provider_get_string(provider, "OpenVPN.Port");
+	auth_user_pass = connman_provider_get_string(provider,
+							"OpenVPN.AuthUserPass");
+	tls_remote = connman_provider_get_string(provider, "OpenVPN.TLSRemote");
+	cipher = connman_provider_get_string(provider, "OpenVPN.Cipher");
+	auth = connman_provider_get_string(provider, "OpenVPN.Auth");
+	comp_lzo = connman_provider_get_string(provider, "OpenVPN.CompLZO");
 
-	if (mtu)
+	if (mtu != NULL)
 		connman_task_add_argument(task, "--mtu", (char *)mtu);
+
+	if (proto != NULL)
+		connman_task_add_argument(task, "--proto", (char *)proto);
+
+	if (port != NULL)
+		connman_task_add_argument(task, "--port", (char *)port);
+
+	if (auth_user_pass != NULL) {
+		connman_task_add_argument(task, "--auth-user-pass",
+						(char *)auth_user_pass);
+	}
+
+	if (tls_remote != NULL) {
+		connman_task_add_argument(task, "--tls-remote",
+						(char *)tls_remote);
+	}
+
+	if (cipher != NULL)
+		connman_task_add_argument(task, "--cipher", (char *)cipher);
+
+	if (auth != NULL)
+		connman_task_add_argument(task, "--auth", (char *)auth);
+
+	if (comp_lzo)
+		connman_task_add_argument(task, "--comp-lzo", (char *)comp_lzo);
 
 	connman_task_add_argument(task, "--syslog", NULL);
 
