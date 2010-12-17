@@ -616,7 +616,20 @@ int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 	return 0;
 }
 
-int connman_inet_add_host_route(int index, const char *host, const char *gateway)
+int connman_inet_add_host_route(int index, const char *host,
+				const char *gateway)
+{
+	return connman_inet_add_network_route(index, host, gateway, NULL);
+}
+
+int connman_inet_del_host_route(int index, const char *host)
+{
+	return connman_inet_del_network_route(index, host);
+}
+
+int connman_inet_add_network_route(int index, const char *host,
+					const char *gateway,
+					const char *netmask)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
@@ -638,9 +651,11 @@ int connman_inet_add_host_route(int index, const char *host, const char *gateway
 	DBG("ifname %s", ifr.ifr_name);
 
 	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_HOST;
+	rt.rt_flags = RTF_UP;
 	if (gateway != NULL)
 		rt.rt_flags |= RTF_GATEWAY;
+	if (netmask == NULL)
+		rt.rt_flags |= RTF_HOST;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -658,6 +673,10 @@ int connman_inet_add_host_route(int index, const char *host, const char *gateway
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
+	if (netmask != NULL)
+		addr.sin_addr.s_addr = inet_addr(netmask);
+	else
+		addr.sin_addr.s_addr = INADDR_ANY;
 	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	rt.rt_dev = ifr.ifr_name;
@@ -672,7 +691,7 @@ int connman_inet_add_host_route(int index, const char *host, const char *gateway
 	return err;
 }
 
-int connman_inet_del_host_route(int index, const char *host)
+int connman_inet_del_network_route(int index, const char *host)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
