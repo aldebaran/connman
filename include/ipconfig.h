@@ -76,7 +76,6 @@ struct connman_ipconfig_ops {
 
 struct connman_ipconfig *connman_ipconfig_create(int index,
 					enum connman_ipconfig_type type);
-struct connman_ipconfig *connman_ipconfig_clone(struct connman_ipconfig *ipconfig);
 struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
 

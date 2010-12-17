@@ -906,31 +906,6 @@ struct connman_ipconfig *connman_ipconfig_create(int index,
 	return ipconfig;
 }
 
-/**
- * connman_ipconfig_clone:
- *
- * Clone an ipconfig structure and create new reference.
- *
- * Returns: a newly-allocated #connman_ipconfig structure
- */
-struct connman_ipconfig *connman_ipconfig_clone(struct connman_ipconfig *ipconfig)
-{
-	struct connman_ipconfig *ipconfig_clone;
-
-	DBG("ipconfig %p", ipconfig);
-
-	ipconfig_clone = g_try_new0(struct connman_ipconfig, 1);
-	if (ipconfig_clone == NULL)
-		return NULL;
-
-	ipconfig_clone->refcount = 1;
-
-	ipconfig_clone->origin = connman_ipconfig_ref(ipconfig);
-
-	ipconfig_clone->index = -1;
-
-	return ipconfig_clone;
-}
 
 /**
  * connman_ipconfig_ref:
