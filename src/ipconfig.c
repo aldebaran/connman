@@ -1643,6 +1643,10 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 			ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
 	} else
 		ipconfig->method = __connman_ipconfig_string2method(method);
+
+	if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
+		ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
+
 	g_free(key);
 
 	key = g_strdup_printf("%snetmask_prefixlen", prefix);
