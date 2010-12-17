@@ -1044,11 +1044,67 @@ static void *rtnl_nd_opt_rdnss(struct nd_opt_hdr *opt, guint32 *lifetime,
 	return optint + 2;
 }
 
+static const char **rtnl_nd_opt_dnssl(struct nd_opt_hdr *opt, guint32 *lifetime)
+{
+	const char **domains = NULL;
+	guint32 *optint = (void *)opt;
+	unsigned char *optc = (void *)&optint[2];
+	int data_len = (opt->nd_opt_len * 8) - 8;
+	int nr_domains = 0;
+	int i, tmp;
+
+	if (*lifetime > ntohl(optint[1]))
+		*lifetime = ntohl(optint[1]);
+
+	/* Turn it into normal strings by converting the length bytes into '.',
+	   and count how many search domains there are while we're at it. */
+	i = 0;
+	while (i < data_len) {
+		if (optc[i] > 0x3f) {
+			DBG("DNSSL contains compressed elements in violation of RFC6106");
+			return NULL;
+		}
+
+		if (optc[i] == 0) {
+			nr_domains++;
+			i++;
+			/* Check for double zero */
+			if (i < data_len && optc[i] == 0)
+				break;
+			continue;
+		}
+
+		tmp = i;
+		i += optc[i] + 1;
+
+		if (i >= data_len) {
+			DBG("DNSSL data overflows option length");
+			return NULL;
+		}
+
+		optc[tmp] = '.';
+	}
+
+	domains = g_try_new0(const char *, nr_domains + 1);
+	if (!domains)
+		return NULL;
+
+	/* Now point to the normal strings, missing out the leading '.' that
+	   each of them will have now. */
+	for (i = 0; i < nr_domains; i++) {
+		domains[i] = (char *)optc + 1;
+		optc += strlen((char *)optc) + 1;
+	}
+
+	return domains;
+}
+
 static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 {
 	struct nduseroptmsg *msg = (struct nduseroptmsg *) NLMSG_DATA(hdr);
 	struct nd_opt_hdr *opt = (void *)&msg[1];
 	guint32 lifetime = -1;
+	const char **domains = NULL;
 	struct in6_addr *servers;
 	int nr_servers = 0;
 	int msglen = msg->nduseropt_opts_len;
@@ -1079,6 +1135,8 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 		if (opt->nd_opt_type == 25)
 			servers = rtnl_nd_opt_rdnss(opt, &lifetime,
 						    &nr_servers);
+		else if (opt->nd_opt_type == 31)
+			domains = rtnl_nd_opt_dnssl(opt, &lifetime);
 	}
 
 	if (nr_servers) {
@@ -1088,9 +1146,10 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 		for (i = 0; i < nr_servers; i++) {
 			if (inet_ntop(AF_INET6, servers + i, buf, sizeof(buf)))
 				connman_resolver_append_lifetime(interface,
-							NULL, buf, lifetime);
+				       domains?domains[0]:NULL, buf, lifetime);
 		}
 	}
+	g_free(domains);
 	g_free(interface);
 }
 
