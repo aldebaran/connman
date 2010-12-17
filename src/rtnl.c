@@ -1024,32 +1024,33 @@ static void rtnl_delroute(struct nlmsghdr *hdr)
 						msg, RTM_PAYLOAD(hdr));
 }
 
-static void rtnl_nd_opt_rdnss(char *interface, struct nd_opt_hdr *opt)
+static void *rtnl_nd_opt_rdnss(struct nd_opt_hdr *opt, guint32 *lifetime,
+			       int *nr_servers)
 {
 	guint32 *optint = (void *)opt;
-	guint32 lifetime;
-	char buf[80];
-	int i;
 
 	if (opt->nd_opt_len < 3)
-		return;
+		return NULL;
 
-	lifetime = ntohl(optint[1]);
-	if (!lifetime)
-		return;
+	if (*lifetime > ntohl(optint[1]))
+		*lifetime = ntohl(optint[1]);
 
-	optint += 2;
-	for (i = 0; i < opt->nd_opt_len / 2; i++, optint += 4) {
-		if (inet_ntop(AF_INET6, optint, buf, sizeof(buf)))
-			connman_resolver_append_lifetime(interface, NULL,
-							 buf, lifetime);
-	}
+	/* nd_opt_len is in units of 8 bytes. The header is 1 unit (8 bytes)
+	   and each address is another 2 units (16 bytes).
+	   So the number of addresses (given rounding) is nd_opt_len/2 */
+	*nr_servers = opt->nd_opt_len / 2;
+
+	/* And they start 8 bytes into the packet, or two guint32s in. */
+	return optint + 2;
 }
 
 static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 {
 	struct nduseroptmsg *msg = (struct nduseroptmsg *) NLMSG_DATA(hdr);
 	struct nd_opt_hdr *opt = (void *)&msg[1];
+	guint32 lifetime = -1;
+	struct in6_addr *servers;
+	int nr_servers = 0;
 	int msglen = msg->nduseropt_opts_len;
 	char *interface;
 
@@ -1076,7 +1077,19 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 		    opt->nd_opt_type, opt->nd_opt_len);
 
 		if (opt->nd_opt_type == 25)
-			rtnl_nd_opt_rdnss(interface, opt);
+			servers = rtnl_nd_opt_rdnss(opt, &lifetime,
+						    &nr_servers);
+	}
+
+	if (nr_servers) {
+		int i;
+		char buf[40];
+
+		for (i = 0; i < nr_servers; i++) {
+			if (inet_ntop(AF_INET6, servers + i, buf, sizeof(buf)))
+				connman_resolver_append_lifetime(interface,
+							NULL, buf, lifetime);
+		}
 	}
 	g_free(interface);
 }
