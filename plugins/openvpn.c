@@ -190,7 +190,7 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 		if (!strcmp(key, "ifconfig_local"))
 			connman_provider_set_string(provider, "Address", value);
 
-		if (!strcmp(key, "route_vpn_gateway"))
+		if (!strcmp(key, "ifconfig_remote"))
 			connman_provider_set_string(provider, "Peer", value);
 
 		if (g_str_has_prefix(key, "foreign_option_")) {
