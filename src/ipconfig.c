@@ -848,6 +848,8 @@ static struct connman_ipconfig *create_ipv6config(int index)
 	if (ipv6config == NULL)
 		return NULL;
 
+	ipv6config->refcount = 1;
+
 	ipv6config->index = index;
 	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
 	ipv6config->method = CONNMAN_IPCONFIG_METHOD_OFF;
