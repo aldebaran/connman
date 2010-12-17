@@ -35,6 +35,12 @@ static GHashTable *provider_hash = NULL;
 
 static GSList *driver_list = NULL;
 
+struct connman_route {
+	char *host;
+	char *netmask;
+	char *gateway;
+};
+
 struct connman_provider {
 	struct connman_element element;
 	struct connman_service *vpn_service;
@@ -44,6 +50,7 @@ struct connman_provider {
 	char *host;
 	char *dns;
 	char *domain;
+	GSList *route_list;
 	struct connman_provider_driver *driver;
 	void *driver_data;
 };
@@ -261,6 +268,7 @@ static int set_connected(struct connman_provider *provider,
 		char *nameservers = NULL, *name = NULL;
 		const char *value;
 		char *second_ns;
+		GSList *list;
 		int err;
 
 		__connman_service_indicate_state(provider->vpn_service,
@@ -312,6 +320,15 @@ static int set_connected(struct connman_provider *provider,
 		g_free(nameservers);
 		g_free(name);
 
+		for (list = provider->route_list; list; list = list->next) {
+			struct connman_route *route = list->data;
+
+			connman_inet_add_network_route(provider->element.index,
+							route->host,
+							route->gateway,
+							route->netmask);
+			/* XXX Need to handle IPv6 too */
+		}
 	} else {
 		connman_element_unregister_children(&provider->element);
 		__connman_service_indicate_state(service,
@@ -365,6 +382,7 @@ static void unregister_provider(gpointer data)
 static void provider_destruct(struct connman_element *element)
 {
 	struct connman_provider *provider = element->private;
+	GSList *list;
 
 	DBG("provider %p", provider);
 
@@ -373,6 +391,15 @@ static void provider_destruct(struct connman_element *element)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_free(provider->dns);
+
+	for (list = provider->route_list; list; list = list->next) {
+		struct connman_route *route = list->data;
+
+		g_free(route->host);
+		g_free(route->netmask);
+		g_free(route->gateway);
+	}
+	g_slist_free(provider->route_list);
 }
 
 static void provider_initialize(struct connman_provider *provider)
@@ -395,6 +422,7 @@ static void provider_initialize(struct connman_provider *provider)
 	provider->dns = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
+	provider->route_list = NULL;
 }
 
 static struct connman_provider *connman_provider_new(void)
@@ -707,6 +735,25 @@ done:
 int connman_provider_get_index(struct connman_provider *provider)
 {
 	return provider->element.index;
+}
+
+int connman_provider_append_route(struct connman_provider *provider,
+					const char *host, const char *netmask,
+					const char *gateway)
+{
+	struct connman_route *route;
+
+	route = g_try_new0(struct connman_route, 1);
+	if (route == NULL)
+		return -ENOMEM;
+
+	route->host = g_strdup(host);
+	route->netmask = g_strdup(netmask);
+	route->gateway = g_strdup(gateway);
+
+	provider->route_list = g_slist_append(provider->route_list, route);
+
+	return TRUE;
 }
 
 const char *connman_provider_get_driver_name(struct connman_provider *provider)

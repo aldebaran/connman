@@ -83,6 +83,10 @@ void connman_provider_set_dns(struct connman_provider *provider,
 void connman_provider_set_domain(struct connman_provider *provider,
 							const char *domain);
 
+int connman_provider_append_route(struct connman_provider *provider,
+					const char *host, const char *netmask,
+					const char *gateway);
+
 const char *connman_provider_get_driver_name(struct connman_provider *provider);
 
 struct connman_provider_driver {
