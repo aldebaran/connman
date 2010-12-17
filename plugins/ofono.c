@@ -1516,10 +1516,11 @@ static void set_connected(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 		connman_network_set_ipv4_method(network, method);
 
+		connman_network_set_connected(network, connected);
+
 		if (connected == FALSE)
 			cleanup_ipconfig(network);
 
-		connman_network_set_connected(network, connected);
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
