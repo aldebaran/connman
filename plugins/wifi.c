@@ -60,8 +60,10 @@ struct wifi_data {
 	char *identifier;
 	struct connman_device *device;
 	struct connman_network *network;
+	struct connman_network *pending_network;
 	GSupplicantInterface *interface;
 	connman_bool_t connected;
+	connman_bool_t disconnecting;
 	int index;
 	unsigned flags;
 	unsigned int watch;
@@ -144,6 +146,7 @@ static int wifi_probe(struct connman_device *device)
 		return -ENOMEM;
 
 	wifi->connected = FALSE;
+	wifi->disconnecting = FALSE;
 
 	connman_device_set_data(device, wifi);
 	wifi->device = connman_device_ref(device);
@@ -162,6 +165,11 @@ static void wifi_remove(struct connman_device *device)
 	struct wifi_data *wifi = connman_device_get_data(device);
 
 	DBG("device %p", device);
+
+	if (wifi->pending_network != NULL) {
+		connman_network_unref(wifi->pending_network);
+		wifi->pending_network = NULL;
+	}
 
 	connman_device_set_data(device, NULL);
 	connman_device_unref(wifi->device);
@@ -224,6 +232,12 @@ static int wifi_disable(struct connman_device *device)
 	DBG("device %p", device);
 
 	wifi->connected = FALSE;
+	wifi->disconnecting = FALSE;
+
+	if (wifi->pending_network != NULL) {
+		connman_network_unref(wifi->pending_network);
+		wifi->pending_network = NULL;
+	}
 
 	return g_supplicant_interface_remove(wifi->interface,
 						interface_remove_callback,
@@ -520,22 +534,6 @@ static void connect_callback(int result, GSupplicantInterface *interface,
 	connman_error("%s", __func__);
 }
 
-static void disconnect_callback(int result, GSupplicantInterface *interface,
-							void *user_data)
-{
-	struct wifi_data *wifi = user_data;
-
-	if (result < 0) {
-		connman_error("%s", __func__);
-		return;
-	}
-
-	connman_network_unref(wifi->network);
-
-	wifi->network = NULL;
-}
-
-
 static GSupplicantSecurity network_security(const char *security)
 {
 	if (g_str_equal(security, "none") == TRUE)
@@ -612,16 +610,54 @@ static int network_connect(struct connman_network *network)
 
 	ssid_init(&ssid, network);
 
-	wifi->network = connman_network_ref(network);
+	if (wifi->disconnecting == TRUE)
+		wifi->pending_network = connman_network_ref(network);
+	else {
+		wifi->network = connman_network_ref(network);
 
-	return g_supplicant_interface_connect(interface, &ssid,
+		return g_supplicant_interface_connect(interface, &ssid,
 						connect_callback, NULL);
+	}
+
+	return -EINPROGRESS;
+}
+
+static void disconnect_callback(int result, GSupplicantInterface *interface,
+								void *user_data)
+{
+	struct wifi_data *wifi = user_data;
+
+	if (wifi->network != NULL) {
+		/*
+		 * if result < 0 supplican return an error because
+		 * the network is not current.
+		 * we wont receive G_SUPPLICANT_STATE_DISCONNECTED since it
+		 * failed, call connman_network_set_connected to report
+		 * disconnect is completed.
+		 */
+		if (result < 0)
+			connman_network_set_connected(wifi->network, FALSE);
+
+		connman_network_unref(wifi->network);
+	}
+
+	wifi->network = NULL;
+
+	wifi->disconnecting = FALSE;
+
+	if (wifi->pending_network != NULL) {
+		network_connect(wifi->pending_network);
+		connman_network_unref(wifi->pending_network);
+		wifi->pending_network = NULL;
+	}
+
 }
 
 static int network_disconnect(struct connman_network *network)
 {
 	struct connman_device *device = connman_network_get_device(network);
 	struct wifi_data *wifi;
+	int err;
 
 	DBG("network %p", network);
 
@@ -631,8 +667,17 @@ static int network_disconnect(struct connman_network *network)
 
 	connman_network_set_associating(network, FALSE);
 
-	return g_supplicant_interface_disconnect(wifi->interface,
+	if (wifi->disconnecting == TRUE)
+		return -EALREADY;
+
+	wifi->disconnecting = TRUE;
+
+	err = g_supplicant_interface_disconnect(wifi->interface,
 						disconnect_callback, wifi);
+	if (err < 0)
+		wifi->disconnecting = FALSE;
+
+	return err;
 }
 
 static struct connman_network_driver network_driver = {
