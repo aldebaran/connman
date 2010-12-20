@@ -141,6 +141,35 @@ static void ov_append_route(const char *key, const char *value, GHashTable *rout
 		route->gateway = g_strdup(value);
 }
 
+static void ov_append_dns_entries(const char *key, const char *value,
+					char **dns_entries)
+{
+	if (g_str_has_prefix(key, "foreign_option_")) {
+		gchar **options;
+
+		options = g_strsplit(value, " ", 3);
+		if (options[0] != NULL &&
+			!strcmp(options[0], "dhcp-option") &&
+			options[1] != NULL &&
+			!strcmp(options[1], "DNS") &&
+			options[2] != NULL) {
+
+			if (*dns_entries != NULL) {
+				char *tmp;
+
+				tmp = g_strjoin(" ", *dns_entries,
+						options[2], NULL);
+				g_free(*dns_entries);
+				*dns_entries = tmp;
+			} else {
+				*dns_entries = g_strdup(options[2]);
+			}
+		}
+
+		g_strfreev(options);
+	}
+}
+
 static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 {
 	DBusMessageIter iter, dict;
@@ -193,32 +222,9 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 		if (!strcmp(key, "ifconfig_remote"))
 			connman_provider_set_string(provider, "Peer", value);
 
-		if (g_str_has_prefix(key, "foreign_option_")) {
-			gchar **options;
-
-			options = g_strsplit(value, " ", 3);
-			if (options[0] != NULL &&
-					!strcmp(options[0], "dhcp-option") &&
-					options[1] != NULL &&
-					!strcmp(options[1], "DNS") &&
-					options[2] != NULL) {
-
-				if (dns_entries != NULL) {
-					char *tmp;
-
-					tmp = g_strjoin(" ", dns_entries,
-							options[2], NULL);
-					g_free(dns_entries);
-					dns_entries = tmp;
-				} else {
-					dns_entries = g_strdup(options[2]);
-				}
-			}
-
-			g_strfreev(options);
-		}
-
 		ov_append_route(key, value, routes);
+
+		ov_append_dns_entries(key, value, &dns_entries);
 
 		dbus_message_iter_next(&dict);
 	}
