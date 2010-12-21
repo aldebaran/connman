@@ -71,36 +71,35 @@ static void ov_provider_append_routes(gpointer key, gpointer value,
 static struct ov_route *ov_route_lookup(const char *key, const char *prefix_key,
 					GHashTable *routes)
 {
-	if (g_str_has_prefix(key, prefix_key)) {
-		unsigned long idx;
-		const char *start;
-		char *end;
-		struct ov_route *route;
+	unsigned long idx;
+	const char *start;
+	char *end;
+	struct ov_route *route;
 
-		start = key + strlen(prefix_key);
-		idx = g_ascii_strtoull(start, &end, 10);
+	if (g_str_has_prefix(key, prefix_key) == FALSE)
+		return NULL;
 
-		if (idx == 0 && start == end) {
-			connman_error("string conversion failed %s", start);
+	start = key + strlen(prefix_key);
+	idx = g_ascii_strtoull(start, &end, 10);
+
+	if (idx == 0 && start == end) {
+		connman_error("string conversion failed %s", start);
+		return NULL;
+	}
+
+	route = g_hash_table_lookup(routes, GINT_TO_POINTER(idx));
+	if (route == NULL) {
+		route = g_try_new0(struct ov_route, 1);
+		if (route == NULL) {
+			connman_error("out of memory");
 			return NULL;
 		}
 
-		route = g_hash_table_lookup(routes, GINT_TO_POINTER(idx));
-		if (route == NULL) {
-			route = g_try_new0(struct ov_route, 1);
-			if (route == NULL) {
-				connman_error("out of memory");
-				return NULL;
-			}
-
-			g_hash_table_replace(routes, GINT_TO_POINTER(idx),
+		g_hash_table_replace(routes, GINT_TO_POINTER(idx),
 						route);
-		}
-
-		return  route;
 	}
 
-	return NULL;
+	return  route;
 }
 
 static void ov_append_route(const char *key, const char *value, GHashTable *routes)
@@ -144,30 +143,31 @@ static void ov_append_route(const char *key, const char *value, GHashTable *rout
 static void ov_append_dns_entries(const char *key, const char *value,
 					char **dns_entries)
 {
-	if (g_str_has_prefix(key, "foreign_option_")) {
-		gchar **options;
+	gchar **options;
 
-		options = g_strsplit(value, " ", 3);
-		if (options[0] != NULL &&
-			!strcmp(options[0], "dhcp-option") &&
+	if (g_str_has_prefix(key, "foreign_option_") == FALSE)
+		return;
+
+	options = g_strsplit(value, " ", 3);
+	if (options[0] != NULL &&
+		!strcmp(options[0], "dhcp-option") &&
 			options[1] != NULL &&
 			!strcmp(options[1], "DNS") &&
-			options[2] != NULL) {
+				options[2] != NULL) {
 
-			if (*dns_entries != NULL) {
-				char *tmp;
+		if (*dns_entries != NULL) {
+			char *tmp;
 
-				tmp = g_strjoin(" ", *dns_entries,
+			tmp = g_strjoin(" ", *dns_entries,
 						options[2], NULL);
-				g_free(*dns_entries);
-				*dns_entries = tmp;
-			} else {
-				*dns_entries = g_strdup(options[2]);
-			}
+			g_free(*dns_entries);
+			*dns_entries = tmp;
+		} else {
+			*dns_entries = g_strdup(options[2]);
 		}
-
-		g_strfreev(options);
 	}
+
+	g_strfreev(options);
 }
 
 static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
