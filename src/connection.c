@@ -320,9 +320,12 @@ static int connection_probe(struct connman_element *element)
 
 	service = __connman_element_get_service(element);
 
-	connman_inet_add_ipv6_host_route(element->index,
+	if (new_gateway->ipv6_gateway)
+		connman_inet_add_ipv6_host_route(element->index,
 					new_gateway->ipv6_gateway, NULL);
-	connman_inet_add_host_route(element->index,
+
+	if (g_strcmp0(new_gateway->ipv4_gateway, "0.0.0.0"))
+		connman_inet_add_host_route(element->index,
 					new_gateway->ipv4_gateway, NULL);
 	__connman_service_nameserver_add_routes(service,
 						new_gateway->ipv4_gateway);
