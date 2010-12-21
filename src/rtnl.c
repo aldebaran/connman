@@ -1140,13 +1140,23 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 	}
 
 	if (nr_servers) {
-		int i;
+		int i, j;
 		char buf[40];
 
 		for (i = 0; i < nr_servers; i++) {
-			if (inet_ntop(AF_INET6, servers + i, buf, sizeof(buf)))
+			if (!inet_ntop(AF_INET6, servers + i, buf, sizeof(buf)))
+				continue;
+
+			if (domains == NULL || domains[0] == NULL) {
 				connman_resolver_append_lifetime(interface,
-				       domains?domains[0]:NULL, buf, lifetime);
+							NULL, buf, lifetime);
+				continue;
+			}
+
+			for (j = 0; domains[j]; j++)
+				connman_resolver_append_lifetime(interface,
+								domains[j],
+								buf, lifetime);
 		}
 	}
 	g_free(domains);
