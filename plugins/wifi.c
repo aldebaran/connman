@@ -476,7 +476,7 @@ static void network_removed(GSupplicantNetwork *network)
 
 static void debug(const char *str)
 {
-	if (getenv("CONNMAN_GSUPPLICANT_DEBUG"))
+	if (getenv("CONNMAN_SUPPLICANT_DEBUG"))
 		connman_debug("%s", str);
 }
 
