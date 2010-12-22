@@ -24,6 +24,7 @@
 #endif
 
 #include <unistd.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <string.h>
 #include <sys/ioctl.h>
@@ -475,7 +476,8 @@ static void network_removed(GSupplicantNetwork *network)
 
 static void debug(const char *str)
 {
-	connman_debug("%s", str);
+	if (getenv("CONNMAN_GSUPPLICANT_DEBUG"))
+		connman_debug("%s", str);
 }
 
 static const GSupplicantCallbacks callbacks = {
