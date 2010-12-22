@@ -953,6 +953,9 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
  */
 void *connman_ipconfig_get_data(struct connman_ipconfig *ipconfig)
 {
+	if (ipconfig == NULL)
+		return NULL;
+
 	return ipconfig->ops_data;
 }
 
