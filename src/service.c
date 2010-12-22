@@ -4125,6 +4125,7 @@ static void update_from_network(struct connman_service *service,
 struct connman_service * __connman_service_create_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
+	struct connman_device *device;
 	const char *ident, *group;
 	char *name;
 	int index;
@@ -4185,8 +4186,11 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	service_register(service);
 
-	if (service->favorite == TRUE)
-		__connman_service_auto_connect();
+	if (service->favorite == TRUE) {
+		device = connman_network_get_device(service->network);
+		if (device && __connman_device_scanning(device) == FALSE)
+			__connman_service_auto_connect();
+	}
 
 	return service;
 }
