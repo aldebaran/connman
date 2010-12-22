@@ -284,10 +284,18 @@ static void interface_added(GSupplicantInterface *interface)
 
 	wifi = g_supplicant_interface_get_data(interface);
 
+	/*
+	 * We can get here with a NULL wifi pointer when
+	 * the interface added signal is sent before the
+	 * interface creation callback is called.
+	 */
+	if (wifi == NULL)
+		return;
+
 	DBG("ifname %s driver %s wifi %p", ifname, driver, wifi);
 
-	if (wifi == NULL || wifi->device == NULL) {
-		connman_error("Wrong wifi pointer");
+	if (wifi->device == NULL) {
+		connman_error("WiFi device not set");
 		return;
 	}
 
