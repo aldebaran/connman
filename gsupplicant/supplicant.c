@@ -1882,7 +1882,7 @@ static void interface_get_result(const char *error,
 	SUPPLICANT_DBG("");
 
 	if (error != NULL) {
-		g_warning("error %s", error);
+		SUPPLICANT_DBG("Interface not created yet");
 		err = -EIO;
 		goto create;
 	}
