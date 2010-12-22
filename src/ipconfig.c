@@ -1218,7 +1218,8 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 					ipdevice->config_ipv4 != NULL) {
-		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
+		ipconfig_list = g_list_remove(ipconfig_list,
+							ipdevice->config_ipv4);
 
 		connman_ipaddress_clear(ipdevice->config_ipv4->system);
 
@@ -1227,7 +1228,8 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 					ipdevice->config_ipv6 != NULL) {
-		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
+		ipconfig_list = g_list_remove(ipconfig_list,
+							ipdevice->config_ipv6);
 
 		connman_ipaddress_clear(ipdevice->config_ipv6->system);
 
