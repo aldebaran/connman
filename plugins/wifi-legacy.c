@@ -240,4 +240,4 @@ static void wifi_exit(void)
 }
 
 CONNMAN_PLUGIN_DEFINE(wifi_legacy, "WiFi interface plugin", VERSION,
-		CONNMAN_PLUGIN_PRIORITY_HIGH, wifi_init, wifi_exit)
+		CONNMAN_PLUGIN_PRIORITY_DEFAULT, wifi_init, wifi_exit)
