@@ -896,9 +896,9 @@ int __connman_network_connect(struct connman_network *network)
 	if (network->device == NULL)
 		return -ENODEV;
 
-	__connman_device_disconnect(network->device);
-
 	network->connecting = TRUE;
+
+	__connman_device_disconnect(network->device);
 
 	service = __connman_service_lookup_from_network(network);
 

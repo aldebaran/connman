@@ -308,6 +308,9 @@ static connman_bool_t is_connecting(struct connman_service *service)
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
 	case CONNMAN_SERVICE_STATE_IDLE:
 	case CONNMAN_SERVICE_STATE_FAILURE:
+		if (service->network != NULL)
+			return __connman_network_get_connecting(
+							service->network);
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_READY:
 	case CONNMAN_SERVICE_STATE_ONLINE:
@@ -2797,6 +2800,11 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 		if (is_connected(service_a) == TRUE)
 			return -1;
 		if (is_connected(service_b) == TRUE)
+			return 1;
+
+		if (is_connecting(service_a) == TRUE)
+			return -1;
+		if (is_connecting(service_b) == TRUE)
 			return 1;
 	}
 
