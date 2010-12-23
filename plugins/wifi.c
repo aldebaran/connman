@@ -554,15 +554,20 @@ static GSupplicantSecurity network_security(const char *security)
 
 static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 {
-	const char *security;
+	const char *security, *passphrase;
 
 	memset(ssid, 0, sizeof(*ssid));
 	ssid->ssid = connman_network_get_blob(network, "WiFi.SSID",
 						&ssid->ssid_len);
 	security = connman_network_get_string(network, "WiFi.Security");
 	ssid->security = network_security(security);
-	ssid->passphrase = connman_network_get_string(network,
-							"WiFi.Passphrase");
+	passphrase = connman_network_get_string(network,
+						"WiFi.Passphrase");
+	if (strlen(passphrase) == 0)
+		ssid->passphrase = NULL;
+        else
+		ssid->passphrase = passphrase;
+
 	ssid->eap = connman_network_get_string(network, "WiFi.EAP");
 
 	/*
