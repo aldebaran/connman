@@ -2472,10 +2472,8 @@ static void interface_disconnect_result(const char *error,
 
 	SUPPLICANT_DBG("");
 
-	if (error != NULL && data->callback != NULL) {
+	if (error != NULL && data->callback != NULL)
 		data->callback(-EIO, data->interface, data->user_data);
-		return;
-	}
 
 	network_remove(data);
 }
