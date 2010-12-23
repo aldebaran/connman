@@ -3393,6 +3393,9 @@ int __connman_service_disconnect(struct connman_service *service)
 	else
 		return -EOPNOTSUPP;
 
+	if (err < 0 && err != -EINPROGRESS)
+		return err;
+
 	if (service->ipconfig_ipv4)
 		__connman_ipconfig_set_proxy_autoconfig(service->ipconfig_ipv4,
 							NULL);
@@ -3411,14 +3414,7 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	__connman_stats_service_unregister(service);
 
-	if (err < 0) {
-		if (err != -EINPROGRESS)
-			return err;
-
-		return -EINPROGRESS;
-	}
-
-	return 0;
+	return err;
 }
 
 /**
