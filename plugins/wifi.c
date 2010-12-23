@@ -608,7 +608,7 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	ssid->security = network_security(security);
 	passphrase = connman_network_get_string(network,
 						"WiFi.Passphrase");
-	if (strlen(passphrase) == 0)
+	if (passphrase == NULL || strlen(passphrase) == 0)
 		ssid->passphrase = NULL;
         else
 		ssid->passphrase = passphrase;
