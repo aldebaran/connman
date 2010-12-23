@@ -526,9 +526,19 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 
 static void network_removed(GSupplicantNetwork *network)
 {
-	const char *name = g_supplicant_network_get_name(network);
+	GSupplicantInterface *interface;
+	struct wifi_data *wifi;
+	const char *name, *identifier;
 
-	DBG("* name %s", name);
+	interface = g_supplicant_network_get_interface(network);
+	wifi = g_supplicant_interface_get_data(interface);
+	identifier = g_supplicant_network_get_identifier(network);
+	name = g_supplicant_network_get_name(network);
+
+	DBG("name %s", name);
+
+	if (wifi != NULL)
+		connman_device_remove_network(wifi->device, identifier);
 }
 
 static void debug(const char *str)
