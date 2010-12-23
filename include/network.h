@@ -107,8 +107,6 @@ int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
 const char *connman_network_get_string(struct connman_network *network,
 							const char *key);
-int connman_network_set_passphrase(struct connman_network *network,
-					const char* passphrase);
 int connman_network_set_bool(struct connman_network *network,
 					const char *key, connman_bool_t value);
 connman_bool_t connman_network_get_bool(struct connman_network *network,
