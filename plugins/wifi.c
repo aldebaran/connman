@@ -62,6 +62,7 @@ struct wifi_data {
 	struct connman_network *network;
 	struct connman_network *pending_network;
 	GSupplicantInterface *interface;
+	GSupplicantState state;
 	connman_bool_t connected;
 	connman_bool_t disconnecting;
 	int index;
@@ -147,6 +148,7 @@ static int wifi_probe(struct connman_device *device)
 
 	wifi->connected = FALSE;
 	wifi->disconnecting = FALSE;
+	wifi->state = G_SUPPLICANT_STATE_INACTIVE;
 
 	connman_device_set_data(device, wifi);
 	wifi->device = connman_device_ref(device);
@@ -317,6 +319,29 @@ static void interface_added(GSupplicantInterface *interface)
 	wifi_scan(wifi->device);
 }
 
+static connman_bool_t is_idle(struct wifi_data *wifi)
+{
+	DBG("state %d", wifi->state);
+
+	switch (wifi->state) {
+	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISCONNECTED:
+	case G_SUPPLICANT_STATE_INACTIVE:
+	case G_SUPPLICANT_STATE_SCANNING:
+		return TRUE;
+
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+	case G_SUPPLICANT_STATE_COMPLETED:
+		return FALSE;
+	}
+
+	return FALSE;
+}
+
 static void interface_state(GSupplicantInterface *interface)
 {
 	struct connman_network *network;
@@ -360,6 +385,14 @@ static void interface_state(GSupplicantInterface *interface)
 		break;
 
 	case G_SUPPLICANT_STATE_DISCONNECTED:
+		/*
+		 * If we're in one of the idle modes, we have
+		 * not started association yet and thus setting
+		 * those ones to FALSE could cancel an association
+		 * in progress.
+		 */
+		if (is_idle(wifi))
+			break;
 		connman_network_set_associating(network, FALSE);
 		connman_network_set_connected(network, FALSE);
 		break;
@@ -374,6 +407,8 @@ static void interface_state(GSupplicantInterface *interface)
 	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
 		break;
 	}
+
+	wifi->state = state;
 
 	DBG("DONE");
 }
