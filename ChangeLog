@@ -1,3 +1,16 @@
+ver 0.65:
+	Use new WiFi plugin by default.
+	Fix issue with handling already powered devices.
+	Fix issue with handling proxy PAC option from DHCP.
+	Add support for handling regulatory domain settings.
+	Add support for handling IPv6 router advertisements.
+	Add support for handling IPv6 nameservers.
+	Add support for handling multiple search domains.
+	Add support for handling oFono modem lockdown.
+	Add support for handling IPv6 DNS connections.
+	Add support for IPv4 Link-Local negotiation.
+	Add support for USB CDC Tethering functionality.
+
 ver 0.64:
 	Update service name to net.connman domain.
 	Fix issue with disabling a technology twice.
