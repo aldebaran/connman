@@ -406,6 +406,7 @@ static void remove_interface(gpointer data)
 	callback_interface_removed(interface);
 
 	g_free(interface->path);
+	g_free(interface->network_path);
 	g_free(interface->ifname);
 	g_free(interface->driver);
 	g_free(interface->bridge);
