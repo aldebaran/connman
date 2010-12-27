@@ -52,6 +52,8 @@ struct _GWebResult {
 	const guint8 *buffer;
 	gsize length;
 	gboolean use_chunk;
+	gchar *last_key;
+	GHashTable *headers;
 };
 
 struct web_session {
@@ -147,6 +149,9 @@ static void free_session(struct web_session *session)
 
 	if (session->transport_channel != NULL)
 		g_io_channel_unref(session->transport_channel);
+
+	g_free(session->result.last_key);
+	g_hash_table_destroy(session->result.headers);
 
 	g_string_free(session->send_buffer, TRUE);
 	g_string_free(session->current_header, TRUE);
@@ -718,7 +723,23 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 			ptr = NULL;
 
 		if (session->current_header->len == 0) {
+			char *val;
+
 			session->header_done = TRUE;
+
+			val = g_hash_table_lookup(session->result.headers,
+							"Transfer-Encoding");
+			if (val != NULL) {
+				val = g_strrstr(val, "chunked");
+				if (val != NULL) {
+					session->result.use_chunk = TRUE;
+
+					session->chunck_state = CHUNK_SIZE;
+					session->chunk_left = 0;
+					session->total_len = 0;
+				}
+			}
+
 			if (handle_body(session, ptr, bytes_read) < 0) {
 				session->transport_watch = 0;
 				return FALSE;
@@ -733,23 +754,51 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 			if (sscanf(str, "HTTP/%*s %u %*s", &code) == 1)
 				session->result.status = code;
-		} else if (session->result.use_chunk == FALSE &&
-				g_ascii_strncasecmp("Transfer-Encoding:",
-								str, 18) == 0) {
-			char *val;
-
-			val = g_strrstr(str + 18, "chunked");
-			if (val != NULL) {
-				session->result.use_chunk = TRUE;
-
-				session->chunck_state = CHUNK_SIZE;
-				session->chunk_left = 0;
-				session->chunk_left = 0;
-				session->total_len = 0;
-			}
 		}
 
 		debug(session->web, "[header] %s", str);
+
+		/* handle multi-line header */
+		if (str[0] == ' ' || str[0] == '\t') {
+			gchar *value;
+
+			while (str[0] == ' ' || str[0] == '\t')
+				str++;
+
+			count = str - session->current_header->str;
+			if (count > 0) {
+				g_string_erase(session->current_header,
+								0, count);
+				g_string_insert_c(session->current_header,
+									0, ' ');
+			}
+
+			value = g_hash_table_lookup(session->result.headers,
+						session->result.last_key);
+			if (value != NULL) {
+				g_string_insert(session->current_header,
+								0, value);
+
+				str = session->current_header->str;
+
+				g_hash_table_replace(session->result.headers,
+					g_strdup(session->result.last_key),
+					g_strdup(str));
+			}
+		} else {
+			pos = memchr(str, ':', session->current_header->len);
+			if (pos != NULL) {
+				*pos = '\0';
+				pos++;
+
+				g_hash_table_replace(session->result.headers,
+							g_strdup(str),
+							g_strdup((char *)pos));
+
+				g_free(session->result.last_key);
+				session->result.last_key = g_strdup(str);
+			}
+		}
 
 		g_string_truncate(session->current_header, 0);
 	}
@@ -943,6 +992,13 @@ static guint do_request(GWeb *web, const char *url,
 		return 0;
 	}
 
+	session->result.headers = g_hash_table_new_full(g_str_hash, g_str_equal,
+							g_free, g_free);
+	if (session->result.headers == NULL) {
+		free_session(session);
+		return 0;
+	}
+
 	session->receive_space = DEFAULT_BUFFER_SIZE;
 	session->send_buffer = g_string_sized_new(0);
 	session->current_header = g_string_sized_new(0);
@@ -1012,6 +1068,23 @@ gboolean g_web_result_get_chunk(GWebResult *result,
 
 	if (length != NULL)
 		*length = result->length;
+
+	return TRUE;
+}
+
+gboolean g_web_result_get_header(GWebResult *result,
+				const char *header, const char **value)
+{
+	if (result == NULL)
+		return FALSE;
+
+	if (value == NULL)
+		return FALSE;
+
+	*value = g_hash_table_lookup(result->headers, header);
+
+	if (*value == NULL)
+		return FALSE;
 
 	return TRUE;
 }
