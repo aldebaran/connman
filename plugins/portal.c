@@ -52,6 +52,7 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 {
 	struct connman_location *location = user_data;
 	struct server_data *data = connman_location_get_data(location);
+	const char *str;
 	guint16 status;
 
 	if (data->request_id == 0)
@@ -59,10 +60,22 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 
 	status = g_web_result_get_status(result);
 
+	/* If status header is not available, it is a portal */
+	if (g_web_result_get_header(result, "X-ConnMan-Status", &str) == FALSE)
+		status = 302;
+
 	DBG("status %u", status);
 
 	switch (status) {
 	case 200:
+		if (g_web_result_get_header(result, "X-ConnMan-Client-IP",
+								&str) == TRUE)
+			connman_info("Client-IP: %s", str);
+
+		if (g_web_result_get_header(result, "X-ConnMan-Client-Country",
+								&str) == TRUE)
+			connman_info("Client-Country: %s", str);
+
 		connman_location_report_result(location,
 					CONNMAN_LOCATION_RESULT_ONLINE);
 		break;
