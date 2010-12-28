@@ -653,6 +653,81 @@ static int handle_body(struct web_session *session,
 	return err;
 }
 
+static void handle_multi_line(struct web_session *session)
+{
+	gsize count;
+	char *str;
+	gchar *value;
+
+	str = session->current_header->str;
+
+	if (str[0] != ' ' && str[0] != '\t')
+		return;
+
+	while (str[0] == ' ' || str[0] == '\t')
+		str++;
+
+	count = str - session->current_header->str;
+	if (count > 0) {
+		g_string_erase(session->current_header, 0, count);
+		g_string_insert_c(session->current_header, 0, ' ');
+	}
+
+	value = g_hash_table_lookup(session->result.headers,
+					session->result.last_key);
+	if (value != NULL) {
+		g_string_insert(session->current_header, 0, value);
+
+		str = session->current_header->str;
+
+		g_hash_table_replace(session->result.headers,
+					g_strdup(session->result.last_key),
+					g_strdup(str));
+	}
+}
+
+static void add_header_field(struct web_session *session)
+{
+	gsize count;
+	guint8 *pos;
+	char *str;
+	gchar *value;
+	gchar *key;
+
+	str = session->current_header->str;
+
+	pos = memchr(str, ':', session->current_header->len);
+	if (pos != NULL) {
+		*pos = '\0';
+		pos++;
+
+		key = g_strdup(str);
+
+		/* remove preceding white spaces */
+		while (*pos == ' ')
+			pos++;
+
+		count = (char *) pos - str;
+
+		g_string_erase(session->current_header, 0, count);
+
+		value = g_hash_table_lookup(session->result.headers, key);
+		if (value != NULL) {
+			g_string_insert_c(session->current_header, 0, ' ');
+			g_string_insert_c(session->current_header, 0, ';');
+
+			g_string_insert(session->current_header, 0, value);
+		}
+
+		str = session->current_header->str;
+		g_hash_table_replace(session->result.headers, key,
+							g_strdup(str));
+
+		g_free(session->result.last_key);
+		session->result.last_key = g_strdup(key);
+	}
+}
+
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -759,46 +834,10 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 		debug(session->web, "[header] %s", str);
 
 		/* handle multi-line header */
-		if (str[0] == ' ' || str[0] == '\t') {
-			gchar *value;
-
-			while (str[0] == ' ' || str[0] == '\t')
-				str++;
-
-			count = str - session->current_header->str;
-			if (count > 0) {
-				g_string_erase(session->current_header,
-								0, count);
-				g_string_insert_c(session->current_header,
-									0, ' ');
-			}
-
-			value = g_hash_table_lookup(session->result.headers,
-						session->result.last_key);
-			if (value != NULL) {
-				g_string_insert(session->current_header,
-								0, value);
-
-				str = session->current_header->str;
-
-				g_hash_table_replace(session->result.headers,
-					g_strdup(session->result.last_key),
-					g_strdup(str));
-			}
-		} else {
-			pos = memchr(str, ':', session->current_header->len);
-			if (pos != NULL) {
-				*pos = '\0';
-				pos++;
-
-				g_hash_table_replace(session->result.headers,
-							g_strdup(str),
-							g_strdup((char *)pos));
-
-				g_free(session->result.last_key);
-				session->result.last_key = g_strdup(str);
-			}
-		}
+		if (str[0] == ' ' || str[0] == '\t')
+			handle_multi_line(session);
+		else
+			add_header_field(session);
 
 		g_string_truncate(session->current_header, 0);
 	}
