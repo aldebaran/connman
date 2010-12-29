@@ -423,6 +423,7 @@ static void remove_network(gpointer data)
 
 	g_hash_table_destroy(network->config_table);
 
+	g_free(network->path);
 	g_free(network->group);
 	g_free(network->name);
 	g_free(network);
