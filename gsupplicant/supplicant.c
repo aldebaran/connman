@@ -1986,12 +1986,15 @@ static void interface_remove_result(const char *error,
 		goto done;
 	}
 
-	g_hash_table_remove(interface_table, data->interface->path);
+	/*
+	 * The gsupplicant interface is already freed by the InterfaceRemoved
+	 * signal callback. Simply invoke the interface_data callback.
+	 */
 	err = 0;
 
 done:
 	if (data->callback != NULL)
-		data->callback(err, data->interface, data->user_data);
+		data->callback(err, NULL, data->user_data);
 
 	dbus_free(data);
 }
