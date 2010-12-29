@@ -161,6 +161,13 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->wifi.mode);
 	g_free(network->wifi.security);
 	g_free(network->wifi.passphrase);
+	g_free(network->wifi.eap);
+	g_free(network->wifi.identity);
+	g_free(network->wifi.ca_cert_path);
+	g_free(network->wifi.client_cert_path);
+	g_free(network->wifi.private_key_path);
+	g_free(network->wifi.private_key_passphrase);
+	g_free(network->wifi.phase2_auth);
 
 	g_free(network->group);
 	g_free(network->node);
