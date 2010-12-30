@@ -902,6 +902,7 @@ static void table_cleanup(struct connman_iptables *table)
 		entry = list->data;
 
 		g_free(entry->entry);
+		g_free(entry);
 	}
 
 	g_list_free(table->entries);
@@ -1300,6 +1301,7 @@ int __connman_iptables_commit(const char *table_name)
 
 	err = iptables_replace(table, repl);
 
+	g_free(repl->counters);
 	g_free(repl);
 
 	if (err < 0)
