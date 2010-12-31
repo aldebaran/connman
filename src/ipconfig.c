@@ -1634,7 +1634,7 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix)
 {
-	const char *method;
+	char *method;
 	char *key;
 
 	DBG("ipconfig %p identifier %s", ipconfig, identifier);
@@ -1652,6 +1652,7 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 	if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 		ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
 
+	g_free(method);
 	g_free(key);
 
 	key = g_strdup_printf("%snetmask_prefixlen", prefix);
