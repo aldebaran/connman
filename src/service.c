@@ -4329,7 +4329,8 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 
 	service->strength = 0;
 
-	service->ipconfig_ipv4 = connman_ipconfig_create(index,
+	if (service->ipconfig_ipv4 == NULL)
+		service->ipconfig_ipv4 = connman_ipconfig_create(index,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 	if (service->ipconfig_ipv4 == NULL)
 		return service;
@@ -4339,7 +4340,8 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	connman_ipconfig_set_data(service->ipconfig_ipv4, service);
 	connman_ipconfig_set_ops(service->ipconfig_ipv4, &service_ops);
 
-	service->ipconfig_ipv6 = connman_ipconfig_create(index,
+	if (service->ipconfig_ipv6 == NULL)
+		service->ipconfig_ipv6 = connman_ipconfig_create(index,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 	if (service->ipconfig_ipv6 == NULL)
 		return service;
