@@ -408,6 +408,8 @@ static void connection_remove(struct connman_element *element)
 		if (data != NULL)
 			set_default_gateway(data);
 	}
+
+	connman_element_unref(element);
 }
 
 static struct connman_driver connection_driver = {
