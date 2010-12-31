@@ -191,8 +191,6 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	connman_dhcp_set_data(dhcp, dhcp_client);
 
-	g_dhcp_client_ref(dhcp_client);
-
 	return g_dhcp_client_start(dhcp_client);
 }
 
