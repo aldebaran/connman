@@ -4520,6 +4520,7 @@ static int service_load(struct connman_service *service)
 	str = g_key_file_get_string(keyfile,
 				service->identifier, "Proxy.Method", NULL);
 	service->proxy = string2proxymethod(str);
+	g_free(str);
 
 	service->proxies = g_key_file_get_string_list(keyfile,
 			service->identifier, "Proxy.Servers", &length, NULL);
