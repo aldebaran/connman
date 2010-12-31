@@ -1463,6 +1463,8 @@ void __connman_element_cleanup(void)
 	g_node_traverse(element_root, G_POST_ORDER, G_TRAVERSE_ALL, -1,
 							free_node, NULL);
 
+	connman_element_unref(element_root->data);
+
 	g_node_destroy(element_root);
 	element_root = NULL;
 
