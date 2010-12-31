@@ -328,6 +328,7 @@ static void dhcp_remove(struct connman_element *element)
 	}
 
 	connman_dhcp_unref(dhcp);
+	connman_element_unref(element);
 }
 
 static void dhcp_change(struct connman_element *element)
