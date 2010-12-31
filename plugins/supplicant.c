@@ -224,6 +224,7 @@ static void remove_block(gpointer user_data)
 
 	g_free(block->ssid);
 	g_free(block->netpath);
+	g_free(block);
 }
 
 static struct supplicant_task *find_task_by_index(int index)
