@@ -769,11 +769,14 @@ static struct server_data *create_server(const char *interface,
 			GList *list;
 
 			connman_error("Failed to connect to server %s", server);
-			close(sk);
 			if (data->watch > 0)
 				g_source_remove(data->watch);
 			if (data->timeout > 0)
 				g_source_remove(data->timeout);
+
+			g_io_channel_unref(data->channel);
+			close(sk);
+
 			g_free(data->server);
 			g_free(data->interface);
 			for (list = data->domains; list; list = list->next) {
