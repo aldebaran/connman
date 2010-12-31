@@ -635,8 +635,12 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 			ssid[k++] = hex;
 		}
 
-		if (add_hidden_network(task, ssid, hex_ssid_len / 2) < 0)
+		if (add_hidden_network(task, ssid, hex_ssid_len / 2) < 0) {
+			g_free(ssid);
 			break;
+		}
+
+		g_free(ssid);
 	}
 
 	g_strfreev(hex_ssids);
