@@ -4185,8 +4185,12 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	update_from_network(service, network);
 
 	index = connman_network_get_index(network);
-	setup_ip4config(service, index);
-	setup_ip6config(service, index);
+
+	if (service->ipconfig_ipv4 == NULL)
+		setup_ip4config(service, index);
+
+	if (service->ipconfig_ipv6 == NULL)
+		setup_ip6config(service, index);
 
 	service_register(service);
 
