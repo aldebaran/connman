@@ -76,6 +76,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	address = g_dhcp_client_get_address(dhcp_client);
 	if (address != NULL)
 		connman_dhcp_set_value(dhcp, "Address", address);
+	g_free(address);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
 	if (option != NULL)
