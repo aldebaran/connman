@@ -147,6 +147,8 @@ static void ipv4_remove(struct connman_element *element)
 	if ((__connman_inet_modify_address(RTM_DELADDR, 0, element->index,
 			AF_INET, address, peer, prefixlen, broadcast) < 0))
 		DBG("address removal failed");
+
+	connman_element_unref(element);
 }
 
 static struct connman_driver ipv4_driver = {
