@@ -1100,7 +1100,7 @@ static guint do_request(GWeb *web, const char *url,
 	session->header_done = FALSE;
 	session->body_done = FALSE;
 
-	if (inet_aton(session->host, NULL) == 0) {
+	if (session->address == NULL && inet_aton(session->host, NULL) == 0) {
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
 					session->host, resolv_result, session);
 		if (session->resolv_action == 0) {
@@ -1108,7 +1108,8 @@ static guint do_request(GWeb *web, const char *url,
 			return 0;
 		}
 	} else {
-		session->address = g_strdup(session->host);
+		if (session->address == NULL)
+			session->address = g_strdup(session->host);
 
 		if (create_transport(session) < 0) {
 			free_session(session);
