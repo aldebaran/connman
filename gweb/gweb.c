@@ -921,7 +921,8 @@ static int create_transport(struct web_session *session)
 	return 0;
 }
 
-static int parse_url(struct web_session *session, const char *url)
+static int parse_url(struct web_session *session,
+				const char *url, const char *proxy)
 {
 	char *scheme, *host, *port, *path;
 
@@ -952,7 +953,52 @@ static int parse_url(struct web_session *session, const char *url)
 	if (path != NULL)
 		*(path++) = '\0';
 
-	session->request = g_strdup_printf("/%s", path ? path : "");
+	if (proxy == NULL)
+		session->request = g_strdup_printf("/%s", path ? path : "");
+	else
+		session->request = g_strdup(url);
+
+	port = strrchr(host, ':');
+	if (port != NULL) {
+		char *end;
+		int tmp = strtol(port + 1, &end, 10);
+
+		if (*end == '\0') {
+			*port = '\0';
+			session->port = tmp;
+		}
+
+		if (proxy == NULL)
+			session->host = g_strdup(host);
+		else
+			session->host = g_strdup_printf("%s:%u", host, tmp);
+	} else
+		session->host = g_strdup(host);
+
+	g_free(scheme);
+
+	if (proxy == NULL)
+		return 0;
+
+	scheme = g_strdup(proxy);
+	if (scheme == NULL)
+		return -EINVAL;
+
+	host = strstr(proxy, "://");
+	if (host != NULL) {
+		*host = '\0';
+		host += 3;
+
+		if (strcasecmp(scheme, "http") != 0) {
+			g_free(scheme);
+			return -EINVAL;
+		}
+	} else
+		host = scheme;
+
+	path = strchr(host, '/');
+	if (path != NULL)
+		*(path++) = '\0';
 
 	port = strrchr(host, ':');
 	if (port != NULL) {
@@ -965,7 +1011,7 @@ static int parse_url(struct web_session *session, const char *url)
 		}
 	}
 
-	session->host = g_strdup(host);
+	session->address = g_strdup(host);
 
 	g_free(scheme);
 
@@ -1012,13 +1058,16 @@ static guint do_request(GWeb *web, const char *url,
 	if (session == NULL)
 		return 0;
 
-	if (parse_url(session, url) < 0) {
+	if (parse_url(session, url, web->proxy) < 0) {
 		free_session(session);
 		return 0;
 	}
 
-	debug(web, "host %s:%u", session->host, session->port);
+	debug(web, "address %s", session->address);
+	debug(web, "port %u", session->port);
+	debug(web, "host %s", session->host);
 	debug(web, "flags %lu", session->flags);
+	debug(web, "request %s", session->request);
 
 	if (type != NULL) {
 		session->content_type = g_strdup(type);
