@@ -255,7 +255,14 @@ gboolean g_web_set_proxy(GWeb *web, const char *proxy)
 		return FALSE;
 
 	g_free(web->proxy);
-	web->proxy = g_strdup(proxy);
+
+	if (proxy == NULL) {
+		web->proxy = NULL;
+		debug(web, "clearing proxy");
+	} else {
+		web->proxy = g_strdup(proxy);
+		debug(web, "setting proxy %s", web->proxy);
+	}
 
 	return TRUE;
 }
