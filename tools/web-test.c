@@ -71,6 +71,7 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 }
 
 static gboolean option_debug = FALSE;
+static gchar *option_proxy = NULL;
 static gchar *option_nameserver = NULL;
 static gchar *option_user_agent = NULL;
 static gchar *option_http_version = NULL;
@@ -78,6 +79,8 @@ static gchar *option_http_version = NULL;
 static GOptionEntry options[] = {
 	{ "debug", 'd', 0, G_OPTION_ARG_NONE, &option_debug,
 					"Enable debug output" },
+	{ "proxy", 'p', 0, G_OPTION_ARG_STRING, &option_proxy,
+					"Specify proxy", "ADDRESS" },
 	{ "nameserver", 'n', 0, G_OPTION_ARG_STRING, &option_nameserver,
 					"Specify nameserver", "ADDRESS" },
 	{ "user-agent", 'A', 0, G_OPTION_ARG_STRING, &option_user_agent,
@@ -124,6 +127,11 @@ int main(int argc, char *argv[])
 		g_web_set_debug(web, web_debug, "WEB");
 
 	main_loop = g_main_loop_new(NULL, FALSE);
+
+	if (option_proxy != NULL) {
+		g_web_set_proxy(web, option_proxy);
+		g_free(option_proxy);
+	}
 
 	if (option_nameserver != NULL) {
 		g_web_add_nameserver(web, option_nameserver);
