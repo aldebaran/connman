@@ -3406,10 +3406,10 @@ int __connman_service_disconnect(struct connman_service *service)
 	__connman_ipconfig_clear_address(service->ipconfig_ipv4);
 	__connman_ipconfig_clear_address(service->ipconfig_ipv6);
 
-	if (__connman_ipconfig_disable(service->ipconfig_ipv4) < 0)
+	if (__connman_ipconfig_disable(service->ipconfig_ipv4) == 0)
 		service->ipconfig_ipv4 = NULL;
 
-	if (__connman_ipconfig_disable(service->ipconfig_ipv6) < 0)
+	if (__connman_ipconfig_disable(service->ipconfig_ipv6) == 0)
 		service->ipconfig_ipv6 = NULL;
 
 	__connman_stats_service_unregister(service);
