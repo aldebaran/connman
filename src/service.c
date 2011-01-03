@@ -2233,11 +2233,11 @@ static gboolean connect_timeout(gpointer user_data)
 		__connman_network_disconnect(service->network);
 
 	if (service->ipconfig_ipv4)
-		if (!__connman_ipconfig_disable(service->ipconfig_ipv4))
+		if (__connman_ipconfig_disable(service->ipconfig_ipv4) == 0)
 			service->ipconfig_ipv4 = NULL;
 
 	if (service->ipconfig_ipv6)
-		if (!__connman_ipconfig_disable(service->ipconfig_ipv6))
+		if (__connman_ipconfig_disable(service->ipconfig_ipv6) == 0)
 			service->ipconfig_ipv6 = NULL;
 
 	__connman_stats_service_unregister(service);
@@ -3352,13 +3352,13 @@ int __connman_service_connect(struct connman_service *service)
 	if (err < 0) {
 		if (err != -EINPROGRESS) {
 			if (service->ipconfig_ipv4)
-				if (!__connman_ipconfig_disable(
-						    service->ipconfig_ipv4))
+				if (__connman_ipconfig_disable(
+						service->ipconfig_ipv4) == 0)
 					service->ipconfig_ipv4 = NULL;
 
 			if (service->ipconfig_ipv6)
-				if (!__connman_ipconfig_disable(
-						    service->ipconfig_ipv6))
+				if (__connman_ipconfig_disable(
+						service->ipconfig_ipv6) == 0)
 					service->ipconfig_ipv6 = NULL;
 
 			__connman_stats_service_unregister(service);
