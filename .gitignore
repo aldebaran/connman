@@ -39,6 +39,7 @@ client/cm
 tools/wispr
 tools/wifi-scan
 tools/dhcp-test
+tools/dhcp-server-test
 tools/addr-test
 tools/tap-test
 tools/web-test
@@ -48,6 +49,8 @@ tools/polkit-test
 tools/iptables-test
 tools/supplicant-test
 tools/dbus-test
+tools/stats-tool
+tools/stats-ringbuffer-dump
 doc/*.bak
 doc/*.stamp
 doc/connman.*
