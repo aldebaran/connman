@@ -915,6 +915,9 @@ struct connman_ipconfig *connman_ipconfig_create(int index,
  */
 struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 {
+	DBG("ipconfig %p refcount %d", ipconfig,
+				g_atomic_int_get(&ipconfig->refcount) + 1);
+
 	g_atomic_int_inc(&ipconfig->refcount);
 
 	return ipconfig;
@@ -928,8 +931,13 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
  */
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
-	if (ipconfig &&
-		g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
+	if (ipconfig == NULL)
+		return;
+
+	DBG("ipconfig %p refcount %d", ipconfig,
+			g_atomic_int_get(&ipconfig->refcount) - 1);
+
+	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
 		__connman_ipconfig_disable(ipconfig);
 
 		connman_ipconfig_set_ops(ipconfig, NULL);
