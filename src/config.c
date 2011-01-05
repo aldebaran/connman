@@ -24,8 +24,10 @@
 #endif
 
 #include <stdio.h>
+#include <unistd.h>
 #include <string.h>
 #include <sys/vfs.h>
+#include <sys/inotify.h>
 #include <glib.h>
 
 #include "connman.h"
@@ -55,6 +57,11 @@ struct connman_config {
 };
 
 static GHashTable *config_table = NULL;
+
+static int inotify_wd = -1;
+
+static GIOChannel *inotify_channel = NULL;
+static uint inotify_watch = 0;
 
 /* Definition of possible strings in the .config files */
 #define CONFIG_KEY_NAME                "Name"
@@ -340,18 +347,18 @@ static int load_config(struct connman_config *config)
 	return 0;
 }
 
-static int create_config(const char *ident)
+static struct connman_config *create_config(const char *ident)
 {
 	struct connman_config *config;
 
 	DBG("ident %s", ident);
 
 	if (g_hash_table_lookup(config_table, ident) != NULL)
-		return -EEXIST;
+		return NULL;
 
 	config = g_try_new0(struct connman_config, 1);
 	if (config == NULL)
-		return -ENOMEM;
+		return NULL;
 
 	config->ident = g_strdup(ident);
 
@@ -362,9 +369,7 @@ static int create_config(const char *ident)
 
 	connman_info("Adding configuration %s", config->ident);
 
-	load_config(config);
-
-	return 0;
+	return config;
 }
 
 static int read_configs(void)
@@ -394,9 +399,13 @@ static int read_configs(void)
 
 			ident = g_string_free(str, FALSE);
 
-			if (connman_dbus_validate_ident(ident) == TRUE)
-				create_config(ident);
+			if (connman_dbus_validate_ident(ident) == TRUE) {
+				struct connman_config *config;
 
+				config = create_config(ident);
+				if (config != NULL)
+					load_config(config);
+			}
 			g_free(ident);
 		}
 
@@ -406,6 +415,148 @@ static int read_configs(void)
 	return 0;
 }
 
+static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	char buffer[256];
+	char *next_event;
+	gsize bytes_read;
+	GIOError err;
+
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		inotify_watch = 0;
+		return FALSE;
+	}
+
+	err = g_io_channel_read(channel, buffer,
+					sizeof(buffer) - 1, &bytes_read);
+
+	if (err != G_IO_ERROR_NONE) {
+		if (err == G_IO_ERROR_AGAIN)
+			return TRUE;
+
+		connman_error("Reading from inotify channel failed");
+		inotify_watch = 0;
+		return FALSE;
+	}
+
+	next_event = buffer;
+
+	while (bytes_read > 0) {
+		struct inotify_event *event;
+		gchar *ext;
+		gchar *ident;
+		gsize len;
+
+		event = (struct inotify_event *) next_event;
+		if (event->len)
+			ident = next_event + sizeof(struct inotify_event);
+		else
+			ident = NULL;
+
+		len = sizeof(struct inotify_event) + event->len;
+
+		/* check if inotify_event block fit */
+		if (len > bytes_read)
+			break;
+
+		next_event += len;
+		bytes_read -= len;
+
+		if (ident == NULL)
+			continue;
+
+		if (g_str_has_suffix(ident, ".config") == FALSE)
+			continue;
+
+		ext = g_strrstr(ident, ".config");
+		if (ext == NULL)
+			continue;
+
+		*ext = '\0';
+
+		if (connman_dbus_validate_ident(ident) == FALSE)
+			continue;
+
+		if (event->mask & IN_CREATE)
+			create_config(ident);
+
+		if (event->mask & IN_MODIFY) {
+			struct connman_config *config;
+
+			config = g_hash_table_lookup(config_table, ident);
+			if (config != NULL) {
+				g_hash_table_remove_all(config->service_table);
+				load_config(config);
+			}
+		}
+
+		if (event->mask & IN_DELETE)
+			g_hash_table_remove(config_table, ident);
+	}
+
+	return TRUE;
+}
+
+static int create_watch(void)
+{
+	int fd;
+
+	fd = inotify_init();
+	if (fd < 0)
+		return -EIO;
+
+	inotify_wd = inotify_add_watch(fd, STORAGEDIR,
+					IN_MODIFY | IN_CREATE | IN_DELETE);
+	if (inotify_wd < 0) {
+		connman_error("Creation of STORAGEDIR  watch failed");
+		close(fd);
+		return -EIO;
+	}
+
+	inotify_channel = g_io_channel_unix_new(fd);
+	if (inotify_channel == NULL) {
+		connman_error("Creation of inotify channel failed");
+		inotify_rm_watch(fd, inotify_wd);
+		inotify_wd = 0;
+
+		close(fd);
+		return -EIO;
+	}
+
+	g_io_channel_set_close_on_unref(inotify_channel, TRUE);
+	g_io_channel_set_encoding(inotify_channel, NULL, NULL);
+	g_io_channel_set_buffered(inotify_channel, FALSE);
+
+	inotify_watch = g_io_add_watch(inotify_channel,
+				G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
+				inotify_data, NULL);
+
+	return 0;
+}
+
+static void remove_watch(void)
+{
+	int fd;
+
+	if (inotify_channel == NULL)
+		return;
+
+	if (inotify_watch > 0) {
+		g_source_remove(inotify_watch);
+		inotify_watch = 0;
+	}
+
+	fd = g_io_channel_unix_get_fd(inotify_channel);
+
+	if (inotify_wd >= 0) {
+		inotify_rm_watch(fd, inotify_wd);
+		inotify_wd = 0;
+	}
+
+	g_io_channel_unref(inotify_channel);
+}
+
 int __connman_config_init(void)
 {
 	DBG("");
@@ -413,12 +564,16 @@ int __connman_config_init(void)
 	config_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, unregister_config);
 
+	create_watch();
+
 	return read_configs();
 }
 
 void __connman_config_cleanup(void)
 {
 	DBG("");
+
+	remove_watch();
 
 	g_hash_table_destroy(config_table);
 	config_table = NULL;
