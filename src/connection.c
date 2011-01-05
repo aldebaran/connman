@@ -221,6 +221,7 @@ static int remove_gateway(struct gateway_data *data)
 		err = 0;
 
 	g_free(data->ipv4_gateway);
+	g_free(data->ipv6_gateway);
 	g_free(data->vpn_ip);
 	g_free(data);
 
