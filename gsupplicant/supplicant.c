@@ -1272,20 +1272,26 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str != NULL) {
+			g_free(interface->ifname);
 			interface->ifname = g_strdup(str);
+		}
 	} else if (g_strcmp0(key, "Driver") == 0) {
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str != NULL) {
+			g_free(interface->driver);
 			interface->driver = g_strdup(str);
+		}
 	} else if (g_strcmp0(key, "BridgeIfname") == 0) {
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str != NULL) {
+			g_free(interface->bridge);
 			interface->bridge = g_strdup(str);
+		}
 	} else if (g_strcmp0(key, "CurrentBSS") == 0) {
 		interface_bss_added(iter, interface);
 	} else if (g_strcmp0(key, "CurrentNetwork") == 0) {
