@@ -1607,9 +1607,6 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		if (ipconfig->method == method)
-			return 0;
-
 		ipconfig->method = method;
 		break;
 	}
