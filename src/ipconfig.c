@@ -852,7 +852,7 @@ static struct connman_ipconfig *create_ipv6config(int index)
 
 	ipv6config->index = index;
 	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
-	ipv6config->method = CONNMAN_IPCONFIG_METHOD_OFF;
+	ipv6config->method = CONNMAN_IPCONFIG_METHOD_AUTO;
 
 	ipv6config->address = connman_ipaddress_alloc(AF_INET6);
 	if (ipv6config->address == NULL) {
