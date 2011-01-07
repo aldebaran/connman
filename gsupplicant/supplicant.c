@@ -2352,7 +2352,7 @@ static void add_network_security_peap(DBusMessageIter *dict,
 
 	supplicant_dbus_dict_append_basic(dict, "phase2",
 						DBUS_TYPE_STRING,
-						&ssid->phase2_auth);
+						&phase2_auth);
 
 	g_free(phase2_auth);
 }
