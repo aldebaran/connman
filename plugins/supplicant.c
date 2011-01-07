@@ -1210,7 +1210,7 @@ static int set_network_peap(struct connman_network *network,
 		connman_info("No client certificate has been provided "
 			     "to do the PEAP/TTLS authentication\n");
 
-	phase2_auth = g_strdup_printf("\"auth=%s\"", phase2);
+	phase2_auth = g_strdup_printf("auth=%s", phase2);
 
 	connman_dbus_dict_append_basic(dict, "password",
 						DBUS_TYPE_STRING, &passphrase);
