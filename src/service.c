@@ -3830,9 +3830,6 @@ static void setup_ip6config(struct connman_service *service, int index)
 	if (service->ipconfig_ipv6 == NULL)
 		return;
 
-	connman_ipconfig_set_method(service->ipconfig_ipv6,
-					CONNMAN_IPCONFIG_METHOD_OFF);
-
 	connman_ipconfig_set_data(service->ipconfig_ipv6, service);
 
 	connman_ipconfig_set_ops(service->ipconfig_ipv6, &service_ops);
