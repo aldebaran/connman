@@ -364,14 +364,12 @@ Properties	string State [readonly]
 
 			string Method [readonly]
 
-				Possible values are "dhcp", "manual"
+				Possible values are "auto", "manual"
 				and "off".
 
 				The value "fixed" indicates an IP address
 				that can not be modified. For example
 				cellular networks return fixed information.
-
-				"dhcp" is not supported currently.
 
 			string Address [readonly]
 
