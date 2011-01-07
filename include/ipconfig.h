@@ -61,6 +61,7 @@ enum connman_ipconfig_method {
 	CONNMAN_IPCONFIG_METHOD_FIXED   = 2,
 	CONNMAN_IPCONFIG_METHOD_MANUAL  = 3,
 	CONNMAN_IPCONFIG_METHOD_DHCP    = 4,
+	CONNMAN_IPCONFIG_METHOD_AUTO    = 5,
 };
 
 struct connman_ipconfig;

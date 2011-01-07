@@ -1511,6 +1511,7 @@ static void set_connected(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:

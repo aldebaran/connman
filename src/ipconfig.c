@@ -1119,6 +1119,7 @@ int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
@@ -1146,6 +1147,7 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
@@ -1329,6 +1331,8 @@ const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method
 		return "manual";
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		return "dhcp";
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		return "auto";
 	}
 
 	return NULL;
@@ -1344,6 +1348,8 @@ enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method
 		return CONNMAN_IPCONFIG_METHOD_MANUAL;
 	else if (g_strcmp0(method, "dhcp") == 0)
 		return CONNMAN_IPCONFIG_METHOD_DHCP;
+	else if (g_strcmp0(method, "auto") == 0)
+		return CONNMAN_IPCONFIG_METHOD_AUTO;
 	else
 		return CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 }
@@ -1439,6 +1445,7 @@ void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
 		return;
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		break;
 	}
 
@@ -1476,6 +1483,7 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		break;
@@ -1584,6 +1592,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return -EINVAL;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:

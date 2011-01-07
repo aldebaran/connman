@@ -757,6 +757,7 @@ static gboolean set_connected(gpointer user_data)
 		switch (ipv6_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -774,6 +775,7 @@ static gboolean set_connected(gpointer user_data)
 		switch (ipv4_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			return FALSE;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 			if (set_connected_fixed(network) < 0) {
@@ -1026,6 +1028,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return -EINVAL;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		connman_element_unregister_children_type(&network->element,
@@ -1056,6 +1059,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 		switch (method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -1078,6 +1082,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			return -EINVAL;
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			return manual_ipv4_set(network, ipconfig_ipv4);
