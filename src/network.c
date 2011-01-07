@@ -745,15 +745,8 @@ static gboolean set_connected(gpointer user_data)
 	DBG("service %p ipv4 %p ipv6 %p", service, ipconfig_ipv4,
 		ipconfig_ipv6);
 
-	if (ipconfig_ipv4)
-		ipv4_method = __connman_ipconfig_get_method(ipconfig_ipv4);
-	else
-		ipv4_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
-
-	if (ipconfig_ipv6)
-		ipv6_method = __connman_ipconfig_get_method(ipconfig_ipv6);
-	else
-		ipv6_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	ipv4_method = __connman_ipconfig_get_method(ipconfig_ipv4);
+	ipv6_method = __connman_ipconfig_get_method(ipconfig_ipv6);
 
 	DBG("method ipv4 %d ipv6 %d", ipv4_method, ipv6_method);
 	DBG("network connected %d", network->connected);
