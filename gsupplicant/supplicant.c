@@ -1139,7 +1139,8 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
-static void interface_bss_added(DBusMessageIter *iter, void *user_data)
+static struct g_supplicant_bss *interface_bss_added(DBusMessageIter *iter,
+							void *user_data)
 {
 	GSupplicantInterface *interface = user_data;
 	GSupplicantNetwork *network;
@@ -1150,10 +1151,10 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL)
-		return;
+		return NULL;
 
 	if (g_strcmp0(path, "/") == 0)
-		return;
+		return NULL;
 
 	SUPPLICANT_DBG("%s", path);
 
@@ -1161,24 +1162,51 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	if (network != NULL) {
 		bss = g_hash_table_lookup(network->bss_table, path);
 		if (bss != NULL)
-			return;
+			return NULL;
 	}
 
 	bss = g_try_new0(struct g_supplicant_bss, 1);
 	if (bss == NULL)
-		return;
+		return NULL;
 
 	bss->interface = interface;
 	bss->path = g_strdup(path);
 
-	dbus_message_iter_next(iter);
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
-		supplicant_dbus_property_foreach(iter, bss_property, bss);
-		bss_property(NULL, NULL, bss);
-		return;
-	}
+	return bss;
+}
 
-	supplicant_dbus_property_get_all(path,
+static void interface_bss_added_with_keys(DBusMessageIter *iter,
+						void *user_data)
+{
+	struct g_supplicant_bss *bss;
+
+	SUPPLICANT_DBG("");
+
+	bss = interface_bss_added(iter, user_data);
+	if (bss == NULL)
+		return;
+
+	dbus_message_iter_next(iter);
+
+	if (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_INVALID)
+		return;
+
+	supplicant_dbus_property_foreach(iter, bss_property, bss);
+	bss_property(NULL, NULL, bss);
+}
+
+static void interface_bss_added_without_keys(DBusMessageIter *iter,
+						void *user_data)
+{
+	struct g_supplicant_bss *bss;
+
+	SUPPLICANT_DBG("");
+
+	bss = interface_bss_added(iter, user_data);
+	if (bss == NULL)
+		return;
+
+	supplicant_dbus_property_get_all(bss->path,
 					SUPPLICANT_INTERFACE ".BSS",
 							bss_property, bss);
 }
@@ -1293,11 +1321,11 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 			interface->bridge = g_strdup(str);
 		}
 	} else if (g_strcmp0(key, "CurrentBSS") == 0) {
-		interface_bss_added(iter, interface);
+		interface_bss_added_without_keys(iter, interface);
 	} else if (g_strcmp0(key, "CurrentNetwork") == 0) {
 		interface_network_added(iter, interface);
 	} else if (g_strcmp0(key, "BSSs") == 0) {
-		supplicant_dbus_array_foreach(iter, interface_bss_added,
+		supplicant_dbus_array_foreach(iter, interface_bss_added_without_keys,
 								interface);
 	} else if (g_strcmp0(key, "Blobs") == 0) {
 		/* Nothing */
@@ -1593,7 +1621,7 @@ static void signal_bss_added(const char *path, DBusMessageIter *iter)
 	if (interface == NULL)
 		return;
 
-	interface_bss_added(iter, interface);
+	interface_bss_added_with_keys(iter, interface);
 }
 
 static void signal_bss_removed(const char *path, DBusMessageIter *iter)
