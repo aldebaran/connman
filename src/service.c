@@ -2061,11 +2061,11 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
 			type = CONNMAN_IPCONFIG_TYPE_IPV4;
 			err = __connman_ipconfig_set_config(
-					service->ipconfig_ipv4, type, &value);
+					service->ipconfig_ipv4, &value);
 		} else if (g_str_equal(name, "IPv6.Configuration") == TRUE) {
 			type = CONNMAN_IPCONFIG_TYPE_IPV6;
 			err = __connman_ipconfig_set_config(
-					service->ipconfig_ipv6, type, &value);
+					service->ipconfig_ipv6, &value);
 		}
 
 		if (err < 0) {

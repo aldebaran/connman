@@ -1513,7 +1513,7 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 }
 
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
-		enum connman_ipconfig_type type, DBusMessageIter *array)
+							DBusMessageIter *array)
 {
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL,
@@ -1521,11 +1521,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 	int prefix_length = 0;
 	DBusMessageIter dict;
 
-	DBG("ipconfig %p type %d", ipconfig, type);
-
-	if (type != CONNMAN_IPCONFIG_TYPE_IPV4 &&
-			type != CONNMAN_IPCONFIG_TYPE_IPV6)
-		return -EINVAL;
+	DBG("ipconfig %p", ipconfig);
 
 	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
 		return -EINVAL;
@@ -1601,7 +1597,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 
 		ipconfig->method = method;
 
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			connman_ipaddress_set_ipv4(ipconfig->address,
 						address, netmask, gateway);
 		else

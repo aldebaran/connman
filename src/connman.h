@@ -240,7 +240,7 @@ void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
-		enum connman_ipconfig_type type, DBusMessageIter *array);
+							DBusMessageIter *array);
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 enum connman_ipconfig_method __connman_ipconfig_get_method(
