@@ -2041,7 +2041,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||
 			g_str_equal(name, "IPv6.Configuration")) {
 
-		enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
+		struct connman_ipconfig *ipv4 = NULL, *ipv6 = NULL;
 		int err = 0;
 
 		DBG("%s", name);
@@ -2050,44 +2050,40 @@ static DBusMessage *set_property(DBusConnection *conn,
 					service->ipconfig_ipv6 == NULL)
 			return __connman_error_invalid_property(msg);
 
-		if (is_connecting(service) ||
-				is_connected(service)) {
-			__connman_network_clear_ipconfig(service->network,
-							service->ipconfig_ipv4);
-			__connman_network_clear_ipconfig(service->network,
-							service->ipconfig_ipv6);
-		}
-
 		if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
-			type = CONNMAN_IPCONFIG_TYPE_IPV4;
-			err = __connman_ipconfig_set_config(
-					service->ipconfig_ipv4, &value);
+			if (is_connecting(service) || is_connected(service))
+				__connman_network_clear_ipconfig(
+						service->network,
+						service->ipconfig_ipv4);
+
+			ipv4 = service->ipconfig_ipv4;
+			err = __connman_ipconfig_set_config(ipv4, &value);
+
 		} else if (g_str_equal(name, "IPv6.Configuration") == TRUE) {
-			type = CONNMAN_IPCONFIG_TYPE_IPV6;
-			err = __connman_ipconfig_set_config(
-					service->ipconfig_ipv6, &value);
+			if (is_connecting(service) || is_connected(service))
+				__connman_network_clear_ipconfig(
+						service->network,
+						service->ipconfig_ipv6);
+
+			ipv6 = service->ipconfig_ipv6;
+			err = __connman_ipconfig_set_config(ipv6, &value);
 		}
 
 		if (err < 0) {
-			if (is_connected(service) ||
-					is_connecting(service))
-				__connman_network_set_ipconfig(
-						service->network,
-						service->ipconfig_ipv4,
-						service->ipconfig_ipv6);
+			if (is_connected(service) || is_connecting(service))
+				__connman_network_set_ipconfig(service->network,
+								ipv4, ipv6);
 			return __connman_error_failed(msg, -err);
 		}
 
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		if (ipv4)
 			ipv4_configuration_changed(service);
-		else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		else if (ipv6)
 			ipv6_configuration_changed(service);
 
-		if (is_connecting(service) ||
-				is_connected(service))
+		if (is_connecting(service) || is_connected(service))
 			__connman_network_set_ipconfig(service->network,
-						service->ipconfig_ipv4,
-						service->ipconfig_ipv6);
+							ipv4, ipv6);
 
 		__connman_storage_save_service(service);
 	} else
