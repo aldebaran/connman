@@ -2228,15 +2228,8 @@ static gboolean connect_timeout(gpointer user_data)
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
 
-	if (__connman_ipconfig_disable(service->ipconfig_ipv4) == 0) {
-		connman_ipconfig_unref(service->ipconfig_ipv4);
-		service->ipconfig_ipv4 = NULL;
-	}
-
-	if (__connman_ipconfig_disable(service->ipconfig_ipv6) == 0) {
-		connman_ipconfig_unref(service->ipconfig_ipv6);
-		service->ipconfig_ipv6 = NULL;
-	}
+	__connman_ipconfig_disable(service->ipconfig_ipv4);
+	__connman_ipconfig_disable(service->ipconfig_ipv6);
 
 	__connman_stats_service_unregister(service);
 
@@ -3349,17 +3342,8 @@ int __connman_service_connect(struct connman_service *service)
 
 	if (err < 0) {
 		if (err != -EINPROGRESS) {
-			if (__connman_ipconfig_disable(
-					service->ipconfig_ipv4) == 0) {
-				connman_ipconfig_unref(service->ipconfig_ipv4);
-				service->ipconfig_ipv4 = NULL;
-			}
-
-			if (__connman_ipconfig_disable(
-					service->ipconfig_ipv6) == 0) {
-				connman_ipconfig_unref(service->ipconfig_ipv6);
-				service->ipconfig_ipv6 = NULL;
-			}
+			__connman_ipconfig_disable(service->ipconfig_ipv4);
+			__connman_ipconfig_disable(service->ipconfig_ipv6);
 
 			__connman_stats_service_unregister(service);
 			if (service->userconnect == TRUE)
@@ -3406,15 +3390,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	__connman_ipconfig_clear_address(service->ipconfig_ipv4);
 	__connman_ipconfig_clear_address(service->ipconfig_ipv6);
 
-	if (__connman_ipconfig_disable(service->ipconfig_ipv4) == 0) {
-		connman_ipconfig_unref(service->ipconfig_ipv4);
-		service->ipconfig_ipv4 = NULL;
-	}
-
-	if (__connman_ipconfig_disable(service->ipconfig_ipv6) == 0) {
-		connman_ipconfig_unref(service->ipconfig_ipv6);
-		service->ipconfig_ipv6 = NULL;
-	}
+	__connman_ipconfig_disable(service->ipconfig_ipv4);
+	__connman_ipconfig_disable(service->ipconfig_ipv6);
 
 	__connman_stats_service_unregister(service);
 
