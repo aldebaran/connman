@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <linux/if_link.h>
@@ -289,6 +290,35 @@ static const char *scope2str(unsigned char scope)
 	}
 
 	return "";
+}
+
+static void set_ipv6_state(gchar *ifname, gboolean enable)
+{
+	gchar *path;
+	FILE *f;
+
+	if (ifname == NULL)
+		path = g_strdup("/proc/sys/net/ipv6/conf/all/disable_ipv6");
+	else
+		path = g_strdup_printf(
+			"/proc/sys/net/ipv6/conf/%s/disable_ipv6", ifname);
+
+	if (path == NULL)
+		return;
+
+	f = fopen(path, "r+");
+
+	g_free(path);
+
+	if (f == NULL)
+		return;
+
+	if (enable == FALSE)
+		fprintf(f, "1");
+	else
+		fprintf(f, "0");
+
+	fclose(f);
 }
 
 static void free_ipdevice(gpointer data)
@@ -1512,6 +1542,34 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 				DBUS_TYPE_STRING, &ipconfig->address->gateway);
 }
 
+static void disable_ipv6(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("");
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return;
+
+	set_ipv6_state(ipdevice->ifname, FALSE);
+}
+
+static void enable_ipv6(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("");
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return;
+
+	set_ipv6_state(ipdevice->ifname, TRUE);
+}
+
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *array)
 {
@@ -1586,10 +1644,22 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return -EINVAL;
+
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		ipconfig->method = method;
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			disable_ipv6(ipconfig);
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		if (ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
+			return -EINVAL;
+
+		ipconfig->method = method;
+		enable_ipv6(ipconfig);
+		break;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (address == NULL)
@@ -1607,6 +1677,9 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			return -EOPNOTSUPP;
+
 		ipconfig->method = method;
 		break;
 	}
