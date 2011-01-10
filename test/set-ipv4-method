@@ -4,7 +4,7 @@ import sys
 import dbus
 
 def print_usage():
-	print "Usage: %s <service> [off|dhcp|manual <address> [netmask]]" % (sys.argv[0])
+	print "Usage: %s <service> [off|dhcp|manual <address> [netmask] [gateway]]" % (sys.argv[0])
 
 
 if (len(sys.argv) < 3):
