@@ -2342,7 +2342,11 @@ static void add_network_security_peap(DBusMessageIter *dict,
 
 	}
 
-	phase2_auth = g_strdup_printf("auth=%s", ssid->phase2_auth);
+	if (g_str_has_prefix(ssid->phase2_auth, "EAP-") == TRUE) {
+		phase2_auth = g_strdup_printf("autheap=%s",
+					ssid->phase2_auth + strlen("EAP-"));
+	} else
+		phase2_auth = g_strdup_printf("auth=%s", ssid->phase2_auth);
 
 	supplicant_dbus_dict_append_basic(dict, "password",
 						DBUS_TYPE_STRING,
