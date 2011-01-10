@@ -77,6 +77,8 @@ struct connman_ipdevice {
 
 	struct connman_ipconfig *config_ipv4;
 	struct connman_ipconfig *config_ipv6;
+
+	gboolean ipv6_enabled;
 };
 
 static GHashTable *ipdevice_hash = NULL;
@@ -292,6 +294,35 @@ static const char *scope2str(unsigned char scope)
 	return "";
 }
 
+static gboolean get_ipv6_state(gchar *ifname)
+{
+	int disabled;
+	gchar *path;
+	FILE *f;
+	gboolean enabled = FALSE;
+
+	if (ifname == NULL)
+		path = g_strdup("/proc/sys/net/ipv6/conf/all/disable_ipv6");
+	else
+		path = g_strdup_printf(
+			"/proc/sys/net/ipv6/conf/%s/disable_ipv6", ifname);
+
+	if (path == NULL)
+		return enabled;
+
+	f = fopen(path, "r");
+
+	g_free(path);
+
+	if (f != NULL) {
+		if (fscanf(f, "%d", &disabled) > 0)
+			enabled = !disabled;
+		fclose(f);
+	}
+
+	return enabled;
+}
+
 static void set_ipv6_state(gchar *ifname, gboolean enable)
 {
 	gchar *path;
@@ -344,6 +375,9 @@ static void free_ipdevice(gpointer data)
 	g_free(ipdevice->pac);
 
 	g_free(ipdevice->address);
+
+	set_ipv6_state(ipdevice->ifname, ipdevice->ipv6_enabled);
+
 	g_free(ipdevice->ifname);
 	g_free(ipdevice);
 }
@@ -438,6 +472,8 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 	ipdevice->index = index;
 	ipdevice->ifname = connman_inet_ifname(index);
 	ipdevice->type = type;
+
+	ipdevice->ipv6_enabled = get_ipv6_state(ipdevice->ifname);
 
 	ipdevice->address = g_strdup(address);
 
