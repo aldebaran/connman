@@ -2149,6 +2149,7 @@ static void interface_select_network_result(const char *error,
 
 	SUPPLICANT_DBG("");
 
+	g_free(data->ssid);
 	dbus_free(data);
 }
 
@@ -2191,6 +2192,7 @@ static void interface_add_network_result(const char *error,
 error:
 	g_free(interface->network_path);
 	interface->network_path = NULL;
+	g_free(data->ssid);
 	g_free(data);
 }
 

@@ -645,7 +645,7 @@ static int network_connect(struct connman_network *network)
 	struct connman_device *device = connman_network_get_device(network);
 	struct wifi_data *wifi;
 	GSupplicantInterface *interface;
-	GSupplicantSSID ssid;
+	GSupplicantSSID *ssid;
 
 	DBG("network %p", network);
 
@@ -656,16 +656,20 @@ static int network_connect(struct connman_network *network)
 	if (wifi == NULL)
 		return -ENODEV;
 
+	ssid = g_try_malloc0(sizeof(GSupplicantSSID));
+	if (ssid == NULL)
+		return -ENOMEM;
+
 	interface = wifi->interface;
 
-	ssid_init(&ssid, network);
+	ssid_init(ssid, network);
 
 	if (wifi->disconnecting == TRUE)
 		wifi->pending_network = connman_network_ref(network);
 	else {
 		wifi->network = connman_network_ref(network);
 
-		return g_supplicant_interface_connect(interface, &ssid,
+		return g_supplicant_interface_connect(interface, ssid,
 						connect_callback, NULL);
 	}
 
