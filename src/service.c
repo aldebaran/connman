@@ -957,6 +957,9 @@ static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
 	const char *method;
 
 	switch (service->proxy) {
+	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
+		/* fall through */
 	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
 		break;
 	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
@@ -974,9 +977,6 @@ static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
 		if (service->pac != NULL)
 			connman_dbus_dict_append_basic(iter, "URL",
 					DBUS_TYPE_STRING, &service->pac);
-		break;
-	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
-		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_AUTO;
 		break;
 	}
 
