@@ -1581,6 +1581,8 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 	if (service == NULL)
 		return;
 
+	service->proxy = CONNMAN_SERVICE_PROXY_METHOD_AUTO;
+
 	if (service->ipconfig_ipv4) {
 		if (__connman_ipconfig_set_proxy_autoconfig(
 			    service->ipconfig_ipv4, url) < 0)
