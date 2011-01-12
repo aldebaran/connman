@@ -1569,8 +1569,13 @@ enum connman_service_proxy_method connman_service_get_proxy_method(
 	if (service == NULL)
 		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 
-	if (service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN)
+	if (service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN) {
+		if (service->proxy_config == CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
+				service->pac == NULL)
+			return service->proxy;
+
 		return service->proxy_config;
+	}
 
 	return service->proxy;
 }
