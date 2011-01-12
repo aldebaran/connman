@@ -1561,6 +1561,10 @@ void connman_service_set_proxy_method(struct connman_service *service,
 
 	service->proxy = method;
 
+	proxy_changed(service);
+
+	if (method != CONNMAN_SERVICE_PROXY_METHOD_AUTO)
+		__connman_notifier_proxy_changed(service);
 }
 
 enum connman_service_proxy_method connman_service_get_proxy_method(
@@ -1618,6 +1622,8 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 		return;
 
 	proxy_changed(service);
+
+	__connman_notifier_proxy_changed(service);
 }
 
 const char *connman_service_get_proxy_autoconfig(struct connman_service *service)
@@ -3134,9 +3140,12 @@ int __connman_service_indicate_state(struct connman_service *service,
 				(proxy_config ==
 					CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
 					service->pac == NULL)))
-			if (__connman_wpad_start(service) < 0)
+			if (__connman_wpad_start(service) < 0) {
 				service->proxy =
 					CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
+
+				__connman_notifier_proxy_changed(service);
+			}
 
 		__connman_notifier_connect(service->type);
 
