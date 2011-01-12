@@ -597,6 +597,8 @@ struct connman_element *connman_element_create(const char *name)
 
 	__connman_element_initialize(element);
 
+	element->name = g_strdup(name);
+
 	return element;
 }
 
