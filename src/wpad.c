@@ -114,7 +114,7 @@ failed:
 				CONNMAN_SERVICE_PROXY_METHOD_DIRECT);
 }
 
-void __connman_wpad_start(struct connman_service *service)
+int __connman_wpad_start(struct connman_service *service)
 {
 	struct connman_wpad *wpad;
 	const char *domainname, *nameserver;
@@ -123,29 +123,29 @@ void __connman_wpad_start(struct connman_service *service)
 	DBG("service %p", service);
 
 	if (wpad_list == NULL)
-		return;
+		return -EINVAL;
 
 	index = __connman_service_get_index(service);
 	if (index < 0)
-		return;
+		return -EINVAL;
 
 	domainname = connman_service_get_domainname(service);
 	if (domainname == NULL)
-		return;
+		return -EINVAL;
 
 	nameserver = connman_service_get_nameserver(service);
 	if (nameserver == NULL)
-		return;
+		return -EINVAL;
 
 	wpad = g_try_new0(struct connman_wpad, 1);
 	if (wpad == NULL)
-		return;
+		return -ENOMEM;
 
 	wpad->service = service;
 	wpad->resolv = g_resolv_new(index);
 	if (wpad->resolv == NULL) {
 		g_free(wpad);
-		return;
+		return -ENOMEM;
 	}
 
 	if (getenv("CONNMAN_RESOLV_DEBUG"))
@@ -161,6 +161,8 @@ void __connman_wpad_start(struct connman_service *service)
 							wpad_result, wpad);
 
 	g_hash_table_replace(wpad_list, GINT_TO_POINTER(index), wpad);
+
+	return 0;
 }
 
 void __connman_wpad_stop(struct connman_service *service)

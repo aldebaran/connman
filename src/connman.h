@@ -290,7 +290,7 @@ gboolean __connman_connection_update_gateway(void);
 
 int __connman_wpad_init(void);
 void __connman_wpad_cleanup(void);
-void __connman_wpad_start(struct connman_service *service);
+int __connman_wpad_start(struct connman_service *service);
 void __connman_wpad_stop(struct connman_service *service);
 
 int __connman_wispr_init(void);

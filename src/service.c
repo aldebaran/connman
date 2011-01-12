@@ -3134,7 +3134,9 @@ int __connman_service_indicate_state(struct connman_service *service,
 				(proxy_config ==
 					CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
 					service->pac == NULL)))
-			__connman_wpad_start(service);
+			if (__connman_wpad_start(service) < 0)
+				service->proxy =
+					CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
 
 		__connman_notifier_connect(service->type);
 
