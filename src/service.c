@@ -3100,6 +3100,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 	}
 
 	if (state == CONNMAN_SERVICE_STATE_READY) {
+		enum connman_service_proxy_method proxy_config;
+
 		set_reconnect_state(service, TRUE);
 
 		__connman_service_set_favorite(service, TRUE);
@@ -3115,7 +3117,12 @@ int __connman_service_indicate_state(struct connman_service *service,
 		dns_changed(service);
 		domain_changed(service);
 
-		__connman_wpad_start(service);
+		proxy_config = service->proxy_config;
+
+		if (proxy_config == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN ||
+			(proxy_config == CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
+				service->pac == NULL))
+			__connman_wpad_start(service);
 
 		__connman_notifier_connect(service->type);
 
