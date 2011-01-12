@@ -102,6 +102,7 @@ struct connman_service {
 	struct connman_stats stats_roaming;
 	GHashTable *counter_table;
 	enum connman_service_proxy_method proxy;
+	enum connman_service_proxy_method proxy_config;
 	char **proxies;
 	char **excludes;
 	char *pac;
@@ -900,6 +901,7 @@ static void append_excludes(DBusMessageIter *iter, void *user_data)
 static void append_proxy(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
+	enum connman_service_proxy_method proxy;
 	const char *pac = NULL;
 	const char *method = proxymethod2string(
 		CONNMAN_SERVICE_PROXY_METHOD_DIRECT);
@@ -909,10 +911,11 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 	if (is_connected(service) == FALSE)
 		return;
 
-	switch (service->proxy) {
+	proxy = connman_service_get_proxy_method(service);
+
+	switch (proxy) {
 	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
-		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
-		/* fall through */
+		return;
 	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
 		goto done;
 	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
@@ -944,7 +947,7 @@ static void append_proxy(DBusMessageIter *iter, void *user_data)
 		break;
 	}
 
-	method = proxymethod2string(service->proxy);
+	method = proxymethod2string(proxy);
 
 done:
 	connman_dbus_dict_append_basic(iter, "Method",
@@ -956,10 +959,12 @@ static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
 	struct connman_service *service = user_data;
 	const char *method;
 
-	switch (service->proxy) {
+	if (service->proxy_config == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN)
+		return;
+
+	switch (service->proxy_config) {
 	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
-		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
-		/* fall through */
+		return;
 	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
 		break;
 	case CONNMAN_SERVICE_PROXY_METHOD_MANUAL:
@@ -980,7 +985,7 @@ static void append_proxyconfig(DBusMessageIter *iter, void *user_data)
 		break;
 	}
 
-	method = proxymethod2string(service->proxy);
+	method = proxymethod2string(service->proxy_config);
 
 	connman_dbus_dict_append_basic(iter, "Method",
 				DBUS_TYPE_STRING, &method);
@@ -1564,6 +1569,9 @@ enum connman_service_proxy_method connman_service_get_proxy_method(
 	if (service == NULL)
 		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 
+	if (service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN)
+		return service->proxy_config;
+
 	return service->proxy;
 }
 
@@ -1821,7 +1829,7 @@ static int update_proxy_configuration(struct connman_service *service,
 	if (excludes_str != NULL)
 		g_string_free(excludes_str, TRUE);
 
-	service->proxy = method;
+	service->proxy_config = method;
 
 	return 0;
 
@@ -4515,7 +4523,9 @@ static int service_load(struct connman_service *service)
 
 	str = g_key_file_get_string(keyfile,
 				service->identifier, "Proxy.Method", NULL);
-	service->proxy = string2proxymethod(str);
+	if (str != NULL)
+		service->proxy_config = string2proxymethod(str);
+
 	g_free(str);
 
 	service->proxies = g_key_file_get_string_list(keyfile,
@@ -4698,7 +4708,7 @@ update:
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Domains", NULL);
 
-	cst_str = proxymethod2string(service->proxy);
+	cst_str = proxymethod2string(service->proxy_config);
 	if (cst_str != NULL)
 		g_key_file_set_string(keyfile, service->identifier,
 				"Proxy.Method", cst_str);
