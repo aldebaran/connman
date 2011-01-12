@@ -1548,6 +1548,16 @@ const char *connman_service_get_nameserver(struct connman_service *service)
 	return service->nameserver;
 }
 
+void connman_service_set_proxy_method(struct connman_service *service,
+					enum connman_service_proxy_method method)
+{
+	if (service == NULL)
+		return;
+
+	service->proxy = method;
+
+}
+
 enum connman_service_proxy_method connman_service_get_proxy_method(
 					struct connman_service *service)
 {
