@@ -3119,9 +3119,16 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		proxy_config = service->proxy_config;
 
-		if (proxy_config == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN ||
-			(proxy_config == CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
-				service->pac == NULL))
+		/*
+		 * We start WPAD if we haven't got a PAC URL from DHCP and
+		 * if our proxy manual configuration is either empty or set
+		 * to AUTO with an empty URL.
+		 */
+		if (service->proxy == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN &&
+			(proxy_config == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN ||
+				(proxy_config ==
+					CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
+					service->pac == NULL)))
 			__connman_wpad_start(service);
 
 		__connman_notifier_connect(service->type);
