@@ -72,7 +72,7 @@ static void wpad_result(GResolvResultStatus status,
 		char *url;
 
 		if (results == NULL || g_strv_length(results) == 0)
-			return;
+			goto failed;
 
 		url = g_strdup_printf("http://%s/wpad.dat", wpad->hostname);
 
@@ -90,14 +90,14 @@ static void wpad_result(GResolvResultStatus status,
 	hostname = wpad->hostname;
 
 	if (strlen(hostname) < 6)
-		return;
+		goto failed;
 
 	ptr = strchr(hostname + 5, '.');
 	if (ptr == NULL || strlen(ptr) < 2)
-		return;
+		goto failed;
 
 	if (strchr(ptr + 1, '.') == NULL)
-		return;
+		goto failed;
 
 	wpad->hostname = g_strdup_printf("wpad.%s", ptr + 1);
 	g_free(hostname);
@@ -106,6 +106,12 @@ static void wpad_result(GResolvResultStatus status,
 
 	g_resolv_lookup_hostname(wpad->resolv, wpad->hostname,
 							wpad_result, wpad);
+
+	return;
+
+failed:
+	connman_service_set_proxy_method(wpad->service,
+				CONNMAN_SERVICE_PROXY_METHOD_DIRECT);
 }
 
 void __connman_wpad_start(struct connman_service *service)
