@@ -3658,6 +3658,16 @@ done:
 		goto failed;
 	}
 
+	if (is_connected(service) == TRUE) {
+		err = -EISCONN;
+		goto failed;
+	}
+
+	if (is_connecting(service) == TRUE) {
+		err = -EALREADY;
+		goto failed;
+	}
+
 	set_reconnect_state(service, FALSE);
 
 	__connman_device_disconnect(device);
