@@ -244,6 +244,8 @@ static const char *mode2string(GSupplicantMode mode)
 		return "managed";
 	case G_SUPPLICANT_MODE_IBSS:
 		return "adhoc";
+	case G_SUPPLICANT_MODE_MASTER:
+		return "ap";
 	}
 
 	return NULL;
@@ -2651,6 +2653,27 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 				DBUS_TYPE_STRING, &key_mgmt);
 }
 
+static void add_network_mode(DBusMessageIter *dict, GSupplicantSSID *ssid)
+{
+	dbus_uint32_t mode;
+
+	switch (ssid->mode) {
+	case G_SUPPLICANT_MODE_UNKNOWN:
+	case G_SUPPLICANT_MODE_INFRA:
+		mode = 0;
+		break;
+	case G_SUPPLICANT_MODE_IBSS:
+		mode = 1;
+		break;
+	case G_SUPPLICANT_MODE_MASTER:
+		mode = 2;
+		break;
+	}
+
+	supplicant_dbus_dict_append_basic(dict, "mode",
+				DBUS_TYPE_UINT32, &mode);
+}
+
 static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
@@ -2662,6 +2685,8 @@ static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 
 	supplicant_dbus_dict_append_basic(&dict, "scan_ssid",
 					 DBUS_TYPE_UINT32, &scan_ssid);
+
+	add_network_mode(&dict, ssid);
 
 	add_network_security(&dict, ssid);
 

@@ -341,6 +341,7 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	const char *security, *passphrase;
 
 	memset(ssid, 0, sizeof(*ssid));
+	ssid->mode = G_SUPPLICANT_MODE_INFRA;
 	ssid->ssid = connman_network_get_blob(network, "WiFi.SSID",
 						&ssid->ssid_len);
 	security = connman_network_get_string(network, "WiFi.Security");
