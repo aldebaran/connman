@@ -70,6 +70,8 @@ struct wifi_data {
 	unsigned int watch;
 };
 
+static GList *iface_list = NULL;
+
 static int get_bssid(struct connman_device *device,
 				unsigned char *bssid, unsigned int *bssid_len)
 {
@@ -159,6 +161,8 @@ static int wifi_probe(struct connman_device *device)
 	wifi->watch = connman_rtnl_add_newlink_watch(wifi->index,
 							wifi_newlink, device);
 
+	iface_list = g_list_append(iface_list, wifi);
+
 	return 0;
 }
 
@@ -167,6 +171,11 @@ static void wifi_remove(struct connman_device *device)
 	struct wifi_data *wifi = connman_device_get_data(device);
 
 	DBG("device %p", device);
+
+	if (wifi == NULL)
+		return;
+
+	iface_list = g_list_remove(iface_list, wifi);
 
 	if (wifi->pending_network != NULL) {
 		connman_network_unref(wifi->pending_network);
