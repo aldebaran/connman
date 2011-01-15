@@ -2685,14 +2685,14 @@ static void add_network_mode(DBusMessageIter *dict, GSupplicantSSID *ssid)
 static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
-	dbus_uint32_t scan_ssid = 1;
 	struct interface_connect_data *data = user_data;
 	GSupplicantSSID *ssid = data->ssid;
 
 	supplicant_dbus_dict_open(iter, &dict);
 
-	supplicant_dbus_dict_append_basic(&dict, "scan_ssid",
-					 DBUS_TYPE_UINT32, &scan_ssid);
+	if (ssid->scan_ssid)
+		supplicant_dbus_dict_append_basic(&dict, "scan_ssid",
+					 DBUS_TYPE_UINT32, &ssid->scan_ssid);
 
 	if (ssid->freq)
 		supplicant_dbus_dict_append_basic(&dict, "frequency",

@@ -107,6 +107,7 @@ typedef enum {
 struct _GSupplicantSSID {
 	const void *ssid;
 	unsigned int ssid_len;
+	unsigned int scan_ssid;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
 	unsigned int freq;
