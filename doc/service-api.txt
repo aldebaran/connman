@@ -243,7 +243,9 @@ Properties	string State [readonly]
 		boolean AutoConnect [readwrite]
 
 			If set to true, this service will auto-connect
-			when not other connection is available.
+			when no other connection is available.
+
+			The service won't auto-connect while roaming.
 
 			For favorite services it is possible to change
 			this value to prevent or permit automatic
