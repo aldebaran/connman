@@ -1866,7 +1866,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_has_prefix(name, "AutoConnect") == TRUE) {
+	if (g_str_equal(name, "AutoConnect") == TRUE) {
 		connman_bool_t autoconnect;
 
 		if (type != DBUS_TYPE_BOOLEAN)
