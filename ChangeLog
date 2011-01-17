@@ -1,3 +1,12 @@
+ver 0.66:
+	Fix multiple set of memory leaks.
+	Fix issue with WPA supplicant phase2 values.
+	Fix issue with WiFi access points after kill/restart.
+	Fix issue with correct PACrunner configuration loading.
+	Add support for loading provision files at runtime.
+	Add support for setting proxy auto-configuration.
+	Add support for IPv6 auto-configured addresses.
+
 ver 0.65:
 	Use new WiFi plugin by default.
 	Fix issue with handling already powered devices.
