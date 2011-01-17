@@ -268,16 +268,6 @@ Properties	string State [readonly]
 			sometimes data plan specific. Possible examples
 			are "isp.cingular" or "internet.t-mobile".
 
-		string MCC [readonly]
-
-			If the service is Cellular, then this property
-			contains the Mobile Country Code.
-
-		string MNC [readonly]
-
-			If the service is Cellular, then this property
-			contains the Mobile Network Code.
-
 		boolean Roaming [readonly]
 
 			This property indicates if this service is roaming.
