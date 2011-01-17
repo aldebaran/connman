@@ -1391,13 +1391,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		connman_dbus_dict_append_basic(dict, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
 
-		if (service->mcc != NULL && service->mnc != NULL) {
-			connman_dbus_dict_append_basic(dict, "MCC",
-					DBUS_TYPE_STRING, &service->mcc);
-			connman_dbus_dict_append_basic(dict, "MNC",
-					DBUS_TYPE_STRING, &service->mnc);
-		}
-
 		if (service->apn != NULL) {
 			connman_dbus_dict_append_basic(dict, "APN",
 					DBUS_TYPE_STRING, &service->apn);
