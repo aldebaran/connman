@@ -1515,6 +1515,9 @@ int __connman_rtnl_init(void)
 	channel = g_io_channel_unix_new(sk);
 	g_io_channel_set_close_on_unref(channel, TRUE);
 
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
 	g_io_add_watch(channel, G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 							netlink_event, NULL);
 
