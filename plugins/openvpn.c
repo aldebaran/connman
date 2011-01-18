@@ -183,11 +183,6 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	dbus_message_iter_get_basic(&iter, &reason);
 	dbus_message_iter_next(&iter);
 
-	dbus_message_iter_init(msg, &iter);
-
-	dbus_message_iter_get_basic(&iter, &reason);
-	dbus_message_iter_next(&iter);
-
 	if (!provider) {
 		connman_error("No provider found");
 		return VPN_STATE_FAILURE;
