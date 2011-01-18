@@ -1,3 +1,6 @@
+ver 0.66.1
+	ConnMan 0.66 code merge
+
 ver 0.64.2
 	Already powered devices fix (Fixes BMC#10397).
 	gdhcp socket initialisation fix.
