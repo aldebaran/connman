@@ -1331,17 +1331,22 @@ static gboolean netlink_event(GIOChannel *chan,
 {
 	unsigned char buf[4096];
 	gsize len;
-	GIOError err;
+	GIOStatus status;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
 	memset(buf, 0, sizeof(buf));
 
-	err = g_io_channel_read(chan, (gchar *) buf, sizeof(buf), &len);
-	if (err) {
-		if (err == G_IO_ERROR_AGAIN)
-			return TRUE;
+	status = g_io_channel_read_chars(chan, (gchar *) buf,
+						sizeof(buf), &len, NULL);
+
+	switch (status) {
+	case G_IO_STATUS_NORMAL:
+		break;
+	case G_IO_STATUS_AGAIN:
+		return TRUE;
+	default:
 		return FALSE;
 	}
 

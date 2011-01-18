@@ -421,20 +421,22 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 	char buffer[256];
 	char *next_event;
 	gsize bytes_read;
-	GIOError err;
+	GIOStatus status;
 
 	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		inotify_watch = 0;
 		return FALSE;
 	}
 
-	err = g_io_channel_read(channel, buffer,
-					sizeof(buffer) - 1, &bytes_read);
+	status = g_io_channel_read_chars(channel, buffer,
+					sizeof(buffer) -1, &bytes_read, NULL);
 
-	if (err != G_IO_ERROR_NONE) {
-		if (err == G_IO_ERROR_AGAIN)
-			return TRUE;
-
+	switch (status) {
+	case G_IO_STATUS_NORMAL:
+		break;
+	case G_IO_STATUS_AGAIN:
+		return TRUE;
+	default:
 		connman_error("Reading from inotify channel failed");
 		inotify_watch = 0;
 		return FALSE;
