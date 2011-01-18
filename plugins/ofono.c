@@ -25,6 +25,7 @@
 #endif
 
 #include <errno.h>
+#include <stdlib.h>
 
 #include <gdbus.h>
 #include <string.h>
@@ -36,7 +37,10 @@
 #include <connman/network.h>
 #include <connman/dbus.h>
 #include <connman/inet.h>
+#include <connman/technology.h>
 #include <connman/log.h>
+
+#include "mcc.h"
 
 #define OFONO_SERVICE			"org.ofono"
 
@@ -747,7 +751,7 @@ static void modem_registration_changed(struct modem_data *modem,
 	const char *key;
 	int type;
 	connman_uint8_t strength;
-	char const *name, *status;
+	char const *name, *status, *mcc_s;
 
 	dbus_message_iter_get_basic(entry, &key);
 
@@ -770,6 +774,19 @@ static void modem_registration_changed(struct modem_data *modem,
 	} else if (g_str_equal(key, "Status") && type == DBUS_TYPE_STRING) {
 		dbus_message_iter_get_basic(&iter, &status);
 		modem_roaming_changed(modem, status);
+	} else if (g_str_equal(key, "MobileCountryCode") &&
+					type == DBUS_TYPE_STRING) {
+		int mcc;
+		char *alpha2;
+
+		dbus_message_iter_get_basic(&iter, &mcc_s);
+
+		mcc = atoi(mcc_s);
+		if (mcc > 799)
+			return;
+
+		alpha2 = mcc_country_codes[mcc - 200];
+		connman_technology_set_regdom(alpha2);
 	}
 
 }
@@ -1001,6 +1018,7 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	dbus_bool_t powered = FALSE;
 	dbus_bool_t online = FALSE;
 	dbus_bool_t has_online = FALSE;
+	dbus_bool_t locked = FALSE;
 	gboolean has_sim = FALSE;
 	gboolean has_reg = FALSE;
 	gboolean has_gprs = FALSE;
@@ -1032,6 +1050,8 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 
 		if (g_str_equal(key, "Powered") == TRUE)
 			dbus_message_iter_get_basic(&value, &powered);
+		else if (g_str_equal(key, "Lockdown") == TRUE)
+			dbus_message_iter_get_basic(&value, &locked);
 		else if (g_str_equal(key, "Online") == TRUE) {
 			has_online = TRUE;
 			dbus_message_iter_get_basic(&value, &online);
@@ -1043,6 +1063,9 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 
 		dbus_message_iter_next(prop);
 	}
+
+	if (locked)
+		return;
 
 	if (!powered)
 		modem_change_powered(path, TRUE);
@@ -1173,6 +1196,14 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &online);
 
 		update_modem_online(modem, online);
+	} else if (g_str_equal(key, "Lockdown") == TRUE) {
+		dbus_bool_t locked;
+
+		dbus_message_iter_get_basic(&value, &locked);
+
+		if (!locked)
+			modem_change_powered(path, TRUE);
+
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		gboolean has_sim = modem_has_sim(&value);
 		gboolean has_reg = modem_has_reg(&value);
@@ -1480,19 +1511,21 @@ static void set_connected(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		connman_network_set_method(network, method);
+		connman_network_set_ipv4_method(network, method);
+
+		connman_network_set_connected(network, connected);
 
 		if (connected == FALSE)
 			cleanup_ipconfig(network);
 
-		connman_network_set_connected(network, connected);
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		connman_network_set_method(network, method);
+		connman_network_set_ipv4_method(network, method);
 
 		connman_network_set_connected(network, connected);
 		break;

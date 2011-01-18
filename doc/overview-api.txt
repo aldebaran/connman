@@ -37,7 +37,7 @@ the order of services in this list.
 	| Other WiMAX      (strength 50)        |
 	+---------------------------------------+
 
-If non of the services has been used before the sorting order will be done
+If none of the services has been used before the sorting order will be done
 with these priorities:
 
 	1. Ethernet	(lower index numbers first)
@@ -63,12 +63,12 @@ before others since it is more likely they are selected first. The signal
 strength value is normalized to 0-100 (effectively a percentage) and allows
 an easy sorting.
 
-If the signal strength is identical than the WiMAX network should be shown
+If the signal strength is identical then the WiMAX network should be shown
 first since it is a licensed spectrum and more reliable. Also the number
 of WiMAX networks will be smaller than the number of WiFi since that operates
 in an unlicensed spectrum.
 
-WiFi networks with the same signal strength are then sorted by its security
+WiFi networks with the same signal strength are then sorted by their security
 setting. WPA2 encrypted networks should be preferred over WPA/WEP and also
 unencrypted ones. After that they will be sorted by the SSID in alphabetical
 order.
@@ -122,13 +122,13 @@ remove the favorite selection.
 	|                                       |
 
 This means that all services with an order > 0 have favorite=yes and all
-other have favorite=no setting. The favorite setting is exposed via a
+others have favorite=no setting. The favorite setting is exposed via a
 property over the service interface. As mentioned above, the order number
 is only used internally.
 
-Within Connection Manager many service can be connected at the same time and
+Within Connection Manager many services can be connected at the same time and
 also have an IP assignment. However only one can have the default route. The
-service with the the default route will always be sorted at the top of the
+service with the default route will always be sorted at the top of the
 list.
 
 	+---------------------------------------+
@@ -230,8 +230,8 @@ In case of WiFi this will be the SSID value. The SSID is a binary array and
 will be converted into printable form. Unprintable characters are replaced
 with spaces.
 
-For WiMAX networks the provide name like Clear or X-OHM will be used. This
-name either comes directly from the networks itself or from a provisioning
+For WiMAX networks the provider name like Clear or X-OHM will be used. This
+name either comes directly from the network itself or from a provisioning
 database of the WiMAX service.
 
 For Bluetooth the device alias is used. The alias is different since it
@@ -382,7 +382,7 @@ just telling it to actually connect:
 
 	service.Connect()  or  service.Disconnect()
 
-It is possible to connect multiple service if the underlying technology
+It is possible to connect multiple services if the underlying technology
 allows it. For example it would be possible to connect to a WiFi network
 and a Bluetooth service at the same time. Trying to connect to a second WiFi
 network with the same WiFi hardware would result in an automatic disconnect
@@ -393,7 +393,7 @@ can fail for one reason or another. Application should be able to handle
 such errors and will also be notified of changes via signals.
 
 In future versions Connection Manager will interact with an agent to confirm
-certain transaction with the user. This functionality is currently not
+certain transactions with the user. This functionality is currently not
 implemented.
 
 To monitor the current status of a service the state property can be used. It
@@ -403,6 +403,6 @@ gives detailed information about the current progress.
 
 	print properties["State"]
 
-All state changes are also send via the PropertyChanged signal on the
+All state changes are also sent via the PropertyChanged signal on the
 service interface. This allows asynchronous monitoring without having to poll
 Connection Manager for changes.

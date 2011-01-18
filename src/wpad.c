@@ -72,7 +72,7 @@ static void wpad_result(GResolvResultStatus status,
 		char *url;
 
 		if (results == NULL || g_strv_length(results) == 0)
-			return;
+			goto failed;
 
 		url = g_strdup_printf("http://%s/wpad.dat", wpad->hostname);
 
@@ -90,14 +90,14 @@ static void wpad_result(GResolvResultStatus status,
 	hostname = wpad->hostname;
 
 	if (strlen(hostname) < 6)
-		return;
+		goto failed;
 
 	ptr = strchr(hostname + 5, '.');
 	if (ptr == NULL || strlen(ptr) < 2)
-		return;
+		goto failed;
 
 	if (strchr(ptr + 1, '.') == NULL)
-		return;
+		goto failed;
 
 	wpad->hostname = g_strdup_printf("wpad.%s", ptr + 1);
 	g_free(hostname);
@@ -106,9 +106,15 @@ static void wpad_result(GResolvResultStatus status,
 
 	g_resolv_lookup_hostname(wpad->resolv, wpad->hostname,
 							wpad_result, wpad);
+
+	return;
+
+failed:
+	connman_service_set_proxy_method(wpad->service,
+				CONNMAN_SERVICE_PROXY_METHOD_DIRECT);
 }
 
-void __connman_wpad_start(struct connman_service *service)
+int __connman_wpad_start(struct connman_service *service)
 {
 	struct connman_wpad *wpad;
 	const char *domainname, *nameserver;
@@ -117,29 +123,29 @@ void __connman_wpad_start(struct connman_service *service)
 	DBG("service %p", service);
 
 	if (wpad_list == NULL)
-		return;
+		return -EINVAL;
 
 	index = __connman_service_get_index(service);
 	if (index < 0)
-		return;
+		return -EINVAL;
 
 	domainname = connman_service_get_domainname(service);
 	if (domainname == NULL)
-		return;
+		return -EINVAL;
 
 	nameserver = connman_service_get_nameserver(service);
 	if (nameserver == NULL)
-		return;
+		return -EINVAL;
 
 	wpad = g_try_new0(struct connman_wpad, 1);
 	if (wpad == NULL)
-		return;
+		return -ENOMEM;
 
 	wpad->service = service;
 	wpad->resolv = g_resolv_new(index);
 	if (wpad->resolv == NULL) {
 		g_free(wpad);
-		return;
+		return -ENOMEM;
 	}
 
 	if (getenv("CONNMAN_RESOLV_DEBUG"))
@@ -155,6 +161,8 @@ void __connman_wpad_start(struct connman_service *service)
 							wpad_result, wpad);
 
 	g_hash_table_replace(wpad_list, GINT_TO_POINTER(index), wpad);
+
+	return 0;
 }
 
 void __connman_wpad_stop(struct connman_service *service)

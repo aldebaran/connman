@@ -30,6 +30,7 @@
 #include <sys/ioctl.h>
 #include <arpa/inet.h>
 #include <netinet/ether.h>
+#include <netinet/icmp6.h>
 #include <net/if_arp.h>
 #include <linux/if.h>
 #include <linux/netlink.h>
@@ -175,6 +176,10 @@ static void read_uevent(struct interface_data *interface)
 		} else if (strcmp(line + 8, "wimax") == 0) {
 			interface->service_type = CONNMAN_SERVICE_TYPE_WIMAX;
 			interface->device_type = CONNMAN_DEVICE_TYPE_WIMAX;
+		} else if (strcmp(line + 8, "gadget") == 0) {
+			interface->service_type = CONNMAN_SERVICE_TYPE_GADGET;
+			interface->device_type = CONNMAN_DEVICE_TYPE_GADGET;
+
 		} else {
 			interface->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 			interface->device_type = CONNMAN_DEVICE_TYPE_UNKNOWN;
@@ -401,6 +406,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	struct ether_addr compare = {{ 0, 0, 0, 0, 0, 0 }};
 	struct rtnl_link_stats stats;
 	unsigned char operstate = 0xff;
+	struct interface_data *interface;
 	const char *ifname = NULL;
 	unsigned int mtu = 0;
 	char ident[13], str[18];
@@ -444,10 +450,8 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 						ifname, index, operstate,
 						operstate2str(operstate));
 
-	if (g_hash_table_lookup(interface_list,
-					GINT_TO_POINTER(index)) == NULL) {
-		struct interface_data *interface;
-
+	interface = g_hash_table_lookup(interface_list, GINT_TO_POINTER(index));
+	if (interface == NULL) {
 		interface = g_new0(struct interface_data, 1);
 		interface->index = index;
 		interface->name = g_strdup(ifname);
@@ -1020,6 +1024,145 @@ static void rtnl_delroute(struct nlmsghdr *hdr)
 						msg, RTM_PAYLOAD(hdr));
 }
 
+static void *rtnl_nd_opt_rdnss(struct nd_opt_hdr *opt, guint32 *lifetime,
+			       int *nr_servers)
+{
+	guint32 *optint = (void *)opt;
+
+	if (opt->nd_opt_len < 3)
+		return NULL;
+
+	if (*lifetime > ntohl(optint[1]))
+		*lifetime = ntohl(optint[1]);
+
+	/* nd_opt_len is in units of 8 bytes. The header is 1 unit (8 bytes)
+	   and each address is another 2 units (16 bytes).
+	   So the number of addresses (given rounding) is nd_opt_len/2 */
+	*nr_servers = opt->nd_opt_len / 2;
+
+	/* And they start 8 bytes into the packet, or two guint32s in. */
+	return optint + 2;
+}
+
+static const char **rtnl_nd_opt_dnssl(struct nd_opt_hdr *opt, guint32 *lifetime)
+{
+	const char **domains = NULL;
+	guint32 *optint = (void *)opt;
+	unsigned char *optc = (void *)&optint[2];
+	int data_len = (opt->nd_opt_len * 8) - 8;
+	int nr_domains = 0;
+	int i, tmp;
+
+	if (*lifetime > ntohl(optint[1]))
+		*lifetime = ntohl(optint[1]);
+
+	/* Turn it into normal strings by converting the length bytes into '.',
+	   and count how many search domains there are while we're at it. */
+	i = 0;
+	while (i < data_len) {
+		if (optc[i] > 0x3f) {
+			DBG("DNSSL contains compressed elements in violation of RFC6106");
+			return NULL;
+		}
+
+		if (optc[i] == 0) {
+			nr_domains++;
+			i++;
+			/* Check for double zero */
+			if (i < data_len && optc[i] == 0)
+				break;
+			continue;
+		}
+
+		tmp = i;
+		i += optc[i] + 1;
+
+		if (i >= data_len) {
+			DBG("DNSSL data overflows option length");
+			return NULL;
+		}
+
+		optc[tmp] = '.';
+	}
+
+	domains = g_try_new0(const char *, nr_domains + 1);
+	if (!domains)
+		return NULL;
+
+	/* Now point to the normal strings, missing out the leading '.' that
+	   each of them will have now. */
+	for (i = 0; i < nr_domains; i++) {
+		domains[i] = (char *)optc + 1;
+		optc += strlen((char *)optc) + 1;
+	}
+
+	return domains;
+}
+
+static void rtnl_newnduseropt(struct nlmsghdr *hdr)
+{
+	struct nduseroptmsg *msg = (struct nduseroptmsg *) NLMSG_DATA(hdr);
+	struct nd_opt_hdr *opt = (void *)&msg[1];
+	guint32 lifetime = -1;
+	const char **domains = NULL;
+	struct in6_addr *servers;
+	int nr_servers = 0;
+	int msglen = msg->nduseropt_opts_len;
+	char *interface;
+
+	DBG("family %02x index %x len %04x type %02x code %02x",
+	    msg->nduseropt_family, msg->nduseropt_ifindex,
+	    msg->nduseropt_opts_len, msg->nduseropt_icmp_type,
+	    msg->nduseropt_icmp_code);
+
+	if (msg->nduseropt_family != AF_INET6 ||
+	    msg->nduseropt_icmp_type != ND_ROUTER_ADVERT ||
+	    msg->nduseropt_icmp_code != 0)
+		return;
+
+	interface = connman_inet_ifname(msg->nduseropt_ifindex);
+	if (!interface)
+		return;
+
+	for (opt = (void *)&msg[1];
+	     msglen >= 2 && msglen >= opt->nd_opt_len && opt->nd_opt_len;
+	     msglen -= opt->nd_opt_len,
+		     opt = ((void *)opt) + opt->nd_opt_len*8) {
+
+		DBG("nd opt type %d len %d\n",
+		    opt->nd_opt_type, opt->nd_opt_len);
+
+		if (opt->nd_opt_type == 25)
+			servers = rtnl_nd_opt_rdnss(opt, &lifetime,
+						    &nr_servers);
+		else if (opt->nd_opt_type == 31)
+			domains = rtnl_nd_opt_dnssl(opt, &lifetime);
+	}
+
+	if (nr_servers) {
+		int i, j;
+		char buf[40];
+
+		for (i = 0; i < nr_servers; i++) {
+			if (!inet_ntop(AF_INET6, servers + i, buf, sizeof(buf)))
+				continue;
+
+			if (domains == NULL || domains[0] == NULL) {
+				connman_resolver_append_lifetime(interface,
+							NULL, buf, lifetime);
+				continue;
+			}
+
+			for (j = 0; domains[j]; j++)
+				connman_resolver_append_lifetime(interface,
+								domains[j],
+								buf, lifetime);
+		}
+	}
+	g_free(domains);
+	g_free(interface);
+}
+
 static const char *type2string(uint16_t type)
 {
 	switch (type) {
@@ -1047,6 +1190,8 @@ static const char *type2string(uint16_t type)
 		return "NEWROUTE";
 	case RTM_DELROUTE:
 		return "DELROUTE";
+	case RTM_NEWNDUSEROPT:
+		return "NEWNDUSEROPT";
 	default:
 		return "UNKNOWN";
 	}
@@ -1170,6 +1315,9 @@ static void rtnl_message(void *buf, size_t len)
 			break;
 		case RTM_DELROUTE:
 			rtnl_delroute(hdr);
+			break;
+		case RTM_NEWNDUSEROPT:
+			rtnl_newnduseropt(hdr);
 			break;
 		}
 
@@ -1351,7 +1499,8 @@ int __connman_rtnl_init(void)
 	memset(&addr, 0, sizeof(addr));
 	addr.nl_family = AF_NETLINK;
 	addr.nl_groups = RTMGRP_LINK | RTMGRP_IPV4_IFADDR | RTMGRP_IPV4_ROUTE |
-				RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE;
+				RTMGRP_IPV6_IFADDR | RTMGRP_IPV6_ROUTE |
+				(1<<(RTNLGRP_ND_USEROPT-1));
 
 	if (bind(sk, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		close(sk);

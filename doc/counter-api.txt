@@ -27,7 +27,7 @@ Methods		void Release()
 			When "home" counter is active, then "roaming" counter
 			will contain an empty dictionary and vise-versa.
 
-			The dictionary argument contains following entries:
+			The dictionary argument contains the following entries:
 
 				RX.Packets
 

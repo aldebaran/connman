@@ -215,6 +215,91 @@ int __connman_agent_request_input(struct connman_service *service,
 	return -EIO;
 }
 
+struct report_error_data {
+	struct connman_service *service;
+	report_error_cb_t callback;
+	void *user_data;
+};
+
+static void report_error_reply(DBusPendingCall *call, void *user_data)
+{
+	struct report_error_data *report_error = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	gboolean retry = FALSE;
+	const char *dbus_err;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		dbus_err = dbus_message_get_error_name(reply);
+		if (dbus_err != NULL &&
+			strcmp(dbus_err,
+				CONNMAN_AGENT_INTERFACE ".Error.Retry") == 0)
+			retry = TRUE;
+	}
+
+	report_error->callback(report_error->service, retry,
+			report_error->user_data);
+	connman_service_unref(report_error->service);
+	g_free(report_error);
+	dbus_message_unref(reply);
+}
+
+int __connman_agent_report_error(struct connman_service *service,
+				const char *error,
+				report_error_cb_t callback, void *user_data)
+{
+	DBusMessage *message;
+	DBusMessageIter iter;
+	const char *path;
+	struct report_error_data *report_error;
+	DBusPendingCall *call;
+
+	if (service == NULL || agent_path == NULL || error == NULL ||
+		callback == NULL)
+		return -ESRCH;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+					CONNMAN_AGENT_INTERFACE,
+					"ReportError");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+
+	path = __connman_service_get_path(service);
+	dbus_message_iter_append_basic(&iter,
+				DBUS_TYPE_OBJECT_PATH, &path);
+	dbus_message_iter_append_basic(&iter,
+				DBUS_TYPE_STRING, &error);
+
+	report_error = g_try_new0(struct report_error_data, 1);
+	if (report_error == NULL) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, -1) == FALSE) {
+		dbus_message_unref(message);
+		g_free(report_error);
+		return -ESRCH;
+	}
+
+	if (call == NULL) {
+		dbus_message_unref(message);
+		g_free(report_error);
+		return -ESRCH;
+	}
+
+	report_error->service = connman_service_ref(service);
+	report_error->callback = callback;
+	report_error->user_data = user_data;
+	dbus_pending_call_set_notify(call, report_error_reply,
+				report_error, NULL);
+	dbus_message_unref(message);
+
+	return -EIO;
+}
+
 int __connman_agent_init(void)
 {
 	DBG("");

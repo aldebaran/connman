@@ -53,8 +53,6 @@ DBusMessage *__connman_error_operation_timeout(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_service(DBusMessage *msg);
 DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 
-int __connman_selftest(void);
-
 #include <connman/types.h>
 
 int __connman_manager_init(gboolean compat);
@@ -79,9 +77,14 @@ struct connman_service *service;
 
 typedef void (* passphrase_cb_t) (struct connman_service *service,
 				const char *passphrase, void *user_data);
-
+typedef void (* report_error_cb_t) (struct connman_service *service,
+				gboolean retry, void *user_data);
 int __connman_agent_request_input(struct connman_service *service,
 				passphrase_cb_t callback, void *user_data);
+int __connman_agent_report_error(struct connman_service *service,
+				const char *error,
+				report_error_cb_t callback, void *user_data);
+
 
 #include <connman/log.h>
 
@@ -122,8 +125,6 @@ void __connman_rfkill_cleanup(void);
 
 int __connman_resolver_init(void);
 void __connman_resolver_cleanup(void);
-
-int __connman_resolver_selftest(void);
 
 #include <connman/storage.h>
 
@@ -239,7 +240,7 @@ void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
-		enum connman_ipconfig_type type, DBusMessageIter *array);
+							DBusMessageIter *array);
 void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 enum connman_ipconfig_method __connman_ipconfig_get_method(
@@ -289,7 +290,7 @@ gboolean __connman_connection_update_gateway(void);
 
 int __connman_wpad_init(void);
 void __connman_wpad_cleanup(void);
-void __connman_wpad_start(struct connman_service *service);
+int __connman_wpad_start(struct connman_service *service);
 void __connman_wpad_stop(struct connman_service *service);
 
 int __connman_wispr_init(void);
@@ -351,6 +352,8 @@ int __connman_device_disable(struct connman_device *device);
 int __connman_device_disable_persistent(struct connman_device *device);
 int __connman_device_disconnect(struct connman_device *device);
 
+connman_bool_t __connman_device_scanning(struct connman_device *device);
+
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
 void __connman_device_set_reconnect(struct connman_device *device,
@@ -374,7 +377,8 @@ int __connman_network_disconnect(struct connman_network *network);
 int __connman_network_clear_ipconfig(struct connman_network *network,
 					struct connman_ipconfig *ipconfig);
 int __connman_network_set_ipconfig(struct connman_network *network,
-					struct connman_ipconfig *ipconfig);
+				struct connman_ipconfig *ipconfig_ipv4,
+				struct connman_ipconfig *ipconfig_ipv6);
 
 connman_bool_t __connman_network_has_driver(struct connman_network *network);
 
@@ -457,9 +461,13 @@ struct connman_service *__connman_service_create_from_provider(struct connman_pr
 void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
 
-void __connman_service_create_ipconfig(struct connman_service *service,
+void __connman_service_create_ip4config(struct connman_service *service,
 								int index);
-struct connman_ipconfig *__connman_service_get_ipconfig(
+void __connman_service_create_ip6config(struct connman_service *service,
+								int index);
+struct connman_ipconfig *__connman_service_get_ip4config(
+				struct connman_service *service);
+struct connman_ipconfig *__connman_service_get_ip6config(
 				struct connman_service *service);
 const char *__connman_service_get_ident(struct connman_service *service);
 const char *__connman_service_get_path(struct connman_service *service);
@@ -508,7 +516,7 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase);
 
-void __connman_service_notify(struct connman_ipconfig *ipconfig,
+void __connman_service_notify(struct connman_service *service,
 			unsigned int rx_packets, unsigned int tx_packets,
 			unsigned int rx_bytes, unsigned int tx_bytes,
 			unsigned int rx_error, unsigned int tx_error,
@@ -548,6 +556,7 @@ void __connman_notifier_connect(enum connman_service_type type);
 void __connman_notifier_disconnect(enum connman_service_type type);
 void __connman_notifier_offlinemode(connman_bool_t enabled);
 void __connman_notifier_default_changed(struct connman_service *service);
+void __connman_notifier_proxy_changed(struct connman_service *service);
 
 connman_bool_t __connman_notifier_is_registered(enum connman_service_type type);
 connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type);

@@ -89,7 +89,9 @@ connman_bool_t connman_network_get_connected(struct connman_network *network);
 
 connman_bool_t connman_network_get_associating(struct connman_network *network);
 
-void connman_network_set_method(struct connman_network *network,
+void connman_network_set_ipv4_method(struct connman_network *network,
+					enum connman_ipconfig_method method);
+void connman_network_set_ipv6_method(struct connman_network *network,
 					enum connman_ipconfig_method method);
 
 int connman_network_set_address(struct connman_network *network,
@@ -105,8 +107,6 @@ int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
 const char *connman_network_get_string(struct connman_network *network,
 							const char *key);
-int connman_network_set_passphrase(struct connman_network *network,
-					const char* passphrase);
 int connman_network_set_bool(struct connman_network *network,
 					const char *key, connman_bool_t value);
 connman_bool_t connman_network_get_bool(struct connman_network *network,

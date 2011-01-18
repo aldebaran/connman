@@ -38,6 +38,9 @@ struct connman_technology;
 
 void connman_technology_tethering_notify(struct connman_technology *technology,
 							connman_bool_t enabled);
+int connman_technology_set_regdom(const char *alpha2);
+void connman_technology_regdom_notify(struct connman_technology *technology,
+							const char *alpha2);
 
 struct connman_technology_driver {
 	const char *name;
@@ -52,6 +55,8 @@ struct connman_technology_driver {
 								int index);
 	int (*set_tethering) (struct connman_technology *technology,
 				const char *bridge, connman_bool_t enabled);
+	int (*set_regdom) (struct connman_technology *technology,
+						const char *alpha2);
 };
 
 int connman_technology_driver_register(struct connman_technology_driver *driver);

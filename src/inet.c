@@ -31,6 +31,7 @@
 #include <sys/stat.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
+#include <linux/sockios.h>
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <net/ethernet.h>
@@ -458,6 +459,7 @@ struct connman_device *connman_inet_create_device(int index)
 
 	if (__connman_element_device_isfiltered(devname) == TRUE) {
 		connman_info("Ignoring interface %s (filtered)", devname);
+		g_free(devname);
 		return NULL;
 	}
 
@@ -469,6 +471,7 @@ struct connman_device *connman_inet_create_device(int index)
 		g_free(devname);
 		return NULL;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "");
@@ -492,6 +495,7 @@ struct connman_device *connman_inet_create_device(int index)
 	case CONNMAN_DEVICE_TYPE_GPS:
 		break;
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
@@ -613,7 +617,20 @@ int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 	return 0;
 }
 
-int connman_inet_add_host_route(int index, const char *host, const char *gateway)
+int connman_inet_add_host_route(int index, const char *host,
+				const char *gateway)
+{
+	return connman_inet_add_network_route(index, host, gateway, NULL);
+}
+
+int connman_inet_del_host_route(int index, const char *host)
+{
+	return connman_inet_del_network_route(index, host);
+}
+
+int connman_inet_add_network_route(int index, const char *host,
+					const char *gateway,
+					const char *netmask)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
@@ -635,9 +652,11 @@ int connman_inet_add_host_route(int index, const char *host, const char *gateway
 	DBG("ifname %s", ifr.ifr_name);
 
 	memset(&rt, 0, sizeof(rt));
-	rt.rt_flags = RTF_UP | RTF_HOST;
+	rt.rt_flags = RTF_UP;
 	if (gateway != NULL)
 		rt.rt_flags |= RTF_GATEWAY;
+	if (netmask == NULL)
+		rt.rt_flags |= RTF_HOST;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -655,6 +674,10 @@ int connman_inet_add_host_route(int index, const char *host, const char *gateway
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 	addr.sin_addr.s_addr = INADDR_ANY;
+	if (netmask != NULL)
+		addr.sin_addr.s_addr = inet_addr(netmask);
+	else
+		addr.sin_addr.s_addr = INADDR_ANY;
 	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
 	rt.rt_dev = ifr.ifr_name;
@@ -669,7 +692,7 @@ int connman_inet_add_host_route(int index, const char *host, const char *gateway
 	return err;
 }
 
-int connman_inet_del_host_route(int index, const char *host)
+int connman_inet_del_network_route(int index, const char *host)
 {
 	struct ifreq ifr;
 	struct rtentry rt;
@@ -1099,4 +1122,62 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 	if_addr = addr->sin_addr.s_addr;
 
 	return ((if_addr & netmask_addr) == (host_addr & netmask_addr));
+}
+
+int connman_inet_remove_from_bridge(int index, const char *bridge)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (bridge == NULL)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return sk;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCBRDELIF, &ifr);
+
+	close(sk);
+
+	if (err < 0) {
+		connman_error("Remove interface from bridge error %s",
+							strerror(errno));
+		return err;
+	}
+
+	return 0;
+}
+
+int connman_inet_add_to_bridge(int index, const char *bridge)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	if (bridge == NULL)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
+		return sk;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCBRADDIF, &ifr);
+
+	close(sk);
+
+	if (err < 0) {
+		connman_error("Add interface to bridge error %s",
+							strerror(errno));
+		return err;
+	}
+
+	return 0;
 }

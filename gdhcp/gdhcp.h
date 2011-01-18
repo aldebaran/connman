@@ -45,14 +45,17 @@ typedef enum {
 
 typedef enum {
 	G_DHCP_CLIENT_EVENT_LEASE_AVAILABLE,
+	G_DHCP_CLIENT_EVENT_IPV4LL_AVAILABLE,
 	G_DHCP_CLIENT_EVENT_NO_LEASE,
 	G_DHCP_CLIENT_EVENT_LEASE_LOST,
+	G_DHCP_CLIENT_EVENT_IPV4LL_LOST,
 	G_DHCP_CLIENT_EVENT_ADDRESS_CONFLICT,
 } GDHCPClientEvent;
 
 typedef enum {
 	G_DHCP_IPV4,
 	G_DHCP_IPV6,
+	G_DHCP_IPV4LL,
 } GDHCPType;
 
 #define G_DHCP_SUBNET		0x01
@@ -88,6 +91,7 @@ GDHCPClientError g_dhcp_client_set_send(GDHCPClient *client,
 						const char *option_value);
 
 char *g_dhcp_client_get_address(GDHCPClient *client);
+char *g_dhcp_client_get_netmask(GDHCPClient *client);
 GList *g_dhcp_client_get_option(GDHCPClient *client,
 						unsigned char option_code);
 int g_dhcp_client_get_index(GDHCPClient *client);

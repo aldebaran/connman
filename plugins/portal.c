@@ -52,6 +52,7 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 {
 	struct connman_location *location = user_data;
 	struct server_data *data = connman_location_get_data(location);
+	const char *str;
 	guint16 status;
 
 	if (data->request_id == 0)
@@ -59,10 +60,22 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 
 	status = g_web_result_get_status(result);
 
+	/* If status header is not available, it is a portal */
+	if (g_web_result_get_header(result, "X-ConnMan-Status", &str) == FALSE)
+		status = 302;
+
 	DBG("status %u", status);
 
 	switch (status) {
 	case 200:
+		if (g_web_result_get_header(result, "X-ConnMan-Client-IP",
+								&str) == TRUE)
+			connman_info("Client-IP: %s", str);
+
+		if (g_web_result_get_header(result, "X-ConnMan-Client-Country",
+								&str) == TRUE)
+			connman_info("Client-Country: %s", str);
+
 		connman_location_report_result(location,
 					CONNMAN_LOCATION_RESULT_ONLINE);
 		break;
@@ -105,7 +118,7 @@ static int location_detect(struct connman_location *location)
 {
 	struct server_data *data;
 	enum connman_service_type service_type;
-	const char *interface;
+	char *interface;
 	int err;
 
 	DBG("location %p", location);
@@ -123,6 +136,7 @@ static int location_detect(struct connman_location *location)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EOPNOTSUPP;
 	}
 
@@ -133,15 +147,18 @@ static int location_detect(struct connman_location *location)
 	DBG("interface %s", interface);
 
 	data = g_try_new0(struct server_data, 1);
-	if (data == NULL)
-		return -ENOMEM;
+	if (data == NULL) {
+		err = -ENOMEM;
+		goto done;
+	}
 
 	connman_location_set_data(location, data);
 
 	data->web = g_web_new(0);
 	if (data->web == NULL) {
 		g_free(data);
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto done;
 	}
 
 	if (getenv("CONNMAN_WEB_DEBUG"))
@@ -154,11 +171,14 @@ static int location_detect(struct connman_location *location)
 	err = connman_proxy_lookup(interface, STATUS_URL,
 					proxy_callback, location);
 	if (err < 0)
-		return err;
+		goto done;
 
 	connman_location_ref(location);
+	err = 0;
 
-	return 0;
+done:
+	g_free(interface);
+	return err;
 }
 
 static int location_finish(struct connman_location *location)

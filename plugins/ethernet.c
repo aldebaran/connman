@@ -33,6 +33,7 @@
 #include <glib.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
+#include <connman/technology.h>
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/inet.h>
@@ -201,6 +202,97 @@ static struct connman_device_driver ethernet_driver = {
 	.disable	= ethernet_disable,
 };
 
+static GList *cdc_interface_list = NULL;
+
+static void tech_add_interface(struct connman_technology *technology,
+			int index, const char *name, const char *ident)
+{
+	DBG("index %d name %s ident %s", index, name, ident);
+
+	if (g_list_find(cdc_interface_list,
+			GINT_TO_POINTER((int) index)) != NULL)
+		return;
+
+	cdc_interface_list = g_list_prepend(cdc_interface_list,
+					(GINT_TO_POINTER((int) index)));
+}
+
+static void tech_remove_interface(struct connman_technology *technology,
+								int index)
+{
+	DBG("index %d", index);
+
+	cdc_interface_list = g_list_remove(cdc_interface_list,
+					GINT_TO_POINTER((int) index));
+}
+
+static void enable_tethering(struct connman_technology *technology,
+						const char *bridge)
+{
+	GList *list;
+
+	for (list = cdc_interface_list; list; list = list->next) {
+		int index = GPOINTER_TO_INT(list->data);
+
+		connman_inet_ifup(index);
+
+		connman_inet_add_to_bridge(index, bridge);
+
+		connman_technology_tethering_notify(technology, TRUE);
+	}
+}
+
+static void disable_tethering(struct connman_technology *technology,
+						const char *bridge)
+{
+	GList *list;
+
+	for (list = cdc_interface_list; list; list = list->next) {
+		int index = GPOINTER_TO_INT(list->data);
+
+		connman_inet_remove_from_bridge(index, bridge);
+
+		connman_inet_ifdown(index);
+
+		connman_technology_tethering_notify(technology, FALSE);
+	}
+}
+
+static int tech_set_tethering(struct connman_technology *technology,
+				const char *bridge, connman_bool_t enabled)
+{
+	DBG("bridge %s enabled %d", bridge, enabled);
+
+	if (enabled)
+		enable_tethering(technology, bridge);
+	else
+		disable_tethering(technology, bridge);
+
+	return 0;
+}
+
+static int tech_probe(struct connman_technology *technology)
+{
+	return 0;
+}
+
+static void tech_remove(struct connman_technology *technology)
+{
+	g_list_free(cdc_interface_list);
+
+	cdc_interface_list = NULL;
+}
+
+static struct connman_technology_driver tech_driver = {
+	.name			= "cdc_ethernet",
+	.type			= CONNMAN_SERVICE_TYPE_GADGET,
+	.probe			= tech_probe,
+	.remove			= tech_remove,
+	.add_interface		= tech_add_interface,
+	.remove_interface 	= tech_remove_interface,
+	.set_tethering		= tech_set_tethering,
+};
+
 static int ethernet_init(void)
 {
 	int err;
@@ -215,11 +307,20 @@ static int ethernet_init(void)
 		return err;
 	}
 
+	err = connman_technology_driver_register(&tech_driver);
+	if (err < 0) {
+		connman_device_driver_unregister(&ethernet_driver);
+		connman_network_driver_unregister(&cable_driver);
+		return err;
+	}
+
 	return 0;
 }
 
 static void ethernet_exit(void)
 {
+	connman_technology_driver_unregister(&tech_driver);
+
 	connman_network_driver_unregister(&cable_driver);
 
 	connman_device_driver_unregister(&ethernet_driver);

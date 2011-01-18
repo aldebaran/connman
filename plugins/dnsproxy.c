@@ -29,6 +29,9 @@
 #include <stdint.h>
 #include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
@@ -83,7 +86,7 @@ struct partial_reply {
 
 struct server_data {
 	char *interface;
-	char *domain;
+	GList *domains;
 	char *server;
 	int protocol;
 	GIOChannel *channel;
@@ -95,10 +98,13 @@ struct server_data {
 };
 
 struct request_data {
-	struct sockaddr_in sin;
+	union {
+		struct sockaddr_in6 __sin6; /* Only for the length */
+		struct sockaddr sa;
+	};
+	socklen_t sa_len;
 	int client_sk;
 	int protocol;
-	socklen_t len;
 	guint16 srcid;
 	guint16 dstid;
 	guint16 altid;
@@ -153,7 +159,7 @@ static struct request_data *find_request(guint16 id)
 }
 
 static struct server_data *find_server(const char *interface,
-					const char *domain, const char *server,
+					const char *server,
 						int protocol)
 {
 	GSList *list;
@@ -168,16 +174,8 @@ static struct server_data *find_server(const char *interface,
 
 		if (g_str_equal(data->interface, interface) == TRUE &&
 				g_str_equal(data->server, server) == TRUE &&
-				data->protocol == protocol) {
-			if (domain == NULL) {
-				if (data->domain == NULL)
-					return data;
-				continue;
-			}
-
-			if (g_str_equal(data->domain, domain) == TRUE)
-				return data;
-		}
+				data->protocol == protocol)
+			return data;
 	}
 
 	return NULL;
@@ -231,7 +229,7 @@ static gboolean request_timeout(gpointer user_data)
 		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 
 		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->len);
+			     &req->sa, req->sa_len);
 	} else if (req->request && req->numserv == 0) {
 		struct domain_hdr *hdr;
 
@@ -248,8 +246,7 @@ static gboolean request_timeout(gpointer user_data)
 			hdr->id = req->srcid;
 			sk = g_io_channel_unix_get_fd(udp_listener_channel);
 			send_response(sk, req->request, req->request_len,
-					(struct sockaddr *)&req->sin,
-						sizeof(req->sin), IPPROTO_UDP);
+				      &req->sa, req->sa_len, IPPROTO_UDP);
 		}
 	}
 
@@ -317,6 +314,7 @@ static int append_query(unsigned char *buf, unsigned int size,
 static int ns_resolv(struct server_data *server, struct request_data *req,
 				gpointer request, gpointer name)
 {
+	GList *list;
 	int sk, err;
 
 	sk = g_io_channel_unix_get_fd(server->channel);
@@ -325,16 +323,22 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 	req->numserv++;
 
-	if (server->domain != NULL) {
+	for (list = server->domains; list; list = list->next) {
+		char *domain;
 		unsigned char alt[1024];
 		struct domain_hdr *hdr = (void *) &alt;
 		int altlen, domlen, offset;
+
+		domain = list->data;
+
+		if (domain == NULL)
+			continue;
 
 		offset = protocol_offset(server->protocol);
 		if (offset < 0)
 			return offset;
 
-		domlen = strlen(server->domain) + 1;
+		domlen = strlen(domain) + 1;
 		if (domlen < 5)
 			return -EINVAL;
 
@@ -345,7 +349,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		hdr->qdcount = htons(1);
 
 		altlen = append_query(alt + offset + 12, sizeof(alt) - 12,
-					name, server->domain);
+					name, domain);
 		if (altlen < 0)
 			return -EINVAL;
 
@@ -418,7 +422,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	if (protocol == IPPROTO_UDP) {
 		sk = g_io_channel_unix_get_fd(udp_listener_channel);
 		err = sendto(sk, req->resp, req->resplen, 0,
-				(struct sockaddr *) &req->sin, req->len);
+			     &req->sa, req->sa_len);
 	} else {
 		sk = req->client_sk;
 		err = send(sk, req->resp, req->resplen, 0);
@@ -433,6 +437,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 
 static void destroy_server(struct server_data *server)
 {
+	GList *list;
+
 	DBG("interface %s server %s", server->interface, server->server);
 
 	server_list = g_slist_remove(server_list, server);
@@ -450,7 +456,12 @@ static void destroy_server(struct server_data *server)
 
 	g_free(server->incoming_reply);
 	g_free(server->server);
-	g_free(server->domain);
+	for (list = server->domains; list; list = list->next) {
+		char *domain = list->data;
+
+		server->domains = g_list_remove(server->domains, domain);
+		g_free(domain);
+	}
 	g_free(server->interface);
 	g_free(server);
 }
@@ -535,6 +546,23 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 	if ((condition & G_IO_OUT) && !server->connected) {
 		GSList *list;
+		GList *domains;
+		struct server_data *udp_server;
+
+		udp_server = find_server(server->interface, server->server,
+								IPPROTO_UDP);
+		if (udp_server != NULL) {
+			for (domains = udp_server->domains; domains;
+						domains = domains->next) {
+				char *dom = domains->data;
+
+				DBG("Adding domain %s to %s",
+						dom, server->server);
+
+				server->domains = g_list_append(server->domains,
+								g_strdup(dom));
+			}
+		}
 
 		server->connected = TRUE;
 		server_list = g_slist_append(server_list, server);
@@ -644,28 +672,43 @@ static struct server_data *create_server(const char *interface,
 					const char *domain, const char *server,
 					int protocol)
 {
+	struct addrinfo hints, *rp;
 	struct server_data *data;
-	struct sockaddr_in sin;
-	int sk, type, ret;
+	int sk, ret;
 
 	DBG("interface %s server %s", interface, server);
 
+	memset(&hints, 0, sizeof(hints));
+
 	switch (protocol) {
 	case IPPROTO_UDP:
-		type = SOCK_DGRAM;
+		hints.ai_socktype = SOCK_DGRAM;
 		break;
 
 	case IPPROTO_TCP:
-		type = SOCK_STREAM;
+		hints.ai_socktype = SOCK_STREAM;
 		break;
 
 	default:
 		return NULL;
 	}
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_NUMERICHOST;
 
-	sk = socket(AF_INET, type, protocol);
+	ret = getaddrinfo(server, "53", &hints, &rp);
+	if (ret) {
+		connman_error("Failed to parse server %s address: %s\n",
+			      server, gai_strerror(ret));
+		return NULL;
+	}
+	/* Do not blindly copy this code elsewhere; it doesn't loop over the
+	   results using ->ai_next as it should. That's OK in *this* case
+	   because it was a numeric lookup; we *know* there's only one. */
+
+	sk = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
 	if (sk < 0) {
 		connman_error("Failed to create server %s socket", server);
+		freeaddrinfo(rp);
 		return NULL;
 	}
 
@@ -675,6 +718,7 @@ static struct server_data *create_server(const char *interface,
 			connman_error("Failed to bind server %s "
 						"to interface %s",
 							server, interface);
+			freeaddrinfo(rp);
 			close(sk);
 			return NULL;
 		}
@@ -683,6 +727,7 @@ static struct server_data *create_server(const char *interface,
 	data = g_try_new0(struct server_data, 1);
 	if (data == NULL) {
 		connman_error("Failed to allocate server %s data", server);
+		freeaddrinfo(rp);
 		close(sk);
 		return NULL;
 	}
@@ -690,6 +735,7 @@ static struct server_data *create_server(const char *interface,
 	data->channel = g_io_channel_unix_new(sk);
 	if (data->channel == NULL) {
 		connman_error("Failed to create server %s channel", server);
+		freeaddrinfo(rp);
 		close(sk);
 		g_free(data);
 		return NULL;
@@ -710,21 +756,36 @@ static struct server_data *create_server(const char *interface,
 						udp_server_event, data);
 
 	data->interface = g_strdup(interface);
-	data->domain = g_strdup(domain);
+	if (domain)
+		data->domains = g_list_append(data->domains, g_strdup(domain));
 	data->server = g_strdup(server);
 	data->protocol = protocol;
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr(server);
-
-	ret = connect(sk, (struct sockaddr *) &sin, sizeof(sin));
+	ret = connect(sk, rp->ai_addr, rp->ai_addrlen);
+	freeaddrinfo(rp);
 	if (ret < 0) {
 		if ((protocol == IPPROTO_TCP && errno != EINPROGRESS) ||
 				protocol == IPPROTO_UDP) {
+			GList *list;
+
 			connman_error("Failed to connect to server %s", server);
+			if (data->watch > 0)
+				g_source_remove(data->watch);
+			if (data->timeout > 0)
+				g_source_remove(data->timeout);
+
+			g_io_channel_unref(data->channel);
 			close(sk);
+
+			g_free(data->server);
+			g_free(data->interface);
+			for (list = data->domains; list; list = list->next) {
+				char *domain = list->data;
+
+				data->domains = g_list_remove(data->domains,
+									domain);
+				g_free(domain);
+			}
 			g_free(data);
 			return NULL;
 		}
@@ -751,8 +812,7 @@ static gboolean resolv(struct request_data *req,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		DBG("server %s domain %s enabled %d",
-				data->server, data->domain, data->enabled);
+		DBG("server %s enabled %d", data->server, data->enabled);
 
 		if (data->enabled == FALSE)
 			continue;
@@ -769,6 +829,38 @@ static gboolean resolv(struct request_data *req,
 	return TRUE;
 }
 
+static void append_domain(const char *interface, const char *domain)
+{
+	GSList *list;
+
+	DBG("interface %s domain %s", interface, domain);
+
+	for (list = server_list; list; list = list->next) {
+		struct server_data *data = list->data;
+		GList *dom_list;
+		char *dom;
+		gboolean dom_found = FALSE;
+
+		if (data->interface == NULL)
+			continue;
+
+		if (g_str_equal(data->interface, interface) == FALSE)
+			continue;
+
+		for (dom_list = data->domains; dom_list; dom_list = dom_list->next) {
+			dom = dom_list->data;
+
+			if (g_str_equal(dom, domain)) {
+				dom_found = TRUE;
+				break;
+			}
+		}
+
+		if (dom_found == FALSE)
+			data->domains = g_list_append(data->domains, g_strdup(domain));
+	}
+}
+
 static int dnsproxy_append(const char *interface, const char *domain,
 							const char *server)
 {
@@ -776,8 +868,23 @@ static int dnsproxy_append(const char *interface, const char *domain,
 
 	DBG("interface %s server %s", interface, server);
 
+	if (server == NULL && domain == NULL)
+		return -EINVAL;
+
+	if (server == NULL) {
+		append_domain(interface, domain);
+
+		return 0;
+	}
+
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
+
+	data = find_server(interface, server, IPPROTO_UDP);
+	if (data != NULL) {
+		append_domain(interface, domain);
+		return 0;
+	}
 
 	data = create_server(interface, domain, server, IPPROTO_UDP);
 	if (data == NULL)
@@ -791,7 +898,7 @@ static void remove_server(const char *interface, const char *domain,
 {
 	struct server_data *data;
 
-	data = find_server(interface, domain, server, protocol);
+	data = find_server(interface, server, protocol);
 	if (data == NULL)
 		return;
 
@@ -802,6 +909,9 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 							const char *server)
 {
 	DBG("interface %s server %s", interface, server);
+
+	if (server == NULL)
+		return -EINVAL;
 
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
@@ -977,8 +1087,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	struct request_data *req;
 	struct server_data *server;
 	int sk, client_sk, len, err;
-	struct sockaddr client_addr;
-	socklen_t client_addr_len;
+	struct sockaddr_in6 client_addr;
+	socklen_t client_addr_len = sizeof(client_addr);
 	GSList *list;
 
 	DBG("condition 0x%x", condition);
@@ -995,8 +1105,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	sk = g_io_channel_unix_get_fd(channel);
 
-	client_addr_len = sizeof(struct sockaddr);
-	client_sk = accept(sk, &client_addr, &client_addr_len);
+	client_sk = accept(sk, (void *)&client_addr, &client_addr_len);
 	if (client_sk < 0) {
 		connman_error("Accept failure on TCP listener");
 		tcp_listener_watch = 0;
@@ -1020,10 +1129,10 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
-	memcpy(&req->sin, (struct sockaddr_in *)&client_addr, sizeof(req->sin));
+	memcpy(&req->sa, &client_addr, client_addr_len);
+	req->sa_len = client_addr_len;
 	req->client_sk = client_sk;
 	req->protocol = IPPROTO_TCP;
-	req->len = client_addr_len;
 
 	request_id += 2;
 	if (request_id == 0x0000 || request_id == 0xffff)
@@ -1042,11 +1151,12 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
+		GList *domains;
 
 		if (data->protocol != IPPROTO_UDP || data->enabled == FALSE)
 			continue;
 
-		server = create_server(data->interface, data->domain,
+		server = create_server(data->interface, NULL,
 					data->server, IPPROTO_TCP);
 
 		/*
@@ -1076,6 +1186,15 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 		if (req->timeout > 0)
 			g_source_remove(req->timeout);
 
+		for (domains = data->domains; domains; domains = domains->next) {
+			char *dom = domains->data;
+
+			DBG("Adding domain %s to %s", dom, server->server);
+
+			server->domains = g_list_append(server->domains,
+						g_strdup(dom));
+		}
+
 		req->timeout = g_timeout_add_seconds(30, request_timeout, req);
 		ns_resolv(server, req, buf, query);
 	}
@@ -1089,8 +1208,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	unsigned char buf[768];
 	char query[512];
 	struct request_data *req;
-	struct sockaddr_in sin;
-	socklen_t size = sizeof(sin);
+	struct sockaddr_in6 client_addr;
+	socklen_t client_addr_len = sizeof(client_addr);
 	int sk, err, len;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
@@ -1101,9 +1220,9 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	sk = g_io_channel_unix_get_fd(channel);
 
-	memset(&sin, 0, sizeof(sin));
-	len = recvfrom(sk, buf, sizeof(buf), 0,
-					(struct sockaddr *) &sin, &size);
+	memset(&client_addr, 0, client_addr_len);
+	len = recvfrom(sk, buf, sizeof(buf), 0, (void *)&client_addr,
+		       &client_addr_len);
 	if (len < 2)
 		return TRUE;
 
@@ -1112,8 +1231,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	err = parse_request(buf, len, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0 &&
 				connman_ondemand_connected())) {
-		send_response(sk, buf, len, (struct sockaddr *) &sin, size,
-				IPPROTO_UDP);
+		send_response(sk, buf, len, (void *)&client_addr,
+			      client_addr_len, IPPROTO_UDP);
 		return TRUE;
 	}
 
@@ -1121,10 +1240,10 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
-	memcpy(&req->sin, &sin, sizeof(sin));
+	memcpy(&req->sa, &client_addr, client_addr_len);
+	req->sa_len = client_addr_len;
 	req->client_sk = 0;
 	req->protocol = IPPROTO_UDP;
-	req->len = size;
 
 	request_id += 2;
 	if (request_id == 0x0000 || request_id == 0xffff)
@@ -1177,8 +1296,14 @@ static int create_dns_listener(int protocol)
 {
 	GIOChannel *channel;
 	const char *ifname = "lo", *proto;
-	struct sockaddr_in sin;
-	int sk, type;
+	union {
+		struct sockaddr sa;
+		struct sockaddr_in6 sin6;
+		struct sockaddr_in sin;
+	} s;
+	socklen_t slen;
+	int sk, type, v6only = 0;
+	int family = AF_INET6;
 
 	DBG("");
 
@@ -1197,7 +1322,12 @@ static int create_dns_listener(int protocol)
 		return -EINVAL;
 	}
 
-	sk = socket(AF_INET, type, protocol);
+	sk = socket(family, type, protocol);
+	if (sk < 0 && family == AF_INET6 && errno == EAFNOSUPPORT) {
+		connman_error("No IPv6 support; DNS proxy listening only on Legacy IP");
+		family = AF_INET;
+		sk = socket(family, type, protocol);
+	}
 	if (sk < 0) {
 		connman_error("Failed to create %s listener socket", proto);
 		return -EIO;
@@ -1209,14 +1339,30 @@ static int create_dns_listener(int protocol)
 		close(sk);
 		return -EIO;
 	}
+	/* Ensure it accepts Legacy IP connections too */
+	if (family == AF_INET6 &&
+	    setsockopt(sk, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) < 0) {
+		connman_error("Failed to clear V6ONLY on %s listener socket",
+			      proto);
+		close(sk);
+		return -EIO;
+	}
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(53);
-	sin.sin_addr.s_addr = inet_addr("127.0.0.1");
-	sin.sin_addr.s_addr = htonl(INADDR_ANY);
+	if (family == AF_INET) {
+		memset(&s.sin, 0, sizeof(s.sin));
+		s.sin.sin_family = AF_INET;
+		s.sin.sin_port = htons(53);
+		s.sin.sin_addr.s_addr = htonl(INADDR_ANY);
+		slen = sizeof(s.sin);
+	} else {
+		memset(&s.sin6, 0, sizeof(s.sin6));
+		s.sin6.sin6_family = AF_INET6;
+		s.sin6.sin6_port = htons(53);
+		s.sin6.sin6_addr = in6addr_any;
+		slen = sizeof(s.sin6);
+	}
 
-	if (bind(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+	if (bind(sk, &s.sa, slen) < 0) {
 		connman_error("Failed to bind %s listener socket", proto);
 		close(sk);
 		return -EIO;

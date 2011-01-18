@@ -64,7 +64,6 @@ static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_compat = FALSE;
-static gboolean option_selftest = FALSE;
 static gboolean option_version = FALSE;
 
 static gboolean parse_debug(const char *key, const char *value,
@@ -97,8 +96,6 @@ static GOptionEntry options[] = {
 				"Don't fork daemon to background" },
 	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Enable Network Manager compatibility" },
-	{ "selftest", 't', 0, G_OPTION_ARG_NONE, &option_selftest,
-				"Run self testing routines" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },
@@ -212,13 +209,6 @@ int main(int argc, char *argv[])
 
 	__connman_log_init(option_debug, option_detach);
 
-	if (option_selftest == TRUE) {
-		if (__connman_selftest() < 0) {
-			connman_error("Self testing routines failed");
-			goto selftest;
-		}
-	}
-
 	__connman_dbus_init(conn);
 
 	__connman_storage_init();
@@ -287,7 +277,6 @@ int main(int argc, char *argv[])
 
 	__connman_dbus_cleanup();
 
-selftest:
 	__connman_log_cleanup();
 
 	dbus_connection_unref(conn);

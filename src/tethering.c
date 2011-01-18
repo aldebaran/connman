@@ -349,12 +349,12 @@ int __connman_tethering_set_status(connman_bool_t status)
 	if (status == tethering_status)
 		return -EALREADY;
 
+	tethering_status = status;
+
 	if (status == TRUE)
 		__connman_technology_enable_tethering(BRIDGE_NAME);
 	else
 		__connman_technology_disable_tethering(BRIDGE_NAME);
-
-	tethering_status = status;
 
 	return 0;
 }

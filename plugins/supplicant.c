@@ -224,6 +224,7 @@ static void remove_block(gpointer user_data)
 
 	g_free(block->ssid);
 	g_free(block->netpath);
+	g_free(block);
 }
 
 static struct supplicant_task *find_task_by_index(int index)
@@ -635,8 +636,12 @@ static void add_interface_reply(DBusPendingCall *call, void *user_data)
 			ssid[k++] = hex;
 		}
 
-		if (add_hidden_network(task, ssid, hex_ssid_len / 2) < 0)
+		if (add_hidden_network(task, ssid, hex_ssid_len / 2) < 0) {
+			g_free(ssid);
 			break;
+		}
+
+		g_free(ssid);
 	}
 
 	g_strfreev(hex_ssids);
@@ -1205,7 +1210,11 @@ static int set_network_peap(struct connman_network *network,
 		connman_info("No client certificate has been provided "
 			     "to do the PEAP/TTLS authentication\n");
 
-	phase2_auth = g_strdup_printf("\"auth=%s\"", phase2);
+	if (g_str_has_prefix(phase2, "EAP-") == TRUE) {
+		phase2_auth = g_strdup_printf("autheap=%s",
+						phase2 + strlen("EAP-"));
+	} else
+		phase2_auth = g_strdup_printf("auth=%s", phase2);
 
 	connman_dbus_dict_append_basic(dict, "password",
 						DBUS_TYPE_STRING, &passphrase);

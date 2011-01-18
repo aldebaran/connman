@@ -33,6 +33,21 @@ class Agent(dbus.service.Object):
 		return response
 
 	@dbus.service.method("net.connman.Agent",
+					in_signature='os',
+					out_signature='')
+	def ReportError(self, path, error):
+		print "ReportError %s, %s" % (path, error)
+		retry = raw_input("Retry service (yes/no): ")
+		if (retry == "yes"):
+			class Retry(dbus.DBusException):
+				_dbus_error_name = "net.connman.Agent.Error.Retry"
+
+			raise Retry("retry service")
+		else:
+			return
+
+
+	@dbus.service.method("net.connman.Agent",
 					in_signature='', out_signature='')
 	def Cancel(self):
 		print "Cancel"

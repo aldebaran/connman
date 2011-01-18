@@ -132,7 +132,7 @@ Properties	string State [readonly]
 			The service error status details.
 
 			When error occur during connection or disconnection
-			the detailed information are represented in this
+			the detailed information is represented in this
 			property to help the user interface to present the
 			user with alternate options.
 
@@ -198,7 +198,7 @@ Properties	string State [readonly]
 			If the service type is WiFi, then this property
 			can be used to store a passphrase.
 
-			No PropertyChanged signals will be send for this
+			No PropertyChanged signals will be sent for this
 			property. The PassphraseRequired property should
 			be monitored instead.
 
@@ -364,14 +364,12 @@ Properties	string State [readonly]
 
 			string Method [readonly]
 
-				Possible values are "dhcp", "manual"
+				Possible values are "auto", "manual"
 				and "off".
 
 				The value "fixed" indicates an IP address
 				that can not be modified. For example
 				cellular networks return fixed information.
-
-				"dhcp" is not supported currently.
 
 			string Address [readonly]
 

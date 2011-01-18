@@ -2,7 +2,7 @@
  *
  *  D-Bus helper library
  *
- *  Copyright (C) 2004-2010  Marcel Holtmann <marcel@holtmann.org>
+ *  Copyright (C) 2004-2011  Marcel Holtmann <marcel@holtmann.org>
  *
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -204,8 +204,7 @@ static struct filter_data *filter_data_get(DBusConnection *connection,
 	struct filter_data *data;
 	const char *name = NULL, *owner = NULL;
 
-	if (!filter_data_find(connection, NULL, NULL, NULL, NULL, NULL,
-				NULL)) {
+	if (filter_data_find(connection, NULL, NULL, NULL, NULL, NULL, NULL) == NULL) {
 		if (!dbus_connection_add_filter(connection,
 					message_filter, NULL, NULL)) {
 			error("dbus_connection_add_filter() failed");
@@ -382,7 +381,7 @@ static gboolean filter_data_remove_callback(struct filter_data *data,
 	/* Remove filter if there are no listeners left for the connection */
 	data = filter_data_find(connection, NULL, NULL, NULL, NULL, NULL,
 					NULL);
-	if (!data)
+	if (data == NULL)
 		dbus_connection_remove_filter(connection, message_filter,
 						NULL);
 
@@ -478,17 +477,17 @@ static DBusHandlerResult service_filter(DBusConnection *connection,
 				cb->conn_func(connection, cb->user_data);
 		}
 
-		/* Only auto remove if it is a bus name watch */
-		if (data->argument[0] == ':' &&
-				(!cb->conn_func || !cb->disc_func)) {
-			filter_data_remove_callback(data, cb);
-			continue;
-		}
-
 		/* Check if the watch was removed/freed by the callback
 		 * function */
 		if (!g_slist_find(data->callbacks, cb))
 			continue;
+
+		/* Only auto remove if it is a bus name watch */
+		if (data->argument[0] == ':' &&
+				(cb->conn_func == NULL || cb->disc_func == NULL)) {
+			filter_data_remove_callback(data, cb);
+			continue;
+		}
 
 		data->callbacks = g_slist_remove(data->callbacks, cb);
 		data->processed = g_slist_append(data->processed, cb);
@@ -517,7 +516,7 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 	/* Sender is always bus name */
 	data = filter_data_find(connection, NULL, sender, path, iface, member,
 					arg);
-	if (!data) {
+	if (data == NULL) {
 		error("Got %s.%s signal which has no listeners", iface, member);
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 	}
@@ -543,7 +542,7 @@ static DBusHandlerResult message_filter(DBusConnection *connection,
 	/* Remove filter if there no listener left for the connection */
 	data = filter_data_find(connection, NULL, NULL, NULL, NULL, NULL,
 					NULL);
-	if (!data)
+	if (data == NULL)
 		dbus_connection_remove_filter(connection, message_filter,
 						NULL);
 
@@ -658,18 +657,18 @@ guint g_dbus_add_service_watch(DBusConnection *connection, const char *name,
 	struct filter_data *data;
 	struct filter_callback *cb;
 
-	if (!name)
+	if (name == NULL)
 		return 0;
 
 	data = filter_data_get(connection, service_filter, NULL, NULL,
 				DBUS_INTERFACE_DBUS, "NameOwnerChanged",
 				name);
-	if (!data)
+	if (data == NULL)
 		return 0;
 
 	cb = filter_data_add_callback(data, connect, disconnect, NULL, NULL,
 					user_data);
-	if (!cb)
+	if (cb == NULL)
 		return 0;
 
 	if (connect)
@@ -697,12 +696,12 @@ guint g_dbus_add_signal_watch(DBusConnection *connection,
 
 	data = filter_data_get(connection, signal_filter, sender, path,
 				interface, member, NULL);
-	if (!data)
+	if (data == NULL)
 		return 0;
 
 	cb = filter_data_add_callback(data, NULL, NULL, function, destroy,
 					user_data);
-	if (!cb)
+	if (cb == NULL)
 		return 0;
 
 	if (data->name != NULL && data->name_watch == 0)

@@ -406,6 +406,7 @@ static void remove_interface(gpointer data)
 	callback_interface_removed(interface);
 
 	g_free(interface->path);
+	g_free(interface->network_path);
 	g_free(interface->ifname);
 	g_free(interface->driver);
 	g_free(interface->bridge);
@@ -422,6 +423,7 @@ static void remove_network(gpointer data)
 
 	g_hash_table_destroy(network->config_table);
 
+	g_free(network->path);
 	g_free(network->group);
 	g_free(network->name);
 	g_free(network);
@@ -1137,7 +1139,8 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
-static void interface_bss_added(DBusMessageIter *iter, void *user_data)
+static struct g_supplicant_bss *interface_bss_added(DBusMessageIter *iter,
+							void *user_data)
 {
 	GSupplicantInterface *interface = user_data;
 	GSupplicantNetwork *network;
@@ -1148,10 +1151,10 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL)
-		return;
+		return NULL;
 
 	if (g_strcmp0(path, "/") == 0)
-		return;
+		return NULL;
 
 	SUPPLICANT_DBG("%s", path);
 
@@ -1159,24 +1162,51 @@ static void interface_bss_added(DBusMessageIter *iter, void *user_data)
 	if (network != NULL) {
 		bss = g_hash_table_lookup(network->bss_table, path);
 		if (bss != NULL)
-			return;
+			return NULL;
 	}
 
 	bss = g_try_new0(struct g_supplicant_bss, 1);
 	if (bss == NULL)
-		return;
+		return NULL;
 
 	bss->interface = interface;
 	bss->path = g_strdup(path);
 
-	dbus_message_iter_next(iter);
-	if (dbus_message_iter_get_arg_type(iter) != DBUS_TYPE_INVALID) {
-		supplicant_dbus_property_foreach(iter, bss_property, bss);
-		bss_property(NULL, NULL, bss);
-		return;
-	}
+	return bss;
+}
 
-	supplicant_dbus_property_get_all(path,
+static void interface_bss_added_with_keys(DBusMessageIter *iter,
+						void *user_data)
+{
+	struct g_supplicant_bss *bss;
+
+	SUPPLICANT_DBG("");
+
+	bss = interface_bss_added(iter, user_data);
+	if (bss == NULL)
+		return;
+
+	dbus_message_iter_next(iter);
+
+	if (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_INVALID)
+		return;
+
+	supplicant_dbus_property_foreach(iter, bss_property, bss);
+	bss_property(NULL, NULL, bss);
+}
+
+static void interface_bss_added_without_keys(DBusMessageIter *iter,
+						void *user_data)
+{
+	struct g_supplicant_bss *bss;
+
+	SUPPLICANT_DBG("");
+
+	bss = interface_bss_added(iter, user_data);
+	if (bss == NULL)
+		return;
+
+	supplicant_dbus_property_get_all(bss->path,
 					SUPPLICANT_INTERFACE ".BSS",
 							bss_property, bss);
 }
@@ -1270,26 +1300,32 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str != NULL) {
+			g_free(interface->ifname);
 			interface->ifname = g_strdup(str);
+		}
 	} else if (g_strcmp0(key, "Driver") == 0) {
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str != NULL) {
+			g_free(interface->driver);
 			interface->driver = g_strdup(str);
+		}
 	} else if (g_strcmp0(key, "BridgeIfname") == 0) {
 		const char *str = NULL;
 
 		dbus_message_iter_get_basic(iter, &str);
-		if (str != NULL)
+		if (str != NULL) {
+			g_free(interface->bridge);
 			interface->bridge = g_strdup(str);
+		}
 	} else if (g_strcmp0(key, "CurrentBSS") == 0) {
-		interface_bss_added(iter, interface);
+		interface_bss_added_without_keys(iter, interface);
 	} else if (g_strcmp0(key, "CurrentNetwork") == 0) {
 		interface_network_added(iter, interface);
 	} else if (g_strcmp0(key, "BSSs") == 0) {
-		supplicant_dbus_array_foreach(iter, interface_bss_added,
+		supplicant_dbus_array_foreach(iter, interface_bss_added_without_keys,
 								interface);
 	} else if (g_strcmp0(key, "Blobs") == 0) {
 		/* Nothing */
@@ -1455,6 +1491,11 @@ static void service_property(const char *key, DBusMessageIter *iter,
 	} else if (g_strcmp0(key, "EapMethods") == 0) {
 		supplicant_dbus_array_foreach(iter, eap_method, NULL);
 		debug_strvalmap("EAP method", eap_method_map, eap_methods);
+	} else if (g_strcmp0(key, "Country") == 0) {
+		const char *country = NULL;
+
+		dbus_message_iter_get_basic(iter, &country);
+		SUPPLICANT_DBG("Country %s", country);
 	} else
 		SUPPLICANT_DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
@@ -1580,7 +1621,7 @@ static void signal_bss_added(const char *path, DBusMessageIter *iter)
 	if (interface == NULL)
 		return;
 
-	interface_bss_added(iter, interface);
+	interface_bss_added_with_keys(iter, interface);
 }
 
 static void signal_bss_removed(const char *path, DBusMessageIter *iter)
@@ -1699,6 +1740,69 @@ static DBusHandlerResult g_supplicant_filter(DBusConnection *conn,
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 }
 
+struct supplicant_regdom {
+	GSupplicantCountryCallback callback;
+	const void *user_data;
+};
+
+static void country_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_regdom *regdom = user_data;
+	char *alpha2;
+
+	SUPPLICANT_DBG("Country setting result");
+
+	if (user_data == NULL)
+		return;
+
+	if (error == NULL) {
+		alpha2 = (char *)regdom->user_data;
+	} else {
+		SUPPLICANT_DBG("Country setting failure %s", error);
+		alpha2 = NULL;
+	}
+
+	if (regdom->callback)
+		regdom->callback(alpha2);
+
+	g_free(regdom);
+}
+
+static void country_params(DBusMessageIter *iter, void *user_data)
+{
+	struct supplicant_regdom *regdom = user_data;
+	const char *country;
+
+	country = regdom->user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &country);
+}
+
+int g_supplicant_set_country(const char *alpha2,
+				GSupplicantCountryCallback callback,
+					const void *user_data)
+{
+	struct supplicant_regdom *regdom;
+
+	SUPPLICANT_DBG("Country setting %s", alpha2);
+
+	if (system_available == FALSE)
+		return -EFAULT;
+
+	regdom = dbus_malloc0(sizeof(*regdom));
+	if (regdom == NULL)
+		return -ENOMEM;
+
+	regdom->callback = callback;
+	regdom->user_data = user_data;
+
+	return supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
+					"Country", DBUS_TYPE_STRING_AS_STRING,
+					country_params, country_result,
+						regdom);
+}
+
 struct interface_data {
 	GSupplicantInterface *interface;
 	GSupplicantInterfaceCallback callback;
@@ -1814,7 +1918,7 @@ static void interface_get_result(const char *error,
 	SUPPLICANT_DBG("");
 
 	if (error != NULL) {
-		g_warning("error %s", error);
+		SUPPLICANT_DBG("Interface not created yet");
 		err = -EIO;
 		goto create;
 	}
@@ -1916,12 +2020,15 @@ static void interface_remove_result(const char *error,
 		goto done;
 	}
 
-	g_hash_table_remove(interface_table, data->interface->path);
+	/*
+	 * The gsupplicant interface is already freed by the InterfaceRemoved
+	 * signal callback. Simply invoke the interface_data callback.
+	 */
 	err = 0;
 
 done:
 	if (data->callback != NULL)
-		data->callback(err, data->interface, data->user_data);
+		data->callback(err, NULL, data->user_data);
 
 	dbus_free(data);
 }
@@ -2007,6 +2114,21 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 	if (interface->scanning == TRUE)
 		return -EALREADY;
 
+	switch (interface->state) {
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+		return -EBUSY;
+	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISCONNECTED:
+	case G_SUPPLICANT_STATE_INACTIVE:
+	case G_SUPPLICANT_STATE_SCANNING:
+	case G_SUPPLICANT_STATE_COMPLETED:
+		break;
+	}
+
 	data = dbus_malloc0(sizeof(*data));
 	if (data == NULL)
 		return -ENOMEM;
@@ -2027,6 +2149,7 @@ static void interface_select_network_result(const char *error,
 
 	SUPPLICANT_DBG("");
 
+	g_free(data->ssid);
 	dbus_free(data);
 }
 
@@ -2069,6 +2192,7 @@ static void interface_add_network_result(const char *error,
 error:
 	g_free(interface->network_path);
 	interface->network_path = NULL;
+	g_free(data->ssid);
 	g_free(data);
 }
 
@@ -2218,7 +2342,11 @@ static void add_network_security_peap(DBusMessageIter *dict,
 
 	}
 
-	phase2_auth = g_strdup_printf("\"auth=%s\"", ssid->phase2_auth);
+	if (g_str_has_prefix(ssid->phase2_auth, "EAP-") == TRUE) {
+		phase2_auth = g_strdup_printf("autheap=%s",
+					ssid->phase2_auth + strlen("EAP-"));
+	} else
+		phase2_auth = g_strdup_printf("auth=%s", ssid->phase2_auth);
 
 	supplicant_dbus_dict_append_basic(dict, "password",
 						DBUS_TYPE_STRING,
@@ -2230,7 +2358,7 @@ static void add_network_security_peap(DBusMessageIter *dict,
 
 	supplicant_dbus_dict_append_basic(dict, "phase2",
 						DBUS_TYPE_STRING,
-						&ssid->phase2_auth);
+						&phase2_auth);
 
 	g_free(phase2_auth);
 }
@@ -2389,10 +2517,8 @@ static void interface_disconnect_result(const char *error,
 
 	SUPPLICANT_DBG("");
 
-	if (error != NULL && data->callback != NULL) {
+	if (error != NULL && data->callback != NULL)
 		data->callback(-EIO, data->interface, data->user_data);
-		return;
-	}
 
 	network_remove(data);
 }
@@ -2547,15 +2673,15 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 		bss_mapping = NULL;
 	}
 
+	if (system_available == TRUE)
+		callback_system_killed();
+
 	if (interface_table != NULL) {
 		g_hash_table_foreach(interface_table,	
 					unregister_remove_interface, NULL);
 		g_hash_table_destroy(interface_table);
 		interface_table = NULL;
 	}
-
-	if (system_available == TRUE)
-		callback_system_killed();
 
 	if (connection != NULL) {
 		dbus_connection_unref(connection);

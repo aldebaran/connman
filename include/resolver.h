@@ -34,6 +34,8 @@ extern "C" {
 
 int connman_resolver_append(const char *interface, const char *domain,
 							const char *server);
+int connman_resolver_append_lifetime(const char *interface, const char *domain,
+				     const char *server, unsigned int lifetime);
 int connman_resolver_remove(const char *interface, const char *domain,
 							const char *server);
 int connman_resolver_remove_all(const char *interface);

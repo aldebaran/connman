@@ -18,32 +18,10 @@ Core
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
-- IPv4LL
-
-   Priority: Medium
-   Complexity: C4
-   Owner: Julien Massot <jmassot@aldebaran-robotics.com>
-
-   The IPv4 Link Local support should be integrated into DHCP-lib.
-   IPv4LL should be started when DHCP failed, and then DHCP should
-   be scheduled for periodic trials.
-   Also, there should be no default route going through an IPv4LL
-   interface.
-
-
 - VPNc
 
    Priority: Low
    Complexity: C2
-
-
-- Agent callbacks
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Patrik Flykt <patrik.flykt@nokia.com>
-
-   Implement Agent API according to doc/agent-api.txt
 
 
 - Moving DNS proxy code to ConnMan core
@@ -87,9 +65,8 @@ Core
    Complexity: C2
    Owner: Lucio Maciel <lucio.maciel@hp.com>
 
-   The current service provisioning lacks inotify support for adding
-   new provision files on the fly, and a D-Bus interface for modifying
-   existing ones.
+   The current service provisioning lacks a D-Bus interface for modifying
+   existing configurations.
 
 
 - WiSPR support
@@ -155,31 +132,24 @@ WiFi
    through its pcsc-lite API.
 
 
-- EAP-Fast
+- EAP-FAST
 
    Priority: Low
    Complexity: C1
+   Owner: Henri Bragge <henri.bragge@ixonos.com>
 
 
 - EAP-GTC
 
    Priority: Low
    Complexity: C1
+   Owner: Henri Bragge <henri.bragge@ixonos.com>
 
 
 - WiFi p2p
 
    Priority: Medium
    Complexity: C2
-
-
-- WiFi CRDA setting through 3G country
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-   Setting the 802.11 country based on the 3G MNC/MCC.
 
 
 Bluetooth

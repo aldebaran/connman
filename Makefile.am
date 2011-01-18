@@ -27,7 +27,7 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 					gdbus/object.c gdbus/polkit.c
 
 gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c \
-		gdhcp/server.c
+		gdhcp/server.c gdhcp/ipv4ll.h gdhcp/ipv4ll.c
 
 gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
 					gweb/giognutls.h gweb/giognutls.c
@@ -62,7 +62,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			gweb/gresolv.h gweb/gresolv.c \
 			gweb/giognutls.h gweb/gionotls.c \
 			$(builtin_sources) src/connman.ver \
-			src/main.c src/connman.h src/log.c src/selftest.c \
+			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
 			src/manager.c src/profile.c src/service.c \
@@ -132,7 +132,7 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
-			tools/stats-ringbuffer-dump
+			tools/stats-tool
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
@@ -152,6 +152,8 @@ tools_resolv_test_LDADD = @GLIB_LIBS@ -lresolv
 
 tools_wpad_test_SOURCES = gweb/gresolv.h gweb/gresolv.c tools/wpad-test.c
 tools_wpad_test_LDADD = @GLIB_LIBS@ -lresolv
+
+tools_stats_tool_LDADD = @GLIB_LIBS@
 
 tools_dhcp_test_SOURCES = $(gdhcp_sources) tools/dhcp-test.c
 tools_dhcp_test_LDADD = @GLIB_LIBS@
@@ -173,9 +175,9 @@ test_scripts = test/get-state test/list-profiles test/list-services \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/monitor-manager \
-		test/test-counter test/set-ip-method test/set-nameservers \
-		test/set-domains test/find-service test/get-services \
-		test/get-proxy-autoconfig test/set-proxy \
+		test/test-counter test/set-ipv4-method test/set-ipv6-method \
+		test/set-nameservers test/set-domains test/find-service \
+		test/get-services test/get-proxy-autoconfig test/set-proxy \
 		test/enable-tethering test/disable-tethering test/backtrace
 
 if TEST

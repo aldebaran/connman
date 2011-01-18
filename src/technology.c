@@ -58,6 +58,7 @@ struct connman_technology {
 	GSList *device_list;
 	gint enabled;
 	gint blocked;
+	char *regdom;
 
 	struct connman_technology_driver *driver;
 	void *driver_data;
@@ -83,10 +84,23 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
  */
 int connman_technology_driver_register(struct connman_technology_driver *driver)
 {
+	GSList *list;
+	struct connman_technology *technology;
+
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
+
+	for (list = technology_list; list; list = list->next) {
+		technology = list->data;
+
+		if (technology->driver != NULL)
+			continue;
+
+		if (technology->type == driver->type)
+			technology->driver = driver;
+	}
 
 	return 0;
 }
@@ -99,7 +113,22 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
  */
 void connman_technology_driver_unregister(struct connman_technology_driver *driver)
 {
+	GSList *list;
+	struct connman_technology *technology;
+
 	DBG("driver %p name %s", driver, driver->name);
+
+	for (list = technology_list; list; list = list->next) {
+		technology = list->data;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->type == driver->type) {
+			technology->driver->remove(technology);
+			technology->driver = NULL;
+		}
+	}
 
 	driver_list = g_slist_remove(driver_list, driver);
 }
@@ -120,6 +149,7 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	}
 
@@ -157,6 +187,7 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	}
 
@@ -214,6 +245,37 @@ int __connman_technology_enable_tethering(const char *bridge)
 int __connman_technology_disable_tethering(const char *bridge)
 {
 	return set_tethering(bridge, FALSE);
+}
+
+void connman_technology_regdom_notify(struct connman_technology *technology,
+							const char *alpha2)
+{
+	DBG("");
+
+	if (alpha2 == NULL)
+		connman_error("Failed to set regulatory domain");
+	else
+		DBG("Regulatory domain set to %s", alpha2);
+
+	g_free(technology->regdom);
+	technology->regdom = g_strdup(alpha2);
+}
+
+int connman_technology_set_regdom(const char *alpha2)
+{
+	GSList *list;
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->driver == NULL)
+			continue;
+
+		if (technology->driver->set_regdom)
+			technology->driver->set_regdom(technology, alpha2);
+	}
+
+	return 0;
 }
 
 static void free_rfkill(gpointer data)
@@ -285,6 +347,7 @@ static const char *get_name(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
 		break;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		return "Wired";
@@ -456,6 +519,7 @@ static void technology_put(struct connman_technology *technology)
 	g_hash_table_destroy(technology->rfkill_list);
 
 	g_free(technology->path);
+	g_free(technology->regdom);
 	g_free(technology);
 }
 
@@ -722,7 +786,7 @@ connman_bool_t __connman_technology_get_blocked(enum connman_service_type type)
 {
 	struct connman_technology *technology;
 
-	technology = technology_get(type);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return FALSE;
 

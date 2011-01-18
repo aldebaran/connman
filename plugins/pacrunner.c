@@ -255,9 +255,25 @@ static void default_service_changed(struct connman_service *service)
 	create_proxy_configuration();
 }
 
+static void proxy_changed(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (service != default_service)
+		return;
+
+	if (daemon_running == FALSE)
+		return;
+
+	destroy_proxy_configuration();
+
+	create_proxy_configuration();
+}
+
 static struct connman_notifier pacrunner_notifier = {
 	.name			= "pacrunner",
 	.default_changed	= default_service_changed,
+	.proxy_changed		= proxy_changed,
 };
 
 static void pacrunner_connect(DBusConnection *conn, void *user_data)

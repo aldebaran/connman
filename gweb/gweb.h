@@ -75,6 +75,8 @@ gboolean g_web_cancel_request(GWeb *web, guint id);
 
 guint16 g_web_result_get_status(GWebResult *result);
 
+gboolean g_web_result_get_header(GWebResult *result,
+				const char *header, const char **value);
 gboolean g_web_result_get_chunk(GWebResult *result,
 				const guint8 **chunk, gsize *length);
 

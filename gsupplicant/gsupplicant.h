@@ -114,6 +114,13 @@ struct _GSupplicantSSID {
 
 typedef struct _GSupplicantSSID GSupplicantSSID;
 
+/* global API */
+typedef void (*GSupplicantCountryCallback) (void *user_data);
+
+int g_supplicant_set_country(const char *alpha2,
+				GSupplicantCountryCallback callback,
+						const void *user_data);
+
 /* Interface API */
 struct _GSupplicantInterface;
 

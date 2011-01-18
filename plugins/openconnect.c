@@ -38,7 +38,6 @@
 static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 {
 	DBusMessageIter iter, dict;
-	struct oc_data *data;
 	const char *reason, *key, *value;
 	const char *domain = NULL;
 
@@ -49,12 +48,6 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 
 	if (!provider) {
 		connman_error("No provider found");
-		return VPN_STATE_FAILURE;
-	}
-
-	data = connman_provider_get_data(provider);
-	if (!data) {
-		DBG("provider %p no data", provider);
 		return VPN_STATE_FAILURE;
 	}
 

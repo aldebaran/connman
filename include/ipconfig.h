@@ -61,6 +61,7 @@ enum connman_ipconfig_method {
 	CONNMAN_IPCONFIG_METHOD_FIXED   = 2,
 	CONNMAN_IPCONFIG_METHOD_MANUAL  = 3,
 	CONNMAN_IPCONFIG_METHOD_DHCP    = 4,
+	CONNMAN_IPCONFIG_METHOD_AUTO    = 5,
 };
 
 struct connman_ipconfig;
@@ -74,8 +75,8 @@ struct connman_ipconfig_ops {
 	void (*ip_release) (struct connman_ipconfig *ipconfig);
 };
 
-struct connman_ipconfig *connman_ipconfig_create(int index);
-struct connman_ipconfig *connman_ipconfig_clone(struct connman_ipconfig *ipconfig);
+struct connman_ipconfig *connman_ipconfig_create(int index,
+					enum connman_ipconfig_type type);
 struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
 void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
 
@@ -90,28 +91,10 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 				const char *address, const char *gateway,
 						unsigned char prefix_length);
-struct connman_ipconfig *connman_ipconfig_get_ipv6config(
-				struct connman_ipconfig *ipconfig);
 int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method);
 void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
 					struct connman_ipaddress *ipaddress);
-
-#define CONNMAN_IPCONFIG_PRIORITY_LOW      -100
-#define CONNMAN_IPCONFIG_PRIORITY_DEFAULT     0
-#define CONNMAN_IPCONFIG_PRIORITY_HIGH      100
-
-struct connman_ipconfig_driver {
-	const char *name;
-	enum connman_ipconfig_type type;
-	int priority;
-	int (*request) (struct connman_ipconfig *ipconfig);
-	int (*release) (struct connman_ipconfig *ipconfig);
-	int (*renew) (struct connman_ipconfig *ipconfig);
-};
-
-int connman_ipconfig_driver_register(struct connman_ipconfig_driver *driver);
-void connman_ipconfig_driver_unregister(struct connman_ipconfig_driver *driver);
 
 #ifdef __cplusplus
 }

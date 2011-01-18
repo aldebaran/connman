@@ -55,6 +55,15 @@ static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	DBG("Lease lost");
 }
 
+static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcp *dhcp = user_data;
+
+	DBG("Lease lost");
+
+	connman_dhcp_release(dhcp);
+}
+
 static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	struct connman_dhcp *dhcp = user_data;
@@ -67,6 +76,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	address = g_dhcp_client_get_address(dhcp_client);
 	if (address != NULL)
 		connman_dhcp_set_value(dhcp, "Address", address);
+	g_free(address);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
 	if (option != NULL)
@@ -111,6 +121,27 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	connman_dhcp_bound(dhcp);
 }
 
+static void ipv4ll_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcp *dhcp = user_data;
+	char *address, *netmask;
+
+	DBG("IPV4LL available");
+
+	address = g_dhcp_client_get_address(dhcp_client);
+	if (address != NULL)
+		connman_dhcp_set_value(dhcp, "Address", address);
+
+	netmask = g_dhcp_client_get_netmask(dhcp_client);
+	if (netmask != NULL)
+		connman_dhcp_set_value(dhcp, "Netmask", netmask);
+
+	g_free(address);
+	g_free(netmask);
+
+	connman_dhcp_bound(dhcp);
+}
+
 static int dhcp_request(struct connman_dhcp *dhcp)
 {
 	GDHCPClient *dhcp_client;
@@ -146,14 +177,19 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 						lease_available_cb, dhcp);
 
 	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_IPV4LL_AVAILABLE,
+						ipv4ll_available_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
 			G_DHCP_CLIENT_EVENT_LEASE_LOST, lease_lost_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_IPV4LL_LOST, ipv4ll_lost_cb, dhcp);
 
 	g_dhcp_client_register_event(dhcp_client,
 			G_DHCP_CLIENT_EVENT_NO_LEASE, no_lease_cb, dhcp);
 
 	connman_dhcp_set_data(dhcp, dhcp_client);
-
-	g_dhcp_client_ref(dhcp_client);
 
 	return g_dhcp_client_start(dhcp_client);
 }

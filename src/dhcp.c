@@ -186,6 +186,19 @@ void connman_dhcp_renew(struct connman_dhcp *dhcp)
 }
 
 /**
+ * connman_dhcp_release:
+ * @dhcp: DHCP structure
+ *
+ * Report DHCP release of the interface
+ */
+void connman_dhcp_release(struct connman_dhcp *dhcp)
+{
+	DBG("dhcp %p", dhcp);
+
+	connman_element_unregister_children(dhcp->element);
+}
+
+/**
  * connman_dhcp_fail:
  * @dhcp: DHCP structure
  *
@@ -315,6 +328,7 @@ static void dhcp_remove(struct connman_element *element)
 	}
 
 	connman_dhcp_unref(dhcp);
+	connman_element_unref(element);
 }
 
 static void dhcp_change(struct connman_element *element)

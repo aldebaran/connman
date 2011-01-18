@@ -52,6 +52,8 @@ struct _GWebResult {
 	const guint8 *buffer;
 	gsize length;
 	gboolean use_chunk;
+	gchar *last_key;
+	GHashTable *headers;
 };
 
 struct web_session {
@@ -147,6 +149,9 @@ static void free_session(struct web_session *session)
 
 	if (session->transport_channel != NULL)
 		g_io_channel_unref(session->transport_channel);
+
+	g_free(session->result.last_key);
+	g_hash_table_destroy(session->result.headers);
 
 	g_string_free(session->send_buffer, TRUE);
 	g_string_free(session->current_header, TRUE);
@@ -250,7 +255,14 @@ gboolean g_web_set_proxy(GWeb *web, const char *proxy)
 		return FALSE;
 
 	g_free(web->proxy);
-	web->proxy = g_strdup(proxy);
+
+	if (proxy == NULL) {
+		web->proxy = NULL;
+		debug(web, "clearing proxy");
+	} else {
+		web->proxy = g_strdup(proxy);
+		debug(web, "setting proxy %s", web->proxy);
+	}
 
 	return TRUE;
 }
@@ -648,6 +660,81 @@ static int handle_body(struct web_session *session,
 	return err;
 }
 
+static void handle_multi_line(struct web_session *session)
+{
+	gsize count;
+	char *str;
+	gchar *value;
+
+	str = session->current_header->str;
+
+	if (str[0] != ' ' && str[0] != '\t')
+		return;
+
+	while (str[0] == ' ' || str[0] == '\t')
+		str++;
+
+	count = str - session->current_header->str;
+	if (count > 0) {
+		g_string_erase(session->current_header, 0, count);
+		g_string_insert_c(session->current_header, 0, ' ');
+	}
+
+	value = g_hash_table_lookup(session->result.headers,
+					session->result.last_key);
+	if (value != NULL) {
+		g_string_insert(session->current_header, 0, value);
+
+		str = session->current_header->str;
+
+		g_hash_table_replace(session->result.headers,
+					g_strdup(session->result.last_key),
+					g_strdup(str));
+	}
+}
+
+static void add_header_field(struct web_session *session)
+{
+	gsize count;
+	guint8 *pos;
+	char *str;
+	gchar *value;
+	gchar *key;
+
+	str = session->current_header->str;
+
+	pos = memchr(str, ':', session->current_header->len);
+	if (pos != NULL) {
+		*pos = '\0';
+		pos++;
+
+		key = g_strdup(str);
+
+		/* remove preceding white spaces */
+		while (*pos == ' ')
+			pos++;
+
+		count = (char *) pos - str;
+
+		g_string_erase(session->current_header, 0, count);
+
+		value = g_hash_table_lookup(session->result.headers, key);
+		if (value != NULL) {
+			g_string_insert_c(session->current_header, 0, ' ');
+			g_string_insert_c(session->current_header, 0, ';');
+
+			g_string_insert(session->current_header, 0, value);
+		}
+
+		str = session->current_header->str;
+		g_hash_table_replace(session->result.headers, key,
+							g_strdup(str));
+
+		g_free(session->result.last_key);
+		session->result.last_key = g_strdup(key);
+	}
+}
+
 static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -718,7 +805,23 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 			ptr = NULL;
 
 		if (session->current_header->len == 0) {
+			char *val;
+
 			session->header_done = TRUE;
+
+			val = g_hash_table_lookup(session->result.headers,
+							"Transfer-Encoding");
+			if (val != NULL) {
+				val = g_strrstr(val, "chunked");
+				if (val != NULL) {
+					session->result.use_chunk = TRUE;
+
+					session->chunck_state = CHUNK_SIZE;
+					session->chunk_left = 0;
+					session->total_len = 0;
+				}
+			}
+
 			if (handle_body(session, ptr, bytes_read) < 0) {
 				session->transport_watch = 0;
 				return FALSE;
@@ -733,23 +836,15 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 
 			if (sscanf(str, "HTTP/%*s %u %*s", &code) == 1)
 				session->result.status = code;
-		} else if (session->result.use_chunk == FALSE &&
-				g_ascii_strncasecmp("Transfer-Encoding:",
-								str, 18) == 0) {
-			char *val;
-
-			val = g_strrstr(str + 18, "chunked");
-			if (val != NULL) {
-				session->result.use_chunk = TRUE;
-
-				session->chunck_state = CHUNK_SIZE;
-				session->chunk_left = 0;
-				session->chunk_left = 0;
-				session->total_len = 0;
-			}
 		}
 
 		debug(session->web, "[header] %s", str);
+
+		/* handle multi-line header */
+		if (str[0] == ' ' || str[0] == '\t')
+			handle_multi_line(session);
+		else
+			add_header_field(session);
 
 		g_string_truncate(session->current_header, 0);
 	}
@@ -826,7 +921,8 @@ static int create_transport(struct web_session *session)
 	return 0;
 }
 
-static int parse_url(struct web_session *session, const char *url)
+static int parse_url(struct web_session *session,
+				const char *url, const char *proxy)
 {
 	char *scheme, *host, *port, *path;
 
@@ -857,7 +953,52 @@ static int parse_url(struct web_session *session, const char *url)
 	if (path != NULL)
 		*(path++) = '\0';
 
-	session->request = g_strdup_printf("/%s", path ? path : "");
+	if (proxy == NULL)
+		session->request = g_strdup_printf("/%s", path ? path : "");
+	else
+		session->request = g_strdup(url);
+
+	port = strrchr(host, ':');
+	if (port != NULL) {
+		char *end;
+		int tmp = strtol(port + 1, &end, 10);
+
+		if (*end == '\0') {
+			*port = '\0';
+			session->port = tmp;
+		}
+
+		if (proxy == NULL)
+			session->host = g_strdup(host);
+		else
+			session->host = g_strdup_printf("%s:%u", host, tmp);
+	} else
+		session->host = g_strdup(host);
+
+	g_free(scheme);
+
+	if (proxy == NULL)
+		return 0;
+
+	scheme = g_strdup(proxy);
+	if (scheme == NULL)
+		return -EINVAL;
+
+	host = strstr(proxy, "://");
+	if (host != NULL) {
+		*host = '\0';
+		host += 3;
+
+		if (strcasecmp(scheme, "http") != 0) {
+			g_free(scheme);
+			return -EINVAL;
+		}
+	} else
+		host = scheme;
+
+	path = strchr(host, '/');
+	if (path != NULL)
+		*(path++) = '\0';
 
 	port = strrchr(host, ':');
 	if (port != NULL) {
@@ -870,7 +1011,7 @@ static int parse_url(struct web_session *session, const char *url)
 		}
 	}
 
-	session->host = g_strdup(host);
+	session->address = g_strdup(host);
 
 	g_free(scheme);
 
@@ -917,13 +1058,16 @@ static guint do_request(GWeb *web, const char *url,
 	if (session == NULL)
 		return 0;
 
-	if (parse_url(session, url) < 0) {
+	if (parse_url(session, url, web->proxy) < 0) {
 		free_session(session);
 		return 0;
 	}
 
-	debug(web, "host %s:%u", session->host, session->port);
+	debug(web, "address %s", session->address);
+	debug(web, "port %u", session->port);
+	debug(web, "host %s", session->host);
 	debug(web, "flags %lu", session->flags);
+	debug(web, "request %s", session->request);
 
 	if (type != NULL) {
 		session->content_type = g_strdup(type);
@@ -943,13 +1087,20 @@ static guint do_request(GWeb *web, const char *url,
 		return 0;
 	}
 
+	session->result.headers = g_hash_table_new_full(g_str_hash, g_str_equal,
+							g_free, g_free);
+	if (session->result.headers == NULL) {
+		free_session(session);
+		return 0;
+	}
+
 	session->receive_space = DEFAULT_BUFFER_SIZE;
 	session->send_buffer = g_string_sized_new(0);
 	session->current_header = g_string_sized_new(0);
 	session->header_done = FALSE;
 	session->body_done = FALSE;
 
-	if (inet_aton(session->host, NULL) == 0) {
+	if (session->address == NULL && inet_aton(session->host, NULL) == 0) {
 		session->resolv_action = g_resolv_lookup_hostname(web->resolv,
 					session->host, resolv_result, session);
 		if (session->resolv_action == 0) {
@@ -957,7 +1108,8 @@ static guint do_request(GWeb *web, const char *url,
 			return 0;
 		}
 	} else {
-		session->address = g_strdup(session->host);
+		if (session->address == NULL)
+			session->address = g_strdup(session->host);
 
 		if (create_transport(session) < 0) {
 			free_session(session);
@@ -1012,6 +1164,23 @@ gboolean g_web_result_get_chunk(GWebResult *result,
 
 	if (length != NULL)
 		*length = result->length;
+
+	return TRUE;
+}
+
+gboolean g_web_result_get_header(GWebResult *result,
+				const char *header, const char **value)
+{
+	if (result == NULL)
+		return FALSE;
+
+	if (value == NULL)
+		return FALSE;
+
+	*value = g_hash_table_lookup(result->headers, header);
+
+	if (*value == NULL)
+		return FALSE;
 
 	return TRUE;
 }

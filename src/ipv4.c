@@ -94,7 +94,7 @@ static int ipv4_probe(struct connman_element *element)
 	connection->index   = element->index;
 	connection->devname = connman_inet_ifname(element->index);
 
-	ipconfig = __connman_service_get_ipconfig(service);
+	ipconfig = __connman_service_get_ip6config(service);
 	if (ipconfig != NULL)
 		__connman_ipconfig_set_element_ipv6_gateway(
 						ipconfig, connection);
@@ -147,6 +147,8 @@ static void ipv4_remove(struct connman_element *element)
 	if ((__connman_inet_modify_address(RTM_DELADDR, 0, element->index,
 			AF_INET, address, peer, prefixlen, broadcast) < 0))
 		DBG("address removal failed");
+
+	connman_element_unref(element);
 }
 
 static struct connman_driver ipv4_driver = {

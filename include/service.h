@@ -44,6 +44,7 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_CELLULAR  = 6,
 	CONNMAN_SERVICE_TYPE_GPS       = 7,
 	CONNMAN_SERVICE_TYPE_VPN       = 8,
+	CONNMAN_SERVICE_TYPE_GADGET    = 9,
 };
 
 enum connman_service_mode {
@@ -102,6 +103,7 @@ char *connman_service_get_interface(struct connman_service *service);
 
 const char *connman_service_get_domainname(struct connman_service *service);
 const char *connman_service_get_nameserver(struct connman_service *service);
+void connman_service_set_proxy_method(struct connman_service *service, enum connman_service_proxy_method method);
 enum connman_service_proxy_method connman_service_get_proxy_method(struct connman_service *service);
 char **connman_service_get_proxy_servers(struct connman_service *service);
 char **connman_service_get_proxy_excludes(struct connman_service *service);

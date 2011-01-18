@@ -124,6 +124,9 @@ static const char *type2description(enum connman_device_type type)
 		return "GPS";
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return "Cellular";
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		return "Gadget";
+
 	}
 
 	return NULL;
@@ -147,6 +150,9 @@ static const char *type2string(enum connman_device_type type)
 		return "gps";
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return "cellular";
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		return "gadget";
+
 	}
 
 	return NULL;
@@ -171,6 +177,9 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		return CONNMAN_SERVICE_TYPE_GADGET;
+
 	}
 
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
@@ -190,6 +199,9 @@ int __connman_device_enable(struct connman_device *device)
 
 	if (device->blocked == TRUE)
 		return -ENOLINK;
+
+	connman_device_set_disconnected(device, FALSE);
+	device->scanning = FALSE;
 
 	err = device->driver->enable(device);
 	if (err < 0 && err != -EALREADY) {
@@ -240,6 +252,8 @@ int __connman_device_disable(struct connman_device *device)
 			device->powered_pending = FALSE;
 		return err;
 	}
+
+	device->connections = 0;
 
 	device->powered_pending = FALSE;
 	device->powered = FALSE;
@@ -480,6 +494,9 @@ struct connman_device *connman_device_create(const char *node,
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
+		device->scan_interval = 0;
+		break;
+	case CONNMAN_DEVICE_TYPE_GADGET:
 		device->scan_interval = 0;
 		break;
 	}
@@ -798,6 +815,11 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 					remove_unavailable_network, NULL);
 }
 
+connman_bool_t __connman_device_scanning(struct connman_device *device)
+{
+	return device->scanning;
+}
+
 /**
  * connman_device_set_scanning:
  * @device: device structure
@@ -830,9 +852,6 @@ int connman_device_set_scanning(struct connman_device *device,
 	__connman_device_cleanup_networks(device);
 
 	if (device->connections > 0)
-		return 0;
-
-	if (device->disconnected == TRUE)
 		return 0;
 
 	__connman_service_auto_connect();
