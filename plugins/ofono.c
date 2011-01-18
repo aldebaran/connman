@@ -274,6 +274,16 @@ static void set_online_reply(DBusPendingCall *call, void *user_data)
 
 static int modem_change_online(char const *path, dbus_bool_t online)
 {
+	struct modem_data *modem = g_hash_table_lookup(modem_hash, path);
+
+	if (modem == NULL)
+		return -ENODEV;
+
+	if (modem->online == (gboolean)online)
+		return -EALREADY;
+
+	modem->requested_online = (gboolean)online;
+
 	return set_property(path, OFONO_MODEM_INTERFACE, "Online",
 				DBUS_TYPE_BOOLEAN, &online,
 				set_online_reply,
