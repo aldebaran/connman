@@ -76,11 +76,11 @@ static enum connman_service_type convert_type(uint8_t type)
 
 static GIOStatus rfkill_process(GIOChannel *chan)
 {
-	GIOStatus status = G_IO_STATUS_NORMAL;
 	unsigned char buf[32];
 	struct rfkill_event *event = (void *) buf;
 	enum connman_service_type type;
 	gsize len;
+	GIOStatus status;
 
 	DBG("");
 
