@@ -78,8 +78,8 @@ struct modem_data {
 	gboolean has_gprs;
 	gboolean available;
 	gboolean pending_online;
-	gboolean requested_online;
-	gboolean online;
+	dbus_bool_t requested_online;
+	dbus_bool_t online;
 
 	uint8_t strength, has_strength;
 };
@@ -279,10 +279,10 @@ static int modem_change_online(char const *path, dbus_bool_t online)
 	if (modem == NULL)
 		return -ENODEV;
 
-	if (modem->online == (gboolean)online)
+	if (modem->online == online)
 		return -EALREADY;
 
-	modem->requested_online = (gboolean)online;
+	modem->requested_online = online;
 
 	return set_property(path, OFONO_MODEM_INTERFACE, "Online",
 				DBUS_TYPE_BOOLEAN, &online,
