@@ -83,10 +83,14 @@ int connman_ondemand_start(const char *bearer, unsigned int idle_timeout)
 
 int __connman_ondemand_init(void)
 {
+	DBG("");
+
 	return connman_notifier_register(&ondemand_notifier);
 }
 
 void __connman_ondemand_cleanup(void)
 {
+	DBG("");
+
 	connman_notifier_unregister(&ondemand_notifier);
 }
