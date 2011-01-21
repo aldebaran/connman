@@ -212,7 +212,7 @@ endif
 if DATAFILES
 policydir = @POLKIT_DATADIR@
 
-policy_DATA = plugins/connman.policy
+policy_DATA = plugins/net.connman.policy
 endif
 endif
 
@@ -266,7 +266,7 @@ endif
 
 EXTRA_DIST += plugins/polkit.policy
 
-plugins/connman.policy: plugins/polkit.policy
+plugins/net.connman.policy: plugins/polkit.policy
 if POLKIT
 	$(AM_V_GEN)cp $< $@
 endif
