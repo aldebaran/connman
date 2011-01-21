@@ -243,7 +243,9 @@ Properties	string State [readonly]
 		boolean AutoConnect [readwrite]
 
 			If set to true, this service will auto-connect
-			when not other connection is available.
+			when no other connection is available.
+
+			The service won't auto-connect while roaming.
 
 			For favorite services it is possible to change
 			this value to prevent or permit automatic
@@ -265,16 +267,6 @@ Properties	string State [readonly]
 			The APN is network provider specific and even
 			sometimes data plan specific. Possible examples
 			are "isp.cingular" or "internet.t-mobile".
-
-		string MCC [readonly]
-
-			If the service is Cellular, then this property
-			contains the Mobile Country Code.
-
-		string MNC [readonly]
-
-			If the service is Cellular, then this property
-			contains the Mobile Network Code.
 
 		boolean Roaming [readonly]
 

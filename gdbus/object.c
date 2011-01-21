@@ -162,7 +162,7 @@ static void generate_introspection_xml(DBusConnection *conn,
 
 	gstr = g_string_new(DBUS_INTROSPECT_1_0_XML_DOCTYPE_DECL_NODE);
 
-	g_string_append_printf(gstr, "<node name=\"%s\">\n", path);
+	g_string_append_printf(gstr, "<node>\n");
 
 	for (list = data->interfaces; list; list = list->next) {
 		struct interface_data *iface = list->data;
@@ -475,11 +475,12 @@ static void invalidate_parent_data(DBusConnection *conn, const char *child_path)
 	if (!strlen(parent_path))
 		goto done;
 
-	if (!dbus_connection_get_object_path_data(conn, parent_path,
-							(void *) &data)) {
-		invalidate_parent_data(conn, parent_path);
+	if (dbus_connection_get_object_path_data(conn, parent_path,
+							(void *) &data) == FALSE) {
 		goto done;
 	}
+
+	invalidate_parent_data(conn, parent_path);
 
 	if (data == NULL)
 		goto done;
