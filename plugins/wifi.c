@@ -253,17 +253,25 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 
 	DBG("result %d", result);
 
-	connman_device_set_scanning(device, FALSE);
+	if (result < 0)
+		connman_device_reset_scanning(device);
+	else
+		connman_device_set_scanning(device, FALSE);
 }
 
 static int wifi_scan(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
+	int ret;
 
 	DBG("device %p %p", device, wifi->interface);
 
-	return g_supplicant_interface_scan(wifi->interface, scan_callback,
+	ret = g_supplicant_interface_scan(wifi->interface, scan_callback,
 								device);
+	if (ret == 0)
+		connman_device_set_scanning(device, TRUE);
+
+	return ret;
 }
 
 static struct connman_device_driver wifi_ng_driver = {
@@ -366,7 +374,6 @@ static void interface_state(GSupplicantInterface *interface)
 
 	switch (state) {
 	case G_SUPPLICANT_STATE_SCANNING:
-		connman_device_set_scanning(device, TRUE);
 		break;
 
 	case G_SUPPLICANT_STATE_AUTHENTICATING:
@@ -440,9 +447,6 @@ static void scan_started(GSupplicantInterface *interface)
 
 	if (wifi == NULL)
 		return;
-
-	if (wifi->device)
-		connman_device_set_scanning(wifi->device, TRUE);
 }
 
 static void scan_finished(GSupplicantInterface *interface)
