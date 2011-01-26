@@ -162,6 +162,7 @@ struct _GSupplicantInterface {
 	char *driver;
 	char *bridge;
 	struct _GSupplicantWpsCredentials wps_cred;
+	GSupplicantWpsState wps_state;
 	GHashTable *network_table;
 	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
@@ -674,6 +675,15 @@ const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
 
 	*ssid_len = interface->wps_cred.ssid_len;
 	return interface->wps_cred.ssid;
+}
+
+GSupplicantWpsState g_supplicant_interface_get_wps_state(
+					GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return G_SUPPLICANT_WPS_STATE_UNKNOWN;
+
+	return interface->wps_state;
 }
 
 GSupplicantInterface *g_supplicant_network_get_interface(
@@ -1867,6 +1877,47 @@ static void signal_wps_credentials(const char *path, DBusMessageIter *iter)
 	supplicant_dbus_property_foreach(iter, wps_credentials, interface);
 }
 
+static void wps_event_args(const char *key, DBusMessageIter *iter,
+			void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+
+	if (key == NULL || interface == NULL)
+		return;
+
+	SUPPLICANT_DBG("Arg Key %s", key);
+}
+
+static void signal_wps_event(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	const char *name = NULL;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	dbus_message_iter_get_basic(iter, &name);
+
+	SUPPLICANT_DBG("Name: %s", name);
+
+	if (g_strcmp0(name, "success") == 0)
+		interface->wps_state = G_SUPPLICANT_WPS_STATE_SUCCESS;
+	else if (g_strcmp0(name, "failed") == 0)
+		interface->wps_state = G_SUPPLICANT_WPS_STATE_FAIL;
+	else
+		interface->wps_state = G_SUPPLICANT_WPS_STATE_UNKNOWN;
+
+	if (!dbus_message_iter_has_next(iter))
+		return;
+
+	dbus_message_iter_next(iter);
+
+	supplicant_dbus_property_foreach(iter, wps_event_args, interface);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -1889,6 +1940,7 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".BSS", "PropertiesChanged", signal_bss_changed   },
 
 	{ SUPPLICANT_INTERFACE ".Interface.WPS", "Credentials", signal_wps_credentials },
+	{ SUPPLICANT_INTERFACE ".Interface.WPS", "Event",       signal_wps_event       },
 
 	{ }
 };

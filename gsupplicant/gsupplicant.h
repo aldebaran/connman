@@ -97,6 +97,12 @@ typedef enum {
 	G_SUPPLICANT_STATE_COMPLETED,
 } GSupplicantState;
 
+typedef enum {
+	G_SUPPLICANT_WPS_STATE_UNKNOWN,
+	G_SUPPLICANT_WPS_STATE_SUCCESS,
+	G_SUPPLICANT_WPS_STATE_FAIL,
+} GSupplicantWpsState;
+
 struct _GSupplicantSSID {
 	const void *ssid;
 	unsigned int ssid_len;
@@ -158,6 +164,7 @@ GSupplicantState g_supplicant_interface_get_state(GSupplicantInterface *interfac
 const char *g_supplicant_interface_get_wps_key(GSupplicantInterface *interface);
 const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
 							unsigned int *ssid_len);
+GSupplicantWpsState g_supplicant_interface_get_wps_state(GSupplicantInterface *interface);
 
 /* Network API */
 struct _GSupplicantNetwork;
