@@ -171,6 +171,7 @@ struct _GSupplicantNetwork {
 	dbus_int16_t signal;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
+	dbus_bool_t wps;
 	GHashTable *bss_table;
 	GHashTable *config_table;
 };
@@ -713,6 +714,14 @@ dbus_int16_t g_supplicant_network_get_signal(GSupplicantNetwork *network)
 	return network->signal;
 }
 
+dbus_bool_t g_supplicant_network_get_wps(GSupplicantNetwork *network)
+{
+	if (network == NULL)
+		return FALSE;
+
+	return network->wps;
+}
+
 static void merge_network(GSupplicantNetwork *network)
 {
 	GString *str;
@@ -930,6 +939,10 @@ static void add_bss_to_network(struct g_supplicant_bss *bss)
 	memcpy(network->ssid, bss->ssid, bss->ssid_len);
 	network->signal = bss->signal;
 
+	network->wps = FALSE;
+	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0)
+		network->wps = TRUE;
+
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_bss);
 
@@ -1024,6 +1037,82 @@ static void bss_wpa(const char *key, DBusMessageIter *iter,
 
 }
 
+static unsigned int get_tlv(unsigned char *ie, unsigned int ie_size,
+							unsigned int type)
+{
+	unsigned int len = 0;
+
+	while (len + 4 < ie_size) {
+		unsigned int hi = ie[len];
+		unsigned int lo = ie[len + 1];
+		unsigned int tmp_type = (hi << 8) + lo;
+		unsigned int v_len = 0;
+
+		/* hi and lo are used to recreate an unsigned int
+		 * based on 2 8bits length unsigned int. */
+
+		hi = ie[len + 2];
+		lo = ie[len + 3];
+		v_len = (hi << 8) + lo;
+
+		if (tmp_type == type) {
+			unsigned int ret_value = 0;
+			unsigned char *value = (unsigned char *)&ret_value;
+
+			SUPPLICANT_DBG("IE: match type 0x%x", type);
+
+			/* Verifying length relevance */
+			if (v_len > sizeof(unsigned int) ||
+				len + 4 + v_len > ie_size)
+				break;
+
+			memcpy(value, ie + len + 4, v_len);
+
+			SUPPLICANT_DBG("returning 0x%x", ret_value);
+			return ret_value;
+		}
+
+		len += v_len + 4;
+	}
+
+	SUPPLICANT_DBG("returning 0");
+	return 0;
+}
+
+static void bss_process_ies(DBusMessageIter *iter, void *user_data)
+{
+	struct g_supplicant_bss *bss = user_data;
+	const unsigned char WPS_OUI[] = { 0x00, 0x50, 0xf2, 0x04 };
+	unsigned char *ie, *ie_end;
+	DBusMessageIter array;
+	int ie_len;
+
+#define WMM_WPA1_WPS_INFO 221
+#define WPS_INFO_MIN_LEN  6
+#define WPS_VERSION_TLV   0x104A
+#define WPS_STATE_TLV     0x1044
+#define WPS_VERSION       0x10
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
+
+	if (ie == NULL || ie_len < 2)
+		return;
+
+	for (ie_end = ie+ie_len; ie+ie[1]+1 <= ie_end; ie += ie[1]+2) {
+		if (ie[0] != WMM_WPA1_WPS_INFO || ie[1] < WPS_INFO_MIN_LEN ||
+			memcmp(ie+2, WPS_OUI, sizeof(WPS_OUI)) != 0)
+			continue;
+
+		SUPPLICANT_DBG("IE: match WPS_OUI");
+
+		if (get_tlv(&ie[6], ie[1],
+				WPS_VERSION_TLV) == WPS_VERSION &&
+			get_tlv(&ie[6], ie[1],
+				WPS_STATE_TLV) != 0)
+			bss->keymgmt |= G_SUPPLICANT_KEYMGMT_WPS;
+	}
+}
 
 static void bss_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
@@ -1134,7 +1223,9 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 				G_SUPPLICANT_KEYMGMT_WPA_FT_PSK |
 				G_SUPPLICANT_KEYMGMT_WPA_PSK_256))
 			bss->psk = TRUE;
-	} else
+	} else if (g_strcmp0(key, "IEs") == 0)
+		bss_process_ies(iter, bss);
+	else
 		SUPPLICANT_DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
 }
