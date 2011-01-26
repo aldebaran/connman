@@ -86,6 +86,8 @@ struct modem_data {
 	dbus_bool_t attached;
 	dbus_bool_t roaming_allowed;
 
+	connman_bool_t registered;
+	connman_bool_t roaming;
 	uint8_t strength, has_strength;
 };
 
@@ -487,7 +489,13 @@ static int network_connect(struct connman_network *network)
 	if (modem == NULL)
 		return -ENODEV;
 
+	if (modem->registered == FALSE)
+		return -ENOLINK;
+
 	if (modem->powered == FALSE)
+		return -ENOLINK;
+
+	if (modem->roaming_allowed == FALSE && modem->roaming == TRUE)
 		return -ENOLINK;
 
 	return set_network_active(network, TRUE);
@@ -544,7 +552,6 @@ static int add_network(struct connman_device *device,
 	char *ident;
 	const char *hash_path;
 	char const *operator;
-	char const *reg_status;
 	dbus_bool_t active = FALSE;
 
 	DBG("modem %p device %p path %s", modem, device, path);
@@ -588,12 +595,7 @@ static int add_network(struct connman_device *device,
 	if (modem->has_strength)
 		connman_network_set_strength(network, modem->strength);
 
-	reg_status = connman_device_get_string(device, "RegistrationStatus");
-
-	if (!g_strcmp0(reg_status, "roaming"))
-		connman_network_set_roaming(network, TRUE);
-	else if (!g_strcmp0(reg_status, "registered"))
-		connman_network_set_roaming(network, FALSE);
+	connman_network_set_roaming(network, modem->roaming);
 
 	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -765,24 +767,34 @@ static void modem_roaming_changed(struct modem_data *modem,
 					char const *status)
 {
 	struct connman_device *device = modem->device;
-	connman_bool_t roaming;
+	connman_bool_t roaming = FALSE;
+	connman_bool_t registered = FALSE;
+	connman_bool_t was_roaming = modem->roaming;
 	GHashTableIter i;
 	gpointer value;
-
-	if (device == NULL)
-		return;
-
-	connman_device_set_string(device, "RegistrationStatus", status);
 
 	if (g_str_equal(status, "roaming"))
 		roaming = TRUE;
 	else if (g_str_equal(status, "registered"))
-		roaming = FALSE;
-	else
+		registered = TRUE;
+
+	registered = registered || roaming;
+
+	if (modem->roaming == roaming && modem->registered == registered)
 		return;
 
-	for (g_hash_table_iter_init(&i, network_hash);
-	     g_hash_table_iter_next(&i, NULL, &value);) {
+	modem->registered = registered;
+	modem->roaming = roaming;
+
+	if (roaming == was_roaming)
+		return;
+
+	if (device == NULL)
+		return;
+
+	g_hash_table_iter_init(&i, network_hash);
+
+	while (g_hash_table_iter_next(&i, NULL, &value)) {
 		struct connman_network *network = value;
 
 		if (connman_network_get_device(network) == device) {
@@ -790,6 +802,12 @@ static void modem_roaming_changed(struct modem_data *modem,
 			connman_network_update(network);
 		}
 	}
+}
+
+static void modem_registration_removed(struct modem_data *modem)
+{
+	modem->registered = FALSE;
+	modem->roaming = FALSE;
 }
 
 static void modem_registration_changed(struct modem_data *modem,
@@ -1344,9 +1362,9 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		gboolean has_sim = modem_has_sim(&value);
 		gboolean has_reg = modem_has_reg(&value);
-		gboolean added_reg = has_reg && !modem->has_reg;
+		gboolean had_reg = modem->has_reg;
 		gboolean has_gprs = modem_has_gprs(&value);
-		gboolean added_gprs = has_gprs && !modem->has_gprs;
+		gboolean had_gprs = modem->has_gprs;
 
 		modem->has_sim = has_sim;
 		modem->has_reg = has_reg;
@@ -1358,10 +1376,12 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		} else if (!has_sim) {
 			modem_remove_device(modem);
 		} else {
-			if (added_reg)
+			if (has_reg && !had_reg)
 				check_registration(modem);
+			else if (had_reg && !has_reg)
+				modem_registration_removed(modem);
 
-			if (added_gprs) {
+			if (has_gprs && !had_gprs) {
 				gprs_change_powered(modem->path, TRUE);
 				check_gprs(modem);
 			}
