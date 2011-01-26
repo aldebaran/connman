@@ -2835,6 +2835,12 @@ static void interface_disconnect_result(const char *error,
 	if (error != NULL && data->callback != NULL)
 		data->callback(-EIO, data->interface, data->user_data);
 
+	/* If we are disconnecting from previous WPS successful
+	 * association. i.e.: it did not went through AddNetwork,
+	 * and interface->network_path was never set. */
+	if (data->interface->network_path == NULL)
+		return;
+
 	network_remove(data);
 }
 
