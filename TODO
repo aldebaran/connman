@@ -95,16 +95,6 @@ Core
 WiFi
 ====
 
-- WPS
-
-   Priority: Low
-   Complexity: C2
-   Dependencies: Core:Agent callbacks
-   Owner: Tomasz Bursztyka <tomasz.bursztyka@nokia.com>
-
-   Support in gsupplicant and connman core (network/service).
-
-
 - Ad-Hoc support
 
    Priority: Medium
