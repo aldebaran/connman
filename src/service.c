@@ -2420,6 +2420,9 @@ static DBusMessage *connect_service(DBusConnection *conn,
 				return NULL;
 		}
 
+		if (service->pending == NULL)
+			return NULL;
+
 		if (err != -EINPROGRESS) {
 			dbus_message_unref(service->pending);
 			service->pending = NULL;
@@ -3322,17 +3325,9 @@ static void prepare_8021x(struct connman_service *service)
 							service->phase2);
 }
 
-int __connman_service_connect(struct connman_service *service)
+static int service_connect(struct connman_service *service)
 {
 	int err;
-
-	DBG("service %p", service);
-
-	if (is_connected(service) == TRUE)
-		return -EISCONN;
-
-	if (is_connecting(service) == TRUE)
-		return -EALREADY;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -3407,23 +3402,56 @@ int __connman_service_connect(struct connman_service *service)
 		if (err != -EINPROGRESS) {
 			__connman_ipconfig_disable(service->ipconfig_ipv4);
 			__connman_ipconfig_disable(service->ipconfig_ipv6);
-
 			__connman_stats_service_unregister(service);
-			if (service->userconnect == TRUE)
-				return __connman_agent_report_error(service,
-						error2string(service->error),
-						report_error_cb, NULL);
-			else
-				return err;
 		}
+	}
 
+	return err;
+}
+
+
+int __connman_service_connect(struct connman_service *service)
+{
+	int err;
+
+	DBG("service %p", service);
+
+	if (is_connected(service) == TRUE)
+		return -EISCONN;
+
+	if (is_connecting(service) == TRUE)
+		return -EALREADY;
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		return -EINVAL;
+	default:
+		err = service_connect(service);
+	}
+
+	if (err >= 0)
+		return 0;
+
+	if (err == -EINPROGRESS) {
 		service->timeout = g_timeout_add_seconds(CONNECT_TIMEOUT,
 						connect_timeout, service);
 
 		return -EINPROGRESS;
 	}
 
-	return 0;
+	if (err == -ENOKEY)
+		return -ENOKEY;
+
+	if (service->userconnect == TRUE)
+		reply_pending(service, err);
+
+	__connman_service_indicate_state(service,
+				CONNMAN_SERVICE_STATE_FAILURE);
+
+	return err;
 }
 
 int __connman_service_disconnect(struct connman_service *service)
