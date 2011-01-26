@@ -2954,6 +2954,14 @@ enum connman_service_security __connman_service_get_security(struct connman_serv
 	return service->security;
 }
 
+connman_bool_t __connman_service_wps_enabled(struct connman_service *service)
+{
+	if (service == NULL)
+		return FALSE;
+
+	return service->wps;
+}
+
 /**
  * __connman_service_set_favorite:
  * @service: service structure
