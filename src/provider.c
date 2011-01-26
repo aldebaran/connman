@@ -254,6 +254,38 @@ int __connman_provider_remove(const char *path)
 	return -ENXIO;
 }
 
+static void provider_set_nameservers(struct connman_provider *provider)
+{
+	char *nameservers = NULL, *name = NULL;
+	const char *value;
+	char *second_ns;
+
+	if (provider->dns == NULL)
+		return;
+
+	name = connman_inet_ifname(provider->element.index);
+
+	nameservers = g_strdup(provider->dns);
+	value = nameservers;
+	second_ns = strchr(value, ' ');
+	if (second_ns)
+		*(second_ns++) = 0;
+	__connman_service_append_nameserver(service, value);
+	value = second_ns;
+
+	while (value) {
+		char *next = strchr(value, ' ');
+		if (next)
+			*(next++) = 0;
+
+		connman_resolver_append(name, provider->domain, value);
+		value = next;
+	}
+
+	g_free(nameservers);
+	g_free(name);
+}
+
 static int set_connected(struct connman_provider *provider,
 					connman_bool_t connected)
 {
@@ -265,9 +297,6 @@ static int set_connected(struct connman_provider *provider,
 	if (connected == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
-		char *nameservers = NULL, *name = NULL;
-		const char *value;
-		char *second_ns;
 		GSList *list;
 		int err;
 
@@ -298,27 +327,7 @@ static int set_connected(struct connman_provider *provider,
 
 		__connman_service_set_domainname(service, provider->domain);
 
-		name = connman_inet_ifname(provider->element.index);
-
-		nameservers = g_strdup(provider->dns);
-		value = nameservers;
-		second_ns = strchr(value, ' ');
-		if (second_ns)
-			*(second_ns++) = 0;
-		__connman_service_append_nameserver(service, value);
-		value = second_ns;
-
-		while (value) {
-			char *next = strchr(value, ' ');
-			if (next)
-				*(next++) = 0;
-
-			connman_resolver_append(name, provider->domain, value);
-			value = next;
-		}
-
-		g_free(nameservers);
-		g_free(name);
+		provider_set_nameservers(provider);
 
 		for (list = provider->route_list; list; list = list->next) {
 			struct connman_route *route = list->data;
