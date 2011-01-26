@@ -582,9 +582,6 @@ struct connman_service *__connman_session_request(const char *bearer, const char
 int __connman_session_init(void);
 void __connman_session_cleanup(void);
 
-int __connman_ondemand_init(void);
-void __connman_ondemand_cleanup(void);
-
 struct connman_stats_data {
 	unsigned int rx_packets;
 	unsigned int tx_packets;

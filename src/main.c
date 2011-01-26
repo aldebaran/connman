@@ -222,7 +222,6 @@ int main(int argc, char *argv[])
 	__connman_iptables_init();
 	__connman_tethering_init();
 	__connman_counter_init();
-	__connman_ondemand_init();
 	__connman_manager_init(option_compat);
 	__connman_profile_init();
 	__connman_config_init();
@@ -272,7 +271,6 @@ int main(int argc, char *argv[])
 	__connman_config_cleanup();
 	__connman_profile_cleanup();
 	__connman_manager_cleanup();
-	__connman_ondemand_cleanup();
 	__connman_counter_cleanup();
 	__connman_agent_cleanup();
 	__connman_tethering_cleanup();

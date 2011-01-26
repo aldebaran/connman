@@ -35,9 +35,6 @@
 
 #include <glib.h>
 
-#define CONNMAN_API_SUBJECT_TO_CHANGE
-#include <connman/ondemand.h>
-
 #include "connman.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
@@ -1113,8 +1110,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	DBG("Received %d bytes (id 0x%04x)", len, buf[2] | buf[3] << 8);
 
 	err = parse_request(buf + 2, len - 2, query, sizeof(query));
-	if (err < 0 || (g_slist_length(server_list) == 0 &&
-				connman_ondemand_connected())) {
+	if (err < 0 || (g_slist_length(server_list) == 0)) {
 		send_response(client_sk, buf, len, NULL, 0, IPPROTO_TCP);
 		return TRUE;
 	}
@@ -1224,8 +1220,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
 
 	err = parse_request(buf, len, query, sizeof(query));
-	if (err < 0 || (g_slist_length(server_list) == 0 &&
-				connman_ondemand_connected())) {
+	if (err < 0 || (g_slist_length(server_list) == 0)) {
 		send_response(sk, buf, len, (void *)&client_addr,
 			      client_addr_len, IPPROTO_UDP);
 		return TRUE;
@@ -1251,34 +1246,6 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	buf[0] = req->dstid & 0xff;
 	buf[1] = req->dstid >> 8;
-
-	if (!connman_ondemand_connected()) {
-		DBG("Starting on demand connection");
-		/*
-		 * We're not connected, let's queue the request and start
-		 * an on-demand connection.
-		 */
-		req->request = g_try_malloc0(req->request_len);
-		if (req->request == NULL)
-			return TRUE;
-
-		memcpy(req->request, buf, req->request_len);
-
-		req->name = g_try_malloc0(sizeof(query));
-		if (req->name == NULL) {
-			g_free(req->request);
-			return TRUE;
-		}
-		memcpy(req->name, query, sizeof(query));
-
-		request_pending_list = g_slist_append(request_pending_list,
-									req);
-
-		connman_ondemand_start("", 300);
-
-		return TRUE;
-	}
-
 
 	req->numserv = 0;
 	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
