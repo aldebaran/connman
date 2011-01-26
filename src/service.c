@@ -2316,9 +2316,12 @@ static void request_input_cb (struct connman_service *service,
 {
 	DBG ("RequestInput return, %p", service);
 
-	if (passphrase == NULL)
+	if (passphrase == NULL && service->wps == FALSE)
 		return;
-	__connman_service_set_passphrase(service, passphrase);
+
+	if (passphrase != NULL)
+		__connman_service_set_passphrase(service, passphrase);
+
 	__connman_service_connect(service);
 }
 
@@ -3296,7 +3299,8 @@ static connman_bool_t prepare_network(struct connman_service *service)
 							&ssid_len) == NULL)
 			return FALSE;
 
-		connman_network_set_string(service->network,
+		if (service->passphrase != NULL)
+			connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 		break;
 	case CONNMAN_NETWORK_TYPE_ETHERNET:
@@ -3380,8 +3384,16 @@ static int service_connect(struct connman_service *service)
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
-			if (service->passphrase == NULL)
-				return -ENOKEY;
+			if (service->passphrase == NULL) {
+				if (service->network == NULL)
+					return -EOPNOTSUPP;
+
+				if (service->wps == FALSE ||
+					connman_network_get_bool(
+							service->network,
+							"WiFi.UseWPS") == FALSE)
+					return -ENOKEY;
+			}
 			break;
 		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
