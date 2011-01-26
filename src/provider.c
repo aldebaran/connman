@@ -52,7 +52,7 @@ struct connman_provider {
 	char *host;
 	char *dns;
 	char *domain;
-	GSList *route_list;
+	GHashTable *routes;
 	struct connman_provider_driver *driver;
 	void *driver_data;
 };
@@ -256,6 +256,26 @@ int __connman_provider_remove(const char *path)
 	return -ENXIO;
 }
 
+static void provider_append_routes(gpointer key, gpointer value,
+					gpointer user_data)
+{
+	struct connman_route *route = value;
+	struct connman_provider *provider = user_data;
+	int index = provider->element.index;
+
+	if (route->family == AF_INET6) {
+		unsigned char prefix_len = atoi(route->netmask);
+
+		connman_inet_add_ipv6_network_route(index, route->host,
+							route->gateway,
+							prefix_len);
+	} else {
+		connman_inet_add_network_route(index, route->host,
+						route->gateway,
+						route->netmask);
+	}
+}
+
 static void provider_set_nameservers(struct connman_provider *provider)
 {
 	struct connman_service *service = provider->vpn_service;
@@ -304,7 +324,6 @@ static int set_connected(struct connman_provider *provider,
 	if (connected == TRUE) {
 		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
 		struct connman_element *element;
-		GSList *list;
 		int err;
 
 		__connman_service_indicate_state(provider->vpn_service,
@@ -336,24 +355,8 @@ static int set_connected(struct connman_provider *provider,
 
 		provider_set_nameservers(provider);
 
-		for (list = provider->route_list; list; list = list->next) {
-			struct connman_route *route = list->data;
-			int index = provider->element.index;
-
-			if (route->family == AF_INET6) {
-				unsigned char prefix_len = atoi(route->netmask);
-
-				connman_inet_add_ipv6_network_route(index,
-								route->host,
-								route->gateway,
-								prefix_len);
-			} else {
-				connman_inet_add_network_route(index,
-							route->host,
-							route->gateway,
-							route->netmask);
-			}
-		}
+		g_hash_table_foreach(provider->routes, provider_append_routes,
+					provider);
 	} else {
 		connman_element_unregister_children(&provider->element);
 		__connman_service_indicate_state(service,
@@ -407,7 +410,6 @@ static void unregister_provider(gpointer data)
 static void provider_destruct(struct connman_element *element)
 {
 	struct connman_provider *provider = element->private;
-	GSList *list;
 
 	DBG("provider %p", provider);
 
@@ -416,15 +418,17 @@ static void provider_destruct(struct connman_element *element)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_free(provider->dns);
+	g_hash_table_destroy(provider->routes);
+}
 
-	for (list = provider->route_list; list; list = list->next) {
-		struct connman_route *route = list->data;
+static void destroy_route(gpointer user_data)
+{
+	struct connman_route *route = user_data;
 
-		g_free(route->host);
-		g_free(route->netmask);
-		g_free(route->gateway);
-	}
-	g_slist_free(provider->route_list);
+	g_free(route->host);
+	g_free(route->netmask);
+	g_free(route->gateway);
+	g_free(route);
 }
 
 static void provider_initialize(struct connman_provider *provider)
@@ -447,7 +451,8 @@ static void provider_initialize(struct connman_provider *provider)
 	provider->dns = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
-	provider->route_list = NULL;
+	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+					NULL, destroy_route);
 }
 
 static struct connman_provider *connman_provider_new(void)
@@ -762,28 +767,109 @@ int connman_provider_get_index(struct connman_provider *provider)
 	return provider->element.index;
 }
 
+enum provider_route_type {
+	PROVIDER_ROUTE_TYPE_NONE = 0,
+	PROVIDER_ROUTE_TYPE_MASK = 1,
+	PROVIDER_ROUTE_TYPE_ADDR = 2,
+	PROVIDER_ROUTE_TYPE_GW   = 3,
+};
+
+static int route_env_parse(struct connman_provider *provider, const char *key,
+				int *family, unsigned long *idx,
+				enum provider_route_type *type)
+{
+	char *end;
+	const char *start;
+
+	DBG("name %s", provider->name);
+
+	if (!strcmp(provider->name, "openvpn")) {
+		if (g_str_has_prefix(key, "route_network_") == TRUE) {
+			start = key + strlen("route_network_");
+			*type = PROVIDER_ROUTE_TYPE_ADDR;
+		} else if (g_str_has_prefix(key, "route_netmask_") == TRUE) {
+			start = key + strlen("route_netmask_");
+			*type = PROVIDER_ROUTE_TYPE_MASK;
+		} else if (g_str_has_prefix(key, "route_gateway_") == TRUE) {
+			start = key + strlen("route_gateway_");
+			*type = PROVIDER_ROUTE_TYPE_GW;
+		} else
+			return -EINVAL;
+
+		*family = AF_INET;
+		*idx = g_ascii_strtoull(start, &end, 10);
+
+	} else if (!strcmp(provider->name, "openconnect")) {
+		if (g_str_has_prefix(key, "CISCO_SPLIT_INC_") == TRUE) {
+			*family = AF_INET;
+			start = key + strlen("CISCO_SPLIT_INC_");
+		} else if (g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC_") == TRUE) {
+			*family = AF_INET6;
+			start = key + strlen("CISCO_IPV6_SPLIT_INC_");
+		} else
+			return -EINVAL;
+
+		*idx = g_ascii_strtoull(start, &end, 10);
+
+		if (strncmp(end, "_ADDR", 5) == 0)
+			*type = PROVIDER_ROUTE_TYPE_ADDR;
+		else if (strncmp(end, "_MASK", 5) == 0)
+			*type = PROVIDER_ROUTE_TYPE_MASK;
+		else if (strncmp(end, "_MASKLEN", 8) == 0 &&
+				*family == AF_INET6) {
+			*type = PROVIDER_ROUTE_TYPE_MASK;
+		} else
+			return -EINVAL;
+	}
+
+	return 0;
+}
+
 int connman_provider_append_route(struct connman_provider *provider,
-					int family, const char *host,
-					const char *netmask,
-					const char *gateway)
+					const char *key, const char *value)
 {
 	struct connman_route *route;
+	int ret, family = 0;
+	unsigned long idx = 0;
+	enum provider_route_type type = PROVIDER_ROUTE_TYPE_NONE;
 
-	if (family != AF_INET && family != AF_INET6)
-		return -EINVAL;
+	DBG("key %s value %s", key, value);
 
-	route = g_try_new0(struct connman_route, 1);
-	if (route == NULL)
-		return -ENOMEM;
+	ret = route_env_parse(provider, key, &family, &idx, &type);
+	if (ret < 0)
+		return ret;
 
-	route->family = family;
-	route->host = g_strdup(host);
-	route->netmask = g_strdup(netmask);
-	route->gateway = g_strdup(gateway);
+	DBG("idx %lu family %d type %d", idx, family, type);
 
-	provider->route_list = g_slist_append(provider->route_list, route);
+	route = g_hash_table_lookup(provider->routes, GINT_TO_POINTER(idx));
+	if (route == NULL) {
+		route = g_try_new0(struct connman_route, 1);
+		if (route == NULL) {
+			connman_error("out of memory");
+			return -ENOMEM;
+		}
 
-	return TRUE;
+		route->family = family;
+
+		g_hash_table_replace(provider->routes, GINT_TO_POINTER(idx),
+						route);
+	}
+
+	switch (type) {
+	case PROVIDER_ROUTE_TYPE_NONE:
+		break;
+	case PROVIDER_ROUTE_TYPE_MASK:
+		route->netmask = g_strdup(value);
+		break;
+	case PROVIDER_ROUTE_TYPE_ADDR:
+		route->host = g_strdup(value);
+		break;
+	case PROVIDER_ROUTE_TYPE_GW:
+		route->gateway = g_strdup(value);
+		break;
+	}
+
+	return 0;
 }
 
 const char *connman_provider_get_driver_name(struct connman_provider *provider)

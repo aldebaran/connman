@@ -27,6 +27,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <glib.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/provider.h>
@@ -86,6 +88,10 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 
 		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN"))
 			domain = value;
+
+		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") == TRUE ||
+			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC") == TRUE)
+			connman_provider_append_route(provider, key, value);
 
 		dbus_message_iter_next(&dict);
 	}
