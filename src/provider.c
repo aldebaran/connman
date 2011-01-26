@@ -25,6 +25,7 @@
 
 #include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
 #include <gdbus.h>
 
 #include "connman.h"
@@ -36,6 +37,7 @@ static GHashTable *provider_hash = NULL;
 static GSList *driver_list = NULL;
 
 struct connman_route {
+	int family;
 	char *host;
 	char *netmask;
 	char *gateway;
@@ -331,12 +333,21 @@ static int set_connected(struct connman_provider *provider,
 
 		for (list = provider->route_list; list; list = list->next) {
 			struct connman_route *route = list->data;
+			int index = provider->element.index;
 
-			connman_inet_add_network_route(provider->element.index,
+			if (route->family == AF_INET6) {
+				unsigned char prefix_len = atoi(route->netmask);
+
+				connman_inet_add_ipv6_network_route(index,
+								route->host,
+								route->gateway,
+								prefix_len);
+			} else {
+				connman_inet_add_network_route(index,
 							route->host,
 							route->gateway,
 							route->netmask);
-			/* XXX Need to handle IPv6 too */
+			}
 		}
 	} else {
 		connman_element_unregister_children(&provider->element);
@@ -747,15 +758,20 @@ int connman_provider_get_index(struct connman_provider *provider)
 }
 
 int connman_provider_append_route(struct connman_provider *provider,
-					const char *host, const char *netmask,
+					int family, const char *host,
+					const char *netmask,
 					const char *gateway)
 {
 	struct connman_route *route;
+
+	if (family != AF_INET && family != AF_INET6)
+		return -EINVAL;
 
 	route = g_try_new0(struct connman_route, 1);
 	if (route == NULL)
 		return -ENOMEM;
 
+	route->family = family;
 	route->host = g_strdup(host);
 	route->netmask = g_strdup(netmask);
 	route->gateway = g_strdup(gateway);

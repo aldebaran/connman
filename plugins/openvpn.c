@@ -43,6 +43,7 @@
 static DBusConnection *connection;
 
 struct ov_route {
+	int family;
 	char *host;
 	char *netmask;
 	char *gateway;
@@ -64,8 +65,8 @@ static void ov_provider_append_routes(gpointer key, gpointer value,
 	struct ov_route *route = value;
 	struct connman_provider *provider = user_data;
 
-	connman_provider_append_route(provider, route->host, route->netmask,
-					route->gateway);
+	connman_provider_append_route(provider, route->family, route->host,
+					route->netmask, route->gateway);
 }
 
 static struct ov_route *ov_route_lookup(const char *key, const char *prefix_key,
@@ -94,6 +95,8 @@ static struct ov_route *ov_route_lookup(const char *key, const char *prefix_key,
 			connman_error("out of memory");
 			return NULL;
 		}
+
+		route->family = AF_INET;
 
 		g_hash_table_replace(routes, GINT_TO_POINTER(idx),
 						route);
