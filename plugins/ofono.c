@@ -471,10 +471,24 @@ static void set_apn(struct connman_network *network)
 
 static int network_connect(struct connman_network *network)
 {
+	struct connman_device *device;
+	struct modem_data *modem;
+
 	DBG("network %p", network);
 
 	if (connman_network_get_index(network) >= 0)
 		return -EISCONN;
+
+	device = connman_network_get_device(network);
+	if (device == NULL)
+		return -ENODEV;
+
+	modem = connman_device_get_data(device);
+	if (modem == NULL)
+		return -ENODEV;
+
+	if (modem->powered == FALSE)
+		return -ENOLINK;
 
 	return set_network_active(network, TRUE);
 }
