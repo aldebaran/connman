@@ -116,6 +116,8 @@ struct _GSupplicantSSID {
 	const char *private_key_path;
 	const char *private_key_passphrase;
 	const char *phase2_auth;
+	dbus_bool_t use_wps;
+	const char *pin_wps;
 };
 
 typedef struct _GSupplicantSSID GSupplicantSSID;

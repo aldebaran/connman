@@ -2672,6 +2672,75 @@ static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
+static void interface_wps_start_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+
+	SUPPLICANT_DBG("");
+	if (error != NULL)
+		SUPPLICANT_DBG("error: %s", error);
+
+	g_free(data->ssid);
+	dbus_free(data);
+}
+
+static void interface_add_wps_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+	GSupplicantSSID *ssid = data->ssid;
+	const char *role = "enrollee", *type;
+	DBusMessageIter dict;
+
+	SUPPLICANT_DBG("");
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	supplicant_dbus_dict_append_basic(&dict, "Role",
+						DBUS_TYPE_STRING, &role);
+
+	type = "pbc";
+	if (ssid->pin_wps != NULL) {
+		type = "pin";
+		supplicant_dbus_dict_append_basic(&dict, "Pin",
+					DBUS_TYPE_STRING, &ssid->pin_wps);
+	}
+
+	supplicant_dbus_dict_append_basic(&dict, "Type",
+					DBUS_TYPE_STRING, &type);
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+static void wps_start(const char *error, DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+
+	SUPPLICANT_DBG("");
+
+	if (error != NULL) {
+		SUPPLICANT_DBG("error: %s", error);
+		g_free(data->ssid);
+		dbus_free(data);
+		return;
+	}
+
+	supplicant_dbus_method_call(data->interface->path,
+			SUPPLICANT_INTERFACE ".Interface.WPS", "Start",
+			interface_add_wps_params,
+			interface_wps_start_result, data);
+}
+
+static void wps_process_credentials(DBusMessageIter *iter, void *user_data)
+{
+	dbus_bool_t credentials = TRUE;
+
+	SUPPLICANT_DBG("");
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &credentials);
+}
+
+
 int g_supplicant_interface_connect(GSupplicantInterface *interface,
 				GSupplicantSSID *ssid,
 				GSupplicantInterfaceCallback callback,
@@ -2697,10 +2766,21 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 	data->ssid = ssid;
 	data->user_data = user_data;
 
-	ret = supplicant_dbus_method_call(interface->path,
+	if (ssid->use_wps == TRUE) {
+		g_free(interface->wps_cred.key);
+		memset(&interface->wps_cred, 0,
+				sizeof(struct _GSupplicantWpsCredentials));
+
+		ret = supplicant_dbus_property_set(interface->path,
+			SUPPLICANT_INTERFACE ".Interface.WPS",
+			"ProcessCredentials", DBUS_TYPE_BOOLEAN_AS_STRING,
+			wps_process_credentials, wps_start, data);
+	} else
+		ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
 			interface_add_network_params,
 			interface_add_network_result, data);
+
 	if (ret < 0)
 		return ret;
 
