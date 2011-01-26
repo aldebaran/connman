@@ -60,8 +60,12 @@ int connman_inet_set_ipv6_address(int index,
 		struct connman_ipaddress *ipaddress);
 int connman_inet_clear_ipv6_address(int index,
 		const char *address, int prefix_len);
+int connman_inet_add_ipv6_network_route(int index, const char *host,
+					const char *gateway, unsigned char prefix_len);
 int connman_inet_add_ipv6_host_route(int index, const char *host,
 						const char *gateway);
+int connman_inet_del_ipv6_network_route(int index, const char *host,
+					unsigned char prefix_len);
 int connman_inet_del_ipv6_host_route(int index, const char *host);
 int connman_inet_set_ipv6_gateway_address(int index, const char *gateway);
 int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway);
