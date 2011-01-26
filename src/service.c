@@ -106,6 +106,7 @@ struct connman_service {
 	char **proxies;
 	char **excludes;
 	char *pac;
+	connman_bool_t wps;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -1438,6 +1439,9 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 
 		connman_dbus_dict_append_basic(dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
+
+		connman_dbus_dict_append_basic(dict, "WPS",
+					DBUS_TYPE_BOOLEAN, &service->wps);
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
@@ -2728,6 +2732,8 @@ static void service_initialize(struct connman_service *service)
 	stats_init(service);
 
 	service->provider = NULL;
+
+	service->wps = FALSE;
 }
 
 /**
@@ -3144,6 +3150,19 @@ int __connman_service_indicate_state(struct connman_service *service,
 			}
 
 		__connman_notifier_connect(service->type);
+
+		if (connman_network_get_bool(service->network,
+						"WiFi.UseWPS") == TRUE) {
+			const char *pass;
+
+			pass = connman_network_get_string(service->network,
+							"WiFi.Passphrase");
+
+			__connman_service_set_passphrase(service, pass);
+
+			connman_network_set_bool(service->network,
+							"WiFi.UseWPS", FALSE);
+		}
 
 		default_changed();
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
@@ -4182,7 +4201,8 @@ static void update_from_network(struct connman_service *service,
 							"Cellular.Mode");
 
 		service->mode = convert_cellular_mode(value);
-	}
+	} else if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
+		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	if (service->strength > strength && service->network != NULL) {
 		connman_network_unref(service->network);
@@ -4309,6 +4329,9 @@ void __connman_service_update_from_network(struct connman_network *network)
 				CONNMAN_SERVICE_INTERFACE, "Name",
 				DBUS_TYPE_STRING, &service->name);
 	}
+
+	if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
+		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	strength = connman_network_get_uint8(service->network, "Strength");
 	if (strength == service->strength)
