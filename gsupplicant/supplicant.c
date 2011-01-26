@@ -136,6 +136,12 @@ static struct strvalmap mode_capa_map[] = {
 static GHashTable *interface_table;
 static GHashTable *bss_mapping;
 
+struct _GSupplicantWpsCredentials {
+	unsigned char ssid[32];
+	unsigned int ssid_len;
+	char *key;
+};
+
 struct _GSupplicantInterface {
 	char *path;
 	char *network_path;
@@ -155,6 +161,7 @@ struct _GSupplicantInterface {
 	char *ifname;
 	char *driver;
 	char *bridge;
+	struct _GSupplicantWpsCredentials wps_cred;
 	GHashTable *network_table;
 	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
@@ -406,6 +413,7 @@ static void remove_interface(gpointer data)
 
 	callback_interface_removed(interface);
 
+	g_free(interface->wps_cred.key);
 	g_free(interface->path);
 	g_free(interface->network_path);
 	g_free(interface->ifname);
@@ -643,6 +651,29 @@ GSupplicantState g_supplicant_interface_get_state(
 		return G_SUPPLICANT_STATE_UNKNOWN;
 
 	return interface->state;
+}
+
+const char *g_supplicant_interface_get_wps_key(GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return NULL;
+
+	return (const char *)interface->wps_cred.key;
+}
+
+const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
+							unsigned int *ssid_len)
+{
+	if (ssid_len == NULL)
+		return NULL;
+
+	if (interface == NULL || interface->wps_cred.ssid == NULL) {
+		*ssid_len = 0;
+		return NULL;
+	}
+
+	*ssid_len = interface->wps_cred.ssid_len;
+	return interface->wps_cred.ssid;
 }
 
 GSupplicantInterface *g_supplicant_network_get_interface(
@@ -1777,6 +1808,65 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
 }
 
+static void wps_credentials(const char *key, DBusMessageIter *iter,
+			void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+
+	if (key == NULL)
+		return;
+
+	SUPPLICANT_DBG("key %s", key);
+
+	if (g_strcmp0(key, "Key") == 0) {
+		DBusMessageIter array;
+		unsigned char *key;
+		int key_len;
+
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &key, &key_len);
+
+		g_free(interface->wps_cred.key);
+		interface->wps_cred.key = g_try_malloc0(
+						sizeof(char) * key_len+1);
+
+		if (interface->wps_cred.key == NULL)
+			return;
+
+		memcpy(interface->wps_cred.key, key, sizeof(char) * key_len);
+
+		SUPPLICANT_DBG("WPS key present");
+	} else if (g_strcmp0(key, "SSID") == 0) {
+		DBusMessageIter array;
+		unsigned char *ssid;
+		int ssid_len;
+
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &ssid, &ssid_len);
+
+		if (ssid_len > 0 && ssid_len < 33) {
+			memcpy(interface->wps_cred.ssid, ssid, ssid_len);
+			interface->wps_cred.ssid_len = ssid_len;
+		} else {
+			memset(interface->wps_cred.ssid, 0, 32);
+			interface->wps_cred.ssid_len = 0;
+		}
+	}
+}
+
+static void signal_wps_credentials(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	supplicant_dbus_property_foreach(iter, wps_credentials, interface);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -1797,6 +1887,8 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed   },
 
 	{ SUPPLICANT_INTERFACE ".BSS", "PropertiesChanged", signal_bss_changed   },
+
+	{ SUPPLICANT_INTERFACE ".Interface.WPS", "Credentials", signal_wps_credentials },
 
 	{ }
 };

@@ -155,6 +155,9 @@ void *g_supplicant_interface_get_data(GSupplicantInterface *interface);
 const char *g_supplicant_interface_get_ifname(GSupplicantInterface *interface);
 const char *g_supplicant_interface_get_driver(GSupplicantInterface *interface);
 GSupplicantState g_supplicant_interface_get_state(GSupplicantInterface *interface);
+const char *g_supplicant_interface_get_wps_key(GSupplicantInterface *interface);
+const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
+							unsigned int *ssid_len);
 
 /* Network API */
 struct _GSupplicantNetwork;
