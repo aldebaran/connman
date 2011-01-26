@@ -863,7 +863,7 @@ static void append_domain(const char *interface, const char *domain)
 	}
 }
 
-static int dnsproxy_append(const char *interface, const char *domain,
+int __connman_dnsproxy_append(const char *interface, const char *domain,
 							const char *server)
 {
 	struct server_data *data;
@@ -907,7 +907,7 @@ static void remove_server(const char *interface, const char *domain,
 	destroy_server(data);
 }
 
-static int dnsproxy_remove(const char *interface, const char *domain,
+int __connman_dnsproxy_remove(const char *interface, const char *domain,
 							const char *server)
 {
 	DBG("interface %s server %s", interface, server);
@@ -924,7 +924,7 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 	return 0;
 }
 
-static void dnsproxy_flush(void)
+void __connman_dnsproxy_flush(void)
 {
 	GSList *list;
 
@@ -941,14 +941,6 @@ static void dnsproxy_flush(void)
 		g_free(req->name);
 	}
 }
-
-static struct connman_resolver dnsproxy_resolver = {
-	.name		= "dnsproxy",
-	.priority	= CONNMAN_RESOLVER_PRIORITY_HIGH,
-	.append		= dnsproxy_append,
-	.remove		= dnsproxy_remove,
-	.flush		= dnsproxy_flush,
-};
 
 static void dnsproxy_offline_mode(connman_bool_t enabled)
 {
@@ -1434,7 +1426,7 @@ static int create_listener(void)
 		return err;
 	}
 
-	connman_resolver_append("lo", NULL, "127.0.0.1");
+	__connman_resolvfile_append("lo", NULL, "127.0.0.1");
 
 	return 0;
 }
@@ -1443,7 +1435,7 @@ static void destroy_listener(void)
 {
 	GSList *list;
 
-	connman_resolver_remove_all("lo");
+	__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
 
 	for (list = request_pending_list; list; list = list->next) {
 		struct request_data *req = list->data;
@@ -1485,6 +1477,8 @@ int __connman_dnsproxy_init(connman_bool_t dnsproxy)
 {
 	int err;
 
+	DBG("dnsproxy %d", dnsproxy);
+
 	dnsproxy_enabled = dnsproxy;
 	if (dnsproxy_enabled == FALSE)
 		return 0;
@@ -1493,18 +1487,11 @@ int __connman_dnsproxy_init(connman_bool_t dnsproxy)
 	if (err < 0)
 		return err;
 
-	err = connman_resolver_register(&dnsproxy_resolver);
+	err = connman_notifier_register(&dnsproxy_notifier);
 	if (err < 0)
 		goto destroy;
 
-	err = connman_notifier_register(&dnsproxy_notifier);
-	if (err < 0)
-		goto unregister;
-
 	return 0;
-
-unregister:
-	connman_resolver_unregister(&dnsproxy_resolver);
 
 destroy:
 	destroy_listener();
@@ -1514,12 +1501,12 @@ destroy:
 
 void __connman_dnsproxy_cleanup(void)
 {
+	DBG("");
+
 	if (dnsproxy_enabled == FALSE)
 		return;
 
 	connman_notifier_unregister(&dnsproxy_notifier);
-
-	connman_resolver_unregister(&dnsproxy_resolver);
 
 	destroy_listener();
 }

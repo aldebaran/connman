@@ -123,8 +123,10 @@ void __connman_rfkill_cleanup(void);
 
 #include <connman/resolver.h>
 
-int __connman_resolver_init(void);
+int __connman_resolver_init(connman_bool_t dnsproxy);
 void __connman_resolver_cleanup(void);
+int __connman_resolvfile_append(const char *interface, const char *domain, const char *server);
+int __connman_resolvfile_remove(const char *interface, const char *domain, const char *server);
 
 #include <connman/storage.h>
 
@@ -614,3 +616,6 @@ int __connman_iptables_commit(const char *table_name);
 
 int __connman_dnsproxy_init(connman_bool_t dnsproxy);
 void __connman_dnsproxy_cleanup(void);
+int __connman_dnsproxy_append(const char *interface, const char *domain, const char *server);
+int __connman_dnsproxy_remove(const char *interface, const char *domain, const char *server);
+void __connman_dnsproxy_flush(void);

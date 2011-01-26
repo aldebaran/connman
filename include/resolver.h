@@ -45,23 +45,6 @@ int connman_resolver_remove_public_server(const char *server);
 
 void connman_resolver_flush(void);
 
-#define CONNMAN_RESOLVER_PRIORITY_LOW      -100
-#define CONNMAN_RESOLVER_PRIORITY_DEFAULT     0
-#define CONNMAN_RESOLVER_PRIORITY_HIGH      100
-
-struct connman_resolver {
-	const char *name;
-	int priority;
-	int (*append) (const char *interface, const char *domain,
-							const char *server);
-	int (*remove) (const char *interface, const char *domain,
-							const char *server);
-	void (*flush) (void);
-};
-
-int connman_resolver_register(struct connman_resolver *resolver);
-void connman_resolver_unregister(struct connman_resolver *resolver);
-
 #ifdef __cplusplus
 }
 #endif
