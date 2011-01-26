@@ -300,271 +300,6 @@ static void system_killed(void)
 	connman_device_driver_unregister(&wifi_ng_driver);
 }
 
-static void interface_added(GSupplicantInterface *interface)
-{
-	const char *ifname = g_supplicant_interface_get_ifname(interface);
-	const char *driver = g_supplicant_interface_get_driver(interface);
-	struct wifi_data *wifi;
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	/*
-	 * We can get here with a NULL wifi pointer when
-	 * the interface added signal is sent before the
-	 * interface creation callback is called.
-	 */
-	if (wifi == NULL)
-		return;
-
-	DBG("ifname %s driver %s wifi %p", ifname, driver, wifi);
-
-	if (wifi->device == NULL) {
-		connman_error("WiFi device not set");
-		return;
-	}
-
-	connman_device_set_powered(wifi->device, TRUE);
-	wifi_scan(wifi->device);
-}
-
-static connman_bool_t is_idle(struct wifi_data *wifi)
-{
-	DBG("state %d", wifi->state);
-
-	switch (wifi->state) {
-	case G_SUPPLICANT_STATE_UNKNOWN:
-	case G_SUPPLICANT_STATE_DISCONNECTED:
-	case G_SUPPLICANT_STATE_INACTIVE:
-	case G_SUPPLICANT_STATE_SCANNING:
-		return TRUE;
-
-	case G_SUPPLICANT_STATE_AUTHENTICATING:
-	case G_SUPPLICANT_STATE_ASSOCIATING:
-	case G_SUPPLICANT_STATE_ASSOCIATED:
-	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
-	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
-	case G_SUPPLICANT_STATE_COMPLETED:
-		return FALSE;
-	}
-
-	return FALSE;
-}
-
-static void interface_state(GSupplicantInterface *interface)
-{
-	struct connman_network *network;
-	struct connman_device *device;
-	struct wifi_data *wifi;
-	GSupplicantState state = g_supplicant_interface_get_state(interface);
-	unsigned char bssid[ETH_ALEN];
-	unsigned int bssid_len;
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	DBG("wifi %p interface state %d", wifi, state);
-
-	if (wifi == NULL)
-		return;
-
-	network = wifi->network;
-	device = wifi->device;
-
-	if (device == NULL || network == NULL)
-		return;
-
-	switch (state) {
-	case G_SUPPLICANT_STATE_SCANNING:
-		break;
-
-	case G_SUPPLICANT_STATE_AUTHENTICATING:
-	case G_SUPPLICANT_STATE_ASSOCIATING:
-		connman_network_set_associating(network, TRUE);
-		break;
-
-	case G_SUPPLICANT_STATE_COMPLETED:
-		/* reset scan trigger and schedule background scan */
-		connman_device_schedule_scan(device);
-
-		if (get_bssid(device, bssid, &bssid_len) == 0)
-			connman_network_set_address(network,
-							bssid, bssid_len);
-		connman_network_set_connected(network, TRUE);
-		break;
-
-	case G_SUPPLICANT_STATE_DISCONNECTED:
-		/*
-		 * If we're in one of the idle modes, we have
-		 * not started association yet and thus setting
-		 * those ones to FALSE could cancel an association
-		 * in progress.
-		 */
-		if (is_idle(wifi))
-			break;
-		connman_network_set_associating(network, FALSE);
-		connman_network_set_connected(network, FALSE);
-		break;
-
-	case G_SUPPLICANT_STATE_INACTIVE:
-		connman_network_set_associating(network, FALSE);
-		break;
-
-	case G_SUPPLICANT_STATE_UNKNOWN:
-	case G_SUPPLICANT_STATE_ASSOCIATED:
-	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
-	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
-		break;
-	}
-
-	wifi->state = state;
-
-	DBG("DONE");
-}
-
-static void interface_removed(GSupplicantInterface *interface)
-{
-	const char *ifname = g_supplicant_interface_get_ifname(interface);
-	struct wifi_data *wifi;
-
-	DBG("ifname %s", ifname);
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	if (wifi == NULL || wifi->device == NULL) {
-		connman_error("Wrong wifi pointer");
-		return;
-	}
-
-	connman_device_set_powered(wifi->device, FALSE);
-}
-
-static void scan_started(GSupplicantInterface *interface)
-{
-	struct wifi_data *wifi;
-
-	DBG("");
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	if (wifi == NULL)
-		return;
-}
-
-static void scan_finished(GSupplicantInterface *interface)
-{
-	struct wifi_data *wifi;
-
-	DBG("");
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	if (wifi == NULL)
-		return;
-}
-
-static unsigned char calculate_strength(GSupplicantNetwork *supplicant_network)
-{
-	unsigned char strength;
-
-	strength = 120 + g_supplicant_network_get_signal(supplicant_network);
-	if (strength > 100)
-		strength = 100;
-
-	return strength;
-}
-
-static void network_added(GSupplicantNetwork *supplicant_network)
-{
-	struct connman_network *network;
-	GSupplicantInterface *interface;
-	struct wifi_data *wifi;
-	const char *name, *identifier, *mode, *security, *group;
-	const unsigned char *ssid;
-	unsigned int ssid_len;
-
-	DBG("");
-
-	interface = g_supplicant_network_get_interface(supplicant_network);
-	wifi = g_supplicant_interface_get_data(interface);
-	name = g_supplicant_network_get_name(supplicant_network);
-	identifier = g_supplicant_network_get_identifier(supplicant_network);
-	mode = g_supplicant_network_get_mode(supplicant_network);
-	security = g_supplicant_network_get_security(supplicant_network);
-	group = g_supplicant_network_get_identifier(supplicant_network);
-
-	if (wifi == NULL)
-		return;
-
-	ssid = g_supplicant_network_get_ssid(supplicant_network, &ssid_len);
-
-	network = connman_device_get_network(wifi->device, identifier);
-
-	if (network == NULL) {
-		network = connman_network_create(identifier,
-						CONNMAN_NETWORK_TYPE_WIFI);
-		if (network == NULL)
-			return;
-
-		connman_network_set_index(network, wifi->index);
-
-		if (connman_device_add_network(wifi->device, network) < 0) {
-			connman_network_unref(network);
-			return;
-		}
-	}
-
-	if (name != NULL && name[0] != '\0')
-		connman_network_set_name(network, name);
-
-	connman_network_set_blob(network, "WiFi.SSID",
-						ssid, ssid_len);
-	connman_network_set_string(network, "WiFi.Mode", mode);
-	connman_network_set_string(network, "WiFi.Security", security);
-	connman_network_set_strength(network,
-				calculate_strength(supplicant_network));
-
-	connman_network_set_available(network, TRUE);
-
-	if (ssid != NULL)
-		connman_network_set_group(network, group);
-}
-
-static void network_removed(GSupplicantNetwork *network)
-{
-	GSupplicantInterface *interface;
-	struct wifi_data *wifi;
-	const char *name, *identifier;
-
-	interface = g_supplicant_network_get_interface(network);
-	wifi = g_supplicant_interface_get_data(interface);
-	identifier = g_supplicant_network_get_identifier(network);
-	name = g_supplicant_network_get_name(network);
-
-	DBG("name %s", name);
-
-	if (wifi != NULL)
-		connman_device_remove_network(wifi->device, identifier);
-}
-
-static void debug(const char *str)
-{
-	if (getenv("CONNMAN_SUPPLICANT_DEBUG"))
-		connman_debug("%s", str);
-}
-
-static const GSupplicantCallbacks callbacks = {
-	.system_ready		= system_ready,
-	.system_killed		= system_killed,
-	.interface_added	= interface_added,
-	.interface_state	= interface_state,
-	.interface_removed	= interface_removed,
-	.scan_started		= scan_started,
-	.scan_finished		= scan_finished,
-	.network_added		= network_added,
-	.network_removed	= network_removed,
-	.debug			= debug,
-};
-
-
 static int network_probe(struct connman_network *network)
 {
 	DBG("network %p", network);
@@ -641,6 +376,9 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	ssid->private_key_passphrase = connman_network_get_string(network,
 						"WiFi.PrivateKeyPassphrase");
 	ssid->phase2_auth = connman_network_get_string(network, "WiFi.Phase2");
+
+	ssid->use_wps = connman_network_get_bool(network, "WiFi.UseWPS");
+	ssid->pin_wps = connman_network_get_string(network, "WiFi.PinWPS");
 
 }
 
@@ -747,6 +485,351 @@ static struct connman_network_driver network_driver = {
 	.connect	= network_connect,
 	.disconnect	= network_disconnect,
 };
+
+static void interface_added(GSupplicantInterface *interface)
+{
+	const char *ifname = g_supplicant_interface_get_ifname(interface);
+	const char *driver = g_supplicant_interface_get_driver(interface);
+	struct wifi_data *wifi;
+
+	wifi = g_supplicant_interface_get_data(interface);
+
+	/*
+	 * We can get here with a NULL wifi pointer when
+	 * the interface added signal is sent before the
+	 * interface creation callback is called.
+	 */
+	if (wifi == NULL)
+		return;
+
+	DBG("ifname %s driver %s wifi %p", ifname, driver, wifi);
+
+	if (wifi->device == NULL) {
+		connman_error("WiFi device not set");
+		return;
+	}
+
+	connman_device_set_powered(wifi->device, TRUE);
+	wifi_scan(wifi->device);
+}
+
+static connman_bool_t is_idle(struct wifi_data *wifi)
+{
+	DBG("state %d", wifi->state);
+
+	switch (wifi->state) {
+	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISCONNECTED:
+	case G_SUPPLICANT_STATE_INACTIVE:
+	case G_SUPPLICANT_STATE_SCANNING:
+		return TRUE;
+
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+	case G_SUPPLICANT_STATE_COMPLETED:
+		return FALSE;
+	}
+
+	return FALSE;
+}
+
+static connman_bool_t is_idle_wps(GSupplicantInterface *interface,
+						struct wifi_data *wifi)
+{
+	/* First, let's check if WPS processing did not went wrong */
+	if (g_supplicant_interface_get_wps_state(interface) ==
+		G_SUPPLICANT_WPS_STATE_FAIL)
+		return FALSE;
+
+	/* Unlike normal connection, being associated while processing wps
+	 * actually means that we are idling. */
+	switch (wifi->state) {
+	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISCONNECTED:
+	case G_SUPPLICANT_STATE_INACTIVE:
+	case G_SUPPLICANT_STATE_SCANNING:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+		return TRUE;
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+	case G_SUPPLICANT_STATE_COMPLETED:
+		return FALSE;
+	}
+
+	return FALSE;
+}
+
+static connman_bool_t handle_wps_completion(GSupplicantInterface *interface,
+					struct connman_network *network,
+					struct connman_device *device,
+					struct wifi_data *wifi)
+{
+	connman_bool_t wps;
+
+	wps = connman_network_get_bool(network, "WiFi.UseWPS");
+	if (wps == TRUE) {
+		const unsigned char *ssid, *wps_ssid;
+		unsigned int ssid_len, wps_ssid_len;
+		const char *wps_key;
+
+		/* Checking if we got associated with requested
+		 * network */
+		ssid = connman_network_get_blob(network, "WiFi.SSID",
+						&ssid_len);
+
+		wps_ssid = g_supplicant_interface_get_wps_ssid(
+			interface, &wps_ssid_len);
+
+		if (wps_ssid == NULL || wps_ssid_len != ssid_len ||
+				memcmp(ssid, wps_ssid, ssid_len) != 0) {
+			connman_network_set_associating(network, FALSE);
+			g_supplicant_interface_disconnect(wifi->interface,
+						disconnect_callback, wifi);
+			return FALSE;
+		}
+
+		wps_key = g_supplicant_interface_get_wps_key(interface);
+		connman_network_set_string(network, "WiFi.Passphrase",
+					wps_key);
+
+		connman_network_set_string(network, "WiFi.PinWPS", NULL);
+	}
+
+	return TRUE;
+}
+
+static void interface_state(GSupplicantInterface *interface)
+{
+	struct connman_network *network;
+	struct connman_device *device;
+	struct wifi_data *wifi;
+	GSupplicantState state = g_supplicant_interface_get_state(interface);
+	unsigned char bssid[ETH_ALEN];
+	unsigned int bssid_len;
+	connman_bool_t wps;
+
+	wifi = g_supplicant_interface_get_data(interface);
+
+	DBG("wifi %p interface state %d", wifi, state);
+
+	if (wifi == NULL)
+		return;
+
+	network = wifi->network;
+	device = wifi->device;
+
+	if (device == NULL || network == NULL)
+		return;
+
+	switch (state) {
+	case G_SUPPLICANT_STATE_SCANNING:
+		break;
+
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+		connman_network_set_associating(network, TRUE);
+		break;
+
+	case G_SUPPLICANT_STATE_COMPLETED:
+		if (handle_wps_completion(interface, network, device, wifi) ==
+									FALSE)
+			break;
+
+		/* reset scan trigger and schedule background scan */
+		connman_device_schedule_scan(device);
+
+		if (get_bssid(device, bssid, &bssid_len) == 0)
+			connman_network_set_address(network,
+							bssid, bssid_len);
+		connman_network_set_connected(network, TRUE);
+		break;
+
+	case G_SUPPLICANT_STATE_DISCONNECTED:
+		/*
+		 * If we're in one of the idle modes, we have
+		 * not started association yet and thus setting
+		 * those ones to FALSE could cancel an association
+		 * in progress.
+		 */
+		wps = connman_network_get_bool(network, "WiFi.UseWPS");
+		if (wps == TRUE)
+			if (is_idle_wps(interface, wifi) == TRUE)
+				break;
+
+		if (is_idle(wifi))
+			break;
+		connman_network_set_associating(network, FALSE);
+		connman_network_set_connected(network, FALSE);
+		break;
+
+	case G_SUPPLICANT_STATE_INACTIVE:
+		connman_network_set_associating(network, FALSE);
+		break;
+
+	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+		break;
+	}
+
+	wifi->state = state;
+
+	DBG("DONE");
+}
+
+static void interface_removed(GSupplicantInterface *interface)
+{
+	const char *ifname = g_supplicant_interface_get_ifname(interface);
+	struct wifi_data *wifi;
+
+	DBG("ifname %s", ifname);
+
+	wifi = g_supplicant_interface_get_data(interface);
+
+	if (wifi == NULL || wifi->device == NULL) {
+		connman_error("Wrong wifi pointer");
+		return;
+	}
+
+	connman_device_set_powered(wifi->device, FALSE);
+}
+
+static void scan_started(GSupplicantInterface *interface)
+{
+	struct wifi_data *wifi;
+
+	DBG("");
+
+	wifi = g_supplicant_interface_get_data(interface);
+
+	if (wifi == NULL)
+		return;
+}
+
+static void scan_finished(GSupplicantInterface *interface)
+{
+	struct wifi_data *wifi;
+
+	DBG("");
+
+	wifi = g_supplicant_interface_get_data(interface);
+
+	if (wifi == NULL)
+		return;
+}
+
+static unsigned char calculate_strength(GSupplicantNetwork *supplicant_network)
+{
+	unsigned char strength;
+
+	strength = 120 + g_supplicant_network_get_signal(supplicant_network);
+	if (strength > 100)
+		strength = 100;
+
+	return strength;
+}
+
+static void network_added(GSupplicantNetwork *supplicant_network)
+{
+	struct connman_network *network;
+	GSupplicantInterface *interface;
+	struct wifi_data *wifi;
+	const char *name, *identifier, *mode, *security, *group;
+	const unsigned char *ssid;
+	unsigned int ssid_len;
+	connman_bool_t wps;
+
+	DBG("");
+
+	interface = g_supplicant_network_get_interface(supplicant_network);
+	wifi = g_supplicant_interface_get_data(interface);
+	name = g_supplicant_network_get_name(supplicant_network);
+	identifier = g_supplicant_network_get_identifier(supplicant_network);
+	mode = g_supplicant_network_get_mode(supplicant_network);
+	security = g_supplicant_network_get_security(supplicant_network);
+	group = g_supplicant_network_get_identifier(supplicant_network);
+	wps = g_supplicant_network_get_wps(supplicant_network);
+
+	if (wifi == NULL)
+		return;
+
+	ssid = g_supplicant_network_get_ssid(supplicant_network, &ssid_len);
+
+	network = connman_device_get_network(wifi->device, identifier);
+
+	if (network == NULL) {
+		network = connman_network_create(identifier,
+						CONNMAN_NETWORK_TYPE_WIFI);
+		if (network == NULL)
+			return;
+
+		connman_network_set_index(network, wifi->index);
+
+		if (connman_device_add_network(wifi->device, network) < 0) {
+			connman_network_unref(network);
+			return;
+		}
+	}
+
+	if (name != NULL && name[0] != '\0')
+		connman_network_set_name(network, name);
+
+	connman_network_set_blob(network, "WiFi.SSID",
+						ssid, ssid_len);
+	connman_network_set_string(network, "WiFi.Mode", mode);
+	connman_network_set_string(network, "WiFi.Security", security);
+	connman_network_set_strength(network,
+				calculate_strength(supplicant_network));
+	connman_network_set_bool(network, "WiFi.WPS", wps);
+
+	connman_network_set_available(network, TRUE);
+
+	if (ssid != NULL)
+		connman_network_set_group(network, group);
+}
+
+static void network_removed(GSupplicantNetwork *network)
+{
+	GSupplicantInterface *interface;
+	struct wifi_data *wifi;
+	const char *name, *identifier;
+
+	interface = g_supplicant_network_get_interface(network);
+	wifi = g_supplicant_interface_get_data(interface);
+	identifier = g_supplicant_network_get_identifier(network);
+	name = g_supplicant_network_get_name(network);
+
+	DBG("name %s", name);
+
+	if (wifi != NULL)
+		connman_device_remove_network(wifi->device, identifier);
+}
+
+static void debug(const char *str)
+{
+	if (getenv("CONNMAN_SUPPLICANT_DEBUG"))
+		connman_debug("%s", str);
+}
+
+static const GSupplicantCallbacks callbacks = {
+	.system_ready		= system_ready,
+	.system_killed		= system_killed,
+	.interface_added	= interface_added,
+	.interface_state	= interface_state,
+	.interface_removed	= interface_removed,
+	.scan_started		= scan_started,
+	.scan_finished		= scan_finished,
+	.network_added		= network_added,
+	.network_removed	= network_removed,
+	.debug			= debug,
+};
+
 
 static int tech_probe(struct connman_technology *technology)
 {
