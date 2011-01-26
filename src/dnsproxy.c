@@ -165,7 +165,13 @@ static struct server_data *find_server(const char *interface,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		if (data->interface == NULL || data->server == NULL)
+		if (interface == NULL && data->interface == NULL &&
+				g_str_equal(data->server, server) == TRUE &&
+				data->protocol == protocol)
+			return data;
+
+		if (interface == NULL ||
+				data->interface == NULL || data->server == NULL)
 			continue;
 
 		if (g_str_equal(data->interface, interface) == TRUE &&
