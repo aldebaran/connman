@@ -33,14 +33,12 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-#define CONNMAN_API_SUBJECT_TO_CHANGE
-#include <connman/plugin.h>
-#include <connman/resolver.h>
-#include <connman/notifier.h>
-#include <connman/ondemand.h>
-#include <connman/log.h>
-
 #include <glib.h>
+
+#define CONNMAN_API_SUBJECT_TO_CHANGE
+#include <connman/ondemand.h>
+
+#include "connman.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 struct domain_hdr {
@@ -1477,7 +1475,7 @@ static void destroy_listener(void)
 	destroy_udp_listener();
 }
 
-static int dnsproxy_init(void)
+int __connman_dnsproxy_init(void)
 {
 	int err;
 
@@ -1504,7 +1502,7 @@ destroy:
 	return err;
 }
 
-static void dnsproxy_exit(void)
+void __connman_dnsproxy_cleanup(void)
 {
 	connman_notifier_unregister(&dnsproxy_notifier);
 
@@ -1512,6 +1510,3 @@ static void dnsproxy_exit(void)
 
 	destroy_listener();
 }
-
-CONNMAN_PLUGIN_DEFINE(dnsproxy, "DNS proxy resolver plugin", VERSION,
-		 CONNMAN_PLUGIN_PRIORITY_DEFAULT, dnsproxy_init, dnsproxy_exit)

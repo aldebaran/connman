@@ -148,13 +148,6 @@ fi
 AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
 AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
 
-AC_ARG_ENABLE(dnsproxy,
-	AC_HELP_STRING([--enable-dnsproxy], [enable DNS proxy support]),
-			[enable_dnsproxy=${enableval}], [enable_dnsproxy="no"])
-
-AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
-AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
-
 AC_ARG_ENABLE(pacrunner,
 	AC_HELP_STRING([--enable-pacrunner], [enable PAC runner support]),
 			[enable_pacrunner=${enableval}], [enable_pacrunner="no"])

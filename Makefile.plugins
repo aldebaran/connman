@@ -150,18 +150,6 @@ plugins_portal_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if DNSPROXY
-if DNSPROXY_BUILTIN
-builtin_modules += dnsproxy
-builtin_sources += plugins/dnsproxy.c
-else
-plugin_LTLIBRARIES += plugins/dnsproxy.la
-plugin_objects += $(plugins_dnsproxy_la_OBJECTS)
-plugins_dnsproxy_la_CFLAGS = $(plugin_cflags)
-plugins_dnsproxy_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if PACRUNNER
 if PACRUNNER_BUILTIN
 builtin_modules += pacrunner
