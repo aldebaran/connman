@@ -612,5 +612,5 @@ int __connman_iptables_command(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 int __connman_iptables_commit(const char *table_name);
 
-int __connman_dnsproxy_init(void);
+int __connman_dnsproxy_init(connman_bool_t dnsproxy);
 void __connman_dnsproxy_cleanup(void);

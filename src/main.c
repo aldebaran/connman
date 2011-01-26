@@ -63,6 +63,7 @@ static gchar *option_nodevice = NULL;
 static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
 static gboolean option_detach = TRUE;
+static gboolean option_dnsproxy = TRUE;
 static gboolean option_compat = FALSE;
 static gboolean option_version = FALSE;
 
@@ -94,6 +95,9 @@ static GOptionEntry options[] = {
 	{ "nodaemon", 'n', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_detach,
 				"Don't fork daemon to background" },
+	{ "nodnsproxy", 'r', G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_dnsproxy,
+				"Don't enable DNS Proxy" },
 	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
 				"Enable Network Manager compatibility" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
@@ -224,7 +228,7 @@ int main(int argc, char *argv[])
 	__connman_config_init();
 	__connman_stats_init();
 
-	__connman_dnsproxy_init();
+	__connman_dnsproxy_init(option_dnsproxy);
 	__connman_resolver_init();
 	__connman_ipconfig_init();
 	__connman_rtnl_init();
