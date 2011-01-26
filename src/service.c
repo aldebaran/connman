@@ -3206,6 +3206,26 @@ int __connman_service_indicate_error(struct connman_service *service,
 					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
+int __connman_service_clear_error(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	if (service->state != CONNMAN_SERVICE_STATE_FAILURE)
+		return -EINVAL;
+
+	service->state = CONNMAN_SERVICE_STATE_UNKNOWN;
+	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;;
+
+	if (service->favorite == TRUE)
+		set_reconnect_state(service, TRUE);
+
+	return __connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_IDLE);
+}
+
 int __connman_service_indicate_default(struct connman_service *service)
 {
 	DBG("service %p", service);

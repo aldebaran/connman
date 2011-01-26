@@ -83,6 +83,7 @@ int connman_network_set_associating(struct connman_network *network,
 						connman_bool_t associating);
 void connman_network_set_error(struct connman_network *network,
 					enum connman_network_error error);
+void connman_network_clear_error(struct connman_network *network);
 int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected);
 connman_bool_t connman_network_get_connected(struct connman_network *network);

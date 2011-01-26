@@ -587,6 +587,22 @@ void connman_network_set_error(struct connman_network *network,
 	}
 }
 
+void connman_network_clear_error(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	DBG("network %p", network);
+
+	if (network == NULL)
+		return;
+
+	if (network->connecting == TRUE || network->associating == TRUE)
+		return;
+
+	service = __connman_service_lookup_from_network(network);
+	__connman_service_clear_error(service);
+}
+
 static void set_configuration(struct connman_network *network)
 {
 	struct connman_service *service;
