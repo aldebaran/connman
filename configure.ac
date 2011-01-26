@@ -321,19 +321,15 @@ PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)
 
-
-AC_ARG_ENABLE(systemd, AC_HELP_STRING([--enable-systemd],
-		[enable systemd support]), [enable_systemd=${enableval}])
-if (test "${enable_systemd}" = "yes"); then
-	PKG_CHECK_MODULES(SYSTEMD, systemd, dummy=yes,
-				AC_MSG_ERROR(systemd is required))
-	SYSTEMD_UNITDIR="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
-	if (test -z "${SYSTEMD_UNITDIR}"); then
-		SYSTEMD_UNITDIR="/lib/systemd/system"
-	fi
-	AC_SUBST(SYSTEMD_UNITDIR)
+AC_ARG_WITH([systemdsystemunitdir],
+	AC_HELP_STRING([--with-systemdsystemunitdir=DIR],
+			[path to systemd service directory]),
+	[], [with_systemdsystemunitdir=
+			$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
+if test "x$with_systemdsystemunitdir" != xno; then
+    AC_SUBST(SYSTEMD_UNITDIR, [$with_systemdsystemunitdir])
 fi
-AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" = "yes")
+AM_CONDITIONAL(SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
 
 AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
