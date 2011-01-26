@@ -214,6 +214,16 @@ Properties	string State [readonly]
 			passphrase is needed, then this property will
 			be set to false.
 
+		boolean WPS [readonly]
+
+			If the service type is Wifi, then this property
+			indicates if it provides WPS (Wifi Protected Setup).
+
+			If this is set to true, then if no Passphrase is
+			provided or if given Passphrase is wrong, WPS
+			push-button or pin methods will be available through
+			Agent API.
+
 		uint8 Strength [readonly]
 
 			Indicates the signal strength of the service. This
