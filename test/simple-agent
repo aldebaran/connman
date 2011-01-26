@@ -11,7 +11,8 @@ class Canceled(dbus.DBusException):
 	_dbus_error_name = "net.connman.Error.Canceled"
 
 class Agent(dbus.service.Object):
-	passphrase = ""
+	passphrase = None
+	wpspin = None
 
 	@dbus.service.method("net.connman.Agent",
 					in_signature='', out_signature='')
@@ -25,8 +26,25 @@ class Agent(dbus.service.Object):
 	def RequestInput(self, path, fields):
 		print "RequestInput (%s,%s)" % (path, fields)
 
-		response = {}
-		response["Passphrase"] = self.passphrase
+		if not self.passphrase and not self.wpspin:
+			args = raw_input('Answer: ')
+
+			response = {}
+
+			for arg in args.split():
+				if arg.startswith("Passphrase="):
+					passphrase = arg.replace("Passphrase=", "", 1)
+					response["Passphrase"] = passphrase
+					break
+				if arg.startswith("WPS="):
+					wpspin = arg.replace("WPS=", "", 1)
+					response["WPS"] = wpspin
+					break
+		else:
+			if self.passphrase:
+				response["Passphrase"] = self.passphrase
+			else:
+				response["WPS"] = self.wpspin
 
 		print "returning (%s)" % (response)
 
@@ -52,12 +70,14 @@ class Agent(dbus.service.Object):
 	def Cancel(self):
 		print "Cancel"
 
-
+def print_usage():
+	print "Usage: %s Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
+	print "Help: %s help" % (sys.ar[0])
+	sys.exit(1)
 
 if __name__ == '__main__':
-	if len(sys.argv) < 2:
-		print "Usage: %s <passphrase>" % (sys.argv[0])
-		sys.exit(1)
+	if len(sys.argv) == 2 and sys.argv[1] == "help":
+		print_usage()
 
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -67,7 +87,15 @@ if __name__ == '__main__':
 
 	path = "/test/agent"
 	object = Agent(bus, path)
-	object.passphrase = sys.argv[1]
+
+	if len(sys.argv) >= 2:
+		for arg in sys.argv[1:]:
+			if arg.startswith("Passphrase="):
+				object.passphrase = arg.replace("Passphrase=", "", 1)
+			elif arg.startswith("WPS="):
+				object.wpspin = arg.replace("WPS=", "", 1)
+			else:
+				print_usage()
 
 	manager.RegisterAgent(path)
 
