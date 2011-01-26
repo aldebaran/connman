@@ -195,7 +195,7 @@ static void send_response(int sk, unsigned char *buf, int len,
 	if (len < 12)
 		return;
 
-	hdr = (void*) (buf + offset);
+	hdr = (void *) (buf + offset);
 
 	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
 
@@ -501,7 +501,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		GSList *list;
-	hangup:
+hangup:
 		DBG("TCP server channel closed");
 
 		/*
@@ -845,7 +845,8 @@ static void append_domain(const char *interface, const char *domain)
 		if (g_str_equal(data->interface, interface) == FALSE)
 			continue;
 
-		for (dom_list = data->domains; dom_list; dom_list = dom_list->next) {
+		for (dom_list = data->domains; dom_list;
+				dom_list = dom_list->next) {
 			dom = dom_list->data;
 
 			if (g_str_equal(dom, domain)) {
@@ -854,8 +855,10 @@ static void append_domain(const char *interface, const char *domain)
 			}
 		}
 
-		if (dom_found == FALSE)
-			data->domains = g_list_append(data->domains, g_strdup(domain));
+		if (dom_found == FALSE) {
+			data->domains =
+				g_list_append(data->domains, g_strdup(domain));
+		}
 	}
 }
 
@@ -1184,7 +1187,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 		if (req->timeout > 0)
 			g_source_remove(req->timeout);
 
-		for (domains = data->domains; domains; domains = domains->next) {
+		for (domains = data->domains; domains;
+				domains = domains->next) {
 			char *dom = domains->data;
 
 			DBG("Adding domain %s to %s", dom, server->server);
@@ -1339,7 +1343,8 @@ static int create_dns_listener(int protocol)
 	}
 	/* Ensure it accepts Legacy IP connections too */
 	if (family == AF_INET6 &&
-	    setsockopt(sk, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) < 0) {
+			setsockopt(sk, SOL_IPV6, IPV6_V6ONLY,
+					&v6only, sizeof(v6only)) < 0) {
 		connman_error("Failed to clear V6ONLY on %s listener socket",
 			      proto);
 		close(sk);
