@@ -67,6 +67,9 @@ struct connman_network {
 		char *private_key_path;
 		char *private_key_passphrase;
 		char *phase2_auth;
+		connman_bool_t wps;
+		connman_bool_t use_wps;
+		char *pin_wps;
 	} wifi;
 };
 
@@ -168,6 +171,7 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->wifi.private_key_path);
 	g_free(network->wifi.private_key_passphrase);
 	g_free(network->wifi.phase2_auth);
+	g_free(network->wifi.pin_wps);
 
 	g_free(network->group);
 	g_free(network->node);
@@ -1250,6 +1254,9 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.Phase2") == TRUE) {
 		g_free(network->wifi.phase2_auth);
 		network->wifi.phase2_auth = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.PinWPS") == TRUE) {
+		g_free(network->wifi.pin_wps);
+		network->wifi.pin_wps = g_strdup(value);
 	}
 
 	err = connman_element_set_string(&network->element, key, value);
@@ -1303,6 +1310,8 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.private_key_passphrase;
 	else if (g_str_equal(key, "WiFi.Phase2") == TRUE)
 		return network->wifi.phase2_auth;
+	else if (g_str_equal(key, "WiFi.PinWPS") == TRUE)
+		return network->wifi.pin_wps;
 
 	return connman_element_get_string(&network->element, key);
 }
@@ -1322,6 +1331,10 @@ int connman_network_set_bool(struct connman_network *network,
 
 	if (g_strcmp0(key, "Roaming") == 0)
 		return connman_network_set_roaming(network, value);
+	else if (g_strcmp0(key, "WiFi.WPS") == 0)
+		network->wifi.wps = value;
+	else if (g_strcmp0(key, "WiFi.UseWPS") == 0)
+		network->wifi.use_wps = value;
 
 	return connman_element_set_bool(&network->element, key, value);
 }
@@ -1340,6 +1353,10 @@ connman_bool_t connman_network_get_bool(struct connman_network *network,
 
 	if (g_str_equal(key, "Roaming") == TRUE)
 		return network->roaming;
+	else if (g_str_equal(key, "WiFi.WPS") == TRUE)
+		return network->wifi.wps;
+	else if (g_str_equal(key, "WiFi.UseWPS") == TRUE)
+		return network->wifi.use_wps;
 
 	return connman_element_get_bool(&network->element, key);
 }
