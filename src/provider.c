@@ -258,9 +258,14 @@ int __connman_provider_remove(const char *path)
 
 static void provider_set_nameservers(struct connman_provider *provider)
 {
+	struct connman_service *service = provider->vpn_service;
+
 	char *nameservers = NULL, *name = NULL;
 	const char *value;
 	char *second_ns;
+
+	if (service == NULL)
+		return;
 
 	if (provider->dns == NULL)
 		return;
