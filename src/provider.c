@@ -783,7 +783,7 @@ static int route_env_parse(struct connman_provider *provider, const char *key,
 
 	DBG("name %s", provider->name);
 
-	if (!strcmp(provider->name, "openvpn")) {
+	if (!strcmp(provider->type, "openvpn")) {
 		if (g_str_has_prefix(key, "route_network_") == TRUE) {
 			start = key + strlen("route_network_");
 			*type = PROVIDER_ROUTE_TYPE_ADDR;
@@ -799,7 +799,7 @@ static int route_env_parse(struct connman_provider *provider, const char *key,
 		*family = AF_INET;
 		*idx = g_ascii_strtoull(start, &end, 10);
 
-	} else if (!strcmp(provider->name, "openconnect")) {
+	} else if (!strcmp(provider->type, "openconnect")) {
 		if (g_str_has_prefix(key, "CISCO_SPLIT_INC_") == TRUE) {
 			*family = AF_INET;
 			start = key + strlen("CISCO_SPLIT_INC_");
