@@ -40,7 +40,27 @@
 
 #include "vpn.h"
 
+#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+
 static DBusConnection *connection;
+
+struct {
+	const char *cm_opt;
+	const char *ov_opt;
+} ov_options[] = {
+	{ "Host", "--remote" },
+	{ "OpenVPN.CACert", "--ca" },
+	{ "OpenVPN.Cert", "--cert" },
+	{ "OpenVPN.Key", "--key" },
+	{ "OpenVPN.MTU", "--mtu" },
+	{ "OpenVPN.Proto", "--proto" },
+	{ "OpenVPN.Port", "--port" },
+	{ "OpenVPN.AuthUserPass", "--auth-user-pass" },
+	{ "OpenVPN.TLSRemote", "--tls-remote" },
+	{ "OpenVPN.Cipher", "--cipher" },
+	{ "OpenVPN.Auth", "--auth" },
+	{ "OpenVPN.CompLZO", "--comp-lzo" },
+};
 
 static void ov_append_dns_entries(const char *key, const char *value,
 					char **dns_entries)
@@ -131,60 +151,40 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
+static int task_append_config_data(struct connman_provider *provider,
+					struct connman_task *task)
+{
+	const char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(ov_options); i++) {
+		option = connman_provider_get_string(provider,
+					ov_options[i].cm_opt);
+		if (option == NULL)
+			continue;
+
+		if (connman_task_add_argument(task,
+					ov_options[i].ov_opt, option) < 0) {
+			return -EIO;
+		}
+	}
+
+	return 0;
+}
+
 static int ov_connect(struct connman_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
-	const char *vpnhost, *cafile, *mtu, *certfile, *keyfile;
-	const char *proto, *port, *auth_user_pass;
-	const char *tls_remote, *cipher, *auth, *comp_lzo;
+	const char *option;
 	int err, fd;
 
-	vpnhost = connman_provider_get_string(provider, "Host");
-	if (!vpnhost) {
+	option = connman_provider_get_string(provider, "Host");
+	if (option == NULL) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;
 	}
 
-	cafile = connman_provider_get_string(provider, "OpenVPN.CACert");
-	certfile = connman_provider_get_string(provider, "OpenVPN.Cert");
-	keyfile = connman_provider_get_string(provider, "OpenVPN.Key");
-	mtu = connman_provider_get_string(provider, "VPN.MTU");
-	proto = connman_provider_get_string(provider, "OpenVPN.Proto");
-	port = connman_provider_get_string(provider, "OpenVPN.Port");
-	auth_user_pass = connman_provider_get_string(provider,
-							"OpenVPN.AuthUserPass");
-	tls_remote = connman_provider_get_string(provider, "OpenVPN.TLSRemote");
-	cipher = connman_provider_get_string(provider, "OpenVPN.Cipher");
-	auth = connman_provider_get_string(provider, "OpenVPN.Auth");
-	comp_lzo = connman_provider_get_string(provider, "OpenVPN.CompLZO");
-
-	if (mtu != NULL)
-		connman_task_add_argument(task, "--mtu", (char *)mtu);
-
-	if (proto != NULL)
-		connman_task_add_argument(task, "--proto", (char *)proto);
-
-	if (port != NULL)
-		connman_task_add_argument(task, "--port", (char *)port);
-
-	if (auth_user_pass != NULL) {
-		connman_task_add_argument(task, "--auth-user-pass",
-						(char *)auth_user_pass);
-	}
-
-	if (tls_remote != NULL) {
-		connman_task_add_argument(task, "--tls-remote",
-						(char *)tls_remote);
-	}
-
-	if (cipher != NULL)
-		connman_task_add_argument(task, "--cipher", (char *)cipher);
-
-	if (auth != NULL)
-		connman_task_add_argument(task, "--auth", (char *)auth);
-
-	if (comp_lzo)
-		connman_task_add_argument(task, "--comp-lzo", (char *)comp_lzo);
+	task_append_config_data(provider, task);
 
 	connman_task_add_argument(task, "--syslog", NULL);
 
@@ -210,7 +210,6 @@ static int ov_connect(struct connman_provider *provider,
 	connman_task_add_argument(task, "--dev-type", "tun");
 
 	connman_task_add_argument(task, "--tls-client", NULL);
-	connman_task_add_argument(task, "--remote", (char *)vpnhost);
 	connman_task_add_argument(task, "--nobind", NULL);
 	connman_task_add_argument(task, "--persist-key", NULL);
 	connman_task_add_argument(task, "--persist-tun", NULL);
@@ -229,21 +228,6 @@ static int ov_connect(struct connman_provider *provider,
 	connman_task_add_argument(task, "--ping-restart", "0");
 
 	connman_task_add_argument(task, "--client", NULL);
-
-	if (cafile) {
-		connman_task_add_argument(task, "--ca",
-						(char *)cafile);
-	}
-
-	if (certfile) {
-		connman_task_add_argument(task, "--cert",
-						(char *)certfile);
-	}
-
-	if (keyfile) {
-		connman_task_add_argument(task, "--key",
-						(char *)keyfile);
-	}
 
 	fd = fileno(stderr);
 	err = connman_task_run(task, vpn_died, provider,
