@@ -277,8 +277,6 @@ int __connman_utsname_set_domainname(const char *domainname);
 int __connman_timeserver_init(void);
 void __connman_timeserver_cleanup(void);
 
-#include <connman/dhcp.h>
-
 int __connman_dhcp_init(void);
 void __connman_dhcp_cleanup(void);
 

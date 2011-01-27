@@ -14,7 +14,7 @@ nodist_include_HEADERS = include/version.h
 noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/rtnl.h include/wifi.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
-			include/profile.h include/provider.h include/dhcp.h \
+			include/profile.h include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
 			include/location.h include/technology.h
 
