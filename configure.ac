@@ -135,6 +135,23 @@ fi
 AM_CONDITIONAL(OPENVPN, test "${enable_openvpn}" != "no")
 AM_CONDITIONAL(OPENVPN_BUILTIN, test "${enable_openvpn}" = "builtin")
 
+AC_ARG_WITH(vpnc, AC_HELP_STRING([--with-vpnc=PROGRAM],
+	[specify location of vpnc binary]), [path_vpnc=${withval}])
+
+AC_ARG_ENABLE(vpnc,
+	AC_HELP_STRING([--enable-vpnc], [enable vpnc support]),
+		[enable_vpnc=${enableval}], [enable_vpnc="no"])
+if (test "${enable_vpnc}" != "no"); then
+	if (test -z "${path_vpnc}"); then
+		AC_PATH_PROG(VPNC, [vpnc], [], $PATH:/sbin:/usr/sbin)
+	else
+		VPNC="${path_vpnc}"
+		AC_SUBST(VPNC)
+	fi
+fi
+AM_CONDITIONAL(VPNC, test "${enable_vpnc}" != "no")
+AM_CONDITIONAL(VPNC_BUILTIN, test "${enable_vpnc}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
