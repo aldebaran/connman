@@ -447,11 +447,23 @@ int __connman_resolver_init(connman_bool_t dnsproxy)
 {
 	DBG("dnsproxy %d", dnsproxy);
 
-	dnsproxy_enabled = dnsproxy;
+	if (dnsproxy == FALSE)
+		return 0;
+
+	if (__connman_dnsproxy_init() < 0) {
+		/* Fall back to resolv.conf */
+		return 0;
+	}
+
+	dnsproxy_enabled = TRUE;
+
 	return 0;
 }
 
 void __connman_resolver_cleanup(void)
 {
 	DBG("");
+
+	if (dnsproxy_enabled == TRUE)
+		__connman_dnsproxy_cleanup();
 }

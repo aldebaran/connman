@@ -114,7 +114,6 @@ struct request_data {
 	gsize resplen;
 };
 
-static connman_bool_t dnsproxy_enabled = TRUE;
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
@@ -1446,15 +1445,11 @@ static void destroy_listener(void)
 	destroy_udp_listener();
 }
 
-int __connman_dnsproxy_init(connman_bool_t dnsproxy)
+int __connman_dnsproxy_init(void)
 {
 	int err;
 
-	DBG("dnsproxy %d", dnsproxy);
-
-	dnsproxy_enabled = dnsproxy;
-	if (dnsproxy_enabled == FALSE)
-		return 0;
+	DBG("");
 
 	err = create_listener();
 	if (err < 0)
@@ -1475,9 +1470,6 @@ destroy:
 void __connman_dnsproxy_cleanup(void)
 {
 	DBG("");
-
-	if (dnsproxy_enabled == FALSE)
-		return;
 
 	connman_notifier_unregister(&dnsproxy_notifier);
 
