@@ -115,7 +115,7 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 		if (!strcmp(key, "ifconfig_remote"))
 			connman_provider_set_string(provider, "Peer", value);
 
-		if (g_str_has_prefix(key, "network_") == TRUE)
+		if (g_str_has_prefix(key, "route_") == TRUE)
 			connman_provider_append_route(provider, key, value);
 
 		ov_append_dns_entries(key, value, &dns_entries);
