@@ -607,7 +607,7 @@ int __connman_iptables_command(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 int __connman_iptables_commit(const char *table_name);
 
-int __connman_dnsproxy_init(connman_bool_t dnsproxy);
+int __connman_dnsproxy_init(void);
 void __connman_dnsproxy_cleanup(void);
 int __connman_dnsproxy_append(const char *interface, const char *domain, const char *server);
 int __connman_dnsproxy_remove(const char *interface, const char *domain, const char *server);
