@@ -3162,7 +3162,8 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		__connman_notifier_connect(service->type);
 
-		if (connman_network_get_bool(service->network,
+		if (service->type == CONNMAN_SERVICE_TYPE_WIFI &&
+			connman_network_get_bool(service->network,
 						"WiFi.UseWPS") == TRUE) {
 			const char *pass;
 
