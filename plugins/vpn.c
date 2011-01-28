@@ -102,7 +102,7 @@ static int kill_tun(char *tun_name)
 	return 0;
 }
 
-void vpn_died(struct connman_task *task, void *user_data)
+void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 {
 	struct connman_provider *provider = user_data;
 	struct vpn_data *data = connman_provider_get_data(provider);
