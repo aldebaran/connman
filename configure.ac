@@ -274,6 +274,12 @@ fi
 AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
 AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
 
+AC_ARG_ENABLE(nmcompat,
+	AC_HELP_STRING([--enable-nmcompat], [enable nmcompat support]),
+			[enable_nmcompat=${enableval}], [enable_nmcompat="no"])
+AM_CONDITIONAL(NMCOMPAT, test "${enable_nmcompat}" != "no")
+AM_CONDITIONAL(NMCOMPAT_BUILTIN, test "${enable_nmcompat}" = "builtin")
+
 AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
 			[Maximal size of a statistics round robin file]),
 			[stats_max_file_size=${withval}])

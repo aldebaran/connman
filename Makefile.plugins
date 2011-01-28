@@ -269,6 +269,18 @@ plugins_ntpd_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if NMCOMPAT
+if NMCOMPAT_BUILTIN
+builtin_modules += nmcompat
+builtin_sources += plugins/nmcompat.c
+else
+plugin_LTLIBRARIES += plugins/nmcompat.la
+plugin_objects += $(plugins_nmcompat_la_OBJECTS)
+plugins_nmcompat_la_CFLAGS = $(plugin_cflags)
+plugins_nmcompat_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 EXTRA_DIST += plugins/polkit.policy
 
 plugins/net.connman.policy: plugins/polkit.policy
