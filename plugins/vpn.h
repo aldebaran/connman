@@ -33,6 +33,7 @@ struct vpn_driver {
 	int (*connect) (struct connman_provider *provider,
 			struct connman_task *task, const char *if_name);
 	void (*disconnect) (void);
+	int (*error_code) (int exit_code);
 };
 
 int vpn_register(const char *name, struct vpn_driver *driver,

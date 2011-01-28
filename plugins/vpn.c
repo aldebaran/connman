@@ -107,6 +107,7 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 	struct connman_provider *provider = user_data;
 	struct vpn_data *data = connman_provider_get_data(provider);
 	int state = data->state;
+	enum connman_provider_error ret;
 
 	DBG("provider %p data %p", provider, data);
 
@@ -118,10 +119,20 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 	connman_rtnl_remove_watch(data->watch);
 
 vpn_exit:
-	if (state != VPN_STATE_READY && state != VPN_STATE_DISCONNECT)
-		connman_provider_set_state(provider,
-						CONNMAN_PROVIDER_STATE_FAILURE);
-	else
+	if (state != VPN_STATE_READY && state != VPN_STATE_DISCONNECT) {
+		const char *name;
+		struct vpn_driver_data *vpn_data;
+
+		name = connman_provider_get_driver_name(provider);
+		vpn_data = g_hash_table_lookup(driver_hash, name);
+		if (vpn_data != NULL &&
+				vpn_data->vpn_driver->error_code != NULL)
+			ret = vpn_data->vpn_driver->error_code(exit_code);
+		else
+			ret = CONNMAN_PROVIDER_ERROR_UNKNOWN;
+
+		connman_provider_indicate_error(provider, ret);
+	} else
 		connman_provider_set_state(provider,
 						CONNMAN_PROVIDER_STATE_IDLE);
 
