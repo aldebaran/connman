@@ -32,9 +32,14 @@ gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
 					gweb/giognutls.h gweb/giognutls.c
 
 if DATAFILES
+
+if NMCOMPAT
+nmcompat_conf = plugins/connman-nmcompat.conf
+endif
+
 dbusconfdir = @DBUS_CONFDIR@
 
-dbusconf_DATA = src/connman.conf
+dbusconf_DATA = src/connman.conf $(nmcompat_conf)
 
 if SYSTEMD
 systemdunitdir = @SYSTEMD_UNITDIR@
@@ -109,7 +114,8 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ @XTABLES_CFLAGS@ \
 
 INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
-EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf
+EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
+		plugins/connman-nmcompat.conf
 
 
 script_DATA =
