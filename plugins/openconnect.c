@@ -161,9 +161,23 @@ static int oc_connect(struct connman_provider *provider,
 	return 0;
 }
 
+static int oc_error_code(int exit_code)
+{
+
+	switch (exit_code) {
+	case 1:
+		return CONNMAN_PROVIDER_ERROR_CONNECT_FAILED;
+	case 2:
+		return CONNMAN_PROVIDER_ERROR_LOGIN_FAILED;
+	default:
+		return CONNMAN_PROVIDER_ERROR_UNKNOWN;
+	}
+}
+
 static struct vpn_driver vpn_driver = {
 	.notify         = oc_notify,
 	.connect	= oc_connect,
+	.error_code	= oc_error_code,
 };
 
 static int openconnect_init(void)
