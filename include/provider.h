@@ -49,8 +49,10 @@ enum connman_provider_state {
 };
 
 enum connman_provider_error {
-	CONNMAN_PROVIDER_ERROR_UNKNOWN        = 0,
-	CONNMAN_PROVIDER_ERROR_CONNECT_FAILED = 1,
+	CONNMAN_PROVIDER_ERROR_UNKNOWN		= 0,
+	CONNMAN_PROVIDER_ERROR_CONNECT_FAILED	= 1,
+	CONNMAN_PROVIDER_ERROR_LOGIN_FAILED	= 2,
+	CONNMAN_PROVIDER_ERROR_AUTH_FAILED	= 3,
 };
 
 struct connman_provider;
@@ -65,6 +67,9 @@ const char *connman_provider_get_string(struct connman_provider *provider,
 
 int connman_provider_set_state(struct connman_provider *provider,
 					enum connman_provider_state state);
+
+int connman_provider_indicate_error(struct connman_provider *provider,
+					enum connman_provider_error error);
 
 void connman_provider_set_index(struct connman_provider *provider, int index);
 int connman_provider_get_index(struct connman_provider *provider);

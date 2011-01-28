@@ -261,6 +261,10 @@ static const char *error2string(enum connman_service_error error)
 		return "dhcp-failed";
 	case CONNMAN_SERVICE_ERROR_CONNECT_FAILED:
 		return "connect-failed";
+	case CONNMAN_SERVICE_ERROR_LOGIN_FAILED:
+		return "login-failed";
+	case CONNMAN_SERVICE_ERROR_AUTH_FAILED:
+		return "auth-failed";
 	}
 
 	return NULL;

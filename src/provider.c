@@ -393,6 +393,30 @@ int connman_provider_set_state(struct connman_provider *provider,
 	return -EINVAL;
 }
 
+int connman_provider_indicate_error(struct connman_provider *provider,
+					enum connman_provider_error error)
+{
+	enum connman_service_error service_error;
+
+	switch (error) {
+	case CONNMAN_PROVIDER_ERROR_LOGIN_FAILED:
+		service_error = CONNMAN_SERVICE_ERROR_LOGIN_FAILED;
+		break;
+	case CONNMAN_PROVIDER_ERROR_AUTH_FAILED:
+		service_error = CONNMAN_SERVICE_ERROR_AUTH_FAILED;
+		break;
+	case CONNMAN_PROVIDER_ERROR_CONNECT_FAILED:
+		service_error = CONNMAN_SERVICE_ERROR_CONNECT_FAILED;
+		break;
+	default:
+		service_error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+		break;
+	}
+
+	return __connman_service_indicate_error(provider->vpn_service,
+							service_error);
+}
+
 static void unregister_provider(gpointer data)
 {
 	struct connman_provider *provider = data;
