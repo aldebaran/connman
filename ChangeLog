@@ -1,3 +1,11 @@
+ver 0.68:
+	Fix issue with wrong name of PolicyKit configuration file.
+	Fix issue with inconsistency of WiFi scan states.
+	Fix issue with missing auto-reconnect and oFono.
+	Add support for vpnc based private networks.
+	Add support for WiFi Protected Setup handling.
+	Remove legacy WiFi plugin.
+
 ver 0.67:
 	Fix issue with oFono plugin and multiple online calls.
 	Fix issue with checking for AutoConnect service property.
