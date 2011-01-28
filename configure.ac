@@ -326,20 +326,19 @@ else
 fi
 AC_SUBST(DBUS_DATADIR)
 
+AC_ARG_WITH([systemdunitdir], AC_HELP_STRING([--with-systemdunitdir=DIR],
+	[path to systemd service directory]), [path_systemdunit=${withval}],
+		[path_systemdunit="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"])
+if (test -n "${path_systemdunit}"); then
+	SYSTEMD_UNITDIR="${path_systemdunit}"
+	AC_SUBST(SYSTEMD_UNITDIR)
+fi
+AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
+
 PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
 				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)
-
-AC_ARG_WITH([systemdsystemunitdir],
-	AC_HELP_STRING([--with-systemdsystemunitdir=DIR],
-			[path to systemd service directory]),
-	[], [with_systemdsystemunitdir=
-			$($PKG_CONFIG --variable=systemdsystemunitdir systemd)])
-if test "x$with_systemdsystemunitdir" != xno; then
-    AC_SUBST(SYSTEMD_UNITDIR, [$with_systemdsystemunitdir])
-fi
-AM_CONDITIONAL(SYSTEMD, [test -n "$with_systemdsystemunitdir" -a "x$with_systemdsystemunitdir" != xno ])
 
 AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
