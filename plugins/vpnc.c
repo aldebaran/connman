@@ -254,9 +254,22 @@ static int vc_connect(struct connman_provider *provider,
 	return err;
 }
 
+static int vc_error_code(int exit_code)
+{
+	switch (exit_code) {
+	case 1:
+		return CONNMAN_PROVIDER_ERROR_CONNECT_FAILED;
+	case 2:
+		return CONNMAN_PROVIDER_ERROR_LOGIN_FAILED;
+	default:
+		return CONNMAN_PROVIDER_ERROR_UNKNOWN;
+	}
+}
+
 static struct vpn_driver vpn_driver = {
 	.notify		= vc_notify,
 	.connect	= vc_connect,
+	.error_code	= vc_error_code,
 };
 
 static int vpnc_init(void)
