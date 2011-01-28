@@ -43,6 +43,8 @@ enum {
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
 
+#define DBUS_PROPERTIES_INTERFACE	"org.freedesktop.DBus.Properties"
+
 static DBusConnection *connection = NULL;
 static dbus_uint32_t state = NM_STATE_UNKNOWN;
 
@@ -61,6 +63,45 @@ static void nm_send_signal(const char *name, dbus_uint32_t state)
 	g_dbus_send_message(connection, signal);
 }
 
+static void nm_send_prop_signal(dbus_uint32_t state)
+{
+	const char *key = "State";
+	DBusMessageIter iter, dict, dict_entry, dict_val;
+	DBusMessage *signal;
+
+	signal = dbus_message_new_signal(NM_PATH, NM_INTERFACE,
+						"PropertiesChanged");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+					DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+					DBUS_DICT_ENTRY_END_CHAR_AS_STRING,
+					&dict);
+
+	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
+			NULL, &dict_entry);
+
+	dbus_message_iter_append_basic(&dict_entry, DBUS_TYPE_STRING,
+					&key);
+
+	dbus_message_iter_open_container(&dict_entry,
+					DBUS_TYPE_VARIANT,
+					DBUS_TYPE_UINT32_AS_STRING, &dict_val);
+
+	dbus_message_iter_append_basic(&dict_val, DBUS_TYPE_UINT32, &state);
+
+	dbus_message_iter_close_container(&dict_entry, &dict_val);
+	dbus_message_iter_close_container(&dict, &dict_entry);
+	dbus_message_iter_close_container(&iter, &dict);
+
+	g_dbus_send_message(connection, signal);
+}
+
 static void default_changed(struct connman_service *service)
 {
 	if (service != NULL)
@@ -75,6 +116,8 @@ static void default_changed(struct connman_service *service)
 
 	/* the preferred current signal */
 	nm_send_signal("StateChanged", state);
+
+	nm_send_prop_signal(state);
 }
 
 static struct connman_notifier notifier = {
@@ -139,6 +182,47 @@ static GDBusMethodTable nm_methods[] = {
 	{ },
 };
 
+static DBusMessage *nm_prop_get(DBusConnection *conn,
+				DBusMessage *msg, void *data)
+{
+	DBusMessageIter iter, value;
+	const char *interface, *key;
+	DBusMessage *reply;
+
+	DBG("conn %p", conn);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_get_args(msg, NULL,
+				DBUS_TYPE_STRING, &interface,
+				DBUS_TYPE_STRING, &key,
+				DBUS_TYPE_INVALID);
+
+	if (g_strcmp0(key, "State") == 0) {
+		dbus_message_iter_init_append(reply, &iter);
+
+		dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
+						DBUS_TYPE_UINT32_AS_STRING,
+						&value);
+		dbus_message_iter_append_basic(&value, DBUS_TYPE_UINT32,
+						&state);
+		dbus_message_iter_close_container(&iter, &value);
+	} else {
+		dbus_message_unref(reply);
+		return dbus_message_new_error(msg, DBUS_ERROR_FAILED,
+						"Unsupported property");
+	}
+
+	return reply;
+}
+
+static GDBusMethodTable nm_prop_methods[] = {
+	{ "Get", "ss",  "v",   nm_prop_get	},
+	{ },
+};
+
 static int nmcompat_init(void)
 {
 	gboolean ret;
@@ -163,6 +247,16 @@ static int nmcompat_init(void)
 					nm_methods, NULL, NULL, NULL, NULL);
 	if (ret == FALSE) {
 		connman_error("nmcompat: can't register " NM_INTERFACE);
+		return -1;
+	}
+
+	ret = g_dbus_register_interface(connection, NM_PATH,
+					DBUS_PROPERTIES_INTERFACE,
+					nm_prop_methods, NULL, NULL,
+					NULL, NULL);
+	if (ret == FALSE) {
+		connman_error("nmcompat: can't register "
+				DBUS_PROPERTIES_INTERFACE);
 		return -1;
 	}
 
