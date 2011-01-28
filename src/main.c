@@ -99,7 +99,7 @@ static GOptionEntry options[] = {
 				G_OPTION_ARG_NONE, &option_dnsproxy,
 				"Don't enable DNS Proxy" },
 	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
-				"Enable Network Manager compatibility" },
+				"(obsolete)" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },
@@ -204,13 +204,6 @@ int main(int argc, char *argv[])
 
 	g_dbus_set_disconnect_function(conn, disconnect_callback, NULL, NULL);
 
-	if (option_compat == TRUE) {
-		if (g_dbus_request_name(conn, NM_SERVICE, NULL) == FALSE) {
-			fprintf(stderr, "Can't register compat service\n");
-			option_compat = FALSE;
-		}
-	}
-
 	__connman_log_init(option_debug, option_detach);
 
 	__connman_dbus_init(conn);
@@ -222,7 +215,7 @@ int main(int argc, char *argv[])
 	__connman_iptables_init();
 	__connman_tethering_init();
 	__connman_counter_init();
-	__connman_manager_init(option_compat);
+	__connman_manager_init();
 	__connman_profile_init();
 	__connman_config_init();
 	__connman_stats_init();

@@ -25,10 +25,6 @@
 
 #include <connman/dbus.h>
 
-#define NM_SERVICE    "org.freedesktop.NetworkManager"
-#define NM_PATH       "/org/freedesktop/NetworkManager"
-#define NM_INTERFACE  NM_SERVICE
-
 int __connman_dbus_init(DBusConnection *conn);
 void __connman_dbus_cleanup(void);
 
@@ -55,7 +51,7 @@ DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 
 #include <connman/types.h>
 
-int __connman_manager_init(gboolean compat);
+int __connman_manager_init(void);
 void __connman_manager_cleanup(void);
 
 int __connman_agent_init(void);
