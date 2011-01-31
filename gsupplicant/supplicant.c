@@ -2391,8 +2391,16 @@ static void interface_select_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_connect_data *data = user_data;
+	int err;
 
 	SUPPLICANT_DBG("");
+
+	err = 0;
+	if (error != NULL)
+		err = -EIO;
+
+	if (data->callback != NULL)
+		data->callback(err, data->interface, data->user_data);
 
 	g_free(data->ssid);
 	dbus_free(data);
