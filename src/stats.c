@@ -222,10 +222,18 @@ static void stats_free(gpointer user_data)
 	TFR(close(file->fd));
 	file->fd = -1;
 
-	if (file->history_name != NULL)
+	if (file->history_name != NULL) {
 		g_free(file->history_name);
-	g_free(file->name);
-	g_free(file);
+		file->history_name = NULL;
+	}
+
+	if (file->name != NULL) {
+		g_free(file->name);
+		file->name = NULL;
+	}
+
+	if (file != NULL)
+		g_free(file);
 }
 
 static void update_first(struct stats_file *file)
