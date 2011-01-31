@@ -688,6 +688,14 @@ GSupplicantWpsState g_supplicant_interface_get_wps_state(
 	return interface->wps_state;
 }
 
+unsigned int g_supplicant_interface_get_mode(GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return 0;
+
+	return interface->mode_capa;
+}
+
 GSupplicantInterface *g_supplicant_network_get_interface(
 					GSupplicantNetwork *network)
 {
