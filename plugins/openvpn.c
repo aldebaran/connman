@@ -40,105 +40,27 @@
 
 #include "vpn.h"
 
+#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+
 static DBusConnection *connection;
 
-struct ov_route {
-	char *host;
-	char *netmask;
-	char *gateway;
+struct {
+	const char *cm_opt;
+	const char *ov_opt;
+} ov_options[] = {
+	{ "Host", "--remote" },
+	{ "OpenVPN.CACert", "--ca" },
+	{ "OpenVPN.Cert", "--cert" },
+	{ "OpenVPN.Key", "--key" },
+	{ "OpenVPN.MTU", "--mtu" },
+	{ "OpenVPN.Proto", "--proto" },
+	{ "OpenVPN.Port", "--port" },
+	{ "OpenVPN.AuthUserPass", "--auth-user-pass" },
+	{ "OpenVPN.TLSRemote", "--tls-remote" },
+	{ "OpenVPN.Cipher", "--cipher" },
+	{ "OpenVPN.Auth", "--auth" },
+	{ "OpenVPN.CompLZO", "--comp-lzo" },
 };
-
-static void destroy_route(gpointer user_data)
-{
-	struct ov_route *route = user_data;
-
-	g_free(route->host);
-	g_free(route->netmask);
-	g_free(route->gateway);
-	g_free(route);
-}
-
-static void ov_provider_append_routes(gpointer key, gpointer value,
-					gpointer user_data)
-{
-	struct ov_route *route = value;
-	struct connman_provider *provider = user_data;
-
-	connman_provider_append_route(provider, route->host, route->netmask,
-					route->gateway);
-}
-
-static struct ov_route *ov_route_lookup(const char *key, const char *prefix_key,
-					GHashTable *routes)
-{
-	unsigned long idx;
-	const char *start;
-	char *end;
-	struct ov_route *route;
-
-	if (g_str_has_prefix(key, prefix_key) == FALSE)
-		return NULL;
-
-	start = key + strlen(prefix_key);
-	idx = g_ascii_strtoull(start, &end, 10);
-
-	if (idx == 0 && start == end) {
-		connman_error("string conversion failed %s", start);
-		return NULL;
-	}
-
-	route = g_hash_table_lookup(routes, GINT_TO_POINTER(idx));
-	if (route == NULL) {
-		route = g_try_new0(struct ov_route, 1);
-		if (route == NULL) {
-			connman_error("out of memory");
-			return NULL;
-		}
-
-		g_hash_table_replace(routes, GINT_TO_POINTER(idx),
-						route);
-	}
-
-	return  route;
-}
-
-static void ov_append_route(const char *key, const char *value, GHashTable *routes)
-{
-	struct ov_route *route;
-
-	/*
-	 * OpenVPN pushes routing tupples (host, nw, gw) as several
-	 * environment values, e.g.
-	 *
-	 * route_gateway_2 = 10.242.2.13
-	 * route_netmask_2 = 255.255.0.0
-	 * route_network_2 = 192.168.0.0
-	 * route_gateway_1 = 10.242.2.13
-	 * route_netmask_1 = 255.255.255.255
-	 * route_network_1 = 10.242.2.1
-	 *
-	 * The hash table is used to group the separate environment
-	 * variables together. It also makes sure all tupples are
-	 * complete even when OpenVPN pushes the information in a
-	 * wrong order (unlikely).
-	 */
-
-	route = ov_route_lookup(key, "route_network_", routes);
-	if (route != NULL) {
-		route->host = g_strdup(value);
-		return;
-	}
-
-	route = ov_route_lookup(key, "route_netmask_", routes);
-	if (route != NULL) {
-		route->netmask = g_strdup(value);
-		return;
-	}
-
-	route = ov_route_lookup(key, "route_gateway_", routes);
-	if (route != NULL)
-		route->gateway = g_strdup(value);
-}
 
 static void ov_append_dns_entries(const char *key, const char *value,
 					char **dns_entries)
@@ -176,12 +98,6 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	const char *reason, *key, *value;
 	const char *domain = NULL;
 	char *dns_entries = NULL;
-	GHashTable *routes;
-
-	dbus_message_iter_init(msg, &iter);
-
-	dbus_message_iter_get_basic(&iter, &reason);
-	dbus_message_iter_next(&iter);
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -199,9 +115,6 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	domain = connman_provider_get_string(provider, "VPN.Domain");
 
 	dbus_message_iter_recurse(&iter, &dict);
-
-	routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-					NULL, destroy_route);
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry;
@@ -222,7 +135,8 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 		if (!strcmp(key, "ifconfig_remote"))
 			connman_provider_set_string(provider, "Peer", value);
 
-		ov_append_route(key, value, routes);
+		if (g_str_has_prefix(key, "route_") == TRUE)
+			connman_provider_append_route(provider, key, value);
 
 		ov_append_dns_entries(key, value, &dns_entries);
 
@@ -234,67 +148,43 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 		g_free(dns_entries);
 	}
 
-	g_hash_table_foreach(routes, ov_provider_append_routes, provider);
-
-	g_hash_table_destroy(routes);
-
 	return VPN_STATE_CONNECT;
+}
+
+static int task_append_config_data(struct connman_provider *provider,
+					struct connman_task *task)
+{
+	const char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(ov_options); i++) {
+		option = connman_provider_get_string(provider,
+					ov_options[i].cm_opt);
+		if (option == NULL)
+			continue;
+
+		if (connman_task_add_argument(task,
+					ov_options[i].ov_opt, option) < 0) {
+			return -EIO;
+		}
+	}
+
+	return 0;
 }
 
 static int ov_connect(struct connman_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
-	const char *vpnhost, *cafile, *mtu, *certfile, *keyfile;
-	const char *proto, *port, *auth_user_pass;
-	const char *tls_remote, *cipher, *auth, *comp_lzo;
+	const char *option;
 	int err, fd;
 
-	vpnhost = connman_provider_get_string(provider, "Host");
-	if (!vpnhost) {
+	option = connman_provider_get_string(provider, "Host");
+	if (option == NULL) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;
 	}
 
-	cafile = connman_provider_get_string(provider, "OpenVPN.CACert");
-	certfile = connman_provider_get_string(provider, "OpenVPN.Cert");
-	keyfile = connman_provider_get_string(provider, "OpenVPN.Key");
-	mtu = connman_provider_get_string(provider, "VPN.MTU");
-	proto = connman_provider_get_string(provider, "OpenVPN.Proto");
-	port = connman_provider_get_string(provider, "OpenVPN.Port");
-	auth_user_pass = connman_provider_get_string(provider,
-							"OpenVPN.AuthUserPass");
-	tls_remote = connman_provider_get_string(provider, "OpenVPN.TLSRemote");
-	cipher = connman_provider_get_string(provider, "OpenVPN.Cipher");
-	auth = connman_provider_get_string(provider, "OpenVPN.Auth");
-	comp_lzo = connman_provider_get_string(provider, "OpenVPN.CompLZO");
-
-	if (mtu != NULL)
-		connman_task_add_argument(task, "--mtu", (char *)mtu);
-
-	if (proto != NULL)
-		connman_task_add_argument(task, "--proto", (char *)proto);
-
-	if (port != NULL)
-		connman_task_add_argument(task, "--port", (char *)port);
-
-	if (auth_user_pass != NULL) {
-		connman_task_add_argument(task, "--auth-user-pass",
-						(char *)auth_user_pass);
-	}
-
-	if (tls_remote != NULL) {
-		connman_task_add_argument(task, "--tls-remote",
-						(char *)tls_remote);
-	}
-
-	if (cipher != NULL)
-		connman_task_add_argument(task, "--cipher", (char *)cipher);
-
-	if (auth != NULL)
-		connman_task_add_argument(task, "--auth", (char *)auth);
-
-	if (comp_lzo)
-		connman_task_add_argument(task, "--comp-lzo", (char *)comp_lzo);
+	task_append_config_data(provider, task);
 
 	connman_task_add_argument(task, "--syslog", NULL);
 
@@ -320,7 +210,6 @@ static int ov_connect(struct connman_provider *provider,
 	connman_task_add_argument(task, "--dev-type", "tun");
 
 	connman_task_add_argument(task, "--tls-client", NULL);
-	connman_task_add_argument(task, "--remote", (char *)vpnhost);
 	connman_task_add_argument(task, "--nobind", NULL);
 	connman_task_add_argument(task, "--persist-key", NULL);
 	connman_task_add_argument(task, "--persist-tun", NULL);
@@ -339,21 +228,6 @@ static int ov_connect(struct connman_provider *provider,
 	connman_task_add_argument(task, "--ping-restart", "0");
 
 	connman_task_add_argument(task, "--client", NULL);
-
-	if (cafile) {
-		connman_task_add_argument(task, "--ca",
-						(char *)cafile);
-	}
-
-	if (certfile) {
-		connman_task_add_argument(task, "--cert",
-						(char *)certfile);
-	}
-
-	if (keyfile) {
-		connman_task_add_argument(task, "--key",
-						(char *)keyfile);
-	}
 
 	fd = fileno(stderr);
 	err = connman_task_run(task, vpn_died, provider,

@@ -25,10 +25,6 @@
 
 #include <connman/dbus.h>
 
-#define NM_SERVICE    "org.freedesktop.NetworkManager"
-#define NM_PATH       "/org/freedesktop/NetworkManager"
-#define NM_INTERFACE  NM_SERVICE
-
 int __connman_dbus_init(DBusConnection *conn);
 void __connman_dbus_cleanup(void);
 
@@ -55,7 +51,7 @@ DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 
 #include <connman/types.h>
 
-int __connman_manager_init(gboolean compat);
+int __connman_manager_init(void);
 void __connman_manager_cleanup(void);
 
 int __connman_agent_init(void);
@@ -123,8 +119,10 @@ void __connman_rfkill_cleanup(void);
 
 #include <connman/resolver.h>
 
-int __connman_resolver_init(void);
+int __connman_resolver_init(connman_bool_t dnsproxy);
 void __connman_resolver_cleanup(void);
+int __connman_resolvfile_append(const char *interface, const char *domain, const char *server);
+int __connman_resolvfile_remove(const char *interface, const char *domain, const char *server);
 
 #include <connman/storage.h>
 
@@ -274,8 +272,6 @@ int __connman_utsname_set_domainname(const char *domainname);
 
 int __connman_timeserver_init(void);
 void __connman_timeserver_cleanup(void);
-
-#include <connman/dhcp.h>
 
 int __connman_dhcp_init(void);
 void __connman_dhcp_cleanup(void);
@@ -474,6 +470,7 @@ const char *__connman_service_get_path(struct connman_service *service);
 unsigned int __connman_service_get_order(struct connman_service *service);
 struct connman_network *__connman_service_get_network(struct connman_service *service);
 enum connman_service_security __connman_service_get_security(struct connman_service *service);
+connman_bool_t __connman_service_wps_enabled(struct connman_service *service);
 int __connman_service_set_favorite(struct connman_service *service,
 						connman_bool_t favorite);
 int __connman_service_set_immutable(struct connman_service *service,
@@ -485,6 +482,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state state);
 int __connman_service_indicate_error(struct connman_service *service,
 					enum connman_service_error error);
+int __connman_service_clear_error(struct connman_service *service);
 int __connman_service_indicate_default(struct connman_service *service);
 int __connman_service_request_login(struct connman_service *service);
 
@@ -580,9 +578,6 @@ struct connman_service *__connman_session_request(const char *bearer, const char
 int __connman_session_init(void);
 void __connman_session_cleanup(void);
 
-int __connman_ondemand_init(void);
-void __connman_ondemand_cleanup(void);
-
 struct connman_stats_data {
 	unsigned int rx_packets;
 	unsigned int tx_packets;
@@ -611,3 +606,9 @@ void __connman_iptables_cleanup(void);
 int __connman_iptables_command(const char *format, ...)
 				__attribute__((format(printf, 1, 2)));
 int __connman_iptables_commit(const char *table_name);
+
+int __connman_dnsproxy_init(connman_bool_t dnsproxy);
+void __connman_dnsproxy_cleanup(void);
+int __connman_dnsproxy_append(const char *interface, const char *domain, const char *server);
+int __connman_dnsproxy_remove(const char *interface, const char *domain, const char *server);
+void __connman_dnsproxy_flush(void);

@@ -209,7 +209,7 @@ static int enable_bridge(const char *name)
 
 	err = __connman_inet_modify_address(RTM_NEWADDR,
 			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
-					    BRIDGE_IP, NULL, 24, BRIDGE_BCAST);
+					BRIDGE_IP, NULL, 24, BRIDGE_BCAST);
 	if (err < 0)
 		return err;
 

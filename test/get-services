@@ -43,7 +43,7 @@ for entry in services:
 					"Domains", "Domains.Configuration"]:
 			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
-				"SetupRequired", "PassphraseRequired"]:
+				"SetupRequired", "PassphraseRequired", "WPS"]:
 			if properties[key] == dbus.Boolean(1):
 				val = "true"
 			else:

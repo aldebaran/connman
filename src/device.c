@@ -784,6 +784,14 @@ int __connman_device_disconnect(struct connman_device *device)
 	return 0;
 }
 
+static void mark_network_available(gpointer key, gpointer value,
+                                                        gpointer user_data)
+{
+	struct connman_network *network = value;
+
+	connman_network_set_available(network, TRUE);
+}
+
 static void mark_network_unavailable(gpointer key, gpointer value,
 							gpointer user_data)
 {
@@ -818,6 +826,15 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 connman_bool_t __connman_device_scanning(struct connman_device *device)
 {
 	return device->scanning;
+}
+
+void connman_device_reset_scanning(struct connman_device *device)
+{
+	device->scanning = FALSE;
+
+	g_hash_table_foreach(device->networks,
+				mark_network_available, NULL);
+
 }
 
 /**

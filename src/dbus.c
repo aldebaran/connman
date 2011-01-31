@@ -280,6 +280,8 @@ DBusConnection *connman_dbus_get_connection(void)
 
 int __connman_dbus_init(DBusConnection *conn)
 {
+	DBG("");
+
 	connection = conn;
 
 	return 0;
@@ -287,5 +289,7 @@ int __connman_dbus_init(DBusConnection *conn)
 
 void __connman_dbus_cleanup(void)
 {
+	DBG("");
+
 	connection = NULL;
 }

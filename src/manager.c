@@ -652,79 +652,7 @@ static GDBusSignalTable manager_signals[] = {
 	{ },
 };
 
-static DBusMessage *nm_sleep(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static DBusMessage *nm_wake(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_append_args(reply, DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-enum {
-	NM_STATE_UNKNOWN = 0,
-	NM_STATE_ASLEEP,
-	NM_STATE_CONNECTING,
-	NM_STATE_CONNECTED,
-	NM_STATE_DISCONNECTED
-};
-
-static DBusMessage *nm_state(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	DBusMessage *reply;
-	dbus_uint32_t state;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	if (__connman_notifier_count_connected() > 0)
-		state = NM_STATE_CONNECTED;
-	else
-		state = NM_STATE_DISCONNECTED;
-
-	dbus_message_append_args(reply, DBUS_TYPE_UINT32, &state,
-							DBUS_TYPE_INVALID);
-
-	return reply;
-}
-
-static GDBusMethodTable nm_methods[] = {
-	{ "sleep", "",  "",   nm_sleep        },
-	{ "wake",  "",  "",   nm_wake         },
-	{ "state", "",  "u",  nm_state        },
-	{ },
-};
-
-static gboolean nm_compat = FALSE;
-
-int __connman_manager_init(gboolean compat)
+int __connman_manager_init(void)
 {
 	DBG("");
 
@@ -740,13 +668,6 @@ int __connman_manager_init(gboolean compat)
 					manager_methods,
 					manager_signals, NULL, NULL, NULL);
 
-	if (compat == TRUE) {
-		g_dbus_register_interface(connection, NM_PATH, NM_INTERFACE,
-					nm_methods, NULL, NULL, NULL, NULL);
-
-		nm_compat = TRUE;
-	}
-
 	return 0;
 }
 
@@ -758,10 +679,6 @@ void __connman_manager_cleanup(void)
 
 	if (connection == NULL)
 		return;
-
-	if (nm_compat == TRUE) {
-		g_dbus_unregister_interface(connection, NM_PATH, NM_INTERFACE);
-	}
 
 	g_dbus_unregister_interface(connection, CONNMAN_MANAGER_PATH,
 						CONNMAN_MANAGER_INTERFACE);

@@ -11,6 +11,7 @@ The following features are built-in into Connection Manager:
 	- Generic plugin infrastructure
 	- Device and network abstraction (with basic storage support)
 	- IPv4, routing and DNS configuration
+	- DNS Proxy
 
 Various plugins can be enabled for networking support:
 	- Ethernet plugin
@@ -18,7 +19,6 @@ Various plugins can be enabled for networking support:
 	- Bluetooth plugin
 
 Also plugins with additional features are available:
-	- Resolver plugin (DNS proxy)
 	- Loopback setup
 	- PolicyKit support
 
@@ -58,21 +58,6 @@ For a working system, certain configuration options need to be enabled:
 	--enable-bluetooth
 
 		Enable support for Bluetooth devices (requires BlueZ)
-
-	--enable-dnsproxy
-
-		Enable DNS proxy support for /etc/resolv.conf abstraction
-
-		The best solution for multiple connections and proper DNS
-		handling is a DNS proxy server. This binds a DNS proxy
-		server to port 53 on the loopback interface (127.0.0.1).
-
-		The /etc/resolv.conf file needs a "nameserver 127.0.0.1"
-		entry, but can now set the immutable bit or be on a read-only
-		filesystem. No further modification to that file will be made.
-
-		It is important that this is not used together with other
-		DNS proxy solution like dnsmasq.
 
 	--enable-loopback
 

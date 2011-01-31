@@ -246,11 +246,15 @@ int connman_task_set_notify(struct connman_task *task, const char *member,
 static void task_died(GPid pid, gint status, gpointer user_data)
 {
 	struct connman_task *task = user_data;
+	int exit_code;
 
-	if (WIFEXITED(status))
-		DBG("task %p exit status %d", task, WEXITSTATUS(status));
-	else
+	if (WIFEXITED(status)) {
+		exit_code = WEXITSTATUS(status);
+		DBG("task %p exit status %d", task, exit_code);
+	} else {
+		exit_code = 0;
 		DBG("task %p signal %d", task, WTERMSIG(status));
+	}
 
 	g_spawn_close_pid(pid);
 	task->pid = -1;
@@ -258,7 +262,7 @@ static void task_died(GPid pid, gint status, gpointer user_data)
 	task->child_watch = 0;
 
 	if (task->exit_func)
-		task->exit_func(task, task->exit_data);
+		task->exit_func(task, exit_code, task->exit_data);
 }
 
 static void task_setup(gpointer user_data)

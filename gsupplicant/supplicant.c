@@ -136,6 +136,12 @@ static struct strvalmap mode_capa_map[] = {
 static GHashTable *interface_table;
 static GHashTable *bss_mapping;
 
+struct _GSupplicantWpsCredentials {
+	unsigned char ssid[32];
+	unsigned int ssid_len;
+	char *key;
+};
+
 struct _GSupplicantInterface {
 	char *path;
 	char *network_path;
@@ -155,6 +161,8 @@ struct _GSupplicantInterface {
 	char *ifname;
 	char *driver;
 	char *bridge;
+	struct _GSupplicantWpsCredentials wps_cred;
+	GSupplicantWpsState wps_state;
 	GHashTable *network_table;
 	GHashTable *net_mapping;
 	GHashTable *bss_mapping;
@@ -171,6 +179,7 @@ struct _GSupplicantNetwork {
 	dbus_int16_t signal;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
+	dbus_bool_t wps;
 	GHashTable *bss_table;
 	GHashTable *config_table;
 };
@@ -405,6 +414,7 @@ static void remove_interface(gpointer data)
 
 	callback_interface_removed(interface);
 
+	g_free(interface->wps_cred.key);
 	g_free(interface->path);
 	g_free(interface->network_path);
 	g_free(interface->ifname);
@@ -644,6 +654,38 @@ GSupplicantState g_supplicant_interface_get_state(
 	return interface->state;
 }
 
+const char *g_supplicant_interface_get_wps_key(GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return NULL;
+
+	return (const char *)interface->wps_cred.key;
+}
+
+const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
+							unsigned int *ssid_len)
+{
+	if (ssid_len == NULL)
+		return NULL;
+
+	if (interface == NULL || interface->wps_cred.ssid == NULL) {
+		*ssid_len = 0;
+		return NULL;
+	}
+
+	*ssid_len = interface->wps_cred.ssid_len;
+	return interface->wps_cred.ssid;
+}
+
+GSupplicantWpsState g_supplicant_interface_get_wps_state(
+					GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return G_SUPPLICANT_WPS_STATE_UNKNOWN;
+
+	return interface->wps_state;
+}
+
 GSupplicantInterface *g_supplicant_network_get_interface(
 					GSupplicantNetwork *network)
 {
@@ -711,6 +753,14 @@ dbus_int16_t g_supplicant_network_get_signal(GSupplicantNetwork *network)
 		return 0;
 
 	return network->signal;
+}
+
+dbus_bool_t g_supplicant_network_get_wps(GSupplicantNetwork *network)
+{
+	if (network == NULL)
+		return FALSE;
+
+	return network->wps;
 }
 
 static void merge_network(GSupplicantNetwork *network)
@@ -930,6 +980,10 @@ static void add_bss_to_network(struct g_supplicant_bss *bss)
 	memcpy(network->ssid, bss->ssid, bss->ssid_len);
 	network->signal = bss->signal;
 
+	network->wps = FALSE;
+	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0)
+		network->wps = TRUE;
+
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_bss);
 
@@ -1024,6 +1078,82 @@ static void bss_wpa(const char *key, DBusMessageIter *iter,
 
 }
 
+static unsigned int get_tlv(unsigned char *ie, unsigned int ie_size,
+							unsigned int type)
+{
+	unsigned int len = 0;
+
+	while (len + 4 < ie_size) {
+		unsigned int hi = ie[len];
+		unsigned int lo = ie[len + 1];
+		unsigned int tmp_type = (hi << 8) + lo;
+		unsigned int v_len = 0;
+
+		/* hi and lo are used to recreate an unsigned int
+		 * based on 2 8bits length unsigned int. */
+
+		hi = ie[len + 2];
+		lo = ie[len + 3];
+		v_len = (hi << 8) + lo;
+
+		if (tmp_type == type) {
+			unsigned int ret_value = 0;
+			unsigned char *value = (unsigned char *)&ret_value;
+
+			SUPPLICANT_DBG("IE: match type 0x%x", type);
+
+			/* Verifying length relevance */
+			if (v_len > sizeof(unsigned int) ||
+				len + 4 + v_len > ie_size)
+				break;
+
+			memcpy(value, ie + len + 4, v_len);
+
+			SUPPLICANT_DBG("returning 0x%x", ret_value);
+			return ret_value;
+		}
+
+		len += v_len + 4;
+	}
+
+	SUPPLICANT_DBG("returning 0");
+	return 0;
+}
+
+static void bss_process_ies(DBusMessageIter *iter, void *user_data)
+{
+	struct g_supplicant_bss *bss = user_data;
+	const unsigned char WPS_OUI[] = { 0x00, 0x50, 0xf2, 0x04 };
+	unsigned char *ie, *ie_end;
+	DBusMessageIter array;
+	int ie_len;
+
+#define WMM_WPA1_WPS_INFO 221
+#define WPS_INFO_MIN_LEN  6
+#define WPS_VERSION_TLV   0x104A
+#define WPS_STATE_TLV     0x1044
+#define WPS_VERSION       0x10
+
+	dbus_message_iter_recurse(iter, &array);
+	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
+
+	if (ie == NULL || ie_len < 2)
+		return;
+
+	for (ie_end = ie+ie_len; ie+ie[1]+1 <= ie_end; ie += ie[1]+2) {
+		if (ie[0] != WMM_WPA1_WPS_INFO || ie[1] < WPS_INFO_MIN_LEN ||
+			memcmp(ie+2, WPS_OUI, sizeof(WPS_OUI)) != 0)
+			continue;
+
+		SUPPLICANT_DBG("IE: match WPS_OUI");
+
+		if (get_tlv(&ie[6], ie[1],
+				WPS_VERSION_TLV) == WPS_VERSION &&
+			get_tlv(&ie[6], ie[1],
+				WPS_STATE_TLV) != 0)
+			bss->keymgmt |= G_SUPPLICANT_KEYMGMT_WPS;
+	}
+}
 
 static void bss_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
@@ -1134,7 +1264,9 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 				G_SUPPLICANT_KEYMGMT_WPA_FT_PSK |
 				G_SUPPLICANT_KEYMGMT_WPA_PSK_256))
 			bss->psk = TRUE;
-	} else
+	} else if (g_strcmp0(key, "IEs") == 0)
+		bss_process_ies(iter, bss);
+	else
 		SUPPLICANT_DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
 }
@@ -1686,6 +1818,106 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
 }
 
+static void wps_credentials(const char *key, DBusMessageIter *iter,
+			void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+
+	if (key == NULL)
+		return;
+
+	SUPPLICANT_DBG("key %s", key);
+
+	if (g_strcmp0(key, "Key") == 0) {
+		DBusMessageIter array;
+		unsigned char *key;
+		int key_len;
+
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &key, &key_len);
+
+		g_free(interface->wps_cred.key);
+		interface->wps_cred.key = g_try_malloc0(
+						sizeof(char) * key_len+1);
+
+		if (interface->wps_cred.key == NULL)
+			return;
+
+		memcpy(interface->wps_cred.key, key, sizeof(char) * key_len);
+
+		SUPPLICANT_DBG("WPS key present");
+	} else if (g_strcmp0(key, "SSID") == 0) {
+		DBusMessageIter array;
+		unsigned char *ssid;
+		int ssid_len;
+
+		dbus_message_iter_recurse(iter, &array);
+		dbus_message_iter_get_fixed_array(&array, &ssid, &ssid_len);
+
+		if (ssid_len > 0 && ssid_len < 33) {
+			memcpy(interface->wps_cred.ssid, ssid, ssid_len);
+			interface->wps_cred.ssid_len = ssid_len;
+		} else {
+			memset(interface->wps_cred.ssid, 0, 32);
+			interface->wps_cred.ssid_len = 0;
+		}
+	}
+}
+
+static void signal_wps_credentials(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	supplicant_dbus_property_foreach(iter, wps_credentials, interface);
+}
+
+static void wps_event_args(const char *key, DBusMessageIter *iter,
+			void *user_data)
+{
+	GSupplicantInterface *interface = user_data;
+
+	if (key == NULL || interface == NULL)
+		return;
+
+	SUPPLICANT_DBG("Arg Key %s", key);
+}
+
+static void signal_wps_event(const char *path, DBusMessageIter *iter)
+{
+	GSupplicantInterface *interface;
+	const char *name = NULL;
+
+	SUPPLICANT_DBG("");
+
+	interface = g_hash_table_lookup(interface_table, path);
+	if (interface == NULL)
+		return;
+
+	dbus_message_iter_get_basic(iter, &name);
+
+	SUPPLICANT_DBG("Name: %s", name);
+
+	if (g_strcmp0(name, "success") == 0)
+		interface->wps_state = G_SUPPLICANT_WPS_STATE_SUCCESS;
+	else if (g_strcmp0(name, "failed") == 0)
+		interface->wps_state = G_SUPPLICANT_WPS_STATE_FAIL;
+	else
+		interface->wps_state = G_SUPPLICANT_WPS_STATE_UNKNOWN;
+
+	if (!dbus_message_iter_has_next(iter))
+		return;
+
+	dbus_message_iter_next(iter);
+
+	supplicant_dbus_property_foreach(iter, wps_event_args, interface);
+}
+
 static struct {
 	const char *interface;
 	const char *member;
@@ -1706,6 +1938,9 @@ static struct {
 	{ SUPPLICANT_INTERFACE ".Interface", "NetworkRemoved",    signal_network_removed   },
 
 	{ SUPPLICANT_INTERFACE ".BSS", "PropertiesChanged", signal_bss_changed   },
+
+	{ SUPPLICANT_INTERFACE ".Interface.WPS", "Credentials", signal_wps_credentials },
+	{ SUPPLICANT_INTERFACE ".Interface.WPS", "Event",       signal_wps_event       },
 
 	{ }
 };
@@ -2437,6 +2672,75 @@ static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
+static void interface_wps_start_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+
+	SUPPLICANT_DBG("");
+	if (error != NULL)
+		SUPPLICANT_DBG("error: %s", error);
+
+	g_free(data->ssid);
+	dbus_free(data);
+}
+
+static void interface_add_wps_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+	GSupplicantSSID *ssid = data->ssid;
+	const char *role = "enrollee", *type;
+	DBusMessageIter dict;
+
+	SUPPLICANT_DBG("");
+
+	supplicant_dbus_dict_open(iter, &dict);
+
+	supplicant_dbus_dict_append_basic(&dict, "Role",
+						DBUS_TYPE_STRING, &role);
+
+	type = "pbc";
+	if (ssid->pin_wps != NULL) {
+		type = "pin";
+		supplicant_dbus_dict_append_basic(&dict, "Pin",
+					DBUS_TYPE_STRING, &ssid->pin_wps);
+	}
+
+	supplicant_dbus_dict_append_basic(&dict, "Type",
+					DBUS_TYPE_STRING, &type);
+
+	supplicant_dbus_dict_close(iter, &dict);
+}
+
+static void wps_start(const char *error, DBusMessageIter *iter, void *user_data)
+{
+	struct interface_connect_data *data = user_data;
+
+	SUPPLICANT_DBG("");
+
+	if (error != NULL) {
+		SUPPLICANT_DBG("error: %s", error);
+		g_free(data->ssid);
+		dbus_free(data);
+		return;
+	}
+
+	supplicant_dbus_method_call(data->interface->path,
+			SUPPLICANT_INTERFACE ".Interface.WPS", "Start",
+			interface_add_wps_params,
+			interface_wps_start_result, data);
+}
+
+static void wps_process_credentials(DBusMessageIter *iter, void *user_data)
+{
+	dbus_bool_t credentials = TRUE;
+
+	SUPPLICANT_DBG("");
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &credentials);
+}
+
+
 int g_supplicant_interface_connect(GSupplicantInterface *interface,
 				GSupplicantSSID *ssid,
 				GSupplicantInterfaceCallback callback,
@@ -2462,10 +2766,21 @@ int g_supplicant_interface_connect(GSupplicantInterface *interface,
 	data->ssid = ssid;
 	data->user_data = user_data;
 
-	ret = supplicant_dbus_method_call(interface->path,
+	if (ssid->use_wps == TRUE) {
+		g_free(interface->wps_cred.key);
+		memset(&interface->wps_cred, 0,
+				sizeof(struct _GSupplicantWpsCredentials));
+
+		ret = supplicant_dbus_property_set(interface->path,
+			SUPPLICANT_INTERFACE ".Interface.WPS",
+			"ProcessCredentials", DBUS_TYPE_BOOLEAN_AS_STRING,
+			wps_process_credentials, wps_start, data);
+	} else
+		ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "AddNetwork",
 			interface_add_network_params,
 			interface_add_network_result, data);
+
 	if (ret < 0)
 		return ret;
 
@@ -2519,6 +2834,12 @@ static void interface_disconnect_result(const char *error,
 
 	if (error != NULL && data->callback != NULL)
 		data->callback(-EIO, data->interface, data->user_data);
+
+	/* If we are disconnecting from previous WPS successful
+	 * association. i.e.: it did not went through AddNetwork,
+	 * and interface->network_path was never set. */
+	if (data->interface->network_path == NULL)
+		return;
 
 	network_remove(data);
 }

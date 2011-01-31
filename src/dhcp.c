@@ -22,79 +22,36 @@
 #ifdef HAVE_CONFIG_H
 #include <config.h>
 #endif
+#include <stdio.h>
+#include <errno.h>
+#include <string.h>
+#include <stdlib.h>
+
+#include <gdhcp/gdhcp.h>
 
 #include <glib.h>
 
 #include "connman.h"
 
+enum connman_dhcp_state {
+	CONNMAN_DHCP_STATE_UNKNOWN  = 0,
+	CONNMAN_DHCP_STATE_IDLE     = 1,
+	CONNMAN_DHCP_STATE_BOUND    = 2,
+	CONNMAN_DHCP_STATE_RENEW    = 3,
+	CONNMAN_DHCP_STATE_FAIL     = 4,
+};
+
 struct connman_dhcp {
-	gint refcount;
+	GDHCPClient *dhcp_client;
+
 	int index;
 	enum connman_dhcp_state state;
 
 	struct connman_element *element;
-
-	struct connman_dhcp_driver *driver;
-	void *driver_data;
 };
 
-/**
- * connman_dhcp_ref:
- * @dhcp: DHCP structure
- *
- * Increase reference counter of DHCP
- */
-struct connman_dhcp *connman_dhcp_ref(struct connman_dhcp *dhcp)
-{
-	g_atomic_int_inc(&dhcp->refcount);
-
-	return dhcp;
-}
-
-/**
- * connman_dhcp_unref:
- * @dhcp: DHCP structure
- *
- * Decrease reference counter of DHCP
- */
-void connman_dhcp_unref(struct connman_dhcp *dhcp)
-{
-	if (g_atomic_int_dec_and_test(&dhcp->refcount) == TRUE)
-		g_free(dhcp);
-}
-
-/**
- * connman_dhcp_get_index:
- * @dhcp: DHCP structure
- *
- * Get network index of DHCP
- */
-int connman_dhcp_get_index(struct connman_dhcp *dhcp)
-{
-	return dhcp->index;
-}
-
-/**
- * connman_dhcp_get_interface:
- * @dhcp: DHCP structure
- *
- * Get network interface of DHCP
- */
-char *connman_dhcp_get_interface(struct connman_dhcp *dhcp)
-{
-	return connman_inet_ifname(dhcp->index);
-}
-
-/**
- * connman_dhcp_set_value:
- * @dhcp: DHCP structure
- * @key: unique identifier
- * @value: string value
- *
- * Set string value for specific key
- */
-void connman_dhcp_set_value(struct connman_dhcp *dhcp,
-					const char *key, const char *value)
+static void dhcp_set_value(struct connman_dhcp *dhcp,
+				const char *key, const char *value)
 {
 	char **nameservers;
 
@@ -147,13 +104,7 @@ void connman_dhcp_set_value(struct connman_dhcp *dhcp,
 	}
 }
 
-/**
- * connman_dhcp_bound:
- * @dhcp: DHCP structure
- *
- * Report successful bound of the interface
- */
-void connman_dhcp_bound(struct connman_dhcp *dhcp)
+static void dhcp_bound(struct connman_dhcp *dhcp)
 {
 	struct connman_element *element;
 
@@ -172,114 +123,178 @@ void connman_dhcp_bound(struct connman_dhcp *dhcp)
 		connman_element_unref(element);
 }
 
-/**
- * connman_dhcp_renew:
- * @dhcp: DHCP structure
- *
- * Report successful renew of the interface
- */
-void connman_dhcp_renew(struct connman_dhcp *dhcp)
+static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
-	DBG("dhcp %p", dhcp);
+	struct connman_dhcp *dhcp = user_data;
 
-	connman_element_update(dhcp->element);
-}
-
-/**
- * connman_dhcp_release:
- * @dhcp: DHCP structure
- *
- * Report DHCP release of the interface
- */
-void connman_dhcp_release(struct connman_dhcp *dhcp)
-{
-	DBG("dhcp %p", dhcp);
-
-	connman_element_unregister_children(dhcp->element);
-}
-
-/**
- * connman_dhcp_fail:
- * @dhcp: DHCP structure
- *
- * Report DHCP failure of the interface
- */
-void connman_dhcp_fail(struct connman_dhcp *dhcp)
-{
-	DBG("dhcp %p", dhcp);
+	DBG("No lease available");
 
 	connman_element_set_error(dhcp->element,
 					CONNMAN_ELEMENT_ERROR_FAILED);
 }
 
-/**
- * connman_dhcp_get_data:
- * @dhcp: DHCP structure
- *
- * Get private DHCP data pointer
- */
-void *connman_dhcp_get_data(struct connman_dhcp *dhcp)
+static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
-	return dhcp->driver_data;
+	DBG("Lease lost");
 }
 
-/**
- * connman_dhcp_set_data:
- * @dhcp: DHCP structure
- * @data: data pointer
- *
- * Set private DHCP data pointer
- */
-void connman_dhcp_set_data(struct connman_dhcp *dhcp, void *data)
+static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
-	dhcp->driver_data = data;
+	struct connman_dhcp *dhcp = user_data;
+
+	DBG("Lease lost");
+
+	connman_element_unregister_children(dhcp->element);
 }
 
-static GSList *driver_list = NULL;
-
-static gint compare_priority(gconstpointer a, gconstpointer b)
+static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
-	const struct connman_dhcp_driver *driver1 = a;
-	const struct connman_dhcp_driver *driver2 = b;
+	struct connman_dhcp *dhcp = user_data;
+	GList *list, *option = NULL;
+	char *address, *nameservers;
+	size_t ns_strlen = 0;
 
-	return driver2->priority - driver1->priority;
+	DBG("Lease available");
+
+	address = g_dhcp_client_get_address(dhcp_client);
+	if (address != NULL)
+		dhcp_set_value(dhcp, "Address", address);
+	g_free(address);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
+	if (option != NULL)
+		dhcp_set_value(dhcp, "Netmask", option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
+	for (list = option; list; list = list->next)
+		ns_strlen += strlen((char *) list->data) + 2;
+	nameservers = g_try_malloc0(ns_strlen);
+	if (nameservers) {
+		char *ns_index = nameservers;
+
+		for (list = option; list; list = list->next) {
+			sprintf(ns_index, "%s ", (char *) list->data);
+			ns_index += strlen((char *) list->data) + 1;
+		}
+
+		dhcp_set_value(dhcp, "Nameserver", nameservers);
+	}
+	g_free(nameservers);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
+	if (option != NULL)
+		dhcp_set_value(dhcp, "Domainname", option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
+	if (option != NULL)
+		dhcp_set_value(dhcp, "Gateway", option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
+	if (option != NULL)
+		dhcp_set_value(dhcp, "Hostname", option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
+	if (option != NULL)
+		dhcp_set_value(dhcp, "Timeserver", option->data);
+
+	option = g_dhcp_client_get_option(dhcp_client, 252);
+	if (option != NULL)
+		dhcp_set_value(dhcp, "PAC", option->data);
+
+	dhcp_bound(dhcp);
 }
 
-/**
- * connman_dhcp_driver_register:
- * @driver: DHCP driver definition
- *
- * Register a new DHCP driver
- *
- * Returns: %0 on success
- */
-int connman_dhcp_driver_register(struct connman_dhcp_driver *driver)
+static void ipv4ll_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
-	DBG("driver %p name %s", driver, driver->name);
+	struct connman_dhcp *dhcp = user_data;
+	char *address, *netmask;
 
-	driver_list = g_slist_insert_sorted(driver_list, driver,
-							compare_priority);
+	DBG("IPV4LL available");
+
+	address = g_dhcp_client_get_address(dhcp_client);
+	if (address != NULL)
+		dhcp_set_value(dhcp, "Address", address);
+
+	netmask = g_dhcp_client_get_netmask(dhcp_client);
+	if (netmask != NULL)
+		dhcp_set_value(dhcp, "Netmask", netmask);
+
+	g_free(address);
+	g_free(netmask);
+
+	dhcp_bound(dhcp);
+}
+
+static void dhcp_debug(const char *str, void *data)
+{
+	connman_info("%s: %s\n", (const char *) data, str);
+}
+
+static int dhcp_request(struct connman_dhcp *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	GDHCPClientError error;
+	const char *hostname;
+	int index;
+
+	DBG("dhcp %p", dhcp);
+
+	index = dhcp->index;
+
+	dhcp_client = g_dhcp_client_new(G_DHCP_IPV4, index, &error);
+	if (error != G_DHCP_CLIENT_ERROR_NONE)
+		return -EINVAL;
+
+	if (getenv("CONNMAN_DHCP_DEBUG"))
+		g_dhcp_client_set_debug(dhcp_client, dhcp_debug, "DHCP");
+
+	hostname = connman_utsname_get_hostname();
+	if (hostname != NULL)
+		g_dhcp_client_set_send(dhcp_client, G_DHCP_HOST_NAME, hostname);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_HOST_NAME);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_SUBNET);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_DNS_SERVER);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_DOMAIN_NAME);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_NTP_SERVER);
+	g_dhcp_client_set_request(dhcp_client, G_DHCP_ROUTER);
+	g_dhcp_client_set_request(dhcp_client, 252);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_LEASE_AVAILABLE,
+						lease_available_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_IPV4LL_AVAILABLE,
+						ipv4ll_available_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_LEASE_LOST, lease_lost_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_IPV4LL_LOST, ipv4ll_lost_cb, dhcp);
+
+	g_dhcp_client_register_event(dhcp_client,
+			G_DHCP_CLIENT_EVENT_NO_LEASE, no_lease_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client);
+}
+
+static int dhcp_release(struct connman_dhcp *dhcp)
+{
+	DBG("dhcp %p", dhcp);
+
+	g_dhcp_client_stop(dhcp->dhcp_client);
+	g_dhcp_client_unref(dhcp->dhcp_client);
 
 	return 0;
-}
-
-/**
- * connman_dhcp_driver_unregister:
- * @driver: DHCP driver definition
- *
- * Remove a previously registered DHCP driver
- */
-void connman_dhcp_driver_unregister(struct connman_dhcp_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_remove(driver_list, driver);
 }
 
 static int dhcp_probe(struct connman_element *element)
 {
 	struct connman_dhcp *dhcp;
-	GSList *list;
 
 	DBG("element %p name %s", element, element->name);
 
@@ -287,7 +302,6 @@ static int dhcp_probe(struct connman_element *element)
 	if (dhcp == NULL)
 		return -ENOMEM;
 
-	dhcp->refcount = 1;
 	dhcp->index = element->index;
 	dhcp->state = CONNMAN_DHCP_STATE_IDLE;
 
@@ -295,21 +309,7 @@ static int dhcp_probe(struct connman_element *element)
 
 	connman_element_set_data(element, dhcp);
 
-	for (list = driver_list; list; list = list->next) {
-		struct connman_dhcp_driver *driver = list->data;
-
-		DBG("driver %p name %s", driver, driver->name);
-
-		if (driver->request(dhcp) == 0) {
-			dhcp->driver = driver;
-			break;
-		}
-	}
-
-	if (dhcp->driver == NULL) {
-		connman_dhcp_unref(dhcp);
-		return -ENOENT;
-	}
+	dhcp_request(dhcp);
 
 	return 0;
 }
@@ -322,12 +322,9 @@ static void dhcp_remove(struct connman_element *element)
 
 	connman_element_set_data(element, NULL);
 
-	if (dhcp->driver) {
-		dhcp->driver->release(dhcp);
-		dhcp->driver = NULL;
-	}
+	dhcp_release(dhcp);
+	g_free(dhcp);
 
-	connman_dhcp_unref(dhcp);
 	connman_element_unref(element);
 }
 

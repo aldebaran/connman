@@ -109,7 +109,8 @@ static connman_bool_t ntpd_running(void)
 	return ret;
 }
 
-static void ntpdate_died(struct connman_task *task, void *user_data)
+static void ntpdate_died(struct connman_task *task,
+				int exit_code, void *user_data)
 {
 	struct ntpdate_task *ntpdate = user_data;
 

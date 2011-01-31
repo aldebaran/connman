@@ -27,6 +27,8 @@
 #include <errno.h>
 #include <unistd.h>
 
+#include <glib.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/provider.h>
@@ -86,6 +88,10 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 
 		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN"))
 			domain = value;
+
+		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") == TRUE ||
+			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC") == TRUE)
+			connman_provider_append_route(provider, key, value);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -155,9 +161,23 @@ static int oc_connect(struct connman_provider *provider,
 	return 0;
 }
 
+static int oc_error_code(int exit_code)
+{
+
+	switch (exit_code) {
+	case 1:
+		return CONNMAN_PROVIDER_ERROR_CONNECT_FAILED;
+	case 2:
+		return CONNMAN_PROVIDER_ERROR_LOGIN_FAILED;
+	default:
+		return CONNMAN_PROVIDER_ERROR_UNKNOWN;
+	}
+}
+
 static struct vpn_driver vpn_driver = {
 	.notify         = oc_notify,
 	.connect	= oc_connect,
+	.error_code	= oc_error_code,
 };
 
 static int openconnect_init(void)

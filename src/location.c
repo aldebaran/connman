@@ -275,9 +275,12 @@ int __connman_location_finish(struct connman_service *service)
 
 int __connman_location_init(void)
 {
+	DBG("");
+
 	return 0;
 }
 
 void __connman_location_cleanup(void)
 {
+	DBG("");
 }

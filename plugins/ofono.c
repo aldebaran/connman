@@ -81,6 +81,13 @@ struct modem_data {
 	dbus_bool_t requested_online;
 	dbus_bool_t online;
 
+	/* org.ofono.ConnectionManager properties */
+	dbus_bool_t powered;
+	dbus_bool_t attached;
+	dbus_bool_t roaming_allowed;
+
+	connman_bool_t registered;
+	connman_bool_t roaming;
 	uint8_t strength, has_strength;
 };
 
@@ -466,10 +473,30 @@ static void set_apn(struct connman_network *network)
 
 static int network_connect(struct connman_network *network)
 {
+	struct connman_device *device;
+	struct modem_data *modem;
+
 	DBG("network %p", network);
 
 	if (connman_network_get_index(network) >= 0)
 		return -EISCONN;
+
+	device = connman_network_get_device(network);
+	if (device == NULL)
+		return -ENODEV;
+
+	modem = connman_device_get_data(device);
+	if (modem == NULL)
+		return -ENODEV;
+
+	if (modem->registered == FALSE)
+		return -ENOLINK;
+
+	if (modem->powered == FALSE)
+		return -ENOLINK;
+
+	if (modem->roaming_allowed == FALSE && modem->roaming == TRUE)
+		return -ENOLINK;
 
 	return set_network_active(network, TRUE);
 }
@@ -525,7 +552,6 @@ static int add_network(struct connman_device *device,
 	char *ident;
 	const char *hash_path;
 	char const *operator;
-	char const *reg_status;
 	dbus_bool_t active = FALSE;
 
 	DBG("modem %p device %p path %s", modem, device, path);
@@ -569,12 +595,7 @@ static int add_network(struct connman_device *device,
 	if (modem->has_strength)
 		connman_network_set_strength(network, modem->strength);
 
-	reg_status = connman_device_get_string(device, "RegistrationStatus");
-
-	if (!g_strcmp0(reg_status, "roaming"))
-		connman_network_set_roaming(network, TRUE);
-	else if (!g_strcmp0(reg_status, "registered"))
-		connman_network_set_roaming(network, FALSE);
+	connman_network_set_roaming(network, modem->roaming);
 
 	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -677,6 +698,25 @@ static void check_networks(struct modem_data *modem)
 			DBUS_TYPE_INVALID);
 }
 
+static void modem_clear_network_errors(struct modem_data *modem)
+{
+	struct connman_device *device = modem->device;
+	GHashTableIter i;
+	gpointer value;
+
+	if (device == NULL)
+		return;
+
+	g_hash_table_iter_init(&i, network_hash);
+
+	while (g_hash_table_iter_next(&i, NULL, &value)) {
+		struct connman_network *network = value;
+
+		if (connman_network_get_device(network) == device)
+			connman_network_clear_error(network);
+	}
+}
+
 static void modem_operator_name_changed(struct modem_data *modem,
 					char const *name)
 {
@@ -727,24 +767,34 @@ static void modem_roaming_changed(struct modem_data *modem,
 					char const *status)
 {
 	struct connman_device *device = modem->device;
-	connman_bool_t roaming;
+	connman_bool_t roaming = FALSE;
+	connman_bool_t registered = FALSE;
+	connman_bool_t was_roaming = modem->roaming;
 	GHashTableIter i;
 	gpointer value;
-
-	if (device == NULL)
-		return;
-
-	connman_device_set_string(device, "RegistrationStatus", status);
 
 	if (g_str_equal(status, "roaming"))
 		roaming = TRUE;
 	else if (g_str_equal(status, "registered"))
-		roaming = FALSE;
-	else
+		registered = TRUE;
+
+	registered = registered || roaming;
+
+	if (modem->roaming == roaming && modem->registered == registered)
 		return;
 
-	for (g_hash_table_iter_init(&i, network_hash);
-	     g_hash_table_iter_next(&i, NULL, &value);) {
+	modem->registered = registered;
+	modem->roaming = roaming;
+
+	if (roaming == was_roaming)
+		return;
+
+	if (device == NULL)
+		return;
+
+	g_hash_table_iter_init(&i, network_hash);
+
+	while (g_hash_table_iter_next(&i, NULL, &value)) {
 		struct connman_network *network = value;
 
 		if (connman_network_get_device(network) == device) {
@@ -752,6 +802,12 @@ static void modem_roaming_changed(struct modem_data *modem,
 			connman_network_update(network);
 		}
 	}
+}
+
+static void modem_registration_removed(struct modem_data *modem)
+{
+	modem->registered = FALSE;
+	modem->roaming = FALSE;
 }
 
 static void modem_registration_changed(struct modem_data *modem,
@@ -865,6 +921,94 @@ static void check_registration(struct modem_data *modem)
 			DBUS_TYPE_INVALID);
 }
 
+static void modem_gprs_changed(struct modem_data *modem,
+					DBusMessageIter *entry)
+{
+	DBusMessageIter iter;
+	const char *key;
+	int type;
+	dbus_bool_t value;
+
+	dbus_message_iter_get_basic(entry, &key);
+
+	DBG("key %s", key);
+
+	dbus_message_iter_next(entry);
+
+	dbus_message_iter_recurse(entry, &iter);
+
+	type = dbus_message_iter_get_arg_type(&iter);
+
+	if (type != DBUS_TYPE_BOOLEAN)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &value);
+
+	if (g_str_equal(key, "Attached") == TRUE) {
+		DBG("Attached %d", value);
+
+		modem->attached = value;
+
+		if (value)
+			modem_clear_network_errors(modem);
+	} else if (g_str_equal(key, "Powered") == TRUE) {
+		DBG("Powered %d", value);
+
+		modem->powered = value;
+	} else if (g_str_equal(key, "RoamingAllowed") == TRUE) {
+		DBG("RoamingAllowed %d", value);
+
+		modem->roaming_allowed = value;
+	}
+}
+
+static void check_gprs_reply(DBusPendingCall *call, void *user_data)
+{
+	char const *path = user_data;
+	struct modem_data *modem;
+	DBusMessage *reply;
+	DBusMessageIter array, dict, entry;
+
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		dbus_message_iter_recurse(&dict, &entry);
+		modem_gprs_changed(modem, &entry);
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+
+	check_networks(modem);
+}
+
+static void check_gprs(struct modem_data *modem)
+{
+	char const *path = modem->path;
+
+	DBG("modem %p path %s", modem, path);
+
+	call_ofono(path, OFONO_GPRS_INTERFACE, GET_PROPERTIES,
+			check_gprs_reply, g_strdup(path), g_free,
+			DBUS_TYPE_INVALID);
+}
+
 static void add_device(const char *path, const char *imsi)
 {
 	struct modem_data *modem;
@@ -911,8 +1055,9 @@ static void add_device(const char *path, const char *imsi)
 
 	if (modem->has_reg)
 		check_registration(modem);
+
 	if (modem->has_gprs)
-		check_networks(modem);
+		check_gprs(modem);
 }
 
 static void sim_properties_reply(DBusPendingCall *call, void *user_data)
@@ -1217,9 +1362,9 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		gboolean has_sim = modem_has_sim(&value);
 		gboolean has_reg = modem_has_reg(&value);
-		gboolean added_reg = has_reg && !modem->has_reg;
+		gboolean had_reg = modem->has_reg;
 		gboolean has_gprs = modem_has_gprs(&value);
-		gboolean added_gprs = has_gprs && !modem->has_gprs;
+		gboolean had_gprs = modem->has_gprs;
 
 		modem->has_sim = has_sim;
 		modem->has_reg = has_reg;
@@ -1231,10 +1376,15 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		} else if (!has_sim) {
 			modem_remove_device(modem);
 		} else {
-			if (added_reg)
+			if (has_reg && !had_reg)
 				check_registration(modem);
-			if (added_gprs)
+			else if (had_reg && !has_reg)
+				modem_registration_removed(modem);
+
+			if (has_gprs && !had_gprs) {
 				gprs_change_powered(modem->path, TRUE);
+				check_gprs(modem);
+			}
 		}
 	}
 
@@ -1292,8 +1442,7 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 {
 	const char *path = dbus_message_get_path(message);
 	struct modem_data *modem;
-	DBusMessageIter iter, value;
-	const char *key;
+	DBusMessageIter iter;
 
 	DBG("path %s", path);
 
@@ -1301,27 +1450,8 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 	if (modem == NULL)
 		return TRUE;
 
-	if (dbus_message_iter_init(message, &iter) == FALSE)
-		return TRUE;
-
-	dbus_message_iter_get_basic(&iter, &key);
-
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	if (g_str_equal(key, "Attached") == TRUE) {
-		dbus_bool_t attached;
-
-		dbus_message_iter_get_basic(&value, &attached);
-
-		DBG("Attached %d", attached);
-
-		if (attached == TRUE)
-			check_networks(modem);
-		else if (modem->device != NULL)
-			connman_device_remove_all_networks(modem->device);
-
-	}
+	if (dbus_message_iter_init(message, &iter))
+		modem_gprs_changed(modem, &iter);
 
 	return TRUE;
 }

@@ -106,6 +106,7 @@ struct connman_service {
 	char **proxies;
 	char **excludes;
 	char *pac;
+	connman_bool_t wps;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -260,6 +261,10 @@ static const char *error2string(enum connman_service_error error)
 		return "dhcp-failed";
 	case CONNMAN_SERVICE_ERROR_CONNECT_FAILED:
 		return "connect-failed";
+	case CONNMAN_SERVICE_ERROR_LOGIN_FAILED:
+		return "login-failed";
+	case CONNMAN_SERVICE_ERROR_AUTH_FAILED:
+		return "auth-failed";
 	}
 
 	return NULL;
@@ -1438,6 +1443,9 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 
 		connman_dbus_dict_append_basic(dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
+
+		connman_dbus_dict_append_basic(dict, "WPS",
+					DBUS_TYPE_BOOLEAN, &service->wps);
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
@@ -2312,9 +2320,12 @@ static void request_input_cb (struct connman_service *service,
 {
 	DBG ("RequestInput return, %p", service);
 
-	if (passphrase == NULL)
+	if (passphrase == NULL && service->wps == FALSE)
 		return;
-	__connman_service_set_passphrase(service, passphrase);
+
+	if (passphrase != NULL)
+		__connman_service_set_passphrase(service, passphrase);
+
 	__connman_service_connect(service);
 }
 
@@ -2419,6 +2430,9 @@ static DBusMessage *connect_service(DBusConnection *conn,
 							NULL) == 0)
 				return NULL;
 		}
+
+		if (service->pending == NULL)
+			return NULL;
 
 		if (err != -EINPROGRESS) {
 			dbus_message_unref(service->pending);
@@ -2725,6 +2739,8 @@ static void service_initialize(struct connman_service *service)
 	stats_init(service);
 
 	service->provider = NULL;
+
+	service->wps = FALSE;
 }
 
 /**
@@ -2945,6 +2961,14 @@ enum connman_service_security __connman_service_get_security(struct connman_serv
 	return service->security;
 }
 
+connman_bool_t __connman_service_wps_enabled(struct connman_service *service)
+{
+	if (service == NULL)
+		return FALSE;
+
+	return service->wps;
+}
+
 /**
  * __connman_service_set_favorite:
  * @service: service structure
@@ -3142,6 +3166,20 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 		__connman_notifier_connect(service->type);
 
+		if (service->type == CONNMAN_SERVICE_TYPE_WIFI &&
+			connman_network_get_bool(service->network,
+						"WiFi.UseWPS") == TRUE) {
+			const char *pass;
+
+			pass = connman_network_get_string(service->network,
+							"WiFi.Passphrase");
+
+			__connman_service_set_passphrase(service, pass);
+
+			connman_network_set_bool(service->network,
+							"WiFi.UseWPS", FALSE);
+		}
+
 		default_changed();
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
@@ -3206,6 +3244,26 @@ int __connman_service_indicate_error(struct connman_service *service,
 					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
+int __connman_service_clear_error(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	if (service == NULL)
+		return -EINVAL;
+
+	if (service->state != CONNMAN_SERVICE_STATE_FAILURE)
+		return -EINVAL;
+
+	service->state = CONNMAN_SERVICE_STATE_UNKNOWN;
+	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;;
+
+	if (service->favorite == TRUE)
+		set_reconnect_state(service, TRUE);
+
+	return __connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_IDLE);
+}
+
 int __connman_service_indicate_default(struct connman_service *service)
 {
 	DBG("service %p", service);
@@ -3246,7 +3304,8 @@ static connman_bool_t prepare_network(struct connman_service *service)
 							&ssid_len) == NULL)
 			return FALSE;
 
-		connman_network_set_string(service->network,
+		if (service->passphrase != NULL)
+			connman_network_set_string(service->network,
 				"WiFi.Passphrase", service->passphrase);
 		break;
 	case CONNMAN_NETWORK_TYPE_ETHERNET:
@@ -3302,17 +3361,9 @@ static void prepare_8021x(struct connman_service *service)
 							service->phase2);
 }
 
-int __connman_service_connect(struct connman_service *service)
+static int service_connect(struct connman_service *service)
 {
 	int err;
-
-	DBG("service %p", service);
-
-	if (is_connected(service) == TRUE)
-		return -EISCONN;
-
-	if (is_connecting(service) == TRUE)
-		return -EALREADY;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -3338,8 +3389,16 @@ int __connman_service_connect(struct connman_service *service)
 		case CONNMAN_SERVICE_SECURITY_PSK:
 		case CONNMAN_SERVICE_SECURITY_WPA:
 		case CONNMAN_SERVICE_SECURITY_RSN:
-			if (service->passphrase == NULL)
-				return -ENOKEY;
+			if (service->passphrase == NULL) {
+				if (service->network == NULL)
+					return -EOPNOTSUPP;
+
+				if (service->wps == FALSE ||
+					connman_network_get_bool(
+							service->network,
+							"WiFi.UseWPS") == FALSE)
+					return -ENOKEY;
+			}
 			break;
 		case CONNMAN_SERVICE_SECURITY_8021X:
 			break;
@@ -3387,23 +3446,56 @@ int __connman_service_connect(struct connman_service *service)
 		if (err != -EINPROGRESS) {
 			__connman_ipconfig_disable(service->ipconfig_ipv4);
 			__connman_ipconfig_disable(service->ipconfig_ipv6);
-
 			__connman_stats_service_unregister(service);
-			if (service->userconnect == TRUE)
-				return __connman_agent_report_error(service,
-						error2string(service->error),
-						report_error_cb, NULL);
-			else
-				return err;
 		}
+	}
 
+	return err;
+}
+
+
+int __connman_service_connect(struct connman_service *service)
+{
+	int err;
+
+	DBG("service %p", service);
+
+	if (is_connected(service) == TRUE)
+		return -EISCONN;
+
+	if (is_connecting(service) == TRUE)
+		return -EALREADY;
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		return -EINVAL;
+	default:
+		err = service_connect(service);
+	}
+
+	if (err >= 0)
+		return 0;
+
+	if (err == -EINPROGRESS) {
 		service->timeout = g_timeout_add_seconds(CONNECT_TIMEOUT,
 						connect_timeout, service);
 
 		return -EINPROGRESS;
 	}
 
-	return 0;
+	if (err == -ENOKEY)
+		return -ENOKEY;
+
+	if (service->userconnect == TRUE)
+		reply_pending(service, err);
+
+	__connman_service_indicate_state(service,
+				CONNMAN_SERVICE_STATE_FAILURE);
+
+	return err;
 }
 
 int __connman_service_disconnect(struct connman_service *service)
@@ -4134,7 +4226,8 @@ static void update_from_network(struct connman_service *service,
 							"Cellular.Mode");
 
 		service->mode = convert_cellular_mode(value);
-	}
+	} else if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
+		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	if (service->strength > strength && service->network != NULL) {
 		connman_network_unref(service->network);
@@ -4261,6 +4354,9 @@ void __connman_service_update_from_network(struct connman_network *network)
 				CONNMAN_SERVICE_INTERFACE, "Name",
 				DBUS_TYPE_STRING, &service->name);
 	}
+
+	if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
+		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	strength = connman_network_get_uint8(service->network, "Strength");
 	if (strength == service->strength)

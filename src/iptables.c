@@ -1334,6 +1334,8 @@ int __connman_iptables_init(void)
 
 void __connman_iptables_cleanup(void)
 {
+	DBG("");
+
 	g_hash_table_destroy(table_hash);
 
 	xtables_free_opts(1);

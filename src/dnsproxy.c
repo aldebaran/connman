@@ -33,14 +33,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 
-#define CONNMAN_API_SUBJECT_TO_CHANGE
-#include <connman/plugin.h>
-#include <connman/resolver.h>
-#include <connman/notifier.h>
-#include <connman/ondemand.h>
-#include <connman/log.h>
-
 #include <glib.h>
+
+#include "connman.h"
 
 #if __BYTE_ORDER == __LITTLE_ENDIAN
 struct domain_hdr {
@@ -119,6 +114,7 @@ struct request_data {
 	gsize resplen;
 };
 
+static connman_bool_t dnsproxy_enabled = TRUE;
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
@@ -169,7 +165,13 @@ static struct server_data *find_server(const char *interface,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		if (data->interface == NULL || data->server == NULL)
+		if (interface == NULL && data->interface == NULL &&
+				g_str_equal(data->server, server) == TRUE &&
+				data->protocol == protocol)
+			return data;
+
+		if (interface == NULL ||
+				data->interface == NULL || data->server == NULL)
 			continue;
 
 		if (g_str_equal(data->interface, interface) == TRUE &&
@@ -197,7 +199,7 @@ static void send_response(int sk, unsigned char *buf, int len,
 	if (len < 12)
 		return;
 
-	hdr = (void*) (buf + offset);
+	hdr = (void *) (buf + offset);
 
 	DBG("id 0x%04x qr %d opcode %d", hdr->id, hdr->qr, hdr->opcode);
 
@@ -503,7 +505,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		GSList *list;
-	hangup:
+hangup:
 		DBG("TCP server channel closed");
 
 		/*
@@ -847,7 +849,8 @@ static void append_domain(const char *interface, const char *domain)
 		if (g_str_equal(data->interface, interface) == FALSE)
 			continue;
 
-		for (dom_list = data->domains; dom_list; dom_list = dom_list->next) {
+		for (dom_list = data->domains; dom_list;
+				dom_list = dom_list->next) {
 			dom = dom_list->data;
 
 			if (g_str_equal(dom, domain)) {
@@ -856,12 +859,14 @@ static void append_domain(const char *interface, const char *domain)
 			}
 		}
 
-		if (dom_found == FALSE)
-			data->domains = g_list_append(data->domains, g_strdup(domain));
+		if (dom_found == FALSE) {
+			data->domains =
+				g_list_append(data->domains, g_strdup(domain));
+		}
 	}
 }
 
-static int dnsproxy_append(const char *interface, const char *domain,
+int __connman_dnsproxy_append(const char *interface, const char *domain,
 							const char *server)
 {
 	struct server_data *data;
@@ -905,7 +910,7 @@ static void remove_server(const char *interface, const char *domain,
 	destroy_server(data);
 }
 
-static int dnsproxy_remove(const char *interface, const char *domain,
+int __connman_dnsproxy_remove(const char *interface, const char *domain,
 							const char *server)
 {
 	DBG("interface %s server %s", interface, server);
@@ -922,7 +927,7 @@ static int dnsproxy_remove(const char *interface, const char *domain,
 	return 0;
 }
 
-static void dnsproxy_flush(void)
+void __connman_dnsproxy_flush(void)
 {
 	GSList *list;
 
@@ -939,14 +944,6 @@ static void dnsproxy_flush(void)
 		g_free(req->name);
 	}
 }
-
-static struct connman_resolver dnsproxy_resolver = {
-	.name		= "dnsproxy",
-	.priority	= CONNMAN_RESOLVER_PRIORITY_HIGH,
-	.append		= dnsproxy_append,
-	.remove		= dnsproxy_remove,
-	.flush		= dnsproxy_flush,
-};
 
 static void dnsproxy_offline_mode(connman_bool_t enabled)
 {
@@ -1119,8 +1116,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	DBG("Received %d bytes (id 0x%04x)", len, buf[2] | buf[3] << 8);
 
 	err = parse_request(buf + 2, len - 2, query, sizeof(query));
-	if (err < 0 || (g_slist_length(server_list) == 0 &&
-				connman_ondemand_connected())) {
+	if (err < 0 || (g_slist_length(server_list) == 0)) {
 		send_response(client_sk, buf, len, NULL, 0, IPPROTO_TCP);
 		return TRUE;
 	}
@@ -1186,7 +1182,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 		if (req->timeout > 0)
 			g_source_remove(req->timeout);
 
-		for (domains = data->domains; domains; domains = domains->next) {
+		for (domains = data->domains; domains;
+				domains = domains->next) {
 			char *dom = domains->data;
 
 			DBG("Adding domain %s to %s", dom, server->server);
@@ -1229,8 +1226,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	DBG("Received %d bytes (id 0x%04x)", len, buf[0] | buf[1] << 8);
 
 	err = parse_request(buf, len, query, sizeof(query));
-	if (err < 0 || (g_slist_length(server_list) == 0 &&
-				connman_ondemand_connected())) {
+	if (err < 0 || (g_slist_length(server_list) == 0)) {
 		send_response(sk, buf, len, (void *)&client_addr,
 			      client_addr_len, IPPROTO_UDP);
 		return TRUE;
@@ -1256,34 +1252,6 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	buf[0] = req->dstid & 0xff;
 	buf[1] = req->dstid >> 8;
-
-	if (!connman_ondemand_connected()) {
-		DBG("Starting on demand connection");
-		/*
-		 * We're not connected, let's queue the request and start
-		 * an on-demand connection.
-		 */
-		req->request = g_try_malloc0(req->request_len);
-		if (req->request == NULL)
-			return TRUE;
-
-		memcpy(req->request, buf, req->request_len);
-
-		req->name = g_try_malloc0(sizeof(query));
-		if (req->name == NULL) {
-			g_free(req->request);
-			return TRUE;
-		}
-		memcpy(req->name, query, sizeof(query));
-
-		request_pending_list = g_slist_append(request_pending_list,
-									req);
-
-		connman_ondemand_start("", 300);
-
-		return TRUE;
-	}
-
 
 	req->numserv = 0;
 	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
@@ -1341,7 +1309,8 @@ static int create_dns_listener(int protocol)
 	}
 	/* Ensure it accepts Legacy IP connections too */
 	if (family == AF_INET6 &&
-	    setsockopt(sk, SOL_IPV6, IPV6_V6ONLY, &v6only, sizeof(v6only)) < 0) {
+			setsockopt(sk, SOL_IPV6, IPV6_V6ONLY,
+					&v6only, sizeof(v6only)) < 0) {
 		connman_error("Failed to clear V6ONLY on %s listener socket",
 			      proto);
 		close(sk);
@@ -1430,7 +1399,7 @@ static int create_listener(void)
 		return err;
 	}
 
-	connman_resolver_append("lo", NULL, "127.0.0.1");
+	__connman_resolvfile_append("lo", NULL, "127.0.0.1");
 
 	return 0;
 }
@@ -1439,7 +1408,7 @@ static void destroy_listener(void)
 {
 	GSList *list;
 
-	connman_resolver_remove_all("lo");
+	__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
 
 	for (list = request_pending_list; list; list = list->next) {
 		struct request_data *req = list->data;
@@ -1477,26 +1446,25 @@ static void destroy_listener(void)
 	destroy_udp_listener();
 }
 
-static int dnsproxy_init(void)
+int __connman_dnsproxy_init(connman_bool_t dnsproxy)
 {
 	int err;
+
+	DBG("dnsproxy %d", dnsproxy);
+
+	dnsproxy_enabled = dnsproxy;
+	if (dnsproxy_enabled == FALSE)
+		return 0;
 
 	err = create_listener();
 	if (err < 0)
 		return err;
 
-	err = connman_resolver_register(&dnsproxy_resolver);
+	err = connman_notifier_register(&dnsproxy_notifier);
 	if (err < 0)
 		goto destroy;
 
-	err = connman_notifier_register(&dnsproxy_notifier);
-	if (err < 0)
-		goto unregister;
-
 	return 0;
-
-unregister:
-	connman_resolver_unregister(&dnsproxy_resolver);
 
 destroy:
 	destroy_listener();
@@ -1504,14 +1472,14 @@ destroy:
 	return err;
 }
 
-static void dnsproxy_exit(void)
+void __connman_dnsproxy_cleanup(void)
 {
-	connman_notifier_unregister(&dnsproxy_notifier);
+	DBG("");
 
-	connman_resolver_unregister(&dnsproxy_resolver);
+	if (dnsproxy_enabled == FALSE)
+		return;
+
+	connman_notifier_unregister(&dnsproxy_notifier);
 
 	destroy_listener();
 }
-
-CONNMAN_PLUGIN_DEFINE(dnsproxy, "DNS proxy resolver plugin", VERSION,
-		 CONNMAN_PLUGIN_PRIORITY_DEFAULT, dnsproxy_init, dnsproxy_exit)

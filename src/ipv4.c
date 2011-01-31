@@ -161,6 +161,8 @@ static struct connman_driver ipv4_driver = {
 
 int __connman_ipv4_init(void)
 {
+	DBG("");
+
 	return connman_driver_register(&ipv4_driver);
 }
 

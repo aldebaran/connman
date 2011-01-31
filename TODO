@@ -24,18 +24,6 @@ Core
    Complexity: C2
 
 
-- Moving DNS proxy code to ConnMan core
-
-   Priority: Medium
-   Complexity: C2
-
-   Supporting DNS proxy or resolv.conf direct editing seems more than
-   plenty as far as resolving is concerned. So the idea is to move the
-   dnsproxy plugin code to ConnMan core and have an additional command
-   line option in case one would like to stick with the current
-   resolver.c code for editing resolv.conf.
-
-
 - WiFi tethering
    Priority: Medium
    Complexity: C4
@@ -94,16 +82,6 @@ Core
 
 WiFi
 ====
-
-- WPS
-
-   Priority: Low
-   Complexity: C2
-   Dependencies: Core:Agent callbacks
-   Owner: Tomasz Bursztyka <tomasz.bursztyka@nokia.com>
-
-   Support in gsupplicant and connman core (network/service).
-
 
 - Ad-Hoc support
 

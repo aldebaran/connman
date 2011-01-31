@@ -733,7 +733,8 @@ int connman_inet_del_network_route(int index, const char *host)
 	return err;
 }
 
-int connman_inet_del_ipv6_host_route(int index, const char *host)
+int connman_inet_del_ipv6_network_route(int index, const char *host,
+						unsigned char prefix_len)
 {
 	struct in6_rtmsg rt;
 	int sk, err;
@@ -745,7 +746,7 @@ int connman_inet_del_ipv6_host_route(int index, const char *host)
 
 	memset(&rt, 0, sizeof(rt));
 
-	rt.rtmsg_dst_len = 128;
+	rt.rtmsg_dst_len = prefix_len;
 
 	err = inet_pton(AF_INET6, host, &rt.rtmsg_dst);
 	if (err < 0)
@@ -771,8 +772,14 @@ out:
 	return err;
 }
 
-int connman_inet_add_ipv6_host_route(int index, const char *host,
-						const char *gateway)
+int connman_inet_del_ipv6_host_route(int index, const char *host)
+{
+	return connman_inet_del_ipv6_network_route(index, host, 128);
+}
+
+int connman_inet_add_ipv6_network_route(int index, const char *host,
+					const char *gateway,
+						unsigned char prefix_len)
 {
 	struct in6_rtmsg rt;
 	int sk, err;
@@ -784,7 +791,7 @@ int connman_inet_add_ipv6_host_route(int index, const char *host,
 
 	memset(&rt, 0, sizeof(rt));
 
-	rt.rtmsg_dst_len = 128;
+	rt.rtmsg_dst_len = prefix_len;
 
 	err = inet_pton(AF_INET6, host, &rt.rtmsg_dst);
 	if (err < 0)
@@ -813,6 +820,12 @@ out:
 		connman_error("Set IPv6 host route error");
 
 	return err;
+}
+
+int connman_inet_add_ipv6_host_route(int index, const char *host,
+					const char *gateway)
+{
+	return connman_inet_add_ipv6_network_route(index, host, gateway, 128);
 }
 
 int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)

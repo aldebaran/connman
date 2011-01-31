@@ -79,6 +79,10 @@ int main(int argc, char *argv[])
 		fprintf(stderr, "Required environment variables not set\n");
 		return 1;
 	}
+
+	if (strcmp(reason, "pre-init") == 0)
+		return 0;
+
 	dbus_error_init(&error);
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);

@@ -97,6 +97,12 @@ typedef enum {
 	G_SUPPLICANT_STATE_COMPLETED,
 } GSupplicantState;
 
+typedef enum {
+	G_SUPPLICANT_WPS_STATE_UNKNOWN,
+	G_SUPPLICANT_WPS_STATE_SUCCESS,
+	G_SUPPLICANT_WPS_STATE_FAIL,
+} GSupplicantWpsState;
+
 struct _GSupplicantSSID {
 	const void *ssid;
 	unsigned int ssid_len;
@@ -110,6 +116,8 @@ struct _GSupplicantSSID {
 	const char *private_key_path;
 	const char *private_key_passphrase;
 	const char *phase2_auth;
+	dbus_bool_t use_wps;
+	const char *pin_wps;
 };
 
 typedef struct _GSupplicantSSID GSupplicantSSID;
@@ -155,6 +163,10 @@ void *g_supplicant_interface_get_data(GSupplicantInterface *interface);
 const char *g_supplicant_interface_get_ifname(GSupplicantInterface *interface);
 const char *g_supplicant_interface_get_driver(GSupplicantInterface *interface);
 GSupplicantState g_supplicant_interface_get_state(GSupplicantInterface *interface);
+const char *g_supplicant_interface_get_wps_key(GSupplicantInterface *interface);
+const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
+							unsigned int *ssid_len);
+GSupplicantWpsState g_supplicant_interface_get_wps_state(GSupplicantInterface *interface);
 
 /* Network API */
 struct _GSupplicantNetwork;
@@ -170,6 +182,7 @@ const void *g_supplicant_network_get_ssid(GSupplicantNetwork *network,
 const char *g_supplicant_network_get_mode(GSupplicantNetwork *network);
 const char *g_supplicant_network_get_security(GSupplicantNetwork *network);
 dbus_int16_t g_supplicant_network_get_signal(GSupplicantNetwork *network);
+dbus_bool_t g_supplicant_network_get_wps(GSupplicantNetwork *network);
 
 struct _GSupplicantCallbacks {
 	void (*system_ready) (void);

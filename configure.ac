@@ -135,6 +135,23 @@ fi
 AM_CONDITIONAL(OPENVPN, test "${enable_openvpn}" != "no")
 AM_CONDITIONAL(OPENVPN_BUILTIN, test "${enable_openvpn}" = "builtin")
 
+AC_ARG_WITH(vpnc, AC_HELP_STRING([--with-vpnc=PROGRAM],
+	[specify location of vpnc binary]), [path_vpnc=${withval}])
+
+AC_ARG_ENABLE(vpnc,
+	AC_HELP_STRING([--enable-vpnc], [enable vpnc support]),
+		[enable_vpnc=${enableval}], [enable_vpnc="no"])
+if (test "${enable_vpnc}" != "no"); then
+	if (test -z "${path_vpnc}"); then
+		AC_PATH_PROG(VPNC, [vpnc], [], $PATH:/sbin:/usr/sbin)
+	else
+		VPNC="${path_vpnc}"
+		AC_SUBST(VPNC)
+	fi
+fi
+AM_CONDITIONAL(VPNC, test "${enable_vpnc}" != "no")
+AM_CONDITIONAL(VPNC_BUILTIN, test "${enable_vpnc}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
@@ -147,13 +164,6 @@ if (test "${enable_loopback}" != "no"); then
 fi
 AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
 AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
-
-AC_ARG_ENABLE(dnsproxy,
-	AC_HELP_STRING([--enable-dnsproxy], [enable DNS proxy support]),
-			[enable_dnsproxy=${enableval}], [enable_dnsproxy="no"])
-
-AM_CONDITIONAL(DNSPROXY, test "${enable_dnsproxy}" != "no")
-AM_CONDITIONAL(DNSPROXY_BUILTIN, test "${enable_dnsproxy}" = "builtin")
 
 AC_ARG_ENABLE(pacrunner,
 	AC_HELP_STRING([--enable-pacrunner], [enable PAC runner support]),
@@ -264,6 +274,12 @@ fi
 AM_CONDITIONAL(NTPD, test "${enable_ntpd}" != "no")
 AM_CONDITIONAL(NTPD_BUILTIN, test "${enable_ntpd}" = "builtin")
 
+AC_ARG_ENABLE(nmcompat,
+	AC_HELP_STRING([--enable-nmcompat], [enable nmcompat support]),
+			[enable_nmcompat=${enableval}], [enable_nmcompat="no"])
+AM_CONDITIONAL(NMCOMPAT, test "${enable_nmcompat}" != "no")
+AM_CONDITIONAL(NMCOMPAT_BUILTIN, test "${enable_nmcompat}" = "builtin")
+
 AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
 			[Maximal size of a statistics round robin file]),
 			[stats_max_file_size=${withval}])
@@ -316,24 +332,19 @@ else
 fi
 AC_SUBST(DBUS_DATADIR)
 
+AC_ARG_WITH([systemdunitdir], AC_HELP_STRING([--with-systemdunitdir=DIR],
+	[path to systemd service directory]), [path_systemdunit=${withval}],
+		[path_systemdunit="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"])
+if (test -n "${path_systemdunit}"); then
+	SYSTEMD_UNITDIR="${path_systemdunit}"
+	AC_SUBST(SYSTEMD_UNITDIR)
+fi
+AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
+
 PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
 				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)
-
-
-AC_ARG_ENABLE(systemd, AC_HELP_STRING([--enable-systemd],
-		[enable systemd support]), [enable_systemd=${enableval}])
-if (test "${enable_systemd}" = "yes"); then
-	PKG_CHECK_MODULES(SYSTEMD, systemd, dummy=yes,
-				AC_MSG_ERROR(systemd is required))
-	SYSTEMD_UNITDIR="`$PKG_CONFIG --variable=systemdsystemunitdir systemd`"
-	if (test -z "${SYSTEMD_UNITDIR}"); then
-		SYSTEMD_UNITDIR="/lib/systemd/system"
-	fi
-	AC_SUBST(SYSTEMD_UNITDIR)
-fi
-AM_CONDITIONAL(SYSTEMD, test "${enable_systemd}" = "yes")
 
 AC_ARG_ENABLE(polkit,
 	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),

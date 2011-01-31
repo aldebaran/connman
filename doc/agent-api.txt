@@ -66,10 +66,19 @@ Fields		string Name
 			The passphrase for a network. For example a WEP
 			key or a PSK passphrase.
 
+		string WPS
+
+			This field requests the use of WPS to get associated.
+			This is an alternate choice against Passphrase when
+			requested service supports WPS. The reply can contain
+			either empty pin, if user wants to use push-button
+			method, or a pin code if user wants to use the pin
+			method.
+
 Arguments	string Type
 
 			Contains the type of a field. For example "psk",
-			"wep", "ssid" or plain "string".
+			"wep", "ssid", "wpspin" or plain "string".
 
 		string Requirement
 
@@ -109,3 +118,17 @@ Examples	Requesting a passphrase for WPA2 network
 				           }
 				}
 			==> { "Name" : "My hidden network" }
+
+		Requesting a passphrase for a WPA2 network with WPS alternative:
+
+			RequestInput("/service3",
+				{ "Passphrase" : { "Type"        : "psk",
+						   "Requirement" : "mandatory",
+						   "Alternates"  : [ "WPS" ]
+						 },
+				  "WPS"        : { "Type"        : "wpspin",
+				                   "Requirement" : "alternate"
+						 }
+				}
+
+			==> { "WPS" : "123456" }

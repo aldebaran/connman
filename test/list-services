@@ -49,7 +49,7 @@ for path in properties["Services"]:
 			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
 					"LoginRequired", "SetupRequired",
-							"PassphraseRequired"]:
+						"PassphraseRequired", "WPS"]:
 			if properties[key] == dbus.Boolean(1):
 				val = "true"
 			else:

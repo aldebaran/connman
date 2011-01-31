@@ -94,7 +94,9 @@ struct request_input_reply {
 static void request_input_passphrase_reply(DBusPendingCall *call, void *user_data)
 {
 	struct request_input_reply *passphrase_reply = user_data;
+	connman_bool_t wps = FALSE;
 	char *passphrase = NULL;
+	char *wpspin = NULL;
 	char *key;
 	DBusMessageIter iter, dict;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
@@ -119,8 +121,36 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 			dbus_message_iter_recurse(&entry, &value);
 			dbus_message_iter_get_basic(&value, &passphrase);
 			break;
+		} else if (g_str_equal(key, "WPS")) {
+			wps = TRUE;
+
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			dbus_message_iter_get_basic(&value, &wpspin);
+			break;
 		}
 		dbus_message_iter_next(&dict);
+	}
+
+	if (wps == TRUE) {
+		struct connman_network *network;
+
+		network = __connman_service_get_network(
+						passphrase_reply->service);
+		if (network == NULL)
+			goto done;
+
+		connman_network_set_bool(network, "WiFi.UseWPS", wps);
+
+		if (wpspin != NULL && strlen(wpspin) > 0)
+			connman_network_set_string(network,
+						"WiFi.PinWPS", wpspin);
+		else
+			connman_network_set_string(network,
+						"WiFi.PinWPS", NULL);
 	}
 
 done:
@@ -131,7 +161,28 @@ done:
 	g_free(passphrase_reply);
 }
 
-static void request_input_append_passphrase(DBusMessageIter *iter, void *user_data)
+static void request_input_append_alternates(DBusMessageIter *iter,
+							void *user_data)
+{
+	const char *str = user_data;
+	char **alternates, **alternative;
+
+	if (str == NULL)
+		return;
+
+	alternates = g_strsplit(str, ",", 0);
+	if (alternates == NULL)
+		return;
+
+	for (alternative = alternates; *alternative != NULL; alternative++)
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+								alternative);
+
+	g_strfreev(alternates);
+}
+
+static void request_input_append_passphrase(DBusMessageIter *iter,
+							void *user_data)
 {
 	struct connman_service *service = user_data;
 	char *value;
@@ -152,6 +203,24 @@ static void request_input_append_passphrase(DBusMessageIter *iter, void *user_da
 	value = "Mandatory";
 	connman_dbus_dict_append_basic(iter, "Requirement",
 				DBUS_TYPE_STRING, &value);
+
+	if (__connman_service_wps_enabled(service) == TRUE) {
+		connman_dbus_dict_append_array(iter, "Alternates",
+					DBUS_TYPE_STRING,
+					request_input_append_alternates,
+					"WPS");
+	}
+}
+
+static void request_input_append_wps(DBusMessageIter *iter, void *user_data)
+{
+	const char *str = "wpspin";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "alternate";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
 }
 
 int __connman_agent_request_input(struct connman_service *service,
@@ -182,6 +251,12 @@ int __connman_agent_request_input(struct connman_service *service,
 	connman_dbus_dict_open(&iter, &dict);
 	connman_dbus_dict_append_dict(&dict, "Passphrase",
 				request_input_append_passphrase, service);
+
+	if (__connman_service_wps_enabled(service) == TRUE) {
+	    connman_dbus_dict_append_dict(&dict, "WPS",
+				request_input_append_wps, NULL);
+	}
+
 	connman_dbus_dict_close(&iter, &dict);
 
 	passphrase_reply = g_try_new0(struct request_input_reply, 1);

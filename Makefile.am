@@ -7,15 +7,14 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/notifier.h \
 			include/storage.h include/service.h \
 			include/resolver.h include/ipconfig.h \
-			include/device.h include/network.h include/inet.h \
-			include/ondemand.h
+			include/device.h include/network.h include/inet.h
 
 nodist_include_HEADERS = include/version.h
 
 noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/rtnl.h include/wifi.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
-			include/profile.h include/provider.h include/dhcp.h \
+			include/profile.h include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
 			include/location.h include/technology.h
 
@@ -33,9 +32,14 @@ gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
 					gweb/giognutls.h gweb/giognutls.c
 
 if DATAFILES
+
+if NMCOMPAT
+nmcompat_conf = plugins/connman-nmcompat.conf
+endif
+
 dbusconfdir = @DBUS_CONFDIR@
 
-dbusconf_DATA = src/connman.conf
+dbusconf_DATA = src/connman.conf $(nmcompat_conf)
 
 if SYSTEMD
 systemdunitdir = @SYSTEMD_UNITDIR@
@@ -72,8 +76,8 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/location.c \
-			src/session.c src/tethering.c src/ondemand.c \
-			src/wpad.c src/wispr.c src/stats.c src/iptables.c
+			src/session.c src/tethering.c src/wpad.c src/wispr.c \
+			src/stats.c src/iptables.c src/dnsproxy.c
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 				@CAPNG_LIBS@ @XTABLES_LIBS@ -lresolv -ldl
@@ -110,7 +114,8 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ @XTABLES_CFLAGS@ \
 
 INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
-EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf
+EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
+		plugins/connman-nmcompat.conf
 
 
 script_DATA =
@@ -206,7 +211,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-wifi \
 				--enable-bluetooth \
 				--enable-ofono \
-				--enable-dnsproxy \
 				--enable-pacrunner \
 				--enable-google \
 				--enable-meego \

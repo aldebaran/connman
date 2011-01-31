@@ -151,10 +151,16 @@ static void free_session(struct web_session *session)
 		g_io_channel_unref(session->transport_channel);
 
 	g_free(session->result.last_key);
-	g_hash_table_destroy(session->result.headers);
 
-	g_string_free(session->send_buffer, TRUE);
-	g_string_free(session->current_header, TRUE);
+	if (session->result.headers != NULL)
+		g_hash_table_destroy(session->result.headers);
+
+	if (session->send_buffer != NULL)
+		g_string_free(session->send_buffer, TRUE);
+
+	if (session->current_header != NULL)
+		g_string_free(session->current_header, TRUE);
+
 	g_free(session->receive_buffer);
 
 	g_free(session->content_type);
