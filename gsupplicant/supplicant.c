@@ -2057,6 +2057,7 @@ struct interface_data {
 struct interface_create_data {
 	const char *ifname;
 	const char *driver;
+	const char *bridge;
 	GSupplicantInterface *interface;
 	GSupplicantInterfaceCallback callback;
 	void *user_data;
@@ -2149,6 +2150,10 @@ static void interface_create_params(DBusMessageIter *iter, void *user_data)
 		supplicant_dbus_dict_append_basic(&dict, "Driver",
 					DBUS_TYPE_STRING, &data->driver);
 
+	if (data->bridge != NULL)
+		supplicant_dbus_dict_append_basic(&dict, "BridgeIfname",
+					DBUS_TYPE_STRING, &data->bridge);
+
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
@@ -2220,6 +2225,7 @@ static void interface_get_params(DBusMessageIter *iter, void *user_data)
 }
 
 int g_supplicant_interface_create(const char *ifname, const char *driver,
+					const char *bridge,
 					GSupplicantInterfaceCallback callback,
 							void *user_data)
 {
@@ -2239,6 +2245,7 @@ int g_supplicant_interface_create(const char *ifname, const char *driver,
 
 	data->ifname = ifname;
 	data->driver = driver;
+	data->bridge = bridge;
 	data->callback = callback;
 	data->user_data = user_data;
 

@@ -142,6 +142,7 @@ typedef void (*GSupplicantInterfaceCallback) (int result,
 							void *user_data);
 
 int g_supplicant_interface_create(const char *ifname, const char *driver,
+					const char *bridge,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 int g_supplicant_interface_remove(GSupplicantInterface *interface,

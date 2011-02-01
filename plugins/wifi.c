@@ -231,7 +231,7 @@ static int wifi_enable(struct connman_device *device)
 
 	DBG("device %p %p", device, wifi);
 
-	return g_supplicant_interface_create(interface, driver,
+	return g_supplicant_interface_create(interface, driver, NULL,
 						interface_create_callback,
 							wifi);
 }
