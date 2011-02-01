@@ -614,6 +614,22 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
+static void set_apscan(DBusMessageIter *iter, void *user_data)
+{
+	unsigned int ap_scan = *(unsigned int *)user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &ap_scan);
+}
+
+int g_supplicant_interface_set_apscan(GSupplicantInterface *interface,
+							unsigned int ap_scan)
+{
+	return supplicant_dbus_property_set(interface->path,
+			SUPPLICANT_INTERFACE ".Interface",
+				"ApScan", DBUS_TYPE_UINT32_AS_STRING,
+					set_apscan, NULL, &ap_scan);
+}
+
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
 								void *data)
 {

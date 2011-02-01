@@ -161,6 +161,9 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 
+int g_supplicant_interface_set_apscan(GSupplicantInterface *interface,
+							unsigned int ap_scan);
+
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
 								void *data);
 void *g_supplicant_interface_get_data(GSupplicantInterface *interface);
