@@ -894,6 +894,8 @@ static GSupplicantSSID *ssid_ap_init(const char *ssid, const char *passphrase)
 		ap->passphrase = NULL;
 	} else {
                ap->security = G_SUPPLICANT_SECURITY_PSK;
+	       ap->pairwise_cipher = G_SUPPLICANT_PAIRWISE_CCMP;
+	       ap->group_cipher = G_SUPPLICANT_GROUP_CCMP;
                ap->passphrase = passphrase;
 	}
 
