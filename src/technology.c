@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <string.h>
+
 #include <gdbus.h>
 
 #include "connman.h"
@@ -59,6 +61,10 @@ struct connman_technology {
 	gint enabled;
 	gint blocked;
 	char *regdom;
+
+	connman_bool_t tethering;
+	char *tethering_ident;
+	char *tethering_passphrase;
 
 	struct connman_technology_driver *driver;
 	void *driver_data;
@@ -208,10 +214,26 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	}
 }
 
+static void tethering_changed(struct connman_technology *technology)
+{
+	connman_bool_t tethering = technology->tethering;
+
+	connman_dbus_property_changed_basic(technology->path,
+				CONNMAN_TECHNOLOGY_INTERFACE, "Tethering",
+						DBUS_TYPE_BOOLEAN, &tethering);
+}
+
 void connman_technology_tethering_notify(struct connman_technology *technology,
 							connman_bool_t enabled)
 {
 	DBG("technology %p enabled %u", technology, enabled);
+
+	if (technology->tethering == enabled)
+		return;
+
+	technology->tethering = enabled;
+
+	tethering_changed(technology);
 
 	if (enabled == TRUE)
 		__connman_tethering_set_enabled();
@@ -219,32 +241,24 @@ void connman_technology_tethering_notify(struct connman_technology *technology,
 		__connman_tethering_set_disabled();
 }
 
-static int set_tethering(const char *bridge, connman_bool_t enabled)
+static int set_tethering(struct connman_technology *technology,
+				const char *bridge, connman_bool_t enabled)
 {
-	GSList *list;
+	const char *ident, *passphrase;
 
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
+	ident = technology->tethering_ident;
+	passphrase = technology->tethering_passphrase;
 
-		if (technology->driver == NULL)
-			continue;
+	if (technology->driver == NULL ||
+			technology->driver->set_tethering == NULL)
+		return -EOPNOTSUPP;
 
-		if (technology->driver->set_tethering)
-			technology->driver->set_tethering(technology,
+	if (technology->type == CONNMAN_SERVICE_TYPE_WIFI &&
+	    (ident == NULL || passphrase == NULL))
+		return -EINVAL;
+
+	return technology->driver->set_tethering(technology, ident, passphrase,
 							bridge, enabled);
-	}
-
-	return 0;
-}
-
-int __connman_technology_enable_tethering(const char *bridge)
-{
-	return set_tethering(bridge, TRUE);
-}
-
-int __connman_technology_disable_tethering(const char *bridge)
-{
-	return set_tethering(bridge, FALSE);
 }
 
 void connman_technology_regdom_notify(struct connman_technology *technology,
@@ -395,13 +409,95 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_basic(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
 
+	connman_dbus_dict_append_basic(&dict, "Tethering",
+					DBUS_TYPE_BOOLEAN,
+					&technology->tethering);
+
+	if (technology->tethering_ident != NULL)
+		connman_dbus_dict_append_basic(&dict, "TetheringIdentifier",
+						DBUS_TYPE_STRING,
+						&technology->tethering_ident);
+
+	if (technology->tethering_passphrase != NULL)
+		connman_dbus_dict_append_basic(&dict, "TetheringPassphrase",
+						DBUS_TYPE_STRING,
+						&technology->tethering_passphrase);
+
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
 }
 
+static DBusMessage *set_property(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct connman_technology *technology = data;
+	DBusMessageIter iter, value;
+	const char *name;
+	int type;
+
+	DBG("conn %p", conn);
+
+	if (dbus_message_iter_init(msg, &iter) == FALSE)
+		return __connman_error_invalid_arguments(msg);
+
+	dbus_message_iter_get_basic(&iter, &name);
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	type = dbus_message_iter_get_arg_type(&value);
+
+	DBG("property %s", name);
+
+	if (g_str_equal(name, "Tethering") == TRUE) {
+		int err;
+		connman_bool_t tethering;
+		const char *bridge;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &tethering);
+
+		if (technology->tethering == tethering)
+			return __connman_error_in_progress(msg);
+
+		bridge = __connman_tethering_get_bridge();
+
+		err = set_tethering(technology, bridge, tethering);
+		if (err < 0)
+			return __connman_error_failed(msg, -err);
+
+	} else if (g_str_equal(name, "TetheringIdentifier") == TRUE) {
+		const char *str;
+
+		dbus_message_iter_get_basic(&value, &str);
+
+		if (technology->type != CONNMAN_SERVICE_TYPE_WIFI)
+			return __connman_error_not_supported(msg);
+
+		technology->tethering_ident = g_strdup(str);
+	} else if (g_str_equal(name, "TetheringPassphrase") == TRUE) {
+		const char *str;
+
+		dbus_message_iter_get_basic(&value, &str);
+
+		if (technology->type != CONNMAN_SERVICE_TYPE_WIFI)
+			return __connman_error_not_supported(msg);
+
+		if (strlen(str) < 8)
+			return __connman_error_invalid_arguments(msg);
+
+		technology->tethering_passphrase = g_strdup(str);
+	} else
+		return __connman_error_invalid_property(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable technology_methods[] = {
-	{ "GetProperties", "", "a{sv}", get_properties },
+	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "SetProperty",   "sv", "",      set_property   },
 	{ },
 };
 

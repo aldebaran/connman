@@ -41,16 +41,14 @@
 #define BRIDGE_IP_END "192.168.218.200"
 #define BRIDGE_DNS "8.8.8.8"
 
-static connman_bool_t tethering_status = FALSE;
 static char *default_interface = NULL;
 static volatile gint tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
 
-connman_bool_t __connman_tethering_get_status(void)
+const char *__connman_tethering_get_bridge(void)
 {
-	return tethering_status;
+	return BRIDGE_NAME;
 }
-
 
 static void dhcp_server_debug(const char *str, void *data)
 {
@@ -291,9 +289,6 @@ void __connman_tethering_set_enabled(void)
 {
 	int err;
 
-	if (tethering_status == FALSE)
-		return;
-
 	DBG("enabled %d", tethering_enabled + 1);
 
 	if (g_atomic_int_exchange_and_add(&tethering_enabled, 1) == 0) {
@@ -326,9 +321,6 @@ void __connman_tethering_set_enabled(void)
 
 void __connman_tethering_set_disabled(void)
 {
-	if (tethering_status == TRUE)
-		return;
-
 	DBG("enabled %d", tethering_enabled - 1);
 
 	if (g_atomic_int_dec_and_test(&tethering_enabled) == TRUE) {
@@ -342,21 +334,6 @@ void __connman_tethering_set_disabled(void)
 
 		DBG("tethering stopped");
 	}
-}
-
-int __connman_tethering_set_status(connman_bool_t status)
-{
-	if (status == tethering_status)
-		return -EALREADY;
-
-	tethering_status = status;
-
-	if (status == TRUE)
-		__connman_technology_enable_tethering(BRIDGE_NAME);
-	else
-		__connman_technology_disable_tethering(BRIDGE_NAME);
-
-	return 0;
 }
 
 void __connman_tethering_update_interface(const char *interface)
@@ -374,8 +351,7 @@ void __connman_tethering_update_interface(const char *interface)
 
 	default_interface = g_strdup(interface);
 
-	if (tethering_status == FALSE ||
-			!g_atomic_int_get(&tethering_enabled))
+	if (!g_atomic_int_get(&tethering_enabled))
 		return;
 
 	enable_nat(interface);
@@ -394,7 +370,7 @@ void __connman_tethering_cleanup(void)
 {
 	DBG("");
 
-	if (tethering_status == TRUE) {
+	if (g_atomic_int_get(&tethering_enabled)) {
 		if (tethering_dhcp_server)
 			dhcp_server_stop(tethering_dhcp_server);
 		disable_bridge(BRIDGE_NAME);

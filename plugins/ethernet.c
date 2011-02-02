@@ -259,6 +259,7 @@ static void disable_tethering(struct connman_technology *technology,
 }
 
 static int tech_set_tethering(struct connman_technology *technology,
+				const char *identifier, const char *passphrase,
 				const char *bridge, connman_bool_t enabled)
 {
 	DBG("bridge %s enabled %d", bridge, enabled);
