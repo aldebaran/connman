@@ -1,10 +1,46 @@
 #!/usr/bin/python
 
+import sys
 import dbus
+
+if (len(sys.argv) < 4 and sys.argv[1] == "wifi"):
+	print "Usage: %s wifi [SSID] [passphrase]" % (sys.argv[0])
+	sys.exit(1)
+elif (len(sys.argv) < 2):
+	print "Usage: %s type" % (sys.argv[0])
+
+print "Enabling %s tethering" % (sys.argv[1])
 
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object('net.connman', "/"),
 					'net.connman.Manager')
 
-manager.SetProperty("Tethering", dbus.Boolean(1));
+def technology_enable_tethering(path, tech_type, ssid, psk):
+	tech = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Technology")
+
+	properties = tech.GetProperties()
+
+	for key in properties.keys():
+		if key in ["Type"]:
+			if properties[key] == tech_type:
+				if len(ssid) > 0:
+					tech.SetProperty("TetheringIdentifier",
+								ssid)
+				if len(psk) > 0:
+					tech.SetProperty("TetheringPassphrase",
+								psk)
+				tech.SetProperty("Tethering", dbus.Boolean(1))
+
+properties = manager.GetProperties()
+
+for key in properties.keys():
+	if key in ["Technologies"]:
+		for path in properties[key]:
+			if (len(sys.argv) == 4):
+				technology_enable_tethering(path, sys.argv[1],
+						sys.argv[2], sys.argv[3])
+			else:
+				technology_enable_tethering(path, sys.argv[1],
+									"", "")

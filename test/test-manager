@@ -74,6 +74,12 @@ def print_properties(key, value):
 
 			elif key in ["Strength", "Priority"]:
 				val = int(properties[key])
+
+			elif key in ["Tethering"]:
+				if properties[key] == dbus.Boolean(1):
+					val = "true"
+				else:
+					val = "false"
 			else:
 				val = str(properties[key])
 
