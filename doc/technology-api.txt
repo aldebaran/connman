@@ -35,3 +35,26 @@ Properties	string State [readonly]
 			This information should only be used to determine
 			advanced properties or showing the correct icon
 			to the user.
+
+		boolean Tethering [readwrite]
+
+			This option allows to enable or disable the support
+			for tethering. When tethering is enabled then the
+			default service is bridged to all clients connected
+			through the technology.
+
+		string TetheringIdentifier [readwrite]
+
+		       The tethering broadcasted identifier.
+
+		       This property is only valid for the WiFi technology,
+		       and is then mapped to the WiFi AP SSID clients will
+		       have to join in order to gain internet connectivity.
+
+		string TetheringPassphrase [readwrite]
+
+		       The tethering connection passphrase.
+
+		       This property is only valid for the WiFi technology,
+		       and is then mapped to the WPA pre-shared key clients
+		       will have to use in order to establish a connection.
