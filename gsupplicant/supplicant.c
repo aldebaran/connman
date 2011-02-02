@@ -2773,16 +2773,16 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 	case G_SUPPLICANT_SECURITY_PSK:
 		key_mgmt = "WPA-PSK";
 		add_network_security_psk(dict, ssid);
+		add_network_security_ciphers(dict, ssid);
 		add_network_security_proto(dict, ssid);
 		break;
 	case G_SUPPLICANT_SECURITY_IEEE8021X:
 		key_mgmt = "WPA-EAP";
 		add_network_security_eap(dict, ssid);
+		add_network_security_ciphers(dict, ssid);
 		add_network_security_proto(dict, ssid);
 		break;
 	}
-
-	add_network_security_ciphers(dict, ssid);
 
 	supplicant_dbus_dict_append_basic(dict, "key_mgmt",
 				DBUS_TYPE_STRING, &key_mgmt);
