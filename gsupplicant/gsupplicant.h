@@ -61,6 +61,9 @@ extern "C" {
 #define G_SUPPLICANT_KEYMGMT_WPA_EAP_256	(1 << 8)
 #define G_SUPPLICANT_KEYMGMT_WPS		(1 << 9)
 
+#define G_SUPPLICANT_PROTO_WPA		(1 << 0)
+#define G_SUPPLICANT_PROTO_RSN		(1 << 1)
+
 #define G_SUPPLICANT_GROUP_WEP40		(1 << 0)
 #define G_SUPPLICANT_GROUP_WEP104		(1 << 1)
 #define G_SUPPLICANT_GROUP_TKIP		(1 << 2)
@@ -110,6 +113,7 @@ struct _GSupplicantSSID {
 	unsigned int scan_ssid;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
+	unsigned int protocol;
 	unsigned int pairwise_cipher;
 	unsigned int group_cipher;
 	unsigned int freq;

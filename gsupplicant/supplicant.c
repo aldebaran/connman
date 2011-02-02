@@ -2726,6 +2726,39 @@ static void add_network_security_ciphers(DBusMessageIter *dict,
 	g_free(group);
 }
 
+static void add_network_security_proto(DBusMessageIter *dict,
+						GSupplicantSSID *ssid)
+{
+	unsigned int protocol, i;
+	char *proto;
+	char *protos[3];
+
+	protocol = ssid->protocol;
+
+	if (protocol == 0)
+		return;
+
+	i = 0;
+
+	if (protocol & G_SUPPLICANT_PROTO_RSN)
+		protos[i++] = "RSN";
+
+	if (protocol & G_SUPPLICANT_PROTO_WPA)
+		protos[i++] = "WPA";
+
+	protos[i] = NULL;
+
+	proto = g_strjoinv(" ", protos);
+
+	SUPPLICANT_DBG("proto %s", proto);
+
+	supplicant_dbus_dict_append_basic(dict, "proto",
+						DBUS_TYPE_STRING,
+						&proto);
+
+	g_free(proto);
+}
+
 static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 {
 	char *key_mgmt;
@@ -2740,10 +2773,12 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 	case G_SUPPLICANT_SECURITY_PSK:
 		key_mgmt = "WPA-PSK";
 		add_network_security_psk(dict, ssid);
+		add_network_security_proto(dict, ssid);
 		break;
 	case G_SUPPLICANT_SECURITY_IEEE8021X:
 		key_mgmt = "WPA-EAP";
 		add_network_security_eap(dict, ssid);
+		add_network_security_proto(dict, ssid);
 		break;
 	}
 
