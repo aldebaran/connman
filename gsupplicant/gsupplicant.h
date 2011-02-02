@@ -110,6 +110,8 @@ struct _GSupplicantSSID {
 	unsigned int scan_ssid;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
+	unsigned int pairwise_cipher;
+	unsigned int group_cipher;
 	unsigned int freq;
 	const char *eap;
 	const char *passphrase;
