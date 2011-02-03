@@ -989,6 +989,7 @@ static int tech_set_tethering(struct connman_technology *technology,
 	struct wifi_tethering_info *info;
 	const char *ifname;
 	unsigned int mode;
+	int err;
 
 	DBG("");
 
@@ -1041,12 +1042,14 @@ static int tech_set_tethering(struct connman_technology *technology,
 
 		info->wifi->tethering = TRUE;
 
-		return g_supplicant_interface_remove(interface,
+		err = g_supplicant_interface_remove(interface,
 						sta_remove_callback,
 							info);
+		if (err == 0)
+			return err;
 	}
 
-	return 0;
+	return -EOPNOTSUPP;
 }
 
 static void regdom_callback(void *user_data)
