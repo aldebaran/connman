@@ -43,6 +43,10 @@ void connman_proxy_lookup_cancel(unsigned int token);
 void connman_proxy_driver_lookup_notify(struct connman_service *service,
 					const char *url, const char *result);
 
+#define CONNMAN_PROXY_PRIORITY_LOW      -100
+#define CONNMAN_PROXY_PRIORITY_DEFAULT     0
+#define CONNMAN_PROXY_PRIORITY_HIGH      100
+
 struct connman_proxy_driver {
 	const char *name;
 	int priority;

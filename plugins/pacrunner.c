@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 
 #include <gdbus.h>
 
@@ -32,12 +33,21 @@
 #include <connman/notifier.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
+#include <connman/proxy.h>
 
 #define PACRUNNER_SERVICE	"org.pacrunner"
 #define PACRUNNER_INTERFACE	"org.pacrunner.Manager"
 #define PACRUNNER_PATH		"/org/pacrunner/manager"
 
+#define PACRUNNER_CLIENT_INTERFACE	"org.pacrunner.Client"
+#define PACRUNNER_CLIENT_PATH		"/org/pacrunner/client"
+
 #define DBUS_TIMEOUT	5000
+
+struct proxy_data {
+	struct connman_service *service;
+	char *url;
+};
 
 static DBusConnection *connection;
 static dbus_bool_t daemon_running = FALSE;
@@ -295,6 +305,139 @@ static void pacrunner_disconnect(DBusConnection *conn, void *user_data)
 	current_config = NULL;
 }
 
+static char * parse_url(const char *url)
+{
+	char *scheme, *host, *path, *host_ret;
+
+	scheme = g_strdup(url);
+	if (scheme == NULL)
+		return NULL;
+
+	if (host_ret == NULL)
+		return NULL;
+
+	host = strstr(scheme, "://");
+	if (host != NULL) {
+		*host = '\0';
+		host += 3;
+	} else
+		host = scheme;
+
+	path = strchr(host, '/');
+	if (path != NULL)
+		*(path++) = '\0';
+
+	host_ret = g_strdup(host);
+
+	g_free(scheme);
+
+	return host_ret;
+}
+
+static void request_lookup_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	struct proxy_data *data = user_data;
+	const char *proxy;
+
+	DBG("");
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		connman_error("Failed to find URL:%s", data->url);
+		proxy = NULL;
+		goto done;
+	}
+
+	if (dbus_message_get_args(reply, NULL, DBUS_TYPE_STRING, &proxy,
+						DBUS_TYPE_INVALID) == FALSE)
+		proxy = NULL;
+
+done:
+	connman_proxy_driver_lookup_notify(data->service, data->url, proxy);
+
+	connman_service_unref(data->service);
+
+	g_free(data->url);
+	g_free(data);
+
+	dbus_message_unref(reply);
+}
+
+static int request_lookup(struct connman_service *service, const char *url)
+{
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	dbus_bool_t result;
+	char *host;
+	struct proxy_data *data;
+
+	DBG("");
+
+	if (daemon_running == FALSE)
+		return -EINVAL;
+
+	msg = dbus_message_new_method_call(PACRUNNER_SERVICE,
+						PACRUNNER_CLIENT_PATH,
+						PACRUNNER_CLIENT_INTERFACE,
+						"FindProxyForURL");
+	if (msg == NULL)
+		return -1;
+
+	host = parse_url(url);
+	if (host == NULL) {
+		dbus_message_unref(msg);
+		return -EINVAL;
+	}
+
+	data = g_try_new0(struct proxy_data, 1);
+	if (data == NULL) {
+		dbus_message_unref(msg);
+		g_free(host);
+		return -ENOMEM;
+	}
+
+	data->url = g_strdup(url);
+	data->service = connman_service_ref(service);
+
+	dbus_message_set_auto_start(msg, FALSE);
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &url,
+					DBUS_TYPE_STRING, &host,
+					DBUS_TYPE_INVALID);
+
+	result = dbus_connection_send_with_reply(connection, msg,
+							&call, DBUS_TIMEOUT);
+
+	dbus_message_unref(msg);
+
+	if (result == FALSE || call == NULL) {
+		g_free(host);
+		g_free(data->url);
+		g_free(data);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, request_lookup_reply,
+							data, NULL);
+
+	dbus_pending_call_unref(call);
+	g_free(host);
+
+	return 0;
+}
+
+static void cancel_lookup(struct connman_service *service, const char *url)
+{
+	DBG("");
+}
+
+static struct connman_proxy_driver pacrunner_proxy = {
+	.name		= "pacrunnerproxy",
+	.priority	= CONNMAN_PROXY_PRIORITY_HIGH,
+	.request_lookup	= request_lookup,
+	.cancel_lookup	= cancel_lookup,
+};
+
 static guint pacrunner_watch;
 
 static int pacrunner_init(void)
@@ -313,11 +456,15 @@ static int pacrunner_init(void)
 
 	connman_notifier_register(&pacrunner_notifier);
 
+	connman_proxy_driver_register(&pacrunner_proxy);
+
 	return 0;
 }
 
 static void pacrunner_exit(void)
 {
+	connman_proxy_driver_unregister(&pacrunner_proxy);
+
 	connman_notifier_unregister(&pacrunner_notifier);
 
 	g_dbus_remove_watch(connection, pacrunner_watch);
