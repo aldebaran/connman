@@ -1018,7 +1018,7 @@ static int tech_set_tethering(struct connman_technology *technology,
 
 		mode = g_supplicant_interface_get_mode(interface);
 		if ((mode & G_SUPPLICANT_CAPABILITY_MODE_AP) == 0) {
-			DBG("ifname does not support AP mode");
+			DBG("%s does not support AP mode", ifname);
 			continue;
 		}
 
