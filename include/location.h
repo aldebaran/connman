@@ -57,6 +57,9 @@ void connman_location_report_result(struct connman_location *location,
 void *connman_location_get_data(struct connman_location *location);
 void connman_location_set_data(struct connman_location *location, void *data);
 
+struct connman_service *connman_location_get_service(
+					struct connman_location *location);
+
 struct connman_location_driver {
 	const char *name;
 	enum connman_service_type type;
