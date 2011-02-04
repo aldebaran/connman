@@ -265,6 +265,8 @@ static const char *error2string(enum connman_service_error error)
 		return "login-failed";
 	case CONNMAN_SERVICE_ERROR_AUTH_FAILED:
 		return "auth-failed";
+	case CONNMAN_SERVICE_ERROR_INVALID_KEY:
+		return "invalid-key";
 	}
 
 	return NULL;
@@ -276,6 +278,8 @@ static enum connman_service_error string2error(const char *error)
 		return CONNMAN_SERVICE_ERROR_DHCP_FAILED;
 	else if (g_strcmp0(error, "pin-missing") == 0)
 		return CONNMAN_SERVICE_ERROR_PIN_MISSING;
+	else if (g_strcmp0(error, "invalid-key") == 0)
+		return CONNMAN_SERVICE_ERROR_INVALID_KEY;
 
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
@@ -3251,6 +3255,9 @@ int __connman_service_indicate_error(struct connman_service *service,
 		return -EINVAL;
 
 	service->error = error;
+
+	if (service->error == CONNMAN_SERVICE_ERROR_INVALID_KEY)
+		__connman_service_set_passphrase(service, NULL);
 
 	return __connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE);

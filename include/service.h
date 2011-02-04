@@ -85,6 +85,7 @@ enum connman_service_error {
 	CONNMAN_SERVICE_ERROR_CONNECT_FAILED = 4,
 	CONNMAN_SERVICE_ERROR_LOGIN_FAILED  = 5,
 	CONNMAN_SERVICE_ERROR_AUTH_FAILED    = 6,
+	CONNMAN_SERVICE_ERROR_INVALID_KEY    = 7,
 };
 
 enum connman_service_proxy_method {
