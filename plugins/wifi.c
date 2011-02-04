@@ -329,7 +329,17 @@ static void network_remove(struct connman_network *network)
 static void connect_callback(int result, GSupplicantInterface *interface,
 							void *user_data)
 {
-	connman_error("%s", __func__);
+	struct connman_network *network = user_data;
+
+	DBG("network %p result %d", network, result);
+
+	if (result == -ENOKEY) {
+		connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_INVALID_KEY);
+	} else if (result < 0) {
+		connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+	}
 }
 
 static GSupplicantSecurity network_security(const char *security)
@@ -428,7 +438,7 @@ static int network_connect(struct connman_network *network)
 		wifi->network = connman_network_ref(network);
 
 		return g_supplicant_interface_connect(interface, ssid,
-						connect_callback, NULL);
+						connect_callback, network);
 	}
 
 	return -EINPROGRESS;
