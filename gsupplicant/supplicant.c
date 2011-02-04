@@ -2410,6 +2410,24 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 			interface_scan_params, interface_scan_result, data);
 }
 
+static int parse_supplicant_error(DBusMessageIter *iter)
+{
+	int err = -ECANCELED;
+	char *key;
+
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_STRING) {
+		dbus_message_iter_get_basic(iter, &key);
+		if (strncmp(key, "psk", 4) == 0 ||
+			strncmp(key, "wep_key", 7) == 0) {
+			err = -ENOKEY;
+			break;
+		}
+		dbus_message_iter_next(iter);
+	}
+
+	return err;
+}
+
 static void interface_select_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
@@ -2419,8 +2437,10 @@ static void interface_select_network_result(const char *error,
 	SUPPLICANT_DBG("");
 
 	err = 0;
-	if (error != NULL)
-		err = -EIO;
+	if (error != NULL) {
+		SUPPLICANT_DBG("SelectNetwork error %s", error);
+		err = parse_supplicant_error(iter);
+	}
 
 	if (data->callback != NULL)
 		data->callback(err, data->interface, data->user_data);
@@ -2445,6 +2465,7 @@ static void interface_add_network_result(const char *error,
 	struct interface_connect_data *data = user_data;
 	GSupplicantInterface *interface = data->interface;
 	const char *path;
+	int err;
 
 	if (error != NULL)
 		goto error;
@@ -2466,6 +2487,11 @@ static void interface_add_network_result(const char *error,
 	return;
 
 error:
+	SUPPLICANT_DBG("AddNetwork error %s", error);
+	err = parse_supplicant_error(iter);
+	if (data->callback != NULL)
+		data->callback(err, data->interface, data->user_data);
+
 	g_free(interface->network_path);
 	interface->network_path = NULL;
 	g_free(data->ssid);
