@@ -534,6 +534,16 @@ static void set_configure_error(struct connman_network *network)
 					CONNMAN_SERVICE_STATE_FAILURE);
 }
 
+static void set_invalid_key_error(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_network(network);
+
+	__connman_service_indicate_error(service,
+					CONNMAN_SERVICE_ERROR_INVALID_KEY);
+}
+
 void connman_network_set_ipv4_method(struct connman_network *network,
 					enum connman_ipconfig_method method)
 {
@@ -587,6 +597,9 @@ void connman_network_set_error(struct connman_network *network,
 		break;
 	case CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL:
 		set_configure_error(network);
+		break;
+	case CONNMAN_NETWORK_ERROR_INVALID_KEY:
+		set_invalid_key_error(network);
 		break;
 	}
 }
