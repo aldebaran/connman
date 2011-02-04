@@ -56,7 +56,7 @@ def print_properties(key, value):
 					"Available", "Remember", "Default",
 					"Favorite", "Immutable", "AutoConnect",
 						"LoginRequired", "SetupRequired",
-						"PassphraseRequired", "WPS"]:
+						"PassphraseRequired"]:
 				if properties[key] == dbus.Boolean(1):
 					val = "true"
 				else:
@@ -69,7 +69,8 @@ def print_properties(key, value):
 				val = extract_values(properties[key])
 
 			elif key in ["Nameservers", "Nameservers.Configuration",
-					"Domains", "Domains.Configuration"]:
+					"Domains", "Domains.Configuration",
+						"Security"]:
 				val = extract_list(properties[key])
 
 			elif key in ["Strength", "Priority"]:

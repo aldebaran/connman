@@ -761,6 +761,22 @@ static void apn_changed(struct connman_service *service)
 						DBUS_TYPE_BOOLEAN, &required);
 }
 
+static void append_security(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	const char *str;
+
+	str = security2string(service->security);
+	if (str != NULL)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &str);
+
+	str = "wps";
+	if (service->wps == TRUE)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &str);
+}
+
 static void append_ethernet(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -1346,10 +1362,8 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		connman_dbus_dict_append_basic(dict, "Mode",
 						DBUS_TYPE_STRING, &str);
 
-	str = security2string(service->security);
-	if (str != NULL)
-		connman_dbus_dict_append_basic(dict, "Security",
-						DBUS_TYPE_STRING, &str);
+	connman_dbus_dict_append_array(dict, "Security",
+				DBUS_TYPE_STRING, append_security, service);
 
 	str = state2string(service->state);
 	if (str != NULL)
@@ -1444,8 +1458,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		connman_dbus_dict_append_basic(dict, "PassphraseRequired",
 						DBUS_TYPE_BOOLEAN, &required);
 
-		connman_dbus_dict_append_basic(dict, "WPS",
-					DBUS_TYPE_BOOLEAN, &service->wps);
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
