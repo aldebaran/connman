@@ -1,3 +1,12 @@
+ver 0.69:
+	Fix issue with not handling DNS proxy failures gracefully.
+	Fix issue with double free in statistics handling.
+	Fix issue with early tethering bridge creation.
+	Add support for tethering property per technology.
+	Add support for initial WiFi tethering feature.
+	Add support for using PACrunner as proxy driver.
+	Add support for WPS as part of the security property.
+
 ver 0.68:
 	Fix issue with wrong name of PolicyKit configuration file.
 	Fix issue with inconsistency of WiFi scan states.
