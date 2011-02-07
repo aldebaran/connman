@@ -836,6 +836,9 @@ static void append_domain(const char *interface, const char *domain)
 
 	DBG("interface %s domain %s", interface, domain);
 
+	if (domain == NULL)
+		return;
+
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 		GList *dom_list;
