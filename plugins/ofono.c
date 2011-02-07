@@ -1456,6 +1456,63 @@ static gboolean gprs_changed(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
+static gboolean context_added(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	const char *network_path;
+	struct modem_data *modem;
+	DBusMessageIter iter, properties;
+
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL || modem->device == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &network_path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &properties);
+
+	add_network(modem->device, network_path, &properties);
+
+	return TRUE;
+}
+
+static gboolean context_removed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	const char *network_path, *identifier;
+	struct modem_data *modem;
+	struct connman_network *network;
+	DBusMessageIter iter;
+
+	DBG("path %s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL || modem->device == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &network_path);
+
+	network = g_hash_table_lookup(network_hash, network_path);
+	if (network == NULL)
+		return TRUE;
+
+	identifier = connman_network_get_identifier(network);
+	connman_device_remove_network(modem->device, identifier);
+
+	return TRUE;
+}
+
 static gboolean modem_added(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
@@ -1716,6 +1773,8 @@ static guint watch;
 static guint reg_watch;
 static guint sim_watch;
 static guint gprs_watch;
+static guint context_added_watch;
+static guint context_removed_watch;
 static guint modem_watch;
 static guint modem_added_watch;
 static guint modem_removed_watch;
@@ -1742,6 +1801,18 @@ static int ofono_init(void)
 						OFONO_GPRS_INTERFACE,
 						PROPERTY_CHANGED,
 						gprs_changed,
+						NULL, NULL);
+
+	context_added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_GPRS_INTERFACE,
+						CONTEXT_ADDED,
+						context_added,
+						NULL, NULL);
+
+	context_removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_GPRS_INTERFACE,
+						CONTEXT_REMOVED,
+						context_removed,
 						NULL, NULL);
 
 	modem_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
@@ -1774,7 +1845,8 @@ static int ofono_init(void)
 						context_changed,
 						NULL, NULL);
 
-	if (watch == 0 || gprs_watch == 0 || modem_watch == 0 ||
+	if (watch == 0 || gprs_watch == 0 || context_added_watch == 0 ||
+			context_removed_watch == 0 || modem_watch == 0 ||
 			reg_watch == 0 || sim_watch == 0 ||
 			modem_added_watch == 0 || modem_removed_watch == 0 ||
 				context_watch == 0) {
@@ -1799,6 +1871,8 @@ remove:
 	g_dbus_remove_watch(connection, sim_watch);
 	g_dbus_remove_watch(connection, reg_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
+	g_dbus_remove_watch(connection, context_added_watch);
+	g_dbus_remove_watch(connection, context_removed_watch);
 	g_dbus_remove_watch(connection, modem_watch);
 	g_dbus_remove_watch(connection, modem_added_watch);
 	g_dbus_remove_watch(connection, modem_removed_watch);
@@ -1815,6 +1889,8 @@ static void ofono_exit(void)
 	g_dbus_remove_watch(connection, sim_watch);
 	g_dbus_remove_watch(connection, reg_watch);
 	g_dbus_remove_watch(connection, gprs_watch);
+	g_dbus_remove_watch(connection, context_added_watch);
+	g_dbus_remove_watch(connection, context_removed_watch);
 	g_dbus_remove_watch(connection, modem_watch);
 	g_dbus_remove_watch(connection, modem_added_watch);
 	g_dbus_remove_watch(connection, modem_removed_watch);
