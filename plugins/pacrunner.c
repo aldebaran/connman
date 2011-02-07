@@ -313,9 +313,6 @@ static char * parse_url(const char *url)
 	if (scheme == NULL)
 		return NULL;
 
-	if (host_ret == NULL)
-		return NULL;
-
 	host = strstr(scheme, "://");
 	if (host != NULL) {
 		*host = '\0';
