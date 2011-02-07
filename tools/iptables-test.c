@@ -473,7 +473,7 @@ static int connman_iptables_add_chain(struct connman_iptables *table,
 				sizeof(struct error_target);
 	entry_head = g_try_malloc0(entry_head_size);
 	if (entry_head == NULL)
-		goto err;
+		goto err_head;
 
 	memset(entry_head, 0, entry_head_size);
 
@@ -486,7 +486,7 @@ static int connman_iptables_add_chain(struct connman_iptables *table,
 	strcpy(error->error, name);
 
 	if (connman_add_entry(table, entry_head, last, -1) < 0)
-		goto err;
+		goto err_head;
 
 	/* tail entry */
 	entry_return_size = sizeof(struct ipt_entry) +
@@ -511,8 +511,9 @@ static int connman_iptables_add_chain(struct connman_iptables *table,
 	return 0;
 
 err:
-	g_free(entry_head);
 	g_free(entry_return);
+err_head:
+	g_free(entry_head);
 
 	return -ENOMEM;
 }
