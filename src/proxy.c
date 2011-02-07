@@ -30,30 +30,76 @@
 static unsigned int next_lookup_token = 1;
 
 static GSList *driver_list = NULL;
+static GSList *lookup_list = NULL;
 
 struct proxy_lookup {
 	unsigned int token;
 	connman_proxy_lookup_cb cb;
 	void *user_data;
+	struct connman_service *service;
+	char *url;
 	guint watch;
+	struct connman_proxy_driver *proxy;
 };
+
+static void remove_lookup(struct proxy_lookup *lookup)
+{
+	lookup_list = g_slist_remove(lookup_list, lookup);
+
+	g_free(lookup->url);
+	g_free(lookup);
+}
+
+static void remove_lookups(GSList *lookups)
+{
+	GSList *list;
+
+	for (list = lookups; list; list = list->next) {
+		struct proxy_lookup *lookup = list->data;
+
+		remove_lookup(lookup);
+	}
+
+	g_slist_free(lookups);
+}
 
 static gboolean lookup_callback(gpointer user_data)
 {
 	struct proxy_lookup *lookup = user_data;
+	GSList *list;
+
+	if (lookup == NULL)
+		return FALSE;
 
 	lookup->watch = 0;
 
-	if (lookup->cb)
-		lookup->cb(NULL, lookup->user_data);
+	for (list = driver_list; list; list = list->next) {
+		struct connman_proxy_driver *proxy = list->data;
 
-	g_free(lookup);
+		if (proxy->request_lookup == NULL)
+			continue;
+
+		lookup->proxy = proxy;
+		break;
+	}
+
+	if (lookup->proxy == NULL ||
+		lookup->proxy->request_lookup(lookup->service,
+						lookup->url) < 0) {
+
+		if (lookup->cb)
+			lookup->cb(NULL, lookup->user_data);
+
+		remove_lookup(lookup);
+	}
 
 	return FALSE;
 }
 
 unsigned int connman_proxy_lookup(const char *interface, const char *url,
-				connman_proxy_lookup_cb cb, void *user_data)
+					struct connman_service *service,
+					connman_proxy_lookup_cb cb,
+					void *user_data)
 {
 	struct proxy_lookup *lookup;
 
@@ -70,30 +116,74 @@ unsigned int connman_proxy_lookup(const char *interface, const char *url,
 
 	lookup->cb = cb;
 	lookup->user_data = user_data;
+	lookup->url = g_strdup(url);
+	lookup->service = service;
 
 	lookup->watch = g_timeout_add_seconds(0, lookup_callback, lookup);
 	if (lookup->watch == 0) {
+		g_free(lookup->url);
 		g_free(lookup);
 		return 0;
 	}
 
 	DBG("token %u", lookup->token);
+	lookup_list = g_slist_append(lookup_list, lookup);
 
 	return lookup->token;
 }
 
 void connman_proxy_lookup_cancel(unsigned int token)
 {
+	GSList *list;
+	struct proxy_lookup *lookup = NULL;
+
 	DBG("token %u", token);
+
+	for (list = lookup_list; list; list = list->next) {
+		lookup = list->data;
+
+		if (lookup->token == token)
+			break;
+	}
+
+	if (lookup != NULL) {
+		if (lookup->watch > 0) {
+			g_source_remove(lookup->watch);
+			lookup->watch = 0;
+		}
+
+		if (lookup->proxy != NULL &&
+					lookup->proxy->cancel_lookup != NULL)
+			lookup->proxy->cancel_lookup(lookup->service,
+								lookup->url);
+
+		remove_lookup(lookup);
+	}
 }
 
 void connman_proxy_driver_lookup_notify(struct connman_service *service,
                                         const char *url, const char *result)
 {
+	GSList *list, *matches = NULL;
+
 	DBG("service %p url %s result %s", service, url, result);
 
-	if (service == NULL)
-		return;
+	for (list = lookup_list; list; list = list->next) {
+		struct proxy_lookup *lookup = list->data;
+
+		if (service != lookup->service)
+			continue;
+
+		if (g_strcmp0(lookup->url, url) == 0) {
+			if (lookup->cb)
+				lookup->cb(result, lookup->user_data);
+
+			matches = g_slist_append(matches, lookup);
+		}
+	}
+
+	if (matches != NULL)
+		remove_lookups(matches);
 }
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -130,9 +220,19 @@ int connman_proxy_driver_register(struct connman_proxy_driver *driver)
  */
 void connman_proxy_driver_unregister(struct connman_proxy_driver *driver)
 {
+	GSList *list;
+
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_remove(driver_list, driver);
+
+	for (list = lookup_list; list; list = list->next) {
+		struct proxy_lookup *lookup = list->data;
+
+		if (lookup->proxy == driver)
+			lookup->proxy = NULL;
+	}
+
 }
 
 int __connman_proxy_init(void)
@@ -145,4 +245,6 @@ int __connman_proxy_init(void)
 void __connman_proxy_cleanup(void)
 {
 	DBG("");
+
+	remove_lookups(lookup_list);
 }

@@ -286,6 +286,12 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	}
 
 	if (file->addr == NULL) {
+		/*
+		 * Though the buffer is not shared between processes, we still
+		 * have to take MAP_SHARED because MAP_PRIVATE does not guarantee
+		 * that writes will hit the file eventually. For more details
+		 * please read the mmap man pages.
+		 */
 		addr = mmap(NULL, new_size, PROT_READ | PROT_WRITE,
 				MAP_SHARED, file->fd, 0);
 	} else {

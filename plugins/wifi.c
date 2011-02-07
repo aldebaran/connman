@@ -65,10 +65,13 @@ struct wifi_data {
 	GSupplicantState state;
 	connman_bool_t connected;
 	connman_bool_t disconnecting;
+	connman_bool_t tethering;
 	int index;
 	unsigned flags;
 	unsigned int watch;
 };
+
+static GList *iface_list = NULL;
 
 static int get_bssid(struct connman_device *device,
 				unsigned char *bssid, unsigned int *bssid_len)
@@ -148,6 +151,7 @@ static int wifi_probe(struct connman_device *device)
 
 	wifi->connected = FALSE;
 	wifi->disconnecting = FALSE;
+	wifi->tethering = FALSE;
 	wifi->state = G_SUPPLICANT_STATE_INACTIVE;
 
 	connman_device_set_data(device, wifi);
@@ -159,6 +163,8 @@ static int wifi_probe(struct connman_device *device)
 	wifi->watch = connman_rtnl_add_newlink_watch(wifi->index,
 							wifi_newlink, device);
 
+	iface_list = g_list_append(iface_list, wifi);
+
 	return 0;
 }
 
@@ -167,6 +173,11 @@ static void wifi_remove(struct connman_device *device)
 	struct wifi_data *wifi = connman_device_get_data(device);
 
 	DBG("device %p", device);
+
+	if (wifi == NULL)
+		return;
+
+	iface_list = g_list_remove(iface_list, wifi);
 
 	if (wifi->pending_network != NULL) {
 		connman_network_unref(wifi->pending_network);
@@ -222,7 +233,7 @@ static int wifi_enable(struct connman_device *device)
 
 	DBG("device %p %p", device, wifi);
 
-	return g_supplicant_interface_create(interface, driver,
+	return g_supplicant_interface_create(interface, driver, NULL,
 						interface_create_callback,
 							wifi);
 }
@@ -265,6 +276,9 @@ static int wifi_scan(struct connman_device *device)
 	int ret;
 
 	DBG("device %p %p", device, wifi->interface);
+
+	if (wifi->tethering == TRUE)
+		return 0;
 
 	ret = g_supplicant_interface_scan(wifi->interface, scan_callback,
 								device);
@@ -341,8 +355,10 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	const char *security, *passphrase;
 
 	memset(ssid, 0, sizeof(*ssid));
+	ssid->mode = G_SUPPLICANT_MODE_INFRA;
 	ssid->ssid = connman_network_get_blob(network, "WiFi.SSID",
 						&ssid->ssid_len);
+	ssid->scan_ssid = 1;
 	security = connman_network_get_string(network, "WiFi.Security");
 	ssid->security = network_security(security);
 	passphrase = connman_network_get_string(network,
@@ -502,7 +518,8 @@ static void interface_added(GSupplicantInterface *interface)
 	if (wifi == NULL)
 		return;
 
-	DBG("ifname %s driver %s wifi %p", ifname, driver, wifi);
+	DBG("ifname %s driver %s wifi %p tethering %d",
+			ifname, driver, wifi, wifi->tethering);
 
 	if (wifi->device == NULL) {
 		connman_error("WiFi device not set");
@@ -510,6 +527,10 @@ static void interface_added(GSupplicantInterface *interface)
 	}
 
 	connman_device_set_powered(wifi->device, TRUE);
+
+	if (wifi->tethering == TRUE)
+		return;
+	
 	wifi_scan(wifi->device);
 }
 
@@ -692,6 +713,9 @@ static void interface_removed(GSupplicantInterface *interface)
 
 	wifi = g_supplicant_interface_get_data(interface);
 
+	if (wifi != NULL && wifi->tethering == TRUE)
+		return;
+
 	if (wifi == NULL || wifi->device == NULL) {
 		connman_error("Wrong wifi pointer");
 		return;
@@ -843,6 +867,191 @@ static void tech_remove(struct connman_technology *technology)
 	wifi_technology = NULL;
 }
 
+struct wifi_tethering_info {
+	struct wifi_data *wifi;
+	struct connman_technology *technology;
+	char *ifname;
+	const char *bridge;
+	GSupplicantSSID *ssid;
+};
+
+static GSupplicantSSID *ssid_ap_init(const char *ssid, const char *passphrase)
+{
+	GSupplicantSSID *ap;
+
+	ap = g_try_malloc0(sizeof(GSupplicantSSID));
+	if (ap == NULL)
+		return NULL;
+
+	ap->mode = G_SUPPLICANT_MODE_MASTER;
+	ap->ssid = ssid;
+	ap->ssid_len = strlen(ssid);
+	ap->scan_ssid = 0;
+	ap->freq = 2412;
+
+	if (passphrase == NULL || strlen(passphrase) == 0) {
+		ap->security = G_SUPPLICANT_SECURITY_NONE;
+		ap->passphrase = NULL;
+	} else {
+               ap->security = G_SUPPLICANT_SECURITY_PSK;
+	       ap->protocol = G_SUPPLICANT_PROTO_RSN;
+	       ap->pairwise_cipher = G_SUPPLICANT_PAIRWISE_CCMP;
+	       ap->group_cipher = G_SUPPLICANT_GROUP_CCMP;
+               ap->passphrase = passphrase;
+	}
+
+	return ap;
+}
+
+static void ap_start_callback(int result, GSupplicantInterface *interface,
+							void *user_data)
+{
+	struct wifi_tethering_info *info = user_data;
+
+	DBG("result %d index %d bridge %s",
+		result, info->wifi->index, info->bridge);
+
+	if (result < 0) {
+		connman_inet_remove_from_bridge(info->wifi->index,
+							info->bridge);
+		connman_technology_tethering_notify(info->technology, FALSE);
+	}
+
+	g_free(info->ifname);
+	g_free(info);
+}
+
+static void ap_create_callback(int result,
+				GSupplicantInterface *interface,
+					void *user_data)
+{
+	struct wifi_tethering_info *info = user_data;
+	struct connman_technology *technology;
+
+	DBG("result %d ifname %s", result,
+				g_supplicant_interface_get_ifname(interface));
+
+	if (result < 0) {
+		connman_inet_remove_from_bridge(info->wifi->index,
+							info->bridge);
+		connman_technology_tethering_notify(info->technology, FALSE);
+
+		g_free(info->ifname);
+		g_free(info);
+		return;
+	}
+
+	info->wifi->interface = interface;
+	technology = info->technology;
+	g_supplicant_interface_set_data(interface, info->wifi);
+
+	if (g_supplicant_interface_set_apscan(interface, 2) < 0)
+		connman_error("Failed to set interface ap_scan property");
+
+	g_supplicant_interface_connect(interface, info->ssid,
+						ap_start_callback, info);
+}
+
+static void sta_remove_callback(int result,
+				GSupplicantInterface *interface,
+					void *user_data)
+{
+	struct wifi_tethering_info *info = user_data;
+	const char *driver = connman_option_get_string("wifi");
+
+	DBG("ifname %s result %d ", info->ifname, result);
+
+	if (result < 0) {
+		info->wifi->tethering = TRUE;
+
+		g_free(info->ifname);
+		g_free(info);
+		return;
+	}
+
+	info->wifi->interface = NULL;
+
+	connman_technology_tethering_notify(info->technology, TRUE);
+	connman_inet_add_to_bridge(info->wifi->index, info->bridge);
+
+	g_supplicant_interface_create(info->ifname, driver, info->bridge,
+						ap_create_callback,
+							info);
+}
+
+static int tech_set_tethering(struct connman_technology *technology,
+				const char *identifier, const char *passphrase,
+				const char *bridge, connman_bool_t enabled)
+{
+	GList *list;
+	GSupplicantInterface *interface;
+	struct wifi_data *wifi;
+	struct wifi_tethering_info *info;
+	const char *ifname;
+	unsigned int mode;
+	int err;
+
+	DBG("");
+
+	if (enabled == FALSE) {
+		for (list = iface_list; list; list = list->next) {
+			wifi = list->data;
+
+			if (wifi->tethering == TRUE)
+				wifi->tethering = FALSE;
+		}
+
+		connman_technology_tethering_notify(technology, FALSE);
+
+		return 0;
+	}
+
+	for (list = iface_list; list; list = list->next) {
+		wifi = list->data;
+
+		interface = wifi->interface;
+
+		if (interface == NULL)
+			continue;
+
+		ifname = g_supplicant_interface_get_ifname(wifi->interface);
+
+		mode = g_supplicant_interface_get_mode(interface);
+		if ((mode & G_SUPPLICANT_CAPABILITY_MODE_AP) == 0) {
+			DBG("%s does not support AP mode", ifname);
+			continue;
+		}
+
+		info = g_try_malloc0(sizeof(struct wifi_tethering_info));
+		if (info == NULL)
+			return -ENOMEM;
+
+		info->wifi = wifi;
+		info->technology = technology;
+		info->bridge = bridge;
+		info->ssid = ssid_ap_init(identifier, passphrase);
+		if (info->ssid == NULL) {
+			g_free(info);
+			continue;
+		}
+		info->ifname = g_strdup(ifname);
+		if (info->ifname == NULL) {
+			g_free(info);
+			continue;
+		}
+
+		info->wifi->tethering = TRUE;
+
+		err = g_supplicant_interface_remove(interface,
+						sta_remove_callback,
+							info);
+		if (err == 0)
+			return err;
+	}
+
+	return -EOPNOTSUPP;
+}
+
 static void regdom_callback(void *user_data)
 {
 	char *alpha2 = user_data;
@@ -865,6 +1074,7 @@ static struct connman_technology_driver tech_driver = {
 	.type		= CONNMAN_SERVICE_TYPE_WIFI,
 	.probe		= tech_probe,
 	.remove		= tech_remove,
+	.set_tethering	= tech_set_tethering,
 	.set_regdom	= tech_set_regdom,
 };
 

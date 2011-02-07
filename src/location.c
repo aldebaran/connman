@@ -94,6 +94,11 @@ char *connman_location_get_interface(struct connman_location *location)
 	return connman_service_get_interface(location->service);
 }
 
+struct connman_service *connman_location_get_service(
+					struct connman_location *location)
+{
+	return location->service;
+}
 /**
  * connman_location_get_data:
  * @location: Location structure

@@ -313,8 +313,6 @@ void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
-int __connman_technology_enable_tethering(const char *bridge);
-int __connman_technology_disable_tethering(const char *bridge);
 
 connman_bool_t __connman_technology_get_blocked(enum connman_service_type type);
 
@@ -417,8 +415,7 @@ int __connman_profile_remove_network(struct connman_network *network);
 int __connman_tethering_init(void);
 void __connman_tethering_cleanup(void);
 
-connman_bool_t __connman_tethering_get_status(void);
-int __connman_tethering_set_status(connman_bool_t status);
+const char *__connman_tethering_get_bridge(void);
 void __connman_tethering_update_interface(const char *interface);
 void __connman_tethering_set_enabled(void);
 void __connman_tethering_set_disabled(void);

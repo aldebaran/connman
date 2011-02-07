@@ -234,11 +234,11 @@ static void enable_tethering(struct connman_technology *technology,
 	for (list = cdc_interface_list; list; list = list->next) {
 		int index = GPOINTER_TO_INT(list->data);
 
+		connman_technology_tethering_notify(technology, TRUE);
+
 		connman_inet_ifup(index);
 
 		connman_inet_add_to_bridge(index, bridge);
-
-		connman_technology_tethering_notify(technology, TRUE);
 	}
 }
 
@@ -259,6 +259,7 @@ static void disable_tethering(struct connman_technology *technology,
 }
 
 static int tech_set_tethering(struct connman_technology *technology,
+				const char *identifier, const char *passphrase,
 				const char *bridge, connman_bool_t enabled)
 {
 	DBG("bridge %s enabled %d", bridge, enabled);

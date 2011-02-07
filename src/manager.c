@@ -32,7 +32,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	connman_bool_t offlinemode, tethering;
+	connman_bool_t offlinemode;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -64,10 +64,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	offlinemode = __connman_profile_get_offlinemode();
 	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
-
-	tethering = __connman_tethering_get_status();
-	connman_dbus_dict_append_basic(&dict, "Tethering",
-					DBUS_TYPE_BOOLEAN, &tethering);
 
 	connman_dbus_dict_append_array(&dict, "AvailableTechnologies",
 		DBUS_TYPE_STRING, __connman_notifier_list_registered, NULL);
@@ -120,20 +116,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		__connman_profile_set_offlinemode(offlinemode, TRUE);
 
 		__connman_profile_save_default();
-	} else if (g_str_equal(name, "Tethering") == TRUE) {
-		connman_bool_t tethering;
-
-		if (type != DBUS_TYPE_BOOLEAN)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &tethering);
-
-		if (__connman_tethering_set_status(tethering) < 0)
-			return __connman_error_invalid_arguments(msg);
-
-		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
-					CONNMAN_MANAGER_INTERFACE, "Tethering",
-						DBUS_TYPE_BOOLEAN, &tethering);
 	} else if (g_str_equal(name, "ActiveProfile") == TRUE) {
 		const char *str;
 

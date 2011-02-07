@@ -244,6 +244,8 @@ static const char *mode2string(GSupplicantMode mode)
 		return "managed";
 	case G_SUPPLICANT_MODE_IBSS:
 		return "adhoc";
+	case G_SUPPLICANT_MODE_MASTER:
+		return "ap";
 	}
 
 	return NULL;
@@ -612,6 +614,22 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 				key, dbus_message_iter_get_arg_type(iter));
 }
 
+static void set_apscan(DBusMessageIter *iter, void *user_data)
+{
+	unsigned int ap_scan = *(unsigned int *)user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_UINT32, &ap_scan);
+}
+
+int g_supplicant_interface_set_apscan(GSupplicantInterface *interface,
+							unsigned int ap_scan)
+{
+	return supplicant_dbus_property_set(interface->path,
+			SUPPLICANT_INTERFACE ".Interface",
+				"ApScan", DBUS_TYPE_UINT32_AS_STRING,
+					set_apscan, NULL, &ap_scan);
+}
+
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
 								void *data)
 {
@@ -684,6 +702,14 @@ GSupplicantWpsState g_supplicant_interface_get_wps_state(
 		return G_SUPPLICANT_WPS_STATE_UNKNOWN;
 
 	return interface->wps_state;
+}
+
+unsigned int g_supplicant_interface_get_mode(GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return 0;
+
+	return interface->mode_capa;
 }
 
 GSupplicantInterface *g_supplicant_network_get_interface(
@@ -2047,6 +2073,7 @@ struct interface_data {
 struct interface_create_data {
 	const char *ifname;
 	const char *driver;
+	const char *bridge;
 	GSupplicantInterface *interface;
 	GSupplicantInterfaceCallback callback;
 	void *user_data;
@@ -2139,6 +2166,10 @@ static void interface_create_params(DBusMessageIter *iter, void *user_data)
 		supplicant_dbus_dict_append_basic(&dict, "Driver",
 					DBUS_TYPE_STRING, &data->driver);
 
+	if (data->bridge != NULL)
+		supplicant_dbus_dict_append_basic(&dict, "BridgeIfname",
+					DBUS_TYPE_STRING, &data->bridge);
+
 	supplicant_dbus_dict_close(iter, &dict);
 }
 
@@ -2210,6 +2241,7 @@ static void interface_get_params(DBusMessageIter *iter, void *user_data)
 }
 
 int g_supplicant_interface_create(const char *ifname, const char *driver,
+					const char *bridge,
 					GSupplicantInterfaceCallback callback,
 							void *user_data)
 {
@@ -2229,6 +2261,7 @@ int g_supplicant_interface_create(const char *ifname, const char *driver,
 
 	data->ifname = ifname;
 	data->driver = driver;
+	data->bridge = bridge;
 	data->callback = callback;
 	data->user_data = user_data;
 
@@ -2381,8 +2414,16 @@ static void interface_select_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_connect_data *data = user_data;
+	int err;
 
 	SUPPLICANT_DBG("");
+
+	err = 0;
+	if (error != NULL)
+		err = -EIO;
+
+	if (data->callback != NULL)
+		data->callback(err, data->interface, data->user_data);
 
 	g_free(data->ssid);
 	dbus_free(data);
@@ -2626,6 +2667,98 @@ static void add_network_security_eap(DBusMessageIter *dict,
 	g_free(eap_value);
 }
 
+static void add_network_security_ciphers(DBusMessageIter *dict,
+						GSupplicantSSID *ssid)
+{
+	unsigned int p_cipher, g_cipher, i;
+	char *pairwise, *group;
+	char *pair_ciphers[4];
+	char *group_ciphers[5];
+
+	p_cipher = ssid->pairwise_cipher;
+	g_cipher = ssid->group_cipher;
+
+	if (p_cipher == 0 && g_cipher == 0)
+		return;
+
+	i = 0;
+
+	if (p_cipher & G_SUPPLICANT_PAIRWISE_CCMP)
+		pair_ciphers[i++] = "CCMP";
+
+	if (p_cipher & G_SUPPLICANT_PAIRWISE_TKIP)
+		pair_ciphers[i++] = "TKIP";
+
+	if (p_cipher & G_SUPPLICANT_PAIRWISE_NONE)
+		pair_ciphers[i++] = "NONE";
+
+	pair_ciphers[i] = NULL;
+
+	i = 0;
+
+	if (g_cipher & G_SUPPLICANT_GROUP_CCMP)
+		group_ciphers[i++] = "CCMP";
+
+	if (g_cipher & G_SUPPLICANT_GROUP_TKIP)
+		group_ciphers[i++] = "TKIP";
+
+	if (g_cipher & G_SUPPLICANT_GROUP_WEP104)
+		group_ciphers[i++] = "WEP104";
+
+	if (g_cipher & G_SUPPLICANT_GROUP_WEP40)
+		group_ciphers[i++] = "WEP40";
+
+	group_ciphers[i] = NULL;
+
+	pairwise = g_strjoinv(" ", pair_ciphers);
+	group = g_strjoinv(" ", group_ciphers);
+
+	SUPPLICANT_DBG("cipher %s %s", pairwise, group);
+
+	supplicant_dbus_dict_append_basic(dict, "pairwise",
+						DBUS_TYPE_STRING,
+						&pairwise);
+	supplicant_dbus_dict_append_basic(dict, "group",
+						DBUS_TYPE_STRING,
+						&group);
+
+	g_free(pairwise);
+	g_free(group);
+}
+
+static void add_network_security_proto(DBusMessageIter *dict,
+						GSupplicantSSID *ssid)
+{
+	unsigned int protocol, i;
+	char *proto;
+	char *protos[3];
+
+	protocol = ssid->protocol;
+
+	if (protocol == 0)
+		return;
+
+	i = 0;
+
+	if (protocol & G_SUPPLICANT_PROTO_RSN)
+		protos[i++] = "RSN";
+
+	if (protocol & G_SUPPLICANT_PROTO_WPA)
+		protos[i++] = "WPA";
+
+	protos[i] = NULL;
+
+	proto = g_strjoinv(" ", protos);
+
+	SUPPLICANT_DBG("proto %s", proto);
+
+	supplicant_dbus_dict_append_basic(dict, "proto",
+						DBUS_TYPE_STRING,
+						&proto);
+
+	g_free(proto);
+}
+
 static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 {
 	char *key_mgmt;
@@ -2640,10 +2773,14 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 	case G_SUPPLICANT_SECURITY_PSK:
 		key_mgmt = "WPA-PSK";
 		add_network_security_psk(dict, ssid);
+		add_network_security_ciphers(dict, ssid);
+		add_network_security_proto(dict, ssid);
 		break;
 	case G_SUPPLICANT_SECURITY_IEEE8021X:
 		key_mgmt = "WPA-EAP";
 		add_network_security_eap(dict, ssid);
+		add_network_security_ciphers(dict, ssid);
+		add_network_security_proto(dict, ssid);
 		break;
 	}
 
@@ -2651,17 +2788,44 @@ static void add_network_security(DBusMessageIter *dict, GSupplicantSSID *ssid)
 				DBUS_TYPE_STRING, &key_mgmt);
 }
 
+static void add_network_mode(DBusMessageIter *dict, GSupplicantSSID *ssid)
+{
+	dbus_uint32_t mode;
+
+	switch (ssid->mode) {
+	case G_SUPPLICANT_MODE_UNKNOWN:
+	case G_SUPPLICANT_MODE_INFRA:
+		mode = 0;
+		break;
+	case G_SUPPLICANT_MODE_IBSS:
+		mode = 1;
+		break;
+	case G_SUPPLICANT_MODE_MASTER:
+		mode = 2;
+		break;
+	}
+
+	supplicant_dbus_dict_append_basic(dict, "mode",
+				DBUS_TYPE_UINT32, &mode);
+}
+
 static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 {
 	DBusMessageIter dict;
-	dbus_uint32_t scan_ssid = 1;
 	struct interface_connect_data *data = user_data;
 	GSupplicantSSID *ssid = data->ssid;
 
 	supplicant_dbus_dict_open(iter, &dict);
 
-	supplicant_dbus_dict_append_basic(&dict, "scan_ssid",
-					 DBUS_TYPE_UINT32, &scan_ssid);
+	if (ssid->scan_ssid)
+		supplicant_dbus_dict_append_basic(&dict, "scan_ssid",
+					 DBUS_TYPE_UINT32, &ssid->scan_ssid);
+
+	if (ssid->freq)
+		supplicant_dbus_dict_append_basic(&dict, "frequency",
+					 DBUS_TYPE_UINT32, &ssid->freq);
+
+	add_network_mode(&dict, ssid);
 
 	add_network_security(&dict, ssid);
 

@@ -45,11 +45,12 @@ for path in properties["Services"]:
 						"Ethernet", "Provider"]:
 			val = extract_values(properties[key])
 		elif key in ["Nameservers", "Nameservers.Configuration",
-					"Domains", "Domains.Configuration"]:
+					"Domains", "Domains.Configuration",
+						"Security"]:
 			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
 					"LoginRequired", "SetupRequired",
-						"PassphraseRequired", "WPS"]:
+						"PassphraseRequired"]:
 			if properties[key] == dbus.Boolean(1):
 				val = "true"
 			else:

@@ -51,7 +51,7 @@ Core
 
    Priority: Medium
    Complexity: C2
-   Owner: Lucio Maciel <lucio.maciel@hp.com>
+   Owner: Henri Bragge <henri.bragge@ixonos.com>
 
    The current service provisioning lacks a D-Bus interface for modifying
    existing configurations.

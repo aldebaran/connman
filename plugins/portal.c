@@ -39,6 +39,7 @@
 #define STATUS_URL  "http://www.connman.net/online/status.html"
 
 struct server_data {
+	unsigned int token;
 	GWeb *web;
 	guint request_id;
 };
@@ -105,10 +106,13 @@ static void proxy_callback(const char *proxy, void *user_data)
 		proxy = getenv("http_proxy");
 
 	if (data != NULL) {
-		g_web_set_proxy(data->web, proxy);
+		if (proxy != NULL && g_strcmp0(proxy, "DIRECT") != 0)
+			g_web_set_proxy(data->web, proxy);
 
 		data->request_id = g_web_request_get(data->web, STATUS_URL,
 							web_result, location);
+
+		data->token = 0;
 	}
 
 	connman_location_unref(location);
@@ -117,6 +121,7 @@ static void proxy_callback(const char *proxy, void *user_data)
 static int location_detect(struct connman_location *location)
 {
 	struct server_data *data;
+	struct connman_service *service;
 	enum connman_service_type service_type;
 	char *interface;
 	int err;
@@ -168,13 +173,17 @@ static int location_detect(struct connman_location *location)
 	g_web_set_user_agent(data->web, "ConnMan/%s", VERSION);
 	g_web_set_close_connection(data->web, TRUE);
 
-	err = connman_proxy_lookup(interface, STATUS_URL,
-					proxy_callback, location);
-	if (err < 0)
-		goto done;
-
 	connman_location_ref(location);
-	err = 0;
+
+	service = connman_location_get_service(location);
+	data->token = connman_proxy_lookup(interface, STATUS_URL,
+					service, proxy_callback, location);
+
+	if (data->token == 0) {
+		connman_location_unref(location);
+		err = -EINVAL;
+	} else
+		err = 0;
 
 done:
 	g_free(interface);
@@ -191,6 +200,11 @@ static int location_finish(struct connman_location *location)
 
 	if (data->request_id > 0)
 		g_web_cancel_request(data->web, data->request_id);
+
+	if (data->token > 0) {
+		connman_proxy_lookup_cancel(data->token);
+		connman_location_unref(location);
+	}
 
 	g_web_unref(data->web);
 

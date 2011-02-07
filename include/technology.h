@@ -54,6 +54,7 @@ struct connman_technology_driver {
 	void (*remove_interface) (struct connman_technology *technology,
 								int index);
 	int (*set_tethering) (struct connman_technology *technology,
+				const char *identifier, const char *passphrase,
 				const char *bridge, connman_bool_t enabled);
 	int (*set_regdom) (struct connman_technology *technology,
 						const char *alpha2);

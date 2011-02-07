@@ -174,15 +174,15 @@ Properties	string State [readonly]
 			This property might be only present for WiFi and
 			Cellular services.
 
-		string Security [readonly]
+		array{string} Security [readonly]
 
 			If the service type is WiFi, then this property is
-			present and contains the security method or key
-			management setting.
+			present and contains the list of security methods
+			or key management settings.
 
-			Possible values are "none", "wep", "psk" and
-			also "ieee8021x". Alternate values for "psk"
-			can also be "wpa" and "rsn".
+			Possible values are "none", "wep", "psk", "ieee8021x"
+			and also "wps". Alternate values for "psk" can also
+			be "wpa" and "rsn".
 
 			This property might be only present for WiFi
 			services.
@@ -213,16 +213,6 @@ Properties	string State [readonly]
 			If a passphrase has been set already or if no
 			passphrase is needed, then this property will
 			be set to false.
-
-		boolean WPS [readonly]
-
-			If the service type is Wifi, then this property
-			indicates if it provides WPS (Wifi Protected Setup).
-
-			If this is set to true, then if no Passphrase is
-			provided or if given Passphrase is wrong, WPS
-			push-button or pin methods will be available through
-			Agent API.
 
 		uint8 Strength [readonly]
 

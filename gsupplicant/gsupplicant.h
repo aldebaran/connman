@@ -61,6 +61,9 @@ extern "C" {
 #define G_SUPPLICANT_KEYMGMT_WPA_EAP_256	(1 << 8)
 #define G_SUPPLICANT_KEYMGMT_WPS		(1 << 9)
 
+#define G_SUPPLICANT_PROTO_WPA		(1 << 0)
+#define G_SUPPLICANT_PROTO_RSN		(1 << 1)
+
 #define G_SUPPLICANT_GROUP_WEP40		(1 << 0)
 #define G_SUPPLICANT_GROUP_WEP104		(1 << 1)
 #define G_SUPPLICANT_GROUP_TKIP		(1 << 2)
@@ -74,6 +77,7 @@ typedef enum {
 	G_SUPPLICANT_MODE_UNKNOWN,
 	G_SUPPLICANT_MODE_INFRA,
 	G_SUPPLICANT_MODE_IBSS,
+	G_SUPPLICANT_MODE_MASTER,
 } GSupplicantMode;
 
 typedef enum {
@@ -106,8 +110,13 @@ typedef enum {
 struct _GSupplicantSSID {
 	const void *ssid;
 	unsigned int ssid_len;
+	unsigned int scan_ssid;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
+	unsigned int protocol;
+	unsigned int pairwise_cipher;
+	unsigned int group_cipher;
+	unsigned int freq;
 	const char *eap;
 	const char *passphrase;
 	const char *identity;
@@ -139,6 +148,7 @@ typedef void (*GSupplicantInterfaceCallback) (int result,
 							void *user_data);
 
 int g_supplicant_interface_create(const char *ifname, const char *driver,
+					const char *bridge,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 int g_supplicant_interface_remove(GSupplicantInterface *interface,
@@ -157,6 +167,9 @@ int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 
+int g_supplicant_interface_set_apscan(GSupplicantInterface *interface,
+							unsigned int ap_scan);
+
 void g_supplicant_interface_set_data(GSupplicantInterface *interface,
 								void *data);
 void *g_supplicant_interface_get_data(GSupplicantInterface *interface);
@@ -167,6 +180,7 @@ const char *g_supplicant_interface_get_wps_key(GSupplicantInterface *interface);
 const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
 							unsigned int *ssid_len);
 GSupplicantWpsState g_supplicant_interface_get_wps_state(GSupplicantInterface *interface);
+unsigned int g_supplicant_interface_get_mode(GSupplicantInterface *interface);
 
 /* Network API */
 struct _GSupplicantNetwork;
