@@ -1,3 +1,6 @@
+ver 0.69.1
+	ConnMan 0.69 code merge
+
 ver 0.68.2
 	dnsproxy: Fallback to resolv.conf if dnsproxy fails
 	stats: Fix double free error
