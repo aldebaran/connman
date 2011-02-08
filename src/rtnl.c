@@ -578,9 +578,6 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 	void *src;
 	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET && family != AF_INET6)
-		return;
-
 	if (family == AF_INET) {
 		struct in_addr ipv4_addr = { INADDR_ANY };
 
@@ -594,6 +591,8 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 			return;
 
 		src = &ipv6_address;
+	} else {
+		return;
 	}
 
 	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
@@ -610,9 +609,6 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 	void *src;
 	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET && family != AF_INET6)
-		return;
-
 	if (family == AF_INET) {
 		struct in_addr ipv4_addr = { INADDR_ANY };
 
@@ -626,6 +622,8 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 			return;
 
 		src = &ipv6_address;
+	} else {
+		return;
 	}
 
 	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
@@ -1105,7 +1103,7 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 	struct nd_opt_hdr *opt = (void *)&msg[1];
 	guint32 lifetime = -1;
 	const char **domains = NULL;
-	struct in6_addr *servers;
+	struct in6_addr *servers = NULL;
 	int nr_servers = 0;
 	int msglen = msg->nduseropt_opts_len;
 	char *interface;
