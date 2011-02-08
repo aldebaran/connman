@@ -547,7 +547,7 @@ static void technology_put(struct connman_technology *technology)
 void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident)
 {
-	GSList *list;
+	struct connman_technology *technology;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -567,21 +567,14 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	connman_info("Create interface %s [ %s ]", name,
 				__connman_service_type2string(type));
 
-	technology_get(type);
+	technology = technology_get(type);
 
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
+	if (technology == NULL || technology->driver == NULL
+			|| technology->driver->add_interface == NULL)
+		return;
 
-		if (technology->type != type)
-			continue;
-
-		if (technology->driver == NULL)
-			continue;
-
-		if (technology->driver->add_interface)
-			technology->driver->add_interface(technology,
-							index, name, ident);
-	}
+	technology->driver->add_interface(technology,
+					index, name, ident);
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
