@@ -46,9 +46,8 @@ enum connman_technology_state {
 	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
 	CONNMAN_TECHNOLOGY_STATE_OFFLINE   = 1,
 	CONNMAN_TECHNOLOGY_STATE_AVAILABLE = 2,
-	CONNMAN_TECHNOLOGY_STATE_BLOCKED   = 3,
-	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 4,
-	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 5,
+	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 3,
+	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 4,
 };
 
 struct connman_technology {
@@ -255,8 +254,6 @@ static const char *state2string(enum connman_technology_state state)
 		return "offline";
 	case CONNMAN_TECHNOLOGY_STATE_AVAILABLE:
 		return "available";
-	case CONNMAN_TECHNOLOGY_STATE_BLOCKED:
-		return "blocked";
 	case CONNMAN_TECHNOLOGY_STATE_ENABLED:
 		return "enabled";
 	case CONNMAN_TECHNOLOGY_STATE_CONNECTED:
@@ -729,7 +726,7 @@ int __connman_technology_disable_device(struct connman_device *device)
 			return 0;
 	}
 
-	technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 	state_changed(technology);
 
 	return 0;
@@ -783,7 +780,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 	if (g_atomic_int_exchange_and_add(&technology->blocked, 1) == 0) {
 		technology_blocked(technology, TRUE);
 
-		technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
 	}
 
@@ -826,7 +823,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 			return 0;
 
 		technology_blocked(technology, blocked);
-		technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
 	} else {
 		if (g_atomic_int_dec_and_test(&technology->blocked) == FALSE)
