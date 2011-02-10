@@ -2012,6 +2012,49 @@ error:
 	return -EINVAL;
 }
 
+static int set_ipconfig(struct connman_service *service,
+			struct connman_ipconfig *ipconfig,
+			DBusMessageIter *array,
+			enum connman_service_state state,
+			enum connman_service_state *new_state)
+{
+	enum connman_ipconfig_method old_method;
+	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	enum connman_ipconfig_type type;
+	int err;
+
+	old_method = __connman_ipconfig_get_method(ipconfig);
+
+	if (is_connecting_state(service, state) ||
+					is_connected_state(service, state))
+		__connman_network_clear_ipconfig(service->network, ipconfig);
+
+	err = __connman_ipconfig_set_config(ipconfig, array);
+	method = __connman_ipconfig_get_method(ipconfig);
+	type = __connman_ipconfig_get_config_type(ipconfig);
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		if (err == 0 && old_method == CONNMAN_IPCONFIG_METHOD_OFF &&
+				method == CONNMAN_IPCONFIG_METHOD_DHCP) {
+			*new_state = service->state_ipv4 =
+				CONNMAN_SERVICE_STATE_CONFIGURATION;
+			__connman_ipconfig_enable(ipconfig);
+		}
+
+	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		if (err == 0 && old_method == CONNMAN_IPCONFIG_METHOD_OFF &&
+				method == CONNMAN_IPCONFIG_METHOD_AUTO) {
+			*new_state = service->state_ipv6;
+			__connman_ipconfig_enable(ipconfig);
+		}
+	}
+
+	DBG("err %d ipconfig %p type %d method %d state %s", err, ipconfig,
+		type, method, state2string(*new_state));
+
+	return err;
+}
+
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -2242,26 +2285,14 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_property(msg);
 
 		if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
-			state = service->state_ipv4;
-			if (is_connecting_state(service, state) ||
-					is_connected_state(service, state))
-				__connman_network_clear_ipconfig(
-						service->network,
-						service->ipconfig_ipv4);
-
 			ipv4 = service->ipconfig_ipv4;
-			err = __connman_ipconfig_set_config(ipv4, &value);
+			err = set_ipconfig(service, ipv4, &value,
+					service->state_ipv4, &state);
 
 		} else if (g_str_equal(name, "IPv6.Configuration") == TRUE) {
-			state = service->state_ipv6;
-			if (is_connecting_state(service, state) ||
-					is_connected_state(service, state))
-				__connman_network_clear_ipconfig(
-						service->network,
-						service->ipconfig_ipv6);
-
 			ipv6 = service->ipconfig_ipv6;
-			err = __connman_ipconfig_set_config(ipv6, &value);
+			err = set_ipconfig(service, ipv6, &value,
+					service->state_ipv6, &state);
 		}
 
 		if (err < 0) {
