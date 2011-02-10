@@ -1778,6 +1778,14 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 	if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
 		ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
 
+	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_OFF)
+			disable_ipv6(ipconfig);
+		else if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_AUTO ||
+			ipconfig->method == CONNMAN_IPCONFIG_METHOD_MANUAL)
+			enable_ipv6(ipconfig);
+	}
+
 	g_free(method);
 	g_free(key);
 
