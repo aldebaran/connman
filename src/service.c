@@ -4123,8 +4123,22 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 static void service_ip_bound(struct connman_ipconfig *ipconfig)
 {
 	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 
 	connman_info("%s ip bound", connman_ipconfig_get_ifname(ipconfig));
+
+	type = __connman_ipconfig_get_config_type(ipconfig);
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	DBG("service %p ipconfig %p type %d method %d", service, ipconfig,
+							type, method);
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
+			method == CONNMAN_IPCONFIG_METHOD_AUTO)
+		__connman_service_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	settings_changed(service);
 }
@@ -4132,8 +4146,22 @@ static void service_ip_bound(struct connman_ipconfig *ipconfig)
 static void service_ip_release(struct connman_ipconfig *ipconfig)
 {
 	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 
 	connman_info("%s ip release", connman_ipconfig_get_ifname(ipconfig));
+
+	type = __connman_ipconfig_get_config_type(ipconfig);
+	method = __connman_ipconfig_get_method(ipconfig);
+
+	DBG("service %p ipconfig %p type %d method %d", service, ipconfig,
+							type, method);
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
+			method == CONNMAN_IPCONFIG_METHOD_OFF)
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	settings_changed(service);
 }
