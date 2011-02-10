@@ -18,20 +18,6 @@ Core
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
-- VPNc
-
-   Priority: Low
-   Complexity: C2
-
-
-- WiFi tethering
-   Priority: Medium
-   Complexity: C4
-
-   WiFi tethering should be done through an extended wpa_supplicant
-   D-Bus API, as STA and AP modes are typically mutually exclusive.
-
-
 - Session API implementation
 
    Priority: High
@@ -130,6 +116,18 @@ WiFi
    Complexity: C2
 
 
+- DUN server
+
+   Priority: Low
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   For DUN server support, ConnMan needs to provide an API for oFono
+   to trigger IP forwarding on a point to point interface. An IP range
+   should also be reserved.
+
+
+
 Bluetooth
 =========
 
@@ -139,7 +137,18 @@ Bluetooth
    Complexity: C4
 
 
-- DUN server
+VPN
+===
+
+- l2tp support
 
    Priority: Low
-   Complexity: C4
+   Complexity: C2
+   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
+
+
+- pptp support
+
+   Priority: Low
+   Complexity: C2
+   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
