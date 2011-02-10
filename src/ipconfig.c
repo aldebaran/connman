@@ -682,7 +682,8 @@ void __connman_ipconfig_deladdr(int index, int family, const char *label,
 	ipdevice->address_list = g_slist_remove(ipdevice->address_list,
 								ipaddress);
 
-	connman_ipaddress_free(ipaddress);
+	connman_ipaddress_clear(ipaddress);
+	g_free(ipaddress);
 
 	connman_info("%s {del} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
