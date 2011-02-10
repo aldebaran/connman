@@ -6,8 +6,6 @@ import dbus
 if (len(sys.argv) < 2):
 	print "Usage: %s type" % (sys.argv[0])
 
-print "Disabling %s tethering" % (sys.argv[1])
-
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object('net.connman', "/"),
@@ -22,11 +20,17 @@ def technology_disable_tethering(path, tech_type):
 	for key in properties.keys():
 		if key in ["Type"]:
 			if properties[key] == tech_type:
+				print "Disabling %s tethering" % tech_type
 				tech.SetProperty("Tethering", dbus.Boolean(0))
+
+				return tech_type
 
 properties = manager.GetProperties()
 
 for key in properties.keys():
 	if key in ["Technologies"]:
 		for path in properties[key]:
-			technology_disable_tethering(path, sys.argv[1])
+			tech = technology_disable_tethering(path, sys.argv[1])
+
+if tech == None:
+	print "Failed to disable %s tethering" % (sys.argv[1])
