@@ -191,7 +191,8 @@ void connman_location_report_result(struct connman_location *location,
 		break;
 	case CONNMAN_LOCATION_RESULT_ONLINE:
 		__connman_service_indicate_state(location->service,
-						CONNMAN_SERVICE_STATE_ONLINE);
+						CONNMAN_SERVICE_STATE_ONLINE,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
 		break;
 	}
 }

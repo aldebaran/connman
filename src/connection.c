@@ -332,7 +332,8 @@ static int connection_probe(struct connman_element *element)
 						new_gateway->ipv4_gateway);
 	__connman_service_set_domainname(service, domainname);
 
-	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY);
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	if (service == NULL) {
 		new_gateway->vpn = TRUE;
@@ -376,7 +377,8 @@ static void connection_remove(struct connman_element *element)
 	service = __connman_element_get_service(element);
 	__connman_service_nameserver_del_routes(service);
 	__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_DISCONNECT);
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	connman_element_set_enabled(element, FALSE);
 

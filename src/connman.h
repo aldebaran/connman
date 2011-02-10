@@ -478,7 +478,8 @@ int __connman_service_set_immutable(struct connman_service *service,
 void __connman_service_set_string(struct connman_service *service,
 					const char *key, const char *value);
 int __connman_service_indicate_state(struct connman_service *service,
-					enum connman_service_state state);
+					enum connman_service_state new_state,
+					enum connman_ipconfig_type type);
 int __connman_service_indicate_error(struct connman_service *service,
 					enum connman_service_error error);
 int __connman_service_clear_error(struct connman_service *service);

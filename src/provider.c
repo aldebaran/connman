@@ -179,7 +179,8 @@ int __connman_provider_disconnect(struct connman_provider *provider)
 
 	if (provider->vpn_service != NULL)
 		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_DISCONNECT);
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 	if (err < 0) {
 		if (err != -EINPROGRESS)
 			return err;
@@ -220,7 +221,8 @@ int __connman_provider_connect(struct connman_provider *provider)
 			return err;
 
 		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_ASSOCIATION);
+					CONNMAN_SERVICE_STATE_ASSOCIATION,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 		return -EINPROGRESS;
 	}
 
@@ -327,7 +329,8 @@ static int set_connected(struct connman_provider *provider,
 		int err;
 
 		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_CONFIGURATION);
+					CONNMAN_SERVICE_STATE_CONFIGURATION,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 		type = CONNMAN_ELEMENT_TYPE_IPV4;
 
@@ -343,13 +346,15 @@ static int set_connected(struct connman_provider *provider,
 			connman_element_unref(element);
 
 			__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_FAILURE);
+						CONNMAN_SERVICE_STATE_FAILURE,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
 
 			return err;
 		}
 
 		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY);
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
 
 		__connman_service_set_domainname(service, provider->domain);
 
@@ -360,7 +365,8 @@ static int set_connected(struct connman_provider *provider,
 	} else {
 		connman_element_unregister_children(&provider->element);
 		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_IDLE);
+						CONNMAN_SERVICE_STATE_IDLE,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
 	}
 
 	return 0;
@@ -379,15 +385,18 @@ int connman_provider_set_state(struct connman_provider *provider,
 		return set_connected(provider, FALSE);
 	case CONNMAN_PROVIDER_STATE_CONNECT:
 		return __connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_ASSOCIATION);
+					CONNMAN_SERVICE_STATE_ASSOCIATION,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 	case CONNMAN_PROVIDER_STATE_READY:
 		return set_connected(provider, TRUE);
 	case CONNMAN_PROVIDER_STATE_DISCONNECT:
 		return __connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_DISCONNECT);
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 	case CONNMAN_PROVIDER_STATE_FAILURE:
 		return __connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_FAILURE);
+					CONNMAN_SERVICE_STATE_FAILURE,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 	}
 
 	return -EINVAL;
