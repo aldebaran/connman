@@ -1782,8 +1782,21 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_OFF)
 			disable_ipv6(ipconfig);
 		else if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_AUTO ||
-			ipconfig->method == CONNMAN_IPCONFIG_METHOD_MANUAL)
+			ipconfig->method == CONNMAN_IPCONFIG_METHOD_MANUAL) {
 			enable_ipv6(ipconfig);
+			__connman_ipconfig_enable(ipconfig);
+
+			if (ipconfig->ops_data) {
+				struct connman_service *service =
+							ipconfig->ops_data;
+				struct connman_network *network;
+				network = __connman_service_get_network(
+								service);
+				if (network)
+					__connman_network_set_ipconfig(network,
+							NULL, ipconfig);
+			}
+		}
 	}
 
 	g_free(method);
