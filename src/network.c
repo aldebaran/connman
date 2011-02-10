@@ -1094,12 +1094,14 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 {
 	struct connman_service *service;
 	enum connman_ipconfig_method method;
+	enum connman_ipconfig_type type;
 
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return -EINVAL;
 
 	method = __connman_ipconfig_get_method(ipconfig);
+	type = __connman_ipconfig_get_config_type(ipconfig);
 
 	switch (method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
@@ -1117,7 +1119,12 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 		break;
 	}
 
-	__connman_service_indicate_state(service,
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_CONFIGURATION,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
+	else if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
