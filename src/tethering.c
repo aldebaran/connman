@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <sys/types.h>
+#include <sys/stat.h>
 #include <unistd.h>
 #include <stdio.h>
 #include <sys/ioctl.h>
@@ -32,6 +34,8 @@
 #include "connman.h"
 
 #include <gdhcp/gdhcp.h>
+
+#define BRIDGE_SYSFS_DIR "/sys/module/bridge"
 
 #define BRIDGE_NAME "tether"
 #define BRIDGE_IP "192.168.218.1"
@@ -47,6 +51,13 @@ static GDHCPServer *tethering_dhcp_server = NULL;
 
 const char *__connman_tethering_get_bridge(void)
 {
+	struct stat st;
+
+	if (stat(BRIDGE_SYSFS_DIR, &st) < 0) {
+		connman_error("Missing support for 802.1d ethernet bridging");
+		return NULL;
+	}
+
 	return BRIDGE_NAME;
 }
 

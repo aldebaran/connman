@@ -388,6 +388,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_in_progress(msg);
 
 		bridge = __connman_tethering_get_bridge();
+		if (bridge == NULL)
+			return __connman_error_not_supported(msg);
 
 		err = set_tethering(technology, bridge, tethering);
 		if (err < 0)
