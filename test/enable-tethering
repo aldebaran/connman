@@ -9,8 +9,6 @@ if (len(sys.argv) < 4 and sys.argv[1] == "wifi"):
 elif (len(sys.argv) < 2):
 	print "Usage: %s type" % (sys.argv[0])
 
-print "Enabling %s tethering" % (sys.argv[1])
-
 bus = dbus.SystemBus()
 
 manager = dbus.Interface(bus.get_object('net.connman', "/"),
@@ -31,7 +29,10 @@ def technology_enable_tethering(path, tech_type, ssid, psk):
 				if len(psk) > 0:
 					tech.SetProperty("TetheringPassphrase",
 								psk)
+				print "Enabling %s tethering" % tech_type
 				tech.SetProperty("Tethering", dbus.Boolean(1))
+
+				return tech_type
 
 properties = manager.GetProperties()
 
@@ -39,8 +40,12 @@ for key in properties.keys():
 	if key in ["Technologies"]:
 		for path in properties[key]:
 			if (len(sys.argv) == 4):
-				technology_enable_tethering(path, sys.argv[1],
-						sys.argv[2], sys.argv[3])
+				tech = technology_enable_tethering(path,
+					sys.argv[1], sys.argv[2], sys.argv[3])
 			else:
-				technology_enable_tethering(path, sys.argv[1],
-									"", "")
+				tech = technology_enable_tethering(path,
+							sys.argv[1], "", "")
+
+
+if tech == None:
+	print "Failed to enable %s tethering" % (sys.argv[1])
