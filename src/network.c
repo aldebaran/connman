@@ -768,6 +768,37 @@ static int manual_ipv6_set(struct connman_network *network,
 	return 0;
 }
 
+static void autoconf_ipv6_set(struct connman_network *network,
+				struct connman_ipconfig *ipconfig_ipv6)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+	const char *nameserver = NULL;
+
+	DBG("network %p", network);
+
+	service = __connman_service_lookup_from_network(network);
+
+	ipconfig = __connman_service_get_ip6config(service);
+
+	__connman_device_increase_connections(network->device);
+
+	__connman_device_set_network(network->device, network);
+
+	connman_device_set_disconnected(network->device, FALSE);
+
+	connman_element_get_value(&network->element,
+			CONNMAN_PROPERTY_ID_IPV6_NAMESERVER, &nameserver);
+	if (nameserver != NULL)
+		__connman_service_append_nameserver(service, nameserver);
+
+	network->connecting = FALSE;
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
+}
+
 static gboolean set_connected(gpointer user_data)
 {
 	struct connman_network *network = user_data;
@@ -795,7 +826,9 @@ static gboolean set_connected(gpointer user_data)
 		switch (ipv6_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
+			break;
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
+			autoconf_ipv6_set(network, ipconfig_ipv6);
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -844,8 +877,12 @@ static gboolean set_connected(gpointer user_data)
 		service = __connman_service_lookup_from_network(network);
 
 		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_IDLE,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
+
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
 	}
 
 	network->connecting = FALSE;
@@ -1100,7 +1137,9 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 		switch (method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
+			break;
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
+			autoconf_ipv6_set(network, ipconfig_ipv6);
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
