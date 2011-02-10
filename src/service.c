@@ -4194,6 +4194,12 @@ static void service_ip_release(struct connman_ipconfig *ipconfig)
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
+			method == CONNMAN_IPCONFIG_METHOD_OFF)
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
+
 	settings_changed(service);
 }
 
