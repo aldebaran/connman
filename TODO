@@ -53,19 +53,6 @@ Core
    credentials, ConnMan should be able to initiate a WiSPR authentication.
 
 
-- IPv6 enhancements
-
-   Priority: High
-   Complexity: C8
-   Owner: Jukka Rissanen <jukka.rissanen@nokia.com>
-
-   Support IPv6 only networks so that system can go online even if
-   there is no IPv4 address. Also support more than one IPv6 address
-   in one device so that the addresses are reported correctly via
-   dbus interface. The autoconf IPv6 addresses need also some tweaking
-   so that system will go online properly.
-
-
 WiFi
 ====
 
