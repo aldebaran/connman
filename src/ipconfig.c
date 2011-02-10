@@ -853,6 +853,12 @@ void __connman_ipconfig_foreach(void (*function) (int index, void *user_data),
 	g_list_free(keys);
 }
 
+enum connman_ipconfig_type __connman_ipconfig_get_config_type(
+					struct connman_ipconfig *ipconfig)
+{
+	return ipconfig ? ipconfig->type : CONNMAN_IPCONFIG_TYPE_UNKNOWN;
+}
+
 unsigned short __connman_ipconfig_get_type(int index)
 {
 	struct connman_ipdevice *ipdevice;

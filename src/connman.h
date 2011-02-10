@@ -218,6 +218,8 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 
 void __connman_ipconfig_foreach(void (*function) (int index, void *user_data),
 							void *user_data);
+enum connman_ipconfig_type __connman_ipconfig_get_config_type(
+					struct connman_ipconfig *ipconfig);
 unsigned short __connman_ipconfig_get_type(int index);
 unsigned int __connman_ipconfig_get_flags(int index);
 const char *__connman_ipconfig_get_gateway(int index);
