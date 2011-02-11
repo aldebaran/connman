@@ -877,11 +877,11 @@ static gboolean set_connected(gpointer user_data)
 		service = __connman_service_lookup_from_network(network);
 
 		__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 		__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 	}
 
