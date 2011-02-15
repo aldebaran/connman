@@ -2261,7 +2261,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 
 		index = connman_network_get_index(service->network);
-		gw = __connman_ipconfig_get_gateway(index);
+		gw = __connman_ipconfig_get_gateway_from_index(index);
 
 		if (gw && strlen(gw))
 			__connman_service_nameserver_del_routes(service);

@@ -243,7 +243,7 @@ unsigned int connman_rtnl_add_newlink_watch(int index,
 	DBG("id %d", watch->id);
 
 	if (callback) {
-		unsigned int flags = __connman_ipconfig_get_flags(index);
+		unsigned int flags = __connman_ipconfig_get_flags_from_index(index);
 
 		if (flags > 0)
 			callback(flags, 0, user_data);
@@ -283,14 +283,14 @@ static void trigger_rtnl(int index, void *user_data)
 	struct connman_rtnl *rtnl = user_data;
 
 	if (rtnl->newlink) {
-		unsigned short type = __connman_ipconfig_get_type(index);
-		unsigned int flags = __connman_ipconfig_get_flags(index);
+		unsigned short type = __connman_ipconfig_get_type_from_index(index);
+		unsigned int flags = __connman_ipconfig_get_flags_from_index(index);
 
 		rtnl->newlink(type, index, flags, 0);
 	}
 
 	if (rtnl->newgateway) {
-		const char *gateway = __connman_ipconfig_get_gateway(index);
+		const char *gateway = __connman_ipconfig_get_gateway_from_index(index);
 
 		if (gateway != NULL)
 			rtnl->newgateway(index, gateway);

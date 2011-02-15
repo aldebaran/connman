@@ -859,7 +859,7 @@ enum connman_ipconfig_type __connman_ipconfig_get_config_type(
 	return ipconfig ? ipconfig->type : CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 }
 
-unsigned short __connman_ipconfig_get_type(int index)
+unsigned short __connman_ipconfig_get_type_from_index(int index)
 {
 	struct connman_ipdevice *ipdevice;
 
@@ -870,7 +870,7 @@ unsigned short __connman_ipconfig_get_type(int index)
 	return ipdevice->type;
 }
 
-unsigned int __connman_ipconfig_get_flags(int index)
+unsigned int __connman_ipconfig_get_flags_from_index(int index)
 {
 	struct connman_ipdevice *ipdevice;
 
@@ -881,7 +881,7 @@ unsigned int __connman_ipconfig_get_flags(int index)
 	return ipdevice->flags;
 }
 
-const char *__connman_ipconfig_get_gateway(int index)
+const char *__connman_ipconfig_get_gateway_from_index(int index)
 {
 	struct connman_ipdevice *ipdevice;
 
