@@ -3115,10 +3115,12 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 {
 	struct connman_service *service_a = (void *) a;
 	struct connman_service *service_b = (void *) b;
+	enum connman_service_state state_a, state_b;
 
-	if (service_a->state_ipv4 != service_b->state_ipv4 &&
-			service_a->state_ipv6 != service_b->state_ipv6) {
+	state_a = combine_state(service_a->state_ipv4, service_a->state_ipv6);
+	state_b = combine_state(service_b->state_ipv4, service_b->state_ipv6);
 
+	if (state_a != state_b) {
 		if (is_connected(service_a) == TRUE)
 			return -1;
 		if (is_connected(service_b) == TRUE)
