@@ -117,8 +117,10 @@ failed:
 int __connman_wpad_start(struct connman_service *service)
 {
 	struct connman_wpad *wpad;
-	const char *domainname, *nameserver;
+	const char *domainname;
+	char **nameservers;
 	int index;
+	int i;
 
 	DBG("service %p", service);
 
@@ -133,8 +135,8 @@ int __connman_wpad_start(struct connman_service *service)
 	if (domainname == NULL)
 		return -EINVAL;
 
-	nameserver = connman_service_get_nameserver(service);
-	if (nameserver == NULL)
+	nameservers = connman_service_get_nameservers(service);
+	if (nameservers == NULL)
 		return -EINVAL;
 
 	wpad = g_try_new0(struct connman_wpad, 1);
@@ -151,7 +153,8 @@ int __connman_wpad_start(struct connman_service *service)
 	if (getenv("CONNMAN_RESOLV_DEBUG"))
 		g_resolv_set_debug(wpad->resolv, resolv_debug, "RESOLV");
 
-	g_resolv_add_nameserver(wpad->resolv, nameserver, 53, 0);
+	for (i = 0; nameservers[i] != NULL; i++)
+		g_resolv_add_nameserver(wpad->resolv, nameservers[i], 53, 0);
 
 	wpad->hostname = g_strdup_printf("wpad.%s", domainname);
 

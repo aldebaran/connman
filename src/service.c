@@ -85,7 +85,7 @@ struct connman_service {
 	struct connman_network *network;
 	struct connman_provider *provider;
 	char **nameservers;
-	char *nameserver;
+	char **nameservers_config;
 	char **domains;
 	char *domainname;
 	/* 802.1x settings from the config files */
@@ -514,14 +514,21 @@ static void update_nameservers(struct connman_service *service)
 
 	connman_resolver_remove_all(ifname);
 
-	if (service->nameservers != NULL) {
+	if (service->nameservers_config != NULL) {
 		int i;
 
-		for (i = 0; service->nameservers[i]; i++)
+		for (i = 0; service->nameservers_config[i] != NULL; i++) {
+			connman_resolver_append(ifname, NULL,
+						service->nameservers_config[i]);
+		}
+	} else if (service->nameservers != NULL) {
+		int i;
+
+		for (i = 0; service->nameservers[i] != NULL; i++) {
 			connman_resolver_append(ifname, NULL,
 						service->nameservers[i]);
-	} else if (service->nameserver != NULL)
-		connman_resolver_append(ifname, NULL, service->nameserver);
+		}
+	}
 
 	if (service->domains != NULL) {
 		int i;
@@ -535,32 +542,100 @@ static void update_nameservers(struct connman_service *service)
 	connman_resolver_flush();
 }
 
-void __connman_service_append_nameserver(struct connman_service *service,
+int __connman_service_nameserver_append(struct connman_service *service,
 						const char *nameserver)
 {
-	DBG("service %p nameserver %s", service, nameserver);
+	int len;
+
+	DBG("service %p nameserver %s",	service, nameserver);
 
 	if (nameserver == NULL)
-		return;
+		return -EINVAL;
 
-	g_free(service->nameserver);
-	service->nameserver = g_strdup(nameserver);
+	if (service->nameservers != NULL) {
+		len = g_strv_length(service->nameservers);
+		service->nameservers = g_try_renew(char *, service->nameservers,
+							len + 2);
+	} else {
+		len = 0;
+		service->nameservers = g_try_new0(char *, len + 2);
+	}
+
+	if (service->nameservers == NULL)
+		return -ENOMEM;
+
+	service->nameservers[len] = g_strdup(nameserver);
+	service->nameservers[len + 1] = NULL;
 
 	update_nameservers(service);
+
+	return 0;
 }
 
-void __connman_service_remove_nameserver(struct connman_service *service,
+int __connman_service_nameserver_remove(struct connman_service *service,
 						const char *nameserver)
 {
+	char **servers;
+	int len, i, j;
+
 	DBG("service %p nameserver %s", service, nameserver);
 
 	if (nameserver == NULL)
-		return;
+		return -EINVAL;
 
-	g_free(service->nameserver);
-	service->nameserver = NULL;
+	if (service->nameservers == NULL)
+		return 0;
+
+	len = g_strv_length(service->nameservers);
+	if (len == 1) {
+		if (g_strcmp0(service->nameservers[0], nameserver) != 0)
+			return 0;
+
+		g_strfreev(service->nameservers);
+		service->nameservers = NULL;
+
+		return 0;
+	}
+
+	servers = g_try_new0(char *, len - 1);
+	if (servers == NULL)
+		return -ENOMEM;
+
+	for (i = 0, j = 0; i < len; i++) {
+		if (g_strcmp0(service->nameservers[i], nameserver) != 0) {
+			servers[j] = g_strdup(service->nameservers[i]);
+			j++;
+		}
+	}
+	servers[len - 2] = NULL;
+
+	g_strfreev(service->nameservers);
+	service->nameservers = servers;
 
 	update_nameservers(service);
+
+	return 0;
+}
+
+static void nameserver_add_routes(int index, char **nameservers,
+					const char *gw)
+{
+	int i;
+
+	for (i = 0; nameservers[i] != NULL; i++) {
+		if (connman_inet_compare_subnet(index, nameservers[i]))
+			continue;
+
+		connman_inet_add_host_route(index, nameservers[i], gw);
+	}
+}
+
+static void nameserver_del_routes(int index, char **nameservers)
+{
+	int i;
+
+	for (i = 0; nameservers[i] != NULL; i++)
+		connman_inet_del_host_route(index, nameservers[i]);
 }
 
 void __connman_service_nameserver_add_routes(struct connman_service *service,
@@ -573,9 +648,13 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 
 	index = connman_network_get_index(service->network);
 
-	if (service->nameservers != NULL) {
-		int i;
-
+	if (service->nameservers_config != NULL) {
+		/*
+		 * Configured nameserver takes preference over the
+		 * discoverd nameserver gathered from DHCP, VPN, etc.
+		 */
+		nameserver_add_routes(index, service->nameservers_config, gw);
+	} else if (service->nameservers != NULL) {
 		/*
 		 * We add nameservers host routes for nameservers that
 		 * are not on our subnet. For those who are, the subnet
@@ -583,19 +662,7 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 		 * tries to reach them. The subnet route is installed
 		 * when setting the interface IP address.
 		 */
-		for (i = 0; service->nameservers[i]; i++) {
-			if (connman_inet_compare_subnet(index,
-							service->nameservers[i]))
-				continue;
-
-			connman_inet_add_host_route(index,
-						service->nameservers[i], gw);
-		}
-	} else if (service->nameserver != NULL) {
-		if (connman_inet_compare_subnet(index, service->nameserver))
-			return;
-
-		connman_inet_add_host_route(index, service->nameserver, gw);
+		nameserver_add_routes(index, service->nameservers, gw);
 	}
 }
 
@@ -608,15 +675,10 @@ void __connman_service_nameserver_del_routes(struct connman_service *service)
 
 	index = connman_network_get_index(service->network);
 
-	if (service->nameservers != NULL) {
-		int i;
-
-		for (i = 0; service->nameservers[i]; i++)
-			connman_inet_del_host_route(index,
-						service->nameservers[i]);
-	} else if (service->nameserver != NULL) {
-		connman_inet_del_host_route(index, service->nameserver);
-	}
+	if (service->nameservers_config != NULL)
+		nameserver_del_routes(index, service->nameservers_config);
+	else if (service->nameservers != NULL)
+		nameserver_del_routes(index, service->nameservers);
 }
 
 static struct connman_stats *stats_get(struct connman_service *service)
@@ -972,6 +1034,19 @@ static void append_ipv6config(DBusMessageIter *iter, void *user_data)
 							iter);
 }
 
+static void append_nameserver(DBusMessageIter *iter, char ***nameservers)
+{
+	char **servers;
+	int i;
+
+	servers = *nameservers;
+
+	for (i = 0; servers[i] != NULL; i++) {
+		dbus_message_iter_append_basic(iter,
+					DBUS_TYPE_STRING, &servers[i]);
+	}
+}
+
 static void append_dns(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -979,21 +1054,13 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 	if (is_connected(service) == FALSE)
 		return;
 
-	if (service->nameservers != NULL) {
-		int i;
-
-		for (i = 0; service->nameservers[i]; i++)
-			dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &service->nameservers[i]);
-
+	if (service->nameservers_config != NULL) {
+		append_nameserver(iter, &service->nameservers_config);
+		return;
+	} else if (service->nameservers != NULL) {
+		append_nameserver(iter, &service->nameservers);
 		return;
 	}
-
-	if (service->nameserver == NULL)
-		return;
-
-	dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &service->nameserver);
 }
 
 static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
@@ -1001,12 +1068,14 @@ static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
 	struct connman_service *service = user_data;
 	int i;
 
-	if (service->nameservers == NULL)
+	if (service->nameservers_config == NULL)
 		return;
 
-	for (i = 0; service->nameservers[i]; i++)
+	for (i = 0; service->nameservers_config[i]; i++) {
 		dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &service->nameservers[i]);
+				DBUS_TYPE_STRING,
+				&service->nameservers_config[i]);
+	}
 }
 
 static void append_domain(DBusMessageIter *iter, void *user_data)
@@ -1703,12 +1772,17 @@ const char *connman_service_get_domainname(struct connman_service *service)
 		return service->domainname;
 }
 
-const char *connman_service_get_nameserver(struct connman_service *service)
+char **connman_service_get_nameservers(struct connman_service *service)
 {
 	if (service == NULL)
 		return NULL;
 
-	return service->nameserver;
+	if (service->nameservers_config != NULL)
+		return service->nameservers_config;
+	else if (service->nameservers != NULL)
+		return service->nameservers;
+
+	return NULL;
 }
 
 void connman_service_set_proxy_method(struct connman_service *service,
@@ -2204,12 +2278,14 @@ static DBusMessage *set_property(DBusConnection *conn,
 				g_string_append(str, val);
 		}
 
-		g_strfreev(service->nameservers);
+		g_strfreev(service->nameservers_config);
 
-		if (str->len > 0)
-			service->nameservers = g_strsplit_set(str->str, " ", 0);
-		else
-			service->nameservers = NULL;
+		if (str->len > 0) {
+			service->nameservers_config =
+				g_strsplit_set(str->str, " ", 0);
+		} else {
+			service->nameservers_config = NULL;
+		}
 
 		g_string_free(str, TRUE);
 
@@ -2848,11 +2924,11 @@ static void service_free(gpointer user_data)
 		connman_location_unref(service->location);
 
 	g_strfreev(service->nameservers);
+	g_strfreev(service->nameservers_config);
 	g_strfreev(service->domains);
 	g_strfreev(service->proxies);
 	g_strfreev(service->excludes);
 
-	g_free(service->nameserver);
 	g_free(service->domainname);
 	g_free(service->pac);
 	g_free(service->mcc);
@@ -4929,11 +5005,11 @@ static int service_load(struct connman_service *service)
 		__connman_ipconfig_load(service->ipconfig_ipv6, keyfile,
 					service->identifier, "IPv6.");
 
-	service->nameservers = g_key_file_get_string_list(keyfile,
+	service->nameservers_config = g_key_file_get_string_list(keyfile,
 			service->identifier, "Nameservers", &length, NULL);
-	if (service->nameservers != NULL && length == 0) {
-		g_strfreev(service->nameservers);
-		service->nameservers = NULL;
+	if (service->nameservers_config != NULL && length == 0) {
+		g_strfreev(service->nameservers_config);
+		service->nameservers_config = NULL;
 	}
 
 	service->domains = g_key_file_get_string_list(keyfile,
@@ -5111,12 +5187,12 @@ update:
 		__connman_ipconfig_save(service->ipconfig_ipv6, keyfile,
 						service->identifier, "IPv6.");
 
-	if (service->nameservers != NULL) {
-		guint len = g_strv_length(service->nameservers);
+	if (service->nameservers_config != NULL) {
+		guint len = g_strv_length(service->nameservers_config);
 
 		g_key_file_set_string_list(keyfile, service->identifier,
 								"Nameservers",
-				(const gchar **) service->nameservers, len);
+				(const gchar **) service->nameservers_config, len);
 	} else
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Nameservers", NULL);

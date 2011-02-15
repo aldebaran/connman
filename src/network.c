@@ -706,7 +706,7 @@ static void set_connected_manual(struct connman_network *network)
 	connman_element_get_value(&network->element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
 	if (nameserver != NULL)
-		__connman_service_append_nameserver(service, nameserver);
+		__connman_service_nameserver_append(service, nameserver);
 
 	__connman_ipconfig_set_gateway(ipconfig, &network->element);
 
@@ -790,7 +790,7 @@ static void autoconf_ipv6_set(struct connman_network *network,
 	connman_element_get_value(&network->element,
 			CONNMAN_PROPERTY_ID_IPV6_NAMESERVER, &nameserver);
 	if (nameserver != NULL)
-		__connman_service_append_nameserver(service, nameserver);
+		__connman_service_nameserver_append(service, nameserver);
 
 	network->connecting = FALSE;
 

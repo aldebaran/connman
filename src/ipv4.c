@@ -84,7 +84,7 @@ static int ipv4_probe(struct connman_element *element)
 		__connman_service_set_proxy_autoconfig(service, pac);
 
 	if (nameserver != NULL)
-		__connman_service_append_nameserver(service, nameserver);
+		__connman_service_nameserver_append(service, nameserver);
 
 	connman_timeserver_append(timeserver);
 
@@ -139,7 +139,7 @@ static void ipv4_remove(struct connman_element *element)
 		struct connman_service *service;
 
 		service = __connman_element_get_service(element);
-		__connman_service_remove_nameserver(service, nameserver);
+		__connman_service_nameserver_remove(service, nameserver);
 	}
 
 	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);

@@ -299,7 +299,7 @@ static void provider_set_nameservers(struct connman_provider *provider)
 	second_ns = strchr(value, ' ');
 	if (second_ns)
 		*(second_ns++) = 0;
-	__connman_service_append_nameserver(service, value);
+	__connman_service_nameserver_append(service, value);
 	value = second_ns;
 
 	while (value) {
