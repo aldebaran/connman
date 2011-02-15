@@ -225,6 +225,17 @@ unsigned int __connman_ipconfig_get_flags_from_index(int index);
 const char *__connman_ipconfig_get_gateway_from_index(int index);
 void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index);
 
+const char *__connman_ipconfig_get_local(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_local(struct connman_ipconfig *ipconfig, const char *address);
+const char *__connman_ipconfig_get_peer(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_peer(struct connman_ipconfig *ipconfig, const char *address);
+const char *__connman_ipconfig_get_broadcast(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_broadcast(struct connman_ipconfig *ipconfig, const char *broadcast);
+const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig, const char *gateway);
+unsigned char __connman_ipconfig_get_prefixlen(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_prefixlen(struct connman_ipconfig *ipconfig, unsigned char prefixlen);
+
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
 
@@ -250,7 +261,7 @@ void __connman_ipconfig_set_element_ipv6_gateway(
 			struct connman_ipconfig *ipconfig,
 				struct connman_element *element);
 
-int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
+int __connman_ipconfig_set_gateway_to_element(struct connman_ipconfig *ipconfig,
 					struct connman_element *parent);
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);

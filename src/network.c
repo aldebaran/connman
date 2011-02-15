@@ -708,7 +708,7 @@ static void set_connected_manual(struct connman_network *network)
 	if (nameserver != NULL)
 		__connman_service_nameserver_append(service, nameserver);
 
-	__connman_ipconfig_set_gateway(ipconfig, &network->element);
+	__connman_ipconfig_set_gateway_to_element(ipconfig, &network->element);
 
 	network->connecting = FALSE;
 
@@ -1088,7 +1088,7 @@ static int manual_ipv4_set(struct connman_network *network,
 		return err;
 	}
 
-	__connman_ipconfig_set_gateway(ipconfig, &network->element);
+	__connman_ipconfig_set_gateway_to_element(ipconfig, &network->element);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 					CONNMAN_IPCONFIG_TYPE_IPV4);

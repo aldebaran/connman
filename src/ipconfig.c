@@ -911,6 +911,90 @@ void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index)
 	ipconfig->index = index;
 }
 
+const char *__connman_ipconfig_get_local(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig->address == NULL)
+		return NULL;
+
+	return ipconfig->address->local;
+}
+
+void __connman_ipconfig_set_local(struct connman_ipconfig *ipconfig, const char *address)
+{
+	if (ipconfig->address == NULL)
+		return;
+
+	g_free(ipconfig->address->local);
+	ipconfig->address->local = g_strdup(address);
+}
+
+const char *__connman_ipconfig_get_peer(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig->address == NULL)
+		return NULL;
+
+	return ipconfig->address->peer;
+}
+
+void __connman_ipconfig_set_peer(struct connman_ipconfig *ipconfig, const char *address)
+{
+	if (ipconfig->address == NULL)
+		return;
+
+	g_free(ipconfig->address->peer);
+	ipconfig->address->peer = g_strdup(address);
+}
+
+const char *__connman_ipconfig_get_broadcast(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig->address == NULL)
+		return NULL;
+
+	return ipconfig->address->broadcast;
+}
+
+void __connman_ipconfig_set_broadcast(struct connman_ipconfig *ipconfig, const char *broadcast)
+{
+	if (ipconfig->address == NULL)
+		return;
+
+	g_free(ipconfig->address->broadcast);
+	ipconfig->address->broadcast = g_strdup(broadcast);
+}
+
+const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig->address == NULL)
+		return NULL;
+
+	return ipconfig->address->gateway;
+}
+
+void __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig, const char *gateway)
+{
+	if (ipconfig->address == NULL)
+		return;
+
+	g_free(ipconfig->address->gateway);
+	ipconfig->address->gateway = g_strdup(gateway);
+}
+
+unsigned char __connman_ipconfig_get_prefixlen(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig->address == NULL)
+		return 0;
+
+	return ipconfig->address->prefixlen;
+}
+
+void __connman_ipconfig_set_prefixlen(struct connman_ipconfig *ipconfig, unsigned char prefixlen)
+{
+	if (ipconfig->address == NULL)
+		return;
+
+	ipconfig->address->prefixlen = prefixlen;
+}
+
 static struct connman_ipconfig *create_ipv6config(int index)
 {
 	struct connman_ipconfig *ipv6config;
@@ -1160,7 +1244,7 @@ void __connman_ipconfig_set_element_ipv6_gateway(
  * FIXME: The element soulution should be removed in the future
  * Set IPv4 and IPv6 gateway
  */
-int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
+int __connman_ipconfig_set_gateway_to_element(struct connman_ipconfig *ipconfig,
 						struct connman_element *parent)
 {
 	struct connman_element *connection;
