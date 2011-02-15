@@ -39,12 +39,12 @@
 static int ipv4_probe(struct connman_element *element)
 {
 	struct connman_service *service;
-	struct connman_ipconfig *ipconfig;
-	struct connman_element *connection;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
 	const char *peer = NULL, *nameserver = NULL, *pac = NULL;
+	const char *domainname = NULL, *ipv4_gw = NULL, *ipv6_gw = NULL;
 	char *timeserver = NULL;
 	unsigned char prefixlen;
+	int err;
 
 	DBG("element %p name %s", element, element->name);
 	connman_element_get_value(element,
@@ -62,6 +62,14 @@ static int ipv4_probe(struct connman_element *element)
 			CONNMAN_PROPERTY_ID_IPV4_TIMESERVER, &timeserver);
 	connman_element_get_value(element,
 			CONNMAN_PROPERTY_ID_IPV4_PAC, &pac);
+
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_DOMAINNAME, &domainname);
+
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &ipv4_gw);
+	connman_element_get_value(element,
+			CONNMAN_PROPERTY_ID_IPV6_GATEWAY, &ipv6_gw);
 
 	DBG("address %s", address);
 	DBG("peer %s", peer);
@@ -88,25 +96,18 @@ static int ipv4_probe(struct connman_element *element)
 
 	connman_timeserver_append(timeserver);
 
-	connection = connman_element_create(NULL);
+	err = __connman_connection_gateway_add(service, ipv4_gw, ipv6_gw, peer);
+	if (err < 0)
+		return err;
 
-	connection->type    = CONNMAN_ELEMENT_TYPE_CONNECTION;
-	connection->index   = element->index;
-	connection->devname = connman_inet_ifname(element->index);
-
-	ipconfig = __connman_service_get_ip6config(service);
-	if (ipconfig != NULL)
-		__connman_ipconfig_set_element_ipv6_gateway(
-						ipconfig, connection);
-
-	if (connman_element_register(connection, element) < 0)
-		connman_element_unref(connection);
+	__connman_service_set_domainname(service, domainname);
 
 	return 0;
 }
 
 static void ipv4_remove(struct connman_element *element)
 {
+	struct connman_service *service;
 	const char *address = NULL, *netmask = NULL, *broadcast = NULL;
 	const char *peer = NULL, *nameserver = NULL;
 	char *timeserver = NULL;
@@ -135,12 +136,14 @@ static void ipv4_remove(struct connman_element *element)
 	DBG("netmask %s", netmask);
 	DBG("broadcast %s", broadcast);
 
-	if (nameserver != NULL) {
-		struct connman_service *service;
+	service = __connman_element_get_service(element);
 
-		service = __connman_element_get_service(element);
+	__connman_service_set_domainname(service, NULL);
+
+	__connman_connection_gateway_remove(service);
+
+	if (nameserver != NULL)
 		__connman_service_nameserver_remove(service, nameserver);
-	}
 
 	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 

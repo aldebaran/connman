@@ -261,8 +261,6 @@ void __connman_ipconfig_set_element_ipv6_gateway(
 			struct connman_ipconfig *ipconfig,
 				struct connman_element *element);
 
-int __connman_ipconfig_set_gateway_to_element(struct connman_ipconfig *ipconfig,
-					struct connman_element *parent);
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
 unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask);
@@ -294,6 +292,12 @@ void __connman_ipv4_cleanup(void);
 
 int __connman_connection_init(void);
 void __connman_connection_cleanup(void);
+
+int __connman_connection_gateway_add(struct connman_service *service,
+					const char *ipv4_gateway,
+					const char *ipv6_gateway,
+					const char *peer);
+void __connman_connection_gateway_remove(struct connman_service *service);
 
 gboolean __connman_connection_update_gateway(void);
 

@@ -641,12 +641,15 @@ static void nameserver_del_routes(int index, char **nameservers)
 void __connman_service_nameserver_add_routes(struct connman_service *service,
 						const char *gw)
 {
-	int index;
+	int index = -1;
 
 	if (service == NULL)
 		return;
 
-	index = connman_network_get_index(service->network);
+	if (service->network != NULL)
+		index = connman_network_get_index(service->network);
+	else if (service->provider != NULL)
+		index = connman_provider_get_index(service->provider);
 
 	if (service->nameservers_config != NULL) {
 		/*
@@ -668,12 +671,15 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 
 void __connman_service_nameserver_del_routes(struct connman_service *service)
 {
-	int index;
+	int index = -1;
 
 	if (service == NULL)
 		return;
 
-	index = connman_network_get_index(service->network);
+	if (service->network != NULL)
+		index = connman_network_get_index(service->network);
+	else if (service->provider != NULL)
+		index = connman_provider_get_index(service->provider);
 
 	if (service->nameservers_config != NULL)
 		nameserver_del_routes(index, service->nameservers_config);
@@ -1743,10 +1749,12 @@ int __connman_service_get_index(struct connman_service *service)
 	if (service == NULL)
 		return -1;
 
-	if (service->network == NULL)
-		return -1;
+	if (service->network != NULL)
+		return connman_network_get_index(service->network);
+	else if (service->provider != NULL)
+		return connman_provider_get_index(service->provider);
 
-	return connman_network_get_index(service->network);
+	return -1;
 }
 
 void __connman_service_set_domainname(struct connman_service *service,

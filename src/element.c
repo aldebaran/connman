@@ -66,8 +66,6 @@ static const char *type2string(enum connman_element_type type)
 		return "bootp";
 	case CONNMAN_ELEMENT_TYPE_ZEROCONF:
 		return "zeroconf";
-	case CONNMAN_ELEMENT_TYPE_CONNECTION:
-		return "connection";
 	case CONNMAN_ELEMENT_TYPE_VENDOR:
 		return "vendor";
 	}
@@ -196,8 +194,11 @@ struct connman_service *__connman_element_get_service(struct connman_element *el
 	enum connman_device_type type;
 
 	device = __connman_element_get_device(element);
-	if (device == NULL)
-		return NULL;
+	if (device == NULL) {
+		/* Workaround for the connection removal. */
+		service = __connman_service_lookup_from_index(element->index);
+		return service;
+	}
 
 	type = connman_device_get_type(device);
 
@@ -1397,7 +1398,6 @@ void __connman_element_start(void)
 
 	__connman_rtnl_start();
 
-	__connman_connection_init();
 	__connman_ipv4_init();
 	__connman_dhcp_init();
 	__connman_wpad_init();
@@ -1417,7 +1417,6 @@ void __connman_element_stop(void)
 	__connman_dhcp_cleanup();
 	__connman_ipv4_cleanup();
 	__connman_provider_cleanup();
-	__connman_connection_cleanup();
 }
 
 static gboolean free_driver(GNode *node, gpointer data)

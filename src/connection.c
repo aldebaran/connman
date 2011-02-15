@@ -3,6 +3,7 @@
  *  Connection Manager
  *
  *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2011  BMW Car IT GmbH. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -32,9 +33,9 @@
 
 struct gateway_data {
 	int index;
+	struct connman_service *service;
 	char *ipv4_gateway;
 	char *ipv6_gateway;
-	struct connman_element *element;
 	unsigned int order;
 	gboolean active;
 	/* VPN extra data */
@@ -43,17 +44,20 @@ struct gateway_data {
 	int vpn_phy_index;
 };
 
-static GSList *gateway_list = NULL;
+static GHashTable *gateway_hash = NULL;
 
 static struct gateway_data *find_gateway(int index, const char *gateway)
 {
-	GSList *list;
+	GHashTableIter iter;
+	gpointer value, key;
 
 	if (gateway == NULL)
 		return NULL;
 
-	for (list = gateway_list; list; list = list->next) {
-		struct gateway_data *data = list->data;
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
 
 		if (data->ipv4_gateway == NULL)
 			continue;
@@ -88,31 +92,13 @@ static int del_routes(struct gateway_data *data)
 	}
 }
 
-static void find_element(struct connman_element *element, gpointer user_data)
-{
-	struct gateway_data *data = user_data;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (data->element != NULL)
-		return;
-
-	if (element->index != data->index)
-		return;
-
-	data->element = element;
-}
-
-static struct gateway_data *add_gateway(int index, const char *gateway,
-						const char *ipv6_gateway)
+static struct gateway_data *add_gateway(struct connman_service *service,
+					int index, const char *ipv4_gateway,
+					const char *ipv6_gateway)
 {
 	struct gateway_data *data;
-	struct connman_service *service;
 
-	DBG("index %d ipv4 gateway %s ipv6 gateway %s", index, gateway,
-							ipv6_gateway);
-
-	if (strlen(gateway) == 0)
+	if (strlen(ipv4_gateway) == 0)
 		return NULL;
 
 	data = g_try_new0(struct gateway_data, 1);
@@ -120,21 +106,17 @@ static struct gateway_data *add_gateway(int index, const char *gateway,
 		return NULL;
 
 	data->index = index;
-	data->ipv4_gateway = g_strdup(gateway);
+	data->ipv4_gateway = g_strdup(ipv4_gateway);
 	data->ipv6_gateway = g_strdup(ipv6_gateway);
 	data->active = FALSE;
-	data->element = NULL;
 	data->vpn_ip = NULL;
 	data->vpn = FALSE;
 	data->vpn_phy_index = -1;
+	data->service = service;
 
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_CONNECTION,
-							find_element, data);
-
-	service = __connman_element_get_service(data->element);
 	data->order = __connman_service_get_order(service);
 
-	gateway_list = g_slist_append(gateway_list, data);
+	g_hash_table_replace(gateway_hash, service, data);
 
 	return data;
 }
@@ -154,49 +136,47 @@ static void connection_newgateway(int index, const char *gateway)
 
 static void set_default_gateway(struct gateway_data *data)
 {
-	struct connman_element *element = data->element;
-	struct connman_service *service = NULL;
+	int index;
 
 	DBG("gateway %s", data->ipv4_gateway);
 
 	if (data->vpn == TRUE) {
-		connman_inet_set_gateway_address(data->index, data->vpn_ip);
+		connman_inet_set_gateway_address(data->index,
+							data->vpn_ip);
 		data->active = TRUE;
 
-		service = __connman_service_lookup_from_index(data->index);
-		if (service == NULL)
-			return;
-
-		__connman_service_indicate_default(service);
+		__connman_service_indicate_default(data->service);
 
 		return;
 	}
 
+	index = __connman_service_get_index(data->service);
+
 	if (g_strcmp0(data->ipv4_gateway, "0.0.0.0") == 0) {
-		if (connman_inet_set_gateway_interface(element->index) < 0)
+		if (connman_inet_set_gateway_interface(index) < 0)
 			return;
 		goto done;
 	}
 
-	connman_inet_set_ipv6_gateway_address(element->index,
-						data->ipv6_gateway);
-	if (connman_inet_set_gateway_address(element->index,
-					data->ipv4_gateway) < 0)
+	connman_inet_set_ipv6_gateway_address(index, data->ipv6_gateway);
+	if (connman_inet_set_gateway_address(index, data->ipv4_gateway) < 0)
 		return;
 
 done:
-	service = __connman_element_get_service(element);
-	__connman_service_indicate_default(service);
+	__connman_service_indicate_default(data->service);
 }
 
 static struct gateway_data *find_default_gateway(void)
 {
 	struct gateway_data *found = NULL;
 	unsigned int order = 0;
-	GSList *list;
+	GHashTableIter iter;
+	gpointer value, key;
 
-	for (list = gateway_list; list; list = list->next) {
-		struct gateway_data *data = list->data;
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
 
 		if (found == NULL || data->order > order) {
 			found = data;
@@ -207,25 +187,24 @@ static struct gateway_data *find_default_gateway(void)
 	return found;
 }
 
-static int remove_gateway(struct gateway_data *data)
+static int disable_gateway(struct gateway_data *data)
 {
-	int err;
+	if (data->active == TRUE)
+		return del_routes(data);
+
+	return 0;
+}
+
+static void remove_gateway(gpointer user_data)
+{
+	struct gateway_data *data = user_data;
 
 	DBG("gateway %s", data->ipv4_gateway);
-
-	gateway_list = g_slist_remove(gateway_list, data);
-
-	if (data->active == TRUE)
-		err = del_routes(data);
-	else
-		err = 0;
 
 	g_free(data->ipv4_gateway);
 	g_free(data->ipv6_gateway);
 	g_free(data->vpn_ip);
 	g_free(data);
-
-	return err;
 }
 
 static void connection_delgateway(int index, const char *gateway)
@@ -251,12 +230,15 @@ static struct connman_rtnl connection_rtnl = {
 
 static struct gateway_data *find_active_gateway(void)
 {
-	GSList *list;
+	GHashTableIter iter;
+	gpointer value, key;
 
 	DBG("");
 
-	for (list = gateway_list; list; list = list->next) {
-		struct gateway_data *data = list->data;
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
 
 		if (data->active == TRUE)
 			return data;
@@ -265,85 +247,80 @@ static struct gateway_data *find_active_gateway(void)
 	return NULL;
 }
 
-static int connection_probe(struct connman_element *element)
+static void update_order(void)
 {
-	struct connman_service *service = NULL;
-	const char *gateway = NULL, *ipv6_gateway = NULL;
-	const char *vpn_ip = NULL;
-	const char *domainname = NULL;
+	GHashTableIter iter;
+	gpointer value, key;
+
+	DBG("");
+
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
+
+		data->order = __connman_service_get_order(data->service);
+	}
+}
+
+int __connman_connection_gateway_add(struct connman_service *service,
+					const char *ipv4_gateway,
+					const char *ipv6_gateway,
+					const char *peer)
+{
 	struct gateway_data *active_gateway = NULL;
 	struct gateway_data *new_gateway = NULL;
+	int index;
 
-	DBG("element %p name %s", element, element->name);
+	index = __connman_service_get_index(service);
 
-	if (element->parent == NULL)
-		return -ENODEV;
-
-	/* FIXME: Remove temporarily for the static gateway support */
-	/* if (element->parent->type != CONNMAN_ELEMENT_TYPE_IPV4)
-		return -ENODEV; */
-
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-	connman_element_get_value(element,
-			CONNMAN_PROPERTY_ID_IPV6_GATEWAY, &ipv6_gateway);
-
-	connman_element_get_value(element,
-			CONNMAN_PROPERTY_ID_IPV4_PEER, &vpn_ip);
-
-	if (vpn_ip == NULL)
-		connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_ADDRESS, &vpn_ip);
-
-	DBG("vpn_ip %s", vpn_ip);
-
-	connman_element_get_value(element,
-			CONNMAN_PROPERTY_ID_DOMAINNAME, &domainname);
-
-	DBG("ipv4 gateway %s ipv6 gateway %s domainname %s",
-				gateway, ipv6_gateway, domainname);
+	DBG("service %p index %d ipv4 gateway %s ipv6 gateway %s vpn ip %s",
+		service, index, ipv4_gateway, ipv6_gateway, peer);
 
 	/*
 	 * If gateway is NULL, it's a point to point link and the default
 	 * gateway is 0.0.0.0, meaning the interface.
 	 */
-	if (gateway == NULL) {
-		gateway = "0.0.0.0";
-		element->ipv4.gateway = g_strdup(gateway);
-	}
-
-	connman_element_set_enabled(element, TRUE);
+	if (ipv4_gateway == NULL)
+		ipv4_gateway = "0.0.0.0";
 
 	active_gateway = find_active_gateway();
-	new_gateway = add_gateway(element->index, gateway, ipv6_gateway);
+	new_gateway = add_gateway(service, index, ipv4_gateway, ipv6_gateway);
 	if (new_gateway == NULL)
 		return 0;
 
-	service = __connman_element_get_service(element);
+	if (new_gateway->ipv6_gateway) {
+		connman_inet_add_ipv6_host_route(index,
+						new_gateway->ipv6_gateway,
+						NULL);
+	}
 
-	if (new_gateway->ipv6_gateway)
-		connman_inet_add_ipv6_host_route(element->index,
-					new_gateway->ipv6_gateway, NULL);
+	if (g_strcmp0(new_gateway->ipv4_gateway, "0.0.0.0") != 0) {
+		connman_inet_add_host_route(index,
+						new_gateway->ipv4_gateway,
+						NULL);
+	}
 
-	if (g_strcmp0(new_gateway->ipv4_gateway, "0.0.0.0"))
-		connman_inet_add_host_route(element->index,
-					new_gateway->ipv4_gateway, NULL);
 	__connman_service_nameserver_add_routes(service,
 						new_gateway->ipv4_gateway);
-	__connman_service_set_domainname(service, domainname);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 
-	if (service == NULL) {
+	if (connman_service_get_type(service) == CONNMAN_SERVICE_TYPE_VPN) {
 		new_gateway->vpn = TRUE;
-		new_gateway->vpn_ip = g_strdup(vpn_ip);
-		/* make sure vpn gateway are at higher priority */
-		new_gateway->order = 10;
+		if (peer != NULL)
+			new_gateway->vpn_ip = g_strdup(peer);
+		else if (ipv4_gateway != NULL)
+			new_gateway->vpn_ip = g_strdup(ipv4_gateway);
+		else
+			new_gateway->vpn_ip = g_strdup(ipv6_gateway);
+
 		if (active_gateway)
 			new_gateway->vpn_phy_index = active_gateway->index;
-	} else
+	} else {
 		new_gateway->vpn = FALSE;
+	}
 
 	if (active_gateway == NULL) {
 		set_default_gateway(new_gateway);
@@ -354,52 +331,42 @@ static int connection_probe(struct connman_element *element)
 		connman_inet_add_host_route(active_gateway->index,
 						new_gateway->ipv4_gateway,
 						active_gateway->ipv4_gateway);
-	}
-
-	if (new_gateway->order >= active_gateway->order) {
-		del_routes(active_gateway);
-		return 0;
+		connman_inet_clear_gateway_address(active_gateway->index,
+						active_gateway->ipv4_gateway);
 	}
 
 	return 0;
 }
 
-static void connection_remove(struct connman_element *element)
+void __connman_connection_gateway_remove(struct connman_service *service)
 {
-	struct connman_service *service;
-	const char *gateway = NULL;
 	struct gateway_data *data = NULL;
 	gboolean set_default = FALSE;
 	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("service %p", service);
 
-	service = __connman_element_get_service(element);
 	__connman_service_nameserver_del_routes(service);
+
 	__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-	connman_element_set_enabled(element, FALSE);
-
-	connman_element_get_value(element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-
-	DBG("gateway %s", gateway);
-
-	if (gateway == NULL)
-		return;
-
-	data = find_gateway(element->index, gateway);
+	data = g_hash_table_lookup(gateway_hash, service);
 	if (data == NULL)
 		return;
 
 	set_default = data->vpn;
 
-	if (data->vpn == TRUE && data->vpn_phy_index >= 0)
-		connman_inet_del_host_route(data->vpn_phy_index,
+	if (data->vpn == TRUE && data->index >= 0) {
+		connman_inet_del_host_route(data->index,
 						data->ipv4_gateway);
-	err = remove_gateway(data);
+	}
+
+	__connman_service_nameserver_del_routes(service);
+
+	err = disable_gateway(data);
+	g_hash_table_remove(gateway_hash, service);
 
 	/* with vpn this will be called after the network was deleted,
 	 * we need to call set_default here because we will not recieve any
@@ -410,68 +377,6 @@ static void connection_remove(struct connman_element *element)
 		data = find_default_gateway();
 		if (data != NULL)
 			set_default_gateway(data);
-	}
-
-	connman_element_unref(element);
-}
-
-static struct connman_driver connection_driver = {
-	.name		= "connection",
-	.type		= CONNMAN_ELEMENT_TYPE_CONNECTION,
-	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
-	.probe		= connection_probe,
-	.remove		= connection_remove,
-};
-
-int __connman_connection_init(void)
-{
-	DBG("");
-
-	if (connman_rtnl_register(&connection_rtnl) < 0)
-		connman_error("Failed to setup RTNL gateway driver");
-
-	return connman_driver_register(&connection_driver);
-}
-
-void __connman_connection_cleanup(void)
-{
-	GSList *list;
-
-	DBG("");
-
-	connman_driver_unregister(&connection_driver);
-
-	connman_rtnl_unregister(&connection_rtnl);
-
-	for (list = gateway_list; list; list = list->next) {
-		struct gateway_data *data = list->data;
-
-		DBG("index %d gateway %s", data->index, data->ipv4_gateway);
-
-		g_free(data->ipv4_gateway);
-		g_free(data);
-		list->data = NULL;
-	}
-
-	g_slist_free(gateway_list);
-	gateway_list = NULL;
-}
-
-static void update_order(void)
-{
-	GSList *list = NULL;
-
-	for (list = gateway_list; list; list = list->next) {
-		struct gateway_data *data = list->data;
-		struct connman_service *service;
-		int index = data->index;
-
-		if (data->vpn)
-			service = __connman_service_lookup_from_index(index);
-		else
-			service = __connman_element_get_service(data->element);
-
-		data->order = __connman_service_get_order(service);
 	}
 }
 
@@ -485,10 +390,45 @@ gboolean __connman_connection_update_gateway(void)
 	active_gateway = find_active_gateway();
 	default_gateway = find_default_gateway();
 
-	if (active_gateway && active_gateway != default_gateway) {
-		del_routes(active_gateway);
+	if (active_gateway && active_gateway != default_gateway)
 		updated = TRUE;
-	}
 
 	return updated;
+}
+
+int __connman_connection_init(void)
+{
+	int err;
+
+	DBG("");
+
+	gateway_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+							NULL, remove_gateway);
+
+	err = connman_rtnl_register(&connection_rtnl);
+	if (err < 0)
+		connman_error("Failed to setup RTNL gateway driver");
+
+	return err;
+}
+
+void __connman_connection_cleanup(void)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+
+	DBG("");
+
+	connman_rtnl_unregister(&connection_rtnl);
+
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
+
+		disable_gateway(data);
+	}
+
+	g_hash_table_destroy(gateway_hash);
+	gateway_hash = NULL;
 }

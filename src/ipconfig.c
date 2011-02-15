@@ -972,11 +972,31 @@ const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig)
 
 void __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig, const char *gateway)
 {
+	struct connman_service *service;
+
 	if (ipconfig->address == NULL)
 		return;
 
+	service = __connman_service_lookup_from_index(ipconfig->index);
+	if (service != NULL)
+		__connman_connection_gateway_remove(service);
+
 	g_free(ipconfig->address->gateway);
 	ipconfig->address->gateway = g_strdup(gateway);
+
+	if (service != NULL && ipconfig->address->gateway != NULL) {
+		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+			__connman_connection_gateway_add(service,
+						NULL,
+						ipconfig->address->gateway,
+						ipconfig->address->peer);
+		} else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+			__connman_connection_gateway_add(service,
+						ipconfig->address->gateway,
+						NULL,
+						ipconfig->address->peer);
+		}
+	}
 }
 
 unsigned char __connman_ipconfig_get_prefixlen(struct connman_ipconfig *ipconfig)
@@ -1238,33 +1258,6 @@ void __connman_ipconfig_set_element_ipv6_gateway(
 {
 	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
 		element->ipv6.gateway = ipconfig->address->gateway;
-}
-
-/*
- * FIXME: The element soulution should be removed in the future
- * Set IPv4 and IPv6 gateway
- */
-int __connman_ipconfig_set_gateway_to_element(struct connman_ipconfig *ipconfig,
-						struct connman_element *parent)
-{
-	struct connman_element *connection;
-
-	connection = connman_element_create(NULL);
-
-	DBG("ipconfig %p", ipconfig);
-
-	connection->type  = CONNMAN_ELEMENT_TYPE_CONNECTION;
-	connection->index = ipconfig->index;
-
-	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		connection->ipv4.gateway = ipconfig->address->gateway;
-	else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		connection->ipv6.gateway = ipconfig->address->gateway;
-
-	if (connman_element_register(connection, parent) < 0)
-		connman_element_unref(connection);
-
-	return 0;
 }
 
 int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)

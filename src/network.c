@@ -686,6 +686,7 @@ static void set_connected_manual(struct connman_network *network)
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
 	const char *nameserver = NULL;
+	const char *gateway;
 	int err;
 
 	DBG("network %p", network);
@@ -708,7 +709,10 @@ static void set_connected_manual(struct connman_network *network)
 	if (nameserver != NULL)
 		__connman_service_nameserver_append(service, nameserver);
 
-	__connman_ipconfig_set_gateway_to_element(ipconfig, &network->element);
+	connman_element_get_value(&network->element,
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+	if (gateway != NULL)
+		__connman_ipconfig_set_gateway(ipconfig, gateway);
 
 	network->connecting = FALSE;
 
@@ -1062,8 +1066,6 @@ static int dhcp_start(struct connman_network *network)
 static int dhcp_stop(struct connman_network *network)
 {
 	connman_element_unregister_children_type(&network->element,
-					CONNMAN_ELEMENT_TYPE_CONNECTION);
-	connman_element_unregister_children_type(&network->element,
 						CONNMAN_ELEMENT_TYPE_IPV4);
 	connman_element_unregister_children_type(&network->element,
 						CONNMAN_ELEMENT_TYPE_DHCP);
@@ -1075,6 +1077,7 @@ static int manual_ipv4_set(struct connman_network *network,
 				struct connman_ipconfig *ipconfig)
 {
 	struct connman_service *service;
+	const char *gateway;
 	int err;
 
 	service = __connman_service_lookup_from_network(network);
@@ -1088,7 +1091,10 @@ static int manual_ipv4_set(struct connman_network *network,
 		return err;
 	}
 
-	__connman_ipconfig_set_gateway_to_element(ipconfig, &network->element);
+	connman_element_get_value(&network->element,
+				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
+	if (gateway != NULL)
+		__connman_ipconfig_set_gateway(ipconfig, gateway);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
@@ -1117,8 +1123,6 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return -EINVAL;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		connman_element_unregister_children_type(&network->element,
-					CONNMAN_ELEMENT_TYPE_CONNECTION);
 		__connman_ipconfig_clear_address(ipconfig);
 		break;
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
