@@ -188,6 +188,7 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 int __connman_device_enable(struct connman_device *device)
 {
 	int err;
+	enum connman_service_type type;
 
 	DBG("device %p %d", device, device->blocked);
 
@@ -220,7 +221,8 @@ int __connman_device_enable(struct connman_device *device)
 	if (__connman_profile_get_offlinemode() == TRUE)
 		__connman_profile_set_offlinemode(FALSE, FALSE);
 
-	__connman_technology_enable_device(device);
+	type = __connman_device_get_service_type(device);
+	__connman_technology_enable(type);
 
 	return 0;
 }
@@ -228,6 +230,7 @@ int __connman_device_enable(struct connman_device *device)
 int __connman_device_disable(struct connman_device *device)
 {
 	int err;
+	enum connman_service_type type;
 
 	DBG("device %p", device);
 
@@ -258,7 +261,8 @@ int __connman_device_disable(struct connman_device *device)
 	device->powered_pending = FALSE;
 	device->powered = FALSE;
 
-	__connman_technology_disable_device(device);
+	type = __connman_device_get_service_type(device);
+	__connman_technology_disable(type);
 
 	return 0;
 }
@@ -636,6 +640,7 @@ int connman_device_set_powered(struct connman_device *device,
 						connman_bool_t powered)
 {
 	int err;
+	enum connman_service_type type;
 
 	DBG("driver %p powered %d", device, powered);
 
@@ -655,10 +660,12 @@ int connman_device_set_powered(struct connman_device *device,
 	device->powered = powered;
 	device->powered_pending = powered;
 
+	type = __connman_device_get_service_type(device);
+
 	if (device->powered == TRUE)
-		__connman_technology_enable_device(device);
+		__connman_technology_enable(type);
 	else
-		__connman_technology_disable_device(device);
+		__connman_technology_disable(type);
 
 	if (device->offlinemode == TRUE && powered == TRUE)
 		return connman_device_set_powered(device, FALSE);

@@ -674,21 +674,17 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
-int __connman_technology_enable_device(struct connman_device *device)
+int __connman_technology_enable(enum connman_service_type type)
 {
 	struct connman_technology *technology;
-	enum connman_service_type type;
 
-	DBG("device %p", device);
-
-	technology = g_hash_table_lookup(device_table, device);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
 	if (g_atomic_int_get(&technology->blocked))
 		return -ERFKILL;
 
-	type = __connman_device_get_service_type(device);
 	__connman_notifier_enable(type);
 
 	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
@@ -699,22 +695,18 @@ int __connman_technology_enable_device(struct connman_device *device)
 	return 0;
 }
 
-int __connman_technology_disable_device(struct connman_device *device)
+int __connman_technology_disable(enum connman_service_type type)
 {
 	struct connman_technology *technology;
-	enum connman_service_type type;
 	GSList *list;
 
-	DBG("device %p", device);
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_disable(type);
-
-	technology = g_hash_table_lookup(device_table, device);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
 	if (g_atomic_int_dec_and_test(&technology->enabled) == TRUE) {
+		__connman_notifier_disable(type);
+
 		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
 		state_changed(technology);
 	}
