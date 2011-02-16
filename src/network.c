@@ -772,8 +772,7 @@ static int manual_ipv6_set(struct connman_network *network,
 	return 0;
 }
 
-static void autoconf_ipv6_set(struct connman_network *network,
-				struct connman_ipconfig *ipconfig_ipv6)
+static void autoconf_ipv6_set(struct connman_network *network)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
@@ -832,7 +831,7 @@ static gboolean set_connected(gpointer user_data)
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 			break;
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
-			autoconf_ipv6_set(network, ipconfig_ipv6);
+			autoconf_ipv6_set(network);
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -1157,7 +1156,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 			break;
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
-			autoconf_ipv6_set(network, ipconfig_ipv6);
+			autoconf_ipv6_set(network);
 			break;
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
