@@ -452,25 +452,6 @@ static int set_network_active(struct connman_network *network,
 	return error;
 }
 
-static void set_apn(struct connman_network *network)
-{
-	const char *apn, *path;
-
-	apn = connman_network_get_string(network, "Cellular.APN");
-	if (apn == NULL)
-		return;
-
-	path = connman_network_get_string(network, "Path");
-	if (path == NULL)
-		return;
-
-	DBG("path %s, apn %s", path, apn);
-
-	set_property(path, OFONO_CONTEXT_INTERFACE,
-			"AccessPointName", DBUS_TYPE_STRING, &apn,
-			NULL, NULL, NULL);
-}
-
 static int network_connect(struct connman_network *network)
 {
 	struct connman_device *device;
@@ -520,14 +501,6 @@ static void network_remove(struct connman_network *network)
 	g_hash_table_remove(network_hash, path);
 }
 
-static int network_setup(struct connman_network *network, const char *key)
-{
-	if (g_strcmp0(key, "Cellular.APN") == 0)
-		set_apn(network);
-
-	return 0;
-}
-
 static struct connman_network_driver network_driver = {
 	.name		= "network",
 	.type		= CONNMAN_NETWORK_TYPE_CELLULAR,
@@ -535,7 +508,6 @@ static struct connman_network_driver network_driver = {
 	.remove		= network_remove,
 	.connect	= network_connect,
 	.disconnect	= network_disconnect,
-	.setup		= network_setup,
 };
 
 static void update_settings(DBusMessageIter *array,
@@ -615,12 +587,6 @@ static int add_network(struct connman_device *device,
 				DBG("path %p type %s", path, type);
 				goto error;
 			}
-		} else if (g_str_equal(key, "AccessPointName")) {
-			const char *ap;
-
-			dbus_message_iter_get_basic(&value, &ap);
-
-			connman_network_set_string(network, "Cellular.APN", ap);
 		} else if (g_str_equal(key, "Settings"))
 			update_settings(&value, network);
 		else if (g_str_equal(key, "Active") == TRUE)

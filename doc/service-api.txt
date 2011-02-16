@@ -259,15 +259,6 @@ Properties	string State [readonly]
 			In most cases it is required to fill in the APN
 			details.
 
-		string APN [readwrite]
-
-			If the service is Cellular, then this property
-			contains the APN details.
-
-			The APN is network provider specific and even
-			sometimes data plan specific. Possible examples
-			are "isp.cingular" or "internet.t-mobile".
-
 		boolean Roaming [readonly]
 
 			This property indicates if this service is roaming.
