@@ -73,8 +73,6 @@ struct connman_service {
 	char *name;
 	char *passphrase;
 	char *profile;
-	char *mcc;
-	char *mnc;
 	connman_bool_t roaming;
 	connman_bool_t login_required;
 	struct connman_ipconfig *ipconfig_ipv4;
@@ -2814,8 +2812,6 @@ static void service_free(gpointer user_data)
 
 	g_free(service->domainname);
 	g_free(service->pac);
-	g_free(service->mcc);
-	g_free(service->mnc);
 	g_free(service->profile);
 	g_free(service->name);
 	g_free(service->passphrase);
@@ -4451,14 +4447,6 @@ static void update_from_network(struct connman_service *service,
 
 	str = connman_network_get_string(network, "WiFi.Security");
 	service->security = convert_wifi_security(str);
-
-	str = connman_network_get_string(network, "Cellular.MCC");
-	g_free(service->mcc);
-	service->mcc = g_strdup(str);
-
-	str = connman_network_get_string(network, "Cellular.MNC");
-	g_free(service->mnc);
-	service->mnc = g_strdup(str);
 
 	if (service->type == CONNMAN_SERVICE_TYPE_CELLULAR) {
 		connman_uint8_t value = connman_network_get_uint8(network,
