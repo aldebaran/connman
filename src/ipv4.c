@@ -94,13 +94,14 @@ static int ipv4_probe(struct connman_element *element)
 	if (nameserver != NULL)
 		__connman_service_nameserver_append(service, nameserver);
 
+	if (domainname != NULL)
+		__connman_service_set_domainname(service, domainname);
+
 	connman_timeserver_append(timeserver);
 
 	err = __connman_connection_gateway_add(service, ipv4_gw, ipv6_gw, peer);
 	if (err < 0)
 		return err;
-
-	__connman_service_set_domainname(service, domainname);
 
 	return 0;
 }
