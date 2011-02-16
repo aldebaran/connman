@@ -141,14 +141,18 @@ static void destroy_query(struct resolv_query *query)
 
 static void destroy_lookup(struct resolv_lookup *lookup)
 {
-	if (lookup->ipv4_query) {
-		g_queue_remove(lookup->resolv->query_queue, lookup->ipv4_query);
+	if (lookup->ipv4_query != NULL) {
+		g_queue_remove(lookup->resolv->query_queue,
+						lookup->ipv4_query);
 		destroy_query(lookup->ipv4_query);
 	}
-	if (lookup->ipv6_query) {
-		g_queue_remove(lookup->resolv->query_queue, lookup->ipv6_query);
+
+	if (lookup->ipv6_query != NULL) {
+		g_queue_remove(lookup->resolv->query_queue,
+						lookup->ipv6_query);
 		destroy_query(lookup->ipv6_query);
 	}
+
 	g_free(lookup->results);
 	g_free(lookup);
 }
@@ -168,7 +172,8 @@ static gboolean query_timeout(gpointer user_data)
 		lookup->ipv6_status = G_RESOLV_RESULT_STATUS_NO_RESPONSE;
 		lookup->ipv6_query = NULL;
 	}
-	if (!lookup->ipv4_query && !lookup->ipv4_query)
+
+	if (lookup->ipv4_query == NULL && lookup->ipv4_query == NULL)
 		sort_and_return_results(lookup);
 
 	destroy_query(query);
@@ -255,19 +260,22 @@ static gint compare_query_msgid(gconstpointer a, gconstpointer b)
 	return 0;
 }
 
-static void add_result(struct resolv_lookup *lookup, int family, const void *data)
+static void add_result(struct resolv_lookup *lookup, int family,
+							const void *data)
 {
 	int n = lookup->nr_results++;
 	lookup->results = g_realloc(lookup->results,
-				    sizeof(struct sort_result) * (n+1));
+					sizeof(struct sort_result) * (n + 1));
 
 	memset(&lookup->results[n], 0, sizeof(struct sort_result));
 
 	lookup->results[n].dst.sa.sa_family = family;
 	if (family == AF_INET)
-		memcpy(&lookup->results[n].dst.sin.sin_addr, data, NS_INADDRSZ);
+		memcpy(&lookup->results[n].dst.sin.sin_addr,
+						data, NS_INADDRSZ);
 	else
-		memcpy(&lookup->results[n].dst.sin6.sin6_addr, data, NS_IN6ADDRSZ);
+		memcpy(&lookup->results[n].dst.sin6.sin6_addr,
+						data, NS_IN6ADDRSZ);
 }
 
 static void parse_response(struct resolv_nameserver *nameserver,
@@ -339,18 +347,18 @@ static void parse_response(struct resolv_nameserver *nameserver,
 			continue;
 
 		g_assert(offsetof(struct sockaddr_in, sin_addr) ==
-			 offsetof(struct sockaddr_in6, sin6_flowinfo));
+				offsetof(struct sockaddr_in6, sin6_flowinfo));
 
 		if (ns_rr_type(rr) == ns_t_a &&
-		    ns_rr_rdlen(rr) == NS_INADDRSZ) {
+					ns_rr_rdlen(rr) == NS_INADDRSZ) {
 			add_result(lookup, AF_INET, ns_rr_rdata(rr));
 		} else if (ns_rr_type(rr) == ns_t_aaaa &&
-			   ns_rr_rdlen(rr) == NS_IN6ADDRSZ) {
+					ns_rr_rdlen(rr) == NS_IN6ADDRSZ) {
 			add_result(lookup, AF_INET6, ns_rr_rdata(rr));
 		}
 	}
 
-	if (!lookup->ipv4_query && !lookup->ipv6_query)
+	if (lookup->ipv4_query == NULL && lookup->ipv6_query == NULL)
 		sort_and_return_results(lookup);
 
 	destroy_query(query);
@@ -396,9 +404,11 @@ static int connect_udp_channel(struct resolv_nameserver *nameserver)
 	if (err)
 		return -EINVAL;
 
-	/* Do not blindly copy this code elsewhere; it doesn't loop over the
-	   results using ->ai_next as it should. That's OK in *this* case
-	   because it was a numeric lookup; we *know* there's only one. */
+	/*
+	 * Do not blindly copy this code elsewhere; it doesn't loop over the
+	 * results using ->ai_next as it should. That's OK in *this* case
+	 * because it was a numeric lookup; we *know* there's only one.
+	 */
 	if (!rp)
 		return -EINVAL;
 
@@ -425,8 +435,8 @@ static int connect_udp_channel(struct resolv_nameserver *nameserver)
 	g_io_channel_set_close_on_unref(nameserver->udp_channel, TRUE);
 
 	nameserver->udp_watch = g_io_add_watch(nameserver->udp_channel,
-			       G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-			       received_udp_data, nameserver);
+				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+				received_udp_data, nameserver);
 
 	return 0;
 }
@@ -500,8 +510,8 @@ void g_resolv_unref(GResolv *resolv)
 	g_free(resolv);
 }
 
-void g_resolv_set_debug(GResolv *resolv,
-                                GResolvDebugFunc func, gpointer user_data)
+void g_resolv_set_debug(GResolv *resolv, GResolvDebugFunc func,
+						gpointer user_data)
 {
 	if (resolv == NULL)
 		return;
@@ -563,21 +573,25 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 
 	for (i = 0; i < lookup->nr_results; i++) {
 		if (lookup->results[i].dst.sa.sa_family == AF_INET) {
-			if (!inet_ntop(AF_INET, &lookup->results[i].dst.sin.sin_addr,
-				       buf, sizeof(buf)))
+			if (inet_ntop(AF_INET,
+					&lookup->results[i].dst.sin.sin_addr,
+					buf, sizeof(buf)) == NULL)
 				continue;
 		} else if (lookup->results[i].dst.sa.sa_family == AF_INET6) {
-			if (!inet_ntop(AF_INET6, &lookup->results[i].dst.sin6.sin6_addr,
-				       buf, sizeof(buf)))
+			if (inet_ntop(AF_INET6,
+					&lookup->results[i].dst.sin6.sin6_addr,
+					buf, sizeof(buf)) == NULL)
 				continue;
 		} else
 			continue;
 
 		results[n++] = strdup(buf);
 	}
+
 	results[n++] = NULL;
 
 	status = lookup->ipv4_status;
+
 	if (status == G_RESOLV_RESULT_STATUS_SUCCESS)
 		status = lookup->ipv6_status;
 
@@ -638,10 +652,12 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 			int family = resolv->res.nsaddr_list[i].sin_family;
 			void *sa_addr = &resolv->res.nsaddr_list[i].sin_addr;
 
-			if (family != AF_INET && resolv->res._u._ext.nsaddrs[i]) {
+			if (family != AF_INET &&
+					resolv->res._u._ext.nsaddrs[i]) {
 				family = AF_INET6;
 				sa_addr = &resolv->res._u._ext.nsaddrs[i]->sin6_addr;
 			}
+
 			if (family != AF_INET && family != AF_INET6)
 				continue;
 
@@ -654,7 +670,7 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 	}
 
 	lookup = g_try_new0(struct resolv_lookup, 1);
-	if (!lookup)
+	if (lookup == NULL)
 		return 0;
 
 	lookup->resolv = resolv;
@@ -666,6 +682,7 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 		g_free(lookup);
 		return -EIO;
 	}
+
 	if (add_query(lookup, hostname, ns_t_aaaa)) {
 		destroy_query(lookup->ipv4_query);
 		g_queue_remove(resolv->query_queue, lookup->ipv4_query);
@@ -695,21 +712,23 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 
 static void find_srcaddr(struct sort_result *res)
 {
-	int fd;
 	socklen_t sl = sizeof(res->src);
+	int fd;
 
 	fd = socket(res->dst.sa.sa_family, SOCK_DGRAM, IPPROTO_IP);
 	if (fd < 0)
 		return;
 
-	if (connect(fd, &res->dst.sa, sizeof(res->dst))) {
+	if (connect(fd, &res->dst.sa, sizeof(res->dst)) < 0) {
 		close(fd);
 		return;
 	}
-	if (getsockname(fd, &res->src.sa, &sl)) {
+
+	if (getsockname(fd, &res->src.sa, &sl) < 0) {
 		close(fd);
 		return;
 	}
+
 	res->reachable = TRUE;
 	close(fd);
 }
@@ -799,7 +818,8 @@ static const struct gai_table gai_precedences[] = {
 static unsigned char v4mapped[] = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 				    0x00, 0x00, 0xff, 0xff, 0x00, 0x00, 0x00, 0x00 };
 
-static gboolean mask_compare(const unsigned char *one, const unsigned char *two, int mask)
+static gboolean mask_compare(const unsigned char *one,
+					const unsigned char *two, int mask)
 {
 	if (mask > 8) {
 		if (memcmp(one, two, mask / 8))
@@ -808,8 +828,9 @@ static gboolean mask_compare(const unsigned char *one, const unsigned char *two,
 		two += mask / 8;
 		mask %= 8;
 	}
-	if (mask && ((*one ^ *two) >> (8-mask)))
-	    return FALSE;
+
+	if (mask && ((*one ^ *two) >> (8 - mask)))
+		return FALSE;
 
 	return TRUE;
 }
@@ -847,13 +868,13 @@ static int addr_scope(struct sockaddr *sa)
 		guint32 addr = ntohl(sin->sin_addr.s_addr);
 
 		if (V4MATCH(addr, 169,254,0,0, 16) ||
-		    V4MATCH(addr, 127,0,0,0,   8))
+					V4MATCH(addr, 127,0,0,0, 8))
 			return RFC3484_SCOPE_LINK;
 
 		/* Site-local */
-		if (V4MATCH(addr, 10,0,0,0,    8) ||
-		    V4MATCH(addr, 172,16,0,0,  12) ||
-		    V4MATCH(addr, 192,168,0,0, 16))
+		if (V4MATCH(addr, 10,0,0,0, 8) ||
+				V4MATCH(addr, 172,16,0,0, 12) ||
+				V4MATCH(addr, 192,168,0,0, 16))
 			return RFC3484_SCOPE_SITE;
 
 		/* Global */
@@ -866,7 +887,7 @@ static int addr_scope(struct sockaddr *sa)
 			return sin6->sin6_addr.s6_addr[1] & 0xf;
 
 		if (IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr) ||
-		    IN6_IS_ADDR_LOOPBACK(&sin6->sin6_addr))
+				IN6_IS_ADDR_LOOPBACK(&sin6->sin6_addr))
 			return RFC3484_SCOPE_LINK;
 
 		if (IN6_IS_ADDR_SITELOCAL(&sin6->sin6_addr))
@@ -889,10 +910,10 @@ static int rfc3484_compare(const void *__one, const void *__two)
 
 	/* Rule 2: Prefer matching scope */
 	if (one->dst_scope == one->src_scope &&
-	    two->dst_scope != two->src_scope)
+				two->dst_scope != two->src_scope)
 		return -1;
 	else if (two->dst_scope == two->src_scope &&
-		 one->dst_scope != one->src_scope)
+				one->dst_scope != one->src_scope)
 		return 1;
 
 	/* Rule 3: Avoid deprecated addresses */
@@ -901,10 +922,10 @@ static int rfc3484_compare(const void *__one, const void *__two)
 
 	/* Rule 5: Prefer matching label */
 	if (one->dst_label == one->src_label &&
-	    two->dst_label != two->src_label)
+				two->dst_label != two->src_label)
 		return -1;
 	else if (two->dst_label == two->src_label &&
-		 one->dst_label != one->src_label)
+				one->dst_label != one->src_label)
 		return 1;
 
 	/* Rule 6: Prefer higher precedence */
@@ -921,10 +942,12 @@ static int rfc3484_compare(const void *__one, const void *__two)
 
 	/* Rule 9: Use longest matching prefix */
 	if (one->dst.sa.sa_family == AF_INET) {
-		/* Rule 9 is meaningless and counterproductive for Legacy IP
-		   unless perhaps we can tell that it's actually on the local
-		   subnet. But we don't (yet) have local interface config
-		   information, so do nothing here for Legacy IP for now. */
+		/*
+		 * Rule 9 is meaningless and counterproductive for Legacy IP
+		 * unless perhaps we can tell that it's actually on the local
+		 * subnet. But we don't (yet) have local interface config
+		 * information, so do nothing here for Legacy IP for now.
+		 */
 	} else {
 		int i;
 
@@ -932,9 +955,9 @@ static int rfc3484_compare(const void *__one, const void *__two)
 			guint32 cmp_one, cmp_two;
 
 			cmp_one = one->src.sin6.sin6_addr.s6_addr32[i] ^
-				one->dst.sin6.sin6_addr.s6_addr32[i];
+					one->dst.sin6.sin6_addr.s6_addr32[i];
 			cmp_two = two->src.sin6.sin6_addr.s6_addr32[i] ^
-				two->dst.sin6.sin6_addr.s6_addr32[i];
+					two->dst.sin6.sin6_addr.s6_addr32[i];
 
 			if (!cmp_two && !cmp_one)
 				continue;
@@ -970,13 +993,14 @@ static void rfc3484_sort_results(struct resolv_lookup *lookup)
 	for (i = 0; i < lookup->nr_results; i++) {
 		struct sort_result *res = &lookup->results[i];
 		find_srcaddr(res);
-		res->precedence = match_gai_table(&res->dst.sa, gai_precedences);
+		res->precedence = match_gai_table(&res->dst.sa,
+							gai_precedences);
 		res->dst_label = match_gai_table(&res->dst.sa, gai_labels);
 		res->src_label = match_gai_table(&res->src.sa, gai_labels);
 		res->dst_scope = addr_scope(&res->dst.sa);
 		res->src_scope = addr_scope(&res->src.sa);
 	}
 
-	qsort(lookup->results, lookup->nr_results, sizeof(struct sort_result),
-	      rfc3484_compare);
+	qsort(lookup->results, lookup->nr_results,
+			sizeof(struct sort_result), rfc3484_compare);
 }
