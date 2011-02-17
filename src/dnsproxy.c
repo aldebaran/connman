@@ -317,12 +317,18 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 {
 	GList *list;
 	int sk, err;
+	char *dot, *lookup = (char *) name;
 
 	sk = g_io_channel_unix_get_fd(server->channel);
 
 	err = send(sk, request, req->request_len, 0);
 
 	req->numserv++;
+
+	/* If we have more than one dot, we don't add domains */
+	dot = strchr(lookup, '.');
+	if (dot != NULL && dot != lookup + strlen(lookup) - 1)
+		return 0;
 
 	for (list = server->domains; list; list = list->next) {
 		char *domain;
