@@ -508,6 +508,8 @@ static int network_disconnect(struct connman_network *network)
 	if (connman_network_get_index(network) < 0)
 		return -ENOTCONN;
 
+	connman_network_set_associating(network, FALSE);
+
 	return set_network_active(network, FALSE);
 }
 
