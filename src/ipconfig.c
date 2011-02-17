@@ -1351,6 +1351,34 @@ const char *__connman_ipconfig_get_proxy_autoconfig(struct connman_ipconfig *ipc
 	return ipdevice->pac;
 }
 
+static void disable_ipv6(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("");
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return;
+
+	set_ipv6_state(ipdevice->ifname, FALSE);
+}
+
+static void enable_ipv6(struct connman_ipconfig *ipconfig)
+{
+	struct connman_ipdevice *ipdevice;
+
+	DBG("");
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash,
+					GINT_TO_POINTER(ipconfig->index));
+	if (ipdevice == NULL)
+		return;
+
+	set_ipv6_state(ipdevice->ifname, TRUE);
+}
+
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
@@ -1376,6 +1404,7 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 		if (ipdevice->config_ipv6 == ipconfig)
 			return -EALREADY;
 		type = CONNMAN_IPCONFIG_TYPE_IPV6;
+		enable_ipv6(ipconfig);
 	} else
 		return -EINVAL;
 
@@ -1458,6 +1487,10 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 
 	if (ipdevice->config_ipv6 == ipconfig) {
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
+
+		if (ipdevice->config_ipv6->method ==
+						CONNMAN_IPCONFIG_METHOD_AUTO)
+			disable_ipv6(ipdevice->config_ipv6);
 
 		connman_ipaddress_clear(ipdevice->config_ipv6->system);
 		connman_ipconfig_unref(ipdevice->config_ipv6);
@@ -1660,34 +1693,6 @@ void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 	if (ipconfig->address->gateway != NULL)
 		connman_dbus_dict_append_basic(iter, "Gateway",
 				DBUS_TYPE_STRING, &ipconfig->address->gateway);
-}
-
-static void disable_ipv6(struct connman_ipconfig *ipconfig)
-{
-	struct connman_ipdevice *ipdevice;
-
-	DBG("");
-
-	ipdevice = g_hash_table_lookup(ipdevice_hash,
-					GINT_TO_POINTER(ipconfig->index));
-	if (ipdevice == NULL)
-		return;
-
-	set_ipv6_state(ipdevice->ifname, FALSE);
-}
-
-static void enable_ipv6(struct connman_ipconfig *ipconfig)
-{
-	struct connman_ipdevice *ipdevice;
-
-	DBG("");
-
-	ipdevice = g_hash_table_lookup(ipdevice_hash,
-					GINT_TO_POINTER(ipconfig->index));
-	if (ipdevice == NULL)
-		return;
-
-	set_ipv6_state(ipdevice->ifname, TRUE);
 }
 
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
