@@ -444,7 +444,7 @@ static int set_network_active(struct connman_network *network,
 
 	error = set_property(path, OFONO_CONTEXT_INTERFACE,
 				"Active", DBUS_TYPE_BOOLEAN, &active,
-				set_active_reply, g_strdup(path), NULL);
+				set_active_reply, g_strdup(path), g_free);
 
 	if (active == FALSE && error == -EINPROGRESS)
 		error = 0;
