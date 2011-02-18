@@ -1,3 +1,8 @@
+ver 0.69.2
+	Initial scan delays exponential backoff (Fixes BMC#13698)
+	Fix infinite recursion in oFono network disconnect
+	Do not add NULL domains to the domain list
+
 ver 0.69.1
 	ConnMan 0.69 code merge
 
