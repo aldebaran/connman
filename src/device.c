@@ -40,6 +40,7 @@ struct connman_device {
 	connman_bool_t disconnected;
 	connman_bool_t reconnect;
 	connman_uint16_t scan_interval;
+	connman_uint16_t backoff_interval;
 	char *name;
 	char *node;
 	char *address;
@@ -56,6 +57,8 @@ struct connman_device {
 	struct connman_network *network;
 	GHashTable *networks;
 };
+
+#define SCAN_INITIAL_DELAY 10
 
 static gboolean device_scan_trigger(gpointer user_data)
 {
@@ -87,9 +90,23 @@ static void reset_scan_trigger(struct connman_device *device)
 	clear_scan_trigger(device);
 
 	if (device->scan_interval > 0) {
-		guint interval = device->scan_interval;
+		guint interval;
+
+		if (g_hash_table_size(device->networks) == 0) {
+			if (device->backoff_interval >= device->scan_interval)
+				device->backoff_interval = SCAN_INITIAL_DELAY;
+			interval = device->backoff_interval;
+		} else
+			interval = device->scan_interval;
+
+		DBG("interval %d", interval);
+
 		device->scan_timeout = g_timeout_add_seconds(interval,
 					device_scan_trigger, device);
+
+		device->backoff_interval *= 2;
+		if (device->backoff_interval > device->scan_interval)
+			device->backoff_interval = device->scan_interval;
 	}
 }
 
@@ -474,6 +491,7 @@ struct connman_device *connman_device_create(const char *node,
 
 	service_type = __connman_device_get_service_type(device);
 	device->blocked = __connman_technology_get_blocked(service_type);
+	device->backoff_interval = SCAN_INITIAL_DELAY;
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
@@ -1014,6 +1032,9 @@ void __connman_device_decrease_connections(struct connman_device *device)
 		return;
 
 	device->connections--;
+
+	if (device->connections == 0)
+		device->backoff_interval = SCAN_INITIAL_DELAY;
 }
 
 /**
