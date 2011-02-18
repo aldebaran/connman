@@ -3319,6 +3319,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	if (state == CONNMAN_SERVICE_STATE_READY) {
 		enum connman_service_proxy_method proxy_config;
+		enum connman_ipconfig_method method;
 
 		set_reconnect_state(service, TRUE);
 
@@ -3371,6 +3372,12 @@ int __connman_service_indicate_state(struct connman_service *service,
 		}
 
 		default_changed();
+
+		method = __connman_ipconfig_get_method(service->ipconfig_ipv6);
+		if (method == CONNMAN_IPCONFIG_METHOD_OFF)
+			__connman_ipconfig_disable_ipv6(
+						service->ipconfig_ipv6);
+
 	} else if (state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		__connman_location_finish(service);
 

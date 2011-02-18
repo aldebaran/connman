@@ -1379,6 +1379,14 @@ static void enable_ipv6(struct connman_ipconfig *ipconfig)
 	set_ipv6_state(ipdevice->ifname, TRUE);
 }
 
+void __connman_ipconfig_disable_ipv6(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL || ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
+		return;
+
+	disable_ipv6(ipconfig);
+}
+
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
@@ -1861,23 +1869,10 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
 
 	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
-		if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_OFF)
-			disable_ipv6(ipconfig);
-		else if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_AUTO ||
+		if (ipconfig->method == CONNMAN_IPCONFIG_METHOD_AUTO ||
 			ipconfig->method == CONNMAN_IPCONFIG_METHOD_MANUAL) {
-			enable_ipv6(ipconfig);
 			__connman_ipconfig_enable(ipconfig);
-
-			if (ipconfig->ops_data) {
-				struct connman_service *service =
-							ipconfig->ops_data;
-				struct connman_network *network;
-				network = __connman_service_get_network(
-								service);
-				if (network)
-					__connman_network_set_ipconfig(network,
-							NULL, ipconfig);
-			}
+			enable_ipv6(ipconfig);
 		}
 	}
 
