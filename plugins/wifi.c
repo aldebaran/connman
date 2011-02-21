@@ -997,8 +997,12 @@ static int tech_set_tethering(struct connman_technology *technology,
 		for (list = iface_list; list; list = list->next) {
 			wifi = list->data;
 
-			if (wifi->tethering == TRUE)
+			if (wifi->tethering == TRUE) {
 				wifi->tethering = FALSE;
+
+				connman_inet_remove_from_bridge(wifi->index,
+									bridge);
+			}
 		}
 
 		connman_technology_tethering_notify(technology, FALSE);
