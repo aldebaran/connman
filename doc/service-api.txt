@@ -366,6 +366,26 @@ Properties	string State [readonly]
 
 				The current configured IPv6 gateway.
 
+			string Privacy [readonly]
+
+				Enable or disable IPv6 privacy extension
+				that is described in RFC 4941. The value
+				has only meaning if Method is set to "auto".
+
+				Value "disabled" means that privacy extension
+				is disabled and normal autoconf addresses are
+				used.
+
+				Value "enabled" means that privacy extension is
+				enabled and system prefers to use public
+				addresses over temporary addresses.
+
+				Value "prefered" means that privacy extension is
+				enabled and system prefers temporary addresses
+				over public addresses.
+
+				Default value is "disabled".
+
 		dict IPv6.Configuration [readwrite]
 
 			Same values as IPv6 property. The IPv6 represents
