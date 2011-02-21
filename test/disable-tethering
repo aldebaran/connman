@@ -24,6 +24,8 @@ def technology_disable_tethering(path, tech_type):
 				tech.SetProperty("Tethering", dbus.Boolean(0))
 
 				return tech_type
+			else:
+				return None
 
 properties = manager.GetProperties()
 
@@ -31,6 +33,8 @@ for key in properties.keys():
 	if key in ["Technologies"]:
 		for path in properties[key]:
 			tech = technology_disable_tethering(path, sys.argv[1])
+			if tech != None:
+				break;
 
 if tech == None:
 	print "Failed to disable %s tethering" % (sys.argv[1])
