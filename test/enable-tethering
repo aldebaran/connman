@@ -33,6 +33,8 @@ def technology_enable_tethering(path, tech_type, ssid, psk):
 				tech.SetProperty("Tethering", dbus.Boolean(1))
 
 				return tech_type
+			else:
+				return None
 
 properties = manager.GetProperties()
 
@@ -46,6 +48,8 @@ for key in properties.keys():
 				tech = technology_enable_tethering(path,
 							sys.argv[1], "", "")
 
+			if tech != None:
+				break;
 
 if tech == None:
 	print "Failed to enable %s tethering" % (sys.argv[1])
