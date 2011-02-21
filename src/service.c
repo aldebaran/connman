@@ -548,6 +548,12 @@ int __connman_service_nameserver_append(struct connman_service *service,
 		return -EINVAL;
 
 	if (service->nameservers != NULL) {
+		int i;
+
+		for (i = 0; service->nameservers[i] != NULL; i++)
+			if (g_strcmp0(service->nameservers[i], nameserver) == 0)
+				return -EEXIST;
+
 		len = g_strv_length(service->nameservers);
 		service->nameservers = g_try_renew(char *, service->nameservers,
 							len + 2);
