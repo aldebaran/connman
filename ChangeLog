@@ -1,3 +1,10 @@
+ver 0.70:
+	Add support for reporting invalid WiFi passphrases.
+	Add support for IPv6 privacy extension.
+	Add support for IPv6 advanced features.
+	Add support for IPv6 nameserver settings.
+	Remove deprecated APN service settings.
+
 ver 0.69:
 	Fix issue with not handling DNS proxy failures gracefully.
 	Fix issue with double free in statistics handling.
