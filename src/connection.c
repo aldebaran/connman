@@ -385,6 +385,9 @@ gboolean __connman_connection_update_gateway(void)
 	struct gateway_data *active_gateway, *default_gateway;
 	gboolean updated = FALSE;
 
+	if (gateway_hash == NULL)
+		return updated;
+
 	update_order();
 
 	active_gateway = find_active_gateway();
