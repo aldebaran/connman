@@ -73,45 +73,6 @@ struct wifi_data {
 
 static GList *iface_list = NULL;
 
-static int get_bssid(struct connman_device *device,
-				unsigned char *bssid, unsigned int *bssid_len)
-{
-	struct iwreq wrq;
-	char *ifname;
-	int ifindex;
-	int fd, err;
-
-	ifindex = connman_device_get_index(device);
-	if (ifindex < 0)
-		return -EINVAL;
-
-	ifname = connman_inet_ifname(ifindex);
-	if (ifname == NULL)
-		return -EINVAL;
-
-	fd = socket(PF_INET, SOCK_DGRAM, 0);
-	if (fd < 0) {
-		g_free(ifname);
-		return -EINVAL;
-	}
-
-	memset(&wrq, 0, sizeof(wrq));
-	strncpy(wrq.ifr_name, ifname, IFNAMSIZ);
-
-	err = ioctl(fd, SIOCGIWAP, &wrq);
-
-	g_free(ifname);
-	close(fd);
-
-	if (err < 0)
-		return -EIO;
-
-	memcpy(bssid, wrq.u.ap_addr.sa_data, ETH_ALEN);
-	*bssid_len = ETH_ALEN;
-
-	return 0;
-}
-
 static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
 {
 	struct connman_device *device = user_data;
@@ -640,8 +601,6 @@ static void interface_state(GSupplicantInterface *interface)
 	struct connman_device *device;
 	struct wifi_data *wifi;
 	GSupplicantState state = g_supplicant_interface_get_state(interface);
-	unsigned char bssid[ETH_ALEN];
-	unsigned int bssid_len;
 	connman_bool_t wps;
 
 	wifi = g_supplicant_interface_get_data(interface);
@@ -674,9 +633,6 @@ static void interface_state(GSupplicantInterface *interface)
 		/* reset scan trigger and schedule background scan */
 		connman_device_schedule_scan(device);
 
-		if (get_bssid(device, bssid, &bssid_len) == 0)
-			connman_network_set_address(network,
-							bssid, bssid_len);
 		connman_network_set_connected(network, TRUE);
 		break;
 

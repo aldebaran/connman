@@ -40,7 +40,6 @@ struct connman_network {
 	connman_uint8_t strength;
 	connman_uint16_t frequency;
 	char *identifier;
-	char *address;
 	char *name;
 	char *node;
 	char *group;
@@ -176,7 +175,6 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->group);
 	g_free(network->node);
 	g_free(network->name);
-	g_free(network->address);
 	g_free(network->identifier);
 
 	network->device = NULL;
@@ -1192,38 +1190,6 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 }
 
 /**
- * connman_network_set_address:
- * @network: network structure
- * @address: binary address value
- * @size: binary address length
- *
- * Set unique address value for network
- */
-int connman_network_set_address(struct connman_network *network,
-				const void *address, unsigned int size)
-{
-	const unsigned char *addr_octet = address;
-	char *str;
-
-	DBG("network %p size %d", network, size);
-
-	if (size != 6)
-		return -EINVAL;
-
-	str = g_strdup_printf("%02X:%02X:%02X:%02X:%02X:%02X",
-				addr_octet[0], addr_octet[1], addr_octet[2],
-				addr_octet[3], addr_octet[4], addr_octet[5]);
-	if (str == NULL)
-		return -ENOMEM;
-
-	g_free(network->address);
-	network->address = str;
-
-	return connman_element_set_string(&network->element,
-						"Address", network->address);
-}
-
-/**
  * connman_network_set_name:
  * @network: network structure
  * @name: name value
@@ -1295,10 +1261,7 @@ int connman_network_set_string(struct connman_network *network,
 	if (g_strcmp0(key, "Name") == 0)
 		return connman_network_set_name(network, value);
 
-	if (g_str_equal(key, "Address") == TRUE) {
-		g_free(network->address);
-		network->address = g_strdup(value);
-	} else if (g_str_equal(key, "Node") == TRUE) {
+	if (g_str_equal(key, "Node") == TRUE) {
 		g_free(network->node);
 		network->node = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.Mode") == TRUE) {
@@ -1361,9 +1324,7 @@ const char *connman_network_get_string(struct connman_network *network,
 {
 	DBG("network %p key %s", network, key);
 
-	if (g_str_equal(key, "Address") == TRUE)
-		return network->address;
-	else if (g_str_equal(key, "Name") == TRUE)
+	if (g_str_equal(key, "Name") == TRUE)
 		return network->name;
 	else if (g_str_equal(key, "Node") == TRUE)
 		return network->node;
@@ -1529,9 +1490,6 @@ int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size)
 {
 	DBG("network %p key %s size %d", network, key, size);
-
-	if (g_strcmp0(key, "Address") == 0)
-		return connman_network_set_address(network, data, size);
 
 	if (g_str_equal(key, "WiFi.SSID") == TRUE) {
 		g_free(network->wifi.ssid);
