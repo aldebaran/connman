@@ -2042,6 +2042,17 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	g_key_file_set_string(keyfile, identifier, key, method);
 	g_free(key);
 
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		break;
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		return 0;
+	}
+
 	key = g_strdup_printf("%snetmask_prefixlen", prefix);
 	g_key_file_set_integer(keyfile, identifier,
 			key, ipconfig->address->prefixlen);
