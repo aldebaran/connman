@@ -2042,6 +2042,14 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	g_key_file_set_string(keyfile, identifier, key, method);
 	g_free(key);
 
+	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		const char *privacy;
+		privacy = privacy2string(ipconfig->ipv6_privacy_config);
+		key = g_strdup_printf("%sprivacy", prefix);
+		g_key_file_set_string(keyfile, identifier, key, privacy);
+		g_free(key);
+	}
+
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -2081,14 +2089,6 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 		g_key_file_set_string(keyfile, identifier,
 			key, ipconfig->address->gateway);
 	g_free(key);
-
-	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
-		const char *privacy;
-		privacy = privacy2string(ipconfig->ipv6_privacy_config);
-		key = g_strdup_printf("%sprivacy", prefix);
-		g_key_file_set_string(keyfile, identifier, key, privacy);
-		g_free(key);
-	}
 
 	return 0;
 }
