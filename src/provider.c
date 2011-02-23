@@ -800,6 +800,75 @@ int connman_provider_get_index(struct connman_provider *provider)
 	return provider->element.index;
 }
 
+int connman_provider_set_ipaddress(struct connman_provider *provider,
+					struct connman_ipaddress *ipaddress)
+{
+	struct connman_ipconfig *ipconfig = NULL;
+
+	if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		ipconfig = __connman_service_get_ip4config(
+						provider->vpn_service);
+	} else if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		ipconfig = __connman_service_get_ip6config(
+						provider->vpn_service);
+	}
+
+	if (ipconfig == NULL)
+		return -EINVAL;
+
+	__connman_ipconfig_set_local(ipconfig, ipaddress->local);
+	__connman_ipconfig_set_peer(ipconfig, ipaddress->peer);
+	__connman_ipconfig_set_broadcast(ipconfig, ipaddress->broadcast);
+	__connman_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
+	__connman_ipconfig_set_prefixlen(ipconfig, ipaddress->prefixlen);
+
+	return 0;
+}
+
+int connman_provider_set_pac(struct connman_provider *provider, const char *pac)
+{
+	DBG("provider %p pac %s", provider, pac);
+
+	__connman_service_set_pac(provider->vpn_service, pac);
+
+	return 0;
+}
+
+
+int connman_provider_set_domain(struct connman_provider *provider,
+					const char *domain)
+{
+	DBG("provider %p domain %s", provider, domain);
+
+	g_free(provider->domain);
+	provider->domain = g_strdup(domain);
+
+	__connman_service_set_domainname(provider->vpn_service, domain);
+
+	return 0;
+}
+
+int connman_provider_set_nameservers(struct connman_provider *provider,
+					const char *nameservers)
+{
+	int i;
+	char **nameservers_array = NULL;
+
+	DBG("provider %p nameservers %s", provider, nameservers);
+
+	__connman_service_nameserver_clear(provider->vpn_service);
+
+	if (nameservers != NULL)
+		nameservers_array = g_strsplit(nameservers, " ", 0);
+
+	for (i = 0; nameservers_array[i] == NULL; i++) {
+		__connman_service_nameserver_append(provider->vpn_service,
+							nameservers_array[i]);
+	}
+
+	return 0;
+}
+
 enum provider_route_type {
 	PROVIDER_ROUTE_TYPE_NONE = 0,
 	PROVIDER_ROUTE_TYPE_MASK = 1,
