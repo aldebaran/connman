@@ -695,7 +695,7 @@ static void set_connected_manual(struct connman_network *network)
 
 	set_configuration(network);
 
-	err = __connman_ipconfig_set_address(ipconfig);
+	err = __connman_ipconfig_address_add(ipconfig);
 	if (err < 0) {
 		connman_network_set_error(network,
 			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
@@ -755,7 +755,7 @@ static int manual_ipv6_set(struct connman_network *network,
 	if (service == NULL)
 		return -EINVAL;
 
-	err = __connman_ipconfig_set_address(ipconfig_ipv6);
+	err = __connman_ipconfig_address_add(ipconfig_ipv6);
 	if (err < 0) {
 		connman_network_set_error(network,
 			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
@@ -1081,7 +1081,7 @@ static int manual_ipv4_set(struct connman_network *network,
 	if (service == NULL)
 		return -EINVAL;
 
-	err = __connman_ipconfig_set_address(ipconfig);
+	err = __connman_ipconfig_address_add(ipconfig);
 	if (err < 0) {
 		connman_network_set_error(network,
 			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
@@ -1120,7 +1120,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return -EINVAL;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		__connman_ipconfig_clear_address(ipconfig);
+		__connman_ipconfig_address_remove(ipconfig);
 		break;
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		dhcp_stop(network);

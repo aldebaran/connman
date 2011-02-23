@@ -3863,8 +3863,8 @@ int __connman_service_disconnect(struct connman_service *service)
 		__connman_ipconfig_set_proxy_autoconfig(service->ipconfig_ipv6,
 							NULL);
 
-	__connman_ipconfig_clear_address(service->ipconfig_ipv4);
-	__connman_ipconfig_clear_address(service->ipconfig_ipv6);
+	__connman_ipconfig_address_remove(service->ipconfig_ipv4);
+	__connman_ipconfig_address_remove(service->ipconfig_ipv6);
 
 	__connman_ipconfig_disable(service->ipconfig_ipv4);
 	__connman_ipconfig_disable(service->ipconfig_ipv6);

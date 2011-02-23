@@ -1343,17 +1343,17 @@ void __connman_ipconfig_set_element_ipv6_gateway(
 		element->ipv6.gateway = ipconfig->address->gateway;
 }
 
-int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
+int __connman_ipconfig_address_add(struct connman_ipconfig *ipconfig)
 {
 	DBG("");
 
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		break;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			return connman_inet_set_address(ipconfig->index,
@@ -1366,7 +1366,7 @@ int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
 	return 0;
 }
 
-int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
+int __connman_ipconfig_address_remove(struct connman_ipconfig *ipconfig)
 {
 	DBG("");
 
@@ -1378,10 +1378,10 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		break;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			return connman_inet_clear_address(ipconfig->index,
