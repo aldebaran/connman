@@ -1054,31 +1054,51 @@ const char *__connman_ipconfig_get_gateway(struct connman_ipconfig *ipconfig)
 
 void __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig, const char *gateway)
 {
-	struct connman_service *service;
+	DBG("");
 
 	if (ipconfig->address == NULL)
 		return;
+	g_free(ipconfig->address->gateway);
+	ipconfig->address->gateway = g_strdup(gateway);
+}
+
+int __connman_ipconfig_gateway_add(struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service;
+
+	DBG("");
+
+	if (ipconfig->address == NULL || ipconfig->address->gateway == NULL)
+		return -EINVAL;
+
+	service = __connman_service_lookup_from_index(ipconfig->index);
+	if (service == NULL)
+		return -EINVAL;
+
+	__connman_connection_gateway_remove(service);
+
+	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		return __connman_connection_gateway_add(service, NULL,
+						ipconfig->address->gateway,
+							ipconfig->address->peer);
+	} else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		return __connman_connection_gateway_add(service,
+						ipconfig->address->gateway,
+							NULL, ipconfig->address->peer);
+	}
+
+	return 0;
+}
+
+void __connman_ipconfig_gateway_remove(struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service;
+
+	DBG("");
 
 	service = __connman_service_lookup_from_index(ipconfig->index);
 	if (service != NULL)
 		__connman_connection_gateway_remove(service);
-
-	g_free(ipconfig->address->gateway);
-	ipconfig->address->gateway = g_strdup(gateway);
-
-	if (service != NULL && ipconfig->address->gateway != NULL) {
-		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6) {
-			__connman_connection_gateway_add(service,
-						NULL,
-						ipconfig->address->gateway,
-						ipconfig->address->peer);
-		} else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4) {
-			__connman_connection_gateway_add(service,
-						ipconfig->address->gateway,
-						NULL,
-						ipconfig->address->peer);
-		}
-	}
 }
 
 unsigned char __connman_ipconfig_get_prefixlen(struct connman_ipconfig *ipconfig)

@@ -696,11 +696,8 @@ static void set_connected_manual(struct connman_network *network)
 	set_configuration(network);
 
 	err = __connman_ipconfig_address_add(ipconfig);
-	if (err < 0) {
-		connman_network_set_error(network,
-			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
-		return;
-	}
+	if (err < 0)
+		goto err;
 
 	connman_element_get_value(&network->element,
 			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
@@ -709,8 +706,12 @@ static void set_connected_manual(struct connman_network *network)
 
 	connman_element_get_value(&network->element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-	if (gateway != NULL)
+	if (gateway != NULL) {
 		__connman_ipconfig_set_gateway(ipconfig, gateway);
+		err = __connman_ipconfig_gateway_add(ipconfig);
+		if (err < 0)
+			goto err;
+	}
 
 	network->connecting = FALSE;
 
@@ -718,6 +719,11 @@ static void set_connected_manual(struct connman_network *network)
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
+
+err:
+	connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+	return;
 }
 
 static int set_connected_dhcp(struct connman_network *network)
@@ -1090,8 +1096,10 @@ static int manual_ipv4_set(struct connman_network *network,
 
 	connman_element_get_value(&network->element,
 				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-	if (gateway != NULL)
+	if (gateway != NULL) {
 		__connman_ipconfig_set_gateway(ipconfig, gateway);
+		__connman_ipconfig_gateway_add(ipconfig);
+	}
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
@@ -1212,10 +1220,10 @@ int connman_network_set_ipaddress(struct connman_network *network,
 	__connman_ipconfig_set_local(ipconfig, ipaddress->local);
 	__connman_ipconfig_set_peer(ipconfig, ipaddress->peer);
 	__connman_ipconfig_set_broadcast(ipconfig, ipaddress->broadcast);
-	__connman_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
 	__connman_ipconfig_set_prefixlen(ipconfig, ipaddress->prefixlen);
+	__connman_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
 
-	return 0;
+	return __connman_ipconfig_gateway_add(ipconfig);
 }
 
 int connman_network_set_pac(struct connman_network *network,
