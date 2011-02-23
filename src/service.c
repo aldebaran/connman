@@ -83,6 +83,7 @@ struct connman_service {
 	char **nameservers_config;
 	char **domains;
 	char *domainname;
+	char **timeservers;
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
@@ -1836,6 +1837,124 @@ const char *connman_service_get_proxy_autoconfig(struct connman_service *service
 		return __connman_ipconfig_get_proxy_autoconfig(
 						service->ipconfig_ipv6);
 	return NULL;
+}
+
+static void update_timeservers(struct connman_service *service)
+{
+	int i;
+
+	if (service->timeservers == NULL)
+		return;
+
+	switch (combine_state(service->state_ipv4, service->state_ipv6)) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return;
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+		for (i = 0; service->timeservers[i] != NULL; i++)
+			connman_timeserver_remove(service->timeservers[i]);
+		return;
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		break;
+	}
+
+	for (i = 0; service->timeservers[i] != NULL; i++)
+		connman_timeserver_append(service->timeservers[i]);
+}
+
+int __connman_service_timeserver_append(struct connman_service *service,
+						const char *timeserver)
+{
+	int len;
+
+	DBG("service %p timeserver %s", service, timeserver);
+
+	if (timeserver == NULL)
+		return -EINVAL;
+
+	if (service->timeservers != NULL) {
+		int i;
+
+		for (i = 0; service->timeservers[i] != NULL; i++)
+			if (g_strcmp0(service->timeservers[i], timeserver) == 0)
+				return -EEXIST;
+
+		len = g_strv_length(service->timeservers);
+		service->timeservers = g_try_renew(char *, service->timeservers,
+							len + 2);
+	} else {
+		len = 0;
+		service->timeservers = g_try_new0(char *, len + 2);
+	}
+
+	if (service->timeservers == NULL)
+		return -ENOMEM;
+
+	service->timeservers[len] = g_strdup(timeserver);
+	service->timeservers[len + 1] = NULL;
+
+	update_timeservers(service);
+
+	return 0;
+}
+
+int __connman_service_timeserver_remove(struct connman_service *service,
+						const char *timeserver)
+{
+	char **servers;
+	int len, i, j;
+
+	DBG("service %p timeserver %s", service, timeserver);
+
+	if (timeserver == NULL)
+		return -EINVAL;
+
+	if (service->timeservers == NULL)
+		return 0;
+
+	len = g_strv_length(service->timeservers);
+	if (len == 1) {
+		if (g_strcmp0(service->timeservers[0], timeserver) != 0)
+			return 0;
+
+		g_strfreev(service->timeservers);
+		service->timeservers = NULL;
+
+		return 0;
+	}
+
+	servers = g_try_new0(char *, len - 1);
+	if (servers == NULL)
+		return -ENOMEM;
+
+	for (i = 0, j = 0; i < len; i++) {
+		if (g_strcmp0(service->timeservers[i], timeserver) != 0) {
+			servers[j] = g_strdup(service->timeservers[i]);
+			j++;
+		}
+	}
+	servers[len - 2] = NULL;
+
+	g_strfreev(service->timeservers);
+	service->timeservers = servers;
+
+	update_timeservers(service);
+
+	return 0;
+}
+
+void __connman_service_set_pac(struct connman_service *service,
+					const char *pac)
+{
+	if (pac == NULL)
+		return;
+
+	g_free(service->pac);
+	service->pac = g_strdup(pac);
 }
 
 void __connman_service_set_passphrase(struct connman_service *service,
