@@ -1189,6 +1189,93 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 	return 0;
 }
 
+int connman_network_set_ipaddress(struct connman_network *network,
+					struct connman_ipaddress *ipaddress)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig = NULL;
+
+	DBG("network %p", network);
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV4)
+		ipconfig = __connman_service_get_ip4config(service);
+	else if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV6)
+		ipconfig = __connman_service_get_ip6config(service);
+
+	if (ipconfig == NULL)
+		return -EINVAL;
+
+	__connman_ipconfig_set_local(ipconfig, ipaddress->local);
+	__connman_ipconfig_set_peer(ipconfig, ipaddress->peer);
+	__connman_ipconfig_set_broadcast(ipconfig, ipaddress->broadcast);
+	__connman_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
+	__connman_ipconfig_set_prefixlen(ipconfig, ipaddress->prefixlen);
+
+	return 0;
+}
+
+int connman_network_set_pac(struct connman_network *network,
+				const char *pac)
+{
+	struct connman_service *service;
+
+	DBG("network %p pac %s", network, pac);
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	__connman_service_set_pac(service, pac);
+
+	return 0;
+}
+
+int connman_network_set_nameservers(struct connman_network *network,
+				const char *nameservers)
+{
+	struct connman_service *service;
+	char **nameservers_array = NULL;
+	int i;
+
+	DBG("network %p nameservers %s", network, nameservers);
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	__connman_service_nameserver_clear(service);
+
+	if (nameservers != NULL)
+		nameservers_array = g_strsplit(nameservers, " ", 0);
+
+	for (i = 0; nameservers_array[i] == NULL; i++) {
+		__connman_service_nameserver_append(service,
+						nameservers_array[i]);
+	}
+
+	return 0;
+}
+
+int connman_network_set_domain(struct connman_network *network,
+				const char *domain)
+{
+	struct connman_service *service;
+
+	DBG("network %p domain %s", network, domain);
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	__connman_service_set_domainname(service, domain);
+
+	return 0;
+}
+
 /**
  * connman_network_set_name:
  * @network: network structure

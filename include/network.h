@@ -95,7 +95,14 @@ void connman_network_set_ipv4_method(struct connman_network *network,
 					enum connman_ipconfig_method method);
 void connman_network_set_ipv6_method(struct connman_network *network,
 					enum connman_ipconfig_method method);
-
+int connman_network_set_ipaddress(struct connman_network *network,
+				struct connman_ipaddress *ipaddress);
+int connman_network_set_nameservers(struct connman_network *network,
+				const char *nameservers);
+int connman_network_set_domain(struct connman_network *network,
+			             const char *domain);
+int connman_network_set_pac(struct connman_network *network,
+				const char *pac);
 int connman_network_set_name(struct connman_network *network,
 							const char *name);
 int connman_network_set_strength(struct connman_network *network,
