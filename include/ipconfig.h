@@ -43,8 +43,14 @@ struct connman_ipaddress {
 
 struct connman_ipaddress *connman_ipaddress_alloc(int family);
 void connman_ipaddress_free(struct connman_ipaddress *ipaddress);
-void connman_ipaddress_set(struct connman_ipaddress *ipaddress,
-		const char *address, const char *netmask, const char *gateway);
+int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
+				const char *address, const char *netmask,
+				const char *gateway);
+int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
+				const char *address, const char *gateway,
+				unsigned char prefix_length);
+void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
+				const char *peer);
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress);
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source);
@@ -88,9 +94,6 @@ const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig);
 
 void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 				const struct connman_ipconfig_ops *ops);
-int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
-				const char *address, const char *gateway,
-						unsigned char prefix_length);
 int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method);
 void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,

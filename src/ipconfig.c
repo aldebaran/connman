@@ -168,6 +168,8 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 	DBG("prefix_len %d address %s gateway %s",
 			prefix_length, address, gateway);
 
+	ipaddress->family = CONNMAN_IPCONFIG_TYPE_IPV6;
+
 	ipaddress->prefixlen = prefix_length;
 
 	g_free(ipaddress->local);
@@ -179,11 +181,13 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 	return 0;
 }
 
-void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
+int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 		const char *address, const char *netmask, const char *gateway)
 {
 	if (ipaddress == NULL)
-		return;
+		return -EINVAL;
+
+	ipaddress->family = CONNMAN_IPCONFIG_TYPE_IPV4;
 
 	ipaddress->prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 
@@ -192,6 +196,18 @@ void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 
 	g_free(ipaddress->gateway);
 	ipaddress->gateway = g_strdup(gateway);
+
+	return 0;
+}
+
+void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
+				const char *peer)
+{
+	if (ipaddress == NULL)
+		return;
+
+	g_free(ipaddress->peer);
+	ipaddress->peer = g_strdup(peer);
 }
 
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
