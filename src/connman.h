@@ -514,6 +514,7 @@ int __connman_service_nameserver_append(struct connman_service *service,
 					const char *nameserver);
 int __connman_service_nameserver_remove(struct connman_service *service,
 					const char *nameserver);
+void __connman_service_nameserver_clear(struct connman_service *service);
 void __connman_service_nameserver_add_routes(struct connman_service *service,
 						const char *gw);
 void __connman_service_nameserver_del_routes(struct connman_service *service);

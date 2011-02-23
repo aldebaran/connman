@@ -619,6 +619,14 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 	return 0;
 }
 
+void __connman_service_nameserver_clear(struct connman_service *service)
+{
+	g_strfreev(service->nameservers);
+	service->nameservers = NULL;
+
+	update_nameservers(service);
+}
+
 static void nameserver_add_routes(int index, char **nameservers,
 					const char *gw)
 {
