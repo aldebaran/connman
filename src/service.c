@@ -3604,6 +3604,14 @@ int __connman_service_clear_error(struct connman_service *service)
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
+	/*
+	 * Toggling the IPv6 state to IDLE could trigger the auto connect
+	 * machinery and consequently the IPv4 state.
+	 */
+	if (service->state_ipv4 != CONNMAN_SERVICE_STATE_UNKNOWN &&
+			service->state_ipv4 != CONNMAN_SERVICE_STATE_FAILURE)
+		return 0;
+
 	return __connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_IDLE,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
