@@ -60,8 +60,6 @@ static const char *type2string(enum connman_element_type type)
 		return "ipv4";
 	case CONNMAN_ELEMENT_TYPE_IPV6:
 		return "ipv6";
-	case CONNMAN_ELEMENT_TYPE_DHCP:
-		return "dhcp";
 	case CONNMAN_ELEMENT_TYPE_BOOTP:
 		return "bootp";
 	case CONNMAN_ELEMENT_TYPE_ZEROCONF:
@@ -1113,9 +1111,6 @@ setup:
 			return -EINVAL;
 		}
 	}
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_DHCP)
-		element->ipv4.method = CONNMAN_IPCONFIG_METHOD_DHCP;
 
 	element->parent = parent;
 

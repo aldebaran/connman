@@ -639,6 +639,66 @@ static void set_configuration(struct connman_network *network)
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 }
 
+static void dhcp_success(struct connman_network *network)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv4;
+	int err;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		goto err;
+
+	connman_network_set_associating(network, FALSE);
+
+	network->connecting = FALSE;
+
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+	err = __connman_ipconfig_address_add(ipconfig_ipv4);
+	if (err < 0)
+		goto err;
+
+	err = __connman_ipconfig_gateway_add(ipconfig_ipv4);
+	if (err < 0)
+		goto err;
+
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	return;
+
+err:
+	connman_network_set_error(network,
+				CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+}
+
+static void dhcp_failure(struct connman_network *network)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv4;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return;
+
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
+	__connman_ipconfig_address_remove(ipconfig_ipv4);
+
+	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_IDLE,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+}
+
+static void dhcp_callback(struct connman_network *network,
+			connman_bool_t success)
+{
+	DBG("success %d", success);
+
+	if (success == TRUE)
+		dhcp_success(network);
+	else
+		dhcp_failure(network);
+}
+
 static int set_connected_fixed(struct connman_network *network)
 {
 	struct connman_service *service;
@@ -728,25 +788,17 @@ err:
 
 static int set_connected_dhcp(struct connman_network *network)
 {
-	struct connman_element *element;
-	int error;
+	int err;
 
 	DBG("network %p", network);
 
-	element = connman_element_create(NULL);
-	if (element == NULL)
-		return -ENOMEM;
-
-	element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
-	element->index = network->element.index;
-
-	error = connman_element_register(element, &network->element);
-	if (error < 0) {
-		connman_element_unref(element);
-		return error;
-	}
-
 	set_configuration(network);
+
+	err = __connman_dhcp_start(network, dhcp_callback);
+	if (err < 0) {
+		connman_error("Can not request DHCP lease");
+		return err;
+	}
 
 	return 0;
 }
@@ -1045,37 +1097,6 @@ int __connman_network_disconnect(struct connman_network *network)
 	return err;
 }
 
-static int dhcp_start(struct connman_network *network)
-{
-	struct connman_element *element;
-	int error;
-
-	element = connman_element_create(NULL);
-	if (element == NULL)
-		return -ENOMEM;
-
-	element->type  = CONNMAN_ELEMENT_TYPE_DHCP;
-	element->index = network->element.index;
-
-	error = connman_element_register(element, &network->element);
-	if (error < 0) {
-		connman_element_unref(element);
-		return error;
-	}
-
-	return 0;
-}
-
-static int dhcp_stop(struct connman_network *network)
-{
-	connman_element_unregister_children_type(&network->element,
-						CONNMAN_ELEMENT_TYPE_IPV4);
-	connman_element_unregister_children_type(&network->element,
-						CONNMAN_ELEMENT_TYPE_DHCP);
-
-	return 0;
-}
-
 static int manual_ipv4_set(struct connman_network *network,
 				struct connman_ipconfig *ipconfig)
 {
@@ -1131,7 +1152,7 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 		__connman_ipconfig_address_remove(ipconfig);
 		break;
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		dhcp_stop(network);
+		__connman_dhcp_stop(network);
 		break;
 	}
 
@@ -1190,7 +1211,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
 			return manual_ipv4_set(network, ipconfig_ipv4);
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
-			return dhcp_start(network);
+			return __connman_dhcp_start(network, dhcp_callback);
 		}
 	}
 

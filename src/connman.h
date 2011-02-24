@@ -286,6 +286,10 @@ int __connman_utsname_set_domainname(const char *domainname);
 int __connman_timeserver_init(void);
 void __connman_timeserver_cleanup(void);
 
+typedef void (* dhcp_cb) (struct connman_network *network,
+				connman_bool_t success);
+int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback);
+void __connman_dhcp_stop(struct connman_network *network);
 int __connman_dhcp_init(void);
 void __connman_dhcp_cleanup(void);
 
