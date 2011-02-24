@@ -35,6 +35,7 @@
 #include <connman/element.h>
 #include <connman/device.h>
 #include <connman/network.h>
+#include <connman/ipconfig.h>
 #include <connman/dbus.h>
 #include <connman/inet.h>
 #include <connman/technology.h>
@@ -89,6 +90,13 @@ struct modem_data {
 	connman_bool_t registered;
 	connman_bool_t roaming;
 	uint8_t strength, has_strength;
+};
+
+struct network_info {
+	struct connman_network *network;
+
+	enum connman_ipconfig_method method;
+	struct connman_ipaddress ipaddress;
 };
 
 static int modem_probe(struct connman_device *device)
@@ -351,7 +359,9 @@ static void remove_modem(gpointer data)
 
 static void remove_network(gpointer data)
 {
-	connman_network_unref(data);
+	struct network_info *info = data;
+
+	connman_network_unref(info->network);
 }
 
 static char *get_ident(const char *path)
@@ -403,15 +413,15 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 	char const *path = user_data;
 	DBusMessage *reply;
 	DBusError error;
-	struct connman_network *network;
+	struct network_info *info;
 
-	network = g_hash_table_lookup(network_hash, path);
+	info = g_hash_table_lookup(network_hash, path);
 
-	DBG("path %s network %p", path, network);
+	DBG("path %s network %p", path, info->network);
 
 	reply = dbus_pending_call_steal_reply(call);
 
-	if (!pending_network_is_available(network))
+	if (!pending_network_is_available(info->network))
 		goto done;
 
 	dbus_error_init(&error);
@@ -420,8 +430,8 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 		connman_error("SetProperty(Active) %s %s",
 				error.name, error.message);
 
-		if (connman_network_get_index(network) < 0)
-			connman_network_set_error(network,
+		if (connman_network_get_index(info->network) < 0)
+			connman_network_set_error(info->network,
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 
 		dbus_error_free(&error);
@@ -513,9 +523,9 @@ static struct connman_network_driver network_driver = {
 };
 
 static void update_settings(DBusMessageIter *array,
-				struct connman_network *network);
+				struct network_info *info);
 
-static void set_connected(struct connman_network *network,
+static void set_connected(struct network_info *info,
 				connman_bool_t connected);
 
 static int add_network(struct connman_device *device,
@@ -523,6 +533,7 @@ static int add_network(struct connman_device *device,
 {
 	struct modem_data *modem = connman_device_get_data(device);
 	struct connman_network *network;
+	struct network_info *info;
 	char *ident;
 	const char *hash_path;
 	char const *operator;
@@ -536,11 +547,11 @@ static int add_network(struct connman_device *device,
 	if (network != NULL)
 		return -EALREADY;
 
-	network = g_hash_table_lookup(network_hash, path);
-	if (network != NULL) {
+	info = g_hash_table_lookup(network_hash, path);
+	if (info != NULL) {
 		DBG("path %p already exists with device %p", path,
-			connman_network_get_device(network));
-		if (connman_network_get_device(network))
+			connman_network_get_device(info->network));
+		if (connman_network_get_device(info->network))
 			return -EALREADY;
 		g_hash_table_remove(network_hash, path);
 	}
@@ -548,6 +559,15 @@ static int add_network(struct connman_device *device,
 	network = connman_network_create(ident, CONNMAN_NETWORK_TYPE_CELLULAR);
 	if (network == NULL)
 		return -ENOMEM;
+
+	info = g_try_new0(struct network_info, 1);
+	if (info == NULL) {
+		connman_network_unref(network);
+		return -ENOMEM;
+	}
+
+	connman_ipaddress_clear(&info->ipaddress);
+	info->network = network;
 
 	connman_network_set_string(network, "Path", path);
 	hash_path = connman_network_get_string(network, "Path");
@@ -557,7 +577,7 @@ static int add_network(struct connman_device *device,
 	create_service(network);
 
 	connman_network_ref(network);
-	g_hash_table_insert(network_hash, (char *)hash_path, network);
+	g_hash_table_insert(network_hash, (char *) hash_path, info);
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
@@ -590,7 +610,7 @@ static int add_network(struct connman_device *device,
 				goto error;
 			}
 		} else if (g_str_equal(key, "Settings"))
-			update_settings(&value, network);
+			update_settings(&value, info);
 		else if (g_str_equal(key, "Active") == TRUE)
 			dbus_message_iter_get_basic(&value, &active);
 
@@ -601,7 +621,7 @@ static int add_network(struct connman_device *device,
 		goto error;
 
 	if (active)
-		set_connected(network, active);
+		set_connected(info, active);
 
 	return 0;
 
@@ -678,10 +698,10 @@ static void modem_clear_network_errors(struct modem_data *modem)
 	g_hash_table_iter_init(&i, network_hash);
 
 	while (g_hash_table_iter_next(&i, NULL, &value)) {
-		struct connman_network *network = value;
+		struct network_info *info = value;
 
-		if (connman_network_get_device(network) == device)
-			connman_network_clear_error(network);
+		if (connman_network_get_device(info->network) == device)
+			connman_network_clear_error(info->network);
 	}
 }
 
@@ -699,11 +719,11 @@ static void modem_operator_name_changed(struct modem_data *modem,
 
 	for (g_hash_table_iter_init(&i, network_hash);
 	     g_hash_table_iter_next(&i, NULL, &value);) {
-		struct connman_network *network = value;
+		struct network_info *info = value;
 
-		if (connman_network_get_device(network) == device) {
-			connman_network_set_name(network, name);
-			connman_network_update(network);
+		if (connman_network_get_device(info->network) == device) {
+			connman_network_set_name(info->network, name);
+			connman_network_update(info->network);
 		}
 	}
 }
@@ -722,11 +742,11 @@ static void modem_strength_changed(struct modem_data *modem, uint8_t strength)
 
 	for (g_hash_table_iter_init(&i, network_hash);
 	     g_hash_table_iter_next(&i, NULL, &value);) {
-		struct connman_network *network = value;
+		struct network_info *info = value;
 
-		if (connman_network_get_device(network) == device) {
-			connman_network_set_strength(network, strength);
-			connman_network_update(network);
+		if (connman_network_get_device(info->network) == device) {
+			connman_network_set_strength(info->network, strength);
+			connman_network_update(info->network);
 		}
 	}
 }
@@ -763,11 +783,11 @@ static void modem_roaming_changed(struct modem_data *modem,
 	g_hash_table_iter_init(&i, network_hash);
 
 	while (g_hash_table_iter_next(&i, NULL, &value)) {
-		struct connman_network *network = value;
+		struct network_info *info = value;
 
-		if (connman_network_get_device(network) == device) {
-			connman_network_set_roaming(network, roaming);
-			connman_network_update(network);
+		if (connman_network_get_device(info->network) == device) {
+			connman_network_set_roaming(info->network, roaming);
+			connman_network_update(info->network);
 		}
 	}
 }
@@ -1457,7 +1477,7 @@ static gboolean context_removed(DBusConnection *connection,
 	const char *path = dbus_message_get_path(message);
 	const char *network_path, *identifier;
 	struct modem_data *modem;
-	struct connman_network *network;
+	struct network_info *info;
 	DBusMessageIter iter;
 
 	DBG("path %s", path);
@@ -1471,11 +1491,11 @@ static gboolean context_removed(DBusConnection *connection,
 
 	dbus_message_iter_get_basic(&iter, &network_path);
 
-	network = g_hash_table_lookup(network_hash, network_path);
-	if (network == NULL)
+	info = g_hash_table_lookup(network_hash, network_path);
+	if (info == NULL)
 		return TRUE;
 
-	identifier = connman_network_get_identifier(network);
+	identifier = connman_network_get_identifier(info->network);
 	connman_device_remove_network(modem->device, identifier);
 
 	return TRUE;
@@ -1521,12 +1541,13 @@ static gboolean modem_removed(DBusConnection *connection,
 }
 
 
-static void get_dns(DBusMessageIter *array, struct connman_element *parent)
+static void get_dns(DBusMessageIter *array, struct network_info *info)
 {
 	DBusMessageIter entry;
-	gchar *nameserver = NULL, *nameserver_old = NULL;
+	gchar *nameservers = NULL, *nameservers_old = NULL;
 
 	DBG("");
+
 
 	dbus_message_iter_recurse(array, &entry);
 
@@ -1537,31 +1558,33 @@ static void get_dns(DBusMessageIter *array, struct connman_element *parent)
 
 		DBG("dns %s", dns);
 
-		if (nameserver == NULL) {
+		if (nameservers == NULL) {
 
-			nameserver = g_strdup(dns);
+			nameservers = g_strdup(dns);
 		} else {
 
-			nameserver_old = nameserver;
-			nameserver = g_strdup_printf("%s %s",
-						nameserver_old, dns);
-			g_free(nameserver_old);
+			nameservers_old = nameservers;
+			nameservers = g_strdup_printf("%s %s",
+						nameservers_old, dns);
+			g_free(nameservers_old);
 		}
 
 		dbus_message_iter_next(&entry);
 	}
 
-	parent->ipv4.nameserver = nameserver;
+	connman_network_set_nameservers(info->network, nameservers);
+
+	g_free(nameservers);
 }
 
 static void update_settings(DBusMessageIter *array,
-				struct connman_network *network)
+				struct network_info *info)
 {
-	struct connman_element *parent = connman_network_get_element(network);
 	DBusMessageIter dict;
+	char *address = NULL, *netmask = NULL, *gateway = NULL;
 	const char *interface = NULL;
 
-	DBG("network %p", network);
+	DBG("network %p", info->network);
 
 	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
 		return;
@@ -1570,7 +1593,7 @@ static void update_settings(DBusMessageIter *array,
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
-		const char *key;
+		const char *key, *val;
 
 		dbus_message_iter_recurse(&dict, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
@@ -1589,7 +1612,7 @@ static void update_settings(DBusMessageIter *array,
 
 			index = connman_inet_ifindex(interface);
 			if (index >= 0) {
-				connman_network_set_index(network, index);
+				connman_network_set_index(info->network, index);
 			} else {
 				connman_error("Can not find interface %s",
 								interface);
@@ -1599,80 +1622,62 @@ static void update_settings(DBusMessageIter *array,
 			const char *method;
 
 			dbus_message_iter_get_basic(&value, &method);
+
 			if (g_strcmp0(method, "static") == 0) {
 
-				parent->ipv4.method =
-					CONNMAN_IPCONFIG_METHOD_FIXED;
+				info->method = CONNMAN_IPCONFIG_METHOD_FIXED;
 			} else if (g_strcmp0(method, "dhcp") == 0) {
 
-				parent->ipv4.method =
-					CONNMAN_IPCONFIG_METHOD_DHCP;
+				info->method = CONNMAN_IPCONFIG_METHOD_DHCP;
 				break;
 			}
 		} else if (g_str_equal(key, "Address") == TRUE) {
-			const char *address;
+			dbus_message_iter_get_basic(&value, &val);
 
-			dbus_message_iter_get_basic(&value, &address);
+			address = g_strdup(val);
 
 			DBG("address %s", address);
-
-			parent->ipv4.address = g_strdup(address);
 		} else if (g_str_equal(key, "Netmask") == TRUE) {
-			const char *netmask;
+			dbus_message_iter_get_basic(&value, &val);
 
-			dbus_message_iter_get_basic(&value, &netmask);
+			netmask = g_strdup(val);
 
 			DBG("netmask %s", netmask);
-
-			parent->ipv4.netmask = g_strdup(netmask);
 		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
 
-			get_dns(&value, parent);
+			get_dns(&value, info);
 		} else if (g_str_equal(key, "Gateway") == TRUE) {
-			const char *gateway;
+			dbus_message_iter_get_basic(&value, &val);
 
-			dbus_message_iter_get_basic(&value, &gateway);
+			gateway = g_strdup(val);
 
 			DBG("gateway %s", gateway);
-
-			parent->ipv4.gateway = g_strdup(gateway);
 		}
 
 		dbus_message_iter_next(&dict);
 	}
 
+
+	if (info->method == CONNMAN_IPCONFIG_METHOD_FIXED) {
+		connman_ipaddress_set_ipv4(&info->ipaddress, address,
+						netmask, gateway);
+	}
+
 	/* deactive, oFono send NULL inteface before deactive signal */
 	if (interface == NULL)
-		connman_network_set_index(network, -1);
+		connman_network_set_index(info->network, -1);
+
+	g_free(address);
+	g_free(netmask);
+	g_free(gateway);
 }
 
-static void cleanup_ipconfig(struct connman_network *network)
-{
-	struct connman_element *parent = connman_network_get_element(network);
-
-	g_free(parent->ipv4.address);
-	parent->ipv4.address = NULL;
-
-	g_free(parent->ipv4.netmask);
-	parent->ipv4.netmask = NULL;
-
-	g_free(parent->ipv4.nameserver);
-	parent->ipv4.nameserver = NULL;
-
-	g_free(parent->ipv4.gateway);
-	parent->ipv4.gateway = NULL;
-
-	parent->ipv4.method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
-}
-
-
-static void set_connected(struct connman_network *network,
+static void set_connected(struct network_info *info,
 				connman_bool_t connected)
 {
-	struct connman_element *parent = connman_network_get_element(network);
-	enum connman_ipconfig_method method = parent->ipv4.method;
+	DBG("network %p connected %d", info->network, connected);
 
-	switch (method) {
+	switch (info->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -1680,39 +1685,36 @@ static void set_connected(struct connman_network *network,
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		connman_network_set_ipv4_method(network, method);
-
-		connman_network_set_connected(network, connected);
-
-		if (connected == FALSE)
-			cleanup_ipconfig(network);
+		connman_network_set_ipv4_method(info->network, info->method);
+		connman_network_set_ipaddress(info->network, &info->ipaddress);
 
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		connman_network_set_ipv4_method(network, method);
+		connman_network_set_ipv4_method(info->network, info->method);
 
-		connman_network_set_connected(network, connected);
 		break;
 	}
+
+	connman_network_set_connected(info->network, connected);
 }
 
 static gboolean context_changed(DBusConnection *connection,
 					DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
-	struct connman_network *network;
+	struct network_info *info;
 	DBusMessageIter iter, value;
 	const char *key;
 
 	DBG("path %s", path);
 
-	network = g_hash_table_lookup(network_hash, path);
-	if (network == NULL)
+	info = g_hash_table_lookup(network_hash, path);
+	if (info == NULL)
 		return TRUE;
 
-	if (!pending_network_is_available(network)) {
-		remove_network(network);
+	if (!pending_network_is_available(info->network)) {
+		remove_network(info->network);
 		return TRUE;
 	}
 
@@ -1724,14 +1726,16 @@ static gboolean context_changed(DBusConnection *connection,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
+	DBG("key %s", key);
+
 	if (g_str_equal(key, "Settings") == TRUE)
-		update_settings(&value, network);
+		update_settings(&value, info);
 	else if (g_str_equal(key, "Active") == TRUE) {
 		dbus_bool_t active;
 
 		dbus_message_iter_get_basic(&value, &active);
 
-		set_connected(network, active);
+		set_connected(info, active);
 	}
 
 	return TRUE;

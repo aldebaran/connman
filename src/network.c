@@ -702,41 +702,39 @@ static void dhcp_callback(struct connman_network *network,
 static int set_connected_fixed(struct connman_network *network)
 {
 	struct connman_service *service;
-	struct connman_element *parent, *element;
+	struct connman_ipconfig *ipconfig_ipv4;
+	int err;
 
 	DBG("");
 
 	service = __connman_service_lookup_from_network(network);
 
-	parent = connman_network_get_element(network);
+	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 
 	set_configuration(network);
-
-	if (parent->ipv4.address == NULL)
-		return -EINVAL;
-
-	if (parent->ipv4.netmask == NULL)
-		return -EINVAL;
-
-	element = connman_element_create(NULL);
-	if (element == NULL) {
-		connman_error("Can not create connman_element");
-		return -ENOMEM;
-	}
-
-	element->type = CONNMAN_ELEMENT_TYPE_IPV4;
-	element->index = parent->index;
-
-	if (connman_element_register(element, parent) < 0) {
-		connman_error("Can not register connman_element");
-		return -EINVAL;
-	}
 
 	network->connecting = FALSE;
 
 	connman_network_set_associating(network, FALSE);
 
+	err = __connman_ipconfig_address_add(ipconfig_ipv4);
+	if (err < 0)
+		goto err;
+
+	err = __connman_ipconfig_gateway_add(ipconfig_ipv4);
+	if (err < 0)
+		goto err;
+
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 	return 0;
+
+err:
+	connman_network_set_error(network,
+			CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+
+	return err;
 }
 
 static void set_connected_manual(struct connman_network *network)
@@ -1228,7 +1226,7 @@ int connman_network_set_ipaddress(struct connman_network *network,
 	__connman_ipconfig_set_prefixlen(ipconfig, ipaddress->prefixlen);
 	__connman_ipconfig_set_gateway(ipconfig, ipaddress->gateway);
 
-	return __connman_ipconfig_gateway_add(ipconfig);
+	return 0;
 }
 
 int connman_network_set_pac(struct connman_network *network,
