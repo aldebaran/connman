@@ -1263,10 +1263,12 @@ int connman_network_set_nameservers(struct connman_network *network,
 	if (nameservers != NULL)
 		nameservers_array = g_strsplit(nameservers, " ", 0);
 
-	for (i = 0; nameservers_array[i] == NULL; i++) {
+	for (i = 0; nameservers_array[i] != NULL; i++) {
 		__connman_service_nameserver_append(service,
 						nameservers_array[i]);
 	}
+
+	g_strfreev(nameservers_array);
 
 	return 0;
 }
