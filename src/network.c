@@ -743,8 +743,6 @@ static void set_connected_manual(struct connman_network *network)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
-	const char *nameserver = NULL;
-	const char *gateway;
 	int err;
 
 	DBG("network %p", network);
@@ -759,19 +757,9 @@ static void set_connected_manual(struct connman_network *network)
 	if (err < 0)
 		goto err;
 
-	connman_element_get_value(&network->element,
-			CONNMAN_PROPERTY_ID_IPV4_NAMESERVER, &nameserver);
-	if (nameserver != NULL)
-		__connman_service_nameserver_append(service, nameserver);
-
-	connman_element_get_value(&network->element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-	if (gateway != NULL) {
-		__connman_ipconfig_set_gateway(ipconfig, gateway);
-		err = __connman_ipconfig_gateway_add(ipconfig);
-		if (err < 0)
-			goto err;
-	}
+	err = __connman_ipconfig_gateway_add(ipconfig);
+	if (err < 0)
+		goto err;
 
 	network->connecting = FALSE;
 
@@ -779,6 +767,8 @@ static void set_connected_manual(struct connman_network *network)
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	return;
 
 err:
 	connman_network_set_error(network,
@@ -1101,7 +1091,6 @@ static int manual_ipv4_set(struct connman_network *network,
 				struct connman_ipconfig *ipconfig)
 {
 	struct connman_service *service;
-	const char *gateway;
 	int err;
 
 	service = __connman_service_lookup_from_network(network);
@@ -1115,12 +1104,7 @@ static int manual_ipv4_set(struct connman_network *network,
 		return err;
 	}
 
-	connman_element_get_value(&network->element,
-				CONNMAN_PROPERTY_ID_IPV4_GATEWAY, &gateway);
-	if (gateway != NULL) {
-		__connman_ipconfig_set_gateway(ipconfig, gateway);
-		__connman_ipconfig_gateway_add(ipconfig);
-	}
+	__connman_ipconfig_gateway_add(ipconfig);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
