@@ -37,6 +37,7 @@
 #include <connman/log.h>
 #include <connman/task.h>
 #include <connman/dbus.h>
+#include <connman/ipconfig.h>
 
 #include "vpn.h"
 
@@ -97,7 +98,9 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
 	const char *domain = NULL;
-	char *dns_entries = NULL;
+	char *nameservers = NULL;
+	char *address = NULL, *gateway = NULL, *peer = NULL;
+	struct connman_ipaddress *ipaddress;
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -126,27 +129,50 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 
 		DBG("%s = %s", key, value);
 
-		if (!strcmp(key, "trusted_ip"))
+		if (!strcmp(key, "trusted_ip")) {
 			connman_provider_set_string(provider, "Gateway", value);
+			gateway = g_strdup(value);
+		}
 
-		if (!strcmp(key, "ifconfig_local"))
+		if (!strcmp(key, "ifconfig_local")) {
 			connman_provider_set_string(provider, "Address", value);
+			address = g_strdup(value);
+		}
 
-		if (!strcmp(key, "ifconfig_remote"))
+		if (!strcmp(key, "ifconfig_remote")) {
 			connman_provider_set_string(provider, "Peer", value);
+			peer = g_strdup(value);
+		}
 
 		if (g_str_has_prefix(key, "route_") == TRUE)
 			connman_provider_append_route(provider, key, value);
 
-		ov_append_dns_entries(key, value, &dns_entries);
+		ov_append_dns_entries(key, value, &nameservers);
 
 		dbus_message_iter_next(&dict);
 	}
 
-	if (dns_entries != NULL) {
-		connman_provider_set_string(provider, "DNS", dns_entries);
-		g_free(dns_entries);
+	ipaddress = connman_ipaddress_alloc(AF_INET);
+	if (ipaddress == NULL) {
+		g_free(nameservers);
+		g_free(address);
+		g_free(gateway);
+		g_free(peer);
+
+		return VPN_STATE_FAILURE;
 	}
+
+	connman_ipaddress_set_ipv4(ipaddress, address, NULL, gateway);
+	connman_ipaddress_set_peer(ipaddress, peer);
+	connman_provider_set_ipaddress(provider, ipaddress);
+
+	connman_provider_set_nameservers(provider, nameservers);
+
+	g_free(nameservers);
+	g_free(address);
+	g_free(gateway);
+	g_free(peer);
+	connman_ipaddress_free(ipaddress);
 
 	return VPN_STATE_CONNECT;
 }

@@ -26,6 +26,7 @@
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <net/if.h>
 
 #include <glib.h>
 
@@ -34,6 +35,7 @@
 #include <connman/provider.h>
 #include <connman/log.h>
 #include <connman/task.h>
+#include <connman/ipconfig.h>
 
 #include "vpn.h"
 
@@ -42,6 +44,8 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
 	const char *domain = NULL;
+	char *address = NULL, *netmask = NULL, *gateway = NULL;
+	struct connman_ipaddress *ipaddress;
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -72,19 +76,19 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 			DBG("%s = %s", key, value);
 
 		if (!strcmp(key, "VPNGATEWAY"))
-			connman_provider_set_string(provider, "Gateway", value);
+			gateway = g_strdup(value);
 
 		if (!strcmp(key, "INTERNAL_IP4_ADDRESS"))
-			connman_provider_set_string(provider, "Address", value);
+			address = g_strdup(value);
 
 		if (!strcmp(key, "INTERNAL_IP4_NETMASK"))
-			connman_provider_set_string(provider, "Netmask", value);
+			netmask = g_strdup(value);
 
 		if (!strcmp(key, "INTERNAL_IP4_DNS"))
-			connman_provider_set_string(provider, "DNS", value);
+			connman_provider_set_nameservers(provider, value);
 
 		if (!strcmp(key, "CISCO_PROXY_PAC"))
-			connman_provider_set_string(provider, "PAC", value);
+			connman_provider_set_pac(provider, value);
 
 		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN"))
 			domain = value;
@@ -96,7 +100,23 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 		dbus_message_iter_next(&dict);
 	}
 
-	connman_provider_set_string(provider, "Domain", domain);
+	ipaddress = connman_ipaddress_alloc(AF_INET);
+	if (ipaddress == NULL) {
+		g_free(address);
+		g_free(netmask);
+		g_free(gateway);
+
+		return VPN_STATE_FAILURE;
+	}
+
+	connman_ipaddress_set_ipv4(ipaddress, address, netmask, gateway);
+	connman_provider_set_ipaddress(provider, ipaddress);
+	connman_provider_set_domain(provider, domain);
+
+	g_free(address);
+	g_free(netmask);
+	g_free(gateway);
+	connman_ipaddress_free(ipaddress);
 
 	return VPN_STATE_CONNECT;
 }

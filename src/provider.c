@@ -50,7 +50,6 @@ struct connman_provider {
 	char *name;
 	char *type;
 	char *host;
-	char *dns;
 	char *domain;
 	GHashTable *routes;
 	struct connman_provider_driver *driver;
@@ -80,35 +79,6 @@ static struct connman_provider *connman_provider_lookup(const char *identifier)
 	provider = g_hash_table_lookup(provider_hash, identifier);
 
 	return provider;
-}
-
-static int connman_provider_setup_vpn_ipv4(struct connman_provider *provider,
-						struct connman_element *element)
-{
-	if (element == NULL || provider == NULL)
-		return -EINVAL;
-
-	DBG("set vpn type %d", element->type);
-
-	g_free(element->ipv4.address);
-	element->ipv4.address = g_strdup(provider->element.ipv4.address);
-
-	g_free(element->ipv4.peer);
-	element->ipv4.peer = g_strdup(provider->element.ipv4.peer);
-
-	g_free(element->ipv4.netmask);
-	element->ipv4.netmask = g_strdup(provider->element.ipv4.netmask);
-
-	g_free(element->ipv4.gateway);
-	element->ipv4.gateway = g_strdup(provider->element.ipv4.gateway);
-
-	g_free(element->ipv4.broadcast);
-	element->ipv4.broadcast = g_strdup(provider->element.ipv4.broadcast);
-
-	g_free(element->ipv4.pac);
-	element->ipv4.pac = g_strdup(provider->element.ipv4.pac);
-
-	return connman_element_register(element, &provider->element);
 }
 
 struct connman_provider *connman_provider_ref(struct connman_provider *provider)
@@ -197,20 +167,6 @@ int __connman_provider_connect(struct connman_provider *provider)
 
 	DBG("provider %p", provider);
 
-	g_free(provider->element.ipv4.address);
-	g_free(provider->element.ipv4.peer);
-	g_free(provider->element.ipv4.netmask);
-	g_free(provider->element.ipv4.gateway);
-	g_free(provider->element.ipv4.broadcast);
-	g_free(provider->element.ipv4.pac);
-
-	provider->element.ipv4.address = NULL;
-	provider->element.ipv4.peer = NULL;
-	provider->element.ipv4.netmask = NULL;
-	provider->element.ipv4.gateway = NULL;
-	provider->element.ipv4.broadcast = NULL;
-	provider->element.ipv4.pac = NULL;
-
 	if (provider->driver != NULL && provider->driver->connect != NULL)
 		err = provider->driver->connect(provider);
 	else
@@ -278,98 +234,51 @@ static void provider_append_routes(gpointer key, gpointer value,
 	}
 }
 
-static void provider_set_nameservers(struct connman_provider *provider)
-{
-	struct connman_service *service = provider->vpn_service;
-
-	char *nameservers = NULL, *name = NULL;
-	const char *value;
-	char *second_ns;
-
-	if (service == NULL)
-		return;
-
-	if (provider->dns == NULL)
-		return;
-
-	name = connman_inet_ifname(provider->element.index);
-
-	nameservers = g_strdup(provider->dns);
-	value = nameservers;
-	second_ns = strchr(value, ' ');
-	if (second_ns)
-		*(second_ns++) = 0;
-	__connman_service_nameserver_append(service, value);
-	value = second_ns;
-
-	while (value) {
-		char *next = strchr(value, ' ');
-		if (next)
-			*(next++) = 0;
-
-		connman_resolver_append(name, provider->domain, value);
-		value = next;
-	}
-
-	g_free(nameservers);
-	g_free(name);
-}
-
 static int set_connected(struct connman_provider *provider,
 					connman_bool_t connected)
 {
+	int err;
 	struct connman_service *service = provider->vpn_service;
+	struct connman_ipconfig *ipconfig;
 
 	if (service == NULL)
 		return -ENODEV;
 
 	if (connected == TRUE) {
-		enum connman_element_type type = CONNMAN_ELEMENT_TYPE_UNKNOWN;
-		struct connman_element *element;
-		int err;
-
-		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_CONFIGURATION,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
-
-		type = CONNMAN_ELEMENT_TYPE_IPV4;
-
-		element = connman_element_create(NULL);
-		if (element == NULL)
-			return -ENOMEM;
-
-		element->type  = type;
-		element->index = provider->element.index;
-
-		err = connman_provider_setup_vpn_ipv4(provider, element);
-		if (err < 0) {
-			connman_element_unref(element);
-
-			__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_FAILURE,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
-
-			return err;
+		ipconfig = __connman_service_get_ip4config(service);
+		if (ipconfig == NULL) {
+			err = -EIO;
+			goto err;
 		}
+
+		__connman_ipconfig_address_add(ipconfig);
+		__connman_ipconfig_gateway_add(ipconfig);
 
 		__connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_READY,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 
-		__connman_service_set_domainname(service, provider->domain);
-
-		provider_set_nameservers(provider);
-
 		g_hash_table_foreach(provider->routes, provider_append_routes,
 					provider);
+
 	} else {
-		connman_element_unregister_children(&provider->element);
+		ipconfig = __connman_service_get_ip4config(service);
+		if (ipconfig != NULL)
+			__connman_ipconfig_gateway_remove(ipconfig);
+
 		__connman_service_indicate_state(service,
 						CONNMAN_SERVICE_STATE_IDLE,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 	}
 
 	return 0;
+
+err:
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_FAILURE,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	return err;
 }
 
 int connman_provider_set_state(struct connman_provider *provider,
@@ -450,7 +359,6 @@ static void provider_destruct(struct connman_element *element)
 	g_free(provider->type);
 	g_free(provider->domain);
 	g_free(provider->identifier);
-	g_free(provider->dns);
 	g_hash_table_destroy(provider->routes);
 }
 
@@ -473,15 +381,8 @@ static void provider_initialize(struct connman_provider *provider)
 	provider->element.private = provider;
 	provider->element.destruct = provider_destruct;
 
-	provider->element.ipv4.address = NULL;
-	provider->element.ipv4.netmask = NULL;
-	provider->element.ipv4.gateway = NULL;
-	provider->element.ipv4.broadcast = NULL;
-	provider->element.ipv4.pac = NULL;
-
 	provider->name = NULL;
 	provider->type = NULL;
-	provider->dns = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
 	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
@@ -699,29 +600,6 @@ int connman_provider_set_string(struct connman_provider *provider,
 	} else if (g_str_equal(key, "Name") == TRUE) {
 		g_free(provider->name);
 		provider->name = g_strdup(value);
-	} else if (g_str_equal(key, "Gateway") == TRUE) {
-		g_free(provider->element.ipv4.gateway);
-		provider->element.ipv4.gateway = g_strdup(value);
-	} else if (g_str_equal(key, "Address") == TRUE) {
-		g_free(provider->element.ipv4.address);
-		provider->element.ipv4.address = g_strdup(value);
-	} else if (g_str_equal(key, "Peer") == TRUE) {
-		g_free(provider->element.ipv4.peer);
-		provider->element.ipv4.peer = g_strdup(value);
-	} else if (g_str_equal(key, "Netmask") == TRUE) {
-		g_free(provider->element.ipv4.netmask);
-		provider->element.ipv4.netmask = g_strdup(value);
-	} else if (g_str_equal(key, "PAC") == TRUE) {
-		g_free(provider->element.ipv4.pac);
-		provider->element.ipv4.pac = g_strdup(value);
-		__connman_service_set_proxy_autoconfig(provider->vpn_service,
-									value);
-	} else if (g_str_equal(key, "DNS") == TRUE) {
-		g_free(provider->dns);
-		provider->dns = g_strdup(value);
-	} else if (g_str_equal(key, "Domain") == TRUE) {
-		g_free(provider->domain);
-		provider->domain = g_strdup(value);
 	}
 
 	return connman_element_set_string(&provider->element, key, value);
