@@ -1336,25 +1336,6 @@ enum connman_ipconfig_method __connman_ipconfig_get_method(struct connman_ipconf
 	return ipconfig->method;
 }
 
-/**
- * connman_ipconfig_bind:
- * @ipconfig: ipconfig structure
- * @ipaddress: ipaddress structure
- *
- * Bind IP address details to configuration
- */
-void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
-					struct connman_ipaddress *ipaddress)
-{
-	struct connman_ipconfig *origin;
-
-	origin = ipconfig->origin ? ipconfig->origin : ipconfig;
-
-	connman_ipaddress_copy(origin->address, ipaddress);
-
-	connman_inet_set_address(origin->index, origin->address);
-}
-
 void __connman_ipconfig_set_element_ipv6_gateway(
 			struct connman_ipconfig *ipconfig,
 				struct connman_element *element)

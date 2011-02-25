@@ -96,8 +96,6 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 				const struct connman_ipconfig_ops *ops);
 int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method);
-void connman_ipconfig_bind(struct connman_ipconfig *ipconfig,
-					struct connman_ipaddress *ipaddress);
 void __connman_ipconfig_disable_ipv6(struct connman_ipconfig *ipconfig);
 
 #ifdef __cplusplus
