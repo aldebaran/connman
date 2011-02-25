@@ -683,14 +683,8 @@ int connman_provider_set_ipaddress(struct connman_provider *provider,
 {
 	struct connman_ipconfig *ipconfig = NULL;
 
-	if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV4) {
-		ipconfig = __connman_service_get_ip4config(
-						provider->vpn_service);
-	} else if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV6) {
-		ipconfig = __connman_service_get_ip6config(
-						provider->vpn_service);
-	}
-
+	ipconfig = __connman_service_get_ipconfig(provider->vpn_service,
+							ipaddress->family);
 	if (ipconfig == NULL)
 		return -EINVAL;
 

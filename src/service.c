@@ -3247,6 +3247,18 @@ __connman_service_get_ip6config(struct connman_service *service)
 	return service->ipconfig_ipv6;
 }
 
+struct connman_ipconfig *
+__connman_service_get_ipconfig(struct connman_service *service, int family)
+{
+	if (family == AF_INET)
+		return __connman_service_get_ip4config(service);
+	else if (family == AF_INET6)
+		return __connman_service_get_ip6config(service);
+	else
+		return NULL;
+
+}
+
 enum connman_service_security __connman_service_get_security(struct connman_service *service)
 {
 	if (service == NULL)

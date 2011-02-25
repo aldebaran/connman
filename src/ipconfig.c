@@ -168,7 +168,7 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 	DBG("prefix_len %d address %s gateway %s",
 			prefix_length, address, gateway);
 
-	ipaddress->family = CONNMAN_IPCONFIG_TYPE_IPV6;
+	ipaddress->family = AF_INET6;
 
 	ipaddress->prefixlen = prefix_length;
 
@@ -187,7 +187,7 @@ int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 	if (ipaddress == NULL)
 		return -EINVAL;
 
-	ipaddress->family = CONNMAN_IPCONFIG_TYPE_IPV4;
+	ipaddress->family = AF_INET;
 
 	ipaddress->prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 

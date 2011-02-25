@@ -1207,11 +1207,7 @@ int connman_network_set_ipaddress(struct connman_network *network,
 	if (service == NULL)
 		return -EINVAL;
 
-	if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV4)
-		ipconfig = __connman_service_get_ip4config(service);
-	else if (ipaddress->family == CONNMAN_IPCONFIG_TYPE_IPV6)
-		ipconfig = __connman_service_get_ip6config(service);
-
+	ipconfig = __connman_service_get_ipconfig(service, ipaddress->family);
 	if (ipconfig == NULL)
 		return -EINVAL;
 
