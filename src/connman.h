@@ -257,10 +257,6 @@ void __connman_ipconfig_append_ethernet(struct connman_ipconfig *ipconfig,
 enum connman_ipconfig_method __connman_ipconfig_get_method(
 				struct connman_ipconfig *ipconfig);
 
-void __connman_ipconfig_set_element_ipv6_gateway(
-			struct connman_ipconfig *ipconfig,
-				struct connman_element *element);
-
 int __connman_ipconfig_address_add(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_address_remove(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_gateway_add(struct connman_ipconfig *ipconfig);

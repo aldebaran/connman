@@ -1336,14 +1336,6 @@ enum connman_ipconfig_method __connman_ipconfig_get_method(struct connman_ipconf
 	return ipconfig->method;
 }
 
-void __connman_ipconfig_set_element_ipv6_gateway(
-			struct connman_ipconfig *ipconfig,
-				struct connman_element *element)
-{
-	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		element->ipv6.gateway = ipconfig->address->gateway;
-}
-
 int __connman_ipconfig_address_add(struct connman_ipconfig *ipconfig)
 {
 	DBG("");
