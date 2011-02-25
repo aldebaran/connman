@@ -352,6 +352,10 @@ void __connman_connection_gateway_remove(struct connman_service *service)
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
+	__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_DISCONNECT,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
+
 	data = g_hash_table_lookup(gateway_hash, service);
 	if (data == NULL)
 		return;

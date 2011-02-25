@@ -923,16 +923,11 @@ static gboolean set_connected(gpointer user_data)
 
 		service = __connman_service_lookup_from_network(network);
 
+		__connman_connection_gateway_remove(service);
+
 		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
-
-		/* TODO: eventually the IPv6 disconnect state should be handled
-		 * in connection.c
-		 */
-		__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_DISCONNECT,
-					CONNMAN_IPCONFIG_TYPE_IPV6);
 
 		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
