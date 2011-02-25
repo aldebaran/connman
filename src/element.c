@@ -56,8 +56,6 @@ static const char *type2string(enum connman_element_type type)
 		return "network";
 	case CONNMAN_ELEMENT_TYPE_SERVICE:
 		return "service";
-	case CONNMAN_ELEMENT_TYPE_IPV4:
-		return "ipv4";
 	case CONNMAN_ELEMENT_TYPE_IPV6:
 		return "ipv6";
 	case CONNMAN_ELEMENT_TYPE_BOOTP:
@@ -639,14 +637,6 @@ void connman_element_unref(struct connman_element *element)
 		free_properties(element);
 		g_free(element->hostname);
 		g_free(element->domainname);
-		g_free(element->ipv4.address);
-		g_free(element->ipv4.netmask);
-		g_free(element->ipv4.gateway);
-		g_free(element->ipv4.network);
-		g_free(element->ipv4.broadcast);
-		g_free(element->ipv4.nameserver);
-		g_free(element->ipv4.timeserver);
-		g_free(element->ipv4.pac);
 		g_free(element->ipv6.address);
 		g_free(element->ipv6.network);
 		g_free(element->devname);
@@ -746,60 +736,6 @@ int connman_element_get_value(struct connman_element *element,
 			return connman_element_get_value(element->parent,
 								id, value);
 		*((char **) value) = element->domainname;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_METHOD:
-		if (element->ipv4.method == CONNMAN_IPCONFIG_METHOD_UNKNOWN)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((const char **) value) = __connman_ipconfig_method2string(element->ipv4.method);
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_ADDRESS:
-		if (element->ipv4.address == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.address;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_PEER:
-		if (element->ipv4.peer == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.peer;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_NETMASK:
-		if (element->ipv4.netmask == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.netmask;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_GATEWAY:
-		if (element->ipv4.gateway == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.gateway;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_BROADCAST:
-		if (element->ipv4.broadcast == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.broadcast;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_NAMESERVER:
-		if (element->ipv4.nameserver == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.nameserver;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_TIMESERVER:
-		if (element->ipv4.timeserver == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.timeserver;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV4_PAC:
-		if (element->ipv4.pac == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv4.pac;
 		break;
 	case CONNMAN_PROPERTY_ID_IPV6_GATEWAY:
 		if (element->ipv6.gateway == NULL)
@@ -1393,7 +1329,6 @@ void __connman_element_start(void)
 
 	__connman_rtnl_start();
 
-	__connman_ipv4_init();
 	__connman_dhcp_init();
 	__connman_wpad_init();
 	__connman_wispr_init();
@@ -1410,7 +1345,6 @@ void __connman_element_stop(void)
 	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
 	__connman_dhcp_cleanup();
-	__connman_ipv4_cleanup();
 	__connman_provider_cleanup();
 }
 

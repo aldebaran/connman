@@ -72,7 +72,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/manager.c src/profile.c src/service.c \
 			src/agent.c src/notifier.c src/provider.c \
 			src/resolver.c src/ipconfig.c src/detect.c src/inet.c \
-			src/ipv4.c src/dhcp.c src/rtnl.c src/proxy.c \
+			src/dhcp.c src/rtnl.c src/proxy.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/wifi.c src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/location.c \
