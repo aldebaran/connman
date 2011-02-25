@@ -51,6 +51,7 @@ struct connman_provider {
 	char *type;
 	char *host;
 	char *domain;
+	int family;
 	GHashTable *routes;
 	struct connman_provider_driver *driver;
 	void *driver_data;
@@ -136,6 +137,18 @@ static int provider_probe(struct connman_provider *provider)
 	return 0;
 }
 
+static int provider_indicate_state(struct connman_provider *provider,
+					enum connman_service_state state)
+{
+	DBG("state %d", state);
+
+	__connman_service_indicate_state(provider->vpn_service, state,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	return __connman_service_indicate_state(provider->vpn_service, state,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
+}
+
 int __connman_provider_disconnect(struct connman_provider *provider)
 {
 	int err;
@@ -148,9 +161,9 @@ int __connman_provider_disconnect(struct connman_provider *provider)
 		return -EOPNOTSUPP;
 
 	if (provider->vpn_service != NULL)
-		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_DISCONNECT,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+		provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_DISCONNECT);
+
 	if (err < 0) {
 		if (err != -EINPROGRESS)
 			return err;
@@ -176,9 +189,9 @@ int __connman_provider_connect(struct connman_provider *provider)
 		if (err != -EINPROGRESS)
 			return err;
 
-		__connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_ASSOCIATION,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+		provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_ASSOCIATION);
+
 		return -EINPROGRESS;
 	}
 
@@ -237,48 +250,42 @@ static void provider_append_routes(gpointer key, gpointer value,
 static int set_connected(struct connman_provider *provider,
 					connman_bool_t connected)
 {
-	int err;
 	struct connman_service *service = provider->vpn_service;
 	struct connman_ipconfig *ipconfig;
 
 	if (service == NULL)
 		return -ENODEV;
 
+	ipconfig = __connman_service_get_ipconfig(service, provider->family);
+
 	if (connected == TRUE) {
-		ipconfig = __connman_service_get_ip4config(service);
 		if (ipconfig == NULL) {
-			err = -EIO;
-			goto err;
+			provider_indicate_state(provider,
+						CONNMAN_SERVICE_STATE_FAILURE);
+			return -EIO;
 		}
 
 		__connman_ipconfig_address_add(ipconfig);
 		__connman_ipconfig_gateway_add(ipconfig);
 
-		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+		provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_READY);
 
 		g_hash_table_foreach(provider->routes, provider_append_routes,
 					provider);
 
 	} else {
-		ipconfig = __connman_service_get_ip4config(service);
-		if (ipconfig != NULL)
+		if (ipconfig != NULL) {
+			provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_DISCONNECT);
 			__connman_ipconfig_gateway_remove(ipconfig);
+		}
 
-		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_IDLE,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+		provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_IDLE);
 	}
 
 	return 0;
-
-err:
-	__connman_service_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
-
-	return err;
 }
 
 int connman_provider_set_state(struct connman_provider *provider,
@@ -293,19 +300,16 @@ int connman_provider_set_state(struct connman_provider *provider,
 	case CONNMAN_PROVIDER_STATE_IDLE:
 		return set_connected(provider, FALSE);
 	case CONNMAN_PROVIDER_STATE_CONNECT:
-		return __connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_ASSOCIATION,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+		return provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_ASSOCIATION);
 	case CONNMAN_PROVIDER_STATE_READY:
 		return set_connected(provider, TRUE);
 	case CONNMAN_PROVIDER_STATE_DISCONNECT:
-		return __connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_DISCONNECT,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+		return provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_DISCONNECT);
 	case CONNMAN_PROVIDER_STATE_FAILURE:
-		return __connman_service_indicate_state(provider->vpn_service,
-					CONNMAN_SERVICE_STATE_FAILURE,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+		return provider_indicate_state(provider,
+					CONNMAN_SERVICE_STATE_FAILURE);
 	}
 
 	return -EINVAL;
@@ -687,6 +691,8 @@ int connman_provider_set_ipaddress(struct connman_provider *provider,
 							ipaddress->family);
 	if (ipconfig == NULL)
 		return -EINVAL;
+
+	provider->family = ipaddress->family;
 
 	__connman_ipconfig_set_local(ipconfig, ipaddress->local);
 	__connman_ipconfig_set_peer(ipconfig, ipaddress->peer);
