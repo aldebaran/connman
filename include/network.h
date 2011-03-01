@@ -77,6 +77,7 @@ void connman_network_set_group(struct connman_network *network,
 						const char *group);
 const char *connman_network_get_group(struct connman_network *network);
 
+connman_bool_t connman_network_get_connecting(struct connman_network *network);
 int connman_network_set_available(struct connman_network *network,
 						connman_bool_t available);
 connman_bool_t connman_network_get_available(struct connman_network *network);

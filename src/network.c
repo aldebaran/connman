@@ -438,7 +438,7 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network)
 	return FALSE;
 }
 
-connman_bool_t __connman_network_get_connecting(struct connman_network *network)
+connman_bool_t connman_network_get_connecting(struct connman_network *network)
 {
 	return network->connecting;
 }

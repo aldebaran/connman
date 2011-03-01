@@ -428,8 +428,7 @@ static connman_bool_t is_connecting_state(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_IDLE:
 	case CONNMAN_SERVICE_STATE_FAILURE:
 		if (service->network != NULL)
-			return __connman_network_get_connecting(
-							service->network);
+			return connman_network_get_connecting(service->network);
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_READY:
 	case CONNMAN_SERVICE_STATE_ONLINE:

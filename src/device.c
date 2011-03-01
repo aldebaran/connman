@@ -787,7 +787,7 @@ int __connman_device_disconnect(struct connman_device *device)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct connman_network *network = value;
 
-		if (__connman_network_get_connecting(network) == TRUE) {
+		if (connman_network_get_connecting(network) == TRUE) {
 			/*
 			 * Skip network in the process of connecting.
 			 * This is a workaround for WiFi networks serviced
