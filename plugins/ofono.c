@@ -620,7 +620,8 @@ static int add_network(struct connman_device *device,
 	if (connman_device_add_network(device, network) != 0)
 		goto error;
 
-	if (active)
+	/* Connect only if requested to do so */
+	if (active && connman_network_get_connecting(network) == TRUE)
 		set_connected(info, active);
 
 	return 0;
@@ -1735,7 +1736,13 @@ static gboolean context_changed(DBusConnection *connection,
 
 		dbus_message_iter_get_basic(&value, &active);
 
-		set_connected(info, active);
+		if (active == FALSE)
+			set_connected(info, active);
+
+		/* Connect only if requested to do so */
+		if (active == TRUE &&
+			connman_network_get_connecting(info->network) == TRUE)
+			set_connected(info, active);
 	}
 
 	return TRUE;
