@@ -462,6 +462,19 @@ static int profile_init(void)
 			if (ident == NULL)
 				continue;
 
+			/*
+			 * If there is no non-extension portion to the file
+			 * (i.e. it is precisely named ".profile"), then ignore
+			 * it. Passing such files to create_profile will result
+			 * in a SIGABRT.
+			 */
+
+			if (file == ident) {
+				connman_info("Ignoring malformed profile %s\n",
+						file);
+				continue;
+			}
+
 			str = g_string_new_len(file, ident - file);
 			if (str == NULL)
 				continue;
