@@ -408,6 +408,9 @@ static gboolean pending_network_is_available(struct connman_network *network)
 	return TRUE;
 }
 
+static void set_connected(struct network_info *info,
+				connman_bool_t connected);
+
 static void set_active_reply(DBusPendingCall *call, void *user_data)
 {
 	char const *path = user_data;
@@ -435,7 +438,8 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 
 		dbus_error_free(&error);
-	}
+	} else if (connman_network_get_index(info->network) >= 0)
+		set_connected(info, TRUE);
 
 done:
 	dbus_message_unref(reply);
@@ -443,23 +447,34 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static int set_network_active(struct connman_network *network,
-						dbus_bool_t active)
+static int set_network_active(struct connman_network *network)
 {
-	int error;
-
+	dbus_bool_t value = TRUE;
 	const char *path = connman_network_get_string(network, "Path");
 
-	DBG("network %p, path %s, active %d", network, path, active);
+	DBG("network %p, path %s", network, path);
 
-	error = set_property(path, OFONO_CONTEXT_INTERFACE,
-				"Active", DBUS_TYPE_BOOLEAN, &active,
+	return set_property(path, OFONO_CONTEXT_INTERFACE,
+				"Active", DBUS_TYPE_BOOLEAN, &value,
 				set_active_reply, g_strdup(path), g_free);
+}
 
-	if (active == FALSE && error == -EINPROGRESS)
-		error = 0;
+static int set_network_inactive(struct connman_network *network)
+{
+	int err;
+	dbus_bool_t value = FALSE;
+	const char *path = connman_network_get_string(network, "Path");
 
-	return error;
+	DBG("network %p, path %s", network, path);
+
+	err = set_property(path, OFONO_CONTEXT_INTERFACE,
+				"Active", DBUS_TYPE_BOOLEAN, &value,
+				NULL, NULL, NULL);
+
+	if (err == -EINPROGRESS)
+		err = 0;
+
+	return err;
 }
 
 static int network_connect(struct connman_network *network)
@@ -468,9 +483,6 @@ static int network_connect(struct connman_network *network)
 	struct modem_data *modem;
 
 	DBG("network %p", network);
-
-	if (connman_network_get_index(network) >= 0)
-		return -EISCONN;
 
 	device = connman_network_get_device(network);
 	if (device == NULL)
@@ -489,7 +501,7 @@ static int network_connect(struct connman_network *network)
 	if (modem->roaming_allowed == FALSE && modem->roaming == TRUE)
 		return -ENOLINK;
 
-	return set_network_active(network, TRUE);
+	return set_network_active(network);
 }
 
 static int network_disconnect(struct connman_network *network)
@@ -501,7 +513,7 @@ static int network_disconnect(struct connman_network *network)
 
 	connman_network_set_associating(network, FALSE);
 
-	return set_network_active(network, FALSE);
+	return set_network_inactive(network);
 }
 
 static void network_remove(struct connman_network *network)
@@ -524,9 +536,6 @@ static struct connman_network_driver network_driver = {
 
 static void update_settings(DBusMessageIter *array,
 				struct network_info *info);
-
-static void set_connected(struct network_info *info,
-				connman_bool_t connected);
 
 static int add_network(struct connman_device *device,
 			const char *path, DBusMessageIter *dict)
