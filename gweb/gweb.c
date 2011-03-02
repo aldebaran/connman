@@ -106,6 +106,7 @@ struct _GWeb {
 	char *proxy;
 	char *accept_option;
 	char *user_agent;
+	char *user_agent_profile;
 	char *http_version;
 	gboolean close_connection;
 
@@ -239,6 +240,7 @@ void g_web_unref(GWeb *web)
 
 	g_free(web->accept_option);
 	g_free(web->user_agent);
+	g_free(web->user_agent_profile);
 	g_free(web->http_version);
 
 	g_free(web);
@@ -343,6 +345,19 @@ gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 	return result;
 }
 
+gboolean g_web_set_ua_profile(GWeb *web, const char *profile)
+{
+	if (web == NULL)
+		return FALSE;
+
+	g_free(web->user_agent_profile);
+
+	web->user_agent_profile = g_strdup(profile);
+	debug(web, "setting user agent profile %s", web->user_agent);
+
+	return TRUE;
+}
+
 gboolean g_web_set_http_version(GWeb *web, const char *version)
 {
 	if (web == NULL)
@@ -355,7 +370,7 @@ gboolean g_web_set_http_version(GWeb *web, const char *version)
 		debug(web, "clearing HTTP version");
 	} else {
 		web->http_version = g_strdup(version);
-                debug(web, "setting HTTP version %s", web->http_version);
+		debug(web, "setting HTTP version %s", web->http_version);
 	}
 
 	return TRUE;
@@ -478,6 +493,11 @@ static void start_request(struct web_session *session)
 	if (session->web->user_agent != NULL)
 		g_string_append_printf(buf, "User-Agent: %s\r\n",
 						session->web->user_agent);
+
+	if (session->web->user_agent_profile != NULL) {
+		g_string_append_printf(buf, "x-wap-profile: %s\r\n",
+				       session->web->user_agent_profile);
+	}
 
 	if (session->web->accept_option != NULL)
 		g_string_append_printf(buf, "Accept: %s\r\n",

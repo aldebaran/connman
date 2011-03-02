@@ -60,6 +60,8 @@ gboolean g_web_set_accept(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
 gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
+gboolean g_web_set_ua_profile(GWeb *web, const char *profile);
+
 gboolean g_web_set_http_version(GWeb *web, const char *version);
 
 void g_web_set_close_connection(GWeb *web, gboolean enabled);
