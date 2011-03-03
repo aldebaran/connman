@@ -214,6 +214,9 @@ static void stats_free(gpointer user_data)
 {
 	struct stats_file *file = user_data;
 
+	if (file == NULL)
+		return;
+
 	msync(file->addr, file->len, MS_SYNC);
 
 	munmap(file->addr, file->len);
@@ -232,8 +235,7 @@ static void stats_free(gpointer user_data)
 		file->name = NULL;
 	}
 
-	if (file != NULL)
-		g_free(file);
+	g_free(file);
 }
 
 static void update_first(struct stats_file *file)
@@ -275,6 +277,9 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	void *addr;
 	int err;
 
+	DBG("file %p size %u addr %p len %u", file, size, file->addr,
+		file->len);
+
 	page_size = sysconf(_SC_PAGESIZE);
 	new_size = (size + page_size - 1) & ~(page_size - 1);
 
@@ -315,6 +320,8 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 static int stats_open(struct stats_file *file,
 			const char *name)
 {
+	DBG("file %p name %s", file, name);
+
 	file->name = g_strdup(name);
 
 	file->fd = TFR(open(file->name, O_RDWR | O_CREAT, 0644));
@@ -322,6 +329,7 @@ static int stats_open(struct stats_file *file,
 		connman_error("open error %s for %s",
 				strerror(errno), file->name);
 		g_free(file->name);
+		file->name = NULL;
 		return -errno;
 	}
 
@@ -337,6 +345,7 @@ static int stats_open_temp(struct stats_file *file)
 		connman_error("create tempory file error %s for %s",
 				strerror(errno), file->name);
 		g_free(file->name);
+		file->name = NULL;
 		return -errno;
 	}
 
@@ -350,6 +359,8 @@ static int stats_file_setup(struct stats_file *file)
 	size_t size = 0;
 	int err;
 
+	DBG("file %p fd %d name %s", file, file->fd, file->name);
+
 	err = fstat(file->fd, &st);
 	if (err < 0) {
 		connman_error("fstat error %s for %s\n",
@@ -357,6 +368,7 @@ static int stats_file_setup(struct stats_file *file)
 
 		TFR(close(file->fd));
 		g_free(file->name);
+		file->name = NULL;
 
 		return -errno;
 	}
@@ -371,6 +383,7 @@ static int stats_file_setup(struct stats_file *file)
 	if (err < 0) {
 		TFR(close(file->fd));
 		g_free(file->name);
+		file->name = NULL;
 
 		return err;
 	}
@@ -586,6 +599,7 @@ static void stats_file_cleanup(struct stats_file *file)
 {
 	file->fd = -1;
 	g_free(file->name);
+	file->name = NULL;
 }
 
 static int stats_file_close_swap(struct stats_file *history_file,
