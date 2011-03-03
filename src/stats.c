@@ -293,9 +293,10 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	if (file->addr == NULL) {
 		/*
 		 * Though the buffer is not shared between processes, we still
-		 * have to take MAP_SHARED because MAP_PRIVATE does not guarantee
-		 * that writes will hit the file eventually. For more details
-		 * please read the mmap man pages.
+		 * have to take MAP_SHARED because MAP_PRIVATE does not
+		 * guarantee that writes will hit the file without an explicit
+		 * call to munmap or msync. For more details please read the
+		 * mmap man pages.
 		 */
 		addr = mmap(NULL, new_size, PROT_READ | PROT_WRITE,
 				MAP_SHARED, file->fd, 0);
@@ -306,6 +307,11 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	if (addr == MAP_FAILED) {
 		connman_error("mmap error %s for %s",
 				strerror(errno), file->name);
+		if (errno == EINVAL) {
+			connman_error("%s might be on a file system, such as "
+					"JFFS2, that does not allow shared "
+					"writable mappings.", file->name);
+		}
 		return -errno;
 	}
 
