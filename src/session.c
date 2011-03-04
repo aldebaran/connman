@@ -160,16 +160,9 @@ static int session_disconnect(struct connman_session *session)
 
 static void owner_disconnect(DBusConnection *connection, void *user_data)
 {
-	struct connman_session *session;
-	char *owner = user_data;
+	struct connman_session *session = user_data;
 
-	DBG("%s died", owner);
-
-	session = g_hash_table_lookup(session_hash, owner);
-	if (session == NULL) {
-		connman_error("No session");
-		return;
-	}
+	DBG("%s died", session->owner);
 
 	session_disconnect(session);
 }
@@ -257,7 +250,7 @@ struct connman_service *__connman_session_request(const char *bearer_name,
 	session->bearer = bearer;
 
 	session->watch = g_dbus_add_disconnect_watch(connection, session->owner,
-					owner_disconnect, session->owner, NULL);
+					owner_disconnect, session, NULL);
 	return session->service;
 
 failed_bearer:
