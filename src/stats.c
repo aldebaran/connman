@@ -277,7 +277,7 @@ static int stats_file_remap(struct stats_file *file, size_t size)
 	void *addr;
 	int err;
 
-	DBG("file %p size %u addr %p len %u", file, size, file->addr,
+	DBG("file %p size %zu addr %p len %zu", file, size, file->addr,
 		file->len);
 
 	page_size = sysconf(_SC_PAGESIZE);
