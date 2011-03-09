@@ -35,7 +35,7 @@
 
 #include <gdhcp/gdhcp.h>
 
-#define BRIDGE_SYSFS_DIR "/sys/module/bridge"
+#define BRIDGE_PROC_DIR "/proc/sys/net/bridge"
 
 #define BRIDGE_NAME "tether"
 #define BRIDGE_IP "192.168.218.1"
@@ -53,7 +53,7 @@ const char *__connman_tethering_get_bridge(void)
 {
 	struct stat st;
 
-	if (stat(BRIDGE_SYSFS_DIR, &st) < 0) {
+	if (stat(BRIDGE_PROC_DIR, &st) < 0) {
 		connman_error("Missing support for 802.1d ethernet bridging");
 		return NULL;
 	}
