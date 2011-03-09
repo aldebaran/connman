@@ -66,12 +66,33 @@ struct wifi_data {
 	connman_bool_t connected;
 	connman_bool_t disconnecting;
 	connman_bool_t tethering;
+	connman_bool_t bridged;
+	const char *bridge;
 	int index;
 	unsigned flags;
 	unsigned int watch;
 };
 
 static GList *iface_list = NULL;
+
+static void handle_tethering(struct wifi_data *wifi)
+{
+	if (wifi->tethering == FALSE)
+		return;
+
+	if (wifi->bridge == NULL)
+		return;
+
+	if (wifi->bridged == TRUE)
+		return;
+
+	DBG("index %d bridge %s", wifi->index, wifi->bridge);
+
+	if (connman_inet_add_to_bridge(wifi->index, wifi->bridge) < 0)
+		return;
+
+	wifi->bridged = TRUE;
+}
 
 static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
 {
@@ -91,9 +112,11 @@ static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
 	}
 
 	if ((wifi->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
-		if (flags & IFF_LOWER_UP)
+		if (flags & IFF_LOWER_UP) {
 			DBG("carrier on");
-		else
+
+			handle_tethering(wifi);
+		} else
 			DBG("carrier off");
 	}
 
@@ -113,6 +136,8 @@ static int wifi_probe(struct connman_device *device)
 	wifi->connected = FALSE;
 	wifi->disconnecting = FALSE;
 	wifi->tethering = FALSE;
+	wifi->bridged = FALSE;
+	wifi->bridge = NULL;
 	wifi->state = G_SUPPLICANT_STATE_INACTIVE;
 
 	connman_device_set_data(device, wifi);
@@ -837,7 +862,6 @@ struct wifi_tethering_info {
 	struct wifi_data *wifi;
 	struct connman_technology *technology;
 	char *ifname;
-	const char *bridge;
 	GSupplicantSSID *ssid;
 };
 
@@ -875,11 +899,11 @@ static void ap_start_callback(int result, GSupplicantInterface *interface,
 	struct wifi_tethering_info *info = user_data;
 
 	DBG("result %d index %d bridge %s",
-		result, info->wifi->index, info->bridge);
+		result, info->wifi->index, info->wifi->bridge);
 
 	if (result < 0) {
 		connman_inet_remove_from_bridge(info->wifi->index,
-							info->bridge);
+							info->wifi->bridge);
 		connman_technology_tethering_notify(info->technology, FALSE);
 	}
 
@@ -899,7 +923,7 @@ static void ap_create_callback(int result,
 
 	if (result < 0) {
 		connman_inet_remove_from_bridge(info->wifi->index,
-							info->bridge);
+							info->wifi->bridge);
 		connman_technology_tethering_notify(info->technology, FALSE);
 
 		g_free(info->ifname);
@@ -938,9 +962,8 @@ static void sta_remove_callback(int result,
 	info->wifi->interface = NULL;
 
 	connman_technology_tethering_notify(info->technology, TRUE);
-	connman_inet_add_to_bridge(info->wifi->index, info->bridge);
 
-	g_supplicant_interface_create(info->ifname, driver, info->bridge,
+	g_supplicant_interface_create(info->ifname, driver, info->wifi->bridge,
 						ap_create_callback,
 							info);
 }
@@ -968,6 +991,7 @@ static int tech_set_tethering(struct connman_technology *technology,
 
 				connman_inet_remove_from_bridge(wifi->index,
 									bridge);
+				wifi->bridged = FALSE;
 			}
 		}
 
@@ -998,7 +1022,7 @@ static int tech_set_tethering(struct connman_technology *technology,
 
 		info->wifi = wifi;
 		info->technology = technology;
-		info->bridge = bridge;
+		info->wifi->bridge = bridge;
 		info->ssid = ssid_ap_init(identifier, passphrase);
 		if (info->ssid == NULL) {
 			g_free(info);
