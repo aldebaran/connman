@@ -280,6 +280,12 @@ AC_ARG_ENABLE(nmcompat,
 AM_CONDITIONAL(NMCOMPAT, test "${enable_nmcompat}" != "no")
 AM_CONDITIONAL(NMCOMPAT_BUILTIN, test "${enable_nmcompat}" = "builtin")
 
+AC_ARG_ENABLE(tist,
+	AC_HELP_STRING([--enable-tist], [enable TI Shared Transport support]),
+			[enable_tist=${enableval}], [enable_tist="no"])
+AM_CONDITIONAL(TIST, test "${enable_tist}" != "no")
+AM_CONDITIONAL(TIST_BUILTIN, test "${enable_tist}" = "builtin")
+
 AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
 			[Maximal size of a statistics round robin file]),
 			[stats_max_file_size=${withval}])
