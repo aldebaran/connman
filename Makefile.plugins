@@ -271,6 +271,18 @@ plugins_nmcompat_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if TIST
+if TIST_BUILTIN
+builtin_modules += tist
+builtin_sources += plugins/tist.c
+else
+plugin_LTLIBRARIES += plugins/tist.la
+plugin_objects += $(plugins_tist_la_OBJECTS)
+plugins_tist_la_CFLAGS = $(plugin_cflags)
+plugins_tist_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 EXTRA_DIST += plugins/polkit.policy
 
 plugins/net.connman.policy: plugins/polkit.policy
