@@ -314,8 +314,13 @@ static int dhcp_release(struct connman_dhcp *dhcp)
 {
 	DBG("dhcp %p", dhcp);
 
+	if (dhcp->dhcp_client == NULL)
+		return 0;
+
 	g_dhcp_client_stop(dhcp->dhcp_client);
 	g_dhcp_client_unref(dhcp->dhcp_client);
+
+	dhcp->dhcp_client = NULL;
 
 	return 0;
 }
@@ -325,6 +330,8 @@ static void remove_network(gpointer user_data)
 	struct connman_dhcp *dhcp = user_data;
 
 	DBG("dhcp %p", dhcp);
+
+	dhcp_release(dhcp);
 
 	dhcp_free(dhcp);
 	g_free(dhcp);
