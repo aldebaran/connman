@@ -182,7 +182,7 @@ static void create_proxy_configuration(void)
 	if (str_list != NULL)
 		connman_dbus_dict_append_array(&dict, "Nameservers",
 					DBUS_TYPE_STRING, append_string_list,
-					&str_list);
+					str_list);
 
 	connman_dbus_dict_close(&iter, &dict);
 
