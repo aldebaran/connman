@@ -362,6 +362,8 @@ static void remove_network(gpointer data)
 	struct network_info *info = data;
 
 	connman_network_unref(info->network);
+
+	g_free(info);
 }
 
 static char *get_ident(const char *path)
@@ -604,8 +606,11 @@ static int add_network(struct connman_device *device,
 
 	connman_network_set_string(network, "Path", path);
 	hash_path = connman_network_get_string(network, "Path");
-	if (hash_path == NULL)
-		goto error;
+	if (hash_path == NULL) {
+		connman_network_unref(network);
+		g_free(info);
+		return -EIO;
+	}
 
 	create_service(network);
 
@@ -1721,7 +1726,7 @@ static gboolean context_changed(DBusConnection *connection,
 		return TRUE;
 
 	if (!pending_network_is_available(info->network)) {
-		remove_network(info->network);
+		g_hash_table_remove(network_hash, path);
 		return TRUE;
 	}
 
