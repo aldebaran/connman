@@ -908,8 +908,10 @@ static gint add_query(struct resolv_lookup *lookup, const char *hostname, int ty
 
 	query->msgid = buf[0] << 8 | buf[1];
 
-	if (send_query(lookup->resolv, buf, len) < 0)
+	if (send_query(lookup->resolv, buf, len) < 0) {
+		g_free(query);
 		return -EIO;
+	}
 
 	query->resolv = lookup->resolv;
 	query->lookup = lookup;
