@@ -130,7 +130,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	struct connman_dhcp *dhcp = user_data;
 	GList *list, *option = NULL;
-	char *address, *netmask = NULL, *gateway = NULL, *net = NULL;
+	char *address, *netmask = NULL, *gateway = NULL;
 	char *domainname = NULL, *hostname = NULL;
 	int ns_entries;
 	struct connman_ipconfig *ipconfig;
@@ -214,7 +214,6 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	g_free(address);
 	g_free(netmask);
 	g_free(gateway);
-	g_free(net);
 	g_free(domainname);
 	g_free(hostname);
 }
