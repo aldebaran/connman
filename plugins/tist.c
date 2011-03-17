@@ -115,14 +115,14 @@ static int read_baud_rate(unsigned long *baud)
 	return err;
 }
 
-static int read_uart_name(char uart_name[])
+static int read_uart_name(char uart_name[], size_t uart_name_len)
 {
 	int err;
 	FILE *f;
 
 	DBG("");
 
-	memset(uart_name, 0, sizeof(uart_name));
+	memset(uart_name, 0, uart_name_len);
 
 	f = fopen(TIST_SYSFS_UART, "r");
 	if (f == NULL)
@@ -510,7 +510,7 @@ static int tist_init(void)
 	int fd, err;
 	gsize len;
 
-	err = read_uart_name(uart_dev_name);
+	err = read_uart_name(uart_dev_name, sizeof(uart_dev_name));
 	if (err < 0) {
 		connman_error("Could not read the UART name");
 		return err;
