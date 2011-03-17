@@ -1,3 +1,16 @@
+ver 0.71:
+	Fix issue with not storing IPv6 privacy settings.
+	Fix issue with storing fixed and manual IP settings.
+	Fix issue with service state when PAN connection fails.
+	Fix issue with tethering and WiFi bridge handling.
+	Fix issue with autonomously activated contexts.
+	Fix issue with nameserver array for PACrunner.
+	Fix issue with network information memory leak.
+	Fix issue with double-free in statistics handling.
+	Fix issue with handling malformed profiles.
+	Fix issue with pending DHCP client requests.
+	Add initial support for TI shared transport handling.
+
 ver 0.70:
 	Add support for reporting invalid WiFi passphrases.
 	Add support for IPv6 privacy extension.
