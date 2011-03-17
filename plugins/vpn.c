@@ -106,13 +106,15 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 {
 	struct connman_provider *provider = user_data;
 	struct vpn_data *data = connman_provider_get_data(provider);
-	int state = data->state;
+	int state = VPN_STATE_FAILURE;
 	enum connman_provider_error ret;
 
 	DBG("provider %p data %p", provider, data);
 
-	if (!data)
+	if (data == NULL)
 		goto vpn_exit;
+
+	state = data->state;
 
 	kill_tun(data->if_name);
 	connman_provider_set_data(provider, NULL);
