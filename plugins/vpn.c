@@ -250,7 +250,9 @@ static int vpn_connect(struct connman_provider *provider)
 	}
 
 	data->if_name = (char *)g_strdup(ifr.ifr_name);
-	if (!data->if_name) {
+	if (data->if_name == NULL) {
+		connman_error("Failed to allocate memory");
+		close(fd);
 		ret = -ENOMEM;
 		goto exist_err;
 	}
