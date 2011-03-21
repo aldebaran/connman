@@ -2797,8 +2797,6 @@ static DBusMessage *remove_service(DBusConnection *conn,
 		__connman_network_disconnect(service->network);
 	}
 
-	g_hash_table_destroy(service->counter_table);
-
 	g_free(service->passphrase);
 	service->passphrase = NULL;
 
@@ -2916,6 +2914,8 @@ static void service_free(gpointer user_data)
 						CONNMAN_SERVICE_INTERFACE);
 		g_free(path);
 	}
+
+	g_hash_table_destroy(service->counter_table);
 
 	if (service->network != NULL)
 		connman_network_unref(service->network);
