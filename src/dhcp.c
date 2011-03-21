@@ -167,7 +167,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		ns_entries += 1;
 	dhcp->nameservers = g_try_new0(char *, ns_entries + 1);
 	if (dhcp->nameservers) {
-		for (i = 0, list = option; list; list = list->next)
+		for (i = 0, list = option; list; list = list->next, i++)
 			dhcp->nameservers[i] = g_strdup(list->data);
 		dhcp->nameservers[ns_entries] = NULL;
 	}
