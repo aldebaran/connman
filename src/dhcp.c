@@ -131,11 +131,13 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	struct connman_dhcp *dhcp = user_data;
 	GList *list, *option = NULL;
 	char *address, *netmask = NULL, *gateway = NULL;
+	const char *c_address, *c_gateway;
 	char *domainname = NULL, *hostname = NULL;
 	int ns_entries;
 	struct connman_ipconfig *ipconfig;
 	struct connman_service *service;
-	unsigned char prefixlen;
+	unsigned char prefixlen, c_prefixlen;
+	gboolean ip_change;
 	int i;
 
 	DBG("Lease available");
@@ -152,6 +154,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		return;
 	}
 
+	c_address = __connman_ipconfig_get_local(ipconfig);
+	c_gateway = __connman_ipconfig_get_gateway(ipconfig);
+	c_prefixlen = __connman_ipconfig_get_prefixlen(ipconfig);
+
 	address = g_dhcp_client_get_address(dhcp_client);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
@@ -161,6 +167,24 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
 	if (option != NULL)
 		gateway = g_strdup(option->data);
+
+	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
+
+	DBG("c_address %s", c_address);
+
+	if (address != NULL && c_address != NULL &&
+					g_strcmp0(address, c_address) != 0)
+		ip_change = TRUE;
+	else if (gateway != NULL && c_gateway != NULL &&
+					g_strcmp0(gateway, c_gateway) != 0)
+		ip_change = TRUE;
+	else if (prefixlen != c_prefixlen)
+		ip_change = TRUE;
+	else if (c_address == NULL || c_gateway == NULL)
+		ip_change = TRUE;
+	else
+		ip_change = FALSE;
+
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
 	for (ns_entries = 0, list = option; list; list = list->next)
@@ -188,12 +212,13 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		dhcp->pac = g_strdup(option->data);
 
-	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
-
 	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
-	__connman_ipconfig_set_local(ipconfig, address);
-	__connman_ipconfig_set_prefixlen(ipconfig, prefixlen);
-	__connman_ipconfig_set_gateway(ipconfig, gateway);
+
+	if (ip_change == TRUE) {
+		__connman_ipconfig_set_local(ipconfig, address);
+		__connman_ipconfig_set_prefixlen(ipconfig, prefixlen);
+		__connman_ipconfig_set_gateway(ipconfig, gateway);
+	}
 
 	for (i = 0; dhcp->nameservers[i] != NULL; i++) {
 		__connman_service_nameserver_append(service,
@@ -209,7 +234,8 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (hostname != NULL)
 		__connman_utsname_set_hostname(hostname);
 
-	dhcp_valid(dhcp);
+	if (ip_change == TRUE)
+		dhcp_valid(dhcp);
 
 	g_free(address);
 	g_free(netmask);
