@@ -126,6 +126,26 @@ static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	dhcp_invalid(dhcp);
 }
 
+
+static gboolean compare_string_arrays(char **array_a, char **array_b)
+{
+	int i;
+
+	if (array_a == NULL || array_b == NULL)
+		return FALSE;
+
+	if (g_strv_length(array_a) != g_strv_length(array_b))
+		return FALSE;
+
+	for (i = 0; array_a[i] != NULL &&
+			     array_b[i] != NULL; i++) {
+		if (g_strcmp0(array_a[i], array_b[i]) != 0)
+			return FALSE;
+	}
+
+	return TRUE;
+}
+
 static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	struct connman_dhcp *dhcp = user_data;
@@ -133,6 +153,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	char *address, *netmask = NULL, *gateway = NULL;
 	const char *c_address, *c_gateway;
 	char *domainname = NULL, *hostname = NULL;
+	char **nameservers, *timeserver = NULL, *pac = NULL;
 	int ns_entries;
 	struct connman_ipconfig *ipconfig;
 	struct connman_service *service;
@@ -185,15 +206,14 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	else
 		ip_change = FALSE;
 
-
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
 	for (ns_entries = 0, list = option; list; list = list->next)
 		ns_entries += 1;
-	dhcp->nameservers = g_try_new0(char *, ns_entries + 1);
-	if (dhcp->nameservers) {
+	nameservers = g_try_new0(char *, ns_entries + 1);
+	if (nameservers != NULL) {
 		for (i = 0, list = option; list; list = list->next, i++)
-			dhcp->nameservers[i] = g_strdup(list->data);
-		dhcp->nameservers[ns_entries] = NULL;
+			nameservers[i] = g_strdup(list->data);
+		nameservers[ns_entries] = NULL;
 	}
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
@@ -206,11 +226,11 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
 	if (option != NULL)
-		dhcp->timeserver = g_strdup(option->data);
+		timeserver = g_strdup(option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, 252);
 	if (option != NULL)
-		dhcp->pac = g_strdup(option->data);
+		pac = g_strdup(option->data);
 
 	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
 
@@ -220,12 +240,44 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		__connman_ipconfig_set_gateway(ipconfig, gateway);
 	}
 
-	for (i = 0; dhcp->nameservers[i] != NULL; i++) {
-		__connman_service_nameserver_append(service,
-					dhcp->nameservers[i]);
+	if (compare_string_arrays(nameservers, dhcp->nameservers) == FALSE) {
+		if (dhcp->nameservers != NULL) {
+			for (i = 0; dhcp->nameservers[i] != NULL; i++) {
+				__connman_service_nameserver_remove(service,
+							dhcp->nameservers[i]);
+			}
+			g_strfreev(dhcp->nameservers);
+		}
+
+		dhcp->nameservers = nameservers;
+
+		for (i = 0; dhcp->nameservers[i] != NULL; i++) {
+			__connman_service_nameserver_append(service,
+							dhcp->nameservers[i]);
+		}
 	}
-	__connman_service_timeserver_append(service, dhcp->timeserver);
-	__connman_service_set_pac(service, dhcp->pac);
+
+	if (g_strcmp0(timeserver, dhcp->timeserver) != 0) {
+		if (dhcp->timeserver != NULL) {
+			__connman_service_timeserver_remove(service,
+							dhcp->timeserver);
+			g_free(dhcp->timeserver);
+		}
+
+		dhcp->timeserver = timeserver;
+
+		if (dhcp->timeserver != NULL)
+			__connman_service_timeserver_append(service,
+							dhcp->timeserver);
+	}
+
+	if (g_strcmp0(pac, dhcp->pac) != 0) {
+		g_free(dhcp->pac);
+		dhcp->pac = pac;
+
+		__connman_service_set_pac(service, dhcp->pac);
+	}
+
 	__connman_service_set_domainname(service, domainname);
 
 	if (domainname != NULL)
