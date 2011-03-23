@@ -2537,9 +2537,21 @@ static void reply_pending(struct connman_service *service, int error)
 								error);
 			if (reply != NULL)
 				g_dbus_send_message(connection, reply);
-		} else
-			g_dbus_send_reply(connection, service->pending,
+		} else {
+			const char *sender;
+
+			sender = dbus_message_get_interface(service->pending);
+
+			DBG("sender %s", sender);
+
+			if (g_strcmp0(sender, CONNMAN_MANAGER_INTERFACE) == 0)
+				g_dbus_send_reply(connection, service->pending,
+					DBUS_TYPE_OBJECT_PATH, &service->path,
 							DBUS_TYPE_INVALID);
+			else
+				g_dbus_send_reply(connection, service->pending,
+							DBUS_TYPE_INVALID);
+		}
 
 		dbus_message_unref(service->pending);
 		service->pending = NULL;
@@ -4128,9 +4140,7 @@ done:
 	if (err < 0 && err != -EINPROGRESS)
 		goto failed;
 
-	g_dbus_send_reply(connection, msg,
-				DBUS_TYPE_OBJECT_PATH, &service->path,
-							DBUS_TYPE_INVALID);
+	service->pending = dbus_message_ref(msg);
 
 	return 0;
 
