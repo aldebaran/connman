@@ -27,5 +27,6 @@ else:
 path = manager.ConnectService(({ "Type": "wifi", "Mode": "managed",
 					"SSID": sys.argv[1],
 					"Security": security,
-					"Passphrase": passphrase }));
+					"Passphrase": passphrase }),
+						timeout=60000);
 print "Service path is %s" %(path)
