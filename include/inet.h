@@ -73,6 +73,9 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway);
 int connman_inet_add_to_bridge(int index, const char *bridge);
 int connman_inet_remove_from_bridge(int index, const char *bridge);
 
+int connman_inet_set_mtu(int index, int mtu);
+int connman_inet_setup_tunnel(char *tunnel, int mtu);
+
 #ifdef __cplusplus
 }
 #endif

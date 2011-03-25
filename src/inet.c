@@ -35,8 +35,8 @@
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <net/ethernet.h>
-#include <linux/if_arp.h>
-#include <linux/wireless.h>
+#include <net/if.h>
+#include <net/if_arp.h>
 
 #include "connman.h"
 
@@ -1193,4 +1193,71 @@ int connman_inet_add_to_bridge(int index, const char *bridge)
 	}
 
 	return 0;
+}
+
+int connman_inet_set_mtu(int index, int mtu)
+{
+	struct ifreq ifr;
+	int sk, err;
+
+	sk = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return sk;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+	if (err == 0) {
+		ifr.ifr_mtu = mtu;
+		err = ioctl(sk, SIOCSIFMTU, &ifr);
+	}
+
+	close(sk);
+	return err;
+}
+
+int connman_inet_setup_tunnel(char *tunnel, int mtu)
+{
+	struct ifreq ifr;
+	int sk, err, index;
+	__u32 mask;
+	__u32 flags;
+
+	if (tunnel == NULL)
+		return -EINVAL;
+
+	sk = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return sk;
+
+	index = if_nametoindex(tunnel);
+
+	err = connman_inet_set_mtu(index, mtu);
+	if (err < 0)
+		return err;
+	else if (err)
+		goto done;
+
+	memset(&ifr, 0, sizeof(ifr));
+	strncpy(ifr.ifr_name, tunnel, IFNAMSIZ);
+	err = ioctl(sk, SIOCGIFFLAGS, &ifr);
+	if (err)
+		goto done;
+
+	mask = IFF_UP;
+	flags = IFF_UP;
+
+	if ((ifr.ifr_flags ^ flags) & mask) {
+		ifr.ifr_flags &= ~mask;
+		ifr.ifr_flags |= mask & flags;
+		err = ioctl(sk, SIOCSIFFLAGS, &ifr);
+		if (err)
+			connman_error("SIOCSIFFLAGS failed: %s",
+							strerror(errno));
+	}
+
+done:
+	close(sk);
+	return err;
 }
