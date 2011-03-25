@@ -645,3 +645,6 @@ void __connman_dnsproxy_cleanup(void);
 int __connman_dnsproxy_append(const char *interface, const char *domain, const char *server);
 int __connman_dnsproxy_remove(const char *interface, const char *domain, const char *server);
 void __connman_dnsproxy_flush(void);
+
+int __connman_6to4_probe(struct connman_service *service);
+void __connman_6to4_remove(struct connman_ipconfig *ipconfig);
