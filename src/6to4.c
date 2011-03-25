@@ -540,3 +540,23 @@ void __connman_6to4_remove(struct connman_ipconfig *ip4config)
 	if (tunnel_created)
 		tunnel_destroy();
 }
+
+int __connman_6to4_check(struct connman_ipconfig *ip4config)
+{
+	const char *address;
+
+	if (ip4config == NULL || tunnel_created == 0 ||
+					tunnel_pending == 1)
+		return -1;
+
+	DBG("tunnel ip address %s", tunnel_ip_address);
+
+	address = __connman_ipconfig_get_local(ip4config);
+	if (address == NULL)
+		return -1;
+
+	if (g_strcmp0(address, tunnel_ip_address) == 0)
+		return 1;
+
+	return 0;
+}

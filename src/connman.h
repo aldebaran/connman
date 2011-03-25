@@ -648,3 +648,4 @@ void __connman_dnsproxy_flush(void);
 
 int __connman_6to4_probe(struct connman_service *service);
 void __connman_6to4_remove(struct connman_ipconfig *ipconfig);
+int __connman_6to4_check(struct connman_ipconfig *ipconfig);
