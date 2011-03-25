@@ -73,6 +73,8 @@ static void dhcp_invalid(struct connman_dhcp *dhcp)
 	if (ipconfig == NULL)
 		return;
 
+	__connman_6to4_remove(ipconfig);
+
 	__connman_service_set_domainname(service, NULL);
 	__connman_service_set_pac(service, NULL);
 	__connman_service_timeserver_remove(service, dhcp->timeserver);
@@ -288,6 +290,8 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	if (ip_change == TRUE)
 		dhcp_valid(dhcp);
+
+	__connman_6to4_probe(service);
 
 	g_free(address);
 	g_free(netmask);

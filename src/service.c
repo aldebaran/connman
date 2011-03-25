@@ -3887,6 +3887,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	if (err < 0 && err != -EINPROGRESS)
 		return err;
 
+	__connman_6to4_remove(service->ipconfig_ipv4);
+
 	if (service->ipconfig_ipv4)
 		__connman_ipconfig_set_proxy_autoconfig(service->ipconfig_ipv4,
 							NULL);
