@@ -347,12 +347,16 @@ Properties	string State [readonly]
 
 			string Method [readonly]
 
-				Possible values are "auto", "manual"
+				Possible values are "auto", "manual", "6to4"
 				and "off".
 
 				The value "fixed" indicates an IP address
 				that can not be modified. For example
 				cellular networks return fixed information.
+				The value "6to4" is returned if 6to4 tunnel
+				is created by connman. The tunnel can only be
+				created if method was set to "auto" by the
+				user. User cannot set the method to "6to4".
 
 			string Address [readonly]
 
