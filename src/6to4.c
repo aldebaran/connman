@@ -40,10 +40,15 @@
 #include "connman.h"
 #include <connman/log.h>
 #include <connman/ipconfig.h>
+#include "gweb/gweb.h"
 
 static int tunnel_created;
 static int tunnel_pending;
 static char *tunnel_ip_address;
+static GWeb *web;
+static guint web_request_id;
+
+#define STATUS_URL "http://ipv6.google.com/"
 
 #define NLMSG_TAIL(nmsg) \
 	((struct rtattr *) (((void *)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
@@ -358,6 +363,35 @@ done:
 	return ret;
 }
 
+static gboolean unref_web(gpointer user_data)
+{
+	g_web_unref(web);
+	return FALSE;
+}
+
+static gboolean web_result(GWebResult *result, gpointer user_data)
+{
+	guint16 status;
+
+	if (web_request_id == 0)
+		return FALSE;
+
+	status = g_web_result_get_status(result);
+
+	DBG("status %u", status);
+
+	if (status >= 400 && status < 500)
+		tunnel_destroy();
+	else
+		tunnel_pending = 0;
+
+	web_request_id = 0;
+
+	g_timeout_add_seconds(1, unref_web, NULL);
+
+	return FALSE;
+}
+
 static int init_6to4(struct in_addr *ip4addr)
 {
 	unsigned int a, b, c, d;
@@ -391,7 +425,18 @@ static int init_6to4(struct in_addr *ip4addr)
 	if (ret)
 		goto error;
 
-	tunnel_pending = 0;
+	/* We try to verify that connectivity through tunnel works ok.
+	 */
+	web = g_web_new(0);
+	if (web == NULL)
+		goto error;
+
+	g_web_set_accept(web, NULL);
+	g_web_set_user_agent(web, "ConnMan/%s", VERSION);
+	g_web_set_close_connection(web, TRUE);
+
+	web_request_id = g_web_request_get(web, STATUS_URL, web_result, NULL);
+
 	return 0;
 
 error:
