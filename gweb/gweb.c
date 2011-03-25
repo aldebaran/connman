@@ -31,6 +31,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include "giognutls.h"
 #include "gresolv.h"
@@ -63,6 +64,7 @@ struct web_session {
 	char *host;
 	uint16_t port;
 	unsigned long flags;
+	struct addrinfo *addr;
 
 	char *content_type;
 
@@ -168,6 +170,9 @@ static void free_session(struct web_session *session)
 
 	g_free(session->host);
 	g_free(session->address);
+	if (session->addr != NULL)
+		freeaddrinfo(session->addr);
+
 	g_free(session);
 }
 
@@ -881,10 +886,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 static int connect_session_transport(struct web_session *session)
 {
 	GIOFlags flags;
-	struct sockaddr_in sin;
 	int sk;
 
-	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	sk = socket(session->addr->ai_family, SOCK_STREAM, IPPROTO_TCP);
 	if (sk < 0)
 		return -EIO;
 
@@ -910,12 +914,8 @@ static int connect_session_transport(struct web_session *session)
 
 	g_io_channel_set_close_on_unref(session->transport_channel, TRUE);
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(session->port);
-	sin.sin_addr.s_addr = inet_addr(session->address);
-
-	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+	if (connect(sk, session->addr->ai_addr,
+			session->addr->ai_addrlen) < 0) {
 		if (errno != EINPROGRESS) {
 			close(sk);
 			return -EIO;
@@ -1048,6 +1048,8 @@ static void resolv_result(GResolvResultStatus status,
 					char **results, gpointer user_data)
 {
 	struct web_session *session = user_data;
+	struct addrinfo hints;
+	int ret;
 
 	if (results == NULL || results[0] == NULL) {
 		call_result_func(session, 404);
@@ -1056,7 +1058,16 @@ static void resolv_result(GResolvResultStatus status,
 
 	debug(session->web, "address %s", results[0]);
 
-	if (inet_aton(results[0], NULL) == 0) {
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = AI_NUMERICHOST;
+
+	if (session->addr != NULL) {
+		freeaddrinfo(session->addr);
+		session->addr = NULL;
+	}
+
+	ret = getaddrinfo(results[0], NULL, &hints, &session->addr);
+	if (ret != 0 || session->addr == NULL) {
 		call_result_func(session, 400);
 		return;
 	}
