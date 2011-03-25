@@ -1701,7 +1701,8 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 }
 
 void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter)
+					DBusMessageIter *iter,
+					struct connman_ipconfig *ipconfig_ipv4)
 {
 	const char *str, *privacy;
 
@@ -1713,6 +1714,12 @@ void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
 	str = __connman_ipconfig_method2string(ipconfig->method);
 	if (str == NULL)
 		return;
+
+	if (ipconfig_ipv4 != NULL &&
+			ipconfig->method == CONNMAN_IPCONFIG_METHOD_AUTO) {
+		if (__connman_6to4_check(ipconfig_ipv4) == 1)
+			str = "6to4";
+	}
 
 	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
 

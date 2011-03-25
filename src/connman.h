@@ -256,7 +256,8 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_append_ipv4config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
-							DBusMessageIter *iter);
+					DBusMessageIter *iter,
+					struct connman_ipconfig *ip4config);
 void __connman_ipconfig_append_ipv6config(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter);
 int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,

@@ -1002,7 +1002,8 @@ static void append_ipv6(DBusMessageIter *iter, void *user_data)
 		return;
 
 	if (service->ipconfig_ipv6 != NULL)
-		__connman_ipconfig_append_ipv6(service->ipconfig_ipv6, iter);
+		__connman_ipconfig_append_ipv6(service->ipconfig_ipv6, iter,
+						service->ipconfig_ipv4);
 }
 
 static void append_ipv4config(DBusMessageIter *iter, void *user_data)
