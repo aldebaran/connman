@@ -319,6 +319,10 @@ LIBS="$LIBS $DBUS_LIBS"
 AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
 	AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1,
 		[Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
+AC_CHECK_LIB(dbus-1, dbus_connection_can_send_type, dummy=yes,
+	AC_DEFINE(NEED_DBUS_CONNECTION_CAN_SEND_TYPE, 1,
+		[Define to 1 if you need the dbus_connection_can_send_type() function.]
+))
 CFLAGS="$saved_CFLAGS"
 LIBS="$saved_LIBS"
 AC_SUBST(DBUS_CFLAGS)
