@@ -736,8 +736,10 @@ int connman_provider_set_nameservers(struct connman_provider *provider,
 
 	__connman_service_nameserver_clear(provider->vpn_service);
 
-	if (nameservers != NULL)
-		nameservers_array = g_strsplit(nameservers, " ", 0);
+	if (nameservers == NULL)
+		return 0;
+
+	nameservers_array = g_strsplit(nameservers, " ", 0);
 
 	for (i = 0; nameservers_array[i] != NULL; i++) {
 		__connman_service_nameserver_append(provider->vpn_service,
