@@ -446,9 +446,12 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 
 	info = g_hash_table_lookup(network_hash, path);
 
-	DBG("path %s network %p", path, info->network);
-
 	reply = dbus_pending_call_steal_reply(call);
+
+	if (info == NULL)
+		goto done;
+
+	DBG("path %s network %p", path, info->network);
 
 	if (!pending_network_is_available(info->network))
 		goto done;
