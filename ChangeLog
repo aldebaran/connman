@@ -1,3 +1,9 @@
+ver 0.72:
+	Fix issue with overwriting DNS servers from DHCP.
+	Fix issue with DHCP renewal with same configuration.
+	Fix issue with multiple memory leaks.
+	Add support for 6to4 tunneling.
+
 ver 0.71:
 	Fix issue with not storing IPv6 privacy settings.
 	Fix issue with storing fixed and manual IP settings.
