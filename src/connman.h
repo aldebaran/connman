@@ -604,6 +604,8 @@ void __connman_notifier_default_changed(struct connman_service *service);
 void __connman_notifier_proxy_changed(struct connman_service *service);
 void __connman_notifier_service_state_changed(struct connman_service *service,
 					enum connman_service_state state);
+void __connman_notifier_ipconfig_changed(struct connman_service *service,
+					struct connman_ipconfig *ipconfig);
 
 connman_bool_t __connman_notifier_is_registered(enum connman_service_type type);
 connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type);

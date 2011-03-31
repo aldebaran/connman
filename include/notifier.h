@@ -23,6 +23,7 @@
 #define __CONNMAN_NOTIFIER_H
 
 #include <connman/service.h>
+#include <connman/ipconfig.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -48,6 +49,8 @@ struct connman_notifier {
 	void (*proxy_changed) (struct connman_service *service);
 	void (*service_state_changed) (struct connman_service *service,
 					enum connman_service_state state);
+	void (*ipconfig_changed) (struct connman_service *service,
+					struct connman_ipconfig *ipconfig);
 };
 
 int connman_notifier_register(struct connman_notifier *notifier);

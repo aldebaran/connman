@@ -1233,7 +1233,8 @@ static void append_provider(DBusMessageIter *iter, void *user_data)
 }
 
 
-static void settings_changed(struct connman_service *service)
+static void settings_changed(struct connman_service *service,
+				struct connman_ipconfig *ipconfig)
 {
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "IPv4",
@@ -1242,6 +1243,8 @@ static void settings_changed(struct connman_service *service)
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "IPv6",
 							append_ipv6, service);
+
+	__connman_notifier_ipconfig_changed(service, ipconfig);
 }
 
 static void ipv4_configuration_changed(struct connman_service *service)
@@ -4348,7 +4351,7 @@ static void service_ip_bound(struct connman_ipconfig *ipconfig)
 						CONNMAN_SERVICE_STATE_READY,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	settings_changed(service);
+	settings_changed(service, ipconfig);
 }
 
 static void service_ip_release(struct connman_ipconfig *ipconfig)
@@ -4377,7 +4380,7 @@ static void service_ip_release(struct connman_ipconfig *ipconfig)
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-	settings_changed(service);
+	settings_changed(service, ipconfig);
 }
 
 static const struct connman_ipconfig_ops service_ops = {

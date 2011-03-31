@@ -437,6 +437,19 @@ void __connman_notifier_service_state_changed(struct connman_service *service,
 	}
 }
 
+void __connman_notifier_ipconfig_changed(struct connman_service *service,
+					struct connman_ipconfig *ipconfig)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->ipconfig_changed)
+			notifier->ipconfig_changed(service, ipconfig);
+	}
+}
+
 static connman_bool_t technology_supported(enum connman_service_type type)
 {
 	switch (type) {
