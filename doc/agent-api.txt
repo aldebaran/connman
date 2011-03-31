@@ -61,10 +61,15 @@ Fields		string Name
 			Normally returning the "Name" field is the better
 			option here.
 
+		string Identity
+
+			Identity (username) for EAP authentication methods.
+
 		string Passphrase
 
-			The passphrase for a network. For example a WEP
-			key or a PSK passphrase.
+			The passphrase for authentication. For example a WEP
+			key, a PSK passphrase or a passphrase for EAP
+			authentication methods.
 
 		string WPS
 
@@ -77,8 +82,9 @@ Fields		string Name
 
 Arguments	string Type
 
-			Contains the type of a field. For example "psk",
-			"wep", "ssid", "wpspin" or plain "string".
+			Contains the type of a field. For example "psk", "wep"
+			"passphrase", "response", "ssid", "wpspin" or plain
+			"string".
 
 		string Requirement
 
@@ -132,3 +138,29 @@ Examples	Requesting a passphrase for WPA2 network
 				}
 
 			==> { "WPS" : "123456" }
+
+		Requesting passphrase for a WPA-Enterprise network:
+
+			RequestInput("/service4",
+				{ "Identity"   : { "Type"        : "string",
+						   "Requirement" : "mandatory"
+						 },
+				  "Passphrase" : { "Type" : "passphrase",
+						   "Requirement" : "mandatory"
+						 }
+				}
+
+			==> { "Identity" : "alice", "Passphrase": "secret123" }
+
+		Requesting challenge response for a WPA-Enterprise network:
+
+			RequestInput("/service4",
+				{ "Identity"   : { "Type"        : "string",
+						   "Requirement" : "mandatory"
+						 },
+				  "Passphrase" : { "Type" : "response",
+						   "Requirement" : "mandatory"
+						 }
+				}
+
+			==> { "Identity" : "bob", "Passphrase": "secret123" }
