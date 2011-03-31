@@ -2748,12 +2748,16 @@ static connman_bool_t get_reconnect_state(struct connman_service *service)
 }
 
 static void request_input_cb (struct connman_service *service,
-			const char *passphrase, void *user_data)
+			const char *identity, const char *passphrase,
+			void *user_data)
 {
 	DBG ("RequestInput return, %p", service);
 
-	if (passphrase == NULL && service->wps == FALSE)
+	if (identity == NULL && passphrase == NULL && service->wps == FALSE)
 		return;
+
+	if (identity != NULL)
+		__connman_service_set_identity(service, identity);
 
 	if (passphrase != NULL)
 		__connman_service_set_passphrase(service, passphrase);
@@ -3831,6 +3835,19 @@ static int service_connect(struct connman_service *service)
 			}
 			break;
 		case CONNMAN_SERVICE_SECURITY_8021X:
+			if (service->eap == NULL)
+				return -EINVAL;
+
+			/*
+			 * never request credentials if using EAP-TLS
+			 * (EAP-TLS networks need to be fully provisioned)
+			 */
+			if (g_str_equal(service->eap, "tls") == TRUE)
+				break;
+
+			if (service->immutable != TRUE)
+				return -ENOKEY;
+
 			break;
 		}
 		break;

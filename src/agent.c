@@ -95,6 +95,7 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 {
 	struct request_input_reply *passphrase_reply = user_data;
 	connman_bool_t wps = FALSE;
+	char *identity = NULL;
 	char *passphrase = NULL;
 	char *wpspin = NULL;
 	char *key;
@@ -114,13 +115,22 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 			break;
 
 		dbus_message_iter_get_basic(&entry, &key);
-		if (g_str_equal(key, "Passphrase")) {
+
+		if (g_str_equal(key, "Identity")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			dbus_message_iter_get_basic(&value, &identity);
+
+		} else if (g_str_equal(key, "Passphrase")) {
 			dbus_message_iter_next(&entry);
 			if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
 				break;
 			dbus_message_iter_recurse(&entry, &value);
 			dbus_message_iter_get_basic(&value, &passphrase);
-			break;
+
 		} else if (g_str_equal(key, "WPS")) {
 			wps = TRUE;
 
@@ -154,7 +164,7 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	}
 
 done:
-	passphrase_reply->callback(passphrase_reply->service,
+	passphrase_reply->callback(passphrase_reply->service, identity,
 				passphrase, passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
 	dbus_message_unref(reply);
@@ -181,11 +191,24 @@ static void request_input_append_alternates(DBusMessageIter *iter,
 	g_strfreev(alternates);
 }
 
+static void request_input_append_identity(DBusMessageIter *iter,
+							void *user_data)
+{
+	char *str = "string";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "Mandatory";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+}
+
 static void request_input_append_passphrase(DBusMessageIter *iter,
 							void *user_data)
 {
 	struct connman_service *service = user_data;
 	char *value;
+	const char *phase2;
 
 	switch (__connman_service_get_security(service)) {
 	case CONNMAN_SERVICE_SECURITY_WEP:
@@ -193,6 +216,17 @@ static void request_input_append_passphrase(DBusMessageIter *iter,
 		break;
 	case CONNMAN_SERVICE_SECURITY_PSK:
 		value = "psk";
+		break;
+	case CONNMAN_SERVICE_SECURITY_8021X:
+		phase2 = __connman_service_get_phase2(service);
+
+		if (phase2 != NULL && (
+				g_str_has_suffix(phase2, "GTC") == TRUE ||
+				g_str_has_suffix(phase2, "OTP") == TRUE))
+			value = "response";
+		else
+			value = "passphrase";
+
 		break;
 	default:
 		value = "string";
@@ -249,6 +283,13 @@ int __connman_agent_request_input(struct connman_service *service,
 				DBUS_TYPE_OBJECT_PATH, &path);
 
 	connman_dbus_dict_open(&iter, &dict);
+
+	if (__connman_service_get_security(service) ==
+			CONNMAN_SERVICE_SECURITY_8021X) {
+		connman_dbus_dict_append_dict(&dict, "Identity",
+					request_input_append_identity, service);
+	}
+
 	connman_dbus_dict_append_dict(&dict, "Passphrase",
 				request_input_append_passphrase, service);
 
