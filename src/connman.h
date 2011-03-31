@@ -547,6 +547,8 @@ const char *__connman_service_get_nameserver(struct connman_service *service);
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url);
 
+void __connman_service_set_identity(struct connman_service *service,
+					const char *identity);
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase);
 

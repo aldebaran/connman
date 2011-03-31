@@ -2011,6 +2011,21 @@ void __connman_service_set_pac(struct connman_service *service,
 	service->pac = g_strdup(pac);
 }
 
+void __connman_service_set_identity(struct connman_service *service,
+					const char *identity)
+{
+	if (service->immutable)
+		return;
+
+	g_free(service->identity);
+	service->identity = g_strdup(identity);
+
+	if (service->network != NULL)
+		connman_network_set_string(service->network,
+					"WiFi.Identity",
+					service->identity);
+}
+
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase)
 {
