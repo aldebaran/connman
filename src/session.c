@@ -691,13 +691,39 @@ void __connman_session_set_mode(connman_bool_t enable)
 		__connman_service_disconnect_all();
 }
 
+static void service_state_changed(struct connman_service *service,
+					enum connman_service_state state)
+{
+	DBG("service %p state %d", service, state);
+}
+
+static void ipconfig_changed(struct connman_service *service,
+				struct connman_ipconfig *ipconfig)
+{
+	DBG("service %p ipconfig %p", service, ipconfig);
+}
+
+static struct connman_notifier session_notifier = {
+	.name			= "session",
+	.service_state_changed	= service_state_changed,
+	.ipconfig_changed	= ipconfig_changed,
+};
+
 int __connman_session_init(void)
 {
+	int err;
+
 	DBG("");
 
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
+
+	err = connman_notifier_register(&session_notifier);
+	if (err < 0) {
+		dbus_connection_unref(connection);
+		return err;
+	}
 
 	session_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, cleanup_session);
@@ -712,6 +738,8 @@ void __connman_session_cleanup(void)
 
 	if (connection == NULL)
 		return;
+
+	connman_notifier_unregister(&session_notifier);
 
 	g_hash_table_foreach(session_hash, release_session, NULL);
 	g_hash_table_destroy(session_hash);
