@@ -3335,6 +3335,14 @@ enum connman_service_security __connman_service_get_security(struct connman_serv
 	return service->security;
 }
 
+const char *__connman_service_get_phase2(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->phase2;
+}
+
 connman_bool_t __connman_service_wps_enabled(struct connman_service *service)
 {
 	if (service == NULL)
