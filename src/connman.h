@@ -557,6 +557,13 @@ void __connman_service_notify(struct connman_service *service,
 int __connman_service_counter_register(const char *counter);
 void __connman_service_counter_unregister(const char *counter);
 
+struct connman_session;
+typedef connman_bool_t (* service_match_cb) (struct connman_session *session,
+					struct connman_service *service);
+
+GSequence *__connman_service_get_list(struct connman_session *session,
+					service_match_cb service_match);
+
 #include <connman/location.h>
 
 int __connman_location_init(void);

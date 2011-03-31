@@ -1549,6 +1549,30 @@ void __connman_service_counter_unregister(const char *counter)
 	counter_list = g_slist_remove(counter_list, counter);
 }
 
+GSequence *__connman_service_get_list(struct connman_session *session,
+					service_match_cb service_match)
+{
+	GSequence *list;
+	GSequenceIter *iter;
+
+	list = g_sequence_new(NULL);
+	if (list == NULL)
+		return NULL;
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+
+		if (service_match(session, service) == TRUE)
+			g_sequence_append(list, service);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return list;
+}
+
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
