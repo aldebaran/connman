@@ -564,6 +564,10 @@ typedef connman_bool_t (* service_match_cb) (struct connman_session *session,
 GSequence *__connman_service_get_list(struct connman_session *session,
 					service_match_cb service_match);
 
+connman_bool_t __connman_service_is_connecting(struct connman_service *service);
+connman_bool_t __connman_service_is_connected(struct connman_service *service);
+const char *__connman_service_get_name(struct connman_service *service);
+
 #include <connman/location.h>
 
 int __connman_location_init(void);

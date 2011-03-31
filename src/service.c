@@ -1573,6 +1573,21 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 	return list;
 }
 
+connman_bool_t __connman_service_is_connecting(struct connman_service *service)
+{
+	return is_connecting(service);
+}
+
+connman_bool_t __connman_service_is_connected(struct connman_service *service)
+{
+	return is_connected(service);
+}
+
+const char *__connman_service_get_name(struct connman_service *service)
+{
+	return service->name;
+}
+
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
