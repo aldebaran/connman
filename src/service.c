@@ -2484,6 +2484,11 @@ void __connman_service_auto_connect(void)
 
 	DBG("");
 
+	if (__connman_session_mode() == TRUE) {
+		DBG("Session mode enabled: auto connect disabled");
+		return;
+	}
+
 	iter = g_sequence_get_begin_iter(service_list);
 
 	while (g_sequence_iter_is_end(iter) == FALSE) {

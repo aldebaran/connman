@@ -608,6 +608,8 @@ unsigned int __connman_rtnl_update_interval_remove(unsigned int interval);
 int __connman_rtnl_request_update(void);
 int __connman_rtnl_send(const void *buf, size_t len);
 
+connman_bool_t __connman_session_mode();
+void __connman_session_set_mode(connman_bool_t enable);
 int __connman_session_release(const char *owner);
 struct connman_service *__connman_session_request(const char *bearer, const char *owner);
 int __connman_session_init(void);

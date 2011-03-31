@@ -32,6 +32,7 @@
 static DBusConnection *connection;
 static GHashTable *session_hash;
 static GHashTable *bearer_hash;
+static connman_bool_t sessionmode;
 
 struct connman_bearer {
 	gint refcount;
@@ -262,6 +263,24 @@ failed_connect:
 	return NULL;
 }
 
+connman_bool_t __connman_session_mode()
+{
+	return sessionmode;
+}
+
+void __connman_session_set_mode(connman_bool_t enable)
+{
+	DBG("enable %d", enable);
+
+	if (sessionmode == enable)
+		return;
+
+	sessionmode = enable;
+
+	if (sessionmode == TRUE)
+		__connman_service_disconnect_all();
+}
+
 int __connman_session_init(void)
 {
 	DBG("");
@@ -276,6 +295,7 @@ int __connman_session_init(void)
 	bearer_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, remove_bearer);
 
+	sessionmode = FALSE;
 	return 0;
 }
 

@@ -32,7 +32,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	connman_bool_t offlinemode;
+	connman_bool_t offlinemode, sessionmode;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -82,6 +82,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_array(&dict, "EnabledDebugs",
 			DBUS_TYPE_STRING, __connman_debug_list_enabled, NULL);
 
+	sessionmode = __connman_session_mode();
+	connman_dbus_dict_append_basic(&dict, "SessionMode",
+					DBUS_TYPE_BOOLEAN,
+					&sessionmode);
+
 	connman_dbus_dict_close(&array, &dict);
 
 	return reply;
@@ -122,6 +127,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &str);
 
 		return __connman_error_not_supported(msg);
+	} else if (g_str_equal(name, "SessionMode") == TRUE) {
+		connman_bool_t sessionmode;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &sessionmode);
+
+		__connman_session_set_mode(sessionmode);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -442,6 +456,13 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (__connman_session_mode() == TRUE) {
+		connman_info("Session mode enabled: "
+				"direct service connect disabled");
+
+		return __connman_error_failed(msg, -EINVAL);
+	}
+
 	err = __connman_service_create_and_connect(msg);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
@@ -462,6 +483,13 @@ static DBusMessage *connect_provider(DBusConnection *conn,
 	int err;
 
 	DBG("conn %p", conn);
+
+	if (__connman_session_mode() == TRUE) {
+		connman_info("Session mode enabled: "
+				"direct provider connect disabled");
+
+		return __connman_error_failed(msg, -EINVAL);
+	}
 
 	err = __connman_provider_create_and_connect(msg);
 	if (err < 0) {

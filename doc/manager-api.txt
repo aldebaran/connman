@@ -277,3 +277,10 @@ Properties	string State [readonly]
 			itself. It is just provided here for convenience of
 			applications only dealing with the current active
 			profile.
+
+		boolean SessionMode [readwrite]
+
+			This disables the auto connect feature. It should be
+			enabled when the Session API is used.
+
+			The default value is false.
