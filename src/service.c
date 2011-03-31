@@ -2649,67 +2649,6 @@ static void request_input_cb (struct connman_service *service,
 	__connman_service_connect(service);
 }
 
-struct connman_service *
-__connman_service_connect_type(enum connman_service_type type)
-{
-	struct connman_service *service;
-	GSequenceIter *iter;
-	int err;
-
-	DBG("type %d", type);
-
-	/*
-	 * We go through the already sorted service list.
-	 * We pick the first one matching our type, or just
-	 * the first available one if we have no type.
-	 */
-	iter = g_sequence_get_begin_iter(service_list);
-	if (g_sequence_iter_is_end(iter))
-		return NULL;
-	service = g_sequence_get(iter);
-
-	/*
-	 * If the first service is connected or about to be
-	 * connected, we return it, regardless of the type.
-	 */
-	if ((g_sequence_iter_is_end(iter) == FALSE) &&
-		(is_connecting(service) == TRUE ||
-			is_connected(service) == TRUE))
-		return service;
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		if (service->type == type ||
-			type == CONNMAN_SERVICE_TYPE_UNKNOWN)
-			break;
-
-		iter = g_sequence_iter_next(iter);
-		service = g_sequence_get(iter);
-	}
-
-	if (g_sequence_iter_is_end(iter))
-		return NULL;
-
-	service->ignore = FALSE;
-
-	service->userconnect = TRUE;
-
-	set_reconnect_state(service, FALSE);
-
-	err = __connman_service_connect(service);
-	if (err < 0) {
-		if (err == -ENOKEY)
-			if ( __connman_agent_request_input(service,
-							request_input_cb,
-							NULL))
-				return service;
-
-		if (err != -EINPROGRESS)
-			return NULL;
-	}
-
-	return service;
-}
-
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
