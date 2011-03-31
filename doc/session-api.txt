@@ -1,0 +1,234 @@
+Service		unique name
+Interface	net.connman.Notification
+Object path	freely definable
+
+Methods		void Release()
+
+			This method gets called when the service daemon
+			unregisters the session. A counter can use it to do
+			cleanup tasks. There is no need to unregister the
+			session, because when this method gets called it has
+			already been unregistered.
+
+		void Update(dict settings)
+
+			Sends an update of changed settings. Only settings
+			that are changed will be included.
+
+			Initially on every session creation this method is
+			called once to inform about the current settings.
+
+
+Service		net.connman
+Interface	net.connman.Session
+Object path	variable
+
+Methods		void Destroy()
+
+			Close the current session. This is similar to
+			DestroySession method on the manager interface. It
+			is just provided for convenience depending on how
+			the application wants to track the session.
+
+		void Connect()
+
+			If not connected, then attempt to connect this
+			session.
+
+			The usage of this method depends a little bit on
+			the model of the application. Some application
+			should not try to call Connect on any session at
+			all. They should just monitor if it becomes online
+			or gets back offline.
+
+			Others might require an active connection right now.
+			So for example email notification should only check
+			for new emails when a connection is available. However
+			if the user presses the button for get email or wants
+			to send an email it should request to get online with
+			this method.
+
+			Depending on the bearer settings the current service
+			is used or a new service will be connected.
+
+			This method returns when the connection has been
+			established and it is online. Additionally an update
+			notification with the IP settings is sent.
+
+			It is also not guaranteed that a session stays online
+			after this method call. It can be taken offline at any
+			time. This might happen because of idle timeouts or
+			other reasons.
+
+			It is safe to call this method multiple times. The
+			actual usage will be sorted out for the application.
+
+		void Disconnect()
+
+			This method indicates that the current session does
+			not need a connection anymore.
+
+			In most cases this method returns right away without
+			any delays. However in some cases it might take a few
+			seconds before a connection can be terminated.
+
+		void Change(string name, variant value)
+
+			Change the value of certain settings. Not all
+			settings can be changed. Normally this should not
+			be needed or an extra session should be created.
+			However in some cases it makes sense to change
+			a value and trigger different behavior.
+
+			A change of a setting will cause an update notification
+			to be sent. Some changes might cause the session to
+			be moved to offline state.
+
+Settings	string  Bearer [readonly]
+
+			This indicates the current bearer that is used
+			for this session. Or an empty string if no bearer
+			is available.
+
+		boolean Online [readonly]
+
+			This indicates if the connection is online or
+			offline.
+
+			This maps to the online service state. And it is
+			only valid for the selected bearer configuration.
+			Otherwise it will be reported as offline even if
+			the global state would be online.
+
+			In addition the Online settings notification might
+			not happen right away. Notifications of online state
+			can be delayed based on the speed of the bearer. It
+			is done to avoid congestion on bearers like 3G etc.
+
+		boolean Realtime [readwrite]
+
+			This indicates if the application uses realtime traffic.
+
+			For example a streaming session should set the
+			realtime value. As soon as realtime data is involved
+			then this should be set. An email client should not
+			set this value.
+
+		string Name [readonly]
+
+			The Service name to which the system is connected.
+			It should only be used for displaying it in the UI
+			and not for getting hold on session object.
+
+		array{string} AllowedBearers [readwrite]
+
+			A list of bearers that can be used for this session.
+			In general this list should be empty to indicate that
+			any bearer is acceptable.
+
+		dict IPv4 [readonly]
+
+			Current IPv4 configuration. This settings is only
+			valid when online is true as well. Otherwise an
+			empty dictionary is reported.
+
+		dict IPv6 [readonly]
+
+			Current IPv6 configuration. This setting is only
+			valid when online is true as well. Otherwise an
+			empty dictionary is reported.
+
+		boolean AvoidHandover [readwrite]
+
+			By default this setting is false. It can be used
+			to indicate that a handover is currently not a good
+			idea. However no connection is guaranteed. So a
+			handover can happen anyway. This is just an indication
+			that the application would like to avoid it right now.
+
+			It is a bad idea to always enable this settings and
+			actually it will be reset after a while to avoid
+			congestion.
+
+			Main use case it is for application that are currently
+			doing a specific tasks that it prefers to finish
+			before allowing handovers again. An example would
+			be synchronization.
+
+			Never the less application needs to be aware that
+			handovers can happen at any time even if this is
+			set to true.
+
+		boolean StayConnected [readwrite]
+
+			This disables the idle timeout for this session. There
+			is no guarantee and this should be used with care.
+
+			If the system is not online yet this value is ignored.
+
+		uint32  PeriodicConnect [readwrite]
+
+			Indicate that a periodic connection attempt every
+			n minutes should be made. The minutes value is a
+			suggestion when to connection. There is no guarantee
+			that it will be made or will succeed.
+
+			A value of 0 disable this feature.
+
+			This feature is interesting for applications that
+			wanna check status on a regular interval. And instead
+			of the application waking up and trying to connect,
+			this can be centralized nicely and multiple wakeups
+			avoided in case no connection is available.
+
+			An example application would be an email client that
+			wants to check for new emails every 10 minutes.
+
+			On purpose the smallest setting is 1 minute here since
+			waking up more often and trying to set up a connection
+			seems rather pointless use case.
+
+			If an interval step has passed this can be nicely
+			rescheduled when any connection matching the bearer
+			settings becomes available becomes available. Using
+			this feature it is also easy to avoid congestion.
+
+		uint32  IdleTimeout [readwrite]
+
+			If the system is idle for given period then it should
+			go offline.
+
+			If the timeout is 0, this feature is disabled. If
+			different values are provided by several session object
+			the longest interval is taken as timeout value.
+
+		boolean EmergencyCall [readwrite]
+
+			Boolean representing the emergency mode of the
+			modem. The Emergency is true if an emergency call or
+			related operation is currently active.
+
+			Only one application is supposed to write this setting
+			and therefore it will be protected by additional
+			PolicyKit rule so that only the emergency application
+			can write.
+
+		boolean RoamingAllowed [readwrite]
+
+			By default this value is true. The application can
+			disabling roaming on a global level.
+
+		string  Interface [readonly]
+
+			Interface name used by the service object to connect.
+			This name can be used for SO_BINDTODEVICE in the
+			application.
+
+		uint32  SessionMarker [readonly]
+
+			The unique session marker can be used to mark all
+			traffic from the application with the SO_MARK
+			socket option. In combination of the EmergencyCall
+			this allows ConnMan to setup the firewall rules
+			that only traffic from the emergency application
+			are transmitted.

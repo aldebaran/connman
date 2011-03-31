@@ -174,28 +174,29 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object RequestSession(string bearer)
+		object CreateSession(dict settings, object notifier)
 
-			Request a networking session.
+			Create a new session for the application. Every
+			application can create multiple session with
+			different settings. The settings are described
+			as part of the session interface.
 
-			If the bearer is an empty string the best available
-			service will be picked.
+			The notifier allows asynchronous notification about
+			session specific changes. These changes can be
+			for online/offline state or IP address changes or
+			similar things the application is required to
+			handle.
 
-			When successful this method will return the object
-			path of the corresponding service.
+			Every application should at least create one session
+			to inform about its requirements and it purpose.
 
-			Possible Errors: [service].Error.InvalidArguments
+		void DestroySession(object session)
 
-		void ReleaseSession()
+			Remove the previously created session. The notifier
+			will be informed via its release method.
 
-			Release a networking session.
-
-			Possible Errors: [service].Error.InvalidArguments
-
-Signals		PropertyChanged(string name, variant value)
-
-			This signal indicates a changed value of the given
-			property.
+			If an application exits unexpectatly the session
+			will be automatically destroyed.
 
 		StateChanged(string state)
 
