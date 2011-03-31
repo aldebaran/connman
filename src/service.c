@@ -3908,6 +3908,30 @@ int __connman_service_disconnect(struct connman_service *service)
 	return err;
 }
 
+int __connman_service_disconnect_all(void)
+{
+	GSequenceIter *iter;
+
+	DBG("");
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		struct connman_service *service = g_sequence_get(iter);
+
+		service->ignore = TRUE;
+
+		set_reconnect_state(service, FALSE);
+
+		__connman_service_disconnect(service);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return 0;
+
+}
+
 /**
  * __connman_service_lookup:
  * @pattern: search pattern
