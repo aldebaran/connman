@@ -46,6 +46,8 @@ struct connman_notifier {
 						connman_bool_t enabled);
 	void (*offline_mode) (connman_bool_t enabled);
 	void (*proxy_changed) (struct connman_service *service);
+	void (*service_state_changed) (struct connman_service *service,
+					enum connman_service_state state);
 };
 
 int connman_notifier_register(struct connman_notifier *notifier);

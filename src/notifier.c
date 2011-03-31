@@ -424,6 +424,19 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 	}
 }
 
+void __connman_notifier_service_state_changed(struct connman_service *service,
+					enum connman_service_state state)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->service_state_changed)
+			notifier->service_state_changed(service, state);
+	}
+}
+
 static connman_bool_t technology_supported(enum connman_service_type type)
 {
 	switch (type) {

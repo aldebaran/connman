@@ -835,10 +835,14 @@ static void mode_changed(struct connman_service *service)
 
 static void state_changed(struct connman_service *service)
 {
+	enum connman_service_state state;
 	const char *str;
 
-	str = state2string(combine_state(service->state_ipv4,
-							service->state_ipv6));
+	state = combine_state(service->state_ipv4, service->state_ipv6);
+
+	__connman_notifier_service_state_changed(service, state);
+
+	str = state2string(state);
 	if (str == NULL)
 		return;
 

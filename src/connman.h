@@ -602,6 +602,8 @@ void __connman_notifier_disconnect(enum connman_service_type type);
 void __connman_notifier_offlinemode(connman_bool_t enabled);
 void __connman_notifier_default_changed(struct connman_service *service);
 void __connman_notifier_proxy_changed(struct connman_service *service);
+void __connman_notifier_service_state_changed(struct connman_service *service,
+					enum connman_service_state state);
 
 connman_bool_t __connman_notifier_is_registered(enum connman_service_type type);
 connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type);
