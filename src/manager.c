@@ -589,40 +589,28 @@ static DBusMessage *unregister_counter(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *request_session(DBusConnection *conn,
+static DBusMessage *create_session(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const char *bearer, *sender, *service_path;
-	struct connman_service *service;
-
-	DBG("conn %p", conn);
-
-	sender = dbus_message_get_sender(msg);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &bearer,
-							DBUS_TYPE_INVALID);
-
-	service = __connman_session_request(bearer, sender);
-	if (service == NULL)
-		return __connman_error_failed(msg, EINVAL);
-
-	service_path = __connman_service_get_path(service);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &service_path,
-						DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *release_session(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *sender;
 	int err;
 
 	DBG("conn %p", conn);
 
-	sender = dbus_message_get_sender(msg);
+	err = __connman_session_create(msg);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
 
-	err = __connman_session_release(sender);
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *destroy_session(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	int err;
+
+	DBG("conn %p", conn);
+
+	err = __connman_session_destroy(msg);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -651,8 +639,8 @@ static GDBusMethodTable manager_methods[] = {
 	{ "UnregisterAgent",   "o",     "",      unregister_agent   },
 	{ "RegisterCounter",   "ouu",   "",      register_counter   },
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
-	{ "RequestSession",    "s",     "o",     request_session    },
-	{ "ReleaseSession",    "s",     "",      release_session    },
+	{ "CreateSession",     "a{sv}o", "o",    create_session     },
+	{ "DestroySession",    "o",     "",      destroy_session    },
 	{ },
 };
 
