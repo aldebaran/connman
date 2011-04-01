@@ -16,7 +16,8 @@ noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/dbus.h include/rfkill.h include/option.h \
 			include/profile.h include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
-			include/location.h include/technology.h
+			include/location.h include/technology.h \
+			include/configuration.h
 
 local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 			$(noinst_HEADERS), include/connman/$(notdir $(file)))
@@ -95,6 +96,8 @@ scriptdir = $(libdir)/connman/scripts
 
 storagedir = $(localstatedir)/lib/connman
 
+configdir = ${sysconfdir}/connman
+
 if MAINTAINER_MODE
 build_plugindir = $(abs_top_srcdir)/plugins/.libs
 build_scriptdir = $(abs_top_srcdir)/scripts
@@ -110,7 +113,8 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ @XTABLES_CFLAGS@ \
 				-DSTATEDIR=\""$(statedir)"\" \
 				-DPLUGINDIR=\""$(build_plugindir)"\" \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
-				-DSTORAGEDIR=\""$(storagedir)\""
+				-DSTORAGEDIR=\""$(storagedir)\"" \
+				-DCONFIGDIR=\""$(configdir)\""
 
 INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 

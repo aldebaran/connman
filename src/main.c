@@ -40,6 +40,51 @@
 
 #include "connman.h"
 
+struct connman_conf {
+	connman_bool_t bg_scan;
+};
+
+static struct connman_conf main_conf = {
+	.bg_scan = TRUE,
+};
+
+static GKeyFile *load_config(const char *file)
+{
+	GError *err = NULL;
+	GKeyFile *keyfile;
+
+	keyfile = g_key_file_new();
+
+	g_key_file_set_list_separator(keyfile, ',');
+
+	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
+		connman_error("Parsing %s failed: %s", file, err->message);
+		g_error_free(err);
+		g_key_file_free(keyfile);
+		return NULL;
+	}
+
+	return keyfile;
+}
+
+static void parse_config(GKeyFile *config)
+{
+	GError *error = NULL;
+	gboolean boolean;
+
+	if (config == NULL)
+		return;
+
+	DBG("parsing main.conf");
+
+	boolean = g_key_file_get_boolean(config, "General",
+						"BackgroundScanning", &error);
+	if (error == NULL)
+		main_conf.bg_scan = boolean;
+
+	g_clear_error(&error);
+}
+
 static GMainLoop *main_loop = NULL;
 
 static void sig_term(int sig)
@@ -117,6 +162,14 @@ const char *connman_option_get_string(const char *key)
 	return NULL;
 }
 
+connman_bool_t connman_configuration_get_bool(const char *key)
+{
+	if (g_str_equal(key, "BackgroundScanning") == TRUE)
+		return main_conf.bg_scan;
+
+	return FALSE;
+}
+
 int main(int argc, char *argv[])
 {
 	GOptionContext *context;
@@ -125,6 +178,7 @@ int main(int argc, char *argv[])
 	DBusError err;
 	struct sigaction sa;
 	mode_t old_umask;
+	GKeyFile *config;
 
 #ifdef HAVE_CAPNG
 	/* Drop capabilities */
@@ -208,6 +262,10 @@ int main(int argc, char *argv[])
 
 	__connman_dbus_init(conn);
 
+	config = load_config(CONFIGDIR "/main.conf");
+
+	parse_config(config);
+
 	__connman_storage_init();
 	__connman_element_init(option_device, option_nodevice);
 
@@ -277,6 +335,9 @@ int main(int argc, char *argv[])
 	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
+
+	if (config)
+		g_key_file_free(config);
 
 	return 0;
 }
