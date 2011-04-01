@@ -1049,6 +1049,7 @@ static void resolv_result(GResolvResultStatus status,
 {
 	struct web_session *session = user_data;
 	struct addrinfo hints;
+	char *port;
 	int ret;
 
 	if (results == NULL || results[0] == NULL) {
@@ -1066,7 +1067,9 @@ static void resolv_result(GResolvResultStatus status,
 		session->addr = NULL;
 	}
 
-	ret = getaddrinfo(results[0], NULL, &hints, &session->addr);
+	port = g_strdup_printf("%u", session->port);
+	ret = getaddrinfo(results[0], port, &hints, &session->addr);
+	g_free(port);
 	if (ret != 0 || session->addr == NULL) {
 		call_result_func(session, 400);
 		return;
