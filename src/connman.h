@@ -416,6 +416,7 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network);
 int __connman_config_init();
 void __connman_config_cleanup(void);
 
+int __connman_config_load_service(GKeyFile *keyfile, const char *group);
 int __connman_config_provision_service(struct connman_service *service);
 
 #include <connman/profile.h>
