@@ -1269,7 +1269,6 @@ static int device_load(struct connman_device *device)
 	GError *error = NULL;
 	gchar *identifier;
 	connman_bool_t powered;
-	int val;
 
 	DBG("device %p", device);
 
@@ -1285,12 +1284,6 @@ static int device_load(struct connman_device *device)
 						"Powered", &error);
 	if (error == NULL)
 		device->powered_persistent = powered;
-	g_clear_error(&error);
-
-	val = g_key_file_get_integer(keyfile, identifier,
-						"ScanInterval", &error);
-	if (error == NULL)
-		device->scan_interval = val;
 	g_clear_error(&error);
 
 done:
@@ -1319,9 +1312,6 @@ static int device_save(struct connman_device *device)
 
 	g_key_file_set_boolean(keyfile, identifier,
 					"Powered", device->powered_persistent);
-
-	g_key_file_set_integer(keyfile, identifier,
-					"ScanInterval", device->scan_interval);
 
 done:
 	g_free(identifier);
