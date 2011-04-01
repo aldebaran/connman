@@ -171,6 +171,7 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	struct connman_config_service *service;
 	const char *ident;
 	char *str, *hex_ssid;
+	gboolean service_created = FALSE;
 
 	/* Strip off "service_" prefix */
 	ident = group + 8;
@@ -188,6 +189,8 @@ static int load_service(GKeyFile *keyfile, const char *group,
 			return -ENOMEM;
 
 		service->ident = g_strdup(ident);
+
+		service_created = TRUE;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_TYPE, NULL);
@@ -297,7 +300,9 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		service->passphrase = str;
 	}
 
-	g_hash_table_replace(config->service_table, service->ident, service);
+	if (service_created)
+		g_hash_table_insert(config->service_table, service->ident,
+					service);
 
 	connman_info("Adding service configuration %s", service->ident);
 
