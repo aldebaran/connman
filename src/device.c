@@ -458,6 +458,7 @@ struct connman_device *connman_device_create(const char *node,
 	struct connman_device *device;
 	const char *str;
 	enum connman_service_type service_type;
+	connman_bool_t bg_scan;
 
 	DBG("node %s type %d", node, type);
 
@@ -466,6 +467,8 @@ struct connman_device *connman_device_create(const char *node,
 		return NULL;
 
 	DBG("device %p", device);
+
+	bg_scan = connman_configuration_get_bool("BackgroundScanning");
 
 	__connman_element_initialize(&device->element);
 
@@ -505,7 +508,10 @@ struct connman_device *connman_device_create(const char *node,
 		device->scan_interval = 0;
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
-		device->scan_interval = 300;
+		if (bg_scan == TRUE)
+			device->scan_interval = 300;
+		else
+			device->scan_interval = 0;
 		break;
 	}
 
