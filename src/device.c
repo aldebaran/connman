@@ -495,27 +495,17 @@ struct connman_device *connman_device_create(const char *node,
 
 	switch (type) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_GADGET:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
 		device->scan_interval = 0;
 		break;
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
 		device->scan_interval = 300;
-		break;
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-		device->scan_interval = 0;
-		break;
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-		device->scan_interval = 0;
-		break;
-	case CONNMAN_DEVICE_TYPE_GPS:
-		device->scan_interval = 0;
-		break;
-	case CONNMAN_DEVICE_TYPE_CELLULAR:
-		device->scan_interval = 0;
-		break;
-	case CONNMAN_DEVICE_TYPE_GADGET:
-		device->scan_interval = 0;
 		break;
 	}
 
