@@ -437,6 +437,19 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *provision_service(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	int err;
+
+	DBG("conn %p", conn);
+
+	err = __connman_service_provision(msg);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return NULL;
+}
 
 static DBusMessage *connect_provider(DBusConnection *conn,
 					DBusMessage *msg, void *data)
@@ -591,6 +604,8 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetServices",       "",      "a(oa{sv})", get_services   },
 	{ "LookupService",     "s",     "o",     lookup_service,    },
 	{ "ConnectService",    "a{sv}", "o",     connect_service,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "ProvisionService",  "s",     "",      provision_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,
 						G_DBUS_METHOD_FLAG_ASYNC },
