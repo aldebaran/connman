@@ -93,6 +93,8 @@ void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data);
 
 #include <connman/option.h>
 
+#include <connman/configuration.h>
+
 #include <connman/plugin.h>
 
 int __connman_plugin_init(const char *pattern, const char *exclude);
