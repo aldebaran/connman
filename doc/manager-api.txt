@@ -29,26 +29,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object CreateProfile(string name)
-
-			Create and add new profile with the specified
-			identifier name.
-
-			Possible Errors: [service].Error.InvalidArguments
-
-		void RemoveProfile(object path)
-
-			Remove profile with specified object path.
-
-			It is not possible to remove the current active
-			profile. To remove the active profile a different
-			one must be selected via ActiveProfile property
-			first.
-
-			At minimum one profile must be available all the time.
-
-			Possible Errors: [service].Error.InvalidArguments
-
 		void RequestScan(string type)
 
 			Request to trigger a scan for the specified
@@ -253,10 +233,6 @@ Properties	string State [readonly]
 		object ActiveProfile [readwrite]
 
 			Object path of the current active profile.
-
-		array{object} Profiles [readonly]
-
-			List of profile object paths.
 
 		array{object} Technologies [readonly]
 

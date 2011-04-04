@@ -39,31 +39,9 @@ struct connman_profile {
 	connman_bool_t offlinemode;
 };
 
-static GHashTable *profile_hash = NULL;
 static struct connman_profile *default_profile = NULL;
 
 static DBusConnection *connection = NULL;
-
-static void append_path(gpointer key, gpointer value, gpointer user_data)
-{
-	struct connman_profile *profile = value;
-	DBusMessageIter *iter = user_data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-							&profile->path);
-}
-
-void __connman_profile_list(DBusMessageIter *iter, void *user_data)
-{
-	g_hash_table_foreach(profile_hash, append_path, iter);
-}
-
-static void profiles_changed(void)
-{
-	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
-			CONNMAN_MANAGER_INTERFACE, "Profiles",
-			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
-}
 
 static void name_changed(struct connman_profile *profile)
 {
@@ -147,25 +125,20 @@ static guint changed_timeout = 0;
 
 static gboolean services_changed(gpointer user_data)
 {
-	struct connman_profile *profile = default_profile;
-	connman_dbus_append_cb_t function = NULL;
-
 	changed_timeout = 0;
 
-	if (profile == NULL)
+	if (default_profile == NULL)
 		return FALSE;
 
-	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0) {
-		function = __connman_service_list;
-
-		connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "Services",
-				DBUS_TYPE_OBJECT_PATH, function, NULL);
-	}
+				DBUS_TYPE_OBJECT_PATH, __connman_service_list,
+				NULL);
 
-	connman_dbus_property_changed_array(profile->path,
+	connman_dbus_property_changed_array(default_profile->path,
 				CONNMAN_PROFILE_INTERFACE, "Services",
-				DBUS_TYPE_OBJECT_PATH, function, NULL);
+				DBUS_TYPE_OBJECT_PATH, __connman_service_list,
+				NULL);
 
 	return FALSE;
 }
@@ -298,171 +271,36 @@ static void free_profile(struct connman_profile *profile)
 	g_free(profile);
 }
 
-static void unregister_profile(gpointer data)
-{
-	struct connman_profile *profile = data;
-
-	DBG("profile %p", profile);
-
-	connman_info("Removing profile %s", profile->ident);
-
-	g_dbus_unregister_interface(connection, profile->path,
-						CONNMAN_PROFILE_INTERFACE);
-
-	if (g_strcmp0(profile->ident, PROFILE_DEFAULT_IDENT) == 0)
-		default_profile = NULL;
-
-	free_profile(profile);
-}
-
-static int create_profile(const char *ident, const char *name,
-							const char **path)
-{
-	struct connman_profile *profile;
-
-	DBG("ident %s name %s", ident, name);
-
-	profile = g_try_new0(struct connman_profile, 1);
-	if (profile == NULL)
-		return -ENOMEM;
-
-	profile->ident = g_strdup(ident);
-	profile->path = g_strdup_printf("/profile/%s", ident);
-
-	if (profile->ident == NULL || profile->path == NULL) {
-		free_profile(profile);
-		return -ENOMEM;
-	}
-
-	if (g_hash_table_lookup(profile_hash, profile->path) != NULL) {
-		free_profile(profile);
-		return -EEXIST;
-	}
-
-	profile->name = g_strdup(name);
-
-	__connman_storage_load_profile(profile);
-
-	g_hash_table_insert(profile_hash, g_strdup(profile->path), profile);
-
-	connman_info("Adding profile %s", ident);
-
-	if (g_strcmp0(ident, PROFILE_DEFAULT_IDENT) == 0)
-		default_profile = profile;
-
-	g_dbus_register_interface(connection, profile->path,
-					CONNMAN_PROFILE_INTERFACE,
-					profile_methods, profile_signals,
-							NULL, profile, NULL);
-
-	if (path != NULL)
-		*path = profile->path;
-
-	DBG("profile %p path %s", profile, profile->path);
-
-	return 0;
-}
-
-int __connman_profile_create(const char *name, const char **path)
-{
-	struct connman_profile *profile;
-	int err;
-
-	DBG("name %s", name);
-
-	if (connman_dbus_validate_ident(name) == FALSE)
-		return -EINVAL;
-
-	err = create_profile(name, NULL, path);
-	if (err < 0)
-		return err;
-
-	profile = g_hash_table_lookup(profile_hash, *path);
-	if (profile == NULL)
-		return -EIO;
-
-	__connman_storage_save_profile(profile);
-
-	profiles_changed();
-
-	return 0;
-}
-
-int __connman_profile_remove(const char *path)
-{
-	struct connman_profile *profile;
-
-	DBG("path %s", path);
-
-	if (default_profile != NULL &&
-				g_strcmp0(path, default_profile->path) == 0)
-		return -EINVAL;
-
-	profile = g_hash_table_lookup(profile_hash, path);
-	if (profile == NULL)
-		return -ENXIO;
-
-	__connman_storage_delete_profile(profile->ident);
-
-	g_hash_table_remove(profile_hash, path);
-
-	profiles_changed();
-
-	return 0;
-}
-
 static int profile_init(void)
 {
-	GDir *dir;
-	const gchar *file;
-
 	DBG("");
 
-	dir = g_dir_open(STORAGEDIR, 0, NULL);
-	if (dir != NULL) {
-		while ((file = g_dir_read_name(dir)) != NULL) {
-			GString *str;
-			gchar *ident;
+	default_profile = g_try_new0(struct connman_profile, 1);
+	if (default_profile == NULL)
+		return -ENOMEM;
 
-			if (g_str_has_suffix(file, ".profile") == FALSE)
-				continue;
+	default_profile->ident = g_strdup(PROFILE_DEFAULT_IDENT);
+	default_profile->path = g_strdup_printf("/profile/%s",
+					PROFILE_DEFAULT_IDENT);
 
-			ident = g_strrstr(file, ".profile");
-			if (ident == NULL)
-				continue;
-
-			/*
-			 * If there is no non-extension portion to the file
-			 * (i.e. it is precisely named ".profile"), then ignore
-			 * it. Passing such files to create_profile will result
-			 * in a SIGABRT.
-			 */
-
-			if (file == ident) {
-				connman_info("Ignoring malformed profile %s\n",
-						file);
-				continue;
-			}
-
-			str = g_string_new_len(file, ident - file);
-			if (str == NULL)
-				continue;
-
-			ident = g_string_free(str, FALSE);
-
-			if (connman_dbus_validate_ident(ident) == TRUE)
-				create_profile(ident, NULL, NULL);
-
-			g_free(ident);
-		}
-
-		g_dir_close(dir);
+	if (default_profile->ident == NULL || default_profile->path == NULL) {
+		free_profile(default_profile);
+		return -ENOMEM;
 	}
 
-	if (default_profile == NULL)
-		create_profile(PROFILE_DEFAULT_IDENT, "Default", NULL);
+	default_profile->name = g_strdup("Default");
 
-	profiles_changed();
+	__connman_storage_load_profile(default_profile);
+
+	connman_info("Adding default profile");
+
+	g_dbus_register_interface(connection, default_profile->path,
+					CONNMAN_PROFILE_INTERFACE,
+					profile_methods, profile_signals,
+						NULL, default_profile, NULL);
+
+
+	DBG("profile %p path %s", default_profile, default_profile->path);
 
 	return 0;
 }
@@ -538,9 +376,6 @@ int __connman_profile_init(void)
 	if (connman_storage_register(&profile_storage) < 0)
 		connman_error("Failed to register profile storage");
 
-	profile_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, unregister_profile);
-
 	return 0;
 }
 
@@ -550,9 +385,6 @@ void __connman_profile_cleanup(void)
 
 	if (connection == NULL)
 		return;
-
-	g_hash_table_destroy(profile_hash);
-	profile_hash = NULL;
 
 	connman_storage_unregister(&profile_storage);
 

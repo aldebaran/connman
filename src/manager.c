@@ -50,8 +50,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_basic(&dict, "ActiveProfile",
 						DBUS_TYPE_OBJECT_PATH, &str);
 
-	connman_dbus_dict_append_array(&dict, "Profiles",
-			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Services",
 			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Technologies",
@@ -153,43 +151,6 @@ static DBusMessage *get_state(DBusConnection *conn,
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &str,
 						DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *create_profile(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *name, *path;
-	int err;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
-							DBUS_TYPE_INVALID);
-
-	err = __connman_profile_create(name, &path);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *remove_profile(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *path;
-	int err;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-
-	err = __connman_profile_remove(path);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *remove_provider(DBusConnection *conn,
@@ -621,8 +582,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property       },
 	{ "GetState",          "",      "s",     get_state          },
-	{ "CreateProfile",     "s",     "o",     create_profile     },
-	{ "RemoveProfile",     "o",     "",      remove_profile     },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "EnableTechnology",  "s",     "",      enable_technology,
