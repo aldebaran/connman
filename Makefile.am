@@ -17,7 +17,7 @@ noinst_HEADERS = include/driver.h include/element.h include/property.h \
 			include/profile.h include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
 			include/location.h include/technology.h \
-			include/configuration.h
+			include/setting.h
 
 local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 			$(noinst_HEADERS), include/connman/$(notdir $(file)))

@@ -19,17 +19,17 @@
  *
  */
 
-#ifndef __CONNMAN_CONFIGURATION_H
-#define __CONNMAN_CONFIGURATION_H
+#ifndef __CONNMAN_SETTING_H
+#define __CONNMAN_SETTING_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-connman_bool_t connman_configuration_get_bool(const char *key);
+connman_bool_t connman_setting_get_bool(const char *key);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* __CONNMAN_CONFIGURATION_H */
+#endif /* __CONNMAN_SETTING_H */
