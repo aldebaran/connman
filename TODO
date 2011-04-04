@@ -53,6 +53,76 @@ Core
    credentials, ConnMan should be able to initiate a WiSPR authentication.
 
 
+- DNS caching
+
+   Priority: Low
+   Complexity: C4
+
+   A simple initial implementation would see ConnMan's dnsproxy
+   caching the DNS record based on their TTL.
+
+
+- Power management
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   Implement a simple device pm hook that ConnMan's core code would
+   use whenever it decides to put devices in power save mode. Although
+   the kernel runtime power management code should take care of that,
+   not all driver (especially WiFi ones) implement runtime PM hooks.
+
+
+- IPv6 gateway handling
+
+   Priority: Medium
+   Complexity: C4
+
+   We should be able to switch between IPv6 only services and thus
+   change the default IPv6 gateway on the fly. For that we need to
+   improve the connection.c code to properly handle IPv6 gateways.
+
+
+- IP ranges allocation and check
+
+   Priority: High
+   Complexity: C2
+
+   For both tethering and private networks, but also to detect invalid
+   static IP configurations, we need to have a core IP range layer
+   that manages all currently used IP blocks.
+
+
+- Personal firewall
+
+   Priority: Low
+   Complexity: C8
+
+   Extend the iptables code and provide a D-Bus API for personal firewalling.
+
+
+- PACRunner extensions
+
+   Priority: Low
+   Complexity: C4
+
+   Support more URI schemes, support multiple connections, tighter
+   security integration.
+
+
+- Private networks
+
+   Priority: Medium
+   Complexity: C4
+
+   The private networks D-Bus API should provide applications with a
+   TUN interface linked to a reserved private IP range.
+   oFono DUN forwarding will use a private network for giving DUN
+   clients access to the default service connectivity.
+
+
+
 WiFi
 ====
 
@@ -60,7 +130,6 @@ WiFi
 
    Priority: Medium
    Complexity: C2
-   Dependencies: Core:IPv4LL
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
@@ -103,17 +172,6 @@ WiFi
    Complexity: C2
 
 
-- DUN server
-
-   Priority: Low
-   Complexity: C4
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-   For DUN server support, ConnMan needs to provide an API for oFono
-   to trigger IP forwarding on a point to point interface. An IP range
-   should also be reserved.
-
-
 
 Bluetooth
 =========
@@ -122,6 +180,21 @@ Bluetooth
 
    Priority: Low
    Complexity: C4
+
+
+
+Cellular
+========
+
+- IPv6 and IPv6v4 cellular data connection
+
+   Priority: Medium
+   Complexity: C2
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   Support IPv6 and dual stack cellular data connections.
+   oFono already supports it and provide an extensive D-Bus API for it.
+
 
 
 VPN
@@ -139,3 +212,22 @@ VPN
    Priority: Low
    Complexity: C2
    Owner: Mohamed Abbas <mohamed.abbas@intel.com>
+
+
+- IPsec
+
+   Priority: Low
+   Complexity: C4
+
+
+- Split tunnelling
+
+   Priority: Low
+   Complexity: C8
+   Dependencies: Core:Private networks
+
+   The current VPN support puts the VPN interface at the top of the
+   service list, giving VPNs the default route. When doing split
+   tunneling, the system routes packet to the VPN interface for
+   private IPs, while going through the default interface for the rest
+   of the traffic.
