@@ -468,7 +468,7 @@ struct connman_device *connman_device_create(const char *node,
 
 	DBG("device %p", device);
 
-	bg_scan = connman_configuration_get_bool("BackgroundScanning");
+	bg_scan = connman_setting_get_bool("BackgroundScanning");
 
 	__connman_element_initialize(&device->element);
 

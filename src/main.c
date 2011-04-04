@@ -40,11 +40,9 @@
 
 #include "connman.h"
 
-struct connman_conf {
+static struct {
 	connman_bool_t bg_scan;
-};
-
-static struct connman_conf main_conf = {
+} connman_settings  = {
 	.bg_scan = TRUE,
 };
 
@@ -80,7 +78,7 @@ static void parse_config(GKeyFile *config)
 	boolean = g_key_file_get_boolean(config, "General",
 						"BackgroundScanning", &error);
 	if (error == NULL)
-		main_conf.bg_scan = boolean;
+		connman_settings.bg_scan = boolean;
 
 	g_clear_error(&error);
 }
@@ -162,10 +160,10 @@ const char *connman_option_get_string(const char *key)
 	return NULL;
 }
 
-connman_bool_t connman_configuration_get_bool(const char *key)
+connman_bool_t connman_setting_get_bool(const char *key)
 {
 	if (g_str_equal(key, "BackgroundScanning") == TRUE)
-		return main_conf.bg_scan;
+		return connman_settings.bg_scan;
 
 	return FALSE;
 }
