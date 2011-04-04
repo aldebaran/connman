@@ -436,13 +436,6 @@ int __connman_profile_remove(const char *path);
 
 void __connman_profile_changed(gboolean delayed);
 
-int __connman_profile_add_device(struct connman_device *device);
-int __connman_profile_remove_device(struct connman_device *device);
-
-int __connman_profile_add_network(struct connman_network *network);
-int __connman_profile_update_network(struct connman_network *network);
-int __connman_profile_remove_network(struct connman_network *network);
-
 int __connman_tethering_init(void);
 void __connman_tethering_cleanup(void);
 

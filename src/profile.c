@@ -192,37 +192,6 @@ void __connman_profile_changed(gboolean delayed)
 	changed_timeout = g_timeout_add_seconds(1, services_changed, NULL);
 }
 
-int __connman_profile_add_network(struct connman_network *network)
-{
-	struct connman_service *service;
-
-	DBG("network %p", network);
-
-	service = __connman_service_create_from_network(network);
-	if (service == NULL)
-		return -EINVAL;
-
-	return 0;
-}
-
-int __connman_profile_update_network(struct connman_network *network)
-{
-	DBG("network %p", network);
-
-	__connman_service_update_from_network(network);
-
-	return 0;
-}
-
-int __connman_profile_remove_network(struct connman_network *network)
-{
-	DBG("network %p", network);
-
-	__connman_service_remove_from_network(network);
-
-	return 0;
-}
-
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
