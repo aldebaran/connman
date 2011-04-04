@@ -32,6 +32,15 @@ static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
 
+enum connman_session_roaming_policy {
+	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
+	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
+	CONNMAN_SESSION_ROAMING_POLICY_ALWAYS		= 2,
+	CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN	= 3,
+	CONNMAN_SESSION_ROAMING_POLICY_NATIONAL		= 4,
+	CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL	= 5,
+};
+
 struct connman_session {
 	char *owner;
 	char *session_path;
@@ -49,7 +58,7 @@ struct connman_session {
 	unsigned int periodic_connect;
 	unsigned int idle_timeout;
 	connman_bool_t ecall;
-	connman_bool_t roaming_allowed;
+	enum connman_session_roaming_policy roaming_policy;
 	unsigned int marker;
 
 	GSequence *service_list;
@@ -61,6 +70,42 @@ struct bearer_info {
 	connman_bool_t match_all;
 	enum connman_service_type service_type;
 };
+
+static const char *roamingpolicy2string(enum connman_session_roaming_policy policy)
+{
+	switch (policy) {
+	case CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN:
+		break;
+	case CONNMAN_SESSION_ROAMING_POLICY_DEFAULT:
+		return "default";
+	case CONNMAN_SESSION_ROAMING_POLICY_ALWAYS:
+		return "always";
+	case CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN:
+		return "forbidden";
+	case CONNMAN_SESSION_ROAMING_POLICY_NATIONAL:
+		return "national";
+	case CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL:
+		return "international";
+	}
+
+	return NULL;
+}
+
+static enum connman_session_roaming_policy string2roamingpolicy(const char *policy)
+{
+	if (g_strcmp0(policy, "default") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
+	else if (g_strcmp0(policy, "always") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_ALWAYS;
+	else if (g_strcmp0(policy, "forbidden") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
+	else if (g_strcmp0(policy, "national") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_NATIONAL;
+	else if (g_strcmp0(policy, "international") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL;
+	else
+		return CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN;
+}
 
 static enum connman_service_type bearer2service(const char *bearer)
 {
@@ -250,6 +295,8 @@ static void append_service(DBusMessageIter *dict,
 static void append_notify_all(DBusMessageIter *dict,
 					struct connman_session *session)
 {
+	const char *policy;
+
 	append_service(dict, session);
 
 	connman_dbus_dict_append_basic(dict, "Realtime",
@@ -279,9 +326,10 @@ static void append_notify_all(DBusMessageIter *dict,
 	connman_dbus_dict_append_basic(dict, "EmergencyCall",
 					DBUS_TYPE_BOOLEAN, &session->ecall);
 
-	connman_dbus_dict_append_basic(dict, "RoamingAllowed",
-					DBUS_TYPE_BOOLEAN,
-					&session->roaming_allowed);
+	policy = roamingpolicy2string(session->roaming_policy);
+	connman_dbus_dict_append_basic(dict, "RoamingPolicy",
+					DBUS_TYPE_STRING,
+					&policy);
 
 	connman_dbus_dict_append_basic(dict, "SessionMarker",
 					DBUS_TYPE_UINT32, &session->marker);
@@ -658,16 +706,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 						DBUS_TYPE_BOOLEAN,
 						&session->ecall);
 
-		} else if (g_str_equal(name, "RoamingAllowed") == TRUE) {
-			dbus_message_iter_get_basic(&value,
-						&session->roaming_allowed);
-
-			/* update_roaming_allowed(); */
-
-			connman_dbus_dict_append_basic(&reply_dict,
-						"RoamingAllowed",
-						DBUS_TYPE_BOOLEAN,
-						&session->roaming_allowed);
 		}
 		break;
 	case DBUS_TYPE_UINT32:
@@ -691,6 +729,21 @@ static DBusMessage *change_session(DBusConnection *conn,
 						"IdleTimeout",
 						DBUS_TYPE_UINT32,
 						&session->idle_timeout);
+		}
+		break;
+	case DBUS_TYPE_STRING:
+		if (g_str_equal(name, "RoamingPolicy") == TRUE) {
+			const char *val;
+			dbus_message_iter_get_basic(&value, &val);
+			session->roaming_policy = string2roamingpolicy(val);
+
+			/* update_roaming_allowed(); */
+
+			val = roamingpolicy2string(session->roaming_policy);
+			connman_dbus_dict_append_basic(&reply_dict,
+						"RoamingPolicy",
+						DBUS_TYPE_STRING,
+						&val);
 		}
 		break;
 	}
@@ -719,7 +772,8 @@ int __connman_session_create(DBusMessage *msg)
 
 	connman_bool_t realtime = FALSE, avoid_handover = FALSE;
 	connman_bool_t stay_connected = FALSE, ecall = FALSE;
-	connman_bool_t roaming_allowed = FALSE;
+	enum connman_session_roaming_policy roaming_policy =
+				CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
 	GSList *allowed_bearers = NULL;
 	unsigned int periodic_connect = 0;
 	unsigned int idle_timeout = 0;
@@ -735,7 +789,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
-		const char *key;
+		const char *key, *val;
 
 		dbus_message_iter_recurse(&array, &entry);
 		dbus_message_iter_get_basic(&entry, &key);
@@ -763,9 +817,6 @@ int __connman_session_create(DBusMessage *msg)
 			} else if (g_str_equal(key, "EmergencyCall") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&ecall);
-			} else if (g_str_equal(key, "RoamingAllowed") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&roaming_allowed);
 			}
 			break;
 		case DBUS_TYPE_UINT32:
@@ -777,8 +828,13 @@ int __connman_session_create(DBusMessage *msg)
 							&idle_timeout);
 			}
 			break;
-		}
+		case DBUS_TYPE_STRING:
 
+			if (g_str_equal(key, "RoamingPolicy") == TRUE) {
+				dbus_message_iter_get_basic(&value, &val);
+				roaming_policy = string2roamingpolicy(val);
+			}
+		}
 		dbus_message_iter_next(&array);
 	}
 
@@ -825,7 +881,7 @@ int __connman_session_create(DBusMessage *msg)
 	session->periodic_connect = periodic_connect;
 	session->idle_timeout = idle_timeout;
 	session->ecall = ecall;
-	session->roaming_allowed = roaming_allowed;
+	session->roaming_policy = roaming_policy;
 
 	session->service_list = NULL;
 
