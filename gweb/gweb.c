@@ -1148,8 +1148,29 @@ static guint do_request(GWeb *web, const char *url,
 			return 0;
 		}
 	} else {
+		struct addrinfo hints;
+		char *port;
+		int ret;
+
 		if (session->address == NULL)
 			session->address = g_strdup(session->host);
+
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_flags = AI_NUMERICHOST;
+
+		if (session->addr != NULL) {
+			freeaddrinfo(session->addr);
+			session->addr = NULL;
+		}
+
+		port = g_strdup_printf("%u", session->port);
+		ret = getaddrinfo(session->address, port, &hints,
+							&session->addr);
+		g_free(port);
+		if (ret != 0 || session->addr == NULL) {
+			free_session(session);
+			return 0;
+		}
 
 		if (create_transport(session) < 0) {
 			free_session(session);
