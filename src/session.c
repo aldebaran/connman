@@ -51,7 +51,7 @@ struct connman_session {
 	const char *name;
 	char *ifname;
 	connman_bool_t online;
-	connman_bool_t realtime;
+	connman_bool_t priority;
 	GSList *allowed_bearers;
 	connman_bool_t avoid_handover;
 	connman_bool_t stay_connected;
@@ -320,8 +320,8 @@ static void append_notify_all(DBusMessageIter *dict,
 
 	append_service(dict, session);
 
-	connman_dbus_dict_append_basic(dict, "Realtime",
-					DBUS_TYPE_BOOLEAN, &session->realtime);
+	connman_dbus_dict_append_basic(dict, "Priority",
+					DBUS_TYPE_BOOLEAN, &session->priority);
 
 	connman_dbus_dict_append_array(dict, "AllowedBearers",
 					DBUS_TYPE_STRING,
@@ -695,14 +695,14 @@ static DBusMessage *change_session(DBusConnection *conn,
 		}
 		break;
 	case DBUS_TYPE_BOOLEAN:
-		if (g_str_equal(name, "Realtime") == TRUE) {
-			dbus_message_iter_get_basic(&value, &session->realtime);
+		if (g_str_equal(name, "Priority") == TRUE) {
+			dbus_message_iter_get_basic(&value, &session->priority);
 
-			/* update_realtime(); */
+			/* update_priority(); */
 
-			connman_dbus_dict_append_basic(&reply_dict, "Realtime",
+			connman_dbus_dict_append_basic(&reply_dict, "Priority",
 							DBUS_TYPE_BOOLEAN,
-							&session->realtime);
+							&session->priority);
 
 		} else if (g_str_equal(name, "AvoidHandover") == TRUE) {
 			dbus_message_iter_get_basic(&value,
@@ -800,7 +800,7 @@ int __connman_session_create(DBusMessage *msg)
 	DBusMessageIter iter, array;
 	struct connman_session *session;
 
-	connman_bool_t realtime = FALSE, avoid_handover = FALSE;
+	connman_bool_t priority = FALSE, avoid_handover = FALSE;
 	connman_bool_t stay_connected = FALSE, ecall = FALSE;
 	enum connman_session_roaming_policy roaming_policy =
 				CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
@@ -835,9 +835,9 @@ int __connman_session_create(DBusMessage *msg)
 			}
 			break;
 		case DBUS_TYPE_BOOLEAN:
-			if (g_str_equal(key, "Realtime") == TRUE) {
+			if (g_str_equal(key, "Priority") == TRUE) {
 				dbus_message_iter_get_basic(&value,
-							&realtime);
+							&priority);
 			} else if (g_str_equal(key, "AvoidHandover") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&avoid_handover);
@@ -904,7 +904,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	session->bearer = "";
 	session->online = FALSE;
-	session->realtime = realtime;
+	session->priority = priority;
 	session->avoid_handover = avoid_handover;
 	session->stay_connected = stay_connected;
 	session->periodic_connect = periodic_connect;

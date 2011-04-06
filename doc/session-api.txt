@@ -105,12 +105,33 @@ Settings	string  Bearer [readonly]
 			can be delayed based on the speed of the bearer. It
 			is done to avoid congestion on bearers like 3G etc.
 
-		boolean Realtime [readwrite]
+		boolean Priority [readwrite]
 
-			This indicates if the application uses realtime traffic.
+			This allows a session to mark itself as priority or
+			not. In general application are not allowed to make
+			themselves more important than others.
+
+			The priority handling is done internally by usage
+			and first come, first serve order. By default this
+			settings is of course false.
+
+			Internally there can be different priorities for
+			different application, but these are defined by a
+			configuration file and not via this interface.
+
+			An application that calls the method to connect
+			a session is preferred over other sessions. This
+			priority value is more for application that want to
+			push themselves up in the asychronization notification
+			queue once a bearer becomes online.
+
+			This actual priority order also depends on the
+			allowed bearers and other factors. This is setting
+			is just a little indicator of one application being
+			notified before another one.
 
 			For example a streaming session should set the
-			realtime value. As soon as realtime data is involved
+			priority value. As soon as realtime data is involved
 			then this should be set. An email client should not
 			set this value.
 
