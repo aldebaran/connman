@@ -147,6 +147,14 @@ Settings	string  Bearer [readonly]
 			In general this list should be empty to indicate that
 			any bearer is acceptable.
 
+			The order of the entries in AllowedBearers matters.
+			The services are sorted in the order of the bearer
+			entries in this list.
+
+			Also "*" matches any bearer. This is usefull to prefer
+			certain bearers such as Wifi with a fallback to any
+			other available bearer.
+
 		dict IPv4 [readonly]
 
 			Current IPv4 configuration. This settings is only
