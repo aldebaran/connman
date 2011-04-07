@@ -692,6 +692,8 @@ static DBusMessage *change_session(DBusConnection *conn,
 							DBUS_TYPE_STRING,
 							append_allowed_bearers,
 							session);
+		} else {
+			goto err;
 		}
 		break;
 	case DBUS_TYPE_BOOLEAN:
@@ -736,6 +738,8 @@ static DBusMessage *change_session(DBusConnection *conn,
 						DBUS_TYPE_BOOLEAN,
 						&session->ecall);
 
+		} else {
+			goto err;
 		}
 		break;
 	case DBUS_TYPE_UINT32:
@@ -759,6 +763,8 @@ static DBusMessage *change_session(DBusConnection *conn,
 						"IdleTimeout",
 						DBUS_TYPE_UINT32,
 						&session->idle_timeout);
+		} else {
+			goto err;
 		}
 		break;
 	case DBUS_TYPE_STRING:
@@ -774,6 +780,8 @@ static DBusMessage *change_session(DBusConnection *conn,
 						"RoamingPolicy",
 						DBUS_TYPE_STRING,
 						&val);
+		} else {
+			goto err;
 		}
 		break;
 	}
@@ -783,6 +791,10 @@ static DBusMessage *change_session(DBusConnection *conn,
 	g_dbus_send_message(connection, reply);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+err:
+	dbus_message_unref(reply);
+	return __connman_error_invalid_arguments(msg);
 }
 
 static GDBusMethodTable session_methods[] = {
@@ -832,6 +844,8 @@ int __connman_session_create(DBusMessage *msg)
 			if (g_str_equal(key, "AllowedBearers") == TRUE) {
 				allowed_bearers =
 					session_parse_allowed_bearers(&value);
+			} else {
+				return -EINVAL;
 			}
 			break;
 		case DBUS_TYPE_BOOLEAN:
@@ -847,6 +861,8 @@ int __connman_session_create(DBusMessage *msg)
 			} else if (g_str_equal(key, "EmergencyCall") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&ecall);
+			} else {
+				return -EINVAL;
 			}
 			break;
 		case DBUS_TYPE_UINT32:
@@ -856,13 +872,16 @@ int __connman_session_create(DBusMessage *msg)
 			} else if (g_str_equal(key, "IdleTimeout") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&idle_timeout);
+			} else {
+				return -EINVAL;
 			}
 			break;
 		case DBUS_TYPE_STRING:
-
 			if (g_str_equal(key, "RoamingPolicy") == TRUE) {
 				dbus_message_iter_get_basic(&value, &val);
 				roaming_policy = string2roamingpolicy(val);
+			} else {
+				return -EINVAL;
 			}
 		}
 		dbus_message_iter_next(&array);
