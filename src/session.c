@@ -225,6 +225,27 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 	return list;
 }
 
+static GSList *session_allowed_bearers_any(void)
+{
+	struct bearer_info *info;
+	GSList *list = NULL;
+
+	info = g_try_new0(struct bearer_info, 1);
+	if (info == NULL) {
+		g_slist_free(list);
+
+		return NULL;
+	}
+
+	info->name = g_strdup("");
+	info->match_all = TRUE;
+	info->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+
+	list = g_slist_append(list, info);
+
+	return list;
+}
+
 static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_session *session = user_data;
@@ -653,6 +674,15 @@ static DBusMessage *change_session(DBusConnection *conn,
 					cleanup_bearer_info, NULL);
 			g_slist_free(session->allowed_bearers);
 
+			if (allowed_bearers == NULL) {
+				allowed_bearers = session_allowed_bearers_any();
+
+				if (allowed_bearers == NULL) {
+					dbus_message_unref(reply);
+					return __connman_error_failed(msg, ENOMEM);
+				}
+			}
+
 			session->allowed_bearers = allowed_bearers;
 
 			/* update_allowed_bearers(); */
@@ -875,13 +905,21 @@ int __connman_session_create(DBusMessage *msg)
 	session->bearer = "";
 	session->online = FALSE;
 	session->realtime = realtime;
-	session->allowed_bearers = allowed_bearers;
 	session->avoid_handover = avoid_handover;
 	session->stay_connected = stay_connected;
 	session->periodic_connect = periodic_connect;
 	session->idle_timeout = idle_timeout;
 	session->ecall = ecall;
 	session->roaming_policy = roaming_policy;
+
+	if (session->allowed_bearers == NULL) {
+		session->allowed_bearers = session_allowed_bearers_any();
+
+		if (session->allowed_bearers == NULL) {
+			err = -ENOMEM;
+			goto err;
+		}
+	}
 
 	session->service_list = NULL;
 
