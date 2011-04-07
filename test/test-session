@@ -71,6 +71,7 @@ class SessionApplication(dbus.service.Object):
 		self.session_path = None
 		self.mainloop = mainloop
 		self.session = None
+		self.settings = { }
 
 		try:
 			bus = dbus.SystemBus()
@@ -107,6 +108,20 @@ class SessionApplication(dbus.service.Object):
 			self.notify.remove_from_connection()
 			self.notify = None
 
+	def type_convert(self, key, value):
+		if key in [ "AllowedBearers", "RoamingPolicy" ]:
+			return value
+		elif key in [ "Priority", "AvoidHandover",
+			      "StayConnected", "EmergencyCall" ]:
+			flag = str(value[0]).strip().lower()
+			val = flag not in ['false', 'f', 'n', '0']
+			return dbus.Boolean(val)
+		elif key in [ "PeriodicConnect", "IdleTimeout" ]:
+			val = value[0]
+			return dbus.UInt32(val)
+
+		return value
+
 	@dbus.service.method("com.example.TestSession",
 				in_signature='', out_signature='')
 	def CreateSession(self):
@@ -122,9 +137,7 @@ class SessionApplication(dbus.service.Object):
 			self.notify = Notification(bus, self, self.notify_path)
 			self.notify.add_to_connection(bus, self.notify_path)
 
-			#settings = { "AllowedBearers" : [ "ethernet", "*" ] }
-			settings = { "AllowedBearers" : [ "ethernet" ] }
-			self.session_path = self.manager.CreateSession(settings, self.notify_path)
+			self.session_path = self.manager.CreateSession(self.settings, self.notify_path)
 
 			print "notify path %s" % (self.notify_path)
 			print "session path %s" % (self.session_path)
@@ -132,7 +145,10 @@ class SessionApplication(dbus.service.Object):
 			self.session = dbus.Interface(bus.get_object("net.connman", self.session_path),
 						      "net.connman.Session")
 
-		except dbus.DBusException:
+		except dbus.DBusException, e:
+			if e.get_dbus_name() in ['net.connman.Error.InvalidArguments']:
+				print e.get_dbus_message()
+				return
 			traceback.print_exc()
 			exit(1)
 
@@ -179,6 +195,27 @@ class SessionApplication(dbus.service.Object):
 			traceback.print_exc()
 			exit(1)
 
+	@dbus.service.method("com.example.TestSession",
+				in_signature='sv', out_signature='')
+	def Change(self, key, value):
+		print "Update session settings"
+		try:
+			val = self.type_convert(key, value)
+			self.session.Change(key, val)
+		except dbus.DBusException, e:
+			if e.get_dbus_name() in ['net.connman.Error.InvalidArguments']:
+				print e.get_dbus_message()
+				return
+			traceback.print_exc()
+			exit(1)
+
+	@dbus.service.method("com.example.TestSession",
+				in_signature='sv', out_signature='')
+	def Configure(self, key, value):
+		print "Configure session settings"
+		val = self.type_convert(key, value)
+		self.settings[key] = val
+
 def main():
 	if len(sys.argv) < 2:
 		print "Usage: %s <command>" % (sys.argv[0])
@@ -189,6 +226,8 @@ def main():
 		print "  destroy <app_path>"
 		print "  connect <app_path>"
 		print "  disconnect <app_path>"
+		print "  change <app_path> <key> <value>"
+		print "  configure <app_path> <key> <value>"
 		print ""
 		print "  run <app_path>"
 		sys.exit(1)
@@ -239,6 +278,24 @@ def main():
 
 	elif sys.argv[1] == "disconnect":
 		app.Disconnect()
+
+	elif sys.argv[1] == "change":
+		if len(sys.argv) < 4:
+			print "Arguments missing"
+			sys.exit(1)
+
+		app.Change(sys.argv[3], sys.argv[4:])
+
+	elif sys.argv[1] == "configure":
+		if len(sys.argv) < 4:
+			print "Arguments missing"
+			sys.exit(1)
+
+		app.Configure(sys.argv[3], sys.argv[4:])
+
+	else:
+		print "Unknown command '%s'" % sys.argv[1]
+		sys.exit(1)
 
 if __name__ == '__main__':
 	main()
