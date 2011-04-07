@@ -1047,7 +1047,7 @@ static void service_state_changed(struct connman_service *service,
 
 		if (session->service == service) {
 			online = __connman_service_is_connected(service);
-			if (session->online != online)
+			if (session->online == online)
 				continue;
 
 			session->online = online;
