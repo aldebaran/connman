@@ -478,6 +478,15 @@ static connman_bool_t is_connected(struct connman_service *service)
 	return is_connected_state(service, state);
 }
 
+static connman_bool_t is_idle(struct connman_service *service)
+{
+	enum connman_service_state state;
+
+	state = combine_state(service->state_ipv4, service->state_ipv6);
+
+	return state == CONNMAN_SERVICE_STATE_IDLE;
+}
+
 static void update_nameservers(struct connman_service *service)
 {
 	const char *ifname;
@@ -1588,6 +1597,11 @@ connman_bool_t __connman_service_is_connecting(struct connman_service *service)
 connman_bool_t __connman_service_is_connected(struct connman_service *service)
 {
 	return is_connected(service);
+}
+
+connman_bool_t __connman_service_is_idle(struct connman_service *service)
+{
+	return is_idle(service);
 }
 
 const char *__connman_service_get_name(struct connman_service *service)
