@@ -206,6 +206,7 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	const char *ident;
 	char *str, *hex_ssid;
 	gboolean service_created = FALSE;
+	int err;
 
 	/* Strip off "service_" prefix */
 	ident = group + 8;
@@ -248,8 +249,9 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 		ssid = g_try_malloc0(hex_ssid_len / 2);
 		if (ssid == NULL) {
+			err = -ENOMEM;
 			g_free(hex_ssid);
-			return -ENOMEM;
+			goto err;
 		}
 
 		for (i = 0; i < hex_ssid_len; i += 2) {
@@ -268,8 +270,10 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 		ssid_len = strlen(service->name);
 		ssid = g_try_malloc0(ssid_len);
-		if (ssid == NULL)
-			return -ENOMEM;
+		if (ssid == NULL) {
+			err = -ENOMEM;
+			goto err;
+		}
 
 		memcpy(ssid, service->name, ssid_len);
 		g_free(service->ssid);
@@ -279,14 +283,8 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	if (is_protected_service(service) == TRUE) {
 		connman_error("Trying to provision a protected service");
-
-		g_free(service->ident);
-		g_free(service->type);
-		g_free(service->name);
-		g_free(service->ssid);
-		g_free(service);
-
-		return -EACCES;
+		err = -EACCES;
+		goto err;
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
@@ -362,6 +360,17 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	connman_info("Adding service configuration %s", service->ident);
 
 	return 0;
+
+err:
+	if (service_created == TRUE) {
+		g_free(service->ident);
+		g_free(service->type);
+		g_free(service->name);
+		g_free(service->ssid);
+		g_free(service);
+	}
+
+	return err;
 }
 
 static int load_config(struct connman_config *config)
