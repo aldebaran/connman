@@ -636,7 +636,7 @@ static DBusMessage *connect_session(DBusConnection *conn,
 		iter = g_sequence_iter_next(iter);
 	}
 
-	if (session != NULL) {
+	if (service != NULL) {
 		session->service = service;
 		update_service(session);
 		g_timeout_add_seconds(0, callback, session);
