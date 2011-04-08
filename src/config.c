@@ -47,7 +47,7 @@ struct connman_config_service {
 	char *private_key_passphrase_type;
 	char *phase2;
 	char *passphrase;
-	gboolean from_fs;
+	connman_bool_t from_fs;
 };
 
 struct connman_config {
