@@ -317,22 +317,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	return 0;
 }
 
-static struct connman_config *create_config(const char *ident);
-
-int __connman_config_load_service(GKeyFile *keyfile, const char *group)
-{
-	struct connman_config *config = g_hash_table_lookup(config_table,
-							NONFS_CONFIG_NAME);
-
-	if (config == NULL) {
-		config = create_config(NONFS_CONFIG_NAME);
-		if (config == NULL)
-			return -ENOMEM;
-	}
-
-	return load_service(keyfile, group, config);
-}
-
 static int load_config(struct connman_config *config)
 {
 	GKeyFile *keyfile;
@@ -399,6 +383,20 @@ static struct connman_config *create_config(const char *ident)
 	connman_info("Adding configuration %s", config->ident);
 
 	return config;
+}
+
+int __connman_config_load_service(GKeyFile *keyfile, const char *group)
+{
+	struct connman_config *config = g_hash_table_lookup(config_table,
+							NONFS_CONFIG_NAME);
+
+	if (config == NULL) {
+		config = create_config(NONFS_CONFIG_NAME);
+		if (config == NULL)
+			return -ENOMEM;
+	}
+
+	return load_service(keyfile, group, config);
 }
 
 static int read_configs(void)
