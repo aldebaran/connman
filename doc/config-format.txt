@@ -16,6 +16,9 @@ These files can have an optional global entry describing the actual file.
 The 2 allowed fields for that entry are:
 - Name: Name of the network.
 - Description: Description of the network.
+- Protected: Configuration protection against being removed, modified or
+overwritten by a Manager.ProvisionService() call. By default, a configuration
+is not protected.
 
 
 Service entry [service_*]

@@ -54,6 +54,7 @@ struct connman_config {
 	char *ident;
 	char *name;
 	char *description;
+	connman_bool_t protected;
 	GHashTable *service_table;
 };
 
@@ -69,6 +70,7 @@ static uint inotify_watch = 0;
 /* Definition of possible strings in the .config files */
 #define CONFIG_KEY_NAME                "Name"
 #define CONFIG_KEY_DESC                "Description"
+#define CONFIG_KEY_PROT                "Protected"
 
 #define SERVICE_KEY_TYPE               "Type"
 #define SERVICE_KEY_NAME               "Name"
@@ -86,6 +88,7 @@ static uint inotify_watch = 0;
 static const char *config_possible_keys[] = {
 	CONFIG_KEY_NAME,
 	CONFIG_KEY_DESC,
+	CONFIG_KEY_PROT,
 	NULL,
 };
 
@@ -323,6 +326,7 @@ static int load_config(struct connman_config *config)
 	gsize length;
 	char **groups;
 	char *str;
+	gboolean protected;
 	int i;
 
 	DBG("config %p", config);
@@ -345,6 +349,10 @@ static int load_config(struct connman_config *config)
 		g_free(config->description);
 		config->description = str;
 	}
+
+	protected = g_key_file_get_boolean(keyfile, "global",
+					CONFIG_KEY_PROT, NULL);
+	config->protected = protected;
 
 	groups = g_key_file_get_groups(keyfile, &length);
 
