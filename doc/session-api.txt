@@ -51,9 +51,9 @@ Methods		void Destroy()
 			Depending on the bearer settings the current service
 			is used or a new service will be connected.
 
-			This method returns when the connection has been
-			established and it is online. Additionally an update
-			notification with the IP settings is sent.
+			This method returns immediately after it has been
+			called. The application is informed through the update
+			notification about the state of the session.
 
 			It is also not guaranteed that a session stays online
 			after this method call. It can be taken offline at any
@@ -68,9 +68,9 @@ Methods		void Destroy()
 			This method indicates that the current session does
 			not need a connection anymore.
 
-			In most cases this method returns right away without
-			any delays. However in some cases it might take a few
-			seconds before a connection can be terminated.
+			This method returns immediately. The application is
+			informed through the update notification about the
+			state of the session.
 
 		void Change(string name, variant value)
 
