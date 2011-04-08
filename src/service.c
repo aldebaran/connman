@@ -2598,57 +2598,6 @@ void __connman_service_auto_connect(void)
 	}
 }
 
-static connman_bool_t session_is_ignore(struct connman_service *service)
-{
-	if (combine_state(service->state_ipv4, service->state_ipv6) ==
-						CONNMAN_SERVICE_STATE_FAILURE)
-		return TRUE;
-
-	return FALSE;
-}
-
-int __connman_service_session_connect(GSequence *list,
-					struct connman_service **ret_service)
-{
-	struct connman_service *service;
-	GSequenceIter *iter;
-
-	DBG("list %p", list);
-
-	iter = g_sequence_get_begin_iter(list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
-
-		if (service->pending != NULL)
-			return -EINPROGRESS;
-
-		if (is_connected(service) == TRUE)
-			return -EISCONN;
-
-		if (is_connecting(service) == TRUE)
-			return -EALREADY;
-
-		if (session_is_ignore(service) == FALSE &&
-			combine_state(service->state_ipv4,
-					service->state_ipv6) ==
-						CONNMAN_SERVICE_STATE_IDLE)
-			break;
-
-		service = NULL;
-
-		iter = g_sequence_iter_next(iter);
-	}
-
-	if (service == NULL)
-		return -EINVAL;
-
-
-	*ret_service = service;
-
-	return __connman_service_connect(service);
-}
-
 static void remove_timeout(struct connman_service *service)
 {
 	if (service->timeout > 0) {

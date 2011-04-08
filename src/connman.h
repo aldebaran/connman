@@ -517,8 +517,6 @@ int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_disconnect_all(void);
 int __connman_service_create_and_connect(DBusMessage *msg);
 void __connman_service_auto_connect(void);
-int __connman_service_session_connect(GSequence *service_list,
-					struct connman_service **service);
 
 const char *__connman_service_type2string(enum connman_service_type type);
 

@@ -588,11 +588,23 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static gboolean session_do_connect(gpointer user_data)
+{
+	struct connman_session *session = user_data;
+
+	__connman_service_connect(session->service);
+
+	service_changed(session);
+	return FALSE;
+}
+
 static DBusMessage *connect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	int err;
+	struct connman_service *service = NULL;
+	GSourceFunc callback;
+	GSequenceIter *iter;
 
 	DBG("session %p", session);
 
@@ -604,35 +616,60 @@ static DBusMessage *connect_session(DBusConnection *conn,
 
 	g_sequence_foreach(session->service_list, print_name, NULL);
 
-	err = __connman_service_session_connect(session->service_list,
-						&session->service);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
 
-	update_service(session);
-	g_timeout_add_seconds(0, service_changed, session);
+	iter = g_sequence_get_begin_iter(session->service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+
+		if (__connman_service_is_connecting(service) == TRUE ||
+				__connman_service_is_connected(service) == TRUE) {
+			callback = service_changed;
+			break;
+		}
+
+		if (__connman_service_is_idle(service) == TRUE) {
+			callback = session_do_connect;
+			break;
+		}
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	if (session != NULL) {
+		session->service = service;
+		update_service(session);
+		g_timeout_add_seconds(0, callback, session);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static gboolean session_do_disconnect(gpointer user_data)
+{
+	struct connman_session *session = user_data;
+
+	if (__connman_service_disconnect(session->service) < 0)
+		return FALSE;
+
+	session->service = NULL;
+	update_service(session);
+	service_changed(session);
+
+	return FALSE;
 }
 
 static DBusMessage *disconnect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	int err;
 
 	DBG("session %p", session);
 
 	if (session->service == NULL)
 		return __connman_error_already_disabled(msg);
 
-	err = __connman_service_disconnect(session->service);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	session->service = NULL;
-	update_service(session);
-	g_timeout_add_seconds(0, service_changed, session);
+	g_timeout_add_seconds(0, session_do_disconnect, session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
