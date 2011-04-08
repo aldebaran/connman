@@ -43,22 +43,8 @@ static struct connman_profile *default_profile = NULL;
 
 static DBusConnection *connection = NULL;
 
-static void name_changed(struct connman_profile *profile)
-{
-	connman_dbus_property_changed_basic(profile->path,
-				CONNMAN_PROFILE_INTERFACE, "Name",
-					DBUS_TYPE_STRING, &profile->name);
-}
-
 static void offlinemode_changed(struct connman_profile *profile)
 {
-	connman_dbus_property_changed_basic(profile->path,
-				CONNMAN_PROFILE_INTERFACE, "OfflineMode",
-				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
-
-	if (profile != default_profile)
-		return;
-
 	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "OfflineMode",
 				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
@@ -135,11 +121,6 @@ static gboolean services_changed(gpointer user_data)
 				DBUS_TYPE_OBJECT_PATH, __connman_service_list,
 				NULL);
 
-	connman_dbus_property_changed_array(default_profile->path,
-				CONNMAN_PROFILE_INTERFACE, "Services",
-				DBUS_TYPE_OBJECT_PATH, __connman_service_list,
-				NULL);
-
 	return FALSE;
 }
 
@@ -164,104 +145,6 @@ void __connman_profile_changed(gboolean delayed)
 
 	changed_timeout = g_timeout_add_seconds(1, services_changed, NULL);
 }
-
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_profile *profile = data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
-
-	DBG("conn %p", conn);
-
-	reply = dbus_message_new_method_return(msg);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	connman_dbus_dict_open(&array, &dict);
-
-	if (profile->name != NULL)
-		connman_dbus_dict_append_basic(&dict, "Name",
-					DBUS_TYPE_STRING, &profile->name);
-
-	connman_dbus_dict_append_basic(&dict, "OfflineMode",
-				DBUS_TYPE_BOOLEAN, &profile->offlinemode);
-
-	connman_dbus_dict_append_array(&dict, "Services",
-			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
-
-	connman_dbus_dict_close(&array, &dict);
-
-	return reply;
-}
-
-static DBusMessage *set_property(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	struct connman_profile *profile = data;
-	DBusMessageIter iter, value;
-	const char *name;
-	int type;
-
-	DBG("conn %p", conn);
-
-	if (dbus_message_iter_init(msg, &iter) == FALSE)
-		return __connman_error_invalid_arguments(msg);
-
-	dbus_message_iter_get_basic(&iter, &name);
-	dbus_message_iter_next(&iter);
-	dbus_message_iter_recurse(&iter, &value);
-
-	type = dbus_message_iter_get_arg_type(&value);
-
-	if (g_str_equal(name, "Name") == TRUE) {
-		const char *name;
-
-		if (type != DBUS_TYPE_STRING)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &name);
-
-		g_free(profile->name);
-		profile->name = g_strdup(name);
-
-		if (profile->name != NULL)
-			name_changed(profile);
-
-		__connman_storage_save_profile(profile);
-	} else if (g_str_equal(name, "OfflineMode") == TRUE) {
-		connman_bool_t offlinemode;
-
-		if (type != DBUS_TYPE_BOOLEAN)
-			return __connman_error_invalid_arguments(msg);
-
-		dbus_message_iter_get_basic(&value, &offlinemode);
-
-		if (profile->offlinemode == offlinemode)
-			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-
-		profile->offlinemode = offlinemode;
-		offlinemode_changed(profile);
-
-		__connman_storage_save_profile(profile);
-	} else
-		return __connman_error_invalid_property(msg);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static GDBusMethodTable profile_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
-	{ "SetProperty",   "sv", "",      set_property   },
-	{ },
-};
-
-static GDBusSignalTable profile_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ },
-};
 
 static void free_profile(struct connman_profile *profile)
 {
@@ -293,12 +176,6 @@ static int profile_init(void)
 	__connman_storage_load_profile(default_profile);
 
 	connman_info("Adding default profile");
-
-	g_dbus_register_interface(connection, default_profile->path,
-					CONNMAN_PROFILE_INTERFACE,
-					profile_methods, profile_signals,
-						NULL, default_profile, NULL);
-
 
 	DBG("profile %p path %s", default_profile, default_profile->path);
 
