@@ -59,6 +59,7 @@ struct connman_config {
 };
 
 static GHashTable *config_table = NULL;
+static GSList *protected_services = NULL;
 
 static int inotify_wd = -1;
 
@@ -128,6 +129,8 @@ static void unregister_service(gpointer data)
 
 	connman_info("Removing service configuration %s", service->ident);
 
+	protected_services = g_slist_remove(protected_services, service);
+
 	g_free(service->ident);
 	g_free(service->type);
 	g_free(service->name);
@@ -169,6 +172,31 @@ static void check_keys(GKeyFile *keyfile, const char *group,
 	}
 
 	g_strfreev(avail_keys);
+}
+
+static connman_bool_t
+is_protected_service(struct connman_config_service *service)
+{
+	GSList *list;
+
+	DBG("ident %s", service->ident);
+
+	for (list = protected_services; list; list = list->next) {
+		struct connman_config_service *s = list->data;
+
+		if (g_strcmp0(s->type, service->type) != 0)
+			continue;
+
+		if (s->ssid == NULL || service->ssid == NULL)
+			continue;
+
+		if (g_strcmp0(service->type, "wifi") == 0 &&
+			strncmp(s->ssid, service->ssid, s->ssid_len) == 0) {
+			return TRUE;
+		}
+	}
+
+	return FALSE;
 }
 
 static int load_service(GKeyFile *keyfile, const char *group,
@@ -249,6 +277,18 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		service->ssid_len = ssid_len;
 	}
 
+	if (is_protected_service(service) == TRUE) {
+		connman_error("Trying to provision a protected service");
+
+		g_free(service->ident);
+		g_free(service->type);
+		g_free(service->name);
+		g_free(service->ssid);
+		g_free(service);
+
+		return -EACCES;
+	}
+
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_EAP, NULL);
 	if (str != NULL) {
 		g_free(service->eap);
@@ -314,6 +354,10 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	if (service_created)
 		g_hash_table_insert(config->service_table, service->ident,
 					service);
+
+	if (config->protected == TRUE)
+		protected_services =
+			g_slist_append(protected_services, service);
 
 	connman_info("Adding service configuration %s", service->ident);
 
