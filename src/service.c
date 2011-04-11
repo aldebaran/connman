@@ -4272,7 +4272,7 @@ int __connman_service_provision(DBusMessage *msg)
 		goto done;
 	}
 
-	err = __connman_config_load_service(keyfile, group);
+	err = __connman_config_load_service(keyfile, group, TRUE);
 	if (err < 0)
 		goto done;
 

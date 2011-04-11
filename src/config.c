@@ -67,6 +67,7 @@ static GIOChannel *inotify_channel = NULL;
 static uint inotify_watch = 0;
 
 #define NONFS_CONFIG_NAME                "internal"
+#define INTERNAL_CONFIG_PREFIX           "__internal"
 
 /* Definition of possible strings in the .config files */
 #define CONFIG_KEY_NAME                "Name"
@@ -446,18 +447,70 @@ static struct connman_config *create_config(const char *ident)
 	return config;
 }
 
-int __connman_config_load_service(GKeyFile *keyfile, const char *group)
+int __connman_config_load_service(GKeyFile *keyfile, const char *group,
+					connman_bool_t persistent)
 {
-	struct connman_config *config = g_hash_table_lookup(config_table,
-							NONFS_CONFIG_NAME);
+	struct connman_config *config;
+	const char *service_name;
+	char *ident, *filename = NULL, *content = NULL;
+	gsize content_length;
+	int err;
 
+	service_name = group + strlen("service_");
+	ident = g_strdup_printf("%s_%s", INTERNAL_CONFIG_PREFIX, service_name);
+	if (ident == NULL)
+		return -ENOMEM;
+
+	DBG("ident %s", ident);
+
+	config = g_hash_table_lookup(config_table, ident);
 	if (config == NULL) {
-		config = create_config(NONFS_CONFIG_NAME);
-		if (config == NULL)
-			return -ENOMEM;
+		config = create_config(ident);
+		if (config == NULL) {
+			err = -ENOMEM;
+			goto out;
+		}
+
+		config->protected = FALSE;
 	}
 
-	return load_service(keyfile, group, config);
+	err = load_service(keyfile, group, config);
+	if (persistent == FALSE || err < 0)
+		goto out;
+
+	g_key_file_set_string(keyfile, "global", CONFIG_KEY_NAME,
+							service_name);
+	g_key_file_set_string(keyfile, "global", CONFIG_KEY_DESC,
+						"Internal Config File");
+
+	content = g_key_file_to_data(keyfile, &content_length, NULL);
+	if (content == NULL) {
+		err = -EIO;
+		goto out;
+	}
+
+	filename = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
+	if (filename == NULL) {
+		err = -ENOMEM;
+		goto out;
+	}
+
+	DBG("Saving %d bytes to %s", content_length, filename);
+
+	if (g_file_set_contents(filename, content,
+				content_length, NULL) == FALSE) {
+		err = -EIO;
+		goto out;
+	}
+
+	return 0;
+
+out:
+	g_free(ident);
+	g_free(content);
+	g_free(filename);
+
+	return err;
 }
 
 static int read_configs(void)
