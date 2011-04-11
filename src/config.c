@@ -47,7 +47,6 @@ struct connman_config_service {
 	char *private_key_passphrase_type;
 	char *phase2;
 	char *passphrase;
-	connman_bool_t from_fs;
 };
 
 struct connman_config {
@@ -66,7 +65,6 @@ static int inotify_wd = -1;
 static GIOChannel *inotify_channel = NULL;
 static uint inotify_watch = 0;
 
-#define NONFS_CONFIG_NAME                "internal"
 #define INTERNAL_CONFIG_PREFIX           "__internal"
 
 /* Definition of possible strings in the .config files */
@@ -348,11 +346,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		service->passphrase = str;
 	}
 
-	if (g_strcmp0(config->ident, NONFS_CONFIG_NAME) != 0)
-		service->from_fs = TRUE;
-	else
-		service->from_fs = FALSE;
-
 	if (service_created)
 		g_hash_table_insert(config->service_table, service->ident,
 					service);
@@ -537,9 +530,6 @@ static int read_configs(void)
 			if (ident == NULL)
 				continue;
 
-			if (g_str_equal(ident, NONFS_CONFIG_NAME) == TRUE)
-				continue;
-
 			str = g_string_new_len(file, ident - file);
 			if (str == NULL)
 				continue;
@@ -623,9 +613,6 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 			continue;
 
 		*ext = '\0';
-
-		if (g_str_equal(ident, NONFS_CONFIG_NAME) == TRUE)
-			continue;
 
 		if (connman_dbus_validate_ident(ident) == FALSE)
 			continue;
@@ -781,14 +768,7 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 	if (memcmp(config->ssid, ssid, ssid_len) != 0)
 		return;
 
-	/* do not provision immutable services with non-fs originated configs */
-	if (config->from_fs == FALSE &&
-			__connman_service_get_immutable(service) == TRUE)
-		return;
-
-	/* only lock services with a config originated from the filesystem */
-	if (config->from_fs == TRUE)
-		__connman_service_set_immutable(service, TRUE);
+	__connman_service_set_immutable(service, TRUE);
 
 	__connman_service_set_favorite(service, TRUE);
 
