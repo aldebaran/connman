@@ -373,6 +373,7 @@ err:
 static int load_config(struct connman_config *config)
 {
 	GKeyFile *keyfile;
+	GError *error = NULL;
 	gsize length;
 	char **groups;
 	char *str;
@@ -401,8 +402,11 @@ static int load_config(struct connman_config *config)
 	}
 
 	protected = g_key_file_get_boolean(keyfile, "global",
-					CONFIG_KEY_PROT, NULL);
-	config->protected = protected;
+					CONFIG_KEY_PROT, &error);
+	if (error == NULL)
+		config->protected = protected;
+	else
+		config->protected = TRUE;
 
 	groups = g_key_file_get_groups(keyfile, &length);
 
@@ -478,6 +482,7 @@ int __connman_config_load_service(GKeyFile *keyfile, const char *group,
 							service_name);
 	g_key_file_set_string(keyfile, "global", CONFIG_KEY_DESC,
 						"Internal Config File");
+	g_key_file_set_boolean(keyfile, "global", CONFIG_KEY_PROT, FALSE);
 
 	content = g_key_file_to_data(keyfile, &content_length, NULL);
 	if (content == NULL) {
