@@ -191,6 +191,9 @@ is_protected_service(struct connman_config_service *service)
 		if (s->ssid == NULL || service->ssid == NULL)
 			continue;
 
+		if (s->ssid_len != service->ssid_len)
+			continue;
+
 		if (g_strcmp0(service->type, "wifi") == 0 &&
 			strncmp(s->ssid, service->ssid, s->ssid_len) == 0) {
 			return TRUE;
