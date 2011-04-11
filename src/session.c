@@ -300,7 +300,7 @@ static void append_ipconfig_ipv6(DBusMessageIter *iter, void *user_data)
 	__connman_ipconfig_append_ipv6(ipconfig_ipv6, iter, ipconfig_ipv4);
 }
 
-static void append_notify_all(DBusMessageIter *dict,
+static void append_notify(DBusMessageIter *dict,
 					struct connman_session *session)
 {
 	struct session_info *info = &session->info;
@@ -411,36 +411,7 @@ static void append_notify_all(DBusMessageIter *dict,
 	}
 }
 
-static gboolean session_notify_all(gpointer user_data)
-{
-	struct connman_session *session = user_data;
-	DBusMessage *msg;
-	DBusMessageIter array, dict;
-
-	DBG("session %p owner %s notify_path %s", session,
-		session->owner, session->notify_path);
-
-	msg = dbus_message_new_method_call(session->owner, session->notify_path,
-						CONNMAN_NOTIFICATION_INTERFACE,
-						"Update");
-	if (msg == NULL) {
-		connman_error("Could not create notification message");
-		return FALSE;
-	}
-
-	dbus_message_iter_init_append(msg, &array);
-	connman_dbus_dict_open(&array, &dict);
-
-	append_notify_all(&dict, session);
-
-	connman_dbus_dict_close(&array, &dict);
-
-	g_dbus_send_message(connection, msg);
-
-	return FALSE;
-}
-
-static gboolean service_changed(gpointer user_data)
+static gboolean session_notify(gpointer user_data)
 {
 	struct connman_session *session = user_data;
 
@@ -462,22 +433,13 @@ static gboolean service_changed(gpointer user_data)
 	dbus_message_iter_init_append(msg, &array);
 	connman_dbus_dict_open(&array, &dict);
 
-	append_notify_all(&dict, session);
+	append_notify(&dict, session);
 
 	connman_dbus_dict_close(&array, &dict);
 
 	g_dbus_send_message(connection, msg);
 
 	return FALSE;
-}
-
-static void online_changed(struct connman_session *session)
-{
-	struct session_info *info = &session->info;
-
-	connman_dbus_setting_changed_basic(session->owner, session->notify_path,
-						"Online", DBUS_TYPE_BOOLEAN,
-						&info->online);
 }
 
 static void ipconfig_ipv4_changed(struct connman_session *session)
@@ -496,26 +458,6 @@ static void ipconfig_ipv6_changed(struct connman_session *session)
 	connman_dbus_setting_changed_dict(session->owner, session->notify_path,
 						"IPv6", append_ipconfig_ipv6,
 						info->service);
-}
-
-static void update_service(struct connman_session *session)
-{
-	struct session_info *info = &session->info;
-	int idx;
-
-	if (info->service != NULL) {
-		info->bearer = session2bearer(session);
-		info->online = __connman_service_is_connected(info->service);
-		info->name = __connman_service_get_name(info->service);
-		idx = __connman_service_get_index(info->service);
-		info->ifname = connman_inet_ifname(idx);
-
-	} else {
-		info->bearer = "";
-		info->online = FALSE;
-		info->name = "";
-		info->ifname = "";
-	}
 }
 
 static connman_bool_t service_type_match(struct connman_session *session,
@@ -651,38 +593,6 @@ static void print_name(gpointer data, gpointer user_data)
 		__connman_service_get_name(service));
 }
 
-static connman_bool_t session_select_service(struct connman_session *session)
-{
-	struct session_info *info = &session->info;
-	struct connman_service *service;
-	GSequenceIter *iter;
-
-	session->service_list =
-		__connman_service_get_list(session, service_match);
-
-	if (session->service_list == NULL)
-		return FALSE;
-
-	g_sequence_sort(session->service_list, sort_services, session);
-	g_sequence_foreach(session->service_list, print_name, NULL);
-
-	iter = g_sequence_get_begin_iter(session->service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		service = g_sequence_get(iter);
-
-		if (__connman_service_is_connecting(service) == TRUE ||
-				__connman_service_is_connected(service) == TRUE) {
-			info->service = service;
-			return TRUE;
-		}
-
-		iter = g_sequence_iter_next(iter);
-	}
-
-	return FALSE;
-}
-
 static void cleanup_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
@@ -761,38 +671,55 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static gboolean session_do_connect(gpointer user_data)
+static gboolean session_changed_connect(gpointer user_data)
 {
 	struct connman_session *session = user_data;
 	struct session_info *info = &session->info;
 
 	__connman_service_connect(info->service);
 
-	service_changed(session);
 	return FALSE;
 }
 
-static DBusMessage *connect_session(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+static void update_service(struct connman_session *session)
 {
-	struct connman_session *session = user_data;
 	struct session_info *info = &session->info;
+	int idx;
+
+	if (info->service != NULL) {
+		info->bearer = session2bearer(session);
+		info->online = __connman_service_is_connected(info->service);
+		info->name = __connman_service_get_name(info->service);
+		idx = __connman_service_get_index(info->service);
+		info->ifname = connman_inet_ifname(idx);
+
+	} else {
+		info->bearer = "";
+		info->online = FALSE;
+		info->name = "";
+		info->ifname = "";
+	}
+}
+
+static void session_changed(struct connman_session *session)
+{
+	struct session_info *info = &session->info;
+	struct session_info *info_last = &session->info_last;
 	struct connman_service *service = NULL;
 	GSourceFunc callback = NULL;
 	GSequenceIter *iter;
 
-	DBG("session %p", session);
+	/*
+	 * TODO: This only a placeholder for the 'real' algorithm to
+	 * play a bit around. So we are going to improve it step by step.
+	 */
 
-	info->connect = TRUE;
-
-	if (session->service_list != NULL)
-		g_sequence_free(session->service_list);
-
-	session->service_list = __connman_service_get_list(session,
-								service_match);
-
-	g_sequence_sort(session->service_list, sort_services, session);
-	g_sequence_foreach(session->service_list, print_name, NULL);
+	if (info->connect == FALSE) {
+		if (info->service != NULL)
+			__connman_service_disconnect(info->service);
+		info->service = NULL;
+		goto out;
+	}
 
 	iter = g_sequence_get_begin_iter(session->service_list);
 
@@ -801,12 +728,12 @@ static DBusMessage *connect_session(DBusConnection *conn,
 
 		if (__connman_service_is_connecting(service) == TRUE ||
 				__connman_service_is_connected(service) == TRUE) {
-			callback = service_changed;
 			break;
 		}
 
-		if (__connman_service_is_idle(service) == TRUE) {
-			callback = session_do_connect;
+		if (__connman_service_is_idle(service) == TRUE &&
+				info->connect == TRUE) {
+			callback = session_changed_connect;
 			break;
 		}
 
@@ -815,28 +742,46 @@ static DBusMessage *connect_session(DBusConnection *conn,
 		iter = g_sequence_iter_next(iter);
 	}
 
-	if (service != NULL) {
-		info->service = service;
-		update_service(session);
-		g_timeout_add_seconds(0, callback, session);
+	if (info->service != NULL && info->service != service) {
+		__connman_service_disconnect(info->service);
+		info->service = NULL;
 	}
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	if (service != NULL) {
+		info->service = service;
+
+		if (callback != NULL)
+			callback(session);
+	}
+
+out:
+	if (info->service != info_last->service)
+		update_service(session);
 }
 
-static gboolean session_do_disconnect(gpointer user_data)
+static gboolean session_cb(gpointer user_data)
+{
+	struct connman_session *session = user_data;
+
+	session_changed(session);
+	session_notify(session);
+
+	return FALSE;
+}
+
+static DBusMessage *connect_session(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
 	struct session_info *info = &session->info;
 
-	if (__connman_service_disconnect(info->service) < 0)
-		return FALSE;
+	DBG("session %p", session);
 
-	info->service = NULL;
-	update_service(session);
-	service_changed(session);
+	info->connect = TRUE;
 
-	return FALSE;
+	g_timeout_add_seconds(0, session_cb, session);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *disconnect_session(DBusConnection *conn,
@@ -849,10 +794,7 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 
 	info->connect = FALSE;
 
-	if (info->service == NULL)
-		return __connman_error_already_disabled(msg);
-
-	g_timeout_add_seconds(0, session_do_disconnect, session);
+	g_timeout_add_seconds(0, session_cb, session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -965,7 +907,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 		break;
 	}
 
-	append_notify_all(&reply_dict, session);
+	append_notify(&reply_dict, session);
 
 	connman_dbus_dict_close(&reply_array, &reply_dict);
 
@@ -1138,12 +1080,13 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->roaming_policy =
 			CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN;
 	info_last->allowed_bearers = NULL;
-	info_last->service = NULL;
+	info_last->service = (void *) 1;
 	info_last->marker = info->marker + 1;
 
-	session->service_list = NULL;
-
-	update_service(session);
+	session->service_list = __connman_service_get_list(session,
+								service_match);
+	g_sequence_sort(session->service_list, sort_services, session);
+	g_sequence_foreach(session->service_list, print_name, NULL);
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
@@ -1165,17 +1108,7 @@ int __connman_session_create(DBusMessage *msg)
 				DBUS_TYPE_OBJECT_PATH, &session->session_path,
 				DBUS_TYPE_INVALID);
 
-
-	/*
-	 * Check if the session info matches to a service which is
-	 * a already connected
-	 */
-	if (session_select_service(session) == TRUE)
-		update_service(session);
-	else
-		info_last->service = (void *)1;
-
-	g_timeout_add_seconds(0, session_notify_all, session);
+	g_timeout_add_seconds(0, session_cb, session);
 
 	return 0;
 
@@ -1251,6 +1184,8 @@ static void service_add(struct connman_service *service)
 
 		g_sequence_insert_sorted(session->service_list, service,
 						sort_services, session);
+
+		session_cb(session);
 	}
 }
 
@@ -1296,8 +1231,7 @@ static void service_remove(struct connman_service *service)
 			continue;
 
 		info->service = NULL;
-		update_service(session);
-		g_timeout_add_seconds(0, service_changed, session);
+		session_cb(session);
 	}
 }
 
@@ -1324,7 +1258,7 @@ static void service_state_changed(struct connman_service *service,
 				continue;
 
 			info->online = online;
-			online_changed(session);
+			session_cb(session);
 		}
 	}
 }
