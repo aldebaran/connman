@@ -514,6 +514,20 @@ out:
 	return err;
 }
 
+static connman_bool_t validate_ident(const char *ident)
+{
+	unsigned int i;
+
+	if (ident == NULL)
+		return FALSE;
+
+	for (i = 0; i < strlen(ident); i++)
+		if (g_ascii_isprint(ident[i]) == FALSE)
+			return FALSE;
+
+	return TRUE;
+}
+
 static int read_configs(void)
 {
 	GDir *dir;
@@ -541,12 +555,14 @@ static int read_configs(void)
 
 			ident = g_string_free(str, FALSE);
 
-			if (connman_dbus_validate_ident(ident) == TRUE) {
+			if (validate_ident(ident) == TRUE) {
 				struct connman_config *config;
 
 				config = create_config(ident);
 				if (config != NULL)
 					load_config(config);
+			} else {
+				connman_error("Invalid config ident %s", ident);
 			}
 			g_free(ident);
 		}
@@ -619,8 +635,10 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 
 		*ext = '\0';
 
-		if (connman_dbus_validate_ident(ident) == FALSE)
+		if (validate_ident(ident) == FALSE) {
+			connman_error("Invalid config ident %s", ident);
 			continue;
+		}
 
 		if (event->mask & IN_CREATE)
 			create_config(ident);
