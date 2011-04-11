@@ -496,7 +496,7 @@ int __connman_config_load_service(GKeyFile *keyfile, const char *group,
 		goto out;
 	}
 
-	DBG("Saving %d bytes to %s", content_length, filename);
+	DBG("Saving %zu bytes to %s", content_length, service_name);
 
 	if (g_file_set_contents(filename, content,
 				content_length, NULL) == FALSE) {
