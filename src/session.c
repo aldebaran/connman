@@ -603,7 +603,7 @@ static DBusMessage *connect_session(DBusConnection *conn,
 {
 	struct connman_session *session = user_data;
 	struct connman_service *service = NULL;
-	GSourceFunc callback;
+	GSourceFunc callback = NULL;
 	GSequenceIter *iter;
 
 	DBG("session %p", session);
@@ -632,6 +632,8 @@ static DBusMessage *connect_session(DBusConnection *conn,
 			callback = session_do_connect;
 			break;
 		}
+
+		service = NULL;
 
 		iter = g_sequence_iter_next(iter);
 	}
