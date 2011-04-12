@@ -145,10 +145,10 @@ static char *service2bearer(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
-		return NULL;
+		return "";
 	}
 
-	return NULL;
+	return "";
 }
 
 static char *session2bearer(struct connman_session *session)
@@ -158,7 +158,7 @@ static char *session2bearer(struct connman_session *session)
 	enum connman_service_type type;
 
 	if (session->service == NULL)
-		return NULL;
+		return "";
 
 	type = connman_service_get_type(session->service);
 
@@ -175,7 +175,7 @@ static char *session2bearer(struct connman_session *session)
 			return service2bearer(type);
 	}
 
-	return NULL;
+	return "";
 
 }
 
