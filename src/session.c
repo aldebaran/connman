@@ -970,13 +970,15 @@ int __connman_session_create(DBusMessage *msg)
 	session->ecall = ecall;
 	session->roaming_policy = roaming_policy;
 
-	if (session->allowed_bearers == NULL) {
+	if (allowed_bearers == NULL) {
 		session->allowed_bearers = session_allowed_bearers_any();
 
 		if (session->allowed_bearers == NULL) {
 			err = -ENOMEM;
 			goto err;
 		}
+	} else {
+		session->allowed_bearers = allowed_bearers;
 	}
 
 	session->service_list = NULL;
