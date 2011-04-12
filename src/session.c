@@ -584,15 +584,6 @@ static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 	return sort_allowed_bearers(service_a, service_b, session);
 }
 
-static void print_name(gpointer data, gpointer user_data)
-{
-	struct connman_service *service = data;
-
-	DBG("service %p type %s name %s", service,
-		service2bearer(connman_service_get_type(service)),
-		__connman_service_get_name(service));
-}
-
 static void cleanup_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
@@ -799,6 +790,26 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static void print_name(gpointer data, gpointer user_data)
+{
+	struct connman_service *service = data;
+
+	DBG("service %p type %s name %s", service,
+		service2bearer(connman_service_get_type(service)),
+		__connman_service_get_name(service));
+}
+
+static void update_allowed_bearers(struct connman_session *session)
+{
+	if (session->service_list != NULL)
+		g_sequence_free(session->service_list);
+
+	session->service_list = __connman_service_get_list(session,
+								service_match);
+	g_sequence_sort(session->service_list, sort_services, session);
+	g_sequence_foreach(session->service_list, print_name, NULL);
+}
+
 static DBusMessage *change_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -848,7 +859,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 
 			info->allowed_bearers = allowed_bearers;
 
-			/* update_allowed_bearers(); */
+			update_allowed_bearers(session);
 		} else {
 			goto err;
 		}
@@ -1083,10 +1094,7 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->service = (void *) 1;
 	info_last->marker = info->marker + 1;
 
-	session->service_list = __connman_service_get_list(session,
-								service_match);
-	g_sequence_sort(session->service_list, sort_services, session);
-	g_sequence_foreach(session->service_list, print_name, NULL);
+	update_allowed_bearers(session);
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
