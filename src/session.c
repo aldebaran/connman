@@ -50,6 +50,7 @@ struct connman_session {
 	char *bearer;
 	const char *name;
 	char *ifname;
+	connman_bool_t connect;
 	connman_bool_t online;
 	connman_bool_t priority;
 	GSList *allowed_bearers;
@@ -712,6 +713,8 @@ static DBusMessage *connect_session(DBusConnection *conn,
 
 	DBG("session %p", session);
 
+	session->connect = TRUE;
+
 	if (session->service_list != NULL)
 		g_sequence_free(session->service_list);
 
@@ -771,6 +774,8 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	struct connman_session *session = user_data;
 
 	DBG("session %p", session);
+
+	session->connect = FALSE;
 
 	if (session->service == NULL)
 		return __connman_error_already_disabled(msg);
