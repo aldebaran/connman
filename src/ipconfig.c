@@ -1201,6 +1201,8 @@ int __connman_ipconfig_set_address(struct connman_ipconfig *ipconfig)
 
 int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 {
+	int err;
+
 	DBG("");
 
 	if (ipconfig == NULL)
@@ -1217,13 +1219,19 @@ int __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
 		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
-			return connman_inet_clear_address(ipconfig->index,
+			err = connman_inet_clear_address(ipconfig->index,
 							ipconfig->address);
 		else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
-			return connman_inet_clear_ipv6_address(
+			err = connman_inet_clear_ipv6_address(
 						ipconfig->index,
 						ipconfig->address->local,
 						ipconfig->address->prefixlen);
+		else
+			err = -EINVAL;
+
+		connman_ipaddress_clear(ipconfig->address);
+
+		return err;
 	}
 
 	return 0;
