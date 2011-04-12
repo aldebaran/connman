@@ -455,12 +455,10 @@ static void update_service(struct connman_session *session)
 	}
 }
 
-static connman_bool_t service_match(struct connman_session *session,
+static connman_bool_t service_type_match(struct connman_session *session,
 					struct connman_service *service)
 {
 	GSList *list;
-
-	DBG("session %p service %p", session, service);
 
 	for (list = session->allowed_bearers; list != NULL; list = list->next) {
 		struct bearer_info *info = list->data;
@@ -477,6 +475,115 @@ static connman_bool_t service_match(struct connman_session *session,
 	return FALSE;
 }
 
+static connman_bool_t service_match(struct connman_session *session,
+					struct connman_service *service)
+{
+	if (service_type_match(session, service) == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
+static int service_type_weight(enum connman_service_type type)
+{
+	/*
+	 * The session doesn't care which service
+	 * to use. Nevertheless we have to sort them
+	 * according their type. The ordering is
+	 *
+	 * 1. Ethernet
+	 * 2. Bluetooth
+	 * 3. WiFi/WiMAX
+	 * 4. GSM/UTMS/3G
+	 */
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		return 4;
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		return 3;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		return 2;
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		return 1;
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		break;
+	}
+
+	return 0;
+}
+
+static gint sort_allowed_bearers(struct connman_service *service_a,
+					struct connman_service *service_b,
+					struct connman_session *session)
+{
+	GSList *list;
+	enum connman_service_type type_a, type_b;
+	int weight_a, weight_b;
+
+	type_a = connman_service_get_type(service_a);
+	type_b = connman_service_get_type(service_b);
+
+	for (list = session->allowed_bearers; list != NULL; list = list->next) {
+		struct bearer_info *info = list->data;
+
+		if (info->match_all == TRUE) {
+			if (type_a != type_b) {
+				weight_a = service_type_weight(type_a);
+				weight_b = service_type_weight(type_b);
+
+				if (weight_a > weight_b)
+					return -1;
+
+				if (weight_a < weight_b)
+					return 1;
+
+				return 0;
+			}
+		}
+
+		if (type_a == info->service_type &&
+				type_b == info->service_type) {
+			return 0;
+		}
+
+		if (type_a == info->service_type &&
+				type_b != info->service_type) {
+			return -1;
+		}
+
+		if (type_a != info->service_type &&
+				type_b == info->service_type) {
+			return 1;
+		}
+	}
+
+	return 0;
+}
+
+static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
+{
+	struct connman_service *service_a = (void *)a;
+	struct connman_service *service_b = (void *)b;
+	struct connman_session *session = user_data;
+
+	return sort_allowed_bearers(service_a, service_b, session);
+}
+
+static void print_name(gpointer data, gpointer user_data)
+{
+	struct connman_service *service = data;
+
+	DBG("service %p type %s name %s", service,
+		service2bearer(connman_service_get_type(service)),
+		__connman_service_get_name(service));
+}
+
 static connman_bool_t session_select_service(struct connman_session *session)
 {
 	struct connman_service *service;
@@ -488,27 +595,24 @@ static connman_bool_t session_select_service(struct connman_session *session)
 	if (session->service_list == NULL)
 		return FALSE;
 
+	g_sequence_sort(session->service_list, sort_services, session);
+	g_sequence_foreach(session->service_list, print_name, NULL);
+
 	iter = g_sequence_get_begin_iter(session->service_list);
 
 	while (g_sequence_iter_is_end(iter) == FALSE) {
 		service = g_sequence_get(iter);
 
-		if (__connman_service_is_connected(service) == TRUE) {
+		if (__connman_service_is_connecting(service) == TRUE ||
+				__connman_service_is_connected(service) == TRUE) {
 			session->service = service;
 			return TRUE;
 		}
+
 		iter = g_sequence_iter_next(iter);
 	}
 
 	return FALSE;
-}
-
-static void print_name(gpointer data, gpointer user_data)
-{
-	struct connman_service *service = data;
-
-	DBG("service %p name %s", service,
-		__connman_service_get_name(service));
 }
 
 static void cleanup_session(gpointer user_data)
@@ -614,8 +718,8 @@ static DBusMessage *connect_session(DBusConnection *conn,
 	session->service_list = __connman_service_get_list(session,
 								service_match);
 
+	g_sequence_sort(session->service_list, sort_services, session);
 	g_sequence_foreach(session->service_list, print_name, NULL);
-
 
 	iter = g_sequence_get_begin_iter(session->service_list);
 
@@ -1071,6 +1175,72 @@ void __connman_session_set_mode(connman_bool_t enable)
 		__connman_service_disconnect_all();
 }
 
+static void service_add(struct connman_service *service)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+	struct connman_session *session;
+
+	DBG("service %p", service);
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session = value;
+
+		if (service_match(session, service) == FALSE)
+			continue;
+
+		g_sequence_insert_sorted(session->service_list, service,
+						sort_services, session);
+	}
+}
+
+static gint service_in_session(gconstpointer a, gconstpointer b,
+				gpointer user_data)
+{
+	if (a == b)
+		return 0;
+
+	return -1;
+}
+
+static void service_remove(struct connman_service *service)
+{
+
+	GHashTableIter iter;
+	gpointer key, value;
+	GSequenceIter *seq_iter;
+	struct connman_session *session;
+	struct connman_service *found_service;
+
+	DBG("service %p", service);
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session = value;
+
+		if (session->service_list == NULL)
+			continue;
+
+		seq_iter = g_sequence_search(session->service_list, service,
+						service_in_session, NULL);
+		if (g_sequence_iter_is_end(seq_iter) == TRUE)
+			continue;
+
+		g_sequence_remove(seq_iter);
+
+		found_service = g_sequence_get(seq_iter);
+		if (found_service != session->service)
+			continue;
+
+		session->service = NULL;
+		update_service(session);
+		g_timeout_add_seconds(0, service_changed, session);
+	}
+}
+
 static void service_state_changed(struct connman_service *service,
 					enum connman_service_state state)
 {
@@ -1125,6 +1295,8 @@ static void ipconfig_changed(struct connman_service *service,
 
 static struct connman_notifier session_notifier = {
 	.name			= "session",
+	.service_add		= service_add,
+	.service_remove		= service_remove,
 	.service_state_changed	= service_state_changed,
 	.ipconfig_changed	= ipconfig_changed,
 };
