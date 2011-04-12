@@ -1,0 +1,71 @@
+Session API
+***********
+
+
+Connection management algorithm basics
+======================================
+
+When a session is created, a sorted list of services is added to the
+session. The services are filtered and stable sorted according
+following rules:
+
+ - AllowedBearers (filter and sort)
+ - RoamingPolicy (filter and sort)
+
+A stable sorting algorithms maintains the relative order.
+
+If a service is removed or added all sessions are updated according
+the above rules.
+
+There are three triggers which lead to evaluate the connect
+algorithm:
+
+ - Session.Connect()
+ - PeriodicConnect
+ - Offline
+
+Connect algorithm:
+
+              Session.Connect()     Offline
+              PeriodicConnect        |
+                       | Yes  +------+-------+  No
+                       +------+StayConnected?+------ Do nothing
+                       |      +--------------+
+                       |
+                       |
+                +------+-------+
+          +-----+EmergencyCall?+-----+
+       Yes|     +--------------+     |No
+          |                          |
+        Connect to            +--------------+
+        first available   +---+AvoidHandover?+---+
+        Service           |   +--------------+   |
+                       Yes|                      |No
+                 +----------------+              |
+             +---+In service_list +---+          |
+          Yes|   |and online?     |   |No        |
+             |   +----------------+   |          |
+             |                        |          |
+         Take that one                Take first in
+                                      the service list
+
+There are two triggers which lead to evaluate the disconnect
+algorithm
+
+ - Session.Disconnect()
+ - IdleTimeout
+
+Disconnect algorithm:
+
+  Session.Disconnect()
+  IdleTimeout
+       |
+       |
+       |
++-----------------+    Yes
+|service not used +-------------+
+|by other session?|             |
++------.----------+             |
+       |No                      |
+       |                        |
+    Service.Disconnect()   Do nothing
