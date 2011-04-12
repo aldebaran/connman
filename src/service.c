@@ -2938,6 +2938,8 @@ static void service_free(gpointer user_data)
 
 	g_hash_table_remove(service_hash, service->identifier);
 
+	__connman_notifier_service_remove(service);
+
 	stats_stop(service);
 	__connman_storage_save_service(service);
 
@@ -4857,6 +4859,8 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 			__connman_service_auto_connect();
 	}
 
+	__connman_notifier_service_add(service);
+
 	return service;
 }
 
@@ -5016,6 +5020,8 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	connman_ipconfig_set_ops(service->ipconfig_ipv6, &service_ops);
 
 	service_register(service);
+
+	__connman_notifier_service_add(service);
 
 	return service;
 }

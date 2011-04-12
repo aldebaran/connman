@@ -596,6 +596,8 @@ void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data);
 
 void __connman_notifier_register(enum connman_service_type type);
 void __connman_notifier_unregister(enum connman_service_type type);
+void __connman_notifier_service_add(struct connman_service *service);
+void __connman_notifier_service_remove(struct connman_service *service);
 void __connman_notifier_enable(enum connman_service_type type);
 void __connman_notifier_disable(enum connman_service_type type);
 void __connman_notifier_connect(enum connman_service_type type);

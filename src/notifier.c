@@ -385,6 +385,30 @@ void __connman_notifier_default_changed(struct connman_service *service)
 	}
 }
 
+void __connman_notifier_service_add(struct connman_service *service)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->service_add)
+			notifier->service_add(service);
+	}
+}
+
+void __connman_notifier_service_remove(struct connman_service *service)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->service_remove)
+			notifier->service_remove(service);
+	}
+}
+
 void __connman_notifier_proxy_changed(struct connman_service *service)
 {
 	GSList *list;
