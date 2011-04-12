@@ -151,19 +151,60 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	struct connman_dhcp *dhcp = user_data;
 	GList *list, *option = NULL;
-	char *address, *nameservers;
+	char *address, *nameservers, *gateway = NULL, *netmask = NULL;
+	char *c_address, *c_gateway, *c_netmask;
 	size_t ns_strlen = 0;
+	unsigned char prefixlen, c_prefixlen;
+	gboolean ip_change;
+	char *c_timeserver = NULL, *c_nameserver = NULL, *c_pac = NULL;
+	struct connman_service *service = NULL;
+	char *domainname = NULL;
 
 	DBG("Lease available");
+
+	c_address = g_strdup(dhcp->element->ipv4.address);
+	c_gateway = g_strdup(dhcp->element->ipv4.gateway);
+	c_netmask = g_strdup(dhcp->element->ipv4.netmask);
+
+	c_prefixlen = __connman_ipconfig_netmask_prefix_len(c_netmask);
 
 	address = g_dhcp_client_get_address(dhcp_client);
 	if (address != NULL)
 		dhcp_set_value(dhcp, "Address", address);
-	g_free(address);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
-	if (option != NULL)
+	if (option != NULL) {
+		netmask = g_strdup(option->data);
 		dhcp_set_value(dhcp, "Netmask", option->data);
+	}
+
+	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
+
+	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
+	if (option != NULL) {
+		dhcp_set_value(dhcp, "Gateway", option->data);
+		gateway = g_strdup(option->data);
+	}
+
+	if (address != NULL && c_address != NULL &&
+					g_strcmp0(address, c_address) != 0)
+		ip_change = TRUE;
+	else if (gateway != NULL && c_gateway != NULL &&
+					g_strcmp0(gateway, c_gateway) != 0)
+		ip_change = TRUE;
+	else if (prefixlen != c_prefixlen)
+		ip_change = TRUE;
+	else if (c_address == NULL || c_gateway == NULL)
+		ip_change = TRUE;
+	else
+		ip_change = FALSE;
+
+
+	if (ip_change == FALSE) {
+		c_nameserver = g_strdup(dhcp->element->ipv4.nameserver);
+		c_timeserver = g_strdup(dhcp->element->ipv4.timeserver);
+		c_pac = g_strdup(dhcp->element->ipv4.pac);
+	}
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
 	for (list = option; list; list = list->next)
@@ -182,13 +223,10 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	g_free(nameservers);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DOMAIN_NAME);
-	if (option != NULL)
-		dhcp_set_value(dhcp, "Domainname", option->data);
-
-	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_ROUTER);
-	if (option != NULL)
-		dhcp_set_value(dhcp, "Gateway", option->data);
-
+	if (option != NULL) {
+		domainname = g_strdup(option->data);
+		dhcp_set_value(dhcp, "Domainname", domainname);
+	}
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
 	if (option != NULL)
 		dhcp_set_value(dhcp, "Hostname", option->data);
@@ -201,7 +239,53 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		dhcp_set_value(dhcp, "PAC", option->data);
 
-	dhcp_bound(dhcp);
+	if (ip_change == TRUE)
+		dhcp_bound(dhcp);
+	else {
+		service = __connman_element_get_service(dhcp->element);
+		if (service != NULL &&
+		    g_strcmp0(c_nameserver,
+					dhcp->element->ipv4.nameserver) != 0) {
+			if (c_nameserver != NULL)
+				__connman_service_remove_nameserver(service,
+								c_nameserver);
+
+			if (dhcp->element->ipv4.nameserver != NULL)
+				__connman_service_append_nameserver(service,
+						dhcp->element->ipv4.nameserver);
+		}
+
+		if (g_strcmp0(c_timeserver,
+				dhcp->element->ipv4.timeserver) != 0) {
+			if (c_timeserver != NULL)
+				connman_timeserver_remove(c_timeserver);
+
+			if (dhcp->element->ipv4.timeserver != NULL)
+				connman_timeserver_append(
+					dhcp->element->ipv4.timeserver);
+		}
+
+		if (service != NULL &&
+				g_strcmp0(c_pac, dhcp->element->ipv4.pac) != 0)
+			__connman_service_set_proxy_autoconfig(service,
+						dhcp->element->ipv4.pac);
+
+		if (service != NULL)
+			__connman_service_set_domainname(service, domainname);
+
+		g_free(c_nameserver);
+		g_free(c_timeserver);
+		g_free(c_pac);
+	}
+
+	g_free(c_gateway);
+	g_free(c_netmask);
+	g_free(c_address);
+
+	g_free(gateway);
+	g_free(netmask);
+	g_free(address);
+	g_free(domainname);
 }
 
 static void ipv4ll_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
