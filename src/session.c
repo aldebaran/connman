@@ -31,6 +31,7 @@
 static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
+static struct connman_session *ecall_session;
 
 enum connman_session_roaming_policy {
 	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
@@ -828,6 +829,52 @@ static void update_allowed_bearers(struct connman_session *session)
 	g_sequence_foreach(session->service_list, print_name, NULL);
 }
 
+static void update_ecall(struct connman_session *session)
+{
+	struct session_info *info = &session->info;
+	struct session_info *info_last = &session->info_last;
+	GHashTableIter iter;
+	gpointer key, value;
+	struct connman_session *session_iter;
+
+	DBG("ecall_session %p ecall %d -> %d", ecall_session,
+		info_last->ecall, info->ecall);
+
+	if (ecall_session == NULL) {
+		if (!(info_last->ecall == FALSE && info->ecall == TRUE))
+			goto err;
+
+		ecall_session = session;
+	} else if (ecall_session == session) {
+		if (!(info_last->ecall == TRUE && info->ecall == FALSE))
+			goto err;
+
+		ecall_session = NULL;
+	} else {
+		goto err;
+	}
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session_iter = value;
+
+		if (session_iter == session)
+			continue;
+
+		session_iter->info.ecall = info->ecall;
+
+		g_timeout_add_seconds(0, session_cb, session_iter);
+	}
+
+	session->info_dirty = TRUE;
+	return;
+
+err:
+	/* not a valid transition */
+	info->ecall = info_last->ecall;
+}
+
 static DBusMessage *change_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -894,8 +941,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 			dbus_message_iter_get_basic(&value,
 					&info->ecall);
 
-			if (info_last->ecall != info->ecall)
-				session->info_dirty = TRUE;
+			update_ecall(session);
 		} else {
 			goto err;
 		}
