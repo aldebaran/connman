@@ -115,6 +115,7 @@ Core
 
    Priority: Medium
    Complexity: C4
+   Owner: Guillaume Zajac <guillaume.zajac@linux.intel.com>
 
    The private networks D-Bus API should provide applications with a
    TUN interface linked to a reserved private IP range.
