@@ -2,6 +2,7 @@
 
 import sys
 import gobject
+import string
 
 import dbus
 import dbus.service
@@ -255,8 +256,10 @@ def main():
 	app_path = sys.argv[2]
 	bus = dbus.SessionBus()
 
+	app_name = "com.example.SessionApplication.%s" % (string.strip(app_path, "/"))
+
 	if sys.argv[1] == "run":
-		name = dbus.service.BusName("com.example.SessionApplication", bus)
+		name = dbus.service.BusName(app_name, bus)
 		mainloop = gobject.MainLoop()
 
 		app = SessionApplication(bus, app_path, mainloop)
@@ -264,7 +267,7 @@ def main():
 		mainloop.run()
 		return
 
-	app = dbus.Interface(bus.get_object("com.example.SessionApplication", app_path),
+	app = dbus.Interface(bus.get_object(app_name, app_path),
 			     "com.example.TestSession")
 
 	if sys.argv[1] == "create":
