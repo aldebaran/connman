@@ -833,13 +833,32 @@ static void update_allowed_bearers(struct connman_session *session)
 	session->info_dirty = TRUE;
 }
 
+static void update_ecall_sessions(struct connman_session *session)
+{
+	struct session_info *info = &session->info;
+	struct connman_session *session_iter;
+	GHashTableIter iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session_iter = value;
+
+		if (session_iter == session)
+			continue;
+
+		session_iter->info.ecall = info->ecall;
+		session_iter->info_dirty = TRUE;
+
+		g_timeout_add_seconds(0, session_cb, session_iter);
+	}
+}
+
 static void update_ecall(struct connman_session *session)
 {
 	struct session_info *info = &session->info;
 	struct session_info *info_last = &session->info_last;
-	GHashTableIter iter;
-	gpointer key, value;
-	struct connman_session *session_iter;
 
 	DBG("ecall_session %p ecall %d -> %d", ecall_session,
 		info_last->ecall, info->ecall);
@@ -858,19 +877,7 @@ static void update_ecall(struct connman_session *session)
 		goto err;
 	}
 
-	g_hash_table_iter_init(&iter, session_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		session_iter = value;
-
-		if (session_iter == session)
-			continue;
-
-		session_iter->info.ecall = info->ecall;
-		session_iter->info_dirty = TRUE;
-
-		g_timeout_add_seconds(0, session_cb, session_iter);
-	}
+	update_ecall_sessions(session);
 
 	session->info_dirty = TRUE;
 	return;
@@ -1003,7 +1010,7 @@ static GDBusMethodTable session_methods[] = {
 int __connman_session_create(DBusMessage *msg)
 {
 	const char *owner, *notify_path;
-	char *session_path;
+	char *session_path = NULL;
 	DBusMessageIter iter, array;
 	struct connman_session *session;
 	struct session_info *info, *info_last;
@@ -1021,6 +1028,15 @@ int __connman_session_create(DBusMessage *msg)
 	owner = dbus_message_get_sender(msg);
 
 	DBG("owner %s", owner);
+
+	if (ecall_session != NULL) {
+		/*
+		 * If there is an emergency call already going on,
+		 * ignore session creation attempt
+		 */
+		err = -EBUSY;
+		goto err;
+	}
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
@@ -1087,7 +1103,6 @@ int __connman_session_create(DBusMessage *msg)
 	dbus_message_iter_get_basic(&iter, &notify_path);
 
 	if (notify_path == NULL) {
-		session_path = NULL;
 		err = -EINVAL;
 		goto err;
 	}
@@ -1144,24 +1159,6 @@ int __connman_session_create(DBusMessage *msg)
 		info->allowed_bearers = allowed_bearers;
 	}
 
-	update_allowed_bearers(session);
-	update_service(session);
-
-	info_last->bearer = info->bearer;
-	info_last->online = info->priority;
-	info_last->avoid_handover = info->avoid_handover;
-	info_last->stay_connected = info->stay_connected;
-	info_last->periodic_connect = info->periodic_connect;
-	info_last->idle_timeout = info->idle_timeout;
-	info_last->ecall = info->ecall;
-	info_last->roaming_policy = info->roaming_policy;
-	info_last->service = info->service;
-	info_last->marker = info->marker;
-	info_last->allowed_bearers = info->allowed_bearers;
-
-	session->info_dirty = TRUE;
-	session->append_all = TRUE;
-
 	g_hash_table_replace(session_hash, session->session_path, session);
 
 	DBG("add %s", session->session_path);
@@ -1181,6 +1178,29 @@ int __connman_session_create(DBusMessage *msg)
 	g_dbus_send_reply(connection, msg,
 				DBUS_TYPE_OBJECT_PATH, &session->session_path,
 				DBUS_TYPE_INVALID);
+
+
+	update_allowed_bearers(session);
+	update_service(session);
+	if (info->ecall == TRUE) {
+		ecall_session = session;
+		update_ecall_sessions(session);
+	}
+
+	info_last->bearer = info->bearer;
+	info_last->online = info->priority;
+	info_last->avoid_handover = info->avoid_handover;
+	info_last->stay_connected = info->stay_connected;
+	info_last->periodic_connect = info->periodic_connect;
+	info_last->idle_timeout = info->idle_timeout;
+	info_last->ecall = info->ecall;
+	info_last->roaming_policy = info->roaming_policy;
+	info_last->service = info->service;
+	info_last->marker = info->marker;
+	info_last->allowed_bearers = info->allowed_bearers;
+
+	session->info_dirty = TRUE;
+	session->append_all = TRUE;
 
 	g_timeout_add_seconds(0, session_cb, session);
 
