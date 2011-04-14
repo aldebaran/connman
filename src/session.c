@@ -66,6 +66,7 @@ struct connman_session {
 	char *notify_path;
 	guint notify_watch;
 
+	connman_bool_t info_dirty;
 	struct session_info info;
 	struct session_info info_last;
 
@@ -409,15 +410,17 @@ static void append_notify(DBusMessageIter *dict,
 						&info->marker);
 		info_last->marker = info->marker;
 	}
+
+	session->info_dirty = FALSE;
 }
 
-static gboolean session_notify(gpointer user_data)
+static int session_notify(struct connman_session *session)
 {
-	struct connman_session *session = user_data;
-
-
 	DBusMessage *msg;
 	DBusMessageIter array, dict;
+
+	if (session->info_dirty == FALSE)
+		return 0;
 
 	DBG("session %p owner %s notify_path %s", session,
 		session->owner, session->notify_path);
@@ -425,10 +428,8 @@ static gboolean session_notify(gpointer user_data)
 	msg = dbus_message_new_method_call(session->owner, session->notify_path,
 						CONNMAN_NOTIFICATION_INTERFACE,
 						"Update");
-	if (msg == NULL) {
-		connman_error("Could not create notification message");
-		return FALSE;
-	}
+	if (msg == NULL)
+		return -ENOMEM;
 
 	dbus_message_iter_init_append(msg, &array);
 	connman_dbus_dict_open(&array, &dict);
@@ -439,7 +440,9 @@ static gboolean session_notify(gpointer user_data)
 
 	g_dbus_send_message(connection, msg);
 
-	return FALSE;
+	session->info_dirty = FALSE;
+
+	return 0;
 }
 
 static void ipconfig_ipv4_changed(struct connman_session *session)
@@ -815,25 +818,15 @@ static DBusMessage *change_session(DBusConnection *conn,
 {
 	struct connman_session *session = user_data;
 	struct session_info *info = &session->info;
+	struct session_info *info_last = &session->info_last;
 	DBusMessageIter iter, value;
-	DBusMessage *reply;
-	DBusMessageIter reply_array, reply_dict;
 	const char *name;
 	GSList *allowed_bearers;
+	int err;
 
 	DBG("session %p", session);
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
 		return __connman_error_invalid_arguments(msg);
-
-	reply = dbus_message_new_method_call(session->owner,
-						session->notify_path,
-						CONNMAN_NOTIFICATION_INTERFACE,
-						"Update");
-	if (reply == NULL)
-		return __connman_error_failed(msg, ENOMEM);
-
-	dbus_message_iter_init_append(reply, &reply_array);
-	connman_dbus_dict_open(&reply_array, &reply_dict);
 
 	dbus_message_iter_get_basic(&iter, &name);
 	dbus_message_iter_next(&iter);
@@ -851,15 +844,14 @@ static DBusMessage *change_session(DBusConnection *conn,
 			if (allowed_bearers == NULL) {
 				allowed_bearers = session_allowed_bearers_any();
 
-				if (allowed_bearers == NULL) {
-					dbus_message_unref(reply);
+				if (allowed_bearers == NULL)
 					return __connman_error_failed(msg, ENOMEM);
-				}
 			}
 
 			info->allowed_bearers = allowed_bearers;
 
 			update_allowed_bearers(session);
+			session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -869,22 +861,26 @@ static DBusMessage *change_session(DBusConnection *conn,
 			dbus_message_iter_get_basic(&value,
 					&info->priority);
 
-			/* update_priority(); */
+			if (info_last->priority != info->priority)
+				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "AvoidHandover") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->avoid_handover);
 
-			/* update_avoid_handover(); */
-		} else if (g_str_equal(name, "StayConnected") == TRUE) {
+			if (info_last->avoid_handover != info->avoid_handover)
+				session->info_dirty = TRUE;
+			} else if (g_str_equal(name, "StayConnected") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->stay_connected);
 
-			/* update_stay_connected(); */
+			if (info_last->stay_connected != info->stay_connected)
+				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "EmergencyCall") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->ecall);
 
-			/* update_ecall(); */
+			if (info_last->ecall != info->ecall)
+				session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -894,12 +890,14 @@ static DBusMessage *change_session(DBusConnection *conn,
 			dbus_message_iter_get_basic(&value,
 					&info->periodic_connect);
 
-			/* update_periodic_update(); */
+			if (info_last->periodic_connect != info->periodic_connect)
+				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "IdleTimeout") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->idle_timeout);
 
-			/* update_idle_timeout(); */
+			if (info_last->idle_timeout != info->idle_timeout)
+				session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -911,23 +909,23 @@ static DBusMessage *change_session(DBusConnection *conn,
 			info->roaming_policy =
 					string2roamingpolicy(val);
 
-			/* update_roaming_allowed(); */
+			if (info_last->roaming_policy != info->roaming_policy)
+				session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
 		break;
+	default:
+		goto err;
 	}
 
-	append_notify(&reply_dict, session);
-
-	connman_dbus_dict_close(&reply_array, &reply_dict);
-
-	g_dbus_send_message(connection, reply);
+	err = session_notify(session);
+	if (err < 0)
+		__connman_error_failed(msg, -err);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
 err:
-	dbus_message_unref(reply);
 	return __connman_error_invalid_arguments(msg);
 }
 
@@ -1093,6 +1091,8 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->allowed_bearers = NULL;
 	info_last->service = (void *) 1;
 	info_last->marker = info->marker + 1;
+
+	session->info_dirty = TRUE;
 
 	update_allowed_bearers(session);
 
