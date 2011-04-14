@@ -788,6 +788,7 @@ static DBusMessage *connect_session(DBusConnection *conn,
 	DBG("session %p", session);
 
 	info->connect = TRUE;
+	session->info_dirty = TRUE;
 
 	g_timeout_add_seconds(0, session_cb, session);
 
@@ -803,6 +804,7 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	DBG("session %p", session);
 
 	info->connect = FALSE;
+	session->info_dirty = TRUE;
 
 	g_timeout_add_seconds(0, session_cb, session);
 
@@ -865,6 +867,7 @@ static void update_ecall(struct connman_session *session)
 			continue;
 
 		session_iter->info.ecall = info->ecall;
+		session_iter->info_dirty = TRUE;
 
 		g_timeout_add_seconds(0, session_cb, session_iter);
 	}
@@ -886,7 +889,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 	DBusMessageIter iter, value;
 	const char *name;
 	GSList *allowed_bearers;
-	int err;
 
 	DBG("session %p", session);
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
@@ -981,9 +983,8 @@ static DBusMessage *change_session(DBusConnection *conn,
 		goto err;
 	}
 
-	err = session_notify(session);
-	if (err < 0)
-		__connman_error_failed(msg, -err);
+	if (session->info_dirty == TRUE)
+		session_cb(session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
