@@ -95,8 +95,11 @@ struct modem_data {
 struct network_info {
 	struct connman_network *network;
 
-	enum connman_ipconfig_method method;
-	struct connman_ipaddress ipaddress;
+	enum connman_ipconfig_method ipv4_method;
+	struct connman_ipaddress ipv4_address;
+
+	enum connman_ipconfig_method ipv6_method;
+	struct connman_ipaddress ipv6_address;
 };
 
 static int modem_probe(struct connman_device *device)
@@ -415,7 +418,7 @@ static void set_connected(struct network_info *info,
 {
 	DBG("network %p connected %d", info->network, connected);
 
-	switch (info->method) {
+	switch (info->ipv4_method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
@@ -423,13 +426,16 @@ static void set_connected(struct network_info *info,
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		connman_network_set_ipv4_method(info->network, info->method);
-		connman_network_set_ipaddress(info->network, &info->ipaddress);
+		connman_network_set_ipv4_method(info->network,
+							info->ipv4_method);
+		connman_network_set_ipaddress(info->network,
+							&info->ipv4_address);
 
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		connman_network_set_ipv4_method(info->network, info->method);
+		connman_network_set_ipv4_method(info->network,
+							info->ipv4_method);
 
 		break;
 	}
@@ -604,7 +610,8 @@ static int add_network(struct connman_device *device,
 		return -ENOMEM;
 	}
 
-	connman_ipaddress_clear(&info->ipaddress);
+	connman_ipaddress_clear(&info->ipv4_address);
+	connman_ipaddress_clear(&info->ipv6_address);
 	info->network = network;
 
 	connman_network_set_string(network, "Path", path);
@@ -1667,10 +1674,12 @@ static void update_settings(DBusMessageIter *array,
 
 			if (g_strcmp0(method, "static") == 0) {
 
-				info->method = CONNMAN_IPCONFIG_METHOD_FIXED;
+				info->ipv4_method =
+					CONNMAN_IPCONFIG_METHOD_FIXED;
 			} else if (g_strcmp0(method, "dhcp") == 0) {
 
-				info->method = CONNMAN_IPCONFIG_METHOD_DHCP;
+				info->ipv4_method =
+					CONNMAN_IPCONFIG_METHOD_DHCP;
 				break;
 			}
 		} else if (g_str_equal(key, "Address") == TRUE) {
@@ -1700,8 +1709,8 @@ static void update_settings(DBusMessageIter *array,
 	}
 
 
-	if (info->method == CONNMAN_IPCONFIG_METHOD_FIXED) {
-		connman_ipaddress_set_ipv4(&info->ipaddress, address,
+	if (info->ipv4_method == CONNMAN_IPCONFIG_METHOD_FIXED) {
+		connman_ipaddress_set_ipv4(&info->ipv4_address, address,
 						netmask, gateway);
 	}
 
