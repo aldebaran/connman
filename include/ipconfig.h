@@ -47,8 +47,9 @@ int connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
 				const char *address, const char *netmask,
 				const char *gateway);
 int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
-				const char *address, const char *gateway,
-				unsigned char prefix_length);
+				const char *address,
+				unsigned char prefix_length,
+				const char *gateway);
 void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
 				const char *peer);
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress);

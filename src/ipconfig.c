@@ -153,8 +153,9 @@ static gboolean check_ipv6_address(const char *address)
 }
 
 int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
-				const char *address, const char *gateway,
-						unsigned char prefix_length)
+				const char *address,
+				unsigned char prefix_length,
+				const char *gateway)
 {
 	if (ipaddress == NULL)
 		return -EINVAL;
@@ -1947,7 +1948,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		else
 			return connman_ipaddress_set_ipv6(
 					ipconfig->address, address,
-						gateway, prefix_length);
+						prefix_length, gateway);
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:

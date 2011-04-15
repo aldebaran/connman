@@ -146,7 +146,7 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 						netmask, gateway);
 	else
 		connman_ipaddress_set_ipv6(ipaddress, addressv6,
-						gateway, prefix_len);
+						prefix_len, gateway);
 	connman_provider_set_ipaddress(provider, ipaddress);
 	connman_provider_set_domain(provider, domain);
 
