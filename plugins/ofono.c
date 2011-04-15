@@ -569,8 +569,138 @@ static struct connman_network_driver network_driver = {
 	.disconnect	= network_disconnect,
 };
 
+static void get_dns(DBusMessageIter *array, struct network_info *info)
+{
+	DBusMessageIter entry;
+	gchar *nameservers = NULL, *nameservers_old = NULL;
+
+	DBG("");
+
+
+	dbus_message_iter_recurse(array, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *dns;
+
+		dbus_message_iter_get_basic(&entry, &dns);
+
+		DBG("dns %s", dns);
+
+		if (nameservers == NULL) {
+
+			nameservers = g_strdup(dns);
+		} else {
+
+			nameservers_old = nameservers;
+			nameservers = g_strdup_printf("%s %s",
+						nameservers_old, dns);
+			g_free(nameservers_old);
+		}
+
+		dbus_message_iter_next(&entry);
+	}
+
+	connman_network_set_nameservers(info->network, nameservers);
+
+	g_free(nameservers);
+}
+
 static void update_settings(DBusMessageIter *array,
-				struct network_info *info);
+				struct network_info *info)
+{
+	DBusMessageIter dict;
+	char *address = NULL, *netmask = NULL, *gateway = NULL;
+	const char *interface = NULL;
+
+	DBG("network %p", info->network);
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		DBG("key %s", key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Interface") == TRUE) {
+			int index;
+
+			dbus_message_iter_get_basic(&value, &interface);
+
+			DBG("interface %s", interface);
+
+			index = connman_inet_ifindex(interface);
+			if (index >= 0) {
+				connman_network_set_index(info->network, index);
+			} else {
+				connman_error("Can not find interface %s",
+								interface);
+				break;
+			}
+		} else if (g_str_equal(key, "Method") == TRUE) {
+			const char *method;
+
+			dbus_message_iter_get_basic(&value, &method);
+
+			if (g_strcmp0(method, "static") == 0) {
+
+				info->ipv4_method =
+					CONNMAN_IPCONFIG_METHOD_FIXED;
+			} else if (g_strcmp0(method, "dhcp") == 0) {
+
+				info->ipv4_method =
+					CONNMAN_IPCONFIG_METHOD_DHCP;
+				break;
+			}
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			address = g_strdup(val);
+
+			DBG("address %s", address);
+		} else if (g_str_equal(key, "Netmask") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			netmask = g_strdup(val);
+
+			DBG("netmask %s", netmask);
+		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+
+			get_dns(&value, info);
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			gateway = g_strdup(val);
+
+			DBG("gateway %s", gateway);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+
+	if (info->ipv4_method == CONNMAN_IPCONFIG_METHOD_FIXED) {
+		connman_ipaddress_set_ipv4(&info->ipv4_address, address,
+						netmask, gateway);
+	}
+
+	/* deactive, oFono send NULL inteface before deactive signal */
+	if (interface == NULL)
+		connman_network_set_index(info->network, -1);
+
+	g_free(address);
+	g_free(netmask);
+	g_free(gateway);
+}
 
 static int add_network(struct connman_device *device,
 			const char *path, DBusMessageIter *dict)
@@ -1587,140 +1717,6 @@ static gboolean modem_removed(DBusConnection *connection,
 	g_hash_table_remove(modem_hash, modem_path);
 
 	return TRUE;
-}
-
-
-static void get_dns(DBusMessageIter *array, struct network_info *info)
-{
-	DBusMessageIter entry;
-	gchar *nameservers = NULL, *nameservers_old = NULL;
-
-	DBG("");
-
-
-	dbus_message_iter_recurse(array, &entry);
-
-	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
-		const char *dns;
-
-		dbus_message_iter_get_basic(&entry, &dns);
-
-		DBG("dns %s", dns);
-
-		if (nameservers == NULL) {
-
-			nameservers = g_strdup(dns);
-		} else {
-
-			nameservers_old = nameservers;
-			nameservers = g_strdup_printf("%s %s",
-						nameservers_old, dns);
-			g_free(nameservers_old);
-		}
-
-		dbus_message_iter_next(&entry);
-	}
-
-	connman_network_set_nameservers(info->network, nameservers);
-
-	g_free(nameservers);
-}
-
-static void update_settings(DBusMessageIter *array,
-				struct network_info *info)
-{
-	DBusMessageIter dict;
-	char *address = NULL, *netmask = NULL, *gateway = NULL;
-	const char *interface = NULL;
-
-	DBG("network %p", info->network);
-
-	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
-		return;
-
-	dbus_message_iter_recurse(array, &dict);
-
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-		const char *key, *val;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		dbus_message_iter_get_basic(&entry, &key);
-
-		DBG("key %s", key);
-
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &value);
-
-		if (g_str_equal(key, "Interface") == TRUE) {
-			int index;
-
-			dbus_message_iter_get_basic(&value, &interface);
-
-			DBG("interface %s", interface);
-
-			index = connman_inet_ifindex(interface);
-			if (index >= 0) {
-				connman_network_set_index(info->network, index);
-			} else {
-				connman_error("Can not find interface %s",
-								interface);
-				break;
-			}
-		} else if (g_str_equal(key, "Method") == TRUE) {
-			const char *method;
-
-			dbus_message_iter_get_basic(&value, &method);
-
-			if (g_strcmp0(method, "static") == 0) {
-
-				info->ipv4_method =
-					CONNMAN_IPCONFIG_METHOD_FIXED;
-			} else if (g_strcmp0(method, "dhcp") == 0) {
-
-				info->ipv4_method =
-					CONNMAN_IPCONFIG_METHOD_DHCP;
-				break;
-			}
-		} else if (g_str_equal(key, "Address") == TRUE) {
-			dbus_message_iter_get_basic(&value, &val);
-
-			address = g_strdup(val);
-
-			DBG("address %s", address);
-		} else if (g_str_equal(key, "Netmask") == TRUE) {
-			dbus_message_iter_get_basic(&value, &val);
-
-			netmask = g_strdup(val);
-
-			DBG("netmask %s", netmask);
-		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
-
-			get_dns(&value, info);
-		} else if (g_str_equal(key, "Gateway") == TRUE) {
-			dbus_message_iter_get_basic(&value, &val);
-
-			gateway = g_strdup(val);
-
-			DBG("gateway %s", gateway);
-		}
-
-		dbus_message_iter_next(&dict);
-	}
-
-
-	if (info->ipv4_method == CONNMAN_IPCONFIG_METHOD_FIXED) {
-		connman_ipaddress_set_ipv4(&info->ipv4_address, address,
-						netmask, gateway);
-	}
-
-	/* deactive, oFono send NULL inteface before deactive signal */
-	if (interface == NULL)
-		connman_network_set_index(info->network, -1);
-
-	g_free(address);
-	g_free(netmask);
-	g_free(gateway);
 }
 
 static gboolean context_changed(DBusConnection *connection,
