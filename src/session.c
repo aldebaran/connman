@@ -66,6 +66,7 @@ struct connman_session {
 	char *notify_path;
 	guint notify_watch;
 
+	connman_bool_t append_all;
 	connman_bool_t info_dirty;
 	struct session_info info;
 	struct session_info info_last;
@@ -308,28 +309,32 @@ static void append_notify(DBusMessageIter *dict,
 	struct session_info *info_last = &session->info_last;
 	const char *policy;
 
-	if (info->bearer != info_last->bearer) {
+	if (session->append_all == TRUE ||
+			info->bearer != info_last->bearer) {
 		connman_dbus_dict_append_basic(dict, "Bearer",
 						DBUS_TYPE_STRING,
 						&info->bearer);
 		info_last->bearer = info->bearer;
 	}
 
-	if (info->online != info_last->online) {
+	if (session->append_all == TRUE ||
+			info->online != info_last->online) {
 		connman_dbus_dict_append_basic(dict, "Online",
 						DBUS_TYPE_BOOLEAN,
 						&info->online);
 		info_last->online = info->online;
 	}
 
-	if (info->name != info_last->name) {
+	if (session->append_all == TRUE ||
+			info->name != info_last->name) {
 		connman_dbus_dict_append_basic(dict, "Name",
 						DBUS_TYPE_STRING,
 						&info->name);
 		info_last->name = info->name;
 	}
 
-	if (info->service != info_last->service) {
+	if (session->append_all == TRUE ||
+			info->service != info_last->service) {
 		connman_dbus_dict_append_dict(dict, "IPv4",
 						append_ipconfig_ipv4,
 						info->service);
@@ -346,14 +351,16 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 
-	if (info->priority != info_last->priority) {
+	if (session->append_all == TRUE ||
+			info->priority != info_last->priority) {
 		connman_dbus_dict_append_basic(dict, "Priority",
 						DBUS_TYPE_BOOLEAN,
 						&info->priority);
 		info_last->priority = info->priority;
 	}
 
-	if (info->allowed_bearers != info_last->allowed_bearers) {
+	if (session->append_all == TRUE ||
+			info->allowed_bearers != info_last->allowed_bearers) {
 		connman_dbus_dict_append_array(dict, "AllowedBearers",
 						DBUS_TYPE_STRING,
 						append_allowed_bearers,
@@ -361,42 +368,48 @@ static void append_notify(DBusMessageIter *dict,
 		info_last->allowed_bearers = info->allowed_bearers;
 	}
 
-	if (info->avoid_handover != info_last->avoid_handover) {
+	if (session->append_all == TRUE ||
+			info->avoid_handover != info_last->avoid_handover) {
 		connman_dbus_dict_append_basic(dict, "AvoidHandover",
 						DBUS_TYPE_BOOLEAN,
 						&info->avoid_handover);
 		info_last->avoid_handover = info->avoid_handover;
 	}
 
-	if (info->stay_connected != info_last->stay_connected) {
+	if (session->append_all == TRUE ||
+			info->stay_connected != info_last->stay_connected) {
 		connman_dbus_dict_append_basic(dict, "StayConnected",
 						DBUS_TYPE_BOOLEAN,
 						&info->stay_connected);
 		info_last->stay_connected = info->stay_connected;
 	}
 
-	if (info->periodic_connect != info_last->periodic_connect) {
+	if (session->append_all == TRUE ||
+			info->periodic_connect != info_last->periodic_connect) {
 		connman_dbus_dict_append_basic(dict, "PeriodicConnect",
 						DBUS_TYPE_UINT32,
 						&info->periodic_connect);
 		info_last->periodic_connect = info->periodic_connect;
 	}
 
-	if (info->idle_timeout != info_last->idle_timeout) {
+	if (session->append_all == TRUE ||
+			info->idle_timeout != info_last->idle_timeout) {
 		connman_dbus_dict_append_basic(dict, "IdleTimeout",
 						DBUS_TYPE_UINT32,
 						&info->idle_timeout);
 		info_last->idle_timeout = info->idle_timeout;
 	}
 
-	if (info->ecall != info_last->ecall) {
+	if (session->append_all == TRUE ||
+			info->ecall != info_last->ecall) {
 		connman_dbus_dict_append_basic(dict, "EmergencyCall",
 						DBUS_TYPE_BOOLEAN,
 						&info->ecall);
 		info_last->ecall = info->ecall;
 	}
 
-	if (info->roaming_policy != info_last->roaming_policy) {
+	if (session->append_all == TRUE ||
+			info->roaming_policy != info_last->roaming_policy) {
 		policy = roamingpolicy2string(info->roaming_policy);
 		connman_dbus_dict_append_basic(dict, "RoamingPolicy",
 						DBUS_TYPE_STRING,
@@ -404,13 +417,15 @@ static void append_notify(DBusMessageIter *dict,
 		info_last->roaming_policy = info->roaming_policy;
 	}
 
-	if (info->marker != info_last->marker) {
+	if (session->append_all == TRUE ||
+			info->marker != info_last->marker) {
 		connman_dbus_dict_append_basic(dict, "SessionMarker",
 						DBUS_TYPE_UINT32,
 						&info->marker);
 		info_last->marker = info->marker;
 	}
 
+	session->append_all = FALSE;
 	session->info_dirty = FALSE;
 }
 
@@ -1066,6 +1081,8 @@ int __connman_session_create(DBusMessage *msg)
 	info->idle_timeout = idle_timeout;
 	info->ecall = ecall;
 	info->roaming_policy = roaming_policy;
+	info->service = NULL;
+	info->marker = 0;
 
 	if (allowed_bearers == NULL) {
 		info->allowed_bearers =
@@ -1079,22 +1096,23 @@ int __connman_session_create(DBusMessage *msg)
 		info->allowed_bearers = allowed_bearers;
 	}
 
-	info_last->bearer = NULL;
-	info_last->online = !priority;
-	info_last->avoid_handover = !avoid_handover;
-	info_last->stay_connected = !stay_connected;
-	info_last->periodic_connect = !periodic_connect;
-	info_last->idle_timeout = !idle_timeout;
-	info_last->ecall = !ecall;
-	info_last->roaming_policy =
-			CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN;
-	info_last->allowed_bearers = NULL;
-	info_last->service = (void *) 1;
-	info_last->marker = info->marker + 1;
+	update_allowed_bearers(session);
+	update_service(session);
+
+	info_last->bearer = info->bearer;
+	info_last->online = info->priority;
+	info_last->avoid_handover = info->avoid_handover;
+	info_last->stay_connected = info->stay_connected;
+	info_last->periodic_connect = info->periodic_connect;
+	info_last->idle_timeout = info->idle_timeout;
+	info_last->ecall = info->ecall;
+	info_last->roaming_policy = info->roaming_policy;
+	info_last->service = info->service;
+	info_last->marker = info->marker;
+	info_last->allowed_bearers = info->allowed_bearers;
 
 	session->info_dirty = TRUE;
-
-	update_allowed_bearers(session);
+	session->append_all = TRUE;
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
