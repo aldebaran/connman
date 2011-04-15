@@ -237,10 +237,27 @@ Settings	string  Bearer [readonly]
 			modem. The Emergency is true if an emergency call or
 			related operation is currently active.
 
+			If the emergency application sets this setting to true
+			all other session will be informed about the emergency
+			situation with setting it also to true. Only the
+			emergency application can set back to false.
+
+			As long the EmergencyCall is true no new session can
+			be created.
+
 			Only one application is supposed to write this setting
 			and therefore it will be protected by additional
 			PolicyKit rule so that only the emergency application
 			can write.
+
+			The emergency application is expected to call Connect()
+			after setting this setting true. If the emergency
+			situation is over the application should call
+			Disconnect() and also set the EmergencyCall to false
+			afterward.
+
+			Note only services matching the AllowedBearers rule
+			will be considered.
 
 		string  RoamingPolicy [readwrite]
 
