@@ -145,6 +145,9 @@ static gboolean check_ipv6_address(const char *address)
 	unsigned char buf[sizeof(struct in6_addr)];
 	int err;
 
+	if (address == NULL)
+		return FALSE;
+
 	err = inet_pton(AF_INET6, address, buf);
 	if (err > 0)
 		return TRUE;
