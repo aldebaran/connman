@@ -827,6 +827,8 @@ static void update_allowed_bearers(struct connman_session *session)
 								service_match);
 	g_sequence_sort(session->service_list, sort_services, session);
 	g_sequence_foreach(session->service_list, print_name, NULL);
+
+	session->info_dirty = TRUE;
 }
 
 static void update_ecall(struct connman_session *session)
@@ -913,7 +915,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 			info->allowed_bearers = allowed_bearers;
 
 			update_allowed_bearers(session);
-			session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
