@@ -440,6 +440,23 @@ static void set_connected(struct network_info *info,
 		break;
 	}
 
+	switch (info->ipv6_method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		return;
+
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		connman_network_set_ipv6_method(info->network,
+							info->ipv6_method);
+		connman_network_set_ipaddress(info->network,
+							&info->ipv6_address);
+
+		break;
+	}
+
 	connman_network_set_connected(info->network, connected);
 }
 
@@ -605,7 +622,7 @@ static void get_dns(DBusMessageIter *array, struct network_info *info)
 	g_free(nameservers);
 }
 
-static void update_settings(DBusMessageIter *array,
+static void update_ipv4_settings(DBusMessageIter *array,
 				struct network_info *info)
 {
 	DBusMessageIter dict;
@@ -702,6 +719,85 @@ static void update_settings(DBusMessageIter *array,
 	g_free(gateway);
 }
 
+static void update_ipv6_settings(DBusMessageIter *array,
+				struct network_info *info)
+{
+	DBusMessageIter dict;
+	char *address = NULL, *gateway = NULL;
+	unsigned char prefix_length;
+	const char *interface = NULL;
+
+	DBG("network %p", info->network);
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	info->ipv6_method = CONNMAN_IPCONFIG_METHOD_FIXED;
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		DBG("key %s", key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Interface") == TRUE) {
+			int index;
+
+			dbus_message_iter_get_basic(&value, &interface);
+
+			DBG("interface %s", interface);
+
+			index = connman_inet_ifindex(interface);
+			if (index >= 0) {
+				connman_network_set_index(info->network, index);
+			} else {
+				connman_error("Can not find interface %s",
+								interface);
+				break;
+			}
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			address = g_strdup(val);
+
+			DBG("address %s", address);
+		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
+			dbus_message_iter_get_basic(&value, &prefix_length);
+
+			DBG("prefix length %d", prefix_length);
+		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+
+			get_dns(&value, info);
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			gateway = g_strdup(val);
+
+			DBG("gateway %s", gateway);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	connman_ipaddress_set_ipv6(&info->ipv6_address, address,
+						prefix_length, gateway);
+
+	/* deactive, oFono send NULL inteface before deactive signal */
+	if (interface == NULL)
+		connman_network_set_index(info->network, -1);
+
+	g_free(address);
+	g_free(gateway);
+}
+
 static int add_network(struct connman_device *device,
 			const char *path, DBusMessageIter *dict)
 {
@@ -788,7 +884,9 @@ static int add_network(struct connman_device *device,
 				goto error;
 			}
 		} else if (g_str_equal(key, "Settings"))
-			update_settings(&value, info);
+			update_ipv4_settings(&value, info);
+		else if (g_str_equal(key, "IPv6.Settings"))
+			update_ipv6_settings(&value, info);
 		else if (g_str_equal(key, "Active") == TRUE)
 			dbus_message_iter_get_basic(&value, &active);
 
@@ -1749,7 +1847,9 @@ static gboolean context_changed(DBusConnection *connection,
 	DBG("key %s", key);
 
 	if (g_str_equal(key, "Settings") == TRUE)
-		update_settings(&value, info);
+		update_ipv4_settings(&value, info);
+	else if (g_str_equal(key, "IPv6.Settings"))
+			update_ipv6_settings(&value, info);
 	else if (g_str_equal(key, "Active") == TRUE) {
 		dbus_bool_t active;
 
