@@ -1,3 +1,10 @@
+ver 0.69.4
+	tethering: Use /proc/sys/net/bridge to detect bridge support.
+	tethering: Add wifi interface to bridge after carrier on.
+	tethering: Fix tethering scripts.
+	main: Initial configuration support.
+	dhcp: Reset IP settings upon changes.
+
 ver 0.69.3
 	Initial TI shared transport plugin implementation
 
