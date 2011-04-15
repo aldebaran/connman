@@ -724,6 +724,9 @@ static void session_changed(struct connman_session *session)
 	 * play a bit around. So we are going to improve it step by step.
 	 */
 
+	if (info->ecall == TRUE && session != ecall_session)
+		goto out;
+
 	if (info->connect == FALSE) {
 		if (info->service != NULL)
 			__connman_service_disconnect(info->service);
