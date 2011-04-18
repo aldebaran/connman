@@ -27,6 +27,21 @@
 
 #include "connman.h"
 
+static char **timeservers_config = NULL;
+
+static void append_timeservers(DBusMessageIter *iter, void *user_data)
+{
+	int i;
+
+	if (timeservers_config == NULL)
+		return;
+
+	for (i = 0; timeservers_config[i] != NULL; i++) {
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &timeservers_config[i]);
+	}
+}
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -42,6 +57,9 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_init_append(reply, &array);
 
 	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_array(&dict, "Timeservers",
+				DBUS_TYPE_STRING, append_timeservers, NULL);
 
 	connman_dbus_dict_close(&array, &dict);
 
@@ -66,7 +84,47 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	return __connman_error_invalid_property(msg);
+	if (g_str_equal(name, "Timeservers") == TRUE) {
+		DBusMessageIter entry;
+		GString *str;
+
+		if (type != DBUS_TYPE_ARRAY)
+			return __connman_error_invalid_arguments(msg);
+
+		str = g_string_new(NULL);
+		if (str == NULL)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_recurse(&value, &entry);
+
+		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+			const char *val;
+
+			dbus_message_iter_get_basic(&entry, &val);
+			dbus_message_iter_next(&entry);
+
+			if (str->len > 0)
+				g_string_append_printf(str, " %s", val);
+			else
+				g_string_append(str, val);
+		}
+
+		g_strfreev(timeservers_config);
+
+		if (str->len > 0)
+			timeservers_config = g_strsplit_set(str->str, " ", 0);
+		else
+			timeservers_config = NULL;
+
+		g_string_free(str, TRUE);
+
+		connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
+				CONNMAN_CLOCK_INTERFACE, "Timeservers",
+				DBUS_TYPE_STRING, append_timeservers, NULL);
+	} else
+		return __connman_error_invalid_property(msg);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static GDBusMethodTable clock_methods[] = {
@@ -109,4 +167,6 @@ void __connman_clock_cleanup(void)
 						CONNMAN_CLOCK_INTERFACE);
 
 	dbus_connection_unref(connection);
+
+	g_strfreev(timeservers_config);
 }
