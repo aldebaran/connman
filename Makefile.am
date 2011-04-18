@@ -70,7 +70,8 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c src/element.c \
 			src/device.c src/network.c src/connection.c \
-			src/manager.c src/clock.c src/profile.c src/service.c \
+			src/manager.c src/profile.c src/service.c \
+			src/clock.c src/timezone.c \
 			src/agent.c src/notifier.c src/provider.c \
 			src/resolver.c src/ipconfig.c src/detect.c src/inet.c \
 			src/dhcp.c src/rtnl.c src/proxy.c \
