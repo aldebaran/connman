@@ -233,7 +233,7 @@ static gboolean resolver_expire_cb(gpointer user_data)
 	GSList *list;
 
 	DBG("interface %s domain %s server %s",
-	    entry->interface, entry->domain, entry->server);
+			entry->interface, entry->domain, entry->server);
 
 	list = g_slist_append(NULL, entry);
 	remove_entries(list);
@@ -242,13 +242,13 @@ static gboolean resolver_expire_cb(gpointer user_data)
 }
 
 static int append_resolver(const char *interface, const char *domain,
-			   const char *server, unsigned int lifetime,
-			   unsigned int flags)
+				const char *server, unsigned int lifetime,
+							unsigned int flags)
 {
 	struct entry_data *entry;
 
 	DBG("interface %s domain %s server %s lifetime %d flags %d",
-	    interface, domain, server, lifetime, flags);
+				interface, domain, server, lifetime, flags);
 
 	if (server == NULL && domain == NULL)
 		return -EINVAL;
@@ -263,8 +263,7 @@ static int append_resolver(const char *interface, const char *domain,
 	entry->flags = flags;
 	if (lifetime)
 		entry->timeout = g_timeout_add_seconds(lifetime,
-						       resolver_expire_cb,
-						       entry);
+						resolver_expire_cb, entry);
 
 	entry_list = g_slist_append(entry_list, entry);
 
@@ -302,12 +301,12 @@ int connman_resolver_append(const char *interface, const char *domain,
  * Append resolver server address to current list
  */
 int connman_resolver_append_lifetime(const char *interface, const char *domain,
-				     const char *server, unsigned int lifetime)
+				const char *server, unsigned int lifetime)
 {
 	GSList *list;
 
 	DBG("interface %s domain %s server %s lifetime %d",
-	    interface, domain, server, lifetime);
+				interface, domain, server, lifetime);
 
 	if (server == NULL)
 		return -EINVAL;
@@ -316,17 +315,17 @@ int connman_resolver_append_lifetime(const char *interface, const char *domain,
 		struct entry_data *entry = list->data;
 
 		if (!entry->timeout ||
-		    g_strcmp0(entry->interface, interface) ||
-		    g_strcmp0(entry->domain, domain) ||
-		    g_strcmp0(entry->server, server))
+				g_strcmp0(entry->interface, interface) ||
+				g_strcmp0(entry->domain, domain) ||
+				g_strcmp0(entry->server, server))
 			continue;
 
 		g_source_remove(entry->timeout);
 		entry->timeout = g_timeout_add_seconds(lifetime,
-						       resolver_expire_cb,
-						       entry);
+						resolver_expire_cb, entry);
 		return 0;
 	}
+
 	return append_resolver(interface, domain, server, lifetime, 0);
 }
 
