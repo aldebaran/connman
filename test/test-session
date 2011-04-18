@@ -147,7 +147,7 @@ class SessionApplication(dbus.service.Object):
 						      "net.connman.Session")
 
 		except dbus.DBusException, e:
-			if e.get_dbus_name() in ['net.connman.Error.InvalidArguments']:
+			if e.get_dbus_name() in ['net.connman.Error.Failed']:
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
@@ -175,8 +175,7 @@ class SessionApplication(dbus.service.Object):
 		try:
 			self.session.Connect()
 		except dbus.DBusException, e:
-			if e.get_dbus_name() in ['net.connman.Error.InProgress',
-						 'net.connman.Error.AlreadyConnected']:
+			if e.get_dbus_name() in ['net.connman.Error.Failed']:
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
@@ -189,8 +188,7 @@ class SessionApplication(dbus.service.Object):
 		try:
 			self.session.Disconnect()
 		except dbus.DBusException, e:
-			if e.get_dbus_name() in ['net.connman.Error.AlreadyDisabled',
-						 'net.connman.Error.NotConnected']:
+			if e.get_dbus_name() in ['net.connman.Error.Failed']:
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
@@ -204,7 +202,7 @@ class SessionApplication(dbus.service.Object):
 			val = self.type_convert(key, value)
 			self.session.Change(key, val)
 		except dbus.DBusException, e:
-			if e.get_dbus_name() in ['net.connman.Error.InvalidArguments']:
+			if e.get_dbus_name() in ['net.connman.Error.Failed']:
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
