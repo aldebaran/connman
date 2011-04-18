@@ -1,3 +1,11 @@
+ver 0.73:
+	Update support for session API handling.
+	Add support for more advanced roaming policies.
+	Add support for EAP identity and passphrase queries.
+	Add support for IPv6 handling with cellular bearer.
+	Add support for main configuration file.
+	Remove deprecated profile interface.
+
 ver 0.72:
 	Fix issue with overwriting DNS servers from DHCP.
 	Fix issue with DHCP renewal with same configuration.
