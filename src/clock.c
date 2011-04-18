@@ -27,7 +27,70 @@
 
 #include "connman.h"
 
+enum time_updates {
+	TIME_UPDATES_UNKNOWN = 0,
+	TIME_UPDATES_MANUAL  = 1,
+	TIME_UPDATES_AUTO    = 2,
+};
+
+enum timezone_updates {
+	TIMEZONE_UPDATES_UNKNOWN = 0,
+	TIMEZONE_UPDATES_MANUAL  = 1,
+	TIMEZONE_UPDATES_AUTO    = 2,
+};
+
+static enum time_updates time_updates_config = TIME_UPDATES_AUTO;
+static enum timezone_updates timezone_updates_config = TIMEZONE_UPDATES_AUTO;
+
 static char **timeservers_config = NULL;
+
+static const char *time_updates2string(enum time_updates value)
+{
+	switch (value) {
+	case TIME_UPDATES_UNKNOWN:
+		break;
+	case TIME_UPDATES_MANUAL:
+		return "manual";
+	case TIME_UPDATES_AUTO:
+		return "auto";
+	}
+
+	return NULL;
+}
+
+static enum time_updates string2time_updates(const char *value)
+{
+	if (g_strcmp0(value, "manual") == 0)
+		return TIME_UPDATES_MANUAL;
+	else if (g_strcmp0(value, "auto") == 0)
+		return TIME_UPDATES_AUTO;
+
+	return TIME_UPDATES_UNKNOWN;
+}
+
+static const char *timezone_updates2string(enum timezone_updates value)
+{
+	switch (value) {
+	case TIMEZONE_UPDATES_UNKNOWN:
+		break;
+	case TIMEZONE_UPDATES_MANUAL:
+		return "manual";
+	case TIMEZONE_UPDATES_AUTO:
+		return "auto";
+	}
+
+	return NULL;
+}
+
+static enum timezone_updates string2timezone_updates(const char *value)
+{
+	if (g_strcmp0(value, "manual") == 0)
+		return TIMEZONE_UPDATES_MANUAL;
+	else if (g_strcmp0(value, "auto") == 0)
+		return TIMEZONE_UPDATES_AUTO;
+
+        return TIMEZONE_UPDATES_UNKNOWN;
+}
 
 static void append_timeservers(DBusMessageIter *iter, void *user_data)
 {
@@ -47,6 +110,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	const char *str;
 
 	DBG("conn %p", conn);
 
@@ -57,6 +121,16 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	dbus_message_iter_init_append(reply, &array);
 
 	connman_dbus_dict_open(&array, &dict);
+
+	str = time_updates2string(time_updates_config);
+	if (str != NULL)
+		connman_dbus_dict_append_basic(&dict, "TimeUpdates",
+						DBUS_TYPE_STRING, &str);
+
+	str = timezone_updates2string(timezone_updates_config);
+	if (str != NULL)
+		connman_dbus_dict_append_basic(&dict, "TimezoneUpdates",
+						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_array(&dict, "Timeservers",
 				DBUS_TYPE_STRING, append_timeservers, NULL);
@@ -84,7 +158,49 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "Timeservers") == TRUE) {
+	if (g_str_equal(name, "TimeUpdates") == TRUE) {
+		const char *strval;
+		enum time_updates newval;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &strval);
+		newval = string2time_updates(strval);
+
+		if (newval == TIME_UPDATES_UNKNOWN)
+			return __connman_error_invalid_arguments(msg);
+
+		if (newval == time_updates_config)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+		time_updates_config = newval;
+
+		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_CLOCK_INTERFACE, "TimeUpdates",
+				DBUS_TYPE_STRING, &strval);
+	} else if (g_str_equal(name, "TimezoneUpdates") == TRUE) {
+		const char *strval;
+		enum timezone_updates newval;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &strval);
+		newval = string2timezone_updates(strval);
+
+		if (newval == TIMEZONE_UPDATES_UNKNOWN)
+			return __connman_error_invalid_arguments(msg);
+
+		if (newval == timezone_updates_config)
+			return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+		timezone_updates_config = newval;
+
+		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_CLOCK_INTERFACE, "TimezoneUpdates",
+				DBUS_TYPE_STRING, &strval);
+	} else if (g_str_equal(name, "Timeservers") == TRUE) {
 		DBusMessageIter entry;
 		GString *str;
 
