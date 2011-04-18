@@ -5,6 +5,8 @@ import gobject
 import dbus
 import dbus.mainloop.glib
 
+from dbus.lowlevel import MethodCallMessage, HANDLER_RESULT_NOT_YET_HANDLED
+
 def property_changed(name, value, path, interface):
 	iface = interface[interface.rfind(".") + 1:]
 	if name in ["Strength", "Priority"]:
@@ -12,6 +14,17 @@ def property_changed(name, value, path, interface):
 	else:
 		val = str(value)
 	print "{%s} [%s] %s = %s" % (iface, path, name, val)
+
+def message_filter(connection, message):
+	if not isinstance(message, MethodCallMessage):
+		return HANDLER_RESULT_NOT_YET_HANDLED
+
+	interface = message.get_interface()
+	path = message.get_path()
+	name = message.get_member()
+	args = message.get_args_list()
+
+	property_changed(name, args, path, interface)
 
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
@@ -23,6 +36,10 @@ if __name__ == '__main__':
 					signal_name = "PropertyChanged",
 						path_keyword="path",
 						interface_keyword="interface")
+
+	bus.add_match_string("member=Change,interface=net.connman.Session")
+	bus.add_match_string("member=Update,interface=net.connman.Notification")
+	bus.add_message_filter(message_filter)
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
