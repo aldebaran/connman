@@ -275,6 +275,7 @@ int main(int argc, char *argv[])
 	__connman_profile_init();
 	__connman_config_init();
 	__connman_stats_init();
+	__connman_clock_init();
 
 	__connman_resolver_init(option_dnsproxy);
 	__connman_ipconfig_init();
@@ -316,6 +317,7 @@ int main(int argc, char *argv[])
 	__connman_ipconfig_cleanup();
 	__connman_resolver_cleanup();
 
+	__connman_clock_cleanup();
 	__connman_stats_cleanup();
 	__connman_config_cleanup();
 	__connman_profile_cleanup();

@@ -54,6 +54,9 @@ DBusMessage *__connman_error_invalid_property(DBusMessage *msg);
 int __connman_manager_init(void);
 void __connman_manager_cleanup(void);
 
+int __connman_clock_init(void);
+void __connman_clock_cleanup(void);
+
 int __connman_agent_init(void);
 void __connman_agent_cleanup(void);
 
