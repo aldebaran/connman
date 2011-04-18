@@ -791,6 +791,10 @@ static DBusMessage *connect_session(DBusConnection *conn,
 	DBG("session %p", session);
 
 	info->connect = TRUE;
+
+	if (ecall_session != NULL && ecall_session != session)
+		return __connman_error_failed(msg, EBUSY);
+
 	session->info_dirty = TRUE;
 
 	g_timeout_add_seconds(0, session_cb, session);
@@ -807,6 +811,10 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	DBG("session %p", session);
 
 	info->connect = FALSE;
+
+	if (ecall_session != NULL && ecall_session != session)
+		return __connman_error_failed(msg, EBUSY);
+
 	session->info_dirty = TRUE;
 
 	g_timeout_add_seconds(0, session_cb, session);
