@@ -104,6 +104,12 @@ void connman_dbus_property_append_basic(DBusMessageIter *iter,
 	case DBUS_TYPE_INT32:
 		signature = DBUS_TYPE_INT32_AS_STRING;
 		break;
+	case DBUS_TYPE_UINT64:
+		signature = DBUS_TYPE_UINT64_AS_STRING;
+		break;
+	case DBUS_TYPE_INT64:
+		signature = DBUS_TYPE_INT64_AS_STRING;
+		break;
 	case DBUS_TYPE_OBJECT_PATH:
 		signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
 		break;
