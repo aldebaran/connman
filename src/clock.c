@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <sys/time.h>
+
 #include <gdbus.h>
 
 #include "connman.h"
@@ -42,6 +44,7 @@ enum timezone_updates {
 static enum time_updates time_updates_config = TIME_UPDATES_AUTO;
 static enum timezone_updates timezone_updates_config = TIMEZONE_UPDATES_AUTO;
 
+static char *timezone_config = NULL;
 static char **timeservers_config = NULL;
 
 static const char *time_updates2string(enum time_updates value)
@@ -110,6 +113,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
+	struct timeval tv;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -122,10 +126,21 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_open(&array, &dict);
 
+	if (gettimeofday(&tv, NULL) == 0) {
+		dbus_uint64_t val = tv.tv_sec;
+
+		connman_dbus_dict_append_basic(&dict, "Time",
+						DBUS_TYPE_UINT64, &val);
+	}
+
 	str = time_updates2string(time_updates_config);
 	if (str != NULL)
 		connman_dbus_dict_append_basic(&dict, "TimeUpdates",
 						DBUS_TYPE_STRING, &str);
+
+	if (timezone_config != NULL)
+		connman_dbus_dict_append_basic(&dict, "Timezone",
+					DBUS_TYPE_STRING, &timezone_config);
 
 	str = timezone_updates2string(timezone_updates_config);
 	if (str != NULL)
@@ -264,6 +279,8 @@ int __connman_clock_init(void)
 	if (connection == NULL)
 		return -1;
 
+	timezone_config = __connman_timezone_lookup();
+
 	g_dbus_register_interface(connection, CONNMAN_MANAGER_PATH,
 						CONNMAN_CLOCK_INTERFACE,
 						clock_methods, clock_signals,
@@ -284,5 +301,6 @@ void __connman_clock_cleanup(void)
 
 	dbus_connection_unref(connection);
 
+	g_free(timezone_config);
 	g_strfreev(timeservers_config);
 }
