@@ -173,7 +173,24 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 	type = dbus_message_iter_get_arg_type(&value);
 
-	if (g_str_equal(name, "TimeUpdates") == TRUE) {
+	if (g_str_equal(name, "Time") == TRUE) {
+		struct timeval tv;
+		dbus_uint64_t newval;
+
+		if (type != DBUS_TYPE_UINT64)
+			return __connman_error_invalid_arguments(msg);
+
+		if (time_updates_config != TIME_UPDATES_MANUAL)
+			return __connman_error_permission_denied(msg);
+
+		dbus_message_iter_get_basic(&value, &newval);
+
+		tv.tv_sec = newval;
+		tv.tv_usec = 0;
+
+		if (settimeofday(&tv, NULL) < 0)
+			return __connman_error_invalid_arguments(msg);
+	} else if (g_str_equal(name, "TimeUpdates") == TRUE) {
 		const char *strval;
 		enum time_updates newval;
 
