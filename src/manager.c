@@ -591,6 +591,40 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *request_private_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender;
+	int  err;
+
+	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
+
+	err = __connman_private_network_request(sender);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *release_private_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender;
+	int err;
+
+	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
+
+	err = __connman_private_network_release(sender);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property       },
@@ -615,6 +649,10 @@ static GDBusMethodTable manager_methods[] = {
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
 	{ "CreateSession",     "a{sv}o", "o",    create_session     },
 	{ "DestroySession",    "o",     "",      destroy_session    },
+	{ "RequestPrivateNetwork",    "",     "",
+						request_private_network },
+	{ "ReleasePrivateNetwork",    "",     "",
+						release_private_network },
 	{ },
 };
 

@@ -35,6 +35,8 @@
 
 #include <gdhcp/gdhcp.h>
 
+#include <gdbus.h>
+
 #define BRIDGE_PROC_DIR "/proc/sys/net/bridge"
 
 #define BRIDGE_NAME "tether"
@@ -48,6 +50,13 @@
 static char *default_interface = NULL;
 static volatile gint tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
+static DBusConnection *connection;
+static GHashTable *pn_hash;
+
+struct connman_private_network {
+	char *owner;
+	guint watch;
+};
 
 const char *__connman_tethering_get_bridge(void)
 {
@@ -368,11 +377,75 @@ void __connman_tethering_update_interface(const char *interface)
 	enable_nat(interface);
 }
 
+static void remove_private_network(gpointer user_data)
+{
+	struct connman_private_network *pn = user_data;
+
+	if (pn->watch > 0) {
+		g_dbus_remove_watch(connection, pn->watch);
+		pn->watch = 0;
+	}
+
+	g_free(pn->owner);
+	g_free(pn);
+}
+
+static void owner_disconnect(DBusConnection *connection, void *user_data)
+{
+	struct connman_private_network *pn = user_data;
+
+	DBG("%s died", pn->owner);
+
+	pn->watch = 0;
+
+	g_hash_table_remove(pn_hash, pn->owner);
+}
+
+int __connman_private_network_request(const char *owner)
+{
+	struct connman_private_network *pn;
+
+	pn = g_hash_table_lookup(pn_hash, owner);
+	if (pn != NULL)
+		return -EEXIST;
+
+	pn = g_try_new0(struct connman_private_network, 1);
+	if (pn == NULL)
+		return -ENOMEM;
+
+	pn->owner = g_strdup(owner);
+	pn->watch = g_dbus_add_disconnect_watch(connection, pn->owner,
+					owner_disconnect, pn, NULL);
+
+	g_hash_table_insert(pn_hash, pn->owner, pn);
+
+	return 0;
+}
+
+int __connman_private_network_release(const char *owner)
+{
+	struct connman_private_network *pn;
+
+	pn = g_hash_table_lookup(pn_hash, owner);
+	if (pn == NULL)
+		return -EACCES;
+
+	g_hash_table_remove(pn_hash, owner);
+	return 0;
+}
+
 int __connman_tethering_init(void)
 {
 	DBG("");
 
 	tethering_enabled = 0;
+
+	connection = connman_dbus_get_connection();
+	if (connection == NULL)
+		return -EFAULT;
+
+	pn_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, remove_private_network);
 
 	return 0;
 }
@@ -387,4 +460,10 @@ void __connman_tethering_cleanup(void)
 		disable_bridge(BRIDGE_NAME);
 		remove_bridge(BRIDGE_NAME);
 	}
+
+	if (connection == NULL)
+		return;
+
+	g_hash_table_destroy(pn_hash);
+	dbus_connection_unref(connection);
 }

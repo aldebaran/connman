@@ -456,6 +456,9 @@ void __connman_tethering_update_interface(const char *interface);
 void __connman_tethering_set_enabled(void);
 void __connman_tethering_set_disabled(void);
 
+int __connman_private_network_request(const char *owner);
+int __connman_private_network_release(const char *owner);
+
 #include <connman/provider.h>
 
 void __connman_provider_append_properties(struct connman_provider *provider, DBusMessageIter *iter);
