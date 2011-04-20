@@ -268,11 +268,59 @@ done:
 	return zone;
 }
 
+static int write_file(void *src_map, struct stat *src_st, const char *pathname)
+{
+	int fd;
+	ssize_t written;
+
+	DBG("pathname %s", pathname);
+
+	fd = open(pathname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	if (fd < 0)
+		return -EIO;
+
+	written = write(fd, src_map, src_st->st_size);
+
+	close(fd);
+
+	if (written < 0)
+		return -EIO;
+
+	return 0;
+}
+
 int __connman_timezone_change(const char *zone)
 {
+	struct stat st;
+	char *map, pathname[PATH_MAX];
+	int fd, err;
+
 	DBG("zone %s", zone);
 
-	return -EIO;
+	snprintf(pathname, PATH_MAX, "%s/%s", USR_SHARE_ZONEINFO, zone);
+
+	fd = open(pathname, O_RDONLY);
+	if (fd < 0)
+		return -EINVAL;
+
+	if (fstat(fd, &st) < 0) {
+		close(fd);
+		return -EIO;
+	}
+
+	map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
+	if (map == NULL || map == MAP_FAILED) {
+		close(fd);
+		return -EIO;
+	}
+
+	err = write_file(map, &st, ETC_LOCALTIME);
+
+	munmap(map, st.st_size);
+
+	close(fd);
+
+	return err;
 }
 
 static guint inotify_watch = 0;
