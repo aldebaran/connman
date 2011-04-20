@@ -142,7 +142,7 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
-			tools/stats-tool
+			tools/stats-tool tools/private-network-test
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
@@ -177,6 +177,8 @@ tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
 tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
+
+tools_private_network_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \
