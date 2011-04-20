@@ -3,6 +3,7 @@
  *  Connection Manager
  *
  *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2011	ProFUSION embedded systems
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -52,6 +53,12 @@
 
 #define DEFAULT_MTU	1500
 
+#define PRIVATE_NETWORK_IP "192.168.219.1"
+#define PRIVATE_NETWORK_PEER_IP "192.168.219.2"
+#define PRIVATE_NETWORK_NETMASK "255.255.255.0"
+#define PRIVATE_NETWORK_PRIMARY_DNS BRIDGE_DNS
+#define PRIVATE_NETWORK_SECONDARY_DNS "8.8.4.4"
+
 static char *default_interface = NULL;
 static volatile gint tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
@@ -62,10 +69,15 @@ struct connman_private_network {
 	char *owner;
 	guint watch;
 	DBusMessage *msg;
+	DBusMessage *reply;
 	int fd;
 	char *interface;
 	int index;
 	guint iface_watch;
+	const char *server_ip;
+	const char *peer_ip;
+	const char *primary_dns;
+	const char *secondary_dns;
 };
 
 const char *__connman_tethering_get_bridge(void)
@@ -391,11 +403,66 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 		void *data)
 {
 	struct connman_private_network *pn = data;
+	unsigned char prefixlen;
+	DBusMessage *reply;
+	DBusMessageIter array, dict;
+	int err;
 
 	DBG("index %d flags %d change %d", pn->index,  flags, change);
 
-	g_dbus_send_reply(connection, pn->msg, DBUS_TYPE_UNIX_FD, &pn->fd,
-							DBUS_TYPE_INVALID);
+	if (flags & IFF_UP)
+		return;
+
+	prefixlen =
+		__connman_ipconfig_netmask_prefix_len(PRIVATE_NETWORK_NETMASK);
+
+	if ((__connman_inet_modify_address(RTM_NEWADDR,
+				NLM_F_REPLACE | NLM_F_ACK, pn->index, AF_INET,
+				pn->server_ip, pn->peer_ip,
+				prefixlen, NULL)) < 0) {
+		DBG("address setting failed");
+		return;
+	}
+
+	connman_inet_ifup(pn->index);
+
+	err = enable_nat(default_interface);
+	if (err < 0) {
+		connman_error("failed to enable NAT on %s", default_interface);
+		goto error;
+	}
+
+	reply = dbus_message_new_method_return(pn->msg);
+
+	if (reply == NULL)
+		goto error;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_UNIX_FD, &pn->fd);
+
+	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_basic(&dict, "ServerIPv4",
+						DBUS_TYPE_STRING, &pn->server_ip);
+	connman_dbus_dict_append_basic(&dict, "PeerIPv4",
+						DBUS_TYPE_STRING, &pn->peer_ip);
+	connman_dbus_dict_append_basic(&dict, "PrimaryDNS",
+						DBUS_TYPE_STRING, &pn->primary_dns);
+	connman_dbus_dict_append_basic(&dict, "SecondaryDNS",
+						DBUS_TYPE_STRING, &pn->secondary_dns);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	g_dbus_send_message(connection, reply);
+
+	return;
+
+error:
+	reply = __connman_error_failed(pn->msg, -err);
+	g_dbus_send_message(connection, reply);
+
+	g_hash_table_remove(pn_hash, pn->owner);
 }
 
 static void remove_private_network(gpointer user_data)
@@ -405,6 +472,8 @@ static void remove_private_network(gpointer user_data)
 	close(pn->fd);
 
 	connman_rtnl_remove_watch(pn->iface_watch);
+
+	disable_nat(default_interface);
 
 	if (pn->watch > 0) {
 		g_dbus_remove_watch(connection, pn->watch);
@@ -463,6 +532,10 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	pn->fd = fd;
 	pn->interface = iface;
 	pn->index = index;
+	pn->server_ip = PRIVATE_NETWORK_IP;
+	pn->peer_ip = PRIVATE_NETWORK_PEER_IP;
+	pn->primary_dns = PRIVATE_NETWORK_PRIMARY_DNS;
+	pn->secondary_dns = PRIVATE_NETWORK_SECONDARY_DNS;
 
 	pn->iface_watch = connman_rtnl_add_newlink_watch(index,
 						setup_tun_interface, pn);
