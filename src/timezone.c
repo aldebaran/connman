@@ -268,6 +268,13 @@ done:
 	return zone;
 }
 
+int __connman_timezone_change(const char *zone)
+{
+	DBG("zone %s", zone);
+
+	return -EIO;
+}
+
 static guint inotify_watch = 0;
 
 static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,

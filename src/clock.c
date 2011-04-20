@@ -211,6 +211,19 @@ static DBusMessage *set_property(DBusConnection *conn,
 		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "TimeUpdates",
 				DBUS_TYPE_STRING, &strval);
+	} else if (g_str_equal(name, "Timezone") == TRUE) {
+		const char *strval;
+
+		if (type != DBUS_TYPE_STRING)
+			return __connman_error_invalid_arguments(msg);
+
+		if (timezone_updates_config != TIMEZONE_UPDATES_MANUAL)
+			return __connman_error_permission_denied(msg);
+
+		dbus_message_iter_get_basic(&value, &strval);
+
+		if (__connman_timezone_change(strval) < 0)
+                        return __connman_error_invalid_arguments(msg);
 	} else if (g_str_equal(name, "TimezoneUpdates") == TRUE) {
 		const char *strval;
 		enum timezone_updates newval;

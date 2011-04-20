@@ -63,6 +63,7 @@ int __connman_timezone_init(void);
 void __connman_timezone_cleanup(void);
 
 char *__connman_timezone_lookup(void);
+int __connman_timezone_change(const char *zone);
 
 int __connman_agent_init(void);
 void __connman_agent_cleanup(void);
