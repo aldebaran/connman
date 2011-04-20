@@ -189,6 +189,31 @@ Methods		dict GetProperties()
 			If an application exits unexpectatly the session
 			will be automatically destroyed.
 
+		fd, dict {settings} RequestPrivateNetwork(dict options)
+								[experimental]
+
+			Request a new Private Network, whick includes the
+			creation of a tun/tap interface, and IP
+			configuration, NAT and IP forwarding on that
+			interface.
+			A file descritor to the interface is returned together
+			with the IP, gateway and DNS settings for the
+			interface.
+
+			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
+
+		void ReleasePrivateNetwork(fd) [experimental]
+
+			Releases a private network.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+Signals		PropertyChanged(string name, variant value)
+
+			This signal indicates a changed value of the given
+			property.
+
 		StateChanged(string state)
 
 			This signal is similar to the PropertyChanged signal
