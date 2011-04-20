@@ -57,6 +57,11 @@ void __connman_manager_cleanup(void);
 int __connman_clock_init(void);
 void __connman_clock_cleanup(void);
 
+void __connman_clock_update_timezone(void);
+
+int __connman_timezone_init(void);
+void __connman_timezone_cleanup(void);
+
 char *__connman_timezone_lookup(void);
 
 int __connman_agent_init(void);

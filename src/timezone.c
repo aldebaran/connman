@@ -31,6 +31,9 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <sys/mman.h>
+#include <sys/inotify.h>
+
+#include <glib.h>
 
 #include "connman.h"
 
@@ -95,11 +98,11 @@ static char *read_key_file(const char *pathname, const char *key)
 		if (val != NULL) {
 			end = memchr(val + 1, '"', end - val - 1);
 			if (end != NULL)
-				str = strndup(val + 1, end - val - 1);
+				str = g_strndup(val + 1, end - val - 1);
 			else
 				str = NULL;
 		} else
-			str = strndup(ptr + keylen + 1, ptrlen - keylen - 1);
+			str = g_strndup(ptr + keylen + 1, ptrlen - keylen - 1);
 	} else
 		str = NULL;
 
@@ -147,13 +150,19 @@ static int compare_file(void *src_map, struct stat *src_st,
 }
 
 static char *find_origin(void *src_map, struct stat *src_st,
-						const char *basepath)
+				const char *basepath, const char *subpath)
 {
 	DIR *dir;
 	struct dirent *d;
 	char *str, pathname[PATH_MAX];
 
-	dir = opendir(basepath);
+	if (subpath == NULL)
+		strncpy(pathname, basepath, sizeof(pathname));
+	else
+		snprintf(pathname, sizeof(pathname),
+					"%s/%s", basepath, subpath);
+
+	dir = opendir(pathname);
 	if (dir == NULL)
 		return NULL;
 
@@ -164,17 +173,30 @@ static char *find_origin(void *src_map, struct stat *src_st,
 				strcmp(d->d_name, "right") == 0)
 			continue;
 
-		snprintf(pathname, PATH_MAX, "%s/%s", basepath, d->d_name);
-
 		switch (d->d_type) {
 		case DT_REG:
+			if (subpath == NULL)
+				snprintf(pathname, PATH_MAX,
+						"%s/%s", basepath, d->d_name);
+			else
+				snprintf(pathname, PATH_MAX,
+						"%s/%s/%s", basepath,
+							subpath, d->d_name);
+
 			if (compare_file(src_map, src_st, pathname) == 0) {
 				closedir(dir);
-				return strdup(d->d_name);
+				return g_strdup_printf("%s/%s",
+							subpath, d->d_name);
 			}
 			break;
 		case DT_DIR:
-			str = find_origin(src_map, src_st, pathname);
+			if (subpath == NULL)
+				strncpy(pathname, d->d_name, sizeof(pathname));
+			else
+				snprintf(pathname, sizeof(pathname),
+						"%s/%s", subpath, d->d_name);
+
+			str = find_origin(src_map, src_st, basepath, pathname);
 			if (str != NULL) {
 				closedir(dir);
 				return str;
@@ -201,7 +223,7 @@ char *__connman_timezone_lookup(void)
 
 	fd = open(ETC_LOCALTIME, O_RDONLY);
 	if (fd < 0) {
-		free(zone);
+		g_free(zone);
 		return NULL;
 	}
 
@@ -211,7 +233,7 @@ char *__connman_timezone_lookup(void)
 	if (S_ISREG(st.st_mode)) {
 		map = mmap(0, st.st_size, PROT_READ, MAP_SHARED, fd, 0);
 		if (map == NULL || map == MAP_FAILED) {
-			free(zone);
+			g_free(zone);
 			zone = NULL;
 
 			goto done;
@@ -224,17 +246,17 @@ char *__connman_timezone_lookup(void)
 						USR_SHARE_ZONEINFO, zone);
 
 			if (compare_file(map, &st, pathname) != 0) {
-				free(zone);
+				g_free(zone);
 				zone = NULL;
 			}
 		}
 
 		if (zone == NULL)
-			zone = find_origin(map, &st, USR_SHARE_ZONEINFO);
+			zone = find_origin(map, &st, USR_SHARE_ZONEINFO, NULL);
 
 		munmap(map, st.st_size);
 	} else {
-		free(zone);
+		g_free(zone);
 		zone = NULL;
 	}
 
@@ -244,4 +266,109 @@ done:
 	DBG("localtime zone %s", zone);
 
 	return zone;
+}
+
+static guint inotify_watch = 0;
+
+static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	char buffer[256];
+	void *ptr = buffer;
+	GIOStatus status;
+	gsize bytes_read;
+
+	DBG("");
+
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
+		inotify_watch = 0;
+		return FALSE;
+	}
+
+	status = g_io_channel_read_chars(channel, buffer, sizeof(buffer),
+							&bytes_read, NULL);
+
+	switch (status) {
+	case G_IO_STATUS_NORMAL:
+		break;
+	case G_IO_STATUS_AGAIN:
+		return TRUE;
+	default:
+		inotify_watch = 0;
+		return FALSE;
+	}
+
+	DBG("bytes read %ld", bytes_read);
+
+	while (bytes_read > 0) {
+		struct inotify_event *event = ptr;
+
+		if (bytes_read < sizeof(*event))
+			break;
+
+		ptr += sizeof(*event);
+		bytes_read -= sizeof(*event);
+
+		if (event->len == 0)
+			continue;
+
+		if (bytes_read < event->len)
+			break;
+
+		ptr += event->len;
+		bytes_read -= event->len;
+
+		if (g_strcmp0(event->name, "localtime") == 0)
+			__connman_clock_update_timezone();
+	}
+
+	return TRUE;
+}
+
+int __connman_timezone_init(void)
+{
+	GIOChannel *channel;
+	char *dirname;
+	int fd, wd;
+
+	DBG("");
+
+	fd = inotify_init1(IN_NONBLOCK | IN_CLOEXEC);
+	if (fd < 0)
+		return -EIO;
+
+	channel = g_io_channel_unix_new(fd);
+	if (channel == NULL) {
+		close(fd);
+		return -EIO;
+	}
+
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
+	inotify_watch = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
+				inotify_data, NULL);
+
+	g_io_channel_unref(channel);
+
+	dirname = g_path_get_dirname(ETC_LOCALTIME);
+
+	wd = inotify_add_watch(fd, dirname, IN_DONT_FOLLOW |
+						IN_MODIFY | IN_MOVED_TO);
+
+	g_free(dirname);
+
+	return 0;
+}
+
+void __connman_timezone_cleanup(void)
+{
+	DBG("");
+
+	if (inotify_watch > 0) {
+		g_source_remove(inotify_watch);
+		inotify_watch = 0;
+	}
 }

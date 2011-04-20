@@ -288,6 +288,21 @@ static GDBusSignalTable clock_signals[] = {
 
 static DBusConnection *connection = NULL;
 
+void __connman_clock_update_timezone(void)
+{
+	DBG("");
+
+	g_free(timezone_config);
+	timezone_config = __connman_timezone_lookup();
+
+	if (timezone_config == NULL)
+		return;
+
+	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_CLOCK_INTERFACE, "Timezone",
+				DBUS_TYPE_STRING, &timezone_config);
+}
+
 int __connman_clock_init(void)
 {
 	DBG("");
@@ -295,6 +310,8 @@ int __connman_clock_init(void)
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -1;
+
+	__connman_timezone_init();
 
 	timezone_config = __connman_timezone_lookup();
 
@@ -317,6 +334,8 @@ void __connman_clock_cleanup(void)
 						CONNMAN_CLOCK_INTERFACE);
 
 	dbus_connection_unref(connection);
+
+	__connman_timezone_cleanup();
 
 	g_free(timezone_config);
 	g_strfreev(timeservers_config);
