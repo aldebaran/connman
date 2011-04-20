@@ -305,7 +305,7 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 		return FALSE;
 	}
 
-	DBG("bytes read %ld", bytes_read);
+	DBG("bytes read %zd", bytes_read);
 
 	while (bytes_read > 0) {
 		struct inotify_event *event = ptr;
