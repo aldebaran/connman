@@ -75,6 +75,7 @@ int connman_inet_remove_from_bridge(int index, const char *bridge);
 
 int connman_inet_set_mtu(int index, int mtu);
 int connman_inet_setup_tunnel(char *tunnel, int mtu);
+int connman_inet_create_tunnel(char **iface);
 
 #ifdef __cplusplus
 }

@@ -40,6 +40,8 @@
 #include <net/if.h>
 #include <net/if_arp.h>
 #include <netinet/icmp6.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
 
 #include "connman.h"
 
@@ -1263,6 +1265,40 @@ int connman_inet_setup_tunnel(char *tunnel, int mtu)
 done:
 	close(sk);
 	return err;
+}
+
+int connman_inet_create_tunnel(char **iface)
+{
+	struct ifreq ifr;
+	int i, fd;
+
+	fd = open("/dev/net/tun", O_RDWR);
+	if (fd < 0) {
+		i = -errno;
+		connman_error("Failed to open /dev/net/tun: %s",
+				strerror(errno));
+		return i;
+	}
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
+
+	for (i = 0; i < 256; i++) {
+		sprintf(ifr.ifr_name, "tun%d", i);
+
+		if (!ioctl(fd, TUNSETIFF, (void *)&ifr))
+			break;
+	}
+
+	if (i == 256) {
+		connman_error("Failed to find available tun device");
+		close(fd);
+		return -ENODEV;
+	}
+
+	*iface = g_strdup(ifr.ifr_name);
+
+	return fd;
 }
 
 struct rs_cb_data {

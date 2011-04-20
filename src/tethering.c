@@ -30,6 +30,9 @@
 #include <sys/ioctl.h>
 #include <net/if.h>
 #include <linux/sockios.h>
+#include <string.h>
+#include <fcntl.h>
+#include <linux/if_tun.h>
 
 #include "connman.h"
 
@@ -47,6 +50,8 @@
 #define BRIDGE_IP_END "192.168.218.200"
 #define BRIDGE_DNS "8.8.8.8"
 
+#define DEFAULT_MTU	1500
+
 static char *default_interface = NULL;
 static volatile gint tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
@@ -56,6 +61,11 @@ static GHashTable *pn_hash;
 struct connman_private_network {
 	char *owner;
 	guint watch;
+	DBusMessage *msg;
+	int fd;
+	char *interface;
+	int index;
+	guint iface_watch;
 };
 
 const char *__connman_tethering_get_bridge(void)
@@ -377,15 +387,31 @@ void __connman_tethering_update_interface(const char *interface)
 	enable_nat(interface);
 }
 
+static void setup_tun_interface(unsigned int flags, unsigned change,
+		void *data)
+{
+	struct connman_private_network *pn = data;
+
+	DBG("index %d flags %d change %d", pn->index,  flags, change);
+
+	g_dbus_send_reply(connection, pn->msg, DBUS_TYPE_UNIX_FD, &pn->fd,
+							DBUS_TYPE_INVALID);
+}
+
 static void remove_private_network(gpointer user_data)
 {
 	struct connman_private_network *pn = user_data;
+
+	close(pn->fd);
+
+	connman_rtnl_remove_watch(pn->iface_watch);
 
 	if (pn->watch > 0) {
 		g_dbus_remove_watch(connection, pn->watch);
 		pn->watch = 0;
 	}
 
+	g_free(pn->interface);
 	g_free(pn->owner);
 	g_free(pn);
 }
@@ -401,25 +427,54 @@ static void owner_disconnect(DBusConnection *connection, void *user_data)
 	g_hash_table_remove(pn_hash, pn->owner);
 }
 
-int __connman_private_network_request(const char *owner)
+int __connman_private_network_request(DBusMessage *msg, const char *owner)
 {
 	struct connman_private_network *pn;
+	char *iface = NULL;
+	int index, fd, err;
 
 	pn = g_hash_table_lookup(pn_hash, owner);
 	if (pn != NULL)
 		return -EEXIST;
 
+	fd = connman_inet_create_tunnel(&iface);
+	if (fd < 0)
+		return fd;
+
+	index = connman_inet_ifindex(iface);
+	if (index < 0) {
+		err = -ENODEV;
+		goto error;
+	}
+	DBG("inteface %s", iface);
+
+	err = connman_inet_set_mtu(index, DEFAULT_MTU);
+
 	pn = g_try_new0(struct connman_private_network, 1);
-	if (pn == NULL)
-		return -ENOMEM;
+	if (pn == NULL) {
+		err = -ENOMEM;
+		goto error;
+	}
 
 	pn->owner = g_strdup(owner);
 	pn->watch = g_dbus_add_disconnect_watch(connection, pn->owner,
 					owner_disconnect, pn, NULL);
+	pn->msg = msg;
+	pn->fd = fd;
+	pn->interface = iface;
+	pn->index = index;
+
+	pn->iface_watch = connman_rtnl_add_newlink_watch(index,
+						setup_tun_interface, pn);
 
 	g_hash_table_insert(pn_hash, pn->owner, pn);
 
 	return 0;
+
+error:
+	close(fd);
+	g_free(iface);
+	return err;
 }
 
 int __connman_private_network_release(const char *owner)

@@ -601,11 +601,11 @@ static DBusMessage *request_private_network(DBusConnection *conn,
 
 	sender = dbus_message_get_sender(msg);
 
-	err = __connman_private_network_request(sender);
+	err = __connman_private_network_request(msg, sender);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+	return NULL;
 }
 
 static DBusMessage *release_private_network(DBusConnection *conn,
@@ -649,8 +649,8 @@ static GDBusMethodTable manager_methods[] = {
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
 	{ "CreateSession",     "a{sv}o", "o",    create_session     },
 	{ "DestroySession",    "o",     "",      destroy_session    },
-	{ "RequestPrivateNetwork",    "",     "",
-						request_private_network },
+	{ "RequestPrivateNetwork",    "",     "h", request_private_network,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ReleasePrivateNetwork",    "",     "",
 						release_private_network },
 	{ },
