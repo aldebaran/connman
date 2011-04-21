@@ -1199,7 +1199,8 @@ int __connman_session_create(DBusMessage *msg)
 	}
 
 	info_last->bearer = info->bearer;
-	info_last->online = info->priority;
+	info_last->online = info->online;
+	info_last->priority = info->priority;
 	info_last->avoid_handover = info->avoid_handover;
 	info_last->stay_connected = info->stay_connected;
 	info_last->periodic_connect = info->periodic_connect;
