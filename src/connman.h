@@ -681,6 +681,8 @@ int __connman_iptables_commit(const char *table_name);
 
 int __connman_dnsproxy_init(void);
 void __connman_dnsproxy_cleanup(void);
+int __connman_dnsproxy_add_listener(const char *interface);
+void __connman_dnsproxy_remove_listener(const char *interface);
 int __connman_dnsproxy_append(const char *interface, const char *domain, const char *server);
 int __connman_dnsproxy_remove(const char *interface, const char *domain, const char *server);
 void __connman_dnsproxy_flush(void);

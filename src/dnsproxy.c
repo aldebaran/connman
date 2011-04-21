@@ -112,17 +112,22 @@ struct request_data {
 	gpointer name;
 	gpointer resp;
 	gsize resplen;
+	struct listener_data *ifdata;
+};
+
+struct listener_data {
+	char *ifname;
+	GIOChannel *udp_listener_channel;
+	guint udp_listener_watch;
+	GIOChannel *tcp_listener_channel;
+	guint tcp_listener_watch;
 };
 
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
 static guint16 request_id = 0x0000;
-
-static GIOChannel *udp_listener_channel = NULL;
-static guint udp_listener_watch = 0;
-static GIOChannel *tcp_listener_channel = NULL;
-static guint tcp_listener_watch = 0;
+static GHashTable *listener_table = NULL;
 
 static int protocol_offset(int protocol)
 {
@@ -215,11 +220,14 @@ static void send_response(int sk, unsigned char *buf, int len,
 static gboolean request_timeout(gpointer user_data)
 {
 	struct request_data *req = user_data;
+	struct listener_data *ifdata;
 
 	DBG("id 0x%04x", req->srcid);
 
 	if (req == NULL)
 		return FALSE;
+
+	ifdata = req->ifdata;
 
 	request_list = g_slist_remove(request_list, req);
 	req->numserv--;
@@ -227,7 +235,7 @@ static gboolean request_timeout(gpointer user_data)
 	if (req->resplen > 0 && req->resp != NULL) {
 		int sk, err;
 
-		sk = g_io_channel_unix_get_fd(udp_listener_channel);
+		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
 
 		err = sendto(sk, req->resp, req->resplen, 0,
 			     &req->sa, req->sa_len);
@@ -245,7 +253,8 @@ static gboolean request_timeout(gpointer user_data)
 
 			hdr = (void *) (req->request);
 			hdr->id = req->srcid;
-			sk = g_io_channel_unix_get_fd(udp_listener_channel);
+			sk = g_io_channel_unix_get_fd(
+						ifdata->udp_listener_channel);
 			send_response(sk, req->request, req->request_len,
 				      &req->sa, req->sa_len, IPPROTO_UDP);
 		}
@@ -386,6 +395,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	struct domain_hdr *hdr;
 	struct request_data *req;
 	int dns_id, sk, err, offset = protocol_offset(protocol);
+	struct listener_data *ifdata;
 
 	if (offset < 0)
 		return offset;
@@ -400,6 +410,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 		return -EINVAL;
 
 	DBG("id 0x%04x rcode %d", hdr->id, hdr->rcode);
+
+	ifdata = req->ifdata;
 
 	reply[offset] = req->srcid & 0xff;
 	reply[offset + 1] = req->srcid >> 8;
@@ -427,7 +439,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	request_list = g_slist_remove(request_list, req);
 
 	if (protocol == IPPROTO_UDP) {
-		sk = g_io_channel_unix_get_fd(udp_listener_channel);
+		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
 		err = sendto(sk, req->resp, req->resplen, 0,
 			     &req->sa, req->sa_len);
 	} else {
@@ -1095,13 +1107,14 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	struct sockaddr_in6 client_addr;
 	socklen_t client_addr_len = sizeof(client_addr);
 	GSList *list;
+	struct listener_data *ifdata = user_data;
 
 	DBG("condition 0x%x", condition);
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		if (tcp_listener_watch > 0)
-			g_source_remove(tcp_listener_watch);
-		tcp_listener_watch = 0;
+		if (ifdata->tcp_listener_watch > 0)
+			g_source_remove(ifdata->tcp_listener_watch);
+		ifdata->tcp_listener_watch = 0;
 
 		connman_error("Error with TCP listener channel");
 
@@ -1113,7 +1126,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	client_sk = accept(sk, (void *)&client_addr, &client_addr_len);
 	if (client_sk < 0) {
 		connman_error("Accept failure on TCP listener");
-		tcp_listener_watch = 0;
+		ifdata->tcp_listener_watch = 0;
 		return FALSE;
 	}
 
@@ -1151,6 +1164,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	buf[3] = req->dstid >> 8;
 
 	req->numserv = 0;
+	req->ifdata = (struct listener_data *) ifdata;
 	request_list = g_slist_append(request_list, req);
 
 	for (list = server_list; list; list = list->next) {
@@ -1216,10 +1230,11 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	struct sockaddr_in6 client_addr;
 	socklen_t client_addr_len = sizeof(client_addr);
 	int sk, err, len;
+	struct listener_data *ifdata = user_data;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		connman_error("Error with UDP listener channel");
-		udp_listener_watch = 0;
+		ifdata->udp_listener_watch = 0;
 		return FALSE;
 	}
 
@@ -1262,16 +1277,17 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	buf[1] = req->dstid >> 8;
 
 	req->numserv = 0;
+	req->ifdata = (struct listener_data *) ifdata;
 	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 	request_list = g_slist_append(request_list, req);
 
 	return resolv(req, buf, query);
 }
 
-static int create_dns_listener(int protocol)
+static int create_dns_listener(int protocol, const char *ifname)
 {
 	GIOChannel *channel;
-	const char *ifname = "lo", *proto;
+	const char *proto;
 	union {
 		struct sockaddr sa;
 		struct sockaddr_in6 sin6;
@@ -1280,8 +1296,13 @@ static int create_dns_listener(int protocol)
 	socklen_t slen;
 	int sk, type, v6only = 0;
 	int family = AF_INET6;
+	struct listener_data *ifdata;
 
-	DBG("");
+	DBG("interface %s", ifname);
+
+	ifdata = g_hash_table_lookup(listener_table, ifname);
+	if (ifdata == NULL)
+		return -ENODEV;
 
 	switch (protocol) {
 	case IPPROTO_UDP:
@@ -1361,62 +1382,79 @@ static int create_dns_listener(int protocol)
 	g_io_channel_set_close_on_unref(channel, TRUE);
 
 	if (protocol == IPPROTO_TCP) {
-		tcp_listener_channel = channel;
-		tcp_listener_watch = g_io_add_watch(channel,
-					G_IO_IN, tcp_listener_event, NULL);
+		ifdata->tcp_listener_channel = channel;
+		ifdata->tcp_listener_watch = g_io_add_watch(channel,
+				G_IO_IN, tcp_listener_event, (gpointer) ifdata);
 	} else {
-		udp_listener_channel = channel;
-		udp_listener_watch = g_io_add_watch(channel,
-					G_IO_IN, udp_listener_event, NULL);
+		ifdata->udp_listener_channel = channel;
+		ifdata->udp_listener_watch = g_io_add_watch(channel,
+				G_IO_IN, udp_listener_event, (gpointer) ifdata);
 	}
 
 	return 0;
 }
 
-static void destroy_udp_listener(void)
+static void destroy_udp_listener(const char *interface)
 {
-	DBG("");
+	struct listener_data *ifdata;
 
-	if (udp_listener_watch > 0)
-		g_source_remove(udp_listener_watch);
+	DBG("interface %s", interface);
 
-	g_io_channel_unref(udp_listener_channel);
+	ifdata = g_hash_table_lookup(listener_table, interface);
+	if (ifdata == NULL)
+		return;
+
+	if (ifdata->udp_listener_watch > 0)
+		g_source_remove(ifdata->udp_listener_watch);
+
+	g_io_channel_unref(ifdata->udp_listener_channel);
 }
 
-static void destroy_tcp_listener(void)
+static void destroy_tcp_listener(const char *interface)
 {
-	DBG("");
+	struct listener_data *ifdata;
 
-	if (tcp_listener_watch > 0)
-		g_source_remove(tcp_listener_watch);
+	DBG("interface %s", interface);
 
-	g_io_channel_unref(tcp_listener_channel);
+	ifdata = g_hash_table_lookup(listener_table, interface);
+	if (ifdata == NULL)
+		return;
+
+	if (ifdata->tcp_listener_watch > 0)
+		g_source_remove(ifdata->tcp_listener_watch);
+
+	g_io_channel_unref(ifdata->tcp_listener_channel);
 }
 
-static int create_listener(void)
+static int create_listener(const char *interface)
 {
 	int err;
 
-	err = create_dns_listener(IPPROTO_UDP);
+	err = create_dns_listener(IPPROTO_UDP, interface);
 	if (err < 0)
 		return err;
 
-	err = create_dns_listener(IPPROTO_TCP);
+	err = create_dns_listener(IPPROTO_TCP, interface);
 	if (err < 0) {
-		destroy_udp_listener();
+		destroy_udp_listener(interface);
 		return err;
 	}
 
-	__connman_resolvfile_append("lo", NULL, "127.0.0.1");
+	if (g_strcmp0(interface, "lo") == 0)
+		__connman_resolvfile_append("lo", NULL, "127.0.0.1");
 
 	return 0;
 }
 
-static void destroy_listener(void)
+static void destroy_listener(const char *interface)
 {
 	GSList *list;
 
-	__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
+	if (interface == NULL)
+		return;
+
+	if (g_strcmp0(interface, "lo") == 0)
+		__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
 
 	for (list = request_pending_list; list; list = list->next) {
 		struct request_data *req = list->data;
@@ -1450,8 +1488,49 @@ static void destroy_listener(void)
 	g_slist_free(request_list);
 	request_list = NULL;
 
-	destroy_tcp_listener();
-	destroy_udp_listener();
+	destroy_tcp_listener(interface);
+	destroy_udp_listener(interface);
+}
+
+int __connman_dnsproxy_add_listener(const char *interface)
+{
+	struct listener_data *ifdata;
+	int err;
+
+	DBG("interface %s", interface);
+
+	if (g_hash_table_lookup(listener_table, interface) != NULL)
+		return 0;
+
+	ifdata = g_try_new0(struct listener_data, 1);
+	if (ifdata == NULL)
+		return -ENOMEM;
+
+	ifdata->ifname = g_strdup(interface);
+	ifdata->udp_listener_channel = NULL;
+	ifdata->udp_listener_watch = 0;
+	ifdata->tcp_listener_channel = NULL;
+	ifdata->tcp_listener_watch = 0;
+	g_hash_table_insert(listener_table, ifdata->ifname, ifdata);
+
+	err = create_listener(interface);
+	if (err < 0)
+		return err;
+	return 0;
+}
+
+void __connman_dnsproxy_remove_listener(const char *interface)
+{
+	DBG("interface %s", interface);
+
+	destroy_listener(interface);
+
+	g_hash_table_remove(listener_table, interface);
+}
+
+static void remove_listener(gpointer key, gpointer value, gpointer user_data)
+{
+	__connman_dnsproxy_remove_listener(key);
 }
 
 int __connman_dnsproxy_init(void)
@@ -1460,7 +1539,9 @@ int __connman_dnsproxy_init(void)
 
 	DBG("");
 
-	err = create_listener();
+	listener_table = g_hash_table_new_full(g_str_hash, g_str_equal,
+							g_free, g_free);
+	err = __connman_dnsproxy_add_listener("lo");
 	if (err < 0)
 		return err;
 
@@ -1471,7 +1552,8 @@ int __connman_dnsproxy_init(void)
 	return 0;
 
 destroy:
-	destroy_listener();
+	__connman_dnsproxy_remove_listener("lo");
+	g_hash_table_destroy(listener_table);
 
 	return err;
 }
@@ -1482,5 +1564,7 @@ void __connman_dnsproxy_cleanup(void)
 
 	connman_notifier_unregister(&dnsproxy_notifier);
 
-	destroy_listener();
+	g_hash_table_foreach(listener_table, remove_listener, NULL);
+
+	g_hash_table_destroy(listener_table);
 }
