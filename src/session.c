@@ -160,36 +160,6 @@ static char *service2bearer(enum connman_service_type type)
 	return "";
 }
 
-static char *session2bearer(struct connman_session *session)
-{
-	struct session_info *info = &session->info;
-	GSList *list;
-	struct bearer_info *bearer_info;
-	enum connman_service_type type;
-
-	if (info->service == NULL)
-		return "";
-
-	type = connman_service_get_type(info->service);
-
-	for (list = info->allowed_bearers;
-			list != NULL; list = list->next) {
-		bearer_info = list->data;
-
-		if (bearer_info->match_all)
-			return service2bearer(type);
-
-		if (bearer_info->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN)
-			return bearer_info->name;
-
-		if (bearer_info->service_type == type)
-			return service2bearer(type);
-	}
-
-	return "";
-
-}
-
 static void cleanup_bearer_info(gpointer data, gpointer user_data)
 {
 	struct bearer_info *info = data;
@@ -348,6 +318,7 @@ static void append_notify(DBusMessageIter *dict,
 						DBUS_TYPE_STRING,
 						&info->ifname);
 
+		info_last->ifname = info->ifname;
 		info_last->service = info->service;
 	}
 
@@ -691,15 +662,18 @@ static gboolean session_changed_connect(gpointer user_data)
 	return FALSE;
 }
 
-static void update_service(struct connman_session *session)
+static void update_info(struct session_info *info)
 {
-	struct session_info *info = &session->info;
+	enum connman_service_type type;
 	int idx;
 
 	if (info->service != NULL) {
-		info->bearer = session2bearer(session);
+		type = connman_service_get_type(info->service);
+		info->bearer = service2bearer(type);
+
 		info->online = __connman_service_is_connected(info->service);
 		info->name = __connman_service_get_name(info->service);
+
 		idx = __connman_service_get_index(info->service);
 		info->ifname = connman_inet_ifname(idx);
 
@@ -768,8 +742,10 @@ static void session_changed(struct connman_session *session)
 	}
 
 out:
-	if (info->service != info_last->service)
-		update_service(session);
+	if (info->service != info_last->service) {
+		update_info(info);
+		session->info_dirty = TRUE;
+	}
 }
 
 static gboolean session_cb(gpointer user_data)
@@ -1192,7 +1168,7 @@ int __connman_session_create(DBusMessage *msg)
 
 
 	update_allowed_bearers(session);
-	update_service(session);
+	update_info(info);
 	if (info->ecall == TRUE) {
 		ecall_session = session;
 		update_ecall_sessions(session);
@@ -1210,6 +1186,7 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->service = info->service;
 	info_last->marker = info->marker;
 	info_last->allowed_bearers = info->allowed_bearers;
+	update_info(info_last);
 
 	session->info_dirty = TRUE;
 	session->append_all = TRUE;
