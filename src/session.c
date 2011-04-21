@@ -676,7 +676,8 @@ static void update_info(struct session_info *info)
 
 		idx = __connman_service_get_index(info->service);
 		info->ifname = connman_inet_ifname(idx);
-
+		if (info->ifname == NULL)
+			info->ifname = "";
 	} else {
 		info->bearer = "";
 		info->online = FALSE;
