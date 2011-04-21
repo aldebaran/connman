@@ -1272,13 +1272,27 @@ static void service_add(struct connman_service *service)
 	}
 }
 
-static gint service_in_session(gconstpointer a, gconstpointer b,
-				gpointer user_data)
+static connman_bool_t service_remove_from_session(
+					struct connman_session *session,
+					struct connman_service *service)
 {
-	if (a == b)
-		return 0;
+	GSequenceIter *iter;
 
-	return -1;
+	iter = g_sequence_get_begin_iter(session->service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		struct connman_service *service_iter = g_sequence_get(iter);
+
+		if (service_iter == service) {
+			g_sequence_remove(iter);
+
+			return TRUE;
+		}
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return FALSE;
 }
 
 static void service_remove(struct connman_service *service)
@@ -1286,10 +1300,8 @@ static void service_remove(struct connman_service *service)
 
 	GHashTableIter iter;
 	gpointer key, value;
-	GSequenceIter *seq_iter;
 	struct connman_session *session;
 	struct session_info *info;
-	struct connman_service *found_service;
 
 	DBG("service %p", service);
 
@@ -1299,18 +1311,7 @@ static void service_remove(struct connman_service *service)
 		session = value;
 		info = &session->info;
 
-		if (session->service_list == NULL)
-			continue;
-
-		seq_iter = g_sequence_search(session->service_list, service,
-						service_in_session, NULL);
-		if (g_sequence_iter_is_end(seq_iter) == TRUE)
-			continue;
-
-		g_sequence_remove(seq_iter);
-
-		found_service = g_sequence_get(seq_iter);
-		if (found_service != info->service)
+		if (service_remove_from_session(session, service) == FALSE)
 			continue;
 
 		info->service = NULL;
