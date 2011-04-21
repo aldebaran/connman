@@ -1364,6 +1364,7 @@ static void service_state_changed(struct connman_service *service,
 				continue;
 
 			info->online = online;
+			session->info_dirty = TRUE;
 			session_cb(session);
 		}
 	}
