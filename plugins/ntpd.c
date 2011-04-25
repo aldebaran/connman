@@ -102,7 +102,8 @@ static connman_bool_t ntpd_running(void)
 			ret = TRUE;
 		else
 			ret = FALSE;
-        }
+        } else
+		ret = FALSE;
 
 	close(sock);
 
