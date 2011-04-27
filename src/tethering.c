@@ -303,6 +303,8 @@ void __connman_tethering_set_enabled(void)
 	DBG("enabled %d", tethering_enabled + 1);
 
 	if (g_atomic_int_exchange_and_add(&tethering_enabled, 1) == 0) {
+		const char *dns;
+
 		err = create_bridge(BRIDGE_NAME);
 		if (err < 0)
 			return;
@@ -313,15 +315,18 @@ void __connman_tethering_set_enabled(void)
 			return;
 		}
 
-		if (__connman_dnsproxy_add_listener(BRIDGE_NAME) < 0)
+		dns = BRIDGE_IP;
+		if (__connman_dnsproxy_add_listener(BRIDGE_NAME) < 0) {
 			connman_error("Can't add listener %s to DNS proxy",
 								BRIDGE_NAME);
+			dns = BRIDGE_DNS;
+		}
 
 		tethering_dhcp_server =
 			dhcp_server_start(BRIDGE_NAME,
 						BRIDGE_IP, BRIDGE_SUBNET,
 						BRIDGE_IP_START, BRIDGE_IP_END,
-							24 * 3600, BRIDGE_IP);
+							24 * 3600, dns);
 		if (tethering_dhcp_server == NULL) {
 			disable_bridge(BRIDGE_NAME);
 			remove_bridge(BRIDGE_NAME);
