@@ -732,18 +732,6 @@ static void update_info(struct session_info *info)
 	}
 }
 
-static void notify_service_changes(struct connman_session *session)
-{
-	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
-
-	if (info->service == info_last->service)
-		return;
-
-	update_info(info);
-	session->info_dirty = TRUE;
-}
-
 static void select_and_connect(struct connman_session *session,
 				connman_bool_t do_connect)
 {
@@ -784,14 +772,13 @@ static void select_and_connect(struct connman_session *session,
 		if (do_connect == TRUE)
 			__connman_service_connect(info->service);
 	}
-
-	notify_service_changes(session);
 }
 
 static void session_changed(struct connman_session *session,
 				enum connman_session_trigger trigger)
 {
 	struct session_info *info = &session->info;
+	struct session_info *info_last = &session->info_last;
 	GSequenceIter *iter;
 
 	/*
@@ -817,8 +804,6 @@ static void session_changed(struct connman_session *session,
 				__connman_service_disconnect(info->service);
 				info->service = NULL;
 			}
-
-			notify_service_changes(session);
 		}
 
 		/* Try to free ride */
@@ -841,7 +826,6 @@ static void session_changed(struct connman_session *session,
 			__connman_service_disconnect(info->service);
 
 		info->service = NULL;
-		notify_service_changes(session);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_PERIODIC:
@@ -867,25 +851,15 @@ static void session_changed(struct connman_session *session,
 		if (info->online == FALSE && info->service != NULL)
 			info->service = NULL;
 
-		notify_service_changes(session);
-
 		break;
 	}
 
-	switch (trigger) {
-	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
-		break;
-	case CONNMAN_SESSION_TRIGGER_CONNECT:
-	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
-	case CONNMAN_SESSION_TRIGGER_ECALL:
-		g_timeout_add_seconds(0, session_notify, session);
-		break;
-	case CONNMAN_SESSION_TRIGGER_SETTING:
-	case CONNMAN_SESSION_TRIGGER_PERIODIC:
-	case CONNMAN_SESSION_TRIGGER_SERVICE:
-		session_notify(session);
-		break;
+	if (info->service != info_last->service) {
+		update_info(info);
+		session->info_dirty = TRUE;
 	}
+
+	session_notify(session);
 }
 
 static DBusMessage *connect_session(DBusConnection *conn,
