@@ -33,6 +33,16 @@ static GHashTable *session_hash;
 static connman_bool_t sessionmode;
 static struct connman_session *ecall_session;
 
+enum connman_session_trigger {
+	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
+	CONNMAN_SESSION_TRIGGER_SETTING		= 1,
+	CONNMAN_SESSION_TRIGGER_CONNECT		= 2,
+	CONNMAN_SESSION_TRIGGER_DISCONNECT	= 3,
+	CONNMAN_SESSION_TRIGGER_PERIODIC	= 4,
+	CONNMAN_SESSION_TRIGGER_SERVICE		= 5,
+	CONNMAN_SESSION_TRIGGER_ECALL		= 6,
+};
+
 enum connman_session_roaming_policy {
 	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
 	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
@@ -46,7 +56,6 @@ struct session_info {
 	char *bearer;
 	const char *name;
 	char *ifname;
-	connman_bool_t connect;
 	connman_bool_t online;
 	connman_bool_t priority;
 	GSList *allowed_bearers;
@@ -80,6 +89,28 @@ struct bearer_info {
 	connman_bool_t match_all;
 	enum connman_service_type service_type;
 };
+
+static const char *trigger2string(enum connman_session_trigger trigger)
+{
+	switch (trigger) {
+	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
+		break;
+	case CONNMAN_SESSION_TRIGGER_SETTING:
+		return "setting";
+	case CONNMAN_SESSION_TRIGGER_CONNECT:
+		return "connect";
+	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
+		return "disconnect";
+	case CONNMAN_SESSION_TRIGGER_PERIODIC:
+		return "periodic";
+	case CONNMAN_SESSION_TRIGGER_SERVICE:
+		return "service";
+	case CONNMAN_SESSION_TRIGGER_ECALL:
+		return "ecall";
+	}
+
+	return NULL;
+}
 
 static const char *roamingpolicy2string(enum connman_session_roaming_policy policy)
 {
@@ -401,8 +432,9 @@ static void append_notify(DBusMessageIter *dict,
 	session->info_dirty = FALSE;
 }
 
-static int session_notify(struct connman_session *session)
+static gboolean session_notify(gpointer user_data)
 {
+	struct connman_session *session = user_data;
 	DBusMessage *msg;
 	DBusMessageIter array, dict;
 
@@ -416,7 +448,7 @@ static int session_notify(struct connman_session *session)
 						CONNMAN_NOTIFICATION_INTERFACE,
 						"Update");
 	if (msg == NULL)
-		return -ENOMEM;
+		return FALSE;
 
 	dbus_message_iter_init_append(msg, &array);
 	connman_dbus_dict_open(&array, &dict);
@@ -429,7 +461,7 @@ static int session_notify(struct connman_session *session)
 
 	session->info_dirty = FALSE;
 
-	return 0;
+	return FALSE;
 }
 
 static void ipconfig_ipv4_changed(struct connman_session *session)
@@ -698,6 +730,18 @@ static void update_info(struct session_info *info)
 	}
 }
 
+static void notify_service_changes(struct connman_session *session)
+{
+	struct session_info *info = &session->info;
+	struct session_info *info_last = &session->info_last;
+
+	if (info->service == info_last->service)
+		return;
+
+	update_info(info);
+	session->info_dirty = TRUE;
+}
+
 static void select_and_connect(struct connman_session *session,
 				connman_bool_t do_connect)
 {
@@ -738,62 +782,121 @@ static void select_and_connect(struct connman_session *session,
 		if (do_connect == TRUE)
 			__connman_service_connect(info->service);
 	}
+
+	notify_service_changes(session);
 }
 
-static void session_changed(struct connman_session *session)
+static void session_changed(struct connman_session *session,
+				enum connman_session_trigger trigger)
 {
 	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
+	GSequenceIter *iter;
 
 	/*
 	 * TODO: This only a placeholder for the 'real' algorithm to
 	 * play a bit around. So we are going to improve it step by step.
 	 */
 
-	if (info->ecall == TRUE && session != ecall_session)
-		goto out;
+	DBG("session %p trigger %s", session, trigger2string(trigger));
 
-	if (info->connect == FALSE) {
+	switch (trigger) {
+	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
+		DBG("ignore session changed event");
+		return;
+	case CONNMAN_SESSION_TRIGGER_SETTING:
+		if (info->service != NULL) {
+			iter = lookup_service(session, info->service);
+			if (iter == NULL) {
+				/*
+				 * This service is not part of this
+				 * session anymore.
+				 */
+
+				__connman_service_disconnect(info->service);
+				info->service = NULL;
+			}
+
+			notify_service_changes(session);
+		}
+
+		/* Try to free ride */
+		if (info->online == FALSE)
+			select_and_connect(session, FALSE);
+
+		break;
+	case CONNMAN_SESSION_TRIGGER_CONNECT:
+		if (info->online == TRUE)
+			break;
+
+		select_and_connect(session, TRUE);
+
+		break;
+	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
+		if (info->online == FALSE)
+			break;
+
 		if (info->service != NULL)
 			__connman_service_disconnect(info->service);
+
 		info->service = NULL;
-	} else {
+		notify_service_changes(session);
+
+		break;
+	case CONNMAN_SESSION_TRIGGER_PERIODIC:
 		select_and_connect(session, TRUE);
+
+		break;
+	case CONNMAN_SESSION_TRIGGER_SERVICE:
+		if (info->online == TRUE)
+			break;
+
+		if (info->stay_connected == TRUE) {
+			DBG("StayConnected");
+			select_and_connect(session, TRUE);
+
+			break;
+		}
+
+		/* Try to free ride */
+		select_and_connect(session, FALSE);
+
+		break;
+	case CONNMAN_SESSION_TRIGGER_ECALL:
+		if (info->online == FALSE && info->service != NULL)
+			info->service = NULL;
+
+		notify_service_changes(session);
+
+		break;
 	}
 
-out:
-	if (info->service != info_last->service) {
-		update_info(info);
-		session->info_dirty = TRUE;
+	switch (trigger) {
+	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
+		break;
+	case CONNMAN_SESSION_TRIGGER_CONNECT:
+	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
+	case CONNMAN_SESSION_TRIGGER_ECALL:
+		g_timeout_add_seconds(0, session_notify, session);
+		break;
+	case CONNMAN_SESSION_TRIGGER_SETTING:
+	case CONNMAN_SESSION_TRIGGER_PERIODIC:
+	case CONNMAN_SESSION_TRIGGER_SERVICE:
+		session_notify(session);
+		break;
 	}
-}
-
-static gboolean session_cb(gpointer user_data)
-{
-	struct connman_session *session = user_data;
-
-	session_changed(session);
-	session_notify(session);
-
-	return FALSE;
 }
 
 static DBusMessage *connect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = &session->info;
 
 	DBG("session %p", session);
-
-	info->connect = TRUE;
 
 	if (ecall_session != NULL && ecall_session != session)
 		return __connman_error_failed(msg, EBUSY);
 
-	session->info_dirty = TRUE;
-
-	g_timeout_add_seconds(0, session_cb, session);
+	session_changed(session, CONNMAN_SESSION_TRIGGER_CONNECT);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -802,18 +905,13 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = &session->info;
 
 	DBG("session %p", session);
-
-	info->connect = FALSE;
 
 	if (ecall_session != NULL && ecall_session != session)
 		return __connman_error_failed(msg, EBUSY);
 
-	session->info_dirty = TRUE;
-
-	g_timeout_add_seconds(0, session_cb, session);
+	session_changed(session, CONNMAN_SESSION_TRIGGER_DISCONNECT);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -858,7 +956,7 @@ static void update_ecall_sessions(struct connman_session *session)
 		session_iter->info.ecall = info->ecall;
 		session_iter->info_dirty = TRUE;
 
-		g_timeout_add_seconds(0, session_cb, session_iter);
+		session_changed(session_iter, CONNMAN_SESSION_TRIGGER_ECALL);
 	}
 }
 
@@ -867,8 +965,8 @@ static void update_ecall(struct connman_session *session)
 	struct session_info *info = &session->info;
 	struct session_info *info_last = &session->info_last;
 
-	DBG("ecall_session %p ecall %d -> %d", ecall_session,
-		info_last->ecall, info->ecall);
+	DBG("session %p ecall_session %p ecall %d -> %d", session,
+		ecall_session, info_last->ecall, info->ecall);
 
 	if (ecall_session == NULL) {
 		if (!(info_last->ecall == FALSE && info->ecall == TRUE))
@@ -998,7 +1096,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 	}
 
 	if (session->info_dirty == TRUE)
-		session_cb(session);
+		session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
@@ -1211,7 +1309,7 @@ int __connman_session_create(DBusMessage *msg)
 	session->info_dirty = TRUE;
 	session->append_all = TRUE;
 
-	g_timeout_add_seconds(0, session_cb, session);
+	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
 
 	return 0;
 
@@ -1288,14 +1386,13 @@ static void service_add(struct connman_service *service)
 		g_sequence_insert_sorted(session->service_list, service,
 						sort_services, session);
 
-		session_cb(session);
+		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
 }
 
 static int service_remove_from_session(struct connman_session *session,
 					struct connman_service *service)
 {
-
 	GSequenceIter *iter;
 
 	iter = lookup_service(session, service);
@@ -1328,7 +1425,7 @@ static void service_remove(struct connman_service *service)
 			continue;
 
 		info->service = NULL;
-		session_cb(session);
+		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
 }
 
@@ -1356,7 +1453,8 @@ static void service_state_changed(struct connman_service *service,
 
 			info->online = online;
 			session->info_dirty = TRUE;
-			session_cb(session);
+			session_changed(session,
+					CONNMAN_SESSION_TRIGGER_SERVICE);
 		}
 	}
 }
