@@ -450,6 +450,28 @@ static void ipconfig_ipv6_changed(struct connman_session *session)
 						info->service);
 }
 
+static GSequenceIter *lookup_service(struct connman_session *session,
+					struct connman_service *service)
+{
+	GSequenceIter *iter;
+
+	if (service == NULL)
+		return NULL;
+
+	iter = g_sequence_get_begin_iter(session->service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		struct connman_service *service_iter = g_sequence_get(iter);
+
+		if (service_iter == service)
+			return iter;
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	return NULL;
+}
+
 static connman_bool_t service_type_match(struct connman_session *session,
 					struct connman_service *service)
 {
@@ -1273,27 +1295,20 @@ static void service_add(struct connman_service *service)
 	}
 }
 
-static connman_bool_t service_remove_from_session(
-					struct connman_session *session,
+static int service_remove_from_session(struct connman_session *session,
 					struct connman_service *service)
 {
+
 	GSequenceIter *iter;
 
-	iter = g_sequence_get_begin_iter(session->service_list);
+	iter = lookup_service(session, service);
+	if (iter == NULL)
+		return -ENOENT;
 
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *service_iter = g_sequence_get(iter);
+	session->info.online = FALSE;
+	g_sequence_remove(iter);
 
-		if (service_iter == service) {
-			g_sequence_remove(iter);
-
-			return TRUE;
-		}
-
-		iter = g_sequence_iter_next(iter);
-	}
-
-	return FALSE;
+	return 0;
 }
 
 static void service_remove(struct connman_service *service)
@@ -1312,7 +1327,7 @@ static void service_remove(struct connman_service *service)
 		session = value;
 		info = &session->info;
 
-		if (service_remove_from_session(session, service) == FALSE)
+		if (service_remove_from_session(session, service) != 0)
 			continue;
 
 		info->service = NULL;
