@@ -31,7 +31,7 @@ Connect algorithm:
                        | Yes  +------+-------+  No
                        +------+StayConnected?+------ Do nothing
                        |      +--------------+
-                       |
+Session.Change() ------+
                        |
                 +------+-------+
           +-----+EmergencyCall?+-----+
@@ -60,7 +60,7 @@ Disconnect algorithm:
   Session.Disconnect()
   IdleTimeout
        |
-       |
+       +--- Session.Change()
        |
 +-----------------+    Yes
 |service not used +-------------+
