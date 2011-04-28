@@ -172,6 +172,11 @@ class SessionApplication(dbus.service.Object):
 				in_signature='', out_signature='')
 	def Connect(self):
 		print "Connect session"
+
+		if self.session == None:
+			print "no session running -> drop request"
+			return
+
 		try:
 			self.session.Connect()
 		except dbus.DBusException, e:
@@ -185,6 +190,11 @@ class SessionApplication(dbus.service.Object):
 				in_signature='', out_signature='')
 	def Disconnect(self):
 		print "Disconnect session"
+
+		if self.session == None:
+			print "no session running -> drop request"
+			return
+
 		try:
 			self.session.Disconnect()
 		except dbus.DBusException, e:
@@ -198,6 +208,11 @@ class SessionApplication(dbus.service.Object):
 				in_signature='sv', out_signature='')
 	def Change(self, key, value):
 		print "Update session settings"
+
+		if self.session == None:
+			print "no session running -> drop request"
+			return
+
 		try:
 			val = self.type_convert(key, value)
 			self.session.Change(key, val)
@@ -281,14 +296,14 @@ def main():
 		app.Disconnect()
 
 	elif sys.argv[1] == "change":
-		if len(sys.argv) < 4:
+		if len(sys.argv) < 5:
 			print "Arguments missing"
 			sys.exit(1)
 
 		app.Change(sys.argv[3], sys.argv[4:])
 
 	elif sys.argv[1] == "configure":
-		if len(sys.argv) < 4:
+		if len(sys.argv) < 5:
 			print "Arguments missing"
 			sys.exit(1)
 
