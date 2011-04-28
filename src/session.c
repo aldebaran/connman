@@ -674,16 +674,6 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static gboolean session_changed_connect(gpointer user_data)
-{
-	struct connman_session *session = user_data;
-	struct session_info *info = &session->info;
-
-	__connman_service_connect(info->service);
-
-	return FALSE;
-}
-
 static void update_info(struct session_info *info)
 {
 	enum connman_service_type type;
@@ -708,28 +698,14 @@ static void update_info(struct session_info *info)
 	}
 }
 
-static void session_changed(struct connman_session *session)
+static void select_and_connect(struct connman_session *session,
+				connman_bool_t do_connect)
 {
 	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
 	struct connman_service *service = NULL;
-	GSourceFunc callback = NULL;
 	GSequenceIter *iter;
 
-	/*
-	 * TODO: This only a placeholder for the 'real' algorithm to
-	 * play a bit around. So we are going to improve it step by step.
-	 */
-
-	if (info->ecall == TRUE && session != ecall_session)
-		goto out;
-
-	if (info->connect == FALSE) {
-		if (info->service != NULL)
-			__connman_service_disconnect(info->service);
-		info->service = NULL;
-		goto out;
-	}
+	DBG("session %p connect %d", session, do_connect);
 
 	iter = g_sequence_get_begin_iter(session->service_list);
 
@@ -742,8 +718,7 @@ static void session_changed(struct connman_session *session)
 		}
 
 		if (__connman_service_is_idle(service) == TRUE &&
-				info->connect == TRUE) {
-			callback = session_changed_connect;
+				do_connect == TRUE) {
 			break;
 		}
 
@@ -760,8 +735,30 @@ static void session_changed(struct connman_session *session)
 	if (service != NULL) {
 		info->service = service;
 
-		if (callback != NULL)
-			callback(session);
+		if (do_connect == TRUE)
+			__connman_service_connect(info->service);
+	}
+}
+
+static void session_changed(struct connman_session *session)
+{
+	struct session_info *info = &session->info;
+	struct session_info *info_last = &session->info_last;
+
+	/*
+	 * TODO: This only a placeholder for the 'real' algorithm to
+	 * play a bit around. So we are going to improve it step by step.
+	 */
+
+	if (info->ecall == TRUE && session != ecall_session)
+		goto out;
+
+	if (info->connect == FALSE) {
+		if (info->service != NULL)
+			__connman_service_disconnect(info->service);
+		info->service = NULL;
+	} else {
+		select_and_connect(session, TRUE);
 	}
 
 out:
