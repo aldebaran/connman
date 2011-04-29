@@ -717,6 +717,8 @@ static void update_info(struct session_info *info)
 
 		info->online = __connman_service_is_connected(info->service);
 		info->name = __connman_service_get_name(info->service);
+		if (info->name == NULL)
+			info->name = "";
 
 		idx = __connman_service_get_index(info->service);
 		info->ifname = connman_inet_ifname(idx);
