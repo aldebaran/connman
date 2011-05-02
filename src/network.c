@@ -1176,7 +1176,7 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 			if (ret != 0) {
 				connman_network_set_error(network,
 					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
-				return FALSE;
+				return ret;
 			}
 			break;
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
