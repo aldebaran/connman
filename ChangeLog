@@ -1,3 +1,6 @@
+ver 0.69.5
+	core: Clock and timezone implementation
+
 ver 0.69.4
 	tethering: Use /proc/sys/net/bridge to detect bridge support.
 	tethering: Add wifi interface to bridge after carrier on.
