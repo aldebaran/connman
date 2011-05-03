@@ -287,6 +287,20 @@ static struct connman_ipaddress *find_ipaddress(struct connman_ipdevice *ipdevic
 	return NULL;
 }
 
+const char *__connman_ipconfig_type2string(enum connman_ipconfig_type type)
+{
+	switch (type) {
+	case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+		return "unknown";
+	case CONNMAN_IPCONFIG_TYPE_IPV4:
+		return "IPv4";
+	case CONNMAN_IPCONFIG_TYPE_IPV6:
+		return "IPv6";
+	}
+
+	return NULL;
+}
+
 static const char *type2str(unsigned short type)
 {
 	switch (type) {

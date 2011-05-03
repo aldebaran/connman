@@ -263,6 +263,7 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
+const char *__connman_ipconfig_type2string(enum connman_ipconfig_type type);
 enum connman_ipconfig_method __connman_ipconfig_string2method(const char *method);
 
 void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
