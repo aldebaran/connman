@@ -65,11 +65,11 @@ struct service_entry {
 	enum connman_service_state state;
 	const char *name;
 	struct connman_service *service;
+	const char *ifname;
 };
 
 struct session_info {
 	char *bearer;
-	char *ifname;
 	connman_bool_t online;
 	connman_bool_t priority;
 	GSList *allowed_bearers;
@@ -342,7 +342,7 @@ static void append_notify(DBusMessageIter *dict,
 	struct session_info *info_last = &session->info_last;
 	const char *policy;
 	struct connman_service *service;
-	const char *name;
+	const char *name, *ifname;
 
 	if (session->append_all == TRUE ||
 			info->bearer != info_last->bearer) {
@@ -364,9 +364,11 @@ static void append_notify(DBusMessageIter *dict,
 			info->entry != info_last->entry) {
 		if (info->entry == NULL) {
 			name = "";
+			ifname = "";
 			service = NULL;
 		} else {
 			name = info->entry->name;
+			ifname = info->entry->ifname;
 			service = info->entry->service;
 		}
 
@@ -384,9 +386,8 @@ static void append_notify(DBusMessageIter *dict,
 
 		connman_dbus_dict_append_basic(dict, "Interface",
 						DBUS_TYPE_STRING,
-						&info->ifname);
+						&ifname);
 
-		info_last->ifname = info->ifname;
 		info_last->entry = info->entry;
 	}
 
@@ -748,22 +749,15 @@ static connman_bool_t is_connected(enum connman_service_state state)
 static void update_info(struct session_info *info)
 {
 	enum connman_service_type type;
-	int idx;
 
 	if (info->entry != NULL) {
 		type = connman_service_get_type(info->entry->service);
 		info->bearer = service2bearer(type);
 
 		info->online = is_connected(info->entry->state);
-
-		idx = __connman_service_get_index(info->entry->service);
-		info->ifname = connman_inet_ifname(idx);
-		if (info->ifname == NULL)
-			info->ifname = "";
 	} else {
 		info->bearer = "";
 		info->online = FALSE;
-		info->ifname = "";
 	}
 }
 
@@ -990,6 +984,7 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 					enum connman_service_state state)
 {
 	struct service_entry *entry;
+	int idx;
 
 	entry = g_try_new0(struct service_entry, 1);
 	if (entry == NULL)
@@ -999,6 +994,12 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 	entry->state = state;
 	entry->name = name;
 	entry->service = service;
+
+	idx = __connman_service_get_index(entry->service);
+	entry->ifname = connman_inet_ifname(idx);
+	if (entry->ifname == NULL)
+		entry->ifname = "";
+
 
 	return entry;
 }
