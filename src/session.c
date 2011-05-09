@@ -63,12 +63,12 @@ struct service_entry {
 	/* track why this service was selected */
 	enum connman_session_reason reason;
 	enum connman_service_state state;
+	const char *name;
 	struct connman_service *service;
 };
 
 struct session_info {
 	char *bearer;
-	const char *name;
 	char *ifname;
 	connman_bool_t online;
 	connman_bool_t priority;
@@ -342,6 +342,7 @@ static void append_notify(DBusMessageIter *dict,
 	struct session_info *info_last = &session->info_last;
 	const char *policy;
 	struct connman_service *service;
+	const char *name;
 
 	if (session->append_all == TRUE ||
 			info->bearer != info_last->bearer) {
@@ -360,19 +361,18 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	if (session->append_all == TRUE ||
-			info->name != info_last->name) {
+			info->entry != info_last->entry) {
+		if (info->entry == NULL) {
+			name = "";
+			service = NULL;
+		} else {
+			name = info->entry->name;
+			service = info->entry->service;
+		}
+
 		connman_dbus_dict_append_basic(dict, "Name",
 						DBUS_TYPE_STRING,
-						&info->name);
-		info_last->name = info->name;
-	}
-
-	if (session->append_all == TRUE ||
-			info->entry != info_last->entry) {
-		if (info->entry == NULL)
-			service = NULL;
-		else
-			service = info->entry->service;
+						&name);
 
 		connman_dbus_dict_append_dict(dict, "IPv4",
 						append_ipconfig_ipv4,
@@ -755,9 +755,6 @@ static void update_info(struct session_info *info)
 		info->bearer = service2bearer(type);
 
 		info->online = is_connected(info->entry->state);
-		info->name = __connman_service_get_name(info->entry->service);
-		if (info->name == NULL)
-			info->name = "";
 
 		idx = __connman_service_get_index(info->entry->service);
 		info->ifname = connman_inet_ifname(idx);
@@ -766,7 +763,6 @@ static void update_info(struct session_info *info)
 	} else {
 		info->bearer = "";
 		info->online = FALSE;
-		info->name = "";
 		info->ifname = "";
 	}
 }
@@ -1001,6 +997,7 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 
 	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	entry->state = state;
+	entry->name = name;
 	entry->service = service;
 
 	return entry;
