@@ -62,6 +62,7 @@ enum connman_session_roaming_policy {
 struct service_entry {
 	/* track why this service was selected */
 	enum connman_session_reason reason;
+	enum connman_service_state state;
 	struct connman_service *service;
 };
 
@@ -726,6 +727,24 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static connman_bool_t is_connected(enum connman_service_state state)
+{
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		break;
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void update_info(struct session_info *info)
 {
 	enum connman_service_type type;
@@ -735,7 +754,7 @@ static void update_info(struct session_info *info)
 		type = connman_service_get_type(info->entry->service);
 		info->bearer = service2bearer(type);
 
-		info->online = __connman_service_is_connected(info->entry->service);
+		info->online = is_connected(info->entry->state);
 		info->name = __connman_service_get_name(info->entry->service);
 		if (info->name == NULL)
 			info->name = "";
@@ -770,6 +789,13 @@ static void test_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = &session->info;
 
+	if (info->entry == NULL)
+		return;
+
+	DBG("session %p reason %s service %p state %d",
+		session, reason2string(info->entry->reason),
+		info->entry->service, info->entry->state);
+
 	if (explicit_connect(info->entry->reason) == FALSE)
 		goto out;
 
@@ -800,18 +826,26 @@ static void select_and_connect(struct connman_session *session,
 	while (g_sequence_iter_is_end(iter) == FALSE) {
 		entry = g_sequence_get(iter);
 
-		if (__connman_service_is_connecting(entry->service) == TRUE ||
-				__connman_service_is_connected(entry->service) == TRUE) {
+		switch (entry->state) {
+		case CONNMAN_SERVICE_STATE_ASSOCIATION:
+		case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		case CONNMAN_SERVICE_STATE_READY:
+		case CONNMAN_SERVICE_STATE_ONLINE:
+			/* connecting or connected */
+			break;
+		case CONNMAN_SERVICE_STATE_IDLE:
+		case CONNMAN_SERVICE_STATE_DISCONNECT:
+			if (explicit_connect(reason) == TRUE)
+				do_connect = TRUE;
+			break;
+		case CONNMAN_SERVICE_STATE_UNKNOWN:
+		case CONNMAN_SERVICE_STATE_FAILURE:
+			entry = NULL;
 			break;
 		}
 
-		if (__connman_service_is_idle(entry->service) == TRUE &&
-				explicit_connect(reason) == TRUE) {
-			do_connect = TRUE;
+		if (entry != NULL)
 			break;
-		}
-
-		entry = NULL;
 
 		iter = g_sequence_iter_next(iter);
 	}
@@ -966,6 +1000,7 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 		return entry;
 
 	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
+	entry->state = state;
 	entry->service = service;
 
 	return entry;
@@ -1520,7 +1555,8 @@ static void service_state_changed(struct connman_service *service,
 		info_last = &session->info_last;
 
 		if (info->entry != NULL && info->entry->service == service) {
-			info->online = __connman_service_is_connected(service);
+			info->entry->state = state;
+			info->online = is_connected(info->entry->state);
 			if (info_last->online != info->online)
 				session->info_dirty = TRUE;
 		}
