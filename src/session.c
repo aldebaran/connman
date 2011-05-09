@@ -66,10 +66,10 @@ struct service_entry {
 	const char *name;
 	struct connman_service *service;
 	const char *ifname;
+	const char *bearer;
 };
 
 struct session_info {
-	char *bearer;
 	connman_bool_t online;
 	connman_bool_t priority;
 	GSList *allowed_bearers;
@@ -342,15 +342,7 @@ static void append_notify(DBusMessageIter *dict,
 	struct session_info *info_last = &session->info_last;
 	const char *policy;
 	struct connman_service *service;
-	const char *name, *ifname;
-
-	if (session->append_all == TRUE ||
-			info->bearer != info_last->bearer) {
-		connman_dbus_dict_append_basic(dict, "Bearer",
-						DBUS_TYPE_STRING,
-						&info->bearer);
-		info_last->bearer = info->bearer;
-	}
+	const char *name, *ifname, *bearer;
 
 	if (session->append_all == TRUE ||
 			info->online != info_last->online) {
@@ -366,10 +358,12 @@ static void append_notify(DBusMessageIter *dict,
 			name = "";
 			ifname = "";
 			service = NULL;
+			bearer = "";
 		} else {
 			name = info->entry->name;
 			ifname = info->entry->ifname;
 			service = info->entry->service;
+			bearer = info->entry->bearer;
 		}
 
 		connman_dbus_dict_append_basic(dict, "Name",
@@ -387,6 +381,10 @@ static void append_notify(DBusMessageIter *dict,
 		connman_dbus_dict_append_basic(dict, "Interface",
 						DBUS_TYPE_STRING,
 						&ifname);
+
+		connman_dbus_dict_append_basic(dict, "Bearer",
+						DBUS_TYPE_STRING,
+						&bearer);
 
 		info_last->entry = info->entry;
 	}
@@ -748,17 +746,10 @@ static connman_bool_t is_connected(enum connman_service_state state)
 
 static void update_info(struct session_info *info)
 {
-	enum connman_service_type type;
-
-	if (info->entry != NULL) {
-		type = connman_service_get_type(info->entry->service);
-		info->bearer = service2bearer(type);
-
+	if (info->entry != NULL)
 		info->online = is_connected(info->entry->state);
-	} else {
-		info->bearer = "";
+	else
 		info->online = FALSE;
-	}
 }
 
 static connman_bool_t explicit_connect(enum connman_session_reason reason)
@@ -984,6 +975,7 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 					enum connman_service_state state)
 {
 	struct service_entry *entry;
+	enum connman_service_type type;
 	int idx;
 
 	entry = g_try_new0(struct service_entry, 1);
@@ -1000,6 +992,8 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 	if (entry->ifname == NULL)
 		entry->ifname = "";
 
+	type = connman_service_get_type(entry->service);
+	entry->bearer = service2bearer(type);
 
 	return entry;
 }
@@ -1351,7 +1345,6 @@ int __connman_session_create(DBusMessage *msg)
 	session->service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, NULL);
 
-	info->bearer = "";
 	info->online = FALSE;
 	info->priority = priority;
 	info->avoid_handover = avoid_handover;
@@ -1403,7 +1396,6 @@ int __connman_session_create(DBusMessage *msg)
 		update_ecall_sessions(session);
 	}
 
-	info_last->bearer = info->bearer;
 	info_last->online = info->online;
 	info_last->priority = info->priority;
 	info_last->avoid_handover = info->avoid_handover;
