@@ -1411,8 +1411,7 @@ static void service_state_changed(struct connman_service *service,
 	GHashTableIter iter;
 	gpointer key, value;
 	struct connman_session *session;
-	struct session_info *info;
-	connman_bool_t online;
+	struct session_info *info, *info_last;
 
 	DBG("service %p state %d", service, state);
 
@@ -1421,17 +1420,16 @@ static void service_state_changed(struct connman_service *service,
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		session = value;
 		info = &session->info;
+		info_last = &session->info_last;
 
 		if (info->service == service) {
-			online = __connman_service_is_connected(service);
-			if (info->online == online)
-				continue;
-
-			info->online = online;
-			session->info_dirty = TRUE;
-			session_changed(session,
-					CONNMAN_SESSION_TRIGGER_SERVICE);
+			info->online = __connman_service_is_connected(service);
+			if (info_last->online != info->online)
+				session->info_dirty = TRUE;
 		}
+
+		session_changed(session,
+				CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
 }
 
