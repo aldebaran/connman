@@ -1028,7 +1028,7 @@ static void update_allowed_bearers(struct connman_session *session)
 
 		DBG("service %p type %s name %s", entry->service,
 			service2bearer(connman_service_get_type(entry->service)),
-			__connman_service_get_name(entry->service));
+			entry->name);
 
 		g_hash_table_replace(session->service_hash,
 					entry->service, iter);

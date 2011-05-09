@@ -587,11 +587,6 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 				create_service_entry_cb create_service_entry,
 				GDestroyNotify destroy_service_entry);
 
-connman_bool_t __connman_service_is_connecting(struct connman_service *service);
-connman_bool_t __connman_service_is_connected(struct connman_service *service);
-connman_bool_t __connman_service_is_idle(struct connman_service *service);
-const char *__connman_service_get_name(struct connman_service *service);
-
 void __connman_service_session_inc(struct connman_service *service);
 connman_bool_t __connman_service_session_dec(struct connman_service *service);
 
