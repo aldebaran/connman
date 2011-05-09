@@ -43,6 +43,13 @@ enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_ECALL		= 6,
 };
 
+enum connman_session_reason {
+	CONNMAN_SESSION_REASON_UNKNOWN		= 0,
+	CONNMAN_SESSION_REASON_CONNECT		= 1,
+	CONNMAN_SESSION_REASON_FREE_RIDE	= 2,
+	CONNMAN_SESSION_REASON_PERIODIC		= 3,
+};
+
 enum connman_session_roaming_policy {
 	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
 	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
@@ -67,6 +74,8 @@ struct session_info {
 	enum connman_session_roaming_policy roaming_policy;
 	unsigned int marker;
 
+	/* track why this service was selected */
+	enum connman_session_reason reason;
 	struct connman_service *service;
 };
 
@@ -107,6 +116,22 @@ static const char *trigger2string(enum connman_session_trigger trigger)
 		return "service";
 	case CONNMAN_SESSION_TRIGGER_ECALL:
 		return "ecall";
+	}
+
+	return NULL;
+}
+
+static const char *reason2string(enum connman_session_reason reason)
+{
+	switch (reason) {
+	case CONNMAN_SESSION_REASON_UNKNOWN:
+		break;
+	case CONNMAN_SESSION_REASON_CONNECT:
+		return "connect";
+	case CONNMAN_SESSION_REASON_FREE_RIDE:
+		return "free-ride";
+	case CONNMAN_SESSION_REASON_PERIODIC:
+		return "periodic";
 	}
 
 	return NULL;
@@ -637,6 +662,11 @@ static void cleanup_session(gpointer user_data)
 
 	g_sequence_free(session->service_list);
 
+	if (info->service != NULL &&
+			info->reason == CONNMAN_SESSION_REASON_CONNECT) {
+		__connman_service_disconnect(info->service);
+	}
+
 	g_slist_foreach(info->allowed_bearers, cleanup_bearer_info, NULL);
 	g_slist_free(info->allowed_bearers);
 
@@ -732,14 +762,29 @@ static void update_info(struct session_info *info)
 	}
 }
 
+static connman_bool_t explicit_connect(enum connman_session_reason reason)
+{
+	switch (reason) {
+	case CONNMAN_SESSION_REASON_UNKNOWN:
+	case CONNMAN_SESSION_REASON_FREE_RIDE:
+		break;
+	case CONNMAN_SESSION_REASON_CONNECT:
+	case CONNMAN_SESSION_REASON_PERIODIC:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void select_and_connect(struct connman_session *session,
-				connman_bool_t do_connect)
+				enum connman_session_reason reason)
 {
 	struct session_info *info = &session->info;
 	struct connman_service *service = NULL;
 	GSequenceIter *iter;
+	connman_bool_t do_connect = FALSE;
 
-	DBG("session %p connect %d", session, do_connect);
+	DBG("session %p reason %s", session, reason2string(reason));
 
 	iter = g_sequence_get_begin_iter(session->service_list);
 
@@ -752,7 +797,8 @@ static void select_and_connect(struct connman_session *session,
 		}
 
 		if (__connman_service_is_idle(service) == TRUE &&
-				do_connect == TRUE) {
+				explicit_connect(reason) == TRUE) {
+			do_connect = TRUE;
 			break;
 		}
 
@@ -763,10 +809,12 @@ static void select_and_connect(struct connman_session *session,
 
 	if (info->service != NULL && info->service != service) {
 		__connman_service_disconnect(info->service);
+		info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 		info->service = NULL;
 	}
 
 	if (service != NULL) {
+		info->reason = reason;
 		info->service = service;
 
 		if (do_connect == TRUE)
@@ -801,21 +849,26 @@ static void session_changed(struct connman_session *session,
 				 * session anymore.
 				 */
 
-				__connman_service_disconnect(info->service);
+				if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
+					__connman_service_disconnect(info->service);
 				info->service = NULL;
 			}
 		}
 
-		/* Try to free ride */
-		if (info->online == FALSE)
-			select_and_connect(session, FALSE);
+		if (info->online == FALSE) {
+			select_and_connect(session,
+					CONNMAN_SESSION_REASON_FREE_RIDE);
+		}
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
-		if (info->online == TRUE)
+		if (info->online == TRUE) {
+			info->reason = CONNMAN_SESSION_REASON_CONNECT;
 			break;
+		}
 
-		select_and_connect(session, TRUE);
+		select_and_connect(session,
+				CONNMAN_SESSION_REASON_CONNECT);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
@@ -825,11 +878,13 @@ static void session_changed(struct connman_session *session,
 		if (info->service != NULL)
 			__connman_service_disconnect(info->service);
 
+		info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 		info->service = NULL;
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_PERIODIC:
-		select_and_connect(session, TRUE);
+		select_and_connect(session,
+				CONNMAN_SESSION_REASON_PERIODIC);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
@@ -838,18 +893,21 @@ static void session_changed(struct connman_session *session,
 
 		if (info->stay_connected == TRUE) {
 			DBG("StayConnected");
-			select_and_connect(session, TRUE);
+			select_and_connect(session,
+					CONNMAN_SESSION_REASON_CONNECT);
 
 			break;
 		}
 
-		/* Try to free ride */
-		select_and_connect(session, FALSE);
+		select_and_connect(session,
+				CONNMAN_SESSION_REASON_FREE_RIDE);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_ECALL:
-		if (info->online == FALSE && info->service != NULL)
+		if (info->online == FALSE && info->service != NULL) {
+			info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 			info->service = NULL;
+		}
 
 		break;
 	}
@@ -1227,6 +1285,7 @@ int __connman_session_create(DBusMessage *msg)
 	info->roaming_policy = roaming_policy;
 	info->service = NULL;
 	info->marker = 0;
+	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 
 	if (allowed_bearers == NULL) {
 		info->allowed_bearers =
@@ -1279,6 +1338,7 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->service = info->service;
 	info_last->marker = info->marker;
+	info_last->reason = info->reason;
 	info_last->allowed_bearers = info->allowed_bearers;
 	update_info(info_last);
 
