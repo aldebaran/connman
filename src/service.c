@@ -1570,6 +1570,7 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 {
 	GSequence *list;
 	GSequenceIter *iter;
+	struct connman_service *service;
 
 	list = g_sequence_new(NULL);
 	if (list == NULL)
@@ -4245,6 +4246,7 @@ int __connman_service_provision(DBusMessage *msg)
 	const char *config_str = NULL;
 	char *group = NULL, *ident = NULL;
 	int err = 0;
+	struct connman_service *service;
 
 	DBG("");
 

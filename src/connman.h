@@ -80,7 +80,7 @@ int __connman_counter_unregister(const char *owner, const char *path);
 int __connman_counter_init(void);
 void __connman_counter_cleanup(void);
 
-struct connman_service *service;
+struct connman_service;
 
 typedef void (* passphrase_cb_t) (struct connman_service *service,
 				const char *identity, const char *passphrase,
