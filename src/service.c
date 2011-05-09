@@ -53,6 +53,7 @@ struct connman_stats_counter {
 
 struct connman_service {
 	gint refcount;
+	gint session_usage_count;
 	char *identifier;
 	char *path;
 	enum connman_service_type type;
@@ -1610,6 +1611,27 @@ const char *__connman_service_get_name(struct connman_service *service)
 	return service->name;
 }
 
+void __connman_service_session_inc(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	g_atomic_int_inc(&service->session_usage_count);
+}
+
+connman_bool_t __connman_service_session_dec(struct connman_service *service)
+{
+	connman_bool_t in_use;
+
+	if (g_atomic_int_dec_and_test(&service->session_usage_count) == TRUE)
+		in_use = FALSE;
+	else
+		in_use = TRUE;
+
+	DBG("service %p last %d", service, in_use);
+
+	return in_use;
+}
+
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
@@ -3046,6 +3068,7 @@ static void service_initialize(struct connman_service *service)
 	DBG("service %p", service);
 
 	service->refcount = 1;
+	service->session_usage_count = 0;
 
 	service->type     = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	service->mode     = CONNMAN_SERVICE_MODE_UNKNOWN;

@@ -585,6 +585,9 @@ connman_bool_t __connman_service_is_connected(struct connman_service *service);
 connman_bool_t __connman_service_is_idle(struct connman_service *service);
 const char *__connman_service_get_name(struct connman_service *service);
 
+void __connman_service_session_inc(struct connman_service *service);
+connman_bool_t __connman_service_session_dec(struct connman_service *service);
+
 #include <connman/location.h>
 
 int __connman_location_init(void);
