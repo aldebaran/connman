@@ -1022,7 +1022,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 
 			if (info_last->avoid_handover != info->avoid_handover)
 				session->info_dirty = TRUE;
-			} else if (g_str_equal(name, "StayConnected") == TRUE) {
+		} else if (g_str_equal(name, "StayConnected") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->stay_connected);
 
