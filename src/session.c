@@ -744,14 +744,6 @@ static connman_bool_t is_connected(enum connman_service_state state)
 	return FALSE;
 }
 
-static void update_info(struct session_info *info)
-{
-	if (info->entry != NULL)
-		info->online = is_connected(info->entry->state);
-	else
-		info->online = FALSE;
-}
-
 static connman_bool_t explicit_connect(enum connman_session_reason reason)
 {
 	switch (reason) {
@@ -788,7 +780,14 @@ static void test_and_disconnect(struct connman_session *session)
 
 	__connman_service_disconnect(info->entry->service);
 
+	/*
+	 * TODO: We should mark this entry as pending work. In case
+	 * disconnect fails we just unassign this session from the
+	 * service and can't do anything later on it
+	 */
+
 out:
+	info->online = FALSE;
 	info->entry = NULL;
 }
 
@@ -843,6 +842,8 @@ static void select_and_connect(struct connman_session *session,
 
 		if (do_connect == TRUE)
 			__connman_service_connect(info->entry->service);
+		else
+			info->online = is_connected(entry->state);
 	}
 }
 
@@ -932,10 +933,8 @@ static void session_changed(struct connman_session *session,
 		break;
 	}
 
-	if (info->entry != info_last->entry) {
-		update_info(info);
+	if (info->entry != info_last->entry)
 		session->info_dirty = TRUE;
-	}
 
 	session_notify(session);
 }
@@ -1390,7 +1389,6 @@ int __connman_session_create(DBusMessage *msg)
 
 
 	update_allowed_bearers(session);
-	update_info(info);
 	if (info->ecall == TRUE) {
 		ecall_session = session;
 		update_ecall_sessions(session);
@@ -1407,7 +1405,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->entry = info->entry;
 	info_last->marker = info->marker;
 	info_last->allowed_bearers = info->allowed_bearers;
-	update_info(info_last);
 
 	session->info_dirty = TRUE;
 	session->append_all = TRUE;
