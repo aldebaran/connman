@@ -530,7 +530,10 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		printf("Logoff URL: %s\n", wispr->msg.logoff_url);
 	printf("\n");
 
-	if (status == 302 && wispr->msg.message_type == 100) {
+	if (status != 200 && status != 302 && status != 404)
+		goto done;
+
+	if (wispr->msg.message_type == 100) {
 		if (wispr->username == NULL) {
 			user_input("Username", FALSE, username_callback, wispr);
 			return FALSE;
@@ -543,11 +546,28 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 
 		g_idle_add(execute_login, wispr);
 		return FALSE;
-	} else if (status == 200 && (wispr->msg.message_type == 120 ||
-					wispr->msg.message_type == 140)) {
+	} else if (wispr->msg.message_type == 120 ||
+					wispr->msg.message_type == 140) {
 		int code = wispr->msg.response_code;
 		printf("Login process: %s\n",
 					code == 50 ? "SUCCESS" : "FAILURE");
+	}
+
+	if (status == 302) {
+		const char *redirect;
+
+		if (g_web_result_get_header(result, "Location",
+							&redirect) == FALSE)
+			goto done;
+
+		printf("\n");
+		printf("Redirect URL: %s\n", redirect);
+		printf("\n");
+
+		wispr->request = g_web_request_get(wispr->web, redirect,
+							wispr_result, wispr);
+
+		return FALSE;
 	}
 
 done:
