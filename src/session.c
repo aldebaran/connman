@@ -60,6 +60,8 @@ enum connman_session_roaming_policy {
 };
 
 struct service_entry {
+	/* track why this service was selected */
+	enum connman_session_reason reason;
 	struct connman_service *service;
 };
 
@@ -78,8 +80,6 @@ struct session_info {
 	enum connman_session_roaming_policy roaming_policy;
 	unsigned int marker;
 
-	/* track why this service was selected */
-	enum connman_session_reason reason;
 	struct service_entry *entry;
 };
 
@@ -653,7 +653,7 @@ static void cleanup_session(gpointer user_data)
 	g_sequence_free(session->service_list);
 
 	if (info->entry != NULL &&
-			info->reason == CONNMAN_SESSION_REASON_CONNECT) {
+			info->entry->reason == CONNMAN_SESSION_REASON_CONNECT) {
 		__connman_service_disconnect(info->entry->service);
 	}
 
@@ -770,7 +770,7 @@ static void test_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = &session->info;
 
-	if (explicit_connect(info->reason) == FALSE)
+	if (explicit_connect(info->entry->reason) == FALSE)
 		goto out;
 
 	if (__connman_service_session_dec(info->entry->service) == TRUE)
@@ -782,7 +782,6 @@ static void test_and_disconnect(struct connman_session *session)
 	__connman_service_disconnect(info->entry->service);
 
 out:
-	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	info->entry = NULL;
 }
 
@@ -821,8 +820,8 @@ static void select_and_connect(struct connman_session *session,
 		test_and_disconnect(session);
 
 	if (entry != NULL) {
-		info->reason = reason;
 		info->entry = entry;
+		info->entry->reason = reason;
 
 		if (explicit_connect(reason) == TRUE)
 			__connman_service_session_inc(info->entry->service);
@@ -871,7 +870,7 @@ static void session_changed(struct connman_session *session,
 		break;
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
 		if (info->online == TRUE) {
-			info->reason = CONNMAN_SESSION_REASON_CONNECT;
+			info->entry->reason = CONNMAN_SESSION_REASON_CONNECT;
 			__connman_service_session_inc(info->entry->service);
 			break;
 		}
@@ -886,7 +885,7 @@ static void session_changed(struct connman_session *session,
 		break;
 	case CONNMAN_SESSION_TRIGGER_PERIODIC:
 		if (info->online == TRUE) {
-			info->reason = CONNMAN_SESSION_REASON_PERIODIC;
+			info->entry->reason = CONNMAN_SESSION_REASON_PERIODIC;
 			__connman_service_session_inc(info->entry->service);
 			break;
 		}
@@ -966,6 +965,7 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 	if (entry == NULL)
 		return entry;
 
+	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	entry->service = service;
 
 	return entry;
@@ -1329,7 +1329,6 @@ int __connman_session_create(DBusMessage *msg)
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
 	info->marker = 0;
-	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 
 	if (allowed_bearers == NULL) {
 		info->allowed_bearers =
@@ -1382,7 +1381,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
 	info_last->marker = info->marker;
-	info_last->reason = info->reason;
 	info_last->allowed_bearers = info->allowed_bearers;
 	update_info(info_last);
 
