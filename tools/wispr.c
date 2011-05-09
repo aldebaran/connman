@@ -491,8 +491,24 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 
 	g_print("elapse: %f seconds\n", elapsed);
 
-	if (wispr->msg.message_type < 0)
-		goto done;
+	if (wispr->msg.message_type < 0) {
+		const char *redirect;
+
+		if (status != 302)
+			goto done;
+
+		if (g_web_result_get_header(result, "Location",
+							&redirect) == FALSE)
+			goto done;
+
+		printf("Redirect URL: %s\n", redirect);
+		printf("\n");
+
+		wispr->request = g_web_request_get(wispr->web, redirect,
+							wispr_result, wispr);
+
+		return FALSE;
+	}
 
 	printf("Message type: %s (%d)\n",
 			message_type_to_string(wispr->msg.message_type),
@@ -527,7 +543,8 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 
 		g_idle_add(execute_login, wispr);
 		return FALSE;
-	} else if (status == 200 && wispr->msg.message_type == 120) {
+	} else if (status == 200 && (wispr->msg.message_type == 120 ||
+					wispr->msg.message_type == 140)) {
 		int code = wispr->msg.response_code;
 		printf("Login process: %s\n",
 					code == 50 ? "SUCCESS" : "FAILURE");
