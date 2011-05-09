@@ -91,6 +91,7 @@ struct connman_session {
 	struct session_info info_last;
 
 	GSequence *service_list;
+	GHashTable *service_hash;
 };
 
 struct bearer_info {
@@ -507,28 +508,6 @@ static void ipconfig_ipv6_changed(struct connman_session *session)
 						info->service);
 }
 
-static GSequenceIter *lookup_service(struct connman_session *session,
-					struct connman_service *service)
-{
-	GSequenceIter *iter;
-
-	if (service == NULL)
-		return NULL;
-
-	iter = g_sequence_get_begin_iter(session->service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		struct connman_service *service_iter = g_sequence_get(iter);
-
-		if (service_iter == service)
-			return iter;
-
-		iter = g_sequence_iter_next(iter);
-	}
-
-	return NULL;
-}
-
 static connman_bool_t service_type_match(struct connman_session *session,
 					struct connman_service *service)
 {
@@ -660,6 +639,7 @@ static void cleanup_session(gpointer user_data)
 
 	DBG("remove %s", session->session_path);
 
+	g_hash_table_destroy(session->service_hash);
 	g_sequence_free(session->service_list);
 
 	if (info->service != NULL &&
@@ -862,7 +842,8 @@ static void session_changed(struct connman_session *session,
 		return;
 	case CONNMAN_SESSION_TRIGGER_SETTING:
 		if (info->service != NULL) {
-			iter = lookup_service(session, info->service);
+			iter = g_hash_table_lookup(session->service_hash,
+							info->service);
 			if (iter == NULL) {
 				/*
 				 * This service is not part of this
@@ -965,24 +946,34 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static void print_name(gpointer data, gpointer user_data)
-{
-	struct connman_service *service = data;
-
-	DBG("service %p type %s name %s", service,
-		service2bearer(connman_service_get_type(service)),
-		__connman_service_get_name(service));
-}
-
 static void update_allowed_bearers(struct connman_session *session)
 {
-	if (session->service_list != NULL)
+	struct connman_service *service;
+	GSequenceIter *iter;
+
+	if (session->service_list != NULL) {
+		g_hash_table_remove_all(session->service_hash);
 		g_sequence_free(session->service_list);
+	}
 
 	session->service_list = __connman_service_get_list(session,
 								service_match);
+
 	g_sequence_sort(session->service_list, sort_services, session);
-	g_sequence_foreach(session->service_list, print_name, NULL);
+
+	iter = g_sequence_get_begin_iter(session->service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		service = g_sequence_get(iter);
+
+		DBG("service %p type %s name %s", service,
+			service2bearer(connman_service_get_type(service)),
+			__connman_service_get_name(service));
+
+		g_hash_table_replace(session->service_hash, service, iter);
+
+		iter = g_sequence_iter_next(iter);
+	}
 
 	session->info_dirty = TRUE;
 }
@@ -1289,6 +1280,9 @@ int __connman_session_create(DBusMessage *msg)
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
 
+	session->service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+						NULL, NULL);
+
 	info->bearer = "";
 	info->online = FALSE;
 	info->priority = priority;
@@ -1421,6 +1415,7 @@ void __connman_session_set_mode(connman_bool_t enable)
 static void service_add(struct connman_service *service)
 {
 	GHashTableIter iter;
+	GSequenceIter *iter_service_list;
 	gpointer key, value;
 	struct connman_session *session;
 
@@ -1434,26 +1429,16 @@ static void service_add(struct connman_service *service)
 		if (service_match(session, service) == FALSE)
 			continue;
 
-		g_sequence_insert_sorted(session->service_list, service,
-						sort_services, session);
+		iter_service_list =
+			g_sequence_insert_sorted(session->service_list,
+							service, sort_services,
+							session);
+
+		g_hash_table_replace(session->service_hash, service,
+					iter_service_list);
 
 		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
-}
-
-static int service_remove_from_session(struct connman_session *session,
-					struct connman_service *service)
-{
-	GSequenceIter *iter;
-
-	iter = lookup_service(session, service);
-	if (iter == NULL)
-		return -ENOENT;
-
-	session->info.online = FALSE;
-	g_sequence_remove(iter);
-
-	return 0;
 }
 
 static void service_remove(struct connman_service *service)
@@ -1469,11 +1454,15 @@ static void service_remove(struct connman_service *service)
 	g_hash_table_iter_init(&iter, session_hash);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		GSequenceIter *iter;
 		session = value;
 		info = &session->info;
 
-		if (service_remove_from_session(session, service) != 0)
+		iter = g_hash_table_lookup(session->service_hash, service);
+		if (iter == NULL)
 			continue;
+
+		g_sequence_remove(iter);
 
 		info->service = NULL;
 		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
