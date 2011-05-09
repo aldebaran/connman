@@ -574,11 +574,18 @@ int __connman_service_counter_register(const char *counter);
 void __connman_service_counter_unregister(const char *counter);
 
 struct connman_session;
+struct service_entry;
 typedef connman_bool_t (* service_match_cb) (struct connman_session *session,
 					struct connman_service *service);
+typedef struct service_entry* (* create_service_entry_cb) (
+					struct connman_service *service,
+					const char *name,
+					enum connman_service_state state);
 
 GSequence *__connman_service_get_list(struct connman_session *session,
-					service_match_cb service_match);
+				service_match_cb service_match,
+				create_service_entry_cb create_service_entry,
+				GDestroyNotify destroy_service_entry);
 
 connman_bool_t __connman_service_is_connecting(struct connman_service *service);
 connman_bool_t __connman_service_is_connected(struct connman_service *service);

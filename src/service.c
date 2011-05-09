@@ -1567,13 +1567,17 @@ void __connman_service_counter_unregister(const char *counter)
 }
 
 GSequence *__connman_service_get_list(struct connman_session *session,
-					service_match_cb service_match)
+				service_match_cb service_match,
+				create_service_entry_cb create_service_entry,
+				GDestroyNotify destroy_service_entry)
 {
 	GSequence *list;
 	GSequenceIter *iter;
 	struct connman_service *service;
+	enum connman_service_state state;
+	struct service_entry *entry;
 
-	list = g_sequence_new(NULL);
+	list = g_sequence_new(destroy_service_entry);
 	if (list == NULL)
 		return NULL;
 
@@ -1582,8 +1586,16 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 	while (g_sequence_iter_is_end(iter) == FALSE) {
 		service = g_sequence_get(iter);
 
-		if (service_match(session, service) == TRUE)
-			g_sequence_append(list, service);
+		if (service_match(session, service) == TRUE) {
+			state = combine_state(service->state_ipv4,
+						service->state_ipv6);
+			entry = create_service_entry(service, service->name,
+							state);
+			if (entry == NULL)
+				return list;
+
+			g_sequence_append(list, entry);
+		}
 
 		iter = g_sequence_iter_next(iter);
 	}
