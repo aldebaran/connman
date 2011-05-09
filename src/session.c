@@ -776,6 +776,26 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 	return FALSE;
 }
 
+static void test_and_disconnect(struct connman_session *session)
+{
+	struct session_info *info = &session->info;
+
+	if (explicit_connect(info->reason) == FALSE)
+		goto out;
+
+	if (__connman_service_session_dec(info->service) == TRUE)
+		goto out;
+
+	if (ecall_session != NULL && ecall_session != session)
+		goto out;
+
+	__connman_service_disconnect(info->service);
+
+out:
+	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
+	info->service = NULL;
+}
+
 static void select_and_connect(struct connman_session *session,
 				enum connman_session_reason reason)
 {
@@ -807,15 +827,15 @@ static void select_and_connect(struct connman_session *session,
 		iter = g_sequence_iter_next(iter);
 	}
 
-	if (info->service != NULL && info->service != service) {
-		__connman_service_disconnect(info->service);
-		info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
-		info->service = NULL;
-	}
+	if (info->service != NULL && info->service != service)
+		test_and_disconnect(session);
 
 	if (service != NULL) {
 		info->reason = reason;
 		info->service = service;
+
+		if (explicit_connect(reason) == TRUE)
+			__connman_service_session_inc(info->service);
 
 		if (do_connect == TRUE)
 			__connman_service_connect(info->service);
@@ -848,10 +868,7 @@ static void session_changed(struct connman_session *session,
 				 * This service is not part of this
 				 * session anymore.
 				 */
-
-				if (info->reason == CONNMAN_SESSION_REASON_CONNECT)
-					__connman_service_disconnect(info->service);
-				info->service = NULL;
+				test_and_disconnect(session);
 			}
 		}
 
@@ -864,6 +881,7 @@ static void session_changed(struct connman_session *session,
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
 		if (info->online == TRUE) {
 			info->reason = CONNMAN_SESSION_REASON_CONNECT;
+			__connman_service_session_inc(info->service);
 			break;
 		}
 
@@ -872,17 +890,16 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
-		if (info->online == FALSE)
-			break;
-
-		if (info->service != NULL)
-			__connman_service_disconnect(info->service);
-
-		info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
-		info->service = NULL;
+		test_and_disconnect(session);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_PERIODIC:
+		if (info->online == TRUE) {
+			info->reason = CONNMAN_SESSION_REASON_PERIODIC;
+			__connman_service_session_inc(info->service);
+			break;
+		}
+
 		select_and_connect(session,
 				CONNMAN_SESSION_REASON_PERIODIC);
 
@@ -904,10 +921,8 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_ECALL:
-		if (info->online == FALSE && info->service != NULL) {
-			info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
-			info->service = NULL;
-		}
+		if (info->online == FALSE && info->service != NULL)
+			test_and_disconnect(session);
 
 		break;
 	}
