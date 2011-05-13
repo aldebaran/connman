@@ -1323,6 +1323,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	session = g_hash_table_lookup(session_hash, session_path);
 	if (session != NULL) {
+		session = NULL;
 		err = -EEXIST;
 		goto err;
 	}
