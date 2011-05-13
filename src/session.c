@@ -92,8 +92,8 @@ struct connman_session {
 
 	connman_bool_t append_all;
 	connman_bool_t info_dirty;
-	struct session_info info;
-	struct session_info info_last;
+	struct session_info *info;
+	struct session_info *info_last;
 
 	GSequence *service_list;
 	GHashTable *service_hash;
@@ -338,8 +338,8 @@ static void append_ipconfig_ipv6(DBusMessageIter *iter, void *user_data)
 static void append_notify(DBusMessageIter *dict,
 					struct connman_session *session)
 {
-	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
+	struct session_info *info = session->info;
+	struct session_info *info_last = session->info_last;
 	const char *policy;
 	struct connman_service *service;
 	const char *name, *ifname, *bearer;
@@ -502,7 +502,7 @@ static gboolean session_notify(gpointer user_data)
 
 static void ipconfig_ipv4_changed(struct connman_session *session)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 
 	connman_dbus_setting_changed_dict(session->owner, session->notify_path,
 						"IPv4", append_ipconfig_ipv4,
@@ -511,7 +511,7 @@ static void ipconfig_ipv4_changed(struct connman_session *session)
 
 static void ipconfig_ipv6_changed(struct connman_session *session)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 
 	connman_dbus_setting_changed_dict(session->owner, session->notify_path,
 						"IPv6", append_ipconfig_ipv6,
@@ -521,7 +521,7 @@ static void ipconfig_ipv6_changed(struct connman_session *session)
 static connman_bool_t service_type_match(struct connman_session *session,
 					struct connman_service *service)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 	GSList *list;
 
 	for (list = info->allowed_bearers;
@@ -587,7 +587,7 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 					struct connman_service *service_b,
 					struct connman_session *session)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 	GSList *list;
 	enum connman_service_type type_a, type_b;
 	int weight_a, weight_b;
@@ -645,7 +645,7 @@ static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 static void cleanup_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 
 	DBG("remove %s", session->session_path);
 
@@ -663,6 +663,8 @@ static void cleanup_session(gpointer user_data)
 	g_free(session->owner);
 	g_free(session->session_path);
 	g_free(session->notify_path);
+	g_free(session->info);
+	g_free(session->info_last);
 
 	g_free(session);
 }
@@ -760,7 +762,7 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 
 static void test_and_disconnect(struct connman_session *session)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 
 	if (info->entry == NULL)
 		return;
@@ -794,7 +796,7 @@ out:
 static void select_and_connect(struct connman_session *session,
 				enum connman_session_reason reason)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 	struct service_entry *entry = NULL;
 	GSequenceIter *iter;
 	connman_bool_t do_connect = FALSE;
@@ -850,8 +852,8 @@ static void select_and_connect(struct connman_session *session,
 static void session_changed(struct connman_session *session,
 				enum connman_session_trigger trigger)
 {
-	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
+	struct session_info *info = session->info;
+	struct session_info *info_last = session->info_last;
 	GSequenceIter *iter;
 
 	/*
@@ -1041,7 +1043,7 @@ static void update_allowed_bearers(struct connman_session *session)
 
 static void update_ecall_sessions(struct connman_session *session)
 {
-	struct session_info *info = &session->info;
+	struct session_info *info = session->info;
 	struct connman_session *session_iter;
 	GHashTableIter iter;
 	gpointer key, value;
@@ -1054,7 +1056,7 @@ static void update_ecall_sessions(struct connman_session *session)
 		if (session_iter == session)
 			continue;
 
-		session_iter->info.ecall = info->ecall;
+		session_iter->info->ecall = info->ecall;
 		session_iter->info_dirty = TRUE;
 
 		session_changed(session_iter, CONNMAN_SESSION_TRIGGER_ECALL);
@@ -1063,8 +1065,8 @@ static void update_ecall_sessions(struct connman_session *session)
 
 static void update_ecall(struct connman_session *session)
 {
-	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
+	struct session_info *info = session->info;
+	struct session_info *info_last = session->info_last;
 
 	DBG("session %p ecall_session %p ecall %d -> %d", session,
 		ecall_session, info_last->ecall, info->ecall);
@@ -1097,8 +1099,8 @@ static DBusMessage *change_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = &session->info;
-	struct session_info *info_last = &session->info_last;
+	struct session_info *info = session->info;
+	struct session_info *info_last = session->info_last;
 	DBusMessageIter iter, value;
 	const char *name;
 	GSList *allowed_bearers;
@@ -1218,7 +1220,7 @@ int __connman_session_create(DBusMessage *msg)
 	const char *owner, *notify_path;
 	char *session_path = NULL;
 	DBusMessageIter iter, array;
-	struct connman_session *session;
+	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
 
 	connman_bool_t priority = FALSE, avoid_handover = FALSE;
@@ -1331,8 +1333,20 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 	}
 
-	info = &session->info;
-	info_last = &session->info_last;
+	session->info = g_try_new0(struct session_info, 1);
+	if (session->info == NULL) {
+		err = -ENOMEM;
+		goto err;
+	}
+
+	session->info_last = g_try_new0(struct session_info, 1);
+	if (session->info_last == NULL) {
+		err = -ENOMEM;
+		goto err;
+	}
+
+	info = session->info;
+	info_last = session->info_last;
 
 	session->owner = g_strdup(owner);
 	session->session_path = session_path;
@@ -1415,6 +1429,15 @@ int __connman_session_create(DBusMessage *msg)
 
 err:
 	connman_error("Failed to create session");
+
+	if (session != NULL) {
+		if (session->info_last != NULL)
+			g_free(session->info_last);
+		if (session->info != NULL)
+			g_free(session->info);
+		g_free(session);
+	}
+
 	g_free(session_path);
 
 	g_slist_foreach(allowed_bearers, cleanup_bearer_info, NULL);
@@ -1511,7 +1534,7 @@ static void service_remove(struct connman_service *service)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		GSequenceIter *iter;
 		session = value;
-		info = &session->info;
+		info = session->info;
 
 		iter = g_hash_table_lookup(session->service_hash, service);
 		if (iter == NULL)
@@ -1538,8 +1561,8 @@ static void service_state_changed(struct connman_service *service,
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		session = value;
-		info = &session->info;
-		info_last = &session->info_last;
+		info = session->info;
+		info_last = session->info_last;
 
 		if (info->entry != NULL && info->entry->service == service) {
 			info->entry->state = state;
@@ -1570,7 +1593,7 @@ static void ipconfig_changed(struct connman_service *service,
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		session = value;
-		info = &session->info;
+		info = session->info;
 
 		if (info->entry != NULL && info->entry->service == service) {
 			if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
