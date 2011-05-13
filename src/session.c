@@ -147,7 +147,7 @@ static const char *roamingpolicy2string(enum connman_session_roaming_policy poli
 {
 	switch (policy) {
 	case CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN:
-		break;
+		return "unknown";
 	case CONNMAN_SESSION_ROAMING_POLICY_DEFAULT:
 		return "default";
 	case CONNMAN_SESSION_ROAMING_POLICY_ALWAYS:
