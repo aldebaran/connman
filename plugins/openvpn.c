@@ -61,6 +61,7 @@ struct {
 	{ "OpenVPN.Cipher", "--cipher" },
 	{ "OpenVPN.Auth", "--auth" },
 	{ "OpenVPN.CompLZO", "--comp-lzo" },
+	{ "OpenVPN.RemoteCertTls", "--remote-cert-tls" },
 };
 
 static void ov_append_dns_entries(const char *key, const char *value,
