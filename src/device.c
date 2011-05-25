@@ -794,7 +794,7 @@ int __connman_device_disconnect(struct connman_device *device)
 			 * will fail.  There is nothing to be gained by
 			 * removing the network here anyway.
 			 */
-			connman_warn("Skipping disconnect of %s",
+			connman_warn("Skipping disconnect of %s, network is connecting.",
 				connman_network_get_identifier(network));
 			continue;
 		}
