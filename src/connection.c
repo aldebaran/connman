@@ -304,8 +304,7 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	__connman_service_nameserver_add_routes(service,
 						new_gateway->ipv4_gateway);
 
-	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_READY,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_set_ipconfig_ready(service, CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	if (connman_service_get_type(service) == CONNMAN_SERVICE_TYPE_VPN) {
 		new_gateway->vpn = TRUE;

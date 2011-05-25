@@ -3428,6 +3428,32 @@ static void report_error_cb(struct connman_service *service,
 	}
 }
 
+int __connman_service_set_ipconfig_ready(struct connman_service *service,
+										 enum connman_ipconfig_type type)
+{
+	enum connman_service_state state;
+	int err = 0;
+
+	DBG("service %p (%s) type %d (%s)",
+		service, service ? service->identifier : NULL,
+		type, __connman_ipconfig_type2string(type));
+
+	if (service == NULL)
+		return -EINVAL;
+
+	state = combine_state(service->state_ipv4, service->state_ipv6);
+
+	if (state == CONNMAN_SERVICE_STATE_READY ||
+		state == CONNMAN_SERVICE_STATE_ONLINE) {
+		err = -EALREADY;
+	} else {
+		err = __connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY, type);
+	}
+
+	return err;
+}
+
 int __connman_service_indicate_state(struct connman_service *service,
 					enum connman_service_state new_state,
 					enum connman_ipconfig_type type)
@@ -4426,8 +4452,7 @@ static void service_ip_bound(struct connman_ipconfig *ipconfig)
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 			method == CONNMAN_IPCONFIG_METHOD_AUTO)
-		__connman_service_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY,
+		__connman_service_set_ipconfig_ready(service,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	settings_changed(service, ipconfig);
