@@ -215,6 +215,8 @@ static void send_response(int sk, unsigned char *buf, int len,
 	hdr->arcount = 0;
 
 	err = sendto(sk, buf, len, 0, to, tolen);
+	if (err < 0)
+		return;
 }
 
 static gboolean request_timeout(gpointer user_data)
@@ -238,7 +240,9 @@ static gboolean request_timeout(gpointer user_data)
 		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
 
 		err = sendto(sk, req->resp, req->resplen, 0,
-			     &req->sa, req->sa_len);
+						&req->sa, req->sa_len);
+		if (err < 0)
+			return FALSE;
 	} else if (req->request && req->numserv == 0) {
 		struct domain_hdr *hdr;
 
@@ -256,7 +260,7 @@ static gboolean request_timeout(gpointer user_data)
 			sk = g_io_channel_unix_get_fd(
 						ifdata->udp_listener_channel);
 			send_response(sk, req->request, req->request_len,
-				      &req->sa, req->sa_len, IPPROTO_UDP);
+					&req->sa, req->sa_len, IPPROTO_UDP);
 		}
 	}
 
@@ -383,6 +387,8 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		}
 
 		err = send(sk, alt, req->request_len + domlen + 1, 0);
+		if (err < 0)
+			return -EIO;
 
 		req->numserv++;
 	}
@@ -506,6 +512,8 @@ static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	err = forward_dns_reply(buf, len, IPPROTO_UDP);
+	if (err < 0)
+		return TRUE;
 
 	return TRUE;
 }
