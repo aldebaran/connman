@@ -562,6 +562,8 @@ static int send_query(GResolv *resolv, const unsigned char *buf, int len)
 		sk = g_io_channel_unix_get_fd(nameserver->udp_channel);
 
 		sent = send(sk, buf, len, 0);
+		if (sent < 0)
+			continue;
 	}
 
 	return 0;
@@ -623,7 +625,7 @@ static void parse_response(struct resolv_nameserver *nameserver,
 	GList *list;
 	ns_msg msg;
 	ns_rr rr;
-	int i, n, rcode, count;
+	int i, rcode, count;
 
 	debug(resolv, "response from %s", nameserver->address);
 
@@ -675,7 +677,7 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		lookup->ipv4_query = NULL;
 	}
 
-	for (i = 0, n = 0; i < count; i++) {
+	for (i = 0; i < count; i++) {
 		ns_parserr(&msg, ns_s_an, i, &rr);
 
 		if (ns_rr_class(rr) != ns_c_in)
