@@ -916,7 +916,6 @@ static void ap_create_callback(int result,
 					void *user_data)
 {
 	struct wifi_tethering_info *info = user_data;
-	struct connman_technology *technology;
 
 	DBG("result %d ifname %s", result,
 				g_supplicant_interface_get_ifname(interface));
@@ -932,7 +931,6 @@ static void ap_create_callback(int result,
 	}
 
 	info->wifi->interface = interface;
-	technology = info->technology;
 	g_supplicant_interface_set_data(interface, info->wifi);
 
 	if (g_supplicant_interface_set_apscan(interface, 2) < 0)
