@@ -1437,7 +1437,6 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	struct modem_data *modem;
 	dbus_bool_t powered = FALSE;
 	dbus_bool_t online = FALSE;
-	dbus_bool_t has_online = FALSE;
 	dbus_bool_t locked = FALSE;
 	gboolean has_sim = FALSE;
 	gboolean has_reg = FALSE;
@@ -1472,10 +1471,7 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 			dbus_message_iter_get_basic(&value, &powered);
 		else if (g_str_equal(key, "Lockdown") == TRUE)
 			dbus_message_iter_get_basic(&value, &locked);
-		else if (g_str_equal(key, "Online") == TRUE) {
-			has_online = TRUE;
-			dbus_message_iter_get_basic(&value, &online);
-		} else if (g_str_equal(key, "Interfaces") == TRUE) {
+		else if (g_str_equal(key, "Interfaces") == TRUE) {
 			has_sim = modem_has_sim(&value);
 			has_reg = modem_has_reg(&value);
 			has_gprs = modem_has_gprs(&value);
