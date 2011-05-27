@@ -45,7 +45,7 @@
 #define ARPHDR_PHONET_PIPE (821)
 #endif
 
-#define print(arg...) do { } while (0)
+#define print(arg...) do { if (0) connman_info(arg); } while (0)
 //#define print(arg...) connman_info(arg)
 
 struct watch_data {
