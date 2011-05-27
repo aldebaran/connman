@@ -819,14 +819,11 @@ static int manual_ipv6_set(struct connman_network *network,
 static void autoconf_ipv6_set(struct connman_network *network)
 {
 	struct connman_service *service;
-	struct connman_ipconfig *ipconfig;
 	const char *nameserver = NULL;
 
 	DBG("network %p", network);
 
 	service = __connman_service_lookup_from_network(network);
-
-	ipconfig = __connman_service_get_ip6config(service);
 
 	__connman_device_increase_connections(network->device);
 
@@ -1011,7 +1008,6 @@ connman_bool_t connman_network_get_associating(struct connman_network *network)
  */
 int __connman_network_connect(struct connman_network *network)
 {
-	struct connman_service *service;
 	int err;
 
 	DBG("network %p", network);
@@ -1034,8 +1030,6 @@ int __connman_network_connect(struct connman_network *network)
 	network->connecting = TRUE;
 
 	__connman_device_disconnect(network->device);
-
-	service = __connman_service_lookup_from_network(network);
 
 	err = network->driver->connect(network);
 	if (err < 0) {
