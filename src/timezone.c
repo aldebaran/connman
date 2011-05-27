@@ -415,6 +415,9 @@ int __connman_timezone_init(void)
 
 	g_free(dirname);
 
+	if (wd < 0)
+		return -EIO;
+
 	return 0;
 }
 
