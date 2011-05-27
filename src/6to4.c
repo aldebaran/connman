@@ -464,7 +464,7 @@ int __connman_6to4_probe(struct connman_service *service)
 {
 	struct connman_ipconfig *ip4config, *ip6config;
 	enum connman_ipconfig_method method;
-	unsigned int a, b, c, d;
+	unsigned int a, b;
 	struct in_addr ip4addr;
 	in_addr_t addr;
 	const char *address;
@@ -502,8 +502,6 @@ int __connman_6to4_probe(struct connman_service *service)
 
 	a = (addr & 0xff000000) >> 24;
 	b = (addr & 0x00ff0000) >> 16;
-	c = (addr & 0x0000ff00) >> 8;
-	d = addr & 0x000000ff;
 
 	/* 6to4 tunnel is only usable if we have a public IPv4 address */
 	if (a == 10 || (a == 192 && b == 168) ||
