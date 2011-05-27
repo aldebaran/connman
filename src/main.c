@@ -175,7 +175,6 @@ int main(int argc, char *argv[])
 	DBusConnection *conn;
 	DBusError err;
 	struct sigaction sa;
-	mode_t old_umask;
 	GKeyFile *config;
 
 #ifdef HAVE_CAPNG
@@ -231,7 +230,7 @@ int main(int argc, char *argv[])
 			perror("Failed to create statistics directory");
 	}
 
-	old_umask = umask(077);
+	umask(0077);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
