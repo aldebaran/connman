@@ -202,7 +202,6 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 static int send_select(GDHCPClient *dhcp_client)
 {
 	struct dhcp_packet packet;
-	struct in_addr addr;
 
 	debug(dhcp_client, "sending DHCP select request");
 
@@ -217,8 +216,6 @@ static int send_select(GDHCPClient *dhcp_client)
 	add_request_options(dhcp_client, &packet);
 
 	add_send_options(dhcp_client, &packet);
-
-	addr.s_addr = dhcp_client->requested_ip;
 
 	return dhcp_send_raw_packet(&packet, INADDR_ANY, CLIENT_PORT,
 					INADDR_BROADCAST, SERVER_PORT,
