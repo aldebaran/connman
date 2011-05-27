@@ -307,10 +307,14 @@ struct user_input_data {
 static void user_callback(struct user_input_data *data)
 {
 	char *value;
-	int len;
 
-	if (data->hidden == TRUE)
+	if (data->hidden == TRUE) {
+		ssize_t len;
+
 		len = write(data->fd, "\n", 1);
+		if (len < 0)
+			return;
+	}
 
 	tcsetattr(data->fd, TCSADRAIN, &data->saved_termios);
 
@@ -358,7 +362,7 @@ static gboolean user_input(const char *label, gboolean hidden,
 	struct termios new_termios;
 	GIOChannel *channel;
 	guint watch;
-	int len;
+	ssize_t len;
 
 	data = g_try_new0(struct user_input_data, 1);
 	if (data == NULL)
@@ -398,7 +402,12 @@ static gboolean user_input(const char *label, gboolean hidden,
 		goto error;
 
 	len = write(data->fd, label, strlen(label));
+	if (len < 0)
+		goto error;
+
 	len = write(data->fd, ": ", 2);
+	if (len < 0)
+		goto error;
 
 	return TRUE;
 
