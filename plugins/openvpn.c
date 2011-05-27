@@ -98,7 +98,6 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 {
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
-	const char *domain = NULL;
 	char *nameservers = NULL;
 	char *address = NULL, *gateway = NULL, *peer = NULL;
 	struct connman_ipaddress *ipaddress;
@@ -115,8 +114,6 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 
 	if (strcmp(reason, "up"))
 		return VPN_STATE_DISCONNECT;
-
-	domain = connman_provider_get_string(provider, "VPN.Domain");
 
 	dbus_message_iter_recurse(&iter, &dict);
 
