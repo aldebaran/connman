@@ -438,15 +438,7 @@ int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback)
 
 void __connman_dhcp_stop(struct connman_network *network)
 {
-	struct connman_dhcp *dhcp;
-
 	DBG("");
-
-	dhcp = g_hash_table_lookup(network_table, network);
-	if (dhcp == NULL)
-		return;
-
-	dhcp_release(dhcp);
 
 	g_hash_table_remove(network_table, network);
 }
