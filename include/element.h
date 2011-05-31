@@ -86,9 +86,6 @@ struct connman_element {
 	};
 
 	GHashTable *properties;
-
-	gchar *hostname;
-	gchar *domainname;
 };
 
 struct connman_element *connman_element_create(const char *name);
