@@ -828,7 +828,6 @@ static int manual_ipv6_set(struct connman_network *network,
 static void autoconf_ipv6_set(struct connman_network *network)
 {
 	struct connman_service *service;
-	const char *nameserver = NULL;
 
 	DBG("network %p", network);
 
@@ -840,10 +839,7 @@ static void autoconf_ipv6_set(struct connman_network *network)
 
 	connman_device_set_disconnected(network->device, FALSE);
 
-	connman_element_get_value(&network->element,
-			CONNMAN_PROPERTY_ID_IPV6_NAMESERVER, &nameserver);
-	if (nameserver != NULL)
-		__connman_service_nameserver_append(service, nameserver);
+	/* XXX: Append IPv6 nameservers here */
 
 	network->connecting = FALSE;
 
