@@ -545,6 +545,16 @@ static void set_invalid_key_error(struct connman_network *network)
 					CONNMAN_SERVICE_ERROR_INVALID_KEY);
 }
 
+static void set_connect_error(struct connman_network *network)
+{
+	struct connman_service *service;
+
+	service = __connman_service_lookup_from_network(network);
+
+	__connman_service_indicate_error(service,
+					CONNMAN_SERVICE_ERROR_CONNECT_FAILED);
+}
+
 void connman_network_set_ipv4_method(struct connman_network *network,
 					enum connman_ipconfig_method method)
 {
@@ -601,6 +611,9 @@ void connman_network_set_error(struct connman_network *network,
 		break;
 	case CONNMAN_NETWORK_ERROR_INVALID_KEY:
 		set_invalid_key_error(network);
+		break;
+	case CONNMAN_NETWORK_ERROR_CONNECT_FAIL:
+		set_connect_error(network);
 		break;
 	}
 }
@@ -960,8 +973,8 @@ int connman_network_set_connected(struct connman_network *network,
 
 	if ((network->connecting == TRUE || network->associating == TRUE) &&
 							connected == FALSE) {
-		connman_element_set_error(&network->element,
-					CONNMAN_ELEMENT_ERROR_CONNECT_FAILED);
+		connman_network_set_error(network,
+					CONNMAN_NETWORK_ERROR_CONNECT_FAIL);
 		__connman_network_disconnect(network);
 	}
 
