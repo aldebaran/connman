@@ -956,9 +956,11 @@ int connman_device_set_string(struct connman_device *device,
 	} else if (g_str_equal(key, "Path") == TRUE) {
 		g_free(device->path);
 		device->path = g_strdup(value);
+	} else {
+		return -EINVAL;
 	}
 
-	return connman_element_set_string(&device->element, key, value);
+	return 0;
 }
 
 /**
@@ -984,7 +986,7 @@ const char *connman_device_get_string(struct connman_device *device,
 	else if (g_str_equal(key, "Path") == TRUE)
 		return device->path;
 
-	return connman_element_get_string(&device->element, key);
+	return NULL;
 }
 
 static void set_offlinemode(struct connman_element *element, gpointer user_data)
