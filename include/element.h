@@ -45,7 +45,6 @@ enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_DEVICE     = 3,
 	CONNMAN_ELEMENT_TYPE_NETWORK    = 4,
 	CONNMAN_ELEMENT_TYPE_SERVICE    = 5,
-	CONNMAN_ELEMENT_TYPE_VENDOR     = 10000,
 };
 
 enum connman_element_state {
