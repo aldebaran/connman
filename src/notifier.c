@@ -241,6 +241,11 @@ void __connman_notifier_unregister(enum connman_service_type type)
 {
 	DBG("type %d", type);
 
+	if (g_atomic_int_get(&registered[type]) == 0) {
+		connman_error("notifier unregister underflow");
+		return;
+	}
+
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -287,6 +292,11 @@ void __connman_notifier_disable(enum connman_service_type type)
 {
 	DBG("type %d", type);
 
+	if (g_atomic_int_get(&enabled[type]) == 0) {
+		connman_error("notifier disable underflow");
+		return;
+	}
+
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -332,6 +342,11 @@ void __connman_notifier_connect(enum connman_service_type type)
 void __connman_notifier_disconnect(enum connman_service_type type)
 {
 	DBG("type %d", type);
+
+	if (g_atomic_int_get(&connected[type]) == 0) {
+		connman_error("notifier disconnect underflow");
+		return;
+	}
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
