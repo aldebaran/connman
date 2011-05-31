@@ -487,8 +487,6 @@ struct connman_device *connman_device_create(const char *node,
 		connman_element_set_string(&device->element,
 					CONNMAN_PROPERTY_ID_TYPE, str);
 
-	device->element.ipv4.method = CONNMAN_IPCONFIG_METHOD_DHCP;
-
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
 

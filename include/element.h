@@ -93,19 +93,6 @@ struct connman_element {
 	struct {
 		enum connman_ipconfig_method method;
 		gchar *address;
-		gchar *peer;
-		gchar *netmask;
-		gchar *gateway;
-		gchar *network;
-		gchar *broadcast;
-		gchar *nameserver;
-		gchar *timeserver;
-		gchar *pac;
-	} ipv4;
-
-	struct {
-		enum connman_ipconfig_method method;
-		gchar *address;
 		int prefix_len;
 		gchar *gateway;
 		gchar *network;

@@ -561,8 +561,6 @@ void connman_network_set_ipv4_method(struct connman_network *network,
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
 
-	network->element.ipv4.method = method;
-
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return;
