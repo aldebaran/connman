@@ -46,6 +46,7 @@ struct connman_device {
 	char *address;
 	char *interface;
 	char *ident;
+	char *path;
 	int phyindex;
 	unsigned int connections;
 	guint scan_timeout;
@@ -440,6 +441,7 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->name);
 	g_free(device->address);
 	g_free(device->interface);
+	g_free(device->path);
 
 	g_free(device->last_network);
 
@@ -951,6 +953,9 @@ int connman_device_set_string(struct connman_device *device,
 	} else if (g_str_equal(key, "Node") == TRUE) {
 		g_free(device->node);
 		device->node = g_strdup(value);
+	} else if (g_str_equal(key, "Path") == TRUE) {
+		g_free(device->path);
+		device->path = g_strdup(value);
 	}
 
 	return connman_element_set_string(&device->element, key, value);
@@ -976,6 +981,8 @@ const char *connman_device_get_string(struct connman_device *device,
 		return device->node;
 	else if (g_str_equal(key, "Interface") == TRUE)
 		return device->interface;
+	else if (g_str_equal(key, "Path") == TRUE)
+		return device->path;
 
 	return connman_element_get_string(&device->element, key);
 }
