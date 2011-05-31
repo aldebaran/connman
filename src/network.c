@@ -1779,9 +1779,6 @@ static void network_change(struct connman_element *element)
 	if (element->state != CONNMAN_ELEMENT_STATE_ERROR)
 		return;
 
-	if (element->error != CONNMAN_ELEMENT_ERROR_DHCP_FAILED)
-		return;
-
 	if (network->connected == FALSE)
 		return;
 
