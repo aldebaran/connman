@@ -59,11 +59,28 @@ static void dhcp_free(struct connman_dhcp *dhcp)
 	dhcp->pac = NULL;
 }
 
-static void dhcp_invalid(struct connman_dhcp *dhcp)
+/**
+ * dhcp_invalidate: Invalidate an existing DHCP lease
+ * @dhcp: pointer to the DHCP lease to invalidate.
+ * @callback: flag indicating whether or not to invoke the client callback
+ *            if present.
+ *
+ * Invalidates an existing DHCP lease, optionally invoking the client
+ * callback. The caller may wish to avoid the client callback invocation
+ * when the invocation of that callback might otherwise unnecessarily upset
+ * service state due to the IP configuration change implied by this
+ * invalidation.
+ */
+static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 {
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
 	int i;
+
+	DBG("dhcp %p callback %u", dhcp, callback);
+
+	if (dhcp == NULL)
+		return;
 
 	service = __connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL)
@@ -89,7 +106,7 @@ static void dhcp_invalid(struct connman_dhcp *dhcp)
 	__connman_ipconfig_set_gateway(ipconfig, NULL);
 	__connman_ipconfig_set_prefixlen(ipconfig, 0);
 
-	if (dhcp->callback != NULL)
+	if (dhcp->callback != NULL && callback)
 		dhcp->callback(dhcp->network, FALSE);
 
 	dhcp_free(dhcp);
@@ -107,7 +124,7 @@ static void no_lease_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("No lease available");
 
-	dhcp_invalid(dhcp);
+	dhcp_invalidate(dhcp, TRUE);
 }
 
 static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -116,7 +133,7 @@ static void lease_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("Lease lost");
 
-	dhcp_invalid(dhcp);
+	dhcp_invalidate(dhcp, TRUE);
 }
 
 static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
@@ -125,7 +142,7 @@ static void ipv4ll_lost_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("Lease lost");
 
-	dhcp_invalid(dhcp);
+	dhcp_invalidate(dhcp, TRUE);
 }
 
 
@@ -412,9 +429,9 @@ static void remove_network(gpointer user_data)
 
 	DBG("dhcp %p", dhcp);
 
+	dhcp_invalidate(dhcp, FALSE);
 	dhcp_release(dhcp);
 
-	dhcp_free(dhcp);
 	g_free(dhcp);
 }
 
