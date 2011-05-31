@@ -578,8 +578,6 @@ void connman_network_set_ipv6_method(struct connman_network *network,
 	struct connman_service *service;
 	struct connman_ipconfig *ipconfig;
 
-	network->element.ipv6.method = method;
-
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return;

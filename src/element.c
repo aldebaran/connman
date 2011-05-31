@@ -625,8 +625,6 @@ void connman_element_unref(struct connman_element *element)
 		free_properties(element);
 		g_free(element->hostname);
 		g_free(element->domainname);
-		g_free(element->ipv6.address);
-		g_free(element->ipv6.network);
 		g_free(element->devname);
 		g_free(element->path);
 		g_free(element->name);
@@ -724,12 +722,6 @@ int connman_element_get_value(struct connman_element *element,
 			return connman_element_get_value(element->parent,
 								id, value);
 		*((char **) value) = element->domainname;
-		break;
-	case CONNMAN_PROPERTY_ID_IPV6_GATEWAY:
-		if (element->ipv6.gateway == NULL)
-			return connman_element_get_value(element->parent,
-								id, value);
-		*((char **) value) = element->ipv6.gateway;
 		break;
 
 	default:
