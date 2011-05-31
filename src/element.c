@@ -1191,14 +1191,6 @@ int connman_element_set_enabled(struct connman_element *element,
 
 static enum connman_service_error convert_error(enum connman_element_error error)
 {
-	switch (error) {
-	case CONNMAN_ELEMENT_ERROR_UNKNOWN:
-	case CONNMAN_ELEMENT_ERROR_FAILED:
-		break;
-	case CONNMAN_ELEMENT_ERROR_CONNECT_FAILED:
-		return CONNMAN_SERVICE_ERROR_CONNECT_FAILED;
-	}
-
 	return CONNMAN_SERVICE_ERROR_UNKNOWN;
 }
 

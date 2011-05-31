@@ -56,7 +56,6 @@ enum connman_element_state {
 enum connman_element_error {
 	CONNMAN_ELEMENT_ERROR_UNKNOWN        = 0,
 	CONNMAN_ELEMENT_ERROR_FAILED         = 1,
-	CONNMAN_ELEMENT_ERROR_CONNECT_FAILED = 3,
 };
 
 struct connman_driver;
