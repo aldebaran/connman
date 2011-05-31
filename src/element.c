@@ -54,8 +54,6 @@ static const char *type2string(enum connman_element_type type)
 		return "network";
 	case CONNMAN_ELEMENT_TYPE_SERVICE:
 		return "service";
-	case CONNMAN_ELEMENT_TYPE_ZEROCONF:
-		return "zeroconf";
 	case CONNMAN_ELEMENT_TYPE_VENDOR:
 		return "vendor";
 	}
