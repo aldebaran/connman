@@ -101,6 +101,8 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 						dhcp->nameservers[i]);
 	}
 
+	__connman_ipconfig_address_remove(ipconfig);
+
 	__connman_ipconfig_set_local(ipconfig, NULL);
 	__connman_ipconfig_set_broadcast(ipconfig, NULL);
 	__connman_ipconfig_set_gateway(ipconfig, NULL);

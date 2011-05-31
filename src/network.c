@@ -683,14 +683,10 @@ err:
 static void dhcp_failure(struct connman_network *network)
 {
 	struct connman_service *service;
-	struct connman_ipconfig *ipconfig_ipv4;
 
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return;
-
-	ipconfig_ipv4 = __connman_service_get_ip4config(service);
-	__connman_ipconfig_address_remove(ipconfig_ipv4);
 
 	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_IDLE,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
