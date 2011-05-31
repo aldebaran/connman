@@ -33,16 +33,6 @@ Core
    See http://www.mail-archive.com/connman@connman.net/msg01653.html
 
 
-- Provisioning D-Bus API
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Henri Bragge <henri.bragge@ixonos.com>
-
-   The current service provisioning lacks a D-Bus interface for modifying
-   existing configurations.
-
-
 - WiSPR support
 
    Priority: Medium
@@ -111,18 +101,6 @@ Core
    security integration.
 
 
-- Private networks
-
-   Priority: Medium
-   Complexity: C4
-   Owner: Guillaume Zajac <guillaume.zajac@linux.intel.com>
-
-   The private networks D-Bus API should provide applications with a
-   TUN interface linked to a reserved private IP range.
-   oFono DUN forwarding will use a private network for giving DUN
-   clients access to the default service connectivity.
-
-
 
 WiFi
 ====
@@ -186,16 +164,6 @@ Bluetooth
 
 Cellular
 ========
-
-- IPv6 and IPv6v4 cellular data connection
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-   Support IPv6 and dual stack cellular data connections.
-   oFono already supports it and provide an extensive D-Bus API for it.
-
 
 
 VPN
