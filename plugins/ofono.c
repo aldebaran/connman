@@ -90,6 +90,7 @@ struct modem_data {
 	connman_bool_t registered;
 	connman_bool_t roaming;
 	uint8_t strength, has_strength;
+	char *operator;
 };
 
 struct network_info {
@@ -356,6 +357,7 @@ static void remove_modem(gpointer data)
 	modem_remove_device(modem);
 
 	g_free(modem->path);
+	g_free(modem->operator);
 
 	g_free(modem);
 }
@@ -806,7 +808,6 @@ static int add_network(struct connman_device *device,
 	struct network_info *info;
 	char *ident;
 	const char *hash_path;
-	char const *operator;
 	dbus_bool_t active = FALSE;
 
 	DBG("modem %p device %p path %s", modem, device, path);
@@ -856,9 +857,8 @@ static int add_network(struct connman_device *device,
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
 
-	operator = connman_device_get_string(device, "Operator");
-	if (operator)
-		connman_network_set_name(network, operator);
+	if (modem->operator)
+		connman_network_set_name(network, modem->operator);
 
 	if (modem->has_strength)
 		connman_network_set_strength(network, modem->strength);
@@ -992,7 +992,9 @@ static void modem_operator_name_changed(struct modem_data *modem,
 	if (device == NULL)
 		return;
 
-	connman_device_set_string(device, "Operator", name);
+	if (modem->operator != NULL)
+		g_free(modem->operator);
+	modem->operator = g_strdup(name);
 
 	for (g_hash_table_iter_init(&i, network_hash);
 	     g_hash_table_iter_next(&i, NULL, &value);) {
