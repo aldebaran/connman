@@ -533,7 +533,7 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 		err = -ENODEV;
 		goto error;
 	}
-	DBG("inteface %s", iface);
+	DBG("interface %s", iface);
 
 	err = connman_inet_set_mtu(index, DEFAULT_MTU);
 
