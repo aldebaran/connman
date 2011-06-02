@@ -944,6 +944,9 @@ static gboolean start_renew_timeout(gpointer user_data)
 	else {
 		send_renew(dhcp_client);
 
+		if (dhcp_client->timeout > 0)
+			g_source_remove(dhcp_client->timeout);
+
 		dhcp_client->timeout =
 				g_timeout_add_seconds_full(G_PRIORITY_HIGH,
 						dhcp_client->lease_seconds >> 1,
@@ -960,6 +963,9 @@ static void start_bound(GDHCPClient *dhcp_client)
 	debug(dhcp_client, "start bound");
 
 	dhcp_client->state = BOUND;
+
+	if (dhcp_client->timeout > 0)
+		g_source_remove(dhcp_client->timeout);
 
 	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
 					dhcp_client->lease_seconds >> 1,
