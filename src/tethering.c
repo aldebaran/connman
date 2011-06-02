@@ -41,6 +41,10 @@
 
 #include <gdbus.h>
 
+#ifndef DBUS_TYPE_UNIX_FD
+#define DBUS_TYPE_UNIX_FD -1
+#endif
+
 #define BRIDGE_PROC_DIR "/proc/sys/net/bridge"
 
 #define BRIDGE_NAME "tether"
@@ -512,6 +516,9 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	struct connman_private_network *pn;
 	char *iface = NULL;
 	int index, fd, err;
+
+	if (DBUS_TYPE_UNIX_FD < 0)
+		return -EINVAL;
 
 	pn = g_hash_table_lookup(pn_hash, owner);
 	if (pn != NULL)
