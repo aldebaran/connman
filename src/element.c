@@ -158,55 +158,6 @@ void __connman_element_list(struct connman_element *element,
 						append_path, &filter);
 }
 
-static struct connman_network *get_network(struct connman_element *element)
-{
-	if (element->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
-						element->network != NULL)
-		return element->network;
-
-	if (element->parent == NULL)
-		return NULL;
-
-	return get_network(element->parent);
-}
-
-struct connman_service *__connman_element_get_service(struct connman_element *element)
-{
-	struct connman_service *service = NULL;
-	struct connman_network *network;
-	struct connman_device *device;
-	enum connman_device_type type;
-
-	device = __connman_element_get_device(element);
-	if (device == NULL) {
-		/* Workaround for the connection removal. */
-		service = __connman_service_lookup_from_index(element->index);
-		return service;
-	}
-
-	type = connman_device_get_type(device);
-
-	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_GADGET:
-		break;
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_CELLULAR:
-		network = get_network(element);
-		if (network == NULL)
-			return NULL;
-		service = __connman_service_lookup_from_network(network);
-		break;
-	}
-
-	return service;
-}
-
 struct connman_device *__connman_element_get_device(struct connman_element *element)
 {
 	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
@@ -1038,43 +989,6 @@ static gboolean remove_element(GNode *node, gpointer user_data)
 	return FALSE;
 }
 
-struct unregister_type {
-	struct connman_element *root;
-	enum connman_element_type type;
-};
-
-static gboolean remove_element_type(GNode *node, gpointer user_data)
-{
-	struct unregister_type *children_type = user_data;
-	struct connman_element *root = children_type->root;
-	struct connman_element *element = node->data;
-	enum connman_element_type type = children_type->type;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (element == root)
-		return FALSE;
-
-	if(element->type != type)
-		return FALSE;
-
-	g_node_unlink(node);
-
-	if (element->driver) {
-		if (element->driver->remove)
-			element->driver->remove(element);
-
-		element->driver = NULL;
-	}
-
-	g_node_destroy(node);
-
-	connman_element_unref(element);
-
-	return FALSE;
-}
-
-
 void connman_element_unregister(struct connman_element *element)
 {
 	GNode *node;
@@ -1099,95 +1013,6 @@ void connman_element_unregister_children(struct connman_element *element)
 	if (node != NULL)
 		g_node_traverse(node, G_POST_ORDER,
 				G_TRAVERSE_ALL, -1, remove_element, element);
-}
-
-void connman_element_unregister_children_type(struct connman_element *element, enum connman_element_type type)
-{
-	GNode *node;
-
-	DBG("element %p name %s", element, element->name);
-
-	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
-
-	if (node != NULL) {
-		struct unregister_type children_type;
-
-		children_type.root = element;
-		children_type.type = type;
-		g_node_traverse(node, G_POST_ORDER,
-				G_TRAVERSE_ALL, -1, remove_element_type, &children_type);
-	}
-}
-
-
-static gboolean update_element(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (element->driver && element->driver->update)
-		element->driver->update(element);
-
-	return FALSE;
-}
-
-void connman_element_update(struct connman_element *element)
-{
-	GNode *node;
-
-	DBG("element %p name %s", element, element->name);
-
-	node = g_node_find(element_root, G_PRE_ORDER, G_TRAVERSE_ALL, element);
-
-	if (node != NULL)
-		g_node_traverse(node, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, update_element, element);
-}
-
-int connman_element_set_enabled(struct connman_element *element,
-							gboolean enabled)
-{
-	if (element->enabled == enabled)
-		return 0;
-
-	element->enabled = enabled;
-
-	connman_element_update(element);
-
-	return 0;
-}
-
-static enum connman_service_error convert_error(enum connman_element_error error)
-{
-	return CONNMAN_SERVICE_ERROR_UNKNOWN;
-}
-
-/**
- * connman_element_set_error:
- * @element: element structure
- * @error: error identifier
- *
- * Set error state and specific error identifier
- */
-void connman_element_set_error(struct connman_element *element,
-					enum connman_element_error error)
-{
-	struct connman_service *service;
-
-	DBG("element %p error %d", element, error);
-
-	if (element->type == CONNMAN_ELEMENT_TYPE_ROOT)
-		return;
-
-	element->state = CONNMAN_ELEMENT_STATE_ERROR;
-	element->error = error;
-
-	if (element->driver && element->driver->change)
-		element->driver->change(element);
-
-	service = __connman_element_get_service(element);
-	__connman_service_indicate_error(service, convert_error(error));
 }
 
 void __connman_element_set_driver(struct connman_element *element)

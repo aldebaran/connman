@@ -116,25 +116,6 @@ int connman_element_register(struct connman_element *element,
 					struct connman_element *parent);
 void connman_element_unregister(struct connman_element *element);
 void connman_element_unregister_children(struct connman_element *element);
-void connman_element_unregister_children_type(struct connman_element *element,
-						enum connman_element_type type);
-void connman_element_update(struct connman_element *element);
-
-int connman_element_set_enabled(struct connman_element *element,
-							gboolean enabled);
-void connman_element_set_error(struct connman_element *element,
-					enum connman_element_error error);
-
-static inline void *connman_element_get_data(struct connman_element *element)
-{
-	return element->driver_data;
-}
-
-static inline void connman_element_set_data(struct connman_element *element,
-								void *data)
-{
-	element->driver_data = data;
-}
 
 #ifdef __cplusplus
 }

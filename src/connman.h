@@ -198,7 +198,6 @@ void __connman_element_list(struct connman_element *element,
 					enum connman_element_type type,
 							DBusMessageIter *iter);
 
-struct connman_service *__connman_element_get_service(struct connman_element *element);
 struct connman_device *__connman_element_get_device(struct connman_element *element);
 
 struct connman_device *__connman_element_find_device(enum connman_service_type type);
