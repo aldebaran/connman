@@ -36,8 +36,6 @@ static DBusConnection *connection;
 
 static GNode *element_root = NULL;
 static GSList *driver_list = NULL;
-static gchar **device_filter = NULL;
-static gchar **nodevice_filter = NULL;
 
 static gboolean started = FALSE;
 
@@ -48,8 +46,6 @@ static const char *type2string(enum connman_element_type type)
 		return "unknown";
 	case CONNMAN_ELEMENT_TYPE_ROOT:
 		return "root";
-	case CONNMAN_ELEMENT_TYPE_DEVICE:
-		return "device";
 	case CONNMAN_ELEMENT_TYPE_NETWORK:
 		return "network";
 	}
@@ -123,10 +119,6 @@ static gboolean append_path(GNode *node, gpointer user_data)
 					filter->type != element->type)
 		return FALSE;
 
-	if (filter->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-			__connman_device_has_driver(element->device) == FALSE)
-		return FALSE;
-
 	if (filter->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
 			__connman_network_has_driver(element->network) == FALSE)
 		return FALSE;
@@ -156,206 +148,6 @@ void __connman_element_list(struct connman_element *element,
 
 	g_node_traverse(node, G_PRE_ORDER, G_TRAVERSE_ALL, -1,
 						append_path, &filter);
-}
-
-struct connman_device *__connman_element_get_device(struct connman_element *element)
-{
-	if (element->type == CONNMAN_ELEMENT_TYPE_DEVICE &&
-						element->device != NULL)
-		return element->device;
-
-	if (element->parent == NULL)
-		return NULL;
-
-	return __connman_element_get_device(element->parent);
-}
-
-struct find_data {
-	enum connman_service_type type;
-	struct connman_device *device;
-	connman_bool_t error;
-};
-
-static gboolean find_device(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-	struct find_data *data = user_data;
-
-	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
-		return FALSE;
-
-	if (element->device == NULL)
-		return FALSE;
-
-	if (data->type != __connman_device_get_service_type(element->device))
-		return FALSE;
-
-	data->device = element->device;
-
-	return TRUE;
-}
-
-struct connman_device *__connman_element_find_device(enum connman_service_type type)
-{
-	struct find_data data = { .type = type, .device = NULL };
-
-	g_node_traverse(element_root, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, find_device, &data);
-
-	return data.device;
-}
-
-static gboolean request_scan(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-	struct find_data *data = user_data;
-	enum connman_service_type type;
-
-	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
-		return FALSE;
-
-	if (element->device == NULL)
-		return FALSE;
-
-	type = __connman_device_get_service_type(element->device);
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return FALSE;
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-		if (data->type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
-							data->type != type)
-			return FALSE;
-		break;
-	}
-
-	__connman_device_scan(element->device);
-
-	return FALSE;
-}
-
-int __connman_element_request_scan(enum connman_service_type type)
-{
-	struct find_data data = { .type = type, .device = NULL };
-
-	g_node_traverse(element_root, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, request_scan, &data);
-
-	return 0;
-}
-
-static gboolean enable_technology(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-	struct find_data *data = user_data;
-	enum connman_service_type type;
-	int err;
-
-	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
-		return FALSE;
-
-	if (element->device == NULL)
-		return FALSE;
-
-	type = __connman_device_get_service_type(element->device);
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return FALSE;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		if (data->type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
-							data->type != type)
-			return FALSE;
-		break;
-	}
-
-	err = __connman_device_enable_persistent(element->device);
-	if (err == 0 || (err < 0 && err == -EINPROGRESS))
-		data->error = FALSE;
-
-	return FALSE;
-}
-
-int __connman_element_enable_technology(enum connman_service_type type)
-{
-	struct find_data data = { .type = type, .device = NULL, .error = TRUE };
-
-	g_node_traverse(element_root, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, enable_technology, &data);
-
-	if (data.error == TRUE)
-		return -ENODEV;
-
-	return 0;
-}
-
-static gboolean disable_technology(GNode *node, gpointer user_data)
-{
-	struct connman_element *element = node->data;
-	struct find_data *data = user_data;
-	enum connman_service_type type;
-	int err;
-
-	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
-		return FALSE;
-
-	if (element->device == NULL)
-		return FALSE;
-
-	type = __connman_device_get_service_type(element->device);
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return FALSE;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		if (data->type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
-							data->type != type)
-			return FALSE;
-		break;
-	}
-
-	err = __connman_device_disable_persistent(element->device);
-	if (err == 0 || (err < 0 && err == -EINPROGRESS))
-		data->error = FALSE;
-
-	return FALSE;
-}
-
-int __connman_element_disable_technology(enum connman_service_type type)
-{
-	struct find_data data = { .type = type, .device = NULL, .error = TRUE };
-
-	g_node_traverse(element_root, G_PRE_ORDER,
-				G_TRAVERSE_ALL, -1, disable_technology, &data);
-
-	if (data.error == TRUE)
-		return -ENODEV;
-
-	return 0;
 }
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
@@ -893,34 +685,6 @@ static void register_element(gpointer data, gpointer user_data)
 	probe_element(element);
 }
 
-gboolean __connman_element_device_isfiltered(const char *devname)
-{
-	char **pattern;
-
-	if (device_filter == NULL)
-		goto nodevice;
-
-	for (pattern = device_filter; *pattern; pattern++) {
-		if (g_pattern_match_simple(*pattern, devname) == FALSE) {
-			DBG("ignoring device %s (match)", devname);
-			return TRUE;
-		}
-	}
-
-nodevice:
-	if (nodevice_filter == NULL)
-		return FALSE;
-
-	for (pattern = nodevice_filter; *pattern; pattern++) {
-		if (g_pattern_match_simple(*pattern, devname) == TRUE) {
-			DBG("ignoring device %s (no match)", devname);
-			return TRUE;
-		}
-	}
-
-	return FALSE;
-}
-
 /**
  * connman_element_register:
  * @element: the element to register
@@ -939,13 +703,6 @@ int connman_element_register(struct connman_element *element,
 	if (element->devname == NULL)
 		element->devname = g_strdup(element->name);
 
-	if (element->type != CONNMAN_ELEMENT_TYPE_DEVICE)
-		goto setup;
-
-	if (__connman_element_device_isfiltered(element->devname) == TRUE)
-		return -EPERM;
-
-setup:
 	if (connman_element_ref(element) == NULL)
 		return -EINVAL;
 
@@ -1015,29 +772,7 @@ void connman_element_unregister_children(struct connman_element *element)
 				G_TRAVERSE_ALL, -1, remove_element, element);
 }
 
-void __connman_element_set_driver(struct connman_element *element)
-{
-	GSList *list;
-
-	DBG("element %p name %s driver %p", element, element->name,
-						element->driver);
-
-	if (element->driver)
-		return;
-
-	for (list = driver_list; list; list = list->next) {
-		struct connman_driver *driver = list->data;
-
-		if (match_driver(element, driver) == FALSE)
-			continue;
-
-		element->driver = driver;
-
-		break;
-	}
-}
-
-int __connman_element_init(const char *device, const char *nodevice)
+int __connman_element_init()
 {
 	struct connman_element *element;
 
@@ -1046,13 +781,6 @@ int __connman_element_init(const char *device, const char *nodevice)
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
-
-	if (device)
-		device_filter = g_strsplit(device, ",", -1);
-
-	if (nodevice)
-		nodevice_filter = g_strsplit(nodevice, ",", -1);
-
 	element = connman_element_create("root");
 
 	element->path = g_strdup("/");
@@ -1066,7 +794,6 @@ int __connman_element_init(const char *device, const char *nodevice)
 	__connman_service_init();
 	__connman_provider_init();
 	__connman_network_init();
-	__connman_device_init();
 
 	return 0;
 }
@@ -1152,7 +879,6 @@ void __connman_element_cleanup(void)
 {
 	DBG("");
 
-	__connman_device_cleanup();
 	__connman_network_cleanup();
 	__connman_service_cleanup();
 	__connman_location_cleanup();
@@ -1169,9 +895,6 @@ void __connman_element_cleanup(void)
 
 	g_node_destroy(element_root);
 	element_root = NULL;
-
-	g_strfreev(nodevice_filter);
-	g_strfreev(device_filter);
 
 	if (connection == NULL)
 		return;

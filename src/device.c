@@ -28,8 +28,12 @@
 
 #include "connman.h"
 
+static GSList *device_list = NULL;
+static gchar **device_filter = NULL;
+static gchar **nodevice_filter = NULL;
+
 struct connman_device {
-	struct connman_element element;
+	gint refcount;
 	enum connman_device_type type;
 	connman_bool_t offlinemode;
 	connman_bool_t blocked;
@@ -47,7 +51,9 @@ struct connman_device {
 	char *interface;
 	char *ident;
 	char *path;
+	char *devname;
 	int phyindex;
+	int index;
 	unsigned int connections;
 	guint scan_timeout;
 
@@ -308,29 +314,28 @@ static int setup_device(struct connman_device *device)
 	return 0;
 }
 
-static void probe_driver(struct connman_element *element, gpointer user_data)
+static void probe_driver(struct connman_device_driver *driver)
 {
-	struct connman_device_driver *driver = user_data;
+	GSList *list;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("driver %p name %s", driver, driver->name);
 
-	if (element->device == NULL)
-		return;
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
 
-	if (element->device->driver != NULL)
-		return;
+		if (device->driver != NULL)
+			continue;
 
-	if (driver->type != element->device->type)
-		return;
+		if (driver->type != device->type)
+			continue;
 
-	if (driver->probe(element->device) < 0)
-		return;
+		if (driver->probe(device) < 0)
+			continue;
 
-	element->device->driver = driver;
+		device->driver = driver;
 
-	__connman_element_set_driver(element);
-
-	setup_device(element->device);
+		setup_device(device);
+	}
 }
 
 static void remove_device(struct connman_device *device)
@@ -347,17 +352,18 @@ static void remove_device(struct connman_device *device)
 	device->driver = NULL;
 }
 
-static void remove_driver(struct connman_element *element, gpointer user_data)
+static void remove_driver(struct connman_device_driver *driver)
 {
-	struct connman_device_driver *driver = user_data;
+	GSList *list;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("driver %p name %s", driver, driver->name);
 
-	if (element->device == NULL)
-		return;
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
 
-	if (element->device->driver == driver)
-		remove_device(element->device);
+		if (device->driver == driver)
+			remove_device(device);
+	}
 }
 
 connman_bool_t __connman_device_has_driver(struct connman_device *device)
@@ -392,9 +398,7 @@ int connman_device_driver_register(struct connman_device_driver *driver)
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
-
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
-						probe_driver, driver);
+	probe_driver(driver);
 
 	return 0;
 }
@@ -411,8 +415,7 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 
 	driver_list = g_slist_remove(driver_list, driver);
 
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
-						remove_driver, driver);
+	remove_driver(driver);
 }
 
 static void unregister_network(gpointer data)
@@ -428,11 +431,9 @@ static void unregister_network(gpointer data)
 	connman_network_unref(network);
 }
 
-static void device_destruct(struct connman_element *element)
+static void device_destruct(struct connman_device *device)
 {
-	struct connman_device *device = element->device;
-
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p name %s", device, device->name);
 
 	clear_scan_trigger(device);
 
@@ -442,11 +443,14 @@ static void device_destruct(struct connman_element *element)
 	g_free(device->address);
 	g_free(device->interface);
 	g_free(device->path);
+	g_free(device->devname);
 
 	g_free(device->last_network);
 
 	g_hash_table_destroy(device->networks);
 	device->networks = NULL;
+
+	g_free(device);
 }
 
 /**
@@ -462,7 +466,6 @@ struct connman_device *connman_device_create(const char *node,
 						enum connman_device_type type)
 {
 	struct connman_device *device;
-	const char *str;
 	enum connman_service_type service_type;
 	connman_bool_t bg_scan;
 
@@ -474,20 +477,9 @@ struct connman_device *connman_device_create(const char *node,
 
 	DBG("device %p", device);
 
+	device->refcount = 1;
+
 	bg_scan = connman_setting_get_bool("BackgroundScanning");
-
-	__connman_element_initialize(&device->element);
-
-	device->element.name = g_strdup(node);
-	device->element.type = CONNMAN_ELEMENT_TYPE_DEVICE;
-
-	device->element.device = device;
-	device->element.destruct = device_destruct;
-
-	str = type2string(type);
-	if (str != NULL)
-		connman_element_set_string(&device->element,
-					CONNMAN_PROPERTY_ID_TYPE, str);
 
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
@@ -522,6 +514,8 @@ struct connman_device *connman_device_create(const char *node,
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_network);
 
+	device_list = g_slist_append(device_list, device);
+
 	return device;
 }
 
@@ -533,8 +527,9 @@ struct connman_device *connman_device_create(const char *node,
  */
 struct connman_device *connman_device_ref(struct connman_device *device)
 {
-	if (connman_element_ref(&device->element) == NULL)
-		return NULL;
+	DBG("%p", device);
+
+	g_atomic_int_inc(&device->refcount);
 
 	return device;
 }
@@ -547,7 +542,17 @@ struct connman_device *connman_device_ref(struct connman_device *device)
  */
 void connman_device_unref(struct connman_device *device)
 {
-	connman_element_unref(&device->element);
+	if (g_atomic_int_dec_and_test(&device->refcount) == FALSE)
+		return;
+
+	if (device->driver) {
+		device->driver->remove(device);
+		device->driver = NULL;
+	}
+
+	device_list = g_slist_remove(device_list, device);
+
+	device_destruct(device);
 }
 
 const char *__connman_device_get_type(struct connman_device *device)
@@ -575,7 +580,7 @@ enum connman_device_type connman_device_get_type(struct connman_device *device)
  */
 void connman_device_set_index(struct connman_device *device, int index)
 {
-	device->element.index = index;
+	device->index = index;
 }
 
 /**
@@ -586,7 +591,7 @@ void connman_device_set_index(struct connman_device *device, int index)
  */
 int connman_device_get_index(struct connman_device *device)
 {
-	return device->element.index;
+	return device->index;
 }
 
 int __connman_device_get_phyindex(struct connman_device *device)
@@ -610,8 +615,8 @@ void __connman_device_set_phyindex(struct connman_device *device,
 void connman_device_set_interface(struct connman_device *device,
 						const char *interface)
 {
-	g_free(device->element.devname);
-	device->element.devname = g_strdup(interface);
+	g_free(device->devname);
+	device->devname = g_strdup(interface);
 
 	g_free(device->interface);
 	device->interface = g_strdup(interface);
@@ -806,7 +811,7 @@ int __connman_device_disconnect(struct connman_device *device)
 }
 
 static void mark_network_available(gpointer key, gpointer value,
-                                                        gpointer user_data)
+							gpointer user_data)
 {
 	struct connman_network *network = value;
 
@@ -989,13 +994,12 @@ const char *connman_device_get_string(struct connman_device *device,
 	return NULL;
 }
 
-static void set_offlinemode(struct connman_element *element, gpointer user_data)
+static void set_offlinemode(struct connman_device *device,
+				connman_bool_t offlinemode)
 {
-	struct connman_device *device = element->device;
-	connman_bool_t offlinemode = GPOINTER_TO_UINT(user_data);
 	connman_bool_t powered;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("device %p name %s", device, device->name);
 
 	if (device == NULL)
 		return;
@@ -1018,10 +1022,15 @@ static void set_offlinemode(struct connman_element *element, gpointer user_data)
 
 int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 {
+	GSList *list;
+
 	DBG("offlinmode %d", offlinemode);
 
-	__connman_element_foreach(NULL, CONNMAN_ELEMENT_TYPE_DEVICE,
-			set_offlinemode, GUINT_TO_POINTER(offlinemode));
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
+
+		set_offlinemode(device, offlinemode);
+	}
 
 	__connman_notifier_offlinemode(offlinemode);
 
@@ -1068,7 +1077,7 @@ int connman_device_add_network(struct connman_device *device,
 	__connman_network_set_device(network, device);
 
 	err = connman_element_register((struct connman_element *) network,
-							&device->element);
+				NULL);
 	if (err < 0) {
 		__connman_network_set_device(network, NULL);
 		return err;
@@ -1105,8 +1114,15 @@ struct connman_network *connman_device_get_network(struct connman_device *device
 int connman_device_remove_network(struct connman_device *device,
 							const char *identifier)
 {
+	struct connman_network *network;
+
 	DBG("device %p identifier %s", device, identifier);
 
+	network = connman_device_get_network(device, identifier);
+	if (network == NULL)
+		return 0;
+
+	connman_element_unregister((struct connman_element *) network);
 	g_hash_table_remove(device->networks, identifier);
 
 	return 0;
@@ -1158,6 +1174,55 @@ connman_bool_t  __connman_device_get_reconnect(
 	return device->reconnect;
 }
 
+static gboolean match_driver(struct connman_device *device,
+					struct connman_device_driver *driver)
+{
+	if (device->type == driver->type ||
+			driver->type == CONNMAN_DEVICE_TYPE_UNKNOWN)
+		return TRUE;
+
+	return FALSE;
+}
+
+static int device_probe(struct connman_device *device)
+{
+	GSList *list;
+
+	DBG("device %p name %s", device, device->name);
+
+	if (device->driver != NULL)
+		return -EALREADY;
+
+	for (list = driver_list; list; list = list->next) {
+		struct connman_device_driver *driver = list->data;
+
+		if (match_driver(device, driver) == FALSE)
+			continue;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->probe(device) == 0) {
+			device->driver = driver;
+			break;
+		}
+	}
+
+	if (device->driver == NULL)
+		return -ENODEV;
+
+	return setup_device(device);
+}
+
+static void device_remove(struct connman_device *device)
+{
+	DBG("device %p name %s", device, device->name);
+
+	if (device->driver == NULL)
+		return;
+
+	remove_device(device);
+}
+
 /**
  * connman_device_register:
  * @device: device structure
@@ -1170,7 +1235,7 @@ int connman_device_register(struct connman_device *device)
 
 	device->offlinemode = __connman_profile_get_offlinemode();
 
-	return connman_element_register(&device->element, NULL);
+	return device_probe(device);
 }
 
 /**
@@ -1183,7 +1248,7 @@ void connman_device_unregister(struct connman_device *device)
 {
 	__connman_storage_save_device(device);
 
-	connman_element_unregister(&device->element);
+	device_remove(device);
 }
 
 /**
@@ -1209,71 +1274,150 @@ void connman_device_set_data(struct connman_device *device, void *data)
 	device->driver_data = data;
 }
 
-static gboolean match_driver(struct connman_device *device,
-					struct connman_device_driver *driver)
+struct connman_device *__connman_device_find_device(
+				enum connman_service_type type)
 {
-	if (device->type == driver->type ||
-			driver->type == CONNMAN_DEVICE_TYPE_UNKNOWN)
-		return TRUE;
-
-	return FALSE;
-}
-
-static int device_probe(struct connman_element *element)
-{
-	struct connman_device *device = element->device;
 	GSList *list;
 
-	DBG("element %p name %s", element, element->name);
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
+		enum connman_service_type service_type =
+			connman_device_get_type(device);
 
-	if (device == NULL)
-		return -ENODEV;
-
-	if (device->driver != NULL)
-		return -EALREADY;
-
-	for (list = driver_list; list; list = list->next) {
-		struct connman_device_driver *driver = list->data;
-
-		if (match_driver(device, driver) == FALSE)
+		if (service_type != type)
 			continue;
 
-		DBG("driver %p name %s", driver, driver->name);
+		return device;
+	}
 
-		if (driver->probe(device) == 0) {
-			device->driver = driver;
-			break;
+	return NULL;
+}
+
+int __connman_device_request_scan(enum connman_service_type type)
+{
+	GSList *list;
+	int err;
+
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		return 0;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+		break;
+	}
+
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
+		enum connman_service_type service_type =
+			__connman_device_get_service_type(device);
+
+		if (service_type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
+				service_type != type) {
+			continue;
+		}
+
+		err = __connman_device_scan(device);
+		if (err < 0 && err != -EINPROGRESS) {
+			DBG("err %d", err);
+			/* XXX maybe only a continue? */
+			return err;
 		}
 	}
 
-	if (device->driver == NULL)
-		return -ENODEV;
-
-	return setup_device(device);
+	return 0;
 }
 
-static void device_remove(struct connman_element *element)
+static int set_technology(enum connman_service_type type, connman_bool_t enable)
 {
-	struct connman_device *device = element->device;
+	GSList *list;
+	int err;
 
-	DBG("element %p name %s", element, element->name);
+	DBG("type %d enable %d", type, enable);
 
-	if (device == NULL)
-		return;
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		return 0;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	}
 
-	if (device->driver == NULL)
-		return;
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
+		enum connman_service_type service_type =
+			__connman_device_get_service_type(device);
 
-	remove_device(device);
+		if (service_type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
+				service_type != type) {
+			continue;
+		}
+
+		if (enable == TRUE)
+			err = __connman_device_enable_persistent(device);
+		else
+			err = __connman_device_disable_persistent(device);
+
+		if (err < 0 && err != -EINPROGRESS) {
+			DBG("err %d", err);
+			/* XXX maybe only a continue? */
+			return err;
+		}
+	}
+
+	return 0;
 }
 
-static struct connman_driver device_driver = {
-	.name		= "device",
-	.type		= CONNMAN_ELEMENT_TYPE_DEVICE,
-	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
-	.probe		= device_probe,
-	.remove		= device_remove,
-};
+int __connman_device_enable_technology(enum connman_service_type type)
+{
+	return set_technology(type, TRUE);
+}
+
+int __connman_device_disable_technology(enum connman_service_type type)
+{
+	return set_technology(type, FALSE);
+}
+
+connman_bool_t __connman_device_isfiltered(const char *devname)
+{
+	char **pattern;
+
+	if (device_filter == NULL)
+		goto nodevice;
+
+	for (pattern = device_filter; *pattern; pattern++) {
+		if (g_pattern_match_simple(*pattern, devname) == FALSE) {
+			DBG("ignoring device %s (match)", devname);
+			return TRUE;
+		}
+	}
+
+nodevice:
+	if (nodevice_filter == NULL)
+		return FALSE;
+
+	for (pattern = nodevice_filter; *pattern; pattern++) {
+		if (g_pattern_match_simple(*pattern, devname) == TRUE) {
+			DBG("ignoring device %s (no match)", devname);
+			return TRUE;
+		}
+	}
+
+	return FALSE;
+}
 
 static int device_load(struct connman_device *device)
 {
@@ -1289,7 +1433,7 @@ static int device_load(struct connman_device *device)
 	if (keyfile == NULL)
 		return 0;
 
-	identifier = g_strdup_printf("device_%s", device->element.name);
+	identifier = g_strdup_printf("device_%s", device->name);
 	if (identifier == NULL)
 		goto done;
 
@@ -1319,7 +1463,7 @@ static int device_save(struct connman_device *device)
 	if (keyfile == NULL)
 		return 0;
 
-	identifier = g_strdup_printf("device_%s", device->element.name);
+	identifier = g_strdup_printf("device_%s", device->name);
 	if (identifier == NULL)
 		goto done;
 
@@ -1341,21 +1485,25 @@ static struct connman_storage device_storage = {
 	.device_save	= device_save,
 };
 
-int __connman_device_init(void)
+int __connman_device_init(const char *device, const char *nodevice)
 {
 	DBG("");
 
-	if (connman_storage_register(&device_storage) < 0)
-		connman_error("Failed to register device storage");
+	if (device != NULL)
+		device_filter = g_strsplit(device, ",", -1);
 
-	return connman_driver_register(&device_driver);
+	if (nodevice != NULL)
+		nodevice_filter = g_strsplit(nodevice, ",", -1);
+
+	return connman_storage_register(&device_storage);
 }
 
 void __connman_device_cleanup(void)
 {
 	DBG("");
 
-	connman_driver_unregister(&device_driver);
+	g_strfreev(nodevice_filter);
+	g_strfreev(device_filter);
 
 	connman_storage_unregister(&device_storage);
 }

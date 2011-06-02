@@ -462,7 +462,7 @@ struct connman_device *connman_inet_create_device(int index)
 	if (devname == NULL)
 		return NULL;
 
-	if (__connman_element_device_isfiltered(devname) == TRUE) {
+	if (__connman_device_isfiltered(devname) == TRUE) {
 		connman_info("Ignoring interface %s (filtered)", devname);
 		free(devname);
 		return NULL;

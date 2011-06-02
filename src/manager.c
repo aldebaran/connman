@@ -192,7 +192,7 @@ static DBusMessage *request_scan(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
-	err = __connman_element_request_scan(type);
+	err = __connman_device_request_scan(type);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
 			connman_error("Invalid return code from scan");
@@ -304,7 +304,7 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	technology_enabled = TRUE;
 	technology_pending = dbus_message_ref(msg);
 
-	err = __connman_element_enable_technology(type);
+	err = __connman_device_enable_technology(type);
 	if (err < 0 && err != -EINPROGRESS)
 		technology_reply(-err);
 	else
@@ -352,7 +352,7 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	technology_enabled = FALSE;
 	technology_pending = dbus_message_ref(msg);
 
-	err = __connman_element_disable_technology(type);
+	err = __connman_device_disable_technology(type);
 	if (err < 0 && err != -EINPROGRESS)
 		technology_reply(-err);
 	else

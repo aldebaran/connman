@@ -42,7 +42,6 @@ extern "C" {
 enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_UNKNOWN    = 0,
 	CONNMAN_ELEMENT_TYPE_ROOT       = 1,
-	CONNMAN_ELEMENT_TYPE_DEVICE     = 3,
 	CONNMAN_ELEMENT_TYPE_NETWORK    = 4,
 };
 
@@ -81,7 +80,6 @@ struct connman_element {
 
 	union {
 		void *private;
-		struct connman_device *device;
 		struct connman_network *network;
 	};
 

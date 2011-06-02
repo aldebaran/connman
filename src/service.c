@@ -3424,7 +3424,7 @@ static void report_error_cb(struct connman_service *service,
 	else {
 		service_complete(service);
 		__connman_profile_changed(FALSE);
-		__connman_element_request_scan(CONNMAN_ELEMENT_TYPE_UNKNOWN);
+		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 	}
 }
 
@@ -3655,7 +3655,7 @@ int __connman_service_indicate_state(struct connman_service *service,
 
 	if (service_state == CONNMAN_SERVICE_STATE_IDLE ||
 			service_state == CONNMAN_SERVICE_STATE_FAILURE)
-		__connman_element_request_scan(CONNMAN_ELEMENT_TYPE_UNKNOWN);
+		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 
 	return 0;
 }
@@ -4185,7 +4185,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 				g_strcmp0(security, "ieee8021x") != 0)
 		return -EINVAL;
 
-	device = __connman_element_find_device(CONNMAN_SERVICE_TYPE_WIFI);
+	device = __connman_device_find_device(CONNMAN_SERVICE_TYPE_WIFI);
 	if (device == NULL)
 		return -EOPNOTSUPP;
 

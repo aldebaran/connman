@@ -181,7 +181,7 @@ void __connman_driver_rescan(struct connman_driver *driver);
 
 #include <connman/element.h>
 
-int __connman_element_init(const char *device, const char *nodevice);
+int __connman_element_init(void);
 void __connman_element_start(void);
 void __connman_element_stop(void);
 void __connman_element_cleanup(void);
@@ -198,19 +198,8 @@ void __connman_element_list(struct connman_element *element,
 					enum connman_element_type type,
 							DBusMessageIter *iter);
 
-struct connman_device *__connman_element_get_device(struct connman_element *element);
-
-struct connman_device *__connman_element_find_device(enum connman_service_type type);
-int __connman_element_request_scan(enum connman_service_type type);
-int __connman_element_enable_technology(enum connman_service_type type);
-int __connman_element_disable_technology(enum connman_service_type type);
-
-gboolean __connman_element_device_isfiltered(const char *devname);
-
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
-
-void __connman_element_set_driver(struct connman_element *element);
 
 #include <connman/proxy.h>
 
@@ -361,12 +350,18 @@ connman_bool_t __connman_technology_get_blocked(enum connman_service_type type);
 
 #include <connman/device.h>
 
-int __connman_device_init(void);
+int __connman_device_init(const char *device, const char *nodevice);
 void __connman_device_cleanup(void);
 
 void __connman_device_list(DBusMessageIter *iter, void *user_data);
 
 enum connman_service_type __connman_device_get_service_type(struct connman_device *device);
+struct connman_device *__connman_device_find_device(enum connman_service_type type);
+int __connman_device_request_scan(enum connman_service_type type);
+int __connman_device_enable_technology(enum connman_service_type type);
+int __connman_device_disable_technology(enum connman_service_type type);
+
+connman_bool_t __connman_device_isfiltered(const char *devname);
 
 int __connman_device_get_phyindex(struct connman_device *device);
 void __connman_device_set_phyindex(struct connman_device *device,
