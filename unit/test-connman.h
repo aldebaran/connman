@@ -55,6 +55,9 @@ void util_test_add(const char *test_name, GSourceFunc test_func,
 void util_setup(struct test_fix *fix, gconstpointer data);
 void util_teardown(struct test_fix *fix, gconstpointer data);
 
+void util_session_create(struct test_fix *fix, unsigned int max_sessions);
+void util_session_destroy(gpointer fix);
+
 typedef void (* notify_cb) (struct test_session *session);
 
 enum connman_session_roaming_policy {

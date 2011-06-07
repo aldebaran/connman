@@ -107,3 +107,32 @@ void util_test_add(const char *test_name, GSourceFunc test_func,
 	g_test_add(test_name, struct test_fix, test_func,
 		setup_cb, util_wrapper, teardown_cb);
 }
+
+void util_session_create(struct test_fix *fix, unsigned int max_sessions)
+{
+	unsigned int i;
+
+	fix->max_sessions = max_sessions;
+	fix->session = g_try_new0(struct test_session, max_sessions);
+
+	for (i = 0; i < max_sessions; i++) {
+		fix->session[i].fix = fix;
+		fix->session[i].info = g_try_new0(struct test_session_info, 1);
+		fix->session[i].connection = g_dbus_setup_private(
+						DBUS_BUS_SYSTEM, NULL, NULL);
+	}
+}
+
+void util_session_destroy(gpointer data)
+{
+	struct test_fix *fix = data;
+
+	unsigned int i;
+
+	for (i = 0; i < fix->max_sessions; i++) {
+		dbus_connection_close(fix->session[i].connection);
+		g_free(fix->session[i].info);
+	}
+
+	g_free(fix->session);
+}

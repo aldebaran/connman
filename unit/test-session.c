@@ -23,15 +23,63 @@
 #include <config.h>
 #endif
 
+#include <stdio.h>
+
 #include "gdbus/gdbus.h"
 
 #include "test-connman.h"
 
-static gboolean test_empty(gpointer data)
+static connman_bool_t is_connman_running(DBusConnection *connection)
+{
+	DBusError error;
+	connman_bool_t running;
+
+	dbus_error_init(&error);
+
+	running = dbus_bus_name_has_owner(connection, CONNMAN_SERVICE, &error);
+
+	if (dbus_error_is_set(&error) == TRUE) {
+		fprintf(stderr, "%s\n", error.message);
+		dbus_error_free(&error);
+
+		return FALSE;
+	}
+
+	return running;
+}
+
+static gboolean test_session_create_no_notify(gpointer data)
 {
 	struct test_fix *fix = data;
+	DBusMessage *msg;
 
-	util_idle_call(fix, util_quit_loop, NULL);
+	util_session_create(fix, 1);
+
+	msg = manager_create_session(fix->session->connection,
+					fix->session->info, "/foo");
+	g_assert(msg != NULL);
+	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
+
+	dbus_message_unref(msg);
+
+	g_assert(is_connman_running(fix->session->connection) == TRUE);
+	util_idle_call(fix, util_quit_loop, util_session_destroy);
+
+	return FALSE;
+}
+
+static gboolean test_session_destroy_no_notify(gpointer data)
+{
+	struct test_fix *fix = data;
+	DBusMessage *msg;
+
+	util_session_create(fix, 1);
+
+	msg = manager_destroy_session(fix->session->connection, "/foo");
+	g_assert(msg == NULL);
+
+	g_assert(is_connman_running(fix->session->connection) == TRUE);
+	util_idle_call(fix, util_quit_loop, util_session_destroy);
 
 	return FALSE;
 }
@@ -88,8 +136,10 @@ int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
 
-	util_test_add("/empty",
-		test_empty, setup_cb, teardown_cb);
+	util_test_add("/manager/session create no notify",
+		test_session_create_no_notify, setup_cb, teardown_cb);
+	util_test_add("/manager/session destroy no notify",
+		test_session_destroy_no_notify, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
