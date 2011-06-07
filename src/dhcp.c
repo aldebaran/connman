@@ -96,9 +96,11 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	__connman_service_set_pac(service, NULL);
 	__connman_service_timeserver_remove(service, dhcp->timeserver);
 
-	for (i = 0; dhcp->nameservers[i] != NULL; i++) {
-		__connman_service_nameserver_remove(service,
-						dhcp->nameservers[i]);
+	if (dhcp->nameservers != NULL) {
+		for (i = 0; dhcp->nameservers[i] != NULL; i++) {
+			__connman_service_nameserver_remove(service,
+							dhcp->nameservers[i]);
+		}
 	}
 
 	__connman_ipconfig_address_remove(ipconfig);
