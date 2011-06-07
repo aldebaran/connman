@@ -1,0 +1,189 @@
+/*
+ *
+ *  Connection Manager
+ *
+ *  Copyright (C) 2011  BWM CarIT GmbH. All rights reserved.
+ *
+ *  This program is free software; you can redistribute it and/or modify
+ *  it under the terms of the GNU General Public License version 2 as
+ *  published by the Free Software Foundation.
+ *
+ *  This program is distributed in the hope that it will be useful,
+ *  but WITHOUT ANY WARRANTY; without even the implied warranty of
+ *  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ *  GNU General Public License for more details.
+ *
+ *  You should have received a copy of the GNU General Public License
+ *  along with this program; if not, write to the Free Software
+ *  Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
+ *
+ */
+
+#ifdef HAVE_CONFIG_H
+#include <config.h>
+#endif
+
+#include <stdio.h>
+
+#include "test-connman.h"
+
+static DBusMessage *set_property(DBusConnection *connection,
+				const char *property, int type, void *value)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+	DBusMessageIter iter;
+
+	message = dbus_message_new_method_call(CONNMAN_SERVICE,
+						CONNMAN_MANAGER_PATH,
+						CONNMAN_MANAGER_INTERFACE,
+						"SetProperty");
+	if (message == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(message, &iter);
+	connman_dbus_property_append_basic(&iter, property, type, value);
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			LOG("%s", error.message);
+			dbus_error_free(&error);
+		} else {
+			LOG("Failed to get properties");
+		}
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	dbus_message_unref(message);
+
+	return reply;
+}
+
+DBusMessage *manager_get_services(DBusConnection *connection)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+
+	message = dbus_message_new_method_call(CONNMAN_SERVICE,
+						CONNMAN_MANAGER_PATH,
+						CONNMAN_MANAGER_INTERFACE,
+							"GetServices");
+	if (message == NULL)
+		return NULL;
+
+	dbus_error_init(&error);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			LOG("%s", error.message);
+			dbus_error_free(&error);
+		} else {
+			LOG("Failed to get properties");
+		}
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	dbus_message_unref(message);
+
+	return reply;
+}
+
+DBusMessage *manager_create_session(DBusConnection *connection,
+					struct test_session_info *info,
+					const char *notifier_path)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+	DBusMessageIter array, dict;
+
+	message = dbus_message_new_method_call(CONNMAN_SERVICE,
+						CONNMAN_MANAGER_PATH,
+						CONNMAN_MANAGER_INTERFACE,
+							"CreateSession");
+	if (message == NULL)
+		return NULL;
+
+	dbus_error_init(&error);
+
+	dbus_message_iter_init_append(message, &array);
+
+	connman_dbus_dict_open(&array, &dict);
+
+	/* session_append_settings(&dict, info); */
+
+	connman_dbus_dict_close(&array, &dict);
+
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_OBJECT_PATH,
+				&notifier_path);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			LOG("%s", error.message);
+			dbus_error_free(&error);
+		} else {
+			LOG("Failed to get properties");
+		}
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	dbus_message_unref(message);
+
+	return reply;
+}
+
+DBusMessage *manager_destroy_session(DBusConnection *connection,
+					const char *notifier_path)
+{
+	DBusMessage *message, *reply;
+	DBusError error;
+	DBusMessageIter array;
+
+	message = dbus_message_new_method_call(CONNMAN_SERVICE,
+						CONNMAN_MANAGER_PATH,
+						CONNMAN_MANAGER_INTERFACE,
+							"DestroySession");
+	if (message == NULL)
+		return NULL;
+
+	dbus_error_init(&error);
+
+	dbus_message_iter_init_append(message, &array);
+
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_OBJECT_PATH,
+				&notifier_path);
+
+	reply = dbus_connection_send_with_reply_and_block(connection,
+							message, -1, &error);
+	if (reply == NULL) {
+		if (dbus_error_is_set(&error) == TRUE) {
+			LOG("%s", error.message);
+			dbus_error_free(&error);
+		} else {
+			LOG("%s", error.message);
+		}
+		dbus_message_unref(message);
+		return NULL;
+	}
+
+	dbus_message_unref(message);
+
+	return reply;
+}
+
+DBusMessage *manager_set_session_mode(DBusConnection *connection,
+					connman_bool_t enable)
+{
+	return set_property(connection, "SessionMode",
+				DBUS_TYPE_BOOLEAN, &enable);
+}

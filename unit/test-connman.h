@@ -57,14 +57,55 @@ void util_teardown(struct test_fix *fix, gconstpointer data);
 
 typedef void (* notify_cb) (struct test_session *session);
 
+enum connman_session_roaming_policy {
+	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
+	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
+	CONNMAN_SESSION_ROAMING_POLICY_ALWAYS		= 2,
+	CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN	= 3,
+	CONNMAN_SESSION_ROAMING_POLICY_NATIONAL		= 4,
+	CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL	= 5,
+};
+
+struct test_session_info {
+	char *bearer;
+	connman_bool_t online;
+	char *name;
+	/* ipv4, ipv6 dicts */
+	GSList *allowed_bearers;
+	connman_bool_t priority;
+	connman_bool_t avoid_handover;
+	connman_bool_t stay_connected;
+	unsigned int periodic_connect;
+	unsigned int idle_timeout;
+	connman_bool_t ecall;
+	enum connman_session_roaming_policy roaming_policy;
+	char *interface;
+	unsigned int marker;
+};
+
 struct test_session {
 	gpointer user_data;
 
 	struct test_fix *fix;
 	DBusConnection *connection;
 
+	char *session_path;
+	char *notify_path;
 	notify_cb notify;
+
+	struct test_session_info *info;
 };
+
+/* manager-api.c */
+DBusMessage *manager_get_services(DBusConnection *connection);
+DBusMessage *manager_create_session(DBusConnection *connection,
+					struct test_session_info *info,
+					const char *notifier_path);
+DBusMessage *manager_destroy_session(DBusConnection *connection,
+					const char *notifier_path);
+DBusMessage *manager_set_session_mode(DBusConnection *connection,
+					connman_bool_t enable);
+
 
 /* #define DEBUG */
 #ifdef DEBUG
