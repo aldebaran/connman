@@ -119,6 +119,25 @@ static gboolean test_session_create(gpointer data)
 	return FALSE;
 }
 
+static gboolean test_session_create_destroy(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+
+	util_session_create(fix, 1);
+	session = fix->session;
+
+	session->notify_path = g_strdup("/foo");
+
+	util_session_init(fix->session);
+	util_session_cleanup(fix->session);
+
+	g_assert(is_connman_running(session->connection) == TRUE);
+	util_idle_call(fix, util_quit_loop, util_session_destroy);
+
+	return FALSE;
+}
+
 static void set_session_mode(struct test_fix *fix,
 					connman_bool_t enable)
 {
@@ -177,6 +196,8 @@ int main(int argc, char *argv[])
 		test_session_destroy_no_notify, setup_cb, teardown_cb);
 	util_test_add("/manager/session create",
 		test_session_create, setup_cb, teardown_cb);
+	util_test_add("/manager/session create destroy",
+		test_session_create_destroy, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
