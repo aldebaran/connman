@@ -166,6 +166,48 @@ static gboolean test_session_create_already_exists(gpointer data)
 	return FALSE;
 }
 
+static void test_session_create_many_notify(struct test_session *session)
+{
+	unsigned int nr;
+
+	LOG("session %p", session);
+
+	g_assert(is_connman_running(session->connection) == TRUE);
+
+	nr = GPOINTER_TO_UINT(session->fix->user_data);
+	nr--;
+	session->fix->user_data = GUINT_TO_POINTER(nr);
+
+	if (nr > 0)
+		return;
+
+	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
+}
+
+static gboolean test_session_create_many(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+	unsigned int i, max;
+
+	max = 100;
+
+	fix->user_data = GUINT_TO_POINTER(max);
+
+	util_session_create(fix, max);
+
+	for (i = 0; i < max; i++) {
+		session = &fix->session[i];
+
+		session->notify_path = g_strdup_printf("/foo/%d", i);
+		session->notify = test_session_create_many_notify;
+
+		util_session_init(session);
+	}
+
+	return FALSE;
+}
+
 static void set_session_mode(struct test_fix *fix,
 					connman_bool_t enable)
 {
@@ -228,6 +270,8 @@ int main(int argc, char *argv[])
 		test_session_create_destroy, setup_cb, teardown_cb);
 	util_test_add("/manager/session create already exists",
 		test_session_create_already_exists, setup_cb, teardown_cb);
+	util_test_add("/manager/session create many",
+		test_session_create_many, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
