@@ -57,6 +57,8 @@ void util_teardown(struct test_fix *fix, gconstpointer data);
 
 void util_session_create(struct test_fix *fix, unsigned int max_sessions);
 void util_session_destroy(gpointer fix);
+void util_session_init(struct test_session *session);
+void util_session_cleanup(struct test_session *session);
 
 typedef void (* notify_cb) (struct test_session *session);
 

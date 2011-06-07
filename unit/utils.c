@@ -136,3 +136,51 @@ void util_session_destroy(gpointer data)
 
 	g_free(fix->session);
 }
+
+void util_session_init(struct test_session *session)
+{
+	DBusMessage *msg;
+	DBusMessageIter iter;
+	const char *path;
+	int err;
+
+	err = session_notify_register(session, session->notify_path);
+	g_assert(err == 0);
+
+	msg = manager_create_session(session->connection,
+					session->info,
+					session->notify_path);
+	g_assert(msg != NULL);
+	dbus_message_iter_init(msg, &iter);
+
+	dbus_message_iter_get_basic(&iter, &path);
+	session->session_path = g_strdup(path);
+
+	dbus_message_unref(msg);
+}
+
+void util_session_cleanup(struct test_session *session)
+{
+	DBusMessage *msg;
+	int err;
+
+	msg = manager_destroy_session(session->connection,
+					session->session_path);
+	g_assert(msg != NULL);
+	dbus_message_unref(msg);
+
+	err = session_notify_unregister(session,
+					session->notify_path);
+	g_assert(err == 0);
+
+	g_free(session->info->bearer);
+	g_free(session->info->name);
+	g_free(session->info->interface);
+	g_slist_foreach(session->info->allowed_bearers,
+			bearer_info_cleanup, NULL);
+	g_slist_free(session->info->allowed_bearers);
+
+	session->notify = NULL;
+	g_free(session->notify_path);
+	g_free(session->session_path);
+}
