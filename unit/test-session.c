@@ -36,13 +36,51 @@ static gboolean test_empty(gpointer data)
 	return FALSE;
 }
 
+static void set_session_mode(struct test_fix *fix,
+					connman_bool_t enable)
+{
+	DBusMessage *msg;
+
+	msg = manager_set_session_mode(fix->main_connection, enable);
+	g_assert(msg != NULL);
+	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
+
+	dbus_message_unref(msg);
+
+	util_idle_call(fix, util_quit_loop, NULL);
+}
+
+static gboolean enable_session_mode(gpointer data)
+{
+	struct test_fix *fix = data;
+
+	set_session_mode(fix, TRUE);
+
+	return FALSE;
+}
+
+static gboolean disable_session_mode(gpointer data)
+{
+	struct test_fix *fix = data;
+
+	set_session_mode(fix, FALSE);
+
+	return FALSE;
+}
+
 static void setup_cb(struct test_fix *fix, gconstpointer data)
 {
 	util_setup(fix, data);
+
+	util_call(fix, enable_session_mode, NULL);
+	g_main_loop_run(fix->main_loop);
 }
 
 static void teardown_cb(struct test_fix *fix, gconstpointer data)
 {
+	util_call(fix, disable_session_mode, NULL);
+	g_main_loop_run(fix->main_loop);
+
 	util_teardown(fix, data);
 }
 
