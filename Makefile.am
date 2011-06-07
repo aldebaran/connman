@@ -184,7 +184,8 @@ tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
 tools_private_network_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 unit_test_session_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
-		unit/test-session.c unit/utils.c unit/manager-api.c
+		unit/test-session.c unit/utils.c unit/manager-api.c \
+		unit/session-api.c
 unit_test_session_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 unit_objects += $(unit_test_session_OBJECTS)
 endif

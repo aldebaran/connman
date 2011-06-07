@@ -99,6 +99,25 @@ struct test_session {
 	struct test_session_info *info;
 };
 
+struct test_bearer_info {
+	char *name;
+};
+
+/* session-api.c */
+void bearer_info_cleanup(gpointer bearer_info, gpointer user_data);
+
+void session_append_settings(DBusMessageIter *dict,
+				struct test_session_info *info);
+int session_notify_register(struct test_session *session,
+				const char *notify_path);
+int session_notify_unregister(struct test_session *session,
+				const char *notify_path);
+
+DBusMessage *session_connect(DBusConnection *connection,
+				struct test_session *session);
+DBusMessage *session_disconnect(DBusConnection *connection,
+					struct test_session *session);
+
 /* manager-api.c */
 DBusMessage *manager_get_services(DBusConnection *connection);
 DBusMessage *manager_create_session(DBusConnection *connection,

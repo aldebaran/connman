@@ -117,7 +117,7 @@ DBusMessage *manager_create_session(DBusConnection *connection,
 
 	connman_dbus_dict_open(&array, &dict);
 
-	/* session_append_settings(&dict, info); */
+	session_append_settings(&dict, info);
 
 	connman_dbus_dict_close(&array, &dict);
 
