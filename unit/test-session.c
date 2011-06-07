@@ -257,6 +257,39 @@ static gboolean test_session_connect(gpointer data)
 	return FALSE;
 }
 
+static void test_session_disconnect_notify(struct test_session *session)
+{
+	LOG("session %p online %d", session, session->info->online);
+
+	if (session->info->online != FALSE)
+		return;
+
+	util_session_cleanup(session);
+
+	g_assert(is_connman_running(session->connection) == TRUE);
+	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
+}
+
+static gboolean test_session_disconnect(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+	DBusMessage *msg;
+
+	util_session_create(fix, 1);
+	session = fix->session;
+
+	session->notify_path = g_strdup("/foo");
+	session->notify =  test_session_disconnect_notify;
+	util_session_init(session);
+
+	msg = session_disconnect(session->connection, session);
+	g_assert(msg != NULL);
+	dbus_message_unref(msg);
+
+	return FALSE;
+}
+
 static gboolean enable_session_mode(gpointer data)
 {
 	struct test_fix *fix = data;
@@ -310,6 +343,8 @@ int main(int argc, char *argv[])
 
 	util_test_add("/session/connect",
 		test_session_connect, setup_cb, teardown_cb);
+	util_test_add("/session/disconnect",
+		test_session_disconnect, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
