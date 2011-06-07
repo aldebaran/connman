@@ -222,6 +222,41 @@ static void set_session_mode(struct test_fix *fix,
 	util_idle_call(fix, util_quit_loop, NULL);
 }
 
+static void test_session_connect_notify(struct test_session *session)
+{
+	LOG("session %p online %d", session, session->info->online);
+
+	if (session->info->online != TRUE)
+		return;
+
+	util_session_cleanup(session);
+
+	g_assert(is_connman_running(session->connection) == TRUE);
+	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
+}
+
+static gboolean test_session_connect(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+	DBusMessage *msg;
+
+	util_session_create(fix, 1);
+	session = fix->session;
+
+	session->notify_path = g_strdup("/foo");
+	session->notify =  test_session_connect_notify;
+	util_session_init(session);
+
+	msg = session_connect(session->connection, session);
+	g_assert(msg != NULL);
+	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
+
+	dbus_message_unref(msg);
+
+	return FALSE;
+}
+
 static gboolean enable_session_mode(gpointer data)
 {
 	struct test_fix *fix = data;
@@ -272,6 +307,9 @@ int main(int argc, char *argv[])
 		test_session_create_already_exists, setup_cb, teardown_cb);
 	util_test_add("/manager/session create many",
 		test_session_create_many, setup_cb, teardown_cb);
+
+	util_test_add("/session/connect",
+		test_session_connect, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
