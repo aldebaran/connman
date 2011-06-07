@@ -60,6 +60,8 @@ builtin_cflags =
 
 noinst_PROGRAMS =
 
+unit_objects =
+
 sbin_PROGRAMS = src/connmand
 
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
@@ -142,7 +144,8 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
-			tools/stats-tool tools/private-network-test
+			tools/stats-tool tools/private-network-test \
+			unit/test-session
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
@@ -179,6 +182,10 @@ tools_polkit_test_LDADD = @DBUS_LIBS@
 tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
 
 tools_private_network_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
+unit_test_session_SOURCES = $(gdbus_sources) unit/test-session.c
+unit_test_session_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+unit_objects += $(unit_test_session_OBJECTS)
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \
