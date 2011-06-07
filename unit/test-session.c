@@ -290,6 +290,47 @@ static gboolean test_session_disconnect(gpointer data)
 	return FALSE;
 }
 
+static void test_session_connect_disconnect_notify(struct test_session *session)
+{
+	DBusMessage *msg;
+
+	LOG("session %p online %d", session, session->info->online);
+
+	if (session->info->online != TRUE)
+		return;
+
+	msg = session_disconnect(session->connection, session);
+	g_assert(msg != NULL);
+	dbus_message_unref(msg);
+
+	util_session_cleanup(session);
+
+	g_assert(is_connman_running(session->connection) == TRUE);
+	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
+}
+
+static gboolean test_session_connect_disconnect(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+	DBusMessage *msg;
+
+	util_session_create(fix, 1);
+	session = fix->session;
+
+	session->notify_path = g_strdup("/foo");
+	session->notify =  test_session_connect_disconnect_notify;
+	util_session_init(session);
+
+	msg = session_connect(session->connection, session);
+	g_assert(msg != NULL);
+	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
+
+	dbus_message_unref(msg);
+
+	return FALSE;
+}
+
 static gboolean enable_session_mode(gpointer data)
 {
 	struct test_fix *fix = data;
@@ -345,6 +386,8 @@ int main(int argc, char *argv[])
 		test_session_connect, setup_cb, teardown_cb);
 	util_test_add("/session/disconnect",
 		test_session_disconnect, setup_cb, teardown_cb);
+	util_test_add("/session/connect disconnect",
+		test_session_connect_disconnect, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
