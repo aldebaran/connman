@@ -23,13 +23,35 @@
 #include <config.h>
 #endif
 
-#include <gdbus.h>
+#include "gdbus/gdbus.h"
 
-#include "connman.h"
+#include "test-connman.h"
+
+static gboolean test_empty(gpointer data)
+{
+	struct test_fix *fix = data;
+
+	util_idle_call(fix, util_quit_loop, NULL);
+
+	return FALSE;
+}
+
+static void setup_cb(struct test_fix *fix, gconstpointer data)
+{
+	util_setup(fix, data);
+}
+
+static void teardown_cb(struct test_fix *fix, gconstpointer data)
+{
+	util_teardown(fix, data);
+}
 
 int main(int argc, char *argv[])
 {
 	g_test_init(&argc, &argv, NULL);
+
+	util_test_add("/empty",
+		test_empty, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
