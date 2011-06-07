@@ -84,6 +84,41 @@ static gboolean test_session_destroy_no_notify(gpointer data)
 	return FALSE;
 }
 
+static void test_session_create_notify(struct test_session *session)
+{
+	LOG("session %p", session);
+
+	g_assert(is_connman_running(session->connection) == TRUE);
+	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
+}
+
+static gboolean test_session_create(gpointer data)
+{
+	struct test_fix *fix = data;
+	struct test_session *session;
+	DBusMessage *msg;
+	int err;
+
+	util_session_create(fix, 1);
+	session = fix->session;
+
+	session->notify_path = "/foo";
+	session->notify = test_session_create_notify;
+
+	err = session_notify_register(session, session->notify_path);
+	g_assert(err == 0);
+
+	msg = manager_create_session(session->connection,
+					session->info,
+					session->notify_path);
+	g_assert(msg != NULL);
+	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
+
+	dbus_message_unref(msg);
+
+	return FALSE;
+}
+
 static void set_session_mode(struct test_fix *fix,
 					connman_bool_t enable)
 {
@@ -140,6 +175,8 @@ int main(int argc, char *argv[])
 		test_session_create_no_notify, setup_cb, teardown_cb);
 	util_test_add("/manager/session destroy no notify",
 		test_session_destroy_no_notify, setup_cb, teardown_cb);
+	util_test_add("/manager/session create",
+		test_session_create, setup_cb, teardown_cb);
 
 	return g_test_run();
 }
