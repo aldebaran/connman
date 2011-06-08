@@ -1146,7 +1146,7 @@ void __connman_ipconfig_set_element_ipv6_gateway(
 				struct connman_element *element)
 {
 	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		element->ipv6.gateway = ipconfig->address->gateway;
+		element->ipv6.gateway = g_strdup(ipconfig->address->gateway);
 }
 
 /*
@@ -1166,9 +1166,9 @@ int __connman_ipconfig_set_gateway(struct connman_ipconfig *ipconfig,
 	connection->index = ipconfig->index;
 
 	if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		connection->ipv4.gateway = ipconfig->address->gateway;
+		connection->ipv4.gateway = g_strdup(ipconfig->address->gateway);
 	else if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		connection->ipv6.gateway = ipconfig->address->gateway;
+		connection->ipv6.gateway = g_strdup(ipconfig->address->gateway);
 
 	if (connman_element_register(connection, parent) < 0)
 		connman_element_unref(connection);
