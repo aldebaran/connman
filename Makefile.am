@@ -145,7 +145,7 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
-			unit/test-session
+			tools/alg-test unit/test-session
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
@@ -182,6 +182,8 @@ tools_polkit_test_LDADD = @DBUS_LIBS@
 tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
 
 tools_private_network_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
+
+tools_alg_test_LDADD = @GLIB_LIBS@
 
 unit_test_session_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		unit/test-session.c unit/utils.c unit/manager-api.c \
