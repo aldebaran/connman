@@ -392,6 +392,9 @@ if (test "${enable_tools}" = "yes"); then
 				AC_MSG_ERROR(GnuTLS library is required))
 	AC_SUBST(GNUTLS_CFLAGS)
 	AC_SUBST(GNUTLS_LIBS)
+
+	AC_CHECK_HEADERS(linux/if_alg.h, dummy=yes,
+		AC_MSG_ERROR(User-space algorithm header files are required))
 fi
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 
