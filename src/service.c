@@ -3936,8 +3936,9 @@ int __connman_service_connect(struct connman_service *service)
 		return 0;
 
 	if (err == -EINPROGRESS) {
-		service->timeout = g_timeout_add_seconds(CONNECT_TIMEOUT,
-						connect_timeout, service);
+		if (service->timeout == 0)
+			service->timeout = g_timeout_add_seconds(
+				CONNECT_TIMEOUT, connect_timeout, service);
 
 		return -EINPROGRESS;
 	}
