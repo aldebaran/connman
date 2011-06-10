@@ -88,13 +88,15 @@ int __connman_inet_modify_address(int cmd, int flags,
 	struct in_addr ipv4_addr, ipv4_dest, ipv4_bcast;
 	int sk, err;
 
-	DBG("");
+	DBG("cmd %#x flags %#x index %d family %d address %s peer %s "
+		"prefixlen %hhu broadcast %s", cmd, flags, index, family,
+		address, peer, prefixlen, broadcast);
 
 	if (address == NULL)
-		return -1;
+		return -EINVAL;
 
 	if (family != AF_INET && family != AF_INET6)
-		return -1;
+		return -EINVAL;
 
 	memset(&request, 0, sizeof(request));
 
@@ -150,7 +152,7 @@ int __connman_inet_modify_address(int cmd, int flags,
 
 	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
 	if (sk < 0)
-		return -1;
+		return -errno;
 
 	memset(&nl_addr, 0, sizeof(nl_addr));
 	nl_addr.nl_family = AF_NETLINK;
@@ -541,6 +543,7 @@ struct in6_ifreq {
 int connman_inet_set_ipv6_address(int index,
 		struct connman_ipaddress *ipaddress)
 {
+	int err;
 	unsigned char prefix_len;
 	const char *address;
 
@@ -552,11 +555,12 @@ int connman_inet_set_ipv6_address(int index,
 
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	if ((__connman_inet_modify_address(RTM_NEWADDR,
-			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET6,
-				address, NULL, prefix_len, NULL)) < 0) {
-		connman_error("Set IPv6 address error");
-		return -1;
+	err = __connman_inet_modify_address(RTM_NEWADDR,
+				NLM_F_REPLACE | NLM_F_ACK, index, AF_INET6,
+				address, NULL, prefix_len, NULL);
+	if (err < 0) {
+		connman_error("%s: %s", __func__, strerror(-err));
+		return err;
 	}
 
 	return 0;
@@ -564,6 +568,7 @@ int connman_inet_set_ipv6_address(int index,
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 {
+	int err;
 	unsigned char prefix_len;
 	const char *address, *broadcast, *peer;
 
@@ -577,11 +582,12 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	if ((__connman_inet_modify_address(RTM_NEWADDR,
-			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
-				address, peer, prefix_len, broadcast)) < 0) {
-		DBG("address setting failed");
-		return -1;
+	err = __connman_inet_modify_address(RTM_NEWADDR,
+				NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
+				address, peer, prefix_len, broadcast);
+	if (err < 0) {
+		connman_error("%s: %s", __func__, strerror(-err));
+		return err;
 	}
 
 	return 0;
@@ -590,12 +596,15 @@ int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress)
 int connman_inet_clear_ipv6_address(int index, const char *address,
 							int prefix_len)
 {
+	int err;
+
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	if ((__connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET6,
-					address, NULL, prefix_len, NULL)) < 0) {
-		connman_error("Clear IPv6 address error");
-		return -1;
+	err = __connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET6,
+				address, NULL, prefix_len, NULL);
+	if (err < 0) {
+		connman_error("%s: %s", __func__, strerror(-err));
+		return err;
 	}
 
 	return 0;
@@ -603,6 +612,7 @@ int connman_inet_clear_ipv6_address(int index, const char *address,
 
 int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 {
+	int err;
 	unsigned char prefix_len;
 	const char *address, *broadcast, *peer;
 
@@ -613,10 +623,11 @@ int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 
 	DBG("index %d address %s prefix_len %d", index, address, prefix_len);
 
-	if ((__connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET,
-				address, peer, prefix_len, broadcast)) < 0) {
-		DBG("address removal failed");
-		return -1;
+	err = __connman_inet_modify_address(RTM_DELADDR, 0, index, AF_INET,
+				address, peer, prefix_len, broadcast);
+	if (err < 0) {
+		connman_error("%s: %s", __func__, strerror(-err));
+		return err;
 	}
 
 	return 0;
