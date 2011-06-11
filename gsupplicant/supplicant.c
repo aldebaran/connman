@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <syslog.h>
+#include <ctype.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -2554,13 +2555,36 @@ static void add_network_security_wep(DBusMessageIter *dict,
 	}
 }
 
+static dbus_bool_t is_psk_raw_key(const char *psk)
+{
+	int i;
+
+	/* A raw key is always 64 bytes length... */
+	if (strlen(psk) != 64)
+		return FALSE;
+
+	/* ... and its content is in hex representation */
+	for (i = 0; i < 64; i++)
+		if (!isxdigit((unsigned char) psk[i]))
+			return FALSE;
+
+	return TRUE;
+}
+
 static void add_network_security_psk(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
-	if (ssid->passphrase && strlen(ssid->passphrase) > 0)
+	if (ssid->passphrase && strlen(ssid->passphrase) > 0) {
+
+		if (is_psk_raw_key(ssid->passphrase) == TRUE)
+			supplicant_dbus_property_append_fixed_array(dict,
+							"psk", DBUS_TYPE_BYTE,
+							&ssid->passphrase, 64);
+		else
 			supplicant_dbus_dict_append_basic(dict, "psk",
-						DBUS_TYPE_STRING,
+							DBUS_TYPE_STRING,
 							&ssid->passphrase);
+	}
 }
 
 static void add_network_security_tls(DBusMessageIter *dict,
