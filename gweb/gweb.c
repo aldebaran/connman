@@ -429,13 +429,11 @@ static gboolean process_send_buffer(struct web_session *session)
 		return FALSE;
 	}
 
-	debug(session->web, "bytes to write %zu", count);
-
 	status = g_io_channel_write_chars(session->transport_channel,
 					buf->str, count, &bytes_written, NULL);
 
-	debug(session->web, "status %u bytes written %zu",
-					status, bytes_written);
+	debug(session->web, "status %u bytes to write %zu bytes written %zu",
+					status, count, bytes_written);
 
 	if (status != G_IO_STATUS_NORMAL && status != G_IO_STATUS_AGAIN)
 		return FALSE;
