@@ -80,6 +80,16 @@ Fields		string Name
 			method, or a pin code if user wants to use the pin
 			method.
 
+		string Username
+
+			Username for WISPr authentication. This field will be
+			requested when connecting to a WISPr-enabled hotspot.
+
+		string Password
+
+			Password for WISPr authentication. This field will be
+			requested when connecting to a WISPr-enabled hotspot.
+
 Arguments	string Type
 
 			Contains the type of a field. For example "psk", "wep"
@@ -164,3 +174,16 @@ Examples	Requesting a passphrase for WPA2 network
 				}
 
 			==> { "Identity" : "bob", "Passphrase": "secret123" }
+
+		Requesting username and password for a WISPr-enabled hotspot:
+
+			RequestInput("/service5",
+                                { "Username"   : { "Type"        : "string",
+                                                   "Requirement" : "mandatory"
+                                                 },
+                                  "Password"   : { "Type"        : "passphrase",
+                                                   "Requirement" : "mandatory"
+                                                 }
+                                }
+
+                        ==> { "Username" : "foo", "Password": "secret" }
