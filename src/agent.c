@@ -87,7 +87,7 @@ int __connman_agent_unregister(const char *sender, const char *path)
 
 struct request_input_reply {
 	struct connman_service *service;
-	passphrase_cb_t callback;
+	authentication_cb_t callback;
 	void *user_data;
 };
 
@@ -258,7 +258,7 @@ static void request_input_append_wps(DBusMessageIter *iter, void *user_data)
 }
 
 int __connman_agent_request_input(struct connman_service *service,
-				passphrase_cb_t callback, void *user_data)
+				authentication_cb_t callback, void *user_data)
 {
 	DBusMessage *message;
 	const char *path;

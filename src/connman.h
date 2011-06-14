@@ -82,13 +82,13 @@ void __connman_counter_cleanup(void);
 
 struct connman_service;
 
-typedef void (* passphrase_cb_t) (struct connman_service *service,
-				const char *identity, const char *passphrase,
+typedef void (* authentication_cb_t) (struct connman_service *service,
+				const char *identifier, const char *secret,
 				void *user_data);
 typedef void (* report_error_cb_t) (struct connman_service *service,
 				gboolean retry, void *user_data);
 int __connman_agent_request_input(struct connman_service *service,
-				passphrase_cb_t callback, void *user_data);
+				authentication_cb_t callback, void *user_data);
 int __connman_agent_report_error(struct connman_service *service,
 				const char *error,
 				report_error_cb_t callback, void *user_data);
