@@ -23,7 +23,7 @@
 
 #include <connman/dbus.h>
 
-#include "connman.h"
+#include "../src/connman.h"
 
 struct test_session;
 
