@@ -187,7 +187,7 @@ tools_alg_test_LDADD = @GLIB_LIBS@
 
 unit_test_session_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		unit/test-session.c unit/utils.c unit/manager-api.c \
-		unit/session-api.c
+		unit/session-api.c unit/test-connman.h
 unit_test_session_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 unit_objects += $(unit_test_session_OBJECTS)
 endif
