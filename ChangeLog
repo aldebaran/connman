@@ -1,3 +1,10 @@
+ver 0.75:
+	Fix issue with 3G connect timeout handling.
+	Fix issue with WiFi raw key PSK handling.
+	Fix issue with DHCP renewal timeout handling.
+	Fix issue with DHCP and empty nameserver list.
+	Add support for unit testing.
+
 ver 0.74:
 	Fix issue with race condition in ready/online handling.
 	Fix issue with DHCP release callback handling.
