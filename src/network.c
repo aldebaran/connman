@@ -195,7 +195,6 @@ struct connman_network *connman_network_create(const char *identifier,
 {
 	struct connman_network *network;
 	connman_uint8_t strength = 0;
-	const char *str;
 	char *temp;
 
 	DBG("identifier %s type %d", identifier, type);
@@ -224,10 +223,6 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	network->element.network = network;
 	network->element.destruct = network_destruct;
-
-	str = type2string(type);
-	if (str != NULL)
-		connman_element_set_string(&network->element, "Type", str);
 
 	connman_element_set_uint8(&network->element, "Strength", strength);
 
