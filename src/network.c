@@ -1342,8 +1342,6 @@ int connman_network_set_roaming(struct connman_network *network,
 int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value)
 {
-	int err;
-
 	DBG("network %p key %s value %s", network, key, value);
 
 	if (g_strcmp0(key, "Name") == 0)
@@ -1387,17 +1385,7 @@ int connman_network_set_string(struct connman_network *network,
 		network->wifi.pin_wps = g_strdup(value);
 	}
 
-	err = connman_element_set_string(&network->element, key, value);
-	if (err < 0)
-		return err;
-
-	if (network->driver == NULL)
-		return 0;
-
-	if (network->driver->setup)
-		return network->driver->setup(network, key);
-
-	return 0;
+	return connman_element_set_string(&network->element, key, value);
 }
 
 /**
