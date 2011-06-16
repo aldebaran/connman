@@ -783,6 +783,8 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 		if (network == NULL)
 			return;
 
+		connman_network_register(network);
+
 		connman_network_set_index(network, wifi->index);
 
 		if (connman_device_add_network(wifi->device, network) < 0) {
@@ -812,6 +814,7 @@ static void network_removed(GSupplicantNetwork *network)
 	GSupplicantInterface *interface;
 	struct wifi_data *wifi;
 	const char *name, *identifier;
+	struct connman_network *connman_network;
 
 	interface = g_supplicant_network_get_interface(network);
 	wifi = g_supplicant_interface_get_data(interface);
@@ -820,8 +823,13 @@ static void network_removed(GSupplicantNetwork *network)
 
 	DBG("name %s", name);
 
-	if (wifi != NULL)
+	if (wifi != NULL) {
+		connman_network = connman_device_get_network(wifi->device, identifier);
+		if (connman_network != NULL)
+			connman_network_unregister(connman_network);
+
 		connman_device_remove_network(wifi->device, identifier);
+	}
 }
 
 static void debug(const char *str)

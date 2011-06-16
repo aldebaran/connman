@@ -215,6 +215,7 @@ done:
 
 	dbus_pending_call_unref(call);
 
+	connman_network_unregister(network);
 	connman_network_unref(network);
 }
 
@@ -437,6 +438,8 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 					CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN);
 	if (network == NULL)
 		goto done;
+
+	connman_network_register(network);
 
 	connman_network_set_string(network, "Path", path);
 

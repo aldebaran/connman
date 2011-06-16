@@ -75,6 +75,7 @@ struct connman_service {
 	char *profile;
 	connman_bool_t roaming;
 	connman_bool_t login_required;
+	connman_bool_t network_created;
 	struct connman_ipconfig *ipconfig_ipv4;
 	struct connman_ipconfig *ipconfig_ipv6;
 	struct connman_network *network;
@@ -2922,8 +2923,11 @@ static void service_free(gpointer user_data)
 
 	g_hash_table_destroy(service->counter_table);
 
-	if (service->network != NULL)
+	if (service->network != NULL) {
+		if (service->network_created == TRUE)
+			connman_network_unregister(service->network);
 		connman_network_unref(service->network);
+	}
 
 	if (service->provider != NULL)
 		connman_provider_unref(service->provider);
@@ -3013,6 +3017,8 @@ static void service_initialize(struct connman_service *service)
 
 	service->refcount = 1;
 	service->session_usage_count = 0;
+
+	service->network_created = FALSE;
 
 	service->type     = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	service->security = CONNMAN_SERVICE_SECURITY_UNKNOWN;
@@ -4041,6 +4047,8 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 	if (network == NULL)
 		return NULL;
 
+	connman_network_register(network);
+
 	connman_network_set_blob(network, "WiFi.SSID",
 					(unsigned char *) ssid, ssid_len);
 
@@ -4049,6 +4057,7 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 
 	name = g_try_malloc0(ssid_len + 1);
 	if (name == NULL) {
+		connman_network_unregister(network);
 		connman_network_unref(network);
 		return NULL;
 	}
@@ -4068,6 +4077,7 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 	connman_network_set_index(network, index);
 
 	if (connman_device_add_network(device, network) < 0) {
+		connman_network_unregister(network);
 		connman_network_unref(network);
 		return NULL;
 	}
@@ -4088,7 +4098,6 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	unsigned int ssid_len = 0;
 	const char *ident;
 	char *name, *group;
-	gboolean created = FALSE;
 	int err;
 
 	dbus_message_iter_init(msg, &iter);
@@ -4176,7 +4185,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	network = create_hidden_wifi(device, ssid, mode, security);
 	if (network != NULL) {
 		connman_network_set_group(network, group);
-		created = TRUE;
+		service->network_created = TRUE;
 	}
 
 	service = lookup_by_identifier(name);
@@ -4220,7 +4229,7 @@ done:
 	return 0;
 
 failed:
-	if (service != NULL && created == TRUE) {
+	if (service != NULL && service->network_created == TRUE) {
 		struct connman_network *network = service->network;
 
 		if (network != NULL) {

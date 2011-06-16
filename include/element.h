@@ -42,7 +42,6 @@ extern "C" {
 enum connman_element_type {
 	CONNMAN_ELEMENT_TYPE_UNKNOWN    = 0,
 	CONNMAN_ELEMENT_TYPE_ROOT       = 1,
-	CONNMAN_ELEMENT_TYPE_NETWORK    = 4,
 };
 
 enum connman_element_state {
@@ -80,7 +79,6 @@ struct connman_element {
 
 	union {
 		void *private;
-		struct connman_network *network;
 	};
 
 	GHashTable *properties;

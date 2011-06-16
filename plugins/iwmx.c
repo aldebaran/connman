@@ -132,6 +132,7 @@ struct connman_network *__iwmx_cm_network_available(
 		DBG("new network %s", station_name);
 		nw = connman_network_create(station_name,
 					    CONNMAN_NETWORK_TYPE_WIMAX);
+		connman_network_register(nw);
 		connman_network_set_index(nw, connman_device_get_index(dev));
 		connman_network_set_name(nw, station_name);
 		connman_network_set_blob(nw, "WiMAX.NSP.name",
@@ -148,6 +149,7 @@ struct connman_network *__iwmx_cm_network_available(
 		group[3 * cnt + 1] = 0;
 		connman_network_set_group(nw, station_name);
 		if (connman_device_add_network(dev, nw) < 0) {
+			connman_network_unregister(nw);
 			connman_network_unref(nw);
 			goto error_add;
 		}
@@ -255,6 +257,7 @@ static void __iwmx_cm_dev_disconnected(struct wmxsdk *wmxsdk)
 		DBG("disconnected from network %s\n",
 					connman_network_get_identifier(nw));
 		connman_network_set_connected(nw, FALSE);
+		connman_network_unregister(nw);
 		connman_network_unref(nw);
 		wmxsdk->nw = NULL;
 	} else

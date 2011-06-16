@@ -28,10 +28,12 @@
 
 #include "connman.h"
 
+static GSList *network_list = NULL;
+static GSList *driver_list = NULL;
 static unsigned int hidden_counter = 0;
 
 struct connman_network {
-	struct connman_element element;
+	gint refcount;
 	enum connman_network_type type;
 	connman_bool_t available;
 	connman_bool_t connected;
@@ -44,6 +46,7 @@ struct connman_network {
 	char *node;
 	char *group;
 	char *path;
+	int index;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -71,6 +74,11 @@ struct connman_network {
 		connman_bool_t use_wps;
 		char *pin_wps;
 	} wifi;
+
+	struct {
+		char *nsp_name;
+		int nsp_name_len;
+	} wimax;
 };
 
 static const char *type2string(enum connman_network_type type)
@@ -103,7 +111,166 @@ connman_bool_t __connman_network_has_driver(struct connman_network *network)
 	return TRUE;
 }
 
-static GSList *driver_list = NULL;
+static gboolean match_driver(struct connman_network *network,
+					struct connman_network_driver *driver)
+{
+	if (network->type == driver->type ||
+			driver->type == CONNMAN_NETWORK_TYPE_UNKNOWN)
+		return TRUE;
+
+	return FALSE;
+}
+
+static int network_probe(struct connman_network *network)
+{
+	GSList *list;
+	struct connman_network_driver *driver = NULL;
+
+	DBG("network %p name %s", network, network->name);
+
+	if (network->driver != NULL)
+		return -EALREADY;
+
+	for (list = driver_list; list; list = list->next) {
+		driver = list->data;
+
+		if (match_driver(network, driver) == FALSE)
+			continue;
+
+		DBG("driver %p name %s", driver, driver->name);
+
+		if (driver->probe(network) == 0)
+			break;
+
+		driver = NULL;
+	}
+
+	if (driver == NULL)
+		return -ENODEV;
+
+	if (network->group == NULL)
+		return -EINVAL;
+
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+		return 0;
+	case CONNMAN_NETWORK_TYPE_ETHERNET:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_CELLULAR:
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		if (__connman_service_create_from_network(network) == NULL)
+			return -EINVAL;
+	}
+
+	network->driver = driver;
+
+	return 0;
+}
+
+static void network_remove(struct connman_network *network)
+{
+	DBG("network %p name %s", network, network->name);
+
+	if (network->driver == NULL)
+		return;
+
+	switch (network->type) {
+	case CONNMAN_NETWORK_TYPE_UNKNOWN:
+	case CONNMAN_NETWORK_TYPE_VENDOR:
+		break;
+	case CONNMAN_NETWORK_TYPE_ETHERNET:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
+	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
+	case CONNMAN_NETWORK_TYPE_CELLULAR:
+	case CONNMAN_NETWORK_TYPE_WIFI:
+	case CONNMAN_NETWORK_TYPE_WIMAX:
+		if (network->group != NULL) {
+			__connman_service_remove_from_network(network);
+
+			g_free(network->group);
+			network->group = NULL;
+		}
+		break;
+	}
+
+	if (network->driver->remove)
+		network->driver->remove(network);
+
+	network->driver = NULL;
+}
+
+static void network_change(struct connman_network *network)
+{
+	DBG("network %p name %s", network, network->name);
+
+	if (network->connected == FALSE)
+		return;
+
+	connman_network_unref(network);
+
+	connman_device_set_disconnected(network->device, TRUE);
+
+	if (network->driver && network->driver->disconnect) {
+		network->driver->disconnect(network);
+		return;
+	}
+
+	network->connected = FALSE;
+}
+
+static void probe_driver(struct connman_network_driver *driver)
+{
+	GSList *list;
+
+	DBG("driver %p name %s", driver, driver->name);
+
+	for (list = network_list; list != NULL; list = list->next) {
+		struct connman_network *network = list->data;
+
+		if (network->driver != NULL)
+			continue;
+
+		if (driver->type != network->type)
+			continue;
+
+		if (driver->probe(network) < 0)
+			continue;
+
+		network->driver = driver;
+	}
+}
+
+int connman_network_register(struct connman_network *network)
+{
+	network_list = g_slist_append(network_list, network);
+
+	return network_probe(network);
+}
+
+
+void connman_network_unregister(struct connman_network *network)
+{
+	network_list = g_slist_remove(network_list, network);
+
+	network_remove(network);
+}
+
+static void remove_driver(struct connman_network_driver *driver)
+{
+	GSList *list;
+
+	DBG("driver %p name %s", driver, driver->name);
+
+	for (list = network_list; list != NULL; list = list->next) {
+		struct connman_network *network = list->data;
+
+		if (network->driver == driver)
+			network_remove(network);
+	}
+}
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
@@ -138,6 +305,8 @@ int connman_network_driver_register(struct connman_network_driver *driver)
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
+	probe_driver(driver);
+
 	return 0;
 }
 
@@ -152,13 +321,13 @@ void connman_network_driver_unregister(struct connman_network_driver *driver)
 	DBG("driver %p name %s", driver, driver->name);
 
 	driver_list = g_slist_remove(driver_list, driver);
+
+	remove_driver(driver);
 }
 
-static void network_destruct(struct connman_element *element)
+static void network_destruct(struct connman_network *network)
 {
-	struct connman_network *network = element->network;
-
-	DBG("element %p name %s", element, element->name);
+	DBG("network %p name %s", network, network->name);
 
 	g_free(network->wifi.ssid);
 	g_free(network->wifi.mode);
@@ -178,8 +347,11 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->node);
 	g_free(network->name);
 	g_free(network->identifier);
+	g_free(network->path);
 
 	network->device = NULL;
+
+	g_free(network);
 }
 
 /**
@@ -194,7 +366,6 @@ struct connman_network *connman_network_create(const char *identifier,
 						enum connman_network_type type)
 {
 	struct connman_network *network;
-	connman_uint8_t strength = 0;
 	char *temp;
 
 	DBG("identifier %s type %d", identifier, type);
@@ -205,7 +376,7 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	DBG("network %p", network);
 
-	__connman_element_initialize(&network->element);
+	network->refcount = 1;
 
 	if (identifier == NULL) {
 		temp = g_strdup_printf("hidden_%d", hidden_counter++);
@@ -217,14 +388,6 @@ struct connman_network *connman_network_create(const char *identifier,
 		g_free(network);
 		return NULL;
 	}
-
-	network->element.name = temp;
-	network->element.type = CONNMAN_ELEMENT_TYPE_NETWORK;
-
-	network->element.network = network;
-	network->element.destruct = network_destruct;
-
-	connman_element_set_uint8(&network->element, "Strength", strength);
 
 	network->type       = type;
 	network->identifier = g_strdup(temp);
@@ -240,8 +403,10 @@ struct connman_network *connman_network_create(const char *identifier,
  */
 struct connman_network *connman_network_ref(struct connman_network *network)
 {
-	if (connman_element_ref(&network->element) == NULL)
-		return NULL;
+	DBG("network %p name %s refcount %d", network, network->name,
+		g_atomic_int_get(&network->refcount) + 1);
+
+	g_atomic_int_inc(&network->refcount);
 
 	return network;
 }
@@ -254,7 +419,13 @@ struct connman_network *connman_network_ref(struct connman_network *network)
  */
 void connman_network_unref(struct connman_network *network)
 {
-	connman_element_unref(&network->element);
+	DBG("network %p name %s refcount %d", network, network->name,
+		g_atomic_int_get(&network->refcount) - 1);
+
+	if (g_atomic_int_dec_and_test(&network->refcount) == FALSE)
+		return;
+
+	network_destruct(network);
 }
 
 const char *__connman_network_get_type(struct connman_network *network)
@@ -302,10 +473,10 @@ void connman_network_set_index(struct connman_network *network, int index)
 
 	ipconfig = __connman_service_get_ip4config(service);
 
-	DBG("index %d service %p ip4config %p", network->element.index,
+	DBG("index %d service %p ip4config %p", network->index,
 		service, ipconfig);
 
-	if (network->element.index < 0 && ipconfig == NULL) {
+	if (network->index < 0 && ipconfig == NULL) {
 
 		ipconfig = __connman_service_get_ip4config(service);
 		if (ipconfig == NULL)
@@ -327,7 +498,7 @@ void connman_network_set_index(struct connman_network *network, int index)
 	}
 
 done:
-	network->element.index = index;
+	network->index = index;
 }
 
 /**
@@ -338,19 +509,7 @@ done:
  */
 int connman_network_get_index(struct connman_network *network)
 {
-	return network->element.index;
-}
-
-/**
- * connman_network_get_element:
- * @network: network structure
- *
- * Get connman_element of network
- */
-struct connman_element *connman_network_get_element(
-				struct connman_network *network)
-{
-	return &network->element;
+	return network->index;
 }
 
 /**
@@ -391,7 +550,7 @@ void connman_network_set_group(struct connman_network *network,
 	network->group = g_strdup(group);
 
 	if (network->group != NULL)
-		__connman_service_create_from_network(network);
+		network_probe(network);
 }
 
 /**
@@ -609,6 +768,8 @@ void connman_network_set_error(struct connman_network *network,
 		set_connect_error(network);
 		break;
 	}
+
+	network_change(network);
 }
 
 void connman_network_clear_error(struct connman_network *network)
@@ -905,8 +1066,6 @@ static gboolean set_connected(gpointer user_data)
 
 	} else {
 		struct connman_service *service;
-
-		connman_element_unregister_children(&network->element);
 
 		__connman_device_set_network(network->device, NULL);
 		network->hidden = FALSE;
@@ -1289,7 +1448,7 @@ int connman_network_set_name(struct connman_network *network,
 	g_free(network->name);
 	network->name = g_strdup(name);
 
-	return connman_element_set_string(&network->element, "Name", name);
+	return 0;
 }
 
 /**
@@ -1567,7 +1726,16 @@ const void *connman_network_get_blob(struct connman_network *network,
 void __connman_network_set_device(struct connman_network *network,
 					struct connman_device *device)
 {
+	if (network->device == device)
+		return;
+
+	if (network->device != NULL)
+		network_remove(network);
+
 	network->device = device;
+
+	if (network->device != NULL)
+		network_probe(network);
 }
 
 /**
@@ -1621,143 +1789,16 @@ void connman_network_update(struct connman_network *network)
 
 	if (network->group != NULL)
 		__connman_service_update_from_network(network);
-
-	return;
 }
-
-static gboolean match_driver(struct connman_network *network,
-					struct connman_network_driver *driver)
-{
-	if (network->type == driver->type ||
-			driver->type == CONNMAN_NETWORK_TYPE_UNKNOWN)
-		return TRUE;
-
-	return FALSE;
-}
-
-static int network_probe(struct connman_element *element)
-{
-	struct connman_network *network = element->network;
-	GSList *list;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (network == NULL)
-		return -ENODEV;
-
-	for (list = driver_list; list; list = list->next) {
-		struct connman_network_driver *driver = list->data;
-
-		if (match_driver(network, driver) == FALSE)
-			continue;
-
-		DBG("driver %p name %s", driver, driver->name);
-
-		if (driver->probe(network) == 0) {
-			network->driver = driver;
-			break;
-		}
-	}
-
-	if (network->driver == NULL)
-		return -ENODEV;
-
-	switch (network->type) {
-	case CONNMAN_NETWORK_TYPE_UNKNOWN:
-	case CONNMAN_NETWORK_TYPE_VENDOR:
-		break;
-	case CONNMAN_NETWORK_TYPE_ETHERNET:
-	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
-	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
-	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_WIFI:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
-		if (network->group != NULL &&
-			 __connman_service_create_from_network(network) == NULL)
-				return -EINVAL;
-	}
-
-	return 0;
-}
-
-static void network_remove(struct connman_element *element)
-{
-	struct connman_network *network = element->network;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (network == NULL)
-		return;
-
-	if (network->driver == NULL)
-		return;
-
-	switch (network->type) {
-	case CONNMAN_NETWORK_TYPE_UNKNOWN:
-	case CONNMAN_NETWORK_TYPE_VENDOR:
-		break;
-	case CONNMAN_NETWORK_TYPE_ETHERNET:
-	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
-	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
-	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_WIFI:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
-		if (network->group != NULL) {
-			__connman_service_remove_from_network(network);
-
-			g_free(network->group);
-			network->group = NULL;
-		}
-		break;
-	}
-
-	if (network->driver->remove)
-		network->driver->remove(network);
-}
-
-static void network_change(struct connman_element *element)
-{
-	struct connman_network *network = element->network;
-
-	DBG("element %p name %s", element, element->name);
-
-	if (element->state != CONNMAN_ELEMENT_STATE_ERROR)
-		return;
-
-	if (network->connected == FALSE)
-		return;
-
-	connman_element_unregister_children(element);
-
-	connman_device_set_disconnected(network->device, TRUE);
-
-	if (network->driver && network->driver->disconnect) {
-		network->driver->disconnect(network);
-		return;
-	}
-
-	network->connected = FALSE;
-}
-
-static struct connman_driver network_driver = {
-	.name		= "network",
-	.type		= CONNMAN_ELEMENT_TYPE_NETWORK,
-	.priority	= CONNMAN_DRIVER_PRIORITY_LOW,
-	.probe		= network_probe,
-	.remove		= network_remove,
-	.change		= network_change,
-};
 
 int __connman_network_init(void)
 {
 	DBG("");
 
-	return connman_driver_register(&network_driver);
+	return 0;
 }
 
 void __connman_network_cleanup(void)
 {
 	DBG("");
-
-	connman_driver_unregister(&network_driver);
 }

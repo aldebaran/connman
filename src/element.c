@@ -46,8 +46,6 @@ static const char *type2string(enum connman_element_type type)
 		return "unknown";
 	case CONNMAN_ELEMENT_TYPE_ROOT:
 		return "root";
-	case CONNMAN_ELEMENT_TYPE_NETWORK:
-		return "network";
 	}
 
 	return NULL;
@@ -117,10 +115,6 @@ static gboolean append_path(GNode *node, gpointer user_data)
 
 	if (filter->type != CONNMAN_ELEMENT_TYPE_UNKNOWN &&
 					filter->type != element->type)
-		return FALSE;
-
-	if (filter->type == CONNMAN_ELEMENT_TYPE_NETWORK &&
-			__connman_network_has_driver(element->network) == FALSE)
 		return FALSE;
 
 	dbus_message_iter_append_basic(filter->iter,

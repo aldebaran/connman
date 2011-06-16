@@ -424,10 +424,9 @@ static void unregister_network(gpointer data)
 
 	DBG("network %p", network);
 
-	connman_element_unregister((struct connman_element *) network);
-
 	__connman_network_set_device(network, NULL);
 
+	connman_network_unregister(network);
 	connman_network_unref(network);
 }
 
@@ -1067,7 +1066,6 @@ int connman_device_add_network(struct connman_device *device,
 					struct connman_network *network)
 {
 	const char *identifier = connman_network_get_identifier(network);
-	int err;
 
 	DBG("device %p network %p", device, network);
 
@@ -1075,13 +1073,6 @@ int connman_device_add_network(struct connman_device *device,
 		return -EINVAL;
 
 	__connman_network_set_device(network, device);
-
-	err = connman_element_register((struct connman_element *) network,
-				NULL);
-	if (err < 0) {
-		__connman_network_set_device(network, NULL);
-		return err;
-	}
 
 	g_hash_table_insert(device->networks, g_strdup(identifier),
 								network);
@@ -1122,7 +1113,8 @@ int connman_device_remove_network(struct connman_device *device,
 	if (network == NULL)
 		return 0;
 
-	connman_element_unregister((struct connman_element *) network);
+	__connman_network_set_device(network, NULL);
+
 	g_hash_table_remove(device->networks, identifier);
 
 	return 0;

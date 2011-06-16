@@ -92,12 +92,15 @@ static void add_network(struct connman_device *device)
 	if (network == NULL)
 		return;
 
+	connman_network_register(network);
+
 	index = connman_device_get_index(device);
 	connman_network_set_index(network, index);
 
 	connman_network_set_name(network, "Wired");
 
 	if (connman_device_add_network(device, network) < 0) {
+		connman_network_unregister(network);
 		connman_network_unref(network);
 		return;
 	}

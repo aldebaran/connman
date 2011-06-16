@@ -140,6 +140,9 @@ void connman_network_set_data(struct connman_network *network, void *data);
 
 void connman_network_update(struct connman_network *network);
 
+int connman_network_register(struct connman_network *network);
+void connman_network_unregister(struct connman_network *network);
+
 struct connman_network_driver {
 	const char *name;
 	enum connman_network_type type;
