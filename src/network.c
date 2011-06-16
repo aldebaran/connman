@@ -1299,6 +1299,7 @@ int connman_network_set_name(struct connman_network *network,
  *
  * Set signal strength value for network
  */
+
 int connman_network_set_strength(struct connman_network *network,
 						connman_uint8_t strength)
 {
@@ -1306,8 +1307,12 @@ int connman_network_set_strength(struct connman_network *network,
 
 	network->strength = strength;
 
-	return connman_element_set_uint8(&network->element,
-						"Strength", strength);
+	return 0;
+}
+
+connman_uint8_t connman_network_get_strength(struct connman_network *network)
+{
+	return network->strength;
 }
 
 /**
@@ -1324,8 +1329,7 @@ int connman_network_set_roaming(struct connman_network *network,
 
 	network->roaming = roaming;
 
-	return connman_element_set_bool(&network->element,
-						"Roaming", roaming);
+	return 0;
 }
 
 /**
@@ -1477,43 +1481,6 @@ connman_bool_t connman_network_get_bool(struct connman_network *network,
 		return network->wifi.use_wps;
 
 	return FALSE;
-}
-
-/**
- * connman_network_set_uint8:
- * @network: network structure
- * @key: unique identifier
- * @value: integer value
- *
- * Set integer value for specific key
- */
-int connman_network_set_uint8(struct connman_network *network,
-					const char *key, connman_uint8_t value)
-{
-	DBG("network %p key %s value %d", network, key, value);
-
-	if (g_strcmp0(key, "Strength") == 0)
-		return connman_network_set_strength(network, value);
-
-	return connman_element_set_uint8(&network->element, key, value);
-}
-
-/**
- * connman_network_get_uint8:
- * @network: network structure
- * @key: unique identifier
- *
- * Get integer value for specific key
- */
-connman_uint8_t connman_network_get_uint8(struct connman_network *network,
-							const char *key)
-{
-	DBG("network %p key %s", network, key);
-
-	if (g_str_equal(key, "Strength") == TRUE)
-		return network->strength;
-
-	return connman_element_get_uint8(&network->element, key);
 }
 
 /**

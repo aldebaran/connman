@@ -4703,7 +4703,7 @@ static void update_from_network(struct connman_service *service,
 		service->hidden = TRUE;
 	}
 
-	service->strength = connman_network_get_uint8(network, "Strength");
+	service->strength = connman_network_get_strength(network);
 	service->roaming = connman_network_get_bool(network, "Roaming");
 
 	if (service->strength == 0) {
@@ -4850,7 +4850,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 	if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
 		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
-	strength = connman_network_get_uint8(service->network, "Strength");
+	strength = connman_network_get_strength(service->network);
 	if (strength == service->strength)
 		goto roaming;
 
