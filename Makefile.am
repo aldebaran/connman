@@ -11,7 +11,7 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 
 nodist_include_HEADERS = include/version.h
 
-noinst_HEADERS = include/driver.h include/element.h include/property.h \
+noinst_HEADERS = include/property.h \
 			include/rtnl.h include/wifi.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
 			include/profile.h include/provider.h \
@@ -70,7 +70,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			gweb/giognutls.h gweb/gionotls.c \
 			$(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c \
-			src/error.c src/plugin.c src/task.c src/element.c \
+			src/error.c src/plugin.c src/task.c \
 			src/device.c src/network.c src/connection.c \
 			src/manager.c src/profile.c src/service.c \
 			src/clock.c src/timezone.c \

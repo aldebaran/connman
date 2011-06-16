@@ -32,7 +32,6 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/element.h>
 #include <connman/device.h>
 #include <connman/network.h>
 #include <connman/ipconfig.h>

@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <net/if.h>
 #include <net/if_arp.h>

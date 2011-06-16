@@ -175,29 +175,6 @@ int __connman_storage_save_service(struct connman_service *service);
 int __connman_storage_load_device(struct connman_device *device);
 int __connman_storage_save_device(struct connman_device *device);
 
-#include <connman/driver.h>
-
-void __connman_driver_rescan(struct connman_driver *driver);
-
-#include <connman/element.h>
-
-int __connman_element_init(void);
-void __connman_element_start(void);
-void __connman_element_stop(void);
-void __connman_element_cleanup(void);
-
-void __connman_element_initialize(struct connman_element *element);
-
-typedef void (* element_cb_t) (struct connman_element *element,
-							gpointer user_data);
-
-void __connman_element_foreach(struct connman_element *element,
-				enum connman_element_type type,
-				element_cb_t callback, gpointer user_data);
-void __connman_element_list(struct connman_element *element,
-					enum connman_element_type type,
-							DBusMessageIter *iter);
-
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
 

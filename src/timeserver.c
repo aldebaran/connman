@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <glib.h>
 
 #include "connman.h"

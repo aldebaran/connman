@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -264,7 +265,12 @@ int main(int argc, char *argv[])
 	parse_config(config);
 
 	__connman_storage_init();
-	__connman_element_init();
+	__connman_technology_init();
+	__connman_notifier_init();
+	__connman_location_init();
+	__connman_service_init();
+	__connman_provider_init();
+	__connman_network_init();
 	__connman_device_init(option_device, option_nodevice);
 
 	__connman_agent_init();
@@ -289,7 +295,13 @@ int main(int argc, char *argv[])
 
 	__connman_plugin_init(option_plugin, option_noplugin);
 
-	__connman_element_start();
+	__connman_storage_init_profile();
+
+	__connman_rtnl_start();
+	__connman_dhcp_init();
+	__connman_wpad_init();
+	__connman_wispr_init();
+	__connman_rfkill_init();
 
 	g_free(option_device);
 	g_free(option_plugin);
@@ -303,10 +315,12 @@ int main(int argc, char *argv[])
 
 	g_main_loop_run(main_loop);
 
-	__connman_element_stop();
-
+	__connman_rfkill_cleanup();
+	__connman_wispr_cleanup();
+	__connman_wpad_cleanup();
+	__connman_dhcp_cleanup();
+	__connman_provider_cleanup();
 	__connman_plugin_cleanup();
-
 	__connman_connection_cleanup();
 	__connman_timeserver_cleanup();
 	__connman_session_cleanup();
@@ -326,9 +340,12 @@ int main(int argc, char *argv[])
 	__connman_agent_cleanup();
 	__connman_tethering_cleanup();
 	__connman_iptables_cleanup();
-
 	__connman_device_cleanup();
-	__connman_element_cleanup();
+	__connman_network_cleanup();
+	__connman_service_cleanup();
+	__connman_location_cleanup();
+	__connman_notifier_cleanup();
+	__connman_technology_cleanup();
 	__connman_storage_cleanup();
 
 	__connman_dbus_cleanup();

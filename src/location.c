@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include "connman.h"
 
 struct connman_location {
