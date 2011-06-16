@@ -1454,7 +1454,7 @@ int connman_network_set_bool(struct connman_network *network,
 	else if (g_strcmp0(key, "WiFi.UseWPS") == 0)
 		network->wifi.use_wps = value;
 
-	return connman_element_set_bool(&network->element, key, value);
+	return -EINVAL;
 }
 
 /**
@@ -1476,7 +1476,7 @@ connman_bool_t connman_network_get_bool(struct connman_network *network,
 	else if (g_str_equal(key, "WiFi.UseWPS") == TRUE)
 		return network->wifi.use_wps;
 
-	return connman_element_get_bool(&network->element, key);
+	return FALSE;
 }
 
 /**
