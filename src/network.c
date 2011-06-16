@@ -1315,6 +1315,36 @@ connman_uint8_t connman_network_get_strength(struct connman_network *network)
 	return network->strength;
 }
 
+int connman_network_set_frequency(struct connman_network *network,
+						connman_uint16_t frequency)
+{
+	DBG("network %p frequency %d", network, frequency);
+
+	network->frequency = frequency;
+
+	return 0;
+}
+
+connman_uint16_t connman_network_get_frequency(struct connman_network *network)
+{
+	return network->frequency;
+}
+
+int connman_network_set_wifi_channel(struct connman_network *network,
+						connman_uint16_t channel)
+{
+	DBG("network %p wifi channel %d", network, channel);
+
+	network->wifi.channel = channel;
+
+	return 0;
+}
+
+connman_uint16_t connman_network_get_wifi_channel(struct connman_network *network)
+{
+	return network->wifi.channel;
+}
+
 /**
  * connman_network_set_roaming:
  * @network: network structure
@@ -1481,47 +1511,6 @@ connman_bool_t connman_network_get_bool(struct connman_network *network,
 		return network->wifi.use_wps;
 
 	return FALSE;
-}
-
-/**
- * connman_network_set_uint16:
- * @network: network structure
- * @key: unique identifier
- * @value: integer value
- *
- * Set integer value for specific key
- */
-int connman_network_set_uint16(struct connman_network *network,
-				const char *key, connman_uint16_t value)
-{
-	DBG("network %p key %s value %d", network, key, value);
-
-	if (g_str_equal(key, "Frequency") == TRUE)
-		network->frequency = value;
-	else if (g_str_equal(key, "WiFi.Channel") == TRUE)
-		network->wifi.channel = value;
-
-	return -EINVAL;
-}
-
-/**
- * connman_network_get_uint16:
- * @network: network structure
- * @key: unique identifier
- *
- * Get integer value for specific key
- */
-connman_uint16_t connman_network_get_uint16(struct connman_network *network,
-							const char *key)
-{
-	DBG("network %p key %s", network, key);
-
-	if (g_str_equal(key, "Frequency") == TRUE)
-		return network->frequency;
-	else if (g_str_equal(key, "WiFi.Channel") == TRUE)
-		return network->wifi.channel;
-
-	return 0;
 }
 
 /**

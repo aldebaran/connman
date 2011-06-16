@@ -113,6 +113,12 @@ int connman_network_set_strength(struct connman_network *network,
 connman_uint8_t connman_network_get_strength(struct connman_network *network);
 int connman_network_set_roaming(struct connman_network *network,
 						connman_bool_t roaming);
+int connman_network_set_frequency(struct connman_network *network,
+					connman_uint16_t frequency);
+connman_uint16_t connman_network_get_frequency(struct connman_network *network);
+int connman_network_set_wifi_channel(struct connman_network *network,
+					connman_uint16_t channel);
+connman_uint16_t connman_network_get_wifi_channel(struct connman_network *network);
 
 int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
@@ -123,10 +129,6 @@ int connman_network_set_bool(struct connman_network *network,
 connman_bool_t connman_network_get_bool(struct connman_network *network,
 							const char *key);
 
-int connman_network_set_uint16(struct connman_network *network,
-					const char *key, connman_uint16_t value);
-connman_uint16_t connman_network_get_uint16(struct connman_network *network,
-							const char *key);
 int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size);
 const void *connman_network_get_blob(struct connman_network *network,
