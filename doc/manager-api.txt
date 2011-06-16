@@ -95,6 +95,9 @@ Methods		dict GetProperties()
 			setting a longer D-Bus timeout might be a really
 			good idea.
 
+			When 'SessionMode' property is enabled, this method
+			call is disallowed.
+
 			Possible Errors: [service].Error.InvalidArguments
 
 		void ProvisionService(string configuration)
@@ -123,6 +126,9 @@ Methods		dict GetProperties()
 			error or when the service is fully connected. So
 			setting a longer D-Bus timeout might be a really
 			good idea.
+
+			When 'SessionMode' property is enabled, this method
+			call is disallowed.
 
 			Possible Errors: [service].Error.InvalidArguments
 
@@ -293,6 +299,8 @@ Properties	string State [readonly]
 		boolean SessionMode [readwrite]
 
 			This disables the auto connect feature. It should be
-			enabled when the Session API is used.
+			enabled when the Session API is used. When SessionMode
+			is enabled, 'ConnectService' and 'ConnectProvider'
+			method calls are disallowed.
 
 			The default value is false.
