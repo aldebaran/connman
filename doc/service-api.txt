@@ -160,20 +160,6 @@ Properties	string State [readonly]
 			advanced properties or showing the correct icon
 			to the user.
 
-		string Mode [readonly]
-
-			If the service type is WiFi or Cellular, then this
-			property is present and contains the mode of the
-			network.
-
-			For WiFi services the possible values are "managed"
-			and "adhoc". For Cellular services it describes the
-			network technology. Possible values are "gprs", "edge"
-			and "umts".
-
-			This property might be only present for WiFi and
-			Cellular services.
-
 		array{string} Security [readonly]
 
 			If the service type is WiFi, then this property is

@@ -57,7 +57,6 @@ struct connman_service {
 	char *identifier;
 	char *path;
 	enum connman_service_type type;
-	enum connman_service_mode mode;
 	enum connman_service_security security;
 	enum connman_service_state state_ipv4;
 	enum connman_service_state state_ipv6;
@@ -175,26 +174,6 @@ const char *__connman_service_type2string(enum connman_service_type type)
 		return "vpn";
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return "gadget";
-	}
-
-	return NULL;
-}
-
-static const char *mode2string(enum connman_service_mode mode)
-{
-	switch (mode) {
-	case CONNMAN_SERVICE_MODE_UNKNOWN:
-		break;
-	case CONNMAN_SERVICE_MODE_MANAGED:
-		return "managed";
-	case CONNMAN_SERVICE_MODE_ADHOC:
-		return "adhoc";
-	case CONNMAN_SERVICE_MODE_GPRS:
-		return "gprs";
-	case CONNMAN_SERVICE_MODE_EDGE:
-		return "edge";
-	case CONNMAN_SERVICE_MODE_UMTS:
-		return "umts";
 	}
 
 	return NULL;
@@ -819,19 +798,6 @@ const char *__connman_service_default(void)
 		return "";
 
 	return __connman_service_type2string(service->type);
-}
-
-static void mode_changed(struct connman_service *service)
-{
-	const char *str;
-
-	str = mode2string(service->mode);
-	if (str == NULL)
-		return;
-
-	connman_dbus_property_changed_basic(service->path,
-				CONNMAN_SERVICE_INTERFACE, "Mode",
-						DBUS_TYPE_STRING, &str);
 }
 
 static void state_changed(struct connman_service *service)
@@ -1624,11 +1590,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	str = __connman_service_type2string(service->type);
 	if (str != NULL)
 		connman_dbus_dict_append_basic(dict, "Type",
-						DBUS_TYPE_STRING, &str);
-
-	str = mode2string(service->mode);
-	if (str != NULL)
-		connman_dbus_dict_append_basic(dict, "Mode",
 						DBUS_TYPE_STRING, &str);
 
 	connman_dbus_dict_append_array(dict, "Security",
@@ -3054,7 +3015,6 @@ static void service_initialize(struct connman_service *service)
 	service->session_usage_count = 0;
 
 	service->type     = CONNMAN_SERVICE_TYPE_UNKNOWN;
-	service->mode     = CONNMAN_SERVICE_MODE_UNKNOWN;
 	service->security = CONNMAN_SERVICE_SECURITY_UNKNOWN;
 
 	service->state_ipv4 = CONNMAN_SERVICE_STATE_UNKNOWN;
@@ -4697,18 +4657,6 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 	return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
 
-static enum connman_service_mode convert_wifi_mode(const char *mode)
-{
-	if (mode == NULL)
-		return CONNMAN_SERVICE_MODE_UNKNOWN;
-	else if (g_str_equal(mode, "managed") == TRUE)
-		return CONNMAN_SERVICE_MODE_MANAGED;
-	else if (g_str_equal(mode, "adhoc") == TRUE)
-		return CONNMAN_SERVICE_MODE_ADHOC;
-	else
-		return CONNMAN_SERVICE_MODE_UNKNOWN;
-}
-
 static enum connman_service_security convert_wifi_security(const char *security)
 {
 	if (security == NULL)
@@ -4727,24 +4675,6 @@ static enum connman_service_security convert_wifi_security(const char *security)
 		return CONNMAN_SERVICE_SECURITY_RSN;
 	else
 		return CONNMAN_SERVICE_SECURITY_UNKNOWN;
-}
-
-static enum connman_service_mode convert_cellular_mode(connman_uint8_t mode)
-{
-	switch (mode) {
-	case 0:
-	case 1:
-		return CONNMAN_SERVICE_MODE_GPRS;
-	case 3:
-		return CONNMAN_SERVICE_MODE_EDGE;
-	case 2:
-	case 4:
-	case 5:
-	case 6:
-		return CONNMAN_SERVICE_MODE_UMTS;
-	}
-
-	return CONNMAN_SERVICE_MODE_UNKNOWN;
 }
 
 static void update_from_network(struct connman_service *service,
@@ -4784,18 +4714,10 @@ static void update_from_network(struct connman_service *service,
 		service->strength = strength;
 	}
 
-	str = connman_network_get_string(network, "WiFi.Mode");
-	service->mode = convert_wifi_mode(str);
-
 	str = connman_network_get_string(network, "WiFi.Security");
 	service->security = convert_wifi_security(str);
 
-	if (service->type == CONNMAN_SERVICE_TYPE_CELLULAR) {
-		connman_uint8_t value = connman_network_get_uint8(network,
-							"Cellular.Mode");
-
-		service->mode = convert_cellular_mode(value);
-	} else if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
+	if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
 		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	if (service->strength > strength && service->network != NULL) {
@@ -4901,8 +4823,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 void __connman_service_update_from_network(struct connman_network *network)
 {
 	struct connman_service *service;
-	enum connman_service_mode mode;
-	connman_uint8_t strength, value;
+	connman_uint8_t strength;
 	connman_bool_t roaming;
 	GSequenceIter *iter;
 	const char *name;
@@ -4940,7 +4861,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 roaming:
 	roaming = connman_network_get_bool(service->network, "Roaming");
 	if (roaming == service->roaming)
-		goto done;
+		return;
 
 	stats_enable = stats_enabled(service);
 	if (stats_enable == TRUE)
@@ -4956,20 +4877,6 @@ roaming:
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL)
 		g_sequence_sort_changed(iter, service_compare, NULL);
-
-done:
-	if (service->type != CONNMAN_SERVICE_TYPE_CELLULAR)
-		return;
-
-	value = connman_network_get_uint8(service->network, "Cellular.Mode");
-	mode = convert_cellular_mode(value);
-
-	if (mode == service->mode)
-		return;
-
-	service->mode = mode;
-
-	mode_changed(service);
 }
 
 void __connman_service_remove_from_network(struct connman_network *network)
