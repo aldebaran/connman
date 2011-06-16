@@ -1535,9 +1535,11 @@ int connman_network_set_blob(struct connman_network *network,
 			network->wifi.ssid_len = size;
 		} else
 			network->wifi.ssid_len = 0;
+	} else {
+		return -EINVAL;
 	}
 
-	return connman_element_set_blob(&network->element, key, data, size);
+	return 0;
 }
 
 /**
@@ -1559,7 +1561,7 @@ const void *connman_network_get_blob(struct connman_network *network,
 		return network->wifi.ssid;
 	}
 
-	return connman_element_get_blob(&network->element, key, size);
+	return NULL;
 }
 
 void __connman_network_set_device(struct connman_network *network,

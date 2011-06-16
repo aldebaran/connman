@@ -128,7 +128,6 @@ int connman_network_set_bool(struct connman_network *network,
 					const char *key, connman_bool_t value);
 connman_bool_t connman_network_get_bool(struct connman_network *network,
 							const char *key);
-
 int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size);
 const void *connman_network_get_blob(struct connman_network *network,
