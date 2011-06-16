@@ -11,13 +11,6 @@ Background
 Core
 ====
 
-- connman_element removal
-
-   Priority: Low
-   Complexity: C8
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-
 - Session API implementation
 
    Priority: High
