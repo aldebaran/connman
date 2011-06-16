@@ -43,6 +43,7 @@ struct connman_network {
 	char *name;
 	char *node;
 	char *group;
+	char *path;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -172,6 +173,7 @@ static void network_destruct(struct connman_element *element)
 	g_free(network->wifi.phase2_auth);
 	g_free(network->wifi.pin_wps);
 
+	g_free(network->path);
 	g_free(network->group);
 	g_free(network->node);
 	g_free(network->name);
@@ -1347,7 +1349,10 @@ int connman_network_set_string(struct connman_network *network,
 	if (g_strcmp0(key, "Name") == 0)
 		return connman_network_set_name(network, value);
 
-	if (g_str_equal(key, "Node") == TRUE) {
+	if (g_str_equal(key, "Path") == TRUE) {
+		g_free(network->path);
+		network->path = g_strdup(value);
+	} else if (g_str_equal(key, "Node") == TRUE) {
 		g_free(network->node);
 		network->node = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.Mode") == TRUE) {
@@ -1383,9 +1388,11 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.PinWPS") == TRUE) {
 		g_free(network->wifi.pin_wps);
 		network->wifi.pin_wps = g_strdup(value);
+	} else {
+		return -EINVAL;
 	}
 
-	return connman_element_set_string(&network->element, key, value);
+	return 0;
 }
 
 /**
@@ -1400,7 +1407,9 @@ const char *connman_network_get_string(struct connman_network *network,
 {
 	DBG("network %p key %s", network, key);
 
-	if (g_str_equal(key, "Name") == TRUE)
+	if (g_str_equal(key, "Path") == TRUE)
+		return network->path;
+	else if (g_str_equal(key, "Name") == TRUE)
 		return network->name;
 	else if (g_str_equal(key, "Node") == TRUE)
 		return network->node;
@@ -1427,7 +1436,7 @@ const char *connman_network_get_string(struct connman_network *network,
 	else if (g_str_equal(key, "WiFi.PinWPS") == TRUE)
 		return network->wifi.pin_wps;
 
-	return connman_element_get_string(&network->element, key);
+	return NULL;
 }
 
 /**
