@@ -11,8 +11,7 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 
 nodist_include_HEADERS = include/version.h
 
-noinst_HEADERS = include/property.h \
-			include/rtnl.h include/wifi.h include/task.h \
+noinst_HEADERS = include/rtnl.h include/wifi.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
 			include/profile.h include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
