@@ -361,7 +361,7 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 						"WiFi.Passphrase");
 	if (passphrase == NULL || strlen(passphrase) == 0)
 		ssid->passphrase = NULL;
-        else
+	else
 		ssid->passphrase = passphrase;
 
 	ssid->eap = connman_network_get_string(network, "WiFi.EAP");
@@ -526,7 +526,7 @@ static void interface_added(GSupplicantInterface *interface)
 
 	if (wifi->tethering == TRUE)
 		return;
-	
+
 	wifi_scan(wifi->device);
 }
 
@@ -883,11 +883,11 @@ static GSupplicantSSID *ssid_ap_init(const char *ssid, const char *passphrase)
 		ap->security = G_SUPPLICANT_SECURITY_NONE;
 		ap->passphrase = NULL;
 	} else {
-               ap->security = G_SUPPLICANT_SECURITY_PSK;
+	       ap->security = G_SUPPLICANT_SECURITY_PSK;
 	       ap->protocol = G_SUPPLICANT_PROTO_RSN;
 	       ap->pairwise_cipher = G_SUPPLICANT_PAIRWISE_CCMP;
 	       ap->group_cipher = G_SUPPLICANT_GROUP_CCMP;
-               ap->passphrase = passphrase;
+	       ap->passphrase = passphrase;
 	}
 
 	return ap;
