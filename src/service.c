@@ -4467,7 +4467,8 @@ static const struct connman_ipconfig_ops service_ops = {
 	.ip_release	= service_ip_release,
 };
 
-static void setup_ip4config(struct connman_service *service, int index)
+static void setup_ip4config(struct connman_service *service, int index,
+			enum connman_ipconfig_method method)
 {
 	if (index < 0)
 		return;
@@ -4477,8 +4478,7 @@ static void setup_ip4config(struct connman_service *service, int index)
 	if (service->ipconfig_ipv4 == NULL)
 		return;
 
-	connman_ipconfig_set_method(service->ipconfig_ipv4,
-					CONNMAN_IPCONFIG_METHOD_DHCP);
+	connman_ipconfig_set_method(service->ipconfig_ipv4, method);
 
 	connman_ipconfig_set_data(service->ipconfig_ipv4, service);
 
@@ -4511,7 +4511,7 @@ void __connman_service_create_ip4config(struct connman_service *service,
 	if (service->ipconfig_ipv4 != NULL)
 		return;
 
-	setup_ip4config(service, index);
+	setup_ip4config(service, index, CONNMAN_IPCONFIG_METHOD_DHCP);
 
 	if (ident == NULL)
 		return;
@@ -4812,7 +4812,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	index = connman_network_get_index(network);
 
 	if (service->ipconfig_ipv4 == NULL)
-		setup_ip4config(service, index);
+		setup_ip4config(service, index, CONNMAN_IPCONFIG_METHOD_DHCP);
 
 	if (service->ipconfig_ipv6 == NULL)
 		setup_ip6config(service, index);
@@ -4949,26 +4949,10 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	service->strength = 0;
 
 	if (service->ipconfig_ipv4 == NULL)
-		service->ipconfig_ipv4 = connman_ipconfig_create(index,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
-	if (service->ipconfig_ipv4 == NULL)
-		return service;
-
-	connman_ipconfig_set_method(service->ipconfig_ipv4,
-					CONNMAN_IPCONFIG_METHOD_MANUAL);
-	connman_ipconfig_set_data(service->ipconfig_ipv4, service);
-	connman_ipconfig_set_ops(service->ipconfig_ipv4, &service_ops);
+		setup_ip4config(service, index, CONNMAN_IPCONFIG_METHOD_MANUAL);
 
 	if (service->ipconfig_ipv6 == NULL)
-		service->ipconfig_ipv6 = connman_ipconfig_create(index,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
-	if (service->ipconfig_ipv6 == NULL)
-		return service;
-
-	connman_ipconfig_set_method(service->ipconfig_ipv6,
-					CONNMAN_IPCONFIG_METHOD_OFF);
-	connman_ipconfig_set_data(service->ipconfig_ipv6, service);
-	connman_ipconfig_set_ops(service->ipconfig_ipv6, &service_ops);
+		setup_ip6config(service, index);
 
 	service_register(service);
 
