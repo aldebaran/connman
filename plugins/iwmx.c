@@ -119,7 +119,6 @@ static struct connman_network_driver iwmx_cm_network_driver = {
  */
 struct connman_network *__iwmx_cm_network_available(
 			struct wmxsdk *wmxsdk, const char *station_name,
-			const char *station_type,
 			const void *sdk_nspname, size_t sdk_nspname_size,
 								int strength)
 {
@@ -156,7 +155,6 @@ struct connman_network *__iwmx_cm_network_available(
 		DBG("updating network %s nw %p\n", station_name, nw);
 	connman_network_set_available(nw, TRUE);
 	connman_network_set_strength(nw, strength);
-	connman_network_set_string(nw, "WiMAX Network Type", station_type);
 error_add:
 	return nw;
 }
@@ -168,14 +166,13 @@ error_add:
  */
 struct connman_network *iwmx_cm_network_available(
 			struct wmxsdk *wmxsdk, const char *station_name,
-			const char *station_type,
 			const void *sdk_nspname, size_t sdk_nspname_size,
 								int strength)
 {
 	struct connman_network *nw;
 
 	g_static_mutex_lock(&wmxsdk->network_mutex);
-	nw = __iwmx_cm_network_available(wmxsdk, station_name, station_type,
+	nw = __iwmx_cm_network_available(wmxsdk, station_name,
 					sdk_nspname, sdk_nspname_size,
 					strength);
 	g_static_mutex_unlock(&wmxsdk->network_mutex);

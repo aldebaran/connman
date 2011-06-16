@@ -160,13 +160,11 @@ enum {
 
 struct connman_network *__iwmx_cm_network_available(
 			struct wmxsdk *wmxsdk, const char *station_name,
-			const char *station_type,
 			const void *sdk_nspname, size_t sdk_nspname_size,
 								int strength);
 
 struct connman_network *iwmx_cm_network_available(
 			struct wmxsdk *wmxsdk, const char *station_name,
-			const char *station_type,
 			const void *sdk_nspname, size_t sdk_nspname_size,
 								int strength);
 

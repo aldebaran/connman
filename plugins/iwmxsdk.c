@@ -211,13 +211,11 @@ struct connman_network *__iwmx_sdk_get_connected_network(struct wmxsdk *wmxsdk)
 		strcpy((char *) nsp_info.NSPName, "unknown");
 		nw = iwmx_cm_network_available(
 			wmxsdk, "unknown",
-			iwmx_sdk_network_type_name(WIMAX_API_UNKNOWN),
 			nsp_info.NSPName, strlen((char *) nsp_info.NSPName) + 1,
 			cinr_to_percentage(nsp_info.CINR - 10));
 	} else {
 		nw = iwmx_cm_network_available(
 			wmxsdk, (char *) nsp_info.NSPName,
-			iwmx_sdk_network_type_name(nsp_info.networkType),
 			nsp_info.NSPName, strlen((char *) nsp_info.NSPName) + 1,
 			cinr_to_percentage(nsp_info.CINR - 10));
 	}
@@ -601,7 +599,6 @@ static void __iwmx_sdk_scan_common_cb(WIMAX_API_DEVICE_ID *device_id,
 
 		__iwmx_cm_network_available(
 			wmxsdk, station_name,
-			iwmx_sdk_network_type_name(nsp_info->networkType),
 			nsp_info->NSPName,
 			strlen((char *) nsp_info->NSPName) + 1,
 			strength);
