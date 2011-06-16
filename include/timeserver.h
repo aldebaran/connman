@@ -26,6 +26,10 @@
 extern "C" {
 #endif
 
+#define CONNMAN_TIMESERVER_PRIORITY_LOW      -100
+#define CONNMAN_TIMESERVER_PRIORITY_DEFAULT     0
+#define CONNMAN_TIMESERVER_PRIORITY_HIGH      100
+
 /**
  * SECTION:timeserver
  * @title: timeserver premitives

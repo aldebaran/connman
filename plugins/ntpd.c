@@ -30,11 +30,13 @@
 #include <string.h>
 #include <arpa/inet.h>
 
+#include <gdbus.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
+#include <connman/types.h>
 #include <connman/plugin.h>
 #include <connman/task.h>
 #include <connman/timeserver.h>
-#include <connman/driver.h>
 #include <connman/log.h>
 
 /*
@@ -303,7 +305,7 @@ remove:
 
 static struct connman_timeserver_driver ntpd_driver = {
 	.name		= "ntpd",
-	.priority	= CONNMAN_DRIVER_PRIORITY_DEFAULT,
+	.priority	= CONNMAN_TIMESERVER_PRIORITY_DEFAULT,
 	.append		= ntpd_append,
 	.remove		= ntpd_remove,
 	.sync		= ntpd_sync,
