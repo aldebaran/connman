@@ -2633,15 +2633,12 @@ static void add_network_security_peap(DBusMessageIter *dict,
 	 *              The 2nd phase authentication method
 	 *              The 2nd phase passphrase
 	 *
-	 * The Client certificate is optional although strongly required
+	 * The Client certificate is optional although strongly recommended
 	 * When setting it, we need in addition
 	 *              The Client private key file
 	 *              The Client private key file password
 	 */
 	if (ssid->passphrase == NULL)
-		return;
-
-	if (ssid->ca_cert_path == NULL)
 		return;
 
 	if (ssid->phase2_auth == NULL)
@@ -2678,7 +2675,8 @@ static void add_network_security_peap(DBusMessageIter *dict,
 						DBUS_TYPE_STRING,
 						&ssid->passphrase);
 
-	supplicant_dbus_dict_append_basic(dict, "ca_cert",
+	if (ssid->ca_cert_path)
+		supplicant_dbus_dict_append_basic(dict, "ca_cert",
 						DBUS_TYPE_STRING,
 						&ssid->ca_cert_path);
 
