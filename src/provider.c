@@ -571,11 +571,6 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 	g_free(ident);
 
-	if (provider == NULL) {
-		err = -EOPNOTSUPP;
-		goto failed;
-	}
-
 	if (provider->vpn_service == NULL)
 		provider->vpn_service =
 			__connman_service_create_from_provider(provider);
