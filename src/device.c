@@ -1199,7 +1199,7 @@ static int device_probe(struct connman_device *device)
 	}
 
 	if (device->driver == NULL)
-		return -ENODEV;
+		return 0;
 
 	return setup_device(device);
 }
