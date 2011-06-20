@@ -216,17 +216,23 @@ static int wifi_enable(struct connman_device *device)
 	struct wifi_data *wifi = connman_device_get_data(device);
 	const char *interface = connman_device_get_string(device, "Interface");
 	const char *driver = connman_option_get_string("wifi");
+	int ret;
 
 	DBG("device %p %p", device, wifi);
 
-	return g_supplicant_interface_create(interface, driver, NULL,
+	ret = g_supplicant_interface_create(interface, driver, NULL,
 						interface_create_callback,
 							wifi);
+	if (ret < 0)
+		return ret;
+
+	return -EINPROGRESS;
 }
 
 static int wifi_disable(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
+	int ret;
 
 	DBG("device %p", device);
 
@@ -238,9 +244,13 @@ static int wifi_disable(struct connman_device *device)
 		wifi->pending_network = NULL;
 	}
 
-	return g_supplicant_interface_remove(wifi->interface,
+	ret = g_supplicant_interface_remove(wifi->interface,
 						interface_remove_callback,
 							wifi);
+	if (ret < 0)
+		return ret;
+
+	return -EINPROGRESS;
 }
 
 static void scan_callback(int result, GSupplicantInterface *interface,
