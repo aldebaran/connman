@@ -807,7 +807,6 @@ static int add_network(struct connman_device *device,
 	struct connman_network *network;
 	struct network_info *info;
 	char *ident;
-	const char *hash_path;
 	dbus_bool_t active = FALSE;
 
 	DBG("modem %p device %p path %s", modem, device, path);
@@ -845,17 +844,10 @@ static int add_network(struct connman_device *device,
 	info->network = network;
 
 	connman_network_set_string(network, "Path", path);
-	hash_path = connman_network_get_string(network, "Path");
-	if (hash_path == NULL) {
-		connman_network_unref(network);
-		g_free(info);
-		return -EIO;
-	}
 
 	create_service(network);
 
-	connman_network_ref(network);
-	g_hash_table_insert(network_hash, (char *) hash_path, info);
+	g_hash_table_insert(network_hash, (char *) path, info);
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
@@ -884,7 +876,7 @@ static int add_network(struct connman_device *device,
 			dbus_message_iter_get_basic(&value, &type);
 			if (g_strcmp0(type, "internet") != 0) {
 				DBG("path %p type %s", path, type);
-				goto error;
+				return -EIO;
 			}
 		} else if (g_str_equal(key, "Settings"))
 			update_ipv4_settings(&value, info);
@@ -897,19 +889,13 @@ static int add_network(struct connman_device *device,
 	}
 
 	if (connman_device_add_network(device, network) != 0)
-		goto error;
+		return -EIO;
 
 	/* Connect only if requested to do so */
 	if (active && connman_network_get_connecting(network) == TRUE)
 		set_connected(info, active);
 
 	return 0;
-
-error:
-	connman_network_unregister(network);
-	connman_network_unref(network);
-	g_hash_table_remove(network_hash, hash_path);
-	return -EIO;
 }
 
 static void check_networks_reply(DBusPendingCall *call, void *user_data)
