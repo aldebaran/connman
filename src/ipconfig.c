@@ -1516,6 +1516,14 @@ static void enable_ipv6(struct connman_ipconfig *ipconfig)
 	set_ipv6_state(ipdevice->ifname, TRUE);
 }
 
+void __connman_ipconfig_enable_ipv6(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL || ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
+		return;
+
+	enable_ipv6(ipconfig);
+}
+
 void __connman_ipconfig_disable_ipv6(struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL || ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
