@@ -57,16 +57,6 @@ Core
    not all driver (especially WiFi ones) implement runtime PM hooks.
 
 
-- IPv6 gateway handling
-
-   Priority: Medium
-   Complexity: C4
-
-   We should be able to switch between IPv6 only services and thus
-   change the default IPv6 gateway on the fly. For that we need to
-   improve the connection.c code to properly handle IPv6 gateways.
-
-
 - IP ranges allocation and check
 
    Priority: High
