@@ -4235,6 +4235,19 @@ failed:
 	return err;
 }
 
+static void provision_changed(gpointer value, gpointer user_data)
+{
+        struct connman_service *service = value;
+	char *path = user_data;
+
+	__connman_config_provision_service_ident(service, path);
+}
+
+void __connman_service_provision_changed(const char *ident)
+{
+	g_sequence_foreach(service_list, provision_changed, (void *)ident);
+}
+
 int __connman_service_provision(DBusMessage *msg)
 {
 	GKeyFile *keyfile = NULL;

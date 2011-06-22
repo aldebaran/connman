@@ -401,6 +401,8 @@ void __connman_config_cleanup(void);
 
 int __connman_config_load_service(GKeyFile *keyfile, const char *group, connman_bool_t persistent);
 int __connman_config_provision_service(struct connman_service *service);
+int __connman_config_provision_service_ident(struct connman_service *service,
+							const char *ident);
 
 #include <connman/profile.h>
 
@@ -507,6 +509,8 @@ int __connman_service_disconnect_all(void);
 int __connman_service_create_and_connect(DBusMessage *msg);
 int __connman_service_provision(DBusMessage *msg);
 void __connman_service_auto_connect(void);
+
+void __connman_service_provision_changed(const char *ident);
 
 const char *__connman_service_type2string(enum connman_service_type type);
 

@@ -651,6 +651,7 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 			if (config != NULL) {
 				g_hash_table_remove_all(config->service_table);
 				load_config(config);
+				__connman_service_provision_changed(ident);
 			}
 		}
 
@@ -867,6 +868,27 @@ int __connman_config_provision_service(struct connman_service *service)
 		g_hash_table_foreach(config->service_table,
 						provision_service, service);
 	}
+
+	return 0;
+}
+
+int __connman_config_provision_service_ident(struct connman_service *service,
+							const char *ident)
+{
+	enum connman_service_type type;
+	struct connman_config *config;
+
+	DBG("service %p", service);
+
+	/* For now only WiFi services are supported */
+	type = connman_service_get_type(service);
+	if (type != CONNMAN_SERVICE_TYPE_WIFI)
+		return -ENOSYS;
+
+	config = g_hash_table_lookup(config_table, ident);
+	if(config != NULL)
+		g_hash_table_foreach(config->service_table,
+						provision_service, service);
 
 	return 0;
 }
