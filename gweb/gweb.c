@@ -101,6 +101,8 @@ struct _GWeb {
 
 	guint next_query_id;
 
+	int family;
+
 	int index;
 	GList *session_list;
 
@@ -203,6 +205,8 @@ GWeb *g_web_new(int index)
 
 	web->next_query_id = 1;
 
+	web->family = AF_UNSPEC;
+
 	web->index = index;
 	web->session_list = NULL;
 
@@ -276,6 +280,19 @@ gboolean g_web_set_proxy(GWeb *web, const char *proxy)
 		web->proxy = g_strdup(proxy);
 		debug(web, "setting proxy %s", web->proxy);
 	}
+
+	return TRUE;
+}
+
+gboolean g_web_set_address_family(GWeb *web, int family)
+{
+	if (web == NULL)
+		return FALSE;
+
+	if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6)
+		return FALSE;
+
+	web->family = family;
 
 	return TRUE;
 }
@@ -1059,6 +1076,7 @@ static void resolv_result(GResolvResultStatus status,
 
 	memset(&hints, 0, sizeof(struct addrinfo));
 	hints.ai_flags = AI_NUMERICHOST;
+	hints.ai_family = session->web->family;
 
 	if (session->addr != NULL) {
 		freeaddrinfo(session->addr);
@@ -1155,6 +1173,7 @@ static guint do_request(GWeb *web, const char *url,
 
 		memset(&hints, 0, sizeof(struct addrinfo));
 		hints.ai_flags = AI_NUMERICHOST;
+		hints.ai_family = session->web->family;
 
 		if (session->addr != NULL) {
 			freeaddrinfo(session->addr);

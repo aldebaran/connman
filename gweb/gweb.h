@@ -54,6 +54,8 @@ void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data);
 
 gboolean g_web_set_proxy(GWeb *web, const char *proxy);
 
+gboolean g_web_set_address_family(GWeb *web, int family);
+
 gboolean g_web_add_nameserver(GWeb *web, const char *address);
 
 gboolean g_web_set_accept(GWeb *web, const char *format, ...)
