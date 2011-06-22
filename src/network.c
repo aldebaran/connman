@@ -1101,6 +1101,9 @@ static gboolean set_connected(gpointer user_data)
 		__connman_connection_gateway_remove(service,
 						CONNMAN_IPCONFIG_TYPE_ALL);
 
+		__connman_ipconfig_address_unset(ipconfig_ipv4);
+		__connman_ipconfig_address_unset(ipconfig_ipv6);
+
 		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
