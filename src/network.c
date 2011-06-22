@@ -1104,6 +1104,17 @@ static gboolean set_connected(gpointer user_data)
 		__connman_ipconfig_address_unset(ipconfig_ipv4);
 		__connman_ipconfig_address_unset(ipconfig_ipv6);
 
+		/*
+		 * Special handling for IPv6 autoconfigured address.
+		 * The simplest way to remove autoconfigured routes is to
+		 * disable IPv6 temporarily so that kernel will do the cleanup
+		 * automagically.
+		 */
+		if (ipv6_method == CONNMAN_IPCONFIG_METHOD_AUTO) {
+			__connman_ipconfig_disable_ipv6(ipconfig_ipv6);
+			__connman_ipconfig_enable_ipv6(ipconfig_ipv6);
+		}
+
 		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
