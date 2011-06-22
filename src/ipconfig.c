@@ -1401,6 +1401,34 @@ int __connman_ipconfig_address_remove(struct connman_ipconfig *ipconfig)
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		err = __connman_ipconfig_address_unset(ipconfig);
+		connman_ipaddress_clear(ipconfig->address);
+
+		return err;
+	}
+
+	return 0;
+}
+
+int __connman_ipconfig_address_unset(struct connman_ipconfig *ipconfig)
+{
+	int err;
+
+	DBG("");
+
+	if (ipconfig == NULL)
+		return 0;
+
+	DBG("method %d", ipconfig->method);
+
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		break;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			err = connman_inet_clear_address(ipconfig->index,
 							ipconfig->address);
@@ -1411,8 +1439,6 @@ int __connman_ipconfig_address_remove(struct connman_ipconfig *ipconfig)
 						ipconfig->address->prefixlen);
 		else
 			err = -EINVAL;
-
-		connman_ipaddress_clear(ipconfig->address);
 
 		return err;
 	}
