@@ -960,6 +960,8 @@ static int manual_ipv6_set(struct connman_network *network,
 	struct connman_service *service;
 	int err;
 
+	DBG("network %p ipv6 %p", network, ipconfig_ipv6);
+
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return -EINVAL;
@@ -971,10 +973,23 @@ static int manual_ipv6_set(struct connman_network *network,
 		return err;
 	}
 
-	/*
-	 * READY state will be indicated by IPV4 setting
-	 * gateway will be set by IPV4 setting
-	 */
+	err = __connman_ipconfig_gateway_add(ipconfig_ipv6);
+	if (err < 0)
+		return err;
+
+	__connman_connection_gateway_activate(service,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+
+	__connman_device_increase_connections(network->device);
+
+	__connman_device_set_network(network->device, network);
+
+	connman_device_set_disconnected(network->device, FALSE);
+
+	network->connecting = FALSE;
+
+	__connman_service_set_ipconfig_ready(service,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	return 0;
 }
