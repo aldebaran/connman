@@ -657,6 +657,9 @@ int connman_network_set_associating(struct connman_network *network,
 		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_ASSOCIATION,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
+		__connman_service_indicate_state(service,
+					CONNMAN_SERVICE_STATE_ASSOCIATION,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
 	}
 
 	return 0;
