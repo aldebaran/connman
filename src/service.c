@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <string.h>
+#include <netdb.h>
 #include <gdbus.h>
 
 #include "connman.h"
@@ -611,22 +612,63 @@ void __connman_service_nameserver_clear(struct connman_service *service)
 static void nameserver_add_routes(int index, char **nameservers,
 					const char *gw)
 {
-	int i;
+	int i, ret, family;
+	struct addrinfo hints;
+	struct addrinfo *addr;
 
 	for (i = 0; nameservers[i] != NULL; i++) {
-		if (connman_inet_compare_subnet(index, nameservers[i]))
-			continue;
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_flags = AI_NUMERICHOST;
+		addr = NULL;
 
-		connman_inet_add_host_route(index, nameservers[i], gw);
+		ret = getaddrinfo(nameservers[i], NULL, &hints, &addr);
+		if (ret == EAI_NONAME)
+			family = AF_INET; /* use the IPv4 as a default */
+		else if (ret != 0)
+			continue;
+		else
+			family = addr->ai_family;
+
+		if (family == AF_INET) {
+			if (connman_inet_compare_subnet(index,
+						nameservers[i]) != TRUE)
+				connman_inet_add_host_route(index,
+							nameservers[i], gw);
+		} else if (family == AF_INET6)
+			connman_inet_add_ipv6_host_route(index,
+							nameservers[i], gw);
+
+		freeaddrinfo(addr);
 	}
 }
 
 static void nameserver_del_routes(int index, char **nameservers)
 {
-	int i;
+	int i, ret, family;
+	struct addrinfo hints;
+	struct addrinfo *addr;
 
-	for (i = 0; nameservers[i] != NULL; i++)
-		connman_inet_del_host_route(index, nameservers[i]);
+	for (i = 0; nameservers[i] != NULL; i++) {
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_flags = AI_NUMERICHOST;
+		addr = NULL;
+
+		ret = getaddrinfo(nameservers[i], NULL, &hints, &addr);
+		if (ret == EAI_NONAME)
+			family = AF_INET; /* use the IPv4 as a default */
+		else if (ret != 0)
+			continue;
+		else
+			family = addr->ai_family;
+
+		if (family == AF_INET)
+			connman_inet_del_host_route(index, nameservers[i]);
+		else if (family == AF_INET6)
+			connman_inet_del_ipv6_host_route(index,
+							nameservers[i]);
+
+		freeaddrinfo(addr);
+	}
 }
 
 void __connman_service_nameserver_add_routes(struct connman_service *service,
