@@ -796,7 +796,7 @@ int connman_inet_del_ipv6_host_route(int index, const char *host)
 
 int connman_inet_add_ipv6_network_route(int index, const char *host,
 					const char *gateway,
-						unsigned char prefix_len)
+					unsigned char prefix_len)
 {
 	struct in6_rtmsg rt;
 	int sk, err;
