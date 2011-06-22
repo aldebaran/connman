@@ -58,6 +58,7 @@ void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 
 enum connman_ipconfig_type {
 	CONNMAN_IPCONFIG_TYPE_UNKNOWN = 0,
+	CONNMAN_IPCONFIG_TYPE_ALL     = 0,
 	CONNMAN_IPCONFIG_TYPE_IPV4    = 1,
 	CONNMAN_IPCONFIG_TYPE_IPV6    = 2,
 };

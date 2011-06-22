@@ -1083,7 +1083,8 @@ static gboolean set_connected(gpointer user_data)
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
-		__connman_connection_gateway_remove(service);
+		__connman_connection_gateway_remove(service,
+						CONNMAN_IPCONFIG_TYPE_ALL);
 
 		__connman_service_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,

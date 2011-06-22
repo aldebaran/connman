@@ -286,12 +286,15 @@ int __connman_connection_init(void);
 void __connman_connection_cleanup(void);
 
 int __connman_connection_gateway_add(struct connman_service *service,
-					const char *ipv4_gateway,
-					const char *ipv6_gateway,
+					const char *gateway,
+					enum connman_ipconfig_type type,
 					const char *peer);
-void __connman_connection_gateway_remove(struct connman_service *service);
+void __connman_connection_gateway_remove(struct connman_service *service,
+					enum connman_ipconfig_type type);
 
 gboolean __connman_connection_update_gateway(void);
+void __connman_connection_gateway_activate(struct connman_service *service,
+					enum connman_ipconfig_type type);
 
 int __connman_wpad_init(void);
 void __connman_wpad_cleanup(void);
