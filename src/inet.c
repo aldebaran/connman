@@ -783,7 +783,8 @@ int connman_inet_del_ipv6_network_route(int index, const char *host,
 	close(sk);
 out:
 	if (err < 0)
-		connman_error("Del IPv6 host route error");
+		connman_error("Del IPv6 host route error (%s)",
+						strerror(errno));
 
 	return err;
 }
@@ -833,7 +834,8 @@ int connman_inet_add_ipv6_network_route(int index, const char *host,
 	close(sk);
 out:
 	if (err < 0)
-		connman_error("Set IPv6 host route error");
+		connman_error("Set IPv6 host route error (%s)",
+						strerror(errno));
 
 	return err;
 }
@@ -875,7 +877,8 @@ int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
 	close(sk);
 out:
 	if (err < 0)
-		connman_error("Set default IPv6 gateway error");
+		connman_error("Set default IPv6 gateway error (%s)",
+						strerror(errno));
 
 	return err;
 }
@@ -911,7 +914,8 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
 	close(sk);
 out:
 	if (err < 0)
-		connman_error("Clear default IPv6 gateway error");
+		connman_error("Clear default IPv6 gateway error (%s)",
+						strerror(errno));
 
 	return err;
 }
