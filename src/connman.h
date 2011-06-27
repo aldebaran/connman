@@ -484,7 +484,6 @@ const char *__connman_service_get_phase2(struct connman_service *service);
 connman_bool_t __connman_service_wps_enabled(struct connman_service *service);
 int __connman_service_set_favorite(struct connman_service *service,
 						connman_bool_t favorite);
-connman_bool_t __connman_service_get_immutable(struct connman_service *service);
 int __connman_service_set_immutable(struct connman_service *service,
 						connman_bool_t immutable);
 
