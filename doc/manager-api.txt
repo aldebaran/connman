@@ -195,21 +195,20 @@ Methods		dict GetProperties()
 			If an application exits unexpectatly the session
 			will be automatically destroyed.
 
-		fd, dict {settings} RequestPrivateNetwork(dict options)
+		object path, dict, fd RequestPrivateNetwork(dict options)
 								[experimental]
 
-			Request a new Private Network, whick includes the
+			Request a new Private Network, which includes the
 			creation of a tun/tap interface, and IP
 			configuration, NAT and IP forwarding on that
 			interface.
-			A file descritor to the interface is returned together
-			with the IP, gateway and DNS settings for the
-			interface.
+			An object path, a dictionnary and a file descriptor
+			with IP settings are returned.
 
 			Possible Errors: [service].Error.InvalidArguments
 					 [service].Error.NotSupported
 
-		void ReleasePrivateNetwork(fd) [experimental]
+		void ReleasePrivateNetwork(object path) [experimental]
 
 			Releases a private network.
 
