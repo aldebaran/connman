@@ -72,6 +72,7 @@ static GHashTable *pn_hash;
 
 struct connman_private_network {
 	char *owner;
+	char *path;
 	guint watch;
 	DBusMessage *msg;
 	DBusMessage *reply;
@@ -420,7 +421,6 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 {
 	struct connman_private_network *pn = data;
 	unsigned char prefixlen;
-	DBusMessage *reply;
 	DBusMessageIter array, dict;
 	int err;
 
@@ -448,56 +448,54 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 		goto error;
 	}
 
-	reply = dbus_message_new_method_return(pn->msg);
+	dbus_message_iter_init_append(pn->reply, &array);
 
-	if (reply == NULL)
-		goto error;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	dbus_message_iter_append_basic(&array, DBUS_TYPE_UNIX_FD, &pn->fd);
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_OBJECT_PATH,
+						&pn->path);
 
 	connman_dbus_dict_open(&array, &dict);
 
 	connman_dbus_dict_append_basic(&dict, "ServerIPv4",
-						DBUS_TYPE_STRING, &pn->server_ip);
+					DBUS_TYPE_STRING, &pn->server_ip);
 	connman_dbus_dict_append_basic(&dict, "PeerIPv4",
-						DBUS_TYPE_STRING, &pn->peer_ip);
+					DBUS_TYPE_STRING, &pn->peer_ip);
 	connman_dbus_dict_append_basic(&dict, "PrimaryDNS",
-						DBUS_TYPE_STRING, &pn->primary_dns);
+					DBUS_TYPE_STRING, &pn->primary_dns);
 	connman_dbus_dict_append_basic(&dict, "SecondaryDNS",
-						DBUS_TYPE_STRING, &pn->secondary_dns);
+					DBUS_TYPE_STRING, &pn->secondary_dns);
 
 	connman_dbus_dict_close(&array, &dict);
 
-	g_dbus_send_message(connection, reply);
+	dbus_message_iter_append_basic(&array, DBUS_TYPE_UNIX_FD, &pn->fd);
+
+	g_dbus_send_message(connection, pn->reply);
 
 	return;
 
 error:
-	reply = __connman_error_failed(pn->msg, -err);
-	g_dbus_send_message(connection, reply);
+	pn->reply = __connman_error_failed(pn->msg, -err);
+	g_dbus_send_message(connection, pn->reply);
 
-	g_hash_table_remove(pn_hash, pn->owner);
+	g_hash_table_remove(pn_hash, pn->path);
 }
 
 static void remove_private_network(gpointer user_data)
 {
 	struct connman_private_network *pn = user_data;
 
-	close(pn->fd);
-
-	connman_rtnl_remove_watch(pn->iface_watch);
-
 	disable_nat(default_interface);
+	connman_rtnl_remove_watch(pn->iface_watch);
 
 	if (pn->watch > 0) {
 		g_dbus_remove_watch(connection, pn->watch);
 		pn->watch = 0;
 	}
 
+	close(pn->fd);
+
 	g_free(pn->interface);
 	g_free(pn->owner);
+	g_free(pn->path);
 	g_free(pn);
 }
 
@@ -509,25 +507,32 @@ static void owner_disconnect(DBusConnection *connection, void *user_data)
 
 	pn->watch = 0;
 
-	g_hash_table_remove(pn_hash, pn->owner);
+	g_hash_table_remove(pn_hash, pn->path);
 }
 
 int __connman_private_network_request(DBusMessage *msg, const char *owner)
 {
 	struct connman_private_network *pn;
 	char *iface = NULL;
+	char *path = NULL;
 	int index, fd, err;
 
 	if (DBUS_TYPE_UNIX_FD < 0)
 		return -EINVAL;
 
-	pn = g_hash_table_lookup(pn_hash, owner);
-	if (pn != NULL)
-		return -EEXIST;
-
 	fd = connman_inet_create_tunnel(&iface);
 	if (fd < 0)
 		return fd;
+
+	path = g_strdup_printf("/tethering/%s", iface);
+
+	pn = g_hash_table_lookup(pn_hash, path);
+	if (pn) {
+		g_free(path);
+		g_free(iface);
+		close(fd);
+		return -EEXIST;
+	}
 
 	index = connman_inet_ifindex(iface);
 	if (index < 0) {
@@ -545,9 +550,14 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	}
 
 	pn->owner = g_strdup(owner);
+	pn->path = path;
 	pn->watch = g_dbus_add_disconnect_watch(connection, pn->owner,
 					owner_disconnect, pn, NULL);
 	pn->msg = msg;
+	pn->reply = dbus_message_new_method_return(pn->msg);
+	if (pn->reply == NULL)
+		goto error;
+
 	pn->fd = fd;
 	pn->interface = iface;
 	pn->index = index;
@@ -559,25 +569,27 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	pn->iface_watch = connman_rtnl_add_newlink_watch(index,
 						setup_tun_interface, pn);
 
-	g_hash_table_insert(pn_hash, pn->owner, pn);
+	g_hash_table_insert(pn_hash, pn->path, pn);
 
 	return 0;
 
 error:
 	close(fd);
 	g_free(iface);
+	g_free(path);
+	g_free(pn);
 	return err;
 }
 
-int __connman_private_network_release(const char *owner)
+int __connman_private_network_release(const char *path)
 {
 	struct connman_private_network *pn;
 
-	pn = g_hash_table_lookup(pn_hash, owner);
+	pn = g_hash_table_lookup(pn_hash, path);
 	if (pn == NULL)
 		return -EACCES;
 
-	g_hash_table_remove(pn_hash, owner);
+	g_hash_table_remove(pn_hash, path);
 	return 0;
 }
 

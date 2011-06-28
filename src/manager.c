@@ -613,14 +613,15 @@ static DBusMessage *request_private_network(DBusConnection *conn,
 static DBusMessage *release_private_network(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const char *sender;
+	const char *path;
 	int err;
 
 	DBG("conn %p", conn);
 
-	sender = dbus_message_get_sender(msg);
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
 
-	err = __connman_private_network_release(sender);
+	err = __connman_private_network_release(path);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -651,10 +652,10 @@ static GDBusMethodTable manager_methods[] = {
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
 	{ "CreateSession",     "a{sv}o", "o",    create_session     },
 	{ "DestroySession",    "o",     "",      destroy_session    },
-	{ "RequestPrivateNetwork",    "",     "ha{sv}",
+	{ "RequestPrivateNetwork",    "",     "oa{sv}h",
 						request_private_network,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "ReleasePrivateNetwork",    "",     "",
+	{ "ReleasePrivateNetwork",    "o",    "",
 						release_private_network },
 	{ },
 };
