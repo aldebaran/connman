@@ -637,11 +637,12 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 
 static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 {
-	struct connman_service *service_a = (void *)a;
-	struct connman_service *service_b = (void *)b;
+	struct service_entry *entry_a = (void *)a;
+	struct service_entry *entry_b = (void *)b;
 	struct connman_session *session = user_data;
 
-	return sort_allowed_bearers(service_a, service_b, session);
+	return sort_allowed_bearers(entry_a->service, entry_b->service,
+				session);
 }
 
 static void cleanup_session(gpointer user_data)
