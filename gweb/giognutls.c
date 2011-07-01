@@ -444,7 +444,9 @@ GIOChannel *g_io_channel_gnutls_new(int fd)
 						g_io_gnutls_push_func);
         gnutls_transport_set_pull_function(gnutls_channel->session,
 						g_io_gnutls_pull_func);
+#if GNUTLS_VERSION_NUMBER < 0x020c00
 	gnutls_transport_set_lowat(gnutls_channel->session, 0);
+#endif
 
 	gnutls_priority_set_direct(gnutls_channel->session,
 				"NORMAL:!VERS-TLS1.1:!VERS-TLS1.0", NULL);
