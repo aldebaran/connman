@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/signalfd.h>
 #include <getopt.h>
 #include <sys/stat.h>
 #include <net/if.h>
@@ -90,11 +91,31 @@ static void parse_config(GKeyFile *config)
 
 static GMainLoop *main_loop = NULL;
 
-static void sig_term(int sig)
+static gboolean signal_cb(GIOChannel *chan,
+				GIOCondition cond, gpointer data)
 {
-	connman_info("Terminating");
+	int signal_fd = GPOINTER_TO_INT(data);
+	struct signalfd_siginfo si;
+	ssize_t res;
 
-	g_main_loop_quit(main_loop);
+	if (cond & (G_IO_NVAL | G_IO_ERR))
+		return FALSE;
+
+	res = read(signal_fd, &si, sizeof(si));
+	if (res != sizeof(si))
+		return FALSE;
+
+	switch (si.ssi_signo) {
+	case SIGINT:
+	case SIGTERM:
+		connman_info("Terminating");
+		g_main_loop_quit(main_loop);
+		break;
+	default:
+		break;
+	}
+
+	return TRUE;
 }
 
 static void disconnect_callback(DBusConnection *conn, void *user_data)
@@ -179,7 +200,10 @@ int main(int argc, char *argv[])
 	GError *error = NULL;
 	DBusConnection *conn;
 	DBusError err;
-	struct sigaction sa;
+	int signal_fd;
+	int signal_source;
+	GIOChannel *signal_io;
+	sigset_t mask;
 	GKeyFile *config;
 
 #ifdef HAVE_CAPNG
@@ -312,12 +336,31 @@ int main(int argc, char *argv[])
 	g_free(option_nodevice);
 	g_free(option_noplugin);
 
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_term;
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGTERM);
+	sigaddset(&mask, SIGINT);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
+		fprintf(stderr, "Could not block signals\n");
+		exit(1);
+	}
+
+	signal_fd = signalfd(-1, &mask, 0);
+	if (signal_fd < 0) {
+		fprintf(stderr, "Could not init signalfd\n");
+		exit(1);
+	}
+
+	signal_io = g_io_channel_unix_new(signal_fd);
+	g_io_channel_set_close_on_unref(signal_io, TRUE);
+	signal_source = g_io_add_watch(signal_io,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				signal_cb, GINT_TO_POINTER(signal_fd));
+	g_io_channel_unref(signal_io);
 
 	g_main_loop_run(main_loop);
+
+	g_source_remove(signal_source);
 
 	__connman_rfkill_cleanup();
 	__connman_wispr_cleanup();
