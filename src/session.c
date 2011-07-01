@@ -196,6 +196,8 @@ static enum connman_service_type bearer2service(const char *bearer)
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	else if (g_strcmp0(bearer, "3g") == 0)
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
+	else if (g_strcmp0(bearer, "vpn") == 0)
+		return CONNMAN_SERVICE_TYPE_VPN;
 	else
 		return CONNMAN_SERVICE_TYPE_UNKNOWN;
 }
@@ -213,10 +215,11 @@ static char *service2bearer(enum connman_service_type type)
 		return "bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return "3g";
+	case CONNMAN_SERVICE_TYPE_VPN:
+		return "vpn";
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return "";
 	}
