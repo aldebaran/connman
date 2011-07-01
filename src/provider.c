@@ -156,6 +156,7 @@ static void provider_destruct(struct connman_provider *provider)
 
 	g_free(provider->name);
 	g_free(provider->type);
+	g_free(provider->host);
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_hash_table_destroy(provider->routes);
