@@ -623,9 +623,14 @@ int connman_provider_set_string(struct connman_provider *provider,
 	} else if (g_str_equal(key, "Name") == TRUE) {
 		g_free(provider->name);
 		provider->name = g_strdup(value);
-	}
-
-	g_hash_table_replace(provider->setting_strings,
+	} else if (g_str_equal(key, "Host") == TRUE) {
+		g_free(provider->host);
+		provider->host = g_strdup(value);
+	} else if (g_str_equal(key, "VPN.Domain") == TRUE) {
+		g_free(provider->domain);
+		provider->domain = g_strdup(value);
+	} else
+		g_hash_table_replace(provider->setting_strings,
 				g_strdup(key), g_strdup(value));
 	return 0;
 }
