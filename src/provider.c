@@ -644,6 +644,10 @@ const char *connman_provider_get_string(struct connman_provider *provider,
 		return provider->type;
 	else if (g_str_equal(key, "Name") == TRUE)
 		return provider->name;
+	else if (g_str_equal(key, "Host") == TRUE)
+		return provider->host;
+	else if (g_str_equal(key, "VPN.Domain") == TRUE)
+		return provider->domain;
 
 	return g_hash_table_lookup(provider->setting_strings, key);
 }
