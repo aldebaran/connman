@@ -91,31 +91,74 @@ static void parse_config(GKeyFile *config)
 
 static GMainLoop *main_loop = NULL;
 
-static gboolean signal_cb(GIOChannel *chan,
-				GIOCondition cond, gpointer data)
-{
-	int signal_fd = GPOINTER_TO_INT(data);
-	struct signalfd_siginfo si;
-	ssize_t res;
+static unsigned int __terminated = 0;
 
-	if (cond & (G_IO_NVAL | G_IO_ERR))
+static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	struct signalfd_siginfo si;
+	ssize_t result;
+	int fd;
+
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
 		return FALSE;
 
-	res = read(signal_fd, &si, sizeof(si));
-	if (res != sizeof(si))
+	fd = g_io_channel_unix_get_fd(channel);
+
+	result = read(fd, &si, sizeof(si));
+	if (result != sizeof(si))
 		return FALSE;
 
 	switch (si.ssi_signo) {
 	case SIGINT:
 	case SIGTERM:
-		connman_info("Terminating");
-		g_main_loop_quit(main_loop);
-		break;
-	default:
+		if (__terminated == 0) {
+			connman_info("Terminating");
+			g_main_loop_quit(main_loop);
+		}
+
+		__terminated = 1;
 		break;
 	}
 
 	return TRUE;
+}
+
+static guint setup_signalfd(void)
+{
+	GIOChannel *channel;
+	guint source;
+	sigset_t mask;
+	int fd;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
+		perror("Failed to set signal mask");
+		return 0;
+	}
+
+	fd = signalfd(-1, &mask, 0);
+	if (fd < 0) {
+		perror("Failed to create signal descriptor");
+		return 0;
+	}
+
+	channel = g_io_channel_unix_new(fd);
+
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
+	source = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				signal_handler, NULL);
+
+	g_io_channel_unref(channel);
+
+	return source;
 }
 
 static void disconnect_callback(DBusConnection *conn, void *user_data)
@@ -200,11 +243,8 @@ int main(int argc, char *argv[])
 	GError *error = NULL;
 	DBusConnection *conn;
 	DBusError err;
-	int signal_fd;
-	int signal_source;
-	GIOChannel *signal_io;
-	sigset_t mask;
 	GKeyFile *config;
+	guint signal;
 
 #ifdef HAVE_CAPNG
 	/* Drop capabilities */
@@ -269,6 +309,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 #endif
+
+	signal = setup_signalfd();
 
 	dbus_error_init(&err);
 
@@ -336,31 +378,9 @@ int main(int argc, char *argv[])
 	g_free(option_nodevice);
 	g_free(option_noplugin);
 
-	sigemptyset(&mask);
-	sigaddset(&mask, SIGTERM);
-	sigaddset(&mask, SIGINT);
-
-	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
-		fprintf(stderr, "Could not block signals\n");
-		exit(1);
-	}
-
-	signal_fd = signalfd(-1, &mask, 0);
-	if (signal_fd < 0) {
-		fprintf(stderr, "Could not init signalfd\n");
-		exit(1);
-	}
-
-	signal_io = g_io_channel_unix_new(signal_fd);
-	g_io_channel_set_close_on_unref(signal_io, TRUE);
-	signal_source = g_io_add_watch(signal_io,
-				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
-				signal_cb, GINT_TO_POINTER(signal_fd));
-	g_io_channel_unref(signal_io);
-
 	g_main_loop_run(main_loop);
 
-	g_source_remove(signal_source);
+	g_source_remove(signal);
 
 	__connman_rfkill_cleanup();
 	__connman_wispr_cleanup();
