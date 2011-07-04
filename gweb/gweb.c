@@ -294,6 +294,8 @@ gboolean g_web_set_address_family(GWeb *web, int family)
 
 	web->family = family;
 
+	g_resolv_set_address_family(web->resolv, family);
+
 	return TRUE;
 }
 
