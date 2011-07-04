@@ -99,6 +99,8 @@ struct resolv_nameserver {
 struct _GResolv {
 	gint ref_count;
 
+	int result_family;
+
 	guint next_lookup_id;
 	GQueue *lookup_queue;
 	GQueue *query_queue;
@@ -791,6 +793,8 @@ GResolv *g_resolv_new(int index)
 
 	resolv->ref_count = 1;
 
+	resolv->result_family = AF_UNSPEC;
+
 	resolv->next_lookup_id = 1;
 
 	resolv->query_queue = g_queue_new();
@@ -974,16 +978,24 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 	lookup->result_data = user_data;
 	lookup->id = resolv->next_lookup_id++;
 
-	if (add_query(lookup, hostname, ns_t_a)) {
-		g_free(lookup);
-		return -EIO;
+	if (resolv->result_family != AF_INET6) {
+		if (add_query(lookup, hostname, ns_t_a)) {
+			g_free(lookup);
+			return -EIO;
+		}
 	}
 
-	if (add_query(lookup, hostname, ns_t_aaaa)) {
-		destroy_query(lookup->ipv4_query);
-		g_queue_remove(resolv->query_queue, lookup->ipv4_query);
-		g_free(lookup);
-		return -EIO;
+	if (resolv->result_family != AF_INET) {
+		if (add_query(lookup, hostname, ns_t_aaaa)) {
+			if (resolv->result_family != AF_INET6) {
+				destroy_query(lookup->ipv4_query);
+				g_queue_remove(resolv->query_queue,
+						lookup->ipv4_query);
+			}
+
+			g_free(lookup);
+			return -EIO;
+		}
 	}
 
 	g_queue_push_tail(resolv->lookup_queue, lookup);
@@ -1002,6 +1014,19 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 
 	destroy_lookup(list->data);
 	g_queue_remove(resolv->query_queue, list->data);
+
+	return TRUE;
+}
+
+gboolean g_resolv_set_address_family(GResolv *resolv, int family)
+{
+	if (resolv == NULL)
+		return FALSE;
+
+	if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6)
+		return FALSE;
+
+	resolv->result_family = family;
 
 	return TRUE;
 }

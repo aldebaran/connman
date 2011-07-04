@@ -67,6 +67,8 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 
 gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id);
 
+gboolean g_resolv_set_address_family(GResolv *resolv, int family);
+
 #ifdef __cplusplus
 }
 #endif
