@@ -418,6 +418,8 @@ static gboolean pending_network_is_available(struct connman_network *network)
 static void set_connected(struct network_info *info,
 				connman_bool_t connected)
 {
+	gboolean setip = FALSE;
+
 	DBG("network %p connected %d", info->network, connected);
 
 	switch (info->ipv4_method) {
@@ -425,20 +427,20 @@ static void set_connected(struct network_info *info,
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		return;
+		break;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 		connman_network_set_ipv4_method(info->network,
 							info->ipv4_method);
 		connman_network_set_ipaddress(info->network,
 							&info->ipv4_address);
-
+		setip = TRUE;
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		connman_network_set_ipv4_method(info->network,
 							info->ipv4_method);
-
+		setip = TRUE;
 		break;
 	}
 
@@ -448,18 +450,19 @@ static void set_connected(struct network_info *info,
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		return;
+		break;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 		connman_network_set_ipv6_method(info->network,
 							info->ipv6_method);
 		connman_network_set_ipaddress(info->network,
 							&info->ipv6_address);
-
+		setip = TRUE;
 		break;
 	}
 
-	connman_network_set_connected(info->network, connected);
+	if (setip == TRUE)
+		connman_network_set_connected(info->network, connected);
 }
 
 static void set_active_reply(DBusPendingCall *call, void *user_data)
