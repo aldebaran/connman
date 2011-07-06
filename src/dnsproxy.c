@@ -250,7 +250,7 @@ static gboolean request_timeout(gpointer user_data)
 			hdr = (void *) (req->request + 2);
 			hdr->id = req->srcid;
 			send_response(req->client_sk, req->request,
-					req->request_len, NULL, 0, IPPROTO_TCP);
+				req->request_len, NULL, 0, IPPROTO_TCP);
 
 		} else if (req->protocol == IPPROTO_UDP) {
 			int sk;
@@ -561,7 +561,7 @@ hangup:
 			hdr = (void *) (req->request + 2);
 			hdr->id = req->srcid;
 			send_response(req->client_sk, req->request,
-					req->request_len, NULL, 0, IPPROTO_TCP);
+				req->request_len, NULL, 0, IPPROTO_TCP);
 
 			request_list = g_slist_remove(request_list, req);
 		}
@@ -1259,7 +1259,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	err = parse_request(buf, len, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0)) {
 		send_response(sk, buf, len, (void *)&client_addr,
-			      client_addr_len, IPPROTO_UDP);
+				client_addr_len, IPPROTO_UDP);
 		return TRUE;
 	}
 
