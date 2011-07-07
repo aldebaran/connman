@@ -3727,6 +3727,50 @@ int __connman_service_indicate_default(struct connman_service *service)
 	return 0;
 }
 
+int __connman_service_ipconfig_indicate_state(struct connman_service *service,
+					enum connman_service_state state,
+					enum connman_ipconfig_type type)
+{
+	enum connman_service_state current_state;
+	int err = 0;
+
+	DBG("service %p (%s) state %d (%s) type %d (%s)",
+		service, service ? service->identifier : NULL,
+		state, state2string(state),
+		type, __connman_ipconfig_type2string(type));
+
+	if (service == NULL)
+		return -EINVAL;
+
+	current_state = combine_state(service->state_ipv4, service->state_ipv6);
+
+	switch (current_state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+		break;
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		if (state == CONNMAN_SERVICE_STATE_READY ||
+				state == CONNMAN_SERVICE_STATE_ONLINE)
+			return -EALREADY;
+		break;
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		break;
+	}
+
+	if (current_state == state)
+		return -EALREADY;
+
+	err = __connman_service_indicate_state(service, state, type);
+	if (err < 0)
+		return err;
+
+	return 0;
+}
+
 int __connman_service_request_login(struct connman_service *service)
 {
 	DBG("service %p", service);
