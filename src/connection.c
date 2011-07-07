@@ -477,7 +477,8 @@ int __connman_connection_gateway_add(struct connman_service *service,
 				new_gateway->ipv4_gateway != NULL) {
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv4_gateway->gateway);
-		__connman_service_set_ipconfig_ready(service,
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 	}
 
@@ -485,7 +486,8 @@ int __connman_connection_gateway_add(struct connman_service *service,
 				new_gateway->ipv6_gateway != NULL) {
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv6_gateway->gateway);
-		__connman_service_set_ipconfig_ready(service,
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 	}
 

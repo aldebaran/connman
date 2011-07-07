@@ -192,7 +192,7 @@ void connman_location_report_result(struct connman_location *location,
 		__connman_service_request_login(location->service);
 		break;
 	case CONNMAN_LOCATION_RESULT_ONLINE:
-		__connman_service_indicate_state(location->service,
+		__connman_service_ipconfig_indicate_state(location->service,
 						CONNMAN_SERVICE_STATE_ONLINE,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 		break;

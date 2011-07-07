@@ -180,11 +180,11 @@ static int provider_indicate_state(struct connman_provider *provider,
 {
 	DBG("state %d", state);
 
-	__connman_service_indicate_state(provider->vpn_service, state,
+	__connman_service_ipconfig_indicate_state(provider->vpn_service, state,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-	return __connman_service_indicate_state(provider->vpn_service, state,
-					CONNMAN_IPCONFIG_TYPE_IPV6);
+	return __connman_service_ipconfig_indicate_state(provider->vpn_service,
+					state, CONNMAN_IPCONFIG_TYPE_IPV6);
 }
 
 int __connman_provider_disconnect(struct connman_provider *provider)

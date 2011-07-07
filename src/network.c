@@ -654,10 +654,10 @@ int connman_network_set_associating(struct connman_network *network,
 		struct connman_service *service;
 
 		service = __connman_service_lookup_from_network(network);
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_ASSOCIATION,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_ASSOCIATION,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 	}
@@ -676,7 +676,7 @@ static void set_associate_error(struct connman_network *network)
 
 	service = __connman_service_lookup_from_network(network);
 
-	__connman_service_indicate_state(service,
+	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 }
@@ -689,7 +689,7 @@ static void set_configure_error(struct connman_network *network)
 
 	service = __connman_service_lookup_from_network(network);
 
-	__connman_service_indicate_state(service,
+	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 }
@@ -804,7 +804,7 @@ static void set_configuration(struct connman_network *network)
 	connman_device_set_disconnected(network->device, FALSE);
 
 	service = __connman_service_lookup_from_network(network);
-	__connman_service_indicate_state(service,
+	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 }
@@ -832,7 +832,9 @@ static void dhcp_success(struct connman_network *network)
 	if (err < 0)
 		goto err;
 
-	__connman_service_set_ipconfig_ready(service, CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	return;
 
@@ -849,8 +851,9 @@ static void dhcp_failure(struct connman_network *network)
 	if (service == NULL)
 		return;
 
-	__connman_service_indicate_state(service, CONNMAN_SERVICE_STATE_IDLE,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_IDLE,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 }
 
 static void dhcp_callback(struct connman_network *network,
@@ -890,7 +893,9 @@ static int set_connected_fixed(struct connman_network *network)
 	if (err < 0)
 		goto err;
 
-	__connman_service_set_ipconfig_ready(service, CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	return 0;
 
@@ -927,7 +932,9 @@ static void set_connected_manual(struct connman_network *network)
 
 	connman_network_set_associating(network, FALSE);
 
-	__connman_service_set_ipconfig_ready(service, CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	return;
 
@@ -988,8 +995,9 @@ static int manual_ipv6_set(struct connman_network *network,
 
 	network->connecting = FALSE;
 
-	__connman_service_set_ipconfig_ready(service,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
 
 	return 0;
 }
@@ -1012,7 +1020,9 @@ static void autoconf_ipv6_set(struct connman_network *network)
 
 	network->connecting = FALSE;
 
-	__connman_service_set_ipconfig_ready(service, CONNMAN_IPCONFIG_TYPE_IPV6);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV6);
 }
 
 static gboolean set_connected(gpointer user_data)
@@ -1090,11 +1100,11 @@ static gboolean set_connected(gpointer user_data)
 
 		service = __connman_service_lookup_from_network(network);
 
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
@@ -1115,11 +1125,11 @@ static gboolean set_connected(gpointer user_data)
 			__connman_ipconfig_enable_ipv6(ipconfig_ipv6);
 		}
 
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_IDLE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 	}
@@ -1286,7 +1296,9 @@ static int manual_ipv4_set(struct connman_network *network,
 
 	__connman_ipconfig_gateway_add(ipconfig);
 
-	__connman_service_set_ipconfig_ready(service, CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_READY,
+					CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	return 0;
 }
@@ -1320,11 +1332,11 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	}
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		__connman_service_indicate_state(service,
+		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
