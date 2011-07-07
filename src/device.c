@@ -1275,7 +1275,7 @@ struct connman_device *__connman_device_find_device(
 	for (list = device_list; list != NULL; list = list->next) {
 		struct connman_device *device = list->data;
 		enum connman_service_type service_type =
-			connman_device_get_type(device);
+			__connman_device_get_service_type(device);
 
 		if (service_type != type)
 			continue;
