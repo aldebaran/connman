@@ -24,6 +24,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <string.h>
 #include <net/if.h>
 
@@ -455,7 +456,7 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(service, index, gateway, type);
 	if (new_gateway == NULL)
-		return 0;
+		return -EINVAL;
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 			new_gateway->ipv6_gateway != NULL &&
