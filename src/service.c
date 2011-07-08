@@ -381,12 +381,18 @@ static enum connman_service_state combine_state(
 	}
 
 	if (state_a == CONNMAN_SERVICE_STATE_ONLINE) {
-		result = state_a;
+		if (state_b == CONNMAN_SERVICE_STATE_DISCONNECT)
+			result = state_b;
+		else
+			result = state_a;
 		goto done;
 	}
 
 	if (state_b == CONNMAN_SERVICE_STATE_ONLINE) {
-		result = state_b;
+		if (state_a == CONNMAN_SERVICE_STATE_DISCONNECT)
+			result = state_a;
+		else
+			result = state_b;
 		goto done;
 	}
 
