@@ -270,10 +270,16 @@ done:
 
 static int write_file(void *src_map, struct stat *src_st, const char *pathname)
 {
+	struct stat st;
 	int fd;
 	ssize_t written;
 
 	DBG("pathname %s", pathname);
+
+	if (lstat(pathname, &st) == 0) {
+		if (S_ISLNK(st.st_mode))
+			unlink(pathname);
+	}
 
 	fd = open(pathname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd < 0)
