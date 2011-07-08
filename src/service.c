@@ -4261,7 +4261,7 @@ failed:
 
 static void provision_changed(gpointer value, gpointer user_data)
 {
-        struct connman_service *service = value;
+	struct connman_service *service = value;
 	char *path = user_data;
 
 	__connman_config_provision_service_ident(service, path);
