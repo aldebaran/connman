@@ -366,7 +366,7 @@ struct connman_network *connman_network_create(const char *identifier,
 						enum connman_network_type type)
 {
 	struct connman_network *network;
-	char *temp;
+	char *ident;
 
 	DBG("identifier %s type %d", identifier, type);
 
@@ -379,18 +379,18 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->refcount = 1;
 
 	if (identifier == NULL) {
-		temp = g_strdup_printf("hidden_%d", hidden_counter++);
+		ident = g_strdup_printf("hidden_%d", hidden_counter++);
 		network->hidden = TRUE;
 	} else
-		temp = g_strdup(identifier);
+		ident = g_strdup(identifier);
 
-	if (temp == NULL) {
+	if (ident == NULL) {
 		g_free(network);
 		return NULL;
 	}
 
 	network->type       = type;
-	network->identifier = g_strdup(temp);
+	network->identifier = ident;
 
 	return network;
 }
