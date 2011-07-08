@@ -1004,11 +1004,7 @@ static int manual_ipv6_set(struct connman_network *network,
 
 static void autoconf_ipv6_set(struct connman_network *network)
 {
-	struct connman_service *service;
-
 	DBG("network %p", network);
-
-	service = __connman_service_lookup_from_network(network);
 
 	__connman_device_increase_connections(network->device);
 
@@ -1019,10 +1015,6 @@ static void autoconf_ipv6_set(struct connman_network *network)
 	/* XXX: Append IPv6 nameservers here */
 
 	network->connecting = FALSE;
-
-	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_READY,
-					CONNMAN_IPCONFIG_TYPE_IPV6);
 }
 
 static gboolean set_connected(gpointer user_data)
