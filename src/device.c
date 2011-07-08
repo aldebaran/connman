@@ -1399,6 +1399,11 @@ connman_bool_t __connman_device_isfiltered(const char *devname)
 	}
 
 nodevice:
+	if (g_pattern_match_simple("dummy*", devname) == TRUE) {
+		DBG("ignoring dummy networking devices");
+		return TRUE;
+	}
+
 	if (nodevice_filter == NULL)
 		return FALSE;
 
