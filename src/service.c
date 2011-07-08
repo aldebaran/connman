@@ -3488,6 +3488,7 @@ static int __connman_service_indicate_state(struct connman_service *service)
 		g_get_current_time(&service->modified);
 		__connman_storage_save_service(service);
 
+		update_nameservers(service);
 		dns_changed(service);
 		domain_changed(service);
 

@@ -708,6 +708,7 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 {
 	struct connman_ipdevice *ipdevice;
 	struct connman_ipaddress *ipaddress;
+	enum connman_ipconfig_type type;
 	GList *list;
 
 	DBG("index %d", index);
@@ -728,6 +729,13 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 		connman_ipaddress_free(ipaddress);
 		return;
 	}
+
+	if (family == AF_INET)
+		type = CONNMAN_IPCONFIG_TYPE_IPV4;
+	else if (family == AF_INET6)
+		type = CONNMAN_IPCONFIG_TYPE_IPV6;
+	else
+		return;
 
 	ipdevice->address_list = g_slist_append(ipdevice->address_list,
 								ipaddress);
@@ -755,6 +763,9 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 		if (index != ipconfig->index)
 			continue;
 
+		if (type != ipconfig->type)
+			continue;
+
 		if (ipconfig->ops == NULL)
 			continue;
 
@@ -768,6 +779,7 @@ void __connman_ipconfig_deladdr(int index, int family, const char *label,
 {
 	struct connman_ipdevice *ipdevice;
 	struct connman_ipaddress *ipaddress;
+	enum connman_ipconfig_type type;
 	GList *list;
 
 	DBG("index %d", index);
@@ -778,6 +790,13 @@ void __connman_ipconfig_deladdr(int index, int family, const char *label,
 
 	ipaddress = find_ipaddress(ipdevice, prefixlen, address);
 	if (ipaddress == NULL)
+		return;
+
+	if (family == AF_INET)
+		type = CONNMAN_IPCONFIG_TYPE_IPV4;
+	else if (family == AF_INET6)
+		type = CONNMAN_IPCONFIG_TYPE_IPV6;
+	else
 		return;
 
 	ipdevice->address_list = g_slist_remove(ipdevice->address_list,
@@ -800,6 +819,9 @@ void __connman_ipconfig_deladdr(int index, int family, const char *label,
 		struct connman_ipconfig *ipconfig = list->data;
 
 		if (index != ipconfig->index)
+			continue;
+
+		if (type != ipconfig->type)
 			continue;
 
 		if (ipconfig->ops == NULL)
@@ -825,8 +847,10 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 						g_strcmp0(dst, "::") == 0)) {
 		GSList *list;
 		GList *config_list;
+		enum connman_ipconfig_type type;
 
 		if (family == AF_INET6) {
+			type = CONNMAN_IPCONFIG_TYPE_IPV6;
 			g_free(ipdevice->ipv6_gateway);
 			ipdevice->ipv6_gateway = g_strdup(gateway);
 
@@ -837,6 +861,7 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 					g_strdup(gateway);
 			}
 		} else if (family == AF_INET) {
+			type = CONNMAN_IPCONFIG_TYPE_IPV4;
 			g_free(ipdevice->ipv4_gateway);
 			ipdevice->ipv4_gateway = g_strdup(gateway);
 
@@ -861,6 +886,9 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 			struct connman_ipconfig *ipconfig = config_list->data;
 
 			if (index != ipconfig->index)
+				continue;
+
+			if (type != ipconfig->type)
 				continue;
 
 			if (ipconfig->ops == NULL)
@@ -891,8 +919,10 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 						g_strcmp0(dst, "::") == 0)) {
 		GSList *list;
 		GList *config_list;
+		enum connman_ipconfig_type type;
 
 		if (family == AF_INET6) {
+			type = CONNMAN_IPCONFIG_TYPE_IPV6;
 			g_free(ipdevice->ipv6_gateway);
 			ipdevice->ipv6_gateway = NULL;
 
@@ -902,6 +932,7 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 				ipdevice->config_ipv6->system->gateway = NULL;
 			}
 		} else if (family == AF_INET) {
+			type = CONNMAN_IPCONFIG_TYPE_IPV4;
 			g_free(ipdevice->ipv4_gateway);
 			ipdevice->ipv4_gateway = NULL;
 
@@ -925,6 +956,9 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 			struct connman_ipconfig *ipconfig = config_list->data;
 
 			if (index != ipconfig->index)
+				continue;
+
+			if (type != ipconfig->type)
 				continue;
 
 			if (ipconfig->ops == NULL)
