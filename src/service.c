@@ -5396,10 +5396,13 @@ int __connman_service_init(void)
 
 void __connman_service_cleanup(void)
 {
+	GSequence *list;
+
 	DBG("");
 
-	g_sequence_free(service_list);
+	list = service_list;
 	service_list = NULL;
+	g_sequence_free(list);
 
 	g_hash_table_destroy(service_hash);
 	service_hash = NULL;
