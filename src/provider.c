@@ -475,10 +475,9 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 {
 	struct connman_provider *provider;
 	DBusMessageIter iter, array;
-	const char *type = NULL, *name = NULL, *service_path = NULL;
+	const char *type = NULL, *name = NULL, *service_path;
 	const char *host = NULL, *domain = NULL;
 	char *ident;
-	gboolean created = FALSE;
 	int err;
 
 	dbus_message_iter_init(msg, &iter);
@@ -524,25 +523,21 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	DBG("ident %s", ident);
 
 	provider = connman_provider_lookup(ident);
-
 	if (provider == NULL) {
-		created = TRUE;
 		provider = connman_provider_get(ident);
-		if (provider) {
-			provider->host = g_strdup(host);
-			provider->domain = g_strdup(domain);
-			provider->name = g_strdup(name);
-			provider->type = g_strdup(type);
+		if (provider == NULL) {
+			DBG("can not create provider");
+			return -EOPNOTSUPP;
 		}
+
+		provider->host = g_strdup(host);
+		provider->domain = g_strdup(domain);
+		provider->name = g_strdup(name);
+		provider->type = g_strdup(type);
 
 		provider_register(provider);
 	}
 
-	if (provider == NULL) {
-		DBG("can not create provider");
-		err = -EOPNOTSUPP;
-		goto failed;
-	}
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
 
@@ -568,12 +563,13 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 	g_free(ident);
 
-	if (provider->vpn_service == NULL)
+	if (provider->vpn_service == NULL) {
 		provider->vpn_service =
 			__connman_service_create_from_provider(provider);
-	if (provider->vpn_service == NULL) {
-		err = -EOPNOTSUPP;
-		goto failed;
+		if (provider->vpn_service == NULL) {
+			err = -EOPNOTSUPP;
+			goto unref;
+		}
 	}
 
 	err = __connman_service_connect(provider->vpn_service);
@@ -587,15 +583,13 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	return 0;
 
 failed:
-	if (provider != NULL && created == TRUE) {
-		DBG("can not connect delete provider");
-		connman_provider_unref(provider);
+	__connman_service_put(provider->vpn_service);
+	provider->vpn_service = NULL;
 
-		if (provider->vpn_service != NULL) {
-			__connman_service_put(provider->vpn_service);
-			provider->vpn_service = NULL;
-		}
-	}
+unref:
+	DBG("can not connect, delete provider");
+
+	connman_provider_unref(provider);
 
 	return err;
 }
