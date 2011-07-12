@@ -510,17 +510,13 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		dbus_message_iter_next(&array);
 	}
 
-	if (host == NULL || domain == NULL) {
-		err = -EINVAL;
-		goto failed;
-	}
+	if (host == NULL || domain == NULL)
+		return -EINVAL;
 
 	DBG("Type %s name %s", type, name);
 
-	if (type == NULL || name == NULL) {
-		err = -EOPNOTSUPP;
-		goto failed;
-	}
+	if (type == NULL || name == NULL)
+		return -EOPNOTSUPP;
 
 	ident = g_strdup_printf("%s_%s", host, domain);
 	provider_dbus_ident(ident);
