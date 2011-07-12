@@ -527,6 +527,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		provider = connman_provider_get(ident);
 		if (provider == NULL) {
 			DBG("can not create provider");
+			g_free(ident);
 			return -EOPNOTSUPP;
 		}
 
