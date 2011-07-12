@@ -124,6 +124,9 @@ static void append_path(gpointer value, gpointer user_data)
 
 void __connman_service_list(DBusMessageIter *iter, void *user_data)
 {
+	if (service_list == NULL)
+		return;
+
 	g_sequence_foreach(service_list, append_path, iter);
 }
 
