@@ -186,6 +186,7 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 {
 	struct sockaddr_in *addr;
 	int err;
+	char buf[INET_ADDRSTRLEN];
 
 	err = ioctl(sk, SIOCGIFADDR, ifr);
 	if (err < 0) {
@@ -195,8 +196,11 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 	}
 
 	addr = (struct sockaddr_in *) &ifr->ifr_addr;
-	if (addr->sin_addr.s_addr != loopback_address)
+	if (addr->sin_addr.s_addr != loopback_address) {
+		connman_warn("Invalid loopback address %s",
+			inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)));
 		return FALSE;
+	}
 
 	err = ioctl(sk, SIOCGIFNETMASK, ifr);
 	if (err < 0) {
@@ -206,8 +210,11 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 	}
 
 	addr = (struct sockaddr_in *) &ifr->ifr_netmask;
-	if (addr->sin_addr.s_addr != loopback_netmask)
+	if (addr->sin_addr.s_addr != loopback_netmask) {
+		connman_warn("Invalid loopback netmask %s",
+			inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)));
 		return FALSE;
+	}
 
 	return TRUE;
 }
