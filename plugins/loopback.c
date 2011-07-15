@@ -242,7 +242,7 @@ static int setup_loopback(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_addr.s_addr = loopback_address;
 	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
@@ -254,7 +254,7 @@ static int setup_loopback(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("255.0.0.0");
+	addr.sin_addr.s_addr = loopback_netmask;
 	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
 
 	err = ioctl(sk, SIOCSIFNETMASK, &ifr);
