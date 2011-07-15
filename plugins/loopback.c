@@ -188,11 +188,16 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 	int err;
 	char buf[INET_ADDRSTRLEN];
 
+	/* It is possible to end up in situations in which the
+	 * loopback interface is up but has no valid address. In that
+	 * case, we expect EADDRNOTAVAIL and should return FALSE.
+	 */
+
 	err = ioctl(sk, SIOCGIFADDR, ifr);
 	if (err < 0) {
 		err = -errno;
 		connman_error("Getting address failed (%s)", strerror(-err));
-		return TRUE;
+		return err != -EADDRNOTAVAIL ? TRUE : FALSE;
 	}
 
 	addr = (struct sockaddr_in *) &ifr->ifr_addr;
