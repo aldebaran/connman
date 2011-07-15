@@ -220,7 +220,7 @@ static int setup_loopback(void)
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
-		return -1;
+		return -errno;
 
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, "lo");
