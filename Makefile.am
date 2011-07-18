@@ -88,7 +88,9 @@ src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
 
-CLEANFILES = src/connman.conf src/builtin.h $(local_headers)
+BUILT_SOURCES = $(local_headers)
+
+CLEANFILES = src/connman.conf src/builtin.h $(BUILT_SOURCES)
 
 statedir = $(localstatedir)/run/connman
 
