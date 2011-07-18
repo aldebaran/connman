@@ -260,8 +260,6 @@ else
 	$(AM_V_GEN)cp $(srcdir)/src/connman-dbus.conf $@
 endif
 
-$(src_connmand_OBJECTS) $(plugin_objects): $(local_headers)
-
 include/connman/version.h: include/version.h
 	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
