@@ -3635,13 +3635,34 @@ int __connman_service_indicate_default(struct connman_service *service)
 	return 0;
 }
 
+static void check_proxy_setup(struct connman_service *service)
+{
+	/*
+	 * We start WPAD if we haven't got a PAC URL from DHCP and
+	 * if our proxy manual configuration is either empty or set
+	 * to AUTO with an empty URL.
+	 */
+
+	if (service->proxy != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN)
+		return;
+
+	if (service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN &&
+		(service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_AUTO ||
+			service->pac != NULL))
+		return;
+
+	if (__connman_wpad_start(service) < 0) {
+		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
+		__connman_notifier_proxy_changed(service);
+	}
+}
+
 int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 					enum connman_service_state new_state,
 					enum connman_ipconfig_type type)
 {
 	struct connman_ipconfig *ipconfig = NULL;
 	enum connman_service_state old_state;
-	enum connman_service_proxy_method proxy_config;
 
 	if (service == NULL)
 		return -EINVAL;
@@ -3680,25 +3701,8 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_READY:
 		update_nameservers(service);
 
-		proxy_config = service->proxy_config;
-
-		/*
-		 * We start WPAD if we haven't got a PAC URL from DHCP and
-		 * if our proxy manual configuration is either empty or set
-		 * to AUTO with an empty URL.
-		 */
-		if (service->proxy == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN &&
-			(proxy_config == CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN ||
-				(proxy_config ==
-					CONNMAN_SERVICE_PROXY_METHOD_AUTO &&
-					service->pac == NULL)))
-			if (__connman_wpad_start(service) < 0) {
-				service->proxy =
-					CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
-
-				__connman_notifier_proxy_changed(service);
-			}
-
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			check_proxy_setup(service);
 		break;
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
