@@ -37,7 +37,6 @@ scripts/connman
 scripts/openconnect-script
 client/cm
 tools/wispr
-tools/wifi-scan
 tools/dhcp-test
 tools/dhcp-server-test
 tools/addr-test

@@ -386,11 +386,6 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
 		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
-	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
-				AC_MSG_ERROR(Netlink library is required))
-	AC_SUBST(NETLINK_CFLAGS)
-	AC_SUBST(NETLINK_LIBS)
-
 	PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
 				AC_MSG_ERROR(GnuTLS library is required))
 	AC_SUBST(GNUTLS_CFLAGS)

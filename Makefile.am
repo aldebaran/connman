@@ -111,8 +111,7 @@ build_scriptdir = $(scriptdir)
 endif
 
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ @XTABLES_CFLAGS@ \
-				@NETLINK_CFLAGS@ @GNUTLS_CFLAGS@ \
-				$(builtin_cflags) \
+				@GNUTLS_CFLAGS@ $(builtin_cflags) \
 				-DCONNMAN_PLUGIN_BUILTIN \
 				-DSTATEDIR=\""$(statedir)"\" \
 				-DPLUGINDIR=\""$(build_plugindir)"\" \
@@ -140,7 +139,7 @@ client_cm_LDADD = @DBUS_LIBS@
 endif
 
 if TOOLS
-noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
+noinst_PROGRAMS += tools/wispr tools/supplicant-test \
 			tools/dhcp-test tools/dhcp-server-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
@@ -150,8 +149,6 @@ noinst_PROGRAMS += tools/wispr tools/wifi-scan tools/supplicant-test \
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
-
-tools_wifi_scan_LDADD = @GLIB_LIBS@ @NETLINK_LIBS@
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \
