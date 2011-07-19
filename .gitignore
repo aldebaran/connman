@@ -51,6 +51,9 @@ tools/alg-test
 tools/dbus-test
 tools/stats-tool
 tools/stats-ringbuffer-dump
+tools/private-network-test
+unit/test-session
+
 doc/*.bak
 doc/*.stamp
 doc/connman.*
