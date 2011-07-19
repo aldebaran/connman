@@ -2970,11 +2970,15 @@ static void service_free(gpointer user_data)
 		connman_provider_unref(service->provider);
 
 	if (service->ipconfig_ipv4 != NULL) {
+		connman_ipconfig_set_ops(service->ipconfig_ipv4, NULL);
+		connman_ipconfig_set_data(service->ipconfig_ipv4, NULL);
 		connman_ipconfig_unref(service->ipconfig_ipv4);
 		service->ipconfig_ipv4 = NULL;
 	}
 
 	if (service->ipconfig_ipv6 != NULL) {
+		connman_ipconfig_set_ops(service->ipconfig_ipv6, NULL);
+		connman_ipconfig_set_data(service->ipconfig_ipv6, NULL);
 		connman_ipconfig_unref(service->ipconfig_ipv6);
 		service->ipconfig_ipv6 = NULL;
 	}
