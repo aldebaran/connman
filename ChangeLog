@@ -1,3 +1,12 @@
+ver 0.76:
+	Fix issue with loopback interface setup.
+	Fix issue with /etc/localtime being a symlink.
+	Fix issue with not handling dummy network devices.
+	Fix issue with not provisioning existing services.
+	Fix issue with running WPAD on IPv6 connections.
+	Fix issue with client certificate for TTLS/PEAP.
+	Remove internal element infrastructure.
+
 ver 0.75:
 	Fix issue with 3G connect timeout handling.
 	Fix issue with WiFi raw key PSK handling.
