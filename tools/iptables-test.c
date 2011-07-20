@@ -1076,7 +1076,11 @@ int main(int argc, char *argv[])
 			if (xt_t->init != NULL)
 				xt_t->init(xt_t->t);
 			connman_iptables_globals.opts =
-				xtables_merge_options(connman_iptables_globals.opts,
+				xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+						     connman_iptables_globals.orig_opts,
+#endif
+						     connman_iptables_globals.opts,
 						     xt_t->extra_opts,
 						     &xt_t->option_offset);
 			if (connman_iptables_globals.opts == NULL)
@@ -1102,7 +1106,11 @@ int main(int argc, char *argv[])
 				xt_m->init(xt_m->m);
 			if (xt_m != xt_m->next) {
 				connman_iptables_globals.opts =
-					xtables_merge_options(connman_iptables_globals.opts,
+					xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+						connman_iptables_globals.orig_opts,
+#endif
+						connman_iptables_globals.opts,
 						xt_m->extra_opts,
 						&xt_m->option_offset);
 				if (connman_iptables_globals.opts == NULL)
