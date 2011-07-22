@@ -215,8 +215,11 @@ static void send_response(int sk, unsigned char *buf, int len,
 	hdr->arcount = 0;
 
 	err = sendto(sk, buf, len, 0, to, tolen);
-	if (err < 0)
+	if (err < 0) {
+		connman_error("Failed to send DNS response: %s",
+				strerror(errno));
 		return;
+	}
 }
 
 static gboolean request_timeout(gpointer user_data)
