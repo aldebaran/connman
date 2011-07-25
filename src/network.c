@@ -208,8 +208,6 @@ static void network_change(struct connman_network *network)
 	if (network->connected == FALSE)
 		return;
 
-	connman_network_unref(network);
-
 	connman_device_set_disconnected(network->device, TRUE);
 
 	if (network->driver && network->driver->disconnect) {
