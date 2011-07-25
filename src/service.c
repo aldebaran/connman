@@ -585,7 +585,7 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 		return 0;
 	}
 
-	servers = g_try_new0(char *, len - 1);
+	servers = g_try_new0(char *, len);
 	if (servers == NULL)
 		return -ENOMEM;
 
@@ -595,7 +595,7 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 			j++;
 		}
 	}
-	servers[len - 2] = NULL;
+	servers[len - 1] = NULL;
 
 	g_strfreev(service->nameservers);
 	service->nameservers = servers;
