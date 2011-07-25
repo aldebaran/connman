@@ -4772,14 +4772,13 @@ static void update_from_network(struct connman_service *service,
 		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	if (service->strength > strength && service->network != NULL) {
-		connman_network_unref(service->network);
-		service->network = connman_network_ref(network);
+		service->network = network;
 
 		strength_changed(service);
 	}
 
 	if (service->network == NULL)
-		service->network = connman_network_ref(network);
+		service->network = network;
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL)
