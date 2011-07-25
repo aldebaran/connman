@@ -571,8 +571,6 @@ static gboolean device_removed(DBusConnection *connection,
 
 	g_hash_table_remove(bluetooth_networks, network_path);
 
-	connman_device_remove_network(device, network);
-
 	return TRUE;
 }
 
@@ -787,6 +785,20 @@ static void unregister_device(gpointer data)
 	connman_device_unref(device);
 }
 
+static void remove_network(gpointer data)
+{
+	struct connman_network *network = data;
+	struct connman_device *device;
+
+	DBG("network %p", network);
+
+	device = connman_network_get_device(network);
+	if (device != NULL)
+		connman_device_remove_network(device, network);
+
+	connman_network_unref(network);
+}
+
 static void bluetooth_connect(DBusConnection *connection, void *user_data)
 {
 	DBusMessage *message;
@@ -798,7 +810,7 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 						g_free, unregister_device);
 
 	bluetooth_networks = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, NULL);
+						g_free, remove_network);
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, "/",
 				BLUEZ_MANAGER_INTERFACE, LIST_ADAPTERS);
