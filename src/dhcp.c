@@ -461,6 +461,9 @@ void __connman_dhcp_stop(struct connman_network *network)
 {
 	DBG("");
 
+	if (network_table == NULL)
+		return;
+
 	g_hash_table_remove(network_table, network);
 }
 
@@ -479,4 +482,5 @@ void __connman_dhcp_cleanup(void)
 	DBG("");
 
 	g_hash_table_destroy(network_table);
+	network_table = NULL;
 }
