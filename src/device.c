@@ -271,14 +271,14 @@ int __connman_device_disable(struct connman_device *device)
 
 	clear_scan_trigger(device);
 
-	g_hash_table_remove_all(device->networks);
-
 	err = device->driver->disable(device);
 	if (err < 0 && err != -EALREADY) {
 		if (err == -EINPROGRESS)
 			device->powered_pending = FALSE;
 		return err;
 	}
+
+	g_hash_table_remove_all(device->networks);
 
 	device->connections = 0;
 
