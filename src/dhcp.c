@@ -84,11 +84,11 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 
 	service = __connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL)
-		return;
+		goto out;
 
 	ipconfig = __connman_service_get_ip4config(service);
 	if (ipconfig == NULL)
-		return;
+		goto out;
 
 	__connman_6to4_remove(ipconfig);
 
@@ -113,6 +113,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	if (dhcp->callback != NULL && callback)
 		dhcp->callback(dhcp->network, FALSE);
 
+out:
 	dhcp_free(dhcp);
 }
 
@@ -278,6 +279,8 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 			__connman_service_nameserver_append(service,
 							dhcp->nameservers[i]);
 		}
+	} else {
+		g_strfreev(nameservers);
 	}
 
 	if (g_strcmp0(timeserver, dhcp->timeserver) != 0) {
