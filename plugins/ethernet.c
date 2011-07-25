@@ -82,7 +82,8 @@ static struct connman_network_driver cable_driver = {
 	.disconnect	= cable_disconnect,
 };
 
-static void add_network(struct connman_device *device)
+static void add_network(struct connman_device *device,
+			struct ethernet_data *ethernet)
 {
 	struct connman_network *network;
 	int index;
@@ -107,6 +108,23 @@ static void add_network(struct connman_device *device)
 	connman_network_set_group(network, "cable");
 
 	connman_network_set_connected(network, TRUE);
+
+	ethernet->network = network;
+}
+
+static void remove_network(struct connman_device *device,
+				struct ethernet_data *ethernet)
+{
+	const char *identifier;
+
+	if (ethernet->network == NULL)
+		return;
+
+	identifier = connman_network_get_identifier(ethernet->network);
+	connman_device_remove_network(device, identifier);
+	connman_network_unref(ethernet->network);
+
+	ethernet->network = NULL;
 }
 
 static void ethernet_newlink(unsigned flags, unsigned change, void *user_data)
@@ -129,10 +147,10 @@ static void ethernet_newlink(unsigned flags, unsigned change, void *user_data)
 	if ((ethernet->flags & IFF_LOWER_UP) != (flags & IFF_LOWER_UP)) {
 		if (flags & IFF_LOWER_UP) {
 			DBG("carrier on");
-			add_network(device);
+			add_network(device, ethernet);
 		} else {
 			DBG("carrier off");
-			connman_device_remove_all_networks(device);
+			remove_network(device, ethernet);
 		}
 	}
 
@@ -170,7 +188,7 @@ static void ethernet_remove(struct connman_device *device)
 
 	connman_rtnl_remove_watch(ethernet->watch);
 
-	connman_device_remove_all_networks(device);
+	remove_network(device, ethernet);
 
 	g_free(ethernet);
 }
