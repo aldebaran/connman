@@ -1117,8 +1117,6 @@ int connman_device_remove_network(struct connman_device *device,
 
 	service = __connman_service_lookup_from_network(network);
 
-	__connman_network_set_device(network, NULL);
-
 	g_hash_table_remove(device->networks, identifier);
 
 	if (service != NULL)
