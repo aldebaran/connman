@@ -1075,6 +1075,18 @@ static gboolean set_connected(gpointer user_data)
 
 		service = __connman_service_lookup_from_network(network);
 
+		switch (ipv4_method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			__connman_dhcp_stop(network);
+			break;
+		}
+
 		__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
