@@ -1104,19 +1104,19 @@ struct connman_network *connman_device_get_network(struct connman_device *device
  * Remove network for given identifier
  */
 int connman_device_remove_network(struct connman_device *device,
-							const char *identifier)
+						struct connman_network *network)
 {
-	struct connman_network *network;
 	struct connman_service *service;
+	const char *identifier;
 
-	DBG("device %p identifier %s", device, identifier);
+	DBG("device %p network %p", device, network);
 
-	network = connman_device_get_network(device, identifier);
 	if (network == NULL)
 		return 0;
 
 	service = __connman_service_lookup_from_network(network);
 
+	identifier = connman_network_get_identifier(network);
 	g_hash_table_remove(device->networks, identifier);
 
 	if (service != NULL)

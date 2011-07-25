@@ -1739,7 +1739,7 @@ static gboolean context_removed(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
-	const char *network_path, *identifier;
+	const char *network_path;
 	struct modem_data *modem;
 	struct network_info *info;
 	DBusMessageIter iter;
@@ -1759,8 +1759,7 @@ static gboolean context_removed(DBusConnection *connection,
 	if (info == NULL)
 		return TRUE;
 
-	identifier = connman_network_get_identifier(info->network);
-	connman_device_remove_network(modem->device, identifier);
+	connman_device_remove_network(modem->device, info->network);
 
 	return TRUE;
 }

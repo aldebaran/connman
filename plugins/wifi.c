@@ -831,15 +831,15 @@ static void network_removed(GSupplicantNetwork *network)
 
 	DBG("name %s", name);
 
-	if (wifi != NULL) {
-		connman_network = connman_device_get_network(wifi->device, identifier);
+	if (wifi == NULL)
+		return;
 
-		connman_device_remove_network(wifi->device, identifier);
+	connman_network = connman_device_get_network(wifi->device, identifier);
+	if (connman_network == NULL)
+		return;
 
-		if (connman_network != NULL)
-			connman_network_unref(connman_network);
-
-	}
+	connman_device_remove_network(wifi->device, connman_network);
+	connman_network_unref(connman_network);
 }
 
 static void debug(const char *str)

@@ -115,13 +115,10 @@ static void add_network(struct connman_device *device,
 static void remove_network(struct connman_device *device,
 				struct ethernet_data *ethernet)
 {
-	const char *identifier;
-
 	if (ethernet->network == NULL)
 		return;
 
-	identifier = connman_network_get_identifier(ethernet->network);
-	connman_device_remove_network(device, identifier);
+	connman_device_remove_network(device, ethernet->network);
 	connman_network_unref(ethernet->network);
 
 	ethernet->network = NULL;

@@ -549,7 +549,7 @@ static gboolean adapter_changed(DBusConnection *connection,
 static gboolean device_removed(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
-	const char *network_path, *identifier;
+	const char *network_path;
 	struct connman_network *network;
 	struct connman_device *device;
 	DBusMessageIter iter;
@@ -569,11 +569,9 @@ static gboolean device_removed(DBusConnection *connection,
 	if (device == NULL)
 		return TRUE;
 
-	identifier = connman_network_get_identifier(network);
-
 	g_hash_table_remove(bluetooth_networks, network_path);
 
-	connman_device_remove_network(device, identifier);
+	connman_device_remove_network(device, network);
 
 	return TRUE;
 }
