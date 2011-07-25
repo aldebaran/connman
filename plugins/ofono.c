@@ -365,7 +365,6 @@ static void remove_network(gpointer data)
 {
 	struct network_info *info = data;
 
-	connman_network_unregister(info->network);
 	connman_network_unref(info->network);
 
 	g_free(info);
@@ -833,11 +832,8 @@ static int add_network(struct connman_device *device,
 	if (network == NULL)
 		return -ENOMEM;
 
-	connman_network_register(network);
-
 	info = g_try_new0(struct network_info, 1);
 	if (info == NULL) {
-		connman_network_unregister(network);
 		connman_network_unref(network);
 		return -ENOMEM;
 	}

@@ -2962,8 +2962,7 @@ static void service_free(gpointer user_data)
 
 	if (service->network != NULL) {
 		if (service->network_created == TRUE)
-			connman_network_unregister(service->network);
-		connman_network_unref(service->network);
+			connman_network_unref(service->network);
 	}
 
 	if (service->provider != NULL)
@@ -4075,8 +4074,6 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 	if (network == NULL)
 		return NULL;
 
-	connman_network_register(network);
-
 	connman_network_set_blob(network, "WiFi.SSID",
 					(unsigned char *) ssid, ssid_len);
 
@@ -4085,7 +4082,6 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 
 	name = g_try_malloc0(ssid_len + 1);
 	if (name == NULL) {
-		connman_network_unregister(network);
 		connman_network_unref(network);
 		return NULL;
 	}
@@ -4105,7 +4101,6 @@ static struct connman_network *create_hidden_wifi(struct connman_device *device,
 	connman_network_set_index(network, index);
 
 	if (connman_device_add_network(device, network) < 0) {
-		connman_network_unregister(network);
 		connman_network_unref(network);
 		return NULL;
 	}

@@ -418,7 +418,7 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 	remove_driver(driver);
 }
 
-static void unregister_network(gpointer data)
+static void free_network(gpointer data)
 {
 	struct connman_network *network = data;
 
@@ -426,7 +426,6 @@ static void unregister_network(gpointer data)
 
 	__connman_network_set_device(network, NULL);
 
-	connman_network_unregister(network);
 	connman_network_unref(network);
 }
 
@@ -511,7 +510,7 @@ struct connman_device *connman_device_create(const char *node,
 	}
 
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, unregister_network);
+						g_free, free_network);
 
 	device_list = g_slist_append(device_list, device);
 

@@ -242,21 +242,6 @@ static void probe_driver(struct connman_network_driver *driver)
 	}
 }
 
-int connman_network_register(struct connman_network *network)
-{
-	network_list = g_slist_append(network_list, network);
-
-	return network_probe(network);
-}
-
-
-void connman_network_unregister(struct connman_network *network)
-{
-	network_list = g_slist_remove(network_list, network);
-
-	network_remove(network);
-}
-
 static void remove_driver(struct connman_network_driver *driver)
 {
 	GSList *list;
@@ -391,6 +376,8 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->type       = type;
 	network->identifier = ident;
 
+	network_list = g_slist_append(network_list, network);
+
 	return network;
 }
 
@@ -423,6 +410,8 @@ void connman_network_unref(struct connman_network *network)
 
 	if (g_atomic_int_dec_and_test(&network->refcount) == FALSE)
 		return;
+
+	network_list = g_slist_remove(network_list, network);
 
 	network_destruct(network);
 }

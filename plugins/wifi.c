@@ -793,8 +793,6 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 		if (network == NULL)
 			return;
 
-		connman_network_register(network);
-
 		connman_network_set_index(network, wifi->index);
 
 		if (connman_device_add_network(wifi->device, network) < 0) {
@@ -835,10 +833,12 @@ static void network_removed(GSupplicantNetwork *network)
 
 	if (wifi != NULL) {
 		connman_network = connman_device_get_network(wifi->device, identifier);
-		if (connman_network != NULL)
-			connman_network_unregister(connman_network);
 
 		connman_device_remove_network(wifi->device, identifier);
+
+		if (connman_network != NULL)
+			connman_network_unref(connman_network);
+
 	}
 }
 
