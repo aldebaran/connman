@@ -599,6 +599,36 @@ static gboolean device_changed(DBusConnection *connection,
 	return TRUE;
 }
 
+static void remove_device_networks(struct connman_device *device)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+	GSList *key_list = NULL;
+	GSList *list;
+
+	if (bluetooth_networks == NULL)
+		return;
+
+	g_hash_table_iter_init(&iter, bluetooth_networks);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_network *network = value;
+
+		if (connman_network_get_device(network) != device)
+			continue;
+
+		key_list = g_slist_append(key_list, key);
+	}
+
+	for (list = key_list; list != NULL; list = list->next) {
+		const char *network_path = list->data;
+
+		g_hash_table_remove(bluetooth_networks, network_path);
+	}
+
+	g_slist_free(key_list);
+}
+
 static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	char *path = user_data;
@@ -665,6 +695,8 @@ update:
 
 	if (powered == TRUE)
 		check_networks(device, &networks);
+	else
+		remove_device_networks(device);
 
 done:
 	dbus_message_unref(reply);
@@ -781,6 +813,8 @@ static void unregister_device(gpointer data)
 
 	DBG("");
 
+	remove_device_networks(device);
+
 	connman_device_unregister(device);
 	connman_device_unref(device);
 }
@@ -844,6 +878,7 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 		return;
 
 	g_hash_table_destroy(bluetooth_networks);
+	bluetooth_networks = NULL;
 	g_hash_table_destroy(bluetooth_devices);
 	bluetooth_devices = NULL;
 }
