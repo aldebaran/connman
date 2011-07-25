@@ -1108,6 +1108,7 @@ int connman_device_remove_network(struct connman_device *device,
 							const char *identifier)
 {
 	struct connman_network *network;
+	struct connman_service *service;
 
 	DBG("device %p identifier %s", device, identifier);
 
@@ -1115,9 +1116,14 @@ int connman_device_remove_network(struct connman_device *device,
 	if (network == NULL)
 		return 0;
 
+	service = __connman_service_lookup_from_network(network);
+
 	__connman_network_set_device(network, NULL);
 
 	g_hash_table_remove(device->networks, identifier);
+
+	if (service != NULL)
+		__connman_service_reset_from_networks(service, device->networks);
 
 	return 0;
 }
