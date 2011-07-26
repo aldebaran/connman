@@ -126,10 +126,10 @@ int __connman_plugin_init(const char *pattern, const char *exclude)
 	DBG("");
 
 	if (pattern)
-		patterns = g_strsplit_set(pattern, ", ", -1);
+		patterns = g_strsplit_set(pattern, ":, ", -1);
 
 	if (exclude)
-		excludes = g_strsplit_set(exclude, ", ", -1);
+		excludes = g_strsplit_set(exclude, ":, ", -1);
 
 	for (i = 0; __connman_builtin[i]; i++) {
 		if (check_plugin(__connman_builtin[i],

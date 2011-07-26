@@ -1,0 +1,28 @@
+#!/usr/bin/python
+
+import sys
+import dbus
+
+if (len(sys.argv) < 3):
+	print "Usage: %s <ssid> [key=value] ..." % (sys.argv[0])
+	sys.exit(1)
+
+bus = dbus.SystemBus()
+
+manager = dbus.Interface(bus.get_object("net.connman", "/"),
+					"net.connman.Manager")
+
+config = unicode("", "utf-8")
+config += "[service_%s]\n" %(sys.argv[1])
+
+for arg in sys.argv:
+	keyval = arg.split("=", 1)
+	if (len(keyval) >= 2):
+		config += arg
+		config += '\n'
+
+config = config.rstrip()
+
+manager.ProvisionService(config);
+
+print "Sent configuration:\n%s" %(config)

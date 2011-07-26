@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <string.h>
 
 #include <gdbus.h>
@@ -46,9 +47,8 @@ enum connman_technology_state {
 	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
 	CONNMAN_TECHNOLOGY_STATE_OFFLINE   = 1,
 	CONNMAN_TECHNOLOGY_STATE_AVAILABLE = 2,
-	CONNMAN_TECHNOLOGY_STATE_BLOCKED   = 3,
-	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 4,
-	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 5,
+	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 3,
+	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 4,
 };
 
 struct connman_technology {
@@ -255,8 +255,6 @@ static const char *state2string(enum connman_technology_state state)
 		return "offline";
 	case CONNMAN_TECHNOLOGY_STATE_AVAILABLE:
 		return "available";
-	case CONNMAN_TECHNOLOGY_STATE_BLOCKED:
-		return "blocked";
 	case CONNMAN_TECHNOLOGY_STATE_ENABLED:
 		return "enabled";
 	case CONNMAN_TECHNOLOGY_STATE_CONNECTED:
@@ -549,7 +547,7 @@ static void technology_put(struct connman_technology *technology)
 void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident)
 {
-	GSList *list;
+	struct connman_technology *technology;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -569,27 +567,20 @@ void __connman_technology_add_interface(enum connman_service_type type,
 	connman_info("Create interface %s [ %s ]", name,
 				__connman_service_type2string(type));
 
-	technology_get(type);
+	technology = technology_get(type);
 
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
+	if (technology == NULL || technology->driver == NULL
+			|| technology->driver->add_interface == NULL)
+		return;
 
-		if (technology->type != type)
-			continue;
-
-		if (technology->driver == NULL)
-			continue;
-
-		if (technology->driver->add_interface)
-			technology->driver->add_interface(technology,
-							index, name, ident);
-	}
+	technology->driver->add_interface(technology,
+					index, name, ident);
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident)
 {
-	GSList *list;
+	struct connman_technology *technology;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -609,20 +600,15 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	connman_info("Remove interface %s [ %s ]", name,
 				__connman_service_type2string(type));
 
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
+	technology = technology_find(type);
 
-		if (technology->type != type)
-			continue;
+	if (technology == NULL || technology->driver == NULL)
+		return;
 
-		if (technology->driver == NULL)
-			continue;
+	if (technology->driver->remove_interface)
+		technology->driver->remove_interface(technology, index);
 
-		if (technology->driver->remove_interface)
-			technology->driver->remove_interface(technology, index);
-
-		technology_put(technology);
-	}
+	technology_put(technology);
 }
 
 static void unregister_technology(gpointer data)
@@ -689,21 +675,17 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
-int __connman_technology_enable_device(struct connman_device *device)
+int __connman_technology_enable(enum connman_service_type type)
 {
 	struct connman_technology *technology;
-	enum connman_service_type type;
 
-	DBG("device %p", device);
-
-	technology = g_hash_table_lookup(device_table, device);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
 	if (g_atomic_int_get(&technology->blocked))
 		return -ERFKILL;
 
-	type = __connman_device_get_service_type(device);
 	__connman_notifier_enable(type);
 
 	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
@@ -714,22 +696,18 @@ int __connman_technology_enable_device(struct connman_device *device)
 	return 0;
 }
 
-int __connman_technology_disable_device(struct connman_device *device)
+int __connman_technology_disable(enum connman_service_type type)
 {
 	struct connman_technology *technology;
-	enum connman_service_type type;
 	GSList *list;
 
-	DBG("device %p", device);
-
-	type = __connman_device_get_service_type(device);
-	__connman_notifier_disable(type);
-
-	technology = g_hash_table_lookup(device_table, device);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
 	if (g_atomic_int_dec_and_test(&technology->enabled) == TRUE) {
+		__connman_notifier_disable(type);
+
 		technology->state = CONNMAN_TECHNOLOGY_STATE_AVAILABLE;
 		state_changed(technology);
 	}
@@ -741,7 +719,7 @@ int __connman_technology_disable_device(struct connman_device *device)
 			return 0;
 	}
 
-	technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 	state_changed(technology);
 
 	return 0;
@@ -795,7 +773,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 	if (g_atomic_int_exchange_and_add(&technology->blocked, 1) == 0) {
 		technology_blocked(technology, TRUE);
 
-		technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
 	}
 
@@ -838,7 +816,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 			return 0;
 
 		technology_blocked(technology, blocked);
-		technology->state = CONNMAN_TECHNOLOGY_STATE_BLOCKED;
+		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
 	} else {
 		if (g_atomic_int_dec_and_test(&technology->blocked) == FALSE)

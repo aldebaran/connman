@@ -11,6 +11,7 @@ class Canceled(dbus.DBusException):
 	_dbus_error_name = "net.connman.Error.Canceled"
 
 class Agent(dbus.service.Object):
+	identity = None
 	passphrase = None
 	wpspin = None
 
@@ -26,12 +27,16 @@ class Agent(dbus.service.Object):
 	def RequestInput(self, path, fields):
 		print "RequestInput (%s,%s)" % (path, fields)
 
-		if not self.passphrase and not self.wpspin:
+		response = {}
+
+		if not self.identity and not self.passphrase and not self.wpspin:
 			args = raw_input('Answer: ')
 
-			response = {}
-
 			for arg in args.split():
+				if arg.startswith("Identity="):
+					identity = arg.replace("Identity=", "", 1)
+					response["Identity"] = identity
+					break
 				if arg.startswith("Passphrase="):
 					passphrase = arg.replace("Passphrase=", "", 1)
 					response["Passphrase"] = passphrase
@@ -41,9 +46,11 @@ class Agent(dbus.service.Object):
 					response["WPS"] = wpspin
 					break
 		else:
+			if self.identity:
+				response["Identity"] = self.identity
 			if self.passphrase:
 				response["Passphrase"] = self.passphrase
-			else:
+			if self.wpspin:
 				response["WPS"] = self.wpspin
 
 		print "returning (%s)" % (response)
@@ -71,7 +78,7 @@ class Agent(dbus.service.Object):
 		print "Cancel"
 
 def print_usage():
-	print "Usage: %s Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
+	print "Usage: %s Identity=<identity> Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
 	print "Help: %s help" % (sys.ar[0])
 	sys.exit(1)
 
@@ -90,7 +97,9 @@ if __name__ == '__main__':
 
 	if len(sys.argv) >= 2:
 		for arg in sys.argv[1:]:
-			if arg.startswith("Passphrase="):
+			if arg.startswith("Identity="):
+				object.identity = arg.replace("Identity=", "", 1)
+			elif arg.startswith("Passphrase="):
 				object.passphrase = arg.replace("Passphrase=", "", 1)
 			elif arg.startswith("WPS="):
 				object.wpspin = arg.replace("WPS=", "", 1)

@@ -23,11 +23,13 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <signal.h>
+#include <sys/signalfd.h>
 #include <getopt.h>
 #include <sys/stat.h>
 #include <net/if.h>
@@ -56,7 +58,11 @@ static GKeyFile *load_config(const char *file)
 	g_key_file_set_list_separator(keyfile, ',');
 
 	if (!g_key_file_load_from_file(keyfile, file, 0, &err)) {
-		connman_error("Parsing %s failed: %s", file, err->message);
+		if (err->code != G_FILE_ERROR_NOENT) {
+			connman_error("Parsing %s failed: %s", file,
+								err->message);
+		}
+
 		g_error_free(err);
 		g_key_file_free(keyfile);
 		return NULL;
@@ -85,11 +91,74 @@ static void parse_config(GKeyFile *config)
 
 static GMainLoop *main_loop = NULL;
 
-static void sig_term(int sig)
-{
-	connman_info("Terminating");
+static unsigned int __terminated = 0;
 
-	g_main_loop_quit(main_loop);
+static gboolean signal_handler(GIOChannel *channel, GIOCondition cond,
+							gpointer user_data)
+{
+	struct signalfd_siginfo si;
+	ssize_t result;
+	int fd;
+
+	if (cond & (G_IO_NVAL | G_IO_ERR | G_IO_HUP))
+		return FALSE;
+
+	fd = g_io_channel_unix_get_fd(channel);
+
+	result = read(fd, &si, sizeof(si));
+	if (result != sizeof(si))
+		return FALSE;
+
+	switch (si.ssi_signo) {
+	case SIGINT:
+	case SIGTERM:
+		if (__terminated == 0) {
+			connman_info("Terminating");
+			g_main_loop_quit(main_loop);
+		}
+
+		__terminated = 1;
+		break;
+	}
+
+	return TRUE;
+}
+
+static guint setup_signalfd(void)
+{
+	GIOChannel *channel;
+	guint source;
+	sigset_t mask;
+	int fd;
+
+	sigemptyset(&mask);
+	sigaddset(&mask, SIGINT);
+	sigaddset(&mask, SIGTERM);
+
+	if (sigprocmask(SIG_BLOCK, &mask, NULL) < 0) {
+		perror("Failed to set signal mask");
+		return 0;
+	}
+
+	fd = signalfd(-1, &mask, 0);
+	if (fd < 0) {
+		perror("Failed to create signal descriptor");
+		return 0;
+	}
+
+	channel = g_io_channel_unix_new(fd);
+
+	g_io_channel_set_close_on_unref(channel, TRUE);
+	g_io_channel_set_encoding(channel, NULL, NULL);
+	g_io_channel_set_buffered(channel, FALSE);
+
+	source = g_io_add_watch(channel,
+				G_IO_IN | G_IO_HUP | G_IO_ERR | G_IO_NVAL,
+				signal_handler, NULL);
+
+	g_io_channel_unref(channel);
+
+	return source;
 }
 
 static void disconnect_callback(DBusConnection *conn, void *user_data)
@@ -174,9 +243,8 @@ int main(int argc, char *argv[])
 	GError *error = NULL;
 	DBusConnection *conn;
 	DBusError err;
-	struct sigaction sa;
-	mode_t old_umask;
 	GKeyFile *config;
+	guint signal;
 
 #ifdef HAVE_CAPNG
 	/* Drop capabilities */
@@ -231,7 +299,7 @@ int main(int argc, char *argv[])
 			perror("Failed to create statistics directory");
 	}
 
-	old_umask = umask(077);
+	umask(0077);
 
 	main_loop = g_main_loop_new(NULL, FALSE);
 
@@ -241,6 +309,8 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 #endif
+
+	signal = setup_signalfd();
 
 	dbus_error_init(&err);
 
@@ -265,7 +335,13 @@ int main(int argc, char *argv[])
 	parse_config(config);
 
 	__connman_storage_init();
-	__connman_element_init(option_device, option_nodevice);
+	__connman_technology_init();
+	__connman_notifier_init();
+	__connman_location_init();
+	__connman_service_init();
+	__connman_provider_init();
+	__connman_network_init();
+	__connman_device_init(option_device, option_nodevice);
 
 	__connman_agent_init();
 	__connman_iptables_init();
@@ -285,27 +361,34 @@ int main(int argc, char *argv[])
 	__connman_detect_init();
 	__connman_session_init();
 	__connman_timeserver_init();
+	__connman_connection_init();
 
 	__connman_plugin_init(option_plugin, option_noplugin);
 
-	__connman_element_start();
+	__connman_storage_init_profile();
+
+	__connman_rtnl_start();
+	__connman_dhcp_init();
+	__connman_wpad_init();
+	__connman_wispr_init();
+	__connman_rfkill_init();
 
 	g_free(option_device);
 	g_free(option_plugin);
 	g_free(option_nodevice);
 	g_free(option_noplugin);
 
-	memset(&sa, 0, sizeof(sa));
-	sa.sa_handler = sig_term;
-	sigaction(SIGINT, &sa, NULL);
-	sigaction(SIGTERM, &sa, NULL);
-
 	g_main_loop_run(main_loop);
 
-	__connman_element_stop();
+	g_source_remove(signal);
 
+	__connman_rfkill_cleanup();
+	__connman_wispr_cleanup();
+	__connman_wpad_cleanup();
+	__connman_dhcp_cleanup();
+	__connman_provider_cleanup();
 	__connman_plugin_cleanup();
-
+	__connman_connection_cleanup();
 	__connman_timeserver_cleanup();
 	__connman_session_cleanup();
 	__connman_detect_cleanup();
@@ -324,8 +407,12 @@ int main(int argc, char *argv[])
 	__connman_agent_cleanup();
 	__connman_tethering_cleanup();
 	__connman_iptables_cleanup();
-
-	__connman_element_cleanup();
+	__connman_device_cleanup();
+	__connman_network_cleanup();
+	__connman_service_cleanup();
+	__connman_location_cleanup();
+	__connman_notifier_cleanup();
+	__connman_technology_cleanup();
 	__connman_storage_cleanup();
 
 	__connman_dbus_cleanup();

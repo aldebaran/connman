@@ -47,15 +47,6 @@ enum connman_service_type {
 	CONNMAN_SERVICE_TYPE_GADGET    = 9,
 };
 
-enum connman_service_mode {
-	CONNMAN_SERVICE_MODE_UNKNOWN = 0,
-	CONNMAN_SERVICE_MODE_MANAGED = 1,
-	CONNMAN_SERVICE_MODE_ADHOC   = 2,
-	CONNMAN_SERVICE_MODE_GPRS    = 3,
-	CONNMAN_SERVICE_MODE_EDGE    = 4,
-	CONNMAN_SERVICE_MODE_UMTS    = 5,
-};
-
 enum connman_service_security {
 	CONNMAN_SERVICE_SECURITY_UNKNOWN = 0,
 	CONNMAN_SERVICE_SECURITY_NONE    = 1,
@@ -85,6 +76,7 @@ enum connman_service_error {
 	CONNMAN_SERVICE_ERROR_CONNECT_FAILED = 4,
 	CONNMAN_SERVICE_ERROR_LOGIN_FAILED  = 5,
 	CONNMAN_SERVICE_ERROR_AUTH_FAILED    = 6,
+	CONNMAN_SERVICE_ERROR_INVALID_KEY    = 7,
 };
 
 enum connman_service_proxy_method {
@@ -104,7 +96,7 @@ enum connman_service_type connman_service_get_type(struct connman_service *servi
 char *connman_service_get_interface(struct connman_service *service);
 
 const char *connman_service_get_domainname(struct connman_service *service);
-const char *connman_service_get_nameserver(struct connman_service *service);
+char **connman_service_get_nameservers(struct connman_service *service);
 void connman_service_set_proxy_method(struct connman_service *service, enum connman_service_proxy_method method);
 enum connman_service_proxy_method connman_service_get_proxy_method(struct connman_service *service);
 char **connman_service_get_proxy_servers(struct connman_service *service);

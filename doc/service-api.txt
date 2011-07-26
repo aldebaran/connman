@@ -160,20 +160,6 @@ Properties	string State [readonly]
 			advanced properties or showing the correct icon
 			to the user.
 
-		string Mode [readonly]
-
-			If the service type is WiFi or Cellular, then this
-			property is present and contains the mode of the
-			network.
-
-			For WiFi services the possible values are "managed"
-			and "adhoc". For Cellular services it describes the
-			network technology. Possible values are "gprs", "edge"
-			and "umts".
-
-			This property might be only present for WiFi and
-			Cellular services.
-
 		array{string} Security [readonly]
 
 			If the service type is WiFi, then this property is
@@ -258,15 +244,6 @@ Properties	string State [readonly]
 
 			In most cases it is required to fill in the APN
 			details.
-
-		string APN [readwrite]
-
-			If the service is Cellular, then this property
-			contains the APN details.
-
-			The APN is network provider specific and even
-			sometimes data plan specific. Possible examples
-			are "isp.cingular" or "internet.t-mobile".
 
 		boolean Roaming [readonly]
 
@@ -356,12 +333,16 @@ Properties	string State [readonly]
 
 			string Method [readonly]
 
-				Possible values are "auto", "manual"
+				Possible values are "auto", "manual", "6to4"
 				and "off".
 
 				The value "fixed" indicates an IP address
 				that can not be modified. For example
 				cellular networks return fixed information.
+				The value "6to4" is returned if 6to4 tunnel
+				is created by connman. The tunnel can only be
+				created if method was set to "auto" by the
+				user. User cannot set the method to "6to4".
 
 			string Address [readonly]
 
@@ -374,6 +355,26 @@ Properties	string State [readonly]
 			string Gateway [readonly]
 
 				The current configured IPv6 gateway.
+
+			string Privacy [readonly]
+
+				Enable or disable IPv6 privacy extension
+				that is described in RFC 4941. The value
+				has only meaning if Method is set to "auto".
+
+				Value "disabled" means that privacy extension
+				is disabled and normal autoconf addresses are
+				used.
+
+				Value "enabled" means that privacy extension is
+				enabled and system prefers to use public
+				addresses over temporary addresses.
+
+				Value "prefered" means that privacy extension is
+				enabled and system prefers temporary addresses
+				over public addresses.
+
+				Default value is "disabled".
 
 		dict IPv6.Configuration [readwrite]
 

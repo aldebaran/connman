@@ -77,6 +77,10 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 								&str) == TRUE)
 			connman_info("Client-Country: %s", str);
 
+		if (g_web_result_get_header(result, "X-ConnMan-Client-Region",
+								&str) == TRUE)
+			connman_info("Client-Region: %s", str);
+
 		connman_location_report_result(location,
 					CONNMAN_LOCATION_RESULT_ONLINE);
 		break;

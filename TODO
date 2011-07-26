@@ -11,27 +11,6 @@ Background
 Core
 ====
 
-- connman_element removal
-
-   Priority: Low
-   Complexity: C8
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-
-- VPNc
-
-   Priority: Low
-   Complexity: C2
-
-
-- WiFi tethering
-   Priority: Medium
-   Complexity: C4
-
-   WiFi tethering should be done through an extended wpa_supplicant
-   D-Bus API, as STA and AP modes are typically mutually exclusive.
-
-
 - Session API implementation
 
    Priority: High
@@ -47,16 +26,6 @@ Core
    See http://www.mail-archive.com/connman@connman.net/msg01653.html
 
 
-- Provisioning D-Bus API
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Henri Bragge <henri.bragge@ixonos.com>
-
-   The current service provisioning lacks a D-Bus interface for modifying
-   existing configurations.
-
-
 - WiSPR support
 
    Priority: Medium
@@ -67,17 +36,53 @@ Core
    credentials, ConnMan should be able to initiate a WiSPR authentication.
 
 
-- IPv6 enhancements
+- DNS caching
+
+   Priority: Low
+   Complexity: C4
+
+   A simple initial implementation would see ConnMan's dnsproxy
+   caching the DNS record based on their TTL.
+
+
+- Power management
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   Implement a simple device pm hook that ConnMan's core code would
+   use whenever it decides to put devices in power save mode. Although
+   the kernel runtime power management code should take care of that,
+   not all driver (especially WiFi ones) implement runtime PM hooks.
+
+
+- IP ranges allocation and check
 
    Priority: High
-   Complexity: C8
-   Owner: Jukka Rissanen <jukka.rissanen@nokia.com>
+   Complexity: C2
 
-   Support IPv6 only networks so that system can go online even if
-   there is no IPv4 address. Also support more than one IPv6 address
-   in one device so that the addresses are reported correctly via
-   dbus interface. The autoconf IPv6 addresses need also some tweaking
-   so that system will go online properly.
+   For both tethering and private networks, but also to detect invalid
+   static IP configurations, we need to have a core IP range layer
+   that manages all currently used IP blocks.
+
+
+- Personal firewall
+
+   Priority: Low
+   Complexity: C8
+
+   Extend the iptables code and provide a D-Bus API for personal firewalling.
+
+
+- PACRunner extensions
+
+   Priority: Low
+   Complexity: C4
+
+   Support more URI schemes, support multiple connections, tighter
+   security integration.
+
 
 
 WiFi
@@ -87,7 +92,6 @@ WiFi
 
    Priority: Medium
    Complexity: C2
-   Dependencies: Core:IPv4LL
    Owner: Samuel Ortiz <sameo@linux.intel.com>
 
 
@@ -130,6 +134,7 @@ WiFi
    Complexity: C2
 
 
+
 Bluetooth
 =========
 
@@ -137,9 +142,45 @@ Bluetooth
 
    Priority: Low
    Complexity: C4
+   Owner: Mario Tokarz <mario.tokarz@bmw-carit.de>
 
 
-- DUN server
+
+Cellular
+========
+
+
+VPN
+===
+
+- l2tp support
+
+   Priority: Low
+   Complexity: C2
+   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
+
+
+- pptp support
+
+   Priority: Low
+   Complexity: C2
+   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
+
+
+- IPsec
 
    Priority: Low
    Complexity: C4
+
+
+- Split tunnelling
+
+   Priority: Low
+   Complexity: C8
+   Dependencies: Core:Private networks
+
+   The current VPN support puts the VPN interface at the top of the
+   service list, giving VPNs the default route. When doing split
+   tunneling, the system routes packet to the VPN interface for
+   private IPs, while going through the default interface for the rest
+   of the traffic.

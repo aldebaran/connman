@@ -241,6 +241,11 @@ void __connman_notifier_unregister(enum connman_service_type type)
 {
 	DBG("type %d", type);
 
+	if (g_atomic_int_get(&registered[type]) == 0) {
+		connman_error("notifier unregister underflow");
+		return;
+	}
+
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -287,6 +292,11 @@ void __connman_notifier_disable(enum connman_service_type type)
 {
 	DBG("type %d", type);
 
+	if (g_atomic_int_get(&enabled[type]) == 0) {
+		connman_error("notifier disable underflow");
+		return;
+	}
+
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -332,6 +342,11 @@ void __connman_notifier_connect(enum connman_service_type type)
 void __connman_notifier_disconnect(enum connman_service_type type)
 {
 	DBG("type %d", type);
+
+	if (g_atomic_int_get(&connected[type]) == 0) {
+		connman_error("notifier disconnect underflow");
+		return;
+	}
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -385,6 +400,30 @@ void __connman_notifier_default_changed(struct connman_service *service)
 	}
 }
 
+void __connman_notifier_service_add(struct connman_service *service)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->service_add)
+			notifier->service_add(service);
+	}
+}
+
+void __connman_notifier_service_remove(struct connman_service *service)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->service_remove)
+			notifier->service_remove(service);
+	}
+}
+
 void __connman_notifier_proxy_changed(struct connman_service *service)
 {
 	GSList *list;
@@ -421,6 +460,32 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 
 		if (notifier->offline_mode)
 			notifier->offline_mode(enabled);
+	}
+}
+
+void __connman_notifier_service_state_changed(struct connman_service *service,
+					enum connman_service_state state)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->service_state_changed)
+			notifier->service_state_changed(service, state);
+	}
+}
+
+void __connman_notifier_ipconfig_changed(struct connman_service *service,
+					struct connman_ipconfig *ipconfig)
+{
+	GSList *list;
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->ipconfig_changed)
+			notifier->ipconfig_changed(service, ipconfig);
 	}
 }
 

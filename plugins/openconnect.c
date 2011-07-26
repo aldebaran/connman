@@ -23,9 +23,11 @@
 #include <config.h>
 #endif
 
+#include <stdlib.h>
 #include <string.h>
 #include <errno.h>
 #include <unistd.h>
+#include <net/if.h>
 
 #include <glib.h>
 
@@ -34,6 +36,7 @@
 #include <connman/provider.h>
 #include <connman/log.h>
 #include <connman/task.h>
+#include <connman/ipconfig.h>
 
 #include "vpn.h"
 
@@ -42,6 +45,10 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
 	const char *domain = NULL;
+	char *addressv4 = NULL, *addressv6 = NULL;
+	char *netmask = NULL, *gateway = NULL;
+	unsigned char prefix_len = 0;
+	struct connman_ipaddress *ipaddress;
 
 	dbus_message_iter_init(msg, &iter);
 
@@ -72,19 +79,39 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 			DBG("%s = %s", key, value);
 
 		if (!strcmp(key, "VPNGATEWAY"))
-			connman_provider_set_string(provider, "Gateway", value);
+			gateway = g_strdup(value);
 
 		if (!strcmp(key, "INTERNAL_IP4_ADDRESS"))
-			connman_provider_set_string(provider, "Address", value);
+			addressv4 = g_strdup(value);
+
+		if (!strcmp(key, "INTERNAL_IP6_ADDRESS")) {
+			addressv6 = g_strdup(value);
+			prefix_len = 128;
+		}
 
 		if (!strcmp(key, "INTERNAL_IP4_NETMASK"))
-			connman_provider_set_string(provider, "Netmask", value);
+			netmask = g_strdup(value);
 
-		if (!strcmp(key, "INTERNAL_IP4_DNS"))
-			connman_provider_set_string(provider, "DNS", value);
+		if (!strcmp(key, "INTERNAL_IP6_NETMASK")) {
+			char *sep;
+
+			/* The netmask contains the address and the prefix */
+			sep = strchr(value, '/');
+			if (sep != NULL) {
+				unsigned char ip_len = sep - value;
+
+				addressv6 = g_strndup(value, ip_len);
+				prefix_len = (unsigned char)
+						strtol(sep + 1, NULL, 10);
+			}
+		}
+
+		if (!strcmp(key, "INTERNAL_IP4_DNS") ||
+				!strcmp(key, "INTERNAL_IP6_DNS"))
+			connman_provider_set_nameservers(provider, value);
 
 		if (!strcmp(key, "CISCO_PROXY_PAC"))
-			connman_provider_set_string(provider, "PAC", value);
+			connman_provider_set_pac(provider, value);
 
 		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN"))
 			domain = value;
@@ -96,7 +123,38 @@ static int oc_notify(DBusMessage *msg, struct connman_provider *provider)
 		dbus_message_iter_next(&dict);
 	}
 
-	connman_provider_set_string(provider, "Domain", domain);
+	DBG("%p %p", addressv4, addressv6);
+
+	if (addressv4 != NULL)
+		ipaddress = connman_ipaddress_alloc(AF_INET);
+	else if (addressv6 != NULL)
+		ipaddress = connman_ipaddress_alloc(AF_INET6);
+	else
+		ipaddress = NULL;
+
+	if (ipaddress == NULL) {
+		g_free(addressv4);
+		g_free(addressv6);
+		g_free(netmask);
+		g_free(gateway);
+
+		return VPN_STATE_FAILURE;
+	}
+
+	if (addressv4 != NULL)
+		connman_ipaddress_set_ipv4(ipaddress, addressv4,
+						netmask, gateway);
+	else
+		connman_ipaddress_set_ipv6(ipaddress, addressv6,
+						prefix_len, gateway);
+	connman_provider_set_ipaddress(provider, ipaddress);
+	connman_provider_set_domain(provider, domain);
+
+	g_free(addressv4);
+	g_free(addressv6);
+	g_free(netmask);
+	g_free(gateway);
+	connman_ipaddress_free(ipaddress);
 
 	return VPN_STATE_CONNECT;
 }

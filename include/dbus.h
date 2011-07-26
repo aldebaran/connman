@@ -41,10 +41,11 @@ extern "C" {
 
 #define CONNMAN_CLOCK_INTERFACE		CONNMAN_SERVICE ".Clock"
 #define CONNMAN_TASK_INTERFACE		CONNMAN_SERVICE ".Task"
-#define CONNMAN_PROFILE_INTERFACE	CONNMAN_SERVICE ".Profile"
 #define CONNMAN_SERVICE_INTERFACE	CONNMAN_SERVICE ".Service"
 #define CONNMAN_PROVIDER_INTERFACE	CONNMAN_SERVICE ".Provider"
 #define CONNMAN_TECHNOLOGY_INTERFACE	CONNMAN_SERVICE ".Technology"
+#define CONNMAN_SESSION_INTERFACE	CONNMAN_SERVICE ".Session"
+#define CONNMAN_NOTIFICATION_INTERFACE	CONNMAN_SERVICE ".Notification"
 
 #define CONNMAN_PRIVILEGE_MODIFY	1
 #define CONNMAN_PRIVILEGE_SECRET	2
@@ -73,6 +74,18 @@ dbus_bool_t connman_dbus_property_changed_dict(const char *path,
 dbus_bool_t connman_dbus_property_changed_array(const char *path,
 			const char *interface, const char *key, int type,
 			connman_dbus_append_cb_t function, void *user_data);
+
+dbus_bool_t connman_dbus_setting_changed_basic(const char *owner,
+				const char *path, const char *key,
+				int type, void *val);
+dbus_bool_t connman_dbus_setting_changed_dict(const char *owner,
+				const char *path, const char *key,
+				connman_dbus_append_cb_t function,
+				void *user_data);
+dbus_bool_t connman_dbus_setting_changed_array(const char *owner,
+				const char *path, const char *key, int type,
+				connman_dbus_append_cb_t function,
+				void *user_data);
 
 static inline void connman_dbus_dict_open(DBusMessageIter *iter,
 							DBusMessageIter *dict)

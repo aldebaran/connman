@@ -29,6 +29,7 @@
 #include <string.h>
 #include <stdint.h>
 #include <syslog.h>
+#include <ctype.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -2410,6 +2411,24 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 			interface_scan_params, interface_scan_result, data);
 }
 
+static int parse_supplicant_error(DBusMessageIter *iter)
+{
+	int err = -ECANCELED;
+	char *key;
+
+	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_STRING) {
+		dbus_message_iter_get_basic(iter, &key);
+		if (strncmp(key, "psk", 4) == 0 ||
+			strncmp(key, "wep_key", 7) == 0) {
+			err = -ENOKEY;
+			break;
+		}
+		dbus_message_iter_next(iter);
+	}
+
+	return err;
+}
+
 static void interface_select_network_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
@@ -2419,8 +2438,10 @@ static void interface_select_network_result(const char *error,
 	SUPPLICANT_DBG("");
 
 	err = 0;
-	if (error != NULL)
-		err = -EIO;
+	if (error != NULL) {
+		SUPPLICANT_DBG("SelectNetwork error %s", error);
+		err = parse_supplicant_error(iter);
+	}
 
 	if (data->callback != NULL)
 		data->callback(err, data->interface, data->user_data);
@@ -2445,6 +2466,7 @@ static void interface_add_network_result(const char *error,
 	struct interface_connect_data *data = user_data;
 	GSupplicantInterface *interface = data->interface;
 	const char *path;
+	int err;
 
 	if (error != NULL)
 		goto error;
@@ -2466,6 +2488,11 @@ static void interface_add_network_result(const char *error,
 	return;
 
 error:
+	SUPPLICANT_DBG("AddNetwork error %s", error);
+	err = parse_supplicant_error(iter);
+	if (data->callback != NULL)
+		data->callback(err, data->interface, data->user_data);
+
 	g_free(interface->network_path);
 	interface->network_path = NULL;
 	g_free(data->ssid);
@@ -2528,13 +2555,36 @@ static void add_network_security_wep(DBusMessageIter *dict,
 	}
 }
 
+static dbus_bool_t is_psk_raw_key(const char *psk)
+{
+	int i;
+
+	/* A raw key is always 64 bytes length... */
+	if (strlen(psk) != 64)
+		return FALSE;
+
+	/* ... and its content is in hex representation */
+	for (i = 0; i < 64; i++)
+		if (!isxdigit((unsigned char) psk[i]))
+			return FALSE;
+
+	return TRUE;
+}
+
 static void add_network_security_psk(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
-	if (ssid->passphrase && strlen(ssid->passphrase) > 0)
+	if (ssid->passphrase && strlen(ssid->passphrase) > 0) {
+
+		if (is_psk_raw_key(ssid->passphrase) == TRUE)
+			supplicant_dbus_property_append_fixed_array(dict,
+							"psk", DBUS_TYPE_BYTE,
+							&ssid->passphrase, 64);
+		else
 			supplicant_dbus_dict_append_basic(dict, "psk",
-						DBUS_TYPE_STRING,
+							DBUS_TYPE_STRING,
 							&ssid->passphrase);
+	}
 }
 
 static void add_network_security_tls(DBusMessageIter *dict,
@@ -2583,15 +2633,12 @@ static void add_network_security_peap(DBusMessageIter *dict,
 	 *              The 2nd phase authentication method
 	 *              The 2nd phase passphrase
 	 *
-	 * The Client certificate is optional although strongly required
+	 * The Client certificate is optional although strongly recommended
 	 * When setting it, we need in addition
 	 *              The Client private key file
 	 *              The Client private key file password
 	 */
 	if (ssid->passphrase == NULL)
-		return;
-
-	if (ssid->ca_cert_path == NULL)
 		return;
 
 	if (ssid->phase2_auth == NULL)
@@ -2628,7 +2675,8 @@ static void add_network_security_peap(DBusMessageIter *dict,
 						DBUS_TYPE_STRING,
 						&ssid->passphrase);
 
-	supplicant_dbus_dict_append_basic(dict, "ca_cert",
+	if (ssid->ca_cert_path)
+		supplicant_dbus_dict_append_basic(dict, "ca_cert",
 						DBUS_TYPE_STRING,
 						&ssid->ca_cert_path);
 

@@ -31,6 +31,7 @@
 #include <string.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <netdb.h>
 
 #include "giognutls.h"
 #include "gresolv.h"
@@ -63,6 +64,7 @@ struct web_session {
 	char *host;
 	uint16_t port;
 	unsigned long flags;
+	struct addrinfo *addr;
 
 	char *content_type;
 
@@ -99,6 +101,8 @@ struct _GWeb {
 
 	guint next_query_id;
 
+	int family;
+
 	int index;
 	GList *session_list;
 
@@ -106,6 +110,7 @@ struct _GWeb {
 	char *proxy;
 	char *accept_option;
 	char *user_agent;
+	char *user_agent_profile;
 	char *http_version;
 	gboolean close_connection;
 
@@ -167,6 +172,9 @@ static void free_session(struct web_session *session)
 
 	g_free(session->host);
 	g_free(session->address);
+	if (session->addr != NULL)
+		freeaddrinfo(session->addr);
+
 	g_free(session);
 }
 
@@ -196,6 +204,8 @@ GWeb *g_web_new(int index)
 	web->ref_count = 1;
 
 	web->next_query_id = 1;
+
+	web->family = AF_UNSPEC;
 
 	web->index = index;
 	web->session_list = NULL;
@@ -239,6 +249,7 @@ void g_web_unref(GWeb *web)
 
 	g_free(web->accept_option);
 	g_free(web->user_agent);
+	g_free(web->user_agent_profile);
 	g_free(web->http_version);
 
 	g_free(web);
@@ -269,6 +280,21 @@ gboolean g_web_set_proxy(GWeb *web, const char *proxy)
 		web->proxy = g_strdup(proxy);
 		debug(web, "setting proxy %s", web->proxy);
 	}
+
+	return TRUE;
+}
+
+gboolean g_web_set_address_family(GWeb *web, int family)
+{
+	if (web == NULL)
+		return FALSE;
+
+	if (family != AF_UNSPEC && family != AF_INET && family != AF_INET6)
+		return FALSE;
+
+	web->family = family;
+
+	g_resolv_set_address_family(web->resolv, family);
 
 	return TRUE;
 }
@@ -343,6 +369,19 @@ gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 	return result;
 }
 
+gboolean g_web_set_ua_profile(GWeb *web, const char *profile)
+{
+	if (web == NULL)
+		return FALSE;
+
+	g_free(web->user_agent_profile);
+
+	web->user_agent_profile = g_strdup(profile);
+	debug(web, "setting user agent profile %s", web->user_agent);
+
+	return TRUE;
+}
+
 gboolean g_web_set_http_version(GWeb *web, const char *version)
 {
 	if (web == NULL)
@@ -355,7 +394,7 @@ gboolean g_web_set_http_version(GWeb *web, const char *version)
 		debug(web, "clearing HTTP version");
 	} else {
 		web->http_version = g_strdup(version);
-                debug(web, "setting HTTP version %s", web->http_version);
+		debug(web, "setting HTTP version %s", web->http_version);
 	}
 
 	return TRUE;
@@ -409,13 +448,11 @@ static gboolean process_send_buffer(struct web_session *session)
 		return FALSE;
 	}
 
-	debug(session->web, "bytes to write %zu", count);
-
 	status = g_io_channel_write_chars(session->transport_channel,
 					buf->str, count, &bytes_written, NULL);
 
-	debug(session->web, "status %u bytes written %zu",
-					status, bytes_written);
+	debug(session->web, "status %u bytes to write %zu bytes written %zu",
+					status, count, bytes_written);
 
 	if (status != G_IO_STATUS_NORMAL && status != G_IO_STATUS_AGAIN)
 		return FALSE;
@@ -478,6 +515,11 @@ static void start_request(struct web_session *session)
 	if (session->web->user_agent != NULL)
 		g_string_append_printf(buf, "User-Agent: %s\r\n",
 						session->web->user_agent);
+
+	if (session->web->user_agent_profile != NULL) {
+		g_string_append_printf(buf, "x-wap-profile: %s\r\n",
+				       session->web->user_agent_profile);
+	}
 
 	if (session->web->accept_option != NULL)
 		g_string_append_printf(buf, "Accept: %s\r\n",
@@ -861,10 +903,9 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 static int connect_session_transport(struct web_session *session)
 {
 	GIOFlags flags;
-	struct sockaddr_in sin;
 	int sk;
 
-	sk = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+	sk = socket(session->addr->ai_family, SOCK_STREAM, IPPROTO_TCP);
 	if (sk < 0)
 		return -EIO;
 
@@ -890,12 +931,8 @@ static int connect_session_transport(struct web_session *session)
 
 	g_io_channel_set_close_on_unref(session->transport_channel, TRUE);
 
-	memset(&sin, 0, sizeof(sin));
-	sin.sin_family = AF_INET;
-	sin.sin_port = htons(session->port);
-	sin.sin_addr.s_addr = inet_addr(session->address);
-
-	if (connect(sk, (struct sockaddr *) &sin, sizeof(sin)) < 0) {
+	if (connect(sk, session->addr->ai_addr,
+			session->addr->ai_addrlen) < 0) {
 		if (errno != EINPROGRESS) {
 			close(sk);
 			return -EIO;
@@ -1028,6 +1065,9 @@ static void resolv_result(GResolvResultStatus status,
 					char **results, gpointer user_data)
 {
 	struct web_session *session = user_data;
+	struct addrinfo hints;
+	char *port;
+	int ret;
 
 	if (results == NULL || results[0] == NULL) {
 		call_result_func(session, 404);
@@ -1036,7 +1076,19 @@ static void resolv_result(GResolvResultStatus status,
 
 	debug(session->web, "address %s", results[0]);
 
-	if (inet_aton(results[0], NULL) == 0) {
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = AI_NUMERICHOST;
+	hints.ai_family = session->web->family;
+
+	if (session->addr != NULL) {
+		freeaddrinfo(session->addr);
+		session->addr = NULL;
+	}
+
+	port = g_strdup_printf("%u", session->port);
+	ret = getaddrinfo(results[0], port, &hints, &session->addr);
+	g_free(port);
+	if (ret != 0 || session->addr == NULL) {
 		call_result_func(session, 400);
 		return;
 	}
@@ -1114,8 +1166,30 @@ static guint do_request(GWeb *web, const char *url,
 			return 0;
 		}
 	} else {
+		struct addrinfo hints;
+		char *port;
+		int ret;
+
 		if (session->address == NULL)
 			session->address = g_strdup(session->host);
+
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_flags = AI_NUMERICHOST;
+		hints.ai_family = session->web->family;
+
+		if (session->addr != NULL) {
+			freeaddrinfo(session->addr);
+			session->addr = NULL;
+		}
+
+		port = g_strdup_printf("%u", session->port);
+		ret = getaddrinfo(session->address, port, &hints,
+							&session->addr);
+		g_free(port);
+		if (ret != 0 || session->addr == NULL) {
+			free_session(session);
+			return 0;
+		}
 
 		if (create_transport(session) < 0) {
 			free_session(session);

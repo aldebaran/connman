@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <gdbus.h>
 
 #include "connman.h"
@@ -32,7 +34,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 {
 	DBusMessage *reply;
 	DBusMessageIter array, dict;
-	connman_bool_t offlinemode;
+	connman_bool_t offlinemode, sessionmode;
 	const char *str;
 
 	DBG("conn %p", conn);
@@ -50,8 +52,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 		connman_dbus_dict_append_basic(&dict, "ActiveProfile",
 						DBUS_TYPE_OBJECT_PATH, &str);
 
-	connman_dbus_dict_append_array(&dict, "Profiles",
-			DBUS_TYPE_OBJECT_PATH, __connman_profile_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Services",
 			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Technologies",
@@ -81,6 +81,11 @@ static DBusMessage *get_properties(DBusConnection *conn,
 			DBUS_TYPE_STRING, __connman_debug_list_available, NULL);
 	connman_dbus_dict_append_array(&dict, "EnabledDebugs",
 			DBUS_TYPE_STRING, __connman_debug_list_enabled, NULL);
+
+	sessionmode = __connman_session_mode();
+	connman_dbus_dict_append_basic(&dict, "SessionMode",
+					DBUS_TYPE_BOOLEAN,
+					&sessionmode);
 
 	connman_dbus_dict_close(&array, &dict);
 
@@ -122,6 +127,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &str);
 
 		return __connman_error_not_supported(msg);
+	} else if (g_str_equal(name, "SessionMode") == TRUE) {
+		connman_bool_t sessionmode;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &sessionmode);
+
+		__connman_session_set_mode(sessionmode);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -139,43 +153,6 @@ static DBusMessage *get_state(DBusConnection *conn,
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &str,
 						DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *create_profile(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *name, *path;
-	int err;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
-							DBUS_TYPE_INVALID);
-
-	err = __connman_profile_create(name, &path);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *remove_profile(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *path;
-	int err;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
-							DBUS_TYPE_INVALID);
-
-	err = __connman_profile_remove(path);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *remove_provider(DBusConnection *conn,
@@ -217,7 +194,7 @@ static DBusMessage *request_scan(DBusConnection *conn,
 	else
 		return __connman_error_invalid_arguments(msg);
 
-	err = __connman_element_request_scan(type);
+	err = __connman_device_request_scan(type);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
 			connman_error("Invalid return code from scan");
@@ -329,7 +306,7 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	technology_enabled = TRUE;
 	technology_pending = dbus_message_ref(msg);
 
-	err = __connman_element_enable_technology(type);
+	err = __connman_device_enable_technology(type);
 	if (err < 0 && err != -EINPROGRESS)
 		technology_reply(-err);
 	else
@@ -377,7 +354,7 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	technology_enabled = FALSE;
 	technology_pending = dbus_message_ref(msg);
 
-	err = __connman_element_disable_technology(type);
+	err = __connman_device_disable_technology(type);
 	if (err < 0 && err != -EINPROGRESS)
 		technology_reply(-err);
 	else
@@ -442,6 +419,13 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	DBG("conn %p", conn);
 
+	if (__connman_session_mode() == TRUE) {
+		connman_info("Session mode enabled: "
+				"direct service connect disabled");
+
+		return __connman_error_failed(msg, -EINVAL);
+	}
+
 	err = __connman_service_create_and_connect(msg);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
@@ -455,6 +439,19 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	return NULL;
 }
 
+static DBusMessage *provision_service(DBusConnection *conn, DBusMessage *msg,
+					void *data)
+{
+	int err;
+
+	DBG("conn %p", conn);
+
+	err = __connman_service_provision(msg);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return NULL;
+}
 
 static DBusMessage *connect_provider(DBusConnection *conn,
 					DBusMessage *msg, void *data)
@@ -462,6 +459,13 @@ static DBusMessage *connect_provider(DBusConnection *conn,
 	int err;
 
 	DBG("conn %p", conn);
+
+	if (__connman_session_mode() == TRUE) {
+		connman_info("Session mode enabled: "
+				"direct provider connect disabled");
+
+		return __connman_error_failed(msg, -EINVAL);
+	}
 
 	err = __connman_provider_create_and_connect(msg);
 	if (err < 0) {
@@ -561,40 +565,63 @@ static DBusMessage *unregister_counter(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *request_session(DBusConnection *conn,
+static DBusMessage *create_session(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
-	const char *bearer, *sender, *service_path;
-	struct connman_service *service;
-
-	DBG("conn %p", conn);
-
-	sender = dbus_message_get_sender(msg);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &bearer,
-							DBUS_TYPE_INVALID);
-
-	service = __connman_session_request(bearer, sender);
-	if (service == NULL)
-		return __connman_error_failed(msg, EINVAL);
-
-	service_path = __connman_service_get_path(service);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_OBJECT_PATH, &service_path,
-						DBUS_TYPE_INVALID);
-}
-
-static DBusMessage *release_session(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *sender;
 	int err;
 
 	DBG("conn %p", conn);
 
+	err = __connman_session_create(msg);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *destroy_session(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	int err;
+
+	DBG("conn %p", conn);
+
+	err = __connman_session_destroy(msg);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *request_private_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender;
+	int  err;
+
+	DBG("conn %p", conn);
+
 	sender = dbus_message_get_sender(msg);
 
-	err = __connman_session_release(sender);
+	err = __connman_private_network_request(msg, sender);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return NULL;
+}
+
+static DBusMessage *release_private_network(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *path;
+	int err;
+
+	DBG("conn %p", conn);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	err = __connman_private_network_release(path);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -605,8 +632,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property       },
 	{ "GetState",          "",      "s",     get_state          },
-	{ "CreateProfile",     "s",     "o",     create_profile     },
-	{ "RemoveProfile",     "o",     "",      remove_profile     },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "EnableTechnology",  "s",     "",      enable_technology,
@@ -617,14 +642,21 @@ static GDBusMethodTable manager_methods[] = {
 	{ "LookupService",     "s",     "o",     lookup_service,    },
 	{ "ConnectService",    "a{sv}", "o",     connect_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "ProvisionService",  "s",     "",      provision_service,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",     "o",     "",      register_agent     },
 	{ "UnregisterAgent",   "o",     "",      unregister_agent   },
 	{ "RegisterCounter",   "ouu",   "",      register_counter   },
 	{ "UnregisterCounter", "o",     "",      unregister_counter },
-	{ "RequestSession",    "s",     "o",     request_session    },
-	{ "ReleaseSession",    "s",     "",      release_session    },
+	{ "CreateSession",     "a{sv}o", "o",    create_session     },
+	{ "DestroySession",    "o",     "",      destroy_session    },
+	{ "RequestPrivateNetwork",    "",     "oa{sv}h",
+						request_private_network,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "ReleasePrivateNetwork",    "o",    "",
+						release_private_network },
 	{ },
 };
 

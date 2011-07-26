@@ -54,12 +54,16 @@ void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data);
 
 gboolean g_web_set_proxy(GWeb *web, const char *proxy);
 
+gboolean g_web_set_address_family(GWeb *web, int family);
+
 gboolean g_web_add_nameserver(GWeb *web, const char *address);
 
 gboolean g_web_set_accept(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
 gboolean g_web_set_user_agent(GWeb *web, const char *format, ...)
 				__attribute__((format(printf, 2, 3)));
+gboolean g_web_set_ua_profile(GWeb *web, const char *profile);
+
 gboolean g_web_set_http_version(GWeb *web, const char *version);
 
 void g_web_set_close_connection(GWeb *web, gboolean enabled);

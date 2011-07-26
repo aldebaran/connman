@@ -178,10 +178,11 @@ static void create_proxy_configuration(void)
 		connman_dbus_dict_append_array(&dict, "Domains",
 					DBUS_TYPE_STRING, append_string, &str);
 
-	str = connman_service_get_nameserver(default_service);
-	if (str != NULL)
+	str_list = connman_service_get_nameservers(default_service);
+	if (str_list != NULL)
 		connman_dbus_dict_append_array(&dict, "Nameservers",
-					DBUS_TYPE_STRING, append_string, &str);
+					DBUS_TYPE_STRING, append_string_list,
+					str_list);
 
 	connman_dbus_dict_close(&iter, &dict);
 
@@ -311,9 +312,6 @@ static char * parse_url(const char *url)
 
 	scheme = g_strdup(url);
 	if (scheme == NULL)
-		return NULL;
-
-	if (host_ret == NULL)
 		return NULL;
 
 	host = strstr(scheme, "://");

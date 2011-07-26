@@ -1,3 +1,4 @@
+
 /*
  *
  *  Connection Manager
@@ -51,6 +52,8 @@ enum connman_network_error {
 	CONNMAN_NETWORK_ERROR_UNKNOWN         = 0,
 	CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL  = 1,
 	CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL  = 2,
+	CONNMAN_NETWORK_ERROR_INVALID_KEY     = 3,
+	CONNMAN_NETWORK_ERROR_CONNECT_FAIL    = 4,
 };
 
 #define CONNMAN_NETWORK_PRIORITY_LOW      -100
@@ -67,8 +70,6 @@ void connman_network_unref(struct connman_network *network);
 enum connman_network_type connman_network_get_type(struct connman_network *network);
 const char *connman_network_get_identifier(struct connman_network *network);
 
-struct connman_element *connman_network_get_element(
-				struct connman_network *network);
 void connman_network_set_index(struct connman_network *network, int index);
 int connman_network_get_index(struct connman_network *network);
 
@@ -76,6 +77,7 @@ void connman_network_set_group(struct connman_network *network,
 						const char *group);
 const char *connman_network_get_group(struct connman_network *network);
 
+connman_bool_t connman_network_get_connecting(struct connman_network *network);
 int connman_network_set_available(struct connman_network *network,
 						connman_bool_t available);
 connman_bool_t connman_network_get_available(struct connman_network *network);
@@ -94,15 +96,27 @@ void connman_network_set_ipv4_method(struct connman_network *network,
 					enum connman_ipconfig_method method);
 void connman_network_set_ipv6_method(struct connman_network *network,
 					enum connman_ipconfig_method method);
-
-int connman_network_set_address(struct connman_network *network,
-				const void *address, unsigned int size);
+int connman_network_set_ipaddress(struct connman_network *network,
+				struct connman_ipaddress *ipaddress);
+int connman_network_set_nameservers(struct connman_network *network,
+				const char *nameservers);
+int connman_network_set_domain(struct connman_network *network,
+			             const char *domain);
+int connman_network_set_pac(struct connman_network *network,
+				const char *pac);
 int connman_network_set_name(struct connman_network *network,
 							const char *name);
 int connman_network_set_strength(struct connman_network *network,
 						connman_uint8_t strength);
+connman_uint8_t connman_network_get_strength(struct connman_network *network);
 int connman_network_set_roaming(struct connman_network *network,
 						connman_bool_t roaming);
+int connman_network_set_frequency(struct connman_network *network,
+					connman_uint16_t frequency);
+connman_uint16_t connman_network_get_frequency(struct connman_network *network);
+int connman_network_set_wifi_channel(struct connman_network *network,
+					connman_uint16_t channel);
+connman_uint16_t connman_network_get_wifi_channel(struct connman_network *network);
 
 int connman_network_set_string(struct connman_network *network,
 					const char *key, const char *value);
@@ -111,14 +125,6 @@ const char *connman_network_get_string(struct connman_network *network,
 int connman_network_set_bool(struct connman_network *network,
 					const char *key, connman_bool_t value);
 connman_bool_t connman_network_get_bool(struct connman_network *network,
-							const char *key);
-int connman_network_set_uint8(struct connman_network *network,
-					const char *key, connman_uint8_t value);
-connman_uint8_t connman_network_get_uint8(struct connman_network *network,
-							const char *key);
-int connman_network_set_uint16(struct connman_network *network,
-					const char *key, connman_uint16_t value);
-connman_uint16_t connman_network_get_uint16(struct connman_network *network,
 							const char *key);
 int connman_network_set_blob(struct connman_network *network,
 			const char *key, const void *data, unsigned int size);
@@ -132,6 +138,9 @@ void connman_network_set_data(struct connman_network *network, void *data);
 
 void connman_network_update(struct connman_network *network);
 
+int connman_network_register(struct connman_network *network);
+void connman_network_unregister(struct connman_network *network);
+
 struct connman_network_driver {
 	const char *name;
 	enum connman_network_type type;
@@ -140,7 +149,6 @@ struct connman_network_driver {
 	void (*remove) (struct connman_network *network);
 	int (*connect) (struct connman_network *network);
 	int (*disconnect) (struct connman_network *network);
-	int (*setup) (struct connman_network *network, const char *key);
 };
 
 int connman_network_driver_register(struct connman_network_driver *driver);

@@ -77,8 +77,6 @@ void connman_device_reset_scanning(struct connman_device *device);
 int connman_device_set_disconnected(struct connman_device *device,
 						connman_bool_t disconnected);
 connman_bool_t connman_device_get_disconnected(struct connman_device *device);
-int connman_device_set_connected(struct connman_device *device,
-						connman_bool_t connected);
 
 int connman_device_set_string(struct connman_device *device,
 					const char *key, const char *value);

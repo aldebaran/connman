@@ -186,17 +186,26 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 {
 	struct sockaddr_in *addr;
 	int err;
+	char buf[INET_ADDRSTRLEN];
+
+	/* It is possible to end up in situations in which the
+	 * loopback interface is up but has no valid address. In that
+	 * case, we expect EADDRNOTAVAIL and should return FALSE.
+	 */
 
 	err = ioctl(sk, SIOCGIFADDR, ifr);
 	if (err < 0) {
 		err = -errno;
 		connman_error("Getting address failed (%s)", strerror(-err));
-		return TRUE;
+		return err != -EADDRNOTAVAIL ? TRUE : FALSE;
 	}
 
 	addr = (struct sockaddr_in *) &ifr->ifr_addr;
-	if (addr->sin_addr.s_addr != loopback_address)
+	if (addr->sin_addr.s_addr != loopback_address) {
+		connman_warn("Invalid loopback address %s",
+			inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)));
 		return FALSE;
+	}
 
 	err = ioctl(sk, SIOCGIFNETMASK, ifr);
 	if (err < 0) {
@@ -206,8 +215,11 @@ static gboolean valid_loopback(int sk, struct ifreq *ifr)
 	}
 
 	addr = (struct sockaddr_in *) &ifr->ifr_netmask;
-	if (addr->sin_addr.s_addr != loopback_netmask)
+	if (addr->sin_addr.s_addr != loopback_netmask) {
+		connman_warn("Invalid loopback netmask %s",
+			inet_ntop(AF_INET, &addr->sin_addr, buf, sizeof(buf)));
 		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -220,7 +232,7 @@ static int setup_loopback(void)
 
 	sk = socket(PF_INET, SOCK_DGRAM, 0);
 	if (sk < 0)
-		return -1;
+		return -errno;
 
 	memset(&ifr, 0, sizeof(ifr));
 	strcpy(ifr.ifr_name, "lo");
@@ -242,7 +254,7 @@ static int setup_loopback(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("127.0.0.1");
+	addr.sin_addr.s_addr = loopback_address;
 	memcpy(&ifr.ifr_addr, &addr, sizeof(ifr.ifr_addr));
 
 	err = ioctl(sk, SIOCSIFADDR, &ifr);
@@ -254,7 +266,7 @@ static int setup_loopback(void)
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
-	addr.sin_addr.s_addr = inet_addr("255.0.0.0");
+	addr.sin_addr.s_addr = loopback_netmask;
 	memcpy(&ifr.ifr_netmask, &addr, sizeof(ifr.ifr_netmask));
 
 	err = ioctl(sk, SIOCSIFNETMASK, &ifr);

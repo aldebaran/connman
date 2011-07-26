@@ -69,11 +69,15 @@ int connman_inet_del_ipv6_network_route(int index, const char *host,
 int connman_inet_del_ipv6_host_route(int index, const char *host);
 int connman_inet_set_ipv6_gateway_address(int index, const char *gateway);
 int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway);
+int connman_inet_set_ipv6_gateway_interface(int index);
+int connman_inet_clear_ipv6_gateway_interface(int index);
 
-void connman_ipaddress_set_ipv4(struct connman_ipaddress *ipaddress,
-		const char *address, const char *netmask, const char *gateway);
 int connman_inet_add_to_bridge(int index, const char *bridge);
 int connman_inet_remove_from_bridge(int index, const char *bridge);
+
+int connman_inet_set_mtu(int index, int mtu);
+int connman_inet_setup_tunnel(char *tunnel, int mtu);
+int connman_inet_create_tunnel(char **iface);
 
 #ifdef __cplusplus
 }

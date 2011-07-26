@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <unistd.h>
 #include <stdarg.h>
 #include <sys/wait.h>
@@ -383,13 +384,12 @@ static DBusHandlerResult task_filter(DBusConnection *connection,
 
 	if (dbus_message_get_no_reply(message) == FALSE) {
 		DBusMessage *reply;
-		dbus_bool_t result;
 
 		reply = dbus_message_new_method_return(message);
 		if (reply == NULL)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
 
-		result = dbus_connection_send(connection, reply, NULL);
+		dbus_connection_send(connection, reply, NULL);
 
 		dbus_message_unref(reply);
 	}

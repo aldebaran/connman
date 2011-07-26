@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <glib.h>
 
 #include "connman.h"
@@ -102,6 +104,8 @@ int connman_timeserver_append(const char *server)
 		if (driver->append(server) == 0) {
 			g_hash_table_insert(server_hash, new_server, driver);
 			return 0;
+		} else {
+			g_free(new_server);
 		}
 	}
 

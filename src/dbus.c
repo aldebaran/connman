@@ -276,6 +276,92 @@ dbus_bool_t connman_dbus_property_changed_array(const char *path,
 	return TRUE;
 }
 
+dbus_bool_t connman_dbus_setting_changed_basic(const char *owner,
+				const char *path, const char *key,
+				int type, void *val)
+{
+	DBusMessage *msg;
+	DBusMessageIter array, dict;
+
+	if (owner == NULL || path == NULL)
+		return FALSE;
+
+	msg = dbus_message_new_method_call(owner, path,
+						CONNMAN_NOTIFICATION_INTERFACE,
+						"Update");
+	if (msg == NULL)
+		return FALSE;
+
+	dbus_message_iter_init_append(msg, &array);
+	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_basic(&dict, key, type, val);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	g_dbus_send_message(connection, msg);
+
+	return TRUE;
+}
+
+dbus_bool_t connman_dbus_setting_changed_dict(const char *owner,
+				const char *path, const char *key,
+				connman_dbus_append_cb_t function,
+				void *user_data)
+{
+	DBusMessage *msg;
+	DBusMessageIter array, dict;
+
+	if (owner == NULL || path == NULL)
+		return FALSE;
+
+	msg = dbus_message_new_method_call(owner, path,
+						CONNMAN_NOTIFICATION_INTERFACE,
+						"Update");
+	if (msg == NULL)
+		return FALSE;
+
+	dbus_message_iter_init_append(msg, &array);
+	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_dict(&dict, key, function, user_data);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	g_dbus_send_message(connection, msg);
+
+	return TRUE;
+}
+
+dbus_bool_t connman_dbus_setting_changed_array(const char *owner,
+				const char *path, const char *key, int type,
+				connman_dbus_append_cb_t function,
+				void *user_data)
+{
+	DBusMessage *msg;
+	DBusMessageIter array, dict;
+
+	if (owner == NULL || path == NULL)
+		return FALSE;
+
+	msg = dbus_message_new_method_call(owner, path,
+						CONNMAN_NOTIFICATION_INTERFACE,
+						"Update");
+	if (msg == NULL)
+		return FALSE;
+
+	dbus_message_iter_init_append(msg, &array);
+	connman_dbus_dict_open(&array, &dict);
+
+	connman_dbus_dict_append_array(&dict, key, type, function, user_data);
+
+	connman_dbus_dict_close(&array, &dict);
+
+	g_dbus_send_message(connection, msg);
+
+	return TRUE;
+}
+
 DBusConnection *connman_dbus_get_connection(void)
 {
 	if (connection == NULL)

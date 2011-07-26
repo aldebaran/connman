@@ -37,7 +37,6 @@ scripts/connman
 scripts/openconnect-script
 client/cm
 tools/wispr
-tools/wifi-scan
 tools/dhcp-test
 tools/dhcp-server-test
 tools/addr-test
@@ -48,9 +47,13 @@ tools/resolv-test
 tools/polkit-test
 tools/iptables-test
 tools/supplicant-test
+tools/alg-test
 tools/dbus-test
 tools/stats-tool
 tools/stats-ringbuffer-dump
+tools/private-network-test
+unit/test-session
+
 doc/*.bak
 doc/*.stamp
 doc/connman.*

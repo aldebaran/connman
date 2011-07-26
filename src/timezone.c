@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -420,6 +421,9 @@ int __connman_timezone_init(void)
 						IN_MODIFY | IN_MOVED_TO);
 
 	g_free(dirname);
+
+	if (wd < 0)
+		return -EIO;
 
 	return 0;
 }

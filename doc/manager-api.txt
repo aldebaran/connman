@@ -29,26 +29,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object CreateProfile(string name)
-
-			Create and add new profile with the specified
-			identifier name.
-
-			Possible Errors: [service].Error.InvalidArguments
-
-		void RemoveProfile(object path)
-
-			Remove profile with specified object path.
-
-			It is not possible to remove the current active
-			profile. To remove the active profile a different
-			one must be selected via ActiveProfile property
-			first.
-
-			At minimum one profile must be available all the time.
-
-			Possible Errors: [service].Error.InvalidArguments
-
 		void RequestScan(string type)
 
 			Request to trigger a scan for the specified
@@ -115,6 +95,20 @@ Methods		dict GetProperties()
 			setting a longer D-Bus timeout might be a really
 			good idea.
 
+			When 'SessionMode' property is enabled, this method
+			call is disallowed.
+
+			Possible Errors: [service].Error.InvalidArguments
+
+		void ProvisionService(string configuration)
+
+			Provide a configuration for services.
+
+			Service configuration is provided as a single string
+			that follows the same format as configuration files,
+			see config-format.txt. An exception to this format
+			is that only one service can be provisioned per call.
+
 			Possible Errors: [service].Error.InvalidArguments
 
 		object ConnectProvider(dict provider)
@@ -132,6 +126,9 @@ Methods		dict GetProperties()
 			error or when the service is fully connected. So
 			setting a longer D-Bus timeout might be a really
 			good idea.
+
+			When 'SessionMode' property is enabled, this method
+			call is disallowed.
 
 			Possible Errors: [service].Error.InvalidArguments
 
@@ -174,21 +171,46 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object RequestSession(string bearer)
+		object CreateSession(dict settings, object notifier)
 
-			Request a networking session.
+			Create a new session for the application. Every
+			application can create multiple session with
+			different settings. The settings are described
+			as part of the session interface.
 
-			If the bearer is an empty string the best available
-			service will be picked.
+			The notifier allows asynchronous notification about
+			session specific changes. These changes can be
+			for online/offline state or IP address changes or
+			similar things the application is required to
+			handle.
 
-			When successful this method will return the object
-			path of the corresponding service.
+			Every application should at least create one session
+			to inform about its requirements and it purpose.
+
+		void DestroySession(object session)
+
+			Remove the previously created session. The notifier
+			will be informed via its release method.
+
+			If an application exits unexpectatly the session
+			will be automatically destroyed.
+
+		object path, dict, fd RequestPrivateNetwork(dict options)
+								[experimental]
+
+			Request a new Private Network, which includes the
+			creation of a tun/tap interface, and IP
+			configuration, NAT and IP forwarding on that
+			interface.
+			An object path, a dictionnary and a file descriptor
+			with IP settings are returned.
 
 			Possible Errors: [service].Error.InvalidArguments
+					 [service].Error.NotSupported
 
-		void ReleaseSession()
+		void ReleasePrivateNetwork(object path) [experimental]
 
-			Release a networking session.
+			Releases a private network.
 
 			Possible Errors: [service].Error.InvalidArguments
 
@@ -253,10 +275,6 @@ Properties	string State [readonly]
 
 			Object path of the current active profile.
 
-		array{object} Profiles [readonly]
-
-			List of profile object paths.
-
 		array{object} Technologies [readonly]
 
 			List of technology object paths.
@@ -276,3 +294,12 @@ Properties	string State [readonly]
 			itself. It is just provided here for convenience of
 			applications only dealing with the current active
 			profile.
+
+		boolean SessionMode [readwrite]
+
+			This disables the auto connect feature. It should be
+			enabled when the Session API is used. When SessionMode
+			is enabled, 'ConnectService' and 'ConnectProvider'
+			method calls are disallowed.
+
+			The default value is false.

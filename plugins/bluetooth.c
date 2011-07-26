@@ -99,7 +99,8 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_set_error_from_message(&error, reply) == TRUE) {
 		connman_error("%s", error.message);
 		dbus_error_free(&error);
-		goto done;
+
+		goto err;
 	}
 
 	if (dbus_message_get_args(reply, &error,
@@ -110,11 +111,11 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 			dbus_error_free(&error);
 		} else
 			connman_error("Wrong arguments for connect");
-		goto done;
+		goto err;
 	}
 
 	if (interface == NULL)
-		goto done;
+		goto err;
 
 	DBG("interface %s", interface);
 
@@ -124,7 +125,15 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 
 	connman_network_set_connected(network, TRUE);
 
-done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+
+	return;
+err:
+
+	connman_network_set_connected(network, FALSE);
+
 	dbus_message_unref(reply);
 
 	dbus_pending_call_unref(call);
@@ -206,6 +215,7 @@ done:
 
 	dbus_pending_call_unref(call);
 
+	connman_network_unregister(network);
 	connman_network_unref(network);
 }
 
@@ -428,6 +438,8 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 					CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN);
 	if (network == NULL)
 		goto done;
+
+	connman_network_register(network);
 
 	connman_network_set_string(network, "Path", path);
 

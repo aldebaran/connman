@@ -369,12 +369,12 @@ static int install_ldisc(GIOChannel *channel, gboolean install)
 	}
 
 	DBG("opening %s custom baud %lu", uart_dev_name, baud_rate);
-
+	
 	uart_fd = open(uart_dev_name, O_RDWR);
 	if (uart_fd < 0)
 		return -EIO;
 
-	uart_channel = g_io_channel_unix_new(uart_fd);
+	uart_channel = g_io_channel_unix_new(uart_fd);	
 	g_io_channel_set_close_on_unref(uart_channel, TRUE);
 
 	g_io_channel_set_encoding(uart_channel, NULL, NULL);

@@ -38,6 +38,8 @@ static void create_network(struct connman_device *device, const char *name)
 	if (network == NULL)
 		return;
 
+	connman_network_register(network);
+
 	connman_device_add_network(device, network);
 	connman_network_unref(network);
 }

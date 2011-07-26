@@ -1,7 +1,7 @@
 AC_PREREQ(2.60)
 AC_INIT(connman, 0.69.6)
 
-AM_INIT_AUTOMAKE([foreign subdir-objects])
+AM_INIT_AUTOMAKE([foreign subdir-objects color-tests])
 AM_CONFIG_HEADER(config.h)
 
 m4_ifdef([AM_SILENT_RULES], [AM_SILENT_RULES([yes])])
@@ -191,6 +191,9 @@ AC_CHECK_LIB(resolv, ns_initparse, dummy=yes, [
 		AC_MSG_ERROR(resolver library support is required))
 ])
 
+AC_CHECK_FUNC(signalfd, dummy=yes,
+			AC_MSG_ERROR(signalfd support is required))
+
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
@@ -312,9 +315,19 @@ fi
 
 PKG_CHECK_MODULES(DBUS, dbus-1 >= 1.0, dummy=yes,
 				AC_MSG_ERROR(D-Bus >= 1.0 is required))
+saved_CFLAGS="$CFLAGS"
+saved_LIBS="$LIBS"
+CFLAGS="$CFLAGS $DBUS_CFLAGS"
+LIBS="$LIBS $DBUS_LIBS"
 AC_CHECK_LIB(dbus-1, dbus_watch_get_unix_fd, dummy=yes,
 	AC_DEFINE(NEED_DBUS_WATCH_GET_UNIX_FD, 1,
 		[Define to 1 if you need the dbus_watch_get_unix_fd() function.]))
+AC_CHECK_LIB(dbus-1, dbus_connection_can_send_type, dummy=yes,
+	AC_DEFINE(NEED_DBUS_CONNECTION_CAN_SEND_TYPE, 1,
+		[Define to 1 if you need the dbus_connection_can_send_type() function.]
+))
+CFLAGS="$saved_CFLAGS"
+LIBS="$saved_LIBS"
 AC_SUBST(DBUS_CFLAGS)
 AC_SUBST(DBUS_LIBS)
 
@@ -373,15 +386,13 @@ AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
 		[enable testing tools]), [enable_tools=${enableval}])
 if (test "${enable_tools}" = "yes"); then
-	PKG_CHECK_MODULES(NETLINK, libnl-1, dummy=yes,
-				AC_MSG_ERROR(Netlink library is required))
-	AC_SUBST(NETLINK_CFLAGS)
-	AC_SUBST(NETLINK_LIBS)
-
 	PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
 				AC_MSG_ERROR(GnuTLS library is required))
 	AC_SUBST(GNUTLS_CFLAGS)
 	AC_SUBST(GNUTLS_LIBS)
+
+	AC_CHECK_HEADERS(linux/if_alg.h, dummy=yes,
+		AC_MSG_ERROR(User-space algorithm header files are required))
 fi
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 

@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <string.h>
@@ -45,7 +46,7 @@
 #define ARPHDR_PHONET_PIPE (821)
 #endif
 
-#define print(arg...) do { } while (0)
+#define print(arg...) do { if (0) connman_info(arg); } while (0)
 //#define print(arg...) connman_info(arg)
 
 struct watch_data {
@@ -243,7 +244,7 @@ unsigned int connman_rtnl_add_newlink_watch(int index,
 	DBG("id %d", watch->id);
 
 	if (callback) {
-		unsigned int flags = __connman_ipconfig_get_flags(index);
+		unsigned int flags = __connman_ipconfig_get_flags_from_index(index);
 
 		if (flags > 0)
 			callback(flags, 0, user_data);
@@ -283,14 +284,14 @@ static void trigger_rtnl(int index, void *user_data)
 	struct connman_rtnl *rtnl = user_data;
 
 	if (rtnl->newlink) {
-		unsigned short type = __connman_ipconfig_get_type(index);
-		unsigned int flags = __connman_ipconfig_get_flags(index);
+		unsigned short type = __connman_ipconfig_get_type_from_index(index);
+		unsigned int flags = __connman_ipconfig_get_flags_from_index(index);
 
 		rtnl->newlink(type, index, flags, 0);
 	}
 
 	if (rtnl->newgateway) {
-		const char *gateway = __connman_ipconfig_get_gateway(index);
+		const char *gateway = __connman_ipconfig_get_gateway_from_index(index);
 
 		if (gateway != NULL)
 			rtnl->newgateway(index, gateway);
@@ -578,9 +579,6 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 	void *src;
 	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET && family != AF_INET6)
-		return;
-
 	if (family == AF_INET) {
 		struct in_addr ipv4_addr = { INADDR_ANY };
 
@@ -594,6 +592,8 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 			return;
 
 		src = &ipv6_address;
+	} else {
+		return;
 	}
 
 	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
@@ -610,9 +610,6 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 	void *src;
 	char ip_string[INET6_ADDRSTRLEN];
 
-	if (family != AF_INET && family != AF_INET6)
-		return;
-
 	if (family == AF_INET) {
 		struct in_addr ipv4_addr = { INADDR_ANY };
 
@@ -626,6 +623,8 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 			return;
 
 		src = &ipv6_address;
+	} else {
+		return;
 	}
 
 	if (inet_ntop(family, src, ip_string, INET6_ADDRSTRLEN) == NULL)
@@ -635,7 +634,7 @@ static void process_deladdr(unsigned char family, unsigned char prefixlen,
 					prefixlen, ip_string);
 }
 
-static void extract_route(struct rtmsg *msg, int bytes, int *index,
+static void extract_ipv4_route(struct rtmsg *msg, int bytes, int *index,
 						struct in_addr *dst,
 						struct in_addr *gateway)
 {
@@ -660,30 +659,79 @@ static void extract_route(struct rtmsg *msg, int bytes, int *index,
 	}
 }
 
+static void extract_ipv6_route(struct rtmsg *msg, int bytes, int *index,
+						struct in6_addr *dst,
+						struct in6_addr *gateway)
+{
+	struct rtattr *attr;
+
+	for (attr = RTM_RTA(msg); RTA_OK(attr, bytes);
+					attr = RTA_NEXT(attr, bytes)) {
+		switch (attr->rta_type) {
+		case RTA_DST:
+			if (dst != NULL)
+				*dst = *((struct in6_addr *) RTA_DATA(attr));
+			break;
+		case RTA_GATEWAY:
+			if (gateway != NULL)
+				*gateway =
+					*((struct in6_addr *) RTA_DATA(attr));
+			break;
+		case RTA_OIF:
+			if (index != NULL)
+				*index = *((int *) RTA_DATA(attr));
+			break;
+		}
+	}
+}
+
 static void process_newroute(unsigned char family, unsigned char scope,
 						struct rtmsg *msg, int bytes)
 {
 	GSList *list;
-	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
-	char dststr[16], gatewaystr[16];
+	char dststr[INET6_ADDRSTRLEN], gatewaystr[INET6_ADDRSTRLEN];
 	int index = -1;
 
-	if (family != AF_INET)
-		return;
+	if (family == AF_INET) {
+		struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
 
-	extract_route(msg, bytes, &index, &dst, &gateway);
+		extract_ipv4_route(msg, bytes, &index, &dst, &gateway);
 
-	inet_ntop(family, &dst, dststr, sizeof(dststr));
-	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
+		inet_ntop(family, &dst, dststr, sizeof(dststr));
+		inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	__connman_ipconfig_newroute(index, family, scope, dststr, gatewaystr);
+		__connman_ipconfig_newroute(index, family, scope, dststr,
+								gatewaystr);
 
-	/* skip host specific routes */
-	if (scope != RT_SCOPE_UNIVERSE &&
+		/* skip host specific routes */
+		if (scope != RT_SCOPE_UNIVERSE &&
 			!(scope == RT_SCOPE_LINK && dst.s_addr == INADDR_ANY))
-		return;
+			return;
 
-	if (dst.s_addr != INADDR_ANY)
+		if (dst.s_addr != INADDR_ANY)
+			return;
+
+	} else if (family == AF_INET6) {
+		struct in6_addr dst = IN6ADDR_ANY_INIT,
+				gateway = IN6ADDR_ANY_INIT;
+
+		extract_ipv6_route(msg, bytes, &index, &dst, &gateway);
+
+		inet_ntop(family, &dst, dststr, sizeof(dststr));
+		inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
+
+		__connman_ipconfig_newroute(index, family, scope, dststr,
+								gatewaystr);
+
+		/* skip host specific routes */
+		if (scope != RT_SCOPE_UNIVERSE &&
+			!(scope == RT_SCOPE_LINK &&
+				IN6_IS_ADDR_UNSPECIFIED(&dst)))
+			return;
+
+		if (!IN6_IS_ADDR_UNSPECIFIED(&dst))
+			return;
+	} else
 		return;
 
 	for (list = rtnl_list; list; list = list->next) {
@@ -698,26 +746,49 @@ static void process_delroute(unsigned char family, unsigned char scope,
 						struct rtmsg *msg, int bytes)
 {
 	GSList *list;
-	struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
-	char dststr[16], gatewaystr[16];
+	char dststr[INET6_ADDRSTRLEN], gatewaystr[INET6_ADDRSTRLEN];
 	int index = -1;
 
-	if (family != AF_INET)
-		return;
+	if (family == AF_INET) {
+		struct in_addr dst = { INADDR_ANY }, gateway = { INADDR_ANY };
 
-	extract_route(msg, bytes, &index, &dst, &gateway);
+		extract_ipv4_route(msg, bytes, &index, &dst, &gateway);
 
-	inet_ntop(family, &dst, dststr, sizeof(dststr));
-	inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
+		inet_ntop(family, &dst, dststr, sizeof(dststr));
+		inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
 
-	__connman_ipconfig_delroute(index, family, scope, dststr, gatewaystr);
+		__connman_ipconfig_delroute(index, family, scope, dststr,
+								gatewaystr);
 
-	/* skip host specific routes */
-	if (scope != RT_SCOPE_UNIVERSE &&
+		/* skip host specific routes */
+		if (scope != RT_SCOPE_UNIVERSE &&
 			!(scope == RT_SCOPE_LINK && dst.s_addr == INADDR_ANY))
-		return;
+			return;
 
-	if (dst.s_addr != INADDR_ANY)
+		if (dst.s_addr != INADDR_ANY)
+			return;
+
+	}  else if (family == AF_INET6) {
+		struct in6_addr dst = IN6ADDR_ANY_INIT,
+				gateway = IN6ADDR_ANY_INIT;
+
+		extract_ipv6_route(msg, bytes, &index, &dst, &gateway);
+
+		inet_ntop(family, &dst, dststr, sizeof(dststr));
+		inet_ntop(family, &gateway, gatewaystr, sizeof(gatewaystr));
+
+		__connman_ipconfig_delroute(index, family, scope, dststr,
+						gatewaystr);
+
+		/* skip host specific routes */
+		if (scope != RT_SCOPE_UNIVERSE &&
+			!(scope == RT_SCOPE_LINK &&
+				IN6_IS_ADDR_UNSPECIFIED(&dst)))
+			return;
+
+		if (!IN6_IS_ADDR_UNSPECIFIED(&dst))
+			return;
+	} else
 		return;
 
 	for (list = rtnl_list; list; list = list->next) {
@@ -1105,7 +1176,7 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 	struct nd_opt_hdr *opt = (void *)&msg[1];
 	guint32 lifetime = -1;
 	const char **domains = NULL;
-	struct in6_addr *servers;
+	struct in6_addr *servers = NULL;
 	int nr_servers = 0;
 	int msglen = msg->nduseropt_opts_len;
 	char *interface;

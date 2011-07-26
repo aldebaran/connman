@@ -202,7 +202,6 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 static int send_select(GDHCPClient *dhcp_client)
 {
 	struct dhcp_packet packet;
-	struct in_addr addr;
 
 	debug(dhcp_client, "sending DHCP select request");
 
@@ -217,8 +216,6 @@ static int send_select(GDHCPClient *dhcp_client)
 	add_request_options(dhcp_client, &packet);
 
 	add_send_options(dhcp_client, &packet);
-
-	addr.s_addr = dhcp_client->requested_ip;
 
 	return dhcp_send_raw_packet(&packet, INADDR_ANY, CLIENT_PORT,
 					INADDR_BROADCAST, SERVER_PORT,
@@ -947,6 +944,9 @@ static gboolean start_renew_timeout(gpointer user_data)
 	else {
 		send_renew(dhcp_client);
 
+		if (dhcp_client->timeout > 0)
+			g_source_remove(dhcp_client->timeout);
+
 		dhcp_client->timeout =
 				g_timeout_add_seconds_full(G_PRIORITY_HIGH,
 						dhcp_client->lease_seconds >> 1,
@@ -963,6 +963,9 @@ static void start_bound(GDHCPClient *dhcp_client)
 	debug(dhcp_client, "start bound");
 
 	dhcp_client->state = BOUND;
+
+	if (dhcp_client->timeout > 0)
+		g_source_remove(dhcp_client->timeout);
 
 	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
 					dhcp_client->lease_seconds >> 1,

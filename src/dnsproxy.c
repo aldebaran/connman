@@ -215,6 +215,8 @@ static void send_response(int sk, unsigned char *buf, int len,
 	hdr->arcount = 0;
 
 	err = sendto(sk, buf, len, 0, to, tolen);
+	if (err < 0)
+		return;
 }
 
 static gboolean request_timeout(gpointer user_data)
@@ -238,7 +240,9 @@ static gboolean request_timeout(gpointer user_data)
 		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
 
 		err = sendto(sk, req->resp, req->resplen, 0,
-			     &req->sa, req->sa_len);
+						&req->sa, req->sa_len);
+		if (err < 0)
+			return FALSE;
 	} else if (req->request && req->numserv == 0) {
 		struct domain_hdr *hdr;
 
@@ -246,7 +250,7 @@ static gboolean request_timeout(gpointer user_data)
 			hdr = (void *) (req->request + 2);
 			hdr->id = req->srcid;
 			send_response(req->client_sk, req->request,
-					req->request_len, NULL, 0, IPPROTO_TCP);
+				req->request_len, NULL, 0, IPPROTO_TCP);
 
 		} else if (req->protocol == IPPROTO_UDP) {
 			int sk;
@@ -256,7 +260,7 @@ static gboolean request_timeout(gpointer user_data)
 			sk = g_io_channel_unix_get_fd(
 						ifdata->udp_listener_channel);
 			send_response(sk, req->request, req->request_len,
-				      &req->sa, req->sa_len, IPPROTO_UDP);
+					&req->sa, req->sa_len, IPPROTO_UDP);
 		}
 	}
 
@@ -326,12 +330,18 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 {
 	GList *list;
 	int sk, err;
+	char *dot, *lookup = (char *) name;
 
 	sk = g_io_channel_unix_get_fd(server->channel);
 
 	err = send(sk, request, req->request_len, 0);
 
 	req->numserv++;
+
+	/* If we have more than one dot, we don't add domains */
+	dot = strchr(lookup, '.');
+	if (dot != NULL && dot != lookup + strlen(lookup) - 1)
+		return 0;
 
 	for (list = server->domains; list; list = list->next) {
 		char *domain;
@@ -377,6 +387,8 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		}
 
 		err = send(sk, alt, req->request_len + domlen + 1, 0);
+		if (err < 0)
+			return -EIO;
 
 		req->numserv++;
 	}
@@ -500,6 +512,8 @@ static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	err = forward_dns_reply(buf, len, IPPROTO_UDP);
+	if (err < 0)
+		return TRUE;
 
 	return TRUE;
 }
@@ -547,7 +561,7 @@ hangup:
 			hdr = (void *) (req->request + 2);
 			hdr->id = req->srcid;
 			send_response(req->client_sk, req->request,
-					req->request_len, NULL, 0, IPPROTO_TCP);
+				req->request_len, NULL, 0, IPPROTO_TCP);
 
 			request_list = g_slist_remove(request_list, req);
 		}
@@ -1245,7 +1259,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	err = parse_request(buf, len, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0)) {
 		send_response(sk, buf, len, (void *)&client_addr,
-			      client_addr_len, IPPROTO_UDP);
+				client_addr_len, IPPROTO_UDP);
 		return TRUE;
 	}
 

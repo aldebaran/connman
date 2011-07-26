@@ -56,6 +56,7 @@ enum connman_provider_error {
 };
 
 struct connman_provider;
+struct connman_ipaddress;
 
 struct connman_provider *connman_provider_ref(struct connman_provider *provider);
 void connman_provider_unref(struct connman_provider *provider);
@@ -76,18 +77,14 @@ int connman_provider_get_index(struct connman_provider *provider);
 
 void connman_provider_set_data(struct connman_provider *provider, void *data);
 void *connman_provider_get_data(struct connman_provider *provider);
-
-void connman_provider_set_gateway(struct connman_provider *provider,
-							const char *gateway);
-void connman_provider_set_address(struct connman_provider *provider,
-							const char *address);
-void connman_provider_set_netmask(struct connman_provider *provider,
-							const char *netmask);
-void connman_provider_set_dns(struct connman_provider *provider,
-							const char *dns);
-void connman_provider_set_domain(struct connman_provider *provider,
-							const char *domain);
-
+int connman_provider_set_ipaddress(struct connman_provider *provider,
+					struct connman_ipaddress *ipaddress);
+int connman_provider_set_pac(struct connman_provider *provider,
+				const char *pac);
+int connman_provider_set_domain(struct connman_provider *provider,
+				const char *domain);
+int connman_provider_set_nameservers(struct connman_provider *provider,
+					const char *nameservers);
 int connman_provider_append_route(struct connman_provider *provider,
 					const char *key, const char *value);
 

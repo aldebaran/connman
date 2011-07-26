@@ -307,10 +307,14 @@ struct user_input_data {
 static void user_callback(struct user_input_data *data)
 {
 	char *value;
-	int len;
 
-	if (data->hidden == TRUE)
+	if (data->hidden == TRUE) {
+		ssize_t len;
+
 		len = write(data->fd, "\n", 1);
+		if (len < 0)
+			return;
+	}
 
 	tcsetattr(data->fd, TCSADRAIN, &data->saved_termios);
 
@@ -358,7 +362,7 @@ static gboolean user_input(const char *label, gboolean hidden,
 	struct termios new_termios;
 	GIOChannel *channel;
 	guint watch;
-	int len;
+	ssize_t len;
 
 	data = g_try_new0(struct user_input_data, 1);
 	if (data == NULL)
@@ -398,7 +402,12 @@ static gboolean user_input(const char *label, gboolean hidden,
 		goto error;
 
 	len = write(data->fd, label, strlen(label));
+	if (len < 0)
+		goto error;
+
 	len = write(data->fd, ": ", 2);
+	if (len < 0)
+		goto error;
 
 	return TRUE;
 
@@ -491,8 +500,24 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 
 	g_print("elapse: %f seconds\n", elapsed);
 
-	if (wispr->msg.message_type < 0)
-		goto done;
+	if (wispr->msg.message_type < 0) {
+		const char *redirect;
+
+		if (status != 302)
+			goto done;
+
+		if (g_web_result_get_header(result, "Location",
+							&redirect) == FALSE)
+			goto done;
+
+		printf("Redirect URL: %s\n", redirect);
+		printf("\n");
+
+		wispr->request = g_web_request_get(wispr->web, redirect,
+							wispr_result, wispr);
+
+		return FALSE;
+	}
 
 	printf("Message type: %s (%d)\n",
 			message_type_to_string(wispr->msg.message_type),
@@ -514,7 +539,10 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		printf("Logoff URL: %s\n", wispr->msg.logoff_url);
 	printf("\n");
 
-	if (status == 302 && wispr->msg.message_type == 100) {
+	if (status != 200 && status != 302 && status != 404)
+		goto done;
+
+	if (wispr->msg.message_type == 100) {
 		if (wispr->username == NULL) {
 			user_input("Username", FALSE, username_callback, wispr);
 			return FALSE;
@@ -527,10 +555,28 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 
 		g_idle_add(execute_login, wispr);
 		return FALSE;
-	} else if (status == 200 && wispr->msg.message_type == 120) {
+	} else if (wispr->msg.message_type == 120 ||
+					wispr->msg.message_type == 140) {
 		int code = wispr->msg.response_code;
 		printf("Login process: %s\n",
 					code == 50 ? "SUCCESS" : "FAILURE");
+	}
+
+	if (status == 302) {
+		const char *redirect;
+
+		if (g_web_result_get_header(result, "Location",
+							&redirect) == FALSE)
+			goto done;
+
+		printf("\n");
+		printf("Redirect URL: %s\n", redirect);
+		printf("\n");
+
+		wispr->request = g_web_request_get(wispr->web, redirect,
+							wispr_result, wispr);
+
+		return FALSE;
 	}
 
 done:
