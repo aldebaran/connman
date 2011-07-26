@@ -1,3 +1,6 @@
+ver 0.76.1
+	ConnMan 0.76 code merge
+
 ver 0.69.6
 	service: Fix Manager.ConnectService D-Bus reply (Fixes BMC#14841)
 	tethering: Use tether device IP as DNS server (Fixes BMC#16847)
