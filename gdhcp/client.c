@@ -109,6 +109,7 @@ struct _GDHCPClient {
 	gpointer address_conflict_data;
 	GDHCPDebugFunc debug_func;
 	gpointer debug_data;
+	char *last_address;
 };
 
 static inline void debug(GDHCPClient *client, const char *format, ...)
@@ -879,7 +880,7 @@ static void restart_dhcp(GDHCPClient *dhcp_client, int retry_times)
 	dhcp_client->requested_ip = 0;
 	switch_listening_mode(dhcp_client, L2);
 
-	g_dhcp_client_start(dhcp_client);
+	g_dhcp_client_start(dhcp_client, dhcp_client->last_address);
 }
 
 static gboolean start_rebound_timeout(gpointer user_data)
@@ -1240,7 +1241,12 @@ static gboolean discover_timeout(gpointer user_data)
 
 	dhcp_client->retry_times++;
 
-	g_dhcp_client_start(dhcp_client);
+	/*
+	 * We do not send the REQUESTED IP option if we are retrying because
+	 * if the server is non-authoritative it will ignore the request if the
+	 * option is present.
+	 */
+	g_dhcp_client_start(dhcp_client, NULL);
 
 	return FALSE;
 }
@@ -1306,9 +1312,10 @@ static gboolean ipv4ll_probe_timeout(gpointer dhcp_data)
 	return FALSE;
 }
 
-int g_dhcp_client_start(GDHCPClient *dhcp_client)
+int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 {
 	int re;
+	uint32_t addr;
 
 	if (dhcp_client->retry_times == DISCOVER_RETRIES) {
 		ipv4ll_start(dhcp_client);
@@ -1327,7 +1334,18 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client)
 		dhcp_client->xid = rand();
 	}
 
-	send_discover(dhcp_client, 0);
+	if (last_address == NULL) {
+		addr = 0;
+	} else {
+		addr = inet_addr(last_address);
+		if (addr == 0xFFFFFFFF) {
+			addr = 0;
+		} else {
+			g_free(dhcp_client->last_address);
+			dhcp_client->last_address = g_strdup(last_address);
+		}
+	}
+	send_discover(dhcp_client, addr);
 
 	dhcp_client->timeout = g_timeout_add_seconds_full(G_PRIORITY_HIGH,
 							DISCOVER_TIMEOUT,
@@ -1505,6 +1523,7 @@ void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 
 	g_free(dhcp_client->interface);
 	g_free(dhcp_client->assigned_ip);
+	g_free(dhcp_client->last_address);
 
 	g_list_free(dhcp_client->request_list);
 	g_list_free(dhcp_client->require_list);
