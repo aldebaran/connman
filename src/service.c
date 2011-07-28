@@ -2028,6 +2028,8 @@ void __connman_service_set_pac(struct connman_service *service,
 {
 	g_free(service->pac);
 	service->pac = g_strdup(pac);
+
+	proxy_changed(service);
 }
 
 void __connman_service_set_identity(struct connman_service *service,
