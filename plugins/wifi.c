@@ -372,7 +372,7 @@ static GSupplicantSecurity network_security(const char *security)
 
 static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 {
-	const char *security, *passphrase;
+	const char *security, *passphrase, *agent_passphrase;
 
 	memset(ssid, 0, sizeof(*ssid));
 	ssid->mode = G_SUPPLICANT_MODE_INFRA;
@@ -383,9 +383,17 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	ssid->security = network_security(security);
 	passphrase = connman_network_get_string(network,
 						"WiFi.Passphrase");
-	if (passphrase == NULL || strlen(passphrase) == 0)
-		ssid->passphrase = NULL;
-	else
+	if (passphrase == NULL || strlen(passphrase) == 0) {
+
+		/* Use agent provided passphrase as a fallback */
+		agent_passphrase = connman_network_get_string(network,
+						"WiFi.AgentPassphrase");
+
+		if (agent_passphrase == NULL || strlen(agent_passphrase) == 0)
+			ssid->passphrase = NULL;
+		else
+			ssid->passphrase = agent_passphrase;
+	} else
 		ssid->passphrase = passphrase;
 
 	ssid->eap = connman_network_get_string(network, "WiFi.EAP");
@@ -403,6 +411,12 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 						ssid->passphrase);
 	/* We must have an identity for both PEAP and TLS */
 	ssid->identity = connman_network_get_string(network, "WiFi.Identity");
+
+	/* Use agent provided identity as a fallback */
+	if (ssid->identity == NULL || strlen(ssid->identity) == 0)
+		ssid->identity = connman_network_get_string(network,
+							"WiFi.AgentIdentity");
+
 	ssid->ca_cert_path = connman_network_get_string(network,
 							"WiFi.CACertFile");
 	ssid->client_cert_path = connman_network_get_string(network,
