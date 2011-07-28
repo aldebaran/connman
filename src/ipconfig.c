@@ -54,6 +54,7 @@ struct connman_ipconfig {
 	struct connman_ipaddress *system;
 
 	int ipv6_privacy_config;
+	char *last_dhcp_address;
 };
 
 struct connman_ipdevice {
@@ -1286,6 +1287,7 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 
 		connman_ipaddress_free(ipconfig->system);
 		connman_ipaddress_free(ipconfig->address);
+		g_free(ipconfig->last_dhcp_address);
 		g_free(ipconfig);
 	}
 }
@@ -1516,6 +1518,24 @@ const char *__connman_ipconfig_get_proxy_autoconfig(struct connman_ipconfig *ipc
 		return NULL;
 
 	return ipdevice->pac;
+}
+
+void __connman_ipconfig_set_dhcp_address(struct connman_ipconfig *ipconfig,
+					const char *address)
+{
+	if (ipconfig == NULL)
+		return;
+
+	g_free(ipconfig->last_dhcp_address);
+	ipconfig->last_dhcp_address = g_strdup(address);
+}
+
+char *__connman_ipconfig_get_dhcp_address(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return NULL;
+
+	return ipconfig->last_dhcp_address;
 }
 
 static void disable_ipv6(struct connman_ipconfig *ipconfig)
@@ -2080,6 +2100,7 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 {
 	char *method;
 	char *key;
+	char *str;
 
 	DBG("ipconfig %p identifier %s", ipconfig, identifier);
 
@@ -2140,6 +2161,14 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 				keyfile, identifier, key, NULL);
 	g_free(key);
 
+	key = g_strdup_printf("%sDHCP.LastAddress", prefix);
+	str = g_key_file_get_string(keyfile, identifier, key, NULL);
+	if (str != NULL) {
+		g_free(ipconfig->last_dhcp_address);
+		ipconfig->last_dhcp_address = str;
+	}
+	g_free(key);
+
 	return 0;
 }
 
@@ -2169,9 +2198,18 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		break;
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		key = g_strdup_printf("%sDHCP.LastAddress", prefix);
+		if (ipconfig->last_dhcp_address != NULL &&
+				strlen(ipconfig->last_dhcp_address) > 0)
+			g_key_file_set_string(keyfile, identifier, key,
+					ipconfig->last_dhcp_address);
+		else
+			g_key_file_remove_key(keyfile, identifier, key, NULL);
+		g_free(key);
+		/* fall through */
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return 0;
 	}
