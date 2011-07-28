@@ -889,6 +889,8 @@ static int add_network(struct connman_device *device,
 
 	if (modem->operator)
 		connman_network_set_name(network, modem->operator);
+	else
+		connman_network_set_name(network, "");
 
 	if (modem->has_strength)
 		connman_network_set_strength(network, modem->strength);
