@@ -4206,10 +4206,8 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 		goto done;
 
 	network = create_hidden_wifi(device, ssid, mode, security);
-	if (network != NULL) {
+	if (network != NULL)
 		connman_network_set_group(network, group);
-		service->network_created = TRUE;
-	}
 
 	service = lookup_by_identifier(name);
 
@@ -4221,6 +4219,8 @@ done:
 		err = -EOPNOTSUPP;
 		goto failed;
 	}
+
+	service->network_created = TRUE;
 
 	if (is_connected(service) == TRUE) {
 		err = -EISCONN;
