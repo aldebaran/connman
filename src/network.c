@@ -1387,22 +1387,6 @@ int connman_network_set_ipaddress(struct connman_network *network,
 	return 0;
 }
 
-int connman_network_set_pac(struct connman_network *network,
-				const char *pac)
-{
-	struct connman_service *service;
-
-	DBG("network %p pac %s", network, pac);
-
-	service = __connman_service_lookup_from_network(network);
-	if (service == NULL)
-		return -EINVAL;
-
-	__connman_service_set_pac(service, pac);
-
-	return 0;
-}
-
 int connman_network_set_nameservers(struct connman_network *network,
 				const char *nameservers)
 {
