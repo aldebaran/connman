@@ -162,8 +162,10 @@ static int network_probe(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_WIFI:
 	case CONNMAN_NETWORK_TYPE_WIMAX:
 		network->driver = driver;
-		if (__connman_service_create_from_network(network) == NULL)
+		if (__connman_service_create_from_network(network) == NULL) {
+			network->driver = NULL;
 			return -EINVAL;
+		}
 	}
 
 	return 0;
