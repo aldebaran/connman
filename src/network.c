@@ -63,8 +63,10 @@ struct connman_network {
 		unsigned short channel;
 		char *security;
 		char *passphrase;
+		char *agent_passphrase;
 		char *eap;
 		char *identity;
+		char *agent_identity;
 		char *ca_cert_path;
 		char *client_cert_path;
 		char *private_key_path;
@@ -317,8 +319,10 @@ static void network_destruct(struct connman_network *network)
 	g_free(network->wifi.mode);
 	g_free(network->wifi.security);
 	g_free(network->wifi.passphrase);
+	g_free(network->wifi.agent_passphrase);
 	g_free(network->wifi.eap);
 	g_free(network->wifi.identity);
+	g_free(network->wifi.agent_identity);
 	g_free(network->wifi.ca_cert_path);
 	g_free(network->wifi.client_cert_path);
 	g_free(network->wifi.private_key_path);
@@ -1550,12 +1554,18 @@ int connman_network_set_string(struct connman_network *network,
 	} else if (g_str_equal(key, "WiFi.Passphrase") == TRUE) {
 		g_free(network->wifi.passphrase);
 		network->wifi.passphrase = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.AgentPassphrase") == TRUE) {
+		g_free(network->wifi.agent_passphrase);
+		network->wifi.agent_passphrase = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.EAP") == TRUE) {
 		g_free(network->wifi.eap);
 		network->wifi.eap = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.Identity") == TRUE) {
 		g_free(network->wifi.identity);
 		network->wifi.identity = g_strdup(value);
+	} else if (g_str_equal(key, "WiFi.AgentIdentity") == TRUE) {
+		g_free(network->wifi.agent_identity);
+		network->wifi.agent_identity = g_strdup(value);
 	} else if (g_str_equal(key, "WiFi.CACertFile") == TRUE) {
 		g_free(network->wifi.ca_cert_path);
 		network->wifi.ca_cert_path = g_strdup(value);
@@ -1605,10 +1615,14 @@ const char *connman_network_get_string(struct connman_network *network,
 		return network->wifi.security;
 	else if (g_str_equal(key, "WiFi.Passphrase") == TRUE)
 		return network->wifi.passphrase;
+	else if (g_str_equal(key, "WiFi.AgentPassphrase") == TRUE)
+		return network->wifi.agent_passphrase;
 	else if (g_str_equal(key, "WiFi.EAP") == TRUE)
 		return network->wifi.eap;
 	else if (g_str_equal(key, "WiFi.Identity") == TRUE)
 		return network->wifi.identity;
+	else if (g_str_equal(key, "WiFi.AgentIdentity") == TRUE)
+		return network->wifi.agent_identity;
 	else if (g_str_equal(key, "WiFi.CACertFile") == TRUE)
 		return network->wifi.ca_cert_path;
 	else if (g_str_equal(key, "WiFi.ClientCertFile") == TRUE)

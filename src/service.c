@@ -75,6 +75,7 @@ struct connman_service {
 	unsigned int order;
 	char *name;
 	char *passphrase;
+	char *agent_passphrase;
 	char *profile;
 	connman_bool_t roaming;
 	connman_bool_t login_required;
@@ -91,6 +92,7 @@ struct connman_service {
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
+	char *agent_identity;
 	char *ca_cert_file;
 	char *client_cert_file;
 	char *private_key_file;
@@ -2047,6 +2049,18 @@ void __connman_service_set_identity(struct connman_service *service,
 					service->identity);
 }
 
+void __connman_service_set_agent_identity(struct connman_service *service,
+						const char *agent_identity)
+{
+	g_free(service->agent_identity);
+	service->agent_identity = g_strdup(agent_identity);
+
+	if (service->network != NULL)
+		connman_network_set_string(service->network,
+					"WiFi.AgentIdentity",
+					service->agent_identity);
+}
+
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase)
 {
@@ -2064,6 +2078,18 @@ void __connman_service_set_passphrase(struct connman_service *service,
 					service->passphrase);
 
 	__connman_storage_save_service(service);
+}
+
+void __connman_service_set_agent_passphrase(struct connman_service *service,
+						const char *agent_passphrase)
+{
+	g_free(service->agent_passphrase);
+	service->agent_passphrase = g_strdup(agent_passphrase);
+
+	if (service->network != NULL)
+		connman_network_set_string(service->network,
+					"WiFi.AgentPassphrase",
+					service->agent_passphrase);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -2725,12 +2751,16 @@ static void request_input_cb (struct connman_service *service,
 		return;
 
 	if (identity != NULL)
-		__connman_service_set_identity(service, identity);
+		__connman_service_set_agent_identity(service, identity);
 
 	if (passphrase != NULL)
-		__connman_service_set_passphrase(service, passphrase);
+		__connman_service_set_agent_passphrase(service, passphrase);
 
 	__connman_service_connect(service);
+
+	/* Never cache agent provided credentials */
+	__connman_service_set_agent_identity(service, NULL);
+	__connman_service_set_agent_passphrase(service, NULL);
 }
 
 static DBusMessage *connect_service(DBusConnection *conn,
@@ -2995,9 +3025,11 @@ static void service_free(gpointer user_data)
 	g_free(service->profile);
 	g_free(service->name);
 	g_free(service->passphrase);
+	g_free(service->agent_passphrase);
 	g_free(service->identifier);
 	g_free(service->eap);
 	g_free(service->identity);
+	g_free(service->agent_identity);
 	g_free(service->ca_cert_file);
 	g_free(service->client_cert_file);
 	g_free(service->private_key_file);
@@ -3846,7 +3878,15 @@ static int service_connect(struct connman_service *service)
 			if (g_str_equal(service->eap, "tls") == TRUE)
 				break;
 
-			if (service->immutable != TRUE)
+			/*
+			 * Return -ENOKEY if either identity or passphrase is
+			 * missing. Agent provided credentials can be used as
+			 * fallback if needed.
+			 */
+			if ((service->identity == NULL &&
+					service->agent_identity == NULL) ||
+					(service->passphrase == NULL &&
+					service->agent_passphrase == NULL))
 				return -ENOKEY;
 
 			break;
