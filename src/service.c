@@ -2026,9 +2026,6 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 void __connman_service_set_pac(struct connman_service *service,
 					const char *pac)
 {
-	if (pac == NULL)
-		return;
-
 	g_free(service->pac);
 	service->pac = g_strdup(pac);
 }
