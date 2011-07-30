@@ -1596,12 +1596,15 @@ static void ofono_disconnect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
 
-	if (modem_hash == NULL)
-		return;
+	if (modem_hash != NULL) {
+		g_hash_table_destroy(modem_hash);
+		modem_hash = NULL;
+	}
 
-	g_hash_table_destroy(modem_hash);
-
-	modem_hash = NULL;
+	if (network_hash != NULL) {
+		g_hash_table_destroy(network_hash);
+		network_hash = NULL;
+	}
 }
 
 static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
