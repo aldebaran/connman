@@ -882,7 +882,7 @@ static int add_network(struct connman_device *device,
 
 	create_service(network);
 
-	g_hash_table_insert(network_hash, (char *) path, info);
+	g_hash_table_insert(network_hash, g_strdup(path), info);
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
@@ -1585,7 +1585,7 @@ static void ofono_connect(DBusConnection *connection, void *user_data)
 						g_free, remove_modem);
 
 	network_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						NULL, remove_network);
+						g_free, remove_network);
 
 	call_ofono("/", OFONO_MANAGER_INTERFACE, GET_MODEMS,
 			manager_modems_reply, NULL, NULL,
