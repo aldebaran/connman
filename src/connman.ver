@@ -2,7 +2,6 @@
 	global:
 		connman_*;
 		g_dbus_*;
-		g_dhcp_*;
 	local:
 		*;
 };
