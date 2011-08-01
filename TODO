@@ -118,14 +118,6 @@ WiFi
 
    Priority: Low
    Complexity: C1
-   Owner: Henri Bragge <henri.bragge@ixonos.com>
-
-
-- EAP-GTC
-
-   Priority: Low
-   Complexity: C1
-   Owner: Henri Bragge <henri.bragge@ixonos.com>
 
 
 - WiFi p2p
