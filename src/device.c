@@ -1117,10 +1117,12 @@ int connman_device_remove_network(struct connman_device *device,
 	service = __connman_service_lookup_from_network(network);
 
 	identifier = connman_network_get_identifier(network);
-	g_hash_table_remove(device->networks, identifier);
+	g_hash_table_steal(device->networks, identifier);
 
 	if (service != NULL)
 		__connman_service_reset_from_networks(service, device->networks);
+
+	free_network(network);
 
 	return 0;
 }
