@@ -4977,43 +4977,6 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	__connman_service_put(service);
 }
 
-void __connman_service_reset_from_networks(struct connman_service *service,
-						GHashTable *networks)
-{
-	struct connman_network *network;
-	GHashTableIter iter;
-	gpointer key, value;
-
-	DBG("service %p", service);
-
-	network = NULL;
-
-	g_hash_table_iter_init(&iter, networks);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		struct connman_network *iter_network = value;
-		uint8_t strength, iter_strength;
-
-		if (network == NULL) {
-			network = iter_network;
-			continue;
-		}
-
-		strength = connman_network_get_strength(network);
-		iter_strength = connman_network_get_strength(iter_network);
-
-		if (iter_strength > strength)
-			network = iter_network;
-	}
-
-	if (network == NULL) {
-		service->network = NULL;
-		return;
-	}
-
-	__connman_service_create_from_network(network);
-}
-
 /**
  * __connman_service_create_from_provider:
  * @provider: provider structure

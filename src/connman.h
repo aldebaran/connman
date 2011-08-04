@@ -470,7 +470,6 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 struct connman_service *__connman_service_create_from_provider(struct connman_provider *provider);
 void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
-void __connman_service_reset_from_networks(struct connman_service *service, GHashTable *networks);
 
 void __connman_service_create_ip4config(struct connman_service *service,
 								int index);
