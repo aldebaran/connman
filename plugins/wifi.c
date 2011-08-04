@@ -333,7 +333,19 @@ static int network_probe(struct connman_network *network)
 
 static void network_remove(struct connman_network *network)
 {
+	struct connman_device *device = connman_network_get_device(network);
+	struct wifi_data *wifi;
+
 	DBG("network %p", network);
+
+	wifi = connman_device_get_data(device);
+	if (wifi == NULL)
+		return;
+
+	if (wifi->network != network)
+		return;
+
+	wifi->network = NULL;
 }
 
 static void connect_callback(int result, GSupplicantInterface *interface,
