@@ -1881,10 +1881,8 @@ static gboolean context_changed(DBusConnection *connection,
 
 		if (active == FALSE)
 			set_connected(info, active);
-
-		/* Connect only if requested to do so */
-		if (active == TRUE &&
-			connman_network_get_connecting(info->network) == TRUE)
+		else if (connman_network_get_connecting(info->network) == TRUE)
+			/* Connect only if requested to do so */
 			set_connected(info, active);
 	}
 
