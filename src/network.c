@@ -30,7 +30,6 @@
 
 static GSList *network_list = NULL;
 static GSList *driver_list = NULL;
-static unsigned int hidden_counter = 0;
 
 struct connman_network {
 	gint refcount;
@@ -38,7 +37,6 @@ struct connman_network {
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t roaming;
-	connman_bool_t hidden;
 	connman_uint8_t strength;
 	connman_uint16_t frequency;
 	char *identifier;
@@ -365,11 +363,7 @@ struct connman_network *connman_network_create(const char *identifier,
 
 	network->refcount = 1;
 
-	if (identifier == NULL) {
-		ident = g_strdup_printf("hidden_%d", hidden_counter++);
-		network->hidden = TRUE;
-	} else
-		ident = g_strdup(identifier);
+	ident = g_strdup(identifier);
 
 	if (ident == NULL) {
 		g_free(network);
@@ -618,9 +612,6 @@ int connman_network_set_available(struct connman_network *network,
  */
 connman_bool_t connman_network_get_available(struct connman_network *network)
 {
-	if (network->hidden == TRUE)
-		return TRUE;
-
 	return network->available;
 }
 
@@ -1063,7 +1054,6 @@ static gboolean set_connected(gpointer user_data)
 		struct connman_service *service;
 
 		__connman_device_set_network(network->device, NULL);
-		network->hidden = FALSE;
 
 		service = __connman_service_lookup_from_network(network);
 
@@ -1211,7 +1201,6 @@ int __connman_network_connect(struct connman_network *network)
 			connman_network_set_associating(network, TRUE);
 		else {
 			network->connecting = FALSE;
-			network->hidden = FALSE;
 		}
 
 		return err;
