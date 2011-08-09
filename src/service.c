@@ -3632,9 +3632,13 @@ int __connman_service_indicate_error(struct connman_service *service,
 	if (service->error == CONNMAN_SERVICE_ERROR_INVALID_KEY)
 		__connman_service_set_passphrase(service, NULL);
 
-	return __connman_service_ipconfig_indicate_state(service,
+	__connman_service_ipconfig_indicate_state(service,
 						CONNMAN_SERVICE_STATE_FAILURE,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_FAILURE,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+	return 0;
 }
 
 int __connman_service_clear_error(struct connman_service *service)
