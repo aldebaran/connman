@@ -191,8 +191,7 @@ unit_objects += $(unit_test_session_OBJECTS)
 endif
 
 test_scripts = test/get-state test/list-profiles test/list-services \
-		test/connect-service test/monitor-services \
-		test/set-address test/test-profile \
+		test/connect-service test/monitor-services test/set-address \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/monitor-manager \
