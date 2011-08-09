@@ -2813,13 +2813,6 @@ static DBusMessage *connect_service(DBusConnection *conn,
 
 	err = __connman_service_connect(service);
 	if (err < 0) {
-		if (err == -ENOKEY) {
-			if (__connman_agent_request_input(service,
-							request_input_cb,
-							NULL) == 0)
-				return NULL;
-		}
-
 		if (service->pending == NULL)
 			return NULL;
 
@@ -3996,18 +3989,24 @@ int __connman_service_connect(struct connman_service *service)
 		return -EINPROGRESS;
 	}
 
-	if (err == -ENOKEY)
-		return -ENOKEY;
-
-	if (service->userconnect == TRUE)
-		reply_pending(service, err);
-
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
+
+	__connman_network_disconnect(service->network);
+
+	if (service->userconnect == TRUE) {
+		if (err == -ENOKEY) {
+			if (__connman_agent_request_input(service,
+							request_input_cb,
+							NULL) == -EIO)
+				return -EINPROGRESS;
+		}
+		reply_pending(service, err);
+	}
 
 	return err;
 }
