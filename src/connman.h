@@ -133,8 +133,6 @@ typedef void (*__connman_inet_rs_cb_t) (struct nd_router_advert *reply,
 int __connman_inet_ipv6_send_rs(int index, int timeout,
 			__connman_inet_rs_cb_t callback, void *user_data);
 
-#include <connman/wifi.h>
-
 #include <connman/rfkill.h>
 
 int __connman_rfkill_init(void);

@@ -1479,6 +1479,28 @@ static void stats_update(struct connman_service *service,
 	stats->data.time = stats->data_last.time + seconds;
 }
 
+static char *wifi_build_group_name(const unsigned char *ssid,
+						unsigned int ssid_len,
+							const char *mode,
+							const char *security)
+{
+	GString *str;
+	unsigned int i;
+
+	/* the last 3 is for the 2 '_' and '\0' */
+	str = g_string_sized_new((ssid_len * 2) + strlen(mode)
+					+ strlen(security) + 3);
+	if (str == NULL)
+		return NULL;
+
+	for (i = 0; i < ssid_len; i++)
+		g_string_append_printf(str, "%02x", ssid[i]);
+
+	g_string_append_printf(str, "_%s_%s", mode, security);
+
+	return g_string_free(str, FALSE);
+}
+
 void __connman_service_notify(struct connman_service *service,
 			unsigned int rx_packets, unsigned int tx_packets,
 			unsigned int rx_bytes, unsigned int tx_bytes,
@@ -4253,7 +4275,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	else
 		group_security = security;
 
-	group = connman_wifi_build_group_name((unsigned char *) ssid,
+	group = wifi_build_group_name((unsigned char *) ssid,
 						ssid_len, mode, group_security);
 	if (group == NULL)
 		return -EINVAL;

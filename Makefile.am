@@ -11,7 +11,7 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 
 nodist_include_HEADERS = include/version.h
 
-noinst_HEADERS = include/rtnl.h include/wifi.h include/task.h \
+noinst_HEADERS = include/rtnl.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
 			include/profile.h include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
@@ -77,7 +77,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/resolver.c src/ipconfig.c src/detect.c src/inet.c \
 			src/dhcp.c src/rtnl.c src/proxy.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
-			src/wifi.c src/storage.c src/dbus.c src/config.c \
+			src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/location.c \
 			src/session.c src/tethering.c src/wpad.c src/wispr.c \
 			src/stats.c src/iptables.c src/dnsproxy.c src/6to4.c
