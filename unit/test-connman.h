@@ -27,12 +27,19 @@
 
 struct test_session;
 
+struct test_manager {
+	char *state;
+};
+
 struct test_fix {
 	gpointer user_data;
 
 	GMainLoop *main_loop;
 	DBusConnection *main_connection;
 	guint watch;
+	guint manager_watch;
+
+	struct test_manager manager;
 
 	/* session test cases */
 	unsigned int max_sessions;
@@ -123,6 +130,7 @@ DBusMessage *session_disconnect(DBusConnection *connection,
 
 /* manager-api.c */
 DBusMessage *manager_get_services(DBusConnection *connection);
+DBusMessage *manager_get_properties(DBusConnection *connection);
 DBusMessage *manager_create_session(DBusConnection *connection,
 					struct test_session_info *info,
 					const char *notifier_path);
@@ -130,7 +138,8 @@ DBusMessage *manager_destroy_session(DBusConnection *connection,
 					const char *notifier_path);
 DBusMessage *manager_set_session_mode(DBusConnection *connection,
 					connman_bool_t enable);
-
+int manager_parse_properties(DBusMessage *msg,
+				struct test_manager *manager);
 
 /* #define DEBUG */
 #ifdef DEBUG
