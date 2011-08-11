@@ -4941,7 +4941,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 			__connman_service_auto_connect();
 	}
 
-	__connman_notifier_service_add(service);
+	__connman_notifier_service_add(service, service->name);
 
 	return service;
 }
@@ -5072,7 +5072,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 
 	service_register(service);
 
-	__connman_notifier_service_add(service);
+	__connman_notifier_service_add(service, service->name);
 
 	return service;
 }

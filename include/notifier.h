@@ -43,7 +43,8 @@ struct connman_notifier {
 	const char *name;
 	int priority;
 	void (*default_changed) (struct connman_service *service);
-	void (*service_add) (struct connman_service *service);
+	void (*service_add) (struct connman_service *service,
+				const char *name);
 	void (*service_remove) (struct connman_service *service);
 	void (*service_enabled) (enum connman_service_type type,
 						connman_bool_t enabled);

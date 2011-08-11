@@ -1565,7 +1565,8 @@ void __connman_session_set_mode(connman_bool_t enable)
 		__connman_service_disconnect_all();
 }
 
-static void service_add(struct connman_service *service)
+static void service_add(struct connman_service *service,
+			const char *name)
 {
 	GHashTableIter iter;
 	GSequenceIter *iter_service_list;

@@ -400,7 +400,8 @@ void __connman_notifier_default_changed(struct connman_service *service)
 	}
 }
 
-void __connman_notifier_service_add(struct connman_service *service)
+void __connman_notifier_service_add(struct connman_service *service,
+					const char *name)
 {
 	GSList *list;
 
@@ -408,7 +409,7 @@ void __connman_notifier_service_add(struct connman_service *service)
 		struct connman_notifier *notifier = list->data;
 
 		if (notifier->service_add)
-			notifier->service_add(service);
+			notifier->service_add(service, name);
 	}
 }
 
