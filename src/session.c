@@ -1561,9 +1561,6 @@ void __connman_session_set_mode(connman_bool_t enable)
 {
 	DBG("enable %d", enable);
 
-	if (sessionmode == enable)
-		return;
-
 	sessionmode = enable;
 
 	if (sessionmode == TRUE)
