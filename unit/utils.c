@@ -91,6 +91,9 @@ static void manager_changed(struct test_fix *fix,
 
 		fix->manager.state = g_strdup(value);
 	}
+
+	if (fix->manager_changed != NULL)
+		fix->manager_changed(fix);
 }
 
 static gboolean handle_manager_changed(DBusConnection *connection,

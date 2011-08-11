@@ -40,6 +40,7 @@ struct test_fix {
 	guint manager_watch;
 
 	struct test_manager manager;
+	GSourceFunc manager_changed;
 
 	/* session test cases */
 	unsigned int max_sessions;

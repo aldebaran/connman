@@ -216,8 +216,6 @@ static void set_session_mode(struct test_fix *fix,
 	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
 
 	dbus_message_unref(msg);
-
-	util_idle_call(fix, util_quit_loop, NULL);
 }
 
 static void test_session_connect_notify(struct test_session *session)
@@ -445,11 +443,34 @@ static gboolean test_session_connect_free_ride(gpointer data)
 	return FALSE;
 }
 
+static connman_bool_t is_online(struct test_fix *fix)
+{
+	if (g_strcmp0(fix->manager.state, "online") == 0)
+		return TRUE;
+
+	return FALSE;
+}
+
 static gboolean enable_session_mode(gpointer data)
 {
 	struct test_fix *fix = data;
 
 	set_session_mode(fix, TRUE);
+
+	if (is_online(fix) == FALSE)
+		util_idle_call(fix, util_quit_loop, NULL);
+
+	return FALSE;
+}
+
+static gboolean manager_state_changed(gpointer data)
+{
+	struct test_fix *fix = data;
+
+	if (is_online(fix) == FALSE) {
+		fix->manager_changed = NULL;
+		util_idle_call(fix, util_quit_loop, NULL);
+	}
 
 	return FALSE;
 }
@@ -465,15 +486,21 @@ static gboolean disable_session_mode(gpointer data)
 
 static void setup_cb(struct test_fix *fix, gconstpointer data)
 {
-	util_setup(fix, data);
+	fix->manager_changed = manager_state_changed;
 
+	util_setup(fix, data);
 	util_call(fix, enable_session_mode, NULL);
+
 	g_main_loop_run(fix->main_loop);
+
+	fix->manager_changed = NULL;
 }
 
 static void teardown_cb(struct test_fix *fix, gconstpointer data)
 {
 	util_call(fix, disable_session_mode, NULL);
+	util_idle_call(fix, util_quit_loop, NULL);
+
 	g_main_loop_run(fix->main_loop);
 
 	util_teardown(fix, data);
