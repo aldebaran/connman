@@ -1572,6 +1572,7 @@ static void service_add(struct connman_service *service,
 	GSequenceIter *iter_service_list;
 	gpointer key, value;
 	struct connman_session *session;
+	struct service_entry *entry;
 
 	DBG("service %p", service);
 
@@ -1583,9 +1584,14 @@ static void service_add(struct connman_service *service,
 		if (service_match(session, service) == FALSE)
 			continue;
 
+		entry = create_service_entry(service, name,
+						CONNMAN_SERVICE_STATE_IDLE);
+		if (entry == NULL)
+			continue;
+
 		iter_service_list =
 			g_sequence_insert_sorted(session->service_list,
-							service, sort_services,
+							entry, sort_services,
 							session);
 
 		g_hash_table_replace(session->service_hash, service,
