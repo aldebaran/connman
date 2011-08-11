@@ -1228,6 +1228,8 @@ static int session_disconnect(struct connman_session *session)
 	g_dbus_unregister_interface(connection, session->session_path,
 						CONNMAN_SESSION_INTERFACE);
 
+	test_and_disconnect(session);
+
 	g_hash_table_remove(session_hash, session->session_path);
 
 	return 0;
