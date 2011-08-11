@@ -54,6 +54,11 @@ guint util_idle_call(struct test_fix *fix, GSourceFunc func,
 	return id;
 }
 
+static void connman_died(DBusConnection *connection, void *user_data)
+{
+	g_assert(FALSE);
+}
+
 guint util_call(struct test_fix *fix, GSourceFunc func,
 		GDestroyNotify notify)
 {
@@ -73,10 +78,16 @@ void util_setup(struct test_fix *fix, gconstpointer data)
 	fix->main_loop = g_main_loop_new(NULL, FALSE);
 	fix->main_connection = g_dbus_setup_private(DBUS_BUS_SYSTEM,
 							NULL, NULL);
+	fix->watch = g_dbus_add_service_watch(fix->main_connection,
+						CONNMAN_SERVICE,
+						NULL,
+						connman_died,
+						NULL, NULL);
 }
 
 void util_teardown(struct test_fix *fix, gconstpointer data)
 {
+	g_dbus_remove_watch(fix->main_connection, fix->watch);
 	dbus_connection_close(fix->main_connection);
 	dbus_connection_unref(fix->main_connection);
 

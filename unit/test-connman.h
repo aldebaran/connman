@@ -32,6 +32,7 @@ struct test_fix {
 
 	GMainLoop *main_loop;
 	DBusConnection *main_connection;
+	guint watch;
 
 	/* session test cases */
 	unsigned int max_sessions;

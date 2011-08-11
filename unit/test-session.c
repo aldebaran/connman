@@ -53,25 +53,6 @@ static struct test_session *get_session(struct test_session *session,
 	return &session->fix->session[index];
 }
 
-static connman_bool_t is_connman_running(DBusConnection *connection)
-{
-	DBusError error;
-	connman_bool_t running;
-
-	dbus_error_init(&error);
-
-	running = dbus_bus_name_has_owner(connection, CONNMAN_SERVICE, &error);
-
-	if (dbus_error_is_set(&error) == TRUE) {
-		fprintf(stderr, "%s\n", error.message);
-		dbus_error_free(&error);
-
-		return FALSE;
-	}
-
-	return running;
-}
-
 static gboolean test_session_create_no_notify(gpointer data)
 {
 	struct test_fix *fix = data;
@@ -86,7 +67,6 @@ static gboolean test_session_create_no_notify(gpointer data)
 
 	dbus_message_unref(msg);
 
-	g_assert(is_connman_running(fix->session->connection) == TRUE);
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
 
 	return FALSE;
@@ -102,7 +82,6 @@ static gboolean test_session_destroy_no_notify(gpointer data)
 	msg = manager_destroy_session(fix->session->connection, "/foo");
 	g_assert(msg == NULL);
 
-	g_assert(is_connman_running(fix->session->connection) == TRUE);
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
 
 	return FALSE;
@@ -112,7 +91,6 @@ static void test_session_create_notify(struct test_session *session)
 {
 	LOG("session %p", session);
 
-	g_assert(is_connman_running(session->connection) == TRUE);
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
@@ -156,7 +134,6 @@ static gboolean test_session_create_destroy(gpointer data)
 	util_session_init(fix->session);
 	util_session_cleanup(fix->session);
 
-	g_assert(is_connman_running(session->connection) == TRUE);
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
 
 	return FALSE;
@@ -184,7 +161,6 @@ static gboolean test_session_create_already_exists(gpointer data)
 
 	util_session_cleanup(session0);
 
-	g_assert(is_connman_running(session0->connection) == TRUE);
 	util_idle_call(fix, util_quit_loop, util_session_destroy);
 
 	return FALSE;
@@ -195,8 +171,6 @@ static void test_session_create_many_notify(struct test_session *session)
 	unsigned int nr;
 
 	LOG("session %p", session);
-
-	g_assert(is_connman_running(session->connection) == TRUE);
 
 	nr = GPOINTER_TO_UINT(session->fix->user_data);
 	nr--;
@@ -255,7 +229,6 @@ static void test_session_connect_notify(struct test_session *session)
 
 	util_session_cleanup(session);
 
-	g_assert(is_connman_running(session->connection) == TRUE);
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
@@ -290,7 +263,6 @@ static void test_session_disconnect_notify(struct test_session *session)
 
 	util_session_cleanup(session);
 
-	g_assert(is_connman_running(session->connection) == TRUE);
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
@@ -329,7 +301,6 @@ static void test_session_connect_disconnect_notify(struct test_session *session)
 
 	util_session_cleanup(session);
 
-	g_assert(is_connman_running(session->connection) == TRUE);
 	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
 }
 
@@ -421,7 +392,6 @@ static void test_session_connect_free_ride_notify(struct test_session *session)
 		util_session_cleanup(session0);
 		util_session_cleanup(session1);
 
-		g_assert(is_connman_running(session0->connection) == TRUE);
 		util_idle_call(session0->fix, util_quit_loop,
 				util_session_destroy);
 
