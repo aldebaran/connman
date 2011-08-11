@@ -84,6 +84,7 @@ struct session_info {
 	unsigned int marker;
 
 	struct service_entry *entry;
+	enum connman_session_reason reason;
 };
 
 struct connman_session {
@@ -760,6 +761,7 @@ static void test_and_disconnect(struct connman_session *session)
 	entry = info->entry;
 
 	info->online = FALSE;
+	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	info->entry = NULL;
 
 	if (disconnect == TRUE) {
@@ -783,6 +785,8 @@ static void select_and_connect(struct connman_session *session,
 	connman_bool_t do_connect = FALSE;
 
 	DBG("session %p reason %s", session, reason2string(reason));
+
+	info->reason = reason;
 
 	iter = g_sequence_get_begin_iter(session->service_list);
 
@@ -899,6 +903,20 @@ static void session_changed(struct connman_session *session,
 
 		if (info->entry != NULL &&
 				is_connecting(info->entry->state) == TRUE) {
+			break;
+		}
+
+		if (info->reason == CONNMAN_SESSION_REASON_CONNECT) {
+			DBG("Retry to find a matching session");
+			/*
+			 * The user called Connect() but there was no
+			 * matching session available at this point.
+			 * Now there might be a new one. Let's retry
+			 * to select and connect
+			 */
+			select_and_connect(session,
+					CONNMAN_SESSION_REASON_CONNECT);
+
 			break;
 		}
 
