@@ -752,6 +752,25 @@ static connman_bool_t is_connected(enum connman_service_state state)
 	return FALSE;
 }
 
+static connman_bool_t is_connecting(enum connman_service_state state)
+{
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+		break;
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		return TRUE;
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		break;
+	}
+
+	return FALSE;
+}
+
 static connman_bool_t explicit_connect(enum connman_session_reason reason)
 {
 	switch (reason) {
@@ -921,6 +940,11 @@ static void session_changed(struct connman_session *session,
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
 		if (info->online == TRUE)
 			break;
+
+		if (info->entry != NULL &&
+				is_connecting(info->entry->state) == TRUE) {
+			break;
+		}
 
 		if (info->stay_connected == TRUE) {
 			DBG("StayConnected");
