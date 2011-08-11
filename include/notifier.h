@@ -54,6 +54,7 @@ struct connman_notifier {
 					enum connman_service_state state);
 	void (*ipconfig_changed) (struct connman_service *service,
 					struct connman_ipconfig *ipconfig);
+	void (*idle_state) (connman_bool_t idle);
 };
 
 int connman_notifier_register(struct connman_notifier *notifier);

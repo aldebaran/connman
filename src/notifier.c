@@ -30,6 +30,7 @@
 static DBusConnection *connection = NULL;
 
 static GSList *notifier_list = NULL;
+static GHashTable *service_hash = NULL;
 
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
@@ -417,6 +418,17 @@ void __connman_notifier_service_remove(struct connman_service *service)
 {
 	GSList *list;
 
+	if (g_hash_table_lookup(service_hash, service) != NULL) {
+		/*
+		 * This is a tempory check for consistency. It can be
+		 * removed when there are no reports for the following
+		 * error message.
+		 */
+		connman_error("Service state machine inconsistency detected.");
+
+		g_hash_table_remove(service_hash, service);
+	}
+
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
@@ -464,16 +476,62 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 	}
 }
 
+static void notify_idle_state(connman_bool_t idle)
+{
+	GSList *list;
+
+	DBG("idle %d", idle);
+
+	for (list = notifier_list; list; list = list->next) {
+		struct connman_notifier *notifier = list->data;
+
+		if (notifier->idle_state)
+			notifier->idle_state(idle);
+	}
+}
+
 void __connman_notifier_service_state_changed(struct connman_service *service,
 					enum connman_service_state state)
 {
 	GSList *list;
+	unsigned int old_size;
+	connman_bool_t found;
 
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
 
 		if (notifier->service_state_changed)
 			notifier->service_state_changed(service, state);
+	}
+
+	old_size = g_hash_table_size(service_hash);
+	found = g_hash_table_lookup(service_hash, service) != NULL;
+
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_IDLE:
+		if (found == FALSE)
+			break;
+
+		g_hash_table_remove(service_hash, service);
+		if (old_size == 1)
+			notify_idle_state(TRUE);
+
+		break;
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		if (found == TRUE)
+			break;
+
+		g_hash_table_insert(service_hash, service, service);
+		if (old_size == 0)
+			notify_idle_state(FALSE);
+
+		break;
 	}
 }
 
@@ -542,12 +600,19 @@ int __connman_notifier_init(void)
 
 	connection = connman_dbus_get_connection();
 
+	service_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+						NULL, NULL);
+
+
 	return 0;
 }
 
 void __connman_notifier_cleanup(void)
 {
 	DBG("");
+
+	g_hash_table_destroy(service_hash);
+	service_hash = NULL;
 
 	dbus_connection_unref(connection);
 }
