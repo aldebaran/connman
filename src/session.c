@@ -998,7 +998,10 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 
 	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	entry->state = state;
-	entry->name = name;
+	if (name != NULL)
+		entry->name = name;
+	else
+		entry->name = "";
 	entry->service = service;
 
 	idx = __connman_service_get_index(entry->service);
