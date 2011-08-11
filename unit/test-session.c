@@ -286,40 +286,89 @@ static gboolean test_session_disconnect(gpointer data)
 
 static void test_session_connect_disconnect_notify(struct test_session *session)
 {
+	enum test_session_state state = get_session_state(session);
+	enum test_session_state next_state = state;
 	DBusMessage *msg;
 
-	LOG("session %p online %d", session, session->info->online);
+	LOG("state %d session %p %s online %d", state, session,
+		session->notify_path, session->info->online);
 
-	if (session->info->online != TRUE)
+	switch (state) {
+	case TEST_SESSION_STATE_0:
+		if (session->info->online == FALSE)
+			next_state = TEST_SESSION_STATE_1;
+		break;
+	case TEST_SESSION_STATE_1:
+		if (session->info->online == TRUE)
+			next_state = TEST_SESSION_STATE_2;
+		break;
+	case TEST_SESSION_STATE_2:
+		if (session->info->online == FALSE)
+			next_state = TEST_SESSION_STATE_3;
+	default:
+		break;
+	}
+
+	if (state == next_state)
 		return;
 
-	msg = session_disconnect(session->connection, session);
-	g_assert(msg != NULL);
-	dbus_message_unref(msg);
+	set_session_state(session, next_state);
 
-	util_session_cleanup(session);
+	LOG("next_state %d", next_state);
 
-	util_idle_call(session->fix, util_quit_loop, util_session_destroy);
+	switch (next_state) {
+	case TEST_SESSION_STATE_1:
+		msg = session_connect(session->connection, session);
+		g_assert(msg != NULL);
+		dbus_message_unref(msg);
+		return;
+	case TEST_SESSION_STATE_2:
+		msg = session_disconnect(session->connection, session);
+		g_assert(msg != NULL);
+		dbus_message_unref(msg);
+		return;
+	case TEST_SESSION_STATE_3:
+		util_session_cleanup(session);
+		util_idle_call(session->fix, util_quit_loop,
+				util_session_destroy);
+		return;
+	default:
+		return;
+	}
 }
 
 static gboolean test_session_connect_disconnect(gpointer data)
 {
 	struct test_fix *fix = data;
 	struct test_session *session;
-	DBusMessage *msg;
+
+	/*
+	 * +-------------------+
+	 * |       START       |
+	 * +-------------------+
+	 *   |
+	 *   | connect foo
+	 *   v
+	 * +-------------------+
+	 * |   FOO-CONNECTED   |
+	 * +-------------------+
+	 *  |
+	 *  | disconnect foo
+	 *  v
+	 * +-------------------+
+	 * |        END        |
+	 * +-------------------+
+	 */
 
 	util_session_create(fix, 1);
 	session = fix->session;
 
 	session->notify_path = g_strdup("/foo");
 	session->notify =  test_session_connect_disconnect_notify;
+
 	util_session_init(session);
 
-	msg = session_connect(session->connection, session);
-	g_assert(msg != NULL);
-	g_assert(dbus_message_get_type(msg) != DBUS_MESSAGE_TYPE_ERROR);
-
-	dbus_message_unref(msg);
+	set_session_state(session, TEST_SESSION_STATE_0);
 
 	return FALSE;
 }
