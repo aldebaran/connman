@@ -906,6 +906,15 @@ static void session_changed(struct connman_session *session,
 			break;
 		}
 
+		/*
+		 * We are not online, we are not connecting, that
+		 * means we could still have a valid info->entry.
+		 * Though something has changed from the service layer.
+		 * Therefore we want to restart the algorithm. Before we
+		 * can do that we have to cleanup a potientional old entry.
+		 */
+		explicit_disconnect(session);
+
 		if (info->reason == CONNMAN_SESSION_REASON_CONNECT) {
 			DBG("Retry to find a matching session");
 			/*
