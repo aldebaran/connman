@@ -1628,23 +1628,21 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 
 void __connman_service_session_inc(struct connman_service *service)
 {
-	DBG("service %p", service);
+	DBG("service %p ref count %d", service,
+		g_atomic_int_get(&service->session_usage_count) + 1);
 
 	g_atomic_int_inc(&service->session_usage_count);
 }
 
 connman_bool_t __connman_service_session_dec(struct connman_service *service)
 {
-	connman_bool_t in_use;
+	DBG("service %p ref count %d", service,
+		g_atomic_int_get(&service->session_usage_count) - 1);
 
-	if (g_atomic_int_dec_and_test(&service->session_usage_count) == TRUE)
-		in_use = FALSE;
-	else
-		in_use = TRUE;
+	if (g_atomic_int_dec_and_test(&service->session_usage_count) == FALSE)
+		return FALSE;
 
-	DBG("service %p last %d", service, in_use);
-
-	return in_use;
+	return TRUE;
 }
 
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
