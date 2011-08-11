@@ -675,65 +675,6 @@ static void cleanup_session(gpointer user_data)
 	g_free(session);
 }
 
-static void release_session(gpointer key, gpointer value, gpointer user_data)
-{
-	struct connman_session *session = value;
-	DBusMessage *message;
-
-	DBG("owner %s path %s", session->owner, session->notify_path);
-
-	if (session->notify_watch > 0)
-		g_dbus_remove_watch(connection, session->notify_watch);
-
-	g_dbus_unregister_interface(connection, session->session_path,
-						CONNMAN_SESSION_INTERFACE);
-
-	message = dbus_message_new_method_call(session->owner,
-						session->notify_path,
-						CONNMAN_NOTIFICATION_INTERFACE,
-						"Release");
-	if (message == NULL)
-		return;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	g_dbus_send_message(connection, message);
-}
-
-static int session_disconnect(struct connman_session *session)
-{
-	DBG("session %p, %s", session, session->owner);
-
-	if (session->notify_watch > 0)
-		g_dbus_remove_watch(connection, session->notify_watch);
-
-	g_dbus_unregister_interface(connection, session->session_path,
-						CONNMAN_SESSION_INTERFACE);
-
-	g_hash_table_remove(session_hash, session->session_path);
-
-	return 0;
-}
-
-static void owner_disconnect(DBusConnection *conn, void *user_data)
-{
-	struct connman_session *session = user_data;
-
-	DBG("session %p, %s died", session, session->owner);
-
-	session_disconnect(session);
-}
-
-static DBusMessage *destroy_session(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
-{
-	struct connman_session *session = user_data;
-
-	DBG("session %p", session);
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
 static connman_bool_t is_online(enum connman_service_state state)
 {
 	switch (state) {
@@ -1250,6 +1191,65 @@ static DBusMessage *change_session(DBusConnection *conn,
 
 err:
 	return __connman_error_invalid_arguments(msg);
+}
+
+static void release_session(gpointer key, gpointer value, gpointer user_data)
+{
+	struct connman_session *session = value;
+	DBusMessage *message;
+
+	DBG("owner %s path %s", session->owner, session->notify_path);
+
+	if (session->notify_watch > 0)
+		g_dbus_remove_watch(connection, session->notify_watch);
+
+	g_dbus_unregister_interface(connection, session->session_path,
+						CONNMAN_SESSION_INTERFACE);
+
+	message = dbus_message_new_method_call(session->owner,
+						session->notify_path,
+						CONNMAN_NOTIFICATION_INTERFACE,
+						"Release");
+	if (message == NULL)
+		return;
+
+	dbus_message_set_no_reply(message, TRUE);
+
+	g_dbus_send_message(connection, message);
+}
+
+static int session_disconnect(struct connman_session *session)
+{
+	DBG("session %p, %s", session, session->owner);
+
+	if (session->notify_watch > 0)
+		g_dbus_remove_watch(connection, session->notify_watch);
+
+	g_dbus_unregister_interface(connection, session->session_path,
+						CONNMAN_SESSION_INTERFACE);
+
+	g_hash_table_remove(session_hash, session->session_path);
+
+	return 0;
+}
+
+static void owner_disconnect(DBusConnection *conn, void *user_data)
+{
+	struct connman_session *session = user_data;
+
+	DBG("session %p, %s died", session, session->owner);
+
+	session_disconnect(session);
+}
+
+static DBusMessage *destroy_session(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_session *session = user_data;
+
+	DBG("session %p", session);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static GDBusMethodTable session_methods[] = {
