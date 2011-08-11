@@ -67,7 +67,7 @@ struct service_entry {
 	enum connman_service_state state;
 	const char *name;
 	struct connman_service *service;
-	const char *ifname;
+	char *ifname;
 	const char *bearer;
 };
 
@@ -1004,7 +1004,7 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 	idx = __connman_service_get_index(entry->service);
 	entry->ifname = connman_inet_ifname(idx);
 	if (entry->ifname == NULL)
-		entry->ifname = "";
+		entry->ifname = g_strdup("");
 
 	type = connman_service_get_type(entry->service);
 	entry->bearer = service2bearer(type);
@@ -1015,6 +1015,8 @@ static struct service_entry *create_service_entry(struct connman_service *servic
 static void destroy_service_entry(gpointer data)
 {
 	struct service_entry *entry = data;
+
+	g_free(entry->ifname);
 
 	g_free(entry);
 }
