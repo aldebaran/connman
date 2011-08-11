@@ -785,37 +785,52 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 	return FALSE;
 }
 
-static void test_and_disconnect(struct connman_session *session)
+static connman_bool_t explicit_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
 
 	if (info->entry == NULL)
-		return;
+		return FALSE;
 
-	DBG("session %p reason %s service %p state %d",
+	DBG("session %p, reason %s service %p state %d",
 		session, reason2string(info->entry->reason),
 		info->entry->service, info->entry->state);
 
 	if (explicit_connect(info->entry->reason) == FALSE)
-		goto out;
+		return FALSE;
 
-	if (__connman_service_session_dec(info->entry->service) == TRUE)
-		goto out;
+	if (__connman_service_session_dec(info->entry->service) == FALSE)
+		return FALSE;
 
 	if (ecall_session != NULL && ecall_session != session)
-		goto out;
+		return FALSE;
 
-	__connman_service_disconnect(info->entry->service);
+	return TRUE;
+}
 
-	/*
-	 * TODO: We should mark this entry as pending work. In case
-	 * disconnect fails we just unassign this session from the
-	 * service and can't do anything later on it
-	 */
+static void test_and_disconnect(struct connman_session *session)
+{
+	struct session_info *info = session->info;
+	struct service_entry *entry;
+	connman_bool_t disconnect;
 
-out:
+	disconnect = explicit_disconnect(session);
+
+	entry = info->entry;
+
 	info->online = FALSE;
 	info->entry = NULL;
+
+	if (disconnect == TRUE) {
+		DBG("disconnect service %p", entry->service);
+
+		/*
+		 * TODO: We should mark this entry as pending work. In case
+		 * disconnect fails we just unassign this session from the
+		 * service and can't do anything later on it
+		 */
+		__connman_service_disconnect(entry->service);
+	}
 }
 
 static void select_and_connect(struct connman_session *session,
