@@ -734,7 +734,7 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static connman_bool_t is_connected(enum connman_service_state state)
+static connman_bool_t is_online(enum connman_service_state state)
 {
 	switch (state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
@@ -743,8 +743,8 @@ static connman_bool_t is_connected(enum connman_service_state state)
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_FAILURE:
-		break;
 	case CONNMAN_SERVICE_STATE_READY:
+		break;
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		return TRUE;
 	}
@@ -760,10 +760,10 @@ static connman_bool_t is_connecting(enum connman_service_state state)
 		break;
 	case CONNMAN_SERVICE_STATE_ASSOCIATION:
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_READY:
 		return TRUE;
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_READY:
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
 	}
@@ -870,7 +870,7 @@ static void select_and_connect(struct connman_session *session,
 		if (do_connect == TRUE)
 			__connman_service_connect(info->entry->service);
 		else
-			info->online = is_connected(entry->state);
+			info->online = is_online(entry->state);
 	}
 }
 
@@ -1597,7 +1597,7 @@ static void service_state_changed(struct connman_service *service,
 
 		if (info->entry != NULL && info->entry->service == service) {
 			info->entry->state = state;
-			info->online = is_connected(info->entry->state);
+			info->online = is_online(info->entry->state);
 			if (info_last->online != info->online)
 				session->info_dirty = TRUE;
 		}
