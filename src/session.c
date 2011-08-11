@@ -1721,6 +1721,7 @@ void __connman_session_cleanup(void)
 
 	g_hash_table_foreach(session_hash, release_session, NULL);
 	g_hash_table_destroy(session_hash);
+	session_hash = NULL;
 
 	dbus_connection_unref(connection);
 }
