@@ -3535,8 +3535,6 @@ static int __connman_service_indicate_state(struct connman_service *service)
 		}
 
 		connman_timeserver_sync();
-
-		default_changed();
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_IDLE) {
@@ -3628,6 +3626,9 @@ static int __connman_service_indicate_state(struct connman_service *service)
 		g_sequence_sort_changed(iter, service_compare, NULL);
 
 	__connman_profile_changed(FALSE);
+
+	if (new_state == CONNMAN_SERVICE_STATE_ONLINE)
+		default_changed();
 
 	return 0;
 }
