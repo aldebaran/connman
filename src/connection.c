@@ -453,6 +453,17 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	DBG("service %p index %d gateway %s vpn ip %s type %d",
 		service, index, gateway, peer, type);
 
+	/*
+	 * If gateway is NULL, it's a point to point link and the default
+	 * gateway for ipv4 is 0.0.0.0 and for ipv6 is ::, meaning the
+	 * interface
+	 */
+	if (gateway == NULL && type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		gateway = "0.0.0.0";
+
+	if (gateway == NULL && type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		gateway = "::";
+
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(service, index, gateway, type);
 	if (new_gateway == NULL)
