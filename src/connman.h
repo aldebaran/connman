@@ -98,6 +98,8 @@ int __connman_agent_report_error(struct connman_service *service,
 
 int __connman_log_init(const char *debug, connman_bool_t detach);
 void __connman_log_cleanup(void);
+void __connman_log_enable(struct connman_debug_desc *start,
+					struct connman_debug_desc *stop);
 
 void __connman_debug_list_available(DBusMessageIter *iter, void *user_data);
 void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data);

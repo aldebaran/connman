@@ -195,16 +195,16 @@ static connman_bool_t is_enabled(struct connman_debug_desc *desc)
 	return FALSE;
 }
 
-int __connman_log_init(const char *debug, connman_bool_t detach)
+void __connman_log_enable(struct connman_debug_desc *start,
+					struct connman_debug_desc *stop)
 {
-	int option = LOG_NDELAY | LOG_PID;
 	struct connman_debug_desc *desc;
 	const char *name = NULL, *file = NULL;
 
-	if (debug != NULL)
-		enabled = g_strsplit_set(debug, ":, ", 0);
+	if (start == NULL || stop == NULL)
+		return;
 
-	for (desc = __start___debug; desc < __stop___debug; desc++) {
+	for (desc = start; desc < stop; desc++) {
 		if (desc->flags & CONNMAN_DEBUG_FLAG_ALIAS) {
 			file = desc->file;
 			name = desc->name;
@@ -222,6 +222,16 @@ int __connman_log_init(const char *debug, connman_bool_t detach)
 		if (is_enabled(desc) == TRUE)
 			desc->flags |= CONNMAN_DEBUG_FLAG_PRINT;
 	}
+}
+
+int __connman_log_init(const char *debug, connman_bool_t detach)
+{
+	int option = LOG_NDELAY | LOG_PID;
+
+	if (debug != NULL)
+		enabled = g_strsplit_set(debug, ":, ", 0);
+
+	__connman_log_enable(__start___debug, __stop___debug);
 
 	if (detach == FALSE)
 		option |= LOG_PERROR;
