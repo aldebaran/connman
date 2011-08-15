@@ -68,7 +68,8 @@ static gboolean add_plugin(void *handle, struct connman_plugin_desc *desc)
 		return FALSE;
 
 	if (g_str_equal(desc->version, CONNMAN_VERSION) == FALSE) {
-		connman_error("Version mismatch for %s", desc->description);
+		connman_error("Invalid version %s for %s", desc->version,
+							desc->description);
 		return FALSE;
 	}
 
