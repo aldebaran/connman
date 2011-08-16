@@ -89,9 +89,9 @@ struct connman_plugin_desc {
 #else
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, priority, init, exit) \
 		extern struct connman_debug_desc __start___debug[] \
-				__attribute__ ((visibility("hidden"))); \
+				__attribute__ ((weak, visibility("hidden"))); \
 		extern struct connman_debug_desc __stop___debug[] \
-				__attribute__ ((visibility("hidden"))); \
+				__attribute__ ((weak, visibility("hidden"))); \
 		extern struct connman_plugin_desc connman_plugin_desc \
 				__attribute__ ((visibility("default"))); \
 		struct connman_plugin_desc connman_plugin_desc = { \
