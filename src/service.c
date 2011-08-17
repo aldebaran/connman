@@ -4017,7 +4017,11 @@ int __connman_service_connect(struct connman_service *service)
 					CONNMAN_SERVICE_STATE_FAILURE,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	__connman_network_disconnect(service->network);
+	if (service->network != NULL)
+		__connman_network_disconnect(service->network);
+	else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
+				service->provider != NULL)
+			__connman_provider_disconnect(service->provider);
 
 	if (service->userconnect == TRUE) {
 		if (err == -ENOKEY) {
