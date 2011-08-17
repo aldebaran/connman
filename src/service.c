@@ -2498,6 +2498,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		proxy_configuration_changed(service);
 
+		__connman_notifier_proxy_changed(service);
+
 		__connman_storage_save_service(service);
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||
 			g_str_equal(name, "IPv6.Configuration")) {
