@@ -269,8 +269,8 @@ static void set_default_gateway(struct gateway_data *data,
 		connman_inet_set_gateway_address(data->index,
 						data->ipv4_gateway->vpn_ip);
 		connman_inet_add_host_route(data->ipv4_gateway->vpn_phy_index,
-						data->ipv4_gateway->vpn_ip,
-						data->ipv4_gateway->vpn_phy_ip);
+					data->ipv4_gateway->vpn_ip,
+					data->ipv4_gateway->vpn_phy_ip);
 		data->ipv4_gateway->active = TRUE;
 
 		__connman_service_indicate_default(data->service);
@@ -283,8 +283,8 @@ static void set_default_gateway(struct gateway_data *data,
 		connman_inet_set_ipv6_gateway_address(data->index,
 						data->ipv6_gateway->vpn_ip);
 		connman_inet_add_host_route(data->ipv6_gateway->vpn_phy_index,
-						data->ipv6_gateway->vpn_ip,
-						data->ipv6_gateway->vpn_phy_ip);
+					data->ipv6_gateway->vpn_ip,
+					data->ipv6_gateway->vpn_phy_ip);
 		data->ipv6_gateway->active = TRUE;
 
 		__connman_service_indicate_default(data->service);
