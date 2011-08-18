@@ -282,7 +282,8 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv6_gateway->vpn == TRUE) {
 		connman_inet_set_ipv6_gateway_address(data->index,
 						data->ipv6_gateway->vpn_ip);
-		connman_inet_add_host_route(data->ipv6_gateway->vpn_phy_index,
+		connman_inet_add_ipv6_host_route(
+					data->ipv6_gateway->vpn_phy_index,
 					data->ipv6_gateway->vpn_ip,
 					data->ipv6_gateway->vpn_phy_ip);
 		data->ipv6_gateway->active = TRUE;
