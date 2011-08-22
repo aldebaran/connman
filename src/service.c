@@ -4623,57 +4623,69 @@ static void setup_ip6config(struct connman_service *service, int index)
 	connman_ipconfig_set_ops(service->ipconfig_ipv6, &service_ops);
 }
 
-void __connman_service_create_ip4config(struct connman_service *service,
-								int index)
+void __connman_service_read_ip4config(struct connman_service *service)
 {
 	const char *ident = service->profile;
 	GKeyFile *keyfile;
 
+	if (ident == NULL)
+		return;
+	if (service->ipconfig_ipv4 == NULL)
+		return;
+
+	keyfile = __connman_storage_open_profile(ident);
+	if (keyfile == NULL)
+		return;
+
+	__connman_ipconfig_load(service->ipconfig_ipv4, keyfile,
+				service->identifier, "IPv4.");
+
+	g_key_file_free(keyfile);
+}
+
+void __connman_service_create_ip4config(struct connman_service *service,
+					int index)
+{
 	DBG("ipv4 %p", service->ipconfig_ipv4);
 
 	if (service->ipconfig_ipv4 != NULL)
 		return;
 
 	setup_ip4config(service, index, CONNMAN_IPCONFIG_METHOD_DHCP);
+	__connman_service_read_ip4config(service);
+}
+
+void __connman_service_read_ip6config(struct connman_service *service)
+{
+	const char *ident = service->profile;
+	GKeyFile *keyfile;
 
 	if (ident == NULL)
 		return;
+	if (service->ipconfig_ipv6 == NULL)
+		return;
 
 	keyfile = __connman_storage_open_profile(ident);
+
 	if (keyfile == NULL)
 		return;
 
-	if (service->ipconfig_ipv4)
-		__connman_ipconfig_load(service->ipconfig_ipv4, keyfile,
-					service->identifier, "IPv4.");
+	__connman_ipconfig_load(service->ipconfig_ipv6, keyfile,
+				service->identifier, "IPv6.");
+
 	g_key_file_free(keyfile);
 }
 
 void __connman_service_create_ip6config(struct connman_service *service,
 								int index)
 {
-	const char *ident = service->profile;
-	GKeyFile *keyfile;
-
 	DBG("ipv6 %p", service->ipconfig_ipv6);
 
 	if (service->ipconfig_ipv6 != NULL)
 		return;
 
 	setup_ip6config(service, index);
-
-	if (ident == NULL)
-		return;
-
-	keyfile = __connman_storage_open_profile(ident);
-	if (keyfile == NULL)
-		return;
-
-	if (service->ipconfig_ipv6 != NULL)
-		__connman_ipconfig_load(service->ipconfig_ipv6, keyfile,
-					service->identifier, "IPv6.");
-
-	g_key_file_free(keyfile);
+	__connman_service_read_ip6config(service);
 }
 
 /**
