@@ -823,18 +823,23 @@ static void select_and_connect(struct connman_session *session,
 	if (info->entry != NULL && info->entry != entry)
 		test_and_disconnect(session);
 
-	if (entry != NULL) {
-		info->entry = entry;
-		info->entry->reason = reason;
-
-		if (explicit_connect(reason) == TRUE)
-			__connman_service_session_inc(info->entry->service);
-
-		if (do_connect == TRUE)
-			__connman_service_connect(info->entry->service);
-		else
-			info->online = is_online(entry->state);
+	if (entry == NULL) {
+		info->entry = NULL;
+		return;
 	}
+
+	info->entry = entry;
+	info->entry->reason = reason;
+
+	if (do_connect == TRUE) {
+		__connman_service_session_inc(info->entry->service);
+		__connman_service_connect(info->entry->service);
+	} else if (reason == CONNMAN_SESSION_REASON_CONNECT) {
+		/* session is already online take ref */
+		__connman_service_session_inc(info->entry->service);
+	}
+
+	info->online = is_online(entry->state);
 }
 
 static void session_changed(struct connman_session *session,
