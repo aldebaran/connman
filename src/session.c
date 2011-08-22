@@ -898,24 +898,24 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
-		if (info->online == TRUE)
-			break;
+		switch (info->reason) {
+		case CONNMAN_SESSION_REASON_CONNECT:
+			if (info->entry != NULL &&
+					(is_connecting(info->entry->state) == TRUE ||
+					is_online(info->entry->state) == TRUE)) {
+				break;
+			}
 
-		if (info->entry != NULL &&
-				is_connecting(info->entry->state) == TRUE) {
-			break;
-		}
+			/*
+			 * We are not online, we are not connecting, that
+			 * means we could still have a valid info->entry.
+			 * Though something has changed from the service layer.
+			 * Therefore we want to restart the algorithm. Before we
+			 * can do that we have to cleanup a potientional old entry.
+			 */
+			test_and_disconnect(session);
+			info->reason = CONNMAN_SESSION_REASON_CONNECT; /* restore value */
 
-		/*
-		 * We are not online, we are not connecting, that
-		 * means we could still have a valid info->entry.
-		 * Though something has changed from the service layer.
-		 * Therefore we want to restart the algorithm. Before we
-		 * can do that we have to cleanup a potientional old entry.
-		 */
-		explicit_disconnect(session);
-
-		if (info->reason == CONNMAN_SESSION_REASON_CONNECT) {
 			DBG("Retry to find a matching session");
 			/*
 			 * The user called Connect() but there was no
@@ -925,21 +925,21 @@ static void session_changed(struct connman_session *session,
 			 */
 			select_and_connect(session,
 					CONNMAN_SESSION_REASON_CONNECT);
-
 			break;
-		}
-
-		if (info->stay_connected == TRUE) {
-			DBG("StayConnected");
-			select_and_connect(session,
+		case CONNMAN_SESSION_REASON_PERIODIC:
+		case CONNMAN_SESSION_REASON_FREE_RIDE:
+			if (info->stay_connected == TRUE) {
+				DBG("StayConnected");
+				select_and_connect(session,
 					CONNMAN_SESSION_REASON_CONNECT);
-
+			} else {
+				select_and_connect(session,
+					CONNMAN_SESSION_REASON_FREE_RIDE);
+			}
+			break;
+		case CONNMAN_SESSION_REASON_UNKNOWN:
 			break;
 		}
-
-		select_and_connect(session,
-				CONNMAN_SESSION_REASON_FREE_RIDE);
-
 		break;
 	case CONNMAN_SESSION_TRIGGER_ECALL:
 		if (info->online == FALSE && info->entry->service != NULL)
