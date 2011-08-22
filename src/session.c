@@ -1626,7 +1626,8 @@ static void service_remove(struct connman_service *service)
 
 		g_sequence_remove(iter);
 
-		info->entry = NULL;
+		if (info->entry != NULL && info->entry->service == service)
+			info->entry = NULL;
 		session_changed(session, CONNMAN_SESSION_TRIGGER_SERVICE);
 	}
 }
