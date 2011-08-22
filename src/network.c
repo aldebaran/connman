@@ -890,6 +890,8 @@ static void set_connected_manual(struct connman_network *network)
 
 	service = __connman_service_lookup_from_network(network);
 
+	__connman_service_read_ip4config(service);
+
 	ipconfig = __connman_service_get_ip4config(service);
 
 	set_configuration(network);
@@ -942,6 +944,8 @@ static int manual_ipv6_set(struct connman_network *network,
 	service = __connman_service_lookup_from_network(network);
 	if (service == NULL)
 		return -EINVAL;
+
+	__connman_service_read_ip6config(service);
 
 	err = __connman_ipconfig_address_add(ipconfig_ipv6);
 	if (err < 0) {
