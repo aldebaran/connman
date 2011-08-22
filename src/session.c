@@ -753,6 +753,31 @@ static connman_bool_t explicit_disconnect(struct connman_session *session)
 	return TRUE;
 }
 
+static gboolean call_disconnect(gpointer user_data)
+{
+	struct connman_service *service = user_data;
+
+	/*
+	 * TODO: We should mark this entry as pending work. In case
+	 * disconnect fails we just unassign this session from the
+	 * service and can't do anything later on it
+	 */
+	DBG("disconnect service %p", service);
+	__connman_service_disconnect(service);
+
+	return FALSE;
+}
+
+static gboolean call_connect(gpointer user_data)
+{
+	struct connman_service *service = user_data;
+
+	DBG("connect service %p", service);
+	__connman_service_connect(service);
+
+	return FALSE;
+}
+
 static void test_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
@@ -771,16 +796,8 @@ static void test_and_disconnect(struct connman_session *session)
 	service = info->entry->service;
 	info->entry = NULL;
 
-	if (disconnect == TRUE) {
-		DBG("disconnect service %p", service);
-
-		/*
-		 * TODO: We should mark this entry as pending work. In case
-		 * disconnect fails we just unassign this session from the
-		 * service and can't do anything later on it
-		 */
-		__connman_service_disconnect(service);
-	}
+	if (disconnect == TRUE)
+		g_timeout_add_seconds(0, call_disconnect, service);
 }
 
 static void select_and_connect(struct connman_session *session,
@@ -837,7 +854,7 @@ static void select_and_connect(struct connman_session *session,
 
 	if (do_connect == TRUE) {
 		__connman_service_session_inc(info->entry->service);
-		__connman_service_connect(info->entry->service);
+		g_timeout_add_seconds(0, call_connect, info->entry->service);
 	} else if (reason == CONNMAN_SESSION_REASON_CONNECT) {
 		/* session is already online take ref */
 		__connman_service_session_inc(info->entry->service);
