@@ -5399,13 +5399,26 @@ update:
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Passphrase", NULL);
 
-	if (service->ipconfig_ipv4 != NULL)
-		__connman_ipconfig_save(service->ipconfig_ipv4, keyfile,
-					service->identifier, "IPv4.");
+	switch (service->state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+		break;
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		if (service->ipconfig_ipv4 != NULL)
+			__connman_ipconfig_save(service->ipconfig_ipv4,
+						keyfile, service->identifier,
+						"IPv4.");
 
-	if (service->ipconfig_ipv6 != NULL)
-		__connman_ipconfig_save(service->ipconfig_ipv6, keyfile,
-						service->identifier, "IPv6.");
+		if (service->ipconfig_ipv6 != NULL)
+			__connman_ipconfig_save(service->ipconfig_ipv6,
+						keyfile, service->identifier,
+						"IPv6.");
+	}
 
 	if (service->nameservers_config != NULL) {
 		guint len = g_strv_length(service->nameservers_config);
