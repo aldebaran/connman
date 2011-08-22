@@ -1644,15 +1644,24 @@ static void service_state_changed(struct connman_service *service,
 	g_hash_table_iter_init(&iter, session_hash);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		GSequenceIter *service_iter;
+
 		session = value;
 		info = session->info;
 		info_last = session->info_last;
 
-		if (info->entry != NULL && info->entry->service == service) {
-			info->entry->state = state;
-			info->online = is_online(info->entry->state);
-			if (info_last->online != info->online)
-				session->info_dirty = TRUE;
+		service_iter = g_hash_table_lookup(session->service_hash, service);
+		if (service_iter != NULL) {
+			struct service_entry *entry;
+
+			entry = g_sequence_get(service_iter);
+			entry->state = state;
+
+			if (info->entry == entry) {
+				info->online = is_online(entry->state);
+				if (info_last->online != info->online)
+					session->info_dirty = TRUE;
+			}
 		}
 
 		session_changed(session,
