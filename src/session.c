@@ -1435,7 +1435,7 @@ int __connman_session_create(DBusMessage *msg)
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
 
-	session->service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+	session->service_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 						NULL, NULL);
 
 	info->online = FALSE;
