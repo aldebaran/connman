@@ -134,7 +134,7 @@ static const char *reason2string(enum connman_session_reason reason)
 {
 	switch (reason) {
 	case CONNMAN_SESSION_REASON_UNKNOWN:
-		break;
+		return "unknown";
 	case CONNMAN_SESSION_REASON_CONNECT:
 		return "connect";
 	case CONNMAN_SESSION_REASON_FREE_RIDE:
