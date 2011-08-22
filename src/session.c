@@ -738,6 +738,9 @@ static connman_bool_t explicit_disconnect(struct connman_session *session)
 		session, reason2string(info->entry->reason),
 		info->entry->service, info->entry->state);
 
+	if (info->entry->reason == CONNMAN_SESSION_REASON_UNKNOWN)
+		return FALSE;
+
 	if (explicit_connect(info->entry->reason) == FALSE)
 		return FALSE;
 
@@ -873,6 +876,8 @@ static void session_changed(struct connman_session *session,
 		break;
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
 		if (info->online == TRUE) {
+			if (info->entry->reason == CONNMAN_SESSION_REASON_CONNECT)
+				break;
 			info->entry->reason = CONNMAN_SESSION_REASON_CONNECT;
 			__connman_service_session_inc(info->entry->service);
 			break;
