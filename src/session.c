@@ -756,26 +756,30 @@ static connman_bool_t explicit_disconnect(struct connman_session *session)
 static void test_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
-	struct service_entry *entry;
+	struct connman_service *service;
 	connman_bool_t disconnect;
+
+	if (info->entry == NULL)
+		return;
 
 	disconnect = explicit_disconnect(session);
 
-	entry = info->entry;
-
 	info->online = FALSE;
 	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
+	info->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
+
+	service = info->entry->service;
 	info->entry = NULL;
 
 	if (disconnect == TRUE) {
-		DBG("disconnect service %p", entry->service);
+		DBG("disconnect service %p", service);
 
 		/*
 		 * TODO: We should mark this entry as pending work. In case
 		 * disconnect fails we just unassign this session from the
 		 * service and can't do anything later on it
 		 */
-		__connman_service_disconnect(entry->service);
+		__connman_service_disconnect(service);
 	}
 }
 
