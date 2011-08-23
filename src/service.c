@@ -4630,6 +4630,7 @@ void __connman_service_read_ip4config(struct connman_service *service)
 
 	if (ident == NULL)
 		return;
+
 	if (service->ipconfig_ipv4 == NULL)
 		return;
 
