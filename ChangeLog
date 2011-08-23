@@ -1,3 +1,16 @@
+ver 0.77:
+	Fix issue with iptables API breakage.
+	Fix issue with agent input handling.
+	Fix issue with empty cellular operator name.
+	Fix issue with reference counting for network objects.
+	Fix issue with missing D-Bus signals for proxy changes.
+	Fix issue with group identifier and hidden WiFi networks.
+	Fix issue with setting wrong gateway for PPP connections.
+	Fix issue with mismatch of stored IP configuration settings.
+	Fix issue with not stopping DHCP for IPv4 configuration.
+	Add support for remembering last IP address from DHCP.
+	Add support for EAP-GTC authentication method.
+
 ver 0.76:
 	Fix issue with loopback interface setup.
 	Fix issue with /etc/localtime being a symlink.
