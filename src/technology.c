@@ -32,7 +32,6 @@
 
 static DBusConnection *connection;
 
-static GHashTable *device_table;
 static GSList *technology_list = NULL;
 
 struct connman_rfkill {
@@ -614,13 +613,6 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 	technology_put(technology);
 }
 
-static void unregister_technology(gpointer data)
-{
-	struct connman_technology *technology = data;
-
-	technology_put(technology);
-}
-
 int __connman_technology_add_device(struct connman_device *device)
 {
 	struct connman_technology *technology;
@@ -634,8 +626,6 @@ int __connman_technology_add_device(struct connman_device *device)
 	technology = technology_get(type);
 	if (technology == NULL)
 		return -ENXIO;
-
-	g_hash_table_insert(device_table, device, technology);
 
 	if (g_atomic_int_get(&technology->blocked))
 		goto done;
@@ -662,7 +652,7 @@ int __connman_technology_remove_device(struct connman_device *device)
 	type = __connman_device_get_service_type(device);
 	__connman_notifier_unregister(type);
 
-	technology = g_hash_table_lookup(device_table, device);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
@@ -672,8 +662,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
 	}
-
-	g_hash_table_remove(device_table, device);
 
 	return 0;
 }
@@ -1025,17 +1013,12 @@ int __connman_technology_init(void)
 
 	connection = connman_dbus_get_connection();
 
-	device_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-						NULL, unregister_technology);
-
 	return 0;
 }
 
 void __connman_technology_cleanup(void)
 {
 	DBG("");
-
-	g_hash_table_destroy(device_table);
 
 	dbus_connection_unref(connection);
 }
