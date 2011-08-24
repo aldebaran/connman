@@ -361,7 +361,6 @@ void __connman_device_set_network(struct connman_device *device,
 					struct connman_network *network);
 void __connman_device_cleanup_networks(struct connman_device *device);
 
-int __connman_device_scan(struct connman_device *device);
 int __connman_device_enable(struct connman_device *device);
 int __connman_device_enable_persistent(struct connman_device *device);
 int __connman_device_disable(struct connman_device *device);

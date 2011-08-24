@@ -725,7 +725,7 @@ connman_bool_t __connman_device_get_blocked(struct connman_device *device)
 	return device->blocked;
 }
 
-int __connman_device_scan(struct connman_device *device)
+static int device_scan(struct connman_device *device)
 {
 	if (!device->driver || !device->driver->scan)
 		return -EOPNOTSUPP;
@@ -1310,7 +1310,7 @@ int __connman_device_request_scan(enum connman_service_type type)
 			continue;
 		}
 
-		err = __connman_device_scan(device);
+		err = device_scan(device);
 		if (err < 0 && err != -EINPROGRESS) {
 			DBG("err %d", err);
 			/* XXX maybe only a continue? */
