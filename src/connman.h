@@ -135,11 +135,6 @@ typedef void (*__connman_inet_rs_cb_t) (struct nd_router_advert *reply,
 int __connman_inet_ipv6_send_rs(int index, int timeout,
 			__connman_inet_rs_cb_t callback, void *user_data);
 
-#include <connman/rfkill.h>
-
-int __connman_rfkill_init(void);
-void __connman_rfkill_cleanup(void);
-
 #include <connman/resolver.h>
 
 int __connman_resolver_init(connman_bool_t dnsproxy);
@@ -382,6 +377,12 @@ void __connman_device_set_reconnect(struct connman_device *device,
 connman_bool_t __connman_device_get_reconnect(struct connman_device *device);
 
 const char *__connman_device_get_type(struct connman_device *device);
+
+#include <connman/rfkill.h>
+
+int __connman_rfkill_init(void);
+void __connman_rfkill_cleanup(void);
+int __connman_rfkill_block(enum connman_service_type type, connman_bool_t block);
 
 #include <connman/network.h>
 
