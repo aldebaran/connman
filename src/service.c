@@ -5189,6 +5189,9 @@ struct connman_service *__connman_service_lookup_from_network(struct connman_net
 
 	DBG("network %p", network);
 
+	if (network == NULL)
+		return NULL;
+
 	ident = __connman_network_get_ident(network);
 	if (ident == NULL)
 		return NULL;
@@ -5381,6 +5384,9 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	int index;
 
 	DBG("network %p", network);
+
+	if (network == NULL)
+		return NULL;
 
 	ident = __connman_network_get_ident(network);
 	if (ident == NULL)
