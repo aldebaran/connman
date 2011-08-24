@@ -464,8 +464,6 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 
 	DBG("enabled %d", enabled);
 
-	__connman_profile_changed(FALSE);
-
 	offlinemode_changed(enabled);
 
 	for (list = notifier_list; list; list = list->next) {

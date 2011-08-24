@@ -95,45 +95,6 @@ const char *__connman_profile_active_path(void)
 	return default_profile->path;
 }
 
-static guint changed_timeout = 0;
-
-static gboolean services_changed(gpointer user_data)
-{
-	changed_timeout = 0;
-
-	if (default_profile == NULL)
-		return FALSE;
-
-	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "Services",
-				DBUS_TYPE_OBJECT_PATH, __connman_service_list,
-				NULL);
-
-	return FALSE;
-}
-
-void __connman_profile_changed(gboolean delayed)
-{
-	DBG("");
-
-	if (changed_timeout > 0) {
-		g_source_remove(changed_timeout);
-		changed_timeout = 0;
-	}
-
-	if (__connman_connection_update_gateway() == TRUE) {
-		services_changed(NULL);
-		return;
-	}
-
-	if (delayed == FALSE) {
-		services_changed(NULL);
-		return;
-	}
-
-	changed_timeout = g_timeout_add_seconds(1, services_changed, NULL);
-}
-
 static void free_profile(struct connman_profile *profile)
 {
 	g_free(profile->name);
