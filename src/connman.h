@@ -333,8 +333,6 @@ void __connman_technology_add_interface(enum connman_service_type type,
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
 
-connman_bool_t __connman_technology_get_blocked(enum connman_service_type type);
-
 #include <connman/device.h>
 
 int __connman_device_init(const char *device, const char *nodevice);
@@ -351,9 +349,6 @@ connman_bool_t __connman_device_isfiltered(const char *devname);
 int __connman_device_get_phyindex(struct connman_device *device);
 void __connman_device_set_phyindex(struct connman_device *device,
 							int phyindex);
-int __connman_device_set_blocked(struct connman_device *device,
-						connman_bool_t blocked);
-connman_bool_t __connman_device_get_blocked(struct connman_device *device);
 
 void __connman_device_increase_connections(struct connman_device *device);
 void __connman_device_decrease_connections(struct connman_device *device);

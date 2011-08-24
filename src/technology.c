@@ -56,7 +56,6 @@ struct connman_technology {
 	GHashTable *rfkill_list;
 	GSList *device_list;
 	gint enabled;
-	gint blocked;
 	char *regdom;
 
 	connman_bool_t tethering;
@@ -618,6 +617,7 @@ int __connman_technology_add_device(struct connman_device *device)
 {
 	struct connman_technology *technology;
 	enum connman_service_type type;
+	connman_bool_t offlinemode = __connman_profile_get_offlinemode();
 
 	DBG("device %p", device);
 
@@ -628,10 +628,11 @@ int __connman_technology_add_device(struct connman_device *device)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (g_atomic_int_get(&technology->blocked))
-		goto done;
-
-done:
+	if (technology->enable_persistent && !offlinemode)
+		__connman_device_enable(device);
+	/* if technology persistent state is offline */
+	if (!technology->enable_persistent)
+		__connman_device_disable(device);
 
 	technology->device_list = g_slist_append(technology->device_list,
 								device);
@@ -690,9 +691,6 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (g_atomic_int_get(&technology->blocked))
-		return -ERFKILL;
-
 	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
 		__connman_notifier_enable(type);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
@@ -741,6 +739,8 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 		__connman_storage_save_technology(technology);
 	}
 
+	__connman_rfkill_block(technology->type, FALSE);
+
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
@@ -775,7 +775,6 @@ done:
 int __connman_technology_disabled(enum connman_service_type type)
 {
 	struct connman_technology *technology;
-	GSList *list;
 
 	technology = technology_find(type);
 	if (technology == NULL)
@@ -791,13 +790,6 @@ int __connman_technology_disabled(enum connman_service_type type)
 		__connman_notifier_disable(type);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 		state_changed(technology);
-	}
-
-	for (list = technology->device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		if (__connman_device_get_blocked(device) == FALSE)
-			return 0;
 	}
 
 	return 0;
@@ -829,6 +821,8 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 		technology->enable_persistent = FALSE;
 		__connman_storage_save_technology(technology);
 	}
+
+	__connman_rfkill_block(technology->type, TRUE);
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
@@ -862,6 +856,15 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 	int err = -EINVAL;
 
 	DBG("offlinemode %s", offlinemode ? "On" : "Off");
+	/*
+	 * This is a bit tricky. When you set offlinemode, there is no
+	 * way to differentiate between attempting offline mode and
+	 * resuming offlinemode from last saved profile. We need that
+	 * information in rfkill_update, otherwise it falls back on the
+	 * technology's persistent state. Hence we set the offline mode here
+	 * but save it & call the notifier only if its successful.
+	 */
+	__connman_profile_set_offlinemode(offlinemode);
 
 	/* Traverse technology list, enable/disable each technology. */
 	for (list = technology_list; list; list = list->next) {
@@ -869,30 +872,17 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 
 		if (offlinemode)
 			err = __connman_technology_disable(technology->type, NULL);
+
 		if (!offlinemode && technology->enable_persistent)
 			err = __connman_technology_enable(technology->type, NULL);
 	}
 
-	if (err == 0 || err == -EINPROGRESS) {
-		__connman_profile_set_offlinemode(offlinemode);
+	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
 		__connman_profile_save_default();
-
 		__connman_notifier_offlinemode(offlinemode);
 	}
 
 	return err;
-}
-
-static void technology_blocked(struct connman_technology *technology,
-				connman_bool_t blocked)
-{
-	GSList *list;
-
-	for (list = technology->device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		__connman_device_set_blocked(device, blocked);
-	}
 }
 
 int __connman_technology_add_rfkill(unsigned int index,
@@ -902,7 +892,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
-	connman_bool_t blocked;
+	connman_bool_t offlinemode = __connman_profile_get_offlinemode();
 
 	DBG("index %u type %d soft %u hard %u", index, type,
 							softblock, hardblock);
@@ -922,15 +912,24 @@ int __connman_technology_add_rfkill(unsigned int index,
 
 	g_hash_table_replace(technology->rfkill_list, &rfkill->index, rfkill);
 
-	blocked = (softblock || hardblock) ? TRUE : FALSE;
-	if (blocked == FALSE)
+	if (hardblock) {
+		DBG("%s is switched off.", get_name(type));
 		return 0;
+	}
 
-	if (g_atomic_int_exchange_and_add(&technology->blocked, 1) == 0) {
-		technology_blocked(technology, TRUE);
-
-		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
-		state_changed(technology);
+	/*
+	 * If Offline mode is on, we softblock the device if it isnt already.
+	 * If Offline mode is off, we rely on the persistent state of tech.
+	 */
+	if (offlinemode) {
+		if (!softblock)
+			return __connman_rfkill_block(type, TRUE);
+	} else {
+		if (technology->enable_persistent && softblock)
+			return __connman_rfkill_block(type, FALSE);
+		/* if technology persistent state is offline */
+		if (!technology->enable_persistent && !softblock)
+			return __connman_rfkill_block(type, TRUE);
 	}
 
 	return 0;
@@ -943,7 +942,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
-	connman_bool_t blocked, old_blocked;
+	connman_bool_t offlinemode = __connman_profile_get_offlinemode();
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
@@ -955,33 +954,23 @@ int __connman_technology_update_rfkill(unsigned int index,
 	if (rfkill == NULL)
 		return -ENXIO;
 
-	old_blocked = (rfkill->softblock || rfkill->hardblock) ? TRUE : FALSE;
-	blocked = (softblock || hardblock) ? TRUE : FALSE;
+	if (rfkill->softblock == softblock &&
+		rfkill->hardblock == hardblock)
+		return 0;
 
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	if (blocked == old_blocked)
+	if (hardblock) {
+		DBG("%s is switched off.", get_name(type));
 		return 0;
+	}
 
-	if (blocked) {
-		guint n_blocked;
-
-		n_blocked =
-			g_atomic_int_exchange_and_add(&technology->blocked, 1);
-		if (n_blocked != g_hash_table_size(technology->rfkill_list) - 1)
-			return 0;
-
-		technology_blocked(technology, blocked);
-		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
-		state_changed(technology);
-	} else {
-		if (g_atomic_int_dec_and_test(&technology->blocked) == FALSE)
-			return 0;
-
-		technology_blocked(technology, blocked);
-		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
-		state_changed(technology);
+	if (!offlinemode) {
+		if (technology->enable_persistent && softblock)
+			return __connman_rfkill_block(type, FALSE);
+		if (!technology->enable_persistent && !softblock)
+			return __connman_rfkill_block(type, TRUE);
 	}
 
 	return 0;
@@ -992,7 +981,6 @@ int __connman_technology_remove_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
-	connman_bool_t blocked;
 
 	DBG("index %u", index);
 
@@ -1004,32 +992,11 @@ int __connman_technology_remove_rfkill(unsigned int index,
 	if (rfkill == NULL)
 		return -ENXIO;
 
-	blocked = (rfkill->softblock || rfkill->hardblock) ? TRUE : FALSE;
-
 	g_hash_table_remove(technology->rfkill_list, &index);
 
-	if (blocked &&
-		g_atomic_int_dec_and_test(&technology->blocked) == TRUE) {
-		technology_blocked(technology, FALSE);
-		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
-		state_changed(technology);
-	}
+	technology_put(technology);
 
 	return 0;
-}
-
-connman_bool_t __connman_technology_get_blocked(enum connman_service_type type)
-{
-	struct connman_technology *technology;
-
-	technology = technology_find(type);
-	if (technology == NULL)
-		return FALSE;
-
-	if (g_atomic_int_get(&technology->blocked))
-		return TRUE;
-
-	return FALSE;
 }
 
 static int technology_load(struct connman_technology *technology)
