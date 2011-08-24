@@ -5560,6 +5560,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	service->type = CONNMAN_SERVICE_TYPE_VPN;
 	service->provider = connman_provider_ref(provider);
 	service->autoconnect = FALSE;
+	service->userconnect = TRUE;
 
 	service->state_ipv4 = service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;
 
