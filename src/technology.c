@@ -693,9 +693,8 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (g_atomic_int_get(&technology->blocked))
 		return -ERFKILL;
 
-	__connman_notifier_enable(type);
-
 	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
+		__connman_notifier_enable(type);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
 		state_changed(technology);
 	}
