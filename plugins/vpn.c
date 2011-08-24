@@ -193,6 +193,11 @@ static void vpn_notify(struct connman_task *task,
 		connman_provider_set_state(provider,
 					CONNMAN_PROVIDER_STATE_DISCONNECT);
 		break;
+
+	case VPN_STATE_AUTH_FAILURE:
+		connman_provider_indicate_error(provider,
+					CONNMAN_PROVIDER_ERROR_AUTH_FAILED);
+		break;
 	}
 }
 
