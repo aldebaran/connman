@@ -32,7 +32,6 @@
 
 static DBusConnection *connection;
 
-static GHashTable *rfkill_table;
 static GHashTable *device_table;
 static GSList *technology_list = NULL;
 
@@ -908,8 +907,6 @@ int __connman_technology_add_rfkill(unsigned int index,
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	g_hash_table_replace(rfkill_table, &rfkill->index, technology);
-
 	g_hash_table_replace(technology->rfkill_list, &rfkill->index, rfkill);
 
 	blocked = (softblock || hardblock) ? TRUE : FALSE;
@@ -927,6 +924,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 }
 
 int __connman_technology_update_rfkill(unsigned int index,
+					enum connman_service_type type,
 						connman_bool_t softblock,
 						connman_bool_t hardblock)
 {
@@ -936,7 +934,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
-	technology = g_hash_table_lookup(rfkill_table, &index);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
@@ -976,7 +974,8 @@ int __connman_technology_update_rfkill(unsigned int index,
 	return 0;
 }
 
-int __connman_technology_remove_rfkill(unsigned int index)
+int __connman_technology_remove_rfkill(unsigned int index,
+					enum connman_service_type type)
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
@@ -984,7 +983,7 @@ int __connman_technology_remove_rfkill(unsigned int index)
 
 	DBG("index %u", index);
 
-	technology = g_hash_table_lookup(rfkill_table, &index);
+	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
 
@@ -995,8 +994,6 @@ int __connman_technology_remove_rfkill(unsigned int index)
 	blocked = (rfkill->softblock || rfkill->hardblock) ? TRUE : FALSE;
 
 	g_hash_table_remove(technology->rfkill_list, &index);
-
-	g_hash_table_remove(rfkill_table, &index);
 
 	if (blocked &&
 		g_atomic_int_dec_and_test(&technology->blocked) == TRUE) {
@@ -1028,8 +1025,6 @@ int __connman_technology_init(void)
 
 	connection = connman_dbus_get_connection();
 
-	rfkill_table = g_hash_table_new_full(g_int_hash, g_int_equal,
-						NULL, unregister_technology);
 	device_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 						NULL, unregister_technology);
 
@@ -1041,7 +1036,6 @@ void __connman_technology_cleanup(void)
 	DBG("");
 
 	g_hash_table_destroy(device_table);
-	g_hash_table_destroy(rfkill_table);
 
 	dbus_connection_unref(connection);
 }

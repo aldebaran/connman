@@ -324,9 +324,11 @@ int __connman_technology_add_rfkill(unsigned int index,
 						connman_bool_t softblock,
 						connman_bool_t hardblock);
 int __connman_technology_update_rfkill(unsigned int index,
+					enum connman_service_type type,
 						connman_bool_t softblock,
 						connman_bool_t hardblock);
-int __connman_technology_remove_rfkill(unsigned int index);
+int __connman_technology_remove_rfkill(unsigned int index,
+					enum connman_service_type type);
 
 void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);

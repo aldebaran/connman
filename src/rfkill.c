@@ -99,18 +99,19 @@ static GIOStatus rfkill_process(GIOChannel *chan)
 						event->type, event->op,
 						event->soft, event->hard);
 
+	type = convert_type(event->type);
+
 	switch (event->op) {
 	case RFKILL_OP_ADD:
-		type = convert_type(event->type);
 		__connman_technology_add_rfkill(event->idx, type,
 						event->soft, event->hard);
 		break;
 	case RFKILL_OP_DEL:
-		__connman_technology_remove_rfkill(event->idx);
+		__connman_technology_remove_rfkill(event->idx, type);
 		break;
 	case RFKILL_OP_CHANGE:
-		__connman_technology_update_rfkill(event->idx, event->soft,
-								event->hard);
+		__connman_technology_update_rfkill(event->idx, type,
+						event->soft, event->hard);
 		break;
 	default:
 		break;
