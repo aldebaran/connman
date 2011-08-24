@@ -940,14 +940,14 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
+		if (info->entry != NULL &&
+				(is_connecting(info->entry->state) == TRUE ||
+					is_online(info->entry->state) == TRUE)) {
+			break;
+		}
+
 		switch (info->reason) {
 		case CONNMAN_SESSION_REASON_CONNECT:
-			if (info->entry != NULL &&
-					(is_connecting(info->entry->state) == TRUE ||
-					is_online(info->entry->state) == TRUE)) {
-				break;
-			}
-
 			/*
 			 * We are not online, we are not connecting, that
 			 * means we could still have a valid info->entry.
