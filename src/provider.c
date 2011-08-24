@@ -143,7 +143,7 @@ static void provider_unregister(struct connman_provider *provider)
 
 struct connman_provider *connman_provider_ref(struct connman_provider *provider)
 {
-	DBG("provider %p", provider);
+	DBG("provider %p refcount %d", provider, provider->refcount + 1);
 
 	g_atomic_int_inc(&provider->refcount);
 
@@ -165,7 +165,7 @@ static void provider_destruct(struct connman_provider *provider)
 
 void connman_provider_unref(struct connman_provider *provider)
 {
-	DBG("provider %p", provider);
+	DBG("provider %p refcount %d", provider, provider->refcount - 1);
 
 	if (g_atomic_int_dec_and_test(&provider->refcount) == FALSE)
 		return;
