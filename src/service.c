@@ -2920,6 +2920,8 @@ static DBusMessage *move_service(DBusConnection *conn,
 	struct connman_service *target;
 	const char *path;
 	GSequenceIter *src, *dst;
+	enum connman_ipconfig_method target4, target6;
+	enum connman_ipconfig_method service4, service6;
 
 	DBG("service %p", service);
 
@@ -2933,11 +2935,50 @@ static DBusMessage *move_service(DBusConnection *conn,
 	if (target == NULL || target->favorite == FALSE || target == service)
 		return __connman_error_invalid_service(msg);
 
-	DBG("target %s", target->identifier);
+	target4 = __connman_ipconfig_get_method(target->ipconfig_ipv4);
+	target6 = __connman_ipconfig_get_method(target->ipconfig_ipv6);
+	service4 = __connman_ipconfig_get_method(service->ipconfig_ipv4);
+	service6 = __connman_ipconfig_get_method(service->ipconfig_ipv6);
 
-	if (target->state_ipv4 != service->state_ipv4 &&
-				target->state_ipv6 != service->state_ipv6)
-		return __connman_error_invalid_service(msg);
+	DBG("target %s method %d/%d state %d/%d", target->identifier,
+				target4, target6,
+				target->state_ipv4, target->state_ipv6);
+
+	DBG("service %s method %d/%d state %d/%d", service->identifier,
+				service4, service6,
+				service->state_ipv4, service->state_ipv6);
+
+	/*
+	 * If method is OFF, then we do not need to check the corresponding
+	 * ipconfig state.
+	 */
+	if (target4 == CONNMAN_IPCONFIG_METHOD_OFF) {
+		if (service6 != CONNMAN_IPCONFIG_METHOD_OFF) {
+			if (target->state_ipv6 != service->state_ipv6)
+				return __connman_error_invalid_service(msg);
+		}
+	}
+
+	if (target6 == CONNMAN_IPCONFIG_METHOD_OFF) {
+		if (service4 != CONNMAN_IPCONFIG_METHOD_OFF) {
+			if (target->state_ipv4 != service->state_ipv4)
+				return __connman_error_invalid_service(msg);
+		}
+	}
+
+	if (service4 == CONNMAN_IPCONFIG_METHOD_OFF) {
+		if (target6 != CONNMAN_IPCONFIG_METHOD_OFF) {
+			if (target->state_ipv6 != service->state_ipv6)
+				return __connman_error_invalid_service(msg);
+		}
+	}
+
+	if (service6 == CONNMAN_IPCONFIG_METHOD_OFF) {
+		if (target4 != CONNMAN_IPCONFIG_METHOD_OFF) {
+			if (target->state_ipv4 != service->state_ipv4)
+				return __connman_error_invalid_service(msg);
+		}
+	}
 
 	g_get_current_time(&service->modified);
 	__connman_storage_save_service(service);
