@@ -181,60 +181,6 @@ void __connman_storage_delete_config(const char *ident)
 	__connman_storage_delete(ident, CONFIG_SUFFIX);
 }
 
-int __connman_storage_init_profile(void)
-{
-	GSList *list;
-
-	DBG("");
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->profile_init) {
-			if (storage->profile_init() == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_load_profile(struct connman_profile *profile)
-{
-	GSList *list;
-
-	DBG("profile %p", profile);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->profile_load) {
-			if (storage->profile_load(profile) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_save_profile(struct connman_profile *profile)
-{
-	GSList *list;
-
-	DBG("profile %p", profile);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->profile_save) {
-			if (storage->profile_save(profile) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
 int __connman_storage_load_service(struct connman_service *service)
 {
 	GSList *list;

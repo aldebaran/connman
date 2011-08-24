@@ -348,7 +348,6 @@ int main(int argc, char *argv[])
 	__connman_tethering_init();
 	__connman_counter_init();
 	__connman_manager_init();
-	__connman_profile_init();
 	__connman_config_init();
 	__connman_stats_init();
 	__connman_clock_init();
@@ -364,8 +363,6 @@ int main(int argc, char *argv[])
 	__connman_connection_init();
 
 	__connman_plugin_init(option_plugin, option_noplugin);
-
-	__connman_storage_init_profile();
 
 	__connman_rtnl_start();
 	__connman_dhcp_init();
@@ -401,7 +398,6 @@ int main(int argc, char *argv[])
 	__connman_clock_cleanup();
 	__connman_stats_cleanup();
 	__connman_config_cleanup();
-	__connman_profile_cleanup();
 	__connman_manager_cleanup();
 	__connman_counter_cleanup();
 	__connman_agent_cleanup();

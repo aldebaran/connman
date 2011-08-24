@@ -22,7 +22,6 @@
 #ifndef __CONNMAN_STORAGE_H
 #define __CONNMAN_STORAGE_H
 
-#include <connman/profile.h>
 #include <connman/service.h>
 #include <connman/device.h>
 #include <connman/technology.h>
@@ -44,9 +43,6 @@ extern "C" {
 struct connman_storage {
 	const char *name;
 	int priority;
-	int (*profile_init) (void);
-	int (*profile_load) (struct connman_profile *profile);
-	int (*profile_save) (struct connman_profile *profile);
 	enum connman_service_type service_type;
 	int (*service_load) (struct connman_service *service);
 	int (*service_save) (struct connman_service *service);

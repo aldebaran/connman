@@ -13,7 +13,7 @@ nodist_include_HEADERS = include/version.h
 
 noinst_HEADERS = include/rtnl.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
-			include/profile.h include/provider.h \
+			include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
 			include/location.h include/technology.h \
 			include/setting.h
@@ -71,7 +71,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c \
 			src/device.c src/network.c src/connection.c \
-			src/manager.c src/profile.c src/service.c \
+			src/manager.c src/service.c \
 			src/clock.c src/timezone.c \
 			src/agent.c src/notifier.c src/provider.c \
 			src/resolver.c src/ipconfig.c src/detect.c src/inet.c \

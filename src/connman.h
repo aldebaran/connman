@@ -162,9 +162,6 @@ void __connman_storage_close_config(const char *ident,
 					GKeyFile *keyfile, gboolean save);
 void __connman_storage_delete_config(const char *ident);
 
-int __connman_storage_init_profile(void);
-int __connman_storage_load_profile(struct connman_profile *profile);
-int __connman_storage_save_profile(struct connman_profile *profile);
 int __connman_storage_load_service(struct connman_service *service);
 int __connman_storage_save_service(struct connman_service *service);
 int __connman_storage_load_technology(struct connman_technology *technology);
@@ -406,24 +403,6 @@ int __connman_config_load_service(GKeyFile *keyfile, const char *group, connman_
 int __connman_config_provision_service(struct connman_service *service);
 int __connman_config_provision_service_ident(struct connman_service *service,
 							const char *ident);
-
-#include <connman/profile.h>
-
-int __connman_profile_init();
-void __connman_profile_cleanup(void);
-
-connman_bool_t __connman_profile_get_offlinemode(void);
-int __connman_profile_set_offlinemode(connman_bool_t offlinemode);
-int __connman_profile_save_default(void);
-
-void __connman_profile_list(DBusMessageIter *iter, void *user_data);
-const char *__connman_profile_active_ident(void);
-const char *__connman_profile_active_path(void);
-
-int __connman_profile_create(const char *name, const char **path);
-int __connman_profile_remove(const char *path);
-
-void __connman_profile_changed(gboolean delayed);
 
 int __connman_tethering_init(void);
 void __connman_tethering_cleanup(void);

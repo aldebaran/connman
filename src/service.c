@@ -76,7 +76,6 @@ struct connman_service {
 	char *name;
 	char *passphrase;
 	char *agent_passphrase;
-	char *profile;
 	connman_bool_t roaming;
 	connman_bool_t login_required;
 	connman_bool_t network_created;
@@ -3152,7 +3151,6 @@ static void service_free(gpointer user_data)
 
 	g_free(service->domainname);
 	g_free(service->pac);
-	g_free(service->profile);
 	g_free(service->name);
 	g_free(service->passphrase);
 	g_free(service->agent_passphrase);
@@ -4561,8 +4559,6 @@ static struct connman_service *service_get(const char *identifier)
 
 	service->identifier = g_strdup(identifier);
 
-	service->profile = g_strdup(__connman_profile_active_ident());
-
 	iter = g_sequence_insert_sorted(service_list, service,
 						service_compare, NULL);
 
@@ -4573,7 +4569,6 @@ static struct connman_service *service_get(const char *identifier)
 
 static int service_register(struct connman_service *service)
 {
-	const char *path = __connman_profile_active_path();
 	GSequenceIter *iter;
 
 	DBG("service %p", service);
@@ -4581,7 +4576,8 @@ static int service_register(struct connman_service *service)
 	if (service->path != NULL)
 		return -EALREADY;
 
-	service->path = g_strdup_printf("%s/%s", path, service->identifier);
+	service->path = g_strdup_printf("%s/service/%s", CONNMAN_PATH,
+						service->identifier);
 
 	DBG("path %s", service->path);
 
@@ -4735,7 +4731,7 @@ static void setup_ip6config(struct connman_service *service, int index)
 
 void __connman_service_read_ip4config(struct connman_service *service)
 {
-	const char *ident = service->profile;
+	const char *ident = "default";
 	GKeyFile *keyfile;
 
 	if (ident == NULL)
@@ -4768,7 +4764,7 @@ void __connman_service_create_ip4config(struct connman_service *service,
 
 void __connman_service_read_ip6config(struct connman_service *service)
 {
-	const char *ident = service->profile;
+	const char *ident = "default";
 	GKeyFile *keyfile;
 
 	if (ident == NULL)
@@ -5228,7 +5224,7 @@ void __connman_service_downgrade_state(struct connman_service *service)
 
 static int service_load(struct connman_service *service)
 {
-	const char *ident = service->profile;
+	const char *ident = "default";
 	GKeyFile *keyfile;
 	GError *error = NULL;
 	gchar *pathname, *data = NULL;
@@ -5417,7 +5413,7 @@ done:
 
 static int service_save(struct connman_service *service)
 {
-	const char *ident = service->profile;
+	const char *ident = "default";
 	GKeyFile *keyfile;
 	gchar *pathname, *data = NULL;
 	gsize length;
