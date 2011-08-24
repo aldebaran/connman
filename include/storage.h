@@ -25,6 +25,7 @@
 #include <connman/profile.h>
 #include <connman/service.h>
 #include <connman/device.h>
+#include <connman/technology.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -52,6 +53,8 @@ struct connman_storage {
 	enum connman_device_type device_type;
 	int (*device_load) (struct connman_device *device);
 	int (*device_save) (struct connman_device *device);
+	int (*tech_load) (struct connman_technology *technology);
+	int (*tech_save) (struct connman_technology *technology);
 };
 
 int connman_storage_register(struct connman_storage *storage);

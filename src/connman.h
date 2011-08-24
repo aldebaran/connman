@@ -174,6 +174,8 @@ int __connman_storage_load_service(struct connman_service *service);
 int __connman_storage_save_service(struct connman_service *service);
 int __connman_storage_load_device(struct connman_device *device);
 int __connman_storage_save_device(struct connman_device *device);
+int __connman_storage_load_technology(struct connman_technology *technology);
+int __connman_storage_save_technology(struct connman_technology *technology);
 
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);

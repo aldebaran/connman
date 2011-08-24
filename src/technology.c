@@ -64,6 +64,8 @@ struct connman_technology {
 	char *tethering_ident;
 	char *tethering_passphrase;
 
+	connman_bool_t enable_persistent; /* Save the tech state */
+
 	struct connman_technology_driver *driver;
 	void *driver_data;
 
@@ -483,6 +485,8 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->pending_reply = NULL;
 	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 
+	__connman_storage_load_technology(technology);
+
 	if (g_dbus_register_interface(connection, technology->path,
 					CONNMAN_TECHNOLOGY_INTERFACE,
 					technology_methods, technology_signals,
@@ -739,8 +743,16 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 		goto done;
 	}
 
-	if (msg != NULL)
+	if (msg != NULL) {
 		technology->pending_reply = dbus_message_ref(msg);
+		/*
+		 * This is a bit of a trick. When msg is not NULL it means
+		 * thats technology_enable was invoked from the manager API. Hence we save
+		 * the state here.
+		 */
+		technology->enable_persistent = TRUE;
+		__connman_storage_save_technology(technology);
+	}
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
@@ -829,8 +841,11 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 		goto done;
 	}
 
-	if (msg != NULL)
+	if (msg != NULL) {
 		technology->pending_reply = dbus_message_ref(msg);
+		technology->enable_persistent = FALSE;
+		__connman_storage_save_technology(technology);
+	}
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
@@ -1007,13 +1022,80 @@ connman_bool_t __connman_technology_get_blocked(enum connman_service_type type)
 	return FALSE;
 }
 
+static int technology_load(struct connman_technology *technology)
+{
+	const char *ident = __connman_profile_active_ident();
+	GKeyFile *keyfile;
+	gchar *identifier;
+	GError *error = NULL;
+	connman_bool_t enable;
+
+	DBG("technology %p", technology);
+
+	keyfile = __connman_storage_open_profile(ident);
+	if (keyfile == NULL)
+		return 0;
+
+	identifier = g_strdup_printf("%s", get_name(technology->type));
+	if (identifier == NULL)
+		goto done;
+
+	enable = g_key_file_get_boolean(keyfile, identifier, "Enable", &error);
+	if (error == NULL)
+		technology->enable_persistent = enable;
+	else
+		technology->enable_persistent = FALSE;
+
+	g_clear_error(&error);
+done:
+	g_free(identifier);
+
+	__connman_storage_close_profile(ident, keyfile, FALSE);
+
+	return 0;
+}
+
+static int technology_save(struct connman_technology *technology)
+{
+	const char *ident = __connman_profile_active_ident();
+	GKeyFile *keyfile;
+	gchar *identifier;
+
+	DBG("technology %p", technology);
+
+	keyfile = __connman_storage_open_profile(ident);
+	if (keyfile == NULL)
+		return 0;
+
+	identifier = g_strdup_printf("%s", get_name(technology->type));
+	if (identifier == NULL)
+		goto done;
+
+	g_key_file_set_boolean(keyfile, identifier, "Enable",
+				technology->enable_persistent);
+
+done:
+	g_free(identifier);
+
+	__connman_storage_close_profile(ident, keyfile, TRUE);
+
+	return 0;
+}
+
+static struct connman_storage tech_storage = {
+	.name		= "technology",
+	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
+	.tech_load	= technology_load,
+	.tech_save	= technology_save,
+};
+
 int __connman_technology_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
 
-	return 0;
+	return connman_storage_register(&tech_storage);
 }
 
 void __connman_technology_cleanup(void)
@@ -1021,4 +1103,6 @@ void __connman_technology_cleanup(void)
 	DBG("");
 
 	dbus_connection_unref(connection);
+
+	connman_storage_unregister(&tech_storage);
 }
