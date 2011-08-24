@@ -5158,6 +5158,25 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	return service;
 }
 
+void __connman_service_downgrade_state(struct connman_service *service)
+{
+	if (service == NULL)
+		return;
+
+	DBG("service %p state4 %d state6 %d", service, service->state_ipv4,
+						service->state_ipv6);
+
+	if (service->state_ipv4 == CONNMAN_SERVICE_STATE_ONLINE)
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	if (service->state_ipv6 == CONNMAN_SERVICE_STATE_ONLINE)
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+}
+
 static int service_load(struct connman_service *service)
 {
 	const char *ident = service->profile;
