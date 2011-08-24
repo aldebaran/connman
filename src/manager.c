@@ -50,11 +50,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_open(&array, &dict);
 
-	str = __connman_profile_active_path();
-	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "ActiveProfile",
-						DBUS_TYPE_OBJECT_PATH, &str);
-
 	connman_dbus_dict_append_array(&dict, "Services",
 			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
 	connman_dbus_dict_append_array(&dict, "Technologies",
@@ -64,7 +59,7 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_basic(&dict, "State",
 						DBUS_TYPE_STRING, &str);
 
-	offlinemode = __connman_profile_get_offlinemode();
+	offlinemode = __connman_technology_get_offlinemode();
 	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
 
@@ -122,12 +117,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &offlinemode);
 
 		__connman_technology_set_offlinemode(offlinemode);
-	} else if (g_str_equal(name, "ActiveProfile") == TRUE) {
-		const char *str;
-
-		dbus_message_iter_get_basic(&value, &str);
-
-		return __connman_error_not_supported(msg);
 	} else if (g_str_equal(name, "SessionMode") == TRUE) {
 		connman_bool_t sessionmode;
 

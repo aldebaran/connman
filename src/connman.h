@@ -314,6 +314,7 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 int __connman_technology_disabled(enum connman_service_type type);
 int __connman_technology_disable(enum connman_service_type type, DBusMessage *msg);
 int __connman_technology_set_offlinemode(connman_bool_t offlinemode);
+connman_bool_t __connman_technology_get_offlinemode(void);
 
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,

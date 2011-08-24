@@ -34,6 +34,8 @@ static DBusConnection *connection;
 
 static GSList *technology_list = NULL;
 
+static connman_bool_t global_offlinemode;
+
 struct connman_rfkill {
 	unsigned int index;
 	enum connman_service_type type;
@@ -298,6 +300,49 @@ static const char *get_name(enum connman_service_type type)
 	}
 
 	return NULL;
+}
+
+connman_bool_t __connman_technology_get_offlinemode(void)
+{
+	return global_offlinemode;
+}
+
+static int connman_technology_save_offlinemode()
+{
+	GKeyFile *keyfile;
+
+	keyfile = __connman_storage_open_profile("default");
+	if (keyfile == NULL)
+		return -EIO;
+
+	g_key_file_set_boolean(keyfile, "global",
+					"OfflineMode", global_offlinemode);
+
+	__connman_storage_close_profile("default", keyfile, TRUE);
+
+	return 0;
+}
+
+static connman_bool_t connman_technology_load_offlinemode()
+{
+	GKeyFile *keyfile;
+	GError *error = NULL;
+	connman_bool_t offlinemode;
+
+	/* If there is a error, we enable offlinemode */
+	keyfile = __connman_storage_open_profile("default");
+	if (keyfile == NULL)
+		return TRUE;
+
+	offlinemode = g_key_file_get_boolean(keyfile, "global",
+						"OfflineMode", &error);
+	if (error != NULL) {
+		offlinemode = TRUE;
+		g_clear_error(&error);
+	}
+	__connman_storage_close_profile("default", keyfile, FALSE);
+
+	return offlinemode;
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -617,7 +662,6 @@ int __connman_technology_add_device(struct connman_device *device)
 {
 	struct connman_technology *technology;
 	enum connman_service_type type;
-	connman_bool_t offlinemode = __connman_profile_get_offlinemode();
 
 	DBG("device %p", device);
 
@@ -628,7 +672,7 @@ int __connman_technology_add_device(struct connman_device *device)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (technology->enable_persistent && !offlinemode)
+	if (technology->enable_persistent && !global_offlinemode)
 		__connman_device_enable(device);
 	/* if technology persistent state is offline */
 	if (!technology->enable_persistent)
@@ -855,7 +899,11 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 	GSList *list;
 	int err = -EINVAL;
 
+	if (global_offlinemode == offlinemode)
+		return 0;
+
 	DBG("offlinemode %s", offlinemode ? "On" : "Off");
+
 	/*
 	 * This is a bit tricky. When you set offlinemode, there is no
 	 * way to differentiate between attempting offline mode and
@@ -864,7 +912,8 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 	 * technology's persistent state. Hence we set the offline mode here
 	 * but save it & call the notifier only if its successful.
 	 */
-	__connman_profile_set_offlinemode(offlinemode);
+
+	global_offlinemode = offlinemode;
 
 	/* Traverse technology list, enable/disable each technology. */
 	for (list = technology_list; list; list = list->next) {
@@ -878,9 +927,10 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 	}
 
 	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
-		__connman_profile_save_default();
+		connman_technology_save_offlinemode();
 		__connman_notifier_offlinemode(offlinemode);
-	}
+	} else
+		global_offlinemode = connman_technology_load_offlinemode();
 
 	return err;
 }
@@ -892,7 +942,6 @@ int __connman_technology_add_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
-	connman_bool_t offlinemode = __connman_profile_get_offlinemode();
 
 	DBG("index %u type %d soft %u hard %u", index, type,
 							softblock, hardblock);
@@ -921,7 +970,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 	 * If Offline mode is on, we softblock the device if it isnt already.
 	 * If Offline mode is off, we rely on the persistent state of tech.
 	 */
-	if (offlinemode) {
+	if (global_offlinemode) {
 		if (!softblock)
 			return __connman_rfkill_block(type, TRUE);
 	} else {
@@ -942,7 +991,6 @@ int __connman_technology_update_rfkill(unsigned int index,
 {
 	struct connman_technology *technology;
 	struct connman_rfkill *rfkill;
-	connman_bool_t offlinemode = __connman_profile_get_offlinemode();
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
@@ -966,7 +1014,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 		return 0;
 	}
 
-	if (!offlinemode) {
+	if (!global_offlinemode) {
 		if (technology->enable_persistent && softblock)
 			return __connman_rfkill_block(type, FALSE);
 		if (!technology->enable_persistent && !softblock)
@@ -1001,7 +1049,6 @@ int __connman_technology_remove_rfkill(unsigned int index,
 
 static int technology_load(struct connman_technology *technology)
 {
-	const char *ident = __connman_profile_active_ident();
 	GKeyFile *keyfile;
 	gchar *identifier;
 	GError *error = NULL;
@@ -1009,7 +1056,7 @@ static int technology_load(struct connman_technology *technology)
 
 	DBG("technology %p", technology);
 
-	keyfile = __connman_storage_open_profile(ident);
+	keyfile = __connman_storage_open_profile("default");
 	if (keyfile == NULL)
 		return 0;
 
@@ -1027,20 +1074,19 @@ static int technology_load(struct connman_technology *technology)
 done:
 	g_free(identifier);
 
-	__connman_storage_close_profile(ident, keyfile, FALSE);
+	__connman_storage_close_profile("default", keyfile, FALSE);
 
 	return 0;
 }
 
 static int technology_save(struct connman_technology *technology)
 {
-	const char *ident = __connman_profile_active_ident();
 	GKeyFile *keyfile;
 	gchar *identifier;
 
 	DBG("technology %p", technology);
 
-	keyfile = __connman_storage_open_profile(ident);
+	keyfile = __connman_storage_open_profile("default");
 	if (keyfile == NULL)
 		return 0;
 
@@ -1054,7 +1100,7 @@ static int technology_save(struct connman_technology *technology)
 done:
 	g_free(identifier);
 
-	__connman_storage_close_profile(ident, keyfile, TRUE);
+	__connman_storage_close_profile("default", keyfile, TRUE);
 
 	return 0;
 }
@@ -1071,6 +1117,8 @@ int __connman_technology_init(void)
 	DBG("");
 
 	connection = connman_dbus_get_connection();
+
+	global_offlinemode = connman_technology_load_offlinemode();
 
 	return connman_storage_register(&tech_storage);
 }
