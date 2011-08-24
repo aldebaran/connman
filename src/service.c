@@ -297,6 +297,384 @@ static enum connman_service_proxy_method string2proxymethod(const char *method)
 		return CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN;
 }
 
+static int service_load(struct connman_service *service)
+{
+	const char *ident = "default";
+	GKeyFile *keyfile;
+	GError *error = NULL;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	gchar *str;
+	connman_bool_t autoconnect;
+	unsigned int ssid_len;
+	int err = 0;
+
+	DBG("service %p", service);
+
+	if (ident == NULL)
+		return -EINVAL;
+
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
+		g_free(pathname);
+		return -ENOENT;
+	}
+
+	g_free(pathname);
+
+	if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE) {
+		g_free(data);
+		return -EILSEQ;
+	}
+
+	g_free(data);
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		if (service->name == NULL) {
+			gchar *name;
+
+			name = g_key_file_get_string(keyfile,
+					service->identifier, "Name", NULL);
+			if (name != NULL) {
+				g_free(service->name);
+				service->name = name;
+			}
+
+			if (service->network != NULL)
+				connman_network_set_name(service->network,
+									name);
+		}
+
+		if (service->network &&
+				connman_network_get_blob(service->network,
+					"WiFi.SSID", &ssid_len) == NULL) {
+			gchar *hex_ssid;
+
+			hex_ssid = g_key_file_get_string(keyfile,
+							service->identifier,
+								"SSID", NULL);
+
+			if (hex_ssid != NULL) {
+				gchar *ssid;
+				unsigned int i, j = 0, hex;
+				size_t hex_ssid_len = strlen(hex_ssid);
+
+				ssid = g_try_malloc0(hex_ssid_len / 2);
+				if (ssid == NULL) {
+					g_free(hex_ssid);
+					err = -ENOMEM;
+					goto done;
+				}
+
+				for (i = 0; i < hex_ssid_len; i += 2) {
+					sscanf(hex_ssid + i, "%02x", &hex);
+					ssid[j++] = hex;
+				}
+
+				connman_network_set_blob(service->network,
+					"WiFi.SSID", ssid, hex_ssid_len / 2);
+			}
+
+			g_free(hex_ssid);
+		}
+		/* fall through */
+
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		service->favorite = g_key_file_get_boolean(keyfile,
+				service->identifier, "Favorite", NULL);
+
+		autoconnect = g_key_file_get_boolean(keyfile,
+				service->identifier, "AutoConnect", &error);
+		if (error == NULL)
+			service->autoconnect = autoconnect;
+		g_clear_error(&error);
+
+		str = g_key_file_get_string(keyfile,
+				service->identifier, "Failure", NULL);
+		if (str != NULL) {
+			if (service->favorite == FALSE)
+				service->state_ipv4 = service->state_ipv6 =
+					CONNMAN_SERVICE_STATE_FAILURE;
+			service->error = string2error(str);
+		}
+		break;
+	}
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Modified", NULL);
+	if (str != NULL) {
+		g_time_val_from_iso8601(str, &service->modified);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Passphrase", NULL);
+	if (str != NULL) {
+		g_free(service->passphrase);
+		service->passphrase = str;
+	}
+
+	if (service->ipconfig_ipv4 != NULL)
+		__connman_ipconfig_load(service->ipconfig_ipv4, keyfile,
+					service->identifier, "IPv4.");
+
+	if (service->ipconfig_ipv6 != NULL)
+		__connman_ipconfig_load(service->ipconfig_ipv6, keyfile,
+					service->identifier, "IPv6.");
+
+	service->nameservers_config = g_key_file_get_string_list(keyfile,
+			service->identifier, "Nameservers", &length, NULL);
+	if (service->nameservers_config != NULL && length == 0) {
+		g_strfreev(service->nameservers_config);
+		service->nameservers_config = NULL;
+	}
+
+	service->domains = g_key_file_get_string_list(keyfile,
+			service->identifier, "Domains", &length, NULL);
+	if (service->domains != NULL && length == 0) {
+		g_strfreev(service->domains);
+		service->domains = NULL;
+	}
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Proxy.Method", NULL);
+	if (str != NULL)
+		service->proxy_config = string2proxymethod(str);
+
+	g_free(str);
+
+	service->proxies = g_key_file_get_string_list(keyfile,
+			service->identifier, "Proxy.Servers", &length, NULL);
+	if (service->proxies != NULL && length == 0) {
+		g_strfreev(service->proxies);
+		service->proxies = NULL;
+	}
+
+	service->excludes = g_key_file_get_string_list(keyfile,
+			service->identifier, "Proxy.Excludes", &length, NULL);
+	if (service->excludes != NULL && length == 0) {
+		g_strfreev(service->excludes);
+		service->excludes = NULL;
+	}
+
+	str = g_key_file_get_string(keyfile,
+				service->identifier, "Proxy.URL", NULL);
+	if (str != NULL) {
+		g_free(service->pac);
+		service->pac = str;
+	}
+
+done:
+	g_key_file_free(keyfile);
+
+	return err;
+}
+
+static int service_save(struct connman_service *service)
+{
+	const char *ident = "default";
+	GKeyFile *keyfile;
+	gchar *pathname, *data = NULL;
+	gsize length;
+	gchar *str;
+	const char *cst_str = NULL;
+	int err = 0;
+
+	DBG("service %p", service);
+
+	if (ident == NULL)
+		return -EINVAL;
+
+	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
+	if (pathname == NULL)
+		return -ENOMEM;
+
+	keyfile = g_key_file_new();
+
+	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
+		goto update;
+
+	if (length > 0) {
+		if (g_key_file_load_from_data(keyfile, data, length,
+							0, NULL) == FALSE)
+			goto done;
+	}
+
+	g_free(data);
+
+update:
+	if (service->name != NULL)
+		g_key_file_set_string(keyfile, service->identifier,
+						"Name", service->name);
+
+	switch (service->type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		break;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		if (service->network) {
+			const unsigned char *ssid;
+			unsigned int ssid_len = 0;
+
+			ssid = connman_network_get_blob(service->network,
+							"WiFi.SSID", &ssid_len);
+
+			if (ssid != NULL && ssid_len > 0 && ssid[0] != '\0') {
+				char *identifier = service->identifier;
+				GString *str;
+				unsigned int i;
+
+				str = g_string_sized_new(ssid_len * 2);
+				if (str == NULL) {
+					err = -ENOMEM;
+					goto done;
+				}
+
+				for (i = 0; i < ssid_len; i++)
+					g_string_append_printf(str,
+							"%02x", ssid[i]);
+
+				g_key_file_set_string(keyfile, identifier,
+							"SSID", str->str);
+
+				g_string_free(str, TRUE);
+			}
+		}
+		/* fall through */
+
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		g_key_file_set_boolean(keyfile, service->identifier,
+					"Favorite", service->favorite);
+
+		if (service->favorite == TRUE)
+			g_key_file_set_boolean(keyfile, service->identifier,
+					"AutoConnect", service->autoconnect);
+
+		if (service->state_ipv4 == CONNMAN_SERVICE_STATE_FAILURE ||
+			service->state_ipv6 == CONNMAN_SERVICE_STATE_FAILURE) {
+			const char *failure = error2string(service->error);
+			if (failure != NULL)
+				g_key_file_set_string(keyfile,
+							service->identifier,
+							"Failure", failure);
+		} else {
+			g_key_file_remove_key(keyfile, service->identifier,
+							"Failure", NULL);
+		}
+		break;
+	}
+
+	str = g_time_val_to_iso8601(&service->modified);
+	if (str != NULL) {
+		g_key_file_set_string(keyfile, service->identifier,
+							"Modified", str);
+		g_free(str);
+	}
+
+	if (service->passphrase != NULL && strlen(service->passphrase) > 0)
+		g_key_file_set_string(keyfile, service->identifier,
+					"Passphrase", service->passphrase);
+	else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Passphrase", NULL);
+
+	if (service->ipconfig_ipv4 != NULL)
+		__connman_ipconfig_save(service->ipconfig_ipv4, keyfile,
+					service->identifier, "IPv4.");
+
+	if (service->ipconfig_ipv6 != NULL)
+		__connman_ipconfig_save(service->ipconfig_ipv6, keyfile,
+						service->identifier, "IPv6.");
+
+	if (service->nameservers_config != NULL) {
+		guint len = g_strv_length(service->nameservers_config);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+								"Nameservers",
+				(const gchar **) service->nameservers_config, len);
+	} else
+	g_key_file_remove_key(keyfile, service->identifier,
+							"Nameservers", NULL);
+
+	if (service->domains != NULL) {
+		guint len = g_strv_length(service->domains);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+								"Domains",
+				(const gchar **) service->domains, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Domains", NULL);
+
+	cst_str = proxymethod2string(service->proxy_config);
+	if (cst_str != NULL)
+		g_key_file_set_string(keyfile, service->identifier,
+				"Proxy.Method", cst_str);
+
+	if (service->proxies != NULL) {
+		guint len = g_strv_length(service->proxies);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+				"Proxy.Servers",
+				(const gchar **) service->proxies, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+						"Proxy.Servers", NULL);
+
+	if (service->excludes != NULL) {
+		guint len = g_strv_length(service->excludes);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+				"Proxy.Excludes",
+				(const gchar **) service->excludes, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+						"Proxy.Excludes", NULL);
+
+	if (service->pac != NULL && strlen(service->pac) > 0)
+		g_key_file_set_string(keyfile, service->identifier,
+					"Proxy.URL", service->pac);
+	else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Proxy.URL", NULL);
+
+	data = g_key_file_to_data(keyfile, &length, NULL);
+
+	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
+		connman_error("Failed to store service information");
+
+done:
+	g_free(data);
+
+	g_key_file_free(keyfile);
+
+	g_free(pathname);
+
+	return err;
+}
+
 static guint changed_timeout = 0;
 
 static gboolean notify_services_changed(gpointer user_data)
@@ -2133,7 +2511,7 @@ void __connman_service_set_passphrase(struct connman_service *service,
 					"WiFi.Passphrase",
 					service->passphrase);
 
-	__connman_storage_save_service(service);
+	service_save(service);
 }
 
 void __connman_service_set_agent_passphrase(struct connman_service *service,
@@ -2423,7 +2801,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		autoconnect_changed(service);
 
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else if (g_str_equal(name, "Passphrase") == TRUE) {
 		const char *passphrase;
 
@@ -2484,7 +2862,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		update_nameservers(service);
 		dns_configuration_changed(service);
 
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
 		DBusMessageIter entry;
 		GString *str;
@@ -2520,7 +2898,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		update_nameservers(service);
 		domain_configuration_changed(service);
 
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else if (g_str_equal(name, "Proxy.Configuration") == TRUE) {
 		int err;
 
@@ -2536,7 +2914,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		__connman_notifier_proxy_changed(service);
 
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||
 			g_str_equal(name, "IPv6.Configuration")) {
 
@@ -2579,7 +2957,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			__connman_network_set_ipconfig(service->network,
 							ipv4, ipv6);
 
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -2609,7 +2987,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		set_idle(service);
 
 		g_get_current_time(&service->modified);
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else if (g_str_equal(name, "Passphrase") == TRUE) {
 		if (service->immutable == TRUE)
 			return __connman_error_not_supported(msg);
@@ -2619,7 +2997,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 
 		passphrase_changed(service);
 
-		__connman_storage_save_service(service);
+		service_save(service);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -2943,7 +3321,7 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	set_idle(service);
 
 	__connman_service_set_favorite(service, FALSE);
-	__connman_storage_save_service(service);
+	service_save(service);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -3037,7 +3415,7 @@ static DBusMessage *move_service(DBusConnection *conn,
 	}
 
 	g_get_current_time(&service->modified);
-	__connman_storage_save_service(service);
+	service_save(service);
 
 	src = g_hash_table_lookup(service_hash, service->identifier);
 	dst = g_hash_table_lookup(service_hash, target->identifier);
@@ -3104,7 +3482,7 @@ static void service_free(gpointer user_data)
 	__connman_notifier_service_remove(service);
 
 	stats_stop(service);
-	__connman_storage_save_service(service);
+	service_save(service);
 
 	service->path = NULL;
 
@@ -3583,7 +3961,7 @@ static void service_complete(struct connman_service *service)
 		__connman_service_auto_connect();
 
 	g_get_current_time(&service->modified);
-	__connman_storage_save_service(service);
+	service_save(service);
 }
 
 static void report_error_cb(struct connman_service *service,
@@ -3669,7 +4047,7 @@ static int __connman_service_indicate_state(struct connman_service *service)
 		service->userconnect = FALSE;
 
 		g_get_current_time(&service->modified);
-		__connman_storage_save_service(service);
+		service_save(service);
 
 		update_nameservers(service);
 		dns_changed(service);
@@ -4583,7 +4961,7 @@ static int service_register(struct connman_service *service)
 
 	__connman_config_provision_service(service);
 
-	__connman_storage_load_service(service);
+	service_load(service);
 
 	g_dbus_register_interface(connection, service->path,
 					CONNMAN_SERVICE_INTERFACE,
@@ -4632,7 +5010,7 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 	DBG("%s lower down", connman_ipconfig_get_ifname(ipconfig));
 
 	stats_stop(service);
-	__connman_storage_save_service(service);
+	service_save(service);
 }
 
 static void service_ip_bound(struct connman_ipconfig *ipconfig)
@@ -4731,16 +5109,12 @@ static void setup_ip6config(struct connman_service *service, int index)
 
 void __connman_service_read_ip4config(struct connman_service *service)
 {
-	const char *ident = "default";
 	GKeyFile *keyfile;
-
-	if (ident == NULL)
-		return;
 
 	if (service->ipconfig_ipv4 == NULL)
 		return;
 
-	keyfile = __connman_storage_open_profile(ident);
+	keyfile = __connman_storage_open_profile("default");
 	if (keyfile == NULL)
 		return;
 
@@ -4764,16 +5138,12 @@ void __connman_service_create_ip4config(struct connman_service *service,
 
 void __connman_service_read_ip6config(struct connman_service *service)
 {
-	const char *ident = "default";
 	GKeyFile *keyfile;
 
-	if (ident == NULL)
-		return;
 	if (service->ipconfig_ipv6 == NULL)
 		return;
 
-	keyfile = __connman_storage_open_profile(ident);
-
+	keyfile = __connman_storage_open_profile("default");
 	if (keyfile == NULL)
 		return;
 
@@ -5222,412 +5592,11 @@ void __connman_service_downgrade_state(struct connman_service *service)
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 }
 
-static int service_load(struct connman_service *service)
-{
-	const char *ident = "default";
-	GKeyFile *keyfile;
-	GError *error = NULL;
-	gchar *pathname, *data = NULL;
-	gsize length;
-	gchar *str;
-	connman_bool_t autoconnect;
-	unsigned int ssid_len;
-	int err = 0;
-
-	DBG("service %p", service);
-
-	if (ident == NULL)
-		return -EINVAL;
-
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
-		g_free(pathname);
-		return -ENOENT;
-	}
-
-	g_free(pathname);
-
-	if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE) {
-		g_free(data);
-		return -EILSEQ;
-	}
-
-	g_free(data);
-
-	switch (service->type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		break;
-	case CONNMAN_SERVICE_TYPE_WIFI:
-		if (service->name == NULL) {
-			gchar *name;
-
-			name = g_key_file_get_string(keyfile,
-					service->identifier, "Name", NULL);
-			if (name != NULL) {
-				g_free(service->name);
-				service->name = name;
-			}
-
-			if (service->network != NULL)
-				connman_network_set_name(service->network,
-									name);
-		}
-
-		if (service->network &&
-				connman_network_get_blob(service->network,
-					"WiFi.SSID", &ssid_len) == NULL) {
-			gchar *hex_ssid;
-
-			hex_ssid = g_key_file_get_string(keyfile,
-							service->identifier,
-								"SSID", NULL);
-
-			if (hex_ssid != NULL) {
-				gchar *ssid;
-				unsigned int i, j = 0, hex;
-				size_t hex_ssid_len = strlen(hex_ssid);
-
-				ssid = g_try_malloc0(hex_ssid_len / 2);
-				if (ssid == NULL) {
-					g_free(hex_ssid);
-					err = -ENOMEM;
-					goto done;
-				}
-
-				for (i = 0; i < hex_ssid_len; i += 2) {
-					sscanf(hex_ssid + i, "%02x", &hex);
-					ssid[j++] = hex;
-				}
-
-				connman_network_set_blob(service->network,
-					"WiFi.SSID", ssid, hex_ssid_len / 2);
-			}
-
-			g_free(hex_ssid);
-		}
-		/* fall through */
-
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		service->favorite = g_key_file_get_boolean(keyfile,
-				service->identifier, "Favorite", NULL);
-
-		autoconnect = g_key_file_get_boolean(keyfile,
-				service->identifier, "AutoConnect", &error);
-		if (error == NULL)
-			service->autoconnect = autoconnect;
-		g_clear_error(&error);
-
-		str = g_key_file_get_string(keyfile,
-				service->identifier, "Failure", NULL);
-		if (str != NULL) {
-			if (service->favorite == FALSE)
-				service->state_ipv4 = service->state_ipv6 =
-					CONNMAN_SERVICE_STATE_FAILURE;
-			service->error = string2error(str);
-		}
-		break;
-	}
-
-	str = g_key_file_get_string(keyfile,
-				service->identifier, "Modified", NULL);
-	if (str != NULL) {
-		g_time_val_from_iso8601(str, &service->modified);
-		g_free(str);
-	}
-
-	str = g_key_file_get_string(keyfile,
-				service->identifier, "Passphrase", NULL);
-	if (str != NULL) {
-		g_free(service->passphrase);
-		service->passphrase = str;
-	}
-
-	if (service->ipconfig_ipv4 != NULL)
-		__connman_ipconfig_load(service->ipconfig_ipv4, keyfile,
-					service->identifier, "IPv4.");
-
-	if (service->ipconfig_ipv6 != NULL)
-		__connman_ipconfig_load(service->ipconfig_ipv6, keyfile,
-					service->identifier, "IPv6.");
-
-	service->nameservers_config = g_key_file_get_string_list(keyfile,
-			service->identifier, "Nameservers", &length, NULL);
-	if (service->nameservers_config != NULL && length == 0) {
-		g_strfreev(service->nameservers_config);
-		service->nameservers_config = NULL;
-	}
-
-	service->domains = g_key_file_get_string_list(keyfile,
-			service->identifier, "Domains", &length, NULL);
-	if (service->domains != NULL && length == 0) {
-		g_strfreev(service->domains);
-		service->domains = NULL;
-	}
-
-	str = g_key_file_get_string(keyfile,
-				service->identifier, "Proxy.Method", NULL);
-	if (str != NULL)
-		service->proxy_config = string2proxymethod(str);
-
-	g_free(str);
-
-	service->proxies = g_key_file_get_string_list(keyfile,
-			service->identifier, "Proxy.Servers", &length, NULL);
-	if (service->proxies != NULL && length == 0) {
-		g_strfreev(service->proxies);
-		service->proxies = NULL;
-	}
-
-	service->excludes = g_key_file_get_string_list(keyfile,
-			service->identifier, "Proxy.Excludes", &length, NULL);
-	if (service->excludes != NULL && length == 0) {
-		g_strfreev(service->excludes);
-		service->excludes = NULL;
-	}
-
-	str = g_key_file_get_string(keyfile,
-				service->identifier, "Proxy.URL", NULL);
-	if (str != NULL) {
-		g_free(service->pac);
-		service->pac = str;
-	}
-
-done:
-	g_key_file_free(keyfile);
-
-	return err;
-}
-
-static int service_save(struct connman_service *service)
-{
-	const char *ident = "default";
-	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
-	gsize length;
-	gchar *str;
-	const char *cst_str = NULL;
-	int err = 0;
-
-	DBG("service %p", service);
-
-	if (ident == NULL)
-		return -EINVAL;
-
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
-		goto update;
-
-	if (length > 0) {
-		if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE)
-			goto done;
-	}
-
-	g_free(data);
-
-update:
-	if (service->name != NULL)
-		g_key_file_set_string(keyfile, service->identifier,
-						"Name", service->name);
-
-	switch (service->type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		break;
-	case CONNMAN_SERVICE_TYPE_WIFI:
-		if (service->network) {
-			const unsigned char *ssid;
-			unsigned int ssid_len = 0;
-
-			ssid = connman_network_get_blob(service->network,
-							"WiFi.SSID", &ssid_len);
-
-			if (ssid != NULL && ssid_len > 0 && ssid[0] != '\0') {
-				char *identifier = service->identifier;
-				GString *str;
-				unsigned int i;
-
-				str = g_string_sized_new(ssid_len * 2);
-				if (str == NULL) {
-					err = -ENOMEM;
-					goto done;
-				}
-
-				for (i = 0; i < ssid_len; i++)
-					g_string_append_printf(str,
-							"%02x", ssid[i]);
-
-				g_key_file_set_string(keyfile, identifier,
-							"SSID", str->str);
-
-				g_string_free(str, TRUE);
-			}
-		}
-		/* fall through */
-
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		g_key_file_set_boolean(keyfile, service->identifier,
-					"Favorite", service->favorite);
-
-		if (service->favorite == TRUE)
-			g_key_file_set_boolean(keyfile, service->identifier,
-					"AutoConnect", service->autoconnect);
-
-		if (service->state_ipv4 == CONNMAN_SERVICE_STATE_FAILURE ||
-			service->state_ipv6 == CONNMAN_SERVICE_STATE_FAILURE) {
-			const char *failure = error2string(service->error);
-			if (failure != NULL)
-				g_key_file_set_string(keyfile,
-							service->identifier,
-							"Failure", failure);
-		} else {
-			g_key_file_remove_key(keyfile, service->identifier,
-							"Failure", NULL);
-		}
-		break;
-	}
-
-	str = g_time_val_to_iso8601(&service->modified);
-	if (str != NULL) {
-		g_key_file_set_string(keyfile, service->identifier,
-							"Modified", str);
-		g_free(str);
-	}
-
-	if (service->passphrase != NULL && strlen(service->passphrase) > 0)
-		g_key_file_set_string(keyfile, service->identifier,
-					"Passphrase", service->passphrase);
-	else
-		g_key_file_remove_key(keyfile, service->identifier,
-							"Passphrase", NULL);
-
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-		break;
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-	case CONNMAN_SERVICE_STATE_FAILURE:
-		if (service->ipconfig_ipv4 != NULL)
-			__connman_ipconfig_save(service->ipconfig_ipv4,
-						keyfile, service->identifier,
-						"IPv4.");
-
-		if (service->ipconfig_ipv6 != NULL)
-			__connman_ipconfig_save(service->ipconfig_ipv6,
-						keyfile, service->identifier,
-						"IPv6.");
-	}
-
-	if (service->nameservers_config != NULL) {
-		guint len = g_strv_length(service->nameservers_config);
-
-		g_key_file_set_string_list(keyfile, service->identifier,
-								"Nameservers",
-				(const gchar **) service->nameservers_config, len);
-	} else
-		g_key_file_remove_key(keyfile, service->identifier,
-							"Nameservers", NULL);
-
-	if (service->domains != NULL) {
-		guint len = g_strv_length(service->domains);
-
-		g_key_file_set_string_list(keyfile, service->identifier,
-								"Domains",
-				(const gchar **) service->domains, len);
-	} else
-		g_key_file_remove_key(keyfile, service->identifier,
-							"Domains", NULL);
-
-	cst_str = proxymethod2string(service->proxy_config);
-	if (cst_str != NULL)
-		g_key_file_set_string(keyfile, service->identifier,
-				"Proxy.Method", cst_str);
-
-	if (service->proxies != NULL) {
-		guint len = g_strv_length(service->proxies);
-
-		g_key_file_set_string_list(keyfile, service->identifier,
-				"Proxy.Servers",
-				(const gchar **) service->proxies, len);
-	} else
-		g_key_file_remove_key(keyfile, service->identifier,
-						"Proxy.Servers", NULL);
-
-	if (service->excludes != NULL) {
-		guint len = g_strv_length(service->excludes);
-
-		g_key_file_set_string_list(keyfile, service->identifier,
-				"Proxy.Excludes",
-				(const gchar **) service->excludes, len);
-	} else
-		g_key_file_remove_key(keyfile, service->identifier,
-						"Proxy.Excludes", NULL);
-
-	if (service->pac != NULL && strlen(service->pac) > 0)
-		g_key_file_set_string(keyfile, service->identifier,
-					"Proxy.URL", service->pac);
-	else
-		g_key_file_remove_key(keyfile, service->identifier,
-							"Proxy.URL", NULL);
-
-	data = g_key_file_to_data(keyfile, &length, NULL);
-
-	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
-		connman_error("Failed to store service information");
-
-done:
-	g_free(data);
-
-	g_key_file_free(keyfile);
-
-	g_free(pathname);
-
-	return err;
-}
-
-static struct connman_storage service_storage = {
-	.name		= "service",
-	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
-	.service_load	= service_load,
-	.service_save	= service_save,
-};
-
 int __connman_service_init(void)
 {
 	DBG("");
 
 	connection = connman_dbus_get_connection();
-
-	if (connman_storage_register(&service_storage) < 0)
-		connman_error("Failed to register service storage");
 
 	service_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 								NULL, NULL);
@@ -5652,8 +5621,6 @@ void __connman_service_cleanup(void)
 
 	g_slist_free(counter_list);
 	counter_list = NULL;
-
-	connman_storage_unregister(&service_storage);
 
 	dbus_connection_unref(connection);
 }
