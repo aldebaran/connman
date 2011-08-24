@@ -1058,6 +1058,7 @@ static gboolean set_connected(gpointer user_data)
 
 	} else {
 		struct connman_service *service;
+		enum connman_service_state state;
 
 		__connman_device_set_network(network->device, NULL);
 
@@ -1075,11 +1076,24 @@ static gboolean set_connected(gpointer user_data)
 			break;
 		}
 
-		__connman_service_ipconfig_indicate_state(service,
+		/*
+		 * We only set the disconnect state if we were not in idle
+		 * or in failure. It does not make sense to go to disconnect
+		 * state if we were not connected.
+		 */
+		state = __connman_service_ipconfig_get_state(service,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+		if (state != CONNMAN_SERVICE_STATE_IDLE &&
+					state != CONNMAN_SERVICE_STATE_FAILURE)
+			__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-		__connman_service_ipconfig_indicate_state(service,
+		state = __connman_service_ipconfig_get_state(service,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+		if (state != CONNMAN_SERVICE_STATE_IDLE &&
+					state != CONNMAN_SERVICE_STATE_FAILURE)
+			__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_DISCONNECT,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
