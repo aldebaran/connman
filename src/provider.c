@@ -879,6 +879,9 @@ int connman_provider_append_route(struct connman_provider *provider,
 
 const char *connman_provider_get_driver_name(struct connman_provider *provider)
 {
+	if (provider->driver == NULL)
+		return NULL;
+
 	return provider->driver->name;
 }
 
