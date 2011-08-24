@@ -571,11 +571,12 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 			err = -EOPNOTSUPP;
 			goto unref;
 		}
-	}
 
-	err = __connman_service_connect(provider->vpn_service);
-	if (err < 0 && err != -EINPROGRESS)
-		goto failed;
+		err = __connman_service_connect(provider->vpn_service);
+		if (err < 0 && err != -EINPROGRESS)
+			goto failed;
+	} else
+		DBG("provider already connected");
 
 	service_path = __connman_service_get_path(provider->vpn_service);
 	g_dbus_send_reply(connection, msg,
