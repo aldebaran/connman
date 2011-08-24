@@ -675,7 +675,7 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
-int __connman_technology_enable(enum connman_service_type type)
+int __connman_technology_enabled(enum connman_service_type type)
 {
 	struct connman_technology *technology;
 
@@ -696,7 +696,37 @@ int __connman_technology_enable(enum connman_service_type type)
 	return 0;
 }
 
-int __connman_technology_disable(enum connman_service_type type)
+int __connman_technology_enable(enum connman_service_type type)
+{
+	struct connman_technology *technology;
+	GSList *list;
+	int err;
+	int ret = -ENODEV;
+
+	DBG("type %d enable", type);
+
+	technology = technology_find(type);
+	if (technology == NULL)
+		return -ENXIO;
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		err = __connman_device_enable_persistent(device);
+		/*
+		 * err = 0 : Device was enabled right away.
+		 * err = -EINPROGRESS : DBus call was successful.
+		 * If atleast one device gets enabled, we consider
+		 * the technology to be enabled.
+		 */
+		if (err == 0 || err == -EINPROGRESS)
+			ret = 0;
+	}
+
+	return ret;
+}
+
+int __connman_technology_disabled(enum connman_service_type type)
 {
 	struct connman_technology *technology;
 	GSList *list;
@@ -723,6 +753,30 @@ int __connman_technology_disable(enum connman_service_type type)
 	state_changed(technology);
 
 	return 0;
+}
+
+int __connman_technology_disable(enum connman_service_type type)
+{
+	struct connman_technology *technology;
+	GSList *list;
+	int err;
+	int ret = -ENODEV;
+
+	DBG("type %d disable", type);
+
+	technology = technology_find(type);
+	if (technology == NULL)
+		return -ENXIO;
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		err = __connman_device_disable_persistent(device);
+		if (err == 0 || err == -EINPROGRESS)
+			ret = 0;
+	}
+
+	return ret;
 }
 
 static void technology_blocked(struct connman_technology *technology,

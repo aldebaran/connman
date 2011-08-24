@@ -343,8 +343,8 @@ static DBusMessage *enable_technology(DBusConnection *conn,
 	technology_enabled = TRUE;
 	technology_pending = dbus_message_ref(msg);
 
-	err = __connman_device_enable_technology(type);
-	if (err < 0 && err != -EINPROGRESS)
+	err = __connman_technology_enable(type);
+	if (err < 0)
 		technology_reply(-err);
 	else
 		technology_timeout = g_timeout_add_seconds(15,
@@ -391,8 +391,8 @@ static DBusMessage *disable_technology(DBusConnection *conn,
 	technology_enabled = FALSE;
 	technology_pending = dbus_message_ref(msg);
 
-	err = __connman_device_disable_technology(type);
-	if (err < 0 && err != -EINPROGRESS)
+	err = __connman_technology_disable(type);
+	if (err < 0)
 		technology_reply(-err);
 	else
 		technology_timeout = g_timeout_add_seconds(10,

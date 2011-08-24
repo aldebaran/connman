@@ -314,8 +314,11 @@ void __connman_technology_list(DBusMessageIter *iter, void *user_data);
 
 int __connman_technology_add_device(struct connman_device *device);
 int __connman_technology_remove_device(struct connman_device *device);
+int __connman_technology_enabled(enum connman_service_type type);
 int __connman_technology_enable(enum connman_service_type type);
+int __connman_technology_disabled(enum connman_service_type type);
 int __connman_technology_disable(enum connman_service_type type);
+
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,
 						connman_bool_t softblock,
@@ -342,8 +345,6 @@ void __connman_device_list(DBusMessageIter *iter, void *user_data);
 enum connman_service_type __connman_device_get_service_type(struct connman_device *device);
 struct connman_device *__connman_device_find_device(enum connman_service_type type);
 int __connman_device_request_scan(enum connman_service_type type);
-int __connman_device_enable_technology(enum connman_service_type type);
-int __connman_device_disable_technology(enum connman_service_type type);
 
 connman_bool_t __connman_device_isfiltered(const char *devname);
 

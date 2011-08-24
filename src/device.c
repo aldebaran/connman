@@ -246,7 +246,7 @@ int __connman_device_enable(struct connman_device *device)
 		__connman_profile_set_offlinemode(FALSE, FALSE);
 
 	type = __connman_device_get_service_type(device);
-	__connman_technology_enable(type);
+	__connman_technology_enabled(type);
 
 	return 0;
 }
@@ -286,7 +286,7 @@ int __connman_device_disable(struct connman_device *device)
 	device->powered = FALSE;
 
 	type = __connman_device_get_service_type(device);
-	__connman_technology_disable(type);
+	__connman_technology_disabled(type);
 
 	return 0;
 }
@@ -680,9 +680,9 @@ int connman_device_set_powered(struct connman_device *device,
 	type = __connman_device_get_service_type(device);
 
 	if (device->powered == TRUE)
-		__connman_technology_enable(type);
+		__connman_technology_enabled(type);
 	else
-		__connman_technology_disable(type);
+		__connman_technology_disabled(type);
 
 	if (device->offlinemode == TRUE && powered == TRUE)
 		return connman_device_set_powered(device, FALSE);
@@ -1319,63 +1319,6 @@ int __connman_device_request_scan(enum connman_service_type type)
 	}
 
 	return 0;
-}
-
-static int set_technology(enum connman_service_type type, connman_bool_t enable)
-{
-	GSList *list;
-	int err;
-
-	DBG("type %d enable %d", type, enable);
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return 0;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		break;
-	}
-
-	for (list = device_list; list != NULL; list = list->next) {
-		struct connman_device *device = list->data;
-		enum connman_service_type service_type =
-			__connman_device_get_service_type(device);
-
-		if (service_type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
-				service_type != type) {
-			continue;
-		}
-
-		if (enable == TRUE)
-			err = __connman_device_enable_persistent(device);
-		else
-			err = __connman_device_disable_persistent(device);
-
-		if (err < 0 && err != -EINPROGRESS) {
-			DBG("err %d", err);
-			/* XXX maybe only a continue? */
-			return err;
-		}
-	}
-
-	return 0;
-}
-
-int __connman_device_enable_technology(enum connman_service_type type)
-{
-	return set_technology(type, TRUE);
-}
-
-int __connman_device_disable_technology(enum connman_service_type type)
-{
-	return set_technology(type, FALSE);
 }
 
 connman_bool_t __connman_device_isfiltered(const char *devname)
