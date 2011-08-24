@@ -743,75 +743,43 @@ static enum connman_service_state combine_state(
 		goto done;
 	}
 
-	if (state_a == CONNMAN_SERVICE_STATE_ASSOCIATION) {
-		if (state_b == CONNMAN_SERVICE_STATE_CONFIGURATION ||
-				state_b == CONNMAN_SERVICE_STATE_ONLINE ||
-				state_b == CONNMAN_SERVICE_STATE_READY)
-			result = state_b;
-		else
-			result = state_a;
-		goto done;
-	}
-
-	if (state_b == CONNMAN_SERVICE_STATE_ASSOCIATION) {
-		if (state_a == CONNMAN_SERVICE_STATE_CONFIGURATION ||
-				state_a == CONNMAN_SERVICE_STATE_ONLINE ||
-				state_a == CONNMAN_SERVICE_STATE_READY)
-			result = state_a;
-		else
-			result = state_b;
-		goto done;
-	}
-
-	if (state_a == CONNMAN_SERVICE_STATE_CONFIGURATION) {
-		if (state_b == CONNMAN_SERVICE_STATE_ONLINE ||
-				state_b == CONNMAN_SERVICE_STATE_READY)
-			result = state_b;
-		else
-			result = state_a;
-		goto done;
-	}
-
-	if (state_b == CONNMAN_SERVICE_STATE_CONFIGURATION) {
-		if (state_a == CONNMAN_SERVICE_STATE_ONLINE ||
-				state_a == CONNMAN_SERVICE_STATE_READY)
-			result = state_a;
-		else
-			result = state_b;
-		goto done;
-	}
-
-	if (state_a == CONNMAN_SERVICE_STATE_READY) {
-		if (state_b == CONNMAN_SERVICE_STATE_ONLINE ||
-				state_b == CONNMAN_SERVICE_STATE_DISCONNECT)
-			result = state_b;
-		else
-			result = state_a;
-		goto done;
-	}
-
-	if (state_b == CONNMAN_SERVICE_STATE_READY) {
-		if (state_a == CONNMAN_SERVICE_STATE_ONLINE ||
-				state_a == CONNMAN_SERVICE_STATE_DISCONNECT)
-			result = state_a;
-		else
-			result = state_b;
-		goto done;
-	}
-
 	if (state_a == CONNMAN_SERVICE_STATE_ONLINE) {
-		if (state_b == CONNMAN_SERVICE_STATE_DISCONNECT)
-			result = state_b;
-		else
-			result = state_a;
+		result = state_a;
 		goto done;
 	}
 
 	if (state_b == CONNMAN_SERVICE_STATE_ONLINE) {
-		if (state_a == CONNMAN_SERVICE_STATE_DISCONNECT)
-			result = state_a;
-		else
-			result = state_b;
+		result = state_b;
+		goto done;
+	}
+
+	if (state_a == CONNMAN_SERVICE_STATE_READY) {
+		result = state_a;
+		goto done;
+	}
+
+	if (state_b == CONNMAN_SERVICE_STATE_READY) {
+		result = state_b;
+		goto done;
+	}
+
+	if (state_a == CONNMAN_SERVICE_STATE_CONFIGURATION) {
+		result = state_a;
+		goto done;
+	}
+
+	if (state_b == CONNMAN_SERVICE_STATE_CONFIGURATION) {
+		result = state_b;
+		goto done;
+	}
+
+	if (state_a == CONNMAN_SERVICE_STATE_ASSOCIATION) {
+		result = state_a;
+		goto done;
+	}
+
+	if (state_b == CONNMAN_SERVICE_STATE_ASSOCIATION) {
+		result = state_b;
 		goto done;
 	}
 
