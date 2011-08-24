@@ -467,6 +467,9 @@ void __connman_service_set_string(struct connman_service *service,
 int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 					enum connman_service_state new_state,
 					enum connman_ipconfig_type type);
+enum connman_service_state __connman_service_ipconfig_get_state(
+					struct connman_service *service,
+					enum connman_ipconfig_type type);
 
 int __connman_service_indicate_error(struct connman_service *service,
 					enum connman_service_error error);

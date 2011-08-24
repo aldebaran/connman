@@ -4191,6 +4191,19 @@ int __connman_service_indicate_default(struct connman_service *service)
 	return 0;
 }
 
+enum connman_service_state __connman_service_ipconfig_get_state(
+					struct connman_service *service,
+					enum connman_ipconfig_type type)
+{
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		return service->state_ipv4;
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		return service->state_ipv6;
+
+	return CONNMAN_SERVICE_STATE_UNKNOWN;
+}
+
 static void check_proxy_setup(struct connman_service *service)
 {
 	/*
