@@ -764,26 +764,12 @@ static void interface_removed(GSupplicantInterface *interface)
 
 static void scan_started(GSupplicantInterface *interface)
 {
-	struct wifi_data *wifi;
-
 	DBG("");
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	if (wifi == NULL)
-		return;
 }
 
 static void scan_finished(GSupplicantInterface *interface)
 {
-	struct wifi_data *wifi;
-
 	DBG("");
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	if (wifi == NULL)
-		return;
 }
 
 static unsigned char calculate_strength(GSupplicantNetwork *supplicant_network)
