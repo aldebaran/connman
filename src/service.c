@@ -3990,15 +3990,15 @@ static int service_indicate_state(struct connman_service *service)
 	old_state = service->state;
 	new_state = combine_state(service->state_ipv4, service->state_ipv6);
 
-	if (old_state == new_state)
-		return -EALREADY;
-
 	DBG("service %p old %s - new %s/%s => %s",
 					service,
 					state2string(old_state),
 					state2string(service->state_ipv4),
 					state2string(service->state_ipv6),
 					state2string(new_state));
+
+	if (old_state == new_state)
+		return -EALREADY;
 
 	service->state = new_state;
 	state_changed(service);
