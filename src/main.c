@@ -293,12 +293,6 @@ int main(int argc, char *argv[])
 			perror("Failed to create storage directory");
 	}
 
-	if (mkdir(STORAGEDIR "/stats", S_IRUSR | S_IWUSR | S_IXUSR |
-				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
-		if (errno != EEXIST)
-			perror("Failed to create statistics directory");
-	}
-
 	umask(0077);
 
 	main_loop = g_main_loop_new(NULL, FALSE);

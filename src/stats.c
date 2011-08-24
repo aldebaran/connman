@@ -33,8 +33,12 @@
 #include <unistd.h>
 #include <string.h>
 #include <limits.h>
+#include <sys/stat.h>
 
 #include "connman.h"
+
+#define MODE		(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | \
+			S_IXGRP | S_IROTH | S_IXOTH)
 
 #ifdef TEMP_FAILURE_RETRY
 #define TFR TEMP_FAILURE_RETRY
@@ -345,7 +349,7 @@ static int stats_open(struct stats_file *file,
 
 static int stats_open_temp(struct stats_file *file)
 {
-	file->name = g_strdup_printf("%s/stats/stats.XXXXXX.tmp",
+	file->name = g_strdup_printf("%s/stats.XXXXXX.tmp",
 					STORAGEDIR);
 	file->fd = g_mkstemp_full(file->name, O_RDWR | O_CREAT, 0644);
 	if (file->fd < 0) {
@@ -667,7 +671,7 @@ static int stats_file_history_update(struct stats_file *data_file)
 int __connman_stats_service_register(struct connman_service *service)
 {
 	struct stats_file *file;
-	char *name;
+	char *name, *dir;
 	int err;
 
 	DBG("service %p", service);
@@ -683,9 +687,26 @@ int __connman_stats_service_register(struct connman_service *service)
 		return -EALREADY;
 	}
 
-	name = g_strdup_printf("%s/stats/%s.data", STORAGEDIR,
+	dir = g_strdup_printf("%s/%s", STORAGEDIR,
 				__connman_service_get_ident(service));
-	file->history_name = g_strdup_printf("%s/stats/%s.history", STORAGEDIR,
+
+	/* If the dir doesn't exist, create it */
+	if (!g_file_test(dir, G_FILE_TEST_IS_DIR)) {
+		if(mkdir(dir, MODE) < 0) {
+			if (errno != EEXIST) {
+				g_free(dir);
+
+				err = -errno;
+				goto err;
+			}
+		}
+	}
+
+	g_free(dir);
+
+	name = g_strdup_printf("%s/%s/data", STORAGEDIR,
+				__connman_service_get_ident(service));
+	file->history_name = g_strdup_printf("%s/%s/history", STORAGEDIR,
 				__connman_service_get_ident(service));
 
 	/* TODO: Use a global config file instead of hard coded value. */
