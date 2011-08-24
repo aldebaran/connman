@@ -744,7 +744,7 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
-		err = __connman_device_enable_persistent(device);
+		err = __connman_device_enable(device);
 		/*
 		 * err = 0 : Device was enabled right away.
 		 * If atleast one device gets enabled, we consider
@@ -827,7 +827,7 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
-		err = __connman_device_disable_persistent(device);
+		err = __connman_device_disable(device);
 		if (err == 0)
 			ret = 0;
 	}

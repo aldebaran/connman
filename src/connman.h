@@ -167,8 +167,6 @@ int __connman_storage_load_profile(struct connman_profile *profile);
 int __connman_storage_save_profile(struct connman_profile *profile);
 int __connman_storage_load_service(struct connman_service *service);
 int __connman_storage_save_service(struct connman_service *service);
-int __connman_storage_load_device(struct connman_device *device);
-int __connman_storage_save_device(struct connman_device *device);
 int __connman_storage_load_technology(struct connman_technology *technology);
 int __connman_storage_save_technology(struct connman_technology *technology);
 
@@ -358,9 +356,7 @@ void __connman_device_set_network(struct connman_device *device,
 void __connman_device_cleanup_networks(struct connman_device *device);
 
 int __connman_device_enable(struct connman_device *device);
-int __connman_device_enable_persistent(struct connman_device *device);
 int __connman_device_disable(struct connman_device *device);
-int __connman_device_disable_persistent(struct connman_device *device);
 int __connman_device_disconnect(struct connman_device *device);
 
 connman_bool_t __connman_device_scanning(struct connman_device *device);

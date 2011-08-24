@@ -271,42 +271,6 @@ int __connman_storage_save_service(struct connman_service *service)
 	return -ENOENT;
 }
 
-int __connman_storage_load_device(struct connman_device *device)
-{
-	GSList *list;
-
-	DBG("device %p", device);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->device_load) {
-			if (storage->device_load(device) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_save_device(struct connman_device *device)
-{
-	GSList *list;
-
-	DBG("device %p", device);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->device_save) {
-			if (storage->device_save(device) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
 int __connman_storage_load_technology(struct connman_technology *technology)
 {
 	GSList *list;

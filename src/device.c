@@ -44,7 +44,6 @@ struct connman_device {
 	enum connman_pending_type powered_pending;	/* Indicates a pending
 							enable/disable request */
 	connman_bool_t powered;
-	connman_bool_t powered_persistent;
 	connman_bool_t scanning;
 	connman_bool_t disconnected;
 	connman_bool_t reconnect;
@@ -487,8 +486,6 @@ struct connman_device *connman_device_create(const char *node,
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
 
-	device->powered_persistent = TRUE;
-
 	device->phyindex = -1;
 
 	device->backoff_interval = SCAN_INITIAL_DELAY;
@@ -707,28 +704,6 @@ static int device_scan(struct connman_device *device)
 	reset_scan_trigger(device);
 
 	return device->driver->scan(device);
-}
-
-int __connman_device_enable_persistent(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	device->powered_persistent = TRUE;
-
-	__connman_storage_save_device(device);
-
-	return __connman_device_enable(device);
-}
-
-int __connman_device_disable_persistent(struct connman_device *device)
-{
-	DBG("device %p", device);
-
-	device->powered_persistent = FALSE;
-
-	__connman_storage_save_device(device);
-
-	return __connman_device_disable(device);
 }
 
 int __connman_device_disconnect(struct connman_device *device)
@@ -1134,8 +1109,6 @@ static void device_remove(struct connman_device *device)
  */
 int connman_device_register(struct connman_device *device)
 {
-	__connman_storage_load_device(device);
-
 	return device_probe(device);
 }
 
@@ -1147,8 +1120,6 @@ int connman_device_register(struct connman_device *device)
  */
 void connman_device_unregister(struct connman_device *device)
 {
-	__connman_storage_save_device(device);
-
 	device_remove(device);
 }
 
@@ -1268,72 +1239,6 @@ nodevice:
 	return FALSE;
 }
 
-static int device_load(struct connman_device *device)
-{
-	const char *ident = __connman_profile_active_ident();
-	GKeyFile *keyfile;
-	GError *error = NULL;
-	gchar *identifier;
-	connman_bool_t powered;
-
-	DBG("device %p", device);
-
-	keyfile = __connman_storage_open_profile(ident);
-	if (keyfile == NULL)
-		return 0;
-
-	identifier = g_strdup_printf("device_%s", device->name);
-	if (identifier == NULL)
-		goto done;
-
-	powered = g_key_file_get_boolean(keyfile, identifier,
-						"Powered", &error);
-	if (error == NULL)
-		device->powered_persistent = powered;
-	g_clear_error(&error);
-
-done:
-	g_free(identifier);
-
-	__connman_storage_close_profile(ident, keyfile, FALSE);
-
-	return 0;
-}
-
-static int device_save(struct connman_device *device)
-{
-	const char *ident = __connman_profile_active_ident();
-	GKeyFile *keyfile;
-	gchar *identifier;
-
-	DBG("device %p", device);
-
-	keyfile = __connman_storage_open_profile(ident);
-	if (keyfile == NULL)
-		return 0;
-
-	identifier = g_strdup_printf("device_%s", device->name);
-	if (identifier == NULL)
-		goto done;
-
-	g_key_file_set_boolean(keyfile, identifier,
-					"Powered", device->powered_persistent);
-
-done:
-	g_free(identifier);
-
-	__connman_storage_close_profile(ident, keyfile, TRUE);
-
-	return 0;
-}
-
-static struct connman_storage device_storage = {
-	.name		= "device",
-	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
-	.device_load	= device_load,
-	.device_save	= device_save,
-};
-
 int __connman_device_init(const char *device, const char *nodevice)
 {
 	DBG("");
@@ -1344,7 +1249,7 @@ int __connman_device_init(const char *device, const char *nodevice)
 	if (nodevice != NULL)
 		nodevice_filter = g_strsplit(nodevice, ",", -1);
 
-	return connman_storage_register(&device_storage);
+	return 0;
 }
 
 void __connman_device_cleanup(void)
@@ -1353,6 +1258,4 @@ void __connman_device_cleanup(void)
 
 	g_strfreev(nodevice_filter);
 	g_strfreev(device_filter);
-
-	connman_storage_unregister(&device_storage);
 }

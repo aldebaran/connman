@@ -50,9 +50,6 @@ struct connman_storage {
 	enum connman_service_type service_type;
 	int (*service_load) (struct connman_service *service);
 	int (*service_save) (struct connman_service *service);
-	enum connman_device_type device_type;
-	int (*device_load) (struct connman_device *device);
-	int (*device_save) (struct connman_device *device);
 	int (*tech_load) (struct connman_technology *technology);
 	int (*tech_save) (struct connman_technology *technology);
 };
