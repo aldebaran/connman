@@ -3297,9 +3297,21 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 	state_b = service_b->state;
 
 	if (state_a != state_b) {
-		if (is_connected(service_a) == TRUE)
+		gboolean a_connected = is_connected(service_a);
+		gboolean b_connected = is_connected(service_b);
+
+		if (a_connected == TRUE && b_connected == TRUE) {
+			/* We prefer online over ready state */
+			if (state_a == CONNMAN_SERVICE_STATE_ONLINE)
+				return -1;
+
+			if (state_b == CONNMAN_SERVICE_STATE_ONLINE)
+				return 1;
+		}
+
+		if (a_connected == TRUE)
 			return -1;
-		if (is_connected(service_b) == TRUE)
+		if (b_connected == TRUE)
 			return 1;
 
 		if (is_connecting(service_a) == TRUE)
