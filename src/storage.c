@@ -31,47 +31,6 @@
 #define PROFILE_SUFFIX	"profile"
 #define CONFIG_SUFFIX	"config"
 
-static GSList *storage_list = NULL;
-
-static gint compare_priority(gconstpointer a, gconstpointer b)
-{
-	const struct connman_storage *storage1 = a;
-	const struct connman_storage *storage2 = b;
-
-	return storage2->priority - storage1->priority;
-}
-
-/**
- * connman_storage_register:
- * @storage: storage module
- *
- * Register a new storage module
- *
- * Returns: %0 on success
- */
-int connman_storage_register(struct connman_storage *storage)
-{
-	DBG("storage %p name %s", storage, storage->name);
-
-	storage_list = g_slist_insert_sorted(storage_list, storage,
-							compare_priority);
-
-	return 0;
-}
-
-/**
- * connman_storage_unregister:
- * @storage: storage module
- *
- * Remove a previously registered storage module
- */
-void connman_storage_unregister(struct connman_storage *storage)
-{
-	DBG("storage %p name %s", storage, storage->name);
-
-	storage_list = g_slist_remove(storage_list, storage);
-}
-
 GKeyFile *__connman_storage_open(const char *ident, const char *suffix)
 {
 	GKeyFile *keyfile;
@@ -179,52 +138,4 @@ void __connman_storage_close_config(const char *ident,
 void __connman_storage_delete_config(const char *ident)
 {
 	__connman_storage_delete(ident, CONFIG_SUFFIX);
-}
-
-int __connman_storage_load_service(struct connman_service *service)
-{
-	GSList *list;
-
-	DBG("service %p", service);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->service_load) {
-			if (storage->service_load(service) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_save_service(struct connman_service *service)
-{
-	GSList *list;
-
-	DBG("service %p", service);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->service_save) {
-			if (storage->service_save(service) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_init(void)
-{
-	DBG("");
-
-	return 0;
-}
-
-void __connman_storage_cleanup(void)
-{
-	DBG("");
 }

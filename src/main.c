@@ -334,7 +334,6 @@ int main(int argc, char *argv[])
 
 	parse_config(config);
 
-	__connman_storage_init();
 	__connman_technology_init();
 	__connman_notifier_init();
 	__connman_location_init();
@@ -409,7 +408,6 @@ int main(int argc, char *argv[])
 	__connman_location_cleanup();
 	__connman_notifier_cleanup();
 	__connman_technology_cleanup();
-	__connman_storage_cleanup();
 
 	__connman_dbus_cleanup();
 

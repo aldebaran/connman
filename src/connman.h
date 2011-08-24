@@ -142,11 +142,6 @@ void __connman_resolver_cleanup(void);
 int __connman_resolvfile_append(const char *interface, const char *domain, const char *server);
 int __connman_resolvfile_remove(const char *interface, const char *domain, const char *server);
 
-#include <connman/storage.h>
-
-int __connman_storage_init(void);
-void __connman_storage_cleanup(void);
-
 GKeyFile *__connman_storage_open(const char *ident, const char *suffix);
 void __connman_storage_close(const char *ident, const char *suffix,
 					GKeyFile *keyfile, gboolean save);
@@ -161,9 +156,6 @@ GKeyFile *__connman_storage_open_config(const char *ident);
 void __connman_storage_close_config(const char *ident,
 					GKeyFile *keyfile, gboolean save);
 void __connman_storage_delete_config(const char *ident);
-
-int __connman_storage_load_service(struct connman_service *service);
-int __connman_storage_save_service(struct connman_service *service);
 
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
