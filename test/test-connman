@@ -61,7 +61,7 @@ elif sys.argv[1] in ["passphrase", "pass"]:
 		print "Need at least service parameter"
 		sys.exit(1)
 
-	path = "/profile/default/" + sys.argv[2]
+	path = "/net/connman/service/" + sys.argv[2]
 
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")
@@ -92,7 +92,7 @@ elif sys.argv[1] in ["autoconnect", "autoconn"]:
 		print "Need at least service parameter"
 		sys.exit(1)
 
-	path = "/profile/default/" + sys.argv[2]
+	path = "/net/connman/service/" + sys.argv[2]
 
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")
@@ -124,7 +124,7 @@ elif sys.argv[1] in ["connect", "conn"]:
 		print "Need at least service parameter"
 		sys.exit(1)
 
-	path = "/profile/default/" + sys.argv[2]
+	path = "/net/connman/service/" + sys.argv[2]
 
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")
@@ -139,7 +139,7 @@ elif sys.argv[1] in ["disconnect", "disc"]:
 		print "Need at least service parameter"
 		sys.exit(1)
 
-	path = "/profile/default/" + sys.argv[2]
+	path = "/net/connman/service/" + sys.argv[2]
 
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")
@@ -154,7 +154,7 @@ elif sys.argv[1] in ["remove"]:
 		print "Need at least service parameter"
 		sys.exit(1)
 
-	path = "/profile/default/" + sys.argv[2]
+	path = "/net/connman/service/" + sys.argv[2]
 
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")

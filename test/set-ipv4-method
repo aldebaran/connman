@@ -12,7 +12,7 @@ if (len(sys.argv) < 3):
 	sys.exit(1)
 
 bus = dbus.SystemBus()
-path = "/profile/default/" + sys.argv[1]
+path = "/net/connman/service/" + sys.argv[1]
 service = dbus.Interface(bus.get_object('net.connman', path),
 					'net.connman.Service')
 
