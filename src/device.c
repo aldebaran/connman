@@ -43,7 +43,6 @@ struct connman_device {
 	enum connman_device_type type;
 	enum connman_pending_type powered_pending;	/* Indicates a pending
 							enable/disable request */
-	connman_bool_t offlinemode;
 	connman_bool_t powered;
 	connman_bool_t powered_persistent;
 	connman_bool_t scanning;
@@ -672,9 +671,6 @@ int connman_device_set_powered(struct connman_device *device,
 	device->pending_timeout = 0;
 	device->powered_pending = PENDING_NONE;
 
-	if (device->offlinemode == TRUE && powered == TRUE)
-		return __connman_device_disable(device);
-
 	device->powered = powered;
 
 	type = __connman_device_get_service_type(device);
@@ -1139,8 +1135,6 @@ static void device_remove(struct connman_device *device)
 int connman_device_register(struct connman_device *device)
 {
 	__connman_storage_load_device(device);
-
-	device->offlinemode = __connman_profile_get_offlinemode();
 
 	return device_probe(device);
 }
