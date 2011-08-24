@@ -229,6 +229,7 @@ static struct gateway_data *add_gateway(struct connman_service *service,
 		}
 	}
 
+	connman_service_ref(service);
 	g_hash_table_replace(gateway_hash, service, data);
 
 	return data;
@@ -720,9 +721,10 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 			&& do_ipv4 == TRUE) ||
 		(data->ipv6_gateway != NULL && data->ipv4_gateway == NULL
 			&& do_ipv6 == TRUE)
-		)
+		) {
+		connman_service_unref(service);
 		g_hash_table_remove(gateway_hash, service);
-	else
+	} else
 		DBG("Not yet removing gw ipv4 %p/%d ipv6 %p/%d",
 			data->ipv4_gateway, do_ipv4,
 			data->ipv6_gateway, do_ipv6);
