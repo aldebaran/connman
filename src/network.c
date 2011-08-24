@@ -1332,6 +1332,9 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 	enum connman_ipconfig_method method;
 	int ret;
 
+	if (network == NULL)
+		return -EINVAL;
+
 	if (ipconfig_ipv6) {
 		method = __connman_ipconfig_get_method(ipconfig_ipv6);
 
