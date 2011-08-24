@@ -740,25 +740,13 @@ static int device_scan(struct connman_device *device)
 
 int __connman_device_enable_persistent(struct connman_device *device)
 {
-	int err;
-
 	DBG("device %p", device);
 
 	device->powered_persistent = TRUE;
 
 	__connman_storage_save_device(device);
 
-	err = __connman_device_enable(device);
-	if (err == 0 || err == -EINPROGRESS) {
-		device->offlinemode = FALSE;
-		if (__connman_profile_get_offlinemode() == TRUE) {
-			__connman_profile_set_offlinemode(FALSE, FALSE);
-
-			__connman_profile_save_default();
-		}
-	}
-
-	return err;
+	return __connman_device_enable(device);
 }
 
 int __connman_device_disable_persistent(struct connman_device *device)

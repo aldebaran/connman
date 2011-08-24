@@ -693,6 +693,11 @@ int __connman_technology_enabled(enum connman_service_type type)
 		state_changed(technology);
 	}
 
+	if (__connman_profile_get_offlinemode() == TRUE) {
+		__connman_profile_set_offlinemode(FALSE, FALSE);
+		__connman_profile_save_default();
+	}
+
 	return 0;
 }
 
