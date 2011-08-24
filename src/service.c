@@ -3979,7 +3979,7 @@ static void report_error_cb(struct connman_service *service,
 	}
 }
 
-static int __connman_service_indicate_state(struct connman_service *service)
+static int service_indicate_state(struct connman_service *service)
 {
 	enum connman_service_state old_state, new_state;
 	GSequenceIter *iter;
@@ -4289,7 +4289,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
 		service->state_ipv6 = new_state;
 
-	return __connman_service_indicate_state(service);
+	return service_indicate_state(service);
 }
 
 int __connman_service_request_login(struct connman_service *service)
