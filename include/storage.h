@@ -46,8 +46,6 @@ struct connman_storage {
 	enum connman_service_type service_type;
 	int (*service_load) (struct connman_service *service);
 	int (*service_save) (struct connman_service *service);
-	int (*tech_load) (struct connman_technology *technology);
-	int (*tech_save) (struct connman_technology *technology);
 };
 
 int connman_storage_register(struct connman_storage *storage);

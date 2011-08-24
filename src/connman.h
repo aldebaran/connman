@@ -164,8 +164,6 @@ void __connman_storage_delete_config(const char *ident);
 
 int __connman_storage_load_service(struct connman_service *service);
 int __connman_storage_save_service(struct connman_service *service);
-int __connman_storage_load_technology(struct connman_technology *technology);
-int __connman_storage_save_technology(struct connman_technology *technology);
 
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);

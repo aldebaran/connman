@@ -217,42 +217,6 @@ int __connman_storage_save_service(struct connman_service *service)
 	return -ENOENT;
 }
 
-int __connman_storage_load_technology(struct connman_technology *technology)
-{
-	GSList *list;
-
-	DBG("technology %p", technology);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->tech_load) {
-			if (storage->tech_load(technology) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
-int __connman_storage_save_technology(struct connman_technology *technology)
-{
-	GSList *list;
-
-	DBG("technology %p", technology);
-
-	for (list = storage_list; list; list = list->next) {
-		struct connman_storage *storage = list->data;
-
-		if (storage->tech_save) {
-			if (storage->tech_save(technology) == 0)
-				return 0;
-		}
-	}
-
-	return -ENOENT;
-}
-
 int __connman_storage_init(void)
 {
 	DBG("");

@@ -302,6 +302,64 @@ static const char *get_name(enum connman_service_type type)
 	return NULL;
 }
 
+static int load_state(struct connman_technology *technology)
+{
+	GKeyFile *keyfile;
+	gchar *identifier;
+	GError *error = NULL;
+	connman_bool_t enable;
+
+	DBG("technology %p", technology);
+
+	keyfile = __connman_storage_open_profile("default");
+	if (keyfile == NULL)
+		return 0;
+
+	identifier = g_strdup_printf("%s", get_name(technology->type));
+	if (identifier == NULL)
+		goto done;
+
+	enable = g_key_file_get_boolean(keyfile, identifier, "Enable", &error);
+	if (error == NULL)
+		technology->enable_persistent = enable;
+	else
+		technology->enable_persistent = FALSE;
+
+	g_clear_error(&error);
+done:
+	g_free(identifier);
+
+	__connman_storage_close_profile("default", keyfile, FALSE);
+
+	return 0;
+}
+
+static int save_state(struct connman_technology *technology)
+{
+	GKeyFile *keyfile;
+	gchar *identifier;
+
+	DBG("technology %p", technology);
+
+	keyfile = __connman_storage_open_profile("default");
+	if (keyfile == NULL)
+		return 0;
+
+	identifier = g_strdup_printf("%s", get_name(technology->type));
+	if (identifier == NULL)
+		goto done;
+
+	g_key_file_set_boolean(keyfile, identifier, "Enable",
+				technology->enable_persistent);
+
+done:
+	g_free(identifier);
+
+	__connman_storage_close_profile("default", keyfile, TRUE);
+
+	return 0;
+}
+
 connman_bool_t __connman_technology_get_offlinemode(void)
 {
 	return global_offlinemode;
@@ -526,7 +584,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->pending_reply = NULL;
 	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 
-	__connman_storage_load_technology(technology);
+	load_state(technology);
 
 	if (g_dbus_register_interface(connection, technology->path,
 					CONNMAN_TECHNOLOGY_INTERFACE,
@@ -780,7 +838,7 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 		 * the state here.
 		 */
 		technology->enable_persistent = TRUE;
-		__connman_storage_save_technology(technology);
+		save_state(technology);
 	}
 
 	__connman_rfkill_block(technology->type, FALSE);
@@ -863,7 +921,7 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 	if (msg != NULL) {
 		technology->pending_reply = dbus_message_ref(msg);
 		technology->enable_persistent = FALSE;
-		__connman_storage_save_technology(technology);
+		save_state(technology);
 	}
 
 	__connman_rfkill_block(technology->type, TRUE);
@@ -1047,71 +1105,6 @@ int __connman_technology_remove_rfkill(unsigned int index,
 	return 0;
 }
 
-static int technology_load(struct connman_technology *technology)
-{
-	GKeyFile *keyfile;
-	gchar *identifier;
-	GError *error = NULL;
-	connman_bool_t enable;
-
-	DBG("technology %p", technology);
-
-	keyfile = __connman_storage_open_profile("default");
-	if (keyfile == NULL)
-		return 0;
-
-	identifier = g_strdup_printf("%s", get_name(technology->type));
-	if (identifier == NULL)
-		goto done;
-
-	enable = g_key_file_get_boolean(keyfile, identifier, "Enable", &error);
-	if (error == NULL)
-		technology->enable_persistent = enable;
-	else
-		technology->enable_persistent = FALSE;
-
-	g_clear_error(&error);
-done:
-	g_free(identifier);
-
-	__connman_storage_close_profile("default", keyfile, FALSE);
-
-	return 0;
-}
-
-static int technology_save(struct connman_technology *technology)
-{
-	GKeyFile *keyfile;
-	gchar *identifier;
-
-	DBG("technology %p", technology);
-
-	keyfile = __connman_storage_open_profile("default");
-	if (keyfile == NULL)
-		return 0;
-
-	identifier = g_strdup_printf("%s", get_name(technology->type));
-	if (identifier == NULL)
-		goto done;
-
-	g_key_file_set_boolean(keyfile, identifier, "Enable",
-				technology->enable_persistent);
-
-done:
-	g_free(identifier);
-
-	__connman_storage_close_profile("default", keyfile, TRUE);
-
-	return 0;
-}
-
-static struct connman_storage tech_storage = {
-	.name		= "technology",
-	.priority	= CONNMAN_STORAGE_PRIORITY_LOW,
-	.tech_load	= technology_load,
-	.tech_save	= technology_save,
-};
-
 int __connman_technology_init(void)
 {
 	DBG("");
@@ -1120,7 +1113,7 @@ int __connman_technology_init(void)
 
 	global_offlinemode = connman_technology_load_offlinemode();
 
-	return connman_storage_register(&tech_storage);
+	return 0;
 }
 
 void __connman_technology_cleanup(void)
@@ -1128,6 +1121,4 @@ void __connman_technology_cleanup(void)
 	DBG("");
 
 	dbus_connection_unref(connection);
-
-	connman_storage_unregister(&tech_storage);
 }
