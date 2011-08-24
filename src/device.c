@@ -1015,49 +1015,6 @@ const char *connman_device_get_string(struct connman_device *device,
 	return NULL;
 }
 
-static void set_offlinemode(struct connman_device *device,
-				connman_bool_t offlinemode)
-{
-	connman_bool_t powered;
-
-	DBG("device %p name %s", device, device->name);
-
-	if (device == NULL)
-		return;
-
-	device->offlinemode = offlinemode;
-
-	if (device->blocked == TRUE)
-		return;
-
-	powered = (offlinemode == TRUE) ? FALSE : TRUE;
-
-	if (device->powered == powered)
-		return;
-
-	if (device->powered_persistent == FALSE)
-		powered = FALSE;
-
-	set_powered(device, powered);
-}
-
-int __connman_device_set_offlinemode(connman_bool_t offlinemode)
-{
-	GSList *list;
-
-	DBG("offlinmode %d", offlinemode);
-
-	for (list = device_list; list != NULL; list = list->next) {
-		struct connman_device *device = list->data;
-
-		set_offlinemode(device, offlinemode);
-	}
-
-	__connman_notifier_offlinemode(offlinemode);
-
-	return 0;
-}
-
 void __connman_device_increase_connections(struct connman_device *device)
 {
 	if (device == NULL)

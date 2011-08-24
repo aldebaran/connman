@@ -707,11 +707,6 @@ int __connman_technology_enabled(enum connman_service_type type)
 		state_changed(technology);
 	}
 
-	if (__connman_profile_get_offlinemode() == TRUE) {
-		__connman_profile_set_offlinemode(FALSE, FALSE);
-		__connman_profile_save_default();
-	}
-
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
 		dbus_message_unref(technology->pending_reply);
@@ -868,6 +863,33 @@ done:
 			if (reply != NULL)
 				g_dbus_send_message(connection, reply);
 		}
+	}
+
+	return err;
+}
+
+int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
+{
+	GSList *list;
+	int err = -EINVAL;
+
+	DBG("offlinemode %s", offlinemode ? "On" : "Off");
+
+	/* Traverse technology list, enable/disable each technology. */
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (offlinemode)
+			err = __connman_technology_disable(technology->type, NULL);
+		if (!offlinemode && technology->enable_persistent)
+			err = __connman_technology_enable(technology->type, NULL);
+	}
+
+	if (err == 0 || err == -EINPROGRESS) {
+		__connman_profile_set_offlinemode(offlinemode);
+		__connman_profile_save_default();
+
+		__connman_notifier_offlinemode(offlinemode);
 	}
 
 	return err;

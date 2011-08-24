@@ -320,6 +320,7 @@ int __connman_technology_enabled(enum connman_service_type type);
 int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg);
 int __connman_technology_disabled(enum connman_service_type type);
 int __connman_technology_disable(enum connman_service_type type, DBusMessage *msg);
+int __connman_technology_set_offlinemode(connman_bool_t offlinemode);
 
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,
@@ -382,8 +383,6 @@ connman_bool_t __connman_device_get_reconnect(struct connman_device *device);
 
 const char *__connman_device_get_type(struct connman_device *device);
 
-int __connman_device_set_offlinemode(connman_bool_t offlinemode);
-
 #include <connman/network.h>
 
 int __connman_network_init(void);
@@ -421,7 +420,7 @@ int __connman_profile_init();
 void __connman_profile_cleanup(void);
 
 connman_bool_t __connman_profile_get_offlinemode(void);
-int __connman_profile_set_offlinemode(connman_bool_t offlinemode, connman_bool_t all_devices);
+int __connman_profile_set_offlinemode(connman_bool_t offlinemode);
 int __connman_profile_save_default(void);
 
 void __connman_profile_list(DBusMessageIter *iter, void *user_data);

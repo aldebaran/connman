@@ -61,8 +61,7 @@ connman_bool_t __connman_profile_get_offlinemode(void)
 	return default_profile->offlinemode;
 }
 
-int __connman_profile_set_offlinemode(connman_bool_t offlinemode,
-					connman_bool_t all_devices)
+int __connman_profile_set_offlinemode(connman_bool_t offlinemode)
 {
 	DBG("offlinemode %d", offlinemode);
 
@@ -74,9 +73,6 @@ int __connman_profile_set_offlinemode(connman_bool_t offlinemode,
 
 	default_profile->offlinemode = offlinemode;
 	offlinemode_changed(default_profile);
-
-	if (all_devices)
-		__connman_device_set_offlinemode(offlinemode);
 
 	return 0;
 }
