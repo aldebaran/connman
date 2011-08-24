@@ -21,8 +21,7 @@ Properties	string State [readonly]
 
 			The technology state information.
 
-			Valid states are "offline", "available", "enabled"
-			and "connected".
+			Valid states are "offline", "enabled" and "connected".
 
 		string Name [readonly]
 
