@@ -4200,6 +4200,7 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 {
 	struct connman_ipconfig *ipconfig = NULL;
 	enum connman_service_state old_state;
+	int ret;
 
 	if (service == NULL)
 		return -EINVAL;
@@ -4257,7 +4258,32 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
 		service->state_ipv6 = new_state;
 
-	return service_indicate_state(service);
+	ret = service_indicate_state(service);
+
+	/*
+	 * If the ipconfig method is OFF, then we set the state to IDLE
+	 * so that it will not affect the combined state in the future.
+	 */
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		enum connman_ipconfig_method method;
+		method = __connman_ipconfig_get_method(service->ipconfig_ipv4);
+		if (method == CONNMAN_IPCONFIG_METHOD_OFF ||
+				method == CONNMAN_IPCONFIG_METHOD_UNKNOWN) {
+			service->state_ipv4 = CONNMAN_SERVICE_STATE_IDLE;
+			ret = service_indicate_state(service);
+		}
+
+	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		enum connman_ipconfig_method method;
+		method = __connman_ipconfig_get_method(service->ipconfig_ipv6);
+		if (method == CONNMAN_IPCONFIG_METHOD_OFF ||
+				method == CONNMAN_IPCONFIG_METHOD_UNKNOWN) {
+			service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;
+			ret = service_indicate_state(service);
+		}
+	}
+
+	return ret;
 }
 
 int __connman_service_request_login(struct connman_service *service)
