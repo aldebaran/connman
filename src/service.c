@@ -2912,6 +2912,22 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static gboolean check_suitable_state(enum connman_service_state a,
+					enum connman_service_state b)
+{
+	/*
+	 * Special check so that "ready" service can be moved before
+	 * "online" one.
+	 */
+	if ((a == CONNMAN_SERVICE_STATE_ONLINE &&
+			b == CONNMAN_SERVICE_STATE_READY) ||
+		(b == CONNMAN_SERVICE_STATE_ONLINE &&
+			a == CONNMAN_SERVICE_STATE_READY))
+		return TRUE;
+
+	return a == b;
+}
+
 static DBusMessage *move_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data,
 								gboolean before)
@@ -2954,28 +2970,32 @@ static DBusMessage *move_service(DBusConnection *conn,
 	 */
 	if (target4 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (service6 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (target->state_ipv6 != service->state_ipv6)
+			if (check_suitable_state(target->state_ipv6,
+						service->state_ipv6) == FALSE)
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (target6 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (service4 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (target->state_ipv4 != service->state_ipv4)
+			if (check_suitable_state(target->state_ipv4,
+						service->state_ipv4) == FALSE)
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (service4 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (target6 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (target->state_ipv6 != service->state_ipv6)
+			if (check_suitable_state(target->state_ipv6,
+						service->state_ipv6) == FALSE)
 				return __connman_error_invalid_service(msg);
 		}
 	}
 
 	if (service6 == CONNMAN_IPCONFIG_METHOD_OFF) {
 		if (target4 != CONNMAN_IPCONFIG_METHOD_OFF) {
-			if (target->state_ipv4 != service->state_ipv4)
+			if (check_suitable_state(target->state_ipv4,
+						service->state_ipv4) == FALSE)
 				return __connman_error_invalid_service(msg);
 		}
 	}
