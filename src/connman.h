@@ -315,9 +315,9 @@ void __connman_technology_list(DBusMessageIter *iter, void *user_data);
 int __connman_technology_add_device(struct connman_device *device);
 int __connman_technology_remove_device(struct connman_device *device);
 int __connman_technology_enabled(enum connman_service_type type);
-int __connman_technology_enable(enum connman_service_type type);
+int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg);
 int __connman_technology_disabled(enum connman_service_type type);
-int __connman_technology_disable(enum connman_service_type type);
+int __connman_technology_disable(enum connman_service_type type, DBusMessage *msg);
 
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,

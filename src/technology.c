@@ -68,6 +68,9 @@ struct connman_technology {
 
 	struct connman_technology_driver *driver;
 	void *driver_data;
+
+	DBusMessage *pending_reply;
+	guint pending_timeout;
 };
 
 static GSList *driver_list = NULL;
@@ -479,6 +482,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 							NULL, free_rfkill);
 	technology->device_list = NULL;
 
+	technology->pending_reply = NULL;
 	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 
 	if (g_dbus_register_interface(connection, technology->path,
@@ -675,6 +679,25 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
+static gboolean technology_pending_reply(gpointer user_data)
+{
+	struct connman_technology *technology = user_data;
+	DBusMessage *reply;
+
+	/* Power request timedout, send ETIMEDOUT. */
+	if (technology->pending_reply != NULL) {
+		reply = __connman_error_failed(technology->pending_reply, ETIMEDOUT);
+		if (reply != NULL)
+			g_dbus_send_message(connection, reply);
+
+		dbus_message_unref(technology->pending_reply);
+		technology->pending_reply = NULL;
+		technology->pending_timeout = 0;
+	}
+
+	return FALSE;
+}
+
 int __connman_technology_enabled(enum connman_service_type type)
 {
 	struct connman_technology *technology;
@@ -698,21 +721,39 @@ int __connman_technology_enabled(enum connman_service_type type)
 		__connman_profile_save_default();
 	}
 
+	if (technology->pending_reply != NULL) {
+		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
+		dbus_message_unref(technology->pending_reply);
+		technology->pending_reply = NULL;
+		technology->pending_timeout = 0;
+	}
+
 	return 0;
 }
 
-int __connman_technology_enable(enum connman_service_type type)
+int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg)
 {
 	struct connman_technology *technology;
 	GSList *list;
-	int err;
+	int err = 0;
 	int ret = -ENODEV;
+	DBusMessage *reply;
 
 	DBG("type %d enable", type);
 
 	technology = technology_find(type);
-	if (technology == NULL)
-		return -ENXIO;
+	if (technology == NULL) {
+		err = -ENXIO;
+		goto done;
+	}
+
+	if (technology->pending_reply != NULL) {
+		err = -EBUSY;
+		goto done;
+	}
+
+	if (msg != NULL)
+		technology->pending_reply = dbus_message_ref(msg);
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
@@ -720,15 +761,29 @@ int __connman_technology_enable(enum connman_service_type type)
 		err = __connman_device_enable_persistent(device);
 		/*
 		 * err = 0 : Device was enabled right away.
-		 * err = -EINPROGRESS : DBus call was successful.
 		 * If atleast one device gets enabled, we consider
 		 * the technology to be enabled.
 		 */
-		if (err == 0 || err == -EINPROGRESS)
+		if (err == 0)
 			ret = 0;
 	}
 
-	return ret;
+done:
+	if (ret == 0)
+		return ret;
+
+	if (msg != NULL) {
+		if (err == -EINPROGRESS)
+			technology->pending_timeout = g_timeout_add_seconds(10,
+					technology_pending_reply, technology);
+		else {
+			reply = __connman_error_failed(msg, -err);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		}
+	}
+
+	return err;
 }
 
 int __connman_technology_disabled(enum connman_service_type type)
@@ -739,6 +794,12 @@ int __connman_technology_disabled(enum connman_service_type type)
 	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
+
+	if (technology->pending_reply != NULL) {
+		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
+		dbus_message_unref(technology->pending_reply);
+		technology->pending_reply = NULL;
+	}
 
 	if (g_atomic_int_dec_and_test(&technology->enabled) == TRUE) {
 		__connman_notifier_disable(type);
@@ -760,28 +821,54 @@ int __connman_technology_disabled(enum connman_service_type type)
 	return 0;
 }
 
-int __connman_technology_disable(enum connman_service_type type)
+int __connman_technology_disable(enum connman_service_type type, DBusMessage *msg)
 {
 	struct connman_technology *technology;
 	GSList *list;
-	int err;
+	int err = 0;
 	int ret = -ENODEV;
+	DBusMessage *reply;
 
 	DBG("type %d disable", type);
 
 	technology = technology_find(type);
-	if (technology == NULL)
-		return -ENXIO;
+	if (technology == NULL) {
+		err = -ENXIO;
+		goto done;
+	}
+
+	if (technology->pending_reply != NULL) {
+		err = -EBUSY;
+		goto done;
+	}
+
+	if (msg != NULL)
+		technology->pending_reply = dbus_message_ref(msg);
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
 		err = __connman_device_disable_persistent(device);
-		if (err == 0 || err == -EINPROGRESS)
+		if (err == 0)
 			ret = 0;
 	}
 
-	return ret;
+done:
+	if (ret == 0)
+		return ret;
+
+	if (msg != NULL) {
+		if (err == -EINPROGRESS)
+			technology->pending_timeout = g_timeout_add_seconds(10,
+					technology_pending_reply, technology);
+		else {
+			reply = __connman_error_failed(msg, -err);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		}
+	}
+
+	return err;
 }
 
 static void technology_blocked(struct connman_technology *technology,
