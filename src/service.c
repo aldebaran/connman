@@ -5124,7 +5124,7 @@ void __connman_service_read_ip4config(struct connman_service *service)
 	if (service->ipconfig_ipv4 == NULL)
 		return;
 
-	keyfile = __connman_storage_open_profile("default");
+	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
 		return;
 
@@ -5153,7 +5153,7 @@ void __connman_service_read_ip6config(struct connman_service *service)
 	if (service->ipconfig_ipv6 == NULL)
 		return;
 
-	keyfile = __connman_storage_open_profile("default");
+	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
 		return;
 
@@ -5172,6 +5172,7 @@ void __connman_service_create_ip6config(struct connman_service *service,
 		return;
 
 	setup_ip6config(service, index);
+
 	__connman_service_read_ip6config(service);
 }
 

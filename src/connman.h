@@ -142,19 +142,14 @@ void __connman_resolver_cleanup(void);
 int __connman_resolvfile_append(const char *interface, const char *domain, const char *server);
 int __connman_resolvfile_remove(const char *interface, const char *domain, const char *server);
 
-GKeyFile *__connman_storage_open(const char *ident, const char *suffix);
-void __connman_storage_close(const char *ident, const char *suffix,
-					GKeyFile *keyfile, gboolean save);
-void __connman_storage_delete(const char *ident, const char *suffix);
+void __connman_storage_migrate(void);
+GKeyFile *__connman_storage_open_global();
+GKeyFile *__connman_storage_load_global();
+void __connman_storage_save_global(GKeyFile *keyfile);
+void __connman_storage_delete_global();
 
-GKeyFile *__connman_storage_open_profile(const char *ident);
-void __connman_storage_close_profile(const char *ident,
-					GKeyFile *keyfile, gboolean save);
-void __connman_storage_delete_profile(const char *ident);
-
-GKeyFile *__connman_storage_open_config(const char *ident);
-void __connman_storage_close_config(const char *ident,
-					GKeyFile *keyfile, gboolean save);
+GKeyFile *__connman_storage_load_config(const char *ident);
+void __connman_storage_save_config(GKeyFile *keyfile, const char *ident);
 void __connman_storage_delete_config(const char *ident);
 
 int __connman_detect_init(void);

@@ -383,7 +383,7 @@ static int load_config(struct connman_config *config)
 
 	DBG("config %p", config);
 
-	keyfile = __connman_storage_open_config(config->ident);
+	keyfile = __connman_storage_load_config(config->ident);
 	if (keyfile == NULL)
 		return -EIO;
 
@@ -418,7 +418,7 @@ static int load_config(struct connman_config *config)
 
 	g_strfreev(groups);
 
-	__connman_storage_close_config(config->ident, keyfile, FALSE);
+	g_key_file_free(keyfile);
 
 	return 0;
 }
@@ -453,7 +453,7 @@ int __connman_config_load_service(GKeyFile *keyfile, const char *group,
 {
 	struct connman_config *config;
 	const char *service_name;
-	char *ident, *filename = NULL, *content = NULL;
+	char *ident, *content = NULL;
 	gsize content_length;
 	int err;
 
@@ -491,26 +491,15 @@ int __connman_config_load_service(GKeyFile *keyfile, const char *group,
 		goto out;
 	}
 
-	filename = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
-	if (filename == NULL) {
-		err = -ENOMEM;
-		goto out;
-	}
-
 	DBG("Saving %zu bytes to %s", content_length, service_name);
 
-	if (g_file_set_contents(filename, content,
-				content_length, NULL) == FALSE) {
-		err = -EIO;
-		goto out;
-	}
+	__connman_storage_save_config(keyfile, ident);
 
 	return 0;
 
 out:
 	g_free(ident);
 	g_free(content);
-	g_free(filename);
 
 	return err;
 }

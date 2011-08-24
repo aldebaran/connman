@@ -302,7 +302,7 @@ static const char *get_name(enum connman_service_type type)
 	return NULL;
 }
 
-static int load_state(struct connman_technology *technology)
+static void load_state(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
 	gchar *identifier;
@@ -311,9 +311,12 @@ static int load_state(struct connman_technology *technology)
 
 	DBG("technology %p", technology);
 
-	keyfile = __connman_storage_open_profile("default");
-	if (keyfile == NULL)
-		return 0;
+	keyfile = __connman_storage_load_global();
+	/* Fallback on disabling technology if file not found. */
+	if (keyfile == NULL) {
+		technology->enable_persistent = FALSE;
+		return;
+	}
 
 	identifier = g_strdup_printf("%s", get_name(technology->type));
 	if (identifier == NULL)
@@ -322,28 +325,28 @@ static int load_state(struct connman_technology *technology)
 	enable = g_key_file_get_boolean(keyfile, identifier, "Enable", &error);
 	if (error == NULL)
 		technology->enable_persistent = enable;
-	else
+	else {
 		technology->enable_persistent = FALSE;
-
-	g_clear_error(&error);
+		g_clear_error(&error);
+	}
 done:
 	g_free(identifier);
 
-	__connman_storage_close_profile("default", keyfile, FALSE);
+	g_key_file_free(keyfile);
 
-	return 0;
+	return;
 }
 
-static int save_state(struct connman_technology *technology)
+static void save_state(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
 	gchar *identifier;
 
 	DBG("technology %p", technology);
 
-	keyfile = __connman_storage_open_profile("default");
+	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
-		return 0;
+		keyfile = g_key_file_new();
 
 	identifier = g_strdup_printf("%s", get_name(technology->type));
 	if (identifier == NULL)
@@ -355,9 +358,11 @@ static int save_state(struct connman_technology *technology)
 done:
 	g_free(identifier);
 
-	__connman_storage_close_profile("default", keyfile, TRUE);
+	__connman_storage_save_global(keyfile);
 
-	return 0;
+	g_key_file_free(keyfile);
+
+	return;
 }
 
 connman_bool_t __connman_technology_get_offlinemode(void)
@@ -365,20 +370,22 @@ connman_bool_t __connman_technology_get_offlinemode(void)
 	return global_offlinemode;
 }
 
-static int connman_technology_save_offlinemode()
+static void connman_technology_save_offlinemode()
 {
 	GKeyFile *keyfile;
 
-	keyfile = __connman_storage_open_profile("default");
+	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
-		return -EIO;
+		keyfile = g_key_file_new();
 
 	g_key_file_set_boolean(keyfile, "global",
 					"OfflineMode", global_offlinemode);
 
-	__connman_storage_close_profile("default", keyfile, TRUE);
+	__connman_storage_save_global(keyfile);
 
-	return 0;
+	g_key_file_free(keyfile);
+
+	return;
 }
 
 static connman_bool_t connman_technology_load_offlinemode()
@@ -388,7 +395,7 @@ static connman_bool_t connman_technology_load_offlinemode()
 	connman_bool_t offlinemode;
 
 	/* If there is a error, we enable offlinemode */
-	keyfile = __connman_storage_open_profile("default");
+	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
 		return TRUE;
 
@@ -398,7 +405,8 @@ static connman_bool_t connman_technology_load_offlinemode()
 		offlinemode = TRUE;
 		g_clear_error(&error);
 	}
-	__connman_storage_close_profile("default", keyfile, FALSE);
+
+	g_key_file_free(keyfile);
 
 	return offlinemode;
 }

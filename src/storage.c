@@ -28,114 +28,225 @@
 
 #include "connman.h"
 
-#define PROFILE_SUFFIX	"profile"
-#define CONFIG_SUFFIX	"config"
+#define SETTINGS	"settings"
+#define DEFAULT		"default.profile"
 
-GKeyFile *__connman_storage_open(const char *ident, const char *suffix)
+static GKeyFile *storage_load(const char *pathname)
 {
-	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
-	gboolean result;
-	gsize length;
+	GKeyFile *keyfile = NULL;
+	GError *error = NULL;
 
-	DBG("ident %s suffix %s", ident, suffix);
-
-	pathname = g_strdup_printf("%s/%s.%s", STORAGEDIR, ident, suffix);
-	if (pathname == NULL)
-		return NULL;
-
-	result = g_file_get_contents(pathname, &data, &length, NULL);
-
-	g_free(pathname);
+	DBG("Loading %s", pathname);
 
 	keyfile = g_key_file_new();
 
-	if (result == FALSE)
-		goto done;
+	if (!g_key_file_load_from_file(keyfile, pathname, 0, &error)) {
+		DBG("Unable to load %s: %s", pathname, error->message);
+		g_clear_error(&error);
 
-	if (length > 0)
-		g_key_file_load_from_data(keyfile, data, length, 0, NULL);
-
-	g_free(data);
-
-done:
-	DBG("keyfile %p", keyfile);
+		g_key_file_free(keyfile);
+		keyfile = NULL;
+	}
 
 	return keyfile;
 }
 
-void __connman_storage_close(const char *ident, const char *suffix,
-					GKeyFile *keyfile, gboolean save)
+static void storage_save(GKeyFile *keyfile, char *pathname)
 {
-	gchar *pathname, *data = NULL;
+	gchar *data = NULL;
 	gsize length = 0;
-
-	DBG("ident %s suffix %s keyfile %p save %d",
-					ident, suffix, keyfile, save);
-
-	if (save == FALSE) {
-		g_key_file_free(keyfile);
-		return;
-	}
-
-	pathname = g_strdup_printf("%s/%s.%s", STORAGEDIR, ident, suffix);
-	if (pathname == NULL)
-		return;
+	GError *error = NULL;
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
-	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
-		connman_error("Failed to store information");
+	if (!g_file_set_contents(pathname, data, length, &error)) {
+		DBG("Failed to store information: %s", error->message);
+		g_free(error);
+	}
 
 	g_free(data);
-
-	g_free(pathname);
-
-	g_key_file_free(keyfile);
 }
 
-void __connman_storage_delete(const char *ident, const char *suffix)
+static void storage_delete(const char *pathname)
 {
-	gchar *pathname;
-
-	DBG("ident %s suffix %s", ident, suffix);
-
-	pathname = g_strdup_printf("%s/%s.%s", STORAGEDIR, ident, suffix);
-	if (pathname == NULL)
-		return;
+	DBG("file path %s", pathname);
 
 	if (unlink(pathname) < 0)
 		connman_error("Failed to remove %s", pathname);
 }
 
-GKeyFile *__connman_storage_open_profile(const char *ident)
+GKeyFile *__connman_storage_load_global()
 {
-	return __connman_storage_open(ident, PROFILE_SUFFIX);
+	gchar *pathname;
+	GKeyFile *keyfile = NULL;
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
+	if(pathname == NULL)
+		return NULL;
+
+	keyfile = storage_load(pathname);
+
+	g_free(pathname);
+
+	return keyfile;
 }
 
-void __connman_storage_close_profile(const char *ident,
-					GKeyFile *keyfile, gboolean save)
+void __connman_storage_save_global(GKeyFile *keyfile)
 {
-	__connman_storage_close(ident, PROFILE_SUFFIX, keyfile, save);
+	gchar *pathname;
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
+	if(pathname == NULL)
+		return;
+
+	storage_save(keyfile, pathname);
+
+	g_free(pathname);
 }
 
-void __connman_storage_delete_profile(const char *ident)
+void __connman_storage_delete_global()
 {
-	__connman_storage_delete(ident, PROFILE_SUFFIX);
+	gchar *pathname;
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
+	if(pathname == NULL)
+		return;
+
+	storage_delete(pathname);
+
+	g_free(pathname);
 }
 
-GKeyFile *__connman_storage_open_config(const char *ident)
+GKeyFile *__connman_storage_load_config(const char *ident)
 {
-	return __connman_storage_open(ident, CONFIG_SUFFIX);
+	gchar *pathname;
+	GKeyFile *keyfile = NULL;
+
+	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
+	if(pathname == NULL)
+		return NULL;
+
+	keyfile = storage_load(pathname);
+
+	g_free(pathname);
+
+	return keyfile;
 }
 
-void __connman_storage_close_config(const char *ident,
-					GKeyFile *keyfile, gboolean save)
+void __connman_storage_save_config(GKeyFile *keyfile, const char *ident)
 {
-	__connman_storage_close(ident, CONFIG_SUFFIX, keyfile, save);
+	gchar *pathname;
+
+	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
+	if(pathname == NULL)
+		return;
+
+	storage_save(keyfile, pathname);
 }
 
 void __connman_storage_delete_config(const char *ident)
 {
-	__connman_storage_delete(ident, CONFIG_SUFFIX);
+	gchar *pathname;
+
+	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
+	if(pathname == NULL)
+		return;
+
+	storage_delete(pathname);
+
+	g_free(pathname);
+}
+
+/*
+ * This function migrates keys from default.profile to settings file.
+ * This can be removed once the migration is over.
+*/
+void __connman_storage_migrate()
+{
+	gchar *pathname;
+	GKeyFile *keyfile_def = NULL;
+	GKeyFile *keyfile = NULL;
+	GError *error = NULL;
+	connman_bool_t val;
+
+	/* If setting file exists, migration has been done. */
+	keyfile = __connman_storage_load_global();
+	if (keyfile) {
+		g_key_file_free(keyfile);
+		return;
+	}
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, DEFAULT);
+	if(pathname == NULL)
+		return;
+
+	/* If default.profile doesn't exists, no need to migrate. */
+	keyfile_def = storage_load(pathname);
+	if (keyfile_def == NULL) {
+		g_free(pathname);
+		return;
+	}
+
+	/* Copy global settings from default.profile to settings. */
+	keyfile = g_key_file_new();
+
+	/* offline mode */
+	val = g_key_file_get_boolean(keyfile_def, "global",
+					"OfflineMode", &error);
+	if (error != NULL)
+		g_clear_error(&error);
+	else
+		g_key_file_set_boolean(keyfile, "global",
+					"OfflineMode", val);
+
+	/* wifi */
+	val = g_key_file_get_boolean(keyfile_def, "WiFi",
+					"Enable", &error);
+	if (error != NULL)
+		g_clear_error(&error);
+	else
+		g_key_file_set_boolean(keyfile, "WiFi",
+					"Enable", val);
+
+	/* bluetooth */
+	val = g_key_file_get_boolean(keyfile_def, "Bluetooth",
+					"Enable", &error);
+	if (error != NULL)
+		g_clear_error(&error);
+	else
+		g_key_file_set_boolean(keyfile, "Bluetooth",
+					"Enable", val);
+
+	/* wired */
+	val = g_key_file_get_boolean(keyfile_def, "Wired",
+					"Enable", &error);
+	if (error != NULL)
+		g_clear_error(&error);
+	else
+		g_key_file_set_boolean(keyfile, "Wired",
+					"Enable", val);
+
+	/* 3G */
+	val = g_key_file_get_boolean(keyfile_def, "3G",
+					"Enable", &error);
+	if (error != NULL)
+		g_clear_error(&error);
+	else
+		g_key_file_set_boolean(keyfile, "3G",
+					"Enable", val);
+
+	/* WiMAX */
+	val = g_key_file_get_boolean(keyfile_def, "WiMAX",
+					"Enable", &error);
+	if (error != NULL)
+		g_clear_error(&error);
+	else
+		g_key_file_set_boolean(keyfile, "WiMAX",
+					"Enable", val);
+
+	__connman_storage_save_global(keyfile);
+
+	g_key_file_free(keyfile);
+	g_key_file_free(keyfile_def);
+	g_free(pathname);
 }
