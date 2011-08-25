@@ -800,13 +800,52 @@ static void test_and_disconnect(struct connman_session *session)
 		g_timeout_add_seconds(0, call_disconnect, service);
 }
 
+static void deselect_previous_service(struct connman_session *session,
+					struct service_entry *entry)
+{
+	struct session_info *info = session->info;
+
+	if (info->entry != NULL && info->entry != entry)
+		test_and_disconnect(session);
+}
+
+static void select_service(struct connman_session *session,
+				struct service_entry *entry)
+{
+	struct session_info *info = session->info;
+
+	DBG("session %p service %p", session, entry->service);
+
+	deselect_previous_service(session, entry);
+
+	info->entry = entry;
+	info->entry->reason = info->reason;
+
+	info->online = is_online(entry->state);
+
+	switch (info->reason) {
+	case CONNMAN_SESSION_REASON_UNKNOWN:
+	case CONNMAN_SESSION_REASON_FREE_RIDE:
+		return;
+	case CONNMAN_SESSION_REASON_CONNECT:
+	case CONNMAN_SESSION_REASON_PERIODIC:
+		break;
+	}
+
+	__connman_service_session_inc(info->entry->service);
+
+	if (entry->state == CONNMAN_SERVICE_STATE_IDLE ||
+			entry->state == CONNMAN_SERVICE_STATE_DISCONNECT) {
+		g_timeout_add_seconds(0, call_connect, info->entry->service);
+	}
+}
+
 static void select_and_connect(struct connman_session *session,
 				enum connman_session_reason reason)
 {
 	struct session_info *info = session->info;
 	struct service_entry *entry = NULL;
 	GSequenceIter *iter;
-	connman_bool_t do_connect = FALSE;
 
 	DBG("session %p reason %s", session, reason2string(reason));
 
@@ -822,45 +861,17 @@ static void select_and_connect(struct connman_session *session,
 		case CONNMAN_SERVICE_STATE_CONFIGURATION:
 		case CONNMAN_SERVICE_STATE_READY:
 		case CONNMAN_SERVICE_STATE_ONLINE:
-			/* connecting or connected */
-			break;
 		case CONNMAN_SERVICE_STATE_IDLE:
 		case CONNMAN_SERVICE_STATE_DISCONNECT:
-			if (explicit_connect(reason) == TRUE)
-				do_connect = TRUE;
-			break;
+			select_service(session, entry);
+			return;
 		case CONNMAN_SERVICE_STATE_UNKNOWN:
 		case CONNMAN_SERVICE_STATE_FAILURE:
-			entry = NULL;
 			break;
 		}
 
-		if (entry != NULL)
-			break;
-
 		iter = g_sequence_iter_next(iter);
 	}
-
-	if (info->entry != NULL && info->entry != entry)
-		test_and_disconnect(session);
-
-	if (entry == NULL) {
-		info->entry = NULL;
-		return;
-	}
-
-	info->entry = entry;
-	info->entry->reason = reason;
-
-	if (do_connect == TRUE) {
-		__connman_service_session_inc(info->entry->service);
-		g_timeout_add_seconds(0, call_connect, info->entry->service);
-	} else if (reason == CONNMAN_SESSION_REASON_CONNECT) {
-		/* session is already online take ref */
-		__connman_service_session_inc(info->entry->service);
-	}
-
-	info->online = is_online(entry->state);
 }
 
 static void session_changed(struct connman_session *session,
