@@ -25,11 +25,15 @@
 
 #include <errno.h>
 #include <unistd.h>
+#include <sys/stat.h>
 
 #include "connman.h"
 
 #define SETTINGS	"settings"
 #define DEFAULT		"default.profile"
+
+#define MODE		(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | \
+			S_IXGRP | S_IROTH | S_IXOTH)
 
 static GKeyFile *storage_load(const char *pathname)
 {
@@ -153,6 +157,83 @@ void __connman_storage_delete_config(const char *ident)
 		return;
 
 	storage_delete(pathname);
+
+	g_free(pathname);
+}
+
+GKeyFile *__connman_storage_open_service(const char *service_id)
+{
+	gchar *pathname;
+	GKeyFile *keyfile = NULL;
+
+	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, SETTINGS);
+	if(pathname == NULL)
+		return NULL;
+
+	keyfile =  storage_load(pathname);
+	if (keyfile) {
+		g_free(pathname);
+		return keyfile;
+	}
+
+	g_free(pathname);
+
+	keyfile = g_key_file_new();
+
+	return keyfile;
+}
+
+GKeyFile *__connman_storage_load_service(const char *service_id)
+{
+	gchar *pathname;
+	GKeyFile *keyfile = NULL;
+
+	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, SETTINGS);
+	if(pathname == NULL)
+		return NULL;
+
+	keyfile =  storage_load(pathname);
+	if (keyfile) {
+		g_free(pathname);
+		return keyfile;
+	}
+
+	g_free(pathname);
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, DEFAULT);
+	if(pathname == NULL)
+		return NULL;
+
+	keyfile =  storage_load(pathname);
+
+	g_free(pathname);
+
+	return keyfile;
+}
+
+void __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
+{
+	gchar *pathname, *dirname;
+
+	dirname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
+	if(dirname == NULL)
+		return;
+
+	/* If the dir doesn't exist, create it */
+	if (!g_file_test(dirname, G_FILE_TEST_IS_DIR)) {
+		if(mkdir(dirname, MODE) < 0) {
+			if (errno != EEXIST) {
+				g_free(dirname);
+				return;
+			}
+		}
+	}
+
+	pathname = g_strdup_printf("%s/%s", dirname, SETTINGS);
+
+	g_free(dirname);
+
+	storage_save(keyfile, pathname);
 
 	g_free(pathname);
 }

@@ -299,10 +299,8 @@ static enum connman_service_proxy_method string2proxymethod(const char *method)
 
 static int service_load(struct connman_service *service)
 {
-	const char *ident = "default";
 	GKeyFile *keyfile;
 	GError *error = NULL;
-	gchar *pathname, *data = NULL;
 	gsize length;
 	gchar *str;
 	connman_bool_t autoconnect;
@@ -311,29 +309,9 @@ static int service_load(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	if (ident == NULL)
-		return -EINVAL;
-
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE) {
-		g_free(pathname);
-		return -ENOENT;
-	}
-
-	g_free(pathname);
-
-	if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE) {
-		g_free(data);
-		return -EILSEQ;
-	}
-
-	g_free(data);
+	keyfile = __connman_storage_load_service(service->identifier);
+	if (keyfile == NULL)
+		return -EIO;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -488,37 +466,17 @@ done:
 
 static int service_save(struct connman_service *service)
 {
-	const char *ident = "default";
 	GKeyFile *keyfile;
-	gchar *pathname, *data = NULL;
-	gsize length;
 	gchar *str;
 	const char *cst_str = NULL;
 	int err = 0;
 
 	DBG("service %p", service);
 
-	if (ident == NULL)
-		return -EINVAL;
+	keyfile = __connman_storage_open_service(service->identifier);
+	if (keyfile == NULL)
+		return -EIO;
 
-	pathname = g_strdup_printf("%s/%s.profile", STORAGEDIR, ident);
-	if (pathname == NULL)
-		return -ENOMEM;
-
-	keyfile = g_key_file_new();
-
-	if (g_file_get_contents(pathname, &data, &length, NULL) == FALSE)
-		goto update;
-
-	if (length > 0) {
-		if (g_key_file_load_from_data(keyfile, data, length,
-							0, NULL) == FALSE)
-			goto done;
-	}
-
-	g_free(data);
-
-update:
 	if (service->name != NULL)
 		g_key_file_set_string(keyfile, service->identifier,
 						"Name", service->name);
@@ -660,17 +618,10 @@ update:
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Proxy.URL", NULL);
 
-	data = g_key_file_to_data(keyfile, &length, NULL);
-
-	if (g_file_set_contents(pathname, data, length, NULL) == FALSE)
-		connman_error("Failed to store service information");
-
 done:
-	g_free(data);
+	__connman_storage_save_service(keyfile, service->identifier);
 
 	g_key_file_free(keyfile);
-
-	g_free(pathname);
 
 	return err;
 }
@@ -3453,7 +3404,6 @@ static void service_free(gpointer user_data)
 	__connman_notifier_service_remove(service);
 
 	stats_stop(service);
-	service_save(service);
 
 	service->path = NULL;
 
@@ -5153,7 +5103,7 @@ void __connman_service_read_ip6config(struct connman_service *service)
 	if (service->ipconfig_ipv6 == NULL)
 		return;
 
-	keyfile = __connman_storage_load_global();
+	keyfile = __connman_storage_load_service(service->identifier);
 	if (keyfile == NULL)
 		return;
 
