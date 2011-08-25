@@ -663,9 +663,12 @@ int connman_device_set_powered(struct connman_device *device,
 	if (device->powered == powered)
 		return -EALREADY;
 
-	/* Reset pending request */
-	g_source_remove(device->pending_timeout);
-	device->pending_timeout = 0;
+	if (device->pending_timeout) {
+		/* Reset pending request */
+		g_source_remove(device->pending_timeout);
+		device->pending_timeout = 0;
+	}
+
 	device->powered_pending = PENDING_NONE;
 
 	device->powered = powered;
