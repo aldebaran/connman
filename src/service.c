@@ -2732,6 +2732,9 @@ static int set_ipconfig(struct connman_service *service,
 	enum connman_ipconfig_type type;
 	int err;
 
+	if (ipconfig == NULL)
+		return -EINVAL;
+
 	old_method = __connman_ipconfig_get_method(ipconfig);
 
 	if (is_connecting_state(service, state) ||
