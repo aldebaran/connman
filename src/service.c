@@ -3284,7 +3284,8 @@ static DBusMessage *move_service(DBusConnection *conn,
 		return __connman_error_not_supported(msg);
 
 	target = find_service(path);
-	if (target == NULL || target->favorite == FALSE || target == service)
+	if (target == NULL || target->favorite == FALSE || target == service ||
+				target->type == CONNMAN_SERVICE_TYPE_VPN)
 		return __connman_error_invalid_service(msg);
 
 	target4 = __connman_ipconfig_get_method(target->ipconfig_ipv4);
