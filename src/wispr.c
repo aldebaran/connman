@@ -39,6 +39,7 @@ struct connman_wispr_portal_context {
 	/* Portal/WISPr common */
 	GWeb *web;
 	unsigned int token;
+	guint request_id;
 };
 
 struct connman_wispr_portal {
@@ -57,6 +58,9 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 
 	if (wp_context->token > 0)
 		connman_proxy_lookup_cancel(wp_context->token);
+
+	if (wp_context->request_id > 0)
+		g_web_cancel_request(wp_context->web, wp_context->request_id);
 
 	g_web_unref(wp_context->web);
 
@@ -83,6 +87,91 @@ static void web_debug(const char *str, void *data)
 	connman_info("%s: %s\n", (const char *) data, str);
 }
 
+static void wispr_portal_error(struct connman_wispr_portal_context *wp_context)
+{
+	DBG("Failed to proceed wispr/portal web request");
+}
+
+static void portal_manage_status(GWebResult *result,
+			struct connman_wispr_portal_context *wp_context)
+{
+	const char *str = NULL;
+
+	DBG("");
+
+	/* We currently don't do anything with this info */
+	if (g_web_result_get_header(result, "X-ConnMan-Client-IP",
+				&str) == TRUE)
+		connman_info("Client-IP: %s", str);
+
+	if (g_web_result_get_header(result, "X-ConnMan-Client-Country",
+				&str) == TRUE)
+		connman_info("Client-Country: %s", str);
+
+	if (g_web_result_get_header(result, "X-ConnMan-Client-Region",
+				&str) == TRUE)
+		connman_info("Client-Region: %s", str);
+
+	__connman_service_ipconfig_indicate_state(wp_context->service,
+						CONNMAN_SERVICE_STATE_ONLINE,
+						wp_context->type);
+}
+
+static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
+{
+	struct connman_wispr_portal_context *wp_context = user_data;
+	const char *redirect = NULL;
+	const char *str = NULL;
+	guint16 status;
+
+	DBG("");
+
+	if (wp_context->request_id == 0)
+		return FALSE;
+
+	status = g_web_result_get_status(result);
+
+	DBG("status: %03u", status);
+
+	switch (status) {
+	case 200:
+		if (g_web_result_get_header(result, "X-ConnMan-Status",
+								&str) == TRUE)
+			portal_manage_status(result, wp_context);
+
+		break;
+	case 302:
+		if (g_web_result_get_header(result, "Location",
+						&redirect) == FALSE)
+			break;
+
+		DBG("Redirect URL: %s", redirect);
+
+		goto done;
+	case 404:
+		wispr_portal_error(wp_context);
+
+		break;
+	default:
+		break;
+	}
+
+	wp_context->request_id = 0;
+done:
+	return FALSE;
+}
+
+static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_context)
+{
+	DBG("");
+
+	wp_context->request_id = g_web_request_get(wp_context->web,
+			STATUS_URL, wispr_portal_web_result, wp_context);
+
+	if (wp_context->request_id == 0)
+		wispr_portal_error(wp_context);
+}
+
 static void proxy_callback(const char *proxy, void *user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
@@ -103,6 +192,8 @@ static void proxy_callback(const char *proxy, void *user_data)
 	g_web_set_accept(wp_context->web, NULL);
 	g_web_set_user_agent(wp_context->web, "ConnMan/%s", VERSION);
 	g_web_set_close_connection(wp_context->web, TRUE);
+
+	wispr_portal_request_portal(wp_context);
 }
 
 static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
