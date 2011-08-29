@@ -4489,7 +4489,7 @@ int __connman_service_connect(struct connman_service *service)
 
 	if (service->userconnect == TRUE) {
 		if (err == -ENOKEY) {
-			if (__connman_agent_request_input(service,
+			if (__connman_agent_request_passphrase_input(service,
 							request_input_cb,
 							NULL) == -EIO)
 				return -EINPROGRESS;

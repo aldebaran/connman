@@ -257,7 +257,71 @@ static void request_input_append_wps(DBusMessageIter *iter, void *user_data)
 				DBUS_TYPE_STRING, &str);
 }
 
-int __connman_agent_request_input(struct connman_service *service,
+static void request_input_append_password(DBusMessageIter *iter,
+							void *user_data)
+{
+	char *str = "passphrase";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "Mandatory";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+}
+
+static void request_input_login_reply(DBusPendingCall *call, void *user_data)
+{
+	struct request_input_reply *username_password_reply = user_data;
+	char *username = NULL;
+	char *password = NULL;
+	char *key;
+	DBusMessageIter iter, dict;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		goto done;
+
+	dbus_message_iter_init(reply, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &key);
+
+		if (g_str_equal(key, "Username")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			dbus_message_iter_get_basic(&value, &username);
+
+		} else if (g_str_equal(key, "Password")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry) !=
+							DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			dbus_message_iter_get_basic(&value, &password);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	username_password_reply->callback(username_password_reply->service,
+					username, password,
+					username_password_reply->user_data);
+	connman_service_unref(username_password_reply->service);
+	dbus_message_unref(reply);
+	g_free(username_password_reply);
+}
+
+int __connman_agent_request_passphrase_input(struct connman_service *service,
 				authentication_cb_t callback, void *user_data)
 {
 	DBusMessage *message;
@@ -325,6 +389,72 @@ int __connman_agent_request_input(struct connman_service *service,
 
 	dbus_pending_call_set_notify(call, request_input_passphrase_reply,
 				passphrase_reply, NULL);
+
+	dbus_message_unref(message);
+
+	return -EIO;
+}
+
+int __connman_agent_request_login_input(struct connman_service *service,
+				authentication_cb_t callback, void *user_data)
+{
+	DBusMessage *message;
+	const char *path;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	DBusPendingCall *call;
+	struct request_input_reply *username_password_reply;
+
+	if (service == NULL || agent_path == NULL || callback == NULL)
+		return -ESRCH;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+					CONNMAN_AGENT_INTERFACE,
+					"RequestInput");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+
+	path = __connman_service_get_path(service);
+	dbus_message_iter_append_basic(&iter,
+				DBUS_TYPE_OBJECT_PATH, &path);
+
+	connman_dbus_dict_open(&iter, &dict);
+
+	connman_dbus_dict_append_dict(&dict, "Username",
+				request_input_append_identity, service);
+
+	connman_dbus_dict_append_dict(&dict, "Password",
+				request_input_append_password, service);
+
+	connman_dbus_dict_close(&iter, &dict);
+
+	username_password_reply = g_try_new0(struct request_input_reply, 1);
+	if (username_password_reply == NULL) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	if (dbus_connection_send_with_reply(connection, message,
+							&call, -1) == FALSE) {
+		dbus_message_unref(message);
+		g_free(username_password_reply);
+		return -ESRCH;
+	}
+
+	if (call == NULL) {
+		dbus_message_unref(message);
+		g_free(username_password_reply);
+		return -ESRCH;
+	}
+
+	username_password_reply->service = connman_service_ref(service);
+	username_password_reply->callback = callback;
+	username_password_reply->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, request_input_login_reply,
+						username_password_reply, NULL);
 
 	dbus_message_unref(message);
 

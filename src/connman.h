@@ -87,7 +87,9 @@ typedef void (* authentication_cb_t) (struct connman_service *service,
 				void *user_data);
 typedef void (* report_error_cb_t) (struct connman_service *service,
 				gboolean retry, void *user_data);
-int __connman_agent_request_input(struct connman_service *service,
+int __connman_agent_request_passphrase_input(struct connman_service *service,
+				authentication_cb_t callback, void *user_data);
+int __connman_agent_request_login_input(struct connman_service *service,
 				authentication_cb_t callback, void *user_data);
 int __connman_agent_report_error(struct connman_service *service,
 				const char *error,
