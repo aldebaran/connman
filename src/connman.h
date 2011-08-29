@@ -288,6 +288,9 @@ void __connman_wpad_stop(struct connman_service *service);
 
 int __connman_wispr_init(void);
 void __connman_wispr_cleanup(void);
+int __connman_wispr_start(struct connman_service *service,
+					enum connman_ipconfig_type type);
+void __connman_wispr_stop(struct connman_service *service);
 
 #include <connman/technology.h>
 
