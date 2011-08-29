@@ -4018,6 +4018,8 @@ static int service_indicate_state(struct connman_service *service)
 
 		default_changed();
 
+		__connman_wispr_stop(service);
+
 		__connman_wpad_stop(service);
 
 		update_nameservers(service);
@@ -4138,17 +4140,22 @@ static void check_proxy_setup(struct connman_service *service)
 	 */
 
 	if (service->proxy != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN)
-		return;
+		goto done;
 
 	if (service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN &&
 		(service->proxy_config != CONNMAN_SERVICE_PROXY_METHOD_AUTO ||
 			service->pac != NULL))
-		return;
+		goto done;
 
 	if (__connman_wpad_start(service) < 0) {
 		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
 		__connman_notifier_proxy_changed(service);
 	}
+
+	return;
+
+done:
+	__connman_wispr_start(service, CONNMAN_IPCONFIG_TYPE_IPV4);
 }
 
 int __connman_service_ipconfig_indicate_state(struct connman_service *service,
@@ -4198,6 +4205,8 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			check_proxy_setup(service);
+		else
+			__connman_wispr_start(service, type);
 		break;
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
