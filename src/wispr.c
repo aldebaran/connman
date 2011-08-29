@@ -65,6 +65,10 @@ struct connman_wispr_portal_context {
 	GWebParser *wispr_parser;
 	struct connman_wispr_message wispr_msg;
 
+	char *wispr_username;
+	char *wispr_password;
+	char *wispr_formdata;
+
 	enum connman_wispr_result wispr_result;
 };
 
@@ -123,6 +127,10 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 
 	g_web_parser_unref(wp_context->wispr_parser);
 	connman_wispr_message_init(&wp_context->wispr_msg);
+
+	g_free(wp_context->wispr_username);
+	g_free(wp_context->wispr_password);
+	g_free(wp_context->wispr_formdata);
 
 	g_free(wp_context);
 }
@@ -383,6 +391,60 @@ static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_
 		wispr_portal_error(wp_context);
 }
 
+static gboolean wispr_input(const guint8 **data, gsize *length,
+						gpointer user_data)
+{
+	struct connman_wispr_portal_context *wp_context = user_data;
+	GString *buf;
+	gsize count;
+
+	DBG("");
+
+	buf = g_string_sized_new(100);
+
+	g_string_append(buf, "button=Login&UserName=");
+	g_string_append_uri_escaped(buf, wp_context->wispr_username,
+								NULL, FALSE);
+	g_string_append(buf, "&Password=");
+	g_string_append_uri_escaped(buf, wp_context->wispr_password,
+								NULL, FALSE);
+	g_string_append(buf, "&FNAME=0&OriginatingServer=");
+	g_string_append_uri_escaped(buf, STATUS_URL, NULL, FALSE);
+
+	count = buf->len;
+
+	g_free(wp_context->wispr_formdata);
+	wp_context->wispr_formdata = g_string_free(buf, FALSE);
+
+	*data = (guint8 *) wp_context->wispr_formdata;
+	*length = count;
+
+	return FALSE;
+}
+
+static void wispr_portal_request_wispr_login(struct connman_service *service,
+				const char *username, const char *password,
+				void *user_data)
+{
+	struct connman_wispr_portal_context *wp_context = user_data;
+
+	DBG("");
+
+	g_free(wp_context->wispr_username);
+	wp_context->wispr_username = g_strdup(username);
+
+	g_free(wp_context->wispr_password);
+	wp_context->wispr_password = g_strdup(password);
+
+	wp_context->request_id = g_web_request_post(wp_context->web,
+					wp_context->wispr_msg.login_url,
+					"application/x-www-form-urlencoded",
+					wispr_input, wispr_portal_web_result,
+					wp_context);
+
+	connman_wispr_message_init(&wp_context->wispr_msg);
+}
+
 static gboolean wispr_manage_message(GWebResult *result,
 			struct connman_wispr_portal_context *wp_context)
 {
@@ -416,11 +478,23 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 		wp_context->wispr_result = CONNMAN_WISPR_RESULT_LOGIN;
 
+		__connman_agent_request_login_input(wp_context->service,
+					wispr_portal_request_wispr_login,
+					wp_context);
 		break;
 	case 120: /* Falling down */
 	case 140:
 		if (wp_context->wispr_msg.response_code == 50) {
 			wp_context->wispr_result = CONNMAN_WISPR_RESULT_ONLINE;
+
+			g_free(wp_context->wispr_username);
+			wp_context->wispr_username = NULL;
+
+			g_free(wp_context->wispr_password);
+			wp_context->wispr_password = NULL;
+
+			g_free(wp_context->wispr_formdata);
+			wp_context->wispr_formdata = NULL;
 
 			wispr_portal_request_portal(wp_context);
 
@@ -479,6 +553,8 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		if (g_web_result_get_header(result, "X-ConnMan-Status",
 								&str) == TRUE)
 			portal_manage_status(result, wp_context);
+		else
+			__connman_service_request_login(wp_context->service);
 
 		break;
 	case 302:
