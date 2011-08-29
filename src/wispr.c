@@ -24,12 +24,21 @@
 #endif
 
 #include <errno.h>
+#include <stdlib.h>
+
+#include <gweb/gweb.h>
 
 #include "connman.h"
+
+#define STATUS_URL  "http://www.connman.net/online/status.html"
 
 struct connman_wispr_portal_context {
 	struct connman_service *service;
 	enum connman_ipconfig_type type;
+
+	/* Portal/WISPr common */
+	GWeb *web;
+	unsigned int token;
 };
 
 struct connman_wispr_portal {
@@ -45,6 +54,11 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 
 	if (wp_context == NULL)
 		return;
+
+	if (wp_context->token > 0)
+		connman_proxy_lookup_cancel(wp_context->token);
+
+	g_web_unref(wp_context->web);
 
 	g_free(wp_context);
 }
@@ -62,6 +76,87 @@ static void free_connman_wispr_portal(gpointer data)
 	free_connman_wispr_portal_context(wispr_portal->ipv6_context);
 
 	g_free(wispr_portal);
+}
+
+static void web_debug(const char *str, void *data)
+{
+	connman_info("%s: %s\n", (const char *) data, str);
+}
+
+static void proxy_callback(const char *proxy, void *user_data)
+{
+	struct connman_wispr_portal_context *wp_context = user_data;
+
+	DBG("proxy %s", proxy);
+
+	wp_context->token = 0;
+
+	if (proxy == NULL)
+		proxy = getenv("http_proxy");
+
+	if (getenv("CONNMAN_WEB_DEBUG"))
+		g_web_set_debug(wp_context->web, web_debug, "WEB");
+
+	if (proxy != NULL && g_strcmp0(proxy, "DIRECT") != 0)
+		g_web_set_proxy(wp_context->web, proxy);
+
+	g_web_set_accept(wp_context->web, NULL);
+	g_web_set_user_agent(wp_context->web, "ConnMan/%s", VERSION);
+	g_web_set_close_connection(wp_context->web, TRUE);
+}
+
+static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
+{
+	enum connman_service_type service_type;
+	char *interface = NULL;
+	int err = 0;
+
+	DBG("wispr/portal context %p", wp_context);
+	DBG("service %p", wp_context->service);
+
+	service_type = connman_service_get_type(wp_context->service);
+
+	switch (service_type) {
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_WIMAX:
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		break;
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		return -EOPNOTSUPP;
+	}
+
+	interface = connman_service_get_interface(wp_context->service);
+	if (interface == NULL)
+		return -EINVAL;
+
+	DBG("interface %s", interface);
+
+	wp_context->web = g_web_new(0);
+	if (wp_context->web == NULL) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	if (wp_context->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		g_web_set_address_family(wp_context->web, AF_INET);
+	else
+		g_web_set_address_family(wp_context->web, AF_INET6);
+
+	wp_context->token = connman_proxy_lookup(interface,
+					STATUS_URL, wp_context->service,
+					proxy_callback, wp_context);
+	if (wp_context->token == 0)
+		err = -EINVAL;
+
+done:
+	g_free(interface);
+	return err;
 }
 
 int __connman_wispr_start(struct connman_service *service,
@@ -110,6 +205,8 @@ int __connman_wispr_start(struct connman_service *service,
 			wispr_portal->ipv4_context = wp_context;
 		else
 			wispr_portal->ipv6_context = wp_context;
+
+		return wispr_portal_detect(wp_context);
 	}
 
 	return 0;
