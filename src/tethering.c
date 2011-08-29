@@ -58,9 +58,6 @@
 
 #define DEFAULT_MTU	1500
 
-#define PRIVATE_NETWORK_IP "192.168.219.1"
-#define PRIVATE_NETWORK_PEER_IP "192.168.219.2"
-#define PRIVATE_NETWORK_NETMASK "255.255.255.0"
 #define PRIVATE_NETWORK_PRIMARY_DNS BRIDGE_DNS
 #define PRIVATE_NETWORK_SECONDARY_DNS "8.8.4.4"
 
@@ -80,8 +77,7 @@ struct connman_private_network {
 	char *interface;
 	int index;
 	guint iface_watch;
-	const char *server_ip;
-	const char *peer_ip;
+	struct connman_ippool *pool;
 	const char *primary_dns;
 	const char *secondary_dns;
 };
@@ -427,6 +423,9 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 	struct connman_private_network *pn = data;
 	unsigned char prefixlen;
 	DBusMessageIter array, dict;
+	const char *server_ip;
+	const char *peer_ip;
+	const char *subnet_mask;
 	int err;
 
 	DBG("index %d flags %d change %d", pn->index,  flags, change);
@@ -434,13 +433,15 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 	if (flags & IFF_UP)
 		return;
 
+	subnet_mask = __connman_ippool_get_subnet_mask(pn->pool);
+	server_ip = __connman_ippool_get_start_ip(pn->pool);
+	peer_ip = __connman_ippool_get_end_ip(pn->pool);
 	prefixlen =
-		__connman_ipconfig_netmask_prefix_len(PRIVATE_NETWORK_NETMASK);
+		__connman_ipconfig_netmask_prefix_len(subnet_mask);
 
 	if ((__connman_inet_modify_address(RTM_NEWADDR,
 				NLM_F_REPLACE | NLM_F_ACK, pn->index, AF_INET,
-				pn->server_ip, pn->peer_ip,
-				prefixlen, NULL)) < 0) {
+				server_ip, peer_ip, prefixlen, NULL)) < 0) {
 		DBG("address setting failed");
 		return;
 	}
@@ -461,9 +462,9 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 	connman_dbus_dict_open(&array, &dict);
 
 	connman_dbus_dict_append_basic(&dict, "ServerIPv4",
-					DBUS_TYPE_STRING, &pn->server_ip);
+					DBUS_TYPE_STRING, &server_ip);
 	connman_dbus_dict_append_basic(&dict, "PeerIPv4",
-					DBUS_TYPE_STRING, &pn->peer_ip);
+					DBUS_TYPE_STRING, &peer_ip);
 	connman_dbus_dict_append_basic(&dict, "PrimaryDNS",
 					DBUS_TYPE_STRING, &pn->primary_dns);
 	connman_dbus_dict_append_basic(&dict, "SecondaryDNS",
@@ -490,6 +491,7 @@ static void remove_private_network(gpointer user_data)
 
 	disable_nat(default_interface);
 	connman_rtnl_remove_watch(pn->iface_watch);
+	__connman_ippool_unref(pn->pool);
 
 	if (pn->watch > 0) {
 		g_dbus_remove_watch(connection, pn->watch);
@@ -566,8 +568,12 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	pn->fd = fd;
 	pn->interface = iface;
 	pn->index = index;
-	pn->server_ip = PRIVATE_NETWORK_IP;
-	pn->peer_ip = PRIVATE_NETWORK_PEER_IP;
+	pn->pool = __connman_ippool_create(1, 1);
+	if (pn->pool == NULL) {
+		errno = -ENOMEM;
+		goto error;
+	}
+
 	pn->primary_dns = PRIVATE_NETWORK_PRIMARY_DNS;
 	pn->secondary_dns = PRIVATE_NETWORK_SECONDARY_DNS;
 
