@@ -49,11 +49,6 @@
 #define BRIDGE_PROC_DIR "/proc/sys/net/bridge"
 
 #define BRIDGE_NAME "tether"
-#define BRIDGE_IP "192.168.218.1"
-#define BRIDGE_BCAST "192.168.218.255"
-#define BRIDGE_SUBNET "255.255.255.0"
-#define BRIDGE_IP_START "192.168.218.100"
-#define BRIDGE_IP_END "192.168.218.200"
 #define BRIDGE_DNS "8.8.8.8"
 
 #define DEFAULT_MTU	1500
@@ -64,6 +59,7 @@
 static char *default_interface = NULL;
 static volatile int tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
+static struct connman_ippool *dhcp_ippool = NULL;
 static DBusConnection *connection;
 static GHashTable *pn_hash;
 
@@ -242,7 +238,8 @@ static int remove_bridge(const char *name)
 	return 0;
 }
 
-static int enable_bridge(const char *name)
+static int enable_bridge(const char *name, const char *broadcast,
+				const char *gateway)
 {
 	int err, index;
 
@@ -252,7 +249,7 @@ static int enable_bridge(const char *name)
 
 	err = __connman_inet_modify_address(RTM_NEWADDR,
 			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
-					BRIDGE_IP, NULL, 24, BRIDGE_BCAST);
+					gateway, NULL, 24, broadcast);
 	if (err < 0)
 		return err;
 
@@ -333,6 +330,11 @@ static void disable_nat(const char *interface)
 void __connman_tethering_set_enabled(void)
 {
 	int err;
+	const char *gateway;
+	const char *broadcast;
+	const char *subnet_mask;
+	const char *start_ip;
+	const char *end_ip;
 	const char *dns;
 
 	DBG("enabled %d", tethering_enabled + 1);
@@ -344,24 +346,35 @@ void __connman_tethering_set_enabled(void)
 	if (err < 0)
 		return;
 
-	err = enable_bridge(BRIDGE_NAME);
+	dhcp_ippool = __connman_ippool_create(1, 253);
+	if (dhcp_ippool == NULL) {
+		connman_error("Fail to create IP pool");
+		return;
+	}
+
+	gateway = __connman_ippool_get_gateway(dhcp_ippool);
+	broadcast = __connman_ippool_get_broadcast(dhcp_ippool);
+	subnet_mask = __connman_ippool_get_subnet_mask(dhcp_ippool);
+	start_ip = __connman_ippool_get_start_ip(dhcp_ippool);
+	end_ip = __connman_ippool_get_end_ip(dhcp_ippool);
+
+	err = enable_bridge(BRIDGE_NAME, gateway, broadcast);
 	if (err < 0 && err != -EALREADY) {
 		remove_bridge(BRIDGE_NAME);
 		return;
 	}
 
-	dns = BRIDGE_IP;
+	dns = gateway;
 	if (__connman_dnsproxy_add_listener(BRIDGE_NAME) < 0) {
 		connman_error("Can't add listener %s to DNS proxy",
 								BRIDGE_NAME);
 		dns = BRIDGE_DNS;
 	}
 
-	tethering_dhcp_server =
-		dhcp_server_start(BRIDGE_NAME,
-					BRIDGE_IP, BRIDGE_SUBNET,
-					BRIDGE_IP_START, BRIDGE_IP_END,
-					24 * 3600, dns);
+	tethering_dhcp_server = dhcp_server_start(BRIDGE_NAME,
+						gateway, subnet_mask,
+						start_ip, end_ip,
+						24 * 3600, dns);
 	if (tethering_dhcp_server == NULL) {
 		disable_bridge(BRIDGE_NAME);
 		remove_bridge(BRIDGE_NAME);
@@ -389,6 +402,8 @@ void __connman_tethering_set_disabled(void)
 	tethering_dhcp_server = NULL;
 
 	disable_bridge(BRIDGE_NAME);
+
+	__connman_ippool_unref(dhcp_ippool);
 
 	remove_bridge(BRIDGE_NAME);
 
