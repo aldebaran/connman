@@ -14,6 +14,8 @@ class Agent(dbus.service.Object):
 	identity = None
 	passphrase = None
 	wpspin = None
+	username = None
+	password = None
 
 	@dbus.service.method("net.connman.Agent",
 					in_signature='', out_signature='')
@@ -21,12 +23,7 @@ class Agent(dbus.service.Object):
 		print("Release")
 		mainloop.quit()
 
-	@dbus.service.method("net.connman.Agent",
-					in_signature='oa{sv}',
-					out_signature='a{sv}')
-	def RequestInput(self, path, fields):
-		print "RequestInput (%s,%s)" % (path, fields)
-
+	def input_passphrase(self):
 		response = {}
 
 		if not self.identity and not self.passphrase and not self.wpspin:
@@ -53,6 +50,46 @@ class Agent(dbus.service.Object):
 			if self.wpspin:
 				response["WPS"] = self.wpspin
 
+		return response
+
+	def input_username(self):
+		response = {}
+
+		if not self.username and not self.password:
+			args = raw_input('Answer: ')
+
+			for arg in args.split():
+				if arg.startswith("Username="):
+					username = arg.replace("Username=", "", 1)
+					response["Username"] = username
+					break
+				if arg.startswith("Password="):
+					password = arg.replace("Password=", "", 1)
+					response["Password"] = password
+					break
+		else:
+			if self.username:
+				response["Username"] = self.username
+			if self.password:
+				response["Password"] = self.password
+
+		return response
+
+	@dbus.service.method("net.connman.Agent",
+					in_signature='oa{sv}',
+					out_signature='a{sv}')
+	def RequestInput(self, path, fields):
+		print "RequestInput (%s,%s)" % (path, fields)
+
+		response = None
+
+		if fields.has_key("Passphrase"):
+			response = self.input_passphrase()
+		elif fields.has_key("Username"):
+			response = self.input_username()
+		else:
+			print "No method to answer the input request"
+
 		print "returning (%s)" % (response)
 
 		return response
@@ -78,8 +115,12 @@ class Agent(dbus.service.Object):
 		print "Cancel"
 
 def print_usage():
-	print "Usage: %s Identity=<identity> Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
-	print "Help: %s help" % (sys.ar[0])
+	print "Usage:"
+	print "For EAP/WPA input:"
+	print "%s Identity=<identity> Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
+	print "For WISPr login input:"
+	print "%s Username=<username> Password=<password>" % (sys.argv[0])
+	print "Help: %s help" % (sys.argv[0])
 	sys.exit(1)
 
 if __name__ == '__main__':
@@ -103,6 +144,10 @@ if __name__ == '__main__':
 				object.passphrase = arg.replace("Passphrase=", "", 1)
 			elif arg.startswith("WPS="):
 				object.wpspin = arg.replace("WPS=", "", 1)
+			elif arg.startswith("Username="):
+				object.username = arg.replace("Username=", "", 1)
+			elif arg.startswith("Password="):
+				object.password = arg.replace("Password=", "", 1)
 			else:
 				print_usage()
 
