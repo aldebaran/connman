@@ -26,16 +26,6 @@ Core
    See http://www.mail-archive.com/connman@connman.net/msg01653.html
 
 
-- WiSPR support
-
-   Priority: Medium
-   Complexity: C4
-   Owner: Marcel Holtmann <marcel@holtmann.org>
-
-   Based on the portal detection parsing results, and provisioned
-   credentials, ConnMan should be able to initiate a WiSPR authentication.
-
-
 - DNS caching
 
    Priority: Low
