@@ -45,6 +45,13 @@ struct connman_wispr_message {
 	char *location_name;
 };
 
+enum connman_wispr_result {
+	CONNMAN_WISPR_RESULT_UNKNOWN = 0,
+	CONNMAN_WISPR_RESULT_LOGIN   = 1,
+	CONNMAN_WISPR_RESULT_ONLINE  = 2,
+	CONNMAN_WISPR_RESULT_FAILED  = 3,
+};
+
 struct connman_wispr_portal_context {
 	struct connman_service *service;
 	enum connman_ipconfig_type type;
@@ -57,12 +64,16 @@ struct connman_wispr_portal_context {
 	/* WISPr specific */
 	GWebParser *wispr_parser;
 	struct connman_wispr_message wispr_msg;
+
+	enum connman_wispr_result wispr_result;
 };
 
 struct connman_wispr_portal {
 	struct connman_wispr_portal_context *ipv4_context;
 	struct connman_wispr_portal_context *ipv6_context;
 };
+
+static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data);
 
 static GHashTable *wispr_portal_list = NULL;
 
@@ -129,6 +140,54 @@ static void free_connman_wispr_portal(gpointer data)
 	free_connman_wispr_portal_context(wispr_portal->ipv6_context);
 
 	g_free(wispr_portal);
+}
+
+static const char *message_type_to_string(int message_type)
+{
+	switch (message_type) {
+	case 100:
+		return "Initial redirect message";
+	case 110:
+		return "Proxy notification";
+	case 120:
+		return "Authentication notification";
+	case 130:
+		return "Logoff notification";
+	case 140:
+		return "Response to Authentication Poll";
+	case 150:
+		return "Response to Abort Login";
+	}
+
+	return NULL;
+}
+
+static const char *response_code_to_string(int response_code)
+{
+	switch (response_code) {
+	case 0:
+		return "No error";
+	case 50:
+		return "Login succeeded";
+	case 100:
+		return "Login failed";
+	case 102:
+		return "RADIUS server error/timeout";
+	case 105:
+		return "RADIUS server not enabled";
+	case 150:
+		return "Logoff succeeded";
+	case 151:
+		return "Login aborted";
+	case 200:
+		return "Proxy detection/repeat operation";
+	case 201:
+		return "Authentication pending";
+	case 255:
+		return "Access gateway internal error";
+	}
+
+	return NULL;
 }
 
 static struct {
@@ -284,6 +343,8 @@ static void web_debug(const char *str, void *data)
 static void wispr_portal_error(struct connman_wispr_portal_context *wp_context)
 {
 	DBG("Failed to proceed wispr/portal web request");
+
+	wp_context->wispr_result = CONNMAN_WISPR_RESULT_FAILED;
 }
 
 static void portal_manage_status(GWebResult *result,
@@ -311,6 +372,70 @@ static void portal_manage_status(GWebResult *result,
 						wp_context->type);
 }
 
+static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_context)
+{
+	DBG("");
+
+	wp_context->request_id = g_web_request_get(wp_context->web,
+			STATUS_URL, wispr_portal_web_result, wp_context);
+
+	if (wp_context->request_id == 0)
+		wispr_portal_error(wp_context);
+}
+
+static gboolean wispr_manage_message(GWebResult *result,
+			struct connman_wispr_portal_context *wp_context)
+{
+	DBG("Message type: %s (%d)",
+		message_type_to_string(wp_context->wispr_msg.message_type),
+					wp_context->wispr_msg.message_type);
+	DBG("Response code: %s (%d)",
+		response_code_to_string(wp_context->wispr_msg.response_code),
+					wp_context->wispr_msg.response_code);
+
+	if (wp_context->wispr_msg.access_procedure != NULL)
+		DBG("Access procedure: %s",
+			wp_context->wispr_msg.access_procedure);
+	if (wp_context->wispr_msg.access_location != NULL)
+		DBG("Access location: %s",
+			wp_context->wispr_msg.access_location);
+	if (wp_context->wispr_msg.location_name != NULL)
+		DBG("Location name: %s",
+			wp_context->wispr_msg.location_name);
+	if (wp_context->wispr_msg.login_url != NULL)
+		DBG("Login URL: %s", wp_context->wispr_msg.login_url);
+	if (wp_context->wispr_msg.abort_login_url != NULL)
+		DBG("Abort login URL: %s",
+			wp_context->wispr_msg.abort_login_url);
+	if (wp_context->wispr_msg.logoff_url != NULL)
+		DBG("Logoff URL: %s", wp_context->wispr_msg.logoff_url);
+
+	switch (wp_context->wispr_msg.message_type) {
+	case 100:
+		DBG("Login required");
+
+		wp_context->wispr_result = CONNMAN_WISPR_RESULT_LOGIN;
+
+		break;
+	case 120: /* Falling down */
+	case 140:
+		if (wp_context->wispr_msg.response_code == 50) {
+			wp_context->wispr_result = CONNMAN_WISPR_RESULT_ONLINE;
+
+			wispr_portal_request_portal(wp_context);
+
+			return TRUE;
+		} else
+			wispr_portal_error(wp_context);
+
+		break;
+	default:
+		break;
+	}
+
+	return FALSE;
+}
+
 static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
@@ -325,15 +450,22 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 	if (wp_context->request_id == 0)
 		return FALSE;
 
-	g_web_result_get_chunk(result, &chunk, &length);
+	if (wp_context->wispr_result != CONNMAN_WISPR_RESULT_ONLINE) {
+		g_web_result_get_chunk(result, &chunk, &length);
 
-	if (length > 0) {
-		g_web_parser_feed_data(wp_context->wispr_parser,
-							chunk, length);
-		return TRUE;
+		if (length > 0) {
+			g_web_parser_feed_data(wp_context->wispr_parser,
+								chunk, length);
+			return TRUE;
+		}
+
+		g_web_parser_end_data(wp_context->wispr_parser);
+
+		if (wp_context->wispr_msg.message_type >= 0) {
+			if (wispr_manage_message(result, wp_context) == TRUE)
+				goto done;
+		}
 	}
-
-	g_web_parser_end_data(wp_context->wispr_parser);
 
 	status = g_web_result_get_status(result);
 
@@ -372,17 +504,6 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 done:
 	wp_context->wispr_msg.message_type = -1;
 	return FALSE;
-}
-
-static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_context)
-{
-	DBG("");
-
-	wp_context->request_id = g_web_request_get(wp_context->web,
-			STATUS_URL, wispr_portal_web_result, wp_context);
-
-	if (wp_context->request_id == 0)
-		wispr_portal_error(wp_context);
 }
 
 static void proxy_callback(const char *proxy, void *user_data)
