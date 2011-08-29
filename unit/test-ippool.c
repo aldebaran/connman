@@ -183,7 +183,7 @@ static void test_ippool_collision0(void)
 
 	g_assert(flag == 0);
 
-	__connman_ippool_newaddr(42, end_ip);
+	__connman_ippool_newaddr(42, start_ip);
 
 	g_assert(flag == 1);
 

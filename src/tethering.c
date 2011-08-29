@@ -327,6 +327,12 @@ static void disable_nat(const char *interface)
 	__connman_iptables_commit("nat");
 }
 
+static void tethering_restart(struct connman_ippool *pool, void *user_data)
+{
+	__connman_tethering_set_disabled();
+	__connman_tethering_set_enabled();
+}
+
 void __connman_tethering_set_enabled(void)
 {
 	int index;
@@ -348,7 +354,8 @@ void __connman_tethering_set_enabled(void)
 		return;
 
 	index = connman_inet_ifindex(BRIDGE_NAME);
-	dhcp_ippool = __connman_ippool_create(index, 1, 253, NULL, NULL);
+	dhcp_ippool = __connman_ippool_create(index, 1, 253,
+						tethering_restart, NULL);
 	if (dhcp_ippool == NULL) {
 		connman_error("Fail to create IP pool");
 		return;
@@ -534,6 +541,15 @@ static void owner_disconnect(DBusConnection *connection, void *user_data)
 	g_hash_table_remove(pn_hash, pn->path);
 }
 
+static void ippool_disconnect(struct connman_ippool *pool, void *user_data)
+{
+	struct connman_private_network *pn = user_data;
+
+	DBG("block used externally");
+
+	g_hash_table_remove(pn_hash, pn->path);
+}
+
 int __connman_private_network_request(DBusMessage *msg, const char *owner)
 {
 	struct connman_private_network *pn;
@@ -585,7 +601,7 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	pn->fd = fd;
 	pn->interface = iface;
 	pn->index = index;
-	pn->pool = __connman_ippool_create(pn->fd, 1, 1, NULL, NULL);
+	pn->pool = __connman_ippool_create(pn->fd, 1, 1, ippool_disconnect, pn);
 	if (pn->pool == NULL) {
 		errno = -ENOMEM;
 		goto error;
