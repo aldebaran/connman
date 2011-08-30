@@ -259,9 +259,9 @@ include/connman/version.h: include/version.h
 	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@
 
-include/connman/%.h: include/%.h
+include/connman/%.h: $(abs_top_srcdir)/include/%.h
 	$(AM_V_at)$(MKDIR_P) include/connman
-	$(AM_V_GEN)$(LN_S) $(abs_top_srcdir)/$< $@
+	$(AM_V_GEN)$(LN_S) $< $@
 
 clean-local:
 	@$(RM) -rf include/connman
