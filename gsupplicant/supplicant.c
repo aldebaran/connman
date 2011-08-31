@@ -1167,7 +1167,9 @@ static void bss_process_ies(DBusMessageIter *iter, void *user_data)
 	if (ie == NULL || ie_len < 2)
 		return;
 
-	for (ie_end = ie+ie_len; ie+ie[1]+1 <= ie_end; ie += ie[1]+2) {
+	for (ie_end = ie + ie_len; ie < ie_end && ie + ie[1] + 1 <= ie_end;
+							ie += ie[1] + 2) {
+
 		if (ie[0] != WMM_WPA1_WPS_INFO || ie[1] < WPS_INFO_MIN_LEN ||
 			memcmp(ie+2, WPS_OUI, sizeof(WPS_OUI)) != 0)
 			continue;
