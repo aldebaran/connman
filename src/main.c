@@ -415,5 +415,7 @@ int main(int argc, char *argv[])
 	if (config)
 		g_key_file_free(config);
 
+	g_free(option_debug);
+
 	return 0;
 }
