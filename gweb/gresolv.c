@@ -453,7 +453,7 @@ static void rfc3484_sort_results(struct resolv_lookup *lookup)
 
 static void sort_and_return_results(struct resolv_lookup *lookup)
 {
-	char buf[100];
+	char buf[INET6_ADDRSTRLEN + 1];
 	GResolvResultStatus status;
 	char **results = g_try_new0(char *, lookup->nr_results + 1);
 	int i, n = 0;
@@ -461,18 +461,20 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 	if (!results)
 		return;
 
+	memset(buf, 0, INET6_ADDRSTRLEN + 1);
+
 	rfc3484_sort_results(lookup);
 
 	for (i = 0; i < lookup->nr_results; i++) {
 		if (lookup->results[i].dst.sa.sa_family == AF_INET) {
 			if (inet_ntop(AF_INET,
 					&lookup->results[i].dst.sin.sin_addr,
-					buf, sizeof(buf)) == NULL)
+					buf, sizeof(buf) - 1) == NULL)
 				continue;
 		} else if (lookup->results[i].dst.sa.sa_family == AF_INET6) {
 			if (inet_ntop(AF_INET6,
 					&lookup->results[i].dst.sin6.sin6_addr,
-					buf, sizeof(buf)) == NULL)
+					buf, sizeof(buf) - 1) == NULL)
 				continue;
 		} else
 			continue;
