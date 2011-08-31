@@ -185,9 +185,10 @@ static char *find_origin(void *src_map, struct stat *src_st,
 							subpath, d->d_name);
 
 			if (compare_file(src_map, src_st, pathname) == 0) {
-				closedir(dir);
-				return g_strdup_printf("%s/%s",
+				str = g_strdup_printf("%s/%s",
 							subpath, d->d_name);
+				closedir(dir);
+				return str;
 			}
 			break;
 		case DT_DIR:
