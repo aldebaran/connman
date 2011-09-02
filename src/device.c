@@ -294,6 +294,7 @@ int __connman_device_disable(struct connman_device *device)
 	if (device->powered_pending == PENDING_NONE && device->powered == FALSE)
 		return -EALREADY;
 
+	device->powered_pending = PENDING_DISABLE;
 	device->reconnect = FALSE;
 
 	clear_scan_trigger(device);
