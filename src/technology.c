@@ -170,15 +170,19 @@ void connman_technology_tethering_notify(struct connman_technology *technology,
 }
 
 static int set_tethering(struct connman_technology *technology,
-				const char *bridge, connman_bool_t enabled)
+				connman_bool_t enabled)
 {
-	const char *ident, *passphrase;
+	const char *ident, *passphrase, *bridge;
 
 	ident = technology->tethering_ident;
 	passphrase = technology->tethering_passphrase;
 
 	if (technology->driver == NULL ||
 			technology->driver->set_tethering == NULL)
+		return -EOPNOTSUPP;
+
+	bridge = __connman_tethering_get_bridge();
+	if (bridge == NULL)
 		return -EOPNOTSUPP;
 
 	if (technology->type == CONNMAN_SERVICE_TYPE_WIFI &&
@@ -485,7 +489,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	if (g_str_equal(name, "Tethering") == TRUE) {
 		int err;
 		connman_bool_t tethering;
-		const char *bridge;
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
@@ -495,11 +498,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (technology->tethering == tethering)
 			return __connman_error_in_progress(msg);
 
-		bridge = __connman_tethering_get_bridge();
-		if (bridge == NULL)
-			return __connman_error_not_supported(msg);
-
-		err = set_tethering(technology, bridge, tethering);
+		err = set_tethering(technology, tethering);
 		if (err < 0)
 			return __connman_error_failed(msg, -err);
 
