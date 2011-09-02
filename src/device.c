@@ -221,11 +221,8 @@ static gboolean device_pending_reset(gpointer user_data)
 	DBG("device %p", device);
 
 	/* Power request timedout, reset power pending state. */
-	if (device->pending_timeout > 0) {
-		g_source_remove(device->pending_timeout);
-		device->pending_timeout = 0;
-		device->powered_pending = PENDING_NONE;
-	}
+	device->pending_timeout = 0;
+	device->powered_pending = PENDING_NONE;
 
 	return FALSE;
 }
