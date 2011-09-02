@@ -925,6 +925,9 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 		goto done;
 	}
 
+	if (technology->tethering == TRUE)
+		set_tethering(technology, FALSE);
+
 	if (msg != NULL) {
 		technology->pending_reply = dbus_message_ref(msg);
 		technology->enable_persistent = FALSE;
