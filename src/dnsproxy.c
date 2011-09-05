@@ -1522,11 +1522,16 @@ int __connman_dnsproxy_add_listener(const char *interface)
 	ifdata->udp_listener_watch = 0;
 	ifdata->tcp_listener_channel = NULL;
 	ifdata->tcp_listener_watch = 0;
-	g_hash_table_insert(listener_table, ifdata->ifname, ifdata);
 
 	err = create_listener(interface);
-	if (err < 0)
+	if (err < 0) {
+		connman_error("Couldn't create listener for %s err %d",
+				interface, err);
+		g_free(ifdata->ifname);
+		g_free(ifdata);
 		return err;
+	}
+	g_hash_table_insert(listener_table, ifdata->ifname, ifdata);
 	return 0;
 }
 
