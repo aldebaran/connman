@@ -3099,45 +3099,6 @@ static connman_bool_t get_reconnect_state(struct connman_service *service)
 	return __connman_device_get_reconnect(device);
 }
 
-static void request_input_cb (struct connman_service *service,
-			const char *identity, const char *passphrase,
-			void *user_data)
-{
-	DBG ("RequestInput return, %p", service);
-
-	if (identity == NULL && passphrase == NULL && service->wps == FALSE)
-		return;
-
-	if (identity != NULL)
-		__connman_service_set_agent_identity(service, identity);
-
-	if (passphrase != NULL) {
-		switch (service->security) {
-		case CONNMAN_SERVICE_SECURITY_WEP:
-		case CONNMAN_SERVICE_SECURITY_PSK:
-			__connman_service_set_passphrase(service, passphrase);
-			break;
-		case CONNMAN_SERVICE_SECURITY_8021X:
-			__connman_service_set_agent_passphrase(service,
-							passphrase);
-			break;
-		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
-		case CONNMAN_SERVICE_SECURITY_NONE:
-		case CONNMAN_SERVICE_SECURITY_WPA:
-		case CONNMAN_SERVICE_SECURITY_RSN:
-			DBG("service security '%s' not handled",
-				security2string(service->security));
-			break;
-		}
-	}
-
-	__connman_service_connect(service);
-
-	/* Never cache agent provided credentials */
-	__connman_service_set_agent_identity(service, NULL);
-	__connman_service_set_agent_passphrase(service, NULL);
-}
-
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -3896,6 +3857,49 @@ static void report_error_cb(struct connman_service *service,
 		services_changed(FALSE);
 		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 	}
+}
+
+static void request_input_cb (struct connman_service *service,
+			const char *identity, const char *passphrase,
+			void *user_data)
+{
+	DBG ("RequestInput return, %p", service);
+
+	if (identity == NULL && passphrase == NULL && service->wps == FALSE) {
+		service_complete(service);
+		services_changed(FALSE);
+		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
+		return;
+	}
+
+	if (identity != NULL)
+		__connman_service_set_agent_identity(service, identity);
+
+	if (passphrase != NULL) {
+		switch (service->security) {
+		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_PSK:
+			__connman_service_set_passphrase(service, passphrase);
+			break;
+		case CONNMAN_SERVICE_SECURITY_8021X:
+			__connman_service_set_agent_passphrase(service,
+							passphrase);
+			break;
+		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+		case CONNMAN_SERVICE_SECURITY_NONE:
+		case CONNMAN_SERVICE_SECURITY_WPA:
+		case CONNMAN_SERVICE_SECURITY_RSN:
+			DBG("service security '%s' not handled",
+				security2string(service->security));
+			break;
+		}
+	}
+
+	__connman_service_connect(service);
+
+	/* Never cache agent provided credentials */
+	__connman_service_set_agent_identity(service, NULL);
+	__connman_service_set_agent_passphrase(service, NULL);
 }
 
 static int service_indicate_state(struct connman_service *service)
