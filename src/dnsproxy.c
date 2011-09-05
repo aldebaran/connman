@@ -1295,7 +1295,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	return resolv(req, buf, query);
 }
 
-static int create_dns_listener(int protocol, const char *ifname)
+static int create_dns_listener(int protocol, struct listener_data *ifdata)
 {
 	GIOChannel *channel;
 	const char *proto;
@@ -1307,13 +1307,9 @@ static int create_dns_listener(int protocol, const char *ifname)
 	socklen_t slen;
 	int sk, type, v6only = 0;
 	int family = AF_INET6;
-	struct listener_data *ifdata;
 
-	DBG("interface %s", ifname);
 
-	ifdata = g_hash_table_lookup(listener_table, ifname);
-	if (ifdata == NULL)
-		return -ENODEV;
+	DBG("interface %s", ifdata->ifname);
 
 	switch (protocol) {
 	case IPPROTO_UDP:
@@ -1342,7 +1338,8 @@ static int create_dns_listener(int protocol, const char *ifname)
 	}
 
 	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-					ifname, strlen(ifname) + 1) < 0) {
+					ifdata->ifname,
+					strlen(ifdata->ifname) + 1) < 0) {
 		connman_error("Failed to bind %s listener interface", proto);
 		close(sk);
 		return -EIO;
@@ -1405,15 +1402,9 @@ static int create_dns_listener(int protocol, const char *ifname)
 	return 0;
 }
 
-static void destroy_udp_listener(const char *interface)
+static void destroy_udp_listener(struct listener_data *ifdata)
 {
-	struct listener_data *ifdata;
-
-	DBG("interface %s", interface);
-
-	ifdata = g_hash_table_lookup(listener_table, interface);
-	if (ifdata == NULL)
-		return;
+	DBG("interface %s", ifdata->ifname);
 
 	if (ifdata->udp_listener_watch > 0)
 		g_source_remove(ifdata->udp_listener_watch);
@@ -1421,15 +1412,9 @@ static void destroy_udp_listener(const char *interface)
 	g_io_channel_unref(ifdata->udp_listener_channel);
 }
 
-static void destroy_tcp_listener(const char *interface)
+static void destroy_tcp_listener(struct listener_data *ifdata)
 {
-	struct listener_data *ifdata;
-
-	DBG("interface %s", interface);
-
-	ifdata = g_hash_table_lookup(listener_table, interface);
-	if (ifdata == NULL)
-		return;
+	DBG("interface %s", ifdata->ifname);
 
 	if (ifdata->tcp_listener_watch > 0)
 		g_source_remove(ifdata->tcp_listener_watch);
@@ -1437,34 +1422,31 @@ static void destroy_tcp_listener(const char *interface)
 	g_io_channel_unref(ifdata->tcp_listener_channel);
 }
 
-static int create_listener(const char *interface)
+static int create_listener(struct listener_data *ifdata)
 {
 	int err;
 
-	err = create_dns_listener(IPPROTO_UDP, interface);
+	err = create_dns_listener(IPPROTO_UDP, ifdata);
 	if (err < 0)
 		return err;
 
-	err = create_dns_listener(IPPROTO_TCP, interface);
+	err = create_dns_listener(IPPROTO_TCP, ifdata);
 	if (err < 0) {
-		destroy_udp_listener(interface);
+		destroy_udp_listener(ifdata);
 		return err;
 	}
 
-	if (g_strcmp0(interface, "lo") == 0)
+	if (g_strcmp0(ifdata->ifname, "lo") == 0)
 		__connman_resolvfile_append("lo", NULL, "127.0.0.1");
 
 	return 0;
 }
 
-static void destroy_listener(const char *interface)
+static void destroy_listener(struct listener_data *ifdata)
 {
 	GSList *list;
 
-	if (interface == NULL)
-		return;
-
-	if (g_strcmp0(interface, "lo") == 0)
+	if (g_strcmp0(ifdata->ifname, "lo") == 0)
 		__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
 
 	for (list = request_pending_list; list; list = list->next) {
@@ -1499,8 +1481,8 @@ static void destroy_listener(const char *interface)
 	g_slist_free(request_list);
 	request_list = NULL;
 
-	destroy_tcp_listener(interface);
-	destroy_udp_listener(interface);
+	destroy_tcp_listener(ifdata);
+	destroy_udp_listener(ifdata);
 }
 
 int __connman_dnsproxy_add_listener(const char *interface)
@@ -1523,7 +1505,7 @@ int __connman_dnsproxy_add_listener(const char *interface)
 	ifdata->tcp_listener_channel = NULL;
 	ifdata->tcp_listener_watch = 0;
 
-	err = create_listener(interface);
+	err = create_listener(ifdata);
 	if (err < 0) {
 		connman_error("Couldn't create listener for %s err %d",
 				interface, err);
@@ -1537,9 +1519,15 @@ int __connman_dnsproxy_add_listener(const char *interface)
 
 void __connman_dnsproxy_remove_listener(const char *interface)
 {
+	struct listener_data *ifdata;
+
 	DBG("interface %s", interface);
 
-	destroy_listener(interface);
+	ifdata = g_hash_table_lookup(listener_table, interface);
+	if (ifdata == NULL)
+		return;
+
+	destroy_listener(ifdata);
 
 	g_hash_table_remove(listener_table, interface);
 }
