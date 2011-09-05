@@ -1310,10 +1310,27 @@ static void append_security(DBusMessageIter *iter, void *user_data)
 		dbus_message_iter_append_basic(iter,
 				DBUS_TYPE_STRING, &str);
 
-	str = "wps";
-	if (service->wps == TRUE)
-		dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &str);
+	/*
+	 * Some access points incorrectly advertise WPS even when they
+	 * are configured as open or no security, so filter
+	 * appropriately.
+	 */
+	if (service->wps == TRUE) {
+		switch (service->security) {
+		case CONNMAN_SERVICE_SECURITY_PSK:
+		case CONNMAN_SERVICE_SECURITY_WPA:
+		case CONNMAN_SERVICE_SECURITY_RSN:
+			str = "wps";
+			dbus_message_iter_append_basic(iter,
+			        DBUS_TYPE_STRING, &str);
+			break;
+		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+		case CONNMAN_SERVICE_SECURITY_NONE:
+		case CONNMAN_SERVICE_SECURITY_WEP:
+		case CONNMAN_SERVICE_SECURITY_8021X:
+			break;
+		}
+	}
 }
 
 static void append_ethernet(DBusMessageIter *iter, void *user_data)
