@@ -200,10 +200,11 @@ static void interface_create_callback(int result,
 {
 	struct wifi_data *wifi = user_data;
 
-	DBG("result %d ifname %s", result,
-				g_supplicant_interface_get_ifname(interface));
+	DBG("result %d ifname %s, wifi %p", result,
+				g_supplicant_interface_get_ifname(interface),
+				wifi);
 
-	if (result < 0)
+	if (result < 0 || wifi == NULL)
 		return;
 
 	wifi->interface = interface;
@@ -216,9 +217,9 @@ static void interface_remove_callback(int result,
 {
 	struct wifi_data *wifi = user_data;
 
-	DBG("result %d", result);
+	DBG("result %d wifi %p", result, wifi);
 
-	if (result < 0)
+	if (result < 0 || wifi == NULL)
 		return;
 
 	wifi->interface = NULL;
