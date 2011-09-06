@@ -279,6 +279,7 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 		connman_device_reset_scanning(device);
 	else
 		connman_device_set_scanning(device, FALSE);
+	connman_device_unref(device);
 }
 
 static int wifi_scan(struct connman_device *device)
@@ -291,10 +292,13 @@ static int wifi_scan(struct connman_device *device)
 	if (wifi->tethering == TRUE)
 		return 0;
 
+	connman_device_ref(device);
 	ret = g_supplicant_interface_scan(wifi->interface, scan_callback,
 								device);
 	if (ret == 0)
 		connman_device_set_scanning(device, TRUE);
+	else
+		connman_device_unref(device);
 
 	return ret;
 }
