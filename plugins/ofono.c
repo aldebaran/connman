@@ -253,6 +253,36 @@ static void update_modem_online(struct modem_data *modem,
 		connman_device_set_powered(modem->device, online);
 }
 
+static void remove_device_networks(struct connman_device *device)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+	GSList *info_list = NULL;
+	GSList *list;
+
+	if (network_hash == NULL)
+		return;
+
+	g_hash_table_iter_init(&iter, network_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct network_info *info = value;
+
+		if (connman_network_get_device(info->network) != device)
+			continue;
+
+		info_list = g_slist_append(info_list, info);
+	}
+
+	for (list = info_list; list != NULL; list = list->next) {
+		struct network_info *info = list->data;
+
+		connman_device_remove_network(device, info->network);
+	}
+
+	g_slist_free(info_list);
+}
+
 static void set_online_reply(DBusPendingCall *call, void *user_data)
 {
 	struct modem_data *modem;
@@ -284,6 +314,9 @@ static void set_online_reply(DBusPendingCall *call, void *user_data)
 
 	if (modem->pending_online)
 		update_modem_online(modem, result);
+
+	if (result == FALSE)
+		remove_device_networks(modem->device);
 
 	dbus_message_unref(reply);
 
@@ -334,36 +367,6 @@ static struct connman_device_driver modem_driver = {
 	.enable		= modem_enable,
 	.disable	= modem_disable,
 };
-
-static void remove_device_networks(struct connman_device *device)
-{
-	GHashTableIter iter;
-	gpointer key, value;
-	GSList *info_list = NULL;
-	GSList *list;
-
-	if (network_hash == NULL)
-		return;
-
-	g_hash_table_iter_init(&iter, network_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		struct network_info *info = value;
-
-		if (connman_network_get_device(info->network) != device)
-			continue;
-
-		info_list = g_slist_append(info_list, info);
-	}
-
-	for (list = info_list; list != NULL; list = list->next) {
-		struct network_info *info = list->data;
-
-		connman_device_remove_network(device, info->network);
-	}
-
-	g_slist_free(info_list);
-}
 
 static void modem_remove_device(struct modem_data *modem)
 {
