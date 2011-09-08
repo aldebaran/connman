@@ -1063,7 +1063,13 @@ static gboolean match_driver(struct connman_device *device,
 	return FALSE;
 }
 
-static int device_probe(struct connman_device *device)
+/**
+ * connman_device_register:
+ * @device: device structure
+ *
+ * Register device with the system
+ */
+int connman_device_register(struct connman_device *device)
 {
 	GSList *list;
 
@@ -1092,27 +1098,6 @@ static int device_probe(struct connman_device *device)
 	return __connman_technology_add_device(device);
 }
 
-static void device_remove(struct connman_device *device)
-{
-	DBG("device %p name %s", device, device->name);
-
-	if (device->driver == NULL)
-		return;
-
-	remove_device(device);
-}
-
-/**
- * connman_device_register:
- * @device: device structure
- *
- * Register device with the system
- */
-int connman_device_register(struct connman_device *device)
-{
-	return device_probe(device);
-}
-
 /**
  * connman_device_unregister:
  * @device: device structure
@@ -1121,7 +1106,12 @@ int connman_device_register(struct connman_device *device)
  */
 void connman_device_unregister(struct connman_device *device)
 {
-	device_remove(device);
+	DBG("device %p name %s", device, device->name);
+
+	if (device->driver == NULL)
+		return;
+
+	remove_device(device);
 }
 
 /**
