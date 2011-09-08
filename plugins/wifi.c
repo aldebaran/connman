@@ -869,6 +869,34 @@ static void network_removed(GSupplicantNetwork *network)
 	connman_network_unref(connman_network);
 }
 
+static void network_changed(GSupplicantNetwork *network, const char *property)
+{
+	GSupplicantInterface *interface;
+	struct wifi_data *wifi;
+	const char *name, *identifier;
+	struct connman_network *connman_network;
+
+	interface = g_supplicant_network_get_interface(network);
+	wifi = g_supplicant_interface_get_data(interface);
+	identifier = g_supplicant_network_get_identifier(network);
+	name = g_supplicant_network_get_name(network);
+
+	DBG("name %s", name);
+
+	if (wifi == NULL)
+		return;
+
+	connman_network = connman_device_get_network(wifi->device, identifier);
+	if (connman_network == NULL)
+		return;
+
+	if (g_str_equal(property, "Signal") == TRUE) {
+	       connman_network_set_strength(connman_network,
+					calculate_strength(network));
+	       connman_network_update(connman_network);
+	}
+}
+
 static void debug(const char *str)
 {
 	if (getenv("CONNMAN_SUPPLICANT_DEBUG"))
@@ -885,6 +913,7 @@ static const GSupplicantCallbacks callbacks = {
 	.scan_finished		= scan_finished,
 	.network_added		= network_added,
 	.network_removed	= network_removed,
+	.network_changed	= network_changed,
 	.debug			= debug,
 };
 
