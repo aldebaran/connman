@@ -208,6 +208,8 @@ struct _GSupplicantCallbacks {
 	void (*scan_finished) (GSupplicantInterface *interface);
 	void (*network_added) (GSupplicantNetwork *network);
 	void (*network_removed) (GSupplicantNetwork *network);
+	void (*network_changed) (GSupplicantNetwork *network,
+					const char *property);
 	void (*debug) (const char *str);
 };
 

@@ -408,6 +408,18 @@ static void callback_network_removed(GSupplicantNetwork *network)
 	callbacks_pointer->network_removed(network);
 }
 
+static void callback_network_changed(GSupplicantNetwork *network,
+					const char *property)
+{
+	if (callbacks_pointer == NULL)
+		return;
+
+	if (callbacks_pointer->network_changed == NULL)
+		return;
+
+	callbacks_pointer->network_changed(network, property);
+}
+
 static void remove_interface(gpointer data)
 {
 	GSupplicantInterface *interface = data;
@@ -1028,6 +1040,7 @@ done:
 	if (bss->signal > network->signal) {
 		network->signal = bss->signal;
 		network->best_bss = bss;
+		callback_network_changed(network, "Signal");
 	}
 
 	g_hash_table_replace(interface->bss_mapping, bss->path, network);
@@ -1894,6 +1907,8 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 	}
 
 	SUPPLICANT_DBG("New network signal for %s %d dBm", network->ssid, network->signal);
+
+	callback_network_changed(network, "Signal");
 }
 
 static void wps_credentials(const char *key, DBusMessageIter *iter,
