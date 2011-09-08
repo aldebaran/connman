@@ -170,21 +170,6 @@ struct _GSupplicantInterface {
 	void *data;
 };
 
-struct _GSupplicantNetwork {
-	GSupplicantInterface *interface;
-	char *path;
-	char *group;
-	char *name;
-	unsigned char ssid[32];
-	unsigned int ssid_len;
-	dbus_int16_t signal;
-	GSupplicantMode mode;
-	GSupplicantSecurity security;
-	dbus_bool_t wps;
-	GHashTable *bss_table;
-	GHashTable *config_table;
-};
-
 struct g_supplicant_bss {
 	GSupplicantInterface *interface;
 	char *path;
@@ -202,6 +187,22 @@ struct g_supplicant_bss {
 	dbus_bool_t privacy;
 	dbus_bool_t psk;
 	dbus_bool_t ieee8021x;
+};
+
+struct _GSupplicantNetwork {
+	GSupplicantInterface *interface;
+	char *path;
+	char *group;
+	char *name;
+	unsigned char ssid[32];
+	unsigned int ssid_len;
+	dbus_int16_t signal;
+	struct g_supplicant_bss *best_bss;
+	GSupplicantMode mode;
+	GSupplicantSecurity security;
+	dbus_bool_t wps;
+	GHashTable *bss_table;
+	GHashTable *config_table;
 };
 
 static inline void debug(const char *format, ...)
@@ -1006,6 +1007,7 @@ static void add_bss_to_network(struct g_supplicant_bss *bss)
 	network->ssid_len = bss->ssid_len;
 	memcpy(network->ssid, bss->ssid, bss->ssid_len);
 	network->signal = bss->signal;
+	network->best_bss = bss;
 
 	network->wps = FALSE;
 	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0)
@@ -1023,6 +1025,11 @@ static void add_bss_to_network(struct g_supplicant_bss *bss)
 	callback_network_added(network);
 
 done:
+	if (bss->signal > network->signal) {
+		network->signal = bss->signal;
+		network->best_bss = bss;
+	}
+
 	g_hash_table_replace(interface->bss_mapping, bss->path, network);
 	g_hash_table_replace(network->bss_table, bss->path, bss);
 
@@ -1372,6 +1379,29 @@ static void interface_bss_added_without_keys(DBusMessageIter *iter,
 							bss_property, bss);
 }
 
+static void update_signal(gpointer key, gpointer value,
+						gpointer user_data)
+{
+	struct g_supplicant_bss *bss = value;
+	GSupplicantNetwork *network = user_data;
+
+	if (bss->signal > network->signal) {
+		network->signal = bss->signal;
+		network->best_bss = bss;
+	}
+}
+
+static void update_network_signal(GSupplicantNetwork *network)
+{
+	if (g_hash_table_size(network->bss_table) <= 1)
+		return;
+
+	g_hash_table_foreach(network->bss_table,
+				update_signal, network);
+
+	SUPPLICANT_DBG("New network signal %d", network->signal);
+}
+
 static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 {
 	GSupplicantInterface *interface = user_data;
@@ -1390,6 +1420,8 @@ static void interface_bss_removed(DBusMessageIter *iter, void *user_data)
 
 	g_hash_table_remove(interface->bss_mapping, path);
 	g_hash_table_remove(network->bss_table, path);
+
+	update_network_signal(network);
 
 	if (g_hash_table_size(network->bss_table) == 0)
 		g_hash_table_remove(interface->network_table, network->group);
@@ -1845,6 +1877,25 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 		return;
 
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
+
+	if (bss->signal == network->signal)
+		return;
+
+	/*
+	 * If the new signal is lower than the SSID signal, we need
+	 * to check for the new maximum.
+	 */
+	if (bss->signal < network->signal) {
+		if (bss != network->best_bss)
+			return;
+		network->signal = bss->signal;
+		update_network_signal(network);
+	} else {
+		network->signal = bss->signal;
+		network->best_bss = bss;
+	}
+
+	SUPPLICANT_DBG("New network signal for %s %d dBm", network->ssid, network->signal);
 }
 
 static void wps_credentials(const char *key, DBusMessageIter *iter,
