@@ -546,17 +546,6 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 void __connman_service_session_inc(struct connman_service *service);
 connman_bool_t __connman_service_session_dec(struct connman_service *service);
 
-#include <connman/location.h>
-
-int __connman_location_init(void);
-void __connman_location_cleanup(void);
-
-struct connman_location *__connman_location_create(struct connman_service *service);
-struct connman_location *__connman_service_get_location(struct connman_service *service);
-
-int __connman_location_detect(struct connman_service *service);
-int __connman_location_finish(struct connman_service *service);
-
 #include <connman/notifier.h>
 
 int __connman_technology_init(void);

@@ -99,7 +99,6 @@ struct connman_service {
 	char *phase2;
 	DBusMessage *pending;
 	guint timeout;
-	struct connman_location *location;
 	struct connman_stats stats;
 	struct connman_stats stats_roaming;
 	GHashTable *counter_table;
@@ -3418,9 +3417,6 @@ static void service_free(gpointer user_data)
 		service->ipconfig_ipv6 = NULL;
 	}
 
-	if (service->location != NULL)
-		connman_location_unref(service->location);
-
 	g_strfreev(service->nameservers);
 	g_strfreev(service->nameservers_config);
 	g_strfreev(service->domains);
@@ -3563,14 +3559,7 @@ struct connman_service *connman_service_create(void)
 
 	service_initialize(service);
 
-	service->location = __connman_location_create(service);
-
 	return service;
-}
-
-struct connman_location *__connman_service_get_location(struct connman_service *service)
-{
-	return service->location;
 }
 
 /**
@@ -4027,8 +4016,6 @@ static int service_indicate_state(struct connman_service *service)
 				def_service->provider != NULL)
 			__connman_provider_disconnect(def_service->provider);
 
-		__connman_location_finish(service);
-
 		default_changed();
 
 		__connman_wpad_stop(service);
@@ -4125,8 +4112,6 @@ int __connman_service_indicate_default(struct connman_service *service)
 	DBG("service %p", service);
 
 	default_changed();
-
-	__connman_location_detect(service);
 
 	return 0;
 }

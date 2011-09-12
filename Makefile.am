@@ -14,8 +14,7 @@ noinst_HEADERS = include/rtnl.h include/task.h \
 			include/dbus.h include/rfkill.h include/option.h \
 			include/provider.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
-			include/location.h include/technology.h \
-			include/setting.h
+			include/technology.h include/setting.h
 
 local_headers = $(foreach file,$(include_HEADERS) $(nodist_include_HEADERS) \
 			$(noinst_HEADERS), include/connman/$(notdir $(file)))
@@ -77,7 +76,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/dhcp.c src/rtnl.c src/proxy.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/storage.c src/dbus.c src/config.c \
-			src/technology.c src/counter.c src/location.c \
+			src/technology.c src/counter.c \
 			src/session.c src/tethering.c src/wpad.c src/wispr.c \
 			src/stats.c src/iptables.c src/dnsproxy.c src/6to4.c
 
@@ -230,7 +229,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-google \
 				--enable-meego \
 				--enable-client \
-				--enable-portal \
 				--enable-hh2serial-gps \
 				--enable-ntpd \
 				--enable-openconnect \

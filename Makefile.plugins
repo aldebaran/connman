@@ -139,18 +139,6 @@ endif
 
 builtin_sources += $(builtin_vpn_sources)
 
-if PORTAL
-if PORTAL_BUILTIN
-builtin_modules += portal
-builtin_sources += plugins/portal.c
-else
-plugin_LTLIBRARIES += plugins/portal.la
-plugin_objects += $(plugins_portal_la_OBJECTS)
-plugins_portal_la_CFLAGS = $(plugin_cflags)
-plugins_portal_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if PACRUNNER
 if PACRUNNER_BUILTIN
 builtin_modules += pacrunner
