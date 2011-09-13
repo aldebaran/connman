@@ -303,6 +303,24 @@ static int wifi_scan(struct connman_device *device)
 	return ret;
 }
 
+static int wifi_scan_fast(struct connman_device *device)
+{
+	struct wifi_data *wifi = connman_device_get_data(device);
+	int ret;
+
+	DBG("device %p %p", device, wifi->interface);
+
+	if (wifi->tethering == TRUE)
+		return 0;
+
+	ret = g_supplicant_interface_scan(wifi->interface, scan_callback,
+									device);
+	if (ret == 0)
+		connman_device_set_scanning(device, TRUE);
+
+	return ret;
+}
+
 static struct connman_device_driver wifi_ng_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_DEVICE_TYPE_WIFI,
@@ -312,6 +330,7 @@ static struct connman_device_driver wifi_ng_driver = {
 	.enable		= wifi_enable,
 	.disable	= wifi_disable,
 	.scan		= wifi_scan,
+	.scan_fast	= wifi_scan_fast,
 };
 
 static void system_ready(void)
@@ -578,8 +597,6 @@ static void interface_added(GSupplicantInterface *interface)
 
 	if (wifi->tethering == TRUE)
 		return;
-
-	wifi_scan(wifi->device);
 }
 
 static connman_bool_t is_idle(struct wifi_data *wifi)

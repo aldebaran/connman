@@ -108,6 +108,7 @@ struct connman_device_driver {
 	int (*enable) (struct connman_device *device);
 	int (*disable) (struct connman_device *device);
 	int (*scan) (struct connman_device *device);
+	int (*scan_fast) (struct connman_device *device);
 };
 
 int connman_device_driver_register(struct connman_device_driver *driver);
