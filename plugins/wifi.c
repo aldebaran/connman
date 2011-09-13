@@ -26,6 +26,7 @@
 #include <unistd.h>
 #include <stdlib.h>
 #include <errno.h>
+#include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
 #include <sys/socket.h>
@@ -48,6 +49,7 @@
 #include <connman/technology.h>
 #include <connman/log.h>
 #include <connman/option.h>
+#include <connman/storage.h>
 
 #include <gsupplicant/gsupplicant.h>
 
@@ -282,6 +284,172 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	connman_device_unref(device);
 }
 
+static int add_scan_param(gchar *hex_ssid, int freq,
+			GSupplicantScanParams *scan_data,
+			int driver_max_scan_ssids)
+{
+	unsigned int i;
+
+	if (driver_max_scan_ssids > scan_data->num_ssids && hex_ssid != NULL) {
+		gchar *ssid;
+		unsigned int j = 0, hex;
+		size_t hex_ssid_len = strlen(hex_ssid);
+
+		ssid = g_try_malloc0(hex_ssid_len / 2);
+		if (ssid == NULL)
+			return -ENOMEM;
+
+		for (i = 0; i < hex_ssid_len; i += 2) {
+			sscanf(hex_ssid + i, "%02x", &hex);
+			ssid[j++] = hex;
+		}
+
+		memcpy(scan_data->ssids[scan_data->num_ssids].ssid, ssid, j);
+		scan_data->ssids[scan_data->num_ssids].ssid_len = j;
+		scan_data->num_ssids++;
+
+		g_free(ssid);
+	}
+
+	/* Don't add duplicate entries */
+	for (i = 0; i < G_SUPPLICANT_MAX_FAST_SCAN; i++) {
+		if (scan_data->freqs[i] == 0) {
+			scan_data->freqs[i] = freq;
+			break;
+		} else if (scan_data->freqs[i] == freq)
+			break;
+	}
+
+	return 0;
+}
+
+struct last_connected {
+	GTimeVal modified;
+	gchar *ssid;
+	int freq;
+};
+
+static gint sort_entry(gconstpointer a, gconstpointer b, gpointer user_data)
+{
+	GTimeVal *aval = (GTimeVal *)a;
+	GTimeVal *bval = (GTimeVal *)b;
+
+	/* Note that the sort order is descending */
+	if (aval->tv_sec < bval->tv_sec)
+		return 1;
+
+	if (aval->tv_sec > bval->tv_sec)
+		return -1;
+
+	return 0;
+}
+
+static void free_entry(gpointer data)
+{
+	struct last_connected *entry = data;
+
+	g_free(entry->ssid);
+	g_free(entry);
+}
+
+static int get_latest_connections(int max_ssids,
+				GSupplicantScanParams *scan_data)
+{
+	GSequenceIter *iter;
+	GSequence *latest_list;
+	struct last_connected *entry;
+	GKeyFile *keyfile;
+	GTimeVal modified;
+	gchar **services;
+	gchar *str;
+	char *ssid;
+	int i, freq;
+	int num_ssids = 0;
+
+	latest_list = g_sequence_new(free_entry);
+	if (latest_list == NULL)
+		return -ENOMEM;
+
+	services = connman_storage_get_services();
+	for (i = 0; services && services[i]; i++) {
+		keyfile = connman_storage_load_service(services[i]);
+
+		str = g_key_file_get_string(keyfile,
+					services[i], "Favorite", NULL);
+		if (str == NULL || g_strcmp0(str, "true")) {
+			if (str)
+				g_free(str);
+			g_key_file_free(keyfile);
+			continue;
+		}
+		g_free(str);
+
+		str = g_key_file_get_string(keyfile,
+					services[i], "AutoConnect", NULL);
+		if (str == NULL || g_strcmp0(str, "true")) {
+			if (str)
+				g_free(str);
+			g_key_file_free(keyfile);
+			continue;
+		}
+		g_free(str);
+
+		str = g_key_file_get_string(keyfile,
+					services[i], "Modified", NULL);
+		if (str != NULL) {
+			g_time_val_from_iso8601(str, &modified);
+			g_free(str);
+		}
+
+		ssid = g_key_file_get_string(keyfile,
+					services[i], "SSID", NULL);
+
+		freq = g_key_file_get_integer(keyfile, services[i],
+					"Frequency", NULL);
+		if (freq) {
+			entry = g_try_new(struct last_connected, 1);
+			if (entry == NULL) {
+				g_sequence_free(latest_list);
+				g_key_file_free(keyfile);
+				g_free(ssid);
+				return -ENOMEM;
+			}
+
+			entry->ssid = ssid;
+			entry->modified = modified;
+			entry->freq = freq;
+
+			g_sequence_insert_sorted(latest_list, entry,
+						sort_entry, NULL);
+			num_ssids++;
+		} else
+			g_free(ssid);
+
+		g_key_file_free(keyfile);
+	}
+
+	g_strfreev(services);
+
+	num_ssids = num_ssids > G_SUPPLICANT_MAX_FAST_SCAN ?
+		G_SUPPLICANT_MAX_FAST_SCAN : num_ssids;
+
+	iter = g_sequence_get_begin_iter(latest_list);
+
+	for (i = 0; i < num_ssids; i++) {
+		entry = g_sequence_get(iter);
+
+		DBG("ssid %s freq %d modified %lu", entry->ssid, entry->freq,
+						entry->modified.tv_sec);
+
+		add_scan_param(entry->ssid, entry->freq, scan_data, max_ssids);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	g_sequence_free(latest_list);
+	return num_ssids;
+}
+
 static int wifi_scan(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
@@ -293,8 +461,8 @@ static int wifi_scan(struct connman_device *device)
 		return 0;
 
 	connman_device_ref(device);
-	ret = g_supplicant_interface_scan(wifi->interface, scan_callback,
-								device);
+	ret = g_supplicant_interface_scan(wifi->interface, NULL,
+					scan_callback, device);
 	if (ret == 0)
 		connman_device_set_scanning(device, TRUE);
 	else
@@ -306,17 +474,40 @@ static int wifi_scan(struct connman_device *device)
 static int wifi_scan_fast(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
+	GSupplicantScanParams *scan_params = NULL;
 	int ret;
+	int driver_max_ssids = 0;
 
 	DBG("device %p %p", device, wifi->interface);
 
 	if (wifi->tethering == TRUE)
 		return 0;
 
-	ret = g_supplicant_interface_scan(wifi->interface, scan_callback,
-									device);
+	driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
+							wifi->interface);
+	DBG("max ssids %d", driver_max_ssids);
+	if (driver_max_ssids == 0)
+		return wifi_scan(device);
+
+	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
+	if (scan_params == NULL)
+		return -ENOMEM;
+
+	ret = get_latest_connections(driver_max_ssids, scan_params);
+	if (ret <= 0) {
+		g_free(scan_params);
+		return wifi_scan(device);
+	}
+
+	connman_device_ref(device);
+	ret = g_supplicant_interface_scan(wifi->interface, scan_params,
+						scan_callback, device);
 	if (ret == 0)
 		connman_device_set_scanning(device, TRUE);
+	else {
+		g_free(scan_params);
+		connman_device_unref(device);
+	}
 
 	return ret;
 }

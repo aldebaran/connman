@@ -73,6 +73,8 @@ extern "C" {
 #define G_SUPPLICANT_PAIRWISE_TKIP	(1 << 1)
 #define G_SUPPLICANT_PAIRWISE_CCMP	(1 << 2)
 
+#define G_SUPPLICANT_MAX_FAST_SCAN	4
+
 typedef enum {
 	G_SUPPLICANT_MODE_UNKNOWN,
 	G_SUPPLICANT_MODE_INFRA,
@@ -131,6 +133,19 @@ struct _GSupplicantSSID {
 
 typedef struct _GSupplicantSSID GSupplicantSSID;
 
+struct _GSupplicantScanParams {
+	struct scan_ssid {
+		unsigned char ssid[32];
+		uint8_t ssid_len;
+	} ssids[G_SUPPLICANT_MAX_FAST_SCAN];
+
+	uint8_t num_ssids;
+
+	uint16_t freqs[G_SUPPLICANT_MAX_FAST_SCAN];
+};
+
+typedef struct _GSupplicantScanParams GSupplicantScanParams;
+
 /* global API */
 typedef void (*GSupplicantCountryCallback) (void *user_data);
 
@@ -155,6 +170,7 @@ int g_supplicant_interface_remove(GSupplicantInterface *interface,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 int g_supplicant_interface_scan(GSupplicantInterface *interface,
+					GSupplicantScanParams *scan_data,
 					GSupplicantInterfaceCallback callback,
 							void *user_data);
 
