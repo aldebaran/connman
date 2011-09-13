@@ -26,7 +26,6 @@ fi
 		--enable-pacrunner=builtin \
 		--enable-google=builtin \
 		--enable-meego=builtin \
-		--enable-portal=builtin \
 		--enable-nmcompat=builtin \
 		--enable-polkit=builtin \
 		--enable-capng \
