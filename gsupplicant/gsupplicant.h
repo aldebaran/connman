@@ -196,6 +196,7 @@ const void *g_supplicant_network_get_ssid(GSupplicantNetwork *network,
 const char *g_supplicant_network_get_mode(GSupplicantNetwork *network);
 const char *g_supplicant_network_get_security(GSupplicantNetwork *network);
 dbus_int16_t g_supplicant_network_get_signal(GSupplicantNetwork *network);
+dbus_uint16_t g_supplicant_network_get_frequency(GSupplicantNetwork *network);
 dbus_bool_t g_supplicant_network_get_wps(GSupplicantNetwork *network);
 
 struct _GSupplicantCallbacks {

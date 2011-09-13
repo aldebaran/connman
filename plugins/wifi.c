@@ -841,6 +841,9 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 				calculate_strength(supplicant_network));
 	connman_network_set_bool(network, "WiFi.WPS", wps);
 
+	connman_network_set_frequency(network,
+			g_supplicant_network_get_frequency(supplicant_network));
+
 	connman_network_set_available(network, TRUE);
 
 	if (ssid != NULL)

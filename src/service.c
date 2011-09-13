@@ -469,6 +469,7 @@ static int service_save(struct connman_service *service)
 {
 	GKeyFile *keyfile;
 	gchar *str;
+	guint freq;
 	const char *cst_str = NULL;
 	int err = 0;
 
@@ -518,6 +519,10 @@ static int service_save(struct connman_service *service)
 
 				g_string_free(str, TRUE);
 			}
+
+			freq = connman_network_get_frequency(service->network);
+			g_key_file_set_integer(keyfile, service->identifier,
+						"Frequency", freq);
 		}
 		/* fall through */
 

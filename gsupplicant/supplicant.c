@@ -197,6 +197,7 @@ struct _GSupplicantNetwork {
 	unsigned char ssid[32];
 	unsigned int ssid_len;
 	dbus_int16_t signal;
+	dbus_uint16_t frequency;
 	struct g_supplicant_bss *best_bss;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
@@ -795,6 +796,14 @@ dbus_int16_t g_supplicant_network_get_signal(GSupplicantNetwork *network)
 	return network->signal;
 }
 
+dbus_uint16_t g_supplicant_network_get_frequency(GSupplicantNetwork *network)
+{
+	if (network == NULL)
+		return 0;
+
+	return network->frequency;
+}
+
 dbus_bool_t g_supplicant_network_get_wps(GSupplicantNetwork *network)
 {
 	if (network == NULL)
@@ -1019,6 +1028,7 @@ static void add_bss_to_network(struct g_supplicant_bss *bss)
 	network->ssid_len = bss->ssid_len;
 	memcpy(network->ssid, bss->ssid, bss->ssid_len);
 	network->signal = bss->signal;
+	network->frequency = bss->frequency;
 	network->best_bss = bss;
 
 	network->wps = FALSE;
