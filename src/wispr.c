@@ -604,7 +604,7 @@ static void proxy_callback(const char *proxy, void *user_data)
 		g_web_set_proxy(wp_context->web, proxy);
 
 	g_web_set_accept(wp_context->web, NULL);
-	g_web_set_user_agent(wp_context->web, "ConnMan/%s", VERSION);
+	g_web_set_user_agent(wp_context->web, "ConnMan/%s wispr", VERSION);
 	g_web_set_close_connection(wp_context->web, TRUE);
 
 	connman_wispr_message_init(&wp_context->wispr_msg);
