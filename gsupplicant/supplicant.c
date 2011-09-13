@@ -153,6 +153,7 @@ struct _GSupplicantInterface {
 	unsigned int pairwise_capa;
 	unsigned int scan_capa;
 	unsigned int mode_capa;
+	unsigned int max_scan_ssids;
 	dbus_bool_t ready;
 	GSupplicantState state;
 	dbus_bool_t scanning;
@@ -624,7 +625,13 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 	else if (g_strcmp0(key, "Modes") == 0)
 		supplicant_dbus_array_foreach(iter,
 				interface_capability_mode, interface);
-	else
+	else if (g_strcmp0(key, "MaxScanSSID") == 0) {
+		dbus_int32_t max_scan_ssid;
+
+		dbus_message_iter_get_basic(iter, &max_scan_ssid);
+		interface->max_scan_ssids = max_scan_ssid;
+
+	} else
 		SUPPLICANT_DBG("key %s type %c",
 				key, dbus_message_iter_get_arg_type(iter));
 }
@@ -725,6 +732,15 @@ unsigned int g_supplicant_interface_get_mode(GSupplicantInterface *interface)
 		return 0;
 
 	return interface->mode_capa;
+}
+
+unsigned int g_supplicant_interface_get_max_scan_ssids(
+				GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return 0;
+
+	return interface->max_scan_ssids;
 }
 
 GSupplicantInterface *g_supplicant_network_get_interface(

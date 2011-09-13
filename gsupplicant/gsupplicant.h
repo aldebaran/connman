@@ -181,6 +181,8 @@ const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
 							unsigned int *ssid_len);
 GSupplicantWpsState g_supplicant_interface_get_wps_state(GSupplicantInterface *interface);
 unsigned int g_supplicant_interface_get_mode(GSupplicantInterface *interface);
+unsigned int g_supplicant_interface_get_max_scan_ssids(
+					GSupplicantInterface *interface);
 
 /* Network API */
 struct _GSupplicantNetwork;
