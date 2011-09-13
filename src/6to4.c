@@ -49,7 +49,7 @@ static char *tunnel_ip_address;
 static GWeb *web;
 static guint web_request_id;
 
-#define STATUS_URL "http://ipv6.google.com/"
+#define STATUS_URL "http://ipv6.connman.net/online/status.html"
 
 #define NLMSG_TAIL(nmsg) \
 	((struct rtattr *) (((void *)(nmsg)) + NLMSG_ALIGN((nmsg)->nlmsg_len)))
