@@ -30,7 +30,8 @@
 
 #include "connman.h"
 
-#define STATUS_URL  "http://www.connman.net/online/status.html"
+#define STATUS_URL_IPV4  "http://ipv4.connman.net/online/status.html"
+#define STATUS_URL_IPV6  "http://ipv6.connman.net/online/status.html"
 
 struct connman_wispr_message {
 	gboolean has_error;
@@ -60,6 +61,8 @@ struct connman_wispr_portal_context {
 	GWeb *web;
 	unsigned int token;
 	guint request_id;
+
+	const char *status_url;
 
 	/* WISPr specific */
 	GWebParser *wispr_parser;
@@ -385,7 +388,8 @@ static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_
 	DBG("");
 
 	wp_context->request_id = g_web_request_get(wp_context->web,
-			STATUS_URL, wispr_portal_web_result, wp_context);
+					wp_context->status_url,
+					wispr_portal_web_result, wp_context);
 
 	if (wp_context->request_id == 0)
 		wispr_portal_error(wp_context);
@@ -409,7 +413,7 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 	g_string_append_uri_escaped(buf, wp_context->wispr_password,
 								NULL, FALSE);
 	g_string_append(buf, "&FNAME=0&OriginatingServer=");
-	g_string_append_uri_escaped(buf, STATUS_URL, NULL, FALSE);
+	g_string_append_uri_escaped(buf, wp_context->status_url, NULL, FALSE);
 
 	count = buf->len;
 
@@ -651,13 +655,17 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 		goto done;
 	}
 
-	if (wp_context->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+	if (wp_context->type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 		g_web_set_address_family(wp_context->web, AF_INET);
-	else
+		wp_context->status_url = STATUS_URL_IPV4;
+	} else {
 		g_web_set_address_family(wp_context->web, AF_INET6);
+		wp_context->status_url = STATUS_URL_IPV6;
+	}
 
 	wp_context->token = connman_proxy_lookup(interface,
-					STATUS_URL, wp_context->service,
+					wp_context->status_url,
+					wp_context->service,
 					proxy_callback, wp_context);
 	if (wp_context->token == 0)
 		err = -EINVAL;
