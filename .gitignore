@@ -35,6 +35,7 @@ src/*-connman.rules
 plugins/connman.policy
 scripts/connman
 scripts/openconnect-script
+scripts/openvpn-script
 client/cm
 tools/wispr
 tools/dhcp-test
