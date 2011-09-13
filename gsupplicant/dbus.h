@@ -37,6 +37,11 @@ typedef void (*supplicant_dbus_setup_function) (DBusMessageIter *iter,
 typedef void (*supplicant_dbus_result_function) (const char *error,
 				DBusMessageIter *iter, void *user_data);
 
+void supplicant_dbus_property_append_array(DBusMessageIter *iter,
+				const char *key, int type,
+				supplicant_dbus_array_function function,
+				void *user_data);
+
 void supplicant_dbus_setup(DBusConnection *conn);
 
 void supplicant_dbus_array_foreach(DBusMessageIter *iter,
@@ -109,5 +114,20 @@ supplicant_dbus_dict_append_fixed_array(DBusMessageIter *dict,
 	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 							NULL, &entry);
 	supplicant_dbus_property_append_fixed_array(&entry, key, type, val, len);
+	dbus_message_iter_close_container(dict, &entry);
+}
+
+static inline void
+supplicant_dbus_dict_append_array(DBusMessageIter *dict,
+				const char *key, int type,
+				supplicant_dbus_array_function function,
+				void *user_data)
+{
+	DBusMessageIter entry;
+
+	dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
+								NULL, &entry);
+	supplicant_dbus_property_append_array(&entry, key, type,
+						function, user_data);
 	dbus_message_iter_close_container(dict, &entry);
 }

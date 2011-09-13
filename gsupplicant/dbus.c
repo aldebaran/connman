@@ -520,3 +520,37 @@ void supplicant_dbus_property_append_fixed_array(DBusMessageIter *iter,
 
 	dbus_message_iter_close_container(iter, &value);
 }
+
+void supplicant_dbus_property_append_array(DBusMessageIter *iter,
+				const char *key, int type,
+				supplicant_dbus_array_function function,
+				void *user_data)
+{
+	DBusMessageIter value, array;
+	const char *variant_sig, *array_sig;
+
+	switch (type) {
+	case DBUS_TYPE_STRING:
+		variant_sig = DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_TYPE_BYTE_AS_STRING;
+		array_sig = DBUS_TYPE_ARRAY_AS_STRING DBUS_TYPE_BYTE_AS_STRING;
+		break;
+	default:
+		return;
+	}
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &key);
+
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+							variant_sig, &value);
+
+	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
+							array_sig, &array);
+	if (function)
+		function(&array, user_data);
+
+	dbus_message_iter_close_container(&value, &array);
+
+	dbus_message_iter_close_container(iter, &value);
+}
