@@ -237,7 +237,7 @@ gchar **connman_storage_get_services()
 	return services;
 }
 
-GKeyFile *__connman_storage_load_service(const char *service_id)
+GKeyFile *connman_storage_load_service(const char *service_id)
 {
 	gchar *pathname;
 	GKeyFile *keyfile = NULL;

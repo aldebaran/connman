@@ -29,6 +29,8 @@
 #include <netdb.h>
 #include <gdbus.h>
 
+#include <connman/storage.h>
+
 #include "connman.h"
 
 #define CONNECT_TIMEOUT		120
@@ -308,7 +310,7 @@ static int service_load(struct connman_service *service)
 
 	DBG("service %p", service);
 
-	keyfile = __connman_storage_load_service(service->identifier);
+	keyfile = connman_storage_load_service(service->identifier);
 	if (keyfile == NULL)
 		return -EIO;
 
@@ -5119,7 +5121,7 @@ void __connman_service_read_ip6config(struct connman_service *service)
 	if (service->ipconfig_ipv6 == NULL)
 		return;
 
-	keyfile = __connman_storage_load_service(service->identifier);
+	keyfile = connman_storage_load_service(service->identifier);
 	if (keyfile == NULL)
 		return;
 
