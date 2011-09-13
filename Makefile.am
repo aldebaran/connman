@@ -6,7 +6,8 @@ includedir = @includedir@/connman
 include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/notifier.h include/service.h \
 			include/resolver.h include/ipconfig.h \
-			include/device.h include/network.h include/inet.h
+			include/device.h include/network.h include/inet.h \
+			include/storage.h
 
 nodist_include_HEADERS = include/version.h
 

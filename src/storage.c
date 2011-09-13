@@ -26,6 +26,9 @@
 #include <errno.h>
 #include <unistd.h>
 #include <sys/stat.h>
+#include <dirent.h>
+
+#include <connman/storage.h>
 
 #include "connman.h"
 
@@ -181,6 +184,57 @@ GKeyFile *__connman_storage_open_service(const char *service_id)
 	keyfile = g_key_file_new();
 
 	return keyfile;
+}
+
+gchar **connman_storage_get_services()
+{
+	struct dirent *d;
+	gchar *str;
+	DIR *dir;
+	GString *result;
+	gchar **services = NULL;
+	struct stat buf;
+	int ret;
+
+	dir = opendir(STORAGEDIR);
+	if (dir == NULL)
+		return NULL;
+
+	result = g_string_new(NULL);
+
+	while ((d = readdir(dir))) {
+		if (strcmp(d->d_name, ".") == 0 ||
+				strcmp(d->d_name, "..") == 0)
+			continue;
+
+		switch (d->d_type) {
+		case DT_DIR:
+			/*
+			 * If the settings file is not found, then
+			 * assume this directory is not a services dir.
+			 */
+			str = g_strdup_printf("%s/%s/settings", STORAGEDIR,
+								d->d_name);
+			ret = stat(str, &buf);
+			g_free(str);
+			if (ret < 0)
+				continue;
+
+			g_string_append_printf(result, "%s/", d->d_name);
+			break;
+		}
+	}
+
+	closedir(dir);
+
+	str = g_string_free(result, FALSE);
+	if (str) {
+		str[strlen(str) - 1] = '\0';
+		services = g_strsplit(str, "/", -1);
+	}
+	g_free(str);
+
+	return services;
 }
 
 GKeyFile *__connman_storage_load_service(const char *service_id)
