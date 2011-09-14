@@ -533,6 +533,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 		provider->host = g_strdup(host);
 		provider->domain = g_strdup(domain);
+		g_free(provider->name);
 		provider->name = g_strdup(name);
 		provider->type = g_strdup(type);
 
