@@ -782,12 +782,15 @@ static void test_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
 	struct connman_service *service;
-	connman_bool_t disconnect;
+	connman_bool_t disconnect, online;
 
 	if (info->entry == NULL)
 		return;
 
 	disconnect = explicit_disconnect(session);
+
+	online = is_connecting(info->entry->state) == TRUE ||
+			is_online(info->entry->state) == TRUE;
 
 	info->online = FALSE;
 	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
@@ -796,7 +799,7 @@ static void test_and_disconnect(struct connman_session *session)
 	service = info->entry->service;
 	info->entry = NULL;
 
-	if (disconnect == TRUE)
+	if (disconnect == TRUE && online == TRUE)
 		g_timeout_add_seconds(0, call_disconnect, service);
 }
 
