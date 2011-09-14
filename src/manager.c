@@ -130,7 +130,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		__connman_session_set_mode(sessionmode);
 
-		if (connman_state_idle == FALSE) {
+		if (sessionmode == TRUE && connman_state_idle == FALSE) {
 			session_mode_pending = msg;
 			return NULL;
 		}
