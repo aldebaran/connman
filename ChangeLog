@@ -1,3 +1,9 @@
+ver 0.77.2
+	connection: Default gateway is changed when reorganizing services (Fixes BMC#22540)
+	network: Read only the ipconfig data if we have no address (Fixes BMC#22767)
+	service: Check NULL pointer when setting ipconfig (Fixes BMC#22766)
+	wifi: Implement network_changed gsupplicant hook
+
 ver 0.77.1
 	ConnMan 0.77 code merge
 
