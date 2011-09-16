@@ -1,5 +1,5 @@
 AC_PREREQ(2.60)
-AC_INIT(connman, 0.76.2)
+AC_INIT(connman, 0.77.1)
 
 AM_INIT_AUTOMAKE([foreign subdir-objects color-tests])
 AM_CONFIG_HEADER(config.h)

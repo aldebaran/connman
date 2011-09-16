@@ -1,3 +1,6 @@
+ver 0.77.1
+	ConnMan 0.77 code merge
+
 ver 0.76.2
 	ofono: Network name is empty when operator is not available
 	network: Set driver pointer to NULL back if not ready (Fixes BMC#21705)
