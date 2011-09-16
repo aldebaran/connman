@@ -29,6 +29,9 @@
 
 #include "connman.h"
 
+connman_bool_t connman_state_idle;
+DBusMessage *session_mode_pending = NULL;
+
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -135,7 +138,16 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &sessionmode);
 
+		if (session_mode_pending != NULL)
+			return __connman_error_in_progress(msg);
+
 		__connman_session_set_mode(sessionmode);
+
+		if (connman_state_idle == FALSE) {
+			session_mode_pending = msg;
+			return NULL;
+		}
+
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -262,10 +274,35 @@ static void technology_notify(enum connman_service_type type,
 		technology_reply(0);
 }
 
+static void session_mode_notify(void)
+{
+	DBusMessage *reply;
+
+	reply = g_dbus_create_reply(session_mode_pending, DBUS_TYPE_INVALID);
+	g_dbus_send_message(connection, reply);
+
+	dbus_message_unref(session_mode_pending);
+	session_mode_pending = NULL;
+}
+
+static void idle_state(connman_bool_t idle)
+{
+
+	DBG("idle %d", idle);
+
+	connman_state_idle = idle;
+
+	if (connman_state_idle == FALSE || session_mode_pending == NULL)
+		return;
+
+	session_mode_notify();
+}
+
 static struct connman_notifier technology_notifier = {
 	.name		= "manager",
 	.priority	= CONNMAN_NOTIFIER_PRIORITY_HIGH,
 	.service_enabled= technology_notify,
+	.idle_state	= idle_state,
 };
 
 static DBusMessage *enable_technology(DBusConnection *conn,
@@ -630,7 +667,8 @@ static DBusMessage *release_private_network(DBusConnection *conn,
 
 static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
-	{ "SetProperty",       "sv",    "",      set_property       },
+	{ "SetProperty",       "sv",    "",      set_property,
+						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetState",          "",      "s",     get_state          },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
@@ -681,6 +719,8 @@ int __connman_manager_init(void)
 					CONNMAN_MANAGER_INTERFACE,
 					manager_methods,
 					manager_signals, NULL, NULL, NULL);
+
+	connman_state_idle = TRUE;
 
 	return 0;
 }

@@ -30,6 +30,7 @@
 #include "test-connman.h"
 
 #define ENABLE_WRAPPER 1
+#define PROPERTY_CHANGED		"PropertyChanged"
 
 gboolean util_quit_loop(gpointer data)
 {
@@ -54,6 +55,61 @@ guint util_idle_call(struct test_fix *fix, GSourceFunc func,
 	return id;
 }
 
+static void connman_died(DBusConnection *connection, void *user_data)
+{
+	g_assert(FALSE);
+}
+
+static void manager_changed(struct test_fix *fix,
+					DBusMessageIter *entry)
+{
+	DBusMessageIter iter;
+	const char *key;
+	const char *value;
+	int type;
+
+	dbus_message_iter_get_basic(entry, &key);
+
+	LOG("key %s", key);
+
+	dbus_message_iter_next(entry);
+
+	dbus_message_iter_recurse(entry, &iter);
+
+	type = dbus_message_iter_get_arg_type(&iter);
+
+	if (type != DBUS_TYPE_STRING)
+		return;
+
+	dbus_message_iter_get_basic(&iter, &value);
+
+	if (g_str_equal(key, "State") == TRUE) {
+		LOG("State %s", value);
+
+		if (fix->manager.state != NULL)
+			g_free(fix->manager.state);
+
+		fix->manager.state = g_strdup(value);
+	}
+
+	if (fix->manager_changed != NULL)
+		fix->manager_changed(fix);
+}
+
+static gboolean handle_manager_changed(DBusConnection *connection,
+				DBusMessage *message,
+				void *user_data)
+{
+	struct test_fix *fix = user_data;
+
+	DBusMessageIter iter;
+
+	if (dbus_message_iter_init(message, &iter))
+		manager_changed(fix, &iter);
+
+	return TRUE;
+}
+
 guint util_call(struct test_fix *fix, GSourceFunc func,
 		GDestroyNotify notify)
 {
@@ -70,13 +126,32 @@ guint util_call(struct test_fix *fix, GSourceFunc func,
 
 void util_setup(struct test_fix *fix, gconstpointer data)
 {
+	DBusMessage *msg;
+
 	fix->main_loop = g_main_loop_new(NULL, FALSE);
 	fix->main_connection = g_dbus_setup_private(DBUS_BUS_SYSTEM,
 							NULL, NULL);
+	fix->watch = g_dbus_add_service_watch(fix->main_connection,
+						CONNMAN_SERVICE,
+						NULL,
+						connman_died,
+						NULL, NULL);
+	fix->manager_watch = g_dbus_add_signal_watch(fix->main_connection,
+						NULL, NULL,
+						CONNMAN_MANAGER_INTERFACE,
+						PROPERTY_CHANGED,
+						handle_manager_changed,
+						fix, NULL);
+
+	msg = manager_get_properties(fix->main_connection);
+	manager_parse_properties(msg, &fix->manager);
+	dbus_message_unref(msg);
 }
 
 void util_teardown(struct test_fix *fix, gconstpointer data)
 {
+	g_dbus_remove_watch(fix->main_connection, fix->watch);
+	g_dbus_remove_watch(fix->main_connection, fix->manager_watch);
 	dbus_connection_close(fix->main_connection);
 	dbus_connection_unref(fix->main_connection);
 

@@ -335,6 +335,36 @@ static struct connman_device_driver modem_driver = {
 	.disable	= modem_disable,
 };
 
+static void remove_device_networks(struct connman_device *device)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+	GSList *info_list = NULL;
+	GSList *list;
+
+	if (network_hash == NULL)
+		return;
+
+	g_hash_table_iter_init(&iter, network_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct network_info *info = value;
+
+		if (connman_network_get_device(info->network) != device)
+			continue;
+
+		info_list = g_slist_append(info_list, info);
+	}
+
+	for (list = info_list; list != NULL; list = list->next) {
+		struct network_info *info = list->data;
+
+		connman_device_remove_network(device, info->network);
+	}
+
+	g_slist_free(info_list);
+}
+
 static void modem_remove_device(struct modem_data *modem)
 {
 	DBG("modem %p path %s device %p", modem, modem->path, modem->device);
@@ -342,7 +372,8 @@ static void modem_remove_device(struct modem_data *modem)
 	if (modem->device == NULL)
 		return;
 
-	connman_device_remove_all_networks(modem->device);
+	remove_device_networks(modem->device);
+
 	connman_device_unregister(modem->device);
 	connman_device_unref(modem->device);
 
@@ -364,8 +395,12 @@ static void remove_modem(gpointer data)
 static void remove_network(gpointer data)
 {
 	struct network_info *info = data;
+	struct connman_device *device;
 
-	connman_network_unregister(info->network);
+	device = connman_network_get_device(info->network);
+	if (device != NULL)
+		connman_device_remove_network(device, info->network);
+
 	connman_network_unref(info->network);
 
 	g_free(info);
@@ -833,11 +868,8 @@ static int add_network(struct connman_device *device,
 	if (network == NULL)
 		return -ENOMEM;
 
-	connman_network_register(network);
-
 	info = g_try_new0(struct network_info, 1);
 	if (info == NULL) {
-		connman_network_unregister(network);
 		connman_network_unref(network);
 		return -ENOMEM;
 	}
@@ -850,7 +882,7 @@ static int add_network(struct connman_device *device,
 
 	create_service(network);
 
-	g_hash_table_insert(network_hash, (char *) path, info);
+	g_hash_table_insert(network_hash, g_strdup(path), info);
 
 	connman_network_set_available(network, TRUE);
 	connman_network_set_index(network, -1);
@@ -881,6 +913,7 @@ static int add_network(struct connman_device *device,
 			dbus_message_iter_get_basic(&value, &type);
 			if (g_strcmp0(type, "internet") != 0) {
 				DBG("path %p type %s", path, type);
+				g_hash_table_remove(network_hash, path);
 				return -EIO;
 			}
 		} else if (g_str_equal(key, "Settings"))
@@ -893,8 +926,10 @@ static int add_network(struct connman_device *device,
 		dbus_message_iter_next(dict);
 	}
 
-	if (connman_device_add_network(device, network) != 0)
+	if (connman_device_add_network(device, network) != 0) {
+		g_hash_table_remove(network_hash, path);
 		return -EIO;
+	}
 
 	/* Connect only if requested to do so */
 	if (active && connman_network_get_connecting(network) == TRUE)
@@ -1550,7 +1585,7 @@ static void ofono_connect(DBusConnection *connection, void *user_data)
 						g_free, remove_modem);
 
 	network_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						NULL, remove_network);
+						g_free, remove_network);
 
 	call_ofono("/", OFONO_MANAGER_INTERFACE, GET_MODEMS,
 			manager_modems_reply, NULL, NULL,
@@ -1561,12 +1596,15 @@ static void ofono_disconnect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
 
-	if (modem_hash == NULL)
-		return;
+	if (modem_hash != NULL) {
+		g_hash_table_destroy(modem_hash);
+		modem_hash = NULL;
+	}
 
-	g_hash_table_destroy(modem_hash);
-
-	modem_hash = NULL;
+	if (network_hash != NULL) {
+		g_hash_table_destroy(network_hash);
+		network_hash = NULL;
+	}
 }
 
 static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
@@ -1745,9 +1783,8 @@ static gboolean context_removed(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
-	const char *network_path, *identifier;
+	const char *network_path;
 	struct modem_data *modem;
-	struct network_info *info;
 	DBusMessageIter iter;
 
 	DBG("path %s", path);
@@ -1761,13 +1798,7 @@ static gboolean context_removed(DBusConnection *connection,
 
 	dbus_message_iter_get_basic(&iter, &network_path);
 
-	info = g_hash_table_lookup(network_hash, network_path);
-	if (info == NULL)
-		return TRUE;
-
-	identifier = connman_network_get_identifier(info->network);
-	connman_device_remove_network(modem->device, identifier);
-
+	g_hash_table_remove(network_hash, network_path);
 	return TRUE;
 }
 
@@ -1850,10 +1881,8 @@ static gboolean context_changed(DBusConnection *connection,
 
 		if (active == FALSE)
 			set_connected(info, active);
-
-		/* Connect only if requested to do so */
-		if (active == TRUE &&
-			connman_network_get_connecting(info->network) == TRUE)
+		else if (connman_network_get_connecting(info->network) == TRUE)
+			/* Connect only if requested to do so */
 			set_connected(info, active);
 	}
 

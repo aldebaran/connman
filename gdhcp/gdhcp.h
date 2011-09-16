@@ -73,7 +73,7 @@ typedef void (*GDHCPDebugFunc)(const char *str, gpointer user_data);
 GDHCPClient *g_dhcp_client_new(GDHCPType type, int index,
 						GDHCPClientError *error);
 
-int g_dhcp_client_start(GDHCPClient *client);
+int g_dhcp_client_start(GDHCPClient *client, const char *last_address);
 void g_dhcp_client_stop(GDHCPClient *client);
 
 GDHCPClient *g_dhcp_client_ref(GDHCPClient *client);

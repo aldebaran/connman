@@ -271,14 +271,14 @@ int __connman_device_disable(struct connman_device *device)
 
 	clear_scan_trigger(device);
 
-	g_hash_table_remove_all(device->networks);
-
 	err = device->driver->disable(device);
 	if (err < 0 && err != -EALREADY) {
 		if (err == -EINPROGRESS)
 			device->powered_pending = FALSE;
 		return err;
 	}
+
+	g_hash_table_remove_all(device->networks);
 
 	device->connections = 0;
 
@@ -418,7 +418,7 @@ void connman_device_driver_unregister(struct connman_device_driver *driver)
 	remove_driver(driver);
 }
 
-static void unregister_network(gpointer data)
+static void free_network(gpointer data)
 {
 	struct connman_network *network = data;
 
@@ -426,7 +426,6 @@ static void unregister_network(gpointer data)
 
 	__connman_network_set_device(network, NULL);
 
-	connman_network_unregister(network);
 	connman_network_unref(network);
 }
 
@@ -511,7 +510,7 @@ struct connman_device *connman_device_create(const char *node,
 	}
 
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, unregister_network);
+						g_free, free_network);
 
 	device_list = g_slist_append(device_list, device);
 
@@ -1105,18 +1104,16 @@ struct connman_network *connman_device_get_network(struct connman_device *device
  * Remove network for given identifier
  */
 int connman_device_remove_network(struct connman_device *device,
-							const char *identifier)
+						struct connman_network *network)
 {
-	struct connman_network *network;
+	const char *identifier;
 
-	DBG("device %p identifier %s", device, identifier);
+	DBG("device %p network %p", device, network);
 
-	network = connman_device_get_network(device, identifier);
 	if (network == NULL)
 		return 0;
 
-	__connman_network_set_device(network, NULL);
-
+	identifier = connman_network_get_identifier(network);
 	g_hash_table_remove(device->networks, identifier);
 
 	return 0;
@@ -1138,15 +1135,12 @@ void __connman_device_set_network(struct connman_device *device,
 	if (device->network == network)
 		return;
 
-	if (device->network != NULL)
-		connman_network_unref(device->network);
-
 	if (network != NULL) {
 		name = connman_network_get_string(network, "Name");
 		g_free(device->last_network);
 		device->last_network = g_strdup(name);
 
-		device->network = connman_network_ref(network);
+		device->network = network;
 	} else {
 		g_free(device->last_network);
 		device->last_network = NULL;

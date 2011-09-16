@@ -102,8 +102,6 @@ int connman_network_set_nameservers(struct connman_network *network,
 				const char *nameservers);
 int connman_network_set_domain(struct connman_network *network,
 			             const char *domain);
-int connman_network_set_pac(struct connman_network *network,
-				const char *pac);
 int connman_network_set_name(struct connman_network *network,
 							const char *name);
 int connman_network_set_strength(struct connman_network *network,
@@ -137,9 +135,6 @@ void *connman_network_get_data(struct connman_network *network);
 void connman_network_set_data(struct connman_network *network, void *data);
 
 void connman_network_update(struct connman_network *network);
-
-int connman_network_register(struct connman_network *network);
-void connman_network_unregister(struct connman_network *network);
 
 struct connman_network_driver {
 	const char *name;

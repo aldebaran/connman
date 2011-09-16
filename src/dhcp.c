@@ -84,11 +84,11 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 
 	service = __connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL)
-		return;
+		goto out;
 
 	ipconfig = __connman_service_get_ip4config(service);
 	if (ipconfig == NULL)
-		return;
+		goto out;
 
 	__connman_6to4_remove(ipconfig);
 
@@ -103,6 +103,10 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 		}
 	}
 
+	__connman_ipconfig_set_dhcp_address(ipconfig,
+				__connman_ipconfig_get_local(ipconfig));
+	DBG("last address %s", __connman_ipconfig_get_dhcp_address(ipconfig));
+
 	__connman_ipconfig_address_remove(ipconfig);
 
 	__connman_ipconfig_set_local(ipconfig, NULL);
@@ -113,6 +117,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	if (dhcp->callback != NULL && callback)
 		dhcp->callback(dhcp->network, FALSE);
 
+out:
 	dhcp_free(dhcp);
 }
 
@@ -204,6 +209,9 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	address = g_dhcp_client_get_address(dhcp_client);
 
+	__connman_ipconfig_set_dhcp_address(ipconfig, address);
+	DBG("last address %s", address);
+
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_SUBNET);
 	if (option != NULL)
 		netmask = g_strdup(option->data);
@@ -278,6 +286,8 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 			__connman_service_nameserver_append(service,
 							dhcp->nameservers[i]);
 		}
+	} else {
+		g_strfreev(nameservers);
 	}
 
 	if (g_strcmp0(timeserver, dhcp->timeserver) != 0) {
@@ -362,6 +372,8 @@ static void dhcp_debug(const char *str, void *data)
 
 static int dhcp_request(struct connman_dhcp *dhcp)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
 	GDHCPClient *dhcp_client;
 	GDHCPClientError error;
 	const char *hostname;
@@ -409,7 +421,11 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	dhcp->dhcp_client = dhcp_client;
 
-	return g_dhcp_client_start(dhcp_client);
+	service = __connman_service_lookup_from_network(dhcp->network);
+	ipconfig = __connman_service_get_ip4config(service);
+
+	return g_dhcp_client_start(dhcp_client,
+				__connman_ipconfig_get_dhcp_address(ipconfig));
 }
 
 static int dhcp_release(struct connman_dhcp *dhcp)
@@ -461,6 +477,9 @@ void __connman_dhcp_stop(struct connman_network *network)
 {
 	DBG("");
 
+	if (network_table == NULL)
+		return;
+
 	g_hash_table_remove(network_table, network);
 }
 
@@ -479,4 +498,5 @@ void __connman_dhcp_cleanup(void)
 	DBG("");
 
 	g_hash_table_destroy(network_table);
+	network_table = NULL;
 }

@@ -98,6 +98,8 @@ int __connman_agent_report_error(struct connman_service *service,
 
 int __connman_log_init(const char *debug, connman_bool_t detach);
 void __connman_log_cleanup(void);
+void __connman_log_enable(struct connman_debug_desc *start,
+					struct connman_debug_desc *stop);
 
 void __connman_debug_list_available(DBusMessageIter *iter, void *user_data);
 void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data);
@@ -132,8 +134,6 @@ typedef void (*__connman_inet_rs_cb_t) (struct nd_router_advert *reply,
 
 int __connman_inet_ipv6_send_rs(int index, int timeout,
 			__connman_inet_rs_cb_t callback, void *user_data);
-
-#include <connman/wifi.h>
 
 #include <connman/rfkill.h>
 
@@ -257,6 +257,9 @@ unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask);
 int __connman_ipconfig_set_proxy_autoconfig(struct connman_ipconfig *ipconfig,
 							const char *url);
 const char *__connman_ipconfig_get_proxy_autoconfig(struct connman_ipconfig *ipconfig);
+void __connman_ipconfig_set_dhcp_address(struct connman_ipconfig *ipconfig,
+					const char *address);
+char *__connman_ipconfig_get_dhcp_address(struct connman_ipconfig *ipconfig);
 
 int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
@@ -470,9 +473,10 @@ struct connman_service *__connman_service_create_from_network(struct connman_net
 struct connman_service *__connman_service_create_from_provider(struct connman_provider *provider);
 void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
-
+void __connman_service_read_ip4config(struct connman_service *service);
 void __connman_service_create_ip4config(struct connman_service *service,
 								int index);
+void __connman_service_read_ip6config(struct connman_service *service);
 void __connman_service_create_ip6config(struct connman_service *service,
 								int index);
 struct connman_ipconfig *__connman_service_get_ip4config(
@@ -541,8 +545,12 @@ void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 
 void __connman_service_set_identity(struct connman_service *service,
 					const char *identity);
+void __connman_service_set_agent_identity(struct connman_service *service,
+						const char *agent_identity);
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase);
+void __connman_service_set_agent_passphrase(struct connman_service *service,
+						const char *agent_passphrase);
 
 void __connman_service_notify(struct connman_service *service,
 			unsigned int rx_packets, unsigned int tx_packets,
@@ -595,7 +603,8 @@ void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data);
 
 void __connman_notifier_register(enum connman_service_type type);
 void __connman_notifier_unregister(enum connman_service_type type);
-void __connman_notifier_service_add(struct connman_service *service);
+void __connman_notifier_service_add(struct connman_service *service,
+					const char *name);
 void __connman_notifier_service_remove(struct connman_service *service);
 void __connman_notifier_enable(enum connman_service_type type);
 void __connman_notifier_disable(enum connman_service_type type);

@@ -170,7 +170,7 @@ int main(int argc, char *argv[])
 
 	timer = g_timer_new();
 
-	g_dhcp_client_start(dhcp_client);
+	g_dhcp_client_start(dhcp_client, NULL);
 
 	memset(&sa, 0, sizeof(sa));
 	sa.sa_handler = sig_term;

@@ -88,7 +88,7 @@ int connman_device_add_network(struct connman_device *device,
 struct connman_network *connman_device_get_network(struct connman_device *device,
 							const char *identifier);
 int connman_device_remove_network(struct connman_device *device,
-							const char *identifier);
+					struct connman_network *network);
 void connman_device_remove_all_networks(struct connman_device *device);
 
 void connman_device_schedule_scan(struct connman_device *device);

@@ -1089,7 +1089,11 @@ static int iptables_command(int argc, char *argv[])
 			if (xt_t->init != NULL)
 				xt_t->init(xt_t->t);
 			iptables_globals.opts =
-				xtables_merge_options(iptables_globals.opts,
+				xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+						     iptables_globals.orig_opts,
+#endif
+						     iptables_globals.opts,
 						     xt_t->extra_opts,
 						     &xt_t->option_offset);
 			if (iptables_globals.opts == NULL)
@@ -1113,7 +1117,11 @@ static int iptables_command(int argc, char *argv[])
 				xt_m->init(xt_m->m);
 			if (xt_m != xt_m->next) {
 				iptables_globals.opts =
-				xtables_merge_options(iptables_globals.opts,
+				xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+						iptables_globals.orig_opts,
+#endif
+						iptables_globals.opts,
 						xt_m->extra_opts,
 						&xt_m->option_offset);
 				if (iptables_globals.opts == NULL)

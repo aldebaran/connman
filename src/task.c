@@ -27,6 +27,7 @@
 #include <unistd.h>
 #include <stdarg.h>
 #include <sys/wait.h>
+#include <signal.h>
 
 #include <glib.h>
 
@@ -268,9 +269,14 @@ static void task_died(GPid pid, gint status, gpointer user_data)
 
 static void task_setup(gpointer user_data)
 {
+	sigset_t mask;
 	struct connman_task *task = user_data;
 
 	DBG("task %p", task);
+
+	sigemptyset(&mask);
+	if (sigprocmask(SIG_SETMASK, &mask, NULL) < 0)
+		connman_error("Failed to clean signal mask");
 }
 
 /**

@@ -446,11 +446,13 @@ GIOChannel *g_io_channel_gnutls_new(int fd)
 						g_io_gnutls_pull_func);
 #if GNUTLS_VERSION_NUMBER < 0x020c00
 	gnutls_transport_set_lowat(gnutls_channel->session, 0);
-#endif
 
 	gnutls_priority_set_direct(gnutls_channel->session,
-		"NORMAL:-VERS-TLS-ALL:+VERS-TLS1.0:+VERS-SSL3.0:%COMPAT",
-		NULL);
+						"NORMAL:%COMPAT", NULL);
+#else
+	gnutls_priority_set_direct(gnutls_channel->session,
+		"NORMAL:-VERS-TLS-ALL:+VERS-TLS1.0:+VERS-SSL3.0:%COMPAT", NULL);
+#endif
 
 	gnutls_certificate_allocate_credentials(&gnutls_channel->cred);
 	gnutls_credentials_set(gnutls_channel->session,

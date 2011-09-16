@@ -23,6 +23,7 @@
 #define __CONNMAN_PLUGIN_H
 
 #include <connman/version.h>
+#include <connman/log.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -50,6 +51,8 @@ struct connman_plugin_desc {
 	int priority;
 	int (*init) (void);
 	void (*exit) (void);
+	void *debug_start;
+	void *debug_stop;
 };
 
 /**
@@ -85,10 +88,15 @@ struct connman_plugin_desc {
 		};
 #else
 #define CONNMAN_PLUGIN_DEFINE(name, description, version, priority, init, exit) \
+		extern struct connman_debug_desc __start___debug[] \
+				__attribute__ ((weak, visibility("hidden"))); \
+		extern struct connman_debug_desc __stop___debug[] \
+				__attribute__ ((weak, visibility("hidden"))); \
 		extern struct connman_plugin_desc connman_plugin_desc \
 				__attribute__ ((visibility("default"))); \
 		struct connman_plugin_desc connman_plugin_desc = { \
-			#name, description, version, priority, init, exit \
+			#name, description, version, priority, init, exit, \
+			__start___debug, __stop___debug \
 		};
 #endif
 
