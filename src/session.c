@@ -812,35 +812,56 @@ static void deselect_previous_service(struct connman_session *session,
 		test_and_disconnect(session);
 }
 
-static void select_service(struct connman_session *session,
-				struct service_entry *entry)
+static void select_online_service(struct connman_session *session,
+					struct service_entry *entry)
 {
 	struct session_info *info = session->info;
 
-	DBG("session %p service %p", session, entry->service);
-
-	deselect_previous_service(session, entry);
+	info->online = TRUE;
 
 	info->entry = entry;
 	info->entry->reason = info->reason;
 
-	info->online = is_online(entry->state);
-
-	switch (info->reason) {
-	case CONNMAN_SESSION_REASON_UNKNOWN:
-	case CONNMAN_SESSION_REASON_FREE_RIDE:
+	if (explicit_connect(info->reason) == FALSE)
 		return;
-	case CONNMAN_SESSION_REASON_CONNECT:
-	case CONNMAN_SESSION_REASON_PERIODIC:
-		break;
-	}
 
 	__connman_service_session_inc(info->entry->service);
+}
 
-	if (entry->state == CONNMAN_SERVICE_STATE_IDLE ||
-			entry->state == CONNMAN_SERVICE_STATE_DISCONNECT) {
-		g_timeout_add_seconds(0, call_connect, info->entry->service);
+static void select_offline_service(struct connman_session *session,
+					struct service_entry *entry)
+{
+	struct session_info *info = session->info;
+
+	if (explicit_connect(info->reason) == FALSE) {
+		/* Don't select this service. It is not online and we
+		 * don't call connect on it. This happends for example
+		 * when the system is idle and we create a new session
+		 * which is in free ride mode.
+		 */
+		return;
 	}
+
+	info->online = FALSE;
+
+	info->entry = entry;
+	info->entry->reason = info->reason;
+
+	__connman_service_session_inc(info->entry->service);
+	g_timeout_add_seconds(0, call_connect, info->entry->service);
+}
+
+static void select_service(struct connman_session *session,
+				struct service_entry *entry)
+{
+	DBG("session %p service %p", session, entry->service);
+
+	deselect_previous_service(session, entry);
+
+	if (is_online(entry->state) == TRUE)
+		select_online_service(session, entry);
+	else
+		select_offline_service(session, entry);
 }
 
 static void select_and_connect(struct connman_session *session,
