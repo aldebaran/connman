@@ -282,6 +282,10 @@ gboolean __connman_connection_update_gateway(void);
 void __connman_connection_gateway_activate(struct connman_service *service,
 					enum connman_ipconfig_type type);
 
+int __connman_ntp_start(const char *interface, const char *resolver,
+							const char *server);
+void __connman_ntp_stop(const char *interface);
+
 int __connman_wpad_init(void);
 void __connman_wpad_cleanup(void);
 int __connman_wpad_start(struct connman_service *service);
