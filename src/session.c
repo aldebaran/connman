@@ -987,8 +987,10 @@ static void session_changed(struct connman_session *session,
 		}
 		break;
 	case CONNMAN_SESSION_TRIGGER_ECALL:
-		if (info->online == FALSE && info->entry->service != NULL)
+		if (info->online == FALSE && info->entry != NULL &&
+				info->entry->service != NULL) {
 			test_and_disconnect(session);
+		}
 
 		break;
 	}
