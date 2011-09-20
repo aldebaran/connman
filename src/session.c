@@ -796,7 +796,6 @@ static void deselect_service(struct session_info *info)
 			is_online(info->entry->state) == TRUE;
 
 	info->online = FALSE;
-	info->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 	info->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 
 	service = info->entry->service;
@@ -808,11 +807,14 @@ static void deselect_service(struct session_info *info)
 		g_timeout_add_seconds(0, call_disconnect, service);
 }
 
-static void deselect_and_disconnect(struct connman_session *session)
+static void deselect_and_disconnect(struct connman_session *session,
+					enum connman_session_reason reason)
 {
 	struct session_info *info = session->info;
 
 	deselect_service(info);
+
+	info->reason = reason;
 }
 
 static void select_online_service(struct session_info *info,
@@ -924,7 +926,7 @@ static void session_changed(struct connman_session *session,
 				 * This service is not part of this
 				 * session anymore.
 				 */
-				deselect_and_disconnect(session);
+				deselect_and_disconnect(session, info->reason);
 			}
 		}
 
@@ -948,7 +950,8 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
-		deselect_and_disconnect(session);
+		deselect_and_disconnect(session,
+					CONNMAN_SESSION_REASON_DISCONNECT);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_PERIODIC:
@@ -978,8 +981,8 @@ static void session_changed(struct connman_session *session,
 			 * Therefore we want to restart the algorithm. Before we
 			 * can do that we have to cleanup a potientional old entry.
 			 */
-			deselect_and_disconnect(session);
-			info->reason = CONNMAN_SESSION_REASON_CONNECT; /* restore value */
+			deselect_and_disconnect(session,
+						CONNMAN_SESSION_REASON_CONNECT);
 
 			DBG("Retry to find a matching session");
 			/*
@@ -1010,7 +1013,7 @@ static void session_changed(struct connman_session *session,
 	case CONNMAN_SESSION_TRIGGER_ECALL:
 		if (info->online == FALSE && info->entry != NULL &&
 				info->entry->service != NULL) {
-			deselect_and_disconnect(session);
+			deselect_and_disconnect(session, info->reason);
 		}
 
 		break;
@@ -1330,7 +1333,8 @@ static int session_disconnect(struct connman_session *session)
 	g_dbus_unregister_interface(connection, session->session_path,
 						CONNMAN_SESSION_INTERFACE);
 
-	deselect_and_disconnect(session);
+	deselect_and_disconnect(session,
+				CONNMAN_SESSION_REASON_DISCONNECT);
 
 	g_hash_table_remove(session_hash, session->session_path);
 
