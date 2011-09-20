@@ -972,43 +972,13 @@ static void session_changed(struct connman_session *session,
 			break;
 		}
 
-		switch (info->reason) {
-		case CONNMAN_SESSION_REASON_CONNECT:
-			/*
-			 * We are not online, we are not connecting, that
-			 * means we could still have a valid info->entry.
-			 * Though something has changed from the service layer.
-			 * Therefore we want to restart the algorithm. Before we
-			 * can do that we have to cleanup a potientional old entry.
-			 */
-			deselect_and_disconnect(session,
-						CONNMAN_SESSION_REASON_CONNECT);
+		deselect_and_disconnect(session, info->reason);
 
-			DBG("Retry to find a matching session");
-			/*
-			 * The user called Connect() but there was no
-			 * matching session available at this point.
-			 * Now there might be a new one. Let's retry
-			 * to select and connect
-			 */
-			select_and_connect(session,
-					CONNMAN_SESSION_REASON_CONNECT);
-			break;
-		case CONNMAN_SESSION_REASON_PERIODIC:
-		case CONNMAN_SESSION_REASON_FREE_RIDE:
-			if (info->stay_connected == TRUE) {
-				DBG("StayConnected");
-				select_and_connect(session,
-					CONNMAN_SESSION_REASON_CONNECT);
-			} else {
-				select_and_connect(session,
-					CONNMAN_SESSION_REASON_FREE_RIDE);
-			}
-			break;
-		case CONNMAN_SESSION_REASON_DISCONNECT:
-		case CONNMAN_SESSION_REASON_UNKNOWN:
-			break;
+		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE ||
+				info->stay_connected == TRUE) {
+			select_and_connect(session, info->reason);
 		}
+
 		break;
 	case CONNMAN_SESSION_TRIGGER_ECALL:
 		if (info->online == FALSE && info->entry != NULL &&
