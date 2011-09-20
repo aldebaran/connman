@@ -727,15 +727,13 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 	return FALSE;
 }
 
-static connman_bool_t explicit_disconnect(struct connman_session *session)
+static connman_bool_t explicit_disconnect(struct session_info *info)
 {
-	struct session_info *info = session->info;
-
 	if (info->entry == NULL)
 		return FALSE;
 
-	DBG("session %p, reason %s service %p state %d",
-		session, reason2string(info->entry->reason),
+	DBG("reason %s service %p state %d",
+		reason2string(info->entry->reason),
 		info->entry->service, info->entry->state);
 
 	if (info->entry->reason == CONNMAN_SESSION_REASON_UNKNOWN)
@@ -778,16 +776,15 @@ static gboolean call_connect(gpointer user_data)
 	return FALSE;
 }
 
-static void deselect_service(struct connman_session *session)
+static void deselect_service(struct session_info *info)
 {
-	struct session_info *info = session->info;
 	struct connman_service *service;
 	connman_bool_t disconnect, online;
 
 	if (info->entry == NULL)
 		return;
 
-	disconnect = explicit_disconnect(session);
+	disconnect = explicit_disconnect(info);
 
 	online = is_connecting(info->entry->state) == TRUE ||
 			is_online(info->entry->state) == TRUE;
@@ -805,14 +802,14 @@ static void deselect_service(struct connman_session *session)
 
 static void deselect_and_disconnect(struct connman_session *session)
 {
-	deselect_service(session);
-}
-
-static void select_online_service(struct connman_session *session,
-					struct service_entry *entry)
-{
 	struct session_info *info = session->info;
 
+	deselect_service(info);
+}
+
+static void select_online_service(struct session_info *info,
+					struct service_entry *entry)
+{
 	info->online = TRUE;
 
 	info->entry = entry;
@@ -824,19 +821,16 @@ static void select_online_service(struct connman_session *session,
 	__connman_service_session_inc(info->entry->service);
 }
 
-static void select_offline_service(struct connman_session *session,
+static void select_offline_service(struct session_info *info,
 					struct service_entry *entry)
 {
-	struct session_info *info = session->info;
-
 	if (explicit_connect(info->reason) == FALSE) {
 		/* Don't select this service. It is not online and we
 		 * don't call connect on it. This happends for example
 		 * when the system is idle and we create a new session
 		 * which is in free ride mode.
 		 */
-
-		deselect_and_disconnect(session);
+		deselect_service(info);
 		return;
 	}
 
@@ -849,16 +843,15 @@ static void select_offline_service(struct connman_session *session,
 	g_timeout_add_seconds(0, call_connect, info->entry->service);
 }
 
-static void select_service(struct connman_session *session,
+static void select_service(struct session_info *info,
 				struct service_entry *entry)
 {
-	DBG("session %p service %p", session, entry->service);
-
+	DBG("service %p", entry->service);
 
 	if (is_online(entry->state) == TRUE)
-		select_online_service(session, entry);
+		select_online_service(info, entry);
 	else
-		select_offline_service(session, entry);
+		select_offline_service(info, entry);
 }
 
 static void select_and_connect(struct connman_session *session,
@@ -884,7 +877,7 @@ static void select_and_connect(struct connman_session *session,
 		case CONNMAN_SERVICE_STATE_ONLINE:
 		case CONNMAN_SERVICE_STATE_IDLE:
 		case CONNMAN_SERVICE_STATE_DISCONNECT:
-			select_service(session, entry);
+			select_service(info, entry);
 			return;
 		case CONNMAN_SERVICE_STATE_UNKNOWN:
 		case CONNMAN_SERVICE_STATE_FAILURE:
