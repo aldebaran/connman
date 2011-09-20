@@ -33,7 +33,7 @@
 static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
-static struct connman_session *ecall_session;
+static struct session_info *ecall_info;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -747,7 +747,7 @@ static connman_bool_t explicit_disconnect(struct connman_session *session)
 	if (__connman_service_session_dec(info->entry->service) == FALSE)
 		return FALSE;
 
-	if (ecall_session != NULL && ecall_session != session)
+	if (ecall_info != NULL && ecall_info != info)
 		return FALSE;
 
 	return TRUE;
@@ -1028,10 +1028,11 @@ static DBusMessage *connect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
+	struct session_info *info = session->info;
 
 	DBG("session %p", session);
 
-	if (ecall_session != NULL && ecall_session != session)
+	if (ecall_info != NULL && ecall_info != info)
 		return __connman_error_failed(msg, EBUSY);
 
 	session_changed(session, CONNMAN_SESSION_TRIGGER_CONNECT);
@@ -1043,10 +1044,11 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
+	struct session_info *info = session->info;
 
 	DBG("session %p", session);
 
-	if (ecall_session != NULL && ecall_session != session)
+	if (ecall_info != NULL && ecall_info != info)
 		return __connman_error_failed(msg, EBUSY);
 
 	session_changed(session, CONNMAN_SESSION_TRIGGER_DISCONNECT);
@@ -1156,19 +1158,19 @@ static void update_ecall(struct connman_session *session)
 	struct session_info *info = session->info;
 	struct session_info *info_last = session->info_last;
 
-	DBG("session %p ecall_session %p ecall %d -> %d", session,
-		ecall_session, info_last->ecall, info->ecall);
+	DBG("session %p ecall_info %p ecall %d -> %d", session,
+		ecall_info, info_last->ecall, info->ecall);
 
-	if (ecall_session == NULL) {
+	if (ecall_info == NULL) {
 		if (!(info_last->ecall == FALSE && info->ecall == TRUE))
 			goto err;
 
-		ecall_session = session;
-	} else if (ecall_session == session) {
+		ecall_info = info;
+	} else if (ecall_info == info) {
 		if (!(info_last->ecall == TRUE && info->ecall == FALSE))
 			goto err;
 
-		ecall_session = NULL;
+		ecall_info = NULL;
 	} else {
 		goto err;
 	}
@@ -1386,7 +1388,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	DBG("owner %s", owner);
 
-	if (ecall_session != NULL) {
+	if (ecall_info != NULL) {
 		/*
 		 * If there is an emergency call already going on,
 		 * ignore session creation attempt
@@ -1554,7 +1556,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	update_allowed_bearers(session);
 	if (info->ecall == TRUE) {
-		ecall_session = session;
+		ecall_info = info;
 		update_ecall_sessions(session);
 	}
 
