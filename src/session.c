@@ -839,6 +839,8 @@ static void select_offline_service(struct connman_session *session,
 		 * when the system is idle and we create a new session
 		 * which is in free ride mode.
 		 */
+
+		test_and_disconnect(session);
 		return;
 	}
 
