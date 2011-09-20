@@ -785,6 +785,8 @@ static void deselect_service(struct session_info *info)
 	struct connman_service *service;
 	connman_bool_t disconnect, online;
 
+	DBG("");
+
 	if (info->entry == NULL)
 		return;
 
@@ -799,6 +801,8 @@ static void deselect_service(struct session_info *info)
 
 	service = info->entry->service;
 	info->entry = NULL;
+
+	DBG("disconnect %d online %d", disconnect, online);
 
 	if (disconnect == TRUE && online == TRUE)
 		g_timeout_add_seconds(0, call_disconnect, service);
@@ -904,7 +908,8 @@ static void session_changed(struct connman_session *session,
 	 * play a bit around. So we are going to improve it step by step.
 	 */
 
-	DBG("session %p trigger %s", session, trigger2string(trigger));
+	DBG("session %p trigger %s reason %s", session, trigger2string(trigger),
+						reason2string(info->reason));
 
 	switch (trigger) {
 	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
