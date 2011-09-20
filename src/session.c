@@ -778,7 +778,7 @@ static gboolean call_connect(gpointer user_data)
 	return FALSE;
 }
 
-static void deselect_and_disconnect(struct connman_session *session)
+static void deselect_service(struct connman_session *session)
 {
 	struct session_info *info = session->info;
 	struct connman_service *service;
@@ -803,13 +803,9 @@ static void deselect_and_disconnect(struct connman_session *session)
 		g_timeout_add_seconds(0, call_disconnect, service);
 }
 
-static void deselect_previous_service(struct connman_session *session,
-					struct service_entry *entry)
+static void deselect_and_disconnect(struct connman_session *session)
 {
-	struct session_info *info = session->info;
-
-	if (info->entry != NULL && info->entry != entry)
-		deselect_and_disconnect(session);
+	deselect_service(session);
 }
 
 static void select_online_service(struct connman_session *session,
@@ -858,7 +854,6 @@ static void select_service(struct connman_session *session,
 {
 	DBG("session %p service %p", session, entry->service);
 
-	deselect_previous_service(session, entry);
 
 	if (is_online(entry->state) == TRUE)
 		select_online_service(session, entry);
