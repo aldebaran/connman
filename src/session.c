@@ -48,8 +48,9 @@ enum connman_session_trigger {
 enum connman_session_reason {
 	CONNMAN_SESSION_REASON_UNKNOWN		= 0,
 	CONNMAN_SESSION_REASON_CONNECT		= 1,
-	CONNMAN_SESSION_REASON_FREE_RIDE	= 2,
-	CONNMAN_SESSION_REASON_PERIODIC		= 3,
+	CONNMAN_SESSION_REASON_DISCONNECT	= 2,
+	CONNMAN_SESSION_REASON_FREE_RIDE	= 3,
+	CONNMAN_SESSION_REASON_PERIODIC		= 4,
 };
 
 enum connman_session_roaming_policy {
@@ -137,6 +138,8 @@ static const char *reason2string(enum connman_session_reason reason)
 		return "unknown";
 	case CONNMAN_SESSION_REASON_CONNECT:
 		return "connect";
+	case CONNMAN_SESSION_REASON_DISCONNECT:
+		return "disconnect";
 	case CONNMAN_SESSION_REASON_FREE_RIDE:
 		return "free-ride";
 	case CONNMAN_SESSION_REASON_PERIODIC:
@@ -718,6 +721,7 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 	switch (reason) {
 	case CONNMAN_SESSION_REASON_UNKNOWN:
 	case CONNMAN_SESSION_REASON_FREE_RIDE:
+	case CONNMAN_SESSION_REASON_DISCONNECT:
 		break;
 	case CONNMAN_SESSION_REASON_CONNECT:
 	case CONNMAN_SESSION_REASON_PERIODIC:
@@ -993,6 +997,7 @@ static void session_changed(struct connman_session *session,
 					CONNMAN_SESSION_REASON_FREE_RIDE);
 			}
 			break;
+		case CONNMAN_SESSION_REASON_DISCONNECT:
 		case CONNMAN_SESSION_REASON_UNKNOWN:
 			break;
 		}
