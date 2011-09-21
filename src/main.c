@@ -395,7 +395,6 @@ int main(int argc, char *argv[])
 	__connman_proxy_cleanup();
 	__connman_task_cleanup();
 	__connman_rtnl_cleanup();
-	__connman_ipconfig_cleanup();
 	__connman_resolver_cleanup();
 
 	__connman_clock_cleanup();
@@ -410,6 +409,7 @@ int main(int argc, char *argv[])
 	__connman_device_cleanup();
 	__connman_network_cleanup();
 	__connman_service_cleanup();
+	__connman_ipconfig_cleanup();
 	__connman_location_cleanup();
 	__connman_notifier_cleanup();
 	__connman_technology_cleanup();
