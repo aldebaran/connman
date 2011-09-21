@@ -834,15 +834,8 @@ static void select_online_service(struct session_info *info,
 static void select_offline_service(struct session_info *info,
 					struct service_entry *entry)
 {
-	if (explicit_connect(info->reason) == FALSE) {
-		/* Don't select this service. It is not online and we
-		 * don't call connect on it. This happends for example
-		 * when the system is idle and we create a new session
-		 * which is in free ride mode.
-		 */
-		deselect_service(info);
+	if (explicit_connect(info->reason) == FALSE)
 		return;
-	}
 
 	info->online = FALSE;
 
