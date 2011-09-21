@@ -906,6 +906,12 @@ static void session_changed(struct connman_session *session,
 	DBG("session %p trigger %s reason %s", session, trigger2string(trigger),
 						reason2string(info->reason));
 
+	if (info->entry != NULL) {
+		info->online = is_online(info->entry->state);
+		if (info_last->online != info->online)
+			session->info_dirty = TRUE;
+	}
+
 	switch (trigger) {
 	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
 		DBG("ignore session changed event");
@@ -1674,19 +1680,14 @@ static void service_state_changed(struct connman_service *service,
 {
 	GHashTableIter iter;
 	gpointer key, value;
-	struct connman_session *session;
-	struct session_info *info, *info_last;
 
 	DBG("service %p state %d", service, state);
 
 	g_hash_table_iter_init(&iter, session_hash);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_session *session = value;
 		GSequenceIter *service_iter;
-
-		session = value;
-		info = session->info;
-		info_last = session->info_last;
 
 		service_iter = g_hash_table_lookup(session->service_hash, service);
 		if (service_iter != NULL) {
@@ -1694,12 +1695,6 @@ static void service_state_changed(struct connman_service *service,
 
 			entry = g_sequence_get(service_iter);
 			entry->state = state;
-
-			if (info->entry == entry) {
-				info->online = is_online(entry->state);
-				if (info_last->online != info->online)
-					session->info_dirty = TRUE;
-			}
 		}
 
 		session_changed(session,
