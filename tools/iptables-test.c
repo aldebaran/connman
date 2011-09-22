@@ -407,30 +407,31 @@ static int connman_iptables_flush_chain(struct connman_iptables *table,
 static int connman_iptables_delete_chain(struct connman_iptables *table,
 						char *name)
 {
-	GList *chain_head, *chain_tail, *list, *next;
+	GList *chain_head, *chain_tail;
 	struct connman_iptables_entry *entry;
 
 	chain_head = find_chain_head(table, name);
 	if (chain_head == NULL)
 		return -EINVAL;
 
+	entry = chain_head->data;
+
+	/* We cannot remove builtin chain */
+	if (entry->builtin >= 0)
+		return -EINVAL;
+
 	chain_tail = find_chain_tail(table, name);
 	if (chain_tail == NULL)
 		return -EINVAL;
 
-	list = chain_head;
+	/* Chain must be flushed */
+	if (chain_head->next != chain_tail->prev)
+		return -EINVAL;
 
-	while (list != chain_tail) {
-		entry = list->data;
-		next = g_list_next(list);
+	remove_table_entry(table, entry);
 
-		table->num_entries--;
-		table->size -= entry->entry->next_offset;
-
-		table->entries = g_list_remove(table->entries, list->data);
-
-		list = next;
-	}
+	entry = chain_tail->prev->data;
+	remove_table_entry(table, entry);
 
 	update_offsets(table);
 
