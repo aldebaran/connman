@@ -1025,8 +1025,8 @@ int main(int argc, char *argv[])
 	xt_m = NULL;
 	xt_t = NULL;
 
-	while ((c = getopt_long(argc, argv,
-	   "-A:F:L::N:X:j:i:m:o:t:", connman_iptables_globals.opts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "-A:F:L::N:X:j:i:m:o:t:",
+				connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
