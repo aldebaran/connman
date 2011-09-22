@@ -61,8 +61,10 @@ Core
 
    Priority: Low
    Complexity: C8
+   Owner: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
 
-   Extend the iptables code and provide a D-Bus API for personal firewalling.
+   Discuss and implement a basic and safe firewalling strategy into
+   Connman. Provide a D-Bus API for personal firewalling.
 
 
 - PACRunner extensions
