@@ -685,6 +685,31 @@ connman_iptables_add_rule(struct connman_iptables *table,
 	return ret;
 }
 
+static int connman_iptables_insert_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
+				char *target_name, struct xtables_target *xt_t,
+				char *match_name, struct xtables_match *xt_m)
+{
+	GList *chain_head;
+	struct ipt_entry *new_entry;
+	int builtin = -1, ret;
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	new_entry = prepare_rule_inclusion(table, ip, chain_name,
+			target_name, xt_t, match_name, xt_m, &builtin);
+	if (new_entry == NULL)
+		return -EINVAL;
+
+	ret = connman_add_entry(table, new_entry, chain_head->next, builtin);
+	if (ret < 0)
+		g_free(new_entry);
+
+	return ret;
+}
+
 static struct ipt_replace *
 connman_iptables_blob(struct connman_iptables *table)
 {
@@ -1015,6 +1040,7 @@ err:
 static struct option connman_iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
 	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
+	{.name = "insert",        .has_arg = 1, .val = 'I'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
 	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
@@ -1044,7 +1070,7 @@ int main(int argc, char *argv[])
 	char *delete_chain, *flush_chain;
 	int c, in_len, out_len;
 	size_t size;
-	gboolean dump, invert, delete;
+	gboolean dump, invert, delete, insert;
 	struct in_addr src, dst;
 
 	xtables_init_all(&connman_iptables_globals, NFPROTO_IPV4);
@@ -1052,6 +1078,7 @@ int main(int argc, char *argv[])
 	dump = FALSE;
 	invert = FALSE;
 	delete = FALSE;
+	insert = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
 	delete_chain = flush_chain = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
@@ -1059,15 +1086,28 @@ int main(int argc, char *argv[])
 	xt_m = NULL;
 	xt_t = NULL;
 
-	while ((c = getopt_long(argc, argv, "-A:F:L::N:X:d:i:j:m:o:s:t:",
+	while ((c = getopt_long(argc, argv, "-A:F:I:L::N:X:d:i:j:m:o:s:t:",
 				connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
+			/* It is either -A, -D or -I at once */
+			if (chain)
+				goto out;
+
 			chain = optarg;
 			break;
 
 		case 'F':
 			flush_chain = optarg;
+			break;
+
+		case 'I':
+			/* It is either -A, -D or -I at once */
+			if (chain)
+				goto out;
+
+			chain = optarg;
+			insert = TRUE;
 			break;
 
 		case 'L':
@@ -1273,13 +1313,19 @@ int main(int argc, char *argv[])
 		if (target_name == NULL)
 			return -1;
 
-		printf("Adding %s to %s (match %s)\n",
-				target_name, chain, match_name);
+		if (insert == TRUE) {
+			printf("Inserting %s to %s (match %s)\n", target_name,
+					chain, match_name);
 
-		connman_iptables_add_rule(table, &ip, chain,
+			connman_iptables_insert_rule(table, &ip, chain,
+					target_name, xt_t, match_name, xt_m);
+		} else {
+			printf("Adding %s to %s (match %s)\n", target_name,
+					chain, match_name);
+
+			connman_iptables_add_rule(table, &ip, chain,
 				target_name, xt_t, match_name, xt_m);
-
-		goto commit;
+		}
 	}
 
 commit:
