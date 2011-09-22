@@ -4154,6 +4154,7 @@ int __connman_service_disconnect(struct connman_service *service)
 int __connman_service_disconnect_all(void)
 {
 	GSequenceIter *iter;
+	GSList *services = NULL, *list;
 
 	DBG("");
 
@@ -4162,14 +4163,22 @@ int __connman_service_disconnect_all(void)
 	while (g_sequence_iter_is_end(iter) == FALSE) {
 		struct connman_service *service = g_sequence_get(iter);
 
+		services = g_slist_prepend(services, service);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	for (list = services; list != NULL; list = list->next) {
+		struct connman_service *service = list->data;
+
 		service->ignore = TRUE;
 
 		set_reconnect_state(service, FALSE);
 
 		__connman_service_disconnect(service);
-
-		iter = g_sequence_iter_next(iter);
 	}
+
+	g_slist_free(list);
 
 	return 0;
 
