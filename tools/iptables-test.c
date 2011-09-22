@@ -660,7 +660,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 }
 
 static int
-connman_iptables_add_rule(struct connman_iptables *table,
+connman_iptables_append_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
@@ -1320,10 +1320,10 @@ int main(int argc, char *argv[])
 			connman_iptables_insert_rule(table, &ip, chain,
 					target_name, xt_t, match_name, xt_m);
 		} else {
-			printf("Adding %s to %s (match %s)\n", target_name,
+			printf("Appending %s to %s (match %s)\n", target_name,
 					chain, match_name);
 
-			connman_iptables_add_rule(table, &ip, chain,
+			connman_iptables_append_rule(table, &ip, chain,
 				target_name, xt_t, match_name, xt_m);
 		}
 	}
