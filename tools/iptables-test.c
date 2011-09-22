@@ -55,7 +55,7 @@ static const char *hooknames[] = {
 	type *__entry;						\
 								\
 	for (__i = 0, __n = 0; __i < (size);			\
-	     __i += __entry->next_offset, __n++) { 		\
+	     __i += __entry->next_offset, __n++) {		\
 		__entry = (void *)(entries) + __i;		\
 		if (__n < n)					\
 			continue;				\
@@ -529,10 +529,9 @@ err_head:
 	return -ENOMEM;
 }
 
-static struct ipt_entry *
-new_rule(struct ipt_ip *ip, char *target_name,
-		struct xtables_target *xt_t,
-		char *match_name, struct xtables_match *xt_m)
+static struct ipt_entry *new_rule(struct ipt_ip *ip,
+			char *target_name, struct xtables_target *xt_t,
+			char *match_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
 	size_t match_size, target_size;
@@ -644,8 +643,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 	return new_entry;
 }
 
-static int
-connman_iptables_append_rule(struct connman_iptables *table,
+static int connman_iptables_append_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
@@ -866,8 +864,7 @@ static int connman_iptables_delete_rule(struct connman_iptables *table,
 	return 0;
 }
 
-static struct ipt_replace *
-connman_iptables_blob(struct connman_iptables *table)
+static struct ipt_replace *connman_iptables_blob(struct connman_iptables *table)
 {
 	struct ipt_replace *r;
 	GList *list;
