@@ -327,6 +327,22 @@ static int connman_add_entry(struct connman_iptables *table,
 	return 0;
 }
 
+static int remove_table_entry(struct connman_iptables *table,
+					struct connman_iptables_entry *entry)
+{
+	int removed = 0;
+
+	table->num_entries--;
+	table->size -= entry->entry->next_offset;
+	removed = entry->entry->next_offset;
+
+	g_free(entry->entry);
+
+	table->entries = g_list_remove(table->entries, entry);
+
+	return removed;
+}
+
 static int connman_iptables_flush_chain(struct connman_iptables *table,
 						char *name)
 {
@@ -357,11 +373,7 @@ static int connman_iptables_flush_chain(struct connman_iptables *table,
 		entry = list->data;
 		next = g_list_next(list);
 
-		table->num_entries--;
-		table->size -= entry->entry->next_offset;
-		removed += entry->entry->next_offset;
-
-		table->entries = g_list_remove(table->entries, list->data);
+		removed += remove_table_entry(table, entry);
 
 		list = next;
 	}
