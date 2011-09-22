@@ -198,7 +198,7 @@ static enum connman_service_type bearer2service(const char *bearer)
 		return CONNMAN_SERVICE_TYPE_WIMAX;
 	else if (g_strcmp0(bearer, "bluetooth") == 0)
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
-	else if (g_strcmp0(bearer, "3g") == 0)
+	else if (g_strcmp0(bearer, "cellular") == 0)
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	else if (g_strcmp0(bearer, "vpn") == 0)
 		return CONNMAN_SERVICE_TYPE_VPN;
@@ -218,7 +218,7 @@ static char *service2bearer(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		return "3g";
+		return "cellular";
 	case CONNMAN_SERVICE_TYPE_VPN:
 		return "vpn";
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -568,7 +568,7 @@ static int service_type_weight(enum connman_service_type type)
 	 * 1. Ethernet
 	 * 2. Bluetooth
 	 * 3. WiFi/WiMAX
-	 * 4. GSM/UTMS/3G
+	 * 4. Cellular
 	 */
 
 	switch (type) {
