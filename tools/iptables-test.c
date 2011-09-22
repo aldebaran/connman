@@ -628,7 +628,7 @@ connman_iptables_add_rule(struct connman_iptables *table,
 	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
 	struct connman_iptables_entry *head;
-	int builtin = -1;
+	int builtin = -1, ret;
 
 	chain_head = find_chain_head(table, chain_name);
 	if (chain_head == NULL)
@@ -659,7 +659,11 @@ connman_iptables_add_rule(struct connman_iptables *table,
 		head->builtin = -1;
 	}
 
-	return connman_add_entry(table, new_entry, chain_tail->prev, builtin);
+	ret = connman_add_entry(table, new_entry, chain_tail->prev, builtin);
+	if (ret < 0)
+		g_free(new_entry);
+
+	return ret;
 }
 
 static struct ipt_replace *
