@@ -25,6 +25,8 @@
 #include <unistd.h>
 #include <sys/errno.h>
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <arpa/inet.h>
 #include <xtables.h>
 
 #include <linux/netfilter_ipv4/ip_tables.h>
@@ -510,7 +512,7 @@ err_head:
 }
 
 static struct ipt_entry *
-new_rule(struct connman_iptables *table,
+new_rule(struct connman_iptables *table, struct ipt_ip *ip,
 		char *target_name, struct xtables_target *xt_t,
 		char *match_name, struct xtables_match *xt_m)
 {
@@ -532,6 +534,8 @@ new_rule(struct connman_iptables *table,
 								match_size);
 	if (new_entry == NULL)
 		return NULL;
+
+	memcpy(&new_entry->ip, ip, sizeof(struct ipt_ip));
 
 	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
 	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
@@ -585,7 +589,8 @@ new_rule(struct connman_iptables *table,
 	return new_entry;
 }
 
-static void update_hooks(struct connman_iptables *table, GList *chain_head, struct ipt_entry *entry)
+static void update_hooks(struct connman_iptables *table, GList *chain_head,
+				struct ipt_entry *entry)
 {
 	GList *list;
 	struct connman_iptables_entry *head, *e;
@@ -615,7 +620,8 @@ static void update_hooks(struct connman_iptables *table, GList *chain_head, stru
 }
 
 static int
-connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
+connman_iptables_add_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
 {
@@ -632,7 +638,7 @@ connman_iptables_add_rule(struct connman_iptables *table, char *chain_name,
 	if (chain_tail == NULL)
 		return -EINVAL;
 
-	new_entry = new_rule(table,
+	new_entry = new_rule(table, ip,
 				target_name, xt_t,
 				match_name, xt_m);
 	if (new_entry == NULL)
@@ -989,10 +995,12 @@ static struct option connman_iptables_opts[] = {
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
 	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
+	{.name = "destination",   .has_arg = 1, .val = 'd'},
 	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
 	{.name = "jump",          .has_arg = 1, .val = 'j'},
 	{.name = "match",         .has_arg = 1, .val = 'm'},
 	{.name = "out-interface", .has_arg = 1, .val = 'o'},
+	{.name = "source",        .has_arg = 1, .val = 's'},
 	{.name = "table",         .has_arg = 1, .val = 't'},
 	{NULL},
 };
@@ -1008,11 +1016,13 @@ int main(int argc, char *argv[])
 	struct connman_iptables *table;
 	struct xtables_match *xt_m;
 	struct xtables_target *xt_t;
+	struct ipt_ip ip;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	char *delete_chain, *flush_chain;
-	int c;
+	int c, in_len, out_len;
 	size_t size;
 	gboolean dump, invert, delete;
+	struct in_addr src, dst;
 
 	xtables_init_all(&connman_iptables_globals, NFPROTO_IPV4);
 
@@ -1021,11 +1031,12 @@ int main(int argc, char *argv[])
 	delete = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
 	delete_chain = flush_chain = NULL;
+	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_m = NULL;
 	xt_t = NULL;
 
-	while ((c = getopt_long(argc, argv, "-A:F:L::N:X:j:i:m:o:t:",
+	while ((c = getopt_long(argc, argv, "-A:F:L::N:X:d:i:j:m:o:s:t:",
 				connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
@@ -1047,6 +1058,32 @@ int main(int argc, char *argv[])
 		case 'X':
 			delete = true;
 			delete_chain = optarg;
+			break;
+
+		case 'd':
+			if (!inet_pton(AF_INET, optarg, &dst))
+				break;
+
+			ip.dst = dst;
+			inet_pton(AF_INET, "255.255.255.255", &ip.dmsk);
+
+			if (invert)
+				ip.invflags |= IPT_INV_DSTIP;
+
+			break;
+
+		case 'i':
+			in_len = strlen(optarg);
+
+			if (in_len + 1 > IFNAMSIZ)
+				break;
+
+			strcpy(ip.iniface, optarg);
+			memset(ip.iniface_mask, 0xff, in_len + 1);
+
+			if (invert)
+				ip.invflags |= IPT_INV_VIA_IN;
+
 			break;
 
 		case 'j':
@@ -1079,9 +1116,6 @@ int main(int argc, char *argv[])
 
 			break;
 
-		case 'i':
-			break;
-
 		case 'm':
 			match_name = optarg;
 
@@ -1111,6 +1145,29 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'o':
+			out_len = strlen(optarg);
+
+			if (out_len + 1 > IFNAMSIZ)
+				break;
+
+			strcpy(ip.outiface, optarg);
+			memset(ip.outiface_mask, 0xff, out_len + 1);
+
+			if (invert)
+				ip.invflags |= IPT_INV_VIA_OUT;
+
+			break;
+
+		case 's':
+			if (!inet_pton(AF_INET, optarg, &src))
+				break;
+
+			ip.src = src;
+			inet_pton(AF_INET, "255.255.255.255", &ip.smsk);
+
+			if (invert)
+				ip.invflags |= IPT_INV_SRCIP;
+
 			break;
 
 		case 't':
@@ -1193,10 +1250,11 @@ int main(int argc, char *argv[])
 		if (target_name == NULL)
 			return -1;
 
-		printf("Adding %s to %s (match %s)\n", target_name, chain, match_name);
+		printf("Adding %s to %s (match %s)\n",
+				target_name, chain, match_name);
 
-		connman_iptables_add_rule(table, chain, target_name, xt_t,
-					match_name, xt_m);
+		connman_iptables_add_rule(table, &ip, chain,
+				target_name, xt_t, match_name, xt_m);
 
 		goto commit;
 	}
