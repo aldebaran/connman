@@ -1137,8 +1137,21 @@ static int add_entry(struct ipt_entry *entry, struct connman_iptables *table)
 
 static struct connman_iptables *connman_iptables_init(const char *table_name)
 {
-	struct connman_iptables *table;
+	struct connman_iptables *table = NULL;
+	char *module = NULL;
 	socklen_t s;
+
+	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
+		goto err;
+
+	module = g_strconcat("iptable_", table_name, NULL);
+	if (module == NULL)
+		goto err;
+
+	if (xtables_insmod(module, NULL, TRUE) != 0)
+		goto err;
+
+	g_free(module);
 
 	table =  g_try_new0(struct connman_iptables, 1);
 	if (table == NULL)
@@ -1182,10 +1195,10 @@ static struct connman_iptables *connman_iptables_init(const char *table_name)
 			table->blob_entries->size,
 				add_entry, table);
 
-
 	return table;
 
 err:
+	g_free(module);
 
 	connman_iptables_cleanup(table);
 
