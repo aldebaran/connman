@@ -624,32 +624,27 @@ static void update_hooks(struct connman_iptables *table, GList *chain_head,
 	}
 }
 
-static int
-iptables_add_rule(struct connman_iptables *table,
+static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
-				char *match_name, struct xtables_match *xt_m)
+				char *match_name, struct xtables_match *xt_m,
+				int *builtin)
 {
 	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
 	struct connman_iptables_entry *head;
-	int builtin = -1, ret;
-
-	DBG("");
 
 	chain_head = find_chain_head(table, chain_name);
 	if (chain_head == NULL)
-		return -EINVAL;
+		return NULL;
 
 	chain_tail = find_chain_tail(table, chain_name);
 	if (chain_tail == NULL)
-		return -EINVAL;
+		return NULL;
 
-	new_entry = new_rule(table, ip,
-				target_name, xt_t,
-				match_name, xt_m);
+	new_entry = new_rule(table, ip, target_name, xt_t, match_name, xt_m);
 	if (new_entry == NULL)
-		return -EINVAL;
+		return NULL;
 
 	update_hooks(table, chain_head, new_entry);
 
@@ -660,11 +655,35 @@ iptables_add_rule(struct connman_iptables *table,
 	 */
 	head = chain_head->data;
 	if (head->builtin < 0)
-		builtin = -1;
+		*builtin = -1;
 	else if (chain_head == chain_tail->prev) {
-		builtin = head->builtin;
+		*builtin = head->builtin;
 		head->builtin = -1;
 	}
+
+	return new_entry;
+}
+
+static int
+iptables_add_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
+				char *target_name, struct xtables_target *xt_t,
+				char *match_name, struct xtables_match *xt_m)
+{
+	GList *chain_tail;
+	struct ipt_entry *new_entry;
+	int builtin = -1, ret;
+
+	DBG("");
+
+	chain_tail = find_chain_tail(table, chain_name);
+	if (chain_tail == NULL)
+		return -EINVAL;
+
+	new_entry = prepare_rule_inclusion(table, ip, chain_name,
+			target_name, xt_t, match_name, xt_m, &builtin);
+	if (new_entry == NULL)
+		return -EINVAL;
 
 	ret = iptables_add_entry(table, new_entry, chain_tail->prev, builtin);
 	if (ret < 0)
