@@ -284,13 +284,32 @@ static void update_offsets(struct connman_iptables *table)
 	}
 }
 
+static void update_targets_reference(struct connman_iptables *table,
+				struct connman_iptables_entry *entry_before,
+				struct connman_iptables_entry *modified_entry)
+{
+	struct connman_iptables_entry *tmp;
+	struct xt_standard_target *t;
+	GList *list;
+
+	for (list = table->entries; list; list = list->next) {
+		tmp = list->data;
+
+		if (!is_jump(tmp))
+			continue;
+
+		t = (struct xt_standard_target *)ipt_get_target(tmp->entry);
+
+		if (t->verdict > entry_before->offset)
+			t->verdict += modified_entry->entry->next_offset;
+	}
+}
+
 static int iptables_add_entry(struct connman_iptables *table,
 				struct ipt_entry *entry, GList *before,
 					int builtin)
 {
-	GList *list;
-	struct connman_iptables_entry *e, *tmp, *entry_before;
-	struct xt_standard_target *t;
+	struct connman_iptables_entry *e, *entry_before;
 
 	if (table == NULL)
 		return -1;
@@ -318,17 +337,7 @@ static int iptables_add_entry(struct connman_iptables *table,
 	 * We've just appended/insterted a new entry. All references
 	 * should be bumped accordingly.
 	 */
-	for (list = table->entries; list; list = list->next) {
-		tmp = list->data;
-
-		if (!is_jump(tmp))
-			continue;
-
-		t = (struct xt_standard_target *)ipt_get_target(tmp->entry);
-
-		if (t->verdict > entry_before->offset)
-			t->verdict += entry->next_offset;
-	}
+	update_targets_reference(table, entry_before, e);
 
 	update_offsets(table);
 
