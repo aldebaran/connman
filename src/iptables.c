@@ -483,6 +483,39 @@ err_head:
 	return -ENOMEM;
 }
 
+static int iptables_delete_chain(struct connman_iptables *table, char *name)
+{
+	struct connman_iptables_entry *entry;
+	GList *chain_head, *chain_tail;
+
+	chain_head = find_chain_head(table, name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	entry = chain_head->data;
+
+	/* We cannot remove builtin chain */
+	if (entry->builtin >= 0)
+		return -EINVAL;
+
+	chain_tail = find_chain_tail(table, name);
+	if (chain_tail == NULL)
+		return -EINVAL;
+
+	/* Chain must be flushed */
+	if (chain_head->next != chain_tail->prev)
+		return -EINVAL;
+
+	remove_table_entry(table, entry);
+
+	entry = chain_tail->prev->data;
+	remove_table_entry(table, entry);
+
+	update_offsets(table);
+
+	return 0;
+}
+
 static struct ipt_entry *
 new_rule(struct connman_iptables *table, struct ipt_ip *ip,
 		char *target_name, struct xtables_target *xt_t,
@@ -969,6 +1002,7 @@ static struct option iptables_opts[] = {
 	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
+	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
 	{.name = "destination",   .has_arg = 1, .val = 'd'},
 	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
 	{.name = "jump",          .has_arg = 1, .val = 'j'},
@@ -992,7 +1026,7 @@ static int iptables_command(int argc, char *argv[])
 	struct xtables_target *xt_t;
 	struct ipt_ip ip;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
-	char *flush_chain;
+	char *flush_chain, *delete_chain;
 	int c, ret, in_len, out_len;
 	size_t size;
 	gboolean dump, invert;
@@ -1004,7 +1038,7 @@ static int iptables_command(int argc, char *argv[])
 	dump = FALSE;
 	invert = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
-	flush_chain = NULL;
+	flush_chain = delete_chain = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_m = NULL;
@@ -1014,7 +1048,7 @@ static int iptables_command(int argc, char *argv[])
 	optind = 0;
 
 	while ((c = getopt_long(argc, argv,
-	   "-A:F:L::N:d:j:i:m:o:s:t:", iptables_globals.opts, NULL)) != -1) {
+	   "-A:F:L::N:X:d:j:i:m:o:s:t:", iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
@@ -1030,6 +1064,10 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'N':
 			new_chain = optarg;
+			break;
+
+		case 'X':
+			delete_chain = optarg;
 			break;
 
 		case 'd':
@@ -1183,6 +1221,14 @@ static int iptables_command(int argc, char *argv[])
 	table = iptables_init(table_name);
 	if (table == NULL) {
 		ret = -EINVAL;
+		goto out;
+	}
+
+	if (delete_chain != NULL) {
+		printf("Delete chain %s\n", delete_chain);
+
+		iptables_delete_chain(table, delete_chain);
+
 		goto out;
 	}
 
