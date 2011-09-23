@@ -315,10 +315,10 @@ static int iptables_add_entry(struct connman_iptables *table,
 	entry_before = before->data;
 
 	/*
-	 * We've just insterted a new entry. All references before it
+	 * We've just appended/insterted a new entry. All references
 	 * should be bumped accordingly.
 	 */
-	for (list = table->entries; list != before; list = list->next) {
+	for (list = table->entries; list; list = list->next) {
 		tmp = list->data;
 
 		if (!is_jump(tmp))
@@ -326,7 +326,7 @@ static int iptables_add_entry(struct connman_iptables *table,
 
 		t = (struct xt_standard_target *)ipt_get_target(tmp->entry);
 
-		if (t->verdict >= entry_before->offset)
+		if (t->verdict > entry_before->offset)
 			t->verdict += entry->next_offset;
 	}
 
