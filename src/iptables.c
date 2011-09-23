@@ -1047,8 +1047,8 @@ static int iptables_command(int argc, char *argv[])
 
 	optind = 0;
 
-	while ((c = getopt_long(argc, argv,
-	   "-A:F:L::N:X:d:j:i:m:o:s:t:", iptables_globals.opts, NULL)) != -1) {
+	while ((c = getopt_long(argc, argv, "-A:F:L::N:X:d:j:i:m:o:s:t:",
+					iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
