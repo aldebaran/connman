@@ -1138,10 +1138,24 @@ static void table_cleanup(struct connman_iptables *table)
 
 static struct connman_iptables *iptables_init(char *table_name)
 {
-	struct connman_iptables *table;
+	struct connman_iptables *table = NULL;
+	char *module = NULL;
 	socklen_t s;
 
 	DBG("%s", table_name);
+
+	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
+		goto err;
+
+	module = g_strconcat("iptable_", table_name, NULL);
+	if (module == NULL)
+		goto err;
+
+	if (xtables_insmod(module, NULL, TRUE) != 0)
+		goto err;
+
+	g_free(module);
+	module = NULL;
 
 	table = g_hash_table_lookup(table_hash, table_name);
 	if (table != NULL)
@@ -1194,6 +1208,7 @@ static struct connman_iptables *iptables_init(char *table_name)
 	return table;
 
 err:
+	g_free(module);
 
 	table_cleanup(table);
 
