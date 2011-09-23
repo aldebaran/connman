@@ -664,8 +664,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 	return new_entry;
 }
 
-static int
-iptables_add_rule(struct connman_iptables *table,
+static int iptables_append_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				char *match_name, struct xtables_match *xt_m)
@@ -1338,7 +1337,7 @@ static int iptables_command(int argc, char *argv[])
 			DBG("Adding %s to %s (match %s)",
 					target_name, chain, match_name);
 
-			ret = iptables_add_rule(table, &ip, chain,
+			ret = iptables_append_rule(table, &ip, chain,
 					target_name, xt_t, match_name, xt_m);
 
 			goto out;
