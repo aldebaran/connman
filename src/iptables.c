@@ -242,38 +242,16 @@ static GList *find_chain_head(struct connman_iptables *table,
 static GList *find_chain_tail(struct connman_iptables *table,
 				char *chain_name)
 {
+	struct connman_iptables_entry *tail;
 	GList *chain_head, *list;
-	struct connman_iptables_entry *head, *tail;
-	struct ipt_entry *entry;
-	struct xt_entry_target *target;
-	int builtin;
 
-	/* First we look for the head */
-	for (list = table->entries; list; list = list->next) {
-		head = list->data;
-		entry = head->entry;
-
-		/* Buit-in chain */
-		builtin = head->builtin;
-		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
-			break;
-
-		/* User defined chain */
-		target = ipt_get_target(entry);
-		if (!strcmp(target->u.user.name, IPT_ERROR_TARGET) &&
-		    !strcmp((char *)target->data, chain_name))
-			break;
-	}
-
-	if (list == NULL)
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
 		return NULL;
-
-	chain_head = list;
 
 	/* Then we look for the next chain */
 	for (list = chain_head->next; list; list = list->next) {
 		tail = list->data;
-		entry = tail->entry;
 
 		if (is_chain(table, tail))
 			return list;
