@@ -1149,6 +1149,7 @@ static struct connman_iptables *connman_iptables_init(const char *table_name)
 		goto err;
 
 	g_free(module);
+	module = NULL;
 
 	table =  g_try_new0(struct connman_iptables, 1);
 	if (table == NULL)
