@@ -59,7 +59,7 @@ static const char *hooknames[] = {
 	type *__entry;						\
 								\
 	for (__i = 0, __n = 0; __i < (size);			\
-	     __i += __entry->next_offset, __n++) { 		\
+	     __i += __entry->next_offset, __n++) {		\
 		__entry = (void *)(entries) + __i;		\
 		if (__n < n)					\
 			continue;				\
@@ -534,9 +534,8 @@ static int iptables_delete_chain(struct connman_iptables *table, char *name)
 	return 0;
 }
 
-static struct ipt_entry *
-new_rule(struct ipt_ip *ip, char *target_name,
-		struct xtables_target *xt_t,
+static struct ipt_entry *new_rule(struct ipt_ip *ip,
+		char *target_name, struct xtables_target *xt_t,
 		char *match_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
@@ -872,8 +871,7 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	return 0;
 }
 
-static struct ipt_replace *
-iptables_blob(struct connman_iptables *table)
+static struct ipt_replace *iptables_blob(struct connman_iptables *table)
 {
 	struct ipt_replace *r;
 	GList *list;
