@@ -517,13 +517,12 @@ static int iptables_delete_chain(struct connman_iptables *table, char *name)
 }
 
 static struct ipt_entry *
-new_rule(struct connman_iptables *table, struct ipt_ip *ip,
-		char *target_name, struct xtables_target *xt_t,
+new_rule(struct ipt_ip *ip, char *target_name,
+		struct xtables_target *xt_t,
 		char *match_name, struct xtables_match *xt_m)
 {
 	struct ipt_entry *new_entry;
 	size_t match_size, target_size;
-	int is_builtin = is_builtin_target(target_name);
 
 	if (xt_m)
 		match_size = xt_m->m->u.match_size;
@@ -555,40 +554,8 @@ new_rule(struct connman_iptables *table, struct ipt_ip *ip,
 	if (xt_t) {
 		struct xt_entry_target *entry_target;
 
-		if (is_builtin) {
-			struct xt_standard_target *target;
-
-			target = (struct xt_standard_target *)(xt_t->t);
-			strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
-			target->verdict = target_to_verdict(target_name);
-		}
-
 		entry_target = ipt_get_target(new_entry);
 		memcpy(entry_target, xt_t->t, target_size);
-	} else {
-		struct connman_iptables_entry *target_rule;
-		struct xt_standard_target *target;
-		GList *chain_head;
-
-		/*
-		 * This is a user defined target, i.e. a chain jump.
-		 * We search for the chain head, and the target verdict
-		 * is the first rule's offset on this chain.
-		 * The offset is from the beginning of the table.
-		 */
-
-		chain_head = find_chain_head(table, target_name);
-		if (chain_head == NULL || chain_head->next == NULL) {
-			g_free(new_entry);
-			return NULL;
-		}
-
-		target_rule = chain_head->next->data;
-
-		target = (struct xt_standard_target *)ipt_get_target(new_entry);
-		strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
-		target->target.u.user.target_size = target_size;
-		target->verdict = target_rule->offset;
 	}
 
 	return new_entry;
@@ -642,7 +609,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 	if (chain_tail == NULL)
 		return NULL;
 
-	new_entry = new_rule(table, ip, target_name, xt_t, match_name, xt_m);
+	new_entry = new_rule(ip, target_name, xt_t, match_name, xt_m);
 	if (new_entry == NULL)
 		return NULL;
 
@@ -1044,6 +1011,71 @@ err:
 	return NULL;
 }
 
+static struct xtables_target *prepare_target(struct connman_iptables *table,
+							char *target_name)
+{
+	struct xtables_target *xt_t = NULL;
+	gboolean is_builtin, is_user_defined;
+	GList *chain_head = NULL;
+	size_t target_size;
+
+	is_builtin = FALSE;
+	is_user_defined = FALSE;
+
+	if (is_builtin_target(target_name))
+		is_builtin = TRUE;
+	else {
+		chain_head = find_chain_head(table, target_name);
+		if (chain_head != NULL && chain_head->next != NULL)
+			is_user_defined = TRUE;
+	}
+
+	if (is_builtin || is_user_defined)
+		xt_t = xtables_find_target(IPT_STANDARD_TARGET,
+						XTF_LOAD_MUST_SUCCEED);
+	else
+		xt_t = xtables_find_target(target_name, XTF_TRY_LOAD);
+
+	if (xt_t == NULL)
+		return NULL;
+
+	target_size = ALIGN(sizeof(struct ipt_entry_target)) + xt_t->size;
+
+	xt_t->t = g_try_malloc0(target_size);
+	if (xt_t->t == NULL)
+		return NULL;
+
+	xt_t->t->u.target_size = target_size;
+
+	if (is_builtin || is_user_defined) {
+		struct xt_standard_target *target;
+
+		target = (struct xt_standard_target *)(xt_t->t);
+		strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
+
+		if (is_builtin == TRUE)
+			target->verdict = target_to_verdict(target_name);
+		else if (is_user_defined == TRUE) {
+			struct connman_iptables_entry *target_rule;
+
+			if (chain_head == NULL) {
+				g_free(xt_t->t);
+				return NULL;
+			}
+
+			target_rule = chain_head->next->data;
+			target->verdict = target_rule->offset;
+		}
+	} else {
+		strcpy(xt_t->t->u.user.name, target_name);
+		xt_t->t->u.user.revision = xt_t->revision;
+		if (xt_t->init != NULL)
+			xt_t->init(xt_t->t);
+	}
+
+	return xt_t;
+}
+
 static struct option iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
 	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
@@ -1160,33 +1192,6 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'j':
 			target_name = optarg;
-			xt_t = xtables_find_target(target_name, XTF_TRY_LOAD);
-
-			if (xt_t == NULL)
-				break;
-
-			size = ALIGN(sizeof(struct ipt_entry_target)) +
-								xt_t->size;
-
-			xt_t->t = g_try_malloc0(size);
-			if (xt_t->t == NULL)
-				goto out;
-			xt_t->t->u.target_size = size;
-			strcpy(xt_t->t->u.user.name, target_name);
-			xt_t->t->u.user.revision = xt_t->revision;
-			if (xt_t->init != NULL)
-				xt_t->init(xt_t->t);
-			iptables_globals.opts =
-				xtables_merge_options(
-#if XTABLES_VERSION_CODE > 5
-						     iptables_globals.orig_opts,
-#endif
-						     iptables_globals.opts,
-						     xt_t->extra_opts,
-						     &xt_t->option_offset);
-			if (iptables_globals.opts == NULL)
-				goto out;
-
 			break;
 
 		case 'm':
@@ -1322,8 +1327,20 @@ static int iptables_command(int argc, char *argv[])
 	}
 
 	if (chain) {
-		if (target_name == NULL)
-			return -1;
+		xt_t = prepare_target(table, target_name);
+		if (xt_t == NULL)
+			goto out;
+
+		iptables_globals.opts =
+			xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+					iptables_globals.orig_opts,
+#endif
+					iptables_globals.opts,
+					xt_t->extra_opts,
+					&xt_t->option_offset);
+		if (iptables_globals.opts == NULL)
+			goto out;
 
 		if (insert == TRUE) {
 			DBG("Inserting %s to %s (match %s)",
