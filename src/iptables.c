@@ -692,6 +692,31 @@ iptables_add_rule(struct connman_iptables *table,
 	return ret;
 }
 
+static int iptables_insert_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
+				char *target_name, struct xtables_target *xt_t,
+				char *match_name, struct xtables_match *xt_m)
+{
+	struct ipt_entry *new_entry;
+	int builtin = -1, ret;
+	GList *chain_head;
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	new_entry = prepare_rule_inclusion(table, ip, chain_name,
+			target_name, xt_t, match_name, xt_m, &builtin);
+	if (new_entry == NULL)
+		return -EINVAL;
+
+	ret = iptables_add_entry(table, new_entry, chain_head->next, builtin);
+	if (ret < 0)
+		g_free(new_entry);
+
+	return ret;
+}
+
 static struct ipt_replace *
 iptables_blob(struct connman_iptables *table)
 {
@@ -1023,6 +1048,7 @@ err:
 static struct option iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
 	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
+	{.name = "insert",        .has_arg = 1, .val = 'I'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
 	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
@@ -1052,7 +1078,7 @@ static int iptables_command(int argc, char *argv[])
 	char *flush_chain, *delete_chain;
 	int c, ret, in_len, out_len;
 	size_t size;
-	gboolean dump, invert;
+	gboolean dump, invert, insert;
 	struct in_addr src, dst;
 
 	if (argc == 0)
@@ -1060,6 +1086,7 @@ static int iptables_command(int argc, char *argv[])
 
 	dump = FALSE;
 	invert = FALSE;
+	insert = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
 	flush_chain = delete_chain = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
@@ -1070,15 +1097,28 @@ static int iptables_command(int argc, char *argv[])
 
 	optind = 0;
 
-	while ((c = getopt_long(argc, argv, "-A:F:L::N:X:d:j:i:m:o:s:t:",
+	while ((c = getopt_long(argc, argv, "-A:F:I:L::N:X:d:j:i:m:o:s:t:",
 					iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
+			/* It is either -A, -D or -I at once */
+			if (chain)
+				goto out;
+
 			chain = optarg;
 			break;
 
 		case 'F':
 			flush_chain = optarg;
+			break;
+
+		case 'I':
+			/* It is either -A, -D or -I at once */
+			if (chain)
+				goto out;
+
+			chain = optarg;
+			insert = TRUE;
 			break;
 
 		case 'L':
@@ -1286,13 +1326,23 @@ static int iptables_command(int argc, char *argv[])
 		if (target_name == NULL)
 			return -1;
 
-		DBG("Adding %s to %s (match %s)",
-				target_name, chain, match_name);
+		if (insert == TRUE) {
+			DBG("Inserting %s to %s (match %s)",
+					target_name, chain, match_name);
 
-		ret = iptables_add_rule(table, &ip, chain, target_name, xt_t,
-					match_name, xt_m);
+			ret = iptables_insert_rule(table, &ip, chain,
+					target_name, xt_t, match_name, xt_m);
 
-		goto out;
+			goto out;
+		} else {
+			DBG("Adding %s to %s (match %s)",
+					target_name, chain, match_name);
+
+			ret = iptables_add_rule(table, &ip, chain,
+					target_name, xt_t, match_name, xt_m);
+
+			goto out;
+		}
 	}
 
 out:
