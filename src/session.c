@@ -931,7 +931,7 @@ static void destroy_service_entry(gpointer data)
 	g_free(entry);
 }
 
-static void update_allowed_bearers(struct connman_session *session)
+static void populate_service_list(struct connman_session *session)
 {
 	struct service_entry *entry;
 	GSequenceIter *iter;
@@ -1191,7 +1191,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 
 			info->allowed_bearers = allowed_bearers;
 
-			update_allowed_bearers(session);
+			populate_service_list(session);
 		} else {
 			goto err;
 		}
@@ -1525,7 +1525,7 @@ int __connman_session_create(DBusMessage *msg)
 				DBUS_TYPE_INVALID);
 
 
-	update_allowed_bearers(session);
+	populate_service_list(session);
 	if (info->ecall == TRUE) {
 		ecall_info = info;
 		update_ecall_sessions(session);
