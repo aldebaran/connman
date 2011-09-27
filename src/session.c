@@ -891,6 +891,81 @@ static void select_and_connect(struct connman_session *session,
 	}
 }
 
+static struct service_entry *create_service_entry(struct connman_service *service,
+					const char *name,
+					enum connman_service_state state)
+{
+	struct service_entry *entry;
+	enum connman_service_type type;
+	int idx;
+
+	entry = g_try_new0(struct service_entry, 1);
+	if (entry == NULL)
+		return entry;
+
+	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
+	entry->state = state;
+	if (name != NULL)
+		entry->name = name;
+	else
+		entry->name = "";
+	entry->service = service;
+
+	idx = __connman_service_get_index(entry->service);
+	entry->ifname = connman_inet_ifname(idx);
+	if (entry->ifname == NULL)
+		entry->ifname = g_strdup("");
+
+	type = connman_service_get_type(entry->service);
+	entry->bearer = service2bearer(type);
+
+	return entry;
+}
+
+static void destroy_service_entry(gpointer data)
+{
+	struct service_entry *entry = data;
+
+	g_free(entry->ifname);
+
+	g_free(entry);
+}
+
+static void update_allowed_bearers(struct connman_session *session)
+{
+	struct service_entry *entry;
+	GSequenceIter *iter;
+
+	if (session->service_list != NULL) {
+		g_hash_table_remove_all(session->service_hash);
+		g_sequence_free(session->service_list);
+	}
+
+	session->service_list = __connman_service_get_list(session,
+							service_match,
+							create_service_entry,
+							destroy_service_entry);
+
+	g_sequence_sort(session->service_list, sort_services, session);
+
+	iter = g_sequence_get_begin_iter(session->service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		entry = g_sequence_get(iter);
+
+		DBG("service %p type %s name %s", entry->service,
+			service2bearer(connman_service_get_type(entry->service)),
+			entry->name);
+
+		g_hash_table_replace(session->service_hash,
+					entry->service, iter);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	session->info_dirty = TRUE;
+}
+
 static void session_changed(struct connman_session *session,
 				enum connman_session_trigger trigger)
 {
@@ -1024,81 +1099,6 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 	session_changed(session, CONNMAN_SESSION_TRIGGER_DISCONNECT);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static struct service_entry *create_service_entry(struct connman_service *service,
-					const char *name,
-					enum connman_service_state state)
-{
-	struct service_entry *entry;
-	enum connman_service_type type;
-	int idx;
-
-	entry = g_try_new0(struct service_entry, 1);
-	if (entry == NULL)
-		return entry;
-
-	entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
-	entry->state = state;
-	if (name != NULL)
-		entry->name = name;
-	else
-		entry->name = "";
-	entry->service = service;
-
-	idx = __connman_service_get_index(entry->service);
-	entry->ifname = connman_inet_ifname(idx);
-	if (entry->ifname == NULL)
-		entry->ifname = g_strdup("");
-
-	type = connman_service_get_type(entry->service);
-	entry->bearer = service2bearer(type);
-
-	return entry;
-}
-
-static void destroy_service_entry(gpointer data)
-{
-	struct service_entry *entry = data;
-
-	g_free(entry->ifname);
-
-	g_free(entry);
-}
-
-static void update_allowed_bearers(struct connman_session *session)
-{
-	struct service_entry *entry;
-	GSequenceIter *iter;
-
-	if (session->service_list != NULL) {
-		g_hash_table_remove_all(session->service_hash);
-		g_sequence_free(session->service_list);
-	}
-
-	session->service_list = __connman_service_get_list(session,
-							service_match,
-							create_service_entry,
-							destroy_service_entry);
-
-	g_sequence_sort(session->service_list, sort_services, session);
-
-	iter = g_sequence_get_begin_iter(session->service_list);
-
-	while (g_sequence_iter_is_end(iter) == FALSE) {
-		entry = g_sequence_get(iter);
-
-		DBG("service %p type %s name %s", entry->service,
-			service2bearer(connman_service_get_type(entry->service)),
-			entry->name);
-
-		g_hash_table_replace(session->service_hash,
-					entry->service, iter);
-
-		iter = g_sequence_iter_next(iter);
-	}
-
-	session->info_dirty = TRUE;
 }
 
 static void update_ecall_sessions(struct connman_session *session)
