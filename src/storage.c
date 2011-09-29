@@ -351,73 +351,106 @@ void __connman_storage_migrate()
 	if(pathname == NULL)
 		return;
 
-	/* If default.profile doesn't exists, no need to migrate. */
-	keyfile_def = storage_load(pathname);
-	if (keyfile_def == NULL) {
-		g_free(pathname);
-		return;
-	}
-
 	/* Copy global settings from default.profile to settings. */
 	keyfile = g_key_file_new();
+
+	/* If default.profile doesn't exists, create settings with defaults. */
+	keyfile_def = storage_load(pathname);
+	if (keyfile_def == NULL) {
+		g_key_file_set_boolean(keyfile, "global",
+					"OfflineMode", FALSE);
+
+		g_key_file_set_boolean(keyfile, "WiFi",
+					"Enable", FALSE);
+
+		g_key_file_set_boolean(keyfile, "Bluetooth",
+					"Enable", FALSE);
+
+		g_key_file_set_boolean(keyfile, "Wired",
+					"Enable", FALSE);
+
+		g_key_file_set_boolean(keyfile, "3G",
+					"Enable", FALSE);
+
+		g_key_file_set_boolean(keyfile, "WiMAX",
+					"Enable", FALSE);
+
+		goto done;
+	}
 
 	/* offline mode */
 	val = g_key_file_get_boolean(keyfile_def, "global",
 					"OfflineMode", &error);
-	if (error != NULL)
+	if (error != NULL) {
 		g_clear_error(&error);
-	else
-		g_key_file_set_boolean(keyfile, "global",
+		val = FALSE;
+	}
+
+	g_key_file_set_boolean(keyfile, "global",
 					"OfflineMode", val);
 
 	/* wifi */
 	val = g_key_file_get_boolean(keyfile_def, "WiFi",
 					"Enable", &error);
-	if (error != NULL)
+	if (error != NULL) {
 		g_clear_error(&error);
-	else
-		g_key_file_set_boolean(keyfile, "WiFi",
+		val = FALSE;
+	}
+
+	g_key_file_set_boolean(keyfile, "WiFi",
 					"Enable", val);
 
 	/* bluetooth */
 	val = g_key_file_get_boolean(keyfile_def, "Bluetooth",
 					"Enable", &error);
-	if (error != NULL)
+	if (error != NULL) {
 		g_clear_error(&error);
-	else
-		g_key_file_set_boolean(keyfile, "Bluetooth",
+		val = FALSE;
+	}
+
+	g_key_file_set_boolean(keyfile, "Bluetooth",
 					"Enable", val);
 
 	/* wired */
 	val = g_key_file_get_boolean(keyfile_def, "Wired",
 					"Enable", &error);
-	if (error != NULL)
+	if (error != NULL) {
 		g_clear_error(&error);
-	else
-		g_key_file_set_boolean(keyfile, "Wired",
+		val = FALSE;
+	}
+
+	g_key_file_set_boolean(keyfile, "Wired",
 					"Enable", val);
 
 	/* 3G */
 	val = g_key_file_get_boolean(keyfile_def, "3G",
 					"Enable", &error);
-	if (error != NULL)
+	if (error != NULL) {
 		g_clear_error(&error);
-	else
-		g_key_file_set_boolean(keyfile, "3G",
+		val = FALSE;
+	}
+
+	g_key_file_set_boolean(keyfile, "3G",
 					"Enable", val);
 
 	/* WiMAX */
 	val = g_key_file_get_boolean(keyfile_def, "WiMAX",
 					"Enable", &error);
-	if (error != NULL)
+	if (error != NULL) {
 		g_clear_error(&error);
-	else
-		g_key_file_set_boolean(keyfile, "WiMAX",
+		val = FALSE;
+	}
+
+	g_key_file_set_boolean(keyfile, "WiMAX",
 					"Enable", val);
 
+done:
 	__connman_storage_save_global(keyfile);
 
 	g_key_file_free(keyfile);
-	g_key_file_free(keyfile_def);
+
+	if (keyfile_def)
+		g_key_file_free(keyfile_def);
+
 	g_free(pathname);
 }
