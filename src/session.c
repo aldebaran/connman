@@ -504,8 +504,6 @@ static gboolean session_notify(gpointer user_data)
 
 	g_dbus_send_message(connection, msg);
 
-	session->info_dirty = FALSE;
-
 	return FALSE;
 }
 
