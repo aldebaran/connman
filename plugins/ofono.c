@@ -1247,10 +1247,15 @@ static void modem_gprs_changed(struct modem_data *modem,
 	if (g_str_equal(key, "Attached") == TRUE) {
 		DBG("Attached %d", value);
 
+		if (modem->attached == value)
+			return;
+
 		modem->attached = value;
 
-		if (value)
+		if (value == TRUE) {
 			modem_clear_network_errors(modem);
+			check_networks(modem);
+		}
 	} else if (g_str_equal(key, "Powered") == TRUE) {
 		DBG("Powered %d", value);
 
@@ -1295,7 +1300,6 @@ done:
 
 	dbus_pending_call_unref(call);
 
-	check_networks(modem);
 }
 
 static void check_gprs(struct modem_data *modem)
@@ -1767,6 +1771,10 @@ static gboolean context_added(DBusConnection *connection,
 
 	modem = g_hash_table_lookup(modem_hash, path);
 	if (modem == NULL || modem->device == NULL)
+		return TRUE;
+
+	/* Create the related network only when we are attached */
+	if (modem->attached == FALSE)
 		return TRUE;
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
