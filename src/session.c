@@ -936,11 +936,9 @@ static void populate_service_list(struct connman_session *session)
 	struct service_entry *entry;
 	GSequenceIter *iter;
 
-	if (session->service_list != NULL) {
-		g_hash_table_remove_all(session->service_hash);
-		g_sequence_free(session->service_list);
-	}
-
+	session->service_hash =
+		g_hash_table_new_full(g_direct_hash, g_direct_equal,
+					NULL, NULL);
 	session->service_list = __connman_service_get_list(session,
 							service_match,
 							create_service_entry,
@@ -962,8 +960,6 @@ static void populate_service_list(struct connman_session *session)
 
 		iter = g_sequence_iter_next(iter);
 	}
-
-	session->info_dirty = TRUE;
 }
 
 static void session_changed(struct connman_session *session,
@@ -971,7 +967,9 @@ static void session_changed(struct connman_session *session,
 {
 	struct session_info *info = session->info;
 	struct session_info *info_last = session->info_last;
-	GSequenceIter *iter;
+	GSequenceIter *service_iter = NULL, *service_iter_last = NULL;
+	GSequence *service_list_last;
+	GHashTable *service_hash_last;
 
 	/*
 	 * TODO: This only a placeholder for the 'real' algorithm to
@@ -992,16 +990,32 @@ static void session_changed(struct connman_session *session,
 		DBG("ignore session changed event");
 		return;
 	case CONNMAN_SESSION_TRIGGER_SETTING:
-		if (info->entry != NULL) {
-			iter = g_hash_table_lookup(session->service_hash,
+		if (info->allowed_bearers != info_last->allowed_bearers) {
+
+			service_hash_last = session->service_hash;
+			service_list_last = session->service_list;
+
+			populate_service_list(session);
+
+			if (info->entry != NULL) {
+				service_iter_last = g_hash_table_lookup(
+							service_hash_last,
 							info->entry->service);
-			if (iter == NULL) {
+				service_iter = g_hash_table_lookup(
+							session->service_hash,
+							info->entry->service);
+			}
+
+			if (service_iter == NULL && service_iter_last != NULL) {
 				/*
-				 * This service is not part of this
-				 * session anymore.
+				 * The currently selected service is
+				 * not part of this session anymore.
 				 */
 				deselect_and_disconnect(session, info->reason);
 			}
+
+			g_hash_table_remove_all(service_hash_last);
+			g_sequence_free(service_list_last);
 		}
 
 		if (info->online == FALSE) {
@@ -1191,7 +1205,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 
 			info->allowed_bearers = allowed_bearers;
 
-			populate_service_list(session);
+			session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -1477,9 +1491,6 @@ int __connman_session_create(DBusMessage *msg)
 	session->notify_watch =
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
-
-	session->service_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-						NULL, NULL);
 
 	info->online = FALSE;
 	info->priority = priority;
