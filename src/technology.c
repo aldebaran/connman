@@ -818,6 +818,7 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
 		dbus_message_unref(technology->pending_reply);
+		g_source_remove(technology->pending_timeout);
 		technology->pending_reply = NULL;
 		technology->pending_timeout = 0;
 	}
@@ -908,7 +909,9 @@ int __connman_technology_disabled(enum connman_service_type type)
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
 		dbus_message_unref(technology->pending_reply);
+		g_source_remove(technology->pending_timeout);
 		technology->pending_reply = NULL;
+		technology->pending_timeout = 0;
 	}
 
 	if (g_atomic_int_dec_and_test(&technology->enabled) == TRUE) {
