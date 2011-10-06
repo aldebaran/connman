@@ -104,6 +104,9 @@ AC_ARG_ENABLE(openconnect,
 if (test "${enable_openconnect}" != "no"); then
 	if (test -z "${path_openconnect}"); then
 		AC_PATH_PROG(OPENCONNECT, [openconnect], [], $PATH:/sbin:/usr/sbin)
+		if (test -z "${OPENCONNECT}"); then
+			AC_MSG_ERROR(openconnect binary not found)
+		fi
 	else
 		OPENCONNECT="${path_openconnect}"
 		AC_SUBST(OPENCONNECT)
@@ -121,6 +124,9 @@ AC_ARG_ENABLE(openvpn,
 if (test "${enable_openvpn}" != "no"); then
 	if (test -z "${path_openvpn}"); then
 		AC_PATH_PROG(OPENVPN, [openvpn], [], $PATH:/sbin:/usr/sbin)
+		if (test -z "${OPENVPN}"); then
+			AC_MSG_ERROR(openvpn binary not found)
+		fi
 	else
 		OPENVPN="${path_openvpn}"
 		AC_SUBST(OPENVPN)
@@ -138,6 +144,9 @@ AC_ARG_ENABLE(vpnc,
 if (test "${enable_vpnc}" != "no"); then
 	if (test -z "${path_vpnc}"); then
 		AC_PATH_PROG(VPNC, [vpnc], [], $PATH:/sbin:/usr/sbin)
+		if (test -z "${VPNC}"); then
+			AC_MSG_ERROR(vpnc binary not found)
+		fi
 	else
 		VPNC="${path_vpnc}"
 		AC_SUBST(VPNC)
