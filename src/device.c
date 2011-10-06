@@ -298,6 +298,9 @@ int __connman_device_disable(struct connman_device *device)
 
 	clear_scan_trigger(device);
 
+	if (device->network)
+		connman_network_set_connected(device->network, FALSE);
+
 	err = device->driver->disable(device);
 	if (err == 0) {
 		connman_device_set_powered(device, FALSE);
