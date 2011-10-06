@@ -829,9 +829,6 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	__connman_device_cleanup_networks(device);
 
-	if (device->connections > 0)
-		return 0;
-
 	__connman_service_auto_connect();
 
 	return 0;
