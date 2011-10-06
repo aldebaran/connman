@@ -779,8 +779,6 @@ static void set_configuration(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	__connman_device_increase_connections(network->device);
-
 	__connman_device_set_network(network->device, network);
 
 	connman_device_set_disconnected(network->device, FALSE);
@@ -963,8 +961,6 @@ static int manual_ipv6_set(struct connman_network *network,
 	__connman_connection_gateway_activate(service,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 
-	__connman_device_increase_connections(network->device);
-
 	__connman_device_set_network(network->device, network);
 
 	connman_device_set_disconnected(network->device, FALSE);
@@ -977,8 +973,6 @@ static int manual_ipv6_set(struct connman_network *network,
 static void autoconf_ipv6_set(struct connman_network *network)
 {
 	DBG("network %p", network);
-
-	__connman_device_increase_connections(network->device);
 
 	__connman_device_set_network(network->device, network);
 
@@ -1151,9 +1145,6 @@ int connman_network_set_connected(struct connman_network *network,
 
 	if (network->connected == connected)
 		return -EALREADY;
-
-	if (connected == FALSE)
-		__connman_device_decrease_connections(network->device);
 
 	network->connected = connected;
 

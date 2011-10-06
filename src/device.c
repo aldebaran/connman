@@ -58,7 +58,6 @@ struct connman_device {
 	char *devname;
 	int phyindex;
 	int index;
-	unsigned int connections;
 	guint scan_timeout;
 	guint pending_timeout;
 
@@ -678,10 +677,8 @@ int connman_device_set_powered(struct connman_device *device,
 	else
 		__connman_technology_disabled(type);
 
-	if (powered == FALSE) {
-		device->connections = 0;
+	if (powered == FALSE)
 		return 0;
-	}
 
 	connman_device_set_disconnected(device, FALSE);
 	device->scanning = FALSE;
@@ -852,7 +849,10 @@ int connman_device_set_disconnected(struct connman_device *device,
 	device->disconnected = disconnected;
 
 	if (disconnected == TRUE)
+	{
 		force_scan_trigger(device);
+		device->backoff_interval = SCAN_INITIAL_DELAY;
+	}
 
 	return 0;
 }
@@ -924,25 +924,6 @@ const char *connman_device_get_string(struct connman_device *device,
 		return device->path;
 
 	return NULL;
-}
-
-void __connman_device_increase_connections(struct connman_device *device)
-{
-	if (device == NULL)
-		return;
-
-	device->connections++;
-}
-
-void __connman_device_decrease_connections(struct connman_device *device)
-{
-	if (device == NULL)
-		return;
-
-	device->connections--;
-
-	if (device->connections == 0)
-		device->backoff_interval = SCAN_INITIAL_DELAY;
 }
 
 /**
