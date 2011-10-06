@@ -354,9 +354,6 @@ int __connman_device_set_blocked(struct connman_device *device,
 						connman_bool_t blocked);
 connman_bool_t __connman_device_get_blocked(struct connman_device *device);
 
-void __connman_device_increase_connections(struct connman_device *device);
-void __connman_device_decrease_connections(struct connman_device *device);
-
 void __connman_device_set_network(struct connman_device *device,
 					struct connman_network *network);
 void __connman_device_cleanup_networks(struct connman_device *device);

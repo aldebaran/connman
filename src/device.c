@@ -54,7 +54,6 @@ struct connman_device {
 	char *devname;
 	int phyindex;
 	int index;
-	unsigned int connections;
 	guint scan_timeout;
 
 	struct connman_device_driver *driver;
@@ -279,8 +278,6 @@ int __connman_device_disable(struct connman_device *device)
 	}
 
 	g_hash_table_remove_all(device->networks);
-
-	device->connections = 0;
 
 	device->powered_pending = FALSE;
 	device->powered = FALSE;
@@ -915,7 +912,10 @@ int connman_device_set_disconnected(struct connman_device *device,
 	device->disconnected = disconnected;
 
 	if (disconnected == TRUE)
+	{
 		force_scan_trigger(device);
+		device->backoff_interval = SCAN_INITIAL_DELAY;
+	}
 
 	return 0;
 }
@@ -1030,25 +1030,6 @@ int __connman_device_set_offlinemode(connman_bool_t offlinemode)
 	__connman_notifier_offlinemode(offlinemode);
 
 	return 0;
-}
-
-void __connman_device_increase_connections(struct connman_device *device)
-{
-	if (device == NULL)
-		return;
-
-	device->connections++;
-}
-
-void __connman_device_decrease_connections(struct connman_device *device)
-{
-	if (device == NULL)
-		return;
-
-	device->connections--;
-
-	if (device->connections == 0)
-		device->backoff_interval = SCAN_INITIAL_DELAY;
 }
 
 /**
