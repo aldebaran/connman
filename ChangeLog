@@ -1,3 +1,21 @@
+ver 0.77.3
+	wifi: Add NULL checks in interface create and remove
+	wifi: Device reference counting fix on scan
+	ofono: Remove 3G network after disabled 3G modem
+	session: Only disconnect online sevices
+	main: Cleanup ipconfig after service
+	service: Don't iterate over changing sequence
+	provider: Fix memory leak
+	provider: Remove provider if there is an error when connecting
+	ofono: Create the cellular network only when attached to the PS network
+	AUTHORS: Mention Jeff's contributions
+	AUTHORS: Mention Philippe's contributions
+	service: Add interface name matching in __connman_service_lookup().
+	device: Remove redundant connection numbers check
+	device: Remove connections counter
+	AUTHORS: Mention Danny's contributions
+	device: Disconnect a connected network before disabling the device
+
 ver 0.77.2
 	connection: Default gateway is changed when reorganizing services (Fixes BMC#22540)
 	network: Read only the ipconfig data if we have no address (Fixes BMC#22767)
