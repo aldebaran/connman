@@ -2896,11 +2896,9 @@ static DBusMessage *remove_service(DBusConnection *conn,
 						CONNMAN_SERVICE_STATE_FAILURE)
 		return __connman_error_not_supported(msg);
 
-	if (service->network != NULL) {
-		set_reconnect_state(service, FALSE);
+	set_reconnect_state(service, FALSE);
 
-		__connman_network_disconnect(service->network);
-	}
+	__connman_service_disconnect(service);
 
 	g_free(service->passphrase);
 	service->passphrase = NULL;
