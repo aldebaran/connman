@@ -482,6 +482,8 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 		wp_context->wispr_result = CONNMAN_WISPR_RESULT_LOGIN;
 
+		__connman_service_request_login(wp_context->service);
+
 		if (__connman_agent_request_login_input(wp_context->service,
 					wispr_portal_request_wispr_login,
 					wp_context) != -EIO)
@@ -569,8 +571,6 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 			break;
 
 		DBG("Redirect URL: %s", redirect);
-
-		__connman_service_request_login(wp_context->service);
 
 		wp_context->request_id = g_web_request_get(wp_context->web,
 				redirect, wispr_portal_web_result, wp_context);
