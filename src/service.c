@@ -5120,7 +5120,7 @@ void __connman_service_read_ip4config(struct connman_service *service)
 	if (service->ipconfig_ipv4 == NULL)
 		return;
 
-	keyfile = __connman_storage_load_global();
+	keyfile = connman_storage_load_service(service->identifier);
 	if (keyfile == NULL)
 		return;
 
