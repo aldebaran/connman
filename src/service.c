@@ -3491,6 +3491,7 @@ int __connman_service_set_favorite(struct connman_service *service,
 		return -EALREADY;
 
 	service->favorite = favorite;
+	service->order = __connman_service_get_order(service);
 
 	favorite_changed(service);
 
