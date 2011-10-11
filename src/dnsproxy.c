@@ -113,6 +113,7 @@ struct request_data {
 	gpointer resp;
 	gsize resplen;
 	struct listener_data *ifdata;
+	gboolean append_domain;
 };
 
 struct listener_data {
@@ -346,6 +347,9 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	if (dot != NULL && dot != lookup + strlen(lookup) - 1)
 		return 0;
 
+	if (server->domains != NULL && server->domains->data != NULL)
+		req->append_domain = TRUE;
+
 	for (list = server->domains; list; list = list->next) {
 		char *domain;
 		unsigned char alt[1024];
@@ -428,6 +432,35 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	req->numresp++;
 
 	if (hdr->rcode == 0 || req->resp == NULL) {
+
+		/*
+		 * If the domain name was append
+		 * remove it before forwarding the reply.
+		 */
+		if (req->append_domain == TRUE) {
+			unsigned char *ptr;
+			uint8_t host_len;
+			unsigned int domain_len;
+
+			/*
+			 * ptr points to the first char of the hostname.
+			 * ->hostname.domain.net
+			 */
+			ptr = reply + offset + sizeof(struct domain_hdr);
+			host_len = *ptr;
+			domain_len = strlen((const char *)ptr) - host_len - 1;
+
+			/*
+			 * remove the domain name and replaced it by the end
+			 * of reply.
+			 */
+			memmove(ptr + host_len + 1,
+				ptr + host_len + domain_len + 1,
+				reply_len - (ptr - reply + domain_len));
+
+			reply_len = reply_len - domain_len;
+		}
+
 		g_free(req->resp);
 		req->resplen = 0;
 
@@ -1176,6 +1209,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	req->numserv = 0;
 	req->ifdata = (struct listener_data *) ifdata;
+	req->append_domain = FALSE;
 	request_list = g_slist_append(request_list, req);
 
 	for (list = server_list; list; list = list->next) {
@@ -1290,6 +1324,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	req->numserv = 0;
 	req->ifdata = (struct listener_data *) ifdata;
 	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
+	req->append_domain = FALSE;
 	request_list = g_slist_append(request_list, req);
 
 	return resolv(req, buf, query);
