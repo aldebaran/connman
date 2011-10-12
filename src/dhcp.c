@@ -468,6 +468,8 @@ int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback)
 	dhcp->network = network;
 	dhcp->callback = callback;
 
+	connman_network_ref(network);
+
 	g_hash_table_replace(network_table, network, dhcp);
 
 	return dhcp_request(dhcp);
@@ -480,7 +482,8 @@ void __connman_dhcp_stop(struct connman_network *network)
 	if (network_table == NULL)
 		return;
 
-	g_hash_table_remove(network_table, network);
+	if (g_hash_table_remove(network_table, network) == TRUE)
+		connman_network_unref(network);
 }
 
 int __connman_dhcp_init(void)
