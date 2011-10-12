@@ -1487,6 +1487,7 @@ static int icmpv6_recv(int fd, gpointer user_data)
 	len = recvmsg(fd, &mhdr, 0);
 	if (len < 0) {
 		data->callback(NULL, data->user_data);
+		rs_cleanup(data);
 		return -errno;
 	}
 
