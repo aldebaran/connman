@@ -176,7 +176,7 @@ const char *__connman_notifier_get_state(void)
 	return "offline";
 }
 
-static void state_changed(void)
+static void state_changed(connman_bool_t connected)
 {
 	unsigned int count = __connman_notifier_count_connected();
 	char *state = "offline";
@@ -185,8 +185,12 @@ static void state_changed(void)
 	if (count > 1)
 		return;
 
-	if (count > 0)
+	if (count == 1) {
+		if (connected == FALSE)
+			return;
+
 		state = "online";
+	}
 
 	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "State",
@@ -212,7 +216,7 @@ static void technology_connected(enum connman_service_type type,
 		CONNMAN_MANAGER_INTERFACE, "ConnectedTechnologies",
 		DBUS_TYPE_STRING, __connman_notifier_list_connected, NULL);
 
-	state_changed();
+	state_changed(connected);
 }
 
 void __connman_notifier_register(enum connman_service_type type)
