@@ -164,6 +164,7 @@ int __connman_wpad_start(struct connman_service *service)
 	g_resolv_lookup_hostname(wpad->resolv, wpad->hostname,
 							wpad_result, wpad);
 
+	connman_service_ref(service);
 	g_hash_table_replace(wpad_list, GINT_TO_POINTER(index), wpad);
 
 	return 0;
@@ -182,7 +183,8 @@ void __connman_wpad_stop(struct connman_service *service)
 	if (index < 0)
 		return;
 
-	g_hash_table_remove(wpad_list, GINT_TO_POINTER(index));
+	if (g_hash_table_remove(wpad_list, GINT_TO_POINTER(index)) == TRUE)
+		connman_service_unref(service);
 }
 
 int __connman_wpad_init(void)
