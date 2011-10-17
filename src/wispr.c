@@ -713,23 +713,23 @@ int __connman_wispr_start(struct connman_service *service,
 	else
 		return -EINVAL;
 
-	if (wp_context == NULL) {
-		wp_context = g_try_new0(struct connman_wispr_portal_context, 1);
-		if (wp_context == NULL)
-			return -ENOMEM;
+	/* If there is already an existing context, we wipe it */
+	if (wp_context != NULL)
+		free_connman_wispr_portal_context(wp_context);
 
-		wp_context->service = service;
-		wp_context->type = type;
+	wp_context = g_try_new0(struct connman_wispr_portal_context, 1);
+	if (wp_context == NULL)
+		return -ENOMEM;
 
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-			wispr_portal->ipv4_context = wp_context;
-		else
-			wispr_portal->ipv6_context = wp_context;
+	wp_context->service = service;
+	wp_context->type = type;
 
-		return wispr_portal_detect(wp_context);
-	}
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		wispr_portal->ipv4_context = wp_context;
+	else
+		wispr_portal->ipv6_context = wp_context;
 
-	return 0;
+	return wispr_portal_detect(wp_context);
 }
 
 void __connman_wispr_stop(struct connman_service *service)
