@@ -4156,6 +4156,7 @@ static void check_proxy_setup(struct connman_service *service)
 	if (__connman_wpad_start(service) < 0) {
 		service->proxy = CONNMAN_SERVICE_PROXY_METHOD_DIRECT;
 		__connman_notifier_proxy_changed(service);
+		goto done;
 	}
 
 	return;
