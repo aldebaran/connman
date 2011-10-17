@@ -120,6 +120,8 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 	if (wp_context == NULL)
 		return;
 
+	connman_service_unref(wp_context->service);
+
 	if (wp_context->token > 0)
 		connman_proxy_lookup_cancel(wp_context->token);
 
@@ -720,6 +722,8 @@ int __connman_wispr_start(struct connman_service *service,
 	wp_context = g_try_new0(struct connman_wispr_portal_context, 1);
 	if (wp_context == NULL)
 		return -ENOMEM;
+
+	connman_service_ref(service);
 
 	wp_context->service = service;
 	wp_context->type = type;
