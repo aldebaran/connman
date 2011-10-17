@@ -1038,6 +1038,11 @@ static void session_changed(struct connman_session *session,
 			break;
 		}
 
+		if (info->entry != NULL &&
+				is_connecting(info->entry->state) == TRUE) {
+			break;
+		}
+
 		select_and_connect(session,
 				CONNMAN_SESSION_REASON_CONNECT);
 
