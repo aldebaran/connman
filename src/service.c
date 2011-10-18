@@ -4128,6 +4128,9 @@ enum connman_service_state __connman_service_ipconfig_get_state(
 					struct connman_service *service,
 					enum connman_ipconfig_type type)
 {
+	if (service == NULL)
+		return CONNMAN_SERVICE_STATE_UNKNOWN;
+
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 		return service->state_ipv4;
 
