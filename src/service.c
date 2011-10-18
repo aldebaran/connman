@@ -5587,6 +5587,9 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	if (service == NULL)
 		return;
 
+	__connman_connection_gateway_remove(service,
+					CONNMAN_IPCONFIG_TYPE_ALL);
+
 	__connman_service_put(service);
 }
 
