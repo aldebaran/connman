@@ -1051,12 +1051,9 @@ static gboolean set_connected(gpointer user_data)
 		}
 
 	} else {
-		struct connman_service *service;
 		enum connman_service_state state;
 
 		__connman_device_set_network(network->device, NULL);
-
-		service = __connman_service_lookup_from_network(network);
 
 		switch (ipv4_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
