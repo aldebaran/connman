@@ -452,6 +452,60 @@ static void set_ipv6_privacy(gchar *ifname, int value)
 	fclose(f);
 }
 
+static int get_rp_filter()
+{
+	FILE *f;
+	int value = -EINVAL, tmp;
+
+	f = fopen("/proc/sys/net/ipv4/conf/all/rp_filter", "r");
+
+	if (f != NULL) {
+		if (fscanf(f, "%d", &tmp) == 1)
+			value = tmp;
+		fclose(f);
+	}
+
+	return value;
+}
+
+static void set_rp_filter(int value)
+{
+	FILE *f;
+
+	f = fopen("/proc/sys/net/ipv4/conf/all/rp_filter", "r+");
+
+	if (f == NULL)
+		return;
+
+	fprintf(f, "%d", value);
+
+	fclose(f);
+}
+
+int __connman_ipconfig_set_rp_filter()
+{
+	int value;
+
+	value = get_rp_filter();
+
+	if (value < 0)
+		return value;
+
+	set_rp_filter(2);
+
+	connman_info("rp_filter set to 2 (loose mode routing), "
+			"old value was %d", value);
+
+	return value;
+}
+
+void __connman_ipconfig_unset_rp_filter(int old_value)
+{
+	set_rp_filter(old_value);
+
+	connman_info("rp_filter restored to %d", old_value);
+}
+
 static void free_ipdevice(gpointer data)
 {
 	struct connman_ipdevice *ipdevice = data;
