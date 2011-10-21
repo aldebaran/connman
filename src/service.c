@@ -4168,6 +4168,59 @@ done:
 	__connman_wispr_start(service, CONNMAN_IPCONFIG_TYPE_IPV4);
 }
 
+/*
+ * How many networks are connected at the same time. If more than 1,
+ * then set the rp_filter setting properly (loose mode routing) so that network
+ * connectivity works ok. This is only done for IPv4 networks as IPv6
+ * does not have rp_filter knob.
+ */
+static int connected_networks_count;
+static int original_rp_filter;
+
+static void service_rp_filter(struct connman_service *service,
+				gboolean connected)
+{
+	enum connman_ipconfig_method method;
+
+	method = __connman_ipconfig_get_method(service->ipconfig_ipv4);
+
+	switch (method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		return;
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		break;
+	}
+
+	if (connected == TRUE) {
+		if (connected_networks_count == 1) {
+			int filter_value;
+			filter_value = __connman_ipconfig_set_rp_filter();
+			if (filter_value < 0)
+				return;
+
+			original_rp_filter = filter_value;
+		}
+		connected_networks_count++;
+
+	} else {
+		if (connected_networks_count == 2)
+			__connman_ipconfig_unset_rp_filter(original_rp_filter);
+
+		connected_networks_count--;
+		if (connected_networks_count < 0)
+			connected_networks_count = 0;
+	}
+
+	DBG("%s %s ipconfig %p method %d count %d filter %d",
+		connected ? "connected" : "disconnected", service->identifier,
+		service->ipconfig_ipv4, method,
+		connected_networks_count, original_rp_filter);
+}
+
 int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 					enum connman_service_state new_state,
 					enum connman_ipconfig_type type)
@@ -4213,9 +4266,10 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_READY:
 		update_nameservers(service);
 
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 			check_proxy_setup(service);
-		else
+			service_rp_filter(service, TRUE);
+		} else
 			__connman_wispr_start(service, type);
 		break;
 	case CONNMAN_SERVICE_STATE_ONLINE:
@@ -4223,6 +4277,10 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 		if (service->state == CONNMAN_SERVICE_STATE_IDLE)
 			return -EINVAL;
+
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			service_rp_filter(service, FALSE);
+
 		break;
 	case CONNMAN_SERVICE_STATE_FAILURE:
 		break;
