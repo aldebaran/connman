@@ -1159,7 +1159,7 @@ static struct connman_iptables *connman_iptables_init(const char *table_name)
 	if (table->info == NULL)
 		goto err;
 
-	table->ipt_sock = socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
+	table->ipt_sock = socket(AF_INET, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_RAW);
 	if (table->ipt_sock < 0)
 		goto err;
 

@@ -85,7 +85,7 @@ static int create_socket(void)
 	};
 	int sk, nsk;
 
-	sk = socket(PF_ALG, SOCK_SEQPACKET, 0);
+	sk = socket(PF_ALG, SOCK_SEQPACKET | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		perror("Failed to create socket");
 		return -1;
