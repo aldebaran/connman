@@ -133,7 +133,7 @@ static int setup_loopback(void)
 	struct sockaddr_in addr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -errno;
 
