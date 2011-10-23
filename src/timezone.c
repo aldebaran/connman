@@ -49,7 +49,7 @@ static char *read_key_file(const char *pathname, const char *key)
 	off_t ptrlen, keylen;
 	int fd;
 
-	fd = open(pathname, O_RDONLY);
+	fd = open(pathname, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return NULL;
 
@@ -121,7 +121,7 @@ static int compare_file(void *src_map, struct stat *src_st,
 	void *dst_map;
 	int fd, result;
 
-	fd = open(pathname, O_RDONLY);
+	fd = open(pathname, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return -1;
 
@@ -222,7 +222,7 @@ char *__connman_timezone_lookup(void)
 
 	DBG("sysconfig zone %s", zone);
 
-	fd = open(ETC_LOCALTIME, O_RDONLY);
+	fd = open(ETC_LOCALTIME, O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
 		g_free(zone);
 		return NULL;
@@ -282,7 +282,7 @@ static int write_file(void *src_map, struct stat *src_st, const char *pathname)
 			unlink(pathname);
 	}
 
-	fd = open(pathname, O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	fd = open(pathname, O_WRONLY | O_CREAT | O_TRUNC | O_CLOEXEC, 0644);
 	if (fd < 0)
 		return -EIO;
 
@@ -306,7 +306,7 @@ int __connman_timezone_change(const char *zone)
 
 	snprintf(pathname, PATH_MAX, "%s/%s", USR_SHARE_ZONEINFO, zone);
 
-	fd = open(pathname, O_RDONLY);
+	fd = open(pathname, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return -EINVAL;
 
