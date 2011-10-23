@@ -60,7 +60,7 @@ static int create_hash(int sk, const char *pathname)
 	struct stat st;
 	int fd;
 
-	fd = open(pathname, O_RDONLY);
+	fd = open(pathname, O_RDONLY | O_CLOEXEC);
 	if (fd < 0)
 		return -1;
 

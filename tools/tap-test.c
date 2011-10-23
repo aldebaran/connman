@@ -80,7 +80,7 @@ static int create_tap(const char *ifname)
 	struct ifreq ifr;
 	int fd, val;
 
-	fd = open("/dev/net/tun", O_RDWR);
+	fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		perror("Failed to open TUN/TAP device");
 		return -1;
