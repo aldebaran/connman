@@ -317,7 +317,7 @@ static uint32_t get_interface_address(int index)
 	struct sockaddr_in *server_ip;
 	uint32_t ret = 0;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		perror("Open socket error");
 		return 0;

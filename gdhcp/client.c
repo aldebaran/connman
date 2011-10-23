@@ -361,7 +361,7 @@ static void get_interface_mac_address(int index, uint8_t *mac_address)
 	struct ifreq ifr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		perror("Open socket error");
 		return;
@@ -515,7 +515,7 @@ static int dhcp_l2_socket(int ifindex)
 		.filter = (struct sock_filter *) filter_instr,
 	};
 
-	fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP));
+	fd = socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
 	if (fd < 0)
 		return fd;
 
