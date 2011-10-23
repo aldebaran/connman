@@ -470,7 +470,8 @@ static int stats_open(struct stats_file *file, const char *name)
 	if (name != NULL) {
 		file->name = g_strdup(name);
 
-		file->fd = TFR(open(file->name, O_RDWR | O_CREAT, 0644));
+		file->fd = TFR(open(file->name,
+					O_RDWR | O_CREAT | O_CLOEXEC, 0644));
 		if (file->fd == -1) {
 			fprintf(stderr, "open error %s for %s\n",
 				strerror(errno), file->name);
