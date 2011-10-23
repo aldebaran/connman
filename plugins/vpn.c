@@ -74,7 +74,7 @@ static int kill_tun(char *tun_name)
 	ifr.ifr_flags = IFF_TUN | IFF_NO_PI;
 	sprintf(ifr.ifr_name, "%s", tun_name);
 
-	fd = open("/dev/net/tun", O_RDWR);
+	fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		err = -errno;
 		connman_error("Failed to open /dev/net/tun to device %s: %s",
@@ -228,7 +228,7 @@ static int vpn_connect(struct connman_provider *provider)
 	name = connman_provider_get_driver_name(provider);
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 
-	fd = open("/dev/net/tun", O_RDWR);
+	fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		i = -errno;
 		connman_error("Failed to open /dev/net/tun: %s",

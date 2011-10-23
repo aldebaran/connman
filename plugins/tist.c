@@ -370,7 +370,7 @@ static int install_ldisc(GIOChannel *channel, gboolean install)
 
 	DBG("opening %s custom baud %lu", uart_dev_name, baud_rate);
 	
-	uart_fd = open(uart_dev_name, O_RDWR);
+	uart_fd = open(uart_dev_name, O_RDWR | O_CLOEXEC);
 	if (uart_fd < 0)
 		return -EIO;
 
@@ -522,7 +522,7 @@ static int tist_init(void)
 		return err;
 	}
 
-	fd = open(TIST_SYSFS_INSTALL, O_RDONLY);
+	fd = open(TIST_SYSFS_INSTALL, O_RDONLY | O_CLOEXEC);
 	if (fd < 0) {
 		connman_error("Failed to open TI ST sysfs install file");
 		return -EIO;
