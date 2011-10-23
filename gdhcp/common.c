@@ -301,7 +301,7 @@ int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
 				offsetof(struct ip_udp_dhcp_packet, udp),
 	};
 
-	fd = socket(PF_PACKET, SOCK_DGRAM, htons(ETH_P_IP));
+	fd = socket(PF_PACKET, SOCK_DGRAM | SOCK_CLOEXEC, htons(ETH_P_IP));
 	if (fd < 0)
 		return -errno;
 
@@ -363,7 +363,7 @@ int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 					EXTEND_FOR_BUGGY_SERVERS,
 	};
 
-	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
 	if (fd < 0)
 		return -errno;
 
@@ -402,7 +402,7 @@ int dhcp_l3_socket(int port, const char *interface)
 	int fd, opt = 1;
 	struct sockaddr_in addr;
 
-	fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
 
 	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
@@ -431,7 +431,7 @@ char *get_interface_name(int index)
 	if (index < 0)
 		return NULL;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		perror("Open socket error");
 		return NULL;
@@ -458,7 +458,7 @@ gboolean interface_is_up(int index)
 	struct ifreq ifr;
 	gboolean ret = FALSE;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		perror("Open socket error");
 		return FALSE;
