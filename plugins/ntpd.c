@@ -90,7 +90,7 @@ static connman_bool_t ntpd_running(void)
 	connman_bool_t ret;
 	struct sockaddr_in server_addr;
 
-	if ((sock = socket(AF_INET, SOCK_DGRAM, 0)) == -1)
+	if ((sock = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0)) == -1)
 		return FALSE;
 
 	server_addr.sin_family = AF_INET;
