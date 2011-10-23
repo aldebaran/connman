@@ -118,7 +118,7 @@ static int rtnl_open(struct rtnl_handle *rth)
 
 	memset(rth, 0, sizeof(*rth));
 
-	rth->fd = socket(AF_NETLINK, SOCK_RAW, NETLINK_ROUTE);
+	rth->fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
 	if (rth->fd < 0) {
 		connman_error("Can not open netlink socket: %s",
 						strerror(errno));
@@ -213,7 +213,7 @@ static int tunnel_create(struct in_addr *addr)
 
 	strncpy(ifr.ifr_name, "sit0", IFNAMSIZ);
 	ifr.ifr_ifru.ifru_data = (void *)&p;
-	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	ret = ioctl(fd, SIOCADDTUNNEL, &ifr);
 	if (ret)
 		connman_error("add tunnel %s failed: %s", ifr.ifr_name,
@@ -245,7 +245,7 @@ static void tunnel_destroy()
 
 	strncpy(ifr.ifr_name, "tun6to4", IFNAMSIZ);
 	ifr.ifr_ifru.ifru_data = (void *)&p;
-	fd = socket(AF_INET, SOCK_DGRAM, 0);
+	fd = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
 		connman_error("socket failed: %s", strerror(errno));
 		return;

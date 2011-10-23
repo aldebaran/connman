@@ -150,7 +150,7 @@ int __connman_inet_modify_address(int cmd, int flags,
 			return err;
 	}
 
-	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	sk = socket(AF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_ROUTE);
 	if (sk < 0)
 		return -errno;
 
@@ -177,7 +177,7 @@ int connman_inet_ifindex(const char *name)
 	if (name == NULL)
 		return -1;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -202,7 +202,7 @@ char *connman_inet_ifname(int index)
 	if (index < 0)
 		return NULL;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return NULL;
 
@@ -224,7 +224,7 @@ short int connman_inet_ifflags(int index)
 	struct ifreq ifr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -errno;
 
@@ -254,7 +254,7 @@ int connman_inet_ifup(int index)
 	struct ifreq ifr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -errno;
 
@@ -296,7 +296,7 @@ int connman_inet_ifdown(int index)
 	struct ifreq ifr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -errno;
 
@@ -341,7 +341,7 @@ static char *index2addr(int index)
 	if (index < 0)
 		return NULL;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return NULL;
 
@@ -384,7 +384,7 @@ static char *index2ident(int index, const char *prefix)
 	if (index < 0)
 		return NULL;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return NULL;
 
@@ -428,7 +428,7 @@ connman_bool_t connman_inet_is_cfg80211(int index)
 	struct ifreq ifr;
 	int sk;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return FALSE;
 
@@ -653,7 +653,7 @@ int connman_inet_add_network_route(int index, const char *host,
 	struct sockaddr_in addr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -715,7 +715,7 @@ int connman_inet_del_network_route(int index, const char *host)
 	struct sockaddr_in addr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -773,7 +773,7 @@ int connman_inet_del_ipv6_network_route(int index, const char *host,
 	rt.rtmsg_metric = 1;
 	rt.rtmsg_ifindex = index;
 
-	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		err = -1;
 		goto out;
@@ -824,7 +824,7 @@ int connman_inet_add_ipv6_network_route(int index, const char *host,
 	rt.rtmsg_metric = 1;
 	rt.rtmsg_ifindex = index;
 
-	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		err = -1;
 		goto out;
@@ -867,7 +867,7 @@ int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
 	rt.rtmsg_dst_len = 0;
 	rt.rtmsg_ifindex = index;
 
-	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		err = -1;
 		goto out;
@@ -904,7 +904,7 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
 	rt.rtmsg_dst_len = 0;
 	rt.rtmsg_ifindex = index;
 
-	sk = socket(AF_INET6, SOCK_DGRAM, 0);
+	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
 		err = -1;
 		goto out;
@@ -927,7 +927,7 @@ int connman_inet_set_gateway_address(int index, const char *gateway)
 	struct sockaddr_in addr;
 	int sk, err;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -978,7 +978,7 @@ int connman_inet_set_gateway_interface(int index)
 
 	DBG("");
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -1024,7 +1024,7 @@ int connman_inet_set_ipv6_gateway_interface(int index)
 
 	DBG("");
 
-	sk = socket(PF_INET6, SOCK_DGRAM, 0);
+	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -1069,7 +1069,7 @@ int connman_inet_clear_gateway_address(int index, const char *gateway)
 
 	DBG("");
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -1120,7 +1120,7 @@ int connman_inet_clear_gateway_interface(int index)
 
 	DBG("");
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -1166,7 +1166,7 @@ int connman_inet_clear_ipv6_gateway_interface(int index)
 
 	DBG("");
 
-	sk = socket(PF_INET6, SOCK_DGRAM, 0);
+	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
 
@@ -1219,7 +1219,7 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 		return -1;
 	host_addr = _host_addr.s_addr;
 
-	sk = socket(PF_INET, SOCK_DGRAM, 0);
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return FALSE;
 
@@ -1260,7 +1260,7 @@ int connman_inet_remove_from_bridge(int index, const char *bridge)
 	if (bridge == NULL)
 		return -EINVAL;
 
-	sk = socket(AF_INET, SOCK_STREAM, 0);
+	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return sk;
 
@@ -1289,7 +1289,7 @@ int connman_inet_add_to_bridge(int index, const char *bridge)
 	if (bridge == NULL)
 		return -EINVAL;
 
-	sk = socket(AF_INET, SOCK_STREAM, 0);
+	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return sk;
 
@@ -1315,7 +1315,7 @@ int connman_inet_set_mtu(int index, int mtu)
 	struct ifreq ifr;
 	int sk, err;
 
-	sk = socket(AF_INET, SOCK_DGRAM, 0);
+	sk = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return sk;
 
@@ -1342,7 +1342,7 @@ int connman_inet_setup_tunnel(char *tunnel, int mtu)
 	if (tunnel == NULL)
 		return -EINVAL;
 
-	sk = socket(AF_INET, SOCK_DGRAM, 0);
+	sk = socket(AF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return sk;
 
@@ -1583,7 +1583,7 @@ static int ndisc_send_unspec(int type, int oif, const struct in6_addr *dest)
 
 	DBG("");
 
-	fd = socket(AF_INET6, SOCK_RAW, IPPROTO_RAW);
+	fd = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_RAW);
 	if (fd < 0)
 		return -errno;
 
@@ -1697,7 +1697,7 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 	data->user_data = user_data;
 	data->rs_timeout = g_timeout_add_seconds(timeout, rs_timeout_cb, data);
 
-	sk = socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
+	sk = socket(AF_INET6, SOCK_RAW | SOCK_CLOEXEC, IPPROTO_ICMPV6);
 	if (sk < 0)
 		return -errno;
 

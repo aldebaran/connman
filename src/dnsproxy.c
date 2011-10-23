@@ -1353,12 +1353,12 @@ static int create_dns_listener(int protocol, const char *ifname)
 	switch (protocol) {
 	case IPPROTO_UDP:
 		proto = "UDP";
-		type = SOCK_DGRAM;
+		type = SOCK_DGRAM | SOCK_CLOEXEC;
 		break;
 
 	case IPPROTO_TCP:
 		proto = "TCP";
-		type = SOCK_STREAM;
+		type = SOCK_STREAM | SOCK_CLOEXEC;
 		break;
 
 	default:

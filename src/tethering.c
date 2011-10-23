@@ -206,7 +206,7 @@ static int create_bridge(const char *name)
 
 	DBG("name %s", name);
 
-	sk = socket(AF_INET, SOCK_STREAM, 0);
+	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -EOPNOTSUPP;
 
@@ -231,7 +231,7 @@ static int remove_bridge(const char *name)
 
 	DBG("name %s", name);
 
-	sk = socket(AF_INET, SOCK_STREAM, 0);
+	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -EOPNOTSUPP;
 
