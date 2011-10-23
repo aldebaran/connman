@@ -905,7 +905,8 @@ static int connect_session_transport(struct web_session *session)
 	GIOFlags flags;
 	int sk;
 
-	sk = socket(session->addr->ai_family, SOCK_STREAM, IPPROTO_TCP);
+	sk = socket(session->addr->ai_family, SOCK_STREAM | SOCK_CLOEXEC,
+			IPPROTO_TCP);
 	if (sk < 0)
 		return -EIO;
 

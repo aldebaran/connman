@@ -161,7 +161,8 @@ static void find_srcaddr(struct sort_result *res)
 	socklen_t sl = sizeof(res->src);
 	int fd;
 
-	fd = socket(res->dst.sa.sa_family, SOCK_DGRAM, IPPROTO_IP);
+	fd = socket(res->dst.sa.sa_family, SOCK_DGRAM | SOCK_CLOEXEC,
+			IPPROTO_IP);
 	if (fd < 0)
 		return;
 
