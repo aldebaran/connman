@@ -110,7 +110,7 @@ static connman_bool_t wext_interface(char *ifname)
 	struct iwreq wrq;
 	int fd, err;
 
-	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (fd < 0)
 		return FALSE;
 
@@ -1568,7 +1568,7 @@ int __connman_rtnl_init(void)
 	interface_list = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, free_interface);
 
-	sk = socket(PF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	sk = socket(PF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_ROUTE);
 	if (sk < 0)
 		return -1;
 

@@ -266,7 +266,7 @@ static void start_ntp(const char *server)
 	if (channel_watch > 0)
 		return;
 
-	fd = socket(PF_INET, SOCK_DGRAM, 0);
+	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (fd < 0) {
 		connman_error("Failed to open time server socket");
 		return;
