@@ -121,7 +121,7 @@ static int resolvfile_export(void)
 
 	old_umask = umask(022);
 
-	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT,
+	fd = open("/etc/resolv.conf", O_RDWR | O_CREAT | O_CLOEXEC,
 					S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH);
 	if (fd < 0) {
 		err = -errno;

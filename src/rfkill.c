@@ -172,7 +172,7 @@ int __connman_rfkill_block(enum connman_service_type type, connman_bool_t block)
 	if (rfkill_type == NUM_RFKILL_TYPES)
 		return -EINVAL;
 
-	fd = open("/dev/rfkill", O_RDWR);
+	fd = open("/dev/rfkill", O_RDWR | O_CLOEXEC);
 	if (fd < 0)
 		return fd;
 
@@ -197,7 +197,7 @@ int __connman_rfkill_init(void)
 
 	DBG("");
 
-	fd = open("/dev/rfkill", O_RDWR);
+	fd = open("/dev/rfkill", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		connman_error("Failed to open RFKILL control device");
 		return -EIO;

@@ -1379,7 +1379,7 @@ int connman_inet_create_tunnel(char **iface)
 	struct ifreq ifr;
 	int i, fd;
 
-	fd = open("/dev/net/tun", O_RDWR);
+	fd = open("/dev/net/tun", O_RDWR | O_CLOEXEC);
 	if (fd < 0) {
 		i = -errno;
 		connman_error("Failed to open /dev/net/tun: %s",

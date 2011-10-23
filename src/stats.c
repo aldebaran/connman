@@ -335,7 +335,7 @@ static int stats_open(struct stats_file *file,
 
 	file->name = g_strdup(name);
 
-	file->fd = TFR(open(file->name, O_RDWR | O_CREAT, 0644));
+	file->fd = TFR(open(file->name, O_RDWR | O_CREAT | O_CLOEXEC, 0644));
 	if (file->fd < 0) {
 		connman_error("open error %s for %s",
 				strerror(errno), file->name);
