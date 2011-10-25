@@ -1414,8 +1414,14 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
+	struct session_info *info = session->info;
 
 	DBG("session %p", session);
+
+	if (ecall_info != NULL && ecall_info != info)
+		return __connman_error_failed(msg, EBUSY);
+
+	session_disconnect(session);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
