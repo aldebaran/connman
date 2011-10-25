@@ -104,7 +104,7 @@ class SessionApplication(dbus.service.Object):
 		if not s:
 			return
 		if s['session']:
-			self.manager.DestroySession(s['session_path'])
+			s['session'].Destroy()
 			s['session'] = None
 		if s['notify']:
 			s['notify'].remove_from_connection()
