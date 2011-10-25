@@ -189,8 +189,7 @@ Methods		dict GetProperties()
 
 		void DestroySession(object session)
 
-			Remove the previously created session. The notifier
-			will be informed via its release method.
+			Remove the previously created session.
 
 			If an application exits unexpectatly the session
 			will be automatically destroyed.
