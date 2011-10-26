@@ -43,7 +43,7 @@ class Notification(dbus.service.Object):
 	def Release(self):
 		print "Release %s" % (self._object_path)
 		session_name = self._object_path.split('/')[-1]
-		self.app.release(sessioin_name)
+		self.app.release(session_name)
 
 	@dbus.service.method("net.connman.Notification",
 				in_signature='a{sv}', out_signature='')
