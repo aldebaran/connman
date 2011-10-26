@@ -25,6 +25,7 @@
 #include <config.h>
 #endif
 
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <errno.h>
 #include <unistd.h>
@@ -1429,12 +1430,6 @@ struct rs_cb_data {
 static const struct in6_addr in6addr_all_nodes_mc = IN6ADDR_ALL_NODES_MC_INIT;
 static const struct in6_addr in6addr_all_routers_mc =
 						IN6ADDR_ALL_ROUTERS_MC_INIT;
-
-/* from netinet/in.h */
-struct in6_pktinfo {
-	struct in6_addr ipi6_addr;  /* src/dst IPv6 address */
-	unsigned int ipi6_ifindex;  /* send/recv interface index */
-};
 
 static void rs_cleanup(struct rs_cb_data *data)
 {
