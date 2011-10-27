@@ -1413,6 +1413,9 @@ static int iptables_command(int argc, char *argv[])
 	xt_t = NULL;
 	ret = 0;
 
+	/* extension's options will generate false-positives errors */
+	opterr = 0;
+
 	optind = 0;
 
 	while ((c = getopt_long(argc, argv, "-A:F:I:L::N:X:d:j:i:m:o:s:t:",
