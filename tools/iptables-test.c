@@ -1289,8 +1289,18 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 			xt_t->init(xt_t->t);
 	}
 
-	connman_iptables_globals.opts =
-		xtables_merge_options(
+	if (xt_t->x6_options != NULL)
+		connman_iptables_globals.opts =
+			xtables_options_xfrm(
+#if XTABLES_VERSION_CODE > 5
+				connman_iptables_globals.orig_opts,
+#endif
+				connman_iptables_globals.opts,
+				xt_t->x6_options,
+				&xt_t->option_offset);
+	else
+		connman_iptables_globals.opts =
+			xtables_merge_options(
 #if XTABLES_VERSION_CODE > 5
 				connman_iptables_globals.orig_opts,
 #endif
