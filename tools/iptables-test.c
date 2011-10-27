@@ -46,6 +46,8 @@ static const char *hooknames[] = {
 #define LABEL_QUEUE   "QUEUE"
 #define LABEL_RETURN  "RETURN"
 
+#define XT_OPTION_OFFSET_SCALE 256
+
 /* fn returns 0 to continue iteration */
 #define _XT_ENTRY_ITERATE_CONTINUE(type, entries, size, n, fn, args...) \
 ({								\
@@ -1531,14 +1533,13 @@ int main(int argc, char *argv[])
 			return -1;
 
 		default:
-			if (xt_t == NULL || xt_t->parse == NULL ||
-			    !xt_t->parse(c - xt_t->option_offset, argv, invert,
-					&xt_t->tflags, NULL, &xt_t->t)) {
-				if (xt_m == NULL || xt_m->parse == NULL)
-					break;
-
-				xt_m->parse(c - xt_m->option_offset, argv,
-					invert, &xt_m->mflags, NULL, &xt_m->m);
+			if (xt_t != NULL && (xt_t->x6_parse != NULL ||
+						xt_t->parse != NULL) &&
+					(c >= (int) xt_t->option_offset &&
+					c < (int) xt_t->option_offset +
+					XT_OPTION_OFFSET_SCALE)) {
+				xtables_option_tpcall(c, argv,
+							invert,	xt_t, NULL);
 			}
 
 			break;
