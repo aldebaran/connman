@@ -1402,6 +1402,9 @@ int main(int argc, char *argv[])
 	xt_m = NULL;
 	xt_t = NULL;
 
+	/* extension's options will generate false-positives errors */
+	opterr = 0;
+
 	while ((c = getopt_long(argc, argv, "-A:D:F:I:L::N:X:d:i:j:m:o:s:t:",
 				connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
