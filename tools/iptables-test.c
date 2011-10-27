@@ -1203,6 +1203,30 @@ err:
 	return NULL;
 }
 
+static struct option connman_iptables_opts[] = {
+	{.name = "append",        .has_arg = 1, .val = 'A'},
+	{.name = "delete",        .has_arg = 1, .val = 'D'},
+	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
+	{.name = "insert",        .has_arg = 1, .val = 'I'},
+	{.name = "list",          .has_arg = 2, .val = 'L'},
+	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
+	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
+	{.name = "destination",   .has_arg = 1, .val = 'd'},
+	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
+	{.name = "jump",          .has_arg = 1, .val = 'j'},
+	{.name = "match",         .has_arg = 1, .val = 'm'},
+	{.name = "out-interface", .has_arg = 1, .val = 'o'},
+	{.name = "source",        .has_arg = 1, .val = 's'},
+	{.name = "table",         .has_arg = 1, .val = 't'},
+	{NULL},
+};
+
+struct xtables_globals connman_iptables_globals = {
+	.option_offset = 0,
+	.opts = connman_iptables_opts,
+	.orig_opts = connman_iptables_opts,
+};
+
 static struct xtables_target *prepare_target(struct connman_iptables *table,
 							char *target_name)
 {
@@ -1267,30 +1291,6 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 
 	return xt_t;
 }
-
-static struct option connman_iptables_opts[] = {
-	{.name = "append",        .has_arg = 1, .val = 'A'},
-	{.name = "delete",        .has_arg = 1, .val = 'D'},
-	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
-	{.name = "insert",        .has_arg = 1, .val = 'I'},
-	{.name = "list",          .has_arg = 2, .val = 'L'},
-	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
-	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
-	{.name = "destination",   .has_arg = 1, .val = 'd'},
-	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
-	{.name = "jump",          .has_arg = 1, .val = 'j'},
-	{.name = "match",         .has_arg = 1, .val = 'm'},
-	{.name = "out-interface", .has_arg = 1, .val = 'o'},
-	{.name = "source",        .has_arg = 1, .val = 's'},
-	{.name = "table",         .has_arg = 1, .val = 't'},
-	{NULL},
-};
-
-struct xtables_globals connman_iptables_globals = {
-	.option_offset = 0,
-	.opts = connman_iptables_opts,
-	.orig_opts = connman_iptables_opts,
-};
 
 int main(int argc, char *argv[])
 {
