@@ -1568,6 +1568,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
+	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
+				tmp_xt_rm = tmp_xt_rm->next)
+		xtables_option_mfcall(tmp_xt_rm->match);
+
 	if (xt_t != NULL)
 		xtables_option_tfcall(xt_t);
 
