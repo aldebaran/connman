@@ -875,6 +875,35 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	return 0;
 }
 
+static int iptables_change_policy(struct connman_iptables *table,
+					char *chain_name, char *policy)
+{
+	GList *chain_head;
+	struct connman_iptables_entry *entry;
+	struct xt_entry_target *target;
+	struct xt_standard_target *t;
+	int verdict;
+
+	verdict = target_to_verdict(policy);
+	if (verdict == 0)
+		return -EINVAL;
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	entry = chain_head->data;
+	if (entry->builtin < 0)
+		return -EINVAL;
+
+	target = ipt_get_target(entry->entry);
+
+	t = (struct xt_standard_target *)target;
+	t->verdict = verdict;
+
+	return 0;
+}
+
 static struct ipt_replace *iptables_blob(struct connman_iptables *table)
 {
 	struct ipt_replace *r;
@@ -1224,6 +1253,7 @@ static struct option iptables_opts[] = {
 	{.name = "insert",        .has_arg = 1, .val = 'I'},
 	{.name = "list",          .has_arg = 2, .val = 'L'},
 	{.name = "new-chain",     .has_arg = 1, .val = 'N'},
+	{.name = "policy",        .has_arg = 1, .val = 'P'},
 	{.name = "delete-chain",  .has_arg = 1, .val = 'X'},
 	{.name = "destination",   .has_arg = 1, .val = 'd'},
 	{.name = "in-interface",  .has_arg = 1, .val = 'i'},
@@ -1392,7 +1422,7 @@ static int iptables_command(int argc, char *argv[])
 	struct xtables_target *xt_t;
 	struct ipt_ip ip;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
-	char *flush_chain, *delete_chain;
+	char *flush_chain, *delete_chain, *policy;
 	int c, ret, in_len, out_len;
 	gboolean dump, invert, insert, delete;
 	struct in_addr src, dst;
@@ -1405,7 +1435,7 @@ static int iptables_command(int argc, char *argv[])
 	insert = FALSE;
 	delete = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
-	flush_chain = delete_chain = NULL;
+	flush_chain = delete_chain = policy = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_rm = NULL;
@@ -1418,7 +1448,7 @@ static int iptables_command(int argc, char *argv[])
 
 	optind = 0;
 
-	while ((c = getopt_long(argc, argv, "-A:F:I:L::N:X:d:j:i:m:o:s:t:",
+	while ((c = getopt_long(argc, argv, "-A:F:I:L::N:P:X:d:j:i:m:o:s:t:",
 					iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
@@ -1457,6 +1487,15 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'N':
 			new_chain = optarg;
+			break;
+
+		case 'P':
+			chain = optarg;
+			if (optind < argc)
+				policy = argv[optind++];
+			else
+				goto out;
+
 			break;
 
 		case 'X':
@@ -1637,6 +1676,14 @@ static int iptables_command(int argc, char *argv[])
 	}
 
 	if (chain) {
+		if (policy != NULL) {
+			printf("Changing policy of %s to %s\n", chain, policy);
+
+			iptables_change_policy(table, chain, policy);
+
+			goto out;
+		}
+
 		if (xt_t == NULL)
 			goto out;
 
