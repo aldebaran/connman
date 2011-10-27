@@ -1307,7 +1307,7 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 }
 
 static struct xtables_match *prepare_matches(struct connman_iptables *table,
-							char *match_name)
+			struct xtables_rule_match **xt_rm, char *match_name)
 {
 	struct xtables_match *xt_m;
 	size_t match_size;
@@ -1315,7 +1315,7 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 	if (match_name == NULL)
 		return NULL;
 
-	xt_m = xtables_find_match(match_name, XTF_LOAD_MUST_SUCCEED, NULL);
+	xt_m = xtables_find_match(match_name, XTF_LOAD_MUST_SUCCEED, xt_rm);
 	match_size = ALIGN(sizeof(struct ipt_entry_match)) + xt_m->size;
 
 	xt_m->m = g_try_malloc0(match_size);
@@ -1351,6 +1351,7 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 int main(int argc, char *argv[])
 {
 	struct connman_iptables *table;
+	struct xtables_rule_match *xt_rm;
 	struct xtables_match *xt_m;
 	struct xtables_target *xt_t;
 	struct ipt_ip ip;
@@ -1371,6 +1372,7 @@ int main(int argc, char *argv[])
 	delete_chain = flush_chain = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
+	xt_rm = NULL;
 	xt_m = NULL;
 	xt_t = NULL;
 
@@ -1562,7 +1564,7 @@ int main(int argc, char *argv[])
 			goto out;
 
 		if (match_name != NULL) {
-			xt_m = prepare_matches(table, match_name);
+			xt_m = prepare_matches(table, &xt_rm, match_name);
 			if (xt_m == NULL)
 				goto out;
 		}
