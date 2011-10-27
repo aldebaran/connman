@@ -1580,6 +1580,10 @@ static int iptables_command(int argc, char *argv[])
 		invert = FALSE;
 	}
 
+	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
+				tmp_xt_rm = tmp_xt_rm->next)
+		xtables_option_mfcall(tmp_xt_rm->match);
+
 	if (xt_t != NULL)
 		xtables_option_tfcall(xt_t);
 
