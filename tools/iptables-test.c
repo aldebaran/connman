@@ -1375,8 +1375,8 @@ done:
 int main(int argc, char *argv[])
 {
 	struct connman_iptables *table;
-	struct xtables_rule_match *xt_rm;
-	struct xtables_match *xt_m;
+	struct xtables_rule_match *xt_rm, *tmp_xt_rm;
+	struct xtables_match *xt_m, *xt_m_t;
 	struct xtables_target *xt_t;
 	struct ipt_ip ip;
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
@@ -1540,6 +1540,28 @@ int main(int argc, char *argv[])
 					XT_OPTION_OFFSET_SCALE)) {
 				xtables_option_tpcall(c, argv,
 							invert,	xt_t, NULL);
+
+				break;
+			}
+
+			for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
+						tmp_xt_rm = tmp_xt_rm->next) {
+				xt_m_t = tmp_xt_rm->match;
+
+				if (tmp_xt_rm->completed ||
+						(xt_m_t->x6_parse == NULL &&
+						 xt_m_t->parse == NULL))
+					continue;
+
+				if (c < (int) xt_m_t->option_offset ||
+					c >= (int) xt_m_t->option_offset
+					+ XT_OPTION_OFFSET_SCALE)
+					continue;
+
+				xtables_option_mpcall(c, argv,
+							invert, xt_m_t, NULL);
+
+				break;
 			}
 
 			break;
