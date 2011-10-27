@@ -1299,8 +1299,18 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 			xt_t->init(xt_t->t);
 	}
 
-	iptables_globals.opts =
-		xtables_merge_options(
+	if (xt_t->x6_options != NULL)
+		iptables_globals.opts =
+			xtables_options_xfrm(
+#if XTABLES_VERSION_CODE > 5
+				iptables_globals.orig_opts,
+#endif
+				iptables_globals.opts,
+				xt_t->x6_options,
+				&xt_t->option_offset);
+	else
+		iptables_globals.opts =
+			xtables_merge_options(
 #if XTABLES_VERSION_CODE > 5
 				iptables_globals.orig_opts,
 #endif
