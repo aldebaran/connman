@@ -1558,6 +1558,9 @@ static int iptables_command(int argc, char *argv[])
 		invert = FALSE;
 	}
 
+	if (xt_t != NULL)
+		xtables_option_tfcall(xt_t);
+
 	if (table_name == NULL)
 		table_name = "filter";
 
