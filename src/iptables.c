@@ -1299,6 +1299,20 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 			xt_t->init(xt_t->t);
 	}
 
+	iptables_globals.opts =
+		xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+				iptables_globals.orig_opts,
+#endif
+				iptables_globals.opts,
+				xt_t->extra_opts,
+				&xt_t->option_offset);
+
+	if (iptables_globals.opts == NULL) {
+		g_free(xt_t->t);
+		xt_t = NULL;
+	}
+
 	return xt_t;
 }
 
@@ -1542,17 +1556,6 @@ static int iptables_command(int argc, char *argv[])
 	if (chain) {
 		xt_t = prepare_target(table, target_name);
 		if (xt_t == NULL)
-			goto out;
-
-		iptables_globals.opts =
-			xtables_merge_options(
-#if XTABLES_VERSION_CODE > 5
-					iptables_globals.orig_opts,
-#endif
-					iptables_globals.opts,
-					xt_t->extra_opts,
-					&xt_t->option_offset);
-		if (iptables_globals.opts == NULL)
 			goto out;
 
 		if (delete == TRUE) {
