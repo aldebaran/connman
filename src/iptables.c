@@ -538,15 +538,15 @@ static int iptables_delete_chain(struct connman_iptables *table, char *name)
 
 static struct ipt_entry *new_rule(struct ipt_ip *ip,
 		char *target_name, struct xtables_target *xt_t,
-		char *match_name, struct xtables_match *xt_m)
+		struct xtables_rule_match *xt_rm)
 {
+	struct xtables_rule_match *tmp_xt_rm;
 	struct ipt_entry *new_entry;
 	size_t match_size, target_size;
 
-	if (xt_m)
-		match_size = xt_m->m->u.match_size;
-	else
-		match_size = 0;
+	match_size = 0;
+	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL; tmp_xt_rm = tmp_xt_rm->next)
+		match_size += tmp_xt_rm->match->m->u.match_size;
 
 	if (xt_t)
 		target_size = ALIGN(xt_t->t->u.target_size);
@@ -563,11 +563,13 @@ static struct ipt_entry *new_rule(struct ipt_ip *ip,
 	new_entry->target_offset = sizeof(struct ipt_entry) + match_size;
 	new_entry->next_offset = sizeof(struct ipt_entry) + target_size +
 								match_size;
-	if (xt_m) {
-		struct xt_entry_match *entry_match;
 
-		entry_match = (struct xt_entry_match *)new_entry->elems;
-		memcpy(entry_match, xt_m->m, match_size);
+	match_size = 0;
+	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
+				tmp_xt_rm = tmp_xt_rm->next) {
+		memcpy(new_entry->elems + match_size, tmp_xt_rm->match->m,
+					tmp_xt_rm->match->m->u.match_size);
+		match_size += tmp_xt_rm->match->m->u.match_size;
 	}
 
 	if (xt_t) {
@@ -613,8 +615,7 @@ static void update_hooks(struct connman_iptables *table, GList *chain_head,
 static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
-				char *match_name, struct xtables_match *xt_m,
-				int *builtin)
+				int *builtin, struct xtables_rule_match *xt_rm)
 {
 	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
@@ -628,7 +629,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 	if (chain_tail == NULL)
 		return NULL;
 
-	new_entry = new_rule(ip, target_name, xt_t, match_name, xt_m);
+	new_entry = new_rule(ip, target_name, xt_t, xt_rm);
 	if (new_entry == NULL)
 		return NULL;
 
@@ -653,7 +654,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 static int iptables_append_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
-				char *match_name, struct xtables_match *xt_m)
+				struct xtables_rule_match *xt_rm)
 {
 	GList *chain_tail;
 	struct ipt_entry *new_entry;
@@ -666,7 +667,7 @@ static int iptables_append_rule(struct connman_iptables *table,
 		return -EINVAL;
 
 	new_entry = prepare_rule_inclusion(table, ip, chain_name,
-			target_name, xt_t, match_name, xt_m, &builtin);
+					target_name, xt_t, &builtin, xt_rm);
 	if (new_entry == NULL)
 		return -EINVAL;
 
@@ -680,7 +681,7 @@ static int iptables_append_rule(struct connman_iptables *table,
 static int iptables_insert_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
-				char *match_name, struct xtables_match *xt_m)
+				struct xtables_rule_match *xt_rm)
 {
 	struct ipt_entry *new_entry;
 	int builtin = -1, ret;
@@ -691,7 +692,7 @@ static int iptables_insert_rule(struct connman_iptables *table,
 		return -EINVAL;
 
 	new_entry = prepare_rule_inclusion(table, ip, chain_name,
-			target_name, xt_t, match_name, xt_m, &builtin);
+					target_name, xt_t, &builtin, xt_rm);
 	if (new_entry == NULL)
 		return -EINVAL;
 
@@ -764,7 +765,8 @@ static gboolean is_same_match(struct xt_entry_match *xt_e_m1,
 static int iptables_delete_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
-				char *match_name, struct xtables_match *xt_m)
+				struct xtables_match *xt_m,
+				struct xtables_rule_match *xt_rm)
 {
 	GList *chain_tail, *chain_head, *list;
 	struct xt_entry_target *xt_e_t = NULL;
@@ -786,7 +788,7 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	if (!xt_t && !xt_m)
 		return -EINVAL;
 
-	entry_test = new_rule(ip, target_name, xt_t, match_name, xt_m);
+	entry_test = new_rule(ip, target_name, xt_t, xt_rm);
 	if (entry_test == NULL)
 		return -EINVAL;
 
@@ -1640,7 +1642,7 @@ static int iptables_command(int argc, char *argv[])
 					target_name, chain, match_name);
 
 			ret = iptables_delete_rule(table, &ip, chain,
-					target_name, xt_t, match_name, xt_m);
+					target_name, xt_t, xt_m, xt_rm);
 
 			goto out;
 		}
@@ -1650,7 +1652,7 @@ static int iptables_command(int argc, char *argv[])
 					target_name, chain, match_name);
 
 			ret = iptables_insert_rule(table, &ip, chain,
-					target_name, xt_t, match_name, xt_m);
+						target_name, xt_t, xt_rm);
 
 			goto out;
 		} else {
@@ -1658,7 +1660,7 @@ static int iptables_command(int argc, char *argv[])
 					target_name, chain, match_name);
 
 			ret = iptables_append_rule(table, &ip, chain,
-					target_name, xt_t, match_name, xt_m);
+						target_name, xt_t, xt_rm);
 
 			goto out;
 		}
