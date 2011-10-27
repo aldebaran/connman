@@ -1462,10 +1462,18 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'j':
 			target_name = optarg;
+			xt_t = prepare_target(table, target_name);
+			if (xt_t == NULL)
+				goto out;
+
 			break;
 
 		case 'm':
 			match_name = optarg;
+			xt_m = prepare_matches(table, &xt_rm, match_name);
+			if (xt_m == NULL)
+				goto out;
+
 			break;
 
 		case 'o':
@@ -1572,15 +1580,8 @@ static int iptables_command(int argc, char *argv[])
 	}
 
 	if (chain) {
-		xt_t = prepare_target(table, target_name);
 		if (xt_t == NULL)
 			goto out;
-
-		if (match_name != NULL) {
-			xt_m = prepare_matches(table, &xt_rm, match_name);
-			if (xt_m == NULL)
-				goto out;
-		}
 
 		if (delete == TRUE) {
 			DBG("Deleting %s to %s (match %s)\n",
