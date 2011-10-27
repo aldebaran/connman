@@ -1571,6 +1571,8 @@ int main(int argc, char *argv[])
 
 			break;
 		}
+
+		invert = FALSE;
 	}
 
 	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
