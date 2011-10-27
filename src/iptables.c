@@ -1349,8 +1349,20 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 	if (xt_m->init != NULL)
 		xt_m->init(xt_m->m);
 
-	if (xt_m != xt_m->next) {
+	if (xt_m == xt_m->next)
+		goto done;
+
+	if (xt_m->x6_options != NULL)
 		iptables_globals.opts =
+			xtables_options_xfrm(
+#if XTABLES_VERSION_CODE > 5
+				iptables_globals.orig_opts,
+#endif
+				iptables_globals.opts,
+				xt_m->x6_options,
+				&xt_m->option_offset);
+	else
+			iptables_globals.opts =
 			xtables_merge_options(
 #if XTABLES_VERSION_CODE > 5
 				iptables_globals.orig_opts,
@@ -1359,12 +1371,12 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 				xt_m->extra_opts,
 				&xt_m->option_offset);
 
-		if (iptables_globals.opts == NULL) {
-			g_free(xt_m->m);
-			xt_m = NULL;
-		}
+	if (iptables_globals.opts == NULL) {
+		g_free(xt_m->m);
+		xt_m = NULL;
 	}
 
+done:
 	return xt_m;
 }
 
