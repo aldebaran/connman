@@ -1316,6 +1316,48 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 	return xt_t;
 }
 
+static struct xtables_match *prepare_matches(struct connman_iptables *table,
+							char *match_name)
+{
+	struct xtables_match *xt_m;
+	size_t match_size;
+
+	if (match_name == NULL)
+		return NULL;
+
+	xt_m = xtables_find_match(match_name, XTF_LOAD_MUST_SUCCEED, NULL);
+	match_size = ALIGN(sizeof(struct ipt_entry_match)) + xt_m->size;
+
+	xt_m->m = g_try_malloc0(match_size);
+	if (xt_m->m == NULL)
+		return NULL;
+
+	xt_m->m->u.match_size = match_size;
+	strcpy(xt_m->m->u.user.name, xt_m->name);
+	xt_m->m->u.user.revision = xt_m->revision;
+
+	if (xt_m->init != NULL)
+		xt_m->init(xt_m->m);
+
+	if (xt_m != xt_m->next) {
+		iptables_globals.opts =
+			xtables_merge_options(
+#if XTABLES_VERSION_CODE > 5
+				iptables_globals.orig_opts,
+#endif
+				iptables_globals.opts,
+				xt_m->extra_opts,
+				&xt_m->option_offset);
+
+		if (iptables_globals.opts == NULL) {
+			g_free(xt_m->m);
+			xt_m = NULL;
+		}
+	}
+
+	return xt_m;
+}
+
 static int iptables_command(int argc, char *argv[])
 {
 	struct connman_iptables *table;
@@ -1325,7 +1367,6 @@ static int iptables_command(int argc, char *argv[])
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	char *flush_chain, *delete_chain;
 	int c, ret, in_len, out_len;
-	size_t size;
 	gboolean dump, invert, insert, delete;
 	struct in_addr src, dst;
 
@@ -1423,31 +1464,6 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'm':
 			match_name = optarg;
-
-			xt_m = xtables_find_match(optarg, XTF_LOAD_MUST_SUCCEED, NULL);
-			size = ALIGN(sizeof(struct ipt_entry_match)) +
-								xt_m->size;
-			xt_m->m = g_try_malloc0(size);
-			if (xt_m == NULL)
-				goto out;
-			xt_m->m->u.match_size = size;
-			strcpy(xt_m->m->u.user.name, xt_m->name);
-			xt_m->m->u.user.revision = xt_m->revision;
-			if (xt_m->init != NULL)
-				xt_m->init(xt_m->m);
-			if (xt_m != xt_m->next) {
-				iptables_globals.opts =
-				xtables_merge_options(
-#if XTABLES_VERSION_CODE > 5
-						iptables_globals.orig_opts,
-#endif
-						iptables_globals.opts,
-						xt_m->extra_opts,
-						&xt_m->option_offset);
-				if (iptables_globals.opts == NULL)
-					goto out;
-			}
-
 			break;
 
 		case 'o':
@@ -1557,6 +1573,12 @@ static int iptables_command(int argc, char *argv[])
 		xt_t = prepare_target(table, target_name);
 		if (xt_t == NULL)
 			goto out;
+
+		if (match_name != NULL) {
+			xt_m = prepare_matches(table, match_name);
+			if (xt_m == NULL)
+				goto out;
+		}
 
 		if (delete == TRUE) {
 			DBG("Deleting %s to %s (match %s)\n",
