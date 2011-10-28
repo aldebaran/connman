@@ -343,10 +343,10 @@ int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
 	 */
 	n = sendto(fd, &packet, IP_UPD_DHCP_SIZE, 0,
 			(struct sockaddr *) &dest, sizeof(dest));
+	close(fd);
+
 	if (n < 0)
 		return -errno;
-
-	close(fd);
 
 	return n;
 }
