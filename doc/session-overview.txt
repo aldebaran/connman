@@ -116,3 +116,26 @@ again.
 
 Note: this documents the current behavior it is likely to change in near
 future.
+
+
+Additional Information on Settings
+==================================
+
+PeriodicConnect and IdleTimeout
+-------------------------------
+
+If an application wants to go online periodically (e.g. checking for
+new mails) then the application should use PeriodicConnect instead of
+calling Session.Connect() periodically. There is no need for the
+application to maintain timers. ConnMan is also able to try to combine
+several PeriodicConnect calls into one. Applications should not rely on a
+very precise periodic connect. Apart from merging periodic connect
+timeouts there is also the problem that no service might be available
+at that point and ConnMan will defer the connect call.
+
+The IdleTimeout tells ConnMan when a link is idle for given period it
+is okay to disonnect.
+
+PeriodicConnect and IdleTimeout should only consired as hints. ConnMan
+will try to meet them but there is no garantee for doing so. For
+example global settings have precedence over session settings.
