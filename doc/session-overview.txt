@@ -12,7 +12,7 @@ following rules:
  - AllowedBearers (filter and sort)
  - RoamingPolicy (filter and sort)
 
-A stable sorting algorithms maintains the relative order.
+A stable sorting algorithm maintains the relative order.
 
 If a service is removed or added all sessions are updated according
 the above rules.
