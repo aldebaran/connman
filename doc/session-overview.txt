@@ -69,3 +69,50 @@ Disconnect algorithm:
        |No                      |
        |                        |
     Service.Disconnect()   Do nothing
+
+
+Session States and Transitions
+==============================
+
+There are three main strategies for state changes.
+
+ - Free Ride
+ - Connect
+ - Disconnect
+
+The initial state for all new sessions is Free Ride.
+
+The Free Ride state means that a session will go online if a matching
+service goes online without calling Service.Connect() itself. The idea
+behind this is that a session doesn't request a connection for itself
+instead waits until another session actively requires to go online.
+This is comparable to piggy-backing.
+
+When a session is in the Connect state ConnMan tries to find a
+matching service (see Connect algorithm) and then decides either to
+connect the service or delay the request. ConnMan is allowed to
+connect to the service or to delay it, e.g. group PeriodicConnects
+together. The session will leave the Connect state when the service
+goes offline unless StayConnected is True. It will enter the Free Ride
+mode again.
+
+When the application calls Disconnect() the session enters the
+Disconnect state and stays there until the application calls Connect()
+again.
+
+
+                 State Change to offline & StayConnected = True
+                              +------+
+                              |      v
++-----------+                +---------+ -- Disconnect() --> +------------+
+| Free Ride |-- Connect() -->| Connect |                     | Disconnect |
++-----------+                +---------+  <-- Connect() ---  +------------+
+      |  ^                         |                               ^
+      |  +------------------------ +                               |
+      |   State Change to offline & StayConnected = False          |
+      |                                                            |
+      |                                                            |
+      +----------------------- Disconnect() -----------------------+
+
+Note: this documents the current behavior it is likely to change in near
+future.
