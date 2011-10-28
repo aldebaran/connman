@@ -70,6 +70,7 @@ struct service_entry {
 	struct connman_service *service;
 	char *ifname;
 	const char *bearer;
+	GSList *pending_timeouts;
 };
 
 struct session_info {
@@ -753,9 +754,76 @@ static connman_bool_t explicit_disconnect(struct session_info *info)
 	return TRUE;
 }
 
+struct pending_data {
+	unsigned int timeout;
+	struct service_entry *entry;
+	gboolean (*cb)(gpointer);
+};
+
+static void pending_timeout_free(gpointer data, gpointer user_data)
+{
+	struct pending_data *pending = data;
+
+	DBG("pending %p timeout %d", pending, pending->timeout);
+	g_source_remove(pending->timeout);
+	g_free(pending);
+}
+
+static void pending_timeout_remove_all(struct service_entry *entry)
+{
+	DBG("");
+
+	g_slist_foreach(entry->pending_timeouts, pending_timeout_free, NULL);
+	g_slist_free(entry->pending_timeouts);
+	entry->pending_timeouts = NULL;
+}
+
+static gboolean pending_timeout_cb(gpointer data)
+{
+	struct pending_data *pending = data;
+	struct service_entry *entry = pending->entry;
+	gboolean ret;
+
+	DBG("pending %p timeout %d", pending, pending->timeout);
+
+	ret = pending->cb(pending->entry);
+	if (ret == FALSE) {
+		entry->pending_timeouts =
+			g_slist_remove(entry->pending_timeouts,
+					pending);
+		g_free(pending);
+	}
+	return ret;
+}
+
+static connman_bool_t pending_timeout_add(unsigned int seconds,
+					gboolean (*cb)(gpointer),
+					struct service_entry *entry)
+{
+	struct pending_data *pending = g_try_new0(struct pending_data, 1);
+
+	if (pending == NULL || cb == NULL || entry == NULL) {
+		g_free(pending);
+		return FALSE;
+	}
+
+	pending->cb = cb;
+	pending->entry = entry;
+	pending->timeout = g_timeout_add_seconds(seconds, pending_timeout_cb,
+						pending);
+	entry->pending_timeouts = g_slist_prepend(entry->pending_timeouts,
+						pending);
+
+	DBG("pending %p entry %p timeout id %d", pending, entry,
+		pending->timeout);
+
+	return TRUE;
+}
+
 static gboolean call_disconnect(gpointer user_data)
 {
-	struct connman_service *service = user_data;
+	struct service_entry *entry = user_data;
+	struct connman_service *service = entry->service;
 
 	/*
 	 * TODO: We should mark this entry as pending work. In case
@@ -770,7 +838,8 @@ static gboolean call_disconnect(gpointer user_data)
 
 static gboolean call_connect(gpointer user_data)
 {
-	struct connman_service *service = user_data;
+	struct service_entry *entry = user_data;
+	struct connman_service *service = entry->service;
 
 	DBG("connect service %p", service);
 	__connman_service_connect(service);
@@ -780,7 +849,7 @@ static gboolean call_connect(gpointer user_data)
 
 static connman_bool_t deselect_service(struct session_info *info)
 {
-	struct connman_service *service;
+	struct service_entry *entry;
 	connman_bool_t disconnect, online;
 
 	DBG("");
@@ -796,13 +865,13 @@ static connman_bool_t deselect_service(struct session_info *info)
 	info->online = FALSE;
 	info->entry->reason = CONNMAN_SESSION_REASON_UNKNOWN;
 
-	service = info->entry->service;
+	entry = info->entry;
 	info->entry = NULL;
 
 	DBG("disconnect %d online %d", disconnect, online);
 
 	if (disconnect == TRUE && online == TRUE)
-		g_timeout_add_seconds(0, call_disconnect, service);
+		pending_timeout_add(0, call_disconnect, entry);
 
 	return TRUE;
 }
@@ -845,7 +914,7 @@ static connman_bool_t select_offline_service(struct session_info *info,
 	info->entry->reason = info->reason;
 
 	__connman_service_session_inc(info->entry->service);
-	g_timeout_add_seconds(0, call_connect, info->entry->service);
+	pending_timeout_add(0, call_connect, entry);
 
 	return TRUE;
 }
@@ -931,6 +1000,7 @@ static void destroy_service_entry(gpointer data)
 {
 	struct service_entry *entry = data;
 
+	pending_timeout_remove_all(entry);
 	g_free(entry->ifname);
 
 	g_free(entry);
