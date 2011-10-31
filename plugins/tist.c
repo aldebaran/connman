@@ -56,7 +56,7 @@ static unsigned long baud_rate = 0;
 static guint install_watch = 0;
 static guint uart_watch = 0;
 
-static gint install_count = 0;
+static int install_count = 0;
 
 #define NCCS2 19
 struct termios2 {
@@ -327,12 +327,15 @@ static gboolean uart_event(GIOChannel *channel,
 	if (ioctl(uart_fd, TIOCSETD, &ldisc) < 0)
 		goto err;
 
-	g_atomic_int_set(&install_count, 0);
+	install_count = 1;
+	__sync_synchronize();
 
 	return FALSE;
 
 err:
-	g_atomic_int_set(&install_count, 0);
+	install_count = 0;
+	__sync_synchronize();
+
 	g_io_channel_shutdown(channel, TRUE, NULL);
 	g_io_channel_unref(channel);
 
@@ -348,7 +351,8 @@ static int install_ldisc(GIOChannel *channel, gboolean install)
 	DBG("%d %p", install, uart_channel);
 
 	if (install == FALSE) {
-		g_atomic_int_set(&install_count, 0);
+		install_count = 0;
+		__sync_synchronize();
 
 		if (uart_channel == NULL) {
 			DBG("UART channel is NULL");
@@ -404,7 +408,8 @@ static int install_ldisc(GIOChannel *channel, gboolean install)
 			uart_channel = NULL;
 		}
 
-		g_atomic_int_set(&install_count, 0);
+		install_count = 0;
+		__sync_synchronize();
 
 		return 0;
 	}
@@ -447,7 +452,8 @@ static gboolean install_event(GIOChannel *channel,
 		return FALSE;
 	}
 
-	if (g_atomic_int_get(&install_count) != 0) {
+	__sync_synchronize();
+	if (install_count != 0) {
 		status = g_io_channel_seek_position(channel, 0, G_SEEK_SET, NULL);
 		if (status != G_IO_STATUS_NORMAL) {
 			g_io_channel_shutdown(channel, TRUE, NULL);
@@ -468,7 +474,8 @@ static gboolean install_event(GIOChannel *channel,
 
 		return TRUE;
 	} else {
-		g_atomic_int_set(&install_count, 1);
+		install_count = 1;
+		__sync_synchronize();
 	}
 
 	status = g_io_channel_seek_position(channel, 0, G_SEEK_SET, NULL);
@@ -494,7 +501,8 @@ static gboolean install_event(GIOChannel *channel,
 
 	if (install_ldisc(channel, install) < 0) {
 		connman_error("ldisc installation failed");
-		g_atomic_int_set(&install_count, 0);
+		install_count = 0;
+		__sync_synchronize();
 		return TRUE;
 	}
 
@@ -564,7 +572,9 @@ static int tist_init(void)
 					    install_event, NULL, NULL);
 
 	if (install_state) {
-		g_atomic_int_set(&install_count, 1);
+		install_count = 1;
+		__sync_synchronize();
+
 		err = install_ldisc(install_channel, TRUE);
 		if (err < 0) {
 			connman_error("ldisc installtion failed");
