@@ -375,6 +375,20 @@ static int vpn_remove(struct connman_provider *provider)
 	return 0;
 }
 
+static int vpn_save (struct connman_provider *provider, GKeyFile *keyfile)
+{
+	struct vpn_driver_data *vpn_driver_data;
+	const char *name;
+
+	name = connman_provider_get_driver_name(provider);
+	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
+	if (vpn_driver_data != NULL &&
+			vpn_driver_data->vpn_driver->save != NULL)
+		return vpn_driver_data->vpn_driver->save(provider, keyfile);
+
+	return 0;
+}
+
 int vpn_register(const char *name, struct vpn_driver *vpn_driver,
 			const char *program)
 {
@@ -394,6 +408,7 @@ int vpn_register(const char *name, struct vpn_driver *vpn_driver,
 	data->provider_driver.connect = vpn_connect;
 	data->provider_driver.probe = vpn_probe;
 	data->provider_driver.remove = vpn_remove;
+	data->provider_driver.save = vpn_save;
 
 	if (driver_hash == NULL) {
 		driver_hash = g_hash_table_new_full(g_str_hash,
