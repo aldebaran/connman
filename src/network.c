@@ -32,7 +32,7 @@ static GSList *network_list = NULL;
 static GSList *driver_list = NULL;
 
 struct connman_network {
-	gint refcount;
+	int refcount;
 	enum connman_network_type type;
 	connman_bool_t available;
 	connman_bool_t connected;
@@ -389,9 +389,9 @@ struct connman_network *connman_network_create(const char *identifier,
 struct connman_network *connman_network_ref(struct connman_network *network)
 {
 	DBG("network %p name %s refcount %d", network, network->name,
-		g_atomic_int_get(&network->refcount) + 1);
+		network->refcount + 1);
 
-	g_atomic_int_inc(&network->refcount);
+	__sync_fetch_and_add(&network->refcount, 1);
 
 	return network;
 }
@@ -405,9 +405,9 @@ struct connman_network *connman_network_ref(struct connman_network *network)
 void connman_network_unref(struct connman_network *network)
 {
 	DBG("network %p name %s refcount %d", network, network->name,
-		g_atomic_int_get(&network->refcount) - 1);
+		network->refcount - 1);
 
-	if (g_atomic_int_dec_and_test(&network->refcount) == FALSE)
+	if (__sync_fetch_and_sub(&network->refcount, 1) != 1)
 		return;
 
 	network_list = g_slist_remove(network_list, network);

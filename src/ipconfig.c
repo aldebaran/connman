@@ -40,7 +40,7 @@
 #include "connman.h"
 
 struct connman_ipconfig {
-	gint refcount;
+	int refcount;
 	int index;
 	enum connman_ipconfig_type type;
 
@@ -1307,10 +1307,9 @@ struct connman_ipconfig *connman_ipconfig_create(int index,
  */
 struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 {
-	DBG("ipconfig %p refcount %d", ipconfig,
-				g_atomic_int_get(&ipconfig->refcount) + 1);
+	DBG("ipconfig %p refcount %d", ipconfig, ipconfig->refcount + 1);
 
-	g_atomic_int_inc(&ipconfig->refcount);
+	__sync_fetch_and_add(&ipconfig->refcount, 1);
 
 	return ipconfig;
 }
@@ -1326,24 +1325,24 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	if (ipconfig == NULL)
 		return;
 
-	DBG("ipconfig %p refcount %d", ipconfig,
-			g_atomic_int_get(&ipconfig->refcount) - 1);
+	DBG("ipconfig %p refcount %d", ipconfig, ipconfig->refcount - 1);
 
-	if (g_atomic_int_dec_and_test(&ipconfig->refcount) == TRUE) {
-		__connman_ipconfig_disable(ipconfig);
+	if (__sync_fetch_and_sub(&ipconfig->refcount, 1) != 1)
+		return;
 
-		connman_ipconfig_set_ops(ipconfig, NULL);
+	__connman_ipconfig_disable(ipconfig);
 
-		if (ipconfig->origin != NULL) {
-			connman_ipconfig_unref(ipconfig->origin);
-			ipconfig->origin = NULL;
-		}
+	connman_ipconfig_set_ops(ipconfig, NULL);
 
-		connman_ipaddress_free(ipconfig->system);
-		connman_ipaddress_free(ipconfig->address);
-		g_free(ipconfig->last_dhcp_address);
-		g_free(ipconfig);
+	if (ipconfig->origin != NULL) {
+		connman_ipconfig_unref(ipconfig->origin);
+		ipconfig->origin = NULL;
 	}
+
+	connman_ipaddress_free(ipconfig->system);
+	connman_ipaddress_free(ipconfig->address);
+	g_free(ipconfig->last_dhcp_address);
+	g_free(ipconfig);
 }
 
 /**

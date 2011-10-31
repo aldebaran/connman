@@ -51,7 +51,7 @@ struct connman_task {
 
 static GHashTable *task_hash = NULL;
 
-static volatile gint task_counter;
+static volatile int task_counter;
 
 static DBusConnection *connection;
 
@@ -105,7 +105,7 @@ struct connman_task *connman_task_create(const char *program)
 	if (task == NULL)
 		return NULL;
 
-	counter = g_atomic_int_exchange_and_add(&task_counter, 1);
+	counter = __sync_fetch_and_add(&task_counter, 1);
 
 	task->path = g_strdup_printf("/task/%d", counter);
 	task->pid = -1;
@@ -425,7 +425,8 @@ int __connman_task_init(void)
 
 	dbus_connection_add_filter(connection, task_filter, NULL, NULL);
 
-	g_atomic_int_set(&task_counter, 0);
+	task_counter = 0;
+	__sync_synchronize();
 
 	task_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, free_task);

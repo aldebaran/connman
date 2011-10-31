@@ -51,13 +51,13 @@ enum connman_technology_state {
 };
 
 struct connman_technology {
-	gint refcount;
+	int refcount;
 	enum connman_service_type type;
 	enum connman_technology_state state;
 	char *path;
 	GHashTable *rfkill_list;
 	GSList *device_list;
-	gint enabled;
+	int enabled;
 	char *regdom;
 
 	connman_bool_t tethering;
@@ -575,7 +575,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology = technology_find(type);
 	if (technology != NULL) {
-		g_atomic_int_inc(&technology->refcount);
+		__sync_fetch_and_add(&technology->refcount, 1);
 		goto done;
 	}
 
@@ -642,7 +642,7 @@ static void technology_put(struct connman_technology *technology)
 {
 	DBG("technology %p", technology);
 
-	if (g_atomic_int_dec_and_test(&technology->refcount) == FALSE)
+	if (__sync_fetch_and_sub(&technology->refcount, 1) != 1)
 		return;
 
 	if (technology->driver) {
@@ -809,7 +809,7 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (g_atomic_int_exchange_and_add(&technology->enabled, 1) == 0) {
+	if (__sync_fetch_and_add(&technology->enabled, 1) == 0) {
 		__connman_notifier_enable(type);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
 		state_changed(technology);
@@ -914,11 +914,12 @@ int __connman_technology_disabled(enum connman_service_type type)
 		technology->pending_timeout = 0;
 	}
 
-	if (g_atomic_int_dec_and_test(&technology->enabled) == TRUE) {
-		__connman_notifier_disable(type);
-		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
-		state_changed(technology);
-	}
+	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
+		return 0;
+
+	__connman_notifier_disable(type);
+	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
+	state_changed(technology);
 
 	return 0;
 }

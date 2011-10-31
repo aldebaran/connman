@@ -45,7 +45,7 @@ struct connman_route {
 };
 
 struct connman_provider {
-	gint refcount;
+	int refcount;
 	struct connman_service *vpn_service;
 	int index;
 	char *identifier;
@@ -213,7 +213,7 @@ struct connman_provider *connman_provider_ref(struct connman_provider *provider)
 {
 	DBG("provider %p refcount %d", provider, provider->refcount + 1);
 
-	g_atomic_int_inc(&provider->refcount);
+	__sync_fetch_and_add(&provider->refcount, 1);
 
 	return provider;
 }
@@ -235,7 +235,7 @@ void connman_provider_unref(struct connman_provider *provider)
 {
 	DBG("provider %p refcount %d", provider, provider->refcount - 1);
 
-	if (g_atomic_int_dec_and_test(&provider->refcount) == FALSE)
+	if (__sync_fetch_and_sub(&provider->refcount, 1) != 1)
 		return;
 
 	provider_remove(provider);

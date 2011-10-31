@@ -39,7 +39,7 @@ enum connman_pending_type {
 };
 
 struct connman_device {
-	gint refcount;
+	int refcount;
 	enum connman_device_type type;
 	enum connman_pending_type powered_pending;	/* Indicates a pending
 							enable/disable request */
@@ -536,7 +536,7 @@ struct connman_device *connman_device_ref(struct connman_device *device)
 {
 	DBG("%p", device);
 
-	g_atomic_int_inc(&device->refcount);
+	__sync_fetch_and_add(&device->refcount, 1);
 
 	return device;
 }
@@ -549,7 +549,7 @@ struct connman_device *connman_device_ref(struct connman_device *device)
  */
 void connman_device_unref(struct connman_device *device)
 {
-	if (g_atomic_int_dec_and_test(&device->refcount) == FALSE)
+	if (__sync_fetch_and_sub(&device->refcount, 1) != 1)
 		return;
 
 	if (device->driver) {

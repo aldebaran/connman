@@ -56,8 +56,8 @@ struct connman_stats_counter {
 };
 
 struct connman_service {
-	gint refcount;
-	gint session_usage_count;
+	int refcount;
+	int session_usage_count;
 	char *identifier;
 	char *path;
 	enum connman_service_type type;
@@ -1985,17 +1985,17 @@ GSequence *__connman_service_get_list(struct connman_session *session,
 void __connman_service_session_inc(struct connman_service *service)
 {
 	DBG("service %p ref count %d", service,
-		g_atomic_int_get(&service->session_usage_count) + 1);
+		service->session_usage_count + 1);
 
-	g_atomic_int_inc(&service->session_usage_count);
+	__sync_fetch_and_add(&service->session_usage_count, 1);
 }
 
 connman_bool_t __connman_service_session_dec(struct connman_service *service)
 {
 	DBG("service %p ref count %d", service,
-		g_atomic_int_get(&service->session_usage_count) - 1);
+		service->session_usage_count - 1);
 
-	if (g_atomic_int_dec_and_test(&service->session_usage_count) == FALSE)
+	if (__sync_fetch_and_sub(&service->session_usage_count, 1) != 1)
 		return FALSE;
 
 	return TRUE;
@@ -3456,20 +3456,22 @@ static void service_free(gpointer user_data)
  */
 void __connman_service_put(struct connman_service *service)
 {
+	GSequenceIter *iter;
+
 	DBG("service %p", service);
 
-	if (g_atomic_int_dec_and_test(&service->refcount) == TRUE) {
-		GSequenceIter *iter;
+	if (__sync_fetch_and_sub(&service->refcount, 1) != 1)
+		return;
 
-		iter = g_hash_table_lookup(service_hash, service->identifier);
-		if (iter != NULL) {
-			reply_pending(service, ECONNABORTED);
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL) {
+		reply_pending(service, ECONNABORTED);
 
-			__connman_service_disconnect(service);
+		__connman_service_disconnect(service);
 
-			g_sequence_remove(iter);
-		} else
-			service_free(service);
+		g_sequence_remove(iter);
+	} else {
+		service_free(service);
 	}
 }
 
@@ -3574,7 +3576,7 @@ struct connman_service *connman_service_ref(struct connman_service *service)
 {
 	DBG("%p", service);
 
-	g_atomic_int_inc(&service->refcount);
+	__sync_fetch_and_add(&service->refcount, 1);
 
 	return service;
 }
