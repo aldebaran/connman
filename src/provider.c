@@ -76,6 +76,70 @@ void __connman_provider_append_properties(struct connman_provider *provider,
 						 &provider->type);
 }
 
+static int connman_provider_load(struct connman_provider *provider)
+{
+	gsize idx = 0;
+	GKeyFile *keyfile;
+	gchar **settings;
+	gchar *key, *value;
+	gsize length;
+
+	DBG("provider %p", provider);
+
+	keyfile = __connman_storage_load_provider(provider->identifier);
+	if (keyfile == NULL)
+		return -ENOENT;
+
+	settings = g_key_file_get_keys(keyfile, provider->identifier, &length,
+				NULL);
+	if (settings == NULL) {
+		g_key_file_free(keyfile);
+		return -ENOENT;
+	}
+
+	while (idx < length) {
+		key = settings[idx];
+		DBG("found key %s", key);
+		if (key != NULL) {
+			value = g_key_file_get_string(keyfile,
+						provider->identifier,
+						key, NULL);
+			connman_provider_set_string(provider, key, value);
+			g_free(value);
+		}
+		idx += 1;
+	}
+	g_strfreev(settings);
+
+	g_key_file_free(keyfile);
+	return 0;
+}
+
+static int connman_provider_save(struct connman_provider *provider)
+{
+	GKeyFile *keyfile;
+
+	DBG("provider %p", provider);
+
+	keyfile = g_key_file_new();
+	if (keyfile == NULL)
+		return -ENOMEM;
+
+	g_key_file_set_string(keyfile, provider->identifier,
+			"Name", provider->name);
+	g_key_file_set_string(keyfile, provider->identifier,
+			"Type", provider->type);
+	g_key_file_set_string(keyfile, provider->identifier,
+			"Host", provider->host);
+	g_key_file_set_string(keyfile, provider->identifier,
+			"VPN.Domain", provider->domain);
+
+	__connman_storage_save_provider(keyfile, provider->identifier);
+        g_key_file_free(keyfile);
+
+	return 0;
+}
+
 static struct connman_provider *connman_provider_lookup(const char *identifier)
 {
 	struct connman_provider *provider = NULL;
@@ -133,6 +197,7 @@ static void provider_remove(struct connman_provider *provider)
 
 static int provider_register(struct connman_provider *provider)
 {
+	connman_provider_load(provider);
 	return provider_probe(provider);
 }
 
@@ -585,6 +650,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	} else
 		DBG("provider already connected");
 
+	connman_provider_save(provider);
 	service_path = __connman_service_get_path(provider->vpn_service);
 	g_dbus_send_reply(connection, msg,
 				DBUS_TYPE_OBJECT_PATH, &service_path,
