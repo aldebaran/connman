@@ -1333,16 +1333,16 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 			xt_t->init(xt_t->t);
 	}
 
+#if XTABLES_VERSION_CODE > 5
 	if (xt_t->x6_options != NULL)
 		iptables_globals.opts =
 			xtables_options_xfrm(
-#if XTABLES_VERSION_CODE > 5
 				iptables_globals.orig_opts,
-#endif
 				iptables_globals.opts,
 				xt_t->x6_options,
 				&xt_t->option_offset);
 	else
+#endif
 		iptables_globals.opts =
 			xtables_merge_options(
 #if XTABLES_VERSION_CODE > 5
@@ -1386,16 +1386,16 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 	if (xt_m == xt_m->next)
 		goto done;
 
+#if XTABLES_VERSION_CODE > 5
 	if (xt_m->x6_options != NULL)
 		iptables_globals.opts =
 			xtables_options_xfrm(
-#if XTABLES_VERSION_CODE > 5
 				iptables_globals.orig_opts,
-#endif
 				iptables_globals.opts,
 				xt_m->x6_options,
 				&xt_m->option_offset);
 	else
+#endif
 			iptables_globals.opts =
 			xtables_merge_options(
 #if XTABLES_VERSION_CODE > 5
@@ -1587,6 +1587,7 @@ static int iptables_command(int argc, char *argv[])
 			goto out;
 
 		default:
+#if XTABLES_VERSION_CODE > 5
 			if (xt_t != NULL && (xt_t->x6_parse != NULL ||
 						xt_t->parse != NULL) &&
 					(c >= (int) xt_t->option_offset &&
@@ -1617,19 +1618,49 @@ static int iptables_command(int argc, char *argv[])
 
 				break;
 			}
+#else
+			if (xt_t == NULL || xt_t->parse == NULL ||
+				!xt_t->parse(c - xt_t->option_offset,
+				argv, invert, &xt_t->tflags, NULL, &xt_t->t)) {
 
+				for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
+						tmp_xt_rm = tmp_xt_rm->next) {
+					xt_m_t = tmp_xt_rm->match;
+
+					if (tmp_xt_rm->completed ||
+							xt_m_t->parse == NULL)
+						continue;
+
+					if (xt_m->parse(c - xt_m->option_offset,
+						argv, invert, &xt_m->mflags,
+						NULL, &xt_m->m))
+						break;
+				}
+			}
+#endif
 			break;
 		}
 
 		invert = FALSE;
 	}
 
+#if XTABLES_VERSION_CODE > 5
 	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
 				tmp_xt_rm = tmp_xt_rm->next)
 		xtables_option_mfcall(tmp_xt_rm->match);
 
 	if (xt_t != NULL)
 		xtables_option_tfcall(xt_t);
+#else
+	for (tmp_xt_rm = xt_rm; tmp_xt_rm != NULL;
+				tmp_xt_rm = tmp_xt_rm->next)
+		if (tmp_xt_rm->match->final_check != NULL)
+			tmp_xt_rm->match->final_check(
+					tmp_xt_rm->match->mflags);
+
+	if (xt_t != NULL && xt_t->final_check != NULL)
+		xt_t->final_check(xt_t->tflags);
+#endif
 
 	if (table_name == NULL)
 		table_name = "filter";
