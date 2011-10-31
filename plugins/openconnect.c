@@ -219,6 +219,31 @@ static int oc_connect(struct connman_provider *provider,
 	return 0;
 }
 
+static int oc_save (struct connman_provider *provider, GKeyFile *keyfile)
+{
+	const char *setting;
+
+	setting = connman_provider_get_string(provider,
+					"OpenConnect.ServerCert");
+	g_key_file_set_string(keyfile,
+			connman_provider_get_save_group(provider),
+			"OpenConnect.ServerCert", setting);
+
+	setting = connman_provider_get_string(provider,
+					"OpenConnect.CACert");
+	g_key_file_set_string(keyfile,
+			connman_provider_get_save_group(provider),
+			"OpenConnect.CACert", setting);
+
+	setting = connman_provider_get_string(provider,
+					"VPN.MTU");
+	g_key_file_set_string(keyfile,
+			connman_provider_get_save_group(provider),
+			"VPN.MTU", setting);
+
+	return 0;
+}
+
 static int oc_error_code(int exit_code)
 {
 
@@ -236,6 +261,7 @@ static struct vpn_driver vpn_driver = {
 	.notify         = oc_notify,
 	.connect	= oc_connect,
 	.error_code	= oc_error_code,
+	.save		= oc_save,
 };
 
 static int openconnect_init(void)
