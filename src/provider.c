@@ -962,6 +962,11 @@ const char *connman_provider_get_driver_name(struct connman_provider *provider)
 	return provider->driver->name;
 }
 
+const char *connman_provider_get_save_group(struct connman_provider *provider)
+{
+	return provider->identifier;
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	return 0;
