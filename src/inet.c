@@ -1243,6 +1243,9 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 		close(sk);
 		return FALSE;
 	}
+
+	close(sk);
+
 	addr = (struct sockaddr_in *)&ifr.ifr_addr;
 	if_addr = addr->sin_addr.s_addr;
 
