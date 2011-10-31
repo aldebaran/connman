@@ -204,7 +204,8 @@ gchar **connman_storage_get_services()
 
 	while ((d = readdir(dir))) {
 		if (strcmp(d->d_name, ".") == 0 ||
-				strcmp(d->d_name, "..") == 0)
+				strcmp(d->d_name, "..") == 0 ||
+				strncmp(d->d_name, "provider_", 9) == 0)
 			continue;
 
 		switch (d->d_type) {
