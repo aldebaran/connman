@@ -8,7 +8,7 @@ if (len(sys.argv) < 4):
 	print "  type: openconnect"
 	print "      <name> <host> <domain> <cookie> [servercert]"
 	print "  type: openvpn"
-	print "      <name> <host> <domain> <cafile> <certfile> <keyfile>"
+	print "      <name> <host> <domain> [<cafile> <certfile> <keyfile>]"
 	sys.exit(1)
 
 bus = dbus.SystemBus()
@@ -33,13 +33,20 @@ if sys.argv[1] == "openconnect":
 					"VPN.Domain": sys.argv[4],
 					"OpenConnect.Cookie": sys.argv[5]}))
 elif sys.argv[1] == "openvpn":
-	path = manager.ConnectProvider(({ "Type": "openvpn",
-					"Name": sys.argv[2],
-					"Host": sys.argv[3],
-					"VPN.Domain": sys.argv[4],
-					"OpenVPN.CACert": sys.argv[5],
-					"OpenVPN.Cert": sys.argv[6],
-					"OpenVPN.Key": sys.argv[7]}))
+	if (len(sys.argv) < 6):
+		path = manager.ConnectProvider(({ "Type": "openvpn",
+						  "Name": sys.argv[2],
+						  "Host": sys.argv[3],
+						  "VPN.Domain": sys.argv[4] }))
+	else:
+		path = manager.ConnectProvider(({ "Type": "openvpn",
+						  "Name": sys.argv[2],
+						  "Host": sys.argv[3],
+						  "VPN.Domain": sys.argv[4],
+						  "OpenVPN.CACert": sys.argv[5],
+						  "OpenVPN.Cert": sys.argv[6],
+						  "OpenVPN.Key": sys.argv[7]}))
+
 else:
 	print "Unknown VPN type"
 	sys.exit(1)
