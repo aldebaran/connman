@@ -54,11 +54,11 @@ struct _GIOGnuTLSWatch {
 	GIOCondition condition;
 };
 
-static volatile gint global_init_done = 0;
+static volatile int global_init_done = 0;
 
 static inline void g_io_gnutls_global_init(void)
 {
-	if (g_atomic_int_compare_and_exchange(&global_init_done, 0, 1) == TRUE)
+	if (__sync_bool_compare_and_swap(&global_init_done, 0, 1) == TRUE)
 		gnutls_global_init();
 }
 

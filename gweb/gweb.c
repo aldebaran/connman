@@ -97,7 +97,7 @@ struct web_session {
 };
 
 struct _GWeb {
-	gint ref_count;
+	int ref_count;
 
 	guint next_query_id;
 
@@ -228,7 +228,7 @@ GWeb *g_web_ref(GWeb *web)
 	if (web == NULL)
 		return NULL;
 
-	g_atomic_int_inc(&web->ref_count);
+	__sync_fetch_and_add(&web->ref_count, 1);
 
 	return web;
 }
@@ -238,7 +238,7 @@ void g_web_unref(GWeb *web)
 	if (web == NULL)
 		return;
 
-	if (g_atomic_int_dec_and_test(&web->ref_count) == FALSE)
+	if (__sync_fetch_and_sub(&web->ref_count, 1) != 1)
 		return;
 
 	flush_sessions(web);
@@ -1316,7 +1316,7 @@ GWebParser *g_web_parser_ref(GWebParser *parser)
 	if (parser == NULL)
 		return NULL;
 
-	g_atomic_int_inc(&parser->ref_count);
+	__sync_fetch_and_add(&parser->ref_count, 1);
 
 	return parser;
 }
@@ -1326,7 +1326,7 @@ void g_web_parser_unref(GWebParser *parser)
 	if (parser == NULL)
 		return;
 
-	if (g_atomic_int_dec_and_test(&parser->ref_count) == FALSE)
+	if (__sync_fetch_and_sub(&parser->ref_count, 1) != 1)
 		return;
 
 	g_string_free(parser->content, TRUE);

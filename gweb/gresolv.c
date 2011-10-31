@@ -97,7 +97,7 @@ struct resolv_nameserver {
 };
 
 struct _GResolv {
-	gint ref_count;
+	int ref_count;
 
 	int result_family;
 
@@ -826,7 +826,7 @@ GResolv *g_resolv_ref(GResolv *resolv)
 	if (resolv == NULL)
 		return NULL;
 
-	g_atomic_int_inc(&resolv->ref_count);
+	__sync_fetch_and_add(&resolv->ref_count, 1);
 
 	return resolv;
 }
@@ -838,7 +838,7 @@ void g_resolv_unref(GResolv *resolv)
 	if (resolv == NULL)
 		return;
 
-	if (g_atomic_int_dec_and_test(&resolv->ref_count) == FALSE)
+	if (__sync_fetch_and_sub(&resolv->ref_count, 1) != 1)
 		return;
 
 	while ((query = g_queue_pop_head(resolv->query_queue)))
