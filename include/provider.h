@@ -22,6 +22,7 @@
 #ifndef __CONNMAN_PROVIDER_H
 #define __CONNMAN_PROVIDER_H
 
+#include <glib.h>
 #include <connman/types.h>
 
 #ifdef __cplusplus
@@ -97,6 +98,7 @@ struct connman_provider_driver {
 	int (*remove) (struct connman_provider *provider);
 	int (*connect) (struct connman_provider *provider);
 	int (*disconnect) (struct connman_provider *provider);
+	int (*save) (struct connman_provider *provider, GKeyFile *keyfile);
 };
 
 int connman_provider_driver_register(struct connman_provider_driver *driver);

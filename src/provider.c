@@ -134,6 +134,9 @@ static int connman_provider_save(struct connman_provider *provider)
 	g_key_file_set_string(keyfile, provider->identifier,
 			"VPN.Domain", provider->domain);
 
+	if (provider->driver != NULL && provider->driver->save != NULL)
+		provider->driver->save(provider, keyfile);
+
 	__connman_storage_save_provider(keyfile, provider->identifier);
         g_key_file_free(keyfile);
 
