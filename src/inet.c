@@ -1417,6 +1417,7 @@ struct rs_cb_data {
 	__connman_inet_rs_cb_t callback;
 	struct sockaddr_in6 addr;
 	guint rs_timeout;
+	guint watch_id;
 	void *user_data;
 };
 
@@ -1438,6 +1439,9 @@ static void rs_cleanup(struct rs_cb_data *data)
 
 	if (data->rs_timeout > 0)
 		g_source_remove(data->rs_timeout);
+
+	if (data->watch_id > 0)
+		g_source_remove(data->watch_id);
 
 	g_free(data);
 }
@@ -1708,7 +1712,7 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 	g_io_channel_set_encoding(data->channel, NULL, NULL);
 	g_io_channel_set_buffered(data->channel, FALSE);
 
-	g_io_add_watch(data->channel,
+	data->watch_id = g_io_add_watch(data->channel,
 			G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
 			icmpv6_event, data);
 
