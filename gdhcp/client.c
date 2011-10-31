@@ -72,7 +72,7 @@ typedef enum _dhcp_client_state {
 } ClientState;
 
 struct _GDHCPClient {
-	gint ref_count;
+	int ref_count;
 	GDHCPType type;
 	ClientState state;
 	int ifindex;
@@ -1506,7 +1506,7 @@ GDHCPClient *g_dhcp_client_ref(GDHCPClient *dhcp_client)
 	if (dhcp_client == NULL)
 		return NULL;
 
-	g_atomic_int_inc(&dhcp_client->ref_count);
+	__sync_fetch_and_add(&dhcp_client->ref_count, 1);
 
 	return dhcp_client;
 }
@@ -1516,7 +1516,7 @@ void g_dhcp_client_unref(GDHCPClient *dhcp_client)
 	if (dhcp_client == NULL)
 		return;
 
-	if (g_atomic_int_dec_and_test(&dhcp_client->ref_count) == FALSE)
+	if (__sync_fetch_and_sub(&dhcp_client->ref_count, 1) != 1)
 		return;
 
 	g_dhcp_client_stop(dhcp_client);

@@ -49,7 +49,7 @@
 #define OFFER_TIME (5*60)
 
 struct _GDHCPServer {
-	gint ref_count;
+	int ref_count;
 	GDHCPType type;
 	gboolean started;
 	int ifindex;
@@ -821,7 +821,7 @@ GDHCPServer *g_dhcp_server_ref(GDHCPServer *dhcp_server)
 	if (dhcp_server == NULL)
 		return NULL;
 
-	g_atomic_int_inc(&dhcp_server->ref_count);
+	__sync_fetch_and_add(&dhcp_server->ref_count, 1);
 
 	return dhcp_server;
 }
@@ -846,7 +846,7 @@ void g_dhcp_server_unref(GDHCPServer *dhcp_server)
 	if (dhcp_server == NULL)
 		return;
 
-	if (g_atomic_int_dec_and_test(&dhcp_server->ref_count) == FALSE)
+	if (__sync_fetch_and_sub(&dhcp_server->ref_count, 1) != 1)
 		return;
 
 	g_dhcp_server_stop(dhcp_server);
