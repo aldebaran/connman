@@ -175,6 +175,23 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
+static int ov_save(struct connman_provider *provider, GKeyFile *keyfile)
+{
+	const char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(ov_options); i++) {
+		if (strncmp(ov_options[i].cm_opt, "OpenVPN.", 8) == 0) {
+			option = connman_provider_get_string(provider,
+							ov_options[i].cm_opt);
+			g_key_file_set_string(keyfile,
+					connman_provider_get_save_group(provider),
+					ov_options[i].cm_opt, option);
+		}
+	}
+	return 0;
+}
+
 static int task_append_config_data(struct connman_provider *provider,
 					struct connman_task *task)
 {
@@ -267,6 +284,7 @@ static int ov_connect(struct connman_provider *provider,
 static struct vpn_driver vpn_driver = {
 	.notify	= ov_notify,
 	.connect	= ov_connect,
+	.save		= ov_save,
 };
 
 static int openvpn_init(void)
