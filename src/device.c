@@ -96,6 +96,14 @@ static void clear_scan_trigger(struct connman_device *device)
 	}
 }
 
+static void clear_pending_trigger(struct connman_device *device)
+{
+	if (device->pending_timeout > 0) {
+		g_source_remove(device->pending_timeout);
+		device->pending_timeout = 0;
+	}
+}
+
 static void reset_scan_trigger(struct connman_device *device)
 {
 	clear_scan_trigger(device);
@@ -438,6 +446,7 @@ static void device_destruct(struct connman_device *device)
 {
 	DBG("device %p name %s", device, device->name);
 
+	clear_pending_trigger(device);
 	clear_scan_trigger(device);
 
 	g_free(device->ident);
@@ -663,11 +672,7 @@ int connman_device_set_powered(struct connman_device *device,
 	if (device->powered == powered)
 		return -EALREADY;
 
-	if (device->pending_timeout) {
-		/* Reset pending request */
-		g_source_remove(device->pending_timeout);
-		device->pending_timeout = 0;
-	}
+	clear_pending_trigger(device);
 
 	device->powered_pending = PENDING_NONE;
 
