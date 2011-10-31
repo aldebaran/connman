@@ -290,6 +290,44 @@ void __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 	g_free(pathname);
 }
 
+GKeyFile *__connman_storage_load_provider(const char *identifier)
+{
+	gchar *pathname;
+	GKeyFile *keyfile;
+
+	pathname = g_strdup_printf("%s/%s_%s/%s", STORAGEDIR, "provider",
+			identifier, SETTINGS);
+	if (pathname == NULL)
+		return NULL;
+
+	keyfile = storage_load(pathname);
+	g_free(pathname);
+
+	return keyfile;
+}
+
+void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier)
+{
+	gchar *pathname, *dirname;
+
+	dirname = g_strdup_printf("%s/%s_%s", STORAGEDIR,
+			"provider", identifier);
+	if (dirname == NULL)
+		return;
+
+	if (g_file_test(dirname, G_FILE_TEST_IS_DIR) == FALSE &&
+			mkdir(dirname, MODE) < 0) {
+		g_free(dirname);
+		return;
+	}
+
+	pathname = g_strdup_printf("%s/%s", dirname, SETTINGS);
+	g_free(dirname);
+
+	storage_save(keyfile, pathname);
+	g_free(pathname);
+}
+
 /*
  * This function migrates keys from default.profile to settings file.
  * This can be removed once the migration is over.
