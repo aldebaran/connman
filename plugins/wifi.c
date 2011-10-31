@@ -374,6 +374,9 @@ static int get_latest_connections(int max_ssids,
 
 	services = connman_storage_get_services();
 	for (i = 0; services && services[i]; i++) {
+		if (strncmp(services[i], "wifi_", 5) != 0)
+			continue;
+
 		keyfile = connman_storage_load_service(services[i]);
 
 		str = g_key_file_get_string(keyfile,
