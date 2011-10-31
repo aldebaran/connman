@@ -229,6 +229,23 @@ static int vc_write_config_data(struct connman_provider *provider, int fd)
 	return 0;
 }
 
+static int vc_save(struct connman_provider *provider, GKeyFile *keyfile)
+{
+	char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(vpnc_options); i++) {
+		if (strncmp(vpnc_options[i].cm_opt, "VPNC.", 5) == 0) {
+			option = connman_provider_get_string(provider,
+							vpnc_options[i].cm_opt);
+			g_key_file_set_string(keyfile,
+					connman_provider_get_save_group(provider),
+					vpnc_options[i].cm_opt, option);
+		}
+	}
+	return 0;
+}
+
 static int vc_connect(struct connman_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
@@ -291,6 +308,7 @@ static struct vpn_driver vpn_driver = {
 	.notify		= vc_notify,
 	.connect	= vc_connect,
 	.error_code	= vc_error_code,
+	.save		= vc_save,
 };
 
 static int vpnc_init(void)
