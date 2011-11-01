@@ -178,6 +178,8 @@ static void network_remove(struct connman_network *network)
 	if (network->driver == NULL)
 		return;
 
+	connman_network_set_connected(network, FALSE);
+
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
 	case CONNMAN_NETWORK_TYPE_VENDOR:
