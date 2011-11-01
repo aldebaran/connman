@@ -781,6 +781,9 @@ static void set_configuration(struct connman_network *network)
 
 	DBG("network %p", network);
 
+	if (network->device == NULL)
+		return;
+
 	__connman_device_set_network(network->device, network);
 
 	connman_device_set_disconnected(network->device, FALSE);
