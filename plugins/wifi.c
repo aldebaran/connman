@@ -55,6 +55,7 @@
 
 #define CLEANUP_TIMEOUT   8	/* in seconds */
 #define INACTIVE_TIMEOUT  12	/* in seconds */
+#define MAXIMUM_RETRIES   4
 
 struct connman_technology *wifi_technology = NULL;
 
@@ -74,6 +75,7 @@ struct wifi_data {
 	int index;
 	unsigned flags;
 	unsigned int watch;
+	int retries;
 };
 
 static GList *iface_list = NULL;
@@ -687,6 +689,7 @@ static int network_connect(struct connman_network *network)
 		wifi->pending_network = network;
 	else {
 		wifi->network = network;
+		wifi->retries = 0;
 
 		return g_supplicant_interface_connect(interface, ssid,
 						connect_callback, network);
@@ -880,6 +883,29 @@ static connman_bool_t handle_wps_completion(GSupplicantInterface *interface,
 	return TRUE;
 }
 
+static connman_bool_t handle_4way_handshake_failure(GSupplicantInterface *interface,
+					struct connman_network *network,
+					struct wifi_data *wifi)
+{
+	if (wifi->state != G_SUPPLICANT_STATE_4WAY_HANDSHAKE)
+		return FALSE;
+
+	wifi->retries++;
+
+	if (wifi->retries < MAXIMUM_RETRIES)
+		return TRUE;
+
+	/* We disable the selected network, if not then
+	 * wpa_supplicant will loop retrying */
+	if (g_supplicant_interface_enable_selected_network(interface,
+								FALSE) != 0)
+		DBG("Could not disables selected network");
+
+	connman_network_set_error(network, CONNMAN_NETWORK_ERROR_INVALID_KEY);
+
+	return FALSE;
+}
+
 static void interface_state(GSupplicantInterface *interface)
 {
 	struct connman_network *network;
@@ -935,6 +961,15 @@ static void interface_state(GSupplicantInterface *interface)
 
 		if (is_idle(wifi))
 			break;
+
+		/* If previous state was 4way-handshake, then
+		 * it's either: psk was incorrect and thus we retry
+		 * or if we reach the maximum retries we declare the
+		 * psk as wrong */
+		if (handle_4way_handshake_failure(interface,
+						network, wifi) == TRUE)
+			break;
+
 		connman_network_set_associating(network, FALSE);
 		connman_network_set_connected(network, FALSE);
 		break;
