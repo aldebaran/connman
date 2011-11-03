@@ -182,6 +182,9 @@ const void *g_supplicant_interface_get_wps_ssid(GSupplicantInterface *interface,
 GSupplicantWpsState g_supplicant_interface_get_wps_state(GSupplicantInterface *interface);
 unsigned int g_supplicant_interface_get_mode(GSupplicantInterface *interface);
 
+int g_supplicant_interface_enable_selected_network(GSupplicantInterface *interface,
+							dbus_bool_t enable);
+
 /* Network API */
 struct _GSupplicantNetwork;
 
