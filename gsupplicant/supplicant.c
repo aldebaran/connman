@@ -743,6 +743,29 @@ unsigned int g_supplicant_interface_get_max_scan_ssids(
 	return interface->max_scan_ssids;
 }
 
+static void set_network_enabled(DBusMessageIter *iter, void *user_data)
+{
+	dbus_bool_t enable = *(dbus_bool_t *)user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_BOOLEAN, &enable);
+}
+
+int g_supplicant_interface_enable_selected_network(GSupplicantInterface *interface,
+							dbus_bool_t enable)
+{
+	if (interface == NULL)
+		return -1;
+
+	if (interface->network_path == NULL)
+		return -1;
+
+	SUPPLICANT_DBG(" ");
+	return supplicant_dbus_property_set(interface->network_path,
+				SUPPLICANT_INTERFACE ".Network",
+				"Enabled", DBUS_TYPE_BOOLEAN_AS_STRING,
+				set_network_enabled, NULL, &enable);
+}
+
 GSupplicantInterface *g_supplicant_network_get_interface(
 					GSupplicantNetwork *network)
 {
