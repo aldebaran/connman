@@ -55,7 +55,7 @@ def print_properties(key, value):
 			elif key in ["Powered", "Scanning", "Connected",
 					"Available", "Remember", "Default",
 					"Favorite", "Immutable", "AutoConnect",
-						"LoginRequired", "SetupRequired",
+						"LoginRequired",
 						"PassphraseRequired"]:
 				if properties[key] == dbus.Boolean(1):
 					val = "true"

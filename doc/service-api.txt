@@ -237,14 +237,6 @@ Properties	string State [readonly]
 			this value to prevent or permit automatic
 			connection attempts.
 
-		boolean SetupRequired [readonly]
-
-			If the service is Cellular, then this property
-			indicates that some extra setup steps are required.
-
-			In most cases it is required to fill in the APN
-			details.
-
 		boolean Roaming [readonly]
 
 			This property indicates if this service is roaming.

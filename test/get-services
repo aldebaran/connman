@@ -44,7 +44,7 @@ for entry in services:
 						"Security"]:
 			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
-				"SetupRequired", "PassphraseRequired"]:
+				"PassphraseRequired"]:
 			if properties[key] == dbus.Boolean(1):
 				val = "true"
 			else:

@@ -2060,9 +2060,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		connman_dbus_dict_append_basic(dict, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
 
-		required = FALSE;
-		connman_dbus_dict_append_basic(dict, "SetupRequired",
-						DBUS_TYPE_BOOLEAN, &required);
 		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);
 		break;
