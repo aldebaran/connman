@@ -653,11 +653,6 @@ static void set_associate_error(struct connman_network *network)
 {
 	struct connman_service *service;
 
-	if (network->associating == FALSE)
-		return ;
-
-	network->associating = FALSE;
-
 	service = __connman_service_lookup_from_network(network);
 
 	__connman_service_ipconfig_indicate_state(service,
@@ -668,8 +663,6 @@ static void set_associate_error(struct connman_network *network)
 static void set_configure_error(struct connman_network *network)
 {
 	struct connman_service *service;
-
-	network->connecting = FALSE;
 
 	service = __connman_service_lookup_from_network(network);
 
@@ -738,6 +731,7 @@ void connman_network_set_error(struct connman_network *network,
 	DBG("nework %p, error %d", network, error);
 
 	network->connecting = FALSE;
+	network->associating = FALSE;
 
 	switch (error) {
 	case CONNMAN_NETWORK_ERROR_UNKNOWN:
