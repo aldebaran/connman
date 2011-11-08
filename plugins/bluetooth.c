@@ -1231,7 +1231,7 @@ static int bluetooth_init(void)
 	if (err < 0) {
 		connman_device_driver_unregister(&bluetooth_driver);
 		connman_network_driver_unregister(&pan_driver);
-		return err;
+		goto remove;
 	}
 
 	return 0;
