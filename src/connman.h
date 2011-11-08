@@ -367,8 +367,6 @@ connman_bool_t __connman_device_get_reconnect(struct connman_device *device);
 
 const char *__connman_device_get_type(struct connman_device *device);
 
-#include <connman/rfkill.h>
-
 int __connman_rfkill_init(void);
 void __connman_rfkill_cleanup(void);
 int __connman_rfkill_block(enum connman_service_type type, connman_bool_t block);
