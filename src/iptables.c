@@ -1572,6 +1572,13 @@ static int iptables_command(int argc, char *argv[])
 
 		case 't':
 			table_name = optarg;
+
+			table = iptables_init(table_name);
+			if (table == NULL) {
+				ret = -EINVAL;
+				goto out;
+			}
+
 			break;
 
 		case 1:
@@ -1662,13 +1669,14 @@ static int iptables_command(int argc, char *argv[])
 		xt_t->final_check(xt_t->tflags);
 #endif
 
-	if (table_name == NULL)
+	if (table == NULL) {
 		table_name = "filter";
 
-	table = iptables_init(table_name);
-	if (table == NULL) {
-		ret = -EINVAL;
-		goto out;
+		table = iptables_init(table_name);
+		if (table == NULL) {
+			ret = -EINVAL;
+			goto out;
+		}
 	}
 
 	if (delete_chain != NULL) {
