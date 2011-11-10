@@ -753,10 +753,6 @@ static void update_ipv4_settings(DBusMessageIter *array,
 						netmask, gateway);
 	}
 
-	/* deactive, oFono send NULL inteface before deactive signal */
-	if (interface == NULL)
-		connman_network_set_index(info->network, -1);
-
 	g_free(address);
 	g_free(netmask);
 	g_free(gateway);
@@ -832,10 +828,6 @@ static void update_ipv6_settings(DBusMessageIter *array,
 
 	connman_ipaddress_set_ipv6(&info->ipv6_address, address,
 						prefix_length, gateway);
-
-	/* deactive, oFono send NULL inteface before deactive signal */
-	if (interface == NULL)
-		connman_network_set_index(info->network, -1);
 
 	g_free(address);
 	g_free(gateway);
