@@ -1561,6 +1561,11 @@ int main(int argc, char *argv[])
 
 		case 't':
 			table_name = optarg;
+
+			table = connman_iptables_init(table_name);
+			if (table == NULL)
+				return -1;
+
 			break;
 
 		case 1:
@@ -1653,12 +1658,13 @@ int main(int argc, char *argv[])
 		xt_t->final_check(xt_t->tflags);
 #endif
 
-	if (table_name == NULL)
+	if (table == NULL) {
 		table_name = "filter";
 
-	table = connman_iptables_init(table_name);
-	if (table == NULL)
-		return -1;
+		table = connman_iptables_init(table_name);
+		if (table == NULL)
+			return -1;
+	}
 
 	if (delete) {
 		if (delete_chain == NULL)
