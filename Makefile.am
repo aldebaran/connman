@@ -88,9 +88,9 @@ src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
 
-BUILT_SOURCES = $(local_headers)
+BUILT_SOURCES = $(local_headers) src/builtin.h
 
-CLEANFILES = src/connman.conf src/builtin.h $(BUILT_SOURCES)
+CLEANFILES = src/connman.conf $(BUILT_SOURCES)
 
 statedir = $(localstatedir)/run/connman
 
@@ -243,8 +243,6 @@ MAINTAINERCLEANFILES = Makefile.in \
 	aclocal.m4 configure config.h.in config.sub config.guess \
 	ltmain.sh depcomp compile missing install-sh mkinstalldirs
 
-
-src/plugin.$(OBJEXT): src/builtin.h
 
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
