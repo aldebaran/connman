@@ -201,6 +201,23 @@ static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
+static int pptp_save(struct connman_provider *provider, GKeyFile *keyfile)
+{
+	const char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(pptp_options); i++) {
+		if (strncmp(pptp_options[i].cm_opt, "PPTP.", 5) == 0) {
+			option = connman_provider_get_string(provider,
+							pptp_options[i].cm_opt);
+			g_key_file_set_string(keyfile,
+					connman_provider_get_save_group(provider),
+					pptp_options[i].cm_opt, option);
+		}
+	}
+	return 0;
+}
+
 static void pptp_write_bool_option(struct connman_task *task,
 				const char *key, const char *value)
 {
@@ -295,6 +312,7 @@ static struct vpn_driver vpn_driver = {
 	.notify		= pptp_notify,
 	.connect	= pptp_connect,
 	.error_code     = pptp_error_code,
+	.save		= pptp_save,
 };
 
 static int pptp_init(void)
