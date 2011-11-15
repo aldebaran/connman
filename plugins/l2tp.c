@@ -158,6 +158,9 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
+	if (strcmp(reason, "auth failed") == 0)
+		return VPN_STATE_AUTH_FAILURE;
+
 	if (strcmp(reason, "connect"))
 		return VPN_STATE_DISCONNECT;
 
@@ -473,12 +476,9 @@ static int l2tp_connect(struct connman_provider *provider,
 
 static int l2tp_error_code(int exit_code)
 {
-
 	switch (exit_code) {
 	case 1:
 		return CONNMAN_PROVIDER_ERROR_CONNECT_FAILED;
-	case 2:
-		return CONNMAN_PROVIDER_ERROR_LOGIN_FAILED;
 	default:
 		return CONNMAN_PROVIDER_ERROR_UNKNOWN;
 	}
