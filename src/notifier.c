@@ -513,6 +513,7 @@ void __connman_notifier_service_state_changed(struct connman_service *service,
 
 	switch (state) {
 	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_FAILURE:
 	case CONNMAN_SERVICE_STATE_DISCONNECT:
 	case CONNMAN_SERVICE_STATE_IDLE:
 		if (found == FALSE)
@@ -527,7 +528,6 @@ void __connman_notifier_service_state_changed(struct connman_service *service,
 	case CONNMAN_SERVICE_STATE_CONFIGURATION:
 	case CONNMAN_SERVICE_STATE_READY:
 	case CONNMAN_SERVICE_STATE_ONLINE:
-	case CONNMAN_SERVICE_STATE_FAILURE:
 		if (found == TRUE)
 			break;
 
