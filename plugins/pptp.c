@@ -56,7 +56,6 @@ struct {
 	int type;
 } pptp_options[] = {
 	{ "PPTP.User", "user", NULL, OPT_STRING },
-	{ "PPTP.Password", "password", NULL, OPT_STRING },
 	{ "PPTP.EchoFailure", "lcp-echo-failure", "0", OPT_STRING },
 	{ "PPTP.EchoInterval", "lcp-echo-interval", "0", OPT_STRING },
 	{ "PPTP.Debug", "debug", NULL, OPT_STRING },
