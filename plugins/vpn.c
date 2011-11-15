@@ -78,6 +78,9 @@ static int stop_vpn(struct connman_provider *provider)
 		return -EINVAL;
 
 	name = connman_provider_get_driver_name(provider);
+	if (name == NULL)
+		return -EINVAL;
+
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 
 	if (vpn_driver_data != NULL && vpn_driver_data->vpn_driver != NULL &&
@@ -137,10 +140,12 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 vpn_exit:
 	if (state != VPN_STATE_READY && state != VPN_STATE_DISCONNECT) {
 		const char *name;
-		struct vpn_driver_data *vpn_data;
+		struct vpn_driver_data *vpn_data = NULL;
 
 		name = connman_provider_get_driver_name(provider);
-		vpn_data = g_hash_table_lookup(driver_hash, name);
+		if (name != NULL)
+			vpn_data = g_hash_table_lookup(driver_hash, name);
+
 		if (vpn_data != NULL &&
 				vpn_data->vpn_driver->error_code != NULL)
 			ret = vpn_data->vpn_driver->error_code(exit_code);
@@ -209,6 +214,9 @@ static void vpn_notify(struct connman_task *task,
 	data = connman_provider_get_data(provider);
 
 	name = connman_provider_get_driver_name(provider);
+	if (name == NULL)
+		return;
+
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 	if (vpn_driver_data == NULL)
 		return;
@@ -331,6 +339,9 @@ static int vpn_connect(struct connman_provider *provider)
 	connman_provider_set_data(provider, data);
 
 	name = connman_provider_get_driver_name(provider);
+	if (name == NULL)
+		return -EINVAL;
+
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 
 	if (vpn_driver_data != NULL && vpn_driver_data->vpn_driver != NULL &&
@@ -401,6 +412,9 @@ static int vpn_disconnect(struct connman_provider *provider)
 		return 0;
 
 	name = connman_provider_get_driver_name(provider);
+	if (name == NULL)
+		return 0;
+
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 	if (vpn_driver_data->vpn_driver->disconnect)
 		vpn_driver_data->vpn_driver->disconnect();
