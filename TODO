@@ -137,20 +137,6 @@ Cellular
 VPN
 ===
 
-- l2tp support
-
-   Priority: Low
-   Complexity: C2
-   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
-
-
-- pptp support
-
-   Priority: Low
-   Complexity: C2
-   Owner: Mohamed Abbas <mohamed.abbas@intel.com>
-
-
 - IPsec
 
    Priority: Low
