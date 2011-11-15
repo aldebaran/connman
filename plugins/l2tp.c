@@ -240,6 +240,23 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
+static int l2tp_save(struct connman_provider *provider, GKeyFile *keyfile)
+{
+	const char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(pppd_options); i++) {
+		if (strncmp(pppd_options[i].cm_opt, "L2TP.", 5) == 0) {
+			option = connman_provider_get_string(provider,
+							pppd_options[i].cm_opt);
+			g_key_file_set_string(keyfile,
+					connman_provider_get_save_group(provider),
+					pppd_options[i].cm_opt, option);
+		}
+	}
+	return 0;
+}
+
 static ssize_t full_write(int fd, const void *buf, size_t len)
 {
 	ssize_t byte_write;
@@ -489,6 +506,7 @@ static struct vpn_driver vpn_driver = {
 	.notify		= l2tp_notify,
 	.connect	= l2tp_connect,
 	.error_code	= l2tp_error_code,
+	.save		= l2tp_save,
 };
 
 static int l2tp_init(void)
