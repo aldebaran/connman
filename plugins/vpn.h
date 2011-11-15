@@ -19,6 +19,8 @@
  *
  */
 
+#define VPN_FLAG_NO_TUN	1
+
 enum vpn_state {
 	VPN_STATE_UNKNOWN       = 0,
 	VPN_STATE_IDLE          = 1,
@@ -30,6 +32,7 @@ enum vpn_state {
 };
 
 struct vpn_driver {
+	int flags;
 	int (*notify) (DBusMessage *msg, struct connman_provider *provider);
 	int (*connect) (struct connman_provider *provider,
 			struct connman_task *task, const char *if_name);
@@ -42,3 +45,4 @@ int vpn_register(const char *name, struct vpn_driver *driver,
 			const char *program);
 void vpn_unregister(const char *provider_name);
 void vpn_died(struct connman_task *task, int exit_code, void *user_data);
+int vpn_set_ifname(struct connman_provider *provider, const char *ifname);
