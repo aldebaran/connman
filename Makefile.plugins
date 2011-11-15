@@ -137,6 +137,24 @@ plugins_vpnc_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if L2TP
+if L2TP_BUILTIN
+builtin_modules += l2tp
+builtin_sources += plugins/l2tp.c
+builtin_vpn_sources = plugins/vpn.c plugins/vpn.h
+builtin_cflags += -DL2TP=\"@L2TP@\"
+else
+plugin_LTLIBRARIES += plugins/l2tp.la
+plugin_objects += $(plugins_l2tp_la_OBJECTS)
+plugins_l2tp_la_SOURCES = plugins/vpn.h plugins/vpn.c \
+						plugins/l2tp.c
+plugins_l2tp_la_CFLAGS = $(plugin_cflags) -DL2TP=\"@L2TP@\" \
+					-DSTATEDIR=\""$(statedir)"\" \
+					-DSCRIPTDIR=\""$(build_scriptdir)"\"
+plugins_l2tp_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 builtin_sources += $(builtin_vpn_sources)
 
 if PACRUNNER

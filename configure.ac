@@ -155,6 +155,28 @@ fi
 AM_CONDITIONAL(VPNC, test "${enable_vpnc}" != "no")
 AM_CONDITIONAL(VPNC_BUILTIN, test "${enable_vpnc}" = "builtin")
 
+AC_ARG_ENABLE(l2tp,
+	AC_HELP_STRING([--enable-l2tp], [enable l2tp support]),
+			[enable_l2tp=${enableval}], [enable_l2tp="no"])
+if (test "${enable_l2tp}" != "no"); then
+	if (test -z "${path_pppd}"); then
+		AC_PATH_PROG(PPPD, [pppd], [/usr/sbin/pppd], $PATH:/sbin:/usr/sbin)
+	else
+		PPPD="${path_pppd}"
+		AC_SUBST(PPPD)
+	fi
+	AC_CHECK_HEADERS(pppd/pppd.h, dummy=yes,
+			AC_MSG_ERROR(ppp header files are required))
+	if (test -z "${path_l2tp}"); then
+		AC_PATH_PROG(L2TP, [xl2tpd], [/usr/sbin/xl2tpd], $PATH:/sbin:/usr/sbin)
+	else
+		L2TP="${path_l2tp}"
+		AC_SUBST(L2TP)
+	fi
+fi
+AM_CONDITIONAL(L2TP, test "${enable_l2tp}" != "no")
+AM_CONDITIONAL(L2TP_BUILTIN, test "${enable_l2tp}" = "builtin")
+
 AC_ARG_ENABLE(loopback,
 	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
 			[enable_loopback=${enableval}], [enable_loopback="no"])
