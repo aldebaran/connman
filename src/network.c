@@ -655,9 +655,8 @@ static void set_associate_error(struct connman_network *network)
 
 	service = __connman_service_lookup_from_network(network);
 
-	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_indicate_error(service,
+					CONNMAN_SERVICE_ERROR_CONNECT_FAILED);
 }
 
 static void set_configure_error(struct connman_network *network)
@@ -666,9 +665,8 @@ static void set_configure_error(struct connman_network *network)
 
 	service = __connman_service_lookup_from_network(network);
 
-	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+	__connman_service_indicate_error(service,
+					CONNMAN_SERVICE_ERROR_CONNECT_FAILED);
 }
 
 static void set_invalid_key_error(struct connman_network *network)
