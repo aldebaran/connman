@@ -41,6 +41,21 @@ To compile and install run:
 	make && make install
 
 
+VPN
+===
+
+In order to compile pptp and l2tp VPN plugins, you need ppp development
+package.
+
+To run l2tp you will need
+	- xl2tpd, http://www.xelerance.com/services/software/xl2tpd
+
+To run pptp you will need
+	- pptp client, http://pptpclient.sourceforge.net
+
+Both l2tp and pptp also need pppd.
+
+
 Configuration and options
 =========================
 
