@@ -210,10 +210,11 @@ static int create_bridge(const char *name)
 	if (sk < 0)
 		return -EOPNOTSUPP;
 
-	err = ioctl(sk, SIOCBRADDBR, name);
-
-	if (err < 0)
-		return -EOPNOTSUPP;
+	if (ioctl(sk, SIOCBRADDBR, name) == -1) {
+		err = -errno;
+		if (err != -EEXIST)
+			return -EOPNOTSUPP;
+	}
 
 	err = set_forward_delay(name, 0);
 
@@ -348,7 +349,7 @@ void __connman_tethering_set_enabled(void)
 		return;
 
 	err = enable_bridge(BRIDGE_NAME);
-	if (err < 0) {
+	if (err < 0 && err != -EALREADY) {
 		remove_bridge(BRIDGE_NAME);
 		return;
 	}
