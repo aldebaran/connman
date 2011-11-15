@@ -202,7 +202,7 @@ static void vpn_newlink(unsigned flags, unsigned change, void *user_data)
 	data->flags = flags;
 }
 
-static void vpn_notify(struct connman_task *task,
+static DBusMessage *vpn_notify(struct connman_task *task,
 			DBusMessage *msg, void *user_data)
 {
 	struct connman_provider *provider = user_data;
@@ -215,11 +215,11 @@ static void vpn_notify(struct connman_task *task,
 
 	name = connman_provider_get_driver_name(provider);
 	if (name == NULL)
-		return;
+		return NULL;
 
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 	if (vpn_driver_data == NULL)
-		return;
+		return NULL;
 
 	state = vpn_driver_data->vpn_driver->notify(msg, provider);
 	switch (state) {
@@ -244,6 +244,8 @@ static void vpn_notify(struct connman_task *task,
 					CONNMAN_PROVIDER_ERROR_AUTH_FAILED);
 		break;
 	}
+
+	return NULL;
 }
 
 static int vpn_create_tun(struct connman_provider *provider)

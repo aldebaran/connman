@@ -372,6 +372,7 @@ static DBusHandlerResult task_filter(DBusConnection *connection,
 	struct connman_task *task;
 	struct notify_data *notify;
 	const char *path, *member;
+	DBusMessage *reply = NULL;
 
 	if (dbus_message_get_type(message) != DBUS_MESSAGE_TYPE_METHOD_CALL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
@@ -388,28 +389,31 @@ static DBusHandlerResult task_filter(DBusConnection *connection,
 	if (task == NULL)
 		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
 
-	if (dbus_message_get_no_reply(message) == FALSE) {
-		DBusMessage *reply;
+	member = dbus_message_get_member(message);
+	if (member == NULL)
+		goto send_reply;
+
+	notify = g_hash_table_lookup(task->notify, member);
+	if (notify == NULL)
+		goto send_reply;
+
+	if (notify->func)
+		reply = notify->func(task, message, notify->data);
+
+send_reply:
+	if (dbus_message_get_no_reply(message) == FALSE &&
+						reply == NULL) {
 
 		reply = dbus_message_new_method_return(message);
 		if (reply == NULL)
 			return DBUS_HANDLER_RESULT_NEED_MEMORY;
+	}
 
+	if (reply != NULL) {
 		dbus_connection_send(connection, reply, NULL);
 
 		dbus_message_unref(reply);
 	}
-
-	member = dbus_message_get_member(message);
-	if (member == NULL)
-		return DBUS_HANDLER_RESULT_HANDLED;
-
-	notify = g_hash_table_lookup(task->notify, member);
-	if (notify == NULL)
-		return DBUS_HANDLER_RESULT_HANDLED;
-
-	if (notify->func)
-		notify->func(task, message, notify->data);
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }

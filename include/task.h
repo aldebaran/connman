@@ -39,7 +39,7 @@ struct connman_task;
 typedef void (* connman_task_exit_t) (struct connman_task *task,
 						int exit_code, void *user_data);
 
-typedef void (* connman_task_notify_t) (struct connman_task *task,
+typedef DBusMessage * (* connman_task_notify_t) (struct connman_task *task,
 				DBusMessage *message, void *user_data);
 
 struct connman_task *connman_task_create(const char *program);
