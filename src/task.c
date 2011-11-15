@@ -350,6 +350,44 @@ int connman_task_run(struct connman_task *task,
 	return 0;
 }
 
+static gboolean force_kill_timeout(gpointer user_data)
+{
+	pid_t pid = GPOINTER_TO_INT(user_data);
+	if (pid > 0) {
+		if (kill(pid, SIGKILL) == 0)
+			connman_warn("killing pid %d by force", pid);
+	}
+
+	return FALSE;
+}
+
+static gboolean kill_timeout(gpointer user_data)
+{
+	pid_t pid = GPOINTER_TO_INT(user_data);
+	if (pid > 0) {
+		if (kill(pid, SIGINT) == 0)
+			g_timeout_add_seconds(1, force_kill_timeout,
+					GINT_TO_POINTER(pid));
+	}
+
+	return FALSE;
+}
+
+static gboolean check_kill(gpointer user_data)
+{
+	pid_t pid = GPOINTER_TO_INT(user_data);
+	if (pid > 0) {
+		if (kill(pid, 0) == 0) {
+			connman_info("pid %d was not killed, "
+					"retrying after 2 sec", pid);
+			g_timeout_add_seconds(2, kill_timeout,
+					GINT_TO_POINTER(pid));
+		}
+	}
+
+	return FALSE;
+}
+
 /**
  * connman_task_stop:
  * @task: task structure
@@ -360,8 +398,12 @@ int connman_task_stop(struct connman_task *task)
 {
 	DBG("task %p", task);
 
-	if (task->pid > 0)
+	if (task->pid > 0) {
 		kill(task->pid, SIGTERM);
+
+		g_timeout_add_seconds(0, check_kill,
+				GINT_TO_POINTER(task->pid));
+	}
 
 	return 0;
 }
