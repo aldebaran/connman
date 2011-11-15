@@ -45,6 +45,7 @@ static char *interface;
 static char *path;
 
 static DBusConnection *connection;
+static int prev_phase;
 
 char pppd_version[] = VERSION;
 
@@ -238,11 +239,18 @@ static void ppp_phase_change(void *data, int arg)
 {
 	const char *reason = "disconnect";
 	DBusMessage *msg;
+	int send_msg = 0;
 
 	if (connection == NULL)
 		return;
 
-	if (arg == PHASE_DEAD || arg == PHASE_DISCONNECT) {
+	if (prev_phase == PHASE_AUTHENTICATE &&
+				arg == PHASE_TERMINATE) {
+		reason = "auth failed";
+		send_msg = 1;
+	}
+
+	if (send_msg > 0 || arg == PHASE_DEAD || arg == PHASE_DISCONNECT) {
 		msg = dbus_message_new_method_call(busname, path,
 						interface, "notify");
 		if (msg == NULL)
@@ -259,6 +267,8 @@ static void ppp_phase_change(void *data, int arg)
 
 		dbus_message_unref(msg);
 	}
+
+	prev_phase = arg;
 }
 
 int plugin_init(void)
