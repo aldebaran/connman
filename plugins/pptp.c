@@ -120,6 +120,9 @@ static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
+	if (strcmp(reason, "auth failed") == 0)
+		return VPN_STATE_AUTH_FAILURE;
+
 	if (strcmp(reason, "connect"))
 		return VPN_STATE_DISCONNECT;
 
