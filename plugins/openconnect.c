@@ -225,21 +225,24 @@ static int oc_save (struct connman_provider *provider, GKeyFile *keyfile)
 
 	setting = connman_provider_get_string(provider,
 					"OpenConnect.ServerCert");
-	g_key_file_set_string(keyfile,
-			connman_provider_get_save_group(provider),
-			"OpenConnect.ServerCert", setting);
+	if (setting != NULL)
+		g_key_file_set_string(keyfile,
+				connman_provider_get_save_group(provider),
+				"OpenConnect.ServerCert", setting);
 
 	setting = connman_provider_get_string(provider,
 					"OpenConnect.CACert");
-	g_key_file_set_string(keyfile,
-			connman_provider_get_save_group(provider),
-			"OpenConnect.CACert", setting);
+	if (setting != NULL)
+		g_key_file_set_string(keyfile,
+				connman_provider_get_save_group(provider),
+				"OpenConnect.CACert", setting);
 
 	setting = connman_provider_get_string(provider,
 					"VPN.MTU");
-	g_key_file_set_string(keyfile,
-			connman_provider_get_save_group(provider),
-			"VPN.MTU", setting);
+	if (setting != NULL)
+		g_key_file_set_string(keyfile,
+				connman_provider_get_save_group(provider),
+				"VPN.MTU", setting);
 
 	return 0;
 }

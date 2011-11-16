@@ -210,6 +210,9 @@ static int pptp_save(struct connman_provider *provider, GKeyFile *keyfile)
 		if (strncmp(pptp_options[i].cm_opt, "PPTP.", 5) == 0) {
 			option = connman_provider_get_string(provider,
 							pptp_options[i].cm_opt);
+			if (option == NULL)
+				continue;
+
 			g_key_file_set_string(keyfile,
 					connman_provider_get_save_group(provider),
 					pptp_options[i].cm_opt, option);
