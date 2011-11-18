@@ -4759,6 +4759,7 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	DBusMessageIter iter, array;
 	const char *mode = "managed", *security = "none", *group_security;
 	const char *type = NULL, *ssid = NULL, *passphrase = NULL;
+	connman_bool_t network_created = FALSE;
 	unsigned int ssid_len = 0;
 	const char *ident;
 	char *name, *group;
@@ -4843,16 +4844,17 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 
 	service = lookup_by_identifier(name);
 
-	if (service != NULL)
-		goto done;
+	if (service == NULL) {
+		network = create_hidden_wifi(device, ssid,
+						mode, security, group);
+		if (network != NULL)
+			connman_network_set_group(network, group);
 
-	network = create_hidden_wifi(device, ssid, mode, security, group);
-	if (network != NULL)
-		connman_network_set_group(network, group);
+		service = lookup_by_identifier(name);
 
-	service = lookup_by_identifier(name);
+		network_created = TRUE;
+	}
 
-done:
 	g_free(name);
 	g_free(group);
 
@@ -4861,7 +4863,7 @@ done:
 		goto failed;
 	}
 
-	service->network_created = TRUE;
+	service->network_created = network_created;
 
 	if (is_connected(service) == TRUE) {
 		err = -EISCONN;
