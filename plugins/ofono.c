@@ -58,6 +58,12 @@
 
 static DBusConnection *connection;
 
+static GHashTable *modem_hash;
+
+struct modem_data {
+	char *path;
+};
+
 static gboolean context_changed(DBusConnection *connection,
 				DBusMessage *message,
 				void *user_data)
@@ -103,15 +109,78 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
+static void add_modem(const char *path, DBusMessageIter *prop)
+{
+	struct modem_data *modem;
+
+	DBG("%s", path);
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem != NULL) {
+		/*
+		 * When oFono powers up we ask for the modems and oFono is
+		 * reporting with modem_added signal the modems. Only
+		 * handle them once.
+		 */
+		return;
+	}
+
+	modem = g_try_new0(struct modem_data, 1);
+	if (modem == NULL)
+		return;
+
+	modem->path = g_strdup(path);
+
+	g_hash_table_insert(modem_hash, g_strdup(path), modem);
+}
+
+static void remove_modem(gpointer data)
+{
+	struct modem_data *modem = data;
+
+	DBG("%s", modem->path);
+
+	g_free(modem->path);
+
+	g_free(modem);
+}
+
 static gboolean modem_added(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	DBusMessageIter iter, properties;
+	const char *path;
+
+	DBG("");
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &properties);
+
+	add_modem(path, &properties);
+
 	return TRUE;
 }
 
 static gboolean modem_removed(DBusConnection *connection,
 				DBusMessage *message, void *user_data)
 {
+	DBusMessageIter iter;
+	const char *path;
+
+	DBG("");
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	g_hash_table_remove(modem_hash, path);
+
 	return TRUE;
 }
 
@@ -147,6 +216,8 @@ static void manager_get_modems_reply(DBusPendingCall *call, void *user_data)
 
 		dbus_message_iter_next(&value);
 		dbus_message_iter_recurse(&value, &properties);
+
+		add_modem(path, &properties);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -194,11 +265,23 @@ static void ofono_connect(DBusConnection *conn, void *user_data)
 {
 	DBG("");
 
+	modem_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+						g_free, remove_modem);
+	if (modem_hash == NULL)
+		return;
+
 	manager_get_modems();
 }
 
 static void ofono_disconnect(DBusConnection *conn, void *user_data)
 {
+	DBG("");
+
+	if (modem_hash == NULL)
+		return;
+
+	g_hash_table_destroy(modem_hash);
+	modem_hash = NULL;
 }
 
 static int network_probe(struct connman_network *network)
@@ -391,6 +474,11 @@ remove:
 static void ofono_exit(void)
 {
 	DBG("");
+
+	if (modem_hash != NULL) {
+		g_hash_table_destroy(modem_hash);
+		modem_hash = NULL;
+	}
 
 	connman_device_driver_unregister(&modem_driver);
 	connman_network_driver_unregister(&network_driver);
