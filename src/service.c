@@ -391,6 +391,7 @@ static int service_load(struct connman_service *service)
 				service->state_ipv4 = service->state_ipv6 =
 					CONNMAN_SERVICE_STATE_FAILURE;
 			service->error = string2error(str);
+			g_free(str);
 		}
 		break;
 	}
