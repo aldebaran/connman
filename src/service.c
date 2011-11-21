@@ -4847,12 +4847,12 @@ int __connman_service_create_and_connect(DBusMessage *msg)
 	if (service == NULL) {
 		network = create_hidden_wifi(device, ssid,
 						mode, security, group);
-		if (network != NULL)
+		if (network != NULL) {
 			connman_network_set_group(network, group);
+			network_created = TRUE;
+		}
 
 		service = lookup_by_identifier(name);
-
-		network_created = TRUE;
 	}
 
 	g_free(name);
