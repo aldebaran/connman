@@ -52,6 +52,10 @@
 #define CONTEXT_ADDED			"ContextAdded"
 #define CONTEXT_REMOVED			"ContextRemoved"
 
+#define GET_MODEMS			"GetModems"
+
+#define TIMEOUT 40000
+
 static DBusConnection *connection;
 
 static gboolean context_changed(DBusConnection *connection,
@@ -111,8 +115,86 @@ static gboolean modem_removed(DBusConnection *connection,
 	return TRUE;
 }
 
+static void manager_get_modems_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+	DBusError error;
+	DBusMessageIter array, dict;
+
+	DBG("");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter value, properties;
+		const char *path;
+
+		dbus_message_iter_recurse(&dict, &value);
+		dbus_message_iter_get_basic(&value, &path);
+
+		dbus_message_iter_next(&value);
+		dbus_message_iter_recurse(&value, &properties);
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static int manager_get_modems(void)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("");
+
+	message = dbus_message_new_method_call(OFONO_SERVICE, "/",
+					OFONO_MANAGER_INTERFACE, GET_MODEMS);
+	if (message == NULL)
+		return -ENOMEM;
+
+	if (dbus_connection_send_with_reply(connection, message,
+					       &call, TIMEOUT) == FALSE) {
+		connman_error("Failed to call GetModems()");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, manager_get_modems_reply,
+					NULL, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
 static void ofono_connect(DBusConnection *conn, void *user_data)
 {
+	DBG("");
+
+	manager_get_modems();
 }
 
 static void ofono_disconnect(DBusConnection *conn, void *user_data)
