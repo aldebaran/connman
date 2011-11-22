@@ -559,6 +559,19 @@ static int modem_set_powered(struct modem_data *modem)
 				NULL);
 }
 
+static int modem_set_unpowered(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	modem->set_powered = FALSE;
+
+	return set_property(modem, modem->path,
+				OFONO_MODEM_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN,
+				&modem->set_powered,
+				NULL);
+}
+
 static connman_bool_t has_interface(uint8_t interfaces,
 					enum ofono_api api)
 {
@@ -1681,6 +1694,15 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	}
 }
 
+static void modem_power_down(gpointer key, gpointer value, gpointer user_data)
+{
+	struct modem_data *modem = value;
+
+	DBG("%s", modem->path);
+
+	modem_set_unpowered(modem);
+}
+
 static void remove_modem(gpointer data)
 {
 	struct modem_data *modem = data;
@@ -2067,6 +2089,15 @@ static void ofono_exit(void)
 	DBG("");
 
 	if (modem_hash != NULL) {
+		/*
+		 * We should propably wait for the SetProperty() reply
+		 * message, because ...
+		 */
+		g_hash_table_foreach(modem_hash, modem_power_down, NULL);
+
+		/*
+		 * ... here we will cancel the call.
+		 */
 		g_hash_table_destroy(modem_hash);
 		modem_hash = NULL;
 	}
