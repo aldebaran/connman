@@ -112,6 +112,7 @@ struct modem_data {
 
 	/* ConnectionContext Interface */
 	connman_bool_t active;
+	connman_bool_t set_active;
 
 	/* SimManager Interface */
 	char *imsi;
@@ -177,33 +178,55 @@ static void network_context_free(struct network_context *context)
 
 static void set_connected(struct modem_data *modem)
 {
+	connman_bool_t setip = FALSE;
+
 	DBG("%s", modem->path);
 
 	connman_network_set_index(modem->network, modem->context->index);
 
-	switch (modem->context->method) {
+	switch (modem->context->ipv4_method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		return;
+		break;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
 		connman_network_set_ipv4_method(modem->network,
-						modem->context->method);
+						modem->context->ipv4_method);
 		connman_network_set_ipaddress(modem->network,
-						modem->context->address);
+						modem->context->ipv4_address);
 		connman_network_set_nameservers(modem->network,
-					modem->context->nameservers);
+					modem->context->ipv4_nameservers);
+		setip = TRUE;
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 		connman_network_set_ipv4_method(modem->network,
-						modem->context->method);
+						modem->context->ipv4_method);
+		setip = TRUE;
 		break;
 	}
 
-	connman_network_set_connected(modem->network, TRUE);
+	switch (modem->context->ipv6_method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		connman_network_set_ipv6_method(modem->network,
+							modem->context->ipv6_method);
+		connman_network_set_ipaddress(modem->network,
+							modem->context->ipv6_address);
+		setip = TRUE;
+		break;
+	}
+
+	if (setip == TRUE)
+		connman_network_set_connected(modem->network, TRUE);
 }
 
 static void set_disconnected(struct modem_data *modem)
@@ -408,6 +431,61 @@ static int get_properties(const char *path, const char *interface,
 	dbus_message_unref(message);
 
 	return -EINPROGRESS;
+}
+
+static void context_set_active_reply(struct modem_data *modem,
+					connman_bool_t success)
+{
+	DBG("%s", modem->path);
+
+	if (success == TRUE) {
+		/*
+		 * Don't handle do anything on success here. oFono will send
+		 * the change via PropertyChanged singal.
+		 */
+		return;
+	}
+
+	/*
+	 * Active = True might fail due a timeout. That means oFono
+	 * still tries to go online. If we retry to set Active = True,
+	 * we just get a InProgress error message. Should we power
+	 * cycle the modem in such cases?
+	 */
+
+	connman_network_set_error(modem->network,
+				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+}
+
+static int context_set_active(struct modem_data *modem)
+{
+	dbus_bool_t active = TRUE;
+
+	DBG("%s", modem->path);
+
+	return set_property(modem, modem->context->path,
+				OFONO_CONTEXT_INTERFACE,
+				"Active", DBUS_TYPE_BOOLEAN,
+				&active,
+				context_set_active_reply);
+}
+
+static int context_set_inactive(struct modem_data *modem)
+{
+	dbus_bool_t active = FALSE;
+	int err;
+
+	DBG("%s", modem->path);
+
+	err = set_property(modem, modem->context->path,
+				OFONO_CONTEXT_INTERFACE,
+				"Active", DBUS_TYPE_BOOLEAN,
+				&active,
+				NULL);
+	if (err == -EINPROGRESS)
+		return 0;
+
+	return err;
 }
 
 static void modem_set_online_reply(struct modem_data *modem,
@@ -1803,7 +1881,7 @@ static int network_connect(struct connman_network *network)
 
 	DBG("%s network %p", modem->path, network);
 
-	return 0;
+	return context_set_active(modem);
 }
 
 static int network_disconnect(struct connman_network *network)
@@ -1812,7 +1890,7 @@ static int network_disconnect(struct connman_network *network)
 
 	DBG("%s network %p", modem->path, network);
 
-	return 0;
+	return context_set_inactive(modem);
 }
 
 static struct connman_network_driver network_driver = {
