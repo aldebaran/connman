@@ -115,6 +115,10 @@ struct modem_data {
 	/* SimManager Interface */
 	char *imsi;
 
+	/* Netreg Interface */
+	char *name;
+	uint8_t strength;
+
 	/* pending calls */
 	DBusPendingCall	*call_set_property;
 	DBusPendingCall	*call_get_properties;
@@ -1006,7 +1010,92 @@ static gboolean cm_context_removed(DBusConnection *connection,
 static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Name") == TRUE) {
+		char *name;
+
+		dbus_message_iter_get_basic(&value, &name);
+
+		DBG("%s Name %s", modem->path, name);
+
+		g_free(modem->name);
+		modem->name = g_strdup(name);
+	} else if (g_str_equal(key, "Strength") == TRUE) {
+		dbus_message_iter_get_basic(&value, &modem->strength);
+
+		DBG("%s Strength %d", modem->path, modem->strength);
+	}
+
 	return TRUE;
+}
+
+static void netreg_properties_reply(struct modem_data *modem,
+					DBusMessageIter *dict)
+{
+	DBG("%s", modem->path);
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Name") == TRUE) {
+			char *name;
+
+			dbus_message_iter_get_basic(&value, &name);
+
+			DBG("%s Name %s", modem->path, name);
+
+			g_free(modem->name);
+			modem->name = g_strdup(name);
+		} else if (g_str_equal(key, "Strength") == TRUE) {
+			dbus_message_iter_get_basic(&value, &modem->strength);
+
+			DBG("%s Strength %d", modem->path,
+				modem->strength);
+		}
+
+		dbus_message_iter_next(dict);
+	}
+
+	if (modem->context == NULL) {
+		/*
+		 * netgreg_get_properties() was issued after we got
+		 * cm_get_contexts_reply() where we create the
+		 * context. Though before we got the
+		 * netreg_properties_reply the context was removed
+		 * again. Therefore we have to skip the network
+		 * creation.
+		 */
+		return;
+	}
+}
+
+static int netreg_get_properties(struct modem_data *modem)
+{
+	return get_properties(modem->path, OFONO_NETREG_INTERFACE,
+			netreg_properties_reply, modem);
 }
 
 static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
@@ -1033,6 +1122,13 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &modem->attached);
 
 		DBG("%s Attached %d", modem->path, modem->attached);
+
+		if (modem->attached == TRUE) {
+			if (has_interface(modem->interfaces,
+						OFONO_API_NETREG) == TRUE) {
+				netreg_get_properties(modem);
+			}
+		}
 	} else if (g_str_equal(key, "Powered") == TRUE) {
 		dbus_message_iter_get_basic(&value, &modem->cm_powered);
 
@@ -1065,6 +1161,13 @@ static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
 
 			DBG("%s Attached %d", modem->path,
 				modem->attached);
+
+			if (modem->attached == TRUE) {
+				if (has_interface(modem->interfaces,
+						OFONO_API_NETREG) == TRUE) {
+					netreg_get_properties(modem);
+				}
+			}
 		} else if (g_str_equal(key, "Powered") == TRUE) {
 			dbus_message_iter_get_basic(&value, &modem->cm_powered);
 
@@ -1251,6 +1354,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 			if (modem->device != NULL) {
 				cm_get_properties(modem);
 				cm_get_contexts(modem);
+				return TRUE;
 			}
 		} else {
 			if (modem->context != NULL) {
@@ -1260,6 +1364,13 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 
 			if (modem->device != NULL)
 				destroy_device(modem);
+
+			return TRUE;
+		}
+
+		if (has_interface(modem->interfaces, OFONO_API_NETREG) == TRUE) {
+			if (modem->attached == TRUE)
+				netreg_get_properties(modem);
 		}
 	} else if (g_str_equal(key, "Serial") == TRUE) {
 		char *serial;
@@ -1379,6 +1490,7 @@ static void remove_modem(gpointer data)
 		remove_cm_context(modem, modem->context->path);
 
 	g_free(modem->serial);
+	g_free(modem->name);
 	g_free(modem->imsi);
 	g_free(modem->path);
 
