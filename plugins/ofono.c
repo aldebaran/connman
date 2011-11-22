@@ -53,6 +53,7 @@
 #define CONTEXT_ADDED			"ContextAdded"
 #define CONTEXT_REMOVED			"ContextRemoved"
 
+#define GET_PROPERTIES			"GetProperties"
 #define SET_PROPERTY			"SetProperty"
 #define GET_MODEMS			"GetModems"
 
@@ -79,12 +80,18 @@ struct modem_data {
 
 	connman_bool_t set_powered;
 
+	/* SimManager Interface */
+	char *imsi;
+
 	/* pending calls */
 	DBusPendingCall	*call_set_property;
+	DBusPendingCall	*call_get_properties;
 };
 
 typedef void (*set_property_cb)(struct modem_data *data,
 				connman_bool_t success);
+typedef void (*get_properties_cb)(struct modem_data *data,
+				DBusMessageIter *dict);
 
 struct property_info {
 	struct modem_data *modem;
@@ -92,6 +99,7 @@ struct property_info {
 	const char *interface;
 	const char *property;
 	set_property_cb set_property_cb;
+	get_properties_cb get_properties_cb;
 };
 
 static void set_property_reply(DBusPendingCall *call, void *user_data)
@@ -184,6 +192,99 @@ static int set_property(struct modem_data *modem,
 	return -EINPROGRESS;
 }
 
+static void get_properties_reply(DBusPendingCall *call, void *user_data)
+{
+	struct property_info *info = user_data;
+	DBusMessageIter array, dict;
+	DBusMessage *reply;
+	DBusError error;
+
+	DBG("%s path %s %s", info->modem->path, info->path, info->interface);
+
+	info->modem->call_get_properties = NULL;
+
+	dbus_error_init(&error);
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("Failed to get properties: %s %s: %s %s",
+				info->path, info->interface,
+				error.name, error.message);
+		dbus_error_free(&error);
+
+		goto done;
+	}
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	if (info->get_properties_cb != NULL)
+		(*info->get_properties_cb)(info->modem, &dict);
+
+done:
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static int get_properties(const char *path, const char *interface,
+				get_properties_cb notify,
+				struct modem_data *modem)
+{
+	DBusMessage *message;
+	struct property_info *info;
+
+	DBG("%s path %s %s", modem->path, path, interface);
+
+	if (modem->call_get_properties != NULL) {
+		connman_error("Pending GetProperties");
+		return -EBUSY;
+	}
+
+	message = dbus_message_new_method_call(OFONO_SERVICE, path,
+					interface, GET_PROPERTIES);
+	if (message == NULL)
+		return -ENOMEM;
+
+	if (dbus_connection_send_with_reply(connection, message,
+			&modem->call_get_properties, TIMEOUT) == FALSE) {
+		connman_error("Failed to call %s.GetProperties()", interface);
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (modem->call_get_properties == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	info = g_try_new0(struct property_info, 1);
+	if (info == NULL) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	info->modem = modem;
+	info->path = path;
+	info->interface = interface;
+	info->get_properties_cb = notify;
+
+	dbus_pending_call_set_notify(modem->call_get_properties,
+					get_properties_reply, info, g_free);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
 static int modem_set_powered(struct modem_data *modem)
 {
 	DBG("%s", modem->path);
@@ -195,6 +296,15 @@ static int modem_set_powered(struct modem_data *modem)
 				"Powered", DBUS_TYPE_BOOLEAN,
 				&modem->set_powered,
 				NULL);
+}
+
+static connman_bool_t has_interface(uint8_t interfaces,
+					enum ofono_api api)
+{
+	if ((interfaces & api) == api)
+		return TRUE;
+
+	return FALSE;
 }
 
 static uint8_t extract_interfaces(DBusMessageIter *array)
@@ -255,10 +365,82 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
+static void update_sim_imsi(struct modem_data *modem,
+				const char *imsi)
+{
+	DBG("%s imsi %s", modem->path, imsi);
+
+	if (g_strcmp0(modem->imsi, imsi) == 0)
+		return;
+
+	g_free(modem->imsi);
+	modem->imsi = g_strdup(imsi);
+}
+
 static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
+		char *imsi;
+
+		dbus_message_iter_get_basic(&value, &imsi);
+
+		update_sim_imsi(modem, imsi);
+	}
+
 	return TRUE;
+}
+
+static void sim_properties_reply(struct modem_data *modem,
+					DBusMessageIter *dict)
+{
+	DBG("%s", modem->path);
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
+			char *imsi;
+
+			dbus_message_iter_get_basic(&value, &imsi);
+
+			update_sim_imsi(modem, imsi);
+
+			return;
+		}
+
+		dbus_message_iter_next(dict);
+	}
+}
+
+static int sim_get_properties(struct modem_data *modem)
+{
+	return get_properties(modem->path, OFONO_SIM_INTERFACE,
+			sim_properties_reply, modem);
 }
 
 static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
@@ -297,6 +479,18 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 
 		DBG("%s Interfaces 0x%02x", modem->path,
 			modem->interfaces);
+
+		if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE) {
+			if (modem->imsi == NULL &&
+					modem->set_powered == FALSE) {
+				/*
+				 * Only use do GetProperties() when
+				 * device has not been powered up.
+				 */
+				sim_get_properties(modem);
+				return TRUE;
+			}
+		}
 	} else if (g_str_equal(key, "Serial") == TRUE) {
 		char *serial;
 
@@ -372,6 +566,8 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 
 	if (modem->powered == FALSE)
 		modem_set_powered(modem);
+	else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE)
+		sim_get_properties(modem);
 }
 
 static void remove_modem(gpointer data)
@@ -383,7 +579,11 @@ static void remove_modem(gpointer data)
 	if (modem->call_set_property != NULL)
 		dbus_pending_call_cancel(modem->call_set_property);
 
+	if (modem->call_get_properties != NULL)
+		dbus_pending_call_cancel(modem->call_get_properties);
+
 	g_free(modem->serial);
+	g_free(modem->imsi);
 	g_free(modem->path);
 
 	g_free(modem);
