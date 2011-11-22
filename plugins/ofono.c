@@ -69,6 +69,21 @@ enum ofono_api {
 	OFONO_API_CM =		0x4,
 };
 
+/*
+ * The way this plugin works is following:
+ *
+ *   powered -> SubscriberIdentity or Online = True -> gprs, context ->
+ *     attached -> netreg -> ready
+ *
+ * Enabling and disabling modems are steered through the rfkill
+ * interface. That means when ConnMan toggles the rfkill bit oFono
+ * will add or remove the modems.
+ *
+ * ConnMan will always power up (set Powered and Online) the
+ * modems. No need to power them down because this will be done
+ * through the rfkill inteface.
+ */
+
 static DBusConnection *connection;
 
 static GHashTable *modem_hash;
