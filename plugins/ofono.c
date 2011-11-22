@@ -79,6 +79,7 @@ struct modem_data {
 	uint8_t interfaces;
 
 	connman_bool_t set_powered;
+	connman_bool_t set_online;
 
 	/* SimManager Interface */
 	char *imsi;
@@ -285,6 +286,35 @@ static int get_properties(const char *path, const char *interface,
 	return -EINPROGRESS;
 }
 
+static void modem_set_online_reply(struct modem_data *modem,
+					connman_bool_t success)
+{
+	DBG("%s", modem->path);
+
+	if (success == TRUE) {
+		/*
+		 * Don't handle do anything on success here. oFono will send
+		 * the change via PropertyChanged singal.
+		 */
+		return;
+	}
+
+	modem->set_online = FALSE;
+}
+
+static int modem_set_online(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	modem->set_online = TRUE;
+
+	return set_property(modem, modem->path,
+				OFONO_MODEM_INTERFACE,
+				"Online", DBUS_TYPE_BOOLEAN,
+				&modem->set_online,
+				modem_set_online_reply);
+}
+
 static int modem_set_powered(struct modem_data *modem)
 {
 	DBG("%s", modem->path);
@@ -403,6 +433,9 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &imsi);
 
 		update_sim_imsi(modem, imsi);
+
+		if (modem->online == FALSE)
+			modem_set_online(modem);
 	}
 
 	return TRUE;
@@ -429,6 +462,11 @@ static void sim_properties_reply(struct modem_data *modem,
 			dbus_message_iter_get_basic(&value, &imsi);
 
 			update_sim_imsi(modem, imsi);
+
+			if (modem->online == FALSE) {
+				modem_set_online(modem);
+				break;
+			}
 
 			return;
 		}
