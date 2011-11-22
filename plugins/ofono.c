@@ -91,6 +91,7 @@ struct modem_data {
 	char *path;
 
 	struct connman_device *device;
+	struct connman_network *network;
 
 	struct network_context *context;
 
@@ -125,6 +126,20 @@ struct modem_data {
 	DBusPendingCall *call_get_contexts;
 };
 
+static char *get_ident(const char *path)
+{
+	char *pos;
+
+	if (*path != '/')
+		return NULL;
+
+	pos = strrchr(path, '/');
+	if (pos == NULL)
+		return NULL;
+
+	return pos + 1;
+}
+
 static struct network_context *network_context_alloc(const char *path)
 {
 	struct network_context *context;
@@ -158,6 +173,44 @@ static void network_context_free(struct network_context *context)
 	g_free(context->ipv6_nameservers);
 
 	free(context);
+}
+
+static void set_connected(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	connman_network_set_index(modem->network, modem->context->index);
+
+	switch (modem->context->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		return;
+
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+		connman_network_set_ipv4_method(modem->network,
+						modem->context->method);
+		connman_network_set_ipaddress(modem->network,
+						modem->context->address);
+		connman_network_set_nameservers(modem->network,
+					modem->context->nameservers);
+		break;
+
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+		connman_network_set_ipv4_method(modem->network,
+						modem->context->method);
+		break;
+	}
+
+	connman_network_set_connected(modem->network, TRUE);
+}
+
+static void set_disconnected(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	connman_network_set_connected(modem->network, FALSE);
 }
 
 typedef void (*set_property_cb)(struct modem_data *data,
@@ -738,10 +791,58 @@ static void destroy_device(struct modem_data *modem)
 
 	connman_device_set_powered(modem->device, FALSE);
 
+	if (modem->network != NULL) {
+		connman_device_remove_network(modem->device, modem->network);
+		connman_network_unref(modem->network);
+		modem->network = NULL;
+	}
+
 	connman_device_unregister(modem->device);
 	connman_device_unref(modem->device);
 
 	modem->device = NULL;
+}
+
+static void add_network(struct modem_data *modem)
+{
+	const char *group;
+
+	DBG("%s", modem->path);
+
+	if (modem->network != NULL)
+		return;
+
+	modem->network = connman_network_create(modem->context->path,
+						CONNMAN_NETWORK_TYPE_CELLULAR);
+	if (modem->network == NULL)
+		return;
+
+	DBG("network %p", modem->network);
+
+	connman_network_set_data(modem->network, modem);
+
+	connman_network_set_string(modem->network, "Path",
+					modem->context->path);
+
+	connman_network_set_index(modem->network, modem->context->index);
+
+	if (modem->name != NULL)
+		connman_network_set_name(modem->network, modem->name);
+	else
+		connman_network_set_name(modem->network, "");
+
+	connman_network_set_strength(modem->network, modem->strength);
+
+	group = get_ident(modem->context->path);
+	connman_network_set_group(modem->network, group);
+
+	connman_network_set_available(modem->network, TRUE);
+
+	if (connman_device_add_network(modem->device, modem->network) < 0) {
+		connman_network_unref(modem->network);
+		modem->network = NULL;
+		return;
+	}
 }
 
 static int add_cm_context(struct modem_data *modem, const char *context_path,
@@ -862,6 +963,11 @@ static gboolean context_changed(DBusConnection *connection,
 		dbus_message_iter_get_basic(&value, &modem->active);
 
 		DBG("%s Active %d", modem->path, modem->active);
+
+		if (modem->active == TRUE)
+			set_connected(modem);
+		else
+			set_disconnected(modem);
 	}
 
 	return TRUE;
@@ -1036,10 +1142,22 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 
 		g_free(modem->name);
 		modem->name = g_strdup(name);
+
+		if (modem->network == NULL)
+			return TRUE;
+
+		connman_network_set_name(modem->network, modem->name);
+		connman_network_update(modem->network);
 	} else if (g_str_equal(key, "Strength") == TRUE) {
 		dbus_message_iter_get_basic(&value, &modem->strength);
 
 		DBG("%s Strength %d", modem->path, modem->strength);
+
+		if (modem->network == NULL)
+			return TRUE;
+
+		connman_network_set_strength(modem->network, modem->strength);
+		connman_network_update(modem->network);
 	}
 
 	return TRUE;
@@ -1069,11 +1187,23 @@ static void netreg_properties_reply(struct modem_data *modem,
 
 			g_free(modem->name);
 			modem->name = g_strdup(name);
+
+			if (modem->network != NULL) {
+				connman_network_set_name(modem->network,
+								modem->name);
+				connman_network_update(modem->network);
+			}
 		} else if (g_str_equal(key, "Strength") == TRUE) {
 			dbus_message_iter_get_basic(&value, &modem->strength);
 
 			DBG("%s Strength %d", modem->path,
 				modem->strength);
+
+			if (modem->network != NULL) {
+				connman_network_set_strength(modem->network,
+							modem->strength);
+				connman_network_update(modem->network);
+			}
 		}
 
 		dbus_message_iter_next(dict);
@@ -1090,6 +1220,11 @@ static void netreg_properties_reply(struct modem_data *modem,
 		 */
 		return;
 	}
+
+	add_network(modem);
+
+	if (modem->active == TRUE)
+		set_connected(modem);
 }
 
 static int netreg_get_properties(struct modem_data *modem)
@@ -1648,26 +1783,34 @@ static void ofono_disconnect(DBusConnection *conn, void *user_data)
 
 static int network_probe(struct connman_network *network)
 {
-	DBG("network %p", network);
+	struct modem_data *modem = connman_network_get_data(network);
+
+	DBG("%s network %p", modem->path, network);
 
 	return 0;
 }
 
 static void network_remove(struct connman_network *network)
 {
-	DBG("network %p", network);
+	struct modem_data *modem = connman_network_get_data(network);
+
+	DBG("%s network %p", modem->path, network);
 }
 
 static int network_connect(struct connman_network *network)
 {
-	DBG("network %p", network);
+	struct modem_data *modem = connman_network_get_data(network);
+
+	DBG("%s network %p", modem->path, network);
 
 	return 0;
 }
 
 static int network_disconnect(struct connman_network *network)
 {
-	DBG("network %p", network);
+	struct modem_data *modem = connman_network_get_data(network);
+
+	DBG("%s network %p", modem->path, network);
 
 	return 0;
 }
