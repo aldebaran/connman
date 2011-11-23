@@ -1410,7 +1410,7 @@ int connman_network_set_nameservers(struct connman_network *network,
 
 	for (i = 0; nameservers_array[i] != NULL; i++) {
 		__connman_service_nameserver_append(service,
-						nameservers_array[i]);
+						nameservers_array[i], FALSE);
 	}
 
 	g_strfreev(nameservers_array);

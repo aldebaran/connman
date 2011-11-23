@@ -87,6 +87,7 @@ struct connman_service {
 	struct connman_provider *provider;
 	char **nameservers;
 	char **nameservers_config;
+	char **nameservers_auto;
 	char **domains;
 	char *domainname;
 	char **timeservers;
@@ -836,8 +837,6 @@ static void update_nameservers(struct connman_service *service)
 		break;
 	}
 
-	connman_resolver_remove_all(ifname);
-
 	if (service->nameservers_config != NULL) {
 		int i;
 
@@ -866,63 +865,95 @@ static void update_nameservers(struct connman_service *service)
 	connman_resolver_flush();
 }
 
+/*
+ * The is_auto variable is set to true when IPv6 autoconf nameservers are
+ * inserted to resolver via netlink message (see rtnl.c:rtnl_newnduseropt()
+ * for details) and not through service.c
+ */
 int __connman_service_nameserver_append(struct connman_service *service,
-						const char *nameserver)
+				const char *nameserver, gboolean is_auto)
 {
-	int len;
+	char **nameservers;
+	int len, i;
 
-	DBG("service %p nameserver %s",	service, nameserver);
+	DBG("service %p nameserver %s auto %d",	service, nameserver, is_auto);
 
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	if (service->nameservers != NULL) {
-		int i;
+	if (is_auto == TRUE)
+		nameservers = service->nameservers_auto;
+	else
+		nameservers = service->nameservers;
 
-		for (i = 0; service->nameservers[i] != NULL; i++)
-			if (g_strcmp0(service->nameservers[i], nameserver) == 0)
-				return -EEXIST;
+	for (i = 0; nameservers != NULL && nameservers[i] != NULL; i++)
+		if (g_strcmp0(nameservers[i], nameserver) == 0)
+			return -EEXIST;
 
-		len = g_strv_length(service->nameservers);
-		service->nameservers = g_try_renew(char *, service->nameservers,
-							len + 2);
+	if (nameservers != NULL) {
+		len = g_strv_length(nameservers);
+		nameservers = g_try_renew(char *, nameservers, len + 2);
 	} else {
 		len = 0;
-		service->nameservers = g_try_new0(char *, len + 2);
+		nameservers = g_try_new0(char *, len + 2);
 	}
 
-	if (service->nameservers == NULL)
+	if (nameservers == NULL)
 		return -ENOMEM;
 
-	service->nameservers[len] = g_strdup(nameserver);
-	service->nameservers[len + 1] = NULL;
+	nameservers[len] = g_strdup(nameserver);
+	if (nameservers[len] == NULL)
+		return -ENOMEM;
 
-	update_nameservers(service);
+	nameservers[len + 1] = NULL;
+
+	if (is_auto == TRUE) {
+		service->nameservers_auto = nameservers;
+	} else {
+		service->nameservers = nameservers;
+		update_nameservers(service);
+	}
 
 	return 0;
 }
 
 int __connman_service_nameserver_remove(struct connman_service *service,
-						const char *nameserver)
+				const char *nameserver, gboolean is_auto)
 {
-	char **servers;
+	char **servers, **nameservers;
+	gboolean found = FALSE;
 	int len, i, j;
 
-	DBG("service %p nameserver %s", service, nameserver);
+	DBG("service %p nameserver %s auto %d", service, nameserver, is_auto);
 
 	if (nameserver == NULL)
 		return -EINVAL;
 
-	if (service->nameservers == NULL)
+	if (is_auto == TRUE)
+		nameservers = service->nameservers_auto;
+	else
+		nameservers = service->nameservers;
+
+	if (nameservers == NULL)
 		return 0;
 
-	len = g_strv_length(service->nameservers);
-	if (len == 1) {
-		if (g_strcmp0(service->nameservers[0], nameserver) != 0)
-			return 0;
+	for (i = 0; nameservers != NULL && nameservers[i] != NULL; i++)
+		if (g_strcmp0(nameservers[i], nameserver) == 0) {
+			found = TRUE;
+			break;
+		}
 
-		g_strfreev(service->nameservers);
-		service->nameservers = NULL;
+	if (found == FALSE)
+		return 0;
+
+	len = g_strv_length(nameservers);
+
+	if (len == 1) {
+		g_strfreev(nameservers);
+		if (is_auto == TRUE)
+			service->nameservers_auto = NULL;
+		else
+			service->nameservers = NULL;
 
 		return 0;
 	}
@@ -932,17 +963,24 @@ int __connman_service_nameserver_remove(struct connman_service *service,
 		return -ENOMEM;
 
 	for (i = 0, j = 0; i < len; i++) {
-		if (g_strcmp0(service->nameservers[i], nameserver) != 0) {
-			servers[j] = g_strdup(service->nameservers[i]);
+		if (g_strcmp0(nameservers[i], nameserver) != 0) {
+			servers[j] = g_strdup(nameservers[i]);
+			if (servers[j] == NULL)
+				return -ENOMEM;
 			j++;
 		}
 	}
 	servers[len - 1] = NULL;
 
-	g_strfreev(service->nameservers);
-	service->nameservers = servers;
+	g_strfreev(nameservers);
+	nameservers = servers;
 
-	update_nameservers(service);
+	if (is_auto == TRUE) {
+		service->nameservers_auto = nameservers;
+	} else {
+		service->nameservers = nameservers;
+		update_nameservers(service);
+	}
 
 	return 0;
 }
@@ -1422,9 +1460,12 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 	if (service->nameservers_config != NULL) {
 		append_nameserver(iter, &service->nameservers_config);
 		return;
-	} else if (service->nameservers != NULL) {
-		append_nameserver(iter, &service->nameservers);
-		return;
+	} else {
+		if (service->nameservers != NULL)
+			append_nameserver(iter, &service->nameservers);
+
+		if (service->nameservers_auto != NULL)
+			append_nameserver(iter, &service->nameservers_auto);
 	}
 }
 
@@ -3422,6 +3463,7 @@ static void service_free(gpointer user_data)
 
 	g_strfreev(service->nameservers);
 	g_strfreev(service->nameservers_config);
+	g_strfreev(service->nameservers_auto);
 	g_strfreev(service->domains);
 	g_strfreev(service->proxies);
 	g_strfreev(service->excludes);

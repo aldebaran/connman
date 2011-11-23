@@ -498,9 +498,9 @@ void __connman_service_provision_changed(const char *ident);
 const char *__connman_service_type2string(enum connman_service_type type);
 
 int __connman_service_nameserver_append(struct connman_service *service,
-					const char *nameserver);
+				const char *nameserver, gboolean is_auto);
 int __connman_service_nameserver_remove(struct connman_service *service,
-					const char *nameserver);
+				const char *nameserver, gboolean is_auto);
 void __connman_service_nameserver_clear(struct connman_service *service);
 void __connman_service_nameserver_add_routes(struct connman_service *service,
 						const char *gw);

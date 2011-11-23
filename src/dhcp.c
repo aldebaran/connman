@@ -99,7 +99,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	if (dhcp->nameservers != NULL) {
 		for (i = 0; dhcp->nameservers[i] != NULL; i++) {
 			__connman_service_nameserver_remove(service,
-							dhcp->nameservers[i]);
+						dhcp->nameservers[i], FALSE);
 		}
 	}
 
@@ -275,7 +275,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		if (dhcp->nameservers != NULL) {
 			for (i = 0; dhcp->nameservers[i] != NULL; i++) {
 				__connman_service_nameserver_remove(service,
-							dhcp->nameservers[i]);
+						dhcp->nameservers[i], FALSE);
 			}
 			g_strfreev(dhcp->nameservers);
 		}
@@ -284,7 +284,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 		for (i = 0; dhcp->nameservers[i] != NULL; i++) {
 			__connman_service_nameserver_append(service,
-							dhcp->nameservers[i]);
+						dhcp->nameservers[i], FALSE);
 		}
 	} else {
 		g_strfreev(nameservers);
