@@ -279,6 +279,7 @@ static int append_query(unsigned char *buf, unsigned int size,
 {
 	unsigned char *ptr = buf;
 	char *offset;
+	int len;
 
 	DBG("query %s domain %s", query, domain);
 
@@ -288,11 +289,12 @@ static int append_query(unsigned char *buf, unsigned int size,
 
 		tmp = strchr(offset, '.');
 		if (tmp == NULL) {
-			if (strlen(offset) == 0)
+			len = strlen(offset);
+			if (len == 0)
 				break;
-			*ptr = strlen(offset);
-			memcpy(ptr + 1, offset, strlen(offset));
-			ptr += strlen(offset) + 1;
+			*ptr = len;
+			memcpy(ptr + 1, offset, len);
+			ptr += len + 1;
 			break;
 		}
 
@@ -309,11 +311,12 @@ static int append_query(unsigned char *buf, unsigned int size,
 
 		tmp = strchr(offset, '.');
 		if (tmp == NULL) {
-			if (strlen(offset) == 0)
+			len = strlen(offset);
+			if (len == 0)
 				break;
-			*ptr = strlen(offset);
-			memcpy(ptr + 1, offset, strlen(offset));
-			ptr += strlen(offset) + 1;
+			*ptr = len;
+			memcpy(ptr + 1, offset, len);
+			ptr += len + 1;
 			break;
 		}
 
