@@ -387,7 +387,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 		memcpy(alt + offset + altlen,
 			request + offset + altlen - domlen,
-				req->request_len - altlen + domlen);
+				req->request_len - altlen - offset + domlen);
 
 		if (server->protocol == IPPROTO_TCP) {
 			int req_len = req->request_len + domlen - 2;
