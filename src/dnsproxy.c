@@ -387,13 +387,13 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 				req->request_len - altlen + domlen);
 
 		if (server->protocol == IPPROTO_TCP) {
-			int req_len = req->request_len + domlen - 1;
+			int req_len = req->request_len + domlen - 2;
 
 			alt[0] = (req_len >> 8) & 0xff;
 			alt[1] = req_len & 0xff;
 		}
 
-		err = send(sk, alt, req->request_len + domlen + 1, 0);
+		err = send(sk, alt, req->request_len + domlen, 0);
 		if (err < 0)
 			return -EIO;
 
