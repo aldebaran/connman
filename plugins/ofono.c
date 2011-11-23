@@ -100,6 +100,7 @@ struct modem_data {
 	connman_bool_t powered;
 	connman_bool_t online;
 	uint8_t interfaces;
+	connman_bool_t ignore;
 
 	connman_bool_t set_powered;
 	connman_bool_t set_online;
@@ -1216,6 +1217,9 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 	if (modem == NULL)
 		return TRUE;
 
+	if (modem->ignore == TRUE)
+		return TRUE;
+
 	if (dbus_message_iter_init(message, &iter) == FALSE)
 		return TRUE;
 
@@ -1336,6 +1340,9 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 	if (modem == NULL)
 		return TRUE;
 
+	if (modem->ignore == TRUE)
+		return TRUE;
+
 	if (dbus_message_iter_init(message, &iter) == FALSE)
 		return TRUE;
 
@@ -1438,6 +1445,9 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 	if (modem == NULL)
 		return TRUE;
 
+	if (modem->ignore == TRUE)
+		return TRUE;
+
 	if (dbus_message_iter_init(message, &iter) == FALSE)
 		return TRUE;
 
@@ -1523,6 +1533,9 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 
 	modem = g_hash_table_lookup(modem_hash, path);
 	if (modem == NULL)
+		return TRUE;
+
+	if (modem->ignore == TRUE)
 		return TRUE;
 
 	if (dbus_message_iter_init(message, &iter) == FALSE)
@@ -1675,10 +1688,23 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 			modem->serial = g_strdup(serial);
 
 			DBG("%s Serial %s", modem->path, modem->serial);
+		} else if (g_str_equal(key, "Type") == TRUE) {
+			char *type;
+
+			dbus_message_iter_get_basic(&value, &type);
+
+			DBG("%s Type %s", modem->path, type);
+			if (g_strcmp0(type, "hardware") != 0) {
+				DBG("%s Ignore this modem", modem->path);
+				modem->ignore = TRUE;
+			}
 		}
 
 		dbus_message_iter_next(prop);
 	}
+
+	if (modem->ignore == TRUE)
+		return;
 
 	if (modem->powered == FALSE) {
 		modem_set_powered(modem);
@@ -1699,6 +1725,9 @@ static void modem_power_down(gpointer key, gpointer value, gpointer user_data)
 	struct modem_data *modem = value;
 
 	DBG("%s", modem->path);
+
+	if (modem->ignore ==  TRUE)
+		return;
 
 	modem_set_unpowered(modem);
 }
