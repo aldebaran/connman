@@ -1,3 +1,43 @@
+ver 0.77.4
+	ofono: Don't set network index when device is removed
+	service: network_created is set only for hidden services
+	network: connman_network_set_nameservers() handle NULL argument correctly
+	notifier: Remove service from hash in error case
+	network: Call indicate error function in error case
+	tethering: Use already existing 'tether' bridge interface
+	build: Create src/builtin.h via BUILT_SOURCES
+	tools: Fix compilation in MeeGo
+	core: Fix compilation in MeeGo
+	plugins: Fix compilation in MeeGo
+	tools: Add SOCK_CLOEXEC to socket()
+	core: Add SOCK_CLOEXEC to socket()
+	plugins: Add SOCK_CLOEXEC to socket()
+	gweb: Add SOCK_CLOEXEC to socket()
+	gdhcp: Add SOCK_CLOEXEC to socket()
+	core: Add O_CLOEXEC to open()
+	plugins: Add O_CLOEXEC to open()
+	tools: Add O_CLOEXEC to open()
+	network: Fix failed to reconnect to 3G network when connect failed
+	bluetooth: Cleanup if technology driver register fails
+	Handle erroneous disconnection after 4way-handshake
+	gsupplicant: Add a function to enable or disable the selected network
+	network: Check device pointer when doing IPv6 autoconf
+	network: Disconnect network properly
+	inet: Cleanup the router solicitations handler properly
+	inet: Fix file descriptor leak when comparing subnets
+	gdhcp: Possible file descriptor leak
+	service: Remove the gateways when removing the service
+	service: Activate loose mode routing
+	ipconfig: Set/unset IPv4 rp_filter setting
+	wpad: Reference count service properly
+	dhcp: Reference count network properly
+	inet: Cleanup router solicitation callback properly after error
+	notifier: Don't unnecessarily report "online" state on disconnect
+	dnsproxy: Fix can't resolv hostname
+	service: Update service order when changing the favorite flag
+	service: Call __connman_service_disconnect from remove_service
+	ipconfig: Show IPv4.Configuration properties for FIXED
+
 ver 0.77.3
 	wifi: Add NULL checks in interface create and remove
 	wifi: Device reference counting fix on scan
