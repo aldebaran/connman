@@ -87,6 +87,9 @@ struct modem_data {
 
 	/* ConnectionManager Interface */
 	connman_bool_t attached;
+	connman_bool_t cm_powered;
+
+	connman_bool_t set_cm_powered;
 
 	/* SimManager Interface */
 	char *imsi;
@@ -322,6 +325,35 @@ static int modem_set_online(struct modem_data *modem)
 				modem_set_online_reply);
 }
 
+static void cm_set_powered_reply(struct modem_data *modem,
+					connman_bool_t success)
+{
+	DBG("%s", modem->path);
+
+	if (success == TRUE) {
+		/*
+		 * Don't handle do anything on success here. oFono will send
+		 * the change via PropertyChanged singal.
+		 */
+		return;
+	}
+
+	modem->set_cm_powered = FALSE;
+}
+
+static int cm_set_powered(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	modem->set_cm_powered = TRUE;
+
+	return set_property(modem, modem->path,
+				OFONO_CM_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN,
+				&modem->set_cm_powered,
+				cm_set_powered_reply);
+}
+
 static int modem_set_powered(struct modem_data *modem)
 {
 	DBG("%s", modem->path);
@@ -498,6 +530,14 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &modem->attached);
 
 		DBG("%s Attached %d", modem->path, modem->attached);
+	} else if (g_str_equal(key, "Powered") == TRUE) {
+		dbus_message_iter_get_basic(&value, &modem->cm_powered);
+
+		DBG("%s ConnnectionManager Powered %d", modem->path,
+			modem->cm_powered);
+
+		if (modem->cm_powered == FALSE)
+			cm_set_powered(modem);
 	}
 
 	return TRUE;
@@ -522,8 +562,14 @@ static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
 
 			DBG("%s Attached %d", modem->path,
 				modem->attached);
+		} else if (g_str_equal(key, "Powered") == TRUE) {
+			dbus_message_iter_get_basic(&value, &modem->cm_powered);
 
-			return;
+			DBG("%s ConnnectionManager Powered %d", modem->path,
+				modem->cm_powered);
+
+			if (modem->cm_powered == FALSE)
+				cm_set_powered(modem);
 		}
 
 		dbus_message_iter_next(dict);
