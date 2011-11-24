@@ -29,6 +29,7 @@
 
 #include <gdbus.h>
 #include <string.h>
+#include <stdint.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
@@ -56,13 +57,50 @@
 
 #define TIMEOUT 40000
 
+enum ofono_api {
+	OFONO_API_SIM =		0x1,
+	OFONO_API_NETREG =	0x2,
+	OFONO_API_CM =		0x4,
+};
+
 static DBusConnection *connection;
 
 static GHashTable *modem_hash;
 
 struct modem_data {
 	char *path;
+
+	/* Modem Interface */
+	char *serial;
+	connman_bool_t powered;
+	connman_bool_t online;
+	uint8_t interfaces;
 };
+
+static uint8_t extract_interfaces(DBusMessageIter *array)
+{
+	DBusMessageIter entry;
+	uint8_t interfaces = 0;
+
+	dbus_message_iter_recurse(array, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *name;
+
+		dbus_message_iter_get_basic(&entry, &name);
+
+		if (g_str_equal(name, OFONO_SIM_INTERFACE) == TRUE)
+			interfaces |= OFONO_API_SIM;
+		else if (g_str_equal(name, OFONO_NETREG_INTERFACE) == TRUE)
+			interfaces |= OFONO_API_NETREG;
+		else if (g_str_equal(name, OFONO_CM_INTERFACE) == TRUE)
+			interfaces |= OFONO_API_CM;
+
+		dbus_message_iter_next(&entry);
+	}
+
+	return interfaces;
+}
 
 static gboolean context_changed(DBusConnection *connection,
 				DBusMessage *message,
@@ -106,6 +144,47 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Powered") == TRUE) {
+		dbus_message_iter_get_basic(&value, &modem->powered);
+
+		DBG("%s Powered %d", modem->path, modem->powered);
+	} else if (g_str_equal(key, "Online") == TRUE) {
+		dbus_message_iter_get_basic(&value, &modem->online);
+
+		DBG("%s Online %d", modem->path, modem->online);
+	} else if (g_str_equal(key, "Interfaces") == TRUE) {
+		modem->interfaces = extract_interfaces(&value);
+
+		DBG("%s Interfaces 0x%02x", modem->path,
+			modem->interfaces);
+	} else if (g_str_equal(key, "Serial") == TRUE) {
+		char *serial;
+
+		dbus_message_iter_get_basic(&value, &serial);
+
+		g_free(modem->serial);
+		modem->serial = g_strdup(serial);
+
+		DBG("%s Serial %s", modem->path, modem->serial);
+	}
+
 	return TRUE;
 }
 
@@ -132,6 +211,41 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	modem->path = g_strdup(path);
 
 	g_hash_table_insert(modem_hash, g_strdup(path), modem);
+
+	while (dbus_message_iter_get_arg_type(prop) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(prop, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Powered") == TRUE) {
+			dbus_message_iter_get_basic(&value, &modem->powered);
+
+			DBG("%s Powered %d", modem->path, modem->powered);
+		} else if (g_str_equal(key, "Online") == TRUE) {
+			dbus_message_iter_get_basic(&value, &modem->online);
+
+			DBG("%s Online %d", modem->path, modem->online);
+		} else if (g_str_equal(key, "Interfaces") == TRUE) {
+			modem->interfaces = extract_interfaces(&value);
+
+			DBG("%s Interfaces 0x%02x", modem->path,
+				modem->interfaces);
+		} else if (g_str_equal(key, "Serial") == TRUE) {
+			char *serial;
+
+			dbus_message_iter_get_basic(&value, &serial);
+			modem->serial = g_strdup(serial);
+
+			DBG("%s Serial %s", modem->path, modem->serial);
+		}
+
+		dbus_message_iter_next(prop);
+	}
 }
 
 static void remove_modem(gpointer data)
@@ -140,6 +254,7 @@ static void remove_modem(gpointer data)
 
 	DBG("%s", modem->path);
 
+	g_free(modem->serial);
 	g_free(modem->path);
 
 	g_free(modem);
