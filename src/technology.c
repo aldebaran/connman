@@ -848,7 +848,6 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 	}
 
 	if (msg != NULL) {
-		technology->pending_reply = dbus_message_ref(msg);
 		/*
 		 * This is a bit of a trick. When msg is not NULL it means
 		 * thats technology_enable was invoked from the manager API. Hence we save
@@ -881,14 +880,17 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 	}
 
 done:
-	if (ret == 0)
+	if (ret == 0) {
+		g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
 		return ret;
+	}
 
 	if (msg != NULL) {
-		if (err == -EINPROGRESS)
+		if (err == -EINPROGRESS) {
+			technology->pending_reply = dbus_message_ref(msg);
 			technology->pending_timeout = g_timeout_add_seconds(10,
 					technology_pending_reply, technology);
-		else {
+		} else {
 			reply = __connman_error_failed(msg, -err);
 			if (reply != NULL)
 				g_dbus_send_message(connection, reply);
@@ -949,7 +951,6 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 		set_tethering(technology, FALSE);
 
 	if (msg != NULL) {
-		technology->pending_reply = dbus_message_ref(msg);
 		technology->enable_persistent = FALSE;
 		save_state(technology);
 	}
@@ -965,14 +966,17 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 	}
 
 done:
-	if (ret == 0)
+	if (ret == 0) {
+		g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
 		return ret;
+	}
 
 	if (msg != NULL) {
-		if (err == -EINPROGRESS)
+		if (err == -EINPROGRESS) {
+			technology->pending_reply = dbus_message_ref(msg);
 			technology->pending_timeout = g_timeout_add_seconds(10,
 					technology_pending_reply, technology);
-		else {
+		} else {
 			reply = __connman_error_failed(msg, -err);
 			if (reply != NULL)
 				g_dbus_send_message(connection, reply);
