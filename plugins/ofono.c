@@ -528,13 +528,11 @@ static void set_active_reply(DBusPendingCall *call, void *user_data)
 		connman_error("SetProperty(Active) %s %s",
 				error.name, error.message);
 
-		if (connman_network_get_index(info->network) < 0)
-			connman_network_set_error(info->network,
+		connman_network_set_error(info->network,
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 
 		dbus_error_free(&error);
-	} else if (connman_network_get_index(info->network) >= 0)
-		set_connected(info, TRUE);
+	}
 
 done:
 	dbus_message_unref(reply);
