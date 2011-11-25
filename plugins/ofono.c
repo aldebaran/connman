@@ -38,6 +38,8 @@
 #include <connman/dbus.h>
 #include <connman/log.h>
 
+#define uninitialized_var(x) x = x
+
 #define OFONO_SERVICE			"org.ofono"
 
 #define OFONO_MANAGER_INTERFACE		OFONO_SERVICE ".Manager"
@@ -71,6 +73,8 @@ static GHashTable *modem_hash;
 
 struct modem_data {
 	char *path;
+
+	struct connman_device *device;
 
 	/* Modem Interface */
 	char *serial;
@@ -362,6 +366,84 @@ static uint8_t extract_interfaces(DBusMessageIter *array)
 	return interfaces;
 }
 
+static connman_bool_t ready_to_create_device(struct modem_data *modem)
+{
+	/*
+	 * There are three different modem types which behave slightly
+	 * different:
+	 * - GSM modems will expose the SIM interface then the
+	 *   CM interface.
+	 * - DUN modems will expose first a unique serial number (BDADDR)
+	 *   and then the CM interface.
+	 * - CDMA modems will expose CM first and sometime later
+	 *   a unique serial number.
+	 *
+	 * This functions tests if we have the necessary information gathered
+	 * before we are able to create a device.
+	 */
+
+	if (modem->device != NULL)
+		return FALSE;
+
+	if (modem->imsi != NULL || modem->serial != NULL)
+		return TRUE;
+
+	return FALSE;
+}
+
+static void create_device(struct modem_data *modem)
+{
+	struct connman_device *device;
+	char *uninitialized_var(ident);
+
+	DBG("%s", modem->path);
+
+	if (modem->imsi != NULL)
+		ident = modem->imsi;
+	else if (modem->serial != NULL)
+		ident = modem->serial;
+
+	if (connman_dbus_validate_ident(ident) == FALSE)
+		ident = connman_dbus_encode_string(ident);
+	else
+		ident = g_strdup(ident);
+
+	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_CELLULAR);
+	if (device == NULL)
+		goto out;
+
+	DBG("device %p", device);
+
+	connman_device_set_ident(device, ident);
+
+	connman_device_set_string(device, "Path", modem->path);
+
+	connman_device_set_data(device, modem);
+
+	if (connman_device_register(device) < 0) {
+		connman_error("Failed to register cellular device");
+		connman_device_unref(device);
+		goto out;
+	}
+
+	modem->device = device;
+
+out:
+	g_free(ident);
+}
+
+static void destroy_device(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	connman_device_set_powered(modem->device, FALSE);
+
+	connman_device_unregister(modem->device);
+	connman_device_unref(modem->device);
+
+	modem->device = NULL;
+}
+
 static gboolean context_changed(DBusConnection *connection,
 				DBusMessage *message,
 				void *user_data)
@@ -434,8 +516,13 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 
 		update_sim_imsi(modem, imsi);
 
-		if (modem->online == FALSE)
+		if (modem->online == FALSE) {
 			modem_set_online(modem);
+		} else if (has_interface(modem->interfaces,
+						OFONO_API_CM) == TRUE) {
+			if (ready_to_create_device(modem) == TRUE)
+				create_device(modem);
+		}
 	}
 
 	return TRUE;
@@ -468,6 +555,10 @@ static void sim_properties_reply(struct modem_data *modem,
 				break;
 			}
 
+			if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
+				if (ready_to_create_device(modem) == TRUE)
+					create_device(modem);
+			}
 			return;
 		}
 
@@ -529,6 +620,14 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 				return TRUE;
 			}
 		}
+
+		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
+			if (ready_to_create_device(modem) == TRUE)
+				create_device(modem);
+		} else {
+			if (modem->device != NULL)
+				destroy_device(modem);
+		}
 	} else if (g_str_equal(key, "Serial") == TRUE) {
 		char *serial;
 
@@ -538,6 +637,11 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		modem->serial = g_strdup(serial);
 
 		DBG("%s Serial %s", modem->path, modem->serial);
+
+		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
+			if (ready_to_create_device(modem) == TRUE)
+				create_device(modem);
+		}
 	}
 
 	return TRUE;
@@ -602,10 +706,14 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 		dbus_message_iter_next(prop);
 	}
 
-	if (modem->powered == FALSE)
+	if (modem->powered == FALSE) {
 		modem_set_powered(modem);
-	else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE)
+	} else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE) {
 		sim_get_properties(modem);
+	} else if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
+		if (ready_to_create_device(modem) == TRUE)
+			create_device(modem);
+	}
 }
 
 static void remove_modem(gpointer data)
@@ -619,6 +727,9 @@ static void remove_modem(gpointer data)
 
 	if (modem->call_get_properties != NULL)
 		dbus_pending_call_cancel(modem->call_get_properties);
+
+	if (modem->device != NULL)
+		destroy_device(modem);
 
 	g_free(modem->serial);
 	g_free(modem->imsi);
@@ -803,26 +914,34 @@ static struct connman_network_driver network_driver = {
 
 static int modem_probe(struct connman_device *device)
 {
-	DBG("device %p", device);
+	struct modem_data *modem = connman_device_get_data(device);
+
+	DBG("%s device %p", modem->path, device);
 
 	return 0;
 }
 
 static void modem_remove(struct connman_device *device)
 {
-	DBG("device %p", device);
+	struct modem_data *modem = connman_device_get_data(device);
+
+	DBG("%s device %p", modem->path, device);
 }
 
 static int modem_enable(struct connman_device *device)
 {
-	DBG("device %p", device);
+	struct modem_data *modem = connman_device_get_data(device);
+
+	DBG("%s device %p", modem->path, device);
 
 	return 0;
 }
 
 static int modem_disable(struct connman_device *device)
 {
-	DBG("device %p", device);
+	struct modem_data *modem = connman_device_get_data(device);
+
+	DBG("%s device %p", modem->path, device);
 
 	return 0;
 }
