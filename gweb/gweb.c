@@ -32,6 +32,7 @@
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <netdb.h>
+#include <net/if.h>
 
 #include "giognutls.h"
 #include "gresolv.h"
@@ -909,6 +910,22 @@ static int connect_session_transport(struct web_session *session)
 			IPPROTO_TCP);
 	if (sk < 0)
 		return -EIO;
+
+	if (session->web->index > 0) {
+		char interface[IF_NAMESIZE];
+
+		memset(interface, 0, IF_NAMESIZE);
+
+		if (if_indextoname(session->web->index, interface) != NULL) {
+			if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+						interface, IF_NAMESIZE) < 0) {
+				close(sk);
+				return -EIO;
+			}
+
+			debug(session->web, "Use interface %s", interface);
+		}
+	}
 
 	if (session->flags & SESSION_FLAG_USE_TLS) {
 		debug(session->web, "using TLS encryption");
