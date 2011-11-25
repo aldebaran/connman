@@ -458,6 +458,210 @@ static uint8_t extract_interfaces(DBusMessageIter *array)
 	return interfaces;
 }
 
+static char *extract_nameservers(DBusMessageIter *array)
+{
+	DBusMessageIter entry;
+	char *nameservers = NULL;
+	char *tmp;
+
+	dbus_message_iter_recurse(array, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *nameserver;
+
+		dbus_message_iter_get_basic(&entry, &nameserver);
+
+		if (nameservers == NULL) {
+			nameservers = g_strdup(nameserver);
+		} else {
+			tmp = nameservers;
+			nameservers = g_strdup_printf("%s %s", tmp, nameserver);
+			g_free(tmp);
+		}
+
+		dbus_message_iter_next(&entry);
+	}
+
+	return nameservers;
+}
+
+static void extract_ipv4_settings(DBusMessageIter *array,
+				struct network_context *context)
+{
+	DBusMessageIter dict;
+	char *address = NULL, *netmask = NULL, *gateway = NULL;
+	char *nameservers = NULL;
+	const char *interface = NULL;
+	int index = -1;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Interface") == TRUE) {
+			dbus_message_iter_get_basic(&value, &interface);
+
+			DBG("Interface %s", interface);
+
+			index = connman_inet_ifindex(interface);
+
+			DBG("index %d", index);
+		} else if (g_str_equal(key, "Method") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			DBG("Method %s", val);
+
+			if (g_strcmp0(val, "static") == 0) {
+				context->ipv4_method = CONNMAN_IPCONFIG_METHOD_FIXED;
+			} else if (g_strcmp0(val, "dhcp") == 0) {
+				context->ipv4_method = CONNMAN_IPCONFIG_METHOD_DHCP;
+				break;
+			}
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			address = g_strdup(val);
+
+			DBG("Address %s", address);
+		} else if (g_str_equal(key, "Netmask") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			netmask = g_strdup(val);
+
+			DBG("Netmask %s", netmask);
+		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+			nameservers = extract_nameservers(&value);
+
+			DBG("Nameservers %s", nameservers);
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			gateway = g_strdup(val);
+
+			DBG("Gateway %s", gateway);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	if (index < 0)
+		goto out;
+
+	if (context->ipv4_method != CONNMAN_IPCONFIG_METHOD_FIXED)
+		goto out;
+
+	context->ipv4_address = connman_ipaddress_alloc(CONNMAN_IPCONFIG_TYPE_IPV4);
+	if (context->ipv4_address == NULL)
+		goto out;
+
+	context->index = index;
+	connman_ipaddress_set_ipv4(context->ipv4_address, address,
+				netmask, gateway);
+
+	context->ipv4_nameservers = nameservers;
+
+out:
+	if (context->ipv4_nameservers != nameservers)
+		g_free(nameservers);
+
+	g_free(address);
+	g_free(netmask);
+	g_free(gateway);
+}
+
+static void extract_ipv6_settings(DBusMessageIter *array,
+				struct network_context *context)
+{
+	DBusMessageIter dict;
+	char *address = NULL, *gateway = NULL;
+	unsigned char prefix_length;
+	char *nameservers = NULL;
+	const char *interface = NULL;
+	int index = -1;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Interface") == TRUE) {
+			dbus_message_iter_get_basic(&value, &interface);
+
+			DBG("Interface %s", interface);
+
+			index = connman_inet_ifindex(interface);
+
+			DBG("index %d", index);
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			address = g_strdup(val);
+
+			DBG("Address %s", address);
+		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
+			dbus_message_iter_get_basic(&value, &prefix_length);
+
+			DBG("prefix length %d", prefix_length);
+		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+			nameservers = extract_nameservers(&value);
+
+			DBG("Nameservers %s", nameservers);
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			gateway = g_strdup(val);
+
+			DBG("Gateway %s", gateway);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	if (index < 0)
+		goto out;
+
+	context->ipv6_method = CONNMAN_IPCONFIG_METHOD_FIXED;
+
+	context->ipv6_address =
+		connman_ipaddress_alloc(CONNMAN_IPCONFIG_TYPE_IPV6);
+	if (context->ipv6_address == NULL)
+		goto out;
+
+	context->index = index;
+	connman_ipaddress_set_ipv6(context->ipv6_address, address,
+				prefix_length, gateway);
+
+	context->ipv6_nameservers = nameservers;
+
+out:
+	if (context->ipv6_nameservers != nameservers)
+		g_free(nameservers);
+
+	g_free(address);
+	g_free(gateway);
+}
+
 static connman_bool_t ready_to_create_device(struct modem_data *modem)
 {
 	/*
@@ -574,8 +778,12 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 				context_path, context_type);
 		} else if (g_str_equal(key, "Settings") == TRUE) {
 			DBG("%s Settings", modem->path);
+
+			extract_ipv4_settings(&value, context);
 		} else if (g_str_equal(key, "IPv6.Settings") == TRUE) {
 			DBG("%s IPv6.Settings", modem->path);
+
+			extract_ipv6_settings(&value, context);
 		} else if (g_str_equal(key, "Active") == TRUE) {
 			dbus_message_iter_get_basic(&value, &active);
 
@@ -640,8 +848,12 @@ static gboolean context_changed(DBusConnection *connection,
 	 */
 	if (g_str_equal(key, "Settings") == TRUE) {
 		DBG("%s Settings", modem->path);
+
+		extract_ipv4_settings(&value, modem->context);
 	} else if (g_str_equal(key, "IPv6.Settings") == TRUE) {
 		DBG("%s IPv6.Settings", modem->path);
+
+		extract_ipv6_settings(&value, modem->context);
 	} else if (g_str_equal(key, "Active") == TRUE) {
 		dbus_message_iter_get_basic(&value, &modem->active);
 
