@@ -179,7 +179,7 @@ static void wifi_remove(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
 
-	DBG("device %p", device);
+	DBG("device %p wifi %p", device, wifi);
 
 	if (wifi == NULL)
 		return;
