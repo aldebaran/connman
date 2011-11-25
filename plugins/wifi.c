@@ -219,7 +219,9 @@ static void interface_remove_callback(int result,
 					GSupplicantInterface *interface,
 							void *user_data)
 {
-	struct wifi_data *wifi = user_data;
+	struct wifi_data *wifi;
+
+	wifi = g_supplicant_interface_get_data(interface);
 
 	DBG("result %d wifi %p", result, wifi);
 
@@ -265,7 +267,7 @@ static int wifi_disable(struct connman_device *device)
 
 	ret = g_supplicant_interface_remove(wifi->interface,
 						interface_remove_callback,
-							wifi);
+						NULL);
 	if (ret < 0)
 		return ret;
 
