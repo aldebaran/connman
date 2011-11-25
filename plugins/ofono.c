@@ -85,6 +85,9 @@ struct modem_data {
 	connman_bool_t set_powered;
 	connman_bool_t set_online;
 
+	/* ConnectionManager Interface */
+	connman_bool_t attached;
+
 	/* SimManager Interface */
 	char *imsi;
 
@@ -474,7 +477,63 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Attached") == TRUE) {
+		dbus_message_iter_get_basic(&value, &modem->attached);
+
+		DBG("%s Attached %d", modem->path, modem->attached);
+	}
+
 	return TRUE;
+}
+
+static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
+{
+	DBG("%s", modem->path);
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Attached") == TRUE) {
+			dbus_message_iter_get_basic(&value, &modem->attached);
+
+			DBG("%s Attached %d", modem->path,
+				modem->attached);
+
+			return;
+		}
+
+		dbus_message_iter_next(dict);
+	}
+}
+
+static int cm_get_properties(struct modem_data *modem)
+{
+	return get_properties(modem->path, OFONO_CM_INTERFACE,
+				cm_properties_reply, modem);
 }
 
 static void update_sim_imsi(struct modem_data *modem,
@@ -558,6 +617,8 @@ static void sim_properties_reply(struct modem_data *modem,
 			if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 				if (ready_to_create_device(modem) == TRUE)
 					create_device(modem);
+				if (modem->device != NULL)
+					cm_get_properties(modem);
 			}
 			return;
 		}
@@ -603,6 +664,16 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &modem->online);
 
 		DBG("%s Online %d", modem->path, modem->online);
+
+		if (modem->online == FALSE)
+			return TRUE;
+
+		if (has_interface(modem->interfaces, OFONO_API_CM) == FALSE)
+			return TRUE;
+		if (ready_to_create_device(modem) == TRUE)
+			create_device(modem);
+		if (modem->device != NULL)
+			cm_get_properties(modem);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		modem->interfaces = extract_interfaces(&value);
 
@@ -624,6 +695,8 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 			if (ready_to_create_device(modem) == TRUE)
 				create_device(modem);
+			if (modem->device != NULL)
+				cm_get_properties(modem);
 		} else {
 			if (modem->device != NULL)
 				destroy_device(modem);
@@ -641,6 +714,8 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 			if (ready_to_create_device(modem) == TRUE)
 				create_device(modem);
+			if (modem->device != NULL)
+				cm_get_properties(modem);
 		}
 	}
 
@@ -713,6 +788,8 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	} else if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 		if (ready_to_create_device(modem) == TRUE)
 			create_device(modem);
+		if (modem->device != NULL)
+			cm_get_properties(modem);
 	}
 }
 
