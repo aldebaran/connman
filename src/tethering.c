@@ -390,6 +390,8 @@ void __connman_tethering_set_disabled(void)
 
 	dhcp_server_stop(tethering_dhcp_server);
 
+	tethering_dhcp_server = NULL;
+
 	disable_bridge(BRIDGE_NAME);
 
 	remove_bridge(BRIDGE_NAME);
