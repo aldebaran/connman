@@ -1330,7 +1330,8 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	if (__sync_fetch_and_sub(&ipconfig->refcount, 1) != 1)
 		return;
 
-	__connman_ipconfig_disable(ipconfig);
+	if (__connman_ipconfig_disable(ipconfig) < 0)
+		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
 	connman_ipconfig_set_ops(ipconfig, NULL);
 
