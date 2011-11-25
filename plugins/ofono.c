@@ -35,6 +35,7 @@
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/network.h>
+#include <connman/inet.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
 
@@ -58,6 +59,7 @@
 #define GET_PROPERTIES			"GetProperties"
 #define SET_PROPERTY			"SetProperty"
 #define GET_MODEMS			"GetModems"
+#define GET_CONTEXTS			"GetContexts"
 
 #define TIMEOUT 40000
 
@@ -70,11 +72,27 @@ enum ofono_api {
 static DBusConnection *connection;
 
 static GHashTable *modem_hash;
+static GHashTable *context_hash;
+
+struct network_context {
+	char *path;
+	int index;
+
+	enum connman_ipconfig_method ipv4_method;
+	struct connman_ipaddress *ipv4_address;
+	char *ipv4_nameservers;
+
+	enum connman_ipconfig_method ipv6_method;
+	struct connman_ipaddress *ipv6_address;
+	char *ipv6_nameservers;
+};
 
 struct modem_data {
 	char *path;
 
 	struct connman_device *device;
+
+	struct network_context *context;
 
 	/* Modem Interface */
 	char *serial;
@@ -91,13 +109,52 @@ struct modem_data {
 
 	connman_bool_t set_cm_powered;
 
+	/* ConnectionContext Interface */
+	connman_bool_t active;
+
 	/* SimManager Interface */
 	char *imsi;
 
 	/* pending calls */
 	DBusPendingCall	*call_set_property;
 	DBusPendingCall	*call_get_properties;
+	DBusPendingCall *call_get_contexts;
 };
+
+static struct network_context *network_context_alloc(const char *path)
+{
+	struct network_context *context;
+
+	context = g_try_new0(struct network_context, 1);
+	if (context == NULL)
+		return NULL;
+
+	context->path = g_strdup(path);
+	context->index = -1;
+
+	context->ipv4_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	context->ipv4_address = NULL;
+	context->ipv4_nameservers = NULL;
+
+	context->ipv6_method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
+	context->ipv6_address = NULL;
+	context->ipv6_nameservers = NULL;
+
+	return context;
+}
+
+static void network_context_free(struct network_context *context)
+{
+	g_free(context->path);
+
+	connman_ipaddress_free(context->ipv4_address);
+	g_free(context->ipv4_nameservers);
+
+	connman_ipaddress_free(context->ipv6_address);
+	g_free(context->ipv6_nameservers);
+
+	free(context);
+}
 
 typedef void (*set_property_cb)(struct modem_data *data,
 				connman_bool_t success);
@@ -479,17 +536,233 @@ static void destroy_device(struct modem_data *modem)
 	modem->device = NULL;
 }
 
+static int add_cm_context(struct modem_data *modem, const char *context_path,
+				DBusMessageIter *dict)
+{
+	const char *context_type;
+	struct network_context *context = NULL;
+	connman_bool_t active = FALSE;
+
+	DBG("%s context path %s", modem->path, context_path);
+
+	if (modem->context != NULL) {
+		/*
+		 * We have already assigned a context to this modem
+		 * and we do only support one Internet context.
+		 */
+		return -EALREADY;
+	}
+
+	context = network_context_alloc(context_path);
+	if (context == NULL)
+		return -ENOMEM;
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Type") == TRUE) {
+			dbus_message_iter_get_basic(&value, &context_type);
+
+			DBG("%s context %s type %s", modem->path,
+				context_path, context_type);
+		} else if (g_str_equal(key, "Settings") == TRUE) {
+			DBG("%s Settings", modem->path);
+		} else if (g_str_equal(key, "IPv6.Settings") == TRUE) {
+			DBG("%s IPv6.Settings", modem->path);
+		} else if (g_str_equal(key, "Active") == TRUE) {
+			dbus_message_iter_get_basic(&value, &active);
+
+			DBG("%s Active %d", modem->path, active);
+		}
+
+		dbus_message_iter_next(dict);
+	}
+
+	if (g_strcmp0(context_type, "internet") != 0) {
+		network_context_free(context);
+		return -EINVAL;
+	}
+
+	modem->context = context;
+	modem->active = active;
+
+	g_hash_table_replace(context_hash, g_strdup(context_path), modem);
+
+	return 0;
+}
+
+static void remove_cm_context(struct modem_data *modem,
+				const char *context_path)
+{
+	if (modem->context == NULL)
+		return;
+
+	g_hash_table_remove(context_hash, context_path);
+
+	network_context_free(modem->context);
+	modem->context = NULL;
+}
+
 static gboolean context_changed(DBusConnection *connection,
 				DBusMessage *message,
 				void *user_data)
 {
+	const char *context_path = dbus_message_get_path(message);
+	struct modem_data *modem = NULL;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	DBG("context_path %s", context_path);
+
+	modem = g_hash_table_lookup(context_hash, context_path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	/*
+	 * oFono guarantees the ordering of Settings and
+	 * Active. Settings will always be send before Active = True.
+	 * That means we don't have to order here.
+	 */
+	if (g_str_equal(key, "Settings") == TRUE) {
+		DBG("%s Settings", modem->path);
+	} else if (g_str_equal(key, "IPv6.Settings") == TRUE) {
+		DBG("%s IPv6.Settings", modem->path);
+	} else if (g_str_equal(key, "Active") == TRUE) {
+		dbus_message_iter_get_basic(&value, &modem->active);
+
+		DBG("%s Active %d", modem->path, modem->active);
+	}
+
 	return TRUE;
+}
+
+static void cm_get_contexts_reply(DBusPendingCall *call, void *user_data)
+{
+	struct modem_data *modem = user_data;
+	DBusMessageIter array, dict, entry, value;
+	DBusMessage *reply;
+	DBusError error;
+
+	DBG("%s", modem->path);
+
+	modem->call_get_contexts = NULL;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_ARRAY)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_STRUCT) {
+		const char *context_path;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &context_path);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (add_cm_context(modem, context_path, &value) == 0)
+			break;
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static int cm_get_contexts(struct modem_data *modem)
+{
+	DBusMessage *message;
+
+	DBG("%s", modem->path);
+
+	if (modem->call_get_contexts != NULL)
+		return -EBUSY;
+
+	message = dbus_message_new_method_call(OFONO_SERVICE, modem->path,
+					OFONO_CM_INTERFACE, GET_CONTEXTS);
+	if (message == NULL)
+		return -ENOMEM;
+
+	if (dbus_connection_send_with_reply(connection, message,
+			&modem->call_get_contexts, TIMEOUT) == FALSE) {
+		connman_error("Failed to call GetContexts()");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (modem->call_get_contexts == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(modem->call_get_contexts,
+					cm_get_contexts_reply,
+					modem, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
 }
 
 static gboolean cm_context_added(DBusConnection *connection,
 					DBusMessage *message,
 					void *user_data)
 {
+	const char *path = dbus_message_get_path(message);
+	char *context_path;
+	struct modem_data *modem;
+	DBusMessageIter iter, properties;
+
+	DBG("%s", path);
+
+	modem = g_hash_table_lookup(modem_hash, context_path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &context_path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &properties);
+
+	if (add_cm_context(modem, context_path, &properties) != 0)
+		return TRUE;
+
 	return TRUE;
 }
 
@@ -497,6 +770,24 @@ static gboolean cm_context_removed(DBusConnection *connection,
 					DBusMessage *message,
 					void *user_data)
 {
+	const char *path = dbus_message_get_path(message);
+	const char *context_path;
+	struct modem_data *modem;
+	DBusMessageIter iter;
+
+	DBG("context path %s", path);
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &context_path);
+
+	modem = g_hash_table_lookup(context_hash, context_path);
+	if (modem == NULL)
+		return TRUE;
+
+	remove_cm_context(modem, context_path);
+
 	return TRUE;
 }
 
@@ -663,8 +954,10 @@ static void sim_properties_reply(struct modem_data *modem,
 			if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 				if (ready_to_create_device(modem) == TRUE)
 					create_device(modem);
-				if (modem->device != NULL)
+				if (modem->device != NULL) {
 					cm_get_properties(modem);
+					cm_get_contexts(modem);
+				}
 			}
 			return;
 		}
@@ -718,8 +1011,10 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 			return TRUE;
 		if (ready_to_create_device(modem) == TRUE)
 			create_device(modem);
-		if (modem->device != NULL)
+		if (modem->device != NULL) {
 			cm_get_properties(modem);
+			cm_get_contexts(modem);
+		}
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		modem->interfaces = extract_interfaces(&value);
 
@@ -741,9 +1036,16 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 			if (ready_to_create_device(modem) == TRUE)
 				create_device(modem);
-			if (modem->device != NULL)
+			if (modem->device != NULL) {
 				cm_get_properties(modem);
+				cm_get_contexts(modem);
+			}
 		} else {
+			if (modem->context != NULL) {
+				remove_cm_context(modem,
+						modem->context->path);
+			}
+
 			if (modem->device != NULL)
 				destroy_device(modem);
 		}
@@ -760,8 +1062,10 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 			if (ready_to_create_device(modem) == TRUE)
 				create_device(modem);
-			if (modem->device != NULL)
+			if (modem->device != NULL) {
 				cm_get_properties(modem);
+				cm_get_contexts(modem);
+			}
 		}
 	}
 
@@ -834,8 +1138,10 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	} else if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 		if (ready_to_create_device(modem) == TRUE)
 			create_device(modem);
-		if (modem->device != NULL)
+		if (modem->device != NULL) {
 			cm_get_properties(modem);
+			cm_get_contexts(modem);
+		}
 	}
 }
 
@@ -851,8 +1157,14 @@ static void remove_modem(gpointer data)
 	if (modem->call_get_properties != NULL)
 		dbus_pending_call_cancel(modem->call_get_properties);
 
+	if (modem->call_get_contexts != NULL)
+		dbus_pending_call_cancel(modem->call_get_contexts);
+
 	if (modem->device != NULL)
 		destroy_device(modem);
+
+	if (modem->context != NULL)
+		remove_cm_context(modem, modem->context->path);
 
 	g_free(modem->serial);
 	g_free(modem->imsi);
@@ -986,6 +1298,13 @@ static void ofono_connect(DBusConnection *conn, void *user_data)
 	if (modem_hash == NULL)
 		return;
 
+	context_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+						g_free, NULL);
+	if (context_hash == NULL) {
+		g_hash_table_destroy(modem_hash);
+		return;
+	}
+
 	manager_get_modems();
 }
 
@@ -993,11 +1312,14 @@ static void ofono_disconnect(DBusConnection *conn, void *user_data)
 {
 	DBG("");
 
-	if (modem_hash == NULL)
+	if (modem_hash == NULL || context_hash == NULL)
 		return;
 
 	g_hash_table_destroy(modem_hash);
 	modem_hash = NULL;
+
+	g_hash_table_destroy(context_hash);
+	context_hash = NULL;
 }
 
 static int network_probe(struct connman_network *network)
@@ -1202,6 +1524,11 @@ static void ofono_exit(void)
 	if (modem_hash != NULL) {
 		g_hash_table_destroy(modem_hash);
 		modem_hash = NULL;
+	}
+
+	if (context_hash != NULL) {
+		g_hash_table_destroy(context_hash);
+		context_hash = NULL;
 	}
 
 	connman_device_driver_unregister(&modem_driver);
