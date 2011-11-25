@@ -396,8 +396,8 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 static int init_6to4(struct in_addr *ip4addr)
 {
 	unsigned int a, b, c, d;
+	int ret, if_index;
 	in_addr_t addr;
-	int ret;
 
 	DBG("");
 
@@ -426,9 +426,13 @@ static int init_6to4(struct in_addr *ip4addr)
 	if (ret)
 		goto error;
 
+	if_index = connman_inet_ifindex("tun6to4");
+	if (if_index < 0)
+		goto error;
+
 	/* We try to verify that connectivity through tunnel works ok.
 	 */
-	web = g_web_new(0);
+	web = g_web_new(if_index);
 	if (web == NULL)
 		goto error;
 
