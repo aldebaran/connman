@@ -34,6 +34,7 @@
 #include <netdb.h>
 #include <arpa/inet.h>
 #include <arpa/nameser.h>
+#include <net/if.h>
 
 #include "gresolv.h"
 
@@ -760,6 +761,26 @@ static int connect_udp_channel(struct resolv_nameserver *nameserver)
 		return -EIO;
 	}
 
+	/*
+	 * If nameserver points to localhost ip, their is no need to
+	 * bind the socket on any interface.
+	 */
+	if (nameserver->resolv->index > 0 &&
+			strncmp(nameserver->address, "127.0.0.1", 9) != 0) {
+		char interface[IF_NAMESIZE];
+
+		memset(interface, 0, IF_NAMESIZE);
+		if (if_indextoname(nameserver->resolv->index,
+						interface) != NULL) {
+			if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+						interface, IF_NAMESIZE) < 0) {
+				close(sk);
+				freeaddrinfo(rp);
+				return -EIO;
+			}
+		}
+	}
+
 	if (connect(sk, rp->ai_addr, rp->ai_addrlen) < 0) {
 		close(sk);
 		freeaddrinfo(rp);
@@ -879,13 +900,12 @@ gboolean g_resolv_add_nameserver(GResolv *resolv, const char *address,
 	nameserver->address = g_strdup(address);
 	nameserver->port = port;
 	nameserver->flags = flags;
+	nameserver->resolv = resolv;
 
 	if (connect_udp_channel(nameserver) < 0) {
 		free_nameserver(nameserver);
 		return FALSE;
 	}
-
-	nameserver->resolv = resolv;
 
 	resolv->nameserver_list = g_list_append(resolv->nameserver_list,
 								nameserver);
