@@ -627,6 +627,7 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 {
 	enum connman_service_type service_type;
 	char *interface = NULL;
+	int if_index;
 	int err = 0;
 
 	DBG("wispr/portal context %p", wp_context);
@@ -655,7 +656,11 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 
 	DBG("interface %s", interface);
 
-	wp_context->web = g_web_new(0);
+	if_index = connman_inet_ifindex(interface);
+	if (if_index < 0)
+		return -EINVAL;
+
+	wp_context->web = g_web_new(if_index);
 	if (wp_context->web == NULL) {
 		err = -ENOMEM;
 		goto done;
