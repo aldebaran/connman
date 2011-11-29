@@ -766,6 +766,14 @@ int g_supplicant_interface_enable_selected_network(GSupplicantInterface *interfa
 				set_network_enabled, NULL, &enable);
 }
 
+dbus_bool_t g_supplicant_interface_get_ready(GSupplicantInterface *interface)
+{
+	if (interface == NULL)
+		return FALSE;
+
+	return interface->ready;
+}
+
 GSupplicantInterface *g_supplicant_network_get_interface(
 					GSupplicantNetwork *network)
 {

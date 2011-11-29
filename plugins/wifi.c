@@ -213,6 +213,18 @@ static void interface_create_callback(int result,
 
 	wifi->interface = interface;
 	g_supplicant_interface_set_data(interface, wifi);
+
+	if (g_supplicant_interface_get_ready(interface) == FALSE)
+		return;
+
+	DBG("interface is ready wifi %p tethering %d", wifi, wifi->tethering);
+
+	if (wifi->device == NULL) {
+		connman_error("WiFi device not set");
+		return;
+	}
+
+	connman_device_set_powered(wifi->device, TRUE);
 }
 
 static void interface_remove_callback(int result,
