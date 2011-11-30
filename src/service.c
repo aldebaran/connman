@@ -3956,9 +3956,33 @@ static void request_input_cb (struct connman_service *service,
 	__connman_service_set_agent_passphrase(service, NULL);
 }
 
+static void downgrade_connected_services(void)
+{
+	struct connman_service *up_service;
+	GSequenceIter *iter;
+
+	iter = g_sequence_get_begin_iter(service_list);
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		up_service = g_sequence_get(iter);
+
+		if (is_connected(up_service) == FALSE) {
+			iter = g_sequence_iter_next(iter);
+			continue;
+		}
+
+		if (up_service->state == CONNMAN_SERVICE_STATE_ONLINE)
+			return;
+
+		__connman_service_downgrade_state(up_service);
+
+		iter = g_sequence_iter_next(iter);
+	}
+}
+
 static int service_indicate_state(struct connman_service *service)
 {
 	enum connman_service_state old_state, new_state;
+	struct connman_service *def_service;
 	GSequenceIter *iter;
 
 	if (service == NULL)
@@ -3976,6 +4000,14 @@ static int service_indicate_state(struct connman_service *service)
 
 	if (old_state == new_state)
 		return -EALREADY;
+
+	def_service = get_default();
+
+	if (new_state == CONNMAN_SERVICE_STATE_ONLINE) {
+		if (def_service != NULL && def_service != service &&
+			def_service->state == CONNMAN_SERVICE_STATE_ONLINE)
+			return -EALREADY;
+	}
 
 	service->state = new_state;
 	state_changed(service);
@@ -4057,7 +4089,7 @@ static int service_indicate_state(struct connman_service *service)
 						service->ipconfig_ipv6);
 
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
-		struct connman_service *def_service = get_default();
+		def_service = get_default();
 
 		if (__connman_notifier_count_connected() == 0 &&
 			def_service != NULL &&
@@ -4075,6 +4107,13 @@ static int service_indicate_state(struct connman_service *service)
 		domain_changed(service);
 
 		__connman_notifier_disconnect(service->type);
+
+		/*
+		 * Previous services which are connected and which states
+		 * are set to online should reset relevantly ipconfig_state
+		 * to ready so wispr/portal will be rerun on those
+		 */
+		downgrade_connected_services();
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
