@@ -536,7 +536,6 @@ void __connman_service_notify(struct connman_service *service,
 
 int __connman_service_counter_register(const char *counter);
 void __connman_service_counter_unregister(const char *counter);
-void __connman_service_downgrade_state(struct connman_service *service);
 
 struct connman_session;
 struct service_entry;

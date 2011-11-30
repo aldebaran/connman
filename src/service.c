@@ -3285,6 +3285,25 @@ static gboolean check_suitable_state(enum connman_service_state a,
 	return a == b;
 }
 
+static void downgrade_state(struct connman_service *service)
+{
+	if (service == NULL)
+		return;
+
+	DBG("service %p state4 %d state6 %d", service, service->state_ipv4,
+						service->state_ipv6);
+
+	if (service->state_ipv4 == CONNMAN_SERVICE_STATE_ONLINE)
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	if (service->state_ipv6 == CONNMAN_SERVICE_STATE_ONLINE)
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+}
+
 static void apply_relevant_default_downgrade(struct connman_service *service)
 {
 	struct connman_service *def_service;
@@ -3386,11 +3405,11 @@ static DBusMessage *move_service(DBusConnection *conn,
 	if (before == TRUE) {
 		apply_relevant_default_downgrade(target);
 		g_sequence_move(src, dst);
-		__connman_service_downgrade_state(service);
+		downgrade_state(service);
 	} else {
 		apply_relevant_default_downgrade(service);
 		g_sequence_move(dst, src);
-		__connman_service_downgrade_state(target);
+		downgrade_state(target);
 	}
 
 	services_changed(FALSE);
@@ -4000,7 +4019,7 @@ static void downgrade_connected_services(void)
 		if (up_service->state == CONNMAN_SERVICE_STATE_ONLINE)
 			return;
 
-		__connman_service_downgrade_state(up_service);
+		downgrade_state(up_service);
 
 		iter = g_sequence_iter_next(iter);
 	}
@@ -5767,25 +5786,6 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	__connman_notifier_service_add(service, service->name);
 
 	return service;
-}
-
-void __connman_service_downgrade_state(struct connman_service *service)
-{
-	if (service == NULL)
-		return;
-
-	DBG("service %p state4 %d state6 %d", service, service->state_ipv4,
-						service->state_ipv6);
-
-	if (service->state_ipv4 == CONNMAN_SERVICE_STATE_ONLINE)
-		__connman_service_ipconfig_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
-
-	if (service->state_ipv6 == CONNMAN_SERVICE_STATE_ONLINE)
-		__connman_service_ipconfig_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
 }
 
 int __connman_service_init(void)
