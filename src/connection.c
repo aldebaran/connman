@@ -766,8 +766,6 @@ gboolean __connman_connection_update_gateway(void)
 			unset_default_gateway(active_gateway,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
 
-		__connman_service_downgrade_state(active_gateway->service);
-
 		if (default_gateway) {
 			if (default_gateway->ipv4_gateway)
 				set_default_gateway(default_gateway,

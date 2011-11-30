@@ -3285,6 +3285,19 @@ static gboolean check_suitable_state(enum connman_service_state a,
 	return a == b;
 }
 
+static void apply_relevant_default_downgrade(struct connman_service *service)
+{
+	struct connman_service *def_service;
+
+	def_service = get_default();
+	if (def_service == NULL)
+		return;
+
+	if (def_service == service &&
+			def_service->state == CONNMAN_SERVICE_STATE_ONLINE)
+		def_service->state = CONNMAN_SERVICE_STATE_READY;
+}
+
 static DBusMessage *move_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data,
 								gboolean before)
@@ -3364,7 +3377,21 @@ static DBusMessage *move_service(DBusConnection *conn,
 	src = g_hash_table_lookup(service_hash, service->identifier);
 	dst = g_hash_table_lookup(service_hash, target->identifier);
 
-	before ? g_sequence_move(src, dst) : g_sequence_move(dst, src);
+	/*
+	 * If the service which goes down is the default service and is
+	 * online, we downgrade directly its state to ready so:
+	 * the service which goes up, needs to recompute its state which
+	 * is triggered via downgrading it - if relevant - to state ready.
+	 */
+	if (before == TRUE) {
+		apply_relevant_default_downgrade(target);
+		g_sequence_move(src, dst);
+		__connman_service_downgrade_state(service);
+	} else {
+		apply_relevant_default_downgrade(service);
+		g_sequence_move(dst, src);
+		__connman_service_downgrade_state(target);
+	}
 
 	services_changed(FALSE);
 
