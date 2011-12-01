@@ -5564,6 +5564,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 void __connman_service_update_from_network(struct connman_network *network)
 {
+	connman_bool_t need_sort = FALSE;
 	struct connman_service *service;
 	connman_uint8_t strength;
 	connman_bool_t roaming;
@@ -5597,28 +5598,33 @@ void __connman_service_update_from_network(struct connman_network *network)
 		goto roaming;
 
 	service->strength = strength;
+	need_sort = TRUE;
 
 	strength_changed(service);
 
 roaming:
 	roaming = connman_network_get_bool(service->network, "Roaming");
 	if (roaming == service->roaming)
-		return;
+		goto sorting;
 
 	stats_enable = stats_enabled(service);
 	if (stats_enable == TRUE)
 		stats_stop(service);
 
 	service->roaming = roaming;
+	need_sort = TRUE;
 
 	if (stats_enable == TRUE)
 		stats_start(service);
 
 	roaming_changed(service);
 
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL)
-		g_sequence_sort_changed(iter, service_compare, NULL);
+sorting:
+	if (need_sort == TRUE) {
+		iter = g_hash_table_lookup(service_hash, service->identifier);
+		if (iter != NULL)
+			g_sequence_sort_changed(iter, service_compare, NULL);
+	}
 }
 
 void __connman_service_remove_from_network(struct connman_network *network)
