@@ -881,7 +881,8 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 
 done:
 	if (ret == 0) {
-		g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
+		if (msg != NULL)
+			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
 		return ret;
 	}
 
@@ -967,7 +968,8 @@ int __connman_technology_disable(enum connman_service_type type, DBusMessage *ms
 
 done:
 	if (ret == 0) {
-		g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
+		if (msg != NULL)
+			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
 		return ret;
 	}
 
