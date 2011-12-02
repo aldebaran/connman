@@ -4520,6 +4520,9 @@ static int service_connect(struct connman_service *service)
 {
 	int err;
 
+	if (service->hidden == TRUE)
+		return -EPERM;
+
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -4674,7 +4677,7 @@ int __connman_service_connect(struct connman_service *service)
 			__connman_provider_disconnect(service->provider);
 
 	if (service->userconnect == TRUE) {
-		if (err == -ENOKEY) {
+		if (err == -ENOKEY || err == -EPERM) {
 			if (__connman_agent_request_passphrase_input(service,
 							request_input_cb,
 							NULL) == -EIO)
