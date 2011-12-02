@@ -82,6 +82,8 @@ void __connman_counter_cleanup(void);
 
 struct connman_service;
 
+void __connman_service_add_passphrase(struct connman_service *service,
+				const gchar *passphrase);
 typedef void (* authentication_cb_t) (struct connman_service *service,
 				connman_bool_t values_received,
 				const char *name, int name_len,

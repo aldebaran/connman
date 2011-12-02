@@ -3955,6 +3955,29 @@ static void report_error_cb(struct connman_service *service,
 	}
 }
 
+void __connman_service_add_passphrase(struct connman_service *service,
+				const gchar *passphrase)
+{
+	switch (service->security) {
+	case CONNMAN_SERVICE_SECURITY_WEP:
+	case CONNMAN_SERVICE_SECURITY_PSK:
+		__connman_service_set_passphrase(service, passphrase);
+		break;
+	case CONNMAN_SERVICE_SECURITY_8021X:
+		__connman_service_set_agent_passphrase(service,
+						passphrase);
+		break;
+	case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+	case CONNMAN_SERVICE_SECURITY_NONE:
+	case CONNMAN_SERVICE_SECURITY_WPA:
+	case CONNMAN_SERVICE_SECURITY_RSN:
+		DBG("service security '%s' not handled",
+			security2string(service->security));
+		break;
+	}
+
+}
+
 static void request_input_cb (struct connman_service *service,
 			connman_bool_t values_received,
 			const char *name, int name_len,
@@ -3973,25 +3996,8 @@ static void request_input_cb (struct connman_service *service,
 	if (identity != NULL)
 		__connman_service_set_agent_identity(service, identity);
 
-	if (passphrase != NULL) {
-		switch (service->security) {
-		case CONNMAN_SERVICE_SECURITY_WEP:
-		case CONNMAN_SERVICE_SECURITY_PSK:
-			__connman_service_set_passphrase(service, passphrase);
-			break;
-		case CONNMAN_SERVICE_SECURITY_8021X:
-			__connman_service_set_agent_passphrase(service,
-							passphrase);
-			break;
-		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
-		case CONNMAN_SERVICE_SECURITY_NONE:
-		case CONNMAN_SERVICE_SECURITY_WPA:
-		case CONNMAN_SERVICE_SECURITY_RSN:
-			DBG("service security '%s' not handled",
-				security2string(service->security));
-			break;
-		}
-	}
+	if (passphrase != NULL)
+		__connman_service_add_passphrase(service, passphrase);
 
 	__connman_service_connect(service);
 
