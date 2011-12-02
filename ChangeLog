@@ -1,3 +1,16 @@
+ver 0.78:
+	Fix multiple issues with service connection states.
+	Fix multiple issues with technology handling.
+	Fix issue with DHCP file descriptor leakage.
+	Fix issue with open access points and WPS.
+	Fix issue with handling of cellular devices.
+	Fix issue with DNS proxy hostname resolving.
+	Add support for PPTP and L2TP VPN tunneling.
+	Add support for organized settings storage.
+	Add support for WiFi fast connect handling.
+	Add support for better WiFi error handling.
+	Add support for integrated WISPr handling.
+
 ver 0.77:
 	Fix issue with iptables API breakage.
 	Fix issue with agent input handling.
