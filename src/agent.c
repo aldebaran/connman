@@ -101,7 +101,7 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	char *wpspin = NULL;
 	char *key;
 	char *name = NULL;
-	int name_len;
+	int name_len = 0;
 	DBusMessageIter iter, dict;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 
@@ -192,6 +192,7 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 
 done:
 	passphrase_reply->callback(passphrase_reply->service, values_received,
+				name, name_len,
 				identity, passphrase,
 				passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
@@ -368,7 +369,7 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	username_password_reply->callback(username_password_reply->service,
-					TRUE,
+					TRUE, NULL, 0,
 					username, password,
 					username_password_reply->user_data);
 	connman_service_unref(username_password_reply->service);
