@@ -100,6 +100,8 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	char *passphrase = NULL;
 	char *wpspin = NULL;
 	char *key;
+	char *name = NULL;
+	int name_len;
 	DBusMessageIter iter, dict;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 
@@ -144,6 +146,28 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 			dbus_message_iter_recurse(&entry, &value);
 			dbus_message_iter_get_basic(&value, &wpspin);
 			break;
+		} else if (g_str_equal(key, "Name")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			dbus_message_iter_get_basic(&value, &name);
+			name_len = strlen(name);
+		} else if (g_str_equal(key, "SSID")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			if (dbus_message_iter_get_element_type(&value)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_get_fixed_array(&value, &name,
+							&name_len);
 		}
 		dbus_message_iter_next(&dict);
 	}
