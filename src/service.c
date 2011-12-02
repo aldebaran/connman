@@ -3984,9 +3984,18 @@ static void request_input_cb (struct connman_service *service,
 			const char *identity, const char *passphrase,
 			void *user_data)
 {
+	struct connman_device *device;
+
 	DBG ("RequestInput return, %p", service);
 
-	if (values_received == FALSE) {
+	if (service->hidden == TRUE && name_len > 0 && name_len <= 32) {
+		device = connman_network_get_device(service->network);
+		__connman_device_request_hidden_scan(device,
+						name, name_len,
+						identity, passphrase);
+	}
+
+	if (values_received == FALSE || service->hidden == TRUE) {
 		service_complete(service);
 		services_changed(FALSE);
 		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
