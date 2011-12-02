@@ -2382,7 +2382,7 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 						const char *timeserver)
 {
 	char **servers;
-	int len, i, j;
+	int len, i, j, found = 0;
 
 	DBG("service %p timeserver %s", service, timeserver);
 
@@ -2392,28 +2392,38 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 	if (service->timeservers == NULL)
 		return 0;
 
-	len = g_strv_length(service->timeservers);
-	if (len == 1) {
-		if (g_strcmp0(service->timeservers[0], timeserver) != 0)
-			return 0;
+	for (i = 0; service->timeservers != NULL &&
+					service->timeservers[i] != NULL; i++)
+		if (g_strcmp0(service->timeservers[i], timeserver) == 0) {
+			found = 1;
+			break;
+		}
 
+	if (found == 0)
+		return 0;
+
+	len = g_strv_length(service->timeservers);
+
+	if (len == 1) {
 		g_strfreev(service->timeservers);
 		service->timeservers = NULL;
 
 		return 0;
 	}
 
-	servers = g_try_new0(char *, len - 1);
+	servers = g_try_new0(char *, len);
 	if (servers == NULL)
 		return -ENOMEM;
 
 	for (i = 0, j = 0; i < len; i++) {
 		if (g_strcmp0(service->timeservers[i], timeserver) != 0) {
 			servers[j] = g_strdup(service->timeservers[i]);
+			if (servers[j] == NULL)
+				return -ENOMEM;
 			j++;
 		}
 	}
-	servers[len - 2] = NULL;
+	servers[len - 1] = NULL;
 
 	g_strfreev(service->timeservers);
 	service->timeservers = servers;
