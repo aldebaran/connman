@@ -2190,7 +2190,7 @@ int __connman_service_get_index(struct connman_service *service)
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname)
 {
-	if (service == NULL)
+	if (service == NULL || service->hidden == TRUE)
 		return;
 
 	g_free(service->domainname);
@@ -2226,7 +2226,7 @@ char **connman_service_get_nameservers(struct connman_service *service)
 void connman_service_set_proxy_method(struct connman_service *service,
 					enum connman_service_proxy_method method)
 {
-	if (service == NULL)
+	if (service == NULL || service->hidden == TRUE)
 		return;
 
 	service->proxy = method;
@@ -2275,7 +2275,7 @@ const char *connman_service_get_proxy_url(struct connman_service *service)
 void __connman_service_set_proxy_autoconfig(struct connman_service *service,
 							const char *url)
 {
-	if (service == NULL)
+	if (service == NULL || service->hidden == TRUE)
 		return;
 
 	service->proxy = CONNMAN_SERVICE_PROXY_METHOD_AUTO;
@@ -2421,6 +2421,8 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 void __connman_service_set_pac(struct connman_service *service,
 					const char *pac)
 {
+	if (service->hidden == TRUE)
+		return;
 	g_free(service->pac);
 	service->pac = g_strdup(pac);
 
@@ -2430,7 +2432,7 @@ void __connman_service_set_pac(struct connman_service *service,
 void __connman_service_set_identity(struct connman_service *service,
 					const char *identity)
 {
-	if (service->immutable)
+	if (service->immutable || service->hidden == TRUE)
 		return;
 
 	g_free(service->identity);
@@ -2445,6 +2447,8 @@ void __connman_service_set_identity(struct connman_service *service,
 void __connman_service_set_agent_identity(struct connman_service *service,
 						const char *agent_identity)
 {
+	if (service->hidden == TRUE)
+		return;
 	g_free(service->agent_identity);
 	service->agent_identity = g_strdup(agent_identity);
 
@@ -2457,7 +2461,7 @@ void __connman_service_set_agent_identity(struct connman_service *service,
 void __connman_service_set_passphrase(struct connman_service *service,
 					const char* passphrase)
 {
-	if (service->immutable == TRUE)
+	if (service->immutable == TRUE || service->hidden == TRUE)
 		return;
 
 	g_free(service->passphrase);
@@ -2476,6 +2480,8 @@ void __connman_service_set_passphrase(struct connman_service *service,
 void __connman_service_set_agent_passphrase(struct connman_service *service,
 						const char *agent_passphrase)
 {
+	if (service->hidden == TRUE)
+		return;
 	g_free(service->agent_passphrase);
 	service->agent_passphrase = g_strdup(agent_passphrase);
 
@@ -2770,7 +2776,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
-		if (service->immutable == TRUE)
+		if (service->immutable == TRUE || service->hidden == TRUE)
 			return __connman_error_not_supported(msg);
 
 		dbus_message_iter_get_basic(&value, &passphrase);
@@ -2951,7 +2957,7 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		g_get_current_time(&service->modified);
 		service_save(service);
 	} else if (g_str_equal(name, "Passphrase") == TRUE) {
-		if (service->immutable == TRUE)
+		if (service->immutable == TRUE || service->hidden == TRUE)
 			return __connman_error_not_supported(msg);
 
 		g_free(service->passphrase);
@@ -3223,7 +3229,7 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		return __connman_error_not_supported(msg);
 
-	if (service->immutable == TRUE)
+	if (service->immutable == TRUE || service->hidden == TRUE)
 		return __connman_error_not_supported(msg);
 
 	if (service->favorite == FALSE && service->state !=
@@ -3856,6 +3862,8 @@ int __connman_service_set_favorite(struct connman_service *service,
 {
 	GSequenceIter *iter;
 
+	if (service->hidden == TRUE)
+		return -EOPNOTSUPP;
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter == NULL)
 		return -ENOENT;
@@ -3878,6 +3886,8 @@ int __connman_service_set_favorite(struct connman_service *service,
 int __connman_service_set_immutable(struct connman_service *service,
 						connman_bool_t immutable)
 {
+	if (service->hidden == TRUE)
+		return -EOPNOTSUPP;
 	service->immutable = immutable;
 
 	immutable_changed(service);
@@ -3888,6 +3898,8 @@ int __connman_service_set_immutable(struct connman_service *service,
 void __connman_service_set_string(struct connman_service *service,
 				  const char *key, const char *value)
 {
+	if (service->hidden == TRUE)
+		return;
 	if (g_str_equal(key, "EAP") == TRUE) {
 		g_free(service->eap);
 		service->eap = g_strdup(value);
