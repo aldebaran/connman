@@ -3464,6 +3464,7 @@ static void service_free(gpointer user_data)
 	g_hash_table_destroy(service->counter_table);
 
 	if (service->network != NULL) {
+		__connman_network_disconnect(service->network);
 		if (service->network_created == TRUE)
 			connman_network_unref(service->network);
 	}
