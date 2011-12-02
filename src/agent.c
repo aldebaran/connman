@@ -261,6 +261,32 @@ static void request_input_append_wps(DBusMessageIter *iter, void *user_data)
 				DBUS_TYPE_STRING, &str);
 }
 
+static void request_input_append_name(DBusMessageIter *iter, void *user_data)
+{
+	const char *str = "string";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "mandatory";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+	connman_dbus_dict_append_array(iter, "Alternates",
+				DBUS_TYPE_STRING,
+				request_input_append_alternates,
+				"SSID");
+}
+
+static void request_input_append_ssid(DBusMessageIter *iter, void *user_data)
+{
+	const char *str = "ssid";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "alternate";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+}
+
 static void request_input_append_password(DBusMessageIter *iter,
 							void *user_data)
 {
@@ -352,6 +378,13 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 				DBUS_TYPE_OBJECT_PATH, &path);
 
 	connman_dbus_dict_open(&iter, &dict);
+
+	if (__connman_service_is_hidden(service)) {
+		connman_dbus_dict_append_dict(&dict, "Name",
+					request_input_append_name, NULL);
+		connman_dbus_dict_append_dict(&dict, "SSID",
+					request_input_append_ssid, NULL);
+	}
 
 	if (__connman_service_get_security(service) ==
 			CONNMAN_SERVICE_SECURITY_8021X) {
