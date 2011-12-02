@@ -1169,6 +1169,26 @@ connman_bool_t connman_network_get_associating(struct connman_network *network)
 	return network->associating;
 }
 
+int connman_network_connect_hidden(struct connman_network *network,
+				char *identity, char* passphrase)
+{
+	struct connman_service *service;
+
+	DBG("");
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return -EINVAL;
+
+	if (identity != NULL)
+		__connman_service_set_agent_identity(service, identity);
+
+	if (passphrase != NULL)
+		__connman_service_add_passphrase(service, passphrase);
+
+	return __connman_service_connect(service);
+}
+
 /**
  * __connman_network_connect:
  * @network: network structure
