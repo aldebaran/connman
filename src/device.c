@@ -1185,6 +1185,23 @@ int __connman_device_request_scan(enum connman_service_type type)
 	return 0;
 }
 
+int __connman_device_request_hidden_scan(struct connman_device *device,
+				const char *ssid, unsigned int ssid_len,
+				const char *identity, const char *passphrase)
+{
+	DBG("device %p", device);
+
+	if (device == NULL || device->driver == NULL ||
+			device->driver->scan_hidden == NULL)
+		return -EINVAL;
+
+	if (device->scanning == TRUE)
+		return -EALREADY;
+
+	return device->driver->scan_hidden(device, ssid, ssid_len,
+					identity, passphrase);
+}
+
 connman_bool_t __connman_device_isfiltered(const char *devname)
 {
 	char **pattern;
