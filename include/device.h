@@ -109,6 +109,9 @@ struct connman_device_driver {
 	int (*disable) (struct connman_device *device);
 	int (*scan) (struct connman_device *device);
 	int (*scan_fast) (struct connman_device *device);
+	int (*scan_hidden)(struct connman_device *device,
+			const char *ssid, unsigned int ssid_len,
+			const char *identity, const char* passphrase);
 };
 
 int connman_device_driver_register(struct connman_device_driver *driver);
