@@ -430,6 +430,7 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 
 static void wispr_portal_request_wispr_login(struct connman_service *service,
 				connman_bool_t success,
+				const char *ssid, int ssid_len,
 				const char *username, const char *password,
 				void *user_data)
 {
