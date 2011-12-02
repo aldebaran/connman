@@ -912,12 +912,6 @@ static connman_bool_t handle_4way_handshake_failure(GSupplicantInterface *interf
 	if (wifi->retries < MAXIMUM_RETRIES)
 		return TRUE;
 
-	/* We disable the selected network, if not then
-	 * wpa_supplicant will loop retrying */
-	if (g_supplicant_interface_enable_selected_network(interface,
-								FALSE) != 0)
-		DBG("Could not disables selected network");
-
 	connman_network_set_error(network, CONNMAN_NETWORK_ERROR_INVALID_KEY);
 
 	return FALSE;
@@ -986,6 +980,12 @@ static void interface_state(GSupplicantInterface *interface)
 		if (handle_4way_handshake_failure(interface,
 						network, wifi) == TRUE)
 			break;
+
+		/* We disable the selected network, if not then
+		 * wpa_supplicant will loop retrying */
+		if (g_supplicant_interface_enable_selected_network(interface,
+						FALSE) != 0)
+			DBG("Could not disables selected network");
 
 		connman_network_set_associating(network, FALSE);
 		connman_network_set_connected(network, FALSE);
