@@ -83,6 +83,7 @@ void __connman_counter_cleanup(void);
 struct connman_service;
 
 typedef void (* authentication_cb_t) (struct connman_service *service,
+				connman_bool_t values_received,
 				const char *identifier, const char *secret,
 				void *user_data);
 typedef void (* report_error_cb_t) (struct connman_service *service,

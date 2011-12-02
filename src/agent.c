@@ -94,6 +94,7 @@ struct request_input_reply {
 static void request_input_passphrase_reply(DBusPendingCall *call, void *user_data)
 {
 	struct request_input_reply *passphrase_reply = user_data;
+	connman_bool_t values_received = FALSE;
 	connman_bool_t wps = FALSE;
 	char *identity = NULL;
 	char *passphrase = NULL;
@@ -104,6 +105,8 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
 		goto done;
+
+	values_received = TRUE;
 
 	dbus_message_iter_init(reply, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
@@ -164,8 +167,9 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	}
 
 done:
-	passphrase_reply->callback(passphrase_reply->service, identity,
-				passphrase, passphrase_reply->user_data);
+	passphrase_reply->callback(passphrase_reply->service, values_received,
+				identity, passphrase,
+				passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
 	dbus_message_unref(reply);
 	g_free(passphrase_reply);
@@ -314,6 +318,7 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	username_password_reply->callback(username_password_reply->service,
+					TRUE,
 					username, password,
 					username_password_reply->user_data);
 	connman_service_unref(username_password_reply->service);
