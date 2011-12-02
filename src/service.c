@@ -2174,6 +2174,11 @@ void __connman_service_list_struct(DBusMessageIter *iter)
 	g_sequence_foreach(service_list, append_struct, iter);
 }
 
+connman_bool_t __connman_service_is_hidden(struct connman_service *service)
+{
+	return service->hidden;
+}
+
 int __connman_service_get_index(struct connman_service *service)
 {
 	if (service == NULL)

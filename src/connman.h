@@ -509,6 +509,7 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 						const char *timeserver);
 void __connman_service_set_pac(struct connman_service *service,
 					const char *pac);
+connman_bool_t __connman_service_is_hidden(struct connman_service *service);
 int __connman_service_get_index(struct connman_service *service);
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname);
