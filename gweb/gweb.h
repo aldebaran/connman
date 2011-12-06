@@ -74,6 +74,9 @@ guint g_web_request_get(GWeb *web, const char *url,
 guint g_web_request_post(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data);
+guint g_web_request_post_file(GWeb *web, const char *url,
+				const char *type, const char *file,
+				GWebResultFunc func, gpointer user_data);
 
 gboolean g_web_cancel_request(GWeb *web, guint id);
 

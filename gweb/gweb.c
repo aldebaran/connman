@@ -25,14 +25,18 @@
 
 #include <stdio.h>
 #include <errno.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdarg.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/sendfile.h>
+#include <sys/stat.h>
 #include <arpa/inet.h>
 #include <netdb.h>
 #include <net/if.h>
+#include <netinet/tcp.h>
 
 #include "giognutls.h"
 #include "gresolv.h"
@@ -94,6 +98,9 @@ struct web_session {
 
 	GWebResultFunc result_func;
 	GWebInputFunc input_func;
+	int fd;
+	gsize length;
+	gsize offset;
 	gpointer user_data;
 };
 
@@ -443,7 +450,8 @@ static gboolean process_send_buffer(struct web_session *session)
 
 	if (count == 0) {
 		if (session->request_started == TRUE &&
-					session->more_data == FALSE)
+					session->more_data == FALSE &&
+					session->fd == -1)
 			session->body_done = TRUE;
 
 		return FALSE;
@@ -459,6 +467,40 @@ static gboolean process_send_buffer(struct web_session *session)
 		return FALSE;
 
 	g_string_erase(buf, 0, bytes_written);
+
+	return TRUE;
+}
+
+static gboolean process_send_file(struct web_session *session)
+{
+	int sk;
+	off_t offset;
+	ssize_t bytes_sent;
+
+	if (session->fd == -1)
+		return FALSE;
+
+	sk = g_io_channel_unix_get_fd(session->transport_channel);
+	if (sk < 0)
+		return FALSE;
+
+	offset = session->offset;
+
+	bytes_sent = sendfile(sk, session->fd, &offset, session->length);
+
+	debug(session->web, "errno: %d, bytes to send %zu / bytes sent %zu",
+			errno, session->length, bytes_sent);
+
+	if (bytes_sent < 0 && errno != EAGAIN)
+		return FALSE;
+
+	session->offset = offset;
+	session->length -= bytes_sent;
+
+	if (session->length == 0) {
+		session->body_done = TRUE;
+		return FALSE;
+	}
 
 	return TRUE;
 }
@@ -531,7 +573,7 @@ static void start_request(struct web_session *session)
 							session->content_type);
 		if (session->input_func == NULL) {
 			session->more_data = FALSE;
-			length = 0;
+			length = session->length;
 		} else
 			session->more_data = session->input_func(&body, &length,
 							session->user_data);
@@ -552,7 +594,7 @@ static void start_request(struct web_session *session)
 			g_string_append_printf(buf, "%zx\r\n", length);
 			g_string_append_len(buf, (char *) body, length);
 			g_string_append(buf, "\r\n");
-		} else
+		} else if (session->fd == -1)
 			g_string_append_len(buf, (char *) body, length);
 	}
 }
@@ -568,6 +610,9 @@ static gboolean send_data(GIOChannel *channel, GIOCondition cond,
 	}
 
 	if (process_send_buffer(session) == TRUE)
+		return TRUE;
+
+	if (process_send_file(session) == TRUE)
 		return TRUE;
 
 	if (session->request_started == FALSE) {
@@ -1121,7 +1166,8 @@ static void resolv_result(GResolvResultStatus status,
 
 static guint do_request(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
-				GWebResultFunc func, gpointer user_data)
+				int fd, gsize length, GWebResultFunc func,
+				gpointer user_data)
 {
 	struct web_session *session;
 
@@ -1155,6 +1201,9 @@ static guint do_request(GWeb *web, const char *url,
 
 	session->result_func = func;
 	session->input_func = input;
+	session->fd = fd;
+	session->length = length;
+	session->offset = 0;
 	session->user_data = user_data;
 
 	session->receive_buffer = g_try_malloc(DEFAULT_BUFFER_SIZE);
@@ -1223,14 +1272,36 @@ static guint do_request(GWeb *web, const char *url,
 guint g_web_request_get(GWeb *web, const char *url,
 				GWebResultFunc func, gpointer user_data)
 {
-	return do_request(web, url, NULL, NULL, func, user_data);
+	return do_request(web, url, NULL, NULL, -1, 0, func, user_data);
 }
 
 guint g_web_request_post(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data)
 {
-	return do_request(web, url, type, input, func, user_data);
+	return do_request(web, url, type, input, -1, 0, func, user_data);
+}
+
+guint g_web_request_post_file(GWeb *web, const char *url,
+				const char *type, const char *file,
+				GWebResultFunc func, gpointer user_data)
+{
+	struct stat st;
+	int fd;
+	guint ret;
+
+	if (stat(file, &st) < 0)
+		return 0;
+
+	fd = open(file, O_RDONLY);
+	if (fd < 0)
+		return 0;
+
+	ret = do_request(web, url, type, NULL, fd, st.st_size, func, user_data);
+	if (ret == 0)
+		close(fd);
+
+	return ret;
 }
 
 gboolean g_web_cancel_request(GWeb *web, guint id)
