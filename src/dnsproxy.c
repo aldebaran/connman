@@ -32,6 +32,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <resolv.h>
 
 #include <glib.h>
 
@@ -124,6 +125,52 @@ struct listener_data {
 	guint tcp_listener_watch;
 };
 
+struct cache_data {
+	time_t inserted;
+	int timeout;
+	uint16_t type;
+	uint16_t answers;
+	unsigned int data_len;
+	unsigned char *data; /* contains DNS header + body */
+};
+
+struct cache_entry {
+	char *key;
+	struct cache_data *ipv4;
+	struct cache_data *ipv6;
+};
+
+struct domain_question {
+	uint16_t type;
+	uint16_t class;
+} __attribute__ ((packed));
+
+struct domain_rr {
+	uint16_t type;
+	uint16_t class;
+	uint32_t ttl;
+	uint16_t rdlen;
+} __attribute__ ((packed));
+
+/*
+ * We limit how long the cached DNS entry stays in the cache.
+ * By default the TTL (time-to-live) of the DNS response is used
+ * when setting the cache entry life time. The value is in seconds.
+ */
+#define MAX_CACHE_TTL (60 * 30)
+
+/*
+ * We limit the cache size to some sane value so that cached data does
+ * not occupy too much memory. Each cached entry occupies on average
+ * about 100 bytes memory (depending on DNS name length).
+ * Example: caching www.connman.net uses 97 bytes memory.
+ * The value is the max amount of cached DNS responses (count).
+ */
+#define MAX_CACHE_SIZE 256
+
+static int cache_size;
+static GHashTable *cache;
+static int cache_refcount;
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
@@ -188,6 +235,37 @@ static struct server_data *find_server(const char *interface,
 	return NULL;
 }
 
+static void send_cached_response(int sk, unsigned char *buf, int len,
+				const struct sockaddr *to, socklen_t tolen,
+				int protocol, int id, uint16_t answers)
+{
+	struct domain_hdr *hdr;
+	int err, offset = protocol_offset(protocol);
+
+	if (offset < 0)
+		return;
+
+	if (len < 12)
+		return;
+
+	hdr = (void *) (buf + offset);
+
+	hdr->id = id;
+	hdr->qr = 1;
+	hdr->rcode = 0;
+	hdr->ancount = htons(answers);
+	hdr->nscount = 0;
+	hdr->arcount = 0;
+
+	DBG("id 0x%04x answers %d", hdr->id, answers);
+
+	err = sendto(sk, buf, len, 0, to, tolen);
+	if (err < 0) {
+		connman_error("Cannot send cached DNS response: %s",
+				strerror(errno));
+		return;
+	}
+}
 
 static void send_response(int sk, unsigned char *buf, int len,
 				const struct sockaddr *to, socklen_t tolen,
@@ -332,12 +410,646 @@ static int append_query(unsigned char *buf, unsigned int size,
 	return ptr - buf;
 }
 
+static gboolean cache_check_is_valid(struct cache_data *data,
+				time_t current_time)
+{
+	if (data == NULL)
+		return FALSE;
+
+	if (data->inserted + data->timeout < current_time)
+		return FALSE;
+
+	return TRUE;
+}
+
+static uint16_t cache_check_validity(char *question, uint16_t type,
+				struct cache_data *ipv4,
+				struct cache_data *ipv6)
+{
+	time_t current_time = time(0);
+
+	switch (type) {
+	case 1:		/* IPv4 */
+		if (cache_check_is_valid(ipv4, current_time) == FALSE) {
+			DBG("cache %s \"%s\" type A",
+				ipv4 ? "timeout" : "entry missing", question);
+
+			/*
+			 * We do not remove cache entry if there is still
+			 * valid IPv6 entry found in the cache.
+			 */
+			if (cache_check_is_valid(ipv6, current_time) == FALSE)
+				g_hash_table_remove(cache, question);
+
+			type = 0;
+		}
+		break;
+
+	case 28:	/* IPv6 */
+		if (cache_check_is_valid(ipv6, current_time) == FALSE) {
+			DBG("cache %s \"%s\" type AAAA",
+				ipv6 ? "timeout" : "entry missing", question);
+
+			if (cache_check_is_valid(ipv4, current_time) == FALSE)
+				g_hash_table_remove(cache, question);
+
+			type = 0;
+		}
+		break;
+	}
+
+	return type;
+}
+
+static struct cache_entry *cache_check(gpointer request, int *qtype)
+{
+	char *question = request + 12;
+	struct cache_entry *entry;
+	struct domain_question *q;
+	uint16_t type;
+	int offset;
+
+	offset = strlen(question) + 1;
+	q = (void *) (question + offset);
+	type = ntohs(q->type);
+
+	/* We only cache either A (1) or AAAA (28) requests */
+	if (type != 1 && type != 28)
+		return NULL;
+
+	entry = g_hash_table_lookup(cache, question);
+	if (entry == NULL)
+		return NULL;
+
+	type = cache_check_validity(question, type, entry->ipv4, entry->ipv6);
+	if (type == 0)
+		return NULL;
+
+	*qtype = type;
+	return entry;
+}
+
+/*
+ * Get a label/name from DNS resource record. The function decompresses the
+ * label if necessary. The function does not convert the name to presentation
+ * form. This means that the result string will contain label lengths instead
+ * of dots between labels. We intentionally do not want to convert to dotted
+ * format so that we can cache the wire format string directly.
+ */
+static int get_name(int counter,
+		unsigned char *pkt, unsigned char *start, unsigned char *max,
+		unsigned char *output, int output_max, int *output_len,
+		unsigned char **end, char *name, int *name_len)
+{
+	unsigned char *p;
+
+	/* Limit recursion to 10 (this means up to 10 labels in domain name) */
+	if (counter > 10)
+		return -EINVAL;
+
+	p = start;
+	while (*p) {
+		if (*p & NS_CMPRSFLGS) {
+			uint16_t offset = (*p & 0x3F) * 256 + *(p + 1);
+
+			if (offset >= max - pkt)
+				return -ENOBUFS;
+
+			if (*end == NULL)
+				*end = p + 2;
+
+			return get_name(counter + 1, pkt, pkt + offset, max,
+					output, output_max, output_len, end,
+					name, name_len);
+		} else {
+			unsigned label_len = *p;
+
+			if (pkt + label_len > max)
+				return -ENOBUFS;
+
+			if (*output_len > output_max)
+				return -ENOBUFS;
+
+			/*
+			 * We need the original name in order to check
+			 * if this answer is the correct one.
+			 */
+			name[(*name_len)++] = label_len;
+			memcpy(name + *name_len, p + 1,	label_len + 1);
+			*name_len += label_len;
+
+			/* We compress the result */
+			output[0] = NS_CMPRSFLGS;
+			output[1] = 0x0C;
+			*output_len = 2;
+
+			p += label_len + 1;
+
+			if (*end == NULL)
+				*end = p;
+
+			if (p >= max)
+				return -ENOBUFS;
+		}
+	}
+
+	return 0;
+}
+
+static int parse_rr(unsigned char *buf, unsigned char *start,
+			unsigned char *max,
+			unsigned char *response, unsigned int *response_size,
+			uint16_t *type, uint16_t *class, int *ttl, int *rdlen,
+			unsigned char **end,
+			char *name)
+{
+	struct domain_rr *rr;
+	int err, offset;
+	int name_len = 0, output_len = 0, max_rsp = *response_size;
+
+	err = get_name(0, buf, start, max, response, max_rsp,
+		&output_len, end, name, &name_len);
+	if (err < 0)
+		return err;
+
+	offset = output_len;
+
+	if ((unsigned int) offset > *response_size)
+		return -ENOBUFS;
+
+	rr = (void *) (*end);
+
+	*type = ntohs(rr->type);
+	*class = ntohs(rr->class);
+	*ttl = ntohl(rr->ttl);
+	*rdlen = ntohs(rr->rdlen);
+
+	if (*ttl < 0)
+		return -EINVAL;
+
+	memcpy(response + offset, *end, sizeof(struct domain_rr));
+
+	offset += sizeof(struct domain_rr);
+	*end += sizeof(struct domain_rr);
+
+	if ((unsigned int) (offset + *rdlen) > *response_size)
+		return -ENOBUFS;
+
+	memcpy(response + offset, *end, *rdlen);
+
+	*end += *rdlen;
+
+	*response_size = offset + *rdlen;
+
+	return 0;
+}
+
+static gboolean check_alias(GSList *aliases, char *name)
+{
+	GSList *list;
+
+	if (aliases != NULL) {
+		for (list = aliases; list; list = list->next) {
+			int len = strlen((char *)list->data);
+			if (strncmp((char *)list->data, name, len) == 0)
+				return TRUE;
+		}
+	}
+
+	return FALSE;
+}
+
+static int parse_response(unsigned char *buf, int buflen,
+			char *question, int qlen,
+			uint16_t *type, uint16_t *class, int *ttl,
+			unsigned char *response, unsigned int *response_len,
+			uint16_t *answers)
+{
+	struct domain_hdr *hdr = (void *) buf;
+	struct domain_question *q;
+	unsigned char *ptr;
+	uint16_t qdcount = ntohs(hdr->qdcount);
+	uint16_t ancount = ntohs(hdr->ancount);
+	int err, i;
+	uint16_t qtype, qclass;
+	unsigned char *next = NULL;
+	unsigned int maxlen = *response_len;
+	GSList *aliases = NULL, *list;
+	char name[NS_MAXDNAME + 1];
+
+	if (buflen < 12)
+		return -EINVAL;
+
+	DBG("qr %d qdcount %d", hdr->qr, qdcount);
+
+	/* We currently only cache responses where question count is 1 */
+	if (hdr->qr != 1 || qdcount != 1)
+		return -EINVAL;
+
+	ptr = buf + sizeof(struct domain_hdr);
+
+	strncpy(question, (char *) ptr, qlen);
+	qlen = strlen(question);
+	ptr += qlen + 1; /* skip \0 */
+
+	q = (void *) ptr;
+	qtype = ntohs(q->type);
+
+	/* We cache only A and AAAA records */
+	if (qtype != 1 && qtype != 28)
+		return -ENOMSG;
+
+	qclass = ntohs(q->class);
+
+	ptr += 2 + 2; /* ptr points now to answers */
+
+	err = -ENOMSG;
+	*response_len = 0;
+	*answers = 0;
+
+	/*
+	 * We have a bunch of answers (like A, AAAA, CNAME etc) to
+	 * A or AAAA question. We traverse the answers and parse the
+	 * resource records. Only A and AAAA records are cached, all
+	 * the other records in answers are skipped.
+	 */
+	for (i = 0; i < ancount; i++) {
+		/*
+		 * Get one address at a time to this buffer.
+		 * The max size of the answer is
+		 *   2 (pointer) + 2 (type) + 2 (class) +
+		 *   4 (ttl) + 2 (rdlen) + addr (16 or 4) = 28
+		 * for A or AAAA record.
+		 * For CNAME the size can be bigger.
+		 */
+		unsigned char rsp[NS_MAXCDNAME];
+		unsigned int rsp_len = sizeof(rsp) - 1;
+		int ret, rdlen;
+
+		memset(rsp, 0, sizeof(rsp));
+
+		ret = parse_rr(buf, ptr, buf + buflen, rsp, &rsp_len,
+			type, class, ttl, &rdlen, &next, name);
+		if (ret != 0) {
+			err = ret;
+			goto out;
+		}
+
+		/*
+		 * Now rsp contains compressed or uncompressed resource
+		 * record. Next we check if this record answers the question.
+		 * The name var contains the uncompressed label.
+		 * One tricky bit is the CNAME records as they alias
+		 * the name we might be interested in.
+		 */
+
+		/*
+		 * Go to next answer if the class is not the one we are
+		 * looking for.
+		 */
+		if (*class != qclass) {
+			ptr = next;
+			next = NULL;
+			continue;
+		}
+
+		/*
+		 * Try to resolve aliases also, type is CNAME(5).
+		 * This is important as otherwise the aliased names would not
+		 * be cached at all as the cache would not contain the aliased
+		 * question.
+		 *
+		 * If any CNAME is found in DNS packet, then we cache the alias
+		 * IP address instead of the question (as the server
+		 * said that question has only an alias).
+		 * This means in practice that if e.g., ipv6.google.com is
+		 * queried, DNS server returns CNAME of that name which is
+		 * ipv6.l.google.com. We then cache the address of the CNAME
+		 * but return the question name to client. So the alias
+		 * status of the name is not saved in cache and thus not
+		 * returned to the client. We do not return DNS packets from
+		 * cache to client saying that ipv6.google.com is an alias to
+		 * ipv6.l.google.com but we return instead a DNS packet that
+		 * says ipv6.google.com has address xxx which is in fact the
+		 * address of ipv6.l.google.com. For caching purposes this
+		 * should not cause any issues.
+		 */
+		if (*type == 5 && strncmp(question, name, qlen) == 0) {
+			/*
+			 * So now the alias answered the question. This is
+			 * not very useful from caching point of view as
+			 * the following A or AAAA records will not match the
+			 * question. We need to find the real A/AAAA record
+			 * of the alias and cache that.
+			 */
+			unsigned char *end = NULL;
+			int name_len = 0, output_len;
+
+			memset(rsp, 0, sizeof(rsp));
+			rsp_len = sizeof(rsp) - 1;
+
+			/*
+			 * Alias is in rdata part of the message,
+			 * and next-rdlen points to it. So we need to get
+			 * the real name of the alias.
+			 */
+			ret = get_name(0, buf, next - rdlen, buf + buflen,
+					rsp, rsp_len, &output_len, &end,
+					name, &name_len);
+			if (ret != 0) {
+				/* just ignore the error at this point */
+				ptr = next;
+				next = NULL;
+				continue;
+			}
+
+			/*
+			 * We should now have the alias of the entry we might
+			 * want to cache. Just remember it for a while.
+			 * We check the alias list when we have parsed the
+			 * A or AAAA record.
+			 */
+			aliases = g_slist_prepend(aliases, g_strdup(name));
+
+			ptr = next;
+			next = NULL;
+			continue;
+		}
+
+		if (*type == qtype) {
+			/*
+			 * We found correct type (A or AAAA)
+			 */
+			if (check_alias(aliases, name) == TRUE ||
+				(aliases == NULL && strncmp(question, name,
+							qlen) == 0)) {
+				/*
+				 * We found an alias or the name of the rr
+				 * matches the question. If so, we append
+				 * the compressed label to the cache.
+				 * The end result is a response buffer that
+				 * will contain one or more cached and
+				 * compressed resource records.
+				 */
+				if (*response_len + rsp_len > maxlen) {
+					err = -ENOBUFS;
+					goto out;
+				}
+				memcpy(response + *response_len, rsp, rsp_len);
+				*response_len += rsp_len;
+				(*answers)++;
+				err = 0;
+			}
+		}
+
+		ptr = next;
+		next = NULL;
+	}
+
+out:
+	for (list = aliases; list; list = list->next)
+		g_free(list->data);
+	g_slist_free(aliases);
+
+	return err;
+}
+
+struct cache_timeout {
+	time_t current_time;
+	int max_timeout;
+};
+
+static gboolean cache_check_entry(gpointer key, gpointer value,
+					gpointer user_data)
+{
+	struct cache_timeout *data = user_data;
+	struct cache_entry *entry = value;
+	int max_timeout;
+
+	/*
+	 * If either IPv4 or IPv6 cached entry has expired, we
+	 * remove both from the cache.
+	 */
+
+	if (entry->ipv4 != NULL && entry->ipv4->timeout > 0) {
+		max_timeout = entry->ipv4->inserted + entry->ipv4->timeout;
+		if (max_timeout > data->max_timeout)
+			data->max_timeout = max_timeout;
+
+		if (entry->ipv4->inserted + entry->ipv4->timeout
+							< data->current_time)
+			return TRUE;
+	}
+
+	if (entry->ipv6 != NULL && entry->ipv6->timeout > 0) {
+		max_timeout = entry->ipv6->inserted + entry->ipv6->timeout;
+		if (max_timeout > data->max_timeout)
+			data->max_timeout = max_timeout;
+
+		if (entry->ipv6->inserted + entry->ipv6->timeout
+							< data->current_time)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void cache_cleanup(void)
+{
+	static int max_timeout;
+	struct cache_timeout data;
+	int count;
+
+	data.current_time = time(0);
+	data.max_timeout = 0;
+
+	if (max_timeout > data.current_time) {
+		DBG("waiting %ld secs before cleaning cache",
+			max_timeout - data.current_time);
+		return;
+	}
+
+	count = g_hash_table_foreach_remove(cache, cache_check_entry,
+						&data);
+	DBG("removed %d", count);
+
+	if (count == 0)
+		/*
+		 * If we could not remove anything, then remember
+		 * what is the max timeout and do nothing if we
+		 * have not yet reached it. This will prevent
+		 * constant traversal of the cache if it is full.
+		 */
+		max_timeout = data.max_timeout;
+	else
+		max_timeout = 0;
+}
+
+static int cache_update(struct server_data *srv, unsigned char *msg,
+			unsigned int msg_len)
+{
+	int offset = protocol_offset(srv->protocol);
+	int err, qlen, ttl = 0;
+	uint16_t answers, type = 0, class = 0;
+	struct domain_question *q;
+	struct cache_entry *entry;
+	struct cache_data *data;
+	char question[NS_MAXDNAME + 1];
+	unsigned char response[NS_MAXDNAME + 1];
+	unsigned char *ptr;
+	unsigned int rsplen;
+	gboolean new_entry = TRUE;
+	time_t current_time;
+
+	if (cache_size >= MAX_CACHE_SIZE) {
+		cache_cleanup();
+		if (cache_size >= MAX_CACHE_SIZE)
+			return 0;
+	}
+
+	/* Continue only if response code is 0 (=ok) */
+	if (msg[3] & 0x0f)
+		return 0;
+
+	if (offset < 0)
+		return 0;
+
+	rsplen = sizeof(response) - 1;
+	question[sizeof(question) - 1] = '\0';
+
+	err = parse_response(msg + offset, msg_len - offset,
+				question, sizeof(question) - 1,
+				&type, &class, &ttl,
+				response, &rsplen, &answers);
+	if (err < 0 || ttl == 0)
+		return 0;
+
+	qlen = strlen(question);
+	current_time = time(0);
+
+	/*
+	 * If the cache contains already data, check if the
+	 * type of the cached data is the same and do not add
+	 * to cache if data is already there.
+	 * This is needed so that we can cache both A and AAAA
+	 * records for the same name.
+	 */
+	entry = g_hash_table_lookup(cache, question);
+	if (entry == NULL) {
+		entry = g_try_new(struct cache_entry, 1);
+		if (entry == NULL)
+			return -ENOMEM;
+
+		data = g_try_new(struct cache_data, 1);
+		if (data == NULL) {
+			g_free(entry);
+			return -ENOMEM;
+		}
+
+		entry->key = g_strdup(question);
+		entry->ipv4 = entry->ipv6 = NULL;
+
+		if (type == 1)
+			entry->ipv4 = data;
+		else
+			entry->ipv6 = data;
+	} else {
+		if (type == 1 && entry->ipv4 != NULL)
+			return 0;
+
+		if (type == 28 && entry->ipv6 != NULL)
+			return 0;
+
+		data = g_try_new(struct cache_data, 1);
+		if (data == NULL)
+			return -ENOMEM;
+
+		if (type == 1)
+			entry->ipv4 = data;
+		else
+			entry->ipv6 = data;
+
+		new_entry = FALSE;
+	}
+
+	/*
+	 * Restrict the cached DNS record TTL to some sane value
+	 * in order to prevent data staying in the cache too long.
+	 */
+	if (ttl > MAX_CACHE_TTL)
+		ttl = MAX_CACHE_TTL;
+
+	data->inserted = current_time;
+	data->type = type;
+	data->answers = answers;
+	data->timeout = ttl;
+	data->data_len = 12 + qlen + 1 + 2 + 2 + rsplen;
+	data->data = ptr = g_malloc(data->data_len);
+	if (data->data == NULL) {
+		g_free(entry->key);
+		g_free(data);
+		g_free(entry);
+		return -ENOMEM;
+	}
+
+	memcpy(ptr, msg, 12);
+	memcpy(ptr + 12, question, qlen + 1); /* copy also the \0 */
+
+	q = (void *) (ptr + 12 + qlen + 1);
+	q->type = htons(type);
+	q->class = htons(class);
+	memcpy(ptr + 12 + qlen + 1 + sizeof(struct domain_question),
+		response, rsplen);
+
+	if (new_entry == TRUE) {
+		g_hash_table_replace(cache, entry->key, entry);
+		cache_size++;
+	}
+
+	DBG("cache %d %squestion \"%s\" type %d ttl %d size %ld",
+		cache_size, new_entry ? "new " : "old ",
+		question, type, ttl,
+		sizeof(*entry) + sizeof(*data) + data->data_len + qlen);
+
+	return 0;
+}
+
 static int ns_resolv(struct server_data *server, struct request_data *req,
 				gpointer request, gpointer name)
 {
 	GList *list;
-	int sk, err;
+	int sk, err, type = 0;
 	char *dot, *lookup = (char *) name;
+	struct cache_entry *entry;
+
+	entry = cache_check(request, &type);
+	if (entry != NULL) {
+		struct cache_data *data;
+
+		DBG("cache hit %s type %s", lookup, type == 1 ? "A" : "AAAA");
+		if (type == 1)
+			data = entry->ipv4;
+		else
+			data = entry->ipv6;
+
+		if (data != NULL && req->protocol == IPPROTO_TCP) {
+			send_cached_response(req->client_sk, data->data,
+					data->data_len, NULL, 0, IPPROTO_TCP,
+					req->srcid, data->answers);
+			return 1;
+		}
+
+		if (data != NULL && req->protocol == IPPROTO_UDP) {
+			int sk;
+			sk = g_io_channel_unix_get_fd(
+					req->ifdata->udp_listener_channel);
+
+			send_cached_response(sk, data->data,
+				data->data_len, &req->sa, req->sa_len,
+				IPPROTO_UDP, req->srcid, data->answers);
+			return 1;
+		}
+	}
 
 	sk = g_io_channel_unix_get_fd(server->channel);
 
@@ -406,7 +1118,8 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	return 0;
 }
 
-static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
+static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
+				struct server_data *data)
 {
 	struct domain_hdr *hdr;
 	struct request_data *req;
@@ -473,6 +1186,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 
 		memcpy(req->resp, reply, reply_len);
 		req->resplen = reply_len;
+
+		cache_update(data, reply, reply_len);
 	}
 
 	if (hdr->rcode > 0 && req->numresp < req->numserv)
@@ -497,6 +1212,30 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol)
 	g_free(req);
 
 	return err;
+}
+
+static void cache_element_destroy(gpointer value)
+{
+	struct cache_entry *entry = value;
+
+	if (entry == NULL)
+		return;
+
+	if (entry->ipv4 != NULL) {
+		g_free(entry->ipv4->data);
+		g_free(entry->ipv4);
+	}
+
+	if (entry->ipv6 != NULL) {
+		g_free(entry->ipv6->data);
+		g_free(entry->ipv6);
+	}
+
+	g_free(entry->key);
+	g_free(entry);
+
+	if (--cache_size < 0)
+		cache_size = 0;
 }
 
 static void destroy_server(struct server_data *server)
@@ -527,6 +1266,10 @@ static void destroy_server(struct server_data *server)
 		g_free(domain);
 	}
 	g_free(server->interface);
+
+	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1)
+		g_hash_table_destroy(cache);
+
 	g_free(server);
 }
 
@@ -535,10 +1278,9 @@ static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
 {
 	unsigned char buf[4096];
 	int sk, err, len;
+	struct server_data *data = user_data;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		struct server_data *data = user_data;
-
 		connman_error("Error with UDP server %s", data->server);
 		data->watch = 0;
 		return FALSE;
@@ -550,7 +1292,7 @@ static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
 	if (len < 12)
 		return TRUE;
 
-	err = forward_dns_reply(buf, len, IPPROTO_UDP);
+	err = forward_dns_reply(buf, len, IPPROTO_UDP, data);
 	if (err < 0)
 		return TRUE;
 
@@ -651,7 +1393,16 @@ hangup:
 
 			req->timeout = g_timeout_add_seconds(30,
 						request_timeout, req);
-			ns_resolv(server, req, req->request, req->name);
+			if (ns_resolv(server, req, req->request,
+					req->name) > 0) {
+				/* We sent cached result so no need for timeout
+				 * handler.
+				 */
+				if (req->timeout > 0) {
+					g_source_remove(req->timeout);
+					req->timeout = 0;
+				}
+			}
 		}
 
 	} else if (condition & G_IO_IN) {
@@ -707,7 +1458,8 @@ hangup:
 			reply->received += bytes_recv;
 		}
 
-		forward_dns_reply(reply->buf, reply->received, IPPROTO_TCP);
+		forward_dns_reply(reply->buf, reply->received, IPPROTO_TCP,
+					server);
 
 		g_free(reply);
 		server->incoming_reply = NULL;
@@ -857,6 +1609,12 @@ static struct server_data *create_server(const char *interface,
 		}
 	}
 
+	if (__sync_fetch_and_add(&cache_refcount, 1) == 0)
+		cache = g_hash_table_new_full(g_str_hash,
+					g_str_equal,
+					NULL,
+					cache_element_destroy);
+
 	if (protocol == IPPROTO_UDP) {
 		/* Enable new servers by default */
 		data->enabled = TRUE;
@@ -874,6 +1632,7 @@ static gboolean resolv(struct request_data *req,
 				gpointer request, gpointer name)
 {
 	GSList *list;
+	int status;
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
@@ -888,8 +1647,16 @@ static gboolean resolv(struct request_data *req,
 				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 						udp_server_event, data);
 
-		if (ns_resolv(data, req, request, name) < 0)
+		status = ns_resolv(data, req, request, name);
+		if (status < 0)
 			continue;
+
+		if (status > 0) {
+			if (req->timeout > 0) {
+				g_source_remove(req->timeout);
+				req->timeout = 0;
+			}
+		}
 	}
 
 	return TRUE;
@@ -1263,7 +2030,12 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 		}
 
 		req->timeout = g_timeout_add_seconds(30, request_timeout, req);
-		ns_resolv(server, req, buf, query);
+		if (ns_resolv(server, req, buf, query) > 0) {
+			if (req->timeout > 0) {
+				g_source_remove(req->timeout);
+				req->timeout = 0;
+			}
+		}
 	}
 
 	return TRUE;
