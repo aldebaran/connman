@@ -777,7 +777,8 @@ static int switch_listening_mode(GDHCPClient *dhcp_client,
 		return 0;
 
 	if (dhcp_client->listen_mode != L_NONE) {
-		g_source_remove(dhcp_client->listener_watch);
+		if (dhcp_client->listener_watch > 0)
+			g_source_remove(dhcp_client->listener_watch);
 		dhcp_client->listener_channel = NULL;
 		dhcp_client->listen_mode = L_NONE;
 		dhcp_client->listener_sockfd = -1;
