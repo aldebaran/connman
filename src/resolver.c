@@ -494,6 +494,24 @@ void connman_resolver_flush(void)
 	return;
 }
 
+static void free_entry(gpointer data)
+{
+	struct entry_data *entry = data;
+	g_free(entry->interface);
+	g_free(entry->domain);
+	g_free(entry->server);
+	g_free(entry);
+}
+
+static void free_resolvfile(gpointer data)
+{
+	struct resolvfile_entry *entry = data;
+	g_free(entry->interface);
+	g_free(entry->domain);
+	g_free(entry->server);
+	g_free(entry);
+}
+
 int __connman_resolver_init(connman_bool_t dnsproxy)
 {
 	DBG("dnsproxy %d", dnsproxy);
@@ -517,4 +535,18 @@ void __connman_resolver_cleanup(void)
 
 	if (dnsproxy_enabled == TRUE)
 		__connman_dnsproxy_cleanup();
+	else {
+		GList *list;
+		GSList *slist;
+
+		for (list = resolvfile_list; list; list = g_list_next(list))
+			free_resolvfile(list->data);
+		g_list_free(resolvfile_list);
+		resolvfile_list = NULL;
+
+		for (slist = entry_list; slist; slist = g_slist_next(slist))
+			free_entry(slist->data);
+		g_slist_free(entry_list);
+		entry_list = NULL;
+	}
 }
