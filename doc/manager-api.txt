@@ -155,6 +155,25 @@ Signals		TechnologyAdded(object path, dict properties)
 			The object path is no longer accessible after this
 			signal and only emitted for reference.
 
+		ServicesAdded(array{object, dict})
+
+			List of service that have been added. The array
+			is a list of services that is sorted with existing
+			services containing an empty dictionary and new
+			services containing the properties.
+
+			This signal will only inform about added services
+			and in case that services get added and removed at
+			the same time, a ServicesRemoved signal will be
+			sent first.
+
+		ServicesRemoved(array{object})
+
+			Signals a list of services that are no longer valid.
+
+			The object paths are no longer accessible after
+			this signal and only emitted for reference.
+
 		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
@@ -182,22 +201,6 @@ Properties	string State [readonly]
 			certain technologies manually back on. For example
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.
-
-		array{object} Services [readonly]
-
-			List of service object paths. The list is sorted
-			internally to have the service with the default
-			route always first and then the favorite services
-			followed by scan results.
-
-			This list represents the available services for the
-			current selected profile. If the profile gets changed
-			then this list will be updated.
-
-			The same list is available via the profile object
-			itself. It is just provided here for convenience of
-			applications only dealing with the current active
-			profile.
 
 		boolean SessionMode [readwrite]  [experminental]
 
