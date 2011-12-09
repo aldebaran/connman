@@ -93,17 +93,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void ProvisionService(string configuration)
-
-			Provide a configuration for services.
-
-			Service configuration is provided as a single string
-			that follows the same format as configuration files,
-			see config-format.txt. An exception to this format
-			is that only one service can be provisioned per call.
-
-			Possible Errors: [service].Error.InvalidArguments
-
 		object ConnectProvider(dict provider)
 
 			Connect to a VPN specified by the given provider
