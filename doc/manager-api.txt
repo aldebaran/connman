@@ -294,7 +294,7 @@ Properties	string State [readonly]
 			applications only dealing with the current active
 			profile.
 
-		boolean SessionMode [readwrite]
+		boolean SessionMode [readwrite]  [experminental]
 
 			This disables the auto connect feature. It should be
 			enabled when the Session API is used. When SessionMode
