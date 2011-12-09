@@ -144,7 +144,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void RegisterCounter(object path, uint32 accuracy, uint32 period)
+		void RegisterCounter(object path, uint32 accuracy, uint32 period)  [experimental]
 
 			Register a new counter for user notifications.
 
@@ -165,7 +165,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		void UnregisterCounter(object path)
+		void UnregisterCounter(object path)  [experimental]
 
 			Unregister an existing counter.
 
