@@ -16,7 +16,7 @@ Core
    Priority: High
    Complexity: C4
    Owner: Daniel Wagner <daniel.wagner@bmw-carit.de>
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
+   Owner: Patrik Flykt <patrik.flykt@linux.intel.com>
 
    The session API should provide a connection abstraction in order to
    prioritize applications network accesses, prevent or allow network
@@ -35,22 +35,11 @@ Core
    caching the DNS record based on their TTL.
 
 
-- Power management
-
-   Priority: Medium
-   Complexity: C4
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-   Implement a simple device pm hook that ConnMan's core code would
-   use whenever it decides to put devices in power save mode. Although
-   the kernel runtime power management code should take care of that,
-   not all driver (especially WiFi ones) implement runtime PM hooks.
-
-
 - IP ranges allocation and check
 
    Priority: High
    Complexity: C2
+   Guillaume Zajac <guillaume.zajac@linux.intel.com>
 
    For both tethering and private networks, but also to detect invalid
    static IP configurations, we need to have a core IP range layer
@@ -80,20 +69,6 @@ Core
 WiFi
 ====
 
-- Ad-Hoc support
-
-   Priority: Medium
-   Complexity: C2
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-
-- Fast Connect
-
-   Priority: Low
-   Complexity: C4
-   Owner: Samuel Ortiz <sameo@linux.intel.com>
-
-
 - EAP-AKA/SIM
 
    Priority: Medium
@@ -110,6 +85,21 @@ WiFi
 
    Priority: Low
    Complexity: C1
+
+
+- Wireless background scan
+
+   Priority: Medium
+   Complexity: C4
+   Owner: Samuel Ortiz <sameo@linux.intel.com>
+
+   While connected ConnMan should offload the background scanning to
+   wpa_supplicant. Wpa_supplicant allows for a fancy background scan
+   which frequency increases after the current connection signal level
+   drops below a defined threshold.
+   We should also be able to have wpa_supplicant do the background
+   scanning for us when we're not connected, if we have configured our
+   favorite networks.
 
 
 - WiFi p2p
@@ -139,8 +129,9 @@ VPN
 
 - IPsec
 
-   Priority: Low
+   Priority: Medium
    Complexity: C4
+   Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
 
 
 - Split tunnelling
@@ -148,9 +139,36 @@ VPN
    Priority: Low
    Complexity: C8
    Dependencies: Core:Private networks
+   Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
 
    The current VPN support puts the VPN interface at the top of the
    service list, giving VPNs the default route. When doing split
    tunneling, the system routes packet to the VPN interface for
    private IPs, while going through the default interface for the rest
    of the traffic.
+
+
+Tools
+=====
+
+- Command line tool
+
+   Priority: Low
+   Complexity: C4
+   Owner: Patrik Flykt <patrik.flykt@linux.intel.com>
+
+   For platforms not running python, it could prove useful to provide them
+   with a native single binary command line tool.
+
+
+User Interface
+==============
+
+- GNOME3 UI
+
+   Priority: Low
+   Complexity: C4
+   Owner: Alok Barsode <alok.barsode@linux.intel.com>
+
+   A GNOME3 shell user interface would make it easier for mainstream distros
+   users to use ConnMan.
