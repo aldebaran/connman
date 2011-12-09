@@ -270,10 +270,6 @@ Properties	string State [readonly]
 			the limited usage of WiFi or Bluetooth devices might
 			be allowed in some situations.
 
-		object ActiveProfile [readwrite]
-
-			Object path of the current active profile.
-
 		array{object} Technologies [readonly]
 
 			List of technology object paths.
