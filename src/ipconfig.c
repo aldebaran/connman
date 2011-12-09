@@ -2161,10 +2161,17 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 	key = g_strdup_printf("%smethod", prefix);
 	method = g_key_file_get_string(keyfile, identifier, key, NULL);
 	if (method == NULL) {
-		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		switch (ipconfig->type) {
+		case CONNMAN_IPCONFIG_TYPE_IPV4:
 			ipconfig->method = CONNMAN_IPCONFIG_METHOD_DHCP;
-		else
+			break;
+		case CONNMAN_IPCONFIG_TYPE_IPV6:
+			ipconfig->method = CONNMAN_IPCONFIG_METHOD_AUTO;
+			break;
+		case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
 			ipconfig->method = CONNMAN_IPCONFIG_METHOD_OFF;
+			break;
+		}
 	} else
 		ipconfig->method = __connman_ipconfig_string2method(method);
 
