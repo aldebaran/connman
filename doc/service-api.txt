@@ -167,38 +167,10 @@ Properties	string State [readonly]
 			or key management settings.
 
 			Possible values are "none", "wep", "psk", "ieee8021x"
-			and also "wps". Alternate values for "psk" can also
-			be "wpa" and "rsn".
+			and also "wps".
 
 			This property might be only present for WiFi
 			services.
-
-		boolean LoginRequired [readonly]
-
-			This property indicates that an additional login
-			step, like web based authentication, is needed
-			before the connection establishment can proceed.
-
-		string Passphrase [readwrite]
-
-			If the service type is WiFi, then this property
-			can be used to store a passphrase.
-
-			No PropertyChanged signals will be sent for this
-			property. The PassphraseRequired property should
-			be monitored instead.
-
-			This property might also not always be included
-			since it is protected by a different security policy.
-
-		boolean PassphraseRequired [readonly]
-
-			If the service type is WiFi, then this property
-			indicates if a passphrase is required.
-
-			If a passphrase has been set already or if no
-			passphrase is needed, then this property will
-			be set to false.
 
 		uint8 Strength [readonly]
 
