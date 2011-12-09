@@ -52,47 +52,6 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object LookupService(string pattern)
-
-			Lookup a service matching the specific pattern.
-
-			Examples are interface names like "eth0", "wlan0"
-			etc. or service names like "hotspot" etc.
-
-			In case of multiple services match the the pattern
-			an error is returned.
-
-			Possible Errors: [service].Error.InvalidArguments
-			                 [service].Error.NotUnique
-			                 [service].Error.NotFound
-
-		object ConnectService(dict network)
-
-			Connect to a network specified by the given
-			properties.
-
-			For connecting to a hidden WiFi network for example
-			it is required that Type = "wifi" and the SSID
-			properties are provided.
-
-			When successful this method will return object
-			path of the service object.
-
-			This method can also be used to connect to an
-			already existing service. It works exactly the
-			same as executing the Connect method from the
-			service interface.
-
-			This method call will only return in case of an
-			error or when the service is fully connected. So
-			setting a longer D-Bus timeout might be a really
-			good idea.
-
-			When 'SessionMode' property is enabled, this method
-			call is disallowed.
-
-			Possible Errors: [service].Error.InvalidArguments
-
 		object ConnectProvider(dict provider)
 
 			Connect to a VPN specified by the given provider
