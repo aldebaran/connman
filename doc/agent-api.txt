@@ -23,6 +23,17 @@ Methods		void Release()
 
 			Possible Errors: net.connman.Agent.Error.Retry
 
+		void RequestBrowser(object service, string url)
+
+			This method gets called when it is required
+			to ask the user to open a website to procceed
+			with login handling.
+
+			This can happen if connected to a hotspot portal
+			page without WISPr support.
+
+			Possible Errors: net.connman.Agent.Error.Retry
+
 		dict RequestInput(object service, dict fields)
 
 			This method gets called when trying to connect to
