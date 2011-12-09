@@ -112,7 +112,7 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
-		object CreateSession(dict settings, object notifier)
+		object CreateSession(dict settings, object notifier)  [experimental]
 
 			Create a new session for the application. Every
 			application can create multiple session with
@@ -128,7 +128,7 @@ Methods		dict GetProperties()
 			Every application should at least create one session
 			to inform about its requirements and it purpose.
 
-		void DestroySession(object session)
+		void DestroySession(object session)  [experimental]
 
 			Remove the previously created session.
 
