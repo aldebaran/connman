@@ -12,16 +12,48 @@ Methods		dict GetProperties()
 
 			Possible Errors: [service].Error.InvalidArguments
 
+		void SetProperty(string name, variant value)
+
+			Changes the value of the specified property. Only
+			properties that are listed as read-write are
+			changeable. On success a PropertyChanged signal
+			will be emitted.
+
+			Possible Errors: [service].Error.InvalidArguments
+			                 [service].Error.InvalidProperty
+
+		void Scan()
+
+			Trigger a scan for this specific technology. The
+			method call will return when a scan has been
+			finished and results are available.
+
+			Results will be signaled via the ServicesAdded (or
+			also ServicesRemoved) signal from the manager
+			interface.
+
 Signals		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
 			property.
 
-Properties	string State [readonly]
+Properties	boolean Powered [readwrite]
 
-			The technology state information.
+			Boolean representing the power state of the
+			technology. False means that the technology is
+			off (and is available RF-Killed) while True means
+			that the technology is enabled.
 
-			Valid states are "offline", "enabled" and "connected".
+		boolean Connected [readonly]
+
+			Boolean representing if a technolgy is connected.
+
+			This is just a convience property for allowing the
+			UI to easily show if this technolgy has an active
+			connection or not.
+
+			If this property is True it means that at least one
+			service of this technology is in ready state.
 
 		string Name [readonly]
 
