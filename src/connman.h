@@ -488,7 +488,6 @@ int __connman_service_request_login(struct connman_service *service);
 int __connman_service_connect(struct connman_service *service);
 int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_disconnect_all(void);
-int __connman_service_provision(DBusMessage *msg);
 void __connman_service_auto_connect(void);
 
 void __connman_service_provision_changed(const char *ident);

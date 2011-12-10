@@ -337,20 +337,6 @@ static DBusMessage *get_services(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *provision_service(DBusConnection *conn, DBusMessage *msg,
-					void *data)
-{
-	int err;
-
-	DBG("conn %p", conn);
-
-	err = __connman_service_provision(msg);
-	if (err < 0)
-		return __connman_error_failed(msg, -err);
-
-	return NULL;
-}
-
 static DBusMessage *connect_provider(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -538,8 +524,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "DisableTechnology", "s",     "",      disable_technology,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetServices",       "",      "a(oa{sv})", get_services   },
-	{ "ProvisionService",  "s",     "",      provision_service,
-						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "RegisterAgent",     "o",     "",      register_agent     },

@@ -4773,65 +4773,6 @@ void __connman_service_provision_changed(const char *ident)
 	g_sequence_foreach(service_list, provision_changed, (void *)ident);
 }
 
-int __connman_service_provision(DBusMessage *msg)
-{
-	GKeyFile *keyfile = NULL;
-	const char *config_str = NULL;
-	char *group = NULL, *ident = NULL;
-	int err = 0;
-	struct connman_service *service;
-
-	DBG("");
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &config_str,
-							DBUS_TYPE_INVALID);
-
-	if (config_str == NULL || strlen(config_str) == 0)
-		return -EINVAL;
-
-	keyfile = g_key_file_new();
-
-	/* populate GKeyFile with config_str */
-	if (g_key_file_load_from_data(keyfile, config_str,
-					strlen(config_str), 0, NULL) == FALSE) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	/*
-	 * read only one group of settings (only one service supported, no
-	 * global settings)
-	 */
-	group = g_key_file_get_start_group(keyfile);
-
-	if (group == NULL || g_str_has_prefix(group, "service_") == FALSE) {
-		err = -EINVAL;
-		goto done;
-	}
-
-	err = __connman_config_load_service(keyfile, group, TRUE);
-	if (err < 0)
-		goto done;
-
-	ident = group + strlen("service_");
-
-	/* trigger service provisioning if service exists */
-	service = lookup_by_identifier(ident);
-	if (service != NULL)
-		__connman_config_provision_service(service);
-
-	g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
-
-done:
-	if (group != NULL)
-		g_free(group);
-
-	if (keyfile != NULL)
-		g_key_file_free(keyfile);
-
-	return err;
-}
-
 /**
  * __connman_service_get:
  * @identifier: service identifier
