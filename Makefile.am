@@ -189,7 +189,7 @@ unit_test_session_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 unit_objects += $(unit_test_session_OBJECTS)
 endif
 
-test_scripts = test/get-state test/list-profiles test/list-services \
+test_scripts = test/get-state test/list-services \
 		test/connect-service test/monitor-services test/set-address \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
