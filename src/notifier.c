@@ -184,7 +184,6 @@ static void state_changed(connman_bool_t connected)
 {
 	unsigned int count = __connman_notifier_count_connected();
 	char *state = "offline";
-	DBusMessage *signal;
 
 	if (count > 1)
 		return;
@@ -199,16 +198,6 @@ static void state_changed(connman_bool_t connected)
 	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "State",
 						DBUS_TYPE_STRING, &state);
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "StateChanged");
-	if (signal == NULL)
-		return;
-
-	dbus_message_append_args(signal, DBUS_TYPE_STRING, &state,
-							DBUS_TYPE_INVALID);
-
-	g_dbus_send_message(connection, signal);
 }
 
 static void technology_connected(enum connman_service_type type,

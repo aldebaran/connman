@@ -141,19 +141,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *get_state(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	str = __connman_notifier_get_state();
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_STRING, &str,
-						DBUS_TYPE_INVALID);
-}
-
 static DBusMessage *remove_provider(DBusConnection *conn,
 				    DBusMessage *msg, void *data)
 {
@@ -516,7 +503,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property,
 						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "GetState",          "",      "s",     get_state          },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "EnableTechnology",  "s",     "",      enable_technology,
@@ -542,7 +528,6 @@ static GDBusMethodTable manager_methods[] = {
 
 static GDBusSignalTable manager_signals[] = {
 	{ "PropertyChanged", "sv" },
-	{ "StateChanged",    "s"  },
 	{ },
 };
 
