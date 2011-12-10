@@ -337,33 +337,6 @@ static DBusMessage *get_services(DBusConnection *conn,
 	return reply;
 }
 
-static DBusMessage *connect_service(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	int err;
-
-	DBG("conn %p", conn);
-
-	if (__connman_session_mode() == TRUE) {
-		connman_info("Session mode enabled: "
-				"direct service connect disabled");
-
-		return __connman_error_failed(msg, -EINVAL);
-	}
-
-	err = __connman_service_create_and_connect(msg);
-	if (err < 0) {
-		if (err == -EINPROGRESS) {
-			connman_error("Invalid return code from connect");
-			err = -EINVAL;
-		}
-
-		return __connman_error_failed(msg, -err);
-	}
-
-	return NULL;
-}
-
 static DBusMessage *provision_service(DBusConnection *conn, DBusMessage *msg,
 					void *data)
 {
@@ -565,8 +538,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "DisableTechnology", "s",     "",      disable_technology,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetServices",       "",      "a(oa{sv})", get_services   },
-	{ "ConnectService",    "a{sv}", "o",     connect_service,
-						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ProvisionService",  "s",     "",      provision_service,
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,
