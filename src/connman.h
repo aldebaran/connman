@@ -485,7 +485,6 @@ int __connman_service_clear_error(struct connman_service *service);
 int __connman_service_indicate_default(struct connman_service *service);
 int __connman_service_request_login(struct connman_service *service);
 
-int __connman_service_lookup(const char *pattern, const char **path);
 int __connman_service_connect(struct connman_service *service);
 int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_disconnect_all(void);

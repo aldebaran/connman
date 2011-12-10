@@ -4766,50 +4766,6 @@ int __connman_service_disconnect_all(void)
 }
 
 /**
- * __connman_service_lookup:
- * @pattern: search pattern
- * @path: return object path
- *
- * Look up a service path from a search pattern
- */
-int __connman_service_lookup(const char *pattern, const char **path)
-{
-	GHashTableIter iter;
-	gpointer key, value;
-	struct connman_device *device;
-	const char *ifname;
-
-	g_hash_table_iter_init(&iter, service_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		GSequenceIter *iter = value;
-		struct connman_service *service = g_sequence_get(iter);
-
-		if (g_strcmp0(service->identifier, pattern) == 0 ||
-				g_strcmp0(service->name, pattern) == 0) {
-			*path = (const char *) service->path;
-			return 0;
-		}
-
-		if (service->network == NULL)
-			continue;
-
-		device = connman_network_get_device(service->network);
-		if (device == NULL)
-			continue;
-
-		ifname = connman_device_get_string(device, "Interface");
-		if (ifname != NULL && g_strcmp0(ifname, pattern) == 0) {
-			*path = (const char *) service->path;
-			return 0;
-		}
-
-	}
-
-	return -ENXIO;
-}
-
-/**
  * lookup_by_identifier:
  * @identifier: service identifier
  *
