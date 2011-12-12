@@ -1386,6 +1386,20 @@ static void cm_update_attached(struct modem_data *modem,
 	netreg_get_properties(modem);
 }
 
+static void cm_update_powered(struct modem_data *modem,
+				DBusMessageIter *value)
+{
+	dbus_message_iter_get_basic(value, &modem->cm_powered);
+
+	DBG("%s ConnnectionManager Powered %d", modem->path,
+		modem->cm_powered);
+
+	if (modem->cm_powered == TRUE)
+		return;
+
+	cm_set_powered(modem);
+}
+
 static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1412,13 +1426,7 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 	if (g_str_equal(key, "Attached") == TRUE) {
 		cm_update_attached(modem, &value);
 	} else if (g_str_equal(key, "Powered") == TRUE) {
-		dbus_message_iter_get_basic(&value, &modem->cm_powered);
-
-		DBG("%s ConnnectionManager Powered %d", modem->path,
-			modem->cm_powered);
-
-		if (modem->cm_powered == FALSE)
-			cm_set_powered(modem);
+		cm_update_powered(modem, &value);
 	}
 
 	return TRUE;
@@ -1441,13 +1449,7 @@ static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
 		if (g_str_equal(key, "Attached") == TRUE) {
 			cm_update_attached(modem, &value);
 		} else if (g_str_equal(key, "Powered") == TRUE) {
-			dbus_message_iter_get_basic(&value, &modem->cm_powered);
-
-			DBG("%s ConnnectionManager Powered %d", modem->path,
-				modem->cm_powered);
-
-			if (modem->cm_powered == FALSE)
-				cm_set_powered(modem);
+			cm_update_powered(modem, &value);
 		}
 
 		dbus_message_iter_next(dict);
