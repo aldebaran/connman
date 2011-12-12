@@ -137,6 +137,7 @@ struct modem_data {
 	/* Netreg Interface */
 	char *name;
 	uint8_t strength;
+	connman_bool_t roaming;
 
 	/* pending calls */
 	DBusPendingCall	*call_set_property;
@@ -946,6 +947,8 @@ static void add_network(struct modem_data *modem)
 
 	connman_network_set_available(modem->network, TRUE);
 
+	connman_network_set_roaming(modem->network, modem->roaming);
+
 	if (connman_device_add_network(modem->device, modem->network) < 0) {
 		connman_network_unref(modem->network);
 		modem->network = NULL;
@@ -1254,6 +1257,32 @@ static void netreg_update_strength(struct modem_data *modem,
 	connman_network_update(modem->network);
 }
 
+static void netreg_update_roaming(struct modem_data *modem,
+					DBusMessageIter *value)
+{
+	char *status;
+	connman_bool_t roaming;
+
+	dbus_message_iter_get_basic(value, &status);
+
+	if (g_str_equal(status, "roaming") == TRUE)
+		roaming = TRUE;
+	else
+		roaming = FALSE;
+
+	if (roaming == modem->roaming)
+		return;
+
+	modem->roaming = roaming;
+
+	if (modem->network == NULL)
+		return;
+
+	connman_network_set_bool(modem->network,
+				"Roaming", modem->roaming);
+	connman_network_update(modem->network);
+}
+
 static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1281,6 +1310,8 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 		netreg_update_name(modem, &value);
 	} else if (g_str_equal(key, "Strength") == TRUE) {
 		netreg_update_strength(modem, &value);
+	} else if (g_str_equal(key, "Status") == TRUE) {
+		netreg_update_roaming(modem, &value);
 	}
 
 	return TRUE;
@@ -1305,6 +1336,8 @@ static void netreg_properties_reply(struct modem_data *modem,
 			netreg_update_name(modem, &value);
 		} else if (g_str_equal(key, "Strength") == TRUE) {
 			netreg_update_strength(modem, &value);
+		} else if (g_str_equal(key, "Status") == TRUE) {
+			netreg_update_roaming(modem, &value);
 		}
 
 		dbus_message_iter_next(dict);
