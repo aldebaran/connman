@@ -947,7 +947,8 @@ static void add_network(struct modem_data *modem)
 
 	connman_network_set_available(modem->network, TRUE);
 
-	connman_network_set_roaming(modem->network, modem->roaming);
+	connman_network_set_bool(modem->network, "Roaming",
+					modem->roaming);
 
 	if (connman_device_add_network(modem->device, modem->network) < 0) {
 		connman_network_unref(modem->network);
