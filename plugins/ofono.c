@@ -1368,6 +1368,24 @@ static int netreg_get_properties(struct modem_data *modem)
 			netreg_properties_reply, modem);
 }
 
+static void cm_update_attached(struct modem_data *modem,
+				DBusMessageIter *value)
+{
+	dbus_message_iter_get_basic(value, &modem->attached);
+
+	DBG("%s Attached %d", modem->path, modem->attached);
+
+	if (modem->attached == FALSE)
+		return;
+
+	if (has_interface(modem->interfaces,
+				OFONO_API_NETREG) == FALSE) {
+		return;
+	}
+
+	netreg_get_properties(modem);
+}
+
 static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1392,16 +1410,7 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "Attached") == TRUE) {
-		dbus_message_iter_get_basic(&value, &modem->attached);
-
-		DBG("%s Attached %d", modem->path, modem->attached);
-
-		if (modem->attached == TRUE) {
-			if (has_interface(modem->interfaces,
-						OFONO_API_NETREG) == TRUE) {
-				netreg_get_properties(modem);
-			}
-		}
+		cm_update_attached(modem, &value);
 	} else if (g_str_equal(key, "Powered") == TRUE) {
 		dbus_message_iter_get_basic(&value, &modem->cm_powered);
 
@@ -1430,17 +1439,7 @@ static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (g_str_equal(key, "Attached") == TRUE) {
-			dbus_message_iter_get_basic(&value, &modem->attached);
-
-			DBG("%s Attached %d", modem->path,
-				modem->attached);
-
-			if (modem->attached == TRUE) {
-				if (has_interface(modem->interfaces,
-						OFONO_API_NETREG) == TRUE) {
-					netreg_get_properties(modem);
-				}
-			}
+			cm_update_attached(modem, &value);
 		} else if (g_str_equal(key, "Powered") == TRUE) {
 			dbus_message_iter_get_basic(&value, &modem->cm_powered);
 
