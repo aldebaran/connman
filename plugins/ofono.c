@@ -1307,13 +1307,12 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
-	if (g_str_equal(key, "Name") == TRUE) {
+	if (g_str_equal(key, "Name") == TRUE)
 		netreg_update_name(modem, &value);
-	} else if (g_str_equal(key, "Strength") == TRUE) {
+	else if (g_str_equal(key, "Strength") == TRUE)
 		netreg_update_strength(modem, &value);
-	} else if (g_str_equal(key, "Status") == TRUE) {
+	else if (g_str_equal(key, "Status") == TRUE)
 		netreg_update_roaming(modem, &value);
-	}
 
 	return TRUE;
 }
@@ -1333,13 +1332,12 @@ static void netreg_properties_reply(struct modem_data *modem,
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Name") == TRUE) {
+		if (g_str_equal(key, "Name") == TRUE)
 			netreg_update_name(modem, &value);
-		} else if (g_str_equal(key, "Strength") == TRUE) {
+		else if (g_str_equal(key, "Strength") == TRUE)
 			netreg_update_strength(modem, &value);
-		} else if (g_str_equal(key, "Status") == TRUE) {
+		else if (g_str_equal(key, "Status") == TRUE)
 			netreg_update_roaming(modem, &value);
-		}
 
 		dbus_message_iter_next(dict);
 	}
@@ -1423,11 +1421,10 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_recurse(&iter, &value);
 
-	if (g_str_equal(key, "Attached") == TRUE) {
+	if (g_str_equal(key, "Attached") == TRUE)
 		cm_update_attached(modem, &value);
-	} else if (g_str_equal(key, "Powered") == TRUE) {
+	else if (g_str_equal(key, "Powered") == TRUE)
 		cm_update_powered(modem, &value);
-	}
 
 	return TRUE;
 }
@@ -1446,11 +1443,10 @@ static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
 		dbus_message_iter_next(&entry);
 		dbus_message_iter_recurse(&entry, &value);
 
-		if (g_str_equal(key, "Attached") == TRUE) {
+		if (g_str_equal(key, "Attached") == TRUE)
 			cm_update_attached(modem, &value);
-		} else if (g_str_equal(key, "Powered") == TRUE) {
+		else if (g_str_equal(key, "Powered") == TRUE)
 			cm_update_powered(modem, &value);
-		}
 
 		dbus_message_iter_next(dict);
 	}
