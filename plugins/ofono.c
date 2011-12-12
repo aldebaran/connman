@@ -1240,6 +1240,20 @@ static void netreg_update_name(struct modem_data *modem,
 	connman_network_update(modem->network);
 }
 
+static void netreg_update_strength(struct modem_data *modem,
+					DBusMessageIter *value)
+{
+	dbus_message_iter_get_basic(value, &modem->strength);
+
+	DBG("%s Strength %d", modem->path, modem->strength);
+
+	if (modem->network == NULL)
+		return;
+
+	connman_network_set_strength(modem->network, modem->strength);
+	connman_network_update(modem->network);
+}
+
 static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1266,15 +1280,7 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 	if (g_str_equal(key, "Name") == TRUE) {
 		netreg_update_name(modem, &value);
 	} else if (g_str_equal(key, "Strength") == TRUE) {
-		dbus_message_iter_get_basic(&value, &modem->strength);
-
-		DBG("%s Strength %d", modem->path, modem->strength);
-
-		if (modem->network == NULL)
-			return TRUE;
-
-		connman_network_set_strength(modem->network, modem->strength);
-		connman_network_update(modem->network);
+		netreg_update_strength(modem, &value);
 	}
 
 	return TRUE;
@@ -1298,16 +1304,7 @@ static void netreg_properties_reply(struct modem_data *modem,
 		if (g_str_equal(key, "Name") == TRUE) {
 			netreg_update_name(modem, &value);
 		} else if (g_str_equal(key, "Strength") == TRUE) {
-			dbus_message_iter_get_basic(&value, &modem->strength);
-
-			DBG("%s Strength %d", modem->path,
-				modem->strength);
-
-			if (modem->network != NULL) {
-				connman_network_set_strength(modem->network,
-							modem->strength);
-				connman_network_update(modem->network);
-			}
+			netreg_update_strength(modem, &value);
 		}
 
 		dbus_message_iter_next(dict);
