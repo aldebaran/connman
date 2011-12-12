@@ -1526,23 +1526,6 @@ connman_uint16_t connman_network_get_wifi_channel(struct connman_network *networ
 }
 
 /**
- * connman_network_set_roaming:
- * @network: network structure
- * @roaming: roaming state
- *
- * Set roaming state for network
- */
-int connman_network_set_roaming(struct connman_network *network,
-						connman_bool_t roaming)
-{
-	DBG("network %p roaming %d", network, roaming);
-
-	network->roaming = roaming;
-
-	return 0;
-}
-
-/**
  * connman_network_set_string:
  * @network: network structure
  * @key: unique identifier
@@ -1672,7 +1655,7 @@ int connman_network_set_bool(struct connman_network *network,
 	DBG("network %p key %s value %d", network, key, value);
 
 	if (g_strcmp0(key, "Roaming") == 0)
-		return connman_network_set_roaming(network, value);
+		network->roaming = value;
 	else if (g_strcmp0(key, "WiFi.WPS") == 0)
 		network->wifi.wps = value;
 	else if (g_strcmp0(key, "WiFi.UseWPS") == 0)

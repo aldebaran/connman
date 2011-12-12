@@ -110,8 +110,6 @@ int connman_network_set_name(struct connman_network *network,
 int connman_network_set_strength(struct connman_network *network,
 						connman_uint8_t strength);
 connman_uint8_t connman_network_get_strength(struct connman_network *network);
-int connman_network_set_roaming(struct connman_network *network,
-						connman_bool_t roaming);
 int connman_network_set_frequency(struct connman_network *network,
 					connman_uint16_t frequency);
 connman_uint16_t connman_network_get_frequency(struct connman_network *network);
