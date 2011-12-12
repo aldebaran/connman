@@ -1221,6 +1221,25 @@ static gboolean cm_context_removed(DBusConnection *connection,
 	return TRUE;
 }
 
+static void netreg_update_name(struct modem_data *modem,
+				DBusMessageIter* value)
+{
+	char *name;
+
+	dbus_message_iter_get_basic(value, &name);
+
+	DBG("%s Name %s", modem->path, name);
+
+	g_free(modem->name);
+	modem->name = g_strdup(name);
+
+	if (modem->network == NULL)
+		return;
+
+	connman_network_set_name(modem->network, modem->name);
+	connman_network_update(modem->network);
+}
+
 static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1245,20 +1264,7 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "Name") == TRUE) {
-		char *name;
-
-		dbus_message_iter_get_basic(&value, &name);
-
-		DBG("%s Name %s", modem->path, name);
-
-		g_free(modem->name);
-		modem->name = g_strdup(name);
-
-		if (modem->network == NULL)
-			return TRUE;
-
-		connman_network_set_name(modem->network, modem->name);
-		connman_network_update(modem->network);
+		netreg_update_name(modem, &value);
 	} else if (g_str_equal(key, "Strength") == TRUE) {
 		dbus_message_iter_get_basic(&value, &modem->strength);
 
@@ -1290,20 +1296,7 @@ static void netreg_properties_reply(struct modem_data *modem,
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (g_str_equal(key, "Name") == TRUE) {
-			char *name;
-
-			dbus_message_iter_get_basic(&value, &name);
-
-			DBG("%s Name %s", modem->path, name);
-
-			g_free(modem->name);
-			modem->name = g_strdup(name);
-
-			if (modem->network != NULL) {
-				connman_network_set_name(modem->network,
-								modem->name);
-				connman_network_update(modem->network);
-			}
+			netreg_update_name(modem, &value);
 		} else if (g_str_equal(key, "Strength") == TRUE) {
 			dbus_message_iter_get_basic(&value, &modem->strength);
 
