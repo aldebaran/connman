@@ -2035,11 +2035,11 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	if (modem->ignore == TRUE)
 		return;
 
-	if (modem->powered == FALSE) {
+	if (modem->powered == FALSE)
 		modem_set_powered(modem);
-	} else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE) {
+	else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE)
 		sim_get_properties(modem);
-	} else
+	else
 		connection_manager_init(modem);
 }
 
