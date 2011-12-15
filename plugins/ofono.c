@@ -1625,6 +1625,64 @@ static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
+static void cdma_cm_update_powered(struct modem_data *modem,
+					DBusMessageIter *value)
+{
+	dbus_message_iter_get_basic(value, &modem->cdma_cm_powered);
+
+	DBG("%s CDMA cm Powered %d", modem->path, modem->cdma_cm_powered);
+
+	if (modem->network == NULL)
+		return;
+
+	if (modem->cdma_cm_powered == TRUE)
+		set_connected(modem);
+	else
+		set_disconnected(modem);
+}
+
+static void cdma_cm_update_settings(struct modem_data *modem,
+					DBusMessageIter *value)
+{
+	DBG("%s Settings", modem->path);
+
+	if (modem->context != NULL)
+		return;
+
+	extract_ipv4_settings(value, modem->context);
+}
+
+static gboolean cdma_cm_changed(DBusConnection *connection,
+				DBusMessage *message, void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (modem->online == TRUE && modem->network == NULL)
+		cdma_netreg_get_properties(modem);
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Powered") == TRUE)
+		cdma_cm_update_powered(modem, &value);
+	if (g_str_equal(key, "Settings") == TRUE)
+		cdma_cm_update_settings(modem, &value);
+
+	return TRUE;
+}
+
 static void cm_properties_reply(struct modem_data *modem, DBusMessageIter *dict)
 {
 	DBG("%s", modem->path);
@@ -1654,9 +1712,37 @@ static int cm_get_properties(struct modem_data *modem)
 				cm_properties_reply, modem);
 }
 
+static void cdma_cm_properties_reply(struct modem_data *modem,
+					DBusMessageIter *dict)
+{
+	DBG("%s", modem->path);
+
+	if (modem->online == TRUE)
+		cdma_netreg_get_properties(modem);
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Powered") == TRUE)
+			cdma_cm_update_powered(modem, &value);
+		if (g_str_equal(key, "Settings") == TRUE)
+			cdma_cm_update_settings(modem, &value);
+
+		dbus_message_iter_next(dict);
+	}
+}
+
 static int cdma_cm_get_properties(struct modem_data *modem)
 {
-	return -EINVAL;
+	return get_properties(modem->path, OFONO_CDMA_CM_INTERFACE,
+				cdma_cm_properties_reply, modem);
 }
 
 static int connection_manager_init(struct modem_data *modem)
@@ -2257,6 +2343,7 @@ static guint context_added_watch;
 static guint context_removed_watch;
 static guint netreg_watch;
 static guint context_watch;
+static guint cdma_cm_watch;
 static guint cdma_netreg_watch;
 
 static int ofono_init(void)
@@ -2327,6 +2414,12 @@ static int ofono_init(void)
 						netreg_changed,
 						NULL, NULL);
 
+	cdma_cm_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_CDMA_CM_INTERFACE,
+						PROPERTY_CHANGED,
+						cdma_cm_changed,
+						NULL, NULL);
+
 	cdma_netreg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
 						OFONO_CDMA_NETREG_INTERFACE,
 						PROPERTY_CHANGED,
@@ -2339,7 +2432,7 @@ static int ofono_init(void)
 			context_added_watch == 0 ||
 			context_removed_watch == 0 ||
 			context_watch == 0 || netreg_watch == 0 ||
-			cdma_netreg_watch == 0) {
+			cdma_cm_watch == 0 || cdma_netreg_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -2358,6 +2451,7 @@ static int ofono_init(void)
 
 remove:
 	g_dbus_remove_watch(connection, cdma_netreg_watch);
+	g_dbus_remove_watch(connection, cdma_cm_watch);
 	g_dbus_remove_watch(connection, netreg_watch);
 	g_dbus_remove_watch(connection, context_watch);
 	g_dbus_remove_watch(connection, context_removed_watch);
@@ -2400,6 +2494,7 @@ static void ofono_exit(void)
 	connman_network_driver_unregister(&network_driver);
 
 	g_dbus_remove_watch(connection, cdma_netreg_watch);
+	g_dbus_remove_watch(connection, cdma_cm_watch);
 	g_dbus_remove_watch(connection, netreg_watch);
 	g_dbus_remove_watch(connection, context_watch);
 	g_dbus_remove_watch(connection, context_removed_watch);
