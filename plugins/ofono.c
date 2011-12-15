@@ -510,6 +510,56 @@ static int context_set_inactive(struct modem_data *modem)
 	return err;
 }
 
+static void cdma_cm_set_powered_reply(struct modem_data *modem,
+					connman_bool_t success)
+{
+	DBG("%s", modem->path);
+
+	if (success == TRUE) {
+		/*
+		 * Don't handle do anything on success here. oFono will send
+		 * the change via PropertyChanged singal.
+		 */
+		return;
+	}
+
+	/*
+	 * Powered = True might fail due a timeout. That means oFono
+	 * still tries to go online. If we retry to set Powered = True,
+	 * we just get a InProgress error message. Should we power
+	 * cycle the modem in such cases?
+	 */
+
+	connman_network_set_error(modem->network,
+				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+}
+
+static int cdma_cm_set_powered(struct modem_data *modem)
+{
+	dbus_bool_t powered = TRUE;
+
+	DBG("%s", modem->path);
+
+	return set_property(modem, modem->path, OFONO_CDMA_CM_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN, &powered,
+				cdma_cm_set_powered_reply);
+}
+
+static int cdma_cm_shutdown(struct modem_data *modem)
+{
+	dbus_bool_t powered = FALSE;
+	int err;
+
+	DBG("%s", modem->path);
+
+	err = set_property(modem, modem->path, OFONO_CDMA_CM_INTERFACE,
+				"Powered", DBUS_TYPE_BOOLEAN, &powered, NULL);
+	if (err == -EINPROGRESS)
+		return 0;
+
+	return err;
+}
+
 static void modem_set_online_reply(struct modem_data *modem,
 					connman_bool_t success)
 {
@@ -1977,7 +2027,14 @@ static int network_connect(struct connman_network *network)
 
 	DBG("%s network %p", modem->path, network);
 
-	return context_set_active(modem);
+	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE)
+		return context_set_active(modem);
+	else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE)
+		return cdma_cm_set_powered(modem);
+
+	connman_error("Connection manager interface not available");
+
+	return -ENOSYS;
 }
 
 static int network_disconnect(struct connman_network *network)
@@ -1986,7 +2043,14 @@ static int network_disconnect(struct connman_network *network)
 
 	DBG("%s network %p", modem->path, network);
 
-	return context_set_inactive(modem);
+	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE)
+		return context_set_inactive(modem);
+	else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE)
+		return cdma_cm_shutdown(modem);
+
+	connman_error("Connection manager interface not available");
+
+	return -ENOSYS;
 }
 
 static struct connman_network_driver network_driver = {
