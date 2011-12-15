@@ -1526,27 +1526,31 @@ static int cdma_cm_get_properties(struct modem_data *modem)
 	return -EINVAL;
 }
 
-static gboolean connection_managers_init(struct modem_data *modem)
+static int connection_manager_init(struct modem_data *modem)
 {
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 		if (ready_to_create_device(modem) == TRUE)
 			create_device(modem);
+
 		if (modem->device != NULL) {
 			cm_get_properties(modem);
 			cm_get_contexts(modem);
 		}
 
-		return TRUE;
-	} else if (has_interface(modem->interfaces,
-			OFONO_API_CDMA_CM) == TRUE) {
+		return 0;
+	}
+
+	if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE) {
 		if (ready_to_create_device(modem) == TRUE)
 			create_device(modem);
+
 		if (modem->device != NULL)
 			cdma_cm_get_properties(modem);
 
-		return TRUE;
-	} else
-		return FALSE;
+		return 0;
+	}
+
+	return 0;
 }
 
 static void update_sim_imsi(struct modem_data *modem,
@@ -1634,7 +1638,7 @@ static void sim_properties_reply(struct modem_data *modem,
 				break;
 			}
 
-			connection_managers_init(modem);
+			connection_manager_init(modem);
 
 			return;
 		}
@@ -1687,7 +1691,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (modem->online == FALSE)
 			return TRUE;
 
-		connection_managers_init(modem);
+		connection_manager_init(modem);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		modem->interfaces = extract_interfaces(&value);
 
@@ -1706,7 +1710,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 			}
 		}
 
-		if (connection_managers_init(modem) == FALSE) {
+		if (connection_manager_init(modem) == FALSE) {
 			if (modem->context != NULL) {
 				remove_cm_context(modem,
 						modem->context->path);
@@ -1734,7 +1738,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 
 		DBG("%s Serial %s", modem->path, modem->serial);
 
-		connection_managers_init(modem);
+		connection_manager_init(modem);
 	}
 
 	return TRUE;
@@ -1817,7 +1821,7 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	} else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE) {
 		sim_get_properties(modem);
 	} else
-		connection_managers_init(modem);
+		connection_manager_init(modem);
 }
 
 static void modem_power_down(gpointer key, gpointer value, gpointer user_data)
