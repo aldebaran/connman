@@ -50,6 +50,8 @@
 #define OFONO_NETREG_INTERFACE		OFONO_SERVICE ".NetworkRegistration"
 #define OFONO_CM_INTERFACE		OFONO_SERVICE ".ConnectionManager"
 #define OFONO_CONTEXT_INTERFACE		OFONO_SERVICE ".ConnectionContext"
+#define OFONO_CDMA_CM_INTERFACE		OFONO_SERVICE ".cdma.ConnectionManager"
+#define OFONO_CDMA_NETREG_INTERFACE	OFONO_SERVICE ".cdma.NetworkRegistration"
 
 #define MODEM_ADDED			"ModemAdded"
 #define MODEM_REMOVED			"ModemRemoved"
@@ -68,6 +70,8 @@ enum ofono_api {
 	OFONO_API_SIM =		0x1,
 	OFONO_API_NETREG =	0x2,
 	OFONO_API_CM =		0x4,
+	OFONO_API_CDMA_NETREG =	0x8,
+	OFONO_API_CDMA_CM =	0x10,
 };
 
 /*
@@ -617,6 +621,10 @@ static uint8_t extract_interfaces(DBusMessageIter *array)
 			interfaces |= OFONO_API_NETREG;
 		else if (g_str_equal(name, OFONO_CM_INTERFACE) == TRUE)
 			interfaces |= OFONO_API_CM;
+		else if (g_str_equal(name, OFONO_CDMA_CM_INTERFACE) == TRUE)
+			interfaces |= OFONO_API_CDMA_CM;
+		else if (g_str_equal(name, OFONO_CDMA_NETREG_INTERFACE) == TRUE)
+			interfaces |= OFONO_API_CDMA_NETREG;
 
 		dbus_message_iter_next(&entry);
 	}
