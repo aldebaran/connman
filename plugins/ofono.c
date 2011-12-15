@@ -1745,7 +1745,7 @@ static int cdma_cm_get_properties(struct modem_data *modem)
 				cdma_cm_properties_reply, modem);
 }
 
-static int connection_manager_init(struct modem_data *modem)
+static connman_bool_t connection_manager_init(struct modem_data *modem)
 {
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
 		if (ready_to_create_device(modem) == TRUE)
@@ -1756,7 +1756,7 @@ static int connection_manager_init(struct modem_data *modem)
 			cm_get_contexts(modem);
 		}
 
-		return 0;
+		return TRUE;
 	}
 
 	if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE) {
@@ -1766,10 +1766,10 @@ static int connection_manager_init(struct modem_data *modem)
 		if (modem->device != NULL)
 			cdma_cm_get_properties(modem);
 
-		return 0;
+		return TRUE;
 	}
 
-	return 0;
+	return FALSE;
 }
 
 static void update_sim_imsi(struct modem_data *modem,
