@@ -39,6 +39,9 @@
 #include <connman/inet.h>
 #include <connman/dbus.h>
 #include <connman/log.h>
+#include <connman/technology.h>
+
+#include "mcc.h"
 
 #define uninitialized_var(x) x = x
 
@@ -1385,6 +1388,26 @@ static void netreg_update_roaming(struct modem_data *modem,
 	connman_network_update(modem->network);
 }
 
+static void netreg_update_regdom(struct modem_data *modem,
+				DBusMessageIter *value)
+{
+	char *mobile_country_code;
+	char *alpha2;
+	int mcc;
+
+	dbus_message_iter_get_basic(value, &mobile_country_code);
+
+	DBG("%s MobileContryCode %s", modem->path, mobile_country_code);
+
+
+	mcc = atoi(mobile_country_code);
+	if (mcc > 799)
+		return;
+
+	alpha2 = mcc_country_codes[mcc - 200];
+	connman_technology_set_regdom(alpha2);
+}
+
 static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1414,6 +1437,8 @@ static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
 		netreg_update_strength(modem, &value);
 	else if (g_str_equal(key, "Status") == TRUE)
 		netreg_update_roaming(modem, &value);
+	else if (g_str_equal(key, "MobileCountryCode") == TRUE)
+		netreg_update_regdom(modem, &value);
 
 	return TRUE;
 }
@@ -1439,6 +1464,8 @@ static void netreg_properties_reply(struct modem_data *modem,
 			netreg_update_strength(modem, &value);
 		else if (g_str_equal(key, "Status") == TRUE)
 			netreg_update_roaming(modem, &value);
+		else if (g_str_equal(key, "MobileCountryCode") == TRUE)
+			netreg_update_regdom(modem, &value);
 
 		dbus_message_iter_next(dict);
 	}
