@@ -1526,6 +1526,29 @@ static int cdma_cm_get_properties(struct modem_data *modem)
 	return -EINVAL;
 }
 
+static gboolean connection_managers_init(struct modem_data *modem)
+{
+	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
+		if (ready_to_create_device(modem) == TRUE)
+			create_device(modem);
+		if (modem->device != NULL) {
+			cm_get_properties(modem);
+			cm_get_contexts(modem);
+		}
+
+		return TRUE;
+	} else if (has_interface(modem->interfaces,
+			OFONO_API_CDMA_CM) == TRUE) {
+		if (ready_to_create_device(modem) == TRUE)
+			create_device(modem);
+		if (modem->device != NULL)
+			cdma_cm_get_properties(modem);
+
+		return TRUE;
+	} else
+		return FALSE;
+}
+
 static void update_sim_imsi(struct modem_data *modem,
 				const char *imsi)
 {
@@ -1611,20 +1634,8 @@ static void sim_properties_reply(struct modem_data *modem,
 				break;
 			}
 
-			if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
-				if (ready_to_create_device(modem) == TRUE)
-					create_device(modem);
-				if (modem->device != NULL) {
-					cm_get_properties(modem);
-					cm_get_contexts(modem);
-				}
-			} else if (has_interface(modem->interfaces,
-					OFONO_API_CDMA_CM) == TRUE) {
-				if (ready_to_create_device(modem) == TRUE)
-					create_device(modem);
-				if (modem->device != NULL)
-					cdma_cm_get_properties(modem);
-			}
+			connection_managers_init(modem);
+
 			return;
 		}
 
@@ -1676,22 +1687,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (modem->online == FALSE)
 			return TRUE;
 
-		if (has_interface(modem->interfaces, OFONO_API_CM) == FALSE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-			if (modem->device != NULL) {
-				cm_get_properties(modem);
-				cm_get_contexts(modem);
-			}
-		} else if (has_interface(modem->interfaces,
-						OFONO_API_CDMA_CM) == TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-			if (modem->device != NULL) {
-				cdma_cm_get_properties(modem);
-				cdma_netreg_get_properties(modem);
-			}
-		}
+		connection_managers_init(modem);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		modem->interfaces = extract_interfaces(&value);
 
@@ -1710,21 +1706,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 			}
 		}
 
-		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-			if (modem->device != NULL) {
-				cm_get_properties(modem);
-				cm_get_contexts(modem);
-				return TRUE;
-			}
-		} else if (has_interface(modem->interfaces,
-					OFONO_API_CDMA_CM) == TRUE) {
-				if (ready_to_create_device(modem) == TRUE)
-					create_device(modem);
-				if (modem->device != NULL)
-					cdma_cm_get_properties(modem);
-		} else {
+		if (connection_managers_init(modem) == FALSE) {
 			if (modem->context != NULL) {
 				remove_cm_context(modem,
 						modem->context->path);
@@ -1752,20 +1734,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 
 		DBG("%s Serial %s", modem->path, modem->serial);
 
-		if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-			if (modem->device != NULL) {
-				cm_get_properties(modem);
-				cm_get_contexts(modem);
-			}
-		} else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM)
-				== TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-			if (modem->device != NULL)
-				cdma_cm_get_properties(modem);
-		}
+		connection_managers_init(modem);
 	}
 
 	return TRUE;
@@ -1847,20 +1816,8 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 		modem_set_powered(modem);
 	} else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE) {
 		sim_get_properties(modem);
-	} else if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
-		if (ready_to_create_device(modem) == TRUE)
-			create_device(modem);
-		if (modem->device != NULL) {
-			cm_get_properties(modem);
-			cm_get_contexts(modem);
-		}
-	} else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM)
-			== TRUE) {
-		if (ready_to_create_device(modem) == TRUE)
-			create_device(modem);
-		if (modem->device != NULL)
-			cdma_cm_get_properties(modem);
-	}
+	} else
+		connection_managers_init(modem);
 }
 
 static void modem_power_down(gpointer key, gpointer value, gpointer user_data)
