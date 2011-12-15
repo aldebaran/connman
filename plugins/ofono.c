@@ -125,6 +125,9 @@ struct modem_data {
 	connman_bool_t set_powered;
 	connman_bool_t set_online;
 
+	/* CDMA ConnectionManager Interface */
+	connman_bool_t cdma_cm_powered;
+
 	/* ConnectionManager Interface */
 	connman_bool_t attached;
 	connman_bool_t cm_powered;
@@ -141,6 +144,7 @@ struct modem_data {
 	/* Netreg Interface */
 	char *name;
 	uint8_t strength;
+	uint8_t data_strength; /* 1xEVDO signal strength */
 	connman_bool_t roaming;
 
 	/* pending calls */
@@ -1312,7 +1316,46 @@ static void netreg_update_strength(struct modem_data *modem,
 	if (modem->network == NULL)
 		return;
 
+	/*
+	 * GSM:
+	 * We don't have 2 signal notifications we always report the strength
+	 * signal. data_strength is always equal to 0.
+	 *
+	 * CDMA:
+	 * In the case we have a data_strength signal (from 1xEVDO network)
+	 * we don't need to update the value with strength signal (from 1xCDMA)
+	 * because the modem is registered to 1xEVDO network for data call.
+	 * In case we have no data_strength signal (not registered to 1xEVDO
+	 * network), we must report the strength signal (registered to 1xCDMA
+	 * network e.g slow mode).
+	 */
+	if (modem->data_strength != 0)
+		return;
+
 	connman_network_set_strength(modem->network, modem->strength);
+	connman_network_update(modem->network);
+}
+
+/* Retrieve 1xEVDO Data Strength signal */
+static void netreg_update_datastrength(struct modem_data *modem,
+					DBusMessageIter *value)
+{
+	dbus_message_iter_get_basic(value, &modem->data_strength);
+
+	DBG("%s Data Strength %d", modem->path, modem->data_strength);
+
+	if (modem->network == NULL)
+		return;
+
+	/*
+	 * CDMA modem is not registered to 1xEVDO network, let
+	 * update_signal_strength() reporting the value on the Strength signal
+	 * notification.
+	 */
+	if (modem->data_strength == 0)
+		return;
+
+	connman_network_set_strength(modem->network, modem->data_strength);
 	connman_network_update(modem->network);
 }
 
@@ -1424,9 +1467,99 @@ static int netreg_get_properties(struct modem_data *modem)
 			netreg_properties_reply, modem);
 }
 
+static void add_cdma_network(struct modem_data *modem)
+{
+	/* Be sure that device is created before adding CDMA network */
+	if (modem->device == NULL)
+		return;
+
+	/*
+	 * CDMA modems don't need contexts for data call, however the current
+	 * add_network() logic needs one, so we create one to proceed.
+	 */
+	if (modem->context == NULL)
+		modem->context = network_context_alloc(modem->path);
+
+	add_network(modem);
+
+	if (modem->cdma_cm_powered == TRUE)
+		set_connected(modem);
+}
+
+static gboolean cdma_netreg_changed(DBusConnection *connection,
+					DBusMessage *message,
+					void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct modem_data *modem;
+	DBusMessageIter iter, value;
+	const char *key;
+
+	DBG("");
+
+	modem = g_hash_table_lookup(modem_hash, path);
+	if (modem == NULL)
+		return TRUE;
+
+	if (modem->ignore == TRUE)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	if (g_str_equal(key, "Name") == TRUE)
+		netreg_update_name(modem, &value);
+	else if (g_str_equal(key, "Strength") == TRUE)
+		netreg_update_strength(modem, &value);
+	else if (g_str_equal(key, "DataStrength") == TRUE)
+		netreg_update_datastrength(modem, &value);
+	else if (g_str_equal(key, "Status") == TRUE)
+		netreg_update_roaming(modem, &value);
+
+	add_cdma_network(modem);
+
+	return TRUE;
+}
+
+static void cdma_netreg_properties_reply(struct modem_data *modem,
+					DBusMessageIter *dict)
+{
+	DBG("%s", modem->path);
+
+	while (dbus_message_iter_get_arg_type(dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Name") == TRUE)
+			netreg_update_name(modem, &value);
+		else if (g_str_equal(key, "Strength") == TRUE)
+			netreg_update_strength(modem, &value);
+		else if (g_str_equal(key, "DataStrength") == TRUE)
+			netreg_update_datastrength(modem, &value);
+		else if (g_str_equal(key, "Status") == TRUE)
+			netreg_update_roaming(modem, &value);
+
+		dbus_message_iter_next(dict);
+	}
+
+	add_cdma_network(modem);
+}
+
 static int cdma_netreg_get_properties(struct modem_data *modem)
 {
-	return -EINVAL;
+	return get_properties(modem->path, OFONO_CDMA_NETREG_INTERFACE,
+			cdma_netreg_properties_reply, modem);
 }
 
 static void cm_update_attached(struct modem_data *modem,
@@ -1650,7 +1783,7 @@ static void sim_properties_reply(struct modem_data *modem,
 static int sim_get_properties(struct modem_data *modem)
 {
 	return get_properties(modem->path, OFONO_SIM_INTERFACE,
-			sim_properties_reply, modem);
+				sim_properties_reply, modem);
 }
 
 static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
@@ -2124,6 +2257,7 @@ static guint context_added_watch;
 static guint context_removed_watch;
 static guint netreg_watch;
 static guint context_watch;
+static guint cdma_netreg_watch;
 
 static int ofono_init(void)
 {
@@ -2193,12 +2327,19 @@ static int ofono_init(void)
 						netreg_changed,
 						NULL, NULL);
 
+	cdma_netreg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						OFONO_CDMA_NETREG_INTERFACE,
+						PROPERTY_CHANGED,
+						cdma_netreg_changed,
+						NULL, NULL);
+
 
 	if (watch == 0 || modem_added_watch == 0 || modem_removed_watch == 0 ||
 			modem_watch == 0 || cm_watch == 0 || sim_watch == 0 ||
 			context_added_watch == 0 ||
 			context_removed_watch == 0 ||
-			context_watch == 0 || netreg_watch == 0) {
+			context_watch == 0 || netreg_watch == 0 ||
+			cdma_netreg_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -2216,6 +2357,7 @@ static int ofono_init(void)
 	return 0;
 
 remove:
+	g_dbus_remove_watch(connection, cdma_netreg_watch);
 	g_dbus_remove_watch(connection, netreg_watch);
 	g_dbus_remove_watch(connection, context_watch);
 	g_dbus_remove_watch(connection, context_removed_watch);
@@ -2257,6 +2399,7 @@ static void ofono_exit(void)
 	connman_device_driver_unregister(&modem_driver);
 	connman_network_driver_unregister(&network_driver);
 
+	g_dbus_remove_watch(connection, cdma_netreg_watch);
 	g_dbus_remove_watch(connection, netreg_watch);
 	g_dbus_remove_watch(connection, context_watch);
 	g_dbus_remove_watch(connection, context_removed_watch);
