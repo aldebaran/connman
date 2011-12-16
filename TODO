@@ -26,15 +26,6 @@ Core
    See http://www.mail-archive.com/connman@connman.net/msg01653.html
 
 
-- DNS caching
-
-   Priority: Low
-   Complexity: C4
-
-   A simple initial implementation would see ConnMan's dnsproxy
-   caching the DNS record based on their TTL.
-
-
 - IP ranges allocation and check
 
    Priority: High
