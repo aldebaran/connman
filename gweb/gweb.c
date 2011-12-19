@@ -144,13 +144,14 @@ static inline void debug(GWeb *web, const char *format, ...)
 
 static void free_session(struct web_session *session)
 {
-	GWeb *web = session->web;
+	GWeb *web;
 
 	if (session == NULL)
 		return;
 
 	g_free(session->request);
 
+	web = session->web;
 	if (session->resolv_action > 0)
 		g_resolv_cancel_lookup(web->resolv, session->resolv_action);
 
@@ -442,10 +443,14 @@ static inline void call_result_func(struct web_session *session, guint16 status)
 
 static gboolean process_send_buffer(struct web_session *session)
 {
-	GString *buf = session->send_buffer;
+	GString *buf;
 	gsize count, bytes_written;
 	GIOStatus status;
 
+	if (session == NULL)
+		return FALSE;
+
+	buf = session->send_buffer;
 	count = buf->len;
 
 	if (count == 0) {
