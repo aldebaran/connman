@@ -713,6 +713,14 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 	err = disable_gateway(data, type);
 
 	/*
+	 * We may refcount service twice seperately for ipv4 and ipv6
+	 * then we need to unref accordingly.
+	 */
+	if (do_ipv4 == do_ipv6 && data->ipv4_gateway != NULL &&
+					data->ipv6_gateway != NULL)
+		connman_service_unref(service);
+
+	/*
 	 * We remove the service from the hash only if all the gateway
 	 * settings are to be removed.
 	 */
