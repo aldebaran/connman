@@ -134,8 +134,6 @@ struct modem_data {
 	connman_bool_t attached;
 	connman_bool_t cm_powered;
 
-	connman_bool_t set_cm_powered;
-
 	/* ConnectionContext Interface */
 	connman_bool_t active;
 	connman_bool_t set_active;
@@ -574,33 +572,22 @@ static int modem_set_online(struct modem_data *modem, connman_bool_t online)
 				NULL);
 }
 
-static void cm_set_powered_reply(struct modem_data *modem,
-					connman_bool_t success)
+static int cm_set_powered(struct modem_data *modem, connman_bool_t powered)
 {
-	DBG("%s", modem->path);
+	int err;
 
-	if (success == TRUE) {
-		/*
-		 * Don't handle do anything on success here. oFono will send
-		 * the change via PropertyChanged singal.
-		 */
-		return;
-	}
+	DBG("%s powered %d", modem->path, powered);
 
-	modem->set_cm_powered = FALSE;
-}
-
-static int cm_set_powered(struct modem_data *modem)
-{
-	DBG("%s", modem->path);
-
-	modem->set_cm_powered = TRUE;
-
-	return set_property(modem, modem->path,
+	err = set_property(modem, modem->path,
 				OFONO_CM_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN,
-				&modem->set_cm_powered,
-				cm_set_powered_reply);
+				&powered,
+				NULL);
+
+	if (powered == FALSE && err == -EINPROGRESS)
+		return 0;
+
+	return err;
 }
 
 static int modem_set_powered(struct modem_data *modem)
@@ -1596,7 +1583,7 @@ static void cm_update_powered(struct modem_data *modem,
 	if (modem->cm_powered == TRUE)
 		return;
 
-	cm_set_powered(modem);
+	cm_set_powered(modem, TRUE);
 }
 
 static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
