@@ -1006,7 +1006,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		cache_size++;
 	}
 
-	DBG("cache %d %squestion \"%s\" type %d ttl %d size %ld",
+	DBG("cache %d %squestion \"%s\" type %d ttl %d size %zd",
 		cache_size, new_entry ? "new " : "old ",
 		question, type, ttl,
 		sizeof(*entry) + sizeof(*data) + data->data_len + qlen);
