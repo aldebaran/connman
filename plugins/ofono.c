@@ -482,36 +482,33 @@ static void context_set_active_reply(struct modem_data *modem,
 	 * cycle the modem in such cases?
 	 */
 
+	if (modem->network == NULL) {
+		/*
+		 * In the case where we power down the device
+		 * we don't wait for the reply, therefore the network
+		 * might already be gone.
+		 */
+		return;
+	}
+
 	connman_network_set_error(modem->network,
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 }
 
-static int context_set_active(struct modem_data *modem)
+static int context_set_active(struct modem_data *modem,
+				connman_bool_t active)
 {
-	dbus_bool_t active = TRUE;
-
-	DBG("%s", modem->path);
-
-	return set_property(modem, modem->context->path,
-				OFONO_CONTEXT_INTERFACE,
-				"Active", DBUS_TYPE_BOOLEAN,
-				&active,
-				context_set_active_reply);
-}
-
-static int context_set_inactive(struct modem_data *modem)
-{
-	dbus_bool_t active = FALSE;
 	int err;
 
-	DBG("%s", modem->path);
+	DBG("%s active %d", modem->path, active);
 
 	err = set_property(modem, modem->context->path,
 				OFONO_CONTEXT_INTERFACE,
 				"Active", DBUS_TYPE_BOOLEAN,
 				&active,
-				NULL);
-	if (err == -EINPROGRESS)
+				context_set_active_reply);
+
+	if (active == FALSE && err == -EINPROGRESS)
 		return 0;
 
 	return err;
@@ -2276,7 +2273,7 @@ static int network_connect(struct connman_network *network)
 	DBG("%s network %p", modem->path, network);
 
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE)
-		return context_set_active(modem);
+		return context_set_active(modem, TRUE);
 	else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE)
 		return cdma_cm_set_powered(modem);
 
@@ -2292,7 +2289,7 @@ static int network_disconnect(struct connman_network *network)
 	DBG("%s network %p", modem->path, network);
 
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE)
-		return context_set_inactive(modem);
+		return context_set_active(modem, FALSE);
 	else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE)
 		return cdma_cm_shutdown(modem);
 
