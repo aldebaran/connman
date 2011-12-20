@@ -534,31 +534,31 @@ static void cdma_cm_set_powered_reply(struct modem_data *modem,
 	 * cycle the modem in such cases?
 	 */
 
+	if (modem->network == NULL) {
+		/*
+		 * In the case where we power down the device
+		 * we don't wait for the reply, therefore the network
+		 * might already be gone.
+		 */
+		return;
+	}
+
 	connman_network_set_error(modem->network,
 				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 }
 
-static int cdma_cm_set_powered(struct modem_data *modem)
+static int cdma_cm_set_powered(struct modem_data *modem, connman_bool_t powered)
 {
-	dbus_bool_t powered = TRUE;
-
-	DBG("%s", modem->path);
-
-	return set_property(modem, modem->path, OFONO_CDMA_CM_INTERFACE,
-				"Powered", DBUS_TYPE_BOOLEAN, &powered,
-				cdma_cm_set_powered_reply);
-}
-
-static int cdma_cm_shutdown(struct modem_data *modem)
-{
-	dbus_bool_t powered = FALSE;
 	int err;
 
-	DBG("%s", modem->path);
+	DBG("%s powered %d", modem->path, powered);
 
 	err = set_property(modem, modem->path, OFONO_CDMA_CM_INTERFACE,
-				"Powered", DBUS_TYPE_BOOLEAN, &powered, NULL);
-	if (err == -EINPROGRESS)
+				"Powered", DBUS_TYPE_BOOLEAN,
+				&powered,
+				cdma_cm_set_powered_reply);
+
+	if (powered == FALSE && err == -EINPROGRESS)
 		return 0;
 
 	return err;
@@ -2275,7 +2275,7 @@ static int network_connect(struct connman_network *network)
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE)
 		return context_set_active(modem, TRUE);
 	else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE)
-		return cdma_cm_set_powered(modem);
+		return cdma_cm_set_powered(modem, TRUE);
 
 	connman_error("Connection manager interface not available");
 
@@ -2291,7 +2291,7 @@ static int network_disconnect(struct connman_network *network)
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE)
 		return context_set_active(modem, FALSE);
 	else if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE)
-		return cdma_cm_shutdown(modem);
+		return cdma_cm_set_powered(modem, FALSE);
 
 	connman_error("Connection manager interface not available");
 
