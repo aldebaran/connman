@@ -1799,13 +1799,14 @@ static connman_bool_t connection_manager_init(struct modem_data *modem)
 	return FALSE;
 }
 
-static void update_sim_imsi(struct modem_data *modem,
-				const char *imsi)
+static void sim_update_imsi(struct modem_data *modem,
+				DBusMessageIter* value)
 {
-	DBG("%s imsi %s", modem->path, imsi);
+	char *imsi;
 
-	if (g_strcmp0(modem->imsi, imsi) == 0)
-		return;
+	dbus_message_iter_get_basic(value, &imsi);
+
+	DBG("%s imsi %s", modem->path, imsi);
 
 	g_free(modem->imsi);
 	modem->imsi = g_strdup(imsi);
@@ -1835,11 +1836,7 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_recurse(&iter, &value);
 
 	if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
-		char *imsi;
-
-		dbus_message_iter_get_basic(&value, &imsi);
-
-		update_sim_imsi(modem, imsi);
+		sim_update_imsi(modem, &value);
 
 		if (modem->online == FALSE) {
 			modem_set_online(modem);
@@ -1873,11 +1870,7 @@ static void sim_properties_reply(struct modem_data *modem,
 		dbus_message_iter_recurse(&entry, &value);
 
 		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
-			char *imsi;
-
-			dbus_message_iter_get_basic(&value, &imsi);
-
-			update_sim_imsi(modem, imsi);
+			sim_update_imsi(modem, &value);
 
 			if (modem->online == FALSE) {
 				modem_set_online(modem);
