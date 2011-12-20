@@ -1891,7 +1891,14 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 
 		connection_manager_init(modem);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
-		modem->interfaces = extract_interfaces(&value);
+		uint8_t interfaces;
+
+		interfaces = extract_interfaces(&value);
+
+		if (interfaces == modem->interfaces)
+			return TRUE;
+
+		modem->interfaces = interfaces;
 
 		DBG("%s Interfaces 0x%02x", modem->path,
 			modem->interfaces);
