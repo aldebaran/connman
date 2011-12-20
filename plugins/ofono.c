@@ -590,30 +590,24 @@ static int cm_set_powered(struct modem_data *modem, connman_bool_t powered)
 	return err;
 }
 
-static int modem_set_powered(struct modem_data *modem)
+static int modem_set_powered(struct modem_data *modem, connman_bool_t powered)
 {
-	DBG("%s", modem->path);
+	int err;
 
-	modem->set_powered = TRUE;
+	DBG("%s powered %d", modem->path, powered);
 
-	return set_property(modem, modem->path,
+	modem->set_powered = powered;
+
+	err = set_property(modem, modem->path,
 				OFONO_MODEM_INTERFACE,
 				"Powered", DBUS_TYPE_BOOLEAN,
-				&modem->set_powered,
+				&powered,
 				NULL);
-}
 
-static int modem_set_unpowered(struct modem_data *modem)
-{
-	DBG("%s", modem->path);
+	if (powered == FALSE && err == -EINPROGRESS)
+		return 0;
 
-	modem->set_powered = FALSE;
-
-	return set_property(modem, modem->path,
-				OFONO_MODEM_INTERFACE,
-				"Powered", DBUS_TYPE_BOOLEAN,
-				&modem->set_powered,
-				NULL);
+	return err;
 }
 
 static connman_bool_t has_interface(uint8_t interfaces,
@@ -1886,7 +1880,7 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		DBG("%s Powered %d", modem->path, modem->powered);
 
 		if (modem->powered == FALSE)
-			modem_set_powered(modem);
+			modem_set_powered(modem, TRUE);
 	} else if (g_str_equal(key, "Online") == TRUE) {
 		dbus_message_iter_get_basic(&value, &modem->online);
 
@@ -2021,7 +2015,7 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 		return;
 
 	if (modem->powered == FALSE)
-		modem_set_powered(modem);
+		modem_set_powered(modem, TRUE);
 	else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE)
 		sim_get_properties(modem);
 	else
@@ -2037,7 +2031,7 @@ static void modem_power_down(gpointer key, gpointer value, gpointer user_data)
 	if (modem->ignore ==  TRUE)
 		return;
 
-	modem_set_unpowered(modem);
+	modem_set_powered(modem, FALSE);
 }
 
 static void remove_modem(gpointer data)
