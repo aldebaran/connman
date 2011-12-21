@@ -998,6 +998,12 @@ static void add_network(struct modem_data *modem)
 		modem->network = NULL;
 		return;
 	}
+
+	/*
+	 * Create the ipconfig layer before trying to connect. Withouth
+	 * the ipconfig layer the core is not ready to process errors.
+	 */
+	connman_network_set_index(modem->network, -1);
 }
 
 static void remove_network(struct modem_data *modem)
