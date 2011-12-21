@@ -309,7 +309,7 @@ static const char *get_name(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		return "Bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		return "3G";
+		return "Cellular";
 	}
 
 	return NULL;
