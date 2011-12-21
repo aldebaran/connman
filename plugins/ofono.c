@@ -126,7 +126,6 @@ struct modem_data {
 	connman_bool_t ignore;
 
 	connman_bool_t set_powered;
-	connman_bool_t set_online;
 
 	/* CDMA ConnectionManager Interface */
 	connman_bool_t cdma_cm_powered;
@@ -564,33 +563,15 @@ static int cdma_cm_set_powered(struct modem_data *modem, connman_bool_t powered)
 	return err;
 }
 
-static void modem_set_online_reply(struct modem_data *modem,
-					connman_bool_t success)
+static int modem_set_online(struct modem_data *modem, connman_bool_t online)
 {
-	DBG("%s", modem->path);
-
-	if (success == TRUE) {
-		/*
-		 * Don't handle do anything on success here. oFono will send
-		 * the change via PropertyChanged singal.
-		 */
-		return;
-	}
-
-	modem->set_online = FALSE;
-}
-
-static int modem_set_online(struct modem_data *modem)
-{
-	DBG("%s", modem->path);
-
-	modem->set_online = TRUE;
+	DBG("%s online %d", modem->path, online);
 
 	return set_property(modem, modem->path,
 				OFONO_MODEM_INTERFACE,
 				"Online", DBUS_TYPE_BOOLEAN,
-				&modem->set_online,
-				modem_set_online_reply);
+				&online,
+				NULL);
 }
 
 static void cm_set_powered_reply(struct modem_data *modem,
@@ -1836,7 +1817,7 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 		sim_update_imsi(modem, &value);
 
 		if (modem->online == FALSE) {
-			modem_set_online(modem);
+			modem_set_online(modem, TRUE);
 		} else if (has_interface(modem->interfaces,
 						OFONO_API_CM) == TRUE) {
 			if (ready_to_create_device(modem) == TRUE)
@@ -1870,7 +1851,7 @@ static void sim_properties_reply(struct modem_data *modem,
 			sim_update_imsi(modem, &value);
 
 			if (modem->online == FALSE) {
-				modem_set_online(modem);
+				modem_set_online(modem, TRUE);
 				break;
 			}
 
