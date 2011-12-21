@@ -236,23 +236,6 @@ static void interface_create_callback(int result,
 	connman_device_set_powered(wifi->device, TRUE);
 }
 
-static void interface_remove_callback(int result,
-					GSupplicantInterface *interface,
-							void *user_data)
-{
-	struct wifi_data *wifi;
-
-	wifi = g_supplicant_interface_get_data(interface);
-
-	DBG("result %d wifi %p", result, wifi);
-
-	if (result < 0 || wifi == NULL)
-		return;
-
-	wifi->interface = NULL;
-}
-
-
 static int wifi_enable(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
@@ -286,9 +269,7 @@ static int wifi_disable(struct connman_device *device)
 
 	remove_networks(device, wifi);
 
-	ret = g_supplicant_interface_remove(wifi->interface,
-						interface_remove_callback,
-						NULL);
+	ret = g_supplicant_interface_remove(wifi->interface, NULL, NULL);
 	if (ret < 0)
 		return ret;
 
@@ -1100,6 +1081,7 @@ static void interface_removed(GSupplicantInterface *interface)
 		return;
 	}
 
+	wifi->interface = NULL;
 	connman_device_set_powered(wifi->device, FALSE);
 }
 
