@@ -153,6 +153,24 @@ struct modem_data {
 	DBusPendingCall *call_get_contexts;
 };
 
+static const char *api2string(enum ofono_api api)
+{
+	switch (api) {
+	case OFONO_API_SIM:
+		return "sim";
+	case OFONO_API_NETREG:
+		return "netreg";
+	case OFONO_API_CM:
+		return "cm";
+	case OFONO_API_CDMA_NETREG:
+		return "cdma-netreg";
+	case OFONO_API_CDMA_CM:
+		return "cmda-cm";
+	}
+
+	return "unknown";
+}
+
 static char *get_ident(const char *path)
 {
 	char *pos;
@@ -981,6 +999,20 @@ static void add_network(struct modem_data *modem)
 	}
 }
 
+static void remove_network(struct modem_data *modem)
+{
+	DBG("%s", modem->path);
+
+	if (modem->network == NULL)
+		return;
+
+	DBG("network %p", modem->network);
+
+	connman_device_remove_network(modem->device, modem->network);
+	connman_network_unref(modem->network);
+	modem->network = NULL;
+}
+
 static int add_cm_context(struct modem_data *modem, const char *context_path,
 				DBusMessageIter *dict)
 {
@@ -1731,30 +1763,6 @@ static int cdma_cm_get_properties(struct modem_data *modem)
 				cdma_cm_properties_reply, modem);
 }
 
-static connman_bool_t connection_manager_init(struct modem_data *modem)
-{
-	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
-		if (modem->device != NULL) {
-			cm_get_properties(modem);
-			cm_get_contexts(modem);
-		}
-
-		return TRUE;
-	}
-
-	if (has_interface(modem->interfaces, OFONO_API_CDMA_CM) == TRUE) {
-		if (ready_to_create_device(modem) == TRUE)
-			create_device(modem);
-
-		if (modem->device != NULL)
-			cdma_cm_get_properties(modem);
-
-		return TRUE;
-	}
-
-	return FALSE;
-}
-
 static void sim_update_imsi(struct modem_data *modem,
 				DBusMessageIter* value)
 {
@@ -1850,6 +1858,88 @@ static int sim_get_properties(struct modem_data *modem)
 				sim_properties_reply, modem);
 }
 
+static connman_bool_t api_added(uint8_t old_iface, uint8_t new_iface,
+				enum ofono_api api)
+{
+	if (has_interface(old_iface, api) == FALSE &&
+			has_interface(new_iface, api) == TRUE) {
+		DBG("%s added", api2string(api));
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static connman_bool_t api_removed(uint8_t old_iface, uint8_t new_iface,
+				enum ofono_api api)
+{
+	if (has_interface(old_iface, api) == TRUE &&
+			has_interface(new_iface, api) == FALSE) {
+		DBG("%s removed", api2string(api));
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
+static void modem_update_interfaces(struct modem_data *modem,
+				uint8_t old_ifaces,
+				uint8_t new_ifaces)
+{
+	DBG("%s", modem->path);
+
+	if (api_added(old_ifaces, new_ifaces, OFONO_API_SIM) == TRUE) {
+		if (modem->imsi == NULL &&
+				modem->set_powered == FALSE) {
+			/*
+			 * Only use do GetProperties() when
+			 * device has not been powered up.
+			 */
+			sim_get_properties(modem);
+		}
+	}
+
+	if (api_added(old_ifaces, new_ifaces, OFONO_API_CM) == TRUE) {
+		if (modem->device != NULL) {
+			cm_get_properties(modem);
+			cm_get_contexts(modem);
+		}
+	}
+
+	if (api_added(old_ifaces, new_ifaces, OFONO_API_CDMA_CM) == TRUE) {
+		if (ready_to_create_device(modem) == TRUE)
+			create_device(modem);
+
+		if (modem->device != NULL)
+			cdma_cm_get_properties(modem);
+	}
+
+	if (api_added(old_ifaces, new_ifaces, OFONO_API_NETREG) == TRUE) {
+		if (modem->attached == TRUE)
+			netreg_get_properties(modem);
+	}
+
+	if (api_added(old_ifaces, new_ifaces, OFONO_API_CDMA_NETREG) == TRUE) {
+		cdma_netreg_get_properties(modem);
+	}
+
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CM) == TRUE) {
+		remove_cm_context(modem, modem->context->path);
+	}
+
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_CM) == TRUE) {
+		remove_cm_context(modem, modem->context->path);
+	}
+
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_NETREG) == TRUE) {
+		remove_network(modem);
+	}
+
+	if (api_removed(old_ifaces, new_ifaces, OFONO_API_CDMA_NETREG == TRUE)) {
+		remove_network(modem);
+	}
+}
+
 static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 				void *user_data)
 {
@@ -1892,41 +1982,11 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		if (interfaces == modem->interfaces)
 			return TRUE;
 
+		DBG("%s Interfaces 0x%02x", modem->path, interfaces);
+
+		modem_update_interfaces(modem, modem->interfaces, interfaces);
+
 		modem->interfaces = interfaces;
-
-		DBG("%s Interfaces 0x%02x", modem->path,
-			modem->interfaces);
-
-		if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE) {
-			if (modem->imsi == NULL &&
-					modem->set_powered == FALSE) {
-				/*
-				 * Only use do GetProperties() when
-				 * device has not been powered up.
-				 */
-				sim_get_properties(modem);
-				return TRUE;
-			}
-		}
-
-		if (connection_manager_init(modem) == FALSE) {
-			if (modem->context != NULL) {
-				remove_cm_context(modem,
-						modem->context->path);
-			}
-
-			if (modem->device != NULL)
-				destroy_device(modem);
-
-			return TRUE;
-		}
-
-		if (has_interface(modem->interfaces, OFONO_API_NETREG) == TRUE) {
-			if (modem->attached == TRUE)
-				netreg_get_properties(modem);
-		} else if (has_interface(modem->interfaces,
-				OFONO_API_CDMA_NETREG) == TRUE)
-			cdma_netreg_get_properties(modem);
 	} else if (g_str_equal(key, "Serial") == TRUE) {
 		char *serial;
 
@@ -1936,8 +1996,6 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		modem->serial = g_strdup(serial);
 
 		DBG("%s Serial %s", modem->path, modem->serial);
-
-		connection_manager_init(modem);
 	}
 
 	return TRUE;
@@ -2015,12 +2073,12 @@ static void add_modem(const char *path, DBusMessageIter *prop)
 	if (modem->ignore == TRUE)
 		return;
 
-	if (modem->powered == FALSE)
+	if (modem->powered == FALSE) {
 		modem_set_powered(modem, TRUE);
-	else if (has_interface(modem->interfaces, OFONO_API_SIM) == TRUE)
-		sim_get_properties(modem);
-	else
-		connection_manager_init(modem);
+		return;
+	}
+
+	modem_update_interfaces(modem, 0, modem->interfaces);
 }
 
 static void modem_power_down(gpointer key, gpointer value, gpointer user_data)
