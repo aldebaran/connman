@@ -1734,9 +1734,6 @@ static int cdma_cm_get_properties(struct modem_data *modem)
 static connman_bool_t connection_manager_init(struct modem_data *modem)
 {
 	if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
-		if (ready_to_create_device(modem) == TRUE)
-			create_device(modem);
-
 		if (modem->device != NULL) {
 			cm_get_properties(modem);
 			cm_get_contexts(modem);
@@ -1796,7 +1793,17 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 
 	if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
 		sim_update_imsi(modem, &value);
-		connection_manager_init(modem);
+
+		if (ready_to_create_device(modem) == FALSE)
+			return TRUE;
+
+		/*
+		 * This is a GSM modem. Create the device and
+		 * register it at the core. Enabling (setting
+		 * it online is done through the
+		 * modem_enable() callback.
+		 */
+		create_device(modem);
 	}
 
 	return TRUE;
@@ -1819,8 +1826,17 @@ static void sim_properties_reply(struct modem_data *modem,
 
 		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
 			sim_update_imsi(modem, &value);
-			connection_manager_init(modem);
 
+			if (ready_to_create_device(modem) == FALSE)
+				return;
+
+			/*
+			 * This is a GSM modem. Create the device and
+			 * register it at the core. Enabling (setting
+			 * it online is done through the
+			 * modem_enable() callback.
+			 */
+			create_device(modem);
 			return;
 		}
 
@@ -1868,11 +1884,6 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &modem->online);
 
 		DBG("%s Online %d", modem->path, modem->online);
-
-		if (modem->online == FALSE)
-			return TRUE;
-
-		connection_manager_init(modem);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		uint8_t interfaces;
 
