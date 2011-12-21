@@ -2027,11 +2027,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 						append_ethernet, service);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
-		if (service->passphrase != NULL && limited == FALSE)
-			connman_dbus_dict_append_basic(dict, "Passphrase",
-				DBUS_TYPE_STRING, &service->passphrase);
-
-		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
@@ -2706,18 +2701,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		autoconnect_changed(service);
 
 		service_save(service);
-	} else if (g_str_equal(name, "Passphrase") == TRUE) {
-		const char *passphrase;
-
-		if (type != DBUS_TYPE_STRING)
-			return __connman_error_invalid_arguments(msg);
-
-		if (service->immutable == TRUE || service->hidden == TRUE)
-			return __connman_error_not_supported(msg);
-
-		dbus_message_iter_get_basic(&value, &passphrase);
-
-		__connman_service_set_passphrase(service, passphrase);
 	} else if (g_str_equal(name, "Nameservers.Configuration") == TRUE) {
 		DBusMessageIter entry;
 		GString *str;
@@ -2891,14 +2874,6 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		set_idle(service);
 
 		g_get_current_time(&service->modified);
-		service_save(service);
-	} else if (g_str_equal(name, "Passphrase") == TRUE) {
-		if (service->immutable == TRUE || service->hidden == TRUE)
-			return __connman_error_not_supported(msg);
-
-		g_free(service->passphrase);
-		service->passphrase = NULL;
-
 		service_save(service);
 	} else
 		return __connman_error_invalid_property(msg);
