@@ -1292,46 +1292,6 @@ static void autoconnect_changed(struct connman_service *service)
 				DBUS_TYPE_BOOLEAN, &service->autoconnect);
 }
 
-static void passphrase_changed(struct connman_service *service)
-{
-	dbus_bool_t required;
-
-	switch (service->type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return;
-	case CONNMAN_SERVICE_TYPE_WIFI:
-		required = FALSE;
-
-		switch (service->security) {
-		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
-		case CONNMAN_SERVICE_SECURITY_NONE:
-			break;
-		case CONNMAN_SERVICE_SECURITY_WEP:
-		case CONNMAN_SERVICE_SECURITY_PSK:
-		case CONNMAN_SERVICE_SECURITY_WPA:
-		case CONNMAN_SERVICE_SECURITY_RSN:
-			if (service->passphrase == NULL)
-				required = TRUE;
-			break;
-		case CONNMAN_SERVICE_SECURITY_8021X:
-			break;
-		}
-		break;
-	}
-
-	connman_dbus_property_changed_basic(service->path,
-				CONNMAN_SERVICE_INTERFACE, "PassphraseRequired",
-						DBUS_TYPE_BOOLEAN, &required);
-}
-
 static void append_security(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -2011,7 +1971,6 @@ connman_bool_t __connman_service_session_dec(struct connman_service *service)
 static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
-	dbus_bool_t required;
 	const char *str;
 
 	str = __connman_service_type2string(service->type);
@@ -2071,26 +2030,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		if (service->passphrase != NULL && limited == FALSE)
 			connman_dbus_dict_append_basic(dict, "Passphrase",
 				DBUS_TYPE_STRING, &service->passphrase);
-
-		required = FALSE;
-
-		switch (service->security) {
-		case CONNMAN_SERVICE_SECURITY_UNKNOWN:
-		case CONNMAN_SERVICE_SECURITY_NONE:
-			break;
-		case CONNMAN_SERVICE_SECURITY_WEP:
-		case CONNMAN_SERVICE_SECURITY_PSK:
-		case CONNMAN_SERVICE_SECURITY_WPA:
-		case CONNMAN_SERVICE_SECURITY_RSN:
-			if (service->passphrase == NULL)
-				required = TRUE;
-			break;
-		case CONNMAN_SERVICE_SECURITY_8021X:
-			break;
-		}
-
-		connman_dbus_dict_append_basic(dict, "PassphraseRequired",
-						DBUS_TYPE_BOOLEAN, &required);
 
 		/* fall through */
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
@@ -2465,8 +2404,6 @@ void __connman_service_set_passphrase(struct connman_service *service,
 
 	g_free(service->passphrase);
 	service->passphrase = g_strdup(passphrase);
-
-	passphrase_changed(service);
 
 	if (service->network != NULL)
 		connman_network_set_string(service->network,
@@ -2962,8 +2899,6 @@ static DBusMessage *clear_property(DBusConnection *conn,
 		g_free(service->passphrase);
 		service->passphrase = NULL;
 
-		passphrase_changed(service);
-
 		service_save(service);
 	} else
 		return __connman_error_invalid_property(msg);
@@ -3241,8 +3176,6 @@ static DBusMessage *remove_service(DBusConnection *conn,
 
 	g_free(service->passphrase);
 	service->passphrase = NULL;
-
-	passphrase_changed(service);
 
 	set_idle(service);
 
