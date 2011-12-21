@@ -1830,12 +1830,6 @@ static void sim_properties_reply(struct modem_data *modem,
 
 		if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
 			sim_update_imsi(modem, &value);
-
-			if (modem->online == FALSE) {
-				modem_set_online(modem, TRUE);
-				break;
-			}
-
 			connection_manager_init(modem);
 
 			return;
@@ -2298,7 +2292,10 @@ static int modem_enable(struct connman_device *device)
 
 	DBG("%s device %p", modem->path, device);
 
-	return 0;
+	if (modem->online == TRUE)
+		return 0;
+
+	return modem_set_online(modem, TRUE);
 }
 
 static int modem_disable(struct connman_device *device)
@@ -2307,7 +2304,10 @@ static int modem_disable(struct connman_device *device)
 
 	DBG("%s device %p", modem->path, device);
 
-	return 0;
+	if (modem->online == FALSE)
+		return 0;
+
+	return modem_set_online(modem, FALSE);
 }
 
 static struct connman_device_driver modem_driver = {
