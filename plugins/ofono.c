@@ -932,6 +932,7 @@ static void create_device(struct modem_data *modem)
 
 	modem->device = device;
 
+	connman_device_set_powered(modem->device, modem->online);
 out:
 	g_free(ident);
 }
@@ -1974,6 +1975,11 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		dbus_message_iter_get_basic(&value, &modem->online);
 
 		DBG("%s Online %d", modem->path, modem->online);
+
+		if (modem->device == NULL)
+			return TRUE;
+
+		connman_device_set_powered(modem->device, modem->online);
 	} else if (g_str_equal(key, "Interfaces") == TRUE) {
 		uint8_t interfaces;
 
