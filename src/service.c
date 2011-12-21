@@ -198,13 +198,11 @@ static const char *security2string(enum connman_service_security security)
 	case CONNMAN_SERVICE_SECURITY_WEP:
 		return "wep";
 	case CONNMAN_SERVICE_SECURITY_PSK:
+	case CONNMAN_SERVICE_SECURITY_WPA:
+	case CONNMAN_SERVICE_SECURITY_RSN:
 		return "psk";
 	case CONNMAN_SERVICE_SECURITY_8021X:
 		return "ieee8021x";
-	case CONNMAN_SERVICE_SECURITY_WPA:
-		return "wpa";
-	case CONNMAN_SERVICE_SECURITY_RSN:
-		return "rsn";
 	}
 
 	return NULL;
@@ -3873,8 +3871,9 @@ void __connman_service_add_passphrase(struct connman_service *service,
 	case CONNMAN_SERVICE_SECURITY_NONE:
 	case CONNMAN_SERVICE_SECURITY_WPA:
 	case CONNMAN_SERVICE_SECURITY_RSN:
-		DBG("service security '%s' not handled",
-			security2string(service->security));
+		DBG("service security '%s' (%d) not handled",
+				security2string(service->security),
+				service->security);
 		break;
 	}
 
