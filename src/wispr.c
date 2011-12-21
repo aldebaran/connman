@@ -486,8 +486,6 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 		wp_context->wispr_result = CONNMAN_WISPR_RESULT_LOGIN;
 
-		__connman_service_request_login(wp_context->service);
-
 		if (__connman_agent_request_login_input(wp_context->service,
 					wispr_portal_request_wispr_login,
 					wp_context) != -EIO)
@@ -565,8 +563,6 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		if (g_web_result_get_header(result, "X-ConnMan-Status",
 								&str) == TRUE)
 			portal_manage_status(result, wp_context);
-		else
-			__connman_service_request_login(wp_context->service);
 
 		break;
 	case 302:
