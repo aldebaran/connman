@@ -103,7 +103,8 @@ Settings	string  Bearer [readonly]
 			In addition the Online settings notification might
 			not happen right away. Notifications of online state
 			can be delayed based on the speed of the bearer. It
-			is done to avoid congestion on bearers like 3G etc.
+			is done to avoid congestion on bearers like cellular
+			etc.
 
 		boolean Priority [readwrite]
 

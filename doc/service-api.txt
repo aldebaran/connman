@@ -235,8 +235,9 @@ Properties	string State [readonly]
 		array{string} Nameservers.Configuration [readwrite]
 
 			The list of manually configured domain name
-			servers. Some 3G networks don't provide correct
-			name servers and this allows for an override.
+			servers. Some cellular networks don't provide
+			correct name servers and this allows for an
+			override.
 
 			This array is sorted by priority and the first
 			entry in the list represents the nameserver with
