@@ -1796,18 +1796,7 @@ static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
 
 	if (g_str_equal(key, "SubscriberIdentity") == TRUE) {
 		sim_update_imsi(modem, &value);
-
-		if (modem->online == FALSE) {
-			modem_set_online(modem, TRUE);
-		} else if (has_interface(modem->interfaces,
-						OFONO_API_CM) == TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-		} else if (has_interface(modem->interfaces,
-						OFONO_API_CDMA_CM) == TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
-				create_device(modem);
-		}
+		connection_manager_init(modem);
 	}
 
 	return TRUE;
