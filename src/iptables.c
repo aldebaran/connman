@@ -1152,6 +1152,9 @@ static void table_cleanup(struct connman_iptables *table)
 	GList *list;
 	struct connman_iptables_entry *entry;
 
+	if (table == NULL)
+		return;
+
 	close(table->ipt_sock);
 
 	for (list = table->entries; list; list = list->next) {
