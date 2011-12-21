@@ -1846,6 +1846,20 @@ static void sim_properties_reply(struct modem_data *modem,
 			 * modem_enable() callback.
 			 */
 			create_device(modem);
+
+			if (modem->online == FALSE)
+				return;
+
+			/*
+			 * The modem is already online and we have the CM interface.
+			 * There will be no interface update and therefore our
+			 * state machine will not go to next step. We have to
+			 * trigger it from here.
+			 */
+			if (has_interface(modem->interfaces, OFONO_API_CM) == TRUE) {
+				cm_get_properties(modem);
+				cm_get_contexts(modem);
+			}
 			return;
 		}
 
