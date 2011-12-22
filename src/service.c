@@ -1214,17 +1214,6 @@ static void default_changed(void)
 	__connman_notifier_default_changed(service);
 }
 
-const char *__connman_service_default(void)
-{
-	struct connman_service *service;
-
-	service = get_default();
-	if (service == NULL)
-		return "";
-
-	return __connman_service_type2string(service->type);
-}
-
 static void state_changed(struct connman_service *service)
 {
 	const char *str;
