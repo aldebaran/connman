@@ -63,9 +63,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
 
-	connman_dbus_dict_append_array(&dict, "ConnectedTechnologies",
-		DBUS_TYPE_STRING, __connman_notifier_list_connected, NULL);
-
 	str = __connman_service_default();
 	if (str != NULL)
 		connman_dbus_dict_append_basic(&dict, "DefaultTechnology",
