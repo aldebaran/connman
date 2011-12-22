@@ -566,7 +566,6 @@ void __connman_technology_cleanup(void);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
-void __connman_notifier_list_registered(DBusMessageIter *iter, void *user_data);
 void __connman_notifier_list_enabled(DBusMessageIter *iter, void *user_data);
 void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data);
 
