@@ -77,23 +77,6 @@ static volatile int registered[MAX_TECHNOLOGIES];
 static volatile int enabled[MAX_TECHNOLOGIES];
 static volatile int connected[MAX_TECHNOLOGIES];
 
-void __connman_notifier_list_enabled(DBusMessageIter *iter, void *user_data)
-{
-	int i;
-
-	__sync_synchronize();
-	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
-		const char *type = __connman_service_type2string(i);
-
-		if (type == NULL)
-			continue;
-
-		if (enabled[i] > 0)
-			dbus_message_iter_append_basic(iter,
-						DBUS_TYPE_STRING, &type);
-	}
-}
-
 void __connman_notifier_list_connected(DBusMessageIter *iter, void *user_data)
 {
 	int i;
@@ -123,10 +106,6 @@ static void technology_enabled(enum connman_service_type type,
 	GSList *list;
 
 	DBG("type %d enabled %d", type, enabled);
-
-	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
-		CONNMAN_MANAGER_INTERFACE, "EnabledTechnologies",
-		DBUS_TYPE_STRING, __connman_notifier_list_enabled, NULL);
 
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
