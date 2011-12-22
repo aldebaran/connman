@@ -369,7 +369,7 @@ void __connman_storage_migrate()
 		g_key_file_set_boolean(keyfile, "Wired",
 					"Enable", FALSE);
 
-		g_key_file_set_boolean(keyfile, "3G",
+		g_key_file_set_boolean(keyfile, "Cellular",
 					"Enable", FALSE);
 
 		g_key_file_set_boolean(keyfile, "WiMAX",
@@ -422,15 +422,15 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "Wired",
 					"Enable", val);
 
-	/* 3G */
-	val = g_key_file_get_boolean(keyfile_def, "3G",
+	/* cellular */
+	val = g_key_file_get_boolean(keyfile_def, "Cellular",
 					"Enable", &error);
 	if (error != NULL) {
 		g_clear_error(&error);
 		val = FALSE;
 	}
 
-	g_key_file_set_boolean(keyfile, "3G",
+	g_key_file_set_boolean(keyfile, "Cellular",
 					"Enable", val);
 
 	/* WiMAX */
