@@ -378,7 +378,6 @@ void __connman_storage_migrate()
 		goto done;
 	}
 
-	/* offline mode */
 	val = g_key_file_get_boolean(keyfile_def, "global",
 					"OfflineMode", &error);
 	if (error != NULL) {
@@ -389,7 +388,6 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "global",
 					"OfflineMode", val);
 
-	/* wifi */
 	val = g_key_file_get_boolean(keyfile_def, "WiFi",
 					"Enable", &error);
 	if (error != NULL) {
@@ -400,7 +398,6 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "WiFi",
 					"Enable", val);
 
-	/* bluetooth */
 	val = g_key_file_get_boolean(keyfile_def, "Bluetooth",
 					"Enable", &error);
 	if (error != NULL) {
@@ -411,7 +408,6 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "Bluetooth",
 					"Enable", val);
 
-	/* wired */
 	val = g_key_file_get_boolean(keyfile_def, "Wired",
 					"Enable", &error);
 	if (error != NULL) {
@@ -422,7 +418,6 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "Wired",
 					"Enable", val);
 
-	/* cellular */
 	val = g_key_file_get_boolean(keyfile_def, "Cellular",
 					"Enable", &error);
 	if (error != NULL) {
@@ -433,7 +428,6 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "Cellular",
 					"Enable", val);
 
-	/* WiMAX */
 	val = g_key_file_get_boolean(keyfile_def, "WiMAX",
 					"Enable", &error);
 	if (error != NULL) {
