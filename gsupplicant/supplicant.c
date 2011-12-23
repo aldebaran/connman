@@ -995,25 +995,43 @@ static void interface_network_removed(DBusMessageIter *iter, void *user_data)
 
 static char *create_name(unsigned char *ssid, int ssid_len)
 {
-	char *name;
-	int i;
+	GString *string;
+	const gchar *remainder, *invalid;
+	int valid_bytes, remaining_bytes;
 
 	if (ssid_len < 1 || ssid[0] == '\0')
-		name = NULL;
-	else
-		name = g_try_malloc0(ssid_len + 1);
-
-	if (name == NULL)
 		return g_strdup("");
 
-	for (i = 0; i < ssid_len; i++) {
-		if (g_ascii_isprint(ssid[i]))
-			name[i] = ssid[i];
-		else
-			name[i] = ' ';
+	string = NULL;
+	remainder = (const gchar *)ssid;
+	remaining_bytes = ssid_len;
+
+	while (remaining_bytes != 0) {
+		if (g_utf8_validate(remainder, remaining_bytes,
+					&invalid) == TRUE) {
+			break;
+		}
+
+		valid_bytes = invalid - remainder;
+
+		if (string == NULL)
+			string = g_string_sized_new(remaining_bytes);
+
+		g_string_append_len(string, remainder, valid_bytes);
+
+		/* append U+FFFD REPLACEMENT CHARACTER */
+		g_string_append(string, "\357\277\275");
+
+		remaining_bytes -= valid_bytes + 1;
+		remainder = invalid + 1;
 	}
 
-	return name;
+	if (string == NULL)
+		return g_strndup((const gchar *)ssid, ssid_len + 1);
+
+	g_string_append(string, remainder);
+
+	return g_string_free(string, FALSE);
 }
 
 static char *create_group(struct g_supplicant_bss *bss)
