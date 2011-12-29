@@ -655,8 +655,10 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 	DBG("interface %s", interface);
 
 	if_index = connman_inet_ifindex(interface);
-	if (if_index < 0)
-		return -EINVAL;
+	if (if_index < 0) {
+		err = -EINVAL;
+		goto done;
+	}
 
 	wp_context->web = g_web_new(if_index);
 	if (wp_context->web == NULL) {
