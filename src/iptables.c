@@ -1176,17 +1176,18 @@ static struct connman_iptables *iptables_init(char *table_name)
 	DBG("%s", table_name);
 
 	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
-		goto err;
+		return NULL;
 
 	module = g_strconcat("iptable_", table_name, NULL);
 	if (module == NULL)
-		goto err;
+		return NULL;
 
-	if (xtables_insmod(module, NULL, TRUE) != 0)
-		goto err;
+	if (xtables_insmod(module, NULL, TRUE) != 0) {
+		g_free(module);
+		return NULL;
+	}
 
 	g_free(module);
-	module = NULL;
 
 	table = g_hash_table_lookup(table_hash, table_name);
 	if (table != NULL)
@@ -1239,8 +1240,6 @@ static struct connman_iptables *iptables_init(char *table_name)
 	return table;
 
 err:
-	g_free(module);
-
 	table_cleanup(table);
 
 	return NULL;
