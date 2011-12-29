@@ -625,8 +625,10 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 {
 	enum connman_service_type service_type;
 	char *interface = NULL;
+	char **nameservers;
 	int if_index;
 	int err = 0;
+	int i;
 
 	DBG("wispr/portal context %p", wp_context);
 	DBG("service %p", wp_context->service);
@@ -660,6 +662,12 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 		goto done;
 	}
 
+	nameservers = connman_service_get_nameservers(wp_context->service);
+	if (nameservers == NULL) {
+		err = -EINVAL;
+		goto done;
+	}
+
 	wp_context->web = g_web_new(if_index);
 	if (wp_context->web == NULL) {
 		err = -ENOMEM;
@@ -673,6 +681,9 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 		g_web_set_address_family(wp_context->web, AF_INET6);
 		wp_context->status_url = STATUS_URL_IPV6;
 	}
+
+	for (i = 0; nameservers[i] != NULL; i++)
+		g_web_add_nameserver(wp_context->web, nameservers[i]);
 
 	wp_context->token = connman_proxy_lookup(interface,
 					wp_context->status_url,
