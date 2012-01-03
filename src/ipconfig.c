@@ -941,8 +941,8 @@ void __connman_ipconfig_newroute(int index, int family, unsigned char scope,
 			if (ipconfig->ops == NULL)
 				continue;
 
-			if (ipconfig->ops->ip_bound)
-				ipconfig->ops->ip_bound(ipconfig);
+			if (ipconfig->ops->route_set)
+				ipconfig->ops->route_set(ipconfig);
 		}
 	}
 
@@ -1003,8 +1003,8 @@ void __connman_ipconfig_delroute(int index, int family, unsigned char scope,
 			if (ipconfig->ops == NULL)
 				continue;
 
-			if (ipconfig->ops->ip_release)
-				ipconfig->ops->ip_release(ipconfig);
+			if (ipconfig->ops->route_unset)
+				ipconfig->ops->route_unset(ipconfig);
 		}
 	}
 
