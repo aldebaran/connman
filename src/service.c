@@ -2127,9 +2127,30 @@ char **connman_service_get_nameservers(struct connman_service *service)
 		return NULL;
 
 	if (service->nameservers_config != NULL)
-		return service->nameservers_config;
-	else if (service->nameservers != NULL)
-		return service->nameservers;
+		return g_strdupv(service->nameservers_config);
+	else if (service->nameservers != NULL ||
+					service->nameservers_auto != NULL) {
+		int len = 0, len_auto = 0, i;
+		char **nameservers;
+
+		if (service->nameservers != NULL)
+			len = g_strv_length(service->nameservers);
+		if (service->nameservers_auto != NULL)
+			len_auto = g_strv_length(service->nameservers_auto);
+
+		nameservers = g_try_new0(char *, len + len_auto + 1);
+		if (nameservers == NULL)
+			return NULL;
+
+		for (i = 0; i < len; i++)
+			nameservers[i] = g_strdup(service->nameservers[i]);
+
+		for (i = 0; i < len_auto; i++)
+			nameservers[i + len] =
+				g_strdup(service->nameservers_auto[i]);
+
+		return nameservers;
+	}
 
 	return NULL;
 }

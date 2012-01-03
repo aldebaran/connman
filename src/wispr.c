@@ -627,7 +627,7 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 {
 	enum connman_service_type service_type;
 	char *interface = NULL;
-	char **nameservers;
+	char **nameservers = NULL;
 	int if_index;
 	int err = 0;
 	int i;
@@ -695,6 +695,8 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 		err = -EINVAL;
 
 done:
+	g_strfreev(nameservers);
+
 	g_free(interface);
 	return err;
 }
