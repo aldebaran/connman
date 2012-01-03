@@ -110,6 +110,7 @@ struct connman_service {
 	char **excludes;
 	char *pac;
 	connman_bool_t wps;
+	int online_check_count;
 };
 
 static void append_path(gpointer value, gpointer user_data)
@@ -4246,6 +4247,42 @@ static void service_rp_filter(struct connman_service *service,
 		connected_networks_count, original_rp_filter);
 }
 
+static gboolean redo_wispr(gpointer user_data)
+{
+	struct connman_service *service = user_data;
+
+	DBG("");
+
+	__connman_wispr_start(service, CONNMAN_IPCONFIG_TYPE_IPV6);
+
+	return FALSE;
+}
+
+int __connman_service_online_check_failed(struct connman_service *service,
+					enum connman_ipconfig_type type)
+{
+	DBG("service %p type %d count %d", service, type,
+						service->online_check_count);
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		/* currently we only retry IPv6 stuff */
+		return 0;
+
+	if (service->online_check_count != 1)
+		return 0;
+
+	service->online_check_count = 0;
+
+	/*
+	 * We set the timeout to 1 sec so that we have a chance to get
+	 * necessary IPv6 router advertisement messages that might have
+	 * DNS data etc.
+	 */
+	g_timeout_add_seconds(1, redo_wispr, service);
+
+	return EAGAIN;
+}
+
 int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 					enum connman_service_state new_state,
 					enum connman_ipconfig_type type)
@@ -4294,8 +4331,10 @@ int __connman_service_ipconfig_indicate_state(struct connman_service *service,
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 			check_proxy_setup(service);
 			service_rp_filter(service, TRUE);
-		} else
+		} else {
+			service->online_check_count = 1;
 			__connman_wispr_start(service, type);
+		}
 		break;
 	case CONNMAN_SERVICE_STATE_ONLINE:
 		break;
