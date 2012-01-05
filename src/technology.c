@@ -424,21 +424,13 @@ static connman_bool_t connman_technology_load_offlinemode()
 	return offlinemode;
 }
 
-static DBusMessage *get_properties(DBusConnection *conn,
-					DBusMessage *message, void *user_data)
+static void append_properties(DBusMessageIter *iter,
+		struct connman_technology *technology)
 {
-	struct connman_technology *technology = user_data;
-	DBusMessage *reply;
-	DBusMessageIter array, dict;
+	DBusMessageIter dict;
 	const char *str;
 
-	reply = dbus_message_new_method_return(message);
-	if (reply == NULL)
-		return NULL;
-
-	dbus_message_iter_init_append(reply, &array);
-
-	connman_dbus_dict_open(&array, &dict);
+	connman_dbus_dict_open(iter, &dict);
 
 	str = state2string(technology->state);
 	if (str != NULL)
@@ -469,7 +461,46 @@ static DBusMessage *get_properties(DBusConnection *conn,
 						DBUS_TYPE_STRING,
 						&technology->tethering_passphrase);
 
-	connman_dbus_dict_close(&array, &dict);
+	connman_dbus_dict_close(iter, &dict);
+}
+
+static void technology_added_signal(struct connman_technology *technology)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "TechnologyAdded");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+	append_properties(&iter, technology);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+}
+
+static void technology_removed_signal(struct connman_technology *technology)
+{
+	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "TechnologyRemoved",
+			DBUS_TYPE_OBJECT_PATH, technology->path);
+}
+
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *message, void *user_data)
+{
+	struct connman_technology *technology = user_data;
+	DBusMessage *reply;
+	DBusMessageIter iter;
+
+	reply = dbus_message_new_method_return(message);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+	append_properties(&iter, technology);
 
 	return reply;
 }
@@ -614,6 +645,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology_list = g_slist_append(technology_list, technology);
 
 	technologies_changed();
+	technology_added_signal(technology);
 
 	if (technology->driver != NULL)
 		goto done;
@@ -653,6 +685,7 @@ static void technology_put(struct connman_technology *technology)
 	technology_list = g_slist_remove(technology_list, technology);
 
 	technologies_changed();
+	technology_removed_signal(technology);
 
 	g_dbus_unregister_interface(connection, technology->path,
 						CONNMAN_TECHNOLOGY_INTERFACE);

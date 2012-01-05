@@ -516,6 +516,8 @@ static GDBusMethodTable manager_methods[] = {
 
 static GDBusSignalTable manager_signals[] = {
 	{ "PropertyChanged", "sv" },
+	{ "TechnologyAdded", "a{sv}" },
+	{ "TechnologyRemoved", "o" },
 	{ },
 };
 
