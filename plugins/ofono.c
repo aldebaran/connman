@@ -2022,6 +2022,12 @@ static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
 		modem->serial = g_strdup(serial);
 
 		DBG("%s Serial %s", modem->path, modem->serial);
+
+		if (has_interface(modem->interfaces,
+					 OFONO_API_CDMA_CM) == TRUE) {
+			if (ready_to_create_device(modem) == TRUE)
+				create_device(modem);
+		}
 	}
 
 	return TRUE;
