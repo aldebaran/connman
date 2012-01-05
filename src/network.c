@@ -1486,8 +1486,10 @@ int __connman_network_clear_ipconfig(struct connman_network *network,
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return -EINVAL;
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		release_dhcpv6(network);
+		break;
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 		__connman_ipconfig_address_remove(ipconfig);
 		break;
