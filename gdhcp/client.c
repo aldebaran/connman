@@ -138,6 +138,7 @@ struct _GDHCPClient {
 	struct in6_addr ia_ta;
 	time_t last_renew;
 	time_t last_rebind;
+	time_t expire;
 };
 
 static inline void debug(GDHCPClient *client, const char *format, ...)
@@ -627,7 +628,8 @@ void g_dhcpv6_client_create_iaid(GDHCPClient *dhcp_client, int index,
 
 int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 				uint32_t *T1, uint32_t *T2,
-				time_t *last_renew, time_t *last_rebind)
+				time_t *last_renew, time_t *last_rebind,
+				time_t *expire)
 {
 	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
 		return -EINVAL;
@@ -643,6 +645,9 @@ int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 
 	if (last_rebind != NULL)
 		*last_rebind = dhcp_client->last_rebind;
+
+	if (expire != NULL)
+		*expire = dhcp_client->expire;
 
 	return 0;
 }
@@ -884,6 +889,7 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 	dhcp_client->duid = NULL;
 	dhcp_client->duid_len = 0;
 	dhcp_client->last_renew = dhcp_client->last_rebind = time(0);
+	dhcp_client->expire = 0;
 
 	*error = G_DHCP_CLIENT_ERROR_NONE;
 
@@ -1656,6 +1662,8 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		else
 			memcpy(&dhcp_client->ia_ta, &addr,
 						sizeof(struct in6_addr));
+
+		g_dhcpv6_client_set_expire(dhcp_client, valid);
 	}
 
 	return list;
@@ -2488,6 +2496,14 @@ void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
 		return;
 
 	dhcp_client->last_rebind = time(0);
+}
+
+void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout)
+{
+	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+		return;
+
+	dhcp_client->expire = time(0) + timeout;
 }
 
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)

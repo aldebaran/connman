@@ -1013,6 +1013,28 @@ err:
 	return err;
 }
 
+static void autoconf_ipv6_set(struct connman_network *network);
+static void dhcpv6_callback(struct connman_network *network,
+			connman_bool_t success);
+
+/*
+ * Have a separate callback for renew so that we do not do autoconf
+ * in wrong phase as the dhcpv6_callback() is also called when doing
+ * DHCPv6 solicitation.
+ */
+static void dhcpv6_renew_callback(struct connman_network *network,
+					connman_bool_t success)
+{
+	if (success == TRUE)
+		dhcpv6_callback(network, success);
+	else {
+		stop_dhcpv6(network);
+
+		/* restart and do solicit again. */
+		autoconf_ipv6_set(network);
+	}
+}
+
 static void dhcpv6_callback(struct connman_network *network,
 					connman_bool_t success)
 {
@@ -1026,9 +1048,9 @@ static void dhcpv6_callback(struct connman_network *network,
 			return;
 		}
 
-		__connman_dhcpv6_start_renew(network, dhcpv6_callback);
-
-		return;
+		if (__connman_dhcpv6_start_renew(network,
+					dhcpv6_renew_callback) == -ETIMEDOUT)
+			dhcpv6_renew_callback(network, FALSE);
 	} else
 		stop_dhcpv6(network);
 }

@@ -579,9 +579,45 @@ static int dhcpv6_rebind(struct connman_dhcpv6 *dhcp)
 	return g_dhcp_client_start(dhcp_client, NULL);
 }
 
+static gboolean dhcpv6_restart(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (dhcp->callback != NULL)
+		dhcp->callback(dhcp->network, FALSE);
+
+	return FALSE;
+}
+
+/*
+ * Check if we need to restart the solicitation procedure. This
+ * is done if all the addresses have expired. RFC 3315, 18.1.4
+ */
+static int check_restart(struct connman_dhcpv6 *dhcp)
+{
+	time_t current, expired;
+
+	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, NULL, NULL,
+				NULL, NULL, &expired);
+	current = time(0);
+
+	if (current > expired) {
+		DBG("expired by %d secs", (int)(current - expired));
+
+		g_timeout_add(0, dhcpv6_restart, dhcp);
+
+		return -ETIMEDOUT;
+	}
+
+	return 0;
+}
+
 static gboolean timeout_rebind(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (check_restart(dhcp) < 0)
+		return FALSE;
 
 	dhcp->RT = calc_delay(dhcp->RT, REB_MAX_RT);
 
@@ -636,7 +672,7 @@ static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
 	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
 				G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL);
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
@@ -703,7 +739,7 @@ static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
 	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
 				G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL);
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL, NULL, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
@@ -722,6 +758,9 @@ static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
 static gboolean timeout_renew(gpointer user_data)
 {
 	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (check_restart(dhcp) < 0)
+		return FALSE;
 
 	dhcp->RT = calc_delay(dhcp->RT, REN_MAX_RT);
 
@@ -754,9 +793,7 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 {
 	struct connman_dhcpv6 *dhcp;
 	uint32_t T1, T2;
-	time_t last_renew, last_rebind, current;
-
-	DBG("");
+	time_t last_renew, last_rebind, current, expired;
 
 	dhcp = g_hash_table_lookup(network_table, network);
 	if (dhcp == NULL)
@@ -768,8 +805,12 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 	}
 
 	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, &T1, &T2,
-				&last_renew, &last_rebind);
-	DBG("T1 %u T2 %u", T1, T2);
+				&last_renew, &last_rebind, &expired);
+
+	current = time(0);
+
+	DBG("T1 %u T2 %u expires %lu current %lu", T1, T2,
+		(unsigned long)expired, current);
 
 	if (T1 == 0xffffffff)
 		/* RFC 3315, 22.4 */
@@ -781,15 +822,19 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 		 */
 		T1 = 1800;
 
-	current = time(0);
+	/* RFC 3315, 18.1.4, start solicit if expired */
+	if (current > expired) {
+		DBG("expired by %d secs", (int)(current - expired));
+		return -ETIMEDOUT;
+	}
 
 	dhcp->callback = callback;
 
 	if (T2 != 0xffffffff && T2 > 0 &&
 			(unsigned)current > (unsigned)last_rebind + T2) {
-		/* RFC 3315, chapter 18.1.3, start rebind */
-		int timeout = 0;
+		int timeout;
 
+		/* RFC 3315, chapter 18.1.3, start rebind */
 		if ((unsigned)current > (unsigned)last_renew + T1)
 			timeout = 0;
 		else
