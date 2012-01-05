@@ -57,6 +57,7 @@ typedef enum {
 	G_DHCP_CLIENT_EVENT_ADVERTISE,
 	G_DHCP_CLIENT_EVENT_REQUEST,
 	G_DHCP_CLIENT_EVENT_RENEW,
+	G_DHCP_CLIENT_EVENT_REBIND,
 } GDHCPClientEvent;
 
 typedef enum {
@@ -143,11 +144,12 @@ void g_dhcpv6_client_create_iaid(GDHCPClient *dhcp_client, int index,
 				unsigned char *iaid);
 int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 				uint32_t *T1, uint32_t *T2,
-				time_t *last_renew);
+				time_t *last_renew, time_t *last_rebind);
 uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client);
 int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
 		int code, uint32_t *T1, uint32_t *T2, gboolean add_iaaddr);
 void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client);
+void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client);
 
 /* DHCP Server */
 typedef enum {
