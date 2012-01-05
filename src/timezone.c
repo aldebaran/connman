@@ -420,7 +420,7 @@ int __connman_timezone_init(void)
 	dirname = g_path_get_dirname(ETC_LOCALTIME);
 
 	wd = inotify_add_watch(fd, dirname, IN_DONT_FOLLOW |
-						IN_MODIFY | IN_MOVED_TO);
+						IN_CLOSE_WRITE | IN_MOVED_TO);
 
 	g_free(dirname);
 
