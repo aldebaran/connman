@@ -66,6 +66,7 @@ struct connman_dhcpv6 {
 	gboolean use_ta;	/* set to TRUE if IPv6 privacy is enabled */
 	GSList *prefixes;	/* network prefixes from radvd */
 	int request_count;	/* how many times REQUEST have been sent */
+	gboolean stateless;	/* TRUE if stateless DHCPv6 is used */
 };
 
 static GHashTable *network_table;
@@ -233,6 +234,10 @@ static void clear_callbacks(GDHCPClient *dhcp_client)
 
 	g_dhcp_client_register_event(dhcp_client,
 				G_DHCP_CLIENT_EVENT_REBIND,
+				NULL, NULL);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_RELEASE,
 				NULL, NULL);
 
 	g_dhcp_client_register_event(dhcp_client,
@@ -854,6 +859,64 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 	return 0;
 }
 
+static void release_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	DBG("dhcpv6 release msg %p", dhcp);
+
+	if (dhcp->callback != NULL) {
+		uint16_t status = g_dhcpv6_client_get_status(dhcp_client);
+		dhcp->callback(dhcp->network, status == 0 ? TRUE : FALSE);
+	}
+}
+
+int __connman_dhcpv6_start_release(struct connman_network *network,
+				dhcp_cb callback)
+{
+	struct connman_dhcpv6 *dhcp;
+	GDHCPClient *dhcp_client;
+
+	if (network_table == NULL)
+		return 0;   /* we are already released */
+
+	dhcp = g_hash_table_lookup(network_table, network);
+	if (dhcp == NULL)
+		return -ENOENT;
+
+	DBG("dhcp %p stateless %d", dhcp, dhcp->stateless);
+
+	if (dhcp->stateless == TRUE)
+		return -EINVAL;
+
+	if (dhcp->timeout > 0) {
+		g_source_remove(dhcp->timeout);
+		dhcp->timeout = 0;
+	}
+
+	dhcp_client = dhcp->dhcp_client;
+
+	g_dhcp_client_clear_requests(dhcp_client);
+	g_dhcp_client_clear_values(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+
+	g_dhcpv6_client_set_ia(dhcp_client,
+			connman_network_get_index(dhcp->network),
+			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			NULL, NULL, TRUE);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_RELEASE,
+					release_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
 static int dhcpv6_release(struct connman_dhcpv6 *dhcp)
 {
 	DBG("dhcp %p", dhcp);
@@ -932,6 +995,7 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 
 	dhcp->network = network;
 	dhcp->callback = callback;
+	dhcp->stateless = TRUE;
 
 	connman_network_ref(network);
 

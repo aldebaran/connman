@@ -74,6 +74,7 @@ typedef enum _dhcp_client_state {
 	REQUEST,
 	RENEW,
 	REBIND,
+	RELEASE,
 } ClientState;
 
 struct _GDHCPClient {
@@ -126,6 +127,8 @@ struct _GDHCPClient {
 	gpointer renew_data;
 	GDHCPClientEventFunc rebind_cb;
 	gpointer rebind_data;
+	GDHCPClientEventFunc release_cb;
+	gpointer release_data;
 	char *last_address;
 	unsigned char *duid;
 	int duid_len;
@@ -815,6 +818,11 @@ static int send_dhcpv6_renew(GDHCPClient *dhcp_client)
 static int send_dhcpv6_rebind(GDHCPClient *dhcp_client)
 {
 	return send_dhcpv6_msg(dhcp_client, DHCPV6_REBIND, "rebind");
+}
+
+static int send_dhcpv6_release(GDHCPClient *dhcp_client)
+{
+	return send_dhcpv6_msg(dhcp_client, DHCPV6_RELEASE, "release");
 }
 
 static int send_information_req(GDHCPClient *dhcp_client)
@@ -2002,6 +2010,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	case REQUEST:
 	case RENEW:
 	case REBIND:
+	case RELEASE:
 		if (dhcp_client->type != G_DHCP_IPV6)
 			return TRUE;
 
@@ -2051,6 +2060,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		if (dhcp_client->rebind_cb != NULL) {
 			dhcp_client->rebind_cb(dhcp_client,
 					dhcp_client->rebind_data);
+			return TRUE;
+		}
+		if (dhcp_client->release_cb != NULL) {
+			dhcp_client->release_cb(dhcp_client,
+					dhcp_client->release_data);
 			return TRUE;
 		}
 		break;
@@ -2196,6 +2210,16 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 				return re;
 			}
 			send_dhcpv6_rebind(dhcp_client);
+
+		} else if (dhcp_client->release_cb) {
+			dhcp_client->state = RENEW;
+			re = switch_listening_mode(dhcp_client, L3);
+			if (re != 0) {
+				switch_listening_mode(dhcp_client, L_NONE);
+				dhcp_client->state = 0;
+				return re;
+			}
+			send_dhcpv6_release(dhcp_client);
 		}
 
 		return 0;
@@ -2346,6 +2370,12 @@ void g_dhcp_client_register_event(GDHCPClient *dhcp_client,
 		dhcp_client->rebind_cb = func;
 		dhcp_client->rebind_data = data;
 		return;
+	case G_DHCP_CLIENT_EVENT_RELEASE:
+		if (dhcp_client->type == G_DHCP_IPV4)
+			return;
+		dhcp_client->release_cb = func;
+		dhcp_client->release_data = data;
+		return;
 	}
 }
 
@@ -2386,6 +2416,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 	case REQUEST:
 	case RENEW:
 	case REBIND:
+	case RELEASE:
 		break;
 	}
 	return NULL;

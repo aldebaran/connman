@@ -974,6 +974,21 @@ static void stop_dhcpv6(struct connman_network *network)
 	__connman_dhcpv6_stop(network);
 }
 
+static void dhcpv6_release_callback(struct connman_network *network,
+				connman_bool_t success)
+{
+	DBG("success %d", success);
+
+	stop_dhcpv6(network);
+}
+
+static void release_dhcpv6(struct connman_network *network)
+{
+	if (__connman_dhcpv6_start_release(network,
+					dhcpv6_release_callback) < 0)
+		stop_dhcpv6(network);
+}
+
 static void dhcpv6_info_callback(struct connman_network *network,
 				connman_bool_t success)
 {
@@ -1211,7 +1226,7 @@ static gboolean set_connected(gpointer user_data)
 			break;
 		case CONNMAN_IPCONFIG_METHOD_DHCP:
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
-			stop_dhcpv6(network);
+			release_dhcpv6(network);
 			break;
 		}
 
