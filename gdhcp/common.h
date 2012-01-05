@@ -45,6 +45,10 @@ do {						\
 #define CLIENT_PORT 68
 #define SERVER_PORT 67
 
+#define DHCPV6_CLIENT_PORT 546
+#define DHCPV6_SERVER_PORT 547
+#define MAX_DHCPV6_PKT_SIZE 1500
+
 #define EXTEND_FOR_BUGGY_SERVERS 80
 
 static const uint8_t MAC_BCAST_ADDR[ETH_ALEN] __attribute__((aligned(2))) = {
@@ -89,6 +93,14 @@ struct ip_udp_dhcp_packet {
 	struct dhcp_packet data;
 } __attribute__((packed));
 
+/* See RFC 3315 */
+struct dhcpv6_packet {
+	uint8_t message;
+	uint8_t transaction_id[3];
+	uint8_t options[];
+} __attribute__((packed));
+
+
 /* See RFC 2132 */
 #define DHCP_PADDING		0x00
 #define DHCP_SUBNET		0x01
@@ -130,6 +142,24 @@ struct ip_udp_dhcp_packet {
 #define DHCP_MINTYPE DHCPDISCOVER
 #define DHCP_MAXTYPE DHCPINFORM
 
+/* Message types for DHCPv6, RFC 3315 sec 5.3 */
+#define DHCPV6_SOLICIT		1
+#define DHCPV6_ADVERTISE	2
+#define DHCPV6_REQUEST		3
+#define DHCPV6_CONFIRM		4
+#define DHCPV6_RENEW		5
+#define DHCPV6_REBIND		6
+#define DHCPV6_REPLY		7
+#define DHCPV6_RELEASE		8
+#define DHCPV6_DECLINE		9
+#define DHCPV6_RECONFIGURE	10
+#define DHCPV6_INFORMATION_REQ	11
+
+/*
+ * DUID time starts 2000-01-01.
+ */
+#define DUID_TIME_EPOCH 946684800
+
 typedef enum {
 	OPTION_UNKNOWN,
 	OPTION_IP,
@@ -156,24 +186,35 @@ static const uint8_t dhcp_option_lengths[] = {
 };
 
 uint8_t *dhcp_get_option(struct dhcp_packet *packet, int code);
+uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
+			int code, uint16_t *option_len, int *option_count);
 int dhcp_end_option(uint8_t *optionptr);
 void dhcp_add_binary_option(struct dhcp_packet *packet, uint8_t *addopt);
+void dhcpv6_add_binary_option(struct dhcpv6_packet *packet, uint16_t max_len,
+				uint16_t *pkt_len, uint8_t *addopt);
 void dhcp_add_simple_option(struct dhcp_packet *packet,
 				uint8_t code, uint32_t data);
 GDHCPOptionType dhcp_get_code_type(uint8_t code);
+GDHCPOptionType dhcpv6_get_code_type(uint16_t code);
 
 uint16_t dhcp_checksum(void *addr, int count);
 
 void dhcp_init_header(struct dhcp_packet *packet, char type);
+void dhcpv6_init_header(struct dhcpv6_packet *packet, uint8_t type);
 
 int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
 			uint32_t source_ip, int source_port,
 			uint32_t dest_ip, int dest_port,
 			const uint8_t *dest_arp, int ifindex);
+int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len);
 int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 			uint32_t source_ip, int source_port,
 			uint32_t dest_ip, int dest_port);
-int dhcp_l3_socket(int port, const char *interface);
+int dhcp_l3_socket(int port, const char *interface, int family);
 int dhcp_recv_l3_packet(struct dhcp_packet *packet, int fd);
+int dhcpv6_recv_l3_packet(struct dhcpv6_packet **packet, unsigned char *buf,
+			int buf_len, int fd);
+int dhcp_l3_socket_send(int index, int port, int family);
+
 char *get_interface_name(int index);
 gboolean interface_is_up(int index);

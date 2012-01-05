@@ -22,6 +22,8 @@
 #ifndef __G_DHCP_H
 #define __G_DHCP_H
 
+#include <stdint.h>
+
 #include <glib.h>
 
 #ifdef __cplusplus
@@ -50,6 +52,7 @@ typedef enum {
 	G_DHCP_CLIENT_EVENT_LEASE_LOST,
 	G_DHCP_CLIENT_EVENT_IPV4LL_LOST,
 	G_DHCP_CLIENT_EVENT_ADDRESS_CONFLICT,
+	G_DHCP_CLIENT_EVENT_INFORMATION_REQ,
 } GDHCPClientEvent;
 
 typedef enum {
@@ -65,6 +68,17 @@ typedef enum {
 #define G_DHCP_DOMAIN_NAME	0x0f
 #define G_DHCP_HOST_NAME	0x0c
 #define G_DHCP_NTP_SERVER	0x2a
+
+#define G_DHCPV6_CLIENTID	1
+#define G_DHCPV6_SERVERID	2
+#define G_DHCPV6_ORO		6
+#define G_DHCPV6_STATUS_CODE	13
+
+typedef enum {
+	G_DHCPV6_DUID_LLT = 1,
+	G_DHCPV6_DUID_EN  = 2,
+	G_DHCPV6_DUID_LL  = 3,
+} GDHCPDuidType;
 
 typedef void (*GDHCPClientEventFunc) (GDHCPClient *client, gpointer user_data);
 
@@ -85,7 +99,7 @@ void g_dhcp_client_register_event(GDHCPClient *client,
 					gpointer user_data);
 
 GDHCPClientError g_dhcp_client_set_request(GDHCPClient *client,
-						unsigned char option_code);
+						unsigned int option_code);
 GDHCPClientError g_dhcp_client_set_send(GDHCPClient *client,
 						unsigned char option_code,
 						const char *option_value);
@@ -98,6 +112,14 @@ int g_dhcp_client_get_index(GDHCPClient *client);
 
 void g_dhcp_client_set_debug(GDHCPClient *client,
 				GDHCPDebugFunc func, gpointer user_data);
+int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
+			unsigned char **duid, int *duid_len);
+int g_dhcpv6_client_set_duid(GDHCPClient *dhcp_client, unsigned char *duid,
+			int duid_len);
+void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client, uint16_t option_code,
+			uint8_t *option_value, uint16_t option_len);
+uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client);
+int g_dhcpv6_client_set_oro(GDHCPClient *dhcp_client, int args, ...);
 
 /* DHCP Server */
 typedef enum {

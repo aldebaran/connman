@@ -754,7 +754,7 @@ int g_dhcp_server_start(GDHCPServer *dhcp_server)
 		return 0;
 
 	listener_sockfd = dhcp_l3_socket(SERVER_PORT,
-				dhcp_server->interface);
+					dhcp_server->interface, AF_INET);
 	if (listener_sockfd < 0)
 		return -EIO;
 

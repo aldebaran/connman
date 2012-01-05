@@ -23,6 +23,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <errno.h>
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -33,6 +34,9 @@
 #include <linux/if.h>
 #include <netpacket/packet.h>
 #include <net/ethernet.h>
+#include <arpa/inet.h>
+
+#include <inet.h>
 
 #include "gdhcp.h"
 #include "common.h"
@@ -142,6 +146,48 @@ int dhcp_end_option(uint8_t *optionptr)
 	return i;
 }
 
+uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
+			int code, uint16_t *option_len, int *option_count)
+{
+	int rem, count = 0;
+	uint8_t *optionptr, *found = NULL;
+	uint16_t opt_code, opt_len, len;
+
+	optionptr = packet->options;
+	rem = pkt_len - 1 - 3;
+
+	if (rem <= 0)
+		/* Bad packet */
+		return NULL;
+
+	while (1) {
+		opt_code = optionptr[0] << 8 | optionptr[1];
+		opt_len = len = optionptr[2] << 8 | optionptr[3];
+		len += 2 + 2; /* skip code and len */
+
+		rem -= len;
+		if (rem < 0)
+			break;
+
+		if (opt_code == code) {
+			if (option_len != NULL)
+				*option_len = opt_len;
+			found = optionptr + 2 + 2;
+			count++;
+		}
+
+		if (rem == 0)
+			break;
+
+		optionptr += len;
+	}
+
+	if (option_count != NULL)
+		*option_count = count;
+
+	return found;
+}
+
 /*
  * Add an option (supplied in binary form) to the options.
  * Option format: [code][len][data1][data2]..[dataLEN]
@@ -162,6 +208,27 @@ void dhcp_add_binary_option(struct dhcp_packet *packet, uint8_t *addopt)
 	memcpy(optionptr + end, addopt, len);
 
 	optionptr[end + len] = DHCP_END;
+}
+
+/*
+ * Add an option (supplied in binary form) to the options.
+ * Option format: [code][len][data1][data2]..[dataLEN]
+ */
+void dhcpv6_add_binary_option(struct dhcpv6_packet *packet, uint16_t max_len,
+				uint16_t *pkt_len, uint8_t *addopt)
+{
+	unsigned len;
+	uint8_t *optionptr = packet->options;
+
+	len = 2 + 2 + (addopt[2] << 8 | addopt[3]);
+
+	/* end position + (option code/length + addopt length) */
+	if (*pkt_len + len >= max_len)
+		/* option did not fit into the packet */
+		return;
+
+	memcpy(optionptr + *pkt_len, addopt, len);
+	*pkt_len += len;
 }
 
 void dhcp_add_simple_option(struct dhcp_packet *packet, uint8_t code,
@@ -207,6 +274,21 @@ void dhcp_init_header(struct dhcp_packet *packet, char type)
 	packet->options[0] = DHCP_END;
 
 	dhcp_add_simple_option(packet, DHCP_MESSAGE_TYPE, type);
+}
+
+void dhcpv6_init_header(struct dhcpv6_packet *packet, uint8_t type)
+{
+	int id;
+
+	memset(packet, 0, sizeof(*packet));
+
+	packet->message = type;
+
+	id = random();
+
+	packet->transaction_id[0] = (id >> 16) & 0xff;
+	packet->transaction_id[1] = (id >> 8) & 0xff;
+	packet->transaction_id[2] = id & 0xff;
 }
 
 static gboolean check_vendor(uint8_t  *option_vendor, const char *vendor)
@@ -255,6 +337,20 @@ int dhcp_recv_l3_packet(struct dhcp_packet *packet, int fd)
 	return n;
 }
 
+int dhcpv6_recv_l3_packet(struct dhcpv6_packet **packet, unsigned char *buf,
+			int buf_len, int fd)
+{
+	int n;
+
+	n = read(fd, buf, buf_len);
+	if (n < 0)
+		return -errno;
+
+	*packet = (struct dhcpv6_packet *)buf;
+
+	return n;
+}
+
 /* TODO: Use glib checksum */
 uint16_t dhcp_checksum(void *addr, int count)
 {
@@ -284,6 +380,78 @@ uint16_t dhcp_checksum(void *addr, int count)
 		sum = (sum & 0xffff) + (sum >> 16);
 
 	return ~sum;
+}
+
+#define IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS_MC_INIT \
+	{ { { 0xff,0x02,0,0,0,0,0,0,0,0,0,0,0,0x1,0,0x2 } } } /* ff02::1:2 */
+static const struct in6_addr in6addr_all_dhcp_relay_agents_and_servers_mc =
+	IN6ADDR_ALL_DHCP_RELAY_AGENTS_AND_SERVERS_MC_INIT;
+
+/* from netinet/in.h */
+struct in6_pktinfo {
+	struct in6_addr ipi6_addr;  /* src/dst IPv6 address */
+	unsigned int ipi6_ifindex;  /* send/recv interface index */
+};
+
+int dhcpv6_send_packet(int index, struct dhcpv6_packet *dhcp_pkt, int len)
+{
+	struct msghdr m;
+	struct iovec v;
+	struct in6_pktinfo *pktinfo;
+	struct cmsghdr *cmsg;
+	int fd, ret;
+	struct sockaddr_in6 dst;
+	void *control_buf;
+	size_t control_buf_len;
+
+	fd = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
+	if (fd < 0)
+		return -errno;
+
+	memset(&dst, 0, sizeof(dst));
+	dst.sin6_family = AF_INET6;
+	dst.sin6_port = htons(DHCPV6_SERVER_PORT);
+
+	dst.sin6_addr = in6addr_all_dhcp_relay_agents_and_servers_mc;
+
+	control_buf_len = CMSG_SPACE(sizeof(struct in6_pktinfo));
+	control_buf = g_try_malloc0(control_buf_len);
+	if (control_buf == NULL) {
+		close(fd);
+		return -ENOMEM;
+	}
+
+	memset(&m, 0, sizeof(m));
+	memset(&v, 0, sizeof(v));
+
+	m.msg_name = &dst;
+	m.msg_namelen = sizeof(dst);
+
+	v.iov_base = (char *)dhcp_pkt;
+	v.iov_len = len;
+	m.msg_iov = &v;
+	m.msg_iovlen = 1;
+
+	m.msg_control = control_buf;
+	m.msg_controllen = control_buf_len;
+	cmsg = CMSG_FIRSTHDR(&m);
+	cmsg->cmsg_level = IPPROTO_IPV6;
+	cmsg->cmsg_type = IPV6_PKTINFO;
+	cmsg->cmsg_len = CMSG_LEN(sizeof(*pktinfo));
+
+	pktinfo = (struct in6_pktinfo *)CMSG_DATA(cmsg);
+	memset(pktinfo, 0, sizeof(*pktinfo));
+	pktinfo->ipi6_ifindex = index;
+	m.msg_controllen = cmsg->cmsg_len;
+
+	ret = sendmsg(fd, &m, 0);
+	if (ret < 0)
+		perror("DHCPv6 msg send failed");
+
+	g_free(control_buf);
+	close(fd);
+
+	return ret;
 }
 
 int dhcp_send_raw_packet(struct dhcp_packet *dhcp_pkt,
@@ -397,12 +565,16 @@ int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 	return n;
 }
 
-int dhcp_l3_socket(int port, const char *interface)
+int dhcp_l3_socket(int port, const char *interface, int family)
 {
-	int fd, opt = 1;
-	struct sockaddr_in addr;
+	int fd, opt = 1, len;
+	struct sockaddr_in addr4;
+	struct sockaddr_in6 addr6;
+	struct sockaddr *addr;
 
-	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
+	fd = socket(family, SOCK_DGRAM | SOCK_CLOEXEC, IPPROTO_UDP);
+	if (fd < 0)
+		return -errno;
 
 	setsockopt(fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
 
@@ -412,10 +584,24 @@ int dhcp_l3_socket(int port, const char *interface)
 		return -1;
 	}
 
-	memset(&addr, 0, sizeof(addr));
-	addr.sin_family = AF_INET;
-	addr.sin_port = htons(port);
-	if (bind(fd, (struct sockaddr *)&addr, sizeof(addr)) != 0) {
+	if (family == AF_INET) {
+		memset(&addr4, 0, sizeof(addr4));
+		addr4.sin_family = family;
+		addr4.sin_port = htons(port);
+		addr = (struct sockaddr *)&addr4;
+		len = sizeof(addr4);
+	} else if (family == AF_INET6) {
+		memset(&addr6, 0, sizeof(addr6));
+		addr6.sin6_family = family;
+		addr6.sin6_port = htons(port);
+		addr = (struct sockaddr *)&addr6;
+		len = sizeof(addr6);
+	} else {
+		close(fd);
+		return -EINVAL;
+	}
+
+	if (bind(fd, addr, len) != 0) {
 		close(fd);
 		return -1;
 	}
