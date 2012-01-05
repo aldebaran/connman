@@ -359,6 +359,7 @@ int main(int argc, char *argv[])
 
 	__connman_rtnl_start();
 	__connman_dhcp_init();
+	__connman_dhcpv6_init();
 	__connman_wpad_init();
 	__connman_wispr_init();
 	__connman_rfkill_init();
@@ -375,6 +376,7 @@ int main(int argc, char *argv[])
 	__connman_rfkill_cleanup();
 	__connman_wispr_cleanup();
 	__connman_wpad_cleanup();
+	__connman_dhcpv6_cleanup();
 	__connman_dhcp_cleanup();
 	__connman_provider_cleanup();
 	__connman_plugin_cleanup();

@@ -73,6 +73,8 @@ typedef enum {
 #define G_DHCPV6_SERVERID	2
 #define G_DHCPV6_ORO		6
 #define G_DHCPV6_STATUS_CODE	13
+#define G_DHCPV6_DNS_SERVERS	23
+#define G_DHCPV6_SNTP_SERVERS	31
 
 typedef enum {
 	G_DHCPV6_DUID_LLT = 1,

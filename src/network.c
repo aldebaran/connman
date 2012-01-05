@@ -45,6 +45,7 @@ struct connman_network {
 	char *group;
 	char *path;
 	int index;
+	int router_solicit_count;
 
 	struct connman_network_driver *driver;
 	void *driver_data;
@@ -767,7 +768,8 @@ void connman_network_clear_error(struct connman_network *network)
 	__connman_service_clear_error(service);
 }
 
-static void set_configuration(struct connman_network *network)
+static void set_configuration(struct connman_network *network,
+			enum connman_ipconfig_type type)
 {
 	struct connman_service *service;
 
@@ -783,7 +785,7 @@ static void set_configuration(struct connman_network *network)
 	service = __connman_service_lookup_from_network(network);
 	__connman_service_ipconfig_indicate_state(service,
 					CONNMAN_SERVICE_STATE_CONFIGURATION,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
+					type);
 }
 
 static void dhcp_success(struct connman_network *network)
@@ -852,7 +854,7 @@ static int set_connected_fixed(struct connman_network *network)
 
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 
-	set_configuration(network);
+	set_configuration(network, CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	network->connecting = FALSE;
 
@@ -890,7 +892,7 @@ static void set_connected_manual(struct connman_network *network)
 	if (__connman_ipconfig_get_local(ipconfig) == NULL)
 		__connman_service_read_ip4config(service);
 
-	set_configuration(network);
+	set_configuration(network, CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	err = __connman_ipconfig_address_add(ipconfig);
 	if (err < 0)
@@ -918,7 +920,7 @@ static int set_connected_dhcp(struct connman_network *network)
 
 	DBG("network %p", network);
 
-	set_configuration(network);
+	set_configuration(network, CONNMAN_IPCONFIG_TYPE_IPV4);
 
 	err = __connman_dhcp_start(network, dhcp_callback);
 	if (err < 0) {
@@ -967,17 +969,80 @@ static int manual_ipv6_set(struct connman_network *network,
 	return 0;
 }
 
+static void stop_dhcpv6(struct connman_network *network)
+{
+	__connman_dhcpv6_stop(network);
+}
+
+static void dhcpv6_info_callback(struct connman_network *network,
+				connman_bool_t success)
+{
+	DBG("success %d", success);
+
+	stop_dhcpv6(network);
+}
+
+static void check_dhcpv6(struct nd_router_advert *reply, void *user_data)
+{
+	struct connman_network *network = user_data;
+
+	DBG("reply %p", reply);
+
+	if (reply == NULL) {
+		/*
+		 * Router solicitation message seem to get lost easily so
+		 * try to send it again.
+		 */
+		if (network->router_solicit_count > 0) {
+			DBG("re-send router solicitation %d",
+						network->router_solicit_count);
+			network->router_solicit_count--;
+			__connman_inet_ipv6_send_rs(network->index, 1,
+						check_dhcpv6, network);
+			return;
+		}
+		connman_network_unref(network);
+		return;
+	}
+
+	network->router_solicit_count = 0;
+
+	/* We do stateless DHCPv6 only if router advertisement says so */
+	if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER)
+		__connman_dhcpv6_start_info(network, dhcpv6_info_callback);
+
+	connman_network_unref(network);
+}
+
 static void autoconf_ipv6_set(struct connman_network *network)
 {
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig;
+	int index;
+
 	DBG("network %p", network);
 
 	__connman_device_set_network(network->device, network);
 
 	connman_device_set_disconnected(network->device, FALSE);
 
-	/* XXX: Append IPv6 nameservers here */
-
 	network->connecting = FALSE;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		return;
+
+	ipconfig = __connman_service_get_ip6config(service);
+	if (ipconfig == NULL)
+		return;
+
+	index = connman_ipconfig_get_index(ipconfig);
+
+	connman_network_ref(network);
+
+	/* Try to get stateless DHCPv6 information, RFC 3736 */
+	network->router_solicit_count = 3;
+	__connman_inet_ipv6_send_rs(index, 1, check_dhcpv6, network);
 }
 
 static gboolean set_connected(gpointer user_data)
@@ -1050,7 +1115,25 @@ static gboolean set_connected(gpointer user_data)
 	} else {
 		enum connman_service_state state;
 
+		/*
+		 * Resetting solicit count here will prevent the RS resend loop
+		 * from sending packets in check_dhcpv6()
+		 */
+		network->router_solicit_count = 0;
+
 		__connman_device_set_network(network->device, NULL);
+
+		switch (ipv6_method) {
+		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+		case CONNMAN_IPCONFIG_METHOD_OFF:
+		case CONNMAN_IPCONFIG_METHOD_FIXED:
+		case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
+			break;
+		case CONNMAN_IPCONFIG_METHOD_AUTO:
+			stop_dhcpv6(network);
+			break;
+		}
 
 		switch (ipv4_method) {
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:

@@ -74,7 +74,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/clock.c src/timezone.c \
 			src/agent.c src/notifier.c src/provider.c \
 			src/resolver.c src/ipconfig.c src/detect.c src/inet.c \
-			src/dhcp.c src/rtnl.c src/proxy.c \
+			src/dhcp.c src/dhcpv6.c src/rtnl.c src/proxy.c \
 			src/utsname.c src/timeserver.c src/rfkill.c \
 			src/storage.c src/dbus.c src/config.c \
 			src/technology.c src/counter.c src/ntp.c \

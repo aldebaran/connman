@@ -254,6 +254,15 @@ static void add_dhcpv6_request_options(GDHCPClient *dhcp_client,
 			(*ptr_buf) += len;
 			break;
 
+		case G_DHCPV6_ORO:
+			break;
+
+		case G_DHCPV6_DNS_SERVERS:
+			break;
+
+		case G_DHCPV6_SNTP_SERVERS:
+			break;
+
 		default:
 			break;
 		}
@@ -1335,8 +1344,33 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 					unsigned char *value)
 {
 	GList *list = NULL;
+	char *str;
+	int i;
 
 	switch (code) {
+	case G_DHCPV6_DNS_SERVERS:	/* RFC 3646, chapter 3 */
+	case G_DHCPV6_SNTP_SERVERS:	/* RFC 4075, chapter 4 */
+		if (len % 16) {
+			debug(dhcp_client,
+				"%s server list length (%d) is invalid",
+				code == G_DHCPV6_DNS_SERVERS ? "DNS" : "SNTP",
+				len);
+			return NULL;
+		}
+		for (i = 0; i < len; i += 16) {
+
+			str = g_try_malloc0(INET6_ADDRSTRLEN+1);
+			if (str == NULL)
+				return list;
+
+			if (inet_ntop(AF_INET6, &value[i], str,
+					INET6_ADDRSTRLEN) == NULL)
+				g_free(str);
+			else
+				list = g_list_append(list, str);
+		}
+		break;
+
 	default:
 		break;
 	}
