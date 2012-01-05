@@ -1026,6 +1026,8 @@ static void dhcpv6_callback(struct connman_network *network,
 			return;
 		}
 
+		__connman_dhcpv6_start_renew(network, dhcpv6_callback);
+
 		return;
 	} else
 		stop_dhcpv6(network);

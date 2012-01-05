@@ -72,6 +72,7 @@ typedef enum _dhcp_client_state {
 	INFORMATION_REQ,
 	SOLICITATION,
 	REQUEST,
+	RENEW,
 } ClientState;
 
 struct _GDHCPClient {
@@ -120,6 +121,8 @@ struct _GDHCPClient {
 	gpointer advertise_data;
 	GDHCPClientEventFunc request_cb;
 	gpointer request_data;
+	GDHCPClientEventFunc renew_cb;
+	gpointer renew_data;
 	char *last_address;
 	unsigned char *duid;
 	int duid_len;
@@ -130,6 +133,7 @@ struct _GDHCPClient {
 	uint32_t T1, T2;
 	struct in6_addr ia_na;
 	struct in6_addr ia_ta;
+	time_t last_renew;
 };
 
 static inline void debug(GDHCPClient *client, const char *format, ...)
@@ -618,7 +622,7 @@ void g_dhcpv6_client_create_iaid(GDHCPClient *dhcp_client, int index,
 }
 
 int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
-				uint32_t *T1, uint32_t *T2)
+				uint32_t *T1, uint32_t *T2, time_t *last_renew)
 {
 	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
 		return -EINVAL;
@@ -628,6 +632,9 @@ int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
 
 	if (T2 != NULL)
 		*T2 = dhcp_client->T2;
+
+	if (last_renew != NULL)
+		*last_renew = dhcp_client->last_renew;
 
 	return 0;
 }
@@ -787,6 +794,11 @@ static int send_dhcpv6_request(GDHCPClient *dhcp_client)
 	return send_dhcpv6_msg(dhcp_client, DHCPV6_REQUEST, "request");
 }
 
+static int send_dhcpv6_renew(GDHCPClient *dhcp_client)
+{
+	return send_dhcpv6_msg(dhcp_client, DHCPV6_RENEW, "renew");
+}
+
 static int send_information_req(GDHCPClient *dhcp_client)
 {
 	return send_dhcpv6_msg(dhcp_client, DHCPV6_INFORMATION_REQ,
@@ -858,6 +870,7 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 	dhcp_client->require_list = NULL;
 	dhcp_client->duid = NULL;
 	dhcp_client->duid_len = 0;
+	dhcp_client->last_renew = time(0);
 
 	*error = G_DHCP_CLIENT_ERROR_NONE;
 
@@ -1966,6 +1979,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		break;
 	case INFORMATION_REQ:
 	case REQUEST:
+	case RENEW:
 		if (dhcp_client->type != G_DHCP_IPV6)
 			return TRUE;
 
@@ -2005,6 +2019,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		if (dhcp_client->request_cb != NULL) {
 			dhcp_client->request_cb(dhcp_client,
 					dhcp_client->request_data);
+			return TRUE;
+		}
+		if (dhcp_client->renew_cb != NULL) {
+			dhcp_client->renew_cb(dhcp_client,
+					dhcp_client->renew_data);
 			return TRUE;
 		}
 		break;
@@ -2130,6 +2149,16 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 				return re;
 			}
 			send_dhcpv6_request(dhcp_client);
+
+		} else if (dhcp_client->renew_cb) {
+			dhcp_client->state = RENEW;
+			re = switch_listening_mode(dhcp_client, L3);
+			if (re != 0) {
+				switch_listening_mode(dhcp_client, L_NONE);
+				dhcp_client->state = 0;
+				return re;
+			}
+			send_dhcpv6_renew(dhcp_client);
 		}
 
 		return 0;
@@ -2268,6 +2297,12 @@ void g_dhcp_client_register_event(GDHCPClient *dhcp_client,
 		dhcp_client->request_cb = func;
 		dhcp_client->request_data = data;
 		return;
+	case G_DHCP_CLIENT_EVENT_RENEW:
+		if (dhcp_client->type == G_DHCP_IPV4)
+			return;
+		dhcp_client->renew_cb = func;
+		dhcp_client->renew_data = data;
+		return;
 	}
 }
 
@@ -2306,6 +2341,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 	case INFORMATION_REQ:
 	case SOLICITATION:
 	case REQUEST:
+	case RENEW:
 		break;
 	}
 	return NULL;
@@ -2400,6 +2436,14 @@ void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client,
 					GINT_TO_POINTER((int) option_code),
 					binary_option);
 	}
+}
+
+void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client)
+{
+	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
+		return;
+
+	dhcp_client->last_renew = time(0);
 }
 
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)

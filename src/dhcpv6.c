@@ -46,6 +46,8 @@
 #define REQ_TIMEOUT	(1 * 1000)
 #define REQ_MAX_RT	(30 * 1000)
 #define REQ_MAX_RC	10
+#define REN_TIMEOUT     (10 * 1000)
+#define REN_MAX_RT      (600 * 1000)
 
 
 struct connman_dhcpv6 {
@@ -221,6 +223,10 @@ static void clear_callbacks(GDHCPClient *dhcp_client)
 
 	g_dhcp_client_register_event(dhcp_client,
 				G_DHCP_CLIENT_EVENT_REQUEST,
+				NULL, NULL);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_RENEW,
 				NULL, NULL);
 
 	g_dhcp_client_register_event(dhcp_client,
@@ -552,7 +558,7 @@ static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
 	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
 				G_DHCPV6_SNTP_SERVERS);
 
-	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2);
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL);
 	g_dhcpv6_client_set_ia(dhcp_client,
 			connman_network_get_index(dhcp->network),
 			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
@@ -589,6 +595,123 @@ static gboolean timeout_request(gpointer user_data)
 	g_dhcp_client_start(dhcp->dhcp_client, NULL);
 
 	return FALSE;
+}
+
+static void renew_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	DBG("");
+
+	g_dhcpv6_client_reset_renew(dhcp_client);
+
+	re_cb(dhcp_client, user_data);
+}
+
+static int dhcpv6_renew(struct connman_dhcpv6 *dhcp)
+{
+	GDHCPClient *dhcp_client;
+	uint32_t T1, T2;
+
+	DBG("dhcp %p", dhcp);
+
+	dhcp_client = dhcp->dhcp_client;
+
+	g_dhcp_client_clear_requests(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2, NULL);
+	g_dhcpv6_client_set_ia(dhcp_client,
+			connman_network_get_index(dhcp->network),
+			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			&T1, &T2, TRUE);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_RENEW,
+					renew_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+static gboolean timeout_renew(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = calc_delay(dhcp->RT, REN_MAX_RT);
+
+	DBG("renew RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_renew, dhcp);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
+static gboolean start_renew(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	dhcp->RT = REN_TIMEOUT * (1 + get_random());
+
+	DBG("renew initial RT timeout %d msec", dhcp->RT);
+
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_renew, dhcp);
+
+	dhcpv6_renew(dhcp);
+
+	return FALSE;
+}
+
+int __connman_dhcpv6_start_renew(struct connman_network *network,
+							dhcp_cb callback)
+{
+	struct connman_dhcpv6 *dhcp;
+	uint32_t T1, T2;
+	time_t last_renew, current;
+
+	DBG("");
+
+	dhcp = g_hash_table_lookup(network_table, network);
+	if (dhcp == NULL)
+		return -ENOENT;
+
+	if (dhcp->timeout > 0) {
+		g_source_remove(dhcp->timeout);
+		dhcp->timeout = 0;
+	}
+
+	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, &T1, &T2,
+				&last_renew);
+	DBG("T1 %u T2 %u", T1, T2);
+
+	if (T1 == 0xffffffff)
+		/* RFC 3315, 22.4 */
+		return 0;
+
+	if (T1 == 0)
+		/* RFC 3315, 22.4
+		 * Client can choose the timeout.
+		 */
+		T1 = 1800;
+
+	current = time(0);
+
+	dhcp->callback = callback;
+
+	DBG("renew after %d secs", T1);
+
+	dhcp->timeout = g_timeout_add_seconds(T1, start_renew, dhcp);
+
+	return 0;
 }
 
 static int dhcpv6_release(struct connman_dhcpv6 *dhcp)
