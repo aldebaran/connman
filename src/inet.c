@@ -1456,7 +1456,7 @@ static gboolean rs_timeout_cb(gpointer user_data)
 		return FALSE;
 
 	if (data->callback != NULL)
-		data->callback(NULL, data->user_data);
+		data->callback(NULL, 0, data->user_data);
 
 	data->rs_timeout = 0;
 	rs_cleanup(data);
@@ -1488,16 +1488,18 @@ static int icmpv6_recv(int fd, gpointer user_data)
 
 	len = recvmsg(fd, &mhdr, 0);
 	if (len < 0) {
-		data->callback(NULL, data->user_data);
+		data->callback(NULL, 0, data->user_data);
 		rs_cleanup(data);
 		return -errno;
 	}
 
 	hdr = (struct nd_router_advert *)buf;
+	DBG("code %d len %zd hdr %zd", hdr->nd_ra_code, len,
+				sizeof(struct nd_router_advert));
 	if (hdr->nd_ra_code != 0)
 		return 0;
 
-	data->callback(hdr, data->user_data);
+	data->callback(hdr, len, data->user_data);
 	rs_cleanup(data);
 
 	return len;

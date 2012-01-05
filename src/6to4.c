@@ -449,12 +449,13 @@ error:
 	return -1;
 }
 
-static void receive_rs_reply(struct nd_router_advert *reply, void *user_data)
+static void receive_rs_reply(struct nd_router_advert *reply,
+			unsigned int length, void *user_data)
 {
 	char *address = user_data;
 	struct in_addr ip4addr;
 
-	DBG("reply %p address %s", reply, address);
+	DBG("reply %p len %d address %s", reply, length, address);
 
 	/* We try to create tunnel if autoconfiguration did not work i.e.,
 	 * we did not receive any reply to router solicitation message.

@@ -982,7 +982,8 @@ static void dhcpv6_info_callback(struct connman_network *network,
 	stop_dhcpv6(network);
 }
 
-static void check_dhcpv6(struct nd_router_advert *reply, void *user_data)
+static void check_dhcpv6(struct nd_router_advert *reply,
+			unsigned int length, void *user_data)
 {
 	struct connman_network *network = user_data;
 

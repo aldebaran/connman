@@ -137,7 +137,7 @@ int __connman_inet_modify_address(int cmd, int flags, int index, int family,
 #include <netinet/icmp6.h>
 
 typedef void (*__connman_inet_rs_cb_t) (struct nd_router_advert *reply,
-					void *user_data);
+					unsigned int length, void *user_data);
 
 int __connman_inet_ipv6_send_rs(int index, int timeout,
 			__connman_inet_rs_cb_t callback, void *user_data);
