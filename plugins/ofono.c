@@ -1505,6 +1505,9 @@ static void add_cdma_network(struct modem_data *modem)
 	if (modem->context == NULL)
 		modem->context = network_context_alloc(modem->path);
 
+	if (modem->name == NULL)
+		modem->name = g_strdup("CDMA Network");
+
 	add_network(modem);
 
 	if (modem->cdma_cm_powered == TRUE)
