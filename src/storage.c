@@ -68,7 +68,7 @@ static void storage_save(GKeyFile *keyfile, char *pathname)
 
 	if (!g_file_set_contents(pathname, data, length, &error)) {
 		DBG("Failed to store information: %s", error->message);
-		g_free(error);
+		g_error_free(error);
 	}
 
 	g_free(data);
