@@ -188,6 +188,8 @@ static const uint8_t dhcp_option_lengths[] = {
 uint8_t *dhcp_get_option(struct dhcp_packet *packet, int code);
 uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 			int code, uint16_t *option_len, int *option_count);
+uint8_t *dhcpv6_get_sub_option(unsigned char *option, uint16_t max_len,
+			uint16_t *code, uint16_t *option_len);
 int dhcp_end_option(uint8_t *optionptr);
 void dhcp_add_binary_option(struct dhcp_packet *packet, uint8_t *addopt);
 void dhcpv6_add_binary_option(struct dhcpv6_packet *packet, uint16_t max_len,

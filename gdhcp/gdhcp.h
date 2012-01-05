@@ -53,6 +53,8 @@ typedef enum {
 	G_DHCP_CLIENT_EVENT_IPV4LL_LOST,
 	G_DHCP_CLIENT_EVENT_ADDRESS_CONFLICT,
 	G_DHCP_CLIENT_EVENT_INFORMATION_REQ,
+	G_DHCP_CLIENT_EVENT_SOLICITATION,
+	G_DHCP_CLIENT_EVENT_ADVERTISE,
 } GDHCPClientEvent;
 
 typedef enum {
@@ -71,8 +73,12 @@ typedef enum {
 
 #define G_DHCPV6_CLIENTID	1
 #define G_DHCPV6_SERVERID	2
+#define G_DHCPV6_IA_NA		3
+#define G_DHCPV6_IA_TA		4
+#define G_DHCPV6_IAADDR		5
 #define G_DHCPV6_ORO		6
 #define G_DHCPV6_STATUS_CODE	13
+#define G_DHCPV6_RAPID_COMMIT	14
 #define G_DHCPV6_DNS_SERVERS	23
 #define G_DHCPV6_SNTP_SERVERS	31
 
@@ -102,6 +108,8 @@ void g_dhcp_client_register_event(GDHCPClient *client,
 
 GDHCPClientError g_dhcp_client_set_request(GDHCPClient *client,
 						unsigned int option_code);
+void g_dhcp_client_clear_requests(GDHCPClient *dhcp_client);
+void g_dhcp_client_clear_values(GDHCPClient *dhcp_client);
 GDHCPClientError g_dhcp_client_set_send(GDHCPClient *client,
 						unsigned char option_code,
 						const char *option_value);
@@ -122,6 +130,13 @@ void g_dhcpv6_client_set_send(GDHCPClient *dhcp_client, uint16_t option_code,
 			uint8_t *option_value, uint16_t option_len);
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client);
 int g_dhcpv6_client_set_oro(GDHCPClient *dhcp_client, int args, ...);
+void g_dhcpv6_client_create_iaid(GDHCPClient *dhcp_client, int index,
+				unsigned char *iaid);
+int g_dhcpv6_client_get_timeouts(GDHCPClient *dhcp_client,
+				uint32_t *T1, uint32_t *T2);
+uint32_t g_dhcpv6_client_get_iaid(GDHCPClient *dhcp_client);
+int g_dhcpv6_client_set_ia(GDHCPClient *dhcp_client, int index,
+		int code, uint32_t *T1, uint32_t *T2, gboolean add_iaaddr);
 
 /* DHCP Server */
 typedef enum {

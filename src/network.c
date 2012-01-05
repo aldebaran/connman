@@ -982,10 +982,60 @@ static void dhcpv6_info_callback(struct connman_network *network,
 	stop_dhcpv6(network);
 }
 
+static gboolean dhcpv6_set_addresses(struct connman_network *network)
+{
+	struct connman_service *service;
+	struct connman_ipconfig *ipconfig_ipv6;
+	int err = -EINVAL;
+
+	service = __connman_service_lookup_from_network(network);
+	if (service == NULL)
+		goto err;
+
+	connman_network_set_associating(network, FALSE);
+
+	network->connecting = FALSE;
+
+	ipconfig_ipv6 = __connman_service_get_ip6config(service);
+	err = __connman_ipconfig_address_add(ipconfig_ipv6);
+	if (err < 0)
+		goto err;
+
+	err = __connman_ipconfig_gateway_add(ipconfig_ipv6);
+	if (err < 0)
+		goto err;
+
+	return 0;
+
+err:
+	connman_network_set_error(network,
+				CONNMAN_NETWORK_ERROR_CONFIGURE_FAIL);
+	return err;
+}
+
+static void dhcpv6_callback(struct connman_network *network,
+					connman_bool_t success)
+{
+	DBG("success %d", success);
+
+	/* Start the renew process if necessary */
+	if (success == TRUE) {
+
+		if (dhcpv6_set_addresses(network) < 0) {
+			stop_dhcpv6(network);
+			return;
+		}
+
+		return;
+	} else
+		stop_dhcpv6(network);
+}
+
 static void check_dhcpv6(struct nd_router_advert *reply,
 			unsigned int length, void *user_data)
 {
 	struct connman_network *network = user_data;
+	GSList *prefixes;
 
 	DBG("reply %p", reply);
 
@@ -1008,8 +1058,14 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 
 	network->router_solicit_count = 0;
 
-	/* We do stateless DHCPv6 only if router advertisement says so */
-	if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER)
+	prefixes = __connman_inet_ipv6_get_prefixes(reply, length);
+
+	/*
+	 * We do stateful/stateless DHCPv6 if router advertisement says so.
+	 */
+	if (reply->nd_ra_flags_reserved & ND_RA_FLAG_MANAGED)
+		__connman_dhcpv6_start(network, prefixes, dhcpv6_callback);
+	else if (reply->nd_ra_flags_reserved & ND_RA_FLAG_OTHER)
 		__connman_dhcpv6_start_info(network, dhcpv6_info_callback);
 
 	connman_network_unref(network);
@@ -1074,6 +1130,7 @@ static gboolean set_connected(gpointer user_data)
 		case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			autoconf_ipv6_set(network);
 			break;
@@ -1085,8 +1142,6 @@ static gboolean set_connected(gpointer user_data)
 					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
 				return FALSE;
 			}
-			break;
-		case CONNMAN_IPCONFIG_METHOD_DHCP:
 			break;
 		}
 
@@ -1129,8 +1184,8 @@ static gboolean set_connected(gpointer user_data)
 		case CONNMAN_IPCONFIG_METHOD_OFF:
 		case CONNMAN_IPCONFIG_METHOD_FIXED:
 		case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		case CONNMAN_IPCONFIG_METHOD_DHCP:
 			break;
+		case CONNMAN_IPCONFIG_METHOD_DHCP:
 		case CONNMAN_IPCONFIG_METHOD_AUTO:
 			stop_dhcpv6(network);
 			break;

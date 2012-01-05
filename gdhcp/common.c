@@ -188,6 +188,31 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 	return found;
 }
 
+uint8_t *dhcpv6_get_sub_option(unsigned char *option, uint16_t max_len,
+			uint16_t *option_code, uint16_t *option_len)
+{
+	int rem;
+	uint16_t code, len;
+
+	rem = max_len - 2 - 2;
+
+	if (rem <= 0)
+		/* Bad option */
+		return NULL;
+
+	code = option[0] << 8 | option[1];
+	len = option[2] << 8 | option[3];
+
+	rem -= len;
+	if (rem < 0)
+		return NULL;
+
+	*option_code = code;
+	*option_len = len;
+
+	return &option[4];
+}
+
 /*
  * Add an option (supplied in binary form) to the options.
  * Option format: [code][len][data1][data2]..[dataLEN]
