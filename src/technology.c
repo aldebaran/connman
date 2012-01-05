@@ -892,8 +892,10 @@ int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg
 	 * An empty device list means that devices in the technology
 	 * were rfkill blocked. The unblock above will enable the devs.
 	 */
-	if (technology->device_list == NULL)
-		return 0;
+	if (technology->device_list == NULL) {
+		ret = 0;
+		goto done;
+	}
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
