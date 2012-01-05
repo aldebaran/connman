@@ -1671,9 +1671,6 @@ static void cdma_cm_update_settings(struct modem_data *modem,
 {
 	DBG("%s Settings", modem->path);
 
-	if (modem->context != NULL)
-		return;
-
 	extract_ipv4_settings(value, modem->context);
 }
 
