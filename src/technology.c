@@ -240,28 +240,6 @@ static void free_rfkill(gpointer data)
 	g_free(rfkill);
 }
 
-void __connman_technology_list(DBusMessageIter *iter, void *user_data)
-{
-	GSList *list;
-
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
-
-		if (technology->path == NULL)
-			continue;
-
-		dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-							&technology->path);
-	}
-}
-
-static void technologies_changed(void)
-{
-	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
-			CONNMAN_MANAGER_INTERFACE, "Technologies",
-			DBUS_TYPE_OBJECT_PATH, __connman_technology_list, NULL);
-}
-
 static const char *state2string(enum connman_technology_state state)
 {
 	switch (state) {
@@ -664,7 +642,6 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology_list = g_slist_append(technology_list, technology);
 
-	technologies_changed();
 	technology_added_signal(technology);
 
 	if (technology->driver != NULL)
@@ -704,7 +681,6 @@ static void technology_put(struct connman_technology *technology)
 
 	technology_list = g_slist_remove(technology_list, technology);
 
-	technologies_changed();
 	technology_removed_signal(technology);
 
 	g_dbus_unregister_interface(connection, technology->path,

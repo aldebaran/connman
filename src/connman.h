@@ -309,7 +309,6 @@ void __connman_wispr_stop(struct connman_service *service);
 
 #include <connman/technology.h>
 
-void __connman_technology_list(DBusMessageIter *iter, void *user_data);
 void __connman_technology_list_struct(DBusMessageIter *array);
 
 int __connman_technology_add_device(struct connman_device *device);
