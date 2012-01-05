@@ -1722,3 +1722,53 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 
 	return 0;
 }
+
+GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
+					unsigned int length)
+{
+	GSList *prefixes = NULL;
+	uint8_t *pos;
+	int len;
+
+	if (length <= sizeof(struct nd_router_advert))
+		return NULL;
+
+	len = length - sizeof(struct nd_router_advert);
+	pos = (uint8_t *)hdr + sizeof(struct nd_router_advert);
+
+	while (len > 0) {
+		struct nd_opt_prefix_info *pinfo;
+		char prefix_str[INET6_ADDRSTRLEN+1], *str;
+		const char *prefix;
+		int optlen;
+
+		if (len < 2)
+			break;
+
+		optlen = pos[1] << 3;
+		if (optlen == 0 || optlen > len)
+			break;
+
+		switch (pos[0]) {
+		case ND_OPT_PREFIX_INFORMATION:
+			pinfo = (struct nd_opt_prefix_info *)pos;
+			prefix = inet_ntop(AF_INET6, &pinfo->nd_opt_pi_prefix,
+					prefix_str, INET6_ADDRSTRLEN);
+			if (prefix == NULL)
+				break;
+
+			str = g_strdup_printf("%s/%d", prefix,
+						pinfo->nd_opt_pi_prefix_len);
+			prefixes = g_slist_append(prefixes, str);
+
+			DBG("prefix %s", str);
+
+			break;
+		}
+
+		len -= optlen;
+		pos += optlen;
+	}
+
+	return prefixes;
+}
