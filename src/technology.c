@@ -714,10 +714,10 @@ void __connman_technology_add_interface(enum connman_service_type type,
 		break;
 	}
 
-	connman_info("Create interface %s [ %s ]", name,
+	connman_info("Adding interface %s [ %s ]", name,
 				__connman_service_type2string(type));
 
-	technology = technology_get(type);
+	technology = technology_find(type);
 
 	if (technology == NULL || technology->driver == NULL
 			|| technology->driver->add_interface == NULL)
@@ -757,8 +757,6 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 
 	if (technology->driver->remove_interface)
 		technology->driver->remove_interface(technology, index);
-
-	technology_put(technology);
 }
 
 int __connman_technology_add_device(struct connman_device *device)
