@@ -43,6 +43,9 @@
 #define SOL_MAX_DELAY   (1 * 1000)
 #define SOL_TIMEOUT     (1 * 1000)
 #define SOL_MAX_RT      (120 * 1000)
+#define REQ_TIMEOUT	(1 * 1000)
+#define REQ_MAX_RT	(30 * 1000)
+#define REQ_MAX_RC	10
 
 
 struct connman_dhcpv6 {
@@ -58,9 +61,12 @@ struct connman_dhcpv6 {
 	guint RT;		/* in msec */
 	gboolean use_ta;	/* set to TRUE if IPv6 privacy is enabled */
 	GSList *prefixes;	/* network prefixes from radvd */
+	int request_count;	/* how many times REQUEST have been sent */
 };
 
 static GHashTable *network_table;
+
+static int dhcpv6_request(struct connman_dhcpv6 *dhcp, gboolean add_addresses);
 
 static inline float get_random()
 {
@@ -211,6 +217,10 @@ static void clear_callbacks(GDHCPClient *dhcp_client)
 
 	g_dhcp_client_register_event(dhcp_client,
 				G_DHCP_CLIENT_EVENT_ADVERTISE,
+				NULL, NULL);
+
+	g_dhcp_client_register_event(dhcp_client,
+				G_DHCP_CLIENT_EVENT_REQUEST,
 				NULL, NULL);
 
 	g_dhcp_client_register_event(dhcp_client,
@@ -487,6 +497,100 @@ static int set_addresses(GDHCPClient *dhcp_client,
 	return 0;
 }
 
+static void re_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+	uint16_t status;
+	int ret;
+
+	ret = set_addresses(dhcp_client, dhcp);
+
+	status = g_dhcpv6_client_get_status(dhcp_client);
+
+	DBG("dhcpv6 cb msg %p ret %d status %d", dhcp, ret, status);
+
+	if (ret < 0) {
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE);
+		return;
+	}
+
+	if (status  == G_DHCPV6_ERROR_BINDING) {
+		/* RFC 3315, 18.1.8 */
+		dhcpv6_request(dhcp, FALSE);
+	} else {
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network,
+						status == 0 ? TRUE : FALSE);
+	}
+}
+
+static void request_cb(GDHCPClient *dhcp_client, gpointer user_data)
+{
+	DBG("");
+
+	re_cb(dhcp_client, user_data);
+}
+
+static int dhcpv6_request(struct connman_dhcpv6 *dhcp,
+			gboolean add_addresses)
+{
+	GDHCPClient *dhcp_client;
+	uint32_t T1, T2;
+
+	DBG("dhcp %p add %d", dhcp, add_addresses);
+
+	dhcp_client = dhcp->dhcp_client;
+
+	g_dhcp_client_clear_requests(dhcp_client);
+
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SERVERID);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
+	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_set_oro(dhcp_client, 2, G_DHCPV6_DNS_SERVERS,
+				G_DHCPV6_SNTP_SERVERS);
+
+	g_dhcpv6_client_get_timeouts(dhcp_client, &T1, &T2);
+	g_dhcpv6_client_set_ia(dhcp_client,
+			connman_network_get_index(dhcp->network),
+			dhcp->use_ta == TRUE ? G_DHCPV6_IA_TA : G_DHCPV6_IA_NA,
+			&T1, &T2, add_addresses);
+
+	clear_callbacks(dhcp_client);
+
+	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_REQUEST,
+					request_cb, dhcp);
+
+	dhcp->dhcp_client = dhcp_client;
+
+	return g_dhcp_client_start(dhcp_client, NULL);
+}
+
+static gboolean timeout_request(gpointer user_data)
+{
+	struct connman_dhcpv6 *dhcp = user_data;
+
+	if (dhcp->request_count >= REQ_MAX_RC) {
+		DBG("max request retry attempts %d", dhcp->request_count);
+		dhcp->request_count = 0;
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE);
+		return FALSE;
+	}
+
+	dhcp->request_count++;
+
+	dhcp->RT = calc_delay(dhcp->RT, REQ_MAX_RT);
+	DBG("request RT timeout %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_request, dhcp);
+
+	g_dhcp_client_start(dhcp->dhcp_client, NULL);
+
+	return FALSE;
+}
+
 static int dhcpv6_release(struct connman_dhcpv6 *dhcp)
 {
 	DBG("dhcp %p", dhcp);
@@ -583,6 +687,25 @@ static void advertise_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	struct connman_dhcpv6 *dhcp = user_data;
 
 	DBG("dhcpv6 advertise msg %p", dhcp);
+
+	if (dhcp->timeout > 0) {
+		g_source_remove(dhcp->timeout);
+		dhcp->timeout = 0;
+	}
+
+	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
+		if (dhcp->callback != NULL)
+			dhcp->callback(dhcp->network, FALSE);
+		return;
+	}
+
+	dhcp->RT = REQ_TIMEOUT * (1 + get_random());
+	DBG("request initial RT timeout %d msec", dhcp->RT);
+	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_request, dhcp);
+
+	dhcp->request_count = 1;
+
+	dhcpv6_request(dhcp, TRUE);
 }
 
 static void solicitation_cb(GDHCPClient *dhcp_client, gpointer user_data)

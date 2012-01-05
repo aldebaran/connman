@@ -71,6 +71,7 @@ typedef enum _dhcp_client_state {
 	IPV4LL_DEFEND,
 	INFORMATION_REQ,
 	SOLICITATION,
+	REQUEST,
 } ClientState;
 
 struct _GDHCPClient {
@@ -117,6 +118,8 @@ struct _GDHCPClient {
 	gpointer solicitation_data;
 	GDHCPClientEventFunc advertise_cb;
 	gpointer advertise_data;
+	GDHCPClientEventFunc request_cb;
+	gpointer request_data;
 	char *last_address;
 	unsigned char *duid;
 	int duid_len;
@@ -777,6 +780,11 @@ static int send_dhcpv6_msg(GDHCPClient *dhcp_client, int type, char *msg)
 static int send_solicitation(GDHCPClient *dhcp_client)
 {
 	return send_dhcpv6_msg(dhcp_client, DHCPV6_SOLICIT, "solicit");
+}
+
+static int send_dhcpv6_request(GDHCPClient *dhcp_client)
+{
+	return send_dhcpv6_msg(dhcp_client, DHCPV6_REQUEST, "request");
 }
 
 static int send_information_req(GDHCPClient *dhcp_client)
@@ -1957,6 +1965,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		}
 		break;
 	case INFORMATION_REQ:
+	case REQUEST:
 		if (dhcp_client->type != G_DHCP_IPV6)
 			return TRUE;
 
@@ -1967,7 +1976,10 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		option_len = 0;
 		server_id = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_SERVERID, &option_len, &count);
-		if (server_id == NULL || count != 1 || option_len == 0) {
+		if (server_id == NULL || count != 1 || option_len == 0 ||
+				(dhcp_client->server_duid_len > 0 &&
+				memcmp(dhcp_client->server_duid, server_id,
+					dhcp_client->server_duid_len) != 0)) {
 			/* RFC 3315, 15.10 */
 			debug(dhcp_client,
 				"server duid error, discarding msg %p/%d/%d",
@@ -1988,6 +2000,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			 */
 			dhcp_client->information_req_cb(dhcp_client,
 					dhcp_client->information_req_data);
+			return TRUE;
+		}
+		if (dhcp_client->request_cb != NULL) {
+			dhcp_client->request_cb(dhcp_client,
+					dhcp_client->request_data);
 			return TRUE;
 		}
 		break;
@@ -2103,6 +2120,16 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 				return re;
 			}
 			send_solicitation(dhcp_client);
+
+		} else if (dhcp_client->request_cb) {
+			dhcp_client->state = REQUEST;
+			re = switch_listening_mode(dhcp_client, L3);
+			if (re != 0) {
+				switch_listening_mode(dhcp_client, L_NONE);
+				dhcp_client->state = 0;
+				return re;
+			}
+			send_dhcpv6_request(dhcp_client);
 		}
 
 		return 0;
@@ -2235,6 +2262,12 @@ void g_dhcp_client_register_event(GDHCPClient *dhcp_client,
 		dhcp_client->advertise_cb = func;
 		dhcp_client->advertise_data = data;
 		return;
+	case G_DHCP_CLIENT_EVENT_REQUEST:
+		if (dhcp_client->type == G_DHCP_IPV4)
+			return;
+		dhcp_client->request_cb = func;
+		dhcp_client->request_data = data;
+		return;
 	}
 }
 
@@ -2272,6 +2305,7 @@ char *g_dhcp_client_get_netmask(GDHCPClient *dhcp_client)
 	case IPV4LL_ANNOUNCE:
 	case INFORMATION_REQ:
 	case SOLICITATION:
+	case REQUEST:
 		break;
 	}
 	return NULL;
