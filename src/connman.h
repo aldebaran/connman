@@ -256,6 +256,7 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
 int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 		GKeyFile *keyfile, const char *identifier, const char *prefix);
+gboolean __connman_ipconfig_ipv6_privacy_enabled(struct connman_ipconfig *ipconfig);
 
 int __connman_ipconfig_set_rp_filter();
 void __connman_ipconfig_unset_rp_filter(int old_value);

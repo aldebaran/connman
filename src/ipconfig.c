@@ -506,6 +506,14 @@ void __connman_ipconfig_unset_rp_filter(int old_value)
 	connman_info("rp_filter restored to %d", old_value);
 }
 
+gboolean __connman_ipconfig_ipv6_privacy_enabled(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return FALSE;
+
+	return ipconfig->ipv6_privacy_config == 0 ? FALSE : TRUE;
+}
+
 static void free_ipdevice(gpointer data)
 {
 	struct connman_ipdevice *ipdevice = data;
