@@ -129,6 +129,37 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static DBusMessage *get_technologies(DBusConnection *conn,
+		DBusMessage *msg, void *data)
+{
+	DBusMessage *reply;
+	DBusMessageIter iter, array;
+
+	DBG("");
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &iter);
+
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_OBJECT_PATH_AS_STRING
+			DBUS_TYPE_ARRAY_AS_STRING
+				DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+					DBUS_TYPE_STRING_AS_STRING
+					DBUS_TYPE_VARIANT_AS_STRING
+				DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+			DBUS_STRUCT_END_CHAR_AS_STRING, &array);
+
+	__connman_technology_list_struct(&array);
+
+	dbus_message_iter_close_container(&iter, &array);
+
+	return reply;
+}
+
 static DBusMessage *remove_provider(DBusConnection *conn,
 				    DBusMessage *msg, void *data)
 {
@@ -491,6 +522,7 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetProperties",     "",      "a{sv}", get_properties     },
 	{ "SetProperty",       "sv",    "",      set_property,
 						G_DBUS_METHOD_FLAG_ASYNC },
+	{ "GetTechnologies",   "",      "a(oa{sv})", get_technologies   },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "EnableTechnology",  "s",     "",      enable_technology,

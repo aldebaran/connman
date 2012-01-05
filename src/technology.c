@@ -505,6 +505,26 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	return reply;
 }
 
+void __connman_technology_list_struct(DBusMessageIter *array)
+{
+	GSList *list;
+	DBusMessageIter entry;
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->path == NULL)
+			continue;
+
+		dbus_message_iter_open_container(array, DBUS_TYPE_STRUCT,
+				NULL, &entry);
+		dbus_message_iter_append_basic(&entry, DBUS_TYPE_OBJECT_PATH,
+				&technology->path);
+		append_properties(&entry, technology);
+		dbus_message_iter_close_container(array, &entry);
+	}
+}
+
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
