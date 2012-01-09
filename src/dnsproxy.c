@@ -509,7 +509,7 @@ static int get_name(int counter,
 
 	p = start;
 	while (*p) {
-		if (*p & NS_CMPRSFLGS) {
+		if ((*p & NS_CMPRSFLGS) == NS_CMPRSFLGS) {
 			uint16_t offset = (*p & 0x3F) * 256 + *(p + 1);
 
 			if (offset >= max - pkt)
