@@ -555,6 +555,9 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	int err;
 
 	dbus_message_iter_init(msg, &iter);
+	if (dbus_message_iter_has_next(&iter) == FALSE)
+		return -EINVAL;
+
 	dbus_message_iter_recurse(&iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
