@@ -111,6 +111,9 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	values_received = TRUE;
 
 	dbus_message_iter_init(reply, &iter);
+	if (dbus_message_iter_has_next(&iter) == FALSE)
+		goto done;
+
 	dbus_message_iter_recurse(&iter, &dict);
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
@@ -337,6 +340,9 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 		goto done;
 
 	dbus_message_iter_init(reply, &iter);
+	if (dbus_message_iter_has_next(&iter) == FALSE)
+		goto done;
+
 	dbus_message_iter_recurse(&iter, &dict);
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
 		DBusMessageIter entry, value;
