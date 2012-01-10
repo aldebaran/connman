@@ -1028,6 +1028,44 @@ static void cache_cleanup(void)
 		max_timeout = 0;
 }
 
+static gboolean cache_invalidate_entry(gpointer key, gpointer value,
+					gpointer user_data)
+{
+	struct cache_entry *entry = value;
+
+	/* first, delete any expired elements */
+	cache_enforce_validity(entry);
+
+	/* delete the cached data */
+	if (entry->ipv4) {
+		g_free(entry->ipv4->data);
+		g_free(entry->ipv4);
+		entry->ipv4 = NULL;
+	}
+
+	if (entry->ipv6) {
+		g_free(entry->ipv6->data);
+		g_free(entry->ipv6);
+		entry->ipv6 = NULL;
+	}
+
+	return TRUE;
+}
+
+/*
+ * cache_invalidate is called from places where the DNS landscape
+ * has changed, say because connections are added or we entered a VPN.
+ * The logic is to wipe all cache data, but mark all non-expired
+ * parts of the cache for refresh rather than deleting the whole cache.
+ */
+static void cache_invalidate(void)
+{
+	DBG("Invalidating the DNS cache");
+	 g_hash_table_foreach_remove(cache, cache_invalidate_entry,
+						NULL);
+}
+
+
 static int reply_query_type(unsigned char *msg, int len)
 {
 	unsigned char *c;
@@ -2014,9 +2052,11 @@ static void dnsproxy_offline_mode(connman_bool_t enabled)
 		if (enabled == FALSE) {
 			connman_info("Enabling DNS server %s", data->server);
 			data->enabled = TRUE;
+			cache_invalidate();
 		} else {
 			connman_info("Disabling DNS server %s", data->server);
 			data->enabled = FALSE;
+			cache_invalidate();
 		}
 	}
 }
@@ -2027,6 +2067,9 @@ static void dnsproxy_default_changed(struct connman_service *service)
 	char *interface;
 
 	DBG("service %p", service);
+
+	/* DNS has changed, invalidate the cache */
+	cache_invalidate();
 
 	if (service == NULL) {
 		/* When no services are active, then disable DNS proxying */
