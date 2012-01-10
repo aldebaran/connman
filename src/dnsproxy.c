@@ -422,23 +422,50 @@ static gboolean cache_check_is_valid(struct cache_data *data,
 	return TRUE;
 }
 
-static uint16_t cache_check_validity(char *question, uint16_t type,
-				struct cache_data *ipv4,
-				struct cache_data *ipv6)
+/*
+ * remove stale cached entries so that they can be refreshed
+ */
+static void cache_enforce_validity(struct cache_entry *entry)
 {
 	time_t current_time = time(0);
 
+	if (cache_check_is_valid(entry->ipv4, current_time) == FALSE
+							&& entry->ipv4) {
+		DBG("cache timeout \"%s\" type A", entry->key);
+		g_free(entry->ipv4->data);
+		g_free(entry->ipv4);
+		entry->ipv4 = NULL;
+
+	}
+
+	if (cache_check_is_valid(entry->ipv6, current_time) == FALSE
+							&& entry->ipv6) {
+		DBG("cache timeout \"%s\" type AAAA", entry->key);
+		g_free(entry->ipv6->data);
+		g_free(entry->ipv6);
+		entry->ipv6 = NULL;
+	}
+}
+
+
+static uint16_t cache_check_validity(char *question, uint16_t type,
+				struct cache_entry *entry)
+{
+	time_t current_time = time(0);
+
+	cache_enforce_validity(entry);
+
 	switch (type) {
 	case 1:		/* IPv4 */
-		if (cache_check_is_valid(ipv4, current_time) == FALSE) {
-			DBG("cache %s \"%s\" type A",
-				ipv4 ? "timeout" : "entry missing", question);
+		if (cache_check_is_valid(entry->ipv4, current_time) == FALSE) {
+			DBG("cache %s \"%s\" type A", entry->ipv4 ?
+					"timeout" : "entry missing", question);
 
 			/*
 			 * We do not remove cache entry if there is still
 			 * valid IPv6 entry found in the cache.
 			 */
-			if (cache_check_is_valid(ipv6, current_time) == FALSE)
+			if (cache_check_is_valid(entry->ipv6, current_time) == FALSE)
 				g_hash_table_remove(cache, question);
 
 			type = 0;
@@ -446,11 +473,11 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 		break;
 
 	case 28:	/* IPv6 */
-		if (cache_check_is_valid(ipv6, current_time) == FALSE) {
-			DBG("cache %s \"%s\" type AAAA",
-				ipv6 ? "timeout" : "entry missing", question);
+		if (cache_check_is_valid(entry->ipv6, current_time) == FALSE) {
+			DBG("cache %s \"%s\" type AAAA", entry->ipv6 ?
+					"timeout" : "entry missing", question);
 
-			if (cache_check_is_valid(ipv4, current_time) == FALSE)
+			if (cache_check_is_valid(entry->ipv4, current_time) == FALSE)
 				g_hash_table_remove(cache, question);
 
 			type = 0;
@@ -481,7 +508,7 @@ static struct cache_entry *cache_check(gpointer request, int *qtype)
 	if (entry == NULL)
 		return NULL;
 
-	type = cache_check_validity(question, type, entry->ipv4, entry->ipv6);
+	type = cache_check_validity(question, type, entry);
 	if (type == 0)
 		return NULL;
 
