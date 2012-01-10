@@ -1466,11 +1466,6 @@ int __connman_session_create(DBusMessage *msg)
 	}
 
 	dbus_message_iter_init(msg, &iter);
-	if (dbus_message_iter_has_next(&iter) == FALSE) {
-		err = -EINVAL;
-		goto err;
-	}
-
 	dbus_message_iter_recurse(&iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_DICT_ENTRY) {
