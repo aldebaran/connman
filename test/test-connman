@@ -13,7 +13,6 @@ if len(sys.argv) < 2:
 	print ""
 	print "  state"
 	print "  services"
-	print "  passphrase <service> [passphrase]"
 	print "  autoconnect <service> [autoconnect]"
 	print "  connect <service>"
 	print "  disconnect <service>"
@@ -55,37 +54,6 @@ elif sys.argv[1] in ["services", "list", "show"]:
 	properties = manager.GetProperties()
 
 	print_services(properties["Services"])
-
-elif sys.argv[1] in ["passphrase", "pass"]:
-	if (len(sys.argv) < 3):
-		print "Need at least service parameter"
-		sys.exit(1)
-
-	path = "/net/connman/service/" + sys.argv[2]
-
-	service = dbus.Interface(bus.get_object("net.connman", path),
-						"net.connman.Service")
-
-	if (len(sys.argv) > 3):
-		passphrase = sys.argv[3]
-
-		service.SetProperty("Passphrase", passphrase);
-
-		print "Passphrase %s set for %s" % (passphrase, sys.argv[2])
-	else:
-		properties = service.GetProperties()
-
-		if "Name" in properties.keys():
-			name = properties["Name"]
-		else:
-			name = "{" + properties["Type"] + "}"
-
-		if "Passphrase" in properties.keys():
-			passphrase = properties["Passphrase"]
-		else:
-			passphrase = "not set"
-
-		print "Passphrase for %s is %s" % (name, passphrase)
 
 elif sys.argv[1] in ["autoconnect", "autoconn"]:
 	if (len(sys.argv) < 3):
