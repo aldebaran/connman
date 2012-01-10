@@ -1357,7 +1357,8 @@ int connman_network_set_connected(struct connman_network *network,
 							connected == FALSE) {
 		connman_network_set_error(network,
 					CONNMAN_NETWORK_ERROR_CONNECT_FAIL);
-		__connman_network_disconnect(network);
+		if (__connman_network_disconnect(network) == 0)
+			return 0;
 	}
 
 	if (network->connected == connected)
