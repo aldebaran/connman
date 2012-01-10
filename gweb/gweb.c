@@ -485,6 +485,9 @@ static gboolean process_send_file(struct web_session *session)
 	if (session->fd == -1)
 		return FALSE;
 
+	if (session->request_started == FALSE || session->more_data == TRUE)
+		return FALSE;
+
 	sk = g_io_channel_unix_get_fd(session->transport_channel);
 	if (sk < 0)
 		return FALSE;
