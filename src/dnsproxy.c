@@ -280,11 +280,13 @@ static void dummy_resolve_func(GResolvResultStatus status,
 static void refresh_dns_entry(struct cache_entry *entry, char *name)
 {
 	int age = 1;
+
 	if (ipv4_resolve == NULL) {
 		ipv4_resolve = g_resolv_new(0);
 		g_resolv_set_address_family(ipv4_resolve, AF_INET);
 		g_resolv_add_nameserver(ipv4_resolve, "127.0.0.1", 53, 0);
 	}
+
 	if (ipv6_resolve == NULL) {
 		ipv6_resolve = g_resolv_new(0);
 		g_resolv_set_address_family(ipv6_resolve, AF_INET6);
@@ -297,18 +299,18 @@ static void refresh_dns_entry(struct cache_entry *entry, char *name)
 					dummy_resolve_func, NULL);
 		age = 4;
 	}
+
 	if (entry->ipv6 == NULL) {
 		DBG("Refresing AAAA record for %s", name);
 		g_resolv_lookup_hostname(ipv6_resolve, name,
 					dummy_resolve_func, NULL);
 		age = 4;
 	}
+
 	entry->hits -= age;
 	if (entry->hits < 0)
 		entry->hits = 0;
 }
-
-
 
 static int dns_name_length(unsigned char *buf)
 {
@@ -364,8 +366,6 @@ static void update_cached_ttl(unsigned char *buf, int len, int new_ttl)
 		len -= ntohs(*w) + 2;
 	}
 }
-
-
 
 static void send_cached_response(int sk, unsigned char *buf, int len,
 				const struct sockaddr *to, socklen_t tolen,
@@ -1178,8 +1178,6 @@ static void cache_refresh(void)
 	g_hash_table_foreach(cache, cache_refresh_iterator, NULL);
 }
 
-
-
 static int reply_query_type(unsigned char *msg, int len)
 {
 	unsigned char *c;
@@ -1200,6 +1198,7 @@ static int reply_query_type(unsigned char *msg, int len)
 	len -= l;
 	w = (uint16_t *) c;
 	type = ntohs(*w);
+
 	return type;
 }
 
