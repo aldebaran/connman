@@ -337,7 +337,11 @@ static void send_cached_response(int sk, unsigned char *buf, int len,
 	hdr->nscount = 0;
 	hdr->arcount = 0;
 
-	update_cached_ttl(buf, len, ttl);
+	/* if this is a negative reply, we are authorative */
+	if (answers == 0)
+		hdr->aa = 1;
+	else
+		update_cached_ttl(buf, len, ttl);
 
 	DBG("id 0x%04x answers %d", hdr->id, answers);
 
@@ -995,12 +999,35 @@ static void cache_cleanup(void)
 		max_timeout = 0;
 }
 
+static int reply_query_type(unsigned char *msg, int len)
+{
+	unsigned char *c;
+	uint16_t *w;
+	int l;
+	int type;
+
+	/* skip the header */
+	c = msg + sizeof(struct domain_hdr);
+	len -= sizeof(struct domain_hdr);
+
+	if (len < 0)
+		return 0;
+
+	/* now the query, which is a name and 2 16 bit words */
+	l = dns_name_length(c) + 1;
+	c += l;
+	len -= l;
+	w = (uint16_t *) c;
+	type = ntohs(*w);
+	return type;
+}
+
 static int cache_update(struct server_data *srv, unsigned char *msg,
 			unsigned int msg_len)
 {
 	int offset = protocol_offset(srv->protocol);
 	int err, qlen, ttl = 0;
-	uint16_t answers, type = 0, class = 0;
+	uint16_t answers = 0, type = 0, class = 0;
 	struct domain_question *q;
 	struct cache_entry *entry;
 	struct cache_data *data;
@@ -1031,6 +1058,33 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 				question, sizeof(question) - 1,
 				&type, &class, &ttl,
 				response, &rsplen, &answers);
+
+	/*
+	 * special case: if we do a ipv6 lookup and get no result
+	 * for a record that's already in our ipv4 cache.. we want
+	 * to cache the negative response.
+	 */
+	if ((err == -ENOMSG || err == -ENOBUFS) &&
+			reply_query_type(msg, msg_len) == 28) {
+		entry = g_hash_table_lookup(cache, question);
+		if (entry && entry->ipv4 && entry->ipv6 == NULL) {
+			data = g_try_new(struct cache_data, 1);
+			if (data == NULL)
+				return -ENOMEM;
+			data->inserted = entry->ipv4->inserted;
+			data->type = type;
+			data->answers = msg[5];
+			data->timeout = entry->ipv4->timeout;
+			data->data_len = msg_len;
+			data->data = ptr = g_malloc(msg_len);
+			data->valid_until = entry->ipv4->valid_until;
+			data->cache_until = entry->ipv4->cache_until;
+			memcpy(data->data, msg, msg_len);
+			entry->ipv6 = data;
+			return 0;
+		}
+	}
+
 	if (err < 0 || ttl == 0)
 		return 0;
 
