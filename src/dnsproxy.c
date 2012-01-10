@@ -579,6 +579,9 @@ static int parse_rr(unsigned char *buf, unsigned char *start,
 
 	rr = (void *) (*end);
 
+	if (rr == NULL)
+		return -EINVAL;
+
 	*type = ntohs(rr->type);
 	*class = ntohs(rr->class);
 	*ttl = ntohl(rr->ttl);
