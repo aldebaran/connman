@@ -127,6 +127,8 @@ struct listener_data {
 
 struct cache_data {
 	time_t inserted;
+	time_t valid_until;
+	time_t cache_until;
 	int timeout;
 	uint16_t type;
 	uint16_t answers;
@@ -190,6 +192,27 @@ static int protocol_offset(int protocol)
 		return -EINVAL;
 	}
 
+}
+
+/*
+ * There is a power and efficiency benefit to have entries
+ * in our cache expire at the same time. To this extend,
+ * we round down the cache valid time to common boundaries.
+ */
+static time_t round_down_ttl(time_t end_time, int ttl)
+{
+	if (ttl < 15)
+		return end_time;
+
+	/* Less than 5 minutes, round to 10 second boundary */
+	if (ttl < 300) {
+		end_time = end_time / 10;
+		end_time = end_time * 10;
+	} else { /* 5 or more minutes, round to 30 seconds */
+		end_time = end_time / 30;
+		end_time = end_time * 30;
+	}
+	return end_time;
 }
 
 static struct request_data *find_request(guint16 id)
@@ -416,7 +439,7 @@ static gboolean cache_check_is_valid(struct cache_data *data,
 	if (data == NULL)
 		return FALSE;
 
-	if (data->inserted + data->timeout < current_time)
+	if (data->cache_until < current_time)
 		return FALSE;
 
 	return TRUE;
@@ -862,22 +885,20 @@ static gboolean cache_check_entry(gpointer key, gpointer value,
 	 */
 
 	if (entry->ipv4 != NULL && entry->ipv4->timeout > 0) {
-		max_timeout = entry->ipv4->inserted + entry->ipv4->timeout;
+		max_timeout = entry->ipv4->cache_until;
 		if (max_timeout > data->max_timeout)
 			data->max_timeout = max_timeout;
 
-		if (entry->ipv4->inserted + entry->ipv4->timeout
-							< data->current_time)
+		if (entry->ipv4->cache_until < data->current_time)
 			return TRUE;
 	}
 
 	if (entry->ipv6 != NULL && entry->ipv6->timeout > 0) {
-		max_timeout = entry->ipv6->inserted + entry->ipv6->timeout;
+		max_timeout = entry->ipv6->cache_until;
 		if (max_timeout > data->max_timeout)
 			data->max_timeout = max_timeout;
 
-		if (entry->ipv6->inserted + entry->ipv6->timeout
-							< data->current_time)
+		if (entry->ipv6->cache_until < data->current_time)
 			return TRUE;
 	}
 
@@ -1002,6 +1023,14 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		new_entry = FALSE;
 	}
 
+	data->inserted = current_time;
+	data->type = type;
+	data->answers = answers;
+	data->timeout = ttl;
+	data->data_len = 12 + qlen + 1 + 2 + 2 + rsplen;
+	data->data = ptr = g_malloc(data->data_len);
+	data->valid_until = current_time + ttl;
+
 	/*
 	 * Restrict the cached DNS record TTL to some sane value
 	 * in order to prevent data staying in the cache too long.
@@ -1009,12 +1038,8 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	if (ttl > MAX_CACHE_TTL)
 		ttl = MAX_CACHE_TTL;
 
-	data->inserted = current_time;
-	data->type = type;
-	data->answers = answers;
-	data->timeout = ttl;
-	data->data_len = 12 + qlen + 1 + 2 + 2 + rsplen;
-	data->data = ptr = g_malloc(data->data_len);
+	data->cache_until = round_down_ttl(current_time + ttl, ttl);
+
 	if (data->data == NULL) {
 		g_free(entry->key);
 		g_free(data);
