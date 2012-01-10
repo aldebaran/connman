@@ -160,6 +160,10 @@ struct domain_rr {
  * when setting the cache entry life time. The value is in seconds.
  */
 #define MAX_CACHE_TTL (60 * 30)
+/*
+ * Also limit the other end, cache at least for 30 seconds.
+ */
+#define MIN_CACHE_TTL (30)
 
 /*
  * We limit the cache size to some sane value so that cached data does
@@ -1135,6 +1139,9 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 
 		new_entry = FALSE;
 	}
+
+	if (ttl < MIN_CACHE_TTL)
+		ttl = MIN_CACHE_TTL;
 
 	data->inserted = current_time;
 	data->type = type;
