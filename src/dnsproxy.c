@@ -33,6 +33,7 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <resolv.h>
+#include <gweb/gresolv.h>
 
 #include <glib.h>
 
@@ -138,6 +139,7 @@ struct cache_data {
 
 struct cache_entry {
 	char *key;
+	int want_refresh;
 	int hits;
 	struct cache_data *ipv4;
 	struct cache_data *ipv6;
@@ -183,6 +185,7 @@ static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
 static guint16 request_id = 0x0000;
 static GHashTable *listener_table = NULL;
+static time_t next_refresh;
 
 static int protocol_offset(int protocol)
 {
@@ -262,6 +265,50 @@ static struct server_data *find_server(const char *interface,
 
 	return NULL;
 }
+
+/* we can keep using the same resolve's */
+static GResolv *ipv4_resolve;
+static GResolv *ipv6_resolve;
+
+static void dummy_resolve_func(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+}
+
+/*
+ * Refresh a DNS entry, but also age the hit count a bit */
+static void refresh_dns_entry(struct cache_entry *entry, char *name)
+{
+	int age = 1;
+	if (ipv4_resolve == NULL) {
+		ipv4_resolve = g_resolv_new(0);
+		g_resolv_set_address_family(ipv4_resolve, AF_INET);
+		g_resolv_add_nameserver(ipv4_resolve, "127.0.0.1", 53, 0);
+	}
+	if (ipv6_resolve == NULL) {
+		ipv6_resolve = g_resolv_new(0);
+		g_resolv_set_address_family(ipv6_resolve, AF_INET6);
+		g_resolv_add_nameserver(ipv6_resolve, "127.0.0.1", 53, 0);
+	}
+
+	if (entry->ipv4 == NULL) {
+		DBG("Refresing A record for %s", name);
+		g_resolv_lookup_hostname(ipv4_resolve, name,
+					dummy_resolve_func, NULL);
+		age = 4;
+	}
+	if (entry->ipv6 == NULL) {
+		DBG("Refresing AAAA record for %s", name);
+		g_resolv_lookup_hostname(ipv6_resolve, name,
+					dummy_resolve_func, NULL);
+		age = 4;
+	}
+	entry->hits -= age;
+	if (entry->hits < 0)
+		entry->hits = 0;
+}
+
+
 
 static int dns_name_length(unsigned char *buf)
 {
@@ -538,11 +585,18 @@ static void cache_enforce_validity(struct cache_entry *entry)
 	}
 }
 
-
 static uint16_t cache_check_validity(char *question, uint16_t type,
 				struct cache_entry *entry)
 {
 	time_t current_time = time(0);
+	int want_refresh = 0;
+
+	/*
+	 * if we have a popular entry, we want a refresh instead of
+	 * total destruction of the entry.
+	 */
+	if (entry->hits > 2)
+		want_refresh = 1;
 
 	cache_enforce_validity(entry);
 
@@ -552,14 +606,18 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 			DBG("cache %s \"%s\" type A", entry->ipv4 ?
 					"timeout" : "entry missing", question);
 
+			if (want_refresh)
+				entry->want_refresh = 1;
+
 			/*
 			 * We do not remove cache entry if there is still
 			 * valid IPv6 entry found in the cache.
 			 */
-			if (cache_check_is_valid(entry->ipv6, current_time) == FALSE)
+			if (cache_check_is_valid(entry->ipv6, current_time)
+					== FALSE && want_refresh == FALSE) {
 				g_hash_table_remove(cache, question);
-
-			type = 0;
+				type = 0;
+			}
 		}
 		break;
 
@@ -568,10 +626,14 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 			DBG("cache %s \"%s\" type AAAA", entry->ipv6 ?
 					"timeout" : "entry missing", question);
 
-			if (cache_check_is_valid(entry->ipv4, current_time) == FALSE)
-				g_hash_table_remove(cache, question);
+			if (want_refresh)
+				entry->want_refresh = 1;
 
-			type = 0;
+			if (cache_check_is_valid(entry->ipv4, current_time)
+					== FALSE && want_refresh == FALSE) {
+				g_hash_table_remove(cache, question);
+				type = 0;
+			}
 		}
 		break;
 	}
@@ -1036,6 +1098,10 @@ static gboolean cache_invalidate_entry(gpointer key, gpointer value,
 	/* first, delete any expired elements */
 	cache_enforce_validity(entry);
 
+	/* if anything is not expired, mark the entry for refresh */
+	if (entry->hits > 0 && (entry->ipv4 || entry->ipv6))
+		entry->want_refresh = 1;
+
 	/* delete the cached data */
 	if (entry->ipv4) {
 		g_free(entry->ipv4->data);
@@ -1049,7 +1115,11 @@ static gboolean cache_invalidate_entry(gpointer key, gpointer value,
 		entry->ipv6 = NULL;
 	}
 
-	return TRUE;
+	/* keep the entry if we want it refreshed, delete it otherwise */
+	if (entry->want_refresh)
+		return FALSE;
+	else
+		return TRUE;
 }
 
 /*
@@ -1064,6 +1134,50 @@ static void cache_invalidate(void)
 	 g_hash_table_foreach_remove(cache, cache_invalidate_entry,
 						NULL);
 }
+
+static void cache_refresh_entry(struct cache_entry *entry)
+{
+
+	cache_enforce_validity(entry);
+
+	if (entry->hits > 2 && entry->ipv4 == NULL)
+		entry->want_refresh = 1;
+	if (entry->hits > 2 && entry->ipv6 == NULL)
+		entry->want_refresh = 1;
+
+	if (entry->want_refresh) {
+		char *c;
+		char dns_name[NS_MAXDNAME + 1];
+		entry->want_refresh = 0;
+
+		/* turn a DNS name into a hostname with dots */
+		strncpy(dns_name, entry->key, NS_MAXDNAME);
+		c = dns_name;
+		while (c && *c) {
+			int jump;
+			jump = *c;
+			*c = '.';
+			c += jump + 1;
+		}
+		DBG("Refreshing %s\n", dns_name);
+		/* then refresh the hostname */
+		refresh_dns_entry(entry, &dns_name[1]);
+	}
+}
+
+static void cache_refresh_iterator(gpointer key, gpointer value,
+					gpointer user_data)
+{
+	struct cache_entry *entry = value;
+
+	cache_refresh_entry(entry);
+}
+
+static void cache_refresh(void)
+{
+	g_hash_table_foreach(cache, cache_refresh_iterator, NULL);
+}
+
 
 
 static int reply_query_type(unsigned char *msg, int len)
@@ -1110,6 +1224,15 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		if (cache_size >= MAX_CACHE_SIZE)
 			return 0;
 	}
+
+	current_time = time(0);
+
+	/* don't do a cache refresh more than twice a minute */
+	if (next_refresh < current_time) {
+		cache_refresh();
+		next_refresh = current_time + 30;
+	}
+
 
 	/* Continue only if response code is 0 (=ok) */
 	if (msg[3] & 0x0f)
@@ -1163,7 +1286,6 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		return 0;
 
 	qlen = strlen(question);
-	current_time = time(0);
 
 	/*
 	 * If the cache contains already data, check if the
@@ -1186,6 +1308,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 
 		entry->key = g_strdup(question);
 		entry->ipv4 = entry->ipv6 = NULL;
+		entry->want_refresh = 0;
 		entry->hits = 0;
 
 		if (type == 1)
@@ -2053,6 +2176,7 @@ static void dnsproxy_offline_mode(connman_bool_t enabled)
 			connman_info("Enabling DNS server %s", data->server);
 			data->enabled = TRUE;
 			cache_invalidate();
+			cache_refresh();
 		} else {
 			connman_info("Disabling DNS server %s", data->server);
 			data->enabled = FALSE;
@@ -2094,6 +2218,7 @@ static void dnsproxy_default_changed(struct connman_service *service)
 	}
 
 	g_free(interface);
+	cache_refresh();
 }
 
 static struct connman_notifier dnsproxy_notifier = {
