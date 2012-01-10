@@ -138,6 +138,7 @@ struct cache_data {
 
 struct cache_entry {
 	char *key;
+	int hits;
 	struct cache_data *ipv4;
 	struct cache_data *ipv6;
 };
@@ -1085,6 +1086,13 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 			data->cache_until = entry->ipv4->cache_until;
 			memcpy(data->data, msg, msg_len);
 			entry->ipv6 = data;
+			/*
+			 * we will get a "hit" when we serve the response
+			 * out of the cache
+			 */
+			entry->hits--;
+			if (entry->hits < 0)
+				entry->hits = 0;
 			return 0;
 		}
 	}
@@ -1116,6 +1124,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 
 		entry->key = g_strdup(question);
 		entry->ipv4 = entry->ipv6 = NULL;
+		entry->hits = 0;
 
 		if (type == 1)
 			entry->ipv4 = data;
@@ -1136,6 +1145,14 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 			entry->ipv4 = data;
 		else
 			entry->ipv6 = data;
+
+		/*
+		 * compensate for the hit we'll get for serving
+		 * the response out of the cache
+		 */
+		entry->hits--;
+		if (entry->hits < 0)
+			entry->hits = 0;
 
 		new_entry = FALSE;
 	}
@@ -1208,8 +1225,10 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		else
 			data = entry->ipv6;
 
-		if (data)
+		if (data) {
 			ttl_left = data->valid_until - time(0);
+			entry->hits++;
+		}
 
 		if (data != NULL && req->protocol == IPPROTO_TCP) {
 			send_cached_response(req->client_sk, data->data,
