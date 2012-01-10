@@ -258,9 +258,66 @@ static struct server_data *find_server(const char *interface,
 	return NULL;
 }
 
+static int dns_name_length(unsigned char *buf)
+{
+	if ((buf[0] & NS_CMPRSFLGS) == NS_CMPRSFLGS) /* compressed name */
+		return 2;
+	return strlen((char *)buf);
+}
+
+static void update_cached_ttl(unsigned char *buf, int len, int new_ttl)
+{
+	unsigned char *c;
+	uint32_t *i;
+	uint16_t *w;
+	int l;
+
+	/* skip the header */
+	c = buf + 12;
+	len -= 12;
+
+	/* skip the query, which is a name and 2 16 bit words */
+	l = dns_name_length(c);
+	c += l;
+	len -= l;
+	c += 4;
+	len -= 4;
+
+	/* now we get the answer records */
+
+	while (len > 0) {
+		/* first a name */
+		l = dns_name_length(c);
+		c += l;
+		len -= l;
+		if (len < 0)
+			break;
+		/* then type + class, 2 bytes each */
+		c += 4;
+		len -= 4;
+		if (len < 0)
+			break;
+
+		/* now the 4 byte TTL field */
+		i = (uint32_t *)c;
+		*i = htonl(new_ttl);
+		c += 4;
+		len -= 4;
+		if (len < 0)
+			break;
+
+		/* now the 2 byte rdlen field */
+		w = (uint16_t *)c;
+		c += ntohs(*w) + 2;
+		len -= ntohs(*w) + 2;
+	}
+}
+
+
+
 static void send_cached_response(int sk, unsigned char *buf, int len,
 				const struct sockaddr *to, socklen_t tolen,
-				int protocol, int id, uint16_t answers)
+				int protocol, int id, uint16_t answers, int ttl)
 {
 	struct domain_hdr *hdr;
 	int err, offset = protocol_offset(protocol);
@@ -279,6 +336,8 @@ static void send_cached_response(int sk, unsigned char *buf, int len,
 	hdr->ancount = htons(answers);
 	hdr->nscount = 0;
 	hdr->arcount = 0;
+
+	update_cached_ttl(buf, len, ttl);
 
 	DBG("id 0x%04x answers %d", hdr->id, answers);
 
@@ -1079,6 +1138,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 	entry = cache_check(request, &type);
 	if (entry != NULL) {
+		int ttl_left = 0;
 		struct cache_data *data;
 
 		DBG("cache hit %s type %s", lookup, type == 1 ? "A" : "AAAA");
@@ -1087,10 +1147,13 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		else
 			data = entry->ipv6;
 
+		if (data)
+			ttl_left = data->valid_until - time(0);
+
 		if (data != NULL && req->protocol == IPPROTO_TCP) {
 			send_cached_response(req->client_sk, data->data,
 					data->data_len, NULL, 0, IPPROTO_TCP,
-					req->srcid, data->answers);
+					req->srcid, data->answers, ttl_left);
 			return 1;
 		}
 
@@ -1101,7 +1164,8 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 			send_cached_response(sk, data->data,
 				data->data_len, &req->sa, req->sa_len,
-				IPPROTO_UDP, req->srcid, data->answers);
+				IPPROTO_UDP, req->srcid, data->answers,
+				ttl_left);
 			return 1;
 		}
 	}
