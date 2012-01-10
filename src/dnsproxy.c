@@ -938,6 +938,7 @@ out:
 struct cache_timeout {
 	time_t current_time;
 	int max_timeout;
+	int try_harder;
 };
 
 static gboolean cache_check_entry(gpointer key, gpointer value,
@@ -946,6 +947,10 @@ static gboolean cache_check_entry(gpointer key, gpointer value,
 	struct cache_timeout *data = user_data;
 	struct cache_entry *entry = value;
 	int max_timeout;
+
+	/* Scale the number of hits by half as part of cache aging */
+
+	entry->hits /= 2;
 
 	/*
 	 * If either IPv4 or IPv6 cached entry has expired, we
@@ -970,6 +975,13 @@ static gboolean cache_check_entry(gpointer key, gpointer value,
 			return TRUE;
 	}
 
+	/*
+	 * if we're asked to try harder, also remove entries that have
+	 * few hits
+	 */
+	if (data->try_harder && entry->hits < 4)
+		return TRUE;
+
 	return FALSE;
 }
 
@@ -977,20 +989,32 @@ static void cache_cleanup(void)
 {
 	static int max_timeout;
 	struct cache_timeout data;
-	int count;
+	int count = 0;
 
 	data.current_time = time(0);
 	data.max_timeout = 0;
+	data.try_harder = 0;
 
-	if (max_timeout > data.current_time) {
-		DBG("waiting %ld secs before cleaning cache",
-			max_timeout - data.current_time);
-		return;
-	}
-
-	count = g_hash_table_foreach_remove(cache, cache_check_entry,
+	/*
+	 * In the first pass, we only remove entries that have timed out.
+	 * We use a cache of the first time to expire to do this only
+	 * when it makes sense.
+	 */
+	if (max_timeout <= data.current_time) {
+		count = g_hash_table_foreach_remove(cache, cache_check_entry,
 						&data);
-	DBG("removed %d", count);
+	}
+	DBG("removed %d in the first pass", count);
+
+	/*
+	 * In the second pass, if the first pass turned up blank,
+	 * we also expire entries with a low hit count,
+	 * while aging the hit count at the same time.
+	 */
+	data.try_harder = 1;
+	if (count == 0)
+		count = g_hash_table_foreach_remove(cache, cache_check_entry,
+						&data);
 
 	if (count == 0)
 		/*
