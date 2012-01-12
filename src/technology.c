@@ -585,20 +585,36 @@ static struct connman_technology *technology_find(enum connman_service_type type
 static struct connman_technology *technology_get(enum connman_service_type type)
 {
 	struct connman_technology *technology;
+	struct connman_technology_driver *driver = NULL;
 	const char *str;
 	GSList *list;
+	int err;
 
 	DBG("type %d", type);
-
-	technology = technology_find(type);
-	if (technology != NULL) {
-		__sync_fetch_and_add(&technology->refcount, 1);
-		goto done;
-	}
 
 	str = __connman_service_type2string(type);
 	if (str == NULL)
 		return NULL;
+
+	technology = technology_find(type);
+	if (technology != NULL)
+		return technology;
+
+	/* First check if we have a driver for this technology type */
+	for (list = driver_list; list; list = list->next) {
+		driver = list->data;
+
+		if (driver->type == type)
+			break;
+		else
+			driver = NULL;
+	}
+
+	if (driver == NULL) {
+		DBG("No matching driver found for %s.",
+				__connman_service_type2string(type));
+		return NULL;
+	}
 
 	technology = g_try_new0(struct connman_technology, 1);
 	if (technology == NULL)
@@ -632,24 +648,11 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology_added_signal(technology);
 
-	if (technology->driver != NULL)
-		goto done;
+	technology->driver = driver;
+	err = driver->probe(technology);
+	if (err != 0)
+		DBG("Driver probe failed for technology %p", technology);
 
-	for (list = driver_list; list; list = list->next) {
-		struct connman_technology_driver *driver = list->data;
-
-		DBG("driver %p name %s", driver, driver->name);
-
-		if (driver->type != technology->type)
-			continue;
-
-		if (driver->probe(technology) == 0) {
-			technology->driver = driver;
-			break;
-		}
-	}
-
-done:
 	DBG("technology %p", technology);
 
 	return technology;
