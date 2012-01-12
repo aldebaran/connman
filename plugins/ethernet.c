@@ -309,9 +309,30 @@ static struct connman_technology_driver tech_driver = {
 	.set_tethering		= tech_set_tethering,
 };
 
+static int eth_probe(struct connman_technology *technology)
+{
+	return 0;
+}
+
+static void eth_remove(struct connman_technology *technology)
+{
+	DBG("");
+}
+
+static struct connman_technology_driver eth_driver = {
+	.name			= "ethernet",
+	.type			= CONNMAN_SERVICE_TYPE_ETHERNET,
+	.probe			= eth_probe,
+	.remove			= eth_remove,
+};
+
 static int ethernet_init(void)
 {
 	int err;
+
+	err = connman_technology_driver_register(&eth_driver);
+	if (err < 0)
+		return err;
 
 	err = connman_network_driver_register(&cable_driver);
 	if (err < 0)
@@ -335,6 +356,8 @@ static int ethernet_init(void)
 
 static void ethernet_exit(void)
 {
+	connman_technology_driver_unregister(&eth_driver);
+
 	connman_technology_driver_unregister(&tech_driver);
 
 	connman_network_driver_unregister(&cable_driver);
