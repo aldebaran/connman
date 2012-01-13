@@ -74,35 +74,6 @@ enum connman_ipconfig_method {
 
 struct connman_ipconfig;
 
-struct connman_ipconfig_ops {
-	void (*up) (struct connman_ipconfig *ipconfig);
-	void (*down) (struct connman_ipconfig *ipconfig);
-	void (*lower_up) (struct connman_ipconfig *ipconfig);
-	void (*lower_down) (struct connman_ipconfig *ipconfig);
-	void (*ip_bound) (struct connman_ipconfig *ipconfig);
-	void (*ip_release) (struct connman_ipconfig *ipconfig);
-	void (*route_set) (struct connman_ipconfig *ipconfig);
-	void (*route_unset) (struct connman_ipconfig *ipconfig);
-};
-
-struct connman_ipconfig *connman_ipconfig_create(int index,
-					enum connman_ipconfig_type type);
-struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
-void connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
-
-void *connman_ipconfig_get_data(struct connman_ipconfig *ipconfig);
-void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data);
-
-int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig);
-const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig);
-
-void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
-				const struct connman_ipconfig_ops *ops);
-int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
-					enum connman_ipconfig_method method);
-void __connman_ipconfig_disable_ipv6(struct connman_ipconfig *ipconfig);
-void __connman_ipconfig_enable_ipv6(struct connman_ipconfig *ipconfig);
-
 #ifdef __cplusplus
 }
 #endif
