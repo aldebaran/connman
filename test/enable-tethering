@@ -3,11 +3,12 @@
 import sys
 import dbus
 
-if (len(sys.argv) < 4 and sys.argv[1] == "wifi"):
+if (len(sys.argv) >= 2 and len(sys.argv) < 4 and sys.argv[1] == "wifi"):
 	print "Usage: %s wifi [SSID] [passphrase]" % (sys.argv[0])
 	sys.exit(1)
 elif (len(sys.argv) < 2):
 	print "Usage: %s type" % (sys.argv[0])
+	sys.exit(1)
 
 bus = dbus.SystemBus()
 
@@ -36,20 +37,18 @@ def technology_enable_tethering(path, tech_type, ssid, psk):
 			else:
 				return None
 
-properties = manager.GetProperties()
+technologies = manager.GetTechnologies()
+tech = None
 
-for key in properties.keys():
-	if key in ["Technologies"]:
-		for path in properties[key]:
-			if (len(sys.argv) == 4):
-				tech = technology_enable_tethering(path,
+for path,_ in technologies:
+	if (len(sys.argv) == 4):
+		tech = technology_enable_tethering(path,
 					sys.argv[1], sys.argv[2], sys.argv[3])
-			else:
-				tech = technology_enable_tethering(path,
-							sys.argv[1], "", "")
+	else:
+		tech = technology_enable_tethering(path, sys.argv[1], "", "")
 
-			if tech != None:
-				break;
+	if tech != None:
+		break;
 
 if tech == None:
 	print "Failed to enable %s tethering" % (sys.argv[1])
