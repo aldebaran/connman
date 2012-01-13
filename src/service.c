@@ -4637,7 +4637,7 @@ int __connman_service_connect(struct connman_service *service)
 							NULL) == -EIO)
 				return -EINPROGRESS;
 		}
-		reply_pending(service, err);
+		reply_pending(service, -err);
 	}
 
 	return err;
