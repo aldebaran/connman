@@ -704,7 +704,7 @@ void connman_network_set_ipv4_method(struct connman_network *network,
 	if (ipconfig == NULL)
 		return;
 
-	connman_ipconfig_set_method(ipconfig, method);
+	__connman_ipconfig_set_method(ipconfig, method);
 }
 
 void connman_network_set_ipv6_method(struct connman_network *network,
@@ -721,7 +721,7 @@ void connman_network_set_ipv6_method(struct connman_network *network,
 	if (ipconfig == NULL)
 		return;
 
-	connman_ipconfig_set_method(ipconfig, method);
+	__connman_ipconfig_set_method(ipconfig, method);
 }
 
 void connman_network_set_error(struct connman_network *network,
@@ -1132,7 +1132,7 @@ static void autoconf_ipv6_set(struct connman_network *network)
 	if (ipconfig == NULL)
 		return;
 
-	index = connman_ipconfig_get_index(ipconfig);
+	index = __connman_ipconfig_get_index(ipconfig);
 
 	connman_network_ref(network);
 

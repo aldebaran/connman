@@ -752,7 +752,7 @@ void connman_provider_set_index(struct connman_provider *provider, int index)
 		}
 	}
 
-	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_FIXED);
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_FIXED);
 	__connman_ipconfig_set_index(ipconfig, index);
 
 
@@ -768,7 +768,7 @@ void connman_provider_set_index(struct connman_provider *provider, int index)
 		}
 	}
 
-	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_OFF);
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_OFF);
 	__connman_ipconfig_set_index(ipconfig, index);
 
 done:

@@ -811,9 +811,9 @@ static void update_nameservers(struct connman_service *service)
 	const char *ifname;
 
 	if (service->ipconfig_ipv4)
-		ifname = connman_ipconfig_get_ifname(service->ipconfig_ipv4);
+		ifname = __connman_ipconfig_get_ifname(service->ipconfig_ipv4);
 	else if (service->ipconfig_ipv6)
-		ifname = connman_ipconfig_get_ifname(service->ipconfig_ipv6);
+		ifname = __connman_ipconfig_get_ifname(service->ipconfig_ipv6);
 	else
 		ifname = NULL;
 
@@ -3395,16 +3395,16 @@ static void service_free(gpointer user_data)
 		connman_provider_unref(service->provider);
 
 	if (service->ipconfig_ipv4 != NULL) {
-		connman_ipconfig_set_ops(service->ipconfig_ipv4, NULL);
-		connman_ipconfig_set_data(service->ipconfig_ipv4, NULL);
-		connman_ipconfig_unref(service->ipconfig_ipv4);
+		__connman_ipconfig_set_ops(service->ipconfig_ipv4, NULL);
+		__connman_ipconfig_set_data(service->ipconfig_ipv4, NULL);
+		__connman_ipconfig_unref(service->ipconfig_ipv4);
 		service->ipconfig_ipv4 = NULL;
 	}
 
 	if (service->ipconfig_ipv6 != NULL) {
-		connman_ipconfig_set_ops(service->ipconfig_ipv6, NULL);
-		connman_ipconfig_set_data(service->ipconfig_ipv6, NULL);
-		connman_ipconfig_unref(service->ipconfig_ipv6);
+		__connman_ipconfig_set_ops(service->ipconfig_ipv6, NULL);
+		__connman_ipconfig_set_data(service->ipconfig_ipv6, NULL);
+		__connman_ipconfig_unref(service->ipconfig_ipv6);
 		service->ipconfig_ipv6 = NULL;
 	}
 
@@ -3678,10 +3678,10 @@ char *connman_service_get_interface(struct connman_service *service)
 
 	if (service->type == CONNMAN_SERVICE_TYPE_VPN) {
 		if (service->ipconfig_ipv4)
-			index = connman_ipconfig_get_index(
+			index = __connman_ipconfig_get_index(
 						service->ipconfig_ipv4);
 		else if (service->ipconfig_ipv6)
-			index = connman_ipconfig_get_index(
+			index = __connman_ipconfig_get_index(
 						service->ipconfig_ipv6);
 		else
 			return NULL;
@@ -4812,9 +4812,9 @@ static int service_register(struct connman_service *service)
 
 static void service_up(struct connman_ipconfig *ipconfig)
 {
-	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s up", connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s up", __connman_ipconfig_get_ifname(ipconfig));
 
 	link_changed(service);
 
@@ -4824,23 +4824,23 @@ static void service_up(struct connman_ipconfig *ipconfig)
 
 static void service_down(struct connman_ipconfig *ipconfig)
 {
-	DBG("%s down", connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s down", __connman_ipconfig_get_ifname(ipconfig));
 }
 
 static void service_lower_up(struct connman_ipconfig *ipconfig)
 {
-	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s lower up", connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s lower up", __connman_ipconfig_get_ifname(ipconfig));
 
 	stats_start(service);
 }
 
 static void service_lower_down(struct connman_ipconfig *ipconfig)
 {
-	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
-	DBG("%s lower down", connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s lower down", __connman_ipconfig_get_ifname(ipconfig));
 
 	stats_stop(service);
 	service_save(service);
@@ -4848,11 +4848,11 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 
 static void service_ip_bound(struct connman_ipconfig *ipconfig)
 {
-	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 
-	DBG("%s ip bound", connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s ip bound", __connman_ipconfig_get_ifname(ipconfig));
 
 	type = __connman_ipconfig_get_config_type(ipconfig);
 	method = __connman_ipconfig_get_method(ipconfig);
@@ -4871,11 +4871,11 @@ static void service_ip_bound(struct connman_ipconfig *ipconfig)
 
 static void service_ip_release(struct connman_ipconfig *ipconfig)
 {
-	struct connman_service *service = connman_ipconfig_get_data(ipconfig);
+	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	enum connman_ipconfig_type type = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 
-	DBG("%s ip release", connman_ipconfig_get_ifname(ipconfig));
+	DBG("%s ip release", __connman_ipconfig_get_ifname(ipconfig));
 
 	type = __connman_ipconfig_get_config_type(ipconfig);
 	method = __connman_ipconfig_get_method(ipconfig);
@@ -4910,28 +4910,28 @@ static const struct connman_ipconfig_ops service_ops = {
 static void setup_ip4config(struct connman_service *service, int index,
 			enum connman_ipconfig_method method)
 {
-	service->ipconfig_ipv4 = connman_ipconfig_create(index,
+	service->ipconfig_ipv4 = __connman_ipconfig_create(index,
 						CONNMAN_IPCONFIG_TYPE_IPV4);
 	if (service->ipconfig_ipv4 == NULL)
 		return;
 
-	connman_ipconfig_set_method(service->ipconfig_ipv4, method);
+	__connman_ipconfig_set_method(service->ipconfig_ipv4, method);
 
-	connman_ipconfig_set_data(service->ipconfig_ipv4, service);
+	__connman_ipconfig_set_data(service->ipconfig_ipv4, service);
 
-	connman_ipconfig_set_ops(service->ipconfig_ipv4, &service_ops);
+	__connman_ipconfig_set_ops(service->ipconfig_ipv4, &service_ops);
 }
 
 static void setup_ip6config(struct connman_service *service, int index)
 {
-	service->ipconfig_ipv6 = connman_ipconfig_create(index,
+	service->ipconfig_ipv6 = __connman_ipconfig_create(index,
 						CONNMAN_IPCONFIG_TYPE_IPV6);
 	if (service->ipconfig_ipv6 == NULL)
 		return;
 
-	connman_ipconfig_set_data(service->ipconfig_ipv6, service);
+	__connman_ipconfig_set_data(service->ipconfig_ipv6, service);
 
-	connman_ipconfig_set_ops(service->ipconfig_ipv6, &service_ops);
+	__connman_ipconfig_set_ops(service->ipconfig_ipv6, &service_ops);
 }
 
 void __connman_service_read_ip4config(struct connman_service *service)
@@ -5036,11 +5036,11 @@ struct connman_service *__connman_service_lookup_from_index(int index)
 	while (g_sequence_iter_is_end(iter) == FALSE) {
 		service = g_sequence_get(iter);
 
-		if (connman_ipconfig_get_index(service->ipconfig_ipv4)
+		if (__connman_ipconfig_get_index(service->ipconfig_ipv4)
 							== index)
 			return service;
 
-		if (connman_ipconfig_get_index(service->ipconfig_ipv6)
+		if (__connman_ipconfig_get_index(service->ipconfig_ipv6)
 							== index)
 			return service;
 

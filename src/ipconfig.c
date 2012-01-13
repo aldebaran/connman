@@ -522,12 +522,12 @@ static void free_ipdevice(gpointer data)
 							ipdevice->index);
 
 	if (ipdevice->config_ipv4 != NULL) {
-		connman_ipconfig_unref(ipdevice->config_ipv4);
+		__connman_ipconfig_unref(ipdevice->config_ipv4);
 		ipdevice->config_ipv4 = NULL;
 	}
 
 	if (ipdevice->config_ipv6 != NULL) {
-		connman_ipconfig_unref(ipdevice->config_ipv6);
+		__connman_ipconfig_unref(ipdevice->config_ipv6);
 		ipdevice->config_ipv6 = NULL;
 	}
 
@@ -583,9 +583,9 @@ static void update_stats(struct connman_ipdevice *ipdevice,
 		return;
 
 	if (ipdevice->config_ipv4)
-		service = connman_ipconfig_get_data(ipdevice->config_ipv4);
+		service = __connman_ipconfig_get_data(ipdevice->config_ipv4);
 	else if (ipdevice->config_ipv6)
-		service = connman_ipconfig_get_data(ipdevice->config_ipv6);
+		service = __connman_ipconfig_get_data(ipdevice->config_ipv6);
 	else
 		return;
 
@@ -1258,7 +1258,7 @@ static struct connman_ipconfig *create_ipv6config(int index)
  *
  * Returns: a newly-allocated #connman_ipconfig structure
  */
-struct connman_ipconfig *connman_ipconfig_create(int index,
+struct connman_ipconfig *__connman_ipconfig_create(int index,
 					enum connman_ipconfig_type type)
 {
 	struct connman_ipconfig *ipconfig;
@@ -1297,7 +1297,7 @@ struct connman_ipconfig *connman_ipconfig_create(int index,
  *
  * Increase reference counter of ipconfig
  */
-struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
+struct connman_ipconfig *__connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
 {
 	DBG("ipconfig %p refcount %d", ipconfig, ipconfig->refcount + 1);
 
@@ -1312,7 +1312,7 @@ struct connman_ipconfig *connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
  *
  * Decrease reference counter of ipconfig
  */
-void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
+void __connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL)
 		return;
@@ -1325,10 +1325,10 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 	if (__connman_ipconfig_disable(ipconfig) < 0)
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
-	connman_ipconfig_set_ops(ipconfig, NULL);
+	__connman_ipconfig_set_ops(ipconfig, NULL);
 
 	if (ipconfig->origin != NULL) {
-		connman_ipconfig_unref(ipconfig->origin);
+		__connman_ipconfig_unref(ipconfig->origin);
 		ipconfig->origin = NULL;
 	}
 
@@ -1344,7 +1344,7 @@ void connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
  *
  * Get private data pointer
  */
-void *connman_ipconfig_get_data(struct connman_ipconfig *ipconfig)
+void *__connman_ipconfig_get_data(struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL)
 		return NULL;
@@ -1359,7 +1359,7 @@ void *connman_ipconfig_get_data(struct connman_ipconfig *ipconfig)
  *
  * Set private data pointer
  */
-void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
+void __connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
 {
 	ipconfig->ops_data = data;
 }
@@ -1370,7 +1370,7 @@ void connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data)
  *
  * Get interface index
  */
-int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
+int __connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
 {
 	if (ipconfig == NULL)
 		return -1;
@@ -1387,7 +1387,7 @@ int connman_ipconfig_get_index(struct connman_ipconfig *ipconfig)
  *
  * Get interface name
  */
-const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
+const char *__connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
 
@@ -1412,7 +1412,7 @@ const char *connman_ipconfig_get_ifname(struct connman_ipconfig *ipconfig)
  *
  * Set the operation callbacks
  */
-void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
+void __connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
 				const struct connman_ipconfig_ops *ops)
 {
 	ipconfig->ops = ops;
@@ -1425,7 +1425,7 @@ void connman_ipconfig_set_ops(struct connman_ipconfig *ipconfig,
  *
  * Set the configuration method
  */
-int connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
+int __connman_ipconfig_set_method(struct connman_ipconfig *ipconfig,
 					enum connman_ipconfig_method method)
 {
 	ipconfig->method = method;
@@ -1668,7 +1668,7 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 
 		connman_ipaddress_clear(ipdevice->config_ipv4->system);
 
-		connman_ipconfig_unref(ipdevice->config_ipv4);
+		__connman_ipconfig_unref(ipdevice->config_ipv4);
 	}
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
@@ -1678,13 +1678,13 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 
 		connman_ipaddress_clear(ipdevice->config_ipv6->system);
 
-		connman_ipconfig_unref(ipdevice->config_ipv6);
+		__connman_ipconfig_unref(ipdevice->config_ipv6);
 	}
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		ipdevice->config_ipv4 = connman_ipconfig_ref(ipconfig);
+		ipdevice->config_ipv4 = __connman_ipconfig_ref(ipconfig);
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		ipdevice->config_ipv6 = connman_ipconfig_ref(ipconfig);
+		ipdevice->config_ipv6 = __connman_ipconfig_ref(ipconfig);
 
 	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
 
@@ -1733,7 +1733,7 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 		ipconfig_list = g_list_remove(ipconfig_list, ipconfig);
 
 		connman_ipaddress_clear(ipdevice->config_ipv4->system);
-		connman_ipconfig_unref(ipdevice->config_ipv4);
+		__connman_ipconfig_unref(ipdevice->config_ipv4);
 		ipdevice->config_ipv4 = NULL;
 		return 0;
 	}
@@ -1746,7 +1746,7 @@ int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig)
 			disable_ipv6(ipdevice->config_ipv6);
 
 		connman_ipaddress_clear(ipdevice->config_ipv6->system);
-		connman_ipconfig_unref(ipdevice->config_ipv6);
+		__connman_ipconfig_unref(ipdevice->config_ipv6);
 		ipdevice->config_ipv6 = NULL;
 		return 0;
 	}

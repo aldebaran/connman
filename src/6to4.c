@@ -514,7 +514,7 @@ int __connman_6to4_probe(struct connman_service *service)
 					(a == 172 && (b >= 16 && b <= 31)))
 		return -1;
 
-	index = connman_ipconfig_get_index(ip4config);
+	index = __connman_ipconfig_get_index(ip4config);
 	ip_address = g_strdup(address);
 	tunnel_pending = 1;
 

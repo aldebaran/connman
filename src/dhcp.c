@@ -263,7 +263,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		pac = g_strdup(option->data);
 
-	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
 
 	if (ip_change == TRUE) {
 		__connman_ipconfig_set_local(ipconfig, address);
@@ -354,7 +354,7 @@ static void ipv4ll_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
 
-	connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
 	__connman_ipconfig_set_local(ipconfig, address);
 	__connman_ipconfig_set_prefixlen(ipconfig, prefixlen);
 	__connman_ipconfig_set_gateway(ipconfig, NULL);
