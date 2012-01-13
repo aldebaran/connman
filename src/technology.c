@@ -463,7 +463,8 @@ static void technology_removed_signal(struct connman_technology *technology)
 {
 	g_dbus_emit_signal(connection, CONNMAN_MANAGER_PATH,
 			CONNMAN_MANAGER_INTERFACE, "TechnologyRemoved",
-			DBUS_TYPE_OBJECT_PATH, technology->path);
+			DBUS_TYPE_OBJECT_PATH, technology->path,
+			DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
