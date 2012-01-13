@@ -176,6 +176,15 @@ void __connman_proxy_cleanup(void);
 
 #include <connman/ipconfig.h>
 
+struct connman_ipaddress {
+	int family;
+	unsigned char prefixlen;
+	char *local;
+	char *peer;
+	char *broadcast;
+	char *gateway;
+};
+
 struct connman_ipconfig_ops {
 	void (*up) (struct connman_ipconfig *ipconfig);
 	void (*down) (struct connman_ipconfig *ipconfig);

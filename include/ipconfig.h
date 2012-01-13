@@ -32,14 +32,7 @@ extern "C" {
  * @short_description: Functions for IP configuration handling
  */
 
-struct connman_ipaddress {
-	int family;
-	unsigned char prefixlen;
-	char *local;
-	char *peer;
-	char *broadcast;
-	char *gateway;
-};
+struct connman_ipaddress;
 
 struct connman_ipaddress *connman_ipaddress_alloc(int family);
 void connman_ipaddress_free(struct connman_ipaddress *ipaddress);
