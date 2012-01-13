@@ -36,8 +36,6 @@
 #include <net/ethernet.h>
 #include <arpa/inet.h>
 
-#include <inet.h>
-
 #include "gdhcp.h"
 #include "common.h"
 
