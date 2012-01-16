@@ -2734,7 +2734,12 @@ void __connman_dnsproxy_remove_listener(const char *interface)
 
 static void remove_listener(gpointer key, gpointer value, gpointer user_data)
 {
-	__connman_dnsproxy_remove_listener(key);
+	const char *interface = key;
+	struct listener_data *ifdata = value;
+
+	DBG("interface %s", interface);
+
+	destroy_listener(ifdata);
 }
 
 int __connman_dnsproxy_init(void)
