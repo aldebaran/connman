@@ -3446,7 +3446,7 @@ void __connman_service_put(struct connman_service *service)
 {
 	GSequenceIter *iter;
 
-	DBG("service %p", service);
+	DBG("service %p ref %d", service, service->refcount - 1);
 
 	if (__sync_fetch_and_sub(&service->refcount, 1) != 1)
 		return;
@@ -3560,7 +3560,7 @@ struct connman_service *connman_service_create(void)
  */
 struct connman_service *connman_service_ref(struct connman_service *service)
 {
-	DBG("%p", service);
+	DBG("%p ref %d", service, service->refcount + 1);
 
 	__sync_fetch_and_add(&service->refcount, 1);
 
