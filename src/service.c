@@ -79,7 +79,6 @@ struct connman_service {
 	char *passphrase;
 	char *agent_passphrase;
 	connman_bool_t roaming;
-	connman_bool_t network_created;
 	struct connman_ipconfig *ipconfig_ipv4;
 	struct connman_ipconfig *ipconfig_ipv6;
 	struct connman_network *network;
@@ -3387,8 +3386,7 @@ static void service_free(gpointer user_data)
 
 	if (service->network != NULL) {
 		__connman_network_disconnect(service->network);
-		if (service->network_created == TRUE)
-			connman_network_unref(service->network);
+		connman_network_unref(service->network);
 	}
 
 	if (service->provider != NULL)
@@ -3484,8 +3482,6 @@ static void service_initialize(struct connman_service *service)
 
 	service->refcount = 1;
 	service->session_usage_count = 0;
-
-	service->network_created = FALSE;
 
 	service->type     = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	service->security = CONNMAN_SERVICE_SECURITY_UNKNOWN;
