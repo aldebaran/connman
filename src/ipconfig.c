@@ -1327,7 +1327,7 @@ void __connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
 
 	__connman_ipconfig_set_ops(ipconfig, NULL);
 
-	if (ipconfig->origin != NULL) {
+	if (ipconfig->origin != NULL && ipconfig->origin != ipconfig) {
 		__connman_ipconfig_unref(ipconfig->origin);
 		ipconfig->origin = NULL;
 	}
