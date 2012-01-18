@@ -1126,6 +1126,16 @@ static void autoconf_ipv6_set(struct connman_network *network)
 
 	DBG("network %p", network);
 
+	if (network->router_solicit_count > 0) {
+		/*
+		 * The autoconfiguration is already pending and we have sent
+		 * router solicitation messages and are now waiting answers.
+		 * There is no need to continue any further.
+		 */
+		DBG("autoconfiguration already started");
+		return;
+	}
+
 	__connman_device_set_network(network->device, network);
 
 	connman_device_set_disconnected(network->device, FALSE);
