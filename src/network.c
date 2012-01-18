@@ -1314,7 +1314,9 @@ static gboolean set_connected(gpointer user_data)
 int connman_network_set_connected(struct connman_network *network,
 						connman_bool_t connected)
 {
-	DBG("network %p connected %d", network, connected);
+	DBG("network %p connected %d/%d connecting %d associating %d",
+		network, network->connected, connected, network->connecting,
+		network->associating);
 
 	if ((network->connecting == TRUE || network->associating == TRUE) &&
 							connected == FALSE) {
