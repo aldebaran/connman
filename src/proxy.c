@@ -46,6 +46,7 @@ static void remove_lookup(struct proxy_lookup *lookup)
 {
 	lookup_list = g_slist_remove(lookup_list, lookup);
 
+	connman_service_unref(lookup->service);
 	g_free(lookup->url);
 	g_free(lookup);
 }
@@ -117,7 +118,7 @@ unsigned int connman_proxy_lookup(const char *interface, const char *url,
 	lookup->cb = cb;
 	lookup->user_data = user_data;
 	lookup->url = g_strdup(url);
-	lookup->service = service;
+	lookup->service = connman_service_ref(service);
 
 	lookup->watch = g_timeout_add_seconds(0, lookup_callback, lookup);
 	if (lookup->watch == 0) {
