@@ -67,6 +67,7 @@ struct connman_dhcpv6 {
 	GSList *prefixes;	/* network prefixes from radvd */
 	int request_count;	/* how many times REQUEST have been sent */
 	gboolean stateless;	/* TRUE if stateless DHCPv6 is used */
+	gboolean started;	/* TRUE if we have DHCPv6 started */
 };
 
 static GHashTable *network_table;
@@ -106,6 +107,7 @@ static void dhcpv6_free(struct connman_dhcpv6 *dhcp)
 
 	dhcp->nameservers = NULL;
 	dhcp->timeservers = NULL;
+	dhcp->started = FALSE;
 
 	g_slist_foreach(dhcp->prefixes, free_prefix, NULL);
 	g_slist_free(dhcp->prefixes);
@@ -985,6 +987,12 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 
 	DBG("");
 
+	if (network_table != NULL) {
+		dhcp = g_hash_table_lookup(network_table, network);
+		if (dhcp != NULL && dhcp->started == TRUE)
+			return -EBUSY;
+	}
+
 	dhcp = g_try_new0(struct connman_dhcpv6, 1);
 	if (dhcp == NULL)
 		return -ENOMEM;
@@ -992,6 +1000,7 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 	dhcp->network = network;
 	dhcp->callback = callback;
 	dhcp->stateless = TRUE;
+	dhcp->started = TRUE;
 
 	connman_network_ref(network);
 
@@ -1144,6 +1153,12 @@ int __connman_dhcpv6_start(struct connman_network *network,
 
 	DBG("");
 
+	if (network_table != NULL) {
+		dhcp = g_hash_table_lookup(network_table, network);
+		if (dhcp != NULL && dhcp->started == TRUE)
+			return -EBUSY;
+	}
+
 	dhcp = g_try_new0(struct connman_dhcpv6, 1);
 	if (dhcp == NULL)
 		return -ENOMEM;
@@ -1151,6 +1166,7 @@ int __connman_dhcpv6_start(struct connman_network *network,
 	dhcp->network = network;
 	dhcp->callback = callback;
 	dhcp->prefixes = prefixes;
+	dhcp->started = TRUE;
 
 	connman_network_ref(network);
 
