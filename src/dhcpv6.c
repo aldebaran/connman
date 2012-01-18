@@ -888,6 +888,16 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 	}
 
 	dhcp_client = dhcp->dhcp_client;
+	if (dhcp_client == NULL) {
+		/*
+		 * We had started the DHCPv6 handshaking i.e., we have called
+		 * __connman_dhcpv6_start() but it has not yet sent
+		 * a solicitation message to server. This means that we do not
+		 * have DHCPv6 configured yet so we can just quit here.
+		 */
+		DBG("DHCPv6 was not started");
+		return 0;
+	}
 
 	g_dhcp_client_clear_requests(dhcp_client);
 	g_dhcp_client_clear_values(dhcp_client);
