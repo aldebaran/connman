@@ -456,12 +456,11 @@ int connman_provider_indicate_error(struct connman_provider *provider,
 static void unregister_provider(gpointer data)
 {
 	struct connman_provider *provider = data;
-	struct connman_service *service = provider->vpn_service;
 
-	DBG("provider %p", provider);
+	DBG("provider %p service %p", provider, provider->vpn_service);
 
+	connman_service_unref(provider->vpn_service);
 	provider->vpn_service = NULL;
-	__connman_service_put(service);
 
 	connman_provider_unref(provider);
 }
@@ -661,7 +660,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	return 0;
 
 failed:
-	__connman_service_put(provider->vpn_service);
+	connman_service_unref(provider->vpn_service);
 	provider->vpn_service = NULL;
 
 unref:

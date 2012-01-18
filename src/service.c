@@ -3436,33 +3436,6 @@ static void service_free(gpointer user_data)
 	g_free(service);
 }
 
-/**
- * __connman_service_put:
- * @service: service structure
- *
- * Release service if no longer needed
- */
-void __connman_service_put(struct connman_service *service)
-{
-	GSequenceIter *iter;
-
-	DBG("service %p ref %d", service, service->refcount - 1);
-
-	if (__sync_fetch_and_sub(&service->refcount, 1) != 1)
-		return;
-
-	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL) {
-		reply_pending(service, ECONNABORTED);
-
-		__connman_service_disconnect(service);
-
-		g_sequence_remove(iter);
-	} else {
-		service_free(service);
-	}
-}
-
 static void stats_init(struct connman_service *service)
 {
 	/* home */
@@ -3571,11 +3544,28 @@ struct connman_service *connman_service_ref(struct connman_service *service)
  * connman_service_unref:
  * @service: service structure
  *
- * Decrease reference counter of service
+ * Decrease reference counter of service and release service if no
+ * longer needed.
  */
 void connman_service_unref(struct connman_service *service)
 {
-	__connman_service_put(service);
+	GSequenceIter *iter;
+
+	DBG("service %p ref %d", service, service->refcount - 1);
+
+	if (__sync_fetch_and_sub(&service->refcount, 1) != 1)
+		return;
+
+	iter = g_hash_table_lookup(service_hash, service->identifier);
+	if (iter != NULL) {
+		reply_pending(service, ECONNABORTED);
+
+		__connman_service_disconnect(service);
+
+		g_sequence_remove(iter);
+	} else {
+		service_free(service);
+	}
 }
 
 static gint service_compare(gconstpointer a, gconstpointer b,
@@ -5350,7 +5340,7 @@ void __connman_service_remove_from_network(struct connman_network *network)
 	__connman_connection_gateway_remove(service,
 					CONNMAN_IPCONFIG_TYPE_ALL);
 
-	__connman_service_put(service);
+	connman_service_unref(service);
 }
 
 /**
