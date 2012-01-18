@@ -1096,6 +1096,15 @@ static void check_dhcpv6(struct nd_router_advert *reply,
 
 	network->router_solicit_count = 0;
 
+	/*
+	 * If we were disconnected while waiting router advertisement,
+	 * we just quit and do not start DHCPv6
+	 */
+	if (network->connected == FALSE) {
+		connman_network_unref(network);
+		return;
+	}
+
 	prefixes = __connman_inet_ipv6_get_prefixes(reply, length);
 
 	/*
