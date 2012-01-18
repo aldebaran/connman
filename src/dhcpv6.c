@@ -804,6 +804,8 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 	if (dhcp == NULL)
 		return -ENOENT;
 
+	DBG("network %p dhcp %p", network, dhcp);
+
 	if (dhcp->timeout > 0) {
 		g_source_remove(dhcp->timeout);
 		dhcp->timeout = 0;
@@ -872,7 +874,8 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 	if (dhcp == NULL)
 		return -ENOENT;
 
-	DBG("dhcp %p stateless %d", dhcp, dhcp->stateless);
+	DBG("network %p dhcp %p client %p stateless %d", network, dhcp,
+					dhcp->dhcp_client, dhcp->stateless);
 
 	if (dhcp->stateless == TRUE)
 		return -EINVAL;
@@ -991,6 +994,8 @@ int __connman_dhcpv6_start_info(struct connman_network *network,
 	dhcp->stateless = TRUE;
 
 	connman_network_ref(network);
+
+	DBG("replace network %p dhcp %p", network, dhcp);
 
 	g_hash_table_replace(network_table, network, dhcp);
 
@@ -1148,6 +1153,8 @@ int __connman_dhcpv6_start(struct connman_network *network,
 	dhcp->prefixes = prefixes;
 
 	connman_network_ref(network);
+
+	DBG("replace network %p dhcp %p", network, dhcp);
 
 	g_hash_table_replace(network_table, network, dhcp);
 
