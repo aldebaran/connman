@@ -227,9 +227,13 @@ static struct gateway_data *add_gateway(struct connman_service *service,
 			data->ipv4_gateway = old->ipv4_gateway;
 			old->ipv4_gateway = NULL;
 		}
+	} else {
+		/*
+		 * Only take a ref if we are adding new stuff to hash.
+		 */
+		connman_service_ref(service);
 	}
 
-	connman_service_ref(service);
 	g_hash_table_replace(gateway_hash, service, data);
 
 	return data;
@@ -711,14 +715,6 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 	__connman_service_nameserver_del_routes(service);
 
 	err = disable_gateway(data, type);
-
-	/*
-	 * We may refcount service twice seperately for ipv4 and ipv6
-	 * then we need to unref accordingly.
-	 */
-	if (do_ipv4 == do_ipv6 && data->ipv4_gateway != NULL &&
-					data->ipv6_gateway != NULL)
-		connman_service_unref(service);
 
 	/*
 	 * We remove the service from the hash only if all the gateway
