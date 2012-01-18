@@ -3387,6 +3387,7 @@ static void service_free(gpointer user_data)
 	if (service->network != NULL) {
 		__connman_network_disconnect(service->network);
 		connman_network_unref(service->network);
+		service->network = NULL;
 	}
 
 	if (service->provider != NULL)
@@ -5160,13 +5161,14 @@ static void update_from_network(struct connman_service *service,
 		service->wps = connman_network_get_bool(network, "WiFi.WPS");
 
 	if (service->strength > strength && service->network != NULL) {
-		service->network = network;
+		connman_network_unref(service->network);
+		service->network = connman_network_ref(network);
 
 		strength_changed(service);
 	}
 
 	if (service->network == NULL)
-		service->network = network;
+		service->network = connman_network_ref(network);
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL)
