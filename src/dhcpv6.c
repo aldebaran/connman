@@ -859,18 +859,6 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 	return 0;
 }
 
-static void release_cb(GDHCPClient *dhcp_client, gpointer user_data)
-{
-	struct connman_dhcpv6 *dhcp = user_data;
-
-	DBG("dhcpv6 release msg %p", dhcp);
-
-	if (dhcp->callback != NULL) {
-		uint16_t status = g_dhcpv6_client_get_status(dhcp_client);
-		dhcp->callback(dhcp->network, status == 0 ? TRUE : FALSE);
-	}
-}
-
 int __connman_dhcpv6_start_release(struct connman_network *network,
 				dhcp_cb callback)
 {
@@ -909,8 +897,13 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 
 	clear_callbacks(dhcp_client);
 
-	g_dhcp_client_register_event(dhcp_client, G_DHCP_CLIENT_EVENT_RELEASE,
-					release_cb, dhcp);
+	/*
+	 * We do not register callback here because the answer might take too
+	 * long time and network code might be in the middle of the disconnect.
+	 * So we just inform the server that we are done with the addresses
+	 * but ignore the reply from server. This is allowed by RFC 3315
+	 * chapter 18.1.6.
+	 */
 
 	dhcp->dhcp_client = dhcp_client;
 

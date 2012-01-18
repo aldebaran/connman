@@ -984,9 +984,8 @@ static void dhcpv6_release_callback(struct connman_network *network,
 
 static void release_dhcpv6(struct connman_network *network)
 {
-	if (__connman_dhcpv6_start_release(network,
-					dhcpv6_release_callback) < 0)
-		stop_dhcpv6(network);
+	__connman_dhcpv6_start_release(network, dhcpv6_release_callback);
+	stop_dhcpv6(network);
 }
 
 static void dhcpv6_info_callback(struct connman_network *network,
