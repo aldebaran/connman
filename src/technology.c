@@ -936,7 +936,6 @@ int __connman_technology_add_device(struct connman_device *device)
 	DBG("device %p", device);
 
 	type = __connman_device_get_service_type(device);
-	__connman_notifier_register(type);
 
 	technology = technology_get(type);
 	if (technology == NULL)
@@ -962,7 +961,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 	DBG("device %p", device);
 
 	type = __connman_device_get_service_type(device);
-	__connman_notifier_unregister(type);
 
 	technology = technology_find(type);
 	if (technology == NULL)
@@ -1002,7 +1000,6 @@ int __connman_technology_enabled(enum connman_service_type type)
 		return -ENXIO;
 
 	if (__sync_fetch_and_add(&technology->enabled, 1) == 0) {
-		__connman_notifier_enable(type);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
 		state_changed(technology);
 		powered_changed(technology);
@@ -1038,7 +1035,6 @@ int __connman_technology_disabled(enum connman_service_type type)
 	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
 		return 0;
 
-	__connman_notifier_disable(type);
 	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 	state_changed(technology);
 	powered_changed(technology);
@@ -1105,8 +1101,6 @@ int __connman_technology_add_rfkill(unsigned int index,
 	rfkill = g_try_new0(struct connman_rfkill, 1);
 	if (rfkill == NULL)
 		return -ENOMEM;
-
-	__connman_notifier_register(type);
 
 	rfkill->index = index;
 	rfkill->type = type;
