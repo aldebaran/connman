@@ -242,76 +242,6 @@ static struct connman_notifier technology_notifier = {
 	.idle_state	= idle_state,
 };
 
-static DBusMessage *enable_technology(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	enum connman_service_type type;
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
-							DBUS_TYPE_INVALID);
-
-	if (g_strcmp0(str, "ethernet") == 0)
-		type = CONNMAN_SERVICE_TYPE_ETHERNET;
-	else if (g_strcmp0(str, "wifi") == 0)
-		type = CONNMAN_SERVICE_TYPE_WIFI;
-	else if (g_strcmp0(str, "wimax") == 0)
-		type = CONNMAN_SERVICE_TYPE_WIMAX;
-	else if (g_strcmp0(str, "bluetooth") == 0)
-		type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
-	else if (g_strcmp0(str, "cellular") == 0)
-		type = CONNMAN_SERVICE_TYPE_CELLULAR;
-	else
-		return __connman_error_invalid_arguments(msg);
-
-	if (__connman_notifier_is_registered(type) == FALSE)
-		return __connman_error_not_registered(msg);
-
-	if (__connman_notifier_is_enabled(type) == TRUE)
-		return __connman_error_already_enabled(msg);
-
-	 __connman_technology_enable(type, msg);
-
-	return NULL;
-}
-
-static DBusMessage *disable_technology(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	enum connman_service_type type;
-	const char *str;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
-							DBUS_TYPE_INVALID);
-
-	if (g_strcmp0(str, "ethernet") == 0)
-		type = CONNMAN_SERVICE_TYPE_ETHERNET;
-	else if (g_strcmp0(str, "wifi") == 0)
-		type = CONNMAN_SERVICE_TYPE_WIFI;
-	else if (g_strcmp0(str, "wimax") == 0)
-		type = CONNMAN_SERVICE_TYPE_WIMAX;
-	else if (g_strcmp0(str, "bluetooth") == 0)
-		type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
-	else if (g_strcmp0(str, "cellular") == 0)
-		type = CONNMAN_SERVICE_TYPE_CELLULAR;
-	else
-		return __connman_error_invalid_arguments(msg);
-
-	if (__connman_notifier_is_registered(type) == FALSE)
-		return __connman_error_not_registered(msg);
-
-	if (__connman_notifier_is_enabled(type) == FALSE)
-		return __connman_error_already_disabled(msg);
-
-	__connman_technology_disable(type, msg);
-
-	return NULL;
-}
-
 static DBusMessage *get_services(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -523,10 +453,6 @@ static GDBusMethodTable manager_methods[] = {
 	{ "GetTechnologies",   "",      "a(oa{sv})", get_technologies   },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
 	{ "RequestScan",       "s",     "",      request_scan       },
-	{ "EnableTechnology",  "s",     "",      enable_technology,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "DisableTechnology", "s",     "",      disable_technology,
-						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetServices",       "",      "a(oa{sv})", get_services   },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,
 						G_DBUS_METHOD_FLAG_ASYNC },
