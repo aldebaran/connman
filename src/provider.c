@@ -668,7 +668,7 @@ failed:
 unref:
 	DBG("can not connect, delete provider");
 
-	connman_provider_unref(provider);
+	g_hash_table_remove(provider_hash, provider->identifier);
 
 	return err;
 }
