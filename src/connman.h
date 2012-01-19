@@ -615,13 +615,9 @@ void __connman_technology_cleanup(void);
 int __connman_notifier_init(void);
 void __connman_notifier_cleanup(void);
 
-void __connman_notifier_register(enum connman_service_type type);
-void __connman_notifier_unregister(enum connman_service_type type);
 void __connman_notifier_service_add(struct connman_service *service,
 					const char *name);
 void __connman_notifier_service_remove(struct connman_service *service);
-void __connman_notifier_enable(enum connman_service_type type);
-void __connman_notifier_disable(enum connman_service_type type);
 void __connman_notifier_connect(enum connman_service_type type);
 void __connman_notifier_disconnect(enum connman_service_type type);
 void __connman_notifier_offlinemode(connman_bool_t enabled);
@@ -632,8 +628,6 @@ void __connman_notifier_service_state_changed(struct connman_service *service,
 void __connman_notifier_ipconfig_changed(struct connman_service *service,
 					struct connman_ipconfig *ipconfig);
 
-connman_bool_t __connman_notifier_is_registered(enum connman_service_type type);
-connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type);
 unsigned int __connman_notifier_count_connected(void);
 const char *__connman_notifier_get_state(void);
 

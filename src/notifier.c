@@ -73,30 +73,7 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 
 #define MAX_TECHNOLOGIES 10
 
-static volatile int registered[MAX_TECHNOLOGIES];
-static volatile int enabled[MAX_TECHNOLOGIES];
 static volatile int connected[MAX_TECHNOLOGIES];
-
-static void technology_registered(enum connman_service_type type,
-						connman_bool_t registered)
-{
-	DBG("type %d registered %d", type, registered);
-}
-
-static void technology_enabled(enum connman_service_type type,
-						connman_bool_t enabled)
-{
-	GSList *list;
-
-	DBG("type %d enabled %d", type, enabled);
-
-	for (list = notifier_list; list; list = list->next) {
-		struct connman_notifier *notifier = list->data;
-
-		if (notifier->service_enabled)
-			notifier->service_enabled(type, enabled);
-	}
-}
 
 unsigned int __connman_notifier_count_connected(void)
 {
@@ -147,114 +124,6 @@ static void technology_connected(enum connman_service_type type,
 	DBG("type %d connected %d", type, connected);
 
 	state_changed(connected);
-}
-
-void __connman_notifier_register(enum connman_service_type type)
-{
-	DBG("type %d", type);
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		break;
-	}
-
-	if (__sync_fetch_and_add(&registered[type], 1) == 0)
-		technology_registered(type, TRUE);
-}
-
-void __connman_notifier_unregister(enum connman_service_type type)
-{
-	DBG("type %d", type);
-
-	__sync_synchronize();
-	if (registered[type] == 0) {
-		connman_error("notifier unregister underflow");
-		return;
-	}
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		break;
-	}
-
-	if (__sync_fetch_and_sub(&registered[type], 1) != 1)
-		return;
-
-	technology_registered(type, FALSE);
-}
-
-void __connman_notifier_enable(enum connman_service_type type)
-{
-	DBG("type %d", type);
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		break;
-	}
-
-	if (__sync_fetch_and_add(&enabled[type], 1) == 0)
-		technology_enabled(type, TRUE);
-}
-
-void __connman_notifier_disable(enum connman_service_type type)
-{
-	DBG("type %d", type);
-
-	__sync_synchronize();
-	if (enabled[type] == 0) {
-		connman_error("notifier disable underflow");
-		return;
-	}
-
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		break;
-	}
-
-	if (__sync_fetch_and_sub(&enabled[type], 1) != 1)
-		return;
-
-	technology_enabled(type, FALSE);
 }
 
 void __connman_notifier_connect(enum connman_service_type type)
@@ -487,54 +356,6 @@ void __connman_notifier_ipconfig_changed(struct connman_service *service,
 		if (notifier->ipconfig_changed)
 			notifier->ipconfig_changed(service, ipconfig);
 	}
-}
-
-static connman_bool_t technology_supported(enum connman_service_type type)
-{
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		return FALSE;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		break;
-	}
-
-	return TRUE;
-}
-
-connman_bool_t __connman_notifier_is_registered(enum connman_service_type type)
-{
-	DBG("type %d", type);
-
-	if (technology_supported(type) == FALSE)
-		return FALSE;
-
-	__sync_synchronize();
-	if (registered[type] > 0)
-		return TRUE;
-
-	return FALSE;
-}
-
-connman_bool_t __connman_notifier_is_enabled(enum connman_service_type type)
-{
-	DBG("type %d", type);
-
-	if (technology_supported(type) == FALSE)
-		return FALSE;
-
-	__sync_synchronize();
-	if (enabled[type] > 0)
-		return TRUE;
-
-	return FALSE;
 }
 
 int __connman_notifier_init(void)
