@@ -459,8 +459,10 @@ static void unregister_provider(gpointer data)
 
 	DBG("provider %p service %p", provider, provider->vpn_service);
 
-	connman_service_unref(provider->vpn_service);
-	provider->vpn_service = NULL;
+	if (provider->vpn_service != NULL) {
+		connman_service_unref(provider->vpn_service);
+		provider->vpn_service = NULL;
+	}
 
 	connman_provider_unref(provider);
 }
