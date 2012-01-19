@@ -394,6 +394,7 @@ static void append_properties(DBusMessageIter *iter,
 {
 	DBusMessageIter dict;
 	const char *str;
+	connman_bool_t powered;
 
 	connman_dbus_dict_open(iter, &dict);
 
@@ -411,6 +412,14 @@ static void append_properties(DBusMessageIter *iter,
 	if (str != NULL)
 		connman_dbus_dict_append_basic(&dict, "Type",
 						DBUS_TYPE_STRING, &str);
+
+	__sync_synchronize();
+	if (technology->enabled > 0)
+		powered = TRUE;
+	else
+		powered = FALSE;
+	connman_dbus_dict_append_basic(&dict, "Powered",
+					DBUS_TYPE_BOOLEAN, &powered);
 
 	connman_dbus_dict_append_basic(&dict, "Tethering",
 					DBUS_TYPE_BOOLEAN,
@@ -491,6 +500,163 @@ void __connman_technology_list_struct(DBusMessageIter *array)
 	}
 }
 
+static gboolean technology_pending_reply(gpointer user_data)
+{
+	struct connman_technology *technology = user_data;
+	DBusMessage *reply;
+
+	/* Power request timedout, send ETIMEDOUT. */
+	if (technology->pending_reply != NULL) {
+		reply = __connman_error_failed(technology->pending_reply, ETIMEDOUT);
+		if (reply != NULL)
+			g_dbus_send_message(connection, reply);
+
+		dbus_message_unref(technology->pending_reply);
+		technology->pending_reply = NULL;
+		technology->pending_timeout = 0;
+	}
+
+	return FALSE;
+}
+
+static int technology_enable(struct connman_technology *technology,
+		DBusMessage *msg)
+{
+	GSList *list;
+	int err = 0;
+	int ret = -ENODEV;
+	DBusMessage *reply;
+
+	DBG("technology %p enable", technology);
+
+	__sync_synchronize();
+	if (technology->enabled > 0) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	if (technology->pending_reply != NULL) {
+		err = -EBUSY;
+		goto done;
+	}
+
+	if (msg != NULL) {
+		/*
+		 * This is a bit of a trick. When msg is not NULL it means
+		 * thats technology_enable was invoked from the manager API.
+		 * Hence we save the state here.
+		 */
+		technology->enable_persistent = TRUE;
+		save_state(technology);
+	}
+
+	__connman_rfkill_block(technology->type, FALSE);
+
+	/*
+	 * An empty device list means that devices in the technology
+	 * were rfkill blocked. The unblock above will enable the devs.
+	 */
+	if (technology->device_list == NULL) {
+		ret = 0;
+		goto done;
+	}
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		err = __connman_device_enable(device);
+		/*
+		 * err = 0 : Device was enabled right away.
+		 * If atleast one device gets enabled, we consider
+		 * the technology to be enabled.
+		 */
+		if (err == 0)
+			ret = 0;
+	}
+
+done:
+	if (ret == 0) {
+		if (msg != NULL)
+			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
+		return ret;
+	}
+
+	if (msg != NULL) {
+		if (err == -EINPROGRESS) {
+			technology->pending_reply = dbus_message_ref(msg);
+			technology->pending_timeout = g_timeout_add_seconds(10,
+					technology_pending_reply, technology);
+		} else {
+			reply = __connman_error_failed(msg, -err);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		}
+	}
+
+	return err;
+}
+
+static int technology_disable(struct connman_technology *technology,
+		DBusMessage *msg)
+{
+	GSList *list;
+	int err = 0;
+	int ret = -ENODEV;
+	DBusMessage *reply;
+
+	DBG("technology %p disable", technology);
+
+	__sync_synchronize();
+	if (technology->enabled == 0) {
+		err = -EALREADY;
+		goto done;
+	}
+
+	if (technology->pending_reply != NULL) {
+		err = -EBUSY;
+		goto done;
+	}
+
+	if (technology->tethering == TRUE)
+		set_tethering(technology, FALSE);
+
+	if (msg != NULL) {
+		technology->enable_persistent = FALSE;
+		save_state(technology);
+	}
+
+	__connman_rfkill_block(technology->type, TRUE);
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		err = __connman_device_disable(device);
+		if (err == 0)
+			ret = 0;
+	}
+
+done:
+	if (ret == 0) {
+		if (msg != NULL)
+			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
+		return ret;
+	}
+
+	if (msg != NULL) {
+		if (err == -EINPROGRESS) {
+			technology->pending_reply = dbus_message_ref(msg);
+			technology->pending_timeout = g_timeout_add_seconds(10,
+					technology_pending_reply, technology);
+		} else {
+			reply = __connman_error_failed(msg, -err);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		}
+	}
+
+	return err;
+}
+
 static DBusMessage *set_property(DBusConnection *conn,
 					DBusMessage *msg, void *data)
 {
@@ -549,6 +715,18 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 
 		technology->tethering_passphrase = g_strdup(str);
+	} else if (g_str_equal(name, "Powered") == TRUE) {
+		connman_bool_t enable;
+
+		if (type != DBUS_TYPE_BOOLEAN)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_get_basic(&value, &enable);
+		if (enable == TRUE)
+			technology_enable(technology, msg);
+		else
+			technology_disable(technology, msg);
+
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -800,23 +978,19 @@ int __connman_technology_remove_device(struct connman_device *device)
 	return 0;
 }
 
-static gboolean technology_pending_reply(gpointer user_data)
+static void powered_changed(struct connman_technology *technology)
 {
-	struct connman_technology *technology = user_data;
-	DBusMessage *reply;
+	connman_bool_t powered;
 
-	/* Power request timedout, send ETIMEDOUT. */
-	if (technology->pending_reply != NULL) {
-		reply = __connman_error_failed(technology->pending_reply, ETIMEDOUT);
-		if (reply != NULL)
-			g_dbus_send_message(connection, reply);
+	__sync_synchronize();
+	if (technology->enabled >0)
+		powered = TRUE;
+	else
+		powered = FALSE;
 
-		dbus_message_unref(technology->pending_reply);
-		technology->pending_reply = NULL;
-		technology->pending_timeout = 0;
-	}
-
-	return FALSE;
+	connman_dbus_property_changed_basic(technology->path,
+			CONNMAN_TECHNOLOGY_INTERFACE, "Powered",
+			DBUS_TYPE_BOOLEAN, &powered);
 }
 
 int __connman_technology_enabled(enum connman_service_type type)
@@ -831,6 +1005,7 @@ int __connman_technology_enabled(enum connman_service_type type)
 		__connman_notifier_enable(type);
 		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
 		state_changed(technology);
+		powered_changed(technology);
 	}
 
 	if (technology->pending_reply != NULL) {
@@ -842,83 +1017,6 @@ int __connman_technology_enabled(enum connman_service_type type)
 	}
 
 	return 0;
-}
-
-int __connman_technology_enable(enum connman_service_type type, DBusMessage *msg)
-{
-	struct connman_technology *technology;
-	GSList *list;
-	int err = 0;
-	int ret = -ENODEV;
-	DBusMessage *reply;
-
-	DBG("type %d enable", type);
-
-	technology = technology_find(type);
-	if (technology == NULL) {
-		err = -ENXIO;
-		goto done;
-	}
-
-	if (technology->pending_reply != NULL) {
-		err = -EBUSY;
-		goto done;
-	}
-
-	if (msg != NULL) {
-		/*
-		 * This is a bit of a trick. When msg is not NULL it means
-		 * thats technology_enable was invoked from the manager API. Hence we save
-		 * the state here.
-		 */
-		technology->enable_persistent = TRUE;
-		save_state(technology);
-	}
-
-	__connman_rfkill_block(technology->type, FALSE);
-
-	/*
-	 * An empty device list means that devices in the technology
-	 * were rfkill blocked. The unblock above will enable the devs.
-	 */
-	if (technology->device_list == NULL) {
-		ret = 0;
-		goto done;
-	}
-
-	for (list = technology->device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		err = __connman_device_enable(device);
-		/*
-		 * err = 0 : Device was enabled right away.
-		 * If atleast one device gets enabled, we consider
-		 * the technology to be enabled.
-		 */
-		if (err == 0)
-			ret = 0;
-	}
-
-done:
-	if (ret == 0) {
-		if (msg != NULL)
-			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
-		return ret;
-	}
-
-	if (msg != NULL) {
-		if (err == -EINPROGRESS) {
-			technology->pending_reply = dbus_message_ref(msg);
-			technology->pending_timeout = g_timeout_add_seconds(10,
-					technology_pending_reply, technology);
-		} else {
-			reply = __connman_error_failed(msg, -err);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-		}
-	}
-
-	return err;
 }
 
 int __connman_technology_disabled(enum connman_service_type type)
@@ -943,69 +1041,9 @@ int __connman_technology_disabled(enum connman_service_type type)
 	__connman_notifier_disable(type);
 	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 	state_changed(technology);
+	powered_changed(technology);
 
 	return 0;
-}
-
-int __connman_technology_disable(enum connman_service_type type, DBusMessage *msg)
-{
-	struct connman_technology *technology;
-	GSList *list;
-	int err = 0;
-	int ret = -ENODEV;
-	DBusMessage *reply;
-
-	DBG("type %d disable", type);
-
-	technology = technology_find(type);
-	if (technology == NULL) {
-		err = -ENXIO;
-		goto done;
-	}
-
-	if (technology->pending_reply != NULL) {
-		err = -EBUSY;
-		goto done;
-	}
-
-	if (technology->tethering == TRUE)
-		set_tethering(technology, FALSE);
-
-	if (msg != NULL) {
-		technology->enable_persistent = FALSE;
-		save_state(technology);
-	}
-
-	__connman_rfkill_block(technology->type, TRUE);
-
-	for (list = technology->device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		err = __connman_device_disable(device);
-		if (err == 0)
-			ret = 0;
-	}
-
-done:
-	if (ret == 0) {
-		if (msg != NULL)
-			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
-		return ret;
-	}
-
-	if (msg != NULL) {
-		if (err == -EINPROGRESS) {
-			technology->pending_reply = dbus_message_ref(msg);
-			technology->pending_timeout = g_timeout_add_seconds(10,
-					technology_pending_reply, technology);
-		} else {
-			reply = __connman_error_failed(msg, -err);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-		}
-	}
-
-	return err;
 }
 
 int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
@@ -1034,10 +1072,10 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 		struct connman_technology *technology = list->data;
 
 		if (offlinemode)
-			err = __connman_technology_disable(technology->type, NULL);
+			err = technology_disable(technology, NULL);
 
 		if (!offlinemode && technology->enable_persistent)
-			err = __connman_technology_enable(technology->type, NULL);
+			err = technology_enable(technology, NULL);
 	}
 
 	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
