@@ -338,8 +338,10 @@ static int set_property(struct modem_data *modem,
 	DBG("%s path %s %s.%s", modem->path, path, interface, property);
 
 	if (modem->call_set_property != NULL) {
-		connman_error("Pending SetProperty");
-		return -EBUSY;
+		DBG("Cancel pending SetProperty");
+
+		dbus_pending_call_cancel(modem->call_set_property);
+		modem->call_set_property = NULL;
 	}
 
 	message = dbus_message_new_method_call(OFONO_SERVICE, path,
