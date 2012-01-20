@@ -449,6 +449,8 @@ static void technology_added_signal(struct connman_technology *technology)
 		return;
 
 	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&technology->path);
 	append_properties(&iter, technology);
 
 	dbus_connection_send(connection, signal, NULL);
