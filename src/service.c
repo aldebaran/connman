@@ -3532,9 +3532,12 @@ struct connman_service *connman_service_create(void)
  *
  * Increase reference counter of service
  */
-struct connman_service *connman_service_ref(struct connman_service *service)
+struct connman_service *
+connman_service_ref_debug(struct connman_service *service,
+			const char *file, int line, const char *caller)
 {
-	DBG("%p ref %d", service, service->refcount + 1);
+	DBG("%p ref %d by %s:%d:%s()", service, service->refcount + 1,
+		file, line, caller);
 
 	__sync_fetch_and_add(&service->refcount, 1);
 
@@ -3548,11 +3551,13 @@ struct connman_service *connman_service_ref(struct connman_service *service)
  * Decrease reference counter of service and release service if no
  * longer needed.
  */
-void connman_service_unref(struct connman_service *service)
+void connman_service_unref_debug(struct connman_service *service,
+			const char *file, int line, const char *caller)
 {
 	GSequenceIter *iter;
 
-	DBG("service %p ref %d", service, service->refcount - 1);
+	DBG("%p ref %d by %s:%d:%s()", service, service->refcount - 1,
+		file, line, caller);
 
 	if (__sync_fetch_and_sub(&service->refcount, 1) != 1)
 		return;
