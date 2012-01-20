@@ -1130,9 +1130,12 @@ static gboolean cache_invalidate_entry(gpointer key, gpointer value,
  */
 static void cache_invalidate(void)
 {
-	DBG("Invalidating the DNS cache");
-	 g_hash_table_foreach_remove(cache, cache_invalidate_entry,
-						NULL);
+	DBG("Invalidating the DNS cache %p", cache);
+
+	if (cache == NULL)
+		return;
+
+	g_hash_table_foreach_remove(cache, cache_invalidate_entry, NULL);
 }
 
 static void cache_refresh_entry(struct cache_entry *entry)
@@ -1175,6 +1178,9 @@ static void cache_refresh_iterator(gpointer key, gpointer value,
 
 static void cache_refresh(void)
 {
+	if (cache == NULL)
+		return;
+
 	g_hash_table_foreach(cache, cache_refresh_iterator, NULL);
 }
 
@@ -1650,8 +1656,10 @@ static void destroy_server(struct server_data *server)
 	}
 	g_free(server->interface);
 
-	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1)
+	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1) {
 		g_hash_table_destroy(cache);
+		cache = NULL;
+	}
 
 	g_free(server);
 }
