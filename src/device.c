@@ -539,9 +539,11 @@ struct connman_device *connman_device_create(const char *node,
  *
  * Increase reference counter of device
  */
-struct connman_device *connman_device_ref(struct connman_device *device)
+struct connman_device *connman_device_ref_debug(struct connman_device *device,
+				const char *file, int line, const char *caller)
 {
-	DBG("%p", device);
+	DBG("%p ref %d by %s:%d:%s()", device, device->refcount + 1,
+		file, line, caller);
 
 	__sync_fetch_and_add(&device->refcount, 1);
 
@@ -554,8 +556,12 @@ struct connman_device *connman_device_ref(struct connman_device *device)
  *
  * Decrease reference counter of device
  */
-void connman_device_unref(struct connman_device *device)
+void connman_device_unref_debug(struct connman_device *device,
+				const char *file, int line, const char *caller)
 {
+	DBG("%p ref %d by %s:%d:%s()", device, device->refcount - 1,
+		file, line, caller);
+
 	if (__sync_fetch_and_sub(&device->refcount, 1) != 1)
 		return;
 

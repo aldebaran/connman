@@ -55,8 +55,18 @@ struct connman_device;
 
 struct connman_device *connman_device_create(const char *node,
 						enum connman_device_type type);
-struct connman_device *connman_device_ref(struct connman_device *device);
-void connman_device_unref(struct connman_device *device);
+
+#define connman_device_ref(device) \
+	connman_device_ref_debug(device, __FILE__, __LINE__, __func__)
+
+#define connman_device_unref(device) \
+	connman_device_unref_debug(device, __FILE__, __LINE__, __func__)
+
+struct connman_device *
+connman_device_ref_debug(struct connman_device *device,
+			const char *file, int line, const char *caller);
+void connman_device_unref_debug(struct connman_device *device,
+			const char *file, int line, const char *caller);
 
 enum connman_device_type connman_device_get_type(struct connman_device *device);
 void connman_device_set_index(struct connman_device *device, int index);
