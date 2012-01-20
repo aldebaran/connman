@@ -12,9 +12,9 @@ print object.Introspect()
 manager = dbus.Interface(bus.get_object("net.connman", "/"),
 					"net.connman.Manager")
 
-properties = manager.GetProperties()
+technologies = manager.GetTechnologies()
 
-for path in properties["Technologies"]:
+for path, properties in technologies:
 	object = dbus.Interface(bus.get_object("net.connman", path),
 					"org.freedesktop.DBus.Introspectable")
 
