@@ -146,15 +146,17 @@ elif sys.argv[1] == "scan":
 
 elif sys.argv[1] == "enable":
 	if len(sys.argv) > 2:
-		manager.EnableTechnology(sys.argv[2])
-	else:
-		manager.EnableTechnology("")
+		path = "/net/connman/technology/" + sys.argv[2]
+		technology = dbus.Interface(bus.get_object("net.connman", path),
+					    "net.connman.Technology")
+		technology.SetProperty("Powered", True)
 
 elif sys.argv[1] == "disable":
 	if len(sys.argv) > 2:
-		manager.DisableTechnology(sys.argv[2])
-	else:
-		manager.DisableTechnology("")
+		path = "/net/connman/technology/" + sys.argv[2]
+		technology = dbus.Interface(bus.get_object("net.connman", path),
+					    "net.connman.Technology")
+		technology.SetProperty("Powered", False)
 
 elif sys.argv[1] in ["offlinemode", "flightmode"]:
 	if len(sys.argv) > 2:
