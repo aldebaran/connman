@@ -43,17 +43,9 @@ struct connman_rfkill {
 	connman_bool_t hardblock;
 };
 
-enum connman_technology_state {
-	CONNMAN_TECHNOLOGY_STATE_UNKNOWN   = 0,
-	CONNMAN_TECHNOLOGY_STATE_OFFLINE   = 1,
-	CONNMAN_TECHNOLOGY_STATE_ENABLED   = 2,
-	CONNMAN_TECHNOLOGY_STATE_CONNECTED = 3,
-};
-
 struct connman_technology {
 	int refcount;
 	enum connman_service_type type;
-	enum connman_technology_state state;
 	char *path;
 	GHashTable *rfkill_list;
 	GSList *device_list;
@@ -228,35 +220,6 @@ static void free_rfkill(gpointer data)
 	g_free(rfkill);
 }
 
-static const char *state2string(enum connman_technology_state state)
-{
-	switch (state) {
-	case CONNMAN_TECHNOLOGY_STATE_UNKNOWN:
-		break;
-	case CONNMAN_TECHNOLOGY_STATE_OFFLINE:
-		return "offline";
-	case CONNMAN_TECHNOLOGY_STATE_ENABLED:
-		return "enabled";
-	case CONNMAN_TECHNOLOGY_STATE_CONNECTED:
-		return "connected";
-	}
-
-	return NULL;
-}
-
-static void state_changed(struct connman_technology *technology)
-{
-	const char *str;
-
-	str = state2string(technology->state);
-	if (str == NULL)
-		return;
-
-	connman_dbus_property_changed_basic(technology->path,
-				CONNMAN_TECHNOLOGY_INTERFACE, "State",
-						DBUS_TYPE_STRING, &str);
-}
-
 static const char *get_name(enum connman_service_type type)
 {
 	switch (type) {
@@ -398,11 +361,6 @@ static void append_properties(DBusMessageIter *iter,
 	connman_bool_t powered;
 
 	connman_dbus_dict_open(iter, &dict);
-
-	str = state2string(technology->state);
-	if (str != NULL)
-		connman_dbus_dict_append_basic(&dict, "State",
-						DBUS_TYPE_STRING, &str);
 
 	str = get_name(technology->type);
 	if (str != NULL)
@@ -816,7 +774,6 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->device_list = NULL;
 
 	technology->pending_reply = NULL;
-	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
 
 	load_state(technology);
 
@@ -975,11 +932,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
-	if (technology->device_list == NULL) {
-		technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
-		state_changed(technology);
-	}
-
 	return 0;
 }
 
@@ -1006,11 +958,8 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (__sync_fetch_and_add(&technology->enabled, 1) == 0) {
-		technology->state = CONNMAN_TECHNOLOGY_STATE_ENABLED;
-		state_changed(technology);
+	if (__sync_fetch_and_add(&technology->enabled, 1) == 0)
 		powered_changed(technology);
-	}
 
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
@@ -1039,12 +988,8 @@ int __connman_technology_disabled(enum connman_service_type type)
 		technology->pending_timeout = 0;
 	}
 
-	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
-		return 0;
-
-	technology->state = CONNMAN_TECHNOLOGY_STATE_OFFLINE;
-	state_changed(technology);
-	powered_changed(technology);
+	if (__sync_fetch_and_sub(&technology->enabled, 1) == 1)
+		powered_changed(technology);
 
 	return 0;
 }
