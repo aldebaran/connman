@@ -387,10 +387,12 @@ struct connman_network *connman_network_create(const char *identifier,
  *
  * Increase reference counter of  network
  */
-struct connman_network *connman_network_ref(struct connman_network *network)
+struct connman_network *
+connman_network_ref_debug(struct connman_network *network,
+			const char *file, int line, const char *caller)
 {
-	DBG("network %p name %s refcount %d", network, network->name,
-		network->refcount + 1);
+	DBG("%p name %s ref %d by %s:%d:%s()", network, network->name,
+		network->refcount + 1, file, line, caller);
 
 	__sync_fetch_and_add(&network->refcount, 1);
 
@@ -403,10 +405,11 @@ struct connman_network *connman_network_ref(struct connman_network *network)
  *
  * Decrease reference counter of network
  */
-void connman_network_unref(struct connman_network *network)
+void connman_network_unref_debug(struct connman_network *network,
+				const char *file, int line, const char *caller)
 {
-	DBG("network %p name %s refcount %d", network, network->name,
-		network->refcount - 1);
+	DBG("%p name %s ref %d by %s:%d:%s()", network, network->name,
+		network->refcount - 1, file, line, caller);
 
 	if (__sync_fetch_and_sub(&network->refcount, 1) != 1)
 		return;

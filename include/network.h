@@ -64,8 +64,18 @@ struct connman_network;
 
 struct connman_network *connman_network_create(const char *identifier,
 					enum connman_network_type type);
-struct connman_network *connman_network_ref(struct connman_network *network);
-void connman_network_unref(struct connman_network *network);
+
+#define connman_network_ref(network) \
+	connman_network_ref_debug(network, __FILE__, __LINE__, __func__)
+
+#define connman_network_unref(network) \
+	connman_network_unref_debug(network, __FILE__, __LINE__, __func__)
+
+struct connman_network *
+connman_network_ref_debug(struct connman_network *network,
+			const char *file, int line, const char *caller);
+void connman_network_unref_debug(struct connman_network *network,
+			const char *file, int line, const char *caller);
 
 enum connman_network_type connman_network_get_type(struct connman_network *network);
 const char *connman_network_get_identifier(struct connman_network *network);
