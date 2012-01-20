@@ -123,6 +123,7 @@ static void technology_connected(enum connman_service_type type,
 {
 	DBG("type %d connected %d", type, connected);
 
+	__connman_technology_set_connected(type, connected);
 	state_changed(connected);
 }
 

@@ -59,6 +59,7 @@ struct connman_technology {
 	GSList *device_list;
 	int enabled;
 	char *regdom;
+	connman_bool_t connected;
 
 	connman_bool_t tethering;
 	char *tethering_ident;
@@ -420,6 +421,10 @@ static void append_properties(DBusMessageIter *iter,
 		powered = FALSE;
 	connman_dbus_dict_append_basic(&dict, "Powered",
 					DBUS_TYPE_BOOLEAN, &powered);
+
+	connman_dbus_dict_append_basic(&dict, "Connected",
+					DBUS_TYPE_BOOLEAN,
+					&technology->connected);
 
 	connman_dbus_dict_append_basic(&dict, "Tethering",
 					DBUS_TYPE_BOOLEAN,
@@ -1083,6 +1088,24 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 		global_offlinemode = connman_technology_load_offlinemode();
 
 	return err;
+}
+
+void __connman_technology_set_connected(enum connman_service_type type,
+		connman_bool_t connected)
+{
+	struct connman_technology *technology;
+
+	technology = technology_find(type);
+	if (technology == NULL)
+		return;
+
+	DBG("technology %p connected %d", technology, connected);
+
+	technology->connected = connected;
+
+	connman_dbus_property_changed_basic(technology->path,
+			CONNMAN_TECHNOLOGY_INTERFACE, "Connected",
+			DBUS_TYPE_BOOLEAN, &connected);
 }
 
 int __connman_technology_add_rfkill(unsigned int index,
