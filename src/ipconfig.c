@@ -1297,9 +1297,12 @@ struct connman_ipconfig *__connman_ipconfig_create(int index,
  *
  * Increase reference counter of ipconfig
  */
-struct connman_ipconfig *__connman_ipconfig_ref(struct connman_ipconfig *ipconfig)
+struct connman_ipconfig *
+__connman_ipconfig_ref_debug(struct connman_ipconfig *ipconfig,
+				const char *file, int line, const char *caller)
 {
-	DBG("ipconfig %p refcount %d", ipconfig, ipconfig->refcount + 1);
+	DBG("%p ref %d by %s:%d:%s()", ipconfig, ipconfig->refcount + 1,
+		file, line, caller);
 
 	__sync_fetch_and_add(&ipconfig->refcount, 1);
 
@@ -1312,12 +1315,14 @@ struct connman_ipconfig *__connman_ipconfig_ref(struct connman_ipconfig *ipconfi
  *
  * Decrease reference counter of ipconfig
  */
-void __connman_ipconfig_unref(struct connman_ipconfig *ipconfig)
+void __connman_ipconfig_unref_debug(struct connman_ipconfig *ipconfig,
+				const char *file, int line, const char *caller)
 {
 	if (ipconfig == NULL)
 		return;
 
-	DBG("ipconfig %p refcount %d", ipconfig, ipconfig->refcount - 1);
+	DBG("%p ref %d by %s:%d:%s()", ipconfig, ipconfig->refcount - 1,
+		file, line, caller);
 
 	if (__sync_fetch_and_sub(&ipconfig->refcount, 1) != 1)
 		return;

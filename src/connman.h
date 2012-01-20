@@ -198,8 +198,17 @@ struct connman_ipconfig_ops {
 
 struct connman_ipconfig *__connman_ipconfig_create(int index,
 					enum connman_ipconfig_type type);
-struct connman_ipconfig *__connman_ipconfig_ref(struct connman_ipconfig *ipconfig);
-void __connman_ipconfig_unref(struct connman_ipconfig *ipconfig);
+
+#define __connman_ipconfig_ref(ipconfig) \
+	__connman_ipconfig_ref_debug(ipconfig, __FILE__, __LINE__, __func__)
+#define __connman_ipconfig_unref(ipconfig) \
+	__connman_ipconfig_unref_debug(ipconfig, __FILE__, __LINE__, __func__)
+
+struct connman_ipconfig *
+__connman_ipconfig_ref_debug(struct connman_ipconfig *ipconfig,
+			const char *file, int line, const char *caller);
+void __connman_ipconfig_unref_debug(struct connman_ipconfig *ipconfig,
+			const char *file, int line, const char *caller);
 
 void *__connman_ipconfig_get_data(struct connman_ipconfig *ipconfig);
 void __connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data);
