@@ -59,8 +59,17 @@ enum connman_provider_error {
 struct connman_provider;
 struct connman_ipaddress;
 
-struct connman_provider *connman_provider_ref(struct connman_provider *provider);
-void connman_provider_unref(struct connman_provider *provider);
+#define connman_provider_ref(provider) \
+	connman_provider_ref_debug(provider, __FILE__, __LINE__, __func__)
+
+#define connman_provider_unref(provider) \
+	connman_provider_unref_debug(provider, __FILE__, __LINE__, __func__)
+
+struct connman_provider *
+connman_provider_ref_debug(struct connman_provider *provider,
+			const char *file, int line, const char *caller);
+void connman_provider_unref_debug(struct connman_provider *provider,
+			const char *file, int line, const char *caller);
 
 int connman_provider_set_string(struct connman_provider *provider,
 					const char *key, const char *value);

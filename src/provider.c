@@ -209,9 +209,12 @@ static void provider_unregister(struct connman_provider *provider)
 	provider_remove(provider);
 }
 
-struct connman_provider *connman_provider_ref(struct connman_provider *provider)
+struct connman_provider *
+connman_provider_ref_debug(struct connman_provider *provider,
+			const char *file, int line, const char *caller)
 {
-	DBG("provider %p refcount %d", provider, provider->refcount + 1);
+	DBG("%p ref %d by %s:%d:%s()", provider, provider->refcount + 1,
+		file, line, caller);
 
 	__sync_fetch_and_add(&provider->refcount, 1);
 
@@ -231,9 +234,11 @@ static void provider_destruct(struct connman_provider *provider)
 	g_hash_table_destroy(provider->setting_strings);
 }
 
-void connman_provider_unref(struct connman_provider *provider)
+void connman_provider_unref_debug(struct connman_provider *provider,
+				const char *file, int line, const char *caller)
 {
-	DBG("provider %p refcount %d", provider, provider->refcount - 1);
+	DBG("%p ref %d by %s:%d:%s()", provider, provider->refcount - 1,
+		file, line, caller);
 
 	if (__sync_fetch_and_sub(&provider->refcount, 1) != 1)
 		return;
