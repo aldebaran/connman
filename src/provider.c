@@ -556,6 +556,36 @@ static void provider_dbus_ident(char *ident)
 	}
 }
 
+static struct connman_provider *provider_create_from_keyfile(GKeyFile *keyfile,
+		const char *ident)
+{
+	struct connman_provider *provider;
+
+	if (keyfile == NULL || ident == NULL)
+		return NULL;
+
+	provider = connman_provider_lookup(ident);
+	if (provider == NULL) {
+		provider = connman_provider_get(ident);
+		if (provider == NULL) {
+			DBG("can not create provider");
+			return NULL;
+		}
+
+		provider_load_from_keyfile(provider, keyfile);
+
+		if (provider->name == NULL || provider->host == NULL ||
+				provider->domain == NULL) {
+			DBG("cannot get name, host or domain");
+			connman_provider_unref(provider);
+			return NULL;
+		}
+
+		provider_register(provider);
+	}
+	return provider;
+}
+
 static int provider_create_service(struct connman_provider *provider)
 {
 	if (provider->vpn_service != NULL)
@@ -568,6 +598,53 @@ static int provider_create_service(struct connman_provider *provider)
 		return -EOPNOTSUPP;
 
 	return 0;
+}
+
+static void provider_create_all_from_type(const char *provider_type)
+{
+	unsigned int i;
+	char **providers;
+	char *id, *type;
+	GKeyFile *keyfile;
+	struct connman_provider *provider;
+
+	DBG("provider type %s", provider_type);
+
+	providers = __connman_storage_get_providers();
+
+	for (i = 0; providers[i] != NULL; i+=1) {
+
+		if (strncmp(providers[i], "provider_", 9) != 0)
+			continue;
+
+		id = providers[i] + 9;
+		keyfile = __connman_storage_load_provider(id);
+
+		if (keyfile == NULL)
+			continue;
+
+		type = g_key_file_get_string(keyfile, id, "Type", NULL);
+
+		DBG("keyfile %p id %s type %s", keyfile, id, type);
+
+		if (strcmp(provider_type, type) != 0) {
+			g_free(type);
+			g_key_file_free(keyfile);
+			continue;
+		}
+
+		provider = provider_create_from_keyfile(keyfile, id);
+		if (provider != NULL) {
+			if (provider_create_service(provider) == -EOPNOTSUPP) {
+				DBG("could not create service");
+				connman_provider_unref(provider);
+			}
+		}
+
+		g_free(type);
+		g_key_file_free(keyfile);
+	}
+	g_strfreev(providers);
 }
 
 int __connman_provider_create_and_connect(DBusMessage *msg)
@@ -1011,6 +1088,7 @@ int connman_provider_driver_register(struct connman_provider_driver *driver)
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
+	provider_create_all_from_type(driver->name);
 	return 0;
 }
 
