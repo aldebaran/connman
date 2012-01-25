@@ -328,6 +328,55 @@ void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier)
 	g_free(pathname);
 }
 
+gchar **__connman_storage_get_providers(void)
+{
+	GSList *list = NULL;
+	int num = 0, i = 0;
+	struct dirent *d;
+	gchar *str;
+	DIR *dir;
+	struct stat buf;
+	int ret;
+	char **providers;
+	GSList *iter;
+
+	dir = opendir(STORAGEDIR);
+	if (dir == NULL)
+		return NULL;
+
+	while ((d = readdir(dir))) {
+		if (strcmp(d->d_name, ".") == 0 ||
+				strcmp(d->d_name, "..") == 0 ||
+				strncmp(d->d_name, "provider_", 9) != 0)
+			continue;
+
+		if (d->d_type == DT_DIR) {
+			str = g_strdup_printf("%s/%s/settings", STORAGEDIR,
+					d->d_name);
+			ret = stat(str, &buf);
+			g_free(str);
+			if (ret < 0)
+				continue;
+			list = g_slist_prepend(list, g_strdup(d->d_name));
+			num += 1;
+		}
+	}
+
+	closedir(dir);
+
+	providers = g_try_new0(char *, num + 1);
+	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
+		if (providers != NULL)
+			providers[i] = iter->data;
+		else
+			g_free(iter->data);
+		i += 1;
+	}
+	g_slist_free(list);
+
+	return providers;
+}
+
 /*
  * This function migrates keys from default.profile to settings file.
  * This can be removed once the migration is over.

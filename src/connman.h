@@ -165,6 +165,7 @@ GKeyFile *__connman_storage_open_service(const char *ident);
 void __connman_storage_save_service(GKeyFile *keyfile, const char *ident);
 GKeyFile *__connman_storage_load_provider(const char *identifier);
 void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier);
+char **__connman_storage_get_providers(void);
 
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
