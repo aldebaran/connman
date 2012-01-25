@@ -484,10 +484,15 @@ int vpn_register(const char *name, struct vpn_driver *vpn_driver,
 	data->provider_driver.remove = vpn_remove;
 	data->provider_driver.save = vpn_save;
 
-	if (driver_hash == NULL) {
+	if (driver_hash == NULL)
 		driver_hash = g_hash_table_new_full(g_str_hash,
 							g_str_equal,
 							NULL, g_free);
+
+	if (driver_hash == NULL) {
+		connman_error("driver_hash not initialized for %s", name);
+		g_free(data);
+		return -ENOMEM;
 	}
 
 	g_hash_table_insert(driver_hash, (char *)name, data);
