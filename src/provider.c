@@ -76,19 +76,13 @@ void __connman_provider_append_properties(struct connman_provider *provider,
 						 &provider->type);
 }
 
-static int connman_provider_load(struct connman_provider *provider)
+static int provider_load_from_keyfile(struct connman_provider *provider,
+		GKeyFile *keyfile)
 {
 	gsize idx = 0;
-	GKeyFile *keyfile;
 	gchar **settings;
 	gchar *key, *value;
 	gsize length;
-
-	DBG("provider %p", provider);
-
-	keyfile = __connman_storage_load_provider(provider->identifier);
-	if (keyfile == NULL)
-		return -ENOENT;
 
 	settings = g_key_file_get_keys(keyfile, provider->identifier, &length,
 				NULL);
@@ -99,7 +93,6 @@ static int connman_provider_load(struct connman_provider *provider)
 
 	while (idx < length) {
 		key = settings[idx];
-		DBG("found key %s", key);
 		if (key != NULL) {
 			value = g_key_file_get_string(keyfile,
 						provider->identifier,
@@ -110,6 +103,21 @@ static int connman_provider_load(struct connman_provider *provider)
 		idx += 1;
 	}
 	g_strfreev(settings);
+
+	return 0;
+}
+
+static int connman_provider_load(struct connman_provider *provider)
+{
+	GKeyFile *keyfile;
+
+	DBG("provider %p", provider);
+
+	keyfile = __connman_storage_load_provider(provider->identifier);
+	if (keyfile == NULL)
+		return -ENOENT;
+
+	provider_load_from_keyfile(provider, keyfile);
 
 	g_key_file_free(keyfile);
 	return 0;
