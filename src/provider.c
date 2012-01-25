@@ -208,7 +208,6 @@ static void provider_remove(struct connman_provider *provider)
 
 static int provider_register(struct connman_provider *provider)
 {
-	connman_provider_load(provider);
 	return provider_probe(provider);
 }
 
@@ -636,7 +635,8 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		provider->name = g_strdup(name);
 		provider->type = g_strdup(type);
 
-		provider_register(provider);
+		if (provider_register(provider) == 0)
+			connman_provider_load(provider);
 	}
 
 	dbus_message_iter_init(msg, &iter);
