@@ -557,6 +557,20 @@ static void provider_dbus_ident(char *ident)
 	}
 }
 
+static int provider_create_service(struct connman_provider *provider)
+{
+	if (provider->vpn_service != NULL)
+		return -EALREADY;
+
+	provider->vpn_service =
+		__connman_service_create_from_provider(provider);
+
+	if (provider->vpn_service == NULL)
+		return -EOPNOTSUPP;
+
+	return 0;
+}
+
 int __connman_provider_create_and_connect(DBusMessage *msg)
 {
 	struct connman_provider *provider;
@@ -650,19 +664,19 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 	g_free(ident);
 
-	if (provider->vpn_service == NULL) {
-		provider->vpn_service =
-			__connman_service_create_from_provider(provider);
-		if (provider->vpn_service == NULL) {
-			err = -EOPNOTSUPP;
-			goto unref;
-		}
-
-		err = __connman_service_connect(provider->vpn_service);
-		if (err < 0 && err != -EINPROGRESS)
-			goto failed;
-	} else
+	err = provider_create_service(provider);
+	if (err == -EALREADY) {
 		DBG("provider already connected");
+	} else {
+		if (err == -EOPNOTSUPP) {
+			goto unref;
+		} else {
+			err = __connman_service_connect(provider->vpn_service);
+
+			if (err < 0 && err != -EINPROGRESS)
+				goto failed;
+		}
+	}
 
 	connman_provider_save(provider);
 	service_path = __connman_service_get_path(provider->vpn_service);
