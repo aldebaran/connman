@@ -786,8 +786,10 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 		return NULL;
 
 	technology = technology_find(type);
-	if (technology != NULL)
+	if (technology != NULL) {
+		__sync_fetch_and_add(&technology->refcount, 1);
 		return technology;
+	}
 
 	/* First check if we have a driver for this technology type */
 	for (list = driver_list; list; list = list->next) {
@@ -848,7 +850,7 @@ static void technology_put(struct connman_technology *technology)
 {
 	DBG("technology %p", technology);
 
-	if (__sync_fetch_and_sub(&technology->refcount, 1) != 1)
+	if (__sync_fetch_and_sub(&technology->refcount, 1) > 0)
 		return;
 
 	if (technology->driver) {
@@ -986,6 +988,8 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
+	technology_put(technology);
+
 	return 0;
 }
 
