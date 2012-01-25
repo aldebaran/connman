@@ -531,8 +531,6 @@ static struct connman_provider *connman_provider_get(const char *identifier)
 
 	g_hash_table_insert(provider_hash, provider->identifier, provider);
 
-	provider->name = g_strdup(identifier);
-
 	return provider;
 }
 
@@ -613,7 +611,6 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 		provider->host = g_strdup(host);
 		provider->domain = g_strdup(domain);
-		g_free(provider->name);
 		provider->name = g_strdup(name);
 		provider->type = g_strdup(type);
 
