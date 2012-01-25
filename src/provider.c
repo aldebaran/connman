@@ -439,8 +439,6 @@ int connman_provider_indicate_error(struct connman_provider *provider,
 					enum connman_provider_error error)
 {
 	enum connman_service_error service_error;
-	const char *path;
-	int ret;
 
 	switch (error) {
 	case CONNMAN_PROVIDER_ERROR_LOGIN_FAILED:
@@ -457,12 +455,8 @@ int connman_provider_indicate_error(struct connman_provider *provider,
 		break;
 	}
 
-	ret = __connman_service_indicate_error(provider->vpn_service,
+	return __connman_service_indicate_error(provider->vpn_service,
 							service_error);
-	path = __connman_service_get_path(provider->vpn_service);
-	__connman_provider_remove(path);
-
-	return ret;
 }
 
 static void unregister_provider(gpointer data)
