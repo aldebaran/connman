@@ -704,3 +704,27 @@ void __connman_dnsproxy_flush(void);
 int __connman_6to4_probe(struct connman_service *service);
 void __connman_6to4_remove(struct connman_ipconfig *ipconfig);
 int __connman_6to4_check(struct connman_ipconfig *ipconfig);
+
+struct connman_ippool;
+
+int __connman_ippool_init(void);
+void __connman_ippool_cleanup(void);
+
+#define __connman_ippool_ref(ipconfig) \
+	__connman_ippool_ref_debug(ipconfig, __FILE__, __LINE__, __func__)
+#define __connman_ippool_unref(ipconfig) \
+	__connman_ippool_unref_debug(ipconfig, __FILE__, __LINE__, __func__)
+
+struct connman_ippool *__connman_ippool_ref_debug(struct connman_ippool *pool,
+			const char *file, int line, const char *caller);
+void __connman_ippool_unref_debug(struct connman_ippool *pool,
+			const char *file, int line, const char *caller);
+
+struct connman_ippool *__connman_ippool_create(unsigned int start,
+					unsigned int range);
+
+const char *__connman_ippool_get_gateway(struct connman_ippool *pool);
+const char *__connman_ippool_get_broadcast(struct connman_ippool *pool);
+const char *__connman_ippool_get_subnet_mask(struct connman_ippool *pool);
+const char *__connman_ippool_get_start_ip(struct connman_ippool *pool);
+const char *__connman_ippool_get_end_ip(struct connman_ippool *pool);
