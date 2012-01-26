@@ -135,6 +135,61 @@ static void test_ippool_basic1(void)
 	g_slist_free(list);
 }
 
+static void collision_cb(struct connman_ippool *pool, void *user_data)
+{
+	int *flag = user_data;
+
+	LOG("collision detected");
+
+	g_assert(*flag == 0);
+	g_assert(pool);
+
+	*flag = 1;
+}
+
+static void test_ippool_collision0(void)
+{
+	struct connman_ippool *pool;
+	const char *gateway;
+	const char *broadcast;
+	const char *subnet_mask;
+	const char *start_ip;
+	const char *end_ip;
+	int flag;
+
+	/* Test the IP range collision */
+
+	flag = 0;
+	pool = __connman_ippool_create(23, 1, 100, collision_cb, &flag);
+	g_assert(pool);
+
+	gateway = __connman_ippool_get_gateway(pool);
+	broadcast = __connman_ippool_get_broadcast(pool);
+	subnet_mask = __connman_ippool_get_subnet_mask(pool);
+	start_ip = __connman_ippool_get_start_ip(pool);
+	end_ip = __connman_ippool_get_end_ip(pool);
+
+	g_assert(gateway);
+	g_assert(broadcast);
+	g_assert(subnet_mask);
+	g_assert(start_ip);
+	g_assert(end_ip);
+
+	LOG("\n\tIP range %s --> %s\n"
+		"\tgateway %s broadcast %s mask %s", start_ip, end_ip,
+		gateway, broadcast, subnet_mask);
+
+	__connman_ippool_newaddr(23, start_ip);
+
+	g_assert(flag == 0);
+
+	__connman_ippool_newaddr(42, end_ip);
+
+	g_assert(flag == 1);
+
+	__connman_ippool_unref(pool);
+}
+
 int main(int argc, char *argv[])
 {
 	int err;
@@ -145,6 +200,7 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/basic0", test_ippool_basic0);
 	g_test_add_func("/basic1", test_ippool_basic1);
+	g_test_add_func("/collision0", test_ippool_collision0);
 
 	err = g_test_run();
 
