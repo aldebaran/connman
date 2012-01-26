@@ -707,6 +707,9 @@ int __connman_6to4_check(struct connman_ipconfig *ipconfig);
 
 struct connman_ippool;
 
+typedef void (*ippool_collision_cb_t) (struct connman_ippool *pool,
+					void *user_data);
+
 int __connman_ippool_init(void);
 void __connman_ippool_cleanup(void);
 
@@ -720,11 +723,17 @@ struct connman_ippool *__connman_ippool_ref_debug(struct connman_ippool *pool,
 void __connman_ippool_unref_debug(struct connman_ippool *pool,
 			const char *file, int line, const char *caller);
 
-struct connman_ippool *__connman_ippool_create(unsigned int start,
-					unsigned int range);
+struct connman_ippool *__connman_ippool_create(int index,
+					unsigned int start,
+					unsigned int range,
+					ippool_collision_cb_t collision_cb,
+					void *user_data);
 
 const char *__connman_ippool_get_gateway(struct connman_ippool *pool);
 const char *__connman_ippool_get_broadcast(struct connman_ippool *pool);
 const char *__connman_ippool_get_subnet_mask(struct connman_ippool *pool);
 const char *__connman_ippool_get_start_ip(struct connman_ippool *pool);
 const char *__connman_ippool_get_end_ip(struct connman_ippool *pool);
+
+void __connman_ippool_newaddr(int index, const char *address);
+void __connman_ippool_deladdr(int index, const char *address);

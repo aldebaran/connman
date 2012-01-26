@@ -51,11 +51,11 @@ static void test_ippool_basic0(void)
 
 	/* Test the IP range */
 
-	pool = __connman_ippool_create(1, 500);
+	pool = __connman_ippool_create(23, 1, 500, NULL, NULL);
 	g_assert(pool == NULL);
 
 	for (i = 1; i < 254; i++) {
-		pool = __connman_ippool_create(1, i);
+		pool = __connman_ippool_create(23, 1, i, NULL, NULL);
 		g_assert(pool);
 
 		gateway = __connman_ippool_get_gateway(pool);
@@ -103,7 +103,7 @@ static void test_ippool_basic1(void)
 	 */
 
 	while (TRUE) {
-		pool = __connman_ippool_create(1, 100);
+		pool = __connman_ippool_create(23, 1, 100, NULL, NULL);
 		if (pool == NULL)
 			break;
 		i += 1;

@@ -329,6 +329,7 @@ static void disable_nat(const char *interface)
 
 void __connman_tethering_set_enabled(void)
 {
+	int index;
 	int err;
 	const char *gateway;
 	const char *broadcast;
@@ -346,7 +347,8 @@ void __connman_tethering_set_enabled(void)
 	if (err < 0)
 		return;
 
-	dhcp_ippool = __connman_ippool_create(1, 253);
+	index = connman_inet_ifindex(BRIDGE_NAME);
+	dhcp_ippool = __connman_ippool_create(index, 1, 253, NULL, NULL);
 	if (dhcp_ippool == NULL) {
 		connman_error("Fail to create IP pool");
 		return;
@@ -583,7 +585,7 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	pn->fd = fd;
 	pn->interface = iface;
 	pn->index = index;
-	pn->pool = __connman_ippool_create(1, 1);
+	pn->pool = __connman_ippool_create(pn->fd, 1, 1, NULL, NULL);
 	if (pn->pool == NULL) {
 		errno = -ENOMEM;
 		goto error;
