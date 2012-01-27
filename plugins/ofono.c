@@ -83,13 +83,27 @@ enum ofono_api {
  *   powered -> SubscriberIdentity or Online = True -> gprs, context ->
  *     attached -> netreg -> ready
  *
- * Enabling and disabling modems are steered through the rfkill
- * interface. That means when ConnMan toggles the rfkill bit oFono
- * will add or remove the modems.
+ * Depending on the modem type, this plugin will behave differently.
+ * For example CDMA CDMA modems don't have an IMSI. The following
+ * description is strictly about GSM modems.
  *
- * ConnMan will always power up (set Powered and Online) the
- * modems. No need to power them down because this will be done
- * through the rfkill inteface.
+ * When a new modem appears, the plugin always powers it up. This
+ * allows the plugin to create a connman_device. The core will call
+ * modem_enable() if the technology is enabled. modem_enable() will
+ * then set the modem online. If the technology is disabled then
+ * modem_disable() will just set the modem offline. The modem is
+ * always kept powered all the time.
+ *
+ * After setting the modem online the plugin waits for the
+ * ConnectionManager and ConnectionContext to appear. When the context
+ * signals that it is attached and the NetworkRegistration interface
+ * appears, a new Service will be created and registered at the core.
+ *
+ * When asked to connect to the network (network_connect()) the plugin
+ * will set the Active property on the context. If this operation is
+ * successful the modem is connected to the network. oFono will inform
+ * the plugin about IP configuration through the updating the context's
+ * properties.
  */
 
 static DBusConnection *connection;
