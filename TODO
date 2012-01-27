@@ -26,17 +26,6 @@ Core
    See http://www.mail-archive.com/connman@connman.net/msg01653.html
 
 
-- IP ranges allocation and check
-
-   Priority: High
-   Complexity: C2
-   Guillaume Zajac <guillaume.zajac@linux.intel.com>
-
-   For both tethering and private networks, but also to detect invalid
-   static IP configurations, we need to have a core IP range layer
-   that manages all currently used IP blocks.
-
-
 - Personal firewall
 
    Priority: Low
