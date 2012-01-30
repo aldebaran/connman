@@ -231,7 +231,7 @@ static int vc_write_config_data(struct connman_provider *provider, int fd)
 
 static int vc_save(struct connman_provider *provider, GKeyFile *keyfile)
 {
-	char *option;
+	const char *option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(vpnc_options); i++) {
