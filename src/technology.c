@@ -34,6 +34,12 @@ static DBusConnection *connection;
 
 static GSList *technology_list = NULL;
 
+/*
+ * List of devices with no technology associated with them either because of
+ * no compiled in support or the driver is not yet loaded.
+*/
+static GSList *techless_device_list = NULL;
+
 static connman_bool_t global_offlinemode;
 
 struct connman_rfkill {
@@ -86,10 +92,34 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
  */
 int connman_technology_driver_register(struct connman_technology_driver *driver)
 {
+	GSList *list;
+	struct connman_device *device;
+	enum connman_service_type type;
+
 	DBG("Registering %s driver", driver->name);
 
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
+
+	if (techless_device_list == NULL)
+		return 0;
+
+	/*
+	 * Check for technology less devices if this driver
+	 * can service any of them.
+	*/
+	for (list = techless_device_list; list; list = list->next) {
+		device = list->data;
+
+		type = __connman_device_get_service_type(device);
+		if (type != driver->type)
+			continue;
+
+		techless_device_list = g_slist_remove(techless_device_list,
+								device);
+
+		__connman_technology_add_device(device);
+	}
 
 	return 0;
 }
@@ -902,8 +932,16 @@ int __connman_technology_add_device(struct connman_device *device)
 	type = __connman_device_get_service_type(device);
 
 	technology = technology_get(type);
-	if (technology == NULL)
+	if (technology == NULL) {
+		/*
+		 * Since no driver can be found for this device at the moment we
+		 * add it to the techless device list.
+		*/
+		techless_device_list = g_slist_prepend(techless_device_list,
+								device);
+
 		return -ENXIO;
+	}
 
 	if (technology->enable_persistent && !global_offlinemode)
 		__connman_device_enable(device);
@@ -927,8 +965,11 @@ int __connman_technology_remove_device(struct connman_device *device)
 	type = __connman_device_get_service_type(device);
 
 	technology = technology_find(type);
-	if (technology == NULL)
+	if (technology == NULL) {
+		techless_device_list = g_slist_remove(techless_device_list,
+								device);
 		return -ENXIO;
+	}
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
