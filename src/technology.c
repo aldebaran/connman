@@ -39,6 +39,7 @@ static GSList *technology_list = NULL;
  * no compiled in support or the driver is not yet loaded.
 */
 static GSList *techless_device_list = NULL;
+static GHashTable *rfkill_list;
 
 static connman_bool_t global_offlinemode;
 
@@ -53,7 +54,6 @@ struct connman_technology {
 	int refcount;
 	enum connman_service_type type;
 	char *path;
-	GHashTable *rfkill_list;
 	GSList *device_list;
 	int enabled;
 	char *regdom;
@@ -82,6 +82,17 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
 	return driver2->priority - driver1->priority;
 }
 
+static void rfkill_check(gpointer key, gpointer value, gpointer user_data)
+{
+	struct connman_rfkill *rfkill = value;
+	enum connman_service_type type = GPOINTER_TO_INT(user_data);
+
+	/* Calling _technology_rfkill_add will update the tech. */
+	if (rfkill->type == type)
+	  __connman_technology_add_rfkill(rfkill->index, type,
+				rfkill->softblock, rfkill->hardblock);
+}
+
 /**
  * connman_technology_driver_register:
  * @driver: Technology driver definition
@@ -102,7 +113,7 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 							compare_priority);
 
 	if (techless_device_list == NULL)
-		return 0;
+		goto check_rfkill;
 
 	/*
 	 * Check for technology less devices if this driver
@@ -120,6 +131,11 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 
 		__connman_technology_add_device(device);
 	}
+
+check_rfkill:
+	/* Check for orphaned rfkill switches. */
+	g_hash_table_foreach(rfkill_list, rfkill_check,
+					GINT_TO_POINTER(driver->type));
 
 	return 0;
 }
@@ -799,8 +815,6 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->path = g_strdup_printf("%s/technology/%s",
 							CONNMAN_PATH, str);
 
-	technology->rfkill_list = g_hash_table_new_full(g_int_hash, g_int_equal,
-							NULL, free_rfkill);
 	technology->device_list = NULL;
 
 	technology->pending_reply = NULL;
@@ -850,7 +864,6 @@ static void technology_put(struct connman_technology *technology)
 						CONNMAN_TECHNOLOGY_INTERFACE);
 
 	g_slist_free(technology->device_list);
-	g_hash_table_destroy(technology->rfkill_list);
 
 	g_free(technology->path);
 	g_free(technology->regdom);
@@ -1105,9 +1118,9 @@ int __connman_technology_add_rfkill(unsigned int index,
 	DBG("index %u type %d soft %u hard %u", index, type,
 							softblock, hardblock);
 
-	technology = technology_get(type);
-	if (technology == NULL)
-		return -ENXIO;
+	rfkill = g_hash_table_lookup(rfkill_list, &index);
+	if (rfkill != NULL)
+		goto done;
 
 	rfkill = g_try_new0(struct connman_rfkill, 1);
 	if (rfkill == NULL)
@@ -1118,7 +1131,13 @@ int __connman_technology_add_rfkill(unsigned int index,
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	g_hash_table_replace(technology->rfkill_list, &rfkill->index, rfkill);
+	g_hash_table_insert(rfkill_list, &rfkill->index, rfkill);
+
+done:
+	technology = technology_get(type);
+	/* If there is no driver for this type, ignore it. */
+	if (technology == NULL)
+		return -ENXIO;
 
 	if (hardblock) {
 		DBG("%s is switched off.", get_name(type));
@@ -1153,11 +1172,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
-	technology = technology_find(type);
-	if (technology == NULL)
-		return -ENXIO;
-
-	rfkill = g_hash_table_lookup(technology->rfkill_list, &index);
+	rfkill = g_hash_table_lookup(rfkill_list, &index);
 	if (rfkill == NULL)
 		return -ENXIO;
 
@@ -1172,6 +1187,11 @@ int __connman_technology_update_rfkill(unsigned int index,
 		DBG("%s is switched off.", get_name(type));
 		return 0;
 	}
+
+	technology = technology_get(type);
+	/* If there is no driver for this type, ignore it. */
+	if (technology == NULL)
+		return -ENXIO;
 
 	if (!global_offlinemode) {
 		if (technology->enable_persistent && softblock)
@@ -1191,15 +1211,15 @@ int __connman_technology_remove_rfkill(unsigned int index,
 
 	DBG("index %u", index);
 
-	technology = technology_find(type);
-	if (technology == NULL)
-		return -ENXIO;
-
-	rfkill = g_hash_table_lookup(technology->rfkill_list, &index);
+	rfkill = g_hash_table_lookup(rfkill_list, &index);
 	if (rfkill == NULL)
 		return -ENXIO;
 
-	g_hash_table_remove(technology->rfkill_list, &index);
+	g_hash_table_remove(rfkill_list, &index);
+
+	technology = technology_find(type);
+	if (technology == NULL)
+		return -ENXIO;
 
 	technology_put(technology);
 
@@ -1212,6 +1232,9 @@ int __connman_technology_init(void)
 
 	connection = connman_dbus_get_connection();
 
+	rfkill_list = g_hash_table_new_full(g_int_hash, g_int_equal,
+							NULL, free_rfkill);
+
 	global_offlinemode = connman_technology_load_offlinemode();
 
 	return 0;
@@ -1220,6 +1243,8 @@ int __connman_technology_init(void)
 void __connman_technology_cleanup(void)
 {
 	DBG("");
+
+	g_hash_table_destroy(rfkill_list);
 
 	dbus_connection_unref(connection);
 }
