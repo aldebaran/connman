@@ -1698,7 +1698,13 @@ void __connman_session_set_mode(connman_bool_t enable)
 {
 	DBG("enable %d", enable);
 
-	sessionmode = enable;
+	if (sessionmode != enable) {
+		sessionmode = enable;
+
+		connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
+				CONNMAN_MANAGER_INTERFACE, "SessionMode",
+				DBUS_TYPE_BOOLEAN, &sessionmode);
+	}
 
 	if (sessionmode == TRUE)
 		__connman_service_disconnect_all();
