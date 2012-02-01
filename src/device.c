@@ -1159,6 +1159,8 @@ struct connman_device *__connman_device_find_device(
 
 int __connman_device_request_scan(enum connman_service_type type)
 {
+	connman_bool_t success = FALSE;
+	int last_err = -ENOSYS;
 	GSList *list;
 	int err;
 
@@ -1188,14 +1190,18 @@ int __connman_device_request_scan(enum connman_service_type type)
 		}
 
 		err = device_scan(device);
-		if (err < 0 && err != -EINPROGRESS) {
-			DBG("err %d", err);
-			/* XXX maybe only a continue? */
-			return err;
+		if (err == 0 || err == -EALREADY || err == -EINPROGRESS) {
+			success = TRUE;
+		} else {
+			last_err = err;
+			DBG("device %p err %d", device, err);
 		}
 	}
 
-	return 0;
+	if (success == TRUE)
+		return 0;
+
+	return last_err;
 }
 
 int __connman_device_request_hidden_scan(struct connman_device *device,
