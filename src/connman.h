@@ -744,3 +744,9 @@ const char *__connman_ippool_get_end_ip(struct connman_ippool *pool);
 
 void __connman_ippool_newaddr(int index, const char *address);
 void __connman_ippool_deladdr(int index, const char *address);
+
+int __connman_bridge_create(const char *name);
+int __connman_bridge_remove(const char *name);
+int __connman_bridge_enable(const char *name, const char *broadcast,
+				const char *gateway);
+int __connman_bridge_disable(const char *name);

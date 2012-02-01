@@ -167,106 +167,6 @@ static void dhcp_server_stop(GDHCPServer *server)
 	g_dhcp_server_unref(server);
 }
 
-static int set_forward_delay(const char *name, unsigned int delay)
-{
-	FILE *f;
-	char *forward_delay_path;
-
-	forward_delay_path =
-		g_strdup_printf("/sys/class/net/%s/bridge/forward_delay", name);
-
-	if (forward_delay_path == NULL)
-		return -ENOMEM;
-
-	f = fopen(forward_delay_path, "r+");
-
-	g_free(forward_delay_path);
-
-	if (f == NULL)
-		return -errno;
-
-	fprintf(f, "%d", delay);
-
-	fclose(f);
-
-	return 0;
-}
-
-static int create_bridge(const char *name)
-{
-	int sk, err;
-
-	DBG("name %s", name);
-
-	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -EOPNOTSUPP;
-
-	if (ioctl(sk, SIOCBRADDBR, name) == -1) {
-		err = -errno;
-		if (err != -EEXIST)
-			return -EOPNOTSUPP;
-	}
-
-	err = set_forward_delay(name, 0);
-
-	if (err < 0)
-		ioctl(sk, SIOCBRDELBR, name);
-
-	close(sk);
-
-	return err;
-}
-
-static int remove_bridge(const char *name)
-{
-	int sk, err;
-
-	DBG("name %s", name);
-
-	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -EOPNOTSUPP;
-
-	err = ioctl(sk, SIOCBRDELBR, name);
-
-	close(sk);
-
-	if (err < 0)
-		return -EOPNOTSUPP;
-
-	return 0;
-}
-
-static int enable_bridge(const char *name, const char *broadcast,
-				const char *gateway)
-{
-	int err, index;
-
-	index = connman_inet_ifindex(name);
-	if (index < 0)
-		return index;
-
-	err = __connman_inet_modify_address(RTM_NEWADDR,
-			NLM_F_REPLACE | NLM_F_ACK, index, AF_INET,
-					gateway, NULL, 24, broadcast);
-	if (err < 0)
-		return err;
-
-	return connman_inet_ifup(index);
-}
-
-static int disable_bridge(const char *name)
-{
-	int index;
-
-	index = connman_inet_ifindex(name);
-	if (index < 0)
-		return index;
-
-	return connman_inet_ifdown(index);
-}
-
 static int enable_ip_forward(connman_bool_t enable)
 {
 
@@ -349,7 +249,7 @@ void __connman_tethering_set_enabled(void)
 	if (__sync_fetch_and_add(&tethering_enabled, 1) != 0)
 		return;
 
-	err = create_bridge(BRIDGE_NAME);
+	err = __connman_bridge_create(BRIDGE_NAME);
 	if (err < 0)
 		return;
 
@@ -367,9 +267,9 @@ void __connman_tethering_set_enabled(void)
 	start_ip = __connman_ippool_get_start_ip(dhcp_ippool);
 	end_ip = __connman_ippool_get_end_ip(dhcp_ippool);
 
-	err = enable_bridge(BRIDGE_NAME, gateway, broadcast);
+	err = __connman_bridge_enable(BRIDGE_NAME, gateway, broadcast);
 	if (err < 0 && err != -EALREADY) {
-		remove_bridge(BRIDGE_NAME);
+		__connman_bridge_remove(BRIDGE_NAME);
 		return;
 	}
 
@@ -385,8 +285,8 @@ void __connman_tethering_set_enabled(void)
 						start_ip, end_ip,
 						24 * 3600, dns);
 	if (tethering_dhcp_server == NULL) {
-		disable_bridge(BRIDGE_NAME);
-		remove_bridge(BRIDGE_NAME);
+		__connman_bridge_disable(BRIDGE_NAME);
+		__connman_bridge_remove(BRIDGE_NAME);
 		return;
 	}
 
@@ -410,11 +310,11 @@ void __connman_tethering_set_disabled(void)
 
 	tethering_dhcp_server = NULL;
 
-	disable_bridge(BRIDGE_NAME);
+	__connman_bridge_disable(BRIDGE_NAME);
 
 	__connman_ippool_unref(dhcp_ippool);
 
-	remove_bridge(BRIDGE_NAME);
+	__connman_bridge_remove(BRIDGE_NAME);
 
 	DBG("tethering stopped");
 }
@@ -661,8 +561,8 @@ void __connman_tethering_cleanup(void)
 	if (tethering_enabled == 0) {
 		if (tethering_dhcp_server)
 			dhcp_server_stop(tethering_dhcp_server);
-		disable_bridge(BRIDGE_NAME);
-		remove_bridge(BRIDGE_NAME);
+		__connman_bridge_disable(BRIDGE_NAME);
+		__connman_bridge_remove(BRIDGE_NAME);
 	}
 
 	if (connection == NULL)

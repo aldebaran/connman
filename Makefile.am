@@ -80,7 +80,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/technology.c src/counter.c src/ntp.c \
 			src/session.c src/tethering.c src/wpad.c src/wispr.c \
 			src/stats.c src/iptables.c src/dnsproxy.c src/6to4.c \
-			src/ippool.c
+			src/ippool.c src/bridge.c
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 				@CAPNG_LIBS@ @XTABLES_LIBS@ -lresolv -ldl
