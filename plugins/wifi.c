@@ -1111,7 +1111,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	struct connman_network *network;
 	GSupplicantInterface *interface;
 	struct wifi_data *wifi;
-	const char *name, *identifier, *security, *group;
+	const char *name, *identifier, *security, *group, *mode;
 	const unsigned char *ssid;
 	unsigned int ssid_len;
 	connman_bool_t wps;
@@ -1125,6 +1125,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	security = g_supplicant_network_get_security(supplicant_network);
 	group = g_supplicant_network_get_identifier(supplicant_network);
 	wps = g_supplicant_network_get_wps(supplicant_network);
+	mode = g_supplicant_network_get_mode(supplicant_network);
 
 	if (wifi == NULL)
 		return;
@@ -1163,6 +1164,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 			g_supplicant_network_get_frequency(supplicant_network));
 
 	connman_network_set_available(network, TRUE);
+	connman_network_set_string(network, "WiFi.Mode", mode);
 
 	if (ssid != NULL)
 		connman_network_set_group(network, group);
