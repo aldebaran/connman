@@ -197,14 +197,9 @@ static void technology_default(enum connman_service_type type)
 void __connman_notifier_default_changed(struct connman_service *service)
 {
 	enum connman_service_type type = connman_service_get_type(service);
-	char *interface;
 	GSList *list;
 
 	technology_default(type);
-
-	interface = connman_service_get_interface(service);
-	__connman_tethering_update_interface(interface);
-	g_free(interface);
 
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;

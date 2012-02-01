@@ -319,8 +319,12 @@ void __connman_tethering_set_disabled(void)
 	DBG("tethering stopped");
 }
 
-void __connman_tethering_update_interface(const char *interface)
+static void update_tethering_interface(struct connman_service *service)
 {
+	char *interface;
+
+	interface = connman_service_get_interface(service);
+
 	DBG("interface %s", interface);
 
 	g_free(default_interface);
@@ -329,16 +333,19 @@ void __connman_tethering_update_interface(const char *interface)
 		disable_nat(interface);
 		default_interface = NULL;
 
-		return;
+		goto out;
 	}
 
 	default_interface = g_strdup(interface);
 
 	__sync_synchronize();
 	if (tethering_enabled == 0)
-		return;
+		goto out;
 
 	enable_nat(interface);
+
+out:
+	g_free(interface);
 }
 
 static void setup_tun_interface(unsigned int flags, unsigned change,
@@ -537,8 +544,15 @@ int __connman_private_network_release(const char *path)
 	return 0;
 }
 
+static struct connman_notifier tethering_notifier = {
+	.name			= "tethering",
+	.default_changed	= update_tethering_interface,
+};
+
 int __connman_tethering_init(void)
 {
+	int err;
+
 	DBG("");
 
 	tethering_enabled = 0;
@@ -546,6 +560,12 @@ int __connman_tethering_init(void)
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EFAULT;
+
+	err = connman_notifier_register(&tethering_notifier);
+	if (err < 0) {
+		dbus_connection_unref(connection);
+		return err;
+	}
 
 	pn_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, remove_private_network);
@@ -564,6 +584,8 @@ void __connman_tethering_cleanup(void)
 		__connman_bridge_disable(BRIDGE_NAME);
 		__connman_bridge_remove(BRIDGE_NAME);
 	}
+
+	connman_notifier_unregister(&tethering_notifier);
 
 	if (connection == NULL)
 		return;
