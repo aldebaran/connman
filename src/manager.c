@@ -176,40 +176,6 @@ static DBusMessage *remove_provider(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *request_scan(DBusConnection *conn,
-					DBusMessage *msg, void *data)
-{
-	enum connman_service_type type;
-	const char *str;
-	int err;
-
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &str,
-							DBUS_TYPE_INVALID);
-
-	if (g_strcmp0(str, "") == 0)
-		type = CONNMAN_SERVICE_TYPE_UNKNOWN;
-	else if (g_strcmp0(str, "wifi") == 0)
-		type = CONNMAN_SERVICE_TYPE_WIFI;
-	else if (g_strcmp0(str, "wimax") == 0)
-		type = CONNMAN_SERVICE_TYPE_WIMAX;
-	else
-		return __connman_error_invalid_arguments(msg);
-
-	err = __connman_device_request_scan(type);
-	if (err < 0) {
-		if (err == -EINPROGRESS) {
-			connman_error("Invalid return code from scan");
-			err = -EINVAL;
-		}
-
-		return __connman_error_failed(msg, -err);
-	}
-
-	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
 static DBusConnection *connection = NULL;
 
 static void session_mode_notify(void)
@@ -452,7 +418,6 @@ static GDBusMethodTable manager_methods[] = {
 						G_DBUS_METHOD_FLAG_ASYNC },
 	{ "GetTechnologies",   "",      "a(oa{sv})", get_technologies   },
 	{ "RemoveProvider",    "o",     "",      remove_provider    },
-	{ "RequestScan",       "s",     "",      request_scan       },
 	{ "GetServices",       "",      "a(oa{sv})", get_services   },
 	{ "ConnectProvider",   "a{sv}", "o",     connect_provider,
 						G_DBUS_METHOD_FLAG_ASYNC },
