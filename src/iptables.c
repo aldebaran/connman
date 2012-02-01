@@ -902,6 +902,28 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	return 0;
 }
 
+static int iptables_compare_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
+				char *target_name, struct xtables_target *xt_t,
+				struct xtables_match *xt_m,
+				struct xtables_rule_match *xt_rm)
+{
+	struct connman_iptables_entry *entry;
+	GList *found;
+
+	found = find_existing_rule(table, ip, chain_name, target_name,
+							xt_t, xt_m, xt_rm);
+	if (found == NULL)
+		return -EINVAL;
+
+	entry = found->data;
+	if (entry == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
+
 static int iptables_change_policy(struct connman_iptables *table,
 					char *chain_name, char *policy)
 {
@@ -1277,6 +1299,7 @@ err:
 
 static struct option iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
+	{.name = "compare",       .has_arg = 1, .val = 'C'},
 	{.name = "delete",        .has_arg = 1, .val = 'D'},
 	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
 	{.name = "insert",        .has_arg = 1, .val = 'I'},
@@ -1453,7 +1476,7 @@ static int iptables_command(int argc, char *argv[])
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	char *flush_chain, *delete_chain, *policy;
 	int c, ret, in_len, out_len;
-	gboolean dump, invert, insert, delete;
+	gboolean dump, invert, insert, delete, compare;
 	struct in_addr src, dst;
 
 	if (argc == 0)
@@ -1463,6 +1486,7 @@ static int iptables_command(int argc, char *argv[])
 	invert = FALSE;
 	insert = FALSE;
 	delete = FALSE;
+	compare = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
 	flush_chain = delete_chain = policy = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
@@ -1477,19 +1501,29 @@ static int iptables_command(int argc, char *argv[])
 
 	optind = 0;
 
-	while ((c = getopt_long(argc, argv, "-A:F:I:L::N:P:X:d:j:i:m:o:s:t:",
+	while ((c = getopt_long(argc, argv,
+					"-A:C:D:F:I:L::N:P:X:d:j:i:m:o:s:t:",
 					iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
-			/* It is either -A, -D or -I at once */
+			/* It is either -A, -C, -D or -I at once */
 			if (chain)
 				goto out;
 
 			chain = optarg;
 			break;
 
+		case 'C':
+			/* It is either -A, -C, -D or -I at once */
+			if (chain)
+				goto out;
+
+			chain = optarg;
+			compare = TRUE;
+			break;
+
 		case 'D':
-			/* It is either -A, -D or -I at once */
+			/* It is either -A, -C, -D or -I at once */
 			if (chain)
 				goto out;
 
@@ -1502,7 +1536,7 @@ static int iptables_command(int argc, char *argv[])
 			break;
 
 		case 'I':
-			/* It is either -A, -D or -I at once */
+			/* It is either -A, -C, -D or -I at once */
 			if (chain)
 				goto out;
 
@@ -1754,6 +1788,12 @@ static int iptables_command(int argc, char *argv[])
 
 		if (xt_t == NULL)
 			goto out;
+
+		if (compare == TRUE) {
+			ret = iptables_compare_rule(table, &ip, chain,
+					target_name, xt_t, xt_m, xt_rm);
+			goto out;
+		}
 
 		if (delete == TRUE) {
 			DBG("Deleting %s to %s (match %s)\n",
