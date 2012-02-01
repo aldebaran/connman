@@ -301,8 +301,8 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 
 	if (result < 0)
 		connman_device_reset_scanning(device);
-	else
-		connman_device_set_scanning(device, FALSE);
+
+	connman_device_set_scanning(device, FALSE);
 	connman_device_unref(device);
 }
 
