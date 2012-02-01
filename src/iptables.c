@@ -762,7 +762,7 @@ static gboolean is_same_match(struct xt_entry_match *xt_e_m1,
 	return TRUE;
 }
 
-static int iptables_delete_rule(struct connman_iptables *table,
+static GList *find_existing_rule(struct connman_iptables *table,
 				struct ipt_ip *ip, char *chain_name,
 				char *target_name, struct xtables_target *xt_t,
 				struct xtables_match *xt_m,
@@ -773,24 +773,22 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	struct xt_entry_match *xt_e_m = NULL;
 	struct connman_iptables_entry *entry;
 	struct ipt_entry *entry_test;
-	int builtin, removed;
-
-	removed = 0;
+	int builtin;
 
 	chain_head = find_chain_head(table, chain_name);
 	if (chain_head == NULL)
-		return -EINVAL;
+		return NULL;
 
 	chain_tail = find_chain_tail(table, chain_name);
 	if (chain_tail == NULL)
-		return -EINVAL;
+		return NULL;
 
 	if (!xt_t && !xt_m)
-		return -EINVAL;
+		return NULL;
 
 	entry_test = new_rule(ip, target_name, xt_t, xt_rm);
 	if (entry_test == NULL)
-		return -EINVAL;
+		return NULL;
 
 	if (xt_t != NULL)
 		xt_e_t = ipt_get_target(entry_test);
@@ -805,7 +803,7 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	else
 		list = chain_head->next;
 
-	for (entry = NULL; list != chain_tail->prev; list = list->next) {
+	for (; list != chain_tail->prev; list = list->next) {
 		struct connman_iptables_entry *tmp;
 		struct ipt_entry *tmp_e;
 
@@ -833,14 +831,43 @@ static int iptables_delete_rule(struct connman_iptables *table,
 				continue;
 		}
 
-		entry = tmp;
 		break;
 	}
 
-	if (entry == NULL) {
-		g_free(entry_test);
+	g_free(entry_test);
+
+	if (list != chain_tail->prev)
+		return list;
+
+	return NULL;
+}
+
+static int iptables_delete_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
+				char *target_name, struct xtables_target *xt_t,
+				struct xtables_match *xt_m,
+				struct xtables_rule_match *xt_rm)
+{
+	struct connman_iptables_entry *entry;
+	GList *chain_tail, *list;
+	int builtin, removed;
+
+	removed = 0;
+
+	chain_tail = find_chain_tail(table, chain_name);
+	if (chain_tail == NULL)
 		return -EINVAL;
-	}
+
+	list = find_existing_rule(table, ip, chain_name, target_name,
+							xt_t, xt_m, xt_rm);
+	if (list == NULL)
+		return -EINVAL;
+
+	entry = list->data;
+	if (entry == NULL)
+		return -EINVAL;
+
+	builtin = entry->builtin;
 
 	/* We have deleted a rule,
 	 * all references should be bumped accordingly */
