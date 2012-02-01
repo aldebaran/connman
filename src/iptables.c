@@ -1466,6 +1466,42 @@ done:
 	return xt_m;
 }
 
+static int parse_ip_and_mask(const char *str, struct in_addr *ip, struct in_addr *mask)
+{
+	char **tokens;
+	uint32_t prefixlength;
+	uint32_t tmp;
+	int err;
+
+	tokens = g_strsplit(str, "/", 2);
+	if (tokens == NULL)
+		return -1;
+
+	if (!inet_pton(AF_INET, tokens[0], ip)) {
+		err = -1;
+		goto out;
+	}
+
+	if (tokens[1] != NULL) {
+		prefixlength = strtol(tokens[1], NULL, 10);
+		if (prefixlength > 31) {
+			err = -1;
+			goto out;
+		}
+
+		tmp = ~(0xffffffff >> prefixlength);
+	} else {
+		tmp = 0xffffffff;
+	}
+
+	mask->s_addr = htonl(tmp);
+	err = 0;
+out:
+	g_strfreev(tokens);
+
+	return err;
+}
+
 static int iptables_command(int argc, char *argv[])
 {
 	struct connman_iptables *table;
@@ -1477,7 +1513,6 @@ static int iptables_command(int argc, char *argv[])
 	char *flush_chain, *delete_chain, *policy;
 	int c, ret, in_len, out_len;
 	gboolean dump, invert, insert, delete, compare;
-	struct in_addr src, dst;
 
 	if (argc == 0)
 		return -EINVAL;
@@ -1566,11 +1601,8 @@ static int iptables_command(int argc, char *argv[])
 			break;
 
 		case 'd':
-			if (!inet_pton(AF_INET, optarg, &dst))
+			if (!parse_ip_and_mask(optarg, &ip.dst, &ip.dmsk))
 				break;
-
-			ip.dst = dst;
-			inet_pton(AF_INET, "255.255.255.255", &ip.dmsk);
 
 			if (invert)
 				ip.invflags |= IPT_INV_DSTIP;
@@ -1622,11 +1654,8 @@ static int iptables_command(int argc, char *argv[])
 			break;
 
 		case 's':
-			if (!inet_pton(AF_INET, optarg, &src))
+			if (!parse_ip_and_mask(optarg, &ip.src, &ip.smsk))
 				break;
-
-			ip.src = src;
-			inet_pton(AF_INET, "255.255.255.255", &ip.smsk);
 
 			if (invert)
 				ip.invflags |= IPT_INV_SRCIP;
