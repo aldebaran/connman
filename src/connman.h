@@ -393,6 +393,8 @@ int __connman_technology_update_rfkill(unsigned int index,
 int __connman_technology_remove_rfkill(unsigned int index,
 					enum connman_service_type type);
 
+void __connman_technology_scan_started(struct connman_device *device);
+void __connman_technology_scan_stopped(struct connman_device *device);
 void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
 void __connman_technology_remove_interface(enum connman_service_type type,

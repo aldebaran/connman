@@ -70,6 +70,8 @@ struct connman_technology {
 
 	DBusMessage *pending_reply;
 	guint pending_timeout;
+
+	GSList *scan_pending;
 };
 
 static GSList *driver_list = NULL;
@@ -744,17 +746,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable technology_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
-	{ "SetProperty",   "sv", "",      set_property   },
-	{ },
-};
-
-static GDBusSignalTable technology_signals[] = {
-	{ "PropertyChanged", "sv" },
-	{ },
-};
-
 static struct connman_technology *technology_find(enum connman_service_type type)
 {
 	GSList *list;
@@ -770,6 +761,99 @@ static struct connman_technology *technology_find(enum connman_service_type type
 
 	return NULL;
 }
+
+static void reply_scan_pending(struct connman_technology *technology, int err)
+{
+	DBusMessage *reply;
+
+	DBG("technology %p err %d", technology, err);
+
+	while (technology->scan_pending != NULL) {
+		DBusMessage *msg = technology->scan_pending->data;
+
+		DBG("reply to %s", dbus_message_get_sender(msg));
+
+		if (err == 0)
+			reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+		else
+			reply = __connman_error_failed(msg, -err);
+		g_dbus_send_message(connection, reply);
+		dbus_message_unref(msg);
+
+		technology->scan_pending =
+			g_slist_delete_link(technology->scan_pending,
+					technology->scan_pending);
+	}
+}
+
+void __connman_technology_scan_started(struct connman_device *device)
+{
+	DBG("device %p", device);
+}
+
+void __connman_technology_scan_stopped(struct connman_device *device)
+{
+	int count = 0;
+	struct connman_technology *technology;
+	enum connman_service_type type;
+	GSList *list;
+
+	type = __connman_device_get_service_type(device);
+	technology = technology_find(type);
+
+	DBG("technology %p device %p", technology, device);
+
+	if (technology == NULL)
+		return;
+
+	for (list = technology->device_list; list != NULL; list = list->next) {
+		struct connman_device *other_device = list->data;
+
+		if (device == other_device)
+			continue;
+
+		if (__connman_device_get_service_type(other_device) != type)
+			continue;
+
+		if (__connman_device_scanning(other_device))
+			count += 1;
+	}
+
+	if (count == 0)
+		reply_scan_pending(technology, 0);
+}
+
+static DBusMessage *scan(DBusConnection *conn, DBusMessage *msg, void *data)
+{
+	struct connman_technology *technology = data;
+	int err;
+
+	DBG ("technology %p request from %s", technology,
+			dbus_message_get_sender(msg));
+
+	dbus_message_ref(msg);
+	technology->scan_pending =
+		g_slist_prepend(technology->scan_pending, msg);
+
+	err = __connman_device_request_scan(technology->type);
+	if (err < 0)
+		reply_scan_pending(technology, err);
+
+	return NULL;
+}
+
+static GDBusMethodTable technology_methods[] = {
+	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "SetProperty",   "sv", "",      set_property   },
+	{ "Scan",          "",    "",     scan,
+						G_DBUS_METHOD_FLAG_ASYNC },
+	{ },
+};
+
+static GDBusSignalTable technology_signals[] = {
+	{ "PropertyChanged", "sv" },
+	{ },
+};
 
 static struct connman_technology *technology_get(enum connman_service_type type)
 {
@@ -852,6 +936,8 @@ static void technology_put(struct connman_technology *technology)
 
 	if (__sync_fetch_and_sub(&technology->refcount, 1) > 0)
 		return;
+
+	reply_scan_pending(technology, -EINTR);
 
 	if (technology->driver) {
 		technology->driver->remove(technology);
@@ -985,6 +1071,9 @@ int __connman_technology_remove_device(struct connman_device *device)
 								device);
 		return -ENXIO;
 	}
+
+	if (__connman_device_scanning(device))
+		__connman_technology_scan_stopped(device);
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
