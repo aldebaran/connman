@@ -837,6 +837,8 @@ int connman_device_set_scanning(struct connman_device *device,
 	device->scanning = scanning;
 
 	if (scanning == TRUE) {
+		__connman_technology_scan_started(device);
+
 		reset_scan_trigger(device);
 
 		g_hash_table_foreach(device->networks,
@@ -846,6 +848,8 @@ int connman_device_set_scanning(struct connman_device *device,
 	}
 
 	__connman_device_cleanup_networks(device);
+
+	__connman_technology_scan_stopped(device);
 
 	__connman_service_auto_connect();
 
