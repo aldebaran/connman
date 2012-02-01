@@ -749,3 +749,10 @@ int __connman_bridge_remove(const char *name);
 int __connman_bridge_enable(const char *name, const char *broadcast,
 				const char *gateway);
 int __connman_bridge_disable(const char *name);
+
+int __connman_nat_init(void);
+void __connman_nat_cleanup(void);
+
+int __connman_nat_enable(const char *name, const char *address,
+				unsigned char prefixlen);
+void __connman_nat_disable(const char *name);

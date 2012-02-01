@@ -56,7 +56,6 @@
 #define PRIVATE_NETWORK_PRIMARY_DNS BRIDGE_DNS
 #define PRIVATE_NETWORK_SECONDARY_DNS "8.8.4.4"
 
-static char *default_interface = NULL;
 static volatile int tethering_enabled;
 static GDHCPServer *tethering_dhcp_server = NULL;
 static struct connman_ippool *dhcp_ippool = NULL;
@@ -167,66 +166,6 @@ static void dhcp_server_stop(GDHCPServer *server)
 	g_dhcp_server_unref(server);
 }
 
-static int enable_ip_forward(connman_bool_t enable)
-{
-
-	FILE *f;
-
-	f = fopen("/proc/sys/net/ipv4/ip_forward", "r+");
-	if (f == NULL)
-		return -errno;
-
-	if (enable == TRUE)
-		fprintf(f, "1");
-	else
-		fprintf(f, "0");
-
-	fclose(f);
-
-	return 0;
-}
-
-static int enable_nat(const char *interface)
-{
-	int err;
-
-	if (interface == NULL)
-		return 0;
-
-	/* Enable IPv4 forwarding */
-	err = enable_ip_forward(TRUE);
-	if (err < 0)
-		return err;
-
-	/* POSTROUTING flush */
-	err = __connman_iptables_command("-t nat -F POSTROUTING");
-	if (err < 0)
-		return err;
-
-	/* Enable masquerading */
-	err = __connman_iptables_command("-t nat -A POSTROUTING "
-					"-o %s -j MASQUERADE", interface);
-	if (err < 0)
-		return err;
-
-	return __connman_iptables_commit("nat");
-}
-
-static void disable_nat(const char *interface)
-{
-	int err;
-
-	/* Disable IPv4 forwarding */
-	enable_ip_forward(FALSE);
-
-	/* POSTROUTING flush */
-	err = __connman_iptables_command("-t nat -F POSTROUTING");
-	if (err < 0)
-		return;
-
-	__connman_iptables_commit("nat");
-}
-
 static void tethering_restart(struct connman_ippool *pool, void *user_data)
 {
 	__connman_tethering_set_disabled();
@@ -243,6 +182,7 @@ void __connman_tethering_set_enabled(void)
 	const char *start_ip;
 	const char *end_ip;
 	const char *dns;
+	unsigned char prefixlen;
 
 	DBG("enabled %d", tethering_enabled + 1);
 
@@ -290,7 +230,9 @@ void __connman_tethering_set_enabled(void)
 		return;
 	}
 
-	enable_nat(default_interface);
+	prefixlen =
+		__connman_ipconfig_netmask_prefix_len(subnet_mask);
+	__connman_nat_enable(BRIDGE_NAME, start_ip, prefixlen);
 
 	DBG("tethering started");
 }
@@ -304,7 +246,7 @@ void __connman_tethering_set_disabled(void)
 	if (__sync_fetch_and_sub(&tethering_enabled, 1) != 1)
 		return;
 
-	disable_nat(default_interface);
+	__connman_nat_disable(BRIDGE_NAME);
 
 	dhcp_server_stop(tethering_dhcp_server);
 
@@ -317,35 +259,6 @@ void __connman_tethering_set_disabled(void)
 	__connman_bridge_remove(BRIDGE_NAME);
 
 	DBG("tethering stopped");
-}
-
-static void update_tethering_interface(struct connman_service *service)
-{
-	char *interface;
-
-	interface = connman_service_get_interface(service);
-
-	DBG("interface %s", interface);
-
-	g_free(default_interface);
-
-	if (interface == NULL) {
-		disable_nat(interface);
-		default_interface = NULL;
-
-		goto out;
-	}
-
-	default_interface = g_strdup(interface);
-
-	__sync_synchronize();
-	if (tethering_enabled == 0)
-		goto out;
-
-	enable_nat(interface);
-
-out:
-	g_free(interface);
 }
 
 static void setup_tun_interface(unsigned int flags, unsigned change,
@@ -379,9 +292,9 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 
 	connman_inet_ifup(pn->index);
 
-	err = enable_nat(default_interface);
+	err = __connman_nat_enable(BRIDGE_NAME, server_ip, prefixlen);
 	if (err < 0) {
-		connman_error("failed to enable NAT on %s", default_interface);
+		connman_error("failed to enable NAT");
 		goto error;
 	}
 
@@ -420,7 +333,7 @@ static void remove_private_network(gpointer user_data)
 {
 	struct connman_private_network *pn = user_data;
 
-	disable_nat(default_interface);
+	__connman_nat_disable(BRIDGE_NAME);
 	connman_rtnl_remove_watch(pn->iface_watch);
 	__connman_ippool_unref(pn->pool);
 
@@ -544,15 +457,8 @@ int __connman_private_network_release(const char *path)
 	return 0;
 }
 
-static struct connman_notifier tethering_notifier = {
-	.name			= "tethering",
-	.default_changed	= update_tethering_interface,
-};
-
 int __connman_tethering_init(void)
 {
-	int err;
-
 	DBG("");
 
 	tethering_enabled = 0;
@@ -560,12 +466,6 @@ int __connman_tethering_init(void)
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EFAULT;
-
-	err = connman_notifier_register(&tethering_notifier);
-	if (err < 0) {
-		dbus_connection_unref(connection);
-		return err;
-	}
 
 	pn_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, remove_private_network);
@@ -583,9 +483,8 @@ void __connman_tethering_cleanup(void)
 			dhcp_server_stop(tethering_dhcp_server);
 		__connman_bridge_disable(BRIDGE_NAME);
 		__connman_bridge_remove(BRIDGE_NAME);
+		__connman_nat_disable(BRIDGE_NAME);
 	}
-
-	connman_notifier_unregister(&tethering_notifier);
 
 	if (connection == NULL)
 		return;
