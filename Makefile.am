@@ -145,7 +145,8 @@ noinst_PROGRAMS += tools/wispr tools/supplicant-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
-			tools/alg-test unit/test-session unit/test-ippool
+			tools/alg-test unit/test-session unit/test-ippool \
+			unit/test-nat
 
 tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
 tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
@@ -193,6 +194,11 @@ unit_test_ippool_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		 src/ippool.c unit/test-ippool.c
 unit_test_ippool_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 unit_objects += $(unit_test_ippool_OBJECTS)
+
+unit_test_nat_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
+		src/iptables.c  src/nat.c unit/test-nat.c
+unit_test_nat_LDADD = @GLIB_LIBS@ @DBUS_LIBS@  @XTABLES_LIBS@ -ldl
+unit_objects += $(unit_nat_ippool_OBJECTS)
 endif
 
 test_scripts = test/get-state test/list-services \
