@@ -896,6 +896,28 @@ static int connman_iptables_delete_rule(struct connman_iptables *table,
 	return 0;
 }
 
+static int connman_iptables_compare_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, char *chain_name,
+				char *target_name, struct xtables_target *xt_t,
+				struct xtables_match *xt_m,
+				struct xtables_rule_match *xt_rm)
+{
+	struct connman_iptables_entry *entry;
+	GList *found;
+
+	found = find_existing_rule(table, ip, chain_name, target_name,
+							xt_t, xt_m, xt_rm);
+	if (found == NULL)
+		return -EINVAL;
+
+	entry = found->data;
+	if (entry == NULL)
+		return -EINVAL;
+
+	return 0;
+}
+
+
 static int connman_iptables_change_policy(struct connman_iptables *table,
 						char *chain_name, char *policy)
 {
@@ -1266,6 +1288,7 @@ err:
 
 static struct option connman_iptables_opts[] = {
 	{.name = "append",        .has_arg = 1, .val = 'A'},
+	{.name = "compare",       .has_arg = 1, .val = 'C'},
 	{.name = "delete",        .has_arg = 1, .val = 'D'},
 	{.name = "flush-chain",   .has_arg = 1, .val = 'F'},
 	{.name = "insert",        .has_arg = 1, .val = 'I'},
@@ -1443,7 +1466,7 @@ int main(int argc, char *argv[])
 	char *table_name, *chain, *new_chain, *match_name, *target_name;
 	char *delete_chain, *flush_chain, *policy;
 	int c, in_len, out_len;
-	gboolean dump, invert, delete, insert, delete_rule;
+	gboolean dump, invert, delete, insert, delete_rule, compare_rule;
 	struct in_addr src, dst;
 
 	xtables_init_all(&connman_iptables_globals, NFPROTO_IPV4);
@@ -1453,6 +1476,7 @@ int main(int argc, char *argv[])
 	delete = FALSE;
 	insert = FALSE;
 	delete_rule = FALSE;
+	compare_rule = FALSE;
 	table_name = chain = new_chain = match_name = target_name = NULL;
 	delete_chain = flush_chain = policy = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
@@ -1464,19 +1488,29 @@ int main(int argc, char *argv[])
 	/* extension's options will generate false-positives errors */
 	opterr = 0;
 
-	while ((c = getopt_long(argc, argv, "-A:D:F:I:L::N:P:X:d:i:j:m:o:s:t:",
+	while ((c = getopt_long(argc, argv,
+				"-A:C:D:F:I:L::N:P:X:d:i:j:m:o:s:t:",
 				connman_iptables_globals.opts, NULL)) != -1) {
 		switch (c) {
 		case 'A':
-			/* It is either -A, -D or -I at once */
+			/* It is either -A, -C, -D or -I at once */
 			if (chain)
 				goto out;
 
 			chain = optarg;
 			break;
 
+		case 'C':
+			/* It is either -A, -C, -D or -I at once */
+			if (chain)
+				goto out;
+
+			chain = optarg;
+			compare_rule = TRUE;
+			break;
+
 		case 'D':
-			/* It is either -A, -D or -I at once */
+			/* It is either -A, -C, -D or -I at once */
 			if (chain)
 				goto out;
 
@@ -1489,7 +1523,7 @@ int main(int argc, char *argv[])
 			break;
 
 		case 'I':
-			/* It is either -A, -D or -I at once */
+			/* It is either -A, -C, -D or -I at once */
 			if (chain)
 				goto out;
 
@@ -1737,6 +1771,20 @@ int main(int argc, char *argv[])
 			connman_iptables_change_policy(table, chain, policy);
 
 			goto commit;
+		}
+
+		if (compare_rule == TRUE) {
+			int ret;
+
+			ret = connman_iptables_compare_rule(table, &ip,
+				chain, target_name, xt_t, xt_m, xt_rm);
+
+			if (ret == 0)
+				printf("Rule exists.\n");
+			else
+				printf("Rule does not exist.\n");
+
+			goto out;
 		}
 
 		if (delete_rule == TRUE) {
