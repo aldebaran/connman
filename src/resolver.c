@@ -316,7 +316,7 @@ int connman_resolver_append(const char *interface, const char *domain,
 
 	DBG("interface %s domain %s server %s", interface, domain, server);
 
-	if (server == NULL)
+	if (server == NULL && domain == NULL)
 		return -EINVAL;
 
 	for (list = entry_list; list; list = list->next) {
