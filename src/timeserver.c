@@ -35,6 +35,7 @@ static GSList *driver_list = NULL;
 static GHashTable *server_hash = NULL;
 
 static char **system_timeservers = NULL;
+static char **timeservers = NULL;
 
 static GResolv *resolv = NULL;
 static int resolv_id = 0;
@@ -289,6 +290,14 @@ int __connman_timeserver_sync(struct connman_service *service)
 
 	system_timeservers = load_timeservers();
 
+	timeservers = connman_service_get_timeservers(service);
+
+	if (timeservers != NULL && timeservers[0] != NULL) {
+		DBG("Using service tiemservers");
+		__connman_ntp_start(timeservers[0]);
+		return 0;
+	}
+
 	if (system_timeservers == NULL || system_timeservers[count] == NULL) {
 		DBG("No timeservers set.");
 		return 0;
@@ -314,6 +323,8 @@ void __connman_timeserver_stop()
 		g_strfreev(system_timeservers);
 		system_timeservers = NULL;
 	}
+
+	timeservers = NULL;
 
 	count = 0;
 

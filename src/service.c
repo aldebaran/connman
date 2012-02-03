@@ -2154,6 +2154,17 @@ char **connman_service_get_nameservers(struct connman_service *service)
 	return NULL;
 }
 
+char **connman_service_get_timeservers(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	if (service->timeservers != NULL)
+		return service->timeservers;
+
+	return NULL;
+}
+
 void connman_service_set_proxy_method(struct connman_service *service,
 					enum connman_service_proxy_method method)
 {
