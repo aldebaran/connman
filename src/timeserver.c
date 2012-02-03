@@ -31,9 +31,6 @@
 
 #include "connman.h"
 
-static GSList *driver_list = NULL;
-static GHashTable *server_hash = NULL;
-
 static char **system_timeservers = NULL;
 static char **timeservers = NULL;
 
@@ -86,45 +83,6 @@ static char **load_timeservers()
 	g_key_file_free(keyfile);
 
 	return servers;
-}
-
-static gint compare_priority(gconstpointer a, gconstpointer b)
-{
-	const struct connman_timeserver_driver *driver1 = a;
-	const struct connman_timeserver_driver *driver2 = b;
-
-	return driver2->priority - driver1->priority;
-}
-
-/**
- * connman_timeserver_driver_register:
- * @driver: timeserver driver definition
- *
- * Register a new timeserver driver
- *
- * Returns: %0 on success
- */
-int connman_timeserver_driver_register(struct connman_timeserver_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_insert_sorted(driver_list, driver,
-							compare_priority);
-
-	return 0;
-}
-
-/**
- * connman_timeserver_driver_unregister:
- * @driver: timeserver driver definition
- *
- * Remove a previously registered timeserver driver
- */
-void connman_timeserver_driver_unregister(struct connman_timeserver_driver *driver)
-{
-	DBG("driver %p name %s", driver, driver->name);
-
-	driver_list = g_slist_remove(driver_list, driver);
 }
 
 /* Restart NTP procedure */
@@ -379,15 +337,10 @@ int __connman_timeserver_init(void)
 {
 	DBG("");
 
-	server_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, NULL);
-
 	return 0;
 }
 
 void __connman_timeserver_cleanup(void)
 {
 	DBG("");
-
-	g_hash_table_destroy(server_hash);
 }

@@ -26,29 +26,8 @@
 extern "C" {
 #endif
 
-#define CONNMAN_TIMESERVER_PRIORITY_LOW      -100
-#define CONNMAN_TIMESERVER_PRIORITY_DEFAULT     0
-#define CONNMAN_TIMESERVER_PRIORITY_HIGH      100
-
-/**
- * SECTION:timeserver
- * @title: timeserver premitives
- * @short_description: Functions for handling time servers (including NTP)
- */
-
 int __connman_timeserver_system_append(const char *server);
 int __connman_timeserver_system_remove(const char *server);
-
-struct connman_timeserver_driver {
-	const char *name;
-	int priority;
-	int (*append) (const char *server);
-	int (*remove) (const char *server);
-	void (*sync) (void);
-};
-
-int connman_timeserver_driver_register(struct connman_timeserver_driver *driver);
-void connman_timeserver_driver_unregister(struct connman_timeserver_driver *driver);
 
 #ifdef __cplusplus
 }
