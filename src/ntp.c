@@ -75,6 +75,7 @@ static int transmit_fd = 0;
 
 static char *timeserver = NULL;
 static gint poll_id = 0;
+static gint timeout_id = 0;
 
 static void send_packet(int fd, const char *server)
 {
@@ -107,6 +108,18 @@ static void send_packet(int fd, const char *server)
 		connman_error("Broken time request for server %s", server);
 		return;
 	}
+}
+
+static gboolean next_server(gpointer user_data)
+{
+	if (timeserver != NULL) {
+		g_free(timeserver);
+		timeserver = NULL;
+	}
+
+	__connman_timeserver_sync_next();
+
+	return FALSE;
 }
 
 static gboolean next_poll(gpointer user_data)
@@ -168,7 +181,11 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 
 	DBG("offset=%f delay=%f", offset, delay);
 
-	/* Timeserver has responded.
+	/* Remove the timeout, as timeserver has responded */
+	if (timeout_id > 0)
+		g_source_remove(timeout_id);
+
+	/*
 	 * Now poll the server every transmit_delay seconds
 	 * for time correction.
 	 */
@@ -341,6 +358,13 @@ int __connman_ntp_start(char *server)
 
 	start_ntp(timeserver);
 
+	/*
+	 * Add a fallback timeout , preferably longer, 16 sec here,
+	 * to fallback on the next server.
+	 */
+
+	timeout_id = g_timeout_add_seconds(16, next_server, NULL);
+
 	return 0;
 }
 
@@ -350,6 +374,9 @@ void __connman_ntp_stop()
 
 	if (poll_id > 0)
 		g_source_remove(poll_id);
+
+	if (timeout_id > 0)
+		g_source_remove(timeout_id);
 
 	if (channel_watch > 0) {
 		g_source_remove(channel_watch);

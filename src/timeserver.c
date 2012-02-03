@@ -230,6 +230,8 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
 
 	DBG("status %d", status);
 
+	__sync_fetch_and_add(&count, 1);
+
 	if (status == G_RESOLV_RESULT_STATUS_SUCCESS) {
 		if (results != NULL) {
 			for (i = 0; results[i]; i++)
@@ -240,7 +242,7 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
 			return;
 		}
 	}
-	__sync_fetch_and_add(&count, 1);
+
 	__connman_timeserver_sync_next();
 }
 
