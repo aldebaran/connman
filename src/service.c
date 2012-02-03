@@ -3407,6 +3407,7 @@ static void service_free(gpointer user_data)
 		service->ipconfig_ipv6 = NULL;
 	}
 
+	g_strfreev(service->timeservers);
 	g_strfreev(service->nameservers);
 	g_strfreev(service->nameservers_config);
 	g_strfreev(service->nameservers_auto);
