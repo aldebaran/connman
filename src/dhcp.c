@@ -40,7 +40,7 @@ struct connman_dhcp {
 	dhcp_cb callback;
 
 	char **nameservers;
-	char *timeserver;
+	char **timeservers;
 	char *pac;
 
 	GDHCPClient *dhcp_client;
@@ -51,11 +51,11 @@ static GHashTable *network_table;
 static void dhcp_free(struct connman_dhcp *dhcp)
 {
 	g_strfreev(dhcp->nameservers);
-	g_free(dhcp->timeserver);
+	g_strfreev(dhcp->timeservers);
 	g_free(dhcp->pac);
 
 	dhcp->nameservers = NULL;
-	dhcp->timeserver = NULL;
+	dhcp->timeservers = NULL;
 	dhcp->pac = NULL;
 }
 
@@ -94,7 +94,13 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 
 	__connman_service_set_domainname(service, NULL);
 	__connman_service_set_pac(service, NULL);
-	__connman_service_timeserver_remove(service, dhcp->timeserver);
+
+	if (dhcp->timeservers != NULL) {
+		for (i = 0; dhcp->timeservers[i] != NULL; i++) {
+			__connman_service_timeserver_remove(service,
+							dhcp->timeservers[i]);
+		}
+	}
 
 	if (dhcp->nameservers != NULL) {
 		for (i = 0; dhcp->nameservers[i] != NULL; i++) {
@@ -181,7 +187,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	char *address, *netmask = NULL, *gateway = NULL;
 	const char *c_address, *c_gateway;
 	char *domainname = NULL, *hostname = NULL;
-	char **nameservers, *timeserver = NULL, *pac = NULL;
+	char **nameservers, **timeservers, *pac = NULL;
 	int ns_entries;
 	struct connman_ipconfig *ipconfig;
 	struct connman_service *service;
@@ -256,8 +262,14 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		hostname = g_strdup(option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
-	if (option != NULL)
-		timeserver = g_strdup(option->data);
+	for (ns_entries = 0, list = option; list; list = list->next)
+		ns_entries += 1;
+	timeservers = g_try_new0(char *, ns_entries + 1);
+	if (timeservers != NULL) {
+		for (i = 0, list = option; list; list = list->next, i++)
+			timeservers[i] = g_strdup(list->data);
+		timeservers[ns_entries] = NULL;
+	}
 
 	option = g_dhcp_client_get_option(dhcp_client, 252);
 	if (option != NULL)
@@ -290,18 +302,23 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		g_strfreev(nameservers);
 	}
 
-	if (g_strcmp0(timeserver, dhcp->timeserver) != 0) {
-		if (dhcp->timeserver != NULL) {
-			__connman_service_timeserver_remove(service,
-							dhcp->timeserver);
-			g_free(dhcp->timeserver);
+	if (compare_string_arrays(timeservers, dhcp->timeservers) == FALSE) {
+		if (dhcp->timeservers != NULL) {
+			for (i = 0; dhcp->timeservers[i] != NULL; i++) {
+				__connman_service_timeserver_remove(service,
+							dhcp->timeservers[i]);
+			}
+			g_strfreev(dhcp->timeservers);
 		}
 
-		dhcp->timeserver = timeserver;
+		dhcp->timeservers = timeservers;
 
-		if (dhcp->timeserver != NULL)
+		for (i = 0; dhcp->timeservers[i] != NULL; i++) {
 			__connman_service_timeserver_append(service,
-							dhcp->timeserver);
+							dhcp->timeservers[i]);
+		}
+	} else {
+		g_strfreev(timeservers);
 	}
 
 	if (g_strcmp0(pac, dhcp->pac) != 0) {
