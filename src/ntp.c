@@ -329,7 +329,7 @@ send:
 
 int __connman_ntp_start(char *server)
 {
-	DBG("");
+	DBG("%s", server);
 
 	if (server == NULL)
 		return -EINVAL;

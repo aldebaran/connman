@@ -38,7 +38,6 @@ extern "C" {
 
 int connman_timeserver_append(const char *server);
 int connman_timeserver_remove(const char *server);
-void connman_timeserver_sync(void);
 
 int __connman_timeserver_system_append(const char *server);
 int __connman_timeserver_system_remove(const char *server);

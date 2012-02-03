@@ -321,6 +321,10 @@ void __connman_timeserver_cleanup(void);
 
 char **__connman_timeserver_system_get();
 
+int __connman_timeserver_sync(struct connman_service *service);
+void __connman_timeserver_sync_next();
+void __connman_timeserver_stop();
+
 typedef void (* dhcp_cb) (struct connman_network *network,
 				connman_bool_t success);
 int __connman_dhcp_start(struct connman_network *network, dhcp_cb callback);
