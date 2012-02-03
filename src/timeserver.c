@@ -198,6 +198,10 @@ int connman_timeserver_remove(const char *server)
 /* Restart NTP procedure */
 static void connman_timeserver_restart()
 {
+	/* If service timeservers are in use, dont restart ntp */
+	if (timeservers != NULL)
+		return;
+
 	if (resolv == NULL) {
 		DBG("No online service.");
 		return;
