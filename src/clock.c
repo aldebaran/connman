@@ -45,7 +45,6 @@ static enum time_updates time_updates_config = TIME_UPDATES_AUTO;
 static enum timezone_updates timezone_updates_config = TIMEZONE_UPDATES_AUTO;
 
 static char *timezone_config = NULL;
-static char **timeservers_config = NULL;
 
 static const char *time_updates2string(enum time_updates value)
 {
@@ -98,14 +97,17 @@ static enum timezone_updates string2timezone_updates(const char *value)
 static void append_timeservers(DBusMessageIter *iter, void *user_data)
 {
 	int i;
+	char **timeservers = __connman_timeserver_system_get();
 
-	if (timeservers_config == NULL)
+	if (timeservers == NULL)
 		return;
 
-	for (i = 0; timeservers_config[i] != NULL; i++) {
+	for (i = 0; timeservers[i] != NULL; i++) {
 		dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &timeservers_config[i]);
+				DBUS_TYPE_STRING, &timeservers[i]);
 	}
+
+	g_strfreev(timeservers);
 }
 
 static DBusMessage *get_properties(DBusConnection *conn,
@@ -251,37 +253,22 @@ static DBusMessage *set_property(DBusConnection *conn,
 				DBUS_TYPE_STRING, &strval);
 	} else if (g_str_equal(name, "Timeservers") == TRUE) {
 		DBusMessageIter entry;
-		GString *str;
 
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
-		str = g_string_new(NULL);
-		if (str == NULL)
-			return __connman_error_invalid_arguments(msg);
-
 		dbus_message_iter_recurse(&value, &entry);
+
+		if (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_INVALID)
+			__connman_timeserver_system_append(NULL);
 
 		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
 			const char *val;
 
 			dbus_message_iter_get_basic(&entry, &val);
+			__connman_timeserver_system_append(val);
 			dbus_message_iter_next(&entry);
-
-			if (str->len > 0)
-				g_string_append_printf(str, " %s", val);
-			else
-				g_string_append(str, val);
 		}
-
-		g_strfreev(timeservers_config);
-
-		if (str->len > 0)
-			timeservers_config = g_strsplit_set(str->str, " ", 0);
-		else
-			timeservers_config = NULL;
-
-		g_string_free(str, TRUE);
 
 		connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "Timeservers",
@@ -355,5 +342,4 @@ void __connman_clock_cleanup(void)
 	__connman_timezone_cleanup();
 
 	g_free(timezone_config);
-	g_strfreev(timeservers_config);
 }

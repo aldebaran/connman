@@ -32,6 +32,49 @@
 static GSList *driver_list = NULL;
 static GHashTable *server_hash = NULL;
 
+static void save_timeservers(char **servers)
+{
+	GKeyFile *keyfile;
+	int cnt;
+
+	keyfile = __connman_storage_load_global();
+	if (keyfile == NULL)
+		keyfile = g_key_file_new();
+
+	for (cnt = 0; servers != NULL && servers[cnt] != NULL; cnt++);
+
+	g_key_file_set_string_list(keyfile, "global", "Timeservers",
+			   (const gchar **)servers, cnt);
+
+	__connman_storage_save_global(keyfile);
+
+	g_key_file_free(keyfile);
+
+	return;
+}
+
+static char **load_timeservers()
+{
+	GKeyFile *keyfile;
+	GError *error = NULL;
+	char **servers = NULL;
+
+	keyfile = __connman_storage_load_global();
+	if (keyfile == NULL)
+		return NULL;
+
+	servers = g_key_file_get_string_list(keyfile, "global",
+						"Timeservers", NULL, &error);
+	if (error) {
+		DBG("Error loading timeservers: %s", error->message);
+		g_error_free(error);
+	}
+
+	g_key_file_free(keyfile);
+
+	return servers;
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_timeserver_driver *driver1 = a;
@@ -153,6 +196,110 @@ void connman_timeserver_sync(void)
 
 		driver->sync();
 	}
+}
+
+int __connman_timeserver_system_append(const char *server)
+{
+	int len;
+	char **servers = NULL;
+
+	if (server == NULL) {
+		save_timeservers(servers);
+		return 0;
+	}
+
+	DBG("server %s", server);
+
+	servers = load_timeservers();
+
+	if (servers != NULL) {
+		int i;
+
+		for (i = 0; servers[i] != NULL; i++)
+			if (g_strcmp0(servers[i], server) == 0) {
+				g_strfreev(servers);
+				return -EEXIST;
+			}
+
+		len = g_strv_length(servers);
+		servers = g_try_renew(char *, servers, len + 2);
+	} else {
+		len = 0;
+		servers = g_try_new0(char *, len + 2);
+	}
+
+	if (servers == NULL)
+		return -ENOMEM;
+
+	servers[len] = g_strdup(server);
+	servers[len + 1] = NULL;
+
+	save_timeservers(servers);
+
+	g_strfreev(servers);
+
+	return 0;
+}
+
+int __connman_timeserver_system_remove(const char *server)
+{
+	char **servers;
+	char **temp;
+	int len, i, j;
+
+	if (server == NULL)
+		return -EINVAL;
+
+	DBG("server %s", server);
+
+	servers = load_timeservers();
+
+	if (servers == NULL)
+		return 0;
+
+	len = g_strv_length(servers);
+	if (len == 1) {
+		if (g_strcmp0(servers[0], server) != 0) {
+			g_strfreev(servers);
+			return 0;
+		}
+
+		g_strfreev(servers);
+		servers = NULL;
+		save_timeservers(servers);
+		return 0;
+	}
+
+	temp = g_try_new0(char *, len - 1);
+	if (temp == NULL) {
+			g_strfreev(servers);
+			return -ENOMEM;
+	}
+
+	for (i = 0, j = 0; i < len; i++) {
+		if (g_strcmp0(servers[i], server) != 0) {
+			temp[j] = g_strdup(servers[i]);
+			j++;
+		}
+	}
+	temp[len - 1] = NULL;
+
+	g_strfreev(servers);
+	servers = g_strdupv(temp);
+	g_strfreev(temp);
+
+	save_timeservers(servers);
+	g_strfreev(servers);
+
+	return 0;
+}
+
+char **__connman_timeserver_system_get()
+{
+	char **servers;
+
+	servers = load_timeservers();
+	return servers;
 }
 
 int __connman_timeserver_init(void)
