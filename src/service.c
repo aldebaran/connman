@@ -2252,33 +2252,6 @@ const char *connman_service_get_proxy_autoconfig(struct connman_service *service
 	return NULL;
 }
 
-static void update_timeservers(struct connman_service *service)
-{
-	int i;
-
-	if (service->timeservers == NULL)
-		return;
-
-	switch (service->state) {
-	case CONNMAN_SERVICE_STATE_UNKNOWN:
-	case CONNMAN_SERVICE_STATE_IDLE:
-	case CONNMAN_SERVICE_STATE_ASSOCIATION:
-	case CONNMAN_SERVICE_STATE_CONFIGURATION:
-		return;
-	case CONNMAN_SERVICE_STATE_FAILURE:
-	case CONNMAN_SERVICE_STATE_DISCONNECT:
-		for (i = 0; service->timeservers[i] != NULL; i++)
-			connman_timeserver_remove(service->timeservers[i]);
-		return;
-	case CONNMAN_SERVICE_STATE_READY:
-	case CONNMAN_SERVICE_STATE_ONLINE:
-		break;
-	}
-
-	for (i = 0; service->timeservers[i] != NULL; i++)
-		connman_timeserver_append(service->timeservers[i]);
-}
-
 int __connman_service_timeserver_append(struct connman_service *service,
 						const char *timeserver)
 {
@@ -2309,8 +2282,6 @@ int __connman_service_timeserver_append(struct connman_service *service,
 
 	service->timeservers[len] = g_strdup(timeserver);
 	service->timeservers[len + 1] = NULL;
-
-	update_timeservers(service);
 
 	return 0;
 }
@@ -2364,8 +2335,6 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 
 	g_strfreev(service->timeservers);
 	service->timeservers = servers;
-
-	update_timeservers(service);
 
 	return 0;
 }

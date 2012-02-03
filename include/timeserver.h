@@ -36,9 +36,6 @@ extern "C" {
  * @short_description: Functions for handling time servers (including NTP)
  */
 
-int connman_timeserver_append(const char *server);
-int connman_timeserver_remove(const char *server);
-
 int __connman_timeserver_system_append(const char *server);
 int __connman_timeserver_system_remove(const char *server);
 
