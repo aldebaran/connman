@@ -135,6 +135,7 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 
 	stop_vpn(provider);
 	connman_provider_set_data(provider, NULL);
+	connman_provider_unref(provider);
 	connman_rtnl_remove_watch(data->watch);
 
 vpn_exit:
@@ -226,6 +227,7 @@ static DBusMessage *vpn_notify(struct connman_task *task,
 	case VPN_STATE_CONNECT:
 	case VPN_STATE_READY:
 		index = connman_provider_get_index(provider);
+		connman_provider_ref(provider);
 		data->watch = connman_rtnl_add_newlink_watch(index,
 						     vpn_newlink, provider);
 		connman_inet_ifup(index);
@@ -421,10 +423,12 @@ static int vpn_disconnect(struct connman_provider *provider)
 	if (vpn_driver_data->vpn_driver->disconnect)
 		vpn_driver_data->vpn_driver->disconnect();
 
-	if (data->watch != 0)
+	if (data->watch != 0) {
+		connman_provider_unref(provider);
 		connman_rtnl_remove_watch(data->watch);
+		data->watch = 0;
+	}
 
-	data->watch = 0;
 	data->state = VPN_STATE_DISCONNECT;
 	connman_task_stop(data->task);
 
@@ -439,9 +443,12 @@ static int vpn_remove(struct connman_provider *provider)
 	if (data == NULL)
 		return 0;
 
-	if (data->watch != 0)
+	if (data->watch != 0) {
+		connman_provider_unref(provider);
 		connman_rtnl_remove_watch(data->watch);
-	data->watch = 0;
+		data->watch = 0;
+	}
+
 	connman_task_stop(data->task);
 
 	g_usleep(G_USEC_PER_SEC);
