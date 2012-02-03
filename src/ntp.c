@@ -37,8 +37,6 @@
 
 #include <glib.h>
 
-#include <gweb/gresolv.h>
-
 #include "connman.h"
 
 struct ntp_short {
@@ -71,10 +69,12 @@ struct ntp_msg {
 
 #define LOGTOD(a)  ((a) < 0 ? 1. / (1L << -(a)) : 1L << (int)(a))
 
+static guint channel_watch = 0;
 static struct timeval transmit_timeval;
-static char *transmit_server;
-static int transmit_fd;
-static guint transmit_delay = 16;
+static int transmit_fd = 0;
+
+static char *timeserver = NULL;
+static gint poll_id = 0;
 
 static void send_packet(int fd, const char *server)
 {
@@ -109,11 +109,12 @@ static void send_packet(int fd, const char *server)
 	}
 }
 
-static gboolean next_request(gpointer user_data)
+static gboolean next_poll(gpointer user_data)
 {
-	DBG("server %s", transmit_server);
+	if (timeserver == NULL || transmit_fd == 0)
+		return FALSE;
 
-	send_packet(transmit_fd, transmit_server);
+	send_packet(transmit_fd, timeserver);
 
 	return FALSE;
 }
@@ -123,6 +124,7 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 	struct ntp_msg *msg = base;
 	double org, rec, xmt, dst;
 	double delay, offset;
+	static guint transmit_delay;
 
 	if (len < sizeof(*msg)) {
 		connman_error("Invalid response from time server");
@@ -166,6 +168,17 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 
 	DBG("offset=%f delay=%f", offset, delay);
 
+	/* Timeserver has responded.
+	 * Now poll the server every transmit_delay seconds
+	 * for time correction.
+	 */
+	if (poll_id > 0)
+		g_source_remove(poll_id);
+
+	DBG("Timeserver %s, next sync in %d seconds", timeserver, transmit_delay);
+
+	poll_id = g_timeout_add_seconds(transmit_delay, next_poll, NULL);
+
 	if (offset < STEPTIME_MIN_OFFSET && offset > -STEPTIME_MIN_OFFSET) {
 		struct timeval adj;
 
@@ -199,8 +212,6 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 		DBG("%lu seconds, %lu msecs", cur.tv_sec, cur.tv_usec);
 	}
 }
-
-static guint channel_watch = 0;
 
 static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 							gpointer user_data)
@@ -250,24 +261,25 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 
 	decode_msg(iov.iov_base, iov.iov_len, tv);
 
-	g_timeout_add_seconds(transmit_delay, next_request, NULL);
-
 	return TRUE;
 }
 
-static void start_ntp(const char *server)
+static void start_ntp(char *server)
 {
 	GIOChannel *channel;
 	struct sockaddr_in addr;
-	int fd, tos = IPTOS_LOWDELAY, timestamp = 1;
+	int tos = IPTOS_LOWDELAY, timestamp = 1;
+
+	if (server == NULL)
+		return;
 
 	DBG("server %s", server);
 
 	if (channel_watch > 0)
-		return;
+		goto send;
 
-	fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (fd < 0) {
+	transmit_fd = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (transmit_fd < 0) {
 		connman_error("Failed to open time server socket");
 		return;
 	}
@@ -275,28 +287,28 @@ static void start_ntp(const char *server)
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
 
-	if (bind(fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
+	if (bind(transmit_fd, (struct sockaddr *) &addr, sizeof(addr)) < 0) {
 		connman_error("Failed to bind time server socket");
-		close(fd);
+		close(transmit_fd);
 		return;
 	}
 
-	if (setsockopt(fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
+	if (setsockopt(transmit_fd, IPPROTO_IP, IP_TOS, &tos, sizeof(tos)) < 0) {
 		connman_error("Failed to set type of service option");
-		close(fd);
+		close(transmit_fd);
 		return;
 	}
 
-	if (setsockopt(fd, SOL_SOCKET, SO_TIMESTAMP, &timestamp,
+	if (setsockopt(transmit_fd, SOL_SOCKET, SO_TIMESTAMP, &timestamp,
 						sizeof(timestamp)) < 0) {
 		connman_error("Failed to enable timestamp support");
-		close(fd);
+		close(transmit_fd);
 		return;
 	}
 
-	channel = g_io_channel_unix_new(fd);
+	channel = g_io_channel_unix_new(transmit_fd);
 	if (channel == NULL) {
-		close(fd);
+		close(transmit_fd);
 		return;
 	}
 
@@ -311,72 +323,42 @@ static void start_ntp(const char *server)
 
 	g_io_channel_unref(channel);
 
-	transmit_fd = fd;
-	transmit_server = g_strdup(server);
-
-	send_packet(fd, server);
+send:
+	send_packet(transmit_fd, server);
 }
 
-static void resolv_debug(const char *str, void *data)
+int __connman_ntp_start(char *server)
 {
-	connman_info("%s: %s\n", (const char *) data, str);
-}
+	DBG("");
 
-static GResolv *resolv = NULL;
-static guint resolv_lookup = 0;
+	if (server == NULL)
+		return -EINVAL;
 
-static void resolv_result(GResolvResultStatus status,
-					char **results, gpointer user_data)
-{
-	int i;
+	if (timeserver != NULL)
+		g_free(timeserver);
 
-	resolv_lookup = 0;
+	timeserver = g_strdup(server);
 
-	if (results != NULL) {
-		for (i = 0; results[i]; i++)
-			DBG("result: %s", results[i]);
-
-		if (results[0] != NULL)
-			start_ntp(results[0]);
-	}
-}
-
-int __connman_ntp_start(const char *interface, const char *resolver,
-							const char *server)
-{
-	DBG("interface %s server %s", interface, server);
-
-	resolv = g_resolv_new(0);
-	if (resolv == NULL)
-		return -ENOMEM;
-
-	if (getenv("CONNMAN_RESOLV_DEBUG"))
-		g_resolv_set_debug(resolv, resolv_debug, "RESOLV");
-
-	if (resolver != NULL)
-		g_resolv_add_nameserver(resolv, resolver, 53, 0);
-
-	g_resolv_lookup_hostname(resolv, server, resolv_result, NULL);
+	start_ntp(timeserver);
 
 	return 0;
 }
 
-void __connman_ntp_stop(const char *interface)
+void __connman_ntp_stop()
 {
-	DBG("interface %s", interface);
+	DBG("");
 
-	if (resolv == NULL)
-		return;
-
-	if (resolv_lookup > 0) {
-		g_resolv_cancel_lookup(resolv, resolv_lookup);
-		resolv_lookup = 0;
-	}
+	if (poll_id > 0)
+		g_source_remove(poll_id);
 
 	if (channel_watch > 0) {
 		g_source_remove(channel_watch);
 		channel_watch = 0;
+		transmit_fd = 0;
 	}
 
-	g_resolv_unref(resolv);
+	if (timeserver != NULL) {
+		g_free(timeserver);
+		timeserver = NULL;
+	}
 }
