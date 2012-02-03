@@ -31,12 +31,12 @@
 
 static int meego_init(void)
 {
-	return connman_timeserver_append(MEEGO_NTP_SERVER);
+	return __connman_timeserver_system_append(MEEGO_NTP_SERVER);
 }
 
 static void meego_exit(void)
 {
-	connman_timeserver_remove(MEEGO_NTP_SERVER);
+	__connman_timeserver_system_remove(MEEGO_NTP_SERVER);
 }
 
 CONNMAN_PLUGIN_DEFINE(meego, "MeeGo features plugin", VERSION,
