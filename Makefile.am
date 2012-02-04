@@ -240,7 +240,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-meego \
 				--enable-client \
 				--enable-hh2serial-gps \
-				--enable-ntpd \
 				--enable-openconnect \
 				--enable-tools
 
