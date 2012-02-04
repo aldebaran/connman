@@ -84,8 +84,8 @@ enum ofono_api {
  *     attached -> netreg -> ready
  *
  * Depending on the modem type, this plugin will behave differently.
- * For example CDMA CDMA modems don't have an IMSI. The following
- * description is strictly about GSM modems.
+ *
+ * GSM working flow:
  *
  * When a new modem appears, the plugin always powers it up. This
  * allows the plugin to create a connman_device. The core will call
@@ -104,6 +104,27 @@ enum ofono_api {
  * successful the modem is connected to the network. oFono will inform
  * the plugin about IP configuration through the updating the context's
  * properties.
+ *
+ * CDMA working flow:
+ *
+ * When a new modem appears, the plugin always powers it up. This
+ * allows the plugin to create connman_device either using IMSI either
+ * using modem Serial if the modem got a SIM interface or not.
+ *
+ * As for GSM, the core will call modem_enable() if the technology
+ * is enabled. modem_enable() will then set the modem online.
+ * If the technology is disabled then modem_disable() will just set the
+ * modem offline. The modem is always kept powered all the time.
+ *
+ * After setting the modem online the plugin waits for CdmaConnectionManager
+ * interface to appear. Then, once CdmaNetworkRegistration appears, a new
+ * Service will be created and registered at the core.
+ *
+ * When asked to connect to the network (network_connect()) the plugin
+ * will power up the CdmaConnectionManager interface.
+ * If the operation is successful the modem is connected to the network.
+ * oFono will inform the plugin about IP configuration through the
+ * updating CdmaConnectionManager settings properties.
  */
 
 static DBusConnection *connection;
