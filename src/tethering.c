@@ -194,7 +194,7 @@ void __connman_tethering_set_enabled(void)
 		return;
 
 	index = connman_inet_ifindex(BRIDGE_NAME);
-	dhcp_ippool = __connman_ippool_create(index, 1, 253,
+	dhcp_ippool = __connman_ippool_create(index, 2, 253,
 						tethering_restart, NULL);
 	if (dhcp_ippool == NULL) {
 		connman_error("Fail to create IP pool");
