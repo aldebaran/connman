@@ -696,7 +696,10 @@ static int iptables_insert_rule(struct connman_iptables *table,
 	if (new_entry == NULL)
 		return -EINVAL;
 
-	ret = iptables_add_entry(table, new_entry, chain_head->next, builtin);
+	if (builtin == -1)
+		chain_head = chain_head->next;
+
+	ret = iptables_add_entry(table, new_entry, chain_head, builtin);
 	if (ret < 0)
 		g_free(new_entry);
 
