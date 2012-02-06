@@ -741,8 +741,10 @@ const char *__connman_ippool_get_subnet_mask(struct connman_ippool *pool);
 const char *__connman_ippool_get_start_ip(struct connman_ippool *pool);
 const char *__connman_ippool_get_end_ip(struct connman_ippool *pool);
 
-void __connman_ippool_newaddr(int index, const char *address);
-void __connman_ippool_deladdr(int index, const char *address);
+void __connman_ippool_newaddr(int index, const char *address,
+				unsigned char prefixlen);
+void __connman_ippool_deladdr(int index, const char *address,
+				unsigned char prefixlen);
 
 int __connman_bridge_create(const char *name);
 int __connman_bridge_remove(const char *name);

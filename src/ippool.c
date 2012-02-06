@@ -196,7 +196,8 @@ static uint32_t find_free_block()
 	return 0;
 }
 
-void __connman_ippool_newaddr(int index, const char *address)
+void __connman_ippool_newaddr(int index, const char *address,
+				unsigned char prefixlen)
 {
 	struct connman_ippool *pool;
 	struct in_addr inp;
@@ -225,7 +226,8 @@ void __connman_ippool_newaddr(int index, const char *address)
 		pool->collision_cb(pool, pool->user_data);
 }
 
-void __connman_ippool_deladdr(int index, const char *address)
+void __connman_ippool_deladdr(int index, const char *address,
+				unsigned char prefixlen)
 {
 	struct in_addr inp;
 	uint32_t block;

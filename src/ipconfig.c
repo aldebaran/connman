@@ -807,7 +807,7 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 		ipdevice->ifname, address, prefixlen, label, family);
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		__connman_ippool_newaddr(index, address);
+		__connman_ippool_newaddr(index, address, prefixlen);
 
 	if (ipdevice->config_ipv4 != NULL && family == AF_INET)
 		connman_ipaddress_copy(ipdevice->config_ipv4->system,
@@ -868,14 +868,14 @@ void __connman_ipconfig_deladdr(int index, int family, const char *label,
 	ipdevice->address_list = g_slist_remove(ipdevice->address_list,
 								ipaddress);
 
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		__connman_ippool_deladdr(index, address, prefixlen);
+
 	connman_ipaddress_clear(ipaddress);
 	g_free(ipaddress);
 
 	connman_info("%s {del} address %s/%u label %s", ipdevice->ifname,
 						address, prefixlen, label);
-
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		__connman_ippool_deladdr(index, address);
 
 	if ((ipdevice->flags & (IFF_RUNNING | IFF_LOWER_UP)) != (IFF_RUNNING | IFF_LOWER_UP))
 		return;

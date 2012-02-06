@@ -179,11 +179,11 @@ static void test_ippool_collision0(void)
 		"\tgateway %s broadcast %s mask %s", start_ip, end_ip,
 		gateway, broadcast, subnet_mask);
 
-	__connman_ippool_newaddr(23, start_ip);
+	__connman_ippool_newaddr(23, start_ip, 24);
 
 	g_assert(flag == 0);
 
-	__connman_ippool_newaddr(42, start_ip);
+	__connman_ippool_newaddr(42, start_ip, 24);
 
 	g_assert(flag == 1);
 
