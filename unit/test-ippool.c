@@ -98,7 +98,7 @@ static void test_ippool_basic1(void)
 	__connman_ippool_cleanup();
 }
 
-static void test_ippool_basic2(void)
+static void test_ippool_exhaust0(void)
 {
 	struct connman_ippool *pool;
 	const char *gateway;
@@ -223,7 +223,7 @@ int main(int argc, char *argv[])
 
 	g_test_add_func("/basic0", test_ippool_basic0);
 	g_test_add_func("/basic1", test_ippool_basic1);
-	g_test_add_func("/basic2", test_ippool_basic2);
+	g_test_add_func("/exhaust0", test_ippool_exhaust0);
 	g_test_add_func("/collision0", test_ippool_collision0);
 
 	return g_test_run();
