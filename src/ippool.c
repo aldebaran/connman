@@ -34,11 +34,19 @@
 
 #include "connman.h"
 
+struct address_info {
+	int index;
+	uint32_t start;
+	uint32_t end;
+
+	unsigned int use_count;
+	struct connman_ippool *pool;
+};
+
 struct connman_ippool {
 	unsigned int refcount;
 
-	int index;
-	uint32_t block;
+	struct address_info *info;
 
 	char *gateway;
 	char *broadcast;
@@ -50,8 +58,9 @@ struct connman_ippool {
 	void *user_data;
 };
 
-static GHashTable *hash_pool;
-static GHashTable *hash_addresses;
+GSList *allocated_blocks;
+GHashTable *pool_hash;
+
 static uint32_t last_block;
 static uint32_t block_16_bits;
 static uint32_t block_20_bits;
@@ -82,7 +91,7 @@ void __connman_ippool_unref_debug(struct connman_ippool *pool,
 	if (__sync_fetch_and_sub(&pool->refcount, 1) != 1)
 		return;
 
-	g_hash_table_remove(hash_pool, GUINT_TO_POINTER(pool->block));
+	g_hash_table_remove(pool_hash, pool);
 }
 
 static char *get_ip(uint32_t ip)
@@ -156,15 +165,12 @@ static uint32_t next_block(uint32_t block)
 	return (block & 0xffff0000) | ((next << 8) & 0x0000ff00);
 }
 
-static uint32_t find_free_block()
+static uint32_t get_free_block(unsigned int size)
 {
-	struct connman_ippool *pool;
-	uint32_t start;
+	struct address_info *info;
 	uint32_t block;
-	uint32_t *key;
-
-	if (last_block == 0)
-		return block_16_bits;
+	GSList *list;
+	connman_bool_t collision;
 
 	/*
 	 * Instead starting always from the 16 bit block, we start
@@ -176,77 +182,159 @@ static uint32_t find_free_block()
 	 * To only thing we have to make sure is that we terminated if
 	 * there is no block left.
 	 */
-	start = last_block;
+	if (last_block == 0)
+		block = block_16_bits;
+	else
+		block = next_block(last_block);
 
-	block = next_block(start);
-	while (start != block) {
+	do {
+		collision = FALSE;
+		for (list = allocated_blocks; list != NULL; list = list->next) {
+			info = list->data;
+
+			if (info->start <= block && block <= info->end) {
+				collision = TRUE;
+				break;
+			}
+		}
+
+		if (collision == FALSE)
+			return block;
+
 		block = next_block(block);
-
-		key = GUINT_TO_POINTER(block);
-		pool = g_hash_table_lookup(hash_pool, key);
-		if (pool != NULL)
-			continue;
-
-		if (g_hash_table_lookup(hash_addresses, key) != NULL)
-			continue;
-
-		return block;
-	}
+	} while (block != last_block);
 
 	return 0;
+}
+
+static struct address_info *lookup_info(int index, uint32_t start)
+{
+	GSList *list;
+
+	for (list = allocated_blocks; list != NULL; list = list->next) {
+		struct address_info *info = list->data;
+
+		if (info->index == index && info->start == start)
+			return info;
+	}
+
+	return NULL;
+}
+
+static connman_bool_t is_private_address(uint32_t address)
+{
+	uint32_t val;
+
+	if ((address & 0xff000000) == block_24_bits)
+		return TRUE;
+
+	if ((address & 0xffff0000) == block_20_bits) {
+		val = (address & 0x00ff0000) >> 16;
+
+		if (val < 16 || val > 31)
+			return FALSE;
+
+		return TRUE;
+	}
+
+	if ((address & 0xffffff00) == block_16_bits)
+		return TRUE;
+
+	return FALSE;
 }
 
 void __connman_ippool_newaddr(int index, const char *address,
 				unsigned char prefixlen)
 {
-	struct connman_ippool *pool;
+	struct address_info *info, *it;
 	struct in_addr inp;
-	uint32_t block;
-	uint32_t *key;
-	unsigned int count;
+	uint32_t start, end, mask;
+	GSList *list;
 
 	if (inet_aton(address, &inp) == 0)
 		return;
 
-	block = ntohl(inp.s_addr) & 0xffffff00;
-
-	key = GUINT_TO_POINTER(block);
-	count = GPOINTER_TO_UINT(g_hash_table_lookup(hash_addresses, key));
-	count = count + 1;
-	g_hash_table_replace(hash_addresses, key, GUINT_TO_POINTER(count));
-
-	pool = g_hash_table_lookup(hash_pool, key);
-	if (pool == NULL)
+	start = ntohl(inp.s_addr);
+	if (is_private_address(start) == FALSE)
 		return;
 
-	if (pool->index == index)
+	mask = ~(0xffffffff >> prefixlen);
+	start = start & mask;
+	end = start | ~mask;
+
+	info = lookup_info(index, start);
+	if (info != NULL)
+		goto update;
+
+	info = g_try_new0(struct address_info, 1);
+	if (info == NULL)
 		return;
 
-	if (pool->collision_cb != NULL)
-		pool->collision_cb(pool, pool->user_data);
+	info->index = index;
+	info->start = start;
+	info->end = end;
+
+	allocated_blocks = g_slist_prepend(allocated_blocks, info);
+
+update:
+	info->use_count = info->use_count + 1;
+
+	if (info->use_count > 1 || info->pool != NULL) {
+		/*
+		 * We need only to check for the first IP in a block for
+		 * collisions.
+		 */
+		return;
+	}
+
+	for (list = allocated_blocks; list != NULL; list = list->next) {
+		it = list->data;
+
+		if (it == info)
+			continue;
+
+		if (!(it->start <= info->start || info->start <= it->end))
+			continue;
+
+		if (it->pool->collision_cb != NULL)
+			it->pool->collision_cb(it->pool, it->pool->user_data);
+
+		return;
+	}
 }
 
 void __connman_ippool_deladdr(int index, const char *address,
 				unsigned char prefixlen)
 {
+	struct address_info *info;
 	struct in_addr inp;
-	uint32_t block;
-	uint32_t *key;
-	unsigned int count;
+	uint32_t start, mask;
 
 	if (inet_aton(address, &inp) == 0)
 		return;
 
-	block = ntohl(inp.s_addr) & 0xffffff00;
+	start = ntohl(inp.s_addr);
+	if (is_private_address(start) == FALSE)
+		return;
 
-	key = GUINT_TO_POINTER(block);
-	count = GPOINTER_TO_UINT(g_hash_table_lookup(hash_addresses, key));
-	count = count - 1;
+	mask = ~(0xffffffff >> prefixlen);
+	start = start & mask;
 
-	if (count == 0)
-		g_hash_table_remove(hash_addresses, key);
-	else
-		g_hash_table_replace(hash_addresses, key, GUINT_TO_POINTER(count));
+	info = lookup_info(index, start);
+	if (info == NULL) {
+		/* In theory this should never happen */
+		connman_error("Inconsisten IP pool management (start not found)");
+		return;
+	}
+
+	info->use_count = info->use_count - 1;
+	if (info->pool != NULL)
+		return;
+
+	if (info->use_count > 0)
+		return;
+
+	allocated_blocks = g_slist_remove(allocated_blocks, info);
 }
 
 struct connman_ippool *__connman_ippool_create(int index,
@@ -256,7 +344,10 @@ struct connman_ippool *__connman_ippool_create(int index,
 					void *user_data)
 {
 	struct connman_ippool *pool;
+	struct address_info *info;
 	uint32_t block;
+
+	DBG("");
 
 	/*
 	 * The range is at max 255 and we don't support overlapping
@@ -265,7 +356,7 @@ struct connman_ippool *__connman_ippool_create(int index,
 	if (start + range > 254)
 		return NULL;
 
-	block = find_free_block();
+	block = get_free_block(start + range);
 	if (block == 0)
 		return NULL;
 
@@ -273,24 +364,36 @@ struct connman_ippool *__connman_ippool_create(int index,
 	if (pool == NULL)
 		return NULL;
 
+	info = g_try_new0(struct address_info, 1);
+	if (info == NULL) {
+		g_free(pool);
+		return NULL;
+	}
+
+	last_block = block;
+
+	info->index = index;
+	info->start = block;
+	info->end = block + range;
+
 	pool->refcount = 1;
-	pool->index = index;
-	pool->block = block;
+	pool->info = info;
 	pool->collision_cb = collision_cb;
 	pool->user_data = user_data;
 
-	last_block = block;
+	info->pool = pool;
 
 	if (range == 0)
 		range = 1;
 
-	pool->gateway = get_ip(block + 1);
-	pool->broadcast = get_ip(block + 255);
+	pool->gateway = get_ip(info->start + 1);
+	pool->broadcast = get_ip(info->start + 255);
 	pool->subnet_mask = get_ip(subnet_mask_24);
 	pool->start_ip = get_ip(block + start);
 	pool->end_ip = get_ip(block + start + range);
 
-	g_hash_table_insert(hash_pool, GUINT_TO_POINTER(pool->block), pool);
+	allocated_blocks = g_slist_prepend(allocated_blocks, info);
+	g_hash_table_insert(pool_hash, pool, pool);
 
 	return pool;
 }
@@ -324,6 +427,11 @@ static void pool_free(gpointer data)
 {
 	struct connman_ippool *pool = data;
 
+	if (pool->info != NULL) {
+		allocated_blocks = g_slist_remove(allocated_blocks, pool->info);
+		g_free(pool->info);
+	}
+
 	g_free(pool->gateway);
 	g_free(pool->broadcast);
 	g_free(pool->start_ip);
@@ -342,10 +450,8 @@ int __connman_ippool_init(void)
 	block_24_bits = ntohl(inet_addr("10.0.0.0"));
 	subnet_mask_24 = ntohl(inet_addr("255.255.255.0"));
 
-	hash_pool = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
-						pool_free);
-	hash_addresses = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-						NULL, NULL);
+	pool_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal, NULL,
+					pool_free);
 
 	return 0;
 }
@@ -354,9 +460,9 @@ void __connman_ippool_cleanup(void)
 {
 	DBG("");
 
-	g_hash_table_destroy(hash_pool);
-	hash_pool = NULL;
+	g_hash_table_destroy(pool_hash);
+	pool_hash = NULL;
 
-	g_hash_table_destroy(hash_addresses);
-	hash_addresses = NULL;
+	g_slist_free(allocated_blocks);
+	last_block = 0;
 }
