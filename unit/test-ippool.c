@@ -209,11 +209,39 @@ static void test_ippool_collision0(void)
 
 	g_assert(flag == 0);
 
-	__connman_ippool_newaddr(42, start_ip, 24);
+	__connman_ippool_newaddr(42, start_ip, 16);
 
 	g_assert(flag == 1);
 
 	__connman_ippool_unref(pool);
+
+	flag = 0;
+
+	pool = __connman_ippool_create(23, 1, 100, collision_cb, &flag);
+	g_assert(pool);
+
+	gateway = __connman_ippool_get_gateway(pool);
+	broadcast = __connman_ippool_get_broadcast(pool);
+	subnet_mask = __connman_ippool_get_subnet_mask(pool);
+	start_ip = __connman_ippool_get_start_ip(pool);
+	end_ip = __connman_ippool_get_end_ip(pool);
+
+	g_assert(gateway);
+	g_assert(broadcast);
+	g_assert(subnet_mask);
+	g_assert(start_ip);
+	g_assert(end_ip);
+
+	LOG("\n\tIP range %s --> %s\n"
+		"\tgateway %s broadcast %s mask %s", start_ip, end_ip,
+		gateway, broadcast, subnet_mask);
+
+	__connman_ippool_newaddr(45, start_ip, 22);
+
+	g_assert(flag == 1);
+
+	__connman_ippool_unref(pool);
+
 	__connman_ippool_cleanup();
 }
 
