@@ -44,12 +44,19 @@ static void test_ippool_basic0(void)
 	struct connman_ippool *pool;
 	int i;
 
+	__connman_ippool_init();
+
+	pool = __connman_ippool_create(23, 1, 500, NULL, NULL);
+	g_assert(pool == NULL);
+
 	for (i = 0; i < 100000; i++) {
 		pool = __connman_ippool_create(23, 1, 20, NULL, NULL);
 		g_assert(pool);
 
 		__connman_ippool_unref(pool);
 	}
+
+	__connman_ippool_cleanup();
 }
 
 static void test_ippool_basic1(void)
@@ -61,6 +68,8 @@ static void test_ippool_basic1(void)
 	const char *start_ip;
 	const char *end_ip;
 	int i;
+
+	__connman_ippool_init();
 
 	/* Test the IP range */
 	for (i = 1; i < 254; i++) {
@@ -85,6 +94,8 @@ static void test_ippool_basic1(void)
 
 		__connman_ippool_unref(pool);
 	}
+
+	__connman_ippool_cleanup();
 }
 
 static void test_ippool_basic2(void)
@@ -97,6 +108,8 @@ static void test_ippool_basic2(void)
 	const char *end_ip;
 	GSList *list = NULL, *it;
 	int i = 0;
+
+	__connman_ippool_init();
 
 	/* Allocate all possible pools */
 
@@ -142,6 +155,8 @@ static void test_ippool_basic2(void)
 	}
 
 	g_slist_free(list);
+
+	__connman_ippool_cleanup();
 }
 
 static void collision_cb(struct connman_ippool *pool, void *user_data)
@@ -165,6 +180,8 @@ static void test_ippool_collision0(void)
 	const char *start_ip;
 	const char *end_ip;
 	int flag;
+
+	__connman_ippool_init();
 
 	/* Test the IP range collision */
 
@@ -197,24 +214,17 @@ static void test_ippool_collision0(void)
 	g_assert(flag == 1);
 
 	__connman_ippool_unref(pool);
+	__connman_ippool_cleanup();
 }
 
 int main(int argc, char *argv[])
 {
-	int err;
-
 	g_test_init(&argc, &argv, NULL);
-
-	__connman_ippool_init();
 
 	g_test_add_func("/basic0", test_ippool_basic0);
 	g_test_add_func("/basic1", test_ippool_basic1);
 	g_test_add_func("/basic2", test_ippool_basic2);
 	g_test_add_func("/collision0", test_ippool_collision0);
 
-	err = g_test_run();
-
-	__connman_ippool_cleanup();
-
-	return err;
+	return g_test_run();
 }
