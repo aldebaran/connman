@@ -110,7 +110,7 @@ static uint32_t next_block(uint32_t block)
 	next += 1;
 
 	if (next == 255) {
-		if ((block & 0xffffff00) == block_16_bits) {
+		if ((block & 0xffff0000) == block_16_bits) {
 			/*
 			 * Reached the end of the 16 bit block, switch
 			 * to the 20-bit block.
@@ -337,8 +337,7 @@ int __connman_ippool_init(void)
 {
 	DBG("");
 
-	/* We start at 254 by default to avoid common addresses */
-	block_16_bits = ntohl(inet_addr("192.168.254.0"));
+	block_16_bits = ntohl(inet_addr("192.168.0.0"));
 	block_20_bits = ntohl(inet_addr("172.16.0.0"));
 	block_24_bits = ntohl(inet_addr("10.0.0.0"));
 	subnet_mask_24 = ntohl(inet_addr("255.255.255.0"));
