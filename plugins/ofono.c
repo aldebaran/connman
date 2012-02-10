@@ -1415,11 +1415,12 @@ static void netreg_update_regdom(struct modem_data *modem,
 
 
 	mcc = atoi(mobile_country_code);
-	if (mcc > 799)
+	if (mcc > 799 || mcc < 200)
 		return;
 
 	alpha2 = mcc_country_codes[mcc - 200];
-	connman_technology_set_regdom(alpha2);
+	if (alpha2 != NULL)
+		connman_technology_set_regdom(alpha2);
 }
 
 static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
