@@ -407,6 +407,8 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	if (getenv("CONNMAN_DHCP_DEBUG"))
 		g_dhcp_client_set_debug(dhcp_client, dhcp_debug, "DHCP");
 
+	g_dhcp_client_set_id(dhcp_client);
+
 	hostname = connman_utsname_get_hostname();
 	if (hostname != NULL)
 		g_dhcp_client_set_send(dhcp_client, G_DHCP_HOST_NAME, hostname);
