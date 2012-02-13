@@ -227,7 +227,7 @@ static void request_input_append_identity(DBusMessageIter *iter,
 
 	connman_dbus_dict_append_basic(iter, "Type",
 				DBUS_TYPE_STRING, &str);
-	str = "Mandatory";
+	str = "mandatory";
 	connman_dbus_dict_append_basic(iter, "Requirement",
 				DBUS_TYPE_STRING, &str);
 }
@@ -263,7 +263,7 @@ static void request_input_append_passphrase(DBusMessageIter *iter,
 	}
 	connman_dbus_dict_append_basic(iter, "Type",
 				DBUS_TYPE_STRING, &value);
-	value = "Mandatory";
+	value = "mandatory";
 	connman_dbus_dict_append_basic(iter, "Requirement",
 				DBUS_TYPE_STRING, &value);
 
@@ -319,7 +319,7 @@ static void request_input_append_password(DBusMessageIter *iter,
 
 	connman_dbus_dict_append_basic(iter, "Type",
 				DBUS_TYPE_STRING, &str);
-	str = "Mandatory";
+	str = "mandatory";
 	connman_dbus_dict_append_basic(iter, "Requirement",
 				DBUS_TYPE_STRING, &str);
 }
