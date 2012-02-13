@@ -227,6 +227,8 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/manager-api.txt doc/agent-api.txt \
 				doc/service-api.txt doc/technology-api.txt \
 				doc/counter-api.txt doc/config-format.txt \
+				doc/clock-api.txt doc/session-api.txt \
+				doc/session-overview.txt doc/backtrace.txt \
 				doc/advanced-configuration.txt
 
 
