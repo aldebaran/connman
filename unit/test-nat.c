@@ -62,6 +62,37 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 	nat_notifier = NULL;
 }
 
+
+static void test_iptables_basic0(void)
+{
+	int err;
+
+	err = __connman_iptables_command("-C INPUT -i session-bridge -j ACCEPT");
+	g_assert(err != 0);
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_command("-I INPUT -i session-bridge -j ACCEPT");
+	g_assert(err == 0);
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_command("-C INPUT -i session-bridge -j ACCEPT");
+	g_assert(err == 0);
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_command("-D INPUT -i session-bridge -j ACCEPT");
+	g_assert(err == 0);
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_command("-C INPUT -i session-bridge -j ACCEPT");
+	g_assert(err != 0);
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+}
+
 static void test_nat_basic0(void)
 {
 	int err;
@@ -120,8 +151,9 @@ int main(int argc, char *argv[])
 	__connman_iptables_init();
 	__connman_nat_init();
 
-	g_test_add_func("/basic0", test_nat_basic0);
-	g_test_add_func("/basic1", test_nat_basic1);
+	g_test_add_func("/iptables/basic0", test_iptables_basic0);
+	g_test_add_func("/nat/basic0", test_nat_basic0);
+	g_test_add_func("/nat/basic1", test_nat_basic1);
 
 	err = g_test_run();
 
