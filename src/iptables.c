@@ -1498,6 +1498,7 @@ static int parse_ip_and_mask(const char *str, struct in_addr *ip, struct in_addr
 	}
 
 	mask->s_addr = htonl(tmp);
+	ip->s_addr = ip->s_addr & mask->s_addr;
 	err = 0;
 out:
 	g_strfreev(tokens);
