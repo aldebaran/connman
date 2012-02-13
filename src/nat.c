@@ -102,7 +102,7 @@ static void disable_nat(struct connman_nat *nat)
 
 	/* Disable masquerading */
 	err = __connman_iptables_command("-t nat -D POSTROUTING "
-					"-s %s/%d -o %s, -j MASKQUERADE",
+					"-s %s/%d -o %s -j MASQUERADE",
 					nat->address,
 					nat->prefixlen,
 					nat->interface);
