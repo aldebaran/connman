@@ -2445,17 +2445,29 @@ void g_dhcp_client_clear_values(GDHCPClient *dhcp_client)
 	g_hash_table_remove_all(dhcp_client->send_value_hash);
 }
 
-static uint8_t *alloc_dhcp_option(int code, const char *str, int extra)
+static uint8_t *alloc_dhcp_option(int code, const uint8_t *data, unsigned size)
 {
 	uint8_t *storage;
-	int len = strnlen(str, 255);
 
-	storage = malloc(len + extra + OPT_DATA);
+	storage = g_try_malloc(size + OPT_DATA);
+	if (storage == NULL)
+		return NULL;
+
 	storage[OPT_CODE] = code;
-	storage[OPT_LEN] = len + extra;
-	memcpy(storage + extra + OPT_DATA, str, len);
+	storage[OPT_LEN] = size;
+	memcpy(&storage[OPT_DATA], data, size);
 
 	return storage;
+}
+
+static uint8_t *alloc_dhcp_data_option(int code, const uint8_t *data, unsigned size)
+{
+	return alloc_dhcp_option(code, data, MIN(size, 255));
+}
+
+static uint8_t *alloc_dhcp_string_option(int code, const char *str)
+{
+	return alloc_dhcp_data_option(code, (const uint8_t *)str, strlen(str));
 }
 
 /* Now only support send hostname */
@@ -2465,8 +2477,10 @@ GDHCPClientError g_dhcp_client_set_send(GDHCPClient *dhcp_client,
 	uint8_t *binary_option;
 
 	if (option_code == G_DHCP_HOST_NAME && option_value != NULL) {
-		binary_option = alloc_dhcp_option(option_code,
-							option_value, 0);
+		binary_option = alloc_dhcp_string_option(option_code,
+							option_value);
+		if (binary_option == NULL)
+			return G_DHCP_CLIENT_ERROR_NOMEM;
 
 		g_hash_table_insert(dhcp_client->send_value_hash,
 			GINT_TO_POINTER((int) option_code), binary_option);
