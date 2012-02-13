@@ -73,6 +73,9 @@ static void test_nat_basic0(void)
 	err = __connman_iptables_command("-t nat -C POSTROUTING "
 					"-s 192.168.2.1/24 -o eth0 -j MASQUERADE");
 	g_assert(err != 0);
+	err = __connman_iptables_commit("nat");
+	g_assert(err == 0);
+
 
 	__connman_nat_disable("bridge");
 }
@@ -94,6 +97,8 @@ static void test_nat_basic1(void)
 	err = __connman_iptables_command("-t nat -C POSTROUTING "
 					"-s 192.168.2.1/24 -o eth0 -j MASQUERADE");
 	g_assert(err == 0);
+	err = __connman_iptables_commit("nat");
+	g_assert(err == 0);
 
 	__connman_nat_disable("bridge");
 
@@ -101,6 +106,8 @@ static void test_nat_basic1(void)
 	err = __connman_iptables_command("-t nat -C POSTROUTING "
 					"-s 192.168.2.1/24 -o eth0 -j MASQUERADE");
 	g_assert(err != 0);
+	err = __connman_iptables_commit("nat");
+	g_assert(err == 0);
 }
 
 int main(int argc, char *argv[])
