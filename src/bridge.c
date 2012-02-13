@@ -109,8 +109,8 @@ int __connman_bridge_remove(const char *name)
 	return 0;
 }
 
-int __connman_bridge_enable(const char *name, const char *broadcast,
-				const char *gateway)
+int __connman_bridge_enable(const char *name, const char *gateway,
+				const char *broadcast)
 {
 	int err, index;
 

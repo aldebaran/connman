@@ -746,8 +746,8 @@ void __connman_ippool_deladdr(int index, const char *address);
 
 int __connman_bridge_create(const char *name);
 int __connman_bridge_remove(const char *name);
-int __connman_bridge_enable(const char *name, const char *broadcast,
-				const char *gateway);
+int __connman_bridge_enable(const char *name, const char *gateway,
+				const char *broadcast);
 int __connman_bridge_disable(const char *name);
 
 int __connman_nat_init(void);
