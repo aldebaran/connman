@@ -74,6 +74,7 @@ typedef enum {
 #define G_DHCP_DOMAIN_NAME	0x0f
 #define G_DHCP_HOST_NAME	0x0c
 #define G_DHCP_NTP_SERVER	0x2a
+#define G_DHCP_CLIENT_ID	0x3d
 
 #define G_DHCPV6_CLIENTID	1
 #define G_DHCPV6_SERVERID	2
@@ -121,6 +122,7 @@ GDHCPClientError g_dhcp_client_set_request(GDHCPClient *client,
 						unsigned int option_code);
 void g_dhcp_client_clear_requests(GDHCPClient *dhcp_client);
 void g_dhcp_client_clear_values(GDHCPClient *dhcp_client);
+GDHCPClientError g_dhcp_client_set_id(GDHCPClient *client);
 GDHCPClientError g_dhcp_client_set_send(GDHCPClient *client,
 						unsigned char option_code,
 						const char *option_value);
