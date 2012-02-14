@@ -524,6 +524,50 @@ int __connman_agent_request_login_input(struct connman_service *service,
 	return -EIO;
 }
 
+int __connman_agent_request_browser(struct connman_service *service,
+				browser_authentication_cb_t callback,
+				const char *url, void *user_data)
+{
+	DBusPendingCall *call;
+	DBusMessage *message;
+	DBusMessageIter iter;
+	const char *path;
+
+	if (service == NULL || agent_path == NULL || callback == NULL)
+		return -ESRCH;
+
+	if (url == NULL)
+		url = "";
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+					CONNMAN_AGENT_INTERFACE,
+					"RequestBrowser");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+
+	path = __connman_service_get_path(service);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
+
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &url);
+
+	if (dbus_connection_send_with_reply(connection, message,
+							&call, -1) == FALSE) {
+		dbus_message_unref(message);
+		return -ESRCH;
+	}
+
+	if (call == NULL) {
+		dbus_message_unref(message);
+		return -ESRCH;
+	}
+
+	dbus_message_unref(message);
+
+	return -EIO;
+}
+
 struct report_error_data {
 	struct connman_service *service;
 	report_error_cb_t callback;
