@@ -64,6 +64,8 @@ struct connman_wispr_portal_context {
 
 	const char *status_url;
 
+	char *redirect_url;
+
 	/* WISPr specific */
 	GWebParser *wispr_parser;
 	struct connman_wispr_message wispr_msg;
@@ -129,6 +131,8 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 		g_web_cancel_request(wp_context->web, wp_context->request_id);
 
 	g_web_unref(wp_context->web);
+
+	g_free(wp_context->redirect_url);
 
 	g_web_parser_unref(wp_context->wispr_parser);
 	connman_wispr_message_init(&wp_context->wispr_msg);
@@ -563,14 +567,22 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		if (g_web_result_get_header(result, "X-ConnMan-Status",
 								&str) == TRUE)
 			portal_manage_status(result, wp_context);
+		else
+			__connman_agent_request_browser(wp_context->service,
+				NULL, wp_context->redirect_url, wp_context);
 
 		break;
 	case 302:
 		if (g_web_result_get_header(result, "Location",
-						&redirect) == FALSE)
+						&redirect) == FALSE) {
+			__connman_agent_request_browser(wp_context->service,
+				NULL, wp_context->status_url, wp_context);
 			break;
+		}
 
 		DBG("Redirect URL: %s", redirect);
+
+		wp_context->redirect_url = g_strdup(redirect);
 
 		wp_context->request_id = g_web_request_get(wp_context->web,
 				redirect, wispr_portal_web_result, wp_context);
