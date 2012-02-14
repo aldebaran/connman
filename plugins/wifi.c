@@ -57,6 +57,8 @@
 #define INACTIVE_TIMEOUT  12	/* in seconds */
 #define MAXIMUM_RETRIES   4
 
+#define BGSCAN_DEFAULT "simple:30:-45:300"
+
 struct connman_technology *wifi_technology = NULL;
 
 struct hidden_params {
@@ -733,6 +735,7 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	ssid->use_wps = connman_network_get_bool(network, "WiFi.UseWPS");
 	ssid->pin_wps = connman_network_get_string(network, "WiFi.PinWPS");
 
+	ssid->bgscan = BGSCAN_DEFAULT;
 }
 
 static int network_connect(struct connman_network *network)
