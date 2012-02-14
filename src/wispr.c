@@ -524,6 +524,24 @@ static gboolean wispr_manage_message(GWebResult *result,
 	return FALSE;
 }
 
+static void wispr_portal_browser_reply_cb(struct connman_service *service,
+					connman_bool_t authentication_done,
+					void *user_data)
+{
+	struct connman_wispr_portal_context *wp_context = user_data;
+
+	if (service == NULL || wp_context == NULL)
+		return;
+
+	if (authentication_done == FALSE) {
+		wispr_portal_error(wp_context);
+		return;
+	}
+
+	/* Restarting the test */
+	__connman_wispr_start(service, wp_context->type);
+}
+
 static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
@@ -569,14 +587,16 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 			portal_manage_status(result, wp_context);
 		else
 			__connman_agent_request_browser(wp_context->service,
-				NULL, wp_context->redirect_url, wp_context);
+					wispr_portal_browser_reply_cb,
+					wp_context->redirect_url, wp_context);
 
 		break;
 	case 302:
 		if (g_web_result_get_header(result, "Location",
 						&redirect) == FALSE) {
 			__connman_agent_request_browser(wp_context->service,
-				NULL, wp_context->status_url, wp_context);
+					wispr_portal_browser_reply_cb,
+					wp_context->status_url, wp_context);
 			break;
 		}
 
