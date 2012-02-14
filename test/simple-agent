@@ -97,6 +97,22 @@ class Agent(dbus.service.Object):
 	@dbus.service.method("net.connman.Agent",
 					in_signature='os',
 					out_signature='')
+	def RequestBrowser(self, path, url):
+		print "RequestBrowser (%s,%s)" % (path, url)
+
+		print "Please login through the given url in a browser"
+		print "Then press enter to accept or some text to cancel"
+
+		args = raw_input('> ')
+
+		if len(args) > 0:
+			raise Canceled("canceled")
+
+		return
+
+	@dbus.service.method("net.connman.Agent",
+					in_signature='os',
+					out_signature='')
 	def ReportError(self, path, error):
 		print "ReportError %s, %s" % (path, error)
 		retry = raw_input("Retry service (yes/no): ")
