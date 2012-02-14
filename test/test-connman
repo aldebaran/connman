@@ -18,7 +18,7 @@ if len(sys.argv) < 2:
 	print "  disconnect <service>"
 	print "  remove <service>"
 	print ""
-	print "  scan [type]"
+	print "  scan <type>"
 	print "  enable <type>"
 	print "  disable <type>"
 	print "  offlinemode [on|off]"
@@ -140,9 +140,10 @@ elif sys.argv[1] in ["remove"]:
 
 elif sys.argv[1] == "scan":
 	if len(sys.argv) > 2:
-		manager.RequestScan(sys.argv[2])
-	else:
-		manager.RequestScan("")
+		path = "/net/connman/technology/" + sys.argv[2]
+		technology = dbus.Interface(bus.get_object("net.connman", path),
+						"net.connman.Technology")
+		technology.Scan()
 
 elif sys.argv[1] == "enable":
 	if len(sys.argv) > 2:
