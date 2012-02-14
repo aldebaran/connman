@@ -524,10 +524,36 @@ int __connman_agent_request_login_input(struct connman_service *service,
 	return -EIO;
 }
 
+struct request_browser_reply_data {
+	struct connman_service *service;
+	browser_authentication_cb_t callback;
+	void *user_data;
+};
+
+static void request_browser_reply(DBusPendingCall *call, void *user_data)
+{
+	struct request_browser_reply_data *browser_reply_data = user_data;
+	DBusMessage *reply = dbus_pending_call_steal_reply(call);
+	connman_bool_t result = FALSE;
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+		goto done;
+
+	result = TRUE;
+
+done:
+	browser_reply_data->callback(browser_reply_data->service,
+					result,	browser_reply_data->user_data);
+	connman_service_unref(browser_reply_data->service);
+	dbus_message_unref(reply);
+	g_free(browser_reply_data);
+}
+
 int __connman_agent_request_browser(struct connman_service *service,
 				browser_authentication_cb_t callback,
 				const char *url, void *user_data)
 {
+	struct request_browser_reply_data *browser_reply_data;
 	DBusPendingCall *call;
 	DBusMessage *message;
 	DBusMessageIter iter;
@@ -552,16 +578,31 @@ int __connman_agent_request_browser(struct connman_service *service,
 
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &url);
 
+	browser_reply_data = g_try_new0(struct request_browser_reply_data, 1);
+	if (browser_reply_data == NULL) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
 	if (dbus_connection_send_with_reply(connection, message,
 							&call, -1) == FALSE) {
 		dbus_message_unref(message);
+		g_free(browser_reply_data);
 		return -ESRCH;
 	}
 
 	if (call == NULL) {
 		dbus_message_unref(message);
+		g_free(browser_reply_data);
 		return -ESRCH;
 	}
+
+	browser_reply_data->service = connman_service_ref(service);
+	browser_reply_data->callback = callback;
+	browser_reply_data->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, request_browser_reply,
+						browser_reply_data, NULL);
 
 	dbus_message_unref(message);
 
