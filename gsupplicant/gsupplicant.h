@@ -129,6 +129,7 @@ struct _GSupplicantSSID {
 	const char *phase2_auth;
 	dbus_bool_t use_wps;
 	const char *pin_wps;
+	const char *bgscan;
 };
 
 typedef struct _GSupplicantSSID GSupplicantSSID;

@@ -3142,6 +3142,10 @@ static void interface_add_network_params(DBusMessageIter *iter, void *user_data)
 		supplicant_dbus_dict_append_basic(&dict, "frequency",
 					 DBUS_TYPE_UINT32, &ssid->freq);
 
+	if (ssid->bgscan != NULL)
+		supplicant_dbus_dict_append_basic(&dict, "bgscan",
+					DBUS_TYPE_STRING, &ssid->bgscan);
+
 	add_network_mode(&dict, ssid);
 
 	add_network_security(&dict, ssid);
