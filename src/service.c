@@ -5365,6 +5365,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	service->userconnect = TRUE;
 
 	service->state_ipv4 = service->state_ipv6 = CONNMAN_SERVICE_STATE_IDLE;
+	service->state = combine_state(service->state_ipv4, service->state_ipv6);
 
 	str = connman_provider_get_string(provider, "Name");
 	if (str != NULL) {
