@@ -32,7 +32,7 @@ Methods		void Release()
 			This can happen if connected to a hotspot portal
 			page without WISPr support.
 
-			Possible Errors: net.connman.Agent.Error.Retry
+			Possible Errors: net.connman.Agent.Error.Canceled
 
 		dict RequestInput(object service, dict fields)
 
