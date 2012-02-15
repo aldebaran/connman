@@ -547,6 +547,28 @@ static void append_notify(DBusMessageIter *dict,
 	session->append_all = FALSE;
 }
 
+static connman_bool_t is_type_matching_state(enum connman_session_state *state,
+						enum connman_session_type type)
+{
+	switch (type) {
+	case CONNMAN_SESSION_TYPE_ANY:
+		return TRUE;
+	case CONNMAN_SESSION_TYPE_LOCAL:
+		if (*state >= CONNMAN_SESSION_STATE_CONNECTED) {
+			*state = CONNMAN_SESSION_STATE_CONNECTED;
+			return TRUE;
+		}
+
+		break;
+	case CONNMAN_SESSION_TYPE_INTERNET:
+		if (*state == CONNMAN_SESSION_STATE_ONLINE)
+			return TRUE;
+		break;
+	}
+
+	return FALSE;
+}
+
 static connman_bool_t compute_notifiable_changes(struct connman_session *session)
 {
 	struct session_info *info_last = session->info_last;
@@ -1005,7 +1027,13 @@ static void deselect_and_disconnect(struct connman_session *session,
 static void select_connected_service(struct session_info *info,
 					struct service_entry *entry)
 {
-	info->state = service_to_session_state(entry->state);
+	enum connman_session_state state;
+
+	state = service_to_session_state(entry->state);
+	if (is_type_matching_state(&state, info->type) == FALSE)
+		return;
+
+	info->state = state;
 
 	info->entry = entry;
 	info->entry->reason = info->reason;
@@ -1165,8 +1193,14 @@ static void session_changed(struct connman_session *session,
 	DBG("session %p trigger %s reason %s", session, trigger2string(trigger),
 						reason2string(info->reason));
 
-	if (info->entry != NULL)
-		info->state = service_to_session_state(info->entry->state);
+	if (info->entry != NULL) {
+		enum connman_session_state state;
+
+		state = service_to_session_state(info->entry->state);
+
+		if (is_type_matching_state(&state, info->type) == TRUE)
+			info->state = state;
+	}
 
 	switch (trigger) {
 	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
@@ -1199,6 +1233,13 @@ static void session_changed(struct connman_session *session,
 
 			g_hash_table_remove_all(service_hash_last);
 			g_sequence_free(service_list_last);
+		}
+
+		if (info->type != info_last->type) {
+			if (info->state >= CONNMAN_SESSION_STATE_CONNECTED &&
+					is_type_matching_state(&info->state,
+							info->type) == FALSE)
+				deselect_and_disconnect(session, info->reason);
 		}
 
 		if (info->state == CONNMAN_SESSION_STATE_DISCONNECTED) {
