@@ -102,7 +102,6 @@ struct connman_session {
 	guint notify_watch;
 
 	connman_bool_t append_all;
-	connman_bool_t info_dirty;
 	struct session_info *info;
 	struct session_info *info_last;
 
@@ -497,7 +496,35 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	session->append_all = FALSE;
-	session->info_dirty = FALSE;
+}
+
+static connman_bool_t compute_notifiable_changes(struct connman_session *session)
+{
+	struct session_info *info_last = session->info_last;
+	struct session_info *info = session->info;
+
+	if (session->append_all == TRUE)
+		return TRUE;
+
+	if (info->state != info_last->state)
+		return TRUE;
+
+	if (info->entry != info_last->entry &&
+			info->state >= CONNMAN_SESSION_STATE_CONNECTED)
+		return TRUE;
+
+	if (info->periodic_connect != info_last->periodic_connect ||
+			info->allowed_bearers != info_last->allowed_bearers ||
+			info->avoid_handover != info_last->avoid_handover ||
+			info->stay_connected != info_last->stay_connected ||
+			info->roaming_policy != info_last->roaming_policy ||
+			info->idle_timeout != info_last->idle_timeout ||
+			info->priority != info_last->priority ||
+			info->marker != info_last->marker ||
+			info->ecall != info_last->ecall)
+		return TRUE;
+
+	return FALSE;
 }
 
 static gboolean session_notify(gpointer user_data)
@@ -506,8 +533,8 @@ static gboolean session_notify(gpointer user_data)
 	DBusMessage *msg;
 	DBusMessageIter array, dict;
 
-	if (session->info_dirty == FALSE)
-		return 0;
+	if (compute_notifiable_changes(session) == FALSE)
+		return FALSE;
 
 	DBG("session %p owner %s notify_path %s", session,
 		session->owner, session->notify_path);
@@ -888,7 +915,7 @@ static gboolean call_connect(gpointer user_data)
 	return FALSE;
 }
 
-static connman_bool_t deselect_service(struct session_info *info)
+static void deselect_service(struct session_info *info)
 {
 	struct service_entry *entry;
 	connman_bool_t disconnect, connected;
@@ -896,7 +923,7 @@ static connman_bool_t deselect_service(struct session_info *info)
 	DBG("");
 
 	if (info->entry == NULL)
-		return FALSE;
+		return;
 
 	disconnect = explicit_disconnect(info);
 
@@ -913,8 +940,6 @@ static connman_bool_t deselect_service(struct session_info *info)
 
 	if (disconnect == TRUE && connected == TRUE)
 		pending_timeout_add(0, call_disconnect, entry);
-
-	return TRUE;
 }
 
 static void deselect_and_disconnect(struct connman_session *session,
@@ -922,12 +947,12 @@ static void deselect_and_disconnect(struct connman_session *session,
 {
 	struct session_info *info = session->info;
 
-	session->info_dirty |= deselect_service(info);
+	deselect_service(info);
 
 	info->reason = reason;
 }
 
-static connman_bool_t select_connected_service(struct session_info *info,
+static void select_connected_service(struct session_info *info,
 					struct service_entry *entry)
 {
 	info->state = service_to_session_state(entry->state);
@@ -936,18 +961,16 @@ static connman_bool_t select_connected_service(struct session_info *info,
 	info->entry->reason = info->reason;
 
 	if (explicit_connect(info->reason) == FALSE)
-		return TRUE;
+		return;
 
 	__connman_service_session_inc(info->entry->service);
-
-	return TRUE;
 }
 
-static connman_bool_t select_offline_service(struct session_info *info,
+static void select_offline_service(struct session_info *info,
 					struct service_entry *entry)
 {
 	if (explicit_connect(info->reason) == FALSE)
-		return FALSE;
+		return;
 
 	info->state = service_to_session_state(entry->state);
 
@@ -956,19 +979,17 @@ static connman_bool_t select_offline_service(struct session_info *info,
 
 	__connman_service_session_inc(info->entry->service);
 	pending_timeout_add(0, call_connect, entry);
-
-	return TRUE;
 }
 
-static connman_bool_t select_service(struct session_info *info,
+static void select_service(struct session_info *info,
 				struct service_entry *entry)
 {
 	DBG("service %p", entry->service);
 
 	if (is_connected(entry->state) == TRUE)
-		return select_connected_service(info, entry);
+		select_connected_service(info, entry);
 	else
-		return select_offline_service(info, entry);
+		select_offline_service(info, entry);
 }
 
 static void select_and_connect(struct connman_session *session,
@@ -994,8 +1015,7 @@ static void select_and_connect(struct connman_session *session,
 		case CONNMAN_SERVICE_STATE_ONLINE:
 		case CONNMAN_SERVICE_STATE_IDLE:
 		case CONNMAN_SERVICE_STATE_DISCONNECT:
-			session->info_dirty |=
-				select_service(info, entry);
+			select_service(info, entry);
 			return;
 		case CONNMAN_SERVICE_STATE_UNKNOWN:
 		case CONNMAN_SERVICE_STATE_FAILURE:
@@ -1095,11 +1115,8 @@ static void session_changed(struct connman_session *session,
 	DBG("session %p trigger %s reason %s", session, trigger2string(trigger),
 						reason2string(info->reason));
 
-	if (info->entry != NULL) {
+	if (info->entry != NULL)
 		info->state = service_to_session_state(info->entry->state);
-		if (info_last->state != info->state)
-			session->info_dirty = TRUE;
-	}
 
 	switch (trigger) {
 	case CONNMAN_SESSION_TRIGGER_UNKNOWN:
@@ -1250,7 +1267,6 @@ static void update_ecall_sessions(struct connman_session *session)
 			continue;
 
 		session_iter->info->ecall = info->ecall;
-		session_iter->info_dirty = TRUE;
 
 		session_changed(session_iter, CONNMAN_SESSION_TRIGGER_ECALL);
 	}
@@ -1280,7 +1296,6 @@ static void update_ecall(struct connman_session *session)
 
 	update_ecall_sessions(session);
 
-	session->info_dirty = TRUE;
 	return;
 
 err:
@@ -1293,7 +1308,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 {
 	struct connman_session *session = user_data;
 	struct session_info *info = session->info;
-	struct session_info *info_last = session->info_last;
 	DBusMessageIter iter, value;
 	const char *name;
 	GSList *allowed_bearers;
@@ -1323,8 +1337,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 			}
 
 			info->allowed_bearers = allowed_bearers;
-
-			session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -1333,21 +1345,12 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "Priority") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->priority);
-
-			if (info_last->priority != info->priority)
-				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "AvoidHandover") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->avoid_handover);
-
-			if (info_last->avoid_handover != info->avoid_handover)
-				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "StayConnected") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->stay_connected);
-
-			if (info_last->stay_connected != info->stay_connected)
-				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "EmergencyCall") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->ecall);
@@ -1361,15 +1364,9 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "PeriodicConnect") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->periodic_connect);
-
-			if (info_last->periodic_connect != info->periodic_connect)
-				session->info_dirty = TRUE;
 		} else if (g_str_equal(name, "IdleTimeout") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->idle_timeout);
-
-			if (info_last->idle_timeout != info->idle_timeout)
-				session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -1380,9 +1377,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 			dbus_message_iter_get_basic(&value, &val);
 			info->roaming_policy =
 					string2roamingpolicy(val);
-
-			if (info_last->roaming_policy != info->roaming_policy)
-				session->info_dirty = TRUE;
 		} else {
 			goto err;
 		}
@@ -1391,8 +1385,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 		goto err;
 	}
 
-	if (session->info_dirty == TRUE)
-		session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
+	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 
@@ -1679,7 +1672,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->marker = info->marker;
 	info_last->allowed_bearers = info->allowed_bearers;
 
-	session->info_dirty = TRUE;
 	session->append_all = TRUE;
 
 	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
