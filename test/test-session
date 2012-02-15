@@ -112,8 +112,11 @@ class SessionApplication(dbus.service.Object):
 		del self.sessions[session_name]
 
 	def type_convert(self, key, value):
-		if key in [ "AllowedBearers", "RoamingPolicy" ]:
+		if key in [ "AllowedBearers" ]:
 			return value
+		elif key in [ "RoamingPolicy" ]:
+			if len(value) > 0:
+				return value[0]
 		elif key in [ "Priority", "AvoidHandover",
 			      "StayConnected", "EmergencyCall" ]:
 			flag = str(value[0]).strip().lower()
