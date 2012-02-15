@@ -1855,6 +1855,9 @@ static void ipconfig_changed(struct connman_service *service,
 		session = value;
 		info = session->info;
 
+		if (info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
+			continue;
+
 		if (info->entry != NULL && info->entry->service == service) {
 			if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 				ipconfig_ipv4_changed(session);
