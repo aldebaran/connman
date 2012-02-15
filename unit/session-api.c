@@ -39,6 +39,16 @@ static enum connman_session_state string2state(const char *state)
 	return CONNMAN_SESSION_STATE_DISCONNECTED;
 }
 
+static enum connman_session_state string2type(const char *type)
+{
+	if (g_strcmp0(type, "local") == 0)
+		return CONNMAN_SESSION_TYPE_LOCAL;
+	if (g_strcmp0(type, "internet") == 0)
+		return CONNMAN_SESSION_TYPE_INTERNET;
+
+	return CONNMAN_SESSION_TYPE_ANY;
+}
+
 static const char *roamingpolicy2string(enum connman_session_roaming_policy policy)
 {
 	switch (policy) {
@@ -251,6 +261,12 @@ static DBusMessage *notify_update(DBusConnection *conn,
 
 				info->interface = g_strdup(val);
 
+			} else if (g_str_equal(key, "ConnectionType")
+								== TRUE) {
+				const char *val;
+				dbus_message_iter_get_basic(&value, &val);
+
+				info->type = string2type(val);
 			} else {
 				g_assert(FALSE);
 				return __connman_error_invalid_arguments(msg);
