@@ -341,6 +341,11 @@ static void append_ipconfig_ipv4(DBusMessageIter *iter, void *user_data)
 	if (service == NULL)
 		return;
 
+	if (__connman_service_is_connected_state(service,
+				CONNMAN_IPCONFIG_TYPE_IPV4) == FALSE) {
+		return;
+	}
+
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 	if (ipconfig_ipv4 == NULL)
 		return;
@@ -355,6 +360,11 @@ static void append_ipconfig_ipv6(DBusMessageIter *iter, void *user_data)
 
 	if (service == NULL)
 		return;
+
+	if (__connman_service_is_connected_state(service,
+				CONNMAN_IPCONFIG_TYPE_IPV6) == FALSE) {
+		return;
+	}
 
 	ipconfig_ipv4 = __connman_service_get_ip4config(service);
 	ipconfig_ipv6 = __connman_service_get_ip6config(service);
