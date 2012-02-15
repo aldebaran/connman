@@ -114,7 +114,7 @@ class SessionApplication(dbus.service.Object):
 	def type_convert(self, key, value):
 		if key in [ "AllowedBearers" ]:
 			return value
-		elif key in [ "RoamingPolicy" ]:
+		elif key in [ "RoamingPolicy", "ConnectionType" ]:
 			if len(value) > 0:
 				return value[0]
 		elif key in [ "Priority", "AvoidHandover",
