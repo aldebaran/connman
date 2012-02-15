@@ -88,20 +88,42 @@ Settings	string  Bearer [readonly]
 
 			This indicates the current bearer that is used
 			for this session. Or an empty string if no bearer
-			is available.
+			if available.
 
-		boolean Online [readonly]
+		string ConnectionType [readwrite]
 
-			This indicates if the connection is online or
-			offline.
+			This is used to indicate which connection is requested
+			from the session. The state of the session will be
+			updated accordingly. Values can be nothing, 'local' or
+			'internet'.
+			'local' means the session requests to be connected,
+			but does not require specifically to be online.
+			Therefore State property will be set to 'connected' if
+			underlying service gets ready and/or online.
+			'online' means the session requests to be connected,
+			and online. State property will never get 'connected'
+			but instead will switch to 'online' if underlying
+			service gets online.
+			No value means the session requests any kind of
+			connection and the state will be updated on all steps,
+			'connected' and 'online'. This is the default value.
 
-			This maps to the online service state. And it is
-			only valid for the selected bearer configuration.
-			Otherwise it will be reported as offline even if
-			the global state would be online.
+		boolean State [readonly]
 
-			In addition the Online settings notification might
-			not happen right away. Notifications of online state
+			This indicates if the connection is disconnected,
+			connected or online. It is updated according to the
+			selected ConnectionType. The session will not be
+			in a useful shape (i.e.: providing a network connection
+			to the owner) until its State gets updated to connected
+			and/or online.
+
+			This maps to the useful port of the  service state.
+			And it is only valid for the selected bearer
+			configuration. Otherwise it will be reported as
+			disconnected even if connected services are present.
+
+			In addition the State settings notification might
+			not happen right away. Notifications of this state
 			can be delayed based on the speed of the bearer. It
 			is done to avoid congestion on bearers like cellular
 			etc.
@@ -158,15 +180,11 @@ Settings	string  Bearer [readonly]
 
 		dict IPv4 [readonly]
 
-			Current IPv4 configuration. This settings is only
-			valid when online is true as well. Otherwise an
-			empty dictionary is reported.
+			Current IPv4 configuration.
 
 		dict IPv6 [readonly]
 
-			Current IPv6 configuration. This setting is only
-			valid when online is true as well. Otherwise an
-			empty dictionary is reported.
+			Current IPv6 configuration.
 
 		boolean AvoidHandover [readwrite]
 
