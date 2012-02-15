@@ -59,6 +59,12 @@ enum connman_session_state {
 	CONNMAN_SESSION_STATE_ONLINE         = 2,
 };
 
+enum connman_session_type {
+	CONNMAN_SESSION_TYPE_ANY      = 0,
+	CONNMAN_SESSION_TYPE_LOCAL    = 1,
+	CONNMAN_SESSION_TYPE_INTERNET = 2,
+};
+
 enum connman_session_roaming_policy {
 	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
 	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
@@ -81,6 +87,7 @@ struct service_entry {
 
 struct session_info {
 	enum connman_session_state state;
+	enum connman_session_type type;
 	connman_bool_t priority;
 	GSList *allowed_bearers;
 	connman_bool_t avoid_handover;
@@ -167,6 +174,30 @@ static const char *state2string(enum connman_session_state state)
 	}
 
 	return NULL;
+}
+
+static const char *type2string(enum connman_session_type type)
+{
+	switch (type) {
+	case CONNMAN_SESSION_TYPE_ANY:
+		return "";
+	case CONNMAN_SESSION_TYPE_LOCAL:
+		return "local";
+	case CONNMAN_SESSION_TYPE_INTERNET:
+		return "internet";
+	}
+
+	return NULL;
+}
+
+static enum connman_session_type string2type(const char *type)
+{
+	if (g_strcmp0(type, "local") == 0)
+		return CONNMAN_SESSION_TYPE_LOCAL;
+	else if (g_strcmp0(type, "internet") == 0)
+		return CONNMAN_SESSION_TYPE_INTERNET;
+
+	return CONNMAN_SESSION_TYPE_ANY;
 }
 
 static const char *roamingpolicy2string(enum connman_session_roaming_policy policy)
@@ -430,6 +461,14 @@ static void append_notify(DBusMessageIter *dict,
 		info_last->entry = info->entry;
 	}
 
+	if (session->append_all == TRUE || info->type != info_last->type) {
+		const char *type = type2string(info->type);
+
+		connman_dbus_dict_append_basic(dict, "ConnectionType",
+						DBUS_TYPE_STRING,
+						&type);
+		info_last->type = info->type;
+	}
 
 	if (session->append_all == TRUE ||
 			info->priority != info_last->priority) {
@@ -531,7 +570,8 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 			info->idle_timeout != info_last->idle_timeout ||
 			info->priority != info_last->priority ||
 			info->marker != info_last->marker ||
-			info->ecall != info_last->ecall)
+			info->ecall != info_last->ecall ||
+			info->type != info_last->type)
 		return TRUE;
 
 	return FALSE;
@@ -1320,6 +1360,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 	struct session_info *info = session->info;
 	DBusMessageIter iter, value;
 	const char *name;
+	const char *val;
 	GSList *allowed_bearers;
 
 	DBG("session %p", session);
@@ -1382,8 +1423,10 @@ static DBusMessage *change_session(DBusConnection *conn,
 		}
 		break;
 	case DBUS_TYPE_STRING:
-		if (g_str_equal(name, "RoamingPolicy") == TRUE) {
-			const char *val;
+		if (g_str_equal(name, "ConnectionType") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+			info->type = string2type(val);
+		} else if (g_str_equal(name, "RoamingPolicy") == TRUE) {
 			dbus_message_iter_get_basic(&value, &val);
 			info->roaming_policy =
 					string2roamingpolicy(val);
@@ -1487,6 +1530,7 @@ int __connman_session_create(DBusMessage *msg)
 	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
 
+	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
 	connman_bool_t priority = FALSE, avoid_handover = FALSE;
 	connman_bool_t stay_connected = FALSE, ecall = FALSE;
 	enum connman_session_roaming_policy roaming_policy =
@@ -1561,7 +1605,10 @@ int __connman_session_create(DBusMessage *msg)
 			}
 			break;
 		case DBUS_TYPE_STRING:
-			if (g_str_equal(key, "RoamingPolicy") == TRUE) {
+			if (g_str_equal(key, "ConnectionType") == TRUE) {
+				dbus_message_iter_get_basic(&value, &val);
+				type = string2type(val);
+			} else if (g_str_equal(key, "RoamingPolicy") == TRUE) {
 				dbus_message_iter_get_basic(&value, &val);
 				roaming_policy = string2roamingpolicy(val);
 			} else {
@@ -1621,6 +1668,7 @@ int __connman_session_create(DBusMessage *msg)
 					owner_disconnect, session, NULL);
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
+	info->type = type;
 	info->priority = priority;
 	info->avoid_handover = avoid_handover;
 	info->stay_connected = stay_connected;
