@@ -3795,6 +3795,23 @@ __connman_service_get_ipconfig(struct connman_service *service, int family)
 
 }
 
+connman_bool_t __connman_service_is_connected_state(struct connman_service *service,
+					enum connman_ipconfig_type type)
+{
+	if (service == NULL)
+		return FALSE;
+
+	switch (type) {
+	case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+		break;
+	case CONNMAN_IPCONFIG_TYPE_IPV4:
+		return is_connected_state(service, service->state_ipv4);
+	case CONNMAN_IPCONFIG_TYPE_IPV6:
+		return is_connected_state(service, service->state_ipv6);
+	}
+
+	return FALSE;
+}
 enum connman_service_security __connman_service_get_security(struct connman_service *service)
 {
 	if (service == NULL)
