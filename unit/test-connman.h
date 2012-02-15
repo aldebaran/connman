@@ -71,6 +71,12 @@ void util_session_cleanup(struct test_session *session);
 
 typedef void (* notify_cb) (struct test_session *session);
 
+enum connman_session_state {
+	CONNMAN_SESSION_STATE_DISCONNECTED   = 0,
+	CONNMAN_SESSION_STATE_CONNECTED      = 1,
+	CONNMAN_SESSION_STATE_ONLINE         = 2,
+};
+
 enum connman_session_roaming_policy {
 	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
 	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
@@ -82,7 +88,7 @@ enum connman_session_roaming_policy {
 
 struct test_session_info {
 	char *bearer;
-	connman_bool_t online;
+	enum connman_session_state state;
 	char *name;
 	/* ipv4, ipv6 dicts */
 	GSList *allowed_bearers;

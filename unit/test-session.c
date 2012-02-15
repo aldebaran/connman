@@ -220,9 +220,9 @@ static void set_session_mode(struct test_fix *fix,
 
 static void test_session_connect_notify(struct test_session *session)
 {
-	LOG("session %p online %d", session, session->info->online);
+	LOG("session %p state %d", session, session->info->state);
 
-	if (session->info->online != TRUE)
+	if (session->info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
 		return;
 
 	util_session_cleanup(session);
@@ -254,9 +254,9 @@ static gboolean test_session_connect(gpointer data)
 
 static void test_session_disconnect_notify(struct test_session *session)
 {
-	LOG("session %p online %d", session, session->info->online);
+	LOG("session %p state %d", session, session->info->state);
 
-	if (session->info->online != FALSE)
+	if (session->info->state >= CONNMAN_SESSION_STATE_CONNECTED)
 		return;
 
 	util_session_cleanup(session);
@@ -290,20 +290,20 @@ static void test_session_connect_disconnect_notify(struct test_session *session)
 	enum test_session_state next_state = state;
 	DBusMessage *msg;
 
-	LOG("state %d session %p %s online %d", state, session,
-		session->notify_path, session->info->online);
+	LOG("state %d session %p %s state %d", state, session,
+		session->notify_path, session->info->state);
 
 	switch (state) {
 	case TEST_SESSION_STATE_0:
-		if (session->info->online == FALSE)
+		if (session->info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
 			next_state = TEST_SESSION_STATE_1;
 		break;
 	case TEST_SESSION_STATE_1:
-		if (session->info->online == TRUE)
+		if (session->info->state >= CONNMAN_SESSION_STATE_CONNECTED)
 			next_state = TEST_SESSION_STATE_2;
 		break;
 	case TEST_SESSION_STATE_2:
-		if (session->info->online == FALSE)
+		if (session->info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
 			next_state = TEST_SESSION_STATE_3;
 	default:
 		break;
@@ -381,27 +381,30 @@ static void test_session_connect_free_ride_notify(struct test_session *session)
 	enum test_session_state next_state = state;
 	DBusMessage *msg;
 
-	LOG("state %d session %p %s online %d", state, session,
-		session->notify_path, session->info->online);
+	LOG("state %d session %p %s state %d", state, session,
+		session->notify_path, session->info->state);
 
 	switch (state) {
 	case TEST_SESSION_STATE_0:
-		if (session0->info->online == FALSE &&
-				session1->info->online == FALSE) {
+		if (session0->info->state == CONNMAN_SESSION_STATE_DISCONNECTED
+				&& session1->info->state ==
+					CONNMAN_SESSION_STATE_DISCONNECTED) {
 			next_state = TEST_SESSION_STATE_1;
 		}
 
 		break;
 	case TEST_SESSION_STATE_1:
-		if (session0->info->online == TRUE &&
-				session1->info->online == TRUE) {
+		if (session0->info->state >= CONNMAN_SESSION_STATE_CONNECTED &&
+				session1->info->state >=
+					CONNMAN_SESSION_STATE_CONNECTED) {
 			next_state = TEST_SESSION_STATE_2;
 		}
 
 		break;
 	case TEST_SESSION_STATE_2:
-		if (session0->info->online == FALSE &&
-				session1->info->online == FALSE) {
+		if (session0->info->state == CONNMAN_SESSION_STATE_DISCONNECTED
+				&& session1->info->state ==
+					CONNMAN_SESSION_STATE_DISCONNECTED) {
 			next_state = TEST_SESSION_STATE_3;
 		}
 

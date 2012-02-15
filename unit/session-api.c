@@ -29,6 +29,16 @@
 
 #include "test-connman.h"
 
+static enum connman_session_state string2state(const char *state)
+{
+	if (g_strcmp0(state, "connected") == 0)
+		return CONNMAN_SESSION_STATE_CONNECTED;
+	if (g_strcmp0(state, "online") == 0)
+		return CONNMAN_SESSION_STATE_ONLINE;
+
+	return CONNMAN_SESSION_STATE_DISCONNECTED;
+}
+
 static const char *roamingpolicy2string(enum connman_session_roaming_policy policy)
 {
 	switch (policy) {
@@ -163,10 +173,7 @@ static DBusMessage *notify_update(DBusConnection *conn,
 			}
 			break;
 		case DBUS_TYPE_BOOLEAN:
-			if (g_str_equal(key, "Online") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->online);
-			} else if (g_str_equal(key, "Priority") == TRUE) {
+			if (g_str_equal(key, "Priority") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&info->priority);
 
@@ -206,7 +213,12 @@ static DBusMessage *notify_update(DBusConnection *conn,
 			}
 			break;
 		case DBUS_TYPE_STRING:
-			if (g_str_equal(key, "Bearer") == TRUE) {
+			if (g_str_equal(key, "State") == TRUE) {
+				const char *val;
+				dbus_message_iter_get_basic(&value, &val);
+
+				info->state = string2state(val);
+			} else if (g_str_equal(key, "Bearer") == TRUE) {
 				const char *val;
 				dbus_message_iter_get_basic(&value, &val);
 
