@@ -50,9 +50,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 
 	connman_dbus_dict_open(&array, &dict);
 
-	connman_dbus_dict_append_array(&dict, "Services",
-			DBUS_TYPE_OBJECT_PATH, __connman_service_list, NULL);
-
 	str = __connman_notifier_get_state();
 	connman_dbus_dict_append_basic(&dict, "State",
 						DBUS_TYPE_STRING, &str);

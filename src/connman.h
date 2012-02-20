@@ -517,7 +517,6 @@ int __connman_provider_init(void);
 int __connman_service_init(void);
 void __connman_service_cleanup(void);
 
-void __connman_service_list(DBusMessageIter *iter, void *user_data);
 void __connman_service_list_struct(DBusMessageIter *iter);
 
 struct connman_service *__connman_service_lookup_from_network(struct connman_network *network);

@@ -112,26 +112,6 @@ struct connman_service {
 	int online_check_count;
 };
 
-static void append_path(gpointer value, gpointer user_data)
-{
-	struct connman_service *service = value;
-	DBusMessageIter *iter = user_data;
-
-	if (service->path == NULL)
-		return;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH,
-							&service->path);
-}
-
-void __connman_service_list(DBusMessageIter *iter, void *user_data)
-{
-	if (service_list == NULL)
-		return;
-
-	g_sequence_foreach(service_list, append_path, iter);
-}
-
 struct find_data {
 	const char *path;
 	struct connman_service *service;
@@ -629,43 +609,6 @@ done:
 	g_key_file_free(keyfile);
 
 	return err;
-}
-
-static guint changed_timeout = 0;
-
-static gboolean notify_services_changed(gpointer user_data)
-{
-	changed_timeout = 0;
-
-	connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
-				CONNMAN_MANAGER_INTERFACE, "Services",
-				DBUS_TYPE_OBJECT_PATH, __connman_service_list,
-				NULL);
-
-	return FALSE;
-}
-
-static void services_changed(gboolean delayed)
-{
-	DBG("");
-
-	if (changed_timeout > 0) {
-		g_source_remove(changed_timeout);
-		changed_timeout = 0;
-	}
-
-	if (__connman_connection_update_gateway() == TRUE) {
-		notify_services_changed(NULL);
-		return;
-	}
-
-	if (delayed == FALSE) {
-		notify_services_changed(NULL);
-		return;
-	}
-
-	changed_timeout = g_timeout_add_seconds(1, notify_services_changed,
-								 NULL);
 }
 
 static enum connman_service_state combine_state(
@@ -3291,7 +3234,7 @@ static DBusMessage *move_service(DBusConnection *conn,
 		downgrade_state(target);
 	}
 
-	services_changed(FALSE);
+	__connman_connection_update_gateway();
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -3492,7 +3435,7 @@ static void service_free(gpointer user_data)
 	service->path = NULL;
 
 	if (path != NULL) {
-		services_changed(FALSE);
+		__connman_connection_update_gateway();
 
 		g_dbus_unregister_interface(connection, path,
 						CONNMAN_SERVICE_INTERFACE);
@@ -3904,7 +3847,7 @@ int __connman_service_set_favorite(struct connman_service *service,
 
 	g_sequence_sort_changed(iter, service_compare, NULL);
 
-	services_changed(FALSE);
+	__connman_connection_update_gateway();
 
 	return 0;
 }
@@ -3971,7 +3914,7 @@ static void report_error_cb(struct connman_service *service,
 		__connman_service_connect(service);
 	else {
 		service_complete(service);
-		services_changed(FALSE);
+		__connman_connection_update_gateway();
 		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 	}
 }
@@ -4019,7 +3962,7 @@ static void request_input_cb (struct connman_service *service,
 
 	if (values_received == FALSE || service->hidden == TRUE) {
 		service_complete(service);
-		services_changed(FALSE);
+		__connman_connection_update_gateway();
 		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 		return;
 	}
@@ -4209,7 +4152,7 @@ static int service_indicate_state(struct connman_service *service)
 	if (iter != NULL)
 		g_sequence_sort_changed(iter, service_compare, NULL);
 
-	services_changed(FALSE);
+	__connman_connection_update_gateway();
 
 	if (new_state == CONNMAN_SERVICE_STATE_ONLINE)
 		default_changed();
@@ -4916,7 +4859,7 @@ static int service_register(struct connman_service *service)
 	if (iter != NULL)
 		g_sequence_sort_changed(iter, service_compare, NULL);
 
-	services_changed(TRUE);
+	__connman_connection_update_gateway();
 
 	return 0;
 }
@@ -5339,7 +5282,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	if (service->path != NULL) {
 		update_from_network(service, network);
-		services_changed(TRUE);
+		__connman_connection_update_gateway();
 		return service;
 	}
 
