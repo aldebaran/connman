@@ -353,12 +353,16 @@ struct connman_ippool *__connman_ippool_create(int index,
 	 * The range is at max 255 and we don't support overlapping
 	 * blocks.
 	 */
-	if (start + range > 254)
+	if (start + range > 254) {
+		connman_error("IP pool does not support pool size larger than 254");
 		return NULL;
+	}
 
 	block = get_free_block(start + range);
-	if (block == 0)
+	if (block == 0) {
+		connman_warn("Could not find a free IP block");
 		return NULL;
+	}
 
 	pool = g_try_new0(struct connman_ippool, 1);
 	if (pool == NULL)
