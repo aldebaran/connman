@@ -3318,6 +3318,142 @@ static DBusMessage *reset_counters(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static struct _services_notify {
+	int id;
+	GSList *added;
+	GSList *removed;
+} *services_notify;
+
+static void service_send_removed(void)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter, array;
+	GSList *list, *next;
+
+	if (services_notify->removed == NULL)
+		return;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "ServicesRemoved");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
+			DBUS_TYPE_OBJECT_PATH_AS_STRING, &array);
+
+	list = services_notify->removed;
+	services_notify->removed = NULL;
+
+	while (list != NULL) {
+		char *path = list->data;
+		DBG("removing %s", path);
+		next = list->next;
+		dbus_message_iter_append_basic(&array,
+				DBUS_TYPE_OBJECT_PATH, &list->data);
+		g_free(list->data);
+		g_slist_free_1(list);
+		list = next;
+	}
+	dbus_message_iter_close_container(&iter, &array);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+}
+
+static void append_service_structs(DBusMessageIter *iter, void *user_data)
+{
+	GSList *list = user_data;
+	GSList *next;
+
+	while (list != NULL) {
+		struct connman_service *srv = list->data;
+		DBG("adding %s", srv->path);
+		next = list->next;
+		append_struct(list->data, iter);
+		g_slist_free_1(list);
+		list = next;
+	}
+}
+
+static void service_send_added(void)
+{
+	DBusMessage *signal;
+	GSList *list;
+
+	if (services_notify->added == NULL)
+		return;
+
+	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
+			CONNMAN_MANAGER_INTERFACE, "ServicesAdded");
+	if (signal == NULL)
+		return;
+
+	list = services_notify->added;
+	services_notify->added = NULL;
+	__connman_dbus_append_objpath_dict_array(signal,
+			append_service_structs, list);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+}
+
+static gboolean service_send_signals(gpointer data)
+{
+	service_send_removed();
+	service_send_added();
+
+	services_notify->id = 0;
+	return FALSE;
+}
+
+static void service_schedule_signals(void)
+{
+	if (services_notify->id != 0)
+		g_source_remove(services_notify->id);
+
+	services_notify->id = g_timeout_add(100, service_send_signals, NULL);
+}
+
+static void service_schedule_added(struct connman_service *service)
+{
+	DBG("service %p", service);
+
+	services_notify->added = g_slist_prepend(services_notify->added,
+			service);
+
+	service_schedule_signals();
+}
+
+static void service_schedule_removed(struct connman_service *service)
+{
+	GSList *list;
+
+	DBG("service %p", service);
+
+	if (service == NULL || service->path == NULL) {
+		DBG("service %p or path is NULL", service);
+		return;
+	}
+
+	for (list = services_notify->added; list != NULL; list = list->next) {
+		struct connman_service *srv = list->data;
+		if (service == srv) {
+			DBG("delete service %p from added list", srv);
+			break;
+		}
+	}
+
+	if (list != NULL)
+		services_notify->added =
+			g_slist_delete_link(services_notify->added, list);
+
+	services_notify->removed = g_slist_prepend(services_notify->removed,
+			g_strdup(service->path));
+
+	service_schedule_signals();
+}
+
 static GDBusMethodTable service_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties     },
 	{ "SetProperty",   "sv", "",      set_property       },
@@ -3349,6 +3485,7 @@ static void service_free(gpointer user_data)
 	g_hash_table_remove(service_hash, service->identifier);
 
 	__connman_notifier_service_remove(service);
+	service_schedule_removed(service);
 
 	stats_stop(service);
 
@@ -5247,6 +5384,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	}
 
 	__connman_notifier_service_add(service, service->name);
+	service_schedule_added(service);
 
 	return service;
 }
@@ -5389,6 +5527,7 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	service_register(service);
 
 	__connman_notifier_service_add(service, service->name);
+	service_schedule_added(service);
 
 	return service;
 }
@@ -5403,6 +5542,8 @@ int __connman_service_init(void)
 								NULL, NULL);
 
 	service_list = g_sequence_new(service_free);
+
+	services_notify = g_new0(struct _services_notify, 1);
 
 	return 0;
 }
@@ -5422,6 +5563,12 @@ void __connman_service_cleanup(void)
 
 	g_slist_free(counter_list);
 	counter_list = NULL;
+
+	if (services_notify->id != 0) {
+		g_source_remove(services_notify->id);
+		service_send_signals(NULL);
+	}
+	g_free(services_notify);
 
 	dbus_connection_unref(connection);
 }
