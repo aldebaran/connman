@@ -934,7 +934,7 @@ static void technology_put(struct connman_technology *technology)
 {
 	DBG("technology %p", technology);
 
-	if (__sync_fetch_and_sub(&technology->refcount, 1) > 0)
+	if (__sync_sub_and_fetch(&technology->refcount, 1) > 0)
 		return;
 
 	reply_scan_pending(technology, -EINTR);
@@ -1281,7 +1281,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 		return 0;
 	}
 
-	technology = technology_get(type);
+	technology = technology_find(type);
 	/* If there is no driver for this type, ignore it. */
 	if (technology == NULL)
 		return -ENXIO;
