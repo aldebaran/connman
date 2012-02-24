@@ -1044,8 +1044,17 @@ int __connman_technology_add_device(struct connman_device *device)
 		return -ENXIO;
 	}
 
-	if (technology->enable_persistent && !global_offlinemode)
-		__connman_device_enable(device);
+	if (technology->enable_persistent && !global_offlinemode) {
+		int err = __connman_device_enable(device);
+		/*
+		 * connman_technology_add_device() calls __connman_device_enable()
+		 * but since the device is already enabled, the calls does not
+		 * propagate through to connman_technology_enabled via
+		 * connman_device_set_powered.
+		 */
+		if (err == -EALREADY)
+			__connman_technology_enabled(type);
+	}
 	/* if technology persistent state is offline */
 	if (!technology->enable_persistent)
 		__connman_device_disable(device);
