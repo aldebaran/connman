@@ -202,18 +202,17 @@ unit_objects += $(unit_nat_ippool_OBJECTS)
 endif
 
 test_scripts = test/get-state test/list-services \
-		test/connect-service test/monitor-services test/set-address \
+		test/monitor-services test/set-address test/test-clock \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/monitor-manager \
 		test/test-counter test/set-ipv4-method test/set-ipv6-method \
-		test/set-nameservers test/set-domains test/find-service \
 		test/get-services test/get-proxy-autoconfig test/set-proxy \
 		test/enable-tethering test/disable-tethering test/backtrace \
 		test/test-session test/provision-service test/test-supplicant \
 		test/test-new-supplicant test/service-move-before \
 		test/set-global-timeservers test/get-global-timeservers \
-		test/test-clock
+		test/set-nameservers test/set-domains
 
 if TEST
 testdir = $(pkglibdir)/test
