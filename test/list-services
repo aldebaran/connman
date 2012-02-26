@@ -28,14 +28,9 @@ bus = dbus.SystemBus()
 manager = dbus.Interface(bus.get_object("net.connman", "/"),
 					"net.connman.Manager")
 
-properties = manager.GetProperties()
-
-for path in properties["Services"]:
+for path, properties in manager.GetServices():
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")
-
-	properties = service.GetProperties()
-
 	print "[ %s ]" % (path)
 
 	for key in properties.keys():
