@@ -30,66 +30,8 @@ manager = dbus.Interface(bus.get_object("net.connman", "/"),
 
 properties = manager.GetProperties()
 
-def print_properties(key, value):
-	if key == "Profiles":
-		interface = "net.connman.Profile"
-	elif key == "Services":
-		interface = "net.connman.Service"
-	else:
-		return
-
-	print "%s" % (key)
-	for path in value:
-		print "    %s" % (path)
-		obj = dbus.Interface(bus.get_object("net.connman", path),
-								interface)
-
-		properties = obj.GetProperties()
-
-		for key in properties.keys():
-			if key in ["Services"]:
-				continue
-
-			elif key in ["Available", "Remember", "Default",
-					"Favorite", "Immutable", "AutoConnect",
-						"LoginRequired",
-						"PassphraseRequired"]:
-				if properties[key] == dbus.Boolean(1):
-					val = "true"
-				else:
-					val = "false"
-
-			elif key in ["IPv4", "IPv4.Configuration",
-					"IPv6", "IPv6.Configuration",
-						"Proxy", "Proxy.Configuration",
-							"Ethernet", "Provider"]:
-				val = extract_values(properties[key])
-
-			elif key in ["Nameservers", "Nameservers.Configuration",
-					"Domains", "Domains.Configuration",
-						"Security"]:
-				val = extract_list(properties[key])
-
-			elif key in ["Strength", "Priority"]:
-				val = int(properties[key])
-
-			else:
-				val = str(properties[key])
-
-			print "        %s = %s" % (key, val)
-
-		if "Services" in properties.keys():
-			list = ""
-			for path in properties["Services"]:
-				val = str(path)
-				list = list + val[val.rfind("/") + 1:] + " "
-			print "        Services = [ %s]" % (list)
-
-
 for key in properties.keys():
-	if key in ["Profiles", "Services"]:
-		print_properties(key, properties[key])
-	elif key in ["AvailableDebugs", "EnabledDebugs"]:
+	if key in ["AvailableDebugs", "EnabledDebugs"]:
 		print "%s" % (key)
 		list = ""
 		for val in properties[key]:
@@ -105,6 +47,39 @@ for key in properties.keys():
 		print "%s" % (key)
 		print "    %s" % (properties[key])
 
+print ("Services")
+services = manager.GetServices()
+
+for (path, properties) in services:
+	print "    %s" % (path)
+	for key in properties.keys():
+		if key in ["Available", "Remember", "Default",
+				"Favorite", "Immutable", "AutoConnect",
+					"LoginRequired",
+					"PassphraseRequired"]:
+			if properties[key] == dbus.Boolean(1):
+				val = "true"
+			else:
+				val = "false"
+
+		elif key in ["IPv4", "IPv4.Configuration",
+				"IPv6", "IPv6.Configuration",
+					"Proxy", "Proxy.Configuration",
+						"Ethernet", "Provider"]:
+			val = extract_values(properties[key])
+
+		elif key in ["Nameservers", "Nameservers.Configuration",
+				"Domains", "Domains.Configuration",
+					"Security"]:
+			val = extract_list(properties[key])
+
+		elif key in ["Strength", "Priority"]:
+			val = int(properties[key])
+
+		else:
+			val = str(properties[key])
+
+		print "        %s = %s" % (key, val)
 
 print ("Technologies")
 technologies = manager.GetTechnologies()
