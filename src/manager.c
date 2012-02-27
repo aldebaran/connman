@@ -419,7 +419,7 @@ static GDBusSignalTable manager_signals[] = {
 	{ "TechnologyAdded", "oa{sv}" },
 	{ "TechnologyRemoved", "o" },
 	{ "ServicesAdded",   "a(oa{sv})" },
-	{ "ServicesRemoved", "a{o}" },
+	{ "ServicesRemoved", "ao" },
 	{ },
 };
 
