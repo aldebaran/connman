@@ -323,7 +323,7 @@ void __connman_ippool_deladdr(int index, const char *address,
 	info = lookup_info(index, start);
 	if (info == NULL) {
 		/* In theory this should never happen */
-		connman_error("Inconsisten IP pool management (start not found)");
+		connman_error("Inconsistent IP pool management (start not found)");
 		return;
 	}
 
