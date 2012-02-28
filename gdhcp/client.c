@@ -584,7 +584,7 @@ int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
 		get_interface_mac_address(index, &(*duid)[2 + 2 + 4]);
 		(*duid)[2] = 0;
 		(*duid)[3] = type;
-		duid_time = time(0) - DUID_TIME_EPOCH;
+		duid_time = time(NULL) - DUID_TIME_EPOCH;
 		(*duid)[4] = duid_time >> 24;
 		(*duid)[5] = duid_time >> 16;
 		(*duid)[6] = duid_time >> 8;
@@ -910,7 +910,7 @@ GDHCPClient *g_dhcp_client_new(GDHCPType type,
 	dhcp_client->require_list = NULL;
 	dhcp_client->duid = NULL;
 	dhcp_client->duid_len = 0;
-	dhcp_client->last_renew = dhcp_client->last_rebind = time(0);
+	dhcp_client->last_renew = dhcp_client->last_rebind = time(NULL);
 	dhcp_client->expire = 0;
 
 	*error = G_DHCP_CLIENT_ERROR_NONE;
@@ -2569,7 +2569,7 @@ void g_dhcpv6_client_reset_renew(GDHCPClient *dhcp_client)
 	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
 		return;
 
-	dhcp_client->last_renew = time(0);
+	dhcp_client->last_renew = time(NULL);
 }
 
 void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
@@ -2577,7 +2577,7 @@ void g_dhcpv6_client_reset_rebind(GDHCPClient *dhcp_client)
 	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
 		return;
 
-	dhcp_client->last_rebind = time(0);
+	dhcp_client->last_rebind = time(NULL);
 }
 
 void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout)
@@ -2585,7 +2585,7 @@ void g_dhcpv6_client_set_expire(GDHCPClient *dhcp_client, uint32_t timeout)
 	if (dhcp_client == NULL || dhcp_client->type == G_DHCP_IPV4)
 		return;
 
-	dhcp_client->expire = time(0) + timeout;
+	dhcp_client->expire = time(NULL) + timeout;
 }
 
 uint16_t g_dhcpv6_client_get_status(GDHCPClient *dhcp_client)
