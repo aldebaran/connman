@@ -606,7 +606,7 @@ static int check_restart(struct connman_dhcpv6 *dhcp)
 
 	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, NULL, NULL,
 				NULL, NULL, &expired);
-	current = time(0);
+	current = time(NULL);
 
 	if (current > expired) {
 		DBG("expired by %d secs", (int)(current - expired));
@@ -816,7 +816,7 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, &T1, &T2,
 				&last_renew, &last_rebind, &expired);
 
-	current = time(0);
+	current = time(NULL);
 
 	DBG("T1 %u T2 %u expires %lu current %lu", T1, T2,
 		(unsigned long)expired, current);
@@ -1207,7 +1207,7 @@ int __connman_dhcpv6_init(void)
 {
 	DBG("");
 
-	srand(time(0));
+	srand(time(NULL));
 
 	network_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, remove_network);

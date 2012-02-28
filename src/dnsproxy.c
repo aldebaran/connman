@@ -565,7 +565,7 @@ static gboolean cache_check_is_valid(struct cache_data *data,
  */
 static void cache_enforce_validity(struct cache_entry *entry)
 {
-	time_t current_time = time(0);
+	time_t current_time = time(NULL);
 
 	if (cache_check_is_valid(entry->ipv4, current_time) == FALSE
 							&& entry->ipv4) {
@@ -588,7 +588,7 @@ static void cache_enforce_validity(struct cache_entry *entry)
 static uint16_t cache_check_validity(char *question, uint16_t type,
 				struct cache_entry *entry)
 {
-	time_t current_time = time(0);
+	time_t current_time = time(NULL);
 	int want_refresh = 0;
 
 	/*
@@ -1053,7 +1053,7 @@ static void cache_cleanup(void)
 	struct cache_timeout data;
 	int count = 0;
 
-	data.current_time = time(0);
+	data.current_time = time(NULL);
 	data.max_timeout = 0;
 	data.try_harder = 0;
 
@@ -1230,7 +1230,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 			return 0;
 	}
 
-	current_time = time(0);
+	current_time = time(NULL);
 
 	/* don't do a cache refresh more than twice a minute */
 	if (next_refresh < current_time) {
@@ -1416,7 +1416,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 			data = entry->ipv6;
 
 		if (data) {
-			ttl_left = data->valid_until - time(0);
+			ttl_left = data->valid_until - time(NULL);
 			entry->hits++;
 		}
 
