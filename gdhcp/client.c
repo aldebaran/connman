@@ -88,6 +88,7 @@ struct _GDHCPClient {
 	uint32_t server_ip;
 	uint32_t requested_ip;
 	char *assigned_ip;
+	time_t start;
 	uint32_t lease_seconds;
 	ListenMode listen_mode;
 	int listener_sockfd;
@@ -339,6 +340,17 @@ static void add_send_options(GDHCPClient *dhcp_client,
 				add_binary_option, packet);
 }
 
+/*
+ * Return an RFC 951- and 2131-complaint BOOTP 'secs' value that
+ * represents the number of seconds elapsed from the start of
+ * attempting DHCP to satisfy some DHCP servers that allow for an
+ * "authoritative" reply before responding.
+ */
+static uint16_t dhcp_attempt_secs(GDHCPClient *dhcp_client)
+{
+	return htons(MIN(time(NULL) - dhcp_client->start, UINT16_MAX));
+}
+
 static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 {
 	struct dhcp_packet packet;
@@ -348,6 +360,7 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 	init_packet(dhcp_client, &packet, DHCPDISCOVER);
 
 	packet.xid = dhcp_client->xid;
+	packet.secs = dhcp_attempt_secs(dhcp_client);
 
 	if (requested)
 		dhcp_add_simple_option(&packet, DHCP_REQUESTED_IP, requested);
@@ -374,6 +387,7 @@ static int send_select(GDHCPClient *dhcp_client)
 	init_packet(dhcp_client, &packet, DHCPREQUEST);
 
 	packet.xid = dhcp_client->xid;
+	packet.secs = dhcp_attempt_secs(dhcp_client);
 
 	dhcp_add_simple_option(&packet, DHCP_REQUESTED_IP,
 					dhcp_client->requested_ip);
@@ -2240,6 +2254,7 @@ int g_dhcp_client_start(GDHCPClient *dhcp_client, const char *last_address)
 			return re;
 
 		dhcp_client->xid = rand();
+		dhcp_client->start = time(NULL);
 	}
 
 	if (last_address == NULL) {
