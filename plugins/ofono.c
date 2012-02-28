@@ -914,8 +914,6 @@ static connman_bool_t ready_to_create_device(struct modem_data *modem)
 	 * different:
 	 * - GSM modems will expose the SIM interface then the
 	 *   CM interface.
-	 * - DUN modems will expose first a unique serial number (BDADDR)
-	 *   and then the CM interface.
 	 * - CDMA modems will expose CM first and sometime later
 	 *   a unique serial number.
 	 *
