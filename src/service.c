@@ -1996,14 +1996,11 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 						append_provider, service);
 }
 
-static void append_struct(gpointer value, gpointer user_data)
+static void append_struct_service(DBusMessageIter *iter,
+		connman_dbus_append_cb_t function,
+		struct connman_service *service)
 {
-	struct connman_service *service = value;
-	DBusMessageIter *iter = user_data;
 	DBusMessageIter entry, dict;
-
-	if (service->path == NULL)
-		return;
 
 	dbus_message_iter_open_container(iter, DBUS_TYPE_STRUCT, NULL, &entry);
 
@@ -2011,10 +2008,29 @@ static void append_struct(gpointer value, gpointer user_data)
 							&service->path);
 
 	connman_dbus_dict_open(&entry, &dict);
-	append_properties(&dict, TRUE, service);
+	if (function != NULL)
+		function(&dict, service);
 	connman_dbus_dict_close(&entry, &dict);
 
 	dbus_message_iter_close_container(iter, &entry);
+}
+
+static void append_dict_properties(DBusMessageIter *dict, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	append_properties(dict, TRUE, service);
+}
+
+static void append_struct(gpointer value, gpointer user_data)
+{
+	struct connman_service *service = value;
+	DBusMessageIter *iter = user_data;
+
+	if (service->path == NULL)
+		return;
+
+	append_struct_service(iter, append_dict_properties, service);
 }
 
 void __connman_service_list_struct(DBusMessageIter *iter)
@@ -3263,18 +3279,23 @@ static DBusMessage *reset_counters(DBusConnection *conn,
 
 static struct _services_notify {
 	int id;
-	GSList *added;
-	GSList *removed;
+	GHashTable *add;
+	GHashTable *remove;
 } *services_notify;
+
+static void append_removed(gpointer key, gpointer value, gpointer user_data)
+{
+	char *objpath = key;
+	DBusMessageIter *iter = user_data;
+
+	DBG("removed %s", objpath);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &objpath);
+}
 
 static void service_send_removed(void)
 {
 	DBusMessage *signal;
 	DBusMessageIter iter, array;
-	GSList *list, *next;
-
-	if (services_notify->removed == NULL)
-		return;
 
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 			CONNMAN_MANAGER_INTERFACE, "ServicesRemoved");
@@ -3285,57 +3306,57 @@ static void service_send_removed(void)
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
 			DBUS_TYPE_OBJECT_PATH_AS_STRING, &array);
 
-	list = services_notify->removed;
-	services_notify->removed = NULL;
+	g_hash_table_foreach(services_notify->remove, append_removed, &array);
 
-	while (list != NULL) {
-		char *path = list->data;
-		DBG("removing %s", path);
-		next = list->next;
-		dbus_message_iter_append_basic(&array,
-				DBUS_TYPE_OBJECT_PATH, &list->data);
-		g_free(list->data);
-		g_slist_free_1(list);
-		list = next;
-	}
 	dbus_message_iter_close_container(&iter, &array);
 
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
 }
 
-static void append_service_structs(DBusMessageIter *iter, void *user_data)
+static void service_send_added_foreach(gpointer data, gpointer user_data)
 {
-	GSList *list = user_data;
-	GSList *next;
+	struct connman_service *service = data;
+	DBusMessageIter *iter = user_data;
+	gpointer value;
 
-	while (list != NULL) {
-		struct connman_service *srv = list->data;
-		DBG("adding %s", srv->path);
-		next = list->next;
-		append_struct(list->data, iter);
-		g_slist_free_1(list);
-		list = next;
+	if (service == NULL || service->path == NULL) {
+		DBG("service %p or path is NULL", service);
+		return;
 	}
+
+	value = g_hash_table_lookup(services_notify->remove, service->path);
+	if (GPOINTER_TO_INT(value) == TRUE) {
+		g_hash_table_remove(services_notify->remove, service->path);
+		return;
+	}
+
+	DBG("added %s", service->path);
+
+	if (g_hash_table_lookup(services_notify->add, service->path) != NULL) {
+		append_struct(service, iter);
+		g_hash_table_remove(services_notify->add, service->path);
+	} else {
+		append_struct_service(iter, NULL, service);
+	}
+}
+
+static void service_send_added_ordered(DBusMessageIter *iter, void *user_data)
+{
+	g_sequence_foreach(service_list, service_send_added_foreach, iter);
 }
 
 static void service_send_added(void)
 {
 	DBusMessage *signal;
-	GSList *list;
-
-	if (services_notify->added == NULL)
-		return;
 
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 			CONNMAN_MANAGER_INTERFACE, "ServicesAdded");
 	if (signal == NULL)
 		return;
 
-	list = services_notify->added;
-	services_notify->added = NULL;
 	__connman_dbus_append_objpath_dict_array(signal,
-			append_service_structs, list);
+			service_send_added_ordered, NULL);
 
 	dbus_connection_send(connection, signal, NULL);
 	dbus_message_unref(signal);
@@ -3343,8 +3364,13 @@ static void service_send_added(void)
 
 static gboolean service_send_signals(gpointer data)
 {
-	service_send_removed();
-	service_send_added();
+	if (g_hash_table_size(services_notify->remove) > 0)
+		service_send_removed();
+
+	if (g_hash_table_size(services_notify->add) > 0)
+		service_send_added();
+	else
+		g_hash_table_remove_all(services_notify->remove);
 
 	services_notify->id = 0;
 	return FALSE;
@@ -3362,37 +3388,24 @@ static void service_schedule_added(struct connman_service *service)
 {
 	DBG("service %p", service);
 
-	services_notify->added = g_slist_prepend(services_notify->added,
-			service);
+	g_hash_table_remove(services_notify->remove, service->path);
+	g_hash_table_insert(services_notify->add, service->path, service);
 
 	service_schedule_signals();
 }
 
 static void service_schedule_removed(struct connman_service *service)
 {
-	GSList *list;
-
-	DBG("service %p", service);
+	DBG("service %p %s", service, service->path);
 
 	if (service == NULL || service->path == NULL) {
 		DBG("service %p or path is NULL", service);
 		return;
 	}
 
-	for (list = services_notify->added; list != NULL; list = list->next) {
-		struct connman_service *srv = list->data;
-		if (service == srv) {
-			DBG("delete service %p from added list", srv);
-			break;
-		}
-	}
-
-	if (list != NULL)
-		services_notify->added =
-			g_slist_delete_link(services_notify->added, list);
-
-	services_notify->removed = g_slist_prepend(services_notify->removed,
-			g_strdup(service->path));
+	g_hash_table_remove(services_notify->add, service->path);
+	g_hash_table_insert(services_notify->remove, g_strdup(service->path),
+			GINT_TO_POINTER(TRUE));
 
 	service_schedule_signals();
 }
@@ -5504,6 +5517,9 @@ int __connman_service_init(void)
 	service_list = g_sequence_new(service_free);
 
 	services_notify = g_new0(struct _services_notify, 1);
+	services_notify->remove = g_hash_table_new_full(g_str_hash,
+			g_str_equal, g_free, NULL);
+	services_notify->add = g_hash_table_new(g_str_hash, g_str_equal);
 
 	return 0;
 }
@@ -5527,6 +5543,8 @@ void __connman_service_cleanup(void)
 	if (services_notify->id != 0) {
 		g_source_remove(services_notify->id);
 		service_send_signals(NULL);
+		g_hash_table_destroy(services_notify->remove);
+		g_hash_table_destroy(services_notify->add);
 	}
 	g_free(services_notify);
 
