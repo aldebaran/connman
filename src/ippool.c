@@ -296,7 +296,7 @@ update:
 		if (!(it->start <= info->start || info->start <= it->end))
 			continue;
 
-		if (it->pool->collision_cb != NULL)
+		if (it->pool != NULL && it->pool->collision_cb != NULL)
 			it->pool->collision_cb(it->pool, it->pool->user_data);
 
 		return;
