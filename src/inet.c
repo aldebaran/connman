@@ -1433,9 +1433,11 @@ static const struct in6_addr in6addr_all_routers_mc =
 
 static void rs_cleanup(struct rs_cb_data *data)
 {
-	g_io_channel_shutdown(data->channel, TRUE, NULL);
-	g_io_channel_unref(data->channel);
-	data->channel = 0;
+	if (data->channel != NULL) {
+		g_io_channel_shutdown(data->channel, TRUE, NULL);
+		g_io_channel_unref(data->channel);
+		data->channel = NULL;
+	}
 
 	if (data->rs_timeout > 0)
 		g_source_remove(data->rs_timeout);
