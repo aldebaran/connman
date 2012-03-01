@@ -1280,7 +1280,7 @@ static gboolean cm_context_added(DBusConnection *connection,
 
 	DBG("%s", path);
 
-	modem = g_hash_table_lookup(modem_hash, context_path);
+	modem = g_hash_table_lookup(modem_hash, path);
 	if (modem == NULL)
 		return TRUE;
 
