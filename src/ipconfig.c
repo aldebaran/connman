@@ -2032,17 +2032,35 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		if (g_str_equal(key, "Method") == TRUE) {
 			const char *str;
 
+			if (type == DBUS_TYPE_VARIANT) {
+				DBusMessageIter variant = entry;
+				dbus_message_iter_recurse(&variant, &entry);
+				type = dbus_message_iter_get_arg_type(&entry);
+			}
+
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
 			dbus_message_iter_get_basic(&entry, &str);
 			method = __connman_ipconfig_string2method(str);
 		} else if (g_str_equal(key, "Address") == TRUE) {
+			if (type == DBUS_TYPE_VARIANT) {
+				DBusMessageIter variant = entry;
+				dbus_message_iter_recurse(&variant, &entry);
+				type = dbus_message_iter_get_arg_type(&entry);
+			}
+
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
 			dbus_message_iter_get_basic(&entry, &address);
 		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
+			if (type == DBUS_TYPE_VARIANT) {
+				DBusMessageIter variant = entry;
+				dbus_message_iter_recurse(&variant, &entry);
+				type = dbus_message_iter_get_arg_type(&entry);
+			}
+
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
@@ -2054,16 +2072,34 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 				return -EINVAL;
 
 		} else if (g_str_equal(key, "Netmask") == TRUE) {
+			if (type == DBUS_TYPE_VARIANT) {
+				DBusMessageIter variant = entry;
+				dbus_message_iter_recurse(&variant, &entry);
+				type = dbus_message_iter_get_arg_type(&entry);
+			}
+
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
 			dbus_message_iter_get_basic(&entry, &netmask);
 		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			if (type == DBUS_TYPE_VARIANT) {
+				DBusMessageIter variant = entry;
+				dbus_message_iter_recurse(&variant, &entry);
+				type = dbus_message_iter_get_arg_type(&entry);
+			}
+
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
 			dbus_message_iter_get_basic(&entry, &gateway);
 		} else if (g_str_equal(key, "Privacy") == TRUE) {
+			if (type == DBUS_TYPE_VARIANT) {
+				DBusMessageIter variant = entry;
+				dbus_message_iter_recurse(&variant, &entry);
+				type = dbus_message_iter_get_arg_type(&entry);
+			}
+
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
