@@ -179,11 +179,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		struct timeval tv;
 		dbus_uint64_t newval;
 
-		if (type == DBUS_TYPE_VARIANT) {
-			DBusMessageIter variant = value;
-			dbus_message_iter_recurse(&variant, &value);
-			type = dbus_message_iter_get_arg_type(&value);
-		}
 		if (type != DBUS_TYPE_UINT64)
 			return __connman_error_invalid_arguments(msg);
 
@@ -205,11 +200,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		const char *strval;
 		enum time_updates newval;
 
-		if (type == DBUS_TYPE_VARIANT) {
-			DBusMessageIter variant = value;
-			dbus_message_iter_recurse(&variant, &value);
-			type = dbus_message_iter_get_arg_type(&value);
-		}
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
@@ -230,11 +220,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "Timezone") == TRUE) {
 		const char *strval;
 
-		if (type == DBUS_TYPE_VARIANT) {
-			DBusMessageIter variant = value;
-			dbus_message_iter_recurse(&variant, &value);
-			type = dbus_message_iter_get_arg_type(&value);
-		}
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
@@ -249,11 +234,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		const char *strval;
 		enum timezone_updates newval;
 
-		if (type == DBUS_TYPE_VARIANT) {
-			DBusMessageIter variant = value;
-			dbus_message_iter_recurse(&variant, &value);
-			type = dbus_message_iter_get_arg_type(&value);
-		}
 		if (type != DBUS_TYPE_STRING)
 			return __connman_error_invalid_arguments(msg);
 
@@ -274,11 +254,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "Timeservers") == TRUE) {
 		DBusMessageIter entry;
 
-		if (type == DBUS_TYPE_VARIANT) {
-			DBusMessageIter variant = value;
-			dbus_message_iter_recurse(&variant, &value);
-			type = dbus_message_iter_get_arg_type(&value);
-		}
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
