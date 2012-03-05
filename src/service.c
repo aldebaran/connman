@@ -2417,11 +2417,11 @@ static int update_proxy_configuration(struct connman_service *service,
 		dbus_message_iter_get_basic(&entry, &key);
 		dbus_message_iter_next(&entry);
 
-		if (dbus_message_iter_get_arg_type(&entry) !=
-							DBUS_TYPE_VARIANT)
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
 			goto error;
 
 		dbus_message_iter_recurse(&entry, &variant);
+
 		type = dbus_message_iter_get_arg_type(&variant);
 
 		if (g_str_equal(key, "Method") == TRUE) {
