@@ -2015,7 +2015,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 	dbus_message_iter_recurse(array, &dict);
 
 	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry;
+		DBusMessageIter entry, value;
 		const char *key;
 		int type;
 
@@ -2027,85 +2027,54 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		dbus_message_iter_get_basic(&entry, &key);
 		dbus_message_iter_next(&entry);
 
-		type = dbus_message_iter_get_arg_type(&entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
+			return -EINVAL;
+
+		dbus_message_iter_recurse(&entry, &value);
+
+		type = dbus_message_iter_get_arg_type(&value);
 
 		if (g_str_equal(key, "Method") == TRUE) {
 			const char *str;
 
-			if (type == DBUS_TYPE_VARIANT) {
-				DBusMessageIter variant = entry;
-				dbus_message_iter_recurse(&variant, &entry);
-				type = dbus_message_iter_get_arg_type(&entry);
-			}
-
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&entry, &str);
+			dbus_message_iter_get_basic(&value, &str);
 			method = __connman_ipconfig_string2method(str);
 		} else if (g_str_equal(key, "Address") == TRUE) {
-			if (type == DBUS_TYPE_VARIANT) {
-				DBusMessageIter variant = entry;
-				dbus_message_iter_recurse(&variant, &entry);
-				type = dbus_message_iter_get_arg_type(&entry);
-			}
-
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&entry, &address);
+			dbus_message_iter_get_basic(&value, &address);
 		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
-			if (type == DBUS_TYPE_VARIANT) {
-				DBusMessageIter variant = entry;
-				dbus_message_iter_recurse(&variant, &entry);
-				type = dbus_message_iter_get_arg_type(&entry);
-			}
-
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&entry,
+			dbus_message_iter_get_basic(&value,
 							&prefix_length_string);
 
 			prefix_length = atoi(prefix_length_string);
 			if (prefix_length < 0 || prefix_length > 128)
 				return -EINVAL;
-
 		} else if (g_str_equal(key, "Netmask") == TRUE) {
-			if (type == DBUS_TYPE_VARIANT) {
-				DBusMessageIter variant = entry;
-				dbus_message_iter_recurse(&variant, &entry);
-				type = dbus_message_iter_get_arg_type(&entry);
-			}
-
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&entry, &netmask);
+			dbus_message_iter_get_basic(&value, &netmask);
 		} else if (g_str_equal(key, "Gateway") == TRUE) {
-			if (type == DBUS_TYPE_VARIANT) {
-				DBusMessageIter variant = entry;
-				dbus_message_iter_recurse(&variant, &entry);
-				type = dbus_message_iter_get_arg_type(&entry);
-			}
-
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&entry, &gateway);
+			dbus_message_iter_get_basic(&value, &gateway);
 		} else if (g_str_equal(key, "Privacy") == TRUE) {
-			if (type == DBUS_TYPE_VARIANT) {
-				DBusMessageIter variant = entry;
-				dbus_message_iter_recurse(&variant, &entry);
-				type = dbus_message_iter_get_arg_type(&entry);
-			}
-
 			if (type != DBUS_TYPE_STRING)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&entry, &privacy_string);
+			dbus_message_iter_get_basic(&value, &privacy_string);
 			privacy = string2privacy(privacy_string);
 		}
+
 		dbus_message_iter_next(&dict);
 	}
 
