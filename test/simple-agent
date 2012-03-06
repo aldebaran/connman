@@ -11,6 +11,8 @@ class Canceled(dbus.DBusException):
 	_dbus_error_name = "net.connman.Error.Canceled"
 
 class Agent(dbus.service.Object):
+	name = None
+	ssid = None
 	identity = None
 	passphrase = None
 	wpspin = None
@@ -75,6 +77,29 @@ class Agent(dbus.service.Object):
 
 		return response
 
+	def input_hidden(self):
+		response = {}
+
+		if not self.name and not self.ssid:
+			args = raw_input('Answer ')
+
+			for arg in args.split():
+				if arg.startswith("Name="):
+					name = arg.replace("Name=", "", 1)
+					response["Name"] = name
+					break
+				if arg.startswith("SSID="):
+					ssid = arg.replace("SSID", "", 1)
+					response["SSID"] = ssid
+					break
+		else:
+			if self.name:
+				response["Name"] = self.name
+			if self.ssid:
+				response["SSID"] = self.ssid
+
+		return response
+
 	@dbus.service.method("net.connman.Agent",
 					in_signature='oa{sv}',
 					out_signature='a{sv}')
@@ -83,7 +108,9 @@ class Agent(dbus.service.Object):
 
 		response = None
 
-		if fields.has_key("Passphrase"):
+		if fields.has_key("Name"):
+			response = self.input_hidden()
+		elif fields.has_key("Passphrase"):
 			response = self.input_passphrase()
 		elif fields.has_key("Username"):
 			response = self.input_username()
@@ -132,6 +159,8 @@ class Agent(dbus.service.Object):
 
 def print_usage():
 	print "Usage:"
+	print "For hidden service:"
+	print "%s Name=<hidden service name> [SSID=<hidden ssid>]" % (sys.argv[0])
 	print "For EAP/WPA input:"
 	print "%s Identity=<identity> Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
 	print "For WISPr login input:"
@@ -154,7 +183,11 @@ if __name__ == '__main__':
 
 	if len(sys.argv) >= 2:
 		for arg in sys.argv[1:]:
-			if arg.startswith("Identity="):
+			if arg.startswith("Name="):
+				object.name = arg.replace("Name=", "", 1)
+			elif arg.startswith("SSID="):
+				object.ssid = arg.replace("SSID=", "", 1)
+			elif arg.startswith("Identity="):
 				object.identity = arg.replace("Identity=", "", 1)
 			elif arg.startswith("Passphrase="):
 				object.passphrase = arg.replace("Passphrase=", "", 1)
