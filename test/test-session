@@ -76,7 +76,6 @@ class SessionApplication(dbus.service.Object):
 			bus.watch_name_owner('net.connman', self.connman_name_owner_changed)
 		except dbus.DBusException:
 			traceback.print_exc()
-			exit(1)
 
 	def connman_name_owner_changed(self, proxy):
 		try:
@@ -97,7 +96,6 @@ class SessionApplication(dbus.service.Object):
 
 		except dbus.DBusException:
 			traceback.print_exc()
-			exit(1)
 
 	def release(self, session_name):
 		s = self.find_session(session_name)
@@ -165,7 +163,6 @@ class SessionApplication(dbus.service.Object):
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
-			exit(1)
 
 	@dbus.service.method("com.example.TestSession",
 				in_signature='', out_signature='')
@@ -181,7 +178,6 @@ class SessionApplication(dbus.service.Object):
 			self.release(session_name)
 		except dbus.DBusException:
 			traceback.print_exc()
-			exit(1)
 
 	@dbus.service.method("com.example.TestSession",
 				in_signature='', out_signature='')
@@ -200,7 +196,6 @@ class SessionApplication(dbus.service.Object):
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
-			exit(1)
 
 	@dbus.service.method("com.example.TestSession",
 				in_signature='', out_signature='')
@@ -219,7 +214,6 @@ class SessionApplication(dbus.service.Object):
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
-			exit(1)
 
 	@dbus.service.method("com.example.TestSession",
 				in_signature='', out_signature='')
@@ -239,7 +233,6 @@ class SessionApplication(dbus.service.Object):
 				print e.get_dbus_message()
 				return
 			traceback.print_exc()
-			exit(1)
 
 	@dbus.service.method("com.example.TestSession",
 				in_signature='', out_signature='')
