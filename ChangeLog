@@ -1,3 +1,14 @@
+ver 0.79:
+	Update to support changed D-Bus API.
+	Add support for WiFi background scanning.
+	Add support for showing hidden WiFi networks as services.
+	Add support for generic stateless DHCPv6 handling.
+	Add support for DHCPv4 client identifier handling.
+	Add support for generic IP address pool handling.
+	Add support for global DNS cache handling.
+	Add support for internal NTP time handling.
+	Add support for updated oFono handling.
+
 ver 0.78:
 	Fix multiple issues with service connection states.
 	Fix multiple issues with technology handling.
