@@ -35,11 +35,9 @@ class Agent(dbus.service.Object):
 				if arg.startswith("Identity="):
 					identity = arg.replace("Identity=", "", 1)
 					response["Identity"] = identity
-					break
 				if arg.startswith("Passphrase="):
 					passphrase = arg.replace("Passphrase=", "", 1)
 					response["Passphrase"] = passphrase
-					break
 				if arg.startswith("WPS="):
 					wpspin = arg.replace("WPS=", "", 1)
 					response["WPS"] = wpspin
@@ -64,11 +62,9 @@ class Agent(dbus.service.Object):
 				if arg.startswith("Username="):
 					username = arg.replace("Username=", "", 1)
 					response["Username"] = username
-					break
 				if arg.startswith("Password="):
 					password = arg.replace("Password=", "", 1)
 					response["Password"] = password
-					break
 		else:
 			if self.username:
 				response["Username"] = self.username
