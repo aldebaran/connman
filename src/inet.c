@@ -619,11 +619,13 @@ int connman_inet_del_rule(const char* from, int index)
 int connman_inet_add_host_route(int index, const char *host,
 				const char *gateway)
 {
+	connman_inet_add_network_route_with_table(index, host, gateway, 32);
 	return connman_inet_add_network_route(index, host, gateway, NULL);
 }
 
 int connman_inet_del_host_route(int index, const char *host)
 {
+	connman_inet_del_network_route_with_table(index, host, NULL);
 	return connman_inet_del_network_route(index, host);
 }
 

@@ -187,14 +187,14 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	GList *list, *option = NULL;
 	char *address, *netmask = NULL, *gateway = NULL;
 	const char *c_address, *c_gateway;
-	char *domainname = NULL, *hostname = NULL;
+	char *domainname = NULL, *hostname = NULL, *subnet = NULL;
 	char **nameservers, **timeservers, *pac = NULL;
 	int ns_entries;
 	struct connman_ipconfig *ipconfig;
 	struct connman_service *service;
 	unsigned char prefixlen, c_prefixlen;
 	gboolean ip_change;
-	int i;
+	int i, index;
 
 	DBG("Lease available");
 
@@ -285,6 +285,14 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		__connman_ipconfig_set_local(ipconfig, address);
 		__connman_ipconfig_set_prefixlen(ipconfig, prefixlen);
 		__connman_ipconfig_set_gateway(ipconfig, gateway);
+		index = connman_network_get_index(dhcp->network);
+		subnet = __connman_ipconfig_address_subnet(address, netmask);
+		if (subnet != NULL) {
+			connman_inet_add_network_route_with_table(index, subnet,
+							NULL, prefixlen);
+			free(subnet);
+			subnet = NULL;
+		}
 	}
 
 	if (compare_string_arrays(nameservers, dhcp->nameservers) == FALSE) {

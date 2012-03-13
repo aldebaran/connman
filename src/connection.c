@@ -368,8 +368,11 @@ static struct gateway_data *add_gateway(struct connman_service *service,
 	config->vpn_phy_index = -1;
 	config->active = FALSE;
 
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 		data->ipv4_gateway = config;
+		connman_inet_add_network_route_with_table(data->index, NULL,
+					data->ipv4_gateway->gateway, 0);
+	}
 	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
 		data->ipv6_gateway = config;
 	else {
@@ -695,6 +698,8 @@ static void remove_gateway(gpointer user_data)
 	DBG("gateway ipv4 %p ipv6 %p", data->ipv4_gateway, data->ipv6_gateway);
 
 	if (data->ipv4_gateway != NULL) {
+		connman_inet_del_network_route_with_table(data->index, NULL,
+						data->ipv4_gateway->gateway);
 		g_free(data->ipv4_gateway->gateway);
 		g_free(data->ipv4_gateway->vpn_ip);
 		g_free(data->ipv4_gateway->vpn_phy_ip);
