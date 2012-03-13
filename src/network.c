@@ -23,6 +23,14 @@
 #include <config.h>
 #endif
 
+/*
+ * Ugly tricks to add ERFKILL errno symbol with 2.6.29 kernel
+ * The ERFKILL symbol wasn't use away from this file
+ */
+#ifndef ERFKILL
+#define ERFKILL 132
+#endif
+
 #include <errno.h>
 #include <string.h>
 
