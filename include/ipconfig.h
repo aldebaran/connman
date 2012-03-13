@@ -48,6 +48,8 @@ void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress);
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source);
+char* __connman_ipconfig_address_subnet(const char *address,
+					const char *netmask);
 
 enum connman_ipconfig_type {
 	CONNMAN_IPCONFIG_TYPE_UNKNOWN = 0,

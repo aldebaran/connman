@@ -120,6 +120,23 @@ void connman_ipaddress_free(struct connman_ipaddress *ipaddress)
 	g_free(ipaddress);
 }
 
+char* __connman_ipconfig_address_subnet(const char *address,
+					const char *netmask)
+{
+	char *subnet = NULL;
+	struct in_addr ip_addr, ip_netmask, ip_subnet;
+
+	subnet = malloc(INET_ADDRSTRLEN);
+
+	inet_pton(AF_INET, address, &ip_addr);
+	inet_pton(AF_INET, netmask, &ip_netmask);
+	ip_subnet.s_addr = ip_addr.s_addr & ip_netmask.s_addr;
+
+	inet_ntop(AF_INET, &ip_subnet, subnet, INET_ADDRSTRLEN);
+
+	return subnet;
+}
+
 unsigned char __connman_ipconfig_netmask_prefix_len(const char *netmask)
 {
 	unsigned char bits;
