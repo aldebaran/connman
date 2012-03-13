@@ -41,6 +41,8 @@ int connman_inet_ifdown(int index);
 
 int connman_inet_set_address(int index, struct connman_ipaddress *ipaddress);
 int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress);
+int connman_inet_add_rule(const char* from, int index);
+int connman_inet_del_rule(const char* from, int index);
 int connman_inet_add_host_route(int index, const char *host, const char *gateway);
 int connman_inet_del_host_route(int index, const char *host);
 int connman_inet_add_network_route(int index, const char *host, const char *gateway,

@@ -75,6 +75,12 @@ int __connman_inet_rtnl_addattr_l(struct nlmsghdr *n, size_t max_length,
 	return 0;
 }
 
+//here i use directly the index as tid
+static inline int index2tid(int index)
+{
+	return index;
+}
+
 int __connman_inet_modify_address(int cmd, int flags,
 				int index, int family,
 				const char *address,
@@ -120,6 +126,12 @@ int __connman_inet_modify_address(int cmd, int flags,
 	ifaddrmsg->ifa_index = index;
 
 	if (family == AF_INET) {
+
+		if (header->nlmsg_type == RTM_NEWADDR)
+			connman_inet_add_rule(address, index);
+		else if (header->nlmsg_type == RTM_DELADDR)
+			connman_inet_del_rule(address, index);
+
 		if (inet_pton(AF_INET, address, &ipv4_addr) < 1)
 			return -1;
 
@@ -434,6 +446,121 @@ int connman_inet_clear_address(int index, struct connman_ipaddress *ipaddress)
 	}
 
 	return 0;
+}
+int connman_inet_add_rule(const char* from, int index)
+{
+	uint8_t request[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+			NLMSG_ALIGN(sizeof(struct rtmsg)) +
+			RTA_LENGTH(sizeof(struct in_addr))];
+
+	int sk = 0, err = 0;
+	struct nlmsghdr *header;
+	struct sockaddr_nl nl_addr;
+	struct rtmsg *rtmsg;
+	struct in_addr ipv4_from;
+
+	DBG("add ip rule from %s index %d", from, index);
+
+	memset(&request, 0, sizeof(request));
+
+	header = (struct nlmsghdr *)request;
+	header->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	header->nlmsg_flags = NLM_F_REQUEST|NLM_F_CREATE|NLM_F_EXCL;;
+	header->nlmsg_type = RTM_NEWRULE;
+
+	rtmsg = NLMSG_DATA(header);
+	rtmsg->rtm_family = AF_INET;
+	rtmsg->rtm_protocol = RTPROT_BOOT;
+	rtmsg->rtm_scope = RT_SCOPE_UNIVERSE;
+	rtmsg->rtm_type = RTN_UNICAST;
+
+	rtmsg->rtm_table = index2tid(index);
+
+	rtmsg->rtm_src_len = 32;
+	inet_pton(AF_INET, from, &ipv4_from);
+
+	if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), FRA_SRC,
+			      &ipv4_from, sizeof(ipv4_from))) < 0)
+		goto out;
+
+	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	memset(&nl_addr, 0, sizeof(nl_addr));
+	nl_addr.nl_family = AF_NETLINK;
+	if ((err = sendto(sk, request, header->nlmsg_len, 0,
+			(struct sockaddr *) &nl_addr, sizeof(nl_addr))) < 0)
+		goto out;
+
+ out:
+	if (err < 0)
+		connman_error("Set IP rule error (%s)", strerror(errno));
+	close(sk);
+	return err;
+
+}
+
+int connman_inet_del_rule(const char* from, int index)
+{
+	uint8_t request[NLMSG_ALIGN(sizeof(struct nlmsghdr)) +
+			NLMSG_ALIGN(sizeof(struct rtmsg)) +
+			RTA_LENGTH(sizeof(struct in_addr))];
+
+	int sk = 0 , err = 0;
+	struct nlmsghdr *header;
+	struct sockaddr_nl nl_addr;
+	struct rtmsg *rtmsg;
+	struct in_addr ipv4_from;
+
+	DBG("del ip rule from %s index %d", from, index);
+
+	if (from == NULL)
+		return 0;
+
+	memset(&request, 0, sizeof(request));
+
+	header = (struct nlmsghdr *)request;
+	header->nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	header->nlmsg_flags = NLM_F_REQUEST;
+	header->nlmsg_type = RTM_DELRULE;
+
+	rtmsg = NLMSG_DATA(header);
+	rtmsg = NLMSG_DATA(header);
+	rtmsg->rtm_family = AF_INET;
+	rtmsg->rtm_protocol = RTPROT_BOOT;
+	rtmsg->rtm_scope = RT_SCOPE_NOWHERE;
+	rtmsg->rtm_type = RTN_UNICAST;
+
+	rtmsg->rtm_table = index2tid(index);
+
+	rtmsg->rtm_src_len = 32;
+	inet_pton(AF_INET, from, &ipv4_from);
+
+	if ((err = __connman_inet_rtnl_addattr_l(header, sizeof(request), FRA_SRC,
+			      &ipv4_from, sizeof(ipv4_from))) < 0)
+		goto out;
+
+	sk = socket(AF_NETLINK, SOCK_DGRAM, NETLINK_ROUTE);
+	if (sk < 0) {
+		err = -1;
+		goto out;
+	}
+
+	memset(&nl_addr, 0, sizeof(nl_addr));
+	nl_addr.nl_family = AF_NETLINK;
+	if ((err = sendto(sk, request, header->nlmsg_len, 0,
+			(struct sockaddr *) &nl_addr, sizeof(nl_addr))) < 0)
+		goto out;
+
+ out:
+	if (err < 0)
+		connman_error("Del IP rule error (%s)",	strerror(errno));
+	close(sk);
+	return err;
+
 }
 
 int connman_inet_add_host_route(int index, const char *host,
