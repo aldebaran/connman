@@ -4261,7 +4261,12 @@ int __connman_service_clear_error(struct connman_service *service)
 
 int __connman_service_indicate_default(struct connman_service *service)
 {
-	DBG("service %p", service);
+	struct connman_service *current = get_default();
+
+	DBG("service %p default %p", service, current);
+
+	if (current == service)
+		return 0;
 
 	default_changed();
 
