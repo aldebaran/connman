@@ -966,7 +966,8 @@ static void nameserver_add_routes(int index, char **nameservers,
 	}
 }
 
-static void nameserver_del_routes(int index, char **nameservers)
+static void nameserver_del_routes(int index, char **nameservers,
+				enum connman_ipconfig_type type)
 {
 	int i, ret, family;
 	struct addrinfo hints;
@@ -985,11 +986,18 @@ static void nameserver_del_routes(int index, char **nameservers)
 		else
 			family = addr->ai_family;
 
-		if (family == AF_INET)
-			connman_inet_del_host_route(index, nameservers[i]);
-		else if (family == AF_INET6)
-			connman_inet_del_ipv6_host_route(index,
+		switch (family) {
+		case AF_INET:
+			if (type != CONNMAN_IPCONFIG_TYPE_IPV6)
+				connman_inet_del_host_route(index,
 							nameservers[i]);
+			break;
+		case AF_INET6:
+			if (type != CONNMAN_IPCONFIG_TYPE_IPV4)
+				connman_inet_del_ipv6_host_route(index,
+							nameservers[i]);
+			break;
+		}
 
 		freeaddrinfo(addr);
 	}
@@ -1026,7 +1034,8 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 	}
 }
 
-void __connman_service_nameserver_del_routes(struct connman_service *service)
+void __connman_service_nameserver_del_routes(struct connman_service *service,
+					enum connman_ipconfig_type type)
 {
 	int index = -1;
 
@@ -1039,9 +1048,10 @@ void __connman_service_nameserver_del_routes(struct connman_service *service)
 		index = connman_provider_get_index(service->provider);
 
 	if (service->nameservers_config != NULL)
-		nameserver_del_routes(index, service->nameservers_config);
+		nameserver_del_routes(index, service->nameservers_config,
+					type);
 	else if (service->nameservers != NULL)
-		nameserver_del_routes(index, service->nameservers);
+		nameserver_del_routes(index, service->nameservers, type);
 }
 
 static struct connman_stats *stats_get(struct connman_service *service)
@@ -2672,7 +2682,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		gw = __connman_ipconfig_get_gateway_from_index(index);
 
 		if (gw && strlen(gw))
-			__connman_service_nameserver_del_routes(service);
+			__connman_service_nameserver_del_routes(service,
+						CONNMAN_IPCONFIG_TYPE_ALL);
 
 		dbus_message_iter_recurse(&value, &entry);
 

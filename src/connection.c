@@ -728,7 +728,7 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 	else
 		do_ipv4 = do_ipv6 = TRUE;
 
-	__connman_service_nameserver_del_routes(service);
+	__connman_service_nameserver_del_routes(service, type);
 
 	data = g_hash_table_lookup(gateway_hash, service);
 	if (data == NULL)
