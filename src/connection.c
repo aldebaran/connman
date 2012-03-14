@@ -809,40 +809,57 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 
 gboolean __connman_connection_update_gateway(void)
 {
-	struct gateway_data *active_gateway, *default_gateway;
+	struct gateway_data *default_gateway;
 	gboolean updated = FALSE;
+	GHashTableIter iter;
+	gpointer value, key;
 
 	if (gateway_hash == NULL)
 		return updated;
-
-	active_gateway = find_active_gateway();
 
 	update_order();
 
 	default_gateway = find_default_gateway();
 
-	DBG("active %p default %p", active_gateway, default_gateway);
+	DBG("default %p", default_gateway);
 
-	if (active_gateway && active_gateway != default_gateway) {
-		updated = TRUE;
+	/*
+	 * There can be multiple active gateways so we need to
+	 * check them all.
+	 */
+	g_hash_table_iter_init(&iter, gateway_hash);
 
-		if (active_gateway->ipv4_gateway)
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *active_gateway = value;
+
+		if (active_gateway == default_gateway)
+			continue;
+
+		if (active_gateway->ipv4_gateway != NULL &&
+				active_gateway->ipv4_gateway->active == TRUE) {
+
 			unset_default_gateway(active_gateway,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+			updated = TRUE;
+		}
+
+		if (active_gateway->ipv6_gateway != NULL &&
+				active_gateway->ipv6_gateway->active == TRUE) {
+
+			unset_default_gateway(active_gateway,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+			updated = TRUE;
+		}
+	}
+
+	if (updated && default_gateway != NULL) {
+		if (default_gateway->ipv4_gateway)
+			set_default_gateway(default_gateway,
 					CONNMAN_IPCONFIG_TYPE_IPV4);
 
-		if (active_gateway->ipv6_gateway)
-			unset_default_gateway(active_gateway,
+		if (default_gateway->ipv6_gateway)
+			set_default_gateway(default_gateway,
 					CONNMAN_IPCONFIG_TYPE_IPV6);
-
-		if (default_gateway) {
-			if (default_gateway->ipv4_gateway)
-				set_default_gateway(default_gateway,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
-
-			if (default_gateway->ipv6_gateway)
-				set_default_gateway(default_gateway,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
-		}
 	}
 
 	return updated;
