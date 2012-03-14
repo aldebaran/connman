@@ -755,8 +755,6 @@ void __connman_connection_gateway_remove(struct connman_service *service,
 		connman_inet_del_ipv6_host_route(data->index,
 						data->ipv6_gateway->gateway);
 
-	__connman_service_nameserver_del_routes(service);
-
 	err = disable_gateway(data, type);
 
 	/*
