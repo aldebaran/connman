@@ -278,6 +278,11 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv4_gateway->vpn_phy_ip);
 		data->ipv4_gateway->active = TRUE;
 
+		DBG("set %p index %d vpn %s index %d phy %s",
+			data, data->index, data->ipv4_gateway->vpn_ip,
+			data->ipv4_gateway->vpn_phy_index,
+			data->ipv4_gateway->vpn_phy_ip);
+
 		__connman_service_indicate_default(data->service);
 
 		return;
@@ -292,6 +297,11 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv6_gateway->vpn_ip,
 					data->ipv6_gateway->vpn_phy_ip);
 		data->ipv6_gateway->active = TRUE;
+
+		DBG("set %p index %d vpn %s index %d phy %s",
+			data, data->index, data->ipv6_gateway->vpn_ip,
+			data->ipv6_gateway->vpn_phy_index,
+			data->ipv6_gateway->vpn_phy_ip);
 
 		__connman_service_indicate_default(data->service);
 
@@ -355,6 +365,11 @@ static void unset_default_gateway(struct gateway_data *data,
 						data->ipv4_gateway->vpn_ip);
 		data->ipv4_gateway->active = FALSE;
 
+		DBG("unset %p index %d vpn %s index %d phy %s",
+			data, data->index, data->ipv4_gateway->vpn_ip,
+			data->ipv4_gateway->vpn_phy_index,
+			data->ipv4_gateway->vpn_phy_ip);
+
 		return;
 	}
 
@@ -365,6 +380,11 @@ static void unset_default_gateway(struct gateway_data *data,
 		connman_inet_clear_ipv6_gateway_address(data->index,
 						data->ipv6_gateway->vpn_ip);
 		data->ipv6_gateway->active = FALSE;
+
+		DBG("unset %p index %d vpn %s index %d phy %s",
+			data, data->index, data->ipv6_gateway->vpn_ip,
+			data->ipv6_gateway->vpn_phy_index,
+			data->ipv6_gateway->vpn_phy_ip);
 
 		return;
 	}
@@ -409,6 +429,8 @@ static struct gateway_data *find_default_gateway(void)
 		if (found == NULL || data->order > order) {
 			found = data;
 			order = data->order;
+
+			DBG("default %p order %d", found, order);
 		}
 	}
 
@@ -529,9 +551,6 @@ int __connman_connection_gateway_add(struct connman_service *service,
 
 	index = __connman_service_get_index(service);
 
-	DBG("service %p index %d gateway %s vpn ip %s type %d",
-		service, index, gateway, peer, type);
-
 	/*
 	 * If gateway is NULL, it's a point to point link and the default
 	 * gateway for ipv4 is 0.0.0.0 and for ipv6 is ::, meaning the
@@ -543,10 +562,16 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	if (gateway == NULL && type == CONNMAN_IPCONFIG_TYPE_IPV6)
 		gateway = "::";
 
+	DBG("service %p index %d gateway %s vpn ip %s type %d",
+		service, index, gateway, peer, type);
+
 	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(service, index, gateway, type);
 	if (new_gateway == NULL)
 		return -EINVAL;
+
+	DBG("active %p index %d new %p", active_gateway,
+		active_gateway ? active_gateway->index : -1, new_gateway);
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 			new_gateway->ipv6_gateway != NULL &&
@@ -607,6 +632,11 @@ int __connman_connection_gateway_add(struct connman_service *service,
 							active_gateway->index;
 			}
 
+			DBG("vpn %s phy %s index %d",
+				new_gateway->ipv4_gateway->vpn_ip,
+				new_gateway->ipv4_gateway->vpn_phy_ip,
+				new_gateway->ipv4_gateway->vpn_phy_index);
+
 		} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 					new_gateway->ipv6_gateway != NULL) {
 			new_gateway->ipv6_gateway->vpn = TRUE;
@@ -629,6 +659,11 @@ int __connman_connection_gateway_add(struct connman_service *service,
 				new_gateway->ipv6_gateway->vpn_phy_index =
 							active_gateway->index;
 			}
+
+			DBG("vpn %s phy %s index %d",
+				new_gateway->ipv6_gateway->vpn_ip,
+				new_gateway->ipv6_gateway->vpn_phy_ip,
+				new_gateway->ipv6_gateway->vpn_phy_index);
 		}
 	} else {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
@@ -758,6 +793,8 @@ gboolean __connman_connection_update_gateway(void)
 	update_order();
 
 	default_gateway = find_default_gateway();
+
+	DBG("active %p default %p", active_gateway, default_gateway);
 
 	if (active_gateway && active_gateway != default_gateway) {
 		updated = TRUE;
