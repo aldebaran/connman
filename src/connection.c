@@ -567,10 +567,11 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	DBG("service %p index %d gateway %s vpn ip %s type %d",
 		service, index, gateway, peer, type);
 
-	active_gateway = find_active_gateway();
 	new_gateway = add_gateway(service, index, gateway, type);
 	if (new_gateway == NULL)
 		return -EINVAL;
+
+	active_gateway = find_active_gateway();
 
 	DBG("active %p index %d new %p", active_gateway,
 		active_gateway ? active_gateway->index : -1, new_gateway);
