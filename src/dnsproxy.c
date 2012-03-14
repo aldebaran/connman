@@ -2662,6 +2662,8 @@ static void destroy_listener(struct listener_data *ifdata)
 
 		DBG("Dropping pending request (id 0x%04x -> 0x%04x)",
 						req->srcid, req->dstid);
+		if (req->timeout > 0)
+			g_source_remove(req->timeout);
 
 		g_free(req->resp);
 		g_free(req->request);
@@ -2678,6 +2680,8 @@ static void destroy_listener(struct listener_data *ifdata)
 
 		DBG("Dropping request (id 0x%04x -> 0x%04x)",
 						req->srcid, req->dstid);
+		if (req->timeout > 0)
+			g_source_remove(req->timeout);
 
 		g_free(req->resp);
 		g_free(req->request);
