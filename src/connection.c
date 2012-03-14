@@ -547,6 +547,8 @@ int __connman_connection_gateway_add(struct connman_service *service,
 {
 	struct gateway_data *active_gateway = NULL;
 	struct gateway_data *new_gateway = NULL;
+	enum connman_ipconfig_type type4 = CONNMAN_IPCONFIG_TYPE_UNKNOWN,
+		type6 = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 	int index;
 
 	index = __connman_service_get_index(service);
@@ -593,18 +595,14 @@ int __connman_connection_gateway_add(struct connman_service *service,
 				new_gateway->ipv4_gateway != NULL) {
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv4_gateway->gateway);
-		__connman_service_ipconfig_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY,
-						CONNMAN_IPCONFIG_TYPE_IPV4);
+		type4 = CONNMAN_IPCONFIG_TYPE_IPV4;
 	}
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 				new_gateway->ipv6_gateway != NULL) {
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv6_gateway->gateway);
-		__connman_service_ipconfig_indicate_state(service,
-						CONNMAN_SERVICE_STATE_READY,
-						CONNMAN_IPCONFIG_TYPE_IPV6);
+		type6 = CONNMAN_IPCONFIG_TYPE_IPV6;
 	}
 
 	if (connman_service_get_type(service) == CONNMAN_SERVICE_TYPE_VPN) {
@@ -677,7 +675,7 @@ int __connman_connection_gateway_add(struct connman_service *service,
 
 	if (active_gateway == NULL) {
 		set_default_gateway(new_gateway, type);
-		return 0;
+		goto done;
 	}
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
@@ -700,6 +698,16 @@ int __connman_connection_gateway_add(struct connman_service *service,
 					active_gateway->ipv6_gateway->gateway);
 	}
 
+done:
+	if (type4 == CONNMAN_IPCONFIG_TYPE_IPV4)
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+
+	if (type6 == CONNMAN_IPCONFIG_TYPE_IPV6)
+		__connman_service_ipconfig_indicate_state(service,
+						CONNMAN_SERVICE_STATE_READY,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
 	return 0;
 }
 
