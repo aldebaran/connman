@@ -95,11 +95,6 @@ static int del_routes(struct gateway_data *data,
 
 	if (do_ipv4 == TRUE && data->ipv4_gateway != NULL) {
 		if (data->ipv4_gateway->vpn == TRUE) {
-			if (data->ipv4_gateway->vpn_phy_index >= 0)
-				connman_inet_del_host_route(
-					data->ipv4_gateway->vpn_phy_index,
-					data->ipv4_gateway->gateway);
-
 			status4 = connman_inet_clear_gateway_address(
 						data->index,
 						data->ipv4_gateway->vpn_ip);
@@ -119,11 +114,6 @@ static int del_routes(struct gateway_data *data,
 
 	if (do_ipv6 == TRUE && data->ipv6_gateway != NULL) {
 		if (data->ipv6_gateway->vpn == TRUE) {
-			if (data->ipv6_gateway->vpn_phy_index >= 0)
-				connman_inet_del_host_route(
-					data->ipv6_gateway->vpn_phy_index,
-					data->ipv6_gateway->gateway);
-
 			status6 = connman_inet_clear_ipv6_gateway_address(
 						data->index,
 						data->ipv6_gateway->vpn_ip);
@@ -273,9 +263,6 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv4_gateway->vpn == TRUE) {
 		connman_inet_set_gateway_address(data->index,
 						data->ipv4_gateway->vpn_ip);
-		connman_inet_add_host_route(data->ipv4_gateway->vpn_phy_index,
-					data->ipv4_gateway->vpn_ip,
-					data->ipv4_gateway->vpn_phy_ip);
 		data->ipv4_gateway->active = TRUE;
 
 		DBG("set %p index %d vpn %s index %d phy %s",
@@ -292,10 +279,6 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv6_gateway->vpn == TRUE) {
 		connman_inet_set_ipv6_gateway_address(data->index,
 						data->ipv6_gateway->vpn_ip);
-		connman_inet_add_ipv6_host_route(
-					data->ipv6_gateway->vpn_phy_index,
-					data->ipv6_gateway->vpn_ip,
-					data->ipv6_gateway->vpn_phy_ip);
 		data->ipv6_gateway->active = TRUE;
 
 		DBG("set %p index %d vpn %s index %d phy %s",
