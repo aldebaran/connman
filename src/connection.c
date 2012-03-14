@@ -49,6 +49,7 @@ struct gateway_data {
 	unsigned int order;
 	struct gateway_config *ipv4_gateway;
 	struct gateway_config *ipv6_gateway;
+	connman_bool_t default_checked;
 };
 
 static GHashTable *gateway_hash = NULL;
@@ -75,6 +76,31 @@ static struct gateway_config *find_gateway(int index, const char *gateway)
 				g_str_equal(data->ipv6_gateway->gateway,
 					gateway) == TRUE)
 			return data->ipv6_gateway;
+	}
+
+	return NULL;
+}
+
+static struct gateway_data *lookup_gateway_data(struct gateway_config *config)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+
+	if (config == NULL)
+		return NULL;
+
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
+
+		if (data->ipv4_gateway != NULL &&
+				data->ipv4_gateway == config)
+			return data;
+
+		if (data->ipv6_gateway != NULL &&
+				data->ipv6_gateway == config)
+			return data;
 	}
 
 	return NULL;
@@ -313,19 +339,6 @@ static struct gateway_data *add_gateway(struct connman_service *service,
 	return data;
 }
 
-static void connection_newgateway(int index, const char *gateway)
-{
-	struct gateway_config *config;
-
-	DBG("index %d gateway %s", index, gateway);
-
-	config = find_gateway(index, gateway);
-	if (config == NULL)
-		return;
-
-	config->active = TRUE;
-}
-
 static void set_default_gateway(struct gateway_data *data,
 				enum connman_ipconfig_type type)
 {
@@ -502,6 +515,111 @@ static struct gateway_data *find_default_gateway(void)
 	}
 
 	return found;
+}
+
+static gboolean choose_default_gateway(struct gateway_data *data,
+					struct gateway_data *candidate)
+{
+	gboolean downgraded = FALSE;
+
+	/*
+	 * If the current default is not active, then we mark
+	 * this one as default. If the other one is already active
+	 * we mark this one as non default.
+	 */
+	if (data->ipv4_gateway != NULL) {
+		if (candidate->ipv4_gateway != NULL &&
+				candidate->ipv4_gateway->active == FALSE) {
+			DBG("ipv4 downgrading %p", candidate);
+			unset_default_gateway(candidate,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+		}
+		if (candidate->ipv4_gateway != NULL &&
+				candidate->ipv4_gateway->active == TRUE &&
+				candidate->order > data->order) {
+			DBG("ipv4 downgrading this %p", data);
+			unset_default_gateway(data,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+			downgraded = TRUE;
+		}
+	}
+
+	if (data->ipv6_gateway != NULL) {
+		if (candidate->ipv6_gateway != NULL &&
+				candidate->ipv6_gateway->active == FALSE) {
+			DBG("ipv6 downgrading %p", candidate);
+			unset_default_gateway(candidate,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+		}
+
+		if (candidate->ipv6_gateway != NULL &&
+				candidate->ipv6_gateway->active == TRUE &&
+				candidate->order > data->order) {
+			DBG("ipv6 downgrading this %p", data);
+			unset_default_gateway(data,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+			downgraded = TRUE;
+		}
+	}
+
+	return downgraded;
+}
+
+static void connection_newgateway(int index, const char *gateway)
+{
+	struct gateway_config *config;
+	struct gateway_data *data;
+	GHashTableIter iter;
+	gpointer value, key;
+	gboolean found = FALSE;
+
+	DBG("index %d gateway %s", index, gateway);
+
+	config = find_gateway(index, gateway);
+	if (config == NULL)
+		return;
+
+	config->active = TRUE;
+
+	/*
+	 * It is possible that we have two default routes atm
+	 * if there are two gateways waiting rtnl activation at the
+	 * same time.
+	 */
+	data = lookup_gateway_data(config);
+	if (data == NULL)
+		return;
+
+	if (data->default_checked == TRUE)
+		return;
+
+	/*
+	 * The next checks are only done once, otherwise setting
+	 * the default gateway could lead into rtnl forever loop.
+	 */
+
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *candidate = value;
+
+		if (candidate == data)
+			continue;
+
+		found = choose_default_gateway(data, candidate);
+		if (found == TRUE)
+			break;
+	}
+
+	if (found == FALSE) {
+		if (data->ipv4_gateway != NULL)
+			set_default_gateway(data, CONNMAN_IPCONFIG_TYPE_IPV4);
+
+		if (data->ipv6_gateway != NULL)
+			set_default_gateway(data, CONNMAN_IPCONFIG_TYPE_IPV6);
+	}
+
+	data->default_checked = TRUE;
 }
 
 static void remove_gateway(gpointer user_data)
