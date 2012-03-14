@@ -80,6 +80,90 @@ static struct gateway_config *find_gateway(int index, const char *gateway)
 	return NULL;
 }
 
+/*
+ * Find the gateway that is serving the VPN link
+ */
+static struct gateway_data *find_phy_gateway(int index, const char *gateway)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+
+	if (gateway == NULL)
+		return NULL;
+
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
+
+		if (data->ipv4_gateway != NULL && data->index != index &&
+				g_str_equal(data->ipv4_gateway->gateway,
+					gateway) == TRUE)
+			return data;
+
+		if (data->ipv6_gateway != NULL && data->index != index &&
+				g_str_equal(data->ipv6_gateway->gateway,
+					gateway) == TRUE)
+			return data;
+	}
+
+	return NULL;
+}
+
+static void set_vpn_routes(struct gateway_config *config,
+			struct connman_service *service,
+			const char *gateway,
+			enum connman_ipconfig_type type,
+			const char *peer)
+{
+	struct gateway_data *data;
+	struct connman_ipconfig *ipconfig;
+	int index;
+
+	config->vpn = TRUE;
+	if (peer != NULL)
+		config->vpn_ip = g_strdup(peer);
+	else if (gateway != NULL)
+		config->vpn_ip = g_strdup(gateway);
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		ipconfig = __connman_service_get_ip4config(service);
+	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		ipconfig = __connman_service_get_ip6config(service);
+	else
+		return;
+
+	index = __connman_ipconfig_get_index(ipconfig);
+	data = find_phy_gateway(index, gateway);
+
+	if (data != NULL) {
+		/*
+		 * data->service points now to original
+		 * service that is serving the VPN link
+		 */
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			ipconfig =
+				__connman_service_get_ip4config(data->service);
+		else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+			ipconfig =
+				__connman_service_get_ip6config(data->service);
+		else
+			return;
+
+		if (ipconfig != NULL) {
+			const char *address;
+
+			address = __connman_ipconfig_get_local(ipconfig);
+			config->vpn_phy_ip = g_strdup(address);
+		}
+
+		config->vpn_phy_index = data->index;
+	}
+
+	DBG("vpn %s phy %s index %d", config->vpn_ip,
+		config->vpn_phy_ip, config->vpn_phy_index);
+}
+
 static int del_routes(struct gateway_data *data,
 			enum connman_ipconfig_type type)
 {
@@ -591,62 +675,15 @@ int __connman_connection_gateway_add(struct connman_service *service,
 
 	if (connman_service_get_type(service) == CONNMAN_SERVICE_TYPE_VPN) {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
-					new_gateway->ipv4_gateway != NULL) {
-			new_gateway->ipv4_gateway->vpn = TRUE;
-			if (peer != NULL)
-				new_gateway->ipv4_gateway->vpn_ip =
-							g_strdup(peer);
-			else if (gateway != NULL)
-				new_gateway->ipv4_gateway->vpn_ip =
-							g_strdup(gateway);
-			if (active_gateway) {
-				const char *new_ipv4_gateway;
+					new_gateway->ipv4_gateway != NULL)
+			set_vpn_routes(new_gateway->ipv4_gateway,
+				service, gateway, type, peer);
 
-				new_ipv4_gateway =
-					active_gateway->ipv4_gateway->gateway;
-				if (new_ipv4_gateway != NULL &&
-					 g_strcmp0(new_ipv4_gateway,
-							"0.0.0.0") != 0)
-					new_gateway->ipv4_gateway->vpn_phy_ip =
-						g_strdup(new_ipv4_gateway);
+		else if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
+					new_gateway->ipv6_gateway != NULL)
+			set_vpn_routes(new_gateway->ipv6_gateway,
+				service, gateway, type, peer);
 
-				new_gateway->ipv4_gateway->vpn_phy_index =
-							active_gateway->index;
-			}
-
-			DBG("vpn %s phy %s index %d",
-				new_gateway->ipv4_gateway->vpn_ip,
-				new_gateway->ipv4_gateway->vpn_phy_ip,
-				new_gateway->ipv4_gateway->vpn_phy_index);
-
-		} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
-					new_gateway->ipv6_gateway != NULL) {
-			new_gateway->ipv6_gateway->vpn = TRUE;
-			if (peer != NULL)
-				new_gateway->ipv6_gateway->vpn_ip =
-							g_strdup(peer);
-			else if (gateway != NULL)
-				new_gateway->ipv6_gateway->vpn_ip =
-							g_strdup(gateway);
-			if (active_gateway) {
-				const char *new_ipv6_gateway;
-
-				new_ipv6_gateway =
-					active_gateway->ipv6_gateway->gateway;
-				if (new_ipv6_gateway != NULL &&
-					g_strcmp0(new_ipv6_gateway, "::") != 0)
-					new_gateway->ipv6_gateway->vpn_phy_ip =
-						g_strdup(new_ipv6_gateway);
-
-				new_gateway->ipv6_gateway->vpn_phy_index =
-							active_gateway->index;
-			}
-
-			DBG("vpn %s phy %s index %d",
-				new_gateway->ipv6_gateway->vpn_ip,
-				new_gateway->ipv6_gateway->vpn_phy_ip,
-				new_gateway->ipv6_gateway->vpn_phy_index);
-		}
 	} else {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 					new_gateway->ipv4_gateway != NULL)
