@@ -654,6 +654,9 @@ int connman_inet_add_network_route(int index, const char *host,
 	struct sockaddr_in addr;
 	int sk, err;
 
+	DBG("index %d host %s gateway %s netmask %s", index,
+		host, gateway, netmask);
+
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
 		return -1;
@@ -715,6 +718,8 @@ int connman_inet_del_network_route(int index, const char *host)
 	struct rtentry rt;
 	struct sockaddr_in addr;
 	int sk, err;
+
+	DBG("index %d host %s", index, host);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -852,7 +857,7 @@ int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
 	struct in6_rtmsg rt;
 	int sk, err;
 
-	DBG("index %d, gateway %s", index, gateway);
+	DBG("index %d gateway %s", index, gateway);
 
 	if (gateway == NULL)
 		return -EINVAL;
@@ -889,7 +894,7 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
 	struct in6_rtmsg rt;
 	int sk, err;
 
-	DBG("index %d, gateway %s", index, gateway);
+	DBG("index %d gateway %s", index, gateway);
 
 	if (gateway == NULL)
 		return -EINVAL;
@@ -927,6 +932,8 @@ int connman_inet_set_gateway_address(int index, const char *gateway)
 	struct rtentry rt;
 	struct sockaddr_in addr;
 	int sk, err;
+
+	DBG("index %d gateway %s", index, gateway);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -977,7 +984,7 @@ int connman_inet_set_gateway_interface(int index)
 	struct sockaddr_in addr;
 	int sk, err;
 
-	DBG("");
+	DBG("index %d", index);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -1023,7 +1030,7 @@ int connman_inet_set_ipv6_gateway_interface(int index)
 	const struct in6_addr any = IN6ADDR_ANY_INIT;
 	int sk, err;
 
-	DBG("");
+	DBG("index %d", index);
 
 	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -1068,7 +1075,7 @@ int connman_inet_clear_gateway_address(int index, const char *gateway)
 	struct sockaddr_in addr;
 	int sk, err;
 
-	DBG("");
+	DBG("index %d gateway %s", index, gateway);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -1119,7 +1126,7 @@ int connman_inet_clear_gateway_interface(int index)
 	struct sockaddr_in addr;
 	int sk, err;
 
-	DBG("");
+	DBG("index %d", index);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
@@ -1165,7 +1172,7 @@ int connman_inet_clear_ipv6_gateway_interface(int index)
 	const struct in6_addr any = IN6ADDR_ANY_INIT;
 	int sk, err;
 
-	DBG("");
+	DBG("index %d", index);
 
 	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0)
