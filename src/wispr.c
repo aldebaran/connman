@@ -632,9 +632,6 @@ static void proxy_callback(const char *proxy, void *user_data)
 
 	wp_context->token = 0;
 
-	if (proxy == NULL)
-		proxy = getenv("http_proxy");
-
 	if (getenv("CONNMAN_WEB_DEBUG"))
 		g_web_set_debug(wp_context->web, web_debug, "WEB");
 
