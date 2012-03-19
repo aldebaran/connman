@@ -5341,7 +5341,6 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_GPS:
@@ -5349,6 +5348,8 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		service->autoconnect = FALSE;
 		break;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		service->favorite = TRUE;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->autoconnect = TRUE;
