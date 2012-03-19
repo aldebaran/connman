@@ -2196,9 +2196,6 @@ int __connman_ipconfig_load(struct connman_ipconfig *ipconfig,
 			ipconfig->ipv6_privacy_config = string2privacy(privacy);
 			g_free(pprefix);
 			g_free(privacy);
-
-			__connman_ipconfig_enable(ipconfig);
-			enable_ipv6(ipconfig);
 		}
 	}
 
