@@ -63,12 +63,16 @@ static int cable_connect(struct connman_network *network)
 {
 	DBG("network %p", network);
 
+	connman_network_set_connected(network, TRUE);
+
 	return 0;
 }
 
 static int cable_disconnect(struct connman_network *network)
 {
 	DBG("network %p", network);
+
+	connman_network_set_connected(network, FALSE);
 
 	return 0;
 }
@@ -106,8 +110,6 @@ static void add_network(struct connman_device *device,
 	connman_network_set_available(network, TRUE);
 
 	connman_network_set_group(network, "cable");
-
-	connman_network_set_connected(network, TRUE);
 
 	ethernet->network = network;
 }
