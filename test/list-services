@@ -31,7 +31,8 @@ manager = dbus.Interface(bus.get_object("net.connman", "/"),
 for path, properties in manager.GetServices():
 	service = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Service")
-	print "[ %s ]" % (path)
+	identifier = path[path.rfind("/") + 1:]
+	print "[ %s ]" % (identifier)
 
 	for key in properties.keys():
 		if key in ["IPv4", "IPv4.Configuration",
