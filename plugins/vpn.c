@@ -37,7 +37,6 @@
 
 #include <dbus/dbus.h>
 
-#include <glib/ghash.h>
 #include <glib/gprintf.h>
 
 #include <connman/provider.h>
