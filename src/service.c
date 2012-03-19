@@ -295,7 +295,6 @@ static int service_load(struct connman_service *service)
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
@@ -356,12 +355,6 @@ static int service_load(struct connman_service *service)
 		service->favorite = g_key_file_get_boolean(keyfile,
 				service->identifier, "Favorite", NULL);
 
-		autoconnect = g_key_file_get_boolean(keyfile,
-				service->identifier, "AutoConnect", &error);
-		if (error == NULL)
-			service->autoconnect = autoconnect;
-		g_clear_error(&error);
-
 		str = g_key_file_get_string(keyfile,
 				service->identifier, "Failure", NULL);
 		if (str != NULL) {
@@ -371,6 +364,14 @@ static int service_load(struct connman_service *service)
 			service->error = string2error(str);
 			g_free(str);
 		}
+		/* fall through */
+
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		autoconnect = g_key_file_get_boolean(keyfile,
+				service->identifier, "AutoConnect", &error);
+		if (error == NULL)
+			service->autoconnect = autoconnect;
+		g_clear_error(&error);
 		break;
 	}
 
@@ -465,7 +466,6 @@ static int service_save(struct connman_service *service)
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
@@ -511,10 +511,6 @@ static int service_save(struct connman_service *service)
 		g_key_file_set_boolean(keyfile, service->identifier,
 					"Favorite", service->favorite);
 
-		if (service->favorite == TRUE)
-			g_key_file_set_boolean(keyfile, service->identifier,
-					"AutoConnect", service->autoconnect);
-
 		if (service->state_ipv4 == CONNMAN_SERVICE_STATE_FAILURE ||
 			service->state_ipv6 == CONNMAN_SERVICE_STATE_FAILURE) {
 			const char *failure = error2string(service->error);
@@ -526,6 +522,12 @@ static int service_save(struct connman_service *service)
 			g_key_file_remove_key(keyfile, service->identifier,
 							"Failure", NULL);
 		}
+		/* fall through */
+
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		if (service->favorite == TRUE)
+			g_key_file_set_boolean(keyfile, service->identifier,
+					"AutoConnect", service->autoconnect);
 		break;
 	}
 
