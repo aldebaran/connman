@@ -550,6 +550,13 @@ static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
 {
 	DBG("ipconfig ipv4 %p ipv6 %p", ipdevice->config_ipv4,
 					ipdevice->config_ipv6);
+
+	if (ipdevice->config_ipv6 != NULL &&
+			ipdevice->config_ipv6->enabled == TRUE)
+		return;
+
+	set_ipv6_state(ipdevice->ifname, FALSE);
+	ipdevice->ipv6_enabled = FALSE;
 }
 
 static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
