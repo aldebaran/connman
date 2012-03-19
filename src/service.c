@@ -740,6 +740,25 @@ static connman_bool_t is_connected_state(const struct connman_service *service,
 	return FALSE;
 }
 
+static connman_bool_t is_idle_state(const struct connman_service *service,
+				enum connman_service_state state)
+{
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		break;
+	case CONNMAN_SERVICE_STATE_IDLE:
+		return TRUE;
+	}
+
+	return FALSE;
+}
+
 static connman_bool_t is_connecting(struct connman_service *service)
 {
 	return is_connecting_state(service, service->state);
@@ -4945,6 +4964,12 @@ static void service_lower_down(struct connman_ipconfig *ipconfig)
 	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
 
 	DBG("%s lower down", __connman_ipconfig_get_ifname(ipconfig));
+
+	if (is_idle_state(service, service->state_ipv4) == FALSE)
+		__connman_ipconfig_disable(service->ipconfig_ipv4);
+
+	if (is_idle_state(service, service->state_ipv6) == FALSE)
+		__connman_ipconfig_disable(service->ipconfig_ipv6);
 
 	stats_stop(service);
 	service_save(service);
