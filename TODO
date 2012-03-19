@@ -26,6 +26,41 @@ Core
    See http://www.mail-archive.com/connman@connman.net/msg01653.html
 
 
+- main.conf FallbackTimeservers, FallbackNameservers
+   Priority: Medium
+   Complexity: C2
+   Owner:
+
+   Both entries should take a string list as arguments and can contain
+   mixed combination of fully qualified domain names, IPv4 and IPv6
+   addresses. In absence of main.conf or if this entry is not present
+   then no fallback servers are used. These configuration file values
+   will obsolete plugins/meego.c and plugins/google.c.
+   See http://lists.connman.net/pipermail/connman/2012-March/008605.html
+
+
+- main.conf DefaultAutoConnectTechnologies
+   Priority: Medium
+   Complexity: C2
+   Owner:
+
+   The default autoconnect value for a new service that has not been seen. After
+   that it can be changed on a per service level via AutoConnect property.
+   The default value if not present should be "ethernet,wifi".
+   See http://lists.connman.net/pipermail/connman/2012-March/008605.html
+
+
+- main.conf PriorityTechnologies
+   Priority: Medium
+   Complexity: C2
+   Owner: Patrik Flykt <patrik.flykt@linux.intel.com>
+
+   Handle automatic switch from one technology to another one. By default
+   this value should be empty and no automatic switching is happening as
+   long as technology is connected. The list is ordered.
+   See http://lists.connman.net/pipermail/connman/2012-March/008605.html
+
+
 - Personal firewall
 
    Priority: Low
