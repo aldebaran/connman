@@ -239,6 +239,7 @@ static void provider_destruct(struct connman_provider *provider)
 	g_free(provider->identifier);
 	g_hash_table_destroy(provider->routes);
 	g_hash_table_destroy(provider->setting_strings);
+	g_free(provider);
 }
 
 void connman_provider_unref_debug(struct connman_provider *provider,
