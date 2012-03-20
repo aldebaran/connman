@@ -37,6 +37,7 @@
 #include <netdb.h>
 #include <net/if.h>
 #include <netinet/tcp.h>
+#include <ifaddrs.h>
 
 #include "giognutls.h"
 #include "gresolv.h"
@@ -954,6 +955,57 @@ static gboolean received_data(GIOChannel *channel, GIOCondition cond,
 	return TRUE;
 }
 
+static int bind_to_address(int sk, const char *interface, int family)
+{
+	struct ifaddrs *ifaddr_list, *ifaddr;
+	int size, err = -1;
+
+	if (getifaddrs(&ifaddr_list) < 0)
+		return err;
+
+	for (ifaddr = ifaddr_list; ifaddr != NULL; ifaddr = ifaddr->ifa_next) {
+		if (g_strcmp0(ifaddr->ifa_name, interface) != 0)
+			continue;
+
+		if (ifaddr->ifa_addr == NULL ||
+				ifaddr->ifa_addr->sa_family != family)
+			continue;
+
+		switch (family) {
+		case AF_INET:
+			size = sizeof(struct sockaddr_in);
+			break;
+		case AF_INET6:
+			size = sizeof(struct sockaddr_in6);
+			break;
+		default:
+			continue;
+		}
+
+		err = bind(sk, (struct sockaddr *) ifaddr->ifa_addr, size);
+		break;
+	}
+
+	freeifaddrs(ifaddr_list);
+	return err;
+}
+
+static inline int bind_socket(int sk, int index, int family)
+{
+	char interface[IF_NAMESIZE];
+	int err;
+
+	if (if_indextoname(index, interface) == NULL)
+		return -1;
+
+	err = setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+					interface, IF_NAMESIZE);
+	if (err < 0)
+		err = bind_to_address(sk, interface, family);
+
+	return err;
+}
+
 static int connect_session_transport(struct web_session *session)
 {
 	GIOFlags flags;
@@ -965,18 +1017,10 @@ static int connect_session_transport(struct web_session *session)
 		return -EIO;
 
 	if (session->web->index > 0) {
-		char interface[IF_NAMESIZE];
-
-		memset(interface, 0, IF_NAMESIZE);
-
-		if (if_indextoname(session->web->index, interface) != NULL) {
-			if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-						interface, IF_NAMESIZE) < 0) {
-				close(sk);
-				return -EIO;
-			}
-
-			debug(session->web, "Use interface %s", interface);
+		if (bind_socket(sk, session->web->index,
+					session->addr->ai_family) < 0) {
+			close(sk);
+			return -EIO;
 		}
 	}
 
