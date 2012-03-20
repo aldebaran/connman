@@ -134,8 +134,12 @@ void vpn_died(struct connman_task *task, int exit_code, void *user_data)
 
 	stop_vpn(provider);
 	connman_provider_set_data(provider, NULL);
-	connman_provider_unref(provider);
-	connman_rtnl_remove_watch(data->watch);
+
+	if (data->watch != 0) {
+		connman_provider_unref(provider);
+		connman_rtnl_remove_watch(data->watch);
+		data->watch = 0;
+	}
 
 vpn_exit:
 	if (state != VPN_STATE_READY && state != VPN_STATE_DISCONNECT) {
