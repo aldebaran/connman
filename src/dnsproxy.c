@@ -2650,6 +2650,17 @@ static int create_listener(struct listener_data *ifdata)
 	return 0;
 }
 
+static void destroy_request_data(struct request_data *req)
+{
+	if (req->timeout > 0)
+		g_source_remove(req->timeout);
+
+	g_free(req->resp);
+	g_free(req->request);
+	g_free(req->name);
+	g_free(req);
+}
+
 static void destroy_listener(struct listener_data *ifdata)
 {
 	GSList *list;
@@ -2662,13 +2673,7 @@ static void destroy_listener(struct listener_data *ifdata)
 
 		DBG("Dropping pending request (id 0x%04x -> 0x%04x)",
 						req->srcid, req->dstid);
-		if (req->timeout > 0)
-			g_source_remove(req->timeout);
-
-		g_free(req->resp);
-		g_free(req->request);
-		g_free(req->name);
-		g_free(req);
+		destroy_request_data(req);
 		list->data = NULL;
 	}
 
@@ -2680,13 +2685,7 @@ static void destroy_listener(struct listener_data *ifdata)
 
 		DBG("Dropping request (id 0x%04x -> 0x%04x)",
 						req->srcid, req->dstid);
-		if (req->timeout > 0)
-			g_source_remove(req->timeout);
-
-		g_free(req->resp);
-		g_free(req->request);
-		g_free(req->name);
-		g_free(req);
+		destroy_request_data(req);
 		list->data = NULL;
 	}
 
