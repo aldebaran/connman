@@ -961,6 +961,28 @@ void __connman_service_nameserver_clear(struct connman_service *service)
 	update_nameservers(service);
 }
 
+static void add_nameserver_route(int family, int index, char *nameserver,
+				const char *gw)
+{
+	switch (family) {
+	case AF_INET:
+		if (connman_inet_compare_subnet(index, nameserver) == TRUE)
+			break;
+
+		if (connman_inet_add_host_route(index, nameserver, gw) < 0)
+			/* For P-t-P link the above route add will fail */
+			connman_inet_add_host_route(index, nameserver, NULL);
+		break;
+
+	case AF_INET6:
+		if (connman_inet_add_ipv6_host_route(index, nameserver,
+								gw) < 0)
+			connman_inet_add_ipv6_host_route(index, nameserver,
+							NULL);
+		break;
+	}
+}
+
 static void nameserver_add_routes(int index, char **nameservers,
 					const char *gw)
 {
@@ -981,14 +1003,7 @@ static void nameserver_add_routes(int index, char **nameservers,
 		else
 			family = addr->ai_family;
 
-		if (family == AF_INET) {
-			if (connman_inet_compare_subnet(index,
-						nameservers[i]) != TRUE)
-				connman_inet_add_host_route(index,
-							nameservers[i], gw);
-		} else if (family == AF_INET6)
-			connman_inet_add_ipv6_host_route(index,
-							nameservers[i], gw);
+		add_nameserver_route(family, index, nameservers[i], gw);
 
 		freeaddrinfo(addr);
 	}
