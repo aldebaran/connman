@@ -1781,3 +1781,97 @@ GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
 
 	return prefixes;
 }
+
+static int get_dest_addr(int family, int index, char *buf, int len)
+{
+	struct ifreq ifr;
+	void *addr;
+	int sk;
+
+	sk = socket(family, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return -errno;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		DBG("SIOCGIFNAME (%d/%s)", errno, strerror(errno));
+		close(sk);
+		return -errno;
+	}
+
+	if (ioctl(sk, SIOCGIFFLAGS, &ifr) < 0) {
+		DBG("SIOCGIFFLAGS (%d/%s)", errno, strerror(errno));
+		close(sk);
+		return -errno;
+	}
+
+	if ((ifr.ifr_flags & IFF_POINTOPOINT) == 0) {
+		close(sk);
+		errno = EINVAL;
+		return -errno;
+	}
+
+	DBG("index %d %s", index, ifr.ifr_name);
+
+	if (ioctl(sk, SIOCGIFDSTADDR, &ifr) < 0) {
+		connman_error("Get destination address failed (%s)",
+							strerror(errno));
+		close(sk);
+		return -errno;
+	}
+
+	close(sk);
+
+	switch (family) {
+	case AF_INET:
+		addr = &((struct sockaddr_in *)&ifr.ifr_dstaddr)->sin_addr;
+		break;
+	case AF_INET6:
+		addr = &((struct sockaddr_in6 *)&ifr.ifr_dstaddr)->sin6_addr;
+		break;
+	default:
+		errno = EINVAL;
+		return -errno;
+	}
+
+	if (inet_ntop(family, addr, buf, len) == NULL) {
+		DBG("error %d/%s", errno, strerror(errno));
+		return -errno;
+	}
+
+	return 0;
+}
+
+int connman_inet_get_dest_addr(int index, char **dest)
+{
+	char addr[INET_ADDRSTRLEN];
+	int ret;
+
+	ret = get_dest_addr(PF_INET, index, addr, INET_ADDRSTRLEN);
+	if (ret < 0)
+		return ret;
+
+	*dest = g_strdup(addr);
+
+	DBG("destination %s", *dest);
+
+	return 0;
+}
+
+int connman_inet_ipv6_get_dest_addr(int index, char **dest)
+{
+	char addr[INET6_ADDRSTRLEN];
+	int ret;
+
+	ret = get_dest_addr(PF_INET6, index, addr, INET6_ADDRSTRLEN);
+	if (ret < 0)
+		return ret;
+
+	*dest = g_strdup(addr);
+
+	DBG("destination %s", *dest);
+
+	return 0;
+}
