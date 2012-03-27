@@ -725,6 +725,44 @@ void __connman_connection_gateway_activate(struct connman_service *service,
 		data->ipv6_gateway->active = TRUE;
 }
 
+static void add_host_route(int family, int index, const char *gateway)
+{
+	switch (family) {
+	case AF_INET:
+		if (g_strcmp0(gateway, "0.0.0.0") != 0)
+			connman_inet_add_host_route(index, gateway, NULL);
+		else {
+			/*
+			 * Add host route to P-t-P link so that services can
+			 * be moved around and we can have some link to P-t-P
+			 * network (although those P-t-P links have limited
+			 * usage if default route is not directed to them)
+			 */
+			char *dest;
+			if (connman_inet_get_dest_addr(index, &dest) == 0) {
+				connman_inet_add_host_route(index, dest, NULL);
+				g_free(dest);
+			}
+		}
+		break;
+
+	case AF_INET6:
+		if (g_strcmp0(gateway, "::") != 0)
+			connman_inet_add_ipv6_host_route(index, gateway, NULL);
+		else {
+			/* P-t-P link, add route to destination */
+			char *dest;
+			if (connman_inet_ipv6_get_dest_addr(index,
+								&dest) == 0) {
+				connman_inet_add_ipv6_host_route(index, dest,
+								NULL);
+				g_free(dest);
+			}
+		}
+		break;
+	}
+}
+
 int __connman_connection_gateway_add(struct connman_service *service,
 					const char *gateway,
 					enum connman_ipconfig_type type,
@@ -761,24 +799,9 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	DBG("active %p index %d new %p", active_gateway,
 		active_gateway ? active_gateway->index : -1, new_gateway);
 
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
-			new_gateway->ipv6_gateway != NULL &&
-			g_strcmp0(new_gateway->ipv6_gateway->gateway,
-								"::") != 0)
-		connman_inet_add_ipv6_host_route(index,
-					new_gateway->ipv6_gateway->gateway,
-					NULL);
-
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
-			new_gateway->ipv4_gateway != NULL &&
-			g_strcmp0(new_gateway->ipv4_gateway->gateway,
-							"0.0.0.0") != 0)
-		connman_inet_add_host_route(index,
-					new_gateway->ipv4_gateway->gateway,
-					NULL);
-
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 				new_gateway->ipv4_gateway != NULL) {
+		add_host_route(AF_INET, index, gateway);
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv4_gateway->gateway);
 		type4 = CONNMAN_IPCONFIG_TYPE_IPV4;
@@ -786,6 +809,7 @@ int __connman_connection_gateway_add(struct connman_service *service,
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 				new_gateway->ipv6_gateway != NULL) {
+		add_host_route(AF_INET6, index, gateway);
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv6_gateway->gateway);
 		type6 = CONNMAN_IPCONFIG_TYPE_IPV6;
