@@ -155,25 +155,6 @@ Signals		TechnologyAdded(object path, dict properties)
 			The object path is no longer accessible after this
 			signal and only emitted for reference.
 
-		ServicesAdded(array{object, dict})
-
-			List of service that have been added. The array
-			is a list of services that is sorted with existing
-			services containing an empty dictionary and new
-			services containing the properties.
-
-			This signal will only inform about added services
-			and in case that services get added and removed at
-			the same time, a ServicesRemoved signal will be
-			sent first.
-
-		ServicesRemoved(array{object})
-
-			Signals a list of services that are no longer valid.
-
-			The object paths are no longer accessible after
-			this signal and only emitted for reference.
-
 		ServicesChanged(array{object, dict}, array{object})
 
 			Signals a list of services that have been changed
