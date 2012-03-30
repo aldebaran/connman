@@ -312,6 +312,9 @@ static void set_disconnected(struct modem_data *modem)
 {
 	DBG("%s", modem->path);
 
+	if (modem->network == NULL)
+		return;
+
 	connman_network_set_connected(modem->network, FALSE);
 }
 
