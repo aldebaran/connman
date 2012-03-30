@@ -174,6 +174,29 @@ Signals		TechnologyAdded(object path, dict properties)
 			The object paths are no longer accessible after
 			this signal and only emitted for reference.
 
+		ServicesChanged(array{object, dict}, array{object})
+
+			Signals a list of services that have been changed
+			via the first array. And a list of service that
+			have been removed via the second array.
+
+			The list of added services is sorted. The dictionary
+			with the properties might be empty in case none of
+			the properties have changed. Or only contains the
+			properties that have changed.
+
+			For newly added services the whole set of properties
+			will be present.
+
+			The list of removed services can be empty.
+
+			This signal will only be triggered when the sort
+			order of the service list or the number of services
+			changes. It will not be emitted if only a property
+			of the service object changes. For that it is
+			required to watch the PropertyChanged signal of
+			the service object.
+
 		PropertyChanged(string name, variant value)
 
 			This signal indicates a changed value of the given
