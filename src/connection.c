@@ -360,6 +360,8 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv4_gateway->vpn == TRUE) {
 		connman_inet_set_gateway_address(data->index,
 						data->ipv4_gateway->vpn_ip);
+		connman_inet_add_host_route(data->index,
+					data->ipv4_gateway->vpn_ip, NULL);
 		data->ipv4_gateway->active = TRUE;
 
 		DBG("set %p index %d vpn %s index %d phy %s",
@@ -376,6 +378,8 @@ static void set_default_gateway(struct gateway_data *data,
 					data->ipv6_gateway->vpn == TRUE) {
 		connman_inet_set_ipv6_gateway_address(data->index,
 						data->ipv6_gateway->vpn_ip);
+		connman_inet_add_ipv6_host_route(data->index,
+					data->ipv6_gateway->vpn_ip, NULL);
 		data->ipv6_gateway->active = TRUE;
 
 		DBG("set %p index %d vpn %s index %d phy %s",
