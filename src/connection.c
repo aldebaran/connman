@@ -1025,6 +1025,28 @@ gboolean __connman_connection_update_gateway(void)
 	return updated;
 }
 
+int __connman_connection_get_vpn_index(int phy_index)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+
+	g_hash_table_iter_init(&iter, gateway_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct gateway_data *data = value;
+
+		if (data->ipv4_gateway != NULL &&
+				data->ipv4_gateway->vpn_phy_index == phy_index)
+			return data->index;
+
+		if (data->ipv6_gateway != NULL &&
+				data->ipv6_gateway->vpn_phy_index == phy_index)
+			return data->index;
+	}
+
+	return -1;
+}
+
 int __connman_connection_init(void)
 {
 	int err;

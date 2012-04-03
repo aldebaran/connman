@@ -1281,9 +1281,71 @@ static void provider_offline_mode(connman_bool_t enabled)
 
 }
 
+static struct connman_provider *provider_get(int index)
+{
+	GHashTableIter iter;
+	gpointer value, key;
+
+	g_hash_table_iter_init(&iter, provider_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_provider *provider = value;
+
+		if (provider->index == index)
+			return provider;
+	}
+
+	return NULL;
+}
+
+static void provider_service_changed(struct connman_service *service,
+				enum connman_service_state state)
+{
+	struct connman_provider *provider;
+	int vpn_index, service_index;
+
+	if (service == NULL)
+		return;
+
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		return;
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+		break;
+	}
+
+	service_index = __connman_service_get_index(service);
+
+	vpn_index = __connman_connection_get_vpn_index(service_index);
+
+	DBG("service %p %s state %d index %d/%d", service,
+		__connman_service_get_ident(service),
+		state, service_index, vpn_index);
+
+	if (vpn_index < 0)
+		return;
+
+	provider = provider_get(vpn_index);
+	if (provider == NULL)
+		return;
+
+	DBG("disconnect %p index %d", provider, vpn_index);
+
+	__connman_provider_disconnect(provider);
+
+	return;
+}
+
 static struct connman_notifier provider_notifier = {
 	.name			= "provider",
 	.offline_mode		= provider_offline_mode,
+	.service_state_changed	= provider_service_changed,
 };
 
 int __connman_provider_init(void)
