@@ -4120,6 +4120,7 @@ int __connman_service_set_favorite(struct connman_service *service,
 	favorite_changed(service);
 
 	g_sequence_sort_changed(iter, service_compare, NULL);
+	service_schedule_changed();
 
 	__connman_connection_update_gateway();
 
@@ -4454,8 +4455,10 @@ static int service_indicate_state(struct connman_service *service)
 		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL)
+	if (iter != NULL) {
 		g_sequence_sort_changed(iter, service_compare, NULL);
+		service_schedule_changed();
+	}
 
 	__connman_connection_update_gateway();
 
@@ -5166,8 +5169,10 @@ static int service_register(struct connman_service *service)
 							NULL, service, NULL);
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL)
+	if (iter != NULL) {
 		g_sequence_sort_changed(iter, service_compare, NULL);
+		service_schedule_changed();
+	}
 
 	__connman_connection_update_gateway();
 
@@ -5567,8 +5572,10 @@ static void update_from_network(struct connman_service *service,
 		service->network = connman_network_ref(network);
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
-	if (iter != NULL)
+	if (iter != NULL) {
 		g_sequence_sort_changed(iter, service_compare, NULL);
+		service_schedule_changed();
+	}
 }
 
 /**
@@ -5730,8 +5737,10 @@ roaming:
 sorting:
 	if (need_sort == TRUE) {
 		iter = g_hash_table_lookup(service_hash, service->identifier);
-		if (iter != NULL)
+		if (iter != NULL) {
 			g_sequence_sort_changed(iter, service_compare, NULL);
+			service_schedule_changed();
+		}
 	}
 }
 
