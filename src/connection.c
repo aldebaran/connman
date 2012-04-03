@@ -725,13 +725,21 @@ void __connman_connection_gateway_activate(struct connman_service *service,
 		data->ipv6_gateway->active = TRUE;
 }
 
-static void add_host_route(int family, int index, const char *gateway)
+static void add_host_route(int family, int index, const char *gateway,
+			enum connman_service_type service_type)
 {
 	switch (family) {
 	case AF_INET:
-		if (g_strcmp0(gateway, "0.0.0.0") != 0)
-			connman_inet_add_host_route(index, gateway, NULL);
-		else {
+		if (g_strcmp0(gateway, "0.0.0.0") != 0) {
+			/*
+			 * We must not set route to the phy dev gateway in
+			 * VPN link. The packets to VPN link might be routed
+			 * back to itself and not routed into phy link gateway.
+			 */
+			if (service_type != CONNMAN_SERVICE_TYPE_VPN)
+				connman_inet_add_host_route(index, gateway,
+									NULL);
+		} else {
 			/*
 			 * Add host route to P-t-P link so that services can
 			 * be moved around and we can have some link to P-t-P
@@ -747,9 +755,11 @@ static void add_host_route(int family, int index, const char *gateway)
 		break;
 
 	case AF_INET6:
-		if (g_strcmp0(gateway, "::") != 0)
-			connman_inet_add_ipv6_host_route(index, gateway, NULL);
-		else {
+		if (g_strcmp0(gateway, "::") != 0) {
+			if (service_type != CONNMAN_SERVICE_TYPE_VPN)
+				connman_inet_add_ipv6_host_route(index,
+								gateway, NULL);
+		} else {
 			/* P-t-P link, add route to destination */
 			char *dest;
 			if (connman_inet_ipv6_get_dest_addr(index,
@@ -772,6 +782,8 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	struct gateway_data *new_gateway = NULL;
 	enum connman_ipconfig_type type4 = CONNMAN_IPCONFIG_TYPE_UNKNOWN,
 		type6 = CONNMAN_IPCONFIG_TYPE_UNKNOWN;
+	enum connman_service_type service_type =
+					connman_service_get_type(service);
 	int index;
 
 	index = __connman_service_get_index(service);
@@ -801,7 +813,7 @@ int __connman_connection_gateway_add(struct connman_service *service,
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 				new_gateway->ipv4_gateway != NULL) {
-		add_host_route(AF_INET, index, gateway);
+		add_host_route(AF_INET, index, gateway, service_type);
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv4_gateway->gateway);
 		type4 = CONNMAN_IPCONFIG_TYPE_IPV4;
@@ -809,13 +821,13 @@ int __connman_connection_gateway_add(struct connman_service *service,
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 				new_gateway->ipv6_gateway != NULL) {
-		add_host_route(AF_INET6, index, gateway);
+		add_host_route(AF_INET6, index, gateway, service_type);
 		__connman_service_nameserver_add_routes(service,
 					new_gateway->ipv6_gateway->gateway);
 		type6 = CONNMAN_IPCONFIG_TYPE_IPV6;
 	}
 
-	if (connman_service_get_type(service) == CONNMAN_SERVICE_TYPE_VPN) {
+	if (service_type == CONNMAN_SERVICE_TYPE_VPN) {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 					new_gateway->ipv4_gateway != NULL)
 			set_vpn_routes(new_gateway->ipv4_gateway,
