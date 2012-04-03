@@ -3550,6 +3550,33 @@ static struct _services_notify {
 	GHashTable *remove;
 } *services_notify;
 
+static void service_append_added_foreach(gpointer data, gpointer user_data)
+{
+	struct connman_service *service = data;
+	DBusMessageIter *iter = user_data;
+
+	if (service == NULL || service->path == NULL) {
+		DBG("service %p or path is NULL", service);
+		return;
+	}
+
+	if (g_hash_table_lookup(services_notify->add, service->path) != NULL) {
+		DBG("new %s", service->path);
+
+		append_struct(service, iter);
+		g_hash_table_remove(services_notify->add, service->path);
+	} else {
+		DBG("changed %s", service->path);
+
+		append_struct_service(iter, NULL, service);
+	}
+}
+
+static void service_append_ordered(DBusMessageIter *iter, void *user_data)
+{
+	g_sequence_foreach(service_list, service_append_added_foreach, iter);
+}
+
 static void append_removed(gpointer key, gpointer value, gpointer user_data)
 {
 	char *objpath = key;
@@ -3559,15 +3586,20 @@ static void append_removed(gpointer key, gpointer value, gpointer user_data)
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_OBJECT_PATH, &objpath);
 }
 
-static void service_send_removed(void)
+static gboolean service_send_changed(gpointer data)
 {
 	DBusMessage *signal;
 	DBusMessageIter iter, array;
 
+	DBG("");
+
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-			CONNMAN_MANAGER_INTERFACE, "ServicesRemoved");
+			CONNMAN_MANAGER_INTERFACE, "ServicesChanged");
 	if (signal == NULL)
-		return;
+		return FALSE;
+
+	__connman_dbus_append_objpath_dict_array(signal,
+			service_append_ordered, NULL);
 
 	dbus_message_iter_init_append(signal, &iter);
 	dbus_message_iter_open_container(&iter, DBUS_TYPE_ARRAY,
@@ -3581,69 +3613,18 @@ static void service_send_removed(void)
 	dbus_message_unref(signal);
 
 	g_hash_table_remove_all(services_notify->remove);
-}
-
-static void service_send_added_foreach(gpointer data, gpointer user_data)
-{
-	struct connman_service *service = data;
-	DBusMessageIter *iter = user_data;
-
-	if (service == NULL || service->path == NULL) {
-		DBG("service %p or path is NULL", service);
-		return;
-	}
-
-	DBG("added %s", service->path);
-
-	if (g_hash_table_lookup(services_notify->add, service->path) != NULL) {
-		append_struct(service, iter);
-		g_hash_table_remove(services_notify->add, service->path);
-	} else {
-		append_struct_service(iter, NULL, service);
-	}
-}
-
-static void service_send_added_ordered(DBusMessageIter *iter, void *user_data)
-{
-	g_sequence_foreach(service_list, service_send_added_foreach, iter);
-}
-
-static void service_send_added(void)
-{
-	DBusMessage *signal;
-
-	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
-			CONNMAN_MANAGER_INTERFACE, "ServicesAdded");
-	if (signal == NULL)
-		return;
-
-	__connman_dbus_append_objpath_dict_array(signal,
-			service_send_added_ordered, NULL);
-
-	dbus_connection_send(connection, signal, NULL);
-	dbus_message_unref(signal);
-
 	g_hash_table_remove_all(services_notify->add);
-}
-
-static gboolean service_send_signals(gpointer data)
-{
-	if (g_hash_table_size(services_notify->remove) > 0)
-		service_send_removed();
-
-	if (g_hash_table_size(services_notify->add) > 0)
-		service_send_added();
 
 	services_notify->id = 0;
 	return FALSE;
 }
 
-static void service_schedule_signals(void)
+static void service_schedule_changed(void)
 {
 	if (services_notify->id != 0)
-		g_source_remove(services_notify->id);
+		return;
 
-	services_notify->id = g_timeout_add(100, service_send_signals, NULL);
+	services_notify->id = g_timeout_add(100, service_send_changed, NULL);
 }
 
 static void service_schedule_added(struct connman_service *service)
@@ -3653,7 +3634,7 @@ static void service_schedule_added(struct connman_service *service)
 	g_hash_table_remove(services_notify->remove, service->path);
 	g_hash_table_insert(services_notify->add, service->path, service);
 
-	service_schedule_signals();
+	service_schedule_changed();
 }
 
 static void service_schedule_removed(struct connman_service *service)
@@ -3669,7 +3650,7 @@ static void service_schedule_removed(struct connman_service *service)
 	g_hash_table_insert(services_notify->remove, g_strdup(service->path),
 			NULL);
 
-	service_schedule_signals();
+	service_schedule_changed();
 }
 
 static GDBusMethodTable service_methods[] = {
@@ -5869,7 +5850,7 @@ void __connman_service_cleanup(void)
 
 	if (services_notify->id != 0) {
 		g_source_remove(services_notify->id);
-		service_send_signals(NULL);
+		service_send_changed(NULL);
 		g_hash_table_destroy(services_notify->remove);
 		g_hash_table_destroy(services_notify->add);
 	}
