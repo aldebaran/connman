@@ -202,7 +202,7 @@ unit_objects += $(unit_nat_ippool_OBJECTS)
 endif
 
 test_scripts = test/get-state test/list-services \
-		test/monitor-services test/set-address test/test-clock \
+		test/monitor-services test/test-clock \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
 		test/connect-vpn test/disconnect-vpn test/monitor-manager \
