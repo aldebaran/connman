@@ -4163,9 +4163,6 @@ static int service_indicate_state(struct connman_service *service)
 		}
 	}
 
-	if (new_state == CONNMAN_SERVICE_STATE_ONLINE)
-		__connman_timeserver_sync(service);
-
 	if (new_state == CONNMAN_SERVICE_STATE_IDLE) {
 		connman_bool_t reconnect;
 
@@ -4234,8 +4231,6 @@ static int service_indicate_state(struct connman_service *service)
 		update_nameservers(service);
 		dns_changed(service);
 		domain_changed(service);
-
-		__connman_timeserver_stop();
 
 		__connman_notifier_disconnect(service->type);
 

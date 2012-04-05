@@ -155,10 +155,19 @@ void __connman_timeserver_sync_next()
 						NULL);
 }
 
-int __connman_timeserver_sync(struct connman_service *service)
+int __connman_timeserver_sync(struct connman_service *default_service)
 {
-	char **nameservers = NULL;
+	struct connman_service *service;
+	char **nameservers;
 	int i;
+
+	if (default_service != NULL)
+		service = default_service;
+	else
+		service = __connman_service_get_default();
+
+	if (service == NULL)
+		return -EINVAL;
 
 	DBG("service %p", service);
 
@@ -242,9 +251,26 @@ char **__connman_timeserver_system_get()
 	return servers;
 }
 
+static void default_changed(struct connman_service *default_service)
+{
+	DBG("");
+
+	if (default_service != NULL)
+		__connman_timeserver_sync(default_service);
+	else
+		__connman_timeserver_stop();
+}
+
+static struct connman_notifier timeserver_notifier = {
+	.name			= "timeserver",
+	.default_changed	= default_changed,
+};
+
 int __connman_timeserver_init(void)
 {
 	DBG("");
+
+	connman_notifier_register(&timeserver_notifier);
 
 	return 0;
 }
@@ -252,4 +278,6 @@ int __connman_timeserver_init(void)
 void __connman_timeserver_cleanup(void)
 {
 	DBG("");
+
+	connman_notifier_unregister(&timeserver_notifier);
 }
