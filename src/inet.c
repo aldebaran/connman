@@ -2151,7 +2151,7 @@ int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen, int type,
 	struct rtattr *rta;
 
 	if (NLMSG_ALIGN(n->nlmsg_len) + len > maxlen) {
-		DBG("Error! max allowed bound %d exceeded", maxlen);
+		DBG("Error! max allowed bound %zd exceeded", maxlen);
 		return -1;
 	}
 	rta = NLMSG_TAIL(n);
