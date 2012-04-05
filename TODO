@@ -39,17 +39,6 @@ Core
    See http://lists.connman.net/pipermail/connman/2012-March/008605.html
 
 
-- main.conf DefaultAutoConnectTechnologies
-   Priority: Medium
-   Complexity: C2
-   Owner:
-
-   The default autoconnect value for a new service that has not been seen. After
-   that it can be changed on a per service level via AutoConnect property.
-   The default value if not present should be "ethernet,wifi".
-   See http://lists.connman.net/pipermail/connman/2012-March/008605.html
-
-
 - main.conf PriorityTechnologies
    Priority: Medium
    Complexity: C2
