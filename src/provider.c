@@ -59,6 +59,8 @@ struct connman_provider {
 	void *driver_data;
 	GHashTable *setting_strings;
 	GHashTable *user_routes;
+	gchar **user_networks;
+	gsize num_user_networks;
 };
 
 void __connman_provider_append_properties(struct connman_provider *provider,
@@ -104,6 +106,53 @@ int __connman_provider_append_user_route(struct connman_provider *provider,
 	return 0;
 }
 
+static void set_user_networks(struct connman_provider *provider,
+							char **networks)
+{
+	int i = 0;
+
+	while (networks[i] != NULL) {
+		char **elems = g_strsplit(networks[i], "/", 0);
+		char *network, *netmask = NULL;
+		int family = PF_UNSPEC, ret;
+
+		if (elems == NULL)
+			break;
+
+		network = elems[0];
+		if (elems[1] != NULL)
+			netmask = elems[1];
+
+		if (g_strrstr(network, ":") != NULL)
+			family = AF_INET6;
+		else if (g_strrstr(network, ".") != NULL) {
+			family = AF_INET;
+
+			if (g_strrstr(netmask, ".") == NULL) {
+				/* We have netmask length */
+				in_addr_t addr;
+				struct in_addr netmask_in;
+				unsigned char prefix_len = atoi(netmask);
+
+				addr = 0xffffffff << (32 - prefix_len);
+				netmask_in.s_addr = htonl(addr);
+				netmask = inet_ntoa(netmask_in);
+
+				DBG("network %s netmask %s", network, netmask);
+			}
+		}
+
+		ret = __connman_provider_append_user_route(provider,
+						family, network, netmask);
+		g_strfreev(elems);
+
+		if (ret != 0)
+			break;
+
+		i++;
+	}
+}
+
 static int provider_load_from_keyfile(struct connman_provider *provider,
 		GKeyFile *keyfile)
 {
@@ -122,15 +171,29 @@ static int provider_load_from_keyfile(struct connman_provider *provider,
 	while (idx < length) {
 		key = settings[idx];
 		if (key != NULL) {
-			value = g_key_file_get_string(keyfile,
+			if (g_str_equal(key, "Networks") == TRUE) {
+				g_strfreev(provider->user_networks);
+				provider->user_networks =
+					g_key_file_get_string_list(keyfile,
 						provider->identifier,
-						key, NULL);
-			connman_provider_set_string(provider, key, value);
-			g_free(value);
+						key,
+						&provider->num_user_networks,
+						NULL);
+			} else {
+				value = g_key_file_get_string(keyfile,
+							provider->identifier,
+							key, NULL);
+				connman_provider_set_string(provider, key,
+							value);
+				g_free(value);
+			}
 		}
 		idx += 1;
 	}
 	g_strfreev(settings);
+
+	if (provider->user_networks != NULL)
+		set_user_networks(provider, provider->user_networks);
 
 	return 0;
 }
@@ -169,6 +232,11 @@ static int connman_provider_save(struct connman_provider *provider)
 			"Host", provider->host);
 	g_key_file_set_string(keyfile, provider->identifier,
 			"VPN.Domain", provider->domain);
+	if (provider->user_networks != NULL)
+		g_key_file_set_string_list(keyfile, provider->identifier,
+				"Networks",
+				(const gchar **)provider->user_networks,
+				provider->num_user_networks);
 
 	if (provider->driver != NULL && provider->driver->save != NULL)
 		provider->driver->save(provider, keyfile);
@@ -265,6 +333,7 @@ static void provider_destruct(struct connman_provider *provider)
 	g_free(provider->host);
 	g_free(provider->domain);
 	g_free(provider->identifier);
+	g_strfreev(provider->user_networks);
 	g_hash_table_destroy(provider->routes);
 	g_hash_table_destroy(provider->user_routes);
 	g_hash_table_destroy(provider->setting_strings);
@@ -525,6 +594,7 @@ static void provider_initialize(struct connman_provider *provider)
 	provider->type = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
+	provider->user_networks = NULL;
 	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 					NULL, destroy_route);
 	provider->user_routes = g_hash_table_new_full(g_str_hash, g_str_equal,
