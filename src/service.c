@@ -4296,6 +4296,36 @@ static void downgrade_connected_services(void)
 	}
 }
 
+static int service_update_preferred_order(struct connman_service *default_service,
+		struct connman_service *new_service,
+		enum connman_service_state new_state)
+{
+	unsigned int *tech_array;
+	int i;
+
+	if (default_service == NULL || default_service == new_service ||
+			default_service->state != new_state )
+		return 0;
+
+	tech_array = connman_setting_get_uint_list("PreferredTechnologies");
+	if (tech_array != NULL) {
+
+		for (i = 0; tech_array[i] != 0; i += 1) {
+			if (default_service->type == tech_array[i])
+				return -EALREADY;
+
+			if (new_service->type == tech_array[i]) {
+				switch_default_service(new_service,
+						default_service);
+				return 0;
+			}
+		}
+		return -EAGAIN;
+	}
+
+	return -EALREADY;
+}
+
 static int service_indicate_state(struct connman_service *service)
 {
 	enum connman_service_state old_state, new_state;
