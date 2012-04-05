@@ -149,20 +149,6 @@ VPN
    Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
 
 
-- Split tunnelling
-
-   Priority: Low
-   Complexity: C8
-   Dependencies: Core:Private networks
-   Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
-
-   The current VPN support puts the VPN interface at the top of the
-   service list, giving VPNs the default route. When doing split
-   tunneling, the system routes packet to the VPN interface for
-   private IPs, while going through the default interface for the rest
-   of the traffic.
-
-
 Tools
 =====
 
