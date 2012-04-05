@@ -359,11 +359,11 @@ int __connman_ntp_start(char *server)
 	start_ntp(timeserver);
 
 	/*
-	 * Add a fallback timeout , preferably longer, 16 sec here,
+	 * Add a fallback timeout , preferably short, 5 sec here,
 	 * to fallback on the next server.
 	 */
 
-	timeout_id = g_timeout_add_seconds(16, next_server, NULL);
+	timeout_id = g_timeout_add_seconds(5, next_server, NULL);
 
 	return 0;
 }
