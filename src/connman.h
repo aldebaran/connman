@@ -498,6 +498,8 @@ int __connman_private_network_release(const char *path);
 
 #include <connman/provider.h>
 
+int __connman_provider_append_user_route(struct connman_provider *provider,
+			int family, const char *network, const char *netmask);
 void __connman_provider_append_properties(struct connman_provider *provider, DBusMessageIter *iter);
 void __connman_provider_list(DBusMessageIter *iter, void *user_data);
 int __connman_provider_create_and_connect(DBusMessage *msg);

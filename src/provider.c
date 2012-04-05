@@ -58,6 +58,7 @@ struct connman_provider {
 	struct connman_provider_driver *driver;
 	void *driver_data;
 	GHashTable *setting_strings;
+	GHashTable *user_routes;
 };
 
 void __connman_provider_append_properties(struct connman_provider *provider,
@@ -74,6 +75,33 @@ void __connman_provider_append_properties(struct connman_provider *provider,
 	if (provider->type != NULL)
 		connman_dbus_dict_append_basic(iter, "Type", DBUS_TYPE_STRING,
 						 &provider->type);
+}
+
+int __connman_provider_append_user_route(struct connman_provider *provider,
+			int family, const char *network, const char *netmask)
+{
+	struct connman_route *route;
+	char *key = g_strdup_printf("%d/%s/%s", family, network, netmask);
+
+	DBG("family %d network %s netmask %s", family, network, netmask);
+
+	route = g_hash_table_lookup(provider->user_routes, key);
+	if (route == NULL) {
+		route = g_try_new0(struct connman_route, 1);
+		if (route == NULL) {
+			connman_error("out of memory");
+			return -ENOMEM;
+		}
+
+		route->family = family;
+		route->host = g_strdup(network);
+		route->netmask = g_strdup(netmask);
+
+		g_hash_table_replace(provider->user_routes, key, route);
+	} else
+		g_free(key);
+
+	return 0;
 }
 
 static int provider_load_from_keyfile(struct connman_provider *provider,
@@ -238,6 +266,7 @@ static void provider_destruct(struct connman_provider *provider)
 	g_free(provider->domain);
 	g_free(provider->identifier);
 	g_hash_table_destroy(provider->routes);
+	g_hash_table_destroy(provider->user_routes);
 	g_hash_table_destroy(provider->setting_strings);
 	g_free(provider);
 }
@@ -395,6 +424,9 @@ static int set_connected(struct connman_provider *provider,
 		g_hash_table_foreach(provider->routes, provider_append_routes,
 					provider);
 
+		g_hash_table_foreach(provider->user_routes, provider_append_routes,
+					provider);
+
 	} else {
 		if (ipconfig != NULL) {
 			provider_indicate_state(provider,
@@ -495,6 +527,8 @@ static void provider_initialize(struct connman_provider *provider)
 	provider->identifier = NULL;
 	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 					NULL, destroy_route);
+	provider->user_routes = g_hash_table_new_full(g_str_hash, g_str_equal,
+					g_free, destroy_route);
 	provider->setting_strings = g_hash_table_new_full(g_str_hash, g_str_equal,
 							g_free, g_free);
 }
