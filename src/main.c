@@ -44,8 +44,10 @@
 
 static struct {
 	connman_bool_t bg_scan;
+	char **pref_timeservers;
 } connman_settings  = {
 	.bg_scan = TRUE,
+	.pref_timeservers = NULL,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -75,6 +77,7 @@ static void parse_config(GKeyFile *config)
 {
 	GError *error = NULL;
 	gboolean boolean;
+	char **timeservers;
 
 	if (config == NULL)
 		return;
@@ -85,6 +88,13 @@ static void parse_config(GKeyFile *config)
 						"BackgroundScanning", &error);
 	if (error == NULL)
 		connman_settings.bg_scan = boolean;
+
+	g_clear_error(&error);
+
+	timeservers = g_key_file_get_string_list(config, "General",
+						"FallbackTimeservers", NULL, &error);
+	if (error == NULL)
+		connman_settings.pref_timeservers = timeservers;
 
 	g_clear_error(&error);
 }
@@ -235,6 +245,14 @@ connman_bool_t connman_setting_get_bool(const char *key)
 		return connman_settings.bg_scan;
 
 	return FALSE;
+}
+
+char **connman_setting_get_string_list(const char *key)
+{
+	if (g_str_equal(key, "FallbackTimeservers") == TRUE)
+		return connman_settings.pref_timeservers;
+
+	return NULL;
 }
 
 int main(int argc, char *argv[])
@@ -418,6 +436,9 @@ int main(int argc, char *argv[])
 
 	if (config)
 		g_key_file_free(config);
+
+	if (connman_settings.pref_timeservers != NULL)
+		g_strfreev(connman_settings.pref_timeservers);
 
 	g_free(option_debug);
 

@@ -27,6 +27,7 @@ extern "C" {
 #endif
 
 connman_bool_t connman_setting_get_bool(const char *key);
+char **connman_setting_get_string_list(const char *key);
 
 #ifdef __cplusplus
 }
