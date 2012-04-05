@@ -4330,6 +4330,7 @@ static int service_indicate_state(struct connman_service *service)
 {
 	enum connman_service_state old_state, new_state;
 	struct connman_service *def_service;
+	int result;
 	GSequenceIter *iter;
 
 	if (service == NULL)
@@ -4351,9 +4352,12 @@ static int service_indicate_state(struct connman_service *service)
 	def_service = __connman_service_get_default();
 
 	if (new_state == CONNMAN_SERVICE_STATE_ONLINE) {
-		if (def_service != NULL && def_service != service &&
-			def_service->state == CONNMAN_SERVICE_STATE_ONLINE)
-			return -EALREADY;
+		result = service_update_preferred_order(def_service,
+				service, new_state);
+		if (result == -EALREADY)
+			return result;
+		if (result == -EAGAIN)
+			__connman_service_auto_connect();
 	}
 
 	service->state = new_state;
@@ -4387,6 +4391,8 @@ static int service_indicate_state(struct connman_service *service)
 
 	if (new_state == CONNMAN_SERVICE_STATE_READY) {
 		enum connman_ipconfig_method method;
+
+		service_update_preferred_order(def_service, service, new_state);
 
 		set_reconnect_state(service, TRUE);
 
@@ -4662,12 +4668,12 @@ int __connman_service_online_check_failed(struct connman_service *service,
 	DBG("service %p type %d count %d", service, type,
 						service->online_check_count);
 
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		/* currently we only retry IPv6 stuff */
+	/* currently we only retry IPv6 stuff */
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 ||
+			service->online_check_count != 1) {
+		__connman_service_auto_connect();
 		return 0;
-
-	if (service->online_check_count != 1)
-		return 0;
+	}
 
 	service->online_check_count = 0;
 
