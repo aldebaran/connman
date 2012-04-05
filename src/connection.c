@@ -820,14 +820,20 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
 				new_gateway->ipv4_gateway != NULL &&
 				new_gateway->ipv4_gateway->vpn == TRUE) {
-		connman_inet_clear_gateway_address(active_gateway->index,
+		if (__connman_service_is_split_routing(new_gateway->service) ==
+									FALSE)
+			connman_inet_clear_gateway_address(
+					active_gateway->index,
 					active_gateway->ipv4_gateway->gateway);
 	}
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
 				new_gateway->ipv6_gateway != NULL &&
 				new_gateway->ipv6_gateway->vpn == TRUE) {
-		connman_inet_clear_ipv6_gateway_address(active_gateway->index,
+		if (__connman_service_is_split_routing(new_gateway->service) ==
+									FALSE)
+			connman_inet_clear_ipv6_gateway_address(
+					active_gateway->index,
 					active_gateway->ipv6_gateway->gateway);
 	}
 
