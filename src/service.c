@@ -170,6 +170,33 @@ const char *__connman_service_type2string(enum connman_service_type type)
 	return NULL;
 }
 
+enum connman_service_type __connman_service_string2type(const char *str)
+{
+	if (str == NULL)
+		return CONNMAN_SERVICE_TYPE_UNKNOWN;
+
+	if (strcmp(str, "ethernet") == 0)
+		return CONNMAN_SERVICE_TYPE_ETHERNET;
+	if (strcmp(str, "gadget") == 0)
+		return CONNMAN_SERVICE_TYPE_GADGET;
+	if (strcmp(str, "wifi") == 0)
+		return CONNMAN_SERVICE_TYPE_WIFI;
+	if (strcmp(str, "cellular") == 0)
+		return CONNMAN_SERVICE_TYPE_CELLULAR;
+	if (strcmp(str, "bluetooth") == 0)
+		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
+	if (strcmp(str, "wimax") == 0)
+		return CONNMAN_SERVICE_TYPE_WIMAX;
+	if (strcmp(str, "vpn") == 0)
+		return CONNMAN_SERVICE_TYPE_VPN;
+	if (strcmp(str, "gps") == 0)
+		return CONNMAN_SERVICE_TYPE_GPS;
+	if (strcmp(str, "system") == 0)
+		return CONNMAN_SERVICE_TYPE_SYSTEM;
+
+	return CONNMAN_SERVICE_TYPE_UNKNOWN;
+}
+
 static const char *security2string(enum connman_service_security security)
 {
 	switch (security) {
