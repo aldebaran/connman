@@ -28,15 +28,14 @@
 #include <glib.h>
 #include <stdlib.h>
 #include <gweb/gresolv.h>
+#include <netdb.h>
 
 #include "connman.h"
 
-static char **system_timeservers = NULL;
-static char **timeservers = NULL;
+static GSList *ts_list = NULL;
 
 static GResolv *resolv = NULL;
 static int resolv_id = 0;
-static volatile int count;
 
 static void resolv_debug(const char *str, void *data)
 {
@@ -85,47 +84,11 @@ static char **load_timeservers()
 	return servers;
 }
 
-/* Restart NTP procedure */
-static void connman_timeserver_restart()
-{
-	/* If service timeservers are in use, dont restart ntp */
-	if (timeservers != NULL)
-		return;
-
-	if (resolv == NULL) {
-		DBG("No online service.");
-		return;
-	}
-
-	/* Cancel current lookup */
-	if(resolv_id > 0)
-		g_resolv_cancel_lookup(resolv, resolv_id);
-
-	/* Reload system timeserver list */
-	if (system_timeservers != NULL) {
-		g_strfreev(system_timeservers);
-		system_timeservers = NULL;
-	}
-
-	system_timeservers = load_timeservers();
-
-	if (system_timeservers == NULL)
-		return;
-
-	__connman_ntp_stop();
-
-	count = 0;
-
-	__connman_timeserver_sync_next();
-}
-
 static void resolv_result(GResolvResultStatus status, char **results, gpointer user_data)
 {
 	int i;
 
 	DBG("status %d", status);
-
-	__sync_fetch_and_add(&count, 1);
 
 	if (status == G_RESOLV_RESULT_STATUS_SUCCESS) {
 		if (results != NULL) {
@@ -138,27 +101,74 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
 		}
 	}
 
+	/* If resolving fails, move to the next server */
 	__connman_timeserver_sync_next();
 }
 
+/*
+ * Once the timeserver list (ts_list) is created, we start querying the
+ * servers one by one. If resolving fails on one of them, we move to the
+ * next one. The user can enter either an IP address or a URL for the
+ * timeserver. We only resolve the urls. Once we have a IP for the NTP
+ * server, we start querying it for time corrections.
+ */
 void __connman_timeserver_sync_next()
 {
-	if (system_timeservers == NULL ||
-	system_timeservers[count] == NULL)
+	char *server;
+	int ret;
+	struct addrinfo hints;
+	struct addrinfo *addr;
+
+	__connman_ntp_stop();
+
+	/* Get the 1st server in the list */
+	if (ts_list == NULL)
 		return;
 
-	DBG("Trying timeserver %s", system_timeservers[count]);
+	server = ts_list->data;
 
-	if (resolv)
-		resolv_id = g_resolv_lookup_hostname(resolv,
-			system_timeservers[count], resolv_result,
-						NULL);
+	ts_list = g_slist_delete_link(ts_list, ts_list);
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = AI_NUMERICHOST;
+	addr = NULL;
+
+	ret = getaddrinfo(server, NULL, &hints, &addr);
+	freeaddrinfo(addr);
+
+	/* if its a IP , directly query it. */
+	if (ret == 0) {
+		DBG("Using timeservers %s", server);
+
+		__connman_ntp_start(server);
+
+		g_free(server);
+		return;
+	}
+
+	DBG("Resolving server %s", server);
+
+	resolv_id = g_resolv_lookup_hostname(resolv, server,
+						resolv_result, NULL);
+
+	g_free(server);
+
+	return;
 }
 
+
+/*
+ * __connman_timeserver_sync function recreates the timeserver
+ * list which will be used to determine NTP server for time corrections.
+ * It must be called everytime the default service changes, the service
+ * timeserver(s) changes or the global timeserver(s) changes.The service
+ * settings take priority over the global timeservers.
+ */
 int __connman_timeserver_sync(struct connman_service *default_service)
 {
 	struct connman_service *service;
-	char **nameservers;
+	char **timeservers;
+	char **service_ts;
 	int i;
 
 	if (default_service != NULL)
@@ -168,6 +178,50 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 
 	if (service == NULL)
 		return -EINVAL;
+
+	if (resolv == NULL)
+		return 0;
+	/*
+	 * Before be start creating the new timeserver list we must stop
+	 * any ongoing ntp query and server resolution.
+	 */
+
+	__connman_ntp_stop();
+
+	if (resolv_id > 0)
+		g_resolv_cancel_lookup(resolv, resolv_id);
+
+	if (ts_list != NULL) {
+		g_slist_free_full(ts_list, g_free);
+		ts_list = NULL;
+	}
+
+	service_ts = connman_service_get_timeservers(service);
+
+	for (i=0; service_ts != NULL && service_ts[i] != NULL; i++)
+		ts_list = g_slist_prepend(ts_list, g_strdup(service_ts[i]));
+
+	timeservers = load_timeservers();
+
+	for (i=0; timeservers != NULL && timeservers[i] != NULL; i++)
+		ts_list = g_slist_prepend(ts_list, g_strdup(timeservers[i]));
+
+	if (ts_list == NULL) {
+		DBG("No timeservers set.");
+		return 0;
+	}
+
+	ts_list = g_slist_reverse(ts_list);
+
+        __connman_timeserver_sync_next();
+
+	return 0;
+}
+
+static int timeserver_start(struct connman_service *service)
+{
+	char **nameservers;
+	int i;
 
 	DBG("service %p", service);
 
@@ -179,6 +233,16 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	if (nameservers == NULL)
 		return -EINVAL;
 
+	/* Stop an already ongoing resolution, if there is one */
+	if (resolv_id > 0)
+		g_resolv_cancel_lookup(resolv, resolv_id);
+
+	/* get rid of the old resolver */
+	if (resolv != NULL) {
+		g_resolv_unref(resolv);
+		resolv = NULL;
+	}
+
 	resolv = g_resolv_new(i);
 	if (resolv == NULL)
 		return -ENOMEM;
@@ -189,31 +253,10 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	for (i = 0; nameservers[i] != NULL; i++)
 		g_resolv_add_nameserver(resolv, nameservers[i], 53, 0);
 
-	count = 0;
-
-	system_timeservers = load_timeservers();
-
-	timeservers = connman_service_get_timeservers(service);
-
-	if (timeservers != NULL && timeservers[0] != NULL) {
-		DBG("Using service tiemservers");
-		__connman_ntp_start(timeservers[0]);
-		return 0;
-	}
-
-	if (system_timeservers == NULL || system_timeservers[count] == NULL) {
-		DBG("No timeservers set.");
-		return 0;
-	}
-
-	DBG("Trying server %s", system_timeservers[count]);
-
-	resolv_id = g_resolv_lookup_hostname(resolv, system_timeservers[count],
-						resolv_result, NULL);
-	return 0;
+	return __connman_timeserver_sync(service);
 }
 
-void __connman_timeserver_stop()
+static void timeserver_stop()
 {
 	DBG(" ");
 
@@ -222,14 +265,10 @@ void __connman_timeserver_stop()
 		resolv = NULL;
 	}
 
-	if (system_timeservers != NULL) {
-		g_strfreev(system_timeservers);
-		system_timeservers = NULL;
-	}
+	if (ts_list != NULL)
+		g_slist_free_full(ts_list, g_free);
 
-	timeservers = NULL;
-
-	count = 0;
+	ts_list = NULL;
 
 	__connman_ntp_stop();
 }
@@ -238,7 +277,7 @@ int __connman_timeserver_system_set(char **servers)
 {
 	save_timeservers(servers);
 
-	connman_timeserver_restart();
+	__connman_timeserver_sync(NULL);
 
 	return 0;
 }
@@ -253,12 +292,10 @@ char **__connman_timeserver_system_get()
 
 static void default_changed(struct connman_service *default_service)
 {
-	DBG("");
-
 	if (default_service != NULL)
-		__connman_timeserver_sync(default_service);
+		timeserver_start(default_service);
 	else
-		__connman_timeserver_stop();
+		timeserver_stop();
 }
 
 static struct connman_notifier timeserver_notifier = {
