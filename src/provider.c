@@ -970,6 +970,23 @@ const char *connman_provider_get_string(struct connman_provider *provider,
 	return g_hash_table_lookup(provider->setting_strings, key);
 }
 
+connman_bool_t
+__connman_provider_check_routes(struct connman_provider *provider)
+{
+	if (provider == NULL)
+		return FALSE;
+
+	if (provider->user_routes != NULL &&
+			g_hash_table_size(provider->user_routes) > 0)
+		return TRUE;
+
+	if (provider->routes != NULL &&
+			g_hash_table_size(provider->routes) > 0)
+		return TRUE;
+
+	return FALSE;
+}
+
 void *connman_provider_get_data(struct connman_provider *provider)
 {
 	return provider->driver_data;
