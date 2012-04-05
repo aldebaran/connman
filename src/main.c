@@ -400,8 +400,10 @@ int main(int argc, char *argv[])
 	__connman_dbus_init(conn);
 
 	config = load_config(CONFIGDIR "/main.conf");
-
-	parse_config(config);
+	if (config != NULL) {
+		parse_config(config);
+		g_key_file_free(config);
+	}
 
 	__connman_storage_migrate();
 	__connman_technology_init();
@@ -490,9 +492,6 @@ int main(int argc, char *argv[])
 	dbus_connection_unref(conn);
 
 	g_main_loop_unref(main_loop);
-
-	if (config)
-		g_key_file_free(config);
 
 	if (connman_settings.pref_timeservers != NULL)
 		g_strfreev(connman_settings.pref_timeservers);
