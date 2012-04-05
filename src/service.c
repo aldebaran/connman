@@ -5245,6 +5245,15 @@ done:
 	return service->order;
 }
 
+void __connman_service_update_ordering(void)
+{
+	GSequenceIter *iter;
+
+	iter = g_sequence_get_begin_iter(service_list);
+	if (iter != NULL)
+		g_sequence_sort_changed(iter, service_compare, NULL);
+}
+
 static enum connman_service_type convert_network_type(struct connman_network *network)
 {
 	enum connman_network_type type = connman_network_get_type(network);

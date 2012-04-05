@@ -545,6 +545,7 @@ connman_bool_t __connman_service_is_connected_state(struct connman_service *serv
 const char *__connman_service_get_ident(struct connman_service *service);
 const char *__connman_service_get_path(struct connman_service *service);
 unsigned int __connman_service_get_order(struct connman_service *service);
+void __connman_service_update_ordering(void);
 struct connman_network *__connman_service_get_network(struct connman_service *service);
 enum connman_service_security __connman_service_get_security(struct connman_service *service);
 const char *__connman_service_get_phase2(struct connman_service *service);
