@@ -110,6 +110,7 @@ struct connman_service {
 	char *pac;
 	connman_bool_t wps;
 	int online_check_count;
+	connman_bool_t do_split_routing;
 };
 
 struct find_data {
@@ -3214,18 +3215,36 @@ static DBusMessage *move_service(DBusConnection *conn,
 		return __connman_error_not_supported(msg);
 
 	target = find_service(path);
-	if (target == NULL || target->favorite == FALSE || target == service ||
-				target->type == CONNMAN_SERVICE_TYPE_VPN)
+	if (target == NULL || target->favorite == FALSE || target == service)
 		return __connman_error_invalid_service(msg);
+
+	if (target->type == CONNMAN_SERVICE_TYPE_VPN) {
+		/*
+		 * We only allow VPN route splitting if there are
+		 * routes defined for a given VPN.
+		 */
+		if (__connman_provider_check_routes(target->provider)
+								== FALSE) {
+			connman_info("Cannot move service. "
+				"No routes defined for provider %s",
+				__connman_provider_get_ident(target->provider));
+			return __connman_error_invalid_service(msg);
+		}
+
+		target->do_split_routing = TRUE;
+	} else
+		target->do_split_routing = FALSE;
+
+	service->do_split_routing = FALSE;
 
 	target4 = __connman_ipconfig_get_method(target->ipconfig_ipv4);
 	target6 = __connman_ipconfig_get_method(target->ipconfig_ipv6);
 	service4 = __connman_ipconfig_get_method(service->ipconfig_ipv4);
 	service6 = __connman_ipconfig_get_method(service->ipconfig_ipv6);
 
-	DBG("target %s method %d/%d state %d/%d", target->identifier,
-				target4, target6,
-				target->state_ipv4, target->state_ipv6);
+	DBG("target %s method %d/%d state %d/%d split %d", target->identifier,
+		target4, target6, target->state_ipv4, target->state_ipv6,
+		target->do_split_routing);
 
 	DBG("service %s method %d/%d state %d/%d", service->identifier,
 				service4, service6,
@@ -3269,6 +3288,7 @@ static DBusMessage *move_service(DBusConnection *conn,
 
 	g_get_current_time(&service->modified);
 	service_save(service);
+	service_save(target);
 
 	src = g_hash_table_lookup(service_hash, service->identifier);
 	dst = g_hash_table_lookup(service_hash, target->identifier);
@@ -5205,11 +5225,15 @@ unsigned int __connman_service_get_order(struct connman_service *service)
 	if (iter != NULL) {
 		if (g_sequence_iter_get_position(iter) == 0)
 			service->order = 1;
-		else if (service->type == CONNMAN_SERVICE_TYPE_VPN)
+		else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
+				service->do_split_routing == FALSE)
 			service->order = 10;
 		else
 			service->order = 0;
 	}
+
+	DBG("service %p name %s order %d split %d", service, service->name,
+		service->order, service->do_split_routing);
 
 done:
 	return service->order;
