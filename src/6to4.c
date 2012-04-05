@@ -49,6 +49,9 @@ static int tunnel_pending;
 static char *tunnel_ip_address;
 static GWeb *web;
 static guint web_request_id;
+static unsigned int newlink_watch;
+static unsigned int newlink_flags;
+static int newlink_timeout_id;
 
 #define STATUS_URL "http://ipv6.connman.net/online/status.html"
 
@@ -256,6 +259,71 @@ static void web_debug(const char *str, void *data)
 	connman_info("%s: %s\n", (const char *) data, str);
 }
 
+static gboolean newlink_timeout(gpointer user_data)
+{
+	/*
+	 * Stop if the timeout has been cancelled already by tun_newlink()
+	 */
+	if (newlink_timeout_id == 0)
+		return FALSE;
+
+	DBG("");
+
+	if (newlink_watch != 0) {
+		connman_rtnl_remove_watch(newlink_watch);
+		newlink_watch = 0;
+	}
+
+	newlink_flags = 0;
+
+	if (web_request_id == 0)
+		tunnel_destroy();
+
+	newlink_timeout_id = 0;
+
+	return FALSE;
+}
+
+static void tun_newlink(unsigned flags, unsigned change, void *user_data)
+{
+	int index = GPOINTER_TO_INT(user_data);
+
+	if ((newlink_flags & IFF_UP) == (flags & IFF_UP)) {
+		newlink_flags = flags;
+		return;
+	}
+
+	if (flags & IFF_UP) {
+		/*
+		 * We try to verify that connectivity through tunnel works ok.
+		 */
+		if (newlink_timeout_id > 0) {
+			g_source_remove(newlink_timeout_id);
+			newlink_timeout_id = 0;
+		}
+
+		web = g_web_new(index);
+		if (web == NULL) {
+			tunnel_destroy();
+			return;
+		}
+
+		g_web_set_accept(web, NULL);
+		g_web_set_user_agent(web, "ConnMan/%s", VERSION);
+		g_web_set_close_connection(web, TRUE);
+
+		if (getenv("CONNMAN_WEB_DEBUG"))
+			g_web_set_debug(web, web_debug, "6to4");
+
+		web_request_id = g_web_request_get(web, STATUS_URL,
+						web_result, NULL);
+
+		newlink_timeout(NULL);
+	}
+
+	newlink_flags = flags;
+}
+
 static int init_6to4(struct in_addr *ip4addr)
 {
 	unsigned int a, b, c, d;
@@ -293,20 +361,10 @@ static int init_6to4(struct in_addr *ip4addr)
 	if (if_index < 0)
 		goto error;
 
-	/* We try to verify that connectivity through tunnel works ok.
-	 */
-	web = g_web_new(if_index);
-	if (web == NULL)
-		goto error;
+	newlink_watch = connman_rtnl_add_newlink_watch(if_index,
+				tun_newlink, GINT_TO_POINTER(if_index));
 
-	g_web_set_accept(web, NULL);
-	g_web_set_user_agent(web, "ConnMan/%s", VERSION);
-	g_web_set_close_connection(web, TRUE);
-
-	if (getenv("CONNMAN_WEB_DEBUG"))
-		g_web_set_debug(web, web_debug, "6to4");
-
-	web_request_id = g_web_request_get(web, STATUS_URL, web_result, NULL);
+	newlink_timeout_id = g_timeout_add_seconds(1, newlink_timeout, NULL);
 
 	return 0;
 
