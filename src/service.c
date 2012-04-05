@@ -3369,6 +3369,18 @@ static void apply_relevant_default_downgrade(struct connman_service *service)
 		def_service->state = CONNMAN_SERVICE_STATE_READY;
 }
 
+static void switch_default_service(struct connman_service *default_service,
+		struct connman_service *downgrade_service)
+{
+	GSequenceIter *src, *dst;
+
+	apply_relevant_default_downgrade(default_service);
+	src = g_hash_table_lookup(service_hash, downgrade_service->identifier);
+	dst = g_hash_table_lookup(service_hash, default_service->identifier);
+	g_sequence_move(src, dst);
+	downgrade_state(downgrade_service);
+}
+
 static DBusMessage *move_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data,
 								gboolean before)
@@ -3376,7 +3388,6 @@ static DBusMessage *move_service(DBusConnection *conn,
 	struct connman_service *service = user_data;
 	struct connman_service *target;
 	const char *path;
-	GSequenceIter *src, *dst;
 	enum connman_ipconfig_method target4, target6;
 	enum connman_ipconfig_method service4, service6;
 
@@ -3464,24 +3475,16 @@ static DBusMessage *move_service(DBusConnection *conn,
 	service_save(service);
 	service_save(target);
 
-	src = g_hash_table_lookup(service_hash, service->identifier);
-	dst = g_hash_table_lookup(service_hash, target->identifier);
-
 	/*
 	 * If the service which goes down is the default service and is
 	 * online, we downgrade directly its state to ready so:
 	 * the service which goes up, needs to recompute its state which
 	 * is triggered via downgrading it - if relevant - to state ready.
 	 */
-	if (before == TRUE) {
-		apply_relevant_default_downgrade(target);
-		g_sequence_move(src, dst);
-		downgrade_state(service);
-	} else {
-		apply_relevant_default_downgrade(service);
-		g_sequence_move(dst, src);
-		downgrade_state(target);
-	}
+	if (before == TRUE)
+		switch_default_service(target, service);
+	else
+		switch_default_service(service, target);
 
 	__connman_connection_update_gateway();
 
