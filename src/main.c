@@ -46,10 +46,12 @@ static struct {
 	connman_bool_t bg_scan;
 	char **pref_timeservers;
 	unsigned int *auto_connect;
+	unsigned int *preferred_techs;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
 	.auto_connect = NULL,
+	.preferred_techs = NULL,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -142,6 +144,17 @@ static void parse_config(GKeyFile *config)
 	else
 		connman_settings.auto_connect =
 			parse_service_types(default_auto_connect, 3);
+
+	g_strfreev(str_list);
+
+	g_clear_error(&error);
+
+	str_list = g_key_file_get_string_list(config, "General",
+			"PreferredTechnologies", &len, &error);
+
+	if (error == NULL)
+		connman_settings.preferred_techs =
+			parse_service_types(str_list, len);
 
 	g_strfreev(str_list);
 
@@ -308,6 +321,9 @@ unsigned int *connman_setting_get_uint_list(const char *key)
 {
 	if (g_str_equal(key, "DefaultAutoConnectTechnologies") == TRUE)
 		return connman_settings.auto_connect;
+
+	if (g_str_equal(key, "PreferredTechnologies") == TRUE)
+		return connman_settings.preferred_techs;
 
 	return NULL;
 }
@@ -497,6 +513,7 @@ int main(int argc, char *argv[])
 		g_strfreev(connman_settings.pref_timeservers);
 
 	g_free(connman_settings.auto_connect);
+	g_free(connman_settings.preferred_techs);
 
 	g_free(option_debug);
 
