@@ -244,7 +244,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-ofono \
 				--enable-pacrunner \
 				--enable-google \
-				--enable-meego \
 				--enable-client \
 				--enable-hh2serial-gps \
 				--enable-openconnect \

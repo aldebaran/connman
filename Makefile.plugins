@@ -214,18 +214,6 @@ plugins_google_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if MEEGO
-if MEEGO_BUILTIN
-builtin_modules += meego
-builtin_sources += plugins/meego.c
-else
-plugin_LTLIBRARIES += plugins/meego.la
-plugin_objects += $(plugins_meego_la_OBJECTS)
-plugins_meego_la_CFLAGS = $(plugin_cflags)
-plugins_meego_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if POLKIT
 if POLKIT_BUILTIN
 builtin_modules += polkit
