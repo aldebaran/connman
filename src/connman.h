@@ -152,6 +152,46 @@ int __connman_inet_ipv6_send_rs(int index, int timeout,
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
 					unsigned int length);
 
+struct __connman_inet_rtnl_handle {
+	int			fd;
+	struct sockaddr_nl	local;
+	struct sockaddr_nl	peer;
+	__u32			seq;
+	__u32			dump;
+
+	struct {
+		struct nlmsghdr n;
+		union {
+			struct {
+				struct rtmsg rt;
+			} r;
+			struct {
+				struct ifaddrmsg ifa;
+			} i;
+		} u;
+		char buf[1024];
+	} req;
+};
+
+int __connman_inet_rtnl_open(struct __connman_inet_rtnl_handle *rth);
+typedef void (*__connman_inet_rtnl_cb_t) (struct nlmsghdr *answer,
+					void *user_data);
+int __connman_inet_rtnl_talk(struct __connman_inet_rtnl_handle *rtnl,
+			struct nlmsghdr *n, int timeout,
+			__connman_inet_rtnl_cb_t callback, void *user_data);
+static inline
+int __connman_inet_rtnl_send(struct __connman_inet_rtnl_handle *rtnl,
+						struct nlmsghdr *n)
+{
+	return __connman_inet_rtnl_talk(rtnl, n, 0, NULL, NULL);
+}
+
+void __connman_inet_rtnl_close(struct __connman_inet_rtnl_handle *rth);
+int __connman_inet_rtnl_addattr_l(struct nlmsghdr *n, size_t max_length,
+			int type, const void *data, size_t data_length);
+int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen,
+			int type, __u32 data);
+
 #include <connman/resolver.h>
 
 int __connman_resolver_init(connman_bool_t dnsproxy);

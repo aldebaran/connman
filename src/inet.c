@@ -35,6 +35,7 @@
 #include <sys/ioctl.h>
 #include <sys/socket.h>
 #include <linux/sockios.h>
+#include <netdb.h>
 #include <arpa/inet.h>
 #include <net/route.h>
 #include <net/ethernet.h>
@@ -50,8 +51,8 @@
 	((struct rtattr *) (((uint8_t*) (nmsg)) +	\
 	NLMSG_ALIGN((nmsg)->nlmsg_len)))
 
-static int add_rtattr(struct nlmsghdr *n, size_t max_length, int type,
-				const void *data, size_t data_length)
+int __connman_inet_rtnl_addattr_l(struct nlmsghdr *n, size_t max_length,
+				int type, const void *data, size_t data_length)
 {
 	size_t length;
 	struct rtattr *rta;
@@ -128,26 +129,41 @@ int __connman_inet_modify_address(int cmd, int flags,
 			if (inet_pton(AF_INET, peer, &ipv4_dest) < 1)
 				return -1;
 
-			if ((err = add_rtattr(header, sizeof(request),
-					IFA_ADDRESS,
-					&ipv4_dest, sizeof(ipv4_dest))) < 0)
-			return err;
+			err = __connman_inet_rtnl_addattr_l(header,
+							sizeof(request),
+							IFA_ADDRESS,
+							&ipv4_dest,
+							sizeof(ipv4_dest));
+			if (err < 0)
+				return err;
 		}
 
-		if ((err = add_rtattr(header, sizeof(request), IFA_LOCAL,
-				&ipv4_addr, sizeof(ipv4_addr))) < 0)
+		err = __connman_inet_rtnl_addattr_l(header,
+						sizeof(request),
+						IFA_LOCAL,
+						&ipv4_addr,
+						sizeof(ipv4_addr));
+		if (err < 0)
 			return err;
 
-		if ((err = add_rtattr(header, sizeof(request), IFA_BROADCAST,
-				&ipv4_bcast, sizeof(ipv4_bcast))) < 0)
+		err = __connman_inet_rtnl_addattr_l(header,
+						sizeof(request),
+						IFA_BROADCAST,
+						&ipv4_bcast,
+						sizeof(ipv4_bcast));
+		if (err < 0)
 			return err;
 
 	} else if (family == AF_INET6) {
 		if (inet_pton(AF_INET6, address, &ipv6_addr) < 1)
 			return -1;
 
-		if ((err = add_rtattr(header, sizeof(request), IFA_LOCAL,
-				&ipv6_addr, sizeof(ipv6_addr))) < 0)
+		err = __connman_inet_rtnl_addattr_l(header,
+						sizeof(request),
+						IFA_LOCAL,
+						&ipv6_addr,
+						sizeof(ipv6_addr));
+		if (err < 0)
 			return err;
 	}
 
@@ -1872,6 +1888,277 @@ int connman_inet_ipv6_get_dest_addr(int index, char **dest)
 	*dest = g_strdup(addr);
 
 	DBG("destination %s", *dest);
+
+	return 0;
+}
+
+int __connman_inet_rtnl_open(struct __connman_inet_rtnl_handle *rth)
+{
+	int sndbuf = 1024;
+	int rcvbuf = 1024 * 4;
+
+	rth->fd = socket(AF_NETLINK, SOCK_RAW | SOCK_CLOEXEC, NETLINK_ROUTE);
+	if (rth->fd < 0) {
+		connman_error("Can not open netlink socket: %s",
+						strerror(errno));
+		return -errno;
+	}
+
+	if (setsockopt(rth->fd, SOL_SOCKET, SO_SNDBUF, &sndbuf,
+			sizeof(sndbuf)) < 0) {
+		connman_error("SO_SNDBUF: %s", strerror(errno));
+		return -errno;
+	}
+
+	if (setsockopt(rth->fd, SOL_SOCKET, SO_RCVBUF, &rcvbuf,
+			sizeof(rcvbuf)) < 0) {
+		connman_error("SO_RCVBUF: %s", strerror(errno));
+		return -errno;
+	}
+
+	memset(&rth->local, 0, sizeof(rth->local));
+	rth->local.nl_family = AF_NETLINK;
+	rth->local.nl_groups = 0;
+
+	if (bind(rth->fd, (struct sockaddr *)&rth->local,
+						sizeof(rth->local)) < 0) {
+		connman_error("Can not bind netlink socket: %s",
+							strerror(errno));
+		return -errno;
+	}
+
+	rth->seq = time(NULL);
+
+	DBG("fd %d", rth->fd);
+
+	return 0;
+}
+
+struct inet_rtnl_cb_data {
+	GIOChannel *channel;
+	__connman_inet_rtnl_cb_t callback;
+	guint rtnl_timeout;
+	guint watch_id;
+	struct __connman_inet_rtnl_handle *rtnl;
+	void *user_data;
+};
+
+static void inet_rtnl_cleanup(struct inet_rtnl_cb_data *data)
+{
+	struct __connman_inet_rtnl_handle *rth = data->rtnl;
+
+	if (data->channel != NULL) {
+		g_io_channel_shutdown(data->channel, TRUE, NULL);
+		g_io_channel_unref(data->channel);
+		data->channel = NULL;
+	}
+
+	DBG("data %p", data);
+
+	if (data->rtnl_timeout > 0)
+		g_source_remove(data->rtnl_timeout);
+
+	if (data->watch_id > 0)
+		g_source_remove(data->watch_id);
+
+	if (rth != NULL) {
+		__connman_inet_rtnl_close(rth);
+		g_free(rth);
+	}
+
+	g_free(data);
+}
+
+static gboolean inet_rtnl_timeout_cb(gpointer user_data)
+{
+	struct inet_rtnl_cb_data *data = user_data;
+
+	DBG("user data %p", user_data);
+
+	if (data == NULL)
+		return FALSE;
+
+	if (data->callback != NULL)
+		data->callback(NULL, data->user_data);
+
+	data->rtnl_timeout = 0;
+	inet_rtnl_cleanup(data);
+	return FALSE;
+}
+
+static int inet_rtnl_recv(GIOChannel *chan, gpointer user_data)
+{
+	struct inet_rtnl_cb_data *rtnl_data = user_data;
+	struct __connman_inet_rtnl_handle *rth = rtnl_data->rtnl;
+	struct nlmsghdr *h = NULL;
+	unsigned char buf[4096];
+	void *ptr = buf;
+	gsize len;
+	int status;
+
+	memset(buf, 0, sizeof(buf));
+
+	status = g_io_channel_read_chars(chan, (gchar *) buf,
+						sizeof(buf), &len, NULL);
+
+	DBG("status %d", status);
+
+	switch (status) {
+	case G_IO_STATUS_NORMAL:
+		break;
+	case G_IO_STATUS_AGAIN:
+		return 0;
+	default:
+		return -1;
+	}
+
+	while (len > 0) {
+		struct nlmsgerr *err;
+
+		h = ptr;
+
+		if (!NLMSG_OK(h, len)) {
+			return -1;
+			break;
+		}
+
+		if (h->nlmsg_seq != rth->seq) {
+			/* Skip this msg */
+			DBG("skip %d/%d len %d", rth->seq,
+				h->nlmsg_seq, h->nlmsg_len);
+
+			len -= h->nlmsg_len;
+			ptr += h->nlmsg_len;
+			continue;
+		}
+
+		switch (h->nlmsg_type) {
+		case NLMSG_NOOP:
+		case NLMSG_OVERRUN:
+			return -1;
+
+		case NLMSG_ERROR:
+			err = (struct nlmsgerr *)NLMSG_DATA(h);
+			connman_error("RTNETLINK answers %s (%d)",
+				strerror(-err->error), -err->error);
+			return err->error;
+		}
+
+		break;
+	}
+
+	if (h->nlmsg_seq == rth->seq) {
+		DBG("received %d seq %d", h->nlmsg_len, h->nlmsg_seq);
+
+		rtnl_data->callback(h, rtnl_data->user_data);
+
+		if (rtnl_data->rtnl_timeout > 0) {
+			g_source_remove(rtnl_data->rtnl_timeout);
+			rtnl_data->rtnl_timeout = 0;
+		}
+
+		__connman_inet_rtnl_close(rth);
+		g_free(rth);
+	}
+
+	return 0;
+}
+
+static gboolean inet_rtnl_event(GIOChannel *chan, GIOCondition cond,
+							gpointer user_data)
+{
+	int ret;
+
+	DBG("");
+
+	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
+		return FALSE;
+
+	ret = inet_rtnl_recv(chan, user_data);
+	if (ret != 0)
+		return TRUE;
+
+	return FALSE;
+}
+
+int __connman_inet_rtnl_talk(struct __connman_inet_rtnl_handle *rtnl,
+			struct nlmsghdr *n, int timeout,
+			__connman_inet_rtnl_cb_t callback, void *user_data)
+{
+	struct sockaddr_nl nladdr;
+	struct inet_rtnl_cb_data *data;
+	unsigned seq;
+	int err;
+
+	memset(&nladdr, 0, sizeof(nladdr));
+	nladdr.nl_family = AF_NETLINK;
+
+	n->nlmsg_seq = seq = ++rtnl->seq;
+
+	if (callback != NULL) {
+		data = g_try_malloc0(sizeof(struct inet_rtnl_cb_data));
+		if (data == NULL)
+			return -ENOMEM;
+
+		data->callback = callback;
+		data->user_data = user_data;
+		data->rtnl = rtnl;
+		data->rtnl_timeout = g_timeout_add_seconds(timeout,
+						inet_rtnl_timeout_cb, data);
+
+		data->channel = g_io_channel_unix_new(rtnl->fd);
+		g_io_channel_set_close_on_unref(data->channel, TRUE);
+
+		g_io_channel_set_encoding(data->channel, NULL, NULL);
+		g_io_channel_set_buffered(data->channel, FALSE);
+
+		data->watch_id = g_io_add_watch(data->channel,
+				G_IO_IN | G_IO_NVAL | G_IO_HUP | G_IO_ERR,
+						inet_rtnl_event, data);
+	} else
+		n->nlmsg_flags |= NLM_F_ACK;
+
+	err = sendto(rtnl->fd, &rtnl->req.n, rtnl->req.n.nlmsg_len, 0,
+		(struct sockaddr *) &nladdr, sizeof(nladdr));
+	DBG("handle %p len %d err %d", rtnl, rtnl->req.n.nlmsg_len, err);
+	if (err < 0) {
+		connman_error("Can not talk to rtnetlink");
+		return -errno;
+	}
+
+	if ((unsigned int)err != rtnl->req.n.nlmsg_len) {
+		connman_error("Sent %d bytes, msg truncated", err);
+		return -EINVAL;
+	}
+
+	return 0;
+}
+
+void __connman_inet_rtnl_close(struct __connman_inet_rtnl_handle *rth)
+{
+	DBG("handle %p", rth);
+
+	if (rth->fd >= 0) {
+		close(rth->fd);
+		rth->fd = -1;
+	}
+}
+
+int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen, int type,
+				__u32 data)
+{
+	int len = RTA_LENGTH(4);
+	struct rtattr *rta;
+
+	if (NLMSG_ALIGN(n->nlmsg_len) + len > maxlen) {
+		DBG("Error! max allowed bound %d exceeded", maxlen);
+		return -1;
+	}
+	rta = NLMSG_TAIL(n);
+	rta->rta_type = type;
+	rta->rta_len = len;
+	memcpy(RTA_DATA(rta), &data, 4);
+	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + len;
 
 	return 0;
 }
