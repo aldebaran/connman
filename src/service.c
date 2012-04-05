@@ -2081,6 +2081,12 @@ connman_bool_t __connman_service_is_hidden(struct connman_service *service)
 	return service->hidden;
 }
 
+connman_bool_t
+__connman_service_is_split_routing(struct connman_service *service)
+{
+	return service->do_split_routing;
+}
+
 int __connman_service_get_index(struct connman_service *service)
 {
 	if (service == NULL)
