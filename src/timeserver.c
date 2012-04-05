@@ -170,6 +170,7 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	struct connman_network *network;
 	char **timeservers;
 	char **service_ts;
+	char **service_ts_config;
 	const char *service_gw;
 	int index, i;
 
@@ -197,6 +198,12 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 		g_slist_free_full(ts_list, g_free);
 		ts_list = NULL;
 	}
+
+	service_ts_config = connman_service_get_timeservers_config(service);
+
+	/* First add Service Timeservers.Configuration to the list */
+	for (i=0; service_ts_config != NULL && service_ts_config[i] != NULL; i++)
+		ts_list = g_slist_prepend(ts_list, g_strdup(service_ts_config[i]));
 
 	service_ts = connman_service_get_timeservers(service);
 
