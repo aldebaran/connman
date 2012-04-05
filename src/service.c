@@ -3020,6 +3020,45 @@ static connman_bool_t is_ignore(struct connman_service *service)
 	return FALSE;
 }
 
+struct preferred_tech_data {
+	GSequence *preferred_list;
+	enum connman_service_type type;
+};
+
+static void preferred_tech_add_by_type(gpointer data, gpointer user_data)
+{
+	struct connman_service *service = data;
+	struct preferred_tech_data *tech_data = user_data;
+
+	if (service->type == tech_data->type) {
+		g_sequence_append(tech_data->preferred_list, service);
+
+		DBG("type %d service %p %s", tech_data->type, service,
+				service->name);
+	}
+}
+
+static GSequence* preferred_tech_list_get(GSequence *list)
+{
+	unsigned int *tech_array;
+	struct preferred_tech_data tech_data;
+	int i;
+
+	tech_array = connman_setting_get_uint_list("PreferredTechnologies");
+	if (tech_array == NULL)
+		return NULL;
+
+	tech_data.preferred_list = g_sequence_new(NULL);
+
+	for (i = 0; tech_array[i] != 0; i += 1) {
+		tech_data.type = tech_array[i];
+		g_sequence_foreach(service_list, preferred_tech_add_by_type,
+				&tech_data);
+	}
+
+	return tech_data.preferred_list;
+}
+
 void __connman_service_auto_connect(void)
 {
 	struct connman_service *service = NULL;
