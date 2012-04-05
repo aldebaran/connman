@@ -89,6 +89,7 @@ struct connman_service {
 	char **domains;
 	char *domainname;
 	char **timeservers;
+	char **timeservers_config;
 	/* 802.1x settings from the config files */
 	char *eap;
 	char *identity;
@@ -408,6 +409,13 @@ static int service_load(struct connman_service *service)
 		service->nameservers_config = NULL;
 	}
 
+	service->timeservers_config = g_key_file_get_string_list(keyfile,
+			service->identifier, "Timeservers", &length, NULL);
+	if (service->timeservers_config != NULL && length == 0) {
+		g_strfreev(service->timeservers_config);
+		service->timeservers_config = NULL;
+	}
+
 	service->domains = g_key_file_get_string_list(keyfile,
 			service->identifier, "Domains", &length, NULL);
 	if (service->domains != NULL && length == 0) {
@@ -569,6 +577,16 @@ static int service_save(struct connman_service *service)
 	} else
 	g_key_file_remove_key(keyfile, service->identifier,
 							"Nameservers", NULL);
+
+	if (service->timeservers_config != NULL) {
+		guint len = g_strv_length(service->timeservers_config);
+
+		g_key_file_set_string_list(keyfile, service->identifier,
+								"Timeservers",
+				(const gchar **) service->timeservers_config, len);
+	} else
+		g_key_file_remove_key(keyfile, service->identifier,
+							"Timeservers", NULL);
 
 	if (service->domains != NULL) {
 		guint len = g_strv_length(service->domains);
@@ -1414,6 +1432,21 @@ static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
 	}
 }
 
+static void append_tsconfig(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+	int i;
+
+	if (service->timeservers_config == NULL)
+		return;
+
+	for (i = 0; service->timeservers_config[i]; i++) {
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING,
+				&service->timeservers_config[i]);
+	}
+}
+
 static void append_domain(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -2034,6 +2067,9 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 	connman_dbus_dict_append_array(dict, "Nameservers.Configuration",
 				DBUS_TYPE_STRING, append_dnsconfig, service);
 
+	connman_dbus_dict_append_array(dict, "Timeservers.Configuration",
+				DBUS_TYPE_STRING, append_tsconfig, service);
+
 	connman_dbus_dict_append_array(dict, "Domains",
 				DBUS_TYPE_STRING, append_domain, service);
 
@@ -2170,6 +2206,14 @@ char **connman_service_get_nameservers(struct connman_service *service)
 	}
 
 	return NULL;
+}
+
+char **connman_service_get_timeservers_config(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->timeservers_config;
 }
 
 char **connman_service_get_timeservers(struct connman_service *service)
@@ -2762,6 +2806,40 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		update_nameservers(service);
 		dns_configuration_changed(service);
+
+		service_save(service);
+	} else if (g_str_equal(name, "Timeservers.Configuration") == TRUE) {
+		DBusMessageIter entry;
+		GSList *list = NULL;
+		int count = 0;
+
+		if (type != DBUS_TYPE_ARRAY)
+			return __connman_error_invalid_arguments(msg);
+
+		dbus_message_iter_recurse(&value, &entry);
+
+		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+			const char *val;
+			dbus_message_iter_get_basic(&entry, &val);
+
+			list = g_slist_prepend(list, strdup(val));
+			count++;
+
+			dbus_message_iter_next(&entry);
+		}
+
+		g_strfreev(service->timeservers_config);
+		service->timeservers_config = NULL;
+
+		if (list != NULL) {
+			service->timeservers_config = g_new0(char *, count+1);
+
+			while (list != NULL) {
+				count--;
+				service->timeservers_config[count] = list->data;
+				list = g_slist_delete_link(list, list);
+			};
+		}
 
 		service_save(service);
 	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
@@ -3562,6 +3640,7 @@ static void service_free(gpointer user_data)
 	}
 
 	g_strfreev(service->timeservers);
+	g_strfreev(service->timeservers_config);
 	g_strfreev(service->nameservers);
 	g_strfreev(service->nameservers_config);
 	g_strfreev(service->nameservers_auto);
