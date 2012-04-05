@@ -172,6 +172,7 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	char **service_ts;
 	char **service_ts_config;
 	const char *service_gw;
+	char **fallback_ts;
 	int index, i;
 
 	if (default_service != NULL)
@@ -226,6 +227,12 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 
 	for (i=0; timeservers != NULL && timeservers[i] != NULL; i++)
 		ts_list = g_slist_prepend(ts_list, g_strdup(timeservers[i]));
+
+	fallback_ts = connman_setting_get_string_list("FallbackTimeservers");
+
+	/* Lastly add the fallback servers */
+	for (i=0; fallback_ts != NULL && fallback_ts[i] != NULL; i++)
+		ts_list = g_slist_prepend(ts_list, g_strdup(fallback_ts[i]));
 
 	if (ts_list == NULL) {
 		DBG("No timeservers set.");
