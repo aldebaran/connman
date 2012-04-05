@@ -262,7 +262,7 @@ static int timeserver_start(struct connman_service *service)
 		return -EINVAL;
 
 	/* Stop an already ongoing resolution, if there is one */
-	if (resolv_id > 0)
+	if (resolv != NULL && resolv_id > 0)
 		g_resolv_cancel_lookup(resolv, resolv_id);
 
 	/* get rid of the old resolver */
