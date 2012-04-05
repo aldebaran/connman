@@ -297,8 +297,11 @@ static int service_load(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
+		break;
+	case CONNMAN_SERVICE_TYPE_VPN:
+		service->do_split_routing = g_key_file_get_boolean(keyfile,
+				service->identifier, "SplitRouting", NULL);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->name == NULL) {
@@ -468,8 +471,11 @@ static int service_save(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
 	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
+		break;
+	case CONNMAN_SERVICE_TYPE_VPN:
+		g_key_file_set_boolean(keyfile, service->identifier,
+				"SplitRouting", service->do_split_routing);
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		if (service->network) {
