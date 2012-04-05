@@ -26,6 +26,7 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -250,6 +251,11 @@ static gboolean web_result(GWebResult *result, gpointer user_data)
 	return FALSE;
 }
 
+static void web_debug(const char *str, void *data)
+{
+	connman_info("%s: %s\n", (const char *) data, str);
+}
+
 static int init_6to4(struct in_addr *ip4addr)
 {
 	unsigned int a, b, c, d;
@@ -296,6 +302,9 @@ static int init_6to4(struct in_addr *ip4addr)
 	g_web_set_accept(web, NULL);
 	g_web_set_user_agent(web, "ConnMan/%s", VERSION);
 	g_web_set_close_connection(web, TRUE);
+
+	if (getenv("CONNMAN_WEB_DEBUG"))
+		g_web_set_debug(web, web_debug, "6to4");
 
 	web_request_id = g_web_request_get(web, STATUS_URL, web_result, NULL);
 
