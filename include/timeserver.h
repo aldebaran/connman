@@ -26,8 +26,7 @@
 extern "C" {
 #endif
 
-int __connman_timeserver_system_append(const char *server);
-int __connman_timeserver_system_remove(const char *server);
+int __connman_timeserver_system_set(char **server);
 
 #ifdef __cplusplus
 }

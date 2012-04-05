@@ -260,22 +260,40 @@ static DBusMessage *set_property(DBusConnection *conn,
 				DBUS_TYPE_STRING, &strval);
 	} else if (g_str_equal(name, "Timeservers") == TRUE) {
 		DBusMessageIter entry;
+		char **str = NULL;
+		GSList *list = NULL;
+		int count = 0;
 
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
 		dbus_message_iter_recurse(&value, &entry);
 
-		if (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_INVALID)
-			__connman_timeserver_system_append(NULL);
-
 		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
 			const char *val;
 
 			dbus_message_iter_get_basic(&entry, &val);
-			__connman_timeserver_system_append(val);
+
+			list = g_slist_prepend(list, strdup(val));
+			count++;
+
 			dbus_message_iter_next(&entry);
 		}
+
+		if (list != NULL) {
+			str = g_new0(char *, count+1);
+
+			while (list != NULL) {
+				count--;
+				str[count] = list->data;
+				list = g_slist_delete_link(list, list);
+			};
+		}
+
+		__connman_timeserver_system_set(str);
+
+		if (str != NULL)
+			g_strfreev(str);
 
 		connman_dbus_property_changed_array(CONNMAN_MANAGER_PATH,
 				CONNMAN_CLOCK_INTERFACE, "Timeservers",
