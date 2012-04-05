@@ -45,9 +45,11 @@
 static struct {
 	connman_bool_t bg_scan;
 	char **pref_timeservers;
+	unsigned int *auto_connect;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
+	.auto_connect = NULL,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -73,11 +75,44 @@ static GKeyFile *load_config(const char *file)
 	return keyfile;
 }
 
+static uint *parse_service_types(char **str_list, gsize len)
+{
+	unsigned int *type_list;
+	int i, j;
+	enum connman_service_type type;
+
+	type_list = g_try_new0(unsigned int, len + 1);
+	if (type_list == NULL)
+		return NULL;
+
+	i = 0;
+	j = 0;
+	while (str_list[i] != NULL)
+	{
+		type = __connman_service_string2type(str_list[i]);
+
+		if (type != CONNMAN_SERVICE_TYPE_UNKNOWN) {
+			type_list[j] = type;
+			j += 1;
+		}
+		i += 1;
+	}
+
+	return type_list;
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *error = NULL;
 	gboolean boolean;
 	char **timeservers;
+	char **str_list;
+	gsize len;
+	char *default_auto_connect[] = {
+		"wifi",
+		"ethernet",
+		"cellular",
+	};
 
 	if (config == NULL)
 		return;
@@ -95,6 +130,20 @@ static void parse_config(GKeyFile *config)
 						"FallbackTimeservers", NULL, &error);
 	if (error == NULL)
 		connman_settings.pref_timeservers = timeservers;
+
+	g_clear_error(&error);
+
+	str_list = g_key_file_get_string_list(config, "General",
+			"DefaultAutoConnectTechnologies", &len, &error);
+
+	if (error == NULL)
+		connman_settings.auto_connect =
+			parse_service_types(str_list, len);
+	else
+		connman_settings.auto_connect =
+			parse_service_types(default_auto_connect, 3);
+
+	g_strfreev(str_list);
 
 	g_clear_error(&error);
 }
@@ -251,6 +300,14 @@ char **connman_setting_get_string_list(const char *key)
 {
 	if (g_str_equal(key, "FallbackTimeservers") == TRUE)
 		return connman_settings.pref_timeservers;
+
+	return NULL;
+}
+
+unsigned int *connman_setting_get_uint_list(const char *key)
+{
+	if (g_str_equal(key, "DefaultAutoConnectTechnologies") == TRUE)
+		return connman_settings.auto_connect;
 
 	return NULL;
 }
@@ -439,6 +496,8 @@ int main(int argc, char *argv[])
 
 	if (connman_settings.pref_timeservers != NULL)
 		g_strfreev(connman_settings.pref_timeservers);
+
+	g_free(connman_settings.auto_connect);
 
 	g_free(option_debug);
 
