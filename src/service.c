@@ -30,6 +30,7 @@
 #include <gdbus.h>
 
 #include <connman/storage.h>
+#include <connman/setting.h>
 
 #include "connman.h"
 
@@ -5492,7 +5493,8 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	struct connman_device *device;
 	const char *ident, *group;
 	char *name;
-	int index;
+	unsigned int *auto_connect_types;
+	int i, index;
 
 	DBG("network %p", network);
 
@@ -5526,6 +5528,15 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	service->type = convert_network_type(network);
 
+	auto_connect_types = connman_setting_get_uint_list("DefaultAutoConnectTechnologies");
+	service->autoconnect = FALSE;
+	for (i = 0; auto_connect_types[i] != 0; i += 1) {
+		if (service->type == auto_connect_types[i]) {
+			service->autoconnect = TRUE;
+			break;
+		}
+	}
+
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
@@ -5534,13 +5545,11 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:
 	case CONNMAN_SERVICE_TYPE_GADGET:
-		service->autoconnect = FALSE;
+	case CONNMAN_SERVICE_TYPE_WIFI:
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 		service->favorite = TRUE;
-	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		service->autoconnect = TRUE;
 		break;
 	}
 
