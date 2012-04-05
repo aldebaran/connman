@@ -746,14 +746,52 @@ static void provider_create_all_from_type(const char *provider_type)
 	g_strfreev(providers);
 }
 
+static char **get_user_networks(DBusMessageIter *array, int *count)
+{
+	DBusMessageIter entry;
+	char **networks = NULL;
+	GSList *list = NULL, *l;
+	int len;
+
+	dbus_message_iter_recurse(array, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *val;
+		dbus_message_iter_get_basic(&entry, &val);
+
+		list = g_slist_prepend(list, g_strdup(val));
+		dbus_message_iter_next(&entry);
+	}
+
+	len = g_slist_length(list);
+	if (len == 0)
+		goto out;
+
+	networks = g_try_new(char *, len + 1);
+	if (networks == NULL)
+		goto out;
+
+	*count = len;
+	networks[len] = 0;
+
+	for (l = list; l != NULL; l = g_slist_next(l))
+		networks[--len] = l->data;
+
+out:
+	g_slist_free(list);
+
+	return networks;
+}
+
 int __connman_provider_create_and_connect(DBusMessage *msg)
 {
 	struct connman_provider *provider;
 	DBusMessageIter iter, array;
 	const char *type = NULL, *name = NULL, *service_path;
 	const char *host = NULL, *domain = NULL;
+	char **networks = NULL;
 	char *ident;
-	int err;
+	int err, count = 0;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
@@ -779,6 +817,10 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 			else if (g_str_equal(key, "VPN.Domain") == TRUE)
 				dbus_message_iter_get_basic(&value, &domain);
 			break;
+		case DBUS_TYPE_ARRAY:
+			if (g_str_equal(key, "Networks") == TRUE)
+				networks = get_user_networks(&value, &count);
+			break;
 		}
 
 		dbus_message_iter_next(&array);
@@ -787,7 +829,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	if (host == NULL || domain == NULL)
 		return -EINVAL;
 
-	DBG("Type %s name %s", type, name);
+	DBG("Type %s name %s networks %p", type, name, networks);
 
 	if (type == NULL || name == NULL)
 		return -EOPNOTSUPP;
@@ -813,6 +855,13 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 		if (provider_register(provider) == 0)
 			connman_provider_load(provider);
+	}
+
+	if (networks != NULL) {
+		g_strfreev(provider->user_networks);
+		provider->user_networks = networks;
+		provider->num_user_networks = count;
+		set_user_networks(provider, provider->user_networks);
 	}
 
 	dbus_message_iter_init(msg, &iter);
