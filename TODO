@@ -39,17 +39,6 @@ Core
    See http://lists.connman.net/pipermail/connman/2012-March/008605.html
 
 
-- main.conf PriorityTechnologies
-   Priority: Medium
-   Complexity: C2
-   Owner: Patrik Flykt <patrik.flykt@linux.intel.com>
-
-   Handle automatic switch from one technology to another one. By default
-   this value should be empty and no automatic switching is happening as
-   long as technology is connected. The list is ordered.
-   See http://lists.connman.net/pipermail/connman/2012-March/008605.html
-
-
 - Personal firewall
 
    Priority: Low
