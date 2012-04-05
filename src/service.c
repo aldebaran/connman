@@ -1185,7 +1185,7 @@ static void reset_stats(struct connman_service *service)
 	g_timer_reset(service->stats_roaming.timer);
 }
 
-static struct connman_service *get_default(void)
+struct connman_service *__connman_service_get_default(void)
 {
 	struct connman_service *service;
 	GSequenceIter *iter;
@@ -1205,7 +1205,7 @@ static struct connman_service *get_default(void)
 
 static void default_changed(void)
 {
-	struct connman_service *service = get_default();
+	struct connman_service *service = __connman_service_get_default();
 
 	__connman_notifier_default_changed(service);
 }
@@ -3213,7 +3213,7 @@ static void apply_relevant_default_downgrade(struct connman_service *service)
 {
 	struct connman_service *def_service;
 
-	def_service = get_default();
+	def_service = __connman_service_get_default();
 	if (def_service == NULL)
 		return;
 
@@ -4136,7 +4136,7 @@ static int service_indicate_state(struct connman_service *service)
 	if (old_state == new_state)
 		return -EALREADY;
 
-	def_service = get_default();
+	def_service = __connman_service_get_default();
 
 	if (new_state == CONNMAN_SERVICE_STATE_ONLINE) {
 		if (def_service != NULL && def_service != service &&
@@ -4218,7 +4218,7 @@ static int service_indicate_state(struct connman_service *service)
 						service->ipconfig_ipv6);
 
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
-		def_service = get_default();
+		def_service = __connman_service_get_default();
 
 		if (__connman_notifier_count_connected() == 0 &&
 			def_service != NULL &&
@@ -4329,7 +4329,7 @@ int __connman_service_clear_error(struct connman_service *service)
 
 int __connman_service_indicate_default(struct connman_service *service)
 {
-	struct connman_service *current = get_default();
+	struct connman_service *current = __connman_service_get_default();
 
 	DBG("service %p default %p", service, current);
 
