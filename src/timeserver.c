@@ -161,15 +161,17 @@ void __connman_timeserver_sync_next()
  * __connman_timeserver_sync function recreates the timeserver
  * list which will be used to determine NTP server for time corrections.
  * It must be called everytime the default service changes, the service
- * timeserver(s) changes or the global timeserver(s) changes.The service
- * settings take priority over the global timeservers.
+ * timeserver(s) or gatway changes or the global timeserver(s) changes.
+ * The service settings take priority over the global timeservers.
  */
 int __connman_timeserver_sync(struct connman_service *default_service)
 {
 	struct connman_service *service;
+	struct connman_network *network;
 	char **timeservers;
 	char **service_ts;
-	int i;
+	const char *service_gw;
+	int index, i;
 
 	if (default_service != NULL)
 		service = default_service;
@@ -198,9 +200,21 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 
 	service_ts = connman_service_get_timeservers(service);
 
+	/* First add Service Timeservers via DHCP to the list */
 	for (i=0; service_ts != NULL && service_ts[i] != NULL; i++)
 		ts_list = g_slist_prepend(ts_list, g_strdup(service_ts[i]));
 
+	network = __connman_service_get_network(service);
+
+	index = connman_network_get_index(network);
+
+	service_gw = __connman_ipconfig_get_gateway_from_index(index);
+
+	/* Then add Service Gateway to the list */
+	if (service_gw != NULL)
+		ts_list = g_slist_prepend(ts_list, g_strdup(service_gw));
+
+	/* Then add Global Timeservers to the list */
 	timeservers = load_timeservers();
 
 	for (i=0; timeservers != NULL && timeservers[i] != NULL; i++)
