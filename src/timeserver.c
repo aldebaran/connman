@@ -228,6 +228,8 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	for (i=0; timeservers != NULL && timeservers[i] != NULL; i++)
 		ts_list = g_slist_prepend(ts_list, g_strdup(timeservers[i]));
 
+	g_strfreev(timeservers);
+
 	fallback_ts = connman_setting_get_string_list("FallbackTimeservers");
 
 	/* Lastly add the fallback servers */
