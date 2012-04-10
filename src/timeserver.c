@@ -274,14 +274,18 @@ static int timeserver_start(struct connman_service *service)
 	}
 
 	resolv = g_resolv_new(i);
-	if (resolv == NULL)
+	if (resolv == NULL) {
+		g_strfreev(nameservers);
 		return -ENOMEM;
+	}
 
 	if (getenv("CONNMAN_RESOLV_DEBUG"))
 		g_resolv_set_debug(resolv, resolv_debug, "RESOLV");
 
 	for (i = 0; nameservers[i] != NULL; i++)
 		g_resolv_add_nameserver(resolv, nameservers[i], 53, 0);
+
+	g_strfreev(nameservers);
 
 	return __connman_timeserver_sync(service);
 }
