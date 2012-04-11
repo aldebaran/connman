@@ -40,9 +40,6 @@ int connman_resolver_remove(const char *interface, const char *domain,
 							const char *server);
 int connman_resolver_remove_all(const char *interface);
 
-int connman_resolver_append_public_server(const char *server);
-int connman_resolver_remove_public_server(const char *server);
-
 void connman_resolver_flush(void);
 
 #ifdef __cplusplus

@@ -456,32 +456,6 @@ int connman_resolver_remove_all(const char *interface)
 }
 
 /**
- * connman_resolver_append_public_server:
- * @server: server address
- *
- * Append public resolver server address to current list
- */
-int connman_resolver_append_public_server(const char *server)
-{
-	DBG("server %s", server);
-
-	return append_resolver(NULL, NULL, server, 0, RESOLVER_FLAG_PUBLIC);
-}
-
-/**
- * connman_resolver_remove_public_server:
- * @server: server address
- *
- * Remove public resolver server address to current list
- */
-int connman_resolver_remove_public_server(const char *server)
-{
-	DBG("server %s", server);
-
-	return connman_resolver_remove(NULL, NULL, server);
-}
-
-/**
  * connman_resolver_flush:
  *
  * Flush pending resolver requests
@@ -514,6 +488,9 @@ static void free_resolvfile(gpointer data)
 
 int __connman_resolver_init(connman_bool_t dnsproxy)
 {
+	int i;
+	char **ns;
+
 	DBG("dnsproxy %d", dnsproxy);
 
 	if (dnsproxy == FALSE)
@@ -525,6 +502,12 @@ int __connman_resolver_init(connman_bool_t dnsproxy)
 	}
 
 	dnsproxy_enabled = TRUE;
+
+	ns = connman_setting_get_string_list("FallbackNameservers");
+	for (i = 0; ns != NULL && ns[i] != NULL; i += 1) {
+		DBG("server %s", ns[i]);
+		append_resolver(NULL, NULL, ns[i], 0, RESOLVER_FLAG_PUBLIC);
+	}
 
 	return 0;
 }
