@@ -33,6 +33,7 @@
 #include <getopt.h>
 #include <sys/stat.h>
 #include <net/if.h>
+#include <netdb.h>
 
 #include <gdbus.h>
 
@@ -47,11 +48,13 @@ static struct {
 	char **pref_timeservers;
 	unsigned int *auto_connect;
 	unsigned int *preferred_techs;
+	char **fallback_nameservers;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
 	.auto_connect = NULL,
 	.preferred_techs = NULL,
+	.fallback_nameservers = NULL,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -101,6 +104,35 @@ static uint *parse_service_types(char **str_list, gsize len)
 	}
 
 	return type_list;
+}
+
+static char **parse_fallback_nameservers(char **nameservers, gsize len)
+{
+	char **servers;
+	int i, j;
+	struct addrinfo hints;
+	struct addrinfo *addr;
+
+	servers = g_try_new0(char *, len + 1);
+	if (servers == NULL)
+		return NULL;
+
+	i = 0;
+	j = 0;
+	while (nameservers[i] != NULL) {
+		memset(&hints, 0, sizeof(struct addrinfo));
+		hints.ai_flags = AI_NUMERICHOST;
+		addr = NULL;
+		if (getaddrinfo(nameservers[i], NULL, &hints, &addr) == 0) {
+			servers[j] = g_strdup(nameservers[i]);
+			j += 1;
+		}
+
+		freeaddrinfo(addr);
+		i += 1;
+	}
+
+	return servers;
 }
 
 static void parse_config(GKeyFile *config)
@@ -155,6 +187,17 @@ static void parse_config(GKeyFile *config)
 	if (error == NULL)
 		connman_settings.preferred_techs =
 			parse_service_types(str_list, len);
+
+	g_strfreev(str_list);
+
+	g_clear_error(&error);
+
+	str_list = g_key_file_get_string_list(config, "General",
+			"FallbackNameservers", &len, &error);
+
+	if (error == NULL)
+		connman_settings.fallback_nameservers =
+			parse_fallback_nameservers(str_list, len);
 
 	g_strfreev(str_list);
 
@@ -313,6 +356,9 @@ char **connman_setting_get_string_list(const char *key)
 {
 	if (g_str_equal(key, "FallbackTimeservers") == TRUE)
 		return connman_settings.pref_timeservers;
+
+	if (g_str_equal(key, "FallbackNameservers") == TRUE)
+		return connman_settings.fallback_nameservers;
 
 	return NULL;
 }
@@ -514,6 +560,7 @@ int main(int argc, char *argv[])
 
 	g_free(connman_settings.auto_connect);
 	g_free(connman_settings.preferred_techs);
+	g_strfreev(connman_settings.fallback_nameservers);
 
 	g_free(option_debug);
 
