@@ -219,12 +219,6 @@ AC_ARG_ENABLE(pacrunner,
 AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
 AM_CONDITIONAL(PACRUNNER_BUILTIN, test "${enable_pacrunner}" = "builtin")
 
-AC_ARG_ENABLE(google,
-	AC_HELP_STRING([--enable-google], [enable Google Public DNS support]),
-			[enable_google=${enableval}], [enable_google="no"])
-AM_CONDITIONAL(GOOGLE, test "${enable_google}" != "no")
-AM_CONDITIONAL(GOOGLE_BUILTIN, test "${enable_google}" = "builtin")
-
 AC_CHECK_HEADERS(resolv.h, dummy=yes,
 	AC_MSG_ERROR(resolver header files are required))
 AC_CHECK_LIB(resolv, ns_initparse, dummy=yes, [

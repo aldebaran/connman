@@ -243,7 +243,6 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-bluetooth \
 				--enable-ofono \
 				--enable-pacrunner \
-				--enable-google \
 				--enable-client \
 				--enable-hh2serial-gps \
 				--enable-openconnect \

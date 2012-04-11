@@ -24,7 +24,6 @@ fi
 		--enable-openconnect=builtin \
 		--enable-openvpn=builtin \
 		--enable-pacrunner=builtin \
-		--enable-google=builtin \
 		--enable-nmcompat=builtin \
 		--enable-polkit=builtin \
 		--enable-capng \
