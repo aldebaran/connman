@@ -5627,7 +5627,8 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	auto_connect_types = connman_setting_get_uint_list("DefaultAutoConnectTechnologies");
 	service->autoconnect = FALSE;
-	for (i = 0; auto_connect_types[i] != 0; i += 1) {
+	for (i = 0; auto_connect_types != NULL &&
+		     auto_connect_types[i] != 0; i++) {
 		if (service->type == auto_connect_types[i]) {
 			service->autoconnect = TRUE;
 			break;
