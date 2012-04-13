@@ -1400,6 +1400,7 @@ connman_bool_t connman_network_get_associating(struct connman_network *network)
 int connman_network_connect_hidden(struct connman_network *network,
 				char *identity, char* passphrase)
 {
+	int err = 0;
 	struct connman_service *service;
 
 	DBG("");
@@ -1412,9 +1413,14 @@ int connman_network_connect_hidden(struct connman_network *network,
 		__connman_service_set_agent_identity(service, identity);
 
 	if (passphrase != NULL)
-		__connman_service_add_passphrase(service, passphrase);
+		err = __connman_service_add_passphrase(service, passphrase);
 
-	return __connman_service_connect(service);
+	if (err == -ENOKEY) {
+		__connman_service_indicate_error(service,
+					CONNMAN_SERVICE_ERROR_INVALID_KEY);
+		return err;
+	} else
+		return __connman_service_connect(service);
 }
 
 /**

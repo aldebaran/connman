@@ -4284,6 +4284,7 @@ static void request_input_cb (struct connman_service *service,
 			void *user_data)
 {
 	struct connman_device *device;
+	int err = 0;
 
 	DBG ("RequestInput return, %p", service);
 
@@ -4305,13 +4306,21 @@ static void request_input_cb (struct connman_service *service,
 		__connman_service_set_agent_identity(service, identity);
 
 	if (passphrase != NULL)
-		__connman_service_add_passphrase(service, passphrase);
+		err = __connman_service_add_passphrase(service, passphrase);
 
-	__connman_service_connect(service);
+	if (err >= 0) {
+		__connman_service_connect(service);
 
-	/* Never cache agent provided credentials */
-	__connman_service_set_agent_identity(service, NULL);
-	__connman_service_set_agent_passphrase(service, NULL);
+		/* Never cache agent provided credentials */
+		__connman_service_set_agent_identity(service, NULL);
+		__connman_service_set_agent_passphrase(service, NULL);
+	} else if (err == -ENOKEY) {
+		__connman_service_indicate_error(service,
+					CONNMAN_SERVICE_ERROR_INVALID_KEY);
+		__connman_agent_report_error(service,
+					error2string(service->error),
+					report_error_cb, NULL);
+	}
 }
 
 static void downgrade_connected_services(void)
