@@ -84,8 +84,8 @@ void __connman_counter_cleanup(void);
 
 struct connman_service;
 
-void __connman_service_add_passphrase(struct connman_service *service,
-				const gchar *passphrase);
+int __connman_service_add_passphrase(struct connman_service *service,
+					const gchar *passphrase);
 typedef void (* authentication_cb_t) (struct connman_service *service,
 				connman_bool_t values_received,
 				const char *name, int name_len,
@@ -651,8 +651,8 @@ void __connman_service_set_identity(struct connman_service *service,
 					const char *identity);
 void __connman_service_set_agent_identity(struct connman_service *service,
 						const char *agent_identity);
-void __connman_service_set_passphrase(struct connman_service *service,
-					const char* passphrase);
+int __connman_service_set_passphrase(struct connman_service *service,
+					const char *passphrase);
 void __connman_service_set_agent_passphrase(struct connman_service *service,
 						const char *agent_passphrase);
 

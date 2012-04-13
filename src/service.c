@@ -28,6 +28,7 @@
 #include <string.h>
 #include <netdb.h>
 #include <gdbus.h>
+#include <ctype.h>
 
 #include <connman/storage.h>
 #include <connman/setting.h>
@@ -2469,21 +2470,76 @@ void __connman_service_set_agent_identity(struct connman_service *service,
 					service->agent_identity);
 }
 
-void __connman_service_set_passphrase(struct connman_service *service,
-					const char* passphrase)
+static int check_passphrase(enum connman_service_security security,
+				const char *passphrase)
 {
+	guint i;
+	gsize length;
+
+	if (passphrase == NULL)
+		return 0;
+
+	length = strlen(passphrase);
+
+	switch (security) {
+	case CONNMAN_SERVICE_SECURITY_PSK:
+	case CONNMAN_SERVICE_SECURITY_WPA:
+	case CONNMAN_SERVICE_SECURITY_RSN:
+		/* A raw key is always 64 bytes length,
+		 * its content is in hex representation.
+		 * A PSK key must be between [8..63].
+		 */
+		if (length == 64) {
+			for (i = 0; i < 64; i++)
+				if (!isxdigit((unsigned char)
+					      passphrase[i]))
+					return -ENOKEY;
+		} else if (length < 8 || length > 63)
+			return -ENOKEY;
+		break;
+	case CONNMAN_SERVICE_SECURITY_WEP:
+		/* length of WEP key is 10 or 26
+		 * length of WEP passphrase is 5 or 13
+		 */
+		if (length == 10 || length == 26) {
+			for (i = 0; i < length; i++)
+				if (!isxdigit((unsigned char)
+					      passphrase[i]))
+					return -ENOKEY;
+		} else if (length != 5 && length != 13)
+			return -ENOKEY;
+		break;
+	case CONNMAN_SERVICE_SECURITY_UNKNOWN:
+	case CONNMAN_SERVICE_SECURITY_NONE:
+	case CONNMAN_SERVICE_SECURITY_8021X:
+		break;
+	}
+
+	return 0;
+}
+
+int __connman_service_set_passphrase(struct connman_service *service,
+					const char *passphrase)
+{
+	int err = 0;
+
 	if (service->immutable == TRUE || service->hidden == TRUE)
-		return;
+		return -EINVAL;
 
-	g_free(service->passphrase);
-	service->passphrase = g_strdup(passphrase);
+	err = check_passphrase(service->security, passphrase);
 
-	if (service->network != NULL)
-		connman_network_set_string(service->network,
-					"WiFi.Passphrase",
-					service->passphrase);
+	if (err == 0) {
+		g_free(service->passphrase);
+		service->passphrase = g_strdup(passphrase);
 
-	service_save(service);
+		if (service->network != NULL)
+			connman_network_set_string(service->network,
+							"WiFi.Passphrase",
+							service->passphrase);
+		service_save(service);
+	}
+
+	return err;
 }
 
 void __connman_service_set_agent_passphrase(struct connman_service *service,
@@ -4194,13 +4250,15 @@ static void report_error_cb(struct connman_service *service,
 	}
 }
 
-void __connman_service_add_passphrase(struct connman_service *service,
+int __connman_service_add_passphrase(struct connman_service *service,
 				const gchar *passphrase)
 {
+	int err = 0;
+
 	switch (service->security) {
 	case CONNMAN_SERVICE_SECURITY_WEP:
 	case CONNMAN_SERVICE_SECURITY_PSK:
-		__connman_service_set_passphrase(service, passphrase);
+		err = __connman_service_set_passphrase(service, passphrase);
 		break;
 	case CONNMAN_SERVICE_SECURITY_8021X:
 		__connman_service_set_agent_passphrase(service,
@@ -4216,6 +4274,7 @@ void __connman_service_add_passphrase(struct connman_service *service,
 		break;
 	}
 
+	return err;
 }
 
 static void request_input_cb (struct connman_service *service,
