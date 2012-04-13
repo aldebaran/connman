@@ -172,24 +172,6 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 		dbus_message_iter_next(&dict);
 	}
 
-	if (wps == TRUE) {
-		struct connman_network *network;
-
-		network = __connman_service_get_network(
-						passphrase_reply->service);
-		if (network == NULL)
-			goto done;
-
-		connman_network_set_bool(network, "WiFi.UseWPS", wps);
-
-		if (wpspin != NULL && strlen(wpspin) > 0)
-			connman_network_set_string(network,
-						"WiFi.PinWPS", wpspin);
-		else
-			connman_network_set_string(network,
-						"WiFi.PinWPS", NULL);
-	}
-
 done:
 	passphrase_reply->callback(passphrase_reply->service, values_received,
 				name, name_len,

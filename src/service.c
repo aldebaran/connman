@@ -4323,12 +4323,22 @@ static void request_input_cb (struct connman_service *service,
 		return;
 	}
 
+	err = check_wpspin(wpspin);
+	if (err < 0)
+		goto done;
+	if (service->network != NULL) {
+		connman_network_set_bool(service->network, "Wifi.UseWPS", wps);
+		connman_network_set_string(service->network, "Wifi.PinWPS",
+						wpspin);
+	}
+
 	if (identity != NULL)
 		__connman_service_set_agent_identity(service, identity);
 
 	if (passphrase != NULL)
 		err = __connman_service_add_passphrase(service, passphrase);
 
+ done:
 	if (err >= 0) {
 		__connman_service_connect(service);
 
