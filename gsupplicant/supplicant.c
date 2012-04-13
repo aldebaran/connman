@@ -2684,10 +2684,15 @@ static int parse_supplicant_error(DBusMessageIter *iter)
 	int err = -ECANCELED;
 	char *key;
 
+	/* If the given passphrase is malformed wpa_s returns
+	 * "invalid message format" but this error should be interpreted as
+	 * invalid-key.
+	 */
 	while (dbus_message_iter_get_arg_type(iter) == DBUS_TYPE_STRING) {
 		dbus_message_iter_get_basic(iter, &key);
-		if (strncmp(key, "psk", 4) == 0 ||
-			strncmp(key, "wep_key", 7) == 0) {
+		if (strncmp(key, "psk", 3) == 0 ||
+				strncmp(key, "wep_key", 7) == 0 ||
+				strcmp(key, "invalid message format") == 0) {
 			err = -ENOKEY;
 			break;
 		}
