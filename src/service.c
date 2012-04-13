@@ -4277,6 +4277,26 @@ int __connman_service_add_passphrase(struct connman_service *service,
 	return err;
 }
 
+static int check_wpspin(const char *wpspin)
+{
+	guint i;
+
+	if (wpspin == NULL)
+		return 0;
+
+	/* A WPS PIN is always 8 chars length,
+	 * its content is in digit representation.
+	 */
+	if (strlen(wpspin) != 8)
+		return -ENOKEY;
+
+	for (i = 0; i < 8; i++)
+		if (!isdigit((unsigned char) wpspin[i]))
+			return -ENOKEY;
+
+	return 0;
+}
+
 static void request_input_cb (struct connman_service *service,
 			connman_bool_t values_received,
 			const char *name, int name_len,
