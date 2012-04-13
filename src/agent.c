@@ -194,6 +194,7 @@ done:
 	passphrase_reply->callback(passphrase_reply->service, values_received,
 				name, name_len,
 				identity, passphrase,
+				wps, wpspin,
 				passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
 	dbus_message_unref(reply);
@@ -371,6 +372,7 @@ done:
 	username_password_reply->callback(username_password_reply->service,
 					TRUE, NULL, 0,
 					username, password,
+					FALSE, NULL,
 					username_password_reply->user_data);
 	connman_service_unref(username_password_reply->service);
 	dbus_message_unref(reply);

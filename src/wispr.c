@@ -436,6 +436,7 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 				connman_bool_t success,
 				const char *ssid, int ssid_len,
 				const char *username, const char *password,
+				gboolean wps, const char *wpspin,
 				void *user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
