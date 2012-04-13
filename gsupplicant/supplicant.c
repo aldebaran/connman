@@ -3488,7 +3488,7 @@ void g_supplicant_unregister(const GSupplicantCallbacks *callbacks)
 		callback_system_killed();
 
 	if (interface_table != NULL) {
-		g_hash_table_foreach(interface_table,	
+		g_hash_table_foreach(interface_table,
 					unregister_remove_interface, NULL);
 		g_hash_table_destroy(interface_table);
 		interface_table = NULL;
