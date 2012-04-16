@@ -186,12 +186,24 @@ Signals		TechnologyAdded(object path, dict properties)
 Properties	string State [readonly]
 
 			The global connection state of a system. Possible
-			values are "online" if at least one connection exists
-			and "offline" if no device is connected.
+			values are "offline", "idle", "ready" and "online".
 
-			In certain situations the state might change to
-			the value "connected". This can only be seen if
-			previously no connection was present.
+			If the device is in offline mode, the value "offline"
+			indicates this special global state. It can also be
+			retrieved via the OfflineMode property, but is kept
+			here for consistency and to differentiate from "idle".
+
+			The states "idle", "ready" and "online" match to
+			states from the services. If no service is in
+			either "ready" or "online" state it will indicate
+			the "idle" state.
+
+			If at least one service is in "ready" state and no
+			service is in "online" state, then it will indicate
+			the "ready" state.
+
+			When at least one service is in "online" state,
+			this property will indicate "online" as well.
 
 		boolean OfflineMode [readwrite]
 
