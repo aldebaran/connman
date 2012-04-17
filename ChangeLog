@@ -1,3 +1,22 @@
+ver 0.80:
+	Update to support additional D-Bus API changes.
+	Add support for preferred technologies switching.
+	Add support for default auto connect technologies option.
+	Add support for service specific timeserver configuration.
+	Add support for extended timeserver fallback functionality.
+	Add support for extended nameserver fallback functionality.
+	Add support for user supplied routes for providers.
+	Add support for checking WiFi passphrase validity.
+	Fix issue with WISPr support and proxy handling.
+	Fix issue with Ethernet and auto connect handling.
+	Fix issue with too early IPv6 auto connection.
+	Fix issue with too early 6to4 connection checks.
+	Fix issue with oFono interaction on disconnect.
+	Fix issue with DNS servers behind point-to-point links.
+	Fix issue with pending DNS proxy requests.
+	Fix multiple issues with VPN handling.
+	Fix multiple issues with default gateway handling.
+
 ver 0.79:
 	Update to support changed D-Bus API.
 	Add support for WiFi background scanning.
