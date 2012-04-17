@@ -689,6 +689,7 @@ void __connman_notifier_cleanup(void);
 void __connman_notifier_service_add(struct connman_service *service,
 					const char *name);
 void __connman_notifier_service_remove(struct connman_service *service);
+void __connman_notifier_online(enum connman_service_type type);
 void __connman_notifier_connect(enum connman_service_type type);
 void __connman_notifier_disconnect(enum connman_service_type type,
 					enum connman_service_state old_state);
