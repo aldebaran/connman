@@ -363,7 +363,6 @@ int __connman_notifier_init(void)
 	service_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 						NULL, NULL);
 
-
 	return 0;
 }
 
