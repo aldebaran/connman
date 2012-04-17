@@ -104,14 +104,6 @@ static const char *type2string(enum connman_network_type type)
 	return NULL;
 }
 
-connman_bool_t __connman_network_has_driver(struct connman_network *network)
-{
-	if (network == NULL || network->driver == NULL)
-		return FALSE;
-
-	return TRUE;
-}
-
 static gboolean match_driver(struct connman_network *network,
 					struct connman_network_driver *driver)
 {

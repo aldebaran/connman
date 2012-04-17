@@ -512,8 +512,6 @@ int __connman_network_set_ipconfig(struct connman_network *network,
 				struct connman_ipconfig *ipconfig_ipv4,
 				struct connman_ipconfig *ipconfig_ipv6);
 
-connman_bool_t __connman_network_has_driver(struct connman_network *network);
-
 const char *__connman_network_get_type(struct connman_network *network);
 const char *__connman_network_get_group(struct connman_network *network);
 const char *__connman_network_get_ident(struct connman_network *network);
