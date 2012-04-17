@@ -972,7 +972,7 @@ int connman_device_add_network(struct connman_device *device,
 
 	__connman_network_set_device(network, device);
 
-	g_hash_table_insert(device->networks, g_strdup(identifier),
+	g_hash_table_replace(device->networks, g_strdup(identifier),
 								network);
 
 	return 0;
