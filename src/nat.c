@@ -135,7 +135,7 @@ int __connman_nat_enable(const char *name, const char *address,
 	nat->address = g_strdup(address);
 	nat->prefixlen = prefixlen;
 
-	g_hash_table_insert(nat_hash, g_strdup(name), nat);
+	g_hash_table_replace(nat_hash, g_strdup(name), nat);
 
 	return enable_nat(nat);
 }
