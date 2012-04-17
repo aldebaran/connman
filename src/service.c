@@ -4554,7 +4554,7 @@ static int service_indicate_state(struct connman_service *service)
 		dns_changed(service);
 		domain_changed(service);
 
-		__connman_notifier_disconnect(service->type);
+		__connman_notifier_disconnect(service->type, old_state);
 
 		/*
 		 * Previous services which are connected and which states
