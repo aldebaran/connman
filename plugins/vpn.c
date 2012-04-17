@@ -505,7 +505,7 @@ int vpn_register(const char *name, struct vpn_driver *vpn_driver,
 		return -ENOMEM;
 	}
 
-	g_hash_table_insert(driver_hash, (char *)name, data);
+	g_hash_table_replace(driver_hash, (char *)name, data);
 
 	connman_provider_driver_register(&data->provider_driver);
 
