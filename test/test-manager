@@ -31,13 +31,7 @@ manager = dbus.Interface(bus.get_object("net.connman", "/"),
 properties = manager.GetProperties()
 
 for key in properties.keys():
-	if key in ["AvailableDebugs", "EnabledDebugs"]:
-		print "%s" % (key)
-		list = ""
-		for val in properties[key]:
-			list = list + val + " "
-		print "    [ %s]" % (list)
-	elif key in ["OfflineMode", "SessionMode"]:
+	if key in ["OfflineMode", "SessionMode"]:
 		print "%s" % (key)
 		if properties[key] == dbus.Boolean(1):
 			print "    true"

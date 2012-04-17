@@ -11,13 +11,6 @@ def property_changed(name, value):
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
 		val = val + " ]"
-	elif name in ["AvailableTechnologies", "EnabledTechnologies",
-						"ConnectedTechnologies",
-				"AvailableDebugs", "EnabledDebugs"]:
-		val = "["
-		for i in value:
-			val = val + " " + i
-		val = val + " ]"
 	elif name in ["Strength", "Priority"]:
 		val = int(value)
 	else:
