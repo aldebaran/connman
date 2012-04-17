@@ -252,6 +252,12 @@ Properties	string State [readonly]
 			the service. However there might be small window
 			where name resolution might fail.
 
+		array{string} Timeservers [readonly]
+
+			The list of currently active timeservers for this
+			service. If the server is not in READY or ONLINE
+			state than this list will be empty.
+
 		array{string} Timeservers.Configuration [readwrite]
 
 			The list of manually configured time servers.
