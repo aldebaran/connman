@@ -32,6 +32,8 @@ static DBusConnection *connection = NULL;
 static GSList *notifier_list = NULL;
 static GHashTable *service_hash = NULL;
 
+static const char *notifier_state;
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_notifier *notifier1 = a;
@@ -73,7 +75,21 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 
 #define MAX_TECHNOLOGIES 10
 
-static volatile int connected[MAX_TECHNOLOGIES];
+static int connected[MAX_TECHNOLOGIES];
+static int online[MAX_TECHNOLOGIES];
+
+static unsigned int notifier_count_online(void)
+{
+	unsigned int i, count = 0;
+
+	__sync_synchronize();
+	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
+		if (online[i] > 0)
+			count++;
+	}
+
+	return count;
+}
 
 unsigned int __connman_notifier_count_connected(void)
 {
@@ -88,34 +104,43 @@ unsigned int __connman_notifier_count_connected(void)
 	return count;
 }
 
-const char *__connman_notifier_get_state(void)
+static const char *evaluate_notifier_state(void)
 {
-	unsigned int count = __connman_notifier_count_connected();
+	unsigned int count;
 
+	count = notifier_count_online();
 	if (count > 0)
 		return "online";
 
-	return "offline";
+	count = __connman_notifier_count_connected();
+	if (count > 0)
+		return "ready";
+
+	if ( __connman_technology_get_offlinemode() == TRUE)
+		return "offline";
+
+	return "idle";
 }
 
-static void state_changed(connman_bool_t connected)
+const char *__connman_notifier_get_state(void)
 {
-	unsigned int count = __connman_notifier_count_connected();
-	char *state = "offline";
+	return notifier_state;
+}
 
-	if (count > 1)
+static void state_changed(void)
+{
+	const char *state;
+
+	state = evaluate_notifier_state();
+
+	if (g_strcmp0(state, notifier_state) == 0)
 		return;
 
-	if (count == 1) {
-		if (connected == FALSE)
-			return;
-
-		state = "online";
-	}
+	notifier_state = state;
 
 	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "State",
-						DBUS_TYPE_STRING, &state);
+						DBUS_TYPE_STRING, &notifier_state);
 }
 
 static void technology_connected(enum connman_service_type type,
@@ -124,7 +149,7 @@ static void technology_connected(enum connman_service_type type,
 	DBG("type %d connected %d", type, connected);
 
 	__connman_technology_set_connected(type, connected);
-	state_changed(connected);
+	state_changed();
 }
 
 void __connman_notifier_connect(enum connman_service_type type)
@@ -153,6 +178,9 @@ void __connman_notifier_connect(enum connman_service_type type)
 void __connman_notifier_online(enum connman_service_type type)
 {
 	DBG("type %d", type);
+
+	if (__sync_fetch_and_add(&online[type], 1) == 0)
+		state_changed();
 }
 
 void __connman_notifier_disconnect(enum connman_service_type type,
@@ -180,6 +208,9 @@ void __connman_notifier_disconnect(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
 	}
+
+	if (old_state == CONNMAN_SERVICE_STATE_ONLINE)
+		__sync_fetch_and_sub(&online[type], 1);
 
 	if (__sync_fetch_and_sub(&connected[type], 1) != 1)
 		return;
@@ -279,6 +310,7 @@ void __connman_notifier_offlinemode(connman_bool_t enabled)
 	DBG("enabled %d", enabled);
 
 	offlinemode_changed(enabled);
+	state_changed();
 
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
@@ -368,6 +400,8 @@ int __connman_notifier_init(void)
 
 	service_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 						NULL, NULL);
+
+	notifier_state = evaluate_notifier_state();
 
 	return 0;
 }
