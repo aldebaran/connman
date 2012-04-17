@@ -240,7 +240,7 @@ int connman_task_set_notify(struct connman_task *task, const char *member,
 	notify->func = function;
 	notify->data = user_data;
 
-	g_hash_table_insert(task->notify, g_strdup(member), notify);
+	g_hash_table_replace(task->notify, g_strdup(member), notify);
 
 	return 0;
 }
