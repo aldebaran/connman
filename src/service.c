@@ -43,6 +43,8 @@ static GSequence *service_list = NULL;
 static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 
+static unsigned int autoconnect_timeout = 0;
+
 struct connman_stats {
 	connman_bool_t valid;
 	connman_bool_t enabled;
@@ -3164,17 +3166,14 @@ static connman_bool_t auto_connect_service(GSequenceIter* iter,
 	return FALSE;
 }
 
-void __connman_service_auto_connect(void)
+static gboolean run_auto_connect(gpointer data)
 {
 	GSequenceIter *iter = NULL;
 	GSequence *preferred_tech;
 
-	DBG("");
+	autoconnect_timeout = 0;
 
-	if (__connman_session_mode() == TRUE) {
-		DBG("Session mode enabled: auto connect disabled");
-		return;
-	}
+	DBG("");
 
 	preferred_tech = preferred_tech_list_get(service_list);
 	if (preferred_tech != NULL)
@@ -3188,6 +3187,23 @@ void __connman_service_auto_connect(void)
 
 	if (preferred_tech != NULL)
 		g_sequence_free(preferred_tech);
+
+	return FALSE;
+}
+
+void __connman_service_auto_connect(void)
+{
+	DBG("");
+
+	if (__connman_session_mode() == TRUE) {
+		DBG("Session mode enabled: auto connect disabled");
+		return;
+	}
+
+	if (autoconnect_timeout != 0)
+		return;
+
+	autoconnect_timeout = g_timeout_add_seconds(0, run_auto_connect, NULL);
 }
 
 static void remove_timeout(struct connman_service *service)
@@ -5948,6 +5964,11 @@ void __connman_service_cleanup(void)
 	GSequence *list;
 
 	DBG("");
+
+	if (autoconnect_timeout != 0) {
+		g_source_remove(autoconnect_timeout);
+		autoconnect_timeout = 0;
+	}
 
 	list = service_list;
 	service_list = NULL;
