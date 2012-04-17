@@ -446,7 +446,7 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 
 	connman_network_set_group(network, ident);
 
-	g_hash_table_insert(bluetooth_networks, g_strdup(path), network);
+	g_hash_table_replace(bluetooth_networks, g_strdup(path), network);
 
 done:
 	dbus_message_unref(reply);
