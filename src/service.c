@@ -42,8 +42,8 @@ static DBusConnection *connection = NULL;
 static GSequence *service_list = NULL;
 static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
-
 static unsigned int autoconnect_timeout = 0;
+static struct connman_service *current_default = NULL;
 
 struct connman_stats {
 	connman_bool_t valid;
@@ -1255,6 +1255,11 @@ struct connman_service *__connman_service_get_default(void)
 static void default_changed(void)
 {
 	struct connman_service *service = __connman_service_get_default();
+
+	if (service == current_default)
+		return;
+
+	current_default = service;
 
 	__connman_notifier_default_changed(service);
 }
