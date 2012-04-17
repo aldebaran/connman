@@ -3646,7 +3646,9 @@ static void service_append_added_foreach(gpointer data, gpointer user_data)
 
 static void service_append_ordered(DBusMessageIter *iter, void *user_data)
 {
-	g_sequence_foreach(service_list, service_append_added_foreach, iter);
+	if (service_list != NULL)
+		g_sequence_foreach(service_list,
+					service_append_added_foreach, iter);
 }
 
 static void append_removed(gpointer key, gpointer value, gpointer user_data)
