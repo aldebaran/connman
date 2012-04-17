@@ -241,31 +241,7 @@ static void signal_setup(sighandler_t handler)
 extern struct connman_debug_desc __start___debug[];
 extern struct connman_debug_desc __stop___debug[];
 
-void __connman_debug_list_available(DBusMessageIter *iter, void *user_data)
-{
-	struct connman_debug_desc *desc;
-
-	for (desc = __start___debug; desc < __stop___debug; desc++) {
-		if ((desc->flags & CONNMAN_DEBUG_FLAG_ALIAS) &&
-						desc->name != NULL)
-			dbus_message_iter_append_basic(iter,
-					DBUS_TYPE_STRING, &desc->name);
-	}
-}
-
 static gchar **enabled = NULL;
-
-void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data)
-{
-	int i;
-
-	if (enabled == NULL)
-		return;
-
-	for (i = 0; enabled[i] != NULL; i++)
-		dbus_message_iter_append_basic(iter,
-					DBUS_TYPE_STRING, &enabled[i]);
-}
 
 static connman_bool_t is_enabled(struct connman_debug_desc *desc)
 {

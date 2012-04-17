@@ -117,9 +117,6 @@ void __connman_log_cleanup(void);
 void __connman_log_enable(struct connman_debug_desc *start,
 					struct connman_debug_desc *stop);
 
-void __connman_debug_list_available(DBusMessageIter *iter, void *user_data);
-void __connman_debug_list_enabled(DBusMessageIter *iter, void *user_data);
-
 #include <connman/option.h>
 
 #include <connman/setting.h>
