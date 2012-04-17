@@ -58,11 +58,6 @@ static DBusMessage *get_properties(DBusConnection *conn,
 	connman_dbus_dict_append_basic(&dict, "OfflineMode",
 					DBUS_TYPE_BOOLEAN, &offlinemode);
 
-	connman_dbus_dict_append_array(&dict, "AvailableDebugs",
-			DBUS_TYPE_STRING, __connman_debug_list_available, NULL);
-	connman_dbus_dict_append_array(&dict, "EnabledDebugs",
-			DBUS_TYPE_STRING, __connman_debug_list_enabled, NULL);
-
 	sessionmode = __connman_session_mode();
 	connman_dbus_dict_append_basic(&dict, "SessionMode",
 					DBUS_TYPE_BOOLEAN,
