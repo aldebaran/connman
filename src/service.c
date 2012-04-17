@@ -4584,8 +4584,10 @@ static int service_indicate_state(struct connman_service *service)
 
 	__connman_connection_update_gateway();
 
-	if (new_state == CONNMAN_SERVICE_STATE_ONLINE)
+	if (new_state == CONNMAN_SERVICE_STATE_ONLINE) {
+		__connman_notifier_online(service->type);
 		default_changed();
+	}
 
 	return 0;
 }
