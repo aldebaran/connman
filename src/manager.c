@@ -29,8 +29,8 @@
 
 #include "connman.h"
 
-connman_bool_t connman_state_idle;
-DBusMessage *session_mode_pending = NULL;
+static connman_bool_t connman_state_idle;
+static DBusMessage *session_mode_pending = NULL;
 
 static DBusMessage *get_properties(DBusConnection *conn,
 					DBusMessage *msg, void *data)
