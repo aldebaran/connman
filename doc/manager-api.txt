@@ -193,6 +193,12 @@ Properties	string State [readonly]
 			retrieved via the OfflineMode property, but is kept
 			here for consistency and to differentiate from "idle".
 
+			However when OfflineMode property is true, the State
+			property can still be "idle", "ready" or "online"
+			since it is possible by the end user to re-enable
+			individual technologies like WiFi and Bluetooth while
+			in offline mode.
+
 			The states "idle", "ready" and "online" match to
 			states from the services. If no service is in
 			either "ready" or "online" state it will indicate
