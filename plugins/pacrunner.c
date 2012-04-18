@@ -121,6 +121,7 @@ static void create_proxy_configuration(void)
 
 	switch(connman_service_get_proxy_method(default_service)) {
 	case CONNMAN_SERVICE_PROXY_METHOD_UNKNOWN:
+		connman_dbus_dict_close(&iter, &dict);
 		goto done;
 	case CONNMAN_SERVICE_PROXY_METHOD_DIRECT:
 		method= "direct";
@@ -129,8 +130,10 @@ static void create_proxy_configuration(void)
 		method = "manual";
 
 		str_list = connman_service_get_proxy_servers(default_service);
-		if (str_list == NULL)
+		if (str_list == NULL) {
+			connman_dbus_dict_close(&iter, &dict);
 			goto done;
+		}
 
 		connman_dbus_dict_append_array(&dict, "Servers",
 					DBUS_TYPE_STRING, append_string_list,
@@ -154,8 +157,10 @@ static void create_proxy_configuration(void)
 		if (str == NULL) {
 			str = connman_service_get_proxy_autoconfig(
 							default_service);
-			if (str == NULL)
+			if (str == NULL) {
+				connman_dbus_dict_close(&iter, &dict);
 				goto done;
+			}
 		}
 
 		connman_dbus_dict_append_basic(&dict, "URL",
