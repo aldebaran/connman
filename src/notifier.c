@@ -78,17 +78,17 @@ void connman_notifier_unregister(struct connman_notifier *notifier)
 static int connected[MAX_TECHNOLOGIES];
 static int online[MAX_TECHNOLOGIES];
 
-static unsigned int notifier_count_online(void)
+static connman_bool_t notifier_is_online(void)
 {
-	unsigned int i, count = 0;
+	unsigned int i;
 
 	__sync_synchronize();
 	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
 		if (online[i] > 0)
-			count++;
+			return TRUE;
 	}
 
-	return count;
+	return FALSE;
 }
 
 connman_bool_t __connman_notifier_is_connected(void)
@@ -106,10 +106,7 @@ connman_bool_t __connman_notifier_is_connected(void)
 
 static const char *evaluate_notifier_state(void)
 {
-	unsigned int count;
-
-	count = notifier_count_online();
-	if (count > 0)
+	if (notifier_is_online() == TRUE)
 		return "online";
 
 	if (__connman_notifier_is_connected() == TRUE)
