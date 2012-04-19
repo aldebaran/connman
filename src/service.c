@@ -1724,6 +1724,15 @@ static void proxy_configuration_changed(struct connman_service *service)
 	proxy_changed(service);
 }
 
+static void timeservers_configuration_changed(struct connman_service *service)
+{
+	connman_dbus_property_changed_array(service->path,
+			CONNMAN_SERVICE_INTERFACE,
+			"Timeservers.Configuration",
+			DBUS_TYPE_STRING,
+			append_tsconfig, service);
+}
+
 static void link_changed(struct connman_service *service)
 {
 	connman_dbus_property_changed_dict(service->path,
@@ -2933,6 +2942,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		}
 
 		service_save(service);
+		timeservers_configuration_changed(service);
 
 		__connman_timeserver_sync(service);
 	} else if (g_str_equal(name, "Domains.Configuration") == TRUE) {
