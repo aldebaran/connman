@@ -701,7 +701,7 @@ void __connman_notifier_service_state_changed(struct connman_service *service,
 void __connman_notifier_ipconfig_changed(struct connman_service *service,
 					struct connman_ipconfig *ipconfig);
 
-unsigned int __connman_notifier_count_connected(void);
+connman_bool_t __connman_notifier_is_connected(void);
 const char *__connman_notifier_get_state(void);
 
 #include <connman/rtnl.h>

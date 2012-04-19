@@ -91,17 +91,17 @@ static unsigned int notifier_count_online(void)
 	return count;
 }
 
-unsigned int __connman_notifier_count_connected(void)
+connman_bool_t __connman_notifier_is_connected(void)
 {
-	unsigned int i, count = 0;
+	unsigned int i;
 
 	__sync_synchronize();
 	for (i = 0; i < MAX_TECHNOLOGIES; i++) {
 		if (connected[i] > 0)
-			count++;
+			return TRUE;
 	}
 
-	return count;
+	return FALSE;
 }
 
 static const char *evaluate_notifier_state(void)
@@ -112,8 +112,7 @@ static const char *evaluate_notifier_state(void)
 	if (count > 0)
 		return "online";
 
-	count = __connman_notifier_count_connected();
-	if (count > 0)
+	if (__connman_notifier_is_connected() == TRUE)
 		return "ready";
 
 	if ( __connman_technology_get_offlinemode() == TRUE)

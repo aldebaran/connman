@@ -4549,7 +4549,7 @@ static int service_indicate_state(struct connman_service *service)
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		def_service = __connman_service_get_default();
 
-		if (__connman_notifier_count_connected() == 0 &&
+		if (__connman_notifier_is_connected() == FALSE &&
 			def_service != NULL &&
 				def_service->provider != NULL)
 			__connman_provider_disconnect(def_service->provider);
