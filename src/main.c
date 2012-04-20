@@ -148,8 +148,11 @@ static void parse_config(GKeyFile *config)
 		"cellular",
 	};
 
-	if (config == NULL)
+	if (config == NULL) {
+		connman_settings.auto_connect =
+			parse_service_types(default_auto_connect, 3);
 		return;
+	}
 
 	DBG("parsing main.conf");
 
@@ -462,10 +465,9 @@ int main(int argc, char *argv[])
 	__connman_dbus_init(conn);
 
 	config = load_config(CONFIGDIR "/main.conf");
-	if (config != NULL) {
-		parse_config(config);
+	parse_config(config);
+	if (config != NULL)
 		g_key_file_free(config);
-	}
 
 	__connman_storage_migrate();
 	__connman_technology_init();
