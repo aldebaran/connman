@@ -146,6 +146,7 @@ static void parse_config(GKeyFile *config)
 		"wifi",
 		"ethernet",
 		"cellular",
+		NULL
 	};
 
 	if (config == NULL) {
