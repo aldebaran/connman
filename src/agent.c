@@ -180,6 +180,7 @@ done:
 				passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
 	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
 	g_free(passphrase_reply);
 }
 
