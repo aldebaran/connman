@@ -116,6 +116,7 @@ struct connman_service {
 	connman_bool_t wps;
 	int online_check_count;
 	connman_bool_t do_split_routing;
+	connman_bool_t new_service;
 };
 
 struct find_data {
@@ -322,8 +323,11 @@ static int service_load(struct connman_service *service)
 	DBG("service %p", service);
 
 	keyfile = connman_storage_load_service(service->identifier);
-	if (keyfile == NULL)
+	if (keyfile == NULL) {
+		service->new_service = TRUE;
 		return -EIO;
+	} else
+		service->new_service = FALSE;
 
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -496,7 +500,10 @@ static int service_save(struct connman_service *service)
 	const char *cst_str = NULL;
 	int err = 0;
 
-	DBG("service %p", service);
+	DBG("service %p new %d", service, service->new_service);
+
+	if (service->new_service == TRUE)
+		return -ESRCH;
 
 	keyfile = __connman_storage_open_service(service->identifier);
 	if (keyfile == NULL)
@@ -4487,7 +4494,12 @@ static int service_indicate_state(struct connman_service *service)
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_CONFIGURATION) {
-		if (__connman_stats_service_register(service) == 0) {
+		if (service->new_service == FALSE &&
+				__connman_stats_service_register(service) == 0) {
+			/*
+			 * For new services the statistics are updated after
+			 * we have successfully connected.
+			 */
 			__connman_stats_get(service, FALSE,
 						&service->stats.data);
 			__connman_stats_get(service, TRUE,
@@ -4507,6 +4519,21 @@ static int service_indicate_state(struct connman_service *service)
 
 	if (new_state == CONNMAN_SERVICE_STATE_READY) {
 		enum connman_ipconfig_method method;
+
+		if (service->new_service == TRUE &&
+				__connman_stats_service_register(service) == 0) {
+			/*
+			 * This is normally done after configuring state
+			 * but for new service do this after we have connected
+			 * successfully.
+			 */
+			__connman_stats_get(service, FALSE,
+						&service->stats.data);
+			__connman_stats_get(service, TRUE,
+						&service->stats_roaming.data);
+		}
+
+		service->new_service = FALSE;
 
 		service_update_preferred_order(def_service, service, new_state);
 
