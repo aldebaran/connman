@@ -172,6 +172,7 @@ struct modem_data {
 	/* ConnectionContext Interface */
 	connman_bool_t active;
 	connman_bool_t set_active;
+	connman_bool_t valid_apn; /* APN is 'valid' if length > 0 */
 
 	/* SimManager Interface */
 	char *imsi;
@@ -1106,8 +1107,17 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 			dbus_message_iter_get_basic(&value, &active);
 
 			DBG("%s Active %d", modem->path, active);
-		}
+		} else if (g_str_equal(key, "AccessPointName") == TRUE) {
+			const char *apn;
 
+			dbus_message_iter_get_basic(&value, &apn);
+			if (apn != NULL && strlen(apn) > 0)
+				modem->valid_apn = TRUE;
+			else
+				modem->valid_apn = FALSE;
+
+			DBG("%s AccessPointName '%s'", modem->path, apn);
+		}
 		dbus_message_iter_next(dict);
 	}
 
@@ -1120,6 +1130,12 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 	modem->active = active;
 
 	g_hash_table_replace(context_hash, g_strdup(context_path), modem);
+
+	if (modem->valid_apn == TRUE &&
+			has_interface(modem->interfaces,
+				OFONO_API_NETREG) == TRUE) {
+		add_network(modem);
+	}
 
 	return 0;
 }
@@ -1137,6 +1153,11 @@ static void remove_cm_context(struct modem_data *modem,
 
 	network_context_free(modem->context);
 	modem->context = NULL;
+
+	modem->valid_apn = FALSE;
+
+	if (modem->network != NULL)
+		remove_network(modem);
 }
 
 static gboolean context_changed(DBusConnection *connection,
@@ -1184,6 +1205,36 @@ static gboolean context_changed(DBusConnection *connection,
 			set_connected(modem);
 		else
 			set_disconnected(modem);
+	} else if (g_str_equal(key, "AccessPointName") == TRUE) {
+		const char *apn;
+
+		dbus_message_iter_get_basic(&value, &apn);
+
+		DBG("%s AccessPointName %s", modem->path, apn);
+
+		if (apn != NULL && strlen(apn) > 0) {
+			modem->valid_apn = TRUE;
+
+			if (modem->network != NULL)
+				return TRUE;
+
+			if (has_interface(modem->interfaces,
+					OFONO_API_NETREG) == FALSE) {
+				return TRUE;
+			}
+
+			add_network(modem);
+
+			if (modem->active == TRUE)
+				set_connected(modem);
+		} else {
+			modem->valid_apn = FALSE;
+
+			if (modem->network == NULL)
+				return TRUE;
+
+			remove_network(modem);
+		}
 	}
 
 	return TRUE;
@@ -1522,7 +1573,8 @@ static void netreg_properties_reply(struct modem_data *modem,
 		return;
 	}
 
-	add_network(modem);
+	if (modem->valid_apn == TRUE)
+		add_network(modem);
 
 	if (modem->active == TRUE)
 		set_connected(modem);
