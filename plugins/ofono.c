@@ -2394,7 +2394,7 @@ static int network_disconnect(struct connman_network *network)
 }
 
 static struct connman_network_driver network_driver = {
-	.name		= "network",
+	.name		= "cellular",
 	.type		= CONNMAN_NETWORK_TYPE_CELLULAR,
 	.probe		= network_probe,
 	.remove		= network_remove,
