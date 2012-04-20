@@ -244,6 +244,8 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 
 	ts_list = __connman_timeserver_get_all(service);
 
+	__connman_service_timeserver_changed(service, ts_list);
+
 	if (ts_list == NULL) {
 		DBG("No timeservers set.");
 		return 0;
