@@ -75,6 +75,11 @@ extern "C" {
 
 #define G_SUPPLICANT_MAX_FAST_SCAN	4
 
+#define G_SUPPLICANT_WPS_CONFIGURED     (1 << 0)
+#define G_SUPPLICANT_WPS_PBC            (1 << 1)
+#define G_SUPPLICANT_WPS_PIN            (1 << 2)
+#define G_SUPPLICANT_WPS_REGISTRAR      (1 << 3)
+
 typedef enum {
 	G_SUPPLICANT_MODE_UNKNOWN,
 	G_SUPPLICANT_MODE_INFRA,

@@ -188,6 +188,7 @@ struct g_supplicant_bss {
 	dbus_bool_t privacy;
 	dbus_bool_t psk;
 	dbus_bool_t ieee8021x;
+	unsigned int wps_capabilities;
 };
 
 struct _GSupplicantNetwork {
@@ -1248,13 +1249,19 @@ static void bss_process_ies(DBusMessageIter *iter, void *user_data)
 	const unsigned char WPS_OUI[] = { 0x00, 0x50, 0xf2, 0x04 };
 	unsigned char *ie, *ie_end;
 	DBusMessageIter array;
+	unsigned int value;
 	int ie_len;
 
 #define WMM_WPA1_WPS_INFO 221
 #define WPS_INFO_MIN_LEN  6
 #define WPS_VERSION_TLV   0x104A
 #define WPS_STATE_TLV     0x1044
+#define WPS_METHODS_TLV   0x1012
+#define WPS_REGISTRAR_TLV 0x1041
 #define WPS_VERSION       0x10
+#define WPS_PBC           0x04
+#define WPS_PIN           0x00
+#define WPS_CONFIGURED    0x02
 
 	dbus_message_iter_recurse(iter, &array);
 	dbus_message_iter_get_fixed_array(&array, &ie, &ie_len);
@@ -1271,11 +1278,33 @@ static void bss_process_ies(DBusMessageIter *iter, void *user_data)
 
 		SUPPLICANT_DBG("IE: match WPS_OUI");
 
-		if (get_tlv(&ie[6], ie[1],
-				WPS_VERSION_TLV) == WPS_VERSION &&
-			get_tlv(&ie[6], ie[1],
-				WPS_STATE_TLV) != 0)
+		value = get_tlv(&ie[6], ie[1], WPS_STATE_TLV);
+		if (get_tlv(&ie[6], ie[1], WPS_VERSION_TLV) == WPS_VERSION &&
+								value != 0) {
 			bss->keymgmt |= G_SUPPLICANT_KEYMGMT_WPS;
+
+			if (value == WPS_CONFIGURED)
+				bss->wps_capabilities |=
+					G_SUPPLICANT_WPS_CONFIGURED;
+		}
+
+		value = get_tlv(&ie[6], ie[1], WPS_METHODS_TLV);
+		if (value != 0) {
+			if (GUINT16_FROM_BE(value) == WPS_PBC)
+				bss->wps_capabilities |= G_SUPPLICANT_WPS_PBC;
+			if (GUINT16_FROM_BE(value) == WPS_PIN)
+				bss->wps_capabilities |= G_SUPPLICANT_WPS_PIN;
+		} else
+			bss->wps_capabilities |=
+				G_SUPPLICANT_WPS_PBC | G_SUPPLICANT_WPS_PIN;
+
+		/* If the AP sends this it means it's advertizing
+		 * as a registrar and the WPS process is launched
+		 * on its side */
+		if (get_tlv(&ie[6], ie[1], WPS_REGISTRAR_TLV) != 0)
+			bss->wps_capabilities |= G_SUPPLICANT_WPS_REGISTRAR;
+
+		SUPPLICANT_DBG("WPS Methods 0x%x", bss->wps_capabilities);
 	}
 }
 
