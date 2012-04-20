@@ -1266,6 +1266,8 @@ static void default_changed(void)
 	if (service == current_default)
 		return;
 
+	__connman_service_timeserver_changed(current_default, NULL);
+
 	current_default = service;
 
 	__connman_notifier_default_changed(service);
