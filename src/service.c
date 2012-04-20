@@ -1475,6 +1475,21 @@ static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
 	}
 }
 
+static void append_ts(DBusMessageIter *iter, void *user_data)
+{
+	GSList *list = user_data;
+
+	while (list != NULL) {
+		char *timeserver = list->data;
+
+		if (timeserver != NULL)
+			dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+					&timeserver);
+
+		list = g_slist_next(list);
+	}
+}
+
 static void append_tsconfig(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -2040,6 +2055,7 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 					struct connman_service *service)
 {
 	const char *str;
+	GSList *list;
 
 	str = __connman_service_type2string(service->type);
 	if (str != NULL)
@@ -2118,6 +2134,17 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 
 	connman_dbus_dict_append_array(dict, "Nameservers.Configuration",
 				DBUS_TYPE_STRING, append_dnsconfig, service);
+
+	if (service->state == CONNMAN_SERVICE_STATE_READY ||
+			service->state == CONNMAN_SERVICE_STATE_ONLINE)
+		list = __connman_timeserver_get_all(service);
+	else
+		list = NULL;
+
+	connman_dbus_dict_append_array(dict, "Timeservers",
+				DBUS_TYPE_STRING, append_ts, list);
+
+	g_slist_free_full(list, g_free);
 
 	connman_dbus_dict_append_array(dict, "Timeservers.Configuration",
 				DBUS_TYPE_STRING, append_tsconfig, service);
@@ -2451,6 +2478,17 @@ int __connman_service_timeserver_remove(struct connman_service *service,
 	service->timeservers = servers;
 
 	return 0;
+}
+
+void __connman_service_timeserver_changed(struct connman_service *service,
+		GSList *ts_list)
+{
+	if (service == NULL)
+		return;
+
+	connman_dbus_property_changed_array(service->path,
+			CONNMAN_SERVICE_INTERFACE, "Timeservers",
+			DBUS_TYPE_STRING, append_ts, ts_list);
 }
 
 void __connman_service_set_pac(struct connman_service *service,

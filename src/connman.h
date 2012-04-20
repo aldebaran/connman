@@ -632,6 +632,8 @@ int __connman_service_timeserver_append(struct connman_service *service,
 						const char *timeserver);
 int __connman_service_timeserver_remove(struct connman_service *service,
 						const char *timeserver);
+void __connman_service_timeserver_changed(struct connman_service *service,
+		GSList *ts_list);
 void __connman_service_set_pac(struct connman_service *service,
 					const char *pac);
 connman_bool_t __connman_service_is_hidden(struct connman_service *service);
