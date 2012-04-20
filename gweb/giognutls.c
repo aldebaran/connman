@@ -42,7 +42,7 @@ struct _GIOGnuTLSChannel {
 	GIOChannel channel;
 	gint fd;
 	gnutls_certificate_credentials_t cred;
-	gnutls_session session;
+	gnutls_session_t session;
 	gboolean established;
 	gboolean again;
 };
