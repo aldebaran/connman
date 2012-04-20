@@ -91,7 +91,7 @@ static void rfkill_check(gpointer key, gpointer value, gpointer user_data)
 
 	/* Calling _technology_rfkill_add will update the tech. */
 	if (rfkill->type == type)
-	  __connman_technology_add_rfkill(rfkill->index, type,
+		__connman_technology_add_rfkill(rfkill->index, type,
 				rfkill->softblock, rfkill->hardblock);
 }
 
