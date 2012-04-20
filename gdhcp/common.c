@@ -272,7 +272,7 @@ void dhcp_add_simple_option(struct dhcp_packet *packet, uint8_t code,
 	data <<= 8 * (4 - len);
 #endif
 
-	dhcp_put_unaligned(data, (uint32_t *) &option[OPT_DATA]);
+	dhcp_put_unaligned(data, (uint32_t *)(option + OPT_DATA));
 	dhcp_add_binary_option(packet, option);
 
 	return;
