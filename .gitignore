@@ -54,6 +54,8 @@ tools/stats-tool
 tools/stats-ringbuffer-dump
 tools/private-network-test
 unit/test-session
+unit/test-ippool
+unit/test-nat
 
 doc/*.bak
 doc/*.stamp
