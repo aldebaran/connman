@@ -102,16 +102,14 @@ class Agent(dbus.service.Object):
 	def RequestInput(self, path, fields):
 		print "RequestInput (%s,%s)" % (path, fields)
 
-		response = None
+		response = {}
 
 		if fields.has_key("Name"):
-			response = self.input_hidden()
-		elif fields.has_key("Passphrase"):
-			response = self.input_passphrase()
-		elif fields.has_key("Username"):
-			response = self.input_username()
-		else:
-			print "No method to answer the input request"
+			response.update(self.input_hidden())
+		if fields.has_key("Passphrase"):
+			response.update(self.input_passphrase())
+		if fields.has_key("Username"):
+			response.update(self.input_username())
 
 		print "returning (%s)" % (response)
 
