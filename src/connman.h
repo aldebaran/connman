@@ -367,6 +367,7 @@ void __connman_timeserver_cleanup(void);
 
 char **__connman_timeserver_system_get();
 
+GSList *__connman_timeserver_get_all(struct connman_service *service);
 int __connman_timeserver_sync(struct connman_service *service);
 void __connman_timeserver_sync_next();
 

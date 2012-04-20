@@ -156,17 +156,14 @@ void __connman_timeserver_sync_next()
 	return;
 }
 
-
 /*
- * __connman_timeserver_sync function recreates the timeserver
+ * __connman_timeserver_get_all function creates the timeserver
  * list which will be used to determine NTP server for time corrections.
- * It must be called everytime the default service changes, the service
- * timeserver(s) or gatway changes or the global timeserver(s) changes.
  * The service settings take priority over the global timeservers.
  */
-int __connman_timeserver_sync(struct connman_service *default_service)
+GSList *__connman_timeserver_get_all(struct connman_service *service)
 {
-	struct connman_service *service;
+	GSList *list = NULL;
 	struct connman_network *network;
 	char **timeservers;
 	char **service_ts;
@@ -174,6 +171,54 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	const char *service_gw;
 	char **fallback_ts;
 	int index, i;
+
+	service_ts_config = connman_service_get_timeservers_config(service);
+
+	/* First add Service Timeservers.Configuration to the list */
+	for (i = 0; service_ts_config != NULL && service_ts_config[i] != NULL;
+			i++)
+		list = g_slist_prepend(list, g_strdup(service_ts_config[i]));
+
+	service_ts = connman_service_get_timeservers(service);
+
+	/* First add Service Timeservers via DHCP to the list */
+	for (i = 0; service_ts != NULL && service_ts[i] != NULL; i++)
+		list = g_slist_prepend(list, g_strdup(service_ts[i]));
+
+	network = __connman_service_get_network(service);
+
+	index = connman_network_get_index(network);
+
+	service_gw = __connman_ipconfig_get_gateway_from_index(index);
+
+	/* Then add Service Gateway to the list */
+	if (service_gw != NULL)
+		list = g_slist_prepend(list, g_strdup(service_gw));
+
+	/* Then add Global Timeservers to the list */
+	timeservers = load_timeservers();
+
+	for (i = 0; timeservers != NULL && timeservers[i] != NULL; i++)
+		list = g_slist_prepend(list, g_strdup(timeservers[i]));
+
+	g_strfreev(timeservers);
+
+	fallback_ts = connman_setting_get_string_list("FallbackTimeservers");
+
+	/* Lastly add the fallback servers */
+	for (i = 0; fallback_ts != NULL && fallback_ts[i] != NULL; i++)
+		list = g_slist_prepend(list, g_strdup(fallback_ts[i]));
+
+	return g_slist_reverse(list);
+}
+
+/*
+ * This function must be called everytime the default service changes, the
+ * service timeserver(s) or gatway changes or the global timeserver(s) changes.
+ */
+int __connman_timeserver_sync(struct connman_service *default_service)
+{
+	struct connman_service *service;
 
 	if (default_service != NULL)
 		service = default_service;
@@ -186,7 +231,7 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	if (resolv == NULL)
 		return 0;
 	/*
-	 * Before be start creating the new timeserver list we must stop
+	 * Before we start creating the new timeserver list we must stop
 	 * any ongoing ntp query and server resolution.
 	 */
 
@@ -195,53 +240,14 @@ int __connman_timeserver_sync(struct connman_service *default_service)
 	if (resolv_id > 0)
 		g_resolv_cancel_lookup(resolv, resolv_id);
 
-	if (ts_list != NULL) {
-		g_slist_free_full(ts_list, g_free);
-		ts_list = NULL;
-	}
+	g_slist_free_full(ts_list, g_free);
 
-	service_ts_config = connman_service_get_timeservers_config(service);
-
-	/* First add Service Timeservers.Configuration to the list */
-	for (i=0; service_ts_config != NULL && service_ts_config[i] != NULL; i++)
-		ts_list = g_slist_prepend(ts_list, g_strdup(service_ts_config[i]));
-
-	service_ts = connman_service_get_timeservers(service);
-
-	/* First add Service Timeservers via DHCP to the list */
-	for (i=0; service_ts != NULL && service_ts[i] != NULL; i++)
-		ts_list = g_slist_prepend(ts_list, g_strdup(service_ts[i]));
-
-	network = __connman_service_get_network(service);
-
-	index = connman_network_get_index(network);
-
-	service_gw = __connman_ipconfig_get_gateway_from_index(index);
-
-	/* Then add Service Gateway to the list */
-	if (service_gw != NULL)
-		ts_list = g_slist_prepend(ts_list, g_strdup(service_gw));
-
-	/* Then add Global Timeservers to the list */
-	timeservers = load_timeservers();
-
-	for (i=0; timeservers != NULL && timeservers[i] != NULL; i++)
-		ts_list = g_slist_prepend(ts_list, g_strdup(timeservers[i]));
-
-	g_strfreev(timeservers);
-
-	fallback_ts = connman_setting_get_string_list("FallbackTimeservers");
-
-	/* Lastly add the fallback servers */
-	for (i=0; fallback_ts != NULL && fallback_ts[i] != NULL; i++)
-		ts_list = g_slist_prepend(ts_list, g_strdup(fallback_ts[i]));
+	ts_list = __connman_timeserver_get_all(service);
 
 	if (ts_list == NULL) {
 		DBG("No timeservers set.");
 		return 0;
 	}
-
-	ts_list = g_slist_reverse(ts_list);
 
         __connman_timeserver_sync_next();
 
@@ -299,8 +305,7 @@ static void timeserver_stop()
 		resolv = NULL;
 	}
 
-	if (ts_list != NULL)
-		g_slist_free_full(ts_list, g_free);
+	g_slist_free_full(ts_list, g_free);
 
 	ts_list = NULL;
 
