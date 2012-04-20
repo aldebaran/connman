@@ -204,6 +204,7 @@ struct _GSupplicantNetwork {
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
 	dbus_bool_t wps;
+	unsigned int wps_capabilities;
 	GHashTable *bss_table;
 	GHashTable *config_table;
 };
@@ -860,6 +861,39 @@ dbus_bool_t g_supplicant_network_get_wps(GSupplicantNetwork *network)
 	return network->wps;
 }
 
+dbus_bool_t g_supplicant_network_is_wps_active(GSupplicantNetwork *network)
+{
+	if (network == NULL)
+		return FALSE;
+
+	if (network->wps_capabilities & G_SUPPLICANT_WPS_CONFIGURED)
+		return TRUE;
+
+	return FALSE;
+}
+
+dbus_bool_t g_supplicant_network_is_wps_pbc(GSupplicantNetwork *network)
+{
+	if (network == NULL)
+		return FALSE;
+
+	if (network->wps_capabilities & G_SUPPLICANT_WPS_PBC)
+		return TRUE;
+
+	return FALSE;
+}
+
+dbus_bool_t g_supplicant_network_is_wps_advertizing(GSupplicantNetwork *network)
+{
+	if (network == NULL)
+		return FALSE;
+
+	if (network->wps_capabilities & G_SUPPLICANT_WPS_REGISTRAR)
+		return TRUE;
+
+	return FALSE;
+}
+
 static void merge_network(GSupplicantNetwork *network)
 {
 	GString *str;
@@ -1098,8 +1132,11 @@ static void add_bss_to_network(struct g_supplicant_bss *bss)
 	network->best_bss = bss;
 
 	network->wps = FALSE;
-	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0)
+	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0) {
 		network->wps = TRUE;
+
+		network->wps_capabilities |= bss->wps_capabilities;
+	}
 
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_bss);
