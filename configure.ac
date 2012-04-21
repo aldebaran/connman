@@ -310,27 +310,15 @@ if (test -n "${path_systemdunit}"); then
 fi
 AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
 
+PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
+				AC_MSG_ERROR(GnuTLS library is required))
+AC_SUBST(GNUTLS_CFLAGS)
+AC_SUBST(GNUTLS_LIBS)
+
 PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
 				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)
-
-AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
-		[enable command line client]), [enable_client=${enableval}])
-AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
-
-AC_ARG_ENABLE(tools, AC_HELP_STRING([--enable-tools],
-		[enable testing tools]), [enable_tools=${enableval}])
-if (test "${enable_tools}" = "yes"); then
-	PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
-				AC_MSG_ERROR(GnuTLS library is required))
-	AC_SUBST(GNUTLS_CFLAGS)
-	AC_SUBST(GNUTLS_LIBS)
-
-	AC_CHECK_HEADERS(linux/if_alg.h, dummy=yes,
-		AC_MSG_ERROR(User-space algorithm header files are required))
-fi
-AM_CONDITIONAL(TOOLS, test "${enable_tools}" = "yes")
 
 AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
@@ -393,6 +381,16 @@ AC_ARG_ENABLE(pacrunner, AC_HELP_STRING([--disable-pacrunner],
 				[disable PACrunner support]),
 					[enable_pacrunner=${enableval}])
 AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
+
+AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
+				[disable command line client]),
+					[disable_client=${enableval}])
+AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
+
+AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
+				[disable testing tools]),
+					[enable_tools=${enableval}])
+AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
 if (test "${enable_loopback}" != "no"); then
 	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,

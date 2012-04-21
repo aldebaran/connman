@@ -240,9 +240,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-hh2serial-gps \
 				--enable-openconnect \
 				--enable-nmcompat \
-				--enable-polkit \
-				--enable-client \
-				--enable-tools
+				--enable-polkit
 
 DISTCLEANFILES = $(pkgconfig_DATA)
 

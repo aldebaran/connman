@@ -20,6 +20,4 @@ fi
 		--enable-openvpn=builtin \
 		--enable-nmcompat \
 		--enable-polkit \
-		--enable-capng \
-		--enable-client \
-		--enable-tools $*
+		--enable-capng $*
