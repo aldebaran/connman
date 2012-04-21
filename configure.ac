@@ -404,10 +404,6 @@ AC_ARG_ENABLE(test, AC_HELP_STRING([--enable-test],
 		[enable test/example scripts]), [enable_test=${enableval}])
 AM_CONDITIONAL(TEST, test "${enable_test}" = "yes")
 
-AC_ARG_ENABLE(fake, AC_HELP_STRING([--enable-fake],
-		[enable fake device support]), [enable_fake=${enableval}])
-AM_CONDITIONAL(FAKE, test "${enable_fake}" = "yes")
-
 AC_ARG_ENABLE(capng, AC_HELP_STRING([--enable-capng],
 		[enable capabilities support]), [enable_capng=${enableval}])
 if (test "${enable_capng}" = "yes"); then

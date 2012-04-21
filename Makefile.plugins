@@ -236,13 +236,6 @@ plugins_iospm_la_CFLAGS = $(plugin_cflags)
 plugins_iospm_la_LDFLAGS = $(plugin_ldflags)
 endif
 
-if FAKE
-plugin_LTLIBRARIES += plugins/fake.la
-plugin_objects += $(plugins_fake_la_OBJECTS)
-plugins_fake_la_CFLAGS = $(plugin_cflags)
-plugins_fake_la_LDFLAGS = $(plugin_ldflags)
-endif
-
 if OPENCONNECT
 script_PROGRAMS += scripts/openconnect-script
 
