@@ -61,10 +61,6 @@ AC_ARG_ENABLE(threads,
 	AC_HELP_STRING([--enable-threads], [enable threading support]),
 			[enable_threads=${enableval}], [enable_threads="no"])
 
-if (test "${enable_wifi}" != "no"); then
-	AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], [],
-						$PATH:/sbin:/usr/sbin)
-fi
 AC_ARG_ENABLE(hh2serial-gps,
 	AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
 			[enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
