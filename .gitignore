@@ -48,7 +48,6 @@ tools/resolv-test
 tools/polkit-test
 tools/iptables-test
 tools/supplicant-test
-tools/alg-test
 tools/dbus-test
 tools/stats-tool
 tools/stats-ringbuffer-dump
