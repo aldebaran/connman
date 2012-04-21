@@ -239,6 +239,8 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--disable-datafiles \
 				--enable-hh2serial-gps \
 				--enable-openconnect \
+				--enable-nmcompat \
+				--enable-polkit \
 				--enable-client \
 				--enable-tools
 

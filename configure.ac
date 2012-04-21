@@ -246,12 +246,6 @@ AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 		[enable Intel OSPM support]), [enable_iospm=${enableval}])
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")
 
-AC_ARG_ENABLE(nmcompat,
-	AC_HELP_STRING([--enable-nmcompat], [enable nmcompat support]),
-			[enable_nmcompat=${enableval}], [enable_nmcompat="no"])
-AM_CONDITIONAL(NMCOMPAT, test "${enable_nmcompat}" != "no")
-AM_CONDITIONAL(NMCOMPAT_BUILTIN, test "${enable_nmcompat}" = "builtin")
-
 AC_ARG_ENABLE(tist,
 	AC_HELP_STRING([--enable-tist], [enable TI Shared Transport support]),
 			[enable_tist=${enableval}], [enable_tist="no"])
@@ -321,20 +315,6 @@ PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)
 
-AC_ARG_ENABLE(polkit,
-	AC_HELP_STRING([--enable-polkit], [enable PolicyKit support]),
-			[enable_polkit=${enableval}], [enable_polkit="no"])
-if (test "${enable_polkit}" != "no"); then
-	POLKIT_DATADIR="`$PKG_CONFIG --variable=actiondir polkit`"
-	POLKIT_DATADIR=""
-	if (test -z "${POLKIT_DATADIR}"); then
-		POLKIT_DATADIR="${datadir}/polkit-1/actions"
-	fi
-	AC_SUBST(POLKIT_DATADIR)
-fi
-AM_CONDITIONAL(POLKIT, test "${enable_polkit}" != "no")
-AM_CONDITIONAL(POLKIT_BUILTIN, test "${enable_polkit}" = "builtin")
-
 AC_ARG_ENABLE(client, AC_HELP_STRING([--enable-client],
 		[enable command line client]), [enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" = "yes")
@@ -365,6 +345,24 @@ if (test "${enable_capng}" = "yes"); then
 	AC_SUBST(CAPNG_LIBS)
 	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
 fi
+
+AC_ARG_ENABLE(nmcompat, AC_HELP_STRING([--enable-nmcompat],
+				[enable Network Manager support]),
+			[enable_nmcompat=${enableval}], [enable_nmcompat="no"])
+AM_CONDITIONAL(NMCOMPAT, test "${enable_nmcompat}" != "no")
+
+AC_ARG_ENABLE(polkit, AC_HELP_STRING([--enable-polkit],
+				[enable PolicyKit support]),
+			[enable_polkit=${enableval}], [enable_polkit="no"])
+if (test "${enable_polkit}" != "no"); then
+	POLKIT_DATADIR="`$PKG_CONFIG --variable=actiondir polkit`"
+	POLKIT_DATADIR=""
+	if (test -z "${POLKIT_DATADIR}"); then
+		POLKIT_DATADIR="${datadir}/polkit-1/actions"
+	fi
+	AC_SUBST(POLKIT_DATADIR)
+fi
+AM_CONDITIONAL(POLKIT, test "${enable_polkit}" != "no")
 
 AC_ARG_ENABLE(loopback, AC_HELP_STRING([--disable-loopback],
 				[disable loopback support]),

@@ -157,15 +157,8 @@ builtin_sources += plugins/pacrunner.c
 endif
 
 if POLKIT
-if POLKIT_BUILTIN
 builtin_modules += polkit
 builtin_sources += plugins/polkit.c
-else
-plugin_LTLIBRARIES += plugins/polkit.la
-plugin_objects += $(plugins_polkit_la_OBJECTS)
-plugins_polkit_la_CFLAGS = $(plugin_cflags)
-plugins_polkit_la_LDFLAGS = $(plugin_ldflags)
-endif
 
 if DATAFILES
 policydir = @POLKIT_DATADIR@
@@ -209,15 +202,8 @@ scripts_openvpn_script_LDADD = @DBUS_LIBS@
 endif
 
 if NMCOMPAT
-if NMCOMPAT_BUILTIN
 builtin_modules += nmcompat
 builtin_sources += plugins/nmcompat.c
-else
-plugin_LTLIBRARIES += plugins/nmcompat.la
-plugin_objects += $(plugins_nmcompat_la_OBJECTS)
-plugins_nmcompat_la_CFLAGS = $(plugin_cflags)
-plugins_nmcompat_la_LDFLAGS = $(plugin_ldflags)
-endif
 endif
 
 if TIST

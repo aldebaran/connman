@@ -18,8 +18,8 @@ fi
 		--disable-datafiles \
 		--enable-openconnect=builtin \
 		--enable-openvpn=builtin \
-		--enable-nmcompat=builtin \
-		--enable-polkit=builtin \
+		--enable-nmcompat \
+		--enable-polkit \
 		--enable-capng \
 		--enable-client \
 		--enable-tools $*
