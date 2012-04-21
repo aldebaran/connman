@@ -237,15 +237,9 @@ pkgconfig_DATA = connman.pc
 
 DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--disable-datafiles \
-				--enable-loopback \
-				--enable-ethernet \
-				--enable-wifi \
-				--enable-bluetooth \
-				--enable-ofono \
-				--enable-pacrunner \
-				--enable-client \
 				--enable-hh2serial-gps \
 				--enable-openconnect \
+				--enable-client \
 				--enable-tools
 
 DISTCLEANFILES = $(pkgconfig_DATA)

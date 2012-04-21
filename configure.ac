@@ -61,39 +61,15 @@ AC_ARG_ENABLE(threads,
 	AC_HELP_STRING([--enable-threads], [enable threading support]),
 			[enable_threads=${enableval}], [enable_threads="no"])
 
-AC_ARG_ENABLE(ethernet,
-	AC_HELP_STRING([--enable-ethernet], [enable Ethernet support]),
-			[enable_ethernet=${enableval}], [enable_ethernet="no"])
-AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" != "no")
-AM_CONDITIONAL(ETHERNET_BUILTIN, test "${enable_ethernet}" = "builtin")
-
-AC_ARG_ENABLE(wifi,
-	AC_HELP_STRING([--enable-wifi], [enable WiFi support]),
-			[enable_wifi=${enableval}], [enable_wifi="no"])
 if (test "${enable_wifi}" != "no"); then
 	AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], [],
 						$PATH:/sbin:/usr/sbin)
 fi
-AM_CONDITIONAL(WIFI, test "${enable_wifi}" != "no")
-AM_CONDITIONAL(WIFI_BUILTIN, test "${enable_wifi}" = "builtin")
-
-AC_ARG_ENABLE(bluetooth,
-	AC_HELP_STRING([--enable-bluetooth], [enable Bluetooth support]),
-			[enable_bluetooth=${enableval}], [enable_bluetooth="no"])
-AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
-AM_CONDITIONAL(BLUETOOTH_BUILTIN, test "${enable_bluetooth}" = "builtin")
-
 AC_ARG_ENABLE(hh2serial-gps,
 	AC_HELP_STRING([--enable-hh2serial-gps], [enable hh2serial GPS support]),
 			[enable_hh2serial_gps=${enableval}], [enable_hh2serial_gps="no"])
 AM_CONDITIONAL(HH2SERIAL_GPS, test "${enable_hh2serial_gps}" != "no")
 AM_CONDITIONAL(HH2SERIAL_GPS_BUILTIN, test "${enable_hh2serial_gps}" = "builtin")
-
-AC_ARG_ENABLE(ofono,
-	AC_HELP_STRING([--enable-ofono], [enable oFono support]),
-			[enable_ofono=${enableval}], [enable_ofono="no"])
-AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
-AM_CONDITIONAL(OFONO_BUILTIN, test "${enable_ofono}" = "builtin")
 
 AC_ARG_WITH(openconnect, AC_HELP_STRING([--with-openconnect=PROGRAM],
         [specify location of openconnect binary]), [path_openconnect=${withval}])
@@ -198,26 +174,6 @@ if (test "${enable_pptp}" != "no"); then
 fi
 AM_CONDITIONAL(PPTP, test "${enable_pptp}" != "no")
 AM_CONDITIONAL(PPTP_BUILTIN, test "${enable_pptp}" = "builtin")
-
-AC_ARG_ENABLE(loopback,
-	AC_HELP_STRING([--enable-loopback], [enable loopback support]),
-			[enable_loopback=${enableval}], [enable_loopback="no"])
-if (test "${enable_loopback}" != "no"); then
-	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,
-			AC_MSG_ERROR(inotify header files are required))
-
-	AC_CHECK_LIB(c, inotify_init, dummy=yes,
-			AC_MSG_ERROR(inotify library support is required))
-fi
-AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
-AM_CONDITIONAL(LOOPBACK_BUILTIN, test "${enable_loopback}" = "builtin")
-
-AC_ARG_ENABLE(pacrunner,
-	AC_HELP_STRING([--enable-pacrunner], [enable PAC runner support]),
-			[enable_pacrunner=${enableval}], [enable_pacrunner="no"])
-
-AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
-AM_CONDITIONAL(PACRUNNER_BUILTIN, test "${enable_pacrunner}" = "builtin")
 
 AC_CHECK_HEADERS(resolv.h, dummy=yes,
 	AC_MSG_ERROR(resolver header files are required))
@@ -412,6 +368,49 @@ if (test "${enable_capng}" = "yes"); then
 	AC_SUBST(CAPNG_CFLAGS)
 	AC_SUBST(CAPNG_LIBS)
 	AC_DEFINE(HAVE_CAPNG, 1, [Define to 1 if you have capabilities library.])
+fi
+
+AC_ARG_ENABLE(loopback, AC_HELP_STRING([--disable-loopback],
+				[disable loopback support]),
+					[enable_loopback=${enableval}])
+AM_CONDITIONAL(LOOPBACK, test "${enable_loopback}" != "no")
+
+AC_ARG_ENABLE(ethernet, AC_HELP_STRING([--disable-ethernet],
+				[disable Ethernet support]),
+					[enable_ethernet=${enableval}])
+AM_CONDITIONAL(ETHERNET, test "${enable_ethernet}" != "no")
+
+AC_ARG_ENABLE(wifi, AC_HELP_STRING([--disable-wifi],
+				[disable WiFi support]),
+					[enable_wifi=${enableval}])
+AM_CONDITIONAL(WIFI, test "${enable_wifi}" != "no")
+
+AC_ARG_ENABLE(BLUETOOTH, AC_HELP_STRING([--disable-bluetooth],
+				[disable Bluetooth support]),
+					[enable_bluetooth=${enableval}])
+AM_CONDITIONAL(BLUETOOTH, test "${enable_bluetooth}" != "no")
+
+AC_ARG_ENABLE(ofono, AC_HELP_STRING([--disable-ofono],
+				[disable oFono support]),
+					[enable_ofono=${enableval}])
+AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
+
+AC_ARG_ENABLE(pacrunner, AC_HELP_STRING([--disable-pacrunner],
+				[disable PACrunner support]),
+					[enable_pacrunner=${enableval}])
+AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
+
+if (test "${enable_loopback}" != "no"); then
+	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,
+			AC_MSG_ERROR(inotify header files are required))
+
+	AC_CHECK_LIB(c, inotify_init, dummy=yes,
+			AC_MSG_ERROR(inotify library support is required))
+fi
+
+if (test "${enable_wifi}" != "no"); then
+	AC_PATH_PROG(WPASUPPLICANT, [wpa_supplicant], [],
+						$PATH:/sbin:/usr/sbin)
 fi
 
 AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
