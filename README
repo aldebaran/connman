@@ -1,7 +1,7 @@
 Connection Manager
 ******************
 
-Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+Copyright (C) 2007-2012  Intel Corporation. All rights reserved.
 
 
 Functionality and features
@@ -10,17 +10,26 @@ Functionality and features
 The following features are built-in into Connection Manager:
 	- Generic plugin infrastructure
 	- Device and network abstraction (with basic storage support)
-	- IPv4, routing and DNS configuration
-	- DNS Proxy
+	- IPv4, IPv4-LL (link-local) and DHCP
+	- IPv6, DHCPv6 and 6to4 tunnels
+	- Advanced routing and DNS configuration
+	- Built-in DNS proxy and intelligent caching
+	- Built-in WISPr hotspot logins and portal detection
+	- Time and timezone configuration (manual and automatic with NTP)
+	- Proxy handling (manual and automatic with WPAD)
+	- Tethering support (USB, Bluetooth and WiFi AP mode)
+	- Detailed statistics handling (home and roaming)
 
 Various plugins can be enabled for networking support:
 	- Ethernet plugin
-	- WiFi plugin with WEP40/WEP128 and WPA/WPA2 (personal only) support
-	- Bluetooth plugin
+	- WiFi plugin with WEP40/WEP128 and WPA/WPA2 (personal and enterprise)
+	- Bluetooth plugin (using BlueZ)
+	- 2G/3G/4G plugin (using oFono)
 
 Also plugins with additional features are available:
-	- Loopback setup
-	- PolicyKit support
+	- Loopback interface setup
+	- PACrunner proxy handling
+	- PolicyKit authorization support
 
 
 Compilation and installation
@@ -30,6 +39,8 @@ In order to compile Connection Manager you need following software packages:
 	- GCC compiler
 	- GLib library
 	- D-Bus library
+	- GnuTLS library
+	- IP-Tables library
 	- PolicyKit (optional)
 
 To configure run:
@@ -61,30 +72,77 @@ Configuration and options
 
 For a working system, certain configuration options need to be enabled:
 
-	--enable-ethernet
+	--disable-ethernet
 
-		Enable support for Ethernet network cards
+		Disable support for Ethernet network cards
 
-	--enable-wifi
+		By default Ethernet technology support is built-in and
+		enabled. This option can be used to build a small daemon
+		for a specific system if Ethernet support is not required.
 
-		Enable support for WiFi devices (requires wpa_supplicant)
+	--disable-wifi
 
+		Disable support for WiFi devices
 
-	--enable-bluetooth
+		By default WiFi technology support is built-in and
+		enabled. This option can be used to build a small daemon
+		for a specific system if WiFi support is not required.
 
-		Enable support for Bluetooth devices (requires BlueZ)
+		It is safe to build a daemon with WiFi support and no
+		running wpa_supplicant. The start of wpa_supplicant is
+		automatically detected and only a runtime dependency. It
+		is not needed to build ConnMan.
 
-	--enable-loopback
+	--disable-bluetooth
 
-		Enable setup of loopback device
+		Disable support for Bluetooth devices
+
+		By default Bluetooth technology support is built-in and
+		enabled. This option can be used to build a small daemon
+		for a specific system if Bluetooth support is not required.
+
+		It is safe to build a daemon with Bluetooth support and no
+		running bluetoothd. The start of bluetoothd is automatically
+		detected and only a runtime depedency. It is not needed to
+		build ConnMan.
+
+	--disable-ofono
+
+		Disable support for cellular 2G/3G/4G devices
+
+		By default oFono technology support is built-in and
+		enabled. This option can be used to build a small daemon
+		for a specific system where oFono is not used.
+
+		It is safe to build a daemon with oFono support and no
+		running ofonod. That start of ofonod is automatically
+		detected and only a runtime dependecy. it is not needed	to
+		build ConnMan.
+
+	--disable-pacrunner
+
+		Disable support for PACrunner proxy handling
+
+		By default PACrunner support is built-in and enabled. This
+		option can be used to build a small daemon for a specific
+		system where PACrunner is not used.
+
+		It is safe to build a daemon with PACrunner support and no
+		pacrunner daemon. It will detect and start a PACrunner
+		process if needed at runtime. The presence is not needed
+		to build ConnMan.
+
+	--disable-loopback
+
+		Disable setup of loopback device
 
 		For distributions with a really minimal init system and no
 		networking scripts this can take care of setting up the
 		loopback device and enabling it.
 
-		It is safe to select this option even if networking scripts
-		are in place. It detects an already configured loopback
-		device and leaves it as it is.
+		It is safe to leave this selected even if networking
+		scripts are in place. It detects an already configured
+		loopback device and leaves it as it is.
 
 	--enable-polkit
 
@@ -92,4 +150,13 @@ For a working system, certain configuration options need to be enabled:
 
 		This allows to check every D-Bus access against a security
 		policy and so restrict access to certain functionality.
+
+	--enable-nmcompat
+
+		Enable support for NetworkManager compatibility interfaces
+
+		This allows to expose a minimal set of NetworkManager
+		interfaces. It is useful for systems with applications
+		written to use NetworkManager to detect online/offline
+		status and have not yet been converted to use ConnMan.
 
