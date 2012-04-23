@@ -904,7 +904,8 @@ static void ssid_init(GSupplicantSSID *ssid, struct connman_network *network)
 	ssid->use_wps = connman_network_get_bool(network, "WiFi.UseWPS");
 	ssid->pin_wps = connman_network_get_string(network, "WiFi.PinWPS");
 
-	ssid->bgscan = BGSCAN_DEFAULT;
+	if (connman_setting_get_bool("BackgroundScanning") == TRUE)
+		ssid->bgscan = BGSCAN_DEFAULT;
 }
 
 static int network_connect(struct connman_network *network)
