@@ -50,6 +50,7 @@
 #include <connman/log.h>
 #include <connman/option.h>
 #include <connman/storage.h>
+#include <include/setting.h>
 
 #include <gsupplicant/gsupplicant.h>
 
@@ -406,6 +407,9 @@ static void interface_create_callback(int result,
 	}
 
 	connman_device_set_powered(wifi->device, TRUE);
+
+	if (connman_setting_get_bool("BackgroundScanning") == FALSE)
+		return;
 
 	/* Setting up automatic scanning */
 	setup_autoscan(wifi);
