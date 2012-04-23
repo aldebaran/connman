@@ -137,11 +137,6 @@ static void force_scan_trigger(struct connman_device *device)
 					device_scan_trigger, device);
 }
 
-void connman_device_schedule_scan(struct connman_device *device)
-{
-	reset_scan_trigger(device);
-}
-
 static const char *type2description(enum connman_device_type type)
 {
 	switch (type) {
