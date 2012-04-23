@@ -1183,9 +1183,6 @@ static void interface_state(GSupplicantInterface *interface)
 									FALSE)
 			break;
 
-		/* reset scan trigger and schedule background scan */
-		connman_device_schedule_scan(device);
-
 		connman_network_set_connected(network, TRUE);
 		break;
 
