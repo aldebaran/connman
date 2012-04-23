@@ -47,8 +47,6 @@ struct connman_device {
 	connman_bool_t scanning;
 	connman_bool_t disconnected;
 	connman_bool_t reconnect;
-	connman_uint16_t scan_interval;
-	connman_uint16_t backoff_interval;
 	char *name;
 	char *node;
 	char *address;
@@ -58,7 +56,6 @@ struct connman_device {
 	char *devname;
 	int phyindex;
 	int index;
-	guint scan_timeout;
 	guint pending_timeout;
 
 	struct connman_device_driver *driver;
@@ -69,72 +66,12 @@ struct connman_device {
 	GHashTable *networks;
 };
 
-#define SCAN_INITIAL_DELAY 10
-
-static gboolean device_scan_trigger(gpointer user_data)
-{
-	struct connman_device *device = user_data;
-
-	DBG("device %p", device);
-
-	if (device->driver == NULL) {
-		device->scan_timeout = 0;
-		return FALSE;
-	}
-
-	if (device->driver->scan)
-		device->driver->scan(device);
-
-	return TRUE;
-}
-
-static void clear_scan_trigger(struct connman_device *device)
-{
-	if (device->scan_timeout > 0) {
-		g_source_remove(device->scan_timeout);
-		device->scan_timeout = 0;
-	}
-}
-
 static void clear_pending_trigger(struct connman_device *device)
 {
 	if (device->pending_timeout > 0) {
 		g_source_remove(device->pending_timeout);
 		device->pending_timeout = 0;
 	}
-}
-
-static void reset_scan_trigger(struct connman_device *device)
-{
-	clear_scan_trigger(device);
-
-	if (device->scan_interval > 0) {
-		guint interval;
-
-		if (g_hash_table_size(device->networks) == 0) {
-			if (device->backoff_interval >= device->scan_interval)
-				device->backoff_interval = SCAN_INITIAL_DELAY;
-			interval = device->backoff_interval;
-		} else
-			interval = device->scan_interval;
-
-		DBG("interval %d", interval);
-
-		device->scan_timeout = g_timeout_add_seconds(interval,
-					device_scan_trigger, device);
-
-		device->backoff_interval *= 2;
-		if (device->backoff_interval > device->scan_interval)
-			device->backoff_interval = device->scan_interval;
-	}
-}
-
-static void force_scan_trigger(struct connman_device *device)
-{
-	clear_scan_trigger(device);
-
-	device->scan_timeout = g_timeout_add_seconds(5,
-					device_scan_trigger, device);
 }
 
 static const char *type2description(enum connman_device_type type)
@@ -299,8 +236,6 @@ int __connman_device_disable(struct connman_device *device)
 	device->powered_pending = PENDING_DISABLE;
 	device->reconnect = FALSE;
 
-	clear_scan_trigger(device);
-
 	if (device->network) {
 		struct connman_service *service =
 			__connman_service_lookup_from_network(device->network);
@@ -449,7 +384,6 @@ static void device_destruct(struct connman_device *device)
 	DBG("device %p name %s", device, device->name);
 
 	clear_pending_trigger(device);
-	clear_scan_trigger(device);
 
 	g_free(device->ident);
 	g_free(device->node);
@@ -480,7 +414,6 @@ struct connman_device *connman_device_create(const char *node,
 						enum connman_device_type type)
 {
 	struct connman_device *device;
-	connman_bool_t bg_scan;
 
 	DBG("node %s type %d", node, type);
 
@@ -492,33 +425,10 @@ struct connman_device *connman_device_create(const char *node,
 
 	device->refcount = 1;
 
-	bg_scan = connman_setting_get_bool("BackgroundScanning");
-
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
 
 	device->phyindex = -1;
-
-	device->backoff_interval = SCAN_INITIAL_DELAY;
-
-	switch (type) {
-	case CONNMAN_DEVICE_TYPE_UNKNOWN:
-	case CONNMAN_DEVICE_TYPE_ETHERNET:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
-	case CONNMAN_DEVICE_TYPE_CELLULAR:
-	case CONNMAN_DEVICE_TYPE_GPS:
-	case CONNMAN_DEVICE_TYPE_GADGET:
-	case CONNMAN_DEVICE_TYPE_VENDOR:
-		device->scan_interval = 0;
-		break;
-	case CONNMAN_DEVICE_TYPE_WIFI:
-		if (bg_scan == TRUE)
-			device->scan_interval = 300;
-		else
-			device->scan_interval = 0;
-		break;
-	}
 
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, free_network);
@@ -699,8 +609,6 @@ int connman_device_set_powered(struct connman_device *device,
 	connman_device_set_disconnected(device, FALSE);
 	device->scanning = FALSE;
 
-	reset_scan_trigger(device);
-
 	if (device->driver && device->driver->scan_fast)
 		device->driver->scan_fast(device);
 	else if (device->driver && device->driver->scan)
@@ -716,8 +624,6 @@ static int device_scan(struct connman_device *device)
 
 	if (device->powered == FALSE)
 		return -ENOLINK;
-
-	reset_scan_trigger(device);
 
 	return device->driver->scan(device);
 }
@@ -808,7 +714,6 @@ void connman_device_reset_scanning(struct connman_device *device)
 
 	g_hash_table_foreach(device->networks,
 				mark_network_available, NULL);
-
 }
 
 /**
@@ -833,8 +738,6 @@ int connman_device_set_scanning(struct connman_device *device,
 
 	if (scanning == TRUE) {
 		__connman_technology_scan_started(device);
-
-		reset_scan_trigger(device);
 
 		g_hash_table_foreach(device->networks,
 					mark_network_unavailable, NULL);
@@ -867,12 +770,6 @@ int connman_device_set_disconnected(struct connman_device *device,
 		return -EALREADY;
 
 	device->disconnected = disconnected;
-
-	if (disconnected == TRUE)
-	{
-		force_scan_trigger(device);
-		device->backoff_interval = SCAN_INITIAL_DELAY;
-	}
 
 	return 0;
 }
