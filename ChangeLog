@@ -1,3 +1,10 @@
+ver 0.81:
+	Update default configuration options.
+	Add support for WPS PBC advertising handling.
+	Add support for wpa_supplicant background scanning.
+	Fix issue with showing cellular services without APN.
+	Fix issue with missing timeservers changed signal.
+
 ver 0.80:
 	Update to support additional D-Bus API changes.
 	Add support for preferred technologies switching.
