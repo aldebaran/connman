@@ -160,3 +160,19 @@ For a working system, certain configuration options need to be enabled:
 		written to use NetworkManager to detect online/offline
 		status and have not yet been converted to use ConnMan.
 
+
+wpa_supplicant configuration
+============================
+
+In order to get wpa_supplicant and Connman working properly together you should
+edit wpa_supplicant .config file and set:
+
+CONFIG_WPS=y
+CONFIG_AP=y
+CONFIG_CTRL_IFACE_DBUS_NEW=y
+
+and, add:
+CONFIG_BGSCAN_SIMPLE=y
+
+This last option will enable the support of background scanning while being
+connected, which is necessary when roaming on wifi.
