@@ -214,8 +214,10 @@ static void stop_autoscan(struct connman_device *device)
 
 	autoscan = wifi->autoscan;
 
-	if (autoscan->timeout > 0)
-		g_source_remove(autoscan->timeout);
+	if (autoscan->timeout == 0 && autoscan->interval == 0)
+		return;
+
+	g_source_remove(autoscan->timeout);
 
 	autoscan->timeout = 0;
 	autoscan->interval = 0;
@@ -281,6 +283,7 @@ static void autoscan_scan_callback(int result,
 	DBG("");
 
 	connman_device_set_scanning(device, FALSE);
+	connman_device_unref(device);
 }
 
 static gboolean autoscan_timeout(gpointer data)
