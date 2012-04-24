@@ -4530,6 +4530,9 @@ static int service_indicate_state(struct connman_service *service)
 			__connman_service_auto_connect();
 	}
 
+	if (old_state == CONNMAN_SERVICE_STATE_ONLINE)
+		__connman_notifier_leave_online(service->type);
+
 	service->state = new_state;
 	state_changed(service);
 
@@ -4640,7 +4643,7 @@ static int service_indicate_state(struct connman_service *service)
 		dns_changed(service);
 		domain_changed(service);
 
-		__connman_notifier_disconnect(service->type, old_state);
+		__connman_notifier_disconnect(service->type);
 
 		/*
 		 * Previous services which are connected and which states
@@ -4671,7 +4674,7 @@ static int service_indicate_state(struct connman_service *service)
 	__connman_connection_update_gateway();
 
 	if (new_state == CONNMAN_SERVICE_STATE_ONLINE) {
-		__connman_notifier_online(service->type);
+		__connman_notifier_enter_online(service->type);
 		default_changed();
 	}
 

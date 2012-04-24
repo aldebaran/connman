@@ -171,7 +171,7 @@ void __connman_notifier_connect(enum connman_service_type type)
 		technology_connected(type, TRUE);
 }
 
-void __connman_notifier_online(enum connman_service_type type)
+void __connman_notifier_enter_online(enum connman_service_type type)
 {
 	DBG("type %d", type);
 
@@ -179,8 +179,15 @@ void __connman_notifier_online(enum connman_service_type type)
 		state_changed();
 }
 
-void __connman_notifier_disconnect(enum connman_service_type type,
-					enum connman_service_state old_state)
+void __connman_notifier_leave_online(enum connman_service_type type)
+{
+	DBG("type %d", type);
+
+	if (__sync_fetch_and_sub(&online[type], 1) == 1)
+		state_changed();
+}
+
+void __connman_notifier_disconnect(enum connman_service_type type)
 {
 	DBG("type %d", type);
 
@@ -204,9 +211,6 @@ void __connman_notifier_disconnect(enum connman_service_type type,
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		break;
 	}
-
-	if (old_state == CONNMAN_SERVICE_STATE_ONLINE)
-		__sync_fetch_and_sub(&online[type], 1);
 
 	if (__sync_fetch_and_sub(&connected[type], 1) != 1)
 		return;
