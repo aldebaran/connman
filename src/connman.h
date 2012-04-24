@@ -196,6 +196,7 @@ int __connman_resolver_init(connman_bool_t dnsproxy);
 void __connman_resolver_cleanup(void);
 int __connman_resolvfile_append(const char *interface, const char *domain, const char *server);
 int __connman_resolvfile_remove(const char *interface, const char *domain, const char *server);
+int __connman_resolver_redo_servers(const char *interface);
 
 void __connman_storage_migrate(void);
 GKeyFile *__connman_storage_open_global();

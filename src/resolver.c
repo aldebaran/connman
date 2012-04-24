@@ -468,6 +468,39 @@ void connman_resolver_flush(void)
 	return;
 }
 
+int __connman_resolver_redo_servers(const char *interface)
+{
+	GSList *list;
+
+	if (dnsproxy_enabled == FALSE)
+		return 0;
+
+	DBG("interface %s", interface);
+
+	if (interface == NULL)
+		return -EINVAL;
+
+	for (list = entry_list; list; list = list->next) {
+		struct entry_data *entry = list->data;
+
+		if (entry->timeout == 0 ||
+				g_strcmp0(entry->interface, interface) != 0)
+			continue;
+
+		/*
+		 * We remove the server, and then re-create so that it will
+		 * use proper source addresses when sending DNS queries.
+		 */
+		__connman_dnsproxy_remove(entry->interface, entry->domain,
+					entry->server);
+
+		__connman_dnsproxy_append(entry->interface, entry->domain,
+					entry->server);
+	}
+
+	return 0;
+}
+
 static void free_entry(gpointer data)
 {
 	struct entry_data *entry = data;
