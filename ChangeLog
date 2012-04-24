@@ -1,3 +1,9 @@
+ver 0.82:
+	Fix issue with global online state handling.
+	Fix issue with timeserver handling in case of VPN.
+	Fix issue with automatic WiFi scanning handling.
+	Fix issue with WPS PIN length of zero and PBC.
+
 ver 0.81:
 	Update default configuration options.
 	Add support for WPS PBC advertising handling.
