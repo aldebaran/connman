@@ -186,14 +186,14 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 		list = g_slist_prepend(list, g_strdup(service_ts[i]));
 
 	network = __connman_service_get_network(service);
+	if (network != NULL) {
+		index = connman_network_get_index(network);
+		service_gw = __connman_ipconfig_get_gateway_from_index(index);
 
-	index = connman_network_get_index(network);
-
-	service_gw = __connman_ipconfig_get_gateway_from_index(index);
-
-	/* Then add Service Gateway to the list */
-	if (service_gw != NULL)
-		list = g_slist_prepend(list, g_strdup(service_gw));
+		/* Then add Service Gateway to the list */
+		if (service_gw != NULL)
+			list = g_slist_prepend(list, g_strdup(service_gw));
+	}
 
 	/* Then add Global Timeservers to the list */
 	timeservers = load_timeservers();
