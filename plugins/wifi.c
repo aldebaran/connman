@@ -1175,10 +1175,15 @@ static void interface_state(GSupplicantInterface *interface)
 
 	case G_SUPPLICANT_STATE_AUTHENTICATING:
 	case G_SUPPLICANT_STATE_ASSOCIATING:
+		stop_autoscan(device);
+
 		connman_network_set_associating(network, TRUE);
 		break;
 
 	case G_SUPPLICANT_STATE_COMPLETED:
+		/* though it should be already stopped: */
+		stop_autoscan(device);
+
 		if (handle_wps_completion(interface, network, device, wifi) ==
 									FALSE)
 			break;
@@ -1217,10 +1222,15 @@ static void interface_state(GSupplicantInterface *interface)
 
 		connman_network_set_associating(network, FALSE);
 		connman_network_set_connected(network, FALSE);
+
+		start_autoscan(device);
+
 		break;
 
 	case G_SUPPLICANT_STATE_INACTIVE:
 		connman_network_set_associating(network, FALSE);
+		start_autoscan(device);
+
 		break;
 
 	case G_SUPPLICANT_STATE_UNKNOWN:
