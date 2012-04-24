@@ -4361,15 +4361,22 @@ int __connman_service_add_passphrase(struct connman_service *service,
 
 static int check_wpspin(const char *wpspin)
 {
+	int length;
 	guint i;
 
 	if (wpspin == NULL)
 		return 0;
 
+	length = strlen(wpspin);
+
+	/* If 0, it will mean user wants to use PBC method */
+	if (length == 0)
+		return 0;
+
 	/* A WPS PIN is always 8 chars length,
 	 * its content is in digit representation.
 	 */
-	if (strlen(wpspin) != 8)
+	if (length != 8)
 		return -ENOKEY;
 
 	for (i = 0; i < 8; i++)
