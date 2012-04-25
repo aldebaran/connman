@@ -1180,7 +1180,9 @@ static void interface_state(GSupplicantInterface *interface)
 	case G_SUPPLICANT_STATE_ASSOCIATING:
 		stop_autoscan(device);
 
-		connman_network_set_associating(network, TRUE);
+		if (wifi->connected == FALSE)
+			connman_network_set_associating(network, TRUE);
+
 		break;
 
 	case G_SUPPLICANT_STATE_COMPLETED:
@@ -1244,6 +1246,34 @@ static void interface_state(GSupplicantInterface *interface)
 	}
 
 	wifi->state = state;
+
+	/* Saving wpa_s state policy:
+	 * If connected and if the state changes are roaming related:
+	 * --> We stay connected
+	 * If completed
+	 * --> We are connected
+	 * All other case:
+	 * --> We are not connected
+	 * */
+	switch (state) {
+	case G_SUPPLICANT_STATE_AUTHENTICATING:
+	case G_SUPPLICANT_STATE_ASSOCIATING:
+	case G_SUPPLICANT_STATE_ASSOCIATED:
+	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
+	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
+		if (wifi->connected == TRUE)
+			connman_warn("Probably roaming right now!"
+						" Staying connected...");
+		else
+			wifi->connected = FALSE;
+		break;
+	case G_SUPPLICANT_STATE_COMPLETED:
+		wifi->connected = TRUE;
+		break;
+	default:
+		wifi->connected = FALSE;
+		break;
+	}
 
 	DBG("DONE");
 }
