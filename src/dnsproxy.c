@@ -1627,6 +1627,18 @@ static void cache_element_destroy(gpointer value)
 		cache_size = 0;
 }
 
+static gboolean try_remove_cache(gpointer user_data)
+{
+	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1) {
+		DBG("No cache users, removing it.");
+
+		g_hash_table_destroy(cache);
+		cache = NULL;
+	}
+
+	return FALSE;
+}
+
 static void destroy_server(struct server_data *server)
 {
 	GList *list;
@@ -1656,10 +1668,16 @@ static void destroy_server(struct server_data *server)
 	}
 	g_free(server->interface);
 
-	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1) {
-		g_hash_table_destroy(cache);
-		cache = NULL;
-	}
+	/*
+	 * We do not remove cache right away but delay it few seconds.
+	 * The idea is that when IPv6 DNS server is added via RDNSS, it has a
+	 * lifetime. When the lifetime expires we decrease the refcount so it
+	 * is possible that the cache is then removed. Because a new DNS server
+	 * is usually created almost immediately we would then loose the cache
+	 * without any good reason. The small delay allows the new RDNSS to
+	 * create a new DNS server instance and the refcount does not go to 0.
+	 */
+	g_timeout_add_seconds(3, try_remove_cache, NULL);
 
 	g_free(server);
 }
