@@ -4359,7 +4359,7 @@ int __connman_service_add_passphrase(struct connman_service *service,
 	return err;
 }
 
-static int check_wpspin(const char *wpspin)
+static int check_wpspin(struct connman_service *service, const char *wpspin)
 {
 	int length;
 	guint i;
@@ -4370,8 +4370,11 @@ static int check_wpspin(const char *wpspin)
 	length = strlen(wpspin);
 
 	/* If 0, it will mean user wants to use PBC method */
-	if (length == 0)
+	if (length == 0) {
+		connman_network_set_string(service->network,
+							"WiFi.PinWPS", NULL);
 		return 0;
+	}
 
 	/* A WPS PIN is always 8 chars length,
 	 * its content is in digit representation.
@@ -4382,6 +4385,8 @@ static int check_wpspin(const char *wpspin)
 	for (i = 0; i < 8; i++)
 		if (!isdigit((unsigned char) wpspin[i]))
 			return -ENOKEY;
+
+	connman_network_set_string(service->network, "WiFi.PinWPS", wpspin);
 
 	return 0;
 }
@@ -4412,13 +4417,12 @@ static void request_input_cb (struct connman_service *service,
 		return;
 	}
 
-	err = check_wpspin(wpspin);
-	if (err < 0)
-		goto done;
-	if (service->network != NULL) {
+	if (wps == TRUE && service->network != NULL) {
+		err = check_wpspin(service, wpspin);
+		if (err < 0)
+			goto done;
+
 		connman_network_set_bool(service->network, "WiFi.UseWPS", wps);
-		connman_network_set_string(service->network, "WiFi.PinWPS",
-						wpspin);
 	}
 
 	if (identity != NULL)
