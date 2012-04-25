@@ -4416,8 +4416,8 @@ static void request_input_cb (struct connman_service *service,
 	if (err < 0)
 		goto done;
 	if (service->network != NULL) {
-		connman_network_set_bool(service->network, "Wifi.UseWPS", wps);
-		connman_network_set_string(service->network, "Wifi.PinWPS",
+		connman_network_set_bool(service->network, "WiFi.UseWPS", wps);
+		connman_network_set_string(service->network, "WiFi.PinWPS",
 						wpspin);
 	}
 
