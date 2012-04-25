@@ -4863,7 +4863,8 @@ int __connman_service_online_check_failed(struct connman_service *service,
 	/* currently we only retry IPv6 stuff */
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4 ||
 			service->online_check_count != 1) {
-		__connman_service_auto_connect();
+		connman_warn("Online check failed for %p %s", service,
+			service->name);
 		return 0;
 	}
 
