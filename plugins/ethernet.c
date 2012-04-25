@@ -307,7 +307,7 @@ static struct connman_technology_driver tech_driver = {
 	.probe			= tech_probe,
 	.remove			= tech_remove,
 	.add_interface		= tech_add_interface,
-	.remove_interface 	= tech_remove_interface,
+	.remove_interface	= tech_remove_interface,
 	.set_tethering		= tech_set_tethering,
 };
 
