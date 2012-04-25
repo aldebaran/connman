@@ -555,8 +555,10 @@ static void __connman_ipconfig_lower_up(struct connman_ipdevice *ipdevice)
 			ipdevice->config_ipv6->enabled == TRUE)
 		return;
 
-	set_ipv6_state(ipdevice->ifname, FALSE);
-	ipdevice->ipv6_enabled = FALSE;
+	if (__connman_device_isfiltered(ipdevice->ifname) == FALSE) {
+		ipdevice->ipv6_enabled = get_ipv6_state(ipdevice->ifname);
+		set_ipv6_state(ipdevice->ifname, FALSE);
+	}
 }
 
 static void __connman_ipconfig_lower_down(struct connman_ipdevice *ipdevice)
