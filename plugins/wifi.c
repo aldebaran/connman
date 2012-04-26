@@ -1225,8 +1225,8 @@ static void interface_state(GSupplicantInterface *interface)
 						FALSE) != 0)
 			DBG("Could not disables selected network");
 
-		connman_network_set_associating(network, FALSE);
 		connman_network_set_connected(network, FALSE);
+		connman_network_set_associating(network, FALSE);
 
 		start_autoscan(device);
 
