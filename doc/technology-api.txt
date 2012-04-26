@@ -28,9 +28,8 @@ Methods		dict GetProperties()
 			method call will return when a scan has been
 			finished and results are available.
 
-			Results will be signaled via the ServicesAdded (or
-			also ServicesRemoved) signal from the manager
-			interface.
+			Results will be signaled via the ServicesChanged
+			signal from the manager interface.
 
 Signals		PropertyChanged(string name, variant value)
 
