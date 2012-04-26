@@ -65,7 +65,7 @@ sbin_PROGRAMS = src/connmand
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			gweb/gweb.h gweb/gweb.c \
 			gweb/gresolv.h gweb/gresolv.c \
-			gweb/giognutls.h gweb/gionotls.c \
+			gweb/giognutls.h gweb/giognutls.c \
 			$(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c \
@@ -83,7 +83,8 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
 			src/ippool.c src/bridge.c src/nat.c
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
-				@CAPNG_LIBS@ @XTABLES_LIBS@ -lresolv -ldl
+					@CAPNG_LIBS@ @XTABLES_LIBS@ \
+					@GNUTLS_LIBS@ -lresolv -ldl
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
@@ -122,7 +123,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @CAPNG_CFLAGS@ @XTABLES_CFLAGS@ \
 INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
-		plugins/connman-nmcompat.conf
+		plugins/connman-nmcompat.conf gweb/gionotls.c
 
 
 script_DATA =
