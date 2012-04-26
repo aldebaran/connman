@@ -402,8 +402,11 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 					request_input_append_identity, service);
 	}
 
-	connman_dbus_dict_append_dict(&dict, "Passphrase",
-				request_input_append_passphrase, service);
+	if (__connman_service_get_security(service) !=
+			CONNMAN_SERVICE_SECURITY_NONE) {
+		connman_dbus_dict_append_dict(&dict, "Passphrase",
+					request_input_append_passphrase, service);
+	}
 
 	if (__connman_service_wps_enabled(service) == TRUE) {
 	    connman_dbus_dict_append_dict(&dict, "WPS",
