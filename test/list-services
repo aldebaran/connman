@@ -41,8 +41,9 @@ for path, properties in manager.GetServices():
 						"Ethernet", "Provider"]:
 			val = extract_values(properties[key])
 		elif key in ["Nameservers", "Nameservers.Configuration",
-					"Domains", "Domains.Configuration",
-						"Security"]:
+			     "Domains", "Domains.Configuration",
+			     "Timeservers", "Timeservers.Configuration",
+			     "Security"]:
 			val = extract_list(properties[key])
 		elif key in ["Favorite", "Immutable", "AutoConnect",
 					"LoginRequired", "PassphraseRequired"]:
