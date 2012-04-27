@@ -394,12 +394,12 @@ static connman_bool_t connman_technology_load_offlinemode()
 	/* If there is a error, we enable offlinemode */
 	keyfile = __connman_storage_load_global();
 	if (keyfile == NULL)
-		return TRUE;
+		return FALSE;
 
 	offlinemode = g_key_file_get_boolean(keyfile, "global",
 						"OfflineMode", &error);
 	if (error != NULL) {
-		offlinemode = TRUE;
+		offlinemode = FALSE;
 		g_clear_error(&error);
 	}
 
