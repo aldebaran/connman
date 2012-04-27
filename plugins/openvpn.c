@@ -48,20 +48,21 @@ static DBusConnection *connection;
 struct {
 	const char *cm_opt;
 	const char *ov_opt;
+	char       has_value;
 } ov_options[] = {
-	{ "Host", "--remote" },
-	{ "OpenVPN.CACert", "--ca" },
-	{ "OpenVPN.Cert", "--cert" },
-	{ "OpenVPN.Key", "--key" },
-	{ "OpenVPN.MTU", "--mtu" },
-	{ "OpenVPN.Proto", "--proto" },
-	{ "OpenVPN.Port", "--port" },
-	{ "OpenVPN.AuthUserPass", "--auth-user-pass" },
-	{ "OpenVPN.TLSRemote", "--tls-remote" },
-	{ "OpenVPN.Cipher", "--cipher" },
-	{ "OpenVPN.Auth", "--auth" },
-	{ "OpenVPN.CompLZO", "--comp-lzo" },
-	{ "OpenVPN.RemoteCertTls", "--remote-cert-tls" },
+	{ "Host", "--remote", 1 },
+	{ "OpenVPN.CACert", "--ca", 1 },
+	{ "OpenVPN.Cert", "--cert", 1 },
+	{ "OpenVPN.Key", "--key", 1 },
+	{ "OpenVPN.MTU", "--mtu", 1 },
+	{ "OpenVPN.Proto", "--proto", 1 },
+	{ "OpenVPN.Port", "--port", 1 },
+	{ "OpenVPN.AuthUserPass", "--auth-user-pass", 1 },
+	{ "OpenVPN.TLSRemote", "--tls-remote", 1 },
+	{ "OpenVPN.Cipher", "--cipher", 1 },
+	{ "OpenVPN.Auth", "--auth", 1 },
+	{ "OpenVPN.CompLZO", "--comp-lzo", 0 },
+	{ "OpenVPN.RemoteCertTls", "--remote-cert-tls", 1 },
 };
 
 static void ov_append_dns_entries(const char *key, const char *value,
@@ -208,7 +209,8 @@ static int task_append_config_data(struct connman_provider *provider,
 			continue;
 
 		if (connman_task_add_argument(task,
-					ov_options[i].ov_opt, option) < 0) {
+					ov_options[i].ov_opt,
+					ov_options[i].has_value ? option : NULL) < 0) {
 			return -EIO;
 		}
 	}
