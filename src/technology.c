@@ -304,7 +304,11 @@ static void load_state(struct connman_technology *technology)
 	keyfile = __connman_storage_load_global();
 	/* Fallback on disabling technology if file not found. */
 	if (keyfile == NULL) {
-		technology->enable_persistent = FALSE;
+		if (technology->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+			/* We enable ethernet by default */
+			technology->enable_persistent = TRUE;
+		else
+			technology->enable_persistent = FALSE;
 		return;
 	}
 
@@ -316,7 +320,10 @@ static void load_state(struct connman_technology *technology)
 	if (error == NULL)
 		technology->enable_persistent = enable;
 	else {
-		technology->enable_persistent = FALSE;
+		if (technology->type == CONNMAN_SERVICE_TYPE_ETHERNET)
+			technology->enable_persistent = TRUE;
+		else
+			technology->enable_persistent = FALSE;
 		g_clear_error(&error);
 	}
 done:
