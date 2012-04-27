@@ -1,3 +1,13 @@
+ver 0.83:
+	Fix issue with Ethernet not being enabled by default.
+	Fix issue with missing host routes for WISPr request.
+	Fix issue with missing HTTPS handling for WISPr support.
+	Fix issue with agent asking for passphrase for open service.
+	Fix issue with endless online check for preferred technology.
+	Fix issue with IPv6 RDNSS and DNS server creation.
+	Fix issue with WiFi roaming state change handling.
+	Fix issue with broken handling of WPS PBC method.
+
 ver 0.82:
 	Fix issue with global online state handling.
 	Fix issue with timeserver handling in case of VPN.
