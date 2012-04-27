@@ -296,7 +296,8 @@ enum connman_ipconfig_type __connman_ipconfig_get_config_type(
 					struct connman_ipconfig *ipconfig);
 unsigned short __connman_ipconfig_get_type_from_index(int index);
 unsigned int __connman_ipconfig_get_flags_from_index(int index);
-const char *__connman_ipconfig_get_gateway_from_index(int index);
+const char *__connman_ipconfig_get_gateway_from_index(int index,
+	enum connman_ipconfig_type type);
 void __connman_ipconfig_set_index(struct connman_ipconfig *ipconfig, int index);
 
 const char *__connman_ipconfig_get_local(struct connman_ipconfig *ipconfig);

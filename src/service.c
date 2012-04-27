@@ -2919,7 +2919,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 
 		index = connman_network_get_index(service->network);
-		gw = __connman_ipconfig_get_gateway_from_index(index);
+		gw = __connman_ipconfig_get_gateway_from_index(index,
+			CONNMAN_IPCONFIG_TYPE_ALL);
 
 		if (gw && strlen(gw))
 			__connman_service_nameserver_del_routes(service,

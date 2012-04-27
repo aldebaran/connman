@@ -1083,7 +1083,8 @@ unsigned int __connman_ipconfig_get_flags_from_index(int index)
 	return ipdevice->flags;
 }
 
-const char *__connman_ipconfig_get_gateway_from_index(int index)
+const char *__connman_ipconfig_get_gateway_from_index(int index,
+	enum connman_ipconfig_type type)
 {
 	struct connman_ipdevice *ipdevice;
 
@@ -1091,19 +1092,23 @@ const char *__connman_ipconfig_get_gateway_from_index(int index)
 	if (ipdevice == NULL)
 		return NULL;
 
-	if (ipdevice->ipv4_gateway != NULL)
-		return ipdevice->ipv4_gateway;
+	if (type != CONNMAN_IPCONFIG_TYPE_IPV6) {
+		if (ipdevice->ipv4_gateway != NULL)
+			return ipdevice->ipv4_gateway;
 
-	if (ipdevice->config_ipv4 != NULL &&
-			ipdevice->config_ipv4->address != NULL)
-		return ipdevice->config_ipv4->address->gateway;
+		if (ipdevice->config_ipv4 != NULL &&
+				ipdevice->config_ipv4->address != NULL)
+			return ipdevice->config_ipv4->address->gateway;
+	}
 
-	if (ipdevice->ipv6_gateway != NULL)
-		return ipdevice->ipv6_gateway;
+	if (type != CONNMAN_IPCONFIG_TYPE_IPV4) {
+		if (ipdevice->ipv6_gateway != NULL)
+			return ipdevice->ipv6_gateway;
 
-	if (ipdevice->config_ipv6 != NULL &&
-			ipdevice->config_ipv6->address != NULL)
-		return ipdevice->config_ipv6->address->gateway;
+		if (ipdevice->config_ipv6 != NULL &&
+				ipdevice->config_ipv6->address != NULL)
+			return ipdevice->config_ipv6->address->gateway;
+	}
 
 	return NULL;
 }

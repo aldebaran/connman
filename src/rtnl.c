@@ -291,7 +291,9 @@ static void trigger_rtnl(int index, void *user_data)
 	}
 
 	if (rtnl->newgateway) {
-		const char *gateway = __connman_ipconfig_get_gateway_from_index(index);
+		const char *gateway =
+			__connman_ipconfig_get_gateway_from_index(index,
+					CONNMAN_IPCONFIG_TYPE_ALL);
 
 		if (gateway != NULL)
 			rtnl->newgateway(index, gateway);
