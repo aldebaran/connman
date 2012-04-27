@@ -400,32 +400,13 @@ void __connman_storage_migrate()
 	if(pathname == NULL)
 		return;
 
+	/* If default.profile exists, create new settings file */
+	keyfile_def = storage_load(pathname);
+	if (keyfile_def == NULL)
+		goto done;
+
 	/* Copy global settings from default.profile to settings. */
 	keyfile = g_key_file_new();
-
-	/* If default.profile doesn't exists, create settings with defaults. */
-	keyfile_def = storage_load(pathname);
-	if (keyfile_def == NULL) {
-		g_key_file_set_boolean(keyfile, "global",
-					"OfflineMode", FALSE);
-
-		g_key_file_set_boolean(keyfile, "WiFi",
-					"Enable", FALSE);
-
-		g_key_file_set_boolean(keyfile, "Bluetooth",
-					"Enable", FALSE);
-
-		g_key_file_set_boolean(keyfile, "Wired",
-					"Enable", FALSE);
-
-		g_key_file_set_boolean(keyfile, "Cellular",
-					"Enable", FALSE);
-
-		g_key_file_set_boolean(keyfile, "WiMAX",
-					"Enable", FALSE);
-
-		goto done;
-	}
 
 	val = g_key_file_get_boolean(keyfile_def, "global",
 					"OfflineMode", &error);
@@ -487,13 +468,12 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "WiMAX",
 					"Enable", val);
 
-done:
 	__connman_storage_save_global(keyfile);
 
 	g_key_file_free(keyfile);
 
-	if (keyfile_def)
-		g_key_file_free(keyfile_def);
+	g_key_file_free(keyfile_def);
 
+done:
 	g_free(pathname);
 }
