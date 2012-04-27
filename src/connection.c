@@ -832,15 +832,31 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	}
 
 	if (service_type == CONNMAN_SERVICE_TYPE_VPN) {
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
-					new_gateway->ipv4_gateway != NULL)
-			set_vpn_routes(new_gateway->ipv4_gateway,
-				service, gateway, type, peer);
 
-		else if (type == CONNMAN_IPCONFIG_TYPE_IPV6 &&
-					new_gateway->ipv6_gateway != NULL)
-			set_vpn_routes(new_gateway->ipv6_gateway,
-				service, gateway, type, peer);
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+			if (new_gateway->ipv4_gateway != NULL)
+				set_vpn_routes(new_gateway->ipv4_gateway,
+					service, gateway, type, peer);
+
+			/*
+			 * Special route to VPN server via gateway. This
+			 * is needed so that we can access hosts behind
+			 * the VPN. The route might already exist depending
+			 * on network topology.
+			 */
+			connman_inet_add_host_route(active_gateway->index,
+					gateway,
+					active_gateway->ipv4_gateway->gateway);
+
+		} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+			if (new_gateway->ipv6_gateway != NULL)
+				set_vpn_routes(new_gateway->ipv6_gateway,
+					service, gateway, type, peer);
+
+			connman_inet_add_ipv6_host_route(active_gateway->index,
+					gateway,
+					active_gateway->ipv6_gateway->gateway);
+		}
 
 	} else {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
