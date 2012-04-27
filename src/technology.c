@@ -1355,6 +1355,9 @@ int __connman_technology_init(void)
 
 	global_offlinemode = connman_technology_load_offlinemode();
 
+	/* This will create settings file if it is missing */
+	connman_technology_save_offlinemode();
+
 	return 0;
 }
 
