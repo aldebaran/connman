@@ -98,6 +98,7 @@ struct web_session {
 	GWebResult result;
 
 	GWebResultFunc result_func;
+	GWebRouteFunc route_func;
 	GWebInputFunc input_func;
 	int fd;
 	gsize length;
@@ -440,6 +441,13 @@ static inline void call_result_func(struct web_session *session, guint16 status)
 
 	debug(session->web, "[result function] %s",
 					result == TRUE ? "continue" : "stop");
+}
+
+static inline void call_route_func(struct web_session *session)
+{
+	if (session->route_func != NULL)
+		session->route_func(session->address, session->addr->ai_family,
+				session->web->index, session->user_data);
 }
 
 static gboolean process_send_buffer(struct web_session *session)
@@ -1212,6 +1220,7 @@ static void resolv_result(GResolvResultStatus status,
 	}
 
 	session->address = g_strdup(results[0]);
+	call_route_func(session);
 
 	if (create_transport(session) < 0) {
 		call_result_func(session, 409);
@@ -1222,7 +1231,7 @@ static void resolv_result(GResolvResultStatus status,
 static guint do_request(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
 				int fd, gsize length, GWebResultFunc func,
-				gpointer user_data)
+				GWebRouteFunc route, gpointer user_data)
 {
 	struct web_session *session;
 
@@ -1255,6 +1264,7 @@ static guint do_request(GWeb *web, const char *url,
 	session->web = web;
 
 	session->result_func = func;
+	session->route_func = route;
 	session->input_func = input;
 	session->fd = fd;
 	session->length = length;
@@ -1324,17 +1334,17 @@ static guint do_request(GWeb *web, const char *url,
 	return web->next_query_id++;
 }
 
-guint g_web_request_get(GWeb *web, const char *url,
-				GWebResultFunc func, gpointer user_data)
+guint g_web_request_get(GWeb *web, const char *url, GWebResultFunc func,
+		GWebRouteFunc route, gpointer user_data)
 {
-	return do_request(web, url, NULL, NULL, -1, 0, func, user_data);
+	return do_request(web, url, NULL, NULL, -1, 0, func, route, user_data);
 }
 
 guint g_web_request_post(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data)
 {
-	return do_request(web, url, type, input, -1, 0, func, user_data);
+	return do_request(web, url, type, input, -1, 0, func, NULL, user_data);
 }
 
 guint g_web_request_post_file(GWeb *web, const char *url,
@@ -1352,7 +1362,8 @@ guint g_web_request_post_file(GWeb *web, const char *url,
 	if (fd < 0)
 		return 0;
 
-	ret = do_request(web, url, type, NULL, fd, st.st_size, func, user_data);
+	ret = do_request(web, url, type, NULL, fd, st.st_size, func, NULL,
+			user_data);
 	if (ret == 0)
 		close(fd);
 

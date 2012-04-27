@@ -40,6 +40,9 @@ typedef struct _GWebParser GWebParser;
 
 typedef gboolean (*GWebResultFunc)(GWebResult *result, gpointer user_data);
 
+typedef gboolean (*GWebRouteFunc)(const char *addr, int ai_family,
+		int if_index, gpointer user_data);
+
 typedef gboolean (*GWebInputFunc)(const guint8 **data, gsize *length,
 							gpointer user_data);
 
@@ -70,7 +73,8 @@ void g_web_set_close_connection(GWeb *web, gboolean enabled);
 gboolean g_web_get_close_connection(GWeb *web);
 
 guint g_web_request_get(GWeb *web, const char *url,
-				GWebResultFunc func, gpointer user_data);
+				GWebResultFunc func, GWebRouteFunc route,
+				gpointer user_data);
 guint g_web_request_post(GWeb *web, const char *url,
 				const char *type, GWebInputFunc input,
 				GWebResultFunc func, gpointer user_data);
