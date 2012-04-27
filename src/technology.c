@@ -292,6 +292,34 @@ static const char *get_name(enum connman_service_type type)
 	return NULL;
 }
 
+static void save_state(struct connman_technology *technology)
+{
+	GKeyFile *keyfile;
+	gchar *identifier;
+
+	DBG("technology %p", technology);
+
+	keyfile = __connman_storage_load_global();
+	if (keyfile == NULL)
+		keyfile = g_key_file_new();
+
+	identifier = g_strdup_printf("%s", get_name(technology->type));
+	if (identifier == NULL)
+		goto done;
+
+	g_key_file_set_boolean(keyfile, identifier, "Enable",
+				technology->enable_persistent);
+
+done:
+	g_free(identifier);
+
+	__connman_storage_save_global(keyfile);
+
+	g_key_file_free(keyfile);
+
+	return;
+}
+
 static void load_state(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
@@ -324,38 +352,12 @@ static void load_state(struct connman_technology *technology)
 			technology->enable_persistent = TRUE;
 		else
 			technology->enable_persistent = FALSE;
+
+		save_state(technology);
 		g_clear_error(&error);
 	}
 done:
 	g_free(identifier);
-
-	g_key_file_free(keyfile);
-
-	return;
-}
-
-static void save_state(struct connman_technology *technology)
-{
-	GKeyFile *keyfile;
-	gchar *identifier;
-
-	DBG("technology %p", technology);
-
-	keyfile = __connman_storage_load_global();
-	if (keyfile == NULL)
-		keyfile = g_key_file_new();
-
-	identifier = g_strdup_printf("%s", get_name(technology->type));
-	if (identifier == NULL)
-		goto done;
-
-	g_key_file_set_boolean(keyfile, identifier, "Enable",
-				technology->enable_persistent);
-
-done:
-	g_free(identifier);
-
-	__connman_storage_save_global(keyfile);
 
 	g_key_file_free(keyfile);
 
