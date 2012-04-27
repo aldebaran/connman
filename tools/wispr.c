@@ -31,6 +31,7 @@
 #include <string.h>
 #include <signal.h>
 #include <termios.h>
+#include <netdb.h>
 
 #include <gweb/gweb.h>
 
@@ -475,6 +476,24 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 	return FALSE;
 }
 
+static gboolean wispr_route(const char *addr, int ai_family, int if_index,
+		gpointer user_data)
+{
+	char *family = "unknown";
+
+	if (ai_family == AF_INET)
+		family = "IPv4";
+	else if (ai_family == AF_INET6)
+		family = "IPv6";
+
+	printf("Route request: %s %s index %d\n", family, addr, if_index);
+
+	if (ai_family != AF_INET && ai_family != AF_INET6)
+		return FALSE;
+
+	return TRUE;
+}
+
 static gboolean wispr_result(GWebResult *result, gpointer user_data)
 {
 	struct wispr_session *wispr = user_data;
@@ -515,7 +534,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		printf("\n");
 
 		wispr->request = g_web_request_get(wispr->web, redirect,
-							wispr_result, wispr);
+				wispr_result, wispr_route, wispr);
 
 		return FALSE;
 	}
@@ -575,7 +594,7 @@ static gboolean wispr_result(GWebResult *result, gpointer user_data)
 		printf("\n");
 
 		wispr->request = g_web_request_get(wispr->web, redirect,
-							wispr_result, wispr);
+				wispr_result, NULL, wispr);
 
 		return FALSE;
 	}
@@ -678,7 +697,7 @@ int main(int argc, char *argv[])
 						parser_callback, &wispr);
 
 	wispr.request = g_web_request_get(wispr.web, option_url,
-							wispr_result, &wispr);
+			wispr_result, wispr_route, &wispr);
 
 	if (wispr.request == 0) {
 		fprintf(stderr, "Failed to start request\n");
