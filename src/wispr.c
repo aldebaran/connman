@@ -395,7 +395,8 @@ static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_
 
 	wp_context->request_id = g_web_request_get(wp_context->web,
 					wp_context->status_url,
-					wispr_portal_web_result, wp_context);
+					wispr_portal_web_result, NULL,
+					wp_context);
 
 	if (wp_context->request_id == 0)
 		wispr_portal_error(wp_context);
@@ -606,7 +607,8 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		wp_context->redirect_url = g_strdup(redirect);
 
 		wp_context->request_id = g_web_request_get(wp_context->web,
-				redirect, wispr_portal_web_result, wp_context);
+				redirect, wispr_portal_web_result, NULL,
+				wp_context);
 
 		goto done;
 	case 404:
