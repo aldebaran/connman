@@ -316,7 +316,7 @@ static void tun_newlink(unsigned flags, unsigned change, void *user_data)
 			g_web_set_debug(web, web_debug, "6to4");
 
 		web_request_id = g_web_request_get(web, STATUS_URL,
-						web_result, NULL);
+				web_result, NULL,  NULL);
 
 		newlink_timeout(NULL);
 	}
