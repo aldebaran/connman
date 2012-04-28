@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2007-2012  Intel Corporation. All rights reserved.
  *  Copyright (C) 2010 Nokia Corporation and/or its subsidiary(-ies).
  *  Copyright (C) 2011  BWM Car IT GmbH. All rights reserved.
  *
