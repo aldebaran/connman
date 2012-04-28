@@ -1345,6 +1345,19 @@ static void bss_process_ies(DBusMessageIter *iter, void *user_data)
 	}
 }
 
+static void bss_compute_security(struct g_supplicant_bss *bss)
+{
+	if (bss->ieee8021x == TRUE)
+		bss->security = G_SUPPLICANT_SECURITY_IEEE8021X;
+	else if (bss->psk == TRUE)
+		bss->security = G_SUPPLICANT_SECURITY_PSK;
+	else if (bss->privacy == TRUE)
+		bss->security = G_SUPPLICANT_SECURITY_WEP;
+	else
+		bss->security = G_SUPPLICANT_SECURITY_NONE;
+}
+
+
 static void bss_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -1356,14 +1369,7 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 	SUPPLICANT_DBG("key %s", key);
 
 	if (key == NULL) {
-		if (bss->ieee8021x == TRUE)
-			bss->security = G_SUPPLICANT_SECURITY_IEEE8021X;
-		else if (bss->psk == TRUE)
-			bss->security = G_SUPPLICANT_SECURITY_PSK;
-		else if (bss->privacy == TRUE)
-			bss->security = G_SUPPLICANT_SECURITY_WEP;
-		else
-			bss->security = G_SUPPLICANT_SECURITY_NONE;
+		bss_compute_security(bss);
 
 		add_or_replace_bss_to_network(bss);
 		return;
