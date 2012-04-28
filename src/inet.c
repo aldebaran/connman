@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2007-2010  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2007-2012  Intel Corporation. All rights reserved.
  *  Copyright (C) 2003-2005  Go-Core Project
  *  Copyright (C) 2003-2006  Helsinki University of Technology
  *
