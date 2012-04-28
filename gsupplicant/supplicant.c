@@ -1096,7 +1096,7 @@ static char *create_group(struct g_supplicant_bss *bss)
 	return g_string_free(str, FALSE);
 }
 
-static void add_bss_to_network(struct g_supplicant_bss *bss)
+static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 {
 	GSupplicantInterface *interface = bss->interface;
 	GSupplicantNetwork *network;
@@ -1365,7 +1365,7 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 		else
 			bss->security = G_SUPPLICANT_SECURITY_NONE;
 
-		add_bss_to_network(bss);
+		add_or_replace_bss_to_network(bss);
 		return;
 	}
 
