@@ -164,15 +164,18 @@ For a working system, certain configuration options need to be enabled:
 wpa_supplicant configuration
 ============================
 
-In order to get wpa_supplicant and Connman working properly together you should
-edit wpa_supplicant .config file and set:
+In order to get wpa_supplicant and Connection Manager working properly
+together you should edit wpa_supplicant .config file and set:
 
 CONFIG_WPS=y
 CONFIG_AP=y
 CONFIG_CTRL_IFACE_DBUS_NEW=y
 
 and, add:
+
 CONFIG_BGSCAN_SIMPLE=y
 
 This last option will enable the support of background scanning while being
 connected, which is necessary when roaming on wifi.
+
+It is recommended to use wpa_supplicant 8.x or 1.x or later.
