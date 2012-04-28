@@ -42,7 +42,8 @@ def extract(name, value):
 		val = int(value)
 	elif name in ["IPv4", "IPv6", "Ethernet", "Proxy" ]:
 		val = extract_values(value)
-	elif name in ["Nameservers", "Domains", "Services", "Technologies"]:
+	elif name in ["Services", "Technologies",
+			"Nameservers", "Domains", "Timeservers"]:
 		val = extract_list(value)
 	else:
 		val = str(value)
