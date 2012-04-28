@@ -218,25 +218,9 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 	technology_connected(type, FALSE);
 }
 
-static void technology_default(enum connman_service_type type)
-{
-	const char *str;
-
-	str = __connman_service_type2string(type);
-	if (str == NULL)
-		str = "";
-
-	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
-			CONNMAN_MANAGER_INTERFACE, "DefaultTechnology",
-						DBUS_TYPE_STRING, &str);
-}
-
 void __connman_notifier_default_changed(struct connman_service *service)
 {
-	enum connman_service_type type = connman_service_get_type(service);
 	GSList *list;
-
-	technology_default(type);
 
 	for (list = notifier_list; list; list = list->next) {
 		struct connman_notifier *notifier = list->data;
