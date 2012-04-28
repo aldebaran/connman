@@ -44,6 +44,16 @@ def property_changed(name, value, path):
 		val = str(value)
 	print "[%s] %s = %s" % (service, name, val)
 
+def services_changed(services, removed):
+	for i in services:
+		service = i[0][i[0].rfind("/") + 1:]
+		print "[%s] added / update" % (service)
+		for n in i[1].keys():
+			property_changed(n, i[1][n], i[0])
+	for i in removed:
+		service = i[i.rfind("/") + 1:]
+		print "[%s] removed" % (service)
+
 if __name__ == '__main__':
 	dbus.mainloop.glib.DBusGMainLoop(set_as_default=True)
 
@@ -52,8 +62,13 @@ if __name__ == '__main__':
 	bus.add_signal_receiver(property_changed,
 				bus_name="net.connman",
 				dbus_interface="net.connman.Service",
-				signal_name = "PropertyChanged",
+				signal_name="PropertyChanged",
 				path_keyword="path")
+
+	bus.add_signal_receiver(services_changed,
+				bus_name="net.connman",
+				dbus_interface="net.connman.Manager",
+				signal_name="ServicesChanged")
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
