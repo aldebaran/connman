@@ -1103,12 +1103,16 @@ static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 	char *group;
 
 	group = create_group(bss);
+	SUPPLICANT_DBG("New group created: %s", group);
+
 	if (group == NULL)
 		return;
 
 	network = g_hash_table_lookup(interface->network_table, group);
 	if (network != NULL) {
 		g_free(group);
+		SUPPLICANT_DBG("Network %s already exist", network->name);
+
 		goto done;
 	}
 
@@ -1137,6 +1141,8 @@ static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 
 		network->wps_capabilities |= bss->wps_capabilities;
 	}
+
+	SUPPLICANT_DBG("New network %s created", network->name);
 
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							NULL, remove_bss);
