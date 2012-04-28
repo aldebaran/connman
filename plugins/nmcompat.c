@@ -42,8 +42,6 @@ enum {
 	NM_STATE_CONNECTED_GLOBAL = 70
 };
 
-#define NM_STATE_CONNECTED NM_STATE_CONNECTED_GLOBAL
-
 #define NM_SERVICE    "org.freedesktop.NetworkManager"
 #define NM_PATH       "/org/freedesktop/NetworkManager"
 #define NM_INTERFACE  NM_SERVICE
@@ -51,11 +49,14 @@ enum {
 #define DBUS_PROPERTIES_INTERFACE	"org.freedesktop.DBus.Properties"
 
 static DBusConnection *connection = NULL;
-static dbus_uint32_t state = NM_STATE_UNKNOWN;
+static struct connman_service *current_service = NULL;
+static dbus_uint32_t nm_state = NM_STATE_UNKNOWN;
 
 static void state_changed(dbus_uint32_t state)
 {
 	DBusMessage *signal;
+
+	DBG("state %d", state);
 
 	signal = dbus_message_new_signal(NM_PATH, NM_INTERFACE,
 						"StateChanged");
@@ -63,7 +64,7 @@ static void state_changed(dbus_uint32_t state)
 		return;
 
 	dbus_message_append_args(signal, DBUS_TYPE_UINT32, &state,
-				DBUS_TYPE_INVALID);
+						DBUS_TYPE_INVALID);
 
 	g_dbus_send_message(connection, signal);
 }
@@ -73,6 +74,8 @@ static void properties_changed(dbus_uint32_t state)
 	const char *key = "State";
 	DBusMessageIter iter, dict, dict_entry, dict_val;
 	DBusMessage *signal;
+
+	DBG("state %d", state);
 
 	signal = dbus_message_new_signal(NM_PATH, NM_INTERFACE,
 						"PropertiesChanged");
@@ -107,22 +110,75 @@ static void properties_changed(dbus_uint32_t state)
 
 static void default_changed(struct connman_service *service)
 {
-	if (service != NULL)
-		state = NM_STATE_CONNECTED;
+	DBG("service %p", service);
+
+	if (service == NULL)
+		nm_state = NM_STATE_DISCONNECTED;
 	else
-		state = NM_STATE_DISCONNECTED;
+		nm_state = NM_STATE_CONNECTED_LOCAL;
 
-	DBG("%p %d", service, state);
+	state_changed(nm_state);
+	properties_changed(nm_state);
 
-	state_changed(state);
+	current_service = service;
+}
 
-	properties_changed(state);
+static void service_state_changed(struct connman_service *service,
+					enum connman_service_state state)
+{
+	DBG("service %p state %d", service, state);
+
+	if (current_service == NULL || current_service != service)
+		return;
+
+	switch (state) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+		nm_state = NM_STATE_UNKNOWN;
+		break;
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_IDLE:
+		nm_state = NM_STATE_DISCONNECTED;
+		break;
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+		nm_state = NM_STATE_CONNECTING;
+		break;
+	case CONNMAN_SERVICE_STATE_READY:
+		nm_state = NM_STATE_CONNECTED_LOCAL;
+		break;
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		nm_state = NM_STATE_CONNECTED_GLOBAL;
+		break;
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+		nm_state = NM_STATE_DISCONNECTING;
+		break;
+	}
+
+	state_changed(nm_state);
+	properties_changed(nm_state);
+}
+
+static void offline_mode(connman_bool_t enabled)
+{
+	DBG("enabled %d", enabled);
+
+	if (enabled == TRUE)
+		nm_state = NM_STATE_ASLEEP;
+	else
+		nm_state = NM_STATE_DISCONNECTED;
+
+	state_changed(nm_state);
+	properties_changed(nm_state);
+
+	current_service = NULL;
 }
 
 static struct connman_notifier notifier = {
-	.name		= "nmcompat",
-	.priority	= CONNMAN_NOTIFIER_PRIORITY_DEFAULT,
-	.default_changed= default_changed,
+	.name			= "nmcompat",
+	.priority		= CONNMAN_NOTIFIER_PRIORITY_DEFAULT,
+	.default_changed	= default_changed,
+	.service_state_changed	= service_state_changed,
+	.offline_mode		= offline_mode,
 };
 
 static DBusMessage *property_get(DBusConnection *conn,
@@ -130,18 +186,20 @@ static DBusMessage *property_get(DBusConnection *conn,
 {
 	const char *interface, *key;
 
-	DBG("conn %p", conn);
-
-	dbus_message_get_args(msg, NULL,
-				DBUS_TYPE_STRING, &interface,
-				DBUS_TYPE_STRING, &key,
-				DBUS_TYPE_INVALID);
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &interface,
+				DBUS_TYPE_STRING, &key, DBUS_TYPE_INVALID);
 
 	DBG("interface %s property %s", interface, key);
 
-	if (g_strcmp0(key, "State") == 0) {
+	if (g_str_equal(interface, NM_INTERFACE) == FALSE)
+		return dbus_message_new_error(msg, DBUS_ERROR_FAILED,
+						"Unsupported interface");
+
+	if (g_str_equal(key, "State") == TRUE) {
 		DBusMessage *reply;
 		DBusMessageIter iter, value;
+
+		DBG("state %d", nm_state);
 
 		reply = dbus_message_new_method_return(msg);
 		if (reply == NULL)
@@ -150,10 +208,9 @@ static DBusMessage *property_get(DBusConnection *conn,
 		dbus_message_iter_init_append(reply, &iter);
 
 		dbus_message_iter_open_container(&iter, DBUS_TYPE_VARIANT,
-						DBUS_TYPE_UINT32_AS_STRING,
-						&value);
-		dbus_message_iter_append_basic(&value, DBUS_TYPE_UINT32,
-						&state);
+					DBUS_TYPE_UINT32_AS_STRING, &value);
+		dbus_message_iter_append_basic(&value,
+						DBUS_TYPE_UINT32, &nm_state);
 		dbus_message_iter_close_container(&iter, &value);
 
 		return reply;
