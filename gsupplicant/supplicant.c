@@ -1374,12 +1374,8 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 
 	SUPPLICANT_DBG("key %s", key);
 
-	if (key == NULL) {
-		bss_compute_security(bss);
-
-		add_or_replace_bss_to_network(bss);
+	if (key == NULL)
 		return;
-	}
 
 	if (g_strcmp0(key, "BSSID") == 0) {
 		DBusMessageIter array;
@@ -1526,7 +1522,9 @@ static void interface_bss_added_with_keys(DBusMessageIter *iter,
 		return;
 
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
-	bss_property(NULL, NULL, bss);
+
+	bss_compute_security(bss);
+	add_or_replace_bss_to_network(bss);
 }
 
 static void interface_bss_added_without_keys(DBusMessageIter *iter,
@@ -1543,6 +1541,9 @@ static void interface_bss_added_without_keys(DBusMessageIter *iter,
 	supplicant_dbus_property_get_all(bss->path,
 					SUPPLICANT_INTERFACE ".BSS",
 							bss_property, bss);
+
+	bss_compute_security(bss);
+	add_or_replace_bss_to_network(bss);
 }
 
 static void update_signal(gpointer key, gpointer value,
@@ -2026,6 +2027,7 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 {
 	GSupplicantInterface *interface;
 	GSupplicantNetwork *network;
+	GSupplicantSecurity old_security;
 	struct g_supplicant_bss *bss;
 
 	SUPPLICANT_DBG("");
@@ -2043,6 +2045,39 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 		return;
 
 	supplicant_dbus_property_foreach(iter, bss_property, bss);
+
+	old_security = network->security;
+	bss_compute_security(bss);
+
+	if (old_security != bss->security) {
+		struct g_supplicant_bss *new_bss;
+
+		SUPPLICANT_DBG("New network security for %s", bss->ssid);
+
+		/* Security change policy:
+		 * - we first copy the current bss into a new one with
+		 * its own pointer (path)
+		 * - we remove the current bss related nework which will
+		 * tell the plugin about such removal. This is done due
+		 * to the fact that a security change means a group change
+		 * so a complete network change.
+		 * (current bss becomes invalid as well)
+		 * - we add the new bss: it adds new network and tell the
+		 * plugin about it. */
+
+		new_bss = g_try_new0(struct g_supplicant_bss, 1);
+		if (new_bss == NULL)
+			return;
+
+		memcpy(new_bss, bss, sizeof(struct g_supplicant_bss));
+		new_bss->path = g_strdup(bss->path);
+
+		g_hash_table_remove(interface->network_table, network->group);
+
+		add_or_replace_bss_to_network(new_bss);
+
+		return;
+	}
 
 	if (bss->signal == network->signal)
 		return;
