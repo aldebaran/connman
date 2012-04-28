@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2011  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2012  Intel Corporation. All rights reserved.
  *  Copyright (C) 2011	ProFUSION embedded systems
  *
  *  This program is free software; you can redistribute it and/or modify
