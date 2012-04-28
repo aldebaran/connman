@@ -183,7 +183,7 @@ static int nmcompat_init(void)
 		return -1;
 
 	if (g_dbus_request_name(connection, NM_SERVICE, NULL) == FALSE) {
-		connman_error("nmcompat: failed register service\n");
+		connman_error("nmcompat: failed to register service");
 		return -1;
 	}
 
