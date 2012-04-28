@@ -136,7 +136,7 @@ static void state_changed(void)
 
 	connman_dbus_property_changed_basic(CONNMAN_MANAGER_PATH,
 				CONNMAN_MANAGER_INTERFACE, "State",
-						DBUS_TYPE_STRING, &notifier_state);
+					DBUS_TYPE_STRING, &notifier_state);
 }
 
 static void technology_connected(enum connman_service_type type,
