@@ -202,7 +202,7 @@ test_scripts = test/get-state test/list-services \
 		test/monitor-services test/test-clock \
 		test/simple-agent test/show-introspection test/test-compat \
 		test/test-manager test/test-connman test/monitor-connman \
-		test/connect-vpn test/disconnect-vpn test/monitor-manager \
+		test/connect-vpn test/disconnect-vpn \
 		test/test-counter test/set-ipv4-method test/set-ipv6-method \
 		test/get-services test/get-proxy-autoconfig test/set-proxy \
 		test/enable-tethering test/disable-tethering test/backtrace \
