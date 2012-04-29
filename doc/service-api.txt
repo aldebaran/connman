@@ -427,19 +427,19 @@ Properties	string State [readonly]
 
 			string Host [readonly]
 
-			       VPN host IP.
+				VPN host IP.
 
 			string Domain [readonly]
 
-			       VPN Domain.
+				VPN Domain.
 
 			string Name [readonly]
 
-			       VPN provider Name.
+				VPN provider Name.
 
 			string Type [readonly]
 
-			       VPN provider type.
+				VPN provider type.
 
 		dict Ethernet [readonly]
 
