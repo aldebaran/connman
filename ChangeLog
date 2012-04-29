@@ -1,3 +1,7 @@
+ver 0.84:
+	Fix issue with handling changed WiFi security of access points.
+	Fix issue with state notification of NetworkManager compatibility.
+
 ver 0.83:
 	Fix issue with Ethernet not being enabled by default.
 	Fix issue with missing host routes for WISPr request.
