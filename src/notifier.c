@@ -106,14 +106,14 @@ connman_bool_t __connman_notifier_is_connected(void)
 
 static const char *evaluate_notifier_state(void)
 {
+	if ( __connman_technology_get_offlinemode() == TRUE)
+		return "offline";
+
 	if (notifier_is_online() == TRUE)
 		return "online";
 
 	if (__connman_notifier_is_connected() == TRUE)
 		return "ready";
-
-	if ( __connman_technology_get_offlinemode() == TRUE)
-		return "offline";
 
 	return "idle";
 }
