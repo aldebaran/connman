@@ -25,14 +25,14 @@ def extract_list(list):
 
 def property_changed(name, value, path):
 	service = path[path.rfind("/") + 1:]
-	if name in ["Profiles", "Services", "Technologies"]:
+	if name in ["Services"]:
 		val = "["
 		for i in value:
 			val = val + " " + i[i.rfind("/") + 1:]
 		val = val + " ]"
 	elif name in ["IPv4", "IPv4.Configuration",
 			"IPv6", "IPv6.Configuration",
-			"Proxy", "Proxy.Configuration", "Ethernet"]:
+			"Proxy", "Proxy.Configuration", "Ethernet", "Provider"]:
 		val = extract_values(value)
 	elif name in ["Nameservers", "Nameservers.Configuration",
 			"Domains", "Domains.Configuration",
@@ -62,6 +62,12 @@ if __name__ == '__main__':
 	bus.add_signal_receiver(property_changed,
 				bus_name="net.connman",
 				dbus_interface="net.connman.Service",
+				signal_name="PropertyChanged",
+				path_keyword="path")
+
+	bus.add_signal_receiver(property_changed,
+				bus_name="net.connman",
+				dbus_interface="net.connman.Manager",
 				signal_name="PropertyChanged",
 				path_keyword="path")
 
