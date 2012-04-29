@@ -37,10 +37,6 @@
 
 #include <gdbus.h>
 
-#ifdef HAVE_CAPNG
-#include <cap-ng.h>
-#endif
-
 #include "connman.h"
 
 static struct {
@@ -386,10 +382,6 @@ int main(int argc, char *argv[])
 	DBusError err;
 	GKeyFile *config;
 	guint signal;
-
-#ifdef HAVE_CAPNG
-	/* Drop capabilities */
-#endif
 
 #ifdef NEED_THREADS
 	if (g_thread_supported() == FALSE)

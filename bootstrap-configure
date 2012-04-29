@@ -19,5 +19,4 @@ fi
 		--enable-openconnect=builtin \
 		--enable-openvpn=builtin \
 		--enable-nmcompat \
-		--enable-polkit \
-		--enable-capng $*
+		--enable-polkit $*
