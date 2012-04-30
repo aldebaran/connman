@@ -178,4 +178,4 @@ CONFIG_BGSCAN_SIMPLE=y
 This last option will enable the support of background scanning while being
 connected, which is necessary when roaming on wifi.
 
-It is recommended to use wpa_supplicant 8.x or 1.x or later.
+It is recommended to use wpa_supplicant 0.8.x or 1.x or later.
