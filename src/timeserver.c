@@ -156,6 +156,23 @@ void __connman_timeserver_sync_next()
 	return;
 }
 
+GSList *__connman_timeserver_add_list(GSList *server_list,
+		const char *timeserver)
+{
+	GSList *list = server_list;
+
+	if (timeserver == NULL)
+		return server_list;
+
+	while (list != NULL) {
+		char *existing_server = list->data;
+		if (strcmp(timeserver, existing_server) == 0)
+			return server_list;
+		list = g_slist_next(list);
+	}
+	return g_slist_prepend(server_list, g_strdup(timeserver));
+}
+
 /*
  * __connman_timeserver_get_all function creates the timeserver
  * list which will be used to determine NTP server for time corrections.
