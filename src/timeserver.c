@@ -194,13 +194,14 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 	/* First add Service Timeservers.Configuration to the list */
 	for (i = 0; service_ts_config != NULL && service_ts_config[i] != NULL;
 			i++)
-		list = g_slist_prepend(list, g_strdup(service_ts_config[i]));
+		list = __connman_timeserver_add_list(list,
+				service_ts_config[i]);
 
 	service_ts = connman_service_get_timeservers(service);
 
 	/* First add Service Timeservers via DHCP to the list */
 	for (i = 0; service_ts != NULL && service_ts[i] != NULL; i++)
-		list = g_slist_prepend(list, g_strdup(service_ts[i]));
+		list = __connman_timeserver_add_list(list, service_ts[i]);
 
 	network = __connman_service_get_network(service);
 	if (network != NULL) {
@@ -210,14 +211,14 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 
 		/* Then add Service Gateway to the list */
 		if (service_gw != NULL)
-			list = g_slist_prepend(list, g_strdup(service_gw));
+			list = __connman_timeserver_add_list(list, service_gw);
 	}
 
 	/* Then add Global Timeservers to the list */
 	timeservers = load_timeservers();
 
 	for (i = 0; timeservers != NULL && timeservers[i] != NULL; i++)
-		list = g_slist_prepend(list, g_strdup(timeservers[i]));
+		list = __connman_timeserver_add_list(list, timeservers[i]);
 
 	g_strfreev(timeservers);
 
@@ -225,7 +226,7 @@ GSList *__connman_timeserver_get_all(struct connman_service *service)
 
 	/* Lastly add the fallback servers */
 	for (i = 0; fallback_ts != NULL && fallback_ts[i] != NULL; i++)
-		list = g_slist_prepend(list, g_strdup(fallback_ts[i]));
+		list = __connman_timeserver_add_list(list, fallback_ts[i]);
 
 	return g_slist_reverse(list);
 }
