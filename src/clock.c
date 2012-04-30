@@ -271,11 +271,15 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
 			const char *val;
+			GSList *new_head;
 
 			dbus_message_iter_get_basic(&entry, &val);
 
-			list = g_slist_prepend(list, strdup(val));
-			count++;
+			new_head = __connman_timeserver_add_list(list, val);
+			if (list != new_head) {
+				count++;
+				list = new_head;
+			}
 
 			dbus_message_iter_next(&entry);
 		}
