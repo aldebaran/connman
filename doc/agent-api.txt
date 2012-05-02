@@ -51,7 +51,12 @@ Methods		void Release()
 			The dictionary arguments contains field names with
 			their input parameters.
 
+			In case of WISPr credentials requests and if the user
+			prefers to login through the browser by himself, agent
+			will have to return a LaunchBrowser error (see below).
+
 			Possible Errors: net.connman.Agent.Error.Canceled
+					 net.connman.Agent.Error.LaunchBrowser
 
 		void Cancel()
 
