@@ -520,6 +520,27 @@ static gboolean wispr_input(const guint8 **data, gsize *length,
 	return FALSE;
 }
 
+static void wispr_portal_browser_reply_cb(struct connman_service *service,
+					connman_bool_t authentication_done,
+					const char *error, void *user_data)
+{
+	struct connman_wispr_portal_context *wp_context = user_data;
+
+	DBG("");
+
+	if (service == NULL || wp_context == NULL)
+		return;
+
+	if (authentication_done == FALSE) {
+		wispr_portal_error(wp_context);
+		free_wispr_routes(wp_context);
+		return;
+	}
+
+	/* Restarting the test */
+	__connman_wispr_start(service, wp_context->type);
+}
+
 static void wispr_portal_request_wispr_login(struct connman_service *service,
 				connman_bool_t success,
 				const char *ssid, int ssid_len,
@@ -530,6 +551,14 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 	struct connman_wispr_portal_context *wp_context = user_data;
 
 	DBG("");
+
+	if (error != NULL && g_strcmp0(error,
+			"net.connman.Agent.Error.LaunchBrowser") == 0) {
+		__connman_agent_request_browser(service,
+				wispr_portal_browser_reply_cb,
+				wp_context->redirect_url, wp_context);
+		return;
+	}
 
 	g_free(wp_context->wispr_username);
 	wp_context->wispr_username = g_strdup(username);
@@ -611,27 +640,6 @@ static gboolean wispr_manage_message(GWebResult *result,
 	}
 
 	return FALSE;
-}
-
-static void wispr_portal_browser_reply_cb(struct connman_service *service,
-					connman_bool_t authentication_done,
-					const char *error, void *user_data)
-{
-	struct connman_wispr_portal_context *wp_context = user_data;
-
-	DBG("");
-
-	if (service == NULL || wp_context == NULL)
-		return;
-
-	if (authentication_done == FALSE) {
-		wispr_portal_error(wp_context);
-		free_wispr_routes(wp_context);
-		return;
-	}
-
-	/* Restarting the test */
-	__connman_wispr_start(service, wp_context->type);
 }
 
 static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
