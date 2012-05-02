@@ -4409,6 +4409,16 @@ static void request_input_cb (struct connman_service *service,
 
 	DBG ("RequestInput return, %p", service);
 
+	if (error != NULL) {
+		DBG("error: %s", error);
+
+		if (g_strcmp0(error,
+				"net.connman.Agent.Error.Canceled") == 0) {
+			err = -EINVAL;
+			goto done;
+		}
+	}
+
 	if (service->hidden == TRUE && name_len > 0 && name_len <= 32) {
 		device = connman_network_get_device(service->network);
 		__connman_device_request_hidden_scan(device,
@@ -4417,10 +4427,8 @@ static void request_input_cb (struct connman_service *service,
 	}
 
 	if (values_received == FALSE || service->hidden == TRUE) {
-		service_complete(service);
-		__connman_connection_update_gateway();
-		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
-		return;
+		err = -EINVAL;
+		goto done;
 	}
 
 	if (wps == TRUE && service->network != NULL) {
@@ -4450,6 +4458,9 @@ static void request_input_cb (struct connman_service *service,
 		__connman_agent_report_error(service,
 					error2string(service->error),
 					report_error_cb, NULL);
+	} else if (err == -EINVAL) {
+		service_complete(service);
+		__connman_connection_update_gateway();
 	}
 }
 
