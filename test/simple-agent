@@ -10,6 +10,9 @@ import sys
 class Canceled(dbus.DBusException):
 	_dbus_error_name = "net.connman.Error.Canceled"
 
+class LaunchBrowser(dbus.DBusException):
+	_dbus_error_name = "net.connman.Agent.Error.LaunchBrowser"
+
 class Agent(dbus.service.Object):
 	name = None
 	ssid = None
@@ -29,9 +32,12 @@ class Agent(dbus.service.Object):
 		response = {}
 
 		if not self.identity and not self.passphrase and not self.wpspin:
+			print "Service credentials requested, type cancel to cancel"
 			args = raw_input('Answer: ')
 
 			for arg in args.split():
+				if arg.startswith("cancel"):
+					response["Error"] = arg
 				if arg.startswith("Identity="):
 					identity = arg.replace("Identity=", "", 1)
 					response["Identity"] = identity
@@ -56,9 +62,13 @@ class Agent(dbus.service.Object):
 		response = {}
 
 		if not self.username and not self.password:
+			print "User login requested, type cancel to cancel"
+			print "or browser to login through the browser by yourself."
 			args = raw_input('Answer: ')
 
 			for arg in args.split():
+				if arg.startswith("cancel") or arg.startswith("browser"):
+					response["Error"] = arg
 				if arg.startswith("Username="):
 					username = arg.replace("Username=", "", 1)
 					response["Username"] = username
@@ -110,6 +120,14 @@ class Agent(dbus.service.Object):
 			response.update(self.input_passphrase())
 		if fields.has_key("Username"):
 			response.update(self.input_username())
+
+		if response.has_key("Error"):
+			if response["Error"] == "cancel":
+				raise Canceled("canceled")
+				return
+			if response["Error"] == "browser":
+				raise LaunchBrowser("launch browser")
+				return
 
 		print "returning (%s)" % (response)
 
