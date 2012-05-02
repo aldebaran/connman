@@ -790,18 +790,21 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 
 	if_index = connman_inet_ifindex(interface);
 	if (if_index < 0) {
+		DBG("Could not get ifindex");
 		err = -EINVAL;
 		goto done;
 	}
 
 	nameservers = connman_service_get_nameservers(wp_context->service);
 	if (nameservers == NULL) {
+		DBG("Could not get nameservers");
 		err = -EINVAL;
 		goto done;
 	}
 
 	wp_context->web = g_web_new(if_index);
 	if (wp_context->web == NULL) {
+		DBG("Could not set up GWeb");
 		err = -ENOMEM;
 		goto done;
 	}
