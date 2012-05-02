@@ -726,9 +726,6 @@ static void proxy_callback(const char *proxy, void *user_data)
 
 	wp_context->token = 0;
 
-	if (getenv("CONNMAN_WEB_DEBUG"))
-		g_web_set_debug(wp_context->web, web_debug, "WEB");
-
 	if (proxy != NULL && g_strcmp0(proxy, "DIRECT") != 0)
 		g_web_set_proxy(wp_context->web, proxy);
 
@@ -808,6 +805,9 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 		err = -ENOMEM;
 		goto done;
 	}
+
+	if (getenv("CONNMAN_WEB_DEBUG"))
+		g_web_set_debug(wp_context->web, web_debug, "WEB");
 
 	if (wp_context->type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 		g_web_set_address_family(wp_context->web, AF_INET);
