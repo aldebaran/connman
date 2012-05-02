@@ -468,7 +468,7 @@ static gboolean wispr_route_request(const char *address, int ai_family,
 		return FALSE;
 	}
 
-	route->address = strdup(address);
+	route->address = g_strdup(address);
 	route->if_index = if_index;
 	wp_context->route_list = g_slist_prepend(wp_context->route_list, route);
 
