@@ -61,7 +61,7 @@
 #define BGSCAN_DEFAULT "simple:30:-45:300"
 #define AUTOSCAN_DEFAULT "exponential:3:300"
 
-struct connman_technology *wifi_technology = NULL;
+static struct connman_technology *wifi_technology = NULL;
 
 struct hidden_params {
 	char ssid[32];
