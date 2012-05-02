@@ -55,24 +55,29 @@ struct {
 	const char *vpnc_opt;
 	const char *vpnc_default;
 	int type;
+	connman_bool_t cm_save;
 } vpnc_options[] = {
-	{ "Host", "IPSec gateway", NULL, OPT_STRING },
-	{ "VPNC.IPSec.ID", "IPSec ID", NULL, OPT_STRING },
-	{ "VPNC.IPSec.Secret", "IPSec secret", NULL, OPT_STRING },
-	{ "VPNC.Xauth.Username", "Xauth username", NULL, OPT_STRING },
-	{ "VPNC.Xauth.Password", "Xauth password", NULL, OPT_STRING },
-	{ "VPNC.IKE.Authmode", "IKE Authmode", NULL, OPT_STRING },
-	{ "VPNC.IKE.DHGroup", "IKE DH Group", NULL, OPT_STRING },
-	{ "VPNC.PFS", "Perfect Forward Secrecy", NULL, OPT_STRING },
-	{ "VPNC.Domain", "Domain", NULL, OPT_STRING },
-	{ "VPNC.Vendor", "Vendor", NULL, OPT_STRING },
-	{ "VPNC.LocalPort", "Local Port", "0", OPT_STRING },
-	{ "VPNC.CiscoPort","Cisco UDP Encapsulation Port", "0", OPT_STRING },
-	{ "VPNC.AppVersion", "Application Version", NULL, OPT_STRING },
-	{ "VPNC.NATTMode", "NAT Traversal Mode", "cisco-udp", OPT_STRING },
-	{ "VPNC.DPDTimeout", "DPD idle timeout (our side)", NULL, OPT_STRING },
-	{ "VPNC.SingleDES", "Enable Single DES", NULL, OPT_BOOLEAN },
-	{ "VPNC.NoEncryption", "Enable no encryption", NULL, OPT_BOOLEAN },
+	{ "Host", "IPSec gateway", NULL, OPT_STRING, TRUE },
+	{ "VPNC.IPSec.ID", "IPSec ID", NULL, OPT_STRING, TRUE },
+	{ "VPNC.IPSec.Secret", "IPSec secret", NULL, OPT_STRING, FALSE },
+	{ "VPNC.Xauth.Username", "Xauth username", NULL, OPT_STRING, FALSE },
+	{ "VPNC.Xauth.Password", "Xauth password", NULL, OPT_STRING, FALSE },
+	{ "VPNC.IKE.Authmode", "IKE Authmode", NULL, OPT_STRING, TRUE },
+	{ "VPNC.IKE.DHGroup", "IKE DH Group", NULL, OPT_STRING, TRUE },
+	{ "VPNC.PFS", "Perfect Forward Secrecy", NULL, OPT_STRING, TRUE },
+	{ "VPNC.Domain", "Domain", NULL, OPT_STRING, TRUE },
+	{ "VPNC.Vendor", "Vendor", NULL, OPT_STRING, TRUE },
+	{ "VPNC.LocalPort", "Local Port", "0", OPT_STRING, TRUE, },
+	{ "VPNC.CiscoPort","Cisco UDP Encapsulation Port", "0", OPT_STRING,
+	  TRUE },
+	{ "VPNC.AppVersion", "Application Version", NULL, OPT_STRING, TRUE },
+	{ "VPNC.NATTMode", "NAT Traversal Mode", "cisco-udp", OPT_STRING,
+	  TRUE },
+	{ "VPNC.DPDTimeout", "DPD idle timeout (our side)", NULL, OPT_STRING,
+	  TRUE },
+	{ "VPNC.SingleDES", "Enable Single DES", NULL, OPT_BOOLEAN, TRUE },
+	{ "VPNC.NoEncryption", "Enable no encryption", NULL, OPT_BOOLEAN,
+	  TRUE },
 };
 
 static int vc_notify(DBusMessage *msg, struct connman_provider *provider)
@@ -236,6 +241,10 @@ static int vc_save(struct connman_provider *provider, GKeyFile *keyfile)
 
 	for (i = 0; i < (int)ARRAY_SIZE(vpnc_options); i++) {
 		if (strncmp(vpnc_options[i].cm_opt, "VPNC.", 5) == 0) {
+
+			if (vpnc_options[i].cm_save == FALSE)
+				continue;
+
 			option = connman_provider_get_string(provider,
 							vpnc_options[i].cm_opt);
 			if (option == NULL)
