@@ -463,8 +463,10 @@ static gboolean wispr_route_request(const char *address, int ai_family,
 		break;
 	}
 
-	if (result < 0)
+	if (result < 0) {
+		g_free(route);
 		return FALSE;
+	}
 
 	route->address = strdup(address);
 	route->if_index = if_index;
