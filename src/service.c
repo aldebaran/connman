@@ -4334,7 +4334,6 @@ static void report_error_cb(struct connman_service *service,
 	else {
 		service_complete(service);
 		__connman_connection_update_gateway();
-		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 	}
 }
 
@@ -4584,8 +4583,6 @@ static int service_indicate_state(struct connman_service *service)
 		reconnect = get_reconnect_state(service);
 		if (reconnect == TRUE)
 			__connman_service_auto_connect();
-
-		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 	}
 
 	if (new_state == CONNMAN_SERVICE_STATE_READY) {
@@ -4681,8 +4678,6 @@ static int service_indicate_state(struct connman_service *service)
 					report_error_cb, NULL) == -EIO)
 			return 0;
 		service_complete(service);
-
-		__connman_device_request_scan(CONNMAN_DEVICE_TYPE_UNKNOWN);
 	} else
 		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
