@@ -615,7 +615,7 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 static void wispr_portal_browser_reply_cb(struct connman_service *service,
 					connman_bool_t authentication_done,
-					void *user_data)
+					const char *error, void *user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
 

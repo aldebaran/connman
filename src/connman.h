@@ -94,7 +94,7 @@ typedef void (* authentication_cb_t) (struct connman_service *service,
 				const char *error, void *user_data);
 typedef void (* browser_authentication_cb_t) (struct connman_service *service,
 				connman_bool_t authentication_done,
-				void *user_data);
+				const char *error, void *user_data);
 typedef void (* report_error_cb_t) (struct connman_service *service,
 				gboolean retry, void *user_data);
 int __connman_agent_request_passphrase_input(struct connman_service *service,

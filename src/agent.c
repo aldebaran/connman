@@ -529,15 +529,18 @@ static void request_browser_reply(DBusPendingCall *call, void *user_data)
 	struct request_browser_reply_data *browser_reply_data = user_data;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	connman_bool_t result = FALSE;
+	const char *error = NULL;
 
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		error = dbus_message_get_error_name(reply);
 		goto done;
+	}
 
 	result = TRUE;
 
 done:
-	browser_reply_data->callback(browser_reply_data->service,
-					result,	browser_reply_data->user_data);
+	browser_reply_data->callback(browser_reply_data->service, result,
+					error, browser_reply_data->user_data);
 	connman_service_unref(browser_reply_data->service);
 	dbus_message_unref(reply);
 	g_free(browser_reply_data);
