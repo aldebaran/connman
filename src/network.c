@@ -1411,8 +1411,10 @@ int connman_network_connect_hidden(struct connman_network *network,
 		__connman_service_indicate_error(service,
 					CONNMAN_SERVICE_ERROR_INVALID_KEY);
 		return err;
-	} else
+	} else {
+		__connman_service_set_userconnect(service, TRUE);
 		return __connman_service_connect(service);
+	}
 }
 
 /**
