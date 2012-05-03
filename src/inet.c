@@ -44,6 +44,7 @@
 #include <netinet/icmp6.h>
 #include <fcntl.h>
 #include <linux/if_tun.h>
+#include <ctype.h>
 
 #include "connman.h"
 
@@ -2171,4 +2172,51 @@ int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen, int type,
 	n->nlmsg_len = NLMSG_ALIGN(n->nlmsg_len) + len;
 
 	return 0;
+}
+
+/* Check routine modified from ics-dhcp 4.2.3-P2 */
+connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
+{
+	const char *p;
+
+	/*
+	 * Not empty or complete length not over 255 characters.
+	 */
+	if ((len == 0) || (len > 256))
+		return FALSE;
+
+	/*
+	 * Consists of [[:alnum:]-]+ labels separated by [.]
+	 * a [_] is against RFC but seems to be "widely used"
+	 */
+	for (p = ptr; (*p != 0) && (len-- > 0); p++) {
+
+		if ((*p == '-') || (*p == '_')) {
+			/*
+			 * Not allowed at begin or end of a label.
+			 */
+			if (((p - ptr) == 0) || (len == 0) || (p[1] == '.'))
+				return FALSE;
+
+		} else if (*p == '.') {
+			/*
+			 * Each label has to be 1-63 characters;
+			 * we allow [.] at the end ('foo.bar.')
+			 */
+			size_t d = p - ptr;
+
+			if ((d <= 0) || (d >= 64))
+				return FALSE;
+
+			ptr = p + 1; /* Jump to the next label */
+
+		} else if (isalnum((unsigned char)*p) == 0) {
+			/*
+			 * Also numbers at the begin are fine
+			 */
+			return FALSE;
+		}
+	}
+
+	return TRUE;
 }
