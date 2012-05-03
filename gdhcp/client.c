@@ -1596,6 +1596,9 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 	uint8_t *option;
 	char *str;
 
+	if (value == NULL || len < 4)
+		return NULL;
+
 	iaid = get_uint32(&value[0]);
 	if (dhcp_client->iaid != iaid)
 		return NULL;
@@ -1699,6 +1702,9 @@ static GList *get_dhcpv6_option_value_list(GDHCPClient *dhcp_client,
 	GList *list = NULL;
 	char *str;
 	int i;
+
+	if (value == NULL)
+		return NULL;
 
 	switch (code) {
 	case G_DHCPV6_DNS_SERVERS:	/* RFC 3646, chapter 3 */
