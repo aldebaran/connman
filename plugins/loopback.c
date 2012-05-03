@@ -39,6 +39,7 @@
 #include <connman/plugin.h>
 #include <connman/utsname.h>
 #include <connman/log.h>
+#include <connman/inet.h>
 
 static in_addr_t loopback_address;
 static in_addr_t loopback_netmask;
@@ -206,12 +207,21 @@ static const char *loopback_get_hostname(void)
 
 static int loopback_set_hostname(const char *hostname)
 {
-	int err;
+	const char *ptr;
+	int err, len;
 
 	if (g_strcmp0(hostname, "<hostname>") == 0)
 		return 0;
 
-	if (sethostname(hostname, strlen(hostname)) < 0) {
+	len = strlen(hostname);
+
+	if (connman_inet_check_hostname(hostname, len) == FALSE)
+		return -EINVAL;
+
+	if ((ptr = strstr(hostname, ".")) != NULL)
+		len = ptr - hostname;
+
+	if (sethostname(hostname, len) < 0) {
 		err = -errno;
 		connman_error("Failed to set hostname to %s", hostname);
 		return err;
@@ -224,9 +234,14 @@ static int loopback_set_hostname(const char *hostname)
 
 static int loopback_set_domainname(const char *domainname)
 {
-	int err;
+	int err, len;
 
-	if (setdomainname(domainname, strlen(domainname)) < 0) {
+	len = strlen(domainname);
+
+	if (connman_inet_check_hostname(domainname, len) == FALSE)
+		return -EINVAL;
+
+	if (setdomainname(domainname, len) < 0) {
 		err = -errno;
 		connman_error("Failed to set domainname to %s", domainname);
 		return err;
