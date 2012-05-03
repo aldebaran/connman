@@ -1991,26 +1991,36 @@ static int inet_rtnl_recv(GIOChannel *chan, gpointer user_data)
 	struct inet_rtnl_cb_data *rtnl_data = user_data;
 	struct __connman_inet_rtnl_handle *rth = rtnl_data->rtnl;
 	struct nlmsghdr *h = NULL;
+	struct sockaddr_nl nladdr;
+	socklen_t addr_len = sizeof(nladdr);
 	unsigned char buf[4096];
 	void *ptr = buf;
 	gsize len;
-	int status;
+	int status, fd;
 
 	memset(buf, 0, sizeof(buf));
+	memset(&nladdr, 0, sizeof(nladdr));
 
-	status = g_io_channel_read_chars(chan, (gchar *) buf,
-						sizeof(buf), &len, NULL);
+	fd = g_io_channel_unix_get_fd(chan);
 
-	DBG("status %d", status);
+	status = recvfrom(fd, buf, sizeof(buf), 0,
+                       (struct sockaddr *) &nladdr, &addr_len);
+	if (status < 0) {
+		if (errno == EINTR || errno == EAGAIN)
+			return 0;
 
-	switch (status) {
-	case G_IO_STATUS_NORMAL:
-		break;
-	case G_IO_STATUS_AGAIN:
-		return 0;
-	default:
 		return -1;
 	}
+
+	if (status == 0)
+		return -1;
+
+	if (nladdr.nl_pid != 0) { /* not sent by kernel, ignore */
+		DBG("Received msg from %u, ignoring it", nladdr.nl_pid);
+		return 0;
+	}
+
+	len = status;
 
 	while (len > 0) {
 		struct nlmsgerr *err;
