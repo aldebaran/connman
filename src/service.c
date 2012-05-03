@@ -4339,6 +4339,10 @@ static void report_error_cb(struct connman_service *service,
 	if (retry == TRUE)
 		__connman_service_connect(service);
 	else {
+		/* It is not relevant to stay on Failure state
+		 * when failing is due to wrong user input */
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+
 		service_complete(service);
 		__connman_connection_update_gateway();
 	}
@@ -4464,7 +4468,11 @@ static void request_input_cb (struct connman_service *service,
 		__connman_agent_report_error(service,
 					error2string(service->error),
 					report_error_cb, NULL);
-	} else if (err == -EINVAL) {
+	} else {
+		/* It is not relevant to stay on Failure state
+		 * when failing is due to wrong user input */
+		service->state = CONNMAN_SERVICE_STATE_IDLE;
+
 		service_complete(service);
 		__connman_connection_update_gateway();
 	}
