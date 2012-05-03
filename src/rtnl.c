@@ -1368,10 +1368,11 @@ static void rtnl_message(void *buf, size_t len)
 		if (!NLMSG_OK(hdr, len))
 			break;
 
-		DBG("%s len %d type %d flags 0x%04x seq %d",
+		DBG("%s len %d type %d flags 0x%04x seq %d pid %d",
 					type2string(hdr->nlmsg_type),
 					hdr->nlmsg_len, hdr->nlmsg_type,
-					hdr->nlmsg_flags, hdr->nlmsg_seq);
+					hdr->nlmsg_flags, hdr->nlmsg_seq,
+					hdr->nlmsg_pid);
 
 		switch (hdr->nlmsg_type) {
 		case NLMSG_NOOP:
@@ -1417,27 +1418,37 @@ static gboolean netlink_event(GIOChannel *chan,
 				GIOCondition cond, gpointer data)
 {
 	unsigned char buf[4096];
-	gsize len;
-	GIOStatus status;
+	struct sockaddr_nl nladdr;
+	socklen_t addr_len = sizeof(nladdr);
+	ssize_t status;
+	int fd;
 
 	if (cond & (G_IO_NVAL | G_IO_HUP | G_IO_ERR))
 		return FALSE;
 
 	memset(buf, 0, sizeof(buf));
+	memset(&nladdr, 0, sizeof(nladdr));
 
-	status = g_io_channel_read_chars(chan, (gchar *) buf,
-						sizeof(buf), &len, NULL);
+	fd = g_io_channel_unix_get_fd(chan);
 
-	switch (status) {
-	case G_IO_STATUS_NORMAL:
-		break;
-	case G_IO_STATUS_AGAIN:
-		return TRUE;
-	default:
+	status = recvfrom(fd, buf, sizeof(buf), 0,
+                       (struct sockaddr *) &nladdr, &addr_len);
+	if (status < 0) {
+		if (errno == EINTR || errno == EAGAIN)
+			return TRUE;
+
 		return FALSE;
 	}
 
-	rtnl_message(buf, len);
+	if (status == 0)
+		return FALSE;
+
+	if (nladdr.nl_pid != 0) { /* not sent by kernel, ignore */
+		DBG("Received msg from %u, ignoring it", nladdr.nl_pid);
+		return TRUE;
+	}
+
+	rtnl_message(buf, status);
 
 	return TRUE;
 }
