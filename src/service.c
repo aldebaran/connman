@@ -4402,7 +4402,7 @@ static void request_input_cb (struct connman_service *service,
 			const char *name, int name_len,
 			const char *identity, const char *passphrase,
 			gboolean wps, const char *wpspin,
-			void *user_data)
+			const char *error, void *user_data)
 {
 	struct connman_device *device;
 	int err = 0;

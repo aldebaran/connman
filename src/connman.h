@@ -91,7 +91,7 @@ typedef void (* authentication_cb_t) (struct connman_service *service,
 				const char *name, int name_len,
 				const char *identifier, const char *secret,
 				gboolean wps, const char *wpspin,
-				void *user_data);
+				const char *error, void *user_data);
 typedef void (* browser_authentication_cb_t) (struct connman_service *service,
 				connman_bool_t authentication_done,
 				void *user_data);

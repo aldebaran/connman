@@ -96,6 +96,7 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	struct request_input_reply *passphrase_reply = user_data;
 	connman_bool_t values_received = FALSE;
 	connman_bool_t wps = FALSE;
+	const char *error = NULL;
 	char *identity = NULL;
 	char *passphrase = NULL;
 	char *wpspin = NULL;
@@ -105,8 +106,10 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	DBusMessageIter iter, dict;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		error = dbus_message_get_error_name(reply);
 		goto done;
+	}
 
 	values_received = TRUE;
 
@@ -176,7 +179,7 @@ done:
 	passphrase_reply->callback(passphrase_reply->service, values_received,
 				name, name_len,
 				identity, passphrase,
-				wps, wpspin,
+				wps, wpspin, error,
 				passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
 	dbus_message_unref(reply);
@@ -311,14 +314,17 @@ static void request_input_append_password(DBusMessageIter *iter,
 static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 {
 	struct request_input_reply *username_password_reply = user_data;
+	const char *error = NULL;
 	char *username = NULL;
 	char *password = NULL;
 	char *key;
 	DBusMessageIter iter, dict;
 	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR)
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		error = dbus_message_get_error_name(reply);
 		goto done;
+	}
 
 	dbus_message_iter_init(reply, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
@@ -355,7 +361,7 @@ done:
 	username_password_reply->callback(username_password_reply->service,
 					TRUE, NULL, 0,
 					username, password,
-					FALSE, NULL,
+					FALSE, NULL, error,
 					username_password_reply->user_data);
 	connman_service_unref(username_password_reply->service);
 	dbus_message_unref(reply);
