@@ -596,6 +596,8 @@ int __connman_service_set_favorite(struct connman_service *service,
 						connman_bool_t favorite);
 int __connman_service_set_immutable(struct connman_service *service,
 						connman_bool_t immutable);
+void __connman_service_set_userconnect(struct connman_service *service,
+						connman_bool_t userconnect);
 
 void __connman_service_set_string(struct connman_service *service,
 					const char *key, const char *value);

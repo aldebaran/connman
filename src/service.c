@@ -4315,6 +4315,13 @@ void __connman_service_set_string(struct connman_service *service,
 	}
 }
 
+void __connman_service_set_userconnect(struct connman_service *service,
+						connman_bool_t userconnect)
+{
+	if (service != NULL)
+		service->userconnect = userconnect;
+}
+
 static void service_complete(struct connman_service *service)
 {
 	reply_pending(service, EIO);
