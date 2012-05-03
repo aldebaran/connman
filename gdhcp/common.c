@@ -155,13 +155,15 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 	rem = pkt_len - 1 - 3;
 
 	if (rem <= 0)
-		/* Bad packet */
-		return NULL;
+		goto bad_packet;
 
 	while (1) {
 		opt_code = optionptr[0] << 8 | optionptr[1];
 		opt_len = len = optionptr[2] << 8 | optionptr[3];
 		len += 2 + 2; /* skip code and len */
+
+		if (len < 4)
+			goto bad_packet;
 
 		rem -= len;
 		if (rem < 0)
@@ -170,7 +172,10 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 		if (opt_code == code) {
 			if (option_len != NULL)
 				*option_len = opt_len;
-			found = optionptr + 2 + 2;
+			if (rem == 0)
+				found = NULL;
+			else
+				found = optionptr + 2 + 2;
 			count++;
 		}
 
@@ -184,6 +189,13 @@ uint8_t *dhcpv6_get_option(struct dhcpv6_packet *packet, uint16_t pkt_len,
 		*option_count = count;
 
 	return found;
+
+bad_packet:
+	if (option_len != NULL)
+		*option_len = 0;
+	if (option_count != NULL)
+		*option_count = 0;
+	return NULL;
 }
 
 uint8_t *dhcpv6_get_sub_option(unsigned char *option, uint16_t max_len,
