@@ -709,6 +709,7 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 				wispr_route_request, wp_context);
 
 		goto done;
+	case 400:
 	case 404:
 		if (__connman_service_online_check_failed(wp_context->service,
 							wp_context->type) == 0)
