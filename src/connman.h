@@ -645,6 +645,7 @@ void __connman_service_set_pac(struct connman_service *service,
 connman_bool_t __connman_service_is_hidden(struct connman_service *service);
 connman_bool_t __connman_service_is_split_routing(struct connman_service *service);
 int __connman_service_get_index(struct connman_service *service);
+void __connman_service_set_hidden(struct connman_service *service);
 void __connman_service_set_domainname(struct connman_service *service,
 						const char *domainname);
 const char *__connman_service_get_domainname(struct connman_service *service);

@@ -117,6 +117,7 @@ struct connman_service {
 	int online_check_count;
 	connman_bool_t do_split_routing;
 	connman_bool_t new_service;
+	connman_bool_t hidden_service;
 };
 
 struct find_data {
@@ -2230,6 +2231,14 @@ int __connman_service_get_index(struct connman_service *service)
 		return connman_provider_get_index(service->provider);
 
 	return -1;
+}
+
+void __connman_service_set_hidden(struct connman_service *service)
+{
+	if (service == NULL || service->hidden == TRUE)
+		return;
+
+	service->hidden_service = TRUE;
 }
 
 void __connman_service_set_domainname(struct connman_service *service,
