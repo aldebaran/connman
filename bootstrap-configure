@@ -18,5 +18,6 @@ fi
 		--disable-datafiles \
 		--enable-openconnect=builtin \
 		--enable-openvpn=builtin \
+		--enable-vpnc=builtin \
 		--enable-nmcompat \
 		--enable-polkit $*
