@@ -495,6 +495,7 @@ static int add_scan_param(gchar *hex_ssid, int freq,
 			int driver_max_scan_ssids)
 {
 	unsigned int i;
+	struct scan_ssid *scan_ssid;
 
 	if (driver_max_scan_ssids > scan_data->num_ssids && hex_ssid != NULL) {
 		gchar *ssid;
@@ -510,15 +511,44 @@ static int add_scan_param(gchar *hex_ssid, int freq,
 			ssid[j++] = hex;
 		}
 
-		memcpy(scan_data->ssids[scan_data->num_ssids].ssid, ssid, j);
-		scan_data->ssids[scan_data->num_ssids].ssid_len = j;
+		scan_ssid = g_try_new(struct scan_ssid, 1);
+		if (scan_ssid == NULL) {
+			g_free(ssid);
+			return -ENOMEM;
+		}
+
+		memcpy(scan_ssid->ssid, ssid, j);
+		scan_ssid->ssid_len = j;
+		scan_data->ssids = g_slist_prepend(scan_data->ssids,
+								scan_ssid);
+
 		scan_data->num_ssids++;
 
 		g_free(ssid);
+	} else
+		return -EINVAL;
+
+	scan_data->ssids = g_slist_reverse(scan_data->ssids);
+
+	if (scan_data->freqs == NULL) {
+		scan_data->freqs = g_try_malloc0(sizeof(uint16_t) *
+						scan_data->num_ssids);
+		if (scan_data->freqs == NULL) {
+			g_slist_free_full(scan_data->ssids, g_free);
+			return -ENOMEM;
+		}
+	} else {
+		scan_data->freqs = g_try_realloc(scan_data->freqs,
+				sizeof(uint16_t) * scan_data->num_ssids);
+		if (scan_data->freqs == NULL) {
+			g_slist_free_full(scan_data->ssids, g_free);
+			return -ENOMEM;
+		}
+		scan_data->freqs[scan_data->num_ssids - 1] = 0;
 	}
 
 	/* Don't add duplicate entries */
-	for (i = 0; i < G_SUPPLICANT_MAX_FAST_SCAN; i++) {
+	for (i = 0; i < scan_data->num_ssids; i++) {
 		if (scan_data->freqs[i] == 0) {
 			scan_data->freqs[i] = freq;
 			break;
@@ -639,8 +669,7 @@ static int get_latest_connections(int max_ssids,
 
 	g_strfreev(services);
 
-	num_ssids = num_ssids > G_SUPPLICANT_MAX_FAST_SCAN ?
-		G_SUPPLICANT_MAX_FAST_SCAN : num_ssids;
+	num_ssids = num_ssids > max_ssids ? max_ssids : num_ssids;
 
 	iter = g_sequence_get_begin_iter(latest_list);
 
@@ -690,7 +719,7 @@ static int wifi_scan_fast(struct connman_device *device)
 
 	ret = get_latest_connections(driver_max_ssids, scan_params);
 	if (ret <= 0) {
-		g_free(scan_params);
+		g_supplicant_free_scan_params(scan_params);
 		return wifi_scan(device);
 	}
 
@@ -702,7 +731,7 @@ static int wifi_scan_fast(struct connman_device *device)
 	if (ret == 0)
 		connman_device_set_scanning(device, TRUE);
 	else {
-		g_free(scan_params);
+		g_supplicant_free_scan_params(scan_params);
 		connman_device_unref(device);
 	}
 
@@ -715,6 +744,7 @@ static int wifi_scan_hidden(struct connman_device *device,
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
 	GSupplicantScanParams *scan_params = NULL;
+	struct scan_ssid *scan_ssid;
 	struct hidden_params *hidden;
 	int ret;
 
@@ -729,8 +759,17 @@ static int wifi_scan_hidden(struct connman_device *device,
 	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
 	if (scan_params == NULL)
 		return -ENOMEM;
-	memcpy(scan_params->ssids[0].ssid, ssid, ssid_len);
-	scan_params->ssids[0].ssid_len = ssid_len;
+
+	scan_ssid = g_try_new(struct scan_ssid, 1);
+	if (scan_ssid == NULL) {
+		g_free(scan_params);
+		return -ENOMEM;
+	}
+
+	memcpy(scan_ssid->ssid, ssid, ssid_len);
+	scan_ssid->ssid_len = ssid_len;
+	scan_params->ssids = g_slist_prepend(scan_params->ssids, scan_ssid);
+
 	scan_params->num_ssids = 1;
 
 	hidden = g_try_new0(struct hidden_params, 1);
@@ -753,7 +792,7 @@ static int wifi_scan_hidden(struct connman_device *device,
 		connman_device_set_scanning(device, TRUE);
 	else {
 		connman_device_unref(device);
-		g_free(scan_params);
+		g_supplicant_free_scan_params(scan_params);
 		hidden_free(wifi->hidden);
 		wifi->hidden = NULL;
 	}

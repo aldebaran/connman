@@ -742,6 +742,9 @@ unsigned int g_supplicant_interface_get_max_scan_ssids(
 	if (interface == NULL)
 		return 0;
 
+	if (interface->max_scan_ssids == 0)
+		return WPAS_MAX_SCAN_SSIDS;
+
 	return interface->max_scan_ssids;
 }
 
@@ -2618,7 +2621,7 @@ static void interface_scan_result(const char *error,
 	}
 
 	if (data != NULL && data->scan_params != NULL)
-		g_free(data->scan_params);
+		g_supplicant_free_scan_params(data->scan_params);
 
 	dbus_free(data);
 }
@@ -2643,7 +2646,7 @@ static void add_scan_frequencies(DBusMessageIter *iter,
 	unsigned int freq;
 	int i;
 
-	for (i = 0; i < G_SUPPLICANT_MAX_FAST_SCAN; i++) {
+	for (i = 0; i < scan_data->num_ssids; i++) {
 		freq = scan_data->freqs[i];
 		if (!freq)
 			break;
@@ -2668,11 +2671,13 @@ static void append_ssid(DBusMessageIter *iter,
 static void append_ssids(DBusMessageIter *iter, void *user_data)
 {
 	GSupplicantScanParams *scan_data = user_data;
-	int i;
+	GSList *list;
 
-	for (i = 0; i < scan_data->num_ssids; i++)
-		append_ssid(iter, scan_data->ssids[i].ssid,
-					scan_data->ssids[i].ssid_len);
+	for (list = scan_data->ssids; list; list = list->next) {
+		struct scan_ssid *scan_ssid = list->data;
+
+		append_ssid(iter, scan_ssid->ssid, scan_ssid->ssid_len);
+	}
 }
 
 static void supplicant_add_scan_frequency(DBusMessageIter *dict,
@@ -2683,7 +2688,7 @@ static void supplicant_add_scan_frequency(DBusMessageIter *dict,
 	DBusMessageIter entry, value, array;
 	const char *key = "Channels";
 
-	if (scan_params->freqs[0] != 0) {
+	if (scan_params->freqs && scan_params->freqs[0] != 0) {
 		dbus_message_iter_open_container(dict, DBUS_TYPE_DICT_ENTRY,
 						NULL, &entry);
 

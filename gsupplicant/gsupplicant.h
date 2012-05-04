@@ -73,8 +73,6 @@ extern "C" {
 #define G_SUPPLICANT_PAIRWISE_TKIP	(1 << 1)
 #define G_SUPPLICANT_PAIRWISE_CCMP	(1 << 2)
 
-#define G_SUPPLICANT_MAX_FAST_SCAN	4
-
 #define G_SUPPLICANT_WPS_CONFIGURED     (1 << 0)
 #define G_SUPPLICANT_WPS_PBC            (1 << 1)
 #define G_SUPPLICANT_WPS_PIN            (1 << 2)
@@ -139,15 +137,26 @@ struct _GSupplicantSSID {
 
 typedef struct _GSupplicantSSID GSupplicantSSID;
 
+/*
+ * Max number of SSIDs that can be scanned.
+ * In wpa_s 0.7x the limit is 4.
+ * In wps_s 0.8 or later it is 16.
+ * The value is only used if wpa_supplicant does not return any max limit
+ * for number of scannable SSIDs.
+ */
+#define WPAS_MAX_SCAN_SSIDS 4
+
+struct scan_ssid {
+	unsigned char ssid[32];
+	uint8_t ssid_len;
+};
+
 struct _GSupplicantScanParams {
-	struct scan_ssid {
-		unsigned char ssid[32];
-		uint8_t ssid_len;
-	} ssids[G_SUPPLICANT_MAX_FAST_SCAN];
+	GSList *ssids;
 
 	uint8_t num_ssids;
 
-	uint16_t freqs[G_SUPPLICANT_MAX_FAST_SCAN];
+	uint16_t *freqs;
 };
 
 typedef struct _GSupplicantScanParams GSupplicantScanParams;
@@ -249,6 +258,14 @@ typedef struct _GSupplicantCallbacks GSupplicantCallbacks;
 
 int g_supplicant_register(const GSupplicantCallbacks *callbacks);
 void g_supplicant_unregister(const GSupplicantCallbacks *callbacks);
+
+static inline
+void g_supplicant_free_scan_params(GSupplicantScanParams *scan_params)
+{
+	g_slist_free_full(scan_params->ssids, g_free);
+	g_free(scan_params->freqs);
+	g_free(scan_params);
+}
 
 #ifdef __cplusplus
 }
