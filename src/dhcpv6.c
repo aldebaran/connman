@@ -74,6 +74,14 @@ static GHashTable *network_table;
 
 static int dhcpv6_request(struct connman_dhcpv6 *dhcp, gboolean add_addresses);
 
+static void clear_timer(struct connman_dhcpv6 *dhcp)
+{
+	if (dhcp->timeout > 0) {
+		g_source_remove(dhcp->timeout);
+		dhcp->timeout = 0;
+	}
+}
+
 static inline float get_random()
 {
 	return (rand() % 200 - 100) / 1000.0;
@@ -812,10 +820,7 @@ int __connman_dhcpv6_start_renew(struct connman_network *network,
 
 	DBG("network %p dhcp %p", network, dhcp);
 
-	if (dhcp->timeout > 0) {
-		g_source_remove(dhcp->timeout);
-		dhcp->timeout = 0;
-	}
+	clear_timer(dhcp);
 
 	g_dhcpv6_client_get_timeouts(dhcp->dhcp_client, &T1, &T2,
 				&last_renew, &last_rebind, &expired);
@@ -886,10 +891,7 @@ int __connman_dhcpv6_start_release(struct connman_network *network,
 	if (dhcp->stateless == TRUE)
 		return -EINVAL;
 
-	if (dhcp->timeout > 0) {
-		g_source_remove(dhcp->timeout);
-		dhcp->timeout = 0;
-	}
+	clear_timer(dhcp);
 
 	dhcp_client = dhcp->dhcp_client;
 	if (dhcp_client == NULL) {
@@ -933,10 +935,7 @@ static int dhcpv6_release(struct connman_dhcpv6 *dhcp)
 {
 	DBG("dhcp %p", dhcp);
 
-	if (dhcp->timeout > 0) {
-		g_source_remove(dhcp->timeout);
-		dhcp->timeout = 0;
-	}
+	clear_timer(dhcp);
 
 	dhcpv6_free(dhcp);
 
@@ -1036,10 +1035,7 @@ static void advertise_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("dhcpv6 advertise msg %p", dhcp);
 
-	if (dhcp->timeout > 0) {
-		g_source_remove(dhcp->timeout);
-		dhcp->timeout = 0;
-	}
+	clear_timer(dhcp);
 
 	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
 		if (dhcp->callback != NULL)
@@ -1063,10 +1059,7 @@ static void solicitation_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("dhcpv6 solicitation msg %p", dhcp);
 
-	if (dhcp->timeout > 0) {
-		g_source_remove(dhcp->timeout);
-		dhcp->timeout = 0;
-	}
+	clear_timer(dhcp);
 
 	set_addresses(dhcp_client, dhcp);
 }
