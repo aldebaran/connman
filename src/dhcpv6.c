@@ -343,20 +343,24 @@ static int dhcpv6_info_request(struct connman_dhcpv6 *dhcp)
 	index = connman_network_get_index(dhcp->network);
 
 	dhcp_client = g_dhcp_client_new(G_DHCP_IPV6, index, &error);
-	if (error != G_DHCP_CLIENT_ERROR_NONE)
+	if (error != G_DHCP_CLIENT_ERROR_NONE) {
+		clear_timer(dhcp);
 		return -EINVAL;
+	}
 
 	if (getenv("CONNMAN_DHCPV6_DEBUG"))
 		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
 
 	service = __connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
+		clear_timer(dhcp);
 		g_dhcp_client_unref(dhcp_client);
 		return -EINVAL;
 	}
 
 	ret = set_duid(service, dhcp->network, dhcp_client, index);
 	if (ret < 0) {
+		clear_timer(dhcp);
 		g_dhcp_client_unref(dhcp_client);
 		return ret;
 	}
@@ -1092,20 +1096,24 @@ static int dhcpv6_solicitation(struct connman_dhcpv6 *dhcp)
 	index = connman_network_get_index(dhcp->network);
 
 	dhcp_client = g_dhcp_client_new(G_DHCP_IPV6, index, &error);
-	if (error != G_DHCP_CLIENT_ERROR_NONE)
+	if (error != G_DHCP_CLIENT_ERROR_NONE) {
+		clear_timer(dhcp);
 		return -EINVAL;
+	}
 
 	if (getenv("CONNMAN_DHCPV6_DEBUG"))
 		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
 
 	service = __connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
+		clear_timer(dhcp);
 		g_dhcp_client_unref(dhcp_client);
 		return -EINVAL;
 	}
 
 	ret = set_duid(service, dhcp->network, dhcp_client, index);
 	if (ret < 0) {
+		clear_timer(dhcp);
 		g_dhcp_client_unref(dhcp_client);
 		return ret;
 	}
