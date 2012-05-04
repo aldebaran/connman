@@ -632,6 +632,7 @@ static void report_error_reply(DBusPendingCall *call, void *user_data)
 	connman_service_unref(report_error->service);
 	g_free(report_error);
 	dbus_message_unref(reply);
+	dbus_pending_call_unref(call);
 }
 
 int __connman_agent_report_error(struct connman_service *service,
