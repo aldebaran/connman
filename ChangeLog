@@ -1,3 +1,11 @@
+ver 0.85:
+	Fix issue with duplicate service timeservers.
+	Fix issue with failure state when aborting agent request.
+	Fix issue with automatic scanning for hidden WiFi networks.
+	Fix issue with missing hostname/domainname validity checks.
+	Fix issue with missing DHCP packet length checks.
+	Add support for browser launching from WISPr login.
+
 ver 0.84:
 	Fix issue with handling changed WiFi security of access points.
 	Fix issue with state notification of NetworkManager compatibility.
