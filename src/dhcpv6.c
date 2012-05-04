@@ -342,12 +342,16 @@ static int dhcpv6_info_request(struct connman_dhcpv6 *dhcp)
 		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
 
 	service = __connman_service_lookup_from_network(dhcp->network);
-	if (service == NULL)
+	if (service == NULL) {
+		g_dhcp_client_unref(dhcp_client);
 		return -EINVAL;
+	}
 
 	ret = set_duid(service, dhcp->network, dhcp_client, index);
-	if (ret < 0)
+	if (ret < 0) {
+		g_dhcp_client_unref(dhcp_client);
 		return ret;
+	}
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_DNS_SERVERS);
@@ -1102,12 +1106,16 @@ static int dhcpv6_solicitation(struct connman_dhcpv6 *dhcp)
 		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
 
 	service = __connman_service_lookup_from_network(dhcp->network);
-	if (service == NULL)
+	if (service == NULL) {
+		g_dhcp_client_unref(dhcp_client);
 		return -EINVAL;
+	}
 
 	ret = set_duid(service, dhcp->network, dhcp_client, index);
-	if (ret < 0)
+	if (ret < 0) {
+		g_dhcp_client_unref(dhcp_client);
 		return ret;
+	}
 
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_CLIENTID);
 	g_dhcp_client_set_request(dhcp_client, G_DHCPV6_RAPID_COMMIT);
