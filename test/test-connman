@@ -27,9 +27,21 @@ if len(sys.argv) < 2:
 def print_services(services):
 	for path, properties in services:
 		identifier = path[path.rfind("/") + 1:]
+		state = " "
+		autoconnect = "  "
 
 		if properties["Favorite"] == dbus.Boolean(1):
 			favorite = "*"
+
+			if properties["AutoConnect"] == dbus.Boolean(1):
+				autoconnect = " A"
+			else:
+				autoconnect = "  "
+
+			if properties["State"] == "ready":
+				state = "R"
+			elif properties["State"] == "online":
+				state = "O"
 		else:
 			favorite = " "
 
@@ -38,7 +50,8 @@ def print_services(services):
 		else:
 			name = "{" + properties["Type"] + "}"
 
-		print "%s %-26s { %s }" % (favorite, name, identifier)
+		print "%s%s%s %-26s { %s }" % (favorite, autoconnect, state,
+					       name, identifier)
 
 if sys.argv[1] == "state":
 	properties = manager.GetProperties()
