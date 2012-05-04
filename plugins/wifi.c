@@ -252,6 +252,75 @@ static void wifi_remove(struct connman_device *device)
 	g_free(wifi);
 }
 
+static int add_scan_param(gchar *hex_ssid, int freq,
+			GSupplicantScanParams *scan_data,
+			int driver_max_scan_ssids)
+{
+	unsigned int i;
+	struct scan_ssid *scan_ssid;
+
+	if (driver_max_scan_ssids > scan_data->num_ssids && hex_ssid != NULL) {
+		gchar *ssid;
+		unsigned int j = 0, hex;
+		size_t hex_ssid_len = strlen(hex_ssid);
+
+		ssid = g_try_malloc0(hex_ssid_len / 2);
+		if (ssid == NULL)
+			return -ENOMEM;
+
+		for (i = 0; i < hex_ssid_len; i += 2) {
+			sscanf(hex_ssid + i, "%02x", &hex);
+			ssid[j++] = hex;
+		}
+
+		scan_ssid = g_try_new(struct scan_ssid, 1);
+		if (scan_ssid == NULL) {
+			g_free(ssid);
+			return -ENOMEM;
+		}
+
+		memcpy(scan_ssid->ssid, ssid, j);
+		scan_ssid->ssid_len = j;
+		scan_data->ssids = g_slist_prepend(scan_data->ssids,
+								scan_ssid);
+
+		scan_data->num_ssids++;
+
+		g_free(ssid);
+	} else
+		return -EINVAL;
+
+	scan_data->ssids = g_slist_reverse(scan_data->ssids);
+
+	if (scan_data->freqs == NULL) {
+		scan_data->freqs = g_try_malloc0(sizeof(uint16_t) *
+						scan_data->num_ssids);
+		if (scan_data->freqs == NULL) {
+			g_slist_free_full(scan_data->ssids, g_free);
+			return -ENOMEM;
+		}
+	} else {
+		scan_data->freqs = g_try_realloc(scan_data->freqs,
+				sizeof(uint16_t) * scan_data->num_ssids);
+		if (scan_data->freqs == NULL) {
+			g_slist_free_full(scan_data->ssids, g_free);
+			return -ENOMEM;
+		}
+		scan_data->freqs[scan_data->num_ssids - 1] = 0;
+	}
+
+	/* Don't add duplicate entries */
+	for (i = 0; i < scan_data->num_ssids; i++) {
+		if (scan_data->freqs[i] == 0) {
+			scan_data->freqs[i] = freq;
+			break;
+		} else if (scan_data->freqs[i] == freq)
+			break;
+	}
+
+	return 0;
+}
+
 static int throw_wifi_scan(struct connman_device *device,
 			GSupplicantInterfaceCallback callback)
 {
@@ -488,75 +557,6 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	connman_device_unref(device);
 
 	start_autoscan(device);
-}
-
-static int add_scan_param(gchar *hex_ssid, int freq,
-			GSupplicantScanParams *scan_data,
-			int driver_max_scan_ssids)
-{
-	unsigned int i;
-	struct scan_ssid *scan_ssid;
-
-	if (driver_max_scan_ssids > scan_data->num_ssids && hex_ssid != NULL) {
-		gchar *ssid;
-		unsigned int j = 0, hex;
-		size_t hex_ssid_len = strlen(hex_ssid);
-
-		ssid = g_try_malloc0(hex_ssid_len / 2);
-		if (ssid == NULL)
-			return -ENOMEM;
-
-		for (i = 0; i < hex_ssid_len; i += 2) {
-			sscanf(hex_ssid + i, "%02x", &hex);
-			ssid[j++] = hex;
-		}
-
-		scan_ssid = g_try_new(struct scan_ssid, 1);
-		if (scan_ssid == NULL) {
-			g_free(ssid);
-			return -ENOMEM;
-		}
-
-		memcpy(scan_ssid->ssid, ssid, j);
-		scan_ssid->ssid_len = j;
-		scan_data->ssids = g_slist_prepend(scan_data->ssids,
-								scan_ssid);
-
-		scan_data->num_ssids++;
-
-		g_free(ssid);
-	} else
-		return -EINVAL;
-
-	scan_data->ssids = g_slist_reverse(scan_data->ssids);
-
-	if (scan_data->freqs == NULL) {
-		scan_data->freqs = g_try_malloc0(sizeof(uint16_t) *
-						scan_data->num_ssids);
-		if (scan_data->freqs == NULL) {
-			g_slist_free_full(scan_data->ssids, g_free);
-			return -ENOMEM;
-		}
-	} else {
-		scan_data->freqs = g_try_realloc(scan_data->freqs,
-				sizeof(uint16_t) * scan_data->num_ssids);
-		if (scan_data->freqs == NULL) {
-			g_slist_free_full(scan_data->ssids, g_free);
-			return -ENOMEM;
-		}
-		scan_data->freqs[scan_data->num_ssids - 1] = 0;
-	}
-
-	/* Don't add duplicate entries */
-	for (i = 0; i < scan_data->num_ssids; i++) {
-		if (scan_data->freqs[i] == 0) {
-			scan_data->freqs[i] = freq;
-			break;
-		} else if (scan_data->freqs[i] == freq)
-			break;
-	}
-
-	return 0;
 }
 
 struct last_connected {
