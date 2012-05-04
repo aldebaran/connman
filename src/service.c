@@ -487,6 +487,9 @@ static int service_load(struct connman_service *service)
 		service->pac = str;
 	}
 
+	service->hidden_service = g_key_file_get_boolean(keyfile,
+					service->identifier, "Hidden", NULL);
+
 done:
 	g_key_file_free(keyfile);
 
@@ -668,6 +671,10 @@ static int service_save(struct connman_service *service)
 	else
 		g_key_file_remove_key(keyfile, service->identifier,
 							"Proxy.URL", NULL);
+
+	if (service->hidden_service == TRUE)
+		g_key_file_set_boolean(keyfile, service->identifier, "Hidden",
+									TRUE);
 
 done:
 	__connman_storage_save_service(keyfile, service->identifier);
