@@ -321,6 +321,73 @@ static int add_scan_param(gchar *hex_ssid, int freq,
 	return 0;
 }
 
+static int get_hidden_connections(int max_ssids,
+				GSupplicantScanParams *scan_data)
+{
+	GKeyFile *keyfile;
+	gchar **services;
+	char *ssid;
+	gchar *str;
+	int i, freq;
+	gboolean value;
+	int num_ssids = 0, add_param_failed = 0;
+
+	services = connman_storage_get_services();
+	for (i = 0; services && services[i]; i++) {
+		if (strncmp(services[i], "wifi_", 5) != 0)
+			continue;
+
+		keyfile = connman_storage_load_service(services[i]);
+
+		value = g_key_file_get_boolean(keyfile,
+					services[i], "Hidden", NULL);
+		if (value == FALSE) {
+			g_key_file_free(keyfile);
+			continue;
+		}
+
+		value = g_key_file_get_boolean(keyfile,
+					services[i], "Favorite", NULL);
+		if (value == FALSE) {
+			g_key_file_free(keyfile);
+			continue;
+		}
+
+		value = g_key_file_get_boolean(keyfile,
+					services[i], "AutoConnect", NULL);
+		if (value == FALSE) {
+			g_key_file_free(keyfile);
+			continue;
+		}
+
+		ssid = g_key_file_get_string(keyfile,
+					services[i], "SSID", NULL);
+
+		freq = g_key_file_get_integer(keyfile, services[i],
+					"Frequency", NULL);
+
+		if (add_scan_param(ssid, freq, scan_data, max_ssids) < 0) {
+			str = g_key_file_get_string(keyfile,
+					services[i], "Name", NULL);
+			DBG("Cannot scan %s (%s)", ssid, str);
+			g_free(str);
+			add_param_failed++;
+		}
+
+		num_ssids++;
+
+		g_key_file_free(keyfile);
+	}
+
+	if (add_param_failed > 0)
+		connman_warn("Unable to scan %d out of %d SSIDs (max is %d)",
+			add_param_failed, num_ssids, max_ssids);
+
+	g_strfreev(services);
+
+	return num_ssids > max_ssids ? max_ssids : num_ssids;
+}
+
 static int throw_wifi_scan(struct connman_device *device,
 			GSupplicantInterfaceCallback callback)
 {
@@ -344,13 +411,55 @@ static int throw_wifi_scan(struct connman_device *device,
 	return ret;
 }
 
-static void autoscan_scan_callback(int result,
+static void hidden_scan_callback(int result,
 			GSupplicantInterface *interface, void *user_data)
 {
 	struct connman_device *device = user_data;
 
-	DBG("");
+	DBG("result %d", result);
 
+	connman_device_set_scanning(device, FALSE);
+	connman_device_unref(device);
+}
+
+static void autoscan_scan_callback(int result,
+			GSupplicantInterface *interface, void *user_data)
+{
+	struct connman_device *device = user_data;
+	struct wifi_data *wifi = connman_device_get_data(device);
+	int driver_max_ssids;
+
+	DBG("result %d", result);
+
+	/*
+	 * Scan hidden networks so that we can autoconnect to them.
+	 */
+	driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
+							wifi->interface);
+	DBG("max ssids %d", driver_max_ssids);
+
+	if (driver_max_ssids > 0) {
+		GSupplicantScanParams *scan_params;
+		int ret;
+
+		scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
+		if (scan_params == NULL)
+			goto out;
+
+		if (get_hidden_connections(driver_max_ssids,
+						scan_params) > 0) {
+			ret = g_supplicant_interface_scan(wifi->interface,
+							scan_params,
+							hidden_scan_callback,
+							device);
+			if (ret == 0)
+				return;
+		}
+
+		g_supplicant_free_scan_params(scan_params);
+	}
+
+out:
 	connman_device_set_scanning(device, FALSE);
 	connman_device_unref(device);
 }
@@ -738,6 +847,10 @@ static int wifi_scan_fast(struct connman_device *device)
 	return ret;
 }
 
+/*
+ * This func is only used when connecting to this specific AP first time.
+ * It is not used when system autoconnects to hidden AP.
+ */
 static int wifi_scan_hidden(struct connman_device *device,
 		const char *ssid, unsigned int ssid_len,
 		const char *identity, const char* passphrase)
