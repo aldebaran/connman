@@ -3446,8 +3446,10 @@ static void interface_disconnect_result(const char *error,
 	/* If we are disconnecting from previous WPS successful
 	 * association. i.e.: it did not went through AddNetwork,
 	 * and interface->network_path was never set. */
-	if (data->interface->network_path == NULL)
+	if (data->interface->network_path == NULL) {
+		dbus_free(data);
 		return;
+	}
 
 	network_remove(data);
 }
