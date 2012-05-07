@@ -1131,7 +1131,7 @@ static int add_cm_context(struct modem_data *modem, const char *context_path,
 
 	g_hash_table_replace(context_hash, g_strdup(context_path), modem);
 
-	if (modem->valid_apn == TRUE &&
+	if (modem->valid_apn == TRUE && modem->attached == TRUE &&
 			has_interface(modem->interfaces,
 				OFONO_API_NETREG) == TRUE) {
 		add_network(modem);
@@ -1216,6 +1216,9 @@ static gboolean context_changed(DBusConnection *connection,
 			modem->valid_apn = TRUE;
 
 			if (modem->network != NULL)
+				return TRUE;
+
+			if (modem->attached == FALSE)
 				return TRUE;
 
 			if (has_interface(modem->interfaces,
