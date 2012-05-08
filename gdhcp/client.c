@@ -1126,7 +1126,6 @@ static int ipv4ll_recv_arp_packet(GDHCPClient *dhcp_client)
 	int target_conflict;
 
 	memset(&arp, 0, sizeof(arp));
-	bytes = 0;
 	bytes = read(dhcp_client->listener_sockfd, &arp, sizeof(arp));
 	if (bytes < 0)
 		return bytes;
