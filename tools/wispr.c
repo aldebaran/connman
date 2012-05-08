@@ -290,7 +290,7 @@ static void parser_callback(const char *str, gpointer user_data)
 
 	result = g_markup_parse_context_parse(context, str, strlen(str), NULL);
 	if (result == TRUE)
-		result = g_markup_parse_context_end_parse(context, NULL);
+		g_markup_parse_context_end_parse(context, NULL);
 
 	g_markup_parse_context_free(context);
 }
