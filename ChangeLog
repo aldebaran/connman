@@ -1,3 +1,10 @@
+ver 1.0:
+	Fix issue with missing WiFi disconnecting flag.
+	Fix issue with missing GPRS context attached check.
+	Fix issue with potential crash and supplicant handling.
+	Fix issue with potential crash and VPN provider.
+	Fix issue with potential crash and host routes.
+
 ver 0.85:
 	Fix issue with duplicate service timeservers.
 	Fix issue with failure state when aborting agent request.
