@@ -1443,6 +1443,8 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	sk = g_io_channel_unix_get_fd(server->channel);
 
 	err = send(sk, request, req->request_len, 0);
+	if (err < 0)
+		return -EIO;
 
 	req->numserv++;
 
