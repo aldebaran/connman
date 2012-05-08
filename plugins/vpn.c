@@ -162,10 +162,12 @@ vpn_exit:
 						CONNMAN_PROVIDER_STATE_IDLE);
 
 	connman_provider_set_index(provider, -1);
-	connman_provider_unref(data->provider);
 
-	g_free(data->if_name);
-	g_free(data);
+	if (data != NULL) {
+		connman_provider_unref(data->provider);
+		g_free(data->if_name);
+		g_free(data);
+	}
 
 	connman_task_destroy(task);
 }
