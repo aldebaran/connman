@@ -1852,7 +1852,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			re = dhcp_recv_l3_packet(&packet,
 						dhcp_client->listener_sockfd);
 	} else if (dhcp_client->listen_mode == L_ARP) {
-		re = ipv4ll_recv_arp_packet(dhcp_client);
+		ipv4ll_recv_arp_packet(dhcp_client);
 		return TRUE;
 	}
 	else
