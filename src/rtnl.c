@@ -1189,7 +1189,7 @@ static const char **rtnl_nd_opt_dnssl(struct nd_opt_hdr *opt, guint32 *lifetime)
 static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 {
 	struct nduseroptmsg *msg = (struct nduseroptmsg *) NLMSG_DATA(hdr);
-	struct nd_opt_hdr *opt = (void *)&msg[1];
+	struct nd_opt_hdr *opt;
 	guint32 lifetime = -1;
 	const char **domains = NULL;
 	struct in6_addr *servers = NULL;
