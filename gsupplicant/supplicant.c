@@ -2452,7 +2452,6 @@ static void interface_get_result(const char *error,
 
 	if (error != NULL) {
 		SUPPLICANT_DBG("Interface not created yet");
-		err = -EIO;
 		goto create;
 	}
 
