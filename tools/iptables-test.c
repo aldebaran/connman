@@ -1516,7 +1516,7 @@ int main(int argc, char *argv[])
 	insert = FALSE;
 	delete_rule = FALSE;
 	compare_rule = FALSE;
-	table_name = chain = new_chain = match_name = target_name = NULL;
+	chain = new_chain = match_name = target_name = NULL;
 	delete_chain = flush_chain = policy = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
