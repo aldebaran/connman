@@ -1526,7 +1526,7 @@ static int iptables_command(int argc, char *argv[])
 	insert = FALSE;
 	delete = FALSE;
 	compare = FALSE;
-	table_name = chain = new_chain = match_name = target_name = NULL;
+	chain = new_chain = match_name = target_name = NULL;
 	flush_chain = delete_chain = policy = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
