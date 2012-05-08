@@ -1551,7 +1551,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	if (ssid != NULL)
 		connman_network_set_group(network, group);
 
-	if (wifi->hidden != NULL) {
+	if (wifi->hidden != NULL && ssid != NULL) {
 		if (wifi->hidden->ssid_len == ssid_len &&
 				memcmp(wifi->hidden->ssid, ssid,
 						ssid_len) == 0) {
