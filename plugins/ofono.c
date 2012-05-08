@@ -834,7 +834,7 @@ static void extract_ipv6_settings(DBusMessageIter *array,
 {
 	DBusMessageIter dict;
 	char *address = NULL, *gateway = NULL;
-	unsigned char prefix_length;
+	unsigned char prefix_length = 0;
 	char *nameservers = NULL;
 	const char *interface = NULL;
 	int index = -1;
