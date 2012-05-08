@@ -43,8 +43,6 @@
 
 #include "mcc.h"
 
-#define uninitialized_var(x) x = x
-
 #define OFONO_SERVICE			"org.ofono"
 
 #define OFONO_MANAGER_INTERFACE		OFONO_SERVICE ".Manager"
@@ -937,7 +935,7 @@ static connman_bool_t ready_to_create_device(struct modem_data *modem)
 static void create_device(struct modem_data *modem)
 {
 	struct connman_device *device;
-	char *uninitialized_var(ident);
+	char *ident = NULL;
 
 	DBG("%s", modem->path);
 
