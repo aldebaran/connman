@@ -894,8 +894,6 @@ static void extract_rsn(struct supplicant_bss *bss,
 		}
 	}
 
-	buf += 2 + (count * 4);
-	len -= 2 + (count * 4);
 }
 
 static void bss_rates(DBusMessageIter *iter, void *user_data)
