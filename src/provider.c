@@ -113,15 +113,25 @@ static void set_user_networks(struct connman_provider *provider,
 
 	while (networks[i] != NULL) {
 		char **elems = g_strsplit(networks[i], "/", 0);
-		char *network, *netmask = NULL;
+		char *network, *netmask;
 		int family = PF_UNSPEC, ret;
 
 		if (elems == NULL)
 			break;
 
 		network = elems[0];
-		if (elems[1] != NULL)
-			netmask = elems[1];
+		if (network == NULL || *network == '\0') {
+			DBG("no network/netmask set");
+			g_strfreev(elems);
+			break;
+		}
+
+		netmask = elems[1];
+		if (netmask != NULL && *netmask == '\0') {
+			DBG("no netmask set");
+			g_strfreev(elems);
+			break;
+		}
 
 		if (g_strrstr(network, ":") != NULL)
 			family = AF_INET6;
@@ -132,7 +142,10 @@ static void set_user_networks(struct connman_provider *provider,
 				/* We have netmask length */
 				in_addr_t addr;
 				struct in_addr netmask_in;
-				unsigned char prefix_len = atoi(netmask);
+				unsigned char prefix_len = 32;
+
+				if (netmask != NULL)
+					prefix_len = atoi(netmask);
 
 				addr = 0xffffffff << (32 - prefix_len);
 				netmask_in.s_addr = htonl(addr);
