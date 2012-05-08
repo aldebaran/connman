@@ -1201,7 +1201,6 @@ static int reply_query_type(unsigned char *msg, int len)
 	/* now the query, which is a name and 2 16 bit words */
 	l = dns_name_length(c) + 1;
 	c += l;
-	len -= l;
 	w = (uint16_t *) c;
 	type = ntohs(*w);
 
