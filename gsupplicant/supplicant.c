@@ -2966,9 +2966,8 @@ static void add_network_security_psk(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
 	if (ssid->passphrase && strlen(ssid->passphrase) > 0) {
-
 		if (is_psk_raw_key(ssid->passphrase) == TRUE)
-			supplicant_dbus_property_append_fixed_array(dict,
+			supplicant_dbus_dict_append_fixed_array(dict,
 							"psk", DBUS_TYPE_BYTE,
 							&ssid->passphrase, 64);
 		else
