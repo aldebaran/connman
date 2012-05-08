@@ -1745,10 +1745,8 @@ static void interface_get_result(const char *error,
 	const char *path = NULL;
 	int err;
 
-	if (error != NULL) {
-		err = -EIO;
+	if (error != NULL)
 		goto create;
-	}
 
 	dbus_message_iter_get_basic(iter, &path);
 	if (path == NULL) {
