@@ -116,7 +116,7 @@ For a working system, certain configuration options need to be enabled:
 
 		It is safe to build a daemon with oFono support and no
 		running ofonod. That start of ofonod is automatically
-		detected and only a runtime dependecy. it is not needed	to
+		detected and only a runtime dependecy. It is not needed	to
 		build ConnMan.
 
 	--disable-pacrunner
