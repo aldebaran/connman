@@ -1060,7 +1060,7 @@ static void remove_network(struct modem_data *modem)
 static int add_cm_context(struct modem_data *modem, const char *context_path,
 				DBusMessageIter *dict)
 {
-	const char *context_type;
+	const char *context_type = NULL;
 	struct network_context *context = NULL;
 	connman_bool_t active = FALSE;
 
