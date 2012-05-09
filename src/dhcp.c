@@ -244,8 +244,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		ip_change = FALSE;
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_DNS_SERVER);
-	for (ns_entries = 0, list = option; list; list = list->next)
-		ns_entries += 1;
+	ns_entries = g_list_length(option);
 	nameservers = g_try_new0(char *, ns_entries + 1);
 	if (nameservers != NULL) {
 		for (i = 0, list = option; list; list = list->next, i++)
@@ -262,8 +261,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		hostname = g_strdup(option->data);
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
-	for (ns_entries = 0, list = option; list; list = list->next)
-		ns_entries += 1;
+	ns_entries = g_list_length(option);
 	timeservers = g_try_new0(char *, ns_entries + 1);
 	if (timeservers != NULL) {
 		for (i = 0, list = option; list; list = list->next, i++)
