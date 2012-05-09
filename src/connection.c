@@ -136,15 +136,30 @@ static struct gateway_data *find_phy_gateway(int index, const char *gateway)
 	return NULL;
 }
 
-static void set_vpn_routes(struct gateway_config *config,
+static void set_vpn_routes(struct gateway_data *new_gateway,
 			struct connman_service *service,
 			const char *gateway,
 			enum connman_ipconfig_type type,
-			const char *peer)
+			const char *peer,
+			struct gateway_data *active_gateway)
 {
+	struct gateway_config *config;
 	struct gateway_data *data;
 	struct connman_ipconfig *ipconfig;
+	char *dest;
 	int index;
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		ipconfig = __connman_service_get_ip4config(service);
+		config = new_gateway->ipv4_gateway;
+	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		ipconfig = __connman_service_get_ip6config(service);
+		config = new_gateway->ipv6_gateway;
+	} else
+		return;
+
+	if (config == NULL)
+		goto done;
 
 	config->vpn = TRUE;
 	if (peer != NULL)
@@ -152,42 +167,72 @@ static void set_vpn_routes(struct gateway_config *config,
 	else if (gateway != NULL)
 		config->vpn_ip = g_strdup(gateway);
 
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		ipconfig = __connman_service_get_ip4config(service);
-	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		ipconfig = __connman_service_get_ip6config(service);
-	else
-		return;
-
 	index = __connman_ipconfig_get_index(ipconfig);
 	data = find_phy_gateway(index, gateway);
 
-	if (data != NULL) {
-		/*
-		 * data->service points now to original
-		 * service that is serving the VPN link
-		 */
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-			ipconfig =
-				__connman_service_get_ip4config(data->service);
-		else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-			ipconfig =
-				__connman_service_get_ip6config(data->service);
-		else
-			return;
+	if (data == NULL)
+		goto done;
 
-		if (ipconfig != NULL) {
-			const char *address;
+	/*
+	 * data->service points now to original
+	 * service that is serving the VPN link
+	 */
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		ipconfig = __connman_service_get_ip4config(data->service);
+	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		ipconfig = __connman_service_get_ip6config(data->service);
+	else
+		return;
 
-			address = __connman_ipconfig_get_local(ipconfig);
-			config->vpn_phy_ip = g_strdup(address);
-		}
+	if (ipconfig != NULL) {
+		const char *address;
 
-		config->vpn_phy_index = data->index;
+		address = __connman_ipconfig_get_local(ipconfig);
+		config->vpn_phy_ip = g_strdup(address);
 	}
+
+	config->vpn_phy_index = data->index;
 
 	DBG("vpn %s phy %s index %d", config->vpn_ip,
 		config->vpn_phy_ip, config->vpn_phy_index);
+
+done:
+	if (active_gateway == NULL)
+		return;
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		/*
+		 * Special route to VPN server via gateway. This
+		 * is needed so that we can access hosts behind
+		 * the VPN. The route might already exist depending
+		 * on network topology.
+		 */
+		if (active_gateway->ipv4_gateway == NULL)
+			return;
+
+		if (g_strcmp0(active_gateway->ipv4_gateway->gateway,
+							"0.0.0.0") != 0)
+			dest = active_gateway->ipv4_gateway->gateway;
+		else
+			dest = NULL;
+
+		connman_inet_add_host_route(active_gateway->index, gateway,
+									dest);
+
+	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+
+		if (active_gateway->ipv6_gateway == NULL)
+			return;
+
+		if (g_strcmp0(active_gateway->ipv6_gateway->gateway,
+								"::") != 0)
+			dest = active_gateway->ipv6_gateway->gateway;
+		else
+			dest = NULL;
+
+		connman_inet_add_ipv6_host_route(active_gateway->index,
+								gateway, dest);
+	}
 }
 
 static int del_routes(struct gateway_data *data,
@@ -832,46 +877,9 @@ int __connman_connection_gateway_add(struct connman_service *service,
 	}
 
 	if (service_type == CONNMAN_SERVICE_TYPE_VPN) {
-		char *dest;
 
-		if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
-			if (new_gateway->ipv4_gateway != NULL)
-				set_vpn_routes(new_gateway->ipv4_gateway,
-					service, gateway, type, peer);
-
-			/*
-			 * Special route to VPN server via gateway. This
-			 * is needed so that we can access hosts behind
-			 * the VPN. The route might already exist depending
-			 * on network topology.
-			 */
-			if (active_gateway != NULL) {
-				if (g_strcmp0(active_gateway->ipv4_gateway->gateway, "0.0.0.0") != 0)
-					dest = active_gateway->ipv4_gateway->gateway;
-				else
-					dest = NULL;
-
-				connman_inet_add_host_route(active_gateway->index,
-						gateway,
-						dest);
-			}
-
-		} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
-			if (new_gateway->ipv6_gateway != NULL)
-				set_vpn_routes(new_gateway->ipv6_gateway,
-					service, gateway, type, peer);
-
-			if (active_gateway != NULL) {
-				if (g_strcmp0(active_gateway->ipv6_gateway->gateway, "::") != 0)
-					dest = active_gateway->ipv6_gateway->gateway;
-				else
-					dest = NULL;
-
-				connman_inet_add_ipv6_host_route(active_gateway->index,
-						gateway,
-						dest);
-			}
-		}
+		set_vpn_routes(new_gateway, service, gateway, type, peer,
+							active_gateway);
 
 	} else {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4 &&
