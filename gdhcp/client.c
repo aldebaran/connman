@@ -1897,8 +1897,11 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		} else
 			dhcp_client->status_code = 0;
 
-	} else
+	} else {
 		message_type = dhcp_get_option(&packet, DHCP_MESSAGE_TYPE);
+		if (message_type == NULL)
+			return TRUE;
+	}
 
 	if (message_type == NULL && client_id == NULL)
 		/* No message type / client id option, ignore package */
