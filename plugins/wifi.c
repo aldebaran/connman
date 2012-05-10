@@ -62,7 +62,7 @@
 #define FAVORITE_MAXIMUM_RETRIES 4
 
 #define BGSCAN_DEFAULT "simple:30:-45:300"
-#define AUTOSCAN_DEFAULT "exponential:3:300"
+#define AUTOSCAN_DEFAULT "exponential:3:90"
 
 static struct connman_technology *wifi_technology = NULL;
 
