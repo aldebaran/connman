@@ -471,7 +471,8 @@ static int set_addresses(GDHCPClient *dhcp_client,
 
 		dhcp->nameservers = nameservers;
 
-		for (i = 0; dhcp->nameservers[i] != NULL; i++)
+		for (i = 0; dhcp->nameservers != NULL &&
+					dhcp->nameservers[i] != NULL; i++)
 			__connman_service_nameserver_append(service,
 							dhcp->nameservers[i],
 							FALSE);
@@ -498,7 +499,8 @@ static int set_addresses(GDHCPClient *dhcp_client,
 
 		dhcp->timeservers = timeservers;
 
-		for (i = 0; dhcp->timeservers[i] != NULL; i++)
+		for (i = 0; dhcp->timeservers != NULL &&
+					dhcp->timeservers[i] != NULL; i++)
 			__connman_service_timeserver_append(service,
 							dhcp->timeservers[i]);
 	} else
