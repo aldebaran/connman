@@ -1626,9 +1626,6 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	const unsigned char *ssid;
 	unsigned int ssid_len;
 	connman_bool_t wps;
-	connman_bool_t wps_pbc;
-	connman_bool_t wps_ready;
-	connman_bool_t wps_advertizing;
 
 	DBG("");
 
@@ -1639,10 +1636,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	security = g_supplicant_network_get_security(supplicant_network);
 	group = g_supplicant_network_get_identifier(supplicant_network);
 	wps = g_supplicant_network_get_wps(supplicant_network);
-	wps_pbc = g_supplicant_network_is_wps_pbc(supplicant_network);
-	wps_ready = g_supplicant_network_is_wps_active(supplicant_network);
-	wps_advertizing = g_supplicant_network_is_wps_advertizing(
-							supplicant_network);
+
 	mode = g_supplicant_network_get_mode(supplicant_network);
 
 	if (wifi == NULL)
@@ -1677,14 +1671,6 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 	connman_network_set_strength(network,
 				calculate_strength(supplicant_network));
 	connman_network_set_bool(network, "WiFi.WPS", wps);
-
-	if (wps == TRUE) {
-		/* Is AP advertizing for WPS association?
-		 * If so, we decide to use WPS by default */
-		if (wps_ready == TRUE && wps_pbc == TRUE &&
-						wps_advertizing == TRUE)
-			connman_network_set_bool(network, "WiFi.UseWPS", TRUE);
-	}
 
 	connman_network_set_frequency(network,
 			g_supplicant_network_get_frequency(supplicant_network));
