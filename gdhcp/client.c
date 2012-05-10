@@ -1865,6 +1865,9 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	if (dhcp_client->type == G_DHCP_IPV6) {
+		if (packet6 == NULL)
+			return TRUE;
+
 		count = 0;
 		client_id = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_CLIENTID, &option_len,	&count);
