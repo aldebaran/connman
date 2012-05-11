@@ -179,3 +179,13 @@ To run pptp you will need
 	- pptp client, http://pptpclient.sourceforge.net
 
 Both l2tp and pptp also need pppd.
+
+
+OpenVPN
+=======
+
+Up to version 2.2 of OpenVPN, pushing additional routes from the
+server will not always work. Some of the symptons are that additional
+routes will not be set by ConnMan if the uplink is a cellular
+network. While the same setup works well for a WiFi or ethernet
+uplink.
