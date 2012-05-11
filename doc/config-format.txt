@@ -31,7 +31,9 @@ to store the different services into an hash table.
 
 Allowed fields:
 - Type: Service type. We currently only support wifi.
-- SSID: An hexadecimal or a string representation of a 802.11 SSID.
+- Name: Service name
+- SSID: An hexadecimal representation of a 802.11 SSID. If the SSID field is
+  omitted, the Name field is used instead.
 - EAP: EAP type. We currently only support tls, ttls or peap.
 - CACertFile: File path to CA certificate file (PEM/DER).
 - ClientCertFile: File path to client certificate file (PEM/DER).
