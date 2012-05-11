@@ -52,21 +52,6 @@ To compile and install run:
 	make && make install
 
 
-VPN
-===
-
-In order to compile pptp and l2tp VPN plugins, you need ppp development
-package.
-
-To run l2tp you will need
-	- xl2tpd, http://www.xelerance.com/services/software/xl2tpd
-
-To run pptp you will need
-	- pptp client, http://pptpclient.sourceforge.net
-
-Both l2tp and pptp also need pppd.
-
-
 Configuration and options
 =========================
 
@@ -179,3 +164,18 @@ This last option will enable the support of background scanning while being
 connected, which is necessary when roaming on wifi.
 
 It is recommended to use wpa_supplicant 0.8.x or 1.x or later.
+
+
+VPN
+===
+
+In order to compile pptp and l2tp VPN plugins, you need ppp development
+package.
+
+To run l2tp you will need
+	- xl2tpd, http://www.xelerance.com/services/software/xl2tpd
+
+To run pptp you will need
+	- pptp client, http://pptpclient.sourceforge.net
+
+Both l2tp and pptp also need pppd.
