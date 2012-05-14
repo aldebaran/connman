@@ -360,10 +360,10 @@ int connman_resolver_append_lifetime(const char *interface, const char *domain,
 	for (list = entry_list; list; list = list->next) {
 		struct entry_data *entry = list->data;
 
-		if (!entry->timeout ||
-				g_strcmp0(entry->interface, interface) ||
-				g_strcmp0(entry->domain, domain) ||
-				g_strcmp0(entry->server, server))
+		if (entry->timeout == 0 ||
+				g_strcmp0(entry->interface, interface) != 0 ||
+				g_strcmp0(entry->domain, domain) != 0 ||
+				g_strcmp0(entry->server, server) != 0)
 			continue;
 
 		g_source_remove(entry->timeout);
