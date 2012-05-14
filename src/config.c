@@ -258,7 +258,13 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		}
 
 		for (i = 0; i < hex_ssid_len; i += 2) {
-			sscanf(hex_ssid + i, "%02x", &hex);
+			if (sscanf(hex_ssid + i, "%02x", &hex) <= 0) {
+				connman_warn("Invalid SSID %s", hex_ssid);
+				g_free(ssid);
+				g_free(hex_ssid);
+				err = -EILSEQ;
+				goto err;
+			}
 			ssid[j++] = hex;
 		}
 
