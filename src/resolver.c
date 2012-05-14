@@ -354,7 +354,7 @@ int connman_resolver_append_lifetime(const char *interface, const char *domain,
 	DBG("interface %s domain %s server %s lifetime %d",
 				interface, domain, server, lifetime);
 
-	if (server == NULL)
+	if (server == NULL && domain == NULL)
 		return -EINVAL;
 
 	for (list = entry_list; list; list = list->next) {
