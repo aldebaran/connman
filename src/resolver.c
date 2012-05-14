@@ -283,7 +283,7 @@ static int append_resolver(const char *interface, const char *domain,
 		 * that are automagically added via netlink (lifetime > 0)
 		 */
 		index = connman_inet_ifindex(interface);
-		if (index >= 0) {
+		if (server != NULL && index >= 0) {
 			struct connman_service *service;
 			service = __connman_service_lookup_from_index(index);
 			if (service != NULL)
