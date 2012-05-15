@@ -2379,7 +2379,7 @@ static void interface_create_result(const char *error,
 	SUPPLICANT_DBG("");
 
 	if (error != NULL) {
-		g_critical("error %s", error);
+		g_warning("error %s", error);
 		err = -EIO;
 		goto done;
 	}
