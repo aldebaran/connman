@@ -2961,17 +2961,47 @@ static dbus_bool_t is_psk_raw_key(const char *psk)
 	return TRUE;
 }
 
+static unsigned char hexchar2bin(char c)
+{
+	if ((c >= '0') && (c <= '9'))
+		return (c - '0');
+	else if ((c >= 'A') && (c <= 'F'))
+		return (c - 'A' + 10);
+	else if ((c >= 'a') && (c <= 'f'))
+		return (c - 'a' + 10);
+	else
+		return (c);
+}
+
+static void hexstring2bin(const char *string, unsigned char *data, size_t data_len)
+{
+	size_t i;
+
+	if ((data != NULL) && (string != NULL))
+		for (i = 0; i < data_len; i++)
+			data[i] = (hexchar2bin(string[i * 2 + 0]) << 4 |
+				   hexchar2bin(string[i * 2 + 1]) << 0);
+}
+
 static void add_network_security_psk(DBusMessageIter *dict,
 					GSupplicantSSID *ssid)
 {
 	if (ssid->passphrase && strlen(ssid->passphrase) > 0) {
-		if (is_psk_raw_key(ssid->passphrase) == TRUE)
+		const char *key = "psk";
+
+		if (is_psk_raw_key(ssid->passphrase) == TRUE) {
+			const size_t size = 32;
+			unsigned char data[size];
+			unsigned char *datap = data;
+
+			hexstring2bin(ssid->passphrase, datap, size);
+
 			supplicant_dbus_dict_append_fixed_array(dict,
-							"psk", DBUS_TYPE_BYTE,
-							&ssid->passphrase, 64);
-		else
-			supplicant_dbus_dict_append_basic(dict, "psk",
-							DBUS_TYPE_STRING,
+							key, DBUS_TYPE_BYTE,
+							&datap, size);
+		} else
+			supplicant_dbus_dict_append_basic(dict,
+							key, DBUS_TYPE_STRING,
 							&ssid->passphrase);
 	}
 }
