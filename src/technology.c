@@ -859,7 +859,8 @@ static DBusMessage *scan(DBusConnection *conn, DBusMessage *msg, void *data)
 }
 
 static GDBusMethodTable technology_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties },
+	{ "GetProperties", "",   "a{sv}", get_properties,
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "SetProperty",   "sv", "",      set_property   },
 	{ "Scan",          "",    "",     scan,
 						G_DBUS_METHOD_FLAG_ASYNC },
