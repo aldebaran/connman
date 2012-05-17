@@ -150,10 +150,11 @@ Properties	string State [readonly]
 			The service name (for example "Wireless" etc.)
 
 			This name can be used for directly displaying it in
-			the application. It has pure informational purpose.
+			the application. It has pure informational purpose
+			and no attempt should be made to translate it.
 
-			For Ethernet devices and hidden WiFi networks it is
-			not guaranteed that this property is present.
+			For Ethernet devices and hidden WiFi networks this
+			property is not present.
 
 		string Type [readonly]
 
@@ -162,6 +163,9 @@ Properties	string State [readonly]
 			This information should only be used to determine
 			advanced properties or showing the correct icon
 			to the user.
+
+			Together with a missing Name property, this can
+			be used to identify hidden WiFi networks.
 
 		array{string} Security [readonly]
 
