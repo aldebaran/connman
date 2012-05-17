@@ -3812,7 +3812,8 @@ static void service_schedule_removed(struct connman_service *service)
 }
 
 static GDBusMethodTable service_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties     },
+	{ "GetProperties", "",   "a{sv}", get_properties,
+						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "SetProperty",   "sv", "",      set_property       },
 	{ "ClearProperty", "s",  "",      clear_property     },
 	{ "Connect",       "",   "",      connect_service,
