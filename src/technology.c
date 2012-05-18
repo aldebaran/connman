@@ -867,7 +867,7 @@ static const GDBusMethodTable technology_methods[] = {
 	{ },
 };
 
-static GDBusSignalTable technology_signals[] = {
+static const GDBusSignalTable technology_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ },
 };

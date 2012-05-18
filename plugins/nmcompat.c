@@ -225,7 +225,7 @@ static const GDBusMethodTable methods[] = {
 	{ },
 };
 
-static GDBusSignalTable signals[] = {
+static const GDBusSignalTable signals[] = {
 	{ "PropertiesChanged",	"a{sv}"	},
 	{ "StateChanged",	"u"	},
 	{ },

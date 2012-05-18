@@ -3826,7 +3826,7 @@ static const GDBusMethodTable service_methods[] = {
 	{ },
 };
 
-static GDBusSignalTable service_signals[] = {
+static const GDBusSignalTable service_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ },
 };

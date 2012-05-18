@@ -314,7 +314,7 @@ static const GDBusMethodTable clock_methods[] = {
 	{ },
 };
 
-static GDBusSignalTable clock_signals[] = {
+static const GDBusSignalTable clock_signals[] = {
 	{ "PropertyChanged", "sv" },
 	{ },
 };
