@@ -256,16 +256,6 @@ GKeyFile *connman_storage_load_service(const char *service_id)
 
 	keyfile =  storage_load(pathname);
 	g_free(pathname);
-	if (keyfile)
-		return keyfile;
-
-	pathname = g_strdup_printf("%s/%s", STORAGEDIR, DEFAULT);
-	if(pathname == NULL)
-		return NULL;
-
-	keyfile =  storage_load(pathname);
-
-	g_free(pathname);
 
 	return keyfile;
 }
