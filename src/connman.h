@@ -204,7 +204,7 @@ int __connman_resolver_redo_servers(const char *interface);
 void __connman_storage_migrate(void);
 GKeyFile *__connman_storage_open_global();
 GKeyFile *__connman_storage_load_global();
-void __connman_storage_save_global(GKeyFile *keyfile);
+int __connman_storage_save_global(GKeyFile *keyfile);
 void __connman_storage_delete_global();
 
 GKeyFile *__connman_storage_load_config(const char *ident);
@@ -212,7 +212,7 @@ void __connman_storage_save_config(GKeyFile *keyfile, const char *ident);
 void __connman_storage_delete_config(const char *ident);
 
 GKeyFile *__connman_storage_open_service(const char *ident);
-void __connman_storage_save_service(GKeyFile *keyfile, const char *ident);
+int __connman_storage_save_service(GKeyFile *keyfile, const char *ident);
 GKeyFile *__connman_storage_load_provider(const char *identifier);
 void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier);
 char **__connman_storage_get_providers(void);

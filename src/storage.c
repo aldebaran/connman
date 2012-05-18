@@ -58,20 +58,24 @@ static GKeyFile *storage_load(const char *pathname)
 	return keyfile;
 }
 
-static void storage_save(GKeyFile *keyfile, char *pathname)
+static int storage_save(GKeyFile *keyfile, char *pathname)
 {
 	gchar *data = NULL;
 	gsize length = 0;
 	GError *error = NULL;
+	int ret = 0;
 
 	data = g_key_file_to_data(keyfile, &length, NULL);
 
 	if (!g_file_set_contents(pathname, data, length, &error)) {
 		DBG("Failed to store information: %s", error->message);
 		g_error_free(error);
+		ret = -EIO;
 	}
 
 	g_free(data);
+
+	return ret;
 }
 
 static void storage_delete(const char *pathname)
@@ -98,17 +102,20 @@ GKeyFile *__connman_storage_load_global()
 	return keyfile;
 }
 
-void __connman_storage_save_global(GKeyFile *keyfile)
+int __connman_storage_save_global(GKeyFile *keyfile)
 {
 	gchar *pathname;
+	int ret;
 
 	pathname = g_strdup_printf("%s/%s", STORAGEDIR, SETTINGS);
 	if(pathname == NULL)
-		return;
+		return -ENOMEM;
 
-	storage_save(keyfile, pathname);
+	ret = storage_save(keyfile, pathname);
 
 	g_free(pathname);
+
+	return ret;
 }
 
 void __connman_storage_delete_global()
@@ -263,20 +270,21 @@ GKeyFile *connman_storage_load_service(const char *service_id)
 	return keyfile;
 }
 
-void __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
+int __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 {
+	int ret = 0;
 	gchar *pathname, *dirname;
 
 	dirname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
 	if(dirname == NULL)
-		return;
+		return -ENOMEM;
 
 	/* If the dir doesn't exist, create it */
 	if (!g_file_test(dirname, G_FILE_TEST_IS_DIR)) {
 		if(mkdir(dirname, MODE) < 0) {
 			if (errno != EEXIST) {
 				g_free(dirname);
-				return;
+				return -errno;
 			}
 		}
 	}
@@ -285,9 +293,11 @@ void __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 
 	g_free(dirname);
 
-	storage_save(keyfile, pathname);
+	ret = storage_save(keyfile, pathname);
 
 	g_free(pathname);
+
+	return ret;
 }
 
 GKeyFile *__connman_storage_load_provider(const char *identifier)
