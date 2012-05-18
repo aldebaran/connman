@@ -387,6 +387,8 @@ void __connman_storage_migrate()
 	GKeyFile *keyfile_def = NULL;
 	GKeyFile *keyfile = NULL;
 	GError *error = NULL;
+	char **services, **keys, *value;
+	int i, k, err;
 	connman_bool_t val;
 
 	/* If setting file exists, migration has been done. */
@@ -404,6 +406,56 @@ void __connman_storage_migrate()
 	keyfile_def = storage_load(pathname);
 	if (keyfile_def == NULL)
 		goto done;
+
+	services = g_key_file_get_groups(keyfile_def, NULL);
+	for (i = 0; services != NULL && services[i] != NULL; i++) {
+		if (strncmp(services[i], "wifi_", 5) != 0 &&
+				strncmp(services[i], "ethernet_", 9) != 0 &&
+				strncmp(services[i], "cellular_", 9) != 0 &&
+				strncmp(services[i], "bluetooth_", 10) != 0 &&
+				strncmp(services[i], "wimax_", 6) != 0 &&
+				strncmp(services[i], "vpn_", 4) != 0)
+			continue;
+
+		keyfile = connman_storage_load_service(services[i]);
+		if (keyfile != NULL) {
+			g_key_file_free(keyfile);
+			DBG("already exists %s", services[i]);
+			continue;
+		}
+
+		keyfile = g_key_file_new();
+		if (keyfile == NULL) {
+			connman_warn("Migrating %s failed", services[i]);
+			continue;
+		}
+
+		keys = g_key_file_get_keys(keyfile_def, services[i],
+				NULL, NULL);
+
+		for (k = 0; keys != NULL && keys[k] != NULL; k++) {
+			value = g_key_file_get_value(keyfile_def, services[i],
+					keys[k], NULL);
+			g_key_file_set_value(keyfile, services[i],
+					keys[k], value);
+			g_free(value);
+		}
+
+		if (keys != NULL && keys[0] != NULL) {
+			err = __connman_storage_save_service(keyfile,
+					services[i]);
+			if (err >= 0)
+				DBG("migrated %s", services[i]);
+			else
+				connman_warn("Migrating %s failed %s",
+						services[i], strerror(-err));
+		} else
+			DBG("no keys in %s", services[i]);
+
+		g_strfreev(keys);
+		g_key_file_free(keyfile);
+	}
+	g_strfreev(services);
 
 	/* Copy global settings from default.profile to settings. */
 	keyfile = g_key_file_new();
