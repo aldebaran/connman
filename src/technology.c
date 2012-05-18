@@ -859,16 +859,19 @@ static DBusMessage *scan(DBusConnection *conn, DBusMessage *msg, void *data)
 }
 
 static const GDBusMethodTable technology_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties,
-						G_DBUS_METHOD_FLAG_DEPRECATED },
-	{ "SetProperty",   "sv", "",      set_property   },
-	{ "Scan",          "",    "",     scan,
-						G_DBUS_METHOD_FLAG_ASYNC },
+	{ _GDBUS_DEPRECATED_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_METHOD("SetProperty", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
+			NULL, set_property) },
+	{ _GDBUS_ASYNC_METHOD("Scan", "", "", NULL, NULL, scan) },
 	{ },
 };
 
 static const GDBusSignalTable technology_signals[] = {
-	{ "PropertyChanged", "sv" },
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ },
 };
 

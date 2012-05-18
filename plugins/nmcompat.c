@@ -221,13 +221,17 @@ static DBusMessage *property_get(DBusConnection *conn,
 }
 
 static const GDBusMethodTable methods[] = {
-	{ "Get", "ss",  "v",   property_get	},
+	{ _GDBUS_METHOD("Get", "ss", "v",
+			GDBUS_ARGS({ "interface", "s" }, { "key", "s" }),
+			GDBUS_ARGS({ "property", "v" }), property_get) },
 	{ },
 };
 
 static const GDBusSignalTable signals[] = {
-	{ "PropertiesChanged",	"a{sv}"	},
-	{ "StateChanged",	"u"	},
+	{ _GDBUS_SIGNAL("PropertiesChanged", "a{sv}",
+			GDBUS_ARGS({ "properties", "a{sv}" })) },
+	{ _GDBUS_SIGNAL("StateChanged", "u",
+			GDBUS_ARGS({ "state", "u" })) },
 	{ },
 };
 

@@ -1556,10 +1556,13 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 }
 
 static const GDBusMethodTable session_methods[] = {
-	{ "Destroy",    "",   "", destroy_session    },
-	{ "Connect",    "",   "", connect_session    },
-	{ "Disconnect", "",   "", disconnect_session },
-	{ "Change",     "sv", "", change_session     },
+	{ _GDBUS_METHOD("Destroy", "", "", NULL, NULL, destroy_session) },
+	{ _GDBUS_METHOD("Connect", "", "", NULL, NULL, connect_session) },
+	{ _GDBUS_METHOD("Disconnect", "", "", NULL, NULL,
+			disconnect_session ) },
+	{ _GDBUS_METHOD("Change", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
+			NULL, change_session) },
 	{ },
 };
 

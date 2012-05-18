@@ -3812,22 +3812,33 @@ static void service_schedule_removed(struct connman_service *service)
 }
 
 static const GDBusMethodTable service_methods[] = {
-	{ "GetProperties", "",   "a{sv}", get_properties,
-						G_DBUS_METHOD_FLAG_DEPRECATED },
-	{ "SetProperty",   "sv", "",      set_property       },
-	{ "ClearProperty", "s",  "",      clear_property     },
-	{ "Connect",       "",   "",      connect_service,
-						G_DBUS_METHOD_FLAG_ASYNC },
-	{ "Disconnect",    "",   "",      disconnect_service },
-	{ "Remove",        "",   "",      remove_service     },
-	{ "MoveBefore",    "o",  "",      move_before        },
-	{ "MoveAfter",     "o",  "",      move_after         },
-	{ "ResetCounters", "",   "",      reset_counters     },
+	{ _GDBUS_DEPRECATED_METHOD("GetProperties", "", "a{sv}",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
+	{ _GDBUS_METHOD("SetProperty", "sv", "",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
+			NULL, set_property) },
+	{ _GDBUS_METHOD("ClearProperty", "s", "",
+			GDBUS_ARGS({ "name", "s" }), NULL,
+			clear_property) },
+	{ _GDBUS_ASYNC_METHOD("Connect", "", "", NULL, NULL,
+			      connect_service) },
+	{ _GDBUS_METHOD("Disconnect", "", "", NULL, NULL,
+			disconnect_service) },
+	{ _GDBUS_METHOD("Remove", "", "", NULL, NULL, remove_service) },
+	{ _GDBUS_METHOD("MoveBefore", "o", "",
+			GDBUS_ARGS({ "service", "o" }), NULL,
+			move_before) },
+	{ _GDBUS_METHOD("MoveAfter", "o", "",
+			GDBUS_ARGS({ "service", "o" }), NULL,
+			move_after) },
+	{ _GDBUS_METHOD("ResetCounters", "", "", NULL, NULL, reset_counters) },
 	{ },
 };
 
 static const GDBusSignalTable service_signals[] = {
-	{ "PropertyChanged", "sv" },
+	{ _GDBUS_SIGNAL("PropertyChanged", "sv",
+			GDBUS_ARGS({ "name", "s" }, { "value", "v" })) },
 	{ },
 };
 
