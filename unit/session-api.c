@@ -286,8 +286,8 @@ static DBusMessage *notify_update(DBusConnection *conn,
 }
 
 static const GDBusMethodTable notify_methods[] = {
-	{ _GDBUS_METHOD("Release", "", "", NULL, NULL, notify_release) },
-	{ _GDBUS_METHOD("Update", "a{sv}", "",
+	{ GDBUS_METHOD("Release", NULL, NULL, notify_release) },
+	{ GDBUS_METHOD("Update",
 			GDBUS_ARGS({ "settings", "a{sv}" }), NULL,
 			notify_update) },
 	{ },
