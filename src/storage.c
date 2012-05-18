@@ -387,20 +387,23 @@ void __connman_storage_migrate()
 	GKeyFile *keyfile_def = NULL;
 	GKeyFile *keyfile = NULL;
 	GError *error = NULL;
+	connman_bool_t delete_old_config = TRUE;
 	char **services, **keys, *value;
 	int i, k, err;
 	connman_bool_t val;
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, DEFAULT);
+	if (pathname == NULL)
+		return;
 
 	/* If setting file exists, migration has been done. */
 	keyfile = __connman_storage_load_global();
 	if (keyfile) {
 		g_key_file_free(keyfile);
+		unlink(pathname);
+		g_free(pathname);
 		return;
 	}
-
-	pathname = g_strdup_printf("%s/%s", STORAGEDIR, DEFAULT);
-	if(pathname == NULL)
-		return;
 
 	/* If default.profile exists, create new settings file */
 	keyfile_def = storage_load(pathname);
@@ -427,6 +430,7 @@ void __connman_storage_migrate()
 		keyfile = g_key_file_new();
 		if (keyfile == NULL) {
 			connman_warn("Migrating %s failed", services[i]);
+			delete_old_config = FALSE;
 			continue;
 		}
 
@@ -446,9 +450,11 @@ void __connman_storage_migrate()
 					services[i]);
 			if (err >= 0)
 				DBG("migrated %s", services[i]);
-			else
+			else {
 				connman_warn("Migrating %s failed %s",
 						services[i], strerror(-err));
+				delete_old_config = FALSE;
+			}
 		} else
 			DBG("no keys in %s", services[i]);
 
@@ -520,12 +526,19 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "WiMAX",
 					"Enable", val);
 
-	__connman_storage_save_global(keyfile);
+	if (__connman_storage_save_global(keyfile) < 0) {
+		connman_warn("Migrating global config failed");
+		delete_old_config = FALSE;
+	}
 
 	g_key_file_free(keyfile);
 
 	g_key_file_free(keyfile_def);
 
+	if (delete_old_config == TRUE) {
+		DBG("migration done for %s", pathname);
+		unlink(pathname);
+	}
 done:
 	g_free(pathname);
 }
