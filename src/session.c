@@ -1555,7 +1555,7 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable session_methods[] = {
+static const GDBusMethodTable session_methods[] = {
 	{ "Destroy",    "",   "", destroy_session    },
 	{ "Connect",    "",   "", connect_session    },
 	{ "Disconnect", "",   "", disconnect_session },

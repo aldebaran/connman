@@ -220,7 +220,7 @@ static DBusMessage *property_get(DBusConnection *conn,
 						"Unsupported property");
 }
 
-static GDBusMethodTable methods[] = {
+static const GDBusMethodTable methods[] = {
 	{ "Get", "ss",  "v",   property_get	},
 	{ },
 };

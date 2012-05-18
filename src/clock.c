@@ -308,7 +308,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static GDBusMethodTable clock_methods[] = {
+static const GDBusMethodTable clock_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties },
 	{ "SetProperty",   "sv", "",      set_property   },
 	{ },

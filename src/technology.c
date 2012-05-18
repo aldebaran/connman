@@ -858,7 +858,7 @@ static DBusMessage *scan(DBusConnection *conn, DBusMessage *msg, void *data)
 	return NULL;
 }
 
-static GDBusMethodTable technology_methods[] = {
+static const GDBusMethodTable technology_methods[] = {
 	{ "GetProperties", "",   "a{sv}", get_properties,
 						G_DBUS_METHOD_FLAG_DEPRECATED },
 	{ "SetProperty",   "sv", "",      set_property   },
