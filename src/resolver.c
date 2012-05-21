@@ -36,11 +36,18 @@
 
 #define RESOLVER_FLAG_PUBLIC (1 << 0)
 
+/*
+ * Threshold for RDNSS lifetime. Will be used to trigger RS
+ * before RDNSS entries actually expire
+ */
+#define RESOLVER_LIFETIME_REFRESH_THRESHOLD 0.8
+
 struct entry_data {
 	char *interface;
 	char *domain;
 	char *server;
 	unsigned int flags;
+	unsigned int lifetime;
 	guint timeout;
 };
 
@@ -253,11 +260,47 @@ static gboolean resolver_expire_cb(gpointer user_data)
 	return FALSE;
 }
 
+static gboolean resolver_refresh_cb(gpointer user_data)
+{
+	struct entry_data *entry = user_data;
+	int index;
+	unsigned int interval;
+	struct connman_service *service = NULL;
+
+	/* Round up what we have left from lifetime */
+	interval = entry->lifetime *
+		(1 - RESOLVER_LIFETIME_REFRESH_THRESHOLD) + 1.0;
+
+	DBG("RDNSS start interface %s domain %s "
+			"server %s remaining lifetime %d",
+			entry->interface, entry->domain,
+			entry->server, interval);
+
+	entry->timeout = g_timeout_add_seconds(interval,
+			resolver_expire_cb, entry);
+
+	index = connman_inet_ifindex(entry->interface);
+	if (index >= 0) {
+		service = __connman_service_lookup_from_index(index);
+		if (service != NULL) {
+			/*
+			 * Send Router Solicitation to refresh RDNSS entries
+			 * before their lifetime expires
+			 */
+			__connman_refresh_rs_ipv6(
+					__connman_service_get_network(service),
+					index);
+		}
+	}
+	return FALSE;
+}
+
 static int append_resolver(const char *interface, const char *domain,
 				const char *server, unsigned int lifetime,
 							unsigned int flags)
 {
 	struct entry_data *entry;
+	unsigned int interval;
 
 	DBG("interface %s domain %s server %s lifetime %d flags %d",
 				interface, domain, server, lifetime, flags);
@@ -273,10 +316,17 @@ static int append_resolver(const char *interface, const char *domain,
 	entry->domain = g_strdup(domain);
 	entry->server = g_strdup(server);
 	entry->flags = flags;
+	entry->lifetime = lifetime;
 	if (lifetime) {
 		int index;
-		entry->timeout = g_timeout_add_seconds(lifetime,
-						resolver_expire_cb, entry);
+		interval = lifetime * RESOLVER_LIFETIME_REFRESH_THRESHOLD;
+
+		DBG("RDNSS start interface %s domain %s "
+				"server %s lifetime threshold %d",
+				interface, domain, server, interval);
+
+		entry->timeout = g_timeout_add_seconds(interval,
+				resolver_refresh_cb, entry);
 
 		/*
 		 * We update the service only for those nameservers
@@ -350,6 +400,7 @@ int connman_resolver_append_lifetime(const char *interface, const char *domain,
 				const char *server, unsigned int lifetime)
 {
 	GSList *list;
+	unsigned int interval;
 
 	DBG("interface %s domain %s server %s lifetime %d",
 				interface, domain, server, lifetime);
@@ -373,8 +424,14 @@ int connman_resolver_append_lifetime(const char *interface, const char *domain,
 			return 0;
 		}
 
-		entry->timeout = g_timeout_add_seconds(lifetime,
-						resolver_expire_cb, entry);
+		interval = lifetime * RESOLVER_LIFETIME_REFRESH_THRESHOLD;
+
+		DBG("RDNSS start interface %s domain %s "
+				"server %s lifetime threshold %d",
+				interface, domain, server, interval);
+
+		entry->timeout = g_timeout_add_seconds(interval,
+				resolver_refresh_cb, entry);
 		return 0;
 	}
 

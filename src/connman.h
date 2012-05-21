@@ -147,6 +147,9 @@ typedef void (*__connman_inet_rs_cb_t) (struct nd_router_advert *reply,
 
 int __connman_inet_ipv6_send_rs(int index, int timeout,
 			__connman_inet_rs_cb_t callback, void *user_data);
+
+int __connman_refresh_rs_ipv6(struct connman_network *network, int index);
+
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
 					unsigned int length);
 
