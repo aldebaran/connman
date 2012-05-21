@@ -408,6 +408,11 @@ static ssize_t g_io_gnutls_pull_func(gnutls_transport_ptr_t transport_data,
 	return result;
 }
 
+gboolean g_io_channel_supports_tls(void)
+{
+	return TRUE;
+}
+
 GIOChannel *g_io_channel_gnutls_new(int fd)
 {
 	GIOGnuTLSChannel *gnutls_channel;

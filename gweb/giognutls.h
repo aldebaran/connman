@@ -21,4 +21,6 @@
 
 #include <glib.h>
 
+gboolean g_io_channel_supports_tls(void);
+
 GIOChannel *g_io_channel_gnutls_new(int fd);
