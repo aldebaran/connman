@@ -476,11 +476,19 @@ void __connman_storage_migrate()
 	g_key_file_set_boolean(keyfile, "global",
 					"OfflineMode", val);
 
+	/* Migrate Powered/Enable state key/value pairs from legacy
+	 * settings
+	 */
+
 	val = g_key_file_get_boolean(keyfile_def, "WiFi",
 					"Enable", &error);
 	if (error != NULL) {
 		g_clear_error(&error);
-		val = FALSE;
+		val = g_key_file_get_boolean(keyfile_def, "device_Wireless", "Powered", &error);
+		if (error != NULL) {
+			g_clear_error(&error);
+			val = FALSE;
+		}
 	}
 
 	g_key_file_set_boolean(keyfile, "WiFi",
@@ -490,7 +498,11 @@ void __connman_storage_migrate()
 					"Enable", &error);
 	if (error != NULL) {
 		g_clear_error(&error);
-		val = FALSE;
+		val = g_key_file_get_boolean(keyfile_def, "device_Bluetooth", "Powered", &error);
+		if (error != NULL) {
+			g_clear_error(&error);
+			val = FALSE;
+		}
 	}
 
 	g_key_file_set_boolean(keyfile, "Bluetooth",
@@ -500,7 +512,11 @@ void __connman_storage_migrate()
 					"Enable", &error);
 	if (error != NULL) {
 		g_clear_error(&error);
-		val = FALSE;
+		val = g_key_file_get_boolean(keyfile_def, "device_Ethernet", "Powered", &error);
+		if (error != NULL) {
+			g_clear_error(&error);
+			val = FALSE;
+		}
 	}
 
 	g_key_file_set_boolean(keyfile, "Wired",
@@ -510,7 +526,11 @@ void __connman_storage_migrate()
 					"Enable", &error);
 	if (error != NULL) {
 		g_clear_error(&error);
-		val = FALSE;
+		val = g_key_file_get_boolean(keyfile_def, "device_Cellular", "Powered", &error);
+		if (error != NULL) {
+			g_clear_error(&error);
+			val = FALSE;
+		}
 	}
 
 	g_key_file_set_boolean(keyfile, "Cellular",
@@ -520,7 +540,11 @@ void __connman_storage_migrate()
 					"Enable", &error);
 	if (error != NULL) {
 		g_clear_error(&error);
-		val = FALSE;
+		val = g_key_file_get_boolean(keyfile_def, "device_WiMAX", "Powered", &error);
+		if (error != NULL) {
+			g_clear_error(&error);
+			val = FALSE;
+		}
 	}
 
 	g_key_file_set_boolean(keyfile, "WiMAX",
