@@ -27,8 +27,13 @@ gdbus_sources = gdbus/gdbus.h gdbus/mainloop.c gdbus/watch.c \
 gdhcp_sources = gdhcp/gdhcp.h gdhcp/common.h gdhcp/common.c gdhcp/client.c \
 		gdhcp/server.c gdhcp/ipv4ll.h gdhcp/ipv4ll.c
 
-gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c \
-					gweb/giognutls.h gweb/giognutls.c
+gweb_sources = gweb/gweb.h gweb/gweb.c gweb/gresolv.h gweb/gresolv.c
+
+if WISPR
+gweb_sources += gweb/giognutls.h gweb/giognutls.c
+else
+gweb_sources += gweb/giognutls.h gweb/gionotls.c
+endif
 
 if DATAFILES
 
@@ -62,10 +67,7 @@ unit_objects =
 
 sbin_PROGRAMS = src/connmand
 
-src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) \
-			gweb/gweb.h gweb/gweb.c \
-			gweb/gresolv.h gweb/gresolv.c \
-			gweb/giognutls.h gweb/giognutls.c \
+src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
 			$(builtin_sources) src/connman.ver \
 			src/main.c src/connman.h src/log.c \
 			src/error.c src/plugin.c src/task.c \
@@ -122,7 +124,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
-		plugins/connman-nmcompat.conf gweb/gionotls.c
+						plugins/connman-nmcompat.conf
 
 
 script_DATA =
@@ -138,17 +140,21 @@ client_cm_SOURCES = client/main.c
 client_cm_LDADD = @DBUS_LIBS@
 endif
 
+if WISPR
+noinst_PROGRAMS += tools/wispr
+
+tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
+tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
+endif
+
 if TOOLS
-noinst_PROGRAMS += tools/wispr tools/supplicant-test \
+noinst_PROGRAMS += tools/supplicant-test \
 			tools/dhcp-test tools/dhcp-server-test \
 			tools/addr-test tools/web-test tools/resolv-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
 			unit/test-session unit/test-ippool unit/test-nat
-
-tools_wispr_SOURCES = $(gweb_sources) tools/wispr.c
-tools_wispr_LDADD = @GLIB_LIBS@ @GNUTLS_LIBS@ -lresolv
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \

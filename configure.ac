@@ -310,11 +310,6 @@ if (test -n "${path_systemdunit}"); then
 fi
 AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
 
-PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
-				AC_MSG_ERROR(GnuTLS library is required))
-AC_SUBST(GNUTLS_CFLAGS)
-AC_SUBST(GNUTLS_LIBS)
-
 PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
 				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
@@ -372,15 +367,30 @@ AC_ARG_ENABLE(pacrunner, AC_HELP_STRING([--disable-pacrunner],
 					[enable_pacrunner=${enableval}])
 AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
 
-AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
-				[disable command line client]),
-					[disable_client=${enableval}])
-AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
+AC_ARG_ENABLE(wispr, AC_HELP_STRING([--disable-wispr],
+				[disable WISPr support]),
+					[enable_wispr=${enableval}])
+AM_CONDITIONAL(WISPR, test "${enable_wispr}" != "no")
 
 AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 				[disable testing tools]),
 					[enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
+
+AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
+				[disable command line client]),
+					[disable_client=${enableval}])
+AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
+
+if (test "${enable_wispr}" != "no"); then
+	PKG_CHECK_MODULES(GNUTLS, gnutls, dummy=yes,
+				AC_MSG_ERROR(GnuTLS library is required))
+else
+	GNUTLS_CFLAGS=""
+	GNUTLS_LIBS=""
+fi
+AC_SUBST(GNUTLS_CFLAGS)
+AC_SUBST(GNUTLS_LIBS)
 
 if (test "${enable_loopback}" != "no"); then
 	AC_CHECK_HEADERS(sys/inotify.h, dummy=yes,
