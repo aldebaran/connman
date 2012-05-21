@@ -282,7 +282,9 @@ Properties	string State [readonly]
 
 		array{string} Domains [readonly]
 
-			The list of currently used search domains.
+			The list of currently used search domains taken
+			from Domains.Configurations if set, otherwise a
+			domain name if provided by DHCP or VPNs.
 
 		array{string} Domains.Configuration [readwrite]
 
