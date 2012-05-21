@@ -1515,21 +1515,6 @@ static void append_tsconfig(DBusMessageIter *iter, void *user_data)
 	}
 }
 
-static void append_domain(DBusMessageIter *iter, void *user_data)
-{
-	struct connman_service *service = user_data;
-
-	if (is_connected(service) == FALSE &&
-				is_connecting(service) == FALSE)
-		return;
-
-	if (service->domainname == NULL)
-		return;
-
-	dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING, &service->domainname);
-}
-
 static void append_domainconfig(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
@@ -1541,6 +1526,21 @@ static void append_domainconfig(DBusMessageIter *iter, void *user_data)
 	for (i = 0; service->domains[i]; i++)
 		dbus_message_iter_append_basic(iter,
 				DBUS_TYPE_STRING, &service->domains[i]);
+}
+
+static void append_domain(DBusMessageIter *iter, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	if (is_connected(service) == FALSE &&
+				is_connecting(service) == FALSE)
+		return;
+
+	if (service->domains != NULL)
+		append_domainconfig(iter, user_data);
+	else if (service->domainname != NULL)
+		dbus_message_iter_append_basic(iter,
+				DBUS_TYPE_STRING, &service->domainname);
 }
 
 static void append_proxies(DBusMessageIter *iter, void *user_data)
