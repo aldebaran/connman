@@ -454,8 +454,8 @@ static const GDBusSignalTable manager_signals[] = {
 	{ GDBUS_SIGNAL("TechnologyRemoved",
 			GDBUS_ARGS({ "path", "o" })) },
 	{ GDBUS_SIGNAL("ServicesChanged",
-			GDBUS_ARGS({ "services_changed", "a(oa{sv})" },
-					{ "services_removed", "ao" })) },
+			GDBUS_ARGS({ "changed", "a(oa{sv})" },
+					{ "removed", "ao" })) },
 	{ },
 };
 
