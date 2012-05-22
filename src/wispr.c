@@ -692,8 +692,9 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 
 		break;
 	case 302:
-		if (g_web_result_get_header(result, "Location",
-						&redirect) == FALSE) {
+		if (g_web_supports_tls() == FALSE ||
+				g_web_result_get_header(result, "Location",
+							&redirect) == FALSE) {
 			__connman_agent_request_browser(wp_context->service,
 					wispr_portal_browser_reply_cb,
 					wp_context->status_url, wp_context);
