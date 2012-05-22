@@ -55,6 +55,8 @@ void g_web_unref(GWeb *web);
 
 void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data);
 
+gboolean g_web_supports_tls(void);
+
 gboolean g_web_set_proxy(GWeb *web, const char *proxy);
 
 gboolean g_web_set_address_family(GWeb *web, int family);

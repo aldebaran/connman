@@ -266,6 +266,11 @@ void g_web_unref(GWeb *web)
 	g_free(web);
 }
 
+gboolean g_web_supports_tls(void)
+{
+	return g_io_channel_supports_tls();
+}
+
 void g_web_set_debug(GWeb *web, GWebDebugFunc func, gpointer user_data)
 {
 	if (web == NULL)
