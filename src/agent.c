@@ -85,6 +85,26 @@ int __connman_agent_unregister(const char *sender, const char *path)
 	return 0;
 }
 
+static connman_bool_t check_reply_has_dict(DBusMessage *reply)
+{
+	const char *signature = DBUS_TYPE_ARRAY_AS_STRING
+		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING
+		DBUS_TYPE_VARIANT_AS_STRING
+		DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
+
+	if (dbus_message_has_signature(reply, signature) == TRUE)
+		return TRUE;
+
+	connman_warn("Reply %s to %s from %s has wrong signature %s",
+			signature,
+			dbus_message_get_interface(reply),
+			dbus_message_get_sender(reply),
+			dbus_message_get_signature(reply));
+
+	return FALSE;
+}
+
 struct request_input_reply {
 	struct connman_service *service;
 	authentication_cb_t callback;
@@ -110,6 +130,9 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 		error = dbus_message_get_error_name(reply);
 		goto done;
 	}
+
+	if (check_reply_has_dict(reply) == FALSE)
+		goto done;
 
 	values_received = TRUE;
 
@@ -315,6 +338,7 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 {
 	struct request_input_reply *username_password_reply = user_data;
 	const char *error = NULL;
+	connman_bool_t values_received = FALSE;
 	char *username = NULL;
 	char *password = NULL;
 	char *key;
@@ -325,6 +349,11 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 		error = dbus_message_get_error_name(reply);
 		goto done;
 	}
+
+	if (check_reply_has_dict(reply) == FALSE)
+		goto done;
+
+	values_received = TRUE;
 
 	dbus_message_iter_init(reply, &iter);
 	dbus_message_iter_recurse(&iter, &dict);
@@ -359,7 +388,7 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 
 done:
 	username_password_reply->callback(username_password_reply->service,
-					TRUE, NULL, 0,
+					values_received, NULL, 0,
 					username, password,
 					FALSE, NULL, error,
 					username_password_reply->user_data);
