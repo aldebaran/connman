@@ -39,8 +39,8 @@ In order to compile Connection Manager you need following software packages:
 	- GCC compiler
 	- GLib library
 	- D-Bus library
-	- GnuTLS library
 	- IP-Tables library
+	- GnuTLS library (optional)
 	- PolicyKit (optional)
 
 To configure run:
@@ -128,6 +128,24 @@ For a working system, certain configuration options need to be enabled:
 		It is safe to leave this selected even if networking
 		scripts are in place. It detects an already configured
 		loopback device and leaves it as it is.
+
+	--disable-wispr
+
+		Disable support for WISPr hotspot logins
+
+		For systems with really minimal memory requirements, this
+		will disable the support for WISPr hotspot logins. The code
+		for WISPr will be still compiled into the daemon, but its
+		requirement on GnuTLS for secure connections will be lifted.
+
+		The missing GnuTLS support shrinks the memory requirements
+		by about 30% and for systems that are more stationary and do
+		not log into hotspots this might be a better trade off.
+
+		Disabling WISPr support is not disabling the portal detection
+		support. A portal will still be detected, but instead of being
+		asked for login credentials, the request for a browser session
+		will be made through the agent.
 
 	--enable-polkit
 
