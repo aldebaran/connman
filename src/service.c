@@ -5260,10 +5260,8 @@ int __connman_service_connect(struct connman_service *service)
 
 	if (service->userconnect == TRUE) {
 		if (err == -ENOKEY || err == -EPERM) {
-			if (__connman_agent_request_passphrase_input(service,
-							request_input_cb,
-							NULL) == -EIO)
-				return -EINPROGRESS;
+			return __connman_agent_request_passphrase_input(service,
+					request_input_cb, NULL);
 		}
 		reply_pending(service, -err);
 	}

@@ -480,7 +480,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 
 	dbus_message_unref(message);
 
-	return -EIO;
+	return -EINPROGRESS;
 }
 
 int __connman_agent_request_login_input(struct connman_service *service,
