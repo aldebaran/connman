@@ -1551,13 +1551,13 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 			 */
 			ptr = reply + offset + sizeof(struct domain_hdr);
 			host_len = *ptr;
-			domain_len = strlen((const char *)ptr) - host_len - 1;
+			domain_len = strlen((const char *)ptr + host_len + 1);
 
 			/*
-			 * remove the domain name and replaced it by the end
+			 * remove the domain name and replace it by the end
 			 * of reply.
 			 */
-			memmove(ptr + host_len + 1,
+			memcpy(ptr + host_len + 1,
 				ptr + host_len + domain_len + 1,
 				reply_len - (ptr - reply + domain_len));
 
