@@ -2272,7 +2272,7 @@ static int parse_request(unsigned char *buf, int len,
 	if (hdr->qr != 0 || qdcount != 1)
 		return -EINVAL;
 
-	memset(name, 0, size);
+	name[0] = '\0';
 
 	ptr = buf + sizeof(struct domain_hdr);
 	remain = len - sizeof(struct domain_hdr);
