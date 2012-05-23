@@ -4718,7 +4718,7 @@ static int service_indicate_state(struct connman_service *service)
 		if (service->userconnect == TRUE &&
 			__connman_agent_report_error(service,
 					error2string(service->error),
-					report_error_cb, NULL) == -EIO)
+					report_error_cb, NULL) == -EINPROGRESS)
 			return 0;
 		service_complete(service);
 	} else

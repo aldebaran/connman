@@ -720,7 +720,7 @@ int __connman_agent_report_error(struct connman_service *service,
 				report_error, NULL);
 	dbus_message_unref(message);
 
-	return -EIO;
+	return -EINPROGRESS;
 }
 
 int __connman_agent_init(void)
