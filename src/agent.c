@@ -31,6 +31,8 @@
 
 #include "connman.h"
 
+#define REQUEST_TIMEOUT (120 * 1000)		/* 120 seconds */
+
 static DBusConnection *connection = NULL;
 static guint agent_watch = 0;
 static gchar *agent_path = NULL;
@@ -456,8 +458,8 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(connection, message, &call,
+						REQUEST_TIMEOUT) == FALSE) {
 		dbus_message_unref(message);
 		g_free(passphrase_reply);
 		return -ESRCH;
@@ -522,8 +524,8 @@ int __connman_agent_request_login_input(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message,
-							&call, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(connection, message, &call,
+						REQUEST_TIMEOUT) == FALSE) {
 		dbus_message_unref(message);
 		g_free(username_password_reply);
 		return -ESRCH;
@@ -610,8 +612,8 @@ int __connman_agent_request_browser(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message,
-							&call, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(connection, message, &call,
+						REQUEST_TIMEOUT) == FALSE) {
 		dbus_message_unref(message);
 		g_free(browser_reply_data);
 		return -ESRCH;
@@ -698,8 +700,8 @@ int __connman_agent_report_error(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message,
-						&call, -1) == FALSE) {
+	if (dbus_connection_send_with_reply(connection, message, &call,
+						REQUEST_TIMEOUT) == FALSE) {
 		dbus_message_unref(message);
 		g_free(report_error);
 		return -ESRCH;
