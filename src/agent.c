@@ -546,7 +546,7 @@ int __connman_agent_request_login_input(struct connman_service *service,
 
 	dbus_message_unref(message);
 
-	return -EIO;
+	return -EINPROGRESS;
 }
 
 struct request_browser_reply_data {
@@ -634,7 +634,7 @@ int __connman_agent_request_browser(struct connman_service *service,
 
 	dbus_message_unref(message);
 
-	return -EIO;
+	return -EINPROGRESS;
 }
 
 struct report_error_data {

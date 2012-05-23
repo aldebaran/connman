@@ -610,7 +610,7 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 		if (__connman_agent_request_login_input(wp_context->service,
 					wispr_portal_request_wispr_login,
-					wp_context) != -EIO)
+					wp_context) != -EINPROGRESS)
 			wispr_portal_error(wp_context);
 
 		break;
