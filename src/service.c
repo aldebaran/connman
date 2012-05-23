@@ -5252,13 +5252,6 @@ int __connman_service_connect(struct connman_service *service)
 		return -EINPROGRESS;
 	}
 
-	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE,
-					CONNMAN_IPCONFIG_TYPE_IPV4);
-	__connman_service_ipconfig_indicate_state(service,
-					CONNMAN_SERVICE_STATE_FAILURE,
-					CONNMAN_IPCONFIG_TYPE_IPV6);
-
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
 	else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
