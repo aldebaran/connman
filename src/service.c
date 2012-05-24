@@ -1519,14 +1519,14 @@ static void append_ipv6config(DBusMessageIter *iter, void *user_data)
 							iter);
 }
 
-static void append_nameserver(DBusMessageIter *iter, char ***nameservers)
+static void append_nameservers(DBusMessageIter *iter, char **servers)
 {
-	char **servers;
 	int i;
 
-	servers = *nameservers;
+	DBG("%p", servers);
 
 	for (i = 0; servers[i] != NULL; i++) {
+		DBG("servers[%d] %s", i, servers[i]);
 		dbus_message_iter_append_basic(iter,
 					DBUS_TYPE_STRING, &servers[i]);
 	}
@@ -1540,30 +1540,25 @@ static void append_dns(DBusMessageIter *iter, void *user_data)
 		return;
 
 	if (service->nameservers_config != NULL) {
-		append_nameserver(iter, &service->nameservers_config);
+		append_nameservers(iter, service->nameservers_config);
 		return;
 	} else {
 		if (service->nameservers != NULL)
-			append_nameserver(iter, &service->nameservers);
+			append_nameservers(iter, service->nameservers);
 
 		if (service->nameservers_auto != NULL)
-			append_nameserver(iter, &service->nameservers_auto);
+			append_nameservers(iter, service->nameservers_auto);
 	}
 }
 
 static void append_dnsconfig(DBusMessageIter *iter, void *user_data)
 {
 	struct connman_service *service = user_data;
-	int i;
 
 	if (service->nameservers_config == NULL)
 		return;
 
-	for (i = 0; service->nameservers_config[i]; i++) {
-		dbus_message_iter_append_basic(iter,
-				DBUS_TYPE_STRING,
-				&service->nameservers_config[i]);
-	}
+	append_nameservers(iter, service->nameservers_config);
 }
 
 static void append_ts(DBusMessageIter *iter, void *user_data)
