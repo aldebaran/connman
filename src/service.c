@@ -3022,6 +3022,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 				g_string_append(str, val);
 		}
 
+		remove_nameservers(service, NULL, service->nameservers_config);
 		g_strfreev(service->nameservers_config);
 
 		if (str->len > 0) {
@@ -3105,6 +3106,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 				g_string_append(str, val);
 		}
 
+		remove_searchdomains(service, NULL, service->domains);
 		g_strfreev(service->domains);
 
 		if (str->len > 0)
