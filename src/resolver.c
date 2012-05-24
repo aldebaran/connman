@@ -450,23 +450,20 @@ int connman_resolver_remove(const char *interface, const char *domain,
 
 	DBG("interface %s domain %s server %s", interface, domain, server);
 
-	if (server == NULL)
-		return -EINVAL;
-
 	for (list = entry_list; list; list = list->next) {
 		struct entry_data *entry = list->data;
 
-		if (interface != NULL &&
-				g_strcmp0(entry->interface, interface) != 0)
+		if (g_strcmp0(entry->interface, interface) != 0)
 			continue;
 
-		if (domain != NULL && g_strcmp0(entry->domain, domain) != 0)
+		if (g_strcmp0(entry->domain, domain) != 0)
 			continue;
 
 		if (g_strcmp0(entry->server, server) != 0)
 			continue;
 
 		matches = g_slist_append(matches, entry);
+		break;
 	}
 
 	if (matches == NULL)
