@@ -362,7 +362,7 @@ static int append_resolver(const char *interface, const char *domain,
 int connman_resolver_append(const char *interface, const char *domain,
 						const char *server)
 {
-	GSList *list, *matches = NULL;
+	GSList *list;
 
 	DBG("interface %s domain %s server %s", interface, domain, server);
 
@@ -372,17 +372,14 @@ int connman_resolver_append(const char *interface, const char *domain,
 	for (list = entry_list; list; list = list->next) {
 		struct entry_data *entry = list->data;
 
-		if (entry->timeout > 0 ||
-				g_strcmp0(entry->interface, interface) != 0 ||
-				g_strcmp0(entry->domain, domain) != 0 ||
-				g_strcmp0(entry->server, server) != 0)
+		if (entry->timeout > 0)
 			continue;
 
-		matches = g_slist_append(matches, entry);
+		if (g_strcmp0(entry->interface, interface) == 0 &&
+				g_strcmp0(entry->domain, domain) == 0 &&
+				g_strcmp0(entry->server, server) == 0)
+			return -EEXIST;
 	}
-
-	if (matches != NULL)
-		remove_entries(matches);
 
 	return append_resolver(interface, domain, server, 0, 0);
 }
