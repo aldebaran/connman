@@ -840,6 +840,74 @@ static connman_bool_t is_connected(struct connman_service *service)
 	return is_connected_state(service, service->state);
 }
 
+static const char *nameserver_get_ifname(struct connman_service *service)
+{
+	const char *ifname;
+
+	if (service->ipconfig_ipv4)
+		ifname = __connman_ipconfig_get_ifname(service->ipconfig_ipv4);
+	else if (service->ipconfig_ipv6)
+		ifname = __connman_ipconfig_get_ifname(service->ipconfig_ipv6);
+	else
+		ifname = NULL;
+
+	if (ifname == NULL)
+		return NULL;
+
+	switch (combine_state(service->state_ipv4, service->state_ipv6)) {
+	case CONNMAN_SERVICE_STATE_UNKNOWN:
+	case CONNMAN_SERVICE_STATE_IDLE:
+	case CONNMAN_SERVICE_STATE_ASSOCIATION:
+	case CONNMAN_SERVICE_STATE_CONFIGURATION:
+	case CONNMAN_SERVICE_STATE_FAILURE:
+	case CONNMAN_SERVICE_STATE_DISCONNECT:
+		return NULL;
+	case CONNMAN_SERVICE_STATE_READY:
+	case CONNMAN_SERVICE_STATE_ONLINE:
+		break;
+	}
+
+	return ifname;
+}
+
+static void remove_nameservers(struct connman_service *service,
+		const char* interface, char **ns)
+{
+	const char *ifname = interface;
+	int i;
+
+	if (ns == NULL)
+		return;
+
+	if (interface == NULL)
+		ifname = nameserver_get_ifname(service);
+
+	if (ifname == NULL)
+			return;
+
+	for (i = 0; ns[i] != NULL; i++)
+		connman_resolver_remove(ifname, NULL, ns[i]);
+}
+
+static void remove_searchdomains(struct connman_service *service,
+		const char *interface, char **sd)
+{
+	const char *ifname = interface;
+	int i;
+
+	if (sd == NULL)
+		return;
+
+	if (interface == NULL)
+		ifname = nameserver_get_ifname(service);
+
+	if (ifname == NULL)
+		return;
+
+	for (i = 0; sd[i] != NULL; i++)
+		connman_resolver_remove(ifname, sd[i], NULL);
+}
+
 static void update_nameservers(struct connman_service *service)
 {
 	const char *ifname;
