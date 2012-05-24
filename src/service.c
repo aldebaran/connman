@@ -942,16 +942,20 @@ static void update_nameservers(struct connman_service *service)
 
 		remove_nameservers(service, ifname, service->nameservers);
 
-		for (i = 0; service->nameservers_config[i] != NULL; i++) {
+		i = g_strv_length(service->nameservers_config);
+		while (i != 0) {
+			i--;
 			connman_resolver_append(ifname, NULL,
-						service->nameservers_config[i]);
+					service->nameservers_config[i]);
 		}
 	} else if (service->nameservers != NULL) {
 		int i;
 
-		for (i = 0; service->nameservers[i] != NULL; i++) {
+		i = g_strv_length(service->nameservers);
+		while (i != 0) {
+			i--;
 			connman_resolver_append(ifname, NULL,
-						service->nameservers[i]);
+					service->nameservers[i]);
 		}
 	}
 
@@ -962,9 +966,12 @@ static void update_nameservers(struct connman_service *service)
 		searchdomains[0] = service->domainname;
 		remove_searchdomains(service, ifname, searchdomains);
 
-		for (i = 0; service->domains[i]; i++)
+		i = g_strv_length(service->domains);
+		while (i != 0) {
+			i--;
 			connman_resolver_append(ifname,	service->domains[i],
 						NULL);
+		}
 	} else if (service->domainname != NULL)
 		connman_resolver_append(ifname, service->domainname, NULL);
 
