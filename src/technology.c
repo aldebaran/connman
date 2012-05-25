@@ -831,7 +831,7 @@ void __connman_technology_scan_stopped(struct connman_device *device)
 		if (__connman_device_get_service_type(other_device) != type)
 			continue;
 
-		if (__connman_device_scanning(other_device))
+		if (connman_device_get_scanning(other_device) == TRUE)
 			count += 1;
 	}
 
@@ -1101,7 +1101,7 @@ int __connman_technology_remove_device(struct connman_device *device)
 		return -ENXIO;
 	}
 
-	if (__connman_device_scanning(device))
+	if (connman_device_get_scanning(device) == TRUE)
 		__connman_technology_scan_stopped(device);
 
 	technology->device_list = g_slist_remove(technology->device_list,

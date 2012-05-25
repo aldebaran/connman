@@ -5936,7 +5936,7 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 
 	if (service->favorite == TRUE) {
 		device = connman_network_get_device(service->network);
-		if (device && __connman_device_scanning(device) == FALSE)
+		if (device && connman_device_get_scanning(device) == FALSE)
 			__connman_service_auto_connect();
 	}
 

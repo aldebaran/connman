@@ -703,7 +703,7 @@ void __connman_device_cleanup_networks(struct connman_device *device)
 					remove_unavailable_network, NULL);
 }
 
-connman_bool_t __connman_device_scanning(struct connman_device *device)
+connman_bool_t connman_device_get_scanning(struct connman_device *device)
 {
 	return device->scanning;
 }

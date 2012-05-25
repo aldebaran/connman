@@ -487,8 +487,6 @@ int __connman_device_enable(struct connman_device *device);
 int __connman_device_disable(struct connman_device *device);
 int __connman_device_disconnect(struct connman_device *device);
 
-connman_bool_t __connman_device_scanning(struct connman_device *device);
-
 connman_bool_t __connman_device_has_driver(struct connman_device *device);
 
 void __connman_device_set_reconnect(struct connman_device *device,
