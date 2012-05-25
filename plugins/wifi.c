@@ -222,6 +222,8 @@ static void stop_autoscan(struct connman_device *device)
 	autoscan->timeout = 0;
 	autoscan->interval = 0;
 
+	connman_device_set_scanning(device, FALSE);
+
 	connman_device_unref(device);
 }
 
