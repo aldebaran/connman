@@ -825,6 +825,8 @@ static int wifi_scan_fast(struct connman_device *device)
 	if (wifi->tethering == TRUE)
 		return 0;
 
+	stop_autoscan(device);
+
 	if (connman_device_get_scanning(device) == TRUE)
 		return -EALREADY;
 
@@ -843,8 +845,6 @@ static int wifi_scan_fast(struct connman_device *device)
 		g_supplicant_free_scan_params(scan_params);
 		return wifi_scan(device);
 	}
-
-	stop_autoscan(device);
 
 	connman_device_ref(device);
 	ret = g_supplicant_interface_scan(wifi->interface, scan_params,
@@ -881,6 +881,8 @@ static int wifi_scan_hidden(struct connman_device *device,
 	if (ssid == NULL || ssid_len == 0 || ssid_len > 32)
 		return -EINVAL;
 
+	stop_autoscan(device);
+
 	if (connman_device_get_scanning(device) == TRUE)
 		return -EALREADY;
 
@@ -910,8 +912,6 @@ static int wifi_scan_hidden(struct connman_device *device,
 	hidden->identity = g_strdup(identity);
 	hidden->passphrase = g_strdup(passphrase);
 	wifi->hidden = hidden;
-
-	stop_autoscan(device);
 
 	connman_device_ref(device);
 	ret = g_supplicant_interface_scan(wifi->interface, scan_params,
