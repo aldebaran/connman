@@ -238,6 +238,10 @@ static void wifi_remove(struct connman_device *device)
 
 	stop_autoscan(device);
 
+	/* In case of a user scan, device is still referenced */
+	if (connman_device_get_scanning(device) == TRUE)
+		connman_device_unref(wifi->device);
+
 	iface_list = g_list_remove(iface_list, wifi);
 
 	remove_networks(device, wifi);
