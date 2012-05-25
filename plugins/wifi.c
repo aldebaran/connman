@@ -405,6 +405,9 @@ static int throw_wifi_scan(struct connman_device *device,
 	if (wifi->tethering == TRUE)
 		return 0;
 
+	if (connman_device_get_scanning(device) == TRUE)
+		return -EALREADY;
+
 	connman_device_ref(device);
 
 	ret = g_supplicant_interface_scan(wifi->interface, NULL,
@@ -822,6 +825,9 @@ static int wifi_scan_fast(struct connman_device *device)
 	if (wifi->tethering == TRUE)
 		return 0;
 
+	if (connman_device_get_scanning(device) == TRUE)
+		return -EALREADY;
+
 	driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
 							wifi->interface);
 	DBG("max ssids %d", driver_max_ssids);
@@ -874,6 +880,9 @@ static int wifi_scan_hidden(struct connman_device *device,
 
 	if (ssid == NULL || ssid_len == 0 || ssid_len > 32)
 		return -EINVAL;
+
+	if (connman_device_get_scanning(device) == TRUE)
+		return -EALREADY;
 
 	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
 	if (scan_params == NULL)
