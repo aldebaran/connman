@@ -196,6 +196,8 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 
 	poll_id = g_timeout_add_seconds(transmit_delay, next_poll, NULL);
 
+	connman_info("ntp: time slew %+.6f s", offset);
+
 	if (offset < STEPTIME_MIN_OFFSET && offset > -STEPTIME_MIN_OFFSET) {
 		struct timeval adj;
 
