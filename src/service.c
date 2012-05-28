@@ -2618,14 +2618,23 @@ void __connman_service_set_agent_identity(struct connman_service *service,
 					service->agent_identity);
 }
 
-static int check_passphrase(enum connman_service_security security,
+static int check_passphrase(struct connman_service *service,
+				enum connman_service_security security,
 				const char *passphrase)
 {
 	guint i;
 	gsize length;
 
-	if (passphrase == NULL)
-		return 0;
+	if (passphrase == NULL) {
+		/*
+		 * This will prevent __connman_service_set_passphrase() to
+		 * wipe the passphrase out in case of -ENOKEY error for a
+		 * favorite service. */
+		if (service->favorite == TRUE)
+			return 1;
+		else
+			return 0;
+	}
 
 	length = strlen(passphrase);
 
@@ -2674,7 +2683,7 @@ int __connman_service_set_passphrase(struct connman_service *service,
 	if (service->immutable == TRUE || service->hidden == TRUE)
 		return -EINVAL;
 
-	err = check_passphrase(service->security, passphrase);
+	err = check_passphrase(service, service->security, passphrase);
 
 	if (err == 0) {
 		g_free(service->passphrase);
@@ -4615,6 +4624,9 @@ static void request_input_cb (struct connman_service *service,
 
  done:
 	if (err >= 0) {
+		/* We forget any previous error. */
+		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+
 		__connman_service_connect(service);
 
 		/* Never cache agent provided credentials */
@@ -5272,7 +5284,9 @@ static int service_connect(struct connman_service *service)
 							service->network,
 							"WiFi.UseWPS") == FALSE)
 					return -ENOKEY;
-			}
+			} else if (service->error ==
+					CONNMAN_SERVICE_ERROR_INVALID_KEY)
+				return -ENOKEY;
 			break;
 		case CONNMAN_SERVICE_SECURITY_8021X:
 			if (service->eap == NULL)
