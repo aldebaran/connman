@@ -666,6 +666,7 @@ void __connman_service_set_agent_identity(struct connman_service *service,
 						const char *agent_identity);
 int __connman_service_set_passphrase(struct connman_service *service,
 					const char *passphrase);
+const char *__connman_service_get_passphrase(struct connman_service *service);
 void __connman_service_set_agent_passphrase(struct connman_service *service,
 						const char *agent_passphrase);
 

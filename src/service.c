@@ -2690,6 +2690,14 @@ int __connman_service_set_passphrase(struct connman_service *service,
 	return err;
 }
 
+const char *__connman_service_get_passphrase(struct connman_service *service)
+{
+	if (service == NULL)
+		return NULL;
+
+	return service->passphrase;
+}
+
 void __connman_service_set_agent_passphrase(struct connman_service *service,
 						const char *agent_passphrase)
 {
