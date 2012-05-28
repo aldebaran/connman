@@ -87,6 +87,15 @@ Fields		string Name
 			key, a PSK passphrase or a passphrase for EAP
 			authentication methods.
 
+		string PreviousPassphrase
+
+			The previous passphrase successfully saved, i.e.
+			which lead to a successfull connection. This field is
+			provided as an informational argument when connecting
+			with it does not work anymore, for instance when it
+			has been changed on the AP. Such argument appears when
+			a RequestInput is raised after a retry.
+
 		string WPS
 
 			This field requests the use of WPS to get associated.
@@ -109,8 +118,9 @@ Fields		string Name
 Arguments	string Type
 
 			Contains the type of a field. For example "psk", "wep"
-			"passphrase", "response", "ssid", "wpspin" or plain
-			"string".
+			"informational", "passphrase", "response", "ssid",
+			"wpspin" or plain "string". "informational" has no
+			"Requirement" but a "Value".
 
 		string Requirement
 
@@ -129,6 +139,11 @@ Arguments	string Type
 			Contains the list of alternate field names this
 			field can be represented by.
 
+		string Value
+
+			Contains data as a string, relatively to an
+			"informational" argument.
+
 Examples	Requesting a passphrase for WPA2 network
 
 			RequestInput("/service1",
@@ -137,6 +152,18 @@ Examples	Requesting a passphrase for WPA2 network
 						 }
 				}
 			==> { "Passphrase" : "secret123" }
+
+		Requesting a passphrase after an error on the previous one:
+
+			RequestInput("/service1",
+				{ "Passphrase" : { "Type"        : "psk",
+						   "Requirement" : "mandatory"
+						 },
+				  "PreviousPassphrase" :
+						{ "Type"  : "informational",
+						  "Value" : "secret123"
+						}
+				}
 
 		Requesting name for hidden network
 
