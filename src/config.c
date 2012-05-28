@@ -461,62 +461,6 @@ static struct connman_config *create_config(const char *ident)
 	return config;
 }
 
-int __connman_config_load_service(GKeyFile *keyfile, const char *group,
-					connman_bool_t persistent)
-{
-	struct connman_config *config;
-	const char *service_name;
-	char *ident, *content = NULL;
-	gsize content_length;
-	int err;
-
-	service_name = group + strlen("service_");
-	ident = g_strdup_printf("%s_%s", INTERNAL_CONFIG_PREFIX, service_name);
-	if (ident == NULL)
-		return -ENOMEM;
-
-	DBG("ident %s", ident);
-
-	config = g_hash_table_lookup(config_table, ident);
-	if (config == NULL) {
-		config = create_config(ident);
-		if (config == NULL) {
-			err = -ENOMEM;
-			goto out;
-		}
-
-		config->protected = FALSE;
-	}
-
-	err = load_service(keyfile, group, config);
-	if (persistent == FALSE || err < 0)
-		goto out;
-
-	g_key_file_set_string(keyfile, "global", CONFIG_KEY_NAME,
-							service_name);
-	g_key_file_set_string(keyfile, "global", CONFIG_KEY_DESC,
-						"Internal Config File");
-	g_key_file_set_boolean(keyfile, "global", CONFIG_KEY_PROT, FALSE);
-
-	content = g_key_file_to_data(keyfile, &content_length, NULL);
-	if (content == NULL) {
-		err = -EIO;
-		goto out;
-	}
-
-	DBG("Saving %zu bytes to %s", content_length, service_name);
-
-	__connman_storage_save_config(keyfile, ident);
-
-	return 0;
-
-out:
-	g_free(ident);
-	g_free(content);
-
-	return err;
-}
-
 static connman_bool_t validate_ident(const char *ident)
 {
 	unsigned int i;
