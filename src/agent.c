@@ -334,6 +334,18 @@ static void request_input_append_password(DBusMessageIter *iter,
 				DBUS_TYPE_STRING, &str);
 }
 
+static void request_input_append_previouspassphrase(DBusMessageIter *iter,
+							void *user_data)
+{
+	const char *passphrase = user_data;
+	const char *str = "informational";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	connman_dbus_dict_append_basic(iter, "Value",
+				DBUS_TYPE_STRING, &passphrase);
+}
+
 static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 {
 	struct request_input_reply *username_password_reply = user_data;
@@ -401,7 +413,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 				authentication_cb_t callback, void *user_data)
 {
 	DBusMessage *message;
-	const char *path;
+	const char *path, *passphrase;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	DBusPendingCall *call;
@@ -441,6 +453,11 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 			CONNMAN_SERVICE_SECURITY_NONE) {
 		connman_dbus_dict_append_dict(&dict, "Passphrase",
 					request_input_append_passphrase, service);
+		passphrase = __connman_service_get_passphrase(service);
+		if (passphrase != NULL)
+			connman_dbus_dict_append_dict(&dict, "PreviousPassphrase",
+					request_input_append_previouspassphrase,
+					(void *) passphrase);
 	}
 
 	if (__connman_service_wps_enabled(service) == TRUE) {
