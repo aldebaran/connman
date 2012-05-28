@@ -147,30 +147,6 @@ GKeyFile *__connman_storage_load_config(const char *ident)
 	return keyfile;
 }
 
-void __connman_storage_save_config(GKeyFile *keyfile, const char *ident)
-{
-	gchar *pathname;
-
-	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
-	if(pathname == NULL)
-		return;
-
-	storage_save(keyfile, pathname);
-}
-
-void __connman_storage_delete_config(const char *ident)
-{
-	gchar *pathname;
-
-	pathname = g_strdup_printf("%s/%s.config", STORAGEDIR, ident);
-	if(pathname == NULL)
-		return;
-
-	storage_delete(pathname);
-
-	g_free(pathname);
-}
-
 GKeyFile *__connman_storage_open_service(const char *service_id)
 {
 	gchar *pathname;
