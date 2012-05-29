@@ -39,18 +39,25 @@
 
 #include "connman.h"
 
+#define DEFAULT_INPUT_REQUEST_TIMEOUT 120 * 1000
+#define DEFAULT_BROWSER_LAUNCH_TIMEOUT 300 * 1000
+
 static struct {
 	connman_bool_t bg_scan;
 	char **pref_timeservers;
 	unsigned int *auto_connect;
 	unsigned int *preferred_techs;
 	char **fallback_nameservers;
+	unsigned int timeout_inputreq;
+	unsigned int timeout_browserlaunch;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
 	.auto_connect = NULL,
 	.preferred_techs = NULL,
 	.fallback_nameservers = NULL,
+	.timeout_inputreq = DEFAULT_INPUT_REQUEST_TIMEOUT,
+	.timeout_browserlaunch = DEFAULT_BROWSER_LAUNCH_TIMEOUT,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -144,6 +151,7 @@ static void parse_config(GKeyFile *config)
 		"cellular",
 		NULL
 	};
+	int timeout;
 
 	if (config == NULL) {
 		connman_settings.auto_connect =
@@ -200,6 +208,20 @@ static void parse_config(GKeyFile *config)
 			parse_fallback_nameservers(str_list, len);
 
 	g_strfreev(str_list);
+
+	g_clear_error(&error);
+
+	timeout = g_key_file_get_integer(config, "General",
+			"InputRequestTimeout", &error);
+	if (error == NULL && timeout >= 0)
+		connman_settings.timeout_inputreq = timeout * 1000;
+
+	g_clear_error(&error);
+
+	timeout = g_key_file_get_integer(config, "General",
+			"BrowserLaunchTimeout", &error);
+	if (error == NULL && timeout >= 0)
+		connman_settings.timeout_browserlaunch = timeout * 1000;
 
 	g_clear_error(&error);
 }
@@ -372,6 +394,14 @@ unsigned int *connman_setting_get_uint_list(const char *key)
 		return connman_settings.preferred_techs;
 
 	return NULL;
+}
+
+unsigned int connman_timeout_input_request(void) {
+	return connman_settings.timeout_inputreq;
+}
+
+unsigned int connman_timeout_browser_launch(void) {
+	return connman_settings.timeout_browserlaunch;
 }
 
 int main(int argc, char *argv[])

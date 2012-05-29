@@ -32,6 +32,9 @@ connman_bool_t connman_setting_get_bool(const char *key);
 char **connman_setting_get_string_list(const char *key);
 unsigned int *connman_setting_get_uint_list(const char *key);
 
+unsigned int connman_timeout_input_request(void);
+unsigned int connman_timeout_browser_launch(void);
+
 #ifdef __cplusplus
 }
 #endif
