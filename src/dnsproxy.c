@@ -2039,7 +2039,6 @@ static gboolean resolv(struct request_data *req,
 				gpointer request, gpointer name)
 {
 	GSList *list;
-	int status;
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
@@ -2054,19 +2053,11 @@ static gboolean resolv(struct request_data *req,
 				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
 						udp_server_event, data);
 
-		status = ns_resolv(data, req, request, name);
-		if (status < 0)
-			continue;
-
-		if (status > 0) {
-			if (req->timeout > 0) {
-				g_source_remove(req->timeout);
-				req->timeout = 0;
-			}
-		}
+		if (ns_resolv(data, req, request, name) > 0)
+			return TRUE;
 	}
 
-	return TRUE;
+	return FALSE;
 }
 
 static void append_domain(const char *interface, const char *domain)
@@ -2512,11 +2503,18 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	req->numserv = 0;
 	req->ifdata = (struct listener_data *) ifdata;
-	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 	req->append_domain = FALSE;
+
+	if (resolv(req, buf, query) == TRUE) {
+		/* a cached result was sent, so the request can be released */
+	        g_free(req);
+		return TRUE;
+	}
+
+	req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 	request_list = g_slist_append(request_list, req);
 
-	return resolv(req, buf, query);
+	return TRUE;
 }
 
 static int create_dns_listener(int protocol, struct listener_data *ifdata)
