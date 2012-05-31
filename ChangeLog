@@ -1,3 +1,22 @@
+ver 1.1:
+	Fix issue with missing message type and DHCPv4 support.
+	Fix issue with potential NULL pointer in DHCPv6 handling.
+	Fix issue with potential NULL pointer in VPN handling.
+	Fix issue with potential NULL pointer for WiFi SSID.
+	Fix issue with missing conversion of raw WiFi PSK input.
+	Fix issue with missing stop for WiFi auto-scanning handling.
+	Fix issue with uninitialized IPv6 prefix length in oFono plugin.
+	Fix issue with domain search list handling according to RFC 6106.
+	Fix issue with domain name list notifications.
+	Fix issue with nameserver list notifications.
+	Fix issue with incorrect fixed IP configuration.
+	Fix issue with incorrect cleanup of resolver timers.
+	Fix issue with handling of RDNSS lifetime expiration.
+	Fix issue with crash on wrong domain length information.
+	Add support for favorite service database migration.
+	Add support for disabling WISPr functionality.
+	Add support for configurable agent timeouts.
+
 ver 1.0:
 	Fix issue with missing WiFi disconnecting flag.
 	Fix issue with missing GPRS context attached check.
