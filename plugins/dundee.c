@@ -31,6 +31,7 @@
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/network.h>
+#include <connman/inet.h>
 #include <connman/dbus.h>
 
 #define DUNDEE_SERVICE			"org.ofono.dundee"
@@ -49,6 +50,16 @@ static GHashTable *dundee_devices = NULL;
 
 struct dundee_data {
 	char *path;
+	char *name;
+
+	connman_bool_t active;
+
+	int index;
+
+	/* IPv4 Settings */
+	enum connman_ipconfig_method method;
+	struct connman_ipaddress *address;
+	char *nameservers;
 };
 
 static void device_destroy(gpointer data)
@@ -56,6 +67,7 @@ static void device_destroy(gpointer data)
 	struct dundee_data *info = data;
 
 	g_free(info->path);
+	g_free(info->name);
 
 	g_free(info);
 }
@@ -130,6 +142,109 @@ static struct connman_device_driver dundee_driver = {
 	.disable	= dundee_disable,
 };
 
+static char *extract_nameservers(DBusMessageIter *array)
+{
+	DBusMessageIter entry;
+	char *nameservers = NULL;
+	char *tmp;
+
+	dbus_message_iter_recurse(array, &entry);
+
+	while (dbus_message_iter_get_arg_type(&entry) == DBUS_TYPE_STRING) {
+		const char *nameserver;
+
+		dbus_message_iter_get_basic(&entry, &nameserver);
+
+		if (nameservers == NULL) {
+			nameservers = g_strdup(nameserver);
+		} else {
+			tmp = nameservers;
+			nameservers = g_strdup_printf("%s %s", tmp, nameserver);
+			g_free(tmp);
+		}
+
+		dbus_message_iter_next(&entry);
+	}
+
+	return nameservers;
+}
+
+static void extract_settings(DBusMessageIter *array,
+				struct dundee_data *info)
+{
+	DBusMessageIter dict;
+	char *address = NULL, *gateway = NULL;
+	char *nameservers = NULL;
+	const char *interface = NULL;
+	int index = -1;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key, *val;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Interface") == TRUE) {
+			dbus_message_iter_get_basic(&value, &interface);
+
+			DBG("Interface %s", interface);
+
+			index = connman_inet_ifindex(interface);
+
+			DBG("index %d", index);
+
+			if (index < 0)
+				break;
+		} else if (g_str_equal(key, "Address") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			address = g_strdup(val);
+
+			DBG("Address %s", address);
+		} else if (g_str_equal(key, "DomainNameServers") == TRUE) {
+			nameservers = extract_nameservers(&value);
+
+			DBG("Nameservers %s", nameservers);
+		} else if (g_str_equal(key, "Gateway") == TRUE) {
+			dbus_message_iter_get_basic(&value, &val);
+
+			gateway = g_strdup(val);
+
+			DBG("Gateway %s", gateway);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+	if (index < 0)
+		goto out;
+
+	info->address = connman_ipaddress_alloc(CONNMAN_IPCONFIG_TYPE_IPV4);
+	if (info->address == NULL)
+		goto out;
+
+	info->index = index;
+	connman_ipaddress_set_ipv4(info->address, address, NULL, gateway);
+
+	info->nameservers = nameservers;
+
+out:
+	if (info->nameservers != nameservers)
+		g_free(nameservers);
+
+	g_free(address);
+	g_free(gateway);
+}
+
 static void add_device(const char *path, DBusMessageIter *properties)
 {
 	struct dundee_data *info;
@@ -143,6 +258,38 @@ static void add_device(const char *path, DBusMessageIter *properties)
 		return;
 
 	info->path = g_strdup(path);
+
+	while (dbus_message_iter_get_arg_type(properties) ==
+			DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *key;
+
+		dbus_message_iter_recurse(properties, &entry);
+		dbus_message_iter_get_basic(&entry, &key);
+
+		dbus_message_iter_next(&entry);
+		dbus_message_iter_recurse(&entry, &value);
+
+		if (g_str_equal(key, "Active") == TRUE) {
+			dbus_message_iter_get_basic(&value, &info->active);
+
+			DBG("%s Active %d", info->path, info->active);
+		} else if (g_str_equal(key, "Settings") == TRUE) {
+			DBG("%s Settings", info->path);
+
+			extract_settings(&value, info);
+		} else if (g_str_equal(key, "Name") == TRUE) {
+			char *name;
+
+			dbus_message_iter_get_basic(&value, &name);
+
+			info->name = g_strdup(name);
+
+			DBG("%s Name %s", info->path, info->name);
+		}
+
+		dbus_message_iter_next(properties);
+	}
 
 	g_hash_table_insert(dundee_devices, g_strdup(path), info);
 }
