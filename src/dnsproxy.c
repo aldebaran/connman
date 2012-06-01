@@ -1554,14 +1554,23 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 			domain_len = strlen((const char *)ptr + host_len + 1);
 
 			/*
-			 * remove the domain name and replace it by the end
-			 * of reply.
+			 * Remove the domain name and replace it by the end
+			 * of reply. Check if the domain is really there
+			 * before trying to copy the data. The domain_len can
+			 * be 0 because if the original query did not contain
+			 * a domain name, then we are sending two packets,
+			 * first without the domain name and the second packet
+			 * with domain name. The append_domain is set to true
+			 * even if we sent the first packet without domain
+			 * name. In this case we end up in this branch.
 			 */
-			memcpy(ptr + host_len + 1,
-				ptr + host_len + domain_len + 1,
-				reply_len - (ptr - reply + domain_len));
+			if (domain_len > 0) {
+				memcpy(ptr + host_len + 1,
+					ptr + host_len + domain_len + 1,
+					reply_len - (ptr - reply + domain_len));
 
-			reply_len = reply_len - domain_len;
+				reply_len = reply_len - domain_len;
+			}
 		}
 
 		g_free(req->resp);
