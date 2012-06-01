@@ -362,6 +362,11 @@ AC_ARG_ENABLE(ofono, AC_HELP_STRING([--disable-ofono],
 					[enable_ofono=${enableval}])
 AM_CONDITIONAL(OFONO, test "${enable_ofono}" != "no")
 
+AC_ARG_ENABLE(dundee, AC_HELP_STRING([--disable-dundee],
+				[disable dundee support (Bluetooth DUN)]),
+					[enable_dundee=${enableval}])
+AM_CONDITIONAL(DUNDEE, test "${enable_dundee}" != "no")
+
 AC_ARG_ENABLE(pacrunner, AC_HELP_STRING([--disable-pacrunner],
 				[disable PACrunner support]),
 					[enable_pacrunner=${enableval}])

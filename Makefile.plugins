@@ -46,6 +46,11 @@ builtin_modules += ofono
 builtin_sources += plugins/mcc.h plugins/ofono.c
 endif
 
+if DUNDEE
+builtin_modules += dundee
+builtin_sources += plugins/dundee.c
+endif
+
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
 builtin_modules += openconnect
