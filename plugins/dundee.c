@@ -25,13 +25,29 @@
 
 #include <errno.h>
 
+#include <gdbus.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/network.h>
 #include <connman/dbus.h>
 
+#define DUNDEE_SERVICE			"org.ofono.dundee"
+
 static DBusConnection *connection;
+
+static GHashTable *dundee_devices = NULL;
+
+struct dundee_data {
+};
+
+static void device_destroy(gpointer data)
+{
+	struct dundee_data *info = data;
+
+	g_free(info);
+}
 
 static int network_probe(struct connman_network *network)
 {
@@ -103,6 +119,24 @@ static struct connman_device_driver dundee_driver = {
 	.disable	= dundee_disable,
 };
 
+static void dundee_connect(DBusConnection *connection, void *user_data)
+{
+	DBG("connection %p", connection);
+
+	dundee_devices = g_hash_table_new_full(g_str_hash, g_str_equal,
+					g_free, device_destroy);
+}
+
+static void dundee_disconnect(DBusConnection *connection, void *user_data)
+{
+	DBG("connection %p", connection);
+
+	g_hash_table_destroy(dundee_devices);
+	dundee_devices = NULL;
+}
+
+static guint watch;
+
 static int dundee_init(void)
 {
 	int err;
@@ -110,6 +144,14 @@ static int dundee_init(void)
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
+
+	watch = g_dbus_add_service_watch(connection, DUNDEE_SERVICE,
+			dundee_connect, dundee_disconnect, NULL, NULL);
+
+	if (watch == 0) {
+		err = -EIO;
+		goto remove;
+	}
 
 	err = connman_network_driver_register(&network_driver);
 	if (err < 0)
@@ -124,6 +166,8 @@ static int dundee_init(void)
 	return 0;
 
 remove:
+	g_dbus_remove_watch(connection, watch);
+
 	dbus_connection_unref(connection);
 
 	return err;
@@ -131,6 +175,8 @@ remove:
 
 static void dundee_exit(void)
 {
+	g_dbus_remove_watch(connection, watch);
+
 	connman_device_driver_unregister(&dundee_driver);
 	connman_network_driver_unregister(&network_driver);
 
