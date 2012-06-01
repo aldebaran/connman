@@ -34,17 +34,24 @@
 #include <connman/dbus.h>
 
 #define DUNDEE_SERVICE			"org.ofono.dundee"
+#define DUNDEE_MANAGER_INTERFACE	DUNDEE_SERVICE ".Manager"
+
+#define DEVICE_ADDED			"DeviceAdded"
+#define DEVICE_REMOVED			"DeviceRemoved"
 
 static DBusConnection *connection;
 
 static GHashTable *dundee_devices = NULL;
 
 struct dundee_data {
+	char *path;
 };
 
 static void device_destroy(gpointer data)
 {
 	struct dundee_data *info = data;
+
+	g_free(info->path);
 
 	g_free(info);
 }
@@ -119,6 +126,79 @@ static struct connman_device_driver dundee_driver = {
 	.disable	= dundee_disable,
 };
 
+static void add_device(const char *path, DBusMessageIter *properties)
+{
+	struct dundee_data *info;
+
+	info = g_hash_table_lookup(dundee_devices, path);
+	if (info != NULL)
+		return;
+
+	info = g_try_new0(struct dundee_data, 1);
+	if (info == NULL)
+		return;
+
+	info->path = g_strdup(path);
+
+	g_hash_table_insert(dundee_devices, g_strdup(path), info);
+}
+
+static gboolean device_added(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
+{
+	DBusMessageIter iter, properties;
+	const char *path;
+	const char *signature = DBUS_TYPE_OBJECT_PATH_AS_STRING
+		DBUS_TYPE_ARRAY_AS_STRING
+		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING
+		DBUS_TYPE_VARIANT_AS_STRING
+		DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
+
+	if (dbus_message_has_signature(message, signature) == FALSE) {
+		connman_error("dundee signature does not match");
+		return TRUE;
+	}
+
+	DBG("");
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &path);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &properties);
+
+	add_device(path, &properties);
+
+	return TRUE;
+}
+
+static void remove_device(DBusConnection *connection, const char *path)
+{
+	DBG("path %s", path);
+
+	g_hash_table_remove(dundee_devices, path);
+}
+
+static gboolean device_removed(DBusConnection *connection, DBusMessage *message,
+				void *user_data)
+{
+	const char *path;
+	const char *signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+
+	if (dbus_message_has_signature(message, signature) == FALSE) {
+		connman_error("dundee signature does not match");
+		return TRUE;
+	}
+
+	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+	remove_device(connection, path);
+	return TRUE;
+}
+
 static void dundee_connect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
@@ -136,6 +216,8 @@ static void dundee_disconnect(DBusConnection *connection, void *user_data)
 }
 
 static guint watch;
+static guint added_watch;
+static guint removed_watch;
 
 static int dundee_init(void)
 {
@@ -148,7 +230,17 @@ static int dundee_init(void)
 	watch = g_dbus_add_service_watch(connection, DUNDEE_SERVICE,
 			dundee_connect, dundee_disconnect, NULL, NULL);
 
-	if (watch == 0) {
+	added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						DUNDEE_MANAGER_INTERFACE,
+						DEVICE_ADDED, device_added,
+						NULL, NULL);
+
+	removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						DUNDEE_MANAGER_INTERFACE,
+						DEVICE_REMOVED, device_removed,
+						NULL, NULL);
+
+	if (watch == 0 || added_watch == 0 || removed_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -167,6 +259,8 @@ static int dundee_init(void)
 
 remove:
 	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, added_watch);
+	g_dbus_remove_watch(connection, removed_watch);
 
 	dbus_connection_unref(connection);
 
@@ -176,6 +270,8 @@ remove:
 static void dundee_exit(void)
 {
 	g_dbus_remove_watch(connection, watch);
+	g_dbus_remove_watch(connection, added_watch);
+	g_dbus_remove_watch(connection, removed_watch);
 
 	connman_device_driver_unregister(&dundee_driver);
 	connman_network_driver_unregister(&network_driver);
