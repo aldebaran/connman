@@ -104,6 +104,19 @@ For a working system, certain configuration options need to be enabled:
 		detected and only a runtime dependency. It is not needed to
 		build ConnMan.
 
+	--disable-dundee
+
+		Disable support for Bluetooth DUN devices
+
+		By default Bluetooth DUN technology (dundee) support is
+		built-in and enabled. This option can be used to build a
+		small daemon for a specific system where dundee is not used.
+
+		It is safe to build a daemon with dundee support and no
+		running dundee. That start of dundee is automatically
+		detected and only a runtime dependency. It is not needed to
+		build ConnMan.
+
 	--disable-pacrunner
 
 		Disable support for PACrunner proxy handling
