@@ -57,6 +57,7 @@ struct dundee_data {
 	char *name;
 
 	struct connman_device *device;
+	struct connman_network *network;
 
 	connman_bool_t active;
 
@@ -118,6 +119,12 @@ static void destroy_device(struct dundee_data *info)
 {
 	connman_device_set_powered(info->device, FALSE);
 
+	if (info->network != NULL) {
+		connman_device_remove_network(info->device, info->network);
+		connman_network_unref(info->network);
+		info->network = NULL;
+	}
+
 	connman_device_unregister(info->device);
 	connman_device_unref(info->device);
 
@@ -135,6 +142,40 @@ static void device_destroy(gpointer data)
 	g_free(info->name);
 
 	g_free(info);
+}
+
+static void create_network(struct dundee_data *info)
+{
+	struct connman_network *network;
+	const char *group;
+
+	DBG("%s", info->path);
+
+	network = connman_network_create(info->path,
+				CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN);
+	if (network == NULL)
+		return;
+
+	DBG("network %p", network);
+
+	connman_network_set_data(network, info);
+
+	connman_network_set_string(network, "Path",
+				info->path);
+
+	connman_network_set_name(network, info->name);
+
+	group = get_ident(info->path);
+	connman_network_set_group(network, group);
+
+	connman_network_set_available(network, TRUE);
+
+	if (connman_device_add_network(info->device, network) < 0) {
+		connman_network_unref(network);
+		return;
+	}
+
+	info->network = network;
 }
 
 static int network_probe(struct connman_network *network)
@@ -360,6 +401,9 @@ static gboolean device_changed(DBusConnection *connection,
 		info->name = g_strdup(name);
 
 		DBG("%s Name %s", info->path, info->name);
+
+		connman_network_set_name(info->network, info->name);
+		connman_network_update(info->network);
 	}
 
 	return TRUE;
@@ -414,6 +458,7 @@ static void add_device(const char *path, DBusMessageIter *properties)
 	g_hash_table_insert(dundee_devices, g_strdup(path), info);
 
 	create_device(info);
+	create_network(info);
 }
 
 static gboolean device_added(DBusConnection *connection, DBusMessage *message,
