@@ -44,6 +44,7 @@
 #define PROPERTY_CHANGED		"PropertyChanged"
 
 #define GET_PROPERTIES			"GetProperties"
+#define SET_PROPERTY			"SetProperty"
 #define GET_DEVICES			"GetDevices"
 
 #define TIMEOUT 40000
@@ -67,6 +68,8 @@ struct dundee_data {
 	enum connman_ipconfig_method method;
 	struct connman_ipaddress *address;
 	char *nameservers;
+
+	DBusPendingCall *call;
 };
 
 static char *get_ident(const char *path)
@@ -118,6 +121,9 @@ out:
 static void destroy_device(struct dundee_data *info)
 {
 	connman_device_set_powered(info->device, FALSE);
+
+	if (info->call != NULL)
+		dbus_pending_call_cancel(info->call);
 
 	if (info->network != NULL) {
 		connman_device_remove_network(info->device, info->network);
@@ -201,6 +207,97 @@ static void set_disconnected(struct dundee_data *info)
 	connman_inet_ifdown(info->index);
 }
 
+static void set_property_reply(DBusPendingCall *call, void *user_data)
+{
+	struct dundee_data *info = user_data;
+	DBusMessage *reply;
+	DBusError error;
+
+	DBG("%s", info->path);
+
+	info->call = NULL;
+
+	dbus_error_init(&error);
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_set_error_from_message(&error, reply)) {
+		connman_error("Failed to change property: %s %s %s",
+				info->path, error.name, error.message);
+		dbus_error_free(&error);
+
+		connman_network_set_error(info->network,
+					CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+	}
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static int set_property(struct dundee_data *info,
+			const char *property, int type, void *value)
+{
+	DBusMessage *message;
+	DBusMessageIter iter;
+
+	DBG("%s %s", info->path, property);
+
+	message = dbus_message_new_method_call(DUNDEE_SERVICE, info->path,
+					DUNDEE_DEVICE_INTERFACE, SET_PROPERTY);
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+	connman_dbus_property_append_basic(&iter, property, type, value);
+
+	if (dbus_connection_send_with_reply(connection, message,
+			&info->call, TIMEOUT) == FALSE) {
+		connman_error("Failed to change property: %s %s",
+				info->path, property);
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (info->call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(info->call, set_property_reply,
+					info, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static int device_set_active(struct dundee_data *info)
+{
+	dbus_bool_t active = TRUE;
+
+	DBG("%s", info->path);
+
+	return set_property(info, "Active", DBUS_TYPE_BOOLEAN,
+				&active);
+}
+
+static int device_set_inactive(struct dundee_data *info)
+{
+	dbus_bool_t active = FALSE;
+	int err;
+
+	DBG("%s", info->path);
+
+	err = set_property(info, "Active", DBUS_TYPE_BOOLEAN,
+				&active);
+	if (err == -EINPROGRESS)
+		return 0;
+
+	return err;
+}
+
 static int network_probe(struct connman_network *network)
 {
 	DBG("network %p", network);
@@ -215,16 +312,20 @@ static void network_remove(struct connman_network *network)
 
 static int network_connect(struct connman_network *network)
 {
+	struct dundee_data *info = connman_network_get_data(network);
+
 	DBG("network %p", network);
 
-	return 0;
+	return device_set_active(info);
 }
 
 static int network_disconnect(struct connman_network *network)
 {
+	struct dundee_data *info = connman_network_get_data(network);
+
 	DBG("network %p", network);
 
-	return 0;
+	return device_set_inactive(info);
 }
 
 static struct connman_network_driver network_driver = {
