@@ -23,6 +23,7 @@
 #include <config.h>
 #endif
 
+#include <string.h>
 #include <errno.h>
 
 #include <gdbus.h>
@@ -52,6 +53,8 @@ struct dundee_data {
 	char *path;
 	char *name;
 
+	struct connman_device *device;
+
 	connman_bool_t active;
 
 	int index;
@@ -62,9 +65,68 @@ struct dundee_data {
 	char *nameservers;
 };
 
+static char *get_ident(const char *path)
+{
+	char *pos;
+
+	if (*path != '/')
+		return NULL;
+
+	pos = strrchr(path, '/');
+	if (pos == NULL)
+		return NULL;
+
+	return pos + 1;
+}
+
+static void create_device(struct dundee_data *info)
+{
+	struct connman_device *device;
+	char *ident;
+
+	DBG("%s", info->path);
+
+	ident = g_strdup(get_ident(info->path));
+	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_BLUETOOTH);
+	if (device == NULL)
+		goto out;
+
+	DBG("device %p", device);
+
+	connman_device_set_ident(device, ident);
+
+	connman_device_set_string(device, "Path", info->path);
+
+	connman_device_set_data(device, info);
+
+	if (connman_device_register(device) < 0) {
+		connman_error("Failed to register DUN device");
+		connman_device_unref(device);
+		goto out;
+	}
+
+	info->device = device;
+
+out:
+	g_free(ident);
+}
+
+static void destroy_device(struct dundee_data *info)
+{
+	connman_device_set_powered(info->device, FALSE);
+
+	connman_device_unregister(info->device);
+	connman_device_unref(info->device);
+
+	info->device = NULL;
+}
+
 static void device_destroy(gpointer data)
 {
 	struct dundee_data *info = data;
+
+	if (info->device != NULL)
+		destroy_device(info);
 
 	g_free(info->path);
 	g_free(info->name);
@@ -292,6 +354,8 @@ static void add_device(const char *path, DBusMessageIter *properties)
 	}
 
 	g_hash_table_insert(dundee_devices, g_strdup(path), info);
+
+	create_device(info);
 }
 
 static gboolean device_added(DBusConnection *connection, DBusMessage *message,
