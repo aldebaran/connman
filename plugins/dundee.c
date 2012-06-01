@@ -178,6 +178,29 @@ static void create_network(struct dundee_data *info)
 	info->network = network;
 }
 
+static void set_connected(struct dundee_data *info)
+{
+	DBG("%s", info->path);
+
+	connman_inet_ifup(info->index);
+
+	connman_network_set_index(info->network, info->index);
+	connman_network_set_ipv4_method(info->network,
+					CONNMAN_IPCONFIG_METHOD_FIXED);
+	connman_network_set_ipaddress(info->network, info->address);
+	connman_network_set_nameservers(info->network, info->nameservers);
+
+	connman_network_set_connected(info->network, TRUE);
+}
+
+static void set_disconnected(struct dundee_data *info)
+{
+	DBG("%s", info->path);
+
+	connman_network_set_connected(info->network, FALSE);
+	connman_inet_ifdown(info->index);
+}
+
 static int network_probe(struct connman_network *network)
 {
 	DBG("network %p", network);
@@ -388,6 +411,11 @@ static gboolean device_changed(DBusConnection *connection,
 		dbus_message_iter_get_basic(&value, &info->active);
 
 		DBG("%s Active %d", info->path, info->active);
+
+		if (info->active == TRUE)
+			set_connected(info);
+		else
+			set_disconnected(info);
 	} else if (g_str_equal(key, "Settings") == TRUE) {
 		DBG("%s Settings", info->path);
 
@@ -459,6 +487,9 @@ static void add_device(const char *path, DBusMessageIter *properties)
 
 	create_device(info);
 	create_network(info);
+
+	if (info->active == TRUE)
+		set_connected(info);
 }
 
 static gboolean device_added(DBusConnection *connection, DBusMessage *message,
