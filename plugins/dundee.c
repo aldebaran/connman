@@ -339,9 +339,24 @@ static struct connman_network_driver network_driver = {
 
 static int dundee_probe(struct connman_device *device)
 {
+	GHashTableIter iter;
+	gpointer key, value;
+
 	DBG("device %p", device);
 
-	return 0;
+	if (dundee_devices == NULL)
+		return -ENOTSUP;
+
+	g_hash_table_iter_init(&iter, dundee_devices);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_device *device_dun = value;
+
+		if (device == device_dun)
+			return 0;
+	}
+
+	return -ENOTSUP;
 }
 
 static void dundee_remove(struct connman_device *device)
