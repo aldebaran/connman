@@ -1565,7 +1565,11 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 			 * name. In this case we end up in this branch.
 			 */
 			if (domain_len > 0) {
-				memcpy(ptr + host_len + 1,
+				/*
+				 * Note that we must use memmove() here,
+				 * because the memory areas can overlap.
+				 */
+				memmove(ptr + host_len + 1,
 					ptr + host_len + domain_len + 1,
 					reply_len - (ptr - reply + domain_len));
 
