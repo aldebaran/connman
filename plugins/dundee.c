@@ -37,10 +37,13 @@
 
 #define DUNDEE_SERVICE			"org.ofono.dundee"
 #define DUNDEE_MANAGER_INTERFACE	DUNDEE_SERVICE ".Manager"
+#define DUNDEE_DEVICE_INTERFACE		DUNDEE_SERVICE ".Device"
 
 #define DEVICE_ADDED			"DeviceAdded"
 #define DEVICE_REMOVED			"DeviceRemoved"
+#define PROPERTY_CHANGED		"PropertyChanged"
 
+#define GET_PROPERTIES			"GetProperties"
 #define GET_DEVICES			"GetDevices"
 
 #define TIMEOUT 40000
@@ -307,6 +310,61 @@ out:
 	g_free(gateway);
 }
 
+static gboolean device_changed(DBusConnection *connection,
+				DBusMessage *message,
+				void *user_data)
+{
+	const char *path = dbus_message_get_path(message);
+	struct dundee_data *info = NULL;
+	DBusMessageIter iter, value;
+	const char *key;
+	const char *signature =	DBUS_TYPE_STRING_AS_STRING
+		DBUS_TYPE_VARIANT_AS_STRING;
+
+	if (dbus_message_has_signature(message, signature) == FALSE) {
+		connman_error("dundee signature does not match");
+		return TRUE;
+	}
+
+	info = g_hash_table_lookup(dundee_devices, path);
+	if (info == NULL)
+		return TRUE;
+
+	if (dbus_message_iter_init(message, &iter) == FALSE)
+		return TRUE;
+
+	dbus_message_iter_get_basic(&iter, &key);
+
+	dbus_message_iter_next(&iter);
+	dbus_message_iter_recurse(&iter, &value);
+
+	/*
+	 * Dundee guarantees the ordering of Settings and
+	 * Active. Settings will always be send before Active = True.
+	 * That means we don't have to order here.
+	 */
+	if (g_str_equal(key, "Active") == TRUE) {
+		dbus_message_iter_get_basic(&value, &info->active);
+
+		DBG("%s Active %d", info->path, info->active);
+	} else if (g_str_equal(key, "Settings") == TRUE) {
+		DBG("%s Settings", info->path);
+
+		extract_settings(&value, info);
+	} else if (g_str_equal(key, "Name") == TRUE) {
+		char *name;
+
+		dbus_message_iter_get_basic(&value, &name);
+
+		g_free(info->name);
+		info->name = g_strdup(name);
+
+		DBG("%s Name %s", info->path, info->name);
+	}
+
+	return TRUE;
+}
+
 static void add_device(const char *path, DBusMessageIter *properties)
 {
 	struct dundee_data *info;
@@ -526,6 +584,7 @@ static void dundee_disconnect(DBusConnection *connection, void *user_data)
 static guint watch;
 static guint added_watch;
 static guint removed_watch;
+static guint device_watch;
 
 static int dundee_init(void)
 {
@@ -548,7 +607,15 @@ static int dundee_init(void)
 						DEVICE_REMOVED, device_removed,
 						NULL, NULL);
 
-	if (watch == 0 || added_watch == 0 || removed_watch == 0) {
+	device_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+						DUNDEE_DEVICE_INTERFACE,
+						PROPERTY_CHANGED,
+						device_changed,
+						NULL, NULL);
+
+
+	if (watch == 0 || added_watch == 0 || removed_watch == 0 ||
+			device_watch == 0) {
 		err = -EIO;
 		goto remove;
 	}
@@ -569,6 +636,7 @@ remove:
 	g_dbus_remove_watch(connection, watch);
 	g_dbus_remove_watch(connection, added_watch);
 	g_dbus_remove_watch(connection, removed_watch);
+	g_dbus_remove_watch(connection, device_watch);
 
 	dbus_connection_unref(connection);
 
@@ -580,6 +648,7 @@ static void dundee_exit(void)
 	g_dbus_remove_watch(connection, watch);
 	g_dbus_remove_watch(connection, added_watch);
 	g_dbus_remove_watch(connection, removed_watch);
+	g_dbus_remove_watch(connection, device_watch);
 
 	connman_device_driver_unregister(&dundee_driver);
 	connman_network_driver_unregister(&network_driver);
