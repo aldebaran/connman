@@ -885,9 +885,24 @@ static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
 
 static int bluetooth_probe(struct connman_device *device)
 {
+	GHashTableIter iter;
+	gpointer key, value;
+
 	DBG("device %p", device);
 
-	return 0;
+	if (bluetooth_devices == NULL)
+		return -ENOTSUP;
+
+	g_hash_table_iter_init(&iter, bluetooth_devices);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		struct connman_device *device_pan = value;
+
+		if (device == device_pan)
+			return 0;
+	}
+
+	return -ENOTSUP;
 }
 
 static void bluetooth_remove(struct connman_device *device)
