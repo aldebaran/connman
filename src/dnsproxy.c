@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
@@ -183,9 +184,13 @@ static int cache_refcount;
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
 static GSList *request_pending_list = NULL;
-static guint16 request_id = 0x0000;
 static GHashTable *listener_table = NULL;
 static time_t next_refresh;
+
+static guint16 get_id()
+{
+	return random();
+}
 
 static int protocol_offset(int protocol)
 {
@@ -2383,13 +2388,9 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	req->client_sk = client_sk;
 	req->protocol = IPPROTO_TCP;
 
-	request_id += 2;
-	if (request_id == 0x0000 || request_id == 0xffff)
-		request_id += 2;
-
 	req->srcid = buf[2] | (buf[3] << 8);
-	req->dstid = request_id;
-	req->altid = request_id + 1;
+	req->dstid = get_id();
+	req->altid = get_id();
 	req->request_len = len;
 
 	buf[2] = req->dstid & 0xff;
@@ -2502,13 +2503,9 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	req->client_sk = 0;
 	req->protocol = IPPROTO_UDP;
 
-	request_id += 2;
-	if (request_id == 0x0000 || request_id == 0xffff)
-		request_id += 2;
-
 	req->srcid = buf[0] | (buf[1] << 8);
-	req->dstid = request_id;
-	req->altid = request_id + 1;
+	req->dstid = get_id();
+	req->altid = get_id();
 	req->request_len = len;
 
 	buf[0] = req->dstid & 0xff;
@@ -2785,6 +2782,8 @@ int __connman_dnsproxy_init(void)
 	int err;
 
 	DBG("");
+
+	srandom(time(NULL));
 
 	listener_table = g_hash_table_new_full(g_str_hash, g_str_equal,
 							g_free, g_free);
