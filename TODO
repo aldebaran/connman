@@ -45,6 +45,15 @@ Core
    security integration.
 
 
+- Favorite service migration removal
+
+  Priority: Medium
+  Complexity: C1
+  When: 12/2012
+
+  Remove service migration code that moves services from default.profile
+  to the current directory-based structure.
+
 
 WiFi
 ====
