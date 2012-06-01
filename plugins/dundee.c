@@ -39,6 +39,10 @@
 #define DEVICE_ADDED			"DeviceAdded"
 #define DEVICE_REMOVED			"DeviceRemoved"
 
+#define GET_DEVICES			"GetDevices"
+
+#define TIMEOUT 40000
+
 static DBusConnection *connection;
 
 static GHashTable *dundee_devices = NULL;
@@ -199,12 +203,105 @@ static gboolean device_removed(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
+static void manager_get_devices_reply(DBusPendingCall *call, void *user_data)
+{
+	DBusMessage *reply;
+	DBusError error;
+	DBusMessageIter array, dict;
+	const char *signature = DBUS_TYPE_ARRAY_AS_STRING
+		DBUS_STRUCT_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_OBJECT_PATH_AS_STRING
+		DBUS_TYPE_ARRAY_AS_STRING
+		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+		DBUS_TYPE_STRING_AS_STRING
+		DBUS_TYPE_VARIANT_AS_STRING
+		DBUS_DICT_ENTRY_END_CHAR_AS_STRING
+		DBUS_STRUCT_END_CHAR_AS_STRING;
+
+	DBG("");
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_has_signature(reply, signature) == FALSE) {
+		connman_error("dundee signature does not match");
+		goto done;
+	}
+
+	dbus_error_init(&error);
+
+	if (dbus_set_error_from_message(&error, reply) == TRUE) {
+		connman_error("%s", error.message);
+		dbus_error_free(&error);
+		goto done;
+	}
+
+	if (dbus_message_iter_init(reply, &array) == FALSE)
+		goto done;
+
+	dbus_message_iter_recurse(&array, &dict);
+
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter value, properties;
+		const char *path;
+
+		dbus_message_iter_recurse(&dict, &value);
+		dbus_message_iter_get_basic(&value, &path);
+
+		dbus_message_iter_next(&value);
+		dbus_message_iter_recurse(&value, &properties);
+
+		add_device(path, &properties);
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+static int manager_get_devices(void)
+{
+	DBusMessage *message;
+	DBusPendingCall *call;
+
+	DBG("");
+
+	message = dbus_message_new_method_call(DUNDEE_SERVICE, "/",
+					DUNDEE_MANAGER_INTERFACE, GET_DEVICES);
+	if (message == NULL)
+		return -ENOMEM;
+
+	if (dbus_connection_send_with_reply(connection, message,
+						&call, TIMEOUT) == FALSE) {
+		connman_error("Failed to call GetDevices()");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	if (call == NULL) {
+		connman_error("D-Bus connection not available");
+		dbus_message_unref(message);
+		return -EINVAL;
+	}
+
+	dbus_pending_call_set_notify(call, manager_get_devices_reply,
+					NULL, NULL);
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
 static void dundee_connect(DBusConnection *connection, void *user_data)
 {
 	DBG("connection %p", connection);
 
 	dundee_devices = g_hash_table_new_full(g_str_hash, g_str_equal,
 					g_free, device_destroy);
+
+	manager_get_devices();
 }
 
 static void dundee_disconnect(DBusConnection *connection, void *user_data)
