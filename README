@@ -88,7 +88,7 @@ For a working system, certain configuration options need to be enabled:
 
 		It is safe to build a daemon with Bluetooth support and no
 		running bluetoothd. The start of bluetoothd is automatically
-		detected and only a runtime depedency. It is not needed to
+		detected and only a runtime dependency. It is not needed to
 		build ConnMan.
 
 	--disable-ofono
@@ -101,7 +101,7 @@ For a working system, certain configuration options need to be enabled:
 
 		It is safe to build a daemon with oFono support and no
 		running ofonod. That start of ofonod is automatically
-		detected and only a runtime dependecy. It is not needed	to
+		detected and only a runtime dependency. It is not needed to
 		build ConnMan.
 
 	--disable-pacrunner
