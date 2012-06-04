@@ -1148,48 +1148,26 @@ static void add_nameserver_route(int family, int index, char *nameserver,
 static void nameserver_add_routes(int index, char **nameservers,
 					const char *gw)
 {
-	int i, ret, family;
-	struct addrinfo hints;
-	struct addrinfo *addr;
+	int i, family;
 
 	for (i = 0; nameservers[i] != NULL; i++) {
-		memset(&hints, 0, sizeof(struct addrinfo));
-		hints.ai_flags = AI_NUMERICHOST;
-		addr = NULL;
-
-		ret = getaddrinfo(nameservers[i], NULL, &hints, &addr);
-		if (ret == EAI_NONAME)
-			family = AF_INET; /* use the IPv4 as a default */
-		else if (ret != 0)
+		family = connman_inet_check_ipaddress(nameservers[i]);
+		if (family < 0)
 			continue;
-		else
-			family = addr->ai_family;
 
 		add_nameserver_route(family, index, nameservers[i], gw);
-
-		freeaddrinfo(addr);
 	}
 }
 
 static void nameserver_del_routes(int index, char **nameservers,
 				enum connman_ipconfig_type type)
 {
-	int i, ret, family;
-	struct addrinfo hints;
-	struct addrinfo *addr;
+	int i, family;
 
 	for (i = 0; nameservers[i] != NULL; i++) {
-		memset(&hints, 0, sizeof(struct addrinfo));
-		hints.ai_flags = AI_NUMERICHOST;
-		addr = NULL;
-
-		ret = getaddrinfo(nameservers[i], NULL, &hints, &addr);
-		if (ret == EAI_NONAME)
-			family = AF_INET; /* use the IPv4 as a default */
-		else if (ret != 0)
+		family = connman_inet_check_ipaddress(nameservers[i]);
+		if (family < 0)
 			continue;
-		else
-			family = addr->ai_family;
 
 		switch (family) {
 		case AF_INET:
@@ -1203,8 +1181,6 @@ static void nameserver_del_routes(int index, char **nameservers,
 							nameservers[i]);
 			break;
 		}
-
-		freeaddrinfo(addr);
 	}
 }
 
