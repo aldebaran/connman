@@ -115,9 +115,6 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
 void __connman_timeserver_sync_next()
 {
 	char *server;
-	int ret;
-	struct addrinfo hints;
-	struct addrinfo *addr;
 
 	__connman_ntp_stop();
 
@@ -129,15 +126,8 @@ void __connman_timeserver_sync_next()
 
 	ts_list = g_slist_delete_link(ts_list, ts_list);
 
-	memset(&hints, 0, sizeof(struct addrinfo));
-	hints.ai_flags = AI_NUMERICHOST;
-	addr = NULL;
-
-	ret = getaddrinfo(server, NULL, &hints, &addr);
-	freeaddrinfo(addr);
-
 	/* if its a IP , directly query it. */
-	if (ret == 0) {
+	if (connman_inet_check_ipaddress(server) > 0) {
 		DBG("Using timeservers %s", server);
 
 		__connman_ntp_start(server);
