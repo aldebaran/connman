@@ -1672,7 +1672,7 @@ static void destroy_server(struct server_data *server)
 	g_io_channel_unref(server->channel);
 
 	if (server->protocol == IPPROTO_UDP)
-		connman_info("Removing DNS server %s", server->server);
+		DBG("Removing DNS server %s", server->server);
 
 	g_free(server->incoming_reply);
 	g_free(server->server);
@@ -2043,7 +2043,7 @@ static struct server_data *create_server(const char *interface,
 	if (protocol == IPPROTO_UDP) {
 		/* Enable new servers by default */
 		data->enabled = TRUE;
-		connman_info("Adding DNS server %s", data->server);
+		DBG("Adding DNS server %s", data->server);
 
 		server_list = g_slist_append(server_list, data);
 
@@ -2205,12 +2205,12 @@ static void dnsproxy_offline_mode(connman_bool_t enabled)
 		struct server_data *data = list->data;
 
 		if (enabled == FALSE) {
-			connman_info("Enabling DNS server %s", data->server);
+			DBG("Enabling DNS server %s", data->server);
 			data->enabled = TRUE;
 			cache_invalidate();
 			cache_refresh();
 		} else {
-			connman_info("Disabling DNS server %s", data->server);
+			DBG("Disabling DNS server %s", data->server);
 			data->enabled = FALSE;
 			cache_invalidate();
 		}
@@ -2241,10 +2241,10 @@ static void dnsproxy_default_changed(struct connman_service *service)
 		struct server_data *data = list->data;
 
 		if (g_strcmp0(data->interface, interface) == 0) {
-			connman_info("Enabling DNS server %s", data->server);
+			DBG("Enabling DNS server %s", data->server);
 			data->enabled = TRUE;
 		} else {
-			connman_info("Disabling DNS server %s", data->server);
+			DBG("Disabling DNS server %s", data->server);
 			data->enabled = FALSE;
 		}
 	}
