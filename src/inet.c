@@ -2174,6 +2174,26 @@ int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen, int type,
 	return 0;
 }
 
+int connman_inet_check_ipaddress(const char *host)
+{
+	struct addrinfo hints;
+	struct addrinfo *addr;
+	int result;
+
+	memset(&hints, 0, sizeof(struct addrinfo));
+	hints.ai_flags = AI_NUMERICHOST;
+	addr = NULL;
+
+	result = getaddrinfo(host, NULL, &hints, &addr);
+	if (result == 0)
+		result = addr->ai_family;
+	else
+		result = -result;
+	freeaddrinfo(addr);
+
+	return result;
+}
+
 /* Check routine modified from ics-dhcp 4.2.3-P2 */
 connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
 {

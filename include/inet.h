@@ -80,6 +80,7 @@ int connman_inet_setup_tunnel(char *tunnel, int mtu);
 int connman_inet_create_tunnel(char **iface);
 int connman_inet_get_dest_addr(int index, char **dest);
 int connman_inet_ipv6_get_dest_addr(int index, char **dest);
+int connman_inet_check_ipaddress(const char *host);
 connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len);
 
 #ifdef __cplusplus
