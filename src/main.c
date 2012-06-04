@@ -113,8 +113,6 @@ static char **parse_fallback_nameservers(char **nameservers, gsize len)
 {
 	char **servers;
 	int i, j;
-	struct addrinfo hints;
-	struct addrinfo *addr;
 
 	servers = g_try_new0(char *, len + 1);
 	if (servers == NULL)
@@ -123,15 +121,10 @@ static char **parse_fallback_nameservers(char **nameservers, gsize len)
 	i = 0;
 	j = 0;
 	while (nameservers[i] != NULL) {
-		memset(&hints, 0, sizeof(struct addrinfo));
-		hints.ai_flags = AI_NUMERICHOST;
-		addr = NULL;
-		if (getaddrinfo(nameservers[i], NULL, &hints, &addr) == 0) {
+		if (connman_inet_check_ipaddress(nameservers[i]) > 0) {
 			servers[j] = g_strdup(nameservers[i]);
 			j += 1;
 		}
-
-		freeaddrinfo(addr);
 		i += 1;
 	}
 
