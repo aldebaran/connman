@@ -3041,10 +3041,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 			const char *val;
 			dbus_message_iter_get_basic(&entry, &val);
 			dbus_message_iter_next(&entry);
-			if (str->len > 0)
-				g_string_append_printf(str, " %s", val);
-			else
-				g_string_append(str, val);
+			if (connman_inet_check_ipaddress(val) > 0) {
+				if (str->len > 0)
+					g_string_append_printf(str, " %s", val);
+				else
+					g_string_append(str, val);
+			}
 		}
 
 		remove_nameservers(service, NULL, service->nameservers_config);
