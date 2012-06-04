@@ -29,7 +29,9 @@ Methods		dict GetProperties()  [deprecated]
 
 			Trigger a scan for this specific technology. The
 			method call will return when a scan has been
-			finished and results are available.
+			finished and results are available. So setting
+			a longer D-Bus timeout might be a really good
+			idea.
 
 			Results will be signaled via the ServicesChanged
 			signal from the manager interface.
