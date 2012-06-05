@@ -678,6 +678,15 @@ static int service_save(struct connman_service *service)
 		g_key_file_set_boolean(keyfile, service->identifier, "Hidden",
 									TRUE);
 
+	if (service->config_file != NULL && strlen(service->config_file) > 0)
+		g_key_file_set_string(keyfile, service->identifier,
+				"Config.file", service->config_file);
+
+	if (service->config_entry != NULL &&
+					strlen(service->config_entry) > 0)
+		g_key_file_set_string(keyfile, service->identifier,
+				"Config.ident", service->config_entry);
+
 done:
 	__connman_storage_save_service(keyfile, service->identifier);
 
