@@ -6214,6 +6214,66 @@ __connman_service_create_from_provider(struct connman_provider *provider)
 	return service;
 }
 
+static void remove_unprovisioned_services()
+{
+	gchar **services;
+	GKeyFile *keyfile, *configkeyfile;
+	char *file, *section;
+	int i = 0;
+
+	services = connman_storage_get_services();
+	if (services == NULL)
+		return;
+
+	for (;services[i] != NULL; i++) {
+		file = section = NULL;
+		keyfile = configkeyfile = NULL;
+
+		keyfile = connman_storage_load_service(services[i]);
+		if (keyfile == NULL)
+			continue;
+
+		file = g_key_file_get_string(keyfile, services[i],
+					"Config.file", NULL);
+		if (file == NULL)
+			goto next;
+
+		section = g_key_file_get_string(keyfile, services[i],
+					"Config.ident", NULL);
+		if (section == NULL)
+			goto next;
+
+		configkeyfile = __connman_storage_load_config(file);
+		if (configkeyfile == NULL) {
+			/*
+			 * Config file is missing, remove the provisioned
+			 * service.
+			 */
+			__connman_storage_remove_service(services[i]);
+			goto next;
+		}
+
+		if (g_key_file_has_group(configkeyfile, section) == FALSE)
+			/*
+			 * Config section is missing, remove the provisioned
+			 * service.
+			 */
+			__connman_storage_remove_service(services[i]);
+
+	next:
+		if (keyfile != NULL)
+			g_key_file_free(keyfile);
+
+		if (configkeyfile != NULL)
+			g_key_file_free(configkeyfile);
+
+		g_free(section);
+		g_free(file);
+	}
+
+	g_strfreev(services);
+}
+
 int __connman_service_init(void)
 {
 	DBG("");
@@ -6229,6 +6289,8 @@ int __connman_service_init(void)
 	services_notify->remove = g_hash_table_new_full(g_str_hash,
 			g_str_equal, g_free, NULL);
 	services_notify->add = g_hash_table_new(g_str_hash, g_str_equal);
+
+	remove_unprovisioned_services();
 
 	return 0;
 }
