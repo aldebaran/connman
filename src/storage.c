@@ -266,6 +266,69 @@ int __connman_storage_save_service(GKeyFile *keyfile, const char *service_id)
 	return ret;
 }
 
+static gboolean remove_file(const char *service_id, const char *file)
+{
+	gchar *pathname;
+	gboolean ret = FALSE;
+
+	pathname = g_strdup_printf("%s/%s/%s", STORAGEDIR, service_id, file);
+	if(pathname == NULL)
+		return FALSE;
+
+	if (g_file_test(pathname, G_FILE_TEST_EXISTS) == FALSE) {
+		ret = TRUE;
+	} else if (g_file_test(pathname, G_FILE_TEST_IS_REGULAR) == TRUE) {
+		unlink(pathname);
+		ret = TRUE;
+	}
+
+	g_free(pathname);
+	return ret;
+}
+
+static gboolean remove_dir(const char *service_id)
+{
+	gchar *pathname;
+	gboolean ret = FALSE;
+
+	pathname = g_strdup_printf("%s/%s", STORAGEDIR, service_id);
+	if(pathname == NULL)
+		return FALSE;
+
+	if (g_file_test(pathname, G_FILE_TEST_EXISTS) == FALSE) {
+		ret = TRUE;
+	} else if (g_file_test(pathname, G_FILE_TEST_IS_DIR) == TRUE) {
+		rmdir(pathname);
+		ret = TRUE;
+	}
+
+	g_free(pathname);
+	return ret;
+}
+
+gboolean __connman_storage_remove_service(const char *service_id)
+{
+	gboolean removed;
+
+	/* Remove service configuration file */
+	removed = remove_file(service_id, SETTINGS);
+	if (removed == FALSE)
+		return FALSE;
+
+	/* Remove the statistics file also */
+	removed = remove_file(service_id, "data");
+	if (removed == FALSE)
+		return FALSE;
+
+	removed = remove_dir(service_id);
+	if (removed == FALSE)
+		return FALSE;
+
+	DBG("Removed service dir %s/%s", STORAGEDIR, service_id);
+
+	return TRUE;
+}
+
 GKeyFile *__connman_storage_load_provider(const char *identifier)
 {
 	gchar *pathname;
