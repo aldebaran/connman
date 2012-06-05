@@ -873,9 +873,45 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 		return -ENOSYS;
 
 	config = g_hash_table_lookup(config_table, ident);
-	if(config != NULL)
+	if(config != NULL) {
+		GHashTableIter iter;
+		gpointer value, key;
+		gboolean found = FALSE;
+
+		g_hash_table_iter_init(&iter, config->service_table);
+
+		/*
+		 * Check if we need to remove individual service if it
+		 * is missing from config file.
+		 */
+		if (file != NULL && entry != NULL) {
+			while (g_hash_table_iter_next(&iter, &key,
+							&value) == TRUE) {
+				struct connman_config_service *config = value;
+
+				if (g_strcmp0(config->config_ident,
+								file) == 0 &&
+						g_strcmp0(config->config_entry,
+								entry) == 0) {
+					found = TRUE;
+					break;
+				}
+			}
+
+			DBG("found %d ident %s file %s entry %s", found, ident,
+								file, entry);
+
+			if (found == FALSE)
+				/*
+				 * The entry+8 will skip "service_" prefix
+				 */
+				g_hash_table_remove(config->service_table,
+						entry + 8);
+		}
+
 		g_hash_table_foreach(config->service_table,
 						provision_service, service);
+	}
 
 	return 0;
 }
