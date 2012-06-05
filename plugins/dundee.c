@@ -350,9 +350,9 @@ static int dundee_probe(struct connman_device *device)
 	g_hash_table_iter_init(&iter, dundee_devices);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		struct connman_device *device_dun = value;
+		struct dundee_data *info = value;
 
-		if (device == device_dun)
+		if (device == info->device)
 			return 0;
 	}
 
