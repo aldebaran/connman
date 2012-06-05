@@ -3556,22 +3556,17 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
-static DBusMessage *remove_service(DBusConnection *conn,
-					DBusMessage *msg, void *user_data)
+gboolean __connman_service_remove(struct connman_service *service)
 {
-	struct connman_service *service = user_data;
-
-	DBG("service %p", service);
-
 	if (service->type == CONNMAN_SERVICE_TYPE_ETHERNET)
-		return __connman_error_not_supported(msg);
+		return FALSE;
 
 	if (service->immutable == TRUE || service->hidden == TRUE)
-		return __connman_error_not_supported(msg);
+		return FALSE;
 
 	if (service->favorite == FALSE && service->state !=
 						CONNMAN_SERVICE_STATE_FAILURE)
-		return __connman_error_not_supported(msg);
+		return FALSE;
 
 	set_reconnect_state(service, FALSE);
 
@@ -3580,10 +3575,36 @@ static DBusMessage *remove_service(DBusConnection *conn,
 	g_free(service->passphrase);
 	service->passphrase = NULL;
 
+	g_free(service->agent_passphrase);
+	service->agent_passphrase = NULL;
+
+	g_free(service->identity);
+	service->identity = NULL;
+
+	g_free(service->agent_identity);
+	service->agent_identity = NULL;
+
+	g_free(service->eap);
+	service->eap = NULL;
+
 	set_idle(service);
 
 	__connman_service_set_favorite(service, FALSE);
+
 	service_save(service);
+
+	return TRUE;
+}
+
+static DBusMessage *remove_service(DBusConnection *conn,
+					DBusMessage *msg, void *user_data)
+{
+	struct connman_service *service = user_data;
+
+	DBG("service %p", service);
+
+	if (__connman_service_remove(service) == FALSE)
+		return __connman_error_not_supported(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
