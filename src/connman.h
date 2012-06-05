@@ -622,6 +622,8 @@ int __connman_service_disconnect_all(void);
 void __connman_service_auto_connect(void);
 
 void __connman_service_provision_changed(const char *ident);
+void __connman_service_set_config(struct connman_service *service,
+				const char *file_id, const char *section);
 
 const char *__connman_service_type2string(enum connman_service_type type);
 enum connman_service_type __connman_service_string2type(const char *str);

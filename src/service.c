@@ -118,6 +118,8 @@ struct connman_service {
 	connman_bool_t do_split_routing;
 	connman_bool_t new_service;
 	connman_bool_t hidden_service;
+	char *config_file;
+	char *config_entry;
 };
 
 struct find_data {
@@ -3994,6 +3996,8 @@ static void service_free(gpointer user_data)
 	g_free(service->private_key_file);
 	g_free(service->private_key_passphrase);
 	g_free(service->phase2);
+	g_free(service->config_file);
+	g_free(service->config_entry);
 
 	if (service->stats.timer != NULL)
 		g_timer_destroy(service->stats.timer);
@@ -5445,6 +5449,19 @@ static void provision_changed(gpointer value, gpointer user_data)
 void __connman_service_provision_changed(const char *ident)
 {
 	g_sequence_foreach(service_list, provision_changed, (void *)ident);
+}
+
+void __connman_service_set_config(struct connman_service *service,
+				const char *file_id, const char *entry)
+{
+	if (service == NULL)
+		return;
+
+	g_free(service->config_file);
+	service->config_file = g_strdup(file_id);
+
+	g_free(service->config_entry);
+	service->config_entry = g_strdup(entry);
 }
 
 /**
