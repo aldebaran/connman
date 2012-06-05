@@ -5762,6 +5762,11 @@ struct connman_service *__connman_service_lookup_from_index(int index)
 	return NULL;
 }
 
+struct connman_service *__connman_service_lookup_from_ident(const char *identifier)
+{
+	return lookup_by_identifier(identifier);
+}
+
 const char *__connman_service_get_ident(struct connman_service *service)
 {
 	return service->identifier;
