@@ -4376,14 +4376,16 @@ connman_bool_t __connman_service_wps_enabled(struct connman_service *service)
 }
 
 /**
- * __connman_service_set_favorite:
+ * __connman_service_set_favorite_delayed:
  * @service: service structure
  * @favorite: favorite value
+ * @delay_ordering: do not order service sequence
  *
  * Change the favorite setting of service
  */
-int __connman_service_set_favorite(struct connman_service *service,
-						connman_bool_t favorite)
+int __connman_service_set_favorite_delayed(struct connman_service *service,
+					connman_bool_t favorite,
+					gboolean delay_ordering)
 {
 	GSequenceIter *iter;
 
@@ -4397,18 +4399,37 @@ int __connman_service_set_favorite(struct connman_service *service,
 		return -EALREADY;
 
 	service->favorite = favorite;
-	service->order = __connman_service_get_order(service);
+
+	if (delay_ordering == FALSE)
+		service->order = __connman_service_get_order(service);
 
 	favorite_changed(service);
 
-	if (g_sequence_get_length(service_list) > 1) {
-		g_sequence_sort_changed(iter, service_compare, NULL);
-		service_schedule_changed();
+	if (delay_ordering == FALSE) {
+
+		if (g_sequence_get_length(service_list) > 1) {
+			g_sequence_sort_changed(iter, service_compare, NULL);
+			service_schedule_changed();
+		}
+
+		__connman_connection_update_gateway();
 	}
 
-	__connman_connection_update_gateway();
-
 	return 0;
+}
+
+/**
+ * __connman_service_set_favorite:
+ * @service: service structure
+ * @favorite: favorite value
+ *
+ * Change the favorite setting of service
+ */
+int __connman_service_set_favorite(struct connman_service *service,
+						connman_bool_t favorite)
+{
+	return __connman_service_set_favorite_delayed(service, favorite,
+							FALSE);
 }
 
 int __connman_service_set_immutable(struct connman_service *service,

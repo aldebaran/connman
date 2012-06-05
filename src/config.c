@@ -775,7 +775,7 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 
 	__connman_service_set_immutable(service, TRUE);
 
-	__connman_service_set_favorite(service, TRUE);
+	__connman_service_set_favorite_delayed(service, TRUE, TRUE);
 
 	__connman_service_set_config(service, config->config_ident,
 						config->config_entry);
