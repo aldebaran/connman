@@ -696,6 +696,11 @@ done:
 	return err;
 }
 
+void __connman_service_save(struct connman_service *service)
+{
+	service_save(service);
+}
+
 static enum connman_service_state combine_state(
 					enum connman_service_state state_a,
 					enum connman_service_state state_b)
