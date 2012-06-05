@@ -5506,6 +5506,21 @@ static void provision_changed(gpointer value, gpointer user_data)
 void __connman_service_provision_changed(const char *ident)
 {
 	g_sequence_foreach(service_list, provision_changed, (void *)ident);
+
+	/*
+	 * Because the provision_changed() might have set some services
+	 * as favorite, we must sort the sequence now.
+	 */
+	if (services_dirty == TRUE) {
+		services_dirty = FALSE;
+
+		if (g_sequence_get_length(service_list) > 1) {
+			g_sequence_sort(service_list, service_compare, NULL);
+			service_schedule_changed();
+		}
+
+		__connman_connection_update_gateway();
+	}
 }
 
 void __connman_service_set_config(struct connman_service *service,
