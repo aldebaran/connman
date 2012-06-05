@@ -44,6 +44,7 @@ static GHashTable *service_hash = NULL;
 static GSList *counter_list = NULL;
 static unsigned int autoconnect_timeout = 0;
 static struct connman_service *current_default = NULL;
+static connman_bool_t services_dirty = FALSE;
 
 struct connman_stats {
 	connman_bool_t valid;
@@ -4374,6 +4375,11 @@ connman_bool_t __connman_service_wps_enabled(struct connman_service *service)
 
 	return service->wps;
 }
+
+void __connman_service_mark_dirty()
+ {
+	services_dirty = TRUE;
+ }
 
 /**
  * __connman_service_set_favorite_delayed:
