@@ -860,7 +860,7 @@ int __connman_config_provision_service(struct connman_service *service)
 }
 
 int __connman_config_provision_service_ident(struct connman_service *service,
-							const char *ident)
+			const char *ident, const char *file, const char *entry)
 {
 	enum connman_service_type type;
 	struct connman_config *config;

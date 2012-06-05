@@ -525,7 +525,7 @@ void __connman_config_cleanup(void);
 int __connman_config_load_service(GKeyFile *keyfile, const char *group, connman_bool_t persistent);
 int __connman_config_provision_service(struct connman_service *service);
 int __connman_config_provision_service_ident(struct connman_service *service,
-							const char *ident);
+		const char *ident, const char *file, const char *entry);
 
 int __connman_tethering_init(void);
 void __connman_tethering_cleanup(void);

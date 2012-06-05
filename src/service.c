@@ -5505,7 +5505,8 @@ static void provision_changed(gpointer value, gpointer user_data)
 	struct connman_service *service = value;
 	char *path = user_data;
 
-	__connman_config_provision_service_ident(service, path);
+	__connman_config_provision_service_ident(service, path,
+			service->config_file, service->config_entry);
 }
 
 void __connman_service_provision_changed(const char *ident)
