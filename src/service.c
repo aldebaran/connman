@@ -5500,18 +5500,32 @@ static struct connman_service *lookup_by_identifier(const char *identifier)
 	return NULL;
 }
 
+struct provision_user_data {
+	const char *ident;
+	int ret;
+};
+
 static void provision_changed(gpointer value, gpointer user_data)
 {
 	struct connman_service *service = value;
-	char *path = user_data;
+	struct provision_user_data *data = user_data;
+	const char *path = data->ident;
+	int ret;
 
-	__connman_config_provision_service_ident(service, path,
+	ret = __connman_config_provision_service_ident(service, path,
 			service->config_file, service->config_entry);
+	if (ret > 0)
+		data->ret = ret;
 }
 
-void __connman_service_provision_changed(const char *ident)
+int __connman_service_provision_changed(const char *ident)
 {
-	g_sequence_foreach(service_list, provision_changed, (void *)ident);
+	struct provision_user_data data = {
+		.ident = ident,
+		.ret = 0
+	};
+
+	g_sequence_foreach(service_list, provision_changed, (void *)&data);
 
 	/*
 	 * Because the provision_changed() might have set some services
@@ -5527,6 +5541,8 @@ void __connman_service_provision_changed(const char *ident)
 
 		__connman_connection_update_gateway();
 	}
+
+	return data.ret;
 }
 
 void __connman_service_set_config(struct connman_service *service,

@@ -625,7 +625,7 @@ int __connman_service_disconnect_all(void);
 void __connman_service_auto_connect(void);
 gboolean __connman_service_remove(struct connman_service *service);
 
-void __connman_service_provision_changed(const char *ident);
+int __connman_service_provision_changed(const char *ident);
 void __connman_service_set_config(struct connman_service *service,
 				const char *file_id, const char *section);
 
