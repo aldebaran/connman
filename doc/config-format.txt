@@ -8,6 +8,12 @@ characters than letters or numbers and must have a .config suffix.
 Those configuration files are text files with a simple format and we typically
 have one file per provisioned network.
 
+If the config file is removed, then Connman tries to remove the
+provisioned service. If individual service entry inside config is removed,
+then the corresponding provisioned service is removed. If service
+entry is changed, then corresponding service is removed and then
+immediately re-provisioned.
+
 
 Global entry [global]
 =====================
