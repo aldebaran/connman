@@ -68,6 +68,7 @@ static int inotify_wd = -1;
 
 static GIOChannel *inotify_channel = NULL;
 static uint inotify_watch = 0;
+static connman_bool_t cleanup = FALSE;
 
 #define INTERNAL_CONFIG_PREFIX           "__internal"
 
@@ -133,6 +134,9 @@ static void unregister_service(gpointer data)
 	char *service_id;
 	GSList *list;
 
+	if (cleanup == TRUE)
+		goto free_only;
+
 	connman_info("Removing service configuration %s",
 						config_service->ident);
 
@@ -154,6 +158,7 @@ static void unregister_service(gpointer data)
 								service_id);
 	}
 
+free_only:
 	g_free(config_service->ident);
 	g_free(config_service->type);
 	g_free(config_service->name);
@@ -712,10 +717,14 @@ void __connman_config_cleanup(void)
 {
 	DBG("");
 
+	cleanup = TRUE;
+
 	remove_watch();
 
 	g_hash_table_destroy(config_table);
 	config_table = NULL;
+
+	cleanup = FALSE;
 }
 
 static char *config_pem_fsid(const char *pem_file)
