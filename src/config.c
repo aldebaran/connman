@@ -830,6 +830,8 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 		__connman_service_set_string(service, "Passphrase", config->passphrase);
 
 	__connman_service_mark_dirty();
+
+	__connman_service_save(service);
 }
 
 int __connman_config_provision_service(struct connman_service *service)
