@@ -49,6 +49,8 @@ struct connman_config_service {
 	char *phase2;
 	char *passphrase;
 	GSList *service_identifiers;
+	char *config_ident; /* file prefix */
+	char *config_entry; /* entry name */
 };
 
 struct connman_config {
@@ -166,6 +168,8 @@ static void unregister_service(gpointer data)
 	g_free(config_service->phase2);
 	g_free(config_service->passphrase);
 	g_slist_free_full(config_service->service_identifiers, g_free);
+	g_free(config_service->config_ident);
+	g_free(config_service->config_entry);
 	g_free(config_service);
 }
 
@@ -374,6 +378,9 @@ static int load_service(GKeyFile *keyfile, const char *group,
 		g_free(service->passphrase);
 		service->passphrase = str;
 	}
+
+	service->config_ident = g_strdup(config->ident);
+	service->config_entry = g_strdup_printf("service_%s", service->ident);
 
 	if (service_created)
 		g_hash_table_insert(config->service_table, service->ident,
@@ -769,6 +776,9 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 	__connman_service_set_immutable(service, TRUE);
 
 	__connman_service_set_favorite(service, TRUE);
+
+	__connman_service_set_config(service, config->config_ident,
+						config->config_entry);
 
 	if (config->eap != NULL)
 		__connman_service_set_string(service, "EAP", config->eap);
