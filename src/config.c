@@ -48,6 +48,7 @@ struct connman_config_service {
 	char *private_key_passphrase_type;
 	char *phase2;
 	char *passphrase;
+	GSList *service_identifiers;
 };
 
 struct connman_config {
@@ -125,26 +126,47 @@ static void unregister_config(gpointer data)
 
 static void unregister_service(gpointer data)
 {
-	struct connman_config_service *service = data;
+	struct connman_config_service *config_service = data;
+	struct connman_service *service;
+	char *service_id;
+	GSList *list;
 
-	connman_info("Removing service configuration %s", service->ident);
+	connman_info("Removing service configuration %s",
+						config_service->ident);
 
-	protected_services = g_slist_remove(protected_services, service);
+	protected_services = g_slist_remove(protected_services,
+						config_service);
 
-	g_free(service->ident);
-	g_free(service->type);
-	g_free(service->name);
-	g_free(service->ssid);
-	g_free(service->eap);
-	g_free(service->identity);
-	g_free(service->ca_cert_file);
-	g_free(service->client_cert_file);
-	g_free(service->private_key_file);
-	g_free(service->private_key_passphrase);
-	g_free(service->private_key_passphrase_type);
-	g_free(service->phase2);
-	g_free(service->passphrase);
-	g_free(service);
+	for (list = config_service->service_identifiers; list != NULL;
+							list = list->next) {
+		service_id = list->data;
+
+		service = __connman_service_lookup_from_ident(service_id);
+		if (service != NULL) {
+			__connman_service_set_immutable(service, FALSE);
+			__connman_service_remove(service);
+		}
+
+		if (__connman_storage_remove_service(service_id) == FALSE)
+			DBG("Could not remove all files for service %s",
+								service_id);
+	}
+
+	g_free(config_service->ident);
+	g_free(config_service->type);
+	g_free(config_service->name);
+	g_free(config_service->ssid);
+	g_free(config_service->eap);
+	g_free(config_service->identity);
+	g_free(config_service->ca_cert_file);
+	g_free(config_service->client_cert_file);
+	g_free(config_service->private_key_file);
+	g_free(config_service->private_key_passphrase);
+	g_free(config_service->private_key_passphrase_type);
+	g_free(config_service->phase2);
+	g_free(config_service->passphrase);
+	g_slist_free_full(config_service->service_identifiers, g_free);
+	g_free(config_service);
 }
 
 static void check_keys(GKeyFile *keyfile, const char *group,
@@ -714,7 +736,7 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 	struct connman_service *service = user_data;
 	struct connman_config_service *config = value;
 	struct connman_network *network;
-	const void *ssid;
+	const void *ssid, *service_id;
 	unsigned int ssid_len;
 
 	/* For now only WiFi service entries are supported */
@@ -738,6 +760,11 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 
 	if (memcmp(config->ssid, ssid, ssid_len) != 0)
 		return;
+
+	service_id = __connman_service_get_ident(service);
+	config->service_identifiers =
+		g_slist_prepend(config->service_identifiers,
+				g_strdup(service_id));
 
 	__connman_service_set_immutable(service, TRUE);
 
