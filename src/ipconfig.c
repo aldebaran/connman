@@ -1245,6 +1245,7 @@ void __connman_ipconfig_set_prefixlen(struct connman_ipconfig *ipconfig, unsigne
 static struct connman_ipconfig *create_ipv6config(int index)
 {
 	struct connman_ipconfig *ipv6config;
+	struct connman_ipdevice *ipdevice;
 
 	DBG("index %d", index);
 
@@ -1258,7 +1259,10 @@ static struct connman_ipconfig *create_ipv6config(int index)
 	ipv6config->enabled = FALSE;
 	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
 	ipv6config->method = CONNMAN_IPCONFIG_METHOD_AUTO;
-	ipv6config->ipv6_privacy_config = 0;
+
+	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
+	if (ipdevice != NULL)
+		ipv6config->ipv6_privacy_config = ipdevice->ipv6_privacy;
 
 	ipv6config->address = connman_ipaddress_alloc(AF_INET6);
 	if (ipv6config->address == NULL) {
