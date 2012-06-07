@@ -4852,7 +4852,7 @@ int __connman_service_clear_error(struct connman_service *service)
 
 	service->state_ipv4 = service->state_ipv6 =
 						CONNMAN_SERVICE_STATE_UNKNOWN;
-	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;;
+	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
 
 	if (service->favorite == TRUE)
 		set_reconnect_state(service, TRUE);
