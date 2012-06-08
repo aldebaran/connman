@@ -1143,13 +1143,6 @@ static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 	network->frequency = bss->frequency;
 	network->best_bss = bss;
 
-	network->wps = FALSE;
-	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0) {
-		network->wps = TRUE;
-
-		network->wps_capabilities |= bss->wps_capabilities;
-	}
-
 	SUPPLICANT_DBG("New network %s created", network->name);
 
 	network->bss_table = g_hash_table_new_full(g_str_hash, g_str_equal,
@@ -1164,6 +1157,12 @@ static void add_or_replace_bss_to_network(struct g_supplicant_bss *bss)
 	callback_network_added(network);
 
 done:
+	/* We update network's WPS properties if only bss provides WPS. */
+	if ((bss->keymgmt & G_SUPPLICANT_KEYMGMT_WPS) != 0) {
+		network->wps = TRUE;
+		network->wps_capabilities |= bss->wps_capabilities;
+	}
+
 	if (bss->signal > network->signal) {
 		network->signal = bss->signal;
 		network->best_bss = bss;
@@ -1342,6 +1341,9 @@ static void bss_process_ies(DBusMessageIter *iter, void *user_data)
 
 	if (ie == NULL || ie_len < 2)
 		return;
+
+	bss->wps_capabilities = 0;
+	bss->keymgmt = 0;
 
 	for (ie_end = ie + ie_len; ie < ie_end && ie + ie[1] + 1 <= ie_end;
 							ie += ie[1] + 2) {
