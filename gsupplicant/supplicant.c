@@ -182,9 +182,14 @@ struct g_supplicant_bss {
 	dbus_int16_t signal;
 	GSupplicantMode mode;
 	GSupplicantSecurity security;
+	dbus_bool_t rsn_selected;
+	unsigned int wpa_keymgmt;
+	unsigned int wpa_pairwise;
+	unsigned int wpa_group;
+	unsigned int rsn_keymgmt;
+	unsigned int rsn_pairwise;
+	unsigned int rsn_group;
 	unsigned int keymgmt;
-	unsigned int pairwise;
-	unsigned int group;
 	dbus_bool_t privacy;
 	dbus_bool_t psk;
 	dbus_bool_t ieee8021x;
@@ -1186,7 +1191,7 @@ static void bss_rates(DBusMessageIter *iter, void *user_data)
 
 static void bss_keymgmt(DBusMessageIter *iter, void *user_data)
 {
-	struct g_supplicant_bss *bss = user_data;
+	unsigned int *keymgmt = user_data;
 	const char *str = NULL;
 	int i;
 
@@ -1196,14 +1201,15 @@ static void bss_keymgmt(DBusMessageIter *iter, void *user_data)
 
 	for (i = 0; keymgmt_map[i].str != NULL; i++)
 		if (strcmp(str, keymgmt_map[i].str) == 0) {
-			bss->keymgmt |= keymgmt_map[i].val;
+			SUPPLICANT_DBG("Keymgmt: %s", str);
+			*keymgmt |= keymgmt_map[i].val;
 			break;
 		}
 }
 
 static void bss_group(DBusMessageIter *iter, void *user_data)
 {
-	struct g_supplicant_bss *bss = user_data;
+	unsigned int *group = user_data;
 	const char *str = NULL;
 	int i;
 
@@ -1213,14 +1219,15 @@ static void bss_group(DBusMessageIter *iter, void *user_data)
 
 	for (i = 0; group_map[i].str != NULL; i++)
 		if (strcmp(str, group_map[i].str) == 0) {
-			bss->group |= group_map[i].val;
+			SUPPLICANT_DBG("Group: %s", str);
+			*group |= group_map[i].val;
 			break;
 		}
 }
 
 static void bss_pairwise(DBusMessageIter *iter, void *user_data)
 {
-	struct g_supplicant_bss *bss = user_data;
+	unsigned int *pairwise = user_data;
 	const char *str = NULL;
 	int i;
 
@@ -1230,7 +1237,8 @@ static void bss_pairwise(DBusMessageIter *iter, void *user_data)
 
 	for (i = 0; pairwise_map[i].str != NULL; i++)
 		if (strcmp(str, pairwise_map[i].str) == 0) {
-			bss->pairwise |= pairwise_map[i].val;
+			SUPPLICANT_DBG("Pairwise: %s", str);
+			*pairwise |= pairwise_map[i].val;
 			break;
 		}
 }
@@ -1238,13 +1246,33 @@ static void bss_pairwise(DBusMessageIter *iter, void *user_data)
 static void bss_wpa(const char *key, DBusMessageIter *iter,
 			void *user_data)
 {
-	if (g_strcmp0(key, "KeyMgmt") == 0)
-		supplicant_dbus_array_foreach(iter, bss_keymgmt, user_data);
-	else if (g_strcmp0(key, "Group") == 0)
-		supplicant_dbus_array_foreach(iter, bss_group, user_data);
-	else if (g_strcmp0(key, "Pairwise") == 0)
-		supplicant_dbus_array_foreach(iter, bss_pairwise, user_data);
+	struct g_supplicant_bss *bss = user_data;
+	unsigned int value = 0;
 
+	SUPPLICANT_DBG("Key: %s", key);
+
+	if (g_strcmp0(key, "KeyMgmt") == 0) {
+		supplicant_dbus_array_foreach(iter, bss_keymgmt, &value);
+
+		if (bss->rsn_selected == TRUE)
+			bss->rsn_keymgmt = value;
+		else
+			bss->wpa_keymgmt = value;
+	} else if (g_strcmp0(key, "Group") == 0) {
+		supplicant_dbus_array_foreach(iter, bss_group, &value);
+
+		if (bss->rsn_selected == TRUE)
+			bss->rsn_group = value;
+		else
+			bss->wpa_group = value;
+	} else if (g_strcmp0(key, "Pairwise") == 0) {
+		supplicant_dbus_array_foreach(iter, bss_pairwise, &value);
+
+		if (bss->rsn_selected == TRUE)
+			bss->rsn_pairwise = value;
+		else
+			bss->wpa_pairwise = value;
+	}
 }
 
 static unsigned int get_tlv(unsigned char *ie, unsigned int ie_size,
@@ -1356,6 +1384,26 @@ static void bss_process_ies(DBusMessageIter *iter, void *user_data)
 
 static void bss_compute_security(struct g_supplicant_bss *bss)
 {
+	/*
+	 * Combining RSN and WPA keymgmt
+	 * We combine it since parsing IEs might have set something for WPS. */
+	bss->keymgmt |= bss->rsn_keymgmt | bss->wpa_keymgmt;
+
+	bss->ieee8021x = FALSE;
+	bss->psk = FALSE;
+
+	if (bss->keymgmt &
+			(G_SUPPLICANT_KEYMGMT_WPA_EAP |
+				G_SUPPLICANT_KEYMGMT_WPA_FT_EAP |
+				G_SUPPLICANT_KEYMGMT_WPA_EAP_256))
+		bss->ieee8021x = TRUE;
+
+	if (bss->keymgmt &
+			(G_SUPPLICANT_KEYMGMT_WPA_PSK |
+				G_SUPPLICANT_KEYMGMT_WPA_FT_PSK |
+				G_SUPPLICANT_KEYMGMT_WPA_PSK_256))
+		bss->psk = TRUE;
+
 	if (bss->ieee8021x == TRUE)
 		bss->security = G_SUPPLICANT_SECURITY_IEEE8021X;
 	else if (bss->psk == TRUE)
@@ -1450,21 +1498,14 @@ static void bss_property(const char *key, DBusMessageIter *iter,
 
 		dbus_message_iter_get_basic(iter, &privacy);
 		bss->privacy = privacy;
-	} else if ((g_strcmp0(key, "RSN") == 0) ||
-			(g_strcmp0(key, "WPA") == 0)) {
+	} else if (g_strcmp0(key, "RSN") == 0) {
+		bss->rsn_selected = TRUE;
+
 		supplicant_dbus_property_foreach(iter, bss_wpa, bss);
+	} else if (g_strcmp0(key, "WPA") == 0) {
+		bss->rsn_selected = FALSE;
 
-		if (bss->keymgmt &
-			(G_SUPPLICANT_KEYMGMT_WPA_EAP |
-				G_SUPPLICANT_KEYMGMT_WPA_FT_EAP |
-				G_SUPPLICANT_KEYMGMT_WPA_EAP_256))
-			bss->ieee8021x = TRUE;
-
-		if (bss->keymgmt &
-			(G_SUPPLICANT_KEYMGMT_WPA_PSK |
-				G_SUPPLICANT_KEYMGMT_WPA_FT_PSK |
-				G_SUPPLICANT_KEYMGMT_WPA_PSK_256))
-			bss->psk = TRUE;
+		supplicant_dbus_property_foreach(iter, bss_wpa, bss);
 	} else if (g_strcmp0(key, "IEs") == 0)
 		bss_process_ies(iter, bss);
 	else
@@ -2060,7 +2101,7 @@ static void signal_bss_changed(const char *path, DBusMessageIter *iter)
 		/* Security change policy:
 		 * - we first copy the current bss into a new one with
 		 * its own pointer (path)
-		 * - we remove the current bss related nework which will
+		 * - we remove the current bss related network which will
 		 * tell the plugin about such removal. This is done due
 		 * to the fact that a security change means a group change
 		 * so a complete network change.
