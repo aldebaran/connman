@@ -492,8 +492,7 @@ static void scan_callback_hidden(int result,
 	}
 
 out:
-	connman_device_set_scanning(device, FALSE);
-	connman_device_unref(device);
+	scan_callback(result, interface, user_data);
 }
 
 static gboolean autoscan_timeout(gpointer data)
