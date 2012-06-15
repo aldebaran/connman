@@ -624,6 +624,10 @@ int __connman_service_disconnect(struct connman_service *service);
 int __connman_service_disconnect_all(void);
 void __connman_service_auto_connect(void);
 gboolean __connman_service_remove(struct connman_service *service);
+void __connman_service_set_hidden_data(struct connman_service *service,
+				gpointer user_data);
+void __connman_service_return_error(struct connman_service *service,
+				int error, gpointer user_data);
 void __connman_service_reply_dbus_pending(DBusMessage *pending, int error);
 
 int __connman_service_provision_changed(const char *ident);

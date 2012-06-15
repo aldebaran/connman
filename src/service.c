@@ -3428,6 +3428,38 @@ static void reply_pending(struct connman_service *service, int error)
 	}
 }
 
+static void check_pending_msg(struct connman_service *service)
+{
+	if (service->pending == NULL)
+		return;
+
+	DBG("service %p pending msg %p already exists", service,
+						service->pending);
+	dbus_message_unref(service->pending);
+}
+
+void __connman_service_set_hidden_data(struct connman_service *service,
+							gpointer user_data)
+{
+	DBusMessage *pending = user_data;
+
+	DBG("service %p pending %p", service, pending);
+
+	check_pending_msg(service);
+
+	service->pending = pending;
+}
+
+void __connman_service_return_error(struct connman_service *service,
+				int error, gpointer user_data)
+{
+	DBG("service %p error %d user_data %p", service, error, user_data);
+
+	__connman_service_set_hidden_data(service, user_data);
+
+	reply_pending(service, error);
+}
+
 static gboolean connect_timeout(gpointer user_data)
 {
 	struct connman_service *service = user_data;
