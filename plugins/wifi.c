@@ -1465,7 +1465,7 @@ static void interface_removed(GSupplicantInterface *interface)
 		return;
 
 	if (wifi == NULL || wifi->device == NULL) {
-		connman_error("Wrong wifi pointer");
+		DBG("wifi interface already removed");
 		return;
 	}
 
