@@ -203,7 +203,7 @@ static void remove_networks(struct connman_device *device,
 	wifi->networks = NULL;
 }
 
-static void stop_autoscan(struct connman_device *device)
+static void reset_autoscan(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
 	struct autoscan_params *autoscan;
@@ -223,9 +223,14 @@ static void stop_autoscan(struct connman_device *device)
 	autoscan->timeout = 0;
 	autoscan->interval = 0;
 
-	connman_device_set_scanning(device, FALSE);
-
 	connman_device_unref(device);
+}
+
+static void stop_autoscan(struct connman_device *device)
+{
+	reset_autoscan(device);
+
+	connman_device_set_scanning(device, FALSE);
 }
 
 static void wifi_remove(struct connman_device *device)
@@ -812,7 +817,7 @@ static int get_latest_connections(int max_ssids,
 
 static int wifi_scan(struct connman_device *device)
 {
-	stop_autoscan(device);
+	reset_autoscan(device);
 
 	return throw_wifi_scan(device, scan_callback);
 }
@@ -828,8 +833,6 @@ static int wifi_scan_fast(struct connman_device *device)
 
 	if (wifi->tethering == TRUE)
 		return 0;
-
-	stop_autoscan(device);
 
 	if (connman_device_get_scanning(device) == TRUE)
 		return -EALREADY;
@@ -851,6 +854,8 @@ static int wifi_scan_fast(struct connman_device *device)
 	}
 
 	connman_device_ref(device);
+	reset_autoscan(device);
+
 	ret = g_supplicant_interface_scan(wifi->interface, scan_params,
 						scan_callback, device);
 	if (ret == 0)
@@ -886,8 +891,6 @@ static int wifi_scan_hidden(struct connman_device *device,
 	if (ssid == NULL || ssid_len == 0 || ssid_len > 32)
 		return -EINVAL;
 
-	stop_autoscan(device);
-
 	if (connman_device_get_scanning(device) == TRUE)
 		return -EALREADY;
 
@@ -920,6 +923,9 @@ static int wifi_scan_hidden(struct connman_device *device,
 	wifi->hidden = hidden;
 
 	connman_device_ref(device);
+
+	reset_autoscan(device);
+
 	ret = g_supplicant_interface_scan(wifi->interface, scan_params,
 			scan_callback, device);
 	if (ret == 0)
