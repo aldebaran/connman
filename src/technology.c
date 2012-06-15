@@ -1131,8 +1131,10 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (__sync_fetch_and_add(&technology->enabled, 1) == 0)
-		powered_changed(technology);
+	if (__sync_fetch_and_add(&technology->enabled, 1) != 0)
+		return -EALREADY;
+
+	powered_changed(technology);
 
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
@@ -1153,6 +1155,9 @@ int __connman_technology_disabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
+	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
+		return -EINPROGRESS;
+
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
 		dbus_message_unref(technology->pending_reply);
@@ -1161,8 +1166,7 @@ int __connman_technology_disabled(enum connman_service_type type)
 		technology->pending_timeout = 0;
 	}
 
-	if (__sync_fetch_and_sub(&technology->enabled, 1) == 1)
-		powered_changed(technology);
+	powered_changed(technology);
 
 	return 0;
 }
