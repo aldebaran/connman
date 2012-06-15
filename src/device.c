@@ -593,13 +593,12 @@ int connman_device_set_powered(struct connman_device *device,
 
 	type = __connman_device_get_service_type(device);
 
-	if (device->powered == TRUE)
-		__connman_technology_enabled(type);
-	else
+	if (device->powered == FALSE) {
 		__connman_technology_disabled(type);
-
-	if (powered == FALSE)
 		return 0;
+	}
+
+	__connman_technology_enabled(type);
 
 	connman_device_set_disconnected(device, FALSE);
 	device->scanning = FALSE;
