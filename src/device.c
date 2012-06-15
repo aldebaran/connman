@@ -247,12 +247,7 @@ int __connman_device_disable(struct connman_device *device)
 	}
 
 	err = device->driver->disable(device);
-	if (err == 0) {
-		connman_device_set_powered(device, FALSE);
-		goto done;
-	}
-
-	if (err == -EALREADY) {
+	if (err == 0 || err == -EALREADY) {
 		connman_device_set_powered(device, FALSE);
 		goto done;
 	}
