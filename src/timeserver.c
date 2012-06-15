@@ -65,7 +65,6 @@ static void save_timeservers(char **servers)
 static char **load_timeservers()
 {
 	GKeyFile *keyfile;
-	GError *error = NULL;
 	char **servers = NULL;
 
 	keyfile = __connman_storage_load_global();
@@ -73,11 +72,7 @@ static char **load_timeservers()
 		return NULL;
 
 	servers = g_key_file_get_string_list(keyfile, "global",
-						"Timeservers", NULL, &error);
-	if (error) {
-		DBG("Error loading timeservers: %s", error->message);
-		g_error_free(error);
-	}
+						"Timeservers", NULL, NULL);
 
 	g_key_file_free(keyfile);
 
