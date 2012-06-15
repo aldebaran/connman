@@ -108,6 +108,8 @@ struct wifi_data {
 
 static GList *iface_list = NULL;
 
+static void start_autoscan(struct connman_device *device);
+
 static void handle_tethering(struct wifi_data *wifi)
 {
 	if (wifi->tethering == FALSE)
@@ -420,14 +422,35 @@ static int throw_wifi_scan(struct connman_device *device,
 	return ret;
 }
 
-static void hidden_scan_callback(int result,
-			GSupplicantInterface *interface, void *user_data)
+static void hidden_free(struct hidden_params *hidden)
+{
+	if (hidden == NULL)
+		return;
+
+	g_free(hidden->identity);
+	g_free(hidden->passphrase);
+	g_free(hidden);
+}
+
+static void scan_callback(int result, GSupplicantInterface *interface,
+						void *user_data)
 {
 	struct connman_device *device = user_data;
+	struct wifi_data *wifi = connman_device_get_data(device);
 
 	DBG("result %d", result);
 
+	if (wifi != NULL && wifi->hidden != NULL) {
+		connman_network_clear_hidden(wifi->hidden->user_data);
+		hidden_free(wifi->hidden);
+		wifi->hidden = NULL;
+	}
+
+	if (result < 0)
+		connman_device_reset_scanning(device);
+
 	connman_device_set_scanning(device, FALSE);
+	start_autoscan(device);
 	connman_device_unref(device);
 }
 
@@ -459,7 +482,7 @@ static void autoscan_scan_callback(int result,
 						scan_params) > 0) {
 			ret = g_supplicant_interface_scan(wifi->interface,
 							scan_params,
-							hidden_scan_callback,
+							scan_callback,
 							device);
 			if (ret == 0)
 				return;
@@ -651,39 +674,6 @@ static int wifi_disable(struct connman_device *device)
 		return ret;
 
 	return -EINPROGRESS;
-}
-
-static void hidden_free(struct hidden_params *hidden)
-{
-	if (hidden == NULL)
-		return;
-
-	g_free(hidden->identity);
-	g_free(hidden->passphrase);
-	g_free(hidden);
-}
-
-static void scan_callback(int result, GSupplicantInterface *interface,
-						void *user_data)
-{
-	struct connman_device *device = user_data;
-	struct wifi_data *wifi = connman_device_get_data(device);
-
-	DBG("result %d", result);
-
-	if (wifi != NULL && wifi->hidden != NULL) {
-		connman_network_clear_hidden(wifi->hidden->user_data);
-		hidden_free(wifi->hidden);
-		wifi->hidden = NULL;
-	}
-
-	if (result < 0)
-		connman_device_reset_scanning(device);
-
-	connman_device_set_scanning(device, FALSE);
-	connman_device_unref(device);
-
-	start_autoscan(device);
 }
 
 struct last_connected {
