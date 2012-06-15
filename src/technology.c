@@ -1101,9 +1101,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 		return -ENXIO;
 	}
 
-	if (connman_device_get_scanning(device) == TRUE)
-		__connman_technology_scan_stopped(device);
-
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
 	technology_put(technology);
