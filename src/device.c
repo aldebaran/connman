@@ -704,8 +704,6 @@ connman_bool_t connman_device_get_scanning(struct connman_device *device)
 
 void connman_device_reset_scanning(struct connman_device *device)
 {
-	device->scanning = FALSE;
-
 	g_hash_table_foreach(device->networks,
 				mark_network_available, NULL);
 }
