@@ -454,7 +454,7 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	connman_device_unref(device);
 }
 
-static void autoscan_scan_callback(int result,
+static void scan_callback_hidden(int result,
 			GSupplicantInterface *interface, void *user_data)
 {
 	struct connman_device *device = user_data;
@@ -514,7 +514,7 @@ static gboolean autoscan_timeout(gpointer data)
 	if (autoscan->interval >= autoscan->limit)
 		interval = autoscan->limit;
 
-	throw_wifi_scan(wifi->device, autoscan_scan_callback);
+	throw_wifi_scan(wifi->device, scan_callback_hidden);
 
 set_interval:
 	DBG("interval %d", interval);
@@ -809,7 +809,7 @@ static int wifi_scan(struct connman_device *device)
 {
 	reset_autoscan(device);
 
-	return throw_wifi_scan(device, scan_callback);
+	return throw_wifi_scan(device, scan_callback_hidden);
 }
 
 static int wifi_scan_fast(struct connman_device *device)
