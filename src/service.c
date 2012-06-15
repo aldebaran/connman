@@ -3388,35 +3388,42 @@ static void remove_timeout(struct connman_service *service)
 	}
 }
 
+void __connman_service_reply_dbus_pending(DBusMessage *pending, int error)
+{
+	if (pending != NULL) {
+		if (error > 0) {
+			DBusMessage *reply;
+
+			reply = __connman_error_failed(pending,	error);
+			if (reply != NULL)
+				g_dbus_send_message(connection, reply);
+		} else {
+			const char *sender, *path;
+
+			sender = dbus_message_get_interface(pending);
+			path = dbus_message_get_path(pending);
+
+			DBG("sender %s path %s", sender, path);
+
+			if (g_strcmp0(sender, CONNMAN_MANAGER_INTERFACE) == 0)
+				g_dbus_send_reply(connection, pending,
+					DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+			else
+				g_dbus_send_reply(connection, pending,
+							DBUS_TYPE_INVALID);
+		}
+
+		dbus_message_unref(pending);
+	}
+}
+
 static void reply_pending(struct connman_service *service, int error)
 {
 	remove_timeout(service);
 
 	if (service->pending != NULL) {
-		if (error > 0) {
-			DBusMessage *reply;
-
-			reply = __connman_error_failed(service->pending,
-								error);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-		} else {
-			const char *sender;
-
-			sender = dbus_message_get_interface(service->pending);
-
-			DBG("sender %s", sender);
-
-			if (g_strcmp0(sender, CONNMAN_MANAGER_INTERFACE) == 0)
-				g_dbus_send_reply(connection, service->pending,
-					DBUS_TYPE_OBJECT_PATH, &service->path,
-							DBUS_TYPE_INVALID);
-			else
-				g_dbus_send_reply(connection, service->pending,
-							DBUS_TYPE_INVALID);
-		}
-
-		dbus_message_unref(service->pending);
+		__connman_service_reply_dbus_pending(service->pending, error);
 		service->pending = NULL;
 	}
 }
