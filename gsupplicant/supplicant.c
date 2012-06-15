@@ -437,6 +437,21 @@ static void remove_interface(gpointer data)
 	g_hash_table_destroy(interface->net_mapping);
 	g_hash_table_destroy(interface->network_table);
 
+	if (interface->scan_callback != NULL) {
+		SUPPLICANT_DBG("call interface %p callback %p scanning %d",
+				interface, interface->scan_callback,
+				interface->scanning);
+
+		interface->scan_callback(-EIO, interface, interface->scan_data);
+                interface->scan_callback = NULL;
+                interface->scan_data = NULL;
+
+		if (interface->scanning == TRUE) {
+			interface->scanning = FALSE;
+			callback_scan_finished(interface);
+		}
+	}
+
 	callback_interface_removed(interface);
 
 	g_free(interface->wps_cred.key);
