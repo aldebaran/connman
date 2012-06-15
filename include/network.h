@@ -102,8 +102,9 @@ connman_bool_t connman_network_get_connected(struct connman_network *network);
 
 connman_bool_t connman_network_get_associating(struct connman_network *network);
 
+void connman_network_clear_hidden(void *user_data);
 int connman_network_connect_hidden(struct connman_network *network,
-				char *identity, char* passphrase);
+			char *identity, char* passphrase, void *user_data);
 
 void connman_network_set_ipv4_method(struct connman_network *network,
 					enum connman_ipconfig_method method);

@@ -470,7 +470,8 @@ struct connman_device *__connman_device_find_device(enum connman_service_type ty
 int __connman_device_request_scan(enum connman_service_type type);
 int __connman_device_request_hidden_scan(struct connman_device *device,
 				const char *ssid, unsigned int ssid_len,
-				const char *identity, const char *passphrase);
+				const char *identity, const char *passphrase,
+				gpointer user_data);
 
 connman_bool_t __connman_device_isfiltered(const char *devname);
 

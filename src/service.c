@@ -4631,15 +4631,27 @@ static void request_input_cb (struct connman_service *service,
 		if (g_strcmp0(error,
 				"net.connman.Agent.Error.Canceled") == 0) {
 			err = -EINVAL;
+
+			if (service->hidden == TRUE)
+				__connman_service_return_error(service,
+							ECANCELED, user_data);
 			goto done;
+		} else {
+			if (service->hidden == TRUE)
+				__connman_service_return_error(service,
+							ETIMEDOUT, user_data);
 		}
 	}
 
 	if (service->hidden == TRUE && name_len > 0 && name_len <= 32) {
 		device = connman_network_get_device(service->network);
-		__connman_device_request_hidden_scan(device,
+		err = __connman_device_request_hidden_scan(device,
 						name, name_len,
-						identity, passphrase);
+						identity, passphrase,
+						user_data);
+		if (err < 0)
+			__connman_service_return_error(service,	-err,
+							user_data);
 	}
 
 	if (values_received == FALSE || service->hidden == TRUE) {
@@ -4681,6 +4693,17 @@ static void request_input_cb (struct connman_service *service,
 		/* It is not relevant to stay on Failure state
 		 * when failing is due to wrong user input */
 		service->state = CONNMAN_SERVICE_STATE_IDLE;
+
+		if (service->hidden == FALSE) {
+			/*
+			 * If there was a real error when requesting
+			 * hidden scan, then that error is returned already
+			 * to the user somewhere above so do not try to
+			 * do this again.
+			 */
+			__connman_service_return_error(service,	-err,
+							user_data);
+		}
 
 		service_complete(service);
 		__connman_connection_update_gateway();
@@ -5443,8 +5466,25 @@ int __connman_service_connect(struct connman_service *service)
 
 	if (service->userconnect == TRUE) {
 		if (err == -ENOKEY || err == -EPERM) {
-			return __connman_agent_request_passphrase_input(service,
-					request_input_cb, NULL);
+			DBusMessage *pending = NULL;
+
+			/*
+			 * We steal the reply here. The idea is that the
+			 * connecting client will see the connection status
+			 * after the real hidden network is connected or
+			 * connection failed.
+			 */
+			if (service->hidden == TRUE) {
+				pending = service->pending;
+				service->pending = NULL;
+			}
+
+			err = __connman_agent_request_passphrase_input(service,
+					request_input_cb, pending);
+			if (service->hidden == TRUE && err != -EINPROGRESS)
+				service->pending = pending;
+
+			return err;
 		}
 		reply_pending(service, -err);
 	}

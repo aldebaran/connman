@@ -1455,17 +1455,36 @@ connman_bool_t connman_network_get_associating(struct connman_network *network)
 	return network->associating;
 }
 
+void connman_network_clear_hidden(void *user_data)
+{
+	if (user_data == NULL)
+		return;
+
+	DBG("user_data %p", user_data);
+
+	/*
+	 * Hidden service does not have a connect timeout so
+	 * we do not need to remove it. We can just return
+	 * error to the caller telling that we could not find
+	 * any network that we could connect to.
+	 */
+	__connman_service_reply_dbus_pending(user_data, EIO);
+}
+
 int connman_network_connect_hidden(struct connman_network *network,
-				char *identity, char* passphrase)
+			char *identity, char* passphrase, void *user_data)
 {
 	int err = 0;
 	struct connman_service *service;
 
-	DBG("");
-
 	service = __connman_service_lookup_from_network(network);
-	if (service == NULL)
-		return -EINVAL;
+
+	DBG("network %p service %p user_data %p", network, service, user_data);
+
+	if (service == NULL) {
+		err = -EINVAL;
+		goto out;
+	}
 
 	if (identity != NULL)
 		__connman_service_set_agent_identity(service, identity);
@@ -1476,12 +1495,17 @@ int connman_network_connect_hidden(struct connman_network *network,
 	if (err == -ENOKEY) {
 		__connman_service_indicate_error(service,
 					CONNMAN_SERVICE_ERROR_INVALID_KEY);
-		return err;
+		goto out;
 	} else {
 		__connman_service_set_hidden(service);
 		__connman_service_set_userconnect(service, TRUE);
+		__connman_service_set_hidden_data(service, user_data);
 		return __connman_service_connect(service);
 	}
+
+out:
+	__connman_service_return_error(service, -err, user_data);
+	return err;
 }
 
 /**
