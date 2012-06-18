@@ -183,7 +183,6 @@ static GHashTable *cache;
 static int cache_refcount;
 static GSList *server_list = NULL;
 static GSList *request_list = NULL;
-static GSList *request_pending_list = NULL;
 static GHashTable *listener_table = NULL;
 static time_t next_refresh;
 
@@ -2206,17 +2205,26 @@ void __connman_dnsproxy_flush(void)
 {
 	GSList *list;
 
-	list = request_pending_list;
+	list = request_list;
 	while (list) {
 		struct request_data *req = list->data;
 
 		list = list->next;
 
-		request_pending_list =
-				g_slist_remove(request_pending_list, req);
-		resolv(req, req->request, req->name);
-		g_free(req->request);
-		g_free(req->name);
+		if (resolv(req, req->request, req->name) == TRUE) {
+			/*
+			 * A cached result was sent,
+			 * so the request can be released
+			 */
+			request_list =
+				g_slist_remove(request_list, req);
+			destroy_request_data(req);
+			continue;
+		}
+
+		if (req->timeout > 0)
+			g_source_remove(req->timeout);
+		req->timeout = g_timeout_add_seconds(5, request_timeout, req);
 	}
 }
 
@@ -2695,18 +2703,6 @@ static void destroy_listener(struct listener_data *ifdata)
 
 	if (g_strcmp0(ifdata->ifname, "lo") == 0)
 		__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
-
-	for (list = request_pending_list; list; list = list->next) {
-		struct request_data *req = list->data;
-
-		DBG("Dropping pending request (id 0x%04x -> 0x%04x)",
-						req->srcid, req->dstid);
-		destroy_request_data(req);
-		list->data = NULL;
-	}
-
-	g_slist_free(request_pending_list);
-	request_pending_list = NULL;
 
 	for (list = request_list; list; list = list->next) {
 		struct request_data *req = list->data;
