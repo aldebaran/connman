@@ -1609,9 +1609,6 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 	if (hdr->rcode > 0 && req->numresp < req->numserv)
 		return -EINVAL;
 
-	if (req->timeout > 0)
-		g_source_remove(req->timeout);
-
 	request_list = g_slist_remove(request_list, req);
 
 	if (protocol == IPPROTO_UDP) {
@@ -1624,8 +1621,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 		close(sk);
 	}
 
-	g_free(req->resp);
-	g_free(req);
+	destroy_request_data(req);
 
 	return err;
 }
