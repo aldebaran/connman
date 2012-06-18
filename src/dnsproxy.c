@@ -2368,7 +2368,6 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	unsigned char buf[768];
 	char query[512];
 	struct request_data *req;
-	struct server_data *server;
 	int sk, client_sk, len, err;
 	struct sockaddr_in6 client_addr;
 	socklen_t client_addr_len = sizeof(client_addr);
@@ -2432,25 +2431,13 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
-		GList *domains;
 
 		if (data->protocol != IPPROTO_UDP || data->enabled == FALSE)
 			continue;
 
-		server = create_server(data->interface, NULL,
-					data->server, IPPROTO_TCP);
-		if (server == NULL)
+		if(create_server(data->interface, NULL,
+					data->server, IPPROTO_TCP) == NULL)
 			continue;
-
-		for (domains = data->domains; domains;
-				domains = domains->next) {
-			char *dom = domains->data;
-
-			DBG("Adding domain %s to %s", dom, server->server);
-
-			server->domains = g_list_append(server->domains,
-						g_strdup(dom));
-		}
 
 		waiting_for_connect = TRUE;
 	}
