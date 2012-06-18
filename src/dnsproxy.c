@@ -1791,6 +1791,7 @@ hangup:
 	if ((condition & G_IO_OUT) && !server->connected) {
 		GSList *list;
 		GList *domains;
+		int no_request_sent = TRUE;
 		struct server_data *udp_server;
 
 		udp_server = find_server(server->interface, server->server,
@@ -1818,6 +1819,7 @@ hangup:
 
 		for (list = request_list; list; ) {
 			struct request_data *req = list->data;
+			int status;
 
 			if (req->protocol == IPPROTO_UDP) {
 				list = list->next;
@@ -1826,8 +1828,9 @@ hangup:
 
 			DBG("Sending req %s over TCP", (char *)req->name);
 
-			if (ns_resolv(server, req,
-					req->request, req->name) > 0) {
+			status = ns_resolv(server, req,
+						req->request, req->name);
+			if (status > 0) {
 				/*
 				 * A cached result was sent,
 				 * so the request can be released
@@ -1838,12 +1841,24 @@ hangup:
 				continue;
 			}
 
+			if (status < 0) {
+				list = list->next;
+				continue;
+			}
+
+			no_request_sent = FALSE;
+
 			if (req->timeout > 0)
 				g_source_remove(req->timeout);
 
 			req->timeout = g_timeout_add_seconds(30,
 						request_timeout, req);
 			list = list->next;
+		}
+
+		if (no_request_sent == TRUE) {
+			destroy_server(server);
+			return FALSE;
 		}
 
 	} else if (condition & G_IO_IN) {
