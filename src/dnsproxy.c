@@ -1510,6 +1510,17 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	return 0;
 }
 
+static void destroy_request_data(struct request_data *req)
+{
+	if (req->timeout > 0)
+		g_source_remove(req->timeout);
+
+	g_free(req->resp);
+	g_free(req->request);
+	g_free(req->name);
+	g_free(req);
+}
+
 static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 				struct server_data *data)
 {
@@ -1805,29 +1816,34 @@ hangup:
 			server->timeout = 0;
 		}
 
-		for (list = request_list; list; list = list->next) {
+		for (list = request_list; list; ) {
 			struct request_data *req = list->data;
 
-			if (req->protocol == IPPROTO_UDP)
+			if (req->protocol == IPPROTO_UDP) {
+				list = list->next;
 				continue;
+			}
 
 			DBG("Sending req %s over TCP", (char *)req->name);
+
+			if (ns_resolv(server, req,
+					req->request, req->name) > 0) {
+				/*
+				 * A cached result was sent,
+				 * so the request can be released
+				 */
+				list = list->next;
+				request_list = g_slist_remove(request_list, req);
+				destroy_request_data(req);
+				continue;
+			}
 
 			if (req->timeout > 0)
 				g_source_remove(req->timeout);
 
 			req->timeout = g_timeout_add_seconds(30,
 						request_timeout, req);
-			if (ns_resolv(server, req, req->request,
-					req->name) > 0) {
-				/* We sent cached result so no need for timeout
-				 * handler.
-				 */
-				if (req->timeout > 0) {
-					g_source_remove(req->timeout);
-					req->timeout = 0;
-				}
-			}
+			list = list->next;
 		}
 
 	} else if (condition & G_IO_IN) {
@@ -2673,17 +2689,6 @@ static int create_listener(struct listener_data *ifdata)
 		__connman_resolvfile_append("lo", NULL, "127.0.0.1");
 
 	return 0;
-}
-
-static void destroy_request_data(struct request_data *req)
-{
-	if (req->timeout > 0)
-		g_source_remove(req->timeout);
-
-	g_free(req->resp);
-	g_free(req->request);
-	g_free(req->name);
-	g_free(req);
 }
 
 static void destroy_listener(struct listener_data *ifdata)
