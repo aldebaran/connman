@@ -2046,11 +2046,9 @@ static struct server_data *create_server(const char *interface,
 		DBG("Adding DNS server %s", data->server);
 
 		server_list = g_slist_append(server_list, data);
-
-		return data;
 	}
 
-	return NULL;
+	return data;
 }
 
 static gboolean resolv(struct request_data *req,
@@ -2345,6 +2343,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	socklen_t client_addr_len = sizeof(client_addr);
 	GSList *list;
 	struct listener_data *ifdata = user_data;
+	int waiting_for_connect = FALSE;
 
 	DBG("condition 0x%x", condition);
 
@@ -2399,7 +2398,6 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	req->numserv = 0;
 	req->ifdata = (struct listener_data *) ifdata;
 	req->append_domain = FALSE;
-	request_list = g_slist_append(request_list, req);
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
@@ -2410,33 +2408,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 		server = create_server(data->interface, NULL,
 					data->server, IPPROTO_TCP);
-
-		/*
-		 * If server is NULL, we're not connected yet.
-		 * Copy the relevant buffers and continue with
-		 * the next nameserver.
-		 * The request will actually be sent once we're
-		 * properly connected over TCP to this nameserver.
-		 */
-		if (server == NULL) {
-			req->request = g_try_malloc0(req->request_len);
-			if (req->request == NULL)
-				return TRUE;
-
-			memcpy(req->request, buf, req->request_len);
-
-			req->name = g_try_malloc0(sizeof(query));
-			if (req->name == NULL) {
-				g_free(req->request);
-				return TRUE;
-			}
-			memcpy(req->name, query, sizeof(query));
-
+		if (server == NULL)
 			continue;
-		}
-
-		if (req->timeout > 0)
-			g_source_remove(req->timeout);
 
 		for (domains = data->domains; domains;
 				domains = domains->next) {
@@ -2448,14 +2421,42 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 						g_strdup(dom));
 		}
 
-		req->timeout = g_timeout_add_seconds(30, request_timeout, req);
-		if (ns_resolv(server, req, buf, query) > 0) {
-			if (req->timeout > 0) {
-				g_source_remove(req->timeout);
-				req->timeout = 0;
-			}
-		}
+		waiting_for_connect = TRUE;
 	}
+
+	if (waiting_for_connect == FALSE) {
+		/* No server is waiting for connect */
+		send_response(client_sk, buf, len, NULL, 0, IPPROTO_TCP);
+		g_free(req);
+		return TRUE;
+	}
+
+	/*
+	 * The server is not connected yet.
+	 * Copy the relevant buffers.
+	 * The request will actually be sent once we're
+	 * properly connected over TCP to the nameserver.
+	 */
+	req->request = g_try_malloc0(req->request_len);
+	if (req->request == NULL) {
+		send_response(client_sk, buf, len, NULL, 0, IPPROTO_TCP);
+		g_free(req);
+		return TRUE;
+	}
+	memcpy(req->request, buf, req->request_len);
+
+	req->name = g_try_malloc0(sizeof(query));
+	if (req->name == NULL) {
+		send_response(client_sk, buf, len, NULL, 0, IPPROTO_TCP);
+		g_free(req->request);
+		g_free(req);
+		return TRUE;
+	}
+	memcpy(req->name, query, sizeof(query));
+
+	req->timeout = g_timeout_add_seconds(30, request_timeout, req);
+
+	request_list = g_slist_append(request_list, req);
 
 	return TRUE;
 }
