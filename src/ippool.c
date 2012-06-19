@@ -258,7 +258,11 @@ void __connman_ippool_newaddr(int index, const char *address,
 	if (is_private_address(start) == FALSE)
 		return;
 
-	mask = ~(0xffffffff >> prefixlen);
+	if (prefixlen >= 32)
+		mask = 0xffffffff;
+	else
+		mask = ~(0xffffffff >> prefixlen);
+
 	start = start & mask;
 	end = start | ~mask;
 
