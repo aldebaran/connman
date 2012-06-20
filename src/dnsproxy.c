@@ -439,7 +439,7 @@ static void send_response(int sk, unsigned char *buf, int len,
 	struct domain_hdr *hdr;
 	int err, offset = protocol_offset(protocol);
 
-	DBG("");
+	DBG("sk %d", sk);
 
 	if (offset < 0)
 		return;
@@ -460,8 +460,8 @@ static void send_response(int sk, unsigned char *buf, int len,
 
 	err = sendto(sk, buf, len, MSG_NOSIGNAL, to, tolen);
 	if (err < 0) {
-		connman_error("Failed to send DNS response: %s",
-				strerror(errno));
+		connman_error("Failed to send DNS response to %d: %s",
+				sk, strerror(errno));
 		return;
 	}
 }
@@ -1682,6 +1682,12 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 		close(sk);
 	}
 
+	if (err < 0)
+		DBG("Cannot send msg, sk %d proto %d errno %d/%s", sk,
+			protocol, errno, strerror(errno));
+	else
+		DBG("proto %d sent %d bytes to %d", protocol, err, sk);
+
 	destroy_request_data(req);
 
 	return err;
@@ -1727,7 +1733,8 @@ static void destroy_server(struct server_data *server)
 {
 	GList *list;
 
-	DBG("interface %s server %s", server->interface, server->server);
+	DBG("interface %s server %s sock %d", server->interface, server->server,
+		g_io_channel_unix_get_fd(server->channel));
 
 	server_list = g_slist_remove(server_list, server);
 
@@ -1805,7 +1812,7 @@ static gboolean tcp_server_event(GIOChannel *channel, GIOCondition condition,
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		GSList *list;
 hangup:
-		DBG("TCP server channel closed");
+		DBG("TCP server channel closed, sk %d", sk);
 
 		/*
 		 * Discard any partial response which is buffered; better
@@ -1942,7 +1949,7 @@ hangup:
 			reply_len = reply_len_buf[1] | reply_len_buf[0] << 8;
 			reply_len += 2;
 
-			DBG("TCP reply %d bytes", reply_len);
+			DBG("TCP reply %d bytes from %d", reply_len, sk);
 
 			reply = g_try_malloc(sizeof(*reply) + reply_len + 2);
 			if (!reply)
@@ -2042,6 +2049,8 @@ static struct server_data *create_server(const char *interface,
 		freeaddrinfo(rp);
 		return NULL;
 	}
+
+	DBG("sk %d", sk);
 
 	if (interface != NULL) {
 		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
@@ -2466,7 +2475,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (len < 2)
 		return TRUE;
 
-	DBG("Received %d bytes (id 0x%04x)", len, buf[2] | buf[3] << 8);
+	DBG("Received %d bytes (id 0x%04x) from %d", len,
+		buf[2] | buf[3] << 8, client_sk);
 
 	err = parse_request(buf + 2, len - 2, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0)) {
