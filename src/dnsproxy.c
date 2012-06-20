@@ -665,13 +665,22 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 	return type;
 }
 
-static struct cache_entry *cache_check(gpointer request, int *qtype)
+static struct cache_entry *cache_check(gpointer request, int *qtype, int proto)
 {
-	char *question = request + 12;
+	char *question;
 	struct cache_entry *entry;
 	struct domain_question *q;
 	uint16_t type;
-	int offset;
+	int offset, proto_offset;
+
+	if (request == NULL)
+		return NULL;
+
+	proto_offset = protocol_offset(proto);
+	if (proto_offset < 0)
+		return NULL;
+
+	question = request + proto_offset + 12;
 
 	offset = strlen(question) + 1;
 	q = (void *) (question + offset);
@@ -1457,7 +1466,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	char *dot, *lookup = (char *) name;
 	struct cache_entry *entry;
 
-	entry = cache_check(request, &type);
+	entry = cache_check(request, &type, req->protocol);
 	if (entry != NULL) {
 		int ttl_left = 0;
 		struct cache_data *data;
