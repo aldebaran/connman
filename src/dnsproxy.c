@@ -2450,7 +2450,8 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	socklen_t client_addr_len = sizeof(client_addr);
 	GSList *list;
 	struct listener_data *ifdata = user_data;
-	int waiting_for_connect = FALSE;
+	int waiting_for_connect = FALSE, qtype = 0;
+	struct cache_entry *entry;
 
 	DBG("condition 0x%x", condition);
 
@@ -2506,6 +2507,35 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	req->numserv = 0;
 	req->ifdata = (struct listener_data *) ifdata;
 	req->append_domain = FALSE;
+
+	/*
+	 * Check if the answer is found in the cache before
+	 * creating sockets to the server.
+	 */
+	entry = cache_check(buf, &qtype, IPPROTO_TCP);
+	if (entry != NULL) {
+		int ttl_left = 0;
+		struct cache_data *data;
+
+		DBG("cache hit %s type %s", query, qtype == 1 ? "A" : "AAAA");
+		if (qtype == 1)
+			data = entry->ipv4;
+		else
+			data = entry->ipv6;
+
+		if (data != NULL) {
+			ttl_left = data->valid_until - time(NULL);
+			entry->hits++;
+
+			send_cached_response(client_sk, data->data,
+					data->data_len, NULL, 0, IPPROTO_TCP,
+					req->srcid, data->answers, ttl_left);
+
+			g_free(req);
+			return TRUE;
+		} else
+			DBG("data missing, ignoring cache for this query");
+	}
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
