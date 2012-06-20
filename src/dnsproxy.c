@@ -1283,9 +1283,12 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	 * to cache the negative response.
 	 */
 	if ((err == -ENOMSG || err == -ENOBUFS) &&
-			reply_query_type(msg, msg_len) == 28) {
+			reply_query_type(msg + offset,
+					msg_len - offset) == 28) {
 		entry = g_hash_table_lookup(cache, question);
 		if (entry && entry->ipv4 && entry->ipv6 == NULL) {
+			int cache_offset = 0;
+
 			data = g_try_new(struct cache_data, 1);
 			if (data == NULL)
 				return -ENOMEM;
@@ -1293,11 +1296,17 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 			data->type = type;
 			data->answers = msg[5];
 			data->timeout = entry->ipv4->timeout;
-			data->data_len = msg_len;
-			data->data = ptr = g_malloc(msg_len);
+			if (srv->protocol == IPPROTO_UDP)
+				cache_offset = 2;
+			data->data_len = msg_len + cache_offset;
+			data->data = ptr = g_malloc(data->data_len);
+			ptr[0] = (data->data_len - 2) / 256;
+			ptr[1] = (data->data_len - 2) - ptr[0] * 256;
+			if (srv->protocol == IPPROTO_UDP)
+				ptr += 2;
 			data->valid_until = entry->ipv4->valid_until;
 			data->cache_until = entry->ipv4->cache_until;
-			memcpy(data->data, msg, msg_len);
+			memcpy(ptr, msg, msg_len);
 			entry->ipv6 = data;
 			/*
 			 * we will get a "hit" when we serve the response
