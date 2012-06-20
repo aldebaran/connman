@@ -401,7 +401,7 @@ static void send_cached_response(int sk, unsigned char *buf, int len,
 
 	DBG("id 0x%04x answers %d", hdr->id, answers);
 
-	err = sendto(sk, buf, len, 0, to, tolen);
+	err = sendto(sk, buf, len, MSG_NOSIGNAL, to, tolen);
 	if (err < 0) {
 		connman_error("Cannot send cached DNS response: %s",
 				strerror(errno));
@@ -435,7 +435,7 @@ static void send_response(int sk, unsigned char *buf, int len,
 	hdr->nscount = 0;
 	hdr->arcount = 0;
 
-	err = sendto(sk, buf, len, 0, to, tolen);
+	err = sendto(sk, buf, len, MSG_NOSIGNAL, to, tolen);
 	if (err < 0) {
 		connman_error("Failed to send DNS response: %s",
 				strerror(errno));
@@ -463,7 +463,7 @@ static gboolean request_timeout(gpointer user_data)
 
 		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
 
-		err = sendto(sk, req->resp, req->resplen, 0,
+		err = sendto(sk, req->resp, req->resplen, MSG_NOSIGNAL,
 						&req->sa, req->sa_len);
 		if (err < 0)
 			return FALSE;
@@ -1442,7 +1442,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 	sk = g_io_channel_unix_get_fd(server->channel);
 
-	err = send(sk, request, req->request_len, 0);
+	err = send(sk, request, req->request_len, MSG_NOSIGNAL);
 	if (err < 0)
 		return -EIO;
 
@@ -1499,7 +1499,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 			alt[1] = req_len & 0xff;
 		}
 
-		err = send(sk, alt, req->request_len + domlen, 0);
+		err = send(sk, alt, req->request_len + domlen, MSG_NOSIGNAL);
 		if (err < 0)
 			return -EIO;
 
@@ -1616,7 +1616,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 			     &req->sa, req->sa_len);
 	} else {
 		sk = req->client_sk;
-		err = send(sk, req->resp, req->resplen, 0);
+		err = send(sk, req->resp, req->resplen, MSG_NOSIGNAL);
 		close(sk);
 	}
 
