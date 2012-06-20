@@ -1246,6 +1246,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	int offset = protocol_offset(srv->protocol);
 	int err, qlen, ttl = 0;
 	uint16_t answers = 0, type = 0, class = 0;
+	struct domain_hdr *hdr = (void *)(msg + offset);
 	struct domain_question *q;
 	struct cache_entry *entry;
 	struct cache_data *data;
@@ -1270,12 +1271,13 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		next_refresh = current_time + 30;
 	}
 
-
-	/* Continue only if response code is 0 (=ok) */
-	if (msg[3] & 0x0f)
+	if (offset < 0)
 		return 0;
 
-	if (offset < 0)
+	DBG("offset %d hdr %p msg %p rcode %d", offset, hdr, msg, hdr->rcode);
+
+	/* Continue only if response code is 0 (=ok) */
+	if (hdr->rcode != 0)
 		return 0;
 
 	rsplen = sizeof(response) - 1;
@@ -1303,7 +1305,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 				return -ENOMEM;
 			data->inserted = entry->ipv4->inserted;
 			data->type = type;
-			data->answers = msg[5];
+			data->answers = hdr->ancount;
 			data->timeout = entry->ipv4->timeout;
 			if (srv->protocol == IPPROTO_UDP)
 				cache_offset = 2;
