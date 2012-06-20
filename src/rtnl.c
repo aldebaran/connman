@@ -429,6 +429,7 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	case ARPHRD_ETHER:
 	case ARPHRD_LOOPBACK:
 	case ARPHDR_PHONET_PIPE:
+	case ARPHRD_PPP:
 	case ARPHRD_NONE:
 		__connman_ipconfig_newlink(index, type, flags,
 							str, mtu, &stats);
