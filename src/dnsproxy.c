@@ -376,15 +376,32 @@ static void send_cached_response(int sk, unsigned char *buf, int len,
 				int protocol, int id, uint16_t answers, int ttl)
 {
 	struct domain_hdr *hdr;
-	int err, offset = protocol_offset(protocol);
+	unsigned char *ptr = buf;
+	int err, offset, dns_len, adj_len = len - 2;
 
-	if (offset < 0)
+	/*
+	 * The cached packet contains always the TCP offset (two bytes)
+	 * so skip them for UDP.
+	 */
+	switch (protocol) {
+	case IPPROTO_UDP:
+		ptr += 2;
+		len -= 2;
+		dns_len = len;
+		offset = 0;
+		break;
+	case IPPROTO_TCP:
+		offset = 2;
+		dns_len = ptr[0] * 256 + ptr[1];
+		break;
+	default:
 		return;
+	}
 
 	if (len < 12)
 		return;
 
-	hdr = (void *) (buf + offset);
+	hdr = (void *) (ptr + offset);
 
 	hdr->id = id;
 	hdr->qr = 1;
@@ -397,16 +414,22 @@ static void send_cached_response(int sk, unsigned char *buf, int len,
 	if (answers == 0)
 		hdr->aa = 1;
 	else
-		update_cached_ttl(buf, len, ttl);
+		update_cached_ttl((unsigned char *)hdr, adj_len, ttl);
 
-	DBG("id 0x%04x answers %d", hdr->id, answers);
+	DBG("sk %d id 0x%04x answers %d ptr %p length %d dns %d",
+		sk, hdr->id, answers, ptr, len, dns_len);
 
-	err = sendto(sk, buf, len, MSG_NOSIGNAL, to, tolen);
+	err = sendto(sk, ptr, len, MSG_NOSIGNAL, to, tolen);
 	if (err < 0) {
 		connman_error("Cannot send cached DNS response: %s",
 				strerror(errno));
 		return;
 	}
+
+	if (err != len || (dns_len != (len - 2) && protocol == IPPROTO_TCP) ||
+				(dns_len != len && protocol == IPPROTO_UDP))
+		DBG("Packet length mismatch, sent %d wanted %d dns %d",
+			err, len, dns_len);
 }
 
 static void send_response(int sk, unsigned char *buf, int len,
@@ -1354,7 +1377,12 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	data->type = type;
 	data->answers = answers;
 	data->timeout = ttl;
-	data->data_len = 12 + qlen + 1 + 2 + 2 + rsplen;
+	/*
+	 * The "2" in start of the length is the TCP offset. We allocate it
+	 * here even for UDP packet because it simplifies the sending
+	 * of cached packet.
+	 */
+	data->data_len = 2 + 12 + qlen + 1 + 2 + 2 + rsplen;
 	data->data = ptr = g_malloc(data->data_len);
 	data->valid_until = current_time + ttl;
 
@@ -1374,13 +1402,24 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		return -ENOMEM;
 	}
 
-	memcpy(ptr, msg, 12);
-	memcpy(ptr + 12, question, qlen + 1); /* copy also the \0 */
+	/*
+	 * We cache the two extra bytes at the start of the message
+	 * in a TCP packet. When sending UDP packet, we skip the first
+	 * two bytes. This way we do not need to know the format
+	 * (UDP/TCP) of the cached message.
+	 */
+	ptr[0] = (data->data_len - 2) / 256;
+	ptr[1] = (data->data_len - 2) - ptr[0] * 256;
+	if (srv->protocol == IPPROTO_UDP)
+		ptr += 2;
 
-	q = (void *) (ptr + 12 + qlen + 1);
+	memcpy(ptr, msg, offset + 12);
+	memcpy(ptr + offset + 12, question, qlen + 1); /* copy also the \0 */
+
+	q = (void *) (ptr + offset + 12 + qlen + 1);
 	q->type = htons(type);
 	q->class = htons(class);
-	memcpy(ptr + 12 + qlen + 1 + sizeof(struct domain_question),
+	memcpy(ptr + offset + 12 + qlen + 1 + sizeof(struct domain_question),
 		response, rsplen);
 
 	if (new_entry == TRUE) {
@@ -1388,10 +1427,15 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 		cache_size++;
 	}
 
-	DBG("cache %d %squestion \"%s\" type %d ttl %d size %zd",
+	DBG("cache %d %squestion \"%s\" type %d ttl %d size %zd packet %u "
+								"dns len %u",
 		cache_size, new_entry ? "new " : "old ",
 		question, type, ttl,
-		sizeof(*entry) + sizeof(*data) + data->data_len + qlen);
+		sizeof(*entry) + sizeof(*data) + data->data_len + qlen,
+		data->data_len,
+		srv->protocol == IPPROTO_TCP ?
+			(unsigned int)(data->data[0] * 256 + data->data[1]) :
+			data->data_len);
 
 	return 0;
 }
