@@ -1113,6 +1113,7 @@ int __connman_device_request_hidden_scan(struct connman_device *device,
 connman_bool_t __connman_device_isfiltered(const char *devname)
 {
 	char **pattern;
+	char **blacklisted_interfaces;
 
 	if (device_filter == NULL)
 		goto nodevice;
@@ -1131,11 +1132,24 @@ nodevice:
 	}
 
 	if (nodevice_filter == NULL)
-		return FALSE;
+		goto list;
 
 	for (pattern = nodevice_filter; *pattern; pattern++) {
 		if (g_pattern_match_simple(*pattern, devname) == TRUE) {
 			DBG("ignoring device %s (no match)", devname);
+			return TRUE;
+		}
+	}
+
+list:
+	blacklisted_interfaces =
+		connman_setting_get_string_list("BlacklistedInterfaces");
+	if (blacklisted_interfaces == NULL)
+		return FALSE;
+
+	for (pattern = blacklisted_interfaces; *pattern; pattern++) {
+		if (g_str_has_prefix(devname, *pattern) == TRUE) {
+			DBG("ignoring device %s (blacklist)", devname);
 			return TRUE;
 		}
 	}
