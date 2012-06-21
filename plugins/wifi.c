@@ -502,6 +502,9 @@ static gboolean autoscan_timeout(gpointer data)
 	struct autoscan_params *autoscan;
 	int interval;
 
+	if (wifi == NULL)
+		return FALSE;
+
 	autoscan = wifi->autoscan;
 
 	if (autoscan->interval <= 0) {
