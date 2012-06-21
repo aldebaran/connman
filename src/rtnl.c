@@ -90,16 +90,7 @@ static connman_bool_t ether_blacklisted(const char *name)
 	if (name == NULL)
 		return TRUE;
 
-	/* virtual interface from VMware */
-	if (g_str_has_prefix(name, "vmnet") == TRUE)
-		return TRUE;
-
-	/* virtual interface from VirtualBox */
-	if (g_str_has_prefix(name, "vboxnet") == TRUE)
-		return TRUE;
-
-	/* virtual interface from Virtual Machine Manager */
-	if (g_str_has_prefix(name, "virbr") == TRUE)
+	if (__connman_device_isfiltered(name) == TRUE)
 		return TRUE;
 
 	return FALSE;
