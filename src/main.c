@@ -50,6 +50,7 @@ static struct {
 	char **fallback_nameservers;
 	unsigned int timeout_inputreq;
 	unsigned int timeout_browserlaunch;
+	char **blacklisted_interfaces;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
@@ -58,6 +59,7 @@ static struct {
 	.fallback_nameservers = NULL,
 	.timeout_inputreq = DEFAULT_INPUT_REQUEST_TIMEOUT,
 	.timeout_browserlaunch = DEFAULT_BROWSER_LAUNCH_TIMEOUT,
+	.blacklisted_interfaces = NULL,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -136,6 +138,7 @@ static void parse_config(GKeyFile *config)
 	GError *error = NULL;
 	gboolean boolean;
 	char **timeservers;
+	char **interfaces;
 	char **str_list;
 	gsize len;
 	char *default_auto_connect[] = {
@@ -144,11 +147,18 @@ static void parse_config(GKeyFile *config)
 		"cellular",
 		NULL
 	};
+	char *default_blacklist[] = {
+		"vmnet",
+		"vboxnet",
+		"virbr",
+		NULL
+	};
 	int timeout;
 
 	if (config == NULL) {
 		connman_settings.auto_connect =
 			parse_service_types(default_auto_connect, 3);
+		connman_settings.blacklisted_interfaces = default_blacklist;
 		return;
 	}
 
@@ -215,6 +225,16 @@ static void parse_config(GKeyFile *config)
 			"BrowserLaunchTimeout", &error);
 	if (error == NULL && timeout >= 0)
 		connman_settings.timeout_browserlaunch = timeout * 1000;
+
+	g_clear_error(&error);
+
+	interfaces = g_key_file_get_string_list(config, "General",
+			"NetworkInterfaceBlacklist", &len, &error);
+
+	if (error == NULL)
+		connman_settings.blacklisted_interfaces = interfaces;
+	else
+		connman_settings.blacklisted_interfaces = default_blacklist;
 
 	g_clear_error(&error);
 }
@@ -374,6 +394,9 @@ char **connman_setting_get_string_list(const char *key)
 
 	if (g_str_equal(key, "FallbackNameservers") == TRUE)
 		return connman_settings.fallback_nameservers;
+
+	if (g_str_equal(key, "BlacklistedInterfaces") == TRUE)
+		return connman_settings.blacklisted_interfaces;
 
 	return NULL;
 }
