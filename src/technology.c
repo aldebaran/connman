@@ -673,7 +673,10 @@ done:
 			technology->pending_timeout = g_timeout_add_seconds(10,
 					technology_pending_reply, technology);
 		} else {
-			reply = __connman_error_failed(msg, -err);
+			if (err == -EALREADY)
+				reply = __connman_error_already_disabled(msg);
+			else
+				reply = __connman_error_failed(msg, -err);
 			if (reply != NULL)
 				g_dbus_send_message(connection, reply);
 		}
