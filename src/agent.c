@@ -337,11 +337,34 @@ static void request_input_append_password(DBusMessageIter *iter,
 static void request_input_append_previouspassphrase(DBusMessageIter *iter,
 							void *user_data)
 {
-	const char *passphrase = user_data;
-	const char *str = "informational";
+	struct connman_service *service = user_data;
+	enum connman_service_security security;
+	const char *passphrase, *str = NULL;
+
+	passphrase = __connman_service_get_passphrase(service);
+
+	security = __connman_service_get_security(service);
+	switch (security) {
+	case CONNMAN_SERVICE_SECURITY_WEP:
+		str = "wep";
+		break;
+	case CONNMAN_SERVICE_SECURITY_PSK:
+		str  = "psk";
+		break;
+	/*
+	 * This should never happen: no passphrase is set if security is not
+	 * one of the above.*/
+	default:
+		break;
+	}
 
 	connman_dbus_dict_append_basic(iter, "Type",
 				DBUS_TYPE_STRING, &str);
+
+	str = "informational";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+
 	connman_dbus_dict_append_basic(iter, "Value",
 				DBUS_TYPE_STRING, &passphrase);
 }
@@ -413,7 +436,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 				authentication_cb_t callback, void *user_data)
 {
 	DBusMessage *message;
-	const char *path, *passphrase;
+	const char *path;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
 	DBusPendingCall *call;
@@ -453,11 +476,11 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 			CONNMAN_SERVICE_SECURITY_NONE) {
 		connman_dbus_dict_append_dict(&dict, "Passphrase",
 					request_input_append_passphrase, service);
-		passphrase = __connman_service_get_passphrase(service);
-		if (passphrase != NULL)
+
+		if (__connman_service_get_passphrase(service) != NULL)
 			connman_dbus_dict_append_dict(&dict, "PreviousPassphrase",
 					request_input_append_previouspassphrase,
-					(void *) passphrase);
+					service);
 	}
 
 	if (__connman_service_wps_enabled(service) == TRUE) {
