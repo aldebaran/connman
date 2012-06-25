@@ -305,8 +305,8 @@ int __connman_log_init(const char *program, const char *debug,
 
 	__connman_log_enable(__start___debug, __stop___debug);
 
-	if (detach == FALSE)
-		option |= LOG_PERROR;
+	/* if (detach == FALSE) */
+	/* 	option |= LOG_PERROR; */
 
 	signal_setup(signal_handler);
 
