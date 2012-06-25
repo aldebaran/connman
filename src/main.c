@@ -395,7 +395,7 @@ char **connman_setting_get_string_list(const char *key)
 	if (g_str_equal(key, "FallbackNameservers") == TRUE)
 		return connman_settings.fallback_nameservers;
 
-	if (g_str_equal(key, "BlacklistedInterfaces") == TRUE)
+	if (g_str_equal(key, "NetworkInterfaceBlacklist") == TRUE)
 		return connman_settings.blacklisted_interfaces;
 
 	return NULL;

@@ -1143,7 +1143,7 @@ nodevice:
 
 list:
 	blacklisted_interfaces =
-		connman_setting_get_string_list("BlacklistedInterfaces");
+		connman_setting_get_string_list("NetworkInterfaceBlacklist");
 	if (blacklisted_interfaces == NULL)
 		return FALSE;
 
