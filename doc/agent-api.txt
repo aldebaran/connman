@@ -118,14 +118,14 @@ Fields		string Name
 Arguments	string Type
 
 			Contains the type of a field. For example "psk", "wep"
-			"informational", "passphrase", "response", "ssid",
-			"wpspin" or plain "string". "informational" has no
-			"Requirement" but a "Value".
+			"passphrase", "response", "ssid", "wpspin" or plain
+			"string".
 
 		string Requirement
 
 			Contains the requirement option. Valid values are
-			"mandatory", "optional" or "alternate".
+			"mandatory", "optional", "alternate" or
+			"informational".
 
 			The "alternate" value specifies that this field can be
 			returned as an alternative to another one. An example
@@ -133,6 +133,10 @@ Arguments	string Type
 
 			All "mandatory" fields must be returned, while the
 			"optional" can be returned if available.
+
+			Nothing needs to be returned for "informational", as it
+			is here only to provide an information so a value is
+			attached to it.
 
 		array{string} Alternates
 
@@ -160,9 +164,10 @@ Examples	Requesting a passphrase for WPA2 network
 						   "Requirement" : "mandatory"
 						 },
 				  "PreviousPassphrase" :
-						{ "Type"  : "informational",
-						  "Value" : "secret123"
-						}
+					{ "Type"       : "psk",
+					  "Requirement : "informational",
+					  "Value"      : "secret123"
+					}
 				}
 
 		Requesting name for hidden network
