@@ -607,8 +607,10 @@ static void add_result(struct resolv_lookup *lookup, int family,
 							const void *data)
 {
 	int n = lookup->nr_results++;
-	lookup->results = g_realloc(lookup->results,
+	lookup->results = g_try_realloc(lookup->results,
 					sizeof(struct sort_result) * (n + 1));
+	if (lookup->results == NULL)
+		return;
 
 	memset(&lookup->results[n], 0, sizeof(struct sort_result));
 
