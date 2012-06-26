@@ -1,3 +1,17 @@
+ver 1.2:
+	Fix issue with not handling WiFi security changes.
+	Fix issue with not stopping WiFi scanning on shutdown.
+	Fix issue with auto-scanning and network discovery.
+	Fix issue with D-Bus reply for hidden WiFi networks.
+	Fix issue with overlapping memory areas and DNS requests.
+	Add support for randomized DNS transaction identifiers.
+	Add support for DNS caching over TCP connections.
+	Add support for using default IPv6 privacy setting.
+	Add support for providing previous passphrase to agent.
+	Add support for configuration unprovisioning handling.
+	Add support for NetworkInterfaceBlacklist configuration.
+	Add support for Bluetooth DUN daemon (dundee).
+
 ver 1.1:
 	Fix issue with missing message type and DHCPv4 support.
 	Fix issue with potential NULL pointer in DHCPv6 handling.
