@@ -260,6 +260,12 @@ static void set_connected(struct modem_data *modem)
 
 	DBG("%s", modem->path);
 
+	if (modem->context->index < 0 ||
+			modem->context->ipv4_address == NULL) {
+		connman_error("Invalid index and/or address");
+		return;
+	}
+
 	connman_network_set_index(modem->network, modem->context->index);
 
 	switch (modem->context->ipv4_method) {
