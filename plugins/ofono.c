@@ -2553,68 +2553,71 @@ static int ofono_init(void)
 					OFONO_SERVICE, ofono_connect,
 					ofono_disconnect, NULL, NULL);
 
-	modem_added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						OFONO_MANAGER_INTERFACE,
+	modem_added_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE,
+						NULL, OFONO_MANAGER_INTERFACE,
 						MODEM_ADDED,
 						modem_added,
 						NULL, NULL);
 
-	modem_removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	modem_removed_watch = g_dbus_add_signal_watch(connection,
+						OFONO_SERVICE, NULL,
 						OFONO_MANAGER_INTERFACE,
 						MODEM_REMOVED,
 						modem_removed,
 						NULL, NULL);
 
-	modem_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	modem_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE, NULL,
 						OFONO_MODEM_INTERFACE,
 						PROPERTY_CHANGED,
 						modem_changed,
 						NULL, NULL);
 
-	cm_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	cm_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE, NULL,
 						OFONO_CM_INTERFACE,
 						PROPERTY_CHANGED,
 						cm_changed,
 						NULL, NULL);
 
-	sim_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	sim_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE, NULL,
 						OFONO_SIM_INTERFACE,
 						PROPERTY_CHANGED,
 						sim_changed,
 						NULL, NULL);
 
-	context_added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	context_added_watch = g_dbus_add_signal_watch(connection,
+						OFONO_SERVICE, NULL,
 						OFONO_CM_INTERFACE,
 						CONTEXT_ADDED,
 						cm_context_added,
 						NULL, NULL);
 
-	context_removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	context_removed_watch = g_dbus_add_signal_watch(connection,
+						OFONO_SERVICE, NULL,
 						OFONO_CM_INTERFACE,
 						CONTEXT_REMOVED,
 						cm_context_removed,
 						NULL, NULL);
 
-	context_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						OFONO_CONTEXT_INTERFACE,
+	context_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE,
+						NULL, OFONO_CONTEXT_INTERFACE,
 						PROPERTY_CHANGED,
 						context_changed,
 						NULL, NULL);
 
-	netreg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	netreg_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE, NULL,
 						OFONO_NETREG_INTERFACE,
 						PROPERTY_CHANGED,
 						netreg_changed,
 						NULL, NULL);
 
-	cdma_cm_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						OFONO_CDMA_CM_INTERFACE,
+	cdma_cm_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE,
+						NULL, OFONO_CDMA_CM_INTERFACE,
 						PROPERTY_CHANGED,
 						cdma_cm_changed,
 						NULL, NULL);
 
-	cdma_netreg_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						OFONO_CDMA_NETREG_INTERFACE,
+	cdma_netreg_watch = g_dbus_add_signal_watch(connection, OFONO_SERVICE,
+						NULL, OFONO_CDMA_NETREG_INTERFACE,
 						PROPERTY_CHANGED,
 						cdma_netreg_changed,
 						NULL, NULL);
