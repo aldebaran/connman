@@ -2187,8 +2187,6 @@ int connman_inet_check_ipaddress(const char *host)
 	result = getaddrinfo(host, NULL, &hints, &addr);
 	if (result == 0)
 		result = addr->ai_family;
-	else
-		result = -result;
 	freeaddrinfo(addr);
 
 	return result;
