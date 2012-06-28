@@ -160,7 +160,8 @@ static void parse_config(GKeyFile *config)
 	if (config == NULL) {
 		connman_settings.auto_connect =
 			parse_service_types(default_auto_connect, 3);
-		connman_settings.blacklisted_interfaces = default_blacklist;
+		connman_settings.blacklisted_interfaces =
+			g_strdupv(default_blacklist);
 		return;
 	}
 
@@ -236,7 +237,8 @@ static void parse_config(GKeyFile *config)
 	if (error == NULL)
 		connman_settings.blacklisted_interfaces = interfaces;
 	else
-		connman_settings.blacklisted_interfaces = default_blacklist;
+		connman_settings.blacklisted_interfaces =
+			g_strdupv(default_blacklist);
 
 	g_clear_error(&error);
 }
@@ -604,6 +606,7 @@ int main(int argc, char *argv[])
 	g_free(connman_settings.auto_connect);
 	g_free(connman_settings.preferred_techs);
 	g_strfreev(connman_settings.fallback_nameservers);
+	g_strfreev(connman_settings.blacklisted_interfaces);
 
 	g_free(option_debug);
 
