@@ -134,6 +134,9 @@ static void wifi_newlink(unsigned flags, unsigned change, void *user_data)
 	struct connman_device *device = user_data;
 	struct wifi_data *wifi = connman_device_get_data(device);
 
+	if (wifi == NULL)
+		return;
+
 	DBG("index %d flags %d change %d", wifi->index, flags, change);
 
 	if (!change)
@@ -402,6 +405,9 @@ static int throw_wifi_scan(struct connman_device *device,
 	struct wifi_data *wifi = connman_device_get_data(device);
 	int ret;
 
+	if (wifi == NULL)
+		return -ENODEV;
+
 	DBG("device %p %p", device, wifi->interface);
 
 	if (wifi->tethering == TRUE)
@@ -438,7 +444,7 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	struct connman_device *device = user_data;
 	struct wifi_data *wifi = connman_device_get_data(device);
 
-	DBG("result %d", result);
+	DBG("result %d wifi %p", result, wifi);
 
 	if (wifi != NULL && wifi->hidden != NULL) {
 		connman_network_clear_hidden(wifi->hidden->user_data);
@@ -461,7 +467,10 @@ static void scan_callback_hidden(int result,
 	struct wifi_data *wifi = connman_device_get_data(device);
 	int driver_max_ssids;
 
-	DBG("result %d", result);
+	DBG("result %d wifi %p", result, wifi);
+
+	if (wifi == NULL)
+		goto out;
 
 	/*
 	 * Scan hidden networks so that we can autoconnect to them.
@@ -639,6 +648,9 @@ static int wifi_enable(struct connman_device *device)
 
 	DBG("device %p %p", device, wifi);
 
+	if (wifi == NULL)
+		return -ENODEV;
+
 	ret = g_supplicant_interface_create(interface, driver, NULL,
 						interface_create_callback,
 							wifi);
@@ -653,7 +665,10 @@ static int wifi_disable(struct connman_device *device)
 	struct wifi_data *wifi = connman_device_get_data(device);
 	int ret;
 
-	DBG("device %p", device);
+	DBG("device %p wifi %p", device, wifi);
+
+	if (wifi == NULL)
+		return -ENODEV;
 
 	wifi->connected = FALSE;
 	wifi->disconnecting = FALSE;
@@ -821,6 +836,9 @@ static int wifi_scan_fast(struct connman_device *device)
 	int ret;
 	int driver_max_ssids = 0;
 
+	if (wifi == NULL)
+		return -ENODEV;
+
 	DBG("device %p %p", device, wifi->interface);
 
 	if (wifi->tethering == TRUE)
@@ -874,6 +892,9 @@ static int wifi_scan_hidden(struct connman_device *device,
 	struct scan_ssid *scan_ssid;
 	struct hidden_params *hidden;
 	int ret;
+
+	if (wifi == NULL)
+		return -ENODEV;
 
 	DBG("hidden SSID %s", ssid);
 
