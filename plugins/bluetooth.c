@@ -1194,33 +1194,34 @@ static int bluetooth_init(void)
 	watch = g_dbus_add_service_watch(connection, BLUEZ_SERVICE,
 			bluetooth_connect, bluetooth_disconnect, NULL, NULL);
 
-	added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	added_watch = g_dbus_add_signal_watch(connection, BLUEZ_SERVICE, NULL,
 						BLUEZ_MANAGER_INTERFACE,
 						ADAPTER_ADDED, adapter_added,
 						NULL, NULL);
 
-	removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	removed_watch = g_dbus_add_signal_watch(connection, BLUEZ_SERVICE, NULL,
 						BLUEZ_MANAGER_INTERFACE,
 						ADAPTER_REMOVED, adapter_removed,
 						NULL, NULL);
 
-	adapter_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						BLUEZ_ADAPTER_INTERFACE,
+	adapter_watch = g_dbus_add_signal_watch(connection, BLUEZ_SERVICE,
+						NULL, BLUEZ_ADAPTER_INTERFACE,
 						PROPERTY_CHANGED, adapter_changed,
 						NULL, NULL);
 
-	device_removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	device_removed_watch = g_dbus_add_signal_watch(connection,
+						BLUEZ_SERVICE, NULL,
 						BLUEZ_ADAPTER_INTERFACE,
 						DEVICE_REMOVED, device_removed,
 						NULL, NULL);
 
-	device_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	device_watch = g_dbus_add_signal_watch(connection, BLUEZ_SERVICE, NULL,
 						BLUEZ_DEVICE_INTERFACE,
 						PROPERTY_CHANGED, device_changed,
 						NULL, NULL);
 
-	network_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						BLUEZ_NETWORK_INTERFACE,
+	network_watch = g_dbus_add_signal_watch(connection, BLUEZ_SERVICE,
+						NULL, BLUEZ_NETWORK_INTERFACE,
 						PROPERTY_CHANGED, network_changed,
 						NULL, NULL);
 
