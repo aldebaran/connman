@@ -141,13 +141,13 @@ static void parse_config(GKeyFile *config)
 	char **interfaces;
 	char **str_list;
 	gsize len;
-	char *default_auto_connect[] = {
+	static char *default_auto_connect[] = {
 		"wifi",
 		"ethernet",
 		"cellular",
 		NULL
 	};
-	char *default_blacklist[] = {
+	static char *default_blacklist[] = {
 		"vmnet",
 		"vboxnet",
 		"virbr",
