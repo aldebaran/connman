@@ -137,7 +137,7 @@ void util_setup(struct test_fix *fix, gconstpointer data)
 						connman_died,
 						NULL, NULL);
 	fix->manager_watch = g_dbus_add_signal_watch(fix->main_connection,
-						NULL, NULL,
+						CONNMAN_SERVICE, NULL,
 						CONNMAN_MANAGER_INTERFACE,
 						PROPERTY_CHANGED,
 						handle_manager_changed,
