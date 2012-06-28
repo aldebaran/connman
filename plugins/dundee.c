@@ -789,18 +789,18 @@ static int dundee_init(void)
 	watch = g_dbus_add_service_watch(connection, DUNDEE_SERVICE,
 			dundee_connect, dundee_disconnect, NULL, NULL);
 
-	added_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
+	added_watch = g_dbus_add_signal_watch(connection, DUNDEE_SERVICE, NULL,
 						DUNDEE_MANAGER_INTERFACE,
 						DEVICE_ADDED, device_added,
 						NULL, NULL);
 
-	removed_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						DUNDEE_MANAGER_INTERFACE,
+	removed_watch = g_dbus_add_signal_watch(connection, DUNDEE_SERVICE,
+						NULL, DUNDEE_MANAGER_INTERFACE,
 						DEVICE_REMOVED, device_removed,
 						NULL, NULL);
 
-	device_watch = g_dbus_add_signal_watch(connection, NULL, NULL,
-						DUNDEE_DEVICE_INTERFACE,
+	device_watch = g_dbus_add_signal_watch(connection, DUNDEE_SERVICE,
+						NULL, DUNDEE_DEVICE_INTERFACE,
 						PROPERTY_CHANGED,
 						device_changed,
 						NULL, NULL);
