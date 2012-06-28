@@ -42,6 +42,20 @@
 #define DEFAULT_INPUT_REQUEST_TIMEOUT 120 * 1000
 #define DEFAULT_BROWSER_LAUNCH_TIMEOUT 300 * 1000
 
+static char *default_auto_connect[] = {
+	"wifi",
+	"ethernet",
+	"cellular",
+	NULL
+};
+
+static char *default_blacklist[] = {
+	"vmnet",
+	"vboxnet",
+	"virbr",
+	NULL
+};
+
 static struct {
 	connman_bool_t bg_scan;
 	char **pref_timeservers;
@@ -141,18 +155,6 @@ static void parse_config(GKeyFile *config)
 	char **interfaces;
 	char **str_list;
 	gsize len;
-	static char *default_auto_connect[] = {
-		"wifi",
-		"ethernet",
-		"cellular",
-		NULL
-	};
-	static char *default_blacklist[] = {
-		"vmnet",
-		"vboxnet",
-		"virbr",
-		NULL
-	};
 	int timeout;
 
 	if (config == NULL) {
