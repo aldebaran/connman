@@ -1,3 +1,9 @@
+ver 1.3:
+	Fix issue with default configuration values.
+	Fix issue with timeserver canonical name entries.
+	Fix issue with crash from cellular dummy context.
+	Fix issue with incorrect index for private networks.
+
 ver 1.2:
 	Fix issue with not handling WiFi security changes.
 	Fix issue with not stopping WiFi scanning on shutdown.
