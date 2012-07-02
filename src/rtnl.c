@@ -1255,6 +1255,8 @@ static const char *type2string(uint16_t type)
 		return "NEWLINK";
 	case RTM_DELLINK:
 		return "DELLINK";
+	case RTM_GETADDR:
+		return "GETADDR";
 	case RTM_NEWADDR:
 		return "NEWADDR";
 	case RTM_DELADDR:
