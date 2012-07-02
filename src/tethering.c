@@ -421,7 +421,7 @@ int __connman_private_network_request(DBusMessage *msg, const char *owner)
 	pn->fd = fd;
 	pn->interface = iface;
 	pn->index = index;
-	pn->pool = __connman_ippool_create(pn->fd, 1, 1, ippool_disconnect, pn);
+	pn->pool = __connman_ippool_create(pn->index, 1, 1, ippool_disconnect, pn);
 	if (pn->pool == NULL) {
 		errno = -ENOMEM;
 		goto error;
