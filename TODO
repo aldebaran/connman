@@ -76,21 +76,6 @@ WiFi
    Complexity: C1
 
 
-- Wireless background scan
-
-   Priority: Medium
-   Complexity: C4
-   Owner: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
-
-   While connected ConnMan should offload the background scanning to
-   wpa_supplicant. Wpa_supplicant allows for a fancy background scan
-   which frequency increases after the current connection signal level
-   drops below a defined threshold.
-   We should also be able to have wpa_supplicant do the background
-   scanning for us when we're not connected, if we have configured our
-   favorite networks.
-
-
 - WiFi p2p
 
    Priority: Medium
@@ -111,8 +96,8 @@ WiFi
   Owner: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
 
   Removing global country property setter in gsupplicant, and removing
-  wifi's technology set_regdom implementation. (Note: should be done around
-  the end 2012)
+  wifi's technology set_regdom implementation. Removing autoscan fallback.
+  (Note: should be done around the end 2012)
 
 Bluetooth
 =========
