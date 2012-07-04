@@ -104,6 +104,15 @@ WiFi
 
   Provide previous WPS pin code in PreviousPassphrase field if WPS was used.
 
+- Removing wpa_supplicant 0.7.x legacy support
+
+  Priority: Low
+  Complexity: C1
+  Owner: Tomasz Bursztyka <tomasz.bursztyka@linux.intel.com>
+
+  Removing global country property setter in gsupplicant, and removing
+  wifi's technology set_regdom implementation. (Note: should be done around
+  the end 2012)
 
 Bluetooth
 =========
