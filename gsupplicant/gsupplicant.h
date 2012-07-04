@@ -220,6 +220,10 @@ unsigned int g_supplicant_interface_get_max_scan_ssids(
 
 int g_supplicant_interface_enable_selected_network(GSupplicantInterface *interface,
 							dbus_bool_t enable);
+int g_supplicant_interface_set_country(GSupplicantInterface *interface,
+					GSupplicantCountryCallback callback,
+							const char *alpha2,
+							void *user_data);
 
 /* Network API */
 struct _GSupplicantNetwork;
