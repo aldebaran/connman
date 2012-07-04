@@ -604,6 +604,18 @@ static void setup_autoscan(struct wifi_data *wifi)
 	start_autoscan(wifi->device);
 }
 
+static void interface_autoscan_callback(int result,
+					GSupplicantInterface *interface,
+							void *user_data)
+{
+	struct wifi_data *wifi = user_data;
+
+	if (result < 0) {
+		DBG("Could not enable Autoscan, falling back...");
+		setup_autoscan(wifi);
+	}
+}
+
 static void interface_create_callback(int result,
 					GSupplicantInterface *interface,
 							void *user_data)
@@ -636,7 +648,11 @@ static void interface_create_callback(int result,
 		return;
 
 	/* Setting up automatic scanning */
-	setup_autoscan(wifi);
+	if (g_supplicant_interface_autoscan(interface, AUTOSCAN_DEFAULT,
+				interface_autoscan_callback, wifi) < 0) {
+		DBG("Could not enable Autoscan, falling back...");
+		setup_autoscan(wifi);
+	}
 }
 
 static int wifi_enable(struct connman_device *device)
