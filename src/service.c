@@ -3445,6 +3445,9 @@ void __connman_service_set_hidden_data(struct connman_service *service,
 
 	DBG("service %p pending %p", service, pending);
 
+	if (pending == NULL)
+		return;
+
 	check_pending_msg(service);
 
 	service->pending = pending;
