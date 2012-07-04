@@ -755,6 +755,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (technology->type != CONNMAN_SERVICE_TYPE_WIFI)
 			return __connman_error_not_supported(msg);
 
+		if (strlen(str) < 1 || strlen(str) > 32)
+			return __connman_error_invalid_arguments(msg);
+
 		technology->tethering_ident = g_strdup(str);
 	} else if (g_str_equal(name, "TetheringPassphrase") == TRUE) {
 		const char *str;
@@ -764,8 +767,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (technology->type != CONNMAN_SERVICE_TYPE_WIFI)
 			return __connman_error_not_supported(msg);
 
-		if (strlen(str) < 8)
-			return __connman_error_invalid_arguments(msg);
+		if (strlen(str) < 8 || strlen(str) > 63)
+			return __connman_error_passphrase_required(msg);
 
 		technology->tethering_passphrase = g_strdup(str);
 	} else if (g_str_equal(name, "Powered") == TRUE) {
