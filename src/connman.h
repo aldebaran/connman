@@ -457,6 +457,8 @@ void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident);
+void __connman_technology_notify_regdom_by_device(struct connman_device *device,
+						int result, const char *alpha2);
 
 #include <connman/device.h>
 

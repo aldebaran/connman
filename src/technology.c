@@ -845,6 +845,21 @@ void __connman_technology_scan_stopped(struct connman_device *device)
 		reply_scan_pending(technology, 0);
 }
 
+void __connman_technology_notify_regdom_by_device(struct connman_device *device,
+						int result, const char *alpha2)
+{
+	struct connman_technology *technology;
+	enum connman_service_type type;
+
+	type = __connman_device_get_service_type(device);
+	technology = technology_find(type);
+
+	if (technology == NULL)
+		return;
+
+	connman_technology_regdom_notify(technology, alpha2);
+}
+
 static DBusMessage *scan(DBusConnection *conn, DBusMessage *msg, void *data)
 {
 	struct connman_technology *technology = data;
