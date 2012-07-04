@@ -1061,6 +1061,19 @@ int connman_device_set_regdom(struct connman_device *device,
 	return device->driver->set_regdom(device, alpha2);
 }
 
+/**
+ * connman_device_regdom_notify
+ * @device: device structure
+ * @alpha2: string representing regulatory domain
+ *
+ * Notify on setting regulatory domain on device basis
+ */
+void connman_device_regdom_notify(struct connman_device *device,
+					int result, const char *alpha2)
+{
+	__connman_technology_notify_regdom_by_device(device, result, alpha2);
+}
+
 int __connman_device_request_scan(enum connman_service_type type)
 {
 	connman_bool_t success = FALSE;
