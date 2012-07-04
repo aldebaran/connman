@@ -150,7 +150,7 @@ Signals		TechnologyAdded(object path, dict properties)
 
 		TechnologyRemoved(object path)
 
-			Signal that is sent when a modem has been removed.
+			Signal that is sent when a technology has been removed.
 
 			The object path is no longer accessible after this
 			signal and only emitted for reference.
