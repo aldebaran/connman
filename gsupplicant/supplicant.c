@@ -2432,6 +2432,13 @@ struct interface_scan_data {
 	void *user_data;
 };
 
+struct interface_autoscan_data {
+	GSupplicantInterface *interface;
+	GSupplicantInterfaceCallback callback;
+	const char *autoscan_params;
+	void *user_data;
+};
+
 static void interface_create_property(const char *key, DBusMessageIter *iter,
 							void *user_data)
 {
@@ -2869,6 +2876,58 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 			SUPPLICANT_INTERFACE ".Interface", "Scan",
 			interface_scan_params, interface_scan_result, data);
 
+	if (ret < 0)
+		dbus_free(data);
+
+	return ret;
+}
+
+static void interface_autoscan_result(const char *error,
+				DBusMessageIter *iter, void *user_data)
+{
+	struct interface_autoscan_data *data = user_data;
+	int err = 0;
+
+	if (error != NULL) {
+		SUPPLICANT_DBG("error %s", error);
+		err = -EIO;
+	}
+
+	if (data != NULL && data->callback != NULL)
+		data->callback(err, data->interface, data->user_data);
+
+	dbus_free(data);
+}
+
+static void interface_autoscan_params(DBusMessageIter *iter, void *user_data)
+{
+	struct interface_autoscan_data *data = user_data;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+						 &data->autoscan_params);
+}
+
+int g_supplicant_interface_autoscan(GSupplicantInterface *interface,
+					const char *autoscan_data,
+					GSupplicantInterfaceCallback callback,
+							void *user_data)
+{
+	struct interface_autoscan_data *data;
+	int ret;
+
+	data = dbus_malloc0(sizeof(*data));
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->interface = interface;
+	data->callback = callback;
+	data->autoscan_params = autoscan_data;
+	data->user_data = user_data;
+
+	ret = supplicant_dbus_method_call(interface->path,
+			SUPPLICANT_INTERFACE ".Interface", "AutoScan",
+			interface_autoscan_params,
+			interface_autoscan_result, data);
 	if (ret < 0)
 		dbus_free(data);
 
