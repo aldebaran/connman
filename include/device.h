@@ -108,6 +108,9 @@ void connman_device_unregister(struct connman_device *device);
 void *connman_device_get_data(struct connman_device *device);
 void connman_device_set_data(struct connman_device *device, void *data);
 
+int connman_device_set_regdom(struct connman_device *device,
+						const char *alpha2);
+
 struct connman_device_driver {
 	const char *name;
 	enum connman_device_type type;
@@ -122,6 +125,8 @@ struct connman_device_driver {
 			const char *ssid, unsigned int ssid_len,
 			const char *identity, const char* passphrase,
 			void *user_data);
+	int (*set_regdom) (struct connman_device *device,
+						const char *alpha2);
 };
 
 int connman_device_driver_register(struct connman_device_driver *driver);
