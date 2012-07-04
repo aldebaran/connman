@@ -953,6 +953,36 @@ static int wifi_scan_hidden(struct connman_device *device,
 	return ret;
 }
 
+static void wifi_regdom_callback(int result,
+					const char *alpha2,
+						void *user_data)
+{
+	struct connman_device *device = user_data;
+
+	connman_device_regdom_notify(device, result, alpha2);
+
+	connman_device_unref(device);
+}
+
+static int wifi_set_regdom(struct connman_device *device, const char *alpha2)
+{
+	struct wifi_data *wifi = connman_device_get_data(device);
+	int ret;
+
+	if (wifi == NULL)
+		return -EINVAL;
+
+	connman_device_ref(device);
+
+	ret = g_supplicant_interface_set_country(wifi->interface,
+						wifi_regdom_callback,
+							alpha2, device);
+	if (ret != 0)
+		connman_device_unref(device);
+
+	return ret;
+}
+
 static struct connman_device_driver wifi_ng_driver = {
 	.name		= "wifi",
 	.type		= CONNMAN_DEVICE_TYPE_WIFI,
@@ -964,6 +994,7 @@ static struct connman_device_driver wifi_ng_driver = {
 	.scan		= wifi_scan,
 	.scan_fast	= wifi_scan_fast,
 	.scan_hidden    = wifi_scan_hidden,
+	.set_regdom	= wifi_set_regdom,
 };
 
 static void system_ready(void)
