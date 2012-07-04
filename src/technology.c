@@ -244,6 +244,21 @@ void connman_technology_regdom_notify(struct connman_technology *technology,
 	technology->regdom = g_strdup(alpha2);
 }
 
+static int set_regdom_by_device(struct connman_technology *technology,
+							const char *alpha2)
+{
+	GSList *list;
+
+	for (list = technology->device_list; list; list = list->next) {
+		struct connman_device *device = list->data;
+
+		if (connman_device_set_regdom(device, alpha2) != 0)
+			return -ENOTSUP;
+	}
+
+	return 0;
+}
+
 int connman_technology_set_regdom(const char *alpha2)
 {
 	GSList *list;
@@ -251,11 +266,14 @@ int connman_technology_set_regdom(const char *alpha2)
 	for (list = technology_list; list; list = list->next) {
 		struct connman_technology *technology = list->data;
 
-		if (technology->driver == NULL)
-			continue;
+		if (set_regdom_by_device(technology, alpha2) != 0) {
+			if (technology->driver == NULL)
+				continue;
 
-		if (technology->driver->set_regdom)
-			technology->driver->set_regdom(technology, alpha2);
+			if (technology->driver->set_regdom != NULL)
+				technology->driver->set_regdom(technology,
+								alpha2);
+		}
 	}
 
 	return 0;
@@ -856,6 +874,16 @@ void __connman_technology_notify_regdom_by_device(struct connman_device *device,
 
 	if (technology == NULL)
 		return;
+
+	if (result < 0) {
+		if (technology->driver != NULL &&
+				technology->driver->set_regdom != NULL) {
+			technology->driver->set_regdom(technology, alpha2);
+			return;
+		}
+
+		alpha2 = NULL;
+	}
 
 	connman_technology_regdom_notify(technology, alpha2);
 }
