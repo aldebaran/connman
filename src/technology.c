@@ -741,7 +741,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &tethering);
 
 		if (technology->tethering == tethering)
-			return __connman_error_in_progress(msg);
+			return __connman_error_already_enabled(msg);
 
 		err = set_tethering(technology, tethering);
 		if (err < 0)
