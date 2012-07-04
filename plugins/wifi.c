@@ -1880,21 +1880,22 @@ static int tech_set_tethering(struct connman_technology *technology,
 	return -EOPNOTSUPP;
 }
 
-static void regdom_callback(void *user_data)
+static void regdom_callback(int result, const char *alpha2, void *user_data)
 {
-	char *alpha2 = user_data;
-
 	DBG("");
 
 	if (wifi_technology == NULL)
 		return;
+
+	if (result != 0)
+		alpha2 = NULL;
 
 	connman_technology_regdom_notify(wifi_technology, alpha2);
 }
 
 static int tech_set_regdom(struct connman_technology *technology, const char *alpha2)
 {
-	return g_supplicant_set_country(alpha2, regdom_callback, alpha2);
+	return g_supplicant_set_country(alpha2, regdom_callback, NULL);
 }
 
 static struct connman_technology_driver tech_driver = {

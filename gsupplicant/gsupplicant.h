@@ -162,7 +162,9 @@ struct _GSupplicantScanParams {
 typedef struct _GSupplicantScanParams GSupplicantScanParams;
 
 /* global API */
-typedef void (*GSupplicantCountryCallback) (void *user_data);
+typedef void (*GSupplicantCountryCallback) (int result,
+						const char *alpha2,
+							void *user_data);
 
 int g_supplicant_set_country(const char *alpha2,
 				GSupplicantCountryCallback callback,

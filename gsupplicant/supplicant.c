@@ -2321,6 +2321,7 @@ static DBusHandlerResult g_supplicant_filter(DBusConnection *conn,
 
 struct supplicant_regdom {
 	GSupplicantCountryCallback callback;
+	const char *alpha2;
 	const void *user_data;
 };
 
@@ -2328,22 +2329,21 @@ static void country_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct supplicant_regdom *regdom = user_data;
-	char *alpha2;
+	int result = 0;
 
 	SUPPLICANT_DBG("Country setting result");
 
 	if (user_data == NULL)
 		return;
 
-	if (error == NULL) {
-		alpha2 = (char *)regdom->user_data;
-	} else {
+	if (error != NULL) {
 		SUPPLICANT_DBG("Country setting failure %s", error);
-		alpha2 = NULL;
+		result = -EINVAL;
 	}
 
 	if (regdom->callback)
-		regdom->callback(alpha2);
+		regdom->callback(result, regdom->alpha2,
+					(void *) regdom->user_data);
 
 	g_free(regdom);
 }
@@ -2351,11 +2351,9 @@ static void country_result(const char *error,
 static void country_params(DBusMessageIter *iter, void *user_data)
 {
 	struct supplicant_regdom *regdom = user_data;
-	const char *country;
 
-	country = regdom->user_data;
-
-	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &country);
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+							&regdom->alpha2);
 }
 
 int g_supplicant_set_country(const char *alpha2,
@@ -2374,6 +2372,7 @@ int g_supplicant_set_country(const char *alpha2,
 		return -ENOMEM;
 
 	regdom->callback = callback;
+	regdom->alpha2 = alpha2;
 	regdom->user_data = user_data;
 
 	return supplicant_dbus_property_set(SUPPLICANT_PATH, SUPPLICANT_INTERFACE,
