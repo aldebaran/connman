@@ -2269,8 +2269,9 @@ int __connman_ipconfig_save(struct connman_ipconfig *ipconfig,
 	}
 
 	key = g_strdup_printf("%snetmask_prefixlen", prefix);
-	g_key_file_set_integer(keyfile, identifier,
-			key, ipconfig->address->prefixlen);
+	if (ipconfig->address->prefixlen != 0)
+		g_key_file_set_integer(keyfile, identifier,
+				       key, ipconfig->address->prefixlen);
 	g_free(key);
 
 	key = g_strdup_printf("%slocal_address", prefix);
