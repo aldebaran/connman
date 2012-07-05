@@ -227,6 +227,8 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		gateway = g_strdup(option->data);
 
 	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
+	if (prefixlen == 255)
+		connman_warn("netmask: %s is invalid", netmask);
 
 	DBG("c_address %s", c_address);
 
