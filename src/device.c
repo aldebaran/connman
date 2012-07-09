@@ -1186,6 +1186,54 @@ list:
 	return FALSE;
 }
 
+static void cleanup_devices(void)
+{
+	/*
+	 * Check what interfaces are currently up and if connman is
+	 * suppose to handle the interface, then cleanup the mess
+	 * related to that interface. There might be weird routes etc
+	 * that are related to that interface and that might confuse
+	 * connmand. So in this case we just turn the interface down
+	 * so that kernel removes routes/addresses automatically and
+	 * then proceed the startup.
+	 *
+	 * Note that this cleanup must be done before rtnl/detect code
+	 * has activated interface watches.
+	 */
+
+	char **interfaces;
+	int i;
+
+	interfaces = __connman_inet_get_running_interfaces();
+
+	if (interfaces == NULL)
+		return;
+
+	for (i = 0; interfaces[i] != NULL; i++) {
+		connman_bool_t filtered;
+		int index;
+
+		filtered = __connman_device_isfiltered(interfaces[i]);
+		if (filtered == TRUE)
+			continue;
+
+		index = connman_inet_ifindex(interfaces[i]);
+		if (index < 0)
+			continue;
+
+		DBG("cleaning up %s index %d", interfaces[i], index);
+
+		connman_inet_ifdown(index);
+
+		/*
+		 * ConnMan will turn the interface UP automatically so
+		 * no need to do it here.
+		 */
+	}
+
+	g_strfreev(interfaces);
+}
+
 int __connman_device_init(const char *device, const char *nodevice)
 {
 	DBG("");
@@ -1195,6 +1243,8 @@ int __connman_device_init(const char *device, const char *nodevice)
 
 	if (nodevice != NULL)
 		nodevice_filter = g_strsplit(nodevice, ",", -1);
+
+	cleanup_devices();
 
 	return 0;
 }
