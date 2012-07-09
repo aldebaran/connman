@@ -3608,6 +3608,29 @@ static connman_bool_t get_reconnect_state(struct connman_service *service)
 	return __connman_device_get_reconnect(device);
 }
 
+static connman_bool_t is_interface_available(struct connman_service *service,
+					struct connman_service *other_service)
+{
+	unsigned int index = 0, other_index = 0;
+
+	if (service->ipconfig_ipv4 != NULL)
+		index =	__connman_ipconfig_get_index(service->ipconfig_ipv4);
+	else if (service->ipconfig_ipv6 != NULL)
+		index =	__connman_ipconfig_get_index(service->ipconfig_ipv6);
+
+	if (other_service->ipconfig_ipv4 != NULL)
+		other_index = __connman_ipconfig_get_index(
+						other_service->ipconfig_ipv4);
+	else if (other_service->ipconfig_ipv6 != NULL)
+		other_index = __connman_ipconfig_get_index(
+						other_service->ipconfig_ipv6);
+
+	if (index > 0 && other_index != index)
+		return TRUE;
+
+	return FALSE;
+}
+
 static DBusMessage *connect_service(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
@@ -3625,7 +3648,15 @@ static DBusMessage *connect_service(DBusConnection *conn,
 	while (g_sequence_iter_is_end(iter) == FALSE) {
 		struct connman_service *temp = g_sequence_get(iter);
 
-		if (service->type == temp->type && is_connecting(temp) == TRUE)
+		/*
+		 * We should allow connection if there are available
+		 * interfaces for a given technology type (like having
+		 * more than one wifi card).
+		 */
+		if (service->type == temp->type &&
+				is_connecting(temp) == TRUE &&
+				is_interface_available(service,
+							temp) == FALSE)
 			return __connman_error_in_progress(msg);
 
 		iter = g_sequence_iter_next(iter);
