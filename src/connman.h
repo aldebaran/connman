@@ -133,6 +133,7 @@ void __connman_task_cleanup(void);
 
 #include <connman/inet.h>
 
+char **__connman_inet_get_running_interfaces(void);
 int __connman_inet_modify_address(int cmd, int flags, int index, int family,
 				const char *address,
 				const char *peer,

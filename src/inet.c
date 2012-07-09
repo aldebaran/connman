@@ -2238,3 +2238,81 @@ connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len)
 
 	return TRUE;
 }
+
+char **__connman_inet_get_running_interfaces(void)
+{
+	char **result;
+	struct ifconf ifc;
+	struct ifreq *ifr = NULL;
+	int sk, i, numif, count = 0;
+
+	memset(&ifc, 0, sizeof(ifc));
+
+	sk = socket(AF_INET, SOCK_DGRAM, 0);
+	if (sk < 0)
+		return NULL;
+
+	if (ioctl(sk, SIOCGIFCONF, &ifc) < 0)
+		goto error;
+
+	/*
+	 * Allocate some extra bytes just in case there will
+	 * be new interfaces added between two SIOCGIFCONF
+	 * calls.
+	 */
+	ifr = g_try_malloc0(ifc.ifc_len * 2);
+	if (ifr == NULL)
+		goto error;
+
+	ifc.ifc_req = ifr;
+
+	if (ioctl(sk, SIOCGIFCONF, &ifc) < 0)
+		goto error;
+
+	numif = ifc.ifc_len / sizeof(struct ifreq);
+
+	result = g_try_malloc0((numif + 1) * sizeof(char *));
+	if (result == NULL)
+		goto error;
+
+	close(sk);
+
+	for (i = 0; i < numif; i++) {
+		struct ifreq *r = &ifr[i];
+		struct in6_addr *addr6;
+		in_addr_t addr4;
+
+		/*
+		 * Note that we do not return loopback interfaces here as they
+		 * are not needed for our purposes.
+		 */
+		switch (r->ifr_addr.sa_family) {
+		case AF_INET:
+			addr4 = ntohl(((struct sockaddr_in *)
+						&r->ifr_addr)->sin_addr.s_addr);
+			if (((addr4 & 0xff000000) >> 24) == 127)
+				continue;
+			break;
+		case AF_INET6:
+			addr6 = &((struct sockaddr_in6 *)
+						&r->ifr_addr)->sin6_addr;
+			if (IN6_IS_ADDR_LINKLOCAL(addr6))
+				continue;
+			break;
+		}
+
+		result[count++] = g_strdup(r->ifr_name);
+	}
+
+	free(ifr);
+
+	if (count < numif)
+		result = g_try_realloc(result, (count + 1) * sizeof(char *));
+
+	return result;
+
+error:
+	close(sk);
+	free(ifr);
+	return NULL;
+}
