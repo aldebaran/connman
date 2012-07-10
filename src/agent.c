@@ -334,39 +334,54 @@ static void request_input_append_password(DBusMessageIter *iter,
 				DBUS_TYPE_STRING, &str);
 }
 
+struct previous_passphrase_data {
+	const char *passphrase;
+	const char *type;
+};
+
 static void request_input_append_previouspassphrase(DBusMessageIter *iter,
 							void *user_data)
 {
-	struct connman_service *service = user_data;
-	enum connman_service_security security;
-	const char *passphrase, *str = NULL;
+	struct previous_passphrase_data *data = user_data;
+	const char *requirement = "informational";
 
-	passphrase = __connman_service_get_passphrase(service);
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &data->type);
+
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &requirement);
+
+	connman_dbus_dict_append_basic(iter, "Value",
+				DBUS_TYPE_STRING, &data->passphrase);
+}
+
+static void previous_passphrase_handler(DBusMessageIter *iter,
+					struct connman_service *service)
+{
+	enum connman_service_security security;
+	struct previous_passphrase_data data;
+
+	data.passphrase = __connman_service_get_passphrase(service);
+	if (data.passphrase == NULL)
+		return;
 
 	security = __connman_service_get_security(service);
 	switch (security) {
 	case CONNMAN_SERVICE_SECURITY_WEP:
-		str = "wep";
+		data.type = "wep";
 		break;
 	case CONNMAN_SERVICE_SECURITY_PSK:
-		str  = "psk";
+		data.type  = "psk";
 		break;
 	/*
 	 * This should never happen: no passphrase is set if security is not
-	 * one of the above.*/
+	 * one of the above. */
 	default:
 		break;
 	}
 
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &str);
-
-	str = "informational";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &str);
-
-	connman_dbus_dict_append_basic(iter, "Value",
-				DBUS_TYPE_STRING, &passphrase);
+	connman_dbus_dict_append_dict(iter, "PreviousPassphrase",
+			request_input_append_previouspassphrase, &data);
 }
 
 static void request_input_login_reply(DBusPendingCall *call, void *user_data)
@@ -477,10 +492,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 		connman_dbus_dict_append_dict(&dict, "Passphrase",
 					request_input_append_passphrase, service);
 
-		if (__connman_service_get_passphrase(service) != NULL)
-			connman_dbus_dict_append_dict(&dict, "PreviousPassphrase",
-					request_input_append_previouspassphrase,
-					service);
+		previous_passphrase_handler(&dict, service);
 	}
 
 	if (__connman_service_wps_enabled(service) == TRUE) {
