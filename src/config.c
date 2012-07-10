@@ -31,6 +31,7 @@
 #include <sys/inotify.h>
 #include <glib.h>
 
+#include <connman/provision.h>
 #include "connman.h"
 
 struct connman_config_service {
@@ -946,4 +947,84 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 	}
 
 	return ret;
+}
+
+struct connman_config_entry **connman_config_get_entries(void)
+{
+	GHashTableIter iter_file, iter_config;
+	gpointer value, key;
+	struct connman_config_entry **entries = NULL;
+	int i = 0, count;
+
+	g_hash_table_iter_init(&iter_file, config_table);
+	while (g_hash_table_iter_next(&iter_file, &key, &value) == TRUE) {
+		struct connman_config *config_file = value;
+
+		count = g_hash_table_size(config_file->service_table);
+
+		entries = g_try_realloc(entries, (i + count + 1) *
+					sizeof(struct connman_config_entry *));
+		if (entries == NULL)
+			return NULL;
+
+		g_hash_table_iter_init(&iter_config,
+						config_file->service_table);
+		while (g_hash_table_iter_next(&iter_config, &key,
+							&value) == TRUE) {
+			struct connman_config_service *config = value;
+
+			entries[i] = g_try_new0(struct connman_config_entry,
+						1);
+			if (entries[i] == NULL)
+				goto cleanup;
+
+			entries[i]->ident = g_strdup(config->ident);
+			entries[i]->name = g_strdup(config->name);
+			entries[i]->ssid = g_try_malloc0(config->ssid_len + 1);
+			if (entries[i]->ssid == NULL)
+				goto cleanup;
+
+			memcpy(entries[i]->ssid, config->ssid,
+							config->ssid_len);
+			entries[i]->ssid_len = config->ssid_len;
+			entries[i]->hidden = config->hidden;
+
+			i++;
+		}
+	}
+
+	if (entries != NULL) {
+		entries = g_try_realloc(entries, (i + 1) *
+					sizeof(struct connman_config_entry *));
+		if (entries == NULL)
+			return NULL;
+
+		entries[i] = NULL;
+
+		DBG("%d provisioned AP found", i);
+	}
+
+	return entries;
+
+cleanup:
+	connman_config_free_entries(entries);
+	return NULL;
+}
+
+void connman_config_free_entries(struct connman_config_entry **entries)
+{
+	int i;
+
+	if (entries == NULL)
+		return;
+
+	for (i = 0; entries[i]; i++) {
+		g_free(entries[i]->ident);
+		g_free(entries[i]->name);
+		g_free(entries[i]->ssid);
+		g_free(entries[i]);
+	}
+
+	g_free(entries);
+	return;
 }
