@@ -82,13 +82,6 @@ WiFi
    Complexity: C2
 
 
-- Previous WPS pin code sending
-
-  Priority: Medium
-  Complexity: C2
-
-  Provide previous WPS pin code in PreviousPassphrase field if WPS was used.
-
 - Removing wpa_supplicant 0.7.x legacy support
 
   Priority: Low
