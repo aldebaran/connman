@@ -51,6 +51,7 @@ struct connman_config_service {
 	GSList *service_identifiers;
 	char *config_ident; /* file prefix */
 	char *config_entry; /* entry name */
+	connman_bool_t hidden;
 };
 
 struct connman_config {
@@ -89,6 +90,7 @@ static connman_bool_t cleanup = FALSE;
 #define SERVICE_KEY_IDENTITY           "Identity"
 #define SERVICE_KEY_PHASE2             "Phase2"
 #define SERVICE_KEY_PASSPHRASE         "Passphrase"
+#define SERVICE_KEY_HIDDEN             "Hidden"
 
 static const char *config_possible_keys[] = {
 	CONFIG_KEY_NAME,
@@ -110,6 +112,7 @@ static const char *service_possible_keys[] = {
 	SERVICE_KEY_IDENTITY,
 	SERVICE_KEY_PHASE2,
 	SERVICE_KEY_PASSPHRASE,
+	SERVICE_KEY_HIDDEN,
 	NULL,
 };
 
@@ -386,6 +389,9 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	service->config_ident = g_strdup(config->ident);
 	service->config_entry = g_strdup_printf("service_%s", service->ident);
+
+	service->hidden = g_key_file_get_boolean(keyfile, group,
+						SERVICE_KEY_HIDDEN, NULL);
 
 	if (service_created)
 		g_hash_table_insert(config->service_table, service->ident,
@@ -848,6 +854,9 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 
 	if (config->passphrase != NULL)
 		__connman_service_set_string(service, "Passphrase", config->passphrase);
+
+	if (config->hidden == TRUE)
+		__connman_service_set_hidden(service);
 
 	__connman_service_mark_dirty();
 
