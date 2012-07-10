@@ -51,6 +51,7 @@
 #include <connman/option.h>
 #include <connman/storage.h>
 #include <include/setting.h>
+#include <connman/provision.h>
 
 #include <gsupplicant/gsupplicant.h>
 
@@ -263,25 +264,32 @@ static void wifi_remove(struct connman_device *device)
 	g_free(wifi);
 }
 
-static int add_scan_param(gchar *hex_ssid, int freq,
-			GSupplicantScanParams *scan_data,
+static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
+			int freq, GSupplicantScanParams *scan_data,
 			int driver_max_scan_ssids)
 {
 	unsigned int i;
 	struct scan_ssid *scan_ssid;
 
-	if (driver_max_scan_ssids > scan_data->num_ssids && hex_ssid != NULL) {
+	if (driver_max_scan_ssids > scan_data->num_ssids &&
+			(hex_ssid != NULL || raw_ssid != NULL)) {
 		gchar *ssid;
 		unsigned int j = 0, hex;
-		size_t hex_ssid_len = strlen(hex_ssid);
 
-		ssid = g_try_malloc0(hex_ssid_len / 2);
-		if (ssid == NULL)
-			return -ENOMEM;
+		if (hex_ssid != NULL) {
+			size_t hex_ssid_len = strlen(hex_ssid);
 
-		for (i = 0; i < hex_ssid_len; i += 2) {
-			sscanf(hex_ssid + i, "%02x", &hex);
-			ssid[j++] = hex;
+			ssid = g_try_malloc0(hex_ssid_len / 2);
+			if (ssid == NULL)
+				return -ENOMEM;
+
+			for (i = 0; i < hex_ssid_len; i += 2) {
+				sscanf(hex_ssid + i, "%02x", &hex);
+				ssid[j++] = hex;
+			}
+		} else {
+			ssid = raw_ssid;
+			j = ssid_len;
 		}
 
 		scan_ssid = g_try_new(struct scan_ssid, 1);
@@ -297,7 +305,8 @@ static int add_scan_param(gchar *hex_ssid, int freq,
 
 		scan_data->num_ssids++;
 
-		g_free(ssid);
+		if (hex_ssid != NULL)
+			g_free(ssid);
 	} else
 		return -EINVAL;
 
@@ -335,6 +344,7 @@ static int add_scan_param(gchar *hex_ssid, int freq,
 static int get_hidden_connections(int max_ssids,
 				GSupplicantScanParams *scan_data)
 {
+	struct connman_config_entry **entries;
 	GKeyFile *keyfile;
 	gchar **services;
 	char *ssid;
@@ -377,7 +387,8 @@ static int get_hidden_connections(int max_ssids,
 		freq = g_key_file_get_integer(keyfile, services[i],
 					"Frequency", NULL);
 
-		if (add_scan_param(ssid, freq, scan_data, max_ssids) < 0) {
+		if (add_scan_param(ssid, NULL, 0, freq, scan_data,
+							max_ssids) < 0) {
 			str = g_key_file_get_string(keyfile,
 					services[i], "Name", NULL);
 			DBG("Cannot scan %s (%s)", ssid, str);
@@ -389,6 +400,40 @@ static int get_hidden_connections(int max_ssids,
 
 		g_key_file_free(keyfile);
 	}
+
+	/*
+	 * Check if there are any hidden AP that needs to be provisioned.
+	 */
+	entries = connman_config_get_entries();
+	for (i = 0; entries && entries[i]; i++) {
+		int len;
+
+		if (entries[i]->hidden == FALSE)
+			continue;
+
+		if (entries[i]->ssid == NULL) {
+			ssid = entries[i]->name;
+			len = strlen(ssid);
+		} else {
+			ssid = entries[i]->ssid;
+			len = entries[i]->ssid_len;
+		}
+
+		if (ssid == NULL)
+			continue;
+
+		DBG("[%d]->ssid = %s", i, ssid);
+
+		if (add_scan_param(NULL, ssid, len, 0, scan_data,
+							max_ssids) < 0) {
+			DBG("Cannot scan %s (%s)", ssid, entries[i]->ident);
+			add_param_failed++;
+		}
+
+		num_ssids++;
+	}
+
+	connman_config_free_entries(entries);
 
 	if (add_param_failed > 0)
 		connman_warn("Unable to scan %d out of %d SSIDs (max is %d)",
@@ -829,7 +874,8 @@ static int get_latest_connections(int max_ssids,
 		DBG("ssid %s freq %d modified %lu", entry->ssid, entry->freq,
 						entry->modified.tv_sec);
 
-		add_scan_param(entry->ssid, entry->freq, scan_data, max_ssids);
+		add_scan_param(entry->ssid, NULL, 0, entry->freq, scan_data,
+								max_ssids);
 
 		iter = g_sequence_iter_next(iter);
 	}
