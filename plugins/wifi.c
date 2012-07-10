@@ -436,7 +436,7 @@ static int get_hidden_connections(int max_ssids,
 	connman_config_free_entries(entries);
 
 	if (add_param_failed > 0)
-		connman_warn("Unable to scan %d out of %d SSIDs (max is %d)",
+		DBG("Unable to scan %d out of %d SSIDs (max is %d)",
 			add_param_failed, num_ssids, max_ssids);
 
 	g_strfreev(services);
