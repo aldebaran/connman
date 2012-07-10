@@ -94,7 +94,9 @@ Fields		string Name
 			provided as an informational argument when connecting
 			with it does not work anymore, for instance when it
 			has been changed on the AP. Such argument appears when
-			a RequestInput is raised after a retry.
+			a RequestInput is raised after a retry. In case of WPS
+			association through PIN method: when retrying, the
+			previous wpspin will be provided.
 
 		string WPS
 
@@ -196,6 +198,23 @@ Examples	Requesting a passphrase for WPA2 network
 				}
 
 			==> { "WPS" : "123456" }
+
+		Requesting a passphrase for a WPA2 network with WPS alternative
+		after an error on the previous one:
+
+			RequestInput("/service3",
+				{ "Passphrase" : { "Type"        : "psk",
+						   "Requirement" : "mandatory",
+						   "Alternates"  : [ "WPS" ]
+					         },
+				"WPS"          : { "Type"        : "wpspin",
+						   "Requirement" : "alternate"
+						 }
+				"PreviousPassphrase" :
+						{ "Type"       : "wpspin",
+					  	"Requirement : "informational",
+					  	"Value"      : "123456"
+						}
 
 		Requesting passphrase for a WPA-Enterprise network:
 
