@@ -1058,6 +1058,9 @@ int connman_device_set_regdom(struct connman_device *device,
 	if (device->driver == NULL || device->driver->set_regdom == NULL)
 		return -ENOTSUP;
 
+	if (device->powered == FALSE)
+		return -EINVAL;
+
 	return device->driver->set_regdom(device, alpha2);
 }
 
