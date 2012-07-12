@@ -5803,6 +5803,15 @@ static void service_ip_release(struct connman_ipconfig *ipconfig)
 	settings_changed(service, ipconfig);
 }
 
+static void service_route_changed(struct connman_ipconfig *ipconfig)
+{
+	struct connman_service *service = __connman_ipconfig_get_data(ipconfig);
+
+	DBG("%s route changed", __connman_ipconfig_get_ifname(ipconfig));
+
+	settings_changed(service, ipconfig);
+}
+
 static const struct connman_ipconfig_ops service_ops = {
 	.up		= service_up,
 	.down		= service_down,
@@ -5810,6 +5819,8 @@ static const struct connman_ipconfig_ops service_ops = {
 	.lower_down	= service_lower_down,
 	.ip_bound	= service_ip_bound,
 	.ip_release	= service_ip_release,
+	.route_set	= service_route_changed,
+	.route_unset	= service_route_changed,
 };
 
 static void setup_ip4config(struct connman_service *service, int index,
