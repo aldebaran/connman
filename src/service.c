@@ -540,23 +540,23 @@ static int service_save(struct connman_service *service)
 
 			if (ssid != NULL && ssid_len > 0 && ssid[0] != '\0') {
 				char *identifier = service->identifier;
-				GString *str;
+				GString *ssid_str;
 				unsigned int i;
 
-				str = g_string_sized_new(ssid_len * 2);
-				if (str == NULL) {
+				ssid_str = g_string_sized_new(ssid_len * 2);
+				if (ssid_str == NULL) {
 					err = -ENOMEM;
 					goto done;
 				}
 
 				for (i = 0; i < ssid_len; i++)
-					g_string_append_printf(str,
+					g_string_append_printf(ssid_str,
 							"%02x", ssid[i]);
 
 				g_key_file_set_string(keyfile, identifier,
-							"SSID", str->str);
+							"SSID", ssid_str->str);
 
-				g_string_free(str, TRUE);
+				g_string_free(ssid_str, TRUE);
 			}
 
 			freq = connman_network_get_frequency(service->network);
