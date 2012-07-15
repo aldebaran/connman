@@ -139,15 +139,6 @@ static void state_changed(void)
 					DBUS_TYPE_STRING, &notifier_state);
 }
 
-static void technology_connected(enum connman_service_type type,
-						connman_bool_t connected)
-{
-	DBG("type %d connected %d", type, connected);
-
-	__connman_technology_set_connected(type, connected);
-	state_changed();
-}
-
 void __connman_notifier_connect(enum connman_service_type type)
 {
 	DBG("type %d", type);
@@ -167,8 +158,10 @@ void __connman_notifier_connect(enum connman_service_type type)
 		break;
 	}
 
-	if (__sync_fetch_and_add(&connected[type], 1) == 0)
-		technology_connected(type, TRUE);
+	if (__sync_fetch_and_add(&connected[type], 1) == 0) {
+		__connman_technology_set_connected(type, TRUE);
+		state_changed();
+	}
 }
 
 void __connman_notifier_enter_online(enum connman_service_type type)
@@ -215,7 +208,8 @@ void __connman_notifier_disconnect(enum connman_service_type type)
 	if (__sync_fetch_and_sub(&connected[type], 1) != 1)
 		return;
 
-	technology_connected(type, FALSE);
+	__connman_technology_set_connected(type, FALSE);
+	state_changed();
 }
 
 void __connman_notifier_default_changed(struct connman_service *service)
