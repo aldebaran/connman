@@ -904,7 +904,7 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 		return -ENOSYS;
 
 	config = g_hash_table_lookup(config_table, ident);
-	if(config != NULL) {
+	if (config != NULL) {
 		GHashTableIter iter;
 		gpointer value, key;
 		gboolean found = FALSE;
@@ -918,15 +918,20 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 		if (file != NULL && entry != NULL) {
 			while (g_hash_table_iter_next(&iter, &key,
 							&value) == TRUE) {
-				struct connman_config_service *config = value;
+				struct connman_config_service *config_service;
 
-				if (g_strcmp0(config->config_ident,
-								file) == 0 &&
-						g_strcmp0(config->config_entry,
-								entry) == 0) {
-					found = TRUE;
-					break;
-				}
+				config_service = value;
+
+				if (g_strcmp0(config_service->config_ident,
+								file) != 0)
+					continue;
+
+				if (g_strcmp0(config_service->config_entry,
+								entry) != 0)
+					continue;
+
+				found = TRUE;
+				break;
 			}
 
 			DBG("found %d ident %s file %s entry %s", found, ident,
