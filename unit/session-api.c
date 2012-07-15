@@ -324,10 +324,10 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct test_bearer_info *info = list->data;
+		struct test_bearer_info *bearer_info = list->data;
 
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&info->name);
+						&bearer_info->name);
 	}
 }
 
