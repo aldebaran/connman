@@ -357,10 +357,10 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct bearer_info *info = list->data;
+		struct bearer_info *bearer_info = list->data;
 
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&info->name);
+						&bearer_info->name);
 	}
 }
 
@@ -655,14 +655,14 @@ static connman_bool_t service_type_match(struct connman_session *session,
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct bearer_info *info = list->data;
+		struct bearer_info *bearer_info = list->data;
 		enum connman_service_type service_type;
 
-		if (info->match_all == TRUE)
+		if (bearer_info->match_all == TRUE)
 			return TRUE;
 
 		service_type = connman_service_get_type(service);
-		if (info->service_type == service_type)
+		if (bearer_info->service_type == service_type)
 			return TRUE;
 	}
 
@@ -726,9 +726,9 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct bearer_info *info = list->data;
+		struct bearer_info *bearer_info = list->data;
 
-		if (info->match_all == TRUE) {
+		if (bearer_info->match_all == TRUE) {
 			if (type_a != type_b) {
 				weight_a = service_type_weight(type_a);
 				weight_b = service_type_weight(type_b);
@@ -743,18 +743,18 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 			}
 		}
 
-		if (type_a == info->service_type &&
-				type_b == info->service_type) {
+		if (type_a == bearer_info->service_type &&
+				type_b == bearer_info->service_type) {
 			return 0;
 		}
 
-		if (type_a == info->service_type &&
-				type_b != info->service_type) {
+		if (type_a == bearer_info->service_type &&
+				type_b != bearer_info->service_type) {
 			return -1;
 		}
 
-		if (type_a != info->service_type &&
-				type_b == info->service_type) {
+		if (type_a != bearer_info->service_type &&
+				type_b == bearer_info->service_type) {
 			return 1;
 		}
 	}
