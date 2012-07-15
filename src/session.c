@@ -1895,15 +1895,15 @@ static void service_remove(struct connman_service *service)
 	g_hash_table_iter_init(&iter, session_hash);
 
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		GSequenceIter *iter;
+		GSequenceIter *seq_iter;
 		session = value;
 		info = session->info;
 
-		iter = g_hash_table_lookup(session->service_hash, service);
-		if (iter == NULL)
+		seq_iter = g_hash_table_lookup(session->service_hash, service);
+		if (seq_iter == NULL)
 			continue;
 
-		g_sequence_remove(iter);
+		g_sequence_remove(seq_iter);
 
 		if (info->entry != NULL && info->entry->service == service)
 			info->entry = NULL;
