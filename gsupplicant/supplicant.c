@@ -2174,20 +2174,21 @@ static void wps_credentials(const char *key, DBusMessageIter *iter,
 
 	if (g_strcmp0(key, "Key") == 0) {
 		DBusMessageIter array;
-		unsigned char *key;
+		unsigned char *key_val;
 		int key_len;
 
 		dbus_message_iter_recurse(iter, &array);
-		dbus_message_iter_get_fixed_array(&array, &key, &key_len);
+		dbus_message_iter_get_fixed_array(&array, &key_val, &key_len);
 
 		g_free(interface->wps_cred.key);
 		interface->wps_cred.key = g_try_malloc0(
-						sizeof(char) * key_len+1);
+						sizeof(char) * key_len + 1);
 
 		if (interface->wps_cred.key == NULL)
 			return;
 
-		memcpy(interface->wps_cred.key, key, sizeof(char) * key_len);
+		memcpy(interface->wps_cred.key, key_val,
+						sizeof(char) * key_len);
 
 		SUPPLICANT_DBG("WPS key present");
 	} else if (g_strcmp0(key, "SSID") == 0) {
