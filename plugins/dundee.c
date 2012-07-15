@@ -490,7 +490,7 @@ out:
 	g_free(gateway);
 }
 
-static gboolean device_changed(DBusConnection *connection,
+static gboolean device_changed(DBusConnection *conn,
 				DBusMessage *message,
 				void *user_data)
 {
@@ -608,7 +608,7 @@ static void add_device(const char *path, DBusMessageIter *properties)
 		set_connected(info);
 }
 
-static gboolean device_added(DBusConnection *connection, DBusMessage *message,
+static gboolean device_added(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	DBusMessageIter iter, properties;
@@ -640,14 +640,14 @@ static gboolean device_added(DBusConnection *connection, DBusMessage *message,
 	return TRUE;
 }
 
-static void remove_device(DBusConnection *connection, const char *path)
+static void remove_device(DBusConnection *conn, const char *path)
 {
 	DBG("path %s", path);
 
 	g_hash_table_remove(dundee_devices, path);
 }
 
-static gboolean device_removed(DBusConnection *connection, DBusMessage *message,
+static gboolean device_removed(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path;
@@ -660,7 +660,7 @@ static gboolean device_removed(DBusConnection *connection, DBusMessage *message,
 
 	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
-	remove_device(connection, path);
+	remove_device(conn, path);
 	return TRUE;
 }
 
@@ -755,9 +755,9 @@ static int manager_get_devices(void)
 	return -EINPROGRESS;
 }
 
-static void dundee_connect(DBusConnection *connection, void *user_data)
+static void dundee_connect(DBusConnection *conn, void *user_data)
 {
-	DBG("connection %p", connection);
+	DBG("connection %p", conn);
 
 	dundee_devices = g_hash_table_new_full(g_str_hash, g_str_equal,
 					g_free, device_destroy);
@@ -765,9 +765,9 @@ static void dundee_connect(DBusConnection *connection, void *user_data)
 	manager_get_devices();
 }
 
-static void dundee_disconnect(DBusConnection *connection, void *user_data)
+static void dundee_disconnect(DBusConnection *conn, void *user_data)
 {
-	DBG("connection %p", connection);
+	DBG("connection %p", conn);
 
 	g_hash_table_destroy(dundee_devices);
 	dundee_devices = NULL;

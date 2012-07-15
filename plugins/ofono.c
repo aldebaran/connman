@@ -1164,7 +1164,7 @@ static void remove_cm_context(struct modem_data *modem,
 		remove_network(modem);
 }
 
-static gboolean context_changed(DBusConnection *connection,
+static gboolean context_changed(DBusConnection *conn,
 				DBusMessage *message,
 				void *user_data)
 {
@@ -1333,7 +1333,7 @@ static int cm_get_contexts(struct modem_data *modem)
 	return -EINPROGRESS;
 }
 
-static gboolean cm_context_added(DBusConnection *connection,
+static gboolean cm_context_added(DBusConnection *conn,
 					DBusMessage *message,
 					void *user_data)
 {
@@ -1362,7 +1362,7 @@ static gboolean cm_context_added(DBusConnection *connection,
 	return TRUE;
 }
 
-static gboolean cm_context_removed(DBusConnection *connection,
+static gboolean cm_context_removed(DBusConnection *conn,
 					DBusMessage *message,
 					void *user_data)
 {
@@ -1506,7 +1506,7 @@ static void netreg_update_regdom(struct modem_data *modem,
 		connman_technology_set_regdom(alpha2);
 }
 
-static gboolean netreg_changed(DBusConnection *connection, DBusMessage *message,
+static gboolean netreg_changed(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -1615,7 +1615,7 @@ static void add_cdma_network(struct modem_data *modem)
 		set_connected(modem);
 }
 
-static gboolean cdma_netreg_changed(DBusConnection *connection,
+static gboolean cdma_netreg_changed(DBusConnection *conn,
 					DBusMessage *message,
 					void *user_data)
 {
@@ -1723,7 +1723,7 @@ static void cm_update_powered(struct modem_data *modem,
 	cm_set_powered(modem, TRUE);
 }
 
-static gboolean cm_changed(DBusConnection *connection, DBusMessage *message,
+static gboolean cm_changed(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -1778,7 +1778,7 @@ static void cdma_cm_update_settings(struct modem_data *modem,
 	extract_ipv4_settings(value, modem->context);
 }
 
-static gboolean cdma_cm_changed(DBusConnection *connection,
+static gboolean cdma_cm_changed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -1884,7 +1884,7 @@ static void sim_update_imsi(struct modem_data *modem,
 	modem->imsi = g_strdup(imsi);
 }
 
-static gboolean sim_changed(DBusConnection *connection, DBusMessage *message,
+static gboolean sim_changed(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -2062,7 +2062,7 @@ static void modem_update_interfaces(struct modem_data *modem,
 	}
 }
 
-static gboolean modem_changed(DBusConnection *connection, DBusMessage *message,
+static gboolean modem_changed(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -2255,7 +2255,7 @@ static void remove_modem(gpointer data)
 	g_free(modem);
 }
 
-static gboolean modem_added(DBusConnection *connection,
+static gboolean modem_added(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter, properties;
@@ -2276,7 +2276,7 @@ static gboolean modem_added(DBusConnection *connection,
 	return TRUE;
 }
 
-static gboolean modem_removed(DBusConnection *connection,
+static gboolean modem_removed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	DBusMessageIter iter;

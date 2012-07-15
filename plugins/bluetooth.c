@@ -271,7 +271,7 @@ static struct connman_network_driver pan_driver = {
 	.disconnect	= pan_disconnect,
 };
 
-static gboolean network_changed(DBusConnection *connection,
+static gboolean network_changed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -507,7 +507,7 @@ static void check_networks(struct connman_device *device,
 	}
 }
 
-static gboolean adapter_changed(DBusConnection *connection,
+static gboolean adapter_changed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -546,7 +546,7 @@ static gboolean adapter_changed(DBusConnection *connection,
 	return TRUE;
 }
 
-static gboolean device_removed(DBusConnection *connection,
+static gboolean device_removed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	const char *network_path;
@@ -574,7 +574,7 @@ static gboolean device_removed(DBusConnection *connection,
 	return TRUE;
 }
 
-static gboolean device_changed(DBusConnection *connection,
+static gboolean device_changed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
 	const char *path = dbus_message_get_path(message);
@@ -704,7 +704,7 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static void add_adapter(DBusConnection *connection, const char *path)
+static void add_adapter(DBusConnection *conn, const char *path)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
@@ -718,7 +718,7 @@ static void add_adapter(DBusConnection *connection, const char *path)
 
 	dbus_message_set_auto_start(message, FALSE);
 
-	if (dbus_connection_send_with_reply(connection, message,
+	if (dbus_connection_send_with_reply(conn, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get adapter properties for %s", path);
 		goto done;
@@ -736,32 +736,32 @@ done:
 	dbus_message_unref(message);
 }
 
-static gboolean adapter_added(DBusConnection *connection, DBusMessage *message,
+static gboolean adapter_added(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path;
 
 	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
-	add_adapter(connection, path);
+	add_adapter(conn, path);
 	return TRUE;
 }
 
-static void remove_adapter(DBusConnection *connection, const char *path)
+static void remove_adapter(DBusConnection *conn, const char *path)
 {
 	DBG("path %s", path);
 
 	g_hash_table_remove(bluetooth_devices, path);
 }
 
-static gboolean adapter_removed(DBusConnection *connection, DBusMessage *message,
+static gboolean adapter_removed(DBusConnection *conn, DBusMessage *message,
 				void *user_data)
 {
 	const char *path;
 
 	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
-	remove_adapter(connection, path);
+	remove_adapter(conn, path);
 	return TRUE;
 }
 
@@ -833,12 +833,12 @@ static void remove_network(gpointer data)
 	connman_network_unref(network);
 }
 
-static void bluetooth_connect(DBusConnection *connection, void *user_data)
+static void bluetooth_connect(DBusConnection *conn, void *user_data)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
 
-	DBG("connection %p", connection);
+	DBG("connection %p", conn);
 
 	bluetooth_devices = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, unregister_device);
@@ -853,7 +853,7 @@ static void bluetooth_connect(DBusConnection *connection, void *user_data)
 
 	dbus_message_set_auto_start(message, FALSE);
 
-	if (dbus_connection_send_with_reply(connection, message,
+	if (dbus_connection_send_with_reply(conn, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to get Bluetooth adapters");
 		goto done;
@@ -870,9 +870,9 @@ done:
 	dbus_message_unref(message);
 }
 
-static void bluetooth_disconnect(DBusConnection *connection, void *user_data)
+static void bluetooth_disconnect(DBusConnection *conn, void *user_data)
 {
-	DBG("connection %p", connection);
+	DBG("connection %p", conn);
 
 	if (bluetooth_devices == NULL)
 		return;
@@ -935,7 +935,7 @@ static void powered_reply(DBusPendingCall *call, void *user_data)
 	add_adapter(connection, user_data);
 }
 
-static int change_powered(DBusConnection *connection, const char *path,
+static int change_powered(DBusConnection *conn, const char *path,
 							dbus_bool_t powered)
 {
 	DBusMessage *message;
@@ -958,7 +958,7 @@ static int change_powered(DBusConnection *connection, const char *path,
 	connman_dbus_property_append_basic(&iter, "Powered",
 						DBUS_TYPE_BOOLEAN, &powered);
 
-	if (dbus_connection_send_with_reply(connection, message,
+	if (dbus_connection_send_with_reply(conn, message,
 						&call, TIMEOUT) == FALSE) {
 		connman_error("Failed to change Powered property");
 		dbus_message_unref(message);
