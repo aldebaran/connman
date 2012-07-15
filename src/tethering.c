@@ -350,7 +350,7 @@ static void remove_private_network(gpointer user_data)
 	g_free(pn);
 }
 
-static void owner_disconnect(DBusConnection *connection, void *user_data)
+static void owner_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct connman_private_network *pn = user_data;
 
