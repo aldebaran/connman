@@ -1665,7 +1665,7 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 
 	if (addr_count > 0 && st == 0) {
 		/* We only support one address atm */
-		char str[INET6_ADDRSTRLEN + 1];
+		char addr_str[INET6_ADDRSTRLEN + 1];
 
 		if (preferred > valid)
 			/* RFC 3315, 22.6 */
@@ -1674,11 +1674,11 @@ static GList *get_addresses(GDHCPClient *dhcp_client,
 		dhcp_client->T1 = T1;
 		dhcp_client->T2 = T2;
 
-		inet_ntop(AF_INET6, &addr, str, INET6_ADDRSTRLEN);
+		inet_ntop(AF_INET6, &addr, addr_str, INET6_ADDRSTRLEN);
 		debug(dhcp_client, "count %d addr %s T1 %u T2 %u",
-			addr_count, str, T1, T2);
+			addr_count, addr_str, T1, T2);
 
-		list = g_list_append(list, g_strdup(str));
+		list = g_list_append(list, g_strdup(addr_str));
 
 		if (code == G_DHCPV6_IA_NA)
 			memcpy(&dhcp_client->ia_na, &addr,
