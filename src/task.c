@@ -408,7 +408,7 @@ int connman_task_stop(struct connman_task *task)
 	return 0;
 }
 
-static DBusHandlerResult task_filter(DBusConnection *connection,
+static DBusHandlerResult task_filter(DBusConnection *conn,
 					DBusMessage *message, void *user_data)
 {
 	struct connman_task *task;
@@ -452,7 +452,7 @@ send_reply:
 	}
 
 	if (reply != NULL) {
-		dbus_connection_send(connection, reply, NULL);
+		dbus_connection_send(conn, reply, NULL);
 
 		dbus_message_unref(reply);
 	}
