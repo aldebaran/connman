@@ -56,7 +56,7 @@ static void remove_counter(gpointer user_data)
 	g_free(counter);
 }
 
-static void owner_disconnect(DBusConnection *connection, void *user_data)
+static void owner_disconnect(DBusConnection *conn, void *user_data)
 {
 	struct connman_counter *counter = user_data;
 
