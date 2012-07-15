@@ -1492,11 +1492,10 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		}
 
 		if (data != NULL && req->protocol == IPPROTO_UDP) {
-			int sk;
-			sk = g_io_channel_unix_get_fd(
+			int udp_sk = g_io_channel_unix_get_fd(
 					req->ifdata->udp_listener_channel);
 
-			send_cached_response(sk, data->data,
+			send_cached_response(udp_sk, data->data,
 				data->data_len, &req->sa, req->sa_len,
 				IPPROTO_UDP, req->srcid, data->answers,
 				ttl_left);
@@ -2122,11 +2121,11 @@ static struct server_data *create_server(const char *interface,
 			g_free(data->server);
 			g_free(data->interface);
 			for (list = data->domains; list; list = list->next) {
-				char *domain = list->data;
+				char *tmp_domain = list->data;
 
 				data->domains = g_list_remove(data->domains,
-									domain);
-				g_free(domain);
+								tmp_domain);
+				g_free(tmp_domain);
 			}
 			g_free(data);
 			return NULL;
@@ -2393,23 +2392,23 @@ static int parse_request(unsigned char *buf, int len,
 	remain = len - sizeof(struct domain_hdr);
 
 	while (remain > 0) {
-		uint8_t len = *ptr;
+		uint8_t label_len = *ptr;
 
-		if (len == 0x00) {
+		if (label_len == 0x00) {
 			last_label = (char *) (ptr + 1);
 			break;
 		}
 
-		if (used + len + 1 > size)
+		if (used + label_len + 1 > size)
 			return -ENOBUFS;
 
-		strncat(name, (char *) (ptr + 1), len);
+		strncat(name, (char *) (ptr + 1), label_len);
 		strcat(name, ".");
 
-		used += len + 1;
+		used += label_len + 1;
 
-		ptr += len + 1;
-		remain -= len + 1;
+		ptr += label_len + 1;
+		remain -= label_len + 1;
 	}
 
 	if (last_label && arcount && remain >= 9 && last_label[4] == 0 &&
