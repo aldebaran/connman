@@ -199,8 +199,20 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 
 	transmit_delay = LOGTOD(msg->poll);
 
-	if (msg->flags != 0x24)
+	if (NTP_FLAGS_LI_DECODE(msg->flags) == NTP_FLAG_LI_NOTINSYNC) {
+		DBG("ignoring unsynchronized peer");
 		return;
+	}
+
+	if (NTP_FLAGS_VN_DECODE(msg->flags) != 4) {
+		DBG("unsupported version %d", NTP_FLAGS_VN_DECODE(msg->flags));
+		return;
+	}
+
+	if (NTP_FLAGS_MD_DECODE(msg->flags) != NTP_FLAG_MD_SERVER) {
+		DBG("unsupported mode %d", NTP_FLAGS_MD_DECODE(msg->flags));
+		return;
+	}
 
 	org = transmit_timeval.tv_sec +
 			(1.0e-6 * transmit_timeval.tv_usec) + OFFSET_1900_1970;
