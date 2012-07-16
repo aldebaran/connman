@@ -117,8 +117,6 @@ static void send_packet(int fd, const char *server)
 	msg.flags = NTP_FLAGS_ENCODE(NTP_FLAG_LI_NOWARNING, 4, NTP_FLAG_MD_CLIENT);
 	msg.poll = 4;	// min
 	msg.poll = 10;	// max
-	msg.xmttime.seconds = random();
-	msg.xmttime.fraction = random();
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
@@ -126,6 +124,9 @@ static void send_packet(int fd, const char *server)
 	addr.sin_addr.s_addr = inet_addr(server);
 
 	gettimeofday(&transmit_timeval, NULL);
+
+	msg.xmttime.seconds = htonl(transmit_timeval.tv_sec + OFFSET_1900_1970);
+	msg.xmttime.fraction = htonl(transmit_timeval.tv_usec * 1000);
 
 	len = sendto(fd, &msg, sizeof(msg), MSG_DONTWAIT,
 						&addr, sizeof(addr));
