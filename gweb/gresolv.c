@@ -486,10 +486,16 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 
 	results[n++] = NULL;
 
-	status = lookup->ipv4_status;
-
-	if (status == G_RESOLV_RESULT_STATUS_SUCCESS)
+	if (lookup->resolv->result_family == AF_INET)
+		status = lookup->ipv4_status;
+	else if (lookup->resolv->result_family == AF_INET6)
 		status = lookup->ipv6_status;
+	else {
+		if (lookup->ipv6_status == G_RESOLV_RESULT_STATUS_SUCCESS)
+			status = lookup->ipv6_status;
+		else
+			status = lookup->ipv4_status;
+	}
 
 	lookup->result_func(status, results, lookup->result_data);
 
