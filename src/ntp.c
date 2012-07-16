@@ -99,6 +99,13 @@ struct ntp_msg {
 #define NTP_FLAGS_VN_DECODE(flags)    ((uint8_t)(((flags) >> NTP_FLAG_VN_SHIFT) & NTP_FLAG_VN_MASK))
 #define NTP_FLAGS_MD_DECODE(flags)    ((uint8_t)(((flags) >> NTP_FLAG_MD_SHIFT) & NTP_FLAG_MD_MASK))
 
+#define NTP_PRECISION_S    0
+#define NTP_PRECISION_DS   -3
+#define NTP_PRECISION_CS   -6
+#define NTP_PRECISION_MS   -9
+#define NTP_PRECISION_US   -19
+#define NTP_PRECISION_NS   -29
+
 static guint channel_watch = 0;
 static struct timeval transmit_timeval;
 static int transmit_fd = 0;
