@@ -514,7 +514,7 @@ static gboolean query_timeout(gpointer user_data)
 		lookup->ipv6_query = NULL;
 	}
 
-	if (lookup->ipv4_query == NULL && lookup->ipv4_query == NULL)
+	if (lookup->ipv4_query == NULL && lookup->ipv6_query == NULL)
 		sort_and_return_results(lookup);
 
 	destroy_query(query);
