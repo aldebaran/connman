@@ -96,6 +96,8 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
 							ts_list, results[i]);
 			}
 
+			DBG("Using timeserver %s", results[0]);
+
 			__connman_ntp_start(results[0]);
 
 			return;
