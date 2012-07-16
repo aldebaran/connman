@@ -69,6 +69,36 @@ struct ntp_msg {
 
 #define LOGTOD(a)  ((a) < 0 ? 1. / (1L << -(a)) : 1L << (int)(a))
 
+#define NTP_FLAG_LI_SHIFT      6
+#define NTP_FLAG_LI_MASK       0x3
+#define NTP_FLAG_LI_NOWARNING  0x0
+#define NTP_FLAG_LI_ADDSECOND  0x1
+#define NTP_FLAG_LI_DELSECOND  0x2
+#define NTP_FLAG_LI_NOTINSYNC  0x3
+
+#define NTP_FLAG_VN_SHIFT      3
+#define NTP_FLAG_VN_MASK       0x7
+
+#define NTP_FLAG_MD_SHIFT      0
+#define NTP_FLAG_MD_MASK       0x7
+#define NTP_FLAG_MD_UNSPEC     0
+#define NTP_FLAG_MD_ACTIVE     1
+#define NTP_FLAG_MD_PASSIVE    2
+#define NTP_FLAG_MD_CLIENT     3
+#define NTP_FLAG_MD_SERVER     4
+#define NTP_FLAG_MD_BROADCAST  5
+#define NTP_FLAG_MD_CONTROL    6
+#define NTP_FLAG_MD_PRIVATE    7
+
+#define NTP_FLAGS_ENCODE(li, vn, md)  ((uint8_t)( \
+                      (((li) & NTP_FLAG_LI_MASK) << NTP_FLAG_LI_SHIFT) | \
+                      (((vn) & NTP_FLAG_VN_MASK) << NTP_FLAG_VN_SHIFT) | \
+                      (((md) & NTP_FLAG_MD_MASK) << NTP_FLAG_MD_SHIFT)))
+
+#define NTP_FLAGS_LI_DECODE(flags)    ((uint8_t)(((flags) >> NTP_FLAG_LI_SHIFT) & NTP_FLAG_LI_MASK))
+#define NTP_FLAGS_VN_DECODE(flags)    ((uint8_t)(((flags) >> NTP_FLAG_VN_SHIFT) & NTP_FLAG_VN_MASK))
+#define NTP_FLAGS_MD_DECODE(flags)    ((uint8_t)(((flags) >> NTP_FLAG_MD_SHIFT) & NTP_FLAG_MD_MASK))
+
 static guint channel_watch = 0;
 static struct timeval transmit_timeval;
 static int transmit_fd = 0;
