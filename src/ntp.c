@@ -69,6 +69,9 @@ struct ntp_msg {
 
 #define LOGTOD(a)  ((a) < 0 ? 1. / (1L << -(a)) : 1L << (int)(a))
 
+#define NTP_SEND_TIMEOUT       2
+#define NTP_SEND_RETRIES       3
+
 #define NTP_FLAG_LI_SHIFT      6
 #define NTP_FLAG_LI_MASK       0x3
 #define NTP_FLAG_LI_NOWARNING  0x0
@@ -113,6 +116,31 @@ static int transmit_fd = 0;
 static char *timeserver = NULL;
 static gint poll_id = 0;
 static gint timeout_id = 0;
+static guint retries = 0;
+
+static void send_packet(int fd, const char *server);
+
+static void next_server(void)
+{
+	if (timeserver != NULL) {
+		g_free(timeserver);
+		timeserver = NULL;
+	}
+
+	__connman_timeserver_sync_next();
+}
+
+static gboolean send_timeout(gpointer user_data)
+{
+	DBG("send timeout (retries %d)", retries);
+
+	if (retries++ == NTP_SEND_RETRIES)
+		next_server();
+	else
+		send_packet(transmit_fd, timeserver);
+
+	return FALSE;
+}
 
 static void send_packet(int fd, const char *server)
 {
@@ -158,18 +186,14 @@ static void send_packet(int fd, const char *server)
 		connman_error("Broken time request for server %s", server);
 		return;
 	}
-}
 
-static gboolean next_server(gpointer user_data)
-{
-	if (timeserver != NULL) {
-		g_free(timeserver);
-		timeserver = NULL;
-	}
+	/*
+	 * Add a retry timeout of two seconds to retry the existing
+	 * request. After a set number of retries, we'll fallback to
+	 * trying another server.
+	 */
 
-	__connman_timeserver_sync_next();
-
-	return FALSE;
+	timeout_id = g_timeout_add_seconds(NTP_SEND_TIMEOUT, send_timeout, NULL);
 }
 
 static gboolean next_poll(gpointer user_data)
@@ -180,6 +204,14 @@ static gboolean next_poll(gpointer user_data)
 	send_packet(transmit_fd, timeserver);
 
 	return FALSE;
+}
+
+static void reset_timeout(void)
+{
+	if (timeout_id > 0)
+		g_source_remove(timeout_id);
+
+	retries = 0;
 }
 
 static void decode_msg(void *base, size_t len, struct timeval *tv)
@@ -244,8 +276,8 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 	DBG("offset=%f delay=%f", offset, delay);
 
 	/* Remove the timeout, as timeserver has responded */
-	if (timeout_id > 0)
-		g_source_remove(timeout_id);
+
+	reset_timeout();
 
 	/*
 	 * Now poll the server every transmit_delay seconds
@@ -422,13 +454,6 @@ int __connman_ntp_start(char *server)
 
 	start_ntp(timeserver);
 
-	/*
-	 * Add a fallback timeout , preferably short, 5 sec here,
-	 * to fallback on the next server.
-	 */
-
-	timeout_id = g_timeout_add_seconds(5, next_server, NULL);
-
 	return 0;
 }
 
@@ -439,8 +464,7 @@ void __connman_ntp_stop()
 	if (poll_id > 0)
 		g_source_remove(poll_id);
 
-	if (timeout_id > 0)
-		g_source_remove(timeout_id);
+        reset_timeout();
 
 	if (channel_watch > 0) {
 		g_source_remove(channel_watch);
