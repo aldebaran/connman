@@ -114,7 +114,7 @@ static void send_packet(int fd, const char *server)
 	ssize_t len;
 
 	memset(&msg, 0, sizeof(msg));
-	msg.flags = 0x23;
+	msg.flags = NTP_FLAGS_ENCODE(NTP_FLAG_LI_NOWARNING, 4, NTP_FLAG_MD_CLIENT);
 	msg.poll = 4;	// min
 	msg.poll = 10;	// max
 	msg.xmttime.seconds = random();
