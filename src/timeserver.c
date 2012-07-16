@@ -129,7 +129,7 @@ void __connman_timeserver_sync_next()
 
 	/* if its a IP , directly query it. */
 	if (connman_inet_check_ipaddress(server) > 0) {
-		DBG("Using timeservers %s", server);
+		DBG("Using timeserver %s", server);
 
 		__connman_ntp_start(server);
 
