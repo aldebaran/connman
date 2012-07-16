@@ -100,7 +100,12 @@ static void send_packet(int fd, const char *server)
 	len = sendto(fd, &msg, sizeof(msg), MSG_DONTWAIT,
 						&addr, sizeof(addr));
 	if (len < 0) {
-		connman_error("Time request for server %s failed", server);
+		connman_error("Time request for server %s failed (%d/%s)",
+			server, errno, strerror(errno));
+
+		if (errno == ENETUNREACH)
+			__connman_timeserver_sync_next();
+
 		return;
 	}
 
