@@ -652,22 +652,22 @@ static void parse_response(struct resolv_nameserver *nameserver,
 					ns_msg_id(msg), rcode, count);
 
 	switch (rcode) {
-	case 0:
+	case ns_r_noerror:
 		status = G_RESOLV_RESULT_STATUS_SUCCESS;
 		break;
-	case 1:
+	case ns_r_formerr:
 		status = G_RESOLV_RESULT_STATUS_FORMAT_ERROR;
 		break;
-	case 2:
+	case ns_r_servfail:
 		status = G_RESOLV_RESULT_STATUS_SERVER_FAILURE;
 		break;
-	case 3:
+	case ns_r_nxdomain:
 		status = G_RESOLV_RESULT_STATUS_NAME_ERROR;
 		break;
-	case 4:
+	case ns_r_notimpl:
 		status = G_RESOLV_RESULT_STATUS_NOT_IMPLEMENTED;
 		break;
-	case 5:
+	case ns_r_refused:
 		status = G_RESOLV_RESULT_STATUS_REFUSED;
 		break;
 	default:
