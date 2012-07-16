@@ -87,8 +87,14 @@ static void resolv_result(GResolvResultStatus status, char **results, gpointer u
 
 	if (status == G_RESOLV_RESULT_STATUS_SUCCESS) {
 		if (results != NULL) {
-			for (i = 0; results[i]; i++)
-				DBG("result: %s", results[i]);
+			for (i = 0; results[i]; i++) {
+				DBG("result[%d]: %s", i, results[i]);
+				if (i == 0)
+					continue;
+
+				ts_list = __connman_timeserver_add_list(
+							ts_list, results[i]);
+			}
 
 			__connman_ntp_start(results[0]);
 
