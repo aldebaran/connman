@@ -120,10 +120,17 @@ static void send_packet(int fd, const char *server)
 	struct sockaddr_in addr;
 	ssize_t len;
 
+	/*
+	 * At some point, we could specify the actual system precision with:
+	 *
+	 *   clock_getres(CLOCK_REALTIME, &ts);
+	 *   msg.precision = (int)log2(ts.tv_sec + (ts.tv_nsec * 1.0e-9));
+	 */
 	memset(&msg, 0, sizeof(msg));
 	msg.flags = NTP_FLAGS_ENCODE(NTP_FLAG_LI_NOTINSYNC, 4, NTP_FLAG_MD_CLIENT);
 	msg.poll = 4;	// min
 	msg.poll = 10;	// max
+	msg.precision = NTP_PRECISION_S;
 
 	memset(&addr, 0, sizeof(addr));
 	addr.sin_family = AF_INET;
