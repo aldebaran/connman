@@ -212,7 +212,11 @@ gchar **connman_storage_get_services()
 	closedir(dir);
 
 	str = g_string_free(result, FALSE);
-	if (str) {
+	if (str && str[0] != '\0') {
+		/*
+		 * Remove the trailing separator so that services doesn't end up
+		 * with an empty element.
+		 */
 		str[strlen(str) - 1] = '\0';
 		services = g_strsplit(str, "/", -1);
 	}
