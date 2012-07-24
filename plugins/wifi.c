@@ -456,7 +456,7 @@ static int throw_wifi_scan(struct connman_device *device,
 	DBG("device %p %p", device, wifi->interface);
 
 	if (wifi->tethering == TRUE)
-		return 0;
+		return -EBUSY;
 
 	if (connman_device_get_scanning(device) == TRUE)
 		return -EALREADY;
