@@ -1,3 +1,19 @@
+ver 1.4:
+	Fix issue with WiFi scanning in Tethering mode.
+	Fix issue with WISPr operation and disconnects.
+	Fix issue with DHCP client and restart behavior.
+	Fix issue with DNS resolving and failing IPv6 records.
+	Fix issue with incorrect NTP leap-not-in-sync flag.
+	Fix issue with incorrect NTP transmit time value.
+	Fix issue with failing NTP server due to routing.
+	Fix issue with missing gateway change notification.
+	Fix issue with stale network interfaces at startup.
+	Fix issue with pending method reply and agent errors.
+	Add support for providing previous WPS PIN to agent.
+	Add support for WPA supplicant based auto-scanning.
+	Add support for per device regulatory domain setting.
+	Add support for provisioning hidden WiFi networks.
+
 ver 1.3:
 	Fix issue with default configuration values.
 	Fix issue with timeserver canonical name entries.
