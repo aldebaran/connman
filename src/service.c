@@ -3281,7 +3281,7 @@ static connman_bool_t is_ignore(struct connman_service *service)
 	if (service->ignore == TRUE)
 		return TRUE;
 
-	if (service->state == CONNMAN_SERVICE_STATE_FAILURE)
+	if (service->error == CONNMAN_SERVICE_ERROR_INVALID_KEY)
 		return TRUE;
 
 	if (is_ipconfig_usable(service) == FALSE)
