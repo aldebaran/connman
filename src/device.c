@@ -54,7 +54,6 @@ struct connman_device {
 	char *ident;
 	char *path;
 	char *devname;
-	int phyindex;
 	int index;
 	guint pending_timeout;
 
@@ -423,8 +422,6 @@ struct connman_device *connman_device_create(const char *node,
 	device->type = type;
 	device->name = g_strdup(type2description(device->type));
 
-	device->phyindex = -1;
-
 	device->networks = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, free_network);
 
@@ -512,17 +509,6 @@ void connman_device_set_index(struct connman_device *device, int index)
 int connman_device_get_index(struct connman_device *device)
 {
 	return device->index;
-}
-
-int __connman_device_get_phyindex(struct connman_device *device)
-{
-	return device->phyindex;
-}
-
-void __connman_device_set_phyindex(struct connman_device *device,
-							int phyindex)
-{
-	device->phyindex = phyindex;
 }
 
 /**
