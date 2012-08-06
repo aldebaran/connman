@@ -330,7 +330,6 @@ static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_dnsproxy = TRUE;
-static gboolean option_compat = FALSE;
 static gboolean option_version = FALSE;
 
 static gboolean parse_debug(const char *key, const char *value,
@@ -364,8 +363,6 @@ static GOptionEntry options[] = {
 	{ "nodnsproxy", 'r', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_dnsproxy,
 				"Don't enable DNS Proxy" },
-	{ "compat", 'c', 0, G_OPTION_ARG_NONE, &option_compat,
-				"(obsolete)" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },
