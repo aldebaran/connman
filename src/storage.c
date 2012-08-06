@@ -193,6 +193,7 @@ gchar **connman_storage_get_services()
 
 		switch (d->d_type) {
 		case DT_DIR:
+		case DT_UNKNOWN:
 			/*
 			 * If the settings file is not found, then
 			 * assume this directory is not a services dir.
