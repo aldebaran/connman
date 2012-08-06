@@ -110,6 +110,19 @@ VPN
    Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
 
 
+WiMAX
+=====
+
+- WiMAX removal
+
+   Priority: Medium
+   Complexity: C1
+   When: 12/2012
+
+   WiMAX plugin is unmaintained. Remove WiMAX plugin, service type definitions
+   and associated code.
+
+
 Tools
 =====
 
