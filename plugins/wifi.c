@@ -63,7 +63,7 @@
 #define INACTIVE_TIMEOUT  12	/* in seconds */
 #define FAVORITE_MAXIMUM_RETRIES 2
 
-#define BGSCAN_DEFAULT "simple:30:-45:300"
+#define BGSCAN_DEFAULT "simple:30:-65:300"
 #define AUTOSCAN_DEFAULT "exponential:3:90"
 
 #define P2P_FIND_TIMEOUT 30
