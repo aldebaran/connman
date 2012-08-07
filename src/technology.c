@@ -328,6 +328,16 @@ static void technology_save(struct connman_technology *technology)
 	g_key_file_set_boolean(keyfile, identifier, "Enable",
 				technology->enable_persistent);
 
+	if (technology->tethering_ident != NULL)
+		g_key_file_set_string(keyfile, identifier,
+					"Tethering.Identifier",
+					technology->tethering_ident);
+
+	if (technology->tethering_passphrase != NULL)
+		g_key_file_set_string(keyfile, identifier,
+					"Tethering.Passphrase",
+					technology->tethering_passphrase);
+
 done:
 	g_free(identifier);
 
@@ -374,6 +384,12 @@ static void technology_load(struct connman_technology *technology)
 		technology_save(technology);
 		g_clear_error(&error);
 	}
+
+	technology->tethering_ident = g_key_file_get_string(keyfile,
+				identifier, "Tethering.Identifier", NULL);
+
+	technology->tethering_passphrase = g_key_file_get_string(keyfile,
+				identifier, "Tethering.Passphrase", NULL);
 done:
 	g_free(identifier);
 
@@ -759,6 +775,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 
 		technology->tethering_ident = g_strdup(str);
+		technology_save(technology);
 	} else if (g_str_equal(name, "TetheringPassphrase") == TRUE) {
 		const char *str;
 
@@ -771,6 +788,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_passphrase_required(msg);
 
 		technology->tethering_passphrase = g_strdup(str);
+		technology_save(technology);
 	} else if (g_str_equal(name, "Powered") == TRUE) {
 		connman_bool_t enable;
 
