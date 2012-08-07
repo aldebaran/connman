@@ -316,6 +316,7 @@ void __connman_ipconfig_set_prefixlen(struct connman_ipconfig *ipconfig, unsigne
 
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig);
 int __connman_ipconfig_disable(struct connman_ipconfig *ipconfig);
+connman_bool_t __connman_ipconfig_is_usable(struct connman_ipconfig *ipconfig);
 
 const char *__connman_ipconfig_method2string(enum connman_ipconfig_method method);
 const char *__connman_ipconfig_type2string(enum connman_ipconfig_type type);

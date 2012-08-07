@@ -1664,6 +1664,25 @@ void __connman_ipconfig_disable_ipv6(struct connman_ipconfig *ipconfig)
 	disable_ipv6(ipconfig);
 }
 
+connman_bool_t __connman_ipconfig_is_usable(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return FALSE;
+
+	switch (ipconfig->method) {
+	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
+	case CONNMAN_IPCONFIG_METHOD_OFF:
+		return FALSE;
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
+	case CONNMAN_IPCONFIG_METHOD_FIXED:
+	case CONNMAN_IPCONFIG_METHOD_DHCP:
+	case CONNMAN_IPCONFIG_METHOD_MANUAL:
+		break;
+	}
+
+	return TRUE;
+}
+
 int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 {
 	struct connman_ipdevice *ipdevice;
