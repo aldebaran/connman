@@ -2943,8 +2943,7 @@ static int set_ipconfig(struct connman_service *service,
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 		if (err == 0 && old_method == CONNMAN_IPCONFIG_METHOD_OFF &&
 				method == CONNMAN_IPCONFIG_METHOD_DHCP) {
-			*new_state = service->state_ipv4 =
-				CONNMAN_SERVICE_STATE_CONFIGURATION;
+			*new_state = service->state_ipv4;
 			__connman_ipconfig_enable(ipconfig);
 		}
 
