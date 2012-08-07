@@ -2945,6 +2945,7 @@ static int set_ipconfig(struct connman_service *service,
 				method == CONNMAN_IPCONFIG_METHOD_DHCP) {
 			*new_state = service->state_ipv4;
 			__connman_ipconfig_enable(ipconfig);
+			__connman_service_auto_connect();
 		}
 
 	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
@@ -2952,6 +2953,7 @@ static int set_ipconfig(struct connman_service *service,
 				method == CONNMAN_IPCONFIG_METHOD_AUTO) {
 			*new_state = service->state_ipv6;
 			__connman_ipconfig_enable(ipconfig);
+			__connman_service_auto_connect();
 		}
 	}
 
