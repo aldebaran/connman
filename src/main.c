@@ -42,6 +42,8 @@
 #define DEFAULT_INPUT_REQUEST_TIMEOUT 120 * 1000
 #define DEFAULT_BROWSER_LAUNCH_TIMEOUT 300 * 1000
 
+#define CONFIGMAINFILE CONFIGDIR "/main.conf"
+
 static char *default_auto_connect[] = {
 	"wifi",
 	"ethernet",
@@ -243,6 +245,18 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 }
 
+static int config_init(const char *file)
+{
+	GKeyFile *config;
+
+	config = load_config(file);
+	parse_config(config);
+	if (config != NULL)
+		g_key_file_free(config);
+
+	return 0;
+}
+
 static GMainLoop *main_loop = NULL;
 
 static unsigned int __terminated = 0;
@@ -322,6 +336,7 @@ static void disconnect_callback(DBusConnection *conn, void *user_data)
 	g_main_loop_quit(main_loop);
 }
 
+static gchar *option_config = NULL;
 static gchar *option_debug = NULL;
 static gchar *option_device = NULL;
 static gchar *option_plugin = NULL;
@@ -344,6 +359,9 @@ static gboolean parse_debug(const char *key, const char *value,
 }
 
 static GOptionEntry options[] = {
+	{ "config", 'c', 0, G_OPTION_ARG_STRING, &option_config,
+				"Load the specified configuration file "
+				"instead of " CONFIGMAINFILE, "FILE" },
 	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
 				G_OPTION_ARG_CALLBACK, parse_debug,
 				"Specify debug options to enable", "DEBUG" },
@@ -427,7 +445,6 @@ int main(int argc, char *argv[])
 	GError *error = NULL;
 	DBusConnection *conn;
 	DBusError err;
-	GKeyFile *config;
 	guint signal;
 
 #ifdef NEED_THREADS
@@ -504,10 +521,10 @@ int main(int argc, char *argv[])
 
 	__connman_dbus_init(conn);
 
-	config = load_config(CONFIGDIR "/main.conf");
-	parse_config(config);
-	if (config != NULL)
-		g_key_file_free(config);
+	if (option_config == NULL)
+		config_init(CONFIGMAINFILE);
+	else
+		config_init(option_config);
 
 	__connman_storage_migrate();
 	__connman_technology_init();
@@ -547,6 +564,7 @@ int main(int argc, char *argv[])
 	__connman_wispr_init();
 	__connman_rfkill_init();
 
+	g_free(option_config);
 	g_free(option_device);
 	g_free(option_plugin);
 	g_free(option_nodevice);
