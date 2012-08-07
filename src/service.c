@@ -3235,6 +3235,16 @@ static DBusMessage *clear_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static connman_bool_t is_ipconfig_usable(struct connman_service *service)
+{
+	if (__connman_ipconfig_is_usable(service->ipconfig_ipv4) == FALSE &&
+			__connman_ipconfig_is_usable(service->ipconfig_ipv6)
+								== FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
 static connman_bool_t is_ignore(struct connman_service *service)
 {
 	if (service->autoconnect == FALSE)
@@ -3247,6 +3257,9 @@ static connman_bool_t is_ignore(struct connman_service *service)
 		return TRUE;
 
 	if (service->state == CONNMAN_SERVICE_STATE_FAILURE)
+		return TRUE;
+
+	if (is_ipconfig_usable(service) == FALSE)
 		return TRUE;
 
 	return FALSE;
@@ -5447,6 +5460,9 @@ int __connman_service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EINVAL;
 	default:
+		if (is_ipconfig_usable(service) == FALSE)
+			return -ENOLINK;
+
 		err = service_connect(service);
 	}
 
