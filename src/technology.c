@@ -310,7 +310,7 @@ static const char *get_name(enum connman_service_type type)
 	return NULL;
 }
 
-static void save_state(struct connman_technology *technology)
+static void technology_save(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
 	gchar *identifier;
@@ -338,7 +338,7 @@ done:
 	return;
 }
 
-static void load_state(struct connman_technology *technology)
+static void technology_load(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
 	gchar *identifier;
@@ -371,7 +371,7 @@ static void load_state(struct connman_technology *technology)
 		else
 			technology->enable_persistent = FALSE;
 
-		save_state(technology);
+		technology_save(technology);
 		g_clear_error(&error);
 	}
 done:
@@ -587,7 +587,7 @@ static int technology_enable(struct connman_technology *technology,
 		 * Hence we save the state here.
 		 */
 		technology->enable_persistent = TRUE;
-		save_state(technology);
+		technology_save(technology);
 	}
 
 	__connman_rfkill_block(technology->type, FALSE);
@@ -665,7 +665,7 @@ static int technology_disable(struct connman_technology *technology,
 
 	if (msg != NULL) {
 		technology->enable_persistent = FALSE;
-		save_state(technology);
+		technology_save(technology);
 	}
 
 	__connman_rfkill_block(technology->type, TRUE);
@@ -977,7 +977,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology->pending_reply = NULL;
 
-	load_state(technology);
+	technology_load(technology);
 
 	if (g_dbus_register_interface(connection, technology->path,
 					CONNMAN_TECHNOLOGY_INTERFACE,
