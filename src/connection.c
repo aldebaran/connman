@@ -149,6 +149,9 @@ static void set_vpn_routes(struct gateway_data *new_gateway,
 	char *dest;
 	int index;
 
+	DBG("new %p service %p gw %s type %d peer %s active %p",
+		new_gateway, service, gateway, type, peer, active_gateway);
+
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 		ipconfig = __connman_service_get_ip4config(service);
 		config = new_gateway->ipv4_gateway;
@@ -210,6 +213,8 @@ done:
 		if (active_gateway->ipv4_gateway == NULL)
 			return;
 
+		DBG("active gw %s", active_gateway->ipv4_gateway->gateway);
+
 		if (g_strcmp0(active_gateway->ipv4_gateway->gateway,
 							"0.0.0.0") != 0)
 			dest = active_gateway->ipv4_gateway->gateway;
@@ -223,6 +228,8 @@ done:
 
 		if (active_gateway->ipv6_gateway == NULL)
 			return;
+
+		DBG("active gw %s", active_gateway->ipv6_gateway->gateway);
 
 		if (g_strcmp0(active_gateway->ipv6_gateway->gateway,
 								"::") != 0)
