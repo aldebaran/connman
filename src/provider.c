@@ -28,6 +28,7 @@
 #include <string.h>
 #include <stdlib.h>
 #include <gdbus.h>
+#include <gweb/gresolv.h>
 
 #include "connman.h"
 
@@ -61,7 +62,54 @@ struct connman_provider {
 	GHashTable *user_routes;
 	gchar **user_networks;
 	gsize num_user_networks;
+	GResolv *resolv;
+	char **host_ip;
 };
+
+static void resolv_result(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+	struct connman_provider *provider = user_data;
+
+	DBG("status %d", status);
+
+	if (status == G_RESOLV_RESULT_STATUS_SUCCESS && results != NULL &&
+						g_strv_length(results) > 0)
+		provider->host_ip = g_strdupv(results);
+
+	connman_provider_unref(provider);
+}
+
+static void provider_resolv_host_addr(struct connman_provider *provider)
+{
+	if (provider->host == NULL)
+		return;
+
+	if (connman_inet_check_ipaddress(provider->host) > 0)
+		return;
+
+	if (provider->host_ip != NULL)
+		return;
+
+	/*
+	 * If the hostname is not numeric, try to resolv it. We do not wait
+	 * the result as it might take some time. We will get the result
+	 * before VPN will feed routes to us because VPN client will need
+	 * the IP address also before VPN connection can be established.
+	 */
+	provider->resolv = g_resolv_new(0);
+	if (provider->resolv == NULL) {
+		DBG("Cannot resolv %s", provider->host);
+		return;
+	}
+
+	DBG("Trying to resolv %s", provider->host);
+
+	connman_provider_ref(provider);
+
+	g_resolv_lookup_hostname(provider->resolv, provider->host,
+				resolv_result, provider);
+}
 
 void __connman_provider_append_properties(struct connman_provider *provider,
 							DBusMessageIter *iter)
@@ -350,6 +398,11 @@ static void provider_destruct(struct connman_provider *provider)
 	g_hash_table_destroy(provider->routes);
 	g_hash_table_destroy(provider->user_routes);
 	g_hash_table_destroy(provider->setting_strings);
+	if (provider->resolv != NULL) {
+		g_resolv_unref(provider->resolv);
+		provider->resolv = NULL;
+	}
+	g_strfreev(provider->host_ip);
 	g_free(provider);
 }
 
@@ -410,9 +463,10 @@ int __connman_provider_connect(struct connman_provider *provider)
 
 	DBG("provider %p", provider);
 
-	if (provider->driver != NULL && provider->driver->connect != NULL)
+	if (provider->driver != NULL && provider->driver->connect != NULL) {
+		provider_resolv_host_addr(provider);
 		err = provider->driver->connect(provider);
-	else
+	} else
 		return -EOPNOTSUPP;
 
 	if (err < 0) {
@@ -459,12 +513,38 @@ int __connman_provider_remove(const char *path)
 	return -ENXIO;
 }
 
+static connman_bool_t check_host(char **hosts, char *host)
+{
+	int i;
+
+	if (hosts == NULL)
+		return FALSE;
+
+	for (i = 0; hosts[i] != NULL; i++) {
+		if (g_strcmp0(hosts[i], host) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void provider_append_routes(gpointer key, gpointer value,
 					gpointer user_data)
 {
 	struct connman_route *route = value;
 	struct connman_provider *provider = user_data;
 	int index = provider->index;
+
+	/*
+	 * If the VPN administrator/user has given a route to
+	 * VPN server, then we must discard that because the
+	 * server cannot be contacted via VPN tunnel.
+	 */
+	if (check_host(provider->host_ip, route->host) == TRUE) {
+		DBG("Discarding VPN route to %s via %s at index %d",
+			route->host, route->gateway, index);
+		return;
+	}
 
 	if (route->family == AF_INET6) {
 		unsigned char prefix_len = atoi(route->netmask);
@@ -881,6 +961,8 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 
 		if (provider_register(provider) == 0)
 			connman_provider_load(provider);
+
+		provider_resolv_host_addr(provider);
 	}
 
 	if (networks != NULL) {
