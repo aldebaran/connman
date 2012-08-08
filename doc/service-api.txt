@@ -123,12 +123,15 @@ Properties	string State [readonly]
 			The service state information.
 
 			Valid states are "idle", "failure", "association",
-			"configuration", "ready" and "online".
+			"configuration", "ready", "disconnect" and "online".
 
 			The "ready" state signals a successfully
 			connected device. "online" signals that an
 			Internet connection is available and has been
 			verified.
+
+			See doc/overview-api.txt for more information about
+			state transitions.
 
 		string Error [readonly]
 
