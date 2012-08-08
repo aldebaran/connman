@@ -3206,11 +3206,34 @@ static DBusMessage *set_property(DBusConnection *conn,
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
+static void set_error(struct connman_service *service,
+					enum connman_service_error error)
+{
+	const char *str;
+
+	if (service->error == error)
+		return;
+
+	service->error = error;
+
+	if (service->path == NULL)
+		return;
+
+	str = error2string(service->error);
+
+	if (str == NULL)
+		str = "";
+
+	connman_dbus_property_changed_basic(service->path,
+				CONNMAN_SERVICE_INTERFACE, "Error",
+				DBUS_TYPE_STRING, &str);
+}
+
 static void set_idle(struct connman_service *service)
 {
 	service->state = service->state_ipv4 = service->state_ipv6 =
 						CONNMAN_SERVICE_STATE_IDLE;
-	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 	state_changed(service);
 }
 
@@ -4114,6 +4137,8 @@ static void service_initialize(struct connman_service *service)
 	service->refcount = 1;
 	service->session_usage_count = 0;
 
+	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+
 	service->type     = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	service->security = CONNMAN_SERVICE_SECURITY_UNKNOWN;
 
@@ -4693,7 +4718,7 @@ static void request_input_cb (struct connman_service *service,
  done:
 	if (err >= 0) {
 		/* We forget any previous error. */
-		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
 		__connman_service_connect(service);
 
@@ -4943,7 +4968,7 @@ static int service_indicate_state(struct connman_service *service)
 			return 0;
 		service_complete(service);
 	} else
-		service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
 	iter = g_hash_table_lookup(service_hash, service->identifier);
 	if (iter != NULL && g_sequence_get_length(service_list) > 1) {
@@ -4969,7 +4994,7 @@ int __connman_service_indicate_error(struct connman_service *service,
 	if (service == NULL)
 		return -EINVAL;
 
-	service->error = error;
+	set_error(service, error);
 
 	if (service->error == CONNMAN_SERVICE_ERROR_INVALID_KEY)
 		__connman_service_set_passphrase(service, NULL);
@@ -4995,7 +5020,7 @@ int __connman_service_clear_error(struct connman_service *service)
 
 	service->state_ipv4 = service->state_ipv6 =
 						CONNMAN_SERVICE_STATE_UNKNOWN;
-	service->error = CONNMAN_SERVICE_ERROR_UNKNOWN;
+	set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 
 	if (service->favorite == TRUE)
 		set_reconnect_state(service, TRUE);
