@@ -700,8 +700,21 @@ static struct connman_provider *provider_create_from_keyfile(GKeyFile *keyfile,
 
 static int provider_create_service(struct connman_provider *provider)
 {
-	if (provider->vpn_service != NULL)
-		return -EALREADY;
+	if (provider->vpn_service != NULL) {
+		connman_bool_t connected;
+
+		connected = __connman_service_is_connected_state(
+			provider->vpn_service, CONNMAN_IPCONFIG_TYPE_IPV4);
+		if (connected == TRUE)
+			return -EALREADY;
+
+		connected = __connman_service_is_connected_state(
+			provider->vpn_service, CONNMAN_IPCONFIG_TYPE_IPV6);
+		if (connected == TRUE)
+			return -EALREADY;
+
+		return 0;
+	}
 
 	provider->vpn_service =
 		__connman_service_create_from_provider(provider);
