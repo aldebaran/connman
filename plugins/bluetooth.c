@@ -486,8 +486,7 @@ done:
 	dbus_message_unref(message);
 }
 
-static void check_networks(struct connman_device *device,
-						DBusMessageIter *array)
+static void check_networks(DBusMessageIter *array)
 {
 	DBusMessageIter value;
 
@@ -540,7 +539,7 @@ static gboolean adapter_changed(DBusConnection *conn,
 		dbus_message_iter_get_basic(&value, &val);
 		connman_device_set_scanning(device, val);
 	} else if (g_str_equal(key, "Devices") == TRUE) {
-		check_networks(device, &value);
+		check_networks(&value);
 	}
 
 	return TRUE;
@@ -695,7 +694,7 @@ update:
 	connman_device_set_scanning(device, scanning);
 
 	if (powered == TRUE)
-		check_networks(device, &networks);
+		check_networks(&networks);
 	else
 		remove_device_networks(device);
 
