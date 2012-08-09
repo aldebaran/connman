@@ -454,7 +454,7 @@ done:
 	dbus_pending_call_unref(call);
 }
 
-static void add_network(struct connman_device *device, const char *path)
+static void add_network(const char *path)
 {
 	DBusMessage *message;
 	DBusPendingCall *call;
@@ -501,7 +501,7 @@ static void check_networks(struct connman_device *device,
 
 		dbus_message_iter_get_basic(&value, &path);
 
-		add_network(device, path);
+		add_network(path);
 
 		dbus_message_iter_next(&value);
 	}
@@ -594,7 +594,7 @@ static gboolean device_changed(DBusConnection *conn,
 	DBG("key %s", key);
 
 	if (g_str_equal(key, "UUIDs") == TRUE)
-		add_network(NULL, path);
+		add_network(path);
 
 	return TRUE;
 }
