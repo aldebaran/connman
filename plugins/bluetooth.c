@@ -69,6 +69,7 @@ static DBusConnection *connection;
 
 static GHashTable *bluetooth_devices = NULL;
 static GHashTable *bluetooth_networks = NULL;
+static GHashTable *pending_networks = NULL;
 
 static int pan_probe(struct connman_network *network)
 {
@@ -506,6 +507,23 @@ static void check_networks(DBusMessageIter *array)
 	}
 }
 
+static void check_pending_networks(const char *adapter)
+{
+	GSList *networks, *list;
+
+	networks = g_hash_table_lookup(pending_networks, adapter);
+	if (networks == NULL)
+		return;
+
+	for (list = networks; list != NULL; list = list->next) {
+		char *path = list->data;
+
+		add_network(path);
+	}
+
+	g_hash_table_remove(pending_networks, adapter);
+}
+
 static gboolean adapter_changed(DBusConnection *conn,
 				DBusMessage *message, void *user_data)
 {
@@ -533,6 +551,8 @@ static gboolean adapter_changed(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &val);
 		connman_device_set_powered(device, val);
+		if (val == TRUE)
+			check_pending_networks(path);
 	} else if (g_str_equal(key, "Discovering") == TRUE) {
 		dbus_bool_t val;
 
@@ -628,6 +648,32 @@ static void remove_device_networks(struct connman_device *device)
 	g_slist_free(key_list);
 }
 
+static void add_pending_networks(const char *adapter, DBusMessageIter *array)
+{
+	DBusMessageIter value;
+	GSList *list = NULL;
+
+	if (dbus_message_iter_get_arg_type(array) != DBUS_TYPE_ARRAY)
+		return;
+
+	dbus_message_iter_recurse(array, &value);
+
+	while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_OBJECT_PATH) {
+		const char *path;
+
+		dbus_message_iter_get_basic(&value, &path);
+
+		list = g_slist_prepend(list, g_strdup(path));
+
+		dbus_message_iter_next(&value);
+	}
+
+	if (list == NULL)
+		return;
+
+	g_hash_table_replace(pending_networks, g_strdup(adapter), list);
+}
+
 static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 {
 	char *path = user_data;
@@ -693,10 +739,11 @@ update:
 	connman_device_set_powered(device, powered);
 	connman_device_set_scanning(device, scanning);
 
-	if (powered == TRUE)
-		check_networks(&networks);
-	else
+	if (powered == FALSE) {
 		remove_device_networks(device);
+		add_pending_networks(path, &networks);
+	} else
+		check_networks(&networks);
 
 done:
 	dbus_message_unref(reply);
@@ -752,6 +799,7 @@ static void remove_adapter(DBusConnection *conn, const char *path)
 	DBG("path %s", path);
 
 	g_hash_table_remove(bluetooth_devices, path);
+	g_hash_table_remove(pending_networks, path);
 }
 
 static gboolean adapter_removed(DBusConnection *conn, DBusMessage *message,
@@ -833,6 +881,13 @@ static void remove_network(gpointer data)
 	connman_network_unref(network);
 }
 
+static void remove_pending_networks(gpointer data)
+{
+	GSList *list = data;
+
+	g_slist_free_full(list, g_free);
+}
+
 static void bluetooth_connect(DBusConnection *conn, void *user_data)
 {
 	DBusMessage *message;
@@ -845,6 +900,9 @@ static void bluetooth_connect(DBusConnection *conn, void *user_data)
 
 	bluetooth_networks = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, remove_network);
+
+	pending_networks = g_hash_table_new_full(g_str_hash, g_str_equal,
+					g_free, remove_pending_networks);
 
 	message = dbus_message_new_method_call(BLUEZ_SERVICE, "/",
 				BLUEZ_MANAGER_INTERFACE, LIST_ADAPTERS);
@@ -881,6 +939,8 @@ static void bluetooth_disconnect(DBusConnection *conn, void *user_data)
 	bluetooth_networks = NULL;
 	g_hash_table_destroy(bluetooth_devices);
 	bluetooth_devices = NULL;
+	g_hash_table_destroy(pending_networks);
+	pending_networks = NULL;
 }
 
 static int bluetooth_probe(struct connman_device *device)
