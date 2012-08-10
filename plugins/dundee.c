@@ -32,6 +32,7 @@
 #include <connman/plugin.h>
 #include <connman/device.h>
 #include <connman/network.h>
+#include <connman/service.h>
 #include <connman/inet.h>
 #include <connman/dbus.h>
 
@@ -195,10 +196,17 @@ static int create_network(struct dundee_data *info)
 
 static void set_connected(struct dundee_data *info)
 {
+	struct connman_service *service;
+
 	DBG("%s", info->path);
 
 	connman_inet_ifup(info->index);
 
+	service = connman_service_lookup_from_network(info->network);
+	if (service == NULL)
+		return;
+
+	connman_service_create_ip4config(service, info->index);
 	connman_network_set_index(info->network, info->index);
 	connman_network_set_ipv4_method(info->network,
 					CONNMAN_IPCONFIG_METHOD_FIXED);
