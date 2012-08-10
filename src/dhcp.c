@@ -28,6 +28,7 @@
 #include <stdlib.h>
 
 #include <connman/ipconfig.h>
+#include <include/setting.h>
 
 #include <gdhcp/gdhcp.h>
 
@@ -258,9 +259,12 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		domainname = g_strdup(option->data);
 
-	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_HOST_NAME);
-	if (option != NULL)
-		hostname = g_strdup(option->data);
+	if (connman_setting_get_bool("AllowHostnameUpdates") == TRUE) {
+		option = g_dhcp_client_get_option(dhcp_client,
+						G_DHCP_HOST_NAME);
+		if (option != NULL)
+			hostname = g_strdup(option->data);
+	}
 
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCP_NTP_SERVER);
 	ns_entries = g_list_length(option);
