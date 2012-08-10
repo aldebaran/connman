@@ -469,31 +469,14 @@ void connman_network_set_index(struct connman_network *network, int index)
 		goto done;
 
 	ipconfig = __connman_service_get_ip4config(service);
+	if (ipconfig == NULL)
+		goto done;
+
+	/* If index changed, the index of ipconfig must be reset. */
+	__connman_ipconfig_set_index(ipconfig, index);
 
 	DBG("index %d service %p ip4config %p", network->index,
 		service, ipconfig);
-
-	if (network->index < 0 && ipconfig == NULL) {
-
-		ipconfig = __connman_service_get_ip4config(service);
-		if (ipconfig == NULL)
-			/*
-			 * This is needed for plugins that havent set their
-			 * ipconfig layer yet, due to not being able to get
-			 * a network index prior to creating a service.
-			 */
-			connman_service_create_ip4config(service, index);
-		else
-			__connman_ipconfig_set_index(ipconfig, index);
-
-	} else {
-		/* If index changed, the index of ipconfig must be reset. */
-		if (ipconfig == NULL)
-			goto done;
-
-		__connman_ipconfig_set_index(ipconfig, index);
-	}
-
 done:
 	network->index = index;
 }
