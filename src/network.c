@@ -938,6 +938,8 @@ static int manual_ipv6_set(struct connman_network *network,
 	if (__connman_ipconfig_get_local(ipconfig_ipv6) == NULL)
 		__connman_service_read_ip6config(service);
 
+	__connman_ipconfig_enable_ipv6(ipconfig_ipv6);
+
 	err = __connman_ipconfig_address_add(ipconfig_ipv6);
 	if (err < 0) {
 		connman_network_set_error(network,
