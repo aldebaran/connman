@@ -5909,7 +5909,7 @@ void __connman_service_read_ip4config(struct connman_service *service)
 	g_key_file_free(keyfile);
 }
 
-void __connman_service_create_ip4config(struct connman_service *service,
+void connman_service_create_ip4config(struct connman_service *service,
 					int index)
 {
 	DBG("ipv4 %p", service->ipconfig_ipv4);
@@ -5938,7 +5938,7 @@ void __connman_service_read_ip6config(struct connman_service *service)
 	g_key_file_free(keyfile);
 }
 
-void __connman_service_create_ip6config(struct connman_service *service,
+void connman_service_create_ip6config(struct connman_service *service,
 								int index)
 {
 	DBG("ipv6 %p", service->ipconfig_ipv6);

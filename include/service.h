@@ -116,6 +116,11 @@ char **connman_service_get_proxy_excludes(struct connman_service *service);
 const char *connman_service_get_proxy_url(struct connman_service *service);
 const char *connman_service_get_proxy_autoconfig(struct connman_service *service);
 
+void connman_service_create_ip4config(struct connman_service *service,
+								int index);
+void connman_service_create_ip6config(struct connman_service *service,
+								int index);
+
 #ifdef __cplusplus
 }
 #endif

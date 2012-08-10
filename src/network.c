@@ -482,7 +482,7 @@ void connman_network_set_index(struct connman_network *network, int index)
 			 * ipconfig layer yet, due to not being able to get
 			 * a network index prior to creating a service.
 			 */
-			__connman_service_create_ip4config(service, index);
+			connman_service_create_ip4config(service, index);
 		else
 			__connman_ipconfig_set_index(ipconfig, index);
 

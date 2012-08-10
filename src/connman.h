@@ -573,11 +573,8 @@ struct connman_service *__connman_service_get_default(void);
 void __connman_service_update_from_network(struct connman_network *network);
 void __connman_service_remove_from_network(struct connman_network *network);
 void __connman_service_read_ip4config(struct connman_service *service);
-void __connman_service_create_ip4config(struct connman_service *service,
-								int index);
 void __connman_service_read_ip6config(struct connman_service *service);
-void __connman_service_create_ip6config(struct connman_service *service,
-								int index);
+
 struct connman_ipconfig *__connman_service_get_ip4config(
 				struct connman_service *service);
 struct connman_ipconfig *__connman_service_get_ip6config(
