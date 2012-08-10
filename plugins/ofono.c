@@ -259,6 +259,7 @@ static void set_connected(struct modem_data *modem)
 	struct connman_service *service;
 	connman_bool_t setip = FALSE;
 	enum connman_ipconfig_method method;
+	char *nameservers;
 	int index;
 
 	DBG("%s", modem->path);
@@ -289,8 +290,6 @@ static void set_connected(struct modem_data *modem)
 	if (method == CONNMAN_IPCONFIG_METHOD_FIXED) {
 		connman_network_set_ipaddress(modem->network,
 						modem->context->ipv4_address);
-		connman_network_set_nameservers(modem->network,
-					modem->context->ipv4_nameservers);
 	}
 
 	method = modem->context->ipv6_method;
@@ -300,6 +299,22 @@ static void set_connected(struct modem_data *modem)
 		connman_network_set_ipaddress(modem->network,
 						modem->context->ipv6_address);
 		setip = TRUE;
+	}
+
+	/* Set the nameservers */
+	if (modem->context->ipv4_nameservers != NULL &&
+			modem->context->ipv6_nameservers != NULL) {
+		nameservers = g_strdup_printf("%s %s",
+					modem->context->ipv4_nameservers,
+					modem->context->ipv6_nameservers);
+		connman_network_set_nameservers(modem->network, nameservers);
+		g_free(nameservers);
+	} else if (modem->context->ipv4_nameservers != NULL) {
+		connman_network_set_nameservers(modem->network,
+					modem->context->ipv4_nameservers);
+	} else if (modem->context->ipv6_nameservers != NULL) {
+		connman_network_set_nameservers(modem->network,
+					modem->context->ipv6_nameservers);
 	}
 
 	if (setip == TRUE)
