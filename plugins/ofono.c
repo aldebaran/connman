@@ -256,57 +256,50 @@ static void network_context_free(struct network_context *context)
 
 static void set_connected(struct modem_data *modem)
 {
+	struct connman_service *service;
 	connman_bool_t setip = FALSE;
+	enum connman_ipconfig_method method;
+	int index;
 
 	DBG("%s", modem->path);
 
-	if (modem->context->index < 0 ||
-			modem->context->ipv4_address == NULL) {
+	index = modem->context->index;
+
+	if (index < 0 || modem->context->ipv4_address == NULL) {
 		connman_error("Invalid index and/or address");
 		return;
 	}
 
-	connman_network_set_index(modem->network, modem->context->index);
+	service = connman_service_lookup_from_network(modem->network);
+	if (service == NULL)
+		return;
 
-	switch (modem->context->ipv4_method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		break;
+	method = modem->context->ipv4_method;
+	if (method == CONNMAN_IPCONFIG_METHOD_FIXED ||
+			method == CONNMAN_IPCONFIG_METHOD_DHCP)
+	{
+		connman_service_create_ip4config(service, index);
+		connman_network_set_index(modem->network, index);
 
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		connman_network_set_ipv4_method(modem->network,
-						modem->context->ipv4_method);
+		connman_network_set_ipv4_method(modem->network, method);
+
+		setip = TRUE;
+	}
+
+	if (method == CONNMAN_IPCONFIG_METHOD_FIXED) {
 		connman_network_set_ipaddress(modem->network,
 						modem->context->ipv4_address);
 		connman_network_set_nameservers(modem->network,
 					modem->context->ipv4_nameservers);
-		setip = TRUE;
-		break;
-
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		connman_network_set_ipv4_method(modem->network,
-						modem->context->ipv4_method);
-		setip = TRUE;
-		break;
 	}
 
-	switch (modem->context->ipv6_method) {
-	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
-	case CONNMAN_IPCONFIG_METHOD_OFF:
-	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-	case CONNMAN_IPCONFIG_METHOD_DHCP:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
-		break;
-
-	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		connman_network_set_ipv6_method(modem->network,
-							modem->context->ipv6_method);
+	method = modem->context->ipv6_method;
+	if (method == CONNMAN_IPCONFIG_METHOD_FIXED) {
+		connman_service_create_ip6config(service, index);
+		connman_network_set_ipv6_method(modem->network, method);
 		connman_network_set_ipaddress(modem->network,
-							modem->context->ipv6_address);
+						modem->context->ipv6_address);
 		setip = TRUE;
-		break;
 	}
 
 	if (setip == TRUE)
@@ -1019,8 +1012,6 @@ static void add_network(struct modem_data *modem)
 	connman_network_set_string(modem->network, "Path",
 					modem->context->path);
 
-	connman_network_set_index(modem->network, modem->context->index);
-
 	if (modem->name != NULL)
 		connman_network_set_name(modem->network, modem->name);
 	else
@@ -1041,12 +1032,6 @@ static void add_network(struct modem_data *modem)
 		modem->network = NULL;
 		return;
 	}
-
-	/*
-	 * Create the ipconfig layer before trying to connect. Withouth
-	 * the ipconfig layer the core is not ready to process errors.
-	 */
-	connman_network_set_index(modem->network, -1);
 }
 
 static void remove_network(struct modem_data *modem)
