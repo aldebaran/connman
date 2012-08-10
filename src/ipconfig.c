@@ -169,9 +169,6 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 	if (check_ipv6_address(address) == FALSE)
 		return -EINVAL;
 
-	if (check_ipv6_address(gateway) == FALSE)
-		return -EINVAL;
-
 	DBG("prefix_len %d address %s gateway %s",
 			prefix_length, address, gateway);
 
