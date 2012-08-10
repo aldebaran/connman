@@ -83,7 +83,7 @@ static void dhcp_invalidate(struct connman_dhcp *dhcp, connman_bool_t callback)
 	if (dhcp == NULL)
 		return;
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL)
 		goto out;
 
@@ -198,7 +198,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("Lease available");
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
 		connman_error("Can not lookup service");
 		return;
@@ -364,7 +364,7 @@ static void ipv4ll_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("IPV4LL available");
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL)
 		return;
 
@@ -446,7 +446,7 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 
 	dhcp->dhcp_client = dhcp_client;
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	ipconfig = __connman_service_get_ip4config(service);
 
 	return g_dhcp_client_start(dhcp_client,

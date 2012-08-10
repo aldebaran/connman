@@ -237,7 +237,7 @@ int __connman_device_disable(struct connman_device *device)
 
 	if (device->network) {
 		struct connman_service *service =
-			__connman_service_lookup_from_network(device->network);
+			connman_service_lookup_from_network(device->network);
 
 		if (service != NULL)
 			__connman_service_disconnect(service);

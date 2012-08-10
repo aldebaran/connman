@@ -265,7 +265,7 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	DBG("dhcpv6 information-request %p", dhcp);
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
 		connman_error("Can not lookup service");
 		return;
@@ -353,7 +353,7 @@ static int dhcpv6_info_request(struct connman_dhcpv6 *dhcp)
 	if (getenv("CONNMAN_DHCPV6_DEBUG"))
 		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
 		clear_timer(dhcp);
 		g_dhcp_client_unref(dhcp_client);
@@ -439,7 +439,7 @@ static int set_addresses(GDHCPClient *dhcp_client,
 	const char *c_address;
 	char *address = NULL;
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
 		connman_error("Can not lookup service");
 		return -EINVAL;
@@ -1108,7 +1108,7 @@ static int dhcpv6_solicitation(struct connman_dhcpv6 *dhcp)
 	if (getenv("CONNMAN_DHCPV6_DEBUG"))
 		g_dhcp_client_set_debug(dhcp_client, dhcpv6_debug, "DHCPv6");
 
-	service = __connman_service_lookup_from_network(dhcp->network);
+	service = connman_service_lookup_from_network(dhcp->network);
 	if (service == NULL) {
 		clear_timer(dhcp);
 		g_dhcp_client_unref(dhcp_client);
