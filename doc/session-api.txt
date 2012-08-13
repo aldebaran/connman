@@ -271,12 +271,3 @@ Settings	string  Bearer [readonly]
 			Interface name used by the service object to connect.
 			This name can be used for SO_BINDTODEVICE in the
 			application.
-
-		uint32  SessionMarker [readonly]
-
-			The unique session marker can be used to mark all
-			traffic from the application with the SO_MARK
-			socket option. In combination of the EmergencyCall
-			this allows ConnMan to setup the firewall rules
-			that only traffic from the emergency application
-			are transmitted.
