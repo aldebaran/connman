@@ -108,6 +108,9 @@ Settings	string  Bearer [readonly]
 			connection and the state will be updated on all steps,
 			'connected' and 'online'. This is the default value.
 
+			(This setting will be removed when the unique process
+			identifaction problem is solved.)
+
 		boolean State [readonly]
 
 			This indicates if the connection is disconnected,
