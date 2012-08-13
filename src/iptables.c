@@ -1533,7 +1533,8 @@ static int iptables_command(int argc, char *argv[])
 	xt_rm = NULL;
 	xt_m = NULL;
 	xt_t = NULL;
-	ret = 0;
+	/* Default code for options parsing */
+	ret = -EINVAL;
 
 	/* extension's options will generate false-positives errors */
 	opterr = 0;
@@ -1670,10 +1671,8 @@ static int iptables_command(int argc, char *argv[])
 			table_name = optarg;
 
 			table = iptables_init(table_name);
-			if (table == NULL) {
-				ret = -EINVAL;
+			if (table == NULL)
 				goto out;
-			}
 
 			break;
 
@@ -1686,7 +1685,6 @@ static int iptables_command(int argc, char *argv[])
 
 			connman_error("Invalid option");
 
-			ret = -EINVAL;
 			goto out;
 
 		default:
@@ -1769,11 +1767,12 @@ static int iptables_command(int argc, char *argv[])
 		table_name = "filter";
 
 		table = iptables_init(table_name);
-		if (table == NULL) {
-			ret = -EINVAL;
+		if (table == NULL)
 			goto out;
-		}
 	}
+
+	/* Option parsing went fine, falling back to succes code */
+	ret = 0;
 
 	if (delete_chain != NULL) {
 		printf("Delete chain %s\n", delete_chain);
@@ -1786,7 +1785,6 @@ static int iptables_command(int argc, char *argv[])
 	if (dump) {
 		iptables_dump(table);
 
-		ret = 0;
 		goto out;
 	}
 
