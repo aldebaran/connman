@@ -51,9 +51,12 @@ static int config_get_string(const char *id, const char *key, char **val)
 {
 	DBG("id %s key %s", id, key);
 
-	*val = NULL;
+	if (g_str_equal(key, "RoamingPolicy") == TRUE)
+		*val = "default";
+	else
+		return -EINVAL;
 
-	return -EINVAL;
+	return 0;
 }
 
 static struct connman_session_config session_config = {
