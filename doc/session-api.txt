@@ -217,33 +217,6 @@ Settings	string  Bearer [readonly]
 
 			If the system is not online yet this value is ignored.
 
-		uint32  PeriodicConnect [readwrite]
-
-			Indicate that a periodic connection attempt every
-			n minutes should be made. The minutes value is a
-			suggestion when to connection. There is no guarantee
-			that it will be made or will succeed.
-
-			A value of 0 disable this feature.
-
-			This feature is interesting for applications that
-			wanna check status on a regular interval. And instead
-			of the application waking up and trying to connect,
-			this can be centralized nicely and multiple wakeups
-			avoided in case no connection is available.
-
-			An example application would be an email client that
-			wants to check for new emails every 10 minutes.
-
-			On purpose the smallest setting is 1 minute here since
-			waking up more often and trying to set up a connection
-			seems rather pointless use case.
-
-			If an interval step has passed this can be nicely
-			rescheduled when any connection matching the bearer
-			settings becomes available becomes available. Using
-			this feature it is also easy to avoid congestion.
-
 		boolean EmergencyCall [readwrite]
 
 			Boolean representing the emergency mode of the
