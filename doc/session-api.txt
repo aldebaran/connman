@@ -180,27 +180,6 @@ Settings	string  Bearer [readonly]
 			handovers can happen at any time even if this is
 			set to true.
 
-		string  RoamingPolicy [readwrite]
-
-			The allowed roaming behavior.
-
-			Valid policies are "national", "international",
-			"default", "always" and "forbidden".
-
-			"national" allows roaming within a country.
-			"international" allows roaming in a country and
-			between countries.
-
-			"default" is used to tell the Session to use
-			the global roaming setting.
-
-			"always" will overwrite the default "forbidden"
-			value which is useful for emergency application.
-			This value will be protected by additional PolicyKit
-			rule.
-
-			Default value is "forbidden".
-
 		string  Interface [readonly]
 
 			Interface name used by the service object to connect.
