@@ -1224,6 +1224,9 @@ static struct connman_iptables *connman_iptables_init(const char *table_name)
 	char *module = NULL;
 	socklen_t s;
 
+	if (table_name == NULL)
+		table_name = "filter";
+
 	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
 		goto err;
 
@@ -1496,6 +1499,15 @@ out:
 	return err;
 }
 
+static struct connman_iptables *pre_load_table(char *table_name,
+					struct connman_iptables *table)
+{
+	if (table != NULL)
+		return table;
+
+	return connman_iptables_init(table_name);
+}
+
 int main(int argc, char *argv[])
 {
 	struct connman_iptables *table;
@@ -1517,7 +1529,7 @@ int main(int argc, char *argv[])
 	delete_rule = FALSE;
 	compare_rule = FALSE;
 	chain = new_chain = match_name = target_name = NULL;
-	delete_chain = flush_chain = policy = NULL;
+	delete_chain = flush_chain = policy = table_name = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_rm = NULL;
@@ -1618,6 +1630,11 @@ int main(int argc, char *argv[])
 
 		case 'j':
 			target_name = optarg;
+
+			table = pre_load_table(table_name, table);
+			if (table == NULL)
+				goto out;
+
 			xt_t = prepare_target(table, target_name);
 			if (xt_t == NULL)
 				goto out;
@@ -1626,6 +1643,11 @@ int main(int argc, char *argv[])
 
 		case 'm':
 			match_name = optarg;
+
+			table = pre_load_table(table_name, table);
+			if (table == NULL)
+				goto out;
+
 			xt_m = prepare_matches(table, &xt_rm, match_name);
 			if (xt_m == NULL)
 				goto out;
@@ -1658,7 +1680,7 @@ int main(int argc, char *argv[])
 		case 't':
 			table_name = optarg;
 
-			table = connman_iptables_init(table_name);
+			table = pre_load_table(table_name, table);
 			if (table == NULL)
 				return -1;
 
@@ -1754,13 +1776,9 @@ int main(int argc, char *argv[])
 		xt_t->final_check(xt_t->tflags);
 #endif
 
-	if (table == NULL) {
-		table_name = "filter";
-
-		table = connman_iptables_init(table_name);
-		if (table == NULL)
-			return -1;
-	}
+	table = pre_load_table(table_name, table);
+	if (table == NULL)
+		return -1;
 
 	if (delete) {
 		if (delete_chain == NULL)
