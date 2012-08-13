@@ -92,7 +92,6 @@ struct session_info {
 	connman_bool_t stay_connected;
 	connman_bool_t ecall;
 	enum connman_session_roaming_policy roaming_policy;
-	unsigned int marker;
 
 	struct service_entry *entry;
 	enum connman_session_reason reason;
@@ -512,14 +511,6 @@ static void append_notify(DBusMessageIter *dict,
 		info_last->roaming_policy = info->roaming_policy;
 	}
 
-	if (session->append_all == TRUE ||
-			info->marker != info_last->marker) {
-		connman_dbus_dict_append_basic(dict, "SessionMarker",
-						DBUS_TYPE_UINT32,
-						&info->marker);
-		info_last->marker = info->marker;
-	}
-
 	session->append_all = FALSE;
 }
 
@@ -565,7 +556,6 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 			info->stay_connected != info_last->stay_connected ||
 			info->roaming_policy != info_last->roaming_policy ||
 			info->priority != info_last->priority ||
-			info->marker != info_last->marker ||
 			info->ecall != info_last->ecall ||
 			info->type != info_last->type)
 		return TRUE;
@@ -1656,7 +1646,6 @@ int __connman_session_create(DBusMessage *msg)
 	info->ecall = ecall;
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
-	info->marker = 0;
 
 	if (allowed_bearers == NULL) {
 		info->allowed_bearers =
@@ -1704,7 +1693,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->ecall = info->ecall;
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
-	info_last->marker = info->marker;
 	info_last->allowed_bearers = info->allowed_bearers;
 
 	session->append_all = TRUE;
