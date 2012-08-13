@@ -26,6 +26,8 @@
 #include <errno.h>
 #include <string.h>
 
+#include <glib.h>
+
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
 #include <connman/log.h>
@@ -35,9 +37,12 @@ static int config_get_bool(const char *id, const char *key, connman_bool_t *val)
 {
 	DBG("id %s key %s", id, key);
 
-	*val = FALSE;
+	if (g_str_equal(key, "Priority") == TRUE)
+		*val = FALSE;
+	else
+		return -EINVAL;
 
-	return -EINVAL;
+	return 0;
 }
 
 static int config_get_string(const char *id, const char *key, char **val)
