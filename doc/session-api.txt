@@ -241,15 +241,6 @@ Settings	string  Bearer [readonly]
 			settings becomes available becomes available. Using
 			this feature it is also easy to avoid congestion.
 
-		uint32  IdleTimeout [readwrite]
-
-			If the system is idle for given period then it should
-			go offline.
-
-			If the timeout is 0, this feature is disabled. If
-			different values are provided by several session object
-			the longest interval is taken as timeout value.
-
 		boolean EmergencyCall [readwrite]
 
 			Boolean representing the emergency mode of the
