@@ -92,7 +92,6 @@ struct session_info {
 	connman_bool_t priority;
 	GSList *allowed_bearers;
 	connman_bool_t avoid_handover;
-	connman_bool_t stay_connected;
 	connman_bool_t ecall;
 	enum connman_session_roaming_policy roaming_policy;
 
@@ -492,14 +491,6 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	if (session->append_all == TRUE ||
-			info->stay_connected != info_last->stay_connected) {
-		connman_dbus_dict_append_basic(dict, "StayConnected",
-						DBUS_TYPE_BOOLEAN,
-						&info->stay_connected);
-		info_last->stay_connected = info->stay_connected;
-	}
-
-	if (session->append_all == TRUE ||
 			info->ecall != info_last->ecall) {
 		connman_dbus_dict_append_basic(dict, "EmergencyCall",
 						DBUS_TYPE_BOOLEAN,
@@ -558,7 +549,6 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 
 	if (info->allowed_bearers != info_last->allowed_bearers ||
 			info->avoid_handover != info_last->avoid_handover ||
-			info->stay_connected != info_last->stay_connected ||
 			info->roaming_policy != info_last->roaming_policy ||
 			info->ecall != info_last->ecall ||
 			info->type != info_last->type)
@@ -1247,8 +1237,7 @@ static void session_changed(struct connman_session *session,
 
 		deselect_and_disconnect(session, info->reason);
 
-		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE ||
-				info->stay_connected == TRUE) {
+		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE) {
 			select_and_connect(session, info->reason);
 		}
 
@@ -1393,9 +1382,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "AvoidHandover") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->avoid_handover);
-		} else if (g_str_equal(name, "StayConnected") == TRUE) {
-			dbus_message_iter_get_basic(&value,
-					&info->stay_connected);
 		} else if (g_str_equal(name, "EmergencyCall") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->ecall);
@@ -1518,7 +1504,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
 	connman_bool_t priority, avoid_handover = FALSE;
-	connman_bool_t stay_connected = FALSE, ecall = FALSE;
+	connman_bool_t ecall = FALSE;
 	enum connman_session_roaming_policy roaming_policy =
 				CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
 	GSList *allowed_bearers = NULL;
@@ -1563,9 +1549,6 @@ int __connman_session_create(DBusMessage *msg)
 			if (g_str_equal(key, "AvoidHandover") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&avoid_handover);
-			} else if (g_str_equal(key, "StayConnected") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&stay_connected);
 			} else if (g_str_equal(key, "EmergencyCall") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&ecall);
@@ -1642,7 +1625,6 @@ int __connman_session_create(DBusMessage *msg)
 	info->type = type;
 	info->priority = priority;
 	info->avoid_handover = avoid_handover;
-	info->stay_connected = stay_connected;
 	info->ecall = ecall;
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
@@ -1689,7 +1671,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->state = info->state;
 	info_last->priority = info->priority;
 	info_last->avoid_handover = info->avoid_handover;
-	info_last->stay_connected = info->stay_connected;
 	info_last->ecall = info->ecall;
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
