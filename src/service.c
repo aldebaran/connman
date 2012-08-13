@@ -3511,6 +3511,8 @@ static gboolean connect_timeout(gpointer user_data)
 
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
+	else if (service->provider != NULL)
+		__connman_provider_disconnect(service->provider);
 
 	__connman_ipconfig_disable(service->ipconfig_ipv4);
 	__connman_ipconfig_disable(service->ipconfig_ipv6);
