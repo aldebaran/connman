@@ -84,34 +84,7 @@ Methods		void Destroy()
 			to be sent. Some changes might cause the session to
 			be moved to offline state.
 
-Settings	string  Bearer [readonly]
-
-			This indicates the current bearer that is used
-			for this session. Or an empty string if no bearer
-			if available.
-
-		string ConnectionType [readwrite]
-
-			This is used to indicate which connection is requested
-			from the session. The state of the session will be
-			updated accordingly. Values can be nothing, 'local' or
-			'internet'.
-			'local' means the session requests to be connected,
-			but does not require specifically to be online.
-			Therefore State property will be set to 'connected' if
-			underlying service gets ready and/or online.
-			'online' means the session requests to be connected,
-			and online. State property will never get 'connected'
-			but instead will switch to 'online' if underlying
-			service gets online.
-			No value means the session requests any kind of
-			connection and the state will be updated on all steps,
-			'connected' and 'online'. This is the default value.
-
-			(This setting will be removed when the unique process
-			identifaction problem is solved.)
-
-		boolean State [readonly]
+Settings	boolean State [readonly]
 
 			This indicates if the connection is disconnected,
 			connected or online. It is updated according to the
@@ -137,6 +110,26 @@ Settings	string  Bearer [readonly]
 			It should only be used for displaying it in the UI
 			and not for getting hold on session object.
 
+		string  Bearer [readonly]
+
+			This indicates the current bearer that is used
+			for this session. Or an empty string if no bearer
+			if available.
+
+		string  Interface [readonly]
+
+			Interface name used by the service object to connect.
+			This name can be used for SO_BINDTODEVICE in the
+			application.
+
+		dict IPv4 [readonly]
+
+			Current IPv4 configuration.
+
+		dict IPv6 [readonly]
+
+			Current IPv6 configuration.
+
 		array{string} AllowedBearers [readwrite]
 
 			A list of bearers that can be used for this session.
@@ -150,14 +143,6 @@ Settings	string  Bearer [readonly]
 			Also "*" matches any bearer. This is usefull to prefer
 			certain bearers such as Wifi with a fallback to any
 			other available bearer.
-
-		dict IPv4 [readonly]
-
-			Current IPv4 configuration.
-
-		dict IPv6 [readonly]
-
-			Current IPv6 configuration.
 
 		boolean AvoidHandover [readwrite]
 
@@ -180,8 +165,24 @@ Settings	string  Bearer [readonly]
 			handovers can happen at any time even if this is
 			set to true.
 
-		string  Interface [readonly]
+		string ConnectionType [readwrite]
 
-			Interface name used by the service object to connect.
-			This name can be used for SO_BINDTODEVICE in the
-			application.
+			This is used to indicate which connection is requested
+			from the session. The state of the session will be
+			updated accordingly. Values can be nothing, 'local' or
+			'internet'.
+			'local' means the session requests to be connected,
+			but does not require specifically to be online.
+			Therefore State property will be set to 'connected' if
+			underlying service gets ready and/or online.
+			'online' means the session requests to be connected,
+			and online. State property will never get 'connected'
+			but instead will switch to 'online' if underlying
+			service gets online.
+			No value means the session requests any kind of
+			connection and the state will be updated on all steps,
+			'connected' and 'online'. This is the default value.
+
+			(This setting will be removed when the unique process
+			identifaction problem is solved.)
+
