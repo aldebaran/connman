@@ -223,6 +223,9 @@ plugins_tist_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+builtin_modules += @SESSION_CONFIG_PLUGIN@
+builtin_sources += plugins/@SESSION_CONFIG_PLUGIN@.c
+
 EXTRA_DIST += plugins/polkit.policy
 
 plugins/net.connman.policy: plugins/polkit.policy

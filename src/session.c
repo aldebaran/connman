@@ -28,12 +28,15 @@
 
 #include <gdbus.h>
 
+#include <connman/session.h>
+
 #include "connman.h"
 
 static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
 static struct session_info *ecall_info;
+static struct connman_session_config *session_config;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -1897,6 +1900,98 @@ static struct connman_notifier session_notifier = {
 	.service_state_changed	= service_state_changed,
 	.ipconfig_changed	= ipconfig_changed,
 };
+
+static struct connman_session *session_lookup_by_id(const char *id)
+{
+	struct connman_session *session;
+	GHashTableIter iter;
+	gpointer key, value;
+
+	DBG("id %s", id);
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session = value;
+
+		if (g_strcmp0(session->owner, id) == FALSE)
+			continue;
+
+		return session;
+	}
+
+	DBG("No session found by id %s", id);
+
+	return NULL;
+}
+
+int connman_session_update_bool(const char *id, const char *key,
+					connman_bool_t val)
+{
+	struct connman_session *session;
+	struct session_info *info;
+
+	session = session_lookup_by_id(id);
+	if (session == NULL)
+		return -EINVAL;
+
+	info = session->info;
+	if (info == NULL)
+		return 0;
+
+	DBG("%s %d", key, val);
+
+	return -EINVAL;
+}
+
+int connman_session_update_string(const char *id, const char *key,
+					const char *val)
+{
+	struct connman_session *session;
+	struct session_info *info;
+
+	session = session_lookup_by_id(id);
+	if (session == NULL)
+		return -EINVAL;
+
+	info = session->info;
+	if (info == NULL)
+		return 0;
+
+	DBG("%s %s", key, val);
+
+	return -EINVAL;
+}
+
+int connman_session_config_register(struct connman_session_config *config)
+{
+	DBG("name %s", config->name);
+
+	if (session_config != NULL) {
+		connman_warn("A session configuration plugin '%s' is "
+				"already registerd. Skipping registration "
+				"of plugin '%s'",
+				session_config->name, config->name);
+		return -EALREADY;
+	}
+
+	session_config = config;
+
+	return 0;
+}
+
+void connman_session_config_unregister(struct connman_session_config *config)
+{
+	DBG("name %s", config->name);
+
+	if (config != session_config) {
+		connman_warn("Trying to unregister session configuration "
+				"plugin '%s'", config->name);
+		return;
+	}
+
+	session_config = NULL;
+}
 
 int __connman_session_init(void)
 {

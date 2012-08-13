@@ -7,7 +7,8 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/notifier.h include/service.h \
 			include/resolver.h include/ipconfig.h \
 			include/device.h include/network.h include/inet.h \
-			include/storage.h include/provision.h
+			include/storage.h include/provision.h \
+			include/session.h
 
 nodist_include_HEADERS = include/version.h
 
