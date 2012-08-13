@@ -39,6 +39,8 @@ static int config_get_bool(const char *id, const char *key, connman_bool_t *val)
 
 	if (g_str_equal(key, "Priority") == TRUE)
 		*val = FALSE;
+	else if (g_str_equal(key, "EmergencyCall") == TRUE)
+		*val = FALSE;
 	else
 		return -EINVAL;
 

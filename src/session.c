@@ -35,7 +35,7 @@
 static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
-static struct session_info *ecall_info;
+static struct connman_session *ecall_session;
 static struct connman_session_config *session_config;
 
 enum connman_session_trigger {
@@ -92,7 +92,6 @@ struct session_info {
 	connman_bool_t priority;
 	GSList *allowed_bearers;
 	connman_bool_t avoid_handover;
-	connman_bool_t ecall;
 	enum connman_session_roaming_policy roaming_policy;
 
 	struct service_entry *entry;
@@ -108,6 +107,8 @@ struct connman_session {
 	connman_bool_t append_all;
 	struct session_info *info;
 	struct session_info *info_last;
+
+	connman_bool_t ecall;
 
 	GSequence *service_list;
 	GHashTable *service_hash;
@@ -491,14 +492,6 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	if (session->append_all == TRUE ||
-			info->ecall != info_last->ecall) {
-		connman_dbus_dict_append_basic(dict, "EmergencyCall",
-						DBUS_TYPE_BOOLEAN,
-						&info->ecall);
-		info_last->ecall = info->ecall;
-	}
-
-	if (session->append_all == TRUE ||
 			info->roaming_policy != info_last->roaming_policy) {
 		policy = roamingpolicy2string(info->roaming_policy);
 		connman_dbus_dict_append_basic(dict, "RoamingPolicy",
@@ -550,7 +543,6 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 	if (info->allowed_bearers != info_last->allowed_bearers ||
 			info->avoid_handover != info_last->avoid_handover ||
 			info->roaming_policy != info_last->roaming_policy ||
-			info->ecall != info_last->ecall ||
 			info->type != info_last->type)
 		return TRUE;
 
@@ -843,9 +835,6 @@ static connman_bool_t explicit_disconnect(struct session_info *info)
 		return FALSE;
 
 	if (__connman_service_session_dec(info->entry->service) == FALSE)
-		return FALSE;
-
-	if (ecall_info != NULL && ecall_info != info)
 		return FALSE;
 
 	return TRUE;
@@ -1205,6 +1194,11 @@ static void session_changed(struct connman_session *session,
 		}
 
 		break;
+	case CONNMAN_SESSION_TRIGGER_ECALL:
+		/*
+		 * For the time beeing we fallback to normal connect
+		 * strategy.
+		 */
 	case CONNMAN_SESSION_TRIGGER_CONNECT:
 		if (info->state >= CONNMAN_SESSION_STATE_CONNECTED) {
 			if (info->entry->reason == CONNMAN_SESSION_REASON_CONNECT)
@@ -1242,14 +1236,6 @@ static void session_changed(struct connman_session *session,
 		}
 
 		break;
-	case CONNMAN_SESSION_TRIGGER_ECALL:
-		if (info->state == CONNMAN_SESSION_STATE_DISCONNECTED &&
-				info->entry != NULL &&
-				info->entry->service != NULL) {
-			deselect_and_disconnect(session, info->reason);
-		}
-
-		break;
 	}
 
 	session_notify(session);
@@ -1259,14 +1245,17 @@ static DBusMessage *connect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = session->info;
 
 	DBG("session %p", session);
 
-	if (ecall_info != NULL && ecall_info != info)
-		return __connman_error_failed(msg, EBUSY);
+	if (ecall_session != NULL) {
+		if (ecall_session->ecall == TRUE && ecall_session != session)
+			return __connman_error_failed(msg, EBUSY);
 
-	session_changed(session, CONNMAN_SESSION_TRIGGER_CONNECT);
+		session->ecall = TRUE;
+		session_changed(session, CONNMAN_SESSION_TRIGGER_ECALL);
+	} else
+		session_changed(session, CONNMAN_SESSION_TRIGGER_CONNECT);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -1275,68 +1264,19 @@ static DBusMessage *disconnect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = session->info;
 
 	DBG("session %p", session);
 
-	if (ecall_info != NULL && ecall_info != info)
-		return __connman_error_failed(msg, EBUSY);
+	if (ecall_session != NULL) {
+		if (ecall_session->ecall == TRUE && ecall_session != session)
+			return __connman_error_failed(msg, EBUSY);
+
+		session->ecall = FALSE;
+	}
 
 	session_changed(session, CONNMAN_SESSION_TRIGGER_DISCONNECT);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static void update_ecall_sessions(struct connman_session *session)
-{
-	struct session_info *info = session->info;
-	struct connman_session *session_iter;
-	GHashTableIter iter;
-	gpointer key, value;
-
-	g_hash_table_iter_init(&iter, session_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		session_iter = value;
-
-		if (session_iter == session)
-			continue;
-
-		session_iter->info->ecall = info->ecall;
-
-		session_changed(session_iter, CONNMAN_SESSION_TRIGGER_ECALL);
-	}
-}
-
-static void update_ecall(struct connman_session *session)
-{
-	struct session_info *info = session->info;
-	struct session_info *info_last = session->info_last;
-
-	DBG("session %p ecall_info %p ecall %d -> %d", session,
-		ecall_info, info_last->ecall, info->ecall);
-
-	if (ecall_info == NULL) {
-		if (!(info_last->ecall == FALSE && info->ecall == TRUE))
-			goto err;
-
-		ecall_info = info;
-	} else if (ecall_info == info) {
-		if (!(info_last->ecall == TRUE && info->ecall == FALSE))
-			goto err;
-
-		ecall_info = NULL;
-	} else {
-		goto err;
-	}
-
-	update_ecall_sessions(session);
-
-	return;
-
-err:
-	/* not a valid transition */
-	info->ecall = info_last->ecall;
 }
 
 static DBusMessage *change_session(DBusConnection *conn,
@@ -1382,11 +1322,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "AvoidHandover") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->avoid_handover);
-		} else if (g_str_equal(name, "EmergencyCall") == TRUE) {
-			dbus_message_iter_get_basic(&value,
-					&info->ecall);
-
-			update_ecall(session);
 		} else {
 			goto err;
 		}
@@ -1471,11 +1406,10 @@ static DBusMessage *destroy_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
 	struct connman_session *session = user_data;
-	struct session_info *info = session->info;
 
 	DBG("session %p", session);
 
-	if (ecall_info != NULL && ecall_info != info)
+	if (ecall_session != NULL && ecall_session != session)
 		return __connman_error_failed(msg, EBUSY);
 
 	session_disconnect(session);
@@ -1504,7 +1438,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
 	connman_bool_t priority, avoid_handover = FALSE;
-	connman_bool_t ecall = FALSE;
+	connman_bool_t ecall_app;
 	enum connman_session_roaming_policy roaming_policy =
 				CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
 	GSList *allowed_bearers = NULL;
@@ -1514,7 +1448,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	DBG("owner %s", owner);
 
-	if (ecall_info != NULL) {
+	if (ecall_session != NULL && ecall_session->ecall == TRUE) {
 		/*
 		 * If there is an emergency call already going on,
 		 * ignore session creation attempt
@@ -1549,9 +1483,6 @@ int __connman_session_create(DBusMessage *msg)
 			if (g_str_equal(key, "AvoidHandover") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&avoid_handover);
-			} else if (g_str_equal(key, "EmergencyCall") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&ecall);
 			} else {
 				return -EINVAL;
 			}
@@ -1613,6 +1544,7 @@ int __connman_session_create(DBusMessage *msg)
 	info_last = session->info_last;
 
 	config_get_bool(owner, "Priority", &priority);
+	config_get_bool(owner, "EmergencyCall", &ecall_app);
 
 	session->owner = g_strdup(owner);
 	session->session_path = session_path;
@@ -1620,12 +1552,13 @@ int __connman_session_create(DBusMessage *msg)
 	session->notify_watch =
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
+	if (ecall_app == TRUE)
+		ecall_session = session;
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 	info->type = type;
 	info->priority = priority;
 	info->avoid_handover = avoid_handover;
-	info->ecall = ecall;
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
 
@@ -1663,15 +1596,10 @@ int __connman_session_create(DBusMessage *msg)
 
 
 	populate_service_list(session);
-	if (info->ecall == TRUE) {
-		ecall_info = info;
-		update_ecall_sessions(session);
-	}
 
 	info_last->state = info->state;
 	info_last->priority = info->priority;
 	info_last->avoid_handover = info->avoid_handover;
-	info_last->ecall = info->ecall;
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
 	info_last->allowed_bearers = info->allowed_bearers;
