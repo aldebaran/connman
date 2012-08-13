@@ -93,7 +93,6 @@ struct session_info {
 	connman_bool_t avoid_handover;
 	connman_bool_t stay_connected;
 	unsigned int periodic_connect;
-	unsigned int idle_timeout;
 	connman_bool_t ecall;
 	enum connman_session_roaming_policy roaming_policy;
 	unsigned int marker;
@@ -512,14 +511,6 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	if (session->append_all == TRUE ||
-			info->idle_timeout != info_last->idle_timeout) {
-		connman_dbus_dict_append_basic(dict, "IdleTimeout",
-						DBUS_TYPE_UINT32,
-						&info->idle_timeout);
-		info_last->idle_timeout = info->idle_timeout;
-	}
-
-	if (session->append_all == TRUE ||
 			info->ecall != info_last->ecall) {
 		connman_dbus_dict_append_basic(dict, "EmergencyCall",
 						DBUS_TYPE_BOOLEAN,
@@ -589,7 +580,6 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 			info->avoid_handover != info_last->avoid_handover ||
 			info->stay_connected != info_last->stay_connected ||
 			info->roaming_policy != info_last->roaming_policy ||
-			info->idle_timeout != info_last->idle_timeout ||
 			info->priority != info_last->priority ||
 			info->marker != info_last->marker ||
 			info->ecall != info_last->ecall ||
@@ -1456,9 +1446,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "PeriodicConnect") == TRUE) {
 			dbus_message_iter_get_basic(&value,
 					&info->periodic_connect);
-		} else if (g_str_equal(name, "IdleTimeout") == TRUE) {
-			dbus_message_iter_get_basic(&value,
-					&info->idle_timeout);
 		} else {
 			goto err;
 		}
@@ -1581,7 +1568,6 @@ int __connman_session_create(DBusMessage *msg)
 				CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
 	GSList *allowed_bearers = NULL;
 	unsigned int periodic_connect = 0;
-	unsigned int idle_timeout = 0;
 
 	int err;
 
@@ -1641,9 +1627,6 @@ int __connman_session_create(DBusMessage *msg)
 			if (g_str_equal(key, "PeriodicConnect") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&periodic_connect);
-			} else if (g_str_equal(key, "IdleTimeout") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&idle_timeout);
 			} else {
 				return -EINVAL;
 			}
@@ -1717,7 +1700,6 @@ int __connman_session_create(DBusMessage *msg)
 	info->avoid_handover = avoid_handover;
 	info->stay_connected = stay_connected;
 	info->periodic_connect = periodic_connect;
-	info->idle_timeout = idle_timeout;
 	info->ecall = ecall;
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
@@ -1767,7 +1749,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->avoid_handover = info->avoid_handover;
 	info_last->stay_connected = info->stay_connected;
 	info_last->periodic_connect = info->periodic_connect;
-	info_last->idle_timeout = info->idle_timeout;
 	info_last->ecall = info->ecall;
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
