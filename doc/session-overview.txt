@@ -6,37 +6,22 @@ Connection management algorithm basics
 ======================================
 
 When a session is created, a sorted list of services is added to the
-session. The services are filtered and stable sorted according
-following rules:
-
- - AllowedBearers (filter and sort)
- - RoamingPolicy (filter and sort)
-
-A stable sorting algorithm maintains the relative order.
-
-If a service is removed or added all sessions are updated according
-the above rules.
+session. The services are filtered and sorted according AllowedBearers.
 
 There are three triggers which lead to evaluate the connect
 algorithm:
 
  - Session.Connect()
- - PeriodicConnect
  - Offline
 
 Connect algorithm:
 
-              Session.Connect()     Offline
-              PeriodicConnect        |
-                       | Yes  +------+-------+  No
-                       +------+StayConnected?+------ Do nothing
-                       |      +--------------+
-Session.Change() ------+
+              Session.Connect()
                        |
                 +------+-------+
-          +-----+EmergencyCall?+-----+
-       Yes|     +--------------+     |No
-          |                          |
+          +-----+ECall Session ?+-----+
+       Yes|     +--------------+      |No
+          |                           |
         Connect to            +--------------+
         first available   +---+AvoidHandover?+---+
         Service           |   +--------------+   |
@@ -49,16 +34,13 @@ Session.Change() ------+
          Take that one                Take first in
                                       the service list
 
-There are two triggers which lead to evaluate the disconnect
-algorithm
+Disconnect algorithm
 
  - Session.Disconnect()
- - IdleTimeout
 
 Disconnect algorithm:
 
   Session.Disconnect()
-  IdleTimeout
        |
        +--- Session.Change()
        |
@@ -70,17 +52,14 @@ Disconnect algorithm:
        |                        |
     Service.Disconnect()   Do nothing
 
+Session.Disconnect() will be blocked whenever a ongoing
+emergency call is active.
+
 
 Session States and Transitions
 ==============================
 
-There are three main strategies for state changes.
-
- - Free Ride
- - Connect
- - Disconnect
-
-The initial state for all new sessions is Free Ride.
+There is only one state which is called Free Ride.
 
 The Free Ride state means that a session will go online if a matching
 service goes online without calling Service.Connect() itself. The idea
@@ -88,54 +67,12 @@ behind this is that a session doesn't request a connection for itself
 instead waits until another session actively requires to go online.
 This is comparable to piggy-backing.
 
-When a session is in the Connect state ConnMan tries to find a
-matching service (see Connect algorithm) and then decides either to
-connect the service or delay the request. ConnMan is allowed to
-connect to the service or to delay it, e.g. group PeriodicConnects
-together. The session will leave the Connect state when the service
-goes offline unless StayConnected is True. It will enter the Free Ride
-mode again.
-
-When the application calls Disconnect() the session enters the
-Disconnect state and stays there until the application calls Connect()
-again.
-
-
-                 State Change to offline & StayConnected = True
-                              +------+
-                              |      v
-+-----------+                +---------+ -- Disconnect() --> +------------+
-| Free Ride |-- Connect() -->| Connect |                     | Disconnect |
-+-----------+                +---------+  <-- Connect() ---  +------------+
-      |  ^                         |                               ^
-      |  +------------------------ +                               |
-      |   State Change to offline & StayConnected = False          |
-      |                                                            |
-      |                                                            |
-      +----------------------- Disconnect() -----------------------+
-
-Note: this documents the current behavior it is likely to change in near
-future.
-
-
-Additional Information on Settings
-==================================
-
-PeriodicConnect and IdleTimeout
--------------------------------
-
-If an application wants to go online periodically (e.g. checking for
-new mails) then the application should use PeriodicConnect instead of
-calling Session.Connect() periodically. There is no need for the
-application to maintain timers. ConnMan is also able to try to combine
-several PeriodicConnect calls into one. Applications should not rely on a
-very precise periodic connect. Apart from merging periodic connect
-timeouts there is also the problem that no service might be available
-at that point and ConnMan will defer the connect call.
-
-The IdleTimeout tells ConnMan when a link is idle for given period it
-is okay to disonnect.
-
-PeriodicConnect and IdleTimeout should only consired as hints. ConnMan
-will try to meet them but there is no garantee for doing so. For
-example global settings have precedence over session settings.
+Connnect()
+ +------+
+ |      v
++------------+
+|  Free Ride |
++------------+
+  |     ^
+  +-----+
+ Disconnect()
