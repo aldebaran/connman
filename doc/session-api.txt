@@ -180,13 +180,6 @@ Settings	string  Bearer [readonly]
 			handovers can happen at any time even if this is
 			set to true.
 
-		boolean StayConnected [readwrite]
-
-			This disables the idle timeout for this session. There
-			is no guarantee and this should be used with care.
-
-			If the system is not online yet this value is ignored.
-
 		boolean EmergencyCall [readwrite]
 
 			Boolean representing the emergency mode of the
