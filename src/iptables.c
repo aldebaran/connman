@@ -1228,6 +1228,9 @@ static struct connman_iptables *iptables_init(char *table_name)
 	char *module = NULL;
 	socklen_t s;
 
+	if (table_name == NULL)
+		table_name = "filter";
+
 	DBG("%s", table_name);
 
 	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
@@ -1506,6 +1509,15 @@ out:
 	return err;
 }
 
+static struct connman_iptables *pre_load_table(char *table_name,
+					struct connman_iptables *table)
+{
+	if (table != NULL)
+		return table;
+
+	return iptables_init(table_name);
+}
+
 static int iptables_command(int argc, char *argv[])
 {
 	struct connman_iptables *table;
@@ -1527,7 +1539,7 @@ static int iptables_command(int argc, char *argv[])
 	delete = FALSE;
 	compare = FALSE;
 	chain = new_chain = match_name = target_name = NULL;
-	flush_chain = delete_chain = policy = NULL;
+	flush_chain = delete_chain = policy = table_name = NULL;
 	memset(&ip, 0, sizeof(struct ipt_ip));
 	table = NULL;
 	xt_rm = NULL;
@@ -1630,6 +1642,11 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'j':
 			target_name = optarg;
+
+			table = pre_load_table(table_name, table);
+			if (table == NULL)
+				goto out;
+
 			xt_t = prepare_target(table, target_name);
 			if (xt_t == NULL)
 				goto out;
@@ -1638,6 +1655,11 @@ static int iptables_command(int argc, char *argv[])
 
 		case 'm':
 			match_name = optarg;
+
+			table = pre_load_table(table_name, table);
+			if (table == NULL)
+				goto out;
+
 			xt_m = prepare_matches(table, &xt_rm, match_name);
 			if (xt_m == NULL)
 				goto out;
@@ -1670,7 +1692,7 @@ static int iptables_command(int argc, char *argv[])
 		case 't':
 			table_name = optarg;
 
-			table = iptables_init(table_name);
+			table = pre_load_table(table_name, table);
 			if (table == NULL)
 				goto out;
 
@@ -1763,13 +1785,9 @@ static int iptables_command(int argc, char *argv[])
 		xt_t->final_check(xt_t->tflags);
 #endif
 
-	if (table == NULL) {
-		table_name = "filter";
-
-		table = iptables_init(table_name);
-		if (table == NULL)
-			goto out;
-	}
+	table = pre_load_table(table_name, table);
+	if (table == NULL)
+		goto out;
 
 	/* Option parsing went fine, falling back to succes code */
 	ret = 0;
