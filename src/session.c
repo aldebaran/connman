@@ -40,9 +40,8 @@ enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_SETTING		= 1,
 	CONNMAN_SESSION_TRIGGER_CONNECT		= 2,
 	CONNMAN_SESSION_TRIGGER_DISCONNECT	= 3,
-	CONNMAN_SESSION_TRIGGER_PERIODIC	= 4,
-	CONNMAN_SESSION_TRIGGER_SERVICE		= 5,
-	CONNMAN_SESSION_TRIGGER_ECALL		= 6,
+	CONNMAN_SESSION_TRIGGER_SERVICE		= 4,
+	CONNMAN_SESSION_TRIGGER_ECALL		= 5,
 };
 
 enum connman_session_reason {
@@ -50,7 +49,6 @@ enum connman_session_reason {
 	CONNMAN_SESSION_REASON_CONNECT		= 1,
 	CONNMAN_SESSION_REASON_DISCONNECT	= 2,
 	CONNMAN_SESSION_REASON_FREE_RIDE	= 3,
-	CONNMAN_SESSION_REASON_PERIODIC		= 4,
 };
 
 enum connman_session_state {
@@ -92,7 +90,6 @@ struct session_info {
 	GSList *allowed_bearers;
 	connman_bool_t avoid_handover;
 	connman_bool_t stay_connected;
-	unsigned int periodic_connect;
 	connman_bool_t ecall;
 	enum connman_session_roaming_policy roaming_policy;
 	unsigned int marker;
@@ -132,8 +129,6 @@ static const char *trigger2string(enum connman_session_trigger trigger)
 		return "connect";
 	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
 		return "disconnect";
-	case CONNMAN_SESSION_TRIGGER_PERIODIC:
-		return "periodic";
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
 		return "service";
 	case CONNMAN_SESSION_TRIGGER_ECALL:
@@ -154,8 +149,6 @@ static const char *reason2string(enum connman_session_reason reason)
 		return "disconnect";
 	case CONNMAN_SESSION_REASON_FREE_RIDE:
 		return "free-ride";
-	case CONNMAN_SESSION_REASON_PERIODIC:
-		return "periodic";
 	}
 
 	return NULL;
@@ -503,14 +496,6 @@ static void append_notify(DBusMessageIter *dict,
 	}
 
 	if (session->append_all == TRUE ||
-			info->periodic_connect != info_last->periodic_connect) {
-		connman_dbus_dict_append_basic(dict, "PeriodicConnect",
-						DBUS_TYPE_UINT32,
-						&info->periodic_connect);
-		info_last->periodic_connect = info->periodic_connect;
-	}
-
-	if (session->append_all == TRUE ||
 			info->ecall != info_last->ecall) {
 		connman_dbus_dict_append_basic(dict, "EmergencyCall",
 						DBUS_TYPE_BOOLEAN,
@@ -575,8 +560,7 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 			info->state >= CONNMAN_SESSION_STATE_CONNECTED)
 		return TRUE;
 
-	if (info->periodic_connect != info_last->periodic_connect ||
-			info->allowed_bearers != info_last->allowed_bearers ||
+	if (info->allowed_bearers != info_last->allowed_bearers ||
 			info->avoid_handover != info_last->avoid_handover ||
 			info->stay_connected != info_last->stay_connected ||
 			info->roaming_policy != info_last->roaming_policy ||
@@ -853,7 +837,6 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 	case CONNMAN_SESSION_REASON_DISCONNECT:
 		break;
 	case CONNMAN_SESSION_REASON_CONNECT:
-	case CONNMAN_SESSION_REASON_PERIODIC:
 		return TRUE;
 	}
 
@@ -1261,17 +1244,6 @@ static void session_changed(struct connman_session *session,
 					CONNMAN_SESSION_REASON_DISCONNECT);
 
 		break;
-	case CONNMAN_SESSION_TRIGGER_PERIODIC:
-		if (info->state >= CONNMAN_SESSION_STATE_CONNECTED) {
-			info->entry->reason = CONNMAN_SESSION_REASON_PERIODIC;
-			__connman_service_session_inc(info->entry->service);
-			break;
-		}
-
-		select_and_connect(session,
-				CONNMAN_SESSION_REASON_PERIODIC);
-
-		break;
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
 		if (info->entry != NULL &&
 			(is_connecting(info->entry->state) == TRUE ||
@@ -1442,14 +1414,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 			goto err;
 		}
 		break;
-	case DBUS_TYPE_UINT32:
-		if (g_str_equal(name, "PeriodicConnect") == TRUE) {
-			dbus_message_iter_get_basic(&value,
-					&info->periodic_connect);
-		} else {
-			goto err;
-		}
-		break;
 	case DBUS_TYPE_STRING:
 		if (g_str_equal(name, "ConnectionType") == TRUE) {
 			dbus_message_iter_get_basic(&value, &val);
@@ -1567,8 +1531,6 @@ int __connman_session_create(DBusMessage *msg)
 	enum connman_session_roaming_policy roaming_policy =
 				CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
 	GSList *allowed_bearers = NULL;
-	unsigned int periodic_connect = 0;
-
 	int err;
 
 	owner = dbus_message_get_sender(msg);
@@ -1619,14 +1581,6 @@ int __connman_session_create(DBusMessage *msg)
 			} else if (g_str_equal(key, "EmergencyCall") == TRUE) {
 				dbus_message_iter_get_basic(&value,
 							&ecall);
-			} else {
-				return -EINVAL;
-			}
-			break;
-		case DBUS_TYPE_UINT32:
-			if (g_str_equal(key, "PeriodicConnect") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&periodic_connect);
 			} else {
 				return -EINVAL;
 			}
@@ -1699,7 +1653,6 @@ int __connman_session_create(DBusMessage *msg)
 	info->priority = priority;
 	info->avoid_handover = avoid_handover;
 	info->stay_connected = stay_connected;
-	info->periodic_connect = periodic_connect;
 	info->ecall = ecall;
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
@@ -1748,7 +1701,6 @@ int __connman_session_create(DBusMessage *msg)
 	info_last->priority = info->priority;
 	info_last->avoid_handover = info->avoid_handover;
 	info_last->stay_connected = info->stay_connected;
-	info_last->periodic_connect = info->periodic_connect;
 	info_last->ecall = info->ecall;
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
