@@ -50,8 +50,7 @@ enum connman_session_trigger {
 enum connman_session_reason {
 	CONNMAN_SESSION_REASON_UNKNOWN		= 0,
 	CONNMAN_SESSION_REASON_CONNECT		= 1,
-	CONNMAN_SESSION_REASON_DISCONNECT	= 2,
-	CONNMAN_SESSION_REASON_FREE_RIDE	= 3,
+	CONNMAN_SESSION_REASON_FREE_RIDE	= 2,
 };
 
 enum connman_session_state {
@@ -147,8 +146,6 @@ static const char *reason2string(enum connman_session_reason reason)
 		return "unknown";
 	case CONNMAN_SESSION_REASON_CONNECT:
 		return "connect";
-	case CONNMAN_SESSION_REASON_DISCONNECT:
-		return "disconnect";
 	case CONNMAN_SESSION_REASON_FREE_RIDE:
 		return "free-ride";
 	}
@@ -789,7 +786,6 @@ static connman_bool_t explicit_connect(enum connman_session_reason reason)
 	switch (reason) {
 	case CONNMAN_SESSION_REASON_UNKNOWN:
 	case CONNMAN_SESSION_REASON_FREE_RIDE:
-	case CONNMAN_SESSION_REASON_DISCONNECT:
 		break;
 	case CONNMAN_SESSION_REASON_CONNECT:
 		return TRUE;
@@ -939,14 +935,13 @@ static void deselect_service(struct session_info *info)
 		pending_timeout_add(0, call_disconnect, entry);
 }
 
-static void deselect_and_disconnect(struct connman_session *session,
-					enum connman_session_reason reason)
+static void deselect_and_disconnect(struct connman_session *session)
 {
 	struct session_info *info = session->info;
 
 	deselect_service(info);
 
-	info->reason = reason;
+	info->reason = CONNMAN_SESSION_REASON_FREE_RIDE;
 }
 
 static void select_connected_service(struct session_info *info,
@@ -1153,7 +1148,7 @@ static void session_changed(struct connman_session *session,
 				 * The currently selected service is
 				 * not part of this session anymore.
 				 */
-				deselect_and_disconnect(session, info->reason);
+				deselect_and_disconnect(session);
 			}
 
 			g_hash_table_remove_all(service_hash_last);
@@ -1164,7 +1159,7 @@ static void session_changed(struct connman_session *session,
 			if (info->state >= CONNMAN_SESSION_STATE_CONNECTED &&
 					is_type_matching_state(&info->state,
 							info->type) == FALSE)
-				deselect_and_disconnect(session, info->reason);
+				deselect_and_disconnect(session);
 		}
 
 		if (info->state == CONNMAN_SESSION_STATE_DISCONNECTED) {
@@ -1197,8 +1192,7 @@ static void session_changed(struct connman_session *session,
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_DISCONNECT:
-		deselect_and_disconnect(session,
-					CONNMAN_SESSION_REASON_DISCONNECT);
+		deselect_and_disconnect(session);
 
 		break;
 	case CONNMAN_SESSION_TRIGGER_SERVICE:
@@ -1208,7 +1202,7 @@ static void session_changed(struct connman_session *session,
 			break;
 		}
 
-		deselect_and_disconnect(session, info->reason);
+		deselect_and_disconnect(session);
 
 		if (info->reason == CONNMAN_SESSION_REASON_FREE_RIDE) {
 			select_and_connect(session, info->reason);
@@ -1360,8 +1354,7 @@ static int session_disconnect(struct connman_session *session)
 	g_dbus_unregister_interface(connection, session->session_path,
 						CONNMAN_SESSION_INTERFACE);
 
-	deselect_and_disconnect(session,
-				CONNMAN_SESSION_REASON_DISCONNECT);
+	deselect_and_disconnect(session);
 
 	g_hash_table_remove(session_hash, session->session_path);
 
