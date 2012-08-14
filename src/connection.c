@@ -106,10 +106,7 @@ static struct gateway_data *lookup_gateway_data(struct gateway_config *config)
 	return NULL;
 }
 
-/*
- * Find the gateway that is serving the VPN link
- */
-static struct gateway_data *find_phy_gateway(int index, const char *gateway)
+static struct gateway_data *find_vpn_gateway(int index, const char *gateway)
 {
 	GHashTableIter iter;
 	gpointer value, key;
@@ -122,18 +119,61 @@ static struct gateway_data *find_phy_gateway(int index, const char *gateway)
 	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
 		struct gateway_data *data = value;
 
-		if (data->ipv4_gateway != NULL && data->index != index &&
+		if (data->ipv4_gateway != NULL && data->index == index &&
 				g_str_equal(data->ipv4_gateway->gateway,
 					gateway) == TRUE)
 			return data;
 
-		if (data->ipv6_gateway != NULL && data->index != index &&
+		if (data->ipv6_gateway != NULL && data->index == index &&
 				g_str_equal(data->ipv6_gateway->gateway,
 					gateway) == TRUE)
 			return data;
 	}
 
 	return NULL;
+}
+
+struct get_gateway_params {
+	char *vpn_gateway;
+	int vpn_index;
+};
+
+static void get_gateway_cb(const char *gateway, int index, void *user_data)
+{
+	struct gateway_config *config;
+	struct gateway_data *data;
+	struct get_gateway_params *params = user_data;
+	int family;
+
+	if (index < 0)
+		goto out;
+
+	DBG("phy index %d phy gw %s vpn index %d vpn gw %s", index, gateway,
+		params->vpn_index, params->vpn_gateway);
+
+	data = find_vpn_gateway(params->vpn_index, params->vpn_gateway);
+	if (data == NULL) {
+		DBG("Cannot find VPN link route, index %d addr %s",
+			params->vpn_index, params->vpn_gateway);
+		goto out;
+	}
+
+	family = connman_inet_check_ipaddress(params->vpn_gateway);
+
+	if (family == AF_INET)
+		config = data->ipv4_gateway;
+	else if (family == AF_INET6)
+		config = data->ipv6_gateway;
+	else
+		goto out;
+
+	config->vpn_phy_index = index;
+
+	DBG("vpn %s phy index %d", config->vpn_ip, config->vpn_phy_index);
+
+out:
+	g_free(params->vpn_gateway);
+	g_free(params);
 }
 
 static void set_vpn_routes(struct gateway_data *new_gateway,
@@ -144,10 +184,8 @@ static void set_vpn_routes(struct gateway_data *new_gateway,
 			struct gateway_data *active_gateway)
 {
 	struct gateway_config *config;
-	struct gateway_data *data;
 	struct connman_ipconfig *ipconfig;
 	char *dest;
-	int index;
 
 	DBG("new %p service %p gw %s type %d peer %s active %p",
 		new_gateway, service, gateway, type, peer, active_gateway);
@@ -161,45 +199,29 @@ static void set_vpn_routes(struct gateway_data *new_gateway,
 	} else
 		return;
 
-	if (config == NULL)
-		goto done;
+	if (config != NULL) {
+		int index = __connman_ipconfig_get_index(ipconfig);
+		struct get_gateway_params *params;
 
-	config->vpn = TRUE;
-	if (peer != NULL)
-		config->vpn_ip = g_strdup(peer);
-	else if (gateway != NULL)
-		config->vpn_ip = g_strdup(gateway);
+		config->vpn = TRUE;
+		if (peer != NULL)
+			config->vpn_ip = g_strdup(peer);
+		else if (gateway != NULL)
+			config->vpn_ip = g_strdup(gateway);
 
-	index = __connman_ipconfig_get_index(ipconfig);
-	data = find_phy_gateway(index, gateway);
+		params = g_try_malloc(sizeof(struct get_gateway_params));
+		if (params == NULL)
+			return;
 
-	if (data == NULL)
-		goto done;
+		params->vpn_index = index;
+		params->vpn_gateway = g_strdup(gateway);
 
-	/*
-	 * data->service points now to original
-	 * service that is serving the VPN link
-	 */
-	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
-		ipconfig = __connman_service_get_ip4config(data->service);
-	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
-		ipconfig = __connman_service_get_ip6config(data->service);
-	else
-		return;
-
-	if (ipconfig != NULL) {
-		const char *address;
-
-		address = __connman_ipconfig_get_local(ipconfig);
-		config->vpn_phy_ip = g_strdup(address);
+		/*
+		 * Find the gateway that is serving the VPN link
+		 */
+		__connman_inet_get_route(gateway, get_gateway_cb, params);
 	}
 
-	config->vpn_phy_index = data->index;
-
-	DBG("vpn %s phy %s index %d", config->vpn_ip,
-		config->vpn_phy_ip, config->vpn_phy_index);
-
-done:
 	if (active_gateway == NULL)
 		return;
 
