@@ -898,6 +898,7 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	char **networks = NULL;
 	char *ident;
 	int err, count = 0;
+	connman_bool_t connecting = FALSE;
 
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
@@ -1004,14 +1005,40 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 		if (err == -EOPNOTSUPP) {
 			goto unref;
 		} else {
+			if (__connman_service_is_provider_pending(
+					provider->vpn_service) == TRUE) {
+				DBG("Provider %p connection already pending",
+					provider);
+				dbus_message_ref(msg);
+				__connman_service_reply_dbus_pending(msg,
+							EINPROGRESS, NULL);
+				return 0;
+			}
+
 			err = __connman_service_connect(provider->vpn_service);
 
 			if (err < 0 && err != -EINPROGRESS)
 				goto failed;
+
+			if (err == -EINPROGRESS)
+				connecting = TRUE;
 		}
 	}
 
-	connman_provider_save(provider);
+	if (connecting == TRUE) {
+		/*
+		 * Save the dbus message so that we can reply the
+		 * caller when VPN connection is established.
+		 */
+		dbus_message_ref(msg);
+
+		__connman_service_set_provider_pending(provider->vpn_service,
+									msg);
+		connman_provider_save(provider);
+
+		return 0;
+	}
+
 	service_path = __connman_service_get_path(provider->vpn_service);
 	g_dbus_send_reply(connection, msg,
 				DBUS_TYPE_OBJECT_PATH, &service_path,

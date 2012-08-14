@@ -3467,6 +3467,12 @@ static void reply_pending(struct connman_service *service, int error)
 						NULL);
 		service->pending = NULL;
 	}
+
+	if (service->provider_pending != NULL) {
+		__connman_service_reply_dbus_pending(service->provider_pending,
+						error, service->path);
+		service->provider_pending = NULL;
+	}
 }
 
 connman_bool_t
