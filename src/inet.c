@@ -2174,6 +2174,155 @@ int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen, int type,
 	return 0;
 }
 
+static int parse_rtattr(struct rtattr *tb[], int max,
+			struct rtattr *rta, int len)
+{
+	memset(tb, 0, sizeof(struct rtattr *) * (max + 1));
+	while (RTA_OK(rta, len)) {
+		if ((rta->rta_type <= max) && (!tb[rta->rta_type]))
+			tb[rta->rta_type] = rta;
+		rta = RTA_NEXT(rta, len);
+	}
+	if (len)
+		connman_error("Deficit %d, rta_len=%d", len, rta->rta_len);
+
+	return 0;
+}
+
+struct get_route_cb_data {
+	connman_inet_addr_cb_t callback;
+	void *user_data;
+};
+
+static void get_route_cb(struct nlmsghdr *answer, void *user_data)
+{
+	struct get_route_cb_data *data = user_data;
+	struct rtattr *tb[RTA_MAX+1];
+	struct rtmsg *r = NLMSG_DATA(answer);
+	int len, index = -1;
+	char abuf[256];
+	const char *addr = NULL;
+
+	DBG("answer %p data %p", answer, user_data);
+
+	if (answer == NULL)
+		goto out;
+
+	len = answer->nlmsg_len;
+
+	if (answer->nlmsg_type != RTM_NEWROUTE &&
+				answer->nlmsg_type != RTM_DELROUTE) {
+		connman_error("Not a route: %08x %08x %08x",
+			answer->nlmsg_len, answer->nlmsg_type,
+			answer->nlmsg_flags);
+		goto out;
+	}
+
+	len -= NLMSG_LENGTH(sizeof(*r));
+	if (len < 0) {
+		connman_error("BUG: wrong nlmsg len %d", len);
+		goto out;
+	}
+
+	parse_rtattr(tb, RTA_MAX, RTM_RTA(r), len);
+
+	if (tb[RTA_OIF] != NULL)
+		index = *(int *)RTA_DATA(tb[RTA_OIF]);
+
+	if (tb[RTA_GATEWAY] != NULL)
+		addr = inet_ntop(r->rtm_family,
+				RTA_DATA(tb[RTA_GATEWAY]),
+				abuf, sizeof(abuf));
+
+	DBG("addr %s index %d user %p", addr, index, data->user_data);
+
+out:
+	if (data != NULL && data->callback != NULL)
+		data->callback(addr, index, data->user_data);
+
+	g_free(data);
+
+	return;
+}
+
+/*
+ * Return the interface index that contains route to host.
+ */
+int __connman_inet_get_route(const char *dest_address,
+			connman_inet_addr_cb_t callback, void *user_data)
+{
+	struct get_route_cb_data *data;
+	struct addrinfo hints, *rp;
+	struct __connman_inet_rtnl_handle *rth;
+	int err;
+
+	DBG("dest %s", dest_address);
+
+	if (dest_address == NULL)
+		return -EINVAL;
+
+	memset(&hints, 0, sizeof(hints));
+	hints.ai_family = AF_UNSPEC;
+	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_NUMERICHOST;
+
+	err = getaddrinfo(dest_address, NULL, &hints, &rp);
+	if (err)
+		return -EINVAL;
+
+	rth = g_try_malloc0(sizeof(struct __connman_inet_rtnl_handle));
+	if (rth == NULL) {
+		freeaddrinfo(rp);
+		return -ENOMEM;
+	}
+
+	rth->req.n.nlmsg_len = NLMSG_LENGTH(sizeof(struct rtmsg));
+	rth->req.n.nlmsg_flags = NLM_F_REQUEST;
+	rth->req.n.nlmsg_type = RTM_GETROUTE;
+	rth->req.u.r.rt.rtm_family = rp->ai_family;
+	rth->req.u.r.rt.rtm_table = 0;
+	rth->req.u.r.rt.rtm_protocol = 0;
+	rth->req.u.r.rt.rtm_scope = 0;
+	rth->req.u.r.rt.rtm_type = 0;
+	rth->req.u.r.rt.rtm_src_len = 0;
+	rth->req.u.r.rt.rtm_dst_len = rp->ai_addrlen << 3;
+	rth->req.u.r.rt.rtm_tos = 0;
+
+	__connman_inet_rtnl_addattr_l(&rth->req.n, sizeof(rth->req), RTA_DST,
+				&rp->ai_addr, rp->ai_addrlen);
+
+	freeaddrinfo(rp);
+
+	err = __connman_inet_rtnl_open(rth);
+	if (err < 0)
+		goto fail;
+
+	data = g_try_malloc(sizeof(struct get_route_cb_data));
+	if (data == NULL) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	data->callback = callback;
+	data->user_data = user_data;
+
+#define GET_ROUTE_TIMEOUT 2
+	err = __connman_inet_rtnl_talk(rth, &rth->req.n, GET_ROUTE_TIMEOUT,
+				get_route_cb, data);
+	if (err < 0) {
+		g_free(data);
+		goto done;
+	}
+
+	return 0;
+
+done:
+	__connman_inet_rtnl_close(rth);
+
+fail:
+	g_free(rth);
+	return err;
+}
+
 int connman_inet_check_ipaddress(const char *host)
 {
 	struct addrinfo hints;

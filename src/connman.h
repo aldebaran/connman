@@ -153,6 +153,10 @@ int __connman_refresh_rs_ipv6(struct connman_network *network, int index);
 
 GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
 					unsigned int length);
+typedef void (*connman_inet_addr_cb_t) (const char *src_address, int index,
+					void *user_data);
+int __connman_inet_get_route(const char *dst_address,
+			connman_inet_addr_cb_t callback, void *user_data);
 
 struct __connman_inet_rtnl_handle {
 	int			fd;
