@@ -47,6 +47,7 @@
 #include <connman/device.h>
 #include <connman/rtnl.h>
 #include <connman/technology.h>
+#include <connman/service.h>
 #include <connman/log.h>
 #include <connman/option.h>
 #include <connman/storage.h>
@@ -57,7 +58,8 @@
 
 #define CLEANUP_TIMEOUT   8	/* in seconds */
 #define INACTIVE_TIMEOUT  12	/* in seconds */
-#define MAXIMUM_RETRIES   4
+#define MAXIMUM_RETRIES   2
+#define FAVORITE_MAXIMUM_RETRIES 4
 
 #define BGSCAN_DEFAULT "simple:30:-45:300"
 #define AUTOSCAN_DEFAULT "exponential:3:300"
@@ -1423,12 +1425,21 @@ static connman_bool_t handle_4way_handshake_failure(GSupplicantInterface *interf
 					struct connman_network *network,
 					struct wifi_data *wifi)
 {
+	struct connman_service *service;
+
 	if (wifi->state != G_SUPPLICANT_STATE_4WAY_HANDSHAKE)
+		return FALSE;
+
+	service = connman_service_lookup_from_network(network);
+	if (service == NULL)
 		return FALSE;
 
 	wifi->retries++;
 
-	if (wifi->retries < MAXIMUM_RETRIES)
+	if (connman_service_get_favorite(service) == TRUE) {
+		if (wifi->retries < FAVORITE_MAXIMUM_RETRIES)
+			return TRUE;
+	} else if (wifi->retries < MAXIMUM_RETRIES)
 		return TRUE;
 
 	connman_network_set_error(network, CONNMAN_NETWORK_ERROR_INVALID_KEY);
