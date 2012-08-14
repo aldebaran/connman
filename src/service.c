@@ -105,6 +105,7 @@ struct connman_service {
 	char *private_key_passphrase;
 	char *phase2;
 	DBusMessage *pending;
+	DBusMessage *provider_pending;
 	guint timeout;
 	struct connman_stats stats;
 	struct connman_stats stats_roaming;
@@ -3466,6 +3467,31 @@ static void reply_pending(struct connman_service *service, int error)
 						NULL);
 		service->pending = NULL;
 	}
+}
+
+connman_bool_t
+__connman_service_is_provider_pending(struct connman_service *service)
+{
+	if (service == NULL)
+		return FALSE;
+
+	if (service->provider_pending != NULL)
+		return TRUE;
+
+	return FALSE;
+}
+
+void __connman_service_set_provider_pending(struct connman_service *service,
+							DBusMessage *msg)
+{
+	if (service->provider_pending != NULL) {
+		DBG("service %p provider pending msg %p already exists",
+			service, service->provider_pending);
+		return;
+	}
+
+	service->provider_pending = msg;
+	return;
 }
 
 static void check_pending_msg(struct connman_service *service)
