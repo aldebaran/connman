@@ -4521,6 +4521,11 @@ int __connman_service_set_favorite(struct connman_service *service,
 							FALSE);
 }
 
+connman_bool_t connman_service_get_favorite(struct connman_service *service)
+{
+       return service->favorite;
+}
+
 int __connman_service_set_immutable(struct connman_service *service,
 						connman_bool_t immutable)
 {
