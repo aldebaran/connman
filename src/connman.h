@@ -629,7 +629,8 @@ void __connman_service_set_hidden_data(struct connman_service *service,
 				gpointer user_data);
 void __connman_service_return_error(struct connman_service *service,
 				int error, gpointer user_data);
-void __connman_service_reply_dbus_pending(DBusMessage *pending, int error);
+void __connman_service_reply_dbus_pending(DBusMessage *pending, int error,
+					const char *path);
 
 int __connman_service_provision_changed(const char *ident);
 void __connman_service_set_config(struct connman_service *service,

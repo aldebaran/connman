@@ -3425,7 +3425,8 @@ static void remove_timeout(struct connman_service *service)
 	}
 }
 
-void __connman_service_reply_dbus_pending(DBusMessage *pending, int error)
+void __connman_service_reply_dbus_pending(DBusMessage *pending, int error,
+					const char *path)
 {
 	if (pending != NULL) {
 		if (error > 0) {
@@ -3435,10 +3436,11 @@ void __connman_service_reply_dbus_pending(DBusMessage *pending, int error)
 			if (reply != NULL)
 				g_dbus_send_message(connection, reply);
 		} else {
-			const char *sender, *path;
+			const char *sender;
 
 			sender = dbus_message_get_interface(pending);
-			path = dbus_message_get_path(pending);
+			if (path == NULL)
+				path = dbus_message_get_path(pending);
 
 			DBG("sender %s path %s", sender, path);
 
@@ -3460,7 +3462,8 @@ static void reply_pending(struct connman_service *service, int error)
 	remove_timeout(service);
 
 	if (service->pending != NULL) {
-		__connman_service_reply_dbus_pending(service->pending, error);
+		__connman_service_reply_dbus_pending(service->pending, error,
+						NULL);
 		service->pending = NULL;
 	}
 }
