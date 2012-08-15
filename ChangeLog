@@ -1,3 +1,14 @@
+ver 1.5:
+	Fix issue with detecting Bluetooth networks when powered off.
+	Fix issue with connection attempts of non-favorite services.
+	Fix issue with connection attempts of disabled IP configurations.
+	Fix issue with missing auto-connection after changing IP method.
+	Fix issue with setting service state when changing IPv4 method.
+	Fix issue with IPv6 usage and static/manual configuration.
+	Add support for configuration option to disable hostname updates.
+	Add support for storing WiFi Tethering identifier and passphrase.
+	Add support for signaling changes of error property.
+
 ver 1.4:
 	Fix issue with WiFi scanning in Tethering mode.
 	Fix issue with WISPr operation and disconnects.
