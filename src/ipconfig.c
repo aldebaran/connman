@@ -1883,21 +1883,19 @@ void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 
 	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
 
-	append_addr = ipconfig->system;
-
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
+	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		if (append_addr == NULL)
-			append_addr = ipconfig->address;
+		append_addr = ipconfig->address;
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		append_addr = ipconfig->system;
 		break;
 	}
 
@@ -1948,21 +1946,19 @@ void __connman_ipconfig_append_ipv6(struct connman_ipconfig *ipconfig,
 
 	connman_dbus_dict_append_basic(iter, "Method", DBUS_TYPE_STRING, &str);
 
-	append_addr = ipconfig->system;
-
 	switch (ipconfig->method) {
 	case CONNMAN_IPCONFIG_METHOD_UNKNOWN:
 	case CONNMAN_IPCONFIG_METHOD_OFF:
 		return;
 
 	case CONNMAN_IPCONFIG_METHOD_FIXED:
-		if (append_addr == NULL)
-			append_addr = ipconfig->address;
+		append_addr = ipconfig->address;
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
+		append_addr = ipconfig->system;
 		break;
 	}
 
