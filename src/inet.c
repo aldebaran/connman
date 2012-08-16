@@ -294,7 +294,7 @@ int connman_inet_ifup(int index)
 		goto done;
 	}
 
-	ifr.ifr_flags |= IFF_UP;
+	ifr.ifr_flags |= (IFF_UP|IFF_DYNAMIC);
 
 	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0) {
 		err = -errno;
@@ -312,6 +312,7 @@ done:
 int connman_inet_ifdown(int index)
 {
 	struct ifreq ifr;
+	struct sockaddr_in *addr;
 	int sk, err;
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
@@ -331,12 +332,17 @@ int connman_inet_ifdown(int index)
 		goto done;
 	}
 
+	addr = (struct sockaddr_in *)&ifr.ifr_addr;
+	addr->sin_family = AF_INET;
+	if (ioctl(sk, SIOCSIFADDR, &ifr) < 0)
+		connman_warn("Could not clear IPv4 address index %d", index);
+
 	if (!(ifr.ifr_flags & IFF_UP)) {
 		err = -EALREADY;
 		goto done;
 	}
 
-	ifr.ifr_flags &= ~IFF_UP;
+	ifr.ifr_flags = (ifr.ifr_flags & ~IFF_UP) | IFF_DYNAMIC;
 
 	if (ioctl(sk, SIOCSIFFLAGS, &ifr) < 0)
 		err = -errno;
