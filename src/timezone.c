@@ -198,13 +198,13 @@ static char *find_origin(void *src_map, struct stat *src_st,
 			/*
 			 * If there is no d_type support use fstatat()
 			 * to check if d_name is directory
-			 * Let the code fall through
 			 */
 			ret = fstatat(dirfd(dir), d->d_name, &buf, 0);
 			if (ret < 0)
 				continue;
 			if ((buf.st_mode & S_IFDIR) == 0)
 				continue;
+			/* fall through */
 		case DT_DIR:
 			if (subpath == NULL)
 				strncpy(pathname, d->d_name, sizeof(pathname));
