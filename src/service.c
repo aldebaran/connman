@@ -4759,9 +4759,6 @@ static void request_input_cb (struct connman_service *service,
 
  done:
 	if (err >= 0) {
-		/* We forget any previous error. */
-		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
-
 		__connman_service_connect(service);
 
 		/* Never cache agent provided credentials */
@@ -5534,14 +5531,16 @@ int __connman_service_connect(struct connman_service *service)
 		err = service_connect(service);
 	}
 
-	if (err >= 0)
+	if (err >= 0) {
+		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 		return 0;
+	}
 
 	if (err == -EINPROGRESS) {
 		if (service->timeout == 0)
 			service->timeout = g_timeout_add_seconds(
 				CONNECT_TIMEOUT, connect_timeout, service);
-
+		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
 		return -EINPROGRESS;
 	}
 
