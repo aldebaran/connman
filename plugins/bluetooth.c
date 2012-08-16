@@ -705,8 +705,6 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 	if (device != NULL)
 		goto update;
 
-	g_hash_table_insert(bluetooth_devices, g_strdup(path), device);
-
 	ether_aton_r(address, &addr);
 
 	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
@@ -720,6 +718,8 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_BLUETOOTH);
 	if (device == NULL)
 		goto done;
+
+	g_hash_table_insert(bluetooth_devices, g_strdup(path), device);
 
 	connman_device_set_ident(device, ident);
 
