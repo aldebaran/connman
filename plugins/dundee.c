@@ -632,12 +632,10 @@ static void add_device(const char *path, DBusMessageIter *properties)
 	if (info->active == TRUE)
 		set_connected(info);
 
+	return;
+
 out:
 	g_hash_table_remove(dundee_devices, path);
-
-	g_free(info->path);
-	g_free(info->name);
-	g_free(info);
 }
 
 static gboolean device_added(DBusConnection *conn, DBusMessage *message,
