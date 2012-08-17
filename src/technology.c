@@ -575,13 +575,10 @@ static gboolean technology_pending_reply(gpointer user_data)
 	return FALSE;
 }
 
-static int technology_enable(struct connman_technology *technology,
-		DBusMessage *msg)
+static int technology_enable(struct connman_technology *technology)
 {
 	GSList *list;
 	int err = 0;
-	int ret = -ENODEV;
-	DBusMessage *reply;
 
 	DBG("technology %p enable", technology);
 
@@ -596,72 +593,22 @@ static int technology_enable(struct connman_technology *technology,
 		goto done;
 	}
 
-	if (msg != NULL) {
-		/*
-		 * This is a bit of a trick. When msg is not NULL it means
-		 * thats technology_enable was invoked from the manager API.
-		 * Hence we save the state here.
-		 */
-		technology->enable_persistent = TRUE;
-		technology_save(technology);
-	}
-
 	__connman_rfkill_block(technology->type, FALSE);
-
-	/*
-	 * An empty device list means that devices in the technology
-	 * were rfkill blocked. The unblock above will enable the devs.
-	 */
-	if (technology->device_list == NULL) {
-		ret = 0;
-		goto done;
-	}
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
 		err = __connman_device_enable(device);
-		/*
-		 * err = 0 : Device was enabled right away.
-		 * If atleast one device gets enabled, we consider
-		 * the technology to be enabled.
-		 */
-		if (err == 0)
-			ret = 0;
 	}
 
 done:
-	if (ret == 0) {
-		if (msg != NULL)
-			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
-		return ret;
-	}
-
-	if (msg != NULL) {
-		if (err == -EINPROGRESS) {
-			technology->pending_reply = dbus_message_ref(msg);
-			technology->pending_timeout = g_timeout_add_seconds(10,
-					technology_pending_reply, technology);
-		} else {
-			if (err == -EALREADY)
-				reply = __connman_error_already_enabled(msg);
-			else
-				reply = __connman_error_failed(msg, -err);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-		}
-	}
-
 	return err;
 }
 
-static int technology_disable(struct connman_technology *technology,
-		DBusMessage *msg)
+static int technology_disable(struct connman_technology *technology)
 {
 	GSList *list;
 	int err = 0;
-	int ret = -ENODEV;
-	DBusMessage *reply;
 
 	DBG("technology %p disable", technology);
 
@@ -679,44 +626,53 @@ static int technology_disable(struct connman_technology *technology,
 	if (technology->tethering == TRUE)
 		set_tethering(technology, FALSE);
 
-	if (msg != NULL) {
-		technology->enable_persistent = FALSE;
-		technology_save(technology);
-	}
-
 	__connman_rfkill_block(technology->type, TRUE);
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
 		err = __connman_device_disable(device);
-		if (err == 0)
-			ret = 0;
 	}
 
 done:
-	if (ret == 0) {
-		if (msg != NULL)
-			g_dbus_send_reply(connection, msg, DBUS_TYPE_INVALID);
-		return ret;
-	}
-
-	if (msg != NULL) {
-		if (err == -EINPROGRESS) {
-			technology->pending_reply = dbus_message_ref(msg);
-			technology->pending_timeout = g_timeout_add_seconds(10,
-					technology_pending_reply, technology);
-		} else {
-			if (err == -EALREADY)
-				reply = __connman_error_already_disabled(msg);
-			else
-				reply = __connman_error_failed(msg, -err);
-			if (reply != NULL)
-				g_dbus_send_message(connection, reply);
-		}
-	}
-
 	return err;
+}
+
+static DBusMessage *set_powered(struct connman_technology *technology,
+				DBusMessage *msg, connman_bool_t powered)
+{
+	DBusMessage *reply = NULL;
+	connman_bool_t persistent;
+	int err;
+
+	if (powered == TRUE) {
+		err = technology_enable(technology);
+		persistent = TRUE;
+	} else {
+		err = technology_disable(technology);
+		persistent = FALSE;
+	}
+
+	if (err != -EBUSY) {
+		technology->enable_persistent = persistent;
+		technology_save(technology);
+	}
+
+	if (err == -EINPROGRESS) {
+		technology->pending_reply = dbus_message_ref(msg);
+		technology->pending_timeout = g_timeout_add_seconds(10,
+					technology_pending_reply, technology);
+	} else if (err == -EALREADY) {
+		if (powered == TRUE)
+			reply = __connman_error_already_enabled(msg);
+		else
+			reply = __connman_error_already_disabled(msg);
+	} else if (err < 0)
+		reply = __connman_error_failed(msg, -err);
+	else
+		reply = g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	return reply;
 }
 
 static DBusMessage *set_property(DBusConnection *conn,
@@ -796,11 +752,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 			return __connman_error_invalid_arguments(msg);
 
 		dbus_message_iter_get_basic(&value, &enable);
-		if (enable == TRUE)
-			technology_enable(technology, msg);
-		else
-			technology_disable(technology, msg);
 
+		return set_powered(technology, msg, enable);
 	} else
 		return __connman_error_invalid_property(msg);
 
@@ -1267,10 +1220,10 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 		struct connman_technology *technology = list->data;
 
 		if (offlinemode)
-			err = technology_disable(technology, NULL);
+			err = technology_disable(technology);
 
 		if (!offlinemode && technology->enable_persistent)
-			err = technology_enable(technology, NULL);
+			err = technology_enable(technology);
 	}
 
 	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
