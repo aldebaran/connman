@@ -4790,6 +4790,9 @@ static void request_input_cb (struct connman_service *service,
 
  done:
 	if (err >= 0) {
+		/* We forget any previous error. */
+		set_error(service, CONNMAN_SERVICE_ERROR_UNKNOWN);
+
 		__connman_service_connect(service);
 
 		/* Never cache agent provided credentials */
