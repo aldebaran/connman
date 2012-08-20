@@ -4068,6 +4068,8 @@ static gboolean service_send_changed(gpointer data)
 
 	DBG("");
 
+	services_notify->id = 0;
+
 	signal = dbus_message_new_signal(CONNMAN_MANAGER_PATH,
 			CONNMAN_MANAGER_INTERFACE, "ServicesChanged");
 	if (signal == NULL)
@@ -4090,7 +4092,6 @@ static gboolean service_send_changed(gpointer data)
 	g_hash_table_remove_all(services_notify->remove);
 	g_hash_table_remove_all(services_notify->add);
 
-	services_notify->id = 0;
 	return FALSE;
 }
 
