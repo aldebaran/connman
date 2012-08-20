@@ -124,6 +124,8 @@ struct connman_service {
 	char *config_entry;
 };
 
+static connman_bool_t allow_property_changed(struct connman_service *service);
+
 struct find_data {
 	const char *path;
 	struct connman_service *service;
@@ -1366,6 +1368,9 @@ static void state_changed(struct connman_service *service)
 	if (str == NULL)
 		return;
 
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "State",
 						DBUS_TYPE_STRING, &str);
@@ -1374,6 +1379,9 @@ static void state_changed(struct connman_service *service)
 static void strength_changed(struct connman_service *service)
 {
 	if (service->strength == 0)
+		return;
+
+	if (allow_property_changed(service) == FALSE)
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -1386,6 +1394,9 @@ static void favorite_changed(struct connman_service *service)
 	if (service->path == NULL)
 		return;
 
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Favorite",
 					DBUS_TYPE_BOOLEAN, &service->favorite);
@@ -1394,6 +1405,9 @@ static void favorite_changed(struct connman_service *service)
 static void immutable_changed(struct connman_service *service)
 {
 	if (service->path == NULL)
+		return;
+
+	if (allow_property_changed(service) == FALSE)
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -1406,6 +1420,9 @@ static void roaming_changed(struct connman_service *service)
 	if (service->path == NULL)
 		return;
 
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Roaming",
 					DBUS_TYPE_BOOLEAN, &service->roaming);
@@ -1414,6 +1431,9 @@ static void roaming_changed(struct connman_service *service)
 static void autoconnect_changed(struct connman_service *service)
 {
 	if (service->path == NULL)
+		return;
+
+	if (allow_property_changed(service) == FALSE)
 		return;
 
 	connman_dbus_property_changed_basic(service->path,
@@ -1749,6 +1769,9 @@ static void append_provider(DBusMessageIter *iter, void *user_data)
 static void settings_changed(struct connman_service *service,
 				struct connman_ipconfig *ipconfig)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "IPv4",
 							append_ipv4, service);
@@ -1762,6 +1785,9 @@ static void settings_changed(struct connman_service *service,
 
 static void ipv4_configuration_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE,
 							"IPv4.Configuration",
@@ -1771,6 +1797,9 @@ static void ipv4_configuration_changed(struct connman_service *service)
 
 static void ipv6_configuration_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE,
 							"IPv6.Configuration",
@@ -1780,6 +1809,9 @@ static void ipv6_configuration_changed(struct connman_service *service)
 
 static void dns_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_array(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Nameservers",
 					DBUS_TYPE_STRING, append_dns, service);
@@ -1787,6 +1819,9 @@ static void dns_changed(struct connman_service *service)
 
 static void dns_configuration_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_array(service->path,
 				CONNMAN_SERVICE_INTERFACE,
 				"Nameservers.Configuration",
@@ -1797,6 +1832,9 @@ static void dns_configuration_changed(struct connman_service *service)
 
 static void domain_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_array(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Domains",
 				DBUS_TYPE_STRING, append_domain, service);
@@ -1804,6 +1842,9 @@ static void domain_changed(struct connman_service *service)
 
 static void domain_configuration_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_array(service->path,
 				CONNMAN_SERVICE_INTERFACE,
 				"Domains.Configuration",
@@ -1812,6 +1853,9 @@ static void domain_configuration_changed(struct connman_service *service)
 
 static void proxy_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Proxy",
 							append_proxy, service);
@@ -1819,6 +1863,9 @@ static void proxy_changed(struct connman_service *service)
 
 static void proxy_configuration_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_dict(service->path,
 			CONNMAN_SERVICE_INTERFACE, "Proxy.Configuration",
 						append_proxyconfig, service);
@@ -1828,6 +1875,9 @@ static void proxy_configuration_changed(struct connman_service *service)
 
 static void timeservers_configuration_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_array(service->path,
 			CONNMAN_SERVICE_INTERFACE,
 			"Timeservers.Configuration",
@@ -1837,6 +1887,9 @@ static void timeservers_configuration_changed(struct connman_service *service)
 
 static void link_changed(struct connman_service *service)
 {
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "Ethernet",
 						append_ethernet, service);
@@ -2574,6 +2627,9 @@ void __connman_service_timeserver_changed(struct connman_service *service,
 	if (service == NULL)
 		return;
 
+	if (allow_property_changed(service) == FALSE)
+		return;
+
 	connman_dbus_property_changed_array(service->path,
 			CONNMAN_SERVICE_INTERFACE, "Timeservers",
 			DBUS_TYPE_STRING, append_ts, ts_list);
@@ -3224,6 +3280,9 @@ static void set_error(struct connman_service *service,
 
 	if (str == NULL)
 		str = "";
+
+	if (allow_property_changed(service) == FALSE)
+		return;
 
 	connman_dbus_property_changed_basic(service->path,
 				CONNMAN_SERVICE_INTERFACE, "Error",
@@ -4067,6 +4126,17 @@ static void service_schedule_removed(struct connman_service *service)
 			NULL);
 
 	service_schedule_changed();
+}
+
+static connman_bool_t allow_property_changed(struct connman_service *service)
+{
+	if (g_hash_table_lookup_extended(services_notify->add, service->path,
+					NULL, NULL) == TRUE) {
+		DBG("no property updates for service %p", service);
+		return FALSE;
+	}
+
+	return TRUE;
 }
 
 static const GDBusMethodTable service_methods[] = {
@@ -6364,9 +6434,11 @@ void __connman_service_update_from_network(struct connman_network *network)
 	if (g_strcmp0(service->name, name) != 0) {
 		g_free(service->name);
 		service->name = g_strdup(name);
-		connman_dbus_property_changed_basic(service->path,
-				CONNMAN_SERVICE_INTERFACE, "Name",
-				DBUS_TYPE_STRING, &service->name);
+
+		if (allow_property_changed(service) == TRUE)
+			connman_dbus_property_changed_basic(service->path,
+					CONNMAN_SERVICE_INTERFACE, "Name",
+					DBUS_TYPE_STRING, &service->name);
 	}
 
 	if (service->type == CONNMAN_SERVICE_TYPE_WIFI)
