@@ -589,10 +589,8 @@ int connman_device_set_powered(struct connman_device *device,
 	connman_device_set_disconnected(device, FALSE);
 	device->scanning = FALSE;
 
-	if (device->driver && device->driver->scan_fast)
-		device->driver->scan_fast(device);
-	else if (device->driver && device->driver->scan)
-		device->driver->scan(device);
+	if (device->driver && device->driver->scan)
+		device->driver->scan(device, NULL, 0, NULL, NULL, NULL);
 
 	return 0;
 }
@@ -605,7 +603,7 @@ static int device_scan(struct connman_device *device)
 	if (device->powered == FALSE)
 		return -ENOLINK;
 
-	return device->driver->scan(device);
+	return device->driver->scan(device, NULL, 0, NULL, NULL, NULL);
 }
 
 int __connman_device_disconnect(struct connman_device *device)
@@ -1118,13 +1116,13 @@ int __connman_device_request_hidden_scan(struct connman_device *device,
 	DBG("device %p", device);
 
 	if (device == NULL || device->driver == NULL ||
-			device->driver->scan_hidden == NULL)
+			device->driver->scan == NULL)
 		return -EINVAL;
 
 	if (device->scanning == TRUE)
 		return -EALREADY;
 
-	return device->driver->scan_hidden(device, ssid, ssid_len,
+	return device->driver->scan(device, ssid, ssid_len,
 					identity, passphrase, user_data);
 }
 

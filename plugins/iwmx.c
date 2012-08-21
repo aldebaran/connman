@@ -534,7 +534,10 @@ static void iwmx_cm_remove(struct connman_device *dev)
  * First we obtain the current list of networks and pass it to the
  * callback processor. Then we start an scan cycle.
  */
-static int iwmx_cm_scan(struct connman_device *dev)
+static int iwmx_cm_scan(struct connman_device *dev,
+			const char *ssid, unsigned int ssid_len,
+			const char *identity, const char* passphrase,
+			void *user_data)
 {
 	struct wmxsdk *wmxsdk = connman_device_get_data(dev);
 	return iwmx_sdk_scan(wmxsdk);
