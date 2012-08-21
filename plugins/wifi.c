@@ -266,9 +266,24 @@ static void wifi_remove(struct connman_device *device)
 	g_free(wifi);
 }
 
+static gboolean is_duplicate(GSList *list, gchar *ssid, int ssid_len)
+{
+	GSList *iter;
+
+	for (iter = list; iter != NULL; iter = g_slist_next(iter)) {
+		struct scan_ssid *scan_ssid = iter->data;
+
+		if (ssid_len == scan_ssid->ssid_len &&
+				memcmp(ssid, scan_ssid->ssid, ssid_len) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 			int freq, GSupplicantScanParams *scan_data,
-			int driver_max_scan_ssids)
+			int driver_max_scan_ssids, char *ssid_name)
 {
 	unsigned int i;
 	struct scan_ssid *scan_ssid;
@@ -294,6 +309,15 @@ static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 			j = ssid_len;
 		}
 
+		/*
+		 * If we have already added hidden AP to the list,
+		 * then do not do it again. This might happen if you have
+		 * used or are using multiple wifi cards, so in that case
+		 * you might have multiple service files for same AP.
+		 */
+		if (is_duplicate(scan_data->ssids, ssid, j) == TRUE)
+			return 0;
+
 		scan_ssid = g_try_new(struct scan_ssid, 1);
 		if (scan_ssid == NULL) {
 			g_free(ssid);
@@ -306,6 +330,9 @@ static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 								scan_ssid);
 
 		scan_data->num_ssids++;
+
+		DBG("SSID %s added to scanned list of %d entries", ssid_name,
+							scan_data->num_ssids);
 
 		if (hex_ssid != NULL)
 			g_free(ssid);
@@ -340,7 +367,7 @@ static int add_scan_param(gchar *hex_ssid, char *raw_ssid, int ssid_len,
 			break;
 	}
 
-	return 0;
+	return 1;
 }
 
 static int get_hidden_connections(int max_ssids,
@@ -349,9 +376,8 @@ static int get_hidden_connections(int max_ssids,
 	struct connman_config_entry **entries;
 	GKeyFile *keyfile;
 	gchar **services;
-	char *ssid;
-	gchar *str;
-	int i, freq;
+	char *ssid, *name;
+	int i, freq, ret;
 	gboolean value;
 	int num_ssids = 0, add_param_failed = 0;
 
@@ -382,17 +408,17 @@ static int get_hidden_connections(int max_ssids,
 		freq = g_key_file_get_integer(keyfile, services[i],
 					"Frequency", NULL);
 
-		if (add_scan_param(ssid, NULL, 0, freq, scan_data,
-							max_ssids) < 0) {
-			str = g_key_file_get_string(keyfile,
-					services[i], "Name", NULL);
-			DBG("Cannot scan %s (%s)", ssid, str);
-			g_free(str);
+		name = g_key_file_get_string(keyfile, services[i], "Name",
+								NULL);
+
+		ret = add_scan_param(ssid, NULL, 0, freq, scan_data,
+				max_ssids, name);
+		if (ret < 0)
 			add_param_failed++;
-		}
+		else if (ret > 0)
+			num_ssids++;
 
-		num_ssids++;
-
+		g_free(name);
 		g_key_file_free(keyfile);
 	}
 
@@ -417,15 +443,12 @@ static int get_hidden_connections(int max_ssids,
 		if (ssid == NULL)
 			continue;
 
-		DBG("[%d]->ssid = %s", i, ssid);
-
-		if (add_scan_param(NULL, ssid, len, 0, scan_data,
-							max_ssids) < 0) {
-			DBG("Cannot scan %s (%s)", ssid, entries[i]->ident);
+		ret = add_scan_param(NULL, ssid, len, 0, scan_data,
+							max_ssids, ssid);
+		if (ret < 0)
 			add_param_failed++;
-		}
-
-		num_ssids++;
+		else if (ret > 0)
+			num_ssids++;
 	}
 
 	connman_config_free_entries(entries);
@@ -870,7 +893,7 @@ static int get_latest_connections(int max_ssids,
 						entry->modified.tv_sec);
 
 		add_scan_param(entry->ssid, NULL, 0, entry->freq, scan_data,
-								max_ssids);
+						max_ssids, entry->ssid);
 
 		iter = g_sequence_iter_next(iter);
 	}
