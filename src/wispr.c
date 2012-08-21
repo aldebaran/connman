@@ -638,9 +638,12 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 			"net.connman.Agent.Error.LaunchBrowser") == 0) {
 		wispr_portal_context_ref(wp_context);
 
-		__connman_agent_request_browser(service,
+		if (__connman_agent_request_browser(service,
 				wispr_portal_browser_reply_cb,
-				wp_context->redirect_url, wp_context);
+				wp_context->redirect_url,
+				wp_context) != -EINPROGRESS)
+			wispr_portal_context_unref(wp_context);
+
 		return;
 	}
 
@@ -650,13 +653,15 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 	g_free(wp_context->wispr_password);
 	wp_context->wispr_password = g_strdup(password);
 
+	wispr_portal_context_ref(wp_context);
+
 	wp_context->request_id = g_web_request_post(wp_context->web,
 					wp_context->wispr_msg.login_url,
 					"application/x-www-form-urlencoded",
 					wispr_input, wispr_portal_web_result,
 					wp_context);
-	if (wp_context->request_id != 0)
-		wispr_portal_context_ref(wp_context);
+	if (wp_context->request_id == 0)
+		wispr_portal_context_unref(wp_context);
 
 	connman_wispr_message_init(&wp_context->wispr_msg);
 }
