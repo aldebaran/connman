@@ -376,13 +376,6 @@ static int get_hidden_connections(int max_ssids,
 			continue;
 		}
 
-		value = g_key_file_get_boolean(keyfile,
-					services[i], "AutoConnect", NULL);
-		if (value == FALSE) {
-			g_key_file_free(keyfile);
-			continue;
-		}
-
 		ssid = g_key_file_get_string(keyfile,
 					services[i], "SSID", NULL);
 
