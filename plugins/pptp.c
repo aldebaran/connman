@@ -225,7 +225,9 @@ static void pptp_write_bool_option(struct connman_task *task,
 				const char *key, const char *value)
 {
 	if (key != NULL && value != NULL) {
-		if (strcmp(value, "yes") == 0)
+		if (strcasecmp(value, "yes") == 0 ||
+				strcasecmp(value, "true") == 0 ||
+				strcmp(value, "1") == 0)
 			connman_task_add_argument(task, key, NULL);
 	}
 }

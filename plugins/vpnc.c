@@ -194,7 +194,9 @@ static ssize_t write_bool_option(int fd, const char *key, const char *value)
 	ssize_t ret = 0;
 
 	if (key != NULL && value != NULL) {
-		if (strcmp(value, "yes") == 0) {
+		if (strcasecmp(value, "yes") == 0 ||
+				strcasecmp(value, "true") == 0 ||
+				strcmp(value, "1") == 0) {
 			buf = g_strdup_printf("%s\n", key);
 			ret = full_write(fd, buf, strlen(buf));
 
