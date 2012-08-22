@@ -1,3 +1,14 @@
+ver 1.6:
+	Fix issue with Bluetooth networking support.
+	Fix issue with technology enabling method returns.
+	Fix issue with wrong IP address for fixed configurations.
+	Fix issue with IP address setting when interface is down.
+	Fix issue with handling duplicate hidden WiFi networks.
+	Fix issue with missing scanning for hidden WiFi networks.
+	Fix issue with missing update of service properties.
+	Fix issue with missing clearing of service errors.
+	Add manual pages for daemon and configuration file.
+
 ver 1.5:
 	Fix issue with detecting Bluetooth networks when powered off.
 	Fix issue with connection attempts of non-favorite services.
