@@ -1099,7 +1099,13 @@ const char *connman_provider_get_string(struct connman_provider *provider,
 		return provider->name;
 	else if (g_str_equal(key, "Host") == TRUE)
 		return provider->host;
-	else if (g_str_equal(key, "VPN.Domain") == TRUE)
+	else if (g_str_equal(key, "HostIP") == TRUE) {
+		if (provider->host_ip == NULL ||
+				provider->host_ip[0] == NULL)
+			return provider->host;
+		else
+			return provider->host_ip[0];
+	} else if (g_str_equal(key, "VPN.Domain") == TRUE)
 		return provider->domain;
 
 	return g_hash_table_lookup(provider->setting_strings, key);
