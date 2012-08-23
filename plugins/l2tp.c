@@ -218,7 +218,7 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
-	value = connman_provider_get_string(provider, "Host");
+	value = connman_provider_get_string(provider, "HostIP");
 	if (value != NULL) {
 		connman_provider_set_string(provider, "Gateway", value);
 		gateway = g_strdup(value);
