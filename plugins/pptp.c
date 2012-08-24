@@ -65,7 +65,7 @@ struct {
 	{ "PPTP.RefuseMSCHAP", "refuse-mschap", NULL, OPT_BOOL },
 	{ "PPTP.RefuseMSCHAP2", "refuse-mschapv2", NULL, OPT_BOOL },
 	{ "PPTP.NoBSDComp", "nobsdcomp", NULL, OPT_BOOL },
-	{ "PPTP.NoDeflate", "nodeflatey", NULL, OPT_BOOL },
+	{ "PPTP.NoDeflate", "nodeflate", NULL, OPT_BOOL },
 	{ "PPTP.RequirMPPE", "require-mppe", NULL, OPT_BOOL },
 	{ "PPTP.RequirMPPE40", "require-mppe-40", NULL, OPT_BOOL },
 	{ "PPTP.RequirMPPE128", "require-mppe-128", NULL, OPT_BOOL },
