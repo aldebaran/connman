@@ -311,7 +311,7 @@ done:
 
 int connman_inet_ifdown(int index)
 {
-	struct ifreq ifr;
+	struct ifreq ifr, addr_ifr;
 	struct sockaddr_in *addr;
 	int sk, err;
 
@@ -332,9 +332,11 @@ int connman_inet_ifdown(int index)
 		goto done;
 	}
 
-	addr = (struct sockaddr_in *)&ifr.ifr_addr;
+	memset(&addr_ifr, 0, sizeof(addr_ifr));
+	memcpy(&addr_ifr.ifr_name, &ifr.ifr_name, sizeof(ifr.ifr_name));
+	addr = (struct sockaddr_in *)&addr_ifr.ifr_addr;
 	addr->sin_family = AF_INET;
-	if (ioctl(sk, SIOCSIFADDR, &ifr) < 0)
+	if (ioctl(sk, SIOCSIFADDR, &addr_ifr) < 0)
 		connman_warn("Could not clear IPv4 address index %d", index);
 
 	if (!(ifr.ifr_flags & IFF_UP)) {
