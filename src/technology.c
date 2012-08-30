@@ -959,7 +959,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 		return NULL;
 	}
 
-	technology_list = g_slist_append(technology_list, technology);
+	technology_list = g_slist_prepend(technology_list, technology);
 
 	technology_added_signal(technology);
 
@@ -1102,7 +1102,7 @@ int __connman_technology_add_device(struct connman_device *device)
 	if (!technology->enable_persistent)
 		__connman_device_disable(device);
 
-	technology->device_list = g_slist_append(technology->device_list,
+	technology->device_list = g_slist_prepend(technology->device_list,
 								device);
 
 	return 0;

@@ -2089,7 +2089,7 @@ int __connman_service_counter_register(const char *counter)
 
 	DBG("counter %s", counter);
 
-	counter_list = g_slist_append(counter_list, (gpointer)counter);
+	counter_list = g_slist_prepend(counter_list, (gpointer)counter);
 
 	iter = g_sequence_get_begin_iter(service_list);
 

@@ -636,7 +636,7 @@ static void remove_device_networks(struct connman_device *device)
 		if (connman_network_get_device(network) != device)
 			continue;
 
-		key_list = g_slist_append(key_list, key);
+		key_list = g_slist_prepend(key_list, key);
 	}
 
 	for (list = key_list; list != NULL; list = list->next) {

@@ -80,7 +80,7 @@ static void detect_newlink(unsigned short type, int index,
 		return;
 	}
 
-	device_list = g_slist_append(device_list, device);
+	device_list = g_slist_prepend(device_list, device);
 }
 
 static void detect_dellink(unsigned short type, int index,

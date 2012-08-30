@@ -128,7 +128,7 @@ unsigned int connman_proxy_lookup(const char *interface, const char *url,
 	}
 
 	DBG("token %u", lookup->token);
-	lookup_list = g_slist_append(lookup_list, lookup);
+	lookup_list = g_slist_prepend(lookup_list, lookup);
 
 	return lookup->token;
 }
@@ -179,7 +179,7 @@ void connman_proxy_driver_lookup_notify(struct connman_service *service,
 			if (lookup->cb)
 				lookup->cb(result, lookup->user_data);
 
-			matches = g_slist_append(matches, lookup);
+			matches = g_slist_prepend(matches, lookup);
 		}
 	}
 

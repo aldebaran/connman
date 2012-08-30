@@ -244,7 +244,7 @@ static gboolean resolver_expire_cb(gpointer user_data)
 	DBG("interface %s domain %s server %s",
 			entry->interface, entry->domain, entry->server);
 
-	list = g_slist_append(NULL, entry);
+	list = g_slist_prepend(NULL, entry);
 
 	index = connman_inet_ifindex(entry->interface);
 	if (index >= 0) {
@@ -462,7 +462,7 @@ int connman_resolver_remove(const char *interface, const char *domain,
 		if (g_strcmp0(entry->server, server) != 0)
 			continue;
 
-		matches = g_slist_append(matches, entry);
+		matches = g_slist_prepend(matches, entry);
 		break;
 	}
 
@@ -495,7 +495,7 @@ int connman_resolver_remove_all(const char *interface)
 		if (g_strcmp0(entry->interface, interface) != 0)
 			continue;
 
-		matches = g_slist_append(matches, entry);
+		matches = g_slist_prepend(matches, entry);
 	}
 
 	if (matches == NULL)

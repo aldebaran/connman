@@ -400,7 +400,7 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	if (config->protected == TRUE)
 		protected_services =
-			g_slist_append(protected_services, service);
+			g_slist_prepend(protected_services, service);
 
 	connman_info("Adding service configuration %s", service->ident);
 

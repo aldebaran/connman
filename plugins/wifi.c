@@ -1659,7 +1659,7 @@ static void network_added(GSupplicantNetwork *supplicant_network)
 			return;
 		}
 
-		wifi->networks = g_slist_append(wifi->networks, network);
+		wifi->networks = g_slist_prepend(wifi->networks, network);
 	}
 
 	if (name != NULL && name[0] != '\0')

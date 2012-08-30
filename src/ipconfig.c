@@ -807,7 +807,7 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 	else
 		return;
 
-	ipdevice->address_list = g_slist_append(ipdevice->address_list,
+	ipdevice->address_list = g_slist_prepend(ipdevice->address_list,
 								ipaddress);
 
 	connman_info("%s {add} address %s/%u label %s family %d",

@@ -1793,7 +1793,7 @@ GSList *__connman_inet_ipv6_get_prefixes(struct nd_router_advert *hdr,
 
 			str = g_strdup_printf("%s/%d", prefix,
 						pinfo->nd_opt_pi_prefix_len);
-			prefixes = g_slist_append(prefixes, str);
+			prefixes = g_slist_prepend(prefixes, str);
 
 			DBG("prefix %s", str);
 

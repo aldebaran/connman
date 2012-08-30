@@ -382,7 +382,7 @@ struct connman_network *connman_network_create(const char *identifier,
 	network->type       = type;
 	network->identifier = ident;
 
-	network_list = g_slist_append(network_list, network);
+	network_list = g_slist_prepend(network_list, network);
 
 	return network;
 }
