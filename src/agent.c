@@ -150,6 +150,25 @@ fail:
 	return -ESRCH;
 }
 
+static int agent_send_cancel(void)
+{
+	DBusMessage *message;
+
+	if (agent_sender == NULL)
+		return 0;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+			CONNMAN_AGENT_INTERFACE, "Cancel");
+	if (message != NULL) {
+		dbus_message_set_no_reply(message, TRUE);
+		g_dbus_send_message(connection, message);
+		return 0;
+	}
+
+	connman_warn("Failed to send Cancel message to agent");
+	return -ESRCH;
+}
+
 static void agent_receive_message(DBusPendingCall *call, void *user_data)
 {
 	struct agent_data *queue_data = user_data;
@@ -197,6 +216,41 @@ static int agent_queue_message(struct connman_service *service,
 	agent_queue = g_list_append(agent_queue, queue_data);
 
 	return agent_send_next_request();
+}
+
+void __connman_agent_cancel(struct connman_service *service)
+{
+	GList *item, *next;
+	struct agent_data *queued_req;
+
+	DBG("service %p", service);
+
+	item = agent_queue;
+
+	while (item != NULL) {
+		next = g_list_next(item);
+		queued_req = item->data;
+
+		if (queued_req->service == service || service == NULL) {
+			agent_data_free(queued_req);
+			agent_queue = g_list_delete_link(agent_queue, item);
+		}
+
+		item = next;
+	}
+
+	if (agent_request == NULL)
+		return;
+
+	if (agent_request->service != service && service != NULL)
+		return;
+
+	agent_data_free(agent_request);
+	agent_request = NULL;
+
+	agent_send_cancel();
+
+	agent_send_next_request();
 }
 
 static connman_bool_t check_reply_has_dict(DBusMessage *reply)
