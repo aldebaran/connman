@@ -178,7 +178,7 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data)
 
 static int agent_queue_message(struct connman_service *service,
 		DBusMessage *msg, int timeout,
-		DBusPendingCallNotifyFunction callback, void *user_data)
+		agent_queue_cb callback, void *user_data)
 {
 	struct agent_data *queue_data;
 
@@ -225,7 +225,7 @@ struct request_input_reply {
 	void *user_data;
 };
 
-static void request_input_passphrase_reply(DBusPendingCall *call, void *user_data)
+static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
 {
 	struct request_input_reply *passphrase_reply = user_data;
 	connman_bool_t values_received = FALSE;
@@ -238,7 +238,6 @@ static void request_input_passphrase_reply(DBusPendingCall *call, void *user_dat
 	char *name = NULL;
 	int name_len = 0;
 	DBusMessageIter iter, dict;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -319,8 +318,6 @@ done:
 				wps, wpspin, error,
 				passphrase_reply->user_data);
 	connman_service_unref(passphrase_reply->service);
-	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 	g_free(passphrase_reply);
 }
 
@@ -507,7 +504,7 @@ static void previous_passphrase_handler(DBusMessageIter *iter,
 			request_input_append_previouspassphrase, &data);
 }
 
-static void request_input_login_reply(DBusPendingCall *call, void *user_data)
+static void request_input_login_reply(DBusMessage *reply, void *user_data)
 {
 	struct request_input_reply *username_password_reply = user_data;
 	const char *error = NULL;
@@ -516,7 +513,6 @@ static void request_input_login_reply(DBusPendingCall *call, void *user_data)
 	char *password = NULL;
 	char *key;
 	DBusMessageIter iter, dict;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		error = dbus_message_get_error_name(reply);
@@ -566,7 +562,6 @@ done:
 					FALSE, NULL, error,
 					username_password_reply->user_data);
 	connman_service_unref(username_password_reply->service);
-	dbus_message_unref(reply);
 	g_free(username_password_reply);
 }
 
@@ -577,8 +572,8 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 	const char *path;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	DBusPendingCall *call;
 	struct request_input_reply *passphrase_reply;
+	int err;
 
 	if (service == NULL || agent_path == NULL || callback == NULL)
 		return -ESRCH;
@@ -631,26 +626,22 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message, &call,
-					connman_timeout_input_request())
-			== FALSE) {
-		dbus_message_unref(message);
-		g_free(passphrase_reply);
-		return -ESRCH;
-	}
-
-	if (call == NULL) {
-		dbus_message_unref(message);
-		g_free(passphrase_reply);
-		return -ESRCH;
-	}
-
 	passphrase_reply->service = connman_service_ref(service);
 	passphrase_reply->callback = callback;
 	passphrase_reply->user_data = user_data;
 
-	dbus_pending_call_set_notify(call, request_input_passphrase_reply,
-				passphrase_reply, NULL);
+	err = agent_queue_message(service, message,
+			connman_timeout_input_request(),
+			request_input_passphrase_reply,
+			passphrase_reply);
+
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending agent message", err);
+		connman_service_unref(service);
+		dbus_message_unref(message);
+		g_free(passphrase_reply);
+		return err;
+	}
 
 	dbus_message_unref(message);
 
@@ -664,8 +655,8 @@ int __connman_agent_request_login_input(struct connman_service *service,
 	const char *path;
 	DBusMessageIter iter;
 	DBusMessageIter dict;
-	DBusPendingCall *call;
 	struct request_input_reply *username_password_reply;
+	int err;
 
 	if (service == NULL || agent_path == NULL || callback == NULL)
 		return -ESRCH;
@@ -698,26 +689,20 @@ int __connman_agent_request_login_input(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message, &call,
-					connman_timeout_input_request())
-			== FALSE) {
-		dbus_message_unref(message);
-		g_free(username_password_reply);
-		return -ESRCH;
-	}
-
-	if (call == NULL) {
-		dbus_message_unref(message);
-		g_free(username_password_reply);
-		return -ESRCH;
-	}
-
 	username_password_reply->service = connman_service_ref(service);
 	username_password_reply->callback = callback;
 	username_password_reply->user_data = user_data;
 
-	dbus_pending_call_set_notify(call, request_input_login_reply,
-						username_password_reply, NULL);
+	err = agent_queue_message(service, message,
+			connman_timeout_input_request(),
+			request_input_login_reply, username_password_reply);
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending agent request", err);
+		connman_service_unref(service);
+		dbus_message_unref(message);
+		g_free(username_password_reply);
+		return err;
+	}
 
 	dbus_message_unref(message);
 
@@ -730,10 +715,9 @@ struct request_browser_reply_data {
 	void *user_data;
 };
 
-static void request_browser_reply(DBusPendingCall *call, void *user_data)
+static void request_browser_reply(DBusMessage *reply, void *user_data)
 {
 	struct request_browser_reply_data *browser_reply_data = user_data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	connman_bool_t result = FALSE;
 	const char *error = NULL;
 
@@ -748,7 +732,6 @@ done:
 	browser_reply_data->callback(browser_reply_data->service, result,
 					error, browser_reply_data->user_data);
 	connman_service_unref(browser_reply_data->service);
-	dbus_message_unref(reply);
 	g_free(browser_reply_data);
 }
 
@@ -757,10 +740,10 @@ int __connman_agent_request_browser(struct connman_service *service,
 				const char *url, void *user_data)
 {
 	struct request_browser_reply_data *browser_reply_data;
-	DBusPendingCall *call;
 	DBusMessage *message;
 	DBusMessageIter iter;
 	const char *path;
+	int err;
 
 	if (service == NULL || agent_path == NULL || callback == NULL)
 		return -ESRCH;
@@ -787,26 +770,21 @@ int __connman_agent_request_browser(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message, &call,
-					connman_timeout_browser_launch())
-			== FALSE) {
-		dbus_message_unref(message);
-		g_free(browser_reply_data);
-		return -ESRCH;
-	}
-
-	if (call == NULL) {
-		dbus_message_unref(message);
-		g_free(browser_reply_data);
-		return -ESRCH;
-	}
-
 	browser_reply_data->service = connman_service_ref(service);
 	browser_reply_data->callback = callback;
 	browser_reply_data->user_data = user_data;
 
-	dbus_pending_call_set_notify(call, request_browser_reply,
-						browser_reply_data, NULL);
+	err = agent_queue_message(service, message,
+			connman_timeout_browser_launch(),
+			request_browser_reply, browser_reply_data);
+
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending browser request", err);
+		connman_service_unref(service);
+		dbus_message_unref(message);
+		g_free(browser_reply_data);
+		return err;
+	}
 
 	dbus_message_unref(message);
 
@@ -819,10 +797,9 @@ struct report_error_data {
 	void *user_data;
 };
 
-static void report_error_reply(DBusPendingCall *call, void *user_data)
+static void report_error_reply(DBusMessage *reply, void *user_data)
 {
 	struct report_error_data *report_error = user_data;
-	DBusMessage *reply = dbus_pending_call_steal_reply(call);
 	gboolean retry = FALSE;
 	const char *dbus_err;
 
@@ -838,8 +815,6 @@ static void report_error_reply(DBusPendingCall *call, void *user_data)
 			report_error->user_data);
 	connman_service_unref(report_error->service);
 	g_free(report_error);
-	dbus_message_unref(reply);
-	dbus_pending_call_unref(call);
 }
 
 int __connman_agent_report_error(struct connman_service *service,
@@ -850,7 +825,7 @@ int __connman_agent_report_error(struct connman_service *service,
 	DBusMessageIter iter;
 	const char *path;
 	struct report_error_data *report_error;
-	DBusPendingCall *call;
+	int err;
 
 	if (service == NULL || agent_path == NULL || error == NULL ||
 		callback == NULL)
@@ -876,25 +851,21 @@ int __connman_agent_report_error(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	if (dbus_connection_send_with_reply(connection, message, &call,
-					connman_timeout_input_request())
-			== FALSE) {
-		dbus_message_unref(message);
-		g_free(report_error);
-		return -ESRCH;
-	}
-
-	if (call == NULL) {
-		dbus_message_unref(message);
-		g_free(report_error);
-		return -ESRCH;
-	}
-
 	report_error->service = connman_service_ref(service);
 	report_error->callback = callback;
 	report_error->user_data = user_data;
-	dbus_pending_call_set_notify(call, report_error_reply,
-				report_error, NULL);
+
+	err = agent_queue_message(service, message,
+			connman_timeout_input_request(),
+			report_error_reply, report_error);
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending error request", err);
+		connman_service_unref(service);
+		g_free(report_error);
+		dbus_message_unref(message);
+		return -ESRCH;
+	}
+
 	dbus_message_unref(message);
 
 	return -EINPROGRESS;
