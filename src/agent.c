@@ -36,6 +36,20 @@ static guint agent_watch = 0;
 static gchar *agent_path = NULL;
 static gchar *agent_sender = NULL;
 
+typedef void (*agent_queue_cb)(DBusMessage *reply, void *user_data);
+
+struct agent_data {
+	struct connman_service *service;
+	DBusMessage *msg;
+	DBusPendingCall *call;
+	int timeout;
+	agent_queue_cb callback;
+	void *user_data;
+};
+
+static GList *agent_queue = NULL;
+static struct agent_data *agent_request = NULL;
+
 static void agent_free(void)
 {
 	agent_watch = 0;
@@ -83,6 +97,106 @@ int __connman_agent_unregister(const char *sender, const char *path)
 	agent_free();
 
 	return 0;
+}
+
+static void agent_data_free(struct agent_data *data)
+{
+	if (data == NULL)
+		return;
+	if (data->service != NULL)
+		connman_service_unref(data->service);
+	if (data->msg != NULL)
+		dbus_message_unref(data->msg);
+	if (data->call != NULL)
+		dbus_pending_call_cancel(data->call);
+
+	g_free(data);
+}
+
+static void agent_receive_message(DBusPendingCall *call, void *user_data);
+
+static int agent_send_next_request(void)
+{
+	if (agent_request != NULL)
+		return -EBUSY;
+
+	if (agent_queue == NULL)
+		return 0;
+
+	agent_request = agent_queue->data;
+	agent_queue = g_list_remove(agent_queue, agent_request);
+
+	if (dbus_connection_send_with_reply(connection, agent_request->msg,
+					&agent_request->call,
+					agent_request->timeout)
+			== FALSE)
+		goto fail;
+
+	if (agent_request->call == NULL)
+		goto fail;
+
+	if (dbus_pending_call_set_notify(agent_request->call,
+					agent_receive_message, agent_request,
+					NULL) == FALSE)
+		goto fail;
+
+	dbus_message_unref(agent_request->msg);
+	agent_request->msg = NULL;
+	return 0;
+
+fail:
+	agent_data_free(agent_request);
+	agent_request = NULL;
+	return -ESRCH;
+}
+
+static void agent_receive_message(DBusPendingCall *call, void *user_data)
+{
+	struct agent_data *queue_data = user_data;
+	DBusMessage *reply;
+
+	DBG("waiting for %p received %p", agent_request, queue_data);
+
+	if (agent_request != queue_data) {
+		connman_error("Agent callback expected %p got %p",
+				agent_request, queue_data);
+		return;
+	}
+
+	reply = dbus_pending_call_steal_reply(call);
+	dbus_pending_call_unref(call);
+	queue_data->call = NULL;
+
+	queue_data->callback(reply, queue_data->user_data);
+	dbus_message_unref(reply);
+
+	agent_data_free(queue_data);
+	agent_request = NULL;
+
+	agent_send_next_request();
+}
+
+static int agent_queue_message(struct connman_service *service,
+		DBusMessage *msg, int timeout,
+		DBusPendingCallNotifyFunction callback, void *user_data)
+{
+	struct agent_data *queue_data;
+
+	if (service == NULL || callback == NULL)
+		return -EBADMSG;
+
+	queue_data = g_new0(struct agent_data, 1);
+	if (queue_data == NULL)
+		return -ENOMEM;
+
+	queue_data->service = connman_service_ref(service);
+	queue_data->msg = dbus_message_ref(msg);
+	queue_data->timeout = timeout;
+	queue_data->callback = callback;
+	queue_data->user_data = user_data;
+	agent_queue = g_list_append(agent_queue, queue_data);
+
+	return agent_send_next_request();
 }
 
 static connman_bool_t check_reply_has_dict(DBusMessage *reply)
