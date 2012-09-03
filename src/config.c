@@ -455,6 +455,7 @@ static int load_config(struct connman_config *config)
 		config->protected = protected;
 	else
 		config->protected = TRUE;
+	g_clear_error(&error);
 
 	groups = g_key_file_get_groups(keyfile, &length);
 
