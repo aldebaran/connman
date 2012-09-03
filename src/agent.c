@@ -59,6 +59,8 @@ static void agent_free(void)
 
 	g_free(agent_path);
 	agent_path = NULL;
+
+	__connman_agent_cancel(NULL);
 }
 
 static void agent_disconnect(DBusConnection *conn, void *data)
@@ -185,6 +187,13 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data)
 	reply = dbus_pending_call_steal_reply(call);
 	dbus_pending_call_unref(call);
 	queue_data->call = NULL;
+
+	if (dbus_message_is_error(reply, "org.freedesktop.DBus.Error.Timeout")
+			== TRUE || dbus_message_is_error(reply,
+					"org.freedesktop.DBus.Error.TimedOut")
+			== TRUE) {
+		agent_send_cancel();
+	}
 
 	queue_data->callback(reply, queue_data->user_data);
 	dbus_message_unref(reply);

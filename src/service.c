@@ -5686,6 +5686,8 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	DBG("service %p", service);
 
+	__connman_agent_cancel(service);
+
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
 	} else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
