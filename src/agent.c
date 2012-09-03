@@ -957,19 +957,16 @@ void __connman_agent_cleanup(void)
 	if (agent_watch > 0)
 		g_dbus_remove_watch(connection, agent_watch);
 
-	if (agent_path == NULL)
-		return;
+	if (agent_path != NULL) {
+		message = dbus_message_new_method_call(agent_sender, agent_path,
+				CONNMAN_AGENT_INTERFACE, "Release");
+		if (message != NULL) {
+			dbus_message_set_no_reply(message, TRUE);
+			g_dbus_send_message(connection, message);
+		}
 
-	message = dbus_message_new_method_call(agent_sender, agent_path,
-					CONNMAN_AGENT_INTERFACE, "Release");
-	if (message == NULL)
-		return;
-
-	dbus_message_set_no_reply(message, TRUE);
-
-	g_dbus_send_message(connection, message);
-
-	agent_free();
+		agent_free();
+	}
 
 	dbus_connection_unref(connection);
 }
