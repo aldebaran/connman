@@ -216,7 +216,7 @@ test_scripts = test/get-state test/list-services \
 		test/test-session test/test-supplicant \
 		test/test-new-supplicant test/service-move-before \
 		test/set-global-timeservers test/get-global-timeservers \
-		test/set-nameservers test/set-domains
+		test/set-nameservers test/set-domains test/set-timeservers
 
 if TEST
 testdir = $(pkglibdir)/test
