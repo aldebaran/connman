@@ -730,6 +730,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (strlen(str) < 1 || strlen(str) > 32)
 			return __connman_error_invalid_arguments(msg);
 
+		g_free(technology->tethering_ident);
 		technology->tethering_ident = g_strdup(str);
 		technology_save(technology);
 	} else if (g_str_equal(name, "TetheringPassphrase") == TRUE) {
@@ -743,6 +744,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (strlen(str) < 8 || strlen(str) > 63)
 			return __connman_error_passphrase_required(msg);
 
+		g_free(technology->tethering_passphrase);
 		technology->tethering_passphrase = g_strdup(str);
 		technology_save(technology);
 	} else if (g_str_equal(name, "Powered") == TRUE) {
@@ -998,6 +1000,8 @@ static void technology_put(struct connman_technology *technology)
 
 	g_free(technology->path);
 	g_free(technology->regdom);
+	g_free(technology->tethering_ident);
+	g_free(technology->tethering_passphrase);
 	g_free(technology);
 }
 
