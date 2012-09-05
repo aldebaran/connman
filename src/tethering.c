@@ -35,6 +35,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <linux/if_tun.h>
+#include <linux/if_bridge.h>
 
 #include "connman.h"
 
@@ -45,8 +46,6 @@
 #ifndef DBUS_TYPE_UNIX_FD
 #define DBUS_TYPE_UNIX_FD -1
 #endif
-
-#define BRIDGE_PROC_DIR "/proc/sys/net/bridge"
 
 #define BRIDGE_NAME "tether"
 #define BRIDGE_DNS "8.8.8.8"
@@ -79,12 +78,19 @@ struct connman_private_network {
 
 const char *__connman_tethering_get_bridge(void)
 {
-	struct stat st;
+	int sk, err;
+	unsigned long args[3];
 
-	if (stat(BRIDGE_PROC_DIR, &st) < 0) {
-		connman_error("Missing support for 802.1d ethernet bridging");
+	sk = socket(AF_INET, SOCK_STREAM, 0);
+	if (sk < 0)
 		return NULL;
-	}
+
+	args[0] = BRCTL_GET_VERSION;
+	args[1] = args[2] = 0;
+	err = ioctl(sk, SIOCGIFBR, &args);
+	close(sk);
+	if (err == -1)
+		return NULL;
 
 	return BRIDGE_NAME;
 }
