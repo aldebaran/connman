@@ -198,8 +198,10 @@ void __connman_tethering_set_enabled(void)
 		return;
 
 	err = __connman_bridge_create(BRIDGE_NAME);
-	if (err < 0)
+	if (err < 0) {
+		__sync_fetch_and_sub(&tethering_enabled, 1);
 		return;
+	}
 
 	index = connman_inet_ifindex(BRIDGE_NAME);
 	dhcp_ippool = __connman_ippool_create(index, 2, 252,
@@ -207,6 +209,7 @@ void __connman_tethering_set_enabled(void)
 	if (dhcp_ippool == NULL) {
 		connman_error("Fail to create IP pool");
 		__connman_bridge_remove(BRIDGE_NAME);
+		__sync_fetch_and_sub(&tethering_enabled, 1);
 		return;
 	}
 
@@ -220,6 +223,7 @@ void __connman_tethering_set_enabled(void)
 	if (err < 0 && err != -EALREADY) {
 		__connman_ippool_unref(dhcp_ippool);
 		__connman_bridge_remove(BRIDGE_NAME);
+		__sync_fetch_and_sub(&tethering_enabled, 1);
 		return;
 	}
 
@@ -238,6 +242,7 @@ void __connman_tethering_set_enabled(void)
 		__connman_bridge_disable(BRIDGE_NAME);
 		__connman_ippool_unref(dhcp_ippool);
 		__connman_bridge_remove(BRIDGE_NAME);
+		__sync_fetch_and_sub(&tethering_enabled, 1);
 		return;
 	}
 
