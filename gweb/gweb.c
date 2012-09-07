@@ -434,7 +434,6 @@ gboolean g_web_get_close_connection(GWeb *web)
 
 static inline void call_result_func(struct web_session *session, guint16 status)
 {
-	gboolean result;
 
 	if (session->result_func == NULL)
 		return;
@@ -442,10 +441,8 @@ static inline void call_result_func(struct web_session *session, guint16 status)
 	if (status != 0)
 		session->result.status = status;
 
-	result = session->result_func(&session->result, session->user_data);
+	session->result_func(&session->result, session->user_data);
 
-	debug(session->web, "[result function] %s",
-					result == TRUE ? "continue" : "stop");
 }
 
 static inline void call_route_func(struct web_session *session)
