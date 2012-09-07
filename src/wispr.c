@@ -69,6 +69,7 @@ struct connman_wispr_portal_context {
 
 	struct connman_service *service;
 	enum connman_ipconfig_type type;
+	struct connman_wispr_portal *wispr_portal;
 
 	/* Portal/WISPr common */
 	GWeb *web;
@@ -166,6 +167,14 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 
 	if (wp_context == NULL)
 		return;
+
+	if (wp_context->wispr_portal != NULL) {
+		if (wp_context->wispr_portal->ipv4_context == wp_context)
+			wp_context->wispr_portal->ipv4_context = NULL;
+
+		if (wp_context->wispr_portal->ipv6_context == wp_context)
+			wp_context->wispr_portal->ipv6_context = NULL;
+	}
 
 	if (wp_context->service != NULL)
 		connman_service_unref(wp_context->service);
@@ -1015,6 +1024,7 @@ int __connman_wispr_start(struct connman_service *service,
 
 	wp_context->service = service;
 	wp_context->type = type;
+	wp_context->wispr_portal = wispr_portal;
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 		wispr_portal->ipv4_context = wp_context;
