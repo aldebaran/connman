@@ -145,6 +145,8 @@ void connman_proxy_lookup_cancel(unsigned int token)
 
 		if (lookup->token == token)
 			break;
+
+		lookup = NULL;
 	}
 
 	if (lookup != NULL) {
