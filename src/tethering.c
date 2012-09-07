@@ -89,8 +89,10 @@ const char *__connman_tethering_get_bridge(void)
 	args[1] = args[2] = 0;
 	err = ioctl(sk, SIOCGIFBR, &args);
 	close(sk);
-	if (err == -1)
+	if (err == -1) {
+		connman_error("Missing support for 802.1d ethernet bridging");
 		return NULL;
+	}
 
 	return BRIDGE_NAME;
 }
