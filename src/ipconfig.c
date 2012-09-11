@@ -632,8 +632,19 @@ void __connman_ipconfig_newlink(int index, unsigned short type,
 		return;
 
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
-	if (ipdevice != NULL)
+	if (ipdevice != NULL) {
+		char *ifname = connman_inet_ifname(index);
+		if (g_strcmp0(ipdevice->ifname, ifname) != 0) {
+			DBG("interface name changed %s -> %s",
+				ipdevice->ifname, ifname);
+
+			g_free(ipdevice->ifname);
+			ipdevice->ifname = ifname;
+		} else
+			g_free(ifname);
+
 		goto update;
+	}
 
 	ipdevice = g_try_new0(struct connman_ipdevice, 1);
 	if (ipdevice == NULL)
