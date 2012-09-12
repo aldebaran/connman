@@ -96,6 +96,25 @@ static inline void connman_dbus_dict_open(DBusMessageIter *iter,
 			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, dict);
 }
 
+static inline void connman_dbus_dict_open_variant(DBusMessageIter *iter,
+							DBusMessageIter *dict)
+{
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING
+			DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING DBUS_TYPE_VARIANT_AS_STRING
+			DBUS_DICT_ENTRY_END_CHAR_AS_STRING, dict);
+}
+
+static inline void connman_dbus_array_open(DBusMessageIter *iter,
+							DBusMessageIter *dict)
+{
+	dbus_message_iter_open_container(iter, DBUS_TYPE_VARIANT,
+			DBUS_TYPE_ARRAY_AS_STRING
+			DBUS_TYPE_STRING_AS_STRING,
+			dict);
+}
+
 static inline void connman_dbus_dict_close(DBusMessageIter *iter,
 							DBusMessageIter *dict)
 {
