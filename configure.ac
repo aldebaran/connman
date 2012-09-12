@@ -421,5 +421,10 @@ AC_ARG_ENABLE(datafiles, AC_HELP_STRING([--disable-datafiles],
 					[enable_datafiles=${enableval}])
 AM_CONDITIONAL(DATAFILES, test "${enable_datafiles}" != "no")
 
+if (test "${enable_client}" != "no"); then
+	AC_CHECK_HEADERS(readline/readline.h, dummy=yes,
+		AC_MSG_ERROR(readline header files are required))
+fi
+
 AC_OUTPUT(Makefile include/version.h src/connman.service
 				scripts/connman doc/version.xml connman.pc)
