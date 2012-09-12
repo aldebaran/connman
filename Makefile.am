@@ -135,10 +135,21 @@ script_LTLIBRARIES =
 include Makefile.plugins
 
 if CLIENT
-noinst_PROGRAMS += client/cm
+noinst_PROGRAMS += client/connmanctl
 
-client_cm_SOURCES = client/main.c
-client_cm_LDADD = @DBUS_LIBS@
+dist_man_MANS = doc/connmanctl.1
+
+client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
+			include/log.h src/log.c \
+			include/dbus.h src/dbus.c \
+			client/data_manager.h client/data_manager.c \
+			client/services.h client/services.c \
+			client/technology.h client/technology.c \
+			client/interactive.h client/interactive.c \
+			client/monitor.h client/monitor.c \
+			client/commands.c client/main.c
+
+client_connmanctl_LDADD = @DBUS_LIBS@ @GLIB_LIBS@ -lreadline -ldl
 endif
 
 if WISPR
