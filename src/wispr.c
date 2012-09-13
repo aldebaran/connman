@@ -571,8 +571,6 @@ static void wispr_portal_request_portal(struct connman_wispr_portal_context *wp_
 
 	if (wp_context->request_id == 0)
 		wispr_portal_error(wp_context);
-	else
-		wispr_portal_context_ref(wp_context);
 }
 
 static gboolean wispr_input(const guint8 **data, gsize *length,
@@ -662,15 +660,11 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 	g_free(wp_context->wispr_password);
 	wp_context->wispr_password = g_strdup(password);
 
-	wispr_portal_context_ref(wp_context);
-
 	wp_context->request_id = g_web_request_post(wp_context->web,
 					wp_context->wispr_msg.login_url,
 					"application/x-www-form-urlencoded",
 					wispr_input, wispr_portal_web_result,
 					wp_context);
-	if (wp_context->request_id == 0)
-		wispr_portal_context_unref(wp_context);
 
 	connman_wispr_message_init(&wp_context->wispr_msg);
 }
@@ -757,19 +751,10 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 
 	DBG("");
 
-	wp_context = wispr_portal_context_unref(wp_context);
-	if (wp_context == NULL)
-		return FALSE;
-
-	if (wp_context->request_id == 0)
-		return FALSE;
-
 	if (wp_context->wispr_result != CONNMAN_WISPR_RESULT_ONLINE) {
 		g_web_result_get_chunk(result, &chunk, &length);
 
 		if (length > 0) {
-			wispr_portal_context_ref(wp_context);
-
 			g_web_parser_feed_data(wp_context->wispr_parser,
 								chunk, length);
 			return TRUE;
@@ -793,8 +778,11 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 			break;
 
 		if (g_web_result_get_header(result, "X-ConnMan-Status",
-								&str) == TRUE)
+						&str) == TRUE) {
 			portal_manage_status(result, wp_context);
+			wispr_portal_context_unref(wp_context);
+			return FALSE;
+		}
 		else {
 			wispr_portal_context_ref(wp_context);
 
@@ -823,15 +811,16 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		wp_context->request_id = g_web_request_get(wp_context->web,
 				redirect, wispr_portal_web_result,
 				wispr_route_request, wp_context);
-		if (wp_context->request_id != 0)
-			wispr_portal_context_ref(wp_context);
 
 		goto done;
 	case 400:
 	case 404:
 		if (__connman_service_online_check_failed(wp_context->service,
-							wp_context->type) == 0)
+						wp_context->type) == 0) {
 			wispr_portal_error(wp_context);
+			wispr_portal_context_unref(wp_context);
+			return FALSE;
+		}
 
 		break;
 	default:
@@ -851,7 +840,6 @@ static void proxy_callback(const char *proxy, void *user_data)
 
 	DBG("proxy %s", proxy);
 
-	wp_context = wispr_portal_context_unref(wp_context);
 	if (wp_context == NULL)
 		return;
 
@@ -964,13 +952,12 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 
 		if (wp_context->token == 0) {
 			err = -EINVAL;
-			goto done;
+			wispr_portal_context_unref(wp_context);
 		}
 	} else {
 		g_timeout_add_seconds(0, no_proxy_callback, wp_context);
 	}
 
-	wispr_portal_context_ref(wp_context);
 done:
 	g_strfreev(nameservers);
 
