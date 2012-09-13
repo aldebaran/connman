@@ -4185,6 +4185,7 @@ static void service_free(gpointer user_data)
 	__connman_notifier_service_remove(service);
 	service_schedule_removed(service);
 
+	__connman_wispr_stop(service);
 	stats_stop(service);
 
 	service->path = NULL;

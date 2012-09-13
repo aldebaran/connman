@@ -168,9 +168,6 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 			wp_context->wispr_portal->ipv6_context = NULL;
 	}
 
-	if (wp_context->service != NULL)
-		connman_service_unref(wp_context->service);
-
 	if (wp_context->token > 0)
 		connman_proxy_lookup_cancel(wp_context->token);
 
@@ -928,8 +925,6 @@ int __connman_wispr_start(struct connman_service *service,
 	wp_context = create_wispr_portal_context();
 	if (wp_context == NULL)
 		return -ENOMEM;
-
-	connman_service_ref(service);
 
 	wp_context->service = service;
 	wp_context->type = type;
