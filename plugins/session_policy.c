@@ -60,7 +60,7 @@ static int config_get_string(const char *id, const char *key, char **val)
 }
 
 static struct connman_session_config session_config = {
-	.name = "session default configuration",
+	.name = "session policy configuration",
 	.get_bool = config_get_bool,
 	.get_string = config_get_string,
 };
@@ -81,6 +81,6 @@ static void session_config_exit(void)
 	connman_session_config_unregister(&session_config);
 }
 
-CONNMAN_PLUGIN_DEFINE(session_default, "Session default configuration plugin",
+CONNMAN_PLUGIN_DEFINE(session_policy, "Session policy configuration plugin",
 		VERSION, CONNMAN_PLUGIN_PRIORITY_DEFAULT,
 		session_config_init, session_config_exit)

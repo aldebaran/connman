@@ -223,8 +223,17 @@ plugins_tist_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-builtin_modules += @SESSION_CONFIG_PLUGIN@
-builtin_sources += plugins/@SESSION_CONFIG_PLUGIN@.c
+if SESSION_POLICY
+if SESSION_POLICY_BUILTIN
+builtin_modules += session_policy
+builtin_sources += plugins/session_policy.c
+else
+plugin_LTLIBRARIES += plugins/session_policy.la
+plugin_objects += $(plugins_session_policy_la_OBJECTS)
+plugins_session_policy_la_CFLAGS = $(plugin_cflags)
+plugins_session_policy_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
 
 EXTRA_DIST += plugins/polkit.policy
 

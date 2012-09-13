@@ -252,11 +252,11 @@ AC_ARG_ENABLE(tist,
 AM_CONDITIONAL(TIST, test "${enable_tist}" != "no")
 AM_CONDITIONAL(TIST_BUILTIN, test "${enable_tist}" = "builtin")
 
-AC_ARG_WITH(configplugin, AC_HELP_STRING([--with-configplugin=PLUGIN],
-	[session config plugin]), [configplugin=${withval}],
-		[configplugin="session_default"])
-SESSION_CONFIG_PLUGIN="$configplugin"
-AC_SUBST(SESSION_CONFIG_PLUGIN)
+AC_ARG_ENABLE(session-policy,
+	AC_HELP_STRING([--enable-session-policy], [enable default Session policy configuration support]),
+			[enable_session_policy=${enableval}], [enable_session_policy="no"])
+AM_CONDITIONAL(SESSION_POLICY, test "${enable_session_policy}" != "no")
+AM_CONDITIONAL(SESSION_POLICY_BUILTIN, test "${enable_session_policy}" = "builtin")
 
 AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
 			[Maximal size of a statistics round robin file]),
