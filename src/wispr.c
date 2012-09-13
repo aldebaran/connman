@@ -33,9 +33,6 @@
 #define STATUS_URL_IPV4  "http://ipv4.connman.net/online/status.html"
 #define STATUS_URL_IPV6  "http://ipv6.connman.net/online/status.html"
 
-#define wispr_portal_context_ref(_wp_ctxt) \
-	wispr_portal_context_ref_debug(_wp_ctxt, __FILE__, __LINE__, __func__)
-
 #define wispr_portal_context_unref(_wp_ctxt) \
 	wispr_portal_context_unref_debug(_wp_ctxt, __FILE__, __LINE__, __func__)
 
@@ -202,18 +199,6 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 	free_wispr_routes(wp_context);
 
 	g_free(wp_context);
-}
-
-static struct connman_wispr_portal_context *
-wispr_portal_context_ref_debug(struct connman_wispr_portal_context *wp_context,
-				const char *file, int line, const char *caller)
-{
-	DBG("%p ref %d by %s:%d:%s()", wp_context, wp_context->refcount + 1,
-							file, line, caller);
-
-	__sync_fetch_and_add(&wp_context->refcount, 1);
-
-	return wp_context;
 }
 
 static struct connman_wispr_portal_context *
@@ -612,7 +597,6 @@ static void wispr_portal_browser_reply_cb(struct connman_service *service,
 
 	DBG("");
 
-	wp_context = wispr_portal_context_unref(wp_context);
 	if (service == NULL || wp_context == NULL)
 		return;
 
@@ -637,13 +621,8 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 
 	DBG("");
 
-	wp_context = wispr_portal_context_unref(wp_context);
-	if (wp_context == NULL)
-		return;
-
 	if (error != NULL && g_strcmp0(error,
 			"net.connman.Agent.Error.LaunchBrowser") == 0) {
-		wispr_portal_context_ref(wp_context);
 
 		if (__connman_agent_request_browser(service,
 				wispr_portal_browser_reply_cb,
@@ -702,13 +681,11 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 		wp_context->wispr_result = CONNMAN_WISPR_RESULT_LOGIN;
 
-		wispr_portal_context_ref(wp_context);
-
 		if (__connman_agent_request_login_input(wp_context->service,
 					wispr_portal_request_wispr_login,
 					wp_context) != -EINPROGRESS) {
-			wispr_portal_context_unref(wp_context);
 			wispr_portal_error(wp_context);
+			wispr_portal_context_unref(wp_context);
 		}
 
 		break;
@@ -783,20 +760,16 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 			wispr_portal_context_unref(wp_context);
 			return FALSE;
 		}
-		else {
-			wispr_portal_context_ref(wp_context);
-
+		else
 			__connman_agent_request_browser(wp_context->service,
 					wispr_portal_browser_reply_cb,
 					wp_context->redirect_url, wp_context);
-		}
 
 		break;
 	case 302:
 		if (g_web_supports_tls() == FALSE ||
 				g_web_result_get_header(result, "Location",
 							&redirect) == FALSE) {
-			wispr_portal_context_ref(wp_context);
 
 			__connman_agent_request_browser(wp_context->service,
 					wispr_portal_browser_reply_cb,
