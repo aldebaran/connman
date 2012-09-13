@@ -229,22 +229,6 @@ static struct connman_wispr_portal_context *create_wispr_portal_context(void)
 	 return wp_context;
 }
 
-/**
- * This function is usued only by free_connman_wispr_portal, context pointer
- * might still be owned by a third party (gweb, agent dbus call...)
- * so we don't want service to be referenced in any context when it is not
- * valid anymore.
- */
-static void
-reset_service_usage(struct connman_wispr_portal_context *wp_context)
-{
-	if (wp_context->service == NULL)
-		return;
-
-	connman_service_unref(wp_context->service);
-	wp_context->service = NULL;
-}
-
 static void free_connman_wispr_portal(gpointer data)
 {
 	struct connman_wispr_portal *wispr_portal = data;
@@ -254,15 +238,11 @@ static void free_connman_wispr_portal(gpointer data)
 	if (wispr_portal == NULL)
 		return;
 
-	if (wispr_portal->ipv4_context != NULL) {
-		reset_service_usage(wispr_portal->ipv4_context);
+	if (wispr_portal->ipv4_context != NULL)
 		wispr_portal_context_unref(wispr_portal->ipv4_context);
-	}
 
-	if (wispr_portal->ipv6_context != NULL) {
-		reset_service_usage(wispr_portal->ipv6_context);
+	if (wispr_portal->ipv6_context != NULL)
 		wispr_portal_context_unref(wispr_portal->ipv6_context);
-	}
 
 	g_free(wispr_portal);
 }
