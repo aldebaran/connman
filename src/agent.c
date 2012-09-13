@@ -380,7 +380,6 @@ done:
 				identity, passphrase,
 				wps, wpspin, error,
 				passphrase_reply->user_data);
-	connman_service_unref(passphrase_reply->service);
 	g_free(passphrase_reply);
 }
 
@@ -624,7 +623,6 @@ done:
 					username, password,
 					FALSE, NULL, error,
 					username_password_reply->user_data);
-	connman_service_unref(username_password_reply->service);
 	g_free(username_password_reply);
 }
 
@@ -689,7 +687,7 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	passphrase_reply->service = connman_service_ref(service);
+	passphrase_reply->service = service;
 	passphrase_reply->callback = callback;
 	passphrase_reply->user_data = user_data;
 
@@ -700,7 +698,6 @@ int __connman_agent_request_passphrase_input(struct connman_service *service,
 
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent message", err);
-		connman_service_unref(service);
 		dbus_message_unref(message);
 		g_free(passphrase_reply);
 		return err;
@@ -752,7 +749,7 @@ int __connman_agent_request_login_input(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	username_password_reply->service = connman_service_ref(service);
+	username_password_reply->service = service;
 	username_password_reply->callback = callback;
 	username_password_reply->user_data = user_data;
 
@@ -761,7 +758,6 @@ int __connman_agent_request_login_input(struct connman_service *service,
 			request_input_login_reply, username_password_reply);
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending agent request", err);
-		connman_service_unref(service);
 		dbus_message_unref(message);
 		g_free(username_password_reply);
 		return err;
@@ -794,7 +790,6 @@ static void request_browser_reply(DBusMessage *reply, void *user_data)
 done:
 	browser_reply_data->callback(browser_reply_data->service, result,
 					error, browser_reply_data->user_data);
-	connman_service_unref(browser_reply_data->service);
 	g_free(browser_reply_data);
 }
 
@@ -833,7 +828,7 @@ int __connman_agent_request_browser(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	browser_reply_data->service = connman_service_ref(service);
+	browser_reply_data->service = service;
 	browser_reply_data->callback = callback;
 	browser_reply_data->user_data = user_data;
 
@@ -843,7 +838,6 @@ int __connman_agent_request_browser(struct connman_service *service,
 
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending browser request", err);
-		connman_service_unref(service);
 		dbus_message_unref(message);
 		g_free(browser_reply_data);
 		return err;
@@ -876,7 +870,6 @@ static void report_error_reply(DBusMessage *reply, void *user_data)
 
 	report_error->callback(report_error->service, retry,
 			report_error->user_data);
-	connman_service_unref(report_error->service);
 	g_free(report_error);
 }
 
@@ -914,7 +907,7 @@ int __connman_agent_report_error(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	report_error->service = connman_service_ref(service);
+	report_error->service = service;
 	report_error->callback = callback;
 	report_error->user_data = user_data;
 
@@ -923,7 +916,6 @@ int __connman_agent_report_error(struct connman_service *service,
 			report_error_reply, report_error);
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending error request", err);
-		connman_service_unref(service);
 		g_free(report_error);
 		dbus_message_unref(message);
 		return -ESRCH;
