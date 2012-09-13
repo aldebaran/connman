@@ -712,8 +712,12 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		dbus_message_iter_get_basic(&value, &tethering);
 
-		if (technology->tethering == tethering)
-			return __connman_error_already_enabled(msg);
+		if (technology->tethering == tethering) {
+			if (tethering == FALSE)
+				return __connman_error_already_disabled(msg);
+			else
+				return __connman_error_already_enabled(msg);
+		}
 
 		err = set_tethering(technology, tethering);
 		if (err < 0)
