@@ -94,7 +94,8 @@ void show_help(void)
 	"        --manager                    Monitor signals from the Manager interface\n"
 	"  help, --help, (no arguments)       Show this dialogue\n"
 	"  interactive                        Drop into the interactive shell\n"
-	"  exit, quit, q                      Quit interactive mode\n");
+	"  exit, quit, q                      Quit interactive mode\n"
+	"\nNote: arguments and output are considered EXPERIMENTAL for now.\n\n");
 }
 
 int service_switch(int argc, char *argv[], int c, DBusConnection *conn,
