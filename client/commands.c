@@ -70,7 +70,7 @@ void show_help(void)
 	"  state                              Shows if the system is online or offline\n"
 	"  services                           Display list of all services\n"
 	"        --properties <service name>  Show properties of service\n"
-	"  tech                               Current technology on the system\n"
+	"  technologies                       Current technology on the system\n"
 	"  scan <technology>                  Scans for new services on the given technology\n"
 	"  connect <service>                  Connect to a given service\n"
 	"  disconnect <service>               Disconnect from service\n"
@@ -287,7 +287,7 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 		error = list_properties(connection, "GetProperties", NULL);
 		if (error != 0)
 			return error;
-	} else if (strcmp(argv[0], "tech") == 0) {
+	} else if (strcmp(argv[0], "technologies") == 0) {
 		if (argc != 1) {
 			fprintf(stderr, "Tech cannot accept an argument, "
 								"see help\n");
