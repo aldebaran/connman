@@ -126,14 +126,14 @@ WiMAX
 Tools
 =====
 
-- Command line tool
+- Add Agent mode to connmanctl command line tool
 
-   Priority: Low
-   Complexity: C4
-   Owner: Patrik Flykt <patrik.flykt@linux.intel.com>
+   Priority: Medium
+   Complexity: C2
 
-   For platforms not running python, it could prove useful to provide them
-   with a native single binary command line tool.
+   connmanctl should implement agent prompting when started with a suitable
+   command line option. Agent mode should also be enabled when in interactive
+   mode.
 
 
 User Interface
