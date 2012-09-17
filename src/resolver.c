@@ -564,6 +564,7 @@ int __connman_resolver_redo_servers(const char *interface)
 		 * with RDNSS/DNSSL settings.
 		 */
 		g_source_remove(entry->timeout);
+		entry->timeout = 0;
 
 		__connman_dnsproxy_append(entry->interface, entry->domain,
 					entry->server);
