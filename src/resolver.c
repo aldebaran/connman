@@ -31,6 +31,7 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <resolv.h>
+#include <netdb.h>
 
 #include "connman.h"
 
@@ -46,6 +47,7 @@ struct entry_data {
 	char *interface;
 	char *domain;
 	char *server;
+	int family;
 	unsigned int flags;
 	unsigned int lifetime;
 	guint timeout;
@@ -317,6 +319,10 @@ static int append_resolver(const char *interface, const char *domain,
 	entry->server = g_strdup(server);
 	entry->flags = flags;
 	entry->lifetime = lifetime;
+
+	if (server != NULL)
+		entry->family = connman_inet_check_ipaddress(server);
+
 	if (lifetime) {
 		int index;
 		interval = lifetime * RESOLVER_LIFETIME_REFRESH_THRESHOLD;
@@ -536,6 +542,13 @@ int __connman_resolver_redo_servers(const char *interface)
 
 		if (entry->timeout == 0 ||
 				g_strcmp0(entry->interface, interface) != 0)
+			continue;
+
+		/*
+		 * This function must only check IPv6 server addresses so
+		 * do not remove IPv4 name servers unnecessarily.
+		 */
+		if (entry->family != AF_INET6)
 			continue;
 
 		/*
