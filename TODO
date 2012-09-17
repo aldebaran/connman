@@ -45,6 +45,25 @@ Core
    security integration.
 
 
+- Check logging produced by connman_info()
+
+   Priority: Medium
+   Complexity: C1
+
+   Check that logging produced by connman_info() contains meaningful messages
+   and get rid of the unnecessary ones.
+
+
+- Disable logging to syslog when run in foreground
+
+   Priority: Medium
+   Complexity: C1
+
+   When ConnMan is run in foreground mode, disable logging to syslog. If not
+   disabled, systemd will log everything twice, once via syslog and once on
+   standard error.
+
+
 - Favorite service migration removal
 
   Priority: Medium
