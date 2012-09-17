@@ -2040,7 +2040,7 @@ static struct server_data *create_server(const char *interface,
 		return NULL;
 	}
 	hints.ai_family = AF_UNSPEC;
-	hints.ai_flags = AI_PASSIVE | AI_NUMERICSERV | AI_NUMERICHOST;
+	hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST;
 
 	ret = getaddrinfo(server, "53", &hints, &rp);
 	if (ret) {
