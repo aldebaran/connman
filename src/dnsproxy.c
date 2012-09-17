@@ -86,6 +86,8 @@ struct server_data {
 	char *interface;
 	GList *domains;
 	char *server;
+	struct sockaddr server_addr;
+	socklen_t server_addr_len;
 	int protocol;
 	GIOChannel *channel;
 	guint watch;
@@ -1505,9 +1507,15 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 
 	sk = g_io_channel_unix_get_fd(server->channel);
 
-	err = send(sk, request, req->request_len, MSG_NOSIGNAL);
-	if (err < 0)
+	err = sendto(sk, request, req->request_len, MSG_NOSIGNAL,
+			&server->server_addr, server->server_addr_len);
+	if (err < 0) {
+		DBG("Cannot send message to server %s sock %d "
+			"protocol %d (%s/%d)",
+			server->server, sk, server->protocol,
+			strerror(errno), errno);
 		return -EIO;
+	}
 
 	req->numserv++;
 
@@ -2101,6 +2109,8 @@ static struct server_data *create_server(const char *interface,
 		data->domains = g_list_append(data->domains, g_strdup(domain));
 	data->server = g_strdup(server);
 	data->protocol = protocol;
+	data->server_addr_len = rp->ai_addrlen;
+	memcpy(&data->server_addr, rp->ai_addr, rp->ai_addrlen);
 
 	ret = connect(sk, rp->ai_addr, rp->ai_addrlen);
 	freeaddrinfo(rp);
