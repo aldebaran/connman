@@ -144,27 +144,6 @@ Settings	boolean State [readonly]
 			certain bearers such as Wifi with a fallback to any
 			other available bearer.
 
-		boolean AvoidHandover [readwrite]
-
-			By default this setting is false. It can be used
-			to indicate that a handover is currently not a good
-			idea. However no connection is guaranteed. So a
-			handover can happen anyway. This is just an indication
-			that the application would like to avoid it right now.
-
-			It is a bad idea to always enable this settings and
-			actually it will be reset after a while to avoid
-			congestion.
-
-			Main use case it is for application that are currently
-			doing a specific tasks that it prefers to finish
-			before allowing handovers again. An example would
-			be synchronization.
-
-			Never the less application needs to be aware that
-			handovers can happen at any time even if this is
-			set to true.
-
 		string ConnectionType [readwrite]
 
 			This is used to indicate which connection is requested
