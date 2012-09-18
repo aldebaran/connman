@@ -49,42 +49,6 @@ static enum connman_session_state string2type(const char *type)
 	return CONNMAN_SESSION_TYPE_ANY;
 }
 
-static const char *roamingpolicy2string(enum connman_session_roaming_policy policy)
-{
-	switch (policy) {
-	case CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN:
-		break;
-	case CONNMAN_SESSION_ROAMING_POLICY_DEFAULT:
-		return "default";
-	case CONNMAN_SESSION_ROAMING_POLICY_ALWAYS:
-		return "always";
-	case CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN:
-		return "forbidden";
-	case CONNMAN_SESSION_ROAMING_POLICY_NATIONAL:
-		return "national";
-	case CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL:
-		return "international";
-	}
-
-	return "";
-}
-
-static enum connman_session_roaming_policy string2roamingpolicy(const char *policy)
-{
-	if (g_strcmp0(policy, "default") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
-	else if (g_strcmp0(policy, "always") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_ALWAYS;
-	else if (g_strcmp0(policy, "forbidden") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
-	else if (g_strcmp0(policy, "national") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_NATIONAL;
-	else if (g_strcmp0(policy, "international") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL;
-	else
-		return CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN;
-}
-
 void bearer_info_cleanup(gpointer data, gpointer user_data)
 {
 	struct test_bearer_info *info = data;
@@ -182,46 +146,6 @@ static DBusMessage *notify_update(DBusConnection *conn,
 				return __connman_error_invalid_arguments(msg);
 			}
 			break;
-		case DBUS_TYPE_BOOLEAN:
-			if (g_str_equal(key, "Priority") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->priority);
-
-			} else if (g_str_equal(key, "AvoidHandover") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->avoid_handover);
-
-			} else if (g_str_equal(key, "StayConnected") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->stay_connected);
-
-			} else if (g_str_equal(key, "EmergencyCall") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->ecall);
-
-			} else {
-				g_assert(FALSE);
-				return __connman_error_invalid_arguments(msg);
-			}
-			break;
-		case DBUS_TYPE_UINT32:
-			if (g_str_equal(key, "PeriodicConnect") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->periodic_connect);
-
-			} else if (g_str_equal(key, "IdleTimeout") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->idle_timeout);
-
-			} else if (g_str_equal(key, "SessionMarker") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&info->marker);
-
-			} else {
-				g_assert(FALSE);
-				return __connman_error_invalid_arguments(msg);
-			}
-			break;
 		case DBUS_TYPE_STRING:
 			if (g_str_equal(key, "State") == TRUE) {
 				const char *val;
@@ -245,12 +169,6 @@ static DBusMessage *notify_update(DBusConnection *conn,
 					g_free(info->name);
 
 				info->name = g_strdup(val);
-
-			} else if (g_str_equal(key, "RoamingPolicy") == TRUE) {
-				const char *val;
-				dbus_message_iter_get_basic(&value, &val);
-				info->roaming_policy =
-					string2roamingpolicy(val);
 
 			} else if (g_str_equal(key, "Interface") == TRUE) {
 				const char *val;
@@ -334,41 +252,10 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 void session_append_settings(DBusMessageIter *dict,
 				struct test_session_info *info)
 {
-	const char *policy;
-
-	connman_dbus_dict_append_basic(dict, "Priority",
-						DBUS_TYPE_BOOLEAN,
-						&info->priority);
-
 	connman_dbus_dict_append_array(dict, "AllowedBearers",
 						DBUS_TYPE_STRING,
 						append_allowed_bearers,
 						info);
-
-	connman_dbus_dict_append_basic(dict, "AvoidHandover",
-						DBUS_TYPE_BOOLEAN,
-						&info->avoid_handover);
-
-	connman_dbus_dict_append_basic(dict, "StayConnected",
-						DBUS_TYPE_BOOLEAN,
-						&info->stay_connected);
-
-	connman_dbus_dict_append_basic(dict, "PeriodicConnect",
-						DBUS_TYPE_UINT32,
-						&info->periodic_connect);
-
-	connman_dbus_dict_append_basic(dict, "IdleTimeout",
-						DBUS_TYPE_UINT32,
-						&info->idle_timeout);
-
-	connman_dbus_dict_append_basic(dict, "EmergencyCall",
-						DBUS_TYPE_BOOLEAN,
-						&info->ecall);
-
-	policy = roamingpolicy2string(info->roaming_policy);
-	connman_dbus_dict_append_basic(dict, "RoamingPolicy",
-						DBUS_TYPE_STRING,
-						&policy);
 }
 
 DBusMessage *session_connect(DBusConnection *connection,

@@ -93,21 +93,13 @@ enum connman_session_roaming_policy {
 };
 
 struct test_session_info {
-	char *bearer;
 	enum connman_session_state state;
-	enum connman_session_type type;
 	char *name;
+	char *bearer;
+	char *interface;
+	enum connman_session_type type;
 	/* ipv4, ipv6 dicts */
 	GSList *allowed_bearers;
-	connman_bool_t priority;
-	connman_bool_t avoid_handover;
-	connman_bool_t stay_connected;
-	unsigned int periodic_connect;
-	unsigned int idle_timeout;
-	connman_bool_t ecall;
-	enum connman_session_roaming_policy roaming_policy;
-	char *interface;
-	unsigned int marker;
 };
 
 struct test_session {
