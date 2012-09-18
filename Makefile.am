@@ -137,7 +137,7 @@ include Makefile.plugins
 if CLIENT
 noinst_PROGRAMS += client/connmanctl
 
-dist_man_MANS = doc/connmanctl.1
+noinst_dist_man_MANS = doc/connmanctl.1
 
 client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
 			include/log.h src/log.c \
