@@ -90,7 +90,6 @@ struct session_info {
 	enum connman_session_type type;
 	connman_bool_t priority;
 	GSList *allowed_bearers;
-	connman_bool_t avoid_handover;
 	enum connman_session_roaming_policy roaming_policy;
 
 	struct service_entry *entry;
@@ -469,14 +468,6 @@ static void append_notify(DBusMessageIter *dict,
 		info_last->allowed_bearers = info->allowed_bearers;
 	}
 
-	if (session->append_all == TRUE ||
-			info->avoid_handover != info_last->avoid_handover) {
-		connman_dbus_dict_append_basic(dict, "AvoidHandover",
-						DBUS_TYPE_BOOLEAN,
-						&info->avoid_handover);
-		info_last->avoid_handover = info->avoid_handover;
-	}
-
 	session->append_all = FALSE;
 }
 
@@ -518,7 +509,6 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 		return TRUE;
 
 	if (info->allowed_bearers != info_last->allowed_bearers ||
-			info->avoid_handover != info_last->avoid_handover ||
 			info->type != info_last->type)
 		return TRUE;
 
@@ -1291,14 +1281,6 @@ static DBusMessage *change_session(DBusConnection *conn,
 			goto err;
 		}
 		break;
-	case DBUS_TYPE_BOOLEAN:
-		if (g_str_equal(name, "AvoidHandover") == TRUE) {
-			dbus_message_iter_get_basic(&value,
-					&info->avoid_handover);
-		} else {
-			goto err;
-		}
-		break;
 	case DBUS_TYPE_STRING:
 		if (g_str_equal(name, "ConnectionType") == TRUE) {
 			dbus_message_iter_get_basic(&value, &val);
@@ -1405,7 +1387,7 @@ int __connman_session_create(DBusMessage *msg)
 	struct session_info *info, *info_last;
 
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
-	connman_bool_t priority, avoid_handover = FALSE;
+	connman_bool_t priority;
 	connman_bool_t ecall_app;
 	enum connman_session_roaming_policy roaming_policy;
 	char *roaming_policy_str;
@@ -1443,14 +1425,6 @@ int __connman_session_create(DBusMessage *msg)
 			if (g_str_equal(key, "AllowedBearers") == TRUE) {
 				allowed_bearers =
 					session_parse_allowed_bearers(&value);
-			} else {
-				return -EINVAL;
-			}
-			break;
-		case DBUS_TYPE_BOOLEAN:
-			if (g_str_equal(key, "AvoidHandover") == TRUE) {
-				dbus_message_iter_get_basic(&value,
-							&avoid_handover);
 			} else {
 				return -EINVAL;
 			}
@@ -1525,7 +1499,6 @@ int __connman_session_create(DBusMessage *msg)
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 	info->type = type;
 	info->priority = priority;
-	info->avoid_handover = avoid_handover;
 	info->roaming_policy = roaming_policy;
 	info->entry = NULL;
 
@@ -1566,7 +1539,6 @@ int __connman_session_create(DBusMessage *msg)
 
 	info_last->state = info->state;
 	info_last->priority = info->priority;
-	info_last->avoid_handover = info->avoid_handover;
 	info_last->roaming_policy = info->roaming_policy;
 	info_last->entry = info->entry;
 	info_last->allowed_bearers = info->allowed_bearers;
