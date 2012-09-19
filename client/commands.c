@@ -93,7 +93,6 @@ void show_help(void)
 	"        --tech                       Monitor signals from the Technology interface\n"
 	"        --manager                    Monitor signals from the Manager interface\n"
 	"  help, --help, (no arguments)       Show this dialogue\n"
-	"  interactive                        Drop into the interactive shell\n"
 	"  exit, quit, q                      Quit interactive mode\n"
 	"\nNote: arguments and output are considered EXPERIMENTAL for now.\n\n");
 }

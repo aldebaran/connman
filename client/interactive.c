@@ -127,7 +127,6 @@ void show_interactive(DBusConnection *connection, GMainLoop *mainloop)
 	int events;
 	gchan = g_io_channel_unix_new(fileno(stdin));
 	events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
-	show_help();
 	interactive_conn = connection;
 
 	while (TRUE) {

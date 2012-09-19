@@ -90,19 +90,8 @@ int main(int argc, char *argv[])
 		exit(EXIT_FAILURE);
 	}
 
-	if (argc < 2) {
-		show_help();
-		exit(EXIT_SUCCESS);
-	}
-
-	if (strcmp(argv[1], "interactive") == 0) {
-		if (argc != 2) {
-			fprintf(stderr, "Interactive cannot accept an argument,"
-								" see help\n");
-			return -EINVAL;
-		}
+	if (argc < 2)
 		show_interactive(connection, main_loop);
-	}
 
 	error = commands_no_options(connection, argv + 1, argc - 1);
 	if (error == -1) {
