@@ -262,7 +262,7 @@ static int policy_get_bool(struct connman_session *session, const char *id,
 		return -EINVAL;
 	}
 
-	return (*session->policy->get_bool)(id, key, val);
+	return (*session->policy->get_bool)(session, key, val);
 }
 
 static int policy_get_string(struct connman_session *session, const char *id,
@@ -273,7 +273,7 @@ static int policy_get_string(struct connman_session *session, const char *id,
 		return -EINVAL;
 	}
 
-	return (*session->policy->get_string)(id, key, val);
+	return (*session->policy->get_string)(session, key, val);
 }
 
 static int assign_policy_plugin(struct connman_session *session)
@@ -344,37 +344,11 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
 	return policy2->priority - policy1->priority;
 }
 
-static struct connman_session *session_lookup_by_id(const char *id)
-{
-	struct connman_session *session;
-	GHashTableIter iter;
-	gpointer key, value;
-
-	DBG("id %s", id);
-
-	g_hash_table_iter_init(&iter, session_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		session = value;
-
-		if (g_strcmp0(session->owner, id) == FALSE)
-			continue;
-
-		return session;
-	}
-
-	DBG("No session found by id %s", id);
-
-	return NULL;
-}
-
-int connman_session_update_bool(const char *id, const char *key,
+int connman_session_update_bool(struct connman_session *session, const char *key,
 					connman_bool_t val)
 {
-	struct connman_session *session;
 	struct session_info *info;
 
-	session = session_lookup_by_id(id);
 	if (session == NULL)
 		return -EINVAL;
 
@@ -387,13 +361,11 @@ int connman_session_update_bool(const char *id, const char *key,
 	return -EINVAL;
 }
 
-int connman_session_update_string(const char *id, const char *key,
+int connman_session_update_string(struct connman_session *session, const char *key,
 					const char *val)
 {
-	struct connman_session *session;
 	struct session_info *info;
 
-	session = session_lookup_by_id(id);
 	if (session == NULL)
 		return -EINVAL;
 

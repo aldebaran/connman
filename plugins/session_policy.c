@@ -33,9 +33,10 @@
 #include <connman/log.h>
 #include <connman/session.h>
 
-static int policy_get_bool(const char *id, const char *key, connman_bool_t *val)
+static int policy_get_bool(struct connman_session *session,
+				const char *key, connman_bool_t *val)
 {
-	DBG("id %s key %s", id, key);
+	DBG("sesion %p key %s", session, key);
 
 	if (g_str_equal(key, "Priority") == TRUE)
 		*val = FALSE;
@@ -47,9 +48,10 @@ static int policy_get_bool(const char *id, const char *key, connman_bool_t *val)
 	return 0;
 }
 
-static int policy_get_string(const char *id, const char *key, char **val)
+static int policy_get_string(struct connman_session *session,
+				const char *key, char **val)
 {
-	DBG("id %s key %s", id, key);
+	DBG("session %p key %s", session, key);
 
 	if (g_str_equal(key, "RoamingPolicy") == TRUE)
 		*val = "default";

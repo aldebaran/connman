@@ -34,22 +34,21 @@ extern "C" {
 
 struct connman_session;
 
-/*
- * The session are identified through the pid is only a temporary solution
- */
 struct connman_session_policy {
 	const char *name;
 	int priority;
-	int (*get_bool) (const char *id, const char *key, connman_bool_t *val);
-	int (*get_string) (const char *id, const char *key, char **val);
+	int (*get_bool) (struct connman_session *session,
+				const char *key, connman_bool_t *val);
+	int (*get_string) (struct connman_session *session,
+				const char *key, char **val);
 };
 
 int connman_session_policy_register(struct connman_session_policy *config);
 void connman_session_policy_unregister(struct connman_session_policy *config);
 
-int connman_session_update_bool(const char *id, const char *key,
+int connman_session_update_bool(struct connman_session *session, const char *key,
 				connman_bool_t val);
-int connman_session_update_string(const char *id, const char *key,
+int connman_session_update_string(struct connman_session *session, const char *key,
 					const char *val);
 
 #ifdef __cplusplus
