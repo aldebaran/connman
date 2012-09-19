@@ -421,7 +421,7 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 	return list;
 }
 
-static GSList *session_allowed_bearers_any(void)
+GSList *connman_session_allowed_bearers_any(void)
 {
 	struct connman_session_bearer *bearer;
 	GSList *list = NULL;
@@ -1377,7 +1377,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 			g_slist_free(info->config.allowed_bearers);
 
 			if (allowed_bearers == NULL) {
-				allowed_bearers = session_allowed_bearers_any();
+				allowed_bearers = connman_session_allowed_bearers_any();
 
 				if (allowed_bearers == NULL)
 					return __connman_error_failed(msg, ENOMEM);
@@ -1613,7 +1613,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	if (allowed_bearers == NULL) {
 		info->config.allowed_bearers =
-				session_allowed_bearers_any();
+				connman_session_allowed_bearers_any();
 
 		if (info->config.allowed_bearers == NULL) {
 			err = -ENOMEM;

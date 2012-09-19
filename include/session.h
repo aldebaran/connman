@@ -76,6 +76,8 @@ struct connman_session_policy {
 int connman_session_policy_register(struct connman_session_policy *config);
 void connman_session_policy_unregister(struct connman_session_policy *config);
 
+GSList *connman_session_allowed_bearers_any(void);
+
 int connman_session_update_bool(struct connman_session *session, const char *key,
 				connman_bool_t val);
 int connman_session_update_string(struct connman_session *session, const char *key,
