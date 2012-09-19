@@ -8,6 +8,7 @@ Background
    lowest complexity. Complexity is a function of both task 'complexity'
    and task 'scope'.
 
+
 Core
 ====
 
@@ -72,6 +73,18 @@ Core
 
   Remove service migration code that moves services from default.profile
   to the current directory-based structure.
+
+- Support for multiple agents
+
+  Priority: Medium
+  Complexity: C2
+
+  Allow to register multiple agents. Each unique system bus name owner
+  however is only allowed to register one agent.
+
+  The selection of which agents is used  should be matched by bus name
+  owner if possible or first come first serve. A graceful fallback to
+  the next agent should be also used in case of malfunctional agents.
 
 
 WiFi
