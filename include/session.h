@@ -71,6 +71,9 @@ struct connman_session_policy {
 				const char *key, connman_bool_t *val);
 	int (*get_string) (struct connman_session *session,
 				const char *key, char **val);
+	struct connman_session_config *(*create)(
+					struct connman_session *session);
+	void (*destroy)(struct connman_session *session);
 };
 
 int connman_session_policy_register(struct connman_session_policy *config);
