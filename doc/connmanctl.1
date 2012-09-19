@@ -22,8 +22,8 @@ DESCRIPTION
 Connmanctl is a Connman command line interface which can be run in two modes:
 a plain synchronous command input, and an asynchronous interactive shell.
 To run a specific command the user may enter connmanctl <command> [options]
-[args], or enter connmanctl interactive; in this case, the program will
-drop into the interactive shell.
+[args], or enter connmanctl; in this case, the program will drop into the
+interactive shell.
 .PP
 Connmantl can handle most simple network connections. It is able to enable/
 disable any technology that exists on the system, display a list of
@@ -36,12 +36,6 @@ In the interactive shell, all of the same commands can be used. It
 provides quicker usage when needing to use connmanctl more extensively.
 .SH
 COMMANDS AND OPTIONS
-.TP
-.B interactive
-Drops into the interactive shell, where all of the commands are the same.
-Running the monitor command will make connmanctl listen for and
-display connman signals in real time, without blocking user input.
-.PP
 .TP
 .BR "help | \-\-help | " "(no arguments)"
 Shows the abbreviated help menu in the terminal.
