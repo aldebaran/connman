@@ -1,3 +1,10 @@
+ver 1.7:
+	Fix issue with IPv4 address removal when setting interface down.
+	Fix issue with wrong error when setting tethering support option.
+	Fix issue with errors reported twice via agent to the client.
+	Fix issue with missing serialization of agent callbacks.
+	Add initial version of command line client tool.
+
 ver 1.6:
 	Fix issue with Bluetooth networking support.
 	Fix issue with technology enabling method returns.
