@@ -75,20 +75,11 @@ static struct connman_session_policy session_policy = {
 	.destroy = policy_destroy,
 };
 
-static void cleanup_bearer(gpointer data, gpointer user_data)
-{
-	struct connman_session_bearer *info = data;
-
-	g_free(info->name);
-	g_free(info);
-}
-
 static void cleanup_config(gpointer user_data)
 {
 	struct connman_session_config *config = user_data;
 
-	g_slist_foreach(config->allowed_bearers, cleanup_bearer, NULL);
-	g_slist_free(config->allowed_bearers);
+	connman_session_free_bearers(config->allowed_bearers);
 	g_free(config);
 }
 
