@@ -325,11 +325,8 @@ static GSList *session_allowed_bearers_any(void)
 	GSList *list = NULL;
 
 	info = g_try_new0(struct bearer_info, 1);
-	if (info == NULL) {
-		g_slist_free(list);
-
+	if (info == NULL)
 		return NULL;
-	}
 
 	info->name = g_strdup("");
 	info->match_all = TRUE;
