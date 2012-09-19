@@ -691,7 +691,8 @@ void __connman_service_notify(struct connman_service *service,
 int __connman_service_counter_register(const char *counter);
 void __connman_service_counter_unregister(const char *counter);
 
-struct connman_session;
+#include <connman/session.h>
+
 struct service_entry;
 typedef connman_bool_t (* service_match_cb) (struct connman_session *session,
 					struct connman_service *service);

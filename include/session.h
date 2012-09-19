@@ -32,6 +32,8 @@ extern "C" {
 #define CONNMAN_SESSION_POLICY_PRIORITY_DEFAULT     0
 #define CONNMAN_SESSION_POLICY_PRIORITY_HIGH      100
 
+struct connman_session;
+
 /*
  * The session are identified through the pid is only a temporary solution
  */
