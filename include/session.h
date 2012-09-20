@@ -43,9 +43,10 @@ enum connman_session_roaming_policy {
 };
 
 enum connman_session_type {
-	CONNMAN_SESSION_TYPE_ANY      = 0,
-	CONNMAN_SESSION_TYPE_LOCAL    = 1,
-	CONNMAN_SESSION_TYPE_INTERNET = 2,
+	CONNMAN_SESSION_TYPE_UNKNOWN  = 0,
+	CONNMAN_SESSION_TYPE_ANY      = 1,
+	CONNMAN_SESSION_TYPE_LOCAL    = 2,
+	CONNMAN_SESSION_TYPE_INTERNET = 3,
 };
 
 struct connman_session;

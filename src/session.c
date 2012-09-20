@@ -147,8 +147,10 @@ static const char *state2string(enum connman_session_state state)
 static const char *type2string(enum connman_session_type type)
 {
 	switch (type) {
-	case CONNMAN_SESSION_TYPE_ANY:
+	case CONNMAN_SESSION_TYPE_UNKNOWN:
 		return "";
+	case CONNMAN_SESSION_TYPE_ANY:
+		return "any";
 	case CONNMAN_SESSION_TYPE_LOCAL:
 		return "local";
 	case CONNMAN_SESSION_TYPE_INTERNET:
@@ -160,12 +162,14 @@ static const char *type2string(enum connman_session_type type)
 
 static enum connman_session_type string2type(const char *type)
 {
+	if (g_strcmp0(type, "any") == 0)
+		return CONNMAN_SESSION_TYPE_ANY;
 	if (g_strcmp0(type, "local") == 0)
 		return CONNMAN_SESSION_TYPE_LOCAL;
 	else if (g_strcmp0(type, "internet") == 0)
 		return CONNMAN_SESSION_TYPE_INTERNET;
 
-	return CONNMAN_SESSION_TYPE_ANY;
+	return CONNMAN_SESSION_TYPE_UNKNOWN;
 }
 
 static enum connman_service_type bearer2service(const char *bearer)
@@ -528,6 +532,8 @@ static connman_bool_t is_type_matching_state(enum connman_session_state *state,
 						enum connman_session_type type)
 {
 	switch (type) {
+	case CONNMAN_SESSION_TYPE_UNKNOWN:
+		return FALSE;
 	case CONNMAN_SESSION_TYPE_ANY:
 		return TRUE;
 	case CONNMAN_SESSION_TYPE_LOCAL:
@@ -1441,6 +1447,7 @@ int __connman_session_create(DBusMessage *msg)
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
 	GSList *allowed_bearers;
 	connman_bool_t allowed_bearers_valid = FALSE;
+	connman_bool_t type_valid = FALSE;
 	int err;
 
 	owner = dbus_message_get_sender(msg);
@@ -1486,6 +1493,7 @@ int __connman_session_create(DBusMessage *msg)
 			if (g_str_equal(key, "ConnectionType") == TRUE) {
 				dbus_message_iter_get_basic(&value, &val);
 				type = string2type(val);
+				type_valid = TRUE;
 			} else {
 				return -EINVAL;
 			}
@@ -1553,6 +1561,8 @@ int __connman_session_create(DBusMessage *msg)
 		ecall_session = session;
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
+	if (type_valid == FALSE)
+		type = CONNMAN_SESSION_TYPE_ANY;
 	info->config.type = type;
 	info->config.priority = session->policy_config->priority;
 	info->config.roaming_policy = session->policy_config->roaming_policy;
