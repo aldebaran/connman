@@ -134,16 +134,20 @@ int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
 
 	switch (c) {
 	case 'a':
-		if (*optarg != 'y' || *optarg != 'n' || *optarg != '1' ||
-					*optarg != '0' || *optarg != 't' ||
-							*optarg != 'f')
-			return -EINVAL;
-		if (*optarg == 'y' || *optarg == '1' ||
-						*optarg == 't')
+		switch (*optarg) {
+		case 'y':
+		case '1':
+		case 't':
 			val = TRUE;
-		else if (*optarg == 'n' || *optarg == '0' ||
-						*optarg == 'f')
+			break;
+		case 'n':
+		case '0':
+		case 'f':
 			val = FALSE;
+			break;
+		default:
+			return -EINVAL;
+		}
 		error = set_service_property(conn, message, argv[1],
 						"AutoConnect", NULL,
 						&val, 0);
