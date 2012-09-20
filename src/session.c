@@ -394,6 +394,90 @@ static int session_parse_allowed_bearers(DBusMessageIter *iter, GSList **list)
 	return 0;
 }
 
+static struct connman_session_bearer *clone_bearer(
+					struct connman_session_bearer *orig)
+{
+	struct connman_session_bearer *bearer;
+
+	bearer = g_try_new0(struct connman_session_bearer, 1);
+	if (bearer == NULL)
+		return NULL;
+
+	bearer->name = g_strdup(orig->name);
+	bearer->match_all = orig->match_all;
+	bearer->service_type = orig->service_type;
+
+	return bearer;
+}
+
+static int filter_bearer(GSList *policy_bearers,
+				struct connman_session_bearer *bearer,
+				GSList **list)
+{
+	struct connman_session_bearer *policy, *tmp;
+	GSList *it;
+
+	if (policy_bearers == NULL)
+		goto clone;
+
+	for (it = policy_bearers; it != NULL; it = it->next) {
+		policy = it->data;
+
+		if (policy->match_all == FALSE &&
+				bearer->service_type != policy->service_type)
+			continue;
+
+		goto clone;
+	}
+
+	*list = NULL;
+
+	return 0;
+
+clone:
+	tmp = clone_bearer(bearer);
+	if (tmp == NULL) {
+		connman_session_free_bearers(*list);
+		*list = NULL;
+		return -ENOMEM;
+	}
+	*list = g_slist_append(*list, tmp);
+
+	return 0;
+}
+
+static connman_bool_t is_bearer_valid(struct connman_session_bearer *bearer)
+{
+	if (bearer->match_all == FALSE &&
+			bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN)
+		return FALSE;
+
+	return TRUE;
+}
+
+static int apply_policy_on_bearers(GSList *policy_bearers, GSList *bearers,
+				GSList **list)
+{
+	struct connman_session_bearer *bearer;
+	GSList *it;
+	int err;
+
+	*list = NULL;
+
+	for (it = bearers; it != NULL; it = it->next) {
+		bearer = it->data;
+
+		if (is_bearer_valid(bearer) == FALSE)
+			continue;
+
+		err = filter_bearer(policy_bearers, bearer, list);
+		if (err < 0)
+			return err;
+	}
+
+	return 0;
+}
+
 GSList *connman_session_allowed_bearers_any(void)
 {
 	struct connman_session_bearer *bearer;
@@ -1351,7 +1435,14 @@ static DBusMessage *change_session(DBusConnection *conn,
 				return __connman_error_failed(msg, err);
 
 			connman_session_free_bearers(info->config.allowed_bearers);
-			info->config.allowed_bearers = allowed_bearers;
+			err = apply_policy_on_bearers(
+					session->policy_config->allowed_bearers,
+					allowed_bearers,
+					&info->config.allowed_bearers);
+
+			connman_session_free_bearers(allowed_bearers);
+			if (err < 0)
+				return __connman_error_failed(msg, err);
 		} else {
 			goto err;
 		}
@@ -1463,7 +1554,7 @@ int __connman_session_create(DBusMessage *msg)
 	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
-	GSList *allowed_bearers;
+	GSList *allowed_bearers = NULL;
 	connman_bool_t allowed_bearers_valid = FALSE;
 	connman_bool_t type_valid = FALSE;
 	int err;
@@ -1595,7 +1686,13 @@ int __connman_session_create(DBusMessage *msg)
 			goto err;
 		}
 	}
-	info->config.allowed_bearers = allowed_bearers;
+
+	err = apply_policy_on_bearers(
+			session->policy_config->allowed_bearers,
+			allowed_bearers,
+			&info->config.allowed_bearers);
+	if (err < 0)
+		goto err;
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
