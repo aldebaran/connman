@@ -335,13 +335,14 @@ void connman_session_free_bearers(GSList *bearers)
 	g_slist_free_full(bearers, cleanup_bearer);
 }
 
-static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
+static int session_parse_allowed_bearers(DBusMessageIter *iter, GSList **list)
 {
 	struct connman_session_bearer *bearer;
 	DBusMessageIter array;
-	GSList *list = NULL;
 
 	dbus_message_iter_recurse(iter, &array);
+
+	*list = NULL;
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
 		char *bearer_name = NULL;
@@ -350,8 +351,9 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 
 		bearer = g_try_new0(struct connman_session_bearer, 1);
 		if (bearer == NULL) {
-			connman_session_free_bearers(list);
-			return NULL;
+			connman_session_free_bearers(*list);
+			*list = NULL;
+			return -ENOMEM;
 		}
 
 		bearer->name = g_strdup(bearer_name);
@@ -364,12 +366,12 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 			bearer->match_all = FALSE;
 		}
 
-		list = g_slist_append(list, bearer);
+		*list = g_slist_append(*list, bearer);
 
 		dbus_message_iter_next(&array);
 	}
 
-	return list;
+	return 0;
 }
 
 GSList *connman_session_allowed_bearers_any(void)
@@ -1301,6 +1303,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 	const char *name;
 	const char *val;
 	GSList *allowed_bearers;
+	int err;
 
 	DBG("session %p", session);
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
@@ -1320,16 +1323,12 @@ static DBusMessage *change_session(DBusConnection *conn,
 	switch (dbus_message_iter_get_arg_type(&value)) {
 	case DBUS_TYPE_ARRAY:
 		if (g_str_equal(name, "AllowedBearers") == TRUE) {
-			allowed_bearers = session_parse_allowed_bearers(&value);
+			err = session_parse_allowed_bearers(&value,
+							&allowed_bearers);
+			if (err < 0)
+				return __connman_error_failed(msg, err);
 
 			connman_session_free_bearers(info->config.allowed_bearers);
-			if (allowed_bearers == NULL) {
-				allowed_bearers = connman_session_allowed_bearers_any();
-
-				if (allowed_bearers == NULL)
-					return __connman_error_failed(msg, ENOMEM);
-			}
-
 			info->config.allowed_bearers = allowed_bearers;
 		} else {
 			goto err;
@@ -1440,7 +1439,8 @@ int __connman_session_create(DBusMessage *msg)
 	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
-	GSList *allowed_bearers = NULL;
+	GSList *allowed_bearers;
+	connman_bool_t allowed_bearers_valid = FALSE;
 	int err;
 
 	owner = dbus_message_get_sender(msg);
@@ -1472,8 +1472,12 @@ int __connman_session_create(DBusMessage *msg)
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_ARRAY:
 			if (g_str_equal(key, "AllowedBearers") == TRUE) {
-				allowed_bearers =
-					session_parse_allowed_bearers(&value);
+				err = session_parse_allowed_bearers(&value,
+							&allowed_bearers);
+				if (err < 0)
+					goto err;
+
+				allowed_bearers_valid = TRUE;
 			} else {
 				return -EINVAL;
 			}
@@ -1554,17 +1558,14 @@ int __connman_session_create(DBusMessage *msg)
 	info->config.roaming_policy = session->policy_config->roaming_policy;
 	info->entry = NULL;
 
-	if (allowed_bearers == NULL) {
-		info->config.allowed_bearers =
-				connman_session_allowed_bearers_any();
-
-		if (info->config.allowed_bearers == NULL) {
+	if (allowed_bearers_valid == FALSE) {
+		allowed_bearers = connman_session_allowed_bearers_any();
+		if (allowed_bearers == NULL) {
 			err = -ENOMEM;
 			goto err;
 		}
-	} else {
-		info->config.allowed_bearers = allowed_bearers;
 	}
+	info->config.allowed_bearers = allowed_bearers;
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
