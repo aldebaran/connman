@@ -326,6 +326,22 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 	remove_policy(policy);
 }
 
+static enum connman_session_type apply_policy_on_type(
+			enum connman_session_type policy,
+			enum connman_session_type type)
+{
+	if (type == CONNMAN_SESSION_TYPE_UNKNOWN)
+		return CONNMAN_SESSION_TYPE_UNKNOWN;
+
+	if (policy == CONNMAN_SESSION_TYPE_ANY)
+		return type;
+
+	if (policy == CONNMAN_SESSION_TYPE_LOCAL)
+		return CONNMAN_SESSION_TYPE_LOCAL;
+
+	return CONNMAN_SESSION_TYPE_INTERNET;
+}
+
 static void cleanup_bearer(gpointer data)
 {
 	struct connman_session_bearer *bearer = data;
@@ -1343,7 +1359,9 @@ static DBusMessage *change_session(DBusConnection *conn,
 	case DBUS_TYPE_STRING:
 		if (g_str_equal(name, "ConnectionType") == TRUE) {
 			dbus_message_iter_get_basic(&value, &val);
-			info->config.type = string2type(val);
+			info->config.type = apply_policy_on_type(
+				session->policy_config->type,
+				string2type(val));
 		} else {
 			goto err;
 		}
@@ -1563,7 +1581,9 @@ int __connman_session_create(DBusMessage *msg)
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 	if (type_valid == FALSE)
 		type = CONNMAN_SESSION_TYPE_ANY;
-	info->config.type = type;
+	info->config.type = apply_policy_on_type(
+				session->policy_config->type,
+				type);
 	info->config.priority = session->policy_config->priority;
 	info->config.roaming_policy = session->policy_config->roaming_policy;
 	info->entry = NULL;
