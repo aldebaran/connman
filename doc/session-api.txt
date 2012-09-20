@@ -148,19 +148,27 @@ Settings	boolean State [readonly]
 
 			This is used to indicate which connection is requested
 			from the session. The state of the session will be
-			updated accordingly. Values can be nothing, 'local' or
-			'internet'.
+			updated accordingly. Values can be 'local',
+			'internet' or 'any'.
+
 			'local' means the session requests to be connected,
 			but does not require specifically to be online.
 			Therefore State property will be set to 'connected' if
 			underlying service gets ready and/or online.
+
 			'online' means the session requests to be connected,
 			and online. State property will never get 'connected'
 			but instead will switch to 'online' if underlying
 			service gets online.
-			No value means the session requests any kind of
-			connection and the state will be updated on all steps,
-			'connected' and 'online'. This is the default value.
+
+			'any' means either 'local' or 'internet'.
+
+			Invalid values will be ignored and removed. An
+			empty ConnectionType is an invalid configuration.
+
+			When a session is created and the provided settings
+			dictionary does not contain ConnectionType, a default
+			session with 'any' will be created.
 
 			(This setting will be removed when the unique process
 			identifaction problem is solved.)
