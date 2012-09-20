@@ -41,12 +41,14 @@ static enum connman_session_state string2state(const char *state)
 
 static enum connman_session_state string2type(const char *type)
 {
+	if (g_strcmp0(type, "any") == 0)
+		return CONNMAN_SESSION_TYPE_ANY;
 	if (g_strcmp0(type, "local") == 0)
 		return CONNMAN_SESSION_TYPE_LOCAL;
 	if (g_strcmp0(type, "internet") == 0)
 		return CONNMAN_SESSION_TYPE_INTERNET;
 
-	return CONNMAN_SESSION_TYPE_ANY;
+	return CONNMAN_SESSION_TYPE_UNKNOWN;
 }
 
 void bearer_info_cleanup(gpointer data, gpointer user_data)
