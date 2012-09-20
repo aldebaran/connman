@@ -141,8 +141,17 @@ Settings	boolean State [readonly]
 			entries in this list.
 
 			Also "*" matches any bearer. This is usefull to prefer
-			certain bearers such as Wifi with a fallback to any
+			certain bearers such as 'wifi' with a fallback to any
 			other available bearer.
+
+			Invalid bearer names will be ignored and removed
+			from the list. And empty AllowedBearers will
+			not match to any bearer, therefore the session
+			will never go online.
+
+			When a session is created and the provided settings
+			dictionary does not contain AllowedBearers, a default
+			session with "*" will be created.
 
 		string ConnectionType [readwrite]
 
