@@ -76,7 +76,7 @@ int connman_session_policy_register(struct connman_session_policy *config);
 void connman_session_policy_unregister(struct connman_session_policy *config);
 
 GSList *connman_session_allowed_bearers_any(void);
-
+void connman_session_free_bearers(GSList *bearers);
 
 #ifdef __cplusplus
 }

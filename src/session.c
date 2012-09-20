@@ -330,6 +330,12 @@ static void cleanup_bearer(gpointer data, gpointer user_data)
 	g_free(bearer);
 }
 
+void connman_session_free_bearers(GSList *bearers)
+{
+	g_slist_foreach(bearers, cleanup_bearer, NULL);
+	g_slist_free(bearers);
+}
+
 static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 {
 	struct connman_session_bearer *bearer;
@@ -345,9 +351,7 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 
 		bearer = g_try_new0(struct connman_session_bearer, 1);
 		if (bearer == NULL) {
-			g_slist_foreach(list, cleanup_bearer, NULL);
-			g_slist_free(list);
-
+			connman_session_free_bearers(list);
 			return NULL;
 		}
 
@@ -752,9 +756,7 @@ static void cleanup_session(gpointer user_data)
 	}
 
 	destroy_policy_config(session);
-	g_slist_foreach(info->config.allowed_bearers, cleanup_bearer, NULL);
-	g_slist_free(info->config.allowed_bearers);
-
+	connman_session_free_bearers(session->info->config.allowed_bearers);
 	g_free(session->owner);
 	g_free(session->session_path);
 	g_free(session->notify_path);
@@ -1321,10 +1323,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "AllowedBearers") == TRUE) {
 			allowed_bearers = session_parse_allowed_bearers(&value);
 
-			g_slist_foreach(info->config.allowed_bearers,
-					cleanup_bearer, NULL);
-			g_slist_free(info->config.allowed_bearers);
-
+			connman_session_free_bearers(info->config.allowed_bearers);
 			if (allowed_bearers == NULL) {
 				allowed_bearers = connman_session_allowed_bearers_any();
 
@@ -1616,8 +1615,7 @@ err:
 
 	g_free(session_path);
 
-	g_slist_foreach(allowed_bearers, cleanup_bearer, NULL);
-	g_slist_free(allowed_bearers);
+	connman_session_free_bearers(allowed_bearers);
 
 	return err;
 }
