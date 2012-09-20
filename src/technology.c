@@ -734,9 +734,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (strlen(str) < 1 || strlen(str) > 32)
 			return __connman_error_invalid_arguments(msg);
 
-		g_free(technology->tethering_ident);
-		technology->tethering_ident = g_strdup(str);
-		technology_save(technology);
+		if (g_strcmp0(technology->tethering_ident, str) != 0) {
+			g_free(technology->tethering_ident);
+			technology->tethering_ident = g_strdup(str);
+			technology_save(technology);
+
+			connman_dbus_property_changed_basic(technology->path,
+						CONNMAN_TECHNOLOGY_INTERFACE,
+						"TetheringIdentifier",
+						DBUS_TYPE_STRING,
+						&technology->tethering_ident);
+		}
 	} else if (g_str_equal(name, "TetheringPassphrase") == TRUE) {
 		const char *str;
 
@@ -748,9 +756,17 @@ static DBusMessage *set_property(DBusConnection *conn,
 		if (strlen(str) < 8 || strlen(str) > 63)
 			return __connman_error_passphrase_required(msg);
 
-		g_free(technology->tethering_passphrase);
-		technology->tethering_passphrase = g_strdup(str);
-		technology_save(technology);
+		if (g_strcmp0(technology->tethering_passphrase, str) != 0) {
+			g_free(technology->tethering_passphrase);
+			technology->tethering_passphrase = g_strdup(str);
+			technology_save(technology);
+
+			connman_dbus_property_changed_basic(technology->path,
+					CONNMAN_TECHNOLOGY_INTERFACE,
+					"TetheringPassphrase",
+					DBUS_TYPE_STRING,
+					&technology->tethering_passphrase);
+		}
 	} else if (g_str_equal(name, "Powered") == TRUE) {
 		connman_bool_t enable;
 
