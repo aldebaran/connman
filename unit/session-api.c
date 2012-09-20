@@ -254,6 +254,9 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 void session_append_settings(DBusMessageIter *dict,
 				struct test_session_info *info)
 {
+	if (info->allowed_bearers == NULL)
+		return;
+
 	connman_dbus_dict_append_array(dict, "AllowedBearers",
 						DBUS_TYPE_STRING,
 						append_allowed_bearers,
