@@ -356,10 +356,10 @@ static const char *operstate2str(unsigned char operstate)
 	return "";
 }
 
-static void extract_link(struct ifinfomsg *msg, int bytes,
+static connman_bool_t extract_link(struct ifinfomsg *msg, int bytes,
 				struct ether_addr *address, const char **ifname,
 				unsigned int *mtu, unsigned char *operstate,
-						struct rtnl_link_stats *stats)
+				struct rtnl_link_stats *stats)
 {
 	struct rtattr *attr;
 
@@ -389,8 +389,12 @@ static void extract_link(struct ifinfomsg *msg, int bytes,
 			break;
 		case IFLA_LINKMODE:
 			break;
+		case IFLA_WIRELESS:
+			return FALSE;
 		}
 	}
+
+	return TRUE;
 }
 
 static void process_newlink(unsigned short type, int index, unsigned flags,
@@ -407,7 +411,9 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 	GSList *list;
 
 	memset(&stats, 0, sizeof(stats));
-	extract_link(msg, bytes, &address, &ifname, &mtu, &operstate, &stats);
+	if (extract_link(msg, bytes, &address, &ifname, &mtu, &operstate,
+					&stats) == FALSE)
+		return;
 
 	snprintf(ident, 13, "%02x%02x%02x%02x%02x%02x",
 						address.ether_addr_octet[0],
@@ -489,7 +495,9 @@ static void process_dellink(unsigned short type, int index, unsigned flags,
 	GSList *list;
 
 	memset(&stats, 0, sizeof(stats));
-	extract_link(msg, bytes, NULL, &ifname, NULL, &operstate, &stats);
+	if (extract_link(msg, bytes, NULL, &ifname, NULL, &operstate,
+					&stats) == FALSE)
+		return;
 
 	if (operstate != 0xff)
 		connman_info("%s {dellink} index %d operstate %u <%s>",
