@@ -267,11 +267,13 @@ void extract_service_name(DBusMessageIter *dict, struct service_data *service)
 			dbus_message_iter_next(&dict_entry);
 			dbus_message_iter_recurse(&dict_entry, &value);
 			dbus_message_iter_get_basic(&value, &state);
-			if (strcmp(state, "ready") == 0)
+			if (strcmp(state, "ready") == 0) {
 				service->connected = TRUE;
-			else if (strcmp(state, "online") == 0)
+				service->online = FALSE;
+			} else if (strcmp(state, "online") == 0) {
+				service->connected = FALSE;
 				service->online = TRUE;
-			else {
+			} else {
 				service->connected = FALSE;
 				service->online = FALSE;
 			}
