@@ -66,6 +66,8 @@ noinst_PROGRAMS =
 
 unit_objects =
 
+MANUAL_PAGES =
+
 sbin_PROGRAMS = src/connmand
 
 src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
@@ -137,7 +139,7 @@ include Makefile.plugins
 if CLIENT
 noinst_PROGRAMS += client/connmanctl
 
-noinst_dist_man_MANS = doc/connmanctl.1
+MANUAL_PAGES += doc/connmanctl.1
 
 client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
 			include/log.h src/log.c \
@@ -245,6 +247,9 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/session-overview.txt doc/backtrace.txt \
 				doc/advanced-configuration.txt
 
+MANUAL_PAGES += doc/connman.8 doc/connman.conf.5
+
+noinst_dist_man_MANS = $(MANUAL_PAGES)
 
 pkgconfigdir = $(libdir)/pkgconfig
 
