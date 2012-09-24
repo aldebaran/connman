@@ -2095,7 +2095,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 {
 	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
 	const char *address = NULL, *netmask = NULL, *gateway = NULL,
-		*prefix_length_string = NULL, *privacy_string = NULL;
+		*privacy_string = NULL;
 	int prefix_length = 0, privacy = 0;
 	DBusMessageIter dict;
 
@@ -2140,13 +2140,11 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 
 			dbus_message_iter_get_basic(&value, &address);
 		} else if (g_str_equal(key, "PrefixLength") == TRUE) {
-			if (type != DBUS_TYPE_STRING)
+			if (type != DBUS_TYPE_BYTE)
 				return -EINVAL;
 
-			dbus_message_iter_get_basic(&value,
-							&prefix_length_string);
+			dbus_message_iter_get_basic(&value, &prefix_length);
 
-			prefix_length = atoi(prefix_length_string);
 			if (prefix_length < 0 || prefix_length > 128)
 				return -EINVAL;
 		} else if (g_str_equal(key, "Netmask") == TRUE) {
