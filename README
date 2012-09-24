@@ -42,6 +42,7 @@ In order to compile Connection Manager you need following software packages:
 	- IP-Tables library
 	- GnuTLS library (optional)
 	- PolicyKit (optional)
+	- readline (command line client)
 
 To configure run:
 	./configure --prefix=/usr --sysconfdir=/etc --localstatedir=/var
@@ -175,6 +176,15 @@ For a working system, certain configuration options need to be enabled:
 		interfaces. It is useful for systems with applications
 		written to use NetworkManager to detect online/offline
 		status and have not yet been converted to use ConnMan.
+
+	--disable-client
+
+		Disable support for the command line client
+
+		By default the command line client is enabled and uses the
+		readline library. For specific systems where ConnMan is
+		configured by other means, the command line client can be
+		disabled and the dependency on readline is removed.
 
 
 wpa_supplicant configuration
