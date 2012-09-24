@@ -2473,3 +2473,15 @@ error:
 	free(ifr);
 	return NULL;
 }
+
+connman_bool_t connman_inet_is_ipv6_supported()
+{
+	int sk;
+
+	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return FALSE;
+
+	close(sk);
+	return TRUE;
+}

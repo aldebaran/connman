@@ -82,6 +82,7 @@ int connman_inet_get_dest_addr(int index, char **dest);
 int connman_inet_ipv6_get_dest_addr(int index, char **dest);
 int connman_inet_check_ipaddress(const char *host);
 connman_bool_t connman_inet_check_hostname(const char *ptr, size_t len);
+connman_bool_t connman_inet_is_ipv6_supported();
 
 #ifdef __cplusplus
 }
