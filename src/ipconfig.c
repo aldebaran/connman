@@ -89,6 +89,7 @@ struct connman_ipdevice {
 
 static GHashTable *ipdevice_hash = NULL;
 static GList *ipconfig_list = NULL;
+static connman_bool_t is_ipv6_supported = FALSE;
 
 struct connman_ipaddress *connman_ipaddress_alloc(int family)
 {
@@ -1266,7 +1267,11 @@ static struct connman_ipconfig *create_ipv6config(int index)
 	ipv6config->index = index;
 	ipv6config->enabled = FALSE;
 	ipv6config->type = CONNMAN_IPCONFIG_TYPE_IPV6;
-	ipv6config->method = CONNMAN_IPCONFIG_METHOD_AUTO;
+
+	if (is_ipv6_supported == FALSE)
+		ipv6config->method = CONNMAN_IPCONFIG_METHOD_OFF;
+	else
+		ipv6config->method = CONNMAN_IPCONFIG_METHOD_AUTO;
 
 	ipdevice = g_hash_table_lookup(ipdevice_hash, GINT_TO_POINTER(index));
 	if (ipdevice != NULL)
@@ -1280,7 +1285,8 @@ static struct connman_ipconfig *create_ipv6config(int index)
 
 	ipv6config->system = connman_ipaddress_alloc(AF_INET6);
 
-	DBG("ipconfig %p", ipv6config);
+	DBG("ipconfig %p method %s", ipv6config,
+		__connman_ipconfig_method2string(ipv6config->method));
 
 	return ipv6config;
 }
@@ -2405,6 +2411,8 @@ int __connman_ipconfig_init(void)
 
 	ipdevice_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, free_ipdevice);
+
+	is_ipv6_supported = connman_inet_is_ipv6_supported();
 
 	return 0;
 }
