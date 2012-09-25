@@ -110,7 +110,7 @@ struct ntp_msg {
 #define NTP_PRECISION_NS   -29
 
 static guint channel_watch = 0;
-static struct timeval transmit_timeval;
+static struct timespec mtx_time;
 static int transmit_fd = 0;
 
 static char *timeserver = NULL;
@@ -146,6 +146,7 @@ static void send_packet(int fd, const char *server)
 {
 	struct ntp_msg msg;
 	struct sockaddr_in addr;
+	struct timeval transmit_timeval;
 	ssize_t len;
 
 	/*
@@ -166,6 +167,7 @@ static void send_packet(int fd, const char *server)
 	addr.sin_addr.s_addr = inet_addr(server);
 
 	gettimeofday(&transmit_timeval, NULL);
+	clock_gettime(CLOCK_MONOTONIC, &mtx_time);
 
 	msg.xmttime.seconds = htonl(transmit_timeval.tv_sec + OFFSET_1900_1970);
 	msg.xmttime.fraction = htonl(transmit_timeval.tv_usec * 1000);
@@ -214,10 +216,11 @@ static void reset_timeout(void)
 	retries = 0;
 }
 
-static void decode_msg(void *base, size_t len, struct timeval *tv)
+static void decode_msg(void *base, size_t len, struct timeval *tv,
+		struct timespec *mrx_time)
 {
 	struct ntp_msg *msg = base;
-	double org, rec, xmt, dst;
+	double m_delta, org, rec, xmt, dst;
 	double delay, offset;
 	static guint transmit_delay;
 
@@ -260,8 +263,10 @@ static void decode_msg(void *base, size_t len, struct timeval *tv)
 		return;
 	}
 
-	org = transmit_timeval.tv_sec +
-			(1.0e-6 * transmit_timeval.tv_usec) + OFFSET_1900_1970;
+	m_delta = mrx_time->tv_sec - mtx_time.tv_sec +
+		1.0e-9 * (mrx_time->tv_nsec - mtx_time.tv_nsec);
+
+	org = tv->tv_sec + (1.0e-6 * tv->tv_usec) - m_delta + OFFSET_1900_1970;
 	rec = ntohl(msg->rectime.seconds) +
 			((double) ntohl(msg->rectime.fraction) / UINT_MAX);
 	xmt = ntohl(msg->xmttime.seconds) +
@@ -334,6 +339,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 	struct iovec iov;
 	struct cmsghdr *cmsg;
 	struct timeval *tv;
+	struct timespec mrx_time;
 	char aux[128];
 	ssize_t len;
 	int fd;
@@ -360,6 +366,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 		return TRUE;
 
 	tv = NULL;
+	clock_gettime(CLOCK_MONOTONIC, &mrx_time);
 
 	for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
 		if (cmsg->cmsg_level != SOL_SOCKET)
@@ -372,7 +379,7 @@ static gboolean received_data(GIOChannel *channel, GIOCondition condition,
 		}
 	}
 
-	decode_msg(iov.iov_base, iov.iov_len, tv);
+	decode_msg(iov.iov_base, iov.iov_len, tv, &mrx_time);
 
 	return TRUE;
 }
