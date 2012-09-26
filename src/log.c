@@ -292,7 +292,7 @@ void __connman_log_enable(struct connman_debug_desc *start,
 }
 
 int __connman_log_init(const char *program, const char *debug,
-						connman_bool_t detach)
+		connman_bool_t detach, connman_bool_t backtrace)
 {
 	static char path[PATH_MAX];
 	int option = LOG_NDELAY | LOG_PID;
@@ -308,7 +308,8 @@ int __connman_log_init(const char *program, const char *debug,
 	if (detach == FALSE)
 		option |= LOG_PERROR;
 
-	signal_setup(signal_handler);
+	if (backtrace == TRUE)
+		signal_setup(signal_handler);
 
 	openlog(basename(program), option, LOG_DAEMON);
 
@@ -317,13 +318,14 @@ int __connman_log_init(const char *program, const char *debug,
 	return 0;
 }
 
-void __connman_log_cleanup(void)
+void __connman_log_cleanup(connman_bool_t backtrace)
 {
 	syslog(LOG_INFO, "Exit");
 
 	closelog();
 
-	signal_setup(SIG_DFL);
+	if (backtrace == TRUE)
+		signal_setup(SIG_DFL);
 
 	g_strfreev(enabled);
 }

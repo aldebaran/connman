@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 
 	g_test_init(&argc, &argv, NULL);
 
-	__connman_log_init(argv[0], "*", FALSE);
+	__connman_log_init(argv[0], "*", FALSE, TRUE);
 	__connman_iptables_init();
 	__connman_nat_init();
 
@@ -159,7 +159,7 @@ int main(int argc, char *argv[])
 
 	__connman_nat_cleanup();
 	__connman_iptables_cleanup();
-	__connman_log_cleanup();
+	__connman_log_cleanup(TRUE);
 
 	return err;
 }

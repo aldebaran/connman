@@ -355,6 +355,7 @@ static gchar *option_noplugin = NULL;
 static gchar *option_wifi = NULL;
 static gboolean option_detach = TRUE;
 static gboolean option_dnsproxy = TRUE;
+static gboolean option_backtrace = TRUE;
 static gboolean option_version = FALSE;
 
 static gboolean parse_debug(const char *key, const char *value,
@@ -391,6 +392,9 @@ static GOptionEntry options[] = {
 	{ "nodnsproxy", 'r', G_OPTION_FLAG_REVERSE,
 				G_OPTION_ARG_NONE, &option_dnsproxy,
 				"Don't enable DNS Proxy" },
+	{ "nobacktrace", 0, G_OPTION_FLAG_REVERSE,
+				G_OPTION_ARG_NONE, &option_backtrace,
+				"Don't print out backtrace information" },
 	{ "version", 'v', 0, G_OPTION_ARG_NONE, &option_version,
 				"Show version information and exit" },
 	{ NULL },
@@ -530,7 +534,8 @@ int main(int argc, char *argv[])
 
 	g_dbus_set_disconnect_function(conn, disconnect_callback, NULL, NULL);
 
-	__connman_log_init(argv[0], option_debug, option_detach);
+	__connman_log_init(argv[0], option_debug, option_detach,
+			option_backtrace);
 
 	__connman_dbus_init(conn);
 
@@ -622,7 +627,7 @@ int main(int argc, char *argv[])
 
 	__connman_dbus_cleanup();
 
-	__connman_log_cleanup();
+	__connman_log_cleanup(option_backtrace);
 
 	dbus_connection_unref(conn);
 
