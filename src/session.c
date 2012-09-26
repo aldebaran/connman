@@ -36,7 +36,6 @@ static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
 static struct connman_session *ecall_session;
-static struct connman_session_policy *session_policy;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -101,6 +100,8 @@ struct connman_session {
 	char *session_path;
 	char *notify_path;
 	guint notify_watch;
+
+	struct connman_session_policy *policy;
 
 	connman_bool_t append_all;
 	struct session_info *info;
@@ -252,24 +253,26 @@ static char *service2bearer(enum connman_service_type type)
 	return "";
 }
 
-static int policy_get_bool(const char *id, const char *key, connman_bool_t *val)
+static int policy_get_bool(struct connman_session *session, const char *id,
+				const char *key, connman_bool_t *val)
 {
-	if (session_policy == NULL) {
+	if (session->policy == NULL) {
 		*val = FALSE;
 		return -EINVAL;
 	}
 
-	return (*session_policy->get_bool)(id, key, val);
+	return (*session->policy->get_bool)(id, key, val);
 }
 
-static int policy_get_string(const char *id, const char *key, char **val)
+static int policy_get_string(struct connman_session *session, const char *id,
+				const char *key, char **val)
 {
-	if (session_policy == NULL) {
+	if (session->policy == NULL) {
 		*val = NULL;
 		return -EINVAL;
 	}
 
-	return (*session_policy->get_string)(id, key, val);
+	return (*session->policy->get_string)(id, key, val);
 }
 
 static struct connman_session *session_lookup_by_id(const char *id)
@@ -338,30 +341,12 @@ int connman_session_policy_register(struct connman_session_policy *policy)
 {
 	DBG("name %s", policy->name);
 
-	if (session_policy != NULL) {
-		connman_warn("A session policy plugin '%s' is "
-				"already registerd. Skipping registration "
-				"of plugin '%s'",
-				session_policy->name, policy->name);
-		return -EALREADY;
-	}
-
-	session_policy = policy;
-
 	return 0;
 }
 
 void connman_session_policy_unregister(struct connman_session_policy *policy)
 {
 	DBG("name %s", policy->name);
-
-	if (policy != session_policy) {
-		connman_warn("Trying to unregister session policy "
-				"plugin '%s'", policy->name);
-		return;
-	}
-
-	session_policy = NULL;
 }
 
 static void cleanup_bearer_info(gpointer data, gpointer user_data)
@@ -1578,9 +1563,9 @@ int __connman_session_create(DBusMessage *msg)
 	info = session->info;
 	info_last = session->info_last;
 
-	policy_get_bool(owner, "Priority", &priority);
-	policy_get_bool(owner, "EmergencyCall", &ecall_app);
-	policy_get_string(owner, "RoamingPolicy", &roaming_policy_str);
+	policy_get_bool(session, owner, "Priority", &priority);
+	policy_get_bool(session, owner, "EmergencyCall", &ecall_app);
+	policy_get_string(session, owner, "RoamingPolicy", &roaming_policy_str);
 	roaming_policy = string2roamingpolicy(roaming_policy_str);
 
 	session->owner = g_strdup(owner);
