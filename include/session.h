@@ -28,11 +28,16 @@
 extern "C" {
 #endif
 
+#define CONNMAN_SESSION_POLICY_PRIORITY_LOW      -100
+#define CONNMAN_SESSION_POLICY_PRIORITY_DEFAULT     0
+#define CONNMAN_SESSION_POLICY_PRIORITY_HIGH      100
+
 /*
  * The session are identified through the pid is only a temporary solution
  */
 struct connman_session_policy {
 	const char *name;
+	int priority;
 	int (*get_bool) (const char *id, const char *key, connman_bool_t *val);
 	int (*get_string) (const char *id, const char *key, char **val);
 };

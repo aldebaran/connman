@@ -61,6 +61,7 @@ static int policy_get_string(const char *id, const char *key, char **val)
 
 static struct connman_session_policy session_policy = {
 	.name = "session policy configuration",
+	.priority = CONNMAN_SESSION_POLICY_PRIORITY_LOW,
 	.get_bool = policy_get_bool,
 	.get_string = policy_get_string,
 };
