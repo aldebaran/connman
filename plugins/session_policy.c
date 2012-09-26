@@ -35,34 +35,6 @@
 
 static GHashTable *config_hash;
 
-static int policy_get_bool(struct connman_session *session,
-				const char *key, connman_bool_t *val)
-{
-	DBG("sesion %p key %s", session, key);
-
-	if (g_str_equal(key, "Priority") == TRUE)
-		*val = FALSE;
-	else if (g_str_equal(key, "EmergencyCall") == TRUE)
-		*val = FALSE;
-	else
-		return -EINVAL;
-
-	return 0;
-}
-
-static int policy_get_string(struct connman_session *session,
-				const char *key, char **val)
-{
-	DBG("session %p key %s", session, key);
-
-	if (g_str_equal(key, "RoamingPolicy") == TRUE)
-		*val = "default";
-	else
-		return -EINVAL;
-
-	return 0;
-}
-
 static struct connman_session_config *policy_create(
 					struct connman_session *session)
 {
@@ -99,8 +71,6 @@ static void policy_destroy(struct connman_session *session)
 static struct connman_session_policy session_policy = {
 	.name = "session policy configuration",
 	.priority = CONNMAN_SESSION_POLICY_PRIORITY_LOW,
-	.get_bool = policy_get_bool,
-	.get_string = policy_get_string,
 	.create = policy_create,
 	.destroy = policy_destroy,
 };

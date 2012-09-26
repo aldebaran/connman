@@ -300,39 +300,6 @@ static gint compare_priority(gconstpointer a, gconstpointer b)
 	return policy2->priority - policy1->priority;
 }
 
-int connman_session_update_bool(struct connman_session *session, const char *key,
-					connman_bool_t val)
-{
-	struct session_info *info;
-
-	if (session == NULL)
-		return -EINVAL;
-
-	info = session->info;
-	if (info == NULL)
-		return 0;
-
-	DBG("%s %d", key, val);
-
-	return -EINVAL;
-}
-
-int connman_session_update_string(struct connman_session *session, const char *key,
-					const char *val)
-{
-	struct session_info *info;
-
-	if (session == NULL)
-		return -EINVAL;
-
-	info = session->info;
-	if (info == NULL)
-		return 0;
-
-	DBG("%s %s", key, val);
-
-	return -EINVAL;
-}
 
 int connman_session_policy_register(struct connman_session_policy *policy)
 {

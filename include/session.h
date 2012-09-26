@@ -67,10 +67,6 @@ struct connman_session_config {
 struct connman_session_policy {
 	const char *name;
 	int priority;
-	int (*get_bool) (struct connman_session *session,
-				const char *key, connman_bool_t *val);
-	int (*get_string) (struct connman_session *session,
-				const char *key, char **val);
 	struct connman_session_config *(*create)(
 					struct connman_session *session);
 	void (*destroy)(struct connman_session *session);
@@ -81,10 +77,6 @@ void connman_session_policy_unregister(struct connman_session_policy *config);
 
 GSList *connman_session_allowed_bearers_any(void);
 
-int connman_session_update_bool(struct connman_session *session, const char *key,
-				connman_bool_t val);
-int connman_session_update_string(struct connman_session *session, const char *key,
-					const char *val);
 
 #ifdef __cplusplus
 }
