@@ -114,12 +114,6 @@ struct connman_session {
 	GHashTable *service_hash;
 };
 
-struct bearer_info {
-	char *name;
-	connman_bool_t match_all;
-	enum connman_service_type service_type;
-};
-
 static const char *trigger2string(enum connman_session_trigger trigger)
 {
 	switch (trigger) {
@@ -399,46 +393,46 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 	remove_policy(policy);
 }
 
-static void cleanup_bearer_info(gpointer data, gpointer user_data)
+static void cleanup_bearer(gpointer data, gpointer user_data)
 {
-	struct bearer_info *info = data;
+	struct connman_session_bearer *bearer = data;
 
-	g_free(info->name);
-	g_free(info);
+	g_free(bearer->name);
+	g_free(bearer);
 }
 
 static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 {
-	struct bearer_info *info;
+	struct connman_session_bearer *bearer;
 	DBusMessageIter array;
 	GSList *list = NULL;
 
 	dbus_message_iter_recurse(iter, &array);
 
 	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
-		char *bearer = NULL;
+		char *bearer_name = NULL;
 
-		dbus_message_iter_get_basic(&array, &bearer);
+		dbus_message_iter_get_basic(&array, &bearer_name);
 
-		info = g_try_new0(struct bearer_info, 1);
-		if (info == NULL) {
-			g_slist_foreach(list, cleanup_bearer_info, NULL);
+		bearer = g_try_new0(struct connman_session_bearer, 1);
+		if (bearer == NULL) {
+			g_slist_foreach(list, cleanup_bearer, NULL);
 			g_slist_free(list);
 
 			return NULL;
 		}
 
-		info->name = g_strdup(bearer);
-		info->service_type = bearer2service(info->name);
+		bearer->name = g_strdup(bearer_name);
+		bearer->service_type = bearer2service(bearer->name);
 
-		if (info->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN &&
-				g_strcmp0(info->name, "*") == 0) {
-			info->match_all = TRUE;
+		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN &&
+				g_strcmp0(bearer->name, "*") == 0) {
+			bearer->match_all = TRUE;
 		} else {
-			info->match_all = FALSE;
+			bearer->match_all = FALSE;
 		}
 
-		list = g_slist_append(list, info);
+		list = g_slist_append(list, bearer);
 
 		dbus_message_iter_next(&array);
 	}
@@ -448,18 +442,18 @@ static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
 
 static GSList *session_allowed_bearers_any(void)
 {
-	struct bearer_info *info;
+	struct connman_session_bearer *bearer;
 	GSList *list = NULL;
 
-	info = g_try_new0(struct bearer_info, 1);
-	if (info == NULL)
+	bearer = g_try_new0(struct connman_session_bearer, 1);
+	if (bearer == NULL)
 		return NULL;
 
-	info->name = g_strdup("");
-	info->match_all = TRUE;
-	info->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
+	bearer->name = g_strdup("");
+	bearer->match_all = TRUE;
+	bearer->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 
-	list = g_slist_append(list, info);
+	list = g_slist_append(list, bearer);
 
 	return list;
 }
@@ -471,10 +465,10 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct bearer_info *bearer_info = list->data;
+		struct connman_session_bearer *bearer = list->data;
 
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&bearer_info->name);
+						&bearer->name);
 	}
 }
 
@@ -695,14 +689,14 @@ static connman_bool_t service_type_match(struct connman_session *session,
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct bearer_info *bearer_info = list->data;
+		struct connman_session_bearer *bearer = list->data;
 		enum connman_service_type service_type;
 
-		if (bearer_info->match_all == TRUE)
+		if (bearer->match_all == TRUE)
 			return TRUE;
 
 		service_type = connman_service_get_type(service);
-		if (bearer_info->service_type == service_type)
+		if (bearer->service_type == service_type)
 			return TRUE;
 	}
 
@@ -766,9 +760,9 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 
 	for (list = info->allowed_bearers;
 			list != NULL; list = list->next) {
-		struct bearer_info *bearer_info = list->data;
+		struct connman_session_bearer *bearer = list->data;
 
-		if (bearer_info->match_all == TRUE) {
+		if (bearer->match_all == TRUE) {
 			if (type_a != type_b) {
 				weight_a = service_type_weight(type_a);
 				weight_b = service_type_weight(type_b);
@@ -783,18 +777,18 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 			}
 		}
 
-		if (type_a == bearer_info->service_type &&
-				type_b == bearer_info->service_type) {
+		if (type_a == bearer->service_type &&
+				type_b == bearer->service_type) {
 			return 0;
 		}
 
-		if (type_a == bearer_info->service_type &&
-				type_b != bearer_info->service_type) {
+		if (type_a == bearer->service_type &&
+				type_b != bearer->service_type) {
 			return -1;
 		}
 
-		if (type_a != bearer_info->service_type &&
-				type_b == bearer_info->service_type) {
+		if (type_a != bearer->service_type &&
+				type_b == bearer->service_type) {
 			return 1;
 		}
 	}
@@ -827,7 +821,7 @@ static void cleanup_session(gpointer user_data)
 		__connman_service_disconnect(info->entry->service);
 	}
 
-	g_slist_foreach(info->allowed_bearers, cleanup_bearer_info, NULL);
+	g_slist_foreach(info->allowed_bearers, cleanup_bearer, NULL);
 	g_slist_free(info->allowed_bearers);
 
 	g_free(session->owner);
@@ -1397,7 +1391,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 			allowed_bearers = session_parse_allowed_bearers(&value);
 
 			g_slist_foreach(info->allowed_bearers,
-					cleanup_bearer_info, NULL);
+					cleanup_bearer, NULL);
 			g_slist_free(info->allowed_bearers);
 
 			if (allowed_bearers == NULL) {
@@ -1696,7 +1690,7 @@ err:
 
 	g_free(session_path);
 
-	g_slist_foreach(allowed_bearers, cleanup_bearer_info, NULL);
+	g_slist_foreach(allowed_bearers, cleanup_bearer, NULL);
 	g_slist_free(allowed_bearers);
 
 	return err;

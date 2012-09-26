@@ -22,6 +22,7 @@
 #ifndef __CONNMAN_SESSION_H
 #define __CONNMAN_SESSION_H
 
+#include <connman/service.h>
 #include <connman/types.h>
 
 #ifdef __cplusplus
@@ -33,6 +34,12 @@ extern "C" {
 #define CONNMAN_SESSION_POLICY_PRIORITY_HIGH      100
 
 struct connman_session;
+
+struct connman_session_bearer {
+	char *name;
+	connman_bool_t match_all;
+	enum connman_service_type service_type;
+};
 
 struct connman_session_policy {
 	const char *name;
