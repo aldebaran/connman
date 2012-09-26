@@ -86,6 +86,15 @@ Core
   owner if possible or first come first serve. A graceful fallback to
   the next agent should be also used in case of malfunctional agents.
 
+- Remove --nobacktrace option
+
+ Priority: Medium
+ Complexity: C1
+ When: 2.0
+
+ Remove the --nobacktrace option or change it to --backtrace depending on the
+ level of systemd integration or other factors.
+
 
 WiFi
 ====
