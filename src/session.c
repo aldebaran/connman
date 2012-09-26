@@ -322,7 +322,7 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 	remove_policy(policy);
 }
 
-static void cleanup_bearer(gpointer data, gpointer user_data)
+static void cleanup_bearer(gpointer data)
 {
 	struct connman_session_bearer *bearer = data;
 
@@ -332,8 +332,7 @@ static void cleanup_bearer(gpointer data, gpointer user_data)
 
 void connman_session_free_bearers(GSList *bearers)
 {
-	g_slist_foreach(bearers, cleanup_bearer, NULL);
-	g_slist_free(bearers);
+	g_slist_free_full(bearers, cleanup_bearer);
 }
 
 static GSList *session_parse_allowed_bearers(DBusMessageIter *iter)
