@@ -31,14 +31,14 @@ extern "C" {
 /*
  * The session are identified through the pid is only a temporary solution
  */
-struct connman_session_config {
+struct connman_session_policy {
 	const char *name;
 	int (*get_bool) (const char *id, const char *key, connman_bool_t *val);
 	int (*get_string) (const char *id, const char *key, char **val);
 };
 
-int connman_session_config_register(struct connman_session_config *config);
-void connman_session_config_unregister(struct connman_session_config *config);
+int connman_session_policy_register(struct connman_session_policy *config);
+void connman_session_policy_unregister(struct connman_session_policy *config);
 
 int connman_session_update_bool(const char *id, const char *key,
 				connman_bool_t val);

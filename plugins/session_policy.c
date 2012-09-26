@@ -33,7 +33,7 @@
 #include <connman/log.h>
 #include <connman/session.h>
 
-static int config_get_bool(const char *id, const char *key, connman_bool_t *val)
+static int policy_get_bool(const char *id, const char *key, connman_bool_t *val)
 {
 	DBG("id %s key %s", id, key);
 
@@ -47,7 +47,7 @@ static int config_get_bool(const char *id, const char *key, connman_bool_t *val)
 	return 0;
 }
 
-static int config_get_string(const char *id, const char *key, char **val)
+static int policy_get_string(const char *id, const char *key, char **val)
 {
 	DBG("id %s key %s", id, key);
 
@@ -59,28 +59,28 @@ static int config_get_string(const char *id, const char *key, char **val)
 	return 0;
 }
 
-static struct connman_session_config session_config = {
+static struct connman_session_policy session_policy = {
 	.name = "session policy configuration",
-	.get_bool = config_get_bool,
-	.get_string = config_get_string,
+	.get_bool = policy_get_bool,
+	.get_string = policy_get_string,
 };
 
-static int session_config_init(void)
+static int session_policy_init(void)
 {
 	int err;
 
-	err = connman_session_config_register(&session_config);
+	err = connman_session_policy_register(&session_policy);
 	if (err < 0)
 		return err;
 
 	return 0;
 }
 
-static void session_config_exit(void)
+static void session_policy_exit(void)
 {
-	connman_session_config_unregister(&session_config);
+	connman_session_policy_unregister(&session_policy);
 }
 
 CONNMAN_PLUGIN_DEFINE(session_policy, "Session policy configuration plugin",
 		VERSION, CONNMAN_PLUGIN_PRIORITY_DEFAULT,
-		session_config_init, session_config_exit)
+		session_policy_init, session_policy_exit)
