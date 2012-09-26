@@ -276,6 +276,24 @@ static int policy_get_string(struct connman_session *session, const char *id,
 	return (*session->policy->get_string)(id, key, val);
 }
 
+static int assign_policy_plugin(struct connman_session *session)
+{
+	GSList *list;
+	struct connman_session_policy *policy;
+
+	if (session->policy != NULL)
+		return -EALREADY;
+
+	for (list = policy_list; list != NULL; list = list->next) {
+		policy = list->data;
+
+		session->policy = policy;
+		break;
+	}
+
+	return 0;
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_session_policy *policy1 = a;
@@ -1582,6 +1600,8 @@ int __connman_session_create(DBusMessage *msg)
 	session->notify_watch =
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
+
+	assign_policy_plugin(session);
 
 	policy_get_bool(session, owner, "Priority", &priority);
 	policy_get_bool(session, owner, "EmergencyCall", &ecall_app);
