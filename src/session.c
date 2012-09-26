@@ -272,6 +272,98 @@ static int policy_get_string(const char *id, const char *key, char **val)
 	return (*session_policy->get_string)(id, key, val);
 }
 
+static struct connman_session *session_lookup_by_id(const char *id)
+{
+	struct connman_session *session;
+	GHashTableIter iter;
+	gpointer key, value;
+
+	DBG("id %s", id);
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session = value;
+
+		if (g_strcmp0(session->owner, id) == FALSE)
+			continue;
+
+		return session;
+	}
+
+	DBG("No session found by id %s", id);
+
+	return NULL;
+}
+
+int connman_session_update_bool(const char *id, const char *key,
+					connman_bool_t val)
+{
+	struct connman_session *session;
+	struct session_info *info;
+
+	session = session_lookup_by_id(id);
+	if (session == NULL)
+		return -EINVAL;
+
+	info = session->info;
+	if (info == NULL)
+		return 0;
+
+	DBG("%s %d", key, val);
+
+	return -EINVAL;
+}
+
+int connman_session_update_string(const char *id, const char *key,
+					const char *val)
+{
+	struct connman_session *session;
+	struct session_info *info;
+
+	session = session_lookup_by_id(id);
+	if (session == NULL)
+		return -EINVAL;
+
+	info = session->info;
+	if (info == NULL)
+		return 0;
+
+	DBG("%s %s", key, val);
+
+	return -EINVAL;
+}
+
+int connman_session_policy_register(struct connman_session_policy *policy)
+{
+	DBG("name %s", policy->name);
+
+	if (session_policy != NULL) {
+		connman_warn("A session policy plugin '%s' is "
+				"already registerd. Skipping registration "
+				"of plugin '%s'",
+				session_policy->name, policy->name);
+		return -EALREADY;
+	}
+
+	session_policy = policy;
+
+	return 0;
+}
+
+void connman_session_policy_unregister(struct connman_session_policy *policy)
+{
+	DBG("name %s", policy->name);
+
+	if (policy != session_policy) {
+		connman_warn("Trying to unregister session policy "
+				"plugin '%s'", policy->name);
+		return;
+	}
+
+	session_policy = NULL;
+}
+
 static void cleanup_bearer_info(gpointer data, gpointer user_data)
 {
 	struct bearer_info *info = data;
@@ -1749,98 +1841,6 @@ static struct connman_notifier session_notifier = {
 	.service_state_changed	= service_state_changed,
 	.ipconfig_changed	= ipconfig_changed,
 };
-
-static struct connman_session *session_lookup_by_id(const char *id)
-{
-	struct connman_session *session;
-	GHashTableIter iter;
-	gpointer key, value;
-
-	DBG("id %s", id);
-
-	g_hash_table_iter_init(&iter, session_hash);
-
-	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
-		session = value;
-
-		if (g_strcmp0(session->owner, id) == FALSE)
-			continue;
-
-		return session;
-	}
-
-	DBG("No session found by id %s", id);
-
-	return NULL;
-}
-
-int connman_session_update_bool(const char *id, const char *key,
-					connman_bool_t val)
-{
-	struct connman_session *session;
-	struct session_info *info;
-
-	session = session_lookup_by_id(id);
-	if (session == NULL)
-		return -EINVAL;
-
-	info = session->info;
-	if (info == NULL)
-		return 0;
-
-	DBG("%s %d", key, val);
-
-	return -EINVAL;
-}
-
-int connman_session_update_string(const char *id, const char *key,
-					const char *val)
-{
-	struct connman_session *session;
-	struct session_info *info;
-
-	session = session_lookup_by_id(id);
-	if (session == NULL)
-		return -EINVAL;
-
-	info = session->info;
-	if (info == NULL)
-		return 0;
-
-	DBG("%s %s", key, val);
-
-	return -EINVAL;
-}
-
-int connman_session_policy_register(struct connman_session_policy *policy)
-{
-	DBG("name %s", policy->name);
-
-	if (session_policy != NULL) {
-		connman_warn("A session policy plugin '%s' is "
-				"already registerd. Skipping registration "
-				"of plugin '%s'",
-				session_policy->name, policy->name);
-		return -EALREADY;
-	}
-
-	session_policy = policy;
-
-	return 0;
-}
-
-void connman_session_policy_unregister(struct connman_session_policy *policy)
-{
-	DBG("name %s", policy->name);
-
-	if (policy != session_policy) {
-		connman_warn("Trying to unregister session policy "
-				"plugin '%s'", policy->name);
-		return;
-	}
-
-	session_policy = NULL;
-}
 
 int __connman_session_init(void)
 {
