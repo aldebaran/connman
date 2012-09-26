@@ -294,6 +294,48 @@ static int assign_policy_plugin(struct connman_session *session)
 	return 0;
 }
 
+static void probe_policy(struct connman_session_policy *policy)
+{
+
+	GHashTableIter iter;
+	gpointer key, value;
+	struct connman_session *session;
+
+	DBG("policy %p name %s", policy, policy->name);
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session = value;
+
+		if (session->policy != NULL)
+			continue;
+
+		assign_policy_plugin(session);
+	}
+}
+
+static void remove_policy(struct connman_session_policy *policy)
+{
+	GHashTableIter iter;
+	gpointer key, value;
+	struct connman_session *session;
+
+	DBG("policy %p name %s", policy, policy->name);
+
+	g_hash_table_iter_init(&iter, session_hash);
+
+	while (g_hash_table_iter_next(&iter, &key, &value) == TRUE) {
+		session = value;
+
+		if (session->policy != policy)
+			continue;
+
+		session->policy = NULL;
+		assign_policy_plugin(session);
+	}
+}
+
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	const struct connman_session_policy *policy1 = a;
@@ -370,6 +412,9 @@ int connman_session_policy_register(struct connman_session_policy *policy)
 
 	policy_list = g_slist_insert_sorted(policy_list, policy,
 						compare_priority);
+
+	probe_policy(policy);
+
 	return 0;
 }
 
@@ -378,6 +423,8 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 	DBG("name %s", policy->name);
 
 	policy_list = g_slist_remove(policy_list, policy);
+
+	remove_policy(policy);
 }
 
 static void cleanup_bearer_info(gpointer data, gpointer user_data)
