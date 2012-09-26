@@ -36,6 +36,7 @@ static DBusConnection *connection;
 static GHashTable *session_hash;
 static connman_bool_t sessionmode;
 static struct connman_session *ecall_session;
+static GSList *policy_list;
 
 enum connman_session_trigger {
 	CONNMAN_SESSION_TRIGGER_UNKNOWN		= 0,
@@ -275,6 +276,14 @@ static int policy_get_string(struct connman_session *session, const char *id,
 	return (*session->policy->get_string)(id, key, val);
 }
 
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_session_policy *policy1 = a;
+	const struct connman_session_policy *policy2 = b;
+
+	return policy2->priority - policy1->priority;
+}
+
 static struct connman_session *session_lookup_by_id(const char *id)
 {
 	struct connman_session *session;
@@ -341,12 +350,16 @@ int connman_session_policy_register(struct connman_session_policy *policy)
 {
 	DBG("name %s", policy->name);
 
+	policy_list = g_slist_insert_sorted(policy_list, policy,
+						compare_priority);
 	return 0;
 }
 
 void connman_session_policy_unregister(struct connman_session_policy *policy)
 {
 	DBG("name %s", policy->name);
+
+	policy_list = g_slist_remove(policy_list, policy);
 }
 
 static void cleanup_bearer_info(gpointer data, gpointer user_data)
