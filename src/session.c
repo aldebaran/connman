@@ -59,21 +59,6 @@ enum connman_session_state {
 	CONNMAN_SESSION_STATE_ONLINE         = 2,
 };
 
-enum connman_session_type {
-	CONNMAN_SESSION_TYPE_ANY      = 0,
-	CONNMAN_SESSION_TYPE_LOCAL    = 1,
-	CONNMAN_SESSION_TYPE_INTERNET = 2,
-};
-
-enum connman_session_roaming_policy {
-	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
-	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
-	CONNMAN_SESSION_ROAMING_POLICY_ALWAYS		= 2,
-	CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN	= 3,
-	CONNMAN_SESSION_ROAMING_POLICY_NATIONAL		= 4,
-	CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL	= 5,
-};
-
 struct service_entry {
 	/* track why this service was selected */
 	enum connman_session_reason reason;
@@ -86,12 +71,8 @@ struct service_entry {
 };
 
 struct session_info {
+	struct connman_session_config config;
 	enum connman_session_state state;
-	enum connman_session_type type;
-	connman_bool_t priority;
-	GSList *allowed_bearers;
-	enum connman_session_roaming_policy roaming_policy;
-
 	struct service_entry *entry;
 	enum connman_session_reason reason;
 };
@@ -463,7 +444,7 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 	struct session_info *info = user_data;
 	GSList *list;
 
-	for (list = info->allowed_bearers;
+	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
 		struct connman_session_bearer *bearer = list->data;
 
@@ -568,22 +549,23 @@ static void append_notify(DBusMessageIter *dict,
 		info_last->entry = info->entry;
 	}
 
-	if (session->append_all == TRUE || info->type != info_last->type) {
-		const char *type = type2string(info->type);
+	if (session->append_all == TRUE ||
+			info->config.type != info_last->config.type) {
+		const char *type = type2string(info->config.type);
 
 		connman_dbus_dict_append_basic(dict, "ConnectionType",
 						DBUS_TYPE_STRING,
 						&type);
-		info_last->type = info->type;
+		info_last->config.type = info->config.type;
 	}
 
 	if (session->append_all == TRUE ||
-			info->allowed_bearers != info_last->allowed_bearers) {
+			info->config.allowed_bearers != info_last->config.allowed_bearers) {
 		connman_dbus_dict_append_array(dict, "AllowedBearers",
 						DBUS_TYPE_STRING,
 						append_allowed_bearers,
 						info);
-		info_last->allowed_bearers = info->allowed_bearers;
+		info_last->config.allowed_bearers = info->config.allowed_bearers;
 	}
 
 	session->append_all = FALSE;
@@ -626,8 +608,8 @@ static connman_bool_t compute_notifiable_changes(struct connman_session *session
 			info->state >= CONNMAN_SESSION_STATE_CONNECTED)
 		return TRUE;
 
-	if (info->allowed_bearers != info_last->allowed_bearers ||
-			info->type != info_last->type)
+	if (info->config.allowed_bearers != info_last->config.allowed_bearers ||
+			info->config.type != info_last->config.type)
 		return TRUE;
 
 	return FALSE;
@@ -687,7 +669,7 @@ static connman_bool_t service_type_match(struct connman_session *session,
 	struct session_info *info = session->info;
 	GSList *list;
 
-	for (list = info->allowed_bearers;
+	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
 		struct connman_session_bearer *bearer = list->data;
 		enum connman_service_type service_type;
@@ -758,7 +740,7 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 	type_a = connman_service_get_type(service_a);
 	type_b = connman_service_get_type(service_b);
 
-	for (list = info->allowed_bearers;
+	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
 		struct connman_session_bearer *bearer = list->data;
 
@@ -821,8 +803,8 @@ static void cleanup_session(gpointer user_data)
 		__connman_service_disconnect(info->entry->service);
 	}
 
-	g_slist_foreach(info->allowed_bearers, cleanup_bearer, NULL);
-	g_slist_free(info->allowed_bearers);
+	g_slist_foreach(info->config.allowed_bearers, cleanup_bearer, NULL);
+	g_slist_free(info->config.allowed_bearers);
 
 	g_free(session->owner);
 	g_free(session->session_path);
@@ -1058,7 +1040,7 @@ static void select_connected_service(struct session_info *info,
 	enum connman_session_state state;
 
 	state = service_to_session_state(entry->state);
-	if (is_type_matching_state(&state, info->type) == FALSE)
+	if (is_type_matching_state(&state, info->config.type) == FALSE)
 		return;
 
 	info->state = state;
@@ -1226,7 +1208,7 @@ static void session_changed(struct connman_session *session,
 
 		state = service_to_session_state(info->entry->state);
 
-		if (is_type_matching_state(&state, info->type) == TRUE)
+		if (is_type_matching_state(&state, info->config.type) == TRUE)
 			info->state = state;
 	}
 
@@ -1235,7 +1217,7 @@ static void session_changed(struct connman_session *session,
 		DBG("ignore session changed event");
 		return;
 	case CONNMAN_SESSION_TRIGGER_SETTING:
-		if (info->allowed_bearers != info_last->allowed_bearers) {
+		if (info->config.allowed_bearers != info_last->config.allowed_bearers) {
 
 			service_hash_last = session->service_hash;
 			service_list_last = session->service_list;
@@ -1263,10 +1245,10 @@ static void session_changed(struct connman_session *session,
 			g_sequence_free(service_list_last);
 		}
 
-		if (info->type != info_last->type) {
+		if (info->config.type != info_last->config.type) {
 			if (info->state >= CONNMAN_SESSION_STATE_CONNECTED &&
 					is_type_matching_state(&info->state,
-							info->type) == FALSE)
+							info->config.type) == FALSE)
 				deselect_and_disconnect(session);
 		}
 
@@ -1390,9 +1372,9 @@ static DBusMessage *change_session(DBusConnection *conn,
 		if (g_str_equal(name, "AllowedBearers") == TRUE) {
 			allowed_bearers = session_parse_allowed_bearers(&value);
 
-			g_slist_foreach(info->allowed_bearers,
+			g_slist_foreach(info->config.allowed_bearers,
 					cleanup_bearer, NULL);
-			g_slist_free(info->allowed_bearers);
+			g_slist_free(info->config.allowed_bearers);
 
 			if (allowed_bearers == NULL) {
 				allowed_bearers = session_allowed_bearers_any();
@@ -1401,7 +1383,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 					return __connman_error_failed(msg, ENOMEM);
 			}
 
-			info->allowed_bearers = allowed_bearers;
+			info->config.allowed_bearers = allowed_bearers;
 		} else {
 			goto err;
 		}
@@ -1409,7 +1391,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 	case DBUS_TYPE_STRING:
 		if (g_str_equal(name, "ConnectionType") == TRUE) {
 			dbus_message_iter_get_basic(&value, &val);
-			info->type = string2type(val);
+			info->config.type = string2type(val);
 		} else {
 			goto err;
 		}
@@ -1510,7 +1492,6 @@ int __connman_session_create(DBusMessage *msg)
 	DBusMessageIter iter, array;
 	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
-
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
 	connman_bool_t priority;
 	connman_bool_t ecall_app;
@@ -1625,21 +1606,21 @@ int __connman_session_create(DBusMessage *msg)
 		ecall_session = session;
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
-	info->type = type;
-	info->priority = priority;
-	info->roaming_policy = roaming_policy;
+	info->config.type = type;
+	info->config.priority = priority;
+	info->config.roaming_policy = roaming_policy;
 	info->entry = NULL;
 
 	if (allowed_bearers == NULL) {
-		info->allowed_bearers =
+		info->config.allowed_bearers =
 				session_allowed_bearers_any();
 
-		if (info->allowed_bearers == NULL) {
+		if (info->config.allowed_bearers == NULL) {
 			err = -ENOMEM;
 			goto err;
 		}
 	} else {
-		info->allowed_bearers = allowed_bearers;
+		info->config.allowed_bearers = allowed_bearers;
 	}
 
 	g_hash_table_replace(session_hash, session->session_path, session);
@@ -1666,10 +1647,10 @@ int __connman_session_create(DBusMessage *msg)
 	populate_service_list(session);
 
 	info_last->state = info->state;
-	info_last->priority = info->priority;
-	info_last->roaming_policy = info->roaming_policy;
+	info_last->config.priority = info->config.priority;
+	info_last->config.roaming_policy = info->config.roaming_policy;
 	info_last->entry = info->entry;
-	info_last->allowed_bearers = info->allowed_bearers;
+	info_last->config.allowed_bearers = info->config.allowed_bearers;
 
 	session->append_all = TRUE;
 

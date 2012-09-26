@@ -77,21 +77,6 @@ enum connman_session_state {
 	CONNMAN_SESSION_STATE_ONLINE         = 2,
 };
 
-enum connman_session_type {
-	CONNMAN_SESSION_TYPE_ANY      = 0,
-	CONNMAN_SESSION_TYPE_LOCAL    = 1,
-	CONNMAN_SESSION_TYPE_INTERNET = 2,
-};
-
-enum connman_session_roaming_policy {
-	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
-	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
-	CONNMAN_SESSION_ROAMING_POLICY_ALWAYS		= 2,
-	CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN	= 3,
-	CONNMAN_SESSION_ROAMING_POLICY_NATIONAL		= 4,
-	CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL	= 5,
-};
-
 struct test_session_info {
 	enum connman_session_state state;
 	char *name;

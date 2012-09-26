@@ -33,12 +33,35 @@ extern "C" {
 #define CONNMAN_SESSION_POLICY_PRIORITY_DEFAULT     0
 #define CONNMAN_SESSION_POLICY_PRIORITY_HIGH      100
 
+enum connman_session_roaming_policy {
+	CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN		= 0,
+	CONNMAN_SESSION_ROAMING_POLICY_DEFAULT		= 1,
+	CONNMAN_SESSION_ROAMING_POLICY_ALWAYS		= 2,
+	CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN	= 3,
+	CONNMAN_SESSION_ROAMING_POLICY_NATIONAL		= 4,
+	CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL	= 5,
+};
+
+enum connman_session_type {
+	CONNMAN_SESSION_TYPE_ANY      = 0,
+	CONNMAN_SESSION_TYPE_LOCAL    = 1,
+	CONNMAN_SESSION_TYPE_INTERNET = 2,
+};
+
 struct connman_session;
 
 struct connman_session_bearer {
 	char *name;
 	connman_bool_t match_all;
 	enum connman_service_type service_type;
+};
+
+struct connman_session_config {
+	connman_bool_t priority;
+	enum connman_session_roaming_policy roaming_policy;
+	enum connman_session_type type;
+	connman_bool_t ecall;
+	GSList *allowed_bearers;
 };
 
 struct connman_session_policy {
