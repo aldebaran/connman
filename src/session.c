@@ -88,6 +88,7 @@ struct connman_session {
 	connman_bool_t append_all;
 	struct session_info *info;
 	struct session_info *info_last;
+	struct connman_session_config *policy_config;
 
 	connman_bool_t ecall;
 
@@ -167,22 +168,6 @@ static enum connman_session_type string2type(const char *type)
 	return CONNMAN_SESSION_TYPE_ANY;
 }
 
-static enum connman_session_roaming_policy string2roamingpolicy(const char *policy)
-{
-	if (g_strcmp0(policy, "default") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
-	else if (g_strcmp0(policy, "always") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_ALWAYS;
-	else if (g_strcmp0(policy, "forbidden") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
-	else if (g_strcmp0(policy, "national") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_NATIONAL;
-	else if (g_strcmp0(policy, "international") == 0)
-		return CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL;
-	else
-		return CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN;
-}
-
 static enum connman_service_type bearer2service(const char *bearer)
 {
 	if (bearer == NULL)
@@ -229,28 +214,6 @@ static char *service2bearer(enum connman_service_type type)
 	return "";
 }
 
-static int policy_get_bool(struct connman_session *session, const char *id,
-				const char *key, connman_bool_t *val)
-{
-	if (session->policy == NULL) {
-		*val = FALSE;
-		return -EINVAL;
-	}
-
-	return (*session->policy->get_bool)(session, key, val);
-}
-
-static int policy_get_string(struct connman_session *session, const char *id,
-				const char *key, char **val)
-{
-	if (session->policy == NULL) {
-		*val = NULL;
-		return -EINVAL;
-	}
-
-	return (*session->policy->get_string)(session, key, val);
-}
-
 static int assign_policy_plugin(struct connman_session *session)
 {
 	GSList *list;
@@ -267,6 +230,24 @@ static int assign_policy_plugin(struct connman_session *session)
 	}
 
 	return 0;
+}
+
+static int create_policy_config(struct connman_session *session)
+{
+	struct connman_session_config *config;
+
+	config = (*session->policy->create)(session);
+	if (config == NULL)
+		return -ENOMEM;
+
+	session->policy_config = config;
+
+	return 0;
+}
+
+static void destroy_policy_config(struct connman_session *session)
+{
+	(*session->policy->destroy)(session);
 }
 
 static void probe_policy(struct connman_session_policy *policy)
@@ -803,6 +784,7 @@ static void cleanup_session(gpointer user_data)
 		__connman_service_disconnect(info->entry->service);
 	}
 
+	destroy_policy_config(session);
 	g_slist_foreach(info->config.allowed_bearers, cleanup_bearer, NULL);
 	g_slist_free(info->config.allowed_bearers);
 
@@ -1493,10 +1475,6 @@ int __connman_session_create(DBusMessage *msg)
 	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
 	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
-	connman_bool_t priority;
-	connman_bool_t ecall_app;
-	enum connman_session_roaming_policy roaming_policy;
-	char *roaming_policy_str;
 	GSList *allowed_bearers = NULL;
 	int err;
 
@@ -1595,20 +1573,20 @@ int __connman_session_create(DBusMessage *msg)
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
 
-	assign_policy_plugin(session);
+	err = assign_policy_plugin(session);
+	if (err < 0)
+		goto err;
+	err = create_policy_config(session);
+	if (err < 0)
+		goto err;
 
-	policy_get_bool(session, owner, "Priority", &priority);
-	policy_get_bool(session, owner, "EmergencyCall", &ecall_app);
-	policy_get_string(session, owner, "RoamingPolicy", &roaming_policy_str);
-	roaming_policy = string2roamingpolicy(roaming_policy_str);
-
-	if (ecall_app == TRUE)
+	if (session->policy_config->ecall == TRUE)
 		ecall_session = session;
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
 	info->config.type = type;
-	info->config.priority = priority;
-	info->config.roaming_policy = roaming_policy;
+	info->config.priority = session->policy_config->priority;
+	info->config.roaming_policy = session->policy_config->roaming_policy;
 	info->entry = NULL;
 
 	if (allowed_bearers == NULL) {
