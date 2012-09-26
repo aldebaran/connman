@@ -116,7 +116,7 @@ static DBusMessage *set_property(DBusConnection *conn,
 		__connman_session_set_mode(sessionmode);
 
 		if (sessionmode == TRUE && connman_state_idle == FALSE) {
-			session_mode_pending = msg;
+			session_mode_pending = dbus_message_ref(msg);
 			return NULL;
 		}
 
@@ -486,6 +486,9 @@ void __connman_manager_cleanup(void)
 
 	if (connection == NULL)
 		return;
+
+	if (session_mode_pending != NULL)
+		dbus_message_unref(session_mode_pending);
 
 	connman_notifier_unregister(&technology_notifier);
 
