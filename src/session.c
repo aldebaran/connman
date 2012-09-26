@@ -1576,17 +1576,18 @@ int __connman_session_create(DBusMessage *msg)
 	info = session->info;
 	info_last = session->info_last;
 
-	policy_get_bool(session, owner, "Priority", &priority);
-	policy_get_bool(session, owner, "EmergencyCall", &ecall_app);
-	policy_get_string(session, owner, "RoamingPolicy", &roaming_policy_str);
-	roaming_policy = string2roamingpolicy(roaming_policy_str);
-
 	session->owner = g_strdup(owner);
 	session->session_path = session_path;
 	session->notify_path = g_strdup(notify_path);
 	session->notify_watch =
 		g_dbus_add_disconnect_watch(connection, session->owner,
 					owner_disconnect, session, NULL);
+
+	policy_get_bool(session, owner, "Priority", &priority);
+	policy_get_bool(session, owner, "EmergencyCall", &ecall_app);
+	policy_get_string(session, owner, "RoamingPolicy", &roaming_policy_str);
+	roaming_policy = string2roamingpolicy(roaming_policy_str);
+
 	if (ecall_app == TRUE)
 		ecall_session = session;
 
