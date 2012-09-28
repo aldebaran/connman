@@ -567,13 +567,15 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 
 	DBG("");
 
-	if (error != NULL && g_strcmp0(error,
+	if (error != NULL) {
+		if (g_strcmp0(error,
 			"net.connman.Agent.Error.LaunchBrowser") == 0) {
-
-		if (__connman_agent_request_browser(service,
-				wispr_portal_browser_reply_cb,
-				wp_context->redirect_url,
-				wp_context) != -EINPROGRESS)
+			if (__connman_agent_request_browser(service,
+					wispr_portal_browser_reply_cb,
+					wp_context->redirect_url,
+					wp_context) != -EINPROGRESS)
+				free_connman_wispr_portal_context(wp_context);
+		} else
 			free_connman_wispr_portal_context(wp_context);
 
 		return;
