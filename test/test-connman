@@ -145,38 +145,49 @@ elif sys.argv[1] in ["remove"]:
 		print "%s: %s" % (error._dbus_error_name, error.message)
 
 elif sys.argv[1] == "scan":
-	if len(sys.argv) > 2:
+	if len(sys.argv) == 3:
 		path = "/net/connman/technology/" + sys.argv[2]
 		technology = dbus.Interface(bus.get_object("net.connman", path),
 						"net.connman.Technology")
 		technology.Scan()
+	else:
+		print "'%s' takes two arguments" % sys.argv[1]
 
 elif sys.argv[1] == "enable":
-	if len(sys.argv) > 2:
+	if len(sys.argv) == 3:
 		path = "/net/connman/technology/" + sys.argv[2]
 		technology = dbus.Interface(bus.get_object("net.connman", path),
 					    "net.connman.Technology")
 		technology.SetProperty("Powered", True)
+	else:
+		print "'%s' takes two arguments" % sys.argv[1]
 
 elif sys.argv[1] == "disable":
-	if len(sys.argv) > 2:
+	if len(sys.argv) == 3:
 		path = "/net/connman/technology/" + sys.argv[2]
 		technology = dbus.Interface(bus.get_object("net.connman", path),
 					    "net.connman.Technology")
 		technology.SetProperty("Powered", False)
+	else:
+		print "'%s' takes two arguments" % sys.argv[1]
+
 
 elif sys.argv[1] in ["offlinemode", "flightmode"]:
-	if len(sys.argv) > 2:
-		if sys.argv[2] == "on":
+	if len(sys.argv) == 3:
+		if sys.argv[2] == "on" or sys.argv[2] == "1" or sys.argv[2] == "yes":
 			active = dbus.Boolean(1)
-		elif sys.argv[2] == "off":
+		elif sys.argv[2] == "off" or sys.argv[2] == "0" or sys.argv[2] == "no":
 			active = dbus.Boolean(0)
 		else:
-			active = dbus.Boolean(sys.argv[2])
+			print "Use either 'on', '1', 'yes', 'off', '0' or 'no'"
+			exit()
+
 		manager.SetProperty("OfflineMode", active)
-	else:
+	elif len(sys.argv) == 2:
 		properties = manager.GetProperties()
 		print "Offline mode is %s" % (properties["OfflineMode"])
+	else:
+		print "'%s' takes max. two arguments" % sys.argv[1]
 
 else:
 	print "Unknown command"
