@@ -2071,13 +2071,7 @@ static int inet_rtnl_recv(GIOChannel *chan, gpointer user_data)
 
 		rtnl_data->callback(h, rtnl_data->user_data);
 
-		if (rtnl_data->rtnl_timeout > 0) {
-			g_source_remove(rtnl_data->rtnl_timeout);
-			rtnl_data->rtnl_timeout = 0;
-		}
-
-		__connman_inet_rtnl_close(rth);
-		g_free(rth);
+		inet_rtnl_cleanup(rtnl_data);
 	}
 
 	return 0;
