@@ -62,6 +62,7 @@ DBusMessage *__connman_error_failed(DBusMessage *msg, int errnum)
 	case ETIMEDOUT:
 		return __connman_error_operation_timeout(msg);
 	case EALREADY:
+	case EINPROGRESS:
 		return __connman_error_in_progress(msg);
 	case ENOKEY:
 		return __connman_error_passphrase_required(msg);
