@@ -547,7 +547,8 @@ void __connman_technology_list_struct(DBusMessageIter *array)
 	for (list = technology_list; list; list = list->next) {
 		struct connman_technology *technology = list->data;
 
-		if (technology->path == NULL)
+		if (technology->path == NULL ||
+					technology->hardblocked == TRUE)
 			continue;
 
 		dbus_message_iter_open_container(array, DBUS_TYPE_STRUCT,
@@ -933,7 +934,8 @@ static const GDBusSignalTable technology_signals[] = {
 
 static gboolean technology_dbus_register(struct connman_technology *technology)
 {
-	if (technology->dbus_registered == TRUE)
+	if (technology->dbus_registered == TRUE ||
+					technology->hardblocked == TRUE)
 		return TRUE;
 
 	if (g_dbus_register_interface(connection, technology->path,
@@ -1348,9 +1350,11 @@ static void technology_apply_hardblock_change(struct connman_technology *technol
 	if (hardblock == TRUE) {
 		DBG("%s is switched off.", get_name(technology->type));
 		technology_disable(technology, TRUE);
-	} else
+		technology_dbus_unregister(technology);
+	} else {
 		technology_enable(technology, TRUE);
-
+		technology_dbus_register(technology);
+	}
 }
 
 int __connman_technology_add_rfkill(unsigned int index,
