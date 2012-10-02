@@ -240,7 +240,11 @@ static int create_policy_config(struct connman_session *session)
 {
 	struct connman_session_config *config;
 
-	config = (*session->policy->create)(session);
+	if (session->policy == NULL)
+		config = connman_session_create_default_config();
+	else
+		config = (*session->policy->create)(session);
+
 	if (config == NULL)
 		return -ENOMEM;
 
@@ -251,7 +255,13 @@ static int create_policy_config(struct connman_session *session)
 
 static void destroy_policy_config(struct connman_session *session)
 {
-	(*session->policy->destroy)(session);
+	if (session->policy == NULL) {
+		connman_session_free_bearers(
+			session->policy_config->allowed_bearers);
+		g_free(session->policy_config);
+	} else {
+		(*session->policy->destroy)(session);
+	}
 }
 
 static void probe_policy(struct connman_session_policy *policy)
