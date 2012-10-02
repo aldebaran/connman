@@ -74,6 +74,7 @@ struct connman_technology {
 	GSList *scan_pending;
 
 	connman_bool_t hardblocked;
+	connman_bool_t dbus_registered;
 };
 
 static GSList *driver_list = NULL;
@@ -930,6 +931,25 @@ static const GDBusSignalTable technology_signals[] = {
 	{ },
 };
 
+static gboolean technology_dbus_register(struct connman_technology *technology)
+{
+	if (technology->dbus_registered == TRUE)
+		return TRUE;
+
+	if (g_dbus_register_interface(connection, technology->path,
+				CONNMAN_TECHNOLOGY_INTERFACE,
+				technology_methods, technology_signals,
+				NULL, technology, NULL) == FALSE) {
+		connman_error("Failed to register %s", technology->path);
+		return FALSE;
+	}
+
+	technology_added_signal(technology);
+	technology->dbus_registered = TRUE;
+
+	return TRUE;
+}
+
 static struct connman_technology *technology_get(enum connman_service_type type)
 {
 	struct connman_technology *technology;
@@ -987,18 +1007,12 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology_load(technology);
 
-	if (g_dbus_register_interface(connection, technology->path,
-					CONNMAN_TECHNOLOGY_INTERFACE,
-					technology_methods, technology_signals,
-					NULL, technology, NULL) == FALSE) {
-		connman_error("Failed to register %s", technology->path);
+	if (technology_dbus_register(technology) == FALSE) {
 		g_free(technology);
 		return NULL;
 	}
 
 	technology_list = g_slist_prepend(technology_list, technology);
-
-	technology_added_signal(technology);
 
 	technology->driver = driver;
 	err = driver->probe(technology);
@@ -1008,6 +1022,18 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	DBG("technology %p", technology);
 
 	return technology;
+}
+
+static void technology_dbus_unregister(struct connman_technology *technology)
+{
+	if (technology->dbus_registered == FALSE)
+		return;
+
+	technology_removed_signal(technology);
+	g_dbus_unregister_interface(connection, technology->path,
+		CONNMAN_TECHNOLOGY_INTERFACE);
+
+	technology->dbus_registered = FALSE;
 }
 
 static void technology_put(struct connman_technology *technology)
@@ -1026,10 +1052,7 @@ static void technology_put(struct connman_technology *technology)
 
 	technology_list = g_slist_remove(technology_list, technology);
 
-	technology_removed_signal(technology);
-
-	g_dbus_unregister_interface(connection, technology->path,
-						CONNMAN_TECHNOLOGY_INTERFACE);
+	technology_dbus_unregister(technology);
 
 	g_slist_free(technology->device_list);
 
