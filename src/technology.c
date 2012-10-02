@@ -1288,7 +1288,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 	DBG("index %u type %d soft %u hard %u", index, type,
 							softblock, hardblock);
 
-	rfkill = g_hash_table_lookup(rfkill_list, &index);
+	rfkill = g_hash_table_lookup(rfkill_list, GINT_TO_POINTER(index));
 	if (rfkill != NULL)
 		goto done;
 
@@ -1301,7 +1301,7 @@ int __connman_technology_add_rfkill(unsigned int index,
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	g_hash_table_insert(rfkill_list, &rfkill->index, rfkill);
+	g_hash_table_insert(rfkill_list, GINT_TO_POINTER(index), rfkill);
 
 done:
 	technology = technology_get(type);
@@ -1342,7 +1342,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 
 	DBG("index %u soft %u hard %u", index, softblock, hardblock);
 
-	rfkill = g_hash_table_lookup(rfkill_list, &index);
+	rfkill = g_hash_table_lookup(rfkill_list, GINT_TO_POINTER(index));
 	if (rfkill == NULL)
 		return -ENXIO;
 
@@ -1381,11 +1381,11 @@ int __connman_technology_remove_rfkill(unsigned int index,
 
 	DBG("index %u", index);
 
-	rfkill = g_hash_table_lookup(rfkill_list, &index);
+	rfkill = g_hash_table_lookup(rfkill_list, GINT_TO_POINTER(index));
 	if (rfkill == NULL)
 		return -ENXIO;
 
-	g_hash_table_remove(rfkill_list, &index);
+	g_hash_table_remove(rfkill_list, GINT_TO_POINTER(index));
 
 	technology = technology_find(type);
 	if (technology == NULL)
@@ -1402,7 +1402,7 @@ int __connman_technology_init(void)
 
 	connection = connman_dbus_get_connection();
 
-	rfkill_list = g_hash_table_new_full(g_int_hash, g_int_equal,
+	rfkill_list = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, free_rfkill);
 
 	global_offlinemode = connman_technology_load_offlinemode();
