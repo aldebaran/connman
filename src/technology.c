@@ -1290,7 +1290,26 @@ void __connman_technology_set_connected(enum connman_service_type type,
 static void technology_apply_hardblock_change(struct connman_technology *technology,
 						connman_bool_t hardblock)
 {
+	gboolean apply = TRUE;
+	GList *start, *list;
+
 	if (technology->hardblocked == hardblock)
+		return;
+
+	start = g_hash_table_get_values(rfkill_list);
+	for (list = start; list != NULL; list = list->next) {
+		struct connman_rfkill *rfkill = list->data;
+
+		if (rfkill->type != technology->type)
+			continue;
+
+		if (rfkill->hardblock != hardblock)
+			apply = FALSE;
+	}
+
+	g_list_free(start);
+
+	if (apply == FALSE)
 		return;
 
 	technology->hardblocked = hardblock;
