@@ -88,7 +88,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
 			src/ippool.c src/bridge.c src/nat.c
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
-				@XTABLES_LIBS@ @GNUTLS_LIBS@ -lresolv -ldl
+				@XTABLES_LIBS@ @GNUTLS_LIBS@ -lresolv -ldl -lrt
 
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
