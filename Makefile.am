@@ -124,7 +124,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 				-DSTORAGEDIR=\""$(storagedir)\"" \
 				-DCONFIGDIR=\""$(configdir)\""
 
-INCLUDES = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
+AM_CPPFLAGS = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
 						plugins/connman-nmcompat.conf
