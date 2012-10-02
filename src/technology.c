@@ -72,6 +72,8 @@ struct connman_technology {
 	guint pending_timeout;
 
 	GSList *scan_pending;
+
+	connman_bool_t hardblocked;
 };
 
 static GSList *driver_list = NULL;
@@ -962,6 +964,11 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology->refcount = 1;
 
+	if (type == CONNMAN_SERVICE_TYPE_ETHERNET)
+		technology->hardblocked = FALSE;
+	else
+		technology->hardblocked = TRUE;
+
 	technology->type = type;
 	technology->path = g_strdup_printf("%s/technology/%s",
 							CONNMAN_PATH, str);
@@ -1111,7 +1118,9 @@ int __connman_technology_add_device(struct connman_device *device)
 		return -ENXIO;
 	}
 
-	if (technology->enable_persistent && !global_offlinemode) {
+	if (technology->enable_persistent &&
+					global_offlinemode == FALSE &&
+					technology->hardblocked == FALSE) {
 		int err = __connman_device_enable(device);
 		/*
 		 * connman_technology_add_device() calls __connman_device_enable()
@@ -1122,8 +1131,9 @@ int __connman_technology_add_device(struct connman_device *device)
 		if (err == -EALREADY)
 			__connman_technology_enabled(type);
 	}
-	/* if technology persistent state is offline */
-	if (!technology->enable_persistent)
+	/* if technology persistent state is offline or hardblocked */
+	if (technology->enable_persistent == FALSE ||
+					technology->hardblocked == TRUE)
 		__connman_device_disable(device);
 
 	technology->device_list = g_slist_prepend(technology->device_list,
@@ -1277,6 +1287,18 @@ void __connman_technology_set_connected(enum connman_service_type type,
 			DBUS_TYPE_BOOLEAN, &connected);
 }
 
+static void technology_apply_hardblock_change(struct connman_technology *technology,
+						connman_bool_t hardblock)
+{
+	if (technology->hardblocked == hardblock)
+		return;
+
+	technology->hardblocked = hardblock;
+
+	if (hardblock == TRUE)
+		DBG("%s is switched off.", get_name(technology->type));
+}
+
 int __connman_technology_add_rfkill(unsigned int index,
 					enum connman_service_type type,
 						connman_bool_t softblock,
@@ -1309,10 +1331,7 @@ done:
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (hardblock) {
-		DBG("%s is switched off.", get_name(type));
-		return 0;
-	}
+	technology_apply_hardblock_change(technology, hardblock);
 
 	/*
 	 * If Offline mode is on, we softblock the device if it isnt already.
@@ -1353,15 +1372,12 @@ int __connman_technology_update_rfkill(unsigned int index,
 	rfkill->softblock = softblock;
 	rfkill->hardblock = hardblock;
 
-	if (hardblock) {
-		DBG("%s is switched off.", get_name(type));
-		return 0;
-	}
-
 	technology = technology_find(type);
 	/* If there is no driver for this type, ignore it. */
 	if (technology == NULL)
 		return -ENXIO;
+
+	technology_apply_hardblock_change(technology, hardblock);
 
 	if (!global_offlinemode) {
 		if (technology->enable_persistent && softblock)
