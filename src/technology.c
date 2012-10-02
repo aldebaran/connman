@@ -577,7 +577,8 @@ static gboolean technology_pending_reply(gpointer user_data)
 	return FALSE;
 }
 
-static int technology_enable(struct connman_technology *technology)
+static int technology_enable(struct connman_technology *technology,
+						connman_bool_t hardblock)
 {
 	GSList *list;
 	int err = 0;
@@ -595,6 +596,9 @@ static int technology_enable(struct connman_technology *technology)
 		goto done;
 	}
 
+	if (hardblock == TRUE && technology->enable_persistent == FALSE)
+		goto done;
+
 	__connman_rfkill_block(technology->type, FALSE);
 
 	for (list = technology->device_list; list; list = list->next) {
@@ -607,7 +611,8 @@ done:
 	return err;
 }
 
-static int technology_disable(struct connman_technology *technology)
+static int technology_disable(struct connman_technology *technology,
+						connman_bool_t hardblock)
 {
 	GSList *list;
 	int err = 0;
@@ -628,7 +633,8 @@ static int technology_disable(struct connman_technology *technology)
 	if (technology->tethering == TRUE)
 		set_tethering(technology, FALSE);
 
-	__connman_rfkill_block(technology->type, TRUE);
+	if (hardblock == FALSE)
+		__connman_rfkill_block(technology->type, TRUE);
 
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
@@ -648,10 +654,10 @@ static DBusMessage *set_powered(struct connman_technology *technology,
 	int err;
 
 	if (powered == TRUE) {
-		err = technology_enable(technology);
+		err = technology_enable(technology, FALSE);
 		persistent = TRUE;
 	} else {
-		err = technology_disable(technology);
+		err = technology_disable(technology, FALSE);
 		persistent = FALSE;
 	}
 
@@ -1254,10 +1260,10 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 		struct connman_technology *technology = list->data;
 
 		if (offlinemode)
-			err = technology_disable(technology);
+			err = technology_disable(technology, FALSE);
 
 		if (!offlinemode && technology->enable_persistent)
-			err = technology_enable(technology);
+			err = technology_enable(technology, FALSE);
 	}
 
 	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
@@ -1314,8 +1320,12 @@ static void technology_apply_hardblock_change(struct connman_technology *technol
 
 	technology->hardblocked = hardblock;
 
-	if (hardblock == TRUE)
+	if (hardblock == TRUE) {
 		DBG("%s is switched off.", get_name(technology->type));
+		technology_disable(technology, TRUE);
+	} else
+		technology_enable(technology, TRUE);
+
 }
 
 int __connman_technology_add_rfkill(unsigned int index,
