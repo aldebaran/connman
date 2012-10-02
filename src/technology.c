@@ -650,19 +650,15 @@ static DBusMessage *set_powered(struct connman_technology *technology,
 				DBusMessage *msg, connman_bool_t powered)
 {
 	DBusMessage *reply = NULL;
-	connman_bool_t persistent;
 	int err;
 
-	if (powered == TRUE) {
+	if (powered == TRUE)
 		err = technology_enable(technology, FALSE);
-		persistent = TRUE;
-	} else {
+	else
 		err = technology_disable(technology, FALSE);
-		persistent = FALSE;
-	}
 
 	if (err != -EBUSY) {
-		technology->enable_persistent = persistent;
+		technology->enable_persistent = powered;
 		technology_save(technology);
 	}
 
