@@ -326,6 +326,27 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 	remove_policy(policy);
 }
 
+struct connman_session_config *connman_session_create_default_config(void)
+{
+	struct connman_session_config *config;
+
+	config = g_try_new0(struct connman_session_config, 1);
+	if (config == NULL)
+		return NULL;
+
+	config->priority = FALSE;
+	config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
+	config->type = CONNMAN_SESSION_TYPE_ANY;
+	config->ecall = FALSE;
+	config->allowed_bearers = connman_session_allowed_bearers_any();
+	if (config->allowed_bearers == NULL) {
+		g_free(config);
+		return NULL;
+	}
+
+	return config;
+}
+
 static enum connman_session_type apply_policy_on_type(
 			enum connman_session_type policy,
 			enum connman_session_type type)

@@ -42,19 +42,9 @@ static struct connman_session_config *policy_create(
 
 	DBG("session %p", session);
 
-	config = g_try_new0(struct connman_session_config, 1);
+	config = connman_session_create_default_config();
 	if (config == NULL)
 		return NULL;
-
-	config->priority = FALSE;
-	config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
-	config->type = CONNMAN_SESSION_TYPE_ANY;
-	config->ecall = FALSE;
-	config->allowed_bearers = connman_session_allowed_bearers_any();
-	if (config->allowed_bearers == NULL) {
-		g_free(config);
-		return NULL;
-	}
 
 	g_hash_table_replace(config_hash, session, config);
 
