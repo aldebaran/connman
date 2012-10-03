@@ -86,7 +86,7 @@ struct server_data {
 	char *interface;
 	GList *domains;
 	char *server;
-	struct sockaddr server_addr;
+	struct sockaddr *server_addr;
 	socklen_t server_addr_len;
 	int protocol;
 	GIOChannel *channel;
@@ -249,7 +249,7 @@ static struct server_data *find_server(const char *interface,
 {
 	GSList *list;
 
-	DBG("interface %s server %s", interface, server);
+	DBG("interface %s server %s proto %d", interface, server, protocol);
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
@@ -1508,7 +1508,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	sk = g_io_channel_unix_get_fd(server->channel);
 
 	err = sendto(sk, request, req->request_len, MSG_NOSIGNAL,
-			&server->server_addr, server->server_addr_len);
+			server->server_addr, server->server_addr_len);
 	if (err < 0) {
 		DBG("Cannot send message to server %s sock %d "
 			"protocol %d (%s/%d)",
@@ -1767,6 +1767,7 @@ static void destroy_server(struct server_data *server)
 		g_free(domain);
 	}
 	g_free(server->interface);
+	g_free(server->server_addr);
 
 	/*
 	 * We do not remove cache right away but delay it few seconds.
@@ -2023,7 +2024,7 @@ static struct server_data *create_server(const char *interface,
 	struct server_data *data;
 	int sk, ret;
 
-	DBG("interface %s server %s", interface, server);
+	DBG("interface %s server %s proto %d", interface, server, protocol);
 
 	memset(&hints, 0, sizeof(hints));
 
@@ -2110,7 +2111,27 @@ static struct server_data *create_server(const char *interface,
 	data->server = g_strdup(server);
 	data->protocol = protocol;
 	data->server_addr_len = rp->ai_addrlen;
-	memcpy(&data->server_addr, rp->ai_addr, rp->ai_addrlen);
+
+	switch (rp->ai_family) {
+	case AF_INET:
+		data->server_addr = (struct sockaddr *)
+					g_try_new0(struct sockaddr_in, 1);
+		break;
+	case AF_INET6:
+		data->server_addr = (struct sockaddr *)
+					g_try_new0(struct sockaddr_in6, 1);
+		break;
+	default:
+		connman_error("Wrong address family %d", rp->ai_family);
+		break;
+	}
+	if (data->server_addr == NULL) {
+		freeaddrinfo(rp);
+		close(sk);
+		g_free(data);
+		return NULL;
+	}
+	memcpy(data->server_addr, rp->ai_addr, rp->ai_addrlen);
 
 	ret = connect(sk, rp->ai_addr, rp->ai_addrlen);
 	freeaddrinfo(rp);
