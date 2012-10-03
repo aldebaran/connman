@@ -650,7 +650,12 @@ static DBusMessage *set_powered(struct connman_technology *technology,
 				DBusMessage *msg, connman_bool_t powered)
 {
 	DBusMessage *reply = NULL;
-	int err;
+	int err = 0;
+
+	if (technology->hardblocked == TRUE) {
+		err = -EACCES;
+		goto make_reply;
+	}
 
 	if (powered == TRUE)
 		err = technology_enable(technology, FALSE);
@@ -662,6 +667,7 @@ static DBusMessage *set_powered(struct connman_technology *technology,
 		technology_save(technology);
 	}
 
+make_reply:
 	if (err == -EINPROGRESS) {
 		technology->pending_reply = dbus_message_ref(msg);
 		technology->pending_timeout = g_timeout_add_seconds(10,
