@@ -84,7 +84,7 @@ Methods		void Destroy()
 			to be sent. Some changes might cause the session to
 			be moved to offline state.
 
-Settings	boolean State [readonly]
+Settings	string State [readonly]
 
 			This indicates if the connection is disconnected,
 			connected or online. It is updated according to the
