@@ -39,7 +39,7 @@ static enum connman_session_state string2state(const char *state)
 	return CONNMAN_SESSION_STATE_DISCONNECTED;
 }
 
-static enum connman_session_state string2type(const char *type)
+static enum connman_session_type string2type(const char *type)
 {
 	if (g_strcmp0(type, "any") == 0)
 		return CONNMAN_SESSION_TYPE_ANY;
