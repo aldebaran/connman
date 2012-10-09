@@ -1,3 +1,12 @@
+ver 1.8:
+	Fix issue with NTP transmit time calculation.
+	Fix issue with WiFi Tethering and newer kernels.
+	Fix issue with Netlink messages from Wireless Extensions.
+	Fix issue with IPv6 nameserver refresh beeing applied to IPv4.
+	Fix issue with overwriting DNS proxy address information.
+	Fix issue with missing handling of RFKILL hard blocking.
+	Add support for disabling internal backtrace functionality.
+
 ver 1.7:
 	Fix issue with IPv4 address removal when setting interface down.
 	Fix issue with wrong error when setting tethering support option.
