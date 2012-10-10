@@ -1328,6 +1328,7 @@ static connman_bool_t is_idle(struct wifi_data *wifi)
 
 	switch (wifi->state) {
 	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISABLED:
 	case G_SUPPLICANT_STATE_DISCONNECTED:
 	case G_SUPPLICANT_STATE_INACTIVE:
 	case G_SUPPLICANT_STATE_SCANNING:
@@ -1357,6 +1358,7 @@ static connman_bool_t is_idle_wps(GSupplicantInterface *interface,
 	 * actually means that we are idling. */
 	switch (wifi->state) {
 	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISABLED:
 	case G_SUPPLICANT_STATE_DISCONNECTED:
 	case G_SUPPLICANT_STATE_INACTIVE:
 	case G_SUPPLICANT_STATE_SCANNING:
@@ -1527,6 +1529,7 @@ static void interface_state(GSupplicantInterface *interface)
 		break;
 
 	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISABLED:
 	case G_SUPPLICANT_STATE_ASSOCIATED:
 	case G_SUPPLICANT_STATE_4WAY_HANDSHAKE:
 	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:

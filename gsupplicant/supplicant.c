@@ -287,6 +287,8 @@ static GSupplicantState string2state(const char *state)
 
 	if (g_str_equal(state, "unknown") == TRUE)
 		return G_SUPPLICANT_STATE_UNKNOWN;
+	else if (g_str_equal(state, "interface_disabled") == TRUE)
+		return G_SUPPLICANT_STATE_DISABLED;
 	else if (g_str_equal(state, "disconnected") == TRUE)
 		return G_SUPPLICANT_STATE_DISCONNECTED;
 	else if (g_str_equal(state, "inactive") == TRUE)
@@ -1681,7 +1683,6 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 		debug_strvalmap("Mode capability", mode_capa_map,
 						interface->mode_capa);
 
-		interface->ready = TRUE;
 		callback_interface_added(interface);
 		return;
 	}
@@ -1698,6 +1699,10 @@ static void interface_property(const char *key, DBusMessageIter *iter,
 				interface->state = string2state(str);
 				callback_interface_state(interface);
 			}
+		if (interface->state == G_SUPPLICANT_STATE_DISABLED)
+			interface->ready = FALSE;
+		else
+			interface->ready = TRUE;
 
 		SUPPLICANT_DBG("state %s (%d)", str, interface->state);
 	} else if (g_strcmp0(key, "Scanning") == 0) {
@@ -2857,6 +2862,7 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 	case G_SUPPLICANT_STATE_GROUP_HANDSHAKE:
 		return -EBUSY;
 	case G_SUPPLICANT_STATE_UNKNOWN:
+	case G_SUPPLICANT_STATE_DISABLED:
 	case G_SUPPLICANT_STATE_DISCONNECTED:
 	case G_SUPPLICANT_STATE_INACTIVE:
 	case G_SUPPLICANT_STATE_SCANNING:
