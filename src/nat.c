@@ -196,6 +196,7 @@ static void cleanup_nat(gpointer data)
 
 	g_free(nat->address);
 	g_free(nat->interface);
+	g_free(nat);
 }
 
 static struct connman_notifier nat_notifier = {
