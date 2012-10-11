@@ -24,23 +24,8 @@
 
 #include <glib.h>
 
+#include "unaligned.h"
 #include "gdhcp.h"
-
-#define dhcp_get_unaligned(ptr)			\
-({						\
-	struct __attribute__((packed)) {	\
-		typeof(*(ptr)) __v;		\
-	} *__p = (void *) (ptr);		\
-	__p->__v;				\
-})
-
-#define dhcp_put_unaligned(val, ptr)		\
-do {						\
-	struct __attribute__((packed)) {	\
-		typeof(*(ptr)) __v;		\
-	} *__p = (void *) (ptr);		\
-	__p->__v = (val);			\
-} while (0)
 
 #define CLIENT_PORT 68
 #define SERVER_PORT 67

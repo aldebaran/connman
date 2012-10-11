@@ -36,7 +36,7 @@
 #include "ipv4ll.h"
 
 /**
- * Return a random link local IP
+ * Return a random link local IP (in host byte order)
  */
 uint32_t ipv4ll_random_ip(int seed)
 {
@@ -53,7 +53,7 @@ uint32_t ipv4ll_random_ip(int seed)
 		tmp = rand();
 		tmp = tmp & IN_CLASSB_HOST;
 	} while (tmp > (IN_CLASSB_HOST - 0x0200));
-	return ((LINKLOCAL_ADDR + 0x0100) + tmp);
+	return ntohl(((LINKLOCAL_ADDR + 0x0100) + tmp));
 }
 
 /**

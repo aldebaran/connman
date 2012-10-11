@@ -367,7 +367,7 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 
 	/* Explicitly saying that we want RFC-compliant packets helps
 	 * some buggy DHCP servers to NOT send bigger packets */
-	dhcp_add_simple_option(&packet, DHCP_MAX_SIZE, htons(576));
+	dhcp_add_simple_option(&packet, DHCP_MAX_SIZE, 576);
 
 	add_request_options(dhcp_client, &packet);
 
@@ -410,7 +410,7 @@ static int send_renew(GDHCPClient *dhcp_client)
 
 	init_packet(dhcp_client , &packet, DHCPREQUEST);
 	packet.xid = dhcp_client->xid;
-	packet.ciaddr = dhcp_client->requested_ip;
+	packet.ciaddr = htonl(dhcp_client->requested_ip);
 
 	add_request_options(dhcp_client, &packet);
 
@@ -429,7 +429,7 @@ static int send_rebound(GDHCPClient *dhcp_client)
 
 	init_packet(dhcp_client , &packet, DHCPREQUEST);
 	packet.xid = dhcp_client->xid;
-	packet.ciaddr = dhcp_client->requested_ip;
+	packet.ciaddr = htonl(dhcp_client->requested_ip);
 
 	add_request_options(dhcp_client, &packet);
 
@@ -449,7 +449,7 @@ static int send_release(GDHCPClient *dhcp_client,
 
 	init_packet(dhcp_client, &packet, DHCPRELEASE);
 	packet.xid = rand();
-	packet.ciaddr = ciaddr;
+	packet.ciaddr = htonl(ciaddr);
 
 	dhcp_add_simple_option(&packet, DHCP_SERVER_ID, server);
 
@@ -1134,7 +1134,7 @@ static int ipv4ll_recv_arp_packet(GDHCPClient *dhcp_client)
 			arp.arp_op != htons(ARPOP_REQUEST))
 		return -EINVAL;
 
-	ip_requested = ntohl(dhcp_client->requested_ip);
+	ip_requested = htonl(dhcp_client->requested_ip);
 	source_conflict = !memcmp(arp.arp_spa, &ip_requested,
 						sizeof(ip_requested));
 
@@ -1333,15 +1333,14 @@ static void start_request(GDHCPClient *dhcp_client)
 
 static uint32_t get_lease(struct dhcp_packet *packet)
 {
-	uint8_t *option_u8;
+	uint8_t *option;
 	uint32_t lease_seconds;
 
-	option_u8 = dhcp_get_option(packet, DHCP_LEASE_TIME);
-	if (option_u8 == NULL)
+	option = dhcp_get_option(packet, DHCP_LEASE_TIME);
+	if (option == NULL)
 		return 3600;
 
-	lease_seconds = dhcp_get_unaligned((uint32_t *) option_u8);
-	lease_seconds = ntohl(lease_seconds);
+	lease_seconds = get_be32(option);
 	/* paranoia: must not be prone to overflows */
 	lease_seconds &= 0x0fffffff;
 	if (lease_seconds < 10)
@@ -1518,16 +1517,13 @@ static char *malloc_option_value_string(uint8_t *option, GDHCPOptionType type)
 			dest += sprint_nip(dest, "", option);
 			break;
 		case OPTION_U16: {
-			uint16_t val_u16 = dhcp_get_unaligned(
-						(uint16_t *) option);
-			dest += sprintf(dest, "%u", ntohs(val_u16));
+			uint16_t val_u16 = get_be16(option);
+			dest += sprintf(dest, "%u", val_u16);
 			break;
 		}
 		case OPTION_U32: {
-			uint32_t val_u32 = dhcp_get_unaligned(
-						(uint32_t *) option);
-			dest += sprintf(dest, type == OPTION_U32 ? "%lu" :
-					"%ld", (unsigned long) ntohl(val_u32));
+			uint32_t val_u32 = get_be32(option);
+			dest += sprintf(dest, "%u", val_u32);
 			break;
 		}
 		case OPTION_STRING:
@@ -1821,7 +1817,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	GDHCPClient *dhcp_client = user_data;
 	struct dhcp_packet packet;
 	struct dhcpv6_packet *packet6 = NULL;
-	uint8_t *message_type = NULL, *client_id = NULL, *option_u8,
+	uint8_t *message_type = NULL, *client_id = NULL, *option,
 		*server_id = NULL;
 	uint16_t option_len = 0, status = 0;
 	gpointer pkt;
@@ -1882,15 +1878,15 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 			return TRUE;
 		}
 
-		option_u8 = dhcpv6_get_option(packet6, pkt_len,
+		option = dhcpv6_get_option(packet6, pkt_len,
 				G_DHCPV6_STATUS_CODE, &option_len, NULL);
-		if (option_u8 != 0 && option_len > 0) {
-			status = option_u8[0]<<8 | option_u8[1];
+		if (option != 0 && option_len > 0) {
+			status = option[0]<<8 | option[1];
 			if (status != 0) {
 				debug(dhcp_client, "error code %d", status);
 				if (option_len > 2) {
 					gchar *txt = g_strndup(
-						(gchar *)&option_u8[2],
+						(gchar *)&option[2],
 						option_len - 2);
 					debug(dhcp_client, "error text: %s",
 						txt);
@@ -1923,10 +1919,9 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		dhcp_client->timeout = 0;
 		dhcp_client->retry_times = 0;
 
-		option_u8 = dhcp_get_option(&packet, DHCP_SERVER_ID);
-		dhcp_client->server_ip =
-				dhcp_get_unaligned((uint32_t *) option_u8);
-		dhcp_client->requested_ip = packet.yiaddr;
+		option = dhcp_get_option(&packet, DHCP_SERVER_ID);
+		dhcp_client->server_ip = get_be32(option);
+		dhcp_client->requested_ip = ntohl(packet.yiaddr);
 
 		dhcp_client->state = REQUESTING;
 

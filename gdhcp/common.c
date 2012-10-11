@@ -280,11 +280,21 @@ void dhcp_add_simple_option(struct dhcp_packet *packet, uint8_t code,
 	len = dhcp_option_lengths[type & OPTION_TYPE_MASK];
 	option[OPT_LEN] = len;
 
-#if __BYTE_ORDER == __BIG_ENDIAN
-	data <<= 8 * (4 - len);
-#endif
+	switch (len) {
+	case 1:
+		option[OPT_DATA] = data;
+		break;
+	case 2:
+		put_be16(data, option + OPT_DATA);
+		break;
+	case 4:
+		put_be32(data, option + OPT_DATA);
+		break;
+	default:
+		printf("Invalid option len %d for code 0x%x\n", len, code);
+		return;
+	}
 
-	dhcp_put_unaligned(data, (uint32_t *)(option + OPT_DATA));
 	dhcp_add_binary_option(packet, option);
 
 	return;
@@ -575,7 +585,7 @@ int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 	memset(&client, 0, sizeof(client));
 	client.sin_family = AF_INET;
 	client.sin_port = htons(source_port);
-	client.sin_addr.s_addr = source_ip;
+	client.sin_addr.s_addr = htonl(source_ip);
 	if (bind(fd, (struct sockaddr *) &client, sizeof(client)) < 0) {
 		close(fd);
 		return -errno;

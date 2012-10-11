@@ -140,7 +140,7 @@ static int get_lease(GDHCPServer *dhcp_server, uint32_t yiaddr,
 	lease_mac = find_lease_by_mac(dhcp_server, mac);
 
 	lease_nip = g_hash_table_lookup(dhcp_server->nip_lease_hash,
-						GINT_TO_POINTER((int) yiaddr));
+					GINT_TO_POINTER((int) ntohl(yiaddr)));
 	debug(dhcp_server, "lease_mac %p lease_nip %p", lease_mac, lease_nip);
 
 	if (lease_nip != NULL) {
@@ -148,7 +148,7 @@ static int get_lease(GDHCPServer *dhcp_server, uint32_t yiaddr,
 				g_list_remove(dhcp_server->lease_list,
 								lease_nip);
 		g_hash_table_remove(dhcp_server->nip_lease_hash,
-					GINT_TO_POINTER((int) yiaddr));
+				GINT_TO_POINTER((int) ntohl(yiaddr)));
 
 		if (lease_mac == NULL)
 			*lease = lease_nip;
@@ -200,7 +200,7 @@ static struct dhcp_lease *add_lease(GDHCPServer *dhcp_server, uint32_t expire,
 	memset(lease, 0, sizeof(*lease));
 
 	memcpy(lease->lease_mac, chaddr, ETH_ALEN);
-	lease->lease_nip = yiaddr;
+	lease->lease_nip = ntohl(yiaddr);
 
 	if (expire == 0)
 		lease->expire = time(NULL) + dhcp_server->lease_seconds;
@@ -254,13 +254,12 @@ static uint32_t find_free_or_expired_nip(GDHCPServer *dhcp_server,
 		if ((ip_addr & 0xff) == 0xff)
 			continue;
 
-		lease = find_lease_by_nip(dhcp_server,
-				(uint32_t) htonl(ip_addr));
+		lease = find_lease_by_nip(dhcp_server, ip_addr);
 		if (lease != NULL)
 			continue;
 
 		if (arp_check(htonl(ip_addr), safe_mac) == TRUE)
-			return htonl(ip_addr);
+			return ip_addr;
 	}
 
 	/* The last lease is the oldest one */
@@ -471,7 +470,7 @@ static void add_option(gpointer key, gpointer value, gpointer user_data)
 			return;
 
 		dhcp_add_simple_option(packet, (uint8_t) option_code,
-								nip.s_addr);
+							ntohl(nip.s_addr));
 		break;
 	default:
 		return;
@@ -493,10 +492,10 @@ static gboolean check_requested_nip(GDHCPServer *dhcp_server,
 	if (requested_nip == 0)
 		return FALSE;
 
-	if (ntohl(requested_nip) < dhcp_server->start_ip)
+	if (requested_nip < dhcp_server->start_ip)
 		return FALSE;
 
-	if (ntohl(requested_nip) > dhcp_server->end_ip)
+	if (requested_nip > dhcp_server->end_ip)
 		return FALSE;
 
 	lease = find_lease_by_nip(dhcp_server, requested_nip);
@@ -543,12 +542,12 @@ static void send_offer(GDHCPServer *dhcp_server,
 	init_packet(dhcp_server, &packet, client_packet, DHCPOFFER);
 
 	if (lease)
-		packet.yiaddr = lease->lease_nip;
+		packet.yiaddr = htonl(lease->lease_nip);
 	else if (check_requested_nip(dhcp_server, requested_nip) == TRUE)
-		packet.yiaddr = requested_nip;
+		packet.yiaddr = htonl(requested_nip);
 	else
-		packet.yiaddr = find_free_or_expired_nip(
-				dhcp_server, client_packet->chaddr);
+		packet.yiaddr = htonl(find_free_or_expired_nip(
+					dhcp_server, client_packet->chaddr));
 
 	debug(dhcp_server, "find yiaddr %u", packet.yiaddr);
 
@@ -566,7 +565,7 @@ static void send_offer(GDHCPServer *dhcp_server,
 	}
 
 	dhcp_add_simple_option(&packet, DHCP_LEASE_TIME,
-				htonl(dhcp_server->lease_seconds));
+						dhcp_server->lease_seconds);
 	add_server_options(dhcp_server, &packet);
 
 	addr.s_addr = packet.yiaddr;
@@ -590,22 +589,22 @@ static void save_lease(GDHCPServer *dhcp_server)
 }
 
 static void send_ACK(GDHCPServer *dhcp_server,
-		struct dhcp_packet *client_packet, uint32_t yiaddr)
+		struct dhcp_packet *client_packet, uint32_t dest)
 {
 	struct dhcp_packet packet;
 	uint32_t lease_time_sec;
 	struct in_addr addr;
 
 	init_packet(dhcp_server, &packet, client_packet, DHCPACK);
-	packet.yiaddr = yiaddr;
+	packet.yiaddr = htonl(dest);
 
 	lease_time_sec = dhcp_server->lease_seconds;
 
-	dhcp_add_simple_option(&packet, DHCP_LEASE_TIME, htonl(lease_time_sec));
+	dhcp_add_simple_option(&packet, DHCP_LEASE_TIME, lease_time_sec);
 
 	add_server_options(dhcp_server, &packet);
 
-	addr.s_addr = yiaddr;
+	addr.s_addr = htonl(dest);
 
 	debug(dhcp_server, "Sending ACK to %s", inet_ntoa(addr));
 
@@ -664,8 +663,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	server_id_option = dhcp_get_option(&packet, DHCP_SERVER_ID);
 	if (server_id_option) {
-		uint32_t server_nid = dhcp_get_unaligned(
-					(uint32_t *) server_id_option);
+		uint32_t server_nid = get_be32(server_id_option);
 
 		if (server_nid != dhcp_server->server_nip)
 			return TRUE;
@@ -673,8 +671,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 
 	request_ip_option = dhcp_get_option(&packet, DHCP_REQUESTED_IP);
 	if (request_ip_option)
-		requested_nip = dhcp_get_unaligned(
-					(uint32_t *) request_ip_option);
+		requested_nip = get_be32(request_ip_option);
 
 	lease = find_lease_by_mac(dhcp_server, packet.chaddr);
 
