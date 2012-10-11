@@ -186,8 +186,6 @@ int g_dhcp_server_set_option(GDHCPServer *server,
 		unsigned char option_code, const char *option_value);
 int g_dhcp_server_set_ip_range(GDHCPServer *server,
 		const char *start_ip, const char *end_ip);
-void g_dhcp_server_load_lease(GDHCPServer *dhcp_server, unsigned int expire,
-				unsigned char *mac, unsigned int lease_ip);
 void g_dhcp_server_set_debug(GDHCPServer *server,
 				GDHCPDebugFunc func, gpointer user_data);
 void g_dhcp_server_set_lease_time(GDHCPServer *dhcp_server,

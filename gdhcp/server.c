@@ -860,12 +860,6 @@ void g_dhcp_server_unref(GDHCPServer *dhcp_server)
 	g_free(dhcp_server);
 }
 
-void g_dhcp_server_load_lease(GDHCPServer *dhcp_server, unsigned int expire,
-				unsigned char *mac, unsigned int lease_ip)
-{
-	add_lease(dhcp_server, expire, mac, lease_ip);
-}
-
 int g_dhcp_server_set_ip_range(GDHCPServer *dhcp_server,
 		const char *start_ip, const char *end_ip)
 {
