@@ -1043,8 +1043,8 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 	if (list == NULL)
 		return FALSE;
 
+	g_queue_remove(resolv->lookup_queue, list->data);
 	destroy_lookup(list->data);
-	g_queue_remove(resolv->query_queue, list->data);
 
 	return TRUE;
 }
