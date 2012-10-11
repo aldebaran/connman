@@ -179,7 +179,11 @@ int dhcp_end_option(uint8_t *optionptr);
 void dhcp_add_binary_option(struct dhcp_packet *packet, uint8_t *addopt);
 void dhcpv6_add_binary_option(struct dhcpv6_packet *packet, uint16_t max_len,
 				uint16_t *pkt_len, uint8_t *addopt);
-void dhcp_add_simple_option(struct dhcp_packet *packet,
+void dhcp_add_option_uint8(struct dhcp_packet *packet,
+				uint8_t code, uint8_t data);
+void dhcp_add_option_uint16(struct dhcp_packet *packet,
+				uint8_t code, uint16_t data);
+void dhcp_add_option_uint32(struct dhcp_packet *packet,
 				uint8_t code, uint32_t data);
 GDHCPOptionType dhcp_get_code_type(uint8_t code);
 GDHCPOptionType dhcpv6_get_code_type(uint16_t code);

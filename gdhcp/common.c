@@ -266,34 +266,69 @@ void dhcpv6_add_binary_option(struct dhcpv6_packet *packet, uint16_t max_len,
 	*pkt_len += len;
 }
 
-void dhcp_add_simple_option(struct dhcp_packet *packet, uint8_t code,
-							uint32_t data)
+static GDHCPOptionType check_option(uint8_t code, uint8_t data_len)
 {
-	uint8_t option[6], len;
 	GDHCPOptionType type = dhcp_get_code_type(code);
+	uint8_t len;
 
 	if (type == OPTION_UNKNOWN)
+		return type;
+
+	len = dhcp_option_lengths[type & OPTION_TYPE_MASK];
+	if (len != data_len) {
+		printf("Invalid option len %d (expecting %d) for code 0x%x\n",
+			data_len, len, code);
+		return OPTION_UNKNOWN;
+	}
+
+	return type;
+}
+
+void dhcp_add_option_uint32(struct dhcp_packet *packet, uint8_t code,
+							uint32_t data)
+{
+	uint8_t option[6];
+
+	if (check_option(code, sizeof(data)) == OPTION_UNKNOWN)
 		return;
 
 	option[OPT_CODE] = code;
+	option[OPT_LEN] = sizeof(data);
+	put_be32(data, option + OPT_DATA);
 
-	len = dhcp_option_lengths[type & OPTION_TYPE_MASK];
-	option[OPT_LEN] = len;
+	dhcp_add_binary_option(packet, option);
 
-	switch (len) {
-	case 1:
-		option[OPT_DATA] = data;
-		break;
-	case 2:
-		put_be16(data, option + OPT_DATA);
-		break;
-	case 4:
-		put_be32(data, option + OPT_DATA);
-		break;
-	default:
-		printf("Invalid option len %d for code 0x%x\n", len, code);
+	return;
+}
+
+void dhcp_add_option_uint16(struct dhcp_packet *packet, uint8_t code,
+							uint16_t data)
+{
+	uint8_t option[6];
+
+	if (check_option(code, sizeof(data)) == OPTION_UNKNOWN)
 		return;
-	}
+
+	option[OPT_CODE] = code;
+	option[OPT_LEN] = sizeof(data);
+	put_be16(data, option + OPT_DATA);
+
+	dhcp_add_binary_option(packet, option);
+
+	return;
+}
+
+void dhcp_add_option_uint8(struct dhcp_packet *packet, uint8_t code,
+							uint8_t data)
+{
+	uint8_t option[6];
+
+	if (check_option(code, sizeof(data)) == OPTION_UNKNOWN)
+		return;
+
+	option[OPT_CODE] = code;
+	option[OPT_LEN] = sizeof(data);
+	option[OPT_DATA] = data;
 
 	dhcp_add_binary_option(packet, option);
 
@@ -318,7 +353,7 @@ void dhcp_init_header(struct dhcp_packet *packet, char type)
 	packet->cookie = htonl(DHCP_MAGIC);
 	packet->options[0] = DHCP_END;
 
-	dhcp_add_simple_option(packet, DHCP_MESSAGE_TYPE, type);
+	dhcp_add_option_uint8(packet, DHCP_MESSAGE_TYPE, type);
 }
 
 void dhcpv6_init_header(struct dhcpv6_packet *packet, uint8_t type)

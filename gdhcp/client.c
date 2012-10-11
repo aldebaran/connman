@@ -363,11 +363,11 @@ static int send_discover(GDHCPClient *dhcp_client, uint32_t requested)
 	packet.secs = dhcp_attempt_secs(dhcp_client);
 
 	if (requested)
-		dhcp_add_simple_option(&packet, DHCP_REQUESTED_IP, requested);
+		dhcp_add_option_uint32(&packet, DHCP_REQUESTED_IP, requested);
 
 	/* Explicitly saying that we want RFC-compliant packets helps
 	 * some buggy DHCP servers to NOT send bigger packets */
-	dhcp_add_simple_option(&packet, DHCP_MAX_SIZE, 576);
+	dhcp_add_option_uint16(&packet, DHCP_MAX_SIZE, 576);
 
 	add_request_options(dhcp_client, &packet);
 
@@ -389,9 +389,10 @@ static int send_select(GDHCPClient *dhcp_client)
 	packet.xid = dhcp_client->xid;
 	packet.secs = dhcp_attempt_secs(dhcp_client);
 
-	dhcp_add_simple_option(&packet, DHCP_REQUESTED_IP,
-					dhcp_client->requested_ip);
-	dhcp_add_simple_option(&packet, DHCP_SERVER_ID, dhcp_client->server_ip);
+	dhcp_add_option_uint32(&packet, DHCP_REQUESTED_IP,
+						dhcp_client->requested_ip);
+	dhcp_add_option_uint32(&packet, DHCP_SERVER_ID,
+						dhcp_client->server_ip);
 
 	add_request_options(dhcp_client, &packet);
 
@@ -451,7 +452,7 @@ static int send_release(GDHCPClient *dhcp_client,
 	packet.xid = rand();
 	packet.ciaddr = htonl(ciaddr);
 
-	dhcp_add_simple_option(&packet, DHCP_SERVER_ID, server);
+	dhcp_add_option_uint32(&packet, DHCP_SERVER_ID, server);
 
 	return dhcp_send_kernel_packet(&packet, ciaddr, CLIENT_PORT,
 						server, SERVER_PORT);

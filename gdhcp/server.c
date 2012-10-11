@@ -449,7 +449,8 @@ static void init_packet(GDHCPServer *dhcp_server, struct dhcp_packet *packet,
 	packet->flags = client_packet->flags;
 	packet->gateway_nip = client_packet->gateway_nip;
 	packet->ciaddr = client_packet->ciaddr;
-	dhcp_add_simple_option(packet, DHCP_SERVER_ID, dhcp_server->server_nip);
+	dhcp_add_option_uint32(packet, DHCP_SERVER_ID,
+						dhcp_server->server_nip);
 }
 
 static void add_option(gpointer key, gpointer value, gpointer user_data)
@@ -469,7 +470,7 @@ static void add_option(gpointer key, gpointer value, gpointer user_data)
 		if (inet_aton(option_value, &nip) == 0)
 			return;
 
-		dhcp_add_simple_option(packet, (uint8_t) option_code,
+		dhcp_add_option_uint32(packet, (uint8_t) option_code,
 							ntohl(nip.s_addr));
 		break;
 	default:
@@ -564,7 +565,7 @@ static void send_offer(GDHCPServer *dhcp_server,
 		return;
 	}
 
-	dhcp_add_simple_option(&packet, DHCP_LEASE_TIME,
+	dhcp_add_option_uint32(&packet, DHCP_LEASE_TIME,
 						dhcp_server->lease_seconds);
 	add_server_options(dhcp_server, &packet);
 
@@ -600,7 +601,7 @@ static void send_ACK(GDHCPServer *dhcp_server,
 
 	lease_time_sec = dhcp_server->lease_seconds;
 
-	dhcp_add_simple_option(&packet, DHCP_LEASE_TIME, lease_time_sec);
+	dhcp_add_option_uint32(&packet, DHCP_LEASE_TIME, lease_time_sec);
 
 	add_server_options(dhcp_server, &packet);
 
