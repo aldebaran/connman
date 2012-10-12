@@ -1234,16 +1234,14 @@ static struct connman_iptables *iptables_init(char *table_name)
 	DBG("%s", table_name);
 
 	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
-		return NULL;
+		DBG("ip_tables module loading gives error but trying anyway");
 
 	module = g_strconcat("iptable_", table_name, NULL);
 	if (module == NULL)
 		return NULL;
 
-	if (xtables_insmod(module, NULL, TRUE) != 0) {
-		g_free(module);
-		return NULL;
-	}
+	if (xtables_insmod(module, NULL, TRUE) != 0)
+		DBG("%s module loading gives error but trying anyway", module);
 
 	g_free(module);
 
@@ -1266,8 +1264,11 @@ static struct connman_iptables *iptables_init(char *table_name)
 	s = sizeof(*table->info);
 	strcpy(table->info->name, table_name);
 	if (getsockopt(table->ipt_sock, IPPROTO_IP, IPT_SO_GET_INFO,
-						table->info, &s) < 0)
+						table->info, &s) < 0) {
+		connman_error("iptables support missing error %d (%s)", errno,
+			strerror(errno));
 		goto err;
+	}
 
 	table->blob_entries = g_try_malloc0(sizeof(struct ipt_get_entries) +
 						table->info->size);
