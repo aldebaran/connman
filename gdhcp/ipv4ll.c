@@ -53,7 +53,7 @@ uint32_t ipv4ll_random_ip(int seed)
 		tmp = rand();
 		tmp = tmp & IN_CLASSB_HOST;
 	} while (tmp > (IN_CLASSB_HOST - 0x0200));
-	return ntohl(((LINKLOCAL_ADDR + 0x0100) + tmp));
+	return ((LINKLOCAL_ADDR + 0x0100) + tmp);
 }
 
 /**
