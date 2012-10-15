@@ -1317,7 +1317,7 @@ void __connman_technology_set_connected(enum connman_service_type type,
 			DBUS_TYPE_BOOLEAN, &connected);
 }
 
-static void technology_apply_rfkill_change(struct connman_technology *technology,
+static connman_bool_t technology_apply_rfkill_change(struct connman_technology *technology,
 						connman_bool_t softblock,
 						connman_bool_t hardblock)
 {
@@ -1356,6 +1356,8 @@ static void technology_apply_rfkill_change(struct connman_technology *technology
 
 softblock_change:
 	technology->softblocked = softblock;
+
+	return technology->hardblocked;
 }
 
 int __connman_technology_add_rfkill(unsigned int index,
@@ -1392,22 +1394,23 @@ done:
 
 	technology->rfkill_driven = TRUE;
 
-	technology_apply_rfkill_change(technology, softblock, hardblock);
+	/* If hardblocked, there is no need to handle softblocked state */
+	if (technology_apply_rfkill_change(technology,
+					softblock, hardblock) == TRUE)
+		return 0;
 
 	/*
-	 * If Offline mode is on, we softblock the device if it isnt already.
-	 * If Offline mode is off, we rely on the persistent state of tech.
+	 * Depending on softblocked state we unblock/block according to
+	 * offlinemode and persistente state.
 	 */
-	if (global_offlinemode) {
-		if (!softblock)
-			return __connman_rfkill_block(type, TRUE);
-	} else {
-		if (technology->enable_persistent && softblock)
-			return __connman_rfkill_block(type, FALSE);
-		/* if technology persistent state is offline */
-		if (!technology->enable_persistent && !softblock)
-			return __connman_rfkill_block(type, TRUE);
-	}
+	if (technology->softblocked == TRUE &&
+				global_offlinemode == FALSE &&
+				technology->enable_persistent == TRUE)
+		return __connman_rfkill_block(type, FALSE);
+	else if (technology->softblocked == FALSE &&
+				global_offlinemode == TRUE &&
+				technology->enable_persistent == FALSE)
+		return __connman_rfkill_block(type, TRUE);
 
 	return 0;
 }
@@ -1427,7 +1430,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 		return -ENXIO;
 
 	if (rfkill->softblock == softblock &&
-		rfkill->hardblock == hardblock)
+				rfkill->hardblock == hardblock)
 		return 0;
 
 	rfkill->softblock = softblock;
@@ -1438,14 +1441,24 @@ int __connman_technology_update_rfkill(unsigned int index,
 	if (technology == NULL)
 		return -ENXIO;
 
-	technology_apply_rfkill_change(technology, softblock, hardblock);
+	/* If hardblocked, there is no need to handle softblocked state */
+	if (technology_apply_rfkill_change(technology,
+					softblock, hardblock) == TRUE)
+		return 0;
 
-	if (!global_offlinemode) {
-		if (technology->enable_persistent && softblock)
-			return __connman_rfkill_block(type, FALSE);
-		if (!technology->enable_persistent && !softblock)
-			return __connman_rfkill_block(type, TRUE);
-	}
+	if (global_offlinemode == TRUE)
+		return 0;
+
+	/*
+	 * Depending on softblocked state we unblock/block according to
+	 * persistent state.
+	 */
+	if (technology->softblocked == TRUE &&
+				technology->enable_persistent == TRUE)
+		return __connman_rfkill_block(type, FALSE);
+	else if (technology->softblocked == FALSE &&
+				technology->enable_persistent == FALSE)
+		return __connman_rfkill_block(type, TRUE);
 
 	return 0;
 }
