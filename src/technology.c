@@ -1340,7 +1340,8 @@ void __connman_technology_set_connected(enum connman_service_type type,
 
 static connman_bool_t technology_apply_rfkill_change(struct connman_technology *technology,
 						connman_bool_t softblock,
-						connman_bool_t hardblock)
+						connman_bool_t hardblock,
+						connman_bool_t new_rfkill)
 {
 	gboolean hardblock_changed = FALSE;
 	gboolean apply = TRUE;
@@ -1353,18 +1354,21 @@ static connman_bool_t technology_apply_rfkill_change(struct connman_technology *
 	if (technology->hardblocked == hardblock)
 		goto softblock_change;
 
-	start = g_hash_table_get_values(rfkill_list);
-	for (list = start; list != NULL; list = list->next) {
-		struct connman_rfkill *rfkill = list->data;
+	if (!(new_rfkill == TRUE && hardblock == FALSE)) {
+		start = g_hash_table_get_values(rfkill_list);
 
-		if (rfkill->type != technology->type)
-			continue;
+		for (list = start; list != NULL; list = list->next) {
+			struct connman_rfkill *rfkill = list->data;
 
-		if (rfkill->hardblock != hardblock)
-			apply = FALSE;
+			if (rfkill->type != technology->type)
+				continue;
+
+			if (rfkill->hardblock != hardblock)
+				apply = FALSE;
+		}
+
+		g_list_free(start);
 	}
-
-	g_list_free(start);
 
 	if (apply == FALSE)
 		goto softblock_change;
@@ -1438,7 +1442,7 @@ done:
 
 	/* If hardblocked, there is no need to handle softblocked state */
 	if (technology_apply_rfkill_change(technology,
-					softblock, hardblock) == TRUE)
+				softblock, hardblock, TRUE) == TRUE)
 		return 0;
 
 	/*
@@ -1485,7 +1489,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 
 	/* If hardblocked, there is no need to handle softblocked state */
 	if (technology_apply_rfkill_change(technology,
-					softblock, hardblock) == TRUE)
+				softblock, hardblock, FALSE) == TRUE)
 		return 0;
 
 	if (global_offlinemode == TRUE)
@@ -1524,7 +1528,7 @@ int __connman_technology_remove_rfkill(unsigned int index,
 		return -ENXIO;
 
 	technology_apply_rfkill_change(technology,
-			technology->softblocked, !technology->hardblocked);
+		technology->softblocked, !technology->hardblocked, FALSE);
 
 	technology_put(technology);
 
