@@ -866,12 +866,16 @@ GResolv *g_resolv_ref(GResolv *resolv)
 void g_resolv_unref(GResolv *resolv)
 {
 	struct resolv_query *query;
+	struct resolv_lookup *lookup;
 
 	if (resolv == NULL)
 		return;
 
 	if (__sync_fetch_and_sub(&resolv->ref_count, 1) != 1)
 		return;
+
+	while ((lookup = g_queue_pop_head(resolv->lookup_queue)))
+		g_resolv_cancel_lookup(resolv, lookup->id);
 
 	while ((query = g_queue_pop_head(resolv->query_queue)))
 		destroy_query(query);
