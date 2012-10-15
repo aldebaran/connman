@@ -73,6 +73,7 @@ struct connman_technology {
 
 	GSList *scan_pending;
 
+	connman_bool_t rfkill_driven;
 	connman_bool_t hardblocked;
 	connman_bool_t dbus_registered;
 };
@@ -548,7 +549,8 @@ void __connman_technology_list_struct(DBusMessageIter *array)
 		struct connman_technology *technology = list->data;
 
 		if (technology->path == NULL ||
-					technology->hardblocked == TRUE)
+				(technology->rfkill_driven == TRUE &&
+				 technology->hardblocked == TRUE))
 			continue;
 
 		dbus_message_iter_open_container(array, DBUS_TYPE_STRUCT,
@@ -644,7 +646,7 @@ static DBusMessage *set_powered(struct connman_technology *technology,
 	DBusMessage *reply = NULL;
 	int err = 0;
 
-	if (technology->hardblocked == TRUE) {
+	if (technology->rfkill_driven && technology->hardblocked == TRUE) {
 		err = -EACCES;
 		goto make_reply;
 	}
@@ -925,7 +927,8 @@ static const GDBusSignalTable technology_signals[] = {
 static gboolean technology_dbus_register(struct connman_technology *technology)
 {
 	if (technology->dbus_registered == TRUE ||
-					technology->hardblocked == TRUE)
+				(technology->rfkill_driven &&
+				 technology->hardblocked == TRUE))
 		return TRUE;
 
 	if (g_dbus_register_interface(connection, technology->path,
@@ -983,6 +986,8 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 		return NULL;
 
 	technology->refcount = 1;
+
+	technology->rfkill_driven = FALSE;
 
 	if (type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		technology->hardblocked = FALSE;
@@ -1378,6 +1383,8 @@ done:
 	/* If there is no driver for this type, ignore it. */
 	if (technology == NULL)
 		return -ENXIO;
+
+	technology->rfkill_driven = TRUE;
 
 	technology_apply_hardblock_change(technology, hardblock);
 
