@@ -55,7 +55,7 @@ struct connman_technology {
 	enum connman_service_type type;
 	char *path;
 	GSList *device_list;
-	int enabled;
+	connman_bool_t enabled;
 	char *regdom;
 	connman_bool_t connected;
 
@@ -454,7 +454,6 @@ static void append_properties(DBusMessageIter *iter,
 {
 	DBusMessageIter dict;
 	const char *str;
-	connman_bool_t powered;
 
 	connman_dbus_dict_open(iter, &dict);
 
@@ -469,12 +468,9 @@ static void append_properties(DBusMessageIter *iter,
 						DBUS_TYPE_STRING, &str);
 
 	__sync_synchronize();
-	if (technology->enabled > 0)
-		powered = TRUE;
-	else
-		powered = FALSE;
 	connman_dbus_dict_append_basic(&dict, "Powered",
-					DBUS_TYPE_BOOLEAN, &powered);
+					DBUS_TYPE_BOOLEAN,
+					&technology->enabled);
 
 	connman_dbus_dict_append_basic(&dict, "Connected",
 					DBUS_TYPE_BOOLEAN,
@@ -486,13 +482,13 @@ static void append_properties(DBusMessageIter *iter,
 
 	if (technology->tethering_ident != NULL)
 		connman_dbus_dict_append_basic(&dict, "TetheringIdentifier",
-						DBUS_TYPE_STRING,
-						&technology->tethering_ident);
+					DBUS_TYPE_STRING,
+					&technology->tethering_ident);
 
 	if (technology->tethering_passphrase != NULL)
 		connman_dbus_dict_append_basic(&dict, "TetheringPassphrase",
-						DBUS_TYPE_STRING,
-						&technology->tethering_passphrase);
+					DBUS_TYPE_STRING,
+					&technology->tethering_passphrase);
 
 	connman_dbus_dict_close(iter, &dict);
 }
@@ -606,7 +602,7 @@ static int technology_enable(struct connman_technology *technology,
 	DBG("technology %p enable", technology);
 
 	__sync_synchronize();
-	if (technology->enabled > 0)
+	if (technology->enabled == TRUE)
 		return -EALREADY;
 
 	if (technology->pending_reply != NULL)
@@ -626,7 +622,7 @@ static int technology_disable(struct connman_technology *technology,
 	DBG("technology %p disable", technology);
 
 	__sync_synchronize();
-	if (technology->enabled == 0)
+	if (technology->enabled == FALSE)
 		return -EALREADY;
 
 	if (technology->pending_reply != NULL)
@@ -1197,14 +1193,6 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 static void powered_changed(struct connman_technology *technology)
 {
-	connman_bool_t powered;
-
-	__sync_synchronize();
-	if (technology->enabled > 0)
-		powered = TRUE;
-	else
-		powered = FALSE;
-
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection,
 				technology->pending_reply, DBUS_TYPE_INVALID);
@@ -1215,15 +1203,19 @@ static void powered_changed(struct connman_technology *technology)
 		technology->pending_timeout = 0;
 	}
 
+	__sync_synchronize();
 	connman_dbus_property_changed_basic(technology->path,
 			CONNMAN_TECHNOLOGY_INTERFACE, "Powered",
-			DBUS_TYPE_BOOLEAN, &powered);
+			DBUS_TYPE_BOOLEAN, &technology->enabled);
 }
 
 static int technology_enabled(struct connman_technology *technology)
 {
-	if (__sync_fetch_and_add(&technology->enabled, 1) != 0)
+	__sync_synchronize();
+	if (technology->enabled == TRUE)
 		return -EALREADY;
+
+	technology->enabled = TRUE;
 
 	powered_changed(technology);
 
@@ -1243,8 +1235,11 @@ int __connman_technology_enabled(enum connman_service_type type)
 
 static int technology_disabled(struct connman_technology *technology)
 {
-	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
-		return -EINPROGRESS;
+	__sync_synchronize();
+	if (technology->enabled == FALSE)
+		return -EALREADY;
+
+	technology->enabled = FALSE;
 
 	powered_changed(technology);
 
