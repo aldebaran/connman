@@ -595,6 +595,11 @@ int connman_device_set_powered(struct connman_device *device,
 	return 0;
 }
 
+connman_bool_t connman_device_get_powered(struct connman_device *device)
+{
+	return device->powered;
+}
+
 static int device_scan(struct connman_device *device)
 {
 	if (!device->driver || !device->driver->scan)
