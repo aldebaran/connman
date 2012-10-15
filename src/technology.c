@@ -596,8 +596,7 @@ static int technology_affect_devices(struct connman_technology *technology,
 	return err;
 }
 
-static int technology_enable(struct connman_technology *technology,
-						connman_bool_t hardblock)
+static int technology_enable(struct connman_technology *technology)
 {
 	DBG("technology %p enable", technology);
 
@@ -608,16 +607,13 @@ static int technology_enable(struct connman_technology *technology,
 	if (technology->pending_reply != NULL)
 		return -EBUSY;
 
-	if (hardblock == TRUE && technology->enable_persistent == FALSE)
-		return 0;
-
-	__connman_rfkill_block(technology->type, FALSE);
+	if (technology->rfkill_driven == TRUE)
+		return __connman_rfkill_block(technology->type, FALSE);
 
 	return technology_affect_devices(technology, TRUE);
 }
 
-static int technology_disable(struct connman_technology *technology,
-						connman_bool_t hardblock)
+static int technology_disable(struct connman_technology *technology)
 {
 	DBG("technology %p disable", technology);
 
@@ -631,8 +627,8 @@ static int technology_disable(struct connman_technology *technology,
 	if (technology->tethering == TRUE)
 		set_tethering(technology, FALSE);
 
-	if (hardblock == FALSE)
-		__connman_rfkill_block(technology->type, TRUE);
+	if (technology->rfkill_driven == TRUE)
+		return __connman_rfkill_block(technology->type, TRUE);
 
 	return technology_affect_devices(technology, FALSE);
 }
@@ -649,9 +645,9 @@ static DBusMessage *set_powered(struct connman_technology *technology,
 	}
 
 	if (powered == TRUE)
-		err = technology_enable(technology, FALSE);
+		err = technology_enable(technology);
 	else
-		err = technology_disable(technology, FALSE);
+		err = technology_disable(technology);
 
 	if (err != -EBUSY) {
 		technology->enable_persistent = powered;
@@ -1144,9 +1140,18 @@ int __connman_technology_add_device(struct connman_device *device)
 		return -ENXIO;
 	}
 
-	if (technology->enable_persistent &&
-					global_offlinemode == FALSE &&
-					technology->hardblocked == FALSE) {
+	__sync_synchronize();
+	if (technology->rfkill_driven == TRUE) {
+		if (technology->enabled == TRUE)
+			__connman_device_enable(device);
+		else
+			__connman_device_disable(device);
+
+		goto done;
+	}
+
+	if (technology->enable_persistent == TRUE &&
+					global_offlinemode == FALSE) {
 		int err = __connman_device_enable(device);
 		/*
 		 * connman_technology_add_device() calls __connman_device_enable()
@@ -1157,11 +1162,11 @@ int __connman_technology_add_device(struct connman_device *device)
 		if (err == -EALREADY)
 			__connman_technology_enabled(type);
 	}
-	/* if technology persistent state is offline or hardblocked */
-	if (technology->enable_persistent == FALSE ||
-					technology->hardblocked == TRUE)
+	/* if technology persistent state is offline */
+	if (technology->enable_persistent == FALSE)
 		__connman_device_disable(device);
 
+done:
 	technology->device_list = g_slist_prepend(technology->device_list,
 								device);
 
@@ -1283,10 +1288,10 @@ int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
 		struct connman_technology *technology = list->data;
 
 		if (offlinemode)
-			err = technology_disable(technology, FALSE);
+			err = technology_disable(technology);
 
 		if (!offlinemode && technology->enable_persistent)
-			err = technology_enable(technology, FALSE);
+			err = technology_enable(technology);
 	}
 
 	if (err == 0 || err == -EINPROGRESS || err == -EALREADY) {
@@ -1346,10 +1351,10 @@ static connman_bool_t technology_apply_rfkill_change(struct connman_technology *
 
 	if (hardblock == TRUE) {
 		DBG("%s is switched off.", get_name(technology->type));
-		technology_disable(technology, TRUE);
+		technology_disable(technology);
 		technology_dbus_unregister(technology);
 	} else {
-		technology_enable(technology, TRUE);
+		technology_enable(technology);
 		technology_dbus_register(technology);
 	}
 
