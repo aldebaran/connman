@@ -1198,6 +1198,9 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 static void powered_changed(struct connman_technology *technology)
 {
+	if (technology->dbus_registered == FALSE)
+		return;
+
 	if (technology->pending_reply != NULL) {
 		g_dbus_send_reply(connection,
 				technology->pending_reply, DBUS_TYPE_INVALID);
@@ -1235,6 +1238,9 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
+	if (technology->rfkill_driven == TRUE)
+		return 0;
+
 	return technology_enabled(technology);
 }
 
@@ -1254,10 +1260,21 @@ static int technology_disabled(struct connman_technology *technology)
 int __connman_technology_disabled(enum connman_service_type type)
 {
 	struct connman_technology *technology;
+	GSList *list;
 
 	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
+
+	if (technology->rfkill_driven == TRUE)
+		return 0;
+
+	for (list = technology->device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
+
+		if (connman_device_get_powered(device) == TRUE)
+			return 0;
+	}
 
 	return technology_disabled(technology);
 }
@@ -1325,6 +1342,7 @@ static connman_bool_t technology_apply_rfkill_change(struct connman_technology *
 						connman_bool_t softblock,
 						connman_bool_t hardblock)
 {
+	gboolean hardblock_changed = FALSE;
 	gboolean apply = TRUE;
 	GList *start, *list;
 
@@ -1348,18 +1366,34 @@ static connman_bool_t technology_apply_rfkill_change(struct connman_technology *
 		goto softblock_change;
 
 	technology->hardblocked = hardblock;
-
-	if (hardblock == TRUE) {
-		DBG("%s is switched off.", get_name(technology->type));
-		technology_disable(technology);
-		technology_dbus_unregister(technology);
-	} else {
-		technology_enable(technology);
-		technology_dbus_register(technology);
-	}
+	hardblock_changed = TRUE;
 
 softblock_change:
+	if (apply == FALSE && technology->softblocked != softblock)
+		apply = TRUE;
+
+	if (apply == FALSE)
+		return technology->hardblocked;
+
 	technology->softblocked = softblock;
+
+	if (technology->hardblocked == TRUE ||
+					technology->softblocked == TRUE) {
+		if (technology_disabled(technology) != -EALREADY)
+			technology_affect_devices(technology, FALSE);
+	} else if (technology->hardblocked == FALSE &&
+					technology->softblocked == FALSE) {
+		if (technology_enabled(technology) != -EALREADY)
+			technology_affect_devices(technology, TRUE);
+	}
+
+	if (hardblock_changed == TRUE) {
+		if (technology->hardblocked == TRUE) {
+			DBG("%s is switched off.", get_name(technology->type));
+			technology_dbus_unregister(technology);
+		} else
+			technology_dbus_register(technology);
+	}
 
 	return technology->hardblocked;
 }
