@@ -74,6 +74,7 @@ struct connman_technology {
 	GSList *scan_pending;
 
 	connman_bool_t rfkill_driven;
+	connman_bool_t softblocked;
 	connman_bool_t hardblocked;
 	connman_bool_t dbus_registered;
 };
@@ -988,6 +989,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology->refcount = 1;
 
 	technology->rfkill_driven = FALSE;
+	technology->softblocked = FALSE;
 
 	if (type == CONNMAN_SERVICE_TYPE_ETHERNET)
 		technology->hardblocked = FALSE;
@@ -1315,14 +1317,15 @@ void __connman_technology_set_connected(enum connman_service_type type,
 			DBUS_TYPE_BOOLEAN, &connected);
 }
 
-static void technology_apply_hardblock_change(struct connman_technology *technology,
+static void technology_apply_rfkill_change(struct connman_technology *technology,
+						connman_bool_t softblock,
 						connman_bool_t hardblock)
 {
 	gboolean apply = TRUE;
 	GList *start, *list;
 
 	if (technology->hardblocked == hardblock)
-		return;
+		goto softblock_change;
 
 	start = g_hash_table_get_values(rfkill_list);
 	for (list = start; list != NULL; list = list->next) {
@@ -1338,7 +1341,7 @@ static void technology_apply_hardblock_change(struct connman_technology *technol
 	g_list_free(start);
 
 	if (apply == FALSE)
-		return;
+		goto softblock_change;
 
 	technology->hardblocked = hardblock;
 
@@ -1350,6 +1353,9 @@ static void technology_apply_hardblock_change(struct connman_technology *technol
 		technology_enable(technology, TRUE);
 		technology_dbus_register(technology);
 	}
+
+softblock_change:
+	technology->softblocked = softblock;
 }
 
 int __connman_technology_add_rfkill(unsigned int index,
@@ -1386,7 +1392,7 @@ done:
 
 	technology->rfkill_driven = TRUE;
 
-	technology_apply_hardblock_change(technology, hardblock);
+	technology_apply_rfkill_change(technology, softblock, hardblock);
 
 	/*
 	 * If Offline mode is on, we softblock the device if it isnt already.
@@ -1432,7 +1438,7 @@ int __connman_technology_update_rfkill(unsigned int index,
 	if (technology == NULL)
 		return -ENXIO;
 
-	technology_apply_hardblock_change(technology, hardblock);
+	technology_apply_rfkill_change(technology, softblock, hardblock);
 
 	if (!global_offlinemode) {
 		if (technology->enable_persistent && softblock)
