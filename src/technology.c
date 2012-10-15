@@ -579,58 +579,55 @@ static gboolean technology_pending_reply(gpointer user_data)
 	return FALSE;
 }
 
-static int technology_enable(struct connman_technology *technology,
-						connman_bool_t hardblock)
+static int technology_affect_devices(struct connman_technology *technology,
+						connman_bool_t enable_device)
 {
 	GSList *list;
 	int err = 0;
 
-	DBG("technology %p enable", technology);
-
-	__sync_synchronize();
-	if (technology->enabled > 0) {
-		err = -EALREADY;
-		goto done;
-	}
-
-	if (technology->pending_reply != NULL) {
-		err = -EBUSY;
-		goto done;
-	}
-
-	if (hardblock == TRUE && technology->enable_persistent == FALSE)
-		goto done;
-
-	__connman_rfkill_block(technology->type, FALSE);
-
 	for (list = technology->device_list; list; list = list->next) {
 		struct connman_device *device = list->data;
 
-		err = __connman_device_enable(device);
+		if (enable_device == TRUE)
+			err = __connman_device_enable(device);
+		else
+			err = __connman_device_disable(device);
 	}
 
-done:
 	return err;
+}
+
+static int technology_enable(struct connman_technology *technology,
+						connman_bool_t hardblock)
+{
+	DBG("technology %p enable", technology);
+
+	__sync_synchronize();
+	if (technology->enabled > 0)
+		return -EALREADY;
+
+	if (technology->pending_reply != NULL)
+		return -EBUSY;
+
+	if (hardblock == TRUE && technology->enable_persistent == FALSE)
+		return 0;
+
+	__connman_rfkill_block(technology->type, FALSE);
+
+	return technology_affect_devices(technology, TRUE);
 }
 
 static int technology_disable(struct connman_technology *technology,
 						connman_bool_t hardblock)
 {
-	GSList *list;
-	int err = 0;
-
 	DBG("technology %p disable", technology);
 
 	__sync_synchronize();
-	if (technology->enabled == 0) {
-		err = -EALREADY;
-		goto done;
-	}
+	if (technology->enabled == 0)
+		return -EALREADY;
 
-	if (technology->pending_reply != NULL) {
-		err = -EBUSY;
-		goto done;
-	}
+	if (technology->pending_reply != NULL)
+		return -EBUSY;
 
 	if (technology->tethering == TRUE)
 		set_tethering(technology, FALSE);
@@ -638,14 +635,7 @@ static int technology_disable(struct connman_technology *technology,
 	if (hardblock == FALSE)
 		__connman_rfkill_block(technology->type, TRUE);
 
-	for (list = technology->device_list; list; list = list->next) {
-		struct connman_device *device = list->data;
-
-		err = __connman_device_disable(device);
-	}
-
-done:
-	return err;
+	return technology_affect_devices(technology, FALSE);
 }
 
 static DBusMessage *set_powered(struct connman_technology *technology,
