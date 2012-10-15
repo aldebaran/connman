@@ -1346,6 +1346,10 @@ static connman_bool_t technology_apply_rfkill_change(struct connman_technology *
 	gboolean apply = TRUE;
 	GList *start, *list;
 
+	DBG("technology %p --> %d/%d vs %d/%d",
+			technology, softblock, hardblock,
+			technology->softblocked, technology->hardblocked);
+
 	if (technology->hardblocked == hardblock)
 		goto softblock_change;
 
@@ -1518,6 +1522,9 @@ int __connman_technology_remove_rfkill(unsigned int index,
 	technology = technology_find(type);
 	if (technology == NULL)
 		return -ENXIO;
+
+	technology_apply_rfkill_change(technology,
+			technology->softblocked, !technology->hardblocked);
 
 	technology_put(technology);
 
