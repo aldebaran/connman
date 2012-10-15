@@ -1200,14 +1200,34 @@ static void powered_changed(struct connman_technology *technology)
 	connman_bool_t powered;
 
 	__sync_synchronize();
-	if (technology->enabled >0)
+	if (technology->enabled > 0)
 		powered = TRUE;
 	else
 		powered = FALSE;
 
+	if (technology->pending_reply != NULL) {
+		g_dbus_send_reply(connection,
+				technology->pending_reply, DBUS_TYPE_INVALID);
+		dbus_message_unref(technology->pending_reply);
+		technology->pending_reply = NULL;
+
+		g_source_remove(technology->pending_timeout);
+		technology->pending_timeout = 0;
+	}
+
 	connman_dbus_property_changed_basic(technology->path,
 			CONNMAN_TECHNOLOGY_INTERFACE, "Powered",
 			DBUS_TYPE_BOOLEAN, &powered);
+}
+
+static int technology_enabled(struct connman_technology *technology)
+{
+	if (__sync_fetch_and_add(&technology->enabled, 1) != 0)
+		return -EALREADY;
+
+	powered_changed(technology);
+
+	return 0;
 }
 
 int __connman_technology_enabled(enum connman_service_type type)
@@ -1218,18 +1238,15 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (__sync_fetch_and_add(&technology->enabled, 1) != 0)
-		return -EALREADY;
+	return technology_enabled(technology);
+}
+
+static int technology_disabled(struct connman_technology *technology)
+{
+	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
+		return -EINPROGRESS;
 
 	powered_changed(technology);
-
-	if (technology->pending_reply != NULL) {
-		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
-		dbus_message_unref(technology->pending_reply);
-		g_source_remove(technology->pending_timeout);
-		technology->pending_reply = NULL;
-		technology->pending_timeout = 0;
-	}
 
 	return 0;
 }
@@ -1242,20 +1259,7 @@ int __connman_technology_disabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (__sync_fetch_and_sub(&technology->enabled, 1) != 1)
-		return -EINPROGRESS;
-
-	if (technology->pending_reply != NULL) {
-		g_dbus_send_reply(connection, technology->pending_reply, DBUS_TYPE_INVALID);
-		dbus_message_unref(technology->pending_reply);
-		g_source_remove(technology->pending_timeout);
-		technology->pending_reply = NULL;
-		technology->pending_timeout = 0;
-	}
-
-	powered_changed(technology);
-
-	return 0;
+	return technology_disabled(technology);
 }
 
 int __connman_technology_set_offlinemode(connman_bool_t offlinemode)
