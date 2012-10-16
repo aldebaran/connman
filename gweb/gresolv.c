@@ -875,7 +875,7 @@ void g_resolv_unref(GResolv *resolv)
 		return;
 
 	while ((lookup = g_queue_pop_head(resolv->lookup_queue)))
-		g_resolv_cancel_lookup(resolv, lookup->id);
+		destroy_lookup(lookup);
 
 	while ((query = g_queue_pop_head(resolv->query_queue)))
 		destroy_query(query);
