@@ -516,7 +516,10 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 		connman_device_reset_scanning(device);
 
 	connman_device_set_scanning(device, FALSE);
-	start_autoscan(device);
+
+	if (result != -ENOLINK)
+		start_autoscan(device);
+
 	connman_device_unref(device);
 }
 
