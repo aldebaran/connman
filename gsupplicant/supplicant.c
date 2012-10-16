@@ -2700,12 +2700,20 @@ static void interface_scan_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_scan_data *data = user_data;
+	int err = 0;
 
 	if (error != NULL) {
 		SUPPLICANT_DBG("error %s", error);
+		err = -EIO;
+	}
 
+	/* A non ready interface cannot send/receive anything */
+	if (data->interface->ready == FALSE)
+		err = -ENOLINK;
+
+	if (err != 0) {
 		if (data->callback != NULL)
-			data->callback(-EIO, data->interface, data->user_data);
+			data->callback(err, data->interface, data->user_data);
 	} else {
 		data->interface->scan_callback = data->callback;
 		data->interface->scan_data = data->user_data;
