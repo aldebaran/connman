@@ -83,6 +83,8 @@ struct connman_wispr_portal_context {
 	enum connman_wispr_result wispr_result;
 
 	GSList *route_list;
+
+	guint timeout;
 };
 
 struct connman_wispr_portal {
@@ -173,6 +175,9 @@ static void free_connman_wispr_portal_context(struct connman_wispr_portal_contex
 
 	if (wp_context->request_id > 0)
 		g_web_cancel_request(wp_context->web, wp_context->request_id);
+
+	if (wp_context->timeout > 0)
+		g_source_remove(wp_context->timeout);
 
 	if (wp_context->web != NULL)
 		g_web_unref(wp_context->web);
@@ -787,6 +792,8 @@ static gboolean no_proxy_callback(gpointer user_data)
 {
 	struct connman_wispr_portal_context *wp_context = user_data;
 
+	wp_context->timeout = 0;
+
 	proxy_callback("DIRECT", wp_context);
 
 	return FALSE;
@@ -875,8 +882,9 @@ static int wispr_portal_detect(struct connman_wispr_portal_context *wp_context)
 			err = -EINVAL;
 			free_connman_wispr_portal_context(wp_context);
 		}
-	} else {
-		g_timeout_add_seconds(0, no_proxy_callback, wp_context);
+	} else if (wp_context->timeout == 0) {
+		wp_context->timeout =
+			g_timeout_add_seconds(0, no_proxy_callback, wp_context);
 	}
 
 done:
