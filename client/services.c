@@ -408,8 +408,10 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 							"net.connman.Service",
 							"SetProperty");
 
-	if (message_send == NULL)
+	if (message_send == NULL) {
+		g_free(path);
 		return -ENOMEM;
+	}
 
 	dbus_message_iter_init_append(message_send, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &property);
@@ -443,6 +445,8 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 	dbus_connection_flush(connection);
 	dbus_message_unref(message_send);
 
+	g_free(path);
+
 	return 0;
 }
 
@@ -465,8 +469,10 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 							"net.connman.Service",
 							"SetProperty");
 
-	if (message_send == NULL)
+	if (message_send == NULL) {
+		g_free(path);
 		return -ENOMEM;
+	}
 
 	dbus_message_iter_init_append(message_send, &iter);
 

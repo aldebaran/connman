@@ -164,6 +164,9 @@ DBusHandlerResult service_property_changed(DBusConnection *connection,
 	if (dbus_message_is_signal(message, "net.connman.Service",
 					    "PropertyChanged")) {
 		service_message = get_message(connection, "GetServices");
+		if (service_message == NULL)
+			return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
 		service.name = get_service_name(service_message,
 				(char *) dbus_message_get_path(message));
 		printf("\n");
@@ -172,6 +175,8 @@ DBusHandlerResult service_property_changed(DBusConnection *connection,
 				dbus_message_get_interface(message),
 				service.name);
 		extract_signal_args(message);
+
+		dbus_message_unref(service_message);
 	}
 
 	return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
