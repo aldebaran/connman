@@ -90,26 +90,31 @@ free_servers:
 
 int connect_service(DBusConnection *connection, char *name)
 {
-	DBusMessage *message, *message_connect;
+	DBusMessage *message, *message_connect = NULL;
 	struct service_data service;
-	char *path;
+	char *path = NULL;
 	const char *path_name;
 	DBusError err;
+	int err_ret = 0;
 
 	message = get_message(connection, "GetServices");
 	if (message == NULL)
 		return -ENOMEM;
 
 	path_name = find_service(connection, message, name, &service);
-	if (path_name == NULL)
-		return -ENXIO;
+	if (path_name == NULL) {
+		err_ret = -ENXIO;
+		goto error;
+	}
 
 	path = g_strdup_printf("/net/connman/service/%s", path_name);
 	message_connect = dbus_message_new_method_call("net.connman", path,
 						"net.connman.Service",
 						"Connect");
-	if (message_connect == NULL)
-		return -ENOMEM;
+	if (message_connect == NULL) {
+		err_ret = -ENOMEM;
+		goto error;
+	}
 
 	dbus_error_init(&err);
 	dbus_connection_send_with_reply_and_block(connection, message_connect,
@@ -117,40 +122,51 @@ int connect_service(DBusConnection *connection, char *name)
 
 	if (dbus_error_is_set(&err)) {
 		printf("Connection failed; error: '%s'\n", err.message);
-		return -EINVAL;
+		err_ret = -EINVAL;
+		goto error;
 	}
 
 	dbus_connection_send(connection, message_connect, NULL);
 	dbus_connection_flush(connection);
-	dbus_message_unref(message_connect);
+
+error:
+	if (message != NULL)
+		dbus_message_unref(message);
+	if (message_connect != NULL)
+		dbus_message_unref(message_connect);
 	g_free(path);
 
-	return 0;
+	return err_ret;
 }
 
 int disconnect_service(DBusConnection *connection, char *name)
 {
-	DBusMessage *message, *message_disconnect;
+	DBusMessage *message, *message_disconnect = NULL;
 	struct service_data service;
-	char *path;
+	char *path = NULL;
 	const char *path_name;
 	DBusError err;
+	int err_ret = 0;
 
 	message = get_message(connection, "GetServices");
 	if (message == NULL)
 		return -ENOMEM;
 
 	path_name = find_service(connection, message, name, &service);
-	if (path_name == NULL)
-		return -ENXIO;
+	if (path_name == NULL) {
+		err_ret = -ENXIO;
+		goto error;
+	}
 
 	path = g_strdup_printf("/net/connman/service/%s", path_name);
 	printf("%s\n", path);
 	message_disconnect = dbus_message_new_method_call("net.connman", path,
 							  "net.connman.Service",
 							  "Disconnect");
-	if (message_disconnect == NULL)
-		return -ENOMEM;
+	if (message_disconnect == NULL) {
+		err_ret = -ENOMEM;
+		goto error;
+	}
 
 	dbus_error_init(&err);
 	dbus_connection_send_with_reply_and_block(connection,
@@ -159,15 +175,21 @@ int disconnect_service(DBusConnection *connection, char *name)
 
 	if (dbus_error_is_set(&err)) {
 		printf("Connection failed; error: '%s'\n", err.message);
-		return -EINVAL;
+		err_ret = -EINVAL;
+		goto error;
 	}
 
 	dbus_connection_send(connection, message_disconnect, NULL);
 	dbus_connection_flush(connection);
-	dbus_message_unref(message_disconnect);
+
+error:
+	if (message != NULL)
+		dbus_message_unref(message);
+	if (message_disconnect != NULL)
+		dbus_message_unref(message_disconnect);
 	g_free(path);
 
-	return 0;
+	return err_ret;
 }
 
 int set_manager(DBusConnection *connection, char *key, dbus_bool_t value)
