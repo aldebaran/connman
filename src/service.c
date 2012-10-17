@@ -3377,6 +3377,26 @@ static GSequence* preferred_tech_list_get(GSequence *list)
 	if (tech_array == NULL)
 		return NULL;
 
+	if (connman_setting_get_bool("SingleConnectedTechnology") == TRUE) {
+		GSequenceIter *iter = g_sequence_get_begin_iter(service_list);
+		while (g_sequence_iter_is_end(iter) == FALSE) {
+			struct connman_service *service;
+
+			service = g_sequence_get(iter);
+
+			if (is_connected(service) == FALSE)
+				break;
+
+			if (service->userconnect == TRUE) {
+				DBG("service %p name %s is user connected",
+						service, service->name);
+				return NULL;
+			}
+
+			iter = g_sequence_iter_next(iter);
+		}
+	}
+
 	tech_data.preferred_list = g_sequence_new(NULL);
 
 	for (i = 0; tech_array[i] != 0; i += 1) {
