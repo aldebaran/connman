@@ -5065,8 +5065,6 @@ static int service_indicate_state(struct connman_service *service)
 
 		reply_pending(service, 0);
 
-		service->userconnect = FALSE;
-
 		g_get_current_time(&service->modified);
 		service_save(service);
 
@@ -5713,6 +5711,8 @@ int __connman_service_disconnect(struct connman_service *service)
 	int err;
 
 	DBG("service %p", service);
+
+	service->userconnect = FALSE;
 
 	__connman_agent_cancel(service);
 
