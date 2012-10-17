@@ -4941,7 +4941,6 @@ static int service_update_preferred_order(struct connman_service *default_servic
 				return 0;
 			}
 		}
-		return -EAGAIN;
 	}
 
 	return -EALREADY;
@@ -4977,8 +4976,6 @@ static int service_indicate_state(struct connman_service *service)
 				service, new_state);
 		if (result == -EALREADY)
 			return result;
-		if (result == -EAGAIN)
-			__connman_service_auto_connect();
 	}
 
 	if (old_state == CONNMAN_SERVICE_STATE_ONLINE)
