@@ -3408,12 +3408,8 @@ static connman_bool_t auto_connect_service(GSequenceIter* iter,
 			return FALSE;
 		}
 
-		if (is_connected(service) == TRUE) {
-			if (preferred == TRUE && service->state !=
-					CONNMAN_SERVICE_STATE_ONLINE)
-				goto next_service;
+		if (is_connected(service) == TRUE)
 			return TRUE;
-		}
 
 		if (is_ignore(service) == FALSE && service->state ==
 				CONNMAN_SERVICE_STATE_IDLE)
