@@ -68,6 +68,7 @@ static struct {
 	unsigned int timeout_browserlaunch;
 	char **blacklisted_interfaces;
 	connman_bool_t allow_hostname_updates;
+	connman_bool_t single_tech;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
@@ -78,6 +79,7 @@ static struct {
 	.timeout_browserlaunch = DEFAULT_BROWSER_LAUNCH_TIMEOUT,
 	.blacklisted_interfaces = NULL,
 	.allow_hostname_updates = TRUE,
+	.single_tech = FALSE,
 };
 
 static GKeyFile *load_config(const char *file)
@@ -253,6 +255,13 @@ static void parse_config(GKeyFile *config)
 		connman_settings.allow_hostname_updates = boolean;
 
 	g_clear_error(&error);
+
+	boolean = g_key_file_get_boolean(config, "General",
+			"SingleConnectedTechnology", &error);
+	if (error == NULL)
+		connman_settings.single_tech = boolean;
+
+	g_clear_error(&error);
 }
 
 static int config_init(const char *file)
@@ -419,6 +428,9 @@ connman_bool_t connman_setting_get_bool(const char *key)
 
 	if (g_str_equal(key, "AllowHostnameUpdates") == TRUE)
 		return connman_settings.allow_hostname_updates;
+
+	if (g_str_equal(key, "SingleConnectedTechnology") == TRUE)
+		return connman_settings.single_tech;
 
 	return FALSE;
 }
