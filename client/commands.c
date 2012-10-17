@@ -88,6 +88,7 @@ void show_help(void)
 	"          [METHOD|URL|SERVERS|EXCLUDES]\n"
 	"          if METHOD = manual, enter 'servers' then the list of servers\n"
 	"                         then enter 'excludes' then the list of excludes\n"
+	"        --remove                     Remove the service from favorite\n"
 	"  monitor                            Monitor signals from all Connman interfaces\n"
 	"        --services                   Monitor signals from the Service interface\n"
 	"        --tech                       Monitor signals from the Technology interface\n"
@@ -201,6 +202,9 @@ int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
 			fprintf(stderr, "Incorrect arguments\n");
 			error = -EINVAL;
 		}
+		break;
+	case 'r':
+		error = remove_service(conn, message, argv[1]);
 		break;
 	default:
 		fprintf(stderr, "Command not recognized, please check help\n");
@@ -392,6 +396,7 @@ int commands_options(DBusConnection *connection, char *argv[], int argc)
 		{"proxy", required_argument, 0, 'x'},
 		{"autoconnect", required_argument, 0, 'a'},
 		{"ipv4", required_argument, 0, 'i'},
+		{"remove", 0, 0, 'r'},
 		{0, 0, 0, 0}
 	};
 

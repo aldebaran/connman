@@ -39,6 +39,8 @@ void extract_service_name(DBusMessageIter *dict, struct service_data *service);
 int set_service_property(DBusConnection *connection, DBusMessage *message,
 				char *name, char *property, char **keys,
 				void *data, int num_args);
+int remove_service(DBusConnection *connection, DBusMessage *message,
+								char *name);
 int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 				char *name, char **servers, char **excludes,
 				int num_servers, int num_excludes);
