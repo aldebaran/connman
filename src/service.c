@@ -4943,6 +4943,35 @@ static int service_update_preferred_order(struct connman_service *default_servic
 	return -EALREADY;
 }
 
+static void single_connected_tech(struct connman_service *allowed)
+{
+	GSList *services = NULL;
+	GSequenceIter *iter;
+	GSList *list;
+
+	iter = g_sequence_get_begin_iter(service_list);
+
+	while (g_sequence_iter_is_end(iter) == FALSE) {
+		struct connman_service *service = g_sequence_get(iter);
+
+		if (service != allowed && is_connected(service))
+			services = g_slist_prepend(services, service);
+
+		iter = g_sequence_iter_next(iter);
+	}
+
+	DBG("keeping %p %s", allowed, allowed->path);
+
+	for (list = services; list != NULL; list = list->next) {
+		struct connman_service *service = list->data;
+
+		DBG("disconnecting %p %s", service, service->path);
+		__connman_service_disconnect(service);
+	}
+
+	g_slist_free(services);
+}
+
 static int service_indicate_state(struct connman_service *service)
 {
 	enum connman_service_state old_state, new_state;
@@ -5067,6 +5096,10 @@ static int service_indicate_state(struct connman_service *service)
 		if (method == CONNMAN_IPCONFIG_METHOD_OFF)
 			__connman_ipconfig_disable_ipv6(
 						service->ipconfig_ipv6);
+
+		if (connman_setting_get_bool("SingleConnectedTechnology")
+				== TRUE)
+			single_connected_tech(service);
 
 	} else if (new_state == CONNMAN_SERVICE_STATE_DISCONNECT) {
 		def_service = __connman_service_get_default();
