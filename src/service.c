@@ -4932,8 +4932,9 @@ static int service_update_preferred_order(struct connman_service *default_servic
 				return -EALREADY;
 
 			if (new_service->type == tech_array[i]) {
-				switch_default_service(new_service,
-						default_service);
+				switch_default_service(default_service,
+						new_service);
+				__connman_connection_update_gateway();
 				return 0;
 			}
 		}
