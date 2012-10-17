@@ -102,35 +102,43 @@ int service_switch(int argc, char *argv[], int c, DBusConnection *conn,
 {
 	const char *name;
 	DBusMessage *message;
-	int error;
+	int error = 0;
 
 	message = get_message(conn, "GetServices");
+	if (message == NULL)
+		return -ENOMEM;
 
 	switch (c) {
 	case 'p':
 		name = find_service(conn, message, argv[2], service);
-		if (name == NULL)
-			return -ENXIO;
+		if (name == NULL) {
+			error = -ENXIO;
+			break;
+		}
+
 		error = list_properties(conn, "GetServices", (char *) name);
-		if (error != 0)
-			return error;
 		break;
 	default:
 		fprintf(stderr, "Command not recognized, please check help\n");
-		return -EINVAL;
+		error = -EINVAL;
 		break;
 	}
-	return 0;
+
+	dbus_message_unref(message);
+
+	return error;
 }
 
 int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
 {
 	DBusMessage *message;
 	int num_args = argc - MANDATORY_ARGS;
-	int error;
+	int error = 0;
 	dbus_bool_t val;
 
 	message = get_message(conn, "GetServices");
+	if (message == NULL)
+		return -ENOMEM;
 
 	switch (c) {
 	case 'a':
@@ -151,43 +159,31 @@ int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
 		error = set_service_property(conn, message, argv[1],
 						"AutoConnect", NULL,
 						&val, 0);
-		if (error != 0)
-			return error;
 		break;
 	case 'i':
 		error = set_service_property(conn, message, argv[1],
 					"IPv4.Configuration", ipv4,
 					argv + MANDATORY_ARGS, num_args);
-		if (error != 0)
-			return error;
 		break;
 	case 'v':
 		error = set_service_property(conn, message, argv[1],
 					"IPv6.Configuration", ipv6,
 					argv + MANDATORY_ARGS, num_args);
-		if (error != 0)
-			return error;
 		break;
 	case 'n':
 		error = set_service_property(conn, message, argv[1],
 					"Nameservers.Configuration", NULL,
 					argv + MANDATORY_ARGS, num_args);
-		if (error != 0)
-			return error;
 		break;
 	case 't':
 		error = set_service_property(conn, message, argv[1],
 					"Timeservers.Configuration", NULL,
 					argv + MANDATORY_ARGS, num_args);
-		if (error != 0)
-			return error;
 		break;
 	case 'd':
 		error = set_service_property(conn, message, argv[1],
 					"Domains.Configuration", NULL,
 					argv + MANDATORY_ARGS, num_args);
-		if (error != 0)
-			return error;
 		break;
 	case 'x':
 		if ((strcmp(argv[3], "direct") == 0 && argc < 5) ||
@@ -195,27 +191,26 @@ int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
 			error = set_service_property(conn, message, argv[1],
 					"Proxy.Configuration", proxy_simple,
 					argv + MANDATORY_ARGS, num_args);
-			if (error != 0)
-				return error;
 		} else if (strcmp(argv[3], "manual") == 0
 				  && strcmp(argv[4], "servers") == 0
 				  && argc > 5) {
 			argc -= 5;
 			error = store_proxy_input(conn, message, argv[1],
 								argc, &argv[5]);
-			if (error != 0)
-				return error;
 		} else {
 			fprintf(stderr, "Incorrect arguments\n");
-			return -EINVAL;
+			error = -EINVAL;
 		}
 		break;
 	default:
 		fprintf(stderr, "Command not recognized, please check help\n");
-		return -EINVAL;
+		error = -EINVAL;
 		break;
 	}
-	return 0;
+
+	dbus_message_unref(message);
+
+	return error;
 }
 
 int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn)
@@ -275,8 +270,8 @@ int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn)
 
 int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 {
-	int error;
-	DBusMessage *message;
+	DBusMessage *message = NULL;
+	int error = 0;
 
 
 	if (strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "help") == 0  ||
@@ -286,94 +281,96 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 		if (argc != 1) {
 			fprintf(stderr, "State cannot accept an argument, "
 								"see help\n");
-			return -EINVAL;
-		}
-		error = list_properties(connection, "GetProperties", NULL);
-		if (error != 0)
-			return error;
+			error = -EINVAL;
+		} else
+			error = list_properties(connection,
+						"GetProperties", NULL);
 	} else if (strcmp(argv[0], "technologies") == 0) {
 		if (argc != 1) {
 			fprintf(stderr, "Tech cannot accept an argument, "
 								"see help\n");
-			return -EINVAL;
-		}
-		error = list_properties(connection, "GetTechnologies", NULL);
-		if (error != 0)
-			return error;
+			error = -EINVAL;
+		} else
+			error = list_properties(connection,
+						"GetTechnologies", NULL);
 	} else if (strcmp(argv[0], "connect") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Connect requires a service name or "
 							"path, see help\n");
-			return -EINVAL;
-		}
-		error = connect_service(connection, strip_service_path(argv[1]));
-		if (error != 0)
-			return error;
-		printf("Connected to: %s\n", strip_service_path(argv[1]));
+			error = -EINVAL;
+		} else
+			error = connect_service(connection,
+						strip_service_path(argv[1]));
+		if (error == 0)
+			printf("Connected to: %s\n",
+						strip_service_path(argv[1]));
 	} else if (strcmp(argv[0], "disconnect") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Disconnect requires a service name or "
 							"path, see help\n");
-			return -EINVAL;
-		}
-		error = disconnect_service(connection, strip_service_path(argv[1]));
-		if (error != 0)
-			return error;
-		printf("Disconnected from: %s\n", strip_service_path(argv[1]));
+			error = -EINVAL;
+		} else
+			error = disconnect_service(connection,
+						strip_service_path(argv[1]));
+		if (error == 0)
+			printf("Disconnected from: %s\n",
+						strip_service_path(argv[1]));
 	} else if (strcmp(argv[0], "scan") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Scan requires a service name or path, "
 								"see help\n");
-			return -EINVAL;
+			error = -EINVAL;
 		}
 		message = get_message(connection, "GetTechnologies");
-		error = scan_technology(connection, message, argv[1]);
-		if (error != 0)
-			return error;
-		dbus_message_unref(message);
+		if (message == NULL)
+			error = -ENOMEM;
+		else
+			error = scan_technology(connection, message, argv[1]);
 	} else if (strcmp(argv[0], "enable") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Enable requires a technology name or "
 				"the argument 'offlinemode', see help\n");
-			return -EINVAL;
-		}
-		if (strcmp(argv[1], "offlinemode") == 0) {
+			error = -EINVAL;
+		} else if (strcmp(argv[1], "offlinemode") == 0) {
 			error = set_manager(connection, "OfflineMode", TRUE);
-			if (error != 0)
-				return error;
-			printf("OfflineMode is now enabled\n");
+			if (error == 0)
+				printf("OfflineMode is now enabled\n");
 		} else {
 			message = get_message(connection, "GetTechnologies");
-			error = set_technology(connection, message, "Powered",
-							argv[1], TRUE);
-			if (error != 0)
-				return error;
-			printf("Enabled %s technology\n", argv[1]);
-			dbus_message_unref(message);
+			if (message == NULL)
+				error = -ENOMEM;
+			else
+				error = set_technology(connection, message,
+						"Powered", argv[1], TRUE);
+			if (error == 0)
+				printf("Enabled %s technology\n", argv[1]);
 		}
 	} else if (strcmp(argv[0], "disable") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Disable requires a technology name or "
 				"the argument 'offlinemode' see help\n");
-			return -EINVAL;
-		}
-		if (strcmp(argv[1], "offlinemode") == 0) {
+			error = -EINVAL;
+		} else if (strcmp(argv[1], "offlinemode") == 0) {
 			error = set_manager(connection, "OfflineMode", FALSE);
-			if (error != 0)
-				return error;
-			printf("OfflineMode is now disabled\n");
+			if (error == 0)
+				printf("OfflineMode is now disabled\n");
 		} else {
 			message = get_message(connection, "GetTechnologies");
-			error = set_technology(connection, message, "Powered",
-							argv[1], FALSE);
-			if (error != 0)
-				return error;
-			printf("Disabled %s technology\n", argv[1]);
-			dbus_message_unref(message);
+			if (message == NULL)
+				error = -ENOMEM;
+			else
+				error = set_technology(connection, message,
+						"Powered", argv[1], FALSE);
+			if (error == 0)
+				printf("Disabled %s technology\n", argv[1]);
 		}
 	} else
 		return -1;
-	return 0;
+
+	if (message != NULL)
+		dbus_message_unref(message);
+
+	return error;
 }
 
 int commands_options(DBusConnection *connection, char *argv[], int argc)
