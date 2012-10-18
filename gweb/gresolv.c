@@ -141,6 +141,8 @@ static void _debug(GResolv *resolv, const char *file, const char *caller,
 
 static void destroy_query(struct resolv_query *query)
 {
+	debug(query->resolv, "query %p timeout %d", query, query->timeout);
+
 	if (query->timeout > 0)
 		g_source_remove(query->timeout);
 
@@ -149,6 +151,9 @@ static void destroy_query(struct resolv_query *query)
 
 static void destroy_lookup(struct resolv_lookup *lookup)
 {
+	debug(lookup->resolv, "lookup %p id %d ipv4 %p ipv6 %p",
+		lookup, lookup->id, lookup->ipv4_query, lookup->ipv6_query);
+
 	if (lookup->ipv4_query != NULL) {
 		g_queue_remove(lookup->resolv->query_queue,
 						lookup->ipv4_query);
@@ -504,6 +509,8 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 		else
 			status = lookup->ipv4_status;
 	}
+
+	debug(lookup->resolv, "lookup %p received %d results", lookup, n);
 
 	g_queue_remove(lookup->resolv->lookup_queue, lookup);
 
@@ -882,11 +889,15 @@ void g_resolv_unref(GResolv *resolv)
 	if (__sync_fetch_and_sub(&resolv->ref_count, 1) != 1)
 		return;
 
-	while ((lookup = g_queue_pop_head(resolv->lookup_queue)))
+	while ((lookup = g_queue_pop_head(resolv->lookup_queue))) {
+		debug(resolv, "lookup %p id %d", lookup, lookup->id);
 		destroy_lookup(lookup);
+	}
 
-	while ((query = g_queue_pop_head(resolv->query_queue)))
+	while ((query = g_queue_pop_head(resolv->query_queue))) {
+		debug(resolv, "query %p", query);
 		destroy_query(query);
+	}
 
 	g_queue_free(resolv->query_queue);
 	g_queue_free(resolv->lookup_queue);
@@ -960,6 +971,8 @@ static gint add_query(struct resolv_lookup *lookup, const char *hostname, int ty
 
 	query->msgid = buf[0] << 8 | buf[1];
 
+	debug(lookup->resolv, "sending %d bytes", len);
+
 	if (send_query(lookup->resolv, buf, len) < 0) {
 		g_free(query);
 		return -EIO;
@@ -969,6 +982,9 @@ static gint add_query(struct resolv_lookup *lookup, const char *hostname, int ty
 	query->lookup = lookup;
 
 	g_queue_push_tail(lookup->resolv->query_queue, query);
+
+	debug(lookup->resolv, "lookup %p id %d query %p", lookup, lookup->id,
+									query);
 
 	query->timeout = g_timeout_add_seconds(5, query_timeout, query);
 
@@ -985,7 +1001,7 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 {
 	struct resolv_lookup *lookup;
 
-	debug(resolv, "lookup hostname %s", hostname);
+	debug(resolv, "hostname %s", hostname);
 
 	if (resolv == NULL)
 		return 0;
@@ -1045,12 +1061,18 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 	}
 
 	g_queue_push_tail(resolv->lookup_queue, lookup);
+
+	debug(resolv, "lookup %p id %d", lookup, lookup->id);
+
 	return lookup->id;
 }
 
 gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 {
+	struct resolv_lookup *lookup;
 	GList *list;
+
+	debug(resolv, "lookup id %d", id);
 
 	list = g_queue_find_custom(resolv->lookup_queue,
 				GUINT_TO_POINTER(id), compare_lookup_id);
@@ -1058,8 +1080,12 @@ gboolean g_resolv_cancel_lookup(GResolv *resolv, guint id)
 	if (list == NULL)
 		return FALSE;
 
-	g_queue_remove(resolv->lookup_queue, list->data);
-	destroy_lookup(list->data);
+	lookup = list->data;
+
+	debug(resolv, "lookup %p", lookup);
+
+	g_queue_remove(resolv->lookup_queue, lookup);
+	destroy_lookup(lookup);
 
 	return TRUE;
 }
