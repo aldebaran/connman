@@ -554,8 +554,10 @@ static void free_nameserver(struct resolv_nameserver *nameserver)
 	if (nameserver->udp_watch > 0)
 		g_source_remove(nameserver->udp_watch);
 
-	if (nameserver->udp_channel != NULL)
+	if (nameserver->udp_channel != NULL) {
+		g_io_channel_shutdown(nameserver->udp_channel, TRUE, NULL);
 		g_io_channel_unref(nameserver->udp_channel);
+	}
 
 	g_free(nameserver->address);
 	g_free(nameserver);
