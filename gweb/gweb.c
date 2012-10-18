@@ -128,18 +128,26 @@ struct _GWeb {
 	gpointer debug_data;
 };
 
-static inline void debug(GWeb *web, const char *format, ...)
+#define debug(web, format, arg...)				\
+	_debug(web, __FILE__, __func__, format, ## arg)
+
+static void _debug(GWeb *web, const char *file, const char *caller,
+						const char *format, ...)
 {
 	char str[256];
 	va_list ap;
+	int len;
 
 	if (web->debug_func == NULL)
 		return;
 
 	va_start(ap, format);
 
-	if (vsnprintf(str, sizeof(str), format, ap) > 0)
-		web->debug_func(str, web->debug_data);
+	if ((len = snprintf(str, sizeof(str), "%s:%s() web %p ",
+						file, caller, web)) > 0) {
+		if (vsnprintf(str + len, sizeof(str) - len, format, ap) > 0)
+			web->debug_func(str, web->debug_data);
+	}
 
 	va_end(ap);
 }
