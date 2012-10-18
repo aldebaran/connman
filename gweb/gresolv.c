@@ -1052,9 +1052,9 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 	if (resolv->result_family != AF_INET) {
 		if (add_query(lookup, hostname, ns_t_aaaa)) {
 			if (resolv->result_family != AF_INET6) {
-				destroy_query(lookup->ipv4_query);
 				g_queue_remove(resolv->query_queue,
 						lookup->ipv4_query);
+				destroy_query(lookup->ipv4_query);
 			}
 
 			g_free(lookup);
