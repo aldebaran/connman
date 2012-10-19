@@ -719,7 +719,7 @@ void connman_network_set_ipv6_method(struct connman_network *network,
 void connman_network_set_error(struct connman_network *network,
 					enum connman_network_error error)
 {
-	DBG("nework %p, error %d", network, error);
+	DBG("network %p error %d", network, error);
 
 	network->connecting = FALSE;
 	network->associating = FALSE;
