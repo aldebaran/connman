@@ -426,6 +426,8 @@ static void wispr_portal_error(struct connman_wispr_portal_context *wp_context)
 static void portal_manage_status(GWebResult *result,
 			struct connman_wispr_portal_context *wp_context)
 {
+	struct connman_service *service = wp_context->service;
+	enum connman_ipconfig_type type = wp_context->type;
 	const char *str = NULL;
 
 	DBG("");
@@ -443,9 +445,10 @@ static void portal_manage_status(GWebResult *result,
 				&str) == TRUE)
 		connman_info("Client-Region: %s", str);
 
-	__connman_service_ipconfig_indicate_state(wp_context->service,
-						CONNMAN_SERVICE_STATE_ONLINE,
-						wp_context->type);
+	free_connman_wispr_portal_context(wp_context);
+
+	__connman_service_ipconfig_indicate_state(service,
+					CONNMAN_SERVICE_STATE_ONLINE, type);
 }
 
 static gboolean wispr_route_request(const char *address, int ai_family,
@@ -578,11 +581,11 @@ static void wispr_portal_request_wispr_login(struct connman_service *service,
 			if (__connman_agent_request_browser(service,
 					wispr_portal_browser_reply_cb,
 					wp_context->redirect_url,
-					wp_context) != -EINPROGRESS)
-				free_connman_wispr_portal_context(wp_context);
-		} else
-			free_connman_wispr_portal_context(wp_context);
+					wp_context) == -EINPROGRESS)
+				return;
+		}
 
+		free_connman_wispr_portal_context(wp_context);
 		return;
 	}
 
@@ -636,10 +639,8 @@ static gboolean wispr_manage_message(GWebResult *result,
 
 		if (__connman_agent_request_login_input(wp_context->service,
 					wispr_portal_request_wispr_login,
-					wp_context) != -EINPROGRESS) {
+					wp_context) != -EINPROGRESS)
 			wispr_portal_error(wp_context);
-			free_connman_wispr_portal_context(wp_context);
-		}
 
 		break;
 	case 120: /* Falling down */
@@ -710,7 +711,6 @@ static gboolean wispr_portal_web_result(GWebResult *result, gpointer user_data)
 		if (g_web_result_get_header(result, "X-ConnMan-Status",
 						&str) == TRUE) {
 			portal_manage_status(result, wp_context);
-			free_connman_wispr_portal_context(wp_context);
 			return FALSE;
 		}
 		else
