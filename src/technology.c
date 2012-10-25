@@ -920,7 +920,7 @@ static const GDBusSignalTable technology_signals[] = {
 static gboolean technology_dbus_register(struct connman_technology *technology)
 {
 	if (technology->dbus_registered == TRUE ||
-				(technology->rfkill_driven &&
+				(technology->rfkill_driven == TRUE &&
 				 technology->hardblocked == TRUE))
 		return TRUE;
 
@@ -982,11 +982,7 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology->rfkill_driven = FALSE;
 	technology->softblocked = FALSE;
-
-	if (type == CONNMAN_SERVICE_TYPE_ETHERNET)
-		technology->hardblocked = FALSE;
-	else
-		technology->hardblocked = TRUE;
+	technology->hardblocked = FALSE;
 
 	technology->type = type;
 	technology->path = g_strdup_printf("%s/technology/%s",
