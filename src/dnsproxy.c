@@ -1570,6 +1570,9 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 			alt[1] = req_len & 0xff;
 		}
 
+		DBG("req %p dstid 0x%04x altid 0x%04x", req, req->dstid,
+				req->altid);
+
 		err = send(sk, alt, req->request_len + domlen, MSG_NOSIGNAL);
 		if (err < 0)
 			return -EIO;
@@ -1611,7 +1614,8 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 	if (req == NULL)
 		return -EINVAL;
 
-	DBG("id 0x%04x rcode %d", hdr->id, hdr->rcode);
+	DBG("req %p dstid 0x%04x altid 0x%04x rcode %d",
+			req, req->dstid, req->altid, hdr->rcode);
 
 	ifdata = req->ifdata;
 
@@ -1627,17 +1631,25 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 		 * remove it before forwarding the reply.
 		 */
 		if (req->append_domain == TRUE) {
+			unsigned int domain_len = 0;
 			unsigned char *ptr;
 			uint8_t host_len;
-			unsigned int domain_len;
+			unsigned int header_len;
 
 			/*
 			 * ptr points to the first char of the hostname.
 			 * ->hostname.domain.net
 			 */
-			ptr = reply + offset + sizeof(struct domain_hdr);
+			header_len = offset + sizeof(struct domain_hdr);
+			ptr = reply + header_len;
 			host_len = *ptr;
-			domain_len = strlen((const char *)ptr + host_len + 1);
+			if (host_len > 0)
+				domain_len = strnlen((const char *)ptr + 1 +
+						host_len,
+						reply_len - header_len);
+
+
+			DBG("host len %d domain len %d", host_len, domain_len);
 
 			/*
 			 * Remove the domain name and replace it by the end
@@ -1657,7 +1669,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 				 */
 				memmove(ptr + host_len + 1,
 					ptr + host_len + domain_len + 1,
-					reply_len - (ptr - reply + domain_len));
+					reply_len - header_len - domain_len);
 
 				reply_len = reply_len - domain_len;
 			}
