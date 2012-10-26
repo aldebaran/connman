@@ -223,6 +223,10 @@ static int set_tethering(struct connman_technology *technology,
 			technology->driver->set_tethering == NULL)
 		return -EOPNOTSUPP;
 
+	__sync_synchronize();
+	if (technology->enabled == FALSE)
+		return -EACCES;
+
 	bridge = __connman_tethering_get_bridge();
 	if (bridge == NULL)
 		return -EOPNOTSUPP;
