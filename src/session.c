@@ -820,6 +820,9 @@ static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 
 static void free_session(struct connman_session *session)
 {
+	if (session == NULL)
+		return;
+
 	destroy_policy_config(session);
 	g_slist_free(session->info->config.allowed_bearers);
 	g_free(session->owner);
@@ -1522,6 +1525,8 @@ static const GDBusMethodTable session_methods[] = {
 };
 
 struct user_config {
+	DBusMessage *pending;
+
 	enum connman_session_type type;
 	GSList *allowed_bearers;
 };
@@ -1530,12 +1535,78 @@ static void session_create_cb(struct connman_session *session,
 				struct connman_session_config *config,
 				void *user_data, int err)
 {
+	DBusMessage *reply;
+	struct user_config *user_config = user_data;
+	struct session_info *info, *info_last;
+
 	DBG("session %p config %p", session, config);
 
 	if (err != 0)
-		return;
+		goto out;
 
 	session->policy_config = config;
+
+	info = session->info;
+	info_last = session->info_last;
+
+	if (session->policy_config->ecall == TRUE)
+		ecall_session = session;
+
+	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
+	info->config.type = apply_policy_on_type(
+				session->policy_config->type,
+				user_config->type);
+	info->config.priority = session->policy_config->priority;
+	info->config.roaming_policy = session->policy_config->roaming_policy;
+	info->entry = NULL;
+
+	err = apply_policy_on_bearers(
+			session->policy_config->allowed_bearers,
+			user_config->allowed_bearers,
+			&info->config.allowed_bearers);
+	if (err < 0)
+		goto out;
+
+	g_hash_table_replace(session_hash, session->session_path, session);
+
+	DBG("add %s", session->session_path);
+
+	if (g_dbus_register_interface(connection, session->session_path,
+					CONNMAN_SESSION_INTERFACE,
+					session_methods, NULL,
+					NULL, session, NULL) == FALSE) {
+		connman_error("Failed to register %s", session->session_path);
+		g_hash_table_remove(session_hash, session->session_path);
+		err = -EINVAL;
+		goto out;
+	}
+
+	reply = g_dbus_create_reply(user_config->pending,
+				DBUS_TYPE_OBJECT_PATH, &session->session_path,
+				DBUS_TYPE_INVALID);
+	g_dbus_send_message(connection, reply);
+
+	populate_service_list(session);
+
+	info_last->state = info->state;
+	info_last->config.priority = info->config.priority;
+	info_last->config.roaming_policy = info->config.roaming_policy;
+	info_last->entry = info->entry;
+	info_last->config.allowed_bearers = info->config.allowed_bearers;
+
+	session->append_all = TRUE;
+
+	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
+
+out:
+	if (err < 0) {
+		__connman_error_failed(user_config->pending, err);
+		free_session(session);
+	}
+
+	dbus_message_unref(user_config->pending);
+	g_slist_free(user_config->allowed_bearers);
+	g_free(user_config);
 }
 
 int __connman_session_create(DBusMessage *msg)
@@ -1544,7 +1615,6 @@ int __connman_session_create(DBusMessage *msg)
 	char *session_path = NULL;
 	DBusMessageIter iter, array;
 	struct connman_session *session = NULL;
-	struct session_info *info, *info_last;
 	struct user_config *user_config = NULL;
 	connman_bool_t user_allowed_bearers = FALSE;
 	connman_bool_t user_connection_type = FALSE;
@@ -1569,6 +1639,8 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 	}
 
+	user_config->pending = dbus_message_ref(msg);
+
 	dbus_message_iter_init(msg, &iter);
 	dbus_message_iter_recurse(&iter, &array);
 
@@ -1592,7 +1664,8 @@ int __connman_session_create(DBusMessage *msg)
 
 				user_allowed_bearers = TRUE;
 			} else {
-				return -EINVAL;
+				err = -EINVAL;
+				goto err;
 			}
 			break;
 		case DBUS_TYPE_STRING:
@@ -1602,7 +1675,8 @@ int __connman_session_create(DBusMessage *msg)
 
 				user_connection_type = TRUE;
 			} else {
-				return -EINVAL;
+				err = -EINVAL;
+				goto err;
 			}
 		}
 		dbus_message_iter_next(&array);
@@ -1644,6 +1718,7 @@ int __connman_session_create(DBusMessage *msg)
 
 	session = g_hash_table_lookup(session_hash, session_path);
 	if (session != NULL) {
+		g_free(session_path);
 		session = NULL;
 		err = -EEXIST;
 		goto err;
@@ -1651,9 +1726,12 @@ int __connman_session_create(DBusMessage *msg)
 
 	session = g_try_new0(struct connman_session, 1);
 	if (session == NULL) {
+		g_free(session_path);
 		err = -ENOMEM;
 		goto err;
 	}
+
+	session->session_path = session_path;
 
 	session->info = g_try_new0(struct session_info, 1);
 	if (session->info == NULL) {
@@ -1667,11 +1745,7 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 	}
 
-	info = session->info;
-	info_last = session->info_last;
-
 	session->owner = g_strdup(owner);
-	session->session_path = session_path;
 	session->notify_path = g_strdup(notify_path);
 	session->notify_watch =
 		g_dbus_add_disconnect_watch(connection, session->owner,
@@ -1680,83 +1754,23 @@ int __connman_session_create(DBusMessage *msg)
 	err = assign_policy_plugin(session);
 	if (err < 0)
 		goto err;
-	err = create_policy_config(session, session_create_cb, NULL);
+
+	err = create_policy_config(session, session_create_cb, user_config);
 	if (err < 0)
 		goto err;
 
-	if (session->policy_config->ecall == TRUE)
-		ecall_session = session;
-
-	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
-	info->config.type = apply_policy_on_type(
-				session->policy_config->type,
-				user_config->type);
-	info->config.priority = session->policy_config->priority;
-	info->config.roaming_policy = session->policy_config->roaming_policy;
-	info->entry = NULL;
-
-	err = apply_policy_on_bearers(
-			session->policy_config->allowed_bearers,
-			user_config->allowed_bearers,
-			&info->config.allowed_bearers);
-	if (err < 0)
-		goto err;
-
-	g_slist_free(user_config->allowed_bearers);
-	g_free(user_config);
-
-	g_hash_table_replace(session_hash, session->session_path, session);
-
-	DBG("add %s", session->session_path);
-
-	if (g_dbus_register_interface(connection, session->session_path,
-					CONNMAN_SESSION_INTERFACE,
-					session_methods, NULL,
-					NULL, session, NULL) == FALSE) {
-		connman_error("Failed to register %s", session->session_path);
-		g_hash_table_remove(session_hash, session->session_path);
-		session = NULL;
-
-		err = -EINVAL;
-		goto err;
-	}
-
-	g_dbus_send_reply(connection, msg,
-				DBUS_TYPE_OBJECT_PATH, &session->session_path,
-				DBUS_TYPE_INVALID);
-
-
-	populate_service_list(session);
-
-	info_last->state = info->state;
-	info_last->config.priority = info->config.priority;
-	info_last->config.roaming_policy = info->config.roaming_policy;
-	info_last->entry = info->entry;
-	info_last->config.allowed_bearers = info->config.allowed_bearers;
-
-	session->append_all = TRUE;
-
-	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
-
-	return 0;
+	return -EINPROGRESS;
 
 err:
 	connman_error("Failed to create session");
 
-	if (session != NULL) {
-		if (session->info_last != NULL)
-			g_free(session->info_last);
-		if (session->info != NULL)
-			g_free(session->info);
-		g_free(session);
-	}
+	free_session(session);
 
-	g_free(session_path);
-
-	if (user_config != NULL)
+	if (user_config != NULL) {
+		dbus_message_unref(user_config->pending);
 		g_slist_free(user_config->allowed_bearers);
-	g_free(user_config);
-
+		g_free(user_config);
+	}
 	return err;
 }
 
