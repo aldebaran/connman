@@ -386,7 +386,7 @@ void connman_session_free_bearers(GSList *bearers)
 	g_slist_free_full(bearers, cleanup_bearer);
 }
 
-static int session_parse_allowed_bearers(DBusMessageIter *iter, GSList **list)
+static int parse_bearers(DBusMessageIter *iter, GSList **list)
 {
 	struct connman_session_bearer *bearer;
 	DBusMessageIter array;
@@ -1452,8 +1452,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 	switch (dbus_message_iter_get_arg_type(&value)) {
 	case DBUS_TYPE_ARRAY:
 		if (g_str_equal(name, "AllowedBearers") == TRUE) {
-			err = session_parse_allowed_bearers(&value,
-							&allowed_bearers);
+			err = parse_bearers(&value, &allowed_bearers);
 			if (err < 0)
 				return __connman_error_failed(msg, err);
 
@@ -1623,8 +1622,7 @@ int __connman_session_create(DBusMessage *msg)
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_ARRAY:
 			if (g_str_equal(key, "AllowedBearers") == TRUE) {
-				err = session_parse_allowed_bearers(&value,
-							&allowed_bearers);
+				err = parse_bearers(&value, &allowed_bearers);
 				if (err < 0)
 					goto err;
 
