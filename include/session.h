@@ -51,10 +51,6 @@ enum connman_session_type {
 
 struct connman_session;
 
-struct connman_session_bearer {
-	enum connman_service_type service_type;
-};
-
 struct connman_session_config {
 	connman_bool_t priority;
 	enum connman_session_roaming_policy roaming_policy;
@@ -78,9 +74,6 @@ struct connman_session_policy {
 
 int connman_session_policy_register(struct connman_session_policy *config);
 void connman_session_policy_unregister(struct connman_session_policy *config);
-
-GSList *connman_session_allowed_bearers_any(void);
-void connman_session_free_bearers(GSList *bearers);
 
 struct connman_session_config *connman_session_create_default_config(void);
 

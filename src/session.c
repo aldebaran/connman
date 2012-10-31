@@ -254,12 +254,11 @@ static int create_policy_config(struct connman_session *session,
 static void destroy_policy_config(struct connman_session *session)
 {
 	if (session->policy == NULL) {
-		connman_session_free_bearers(
-			session->policy_config->allowed_bearers);
 		g_free(session->policy_config);
-	} else {
-		(*session->policy->destroy)(session);
+		return;
 	}
+
+	(*session->policy->destroy)(session);
 }
 
 static void probe_policy(struct connman_session_policy *policy)
@@ -349,7 +348,8 @@ struct connman_session_config *connman_session_create_default_config(void)
 	config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
 	config->type = CONNMAN_SESSION_TYPE_ANY;
 	config->ecall = FALSE;
-	config->allowed_bearers = connman_session_allowed_bearers_any();
+	config->allowed_bearers = g_slist_prepend(NULL,
+				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
 	if (config->allowed_bearers == NULL) {
 		g_free(config);
 		return NULL;
@@ -374,21 +374,9 @@ static enum connman_session_type apply_policy_on_type(
 	return CONNMAN_SESSION_TYPE_INTERNET;
 }
 
-static void cleanup_bearer(gpointer data)
-{
-	struct connman_session_bearer *bearer = data;
-
-	g_free(bearer);
-}
-
-void connman_session_free_bearers(GSList *bearers)
-{
-	g_slist_free_full(bearers, cleanup_bearer);
-}
-
 static int parse_bearers(DBusMessageIter *iter, GSList **list)
 {
-	struct connman_session_bearer *bearer;
+	enum connman_service_type bearer;
 	DBusMessageIter array;
 	int type, err;
 
@@ -401,7 +389,7 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 		char *bearer_name = NULL;
 
 		if (type != DBUS_TYPE_STRING) {
-			connman_session_free_bearers(*list);
+			g_slist_free(*list);
 			*list = NULL;
 			return -EINVAL;
 		}
@@ -416,21 +404,14 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 			goto next;
 		}
 
-		bearer = g_try_new0(struct connman_session_bearer, 1);
-		if (bearer == NULL) {
-			connman_session_free_bearers(*list);
-			*list = NULL;
-			return -ENOMEM;
-		}
-
-		err = bearer2service(bearer_name, &bearer->service_type);
+		err = bearer2service(bearer_name, &bearer);
 		if (err < 0) {
-			connman_session_free_bearers(*list);
+			g_slist_free(*list);
 			*list = NULL;
 			return err;
 		}
 
-		*list = g_slist_append(*list, bearer);
+		*list = g_slist_append(*list, GINT_TO_POINTER(bearer));
 
 	next:
 		dbus_message_iter_next(&array);
@@ -439,35 +420,20 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 	return 0;
 }
 
-static struct connman_session_bearer *clone_bearer(
-					struct connman_session_bearer *orig)
-{
-	struct connman_session_bearer *bearer;
-
-	bearer = g_try_new0(struct connman_session_bearer, 1);
-	if (bearer == NULL)
-		return NULL;
-
-	bearer->service_type = orig->service_type;
-
-	return bearer;
-}
-
 static int filter_bearer(GSList *policy_bearers,
-				struct connman_session_bearer *bearer,
+				enum connman_service_type bearer,
 				GSList **list)
 {
-	struct connman_session_bearer *policy, *tmp;
+	enum connman_service_type policy;
 	GSList *it;
 
 	if (policy_bearers == NULL)
 		goto clone;
 
 	for (it = policy_bearers; it != NULL; it = it->next) {
-		policy = it->data;
+		policy = GPOINTER_TO_INT(it->data);
 
-		if (policy->service_type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
-				bearer->service_type != policy->service_type)
+		if (policy != CONNMAN_SERVICE_TYPE_UNKNOWN && policy != bearer)
 			continue;
 
 		goto clone;
@@ -478,13 +444,7 @@ static int filter_bearer(GSList *policy_bearers,
 	return 0;
 
 clone:
-	tmp = clone_bearer(bearer);
-	if (tmp == NULL) {
-		connman_session_free_bearers(*list);
-		*list = NULL;
-		return -ENOMEM;
-	}
-	*list = g_slist_append(*list, tmp);
+	*list = g_slist_append(*list, GINT_TO_POINTER(bearer));
 
 	return 0;
 }
@@ -492,14 +452,14 @@ clone:
 static int apply_policy_on_bearers(GSList *policy_bearers, GSList *bearers,
 				GSList **list)
 {
-	struct connman_session_bearer *bearer;
+	enum connman_service_type bearer;
 	GSList *it;
 	int err;
 
 	*list = NULL;
 
 	for (it = bearers; it != NULL; it = it->next) {
-		bearer = it->data;
+		bearer = GPOINTER_TO_INT(it->data);
 
 		err = filter_bearer(policy_bearers, bearer, list);
 		if (err < 0)
@@ -509,22 +469,6 @@ static int apply_policy_on_bearers(GSList *policy_bearers, GSList *bearers,
 	return 0;
 }
 
-GSList *connman_session_allowed_bearers_any(void)
-{
-	struct connman_session_bearer *bearer;
-	GSList *list = NULL;
-
-	bearer = g_try_new0(struct connman_session_bearer, 1);
-	if (bearer == NULL)
-		return NULL;
-
-	bearer->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
-
-	list = g_slist_append(list, bearer);
-
-	return list;
-}
-
 static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 {
 	struct session_info *info = user_data;
@@ -532,9 +476,8 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 
 	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
-		struct connman_session_bearer *bearer = list->data;
-		const char *name =
-			__connman_service_type2string(bearer->service_type);
+		enum connman_service_type bearer = GPOINTER_TO_INT(list->data);
+		const char *name = __connman_service_type2string(bearer);
 
 		if (name == NULL)
 			name = "*";
@@ -764,14 +707,14 @@ static connman_bool_t service_type_match(struct connman_session *session,
 
 	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
-		struct connman_session_bearer *bearer = list->data;
+		enum connman_service_type bearer = GPOINTER_TO_INT(list->data);
 		enum connman_service_type service_type;
 
-		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN)
+		if (bearer == CONNMAN_SERVICE_TYPE_UNKNOWN)
 			return TRUE;
 
 		service_type = connman_service_get_type(service);
-		if (bearer->service_type == service_type)
+		if (bearer == service_type)
 			return TRUE;
 	}
 
@@ -835,9 +778,9 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 
 	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
-		struct connman_session_bearer *bearer = list->data;
+		enum connman_service_type bearer = GPOINTER_TO_INT(list->data);
 
-		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN) {
+		if (bearer == CONNMAN_SERVICE_TYPE_UNKNOWN) {
 			if (type_a != type_b) {
 				weight_a = service_type_weight(type_a);
 				weight_b = service_type_weight(type_b);
@@ -852,20 +795,14 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 			}
 		}
 
-		if (type_a == bearer->service_type &&
-				type_b == bearer->service_type) {
+		if (type_a == bearer && type_b == bearer)
 			return 0;
-		}
 
-		if (type_a == bearer->service_type &&
-				type_b != bearer->service_type) {
+		if (type_a == bearer &&	type_b != bearer)
 			return -1;
-		}
 
-		if (type_a != bearer->service_type &&
-				type_b == bearer->service_type) {
+		if (type_a != bearer &&	type_b == bearer)
 			return 1;
-		}
 	}
 
 	return 0;
@@ -884,7 +821,7 @@ static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 static void free_session(struct connman_session *session)
 {
 	destroy_policy_config(session);
-	connman_session_free_bearers(session->info->config.allowed_bearers);
+	g_slist_free(session->info->config.allowed_bearers);
 	g_free(session->owner);
 	g_free(session->session_path);
 	g_free(session->notify_path);
@@ -1472,13 +1409,13 @@ static DBusMessage *change_session(DBusConnection *conn,
 			if (err < 0)
 				return __connman_error_failed(msg, err);
 
-			connman_session_free_bearers(info->config.allowed_bearers);
+			g_slist_free(info->config.allowed_bearers);
 			err = apply_policy_on_bearers(
 					session->policy_config->allowed_bearers,
 					allowed_bearers,
 					&info->config.allowed_bearers);
 
-			connman_session_free_bearers(allowed_bearers);
+			g_slist_free(allowed_bearers);
 			if (err < 0)
 				return __connman_error_failed(msg, err);
 		} else {
@@ -1729,7 +1666,9 @@ int __connman_session_create(DBusMessage *msg)
 	info->entry = NULL;
 
 	if (allowed_bearers_valid == FALSE) {
-		allowed_bearers = connman_session_allowed_bearers_any();
+		allowed_bearers =
+			g_slist_append(NULL,
+				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
 		if (allowed_bearers == NULL) {
 			err = -ENOMEM;
 			goto err;
@@ -1791,7 +1730,7 @@ err:
 
 	g_free(session_path);
 
-	connman_session_free_bearers(allowed_bearers);
+	g_slist_free(allowed_bearers);
 
 	return err;
 }
