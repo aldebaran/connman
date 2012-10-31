@@ -52,7 +52,6 @@ enum connman_session_type {
 struct connman_session;
 
 struct connman_session_bearer {
-	connman_bool_t match_all;
 	enum connman_service_type service_type;
 };
 

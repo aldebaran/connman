@@ -172,25 +172,26 @@ static enum connman_session_type string2type(const char *type)
 	return CONNMAN_SESSION_TYPE_UNKNOWN;
 }
 
-static enum connman_service_type bearer2service(const char *bearer)
+static int bearer2service(const char *bearer, enum connman_service_type *type)
 {
-	if (bearer == NULL)
-		return CONNMAN_SERVICE_TYPE_UNKNOWN;
-
 	if (g_strcmp0(bearer, "ethernet") == 0)
-		return CONNMAN_SERVICE_TYPE_ETHERNET;
+		*type = CONNMAN_SERVICE_TYPE_ETHERNET;
 	else if (g_strcmp0(bearer, "wifi") == 0)
-		return CONNMAN_SERVICE_TYPE_WIFI;
+		*type = CONNMAN_SERVICE_TYPE_WIFI;
 	else if (g_strcmp0(bearer, "wimax") == 0)
-		return CONNMAN_SERVICE_TYPE_WIMAX;
+		*type = CONNMAN_SERVICE_TYPE_WIMAX;
 	else if (g_strcmp0(bearer, "bluetooth") == 0)
-		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
+		*type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	else if (g_strcmp0(bearer, "cellular") == 0)
-		return CONNMAN_SERVICE_TYPE_CELLULAR;
+		*type = CONNMAN_SERVICE_TYPE_CELLULAR;
 	else if (g_strcmp0(bearer, "vpn") == 0)
-		return CONNMAN_SERVICE_TYPE_VPN;
+		*type = CONNMAN_SERVICE_TYPE_VPN;
+	else if (g_strcmp0(bearer, "*") == 0)
+		*type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 	else
-		return CONNMAN_SERVICE_TYPE_UNKNOWN;
+		return -EINVAL;
+
+	return 0;
 }
 
 static char *service2bearer(enum connman_service_type type)
@@ -389,6 +390,7 @@ static int session_parse_allowed_bearers(DBusMessageIter *iter, GSList **list)
 {
 	struct connman_session_bearer *bearer;
 	DBusMessageIter array;
+	int err;
 
 	dbus_message_iter_recurse(iter, &array);
 
@@ -406,13 +408,11 @@ static int session_parse_allowed_bearers(DBusMessageIter *iter, GSList **list)
 			return -ENOMEM;
 		}
 
-		bearer->service_type = bearer2service(bearer_name);
-
-		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN &&
-				g_strcmp0(bearer_name, "*") == 0) {
-			bearer->match_all = TRUE;
-		} else {
-			bearer->match_all = FALSE;
+		err = bearer2service(bearer_name, &bearer->service_type);
+		if (err < 0) {
+			connman_session_free_bearers(*list);
+			*list = NULL;
+			return err;
 		}
 
 		*list = g_slist_append(*list, bearer);
@@ -432,7 +432,6 @@ static struct connman_session_bearer *clone_bearer(
 	if (bearer == NULL)
 		return NULL;
 
-	bearer->match_all = orig->match_all;
 	bearer->service_type = orig->service_type;
 
 	return bearer;
@@ -451,7 +450,7 @@ static int filter_bearer(GSList *policy_bearers,
 	for (it = policy_bearers; it != NULL; it = it->next) {
 		policy = it->data;
 
-		if (policy->match_all == FALSE &&
+		if (policy->service_type != CONNMAN_SERVICE_TYPE_UNKNOWN &&
 				bearer->service_type != policy->service_type)
 			continue;
 
@@ -474,15 +473,6 @@ clone:
 	return 0;
 }
 
-static connman_bool_t is_bearer_valid(struct connman_session_bearer *bearer)
-{
-	if (bearer->match_all == FALSE &&
-			bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN)
-		return FALSE;
-
-	return TRUE;
-}
-
 static int apply_policy_on_bearers(GSList *policy_bearers, GSList *bearers,
 				GSList **list)
 {
@@ -494,9 +484,6 @@ static int apply_policy_on_bearers(GSList *policy_bearers, GSList *bearers,
 
 	for (it = bearers; it != NULL; it = it->next) {
 		bearer = it->data;
-
-		if (is_bearer_valid(bearer) == FALSE)
-			continue;
 
 		err = filter_bearer(policy_bearers, bearer, list);
 		if (err < 0)
@@ -515,7 +502,6 @@ GSList *connman_session_allowed_bearers_any(void)
 	if (bearer == NULL)
 		return NULL;
 
-	bearer->match_all = TRUE;
 	bearer->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 
 	list = g_slist_append(list, bearer);
@@ -765,7 +751,7 @@ static connman_bool_t service_type_match(struct connman_session *session,
 		struct connman_session_bearer *bearer = list->data;
 		enum connman_service_type service_type;
 
-		if (bearer->match_all == TRUE)
+		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN)
 			return TRUE;
 
 		service_type = connman_service_get_type(service);
@@ -835,7 +821,7 @@ static gint sort_allowed_bearers(struct connman_service *service_a,
 			list != NULL; list = list->next) {
 		struct connman_session_bearer *bearer = list->data;
 
-		if (bearer->match_all == TRUE) {
+		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN) {
 			if (type_a != type_b) {
 				weight_a = service_type_weight(type_a);
 				weight_b = service_type_weight(type_b);
