@@ -231,21 +231,23 @@ static int assign_policy_plugin(struct connman_session *session)
 	return 0;
 }
 
-static int create_policy_config(struct connman_session *session)
+static int create_policy_config(struct connman_session *session,
+				connman_session_config_cb callback,
+				void *user_data)
 {
 	struct connman_session_config *config;
 
-	if (session->policy == NULL)
+	if (session->policy == NULL) {
 		config = connman_session_create_default_config();
-	else
-		config = (*session->policy->create)(session);
+		if (config == NULL)
+			return -ENOMEM;
 
-	if (config == NULL)
-		return -ENOMEM;
+		session->policy_config = config;
 
-	session->policy_config = config;
+		return 0;
+	}
 
-	return 0;
+	return (*session->policy->create)(session, callback, user_data);
 }
 
 static void destroy_policy_config(struct connman_session *session)
@@ -1580,6 +1582,18 @@ static const GDBusMethodTable session_methods[] = {
 	{ },
 };
 
+static void session_create_cb(struct connman_session *session,
+				struct connman_session_config *config,
+				void *user_data, int err)
+{
+	DBG("session %p config %p", session, config);
+
+	if (err != 0)
+		return;
+
+	session->policy_config = config;
+}
+
 int __connman_session_create(DBusMessage *msg)
 {
 	const char *owner, *notify_path;
@@ -1696,7 +1710,7 @@ int __connman_session_create(DBusMessage *msg)
 	err = assign_policy_plugin(session);
 	if (err < 0)
 		goto err;
-	err = create_policy_config(session);
+	err = create_policy_config(session, session_create_cb, NULL);
 	if (err < 0)
 		goto err;
 
