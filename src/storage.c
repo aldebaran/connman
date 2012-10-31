@@ -86,7 +86,7 @@ static void storage_delete(const char *pathname)
 		connman_error("Failed to remove %s", pathname);
 }
 
-GKeyFile *__connman_storage_load_global()
+GKeyFile *__connman_storage_load_global(void)
 {
 	gchar *pathname;
 	GKeyFile *keyfile = NULL;
@@ -118,7 +118,7 @@ int __connman_storage_save_global(GKeyFile *keyfile)
 	return ret;
 }
 
-void __connman_storage_delete_global()
+void __connman_storage_delete_global(void)
 {
 	gchar *pathname;
 
@@ -169,7 +169,7 @@ GKeyFile *__connman_storage_open_service(const char *service_id)
 	return keyfile;
 }
 
-gchar **connman_storage_get_services()
+gchar **connman_storage_get_services(void)
 {
 	struct dirent *d;
 	gchar *str;
@@ -425,7 +425,7 @@ gchar **__connman_storage_get_providers(void)
  * This function migrates keys from default.profile to settings file.
  * This can be removed once the migration is over.
 */
-void __connman_storage_migrate()
+void __connman_storage_migrate(void)
 {
 	gchar *pathname;
 	GKeyFile *keyfile_def = NULL;
