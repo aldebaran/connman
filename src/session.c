@@ -314,6 +314,9 @@ int connman_session_policy_register(struct connman_session_policy *policy)
 {
 	DBG("name %s", policy->name);
 
+	if (policy->create == NULL || policy->destroy == NULL)
+		return -EINVAL;
+
 	policy_list = g_slist_insert_sorted(policy_list, policy,
 						compare_priority);
 
