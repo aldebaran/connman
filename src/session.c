@@ -390,14 +390,21 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 {
 	struct connman_session_bearer *bearer;
 	DBusMessageIter array;
-	int err;
+	int type, err;
 
 	dbus_message_iter_recurse(iter, &array);
 
 	*list = NULL;
 
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRING) {
+	while ((type = dbus_message_iter_get_arg_type(&array)) !=
+			DBUS_TYPE_INVALID) {
 		char *bearer_name = NULL;
+
+		if (type != DBUS_TYPE_STRING) {
+			connman_session_free_bearers(*list);
+			*list = NULL;
+			return -EINVAL;
+		}
 
 		dbus_message_iter_get_basic(&array, &bearer_name);
 
