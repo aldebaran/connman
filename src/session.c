@@ -220,18 +220,13 @@ static char *service2bearer(enum connman_service_type type)
 
 static int assign_policy_plugin(struct connman_session *session)
 {
-	GSList *list;
-	struct connman_session_policy *policy;
-
 	if (session->policy != NULL)
 		return -EALREADY;
 
-	for (list = policy_list; list != NULL; list = list->next) {
-		policy = list->data;
+	if (policy_list == NULL)
+		return 0;
 
-		session->policy = policy;
-		break;
-	}
+	session->policy = policy_list->data;
 
 	return 0;
 }
