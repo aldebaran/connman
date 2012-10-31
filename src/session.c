@@ -377,7 +377,6 @@ static void cleanup_bearer(gpointer data)
 {
 	struct connman_session_bearer *bearer = data;
 
-	g_free(bearer->name);
 	g_free(bearer);
 }
 
@@ -407,11 +406,10 @@ static int session_parse_allowed_bearers(DBusMessageIter *iter, GSList **list)
 			return -ENOMEM;
 		}
 
-		bearer->name = g_strdup(bearer_name);
-		bearer->service_type = bearer2service(bearer->name);
+		bearer->service_type = bearer2service(bearer_name);
 
 		if (bearer->service_type == CONNMAN_SERVICE_TYPE_UNKNOWN &&
-				g_strcmp0(bearer->name, "*") == 0) {
+				g_strcmp0(bearer_name, "*") == 0) {
 			bearer->match_all = TRUE;
 		} else {
 			bearer->match_all = FALSE;
@@ -434,7 +432,6 @@ static struct connman_session_bearer *clone_bearer(
 	if (bearer == NULL)
 		return NULL;
 
-	bearer->name = g_strdup(orig->name);
 	bearer->match_all = orig->match_all;
 	bearer->service_type = orig->service_type;
 
@@ -518,7 +515,6 @@ GSList *connman_session_allowed_bearers_any(void)
 	if (bearer == NULL)
 		return NULL;
 
-	bearer->name = g_strdup("");
 	bearer->match_all = TRUE;
 	bearer->service_type = CONNMAN_SERVICE_TYPE_UNKNOWN;
 
@@ -535,9 +531,14 @@ static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 	for (list = info->config.allowed_bearers;
 			list != NULL; list = list->next) {
 		struct connman_session_bearer *bearer = list->data;
+		const char *name =
+			__connman_service_type2string(bearer->service_type);
+
+		if (name == NULL)
+			name = "*";
 
 		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-						&bearer->name);
+						&name);
 	}
 }
 
