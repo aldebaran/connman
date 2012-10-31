@@ -878,6 +878,19 @@ static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 				session);
 }
 
+static void free_session(struct connman_session *session)
+{
+	destroy_policy_config(session);
+	connman_session_free_bearers(session->info->config.allowed_bearers);
+	g_free(session->owner);
+	g_free(session->session_path);
+	g_free(session->notify_path);
+	g_free(session->info);
+	g_free(session->info_last);
+
+	g_free(session);
+}
+
 static void cleanup_session(gpointer user_data)
 {
 	struct connman_session *session = user_data;
@@ -893,15 +906,7 @@ static void cleanup_session(gpointer user_data)
 		__connman_service_disconnect(info->entry->service);
 	}
 
-	destroy_policy_config(session);
-	connman_session_free_bearers(session->info->config.allowed_bearers);
-	g_free(session->owner);
-	g_free(session->session_path);
-	g_free(session->notify_path);
-	g_free(session->info);
-	g_free(session->info_last);
-
-	g_free(session);
+	free_session(session);
 }
 
 static enum connman_session_state service_to_session_state(enum connman_service_state state)
