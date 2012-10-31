@@ -408,6 +408,14 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 
 		dbus_message_iter_get_basic(&array, &bearer_name);
 
+		if (g_strcmp0(bearer_name, "") == 0) {
+			/*
+			 * An empty string means 'no match' which
+			 * translates to allowed_bearers == NULL
+			 */
+			goto next;
+		}
+
 		bearer = g_try_new0(struct connman_session_bearer, 1);
 		if (bearer == NULL) {
 			connman_session_free_bearers(*list);
@@ -424,6 +432,7 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 
 		*list = g_slist_append(*list, bearer);
 
+	next:
 		dbus_message_iter_next(&array);
 	}
 
