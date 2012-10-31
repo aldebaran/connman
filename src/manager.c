@@ -338,8 +338,12 @@ static DBusMessage *create_session(DBusConnection *conn,
 	DBG("conn %p", conn);
 
 	err = __connman_session_create(msg);
-	if (err < 0)
+	if (err < 0) {
+		if (err == -EINPROGRESS)
+			return NULL;
+
 		return __connman_error_failed(msg, -err);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
@@ -426,7 +430,7 @@ static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("UnregisterCounter",
 			GDBUS_ARGS({ "path", "o" }), NULL,
 			unregister_counter) },
-	{ GDBUS_METHOD("CreateSession",
+	{ GDBUS_ASYNC_METHOD("CreateSession",
 			GDBUS_ARGS({ "settings", "a{sv}" },
 						{ "notifier", "o" }),
 			GDBUS_ARGS({ "session", "o" }),
