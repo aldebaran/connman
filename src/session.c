@@ -1521,6 +1521,11 @@ static const GDBusMethodTable session_methods[] = {
 	{ },
 };
 
+struct user_config {
+	enum connman_session_type type;
+	GSList *allowed_bearers;
+};
+
 static void session_create_cb(struct connman_session *session,
 				struct connman_session_config *config,
 				void *user_data, int err)
@@ -1540,10 +1545,9 @@ int __connman_session_create(DBusMessage *msg)
 	DBusMessageIter iter, array;
 	struct connman_session *session = NULL;
 	struct session_info *info, *info_last;
-	enum connman_session_type type = CONNMAN_SESSION_TYPE_ANY;
-	GSList *allowed_bearers = NULL;
-	connman_bool_t allowed_bearers_valid = FALSE;
-	connman_bool_t type_valid = FALSE;
+	struct user_config *user_config = NULL;
+	connman_bool_t user_allowed_bearers = FALSE;
+	connman_bool_t user_connection_type = FALSE;
 	int err;
 
 	owner = dbus_message_get_sender(msg);
@@ -1556,6 +1560,12 @@ int __connman_session_create(DBusMessage *msg)
 		 * ignore session creation attempt
 		 */
 		err = -EBUSY;
+		goto err;
+	}
+
+	user_config = g_try_new0(struct user_config, 1);
+	if (user_config == NULL) {
+		err = -ENOMEM;
 		goto err;
 	}
 
@@ -1575,11 +1585,12 @@ int __connman_session_create(DBusMessage *msg)
 		switch (dbus_message_iter_get_arg_type(&value)) {
 		case DBUS_TYPE_ARRAY:
 			if (g_str_equal(key, "AllowedBearers") == TRUE) {
-				err = parse_bearers(&value, &allowed_bearers);
+				err = parse_bearers(&value,
+						&user_config->allowed_bearers);
 				if (err < 0)
 					goto err;
 
-				allowed_bearers_valid = TRUE;
+				user_allowed_bearers = TRUE;
 			} else {
 				return -EINVAL;
 			}
@@ -1587,14 +1598,35 @@ int __connman_session_create(DBusMessage *msg)
 		case DBUS_TYPE_STRING:
 			if (g_str_equal(key, "ConnectionType") == TRUE) {
 				dbus_message_iter_get_basic(&value, &val);
-				type = string2type(val);
-				type_valid = TRUE;
+				user_config->type = string2type(val);
+
+				user_connection_type = TRUE;
 			} else {
 				return -EINVAL;
 			}
 		}
 		dbus_message_iter_next(&array);
 	}
+
+	/*
+	 * If the user hasn't provided a configuration, we set
+	 * the default configuration.
+	 *
+	 * For AllowedBearers this is '*', ...
+	 */
+	if (user_allowed_bearers == FALSE) {
+		user_config->allowed_bearers =
+			g_slist_append(NULL,
+				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
+		if (user_config->allowed_bearers == NULL) {
+			err = -ENOMEM;
+			goto err;
+		}
+	}
+
+	/* ... and for ConnectionType it is 'any'. */
+	if (user_connection_type == FALSE)
+		user_config->type = CONNMAN_SESSION_TYPE_ANY;
 
 	dbus_message_iter_next(&iter);
 	dbus_message_iter_get_basic(&iter, &notify_path);
@@ -1656,31 +1688,22 @@ int __connman_session_create(DBusMessage *msg)
 		ecall_session = session;
 
 	info->state = CONNMAN_SESSION_STATE_DISCONNECTED;
-	if (type_valid == FALSE)
-		type = CONNMAN_SESSION_TYPE_ANY;
 	info->config.type = apply_policy_on_type(
 				session->policy_config->type,
-				type);
+				user_config->type);
 	info->config.priority = session->policy_config->priority;
 	info->config.roaming_policy = session->policy_config->roaming_policy;
 	info->entry = NULL;
 
-	if (allowed_bearers_valid == FALSE) {
-		allowed_bearers =
-			g_slist_append(NULL,
-				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
-		if (allowed_bearers == NULL) {
-			err = -ENOMEM;
-			goto err;
-		}
-	}
-
 	err = apply_policy_on_bearers(
 			session->policy_config->allowed_bearers,
-			allowed_bearers,
+			user_config->allowed_bearers,
 			&info->config.allowed_bearers);
 	if (err < 0)
 		goto err;
+
+	g_slist_free(user_config->allowed_bearers);
+	g_free(user_config);
 
 	g_hash_table_replace(session_hash, session->session_path, session);
 
@@ -1730,7 +1753,9 @@ err:
 
 	g_free(session_path);
 
-	g_slist_free(allowed_bearers);
+	if (user_config != NULL)
+		g_slist_free(user_config->allowed_bearers);
+	g_free(user_config);
 
 	return err;
 }
