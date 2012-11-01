@@ -449,6 +449,12 @@ static int dhcp_request(struct connman_dhcp *dhcp)
 	service = connman_service_lookup_from_network(dhcp->network);
 	ipconfig = __connman_service_get_ip4config(service);
 
+	/*
+	 * Clear the addresses at startup so that lease callback will
+	 * take the lease and set ip address properly.
+	 */
+	__connman_ipconfig_clear_address(ipconfig);
+
 	return g_dhcp_client_start(dhcp_client,
 				__connman_ipconfig_get_dhcp_address(ipconfig));
 }
