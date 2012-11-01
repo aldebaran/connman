@@ -235,6 +235,14 @@ void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
 	ipaddress->gateway = NULL;
 }
 
+void __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig)
+{
+	if (ipconfig == NULL)
+		return;
+
+	connman_ipaddress_clear(ipconfig->address);
+}
+
 void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source)
 {

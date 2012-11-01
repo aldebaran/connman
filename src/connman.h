@@ -267,6 +267,7 @@ __connman_ipconfig_ref_debug(struct connman_ipconfig *ipconfig,
 void __connman_ipconfig_unref_debug(struct connman_ipconfig *ipconfig,
 			const char *file, int line, const char *caller);
 
+void __connman_ipconfig_clear_address(struct connman_ipconfig *ipconfig);
 void *__connman_ipconfig_get_data(struct connman_ipconfig *ipconfig);
 void __connman_ipconfig_set_data(struct connman_ipconfig *ipconfig, void *data);
 
