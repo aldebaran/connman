@@ -31,6 +31,11 @@ Also plugins with additional features are available:
 	- PACrunner proxy handling
 	- PolicyKit authorization support
 
+Note that when ConnMan starts, it clears all network interfaces that are
+going to be used. If this is not desired, network interfaces can be ignored
+either by setting NetworkInterfaceBlacklist in the main.conf config file or
+by using the -I command line option.
+
 
 Compilation and installation
 ============================
