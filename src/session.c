@@ -89,6 +89,7 @@ struct connman_session {
 	struct session_info *info;
 	struct session_info *info_last;
 	struct connman_session_config *policy_config;
+	GSList *user_allowed_bearers;
 
 	connman_bool_t ecall;
 
@@ -877,6 +878,7 @@ static void cleanup_session(gpointer user_data)
 
 	DBG("remove %s", session->session_path);
 
+	g_slist_free(session->user_allowed_bearers);
 	g_hash_table_destroy(session->service_hash);
 	g_sequence_free(session->service_list);
 
@@ -1392,7 +1394,7 @@ int connman_session_config_update(struct connman_session *session)
 
 	err = apply_policy_on_bearers(
 		session->policy_config->allowed_bearers,
-		info->config.allowed_bearers,
+		session->user_allowed_bearers,
 		&allowed_bearers);
 	if (err < 0)
 		return err;
@@ -1489,12 +1491,13 @@ static DBusMessage *change_session(DBusConnection *conn,
 				return __connman_error_failed(msg, err);
 
 			g_slist_free(info->config.allowed_bearers);
+			session->user_allowed_bearers = allowed_bearers;
+
 			err = apply_policy_on_bearers(
 					session->policy_config->allowed_bearers,
-					allowed_bearers,
+					session->user_allowed_bearers,
 					&info->config.allowed_bearers);
 
-			g_slist_free(allowed_bearers);
 			if (err < 0)
 				return __connman_error_failed(msg, err);
 		} else {
@@ -1636,9 +1639,11 @@ static void session_create_cb(struct connman_session *session,
 	info->config.roaming_policy = session->policy_config->roaming_policy;
 	info->entry = NULL;
 
+	session->user_allowed_bearers = user_config->allowed_bearers;
+
 	err = apply_policy_on_bearers(
 			session->policy_config->allowed_bearers,
-			user_config->allowed_bearers,
+			session->user_allowed_bearers,
 			&info->config.allowed_bearers);
 	if (err < 0)
 		goto out;
@@ -1681,7 +1686,6 @@ out:
 	}
 
 	dbus_message_unref(user_config->pending);
-	g_slist_free(user_config->allowed_bearers);
 	g_free(user_config);
 }
 
