@@ -465,6 +465,11 @@ static int filter_bearer(GSList *policy_bearers,
 	for (it = policy_bearers; it != NULL; it = it->next) {
 		policy = GPOINTER_TO_INT(it->data);
 
+		if (bearer == CONNMAN_SERVICE_TYPE_UNKNOWN) {
+			bearer = policy;
+			goto clone;
+		}
+
 		if (policy != CONNMAN_SERVICE_TYPE_UNKNOWN && policy != bearer)
 			continue;
 
