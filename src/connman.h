@@ -219,6 +219,11 @@ gboolean __connman_storage_remove_service(const char *service_id);
 int __connman_detect_init(void);
 void __connman_detect_cleanup(void);
 
+#include <connman/inotify.h>
+
+int __connman_inotify_init(void);
+void __connman_inotify_cleanup(void);
+
 #include <connman/proxy.h>
 
 int __connman_proxy_init(void);
