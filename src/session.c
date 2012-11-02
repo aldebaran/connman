@@ -160,7 +160,23 @@ static const char *type2string(enum connman_session_type type)
 	return NULL;
 }
 
-static enum connman_session_type string2type(const char *type)
+enum connman_session_roaming_policy connman_session_parse_roaming_policy(const char *policy)
+{
+	if (g_strcmp0(policy, "default") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
+	else if (g_strcmp0(policy, "always") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_ALWAYS;
+	else if (g_strcmp0(policy, "forbidden") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_FORBIDDEN;
+	else if (g_strcmp0(policy, "national") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_NATIONAL;
+	else if (g_strcmp0(policy, "international") == 0)
+		return CONNMAN_SESSION_ROAMING_POLICY_INTERNATIONAL;
+	else
+		return CONNMAN_SESSION_ROAMING_POLICY_UNKNOWN;
+}
+
+enum connman_session_type connman_session_parse_connection_type(const char *type)
 {
 	if (g_strcmp0(type, "any") == 0)
 		return CONNMAN_SESSION_TYPE_ANY;
@@ -374,9 +390,25 @@ static enum connman_session_type apply_policy_on_type(
 	return CONNMAN_SESSION_TYPE_INTERNET;
 }
 
-static int parse_bearers(DBusMessageIter *iter, GSList **list)
+int connman_session_parse_bearers(const char *token, GSList **list)
 {
 	enum connman_service_type bearer;
+	int err;
+
+	if (g_strcmp0(token, "") == 0)
+		return 0;
+
+	err = bearer2service(token, &bearer);
+	if (err < 0)
+		return err;
+
+	*list = g_slist_append(*list, GINT_TO_POINTER(bearer));
+
+	return 0;
+}
+
+static int parse_bearers(DBusMessageIter *iter, GSList **list)
+{
 	DBusMessageIter array;
 	int type, err;
 
@@ -396,24 +428,13 @@ static int parse_bearers(DBusMessageIter *iter, GSList **list)
 
 		dbus_message_iter_get_basic(&array, &bearer_name);
 
-		if (g_strcmp0(bearer_name, "") == 0) {
-			/*
-			 * An empty string means 'no match' which
-			 * translates to allowed_bearers == NULL
-			 */
-			goto next;
-		}
-
-		err = bearer2service(bearer_name, &bearer);
+		err = connman_session_parse_bearers(bearer_name, list);
 		if (err < 0) {
 			g_slist_free(*list);
 			*list = NULL;
 			return err;
 		}
 
-		*list = g_slist_append(*list, GINT_TO_POINTER(bearer));
-
-	next:
 		dbus_message_iter_next(&array);
 	}
 
@@ -1475,7 +1496,7 @@ static DBusMessage *change_session(DBusConnection *conn,
 			dbus_message_iter_get_basic(&value, &val);
 			info->config.type = apply_policy_on_type(
 				session->policy_config->type,
-				string2type(val));
+				connman_session_parse_connection_type(val));
 		} else {
 			goto err;
 		}
@@ -1716,7 +1737,8 @@ int __connman_session_create(DBusMessage *msg)
 		case DBUS_TYPE_STRING:
 			if (g_str_equal(key, "ConnectionType") == TRUE) {
 				dbus_message_iter_get_basic(&value, &val);
-				user_config->type = string2type(val);
+				user_config->type =
+					connman_session_parse_connection_type(val);
 
 				user_connection_type = TRUE;
 			} else {

@@ -80,6 +80,10 @@ void connman_session_destroy(struct connman_session *session);
 
 struct connman_session_config *connman_session_create_default_config(void);
 
+enum connman_session_roaming_policy connman_session_parse_roaming_policy(const char *policy);
+enum connman_session_type connman_session_parse_connection_type(const char *type);
+int connman_session_parse_bearers(const char *token, GSList **list);
+
 const char *connman_session_get_owner(struct connman_session *session);
 
 #ifdef __cplusplus
