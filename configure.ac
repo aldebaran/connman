@@ -12,8 +12,6 @@ AC_PREFIX_DEFAULT(/usr/local)
 
 PKG_PROG_PKG_CONFIG
 
-COMPILER_FLAGS
-
 AC_SUBST(abs_top_srcdir)
 AC_SUBST(abs_top_builddir)
 
@@ -37,6 +35,8 @@ AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
 		CFLAGS="$CFLAGS -O0"
 	fi
 ])
+
+COMPILER_FLAGS
 
 GTK_DOC_CHECK
 
