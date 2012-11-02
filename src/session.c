@@ -1341,6 +1341,46 @@ static void session_changed(struct connman_session *session,
 	session_notify(session);
 }
 
+int connman_session_config_update(struct connman_session *session)
+{
+	struct session_info *info = session->info;
+	GSList *allowed_bearers;
+	int err;
+
+	DBG("session %p", session);
+
+	/*
+	 * We update all configuration even though only one entry
+	 * might have changed. We can still optimize this later.
+	 */
+
+	err = apply_policy_on_bearers(
+		session->policy_config->allowed_bearers,
+		info->config.allowed_bearers,
+		&allowed_bearers);
+	if (err < 0)
+		return err;
+
+	g_slist_free(info->config.allowed_bearers);
+	info->config.allowed_bearers = allowed_bearers;
+
+	info->config.type = apply_policy_on_type(
+				session->policy_config->type,
+				info->config.type);
+
+	info->config.roaming_policy = session->policy_config->roaming_policy;
+
+	info->config.ecall = session->policy_config->ecall;
+	if (info->config.ecall == TRUE)
+		ecall_session = session;
+
+	info->config.priority = session->policy_config->priority;
+
+	session_changed(session, CONNMAN_SESSION_TRIGGER_SETTING);
+
+	return 0;
+}
+
 static DBusMessage *connect_session(DBusConnection *conn,
 					DBusMessage *msg, void *user_data)
 {
