@@ -562,6 +562,57 @@ static int read_configs(void)
 	return 0;
 }
 
+static void config_notify_handler(struct inotify_event *event,
+                                        const char *ident)
+{
+	char *ext;
+
+	if (ident == NULL)
+		return;
+
+	if (g_str_has_suffix(ident, ".config") == FALSE)
+		return;
+
+	ext = g_strrstr(ident, ".config");
+	if (ext == NULL)
+		return;
+
+	*ext = '\0';
+
+	if (validate_ident(ident) == FALSE) {
+		connman_error("Invalid config ident %s", ident);
+		return;
+	}
+
+	if (event->mask & IN_CREATE)
+		create_config(ident);
+
+	if (event->mask & IN_MODIFY) {
+		struct connman_config *config;
+
+		config = g_hash_table_lookup(config_table, ident);
+		if (config != NULL) {
+			int ret;
+
+			g_hash_table_remove_all(config->service_table);
+			load_config(config);
+			ret = __connman_service_provision_changed(ident);
+			if (ret > 0) {
+				/*
+				 * Re-scan the config file for any
+				 * changes
+				 */
+				g_hash_table_remove_all(config->service_table);
+				load_config(config);
+				__connman_service_provision_changed(ident);
+			}
+		}
+	}
+
+	if (event->mask & IN_DELETE)
+		g_hash_table_remove(config_table, ident);
+}
+
 static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 							gpointer user_data)
 {
@@ -593,7 +644,6 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 
 	while (bytes_read > 0) {
 		struct inotify_event *event;
-		gchar *ext;
 		gchar *ident;
 		gsize len;
 
@@ -612,50 +662,7 @@ static gboolean inotify_data(GIOChannel *channel, GIOCondition cond,
 		next_event += len;
 		bytes_read -= len;
 
-		if (ident == NULL)
-			continue;
-
-		if (g_str_has_suffix(ident, ".config") == FALSE)
-			continue;
-
-		ext = g_strrstr(ident, ".config");
-		if (ext == NULL)
-			continue;
-
-		*ext = '\0';
-
-		if (validate_ident(ident) == FALSE) {
-			connman_error("Invalid config ident %s", ident);
-			continue;
-		}
-
-		if (event->mask & IN_CREATE)
-			create_config(ident);
-
-		if (event->mask & IN_MODIFY) {
-			struct connman_config *config;
-
-			config = g_hash_table_lookup(config_table, ident);
-			if (config != NULL) {
-				int ret;
-
-				g_hash_table_remove_all(config->service_table);
-				load_config(config);
-				ret = __connman_service_provision_changed(ident);
-				if (ret > 0) {
-					/*
-					 * Re-scan the config file for any
-					 * changes
-					 */
-					g_hash_table_remove_all(config->service_table);
-					load_config(config);
-					__connman_service_provision_changed(ident);
-				}
-			}
-		}
-
-		if (event->mask & IN_DELETE)
-			g_hash_table_remove(config_table, ident);
+		config_notify_handler(event, ident);
 	}
 
 	return TRUE;
