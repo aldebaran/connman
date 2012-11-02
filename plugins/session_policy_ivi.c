@@ -24,6 +24,7 @@
 #endif
 
 #include <errno.h>
+#include <string.h>
 
 #include <glib.h>
 
@@ -34,6 +35,8 @@
 #include <connman/log.h>
 #include <connman/session.h>
 #include <connman/dbus.h>
+
+#define POLICYDIR STORAGEDIR "/session_policy_ivi"
 
 static DBusConnection *connection;
 
@@ -238,6 +241,42 @@ static struct connman_session_policy session_policy_ivi = {
 	.destroy = policy_ivi_destroy,
 };
 
+static int load_policy(struct policy_data *policy)
+{
+	return 0;
+}
+
+static int read_policies(void)
+{
+	GDir *dir;
+	int err = 0;
+
+	DBG("");
+
+	dir = g_dir_open(POLICYDIR, 0, NULL);
+	if (dir != NULL) {
+		const gchar *file;
+
+		while ((file = g_dir_read_name(dir)) != NULL) {
+			struct policy_data *policy;
+
+			policy = create_policy(file);
+			if (policy == NULL) {
+				err = -ENOMEM;
+				break;
+			}
+
+			err = load_policy(policy);
+			if (err < 0)
+				break;
+		}
+
+		g_dir_close(dir);
+	}
+
+	return err;
+}
+
 static int session_policy_ivi_init(void)
 {
 	int err;
@@ -265,6 +304,10 @@ static int session_policy_ivi_init(void)
 		err = -ENOMEM;
 		goto err;
 	}
+
+	err = read_policies();
+	if (err < 0)
+		goto err;
 
 	return 0;
 
