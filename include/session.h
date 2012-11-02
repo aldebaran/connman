@@ -80,6 +80,8 @@ void connman_session_destroy(struct connman_session *session);
 
 struct connman_session_config *connman_session_create_default_config(void);
 
+const char *connman_session_get_owner(struct connman_session *session);
+
 #ifdef __cplusplus
 }
 #endif

@@ -469,6 +469,11 @@ static int apply_policy_on_bearers(GSList *policy_bearers, GSList *bearers,
 	return 0;
 }
 
+const char *connman_session_get_owner(struct connman_session *session)
+{
+	return session->owner;
+}
+
 static void append_allowed_bearers(DBusMessageIter *iter, void *user_data)
 {
 	struct session_info *info = user_data;
