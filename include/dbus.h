@@ -171,6 +171,14 @@ static inline void connman_dbus_dict_append_fixed_array(DBusMessageIter *dict,
 dbus_bool_t connman_dbus_validate_ident(const char *ident);
 char *connman_dbus_encode_string(const char *value);
 
+typedef void (* connman_dbus_get_context_cb_t) (const unsigned char *context,
+						void *user_data, int err);
+
+int connman_dbus_get_selinux_context(DBusConnection *connection,
+                               const char *service,
+                               connman_dbus_get_context_cb_t func,
+                               void *user_data);
+
 #ifdef __cplusplus
 }
 #endif

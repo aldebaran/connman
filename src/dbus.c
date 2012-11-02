@@ -24,6 +24,7 @@
 #endif
 
 #include <string.h>
+#include <errno.h>
 #include <gdbus.h>
 
 #include "connman.h"
@@ -403,6 +404,140 @@ dbus_bool_t __connman_dbus_append_objpath_dict_array(DBusMessage *msg,
 	dbus_message_iter_close_container(&iter, &array);
 
 	return TRUE;
+}
+
+struct selinux_data {
+	connman_dbus_get_context_cb_t func;
+	void *user_data;
+};
+
+static unsigned char *parse_context(DBusMessage *msg)
+{
+	DBusMessageIter iter, array;
+	unsigned char *ctx, *p;
+	int size = 0;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_BYTE) {
+		size++;
+
+		dbus_message_iter_next(&array);
+	}
+
+	if (size == 0)
+		return NULL;
+
+	ctx = g_try_malloc0(size + 1);
+	if (ctx == NULL)
+		return NULL;
+
+	p = ctx;
+
+	dbus_message_iter_init(msg, &iter);
+	dbus_message_iter_recurse(&iter, &array);
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_BYTE) {
+		dbus_message_iter_get_basic(&array, p);
+
+		p++;
+		dbus_message_iter_next(&array);
+	}
+
+	return ctx;
+}
+
+static void selinux_get_context_reply(DBusPendingCall *call, void *user_data)
+{
+	struct selinux_data *data = user_data;
+	DBusMessage *reply;
+	unsigned char *context = NULL;
+	int err = 0;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		DBG("Failed to retrieve SELinux context");
+		err = -EIO;
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, "ay") == FALSE) {
+		DBG("Message signature is wrong");
+		err = -EINVAL;
+		goto done;
+	}
+
+	context = parse_context(reply);
+
+done:
+	(*data->func)(context, data->user_data, err);
+
+	g_free(context);
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+int connman_dbus_get_selinux_context(DBusConnection *connection,
+				const char *service,
+				connman_dbus_get_context_cb_t func,
+				void *user_data)
+{
+	struct selinux_data *data;
+	DBusPendingCall *call;
+	DBusMessage *msg = NULL;
+	int err;
+
+	if (func == NULL)
+		return -EINVAL;
+
+	data = g_try_new0(struct selinux_data, 1);
+	if (data == NULL) {
+		DBG("Can't allocate data structure");
+		return -ENOMEM;
+	}
+
+	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
+					DBUS_INTERFACE_DBUS,
+					"GetConnectionSELinuxSecurityContext");
+	if (msg == NULL) {
+		DBG("Can't allocate new message");
+		err = -ENOMEM;
+		goto err;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &service,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, msg,
+						&call, -1) == FALSE) {
+		DBG("Failed to execute method call");
+		err = -EINVAL;
+		goto err;
+	}
+
+	if (call == NULL) {
+		DBG("D-Bus connection not available");
+		err = -EINVAL;
+		goto err;
+	}
+
+	data->func = func;
+	data->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, selinux_get_context_reply,
+							data, g_free);
+
+	dbus_message_unref(msg);
+
+	return 0;
+
+err:
+	dbus_message_unref(msg);
+	g_free(data);
+
+	return err;
 }
 
 DBusConnection *connman_dbus_get_connection(void)
