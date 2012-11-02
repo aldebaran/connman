@@ -247,6 +247,18 @@ plugins_session_policy_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if SESSION_POLICY_IVI
+if SESSION_POLICY_IVI_BUILTIN
+builtin_modules += session_policy_ivi
+builtin_sources += plugins/session_policy_ivi.c
+else
+plugin_LTLIBRARIES += plugins/session_policy_ivi.la
+plugin_objects += $(plugins_session_policy_ivi_la_OBJECTS)
+plugins_session_policy_ivi_la_CFLAGS = $(plugin_cflags)
+plugins_session_policy_ivi_la_LDFLAGS = $(plugin_ldflags)
+endif
+endif
+
 EXTRA_DIST += plugins/polkit.policy
 
 plugins/net.connman.policy: plugins/polkit.policy
