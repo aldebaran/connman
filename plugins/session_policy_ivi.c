@@ -37,11 +37,34 @@
 
 static DBusConnection *connection;
 
+static GHashTable *policy_hash;
+static GHashTable *session_hash;
+
 struct create_data {
 	struct connman_session *session;
 	connman_session_config_cb callback;
 	void *user_data;
 };
+
+struct policy_data {
+	int refcount;
+	char *ident;
+
+	struct connman_session *session;
+	struct connman_session_config *config;
+};
+
+static void cleanup_policy(gpointer user_data)
+{
+	struct policy_data *policy = user_data;
+
+	if (policy->config != NULL)
+		g_slist_free(policy->config->allowed_bearers);
+
+	g_free(policy->ident);
+	g_free(policy->config);
+	g_free(policy);
+}
 
 static char *parse_ident(const unsigned char *context)
 {
@@ -86,10 +109,55 @@ static char *parse_ident(const unsigned char *context)
 	return ident;
 }
 
+static struct policy_data *create_policy(const char *ident)
+{
+	struct policy_data *policy;
+
+	DBG("ident %s", ident);
+
+	policy = g_try_new0(struct policy_data, 1);
+	if (policy == NULL)
+		return NULL;
+
+	policy->config = connman_session_create_default_config();
+	if (policy->config == NULL) {
+		g_free(policy);
+		return NULL;
+	}
+
+	policy->refcount = 1;
+	policy->ident = g_strdup(ident);
+
+	g_hash_table_replace(policy_hash, policy->ident, policy);
+
+	return policy;
+}
+
+static struct policy_data *policy_ref(struct policy_data *policy)
+{
+	DBG("%p %s ref %d", policy, policy->ident, policy->refcount + 1);
+
+	__sync_fetch_and_add(&policy->refcount, 1);
+
+	return policy;
+}
+
+static void policy_unref(struct policy_data *policy)
+{
+	DBG(" %p %s ref %d", policy, policy->ident, policy->refcount - 1);
+
+	if (__sync_fetch_and_sub(&policy->refcount, 1) != 1)
+		return;
+
+	g_hash_table_remove(policy_hash, policy->ident);
+};
+
 static void selinux_context_reply(const unsigned char *context, void *user_data,
 					int err)
 {
 	struct create_data *data = user_data;
+	struct policy_data *policy;
+	struct connman_session_config *config = NULL;
 	char *ident;
 
 	DBG("session %p", data->session);
@@ -98,11 +166,22 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 		goto done;
 
 	ident = parse_ident(context);
+	if (ident == NULL) {
+		err = -EINVAL;
+		goto done;
+	}
 
-	DBG("ident %s", ident);
+	policy = create_policy(ident);
+	if (policy == NULL) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	g_hash_table_replace(session_hash, data->session, policy);
+	config = policy->config;
 
 done:
-	(*data->callback)(data->session, NULL, data->user_data, err);
+	(*data->callback)(data->session, config, data->user_data, err);
 
 	g_free(data);
 	g_free(ident);
@@ -142,7 +221,14 @@ static int policy_ivi_create(struct connman_session *session,
 
 static void policy_ivi_destroy(struct connman_session *session)
 {
+	struct policy_data *policy;
+
 	DBG("session %p", session);
+
+	policy = g_hash_table_lookup(session_hash, session);
+	g_hash_table_remove(session_hash, session);
+
+	policy_unref(policy);
 }
 
 static struct connman_session_policy session_policy_ivi = {
@@ -161,12 +247,35 @@ static int session_policy_ivi_init(void)
 		return -EIO;
 
 	err = connman_session_policy_register(&session_policy_ivi);
-	if (err < 0)
+	if (err < 0) {
+		dbus_connection_unref(connection);
+		return err;
+	}
+
+	session_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+						NULL, NULL);
+	if (session_hash == NULL) {
+		err = -ENOMEM;
 		goto err;
+	}
+
+	policy_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
+					NULL, cleanup_policy);
+	if (policy_hash == NULL) {
+		err = -ENOMEM;
+		goto err;
+	}
 
 	return 0;
 
 err:
+	if (session_hash != NULL)
+		g_hash_table_destroy(session_hash);
+	if (policy_hash != NULL)
+		g_hash_table_destroy(policy_hash);
+
+	connman_session_policy_unregister(&session_policy_ivi);
+
 	dbus_connection_unref(connection);
 
 	return err;
@@ -174,6 +283,9 @@ err:
 
 static void session_policy_ivi_exit(void)
 {
+	g_hash_table_destroy(session_hash);
+	g_hash_table_destroy(policy_hash);
+
 	connman_session_policy_unregister(&session_policy_ivi);
 
 	dbus_connection_unref(connection);
