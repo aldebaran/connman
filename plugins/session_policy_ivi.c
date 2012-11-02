@@ -37,13 +37,107 @@
 
 static DBusConnection *connection;
 
+struct create_data {
+	struct connman_session *session;
+	connman_session_config_cb callback;
+	void *user_data;
+};
+
+static char *parse_ident(const unsigned char *context)
+{
+	char *str, *ident, **tokens;
+
+	/*
+	 * SELinux combines Role-Based Access Control (RBAC), Type
+	 * Enforcment (TE) and optionally Multi-Level Security (MLS).
+	 *
+	 * When SELinux is enabled all processes and files are labeled
+	 * with a contex that contains information such as user, role
+	 * type (and optionally a level). E.g.
+	 *
+	 * $ ls -Z
+	 * -rwxrwxr-x. wagi wagi unconfined_u:object_r:haifux_exec_t:s0 session_ui.py
+	 *
+	 * For identifyng application we (ab)using the type
+	 * information. In the above example the haifux_exec_t type
+	 * will be transfered to haifux_t as defined in the domain
+	 * transition and thus we are able to identify the application
+	 * as haifux_t.
+	 */
+
+	str = g_strdup((const gchar*)context);
+	if (str == NULL)
+		return NULL;
+
+	DBG("SELinux context %s", str);
+
+	tokens = g_strsplit(str, ":", 0);
+	if (tokens == NULL) {
+		g_free(str);
+		return NULL;
+	}
+
+	/* Use the SELinux type as identification token. */
+	ident = g_strdup(tokens[2]);
+
+	g_strfreev(tokens);
+	g_free(str);
+
+	return ident;
+}
+
+static void selinux_context_reply(const unsigned char *context, void *user_data,
+					int err)
+{
+	struct create_data *data = user_data;
+	char *ident;
+
+	DBG("session %p", data->session);
+
+	if (err < 0)
+		goto done;
+
+	ident = parse_ident(context);
+
+	DBG("ident %s", ident);
+
+done:
+	(*data->callback)(data->session, NULL, data->user_data, err);
+
+	g_free(data);
+	g_free(ident);
+}
+
 static int policy_ivi_create(struct connman_session *session,
 				connman_session_config_cb callback,
 				void *user_data)
 {
+	struct create_data *data;
+	const char *owner;
+	int err;
+
 	DBG("session %p", session);
 
-	return -ENOMEM;
+	data = g_try_new0(struct create_data, 1);
+	if (data == NULL)
+		return -ENOMEM;
+
+	data->session = session;
+	data->callback = callback;
+	data->user_data = user_data;
+
+	owner = connman_session_get_owner(session);
+
+	err = connman_dbus_get_selinux_context(connection, owner,
+					selinux_context_reply,
+					data);
+	if (err < 0) {
+		connman_error("Could not get SELinux context");
+		g_free(data);
+		return err;
+	}
+
+	return 0;
 }
 
 static void policy_ivi_destroy(struct connman_session *session)
