@@ -3586,8 +3586,12 @@ static void network_remove_result(const char *error,
 
 	SUPPLICANT_DBG("");
 
-	if (error != NULL)
+	if (error != NULL) {
 		result = -EIO;
+		if (g_strcmp0("org.freedesktop.DBus.Error.UnknownMethod",
+						error) == 0)
+			result = -ECONNABORTED;
+	}
 
 	if (data->callback != NULL)
 		data->callback(result, data->interface, data->user_data);
@@ -3620,11 +3624,21 @@ static void interface_disconnect_result(const char *error,
 				DBusMessageIter *iter, void *user_data)
 {
 	struct interface_data *data = user_data;
+	int result = 0;
 
 	SUPPLICANT_DBG("");
 
-	if (error != NULL && data->callback != NULL)
-		data->callback(-EIO, data->interface, data->user_data);
+	if (error != NULL) {
+		result = -EIO;
+		if (g_strcmp0("org.freedesktop.DBus.Error.UnknownMethod",
+						error) == 0)
+			result = -ECONNABORTED;
+	}
+
+	if (result < 0 && data->callback != NULL) {
+		data->callback(result, data->interface, data->user_data);
+		data->callback = NULL;
+	}
 
 	/* If we are disconnecting from previous WPS successful
 	 * association. i.e.: it did not went through AddNetwork,
@@ -3634,7 +3648,10 @@ static void interface_disconnect_result(const char *error,
 		return;
 	}
 
-	network_remove(data);
+	if (result != -ECONNABORTED)
+		network_remove(data);
+	else
+		dbus_free(data);
 }
 
 int g_supplicant_interface_disconnect(GSupplicantInterface *interface,
