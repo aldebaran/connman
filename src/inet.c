@@ -1382,9 +1382,7 @@ int connman_inet_setup_tunnel(char *tunnel, int mtu)
 	index = if_nametoindex(tunnel);
 
 	err = connman_inet_set_mtu(index, mtu);
-	if (err < 0)
-		return err;
-	else if (err)
+	if (err != 0)
 		goto done;
 
 	memset(&ifr, 0, sizeof(ifr));
