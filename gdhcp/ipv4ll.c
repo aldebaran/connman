@@ -111,7 +111,7 @@ int ipv4ll_send_arp_packet(uint8_t* source_eth, uint32_t source_ip,
 	n = sendto(fd, &p, sizeof(p), 0,
 	       (struct sockaddr*) &dest, sizeof(dest));
 	if (n < 0)
-		return -errno;
+		n = -errno;
 
 	close(fd);
 
