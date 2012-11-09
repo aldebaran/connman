@@ -1003,10 +1003,10 @@ guint g_resolv_lookup_hostname(GResolv *resolv, const char *hostname,
 {
 	struct resolv_lookup *lookup;
 
-	debug(resolv, "hostname %s", hostname);
-
 	if (resolv == NULL)
 		return 0;
+
+	debug(resolv, "hostname %s", hostname);
 
 	if (resolv->nameserver_list == NULL) {
 		int i;
