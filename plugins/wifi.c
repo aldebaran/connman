@@ -1238,6 +1238,14 @@ static void disconnect_callback(int result, GSupplicantInterface *interface,
 {
 	struct wifi_data *wifi = user_data;
 
+	DBG("result %d supplicant interface %p wifi %p",
+			result, interface, wifi);
+
+	if (result == -ECONNABORTED) {
+		DBG("wifi interface no longer available");
+		return;
+	}
+
 	if (wifi->network != NULL) {
 		/*
 		 * if result < 0 supplican return an error because
