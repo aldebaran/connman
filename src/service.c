@@ -32,6 +32,7 @@
 
 #include <connman/storage.h>
 #include <connman/setting.h>
+#include <connman/agent.h>
 
 #include "connman.h"
 
@@ -4729,9 +4730,11 @@ static void service_complete(struct connman_service *service)
 	service_save(service);
 }
 
-static void report_error_cb(struct connman_service *service,
-			gboolean retry, void *user_data)
+static void report_error_cb(void *user_context, gboolean retry,
+							void *user_data)
 {
+	struct connman_service *service = user_context;
+
 	if (retry == TRUE)
 		__connman_service_connect(service);
 	else {
@@ -5136,7 +5139,7 @@ static int service_indicate_state(struct connman_service *service)
 
 	if (new_state == CONNMAN_SERVICE_STATE_FAILURE) {
 		if (service->userconnect == TRUE &&
-			__connman_agent_report_error(service,
+			connman_agent_report_error(service, service->path,
 					error2string(service->error),
 					report_error_cb, NULL) == -EINPROGRESS)
 			return 0;
@@ -5721,7 +5724,7 @@ int __connman_service_disconnect(struct connman_service *service)
 
 	service->userconnect = FALSE;
 
-	__connman_agent_cancel(service);
+	connman_agent_cancel(service);
 
 	if (service->network != NULL) {
 		err = __connman_network_disconnect(service->network);
@@ -6655,9 +6658,52 @@ static void remove_unprovisioned_services()
 	g_strfreev(services);
 }
 
+static int agent_probe(struct connman_agent *agent)
+{
+	DBG("agent %p", agent);
+	return 0;
+}
+
+static void agent_remove(struct connman_agent *agent)
+{
+	DBG("agent %p", agent);
+}
+
+static void *agent_context_ref(void *context)
+{
+	struct connman_service *service = context;
+
+	return (void *)connman_service_ref(service);
+}
+
+static void agent_context_unref(void *context)
+{
+	struct connman_service *service = context;
+
+	connman_service_unref(service);
+}
+
+static struct connman_agent_driver agent_driver = {
+	.name		= "service",
+	.interface      = CONNMAN_AGENT_INTERFACE,
+	.probe		= agent_probe,
+	.remove		= agent_remove,
+	.context_ref	= agent_context_ref,
+	.context_unref	= agent_context_unref,
+};
+
 int __connman_service_init(void)
 {
+	int err;
+
 	DBG("");
+
+	err = connman_agent_driver_register(&agent_driver);
+	if (err < 0) {
+		connman_error("Cannot register agent driver for %s",
+						agent_driver.name);
+		return err;
+	}
 
 	connection = connman_dbus_get_connection();
 
@@ -6704,6 +6750,8 @@ void __connman_service_cleanup(void)
 		g_hash_table_destroy(services_notify->add);
 	}
 	g_free(services_notify);
+
+	connman_agent_driver_unregister(&agent_driver);
 
 	dbus_connection_unref(connection);
 }

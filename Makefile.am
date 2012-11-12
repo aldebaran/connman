@@ -8,7 +8,7 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/resolver.h include/ipconfig.h \
 			include/device.h include/network.h include/inet.h \
 			include/storage.h include/provision.h \
-			include/session.h include/ipaddress.h
+			include/session.h include/ipaddress.h include/agent.h
 
 nodist_include_HEADERS = include/version.h
 
@@ -86,7 +86,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
 			src/error.c src/plugin.c src/task.c \
 			src/device.c src/network.c src/connection.c \
 			src/manager.c src/service.c \
-			src/clock.c src/timezone.c \
+			src/clock.c src/timezone.c src/agent-connman.c \
 			src/agent.c src/notifier.c src/provider.c \
 			src/resolver.c src/ipconfig.c src/detect.c src/inet.c \
 			src/dhcp.c src/dhcpv6.c src/rtnl.c src/proxy.c \
@@ -121,7 +121,7 @@ vpn_connman_vpnd_SOURCES = $(gdbus_sources) $(builtin_vpn_sources) \
 			vpn/vpn-manager.c vpn/vpn-provider.c \
 			vpn/vpn-provider.h vpn/vpn-rtnl.h \
 			vpn/vpn-ipconfig.c src/inet.c vpn/vpn-rtnl.c \
-			src/dbus.c src/storage.c src/ipaddress.c
+			src/dbus.c src/storage.c src/ipaddress.c src/agent.c
 
 vpn_connman_vpnd_LDADD = $(builtin_vpn_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 				@GNUTLS_LIBS@ -lresolv -ldl

@@ -559,12 +559,12 @@ int main(int argc, char *argv[])
 	__connman_storage_migrate();
 	__connman_technology_init();
 	__connman_notifier_init();
+	__connman_agent_init();
 	__connman_service_init();
 	__connman_provider_init();
 	__connman_network_init();
 	__connman_device_init(option_device, option_nodevice);
 
-	__connman_agent_init();
 	__connman_ippool_init();
 	__connman_iptables_init();
 	__connman_nat_init();
@@ -625,7 +625,6 @@ int main(int argc, char *argv[])
 	__connman_config_cleanup();
 	__connman_manager_cleanup();
 	__connman_counter_cleanup();
-	__connman_agent_cleanup();
 	__connman_tethering_cleanup();
 	__connman_nat_cleanup();
 	__connman_iptables_cleanup();
@@ -633,6 +632,7 @@ int main(int argc, char *argv[])
 	__connman_device_cleanup();
 	__connman_network_cleanup();
 	__connman_service_cleanup();
+	__connman_agent_cleanup();
 	__connman_ipconfig_cleanup();
 	__connman_notifier_cleanup();
 	__connman_technology_cleanup();

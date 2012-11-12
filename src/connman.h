@@ -70,9 +70,6 @@ int __connman_timezone_change(const char *zone);
 int __connman_agent_init(void);
 void __connman_agent_cleanup(void);
 
-int __connman_agent_register(const char *sender, const char *path);
-int __connman_agent_unregister(const char *sender, const char *path);
-
 void __connman_counter_send_usage(const char *path,
 					DBusMessage *message);
 int __connman_counter_register(const char *owner, const char *path,
@@ -97,8 +94,6 @@ typedef void (* authentication_cb_t) (struct connman_service *service,
 typedef void (* browser_authentication_cb_t) (struct connman_service *service,
 				connman_bool_t authentication_done,
 				const char *error, void *user_data);
-typedef void (* report_error_cb_t) (struct connman_service *service,
-				gboolean retry, void *user_data);
 int __connman_agent_request_passphrase_input(struct connman_service *service,
 				authentication_cb_t callback, void *user_data);
 int __connman_agent_request_login_input(struct connman_service *service,
@@ -106,10 +101,6 @@ int __connman_agent_request_login_input(struct connman_service *service,
 int __connman_agent_request_browser(struct connman_service *service,
 				browser_authentication_cb_t callback,
 				const char *url, void *user_data);
-int __connman_agent_report_error(struct connman_service *service,
-				const char *error,
-				report_error_cb_t callback, void *user_data);
-
 
 #include <connman/log.h>
 

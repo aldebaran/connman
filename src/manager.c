@@ -27,6 +27,8 @@
 
 #include <gdbus.h>
 
+#include <connman/agent.h>
+
 #include "connman.h"
 
 static connman_bool_t connman_state_idle;
@@ -258,7 +260,7 @@ static DBusMessage *register_agent(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	err = __connman_agent_register(sender, path);
+	err = connman_agent_register(sender, path);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 
@@ -278,7 +280,7 @@ static DBusMessage *unregister_agent(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	err = __connman_agent_unregister(sender, path);
+	err = connman_agent_unregister(sender, path);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 

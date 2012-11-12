@@ -28,6 +28,8 @@
 #include <string.h>
 
 #include <gdbus.h>
+#include <connman/agent.h>
+#include <connman/setting.h>
 
 #include "connman.h"
 
@@ -36,77 +38,34 @@ static guint agent_watch = 0;
 static gchar *agent_path = NULL;
 static gchar *agent_sender = NULL;
 
-typedef void (*agent_queue_cb)(DBusMessage *reply, void *user_data);
-
-struct agent_data {
-	struct connman_service *service;
+struct connman_agent {
+	void *user_context;
+	void *user_data;
 	DBusMessage *msg;
 	DBusPendingCall *call;
 	int timeout;
 	agent_queue_cb callback;
-	void *user_data;
+	struct connman_agent_driver *driver;
 };
 
 static GList *agent_queue = NULL;
-static struct agent_data *agent_request = NULL;
+static struct connman_agent *agent_request = NULL;
+static GSList *driver_list = NULL;
 
-static void agent_free(void)
+void connman_agent_get_info(const char **sender, const char **path)
 {
-	agent_watch = 0;
-
-	g_free(agent_sender);
-	agent_sender = NULL;
-
-	g_free(agent_path);
-	agent_path = NULL;
-
-	__connman_agent_cancel(NULL);
+	*sender = agent_sender;
+	*path = agent_path;
 }
 
-static void agent_disconnect(DBusConnection *conn, void *data)
-{
-	DBG("data %p", data);
-
-	agent_free();
-}
-
-int __connman_agent_register(const char *sender, const char *path)
-{
-	DBG("sender %s path %s", sender, path);
-
-	if (agent_path != NULL)
-		return -EEXIST;
-
-	agent_sender = g_strdup(sender);
-	agent_path = g_strdup(path);
-
-	agent_watch = g_dbus_add_disconnect_watch(connection, sender,
-						agent_disconnect, NULL, NULL);
-
-	return 0;
-}
-
-int __connman_agent_unregister(const char *sender, const char *path)
-{
-	DBG("sender %s path %s", sender, path);
-
-	if (agent_path == NULL)
-		return -ESRCH;
-
-	if (agent_watch > 0)
-		g_dbus_remove_watch(connection, agent_watch);
-
-	agent_free();
-
-	return 0;
-}
-
-static void agent_data_free(struct agent_data *data)
+static void agent_data_free(struct connman_agent *data)
 {
 	if (data == NULL)
 		return;
-	if (data->service != NULL)
-		connman_service_unref(data->service);
+	if (data->user_context != NULL) {
+		if (data->driver != NULL && data->driver->context_unref != NULL)
+			data->driver->context_unref(data->user_context);
+	}
 	if (data->msg != NULL)
 		dbus_message_unref(data->msg);
 	if (data->call != NULL)
@@ -130,16 +89,14 @@ static int agent_send_next_request(void)
 
 	if (dbus_connection_send_with_reply(connection, agent_request->msg,
 					&agent_request->call,
-					agent_request->timeout)
-			== FALSE)
+					agent_request->timeout)	== FALSE)
 		goto fail;
 
 	if (agent_request->call == NULL)
 		goto fail;
 
 	if (dbus_pending_call_set_notify(agent_request->call,
-					agent_receive_message, agent_request,
-					NULL) == FALSE)
+			agent_receive_message, agent_request, NULL) == FALSE)
 		goto fail;
 
 	dbus_message_unref(agent_request->msg);
@@ -152,15 +109,15 @@ fail:
 	return -ESRCH;
 }
 
-static int agent_send_cancel(void)
+static int agent_send_cancel(struct connman_agent *agent)
 {
 	DBusMessage *message;
 
-	if (agent_sender == NULL)
+	if (agent_sender == NULL || agent == NULL || agent->driver == NULL)
 		return 0;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
-			CONNMAN_AGENT_INTERFACE, "Cancel");
+			agent->driver->interface, "Cancel");
 	if (message != NULL) {
 		dbus_message_set_no_reply(message, TRUE);
 		g_dbus_send_message(connection, message);
@@ -173,8 +130,9 @@ static int agent_send_cancel(void)
 
 static void agent_receive_message(DBusPendingCall *call, void *user_data)
 {
-	struct agent_data *queue_data = user_data;
+	struct connman_agent *queue_data = user_data;
 	DBusMessage *reply;
+	int err;
 
 	DBG("waiting for %p received %p", agent_request, queue_data);
 
@@ -188,11 +146,11 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data)
 	dbus_pending_call_unref(call);
 	queue_data->call = NULL;
 
-	if (dbus_message_is_error(reply, "org.freedesktop.DBus.Error.Timeout")
-			== TRUE || dbus_message_is_error(reply,
-					"org.freedesktop.DBus.Error.TimedOut")
-			== TRUE) {
-		agent_send_cancel();
+	if (dbus_message_is_error(reply,
+			"org.freedesktop.DBus.Error.Timeout") == TRUE ||
+			dbus_message_is_error(reply,
+			"org.freedesktop.DBus.Error.TimedOut") == TRUE) {
+		agent_send_cancel(queue_data->user_context);
 	}
 
 	queue_data->callback(reply, queue_data->user_data);
@@ -201,38 +159,59 @@ static void agent_receive_message(DBusPendingCall *call, void *user_data)
 	agent_data_free(queue_data);
 	agent_request = NULL;
 
-	agent_send_next_request();
+	err = agent_send_next_request();
+	if (err < 0)
+		DBG("send next request failed (%s/%d)", strerror(-err), -err);
 }
 
-static int agent_queue_message(struct connman_service *service,
-		DBusMessage *msg, int timeout,
-		agent_queue_cb callback, void *user_data)
+static struct connman_agent_driver *get_driver(void)
 {
-	struct agent_data *queue_data;
+	return g_slist_nth_data(driver_list, 0);
+}
 
-	if (service == NULL || callback == NULL)
+int connman_agent_queue_message(void *user_context,
+				DBusMessage *msg, int timeout,
+				agent_queue_cb callback, void *user_data)
+{
+	struct connman_agent *queue_data;
+	struct connman_agent_driver *driver;
+	int err;
+
+	if (user_context == NULL || callback == NULL)
 		return -EBADMSG;
 
-	queue_data = g_new0(struct agent_data, 1);
+	queue_data = g_new0(struct connman_agent, 1);
 	if (queue_data == NULL)
 		return -ENOMEM;
 
-	queue_data->service = connman_service_ref(service);
+	driver = get_driver();
+	DBG("driver %p", driver);
+
+	if (driver != NULL && driver->context_ref != NULL)
+		queue_data->user_context = driver->context_ref(user_context);
+	else
+		queue_data->user_context = user_context;
+
 	queue_data->msg = dbus_message_ref(msg);
 	queue_data->timeout = timeout;
 	queue_data->callback = callback;
 	queue_data->user_data = user_data;
 	agent_queue = g_list_append(agent_queue, queue_data);
 
-	return agent_send_next_request();
+	err = agent_send_next_request();
+	if (err < 0)
+		DBG("send next request failed (%s/%d)", strerror(-err), -err);
+
+	return err;
 }
 
-void __connman_agent_cancel(struct connman_service *service)
+void connman_agent_cancel(void *user_context)
 {
 	GList *item, *next;
-	struct agent_data *queued_req;
+	struct connman_agent *queued_req;
+	int err;
 
-	DBG("service %p", service);
+	DBG("context %p", user_context);
 
 	item = agent_queue;
 
@@ -240,7 +219,8 @@ void __connman_agent_cancel(struct connman_service *service)
 		next = g_list_next(item);
 		queued_req = item->data;
 
-		if (queued_req->service == service || service == NULL) {
+		if (queued_req->user_context == user_context ||
+							user_context == NULL) {
 			agent_data_free(queued_req);
 			agent_queue = g_list_delete_link(agent_queue, item);
 		}
@@ -251,605 +231,74 @@ void __connman_agent_cancel(struct connman_service *service)
 	if (agent_request == NULL)
 		return;
 
-	if (agent_request->service != service && service != NULL)
+	if (agent_request->user_context != user_context &&
+						user_context != NULL)
 		return;
+
+	agent_send_cancel(agent_request);
 
 	agent_data_free(agent_request);
 	agent_request = NULL;
 
-	agent_send_cancel();
-
-	agent_send_next_request();
+	err = agent_send_next_request();
+	if (err < 0)
+		DBG("send next request failed (%s/%d)", strerror(-err), -err);
 }
 
-static connman_bool_t check_reply_has_dict(DBusMessage *reply)
+static void agent_free(void)
 {
-	const char *signature = DBUS_TYPE_ARRAY_AS_STRING
-		DBUS_DICT_ENTRY_BEGIN_CHAR_AS_STRING
-		DBUS_TYPE_STRING_AS_STRING
-		DBUS_TYPE_VARIANT_AS_STRING
-		DBUS_DICT_ENTRY_END_CHAR_AS_STRING;
+	if (agent_watch > 0)
+		g_dbus_remove_watch(connection, agent_watch);
 
-	if (dbus_message_has_signature(reply, signature) == TRUE)
-		return TRUE;
+	agent_watch = 0;
 
-	connman_warn("Reply %s to %s from %s has wrong signature %s",
-			signature,
-			dbus_message_get_interface(reply),
-			dbus_message_get_sender(reply),
-			dbus_message_get_signature(reply));
+	g_free(agent_sender);
+	agent_sender = NULL;
 
-	return FALSE;
+	g_free(agent_path);
+	agent_path = NULL;
+
+	connman_agent_cancel(NULL);
 }
 
-struct request_input_reply {
-	struct connman_service *service;
-	authentication_cb_t callback;
-	void *user_data;
-};
-
-static void request_input_passphrase_reply(DBusMessage *reply, void *user_data)
+static void agent_disconnect(DBusConnection *conn, void *data)
 {
-	struct request_input_reply *passphrase_reply = user_data;
-	connman_bool_t values_received = FALSE;
-	connman_bool_t wps = FALSE;
-	const char *error = NULL;
-	char *identity = NULL;
-	char *passphrase = NULL;
-	char *wpspin = NULL;
-	char *key;
-	char *name = NULL;
-	int name_len = 0;
-	DBusMessageIter iter, dict;
-
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
-		error = dbus_message_get_error_name(reply);
-		goto done;
-	}
-
-	if (check_reply_has_dict(reply) == FALSE)
-		goto done;
-
-	values_received = TRUE;
-
-	dbus_message_iter_init(reply, &iter);
-	dbus_message_iter_recurse(&iter, &dict);
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			break;
-
-		dbus_message_iter_get_basic(&entry, &key);
-
-		if (g_str_equal(key, "Identity")) {
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			dbus_message_iter_get_basic(&value, &identity);
-
-		} else if (g_str_equal(key, "Passphrase")) {
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			dbus_message_iter_get_basic(&value, &passphrase);
-
-		} else if (g_str_equal(key, "WPS")) {
-			wps = TRUE;
-
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			dbus_message_iter_get_basic(&value, &wpspin);
-			break;
-		} else if (g_str_equal(key, "Name")) {
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			dbus_message_iter_get_basic(&value, &name);
-			name_len = strlen(name);
-		} else if (g_str_equal(key, "SSID")) {
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			if (dbus_message_iter_get_arg_type(&value)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			if (dbus_message_iter_get_element_type(&value)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_get_fixed_array(&value, &name,
-							&name_len);
-		}
-		dbus_message_iter_next(&dict);
-	}
-
-done:
-	passphrase_reply->callback(passphrase_reply->service, values_received,
-				name, name_len,
-				identity, passphrase,
-				wps, wpspin, error,
-				passphrase_reply->user_data);
-	g_free(passphrase_reply);
+	DBG("data %p", data);
+	agent_free();
 }
 
-static void request_input_append_alternates(DBusMessageIter *iter,
-							void *user_data)
+int connman_agent_register(const char *sender, const char *path)
 {
-	const char *str = user_data;
-	char **alternates, **alternative;
+	DBG("sender %s path %s", sender, path);
+	if (agent_path != NULL)
+		return -EEXIST;
 
-	if (str == NULL)
-		return;
+	agent_sender = g_strdup(sender);
+	agent_path = g_strdup(path);
 
-	alternates = g_strsplit(str, ",", 0);
-	if (alternates == NULL)
-		return;
+	agent_watch = g_dbus_add_disconnect_watch(connection, sender,
+						agent_disconnect, NULL, NULL);
 
-	for (alternative = alternates; *alternative != NULL; alternative++)
-		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
-								alternative);
-
-	g_strfreev(alternates);
+	return 0;
 }
 
-static void request_input_append_identity(DBusMessageIter *iter,
-							void *user_data)
+int connman_agent_unregister(const char *sender, const char *path)
 {
-	char *str = "string";
+	DBG("sender %s path %s", sender, path);
 
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &str);
-	str = "mandatory";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &str);
-}
-
-static void request_input_append_passphrase(DBusMessageIter *iter,
-							void *user_data)
-{
-	struct connman_service *service = user_data;
-	char *value;
-	const char *phase2;
-
-	switch (__connman_service_get_security(service)) {
-	case CONNMAN_SERVICE_SECURITY_WEP:
-		value = "wep";
-		break;
-	case CONNMAN_SERVICE_SECURITY_PSK:
-		value = "psk";
-		break;
-	case CONNMAN_SERVICE_SECURITY_8021X:
-		phase2 = __connman_service_get_phase2(service);
-
-		if (phase2 != NULL && (
-				g_str_has_suffix(phase2, "GTC") == TRUE ||
-				g_str_has_suffix(phase2, "OTP") == TRUE))
-			value = "response";
-		else
-			value = "passphrase";
-
-		break;
-	default:
-		value = "string";
-		break;
-	}
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &value);
-	value = "mandatory";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &value);
-
-	if (__connman_service_wps_enabled(service) == TRUE) {
-		connman_dbus_dict_append_array(iter, "Alternates",
-					DBUS_TYPE_STRING,
-					request_input_append_alternates,
-					"WPS");
-	}
-}
-
-static void request_input_append_wps(DBusMessageIter *iter, void *user_data)
-{
-	const char *str = "wpspin";
-
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &str);
-	str = "alternate";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &str);
-}
-
-static void request_input_append_name(DBusMessageIter *iter, void *user_data)
-{
-	const char *str = "string";
-
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &str);
-	str = "mandatory";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &str);
-	connman_dbus_dict_append_array(iter, "Alternates",
-				DBUS_TYPE_STRING,
-				request_input_append_alternates,
-				"SSID");
-}
-
-static void request_input_append_ssid(DBusMessageIter *iter, void *user_data)
-{
-	const char *str = "ssid";
-
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &str);
-	str = "alternate";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &str);
-}
-
-static void request_input_append_password(DBusMessageIter *iter,
-							void *user_data)
-{
-	char *str = "passphrase";
-
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &str);
-	str = "mandatory";
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &str);
-}
-
-struct previous_passphrase_data {
-	const char *passphrase;
-	const char *type;
-};
-
-static void request_input_append_previouspassphrase(DBusMessageIter *iter,
-							void *user_data)
-{
-	struct previous_passphrase_data *data = user_data;
-	const char *requirement = "informational";
-
-	connman_dbus_dict_append_basic(iter, "Type",
-				DBUS_TYPE_STRING, &data->type);
-
-	connman_dbus_dict_append_basic(iter, "Requirement",
-				DBUS_TYPE_STRING, &requirement);
-
-	connman_dbus_dict_append_basic(iter, "Value",
-				DBUS_TYPE_STRING, &data->passphrase);
-}
-
-static void previous_passphrase_handler(DBusMessageIter *iter,
-					struct connman_service *service)
-{
-	enum connman_service_security security;
-	struct previous_passphrase_data data;
-	struct connman_network *network;
-
-	network = __connman_service_get_network(service);
-	data.passphrase = connman_network_get_string(network, "WiFi.PinWPS");
-
-	if (connman_network_get_bool(network, "WiFi.UseWPS") == TRUE &&
-						data.passphrase != NULL) {
-		data.type = "wpspin";
-	} else {
-		data.passphrase = __connman_service_get_passphrase(service);
-		if (data.passphrase == NULL)
-			return;
-
-		security = __connman_service_get_security(service);
-		switch (security) {
-		case CONNMAN_SERVICE_SECURITY_WEP:
-			data.type = "wep";
-			break;
-		case CONNMAN_SERVICE_SECURITY_PSK:
-			data.type  = "psk";
-			break;
-		/*
-		 * This should never happen: no passphrase is set if security
-		 * is not one of the above. */
-		default:
-			break;
-		}
-	}
-
-	connman_dbus_dict_append_dict(iter, "PreviousPassphrase",
-			request_input_append_previouspassphrase, &data);
-}
-
-static void request_input_login_reply(DBusMessage *reply, void *user_data)
-{
-	struct request_input_reply *username_password_reply = user_data;
-	const char *error = NULL;
-	connman_bool_t values_received = FALSE;
-	char *username = NULL;
-	char *password = NULL;
-	char *key;
-	DBusMessageIter iter, dict;
-
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
-		error = dbus_message_get_error_name(reply);
-		goto done;
-	}
-
-	if (check_reply_has_dict(reply) == FALSE)
-		goto done;
-
-	values_received = TRUE;
-
-	dbus_message_iter_init(reply, &iter);
-	dbus_message_iter_recurse(&iter, &dict);
-	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
-		DBusMessageIter entry, value;
-
-		dbus_message_iter_recurse(&dict, &entry);
-		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
-			break;
-
-		dbus_message_iter_get_basic(&entry, &key);
-
-		if (g_str_equal(key, "Username")) {
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry)
-							!= DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			dbus_message_iter_get_basic(&value, &username);
-
-		} else if (g_str_equal(key, "Password")) {
-			dbus_message_iter_next(&entry);
-			if (dbus_message_iter_get_arg_type(&entry) !=
-							DBUS_TYPE_VARIANT)
-				break;
-			dbus_message_iter_recurse(&entry, &value);
-			dbus_message_iter_get_basic(&value, &password);
-		}
-
-		dbus_message_iter_next(&dict);
-	}
-
-done:
-	username_password_reply->callback(username_password_reply->service,
-					values_received, NULL, 0,
-					username, password,
-					FALSE, NULL, error,
-					username_password_reply->user_data);
-	g_free(username_password_reply);
-}
-
-int __connman_agent_request_passphrase_input(struct connman_service *service,
-				authentication_cb_t callback, void *user_data)
-{
-	DBusMessage *message;
-	const char *path;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	struct request_input_reply *passphrase_reply;
-	int err;
-
-	if (service == NULL || agent_path == NULL || callback == NULL)
+	if (agent_path == NULL)
 		return -ESRCH;
 
-	message = dbus_message_new_method_call(agent_sender, agent_path,
-					CONNMAN_AGENT_INTERFACE,
-					"RequestInput");
-	if (message == NULL)
-		return -ENOMEM;
+	if (agent_watch > 0)
+		g_dbus_remove_watch(connection, agent_watch);
 
-	dbus_message_iter_init_append(message, &iter);
+	agent_free();
 
-	path = __connman_service_get_path(service);
-	dbus_message_iter_append_basic(&iter,
-				DBUS_TYPE_OBJECT_PATH, &path);
-
-	connman_dbus_dict_open(&iter, &dict);
-
-	if (__connman_service_is_hidden(service)) {
-		connman_dbus_dict_append_dict(&dict, "Name",
-					request_input_append_name, NULL);
-		connman_dbus_dict_append_dict(&dict, "SSID",
-					request_input_append_ssid, NULL);
-	}
-
-	if (__connman_service_get_security(service) ==
-			CONNMAN_SERVICE_SECURITY_8021X) {
-		connman_dbus_dict_append_dict(&dict, "Identity",
-					request_input_append_identity, service);
-	}
-
-	if (__connman_service_get_security(service) !=
-			CONNMAN_SERVICE_SECURITY_NONE) {
-		connman_dbus_dict_append_dict(&dict, "Passphrase",
-					request_input_append_passphrase, service);
-
-		previous_passphrase_handler(&dict, service);
-	}
-
-	if (__connman_service_wps_enabled(service) == TRUE) {
-	    connman_dbus_dict_append_dict(&dict, "WPS",
-				request_input_append_wps, NULL);
-	}
-
-	connman_dbus_dict_close(&iter, &dict);
-
-	passphrase_reply = g_try_new0(struct request_input_reply, 1);
-	if (passphrase_reply == NULL) {
-		dbus_message_unref(message);
-		return -ENOMEM;
-	}
-
-	passphrase_reply->service = service;
-	passphrase_reply->callback = callback;
-	passphrase_reply->user_data = user_data;
-
-	err = agent_queue_message(service, message,
-			connman_timeout_input_request(),
-			request_input_passphrase_reply,
-			passphrase_reply);
-
-	if (err < 0 && err != -EBUSY) {
-		DBG("error %d sending agent message", err);
-		dbus_message_unref(message);
-		g_free(passphrase_reply);
-		return err;
-	}
-
-	dbus_message_unref(message);
-
-	return -EINPROGRESS;
-}
-
-int __connman_agent_request_login_input(struct connman_service *service,
-				authentication_cb_t callback, void *user_data)
-{
-	DBusMessage *message;
-	const char *path;
-	DBusMessageIter iter;
-	DBusMessageIter dict;
-	struct request_input_reply *username_password_reply;
-	int err;
-
-	if (service == NULL || agent_path == NULL || callback == NULL)
-		return -ESRCH;
-
-	message = dbus_message_new_method_call(agent_sender, agent_path,
-					CONNMAN_AGENT_INTERFACE,
-					"RequestInput");
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_message_iter_init_append(message, &iter);
-
-	path = __connman_service_get_path(service);
-	dbus_message_iter_append_basic(&iter,
-				DBUS_TYPE_OBJECT_PATH, &path);
-
-	connman_dbus_dict_open(&iter, &dict);
-
-	connman_dbus_dict_append_dict(&dict, "Username",
-				request_input_append_identity, service);
-
-	connman_dbus_dict_append_dict(&dict, "Password",
-				request_input_append_password, service);
-
-	connman_dbus_dict_close(&iter, &dict);
-
-	username_password_reply = g_try_new0(struct request_input_reply, 1);
-	if (username_password_reply == NULL) {
-		dbus_message_unref(message);
-		return -ENOMEM;
-	}
-
-	username_password_reply->service = service;
-	username_password_reply->callback = callback;
-	username_password_reply->user_data = user_data;
-
-	err = agent_queue_message(service, message,
-			connman_timeout_input_request(),
-			request_input_login_reply, username_password_reply);
-	if (err < 0 && err != -EBUSY) {
-		DBG("error %d sending agent request", err);
-		dbus_message_unref(message);
-		g_free(username_password_reply);
-		return err;
-	}
-
-	dbus_message_unref(message);
-
-	return -EINPROGRESS;
-}
-
-struct request_browser_reply_data {
-	struct connman_service *service;
-	browser_authentication_cb_t callback;
-	void *user_data;
-};
-
-static void request_browser_reply(DBusMessage *reply, void *user_data)
-{
-	struct request_browser_reply_data *browser_reply_data = user_data;
-	connman_bool_t result = FALSE;
-	const char *error = NULL;
-
-	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
-		error = dbus_message_get_error_name(reply);
-		goto done;
-	}
-
-	result = TRUE;
-
-done:
-	browser_reply_data->callback(browser_reply_data->service, result,
-					error, browser_reply_data->user_data);
-	g_free(browser_reply_data);
-}
-
-int __connman_agent_request_browser(struct connman_service *service,
-				browser_authentication_cb_t callback,
-				const char *url, void *user_data)
-{
-	struct request_browser_reply_data *browser_reply_data;
-	DBusMessage *message;
-	DBusMessageIter iter;
-	const char *path;
-	int err;
-
-	if (service == NULL || agent_path == NULL || callback == NULL)
-		return -ESRCH;
-
-	if (url == NULL)
-		url = "";
-
-	message = dbus_message_new_method_call(agent_sender, agent_path,
-					CONNMAN_AGENT_INTERFACE,
-					"RequestBrowser");
-	if (message == NULL)
-		return -ENOMEM;
-
-	dbus_message_iter_init_append(message, &iter);
-
-	path = __connman_service_get_path(service);
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH, &path);
-
-	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &url);
-
-	browser_reply_data = g_try_new0(struct request_browser_reply_data, 1);
-	if (browser_reply_data == NULL) {
-		dbus_message_unref(message);
-		return -ENOMEM;
-	}
-
-	browser_reply_data->service = service;
-	browser_reply_data->callback = callback;
-	browser_reply_data->user_data = user_data;
-
-	err = agent_queue_message(service, message,
-			connman_timeout_browser_launch(),
-			request_browser_reply, browser_reply_data);
-
-	if (err < 0 && err != -EBUSY) {
-		DBG("error %d sending browser request", err);
-		dbus_message_unref(message);
-		g_free(browser_reply_data);
-		return err;
-	}
-
-	dbus_message_unref(message);
-
-	return -EINPROGRESS;
+	return 0;
 }
 
 struct report_error_data {
-	struct connman_service *service;
+	void *user_context;
 	report_error_cb_t callback;
 	void *user_data;
 };
@@ -868,23 +317,22 @@ static void report_error_reply(DBusMessage *reply, void *user_data)
 			retry = TRUE;
 	}
 
-	report_error->callback(report_error->service, retry,
+	report_error->callback(report_error->user_context, retry,
 			report_error->user_data);
 	g_free(report_error);
 }
 
-int __connman_agent_report_error(struct connman_service *service,
+int connman_agent_report_error(void *user_context, const char *path,
 				const char *error,
 				report_error_cb_t callback, void *user_data)
 {
 	DBusMessage *message;
 	DBusMessageIter iter;
-	const char *path;
 	struct report_error_data *report_error;
 	int err;
 
-	if (service == NULL || agent_path == NULL || error == NULL ||
-		callback == NULL)
+	if (user_context == NULL || agent_path == NULL || error == NULL ||
+							callback == NULL)
 		return -ESRCH;
 
 	message = dbus_message_new_method_call(agent_sender, agent_path,
@@ -895,7 +343,6 @@ int __connman_agent_report_error(struct connman_service *service,
 
 	dbus_message_iter_init_append(message, &iter);
 
-	path = __connman_service_get_path(service);
 	dbus_message_iter_append_basic(&iter,
 				DBUS_TYPE_OBJECT_PATH, &path);
 	dbus_message_iter_append_basic(&iter,
@@ -907,13 +354,13 @@ int __connman_agent_report_error(struct connman_service *service,
 		return -ENOMEM;
 	}
 
-	report_error->service = service;
+	report_error->user_context = user_context;
 	report_error->callback = callback;
 	report_error->user_data = user_data;
 
-	err = agent_queue_message(service, message,
-			connman_timeout_input_request(),
-			report_error_reply, report_error);
+	err = connman_agent_queue_message(user_context, message,
+					connman_timeout_input_request(),
+					report_error_reply, report_error);
 	if (err < 0 && err != -EBUSY) {
 		DBG("error %d sending error request", err);
 		g_free(report_error);
@@ -924,6 +371,63 @@ int __connman_agent_report_error(struct connman_service *service,
 	dbus_message_unref(message);
 
 	return -EINPROGRESS;
+}
+
+static gint compare_priority(gconstpointer a, gconstpointer b)
+{
+	const struct connman_agent_driver *driver1 = a;
+	const struct connman_agent_driver *driver2 = b;
+
+	return driver2->priority - driver1->priority;
+}
+
+/**
+ * connman_agent_driver_register:
+ * @driver: Agent driver definition
+ *
+ * Register a new agent driver
+ *
+ * Returns: %0 on success
+ */
+int connman_agent_driver_register(struct connman_agent_driver *driver)
+{
+	DBG("Registering driver %p name %s", driver, driver->name);
+
+	driver_list = g_slist_insert_sorted(driver_list, driver,
+							compare_priority);
+
+	return 0;
+}
+
+/**
+ * connman_agent_driver_unregister:
+ * @driver: Agent driver definition
+ *
+ * Remove a previously registered agent driver
+ */
+void connman_agent_driver_unregister(struct connman_agent_driver *driver)
+{
+	GSList *list;
+
+	DBG("Unregistering driver %p name %s", driver, driver->name);
+
+	for (list = driver_list; list; list = list->next) {
+		DBusMessage *message;
+
+		if (driver == list->data)
+			continue;
+
+		message = dbus_message_new_method_call(agent_sender, agent_path,
+				driver->interface, "Release");
+		if (message != NULL) {
+			dbus_message_set_no_reply(message, TRUE);
+			g_dbus_send_message(connection, message);
+		}
+
+		agent_free();
+	}
+
+	driver_list = g_slist_remove(driver_list, driver);
 }
 
 int __connman_agent_init(void)
@@ -939,8 +443,6 @@ int __connman_agent_init(void)
 
 void __connman_agent_cleanup(void)
 {
-	DBusMessage *message;
-
 	DBG("");
 
 	if (connection == NULL)
@@ -949,16 +451,6 @@ void __connman_agent_cleanup(void)
 	if (agent_watch > 0)
 		g_dbus_remove_watch(connection, agent_watch);
 
-	if (agent_path != NULL) {
-		message = dbus_message_new_method_call(agent_sender, agent_path,
-				CONNMAN_AGENT_INTERFACE, "Release");
-		if (message != NULL) {
-			dbus_message_set_no_reply(message, TRUE);
-			g_dbus_send_message(connection, message);
-		}
-
-		agent_free();
-	}
-
 	dbus_connection_unref(connection);
+	connection = NULL;
 }
