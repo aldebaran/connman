@@ -191,6 +191,17 @@ For a working system, certain configuration options need to be enabled:
 		configured by other means, the command line client can be
 		disabled and the dependency on readline is removed.
 
+	--enable-selinux
+
+		Enable support for compiling SElinux type enforcement rules
+
+		The TE rules are needed if host environment is in enforcing
+		mode. Without this option, the VPN client process cannot
+		send notification to connman-vpnd via net.connman.Task
+		interface. The compiled connman-task.pp module needs to
+		also installed using this command
+			# semodule -i connman-task.pp
+		in order to enable the dbus access.
 
 wpa_supplicant configuration
 ============================

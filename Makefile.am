@@ -377,6 +377,16 @@ else
 endif
 endif
 
+if SELINUX
+if VPN
+EXTRA_DIST += connman-task.pp
+CLEANFILES += connman-task.pp
+endif
+
+connman-task.pp: vpn/connman-task.te
+	make -f /usr/share/selinux/devel/Makefile
+endif
+
 include/connman/version.h: include/version.h
 	$(AM_V_at)$(MKDIR_P) include/connman
 	$(AM_V_GEN)$(LN_S) $(abs_top_builddir)/$< $@

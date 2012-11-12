@@ -343,6 +343,11 @@ if (test "${enable_polkit}" != "no"); then
 fi
 AM_CONDITIONAL(POLKIT, test "${enable_polkit}" != "no")
 
+AC_ARG_ENABLE(selinux, AC_HELP_STRING([--enable-selinux],
+				[enable selinux support]),
+			[enable_selinux=${enableval}], [enable_selinux="no"])
+AM_CONDITIONAL(SELINUX, test "${enable_selinux}" != "no")
+
 AC_ARG_ENABLE(loopback, AC_HELP_STRING([--disable-loopback],
 				[disable loopback support]),
 					[enable_loopback=${enableval}])
