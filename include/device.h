@@ -113,6 +113,7 @@ int connman_device_set_regdom(struct connman_device *device,
 						const char *alpha2);
 void connman_device_regdom_notify(struct connman_device *device,
 					int result, const char *alpha2);
+struct connman_device *connman_device_create_from_index(int index);
 
 struct connman_device_driver {
 	const char *name;

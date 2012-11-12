@@ -25,6 +25,11 @@
 
 #include <errno.h>
 #include <string.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <sys/ioctl.h>
+#include <net/ethernet.h>
+#include <net/if.h>
 
 #include "connman.h"
 
@@ -1130,6 +1135,179 @@ int __connman_device_request_hidden_scan(struct connman_device *device,
 
 	return device->driver->scan(device, ssid, ssid_len,
 					identity, passphrase, user_data);
+}
+
+static char *index2ident(int index, const char *prefix)
+{
+	struct ifreq ifr;
+	struct ether_addr eth;
+	char *str;
+	int sk, err, len;
+
+	if (index < 0)
+		return NULL;
+
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return NULL;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+
+	if (err == 0)
+		err = ioctl(sk, SIOCGIFHWADDR, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return NULL;
+
+	len = prefix ? strlen(prefix) + 18 : 18;
+
+	str = malloc(len);
+	if (!str)
+		return NULL;
+
+	memcpy(&eth, &ifr.ifr_hwaddr.sa_data, sizeof(eth));
+	snprintf(str, len, "%s%02x%02x%02x%02x%02x%02x",
+						prefix ? prefix : "",
+						eth.ether_addr_octet[0],
+						eth.ether_addr_octet[1],
+						eth.ether_addr_octet[2],
+						eth.ether_addr_octet[3],
+						eth.ether_addr_octet[4],
+						eth.ether_addr_octet[5]);
+
+	return str;
+}
+
+static char *index2addr(int index)
+{
+	struct ifreq ifr;
+	struct ether_addr eth;
+	char *str;
+	int sk, err;
+
+	if (index < 0)
+		return NULL;
+
+	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
+	if (sk < 0)
+		return NULL;
+
+	memset(&ifr, 0, sizeof(ifr));
+	ifr.ifr_ifindex = index;
+
+	err = ioctl(sk, SIOCGIFNAME, &ifr);
+
+	if (err == 0)
+		err = ioctl(sk, SIOCGIFHWADDR, &ifr);
+
+	close(sk);
+
+	if (err < 0)
+		return NULL;
+
+	str = malloc(18);
+	if (!str)
+		return NULL;
+
+	memcpy(&eth, &ifr.ifr_hwaddr.sa_data, sizeof(eth));
+	snprintf(str, 18, "%02X:%02X:%02X:%02X:%02X:%02X",
+						eth.ether_addr_octet[0],
+						eth.ether_addr_octet[1],
+						eth.ether_addr_octet[2],
+						eth.ether_addr_octet[3],
+						eth.ether_addr_octet[4],
+						eth.ether_addr_octet[5]);
+
+	return str;
+}
+
+struct connman_device *connman_device_create_from_index(int index)
+{
+	enum connman_device_type type;
+	struct connman_device *device;
+	char *devname, *ident = NULL;
+	char *addr = NULL, *name = NULL;
+
+	if (index < 0)
+		return NULL;
+
+	devname = connman_inet_ifname(index);
+	if (devname == NULL)
+		return NULL;
+
+	if (__connman_device_isfiltered(devname) == TRUE) {
+		connman_info("Ignoring interface %s (filtered)", devname);
+		g_free(devname);
+		return NULL;
+	}
+
+	type = __connman_rtnl_get_device_type(index);
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+		connman_info("Ignoring interface %s (type unknown)", devname);
+		g_free(devname);
+		return NULL;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_GADGET:
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		name = index2ident(index, "");
+		addr = index2addr(index);
+		break;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+	case CONNMAN_DEVICE_TYPE_CELLULAR:
+	case CONNMAN_DEVICE_TYPE_GPS:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+		name = strdup(devname);
+		break;
+	}
+
+	device = connman_device_create(name, type);
+	if (device == NULL)
+		goto done;
+
+	switch (type) {
+	case CONNMAN_DEVICE_TYPE_UNKNOWN:
+	case CONNMAN_DEVICE_TYPE_VENDOR:
+	case CONNMAN_DEVICE_TYPE_GPS:
+		break;
+	case CONNMAN_DEVICE_TYPE_ETHERNET:
+	case CONNMAN_DEVICE_TYPE_GADGET:
+		ident = index2ident(index, NULL);
+		break;
+	case CONNMAN_DEVICE_TYPE_WIFI:
+	case CONNMAN_DEVICE_TYPE_WIMAX:
+		ident = index2ident(index, NULL);
+		break;
+	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
+		break;
+	case CONNMAN_DEVICE_TYPE_CELLULAR:
+		ident = index2ident(index, NULL);
+		break;
+	}
+
+	connman_device_set_index(device, index);
+	connman_device_set_interface(device, devname);
+
+	if (ident != NULL) {
+		connman_device_set_ident(device, ident);
+		g_free(ident);
+	}
+
+	connman_device_set_string(device, "Address", addr);
+
+done:
+	g_free(devname);
+	g_free(name);
+	g_free(addr);
+
+	return device;
 }
 
 connman_bool_t __connman_device_isfiltered(const char *devname)

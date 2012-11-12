@@ -672,7 +672,7 @@ error_scan:
  * Called through
  *
  * iwmx_sdk_dev_add
- *   connman_inet_create_device
+ *   connman_device_create_from_index
  *      connman_register
  *         iwmx_cm_probe()
  */
@@ -856,7 +856,7 @@ static void iwmx_sdk_dev_add(unsigned idx, unsigned api_idx, const char *name)
 		goto error_noifname;
 	}
 
-	wmxsdk->dev = connman_inet_create_device(ifindex);
+	wmxsdk->dev = connman_device_create_from_index(ifindex);
 	if (wmxsdk->dev == NULL) {
 		connman_error("wmxsdk: %s: failed to create connman_device\n",
 			      name);

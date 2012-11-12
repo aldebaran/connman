@@ -71,7 +71,7 @@ static void detect_newlink(unsigned short type, int index,
 	if (device != NULL)
 		return;
 
-	device = connman_inet_create_device(index);
+	device = connman_device_create_from_index(index);
 	if (device == NULL)
 		return;
 
