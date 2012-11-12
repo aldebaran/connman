@@ -17,5 +17,3 @@ path = "" + sys.argv[1]
 print "remove path is %s" %(path)
 
 manager.RemoveProvider(sys.argv[1])
-
-
