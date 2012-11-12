@@ -432,7 +432,7 @@ static int provider_indicate_state(struct connman_provider *provider,
 					state, CONNMAN_IPCONFIG_TYPE_IPV6);
 }
 
-int __connman_provider_disconnect(struct connman_provider *provider)
+int connman_provider_disconnect(struct connman_provider *provider)
 {
 	int err;
 
@@ -1478,7 +1478,7 @@ static void provider_service_changed(struct connman_service *service,
 
 	DBG("disconnect %p index %d", provider, vpn_index);
 
-	__connman_provider_disconnect(provider);
+	connman_provider_disconnect(provider);
 
 	return;
 }

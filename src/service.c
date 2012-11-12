@@ -3609,7 +3609,7 @@ static gboolean connect_timeout(gpointer user_data)
 	if (service->network != NULL)
 		__connman_network_disconnect(service->network);
 	else if (service->provider != NULL)
-		__connman_provider_disconnect(service->provider);
+		connman_provider_disconnect(service->provider);
 
 	__connman_ipconfig_disable(service->ipconfig_ipv4);
 	__connman_ipconfig_disable(service->ipconfig_ipv6);
@@ -5112,7 +5112,7 @@ static int service_indicate_state(struct connman_service *service)
 		if (__connman_notifier_is_connected() == FALSE &&
 			def_service != NULL &&
 				def_service->provider != NULL)
-			__connman_provider_disconnect(def_service->provider);
+			connman_provider_disconnect(def_service->provider);
 
 		default_changed();
 
@@ -5683,7 +5683,7 @@ int __connman_service_connect(struct connman_service *service)
 		__connman_network_disconnect(service->network);
 	else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
 				service->provider != NULL)
-			__connman_provider_disconnect(service->provider);
+			connman_provider_disconnect(service->provider);
 
 	if (service->userconnect == TRUE) {
 		if (err == -ENOKEY || err == -EPERM) {
@@ -5727,7 +5727,7 @@ int __connman_service_disconnect(struct connman_service *service)
 		err = __connman_network_disconnect(service->network);
 	} else if (service->type == CONNMAN_SERVICE_TYPE_VPN &&
 					service->provider != NULL)
-		err = __connman_provider_disconnect(service->provider);
+		err = connman_provider_disconnect(service->provider);
 	else
 		return -EOPNOTSUPP;
 
