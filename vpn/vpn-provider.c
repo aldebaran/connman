@@ -75,7 +75,6 @@ struct vpn_provider {
 	GSList *user_networks;
 	GResolv *resolv;
 	char **host_ip;
-	DBusMessage *pending_msg;
 	struct vpn_ipconfig *ipconfig_ipv4;
 	struct vpn_ipconfig *ipconfig_ipv6;
 	char **nameservers;
@@ -1543,7 +1542,7 @@ static void provider_create_all_from_type(const char *provider_type)
 	g_strfreev(providers);
 }
 
-int __vpn_provider_create_and_connect(DBusMessage *msg)
+int __vpn_provider_create(DBusMessage *msg)
 {
 	struct vpn_provider *provider;
 	DBusMessageIter iter, array;
@@ -1650,32 +1649,22 @@ int __vpn_provider_create_and_connect(DBusMessage *msg)
 
 	g_free(ident);
 
-	provider->pending_msg = dbus_message_ref(msg);
-
-	DBG("provider %p pending %p", provider, provider->pending_msg);
-
-	if (provider->index > 0) {
-		DBG("provider already connected");
-	} else {
-		err = __vpn_provider_connect(provider);
-		if (err < 0 && err != -EINPROGRESS)
-			goto failed;
-	}
-
 	vpn_provider_save(provider);
 
+	err = provider_register(provider);
+	if (err != 0 && err != -EALREADY)
+		return err;
+
+	connection_register(provider);
+
+	DBG("provider %p index %d path %s", provider, provider->index,
+							provider->path);
+
+	g_dbus_send_reply(connection, msg,
+				DBUS_TYPE_OBJECT_PATH, &provider->path,
+				DBUS_TYPE_INVALID);
+
 	return 0;
-
-failed:
-	DBG("Can not connect (%d), deleting provider %p %s", err, provider,
-		provider->identifier);
-
-	vpn_provider_indicate_error(provider,
-				VPN_PROVIDER_ERROR_CONNECT_FAILED);
-
-	g_hash_table_remove(provider_hash, provider->identifier);
-
-	return err;
 }
 
 static void append_connection_structs(DBusMessageIter *iter, void *user_data)
@@ -1801,17 +1790,7 @@ void vpn_provider_set_data(struct vpn_provider *provider, void *data)
 
 void vpn_provider_set_index(struct vpn_provider *provider, int index)
 {
-	DBG("index %d provider %p pending %p", index, provider,
-		provider->pending_msg);
-
-	if (provider->pending_msg != NULL) {
-		g_dbus_send_reply(connection, provider->pending_msg,
-				DBUS_TYPE_STRING, &provider->identifier,
-				DBUS_TYPE_INT32, &index,
-				DBUS_TYPE_INVALID);
-		dbus_message_unref(provider->pending_msg);
-		provider->pending_msg = NULL;
-	}
+	DBG("index %d provider %p", index, provider);
 
 	if (provider->ipconfig_ipv4 == NULL) {
 		provider->ipconfig_ipv4 = __vpn_ipconfig_create(index,

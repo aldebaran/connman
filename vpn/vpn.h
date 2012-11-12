@@ -76,7 +76,7 @@ int __vpn_provider_append_user_route(struct vpn_provider *provider,
 			int family, const char *network, const char *netmask);
 void __vpn_provider_append_properties(struct vpn_provider *provider, DBusMessageIter *iter);
 void __vpn_provider_list(DBusMessageIter *iter, void *user_data);
-int __vpn_provider_create_and_connect(DBusMessage *msg);
+int __vpn_provider_create(DBusMessage *msg);
 DBusMessage *__vpn_provider_get_connections(DBusMessage *msg);
 const char * __vpn_provider_get_ident(struct vpn_provider *provider);
 int __vpn_provider_indicate_state(struct vpn_provider *provider,

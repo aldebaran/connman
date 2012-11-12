@@ -43,7 +43,7 @@ static DBusMessage *create(DBusConnection *conn, DBusMessage *msg, void *data)
 
 	DBG("conn %p", conn);
 
-	err = __vpn_provider_create_and_connect(msg);
+	err = __vpn_provider_create(msg);
 	if (err < 0) {
 		if (err == -EINPROGRESS) {
 			connman_error("Invalid return code (%d) "
