@@ -93,6 +93,7 @@ int connman_provider_set_ipaddress(struct connman_provider *provider,
 					struct connman_ipaddress *ipaddress);
 int connman_provider_set_pac(struct connman_provider *provider,
 				const char *pac);
+int connman_provider_create_service(struct connman_provider *provider);
 int connman_provider_set_domain(struct connman_provider *provider,
 				const char *domain);
 int connman_provider_set_nameservers(struct connman_provider *provider,
@@ -120,6 +121,8 @@ struct connman_provider_driver {
 
 int connman_provider_driver_register(struct connman_provider_driver *driver);
 void connman_provider_driver_unregister(struct connman_provider_driver *driver);
+void connman_provider_set_driver(struct connman_provider *provider,
+				struct connman_provider_driver *driver);
 
 #ifdef __cplusplus
 }
