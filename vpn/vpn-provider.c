@@ -2109,6 +2109,28 @@ void vpn_provider_driver_unregister(struct vpn_provider_driver *driver)
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+static gboolean check_vpn_count(gpointer data)
+{
+	if (configuration_count == 0) {
+		connman_info("No VPN configurations found, quitting.");
+		raise(SIGTERM);
+	}
+
+	return FALSE;
+}
+
+void __vpn_provider_check_connections(void)
+{
+	/*
+	 * If we were started when there is no providers configured,
+	 * then just quit. This happens when connman starts and its
+	 * vpn plugin asks connman-vpnd if it has any connections
+	 * configured. If there are none, then we can stop the vpn
+	 * daemon.
+	 */
+	g_timeout_add(1000, check_vpn_count, NULL);
+}
+
 int __vpn_provider_init(gboolean do_routes)
 {
 	DBG("");
