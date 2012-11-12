@@ -989,15 +989,51 @@ int __vpn_provider_connect(struct vpn_provider *provider)
 	return err;
 }
 
+static void connection_removed_signal(struct vpn_provider *provider)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	signal = dbus_message_new_signal(VPN_MANAGER_PATH,
+			VPN_MANAGER_INTERFACE, "ConnectionRemoved");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&provider->path);
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+}
+
+static char *get_ident(const char *path)
+{
+	char *pos;
+
+	if (*path != '/')
+		return NULL;
+
+	pos = strrchr(path, '/');
+	if (pos == NULL)
+		return NULL;
+
+	return pos + 1;
+}
+
 int __vpn_provider_remove(const char *path)
 {
 	struct vpn_provider *provider;
+	char *ident;
 
 	DBG("path %s", path);
 
-	provider = vpn_provider_lookup(path);
+	ident = get_ident(path);
+
+	provider = vpn_provider_lookup(ident);
 	if (provider != NULL) {
 		DBG("Removing VPN %s", provider->identifier);
+
+		connection_removed_signal(provider);
 
 		provider_unregister(provider);
 		g_hash_table_remove(provider_hash, provider->identifier);
