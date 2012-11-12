@@ -1,0 +1,12 @@
+[Unit]
+Description=ConnMan VPN service
+After=syslog.target
+
+[Service]
+Type=dbus
+BusName=net.connman.vpn
+ExecStart=@prefix@/sbin/connman-vpnd -n
+StandardOutput=null
+
+[Install]
+WantedBy=multi-user.target

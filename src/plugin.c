@@ -114,7 +114,7 @@ static gboolean check_plugin(struct connman_plugin_desc *desc,
 	return TRUE;
 }
 
-#include "builtin.h"
+#include <builtin.h>
 
 int __connman_plugin_init(const char *pattern, const char *exclude)
 {

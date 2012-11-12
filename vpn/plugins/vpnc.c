@@ -1,8 +1,9 @@
 /*
  *
- *  Connection Manager
+ *  ConnMan VPN daemon
  *
  *  Copyright (C) 2010  BMW Car IT GmbH. All rights reserved.
+ *  Copyright (C) 2010  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License version 2 as
@@ -33,11 +34,12 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/provider.h>
 #include <connman/log.h>
 #include <connman/task.h>
 #include <connman/ipconfig.h>
 #include <connman/dbus.h>
+
+#include "../vpn-provider.h"
 
 #include "vpn.h"
 
@@ -68,19 +70,19 @@ struct {
 	{ "VPNC.Domain", "Domain", NULL, OPT_STRING, TRUE },
 	{ "VPNC.Vendor", "Vendor", NULL, OPT_STRING, TRUE },
 	{ "VPNC.LocalPort", "Local Port", "0", OPT_STRING, TRUE, },
-	{ "VPNC.CiscoPort","Cisco UDP Encapsulation Port", "0", OPT_STRING,
-	  TRUE },
+	{ "VPNC.CiscoPort", "Cisco UDP Encapsulation Port", "0", OPT_STRING,
+									TRUE },
 	{ "VPNC.AppVersion", "Application Version", NULL, OPT_STRING, TRUE },
 	{ "VPNC.NATTMode", "NAT Traversal Mode", "cisco-udp", OPT_STRING,
-	  TRUE },
+									TRUE },
 	{ "VPNC.DPDTimeout", "DPD idle timeout (our side)", NULL, OPT_STRING,
-	  TRUE },
+									TRUE },
 	{ "VPNC.SingleDES", "Enable Single DES", NULL, OPT_BOOLEAN, TRUE },
 	{ "VPNC.NoEncryption", "Enable no encryption", NULL, OPT_BOOLEAN,
-	  TRUE },
+									TRUE },
 };
 
-static int vc_notify(DBusMessage *msg, struct connman_provider *provider)
+static int vc_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
 	DBusMessageIter iter, dict;
 	char *address = NULL, *netmask = NULL, *gateway = NULL;
@@ -122,14 +124,14 @@ static int vc_notify(DBusMessage *msg, struct connman_provider *provider)
 			netmask = g_strdup(value);
 
 		if (!strcmp(key, "INTERNAL_IP4_DNS"))
-			connman_provider_set_nameservers(provider, value);
+			vpn_provider_set_nameservers(provider, value);
 
 		if (!strcmp(key, "CISCO_DEF_DOMAIN"))
-			connman_provider_set_domain(provider, value);
+			vpn_provider_set_domain(provider, value);
 
 		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") == TRUE ||
 			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC") == TRUE)
-			connman_provider_append_route(provider, key, value);
+			vpn_provider_append_route(provider, key, value);
 
 		dbus_message_iter_next(&dict);
 	}
@@ -145,7 +147,7 @@ static int vc_notify(DBusMessage *msg, struct connman_provider *provider)
 	}
 
 	connman_ipaddress_set_ipv4(ipaddress, address, netmask, gateway);
-	connman_provider_set_ipaddress(provider, ipaddress);
+	vpn_provider_set_ipaddress(provider, ipaddress);
 
 	g_free(address);
 	g_free(netmask);
@@ -207,18 +209,18 @@ static ssize_t write_bool_option(int fd, const char *key, const char *value)
 	return ret;
 }
 
-static int vc_write_config_data(struct connman_provider *provider, int fd)
+static int vc_write_config_data(struct vpn_provider *provider, int fd)
 {
 	const char *opt_s;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(vpnc_options); i++) {
-		opt_s = connman_provider_get_string(provider,
+		opt_s = vpn_provider_get_string(provider,
 					vpnc_options[i].cm_opt);
-		if (!opt_s)
-			opt_s= vpnc_options[i].vpnc_default;
+		if (opt_s == FALSE)
+			opt_s = vpnc_options[i].vpnc_default;
 
-		if(!opt_s)
+		if (opt_s == FALSE)
 			continue;
 
 		if (vpnc_options[i].type == OPT_STRING) {
@@ -236,7 +238,7 @@ static int vc_write_config_data(struct connman_provider *provider, int fd)
 	return 0;
 }
 
-static int vc_save(struct connman_provider *provider, GKeyFile *keyfile)
+static int vc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
 	int i;
@@ -247,31 +249,31 @@ static int vc_save(struct connman_provider *provider, GKeyFile *keyfile)
 			if (vpnc_options[i].cm_save == FALSE)
 				continue;
 
-			option = connman_provider_get_string(provider,
+			option = vpn_provider_get_string(provider,
 							vpnc_options[i].cm_opt);
 			if (option == NULL)
 				continue;
 
 			g_key_file_set_string(keyfile,
-					connman_provider_get_save_group(provider),
+					vpn_provider_get_save_group(provider),
 					vpnc_options[i].cm_opt, option);
 		}
 	}
 	return 0;
 }
 
-static int vc_connect(struct connman_provider *provider,
+static int vc_connect(struct vpn_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
 	const char *option;
 	int err, fd;
 
-	option = connman_provider_get_string(provider, "Host");
+	option = vpn_provider_get_string(provider, "Host");
 	if (option == NULL) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;
 	}
-	option = connman_provider_get_string(provider, "VPNC.IPSec.ID");
+	option = vpn_provider_get_string(provider, "VPNC.IPSec.ID");
 	if (option == NULL) {
 		connman_error("Group not set; cannot enable VPN");
 		return -EINVAL;
@@ -286,7 +288,7 @@ static int vc_connect(struct connman_provider *provider,
 	connman_task_add_argument(task, "--script",
 				SCRIPTDIR "/openconnect-script");
 
-	option = connman_provider_get_string(provider, "VPNC.Debug");
+	option = vpn_provider_get_string(provider, "VPNC.Debug");
 	if (option != NULL)
 		connman_task_add_argument(task, "--debug", option);
 
@@ -310,11 +312,11 @@ static int vc_error_code(int exit_code)
 {
 	switch (exit_code) {
 	case 1:
-		return CONNMAN_PROVIDER_ERROR_CONNECT_FAILED;
+		return VPN_PROVIDER_ERROR_CONNECT_FAILED;
 	case 2:
-		return CONNMAN_PROVIDER_ERROR_LOGIN_FAILED;
+		return VPN_PROVIDER_ERROR_LOGIN_FAILED;
 	default:
-		return CONNMAN_PROVIDER_ERROR_UNKNOWN;
+		return VPN_PROVIDER_ERROR_UNKNOWN;
 	}
 }
 

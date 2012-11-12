@@ -1,6 +1,6 @@
 /*
  *
- *  Connection Manager
+ *  ConnMan VPN daemon
  *
  *  Copyright (C) 2010  BMW Car IT GmbH. All rights reserved.
  *
@@ -33,11 +33,12 @@
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
 #include <connman/plugin.h>
-#include <connman/provider.h>
 #include <connman/log.h>
 #include <connman/task.h>
 #include <connman/dbus.h>
 #include <connman/ipconfig.h>
+
+#include "../vpn-provider.h"
 
 #include "vpn.h"
 
@@ -100,7 +101,7 @@ static void ov_append_dns_entries(const char *key, const char *value,
 	g_strfreev(options);
 }
 
-static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
+static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
@@ -134,22 +135,22 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 		DBG("%s = %s", key, value);
 
 		if (!strcmp(key, "trusted_ip")) {
-			connman_provider_set_string(provider, "Gateway", value);
+			vpn_provider_set_string(provider, "Gateway", value);
 			gateway = g_strdup(value);
 		}
 
 		if (!strcmp(key, "ifconfig_local")) {
-			connman_provider_set_string(provider, "Address", value);
+			vpn_provider_set_string(provider, "Address", value);
 			address = g_strdup(value);
 		}
 
 		if (!strcmp(key, "ifconfig_remote")) {
-			connman_provider_set_string(provider, "Peer", value);
+			vpn_provider_set_string(provider, "Peer", value);
 			peer = g_strdup(value);
 		}
 
 		if (g_str_has_prefix(key, "route_") == TRUE)
-			connman_provider_append_route(provider, key, value);
+			vpn_provider_append_route(provider, key, value);
 
 		ov_append_dns_entries(key, value, &nameservers);
 
@@ -168,9 +169,9 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 
 	connman_ipaddress_set_ipv4(ipaddress, address, NULL, gateway);
 	connman_ipaddress_set_peer(ipaddress, peer);
-	connman_provider_set_ipaddress(provider, ipaddress);
+	vpn_provider_set_ipaddress(provider, ipaddress);
 
-	connman_provider_set_nameservers(provider, nameservers);
+	vpn_provider_set_nameservers(provider, nameservers);
 
 	g_free(nameservers);
 	g_free(address);
@@ -181,27 +182,27 @@ static int ov_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
-static int ov_save(struct connman_provider *provider, GKeyFile *keyfile)
+static int ov_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(ov_options); i++) {
 		if (strncmp(ov_options[i].cm_opt, "OpenVPN.", 8) == 0) {
-			option = connman_provider_get_string(provider,
+			option = vpn_provider_get_string(provider,
 							ov_options[i].cm_opt);
 			if (option == NULL)
 				continue;
 
 			g_key_file_set_string(keyfile,
-					connman_provider_get_save_group(provider),
+					vpn_provider_get_save_group(provider),
 					ov_options[i].cm_opt, option);
 		}
 	}
 	return 0;
 }
 
-static int task_append_config_data(struct connman_provider *provider,
+static int task_append_config_data(struct vpn_provider *provider,
 					struct connman_task *task)
 {
 	const char *option;
@@ -211,14 +212,14 @@ static int task_append_config_data(struct connman_provider *provider,
 		if (ov_options[i].ov_opt == NULL)
 			continue;
 
-		option = connman_provider_get_string(provider,
+		option = vpn_provider_get_string(provider,
 					ov_options[i].cm_opt);
 		if (option == NULL)
 			continue;
 
 		if (connman_task_add_argument(task,
-					ov_options[i].ov_opt,
-					ov_options[i].has_value ? option : NULL) < 0) {
+				ov_options[i].ov_opt,
+				ov_options[i].has_value ? option : NULL) < 0) {
 			return -EIO;
 		}
 	}
@@ -226,13 +227,13 @@ static int task_append_config_data(struct connman_provider *provider,
 	return 0;
 }
 
-static int ov_connect(struct connman_provider *provider,
+static int ov_connect(struct vpn_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
 	const char *option;
 	int err, fd;
 
-	option = connman_provider_get_string(provider, "Host");
+	option = vpn_provider_get_string(provider, "Host");
 	if (option == NULL) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;
@@ -240,10 +241,10 @@ static int ov_connect(struct connman_provider *provider,
 
 	task_append_config_data(provider, task);
 
-	option = connman_provider_get_string(provider, "OpenVPN.TLSAuth");
+	option = vpn_provider_get_string(provider, "OpenVPN.TLSAuth");
 	if (option != NULL) {
 		connman_task_add_argument(task, "--tls-auth", option);
-		option = connman_provider_get_string(provider,
+		option = vpn_provider_get_string(provider,
 				"OpenVPN.TLSAuthDir");
 		if (option != NULL)
 			connman_task_add_argument(task, option, NULL);

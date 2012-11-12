@@ -1,6 +1,6 @@
 /*
  *
- *  Connection Manager
+ *  ConnMan VPN daemon
  *
  *  Copyright (C) 2010  BMW Car IT GmbH. All rights reserved.
  *  Copyright (C) 2012  Intel Corporation. All rights reserved.
@@ -34,6 +34,7 @@
 #include <stdio.h>
 #include <net/if.h>
 
+#include <dbus/dbus.h>
 #include <glib.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
@@ -114,13 +115,13 @@ static DBusMessage *l2tp_get_sec(struct connman_task *task,
 			DBusMessage *msg, void *user_data)
 {
 	const char *user, *passwd;
-	struct connman_provider *provider = user_data;
+	struct vpn_provider *provider = user_data;
 
 	if (dbus_message_get_no_reply(msg) == FALSE) {
 		DBusMessage *reply;
 
-		user = connman_provider_get_string(provider, "L2TP.User");
-		passwd = connman_provider_get_string(provider, "L2TP.Password");
+		user = vpn_provider_get_string(provider, "L2TP.User");
+		passwd = vpn_provider_get_string(provider, "L2TP.Password");
 
 		if (user == NULL || strlen(user) == 0 ||
 				passwd == NULL || strlen(passwd) == 0)
@@ -140,7 +141,7 @@ static DBusMessage *l2tp_get_sec(struct connman_task *task,
 	return NULL;
 }
 
-static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
+static int l2tp_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
@@ -177,17 +178,17 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 		DBG("%s = %s", key, value);
 
 		if (!strcmp(key, "INTERNAL_IP4_ADDRESS")) {
-			connman_provider_set_string(provider, "Address", value);
+			vpn_provider_set_string(provider, "Address", value);
 			addressv4 = g_strdup(value);
 		}
 
 		if (!strcmp(key, "INTERNAL_IP4_NETMASK")) {
-			connman_provider_set_string(provider, "Netmask", value);
+			vpn_provider_set_string(provider, "Netmask", value);
 			netmask = g_strdup(value);
 		}
 
 		if (!strcmp(key, "INTERNAL_IP4_DNS")) {
-			connman_provider_set_string(provider, "DNS", value);
+			vpn_provider_set_string(provider, "DNS", value);
 			nameservers = g_strdup(value);
 		}
 
@@ -218,9 +219,9 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
-	value = connman_provider_get_string(provider, "HostIP");
+	value = vpn_provider_get_string(provider, "HostIP");
 	if (value != NULL) {
-		connman_provider_set_string(provider, "Gateway", value);
+		vpn_provider_set_string(provider, "Gateway", value);
 		gateway = g_strdup(value);
 	}
 
@@ -228,8 +229,8 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 		connman_ipaddress_set_ipv4(ipaddress, addressv4, netmask,
 					gateway);
 
-	connman_provider_set_ipaddress(provider, ipaddress);
-	connman_provider_set_nameservers(provider, nameservers);
+	vpn_provider_set_ipaddress(provider, ipaddress);
+	vpn_provider_set_nameservers(provider, nameservers);
 
 	g_free(addressv4);
 	g_free(netmask);
@@ -240,20 +241,20 @@ static int l2tp_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
-static int l2tp_save(struct connman_provider *provider, GKeyFile *keyfile)
+static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(pppd_options); i++) {
 		if (strncmp(pppd_options[i].cm_opt, "L2TP.", 5) == 0) {
-			option = connman_provider_get_string(provider,
+			option = vpn_provider_get_string(provider,
 							pppd_options[i].cm_opt);
 			if (option == NULL)
 				continue;
 
 			g_key_file_set_string(keyfile,
-					connman_provider_get_save_group(provider),
+					vpn_provider_get_save_group(provider),
 					pppd_options[i].cm_opt, option);
 		}
 	}
@@ -332,7 +333,7 @@ static int l2tp_write_section(int fd, const char *key, const char *value)
 	return ret;
 }
 
-static int write_pppd_option(struct connman_provider *provider, int fd)
+static int write_pppd_option(struct vpn_provider *provider, int fd)
 {
 	int i;
 	const char *opt_s;
@@ -350,7 +351,7 @@ static int write_pppd_option(struct connman_provider *provider, int fd)
 			pppd_options[i].sub != OPT_PPPD)
 			continue;
 
-		opt_s = connman_provider_get_string(provider,
+		opt_s = vpn_provider_get_string(provider,
 					pppd_options[i].cm_opt);
 		if (!opt_s)
 			opt_s = pppd_options[i].vpn_default;
@@ -373,7 +374,7 @@ static int write_pppd_option(struct connman_provider *provider, int fd)
 }
 
 
-static int l2tp_write_fields(struct connman_provider *provider,
+static int l2tp_write_fields(struct vpn_provider *provider,
 						int fd, int sub)
 {
 	int i;
@@ -383,7 +384,7 @@ static int l2tp_write_fields(struct connman_provider *provider,
 		if (pppd_options[i].sub != sub)
 			continue;
 
-		opt_s = connman_provider_get_string(provider,
+		opt_s = vpn_provider_get_string(provider,
 					pppd_options[i].cm_opt);
 		if (!opt_s)
 			opt_s = pppd_options[i].vpn_default;
@@ -402,7 +403,7 @@ static int l2tp_write_fields(struct connman_provider *provider,
 	return 0;
 }
 
-static int l2tp_write_config(struct connman_provider *provider,
+static int l2tp_write_config(struct vpn_provider *provider,
 					const char *pppd_name, int fd)
 {
 	const char *option;
@@ -412,7 +413,7 @@ static int l2tp_write_config(struct connman_provider *provider,
 
 	l2tp_write_option(fd, "[lac l2tp]", NULL);
 
-	option = connman_provider_get_string(provider, "Host");
+	option = vpn_provider_get_string(provider, "Host");
 	l2tp_write_option(fd, "lns =", option);
 
 	l2tp_write_fields(provider, fd, OPT_ALL);
@@ -438,7 +439,7 @@ static void l2tp_died(struct connman_task *task, int exit_code, void *user_data)
 	g_free(conf_file);
 }
 
-static int l2tp_connect(struct connman_provider *provider,
+static int l2tp_connect(struct vpn_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
 	const char *host;
@@ -450,7 +451,7 @@ static int l2tp_connect(struct connman_provider *provider,
 					l2tp_get_sec, provider))
 		return -ENOMEM;
 
-	host = connman_provider_get_string(provider, "Host");
+	host = vpn_provider_get_string(provider, "Host");
 	if (host == NULL) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;

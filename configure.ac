@@ -426,5 +426,12 @@ if (test "${enable_client}" != "no"); then
 		AC_MSG_ERROR(readline header files are required))
 fi
 
+AM_CONDITIONAL(VPN, test "${enable_openconnect}" != "no" -o \
+			"${enable_openvpn}" != "no" -o \
+			"${enable_vpnc}" != "no" -o \
+			"${enable_l2tp}" != "no" -o \
+			"${enable_pptp}" != "no")
+
 AC_OUTPUT(Makefile include/version.h src/connman.service
-				scripts/connman doc/version.xml connman.pc)
+		vpn/connman-vpn.service	vpn/net.connman.vpn.service
+		scripts/connman	doc/version.xml connman.pc)

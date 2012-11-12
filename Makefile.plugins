@@ -51,94 +51,96 @@ builtin_modules += dundee
 builtin_sources += plugins/dundee.c
 endif
 
+if VPN
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
-builtin_modules += openconnect
-builtin_sources += plugins/openconnect.c
-builtin_vpn_sources = plugins/vpn.c plugins/vpn.h
-builtin_cflags += -DOPENCONNECT=\"@OPENCONNECT@\"
+builtin_vpn_modules += openconnect
+builtin_vpn_sources += vpn/plugins/openconnect.c
+builtin_vpn_source = vpn/plugins/vpn.c vpn/plugins/vpn.h
+builtin_vpn_cflags += -DOPENCONNECT=\"@OPENCONNECT@\"
 else
-plugin_LTLIBRARIES += plugins/openconnect.la
-plugin_objects += $(plugins_openconnect_la_OBJECTS)
-plugins_openconnect_la_SOURCES = plugins/vpn.h plugins/vpn.c \
-						plugins/openconnect.c
-plugins_openconnect_la_CFLAGS = $(plugin_cflags) -DOPENCONNECT=\"@OPENCONNECT@\" \
+vpn_plugin_LTLIBRARIES += vpn/plugins/openconnect.la
+vpn_plugin_objects += $(plugins_openconnect_la_OBJECTS)
+vpn_plugins_openconnect_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
+						vpn/plugins/openconnect.c
+vpn_plugins_openconnect_la_CFLAGS = $(plugin_cflags) \
+					-DOPENCONNECT=\"@OPENCONNECT@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_openconnect_la_LDFLAGS = $(plugin_ldflags)
+vpn_plugins_openconnect_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
 if OPENVPN
 if OPENVPN_BUILTIN
-builtin_modules += openvpn
-builtin_sources += plugins/openvpn.c
-builtin_vpn_sources = plugins/vpn.c plugins/vpn.h
-builtin_cflags += -DOPENVPN=\"@OPENVPN@\"
+builtin_vpn_modules += openvpn
+builtin_vpn_sources += vpn/plugins/openvpn.c
+builtin_vpn_source = vpn/plugins/vpn.c vpn/plugins/vpn.h
+builtin_vpn_cflags += -DOPENVPN=\"@OPENVPN@\"
 else
-plugin_LTLIBRARIES += plugins/openvpn.la
-plugin_objects += $(plugins_openvpn_la_OBJECTS)
-plugins_openvpn_la_SOURCES = plugins/vpn.h plugins/vpn.c \
-						plugins/openvpn.c
-plugins_openvpn_la_CFLAGS = $(plugin_cflags) -DOPENVPN=\"@OPENVPN@\" \
+vpn_plugin_LTLIBRARIES += vpn/plugins/openvpn.la
+vpn_plugin_objects += $(plugins_openvpn_la_OBJECTS)
+vpn_plugins_openvpn_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
+						vpn/plugins/openvpn.c
+vpn_plugins_openvpn_la_CFLAGS = $(plugin_cflags) -DOPENVPN=\"@OPENVPN@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_openvpn_la_LDFLAGS = $(plugin_ldflags)
+vpn_plugins_openvpn_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
 if VPNC
 if VPNC_BUILTIN
-builtin_modules += vpnc
-builtin_sources += plugins/vpnc.c
-builtin_vpn_sources = plugins/vpn.c plugins/vpn.h
-builtin_cflags += -DVPNC=\"@VPNC@\"
+builtin_vpn_modules += vpnc
+builtin_vpn_sources += vpn/plugins/vpnc.c
+builtin_vpn_source = vpn/plugins/vpn.c vpn/plugins/vpn.h
+builtin_vpn_cflags += -DVPNC=\"@VPNC@\"
 else
-plugin_LTLIBRARIES += plugins/vpnc.la
-plugin_objects += $(plugins_vpnc_la_OBJECTS)
-plugins_vpnc_la_SOURCES = plugins/vpn.h plugins/vpn.c \
-						plugins/vpnc.c
-plugins_vpnc_la_CFLAGS = $(plugin_cflags) -DVPNC=\"@VPNC@\" \
+vpn_plugin_LTLIBRARIES += vpn/plugins/vpnc.la
+vpn_plugin_objects += $(plugins_vpnc_la_OBJECTS)
+vpn_plugins_vpnc_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
+						vpn/plugins/vpnc.c
+vpn_plugins_vpnc_la_CFLAGS = $(plugin_cflags) -DVPNC=\"@VPNC@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_vpnc_la_LDFLAGS = $(plugin_ldflags)
+vpn_plugins_vpnc_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
 if L2TP
 if L2TP_BUILTIN
-builtin_modules += l2tp
-builtin_sources += plugins/l2tp.c
-builtin_vpn_sources = plugins/vpn.c plugins/vpn.h
-builtin_cflags += -DL2TP=\"@L2TP@\"
+builtin_vpn_modules += l2tp
+builtin_vpn_sources += vpn/plugins/l2tp.c
+builtin_vpn_source = vpn/plugins/vpn.c vpn/plugins/vpn.h
+builtin_vpn_cflags += -DL2TP=\"@L2TP@\"
 else
-plugin_LTLIBRARIES += plugins/l2tp.la
-plugin_objects += $(plugins_l2tp_la_OBJECTS)
-plugins_l2tp_la_SOURCES = plugins/vpn.h plugins/vpn.c \
-						plugins/l2tp.c
-plugins_l2tp_la_CFLAGS = $(plugin_cflags) -DL2TP=\"@L2TP@\" \
+vpn_plugin_LTLIBRARIES += vpn/plugins/l2tp.la
+vpn_plugin_objects += $(plugins_l2tp_la_OBJECTS)
+vpn_plugins_l2tp_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
+						vpn/plugins/l2tp.c
+vpn_plugins_l2tp_la_CFLAGS = $(plugin_cflags) -DL2TP=\"@L2TP@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_l2tp_la_LDFLAGS = $(plugin_ldflags)
+vpn_plugins_l2tp_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
 if PPTP
 if PPTP_BUILTIN
-builtin_modules += pptp
-builtin_sources += plugins/pptp.c
-builtin_vpn_sources = plugins/vpn.c plugins/vpn.h
-builtin_cflags += -DPPPD=\"@PPPD@\" -DPPTP=\"@PPTP@\"
+builtin_vpn_modules += pptp
+builtin_vpn_sources += vpn/plugins/pptp.c
+builtin_vpn_source = vpn/plugins/vpn.c vpn/plugins/vpn.h
+builtin_vpn_cflags += -DPPPD=\"@PPPD@\" -DPPTP=\"@PPTP@\"
 else
-plugin_LTLIBRARIES += plugins/pptp.la
-plugin_objects += $(plugins_pptp_la_OBJECTS)
-plugins_pptp_la_SOURCES = plugins/vpn.h plugins/vpn.c \
-						plugins/pptp.c
-plugins_pptp_la_CFLAGS = $(plugin_cflags) -DPPPD=\"@PPPD@\" \
+vpn_plugin_LTLIBRARIES += vpn/plugins/pptp.la
+vpn_plugin_objects += $(plugins_pptp_la_OBJECTS)
+vpn_plugins_pptp_la_SOURCES = vpn/plugins/vpn.h vpn/plugins/vpn.c \
+						vpn/plugins/pptp.c
+vpn_plugins_pptp_la_CFLAGS = $(plugin_cflags) -DPPPD=\"@PPPD@\" \
 					-DPPTP=\"@PPTP@\" \
 					-DSTATEDIR=\""$(statedir)"\" \
 					-DSCRIPTDIR=\""$(build_scriptdir)"\"
-plugins_pptp_la_LDFLAGS = $(plugin_ldflags)
+vpn_plugins_pptp_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
@@ -154,7 +156,10 @@ scripts_libppp_plugin_la_LIBADD = @DBUS_LIBS@
 endif
 endif
 
-builtin_sources += $(builtin_vpn_sources)
+if VPN
+builtin_vpn_sources += $(builtin_vpn_source)
+endif
+endif
 
 if PACRUNNER
 builtin_modules += pacrunner
@@ -169,6 +174,10 @@ if DATAFILES
 policydir = @POLKIT_DATADIR@
 
 policy_DATA = plugins/net.connman.policy
+
+if VPN
+policy_DATA += vpn/net.connman.vpn.policy
+endif
 endif
 endif
 
@@ -240,4 +249,13 @@ EXTRA_DIST += plugins/polkit.policy
 plugins/net.connman.policy: plugins/polkit.policy
 if POLKIT
 	$(AM_V_GEN)cp $< $@
+endif
+
+if VPN
+EXTRA_DIST += vpn/vpn-polkit.policy
+
+vpn/net.connman.vpn.policy: vpn/vpn-polkit.policy
+if POLKIT
+	$(AM_V_GEN)cp $< $@
+endif
 endif

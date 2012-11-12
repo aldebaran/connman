@@ -14,7 +14,7 @@ nodist_include_HEADERS = include/version.h
 
 noinst_HEADERS = include/rtnl.h include/task.h \
 			include/dbus.h include/option.h \
-			include/provider.h \
+			include/provider.h include/vpn-dbus.h \
 			include/utsname.h include/timeserver.h include/proxy.h \
 			include/technology.h include/setting.h
 
@@ -46,10 +46,20 @@ dbusconfdir = @DBUS_CONFDIR@
 
 dbusconf_DATA = src/connman.conf $(nmcompat_conf)
 
+if VPN
+dbusconf_DATA += vpn/connman-vpn-dbus.conf
+dbusservicedir = @DBUS_DATADIR@
+dbusservice_DATA = vpn/net.connman.vpn.service
+endif
+
 if SYSTEMD
 systemdunitdir = @SYSTEMD_UNITDIR@
 
 systemdunit_DATA = src/connman.service
+
+if VPN
+systemdunit_DATA += vpn/connman-vpn.service
+endif
 endif
 endif
 
@@ -93,11 +103,46 @@ src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 src_connmand_LDFLAGS = -Wl,--export-dynamic \
 				-Wl,--version-script=$(srcdir)/src/connman.ver
 
+if VPN
+vpn_plugin_LTLIBRARIES =
+
+vpn_plugin_objects =
+
+builtin_vpn_modules =
+builtin_vpn_sources =
+builtin_vpn_libadd =
+builtin_vpn_cflags =
+
+sbin_PROGRAMS += vpn/connman-vpnd
+
+vpn_connman_vpnd_SOURCES = $(gdbus_sources) $(builtin_vpn_sources) \
+			$(gweb_sources) vpn/vpn.ver vpn/main.c vpn/vpn.h \
+			src/log.c src/error.c src/plugin.c src/task.c \
+			vpn/vpn-manager.c vpn/vpn-provider.c \
+			vpn/vpn-provider.h vpn/vpn-rtnl.h \
+			vpn/vpn-ipconfig.c src/inet.c vpn/vpn-rtnl.c \
+			src/dbus.c src/storage.c src/ipaddress.c
+
+vpn_connman_vpnd_LDADD = $(builtin_vpn_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
+				@GNUTLS_LIBS@ -lresolv -ldl
+
+vpn_connman_vpnd_LDFLAGS = -Wl,--export-dynamic \
+				-Wl,--version-script=$(srcdir)/vpn/vpn.ver
+endif
+
 BUILT_SOURCES = $(local_headers) src/builtin.h
+
+if VPN
+BUILT_SOURCES += vpn/builtin.h
+endif
 
 CLEANFILES = src/connman.conf $(BUILT_SOURCES)
 
 statedir = $(localstatedir)/run/connman
+
+if VPN
+vpn_plugindir = $(libdir)/connman/plugins-vpn
+endif
 
 plugindir = $(libdir)/connman/plugins
 
@@ -108,11 +153,17 @@ storagedir = $(localstatedir)/lib/connman
 configdir = ${sysconfdir}/connman
 
 if MAINTAINER_MODE
+if VPN
+build_vpn_plugindir = $(abs_top_srcdir)/vpn/plugins/.libs
+endif
 build_plugindir = $(abs_top_srcdir)/plugins/.libs
 build_scriptdir = $(abs_top_srcdir)/scripts
 else
 build_plugindir = $(plugindir)
 build_scriptdir = $(scriptdir)
+if VPN
+build_vpn_plugindir = $(vpn_plugindir)
+endif
 endif
 
 AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
@@ -124,11 +175,38 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 				-DSTORAGEDIR=\""$(storagedir)\"" \
 				-DCONFIGDIR=\""$(configdir)\""
 
+if VPN
+AM_CPPFLAGS = -I$(builddir)/include -I$(srcdir)/gdbus
+else
 AM_CPPFLAGS = -I$(builddir)/include -I$(builddir)/src -I$(srcdir)/gdbus
+endif
+
+src_connmand_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
+				@GNUTLS_CFLAGS@ $(builtin_cflags) \
+				-DCONNMAN_PLUGIN_BUILTIN \
+				-DSTATEDIR=\""$(statedir)"\" \
+				-DPLUGINDIR=\""$(build_plugindir)"\" \
+				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
+				-DSTORAGEDIR=\""$(storagedir)\"" \
+				-DCONFIGDIR=\""$(configdir)\"" \
+				-I$(builddir)/src
 
 EXTRA_DIST = src/genbuiltin src/connman-dbus.conf src/connman-polkit.conf \
 						plugins/connman-nmcompat.conf
 
+if VPN
+vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
+				$(builtin_vpn_cflags) \
+				-DCONNMAN_PLUGIN_BUILTIN \
+				-DSTATEDIR=\""$(statedir)"\" \
+				-DPLUGINDIR=\""$(build_vpn_plugindir)"\" \
+				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
+				-DSTORAGEDIR=\""$(storagedir)\"" \
+				-DCONFIGDIR=\""$(configdir)\"" \
+				-I$(builddir)/vpn
+
+EXTRA_DIST += vpn/vpn-dbus.conf vpn/vpn-polkit.conf vpn/net.connman.vpn.service
+endif
 
 script_DATA =
 script_PROGRAMS =
@@ -275,11 +353,23 @@ MAINTAINERCLEANFILES = Makefile.in \
 src/builtin.h: src/genbuiltin $(builtin_sources)
 	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_modules) > $@
 
+vpn/builtin.h: src/genbuiltin $(builtin_vpn_sources)
+	$(AM_V_GEN)$(srcdir)/src/genbuiltin $(builtin_vpn_modules) > $@
+
 src/connman.conf: src/connman-dbus.conf src/connman-polkit.conf
 if POLKIT
 	$(AM_V_GEN)cp $(srcdir)/src/connman-polkit.conf $@
 else
 	$(AM_V_GEN)cp $(srcdir)/src/connman-dbus.conf $@
+endif
+
+if VPN
+vpn/connman-vpn-dbus.conf: vpn/vpn-dbus.conf vpn/vpn-polkit.conf
+if POLKIT
+	$(AM_V_GEN)cp $(srcdir)/vpn/vpn-polkit.conf $@
+else
+	$(AM_V_GEN)cp $(srcdir)/vpn/vpn-dbus.conf $@
+endif
 endif
 
 include/connman/version.h: include/version.h

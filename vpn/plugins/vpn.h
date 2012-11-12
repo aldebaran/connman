@@ -1,6 +1,6 @@
 /*
  *
- *  Connection Manager
+ *  ConnMan VPN daemon
  *
  *  Copyright (C) 2010  BMW Car IT GmbH. All rights reserved.
  *
@@ -19,6 +19,15 @@
  *
  */
 
+#ifndef __CONNMAN_VPND_VPN_H
+#define __CONNMAN_VPND_VPN_H
+
+#include "../vpn-provider.h"
+
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 #define VPN_FLAG_NO_TUN	1
 
 enum vpn_state {
@@ -33,16 +42,22 @@ enum vpn_state {
 
 struct vpn_driver {
 	int flags;
-	int (*notify) (DBusMessage *msg, struct connman_provider *provider);
-	int (*connect) (struct connman_provider *provider,
+	int (*notify) (DBusMessage *msg, struct vpn_provider *provider);
+	int (*connect) (struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name);
 	void (*disconnect) (void);
 	int (*error_code) (int exit_code);
-	int (*save) (struct connman_provider *provider, GKeyFile *keyfile);
+	int (*save) (struct vpn_provider *provider, GKeyFile *keyfile);
 };
 
 int vpn_register(const char *name, struct vpn_driver *driver,
 			const char *program);
 void vpn_unregister(const char *provider_name);
 void vpn_died(struct connman_task *task, int exit_code, void *user_data);
-int vpn_set_ifname(struct connman_provider *provider, const char *ifname);
+int vpn_set_ifname(struct vpn_provider *provider, const char *ifname);
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif /* __CONNMAN_VPND_VPN_H */

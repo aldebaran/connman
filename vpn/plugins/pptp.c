@@ -1,6 +1,6 @@
 /*
  *
- *  Connection Manager
+ *  ConnMan VPN daemon
  *
  *  Copyright (C) 2010  BMW Car IT GmbH. All rights reserved.
  *  Copyright (C) 2012  Intel Corporation. All rights reserved.
@@ -30,6 +30,7 @@
 #include <stdio.h>
 #include <net/if.h>
 
+#include <dbus/dbus.h>
 #include <glib.h>
 
 #define CONNMAN_API_SUBJECT_TO_CHANGE
@@ -79,14 +80,14 @@ static DBusMessage *pptp_get_sec(struct connman_task *task,
 				DBusMessage *msg, void *user_data)
 {
 	const char *user, *passwd;
-	struct connman_provider *provider = user_data;
+	struct vpn_provider *provider = user_data;
 	DBusMessage *reply;
 
 	if (dbus_message_get_no_reply(msg) == TRUE)
 		return NULL;
 
-	user = connman_provider_get_string(provider, "PPTP.User");
-	passwd = connman_provider_get_string(provider, "PPTP.Password");
+	user = vpn_provider_get_string(provider, "PPTP.User");
+	passwd = vpn_provider_get_string(provider, "PPTP.Password");
 	if (user == NULL || strlen(user) == 0 ||
 				passwd == NULL || strlen(passwd) == 0)
 		return NULL;
@@ -101,7 +102,7 @@ static DBusMessage *pptp_get_sec(struct connman_task *task,
 	return reply;
 }
 
-static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
+static int pptp_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
@@ -138,17 +139,17 @@ static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
 		DBG("%s = %s", key, value);
 
 		if (!strcmp(key, "INTERNAL_IP4_ADDRESS")) {
-			connman_provider_set_string(provider, "Address", value);
+			vpn_provider_set_string(provider, "Address", value);
 			addressv4 = g_strdup(value);
 		}
 
 		if (!strcmp(key, "INTERNAL_IP4_NETMASK")) {
-			connman_provider_set_string(provider, "Netmask", value);
+			vpn_provider_set_string(provider, "Netmask", value);
 			netmask = g_strdup(value);
 		}
 
 		if (!strcmp(key, "INTERNAL_IP4_DNS")) {
-			connman_provider_set_string(provider, "DNS", value);
+			vpn_provider_set_string(provider, "DNS", value);
 			nameservers = g_strdup(value);
 		}
 
@@ -179,9 +180,9 @@ static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
-	value = connman_provider_get_string(provider, "HostIP");
+	value = vpn_provider_get_string(provider, "HostIP");
 	if (value != NULL) {
-		connman_provider_set_string(provider, "Gateway", value);
+		vpn_provider_set_string(provider, "Gateway", value);
 		gateway = g_strdup(value);
 	}
 
@@ -189,8 +190,8 @@ static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
 		connman_ipaddress_set_ipv4(ipaddress, addressv4, netmask,
 					gateway);
 
-	connman_provider_set_ipaddress(provider, ipaddress);
-	connman_provider_set_nameservers(provider, nameservers);
+	vpn_provider_set_ipaddress(provider, ipaddress);
+	vpn_provider_set_nameservers(provider, nameservers);
 
 	g_free(addressv4);
 	g_free(netmask);
@@ -201,20 +202,20 @@ static int pptp_notify(DBusMessage *msg, struct connman_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
-static int pptp_save(struct connman_provider *provider, GKeyFile *keyfile)
+static int pptp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(pptp_options); i++) {
 		if (strncmp(pptp_options[i].cm_opt, "PPTP.", 5) == 0) {
-			option = connman_provider_get_string(provider,
+			option = vpn_provider_get_string(provider,
 							pptp_options[i].cm_opt);
 			if (option == NULL)
 				continue;
 
 			g_key_file_set_string(keyfile,
-					connman_provider_get_save_group(provider),
+					vpn_provider_get_save_group(provider),
 					pptp_options[i].cm_opt, option);
 		}
 	}
@@ -232,7 +233,7 @@ static void pptp_write_bool_option(struct connman_task *task,
 	}
 }
 
-static int pptp_connect(struct connman_provider *provider,
+static int pptp_connect(struct vpn_provider *provider,
 		struct connman_task *task, const char *if_name)
 {
 	const char *opt_s, *host;
@@ -243,7 +244,7 @@ static int pptp_connect(struct connman_provider *provider,
 					pptp_get_sec, provider))
 		return -ENOMEM;
 
-	host = connman_provider_get_string(provider, "Host");
+	host = vpn_provider_get_string(provider, "Host");
 	if (host == NULL) {
 		connman_error("Host not set; cannot enable VPN");
 		return -EINVAL;
@@ -268,7 +269,7 @@ static int pptp_connect(struct connman_provider *provider,
 	connman_task_add_argument(task, "ipparam", "pptp_plugin");
 
 	for (i = 0; i < (int)ARRAY_SIZE(pptp_options); i++) {
-		opt_s = connman_provider_get_string(provider,
+		opt_s = vpn_provider_get_string(provider,
 					pptp_options[i].cm_opt);
 		if (opt_s == NULL)
 			opt_s = pptp_options[i].vpnc_default;
