@@ -26,10 +26,21 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <syslog.h>
+#include <libgen.h>
 
 #include <dbus/dbus.h>
 
 extern char **environ;
+
+static void print(const char *format, ...)
+{
+	va_list ap;
+
+	va_start(ap, format);
+	vsyslog(LOG_INFO, format, ap);
+	va_end(ap);
+}
 
 static void append(DBusMessageIter *dict, const char *pattern)
 {
@@ -68,6 +79,9 @@ int main(int argc, char *argv[])
 	DBusMessage *msg;
 	DBusMessageIter iter, dict;
 	char **envp, *busname, *reason, *interface, *path;
+	int ret = 0;
+
+	openlog(basename(argv[0]), LOG_NDELAY | LOG_PID, LOG_DAEMON);
 
 	busname = getenv("CONNMAN_BUSNAME");
 	interface = getenv("CONNMAN_INTERFACE");
@@ -76,31 +90,33 @@ int main(int argc, char *argv[])
 	reason = getenv("reason");
 
 	if (!busname || !interface || !path || !reason) {
-		fprintf(stderr, "Required environment variables not set\n");
-		return 1;
+		print("Required environment variables not set");
+		ret = 1;
+		goto out;
 	}
 
 	if (strcmp(reason, "pre-init") == 0)
-		return 0;
+		goto out;
 
 	dbus_error_init(&error);
 
 	conn = dbus_bus_get(DBUS_BUS_SYSTEM, &error);
 	if (conn == NULL) {
 		if (dbus_error_is_set(&error) == TRUE) {
-			fprintf(stderr, "%s\n", error.message);
+			print("%s", error.message);
 			dbus_error_free(&error);
 		} else
-			fprintf(stderr, "Failed to get on system bus\n");
-		return 0;
+			print("Failed to get on system bus");
+
+		goto out;
 	}
 
 	msg = dbus_message_new_method_call(busname, path,
 						interface, "notify");
 	if (msg == NULL) {
 		dbus_connection_unref(conn);
-		fprintf(stderr, "Failed to allocate method call\n");
-		return 0;
+		print("Failed to allocate method call");
+		goto out;
 	}
 
 	dbus_message_set_no_reply(msg, TRUE);
@@ -121,8 +137,10 @@ int main(int argc, char *argv[])
 
 	dbus_message_iter_close_container(&iter, &dict);
 
-	if (dbus_connection_send(conn, msg, NULL) == FALSE)
-		fprintf(stderr, "Failed to send message\n");
+	if (dbus_connection_send(conn, msg, NULL) == FALSE) {
+		print("Failed to send message");
+		goto out;
+	}
 
 	dbus_connection_flush(conn);
 
@@ -130,5 +148,8 @@ int main(int argc, char *argv[])
 
 	dbus_connection_unref(conn);
 
-	return 0;
+out:
+	closelog();
+
+	return ret;
 }
