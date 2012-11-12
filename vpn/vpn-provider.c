@@ -917,6 +917,9 @@ static void provider_destruct(struct vpn_provider *provider)
 		g_resolv_unref(provider->resolv);
 		provider->resolv = NULL;
 	}
+	__vpn_ipconfig_unref(provider->ipconfig_ipv4);
+	__vpn_ipconfig_unref(provider->ipconfig_ipv6);
+
 	g_strfreev(provider->host_ip);
 	g_free(provider);
 }
