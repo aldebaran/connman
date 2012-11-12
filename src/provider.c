@@ -110,8 +110,6 @@ void connman_provider_unref_debug(struct connman_provider *provider,
 	if (__sync_fetch_and_sub(&provider->refcount, 1) != 1)
 		return;
 
-	provider_remove(provider);
-
 	provider_destruct(provider);
 }
 
@@ -197,9 +195,7 @@ int __connman_provider_remove(const char *path)
 		if (g_strcmp0(srv_path, path) == 0) {
 			DBG("Removing VPN %s", provider->identifier);
 
-			if (provider->driver != NULL &&
-						provider->driver->remove)
-				provider->driver->remove(provider);
+			provider_remove(provider);
 
 			g_hash_table_remove(provider_hash,
 						provider->identifier);
@@ -565,14 +561,6 @@ static void unregister_provider(gpointer data)
 	connman_provider_unref(provider);
 }
 
-static void clean_provider(gpointer key, gpointer value, gpointer user_data)
-{
-	struct connman_provider *provider = value;
-
-	if (provider->driver != NULL && provider->driver->remove)
-		provider->driver->remove(provider);
-}
-
 static gint compare_priority(gconstpointer a, gconstpointer b)
 {
 	return 0;
@@ -760,8 +748,6 @@ void __connman_provider_cleanup(void)
 	DBG("");
 
 	connman_notifier_unregister(&provider_notifier);
-
-	g_hash_table_foreach(provider_hash, clean_provider, NULL);
 
 	g_hash_table_destroy(provider_hash);
 	provider_hash = NULL;
