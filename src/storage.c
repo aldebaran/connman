@@ -372,6 +372,46 @@ void __connman_storage_save_provider(GKeyFile *keyfile, const char *identifier)
 	g_free(pathname);
 }
 
+static gboolean remove_all(const char *id)
+{
+	gboolean removed;
+
+	remove_file(id, SETTINGS);
+	remove_file(id, "data");
+
+	removed = remove_dir(id);
+	if (removed == FALSE)
+		return FALSE;
+
+	return TRUE;
+}
+
+gboolean __connman_storage_remove_provider(const char *identifier)
+{
+	gboolean removed;
+	gchar *id;
+
+	id = g_strdup_printf("%s_%s", "provider", identifier);
+	if (id == NULL)
+		return FALSE;
+
+	if (remove_all(id) == TRUE)
+		DBG("Removed provider dir %s/%s", STORAGEDIR, id);
+
+	g_free(id);
+
+	id = g_strdup_printf("%s_%s", "vpn", identifier);
+	if (id == NULL)
+		return FALSE;
+
+	if ((removed = remove_all(id)) == TRUE)
+		DBG("Removed vpn dir %s/%s", STORAGEDIR, id);
+
+	g_free(id);
+
+	return removed;
+}
+
 gchar **__connman_storage_get_providers(void)
 {
 	GSList *list = NULL;
