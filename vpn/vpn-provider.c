@@ -1225,6 +1225,25 @@ static void append_properties(DBusMessageIter *iter,
 	connman_dbus_dict_close(iter, &dict);
 }
 
+static void connection_added_signal(struct vpn_provider *provider)
+{
+	DBusMessage *signal;
+	DBusMessageIter iter;
+
+	signal = dbus_message_new_signal(VPN_MANAGER_PATH,
+			VPN_MANAGER_INTERFACE, "ConnectionAdded");
+	if (signal == NULL)
+		return;
+
+	dbus_message_iter_init_append(signal, &iter);
+	dbus_message_iter_append_basic(&iter, DBUS_TYPE_OBJECT_PATH,
+							&provider->path);
+	append_properties(&iter, provider);
+
+	dbus_connection_send(connection, signal, NULL);
+	dbus_message_unref(signal);
+}
+
 static connman_bool_t check_host(char **hosts, char *host)
 {
 	int i;
@@ -1663,6 +1682,8 @@ int __vpn_provider_create(DBusMessage *msg)
 	g_dbus_send_reply(connection, msg,
 				DBUS_TYPE_OBJECT_PATH, &provider->path,
 				DBUS_TYPE_INVALID);
+
+	connection_added_signal(provider);
 
 	return 0;
 }
