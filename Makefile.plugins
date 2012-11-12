@@ -52,6 +52,9 @@ builtin_sources += plugins/dundee.c
 endif
 
 if VPN
+builtin_modules += vpn
+builtin_sources += plugins/vpn.c
+
 if OPENCONNECT
 if OPENCONNECT_BUILTIN
 builtin_vpn_modules += openconnect
