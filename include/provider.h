@@ -94,6 +94,8 @@ int connman_provider_set_ipaddress(struct connman_provider *provider,
 int connman_provider_set_pac(struct connman_provider *provider,
 				const char *pac);
 int connman_provider_create_service(struct connman_provider *provider);
+struct connman_provider *connman_provider_get(const char *identifier);
+void connman_provider_put(struct connman_provider *provider);
 int connman_provider_set_domain(struct connman_provider *provider,
 				const char *domain);
 int connman_provider_set_nameservers(struct connman_provider *provider,

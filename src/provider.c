@@ -600,6 +600,71 @@ static void provider_offline_mode(connman_bool_t enabled)
 
 }
 
+static void destroy_route(gpointer user_data)
+{
+	struct connman_route *route = user_data;
+
+	g_free(route->host);
+	g_free(route->netmask);
+	g_free(route->gateway);
+	g_free(route);
+}
+
+static void provider_initialize(struct connman_provider *provider)
+{
+	DBG("provider %p", provider);
+
+	provider->index = 0;
+	provider->identifier = NULL;
+	provider->user_networks = NULL;
+	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
+					NULL, destroy_route);
+	provider->user_routes = g_hash_table_new_full(g_str_hash, g_str_equal,
+					g_free, destroy_route);
+}
+
+static struct connman_provider *provider_new(void)
+{
+	struct connman_provider *provider;
+
+	provider = g_try_new0(struct connman_provider, 1);
+	if (provider == NULL)
+		return NULL;
+
+	provider->refcount = 1;
+
+	DBG("provider %p", provider);
+	provider_initialize(provider);
+
+	return provider;
+}
+
+struct connman_provider *connman_provider_get(const char *identifier)
+{
+	struct connman_provider *provider;
+
+	provider = g_hash_table_lookup(provider_hash, identifier);
+	if (provider != NULL)
+		return provider;
+
+	provider = provider_new();
+	if (provider == NULL)
+		return NULL;
+
+	DBG("provider %p", provider);
+
+	provider->identifier = g_strdup(identifier);
+
+	g_hash_table_insert(provider_hash, provider->identifier, provider);
+
+	return provider;
+}
+
+void connman_provider_put(struct connman_provider *provider)
+{
+	g_hash_table_remove(provider_hash, provider->identifier);
+}
+
 static struct connman_provider *provider_get(int index)
 {
 	GHashTableIter iter;
