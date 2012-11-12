@@ -216,7 +216,7 @@ static DBusMessage *vpn_notify(struct connman_task *task,
 	struct vpn_data *data;
 	struct vpn_driver_data *vpn_driver_data;
 	const char *name;
-	int state, index;
+	int state, index, err;
 
 	data = vpn_provider_get_data(provider);
 
@@ -236,7 +236,22 @@ static DBusMessage *vpn_notify(struct connman_task *task,
 		vpn_provider_ref(provider);
 		data->watch = vpn_rtnl_add_newlink_watch(index,
 						     vpn_newlink, provider);
-		connman_inet_ifup(index);
+		err = connman_inet_ifup(index);
+		if (err < 0) {
+			if (err == -EALREADY)
+				/*
+				 * So the interface is up already, that is just
+				 * great. Unfortunately in this case the
+				 * newlink watch might not have been called at
+				 * all. We must manually call it here so that
+				 * the provider can go to ready state and the
+				 * routes are setup properly.
+				 */
+				vpn_newlink(IFF_UP, 0, provider);
+			else
+				DBG("Cannot take interface %d up err %d/%s",
+					index, -err, strerror(-err));
+		}
 		break;
 
 	case VPN_STATE_UNKNOWN:
