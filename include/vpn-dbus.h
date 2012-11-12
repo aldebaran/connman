@@ -37,6 +37,7 @@ extern "C" {
 #define VPN_MANAGER_PATH		"/"
 
 #define VPN_CONNECTION_INTERFACE	VPN_SERVICE ".Connection"
+#define VPN_AGENT_INTERFACE		VPN_SERVICE ".Agent"
 #define VPN_TASK_INTERFACE		VPN_SERVICE ".Task"
 
 #define VPN_PRIVILEGE_MODIFY		1

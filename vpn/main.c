@@ -308,6 +308,7 @@ int main(int argc, char *argv[])
 	else
 		config_init(option_config);
 
+	__connman_agent_init();
 	__vpn_provider_init(option_routes);
 	__vpn_manager_init();
 	__vpn_ipconfig_init();
@@ -329,6 +330,7 @@ int main(int argc, char *argv[])
 	__vpn_ipconfig_cleanup();
 	__vpn_manager_cleanup();
 	__vpn_provider_cleanup();
+	__connman_agent_cleanup();
 	__connman_dbus_cleanup();
 	__connman_log_cleanup(FALSE);
 

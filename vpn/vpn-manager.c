@@ -27,6 +27,7 @@
 
 #include <gdbus.h>
 #include <connman/log.h>
+#include <connman/agent.h>
 
 #include "../src/connman.h"
 
@@ -87,6 +88,46 @@ static DBusMessage *get_connections(DBusConnection *conn, DBusMessage *msg,
 	return reply;
 }
 
+static DBusMessage *register_agent(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender, *path;
+	int err;
+
+	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	err = connman_agent_register(sender, path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
+static DBusMessage *unregister_agent(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	const char *sender, *path;
+	int err;
+
+	DBG("conn %p", conn);
+
+	sender = dbus_message_get_sender(msg);
+
+	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
+							DBUS_TYPE_INVALID);
+
+	err = connman_agent_unregister(sender, path);
+	if (err < 0)
+		return __connman_error_failed(msg, -err);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+}
+
 static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_ASYNC_METHOD("Create",
 			GDBUS_ARGS({ "properties", "a{sv}" }),
@@ -98,6 +139,12 @@ static const GDBusMethodTable manager_methods[] = {
 	{ GDBUS_METHOD("GetConnections", NULL,
 			GDBUS_ARGS({ "connections", "a(oa{sv})" }),
 			get_connections) },
+	{ GDBUS_METHOD("RegisterAgent",
+			GDBUS_ARGS({ "path", "o" }), NULL,
+			register_agent) },
+	{ GDBUS_METHOD("UnregisterAgent",
+			GDBUS_ARGS({ "path", "o" }), NULL,
+			unregister_agent) },
 	{ },
 };
 
