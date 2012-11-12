@@ -62,9 +62,11 @@ struct vpn_route {
 
 struct connection_data {
 	char *path;
+	char *ident;
 	struct connman_provider *provider;
 	int index;
 	DBusPendingCall *call;
+	connman_bool_t connect_pending;
 
 	char *state;
 	char *type;
@@ -245,18 +247,13 @@ static void set_provider_state(struct connection_data *data)
 static int create_provider(struct connection_data *data, void *user_data)
 {
 	struct connman_provider_driver *driver = user_data;
-	char *ident;
-	int err = 0;
+	int err;
 
 	DBG("%s", data->path);
 
-	ident = g_strdup(get_ident(data->path));
-
-	data->provider = connman_provider_get(ident);
-	if (data->provider == NULL) {
-		err = -ENOMEM;
-		goto out;
-	}
+	data->provider = connman_provider_get(data->ident);
+	if (data->provider == NULL)
+		return -ENOMEM;
 
 	DBG("provider %p name %s", data->provider, data->name);
 
@@ -276,9 +273,7 @@ static int create_provider(struct connection_data *data, void *user_data)
 		set_provider_state(data);
 	}
 
-out:
-	g_free(ident);
-	return err;
+	return 0;
 }
 
 static void destroy_route(gpointer user_data)
@@ -302,6 +297,7 @@ static struct connection_data *create_connection_data(const char *path)
 	DBG("path %s", path);
 
 	data->path = g_strdup(path);
+	data->ident = g_strdup(get_ident(path));
 	data->index = -1;
 
 	data->setting_strings = g_hash_table_new_full(g_str_hash,
@@ -490,14 +486,22 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 {
 	struct connection_data *data;
 	int err;
+	char *ident = get_ident(path);
 
-	data = g_hash_table_lookup(vpn_connections, path);
-	if (data != NULL)
-		return;
-
-	data = create_connection_data(path);
-	if (data == NULL)
-		return;
+	data = g_hash_table_lookup(vpn_connections, ident);
+	if (data != NULL) {
+		/*
+		 * We might have a dummy connection struct here that
+		 * was created by configuration_create_reply() so in
+		 * that case just continue.
+		 */
+		if (data->connect_pending == FALSE)
+			return;
+	} else {
+		data = create_connection_data(path);
+		if (data == NULL)
+			return;
+	}
 
 	DBG("data %p path %s", data, path);
 
@@ -551,7 +555,7 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		dbus_message_iter_next(properties);
 	}
 
-	g_hash_table_insert(vpn_connections, g_strdup(path), data);
+	g_hash_table_insert(vpn_connections, g_strdup(data->ident), data);
 
 	err = create_provider(data, user_data);
 	if (err < 0)
@@ -559,11 +563,16 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 
 	resolv_host_addr(data);
 
+	if (data->connect_pending == TRUE) {
+		connect_provider(data, NULL);
+		data->connect_pending = FALSE;
+	}
+
 	return;
 
 out:
-	DBG("removing %s", path);
-	g_hash_table_remove(vpn_connections, path);
+	DBG("removing %s", data->ident);
+	g_hash_table_remove(vpn_connections, data->ident);
 }
 
 static void get_connections_reply(DBusPendingCall *call, void *user_data)
@@ -581,22 +590,25 @@ static void get_connections_reply(DBusPendingCall *call, void *user_data)
 		DBUS_DICT_ENTRY_END_CHAR_AS_STRING
 		DBUS_STRUCT_END_CHAR_AS_STRING;
 
+	if (dbus_pending_call_get_completed(call) == FALSE)
+		return;
+
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
-
-	if (dbus_message_has_signature(reply, signature) == FALSE) {
-		connman_error("vpnd signature \"%s\" does not match "
-							"expected \"%s\"",
-			dbus_message_get_signature(reply), signature);
-		goto done;
-	}
 
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply) == TRUE) {
 		connman_error("%s", error.message);
 		dbus_error_free(&error);
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, signature) == FALSE) {
+		connman_error("vpnd signature \"%s\" does not match "
+							"expected \"%s\"",
+			dbus_message_get_signature(reply), signature);
 		goto done;
 	}
 
@@ -669,6 +681,9 @@ static void remove_connection_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
 	DBusError error;
+
+	if (dbus_pending_call_get_completed(call) == FALSE)
+		return;
 
 	DBG("");
 
@@ -758,6 +773,9 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusError error;
 
+	if (dbus_pending_call_get_completed(call) == FALSE)
+		return;
+
 	DBG("");
 
 	reply = dbus_pending_call_steal_reply(call);
@@ -842,23 +860,28 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 	DBusMessageIter iter;
 	const char *signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
 	const char *path;
+	char *ident;
+	struct connection_data *data;
+
+	if (dbus_pending_call_get_completed(call) == FALSE)
+		return;
 
 	DBG("user %p", user_data);
 
 	reply = dbus_pending_call_steal_reply(call);
-
-	if (dbus_message_has_signature(reply, signature) == FALSE) {
-		connman_error("vpn configuration signature \"%s\" does not "
-						"match expected \"%s\"",
-			dbus_message_get_signature(reply), signature);
-		goto done;
-	}
 
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply) == TRUE) {
 		connman_error("dbus error: %s", error.message);
 		dbus_error_free(&error);
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, signature) == FALSE) {
+		connman_error("vpn configuration signature \"%s\" does not "
+						"match expected \"%s\"",
+			dbus_message_get_signature(reply), signature);
 		goto done;
 	}
 
@@ -870,7 +893,23 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 	/*
 	 * Then try to connect the VPN as expected by ConnectProvider API
 	 */
-	// XXX:
+	ident = get_ident(path);
+
+	data = g_hash_table_lookup(vpn_connections, ident);
+	if (data == NULL) {
+		/*
+		 * We have not yet received service created message
+		 * from vpnd. So create a dummy connection struct
+		 * and wait a while.
+		 */
+		data = create_connection_data(path);
+		data->connect_pending = TRUE;
+
+		g_hash_table_insert(vpn_connections, g_strdup(ident), data);
+
+	} else {
+		connect_provider(data, NULL);
+	}
 
 done:
 	dbus_message_unref(reply);
@@ -1313,6 +1352,7 @@ static void connection_destroy(gpointer hash_data)
 		destroy_provider(data);
 
 	g_free(data->path);
+	g_free(data->ident);
 	g_free(data->state);
 	g_free(data->type);
 	g_free(data->name);
@@ -1355,7 +1395,7 @@ static void remove_connection(DBusConnection *conn, const char *path)
 {
 	DBG("path %s", path);
 
-	g_hash_table_remove(vpn_connections, path);
+	g_hash_table_remove(vpn_connections, get_ident(path));
 }
 
 static gboolean connection_removed(DBusConnection *conn, DBusMessage *message,
@@ -1553,7 +1593,7 @@ static gboolean property_changed(DBusConnection *conn,
 		return TRUE;
 	}
 
-	data = g_hash_table_lookup(vpn_connections, path);
+	data = g_hash_table_lookup(vpn_connections, get_ident(path));
 	if (data == NULL)
 		return TRUE;
 
