@@ -219,6 +219,13 @@ static int pptp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 					pptp_options[i].cm_opt, option);
 		}
 	}
+
+	option = vpn_provider_get_string(provider, "PPTP.Password");
+	if (option != NULL)
+		g_key_file_set_string(keyfile,
+					vpn_provider_get_save_group(provider),
+					"PPTP.Password", option);
+
 	return 0;
 }
 
