@@ -547,7 +547,7 @@ int main(int argc, char *argv[])
 	g_dbus_set_disconnect_function(conn, disconnect_callback, NULL, NULL);
 
 	__connman_log_init(argv[0], option_debug, option_detach,
-			option_backtrace);
+			option_backtrace, "Connection Manager", VERSION);
 
 	__connman_dbus_init(conn);
 

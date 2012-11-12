@@ -292,7 +292,8 @@ void __connman_log_enable(struct connman_debug_desc *start,
 }
 
 int __connman_log_init(const char *program, const char *debug,
-		connman_bool_t detach, connman_bool_t backtrace)
+		connman_bool_t detach, connman_bool_t backtrace,
+		const char *program_name, const char *program_version)
 {
 	static char path[PATH_MAX];
 	int option = LOG_NDELAY | LOG_PID;
@@ -313,7 +314,7 @@ int __connman_log_init(const char *program, const char *debug,
 
 	openlog(basename(program), option, LOG_DAEMON);
 
-	syslog(LOG_INFO, "Connection Manager version %s", VERSION);
+	syslog(LOG_INFO, "%s version %s", program_name, program_version);
 
 	return 0;
 }

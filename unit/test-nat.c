@@ -147,7 +147,7 @@ int main(int argc, char *argv[])
 
 	g_test_init(&argc, &argv, NULL);
 
-	__connman_log_init(argv[0], "*", FALSE, TRUE);
+	__connman_log_init(argv[0], "*", FALSE, TRUE, "test-nat", VERSION);
 	__connman_iptables_init();
 	__connman_nat_init();
 
