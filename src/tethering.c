@@ -247,7 +247,7 @@ void __connman_tethering_set_enabled(void)
 	}
 
 	prefixlen =
-		__connman_ipconfig_netmask_prefix_len(subnet_mask);
+		__connman_ipaddress_netmask_prefix_len(subnet_mask);
 	__connman_nat_enable(BRIDGE_NAME, start_ip, prefixlen);
 
 	DBG("tethering started");
@@ -300,7 +300,7 @@ static void setup_tun_interface(unsigned int flags, unsigned change,
 	server_ip = __connman_ippool_get_start_ip(pn->pool);
 	peer_ip = __connman_ippool_get_end_ip(pn->pool);
 	prefixlen =
-		__connman_ipconfig_netmask_prefix_len(subnet_mask);
+		__connman_ipaddress_netmask_prefix_len(subnet_mask);
 
 	if ((__connman_inet_modify_address(RTM_NEWADDR,
 				NLM_F_REPLACE | NLM_F_ACK, pn->index, AF_INET,

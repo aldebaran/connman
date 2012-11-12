@@ -227,7 +227,7 @@ static void lease_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	if (option != NULL)
 		gateway = g_strdup(option->data);
 
-	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
+	prefixlen = __connman_ipaddress_netmask_prefix_len(netmask);
 	if (prefixlen == 255)
 		connman_warn("netmask: %s is invalid", netmask);
 
@@ -375,7 +375,7 @@ static void ipv4ll_available_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	address = g_dhcp_client_get_address(dhcp_client);
 	netmask = g_dhcp_client_get_netmask(dhcp_client);
 
-	prefixlen = __connman_ipconfig_netmask_prefix_len(netmask);
+	prefixlen = __connman_ipaddress_netmask_prefix_len(netmask);
 
 	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_DHCP);
 	__connman_ipconfig_set_local(ipconfig, address);

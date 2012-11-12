@@ -8,7 +8,7 @@ include_HEADERS = include/types.h include/log.h include/plugin.h \
 			include/resolver.h include/ipconfig.h \
 			include/device.h include/network.h include/inet.h \
 			include/storage.h include/provision.h \
-			include/session.h
+			include/session.h include/ipaddress.h
 
 nodist_include_HEADERS = include/version.h
 
@@ -85,7 +85,7 @@ src_connmand_SOURCES = $(gdbus_sources) $(gdhcp_sources) $(gweb_sources) \
 			src/technology.c src/counter.c src/ntp.c \
 			src/session.c src/tethering.c src/wpad.c src/wispr.c \
 			src/stats.c src/iptables.c src/dnsproxy.c src/6to4.c \
-			src/ippool.c src/bridge.c src/nat.c
+			src/ippool.c src/bridge.c src/nat.c src/ipaddress.c
 
 src_connmand_LDADD = $(builtin_libadd) @GLIB_LIBS@ @DBUS_LIBS@ \
 				@XTABLES_LIBS@ @GNUTLS_LIBS@ -lresolv -ldl -lrt
