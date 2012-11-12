@@ -223,14 +223,24 @@ static DBusMessage *vpn_notify(struct connman_task *task,
 	data = vpn_provider_get_data(provider);
 
 	name = vpn_provider_get_driver_name(provider);
-	if (name == NULL)
+
+	if (name == NULL) {
+		DBG("Cannot find VPN driver for provider %p", provider);
+		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_FAILURE);
 		return NULL;
+	}
 
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
-	if (vpn_driver_data == NULL)
+	if (vpn_driver_data == NULL) {
+		DBG("Cannot find VPN driver data for name %s", name);
+		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_FAILURE);
 		return NULL;
+	}
 
 	state = vpn_driver_data->vpn_driver->notify(msg, provider);
+
+	DBG("provider %p driver %s state %d", provider, name, state);
+
 	switch (state) {
 	case VPN_STATE_CONNECT:
 	case VPN_STATE_READY:
