@@ -439,9 +439,8 @@ void connman_provider_set_index(struct connman_provider *provider, int index)
 		}
 	}
 
-	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_FIXED);
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_OFF);
 	__connman_ipconfig_set_index(ipconfig, index);
-
 
 	ipconfig = __connman_service_get_ip6config(service);
 
@@ -478,6 +477,8 @@ int connman_provider_set_ipaddress(struct connman_provider *provider,
 		return -EINVAL;
 
 	provider->family = ipaddress->family;
+
+	__connman_ipconfig_set_method(ipconfig, CONNMAN_IPCONFIG_METHOD_FIXED);
 
 	__connman_ipconfig_set_local(ipconfig, ipaddress->local);
 	__connman_ipconfig_set_peer(ipconfig, ipaddress->peer);
