@@ -52,6 +52,10 @@ void __vpn_ipconfig_set_prefixlen(struct vpn_ipconfig *ipconfig,
 unsigned char __vpn_ipconfig_get_prefixlen(struct vpn_ipconfig *ipconfig);
 int __vpn_ipconfig_address_add(struct vpn_ipconfig *ipconfig, int family);
 int __vpn_ipconfig_gateway_add(struct vpn_ipconfig *ipconfig, int family);
+void __vpn_ipconfig_unref_debug(struct vpn_ipconfig *ipconfig,
+			const char *file, int line, const char *caller);
+#define __vpn_ipconfig_unref(ipconfig) \
+	__vpn_ipconfig_unref_debug(ipconfig, __FILE__, __LINE__, __func__)
 struct vpn_ipconfig *__vpn_ipconfig_create(int index, int family);
 void __vpn_ipconfig_set_index(struct vpn_ipconfig *ipconfig,
 								int index);

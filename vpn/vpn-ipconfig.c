@@ -257,6 +257,23 @@ int __vpn_ipconfig_gateway_add(struct vpn_ipconfig *ipconfig, int family)
 	return 0;
 }
 
+void __vpn_ipconfig_unref_debug(struct vpn_ipconfig *ipconfig,
+				const char *file, int line, const char *caller)
+{
+	if (ipconfig == NULL)
+		return;
+
+	DBG("%p ref %d by %s:%d:%s()", ipconfig, ipconfig->refcount - 1,
+		file, line, caller);
+
+	if (__sync_fetch_and_sub(&ipconfig->refcount, 1) != 1)
+		return;
+
+	connman_ipaddress_free(ipconfig->system);
+	connman_ipaddress_free(ipconfig->address);
+	g_free(ipconfig);
+}
+
 static struct vpn_ipconfig *create_ipv6config(int index)
 {
 	struct vpn_ipconfig *ipv6config;
