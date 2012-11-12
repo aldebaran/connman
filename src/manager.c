@@ -229,7 +229,7 @@ static DBusMessage *connect_provider(DBusConnection *conn,
 		connman_info("Session mode enabled: "
 				"direct provider connect disabled");
 
-		return __connman_error_failed(msg, -EINVAL);
+		return __connman_error_failed(msg, EINVAL);
 	}
 
 	err = __connman_provider_create_and_connect(msg);
