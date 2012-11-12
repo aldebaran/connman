@@ -258,6 +258,13 @@ static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 					pppd_options[i].cm_opt, option);
 		}
 	}
+
+	option = vpn_provider_get_string(provider, "L2TP.Password");
+	if (option != NULL)
+		g_key_file_set_string(keyfile,
+					vpn_provider_get_save_group(provider),
+					"L2TP.Password", option);
+
 	return 0;
 }
 
