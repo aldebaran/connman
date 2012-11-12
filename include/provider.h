@@ -111,6 +111,11 @@ struct connman_provider_driver {
 	int (*connect) (struct connman_provider *provider);
 	int (*disconnect) (struct connman_provider *provider);
 	int (*save) (struct connman_provider *provider, GKeyFile *keyfile);
+	int (*set_property) (struct connman_provider *provider,
+				const char *key, const char *value);
+	const char * (*get_property) (struct connman_provider *provider,
+				const char *key);
+	int (*create) (DBusMessage *msg);
 };
 
 int connman_provider_driver_register(struct connman_provider_driver *driver);
