@@ -56,6 +56,13 @@ enum connman_provider_error {
 	CONNMAN_PROVIDER_ERROR_AUTH_FAILED	= 3,
 };
 
+enum connman_provider_route_type {
+	CONNMAN_PROVIDER_ROUTE_UNKNOWN = 0,
+	CONNMAN_PROVIDER_ROUTE_ALL = 0,
+	CONNMAN_PROVIDER_ROUTE_USER = 1,
+	CONNMAN_PROVIDER_ROUTE_SERVER = 2,
+};
+
 struct connman_provider;
 struct connman_ipaddress;
 
@@ -119,6 +126,9 @@ struct connman_provider_driver {
 	const char * (*get_property) (struct connman_provider *provider,
 				const char *key);
 	int (*create) (DBusMessage *msg);
+	int (*set_routes) (struct connman_provider *provider,
+				enum connman_provider_route_type type);
+	connman_bool_t (*check_routes) (struct connman_provider *provider);
 };
 
 int connman_provider_driver_register(struct connman_provider_driver *driver);

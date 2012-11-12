@@ -38,25 +38,14 @@ static GHashTable *provider_hash = NULL;
 
 static GSList *driver_list = NULL;
 
-struct connman_route {
-	int family;
-	char *host;
-	char *netmask;
-	char *gateway;
-};
-
 struct connman_provider {
 	int refcount;
 	struct connman_service *vpn_service;
 	int index;
 	char *identifier;
 	int family;
-	GHashTable *routes;
 	struct connman_provider_driver *driver;
 	void *driver_data;
-	GHashTable *user_routes;
-	gchar **user_networks;
-	gsize num_user_networks;
 };
 
 void __connman_provider_append_properties(struct connman_provider *provider,
@@ -109,9 +98,6 @@ static void provider_destruct(struct connman_provider *provider)
 	DBG("provider %p", provider);
 
 	g_free(provider->identifier);
-	g_strfreev(provider->user_networks);
-	g_hash_table_destroy(provider->routes);
-	g_hash_table_destroy(provider->user_routes);
 	g_free(provider);
 }
 
@@ -247,6 +233,10 @@ static int set_connected(struct connman_provider *provider,
 
 		provider_indicate_state(provider,
 					CONNMAN_SERVICE_STATE_READY);
+
+		if (provider->driver != NULL && provider->driver->set_routes)
+			provider->driver->set_routes(provider,
+						CONNMAN_PROVIDER_ROUTE_ALL);
 
 	} else {
 		if (ipconfig != NULL) {
@@ -396,13 +386,8 @@ __connman_provider_check_routes(struct connman_provider *provider)
 	if (provider == NULL)
 		return FALSE;
 
-	if (provider->user_routes != NULL &&
-			g_hash_table_size(provider->user_routes) > 0)
-		return TRUE;
-
-	if (provider->routes != NULL &&
-			g_hash_table_size(provider->routes) > 0)
-		return TRUE;
+	if (provider->driver != NULL && provider->driver->check_routes)
+		return provider->driver->check_routes(provider);
 
 	return FALSE;
 }
@@ -601,27 +586,12 @@ static void provider_offline_mode(connman_bool_t enabled)
 
 }
 
-static void destroy_route(gpointer user_data)
-{
-	struct connman_route *route = user_data;
-
-	g_free(route->host);
-	g_free(route->netmask);
-	g_free(route->gateway);
-	g_free(route);
-}
-
 static void provider_initialize(struct connman_provider *provider)
 {
 	DBG("provider %p", provider);
 
 	provider->index = 0;
 	provider->identifier = NULL;
-	provider->user_networks = NULL;
-	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
-					NULL, destroy_route);
-	provider->user_routes = g_hash_table_new_full(g_str_hash, g_str_equal,
-					g_free, destroy_route);
 }
 
 static struct connman_provider *provider_new(void)
