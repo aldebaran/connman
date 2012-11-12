@@ -335,6 +335,41 @@ int connman_provider_create_service(struct connman_provider *provider)
 	return 0;
 }
 
+static struct connman_provider *provider_lookup(const char *identifier)
+{
+	return g_hash_table_lookup(provider_hash, identifier);
+}
+
+static void connection_ready(DBusMessage *msg, int error_code, void *user_data)
+{
+	DBusMessage *reply;
+	const char *identifier = user_data;
+
+	DBG("msg %p error %d", msg, error_code);
+
+	if (error_code != 0) {
+		reply = __connman_error_failed(msg, -error_code);
+		if (g_dbus_send_message(connection, reply) == FALSE)
+			DBG("reply %p send failed", reply);
+	} else {
+		const char *path;
+		struct connman_provider *provider;
+
+		provider = provider_lookup(identifier);
+		if (provider == NULL) {
+			reply = __connman_error_failed(msg, -EINVAL);
+			g_dbus_send_message(connection, reply);
+			return;
+		}
+
+		path = __connman_service_get_path(provider->vpn_service);
+
+		g_dbus_send_reply(connection, msg,
+				DBUS_TYPE_OBJECT_PATH, &path,
+				DBUS_TYPE_INVALID);
+	}
+}
+
 int __connman_provider_create_and_connect(DBusMessage *msg)
 {
 	struct connman_provider_driver *driver;
@@ -346,12 +381,9 @@ int __connman_provider_create_and_connect(DBusMessage *msg)
 	if (driver == NULL || driver->create == NULL)
 		return -EINVAL;
 
-	/*
-	 * XXX: we need a callback here which is called when connection
-	 * is ready
-	 */
+	DBG("msg %p", msg);
 
-	return driver->create(msg);
+	return driver->create(msg, connection_ready);
 }
 
 const char * __connman_provider_get_ident(struct connman_provider *provider)

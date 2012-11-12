@@ -60,6 +60,12 @@ struct vpn_route {
 	char *gateway;
 };
 
+struct config_create_data {
+	connection_ready_cb callback;
+	DBusMessage *message;
+	char *path;
+};
+
 struct connection_data {
 	char *path;
 	char *ident;
@@ -67,6 +73,7 @@ struct connection_data {
 	int index;
 	DBusPendingCall *call;
 	connman_bool_t connect_pending;
+	struct config_create_data *cb_data;
 
 	char *state;
 	char *type;
@@ -222,26 +229,58 @@ static void resolv_host_addr(struct connection_data *data)
 						resolv_result, data);
 }
 
+static void free_config_cb_data(struct config_create_data *cb_data)
+{
+	if (cb_data == NULL)
+		return;
+
+	g_free(cb_data->path);
+	cb_data->path = NULL;
+
+	if (cb_data->message != NULL) {
+		dbus_message_unref(cb_data->message);
+		cb_data->message = NULL;
+	}
+
+	cb_data->callback = NULL;
+
+	g_free(cb_data);
+}
+
 static void set_provider_state(struct connection_data *data)
 {
-	if (g_str_equal(data->state, "ready") == TRUE)
-		connman_provider_set_state(data->provider,
-					CONNMAN_PROVIDER_STATE_READY);
-	else if (g_str_equal(data->state, "configuration") == TRUE)
-		connman_provider_set_state(data->provider,
-					CONNMAN_PROVIDER_STATE_CONNECT);
-	else if (g_str_equal(data->state, "idle") == TRUE)
-		connman_provider_set_state(data->provider,
-					CONNMAN_PROVIDER_STATE_IDLE);
-	else if (g_str_equal(data->state, "disconnect") == TRUE)
-		connman_provider_set_state(data->provider,
-					CONNMAN_PROVIDER_STATE_DISCONNECT);
-	else if (g_str_equal(data->state, "failure") == TRUE)
-		connman_provider_set_state(data->provider,
-					CONNMAN_PROVIDER_STATE_FAILURE);
-	else
-		connman_provider_set_state(data->provider,
-					CONNMAN_PROVIDER_STATE_UNKNOWN);
+	enum connman_provider_state state = CONNMAN_PROVIDER_STATE_UNKNOWN;
+	int err = 0;
+
+	if (g_str_equal(data->state, "ready") == TRUE) {
+		state = CONNMAN_PROVIDER_STATE_READY;
+		goto set;
+	} else if (g_str_equal(data->state, "configuration") == TRUE) {
+		state = CONNMAN_PROVIDER_STATE_CONNECT;
+	} else if (g_str_equal(data->state, "idle") == TRUE) {
+		state = CONNMAN_PROVIDER_STATE_IDLE;
+	} else if (g_str_equal(data->state, "disconnect") == TRUE) {
+		err = ECONNREFUSED;
+		state = CONNMAN_PROVIDER_STATE_DISCONNECT;
+		goto set;
+	} else if (g_str_equal(data->state, "failure") == TRUE) {
+		err = ECONNREFUSED;
+		state = CONNMAN_PROVIDER_STATE_FAILURE;
+		goto set;
+	}
+
+	connman_provider_set_state(data->provider, state);
+	return;
+
+set:
+	if (data->cb_data != NULL)
+		data->cb_data->callback(data->cb_data->message,
+					err, data->ident);
+
+	connman_provider_set_state(data->provider, state);
+
+	free_config_cb_data(data->cb_data);
+	data->cb_data = NULL;
 }
 
 static int create_provider(struct connection_data *data, void *user_data)
@@ -415,11 +454,13 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
 	DBusError error;
+	struct connection_data *data;
+	struct config_create_data *cb_data = user_data;
 
 	if (dbus_pending_call_get_completed(call) == FALSE)
 		return;
 
-	DBG("user_data %p", user_data);
+	DBG("user_data %p path %s", user_data, cb_data ? cb_data->path : NULL);
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -431,6 +472,13 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 			connman_error("Connect reply: %s (%s)", error.message,
 								error.name);
 			dbus_error_free(&error);
+
+			if (cb_data != NULL) {
+				cb_data->callback(cb_data->message,
+						ECONNREFUSED, NULL);
+				free_config_cb_data(cb_data);
+			}
+			data->cb_data = NULL;
 			goto done;
 		}
 		dbus_error_free(&error);
@@ -452,8 +500,9 @@ static int connect_provider(struct connection_data *data, void *user_data)
 {
 	DBusPendingCall *call;
 	DBusMessage *message;
+	struct config_create_data *cb_data = user_data;
 
-	DBG("data %p", data);
+	DBG("data %p user %p path %s", data, cb_data, data->path);
 
 	message = dbus_message_new_method_call(VPN_SERVICE, data->path,
 					VPN_CONNECTION_INTERFACE,
@@ -474,7 +523,12 @@ static int connect_provider(struct connection_data *data, void *user_data)
 		return -EINVAL;
 	}
 
-	dbus_pending_call_set_notify(call, connect_reply, NULL, NULL);
+	if (cb_data != NULL) {
+		g_free(cb_data->path);
+		cb_data->path = g_strdup(data->path);
+	}
+
+	dbus_pending_call_set_notify(call, connect_reply, cb_data, NULL);
 
 	dbus_message_unref(message);
 
@@ -487,6 +541,7 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 	struct connection_data *data;
 	int err;
 	char *ident = get_ident(path);
+	connman_bool_t found = FALSE;
 
 	data = g_hash_table_lookup(vpn_connections, ident);
 	if (data != NULL) {
@@ -497,6 +552,8 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		 */
 		if (data->connect_pending == FALSE)
 			return;
+
+		found = TRUE;
 	} else {
 		data = create_connection_data(path);
 		if (data == NULL)
@@ -555,7 +612,9 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		dbus_message_iter_next(properties);
 	}
 
-	g_hash_table_insert(vpn_connections, g_strdup(data->ident), data);
+	if (found == FALSE)
+		g_hash_table_insert(vpn_connections, g_strdup(data->ident),
+									data);
 
 	err = create_provider(data, user_data);
 	if (err < 0)
@@ -563,10 +622,8 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 
 	resolv_host_addr(data);
 
-	if (data->connect_pending == TRUE) {
-		connect_provider(data, NULL);
-		data->connect_pending = FALSE;
-	}
+	if (data->connect_pending == TRUE)
+		connect_provider(data, data->cb_data);
 
 	return;
 
@@ -765,7 +822,6 @@ static int provider_connect(struct connman_provider *provider)
 		return -EINVAL;
 
 	return connect_provider(data, NULL);
-
 }
 
 static void disconnect_reply(DBusPendingCall *call, void *user_data)
@@ -776,7 +832,7 @@ static void disconnect_reply(DBusPendingCall *call, void *user_data)
 	if (dbus_pending_call_get_completed(call) == FALSE)
 		return;
 
-	DBG("");
+	DBG("user %p", user_data);
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -862,11 +918,12 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 	const char *path;
 	char *ident;
 	struct connection_data *data;
+	struct config_create_data *cb_data = user_data;
 
 	if (dbus_pending_call_get_completed(call) == FALSE)
 		return;
 
-	DBG("user %p", user_data);
+	DBG("user %p", cb_data);
 
 	reply = dbus_pending_call_steal_reply(call);
 
@@ -898,17 +955,25 @@ static void configuration_create_reply(DBusPendingCall *call, void *user_data)
 	data = g_hash_table_lookup(vpn_connections, ident);
 	if (data == NULL) {
 		/*
-		 * We have not yet received service created message
-		 * from vpnd. So create a dummy connection struct
-		 * and wait a while.
+		 * Someone removed the data. We cannot really continue.
 		 */
-		data = create_connection_data(path);
+		DBG("Pending data not found for %s, cannot continue!", ident);
+	} else {
+		data->call = NULL;
 		data->connect_pending = TRUE;
 
-		g_hash_table_insert(vpn_connections, g_strdup(ident), data);
+		if (data->cb_data == NULL)
+			data->cb_data = cb_data;
+		else
+			DBG("Connection callback data already in use!");
 
-	} else {
-		connect_provider(data, NULL);
+		/*
+		 * Connection is created in add_connections() after
+		 * we have received the ConnectionAdded signal.
+		 */
+
+		DBG("cb %p msg %p", data->cb_data,
+			data->cb_data ? data->cb_data->message : NULL);
 	}
 
 done:
@@ -1071,9 +1136,9 @@ static void append_routes(DBusMessageIter *iter, void *user_data)
 	}
 }
 
-static int create_configuration(DBusMessage *msg)
+static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 {
-	DBusMessage *new_msg;
+	DBusMessage *new_msg = NULL;
 	DBusPendingCall *call;
 	DBusMessageIter iter, array, new_iter, new_dict;
 	const char *type = NULL, *name = NULL;
@@ -1082,6 +1147,7 @@ static int create_configuration(DBusMessage *msg)
 	int err = 0;
 	dbus_bool_t result;
 	struct connection_data *data;
+	struct config_create_data *user_data = NULL;
 	GSList *networks = NULL;
 
 	/*
@@ -1174,7 +1240,11 @@ static int create_configuration(DBusMessage *msg)
 			goto done;
 		}
 	} else {
-		data = create_connection_data(ident);
+		char *path = g_strdup_printf("%s/connection/%s", VPN_PATH,
+								ident);
+		data = create_connection_data(path);
+		g_free(path);
+
 		if (data == NULL) {
 			err = -ENOMEM;
 			goto done;
@@ -1202,16 +1272,30 @@ static int create_configuration(DBusMessage *msg)
 		goto done;
 	}
 
+	if (data->cb_data == NULL) {
+		user_data = g_try_new(struct config_create_data, 1);
+		if (user_data != NULL) {
+			user_data->callback = callback;
+			user_data->message = dbus_message_ref(msg);
+			user_data->path = NULL;
+
+			DBG("cb %p msg %p", user_data, msg);
+		}
+	} else {
+		DBG("Configuration callback data already pending, "
+			"discarding new data.");
+	}
+
 	dbus_pending_call_set_notify(call, configuration_create_reply,
-								NULL, NULL);
+							user_data, NULL);
 	data->call = call;
 
 done:
-	dbus_message_unref(new_msg);
+	if (new_msg != NULL)
+		dbus_message_unref(new_msg);
 
 	if (networks != NULL)
 		g_slist_free_full(networks, destroy_route);
-
 
 	g_free(me);
 	return err;

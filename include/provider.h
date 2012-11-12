@@ -112,6 +112,8 @@ int connman_provider_append_route(struct connman_provider *provider,
 
 const char *connman_provider_get_driver_name(struct connman_provider *provider);
 const char *connman_provider_get_save_group(struct connman_provider *provider);
+typedef void (* connection_ready_cb) (DBusMessage *msg, int error_code,
+					void *user_data);
 
 struct connman_provider_driver {
 	const char *name;
@@ -125,7 +127,7 @@ struct connman_provider_driver {
 				const char *key, const char *value);
 	const char * (*get_property) (struct connman_provider *provider,
 				const char *key);
-	int (*create) (DBusMessage *msg);
+	int (*create) (DBusMessage *msg, connection_ready_cb callback);
 	int (*set_routes) (struct connman_provider *provider,
 				enum connman_provider_route_type type);
 	connman_bool_t (*check_routes) (struct connman_provider *provider);
