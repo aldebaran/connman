@@ -40,6 +40,7 @@
 #include <connman/ipaddress.h>
 #include <connman/vpn-dbus.h>
 #include <connman/inet.h>
+#include <gweb/gresolv.h>
 
 #define DBUS_TIMEOUT 10000
 
@@ -69,6 +70,7 @@ struct connection_data {
 	char *type;
 	char *name;
 	char *host;
+	char **host_ip;
 	char *domain;
 	char **nameservers;
 
@@ -77,6 +79,9 @@ struct connection_data {
 	GHashTable *setting_strings;
 
 	struct connman_ipaddress *ip;
+
+	GResolv *resolv;
+	guint resolv_id;
 };
 
 static int set_string(struct connman_provider *provider,
@@ -126,7 +131,13 @@ static const char *get_string(struct connman_provider *provider,
 		return data->name;
 	else if (g_str_equal(key, "Host") == TRUE)
 		return data->host;
-	else if (g_str_equal(key, "VPN.Domain") == TRUE)
+	else if (g_str_equal(key, "HostIP") == TRUE) {
+		if (data->host_ip == NULL ||
+				data->host_ip[0] == NULL)
+			return data->host;
+		else
+			return data->host_ip[0];
+	} else if (g_str_equal(key, "VPN.Domain") == TRUE)
 		return data->domain;
 
 	return g_hash_table_lookup(data->setting_strings, key);
@@ -144,6 +155,69 @@ static char *get_ident(const char *path)
 		return NULL;
 
 	return pos + 1;
+}
+
+static void cancel_host_resolv(struct connection_data *data)
+{
+	if (data->resolv_id != 0)
+		g_resolv_cancel_lookup(data->resolv, data->resolv_id);
+
+	data->resolv_id = 0;
+
+	g_resolv_unref(data->resolv);
+	data->resolv = NULL;
+}
+
+static gboolean remove_resolv(gpointer user_data)
+{
+	struct connection_data *data = user_data;
+
+	cancel_host_resolv(data);
+
+	return FALSE;
+}
+
+static void resolv_result(GResolvResultStatus status,
+					char **results, gpointer user_data)
+{
+	struct connection_data *data = user_data;
+
+	DBG("status %d", status);
+
+	if (status == G_RESOLV_RESULT_STATUS_SUCCESS && results != NULL &&
+						g_strv_length(results) > 0)
+		data->host_ip = g_strdupv(results);
+
+	/*
+	 * We cannot unref the resolver here as resolv struct is manipulated
+	 * by gresolv.c after we return from this callback.
+	 */
+	g_timeout_add_seconds(0, remove_resolv, data);
+
+	data->resolv_id = 0;
+}
+
+static void resolv_host_addr(struct connection_data *data)
+{
+	if (data->host == NULL)
+		return;
+
+	if (connman_inet_check_ipaddress(data->host) > 0)
+		return;
+
+	if (data->host_ip != NULL)
+		return;
+
+	data->resolv = g_resolv_new(0);
+	if (data->resolv == NULL) {
+		DBG("Cannot resolv %s", data->host);
+		return;
+	}
+
+	DBG("Trying to resolv %s", data->host);
+
+	data->resolv_id = g_resolv_lookup_hostname(data->resolv, data->host,
+						resolv_result, data);
 }
 
 static void set_provider_state(struct connection_data *data)
@@ -482,6 +556,8 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 	err = create_provider(data, user_data);
 	if (err < 0)
 		goto out;
+
+	resolv_host_addr(data);
 
 	return;
 
@@ -1102,8 +1178,34 @@ done:
 	return err;
 }
 
+static connman_bool_t check_host(char **hosts, char *host)
+{
+	int i;
+
+	if (hosts == NULL)
+		return FALSE;
+
+	for (i = 0; hosts[i] != NULL; i++) {
+		if (g_strcmp0(hosts[i], host) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 static void set_route(struct connection_data *data, struct vpn_route *route)
 {
+	/*
+	 * If the VPN administrator/user has given a route to
+	 * VPN server, then we must discard that because the
+	 * server cannot be contacted via VPN tunnel.
+	 */
+	if (check_host(data->host_ip, route->network) == TRUE) {
+		DBG("Discarding VPN route to %s via %s at index %d",
+			route->network, route->gateway, data->index);
+		return;
+	}
+
 	if (route->family == AF_INET6) {
 		unsigned char prefix_len = atoi(route->netmask);
 
@@ -1221,6 +1323,8 @@ static void connection_destroy(gpointer hash_data)
 	g_strfreev(data->nameservers);
 	g_hash_table_destroy(data->setting_strings);
 	connman_ipaddress_free(data->ip);
+
+	cancel_host_resolv(data);
 
 	g_free(data);
 }
