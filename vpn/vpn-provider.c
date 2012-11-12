@@ -1037,6 +1037,8 @@ int __vpn_provider_remove(const char *path)
 
 		provider_unregister(provider);
 		g_hash_table_remove(provider_hash, provider->identifier);
+
+		__connman_storage_remove_provider(ident);
 		return 0;
 	}
 
