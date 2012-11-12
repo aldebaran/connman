@@ -85,6 +85,8 @@ static DBusMessage *get_connections(DBusConnection *conn, DBusMessage *msg,
 	if (reply == NULL)
 		return __connman_error_failed(msg, -EINVAL);
 
+	__vpn_provider_check_connections();
+
 	return reply;
 }
 
