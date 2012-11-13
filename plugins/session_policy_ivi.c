@@ -250,9 +250,113 @@ static struct connman_session_policy session_policy_ivi = {
 	.destroy = policy_ivi_destroy,
 };
 
+static int load_keyfile(const char *pathname, GKeyFile **keyfile)
+{
+	GError *error = NULL;
+	int err;
+
+	DBG("Loading %s", pathname);
+
+	*keyfile = g_key_file_new();
+
+	if (g_key_file_load_from_file(*keyfile, pathname, 0, &error) == FALSE)
+		goto err;
+
+	return 0;
+
+err:
+	/*
+	 * The fancy G_FILE_ERROR_* codes are identical to the native
+	 * error codes.
+	 */
+	err = -error->code;
+
+	DBG("Unable to load %s: %s", pathname, error->message);
+	g_clear_error(&error);
+
+	g_key_file_free(*keyfile);
+	*keyfile = NULL;
+
+	return err;
+}
+
 static int load_policy(struct policy_data *policy)
 {
-	return 0;
+	struct connman_session_config *config = policy->config;
+	GKeyFile *keyfile;
+	char *pathname;
+	char *str, **tokens;
+	int i, err = 0;
+
+	pathname = g_strdup_printf("%s/%s", POLICYDIR, policy->ident);
+	if(pathname == NULL)
+		return -ENOMEM;
+
+	err = load_keyfile(pathname, &keyfile);
+	if (err < 0) {
+		g_free(pathname);
+
+		if (err == -ENOENT) {
+			/* Ignore empty files */
+			return 0;
+		}
+
+		return err;
+	}
+
+	config->priority = g_key_file_get_boolean(keyfile, "Default",
+						"Priority", NULL);
+
+	str = g_key_file_get_string(keyfile, "Default", "RoamingPolicy",
+				NULL);
+	if (str != NULL) {
+		config->roaming_policy = connman_session_parse_roaming_policy(str);
+		g_free(str);
+	} else {
+		config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
+	}
+
+	str = g_key_file_get_string(keyfile, "Default", "ConnectionType",
+				NULL);
+	if (str != NULL) {
+		config->type = connman_session_parse_connection_type(str);
+		g_free(str);
+	} else {
+		config->type = CONNMAN_SESSION_TYPE_ANY;
+	}
+
+	config->ecall = g_key_file_get_boolean(keyfile, "Default",
+						"EmergencyCall", NULL);
+
+	g_slist_free(config->allowed_bearers);
+	config->allowed_bearers = NULL;
+
+	str = g_key_file_get_string(keyfile, "Default", "AllowedBearers",
+				NULL);
+
+	if (str != NULL) {
+		tokens = g_strsplit(str, " ", 0);
+
+		for (i = 0; tokens[i] != NULL; i++) {
+			err = connman_session_parse_bearers(tokens[i],
+					&config->allowed_bearers);
+			if (err < 0)
+				break;
+		}
+
+		g_free(str);
+		g_strfreev(tokens);
+	} else {
+		config->allowed_bearers = g_slist_append(NULL,
+				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
+		if (config->allowed_bearers == NULL)
+			err = -ENOMEM;
+	}
+
+	g_key_file_free(keyfile);
+	g_free(pathname);
+
+	return err;
 }
 
 static void update_session(struct connman_session *session)
