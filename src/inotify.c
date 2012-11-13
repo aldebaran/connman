@@ -116,7 +116,8 @@ static int create_watch(const char *path, struct connman_inotify *inotify)
 		return -EIO;
 
 	inotify->wd = inotify_add_watch(fd, path,
-					IN_MODIFY | IN_CREATE | IN_DELETE);
+					IN_MODIFY | IN_CREATE | IN_DELETE |
+					IN_MOVED_TO | IN_MOVED_FROM);
 	if (inotify->wd < 0) {
 		connman_error("Creation of %s watch failed", path);
 		close(fd);
