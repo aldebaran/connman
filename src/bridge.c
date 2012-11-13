@@ -75,8 +75,10 @@ int __connman_bridge_create(const char *name)
 
 	if (ioctl(sk, SIOCBRADDBR, name) == -1) {
 		err = -errno;
-		if (err != -EEXIST)
+		if (err != -EEXIST) {
+			close(sk);
 			return -EOPNOTSUPP;
+		}
 	}
 
 	err = set_forward_delay(name, 0);
