@@ -1207,7 +1207,8 @@ static void table_cleanup(struct connman_iptables *table)
 	if (table == NULL)
 		return;
 
-	close(table->ipt_sock);
+	if (table->ipt_sock >= 0)
+		close(table->ipt_sock);
 
 	for (list = table->entries; list; list = list->next) {
 		entry = list->data;
