@@ -78,6 +78,7 @@ void connman_session_policy_unregister(struct connman_session_policy *config);
 int connman_session_config_update(struct connman_session *session);
 void connman_session_destroy(struct connman_session *session);
 
+int connman_session_set_default_config(struct connman_session_config *config);
 struct connman_session_config *connman_session_create_default_config(void);
 
 enum connman_session_roaming_policy connman_session_parse_roaming_policy(const char *policy);
