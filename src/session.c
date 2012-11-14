@@ -1814,6 +1814,13 @@ err:
 	return err;
 }
 
+void connman_session_destroy(struct connman_session *session)
+{
+	DBG("session %p", session);
+
+	session_disconnect(session);
+}
+
 int __connman_session_destroy(DBusMessage *msg)
 {
 	const char *owner, *session_path;
@@ -1835,7 +1842,7 @@ int __connman_session_destroy(DBusMessage *msg)
 	if (g_strcmp0(owner, session->owner) != 0)
 		return -EACCES;
 
-	session_disconnect(session);
+	connman_session_destroy(session);
 
 	return 0;
 }

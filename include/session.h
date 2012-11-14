@@ -76,6 +76,7 @@ int connman_session_policy_register(struct connman_session_policy *config);
 void connman_session_policy_unregister(struct connman_session_policy *config);
 
 int connman_session_config_update(struct connman_session *session);
+void connman_session_destroy(struct connman_session *session);
 
 struct connman_session_config *connman_session_create_default_config(void);
 
