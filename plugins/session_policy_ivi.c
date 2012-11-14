@@ -25,6 +25,7 @@
 
 #include <errno.h>
 #include <string.h>
+#include <sys/inotify.h>
 
 #include <glib.h>
 
@@ -35,6 +36,7 @@
 #include <connman/log.h>
 #include <connman/session.h>
 #include <connman/dbus.h>
+#include <connman/inotify.h>
 
 #define POLICYDIR STORAGEDIR "/session_policy_ivi"
 
@@ -174,10 +176,16 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 		goto done;
 	}
 
-	policy = create_policy(ident);
-	if (policy == NULL) {
-		err = -ENOMEM;
-		goto done;
+	policy = g_hash_table_lookup(policy_hash, ident);
+	if (policy != NULL) {
+		policy_ref(policy);
+		policy->session = data->session;
+	} else {
+		policy = create_policy(ident);
+		if (policy == NULL) {
+			err = -ENOMEM;
+			goto done;
+		}
 	}
 
 	g_hash_table_replace(session_hash, data->session, policy);
@@ -230,6 +238,7 @@ static void policy_ivi_destroy(struct connman_session *session)
 
 	policy = g_hash_table_lookup(session_hash, session);
 	g_hash_table_remove(session_hash, session);
+	policy->session = NULL;
 
 	policy_unref(policy);
 }
@@ -244,6 +253,77 @@ static struct connman_session_policy session_policy_ivi = {
 static int load_policy(struct policy_data *policy)
 {
 	return 0;
+}
+
+static void update_session(struct connman_session *session)
+{
+	if (connman_session_config_update(session) < 0)
+		connman_session_destroy(session);
+}
+
+static void remove_policy(struct policy_data *policy)
+{
+	connman_bool_t update = FALSE;
+	int err;
+
+	if (policy->session != NULL)
+		update = TRUE;
+
+	policy_unref(policy);
+
+	if (update == FALSE)
+		return;
+
+	err = connman_session_set_default_config(policy->config);
+	if (err < 0) {
+		connman_session_destroy(policy->session);
+		return;
+	}
+
+	update_session(policy->session);
+}
+
+static void notify_handler(struct inotify_event *event,
+                                        const char *ident)
+{
+	struct policy_data *policy;
+	int err;
+
+	if (ident == NULL)
+		return;
+
+	policy = g_hash_table_lookup(policy_hash, ident);
+
+	if (event->mask & (IN_CREATE | IN_MOVED_TO)) {
+		connman_info("Policy added for '%s'", ident);
+
+		if (policy != NULL)
+			policy_ref(policy);
+		else
+			policy = create_policy(ident);
+	}
+
+	if (policy == NULL)
+		return;
+
+	if (event->mask & IN_MODIFY) {
+		connman_info("Policy modifed for '%s'", ident);
+
+		if (load_policy(policy) < 0) {
+			remove_policy(policy);
+			return;
+		}
+	}
+
+	if (event->mask & (IN_DELETE | IN_MOVED_FROM)) {
+		connman_info("Policy deleted for '%s'", ident);
+
+		remove_policy(policy);
+		return;
+	}
+
+	if (policy->session != NULL)
+		update_session(policy->session);
 }
 
 static int read_policies(void)
@@ -280,6 +360,10 @@ static int read_policies(void)
 static int session_policy_ivi_init(void)
 {
 	int err;
+
+	err = connman_inotify_register(POLICYDIR, notify_handler);
+	if (err < 0)
+		return err;
 
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
@@ -321,6 +405,8 @@ err:
 
 	dbus_connection_unref(connection);
 
+	connman_inotify_unregister(POLICYDIR, notify_handler);
+
 	return err;
 }
 
@@ -332,6 +418,8 @@ static void session_policy_ivi_exit(void)
 	connman_session_policy_unregister(&session_policy_ivi);
 
 	dbus_connection_unref(connection);
+
+	connman_inotify_unregister(POLICYDIR, notify_handler);
 }
 
 CONNMAN_PLUGIN_DEFINE(session_policy_ivi,
