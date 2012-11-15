@@ -1750,6 +1750,28 @@ static gboolean try_remove_cache(gpointer user_data)
 	return FALSE;
 }
 
+static void server_destroy_socket(struct server_data *data)
+{
+	DBG("interface %s server %s proto %d", data->interface,
+					data->server, data->protocol);
+
+	if (data->watch > 0) {
+		g_source_remove(data->watch);
+		data->watch = 0;
+	}
+
+	if (data->timeout > 0) {
+		g_source_remove(data->timeout);
+		data->timeout = 0;
+	}
+
+	g_io_channel_unref(data->channel);
+	data->channel = NULL;
+
+	g_free(data->incoming_reply);
+	data->incoming_reply = NULL;
+}
+
 static void destroy_server(struct server_data *server)
 {
 	GList *list;
@@ -1758,19 +1780,11 @@ static void destroy_server(struct server_data *server)
 		g_io_channel_unix_get_fd(server->channel));
 
 	server_list = g_slist_remove(server_list, server);
+	server_destroy_socket(server);
 
-	if (server->watch > 0)
-		g_source_remove(server->watch);
-
-	if (server->timeout > 0)
-		g_source_remove(server->timeout);
-
-	g_io_channel_unref(server->channel);
-
-	if (server->protocol == IPPROTO_UDP)
+	if (server->protocol == IPPROTO_UDP && server->enabled)
 		DBG("Removing DNS server %s", server->server);
 
-	g_free(server->incoming_reply);
 	g_free(server->server);
 	for (list = server->domains; list; list = list->next) {
 		char *domain = list->data;
@@ -1804,7 +1818,7 @@ static gboolean udp_server_event(GIOChannel *channel, GIOCondition condition,
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		connman_error("Error with UDP server %s", data->server);
-		data->watch = 0;
+		server_destroy_socket(data);
 		return FALSE;
 	}
 
@@ -2028,15 +2042,106 @@ static gboolean tcp_idle_timeout(gpointer user_data)
 	return FALSE;
 }
 
+static int server_create_socket(struct server_data *data)
+{
+	int sk, err;
+
+	DBG("interface %s server %s proto %d", data->interface,
+					data->server, data->protocol);
+
+	sk = socket(data->server_addr->sa_family,
+		data->protocol == IPPROTO_TCP ? SOCK_STREAM : SOCK_DGRAM,
+		data->protocol);
+	if (sk < 0) {
+		err = errno;
+		connman_error("Failed to create server %s socket",
+							data->server);
+		server_destroy_socket(data);
+		return -err;
+	}
+
+	DBG("sk %d", sk);
+
+	if (data->interface != NULL) {
+		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+					data->interface,
+					strlen(data->interface) + 1) < 0) {
+			err = errno;
+			connman_error("Failed to bind server %s "
+						"to interface %s",
+						data->server, data->interface);
+			close(sk);
+			server_destroy_socket(data);
+			return -err;
+		}
+	}
+
+	data->channel = g_io_channel_unix_new(sk);
+	if (data->channel == NULL) {
+		connman_error("Failed to create server %s channel",
+							data->server);
+		close(sk);
+		server_destroy_socket(data);
+		return -ENOMEM;
+	}
+
+	g_io_channel_set_close_on_unref(data->channel, TRUE);
+
+	if (data->protocol == IPPROTO_TCP) {
+		g_io_channel_set_flags(data->channel, G_IO_FLAG_NONBLOCK, NULL);
+		data->watch = g_io_add_watch(data->channel,
+			G_IO_OUT | G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
+						tcp_server_event, data);
+		data->timeout = g_timeout_add_seconds(30, tcp_idle_timeout,
+								data);
+	} else
+		data->watch = g_io_add_watch(data->channel,
+			G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
+						udp_server_event, data);
+
+	if (connect(sk, data->server_addr, data->server_addr_len) < 0) {
+		err = errno;
+
+		if ((data->protocol == IPPROTO_TCP && errno != EINPROGRESS) ||
+				data->protocol == IPPROTO_UDP) {
+
+			connman_error("Failed to connect to server %s",
+								data->server);
+			server_destroy_socket(data);
+			return -err;
+		}
+	}
+
+	if (__sync_fetch_and_add(&cache_refcount, 1) == 0)
+		cache = g_hash_table_new_full(g_str_hash,
+					g_str_equal,
+					NULL,
+					cache_element_destroy);
+
+	return 0;
+}
+
 static struct server_data *create_server(const char *interface,
 					const char *domain, const char *server,
 					int protocol)
 {
-	struct addrinfo hints, *rp;
 	struct server_data *data;
-	int sk, ret;
+	struct addrinfo hints, *rp;
+	int ret;
 
-	DBG("interface %s server %s proto %d", interface, server, protocol);
+	DBG("interface %s server %s", interface, server);
+
+	data = g_try_new0(struct server_data, 1);
+	if (data == NULL) {
+		connman_error("Failed to allocate server %s data", server);
+		return NULL;
+	}
+
+	data->interface = g_strdup(interface);
+	if (domain)
+		data->domains = g_list_append(data->domains, g_strdup(domain));
+	data->server = g_strdup(server);
+	data->protocol = protocol;
 
 	memset(&hints, 0, sizeof(hints));
 
@@ -2050,78 +2155,24 @@ static struct server_data *create_server(const char *interface,
 		break;
 
 	default:
+		destroy_server(data);
 		return NULL;
 	}
 	hints.ai_family = AF_UNSPEC;
 	hints.ai_flags = AI_NUMERICSERV | AI_NUMERICHOST;
 
-	ret = getaddrinfo(server, "53", &hints, &rp);
+	ret = getaddrinfo(data->server, "53", &hints, &rp);
 	if (ret) {
 		connman_error("Failed to parse server %s address: %s\n",
-			      server, gai_strerror(ret));
+			      data->server, gai_strerror(ret));
+		destroy_server(data);
 		return NULL;
 	}
+
 	/* Do not blindly copy this code elsewhere; it doesn't loop over the
 	   results using ->ai_next as it should. That's OK in *this* case
 	   because it was a numeric lookup; we *know* there's only one. */
 
-	sk = socket(rp->ai_family, rp->ai_socktype, rp->ai_protocol);
-	if (sk < 0) {
-		connman_error("Failed to create server %s socket", server);
-		freeaddrinfo(rp);
-		return NULL;
-	}
-
-	DBG("sk %d", sk);
-
-	if (interface != NULL) {
-		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-				interface, strlen(interface) + 1) < 0) {
-			connman_error("Failed to bind server %s "
-						"to interface %s",
-							server, interface);
-			freeaddrinfo(rp);
-			close(sk);
-			return NULL;
-		}
-	}
-
-	data = g_try_new0(struct server_data, 1);
-	if (data == NULL) {
-		connman_error("Failed to allocate server %s data", server);
-		freeaddrinfo(rp);
-		close(sk);
-		return NULL;
-	}
-
-	data->channel = g_io_channel_unix_new(sk);
-	if (data->channel == NULL) {
-		connman_error("Failed to create server %s channel", server);
-		freeaddrinfo(rp);
-		close(sk);
-		g_free(data);
-		return NULL;
-	}
-
-	g_io_channel_set_close_on_unref(data->channel, TRUE);
-
-	if (protocol == IPPROTO_TCP) {
-		g_io_channel_set_flags(data->channel, G_IO_FLAG_NONBLOCK, NULL);
-		data->watch = g_io_add_watch(data->channel,
-			G_IO_OUT | G_IO_IN | G_IO_HUP | G_IO_NVAL | G_IO_ERR,
-						tcp_server_event, data);
-		data->timeout = g_timeout_add_seconds(30, tcp_idle_timeout,
-								data);
-	} else
-		data->watch = g_io_add_watch(data->channel,
-			G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-						udp_server_event, data);
-
-	data->interface = g_strdup(interface);
-	if (domain)
-		data->domains = g_list_append(data->domains, g_strdup(domain));
-	data->server = g_strdup(server);
-	data->protocol = protocol;
 	data->server_addr_len = rp->ai_addrlen;
 
 	switch (rp->ai_family) {
@@ -2139,47 +2190,16 @@ static struct server_data *create_server(const char *interface,
 	}
 	if (data->server_addr == NULL) {
 		freeaddrinfo(rp);
-		close(sk);
-		g_free(data);
+		destroy_server(data);
 		return NULL;
 	}
 	memcpy(data->server_addr, rp->ai_addr, rp->ai_addrlen);
-
-	ret = connect(sk, rp->ai_addr, rp->ai_addrlen);
 	freeaddrinfo(rp);
-	if (ret < 0) {
-		if ((protocol == IPPROTO_TCP && errno != EINPROGRESS) ||
-				protocol == IPPROTO_UDP) {
-			GList *list;
 
-			connman_error("Failed to connect to server %s", server);
-			if (data->watch > 0)
-				g_source_remove(data->watch);
-			if (data->timeout > 0)
-				g_source_remove(data->timeout);
-
-			g_io_channel_unref(data->channel);
-			close(sk);
-
-			g_free(data->server);
-			g_free(data->interface);
-			for (list = data->domains; list; list = list->next) {
-				char *tmp_domain = list->data;
-
-				data->domains = g_list_remove(data->domains,
-								tmp_domain);
-				g_free(tmp_domain);
-			}
-			g_free(data);
-			return NULL;
-		}
+	if (server_create_socket(data) != 0) {
+		destroy_server(data);
+		return NULL;
 	}
-
-	if (__sync_fetch_and_add(&cache_refcount, 1) == 0)
-		cache = g_hash_table_new_full(g_str_hash,
-					g_str_equal,
-					NULL,
-					cache_element_destroy);
 
 	if (protocol == IPPROTO_UDP) {
 		/* Enable new servers by default */
@@ -2205,10 +2225,8 @@ static gboolean resolv(struct request_data *req,
 		if (data->enabled == FALSE)
 			continue;
 
-		if (data->watch == 0 && data->protocol == IPPROTO_UDP)
-			data->watch = g_io_add_watch(data->channel,
-				G_IO_IN | G_IO_NVAL | G_IO_ERR | G_IO_HUP,
-						udp_server_event, data);
+		if (data->channel == NULL && data->protocol == IPPROTO_UDP)
+			server_create_socket(data);
 
 		if (ns_resolv(data, req, request, name) > 0)
 			return TRUE;
