@@ -1698,8 +1698,10 @@ static void cm_update_attached(struct modem_data *modem,
 
 	DBG("%s Attached %d", modem->path, modem->attached);
 
-	if (modem->attached == FALSE)
+	if (modem->attached == FALSE) {
+		remove_network(modem);
 		return;
+	}
 
 	if (has_interface(modem->interfaces,
 				OFONO_API_NETREG) == FALSE) {
