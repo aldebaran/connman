@@ -99,6 +99,19 @@ Core
 WiFi
 ====
 
+- Clean up WiFi data structure usage
+
+   Priority: Medium
+   Complexity: C2
+
+   Struct wifi_data is passed as a pointer in some of the wifi plugin
+   callbacks. For example removing a WiFi USB stick causes RTNL and
+   wpa_supplicant to call the wifi plugin at the same time causing the
+   freeing of the wifi data structure. Fix up the code to have proper
+   reference counting or other handling in place for the shared wifi data
+   and the members in the data structure.
+
+
 - EAP-AKA/SIM
 
    Priority: Medium
