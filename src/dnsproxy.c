@@ -2224,6 +2224,11 @@ static gboolean resolv(struct request_data *req,
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
+		if (data->protocol == IPPROTO_TCP) {
+			DBG("server %s ignored proto TCP", data->server);
+			continue;
+		}
+
 		DBG("server %s enabled %d", data->server, data->enabled);
 
 		if (data->enabled == FALSE)
