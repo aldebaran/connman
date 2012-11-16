@@ -1765,8 +1765,11 @@ static void server_destroy_socket(struct server_data *data)
 		data->timeout = 0;
 	}
 
-	g_io_channel_unref(data->channel);
-	data->channel = NULL;
+	if (data->channel != NULL) {
+		g_io_channel_shutdown(data->channel, TRUE, NULL);
+		g_io_channel_unref(data->channel);
+		data->channel = NULL;
+	}
 
 	g_free(data->incoming_reply);
 	data->incoming_reply = NULL;
@@ -1777,7 +1780,8 @@ static void destroy_server(struct server_data *server)
 	GList *list;
 
 	DBG("interface %s server %s sock %d", server->interface, server->server,
-		g_io_channel_unix_get_fd(server->channel));
+			server->channel != NULL ?
+			g_io_channel_unix_get_fd(server->channel): -1);
 
 	server_list = g_slist_remove(server_list, server);
 	server_destroy_socket(server);
