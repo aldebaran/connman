@@ -2229,8 +2229,12 @@ static gboolean resolv(struct request_data *req,
 		if (data->enabled == FALSE)
 			continue;
 
-		if (data->channel == NULL && data->protocol == IPPROTO_UDP)
-			server_create_socket(data);
+		if (data->channel == NULL && data->protocol == IPPROTO_UDP) {
+			if (server_create_socket(data) < 0) {
+				DBG("socket creation failed while resolving");
+				continue;
+			}
+		}
 
 		if (ns_resolv(data, req, request, name) > 0)
 			return TRUE;
