@@ -204,9 +204,9 @@ int __connman_inet_rtnl_addattr32(struct nlmsghdr *n, size_t maxlen,
 
 int __connman_resolver_init(connman_bool_t dnsproxy);
 void __connman_resolver_cleanup(void);
-int __connman_resolvfile_append(const char *interface, const char *domain, const char *server);
-int __connman_resolvfile_remove(const char *interface, const char *domain, const char *server);
-int __connman_resolver_redo_servers(const char *interface);
+int __connman_resolvfile_append(int index, const char *domain, const char *server);
+int __connman_resolvfile_remove(int index, const char *domain, const char *server);
+int __connman_resolver_redo_servers(int index);
 
 void __connman_storage_migrate(void);
 GKeyFile *__connman_storage_open_global(void);
@@ -790,10 +790,10 @@ int __connman_iptables_commit(const char *table_name);
 
 int __connman_dnsproxy_init(void);
 void __connman_dnsproxy_cleanup(void);
-int __connman_dnsproxy_add_listener(const char *interface);
-void __connman_dnsproxy_remove_listener(const char *interface);
-int __connman_dnsproxy_append(const char *interface, const char *domain, const char *server);
-int __connman_dnsproxy_remove(const char *interface, const char *domain, const char *server);
+int __connman_dnsproxy_add_listener(int index);
+void __connman_dnsproxy_remove_listener(int index);
+int __connman_dnsproxy_append(int index, const char *domain, const char *server);
+int __connman_dnsproxy_remove(int index, const char *domain, const char *server);
 void __connman_dnsproxy_flush(void);
 
 int __connman_6to4_probe(struct connman_service *service);

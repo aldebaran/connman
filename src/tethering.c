@@ -228,7 +228,7 @@ void __connman_tethering_set_enabled(void)
 	}
 
 	dns = gateway;
-	if (__connman_dnsproxy_add_listener(BRIDGE_NAME) < 0) {
+	if (__connman_dnsproxy_add_listener(index) < 0) {
 		connman_error("Can't add listener %s to DNS proxy",
 								BRIDGE_NAME);
 		dns = BRIDGE_DNS;
@@ -255,9 +255,12 @@ void __connman_tethering_set_enabled(void)
 
 void __connman_tethering_set_disabled(void)
 {
+	int index;
+
 	DBG("enabled %d", tethering_enabled - 1);
 
-	__connman_dnsproxy_remove_listener(BRIDGE_NAME);
+	index = connman_inet_ifindex(BRIDGE_NAME);
+	__connman_dnsproxy_remove_listener(index);
 
 	if (__sync_fetch_and_sub(&tethering_enabled, 1) != 1)
 		return;

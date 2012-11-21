@@ -611,11 +611,7 @@ static void process_newaddr(unsigned char family, unsigned char prefixlen,
 		 * have now properly configured interface with proper
 		 * autoconfigured address.
 		 */
-		char *interface = connman_inet_ifname(index);
-
-		__connman_resolver_redo_servers(interface);
-
-		g_free(interface);
+		__connman_resolver_redo_servers(index);
 	}
 }
 
@@ -1195,7 +1191,7 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 	struct in6_addr *servers = NULL;
 	int i, nr_servers = 0;
 	int msglen = msg->nduseropt_opts_len;
-	char *interface;
+	int index;
 
 	DBG("family %d index %d len %d type %d code %d",
 		msg->nduseropt_family, msg->nduseropt_ifindex,
@@ -1207,8 +1203,8 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 			msg->nduseropt_icmp_code != 0)
 		return;
 
-	interface = connman_inet_ifname(msg->nduseropt_ifindex);
-	if (!interface)
+	index = msg->nduseropt_ifindex;
+	if (index < 0)
 		return;
 
 	for (opt = (void *)&msg[1];
@@ -1229,7 +1225,7 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 								sizeof(buf)))
 					continue;
 
-				connman_resolver_append_lifetime(interface,
+				connman_resolver_append_lifetime(index,
 							NULL, buf, lifetime);
 			}
 
@@ -1238,13 +1234,12 @@ static void rtnl_newnduseropt(struct nlmsghdr *hdr)
 
 			domains = rtnl_nd_opt_dnssl(opt, &lifetime);
 			for (i = 0; domains != NULL && domains[i] != NULL; i++)
-				connman_resolver_append_lifetime(interface,
+				connman_resolver_append_lifetime(index,
 						domains[i], NULL, lifetime);
 		}
 	}
 
 	g_free(domains);
-	g_free(interface);
 }
 
 static const char *type2string(uint16_t type)

@@ -32,13 +32,13 @@ extern "C" {
  * @short_description: Functions for registering resolver modules
  */
 
-int connman_resolver_append(const char *interface, const char *domain,
+int connman_resolver_append(int index, const char *domain,
 							const char *server);
-int connman_resolver_append_lifetime(const char *interface, const char *domain,
+int connman_resolver_append_lifetime(int index, const char *domain,
 				     const char *server, unsigned int lifetime);
-int connman_resolver_remove(const char *interface, const char *domain,
+int connman_resolver_remove(int index, const char *domain,
 							const char *server);
-int connman_resolver_remove_all(const char *interface);
+int connman_resolver_remove_all(int index);
 
 void connman_resolver_flush(void);
 

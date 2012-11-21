@@ -83,7 +83,7 @@ struct partial_reply {
 };
 
 struct server_data {
-	char *interface;
+	int index;
 	GList *domains;
 	char *server;
 	struct sockaddr *server_addr;
@@ -122,7 +122,7 @@ struct request_data {
 };
 
 struct listener_data {
-	char *ifname;
+	int index;
 	GIOChannel *udp_listener_channel;
 	guint udp_listener_watch;
 	GIOChannel *tcp_listener_channel;
@@ -243,27 +243,27 @@ static struct request_data *find_request(guint16 id)
 	return NULL;
 }
 
-static struct server_data *find_server(const char *interface,
+static struct server_data *find_server(int index,
 					const char *server,
 						int protocol)
 {
 	GSList *list;
 
-	DBG("interface %s server %s proto %d", interface, server, protocol);
+	DBG("index %d server %s proto %d", index, server, protocol);
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		if (interface == NULL && data->interface == NULL &&
+		if (index < 0 && data->index < 0 &&
 				g_str_equal(data->server, server) == TRUE &&
 				data->protocol == protocol)
 			return data;
 
-		if (interface == NULL ||
-				data->interface == NULL || data->server == NULL)
+		if (index < 0 ||
+				data->index < 0 || data->server == NULL)
 			continue;
 
-		if (g_str_equal(data->interface, interface) == TRUE &&
+		if (data->index == index &&
 				g_str_equal(data->server, server) == TRUE &&
 				data->protocol == protocol)
 			return data;
@@ -1752,7 +1752,7 @@ static gboolean try_remove_cache(gpointer user_data)
 
 static void server_destroy_socket(struct server_data *data)
 {
-	DBG("interface %s server %s proto %d", data->interface,
+	DBG("index %d server %s proto %d", data->index,
 					data->server, data->protocol);
 
 	if (data->watch > 0) {
@@ -1779,7 +1779,7 @@ static void destroy_server(struct server_data *server)
 {
 	GList *list;
 
-	DBG("interface %s server %s sock %d", server->interface, server->server,
+	DBG("index %d server %s sock %d", server->index, server->server,
 			server->channel != NULL ?
 			g_io_channel_unix_get_fd(server->channel): -1);
 
@@ -1796,7 +1796,6 @@ static void destroy_server(struct server_data *server)
 		server->domains = g_list_remove(server->domains, domain);
 		g_free(domain);
 	}
-	g_free(server->interface);
 	g_free(server->server_addr);
 
 	/*
@@ -1898,7 +1897,7 @@ hangup:
 		int no_request_sent = TRUE;
 		struct server_data *udp_server;
 
-		udp_server = find_server(server->interface, server->server,
+		udp_server = find_server(server->index, server->server,
 								IPPROTO_UDP);
 		if (udp_server != NULL) {
 			for (domains = udp_server->domains; domains;
@@ -2049,8 +2048,9 @@ static gboolean tcp_idle_timeout(gpointer user_data)
 static int server_create_socket(struct server_data *data)
 {
 	int sk, err;
+	char *interface;
 
-	DBG("interface %s server %s proto %d", data->interface,
+	DBG("index %d server %s proto %d", data->index,
 					data->server, data->protocol);
 
 	sk = socket(data->server_addr->sa_family,
@@ -2066,18 +2066,21 @@ static int server_create_socket(struct server_data *data)
 
 	DBG("sk %d", sk);
 
-	if (data->interface != NULL) {
+	interface = connman_inet_ifname(data->index);
+	if (interface != NULL) {
 		if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-					data->interface,
-					strlen(data->interface) + 1) < 0) {
+					interface,
+					strlen(interface) + 1) < 0) {
 			err = errno;
 			connman_error("Failed to bind server %s "
 						"to interface %s",
-						data->server, data->interface);
+						data->server, interface);
 			close(sk);
 			server_destroy_socket(data);
+			g_free(interface);
 			return -err;
 		}
+		g_free(interface);
 	}
 
 	data->channel = g_io_channel_unix_new(sk);
@@ -2125,7 +2128,7 @@ static int server_create_socket(struct server_data *data)
 	return 0;
 }
 
-static struct server_data *create_server(const char *interface,
+static struct server_data *create_server(int index,
 					const char *domain, const char *server,
 					int protocol)
 {
@@ -2133,7 +2136,7 @@ static struct server_data *create_server(const char *interface,
 	struct addrinfo hints, *rp;
 	int ret;
 
-	DBG("interface %s server %s", interface, server);
+	DBG("index %d server %s", index, server);
 
 	data = g_try_new0(struct server_data, 1);
 	if (data == NULL) {
@@ -2141,7 +2144,7 @@ static struct server_data *create_server(const char *interface,
 		return NULL;
 	}
 
-	data->interface = g_strdup(interface);
+	data->index = index;
 	if (domain)
 		data->domains = g_list_append(data->domains, g_strdup(domain));
 	data->server = g_strdup(server);
@@ -2248,11 +2251,11 @@ static gboolean resolv(struct request_data *req,
 	return FALSE;
 }
 
-static void append_domain(const char *interface, const char *domain)
+static void append_domain(int index, const char *domain)
 {
 	GSList *list;
 
-	DBG("interface %s domain %s", interface, domain);
+	DBG("index %d domain %s", index, domain);
 
 	if (domain == NULL)
 		return;
@@ -2263,10 +2266,10 @@ static void append_domain(const char *interface, const char *domain)
 		char *dom;
 		gboolean dom_found = FALSE;
 
-		if (data->interface == NULL)
+		if (data->index < 0)
 			continue;
 
-		if (g_str_equal(data->interface, interface) == FALSE)
+		if (data->index != index)
 			continue;
 
 		for (dom_list = data->domains; dom_list;
@@ -2286,18 +2289,18 @@ static void append_domain(const char *interface, const char *domain)
 	}
 }
 
-int __connman_dnsproxy_append(const char *interface, const char *domain,
+int __connman_dnsproxy_append(int index, const char *domain,
 							const char *server)
 {
 	struct server_data *data;
 
-	DBG("interface %s server %s", interface, server);
+	DBG("index %d server %s", index, server);
 
 	if (server == NULL && domain == NULL)
 		return -EINVAL;
 
 	if (server == NULL) {
-		append_domain(interface, domain);
+		append_domain(index, domain);
 
 		return 0;
 	}
@@ -2305,35 +2308,35 @@ int __connman_dnsproxy_append(const char *interface, const char *domain,
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
-	data = find_server(interface, server, IPPROTO_UDP);
+	data = find_server(index, server, IPPROTO_UDP);
 	if (data != NULL) {
-		append_domain(interface, domain);
+		append_domain(index, domain);
 		return 0;
 	}
 
-	data = create_server(interface, domain, server, IPPROTO_UDP);
+	data = create_server(index, domain, server, IPPROTO_UDP);
 	if (data == NULL)
 		return -EIO;
 
 	return 0;
 }
 
-static void remove_server(const char *interface, const char *domain,
+static void remove_server(int index, const char *domain,
 			const char *server, int protocol)
 {
 	struct server_data *data;
 
-	data = find_server(interface, server, protocol);
+	data = find_server(index, server, protocol);
 	if (data == NULL)
 		return;
 
 	destroy_server(data);
 }
 
-int __connman_dnsproxy_remove(const char *interface, const char *domain,
+int __connman_dnsproxy_remove(int index, const char *domain,
 							const char *server)
 {
-	DBG("interface %s server %s", interface, server);
+	DBG("index %d server %s", index, server);
 
 	if (server == NULL)
 		return -EINVAL;
@@ -2341,8 +2344,8 @@ int __connman_dnsproxy_remove(const char *interface, const char *domain,
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
-	remove_server(interface, domain, server, IPPROTO_UDP);
-	remove_server(interface, domain, server, IPPROTO_TCP);
+	remove_server(index, domain, server, IPPROTO_UDP);
+	remove_server(index, domain, server, IPPROTO_TCP);
 
 	return 0;
 }
@@ -2399,7 +2402,7 @@ static void dnsproxy_offline_mode(connman_bool_t enabled)
 static void dnsproxy_default_changed(struct connman_service *service)
 {
 	GSList *list;
-	char *interface;
+	int index;
 
 	DBG("service %p", service);
 
@@ -2412,14 +2415,14 @@ static void dnsproxy_default_changed(struct connman_service *service)
 		return;
 	}
 
-	interface = connman_service_get_interface(service);
-	if (interface == NULL)
+	index = __connman_service_get_index(service);
+	if (index < 0)
 		return;
 
 	for (list = server_list; list; list = list->next) {
 		struct server_data *data = list->data;
 
-		if (g_strcmp0(data->interface, interface) == 0) {
+		if (data->index == index) {
 			DBG("Enabling DNS server %s", data->server);
 			data->enabled = TRUE;
 		} else {
@@ -2428,7 +2431,6 @@ static void dnsproxy_default_changed(struct connman_service *service)
 		}
 	}
 
-	g_free(interface);
 	cache_refresh();
 }
 
@@ -2616,7 +2618,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 		if (data->protocol != IPPROTO_UDP || data->enabled == FALSE)
 			continue;
 
-		if(create_server(data->interface, NULL,
+		if(create_server(data->index, NULL,
 					data->server, IPPROTO_TCP) == NULL)
 			continue;
 
@@ -2739,9 +2741,9 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 	socklen_t slen;
 	int sk, type, v6only = 0;
 	int family = AF_INET6;
+	char *interface;
 
-
-	DBG("interface %s", ifdata->ifname);
+	DBG("index %d", ifdata->index);
 
 	switch (protocol) {
 	case IPPROTO_UDP:
@@ -2769,13 +2771,17 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 		return -EIO;
 	}
 
-	if (setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
-					ifdata->ifname,
-					strlen(ifdata->ifname) + 1) < 0) {
+	interface = connman_inet_ifname(ifdata->index);
+	if (interface == NULL || setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
+					interface,
+					strlen(interface) + 1) < 0) {
 		connman_error("Failed to bind %s listener interface", proto);
 		close(sk);
+		g_free(interface);
 		return -EIO;
 	}
+	g_free(interface);
+
 	/* Ensure it accepts Legacy IP connections too */
 	if (family == AF_INET6 &&
 			setsockopt(sk, SOL_IPV6, IPV6_V6ONLY,
@@ -2836,7 +2842,7 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 
 static void destroy_udp_listener(struct listener_data *ifdata)
 {
-	DBG("interface %s", ifdata->ifname);
+	DBG("index %d", ifdata->index);
 
 	if (ifdata->udp_listener_watch > 0)
 		g_source_remove(ifdata->udp_listener_watch);
@@ -2846,7 +2852,7 @@ static void destroy_udp_listener(struct listener_data *ifdata)
 
 static void destroy_tcp_listener(struct listener_data *ifdata)
 {
-	DBG("interface %s", ifdata->ifname);
+	DBG("index %d", ifdata->index);
 
 	if (ifdata->tcp_listener_watch > 0)
 		g_source_remove(ifdata->tcp_listener_watch);
@@ -2856,7 +2862,7 @@ static void destroy_tcp_listener(struct listener_data *ifdata)
 
 static int create_listener(struct listener_data *ifdata)
 {
-	int err;
+	int err, index;
 
 	err = create_dns_listener(IPPROTO_UDP, ifdata);
 	if (err < 0)
@@ -2868,18 +2874,21 @@ static int create_listener(struct listener_data *ifdata)
 		return err;
 	}
 
-	if (g_strcmp0(ifdata->ifname, "lo") == 0)
-		__connman_resolvfile_append("lo", NULL, "127.0.0.1");
+	index = connman_inet_ifindex("lo");
+	if (ifdata->index == index)
+		__connman_resolvfile_append(index, NULL, "127.0.0.1");
 
 	return 0;
 }
 
 static void destroy_listener(struct listener_data *ifdata)
 {
+	int index;
 	GSList *list;
 
-	if (g_strcmp0(ifdata->ifname, "lo") == 0)
-		__connman_resolvfile_remove("lo", NULL, "127.0.0.1");
+	index = connman_inet_ifindex("lo");
+	if (ifdata->index == index)
+		__connman_resolvfile_remove(index, NULL, "127.0.0.1");
 
 	for (list = request_list; list; list = list->next) {
 		struct request_data *req = list->data;
@@ -2897,21 +2906,24 @@ static void destroy_listener(struct listener_data *ifdata)
 	destroy_udp_listener(ifdata);
 }
 
-int __connman_dnsproxy_add_listener(const char *interface)
+int __connman_dnsproxy_add_listener(int index)
 {
 	struct listener_data *ifdata;
 	int err;
 
-	DBG("interface %s", interface);
+	DBG("index %d", index);
 
-	if (g_hash_table_lookup(listener_table, interface) != NULL)
+	if (index < 0)
+		return -EINVAL;
+
+	if (g_hash_table_lookup(listener_table, GINT_TO_POINTER(index)) != NULL)
 		return 0;
 
 	ifdata = g_try_new0(struct listener_data, 1);
 	if (ifdata == NULL)
 		return -ENOMEM;
 
-	ifdata->ifname = g_strdup(interface);
+	ifdata->index = index;
 	ifdata->udp_listener_channel = NULL;
 	ifdata->udp_listener_watch = 0;
 	ifdata->tcp_listener_channel = NULL;
@@ -2919,52 +2931,54 @@ int __connman_dnsproxy_add_listener(const char *interface)
 
 	err = create_listener(ifdata);
 	if (err < 0) {
-		connman_error("Couldn't create listener for %s err %d",
-				interface, err);
-		g_free(ifdata->ifname);
+		connman_error("Couldn't create listener for index %d err %d",
+				index, err);
 		g_free(ifdata);
 		return err;
 	}
-	g_hash_table_insert(listener_table, ifdata->ifname, ifdata);
+	g_hash_table_insert(listener_table, GINT_TO_POINTER(ifdata->index),
+			ifdata);
 	return 0;
 }
 
-void __connman_dnsproxy_remove_listener(const char *interface)
+void __connman_dnsproxy_remove_listener(int index)
 {
 	struct listener_data *ifdata;
 
-	DBG("interface %s", interface);
+	DBG("index %d", index);
 
-	ifdata = g_hash_table_lookup(listener_table, interface);
+	ifdata = g_hash_table_lookup(listener_table, GINT_TO_POINTER(index));
 	if (ifdata == NULL)
 		return;
 
 	destroy_listener(ifdata);
 
-	g_hash_table_remove(listener_table, interface);
+	g_hash_table_remove(listener_table, GINT_TO_POINTER(index));
 }
 
 static void remove_listener(gpointer key, gpointer value, gpointer user_data)
 {
-	const char *interface = key;
+	int index = GPOINTER_TO_INT(key);
 	struct listener_data *ifdata = value;
 
-	DBG("interface %s", interface);
+	DBG("index %d", index);
 
 	destroy_listener(ifdata);
 }
 
 int __connman_dnsproxy_init(void)
 {
-	int err;
+	int err, index;
 
 	DBG("");
 
 	srandom(time(NULL));
 
-	listener_table = g_hash_table_new_full(g_str_hash, g_str_equal,
-							g_free, g_free);
-	err = __connman_dnsproxy_add_listener("lo");
+	listener_table = g_hash_table_new_full(g_direct_hash, g_str_equal,
+							NULL, g_free);
+
+	index = connman_inet_ifindex("lo");
+	err = __connman_dnsproxy_add_listener(index);
 	if (err < 0)
 		return err;
 
@@ -2975,7 +2989,7 @@ int __connman_dnsproxy_init(void)
 	return 0;
 
 destroy:
-	__connman_dnsproxy_remove_listener("lo");
+	__connman_dnsproxy_remove_listener(index);
 	g_hash_table_destroy(listener_table);
 
 	return err;
