@@ -242,13 +242,23 @@ static int ov_connect(struct vpn_provider *provider,
 
 	task_append_config_data(provider, task);
 
-	option = vpn_provider_get_string(provider, "OpenVPN.TLSAuth");
-	if (option != NULL) {
-		connman_task_add_argument(task, "--tls-auth", option);
-		option = vpn_provider_get_string(provider,
-				"OpenVPN.TLSAuthDir");
-		if (option != NULL)
-			connman_task_add_argument(task, option, NULL);
+	option = vpn_provider_get_string(provider, "OpenVPN.ConfigFile");
+	if (option == NULL) {
+		/*
+		 * Set some default options if user has no config file.
+		 */
+		option = vpn_provider_get_string(provider, "OpenVPN.TLSAuth");
+		if (option != NULL) {
+			connman_task_add_argument(task, "--tls-auth", option);
+			option = vpn_provider_get_string(provider,
+							"OpenVPN.TLSAuthDir");
+			if (option != NULL)
+				connman_task_add_argument(task, option, NULL);
+		}
+
+		connman_task_add_argument(task, "--nobind", NULL);
+		connman_task_add_argument(task, "--persist-key", NULL);
+		connman_task_add_argument(task, "--client", NULL);
 	}
 
 	connman_task_add_argument(task, "--syslog", NULL);
@@ -274,8 +284,6 @@ static int ov_connect(struct vpn_provider *provider,
 	connman_task_add_argument(task, "--dev", if_name);
 	connman_task_add_argument(task, "--dev-type", "tun");
 
-	connman_task_add_argument(task, "--nobind", NULL);
-	connman_task_add_argument(task, "--persist-key", NULL);
 	connman_task_add_argument(task, "--persist-tun", NULL);
 
 	connman_task_add_argument(task, "--route-noexec", NULL);
@@ -290,8 +298,6 @@ static int ov_connect(struct vpn_provider *provider,
 	 * trying to resolve the OpenVPN servers address.
 	 */
 	connman_task_add_argument(task, "--ping-restart", "0");
-
-	connman_task_add_argument(task, "--client", NULL);
 
 	fd = fileno(stderr);
 	err = connman_task_run(task, vpn_died, provider,
