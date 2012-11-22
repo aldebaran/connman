@@ -273,7 +273,6 @@ static int ov_connect(struct vpn_provider *provider,
 	connman_task_add_argument(task, "--dev", if_name);
 	connman_task_add_argument(task, "--dev-type", "tun");
 
-	connman_task_add_argument(task, "--tls-client", NULL);
 	connman_task_add_argument(task, "--nobind", NULL);
 	connman_task_add_argument(task, "--persist-key", NULL);
 	connman_task_add_argument(task, "--persist-tun", NULL);
