@@ -197,6 +197,9 @@ int __connman_provider_remove(const char *path)
 
 			provider_remove(provider);
 
+			connman_provider_set_state(provider,
+						CONNMAN_PROVIDER_STATE_IDLE);
+
 			g_hash_table_remove(provider_hash,
 						provider->identifier);
 			return 0;
