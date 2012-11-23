@@ -27,6 +27,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/ioctl.h>
 #include <net/ethernet.h>
 #include <net/if.h>
