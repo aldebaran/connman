@@ -116,7 +116,7 @@ Properties	string State [readonly]
 
 			The list of nameservers set by VPN.
 
-		array{dict} UserRoutes
+		array{dict} UserRoutes [readwrite]
 
 			int ProtocolFamily
 
@@ -157,7 +157,8 @@ Properties	string State [readonly]
 
 				Gateway address of the route.
 
-			The VPN server activated route.
+			The VPN server activated route. These routes
+			are pushed to connman by VPN server.
 
 		There can be other properties also but as the VPN
 		technologies are so different, they have different
