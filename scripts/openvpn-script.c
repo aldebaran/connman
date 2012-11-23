@@ -43,7 +43,6 @@ static void print(const char *format, ...)
 	va_end(ap);
 }
 
-
 static void append(DBusMessageIter *dict, const char *pattern)
 {
 	DBusMessageIter entry;
