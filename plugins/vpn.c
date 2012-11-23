@@ -454,7 +454,6 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
 	DBusError error;
-	struct connection_data *data;
 	struct config_create_data *cb_data = user_data;
 
 	if (dbus_pending_call_get_completed(call) == FALSE)
@@ -478,7 +477,6 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 						ECONNREFUSED, NULL);
 				free_config_cb_data(cb_data);
 			}
-			data->cb_data = NULL;
 			goto done;
 		}
 		dbus_error_free(&error);
