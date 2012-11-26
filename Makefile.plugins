@@ -266,9 +266,9 @@ if POLKIT
 	$(AM_V_GEN)cp $< $@
 endif
 
-if VPN
 EXTRA_DIST += vpn/vpn-polkit.policy
 
+if VPN
 vpn/net.connman.vpn.policy: vpn/vpn-polkit.policy
 if POLKIT
 	$(AM_V_GEN)cp $< $@

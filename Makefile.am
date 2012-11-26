@@ -207,8 +207,9 @@ vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
 				-DCONFIGDIR=\""$(configdir)\"" \
 				-I$(builddir)/vpn
 
-EXTRA_DIST += vpn/vpn-dbus.conf vpn/vpn-polkit.conf vpn/net.connman.vpn.service
 endif
+
+EXTRA_DIST += vpn/vpn-dbus.conf vpn/vpn-polkit.conf
 
 script_DATA =
 script_PROGRAMS =
@@ -311,10 +312,8 @@ test_scripts = test/get-state test/list-services \
 		test/set-global-timeservers test/get-global-timeservers \
 		test/set-nameservers test/set-domains test/set-timeservers
 
-if VPN
 test_scripts += test/vpn-connect test/vpn-disconnect test/vpn-get \
 		test/monitor-vpn
-endif
 
 if TEST
 testdir = $(pkglibdir)/test
@@ -388,6 +387,8 @@ endif
 connman-task.pp: vpn/connman-task.te
 	make -f /usr/share/selinux/devel/Makefile
 endif
+
+EXTRA_DIST += vpn/connman-task.te
 
 include/connman/version.h: include/version.h
 	$(AM_V_at)$(MKDIR_P) include/connman
