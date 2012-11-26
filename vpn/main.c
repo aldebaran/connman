@@ -325,6 +325,7 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
+	__connman_plugin_cleanup();
 	__connman_task_cleanup();
 	__vpn_rtnl_cleanup();
 	__vpn_ipconfig_cleanup();
