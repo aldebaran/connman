@@ -47,7 +47,6 @@
 static DBusConnection *connection;
 
 static GHashTable *vpn_connections = NULL;
-static gboolean starting_vpnd = TRUE;
 static guint watch;
 static guint added_watch;
 static guint removed_watch;
@@ -1455,22 +1454,12 @@ static void vpnd_created(DBusConnection *conn, void *user_data)
 {
 	DBG("connection %p", conn);
 
-	if (starting_vpnd == TRUE) {
-		vpn_connections = g_hash_table_new_full(g_str_hash,
-						g_str_equal,
-						g_free, connection_destroy);
-		get_connections(user_data);
-		starting_vpnd = FALSE;
-	}
+	get_connections(user_data);
 }
 
 static void vpnd_removed(DBusConnection *conn, void *user_data)
 {
 	DBG("connection %p", conn);
-
-	g_hash_table_destroy(vpn_connections);
-	vpn_connections = NULL;
-	starting_vpnd = TRUE;
 }
 
 static void remove_connection(DBusConnection *conn, const char *path)
@@ -1773,8 +1762,13 @@ static int vpn_init(void)
 	}
 
 	err = connman_provider_driver_register(&provider_driver);
-	if (err == 0)
+	if (err == 0) {
+		vpn_connections = g_hash_table_new_full(g_str_hash,
+						g_str_equal,
+						g_free, connection_destroy);
+
 		vpnd_created(connection, &provider_driver);
+	}
 
 	return err;
 
@@ -1798,7 +1792,8 @@ static void vpn_exit(void)
 
 	connman_provider_driver_unregister(&provider_driver);
 
-	g_hash_table_destroy(vpn_connections);
+	if (vpn_connections != NULL)
+		g_hash_table_destroy(vpn_connections);
 
 	dbus_connection_unref(connection);
 }
