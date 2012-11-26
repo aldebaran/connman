@@ -453,7 +453,8 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
 	DBusError error;
-	struct config_create_data *cb_data = user_data;
+	struct connection_data *data = user_data;
+	struct config_create_data *cb_data = data->cb_data;
 
 	if (dbus_pending_call_get_completed(call) == FALSE)
 		return;
@@ -475,6 +476,7 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 				cb_data->callback(cb_data->message,
 						ECONNREFUSED, NULL);
 				free_config_cb_data(cb_data);
+				data->cb_data = NULL;
 			}
 			goto done;
 		}
@@ -525,7 +527,7 @@ static int connect_provider(struct connection_data *data, void *user_data)
 		cb_data->path = g_strdup(data->path);
 	}
 
-	dbus_pending_call_set_notify(call, connect_reply, cb_data, NULL);
+	dbus_pending_call_set_notify(call, connect_reply, data, NULL);
 
 	dbus_message_unref(message);
 
