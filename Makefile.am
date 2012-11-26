@@ -329,7 +329,9 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/counter-api.txt doc/config-format.txt \
 				doc/clock-api.txt doc/session-api.txt \
 				doc/session-overview.txt doc/backtrace.txt \
-				doc/advanced-configuration.txt
+				doc/advanced-configuration.txt \
+				doc/vpn-connection-api.txt \
+				doc/vpn-manager-api.txt doc/vpn-overview.txt
 
 MANUAL_PAGES += doc/connman.8 doc/connman.conf.5
 
