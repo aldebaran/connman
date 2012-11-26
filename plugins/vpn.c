@@ -1460,6 +1460,8 @@ static void vpnd_created(DBusConnection *conn, void *user_data)
 static void vpnd_removed(DBusConnection *conn, void *user_data)
 {
 	DBG("connection %p", conn);
+
+	g_hash_table_remove_all(vpn_connections);
 }
 
 static void remove_connection(DBusConnection *conn, const char *path)
