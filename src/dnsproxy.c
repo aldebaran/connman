@@ -2974,7 +2974,7 @@ int __connman_dnsproxy_init(void)
 
 	srandom(time(NULL));
 
-	listener_table = g_hash_table_new_full(g_direct_hash, g_str_equal,
+	listener_table = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 							NULL, g_free);
 
 	index = connman_inet_ifindex("lo");
