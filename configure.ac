@@ -12,6 +12,8 @@ AC_PREFIX_DEFAULT(/usr/local)
 
 PKG_PROG_PKG_CONFIG
 
+COMPILER_FLAGS
+
 AC_SUBST(abs_top_srcdir)
 AC_SUBST(abs_top_builddir)
 
@@ -32,11 +34,9 @@ AC_PROG_LIBTOOL
 AC_ARG_ENABLE(optimization, AC_HELP_STRING([--disable-optimization],
 			[disable code optimization through compiler]), [
 	if (test "${enableval}" = "no"); then
-		CFLAGS="$CFLAGS -O0"
+		CFLAGS="$CFLAGS -O0 -U_FORTIFY_SOURCE"
 	fi
 ])
-
-COMPILER_FLAGS
 
 GTK_DOC_CHECK
 
