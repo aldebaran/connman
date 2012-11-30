@@ -412,7 +412,7 @@ static int vpn_connect(struct vpn_provider *provider,
 
 	ret = vpn_driver_data->vpn_driver->connect(provider, data->task,
 						data->if_name, cb, user_data);
-	if (ret < 0) {
+	if (ret < 0 && ret != -EINPROGRESS) {
 		stop_vpn(provider);
 		connman_task_destroy(data->task);
 		data->task = NULL;

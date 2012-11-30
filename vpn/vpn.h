@@ -83,7 +83,7 @@ int __vpn_provider_indicate_state(struct vpn_provider *provider,
 					enum vpn_provider_state state);
 int __vpn_provider_indicate_error(struct vpn_provider *provider,
 					enum vpn_provider_error error);
-int __vpn_provider_connect(struct vpn_provider *provider);
+int __vpn_provider_connect(struct vpn_provider *provider, DBusMessage *msg);
 int __vpn_provider_connect_path(const char *path);
 int __vpn_provider_disconnect(struct vpn_provider *provider);
 int __vpn_provider_remove(const char *path);

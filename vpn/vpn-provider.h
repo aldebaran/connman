@@ -108,6 +108,10 @@ const char *vpn_provider_get_path(struct vpn_provider *provider);
 typedef void (* vpn_provider_connect_cb_t) (struct vpn_provider *provider,
 					void *user_data, int error);
 
+typedef void (* vpn_provider_auth_cb_t) (struct vpn_provider *provider,
+					const char *authenticator,
+					const char *error, void *user_data);
+
 struct vpn_provider_driver {
 	const char *name;
 	enum vpn_provider_type type;
