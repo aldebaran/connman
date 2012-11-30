@@ -36,10 +36,22 @@
 #include <connman/log.h>
 #include <connman/task.h>
 #include <connman/ipconfig.h>
+#include <connman/dbus.h>
+#include <connman/agent.h>
+#include <connman/setting.h>
+#include <connman/vpn-dbus.h>
 
 #include "../vpn-provider.h"
+#include "../vpn-agent.h"
 
 #include "vpn.h"
+
+struct oc_private_data {
+	struct connman_task *task;
+	char *if_name;
+	vpn_provider_connect_cb_t cb;
+	void *user_data;
+};
 
 static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
@@ -160,26 +172,156 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 	return VPN_STATE_CONNECT;
 }
 
-static int oc_connect(struct vpn_provider *provider,
-			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data)
+static void request_input_append_cookie(DBusMessageIter *iter,
+							void *user_data)
 {
-	const char *vpnhost, *vpncookie, *cafile, *certsha1, *mtu;
-	int fd, err = 0;
+	char *str = "string";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "mandatory";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+}
+
+struct request_input_reply {
+	struct vpn_provider *provider;
+	vpn_provider_auth_cb_t callback;
+	void *user_data;
+};
+
+static void request_input_cookie_reply(DBusMessage *reply, void *user_data)
+{
+	struct request_input_reply *cookie_reply = user_data;
+	const char *error = NULL;
+	char *cookie = NULL;
+	char *key;
+	DBusMessageIter iter, dict;
+
+	DBG("provider %p", cookie_reply->provider);
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		error = dbus_message_get_error_name(reply);
+		goto done;
+	}
+
+	if (vpn_agent_check_reply_has_dict(reply) == FALSE)
+		goto done;
+
+	dbus_message_iter_init(reply, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &key);
+
+		if (g_str_equal(key, "OpenConnect.Cookie")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value)
+							!= DBUS_TYPE_STRING)
+				break;
+			dbus_message_iter_get_basic(&value, &cookie);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	cookie_reply->callback(cookie_reply->provider, cookie, error,
+				cookie_reply->user_data);
+	g_free(cookie_reply);
+}
+
+typedef void (* request_cb_t)(struct vpn_provider *provider,
+					const char *vpncookie,
+					const char *error, void *user_data);
+
+static int request_cookie_input(struct vpn_provider *provider,
+				request_cb_t callback, void *user_data)
+{
+	DBusMessage *message;
+	const char *path, *agent_sender, *agent_path;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	struct request_input_reply *cookie_reply;
+	int err;
+
+	connman_agent_get_info(&agent_sender, &agent_path);
+
+	if (provider == NULL || agent_path == NULL || callback == NULL)
+		return -ESRCH;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+					VPN_AGENT_INTERFACE,
+					"RequestInput");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+
+	path = vpn_provider_get_path(provider);
+	dbus_message_iter_append_basic(&iter,
+				DBUS_TYPE_OBJECT_PATH, &path);
+
+	connman_dbus_dict_open(&iter, &dict);
+
+	connman_dbus_dict_append_dict(&dict, "OpenConnect.Cookie",
+			request_input_append_cookie, provider);
+
+	vpn_agent_append_host_and_name(&dict, provider);
+
+	connman_dbus_dict_close(&iter, &dict);
+
+	cookie_reply = g_try_new0(struct request_input_reply, 1);
+	if (cookie_reply == NULL) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	cookie_reply->provider = provider;
+	cookie_reply->callback = callback;
+	cookie_reply->user_data = user_data;
+
+	err = connman_agent_queue_message(provider, message,
+			connman_timeout_input_request(),
+			request_input_cookie_reply, cookie_reply);
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending agent request", err);
+		dbus_message_unref(message);
+		g_free(cookie_reply);
+		return err;
+	}
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static int run_connect(struct vpn_provider *provider,
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data,
+			const char *vpncookie)
+{
+	const char *vpnhost, *cafile, *certsha1, *mtu;
+	int fd, err = 0, len;
 
 	vpnhost = vpn_provider_get_string(provider, "Host");
-	if (!vpnhost) {
-		connman_error("Host not set; cannot enable VPN");
+
+	if (vpncookie == NULL) {
+		DBG("Cookie missing, cannot connect!");
 		err = -EINVAL;
 		goto done;
 	}
 
-	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
-	if (!vpncookie) {
-		connman_error("OpenConnect.Cookie not set; cannot enable VPN");
-		err = -EINVAL;
-		goto done;
-	}
+	vpn_provider_set_string(provider, "OpenConnect.Cookie", vpncookie);
 
 	certsha1 = vpn_provider_get_string(provider,
 						"OpenConnect.ServerCert");
@@ -214,8 +356,8 @@ static int oc_connect(struct vpn_provider *provider,
 		goto done;
 	}
 
-	if (write(fd, vpncookie, strlen(vpncookie)) !=
-			(ssize_t)strlen(vpncookie) ||
+	len = strlen(vpncookie);
+	if (write(fd, vpncookie, len) != (ssize_t)len ||
 			write(fd, "\n", 1) != 1) {
 		connman_error("openconnect failed to take cookie on stdin");
 		err = -EIO;
@@ -227,6 +369,67 @@ done:
 		cb(provider, user_data, err);
 
 	return err;
+}
+
+static void free_private_data(struct oc_private_data *data)
+{
+	g_free(data->if_name);
+	g_free(data);
+}
+
+static void request_input_cb(struct vpn_provider *provider,
+			const char *vpncookie,
+			const char *error, void *user_data)
+{
+	struct oc_private_data *data = user_data;
+
+	if (vpncookie == NULL)
+		DBG("Requesting cookie failed, error %s", error);
+	else if (error != NULL)
+		DBG("error %s", error);
+
+	run_connect(provider, data->task, data->if_name, data->cb,
+		data->user_data, vpncookie);
+
+	free_private_data(data);
+}
+
+static int oc_connect(struct vpn_provider *provider,
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
+{
+	const char *vpnhost, *vpncookie;
+	int err;
+
+	vpnhost = vpn_provider_get_string(provider, "Host");
+	if (vpnhost == NULL) {
+		connman_error("Host not set; cannot enable VPN");
+		return -EINVAL;
+	}
+
+	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
+	if (vpncookie == NULL) {
+		struct oc_private_data *data;
+
+		data = g_try_new0(struct oc_private_data, 1);
+		if (data == NULL)
+			return -ENOMEM;
+
+		data->task = task;
+		data->if_name = g_strdup(if_name);
+		data->cb = cb;
+		data->user_data = user_data;
+
+		err = request_cookie_input(provider, request_input_cb, data);
+		if (err != -EINPROGRESS) {
+			free_private_data(data);
+			goto done;
+		}
+		return err;
+	}
+
+done:
+	return run_connect(provider, task, if_name, cb, user_data, vpncookie);
 }
 
 static int oc_save(struct vpn_provider *provider, GKeyFile *keyfile)
