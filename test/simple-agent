@@ -169,14 +169,114 @@ class Agent(dbus.service.Object):
 	def Cancel(self):
 		print "Cancel"
 
+class VpnAgent(dbus.service.Object):
+	name = None
+	host = None
+	cookie = None
+	username = None
+	password = None
+
+	@dbus.service.method("net.connman.vpn.Agent",
+					in_signature='', out_signature='')
+	def Release(self):
+		print("Release VPN agent")
+		mainloop.quit()
+
+	def input_cookie(self):
+		response = {}
+
+		if not self.cookie:
+			print "VPN credentials requested, type cancel to cancel"
+			args = raw_input('Answer: ')
+
+			for arg in args.split():
+				if arg.startswith("cancel"):
+					response["Error"] = arg
+				if arg.startswith("Cookie="):
+					cookie = arg.replace("Cookie=", "", 1)
+					response["OpenConnect.Cookie"] = cookie
+		else:
+			if self.cookie:
+				response["OpenConnect.Cookie"] = self.cookie
+
+		return response
+
+	def input_username(self):
+		response = {}
+
+		if not self.username and not self.password:
+			print "User login requested, type cancel to cancel"
+			args = raw_input('Answer: ')
+
+			for arg in args.split():
+				if arg.startswith("cancel"):
+					response["Error"] = arg
+				if arg.startswith("Username="):
+					username = arg.replace("Username=", "", 1)
+					response["Username"] = username
+				if arg.startswith("Password="):
+					password = arg.replace("Password=", "", 1)
+					response["Password"] = password
+		else:
+			if self.username:
+				response["Username"] = self.username
+			if self.password:
+				response["Password"] = self.password
+
+		return response
+
+	@dbus.service.method("net.connman.vpn.Agent",
+					in_signature='oa{sv}',
+					out_signature='a{sv}')
+	def RequestInput(self, path, fields):
+		print "RequestInput (%s,%s)" % (path, fields)
+
+		response = {}
+
+		if fields.has_key("OpenConnect.Cookie"):
+			response.update(self.input_cookie())
+		if fields.has_key("Username") or fields.has_key("Password"):
+			response.update(self.input_username())
+
+		if response.has_key("Error"):
+			if response["Error"] == "cancel":
+				raise Canceled("canceled")
+				return
+
+		print "returning (%s)" % (response)
+
+		return response
+
+	@dbus.service.method("net.connman.vpn.Agent",
+					in_signature='os',
+					out_signature='')
+	def ReportError(self, path, error):
+		print "ReportError %s, %s" % (path, error)
+		retry = raw_input("Retry service (yes/no): ")
+		if (retry == "yes"):
+			class Retry(dbus.DBusException):
+				_dbus_error_name = "net.connman.vpn.Agent.Error.Retry"
+
+			raise Retry("retry service")
+		else:
+			return
+
+
+	@dbus.service.method("net.connman.vpn.Agent",
+					in_signature='', out_signature='')
+	def Cancel(self):
+		print "Cancel"
+
 def print_usage():
 	print "Usage:"
 	print "For hidden service:"
 	print "%s Name=<hidden service name> [SSID=<hidden ssid>]" % (sys.argv[0])
 	print "For EAP/WPA input:"
 	print "%s Identity=<identity> Passphrase=<passphrase> WPS=<wpspin>" % (sys.argv[0])
-	print "For WISPr login input:"
+	print "For WISPr login, L2TP or PPTP input:"
 	print "%s Username=<username> Password=<password>" % (sys.argv[0])
+	print "For OpenConnect input:"
+	print "%s Cookie=<string>" % (sys.argv[0])
 	print "Help: %s help" % (sys.argv[0])
 	sys.exit(1)
 
@@ -193,6 +293,11 @@ if __name__ == '__main__':
 	path = "/test/agent"
 	object = Agent(bus, path)
 
+	vpn_manager = dbus.Interface(bus.get_object('net.connman.vpn', "/"),
+					'net.connman.vpn.Manager')
+	path = "/test/vpn_agent"
+	vpn_object = VpnAgent(bus, path)
+
 	if len(sys.argv) >= 2:
 		for arg in sys.argv[1:]:
 			if arg.startswith("Name="):
@@ -207,12 +312,21 @@ if __name__ == '__main__':
 				object.wpspin = arg.replace("WPS=", "", 1)
 			elif arg.startswith("Username="):
 				object.username = arg.replace("Username=", "", 1)
+				vpn_object.username = arg.replace("Username=", "", 1)
 			elif arg.startswith("Password="):
 				object.password = arg.replace("Password=", "", 1)
+				vpn_object.password = arg.replace("Password=", "", 1)
+			elif arg.startswith("Cookie="):
+				vpn_object.cookie = arg.replace("Cookie=", "", 1)
 			else:
 				print_usage()
 
-	manager.RegisterAgent(path)
+	try:
+		manager.RegisterAgent(path)
+	except:
+		print "Cannot register connman agent."
+
+	vpn_manager.RegisterAgent(path)
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
