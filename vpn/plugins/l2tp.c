@@ -743,12 +743,18 @@ static int l2tp_error_code(int exit_code)
 	}
 }
 
+static void l2tp_disconnect(struct vpn_provider *provider)
+{
+	vpn_provider_set_string(provider, "L2TP.Password", NULL);
+}
+
 static struct vpn_driver vpn_driver = {
 	.flags		= VPN_FLAG_NO_TUN,
 	.notify		= l2tp_notify,
 	.connect	= l2tp_connect,
 	.error_code	= l2tp_error_code,
 	.save		= l2tp_save,
+	.disconnect	= l2tp_disconnect,
 };
 
 static int l2tp_init(void)
