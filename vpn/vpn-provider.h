@@ -112,6 +112,11 @@ typedef void (* vpn_provider_auth_cb_t) (struct vpn_provider *provider,
 					const char *authenticator,
 					const char *error, void *user_data);
 
+typedef void (* vpn_provider_password_cb_t) (struct vpn_provider *provider,
+					const char *username,
+					const char *password,
+					const char *error, void *user_data);
+
 struct vpn_provider_driver {
 	const char *name;
 	enum vpn_provider_type type;
