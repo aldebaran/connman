@@ -1436,11 +1436,47 @@ int vpn_provider_indicate_error(struct vpn_provider *provider,
 	return 0;
 }
 
+static int connection_unregister(struct vpn_provider *provider)
+{
+	DBG("provider %p path %s", provider, provider->path);
+
+	if (provider->path == NULL)
+		return -EALREADY;
+
+	g_dbus_unregister_interface(connection, provider->path,
+				VPN_CONNECTION_INTERFACE);
+
+	g_free(provider->path);
+	provider->path = NULL;
+
+	return 0;
+}
+
+static int connection_register(struct vpn_provider *provider)
+{
+	DBG("provider %p path %s", provider, provider->path);
+
+	if (provider->path != NULL)
+		return -EALREADY;
+
+	provider->path = g_strdup_printf("%s/connection/%s", VPN_PATH,
+						provider->identifier);
+
+	g_dbus_register_interface(connection, provider->path,
+				VPN_CONNECTION_INTERFACE,
+				connection_methods, connection_signals,
+				NULL, provider, NULL);
+
+	return 0;
+}
+
 static void unregister_provider(gpointer data)
 {
 	struct vpn_provider *provider = data;
 
 	configuration_count_del();
+
+	connection_unregister(provider);
 
 	vpn_provider_unref(provider);
 }
@@ -1516,38 +1552,6 @@ static void provider_dbus_ident(char *ident)
 			continue;
 		ident[i] = '_';
 	}
-}
-
-static int connection_unregister(struct vpn_provider *provider)
-{
-	if (provider->path == NULL)
-		return -EALREADY;
-
-	g_dbus_unregister_interface(connection, provider->path,
-				VPN_CONNECTION_INTERFACE);
-
-	g_free(provider->path);
-	provider->path = NULL;
-
-	return 0;
-}
-
-static int connection_register(struct vpn_provider *provider)
-{
-	DBG("provider %p path %s", provider, provider->path);
-
-	if (provider->path != NULL)
-		return -EALREADY;
-
-	provider->path = g_strdup_printf("%s/connection/%s", VPN_PATH,
-						provider->identifier);
-
-	g_dbus_register_interface(connection, provider->path,
-				VPN_CONNECTION_INTERFACE,
-				connection_methods, connection_signals,
-				NULL, provider, NULL);
-
-	return 0;
 }
 
 static struct vpn_provider *provider_create_from_keyfile(GKeyFile *keyfile,
