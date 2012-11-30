@@ -40,6 +40,11 @@
 #include <connman/task.h>
 #include <connman/dbus.h>
 #include <connman/inet.h>
+#include <connman/agent.h>
+#include <connman/setting.h>
+#include <connman/vpn-dbus.h>
+
+#include "../vpn-provider.h"
 
 #include "vpn.h"
 
@@ -75,6 +80,13 @@ struct {
 };
 
 static DBusConnection *connection;
+
+struct pptp_private_data {
+	struct connman_task *task;
+	char *if_name;
+	vpn_provider_connect_cb_t cb;
+	void *user_data;
+};
 
 static DBusMessage *pptp_get_sec(struct connman_task *task,
 				DBusMessage *msg, void *user_data)
@@ -240,19 +252,153 @@ static void pptp_write_bool_option(struct connman_task *task,
 	}
 }
 
-static int pptp_connect(struct vpn_provider *provider,
+struct request_input_reply {
+	struct vpn_provider *provider;
+	vpn_provider_password_cb_t callback;
+	void *user_data;
+};
+
+static void request_input_reply(DBusMessage *reply, void *user_data)
+{
+	struct request_input_reply *pptp_reply = user_data;
+	const char *error = NULL;
+	char *username = NULL, *password = NULL;
+	char *key;
+	DBusMessageIter iter, dict;
+
+	DBG("provider %p", pptp_reply->provider);
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		error = dbus_message_get_error_name(reply);
+		goto done;
+	}
+
+	if (vpn_agent_check_reply_has_dict(reply) == FALSE)
+		goto done;
+
+	dbus_message_iter_init(reply, &iter);
+	dbus_message_iter_recurse(&iter, &dict);
+	while (dbus_message_iter_get_arg_type(&dict) == DBUS_TYPE_DICT_ENTRY) {
+		DBusMessageIter entry, value;
+		const char *str;
+
+		dbus_message_iter_recurse(&dict, &entry);
+		if (dbus_message_iter_get_arg_type(&entry) != DBUS_TYPE_STRING)
+			break;
+
+		dbus_message_iter_get_basic(&entry, &key);
+
+		if (g_str_equal(key, "Username")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value)
+							!= DBUS_TYPE_STRING)
+				break;
+			dbus_message_iter_get_basic(&value, &str);
+			username = g_strdup(str);
+		}
+
+		if (g_str_equal(key, "Password")) {
+			dbus_message_iter_next(&entry);
+			if (dbus_message_iter_get_arg_type(&entry)
+							!= DBUS_TYPE_VARIANT)
+				break;
+			dbus_message_iter_recurse(&entry, &value);
+			if (dbus_message_iter_get_arg_type(&value)
+							!= DBUS_TYPE_STRING)
+				break;
+			dbus_message_iter_get_basic(&value, &str);
+			password = g_strdup(str);
+		}
+
+		dbus_message_iter_next(&dict);
+	}
+
+done:
+	pptp_reply->callback(pptp_reply->provider, username, password, error,
+				pptp_reply->user_data);
+
+	g_free(username);
+	g_free(password);
+
+	g_free(pptp_reply);
+}
+
+typedef void (* request_cb_t)(struct vpn_provider *provider,
+				const char *username, const char *password,
+				const char *error, void *user_data);
+
+static int request_input(struct vpn_provider *provider,
+				request_cb_t callback, void *user_data)
+{
+	DBusMessage *message;
+	const char *path, *agent_sender, *agent_path;
+	DBusMessageIter iter;
+	DBusMessageIter dict;
+	struct request_input_reply *pptp_reply;
+	int err;
+
+	connman_agent_get_info(&agent_sender, &agent_path);
+
+	if (provider == NULL || agent_path == NULL || callback == NULL)
+		return -ESRCH;
+
+	message = dbus_message_new_method_call(agent_sender, agent_path,
+					VPN_AGENT_INTERFACE,
+					"RequestInput");
+	if (message == NULL)
+		return -ENOMEM;
+
+	dbus_message_iter_init_append(message, &iter);
+
+	path = vpn_provider_get_path(provider);
+	dbus_message_iter_append_basic(&iter,
+				DBUS_TYPE_OBJECT_PATH, &path);
+
+	connman_dbus_dict_open(&iter, &dict);
+
+	vpn_agent_append_user_info(&dict, provider, "PPTP.User");
+
+	vpn_agent_append_host_and_name(&dict, provider);
+
+	connman_dbus_dict_close(&iter, &dict);
+
+	pptp_reply = g_try_new0(struct request_input_reply, 1);
+	if (pptp_reply == NULL) {
+		dbus_message_unref(message);
+		return -ENOMEM;
+	}
+
+	pptp_reply->provider = provider;
+	pptp_reply->callback = callback;
+	pptp_reply->user_data = user_data;
+
+	err = connman_agent_queue_message(provider, message,
+			connman_timeout_input_request(),
+			request_input_reply, pptp_reply);
+	if (err < 0 && err != -EBUSY) {
+		DBG("error %d sending agent request", err);
+		dbus_message_unref(message);
+		g_free(pptp_reply);
+		return err;
+	}
+
+	dbus_message_unref(message);
+
+	return -EINPROGRESS;
+}
+
+static int run_connect(struct vpn_provider *provider,
 			struct connman_task *task, const char *if_name,
-			vpn_provider_connect_cb_t cb, void *user_data)
+			vpn_provider_connect_cb_t cb, void *user_data,
+			const char *username, const char *password)
 {
 	const char *opt_s, *host;
 	char *str;
 	int err, i;
-
-	if (connman_task_set_notify(task, "getsec",
-					pptp_get_sec, provider)) {
-		err = -ENOMEM;
-		goto done;
-	}
 
 	host = vpn_provider_get_string(provider, "Host");
 	if (host == NULL) {
@@ -260,6 +406,18 @@ static int pptp_connect(struct vpn_provider *provider,
 		err = -EINVAL;
 		goto done;
 	}
+
+	if (username == NULL || password == NULL) {
+		DBG("Cannot connect username %s password %p",
+						username, password);
+		err = -EINVAL;
+		goto done;
+	}
+
+	vpn_provider_set_string(provider, "PPTP.User", username);
+	vpn_provider_set_string(provider, "PPTP.Password", password);
+
+	DBG("username %s password %p", username, password);
 
 	str = g_strdup_printf("%s %s --nolaunchpppd --loglevel 2",
 				PPTP, host);
@@ -309,6 +467,82 @@ static int pptp_connect(struct vpn_provider *provider,
 	}
 
 done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
+
+	return err;
+}
+
+static void free_private_data(struct pptp_private_data *data)
+{
+	g_free(data->if_name);
+	g_free(data);
+}
+
+static void request_input_cb(struct vpn_provider *provider,
+			const char *username,
+			const char *password,
+			const char *error, void *user_data)
+{
+	struct pptp_private_data *data = user_data;
+
+	if (username == NULL || password == NULL)
+		DBG("Requesting username %s or password failed, error %s",
+			username, error);
+	else if (error != NULL)
+		DBG("error %s", error);
+
+	run_connect(provider, data->task, data->if_name, data->cb,
+		data->user_data, username, password);
+
+	free_private_data(data);
+}
+
+static int pptp_connect(struct vpn_provider *provider,
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
+{
+	const char *username, *password;
+	int err;
+
+	DBG("iface %s provider %p user %p", if_name, provider, user_data);
+
+	if (connman_task_set_notify(task, "getsec",
+					pptp_get_sec, provider)) {
+		err = -ENOMEM;
+		goto error;
+	}
+
+	username = vpn_provider_get_string(provider, "PPTP.User");
+	password = vpn_provider_get_string(provider, "PPTP.Password");
+
+	DBG("user %s password %p", username, password);
+
+	if (username == NULL || password == NULL) {
+		struct pptp_private_data *data;
+
+		data = g_try_new0(struct pptp_private_data, 1);
+		if (data == NULL)
+			return -ENOMEM;
+
+		data->task = task;
+		data->if_name = g_strdup(if_name);
+		data->cb = cb;
+		data->user_data = user_data;
+
+		err = request_input(provider, request_input_cb, data);
+		if (err != -EINPROGRESS) {
+			free_private_data(data);
+			goto done;
+		}
+		return err;
+	}
+
+done:
+	return run_connect(provider, task, if_name, cb, user_data,
+							username, password);
+
+error:
 	if (cb != NULL)
 		cb(provider, user_data, err);
 
