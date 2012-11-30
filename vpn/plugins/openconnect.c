@@ -46,12 +46,46 @@
 
 #include "vpn.h"
 
+#define ARRAY_SIZE(a) (sizeof(a)/sizeof(a[0]))
+
+struct {
+	const char *cm_opt;
+	const char *oc_opt;
+	char       has_value;
+} oc_options[] = {
+	{ "OpenConnect.NoCertCheck", "--no-cert-check", 0 },
+};
+
 struct oc_private_data {
 	struct connman_task *task;
 	char *if_name;
 	vpn_provider_connect_cb_t cb;
 	void *user_data;
 };
+
+static int task_append_config_data(struct vpn_provider *provider,
+					struct connman_task *task)
+{
+	const char *option;
+	int i;
+
+	for (i = 0; i < (int)ARRAY_SIZE(oc_options); i++) {
+		if (oc_options[i].oc_opt == NULL)
+			continue;
+
+		option = vpn_provider_get_string(provider,
+					oc_options[i].cm_opt);
+		if (option == NULL)
+			continue;
+
+		if (connman_task_add_argument(task,
+				oc_options[i].oc_opt,
+				oc_options[i].has_value ? option : NULL) < 0)
+			return -EIO;
+	}
+
+	return 0;
+}
 
 static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
@@ -325,6 +359,8 @@ static int run_connect(struct vpn_provider *provider,
 		goto done;
 	}
 
+	task_append_config_data(provider, task);
+
 	vpn_provider_set_string(provider, "OpenConnect.Cookie", vpncookie);
 
 	certsha1 = vpn_provider_get_string(provider,
@@ -438,7 +474,8 @@ done:
 
 static int oc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
-	const char *setting;
+	const char *setting, *option;
+	int i;
 
 	setting = vpn_provider_get_string(provider,
 					"OpenConnect.ServerCert");
@@ -460,6 +497,19 @@ static int oc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 		g_key_file_set_string(keyfile,
 				vpn_provider_get_save_group(provider),
 				"VPN.MTU", setting);
+
+	for (i = 0; i < (int)ARRAY_SIZE(oc_options); i++) {
+		if (strncmp(oc_options[i].cm_opt, "OpenConnect.", 12) == 0) {
+			option = vpn_provider_get_string(provider,
+							oc_options[i].cm_opt);
+			if (option == NULL)
+				continue;
+
+			g_key_file_set_string(keyfile,
+					vpn_provider_get_save_group(provider),
+					oc_options[i].cm_opt, option);
+		}
+	}
 
 	return 0;
 }
