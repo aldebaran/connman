@@ -2153,6 +2153,21 @@ void __vpn_provider_check_connections(void)
 	g_timeout_add(1000, check_vpn_count, NULL);
 }
 
+const char *vpn_provider_get_name(struct vpn_provider *provider)
+{
+	return provider->name;
+}
+
+const char *vpn_provider_get_host(struct vpn_provider *provider)
+{
+	return provider->host;
+}
+
+const char *vpn_provider_get_path(struct vpn_provider *provider)
+{
+	return provider->path;
+}
+
 int __vpn_provider_init(gboolean do_routes)
 {
 	DBG("");

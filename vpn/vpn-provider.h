@@ -101,6 +101,10 @@ int vpn_provider_append_route(struct vpn_provider *provider,
 const char *vpn_provider_get_driver_name(struct vpn_provider *provider);
 const char *vpn_provider_get_save_group(struct vpn_provider *provider);
 
+const char *vpn_provider_get_name(struct vpn_provider *provider);
+const char *vpn_provider_get_host(struct vpn_provider *provider);
+const char *vpn_provider_get_path(struct vpn_provider *provider);
+
 typedef void (* vpn_provider_connect_cb_t) (struct vpn_provider *provider,
 					void *user_data, int error);
 
