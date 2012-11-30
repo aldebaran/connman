@@ -86,6 +86,28 @@ Core
  level of systemd integration or other factors.
 
 
+- Clean up type definitions
+
+   Priority: Medium
+   Complexity: C1
+
+   Go through variable types and use the following:
+   * uint8_t instead of connman_uint8_t, unsigned char
+   * uint16_t instead of connman_uint16_t, unsigned short
+   * bool from <stdbool.h> instead of connman_bool_t and gboolean, in the
+     latter case in those places it makes sense
+
+
+- Clean up data structure usage
+
+   Priority: Medium
+   Complexity: C4
+
+   Use hash tables, queues and lists in the code. Replace GSequences with
+   simpler structures. At the same time do a check on the currently used
+   data structures and see if something can be simplified.
+
+
 WiFi
 ====
 
