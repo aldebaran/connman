@@ -57,7 +57,7 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 {
 	DBusMessageIter iter, dict;
 	const char *reason, *key, *value;
-	const char *domain = NULL;
+	char *domain = NULL;
 	char *addressv4 = NULL, *addressv6 = NULL;
 	char *netmask = NULL, *gateway = NULL;
 	unsigned char prefix_len = 0;
@@ -76,7 +76,7 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 	if (strcmp(reason, "connect"))
 		return VPN_STATE_DISCONNECT;
 
-	domain = vpn_provider_get_string(provider, "VPN.Domain");
+	domain = g_strdup(vpn_provider_get_string(provider, "VPN.Domain"));
 
 	dbus_message_iter_recurse(&iter, &dict);
 
@@ -126,8 +126,10 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 		if (!strcmp(key, "CISCO_PROXY_PAC"))
 			vpn_provider_set_pac(provider, value);
 
-		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN"))
-			domain = value;
+		if (domain == NULL && !strcmp(key, "CISCO_DEF_DOMAIN")) {
+			g_free(domain);
+			domain = g_strdup(value);
+		}
 
 		if (g_str_has_prefix(key, "CISCO_SPLIT_INC") == TRUE ||
 			g_str_has_prefix(key, "CISCO_IPV6_SPLIT_INC") == TRUE)
@@ -150,6 +152,7 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 		g_free(addressv6);
 		g_free(netmask);
 		g_free(gateway);
+		g_free(domain);
 
 		return VPN_STATE_FAILURE;
 	}
@@ -167,6 +170,7 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 	g_free(addressv6);
 	g_free(netmask);
 	g_free(gateway);
+	g_free(domain);
 	connman_ipaddress_free(ipaddress);
 
 	return VPN_STATE_CONNECT;
