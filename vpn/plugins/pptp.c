@@ -45,6 +45,7 @@
 #include <connman/vpn-dbus.h>
 
 #include "../vpn-provider.h"
+#include "../vpn-agent.h"
 
 #include "vpn.h"
 
