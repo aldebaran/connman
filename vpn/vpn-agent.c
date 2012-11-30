@@ -98,3 +98,48 @@ void vpn_agent_append_host_and_name(DBusMessageIter *iter,
 				request_input_append_name,
 				provider);
 }
+
+struct user_info_data {
+	struct vpn_provider *provider;
+	const char *username_str;
+};
+
+static void request_input_append_user_info(DBusMessageIter *iter,
+						void *user_data)
+{
+	struct user_info_data *data = user_data;
+	struct vpn_provider *provider = data->provider;
+	const char *str = "string";
+
+	connman_dbus_dict_append_basic(iter, "Type",
+				DBUS_TYPE_STRING, &str);
+	str = "mandatory";
+	connman_dbus_dict_append_basic(iter, "Requirement",
+				DBUS_TYPE_STRING, &str);
+
+	if (data->username_str != NULL) {
+		str = vpn_provider_get_string(provider, data->username_str);
+		if (str != NULL)
+			connman_dbus_dict_append_basic(iter, "Value",
+						DBUS_TYPE_STRING, &str);
+	}
+}
+
+void vpn_agent_append_user_info(DBusMessageIter *iter,
+				struct vpn_provider *provider,
+				const char *username_str)
+{
+	struct user_info_data data = {
+		.provider = provider,
+		.username_str = username_str
+	};
+
+	connman_dbus_dict_append_dict(iter, "Username",
+				request_input_append_user_info,
+				&data);
+
+	data.username_str = NULL;
+	connman_dbus_dict_append_dict(iter, "Password",
+				request_input_append_user_info,
+				&data);
+}
