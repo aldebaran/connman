@@ -409,13 +409,19 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver)
 {
 	GSList *list;
 
+	if (driver == NULL)
+		return;
+
 	DBG("Unregistering driver %p name %s", driver, driver->name);
 
 	for (list = driver_list; list; list = list->next) {
 		DBusMessage *message;
 
-		if (driver == list->data)
+		if (driver != list->data)
 			continue;
+
+		DBG("Sending release to %s path %s iface %s", agent_sender,
+			agent_path, driver->interface);
 
 		message = dbus_message_new_method_call(agent_sender, agent_path,
 				driver->interface, "Release");
@@ -425,9 +431,21 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver)
 		}
 
 		agent_free();
+
+		/*
+		 * ATM agent_free() unsets the agent_sender and agent_path
+		 * variables so we can unregister only once.
+		 * This needs proper fix later.
+		 */
+		break;
 	}
 
 	driver_list = g_slist_remove(driver_list, driver);
+}
+
+static void release_all_agents(void)
+{
+	connman_agent_driver_unregister(get_driver());
 }
 
 int __connman_agent_init(void)
@@ -450,6 +468,8 @@ void __connman_agent_cleanup(void)
 
 	if (agent_watch > 0)
 		g_dbus_remove_watch(connection, agent_watch);
+
+	release_all_agents();
 
 	dbus_connection_unref(connection);
 	connection = NULL;
