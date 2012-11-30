@@ -558,12 +558,18 @@ static int pptp_error_code(int exit_code)
 	}
 }
 
+static void pptp_disconnect(struct vpn_provider *provider)
+{
+	vpn_provider_set_string(provider, "PPTP.Password", NULL);
+}
+
 static struct vpn_driver vpn_driver = {
 	.flags		= VPN_FLAG_NO_TUN,
 	.notify		= pptp_notify,
 	.connect	= pptp_connect,
 	.error_code     = pptp_error_code,
 	.save		= pptp_save,
+	.disconnect	= pptp_disconnect,
 };
 
 static int pptp_init(void)
