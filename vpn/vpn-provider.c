@@ -33,6 +33,7 @@
 #include <netdb.h>
 
 #include "../src/connman.h"
+#include "connman/agent.h"
 #include "connman/vpn-dbus.h"
 #include "vpn-provider.h"
 #include "vpn.h"
@@ -2183,11 +2184,38 @@ const char *vpn_provider_get_path(struct vpn_provider *provider)
 	return provider->path;
 }
 
+static int agent_probe(struct connman_agent *agent)
+{
+	DBG("agent %p", agent);
+	return 0;
+}
+
+static void agent_remove(struct connman_agent *agent)
+{
+	DBG("agent %p", agent);
+}
+
+static struct connman_agent_driver agent_driver = {
+	.name		= "vpn",
+	.interface      = VPN_AGENT_INTERFACE,
+	.probe		= agent_probe,
+	.remove		= agent_remove,
+};
+
 int __vpn_provider_init(gboolean do_routes)
 {
+	int err;
+
 	DBG("");
 
 	handle_routes = do_routes;
+
+	err = connman_agent_driver_register(&agent_driver);
+	if (err < 0) {
+		connman_error("Cannot register agent driver for %s",
+						agent_driver.name);
+		return err;
+	}
 
 	connection = connman_dbus_get_connection();
 
@@ -2205,6 +2233,8 @@ void __vpn_provider_cleanup(void)
 
 	g_hash_table_destroy(provider_hash);
 	provider_hash = NULL;
+
+	connman_agent_driver_unregister(&agent_driver);
 
 	dbus_connection_unref(connection);
 }
