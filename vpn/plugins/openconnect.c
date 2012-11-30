@@ -161,21 +161,24 @@ static int oc_notify(DBusMessage *msg, struct vpn_provider *provider)
 }
 
 static int oc_connect(struct vpn_provider *provider,
-			struct connman_task *task, const char *if_name)
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
 {
 	const char *vpnhost, *vpncookie, *cafile, *certsha1, *mtu;
-	int fd, err;
+	int fd, err = 0;
 
 	vpnhost = vpn_provider_get_string(provider, "Host");
 	if (!vpnhost) {
 		connman_error("Host not set; cannot enable VPN");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	vpncookie = vpn_provider_get_string(provider, "OpenConnect.Cookie");
 	if (!vpncookie) {
 		connman_error("OpenConnect.Cookie not set; cannot enable VPN");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	certsha1 = vpn_provider_get_string(provider,
@@ -207,17 +210,23 @@ static int oc_connect(struct vpn_provider *provider,
 			       &fd, NULL, NULL);
 	if (err < 0) {
 		connman_error("openconnect failed to start");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
 	if (write(fd, vpncookie, strlen(vpncookie)) !=
 			(ssize_t)strlen(vpncookie) ||
 			write(fd, "\n", 1) != 1) {
 		connman_error("openconnect failed to take cookie on stdin");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
-	return 0;
+done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
+
+	return err;
 }
 
 static int oc_save(struct vpn_provider *provider, GKeyFile *keyfile)

@@ -101,12 +101,16 @@ int vpn_provider_append_route(struct vpn_provider *provider,
 const char *vpn_provider_get_driver_name(struct vpn_provider *provider);
 const char *vpn_provider_get_save_group(struct vpn_provider *provider);
 
+typedef void (* vpn_provider_connect_cb_t) (struct vpn_provider *provider,
+					void *user_data, int error);
+
 struct vpn_provider_driver {
 	const char *name;
 	enum vpn_provider_type type;
 	int (*probe) (struct vpn_provider *provider);
 	int (*remove) (struct vpn_provider *provider);
-	int (*connect) (struct vpn_provider *provider);
+	int (*connect) (struct vpn_provider *provider,
+			vpn_provider_connect_cb_t cb, void *user_data);
 	int (*disconnect) (struct vpn_provider *provider);
 	int (*save) (struct vpn_provider *provider, GKeyFile *keyfile);
 };

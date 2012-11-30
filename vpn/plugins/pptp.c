@@ -241,27 +241,32 @@ static void pptp_write_bool_option(struct connman_task *task,
 }
 
 static int pptp_connect(struct vpn_provider *provider,
-		struct connman_task *task, const char *if_name)
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
 {
 	const char *opt_s, *host;
 	char *str;
 	int err, i;
 
 	if (connman_task_set_notify(task, "getsec",
-					pptp_get_sec, provider))
-		return -ENOMEM;
+					pptp_get_sec, provider)) {
+		err = -ENOMEM;
+		goto done;
+	}
 
 	host = vpn_provider_get_string(provider, "Host");
 	if (host == NULL) {
 		connman_error("Host not set; cannot enable VPN");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	str = g_strdup_printf("%s %s --nolaunchpppd --loglevel 2",
 				PPTP, host);
 	if (str == NULL) {
 		connman_error("can not allocate memory");
-		return -ENOMEM;
+		err = -ENOMEM;
+		goto done;
 	}
 
 	connman_task_add_argument(task, "pty", str);
@@ -299,10 +304,15 @@ static int pptp_connect(struct vpn_provider *provider,
 				NULL, NULL, NULL);
 	if (err < 0) {
 		connman_error("pptp failed to start");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
-	return 0;
+done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
+
+	return err;
 }
 
 static int pptp_error_code(int exit_code)

@@ -975,6 +975,12 @@ int __vpn_provider_disconnect(struct vpn_provider *provider)
 	return 0;
 }
 
+static void connect_cb(struct vpn_provider *provider, void *user_data,
+								int error)
+{
+	DBG("provider %p user %p error %d", provider, user_data, error);
+}
+
 int __vpn_provider_connect(struct vpn_provider *provider)
 {
 	int err;
@@ -982,7 +988,8 @@ int __vpn_provider_connect(struct vpn_provider *provider)
 	DBG("provider %p", provider);
 
 	if (provider->driver != NULL && provider->driver->connect != NULL)
-		err = provider->driver->connect(provider);
+		err = provider->driver->connect(provider,
+						connect_cb, NULL);
 	else
 		return -EOPNOTSUPP;
 

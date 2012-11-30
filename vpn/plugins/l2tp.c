@@ -447,7 +447,8 @@ static void l2tp_died(struct connman_task *task, int exit_code, void *user_data)
 }
 
 static int l2tp_connect(struct vpn_provider *provider,
-		struct connman_task *task, const char *if_name)
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
 {
 	const char *host;
 	char *l2tp_name, *pppd_name;
@@ -455,13 +456,16 @@ static int l2tp_connect(struct vpn_provider *provider,
 	int err;
 
 	if (connman_task_set_notify(task, "getsec",
-					l2tp_get_sec, provider))
-		return -ENOMEM;
+					l2tp_get_sec, provider) != 0) {
+		err = -ENOMEM;
+		goto done;
+	}
 
 	host = vpn_provider_get_string(provider, "Host");
 	if (host == NULL) {
 		connman_error("Host not set; cannot enable VPN");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	l2tp_name = g_strdup_printf("/var/run/connman/connman-xl2tpd.conf");
@@ -470,7 +474,8 @@ static int l2tp_connect(struct vpn_provider *provider,
 	if (l2tp_fd < 0) {
 		g_free(l2tp_name);
 		connman_error("Error writing l2tp config");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
 	pppd_name = g_strdup_printf("/var/run/connman/connman-ppp-option.conf");
@@ -481,7 +486,8 @@ static int l2tp_connect(struct vpn_provider *provider,
 		g_free(l2tp_name);
 		g_free(pppd_name);
 		close(l2tp_fd);
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
 	l2tp_write_config(provider, pppd_name, l2tp_fd);
@@ -498,10 +504,15 @@ static int l2tp_connect(struct vpn_provider *provider,
 				NULL, NULL, NULL);
 	if (err < 0) {
 		connman_error("l2tp failed to start");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
-	return 0;
+done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
+
+	return err;
 }
 
 static int l2tp_error_code(int exit_code)

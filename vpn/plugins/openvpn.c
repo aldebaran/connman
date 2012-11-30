@@ -229,10 +229,11 @@ static int task_append_config_data(struct vpn_provider *provider,
 }
 
 static int ov_connect(struct vpn_provider *provider,
-		struct connman_task *task, const char *if_name)
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
 {
 	const char *option;
-	int err, fd;
+	int err = 0, fd;
 
 	option = vpn_provider_get_string(provider, "Host");
 	if (option == NULL) {
@@ -304,10 +305,15 @@ static int ov_connect(struct vpn_provider *provider,
 			NULL, &fd, &fd);
 	if (err < 0) {
 		connman_error("openvpn failed to start");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
-	return 0;
+done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
+
+	return err;
 }
 
 static struct vpn_driver vpn_driver = {

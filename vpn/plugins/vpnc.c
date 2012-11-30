@@ -263,20 +263,23 @@ static int vc_save(struct vpn_provider *provider, GKeyFile *keyfile)
 }
 
 static int vc_connect(struct vpn_provider *provider,
-		struct connman_task *task, const char *if_name)
+			struct connman_task *task, const char *if_name,
+			vpn_provider_connect_cb_t cb, void *user_data)
 {
 	const char *option;
-	int err, fd;
+	int err = 0, fd;
 
 	option = vpn_provider_get_string(provider, "Host");
 	if (option == NULL) {
 		connman_error("Host not set; cannot enable VPN");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 	option = vpn_provider_get_string(provider, "VPNC.IPSec.ID");
 	if (option == NULL) {
 		connman_error("Group not set; cannot enable VPN");
-		return -EINVAL;
+		err = -EINVAL;
+		goto done;
 	}
 
 	connman_task_add_argument(task, "--non-inter", NULL);
@@ -298,12 +301,17 @@ static int vc_connect(struct vpn_provider *provider,
 				&fd, NULL, NULL);
 	if (err < 0) {
 		connman_error("vpnc failed to start");
-		return -EIO;
+		err = -EIO;
+		goto done;
 	}
 
 	err = vc_write_config_data(provider, fd);
 
 	close(fd);
+
+done:
+	if (cb != NULL)
+		cb(provider, user_data, err);
 
 	return err;
 }
