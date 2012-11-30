@@ -458,7 +458,7 @@ static int vpn_disconnect(struct vpn_provider *provider)
 
 	vpn_driver_data = g_hash_table_lookup(driver_hash, name);
 	if (vpn_driver_data->vpn_driver->disconnect)
-		vpn_driver_data->vpn_driver->disconnect();
+		vpn_driver_data->vpn_driver->disconnect(provider);
 
 	if (data->watch != 0) {
 		vpn_provider_unref(provider);
