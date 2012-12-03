@@ -781,6 +781,8 @@ int g_dhcpv6_client_set_oro(GDHCPClient *dhcp_client, int args, ...)
 
 	g_dhcpv6_client_set_send(dhcp_client, G_DHCPV6_ORO, values, len);
 
+	g_free(values);
+
 	return 0;
 }
 
