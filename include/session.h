@@ -59,7 +59,7 @@ struct connman_session_config {
 	GSList *allowed_bearers;
 };
 
-typedef void (* connman_session_config_cb) (struct connman_session *session,
+typedef int (* connman_session_config_cb) (struct connman_session *session,
 					struct connman_session_config *config,
 					void *user_data, int err);
 

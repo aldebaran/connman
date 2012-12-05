@@ -1618,7 +1618,7 @@ struct user_config {
 	GSList *allowed_bearers;
 };
 
-static void session_create_cb(struct connman_session *session,
+static int session_create_cb(struct connman_session *session,
 				struct connman_session_config *config,
 				void *user_data, int err)
 {
@@ -1696,6 +1696,8 @@ out:
 	}
 
 	g_free(user_config);
+
+	return err;
 }
 
 int __connman_session_create(DBusMessage *msg)
