@@ -108,6 +108,16 @@ Core
    data structures and see if something can be simplified.
 
 
+- Unit tests for DHCP, DNS and HTTP
+
+   Priority: Medium
+   Complexity: C4
+
+   Create unit tests for these components starting with DHCP. Use gtest
+   from GLib for this task similarly to what has been done for OBEX in Bluez
+   and oFono in general.
+
+
 WiFi
 ====
 
