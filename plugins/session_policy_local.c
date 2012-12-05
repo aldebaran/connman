@@ -38,7 +38,7 @@
 #include <connman/dbus.h>
 #include <connman/inotify.h>
 
-#define POLICYDIR STORAGEDIR "/session_policy_ivi"
+#define POLICYDIR STORAGEDIR "/session_policy_local"
 
 static DBusConnection *connection;
 
@@ -198,7 +198,7 @@ done:
 	g_free(ident);
 }
 
-static int policy_ivi_create(struct connman_session *session,
+static int policy_local_create(struct connman_session *session,
 				connman_session_config_cb callback,
 				void *user_data)
 {
@@ -230,7 +230,7 @@ static int policy_ivi_create(struct connman_session *session,
 	return 0;
 }
 
-static void policy_ivi_destroy(struct connman_session *session)
+static void policy_local_destroy(struct connman_session *session)
 {
 	struct policy_data *policy;
 
@@ -243,11 +243,11 @@ static void policy_ivi_destroy(struct connman_session *session)
 	policy_unref(policy);
 }
 
-static struct connman_session_policy session_policy_ivi = {
-	.name = "session ivi policy configuration",
+static struct connman_session_policy session_policy_local = {
+	.name = "session local policy configuration",
 	.priority = CONNMAN_SESSION_POLICY_PRIORITY_DEFAULT,
-	.create = policy_ivi_create,
-	.destroy = policy_ivi_destroy,
+	.create = policy_local_create,
+	.destroy = policy_local_destroy,
 };
 
 static int load_keyfile(const char *pathname, GKeyFile **keyfile)
@@ -460,23 +460,13 @@ static int read_policies(void)
 	return err;
 }
 
-static int session_policy_ivi_init(void)
+static int session_policy_local_init(void)
 {
 	int err;
-
-	err = connman_inotify_register(POLICYDIR, notify_handler);
-	if (err < 0)
-		return err;
 
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
 		return -EIO;
-
-	err = connman_session_policy_register(&session_policy_ivi);
-	if (err < 0) {
-		dbus_connection_unref(connection);
-		return err;
-	}
 
 	session_hash = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 						NULL, NULL);
@@ -492,11 +482,23 @@ static int session_policy_ivi_init(void)
 		goto err;
 	}
 
-	err = read_policies();
+	err = connman_inotify_register(POLICYDIR, notify_handler);
 	if (err < 0)
 		goto err;
 
+	err = read_policies();
+	if (err < 0)
+		goto err_notify;
+
+	err = connman_session_policy_register(&session_policy_local);
+	if (err < 0)
+		goto err_notify;
+
 	return 0;
+
+err_notify:
+
+	connman_inotify_unregister(POLICYDIR, notify_handler);
 
 err:
 	if (session_hash != NULL)
@@ -504,28 +506,26 @@ err:
 	if (policy_hash != NULL)
 		g_hash_table_destroy(policy_hash);
 
-	connman_session_policy_unregister(&session_policy_ivi);
+	connman_session_policy_unregister(&session_policy_local);
 
 	dbus_connection_unref(connection);
-
-	connman_inotify_unregister(POLICYDIR, notify_handler);
 
 	return err;
 }
 
-static void session_policy_ivi_exit(void)
+static void session_policy_local_exit(void)
 {
 	g_hash_table_destroy(session_hash);
 	g_hash_table_destroy(policy_hash);
 
-	connman_session_policy_unregister(&session_policy_ivi);
+	connman_session_policy_unregister(&session_policy_local);
 
 	dbus_connection_unref(connection);
 
 	connman_inotify_unregister(POLICYDIR, notify_handler);
 }
 
-CONNMAN_PLUGIN_DEFINE(session_policy_ivi,
-		"Session IVI policy configuration plugin",
+CONNMAN_PLUGIN_DEFINE(session_policy_local,
+		"Session local file policy configuration plugin",
 		VERSION, CONNMAN_PLUGIN_PRIORITY_DEFAULT,
-		session_policy_ivi_init, session_policy_ivi_exit)
+		session_policy_local_init, session_policy_local_exit)

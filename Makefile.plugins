@@ -247,16 +247,16 @@ plugins_session_policy_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if SESSION_POLICY_IVI
-if SESSION_POLICY_IVI_BUILTIN
-builtin_modules += session_policy_ivi
-builtin_sources += plugins/session_policy_ivi.c
+if SESSION_POLICY_LOCAL
+if SESSION_POLICY_LOCAL_BUILTIN
+builtin_modules += session_policy_local
+builtin_sources += plugins/session_policy_local.c
 else
-plugin_LTLIBRARIES += plugins/session_policy_ivi.la
-plugin_objects += $(plugins_session_policy_ivi_la_OBJECTS)
-plugins_session_policy_ivi_la_CFLAGS = $(plugin_cflags) \
+plugin_LTLIBRARIES += plugins/session_policy_local.la
+plugin_objects += $(plugins_session_policy_local_la_OBJECTS)
+plugins_session_policy_local_la_CFLAGS = $(plugin_cflags) \
 				-DSTORAGEDIR=\""$(storagedir)\""
-plugins_session_policy_ivi_la_LDFLAGS = $(plugin_ldflags)
+plugins_session_policy_local_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 

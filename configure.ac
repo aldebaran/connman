@@ -258,11 +258,11 @@ AC_ARG_ENABLE(session-policy,
 AM_CONDITIONAL(SESSION_POLICY, test "${enable_session_policy}" != "no")
 AM_CONDITIONAL(SESSION_POLICY_BUILTIN, test "${enable_session_policy}" = "builtin")
 
-AC_ARG_ENABLE(session-policy-ivi,
-	AC_HELP_STRING([--enable-session-policy-ivi], [enable IVI Session policy configuration support]),
-			[enable_session_policy_ivi=${enableval}], [enable_session_policy_ivi="no"])
-AM_CONDITIONAL(SESSION_POLICY_IVI, test "${enable_session_policy_ivi}" != "no")
-AM_CONDITIONAL(SESSION_POLICY_IVI_BUILTIN, test "${enable_session_policy_ivi}" = "builtin")
+AC_ARG_ENABLE(session-policy-local,
+	AC_HELP_STRING([--enable-session-policy-local], [enable local file Session policy configuration support]),
+			[enable_session_policy_local=${enableval}], [enable_session_policy_local="no"])
+AM_CONDITIONAL(SESSION_POLICY_LOCAL, test "${enable_session_policy_local}" != "no")
+AM_CONDITIONAL(SESSION_POLICY_LOCAL_BUILTIN, test "${enable_session_policy_local}" = "builtin")
 
 AC_ARG_WITH(stats-max-file-size, AC_HELP_STRING([--with-stats-max-file-size=SIZE],
 			[Maximal size of a statistics round robin file]),
