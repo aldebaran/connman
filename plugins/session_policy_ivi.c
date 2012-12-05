@@ -163,7 +163,7 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 	struct create_data *data = user_data;
 	struct policy_data *policy;
 	struct connman_session_config *config = NULL;
-	char *ident;
+	char *ident = NULL;
 
 	DBG("session %p", data->session);
 
@@ -391,7 +391,6 @@ static void notify_handler(struct inotify_event *event,
                                         const char *ident)
 {
 	struct policy_data *policy;
-	int err;
 
 	if (ident == NULL)
 		return;
