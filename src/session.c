@@ -1689,11 +1689,12 @@ static void session_create_cb(struct connman_session *session,
 
 out:
 	if (err < 0) {
-		__connman_error_failed(user_config->pending, -err);
+		reply = __connman_error_failed(user_config->pending, -err);
+		g_dbus_send_message(connection, reply);
+
 		free_session(session);
 	}
 
-	dbus_message_unref(user_config->pending);
 	g_free(user_config);
 }
 
