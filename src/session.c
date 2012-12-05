@@ -297,6 +297,25 @@ static int assign_policy_plugin(struct connman_session *session)
 	return 0;
 }
 
+struct user_config {
+	DBusMessage *pending;
+
+	enum connman_session_type type;
+	GSList *allowed_bearers;
+};
+
+static void cleanup_user_config(struct user_config *user_config)
+{
+	if (user_config == NULL)
+		return;
+
+	if (user_config->pending != NULL)
+		dbus_message_unref(user_config->pending);
+
+	g_slist_free(user_config->allowed_bearers);
+	g_free(user_config);
+}
+
 static int create_policy_config(struct connman_session *session,
 				connman_session_config_cb callback,
 				void *user_data)
@@ -1611,13 +1630,6 @@ static const GDBusMethodTable session_methods[] = {
 	{ },
 };
 
-struct user_config {
-	DBusMessage *pending;
-
-	enum connman_session_type type;
-	GSList *allowed_bearers;
-};
-
 static int session_create_cb(struct connman_session *session,
 				struct connman_session_config *config,
 				void *user_data, int err)
@@ -1648,6 +1660,7 @@ static int session_create_cb(struct connman_session *session,
 	info->entry = NULL;
 
 	session->user_allowed_bearers = user_config->allowed_bearers;
+	user_config->allowed_bearers = NULL;
 
 	err = apply_policy_on_bearers(
 			session->policy_config->allowed_bearers,
@@ -1674,6 +1687,7 @@ static int session_create_cb(struct connman_session *session,
 				DBUS_TYPE_OBJECT_PATH, &session->session_path,
 				DBUS_TYPE_INVALID);
 	g_dbus_send_message(connection, reply);
+	user_config->pending = NULL;
 
 	populate_service_list(session);
 
@@ -1695,7 +1709,7 @@ out:
 		free_session(session);
 	}
 
-	g_free(user_config);
+	cleanup_user_config(user_config);
 
 	return err;
 }
@@ -1858,11 +1872,7 @@ err:
 
 	free_session(session);
 
-	if (user_config != NULL) {
-		dbus_message_unref(user_config->pending);
-		g_slist_free(user_config->allowed_bearers);
-		g_free(user_config);
-	}
+	cleanup_user_config(user_config);
 	return err;
 }
 
