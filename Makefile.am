@@ -348,7 +348,7 @@ DISTCHECK_CONFIGURE_FLAGS = --disable-gtk-doc \
 				--enable-openconnect \
 				--enable-openvpn \
 				--enable-vpnc \
-				--enable-session-policy \
+				--enable-session-policy-local \
 				--enable-nmcompat \
 				--enable-polkit
 
