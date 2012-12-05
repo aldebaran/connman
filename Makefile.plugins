@@ -254,7 +254,8 @@ builtin_sources += plugins/session_policy_ivi.c
 else
 plugin_LTLIBRARIES += plugins/session_policy_ivi.la
 plugin_objects += $(plugins_session_policy_ivi_la_OBJECTS)
-plugins_session_policy_ivi_la_CFLAGS = $(plugin_cflags)
+plugins_session_policy_ivi_la_CFLAGS = $(plugin_cflags) \
+				-DSTORAGEDIR=\""$(storagedir)\""
 plugins_session_policy_ivi_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
