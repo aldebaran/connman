@@ -865,6 +865,9 @@ static void free_session(struct connman_session *session)
 	if (session == NULL)
 		return;
 
+	if (session->notify_watch > 0)
+		g_dbus_remove_watch(connection, session->notify_watch);
+
 	destroy_policy_config(session);
 	g_slist_free(session->info->config.allowed_bearers);
 	g_free(session->owner);
