@@ -3146,6 +3146,16 @@ static DBusMessage *set_property(DBusConnection *conn,
 		update_nameservers(service);
 		dns_configuration_changed(service);
 
+		if (__connman_service_is_connected_state(service,
+						CONNMAN_IPCONFIG_TYPE_IPV4))
+			__connman_wispr_start(service,
+						CONNMAN_IPCONFIG_TYPE_IPV4);
+
+		if (__connman_service_is_connected_state(service,
+						CONNMAN_IPCONFIG_TYPE_IPV6))
+			__connman_wispr_start(service,
+						CONNMAN_IPCONFIG_TYPE_IPV6);
+
 		service_save(service);
 	} else if (g_str_equal(name, "Timeservers.Configuration") == TRUE) {
 		DBusMessageIter entry;
