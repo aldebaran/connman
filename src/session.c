@@ -236,6 +236,54 @@ static char *service2bearer(enum connman_service_type type)
 	return "";
 }
 
+static void destroy_policy_config(struct connman_session *session)
+{
+	if (session->policy == NULL) {
+		g_free(session->policy_config);
+		return;
+	}
+
+	(*session->policy->destroy)(session);
+}
+
+static void free_session(struct connman_session *session)
+{
+	if (session == NULL)
+		return;
+
+	if (session->notify_watch > 0)
+		g_dbus_remove_watch(connection, session->notify_watch);
+
+	destroy_policy_config(session);
+	g_slist_free(session->info->config.allowed_bearers);
+	g_free(session->owner);
+	g_free(session->session_path);
+	g_free(session->notify_path);
+	g_free(session->info);
+	g_free(session->info_last);
+
+	g_free(session);
+}
+
+static void cleanup_session(gpointer user_data)
+{
+	struct connman_session *session = user_data;
+	struct session_info *info = session->info;
+
+	DBG("remove %s", session->session_path);
+
+	g_slist_free(session->user_allowed_bearers);
+	g_hash_table_destroy(session->service_hash);
+	g_sequence_free(session->service_list);
+
+	if (info->entry != NULL &&
+			info->entry->reason == CONNMAN_SESSION_REASON_CONNECT) {
+		__connman_service_disconnect(info->entry->service);
+	}
+
+	free_session(session);
+}
+
 static int assign_policy_plugin(struct connman_session *session)
 {
 	if (session->policy != NULL)
@@ -266,16 +314,6 @@ static int create_policy_config(struct connman_session *session,
 	}
 
 	return (*session->policy->create)(session, callback, user_data);
-}
-
-static void destroy_policy_config(struct connman_session *session)
-{
-	if (session->policy == NULL) {
-		g_free(session->policy_config);
-		return;
-	}
-
-	(*session->policy->destroy)(session);
 }
 
 static void probe_policy(struct connman_session_policy *policy)
@@ -858,44 +896,6 @@ static gint sort_services(gconstpointer a, gconstpointer b, gpointer user_data)
 
 	return sort_allowed_bearers(entry_a->service, entry_b->service,
 				session);
-}
-
-static void free_session(struct connman_session *session)
-{
-	if (session == NULL)
-		return;
-
-	if (session->notify_watch > 0)
-		g_dbus_remove_watch(connection, session->notify_watch);
-
-	destroy_policy_config(session);
-	g_slist_free(session->info->config.allowed_bearers);
-	g_free(session->owner);
-	g_free(session->session_path);
-	g_free(session->notify_path);
-	g_free(session->info);
-	g_free(session->info_last);
-
-	g_free(session);
-}
-
-static void cleanup_session(gpointer user_data)
-{
-	struct connman_session *session = user_data;
-	struct session_info *info = session->info;
-
-	DBG("remove %s", session->session_path);
-
-	g_slist_free(session->user_allowed_bearers);
-	g_hash_table_destroy(session->service_hash);
-	g_sequence_free(session->service_list);
-
-	if (info->entry != NULL &&
-			info->entry->reason == CONNMAN_SESSION_REASON_CONNECT) {
-		__connman_service_disconnect(info->entry->service);
-	}
-
-	free_session(session);
 }
 
 static enum connman_session_state service_to_session_state(enum connman_service_state state)
