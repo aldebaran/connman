@@ -1689,7 +1689,7 @@ static void session_create_cb(struct connman_session *session,
 
 out:
 	if (err < 0) {
-		__connman_error_failed(user_config->pending, err);
+		__connman_error_failed(user_config->pending, -err);
 		free_session(session);
 	}
 
