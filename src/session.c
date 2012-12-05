@@ -318,21 +318,22 @@ static void cleanup_user_config(struct user_config *user_config)
 
 static int create_policy_config(struct connman_session *session,
 				connman_session_config_cb callback,
-				void *user_data)
+				struct user_config *user_config)
 {
 	struct connman_session_config *config;
 
 	if (session->policy == NULL) {
 		config = connman_session_create_default_config();
-		if (config == NULL)
+		if (config == NULL) {
+			free_session(session);
+			cleanup_user_config(user_config);
 			return -ENOMEM;
+		}
 
-		session->policy_config = config;
-
-		return 0;
+		return callback(session, config, user_config, 0);
 	}
 
-	return (*session->policy->create)(session, callback, user_data);
+	return (*session->policy->create)(session, callback, user_config);
 }
 
 static void probe_policy(struct connman_session_policy *policy)
@@ -1862,8 +1863,8 @@ int __connman_session_create(DBusMessage *msg)
 		goto err;
 
 	err = create_policy_config(session, session_create_cb, user_config);
-	if (err < 0)
-		goto err;
+	if (err < 0 && err != -EINPROGRESS)
+		return err;
 
 	return -EINPROGRESS;
 
