@@ -235,18 +235,6 @@ plugins_tist_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
-if SESSION_POLICY
-if SESSION_POLICY_BUILTIN
-builtin_modules += session_policy
-builtin_sources += plugins/session_policy.c
-else
-plugin_LTLIBRARIES += plugins/session_policy.la
-plugin_objects += $(plugins_session_policy_la_OBJECTS)
-plugins_session_policy_la_CFLAGS = $(plugin_cflags)
-plugins_session_policy_la_LDFLAGS = $(plugin_ldflags)
-endif
-endif
-
 if SESSION_POLICY_LOCAL
 if SESSION_POLICY_LOCAL_BUILTIN
 builtin_modules += session_policy_local

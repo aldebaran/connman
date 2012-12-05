@@ -252,12 +252,6 @@ AC_ARG_ENABLE(tist,
 AM_CONDITIONAL(TIST, test "${enable_tist}" != "no")
 AM_CONDITIONAL(TIST_BUILTIN, test "${enable_tist}" = "builtin")
 
-AC_ARG_ENABLE(session-policy,
-	AC_HELP_STRING([--enable-session-policy], [enable default Session policy configuration support]),
-			[enable_session_policy=${enableval}], [enable_session_policy="no"])
-AM_CONDITIONAL(SESSION_POLICY, test "${enable_session_policy}" != "no")
-AM_CONDITIONAL(SESSION_POLICY_BUILTIN, test "${enable_session_policy}" = "builtin")
-
 AC_ARG_ENABLE(session-policy-local,
 	AC_HELP_STRING([--enable-session-policy-local], [enable local file Session policy configuration support]),
 			[enable_session_policy_local=${enableval}], [enable_session_policy_local="no"])
