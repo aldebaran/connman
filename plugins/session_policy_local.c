@@ -26,6 +26,7 @@
 #include <errno.h>
 #include <string.h>
 #include <sys/inotify.h>
+#include <sys/stat.h>
 
 #include <glib.h>
 
@@ -39,6 +40,9 @@
 #include <connman/inotify.h>
 
 #define POLICYDIR STORAGEDIR "/session_policy_local"
+
+#define MODE		(S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | \
+			S_IXGRP | S_IROTH | S_IXOTH)
 
 static DBusConnection *connection;
 
@@ -463,6 +467,14 @@ static int read_policies(void)
 static int session_policy_local_init(void)
 {
 	int err;
+
+	/* If the dir doesn't exist, create it */
+	if (g_file_test(POLICYDIR, G_FILE_TEST_IS_DIR) == FALSE) {
+		if (mkdir(POLICYDIR, MODE) < 0) {
+			if (errno != EEXIST)
+				return -errno;
+		}
+	}
 
 	connection = connman_dbus_get_connection();
 	if (connection == NULL)
