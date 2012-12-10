@@ -235,14 +235,8 @@ static DBusMessage *connect_provider(DBusConnection *conn,
 	}
 
 	err = __connman_provider_create_and_connect(msg);
-	if (err < 0) {
-		if (err == -EINPROGRESS) {
-			connman_error("Invalid return code from connect");
-			err = -EINVAL;
-		}
-
+	if (err < 0)
 		return __connman_error_failed(msg, -err);
-	}
 
 	return NULL;
 }
