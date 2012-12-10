@@ -1243,8 +1243,8 @@ static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 
 	data = g_hash_table_lookup(vpn_connections, ident);
 	if (data != NULL) {
-		if (data->call != NULL) {
-			connman_error("Dbus call already pending");
+		if (data->call != NULL || data->cb_data != NULL) {
+			DBG("create configuration call already pending");
 			err = -EINPROGRESS;
 			goto done;
 		}
@@ -1274,25 +1274,23 @@ static int create_configuration(DBusMessage *msg, connection_ready_cb callback)
 	dbus_message_set_sender(new_msg, me);
 	dbus_message_set_member(new_msg, "Create");
 
+	user_data = g_try_new0(struct config_create_data, 1);
+	if (user_data == NULL) {
+		err = -ENOMEM;
+		goto done;
+	}
+
+	user_data->callback = callback;
+	user_data->message = dbus_message_ref(msg);
+	user_data->path = NULL;
+
+	DBG("cb %p msg %p", user_data, msg);
+
 	result = dbus_connection_send_with_reply(connection, new_msg,
 						&call, DBUS_TIMEOUT);
 	if (result == FALSE || call == NULL) {
 		err = -EIO;
 		goto done;
-	}
-
-	if (data->cb_data == NULL) {
-		user_data = g_try_new(struct config_create_data, 1);
-		if (user_data != NULL) {
-			user_data->callback = callback;
-			user_data->message = dbus_message_ref(msg);
-			user_data->path = NULL;
-
-			DBG("cb %p msg %p", user_data, msg);
-		}
-	} else {
-		DBG("Configuration callback data already pending, "
-			"discarding new data.");
 	}
 
 	dbus_pending_call_set_notify(call, configuration_create_reply,
