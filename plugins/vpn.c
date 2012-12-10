@@ -449,6 +449,16 @@ static int extract_nameservers(DBusMessageIter *array,
 	return 0;
 }
 
+static int errorstr2val(const char *error) {
+	if (g_strcmp0(error, CONNMAN_ERROR_INTERFACE ".InProgress") == 0)
+		return -EINPROGRESS;
+
+	if (g_strcmp0(error, CONNMAN_ERROR_INTERFACE ".AlreadyConnected") == 0)
+		return -EISCONN;
+
+	return -ECONNREFUSED;
+}
+
 static void connect_reply(DBusPendingCall *call, void *user_data)
 {
 	DBusMessage *reply;
@@ -466,15 +476,15 @@ static void connect_reply(DBusPendingCall *call, void *user_data)
 	dbus_error_init(&error);
 
 	if (dbus_set_error_from_message(&error, reply) == TRUE) {
-		if (dbus_error_has_name(&error, CONNMAN_ERROR_INTERFACE
-						".InProgress") == FALSE) {
+		int err = errorstr2val(error.name);
+		if (err != -EINPROGRESS) {
 			connman_error("Connect reply: %s (%s)", error.message,
 								error.name);
 			dbus_error_free(&error);
 
+			DBG("data %p cb_data %p", data, cb_data);
 			if (cb_data != NULL) {
-				cb_data->callback(cb_data->message,
-						ECONNREFUSED, NULL);
+				cb_data->callback(cb_data->message, err, NULL);
 				free_config_cb_data(cb_data);
 				data->cb_data = NULL;
 			}
