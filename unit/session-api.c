@@ -25,7 +25,7 @@
 
 #include <errno.h>
 
-#include <gdbus/gdbus.h>
+#include <gdbus.h>
 
 #include "test-connman.h"
 
