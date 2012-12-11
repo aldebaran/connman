@@ -20,9 +20,6 @@
  *
  */
 
-#ifndef __CLIENT_DATA_MANAGER_H
-#define __CLIENT_DATA_MANAGER_H
-
 #include <dbus/dbus.h>
 
 #define SIGNAL_LISTEN_TIMEOUT 10
@@ -48,5 +45,3 @@ int connect_service(DBusConnection *connection, char *name);
 int disconnect_service(DBusConnection *connection, char *name);
 int set_manager(DBusConnection *connection, char *key, dbus_bool_t value);
 void listen_for_manager_signal(void *args);
-
-#endif

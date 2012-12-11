@@ -20,9 +20,6 @@
  *
  */
 
-#ifndef __CLIENT_TECHNOLOGY_H
-#define __CLIENT_TECHNOLOGY_H
-
 #include <dbus/dbus.h>
 
 struct tech_data {
@@ -41,5 +38,3 @@ int set_technology(DBusConnection *connection, DBusMessage *message, char *key,
 						char *tech, dbus_bool_t value);
 int scan_technology(DBusConnection *connection, DBusMessage *message,
 						char *tech);
-
-#endif

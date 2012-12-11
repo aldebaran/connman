@@ -20,9 +20,6 @@
  *
  */
 
-#ifndef __CLIENT_INTERACTIVE_H
-#define __CLIENT_INTERACTIVE_H
-
 #include <dbus/dbus.h>
 
 void show_interactive(DBusConnection *connection, GMainLoop *mainloop);
@@ -33,5 +30,3 @@ int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn);
 int config_switch(int argc, char *argv[], int c, DBusConnection *conn);
 int service_switch(int argc, char *argv[], int c, DBusConnection *conn,
 						struct service_data *service);
-
-#endif

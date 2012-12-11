@@ -20,9 +20,6 @@
  *
  */
 
-#ifndef __CLIENT_SERVICES_H
-#define __CLIENT_SERVICES_H
-
 #include <stdint.h>
 
 #include <dbus/dbus.h>
@@ -58,4 +55,3 @@ int list_services_properties(DBusConnection *connection, char *function,
 int listen_for_service_signal(DBusConnection *connection, char *signal_name,
 			char *service_name);
 void iterate_array(DBusMessageIter *iter);
-#endif

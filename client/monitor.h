@@ -20,11 +20,7 @@
  *
  */
 
-#ifndef __CLIENT_MONITOR_H
-#define __CLIENT_MONITOR_H
-
 #include <dbus/dbus.h>
-
 
 int monitor_connman(DBusConnection *connection, char *interface,
 				char *signal_name);
@@ -43,4 +39,3 @@ DBusHandlerResult manager_property_changed(DBusConnection *connection,
 
 DBusHandlerResult manager_services_changed(DBusConnection *connection,
 				DBusMessage *message, void *user_data);
-#endif
