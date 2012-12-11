@@ -35,7 +35,7 @@ Methods		dict GetProperties()  [deprecated]
 		void Connect()
 
 			Connect this service. It will attempt to connect
-			WiFi, WiMAX or Bluetooth services.
+			WiFi or Bluetooth services.
 
 			For Ethernet devices this method can only be used
 			if it has previously been disconnected. Otherwise

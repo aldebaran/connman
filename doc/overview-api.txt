@@ -11,8 +11,8 @@ preferences. This is the service list and interface.
 
 The basic idea is that Connection Manager maintains a single flat and sorted
 list of all available, preferred or previously used services. A service here
-can be either a Ethernet device, a WiFi network, a WiMAX service provider
-or a remote Bluetooth device (for example a mobile phone).
+can be either a Ethernet device, a WiFi network or a remote Bluetooth device
+(for example a mobile phone).
 
 This list of service is sorted by Connection Manager and there is no need
 for the user interface to implement its own sorting. User decisions will
@@ -28,13 +28,9 @@ the order of services in this list.
 	+---------------------------------------+
 	| My WiFi AP       (strength 80, rsn)   |
 	+---------------------------------------+
-	| Clear WiMAX      (strength 70)        |
-	+---------------------------------------+
 	| Other AP         (strength 70, rsn)   |
 	+---------------------------------------+
 	| Friends AP       (strength 70, wep)   |
-	+---------------------------------------+
-	| Other WiMAX      (strength 50)        |
 	+---------------------------------------+
 
 If none of the services has been used before the sorting order will be done
@@ -43,8 +39,8 @@ with these priorities:
 	1. Ethernet	(lower index numbers first)
 	2. Bluetooth	(last used devices first)
 	3. GSM/UTMS/3G	(if SIM card is present, activated and not roaming)
-	3. WiFi/WiMAX	(signal strength first, then prefer WiMAX over WiFi,
-			 then more secure network first)
+	3. WiFi		(signal strength first, then more secure network
+			first)
 
 The Ethernet devices are always sorted first since they are physically built
 into the system and will be always present. In cases they are switched off
@@ -57,16 +53,9 @@ do have a signal strength, it is mostly unknown since background scanning
 in Bluetooth is too expensive. The choice here is to sort the last used
 Bluetooth device before the others.
 
-The WiFi and WiMAX networks are treated equally since both provide signal
-strength information and networks closer in the proximity should be shown
-before others since it is more likely they are selected first. The signal
-strength value is normalized to 0-100 (effectively a percentage) and allows
-an easy sorting.
-
-If the signal strength is identical then the WiMAX network should be shown
-first since it is a licensed spectrum and more reliable. Also the number
-of WiMAX networks will be smaller than the number of WiFi since that operates
-in an unlicensed spectrum.
+WiFi networks closer in the proximity should be shown first since it is more
+likely they are selected. The signal strength value is normalized to 0-100
+(effectively a percentage) and allows an easy sorting.
 
 WiFi networks with the same signal strength are then sorted by their security
 setting. WPA2 encrypted networks should be preferred over WPA/WEP and also
@@ -76,9 +65,9 @@ order.
 In the case the WiFi network uses WPS for setup and it is clearly detectable
 that a network waits for Connection Manager to connect to it (for example via
 a push-to-connect button press on the AP), then this network should be shown
-first before any other WiFi or WiMAX network. The reason here is that the
-user already made a choice via the access point. However this depends on
-technical details if it is possible to detect these situations.
+first before any other WiFi networks. The reason here is that the user already
+made a choice via the access point. However this depends on technical details
+if it is possible to detect these situations.
 
 
 Service order
@@ -94,10 +83,10 @@ a networking point of view.
 Selecting the "My WiFi AP" and successfully connecting to it makes it a
 favorite device and it will become an order number bigger than 0. All
 order numbers are internally. They are given only to service that are marked
-as favorite. For WiFi, WiMAX and Bluetooth a successful connection attempt
-makes these services automatically a favorite. For Ethernet the plugging
-of a cable makes it a favorite. Disconnecting from a network doesn't remove
-the favorite setting. It is a manual operation and is equal to users pressing
+as favorite. For WiFi and Bluetooth a successful connection attempt makes
+these services automatically a favorite. For Ethernet the plugging of a cable
+makes it a favorite. Disconnecting from a network doesn't remove the favorite
+setting. It is a manual operation and is equal to users pressing
 delete/remove button.
 
 	+---------------------------------------+
@@ -230,10 +219,6 @@ In case of WiFi this will be the SSID value. The SSID is a binary array and
 will be converted into printable form. Unprintable characters are replaced
 with spaces.
 
-For WiMAX networks the provider name like Clear or X-OHM will be used. This
-name either comes directly from the network itself or from a provisioning
-database of the WiMAX service.
-
 For Bluetooth the device alias is used. The alias is different since it
 can be overwritten by the user via the Bluetooth service. The identification
 is still done based on its address, but the display name might change. In
@@ -353,15 +338,14 @@ are more for advanced features and most applications don't need them at all.
 
 The services are represented as a list of object paths. Every of these object
 paths contains a service interface. A service is a global collection for
-Ethernet devices, WiFi networks, Bluetooth services, WiMAX providers etc. and
-all these different types are treated equally.
+Ethernet devices, WiFi networks, Bluetooth services etc. and all these
+different types are treated equally.
 
 Every local Ethernet card will show up as exactly one service. WiFi networks
 will be grouped by SSID, mode and security setting. Bluetooth PAN and DUN
-service will show up per remote device. For WiMAX the provider name will
-be used for grouping different base stations and access providers. This
-creates a simple list that can be directly displayed to the users since these
-are the exact details users should care about.
+service will show up per remote device. This creates a simple list that can
+be directly displayed to the users since these are the exact details users
+should care about.
 
 	properties = manager.GetProperties()
 
