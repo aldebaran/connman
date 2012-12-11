@@ -32,6 +32,7 @@
 
 #include "client/technology.h"
 #include "src/connman.h"
+#include "dbus.h"
 
 void extract_properties(DBusMessageIter *dict)
 {
@@ -175,7 +176,7 @@ int set_technology(DBusConnection *connection, DBusMessage *message, char *key,
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message_send, &iter);
-	connman_dbus_property_append_basic(&iter, (const char *) key,
+	dbus_property_append_basic(&iter, (const char *) key,
 						DBUS_TYPE_BOOLEAN, &value);
 	dbus_connection_send(connection, message_send, NULL);
 	dbus_connection_flush(connection);

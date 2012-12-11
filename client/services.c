@@ -33,6 +33,7 @@
 
 #include "client/services.h"
 #include "src/connman.h"
+#include "dbus.h"
 
 static void append_property_array(DBusMessageIter *iter, char *property,
 						char **data, int num_args)
@@ -482,8 +483,7 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_init_append(message_send, &iter);
 
 	if (strcmp(property, "AutoConnect") == 0)
-		connman_dbus_property_append_basic(&iter,
-						(const char *) property,
+		dbus_property_append_basic(&iter, (const char *) property,
 						DBUS_TYPE_BOOLEAN, data);
 	else if ((strcmp(property, "Domains.Configuration") == 0)
 			|| (strcmp(property, "Timeservers.Configuration") == 0)

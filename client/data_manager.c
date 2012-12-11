@@ -38,7 +38,7 @@
 #include "client/technology.h"
 #include "client/data_manager.h"
 #include "gdbus/gdbus.h"
-#include "include/dbus.h"
+#include "dbus.h"
 
 static void extract_manager_properties(DBusMessage *message)
 {
@@ -211,7 +211,7 @@ int set_manager(DBusConnection *connection, char *key, dbus_bool_t value)
 		return -ENOMEM;
 
 	dbus_message_iter_init_append(message, &iter);
-	connman_dbus_property_append_basic(&iter, (const char *) key,
+	dbus_property_append_basic(&iter, (const char *) key,
 						DBUS_TYPE_BOOLEAN, &value);
 	dbus_connection_send(connection, message, NULL);
 	dbus_connection_flush(connection);
