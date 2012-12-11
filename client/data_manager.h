@@ -23,8 +23,6 @@
 #include <dbus/dbus.h>
 
 #define SIGNAL_LISTEN_TIMEOUT 10
-#define CONNMAN_MANAGER_PATH "/"
-#define CONNMAN_SERVICE "net.connman"
 
 struct signal_args {
 	DBusConnection *connection;

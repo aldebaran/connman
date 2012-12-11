@@ -33,7 +33,6 @@
 
 #include <glib.h>
 
-#include "src/connman.h"
 #include "client/services.h"
 #include "client/technology.h"
 #include "client/data_manager.h"

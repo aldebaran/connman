@@ -30,8 +30,9 @@
 #include <string.h>
 #include <errno.h>
 
+#include <glib.h>
+
 #include "client/technology.h"
-#include "src/connman.h"
 #include "dbus.h"
 
 void extract_properties(DBusMessageIter *dict)

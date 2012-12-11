@@ -38,7 +38,6 @@
 #include "client/services.h"
 #include "client/technology.h"
 #include "client/data_manager.h"
-#include "src/connman.h"
 #include "gdbus/gdbus.h"
 
 static const char *get_service_name(DBusMessage *message, char *dbus_path)

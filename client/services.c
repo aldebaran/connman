@@ -31,8 +31,9 @@
 #include <unistd.h>
 #include <errno.h>
 
+#include <glib.h>
+
 #include "client/services.h"
-#include "src/connman.h"
 #include "dbus.h"
 
 static void append_property_array(DBusMessageIter *iter, char *property,
@@ -43,7 +44,7 @@ static void append_property_array(DBusMessageIter *iter, char *property,
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &property);
 
-	connman_dbus_array_open(iter, &value);
+	dbus_array_open(iter, &value);
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 					 DBUS_TYPE_STRING_AS_STRING, &array);
 
@@ -66,9 +67,9 @@ static void append_property_dict(DBusMessageIter *iter, char *property,
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &property);
 
 	/* Top most level is a{sv} */
-	connman_dbus_dict_open_variant(iter, &value);
+	dbus_dict_open_variant(iter, &value);
 
-	connman_dbus_dict_open(&value, &dict);
+	dbus_dict_open(&value, &dict);
 
 	for (i = 0; i < num_args; i++) {
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
@@ -103,8 +104,8 @@ static void append_property_dict(DBusMessageIter *iter, char *property,
 		dbus_message_iter_close_container(&dict, &entry);
 	}
 	/* Close {sv}, then close a{sv} */
-	connman_dbus_dict_close(&value, &dict);
-	connman_dbus_dict_close(iter, &value);
+	dbus_dict_close(&value, &dict);
+	dbus_dict_close(iter, &value);
 }
 
 void iterate_array(DBusMessageIter *iter)
@@ -421,8 +422,8 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 
 	dbus_message_iter_init_append(message_send, &iter);
 	dbus_message_iter_append_basic(&iter, DBUS_TYPE_STRING, &property);
-	connman_dbus_dict_open_variant(&iter, &value);
-	connman_dbus_dict_open(&value, &dict);
+	dbus_dict_open_variant(&iter, &value);
+	dbus_dict_open(&value, &dict);
 	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL,
 							&entry);
 	dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING, &method);
