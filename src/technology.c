@@ -308,8 +308,6 @@ static const char *get_name(enum connman_service_type type)
 		return "Wired";
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		return "WiFi";
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-		return "WiMAX";
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		return "Bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -1065,7 +1063,6 @@ void __connman_technology_add_interface(enum connman_service_type type,
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:
@@ -1098,7 +1095,6 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 		return;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
 	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_GPS:

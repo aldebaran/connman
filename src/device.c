@@ -89,8 +89,6 @@ static const char *type2description(enum connman_device_type type)
 		return "Ethernet";
 	case CONNMAN_DEVICE_TYPE_WIFI:
 		return "Wireless";
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-		return "WiMAX";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "Bluetooth";
 	case CONNMAN_DEVICE_TYPE_GPS:
@@ -115,8 +113,6 @@ static const char *type2string(enum connman_device_type type)
 		return "ethernet";
 	case CONNMAN_DEVICE_TYPE_WIFI:
 		return "wifi";
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-		return "wimax";
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
 	case CONNMAN_DEVICE_TYPE_GPS:
@@ -144,8 +140,6 @@ enum connman_service_type __connman_device_get_service_type(struct connman_devic
 		return CONNMAN_SERVICE_TYPE_ETHERNET;
 	case CONNMAN_DEVICE_TYPE_WIFI:
 		return CONNMAN_SERVICE_TYPE_WIFI;
-	case CONNMAN_DEVICE_TYPE_WIMAX:
-		return CONNMAN_SERVICE_TYPE_WIMAX;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
@@ -1091,7 +1085,6 @@ int __connman_device_request_scan(enum connman_service_type type)
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EOPNOTSUPP;
 	case CONNMAN_SERVICE_TYPE_WIFI:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 		break;
 	}
 
@@ -1257,7 +1250,6 @@ struct connman_device *connman_device_create_from_index(int index)
 	case CONNMAN_DEVICE_TYPE_ETHERNET:
 	case CONNMAN_DEVICE_TYPE_GADGET:
 	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
 		name = index2ident(index, "");
 		addr = index2addr(index);
 		break;
@@ -1283,7 +1275,6 @@ struct connman_device *connman_device_create_from_index(int index)
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_WIFI:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
 		ident = index2ident(index, NULL);
 		break;
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:

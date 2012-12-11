@@ -56,7 +56,6 @@ static void detect_newlink(unsigned short type, int index,
 	switch (devtype) {
 	case CONNMAN_DEVICE_TYPE_UNKNOWN:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
-	case CONNMAN_DEVICE_TYPE_WIMAX:
 	case CONNMAN_DEVICE_TYPE_BLUETOOTH:
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 	case CONNMAN_DEVICE_TYPE_GPS:

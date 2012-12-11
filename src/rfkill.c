@@ -38,7 +38,6 @@ enum rfkill_type {
 	RFKILL_TYPE_WLAN,
 	RFKILL_TYPE_BLUETOOTH,
 	RFKILL_TYPE_UWB,
-	RFKILL_TYPE_WIMAX,
 	RFKILL_TYPE_WWAN,
 	RFKILL_TYPE_GPS,
 	RFKILL_TYPE_FM,
@@ -67,8 +66,6 @@ static enum connman_service_type convert_type(uint8_t type)
 		return CONNMAN_SERVICE_TYPE_WIFI;
 	case RFKILL_TYPE_BLUETOOTH:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
-	case RFKILL_TYPE_WIMAX:
-		return CONNMAN_SERVICE_TYPE_WIMAX;
 	case RFKILL_TYPE_WWAN:
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	}
@@ -83,8 +80,6 @@ static enum rfkill_type convert_service_type(enum connman_service_type type)
 		return RFKILL_TYPE_WLAN;
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		return RFKILL_TYPE_BLUETOOTH;
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-		return RFKILL_TYPE_WIMAX;
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		return RFKILL_TYPE_WWAN;
 	case CONNMAN_SERVICE_TYPE_GPS:

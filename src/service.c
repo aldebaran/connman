@@ -166,8 +166,6 @@ const char *__connman_service_type2string(enum connman_service_type type)
 		return "ethernet";
 	case CONNMAN_SERVICE_TYPE_WIFI:
 		return "wifi";
-	case CONNMAN_SERVICE_TYPE_WIMAX:
-		return "wimax";
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		return "bluetooth";
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
@@ -198,8 +196,6 @@ enum connman_service_type __connman_service_string2type(const char *str)
 		return CONNMAN_SERVICE_TYPE_CELLULAR;
 	if (strcmp(str, "bluetooth") == 0)
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
-	if (strcmp(str, "wimax") == 0)
-		return CONNMAN_SERVICE_TYPE_WIMAX;
 	if (strcmp(str, "vpn") == 0)
 		return CONNMAN_SERVICE_TYPE_VPN;
 	if (strcmp(str, "gps") == 0)
@@ -397,7 +393,6 @@ static int service_load(struct connman_service *service)
 		}
 		/* fall through */
 
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		service->favorite = g_key_file_get_boolean(keyfile,
@@ -569,7 +564,6 @@ static int service_save(struct connman_service *service)
 		}
 		/* fall through */
 
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 		g_key_file_set_boolean(keyfile, service->identifier,
@@ -2233,7 +2227,6 @@ static void append_properties(DBusMessageIter *dict, dbus_bool_t limited,
 		break;
 	case CONNMAN_SERVICE_TYPE_WIFI:
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		connman_dbus_dict_append_dict(dict, "Ethernet",
 						append_ethernet, service);
@@ -4457,7 +4450,6 @@ static gint service_compare(gconstpointer a, gconstpointer b,
 			break;
 		case CONNMAN_SERVICE_TYPE_WIFI:
 			return 1;
-		case CONNMAN_SERVICE_TYPE_WIMAX:
 		case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 		case CONNMAN_SERVICE_TYPE_CELLULAR:
 			return -1;
@@ -5484,7 +5476,6 @@ static connman_bool_t prepare_network(struct connman_service *service)
 				"WiFi.Passphrase", service->passphrase);
 		break;
 	case CONNMAN_NETWORK_TYPE_ETHERNET:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
@@ -5542,7 +5533,6 @@ static int service_connect(struct connman_service *service)
 	case CONNMAN_SERVICE_TYPE_GADGET:
 		return -EINVAL;
 	case CONNMAN_SERVICE_TYPE_ETHERNET:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_CELLULAR:
 	case CONNMAN_SERVICE_TYPE_VPN:
@@ -6257,8 +6247,6 @@ static enum connman_service_type convert_network_type(struct connman_network *ne
 		return CONNMAN_SERVICE_TYPE_ETHERNET;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		return CONNMAN_SERVICE_TYPE_WIFI;
-	case CONNMAN_NETWORK_TYPE_WIMAX:
-		return CONNMAN_SERVICE_TYPE_WIMAX;
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		return CONNMAN_SERVICE_TYPE_BLUETOOTH;
@@ -6409,7 +6397,6 @@ struct connman_service * __connman_service_create_from_network(struct connman_ne
 	switch (service->type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
 	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_WIMAX:
 	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
 	case CONNMAN_SERVICE_TYPE_GPS:
 	case CONNMAN_SERVICE_TYPE_VPN:

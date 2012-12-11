@@ -90,10 +90,6 @@ struct connman_network {
 		char *pin_wps;
 	} wifi;
 
-	struct {
-		char *nsp_name;
-		int nsp_name_len;
-	} wimax;
 };
 
 static const char *type2string(enum connman_network_type type)
@@ -106,8 +102,6 @@ static const char *type2string(enum connman_network_type type)
 		return "ethernet";
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		return "wifi";
-	case CONNMAN_NETWORK_TYPE_WIMAX:
-		return "wimax";
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 		return "bluetooth";
@@ -167,7 +161,6 @@ static int network_probe(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_WIFI:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
 		network->driver = driver;
 		if (__connman_service_create_from_network(network) == NULL) {
 			network->driver = NULL;
@@ -196,7 +189,6 @@ static void network_remove(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_WIFI:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
 		if (network->group != NULL) {
 			__connman_service_remove_from_network(network);
 
@@ -511,7 +503,6 @@ void connman_network_set_group(struct connman_network *network,
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_WIFI:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
 	}
 
@@ -561,7 +552,6 @@ connman_bool_t __connman_network_get_weakness(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN:
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
 	case CONNMAN_NETWORK_TYPE_WIFI:
 		if (g_strcmp0(network->wifi.mode, "adhoc") == 0)
@@ -2100,7 +2090,6 @@ void connman_network_update(struct connman_network *network)
 	case CONNMAN_NETWORK_TYPE_BLUETOOTH_DUN:
 	case CONNMAN_NETWORK_TYPE_CELLULAR:
 	case CONNMAN_NETWORK_TYPE_WIFI:
-	case CONNMAN_NETWORK_TYPE_WIMAX:
 		break;
 	}
 

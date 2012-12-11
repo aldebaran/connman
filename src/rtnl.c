@@ -165,9 +165,6 @@ static void read_uevent(struct interface_data *interface)
 		} else if (strcmp(line + 8, "bluetooth") == 0) {
 			interface->service_type = CONNMAN_SERVICE_TYPE_BLUETOOTH;
 			interface->device_type = CONNMAN_DEVICE_TYPE_BLUETOOTH;
-		} else if (strcmp(line + 8, "wimax") == 0) {
-			interface->service_type = CONNMAN_SERVICE_TYPE_WIMAX;
-			interface->device_type = CONNMAN_DEVICE_TYPE_WIMAX;
 		} else if (strcmp(line + 8, "gadget") == 0) {
 			interface->service_type = CONNMAN_SERVICE_TYPE_GADGET;
 			interface->device_type = CONNMAN_DEVICE_TYPE_GADGET;

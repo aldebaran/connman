@@ -500,7 +500,6 @@ void __connman_storage_migrate(void)
 				strncmp(services[i], "ethernet_", 9) != 0 &&
 				strncmp(services[i], "cellular_", 9) != 0 &&
 				strncmp(services[i], "bluetooth_", 10) != 0 &&
-				strncmp(services[i], "wimax_", 6) != 0 &&
 				strncmp(services[i], "vpn_", 4) != 0)
 			continue;
 
@@ -618,20 +617,6 @@ void __connman_storage_migrate(void)
 	}
 
 	g_key_file_set_boolean(keyfile, "Cellular",
-					"Enable", val);
-
-	val = g_key_file_get_boolean(keyfile_def, "WiMAX",
-					"Enable", &error);
-	if (error != NULL) {
-		g_clear_error(&error);
-		val = g_key_file_get_boolean(keyfile_def, "device_WiMAX", "Powered", &error);
-		if (error != NULL) {
-			g_clear_error(&error);
-			val = FALSE;
-		}
-	}
-
-	g_key_file_set_boolean(keyfile, "WiMAX",
 					"Enable", val);
 
 	if (__connman_storage_save_global(keyfile) < 0) {
