@@ -203,6 +203,7 @@ For a working system, certain configuration options need to be enabled:
 			# semodule -i connman-task.pp
 		in order to enable the dbus access.
 
+
 wpa_supplicant configuration
 ============================
 
