@@ -184,64 +184,6 @@ AC_CHECK_FUNC(signalfd, dummy=yes,
 AC_CHECK_LIB(dl, dlopen, dummy=yes,
 			AC_MSG_ERROR(dynamic linking loader is required))
 
-AC_ARG_WITH(iwmxsdk, AC_HELP_STRING([--with-iwmxsdk=PATH],
-						[path to Intel WiMAX SDK]),
-				[pkgconfig_iwmxsdk=${withval}/lib/pkgconfig])
-
-AC_ARG_ENABLE(iwmx, AC_HELP_STRING([--enable-iwmx],
-		[enable Intel WiMAX support]), [enable_iwmx=${enableval}])
-if (test "${enable_iwmx}" = "yes"); then
-	enable_threads="yes"
-	export PKG_CONFIG_PATH="${pkgconfig_iwmxsdk}"
-	PKG_CHECK_MODULES(IWMXSDK, libiWmxSdk-0, dummy=yes,
-				AC_MSG_ERROR(Intel WiMAX SDK is required))
-	PKG_CONFIG_PATH=""
-	AC_SUBST(IWMXSDK_CFLAGS)
-	AC_SUBST(IWMXSDK_LIBS)
-
-        # Fix API compat breakage from 1.4 to 1.5...
-        CPPFLAGS_save=$CPPFLAGS
-        CPPFLAGS="$IWMXSDK_CFLAGS $CPPFLAGS"
-        AH_TEMPLATE([HAVE_IWMXSDK_STATUS_IDLE],
-                    [WIMAX_API_DEVICE_STATUS_Connection_Idle is present])
-        AC_CHECK_DECL(WIMAX_API_DEVICE_STATUS_Connection_Idle,
-                      [AC_DEFINE([HAVE_IWMXSDK_STATUS_IDLE], [1], [])],
-                      [],
-                      [[#include <WiMaxType.h>]])
-
-        AH_TEMPLATE([HAVE_WIMAX_API_DEVICE_ID],
-                    [WIMAX_API_DEVICE_ID is present])
-        AC_CHECK_TYPE(WIMAX_API_DEVICE_ID,
-                      [AC_DEFINE([HAVE_WIMAX_API_DEVICE_ID], [1], [])],
-                      [],
-                      [[#include <WiMaxType.h>]])
-
-        AH_TEMPLATE([HAVE_WIMAX_API_HW_DEVICE_ID],
-                    [WIMAX_API_HW_DEVICE_ID is present])
-        AC_CHECK_TYPE(WIMAX_API_HW_DEVICE_ID,
-                      [AC_DEFINE([HAVE_WIMAX_API_HW_DEVICE_ID], [1], [])],
-                      [],
-                      [[#include <WiMaxType.h>]])
-
-        AH_TEMPLATE([HAVE_WIMAX_API_NSP_INFO_EX],
-                    [WIMAX_API_NSP_INFO_EX is present])
-        AC_CHECK_TYPE(WIMAX_API_NSP_INFO_EX,
-                      [AC_DEFINE([HAVE_WIMAX_API_NSP_INFO_EX], [1], [])],
-                      [],
-                      [[#include <WiMaxType.h>] 
-                       [#include <WiMaxTypesEx.h>]])
-
-        AH_TEMPLATE([HAVE_WIMAX_API_CONNECTED_NSP_INFO],
-                    [WIMAX_API_CONNECTED_NSP_INFO is present])
-        AC_CHECK_TYPE(WIMAX_API_CONNECTED_NSP_INFO,
-                      [AC_DEFINE([HAVE_WIMAX_API_CONNECTED_NSP_INFO], [1], [])],
-                      [],
-                      [[#include <WiMaxType.h>]])
-
-        CPPFLAGS=$CPPFLAGS_save
-fi
-AM_CONDITIONAL(IWMX, test "${enable_iwmx}" = "yes")
-
 AC_ARG_ENABLE(iospm, AC_HELP_STRING([--enable-iospm],
 		[enable Intel OSPM support]), [enable_iospm=${enableval}])
 AM_CONDITIONAL(IOSPM, test "${enable_iospm}" = "yes")

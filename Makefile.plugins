@@ -184,15 +184,6 @@ endif
 endif
 endif
 
-if IWMX
-plugin_LTLIBRARIES += plugins/iwmxsdk.la
-plugin_objects += $(plugins_iwmxsdk_la_OBJECTS)
-plugins_iwmxsdk_la_SOURCES = plugins/iwmx.h plugins/iwmx.c plugins/iwmxsdk.c
-plugins_iwmxsdk_la_CFLAGS = $(plugin_cflags) @IWMXSDK_CFLAGS@
-plugins_iwmxsdk_la_LIBADD = @IWMXSDK_LIBS@ @GLIB_LIBS@
-plugins_iwmxsdk_la_LDFLAGS = $(plugin_ldflags)
-endif
-
 if IOSPM
 plugin_LTLIBRARIES += plugins/iospm.la
 plugin_objects += $(plugins_iospm_la_OBJECTS)
