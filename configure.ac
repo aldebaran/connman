@@ -395,7 +395,7 @@ AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
 AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 				[disable command line client]),
-					[disable_client=${enableval}])
+					[enable_client=${enableval}])
 AM_CONDITIONAL(CLIENT, test "${enable_client}" != "no")
 
 if (test "${enable_wispr}" != "no"); then
