@@ -32,7 +32,7 @@
 
 #include <glib.h>
 
-#include "client/technology.h"
+#include "technology.h"
 #include "dbus.h"
 
 void extract_properties(DBusMessageIter *dict)

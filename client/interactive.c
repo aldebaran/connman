@@ -40,11 +40,11 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "client/services.h"
-#include "client/technology.h"
-#include "client/data_manager.h"
-#include "client/monitor.h"
-#include "client/interactive.h"
+#include "services.h"
+#include "technology.h"
+#include "data_manager.h"
+#include "monitor.h"
+#include "interactive.h"
 
 static DBusConnection *interactive_conn;
 

@@ -32,11 +32,11 @@
 #include <errno.h>
 
 #include <glib.h>
+#include <gdbus.h>
 
-#include "client/services.h"
-#include "client/technology.h"
-#include "client/data_manager.h"
-#include "gdbus/gdbus.h"
+#include "services.h"
+#include "technology.h"
+#include "data_manager.h"
 #include "dbus.h"
 
 static void extract_manager_properties(DBusMessage *message)

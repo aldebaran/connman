@@ -33,7 +33,7 @@
 
 #include <glib.h>
 
-#include "client/services.h"
+#include "services.h"
 #include "dbus.h"
 
 static void append_property_array(DBusMessageIter *iter, char *property,

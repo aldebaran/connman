@@ -31,14 +31,12 @@
 #include <stdint.h>
 
 #include <glib.h>
+#include <gdbus.h>
 
-#include <dbus/dbus.h>
-
-#include "client/monitor.h"
-#include "client/services.h"
-#include "client/technology.h"
-#include "client/data_manager.h"
-#include "gdbus/gdbus.h"
+#include "monitor.h"
+#include "services.h"
+#include "technology.h"
+#include "data_manager.h"
 
 static const char *get_service_name(DBusMessage *message, char *dbus_path)
 {

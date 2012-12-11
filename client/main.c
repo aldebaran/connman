@@ -33,15 +33,13 @@
 #include <readline/readline.h>
 
 #include <glib.h>
-
-#include <dbus/dbus.h>
 #include <gdbus.h>
 
-#include "client/data_manager.h"
-#include "client/services.h"
-#include "client/technology.h"
-#include "client/interactive.h"
-#include "client/monitor.h"
+#include "data_manager.h"
+#include "services.h"
+#include "technology.h"
+#include "interactive.h"
+#include "monitor.h"
 
 static GMainLoop *main_loop;
 
