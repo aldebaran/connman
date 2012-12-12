@@ -1454,8 +1454,8 @@ done:
 				technology->enable_persistent == TRUE)
 		return __connman_rfkill_block(type, FALSE);
 	else if (technology->softblocked == FALSE &&
-				global_offlinemode == TRUE &&
-				technology->enable_persistent == FALSE)
+			(global_offlinemode == TRUE ||
+				technology->enable_persistent == FALSE))
 		return __connman_rfkill_block(type, TRUE);
 
 	return 0;
