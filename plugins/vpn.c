@@ -513,6 +513,8 @@ static int connect_provider(struct connection_data *data, void *user_data)
 
 	DBG("data %p user %p path %s", data, cb_data, data->path);
 
+	data->connect_pending = FALSE;
+
 	message = dbus_message_new_method_call(VPN_SERVICE, data->path,
 					VPN_CONNECTION_INTERFACE,
 					VPN_CONNECT);
