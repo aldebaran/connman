@@ -42,7 +42,8 @@
 #define DEFAULT_INPUT_REQUEST_TIMEOUT 120 * 1000
 #define DEFAULT_BROWSER_LAUNCH_TIMEOUT 300 * 1000
 
-#define CONFIGMAINFILE CONFIGDIR "/main.conf"
+#define MAINFILE "main.conf"
+#define CONFIGMAINFILE CONFIGDIR "/" MAINFILE
 
 static char *default_auto_connect[] = {
 	"wifi",
@@ -190,7 +191,8 @@ static void check_config(GKeyFile *config)
 
 	for (j = 0; keys != NULL && keys[j] != NULL; j++) {
 		if (g_strcmp0(keys[j], "General") != 0)
-			connman_warn("Unknown group %s in main.conf", keys[j]);
+			connman_warn("Unknown group %s in %s",
+						keys[j], MAINFILE);
 	}
 
 	g_strfreev(keys);
@@ -209,7 +211,8 @@ static void check_config(GKeyFile *config)
 			}
 		}
 		if (found == FALSE && supported_options[i] == NULL)
-			connman_warn("Unknown key %s in main.conf", keys[j]);
+			connman_warn("Unknown option %s in %s",
+						keys[j], MAINFILE);
 	}
 
 	g_strfreev(keys);
@@ -233,9 +236,7 @@ static void parse_config(GKeyFile *config)
 		return;
 	}
 
-	DBG("parsing main.conf");
-
-	check_config(config);
+	DBG("parsing %s", MAINFILE);
 
 	boolean = g_key_file_get_boolean(config, "General",
 						CONF_BG_SCAN, &error);
@@ -245,7 +246,7 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	timeservers = g_key_file_get_string_list(config, "General",
-						CONF_PREF_TIMESERVERS, NULL, &error);
+					CONF_PREF_TIMESERVERS, NULL, &error);
 	if (error == NULL)
 		connman_settings.pref_timeservers = timeservers;
 
@@ -333,6 +334,7 @@ static int config_init(const char *file)
 	GKeyFile *config;
 
 	config = load_config(file);
+	check_config(config);
 	parse_config(config);
 	if (config != NULL)
 		g_key_file_free(config);
