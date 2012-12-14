@@ -457,10 +457,10 @@ static DBusMessage *do_disconnect(DBusConnection *conn, DBusMessage *msg,
 	DBG("conn %p provider %p", conn, provider);
 
 	err = __vpn_provider_disconnect(provider);
-	if (err < 0)
+	if (err < 0 && err != -EINPROGRESS)
 		return __connman_error_failed(msg, -err);
-	else
-		return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
+
+	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
 
 static const GDBusMethodTable connection_methods[] = {
