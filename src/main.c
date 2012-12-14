@@ -93,6 +93,20 @@ static struct {
 #define CONF_ALLOW_HOSTNAME_UPDATES     "AllowHostnameUpdates"
 #define CONF_SINGLE_TECH                "SingleConnectedTechnology"
 
+static const char *supported_options[] = {
+	CONF_BG_SCAN,
+	CONF_PREF_TIMESERVERS,
+	CONF_AUTO_CONNECT,
+	CONF_PREFERRED_TECHS,
+	CONF_FALLBACK_NAMESERVERS,
+	CONF_TIMEOUT_INPUTREQ,
+	CONF_TIMEOUT_BROWSERLAUNCH,
+	CONF_BLACKLISTED_INTERFACES,
+	CONF_ALLOW_HOSTNAME_UPDATES,
+	CONF_SINGLE_TECH,
+	NULL
+};
+
 static GKeyFile *load_config(const char *file)
 {
 	GError *err = NULL;
@@ -164,6 +178,43 @@ static char **parse_fallback_nameservers(char **nameservers, gsize len)
 	return servers;
 }
 
+static void check_config(GKeyFile *config)
+{
+	char **keys;
+	int j;
+
+	if (config == NULL)
+		return;
+
+	keys = g_key_file_get_groups(config, NULL);
+
+	for (j = 0; keys != NULL && keys[j] != NULL; j++) {
+		if (g_strcmp0(keys[j], "General") != 0)
+			connman_warn("Unknown group %s in main.conf", keys[j]);
+	}
+
+	g_strfreev(keys);
+
+	keys = g_key_file_get_keys(config, "General", NULL, NULL);
+
+	for (j = 0; keys != NULL && keys[j] != NULL; j++) {
+		connman_bool_t found;
+		int i;
+
+		found = FALSE;
+		for (i = 0; supported_options[i] != NULL; i++) {
+			if (g_strcmp0(keys[j], supported_options[i]) == 0) {
+				found = TRUE;
+				break;
+			}
+		}
+		if (found == FALSE && supported_options[i] == NULL)
+			connman_warn("Unknown key %s in main.conf", keys[j]);
+	}
+
+	g_strfreev(keys);
+}
+
 static void parse_config(GKeyFile *config)
 {
 	GError *error = NULL;
@@ -183,6 +234,8 @@ static void parse_config(GKeyFile *config)
 	}
 
 	DBG("parsing main.conf");
+
+	check_config(config);
 
 	boolean = g_key_file_get_boolean(config, "General",
 						CONF_BG_SCAN, &error);
