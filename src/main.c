@@ -82,6 +82,17 @@ static struct {
 	.single_tech = FALSE,
 };
 
+#define CONF_BG_SCAN                    "BackgroundScanning"
+#define CONF_PREF_TIMESERVERS           "FallbackTimeservers"
+#define CONF_AUTO_CONNECT               "DefaultAutoConnectTechnologies"
+#define CONF_PREFERRED_TECHS            "PreferredTechnologies"
+#define CONF_FALLBACK_NAMESERVERS       "FallbackNameservers"
+#define CONF_TIMEOUT_INPUTREQ           "InputRequestTimeout"
+#define CONF_TIMEOUT_BROWSERLAUNCH      "BrowserLaunchTimeout"
+#define CONF_BLACKLISTED_INTERFACES     "NetworkInterfaceBlacklist"
+#define CONF_ALLOW_HOSTNAME_UPDATES     "AllowHostnameUpdates"
+#define CONF_SINGLE_TECH                "SingleConnectedTechnology"
+
 static GKeyFile *load_config(const char *file)
 {
 	GError *err = NULL;
@@ -174,21 +185,21 @@ static void parse_config(GKeyFile *config)
 	DBG("parsing main.conf");
 
 	boolean = g_key_file_get_boolean(config, "General",
-						"BackgroundScanning", &error);
+						CONF_BG_SCAN, &error);
 	if (error == NULL)
 		connman_settings.bg_scan = boolean;
 
 	g_clear_error(&error);
 
 	timeservers = g_key_file_get_string_list(config, "General",
-						"FallbackTimeservers", NULL, &error);
+						CONF_PREF_TIMESERVERS, NULL, &error);
 	if (error == NULL)
 		connman_settings.pref_timeservers = timeservers;
 
 	g_clear_error(&error);
 
 	str_list = g_key_file_get_string_list(config, "General",
-			"DefaultAutoConnectTechnologies", &len, &error);
+			CONF_AUTO_CONNECT, &len, &error);
 
 	if (error == NULL)
 		connman_settings.auto_connect =
@@ -202,7 +213,7 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	str_list = g_key_file_get_string_list(config, "General",
-			"PreferredTechnologies", &len, &error);
+			CONF_PREFERRED_TECHS, &len, &error);
 
 	if (error == NULL)
 		connman_settings.preferred_techs =
@@ -213,7 +224,7 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	str_list = g_key_file_get_string_list(config, "General",
-			"FallbackNameservers", &len, &error);
+			CONF_FALLBACK_NAMESERVERS, &len, &error);
 
 	if (error == NULL)
 		connman_settings.fallback_nameservers =
@@ -224,21 +235,21 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	timeout = g_key_file_get_integer(config, "General",
-			"InputRequestTimeout", &error);
+			CONF_TIMEOUT_INPUTREQ, &error);
 	if (error == NULL && timeout >= 0)
 		connman_settings.timeout_inputreq = timeout * 1000;
 
 	g_clear_error(&error);
 
 	timeout = g_key_file_get_integer(config, "General",
-			"BrowserLaunchTimeout", &error);
+			CONF_TIMEOUT_BROWSERLAUNCH, &error);
 	if (error == NULL && timeout >= 0)
 		connman_settings.timeout_browserlaunch = timeout * 1000;
 
 	g_clear_error(&error);
 
 	interfaces = g_key_file_get_string_list(config, "General",
-			"NetworkInterfaceBlacklist", &len, &error);
+			CONF_BLACKLISTED_INTERFACES, &len, &error);
 
 	if (error == NULL)
 		connman_settings.blacklisted_interfaces = interfaces;
@@ -249,7 +260,7 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	boolean = g_key_file_get_boolean(config, "General",
-					"AllowHostnameUpdates",
+					CONF_ALLOW_HOSTNAME_UPDATES,
 					&error);
 	if (error == NULL)
 		connman_settings.allow_hostname_updates = boolean;
@@ -257,7 +268,7 @@ static void parse_config(GKeyFile *config)
 	g_clear_error(&error);
 
 	boolean = g_key_file_get_boolean(config, "General",
-			"SingleConnectedTechnology", &error);
+			CONF_SINGLE_TECH, &error);
 	if (error == NULL)
 		connman_settings.single_tech = boolean;
 
@@ -423,13 +434,13 @@ const char *connman_option_get_string(const char *key)
 
 connman_bool_t connman_setting_get_bool(const char *key)
 {
-	if (g_str_equal(key, "BackgroundScanning") == TRUE)
+	if (g_str_equal(key, CONF_BG_SCAN) == TRUE)
 		return connman_settings.bg_scan;
 
-	if (g_str_equal(key, "AllowHostnameUpdates") == TRUE)
+	if (g_str_equal(key, CONF_ALLOW_HOSTNAME_UPDATES) == TRUE)
 		return connman_settings.allow_hostname_updates;
 
-	if (g_str_equal(key, "SingleConnectedTechnology") == TRUE)
+	if (g_str_equal(key, CONF_SINGLE_TECH) == TRUE)
 		return connman_settings.single_tech;
 
 	return FALSE;
@@ -437,13 +448,13 @@ connman_bool_t connman_setting_get_bool(const char *key)
 
 char **connman_setting_get_string_list(const char *key)
 {
-	if (g_str_equal(key, "FallbackTimeservers") == TRUE)
+	if (g_str_equal(key, CONF_PREF_TIMESERVERS) == TRUE)
 		return connman_settings.pref_timeservers;
 
-	if (g_str_equal(key, "FallbackNameservers") == TRUE)
+	if (g_str_equal(key, CONF_FALLBACK_NAMESERVERS) == TRUE)
 		return connman_settings.fallback_nameservers;
 
-	if (g_str_equal(key, "NetworkInterfaceBlacklist") == TRUE)
+	if (g_str_equal(key, CONF_BLACKLISTED_INTERFACES) == TRUE)
 		return connman_settings.blacklisted_interfaces;
 
 	return NULL;
@@ -451,10 +462,10 @@ char **connman_setting_get_string_list(const char *key)
 
 unsigned int *connman_setting_get_uint_list(const char *key)
 {
-	if (g_str_equal(key, "DefaultAutoConnectTechnologies") == TRUE)
+	if (g_str_equal(key, CONF_AUTO_CONNECT) == TRUE)
 		return connman_settings.auto_connect;
 
-	if (g_str_equal(key, "PreferredTechnologies") == TRUE)
+	if (g_str_equal(key, CONF_PREFERRED_TECHS) == TRUE)
 		return connman_settings.preferred_techs;
 
 	return NULL;
