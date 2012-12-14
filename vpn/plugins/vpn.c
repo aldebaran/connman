@@ -54,7 +54,7 @@ struct vpn_data {
 	char *if_name;
 	unsigned flags;
 	unsigned int watch;
-	unsigned int state;
+	enum vpn_state state;
 	struct connman_task *task;
 };
 
@@ -360,21 +360,40 @@ static int vpn_connect(struct vpn_provider *provider,
 	struct vpn_driver_data *vpn_driver_data;
 	const char *name;
 	int ret = 0;
+	enum vpn_state state = VPN_STATE_UNKNOWN;
 
 	if (data != NULL)
+		state = data->state;
+
+	DBG("data %p state %d", data, state);
+
+	switch (state) {
+	case VPN_STATE_UNKNOWN:
+		data = g_try_new0(struct vpn_data, 1);
+		if (data == NULL)
+			return -ENOMEM;
+
+		data->provider = vpn_provider_ref(provider);
+		data->watch = 0;
+		data->flags = 0;
+		data->task = NULL;
+
+		vpn_provider_set_data(provider, data);
+		/* fall through */
+
+	case VPN_STATE_DISCONNECT:
+	case VPN_STATE_IDLE:
+	case VPN_STATE_FAILURE:
+	case VPN_STATE_AUTH_FAILURE:
+		data->state = VPN_STATE_IDLE;
+		break;
+
+	case VPN_STATE_CONNECT:
+		return -EINPROGRESS;
+
+	case VPN_STATE_READY:
 		return -EISCONN;
-
-	data = g_try_new0(struct vpn_data, 1);
-	if (data == NULL)
-		return -ENOMEM;
-
-	data->provider = vpn_provider_ref(provider);
-	data->watch = 0;
-	data->flags = 0;
-	data->task = NULL;
-	data->state = VPN_STATE_IDLE;
-
-	vpn_provider_set_data(provider, data);
+	}
 
 	name = vpn_provider_get_driver_name(provider);
 	if (name == NULL)
