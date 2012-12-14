@@ -966,14 +966,10 @@ int __vpn_provider_disconnect(struct vpn_provider *provider)
 	else
 		return -EOPNOTSUPP;
 
-	if (err < 0) {
-		if (err != -EINPROGRESS)
-			return err;
+	if (err == -EINPROGRESS)
+		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_CONNECT);
 
-		return -EINPROGRESS;
-	}
-
-	return 0;
+	return err;
 }
 
 static void connect_cb(struct vpn_provider *provider, void *user_data,
@@ -1008,6 +1004,9 @@ int __vpn_provider_connect(struct vpn_provider *provider, DBusMessage *msg)
 		err = provider->driver->connect(provider, connect_cb, msg);
 	} else
 		return -EOPNOTSUPP;
+
+	if (err == -EINPROGRESS)
+		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_CONNECT);
 
 	return err;
 }
