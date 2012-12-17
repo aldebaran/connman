@@ -414,6 +414,9 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver)
 
 	DBG("Unregistering driver %p name %s", driver, driver->name);
 
+	if (agent_sender == NULL && agent_path == NULL)
+		goto out;
+
 	for (list = driver_list; list; list = list->next) {
 		DBusMessage *message;
 
@@ -440,6 +443,7 @@ void connman_agent_driver_unregister(struct connman_agent_driver *driver)
 		break;
 	}
 
+out:
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
