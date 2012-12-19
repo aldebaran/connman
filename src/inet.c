@@ -234,7 +234,7 @@ char *connman_inet_ifname(int index)
 	if (err < 0)
 		return NULL;
 
-	return strdup(ifr.ifr_name);
+	return g_strdup(ifr.ifr_name);
 }
 
 short int connman_inet_ifflags(int index)
@@ -2280,7 +2280,7 @@ char **__connman_inet_get_running_interfaces(void)
 		result[count++] = g_strdup(r->ifr_name);
 	}
 
-	free(ifr);
+	g_free(ifr);
 
 	if (count < numif)
 		result = g_try_realloc(result, (count + 1) * sizeof(char *));
@@ -2289,7 +2289,7 @@ char **__connman_inet_get_running_interfaces(void)
 
 error:
 	close(sk);
-	free(ifr);
+	g_free(ifr);
 	return NULL;
 }
 

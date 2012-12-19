@@ -1167,7 +1167,7 @@ static char *index2ident(int index, const char *prefix)
 
 	len = prefix ? strlen(prefix) + 18 : 18;
 
-	str = malloc(len);
+	str = g_malloc(len);
 	if (!str)
 		return NULL;
 
@@ -1211,7 +1211,7 @@ static char *index2addr(int index)
 	if (err < 0)
 		return NULL;
 
-	str = malloc(18);
+	str = g_malloc(18);
 	if (!str)
 		return NULL;
 
@@ -1265,7 +1265,7 @@ struct connman_device *connman_device_create_from_index(int index)
 	case CONNMAN_DEVICE_TYPE_CELLULAR:
 	case CONNMAN_DEVICE_TYPE_GPS:
 	case CONNMAN_DEVICE_TYPE_VENDOR:
-		name = strdup(devname);
+		name = g_strdup(devname);
 		break;
 	}
 
