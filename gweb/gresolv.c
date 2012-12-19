@@ -494,7 +494,7 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 		} else
 			continue;
 
-		results[n++] = strdup(buf);
+		results[n++] = g_strdup(buf);
 	}
 
 	results[n++] = NULL;
