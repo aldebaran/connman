@@ -1510,7 +1510,7 @@ static char *malloc_option_value_string(uint8_t *option, GDHCPOptionType type)
 		return NULL;
 	upper_length = len_of_option_as_string[type] *
 			((unsigned)len / (unsigned)optlen);
-	dest = ret = malloc(upper_length + 1);
+	dest = ret = g_malloc(upper_length + 1);
 	if (ret == NULL)
 		return NULL;
 
