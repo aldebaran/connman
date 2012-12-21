@@ -278,6 +278,10 @@ static void test_session_connect_disconnect_notify(struct test_session *session)
 	case TEST_SESSION_STATE_0:
 		if (session->info->state == CONNMAN_SESSION_STATE_DISCONNECTED)
 			next_state = TEST_SESSION_STATE_1;
+		if (session->info->state == CONNMAN_SESSION_STATE_CONNECTED) {
+			LOG("state was already connected, continuing");
+			next_state = TEST_SESSION_STATE_2;
+		}
 		break;
 	case TEST_SESSION_STATE_1:
 		if (session->info->state >= CONNMAN_SESSION_STATE_CONNECTED)
@@ -369,6 +373,12 @@ static void test_session_connect_free_ride_notify(struct test_session *session)
 					CONNMAN_SESSION_STATE_DISCONNECTED) {
 			next_state = TEST_SESSION_STATE_1;
 		}
+		if (session0->info->state == CONNMAN_SESSION_STATE_CONNECTED &&
+				session1->info->state ==
+				CONNMAN_SESSION_STATE_CONNECTED) {
+			LOG("state was already connected, continuing");
+			next_state = TEST_SESSION_STATE_2;
+		}
 
 		break;
 	case TEST_SESSION_STATE_1:
@@ -381,8 +391,12 @@ static void test_session_connect_free_ride_notify(struct test_session *session)
 		break;
 	case TEST_SESSION_STATE_2:
 		if (session0->info->state == CONNMAN_SESSION_STATE_DISCONNECTED
-				&& session1->info->state ==
-					CONNMAN_SESSION_STATE_DISCONNECTED) {
+				&& (session1->info->state ==
+					CONNMAN_SESSION_STATE_DISCONNECTED ||
+						session1->info->state ==
+					CONNMAN_SESSION_STATE_CONNECTED) ) {
+			LOG("session0 /foo is disconnected, session1 /bar "
+				"can be either connected or disconnected");
 			next_state = TEST_SESSION_STATE_3;
 		}
 
