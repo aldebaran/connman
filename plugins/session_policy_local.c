@@ -241,9 +241,11 @@ static void policy_local_destroy(struct connman_session *session)
 	DBG("session %p", session);
 
 	policy = g_hash_table_lookup(session_hash, session);
+	if (policy == NULL)
+		return;
+
 	g_hash_table_remove(session_hash, session);
 	policy->session = NULL;
-
 	policy_unref(policy);
 }
 
