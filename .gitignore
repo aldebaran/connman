@@ -70,3 +70,4 @@ doc/html
 vpn/builtin.h
 vpn/connman-vpnd
 vpn/connman-vpn.service
+vpn/net.connman.vpn.service
