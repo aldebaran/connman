@@ -1,3 +1,11 @@
+ver 1.10:
+	Fix issue with not skipping service if settings loading fails.
+	Fix issue with not clearing address before starting DHCP.
+	Fix issue with not handling removal of GPRS context.
+	Fix issue with not closing UDP socket on error condition.
+	Fix issue with race condition when removing WiFi device.
+	Add support for separate VPN daemon.
+
 ver 1.9:
 	Fix issue with WISPr portal context handling.
 	Fix issue with DNS lookup from wrong queue.
