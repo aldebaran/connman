@@ -309,8 +309,8 @@ if __name__ == '__main__':
 
 	vpn_manager = dbus.Interface(bus.get_object('net.connman.vpn', "/"),
 					'net.connman.vpn.Manager')
-	path = "/test/vpn_agent"
-	vpn_object = VpnAgent(bus, path)
+	vpn_path = "/test/vpn_agent"
+	vpn_object = VpnAgent(bus, vpn_path)
 
 	if len(sys.argv) >= 2:
 		for arg in sys.argv[1:]:
@@ -340,9 +340,9 @@ if __name__ == '__main__':
 	except:
 		print "Cannot register connman agent."
 
-	vpn_manager.RegisterAgent(path)
+	vpn_manager.RegisterAgent(vpn_path)
 
-        bus.watch_name_owner('net.connman.vpn', vpnNameOwnerChanged)
+	bus.watch_name_owner('net.connman.vpn', vpnNameOwnerChanged)
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
