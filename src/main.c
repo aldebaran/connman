@@ -622,7 +622,6 @@ int main(int argc, char *argv[])
 	else
 		config_init(option_config);
 
-	__connman_storage_migrate();
 	__connman_inotify_init();
 	__connman_technology_init();
 	__connman_notifier_init();
