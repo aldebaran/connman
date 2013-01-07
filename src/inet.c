@@ -1183,59 +1183,63 @@ connman_bool_t connman_inet_compare_subnet(int index, const char *host)
 int connman_inet_remove_from_bridge(int index, const char *bridge)
 {
 	struct ifreq ifr;
-	int sk, err;
+	int sk, err = 0;
 
 	if (bridge == NULL)
 		return -EINVAL;
 
 	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return sk;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
 	ifr.ifr_ifindex = index;
 
-	err = ioctl(sk, SIOCBRDELIF, &ifr);
+	if (ioctl(sk, SIOCBRDELIF, &ifr) < 0)
+		err = -errno;
 
 	close(sk);
 
-	if (err < 0) {
+out:
+	if (err < 0)
 		connman_error("Remove interface from bridge error %s",
-							strerror(errno));
-		return err;
-	}
+							strerror(-err));
 
-	return 0;
+	return err;
 }
 
 int connman_inet_add_to_bridge(int index, const char *bridge)
 {
 	struct ifreq ifr;
-	int sk, err;
+	int sk, err = 0;
 
 	if (bridge == NULL)
 		return -EINVAL;
 
 	sk = socket(AF_INET, SOCK_STREAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return sk;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	strncpy(ifr.ifr_name, bridge, IFNAMSIZ - 1);
 	ifr.ifr_ifindex = index;
 
-	err = ioctl(sk, SIOCBRADDIF, &ifr);
+	if (ioctl(sk, SIOCBRADDIF, &ifr) < 0)
+		err = -errno;
 
 	close(sk);
 
-	if (err < 0) {
+out:
+	if (err < 0)
 		connman_error("Add interface to bridge error %s",
-							strerror(errno));
-		return err;
-	}
+							strerror(-err));
 
-	return 0;
+	return err;
 }
 
 int connman_inet_set_mtu(int index, int mtu)
