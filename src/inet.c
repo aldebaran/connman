@@ -504,21 +504,24 @@ int connman_inet_add_network_route(int index, const char *host,
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in addr;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d host %s gateway %s netmask %s", index,
 		host, gateway, netmask);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -554,12 +557,15 @@ int connman_inet_add_network_route(int index, const char *host,
 
 	rt.rt_dev = ifr.ifr_name;
 
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Adding host route failed (%s)",
-							strerror(errno));
+	if (ioctl(sk, SIOCADDRT, &rt) < 0 && errno != EEXIST)
+		err = -errno;
 
 	close(sk);
+
+out:
+	if (err < 0)
+		connman_error("Adding host route failed (%s)",
+							strerror(-err));
 
 	return err;
 }
@@ -569,20 +575,23 @@ int connman_inet_del_network_route(int index, const char *host)
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in addr;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d host %s", index, host);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -597,12 +606,15 @@ int connman_inet_del_network_route(int index, const char *host)
 
 	rt.rt_dev = ifr.ifr_name;
 
-	err = ioctl(sk, SIOCDELRT, &rt);
-	if (err < 0)
-		connman_error("Deleting host route failed (%s)",
-							strerror(errno));
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
 
 	close(sk);
+
+out:
+	if (err < 0)
+		connman_error("Deleting host route failed (%s)",
+							strerror(-err));
 
 	return err;
 }
@@ -611,7 +623,7 @@ int connman_inet_del_ipv6_network_route(int index, const char *host,
 						unsigned char prefix_len)
 {
 	struct in6_rtmsg rt;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d host %s", index, host);
 
@@ -622,9 +634,10 @@ int connman_inet_del_ipv6_network_route(int index, const char *host,
 
 	rt.rtmsg_dst_len = prefix_len;
 
-	err = inet_pton(AF_INET6, host, &rt.rtmsg_dst);
-	if (err < 0)
+	if (inet_pton(AF_INET6, host, &rt.rtmsg_dst) < 0) {
+		err = -errno;
 		goto out;
+	}
 
 	rt.rtmsg_flags = RTF_UP | RTF_HOST;
 
@@ -633,16 +646,19 @@ int connman_inet_del_ipv6_network_route(int index, const char *host,
 
 	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
-		err = -1;
+		err = -errno;
 		goto out;
 	}
 
-	err = ioctl(sk, SIOCDELRT, &rt);
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
+
 	close(sk);
+
 out:
 	if (err < 0)
 		connman_error("Del IPv6 host route error (%s)",
-						strerror(errno));
+						strerror(-err));
 
 	return err;
 }
@@ -657,7 +673,7 @@ int connman_inet_add_ipv6_network_route(int index, const char *host,
 					unsigned char prefix_len)
 {
 	struct in6_rtmsg rt;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d host %s gateway %s", index, host, gateway);
 
@@ -668,9 +684,10 @@ int connman_inet_add_ipv6_network_route(int index, const char *host,
 
 	rt.rtmsg_dst_len = prefix_len;
 
-	err = inet_pton(AF_INET6, host, &rt.rtmsg_dst);
-	if (err < 0)
+	if (inet_pton(AF_INET6, host, &rt.rtmsg_dst) < 0) {
+		err = -errno;
 		goto out;
+	}
 
 	rt.rtmsg_flags = RTF_UP | RTF_HOST;
 
@@ -684,16 +701,19 @@ int connman_inet_add_ipv6_network_route(int index, const char *host,
 
 	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
-		err = -1;
+		err = -errno;
 		goto out;
 	}
 
-	err = ioctl(sk, SIOCADDRT, &rt);
+	if (ioctl(sk, SIOCADDRT, &rt) < 0 && errno != EEXIST)
+		err = -errno;
+
 	close(sk);
+
 out:
 	if (err < 0)
 		connman_error("Set IPv6 host route error (%s)",
-						strerror(errno));
+						strerror(-err));
 
 	return err;
 }
@@ -707,7 +727,7 @@ int connman_inet_add_ipv6_host_route(int index, const char *host,
 int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
 {
 	struct in6_rtmsg rt;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d gateway %s", index, gateway);
 
@@ -716,9 +736,10 @@ int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
 
 	memset(&rt, 0, sizeof(rt));
 
-	err = inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway);
-	if (err < 0)
+	if (inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway) < 0) {
+		err = -errno;
 		goto out;
+	}
 
 	rt.rtmsg_flags = RTF_UP | RTF_GATEWAY;
 	rt.rtmsg_metric = 1;
@@ -727,16 +748,19 @@ int connman_inet_set_ipv6_gateway_address(int index, const char *gateway)
 
 	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
-		err = -1;
+		err = -errno;
 		goto out;
 	}
 
-	err = ioctl(sk, SIOCADDRT, &rt);
+	if (ioctl(sk, SIOCADDRT, &rt) < 0 && errno != EEXIST)
+		err = -errno;
+
 	close(sk);
+
 out:
 	if (err < 0)
 		connman_error("Set default IPv6 gateway error (%s)",
-						strerror(errno));
+						strerror(-err));
 
 	return err;
 }
@@ -744,7 +768,7 @@ out:
 int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
 {
 	struct in6_rtmsg rt;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d gateway %s", index, gateway);
 
@@ -753,9 +777,10 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
 
 	memset(&rt, 0, sizeof(rt));
 
-	err = inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway);
-	if (err < 0)
+	if (inet_pton(AF_INET6, gateway, &rt.rtmsg_gateway) < 0) {
+		err = -errno;
 		goto out;
+	}
 
 	rt.rtmsg_flags = RTF_UP | RTF_GATEWAY;
 	rt.rtmsg_metric = 1;
@@ -764,16 +789,19 @@ int connman_inet_clear_ipv6_gateway_address(int index, const char *gateway)
 
 	sk = socket(AF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
 	if (sk < 0) {
-		err = -1;
+		err = -errno;
 		goto out;
 	}
 
-	err = ioctl(sk, SIOCDELRT, &rt);
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
+
 	close(sk);
+
 out:
 	if (err < 0)
 		connman_error("Clear default IPv6 gateway error (%s)",
-						strerror(errno));
+						strerror(-err));
 
 	return err;
 }
@@ -783,20 +811,23 @@ int connman_inet_set_gateway_address(int index, const char *gateway)
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in addr;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d gateway %s", index, gateway);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -819,12 +850,15 @@ int connman_inet_set_gateway_address(int index, const char *gateway)
 	addr.sin_addr.s_addr = INADDR_ANY;
 	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
-	err = ioctl(sk, SIOCADDRT, &rt);
-	if (err < 0)
-		connman_error("Setting default gateway route failed (%s)",
-							strerror(errno));
+	if (ioctl(sk, SIOCADDRT, &rt) < 0 && errno != EEXIST)
+		err = -errno;
 
 	close(sk);
+
+out:
+	if (err < 0)
+		connman_error("Setting default gateway route failed (%s)",
+							strerror(-err));
 
 	return err;
 }
@@ -834,20 +868,23 @@ int connman_inet_set_gateway_interface(int index)
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in addr;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d", index);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -865,11 +902,15 @@ int connman_inet_set_gateway_interface(int index)
 
 	rt.rt_dev = ifr.ifr_name;
 
-	err = ioctl(sk, SIOCADDRT, &rt);
+	if (ioctl(sk, SIOCADDRT, &rt) < 0 && errno != EEXIST)
+		err = -errno;
+
+	close(sk);
+
+out:
 	if (err < 0)
 		connman_error("Setting default interface route failed (%s)",
-							strerror(errno));
-	close(sk);
+							strerror(-err));
 
 	return err;
 }
@@ -880,20 +921,23 @@ int connman_inet_set_ipv6_gateway_interface(int index)
 	struct rtentry rt;
 	struct sockaddr_in6 addr;
 	const struct in6_addr any = IN6ADDR_ANY_INIT;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d", index);
 
 	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -911,11 +955,15 @@ int connman_inet_set_ipv6_gateway_interface(int index)
 
 	rt.rt_dev = ifr.ifr_name;
 
-	err = ioctl(sk, SIOCADDRT, &rt);
+	if (ioctl(sk, SIOCADDRT, &rt) < 0 && errno != EEXIST)
+		err = -errno;
+
+	close(sk);
+
+out:
 	if (err < 0)
 		connman_error("Setting default interface route failed (%s)",
-							strerror(errno));
-	close(sk);
+							strerror(-err));
 
 	return err;
 }
@@ -925,20 +973,23 @@ int connman_inet_clear_gateway_address(int index, const char *gateway)
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in addr;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d gateway %s", index, gateway);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -961,12 +1012,15 @@ int connman_inet_clear_gateway_address(int index, const char *gateway)
 	addr.sin_addr.s_addr = INADDR_ANY;
 	memcpy(&rt.rt_genmask, &addr, sizeof(rt.rt_genmask));
 
-	err = ioctl(sk, SIOCDELRT, &rt);
-	if (err < 0)
-		connman_error("Removing default gateway route failed (%s)",
-							strerror(errno));
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
 
 	close(sk);
+
+out:
+	if (err < 0)
+		connman_error("Removing default gateway route failed (%s)",
+							strerror(-err));
 
 	return err;
 }
@@ -976,20 +1030,23 @@ int connman_inet_clear_gateway_interface(int index)
 	struct ifreq ifr;
 	struct rtentry rt;
 	struct sockaddr_in addr;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d", index);
 
 	sk = socket(PF_INET, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -1007,11 +1064,15 @@ int connman_inet_clear_gateway_interface(int index)
 
 	rt.rt_dev = ifr.ifr_name;
 
-	err = ioctl(sk, SIOCDELRT, &rt);
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
+
+	close(sk);
+
+out:
 	if (err < 0)
 		connman_error("Removing default interface route failed (%s)",
-							strerror(errno));
-	close(sk);
+							strerror(-err));
 
 	return err;
 }
@@ -1022,20 +1083,23 @@ int connman_inet_clear_ipv6_gateway_interface(int index)
 	struct rtentry rt;
 	struct sockaddr_in6 addr;
 	const struct in6_addr any = IN6ADDR_ANY_INIT;
-	int sk, err;
+	int sk, err = 0;
 
 	DBG("index %d", index);
 
 	sk = socket(PF_INET6, SOCK_DGRAM | SOCK_CLOEXEC, 0);
-	if (sk < 0)
-		return -1;
+	if (sk < 0) {
+		err = -errno;
+		goto out;
+	}
 
 	memset(&ifr, 0, sizeof(ifr));
 	ifr.ifr_ifindex = index;
 
 	if (ioctl(sk, SIOCGIFNAME, &ifr) < 0) {
+		err = -errno;
 		close(sk);
-		return -1;
+		goto out;
 	}
 
 	DBG("ifname %s", ifr.ifr_name);
@@ -1053,11 +1117,15 @@ int connman_inet_clear_ipv6_gateway_interface(int index)
 
 	rt.rt_dev = ifr.ifr_name;
 
-	err = ioctl(sk, SIOCDELRT, &rt);
+	if (ioctl(sk, SIOCDELRT, &rt) < 0 && errno != ESRCH)
+		err = -errno;
+
+	close(sk);
+
+out:
 	if (err < 0)
 		connman_error("Removing default interface route failed (%s)",
-							strerror(errno));
-	close(sk);
+							strerror(-err));
 
 	return err;
 }
