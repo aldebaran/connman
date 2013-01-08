@@ -1595,6 +1595,9 @@ static void provider_create_all_from_type(const char *provider_type)
 
 	providers = __connman_storage_get_providers();
 
+	if (providers == NULL)
+		return;
+
 	for (i = 0; providers[i] != NULL; i+=1) {
 
 		if (strncmp(providers[i], "provider_", 9) != 0)
