@@ -471,6 +471,8 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 	char buf[INET6_ADDRSTRLEN + 1];
 	GResolvResultStatus status;
 	char **results = g_try_new0(char *, lookup->nr_results + 1);
+	GResolvResultFunc result_func = lookup->result_func;
+	void *result_data = lookup->result_data;
 	int i, n = 0;
 
 	if (!results)
@@ -513,11 +515,11 @@ static void sort_and_return_results(struct resolv_lookup *lookup)
 	debug(lookup->resolv, "lookup %p received %d results", lookup, n);
 
 	g_queue_remove(lookup->resolv->lookup_queue, lookup);
+	destroy_lookup(lookup);
 
-	lookup->result_func(status, results, lookup->result_data);
+	result_func(status, results, result_data);
 
 	g_strfreev(results);
-	destroy_lookup(lookup);
 }
 
 static gboolean query_timeout(gpointer user_data)
