@@ -3045,6 +3045,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		autoconnect_changed(service);
 
+		if (autoconnect == TRUE)
+			__connman_service_auto_connect();
+
 		service_save(service);
 	} else if (g_str_equal(name, "Nameservers.Configuration") == TRUE) {
 		DBusMessageIter entry;
