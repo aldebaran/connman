@@ -187,9 +187,10 @@ int connman_agent_queue_message(void *user_context,
 	driver = get_driver();
 	DBG("driver %p", driver);
 
-	if (driver != NULL && driver->context_ref != NULL)
+	if (driver != NULL && driver->context_ref != NULL) {
 		queue_data->user_context = driver->context_ref(user_context);
-	else
+		queue_data->driver = driver;
+	} else
 		queue_data->user_context = user_context;
 
 	queue_data->msg = dbus_message_ref(msg);
