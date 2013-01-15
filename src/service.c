@@ -5074,7 +5074,8 @@ static int service_indicate_state(struct connman_service *service)
 		dns_changed(service);
 		domain_changed(service);
 
-		__connman_notifier_connect(service->type);
+		if (old_state != CONNMAN_SERVICE_STATE_ONLINE)
+			__connman_notifier_connect(service->type);
 
 		if (service->type == CONNMAN_SERVICE_TYPE_WIFI &&
 			connman_network_get_bool(service->network,
