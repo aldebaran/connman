@@ -805,7 +805,8 @@ static void network_remove(struct connman_network *network)
 	if (network->driver == NULL)
 		return;
 
-	connman_network_set_connected(network, FALSE);
+	if (network->connected == TRUE)
+		set_disconnected(network);
 
 	switch (network->type) {
 	case CONNMAN_NETWORK_TYPE_UNKNOWN:
