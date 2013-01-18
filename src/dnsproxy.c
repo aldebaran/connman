@@ -1307,7 +1307,7 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 				return -ENOMEM;
 			data->inserted = entry->ipv4->inserted;
 			data->type = type;
-			data->answers = hdr->ancount;
+			data->answers = ntohs(hdr->ancount);
 			data->timeout = entry->ipv4->timeout;
 			if (srv->protocol == IPPROTO_UDP)
 				cache_offset = 2;
