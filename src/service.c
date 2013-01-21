@@ -3869,8 +3869,10 @@ static void apply_relevant_default_downgrade(struct connman_service *service)
 		return;
 
 	if (def_service == service &&
-			def_service->state == CONNMAN_SERVICE_STATE_ONLINE)
+			def_service->state == CONNMAN_SERVICE_STATE_ONLINE) {
 		def_service->state = CONNMAN_SERVICE_STATE_READY;
+		__connman_notifier_leave_online(def_service->type);
+	}
 }
 
 static void switch_default_service(struct connman_service *default_service,
