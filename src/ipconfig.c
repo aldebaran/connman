@@ -1556,7 +1556,6 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 		if (ipdevice->config_ipv6 == ipconfig)
 			return -EALREADY;
 		type = CONNMAN_IPCONFIG_TYPE_IPV6;
-		enable_ipv6(ipconfig);
 	} else
 		return -EINVAL;
 
@@ -1584,9 +1583,11 @@ int __connman_ipconfig_enable(struct connman_ipconfig *ipconfig)
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 		ipdevice->config_ipv4 = __connman_ipconfig_ref(ipconfig);
-	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
 		ipdevice->config_ipv6 = __connman_ipconfig_ref(ipconfig);
 
+		enable_ipv6(ipdevice->config_ipv6);
+	}
 	ipconfig_list = g_list_append(ipconfig_list, ipconfig);
 
 	if (ipdevice->flags & IFF_UP)
