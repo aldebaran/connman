@@ -96,7 +96,7 @@ static int create_device(struct dundee_data *info)
 	DBG("%s", info->path);
 
 	ident = g_strdup(get_ident(info->path));
-	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_BLUETOOTH);
+	device = connman_device_create("dundee", CONNMAN_DEVICE_TYPE_BLUETOOTH);
 	if (device == NULL) {
 		err = -ENOMEM;
 		goto out;
