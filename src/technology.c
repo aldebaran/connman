@@ -162,9 +162,11 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 		if (technology->driver == NULL)
 			continue;
 
-		if (technology->type == driver->type) {
-			technology->driver->remove(technology);
+		if (technology->driver == driver) {
+			if (driver->remove != NULL)
+				driver->remove(technology);
 			technology->driver = NULL;
+			break;
 		}
 	}
 
