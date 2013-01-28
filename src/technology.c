@@ -1002,7 +1002,11 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	technology_list = g_slist_prepend(technology_list, technology);
 
 	technology->driver = driver;
-	err = driver->probe(technology);
+	if (driver->probe != NULL)
+		err = driver->probe(technology);
+	else
+		err = 0;
+
 	if (err != 0)
 		DBG("Driver probe failed for technology %p", technology);
 
