@@ -27,6 +27,8 @@ endif
 if BLUETOOTH
 builtin_modules += bluetooth_legacy
 builtin_sources += plugins/bluetooth_legacy.c
+builtin_modules += bluetooth
+builtin_sources += plugins/bluetooth.c
 endif
 
 if HH2SERIAL_GPS
