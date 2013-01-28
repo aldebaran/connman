@@ -598,6 +598,9 @@ static int technology_affect_devices(struct connman_technology *technology,
 
 static int technology_enable(struct connman_technology *technology)
 {
+	int err = 0;
+	int err_dev;
+
 	DBG("technology %p enable", technology);
 
 	__sync_synchronize();
@@ -608,13 +611,20 @@ static int technology_enable(struct connman_technology *technology)
 		return -EBUSY;
 
 	if (technology->rfkill_driven == TRUE)
-		return __connman_rfkill_block(technology->type, FALSE);
+		err = __connman_rfkill_block(technology->type, FALSE);
 
-	return technology_affect_devices(technology, TRUE);
+	err_dev = technology_affect_devices(technology, TRUE);
+
+	if (technology->rfkill_driven == FALSE)
+		err = err_dev;
+
+	return err;
 }
 
 static int technology_disable(struct connman_technology *technology)
 {
+	int err;
+
 	DBG("technology %p disable", technology);
 
 	__sync_synchronize();
@@ -627,10 +637,12 @@ static int technology_disable(struct connman_technology *technology)
 	if (technology->tethering == TRUE)
 		set_tethering(technology, FALSE);
 
-	if (technology->rfkill_driven == TRUE)
-		return __connman_rfkill_block(technology->type, TRUE);
+	err = technology_affect_devices(technology, FALSE);
 
-	return technology_affect_devices(technology, FALSE);
+	if (technology->rfkill_driven == TRUE)
+		err = __connman_rfkill_block(technology->type, TRUE);
+
+	return err;
 }
 
 static DBusMessage *set_powered(struct connman_technology *technology,
