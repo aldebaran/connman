@@ -44,6 +44,7 @@ static DBusConnection *connection;
 static GDBusClient *client;
 static GHashTable *devices;
 static GHashTable *networks;
+static connman_bool_t bluetooth_tethering;
 
 struct bluetooth_pan {
 	struct connman_network *network;
@@ -618,6 +619,87 @@ static void device_free(gpointer data)
 	connman_device_unref(device);
 }
 
+struct tethering_info {
+	struct connman_technology *technology;
+	char *bridge;
+	connman_bool_t enable;
+};
+
+static void tethering_free(void *user_data)
+{
+	struct tethering_info *tethering = user_data;
+
+	g_free(tethering->bridge);
+	g_free(tethering);
+}
+
+static void tethering_create_cb(DBusMessage *message, void *user_data)
+{
+	struct tethering_info *tethering = user_data;
+
+	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
+		const char *dbus_error = dbus_message_get_error_name(message);
+
+		DBG("%s tethering failed: %s",
+				tethering->enable == TRUE? "enable": "disable",
+				dbus_error);
+		return;
+	}
+
+	DBG("bridge %s %s", tethering->bridge, tethering->enable == TRUE?
+			"enabled": "disabled");
+
+	if (tethering->technology != NULL)
+		connman_technology_tethering_notify(tethering->technology,
+				tethering->enable);
+}
+
+static void tethering_append(DBusMessageIter *iter, void *user_data)
+{
+	struct tethering_info *tethering = user_data;
+	const char *nap = "nap";
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &nap);
+	if (tethering->enable == TRUE)
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+				&tethering->bridge);
+}
+
+static connman_bool_t tethering_create(const char *path,
+		struct connman_technology *technology, const char *bridge,
+		connman_bool_t enabled)
+{
+	struct tethering_info *tethering = g_new0(struct tethering_info, 1);
+	GDBusProxy *proxy;
+	const char *method;
+	connman_bool_t result;
+
+	DBG("path %s bridge %s", path, bridge);
+
+	if (bridge == NULL)
+		return -EINVAL;
+
+	proxy = g_dbus_proxy_new(client, path, "org.bluez.NetworkServer1");
+	if (proxy == NULL)
+		return FALSE;
+
+	tethering->technology = technology;
+	tethering->bridge = g_strdup(bridge);
+	tethering->enable = enabled;
+
+	if (tethering->enable)
+		method = "Register";
+	else
+		method = "Unregister";
+
+	result = g_dbus_proxy_method_call(proxy, method, tethering_append,
+			tethering_create_cb, tethering, tethering_free);
+
+	g_dbus_proxy_unref(proxy);
+
+	return result;
+}
+
 static void device_create(GDBusProxy *proxy)
 {
 	struct connman_device *device = NULL;
@@ -655,6 +737,9 @@ static void device_create(GDBusProxy *proxy)
 
 	powered = proxy_get_bool(proxy, "Powered");
 	connman_device_set_powered(device, powered);
+
+	if (proxy_get_nap(proxy) == TRUE && bluetooth_tethering == FALSE)
+		tethering_create(path, NULL, NULL, FALSE);
 }
 
 static void object_added(GDBusProxy *proxy, void *user_data)
@@ -739,11 +824,43 @@ static void bluetooth_tech_remove(struct connman_technology *technology)
 
 }
 
+static int bluetooth_tech_set_tethering(struct connman_technology *technology,
+		const char *identifier, const char *passphrase,
+		const char *bridge, connman_bool_t enabled)
+{
+	GHashTableIter hash_iter;
+	gpointer key, value;
+	int i = 0;
+
+	bluetooth_tethering = enabled;
+
+	g_hash_table_iter_init(&hash_iter, devices);
+
+	while (g_hash_table_iter_next(&hash_iter, &key, &value) == TRUE) {
+		const char *path = key;
+		struct connman_device *device = value;
+
+		DBG("device %p", device);
+
+		if (tethering_create(path, technology, bridge, enabled)
+				== TRUE)
+			i++;
+	}
+
+	DBG("%s %d device(s)", enabled == TRUE? "enabled": "disabled", i);
+
+	if (i == 0)
+		return -ENODEV;
+
+       return -EINPROGRESS;
+}
+
 static struct connman_technology_driver tech_driver = {
 	.name		= "bluetooth",
 	.type		= CONNMAN_SERVICE_TYPE_BLUETOOTH,
 	.probe          = bluetooth_tech_probe,
 	.remove         = bluetooth_tech_remove,
+	.set_tethering  = bluetooth_tech_set_tethering,
 };
 
 static int bluetooth_init(void)
