@@ -65,8 +65,7 @@ struct connman_technology {
 
 	connman_bool_t enable_persistent; /* Save the tech state */
 
-	struct connman_technology_driver *driver;
-	void *driver_data;
+	GSList *driver_list;
 
 	DBusMessage *pending_reply;
 	guint pending_timeout;
@@ -151,21 +150,29 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
  */
 void connman_technology_driver_unregister(struct connman_technology_driver *driver)
 {
-	GSList *list;
+	GSList *list, *tech_drivers;
 	struct connman_technology *technology;
+	struct connman_technology_driver *current;
 
 	DBG("Unregistering driver %p name %s", driver, driver->name);
 
 	for (list = technology_list; list; list = list->next) {
 		technology = list->data;
 
-		if (technology->driver == NULL)
-			continue;
+		for (tech_drivers = technology->driver_list;
+		     tech_drivers != NULL;
+		     tech_drivers = g_slist_next(tech_drivers)) {
 
-		if (technology->driver == driver) {
+			current = tech_drivers->data;
+			if (driver != current)
+				continue;
+
 			if (driver->remove != NULL)
 				driver->remove(technology);
-			technology->driver = NULL;
+
+			technology->driver_list =
+				g_slist_remove(technology->driver_list, driver);
+
 			break;
 		}
 	}
@@ -212,14 +219,13 @@ void connman_technology_tethering_notify(struct connman_technology *technology,
 static int set_tethering(struct connman_technology *technology,
 				connman_bool_t enabled)
 {
+	int result = -EOPNOTSUPP;
+	int err;
 	const char *ident, *passphrase, *bridge;
+	GSList *tech_drivers;
 
 	ident = technology->tethering_ident;
 	passphrase = technology->tethering_passphrase;
-
-	if (technology->driver == NULL ||
-			technology->driver->set_tethering == NULL)
-		return -EOPNOTSUPP;
 
 	__sync_synchronize();
 	if (technology->enabled == FALSE)
@@ -233,8 +239,26 @@ static int set_tethering(struct connman_technology *technology,
 	    (ident == NULL || passphrase == NULL))
 		return -EINVAL;
 
-	return technology->driver->set_tethering(technology, ident, passphrase,
-							bridge, enabled);
+	for (tech_drivers = technology->driver_list; tech_drivers != NULL;
+	     tech_drivers = g_slist_next(tech_drivers)) {
+		struct connman_technology_driver *driver = tech_drivers->data;
+
+		if (driver == NULL || driver->set_tethering == NULL)
+			continue;
+
+		err = driver->set_tethering(technology, ident, passphrase,
+				bridge, enabled);
+
+		if (result == -EINPROGRESS)
+			continue;
+
+		if (err == -EINPROGRESS || err == 0) {
+			result = err;
+			continue;
+		}
+	}
+
+	return result;
 }
 
 void connman_technology_regdom_notify(struct connman_technology *technology,
@@ -268,18 +292,23 @@ static int set_regdom_by_device(struct connman_technology *technology,
 
 int connman_technology_set_regdom(const char *alpha2)
 {
-	GSList *list;
+	GSList *list, *tech_drivers;
 
 	for (list = technology_list; list; list = list->next) {
 		struct connman_technology *technology = list->data;
 
 		if (set_regdom_by_device(technology, alpha2) != 0) {
-			if (technology->driver == NULL)
-				continue;
 
-			if (technology->driver->set_regdom != NULL)
-				technology->driver->set_regdom(technology,
-								alpha2);
+			for (tech_drivers = technology->driver_list;
+			     tech_drivers != NULL;
+			     tech_drivers = g_slist_next(tech_drivers)) {
+
+				struct connman_technology_driver *driver =
+					tech_drivers->data;
+
+				if (driver->set_regdom != NULL)
+					driver->set_regdom(technology, alpha2);
+			}
 		}
 	}
 
@@ -871,8 +900,10 @@ void __connman_technology_scan_stopped(struct connman_device *device)
 void __connman_technology_notify_regdom_by_device(struct connman_device *device,
 						int result, const char *alpha2)
 {
+	connman_bool_t regdom_set = FALSE;
 	struct connman_technology *technology;
 	enum connman_service_type type;
+	GSList *tech_drivers;
 
 	type = __connman_device_get_service_type(device);
 	technology = technology_find(type);
@@ -881,13 +912,22 @@ void __connman_technology_notify_regdom_by_device(struct connman_device *device,
 		return;
 
 	if (result < 0) {
-		if (technology->driver != NULL &&
-				technology->driver->set_regdom != NULL) {
-			technology->driver->set_regdom(technology, alpha2);
-			return;
+
+		for (tech_drivers = technology->driver_list;
+		     tech_drivers != NULL;
+		     tech_drivers = g_slist_next(tech_drivers)) {
+			struct connman_technology_driver *driver =
+				tech_drivers->data;
+
+			if (driver->set_regdom != NULL) {
+				driver->set_regdom(technology, alpha2);
+				regdom_set = TRUE;
+			}
+
 		}
 
-		alpha2 = NULL;
+		if (regdom_set == FALSE)
+			alpha2 = NULL;
 	}
 
 	connman_technology_regdom_notify(technology, alpha2);
@@ -952,11 +992,11 @@ static gboolean technology_dbus_register(struct connman_technology *technology)
 
 static struct connman_technology *technology_get(enum connman_service_type type)
 {
+	GSList *tech_drivers = NULL;
+	struct connman_technology_driver *driver;
 	struct connman_technology *technology;
-	struct connman_technology_driver *driver = NULL;
 	const char *str;
 	GSList *list;
-	int err;
 
 	DBG("type %d", type);
 
@@ -974,14 +1014,14 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 	for (list = driver_list; list; list = list->next) {
 		driver = list->data;
 
-		if (driver->type == type)
-			break;
-		else
-			driver = NULL;
+		if (driver->type == type) {
+			DBG("technology %p driver %p", technology, driver);
+			tech_drivers = g_slist_append(tech_drivers, driver);
+		}
 	}
 
-	if (driver == NULL) {
-		DBG("No matching driver found for %s.",
+	if (tech_drivers == NULL) {
+		DBG("No matching drivers found for %s.",
 				__connman_service_type2string(type));
 		return NULL;
 	}
@@ -1013,14 +1053,15 @@ static struct connman_technology *technology_get(enum connman_service_type type)
 
 	technology_list = g_slist_prepend(technology_list, technology);
 
-	technology->driver = driver;
-	if (driver->probe != NULL)
-		err = driver->probe(technology);
-	else
-		err = 0;
+	technology->driver_list = tech_drivers;
 
-	if (err != 0)
-		DBG("Driver probe failed for technology %p", technology);
+	for (list = tech_drivers; list != NULL; list = g_slist_next(list)) {
+		driver = list->data;
+
+		if (driver->probe != NULL && driver->probe(technology) < 0)
+			DBG("Driver probe failed for technology %p",
+					technology);
+	}
 
 	DBG("technology %p", technology);
 
@@ -1048,9 +1089,17 @@ static void technology_put(struct connman_technology *technology)
 
 	reply_scan_pending(technology, -EINTR);
 
-	if (technology->driver) {
-		technology->driver->remove(technology);
-		technology->driver = NULL;
+	while (technology->driver_list != NULL) {
+		struct connman_technology_driver *driver;
+
+		driver = technology->driver_list->data;
+
+		if (driver->remove != NULL)
+			driver->remove(technology);
+
+		technology->driver_list =
+			g_slist_delete_link(technology->driver_list,
+					technology->driver_list);
 	}
 
 	technology_list = g_slist_remove(technology_list, technology);
@@ -1070,6 +1119,8 @@ void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident)
 {
 	struct connman_technology *technology;
+	GSList *tech_drivers;
+	struct connman_technology_driver *driver;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -1090,18 +1141,24 @@ void __connman_technology_add_interface(enum connman_service_type type,
 
 	technology = technology_find(type);
 
-	if (technology == NULL || technology->driver == NULL
-			|| technology->driver->add_interface == NULL)
+	if (technology == NULL)
 		return;
 
-	technology->driver->add_interface(technology,
-					index, name, ident);
+	for (tech_drivers = technology->driver_list; tech_drivers != NULL;
+	     tech_drivers = g_slist_next(tech_drivers)) {
+		driver = tech_drivers->data;
+
+		if(driver->add_interface != NULL)
+			driver->add_interface(technology, index, name, ident);
+	}
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident)
 {
 	struct connman_technology *technology;
+	GSList *tech_drivers;
+	struct connman_technology_driver *driver;
 
 	switch (type) {
 	case CONNMAN_SERVICE_TYPE_UNKNOWN:
@@ -1122,11 +1179,16 @@ void __connman_technology_remove_interface(enum connman_service_type type,
 
 	technology = technology_find(type);
 
-	if (technology == NULL || technology->driver == NULL)
+	if (technology == NULL)
 		return;
 
-	if (technology->driver->remove_interface)
-		technology->driver->remove_interface(technology, index);
+	for (tech_drivers = technology->driver_list; tech_drivers != NULL;
+	     tech_drivers = g_slist_next(tech_drivers)) {
+		driver = tech_drivers->data;
+
+		if(driver->remove_interface != NULL)
+			driver->remove_interface(technology, index);
+	}
 }
 
 int __connman_technology_add_device(struct connman_device *device)
