@@ -539,11 +539,10 @@ static gboolean query_timeout(gpointer user_data)
 	}
 
 	g_queue_remove(resolv->query_queue, query);
+	destroy_query(query);
 
 	if (lookup->ipv4_query == NULL && lookup->ipv6_query == NULL)
 		sort_and_return_results(lookup);
-
-	destroy_query(query);
 
 	return FALSE;
 }
@@ -731,11 +730,10 @@ static void parse_response(struct resolv_nameserver *nameserver,
 	}
 
 	g_queue_remove(resolv->query_queue, query);
+	destroy_query(query);
 
 	if (lookup->ipv4_query == NULL && lookup->ipv6_query == NULL)
 		sort_and_return_results(lookup);
-
-	destroy_query(query);
 }
 
 static gboolean received_udp_data(GIOChannel *channel, GIOCondition cond,
