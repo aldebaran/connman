@@ -264,7 +264,7 @@ static int pan_disconnect(struct connman_network *network)
 }
 
 static struct connman_network_driver pan_driver = {
-	.name		= "bluetooth-pan",
+	.name		= "bluetooth_legacy-pan",
 	.type		= CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN,
 	.probe		= pan_probe,
 	.remove		= pan_remove,
@@ -715,7 +715,8 @@ static void adapter_properties_reply(DBusPendingCall *call, void *user_data)
 						addr.ether_addr_octet[4],
 						addr.ether_addr_octet[5]);
 
-	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_BLUETOOTH);
+	device = connman_device_create("bluetooth_legacy",
+			CONNMAN_DEVICE_TYPE_BLUETOOTH);
 	if (device == NULL)
 		goto done;
 
@@ -1058,7 +1059,7 @@ static int bluetooth_disable(struct connman_device *device)
 }
 
 static struct connman_device_driver bluetooth_driver = {
-	.name		= "bluetooth",
+	.name		= "bluetooth_legacy",
 	.type		= CONNMAN_DEVICE_TYPE_BLUETOOTH,
 	.probe		= bluetooth_probe,
 	.remove		= bluetooth_remove,
@@ -1228,8 +1229,9 @@ static int tech_set_tethering(struct connman_technology *technology,
 }
 
 static struct connman_technology_driver tech_driver = {
-	.name		= "bluetooth",
+	.name		= "bluetooth_legacy",
 	.type		= CONNMAN_SERVICE_TYPE_BLUETOOTH,
+	.priority       = -10,
 	.probe		= tech_probe,
 	.remove		= tech_remove,
 	.set_tethering	= tech_set_tethering,
@@ -1346,5 +1348,6 @@ static void bluetooth_exit(void)
 	dbus_connection_unref(connection);
 }
 
-CONNMAN_PLUGIN_DEFINE(bluetooth, "Bluetooth technology plugin", VERSION,
-		CONNMAN_PLUGIN_PRIORITY_DEFAULT, bluetooth_init, bluetooth_exit)
+CONNMAN_PLUGIN_DEFINE(bluetooth_legacy, "Bluetooth technology plugin (legacy)",
+		VERSION, CONNMAN_PLUGIN_PRIORITY_LOW,
+		bluetooth_init, bluetooth_exit)
