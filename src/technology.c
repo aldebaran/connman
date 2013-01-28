@@ -119,14 +119,11 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 	driver_list = g_slist_insert_sorted(driver_list, driver,
 							compare_priority);
 
-	if (techless_device_list == NULL)
-		goto check_rfkill;
-
 	/*
 	 * Check for technology less devices if this driver
 	 * can service any of them.
 	*/
-	for (list = techless_device_list; list; list = list->next) {
+	for (list = techless_device_list; list != NULL; list = list->next) {
 		device = list->data;
 
 		type = __connman_device_get_service_type(device);
@@ -139,7 +136,6 @@ int connman_technology_driver_register(struct connman_technology_driver *driver)
 		__connman_technology_add_device(device);
 	}
 
-check_rfkill:
 	/* Check for orphaned rfkill switches. */
 	g_hash_table_foreach(rfkill_list, rfkill_check,
 					GINT_TO_POINTER(driver->type));
