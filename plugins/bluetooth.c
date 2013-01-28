@@ -158,32 +158,161 @@ static void bluetooth_pan_remove(struct connman_network *network)
 		pan_remove_nap(pan);
 }
 
+static connman_bool_t pan_connect(struct bluetooth_pan *pan,
+		const char *iface)
+{
+	int index;
+
+	if (iface == NULL) {
+		if (proxy_get_bool(pan->btnetwork_proxy, "Connected") == FALSE)
+			return FALSE;
+		iface = proxy_get_string(pan->btnetwork_proxy, "Interface");
+	}
+
+	if (iface == NULL)
+		return FALSE;
+
+	index = connman_inet_ifindex(iface);
+	if (index < 0) {
+		DBG("network %p invalid index %d", pan->network, index);
+		return FALSE;
+	}
+
+	connman_network_set_index(pan->network, index);
+	connman_network_set_connected(pan->network, TRUE);
+
+	return TRUE;
+}
+
+static void pan_connect_cb(DBusMessage *message, void *user_data)
+{
+	const char *path = user_data;
+	const char *iface = NULL;
+	struct bluetooth_pan *pan;
+	DBusMessageIter iter;
+
+	pan = g_hash_table_lookup(networks, path);
+	if (pan == NULL) {
+		DBG("network already removed");
+		return;
+	}
+
+	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
+		const char *dbus_error = dbus_message_get_error_name(message);
+
+		DBG("network %p %s", pan->network, dbus_error);
+
+		if (strcmp(dbus_error,
+				"org.bluez.Error.AlreadyConnected") != 0) {
+			connman_network_set_error(pan->network,
+				CONNMAN_NETWORK_ERROR_ASSOCIATE_FAIL);
+			return;
+		}
+	} else {
+		if (dbus_message_iter_init(message, &iter) == TRUE &&
+				dbus_message_iter_get_arg_type(&iter) ==
+				DBUS_TYPE_STRING)
+			dbus_message_iter_get_basic(&iter, &iface);
+	}
+
+	DBG("network %p interface %s", pan->network, iface);
+
+	pan_connect(pan, iface);
+}
+
+static void pan_connect_append(DBusMessageIter *iter,
+		void *user_data)
+{
+	const char *role = BLUETOOTH_PAN_NAP;
+
+	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &role);
+}
+
 static int bluetooth_pan_connect(struct connman_network *network)
 {
-	return -EIO;
+	struct bluetooth_pan *pan = connman_network_get_data(network);
+	const char *path;
+
+	DBG("network %p", network);
+
+	if (pan == NULL)
+		return -EINVAL;
+
+	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
+
+	if (g_dbus_proxy_method_call(pan->btnetwork_proxy, "Connect",
+					pan_connect_append, pan_connect_cb,
+					g_strdup(path), g_free) == FALSE)
+		return -EIO;
+
+	connman_network_set_associating(pan->network, TRUE);
+
+	return -EINPROGRESS;
+}
+
+static void pan_disconnect_cb(DBusMessage *message, void *user_data)
+{
+	const char *path = user_data;
+	struct bluetooth_pan *pan;
+
+	pan = g_hash_table_lookup(networks, path);
+	if (pan == NULL) {
+		DBG("network already removed");
+		return;
+	}
+
+	if (dbus_message_get_type(message) == DBUS_MESSAGE_TYPE_ERROR) {
+		const char *dbus_error = dbus_message_get_error_name(message);
+
+		DBG("network %p %s", pan->network, dbus_error);
+	}
+
+	DBG("network %p", pan->network);
+
+	connman_network_set_connected(pan->network, FALSE);
 }
 
 static int bluetooth_pan_disconnect(struct connman_network *network)
 {
-	return -EIO;
+	struct bluetooth_pan *pan = connman_network_get_data(network);
+	const char *path;
+
+	DBG("network %p", network);
+
+	if (pan == NULL)
+		return -EINVAL;
+
+	path = g_dbus_proxy_get_path(pan->btnetwork_proxy);
+
+	if (g_dbus_proxy_method_call(pan->btnetwork_proxy, "Disconnect",
+					NULL, pan_disconnect_cb,
+					g_strdup(path), g_free) == FALSE)
+		return -EIO;
+
+       return -EINPROGRESS;
 }
 
 static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
 		DBusMessageIter *iter, void *user_data)
 {
 	struct bluetooth_pan *pan;
-	connman_bool_t proxy_connected;
+	connman_bool_t proxy_connected, network_connected;
 
 	if (strcmp(name, "Connected") != 0)
 		return;
 
 	pan = g_hash_table_lookup(networks, g_dbus_proxy_get_path(proxy));
-	if (pan == NULL)
+	if (pan == NULL || pan->network == NULL)
 		return;
 
 	dbus_message_iter_get_basic(iter, &proxy_connected);
+	network_connected = connman_network_get_connected(pan->network);
 
-	DBG("proxy connected %d", proxy_connected);
+       DBG("network %p network connected %d proxy connected %d",
+                       pan->network, network_connected, proxy_connected);
+
+       if (network_connected != proxy_connected)
+               connman_network_set_connected(pan->network, proxy_connected);
 }
 
 static void pan_create_nap(struct bluetooth_pan *pan)
@@ -229,6 +358,9 @@ static void pan_create_nap(struct bluetooth_pan *pan)
 	}
 
 	connman_device_add_network(device, pan->network);
+
+	if (pan_connect(pan, NULL) == TRUE)
+		DBG("network %p already connected", pan->network);
 }
 
 static void btdevice_property_change(GDBusProxy *proxy, const char *name,
