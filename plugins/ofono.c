@@ -963,7 +963,7 @@ static void create_device(struct modem_data *modem)
 	else
 		ident = g_strdup(ident);
 
-	device = connman_device_create(ident, CONNMAN_DEVICE_TYPE_CELLULAR);
+	device = connman_device_create("ofono", CONNMAN_DEVICE_TYPE_CELLULAR);
 	if (device == NULL)
 		goto out;
 
