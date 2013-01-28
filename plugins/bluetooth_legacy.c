@@ -73,9 +73,22 @@ static GHashTable *pending_networks = NULL;
 
 static int pan_probe(struct connman_network *network)
 {
-	DBG("network %p", network);
+	GHashTableIter iter;
+	gpointer key, val;
 
-	return 0;
+	g_hash_table_iter_init(&iter, bluetooth_networks);
+	while (g_hash_table_iter_next(&iter, &key, &val) == TRUE) {
+		struct connman_network *known = val;
+
+		if (network != known)
+			continue;
+
+		DBG("network %p", network);
+
+		return 0;
+	}
+
+	return -EOPNOTSUPP;
 }
 
 static void pan_remove(struct connman_network *network)
@@ -266,6 +279,7 @@ static int pan_disconnect(struct connman_network *network)
 static struct connman_network_driver pan_driver = {
 	.name		= "bluetooth_legacy-pan",
 	.type		= CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN,
+	.priority       = CONNMAN_NETWORK_PRIORITY_LOW,
 	.probe		= pan_probe,
 	.remove		= pan_remove,
 	.connect	= pan_connect,
@@ -443,11 +457,11 @@ static void network_properties_reply(DBusPendingCall *call, void *user_data)
 
 	connman_network_set_name(network, name);
 
+	g_hash_table_replace(bluetooth_networks, g_strdup(path), network);
+
 	connman_device_add_network(device, network);
 
 	connman_network_set_group(network, ident);
-
-	g_hash_table_replace(bluetooth_networks, g_strdup(path), network);
 
 done:
 	dbus_message_unref(reply);
