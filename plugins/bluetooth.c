@@ -31,16 +31,24 @@
 #include <connman/dbus.h>
 #include <connman/technology.h>
 #include <connman/device.h>
+#include <connman/inet.h>
 #include <gdbus.h>
 
 #define BLUEZ_SERVICE                   "org.bluez"
 #define BLUEZ_PATH                      "/org/bluez"
+#define BLUETOOTH_PAN_NAP               "00001116-0000-1000-8000-00805f9b34fb"
 
 #define BLUETOOTH_ADDR_LEN              6
 
 static DBusConnection *connection;
 static GDBusClient *client;
 static GHashTable *devices;
+static GHashTable *networks;
+
+struct bluetooth_pan {
+	GDBusProxy *btdevice_proxy;
+	GDBusProxy *btnetwork_proxy;
+};
 
 static void address2ident(const char *address, char *ident)
 {
@@ -74,6 +82,141 @@ static connman_bool_t proxy_get_bool(GDBusProxy *proxy, const char *property)
 	dbus_message_iter_get_basic(&iter, &value);
 	return value;
 }
+
+static connman_bool_t proxy_get_nap(GDBusProxy *proxy)
+{
+        DBusMessageIter iter, value;
+
+	if (proxy == NULL)
+		return FALSE;
+
+        if (g_dbus_proxy_get_property(proxy, "UUIDs", &iter) == FALSE)
+                return FALSE;
+
+        dbus_message_iter_recurse(&iter, &value);
+        while (dbus_message_iter_get_arg_type(&value) == DBUS_TYPE_STRING) {
+                const char *uuid;
+
+                dbus_message_iter_get_basic(&value, &uuid);
+                if (strcmp(uuid, BLUETOOTH_PAN_NAP) == 0)
+                        return TRUE;
+
+                dbus_message_iter_next(&value);
+        }
+        return FALSE;
+}
+
+static int bluetooth_pan_probe(struct connman_network *network)
+{
+	return 0;
+}
+
+static void bluetooth_pan_remove(struct connman_network *network)
+{
+
+}
+
+static int bluetooth_pan_connect(struct connman_network *network)
+{
+	return -EIO;
+}
+
+static int bluetooth_pan_disconnect(struct connman_network *network)
+{
+	return -EIO;
+}
+
+static void btnetwork_property_change(GDBusProxy *proxy, const char *name,
+		DBusMessageIter *iter, void *user_data)
+{
+	struct bluetooth_pan *pan;
+	connman_bool_t proxy_connected;
+
+	if (strcmp(name, "Connected") != 0)
+		return;
+
+	pan = g_hash_table_lookup(networks, g_dbus_proxy_get_path(proxy));
+	if (pan == NULL)
+		return;
+
+	dbus_message_iter_get_basic(iter, &proxy_connected);
+
+	DBG("proxy connected %d", proxy_connected);
+}
+
+static void btdevice_property_change(GDBusProxy *proxy, const char *name,
+		DBusMessageIter *iter, void *user_data)
+{
+	struct bluetooth_pan *pan;
+
+	if (strcmp(name, "UUIDs") != 0)
+		return;
+
+	pan = g_hash_table_lookup(networks, g_dbus_proxy_get_path(proxy));
+	if (pan == NULL)
+		return;
+
+	DBG("proxy nap %d", proxy_get_nap(pan->btdevice_proxy));
+}
+
+static void pan_free(gpointer data)
+{
+	struct bluetooth_pan *pan = data;
+
+	if (pan->btnetwork_proxy != NULL) {
+		g_dbus_proxy_unref(pan->btnetwork_proxy);
+		pan->btnetwork_proxy = NULL;
+	}
+
+	if (pan->btdevice_proxy != NULL) {
+		g_dbus_proxy_unref(pan->btdevice_proxy);
+		pan->btdevice_proxy = NULL;
+	}
+
+	g_free(pan);
+}
+
+static void pan_create(GDBusProxy *network_proxy)
+{
+	const char *path = g_dbus_proxy_get_path(network_proxy);
+	struct bluetooth_pan *pan;
+
+	pan = g_try_new0(struct bluetooth_pan, 1);
+
+	if (pan == NULL) {
+		connman_error("Out of memory creating PAN NAP");
+		return;
+	}
+
+	g_hash_table_replace(networks, g_strdup(path), pan);
+
+	pan->btnetwork_proxy = g_dbus_proxy_ref(network_proxy);
+	pan->btdevice_proxy = g_dbus_proxy_new(client, path,
+			"org.bluez.Device1");
+
+	if (pan->btdevice_proxy == NULL) {
+		connman_error("Cannot create BT PAN watcher %s", path);
+		g_hash_table_remove(networks, path);
+		return;
+	}
+
+	g_dbus_proxy_set_property_watch(pan->btnetwork_proxy,
+			btnetwork_property_change, NULL);
+
+	g_dbus_proxy_set_property_watch(pan->btdevice_proxy,
+			btdevice_property_change, NULL);
+
+	DBG("pan %p %s nap %d", pan, path, proxy_get_nap(pan->btdevice_proxy));
+}
+
+static struct connman_network_driver network_driver = {
+	.name		= "bluetooth",
+	.type           = CONNMAN_NETWORK_TYPE_BLUETOOTH_PAN,
+	.probe          = bluetooth_pan_probe,
+	.remove         = bluetooth_pan_remove,
+	.connect        = bluetooth_pan_connect,
+	.disconnect     = bluetooth_pan_disconnect,
+};
 
 static void device_enable_cb(const DBusError *error, void *user_data)
 {
@@ -193,6 +336,7 @@ static void adapter_property_change(GDBusProxy *proxy, const char *name,
 			device_powered, adapter_powered);
 
 	if (device_powered != adapter_powered) {
+		DBG("powering adapter");
 		if (device_powered == TRUE)
 			bluetooth_device_enable(device);
 		else
@@ -264,6 +408,11 @@ static void object_added(GDBusProxy *proxy, void *user_data)
 		return;
 	}
 
+	if (strcmp(interface, "org.bluez.Network1") == 0) {
+		DBG("%s %s", interface, g_dbus_proxy_get_path(proxy));
+		pan_create(proxy);
+		return;
+	}
 }
 
 static void object_removed(GDBusProxy *proxy, void *user_data)
@@ -278,6 +427,14 @@ static void object_removed(GDBusProxy *proxy, void *user_data)
 
 		g_hash_table_remove(devices, path);
 	}
+
+	if (strcmp(interface, "org.bluez.Network1") == 0) {
+		path = g_dbus_proxy_get_path(proxy);
+		DBG("%s %s", interface, path);
+
+		g_hash_table_remove(networks, path);
+	}
+
 }
 
 static int bluetooth_device_probe(struct connman_device *device)
@@ -349,6 +506,15 @@ static int bluetooth_init(void)
 		goto out;
 	}
 
+	if (connman_network_driver_register(&network_driver) < 0) {
+		connman_technology_driver_unregister(&tech_driver);
+		connman_device_driver_unregister(&device_driver);
+		goto out;
+	}
+
+	networks = g_hash_table_new_full(g_str_hash, g_str_equal, g_free,
+			pan_free);
+
 	client = g_dbus_client_new(connection, BLUEZ_SERVICE, BLUEZ_PATH);
 	if (client == NULL) {
 		connman_warn("Failed to initialize D-Bus client for "
@@ -362,6 +528,9 @@ static int bluetooth_init(void)
 	return 0;
 
 out:
+	if (networks != NULL)
+		g_hash_table_destroy(networks);
+
 	if (devices != NULL)
 		g_hash_table_destroy(devices);
 
@@ -376,6 +545,9 @@ out:
 
 static void bluetooth_exit(void)
 {
+	connman_network_driver_unregister(&network_driver);
+	g_hash_table_destroy(networks);
+
 	connman_device_driver_unregister(&device_driver);
 	g_hash_table_destroy(devices);
 
