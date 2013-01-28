@@ -3765,8 +3765,6 @@ static DBusMessage *disconnect_service(DBusConnection *conn,
 	if (err < 0) {
 		if (err != -EINPROGRESS)
 			return __connman_error_failed(msg, -err);
-
-		return NULL;
 	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
