@@ -162,19 +162,13 @@ WiFi
 Bluetooth
 =========
 
-- Add support for BlueZ 5.x APIs
+- Remove Bluez 4.x support
 
-  Priority: High
+  Priority: Low
   Complexity: C1
 
-  Rename current plugin to plugins/bluetooth-legacy.c and make sure it
-  does not register any technology or service when BlueZ 4.x API is not
-  present.
-
-  Create new plugins/bluetooth.c to support BlueZ 5.x API and make use
-  of GDBusClient and GDBusProxy (see bluetoothctl for usage example).
-
-  Remove plugins/bluetooth-legacy.c support in about 6 month (July 2013).
+  Remove plugins/bluetooth-legacy.c support in about 6 month (July 2013) or
+  when Bluez 4.x usage becomes minimal.
 
 Cellular
 ========
