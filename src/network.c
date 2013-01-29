@@ -762,8 +762,10 @@ static int network_probe(struct connman_network *network)
 	for (list = driver_list; list; list = list->next) {
 		driver = list->data;
 
-		if (match_driver(network, driver) == FALSE)
+		if (match_driver(network, driver) == FALSE) {
+			driver = NULL;
 			continue;
+		}
 
 		DBG("driver %p name %s", driver, driver->name);
 
