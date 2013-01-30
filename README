@@ -204,6 +204,23 @@ For a working system, certain configuration options need to be enabled:
 		in order to enable the dbus access.
 
 
+Kernel configuration
+====================
+
+In order to support tethering, the following kernel configuration options
+need to be enabled either as modules (m) or builtin (y):
+
+CONFIG_BRIDGE
+CONFIG_IP_NF_TARGET_MASQUERADE
+
+In order to enable CONFIG_IP_NF_TARGET_MASQUERADE, the following options need
+to be enabled also as modules (m) or builtin (y):
+
+CONFIG_NETFILTER
+CONFIG_NF_CONNTRACK_IPV4
+CONFIG_NF_NAT_IPV4
+
+
 wpa_supplicant configuration
 ============================
 
