@@ -107,8 +107,6 @@ static void add_network(struct connman_device *device,
 		return;
 	}
 
-	connman_network_set_available(network, TRUE);
-
 	connman_network_set_group(network, "cable");
 
 	ethernet->network = network;
