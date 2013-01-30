@@ -181,8 +181,6 @@ static int create_network(struct dundee_data *info)
 	group = get_ident(info->path);
 	connman_network_set_group(network, group);
 
-	connman_network_set_available(network, TRUE);
-
 	err = connman_device_add_network(info->device, network);
 	if (err < 0) {
 		connman_network_unref(network);
