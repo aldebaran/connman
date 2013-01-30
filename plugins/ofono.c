@@ -1037,8 +1037,6 @@ static void add_network(struct modem_data *modem)
 	group = get_ident(modem->context->path);
 	connman_network_set_group(modem->network, group);
 
-	connman_network_set_available(modem->network, TRUE);
-
 	connman_network_set_bool(modem->network, "Roaming",
 					modem->roaming);
 
