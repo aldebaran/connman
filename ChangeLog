@@ -1,3 +1,15 @@
+ver 1.11:
+	Fix issue with agent reference counting imbalance.
+	Fix issue with handling max number of SSID for scanning.
+	Fix issue with missing notification of online state changes.
+	Fix issue with not properly triggering auto-connect behavior.
+	Fix issue with disabling IPv6 in lower up interface states.
+	Fix issue with spurious error messages for interface handling.
+	Fix issue with wrong answer count in DNS responses.
+	Fix issue with crash in DNS lookup function.
+	Add support for BlueZ 5.x network interfaces.
+	Remove deprecated WiMAX support.
+
 ver 1.10:
 	Fix issue with not skipping service if settings loading fails.
 	Fix issue with not clearing address before starting DHCP.
