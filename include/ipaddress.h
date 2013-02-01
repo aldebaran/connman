@@ -46,7 +46,7 @@ int connman_ipaddress_set_ipv6(struct connman_ipaddress *ipaddress,
 void connman_ipaddress_set_peer(struct connman_ipaddress *ipaddress,
 				const char *peer);
 void connman_ipaddress_clear(struct connman_ipaddress *ipaddress);
-void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
+void connman_ipaddress_copy_address(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source);
 
 #ifdef __cplusplus

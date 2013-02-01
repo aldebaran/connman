@@ -177,7 +177,12 @@ void connman_ipaddress_clear(struct connman_ipaddress *ipaddress)
 	ipaddress->gateway = NULL;
 }
 
-void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
+/*
+ * Note that this copy function only copies the actual address and
+ * prefixlen. If you need full copy of ipaddress struct, then you need
+ * to create a new function that does that.
+ */
+void connman_ipaddress_copy_address(struct connman_ipaddress *ipaddress,
 					struct connman_ipaddress *source)
 {
 	if (ipaddress == NULL || source == NULL)
@@ -188,13 +193,4 @@ void connman_ipaddress_copy(struct connman_ipaddress *ipaddress,
 
 	g_free(ipaddress->local);
 	ipaddress->local = g_strdup(source->local);
-
-	g_free(ipaddress->peer);
-	ipaddress->peer = g_strdup(source->peer);
-
-	g_free(ipaddress->broadcast);
-	ipaddress->broadcast = g_strdup(source->broadcast);
-
-	g_free(ipaddress->gateway);
-	ipaddress->gateway = g_strdup(source->gateway);
 }

@@ -663,11 +663,11 @@ void __connman_ipconfig_newaddr(int index, int family, const char *label,
 		__connman_ippool_newaddr(index, address, prefixlen);
 
 	if (ipdevice->config_ipv4 != NULL && family == AF_INET)
-		connman_ipaddress_copy(ipdevice->config_ipv4->system,
+		connman_ipaddress_copy_address(ipdevice->config_ipv4->system,
 					ipaddress);
 
 	else if (ipdevice->config_ipv6 != NULL && family == AF_INET6)
-		connman_ipaddress_copy(ipdevice->config_ipv6->system,
+		connman_ipaddress_copy_address(ipdevice->config_ipv6->system,
 					ipaddress);
 	else
 		return;
