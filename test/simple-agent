@@ -276,7 +276,7 @@ def vpnNameOwnerChanged(proxy):
 						     'net.connman.vpn.Manager')
 			vpn_manager.RegisterAgent(path)
 		except:
-			print "vpn agent registered"
+			print "vpn agent is not registered"
 	else:
 		print("vpnd is disconnected from system bus")
 		vpn_manager = None
@@ -307,10 +307,14 @@ if __name__ == '__main__':
 	path = "/test/agent"
 	object = Agent(bus, path)
 
-	vpn_manager = dbus.Interface(bus.get_object('net.connman.vpn', "/"),
-					'net.connman.vpn.Manager')
-	vpn_path = "/test/vpn_agent"
-	vpn_object = VpnAgent(bus, vpn_path)
+	try:
+		vpn_manager = dbus.Interface(bus.get_object('net.connman.vpn', "/"),
+					    'net.connman.vpn.Manager')
+		vpn_path = "/test/vpn_agent"
+		vpn_object = VpnAgent(bus, vpn_path)
+	except:
+		vpn_manager = None
+		print "net.connman.vpn is not present"
 
 	if len(sys.argv) >= 2:
 		for arg in sys.argv[1:]:
@@ -340,9 +344,12 @@ if __name__ == '__main__':
 	except:
 		print "Cannot register connman agent."
 
-	vpn_manager.RegisterAgent(vpn_path)
-
-	bus.watch_name_owner('net.connman.vpn', vpnNameOwnerChanged)
+	if vpn_manager != None:
+		try:
+			vpn_manager.RegisterAgent(vpn_path)
+			bus.watch_name_owner('net.connman.vpn', vpnNameOwnerChanged)
+		except:
+			"Cannot register vpn agent"
 
 	mainloop = gobject.MainLoop()
 	mainloop.run()
