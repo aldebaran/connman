@@ -1933,6 +1933,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		*privacy_string = NULL;
 	int prefix_length = 0, privacy = 0;
 	DBusMessageIter dict;
+	int type = -1;
 
 	DBG("ipconfig %p", ipconfig);
 
@@ -2021,7 +2022,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 
 	case CONNMAN_IPCONFIG_METHOD_AUTO:
 		if (ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV6)
-			return -EINVAL;
+			return -EOPNOTSUPP;
 
 		ipconfig->method = method;
 		if (privacy_string != NULL)
@@ -2030,7 +2031,26 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_MANUAL:
-		if (address == NULL)
+		switch (ipconfig->type) {
+		case CONNMAN_IPCONFIG_TYPE_IPV4:
+			type = AF_INET;
+			break;
+		case CONNMAN_IPCONFIG_TYPE_IPV6:
+			type = AF_INET6;
+			break;
+		case CONNMAN_IPCONFIG_TYPE_UNKNOWN:
+			type = -1;
+			break;
+		}
+
+		if ((address != NULL && connman_inet_check_ipaddress(address)
+						!= type) ||
+				(netmask != NULL &&
+				connman_inet_check_ipaddress(netmask)
+						!= type) ||
+				(gateway != NULL &&
+				connman_inet_check_ipaddress(gateway)
+						!= type))
 			return -EINVAL;
 
 		ipconfig->method = method;
@@ -2045,7 +2065,7 @@ int __connman_ipconfig_set_config(struct connman_ipconfig *ipconfig,
 		break;
 
 	case CONNMAN_IPCONFIG_METHOD_DHCP:
-		if (ipconfig->type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		if (ipconfig->type != CONNMAN_IPCONFIG_TYPE_IPV4)
 			return -EOPNOTSUPP;
 
 		ipconfig->method = method;
