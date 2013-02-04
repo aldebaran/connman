@@ -2961,48 +2961,66 @@ error:
 }
 
 static int set_ipconfig(struct connman_service *service,
-			struct connman_ipconfig *ipconfig,
-			DBusMessageIter *array,
-			enum connman_service_state state,
-			enum connman_service_state *new_state)
+		enum connman_ipconfig_type type, DBusMessageIter *array,
+		enum connman_service_state *new_state)
 {
-	enum connman_ipconfig_method old_method;
-	enum connman_ipconfig_method method = CONNMAN_IPCONFIG_METHOD_UNKNOWN;
-	enum connman_ipconfig_type type;
-	int err;
+	struct connman_ipconfig *ipconfig, *new_ipconfig;
+	enum connman_ipconfig_method old_method, new_method;
+	enum connman_service_state state;
+	int err, index;
 
-	if (ipconfig == NULL)
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
+		ipconfig = service->ipconfig_ipv4;
+		state = service->state_ipv4;
+	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
+		ipconfig = service->ipconfig_ipv6;
+		state = service->state_ipv6;
+	} else
 		return -EINVAL;
 
+	if (ipconfig == NULL)
+		return -ENXIO;
+
+	index = __connman_ipconfig_get_index(ipconfig);
+
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		new_ipconfig = create_ip4config(service, index,
+				CONNMAN_IPCONFIG_METHOD_UNKNOWN);
+	else
+		new_ipconfig = create_ip6config(service, index);
+
+	err = __connman_ipconfig_set_config(new_ipconfig, array);
+	if (err < 0) {
+		__connman_ipconfig_unref(new_ipconfig);
+		return err;
+	}
+
 	old_method = __connman_ipconfig_get_method(ipconfig);
+	new_method = __connman_ipconfig_get_method(new_ipconfig);
 
 	if (is_connecting_state(service, state) ||
 					is_connected_state(service, state))
 		__connman_network_clear_ipconfig(service->network, ipconfig);
-
-	err = __connman_ipconfig_set_config(ipconfig, array);
-	method = __connman_ipconfig_get_method(ipconfig);
-	type = __connman_ipconfig_get_config_type(ipconfig);
+	__connman_ipconfig_unref(ipconfig);
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
-		if (err == 0 && old_method == CONNMAN_IPCONFIG_METHOD_OFF &&
-				method == CONNMAN_IPCONFIG_METHOD_DHCP) {
-			*new_state = service->state_ipv4;
-			__connman_ipconfig_enable(ipconfig);
-			__connman_service_auto_connect();
-		}
-
+		service->ipconfig_ipv4 = new_ipconfig;
 	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
-		if (err == 0 && old_method == CONNMAN_IPCONFIG_METHOD_OFF &&
-				method == CONNMAN_IPCONFIG_METHOD_AUTO) {
-			*new_state = service->state_ipv6;
-			__connman_ipconfig_enable(ipconfig);
-			__connman_service_auto_connect();
-		}
+		service->ipconfig_ipv6 = new_ipconfig;
 	}
 
-	DBG("err %d ipconfig %p type %d method %d state %s", err, ipconfig,
-		type, method, state2string(*new_state));
+	__connman_ipconfig_enable(new_ipconfig);
+
+	if (new_method != old_method) {
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+			*new_state = service->state_ipv4;
+		else
+			*new_state = service->state_ipv6;
+		__connman_service_auto_connect();
+	}
+
+	DBG("err %d ipconfig %p type %d method %d state %s", err, new_ipconfig,
+		type, new_method, state2string(*new_state));
 
 	return err;
 }
@@ -3207,9 +3225,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "IPv4.Configuration") == TRUE ||
 			g_str_equal(name, "IPv6.Configuration")) {
 
-		struct connman_ipconfig *ipv4 = NULL, *ipv6 = NULL;
 		enum connman_service_state state =
 						CONNMAN_SERVICE_STATE_UNKNOWN;
+		enum connman_ipconfig_type type =
+			CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 		int err = 0;
 
 		DBG("%s", name);
@@ -3218,33 +3237,31 @@ static DBusMessage *set_property(DBusConnection *conn,
 					service->ipconfig_ipv6 == NULL)
 			return __connman_error_invalid_property(msg);
 
-		if (g_str_equal(name, "IPv4.Configuration") == TRUE) {
-			ipv4 = service->ipconfig_ipv4;
-			err = set_ipconfig(service, ipv4, &value,
-					service->state_ipv4, &state);
+		if (g_str_equal(name, "IPv4.Configuration") == TRUE)
+			type = CONNMAN_IPCONFIG_TYPE_IPV4;
+		else
+			type = CONNMAN_IPCONFIG_TYPE_IPV6;
 
-		} else if (g_str_equal(name, "IPv6.Configuration") == TRUE) {
-			ipv6 = service->ipconfig_ipv6;
-			err = set_ipconfig(service, ipv6, &value,
-					service->state_ipv6, &state);
-		}
+		err = set_ipconfig(service, type, &value, &state);
 
 		if (err < 0) {
 			if (is_connected_state(service, state) ||
 					is_connecting_state(service, state))
 				__connman_network_set_ipconfig(service->network,
-								ipv4, ipv6);
+						service->ipconfig_ipv4,
+						service->ipconfig_ipv6);
 			return __connman_error_failed(msg, -err);
 		}
 
-		if (ipv4)
+		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			ipv4_configuration_changed(service);
-		else if (ipv6)
+		else
 			ipv6_configuration_changed(service);
 
 		if (is_connecting(service) || is_connected(service))
 			__connman_network_set_ipconfig(service->network,
-							ipv4, ipv6);
+					service->ipconfig_ipv4,
+					service->ipconfig_ipv6);
 
 		service_save(service);
 	} else
