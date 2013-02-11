@@ -629,7 +629,7 @@ int dhcp_send_kernel_packet(struct dhcp_packet *dhcp_pkt,
 	memset(&client, 0, sizeof(client));
 	client.sin_family = AF_INET;
 	client.sin_port = htons(dest_port);
-	client.sin_addr.s_addr = dest_ip;
+	client.sin_addr.s_addr = htonl(dest_ip);
 	if (connect(fd, (struct sockaddr *) &client, sizeof(client)) < 0) {
 		close(fd);
 		return -errno;
