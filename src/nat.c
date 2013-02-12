@@ -59,6 +59,7 @@ static int enable_ip_forward(connman_bool_t enable)
 
 static int enable_nat(struct connman_nat *nat)
 {
+	char *cmd;
 	int err;
 
 	g_free(nat->interface);
@@ -68,11 +69,12 @@ static int enable_nat(struct connman_nat *nat)
 		return 0;
 
 	/* Enable masquerading */
-	err = __connman_iptables_command("-t nat -A POSTROUTING "
-					"-s %s/%d -o %s -j MASQUERADE",
+	cmd = g_strdup_printf("-s %s/%d -o %s -j MASQUERADE",
 					nat->address,
 					nat->prefixlen,
 					nat->interface);
+	err = __connman_iptables_append("nat", "POSTROUTING", cmd);
+	g_free(cmd);
 	if (err < 0)
 		return err;
 
@@ -81,17 +83,19 @@ static int enable_nat(struct connman_nat *nat)
 
 static void disable_nat(struct connman_nat *nat)
 {
+	char *cmd;
 	int err;
 
 	if (nat->interface == NULL)
 		return;
 
 	/* Disable masquerading */
-	err = __connman_iptables_command("-t nat -D POSTROUTING "
-					"-s %s/%d -o %s -j MASQUERADE",
+	cmd = g_strdup_printf("-s %s/%d -o %s -j MASQUERADE",
 					nat->address,
 					nat->prefixlen,
 					nat->interface);
+	err = __connman_iptables_delete("nat", "POSTROUTING", cmd);
+	g_free(cmd);
 	if (err < 0)
 		return;
 
