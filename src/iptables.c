@@ -175,6 +175,7 @@ struct connman_iptables {
 };
 
 static GHashTable *table_hash = NULL;
+static gboolean debug_enabled = FALSE;
 
 typedef int (*iterate_entries_cb_t)(struct ipt_entry *entry, int builtin,
 					unsigned int hook,size_t size,
@@ -225,6 +226,18 @@ static int iterate_entries(struct ipt_entry *entries,
 	}
 
 	return 0;
+}
+
+static int print_entry(struct ipt_entry *entry, int builtin, unsigned int hook,
+					size_t size, unsigned int offset,
+					void *user_data)
+{
+	iterate_entries_cb_t cb = user_data;
+
+	DBG("entry %p  hook %d  offset %d  size %d", entry, hook,
+			offset, entry->next_offset);
+
+	return cb(entry, builtin, hook, size, offset, NULL);
 }
 
 static int target_to_verdict(const char *target_name)
@@ -1096,20 +1109,20 @@ static void dump_ip(struct ipt_entry *entry)
 	char ip_mask[INET6_ADDRSTRLEN];
 
 	if (strlen(ip->iniface))
-		connman_info("\tin %s", ip->iniface);
+		DBG("\tin %s", ip->iniface);
 
 	if (strlen(ip->outiface))
-		connman_info("\tout %s", ip->outiface);
+		DBG("\tout %s", ip->outiface);
 
 	if (inet_ntop(AF_INET, &ip->src, ip_string, INET6_ADDRSTRLEN) != NULL &&
 			inet_ntop(AF_INET, &ip->smsk,
 					ip_mask, INET6_ADDRSTRLEN) != NULL)
-		connman_info("\tsrc %s/%s", ip_string, ip_mask);
+		DBG("\tsrc %s/%s", ip_string, ip_mask);
 
 	if (inet_ntop(AF_INET, &ip->dst, ip_string, INET6_ADDRSTRLEN) != NULL &&
 			inet_ntop(AF_INET, &ip->dmsk,
 					ip_mask, INET6_ADDRSTRLEN) != NULL)
-		connman_info("\tdst %s/%s", ip_string, ip_mask);
+		DBG("\tdst %s/%s", ip_string, ip_mask);
 }
 
 static void dump_target(struct ipt_entry *entry)
@@ -1127,27 +1140,27 @@ static void dump_target(struct ipt_entry *entry)
 
 		switch (t->verdict) {
 		case XT_RETURN:
-			connman_info("\ttarget RETURN");
+			DBG("\ttarget RETURN");
 			break;
 
 		case -NF_ACCEPT - 1:
-			connman_info("\ttarget ACCEPT");
+			DBG("\ttarget ACCEPT");
 			break;
 
 		case -NF_DROP - 1:
-			connman_info("\ttarget DROP");
+			DBG("\ttarget DROP");
 			break;
 
 		case -NF_QUEUE - 1:
-			connman_info("\ttarget QUEUE");
+			DBG("\ttarget QUEUE");
 			break;
 
 		case -NF_STOP - 1:
-			connman_info("\ttarget STOP");
+			DBG("\ttarget STOP");
 			break;
 
 		default:
-			connman_info("\tJUMP (0x%x)", t->verdict);
+			DBG("\tJUMP %u", t->verdict);
 			break;
 		}
 
@@ -1159,12 +1172,12 @@ static void dump_target(struct ipt_entry *entry)
 	} else {
 		xt_t = xtables_find_target(target->u.user.name, XTF_TRY_LOAD);
 		if (xt_t == NULL) {
-			connman_info("\ttarget %s", target->u.user.name);
+			DBG("\ttarget %s", target->u.user.name);
 			return;
 		}
 
 		if(xt_t->print != NULL) {
-			connman_info("\ttarget ");
+			DBG("\ttarget ");
 			xt_t->print(NULL, target, 1);
 		}
 	}
@@ -1188,14 +1201,14 @@ static void dump_match(struct ipt_entry *entry)
 		goto out;
 
 	if(xt_m->print != NULL) {
-		connman_info("\tmatch ");
+		DBG("\tmatch ");
 		xt_m->print(NULL, match, 1);
 
 		return;
 	}
 
 out:
-	connman_info("\tmatch %s", match->u.user.name);
+	DBG("\tmatch %s", match->u.user.name);
 
 }
 
@@ -1208,27 +1221,24 @@ static int dump_entry(struct ipt_entry *entry, int builtin,
 	target = ipt_get_target(entry);
 
 	if (offset + entry->next_offset == size) {
-		connman_info("End of CHAIN 0x%x", offset);
+		DBG("\tEnd of CHAIN");
 		return 0;
 	}
 
 	if (!strcmp(target->u.user.name, IPT_ERROR_TARGET)) {
-		connman_info("USER CHAIN (%s) %p  match %p  target %p  size %d",
-			target->data, entry, entry->elems,
-			(char *)entry + entry->target_offset,
-				entry->next_offset);
+		DBG("\tUSER CHAIN (%s) match %p  target %p",
+			target->data, entry->elems,
+			(char *)entry + entry->target_offset);
 
 		return 0;
 	} else if (builtin >= 0) {
-		connman_info("CHAIN (%s) %p  match %p  target %p  size %d",
-			hooknames[builtin], entry, entry->elems,
-			(char *)entry + entry->target_offset,
-				entry->next_offset);
+		DBG("\tCHAIN (%s) match %p  target %p",
+			hooknames[builtin], entry->elems,
+			(char *)entry + entry->target_offset);
 	} else {
-		connman_info("RULE %p  match %p  target %p  size %d", entry,
+		DBG("\tRULE  match %p  target %p",
 			entry->elems,
-			(char *)entry + entry->target_offset,
-				entry->next_offset);
+			(char *)entry + entry->target_offset);
 	}
 
 	dump_match(entry);
@@ -1238,19 +1248,54 @@ static int dump_entry(struct ipt_entry *entry, int builtin,
 	return 0;
 }
 
-static void iptables_dump(struct connman_iptables *table)
+static void dump_table(struct connman_iptables *table)
 {
-	connman_info("%s valid_hooks=0x%08x, num_entries=%u, size=%u",
+	DBG("%s valid_hooks=0x%08x, num_entries=%u, size=%u",
 			table->info->name,
 			table->info->valid_hooks, table->info->num_entries,
 				table->info->size);
+
+	DBG("entry hook: pre/in/fwd/out/post %d/%d/%d/%d/%d",
+		table->info->hook_entry[NF_IP_PRE_ROUTING],
+		table->info->hook_entry[NF_IP_LOCAL_IN],
+		table->info->hook_entry[NF_IP_FORWARD],
+		table->info->hook_entry[NF_IP_LOCAL_OUT],
+		table->info->hook_entry[NF_IP_POST_ROUTING]);
+	DBG("underflow:  pre/in/fwd/out/post %d/%d/%d/%d/%d",
+		table->info->underflow[NF_IP_PRE_ROUTING],
+		table->info->underflow[NF_IP_LOCAL_IN],
+		table->info->underflow[NF_IP_FORWARD],
+		table->info->underflow[NF_IP_LOCAL_OUT],
+		table->info->underflow[NF_IP_POST_ROUTING]);
 
 	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks,
 			table->info->hook_entry,
 			table->blob_entries->size,
-			dump_entry, NULL);
+			print_entry, dump_entry);
+}
 
+static void dump_ipt_replace(struct ipt_replace *repl)
+{
+	DBG("%s valid_hooks 0x%08x  num_entries %u  size %u",
+			repl->name, repl->valid_hooks, repl->num_entries,
+			repl->size);
+
+	DBG("entry hook: pre/in/fwd/out/post %d/%d/%d/%d/%d",
+		repl->hook_entry[NF_IP_PRE_ROUTING],
+		repl->hook_entry[NF_IP_LOCAL_IN],
+		repl->hook_entry[NF_IP_FORWARD],
+		repl->hook_entry[NF_IP_LOCAL_OUT],
+		repl->hook_entry[NF_IP_POST_ROUTING]);
+	DBG("underflow:  pre/in/fwd/out/post %d/%d/%d/%d/%d",
+		repl->underflow[NF_IP_PRE_ROUTING],
+		repl->underflow[NF_IP_LOCAL_IN],
+		repl->underflow[NF_IP_FORWARD],
+		repl->underflow[NF_IP_LOCAL_OUT],
+		repl->underflow[NF_IP_POST_ROUTING]);
+
+	iterate_entries(repl->entries, repl->valid_hooks,
+			repl->hook_entry, repl->size, print_entry, dump_entry);
 }
 
 static int iptables_get_entries(struct connman_iptables *table)
@@ -1382,6 +1427,9 @@ static struct connman_iptables *iptables_init(const char *table_name)
 			table->blob_entries->size, add_entry, table);
 
 	g_hash_table_insert(table_hash, g_strdup(table_name), table);
+
+	if (debug_enabled == TRUE)
+		dump_table(table);
 
 	return table;
 
@@ -1910,7 +1958,7 @@ static int iptables_command(int argc, char *argv[])
 	}
 
 	if (dump) {
-		iptables_dump(table);
+		dump_table(table);
 
 		goto out;
 	}
@@ -2052,6 +2100,9 @@ int __connman_iptables_commit(const char *table_name)
 
 	repl = iptables_blob(table);
 
+	if (debug_enabled == TRUE)
+		dump_ipt_replace(repl);
+
 	err = iptables_replace(table, repl);
 
 	g_free(repl->counters);
@@ -2075,6 +2126,9 @@ static void remove_table(gpointer user_data)
 int __connman_iptables_init(void)
 {
 	DBG("");
+
+	if (getenv("CONNMAN_IPTABLES_DEBUG"))
+		debug_enabled = TRUE;
 
 	table_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, remove_table);
