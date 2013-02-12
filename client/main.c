@@ -42,6 +42,7 @@
 #include "monitor.h"
 
 static GMainLoop *main_loop;
+DBusConnection *connection;
 
 static gboolean timeout_wait(gpointer data)
 {
@@ -72,7 +73,6 @@ static gboolean readmonitor(GIOChannel *channel, GIOCondition condition,
 
 int main(int argc, char *argv[])
 {
-	DBusConnection *connection;
 	DBusError err;
 	int events, error;
 	GIOChannel *gchan;

@@ -22,6 +22,8 @@
 
 #include <dbus/dbus.h>
 
+extern DBusConnection *connection;
+
 void show_interactive(DBusConnection *connection, GMainLoop *mainloop);
 int commands(DBusConnection *connection, char *argv[], int argc);
 int commands_no_options(DBusConnection *connection, char *argv[], int argc);
