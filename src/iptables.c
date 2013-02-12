@@ -820,10 +820,16 @@ static gboolean is_same_ipt_entry(struct ipt_entry *i_e1,
 static gboolean is_same_target(struct xt_entry_target *xt_e_t1,
 					struct xt_entry_target *xt_e_t2)
 {
+	unsigned int i;
+
 	if (xt_e_t1 == NULL || xt_e_t2 == NULL)
 		return FALSE;
 
-	if (strcmp(xt_e_t1->u.user.name, IPT_STANDARD_TARGET) == 0) {
+	if (strcmp(xt_e_t1->u.user.name, "") == 0 &&
+			strcmp(xt_e_t2->u.user.name, "") == 0) {
+		/* fallthrough */
+		return TRUE;
+	} else if (strcmp(xt_e_t1->u.user.name, IPT_STANDARD_TARGET) == 0) {
 		struct xt_standard_target *xt_s_t1;
 		struct xt_standard_target *xt_s_t2;
 
@@ -838,6 +844,12 @@ static gboolean is_same_target(struct xt_entry_target *xt_e_t1,
 
 		if (strcmp(xt_e_t1->u.user.name, xt_e_t2->u.user.name) != 0)
 			return FALSE;
+
+		for (i = 0; i < xt_e_t1->u.target_size -
+				sizeof(struct xt_standard_target); i++) {
+			if ((xt_e_t1->data[i] ^ xt_e_t2->data[i]) != 0)
+				return FALSE;
+		}
 	}
 
 	return TRUE;
@@ -846,6 +858,8 @@ static gboolean is_same_target(struct xt_entry_target *xt_e_t1,
 static gboolean is_same_match(struct xt_entry_match *xt_e_m1,
 				struct xt_entry_match *xt_e_m2)
 {
+	unsigned int i;
+
 	if (xt_e_m1 == NULL || xt_e_m2 == NULL)
 		return FALSE;
 
@@ -857,6 +871,12 @@ static gboolean is_same_match(struct xt_entry_match *xt_e_m1,
 
 	if (strcmp(xt_e_m1->u.user.name, xt_e_m2->u.user.name) != 0)
 		return FALSE;
+
+	for (i = 0; i < xt_e_m1->u.match_size - sizeof(struct xt_entry_match);
+			i++) {
+		if ((xt_e_m1->data[i] ^ xt_e_m2->data[i]) != 0)
+			return FALSE;
+	}
 
 	return TRUE;
 }
