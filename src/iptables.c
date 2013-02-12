@@ -970,10 +970,14 @@ static int iptables_delete_rule(struct connman_iptables *table,
 				struct xtables_rule_match *xt_rm)
 {
 	struct connman_iptables_entry *entry;
-	GList *chain_tail, *list;
+	GList *chain_head, *chain_tail, *list;
 	int builtin, removed;
 
 	removed = 0;
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
+		return -EINVAL;
 
 	chain_tail = find_chain_tail(table, chain_name);
 	if (chain_tail == NULL)
@@ -984,11 +988,12 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	if (list == NULL)
 		return -EINVAL;
 
+	entry = chain_head->data;
+	builtin = entry->builtin;
+
 	entry = list->data;
 	if (entry == NULL)
 		return -EINVAL;
-
-	builtin = entry->builtin;
 
 	/* We have deleted a rule,
 	 * all references should be bumped accordingly */
