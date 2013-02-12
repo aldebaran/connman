@@ -1617,6 +1617,24 @@ static struct connman_iptables *pre_load_table(const char *table_name,
 	return iptables_init(table_name);
 }
 
+static void clear_tables_flags(void)
+{
+	struct xtables_match *xt_m;
+	struct xtables_target *xt_t;
+
+	/*
+	 * Clear all flags because the flags are only valid
+	 * for one rule.
+	 */
+	for (xt_m = xtables_matches; xt_m != NULL; xt_m = xt_m->next)
+		xt_m->mflags = 0;
+
+	for (xt_t = xtables_targets; xt_t != NULL; xt_t = xt_t->next) {
+		xt_t->tflags = 0;
+		xt_t->used = 0;
+	}
+}
+
 static int iptables_command(int argc, char *argv[])
 {
 	struct connman_iptables *table;
@@ -1646,6 +1664,8 @@ static int iptables_command(int argc, char *argv[])
 	xt_t = NULL;
 	/* Default code for options parsing */
 	ret = -EINVAL;
+
+	clear_tables_flags();
 
 	/* extension's options will generate false-positives errors */
 	opterr = 0;
