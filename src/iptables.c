@@ -295,6 +295,17 @@ static gboolean is_jump(struct connman_iptables_entry *e)
 	return false;
 }
 
+static gboolean is_fallthrough(struct connman_iptables_entry *e)
+{
+	struct xt_entry_target *target;
+
+	target = ipt_get_target(e->entry);
+	if (!strcmp(target->u.user.name, ""))
+		return true;
+
+	return false;
+}
+
 static gboolean is_chain(struct connman_iptables *table,
 				struct connman_iptables_entry *e)
 {
@@ -412,6 +423,16 @@ static void update_targets_reference(struct connman_iptables *table,
 			if (t->verdict > entry_before->offset)
 				t->verdict += offset;
 		}
+	}
+
+	if (is_fallthrough(modified_entry)) {
+		t = (struct xt_standard_target *) ipt_get_target(modified_entry->entry);
+
+		t->verdict = entry_before->offset +
+			modified_entry->entry->target_offset +
+			ALIGN(sizeof(struct xt_standard_target));
+		t->target.u.target_size =
+			ALIGN(sizeof(struct xt_standard_target));
 	}
 }
 
