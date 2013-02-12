@@ -2085,6 +2085,517 @@ int __connman_iptables_command(const char *format, ...)
 	return ret;
 }
 
+struct parse_context {
+	int argc;
+	char **argv;
+	struct ipt_ip *ip;
+	struct xtables_target *xt_t;
+	struct xtables_match *xt_m;
+	struct xtables_rule_match *xt_rm;
+};
+
+static int prepare_getopt_args(const char *str, struct parse_context *ctx)
+{
+	char **tokens;
+	int i;
+
+	tokens = g_strsplit_set(str, " ", -1);
+
+	for (i = 0; tokens[i]; i++);
+
+	/* Add space for the argv[0] value */
+	ctx->argc = i + 1;
+
+	/* Don't forget the last NULL entry */
+	ctx->argv = g_try_malloc0((ctx->argc + 1) * sizeof(char *));
+	if (ctx->argv == NULL) {
+		g_strfreev(tokens);
+		return -ENOMEM;
+	}
+
+	/*
+	 * getopt_long() jumps over the first token; we need to add some
+	 * random argv[0] entry.
+	 */
+	ctx->argv[0] = g_strdup("argh");
+	for (i = 1; i < ctx->argc; i++)
+		ctx->argv[i] = tokens[i - 1];
+
+	return 0;
+}
+
+#if XTABLES_VERSION_CODE > 5
+
+static int parse_xt_modules(int c, connman_bool_t invert,
+				struct parse_context *ctx)
+{
+	struct xtables_match *m;
+	struct xtables_rule_match *rm;
+
+	DBG("xtables version code > 5");
+
+	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next) {
+		if (rm->completed != 0)
+			continue;
+
+		m = rm->match;
+
+		if (m->x6_parse == NULL && m->parse == NULL)
+			continue;
+
+		if (c < (int) m->option_offset ||
+				c >= (int) m->option_offset
+					+ XT_OPTION_OFFSET_SCALE)
+			continue;
+
+		xtables_option_mpcall(c, ctx->argv, invert, m, NULL);
+	}
+
+	if (ctx->xt_t == NULL)
+		return 0;
+
+	if (ctx->xt_t->x6_parse == NULL && ctx->xt_t->parse == NULL)
+		return 0;
+
+	if (c < (int) ctx->xt_t->option_offset ||
+			c >= (int) ctx->xt_t->option_offset
+					+ XT_OPTION_OFFSET_SCALE)
+		return 0;
+
+	xtables_option_tpcall(c, ctx->argv, invert, ctx->xt_t, NULL);
+
+	return 0;
+}
+
+static int final_check_xt_modules(struct parse_context *ctx)
+{
+	struct xtables_rule_match *rm;
+
+	DBG("xtables version code > 5");
+
+	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next)
+		xtables_option_mfcall(rm->match);
+
+	if (ctx->xt_t != NULL)
+		xtables_option_tfcall(ctx->xt_t);
+
+	return 0;
+}
+
+#else
+
+static int parse_xt_modules(int c, connman_bool_t invert,
+				struct parse_context *ctx)
+{
+	struct xtables_match *m;
+	struct xtables_rule_match *rm;
+	int err;
+
+	DBG("xtables version code <= 5");
+
+	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next) {
+		if (rm->completed == 1)
+			continue;
+
+		m = rm->match;
+
+		if (m->parse == NULL)
+			continue;
+
+		err = m->parse(c - m->option_offset,
+				argv, invert, &m->mflags,
+				NULL, &m->m);
+		if (err > 0)
+			return -err;
+	}
+
+	if (ctx->xt_t == NULL)
+		return 0;
+
+	if (ctx->xt_t->parse == NULL)
+		return 0;
+
+	err = ctx->xt_m->parse(c - ctx->xt_m->option_offset,
+				ctx->argv, invert, &ctx->xt_m->mflags,
+				NULL, &ctx->xt_m->m);
+	return -err;
+}
+
+static int final_check_xt_modules(struct parse_context *ctx)
+{
+	struct xtables_rule_match *rm;
+
+	DBG("xtables version code <= 5");
+
+	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next)
+		if (rm->match->final_check != NULL)
+			rm->match->final_check(rm->match->mflags);
+
+	if (ctx->xt_t != NULL && ctx->xt_t->final_check != NULL)
+		ctx->xt_t->final_check(ctx->xt_t->tflags);
+
+	return 0;
+}
+
+#endif
+
+static int parse_rule_spec(struct connman_iptables *table,
+				struct parse_context *ctx)
+{
+	/*
+	 * How the parser works:
+	 *
+	 *  - If getopt finds 's', 'd', 'i', 'o'.
+	 *    just extract the information.
+	 *  - if '!' is found, set the invert flag to true and
+	 *    removes the '!' from the optarg string and jumps
+	 *    back to getopt to reparse the current optarg string.
+	 *    After reparsing the invert flag is reseted to false.
+	 *  - If 'm' or 'j' is found then call either
+	 *    prepare_matches() or prepare_target(). Those function
+	 *    will modify (extend) the longopts for getopt_long.
+	 *    That means getopt will change its matching context according
+	 *    the loaded target.
+	 *
+	 *    Here an example with iptables-test
+	 *
+	 *    argv[0] = ./tools/iptables-test
+	 *    argv[1] = -t
+	 *    argv[2] = filter
+	 *    argv[3] = -A
+	 *    argv[4] = INPUT
+	 *    argv[5] = -m
+	 *    argv[6] = mark
+	 *    argv[7] = --mark
+	 *    argv[8] = 999
+	 *    argv[9] = -j
+	 *    argv[10] = LOG
+	 *
+	 *    getopt found 'm' then the optarg is "mark" and optind 7
+	 *    The longopts array containts before hitting the `case 'm'`
+	 *
+	 *    val A has_arg 1 name append
+	 *    val C has_arg 1 name compare
+	 *    val D has_arg 1 name delete
+	 *    val F has_arg 1 name flush-chain
+	 *    val I has_arg 1 name insert
+	 *    val L has_arg 2 name list
+	 *    val N has_arg 1 name new-chain
+	 *    val P has_arg 1 name policy
+	 *    val X has_arg 1 name delete-chain
+	 *    val d has_arg 1 name destination
+	 *    val i has_arg 1 name in-interface
+	 *    val j has_arg 1 name jump
+	 *    val m has_arg 1 name match
+	 *    val o has_arg 1 name out-interface
+	 *    val s has_arg 1 name source
+	 *    val t has_arg 1 name table
+	 *
+	 *    After executing the `case 'm'` block longopts is
+	 *
+	 *    val A has_arg 1 name append
+	 *    val C has_arg 1 name compare
+	 *    val D has_arg 1 name delete
+	 *    val F has_arg 1 name flush-chain
+	 *    val I has_arg 1 name insert
+	 *    val L has_arg 2 name list
+	 *    val N has_arg 1 name new-chain
+	 *    val P has_arg 1 name policy
+	 *    val X has_arg 1 name delete-chain
+	 *    val d has_arg 1 name destination
+	 *    val i has_arg 1 name in-interface
+	 *    val j has_arg 1 name jump
+	 *    val m has_arg 1 name match
+	 *    val o has_arg 1 name out-interface
+	 *    val s has_arg 1 name source
+	 *    val t has_arg 1 name table
+	 *    val   has_arg 1 name mark
+	 *
+	 *    So the 'mark' matcher has added the 'mark' options
+	 *    and getopt will then return c '256' optarg "999" optind 9
+	 *    And we will hit the 'default' statement which then
+	 *    will call the matchers parser (xt_m->parser() or
+	 *    xtables_option_mpcall() depending on which version
+	 *    of libxtables is found.
+	 */
+	connman_bool_t invert = FALSE;
+	int len, c, err;
+
+	DBG("");
+
+	ctx->ip = g_try_new0(struct ipt_ip, 1);
+	if (ctx->ip == NULL)
+		return -ENOMEM;
+
+	/*
+	 * As side effect parsing a rule sets some global flags
+	 * which will be evaluated/verified. Let's reset them
+	 * to ensure we can parse more than one rule.
+	 */
+	clear_tables_flags();
+
+	/*
+	 * Tell getopt_long not to generate error messages for unknown
+	 * options and also reset optind back to 0.
+	 */
+	opterr = 0;
+	optind = 0;
+
+	while ((c = getopt_long(ctx->argc, ctx->argv,
+					"-:d:i:o:s:m:j:",
+					iptables_globals.opts, NULL)) != -1) {
+		switch (c) {
+		case 's':
+			/* Source specification */
+			if (!parse_ip_and_mask(optarg,
+						&ctx->ip->src,
+						&ctx->ip->smsk))
+				break;
+
+			if (invert)
+				ctx->ip->invflags |= IPT_INV_SRCIP;
+
+			break;
+		case 'd':
+			/* Destination specification */
+			if (!parse_ip_and_mask(optarg,
+						&ctx->ip->dst,
+						&ctx->ip->dmsk))
+				break;
+
+			if (invert)
+				ctx->ip->invflags |= IPT_INV_DSTIP;
+			break;
+		case 'i':
+			/* In interface specification */
+			len = strlen(optarg);
+
+			if (len + 1 > IFNAMSIZ)
+				break;
+
+			strcpy(ctx->ip->iniface, optarg);
+			memset(ctx->ip->iniface_mask, 0xff, len + 1);
+
+			if (invert)
+				ctx->ip->invflags |= IPT_INV_VIA_IN;
+
+			break;
+		case 'o':
+			/* Out interface specification */
+			len = strlen(optarg);
+
+			if (len + 1 > IFNAMSIZ)
+				break;
+
+			strcpy(ctx->ip->outiface, optarg);
+			memset(ctx->ip->outiface_mask, 0xff, len + 1);
+
+			if (invert)
+				ctx->ip->invflags |= IPT_INV_VIA_OUT;
+
+			break;
+		case 'm':
+			/* Matches */
+			ctx->xt_m = prepare_matches(table, &ctx->xt_rm, optarg);
+			if (ctx->xt_m == NULL) {
+				err = -EINVAL;
+				goto out;
+			}
+
+			break;
+		case 'j':
+			/* Target */
+			ctx->xt_t = prepare_target(table, optarg);
+			if (ctx->xt_t == NULL) {
+				err = -EINVAL;
+				goto out;
+			}
+
+			break;
+		case 1:
+			if (optarg[0] == '!' && optarg[1] == '\0') {
+				invert = TRUE;
+
+				/* Remove the '!' from the optarg */
+				optarg[0] = '\0';
+
+				/*
+				 * And recall getopt_long without reseting
+				 * invert.
+				 */
+				continue;
+			}
+
+			break;
+		default:
+			err = parse_xt_modules(c, invert, ctx);
+			if (err == 1)
+				continue;
+
+			break;
+		}
+
+		invert = FALSE;
+	}
+
+	err = final_check_xt_modules(ctx);
+
+out:
+	return err;
+}
+
+static void cleanup_parse_context(struct parse_context *ctx)
+{
+	g_strfreev(ctx->argv);
+	g_free(ctx->ip);
+	if (ctx->xt_t != NULL)
+		g_free(ctx->xt_t->t);
+	if (ctx->xt_m != NULL)
+		g_free(ctx->xt_m->m);
+	g_free(ctx);
+}
+
+int __connman_iptables_new_chain(const char *table_name,
+					const char *chain)
+{
+	struct connman_iptables *table;
+
+	DBG("-t %s -N %s", table_name, chain);
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL)
+		return -EINVAL;
+
+	return iptables_add_chain(table, chain);
+}
+
+int __connman_iptables_delete_chain(const char *table_name,
+					const char *chain)
+{
+	struct connman_iptables *table;
+
+	DBG("-t %s -X %s", table_name, chain);
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL)
+		return -EINVAL;
+
+	return iptables_delete_chain(table, chain);
+}
+
+int __connman_iptables_flush_chain(const char *table_name,
+					const char *chain)
+{
+	struct connman_iptables *table;
+
+	DBG("-t %s -F %s", table_name, chain);
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL)
+		return -EINVAL;
+
+	return iptables_flush_chain(table, chain);
+}
+
+int __connman_iptables_change_policy(const char *table_name,
+					const char *chain,
+					const char *policy)
+{
+	struct connman_iptables *table;
+
+	DBG("-t %s -F %s", table_name, chain);
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL)
+		return -EINVAL;
+
+	return iptables_change_policy(table, chain, policy);
+}
+
+int __connman_iptables_append(const char *table_name,
+				const char *chain,
+				const char *rule_spec)
+{
+	struct connman_iptables *table;
+	struct parse_context *ctx;
+	const char *target_name;
+	int err;
+
+	ctx = g_try_new0(struct parse_context, 1);
+	if (ctx == NULL)
+		return -ENOMEM;
+
+	DBG("-t %s -A %s %s", table_name, chain, rule_spec);
+
+	err = prepare_getopt_args(rule_spec, ctx);
+	if (err < 0)
+		goto out;
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	err = parse_rule_spec(table, ctx);
+	if (err < 0)
+		goto out;
+
+	if (ctx->xt_t == NULL)
+		target_name = NULL;
+	else
+		target_name = ctx->xt_t->name;
+
+	err = iptables_insert_rule(table, ctx->ip, chain,
+				target_name, ctx->xt_t, ctx->xt_rm);
+out:
+	cleanup_parse_context(ctx);
+
+	return err;
+}
+
+int __connman_iptables_delete(const char *table_name,
+				const char *chain,
+				const char *rule_spec)
+{
+	struct connman_iptables *table;
+	struct parse_context *ctx;
+	const char *target_name;
+	int err;
+
+	ctx = g_try_new0(struct parse_context, 1);
+	if (ctx == NULL)
+		return -ENOMEM;
+
+	DBG("-t %s -D %s %s", table_name, chain, rule_spec);
+
+	err = prepare_getopt_args(rule_spec, ctx);
+	if (err < 0)
+		goto out;
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	err = parse_rule_spec(table, ctx);
+	if (err < 0)
+		goto out;
+
+	if (ctx->xt_t == NULL)
+		target_name = NULL;
+	else
+		target_name = ctx->xt_t->name;
+
+	err = iptables_delete_rule(table, ctx->ip, chain,
+				target_name, ctx->xt_t, ctx->xt_m,
+				ctx->xt_rm);
+out:
+	cleanup_parse_context(ctx);
+
+	return err;
+}
 
 int __connman_iptables_commit(const char *table_name)
 {

@@ -778,6 +778,22 @@ int __connman_stats_get(struct connman_service *service,
 				connman_bool_t roaming,
 				struct connman_stats_data *data);
 
+int __connman_iptables_new_chain(const char *table_name,
+					const char *chain);
+int __connman_iptables_delete_chain(const char *table_name,
+					const char *chain);
+int __connman_iptables_flush_chain(const char *table_name,
+					const char *chain);
+int __connman_iptables_change_policy(const char *table_name,
+					const char *chain,
+					const char *policy);
+int __connman_iptables_append(const char *table_name,
+			const char *chain,
+			const char *rule_spec);
+int __connman_iptables_delete(const char *table_name,
+			const char *chain,
+			const char *rule_spec);
+
 int __connman_iptables_init(void);
 void __connman_iptables_cleanup(void);
 int __connman_iptables_command(const char *format, ...)
