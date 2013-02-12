@@ -37,6 +37,96 @@
 #include "connman.h"
 
 
+/*
+ * Some comments on how the iptables API works (some of them from the
+ * source code from iptables and the kernel):
+ *
+ * - valid_hooks: bit indicates valid IDs for hook_entry
+ * - hook_entry[ID] offset to the chain start
+ * - overflows should be end of entry chains, and uncodintional policy nodes.
+ * - policy entry: last entry in a chain
+ * - user chain: end of last builtin + policy entry
+ * - final entry must be error node
+ * - Underflows must be unconditional and use the STANDARD target with
+ *   ACCEPT/DROP
+ * - IPT_SO_GET_INFO and IPT_SO_GET_ENTRIES are used to read a table
+ * - IPT_SO_GET_INFO: struct ipt_getinfo (note the lack of table content)
+ * - IPT_SO_GET_ENTRIES: struct ipt_get_entries (contains only parts of the
+ *   table header/meta info. The table is appended after the header. The entries
+ *   are of the type struct ipt_entry.
+ * - After the ipt_entry the matches are appended. After the matches
+ *   the target is appended.
+ * - ipt_entry->target_offset =  Size of ipt_entry + matches
+ * - ipt_entry->next_offset =  Size of ipt_entry + matches + target
+ * - IPT_SO_SET_REPLACE is used to write a table (contains the complete
+ * - hook_entry and overflow mark the begining and the end of a chain, e.g
+ *     entry hook: pre/in/fwd/out/post -1/0/352/504/-1
+ *     underflow:  pre/in/fwd/out/post -1/200/352/904/-1
+ *   means that INPUT starts at offset 0 and ends at 200 (the start offset to
+ *   the last element). FORWARD has one entry starting/ending at 352. The entry
+ *   has a size of 152. 352 + 152 = 504 which is the start of the OUTPUT chain
+ *   which then ends at 904. PREROUTING and POSTROUTING are invalid hooks in
+ *   the filter table.
+ * - 'iptables -t filter -A INPUT -m mark --mark 999 -j LOG'
+ *   writing that table looks like this:
+ *
+ *   filter valid_hooks 0x0000000e  num_entries 5  size 856
+ *   entry hook: pre/in/fwd/out/post -1/0/376/528/-1
+ *   underflow:  pre/in/fwd/out/post -1/224/376/528/-1
+ *   entry 0x699d30  offset 0  size 224
+ *     RULE  match 0x699da0  target 0x699dd0
+ *             match  mark match 0x3e7
+ *             target  LOG flags 0 level 4
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x699e10  offset 224  size 152
+ *     RULE  match 0x699e80  target 0x699e80
+ *             target ACCEPT
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x699ea8  offset 376  size 152
+ *     RULE  match 0x699f18  target 0x699f18
+ *             target ACCEPT
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x699f40  offset 528  size 152
+ *     RULE  match 0x699fb0  target 0x699fb0
+ *             target ACCEPT
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x699fd8  offset 680  size 176
+ *     USER CHAIN (ERROR)  match 0x69a048  target 0x69a048
+ *
+ *   Reading the filter table looks like this:
+ *
+ *   filter valid_hooks 0x0000000e  num_entries 5  size 856
+ *   entry hook: pre/in/fwd/out/post -1/0/376/528/-1
+ *   underflow:  pre/in/fwd/out/post -1/224/376/528/-1
+ *   entry 0x25fec28  offset 0  size 224
+ *     CHAIN (INPUT)  match 0x25fec98  target 0x25fecc8
+ *             match  mark match 0x3e7
+ *             target  LOG flags 0 level 4
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x25fed08  offset 224  size 152
+ *     RULE  match 0x25fed78  target 0x25fed78
+ *             target ACCEPT
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x25feda0  offset 376  size 152
+ *     CHAIN (FORWARD)  match 0x25fee10  target 0x25fee10
+ *             target ACCEPT
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x25fee38  offset 528  size 152
+ *     CHAIN (OUTPUT)  match 0x25feea8  target 0x25feea8
+ *             target ACCEPT
+ *             src 0.0.0.0/0.0.0.0
+ *             dst 0.0.0.0/0.0.0.0
+ *   entry 0x25feed0  offset 680  size 176
+ *     End of CHAIN
+ */
+
 static const char *hooknames[] = {
 	[NF_IP_PRE_ROUTING]	= "PREROUTING",
 	[NF_IP_LOCAL_IN]	= "INPUT",
