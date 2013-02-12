@@ -84,6 +84,35 @@ static void test_iptables_chain2(void)
 	g_assert(err == 0);
 }
 
+static void test_iptables_chain3(void)
+{
+	int err;
+
+	err = __connman_iptables_new_chain("filter", "user-chain-0");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_new_chain("filter", "user-chain-1");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_delete_chain("filter", "user-chain-1");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_delete_chain("filter", "user-chain-0");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+}
+
 static void test_iptables_rule0(void)
 {
 	int err;
@@ -265,6 +294,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/iptables/chain0", test_iptables_chain0);
 	g_test_add_func("/iptables/chain1", test_iptables_chain1);
 	g_test_add_func("/iptables/chain2", test_iptables_chain2);
+	g_test_add_func("/iptables/chain3", test_iptables_chain3);
 	g_test_add_func("/iptables/rule0",  test_iptables_rule0);
 	g_test_add_func("/iptables/rule1",  test_iptables_rule1);
 	g_test_add_func("/iptables/rule2",  test_iptables_rule2);
