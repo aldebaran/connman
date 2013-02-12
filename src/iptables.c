@@ -176,13 +176,11 @@ struct connman_iptables {
 
 static GHashTable *table_hash = NULL;
 
-typedef int (*iterate_entries_cb_t)(struct connman_iptables *table,
-					struct ipt_entry *entry, int builtin,
-					unsigned int hook, unsigned int offset,
-					void *user_data);
+typedef int (*iterate_entries_cb_t)(struct ipt_entry *entry, int builtin,
+					unsigned int hook,size_t size,
+					unsigned int offset, void *user_data);
 
-static int iterate_entries(struct connman_iptables *table,
-				struct ipt_entry *entries,
+static int iterate_entries(struct ipt_entry *entries,
 				unsigned int valid_hooks,
 				unsigned int *hook_entry,
 				size_t size, iterate_entries_cb_t cb,
@@ -220,19 +218,13 @@ static int iterate_entries(struct connman_iptables *table,
 				builtin = h;
 		}
 
-		err = cb(table, entry, builtin, h, i, user_data);
+		err = cb(entry, builtin, h, size, i, user_data);
 		if (err < 0)
 			return err;
 
 	}
 
 	return 0;
-}
-
-static unsigned long entry_to_offset(struct connman_iptables *table,
-					struct ipt_entry *entry)
-{
-	return (void *)entry - (void *)table->blob_entries->entrytable;
 }
 
 static int target_to_verdict(const char *target_name)
@@ -1207,17 +1199,15 @@ out:
 
 }
 
-static int dump_entry(struct connman_iptables *table,
-			struct ipt_entry *entry, int builtin,
-			unsigned int hook, unsigned int offset,
+static int dump_entry(struct ipt_entry *entry, int builtin,
+			unsigned int hook, size_t size, unsigned int offset,
 			void *user_data)
 {
 	struct xt_entry_target *target;
 
 	target = ipt_get_target(entry);
 
-	if (entry_to_offset(table, entry) + entry->next_offset ==
-					table->blob_entries->size) {
+	if (offset + entry->next_offset == size) {
 		connman_info("End of CHAIN 0x%x", offset);
 		return 0;
 	}
@@ -1255,7 +1245,7 @@ static void iptables_dump(struct connman_iptables *table)
 			table->info->valid_hooks, table->info->num_entries,
 				table->info->size);
 
-	iterate_entries(table, table->blob_entries->entrytable,
+	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks,
 			table->info->hook_entry,
 			table->blob_entries->size,
@@ -1280,10 +1270,10 @@ static int iptables_replace(struct connman_iptables *table,
 			 sizeof(*r) + r->size);
 }
 
-static int add_entry(struct connman_iptables *table, struct ipt_entry *entry,
-			int builtin, unsigned int hook, unsigned offset,
-			void *user_data)
+static int add_entry(struct ipt_entry *entry, int builtin, unsigned int hook,
+			size_t size, unsigned offset, void *user_data)
 {
+	struct connman_iptables *table = user_data;
 	struct ipt_entry *new_entry;
 
 	new_entry = g_try_malloc0(entry->next_offset);
@@ -1387,9 +1377,9 @@ static struct connman_iptables *iptables_init(const char *table_name)
 	memcpy(table->hook_entry, table->info->hook_entry,
 				sizeof(table->info->hook_entry));
 
-	iterate_entries(table, table->blob_entries->entrytable,
+	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks, table->info->hook_entry,
-			table->blob_entries->size, add_entry, NULL);
+			table->blob_entries->size, add_entry, table);
 
 	g_hash_table_insert(table_hash, g_strdup(table_name), table);
 
