@@ -55,6 +55,7 @@ tools/private-network-test
 unit/test-session
 unit/test-ippool
 unit/test-nat
+unit/test-iptables
 
 doc/*.bak
 doc/*.stamp

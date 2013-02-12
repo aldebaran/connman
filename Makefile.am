@@ -249,7 +249,8 @@ noinst_PROGRAMS += tools/supplicant-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
-			unit/test-session unit/test-ippool unit/test-nat
+			unit/test-session unit/test-ippool unit/test-nat \
+			unit/test-iptables
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \
@@ -292,6 +293,11 @@ unit_test_ippool_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		 src/ippool.c unit/test-ippool.c
 unit_test_ippool_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 unit_objects += $(unit_test_ippool_OBJECTS)
+
+unit_test_iptables_SOURCES = $(gdbus_sources) src/log.c \
+		 src/iptables.c unit/test-iptables.c
+unit_test_iptables_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ @XTABLES_LIBS@ -ldl
+unit_objects += $(unit_test_iptables_OBJECTS)
 
 unit_test_nat_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		src/iptables.c  src/nat.c unit/test-nat.c
