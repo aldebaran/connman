@@ -57,20 +57,6 @@ static int enable_ip_forward(connman_bool_t enable)
 	return 0;
 }
 
-static void flush_nat(void)
-{
-	int err;
-
-	err = __connman_iptables_command("-t nat -F POSTROUTING");
-	if (err < 0) {
-		DBG("Flushing the nat table failed");
-
-		return;
-	}
-
-	__connman_iptables_commit("nat");
-}
-
 static int enable_nat(struct connman_nat *nat)
 {
 	int err;
@@ -217,8 +203,6 @@ int __connman_nat_init(void)
 	nat_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						g_free, cleanup_nat);
 
-	flush_nat();
-
 	return 0;
 }
 
@@ -229,8 +213,6 @@ void __connman_nat_cleanup(void)
 	g_hash_table_foreach(nat_hash, shutdown_nat, NULL);
 	g_hash_table_destroy(nat_hash);
 	nat_hash = NULL;
-
-	flush_nat();
 
 	connman_notifier_unregister(&nat_notifier);
 }
