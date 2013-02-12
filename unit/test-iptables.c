@@ -160,6 +160,24 @@ static void test_iptables_rule2(void)
 	g_assert(err == 0);
 }
 
+static void test_iptables_target0(void)
+{
+	int err;
+
+	/* Test if 'fallthrough' targets work */
+
+	err = __connman_iptables_append("filter", "INPUT",
+					"-m mark --mark 1");
+	g_assert(err == 0);
+
+	err = __connman_iptables_append("filter", "INPUT",
+					"-m mark --mark 2");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+}
+
 struct connman_notifier *nat_notifier;
 
 struct connman_service {
@@ -250,6 +268,7 @@ int main(int argc, char *argv[])
 	g_test_add_func("/iptables/rule0",  test_iptables_rule0);
 	g_test_add_func("/iptables/rule1",  test_iptables_rule1);
 	g_test_add_func("/iptables/rule2",  test_iptables_rule2);
+	g_test_add_func("/iptables/target0", test_iptables_target0);
 	g_test_add_func("/nat/basic0", test_nat_basic0);
 	g_test_add_func("/nat/basic1", test_nat_basic1);
 
