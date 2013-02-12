@@ -27,79 +27,6 @@
 
 #include "../src/connman.h"
 
-static void test_iptables_basic0(void)
-{
-	int err;
-
-	err = __connman_iptables_command("-t filter -A INPUT "
-					"-m mark --mark 1 -j LOG");
-	g_assert(err == 0);
-
-	err = __connman_iptables_commit("filter");
-	g_assert(err == 0);
-
-	err = __connman_iptables_command("-t filter -D INPUT "
-					"-m mark --mark 1 -j LOG");
-	g_assert(err == 0);
-
-	err = __connman_iptables_commit("filter");
-	g_assert(err == 0);
-}
-
-static void test_iptables_basic1(void)
-{
-	int err;
-
-	/* Test if we can do NAT stuff */
-
-	err = __connman_iptables_command("-t nat -A POSTROUTING "
-				"-s 10.10.1.0/24 -o eth0 -j MASQUERADE");
-
-	err = __connman_iptables_commit("nat");
-	g_assert(err == 0);
-
-	err = __connman_iptables_command("-t nat -D POSTROUTING "
-				"-s 10.10.1.0/24 -o eth0 -j MASQUERADE");
-
-	err = __connman_iptables_commit("nat");
-	g_assert(err == 0);
-}
-
-static void test_iptables_basic2(void)
-{
-	int err;
-
-	/* Test if the right rule is removed */
-
-	err = __connman_iptables_command("-t filter -A INPUT "
-					"-m mark --mark 1 -j LOG");
-	g_assert(err == 0);
-
-	err = __connman_iptables_commit("filter");
-	g_assert(err == 0);
-
-	err = __connman_iptables_command("-t filter -A INPUT "
-					"-m mark --mark 2 -j LOG");
-	g_assert(err == 0);
-
-	err = __connman_iptables_commit("filter");
-	g_assert(err == 0);
-
-	err = __connman_iptables_command("-t filter -D INPUT "
-					"-m mark --mark 2 -j LOG");
-	g_assert(err == 0);
-
-	err = __connman_iptables_commit("filter");
-	g_assert(err == 0);
-
-	err = __connman_iptables_command("-t filter -D INPUT "
-					"-m mark --mark 1 -j LOG");
-	g_assert(err == 0);
-
-	err = __connman_iptables_commit("filter");
-	g_assert(err == 0);
-}
-
 static void test_iptables_chain0(void)
 {
 	int err;
@@ -317,9 +244,6 @@ int main(int argc, char *argv[])
 	__connman_iptables_init();
 	__connman_nat_init();
 
-	g_test_add_func("/iptables/basic0", test_iptables_basic0);
-	g_test_add_func("/iptables/basic1", test_iptables_basic1);
-	g_test_add_func("/iptables/basic2", test_iptables_basic2);
 	g_test_add_func("/iptables/chain0", test_iptables_chain0);
 	g_test_add_func("/iptables/chain1", test_iptables_chain1);
 	g_test_add_func("/iptables/chain2", test_iptables_chain2);
