@@ -26,7 +26,6 @@ void show_interactive(DBusConnection *connection, GMainLoop *mainloop);
 int commands(DBusConnection *connection, char *argv[], int argc);
 int commands_no_options(DBusConnection *connection, char *argv[], int argc);
 int commands_options(DBusConnection *connection, char *argv[], int argc);
-void show_help(void);
 int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn);
 int config_switch(int argc, char *argv[], int c, DBusConnection *conn);
 int service_switch(int argc, char *argv[], int c, DBusConnection *conn,

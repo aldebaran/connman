@@ -66,46 +66,6 @@ static char *proxy_simple[] = {
 
 static int cmd_help(char *args[], int num, struct option *options);
 
-void show_help(void)
-{
-	printf("Usage: connmanctl <command> [args]\n"
-	"  enable                             Enables given technology\n"
-	"        <technology>\n"
-	"        offlinemode                  Enables OfflineMode\n"
-	"  disable                            Disables given technology\n"
-	"        <technology>\n"
-	"        offlinemode                  Disables OfflineMode\n"
-	"  state                              Shows if the system is online or offline\n"
-	"  services                           Display list of all services\n"
-	"        --properties <service name>  Show properties of service\n"
-	"  technologies                       Current technology on the system\n"
-	"  scan <technology>                  Scans for new services on the given technology\n"
-	"  connect <service>                  Connect to a given service\n"
-	"  disconnect <service>               Disconnect from service\n"
-	"  config <service> [arg]             Set certain config options\n"
-	"        --autoconnect=y/n            Set autoconnect to service\n"
-	"        --nameservers <names>        Set manual name servers\n"
-	"        --timeservers <names>        Set manual time servers\n"
-	"        --domains <domains>          Set manual domains\n"
-	"        --ipv4                       Set ipv4 configuration\n"
-	"          [METHOD|DHCP|AUTO|MANUAL] [IP] [NETMASK] [GATEWAY]\n"
-	"        --ipv6                       Set ipv6 configuration\n"
-	"          [METHOD|AUTO|MANUAL|OFF] [IP] [PREFIXLENGTH] [GATEWAY]\n"
-	"          [PRIVACY|DISABLED|ENABLED|PREFERED]\n"
-	"        --proxy                      Set proxy configuration\n"
-	"          [METHOD|URL|SERVERS|EXCLUDES]\n"
-	"          if METHOD = manual, enter 'servers' then the list of servers\n"
-	"                         then enter 'excludes' then the list of excludes\n"
-	"        --remove                     Remove the service from favorite\n"
-	"  monitor                            Monitor signals from all Connman interfaces\n"
-	"        --services                   Monitor signals from the Service interface\n"
-	"        --tech                       Monitor signals from the Technology interface\n"
-	"        --manager                    Monitor signals from the Manager interface\n"
-	"  help, --help, (no arguments)       Show this dialogue\n"
-	"  exit, quit, q                      Quit interactive mode\n"
-	"\nNote: arguments and output are considered EXPERIMENTAL for now.\n\n");
-}
-
 int service_switch(int argc, char *argv[], int c, DBusConnection *conn,
 						struct service_data *service)
 {
@@ -335,6 +295,55 @@ static int cmd_exit(char *args[], int num, struct option *options)
 	return 0;
 }
 
+static struct option service_options[] = {
+	{"properties", required_argument, 0, 'p'},
+	{ NULL, }
+};
+
+static const char *service_desc[] = {
+	"<service>        Show properties for service",
+	NULL
+};
+
+static struct option config_options[] = {
+	{"nameservers", required_argument, 0, 'n'},
+	{"timeservers", required_argument, 0, 't'},
+	{"domains", required_argument, 0, 'd'},
+	{"ipv6", required_argument, 0, 'v'},
+	{"proxy", required_argument, 0, 'x'},
+	{"autoconnect", required_argument, 0, 'a'},
+	{"ipv4", required_argument, 0, 'i'},
+	{"remove", 0, 0, 'r'},
+	{ NULL, }
+};
+
+static const char *config_desc[] = {
+	"<dns1> [<dns2>] [<dns3>]",
+	"<ntp1> [<ntp2>] [...]",
+	"<domain1> [<domain2>] [...]",
+	"off|auto|manual <address> <prefixlength> <gateway> <privacy>",
+	"direct|auto <URL>|manual <URL1> [<URL2>] [...]\n"
+	"                   [exclude <exclude1> [<exclude2>] [...]]",
+	"yes|no",
+	"off|dhcp|manual <address> <prefixlength> <gateway>",
+	"                 Remove service",
+	NULL
+};
+
+static struct option monitor_options[] = {
+	{"services", no_argument, 0, 's'},
+	{"tech", no_argument, 0, 'c'},
+	{"manager", no_argument, 0, 'm'},
+	{ NULL, }
+};
+
+static const char *monitor_desc[] = {
+	"                 Monitor only services",
+	"                 Monitor only technologies",
+	"                 Monitor only manager interface",
+	NULL
+};
+
 static const struct {
         const char *cmd;
 	const char *argument;
@@ -349,7 +358,7 @@ static const struct {
 	  cmd_disable, "Disables given technology or offline mode"},
 	{ "state",        NULL,           NULL,            NULL,
 	  cmd_state, "Shows if the system is online or offline" },
-	{ "services",     NULL,           NULL,            NULL,
+	{ "services",     NULL,           service_options, &service_desc[0],
 	  cmd_services, "Display services" },
 	{ "technologies", NULL,           NULL,            NULL,
 	  cmd_technologies, "Display technologies" },
@@ -359,9 +368,9 @@ static const struct {
 	  cmd_connect, "Connect a given service" },
 	{ "disconnect",   "<service>",    NULL,            NULL,
 	  cmd_disconnect, "Disconnect a given service" },
-	{ "config",       "<service>",    NULL,            NULL,
+	{ "config",       "<service>",    config_options,  &config_desc[0],
 	  cmd_config, "Set service configuration options" },
-	{ "monitor",      NULL,           NULL,            NULL,
+	{ "monitor",      NULL,           monitor_options, &monitor_desc[0],
 	  cmd_monitor, "Monitor signals from interfaces" },
 	{ "help",         NULL,           NULL,            NULL,
 	  cmd_help, "Show help" },
@@ -374,7 +383,32 @@ static const struct {
 
 static int cmd_help(char *args[], int num, struct option *options)
 {
-	return -1;
+	int i, j;
+
+	for (i = 0; cmd_table[i].cmd != NULL; i++) {
+		const char *cmd = cmd_table[i].cmd;
+		const char *argument = cmd_table[i].argument;
+		const char *desc = cmd_table[i].desc;
+
+		printf("%-12s%-22s%s\n", cmd != NULL? cmd: "",
+				argument != NULL? argument: "",
+				desc != NULL? desc: "");
+
+		if (cmd_table[i].options != NULL) {
+			for (j = 0; cmd_table[i].options[j].name != NULL;
+			     j++) {
+				const char *options_desc =
+					cmd_table[i].options_desc != NULL ?
+					cmd_table[i].options_desc[j]: "";
+
+				printf("   --%-12s%s\n",
+						cmd_table[i].options[j].name,
+						options_desc);
+			}
+		}
+	}
+
+	return 0;
 }
 
 int commands(DBusConnection *connection, char *argv[], int argc)
@@ -397,10 +431,12 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 	DBusMessage *message = NULL;
 	int error = 0;
 
-
 	if (strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "help") == 0  ||
 						strcmp(argv[0], "h") == 0) {
-		show_help();
+		printf("Usage: connmanctl [[command] [args]]\n");
+		cmd_help(NULL, 0, NULL);
+		printf("\nNote: arguments and output are considered "
+				"EXPERIMENTAL for now.\n\n");
 	} else if (strcmp(argv[0], "state") == 0) {
 		if (argc != 1) {
 			fprintf(stderr, "State cannot accept an argument, "
@@ -502,30 +538,6 @@ int commands_options(DBusConnection *connection, char *argv[], int argc)
 	int error, c;
 	int option_index = 0;
 	struct service_data service;
-
-	static struct option service_options[] = {
-		{"properties", required_argument, 0, 'p'},
-		{0, 0, 0, 0}
-	};
-
-	static struct option config_options[] = {
-		{"nameservers", required_argument, 0, 'n'},
-		{"timeservers", required_argument, 0, 't'},
-		{"domains", required_argument, 0, 'd'},
-		{"ipv6", required_argument, 0, 'v'},
-		{"proxy", required_argument, 0, 'x'},
-		{"autoconnect", required_argument, 0, 'a'},
-		{"ipv4", required_argument, 0, 'i'},
-		{"remove", 0, 0, 'r'},
-		{0, 0, 0, 0}
-	};
-
-	static struct option monitor_options[] = {
-		{"services", no_argument, 0, 's'},
-		{"tech", no_argument, 0, 'c'},
-		{"manager", no_argument, 0, 'm'},
-		{0, 0, 0, 0}
-	};
 
 	if (strcmp(argv[0], "services") == 0) {
 		if (argc > 3) {
