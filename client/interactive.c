@@ -48,27 +48,10 @@
 
 static DBusConnection *interactive_conn;
 
-static char **parse_long(char *input, int *num_args)
-{
-	int i;
-	char **token = NULL;
-
-	for (i = 0; input != NULL; i++) {
-		token = realloc(token, (i + 1) * sizeof(char *));
-		if (token == NULL)
-			return NULL;
-		token[i] = strdup(input);
-		input = strtok(NULL, " ");
-	}
-	*num_args = i;
-
-	return token;
-}
-
 static gboolean rl_handler(char *input)
 {
-	char **long_args;
-	int num_args, i, error;
+	char **long_args = NULL;
+	int num_args, error;
 	num_args = 0;
 
 	if (input == NULL) {
@@ -77,33 +60,31 @@ static gboolean rl_handler(char *input)
 	}
 
 	add_history(input);
-	input = strtok(input, " ");
+	long_args = g_strsplit(input, " ", 0);
 
-	if (input == NULL)
-		return FALSE;
-	long_args = parse_long(input, &num_args);
-
-	if (long_args == NULL) {
+	if (long_args == NULL || long_args[0] == NULL) {
+		g_strfreev(long_args);
 		free(input);
-		exit(EXIT_FAILURE);
-	} else {
-		error = commands(interactive_conn, long_args, num_args);
-		if (error == -1) {
-			error = commands_no_options(interactive_conn,
-					long_args, num_args);
-			if (error == -1)
-				error = commands_options(interactive_conn,
-						long_args, num_args);
-			else
-				return error;
-		}
+		return FALSE;
 	}
+
+	for (num_args = 0; long_args[num_args] != NULL; num_args++);
+
+	error = commands(interactive_conn, long_args, num_args);
+	if (error == -1) {
+		error = commands_no_options(interactive_conn, long_args,
+				num_args);
+		if (error == -1)
+			error = commands_options(interactive_conn, long_args,
+					num_args);
+		else
+			return error;
+	}
+
 	if ((strcmp(long_args[0], "quit") == 0)
 					|| (strcmp(long_args[0], "exit") == 0)
 					|| (strcmp(long_args[0], "q") == 0)) {
-		for (i = 0; i < num_args; i++)
-			free(long_args[i]);
-		free(long_args);
+		g_strfreev(long_args);
 		exit(EXIT_SUCCESS);
 	}
 	if (error == -1) {
@@ -111,9 +92,7 @@ static gboolean rl_handler(char *input)
 			long_args[0]);
 	}
 
-	for (i = 0; i < num_args; i++)
-		free(long_args[i]);
-	free(long_args);
+	g_strfreev(long_args);
 	optind = 0;
 
 	return TRUE;
