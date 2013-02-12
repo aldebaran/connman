@@ -1120,8 +1120,7 @@ static void dump_ip(struct ipt_entry *entry)
 		connman_info("\tdst %s/%s", ip_string, ip_mask);
 }
 
-static void dump_target(struct connman_iptables *table,
-				struct ipt_entry *entry)
+static void dump_target(struct ipt_entry *entry)
 
 {
 	struct xtables_target *xt_t;
@@ -1156,9 +1155,7 @@ static void dump_target(struct connman_iptables *table,
 			break;
 
 		default:
-			connman_info("\tJUMP @%p (0x%x)",
-				(char*)table->blob_entries->entrytable +
-				t->verdict, t->verdict);
+			connman_info("\tJUMP (0x%x)", t->verdict);
 			break;
 		}
 
@@ -1181,7 +1178,7 @@ static void dump_target(struct connman_iptables *table,
 	}
 }
 
-static void dump_match(struct connman_iptables *table, struct ipt_entry *entry)
+static void dump_match(struct ipt_entry *entry)
 {
 	struct xtables_match *xt_m;
 	struct xt_entry_match *match;
@@ -1244,8 +1241,8 @@ static int dump_entry(struct connman_iptables *table,
 				entry->next_offset);
 	}
 
-	dump_match(table, entry);
-	dump_target(table, entry);
+	dump_match(entry);
+	dump_target(entry);
 	dump_ip(entry);
 
 	return 0;
