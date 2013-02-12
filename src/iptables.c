@@ -2123,6 +2123,64 @@ static void remove_table(gpointer user_data)
 	table_cleanup(table);
 }
 
+static int flush_table_cb(struct ipt_entry *entry, int builtin,
+				unsigned int hook, size_t size,
+				unsigned int offset, void *user_data)
+{
+	GSList **chains = user_data;
+	struct xt_entry_target *target;
+	char *name;
+
+	if (offset + entry->next_offset == size)
+		return 0;
+
+	target = ipt_get_target(entry);
+
+	if (!strcmp(target->u.user.name, IPT_ERROR_TARGET))
+		name = g_strdup((const char*)target->data);
+	else if (builtin >= 0)
+		  name = g_strdup(hooknames[builtin]);
+	else
+		return 0;
+
+	*chains = g_slist_prepend(*chains, name);
+
+	return 0;
+}
+
+static void flush_table(const char *name)
+{
+	GSList *chains = NULL, *list;
+	struct connman_iptables *table;
+
+	table = pre_load_table(name, NULL);
+	if (table == NULL)
+		return;
+
+	iterate_entries(table->blob_entries->entrytable,
+			table->info->valid_hooks,
+			table->info->hook_entry,
+			table->blob_entries->size,
+			flush_table_cb, &chains);
+
+	for (list = chains; list != NULL; list = list->next) {
+		char *chain = list->data;
+
+		DBG("chain %s", chain);
+		iptables_flush_chain(table, chain);
+	}
+
+	__connman_iptables_commit(name);
+	g_slist_free_full(chains, g_free);
+}
+
+static void flush_all_chains(void)
+{
+	flush_table("filter");
+	flush_table("mangle");
+	flush_table("nat");
+}
+
 int __connman_iptables_init(void)
 {
 	DBG("");
@@ -2135,8 +2193,9 @@ int __connman_iptables_init(void)
 
 	xtables_init_all(&iptables_globals, NFPROTO_IPV4);
 
-	return 0;
+	flush_all_chains();
 
+	return 0;
 }
 
 void __connman_iptables_cleanup(void)
