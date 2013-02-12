@@ -23,6 +23,7 @@
 #include <dbus/dbus.h>
 
 void show_interactive(DBusConnection *connection, GMainLoop *mainloop);
+int commands(DBusConnection *connection, char *argv[], int argc);
 int commands_no_options(DBusConnection *connection, char *argv[], int argc);
 int commands_options(DBusConnection *connection, char *argv[], int argc);
 void show_help(void);

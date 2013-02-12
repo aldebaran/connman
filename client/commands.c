@@ -64,6 +64,8 @@ static char *proxy_simple[] = {
 	NULL
 };
 
+static int cmd_help(char *args[], int num, struct option *options);
+
 void show_help(void)
 {
 	printf("Usage: connmanctl <command> [args]\n"
@@ -276,6 +278,118 @@ int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn)
 		break;
 	}
 	return 0;
+}
+
+static int cmd_enable(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_disable(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_state(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_services(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_technologies(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_scan(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_connect(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_disconnect(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_config(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_monitor(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+static int cmd_exit(char *args[], int num, struct option *options)
+{
+	return 0;
+}
+
+static const struct {
+        const char *cmd;
+	const char *argument;
+        struct option *options;
+	const char **options_desc;
+        int (*func) (char *args[], int num, struct option *options);
+        const char *desc;
+} cmd_table[] = {
+	{ "enable",       "<technology>|offline", NULL,    NULL,
+	  cmd_enable, "Enables given technology or offline mode" },
+	{ "disable",      "<technology>|offline", NULL,    NULL,
+	  cmd_disable, "Disables given technology or offline mode"},
+	{ "state",        NULL,           NULL,            NULL,
+	  cmd_state, "Shows if the system is online or offline" },
+	{ "services",     NULL,           NULL,            NULL,
+	  cmd_services, "Display services" },
+	{ "technologies", NULL,           NULL,            NULL,
+	  cmd_technologies, "Display technologies" },
+	{ "scan",         "<technology>", NULL,            NULL,
+	  cmd_scan, "Scans for new services for given technology" },
+	{ "connect",      "<service>",    NULL,            NULL,
+	  cmd_connect, "Connect a given service" },
+	{ "disconnect",   "<service>",    NULL,            NULL,
+	  cmd_disconnect, "Disconnect a given service" },
+	{ "config",       "<service>",    NULL,            NULL,
+	  cmd_config, "Set service configuration options" },
+	{ "monitor",      NULL,           NULL,            NULL,
+	  cmd_monitor, "Monitor signals from interfaces" },
+	{ "help",         NULL,           NULL,            NULL,
+	  cmd_help, "Show help" },
+	{ "exit",         NULL,           NULL,            NULL,
+	  cmd_exit,       "Exit" },
+	{ "quit",         NULL,           NULL,            NULL,
+	  cmd_exit,       "Quit" },
+	{  NULL, },
+};
+
+static int cmd_help(char *args[], int num, struct option *options)
+{
+	return -1;
+}
+
+int commands(DBusConnection *connection, char *argv[], int argc)
+{
+	int i;
+
+	for (i = 0; cmd_table[i].cmd != NULL; i++) {
+		if (g_strcmp0(cmd_table[i].cmd, argv[0]) == 0 &&
+				cmd_table[i].func != NULL) {
+			return cmd_table[i].func(argv, argc,
+					cmd_table[i].options);
+		}
+	}
+
+	return -1;
 }
 
 int commands_no_options(DBusConnection *connection, char *argv[], int argc)

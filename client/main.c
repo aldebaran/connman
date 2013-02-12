@@ -95,13 +95,17 @@ int main(int argc, char *argv[])
 	if (argc < 2)
 		show_interactive(connection, main_loop);
 
-	error = commands_no_options(connection, argv + 1, argc - 1);
+	error = commands(connection, argv + 1, argc -1);
 	if (error == -1) {
-		error = commands_options(connection, argv + 1, argc - 1);
-		if (strcmp(argv[1], "monitor") != 0)
+		error = commands_no_options(connection, argv + 1, argc - 1);
+		if (error == -1) {
+			error = commands_options(connection, argv + 1,
+					argc - 1);
+			if (strcmp(argv[1], "monitor") != 0)
+				return error;
+		} else {
 			return error;
-	} else {
-		return error;
+		}
 	}
 
 	if (error == -1) {

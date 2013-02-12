@@ -87,13 +87,16 @@ static gboolean rl_handler(char *input)
 		free(input);
 		exit(EXIT_FAILURE);
 	} else {
-		error = commands_no_options(interactive_conn,
+		error = commands(interactive_conn, long_args, num_args);
+		if (error == -1) {
+			error = commands_no_options(interactive_conn,
+					long_args, num_args);
+			if (error == -1)
+				error = commands_options(interactive_conn,
 						long_args, num_args);
-		if (error == -1)
-			error = commands_options(interactive_conn, long_args,
-						num_args);
-		else
-			return error;
+			else
+				return error;
+		}
 	}
 	if ((strcmp(long_args[0], "quit") == 0)
 					|| (strcmp(long_args[0], "exit") == 0)
