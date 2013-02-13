@@ -441,10 +441,6 @@ static int run_connect(struct vpn_provider *provider,
 		goto done;
 	}
 
-	vpn_provider_set_string(provider, "PPTP.User", username);
-	vpn_provider_set_string_hide_value(provider, "PPTP.Password",
-								password);
-
 	DBG("username %s password %p", username, password);
 
 	str = g_strdup_printf("%s %s --nolaunchpppd --loglevel 2",
@@ -519,6 +515,10 @@ static void request_input_cb(struct vpn_provider *provider,
 			username, error);
 	else if (error != NULL)
 		DBG("error %s", error);
+
+	vpn_provider_set_string(provider, "PPTP.User", username);
+	vpn_provider_set_string_hide_value(provider, "PPTP.Password",
+								password);
 
 	run_connect(provider, data->task, data->if_name, data->cb,
 		data->user_data, username, password);
