@@ -609,6 +609,10 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 			extract_nameservers(&value, data);
 		} else if (g_str_equal(key, "Index") == TRUE) {
 			dbus_message_iter_get_basic(&value, &data->index);
+		} else if (g_str_equal(key, "ServerRoutes") == TRUE) {
+			/* Ignored */
+		} else if (g_str_equal(key, "UserRoutes") == TRUE) {
+			/* Ignored */
 		} else {
 			if (dbus_message_iter_get_arg_type(&value) ==
 							DBUS_TYPE_STRING) {
