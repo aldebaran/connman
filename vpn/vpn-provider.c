@@ -1179,9 +1179,8 @@ static int provider_indicate_state(struct vpn_provider *provider,
 {
 	const char *str;
 
-	DBG("provider %p state %d", provider, state);
-
 	str = state2string(state);
+	DBG("provider %p state %s/%d", provider, str, state);
 	if (str == NULL)
 		return -EINVAL;
 
