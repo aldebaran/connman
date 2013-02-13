@@ -642,10 +642,6 @@ static int run_connect(struct vpn_provider *provider,
 		goto done;
 	}
 
-	vpn_provider_set_string(provider, "L2TP.User", username);
-	vpn_provider_set_string_hide_value(provider, "L2TP.Password",
-								password);
-
 	DBG("username %s password %p", username, password);
 
 	l2tp_name = g_strdup_printf("/var/run/connman/connman-xl2tpd.conf");
@@ -713,6 +709,10 @@ static void request_input_cb(struct vpn_provider *provider,
 			username, error);
 	else if (error != NULL)
 		DBG("error %s", error);
+
+	vpn_provider_set_string(provider, "L2TP.User", username);
+	vpn_provider_set_string_hide_value(provider, "L2TP.Password",
+								password);
 
 	run_connect(provider, data->task, data->if_name, data->cb,
 		data->user_data, username, password);
