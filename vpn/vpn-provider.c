@@ -1204,6 +1204,13 @@ static int provider_indicate_state(struct vpn_provider *provider,
 	connman_dbus_property_changed_basic(provider->path,
 					VPN_CONNECTION_INTERFACE, "State",
 					DBUS_TYPE_STRING, &str);
+	/*
+	 * We do not stay in failure state as clients like connmand can
+	 * get confused about our current state.
+	 */
+	if (provider->state == VPN_PROVIDER_STATE_FAILURE)
+		provider->state = VPN_PROVIDER_STATE_IDLE;
+
 	return 0;
 }
 
