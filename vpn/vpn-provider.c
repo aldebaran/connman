@@ -1451,6 +1451,7 @@ int vpn_provider_indicate_error(struct vpn_provider *provider,
 	case VPN_PROVIDER_ERROR_LOGIN_FAILED:
 		break;
 	case VPN_PROVIDER_ERROR_AUTH_FAILED:
+		vpn_provider_set_state(provider, VPN_PROVIDER_STATE_FAILURE);
 		break;
 	case VPN_PROVIDER_ERROR_CONNECT_FAILED:
 		break;
