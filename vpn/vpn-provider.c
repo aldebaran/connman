@@ -2007,10 +2007,11 @@ const char * __vpn_provider_get_ident(struct vpn_provider *provider)
 	return provider->identifier;
 }
 
-int vpn_provider_set_string(struct vpn_provider *provider,
-					const char *key, const char *value)
+static int set_string(struct vpn_provider *provider,
+		const char *key, const char *value, gboolean hide_value)
 {
-	DBG("provider %p key %s value %s", provider, key, value);
+	DBG("provider %p key %s value %s", provider, key,
+		hide_value ? "<not printed>" : value);
 
 	if (g_str_equal(key, "Type") == TRUE) {
 		g_free(provider->type);
@@ -2028,6 +2029,18 @@ int vpn_provider_set_string(struct vpn_provider *provider,
 		g_hash_table_replace(provider->setting_strings,
 				g_strdup(key), g_strdup(value));
 	return 0;
+}
+
+int vpn_provider_set_string(struct vpn_provider *provider,
+					const char *key, const char *value)
+{
+	return set_string(provider, key, value, FALSE);
+}
+
+int vpn_provider_set_string_hide_value(struct vpn_provider *provider,
+					const char *key, const char *value)
+{
+	return set_string(provider, key, value, TRUE);
 }
 
 const char *vpn_provider_get_string(struct vpn_provider *provider,

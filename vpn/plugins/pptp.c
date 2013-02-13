@@ -442,7 +442,8 @@ static int run_connect(struct vpn_provider *provider,
 	}
 
 	vpn_provider_set_string(provider, "PPTP.User", username);
-	vpn_provider_set_string(provider, "PPTP.Password", password);
+	vpn_provider_set_string_hide_value(provider, "PPTP.Password",
+								password);
 
 	DBG("username %s password %p", username, password);
 

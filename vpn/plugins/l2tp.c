@@ -643,7 +643,8 @@ static int run_connect(struct vpn_provider *provider,
 	}
 
 	vpn_provider_set_string(provider, "L2TP.User", username);
-	vpn_provider_set_string(provider, "L2TP.Password", password);
+	vpn_provider_set_string_hide_value(provider, "L2TP.Password",
+								password);
 
 	DBG("username %s password %p", username, password);
 
