@@ -133,8 +133,14 @@ static int pptp_notify(DBusMessage *msg, struct vpn_provider *provider)
 		return VPN_STATE_FAILURE;
 	}
 
-	if (strcmp(reason, "auth failed") == 0)
+	if (strcmp(reason, "auth failed") == 0) {
+		DBG("authentication failure");
+
+		vpn_provider_set_string(provider, "PPTP.User", NULL);
+		vpn_provider_set_string(provider, "PPTP.Password", NULL);
+
 		return VPN_STATE_AUTH_FAILURE;
+	}
 
 	if (strcmp(reason, "connect"))
 		return VPN_STATE_DISCONNECT;
