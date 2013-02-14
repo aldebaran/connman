@@ -56,6 +56,8 @@ unit/test-session
 unit/test-ippool
 unit/test-nat
 unit/test-iptables
+unit/test-pbkdf2-sha1
+unit/test-prf-sha1
 
 doc/*.bak
 doc/*.stamp

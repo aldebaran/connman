@@ -235,6 +235,18 @@ client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
 client_connmanctl_LDADD = @DBUS_LIBS@ @GLIB_LIBS@ -lreadline -ldl
 endif
 
+noinst_PROGRAMS += unit/test-pbkdf2-sha1 unit/test-prf-sha1
+
+unit_test_pbkdf2_sha1_SOURCES = unit/test-pbkdf2-sha1.c \
+				src/shared/sha1.h src/shared/sha1.c
+unit_test_pbkdf2_sha1_LDADD = @GLIB_LIBS@
+
+unit_test_prf_sha1_SOURCES = unit/test-prf-sha1.c \
+				src/shared/sha1.h src/shared/sha1.c
+unit_test_prf_sha1_LDADD = @GLIB_LIBS@
+
+TESTS = unit/test-pbkdf2-sha1 unit/test-prf-sha1
+
 if WISPR
 noinst_PROGRAMS += tools/wispr
 
