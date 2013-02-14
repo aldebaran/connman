@@ -215,7 +215,7 @@ static void psk_test(gconstpointer data)
 			g_print("%s'%c'", i == 0 ? " " : ", ",
 						ssid[i]);
 		g_print(" }\n");
-		g_print("SSID Length = %ld\n", ssid_len);
+		g_print("SSID Length = %zd\n", ssid_len);
 		g_print("PSK         = %s\n", test->psk);
 	}
 
