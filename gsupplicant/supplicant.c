@@ -653,8 +653,8 @@ static void interface_capability(const char *key, DBusMessageIter *iter,
 		dbus_int32_t max_scan_ssid;
 
 		dbus_message_iter_get_basic(iter, &max_scan_ssid);
-		if (max_scan_ssid < 1)
-			max_scan_ssid = 1;
+		if (max_scan_ssid < 2)
+			max_scan_ssid = 0;
 		interface->max_scan_ssids = max_scan_ssid;
 
 	} else
