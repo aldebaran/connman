@@ -667,6 +667,11 @@ static void parse_response(struct resolv_nameserver *nameserver,
 
 	ns_initparse(buf, len, &msg);
 
+	list = g_queue_find_custom(resolv->query_queue,
+			GUINT_TO_POINTER(ns_msg_id(msg)), compare_query_msgid);
+	if (!list)
+		return;
+
 	rcode = ns_msg_getflag(msg, ns_f_rcode);
 	count = ns_msg_count(msg, ns_s_an);
 
@@ -696,11 +701,6 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		status = G_RESOLV_RESULT_STATUS_ERROR;
 		break;
 	}
-
-	list = g_queue_find_custom(resolv->query_queue,
-			GUINT_TO_POINTER(ns_msg_id(msg)), compare_query_msgid);
-	if (!list)
-		return;
 
 	query = list->data;
 	query->nr_ns--;
