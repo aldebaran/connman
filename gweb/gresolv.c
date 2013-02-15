@@ -79,6 +79,7 @@ struct resolv_lookup {
 struct resolv_query {
 	GResolv *resolv;
 
+	int nr_ns;
 	guint timeout;
 
 	uint16_t msgid;
@@ -579,12 +580,13 @@ static void flush_nameservers(GResolv *resolv)
 static int send_query(GResolv *resolv, const unsigned char *buf, int len)
 {
 	GList *list;
+	int nr_ns;
 
 	if (resolv->nameserver_list == NULL)
 		return -ENOENT;
 
-	for (list = g_list_first(resolv->nameserver_list);
-					list; list = g_list_next(list)) {
+	for (list = g_list_first(resolv->nameserver_list), nr_ns = 0;
+				list; list = g_list_next(list), nr_ns++) {
 		struct resolv_nameserver *nameserver = list->data;
 		int sk, sent;
 
@@ -598,7 +600,7 @@ static int send_query(GResolv *resolv, const unsigned char *buf, int len)
 			continue;
 	}
 
-	return 0;
+	return nr_ns;
 }
 
 static gint compare_lookup_id(gconstpointer a, gconstpointer b)
@@ -701,15 +703,14 @@ static void parse_response(struct resolv_nameserver *nameserver,
 		return;
 
 	query = list->data;
+	query->nr_ns--;
+
 	lookup = query->lookup;
 
-	if (query == lookup->ipv6_query) {
+	if (query == lookup->ipv6_query)
 		lookup->ipv6_status = status;
-		lookup->ipv6_query = NULL;
-	} else if (query == lookup->ipv4_query) {
+	else if (query == lookup->ipv4_query)
 		lookup->ipv4_status = status;
-		lookup->ipv4_query = NULL;
-	}
 
 	for (i = 0; i < count; i++) {
 		ns_parserr(&msg, ns_s_an, i, &rr);
@@ -728,6 +729,14 @@ static void parse_response(struct resolv_nameserver *nameserver,
 			add_result(lookup, AF_INET6, ns_rr_rdata(rr));
 		}
 	}
+
+	if (status != G_RESOLV_RESULT_STATUS_SUCCESS && query->nr_ns > 0)
+		return;
+
+	if (query == lookup->ipv6_query)
+		lookup->ipv6_query = NULL;
+	else
+		lookup->ipv4_query = NULL;
 
 	g_queue_remove(resolv->query_queue, query);
 	destroy_query(query);
@@ -975,7 +984,8 @@ static gint add_query(struct resolv_lookup *lookup, const char *hostname, int ty
 
 	debug(lookup->resolv, "sending %d bytes", len);
 
-	if (send_query(lookup->resolv, buf, len) < 0) {
+	query->nr_ns = send_query(lookup->resolv, buf, len);
+	if (query->nr_ns <= 0) {
 		g_free(query);
 		return -EIO;
 	}
