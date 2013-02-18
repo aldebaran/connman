@@ -74,7 +74,8 @@ void __vpn_ipconfig_cleanup(void);
 char *__vpn_provider_create_identifier(const char *host, const char *domain);
 connman_bool_t __vpn_provider_check_routes(struct vpn_provider *provider);
 int __vpn_provider_append_user_route(struct vpn_provider *provider,
-			int family, const char *network, const char *netmask);
+				int family, const char *network,
+				const char *netmask, const char *gateway);
 void __vpn_provider_append_properties(struct vpn_provider *provider, DBusMessageIter *iter);
 void __vpn_provider_list(DBusMessageIter *iter, void *user_data);
 int __vpn_provider_create(DBusMessage *msg);

@@ -237,13 +237,9 @@ static GSList *read_route_dict(GSList *routes, DBusMessageIter *dicts)
 		if (family < 0) {
 			DBG("Cannot get address family of %s (%d/%s)", network,
 				family, gai_strerror(family));
-			if (strstr(network, ":") != NULL) {
-				DBG("Guessing it is IPv6");
-				family = AF_INET6;
-			} else {
-				DBG("Guessing it is IPv4");
-				family = AF_INET;
-			}
+
+			g_free(route);
+			return routes;
 		}
 	} else {
 		switch (family) {
@@ -308,7 +304,7 @@ static void set_user_networks(struct vpn_provider *provider, GSList *networks)
 
 		if (__vpn_provider_append_user_route(provider,
 					route->family, route->network,
-					route->netmask) != 0)
+					route->netmask, route->gateway) != 0)
 			break;
 	}
 }
@@ -545,12 +541,15 @@ void __vpn_provider_append_properties(struct vpn_provider *provider,
 }
 
 int __vpn_provider_append_user_route(struct vpn_provider *provider,
-			int family, const char *network, const char *netmask)
+				int family, const char *network,
+				const char *netmask, const char *gateway)
 {
 	struct vpn_route *route;
-	char *key = g_strdup_printf("%d/%s/%s", family, network, netmask);
+	char *key = g_strdup_printf("%d/%s/%s/%s", family, network,
+				netmask, gateway != NULL ? gateway : "");
 
-	DBG("family %d network %s netmask %s", family, network, netmask);
+	DBG("family %d network %s netmask %s gw %s", family, network,
+							netmask, gateway);
 
 	route = g_hash_table_lookup(provider->user_routes, key);
 	if (route == NULL) {
@@ -563,6 +562,7 @@ int __vpn_provider_append_user_route(struct vpn_provider *provider,
 		route->family = family;
 		route->network = g_strdup(network);
 		route->netmask = g_strdup(netmask);
+		route->gateway = g_strdup(gateway);
 
 		g_hash_table_replace(provider->user_routes, key, route);
 	} else
@@ -1795,7 +1795,75 @@ static const char *get_string(GHashTable *settings, const char *key)
 
 static GSList *parse_user_networks(const char *network_str)
 {
-	return NULL;
+	GSList *networks = NULL;
+	char **elems = g_strsplit(network_str, ",", 0);
+	int i = 0;
+
+	if (elems == NULL)
+		return NULL;
+
+	while (elems[i] != NULL) {
+		struct vpn_route *vpn_route;
+		char *network, *netmask, *gateway;
+		int family;
+		char **route;
+
+		route = g_strsplit(elems[i], "/", 0);
+		if (route == NULL)
+			goto next;
+
+		network = route[0];
+		if (network == NULL || network[0] == '\0')
+			goto next;
+
+		family = connman_inet_check_ipaddress(network);
+		if (family < 0) {
+			DBG("Cannot get address family of %s (%d/%s)", network,
+				family, gai_strerror(family));
+
+			goto next;
+		}
+
+		switch (family) {
+		case AF_INET:
+			break;
+		case AF_INET6:
+			break;
+		default:
+			DBG("Unsupported address family %d", family);
+			goto next;
+		}
+
+		netmask = route[1];
+		if (netmask == NULL || netmask[0] == '\0')
+			goto next;
+
+		gateway = route[2];
+
+		vpn_route = g_try_new0(struct vpn_route, 1);
+		if (vpn_route == NULL) {
+			g_strfreev(route);
+			break;
+		}
+
+		vpn_route->family = family;
+		vpn_route->network = g_strdup(network);
+		vpn_route->netmask = g_strdup(netmask);
+		vpn_route->gateway = g_strdup(gateway);
+
+		DBG("route %s/%s%s%s", network, netmask,
+			gateway ? " via " : "", gateway ? gateway : "");
+
+		networks = g_slist_prepend(networks, vpn_route);
+
+	next:
+		g_strfreev(route);
+		i++;
+	}
+
+	g_strfreev(elems);
+
+	return g_slist_reverse(networks);
 }
 
 int __vpn_provider_create_from_config(GHashTable *settings,
@@ -1879,12 +1947,13 @@ int __vpn_provider_create_from_config(GHashTable *settings,
 
 	connection_added_signal(provider);
 
-	err = 0;
+	g_free(ident);
+
+	return 0;
 
 fail:
 	g_free(ident);
-	if (networks != NULL)
-		g_slist_free_full(networks, free_route);
+	g_slist_free_full(networks, free_route);
 
 	return err;
 }
