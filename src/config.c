@@ -842,7 +842,7 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 	return ret;
 }
 
-struct connman_config_entry **connman_config_get_entries(void)
+struct connman_config_entry **connman_config_get_entries(const char *type)
 {
 	GHashTableIter iter_file, iter_config;
 	gpointer value, key;
@@ -865,6 +865,10 @@ struct connman_config_entry **connman_config_get_entries(void)
 		while (g_hash_table_iter_next(&iter_config, &key,
 							&value) == TRUE) {
 			struct connman_config_service *config = value;
+
+			if (type != NULL &&
+					g_strcmp0(config->type, type) != 0)
+				continue;
 
 			entries[i] = g_try_new0(struct connman_config_entry,
 						1);

@@ -424,7 +424,7 @@ static int get_hidden_connections(int max_ssids,
 	/*
 	 * Check if there are any hidden AP that needs to be provisioned.
 	 */
-	entries = connman_config_get_entries();
+	entries = connman_config_get_entries("wifi");
 	for (i = 0; entries && entries[i]; i++) {
 		int len;
 

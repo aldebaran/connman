@@ -42,7 +42,7 @@ struct connman_config_entry {
 	connman_bool_t hidden;
 };
 
-struct connman_config_entry **connman_config_get_entries(void);
+struct connman_config_entry **connman_config_get_entries(const char *type);
 void connman_config_free_entries(struct connman_config_entry **entries);
 
 #ifdef __cplusplus
