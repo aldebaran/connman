@@ -106,3 +106,6 @@ unsigned int __vpn_rtnl_update_interval_add(unsigned int interval);
 unsigned int __vpn_rtnl_update_interval_remove(unsigned int interval);
 int __vpn_rtnl_request_update(void);
 int __vpn_rtnl_send(const void *buf, size_t len);
+
+int __vpn_config_init(void);
+void __vpn_config_cleanup(void);

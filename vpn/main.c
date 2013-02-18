@@ -308,6 +308,7 @@ int main(int argc, char *argv[])
 	else
 		config_init(option_config);
 
+	__connman_inotify_init();
 	__connman_agent_init();
 	__vpn_provider_init(option_routes);
 	__vpn_manager_init();
@@ -315,6 +316,7 @@ int main(int argc, char *argv[])
 	__vpn_rtnl_init();
 	__connman_task_init();
 	__connman_plugin_init(option_plugin, option_noplugin);
+	__vpn_config_init();
 
 	__vpn_rtnl_start();
 
@@ -325,6 +327,7 @@ int main(int argc, char *argv[])
 
 	g_source_remove(signal);
 
+	__vpn_config_cleanup();
 	__connman_plugin_cleanup();
 	__connman_task_cleanup();
 	__vpn_rtnl_cleanup();
@@ -332,6 +335,7 @@ int main(int argc, char *argv[])
 	__vpn_manager_cleanup();
 	__vpn_provider_cleanup();
 	__connman_agent_cleanup();
+	__connman_inotify_cleanup();
 	__connman_dbus_cleanup();
 	__connman_log_cleanup(FALSE);
 
