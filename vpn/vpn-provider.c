@@ -81,6 +81,8 @@ struct vpn_provider {
 	char **nameservers;
 	int what_changed;
 	guint notify_id;
+	char *config_file;
+	char *config_entry;
 };
 
 static void free_route(gpointer data)
@@ -809,6 +811,15 @@ static int vpn_provider_save(struct vpn_provider *provider)
 		}
 	}
 
+	if (provider->config_file != NULL && strlen(provider->config_file) > 0)
+		g_key_file_set_string(keyfile, provider->identifier,
+				"Config.file", provider->config_file);
+
+	if (provider->config_entry != NULL &&
+					strlen(provider->config_entry) > 0)
+		g_key_file_set_string(keyfile, provider->identifier,
+				"Config.ident", provider->config_entry);
+
 	if (provider->driver != NULL && provider->driver->save != NULL)
 		provider->driver->save(provider, keyfile);
 
@@ -922,6 +933,8 @@ static void provider_destruct(struct vpn_provider *provider)
 	__vpn_ipconfig_unref(provider->ipconfig_ipv6);
 
 	g_strfreev(provider->host_ip);
+	g_free(provider->config_file);
+	g_free(provider->config_entry);
 	g_free(provider);
 }
 
@@ -1833,6 +1846,9 @@ int __vpn_provider_create_from_config(GHashTable *settings,
 		provider->name = g_strdup(name);
 		provider->type = g_ascii_strdown(type, -1);
 
+		provider->config_file = g_strdup(config_ident);
+		provider->config_entry = g_strdup(config_entry);
+
 		if (provider_register(provider) == 0)
 			vpn_provider_load(provider);
 
@@ -2326,6 +2342,67 @@ static struct connman_agent_driver agent_driver = {
 	.remove		= agent_remove,
 };
 
+static void remove_unprovisioned_providers()
+{
+	gchar **providers;
+	GKeyFile *keyfile, *configkeyfile;
+	char *file, *section;
+	int i = 0;
+
+	providers = __connman_storage_get_providers();
+	if (providers == NULL)
+		return;
+
+	for (; providers[i] != NULL; i++) {
+		char *group = providers[i] + sizeof("provider_") - 1;
+		file = section = NULL;
+		keyfile = configkeyfile = NULL;
+
+		keyfile = __connman_storage_load_provider(group);
+		if (keyfile == NULL)
+			continue;
+
+		file = g_key_file_get_string(keyfile, group,
+					"Config.file", NULL);
+		if (file == NULL)
+			goto next;
+
+		section = g_key_file_get_string(keyfile, group,
+					"Config.ident", NULL);
+		if (section == NULL)
+			goto next;
+
+		configkeyfile = __connman_storage_load_provider_config(file);
+		if (configkeyfile == NULL) {
+			/*
+			 * Config file is missing, remove the provisioned
+			 * service.
+			 */
+			__connman_storage_remove_provider(group);
+			goto next;
+		}
+
+		if (g_key_file_has_group(configkeyfile, section) == FALSE)
+			/*
+			 * Config section is missing, remove the provisioned
+			 * service.
+			 */
+			__connman_storage_remove_provider(group);
+
+	next:
+		if (keyfile != NULL)
+			g_key_file_free(keyfile);
+
+		if (configkeyfile != NULL)
+			g_key_file_free(configkeyfile);
+
+		g_free(section);
+		g_free(file);
+	}
+
+	g_strfreev(providers);
+}
+
 int __vpn_provider_init(gboolean do_routes)
 {
 	int err;
@@ -2343,9 +2420,10 @@ int __vpn_provider_init(gboolean do_routes)
 
 	connection = connman_dbus_get_connection();
 
+	remove_unprovisioned_providers();
+
 	provider_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
 						NULL, unregister_provider);
-
 	return 0;
 }
 
