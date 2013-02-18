@@ -68,8 +68,6 @@ static GSList *protected_services = NULL;
 
 static connman_bool_t cleanup = FALSE;
 
-#define INTERNAL_CONFIG_PREFIX           "__internal"
-
 /* Definition of possible strings in the .config files */
 #define CONFIG_KEY_NAME                "Name"
 #define CONFIG_KEY_DESC                "Description"
