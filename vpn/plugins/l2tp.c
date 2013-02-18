@@ -76,6 +76,8 @@ struct {
 } pppd_options[] = {
 	{ "L2TP.User", "name", OPT_ALL, NULL, OPT_STRING },
 	{ "L2TP.BPS", "bps", OPT_L2, NULL, OPT_STRING },
+	{ "L2TP.TXBPS", "tx bps", OPT_L2, NULL, OPT_STRING },
+	{ "L2TP.RXBPS", "rx bps", OPT_L2, NULL, OPT_STRING },
 	{ "L2TP.LengthBit", "length bit", OPT_L2, NULL, OPT_STRING },
 	{ "L2TP.Challenge", "challenge", OPT_L2, NULL, OPT_STRING },
 	{ "L2TP.DefaultRoute", "defaultroute", OPT_L2, NULL, OPT_STRING },
