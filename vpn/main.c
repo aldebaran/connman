@@ -273,10 +273,20 @@ int main(int argc, char *argv[])
 			perror("Failed to create state directory");
 	}
 
+	/*
+	 * At some point the VPN stuff is migrated into VPN_STORAGEDIR
+	 * and this mkdir() call can be removed.
+	 */
 	if (mkdir(STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
 				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
 		if (errno != EEXIST)
 			perror("Failed to create storage directory");
+	}
+
+	if (mkdir(VPN_STORAGEDIR, S_IRUSR | S_IWUSR | S_IXUSR |
+				S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH) < 0) {
+		if (errno != EEXIST)
+			perror("Failed to create VPN storage directory");
 	}
 
 	umask(0077);
