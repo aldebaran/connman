@@ -206,6 +206,7 @@ int __connman_storage_save_global(GKeyFile *keyfile);
 void __connman_storage_delete_global(void);
 
 GKeyFile *__connman_storage_load_config(const char *ident);
+GKeyFile *__connman_storage_load_provider_config(const char *ident);
 
 GKeyFile *__connman_storage_open_service(const char *ident);
 int __connman_storage_save_service(GKeyFile *keyfile, const char *ident);

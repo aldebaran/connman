@@ -152,6 +152,7 @@ plugindir = $(libdir)/connman/plugins
 scriptdir = $(libdir)/connman/scripts
 
 storagedir = $(localstatedir)/lib/connman
+vpn_storagedir = $(localstatedir)/lib/connman-vpn
 
 configdir = ${sysconfdir}/connman
 
@@ -176,6 +177,7 @@ AM_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 				-DPLUGINDIR=\""$(build_plugindir)"\" \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\"" \
+				-DVPN_STORAGEDIR=\""$(vpn_storagedir)\"" \
 				-DCONFIGDIR=\""$(configdir)\""
 
 if VPN
@@ -191,6 +193,7 @@ src_connmand_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 				-DPLUGINDIR=\""$(build_plugindir)"\" \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\"" \
+				-DVPN_STORAGEDIR=\""$(vpn_storagedir)\"" \
 				-DCONFIGDIR=\""$(configdir)\"" \
 				-I$(builddir)/src
 
@@ -205,6 +208,7 @@ vpn_connman_vpnd_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ \
 				-DPLUGINDIR=\""$(build_vpn_plugindir)"\" \
 				-DSCRIPTDIR=\""$(build_scriptdir)"\" \
 				-DSTORAGEDIR=\""$(storagedir)\"" \
+				-DVPN_STORAGEDIR=\""$(vpn_storagedir)\"" \
 				-DCONFIGDIR=\""$(configdir)\"" \
 				-I$(builddir)/vpn
 
