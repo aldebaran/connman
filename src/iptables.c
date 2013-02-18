@@ -36,6 +36,7 @@
 
 #include "connman.h"
 
+void flush_table(const char *name);
 
 /*
  * Some comments on how the iptables API works (some of them from the
@@ -2243,7 +2244,7 @@ static int flush_table_cb(struct ipt_entry *entry, int builtin,
 	return 0;
 }
 
-static void flush_table(const char *name)
+void flush_table(const char *name)
 {
 	GSList *chains = NULL, *list;
 	struct connman_iptables *table;
@@ -2269,13 +2270,6 @@ static void flush_table(const char *name)
 	g_slist_free_full(chains, g_free);
 }
 
-static void flush_all_chains(void)
-{
-	flush_table("filter");
-	flush_table("mangle");
-	flush_table("nat");
-}
-
 int __connman_iptables_init(void)
 {
 	DBG("");
@@ -2287,8 +2281,6 @@ int __connman_iptables_init(void)
 						g_free, remove_table);
 
 	xtables_init_all(&iptables_globals, NFPROTO_IPV4);
-
-	flush_all_chains();
 
 	return 0;
 }
