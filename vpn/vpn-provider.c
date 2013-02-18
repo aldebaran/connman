@@ -818,7 +818,7 @@ static int vpn_provider_save(struct vpn_provider *provider)
 	return 0;
 }
 
-static struct vpn_provider *vpn_provider_lookup(const char *identifier)
+struct vpn_provider *__vpn_provider_lookup(const char *identifier)
 {
 	struct vpn_provider *provider = NULL;
 
@@ -840,7 +840,8 @@ static int provider_probe(struct vpn_provider *provider)
 {
 	GSList *list;
 
-	DBG("provider %p name %s", provider, provider->name);
+	DBG("provider %p driver %p name %s", provider, provider->driver,
+						provider->name);
 
 	if (provider->driver != NULL)
 		return -EALREADY;
@@ -1051,20 +1052,26 @@ int __vpn_provider_remove(const char *path)
 
 	ident = get_ident(path);
 
-	provider = vpn_provider_lookup(ident);
-	if (provider != NULL) {
-		DBG("Removing VPN %s", provider->identifier);
-
-		connection_removed_signal(provider);
-
-		provider_unregister(provider);
-		g_hash_table_remove(provider_hash, provider->identifier);
-
-		__connman_storage_remove_provider(ident);
-		return 0;
-	}
+	provider = __vpn_provider_lookup(ident);
+	if (provider != NULL)
+		return __vpn_provider_delete(provider);
 
 	return -ENXIO;
+}
+
+int __vpn_provider_delete(struct vpn_provider *provider)
+{
+	DBG("Deleting VPN %s", provider->identifier);
+
+	connection_removed_signal(provider);
+
+	provider_unregister(provider);
+
+	__connman_storage_remove_provider(provider->identifier);
+
+	g_hash_table_remove(provider_hash, provider->identifier);
+
+	return 0;
 }
 
 static void append_ipv4(DBusMessageIter *iter, void *user_data)
@@ -1561,7 +1568,7 @@ static struct vpn_provider *provider_create_from_keyfile(GKeyFile *keyfile,
 	if (keyfile == NULL || ident == NULL)
 		return NULL;
 
-	provider = vpn_provider_lookup(ident);
+	provider = __vpn_provider_lookup(ident);
 	if (provider == NULL) {
 		provider = vpn_provider_get(ident);
 		if (provider == NULL) {
@@ -1628,6 +1635,19 @@ static void provider_create_all_from_type(const char *provider_type)
 	g_strfreev(providers);
 }
 
+char *__vpn_provider_create_identifier(const char *host, const char *domain)
+{
+	char *ident;
+
+	ident = g_strdup_printf("%s_%s", host, domain);
+	if (ident == NULL)
+		return NULL;
+
+	provider_dbus_ident(ident);
+
+	return ident;
+}
+
 int __vpn_provider_create(DBusMessage *msg)
 {
 	struct vpn_provider *provider;
@@ -1679,12 +1699,10 @@ int __vpn_provider_create(DBusMessage *msg)
 	if (type == NULL || name == NULL)
 		return -EOPNOTSUPP;
 
-	ident = g_strdup_printf("%s_%s", host, domain);
-	provider_dbus_ident(ident);
-
+	ident = __vpn_provider_create_identifier(host, domain);
 	DBG("ident %s", ident);
 
-	provider = vpn_provider_lookup(ident);
+	provider = __vpn_provider_lookup(ident);
 	if (provider == NULL) {
 		provider = vpn_provider_get(ident);
 		if (provider == NULL) {
@@ -1753,6 +1771,106 @@ int __vpn_provider_create(DBusMessage *msg)
 	connection_added_signal(provider);
 
 	return 0;
+}
+
+static const char *get_string(GHashTable *settings, const char *key)
+{
+	DBG("settings %p key %s", settings, key);
+
+	return g_hash_table_lookup(settings, key);
+}
+
+static GSList *parse_user_networks(const char *network_str)
+{
+	return NULL;
+}
+
+int __vpn_provider_create_from_config(GHashTable *settings,
+				const char *config_ident,
+				const char *config_entry)
+{
+	struct vpn_provider *provider;
+	const char *type, *name, *host, *domain, *networks_str;
+	GSList *networks;
+	char *ident = NULL;
+	GHashTableIter hash;
+	gpointer value, key;
+	int err;
+
+	type = get_string(settings, "Type");
+	name = get_string(settings, "Name");
+	host = get_string(settings, "Host");
+	domain = get_string(settings, "Domain");
+	networks_str = get_string(settings, "Networks");
+	networks = parse_user_networks(networks_str);
+
+	if (host == NULL || domain == NULL) {
+		err = -EINVAL;
+		goto fail;
+	}
+
+	DBG("type %s name %s networks %s", type, name, networks_str);
+
+	if (type == NULL || name == NULL) {
+		err = -EOPNOTSUPP;
+		goto fail;
+	}
+
+	ident = __vpn_provider_create_identifier(host, domain);
+	DBG("ident %s", ident);
+
+	provider = __vpn_provider_lookup(ident);
+	if (provider == NULL) {
+		provider = vpn_provider_get(ident);
+		if (provider == NULL) {
+			DBG("can not create provider");
+			err = -EOPNOTSUPP;
+			goto fail;
+		}
+
+		provider->host = g_strdup(host);
+		provider->domain = g_strdup(domain);
+		provider->name = g_strdup(name);
+		provider->type = g_ascii_strdown(type, -1);
+
+		if (provider_register(provider) == 0)
+			vpn_provider_load(provider);
+
+		provider_resolv_host_addr(provider);
+	}
+
+	if (networks != NULL) {
+		g_slist_free_full(provider->user_networks, free_route);
+		provider->user_networks = networks;
+		set_user_networks(provider, provider->user_networks);
+	}
+
+	g_hash_table_iter_init(&hash, settings);
+
+	while (g_hash_table_iter_next(&hash, &key, &value) == TRUE)
+		vpn_provider_set_string(provider, key, value);
+
+	vpn_provider_save(provider);
+
+	err = provider_register(provider);
+	if (err != 0 && err != -EALREADY)
+		goto fail;
+
+	connection_register(provider);
+
+	DBG("provider %p index %d path %s", provider, provider->index,
+							provider->path);
+
+	connection_added_signal(provider);
+
+	err = 0;
+
+fail:
+	g_free(ident);
+	if (networks != NULL)
+		g_slist_free_full(networks, free_route);
+
+	return err;
 }
 
 static void append_connection_structs(DBusMessageIter *iter, void *user_data)

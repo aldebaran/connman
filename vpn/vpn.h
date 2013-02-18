@@ -71,14 +71,18 @@ void __vpn_ipconfig_cleanup(void);
 
 #include "vpn-provider.h"
 
+char *__vpn_provider_create_identifier(const char *host, const char *domain);
 connman_bool_t __vpn_provider_check_routes(struct vpn_provider *provider);
 int __vpn_provider_append_user_route(struct vpn_provider *provider,
 			int family, const char *network, const char *netmask);
 void __vpn_provider_append_properties(struct vpn_provider *provider, DBusMessageIter *iter);
 void __vpn_provider_list(DBusMessageIter *iter, void *user_data);
 int __vpn_provider_create(DBusMessage *msg);
+int __vpn_provider_create_from_config(GHashTable *settings,
+			const char *config_ident, const char *config_entry);
 DBusMessage *__vpn_provider_get_connections(DBusMessage *msg);
 const char * __vpn_provider_get_ident(struct vpn_provider *provider);
+struct vpn_provider *__vpn_provider_lookup(const char *identifier);
 int __vpn_provider_indicate_state(struct vpn_provider *provider,
 					enum vpn_provider_state state);
 int __vpn_provider_indicate_error(struct vpn_provider *provider,
@@ -87,6 +91,7 @@ int __vpn_provider_connect(struct vpn_provider *provider, DBusMessage *msg);
 int __vpn_provider_connect_path(const char *path);
 int __vpn_provider_disconnect(struct vpn_provider *provider);
 int __vpn_provider_remove(const char *path);
+int __vpn_provider_delete(struct vpn_provider *provider);
 void __vpn_provider_check_connections(void);
 void __vpn_provider_cleanup(void);
 int __vpn_provider_init(gboolean handle_routes);
