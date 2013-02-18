@@ -98,23 +98,23 @@ struct {
 	{ "L2TP.Rand Source", "rand source", OPT_L2G, NULL, OPT_STRING },
 	{ "L2TP.IPsecSaref", "ipsec saref", OPT_L2G, NULL, OPT_STRING },
 	{ "L2TP.Port", "port", OPT_L2G, NULL, OPT_STRING },
-	{ "L2TP.EchoFailure", "lcp-echo-failure", OPT_PPPD, "0", OPT_STRING },
-	{ "L2TP.EchoInterval", "lcp-echo-interval", OPT_PPPD, "0", OPT_STRING },
-	{ "L2TP.Debug", "debug", OPT_PPPD, NULL, OPT_STRING },
-	{ "L2TP.RefuseEAP", "refuse-eap", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.RefusePAP", "refuse-pap", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.RefuseCHAP", "refuse-chap", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.RefuseMSCHAP", "refuse-mschap", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.RefuseMSCHAP2", "refuse-mschapv2", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.NoBSDComp", "nobsdcomp", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.NoPcomp", "nopcomp", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.UseAccomp", "accomp", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.NoDeflate", "nodeflate", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.ReqMPPE", "require-mppe", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.ReqMPPE40", "require-mppe-40", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.ReqMPPE128", "require-mppe-128", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.ReqMPPEStateful", "mppe-stateful", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.NoVJ", "no-vj-comp", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.EchoFailure", "lcp-echo-failure", OPT_PPPD, "0", OPT_STRING },
+	{ "PPPD.EchoInterval", "lcp-echo-interval", OPT_PPPD, "0", OPT_STRING },
+	{ "PPPD.Debug", "debug", OPT_PPPD, NULL, OPT_STRING },
+	{ "PPPD.RefuseEAP", "refuse-eap", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.RefusePAP", "refuse-pap", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.RefuseCHAP", "refuse-chap", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.RefuseMSCHAP", "refuse-mschap", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.RefuseMSCHAP2", "refuse-mschapv2", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.NoBSDComp", "nobsdcomp", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.NoPcomp", "nopcomp", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.UseAccomp", "accomp", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.NoDeflate", "nodeflate", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.ReqMPPE", "require-mppe", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.ReqMPPE40", "require-mppe-40", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.ReqMPPE128", "require-mppe-128", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.ReqMPPEStateful", "mppe-stateful", OPT_PPPD, NULL, OPT_BOOL },
+	{ "PPPD.NoVJ", "no-vj-comp", OPT_PPPD, NULL, OPT_BOOL },
 };
 
 static DBusConnection *connection;
@@ -259,14 +259,40 @@ static int l2tp_notify(DBusMessage *msg, struct vpn_provider *provider)
 static int l2tp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
+	connman_bool_t l2tp_option, pppd_option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(pppd_options); i++) {
-		if (strncmp(pppd_options[i].cm_opt, "L2TP.", 5) == 0) {
+		l2tp_option = pppd_option = FALSE;
+
+		if (strncmp(pppd_options[i].cm_opt, "L2TP.", 5) == 0)
+			l2tp_option = TRUE;
+
+		if (strncmp(pppd_options[i].cm_opt, "PPPD.", 5) == 0)
+			pppd_option = TRUE;
+
+		if (l2tp_option == TRUE || pppd_option == TRUE) {
 			option = vpn_provider_get_string(provider,
-							pppd_options[i].cm_opt);
-			if (option == NULL)
-				continue;
+						pppd_options[i].cm_opt);
+			if (option == NULL) {
+				/*
+				 * Check if the option prefix is L2TP as the
+				 * PPPD options were using L2TP prefix earlier.
+				 */
+				char *l2tp_str;
+
+				if (pppd_option == FALSE)
+					continue;
+
+				l2tp_str = g_strdup_printf("L2TP.%s",
+						&pppd_options[i].cm_opt[5]);
+				option = vpn_provider_get_string(provider,
+								l2tp_str);
+				g_free(l2tp_str);
+
+				if (option == NULL)
+					continue;
+			}
 
 			g_key_file_set_string(keyfile,
 					vpn_provider_get_save_group(provider),
