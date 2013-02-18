@@ -63,21 +63,21 @@ struct {
 	int type;
 } pptp_options[] = {
 	{ "PPTP.User", "user", NULL, OPT_STRING },
-	{ "PPTP.EchoFailure", "lcp-echo-failure", "0", OPT_STRING },
-	{ "PPTP.EchoInterval", "lcp-echo-interval", "0", OPT_STRING },
-	{ "PPTP.Debug", "debug", NULL, OPT_STRING },
-	{ "PPTP.RefuseEAP", "refuse-eap", NULL, OPT_BOOL },
-	{ "PPTP.RefusePAP", "refuse-pap", NULL, OPT_BOOL },
-	{ "PPTP.RefuseCHAP", "refuse-chap", NULL, OPT_BOOL },
-	{ "PPTP.RefuseMSCHAP", "refuse-mschap", NULL, OPT_BOOL },
-	{ "PPTP.RefuseMSCHAP2", "refuse-mschapv2", NULL, OPT_BOOL },
-	{ "PPTP.NoBSDComp", "nobsdcomp", NULL, OPT_BOOL },
-	{ "PPTP.NoDeflate", "nodeflate", NULL, OPT_BOOL },
-	{ "PPTP.RequirMPPE", "require-mppe", NULL, OPT_BOOL },
-	{ "PPTP.RequirMPPE40", "require-mppe-40", NULL, OPT_BOOL },
-	{ "PPTP.RequirMPPE128", "require-mppe-128", NULL, OPT_BOOL },
-	{ "PPTP.RequirMPPEStateful", "mppe-stateful", NULL, OPT_BOOL },
-	{ "PPTP.NoVJ", "no-vj-comp", NULL, OPT_BOOL },
+	{ "PPPD.EchoFailure", "lcp-echo-failure", "0", OPT_STRING },
+	{ "PPPD.EchoInterval", "lcp-echo-interval", "0", OPT_STRING },
+	{ "PPPD.Debug", "debug", NULL, OPT_STRING },
+	{ "PPPD.RefuseEAP", "refuse-eap", NULL, OPT_BOOL },
+	{ "PPPD.RefusePAP", "refuse-pap", NULL, OPT_BOOL },
+	{ "PPPD.RefuseCHAP", "refuse-chap", NULL, OPT_BOOL },
+	{ "PPPD.RefuseMSCHAP", "refuse-mschap", NULL, OPT_BOOL },
+	{ "PPPD.RefuseMSCHAP2", "refuse-mschapv2", NULL, OPT_BOOL },
+	{ "PPPD.NoBSDComp", "nobsdcomp", NULL, OPT_BOOL },
+	{ "PPPD.NoDeflate", "nodeflate", NULL, OPT_BOOL },
+	{ "PPPD.RequirMPPE", "require-mppe", NULL, OPT_BOOL },
+	{ "PPPD.RequirMPPE40", "require-mppe-40", NULL, OPT_BOOL },
+	{ "PPPD.RequirMPPE128", "require-mppe-128", NULL, OPT_BOOL },
+	{ "PPPD.RequirMPPEStateful", "mppe-stateful", NULL, OPT_BOOL },
+	{ "PPPD.NoVJ", "no-vj-comp", NULL, OPT_BOOL },
 };
 
 static DBusConnection *connection;
@@ -218,14 +218,40 @@ static int pptp_notify(DBusMessage *msg, struct vpn_provider *provider)
 static int pptp_save(struct vpn_provider *provider, GKeyFile *keyfile)
 {
 	const char *option;
+	connman_bool_t pptp_option, pppd_option;
 	int i;
 
 	for (i = 0; i < (int)ARRAY_SIZE(pptp_options); i++) {
-		if (strncmp(pptp_options[i].cm_opt, "PPTP.", 5) == 0) {
+		pptp_option = pppd_option = FALSE;
+
+		if (strncmp(pptp_options[i].cm_opt, "PPTP.", 5) == 0)
+			pptp_option = TRUE;
+
+		if (strncmp(pptp_options[i].cm_opt, "PPPD.", 5) == 0)
+			pppd_option = TRUE;
+
+		if (pptp_option == TRUE || pppd_option == TRUE) {
 			option = vpn_provider_get_string(provider,
 							pptp_options[i].cm_opt);
-			if (option == NULL)
-				continue;
+			if (option == NULL) {
+				/*
+				 * Check if the option prefix is PPTP as the
+				 * PPPD options were using PPTP prefix earlier.
+				 */
+				char *pptp_str;
+
+				if (pppd_option == FALSE)
+					continue;
+
+				pptp_str = g_strdup_printf("PPTP.%s",
+						&pptp_options[i].cm_opt[5]);
+				option = vpn_provider_get_string(provider,
+								pptp_str);
+				g_free(pptp_str);
+
+				if (option == NULL)
+					continue;
+			}
 
 			g_key_file_set_string(keyfile,
 					vpn_provider_get_save_group(provider),
