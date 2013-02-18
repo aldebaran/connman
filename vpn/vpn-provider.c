@@ -1929,7 +1929,7 @@ int vpn_provider_set_string(struct vpn_provider *provider,
 
 	if (g_str_equal(key, "Type") == TRUE) {
 		g_free(provider->type);
-		provider->type = g_strdup(value);
+		provider->type = g_ascii_strdown(value, -1);
 	} else if (g_str_equal(key, "Name") == TRUE) {
 		g_free(provider->name);
 		provider->name = g_strdup(value);
