@@ -300,7 +300,7 @@ static void set_user_networks(struct vpn_provider *provider, GSList *networks)
 	GSList *list;
 
 	for (list = networks; list != NULL; list = g_slist_next(list)) {
-		struct vpn_route *route= list->data;
+		struct vpn_route *route = list->data;
 
 		if (__vpn_provider_append_user_route(provider,
 					route->family, route->network,
