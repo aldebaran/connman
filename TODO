@@ -183,6 +183,16 @@ VPN
    Complexity: C4
    Owner: Jukka Rissanen <jukka.rissanen@linux.intel.com>
 
+- L2TP & PPTP compatibility prefix removal
+
+   Priority: Medium
+   Complexity: C1
+   When: connman 2.0
+
+   The VPN config file provisioning patchset contains code that makes
+   PPP options to be marked by "PPPD." prefix. The code supports also
+   old "L2TP." and "PPTP." prefix for PPP options. Remove the compatibility
+   code and only allow "PPPD." prefix for PPP options.
 
 Tools
 =====
