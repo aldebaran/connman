@@ -107,7 +107,7 @@ struct {
 	{ "L2TP.NoBSDComp", "nobsdcomp", OPT_PPPD, NULL, OPT_BOOL },
 	{ "L2TP.NoPcomp", "nopcomp", OPT_PPPD, NULL, OPT_BOOL },
 	{ "L2TP.UseAccomp", "accomp", OPT_PPPD, NULL, OPT_BOOL },
-	{ "L2TP.NoDeflate", "nodeflatey", OPT_PPPD, NULL, OPT_BOOL },
+	{ "L2TP.NoDeflate", "nodeflate", OPT_PPPD, NULL, OPT_BOOL },
 	{ "L2TP.ReqMPPE", "require-mppe", OPT_PPPD, NULL, OPT_BOOL },
 	{ "L2TP.ReqMPPE40", "require-mppe-40", OPT_PPPD, NULL, OPT_BOOL },
 	{ "L2TP.ReqMPPE128", "require-mppe-128", OPT_PPPD, NULL, OPT_BOOL },
