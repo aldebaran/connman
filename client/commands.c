@@ -140,12 +140,58 @@ int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn)
 
 static int cmd_enable(char *args[], int num, struct option *options)
 {
-	return -1;
+	DBusMessage *message;
+	int err;
+
+	if (num > 2)
+		return -E2BIG;
+
+	if (num < 2)
+		return -EINVAL;
+
+	if (strcmp(args[1], "offlinemode") == 0) {
+		err = set_manager(connection, "OfflineMode", TRUE);
+		if (err == 0)
+			printf("OfflineMode enabled\n");
+
+		return 0;
+	}
+
+	message = get_message(connection, "GetTechnologies");
+	if (message == NULL)
+		return -ENOMEM;
+
+	set_technology(connection, message, "Powered", args[1], TRUE);
+
+	return 0;
 }
 
 static int cmd_disable(char *args[], int num, struct option *options)
 {
-	return -1;
+	DBusMessage *message;
+	int err;
+
+	if (num > 2)
+		return -E2BIG;
+
+	if (num < 2)
+		return -EINVAL;
+
+	if (strcmp(args[1], "offlinemode") == 0) {
+		err = set_manager(connection, "OfflineMode", FALSE);
+		if (err == 0)
+			printf("OfflineMode enabled\n");
+
+		return 0;
+	}
+
+	message = get_message(connection, "GetTechnologies");
+	if (message == NULL)
+		return -ENOMEM;
+
+	set_technology(connection, message, "Powered", args[1], FALSE);
+
+	return 0;
 }
 
 static int cmd_state(char *args[], int num, struct option *options)
@@ -546,44 +592,6 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 		cmd_help(NULL, 0, NULL);
 		printf("\nNote: arguments and output are considered "
 				"EXPERIMENTAL for now.\n\n");
-	} else if (strcmp(argv[0], "enable") == 0) {
-		if (argc != 2) {
-			fprintf(stderr, "Enable requires a technology name or "
-				"the argument 'offlinemode', see help\n");
-			error = -EINVAL;
-		} else if (strcmp(argv[1], "offlinemode") == 0) {
-			error = set_manager(connection, "OfflineMode", TRUE);
-			if (error == 0)
-				printf("OfflineMode is now enabled\n");
-		} else {
-			message = get_message(connection, "GetTechnologies");
-			if (message == NULL)
-				error = -ENOMEM;
-			else
-				error = set_technology(connection, message,
-						"Powered", argv[1], TRUE);
-			if (error == 0)
-				printf("Enabled %s technology\n", argv[1]);
-		}
-	} else if (strcmp(argv[0], "disable") == 0) {
-		if (argc != 2) {
-			fprintf(stderr, "Disable requires a technology name or "
-				"the argument 'offlinemode' see help\n");
-			error = -EINVAL;
-		} else if (strcmp(argv[1], "offlinemode") == 0) {
-			error = set_manager(connection, "OfflineMode", FALSE);
-			if (error == 0)
-				printf("OfflineMode is now disabled\n");
-		} else {
-			message = get_message(connection, "GetTechnologies");
-			if (message == NULL)
-				error = -ENOMEM;
-			else
-				error = set_technology(connection, message,
-						"Powered", argv[1], FALSE);
-			if (error == 0)
-				printf("Disabled %s technology\n", argv[1]);
-		}
 	} else
 		return -1;
 
