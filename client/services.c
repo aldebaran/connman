@@ -88,11 +88,11 @@ static int append_property_array(DBusMessageIter *iter, char *property,
 	return i;
 }
 
-static void append_property_dict(DBusMessageIter *iter, char *property,
+static int append_property_dict(DBusMessageIter *iter, char *property,
 					char **keys, char **data, int num_args)
 {
 	DBusMessageIter value, dict, entry, dict_key;
-	int i;
+	int i = 0;
 	unsigned char prefix;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &property);
@@ -102,7 +102,12 @@ static void append_property_dict(DBusMessageIter *iter, char *property,
 
 	dbus_dict_open(&value, &dict);
 
-	for (i = 0; i < num_args; i++) {
+	while (keys[i] != NULL && data[i] != NULL
+			&& strncmp(data[i], "--", 2) != 0) {
+
+		if (num_args > 0 && i == num_args)
+			break;
+
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 							NULL, &entry);
 		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
@@ -133,10 +138,14 @@ static void append_property_dict(DBusMessageIter *iter, char *property,
 		}
 		dbus_message_iter_close_container(&entry, &dict_key);
 		dbus_message_iter_close_container(&dict, &entry);
+
+		i++;
 	}
 	/* Close {sv}, then close a{sv} */
 	dbus_dict_close(&value, &dict);
 	dbus_dict_close(iter, &value);
+
+	return i;
 }
 
 void iterate_array(DBusMessageIter *iter)
