@@ -150,7 +150,10 @@ static int cmd_disable(char *args[], int num, struct option *options)
 
 static int cmd_state(char *args[], int num, struct option *options)
 {
-	return -1;
+	if (num > 1)
+		return -E2BIG;
+
+	return list_properties(connection, "GetProperties", NULL);
 }
 
 static int cmd_services(char *args[], int num, struct option *options)
@@ -498,14 +501,6 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 		cmd_help(NULL, 0, NULL);
 		printf("\nNote: arguments and output are considered "
 				"EXPERIMENTAL for now.\n\n");
-	} else if (strcmp(argv[0], "state") == 0) {
-		if (argc != 1) {
-			fprintf(stderr, "State cannot accept an argument, "
-								"see help\n");
-			error = -EINVAL;
-		} else
-			error = list_properties(connection,
-						"GetProperties", NULL);
 	} else if (strcmp(argv[0], "technologies") == 0) {
 		if (argc != 1) {
 			fprintf(stderr, "Tech cannot accept an argument, "
