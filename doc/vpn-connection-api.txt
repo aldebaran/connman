@@ -5,7 +5,14 @@ Service		net.connman.vpn
 Interface	net.connman.vpn.Connection
 Object path	[variable prefix]/{connection0,connection1,...}
 
-Method		void SetProperty(string name, variant value) [experimental]
+Methods		dict GetProperties()  [experimental]
+
+			Returns properties for the connection object. See
+			the properties section for available properties.
+
+			Possible Errors: [connection].Error.InvalidArguments
+
+		void SetProperty(string name, variant value) [experimental]
 
 			Changes the value of the specified property. Only
 			properties that are listed as read-write are
