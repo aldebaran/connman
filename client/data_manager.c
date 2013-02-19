@@ -56,7 +56,8 @@ int store_proxy_input(DBusConnection *connection, DBusMessage *message,
 	gchar **servers = NULL;
 	gchar **excludes = NULL;
 
-	for (i = 0; strcmp(argv[i], "excludes") != 0; i++) {
+	for (i = 0; argv[i] != NULL && strcmp(argv[i], "excludes") != 0 &&
+		     strncmp(argv[i], "--", 2) != 0; i++) {
 		servers = g_try_realloc(servers, (i + 1) * sizeof(char *));
 		if (servers == NULL) {
 			fprintf(stderr, "Could not allocate memory for list\n");
@@ -70,7 +71,8 @@ int store_proxy_input(DBusConnection *connection, DBusMessage *message,
 			goto free_servers;
 		}
 	}
-	for (j = 0; j + (i + 1) != num_args; j++) {
+	for (j = 0; j + (i + 1) != num_args && argv[j + (i + 1)] != NULL &&
+		     strncmp(argv[j + i + 1], "--", 2) != 0; j++) {
 		excludes = g_try_realloc(excludes, (j + 1) * sizeof(char *));
 		if (excludes == NULL) {
 			fprintf(stderr, "Could not allocate memory for list\n");
@@ -91,7 +93,14 @@ free_servers:
 		g_free(servers[k]);
 	g_free(servers);
 
-	return error;
+	if (error < 0)
+		return error;
+
+	if (i > 0)
+		i++;
+	if (j > 0)
+		j++;
+	return i + j;
 }
 
 int connect_service(DBusConnection *connection, char *name)
