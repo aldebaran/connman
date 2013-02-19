@@ -438,8 +438,12 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 				send_routes(provider, provider->user_routes,
 								"UserRoutes");
 		}
-	} else
-		return __connman_error_invalid_property(msg);
+	} else {
+		const char *str;
+
+		dbus_message_iter_get_basic(&value, &str);
+		vpn_provider_set_string(provider, name, str);
+	}
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
 }
