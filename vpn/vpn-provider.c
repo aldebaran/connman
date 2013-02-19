@@ -38,11 +38,6 @@
 #include "vpn-provider.h"
 #include "vpn.h"
 
-enum {
-	USER_ROUTES_CHANGED = 0x01,
-	SERVER_ROUTES_CHANGED = 0x02,
-};
-
 static DBusConnection *connection;
 static GHashTable *provider_hash;
 static GSList *driver_list;
@@ -54,6 +49,11 @@ struct vpn_route {
 	char *network;
 	char *netmask;
 	char *gateway;
+};
+
+struct vpn_setting {
+	gboolean hide_value;
+	char *value;
 };
 
 struct vpn_provider {
@@ -79,7 +79,6 @@ struct vpn_provider {
 	struct vpn_ipconfig *ipconfig_ipv4;
 	struct vpn_ipconfig *ipconfig_ipv6;
 	char **nameservers;
-	int what_changed;
 	guint notify_id;
 	char *config_file;
 	char *config_entry;
@@ -94,6 +93,14 @@ static void free_route(gpointer data)
 	g_free(route->gateway);
 
 	g_free(route);
+}
+
+static void free_setting(gpointer data)
+{
+	struct vpn_setting *setting = data;
+
+	g_free(setting->value);
+	g_free(setting);
 }
 
 static void append_route(DBusMessageIter *iter, void *user_data)
@@ -166,15 +173,11 @@ static void send_routes(struct vpn_provider *provider, GHashTable *routes,
 					routes);
 }
 
-static int provider_property_changed(struct vpn_provider *provider,
-				const char *name)
+static int provider_routes_changed(struct vpn_provider *provider)
 {
-	DBG("provider %p name %s", provider, name);
+	DBG("provider %p", provider);
 
-	if (g_str_equal(name, "UserRoutes") == TRUE)
-		send_routes(provider, provider->user_routes, name);
-	else if (g_str_equal(name, "ServerRoutes") == TRUE)
-		send_routes(provider, provider->routes, name);
+	send_routes(provider, provider->routes, "ServerRoutes");
 
 	return 0;
 }
@@ -333,28 +336,38 @@ static void del_routes(struct vpn_provider *provider)
 	provider->user_networks = NULL;
 }
 
+static void send_value(const char *path, const char *key, const char *value)
+{
+	const char *empty = "";
+	const char *str;
+
+	if (value != NULL)
+		str = value;
+	else
+		str = empty;
+
+	connman_dbus_property_changed_basic(path,
+					VPN_CONNECTION_INTERFACE,
+					key,
+					DBUS_TYPE_STRING,
+					&str);
+}
+
 static gboolean provider_send_changed(gpointer data)
 {
 	struct vpn_provider *provider = data;
 
-	if (provider->what_changed & USER_ROUTES_CHANGED)
-		provider_property_changed(provider, "UserRoutes");
+	provider_routes_changed(provider);
 
-	if (provider->what_changed & SERVER_ROUTES_CHANGED)
-		provider_property_changed(provider, "ServerRoutes");
-
-	provider->what_changed = 0;
 	provider->notify_id = 0;
 
 	return FALSE;
 }
 
-static void provider_schedule_changed(struct vpn_provider *provider, int flag)
+static void provider_schedule_changed(struct vpn_provider *provider)
 {
 	if (provider->notify_id != 0)
 		g_source_remove(provider->notify_id);
-
-	provider->what_changed |= flag;
 
 	provider->notify_id = g_timeout_add(100, provider_send_changed,
 								provider);
@@ -399,8 +412,8 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 			set_user_networks(provider, provider->user_networks);
 
 			if (handle_routes == FALSE)
-				provider_schedule_changed(provider,
-							USER_ROUTES_CHANGED);
+				send_routes(provider, provider->user_routes,
+								"UserRoutes");
 		}
 	} else
 		return __connman_error_invalid_property(msg);
@@ -423,7 +436,7 @@ static DBusMessage *clear_property(DBusConnection *conn, DBusMessage *msg,
 		del_routes(provider);
 
 		if (handle_routes == FALSE)
-			provider_property_changed(provider, name);
+			send_routes(provider, provider->user_routes, name);
 	} else {
 		return __connman_error_invalid_property(msg);
 	}
@@ -1523,7 +1536,7 @@ static void provider_initialize(struct vpn_provider *provider)
 	provider->user_routes = g_hash_table_new_full(g_str_hash, g_str_equal,
 					g_free, free_route);
 	provider->setting_strings = g_hash_table_new_full(g_str_hash,
-						g_str_equal, g_free, g_free);
+					g_str_equal, g_free, free_setting);
 }
 
 static struct vpn_provider *vpn_provider_new(void)
@@ -2023,18 +2036,36 @@ static int set_string(struct vpn_provider *provider,
 	if (g_str_equal(key, "Type") == TRUE) {
 		g_free(provider->type);
 		provider->type = g_ascii_strdown(value, -1);
+		send_value(provider->path, "Type", provider->type);
 	} else if (g_str_equal(key, "Name") == TRUE) {
 		g_free(provider->name);
 		provider->name = g_strdup(value);
+		send_value(provider->path, "Name", provider->name);
 	} else if (g_str_equal(key, "Host") == TRUE) {
 		g_free(provider->host);
 		provider->host = g_strdup(value);
+		send_value(provider->path, "Host", provider->host);
 	} else if (g_str_equal(key, "VPN.Domain") == TRUE) {
 		g_free(provider->domain);
 		provider->domain = g_strdup(value);
-	} else
+		send_value(provider->path, "Domain", provider->domain);
+	} else {
+		struct vpn_setting *setting;
+
+		setting = g_try_new(struct vpn_setting, 1);
+		if (setting == NULL)
+			return -ENOMEM;
+
+		setting->value = g_strdup(value);
+		setting->hide_value = hide_value;
+
+		if (hide_value == FALSE)
+			send_value(provider->path, key, setting->value);
+
 		g_hash_table_replace(provider->setting_strings,
-				g_strdup(key), g_strdup(value));
+				g_strdup(key), setting);
+	}
+
 	return 0;
 }
 
@@ -2053,6 +2084,8 @@ int vpn_provider_set_string_hide_value(struct vpn_provider *provider,
 const char *vpn_provider_get_string(struct vpn_provider *provider,
 							const char *key)
 {
+	struct vpn_setting *setting;
+
 	DBG("provider %p key %s", provider, key);
 
 	if (g_str_equal(key, "Type") == TRUE)
@@ -2070,7 +2103,11 @@ const char *vpn_provider_get_string(struct vpn_provider *provider,
 	} else if (g_str_equal(key, "VPN.Domain") == TRUE)
 		return provider->domain;
 
-	return g_hash_table_lookup(provider->setting_strings, key);
+	setting = g_hash_table_lookup(provider->setting_strings, key);
+	if (setting == NULL)
+		return NULL;
+
+	return setting->value;
 }
 
 connman_bool_t __vpn_provider_check_routes(struct vpn_provider *provider)
@@ -2309,8 +2346,7 @@ int vpn_provider_append_route(struct vpn_provider *provider,
 	if (handle_routes == FALSE) {
 		if (route->netmask != NULL && route->gateway != NULL &&
 							route->network != NULL)
-			provider_schedule_changed(provider,
-						SERVER_ROUTES_CHANGED);
+			provider_schedule_changed(provider);
 	}
 
 	return 0;
