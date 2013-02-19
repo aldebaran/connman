@@ -460,6 +460,8 @@ static DBusMessage *clear_property(DBusConnection *conn, DBusMessage *msg,
 
 		if (handle_routes == FALSE)
 			send_routes(provider, provider->user_routes, name);
+	} else if (vpn_provider_get_string(provider, name) != NULL) {
+		vpn_provider_set_string(provider, name, NULL);
 	} else {
 		return __connman_error_invalid_property(msg);
 	}
