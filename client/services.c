@@ -458,14 +458,14 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 {
 	DBusMessage *message_send;
 	DBusMessageIter iter, value, dict, entry, data;
-	struct service_data service;
 	char *path;
 	const char *path_name;
 	char *property = "Proxy.Configuration";
 	char *method = "Method";
 	char *manual = "manual";
+	DBusError dbus_error;
 
-	path_name = find_service(connection, message, name, &service);
+	path_name = strip_service_path(name);
 	if (path_name == NULL)
 		return -ENXIO;
 
@@ -507,8 +507,16 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 
 	dbus_message_iter_close_container(&value, &dict);
 	dbus_message_iter_close_container(&iter, &value);
-	dbus_connection_send(connection, message_send, NULL);
-	dbus_connection_flush(connection);
+
+	dbus_error_init(&dbus_error);
+	dbus_connection_send_with_reply_and_block(connection, message_send,
+			-1, &dbus_error);
+
+	if (dbus_error_is_set(&dbus_error) == TRUE) {
+		printf("Error '%s': %s", path, dbus_error.message);
+		dbus_error_free(&dbus_error);
+	}
+
 	dbus_message_unref(message_send);
 
 	g_free(path);
@@ -523,11 +531,11 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 	int num_props = 1;
 	DBusMessage *message_send;
 	DBusMessageIter iter;
-	struct service_data service;
 	char *path;
 	const char *path_name;
+	DBusError dbus_error;
 
-	path_name = find_service(connection, message, name, &service);
+	path_name = strip_service_path(name);
 	if (path_name == NULL)
 		return -ENXIO;
 
@@ -557,8 +565,17 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 		num_props = append_property_dict(&iter, property, keys, data,
 				num_args);
 
-	dbus_connection_send(connection, message_send, NULL);
-	dbus_connection_flush(connection);
+	if (num_props >= 0) {
+		dbus_error_init(&dbus_error);
+		dbus_connection_send_with_reply_and_block(connection,
+				message_send, -1, &dbus_error);
+
+		if (dbus_error_is_set(&dbus_error) == TRUE) {
+			printf("Error '%s': %s", path, dbus_error.message);
+			dbus_error_free(&dbus_error);
+		}
+	}
+
 	dbus_message_unref(message_send);
 	g_free(path);
 
