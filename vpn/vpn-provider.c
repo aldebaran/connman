@@ -1191,12 +1191,14 @@ static int provider_indicate_state(struct vpn_provider *provider,
 				enum vpn_provider_state state)
 {
 	const char *str;
+	enum vpn_provider_state old_state;
 
 	str = state2string(state);
 	DBG("provider %p state %s/%d", provider, str, state);
 	if (str == NULL)
 		return -EINVAL;
 
+	old_state = provider->state;
 	provider->state = state;
 
 	if (state == VPN_PROVIDER_STATE_READY) {
@@ -1214,9 +1216,11 @@ static int provider_indicate_state(struct vpn_provider *provider,
 					append_ipv6, provider);
 	}
 
-	connman_dbus_property_changed_basic(provider->path,
+	if (old_state != state)
+		connman_dbus_property_changed_basic(provider->path,
 					VPN_CONNECTION_INTERFACE, "State",
 					DBUS_TYPE_STRING, &str);
+
 	/*
 	 * We do not stay in failure state as clients like connmand can
 	 * get confused about our current state.
