@@ -501,6 +501,7 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 				char *name, char *property, char **keys,
 				void *data, int num_args)
 {
+	int num_props = 1;
 	DBusMessage *message_send;
 	DBusMessageIter iter;
 	struct service_data service;
@@ -529,18 +530,20 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 	else if ((strcmp(property, "Domains.Configuration") == 0)
 			|| (strcmp(property, "Timeservers.Configuration") == 0)
 			|| (strcmp(property, "Nameservers.Configuration") == 0))
-		append_property_array(&iter, property, data, num_args);
+		num_props = append_property_array(&iter, property, data,
+				num_args);
 	else if ((strcmp(property, "IPv4.Configuration") == 0)
 			|| (strcmp(property, "IPv6.Configuration") == 0)
 			|| (strcmp(property, "Proxy.Configuration") == 0))
-		append_property_dict(&iter, property, keys, data, num_args);
+		num_props = append_property_dict(&iter, property, keys, data,
+				num_args);
 
 	dbus_connection_send(connection, message_send, NULL);
 	dbus_connection_flush(connection);
 	dbus_message_unref(message_send);
 	g_free(path);
 
-	return 0;
+	return num_props;
 }
 
 int remove_service(DBusConnection *connection, DBusMessage *message,
