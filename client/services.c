@@ -62,11 +62,11 @@ int parse_boolean(char *arg)
 	return -1;
 }
 
-static void append_property_array(DBusMessageIter *iter, char *property,
+static int append_property_array(DBusMessageIter *iter, char *property,
 						char **data, int num_args)
 {
 	DBusMessageIter value, array;
-	int i;
+	int i = 0;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &property);
 
@@ -74,13 +74,18 @@ static void append_property_array(DBusMessageIter *iter, char *property,
 	dbus_message_iter_open_container(&value, DBUS_TYPE_ARRAY,
 					 DBUS_TYPE_STRING_AS_STRING, &array);
 
-	for (i = 0; i < num_args; i++) {
+	while (data[i] != NULL && strncmp(data[i], "--", 2) != 0) {
 		dbus_message_iter_append_basic(&array, DBUS_TYPE_STRING,
 						&data[i]);
-		printf("Added: %s\n", data[i]);
+		if (num_args > 0 && i == num_args)
+			break;
+		i++;
 	}
+
 	dbus_message_iter_close_container(&value, &array);
 	dbus_message_iter_close_container(iter, &value);
+
+	return i;
 }
 
 static void append_property_dict(DBusMessageIter *iter, char *property,
