@@ -475,14 +475,14 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 	dbus_message_iter_close_container(&dict, &entry);
 	dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY, NULL,
 							&entry);
-	append_property_array(&entry, "Servers", servers, num_servers);
+	append_property_array(&entry, "Servers", servers, num_servers -1);
 	dbus_message_iter_close_container(&dict, &entry);
 
 	if (num_excludes != 0) {
 		dbus_message_iter_open_container(&dict, DBUS_TYPE_DICT_ENTRY,
 							NULL, &entry);
 		append_property_array(&entry, "Excludes", excludes,
-							num_excludes);
+							num_excludes -1);
 		dbus_message_iter_close_container(&dict, &entry);
 	}
 
@@ -494,7 +494,7 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 
 	g_free(path);
 
-	return 0;
+	return num_servers + num_excludes;
 }
 
 int set_service_property(DBusConnection *connection, DBusMessage *message,
