@@ -1758,7 +1758,8 @@ int __vpn_provider_create(DBusMessage *msg)
 				dbus_message_iter_get_basic(&value, &name);
 			else if (g_str_equal(key, "Host") == TRUE)
 				dbus_message_iter_get_basic(&value, &host);
-			else if (g_str_equal(key, "VPN.Domain") == TRUE)
+			else if (g_str_equal(key, "VPN.Domain") == TRUE ||
+					g_str_equal(key, "Domain") == TRUE)
 				dbus_message_iter_get_basic(&value, &domain);
 			break;
 		case DBUS_TYPE_ARRAY:
@@ -2091,7 +2092,8 @@ static int set_string(struct vpn_provider *provider,
 		g_free(provider->host);
 		provider->host = g_strdup(value);
 		send_value(provider->path, "Host", provider->host);
-	} else if (g_str_equal(key, "VPN.Domain") == TRUE) {
+	} else if (g_str_equal(key, "VPN.Domain") == TRUE ||
+			g_str_equal(key, "Domain") == TRUE) {
 		g_free(provider->domain);
 		provider->domain = g_strdup(value);
 		send_value(provider->path, "Domain", provider->domain);
@@ -2146,7 +2148,8 @@ const char *vpn_provider_get_string(struct vpn_provider *provider,
 			return provider->host;
 		else
 			return provider->host_ip[0];
-	} else if (g_str_equal(key, "VPN.Domain") == TRUE)
+	} else if (g_str_equal(key, "VPN.Domain") == TRUE ||
+			g_str_equal(key, "Domain") == TRUE)
 		return provider->domain;
 
 	setting = g_hash_table_lookup(provider->setting_strings, key);
