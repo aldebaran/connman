@@ -470,13 +470,17 @@ static int cmd_help(char *args[], int num, struct option *options)
 
 int commands(DBusConnection *connection, char *argv[], int argc)
 {
-	int i;
+	int i, result;
 
 	for (i = 0; cmd_table[i].cmd != NULL; i++) {
 		if (g_strcmp0(cmd_table[i].cmd, argv[0]) == 0 &&
 				cmd_table[i].func != NULL) {
-			return cmd_table[i].func(argv, argc,
+			result = cmd_table[i].func(argv, argc,
 					cmd_table[i].options);
+			if (result < 0)
+				printf("Error '%s': %s\n", argv[0],
+						strerror(-result));
+			return 0;
 		}
 	}
 
