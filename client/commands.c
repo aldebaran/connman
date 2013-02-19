@@ -83,93 +83,6 @@ static int parse_args(char *arg, struct option *options)
 	return '?';
 }
 
-int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
-{
-	DBusMessage *message;
-	int num_args = argc - MANDATORY_ARGS;
-	int error = 0;
-	dbus_bool_t val;
-
-	message = get_message(conn, "GetServices");
-	if (message == NULL)
-		return -ENOMEM;
-
-	switch (c) {
-	case 'a':
-		switch (*optarg) {
-		case 'y':
-		case '1':
-		case 't':
-			val = TRUE;
-			break;
-		case 'n':
-		case '0':
-		case 'f':
-			val = FALSE;
-			break;
-		default:
-			return -EINVAL;
-		}
-		error = set_service_property(conn, message, argv[1],
-						"AutoConnect", NULL,
-						&val, 0);
-		break;
-	case 'i':
-		error = set_service_property(conn, message, argv[1],
-					"IPv4.Configuration", ipv4,
-					argv + MANDATORY_ARGS, num_args);
-		break;
-	case 'v':
-		error = set_service_property(conn, message, argv[1],
-					"IPv6.Configuration", ipv6,
-					argv + MANDATORY_ARGS, num_args);
-		break;
-	case 'n':
-		error = set_service_property(conn, message, argv[1],
-					"Nameservers.Configuration", NULL,
-					argv + MANDATORY_ARGS, num_args);
-		break;
-	case 't':
-		error = set_service_property(conn, message, argv[1],
-					"Timeservers.Configuration", NULL,
-					argv + MANDATORY_ARGS, num_args);
-		break;
-	case 'd':
-		error = set_service_property(conn, message, argv[1],
-					"Domains.Configuration", NULL,
-					argv + MANDATORY_ARGS, num_args);
-		break;
-	case 'x':
-		if ((strcmp(argv[3], "direct") == 0 && argc < 5) ||
-			(strcmp(argv[3], "auto") == 0 && argc < 6)) {
-			error = set_service_property(conn, message, argv[1],
-					"Proxy.Configuration", proxy_simple,
-					argv + MANDATORY_ARGS, num_args);
-		} else if (strcmp(argv[3], "manual") == 0
-				  && strcmp(argv[4], "servers") == 0
-				  && argc > 5) {
-			argc -= 5;
-			error = store_proxy_input(conn, message, argv[1],
-								argc, &argv[5]);
-		} else {
-			fprintf(stderr, "Incorrect arguments\n");
-			error = -EINVAL;
-		}
-		break;
-	case 'r':
-		error = remove_service(conn, message, argv[1]);
-		break;
-	default:
-		fprintf(stderr, "Command not recognized, please check help\n");
-		error = -EINVAL;
-		break;
-	}
-
-	dbus_message_unref(message);
-
-	return error;
-}
-
 int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn)
 {
 	int error;
@@ -298,7 +211,135 @@ static int cmd_disconnect(char *args[], int num, struct option *options)
 
 static int cmd_config(char *args[], int num, struct option *options)
 {
-	return -1;
+	int res = 0, index = 2, oldindex = 0;
+	int c;
+	char *service_name;
+	DBusMessage *message;
+	char **opt_start;
+	dbus_bool_t val;
+
+	service_name = args[1];
+	if (service_name == NULL)
+		return -EINVAL;
+
+	while (index < num && args[index] != NULL) {
+		c = parse_args(args[index], options);
+		opt_start = &args[index + 1];
+		res = 0;
+
+		message = get_message(connection, "GetServices");
+		if (message == NULL)
+			return -ENOMEM;
+
+		oldindex = index;
+
+		switch (c) {
+		case 'a':
+			switch (parse_boolean(*opt_start)) {
+			case 1:
+				val = TRUE;
+				break;
+			case 0:
+				val = FALSE;
+				break;
+			default:
+				res = -EINVAL;
+				break;
+			}
+			if (res == 0)
+				res = set_service_property(connection, message,
+						service_name, "AutoConnect",
+						NULL, &val, 0);
+			break;
+		case 'i':
+			res = set_service_property(connection, message,
+					service_name, "IPv4.Configuration",
+					ipv4, opt_start, 0);
+			if (res < 0)
+				index += 4;
+			break;
+		case 'v':
+			res = set_service_property(connection, message,
+					service_name, "IPv6.Configuration",
+					ipv6, opt_start, 0);
+			if (res < 0)
+				index += 5;
+			break;
+		case 'n':
+			res = set_service_property(connection, message,
+					service_name,
+					"Nameservers.Configuration",
+					NULL, opt_start, 0);
+			break;
+		case 't':
+			res = set_service_property(connection, message,
+					service_name,
+					"Timeservers.Configuration",
+					NULL, opt_start, 0);
+			break;
+		case 'd':
+			res = set_service_property(connection, message,
+					service_name,
+					"Domains.Configuration",
+					NULL, opt_start, 0);
+			break;
+		case 'x':
+			if (*opt_start == NULL) {
+				res = -EINVAL;
+				break;
+			}
+
+			if (strcmp(*opt_start, "direct") == 0) {
+				res = set_service_property(connection, message,
+						service_name,
+						"Proxy.Configuration",
+						proxy_simple, opt_start, 1);
+				break;
+			}
+
+			if (strcmp(*opt_start, "auto") == 0) {
+				res = set_service_property(connection, message,
+						service_name,
+						"Proxy.Configuration",
+						proxy_simple, opt_start, 1);
+				break;
+			}
+
+			if (strcmp(*opt_start, "manual") == 0) {
+					char **url_start = &args[index + 2];
+
+					if (*url_start != NULL &&
+						strcmp(*url_start,
+							"servers") == 0) {
+						url_start = &args[index + 3];
+						index++;
+					}
+					res = store_proxy_input(connection,
+							message, service_name,
+							0, url_start);
+			}
+
+			break;
+		case 'r':
+			res = remove_service(connection, message, service_name);
+			break;
+		default:
+			res = -EINVAL;
+			break;
+		}
+
+		dbus_message_unref(message);
+
+		if (res < 0) {
+			printf("Error '%s': %s\n", args[oldindex],
+					strerror(-res));
+		} else
+			index += res;
+
+		index++;
+	}
+
+	return 0;
 }
 
 static int cmd_monitor(char *args[], int num, struct option *options)
@@ -554,28 +595,7 @@ int commands_options(DBusConnection *connection, char *argv[], int argc)
 	int error, c;
 	int option_index = 0;
 
-	if (strcmp(argv[0], "config") == 0) {
-		if (argc < 3) {
-			fprintf(stderr, "Config requires an option, "
-								"see help\n");
-			return -EINVAL;
-		}
-		while ((c = getopt_long(argc, argv, "", config_options,
-							&option_index))) {
-			if (c == -1) {
-				if (option_index == 0) {
-					printf("Config requires an option, "
-							"see help\n");
-					return -EINVAL;
-				}
-				break;
-			}
-			error = config_switch(argc, argv, c, connection);
-			if (error != 0)
-				return error;
-			option_index++;
-		}
-	} else if (strcmp(argv[0], "monitor") == 0) {
+	if (strcmp(argv[0], "monitor") == 0) {
 		if (argc > 2) {
 			fprintf(stderr, "Too many arguments for monitor, "
 								"see help\n");
