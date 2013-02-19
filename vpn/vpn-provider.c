@@ -84,6 +84,9 @@ struct vpn_provider {
 	char *config_entry;
 };
 
+static void append_properties(DBusMessageIter *iter,
+				struct vpn_provider *provider);
+
 static void free_route(gpointer data)
 {
 	struct vpn_route *route = data;
@@ -373,6 +376,26 @@ static void provider_schedule_changed(struct vpn_provider *provider)
 								provider);
 }
 
+static DBusMessage *get_properties(DBusConnection *conn,
+					DBusMessage *msg, void *data)
+{
+	struct vpn_provider *provider = data;
+	DBusMessage *reply;
+	DBusMessageIter array;
+
+	DBG("provider %p", provider);
+
+	reply = dbus_message_new_method_return(msg);
+	if (reply == NULL)
+		return NULL;
+
+	dbus_message_iter_init_append(reply, &array);
+
+	append_properties(&array, provider);
+
+	return reply;
+}
+
 static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 								void *data)
 {
@@ -475,6 +498,9 @@ static DBusMessage *do_disconnect(DBusConnection *conn, DBusMessage *msg,
 }
 
 static const GDBusMethodTable connection_methods[] = {
+	{ GDBUS_METHOD("GetProperties",
+			NULL, GDBUS_ARGS({ "properties", "a{sv}" }),
+			get_properties) },
 	{ GDBUS_METHOD("SetProperty",
 			GDBUS_ARGS({ "name", "s" }, { "value", "v" }),
 			NULL, set_property) },
@@ -1284,6 +1310,8 @@ static void append_properties(DBusMessageIter *iter,
 					struct vpn_provider *provider)
 {
 	DBusMessageIter dict;
+	GHashTableIter hash;
+	gpointer value, key;
 
 	connman_dbus_dict_open(iter, &dict);
 
@@ -1324,6 +1352,20 @@ static void append_properties(DBusMessageIter *iter,
 	connman_dbus_dict_append_array(&dict, "ServerRoutes",
 				DBUS_TYPE_DICT_ENTRY, append_routes,
 				provider->routes);
+
+	if (provider->setting_strings != NULL) {
+		g_hash_table_iter_init(&hash, provider->setting_strings);
+
+		while (g_hash_table_iter_next(&hash, &key, &value) == TRUE) {
+			struct vpn_setting *setting = value;
+
+			if (setting->hide_value == FALSE &&
+							setting->value != NULL)
+				connman_dbus_dict_append_basic(&dict, key,
+							DBUS_TYPE_STRING,
+							&setting->value);
+		}
+	}
 
 	connman_dbus_dict_close(iter, &dict);
 }
