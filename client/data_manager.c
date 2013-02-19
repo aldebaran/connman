@@ -106,7 +106,6 @@ free_servers:
 int connect_service(DBusConnection *connection, char *name)
 {
 	DBusMessage *message, *message_connect = NULL;
-	struct service_data service;
 	char *path = NULL;
 	const char *path_name;
 	DBusError err;
@@ -116,11 +115,7 @@ int connect_service(DBusConnection *connection, char *name)
 	if (message == NULL)
 		return -ENOMEM;
 
-	path_name = find_service(connection, message, name, &service);
-	if (path_name == NULL) {
-		err_ret = -ENXIO;
-		goto error;
-	}
+	path_name = strip_service_path(name);
 
 	path = g_strdup_printf("/net/connman/service/%s", path_name);
 	message_connect = dbus_message_new_method_call("net.connman", path,
@@ -136,7 +131,8 @@ int connect_service(DBusConnection *connection, char *name)
 								-1, &err);
 
 	if (dbus_error_is_set(&err)) {
-		printf("Connection failed; error: '%s'\n", err.message);
+		printf("Error '%s': %s\n", path, err.message);
+		dbus_error_free(&err);
 		err_ret = -EINVAL;
 		goto error;
 	}
@@ -157,7 +153,6 @@ error:
 int disconnect_service(DBusConnection *connection, char *name)
 {
 	DBusMessage *message, *message_disconnect = NULL;
-	struct service_data service;
 	char *path = NULL;
 	const char *path_name;
 	DBusError err;
@@ -167,14 +162,9 @@ int disconnect_service(DBusConnection *connection, char *name)
 	if (message == NULL)
 		return -ENOMEM;
 
-	path_name = find_service(connection, message, name, &service);
-	if (path_name == NULL) {
-		err_ret = -ENXIO;
-		goto error;
-	}
-
+	path_name = strip_service_path(name);
 	path = g_strdup_printf("/net/connman/service/%s", path_name);
-	printf("%s\n", path);
+
 	message_disconnect = dbus_message_new_method_call("net.connman", path,
 							  "net.connman.Service",
 							  "Disconnect");
@@ -189,7 +179,8 @@ int disconnect_service(DBusConnection *connection, char *name)
 						  -1, &err);
 
 	if (dbus_error_is_set(&err)) {
-		printf("Connection failed; error: '%s'\n", err.message);
+		printf("Error '%s': %s\n", path, err.message);
+		dbus_error_free(&err);
 		err_ret = -EINVAL;
 		goto error;
 	}
