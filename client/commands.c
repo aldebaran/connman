@@ -66,36 +66,21 @@ static char *proxy_simple[] = {
 
 static int cmd_help(char *args[], int num, struct option *options);
 
-int service_switch(int argc, char *argv[], int c, DBusConnection *conn,
-						struct service_data *service)
+static int parse_args(char *arg, struct option *options)
 {
-	const char *name;
-	DBusMessage *message;
-	int error = 0;
+	int i;
 
-	message = get_message(conn, "GetServices");
-	if (message == NULL)
-		return -ENOMEM;
+	if (arg == NULL)
+		return -1;
 
-	switch (c) {
-	case 'p':
-		name = find_service(conn, message, argv[2], service);
-		if (name == NULL) {
-			error = -ENXIO;
-			break;
-		}
-
-		error = list_properties(conn, "GetServices", (char *) name);
-		break;
-	default:
-		fprintf(stderr, "Command not recognized, please check help\n");
-		error = -EINVAL;
-		break;
+	for (i = 0; options[i].name != NULL; i++) {
+		if (strcmp(options[i].name, arg) == 0 ||
+				(strncmp(arg, "--", 2) == 0 &&
+					strcmp(&arg[2], options[i].name) == 0))
+			return options[i].val;
 	}
 
-	dbus_message_unref(message);
-
-	return error;
+	return '?';
 }
 
 int config_switch(int argc, char *argv[], int c, DBusConnection *conn)
@@ -257,7 +242,38 @@ static int cmd_state(char *args[], int num, struct option *options)
 
 static int cmd_services(char *args[], int num, struct option *options)
 {
-	return -1;
+	char *service_name = NULL;
+	int err = 0;
+	int c;
+	DBusMessage *message;
+
+	if (num > 3)
+		return -E2BIG;
+
+	c = parse_args(args[1], options);
+	switch (c) {
+	case -1:
+		break;
+	case 'p':
+		if (num < 3)
+			return -EINVAL;
+		service_name = args[2];
+		break;
+	default:
+		if (num > 2)
+			return -E2BIG;
+		service_name = args[1];
+		break;
+	}
+
+	message = get_message(connection, "GetServices");
+	if (message == NULL)
+		return -ENOMEM;
+
+	err = list_properties(connection, "GetServices", service_name);
+	dbus_message_unref(message);
+
+	return err;
 }
 
 static int cmd_technologies(char *args[], int num, struct option *options)
@@ -301,7 +317,7 @@ static struct option service_options[] = {
 };
 
 static const char *service_desc[] = {
-	"<service>        Show properties for service",
+	"[<service>]      (obsolete)",
 	NULL
 };
 
@@ -358,7 +374,7 @@ static const struct {
 	  cmd_disable, "Disables given technology or offline mode"},
 	{ "state",        NULL,           NULL,            NULL,
 	  cmd_state, "Shows if the system is online or offline" },
-	{ "services",     NULL,           service_options, &service_desc[0],
+	{ "services",     "[<service>]",  service_options, &service_desc[0],
 	  cmd_services, "Display services" },
 	{ "technologies", NULL,           NULL,            NULL,
 	  cmd_technologies, "Display technologies" },
@@ -537,39 +553,8 @@ int commands_options(DBusConnection *connection, char *argv[], int argc)
 {
 	int error, c;
 	int option_index = 0;
-	struct service_data service;
 
-	if (strcmp(argv[0], "services") == 0) {
-		if (argc > 3) {
-			fprintf(stderr, "Too many arguments for services, "
-								"see help\n");
-			return -EINVAL;
-		}
-		if (argc < 2) {
-			printf("List of all services:\n");
-			error = list_properties(connection, "GetServices", NULL);
-			if (error != 0)
-				return error;
-		} else {
-			while ((c = getopt_long(argc, argv, "", service_options,
-						&option_index))) {
-				if (c == -1) {
-					if (option_index == 0) {
-						printf("Services takes an "
-							"option, see help.\n");
-						return -EINVAL;
-					}
-					break;
-				}
-				error = service_switch(argc, argv, c,
-								connection,
-								&service);
-				if (error != 0)
-					return error;
-				option_index++;
-			}
-		}
-	} else if (strcmp(argv[0], "config") == 0) {
+	if (strcmp(argv[0], "config") == 0) {
 		if (argc < 3) {
 			fprintf(stderr, "Config requires an option, "
 								"see help\n");
