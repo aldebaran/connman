@@ -81,8 +81,6 @@ void match_tech_name(DBusMessage *message, char *tech_name,
 		name = strrchr(path, '/') + 1;
 		tech->name = g_strdup(name);
 		if (g_strcmp0(tech_name, tech->name) == 0) {
-			printf("    %-20s { %s } exists\n", tech->name,
-								tech->path);
 			break;
 		} else
 			dbus_message_iter_next(&array);
@@ -124,9 +122,6 @@ int scan_technology(DBusConnection *connection, DBusMessage *message,
 
 	match_tech_name(message, tech, &technology);
 	if (g_strcmp0(tech, technology.name) != 0) {
-		fprintf(stderr, "%s does not exist on the system\n", tech);
-		fprintf(stderr, "Use the 'tech' command to find available "
-					"technologies on your system.\n");
 		return -ENXIO;
 	}
 
@@ -142,12 +137,12 @@ int scan_technology(DBusConnection *connection, DBusMessage *message,
 									&err);
 
 	if (dbus_error_is_set(&err)) {
-		printf("Scan failed; error: '%s'\n", err.message);
-		return -EINVAL;
+		printf("Error '%s' %s\n", technology.path, err.message);
+		dbus_error_free(&err);
+		return -ENXIO;
 	}
 
 	dbus_message_unref(message_send);
-	printf("Scanned for new services on %s.\n", technology.name);
 	g_free(technology.name);
 	g_free(technology.path);
 
