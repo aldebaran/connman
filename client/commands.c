@@ -224,7 +224,19 @@ static int cmd_connect(char *args[], int num, struct option *options)
 
 static int cmd_disconnect(char *args[], int num, struct option *options)
 {
-	return -1;
+	int err;
+
+	if (num > 2)
+		return -E2BIG;
+
+	if (num < 2)
+		return -EINVAL;
+
+	err = disconnect_service(connection, args[1]);
+	if (err == 0)
+		printf("Disconnected\n");
+
+	return 0;
 }
 
 static int cmd_config(char *args[], int num, struct option *options)
@@ -516,17 +528,6 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 		cmd_help(NULL, 0, NULL);
 		printf("\nNote: arguments and output are considered "
 				"EXPERIMENTAL for now.\n\n");
-	} else if (strcmp(argv[0], "disconnect") == 0) {
-		if (argc != 2) {
-			fprintf(stderr, "Disconnect requires a service name or "
-							"path, see help\n");
-			error = -EINVAL;
-		} else
-			error = disconnect_service(connection,
-						strip_service_path(argv[1]));
-		if (error == 0)
-			printf("Disconnected from: %s\n",
-						strip_service_path(argv[1]));
 	} else if (strcmp(argv[0], "scan") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Scan requires a service name or path, "
