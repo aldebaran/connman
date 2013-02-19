@@ -202,7 +202,25 @@ static int cmd_technologies(char *args[], int num, struct option *options)
 
 static int cmd_scan(char *args[], int num, struct option *options)
 {
-	return -1;
+	DBusMessage *message;
+	int err;
+
+	if (num > 2)
+		return -E2BIG;
+
+	if (num < 2)
+		return -EINVAL;
+
+	message = get_message(connection, "GetTechnologies");
+	if (message == NULL)
+		err = -ENOMEM;
+	else {
+		err = scan_technology(connection, message, args[1]);
+		if (err == 0)
+			printf("Scan completed\n");
+	}
+
+	return 0;
 }
 
 static int cmd_connect(char *args[], int num, struct option *options)
@@ -528,17 +546,6 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 		cmd_help(NULL, 0, NULL);
 		printf("\nNote: arguments and output are considered "
 				"EXPERIMENTAL for now.\n\n");
-	} else if (strcmp(argv[0], "scan") == 0) {
-		if (argc != 2) {
-			fprintf(stderr, "Scan requires a service name or path, "
-								"see help\n");
-			error = -EINVAL;
-		}
-		message = get_message(connection, "GetTechnologies");
-		if (message == NULL)
-			error = -ENOMEM;
-		else
-			error = scan_technology(connection, message, argv[1]);
 	} else if (strcmp(argv[0], "enable") == 0) {
 		if (argc != 2) {
 			fprintf(stderr, "Enable requires a technology name or "
