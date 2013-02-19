@@ -202,6 +202,7 @@ int set_manager(DBusConnection *connection, char *key, dbus_bool_t value)
 {
 	DBusMessage *message;
 	DBusMessageIter iter;
+	DBusError err;
 
 	message = dbus_message_new_method_call("net.connman", "/",
 						"net.connman.Manager",
@@ -212,8 +213,15 @@ int set_manager(DBusConnection *connection, char *key, dbus_bool_t value)
 	dbus_message_iter_init_append(message, &iter);
 	dbus_property_append_basic(&iter, (const char *) key,
 						DBUS_TYPE_BOOLEAN, &value);
-	dbus_connection_send(connection, message, NULL);
-	dbus_connection_flush(connection);
+
+	dbus_error_init(&err);
+	dbus_connection_send_with_reply_and_block(connection, message,
+			-1, &err);
+	if (dbus_error_is_set(&err) == TRUE) {
+		printf("Error 'net.connman.Manager' %s\n", err.message);
+		dbus_error_free(&err);
+	}
+
 	dbus_message_unref(message);
 
 	return 0;
