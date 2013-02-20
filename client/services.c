@@ -91,9 +91,11 @@ static int append_property_array(DBusMessageIter *iter, char *property,
 static int append_property_dict(DBusMessageIter *iter, char *property,
 					char **keys, char **data, int num_args)
 {
+	int is_ipv6 = 0;
 	DBusMessageIter value, dict, entry, dict_key;
 	int i = 0;
 	unsigned char prefix;
+	char *property_value;
 
 	dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING, &property);
 
@@ -101,6 +103,9 @@ static int append_property_dict(DBusMessageIter *iter, char *property,
 	dbus_dict_open_variant(iter, &value);
 
 	dbus_dict_open(&value, &dict);
+
+	if (strcmp(property, "IPv6.Configuration") == 0)
+		is_ipv6 = 1;
 
 	while (keys[i] != NULL && data[i] != NULL
 			&& strncmp(data[i], "--", 2) != 0) {
@@ -113,12 +118,9 @@ static int append_property_dict(DBusMessageIter *iter, char *property,
 		dbus_message_iter_append_basic(&entry, DBUS_TYPE_STRING,
 							&keys[i]);
 
-		if (strcmp(property, "IPv6.Configuration") == 0 &&
-					   g_strcmp0(keys[i], "PrefixLength")) {
-			if (data[i] == NULL) {
-				fprintf(stderr, "No values entered!\n");
-				exit(EXIT_FAILURE);
-			}
+		property_value = data[i];
+
+		if (is_ipv6 == 1 && g_strcmp0(keys[i], "PrefixLength") == 0) {
 			prefix = atoi(data[i]);
 
 			dbus_message_iter_open_container(&entry,
@@ -128,14 +130,31 @@ static int append_property_dict(DBusMessageIter *iter, char *property,
 			dbus_message_iter_append_basic(&dict_key,
 						       DBUS_TYPE_BYTE, &prefix);
 		} else {
+			if (is_ipv6 == 1 && strcmp(keys[i], "Privacy") == 0) {
+				switch (parse_boolean(property_value)) {
+				case 0:
+					property_value = "disabled";
+					break;
+				case 1:
+					property_value = "enabled";
+					break;
+				case -1:
+					if (strcmp(property_value,
+							"prefered") != 0)
+						return -EINVAL;
+					break;
+				}
+			}
+
 			dbus_message_iter_open_container(&entry,
 						 DBUS_TYPE_VARIANT,
 						 DBUS_TYPE_STRING_AS_STRING,
 						 &dict_key);
 			dbus_message_iter_append_basic(&dict_key,
 							DBUS_TYPE_STRING,
-							&data[i]);
+							&property_value);
 		}
+
 		dbus_message_iter_close_container(&entry, &dict_key);
 		dbus_message_iter_close_container(&dict, &entry);
 
