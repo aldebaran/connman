@@ -83,61 +83,6 @@ static int parse_args(char *arg, struct option *options)
 	return '?';
 }
 
-int monitor_switch(int argc, char *argv[], int c, DBusConnection *conn)
-{
-	int error;
-
-	switch (c) {
-	case 's':
-		error = monitor_connman(conn, "Service", "PropertyChanged");
-		if (error != 0)
-			return error;
-		if (dbus_connection_add_filter(conn, service_property_changed,
-							NULL, NULL) == FALSE)
-			return -ENOMEM;
-		printf("Now monitoring the service interface.\n");
-		break;
-	case 'c':
-		error = monitor_connman(conn, "Technology", "PropertyChanged");
-		if (error != 0)
-			return error;
-		if (dbus_connection_add_filter(conn, tech_property_changed,
-							NULL, NULL) == FALSE)
-			return -ENOMEM;
-		printf("Now monitoring the technology interface.\n");
-		break;
-	case 'm':
-		error = monitor_connman(conn, "Manager", "PropertyChanged");
-		if (error != 0)
-			return error;
-		error = monitor_connman(conn, "Manager", "TechnologyAdded");
-		if (error != 0)
-			return error;
-		error = monitor_connman(conn, "Manager", "TechnologyRemoved");
-		if (error != 0)
-			return error;
-		error = monitor_connman(conn, "Manager", "ServicesChanged");
-		if (error != 0)
-			return error;
-		if (dbus_connection_add_filter(conn, manager_property_changed,
-							NULL, NULL) == FALSE)
-			return -ENOMEM;
-		if (dbus_connection_add_filter(conn, tech_added_removed,
-							NULL, NULL) == FALSE)
-			return -ENOMEM;
-		if (dbus_connection_add_filter(conn, manager_services_changed,
-							NULL, NULL) == FALSE)
-			return -ENOMEM;
-		printf("Now monitoring the manager interface.\n");
-		break;
-	default:
-		fprintf(stderr, "Command not recognized, please check help\n");
-		return -EINVAL;
-		break;
-	}
-	return 0;
-}
-
 static int cmd_enable(char *args[], int num, struct option *options)
 {
 	DBusMessage *message;
@@ -438,7 +383,36 @@ static int cmd_config(char *args[], int num, struct option *options)
 
 static int cmd_monitor(char *args[], int num, struct option *options)
 {
-	return -1;
+	int c;
+
+	if (num > 3)
+		return -E2BIG;
+
+	c = parse_args(args[1], options);
+	switch (c) {
+	case -1:
+		monitor_connman_service(connection);
+		monitor_connman_technology(connection);
+		monitor_connman_manager(connection);
+		break;
+
+	case 's':
+		monitor_connman_service(connection);
+		break;
+
+	case 'c':
+		monitor_connman_technology(connection);
+		break;
+
+	case 'm':
+		monitor_connman_manager(connection);
+		break;
+
+	default:
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static int cmd_exit(char *args[], int num, struct option *options)
@@ -603,78 +577,5 @@ int commands_no_options(DBusConnection *connection, char *argv[], int argc)
 
 int commands_options(DBusConnection *connection, char *argv[], int argc)
 {
-	int error, c;
-	int option_index = 0;
-
-	if (strcmp(argv[0], "monitor") == 0) {
-		if (argc > 2) {
-			fprintf(stderr, "Too many arguments for monitor, "
-								"see help\n");
-			return -EINVAL;
-		}
-		if (argc < 2) {
-			error = monitor_connman(connection, "Service",
-							"PropertyChanged");
-			if (error != 0)
-				return error;
-			error = monitor_connman(connection, "Technology",
-							"PropertyChanged");
-			if (error != 0)
-				return error;
-			error = monitor_connman(connection, "Manager",
-							"PropertyChanged");
-			if (error != 0)
-				return error;
-			error = monitor_connman(connection, "Manager",
-							"TechnologyAdded");
-			if (error != 0)
-				return error;
-			error = monitor_connman(connection, "Manager",
-							"TechnologyRemoved");
-			if (error != 0)
-				return error;
-			error = monitor_connman(connection, "Manager",
-							"ServicesChanged");
-			if (error != 0)
-				return error;
-			if (dbus_connection_add_filter(connection,
-					service_property_changed, NULL, NULL)
-								== FALSE)
-				return -ENOMEM;
-			if (dbus_connection_add_filter(connection,
-					tech_property_changed, NULL, NULL)
-								== FALSE)
-				return -ENOMEM;
-			if (dbus_connection_add_filter(connection,
-					tech_added_removed, NULL, NULL)
-								== FALSE)
-				return -ENOMEM;
-			if (dbus_connection_add_filter(connection,
-					manager_property_changed, NULL, NULL)
-								== FALSE)
-				return -ENOMEM;
-			if (dbus_connection_add_filter(connection,
-					manager_services_changed, NULL, NULL)
-								== FALSE)
-				return -ENOMEM;
-			printf("Now monitoring all interfaces.\n");
-		} else
-			while ((c = getopt_long(argc, argv, "", monitor_options,
-							&option_index))) {
-				if (c == -1) {
-					if (option_index == 0) {
-						printf("Monitor takes an "
-							"option, see help\n");
-						return -EINVAL;
-					}
-					break;
-				}
-				error = monitor_switch(argc, argv, c, connection);
-				if (error != 0)
-					return error;
-				option_index++;
-			}
-	} else
-		return -1;
 	return 0;
 }
