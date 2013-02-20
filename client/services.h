@@ -33,6 +33,7 @@ struct service_data {
 	dbus_bool_t online;
 };
 
+int parse_boolean(char *arg);
 char *strip_service_path(char *service);
 void extract_service_name(DBusMessageIter *dict, struct service_data *service);
 int set_service_property(DBusConnection *connection, DBusMessage *message,
