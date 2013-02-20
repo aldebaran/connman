@@ -45,8 +45,6 @@ int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
 				char *name, char **servers, char **excludes,
 				int num_servers, int num_excludes);
 
-const char *find_service(DBusConnection *connection, DBusMessage *message,
-			  char *service_name, struct service_data *service);
 void extract_services(DBusMessage *message, char *service_name);
 void get_services(DBusMessage *message);
 void iterate_dict(DBusMessageIter *dict, char *string, uint16_t key_int);

@@ -282,34 +282,6 @@ static void extract_service_properties(DBusMessageIter *dict,
 	printf("\n\n");
 }
 
-static void match_service_name(DBusMessage *message, char *service_name,
-						struct service_data *service)
-{
-	DBusMessageIter iter, array;
-
-	dbus_message_iter_init(message, &iter);
-	dbus_message_iter_recurse(&iter, &array);
-
-	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRUCT) {
-		DBusMessageIter entry, dict;
-		char *path;
-
-		dbus_message_iter_recurse(&array, &entry);
-		dbus_message_iter_get_basic(&entry, &path);
-
-		service->path = strip_service_path(path);
-		dbus_message_iter_next(&entry);
-		dbus_message_iter_recurse(&entry, &dict);
-		extract_service_name(&dict, service);
-		if (g_strcmp0(service_name, service->name) == 0) {
-			printf("    Matched %s with %s\n\n", service->name,
-								service->path);
-			break;
-		}
-		dbus_message_iter_next(&array);
-	}
-}
-
 void extract_service_name(DBusMessageIter *dict, struct service_data *service)
 {
 	DBusMessageIter dict_entry, value;
@@ -418,38 +390,6 @@ void get_services(DBusMessage *message)
 			service.name, service.path);
 		dbus_message_iter_next(&array);
 	}
-}
-
-const char *find_service(DBusConnection *connection, DBusMessage *message,
-			  char *service_name, struct service_data *service)
-{
-	DBusMessageIter iter, array, entry;
-	char *path;
-
-	service_name = strip_service_path(service_name);
-	match_service_name(message, service_name, service);
-	/* Service name did not match, so check if entry is a path */
-	if (g_strcmp0(service_name, service->name)) {
-		dbus_message_iter_init(message, &iter);
-		dbus_message_iter_recurse(&iter, &array);
-
-		while (dbus_message_iter_get_arg_type(&array) ==
-							DBUS_TYPE_STRUCT) {
-			dbus_message_iter_recurse(&array, &entry);
-			dbus_message_iter_get_basic(&entry, &path);
-
-			service->path = strip_service_path(path);
-			if (g_strcmp0(service->path, service_name) == 0)
-				return service->path;
-			dbus_message_iter_next(&array);
-		}
-		fprintf(stderr, "'%s' is not a valid service name or path.\n",
-								service_name);
-		fprintf(stderr, "Use the 'services' command to find available "
-							"services.\n");
-		return NULL;
-	} else
-		return service->path;
 }
 
 int set_proxy_manual(DBusConnection *connection, DBusMessage *message,
