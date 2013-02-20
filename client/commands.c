@@ -548,34 +548,9 @@ int commands(DBusConnection *connection, char *argv[], int argc)
 			if (result < 0)
 				printf("Error '%s': %s\n", argv[0],
 						strerror(-result));
-			return 0;
+			return result;
 		}
 	}
 
 	return -1;
-}
-
-int commands_no_options(DBusConnection *connection, char *argv[], int argc)
-{
-	DBusMessage *message = NULL;
-	int error = 0;
-
-	if (strcmp(argv[0], "--help") == 0 || strcmp(argv[0], "help") == 0  ||
-						strcmp(argv[0], "h") == 0) {
-		printf("Usage: connmanctl [[command] [args]]\n");
-		cmd_help(NULL, 0, NULL);
-		printf("\nNote: arguments and output are considered "
-				"EXPERIMENTAL for now.\n\n");
-	} else
-		return -1;
-
-	if (message != NULL)
-		dbus_message_unref(message);
-
-	return error;
-}
-
-int commands_options(DBusConnection *connection, char *argv[], int argc)
-{
-	return 0;
 }

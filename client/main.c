@@ -96,23 +96,20 @@ int main(int argc, char *argv[])
 		show_interactive(connection, main_loop);
 
 	error = commands(connection, argv + 1, argc -1);
-	if (error == -1) {
-		error = commands_no_options(connection, argv + 1, argc - 1);
-		if (error == -1) {
-			error = commands_options(connection, argv + 1,
-					argc - 1);
-			if (strcmp(argv[1], "monitor") != 0)
-				return error;
-		} else {
-			return error;
-		}
-	}
 
 	if (error == -1) {
-		fprintf(stderr, "%s is not a valid command, check help.\n",
-							argv[1]);
+		char *help = "help";
+
+		printf("Usage: connmanctl [[command] [args]]\n");
+		commands(connection, &help, 1);
+		printf("\nNote: arguments and output are considered "
+				"EXPERIMENTAL for now.\n\n");
 		return -EINVAL;
 	}
+
+	if (error < 0)
+		return error;
+
 	gchan = g_io_channel_unix_new(fileno(stdin));
 	events = G_IO_IN | G_IO_ERR | G_IO_HUP | G_IO_NVAL;
 	g_io_add_watch(gchan, events, readmonitor, NULL);

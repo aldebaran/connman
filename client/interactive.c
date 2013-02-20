@@ -71,15 +71,6 @@ static gboolean rl_handler(char *input)
 	for (num_args = 0; long_args[num_args] != NULL; num_args++);
 
 	error = commands(interactive_conn, long_args, num_args);
-	if (error == -1) {
-		error = commands_no_options(interactive_conn, long_args,
-				num_args);
-		if (error == -1)
-			error = commands_options(interactive_conn, long_args,
-					num_args);
-		else
-			return error;
-	}
 
 	if ((strcmp(long_args[0], "quit") == 0)
 					|| (strcmp(long_args[0], "exit") == 0)
