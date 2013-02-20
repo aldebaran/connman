@@ -585,18 +585,12 @@ int set_service_property(DBusConnection *connection, DBusMessage *message,
 int remove_service(DBusConnection *connection, DBusMessage *message,
 								char *name)
 {
-	struct service_data service;
 	DBusMessage *message_send;
 	const char *path_name;
 	char *path;
+	DBusError err;
 
-	path_name = find_service(connection, message, name, &service);
-	if (path_name == NULL)
-		return -ENXIO;
-
-	if (service.favorite == FALSE)
-		return 0;
-
+	path_name = strip_service_path(name);
 	path = g_strdup_printf("/net/connman/service/%s", path_name);
 	message_send = dbus_message_new_method_call(CONNMAN_SERVICE, path,
 						CONNMAN_SERVICE_INTERFACE,
@@ -606,7 +600,14 @@ int remove_service(DBusConnection *connection, DBusMessage *message,
 		return -ENOMEM;
 	}
 
-	dbus_connection_send(connection, message_send, NULL);
+	dbus_error_init(&err);
+	dbus_connection_send_with_reply_and_block(connection, message_send,
+			-1, &err);
+	if (dbus_error_is_set(&err) == TRUE) {
+		printf("Error '%s' %s\n", path, err.message);
+		dbus_error_free(&err);
+	}
+
 	dbus_message_unref(message_send);
 	g_free(path);
 
