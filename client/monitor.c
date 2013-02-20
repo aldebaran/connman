@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <string.h>
 #include <stdint.h>
+#include <errno.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -152,6 +153,96 @@ int monitor_connman(DBusConnection *connection, char *interface,
 		fprintf(stderr, "Match Error: %s\n", err.message);
 		return -1;
 	}
+	return 0;
+}
+
+static void monitor_clear(DBusConnection *connection, char *interface)
+{
+	char *rule = g_strdup_printf("type='signal',interface='net.connman.%s'",
+			interface);
+
+	dbus_bus_remove_match(connection, rule, NULL);
+}
+
+static int monitor_add(DBusConnection *connection, char *interface)
+{
+	char *rule = g_strdup_printf("type='signal',interface='net.connman.%s'",
+			interface);
+	DBusError err;
+
+	dbus_error_init(&err);
+	g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &err);
+	if (dbus_error_is_set(&err)) {
+		fprintf(stderr, "Bus setup error:%s\n", err.message);
+		return -1;
+	}
+	dbus_bus_add_match(connection, rule, &err);
+
+	if (dbus_error_is_set(&err)) {
+		fprintf(stderr, "Match Error: %s\n", err.message);
+		return -1;
+	}
+	return 0;
+}
+
+int monitor_connman_service(DBusConnection *connection)
+{
+	int err;
+
+	err = monitor_add(connection, "Service");
+	if (err < 0)
+		return err;
+
+	if (dbus_connection_add_filter(connection,
+					service_property_changed,
+					NULL, NULL) == FALSE) {
+		monitor_clear(connection, "Service");
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+int monitor_connman_technology(DBusConnection *connection)
+{
+	int err;
+
+	err = monitor_add(connection, "Technology");
+	if (err < 0)
+		return err;
+
+	if (dbus_connection_add_filter(connection,
+					tech_property_changed,
+					NULL, NULL) == FALSE) {
+		monitor_clear(connection, "Technology");
+		return -ENXIO;
+	}
+
+	return 0;
+}
+
+int monitor_connman_manager(DBusConnection *connection)
+{
+	int err;
+
+	err = monitor_add(connection, "Manager");
+	if (err < 0)
+		return err;
+
+	if (dbus_connection_add_filter(connection, manager_property_changed,
+					NULL, NULL) == FALSE) {
+		monitor_clear(connection, "Manager");
+		return -ENXIO;
+	}
+
+	if (dbus_connection_add_filter(connection, manager_services_changed,
+					NULL, NULL) == FALSE) {
+		dbus_connection_remove_filter(connection,
+				manager_property_changed, NULL);
+		monitor_clear(connection, "Manager");
+		return -ENXIO;
+	}
+
 	return 0;
 }
 

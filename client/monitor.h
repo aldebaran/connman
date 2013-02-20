@@ -24,6 +24,9 @@
 
 int monitor_connman(DBusConnection *connection, char *interface,
 				char *signal_name);
+int monitor_connman_service(DBusConnection *connection);
+int monitor_connman_technology(DBusConnection *connection);
+int monitor_connman_manager(DBusConnection *connection);
 
 DBusHandlerResult service_property_changed(DBusConnection *connection,
 				DBusMessage *message, void *user_data);
