@@ -2886,6 +2886,9 @@ int g_supplicant_interface_scan(GSupplicantInterface *interface,
 	data->user_data = user_data;
 	data->scan_params = scan_data;
 
+        interface->scan_callback = callback;
+        interface->scan_data = user_data;
+
 	ret = supplicant_dbus_method_call(interface->path,
 			SUPPLICANT_INTERFACE ".Interface", "Scan",
 			interface_scan_params, interface_scan_result, data);
