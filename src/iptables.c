@@ -1653,24 +1653,6 @@ static struct connman_iptables *pre_load_table(const char *table_name,
 	return iptables_init(table_name);
 }
 
-static void clear_tables_flags(void)
-{
-	struct xtables_match *xt_m;
-	struct xtables_target *xt_t;
-
-	/*
-	 * Clear all flags because the flags are only valid
-	 * for one rule.
-	 */
-	for (xt_m = xtables_matches; xt_m != NULL; xt_m = xt_m->next)
-		xt_m->mflags = 0;
-
-	for (xt_t = xtables_targets; xt_t != NULL; xt_t = xt_t->next) {
-		xt_t->tflags = 0;
-		xt_t->used = 0;
-	}
-}
-
 struct parse_context {
 	int argc;
 	char **argv;
@@ -1916,13 +1898,6 @@ static int parse_rule_spec(struct connman_iptables *table,
 		return -ENOMEM;
 
 	/*
-	 * As side effect parsing a rule sets some global flags
-	 * which will be evaluated/verified. Let's reset them
-	 * to ensure we can parse more than one rule.
-	 */
-	clear_tables_flags();
-
-	/*
 	 * Tell getopt_long not to generate error messages for unknown
 	 * options and also reset optind back to 0.
 	 */
@@ -2034,6 +2009,25 @@ out:
 
 static void reset_xtables(void)
 {
+	struct xtables_match *xt_m;
+	struct xtables_target *xt_t;
+
+	/*
+	 * As side effect parsing a rule sets some global flags
+	 * which will be evaluated/verified. Let's reset them
+	 * to ensure we can parse more than one rule.
+	 *
+	 * Clear all flags because the flags are only valid
+	 * for one rule.
+	 */
+	for (xt_m = xtables_matches; xt_m != NULL; xt_m = xt_m->next)
+		xt_m->mflags = 0;
+
+	for (xt_t = xtables_targets; xt_t != NULL; xt_t = xt_t->next) {
+		xt_t->tflags = 0;
+		xt_t->used = 0;
+	}
+
 	/*
 	 * We need also to free the memory implicitly allocated
 	 * during parsing (see xtables_options_xfrm()).
