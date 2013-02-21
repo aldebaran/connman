@@ -2048,10 +2048,14 @@ static void cleanup_parse_context(struct parse_context *ctx)
 {
 	g_strfreev(ctx->argv);
 	g_free(ctx->ip);
-	if (ctx->xt_t != NULL)
+	if (ctx->xt_t != NULL) {
 		g_free(ctx->xt_t->t);
-	if (ctx->xt_m != NULL)
+		ctx->xt_t->t = NULL;
+	}
+	if (ctx->xt_m != NULL) {
 		g_free(ctx->xt_m->m);
+		ctx->xt_m->m = NULL;
+	}
 	g_free(ctx);
 }
 
