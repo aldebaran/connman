@@ -485,9 +485,10 @@ static int remove_table_entry(struct connman_iptables *table,
 	table->size -= entry->entry->next_offset;
 	removed = entry->entry->next_offset;
 
-	g_free(entry->entry);
-
 	table->entries = g_list_remove(table->entries, entry);
+
+	g_free(entry->entry);
+	g_free(entry);
 
 	return removed;
 }
