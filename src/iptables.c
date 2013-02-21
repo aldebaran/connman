@@ -1687,7 +1687,7 @@ static int prepare_getopt_args(const char *str, struct parse_context *ctx)
 
 	tokens = g_strsplit_set(str, " ", -1);
 
-	for (i = 0; tokens[i]; i++);
+	i = g_strv_length(tokens);
 
 	/* Add space for the argv[0] value */
 	ctx->argc = i + 1;
@@ -1706,6 +1706,8 @@ static int prepare_getopt_args(const char *str, struct parse_context *ctx)
 	ctx->argv[0] = g_strdup("argh");
 	for (i = 1; i < ctx->argc; i++)
 		ctx->argv[i] = tokens[i - 1];
+
+	g_free(tokens);
 
 	return 0;
 }
