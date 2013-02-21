@@ -2030,6 +2030,20 @@ out:
 	return err;
 }
 
+static void reset_xtables(void)
+{
+	/*
+	 * We need also to free the memory implicitly allocated
+	 * during parsing (see xtables_options_xfrm()).
+	 * Note xt_params is actually iptables_globals.
+	 */
+	if (xt_params->opts != xt_params->orig_opts) {
+		g_free(xt_params->opts);
+		xt_params->opts = xt_params->orig_opts;
+	}
+	xt_params->option_offset = 0;
+}
+
 static void cleanup_parse_context(struct parse_context *ctx)
 {
 	g_strfreev(ctx->argv);
@@ -2136,6 +2150,7 @@ int __connman_iptables_append(const char *table_name,
 				target_name, ctx->xt_t, ctx->xt_rm);
 out:
 	cleanup_parse_context(ctx);
+	reset_xtables();
 
 	return err;
 }
@@ -2179,6 +2194,7 @@ int __connman_iptables_delete(const char *table_name,
 				ctx->xt_rm);
 out:
 	cleanup_parse_context(ctx);
+	reset_xtables();
 
 	return err;
 }
@@ -2291,6 +2307,4 @@ void __connman_iptables_cleanup(void)
 	DBG("");
 
 	g_hash_table_destroy(table_hash);
-
-	xtables_free_opts(1);
 }
