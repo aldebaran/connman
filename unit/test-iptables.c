@@ -292,6 +292,8 @@ static void test_nat_basic1(void)
 
 	err = __connman_iptables_commit("nat");
 	g_assert(err == 0);
+
+	g_free(service);
 }
 
 int main(int argc, char *argv[])
