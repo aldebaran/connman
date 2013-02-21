@@ -2046,6 +2046,8 @@ static void reset_xtables(void)
 
 static void cleanup_parse_context(struct parse_context *ctx)
 {
+	struct xtables_rule_match *rm, *tmp;
+
 	g_strfreev(ctx->argv);
 	g_free(ctx->ip);
 	if (ctx->xt_t != NULL) {
@@ -2056,6 +2058,13 @@ static void cleanup_parse_context(struct parse_context *ctx)
 		g_free(ctx->xt_m->m);
 		ctx->xt_m->m = NULL;
 	}
+	for (tmp = NULL, rm = ctx->xt_rm; rm != NULL; rm = rm->next) {
+		if (tmp != NULL)
+			g_free(tmp);
+		tmp = rm;
+	}
+	g_free(tmp);
+
 	g_free(ctx);
 }
 
