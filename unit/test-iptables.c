@@ -205,6 +205,20 @@ static void test_iptables_target0(void)
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
+
+	err = __connman_iptables_delete("filter", "INPUT",
+					"-m mark --mark 1");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
+
+	err = __connman_iptables_delete("filter", "INPUT",
+					"-m mark --mark 2");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("filter");
+	g_assert(err == 0);
 }
 
 struct connman_notifier *nat_notifier;
