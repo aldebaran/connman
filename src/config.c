@@ -1197,6 +1197,8 @@ static void provision_service(gpointer key, gpointer value,
 	__connman_service_mark_dirty();
 
 	__connman_service_save(service);
+
+	__connman_service_auto_connect();
 }
 
 int __connman_config_provision_service(struct connman_service *service)
