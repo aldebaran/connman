@@ -180,7 +180,29 @@ static void unregister_service(gpointer data)
 		service = __connman_service_lookup_from_ident(service_id);
 		if (service != NULL) {
 			__connman_service_set_immutable(service, FALSE);
+			__connman_service_set_config(service, NULL, NULL);
 			__connman_service_remove(service);
+
+			/*
+			 * Ethernet service cannot be removed by
+			 * __connman_service_remove() so reset the ipconfig
+			 * here.
+			 */
+			if (connman_service_get_type(service) ==
+						CONNMAN_SERVICE_TYPE_ETHERNET) {
+				__connman_service_disconnect(service);
+				__connman_service_reset_ipconfig(service,
+					CONNMAN_IPCONFIG_TYPE_IPV4, NULL, NULL);
+				__connman_service_reset_ipconfig(service,
+					CONNMAN_IPCONFIG_TYPE_IPV6, NULL, NULL);
+				__connman_service_set_ignore(service, TRUE);
+
+				/*
+				 * After these operations, user needs to
+				 * reconnect ethernet cable to get IP
+				 * address.
+				 */
+			}
 		}
 
 		if (__connman_storage_remove_service(service_id) == FALSE)
@@ -543,6 +565,16 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	err = load_service_generic(keyfile, group, config, service);
 	if (err != 0)
 		return err;
+
+	if (g_strcmp0(str, "ethernet") == 0) {
+		service->config_ident = g_strdup(config->ident);
+		service->config_entry = g_strdup_printf("service_%s",
+							service->ident);
+
+		g_hash_table_insert(config->service_table, service->ident,
+								service);
+		return 0;
+	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
 	if (str != NULL) {
@@ -1173,11 +1205,13 @@ int __connman_config_provision_service(struct connman_service *service)
 	GHashTableIter iter;
 	gpointer value, key;
 
-	DBG("service %p", service);
-
-	/* For now only WiFi services are supported */
+	/* For now only WiFi and Ethernet services are supported */
 	type = connman_service_get_type(service);
-	if (type != CONNMAN_SERVICE_TYPE_WIFI)
+
+	DBG("service %p type %d", service, type);
+
+	if (type != CONNMAN_SERVICE_TYPE_WIFI &&
+					type != CONNMAN_SERVICE_TYPE_ETHERNET)
 		return -ENOSYS;
 
 	g_hash_table_iter_init(&iter, config_table);
@@ -1199,11 +1233,13 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 	struct connman_config *config;
 	int ret = 0;
 
-	DBG("service %p", service);
-
-	/* For now only WiFi services are supported */
+	/* For now only WiFi and Ethernet services are supported */
 	type = connman_service_get_type(service);
-	if (type != CONNMAN_SERVICE_TYPE_WIFI)
+
+	DBG("service %p type %d", service, type);
+
+	if (type != CONNMAN_SERVICE_TYPE_WIFI &&
+					type != CONNMAN_SERVICE_TYPE_ETHERNET)
 		return -ENOSYS;
 
 	config = g_hash_table_lookup(config_table, ident);
