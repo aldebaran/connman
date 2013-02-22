@@ -2975,27 +2975,30 @@ error:
 	return -EINVAL;
 }
 
-static int set_ipconfig(struct connman_service *service,
+int __connman_service_reset_ipconfig(struct connman_service *service,
 		enum connman_ipconfig_type type, DBusMessageIter *array,
 		enum connman_service_state *new_state)
 {
 	struct connman_ipconfig *ipconfig, *new_ipconfig;
 	enum connman_ipconfig_method old_method, new_method;
 	enum connman_service_state state;
-	int err, index;
+	int err = 0, index;
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4) {
 		ipconfig = service->ipconfig_ipv4;
 		state = service->state_ipv4;
+		new_method = CONNMAN_IPCONFIG_METHOD_DHCP;
 	} else if (type == CONNMAN_IPCONFIG_TYPE_IPV6) {
 		ipconfig = service->ipconfig_ipv6;
 		state = service->state_ipv6;
+		new_method = CONNMAN_IPCONFIG_METHOD_AUTO;
 	} else
 		return -EINVAL;
 
 	if (ipconfig == NULL)
 		return -ENXIO;
 
+	old_method = __connman_ipconfig_get_method(ipconfig);
 	index = __connman_ipconfig_get_index(ipconfig);
 
 	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
@@ -3004,14 +3007,15 @@ static int set_ipconfig(struct connman_service *service,
 	else
 		new_ipconfig = create_ip6config(service, index);
 
-	err = __connman_ipconfig_set_config(new_ipconfig, array);
-	if (err < 0) {
-		__connman_ipconfig_unref(new_ipconfig);
-		return err;
-	}
+	if (array != NULL) {
+		err = __connman_ipconfig_set_config(new_ipconfig, array);
+		if (err < 0) {
+			__connman_ipconfig_unref(new_ipconfig);
+			return err;
+		}
 
-	old_method = __connman_ipconfig_get_method(ipconfig);
-	new_method = __connman_ipconfig_get_method(new_ipconfig);
+		new_method = __connman_ipconfig_get_method(new_ipconfig);
+	}
 
 	if (is_connecting_state(service, state) ||
 					is_connected_state(service, state))
@@ -3026,7 +3030,7 @@ static int set_ipconfig(struct connman_service *service,
 
 	__connman_ipconfig_enable(new_ipconfig);
 
-	if (new_method != old_method) {
+	if (new_state != NULL && new_method != old_method) {
 		if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
 			*new_state = service->state_ipv4;
 		else
@@ -3034,8 +3038,9 @@ static int set_ipconfig(struct connman_service *service,
 		__connman_service_auto_connect();
 	}
 
-	DBG("err %d ipconfig %p type %d method %d state %s", err, new_ipconfig,
-		type, new_method, state2string(*new_state));
+	DBG("err %d ipconfig %p type %d method %d state %s", err,
+		new_ipconfig, type, new_method,
+		new_state == NULL ? "-" : state2string(*new_state));
 
 	return err;
 }
@@ -3257,7 +3262,8 @@ static DBusMessage *set_property(DBusConnection *conn,
 		else
 			type = CONNMAN_IPCONFIG_TYPE_IPV6;
 
-		err = set_ipconfig(service, type, &value, &state);
+		err = __connman_service_reset_ipconfig(service, type, &value,
+								&state);
 
 		if (err < 0) {
 			if (is_connected_state(service, state) ||

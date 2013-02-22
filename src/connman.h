@@ -687,6 +687,9 @@ int __connman_service_set_passphrase(struct connman_service *service,
 const char *__connman_service_get_passphrase(struct connman_service *service);
 void __connman_service_set_agent_passphrase(struct connman_service *service,
 						const char *agent_passphrase);
+int __connman_service_reset_ipconfig(struct connman_service *service,
+		enum connman_ipconfig_type type, DBusMessageIter *array,
+		enum connman_service_state *new_state);
 
 void __connman_service_notify(struct connman_service *service,
 			unsigned int rx_packets, unsigned int tx_packets,
