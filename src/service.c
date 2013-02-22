@@ -4748,6 +4748,25 @@ void __connman_service_set_userconnect(struct connman_service *service,
 		service->userconnect = userconnect;
 }
 
+void __connman_service_set_search_domains(struct connman_service *service,
+					char **domains)
+{
+	int index;
+
+	index = __connman_service_get_index(service);
+	if (index < 0)
+		return;
+
+	if (service->domains != NULL) {
+		remove_searchdomains(service, index, service->domains);
+		g_strfreev(service->domains);
+
+		service->domains = g_strdupv(domains);
+
+		update_nameservers(service);
+	}
+}
+
 static void service_complete(struct connman_service *service)
 {
 	reply_pending(service, EIO);
