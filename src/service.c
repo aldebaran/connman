@@ -4698,6 +4698,17 @@ int __connman_service_set_immutable(struct connman_service *service,
 	return 0;
 }
 
+int __connman_service_set_ignore(struct connman_service *service,
+						connman_bool_t ignore)
+{
+	if (service == NULL)
+		return -EINVAL;
+
+	service->ignore = ignore;
+
+	return 0;
+}
+
 void __connman_service_set_string(struct connman_service *service,
 				  const char *key, const char *value)
 {

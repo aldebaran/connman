@@ -601,6 +601,8 @@ int __connman_service_set_favorite_delayed(struct connman_service *service,
 					gboolean delay_ordering);
 int __connman_service_set_immutable(struct connman_service *service,
 						connman_bool_t immutable);
+int __connman_service_set_ignore(struct connman_service *service,
+						connman_bool_t ignore);
 void __connman_service_set_userconnect(struct connman_service *service,
 						connman_bool_t userconnect);
 
