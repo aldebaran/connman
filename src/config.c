@@ -25,13 +25,16 @@
 
 #include <errno.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <unistd.h>
 #include <string.h>
 #include <sys/vfs.h>
 #include <sys/inotify.h>
+#include <netdb.h>
 #include <glib.h>
 
 #include <connman/provision.h>
+#include <connman/ipaddress.h>
 #include "connman.h"
 
 struct connman_config_service {
@@ -53,6 +56,18 @@ struct connman_config_service {
 	char *config_ident; /* file prefix */
 	char *config_entry; /* entry name */
 	connman_bool_t hidden;
+	char *ipv4_address;
+	char *ipv4_netmask;
+	char *ipv4_gateway;
+	char *ipv6_address;
+	unsigned char ipv6_prefix_length;
+	char *ipv6_gateway;
+	char *ipv6_privacy;
+	char *mac;
+	char **nameservers;
+	char **search_domains;
+	char **timeservers;
+	char *domain_name;
 };
 
 struct connman_config {
@@ -87,6 +102,15 @@ static connman_bool_t cleanup = FALSE;
 #define SERVICE_KEY_PASSPHRASE         "Passphrase"
 #define SERVICE_KEY_HIDDEN             "Hidden"
 
+#define SERVICE_KEY_IPv4               "IPv4"
+#define SERVICE_KEY_IPv6               "IPv6"
+#define SERVICE_KEY_IPv6_PRIVACY       "IPv6.Privacy"
+#define SERVICE_KEY_MAC                "MAC"
+#define SERVICE_KEY_NAMESERVERS        "Nameservers"
+#define SERVICE_KEY_SEARCH_DOMAINS     "SearchDomains"
+#define SERVICE_KEY_TIMESERVERS        "Timeservers"
+#define SERVICE_KEY_DOMAIN             "Domain"
+
 static const char *config_possible_keys[] = {
 	CONFIG_KEY_NAME,
 	CONFIG_KEY_DESC,
@@ -108,6 +132,14 @@ static const char *service_possible_keys[] = {
 	SERVICE_KEY_PHASE2,
 	SERVICE_KEY_PASSPHRASE,
 	SERVICE_KEY_HIDDEN,
+	SERVICE_KEY_IPv4,
+	SERVICE_KEY_IPv6,
+	SERVICE_KEY_IPv6_PRIVACY,
+	SERVICE_KEY_MAC,
+	SERVICE_KEY_NAMESERVERS,
+	SERVICE_KEY_SEARCH_DOMAINS,
+	SERVICE_KEY_TIMESERVERS,
+	SERVICE_KEY_DOMAIN,
 	NULL,
 };
 
@@ -170,6 +202,17 @@ free_only:
 	g_free(config_service->private_key_passphrase_type);
 	g_free(config_service->phase2);
 	g_free(config_service->passphrase);
+	g_free(config_service->ipv4_address);
+	g_free(config_service->ipv4_gateway);
+	g_free(config_service->ipv4_netmask);
+	g_free(config_service->ipv6_address);
+	g_free(config_service->ipv6_gateway);
+	g_free(config_service->ipv6_privacy);
+	g_free(config_service->mac);
+	g_strfreev(config_service->nameservers);
+	g_strfreev(config_service->search_domains);
+	g_strfreev(config_service->timeservers);
+	g_free(config_service->domain_name);
 	g_slist_free_full(config_service->service_identifiers, g_free);
 	g_free(config_service->config_ident);
 	g_free(config_service->config_entry);
@@ -231,6 +274,232 @@ is_protected_service(struct connman_config_service *service)
 	return FALSE;
 }
 
+static int check_family(const char *address, int expected_family)
+{
+	int family;
+	int err = 0;
+
+	family = connman_inet_check_ipaddress(address);
+	if (family < 0) {
+		DBG("Cannot get address family of %s (%d/%s)", address,
+			family, gai_strerror(family));
+		err = -EINVAL;
+		goto out;
+	}
+
+	switch (family) {
+	case AF_INET:
+		if (expected_family != AF_INET) {
+			DBG("Wrong type address %s, expecting IPv4", address);
+			err = -EINVAL;
+			goto out;
+		}
+		break;
+	case AF_INET6:
+		if (expected_family != AF_INET6) {
+			DBG("Wrong type address %s, expecting IPv6", address);
+			err = -EINVAL;
+			goto out;
+		}
+		break;
+	default:
+		DBG("Unsupported address family %d", family);
+		err = -EINVAL;
+		goto out;
+	}
+
+out:
+	return err;
+}
+
+static int parse_address(const char *address_str, int address_family,
+			char **address, char **netmask, char **gateway)
+{
+	char *addr_str, *mask_str, *gw_str;
+	int err = 0;
+	char **route;
+
+	route = g_strsplit(address_str, "/", 0);
+	if (route == NULL)
+		return -EINVAL;
+
+	addr_str = route[0];
+	if (addr_str == NULL || addr_str[0] == '\0') {
+		err = -EINVAL;
+		goto out;
+	}
+
+	if ((err = check_family(addr_str, address_family)) < 0)
+		goto out;
+
+	mask_str = route[1];
+	if (mask_str == NULL || mask_str[0] == '\0') {
+		err = -EINVAL;
+		goto out;
+	}
+
+	gw_str = route[2];
+	if (gw_str == NULL || gw_str[0] == '\0') {
+		err = -EINVAL;
+		goto out;
+	}
+
+	if ((err = check_family(gw_str, address_family)) < 0)
+		goto out;
+
+	g_free(*address);
+	*address = g_strdup(addr_str);
+
+	g_free(*netmask);
+	*netmask = g_strdup(mask_str);
+
+	g_free(*gateway);
+	*gateway = g_strdup(gw_str);
+
+	DBG("address %s/%s via %s", *address, *netmask, *gateway);
+
+out:
+	g_strfreev(route);
+
+	return err;
+}
+
+static int load_service_generic(GKeyFile *keyfile, const char *group,
+				struct connman_config *config,
+				struct connman_config_service *service)
+{
+	char *str, *mask;
+	char **strlist;
+	gsize length;
+
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv4, NULL);
+	if (str != NULL) {
+		mask = NULL;
+
+		if (parse_address(str, AF_INET, &service->ipv4_address,
+					&mask, &service->ipv4_gateway) < 0) {
+			connman_warn("Invalid format for IPv4 address %s",
+									str);
+			g_free(str);
+			goto err;
+		}
+
+		if (g_strrstr(mask, ".") == NULL) {
+			/* We have netmask length */
+			in_addr_t addr;
+			struct in_addr netmask_in;
+			unsigned char prefix_len = 32;
+			char *ptr;
+			long int value = strtol(mask, &ptr, 10);
+
+			if (ptr != mask && *ptr == '\0' && value <= 32)
+				prefix_len = value;
+
+			addr = 0xffffffff << (32 - prefix_len);
+			netmask_in.s_addr = htonl(addr);
+			service->ipv4_netmask =
+				g_strdup(inet_ntoa(netmask_in));
+
+			g_free(mask);
+		} else
+			service->ipv4_netmask = mask;
+
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6, NULL);
+	if (str != NULL) {
+		long int value;
+		char *ptr;
+
+		mask = NULL;
+
+		if (parse_address(str, AF_INET6, &service->ipv6_address,
+					&mask, &service->ipv6_gateway) < 0) {
+			connman_warn("Invalid format for IPv6 address %s",
+									str);
+			g_free(str);
+			goto err;
+		}
+
+		value = strtol(mask, &ptr, 10);
+		if (ptr != mask && *ptr == '\0' && value <= 128)
+			service->ipv6_prefix_length = value;
+		else
+			service->ipv6_prefix_length = 128;
+
+		g_free(mask);
+		g_free(str);
+	}
+
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6_PRIVACY,
+									NULL);
+	if (str != NULL) {
+		g_free(service->ipv6_privacy);
+		service->ipv6_privacy = str;
+	}
+
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_MAC, NULL);
+	if (str != NULL) {
+		g_free(service->mac);
+		service->mac = str;
+	}
+
+	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_DOMAIN, NULL);
+	if (str != NULL) {
+		g_free(service->domain_name);
+		service->domain_name = str;
+	}
+
+	strlist = g_key_file_get_string_list(keyfile, group,
+					SERVICE_KEY_NAMESERVERS,
+					&length, NULL);
+	if (strlist != NULL) {
+		if (length != 0) {
+			g_strfreev(service->nameservers);
+			service->nameservers = strlist;
+		} else
+			g_strfreev(strlist);
+	}
+
+	strlist = g_key_file_get_string_list(keyfile, group,
+					SERVICE_KEY_SEARCH_DOMAINS,
+					&length, NULL);
+	if (strlist != NULL) {
+		if (length != 0) {
+			g_strfreev(service->search_domains);
+			service->search_domains = strlist;
+		} else
+			g_strfreev(strlist);
+	}
+
+	strlist = g_key_file_get_string_list(keyfile, group,
+					SERVICE_KEY_TIMESERVERS,
+					&length, NULL);
+	if (strlist != NULL) {
+		if (length != 0) {
+			g_strfreev(service->timeservers);
+			service->timeservers = strlist;
+		} else
+			g_strfreev(strlist);
+	}
+
+	return 0;
+
+err:
+	g_free(service->ident);
+	g_free(service->type);
+	g_free(service->ipv4_address);
+	g_free(service->ipv4_netmask);
+	g_free(service->ipv4_gateway);
+	g_free(service->ipv6_address);
+	g_free(service->ipv6_gateway);
+	g_free(service->mac);
+	g_free(service);
+
+	return -EINVAL;
+}
+
 static int load_service(GKeyFile *keyfile, const char *group,
 						struct connman_config *config)
 {
@@ -264,7 +533,16 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	if (str != NULL) {
 		g_free(service->type);
 		service->type = str;
+	} else {
+		DBG("Type of the configured service is missing for group %s",
+									group);
+		err = -EINVAL;
+		goto err;
 	}
+
+	err = load_service_generic(keyfile, group, config, service);
+	if (err != 0)
+		return err;
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_NAME, NULL);
 	if (str != NULL) {
@@ -653,48 +931,12 @@ static char *config_pem_fsid(const char *pem_file)
 	return g_strdup_printf("%llx", fsid64);
 }
 
-static void provision_service(gpointer key, gpointer value, gpointer user_data)
+static void provision_service_wifi(gpointer key,
+				struct connman_config_service *config,
+				struct connman_service *service,
+				struct connman_network *network,
+				const void *ssid, unsigned int ssid_len)
 {
-	struct connman_service *service = user_data;
-	struct connman_config_service *config = value;
-	struct connman_network *network;
-	const void *ssid, *service_id;
-	unsigned int ssid_len;
-
-	/* For now only WiFi service entries are supported */
-	if (g_strcmp0(config->type, "wifi") != 0)
-		return;
-
-	network = __connman_service_get_network(service);
-	if (network == NULL) {
-		connman_error("Service has no network set");
-		return;
-	}
-
-	ssid = connman_network_get_blob(network, "WiFi.SSID", &ssid_len);
-	if (ssid == NULL) {
-		connman_error("Network SSID not set");
-		return;
-	}
-
-	if (config->ssid == NULL || ssid_len != config->ssid_len)
-		return;
-
-	if (memcmp(config->ssid, ssid, ssid_len) != 0)
-		return;
-
-	service_id = __connman_service_get_ident(service);
-	config->service_identifiers =
-		g_slist_prepend(config->service_identifiers,
-				g_strdup(service_id));
-
-	__connman_service_set_immutable(service, TRUE);
-
-	__connman_service_set_favorite_delayed(service, TRUE, TRUE);
-
-	__connman_service_set_config(service, config->config_ident,
-						config->config_entry);
-
 	if (config->eap != NULL)
 		__connman_service_set_string(service, "EAP", config->eap);
 
@@ -746,6 +988,179 @@ static void provision_service(gpointer key, gpointer value, gpointer user_data)
 
 	if (config->hidden == TRUE)
 		__connman_service_set_hidden(service);
+}
+
+static void provision_service(gpointer key, gpointer value,
+							gpointer user_data)
+{
+	struct connman_service *service = user_data;
+	struct connman_config_service *config = value;
+	struct connman_network *network;
+	const void *service_id;
+	enum connman_service_type type;
+	const void *ssid;
+	unsigned int ssid_len;
+
+	type = connman_service_get_type(service);
+	if (type == CONNMAN_SERVICE_TYPE_WIFI &&
+				g_strcmp0(config->type, "wifi") != 0)
+		return;
+
+	if (type == CONNMAN_SERVICE_TYPE_ETHERNET &&
+				g_strcmp0(config->type, "ethernet") != 0)
+		return;
+
+	DBG("service %p ident %s", service,
+					__connman_service_get_ident(service));
+
+	network = __connman_service_get_network(service);
+	if (network == NULL) {
+		connman_error("Service has no network set");
+		return;
+	}
+
+	DBG("network %p ident %s", network,
+				connman_network_get_identifier(network));
+
+	if (config->mac != NULL) {
+		struct connman_device *device;
+		const char *device_addr;
+
+		device = connman_network_get_device(network);
+		if (device == NULL) {
+			connman_error("Network device is missing");
+			return;
+		}
+
+		device_addr = connman_device_get_string(device, "Address");
+
+		DBG("wants %s has %s", config->mac, device_addr);
+
+		if (g_ascii_strcasecmp(device_addr, config->mac) != 0)
+			return;
+	}
+
+	if (g_strcmp0(config->type, "wifi") == 0 &&
+				type == CONNMAN_SERVICE_TYPE_WIFI) {
+		ssid = connman_network_get_blob(network, "WiFi.SSID",
+						&ssid_len);
+		if (ssid == NULL) {
+			connman_error("Network SSID not set");
+			return;
+		}
+
+		if (config->ssid == NULL || ssid_len != config->ssid_len)
+			return;
+
+		if (memcmp(config->ssid, ssid, ssid_len) != 0)
+			return;
+	}
+
+	if (config->ipv6_address != NULL) {
+		struct connman_ipaddress *address;
+
+		if (config->ipv6_prefix_length == 0 ||
+					config->ipv6_gateway == NULL) {
+			DBG("IPv6 prefix or gateway missing");
+			return;
+		}
+
+		address = connman_ipaddress_alloc(AF_INET6);
+		if (address == NULL)
+			return;
+
+		connman_ipaddress_set_ipv6(address, config->ipv6_address,
+					config->ipv6_prefix_length,
+					config->ipv6_gateway);
+
+		connman_network_set_ipv6_method(network,
+						CONNMAN_IPCONFIG_METHOD_FIXED);
+
+		if (connman_network_set_ipaddress(network, address) < 0)
+			DBG("Unable to set IPv6 address to network %p",
+								network);
+
+		connman_ipaddress_free(address);
+	}
+
+	if (config->ipv6_privacy != NULL) {
+		struct connman_ipconfig *ipconfig;
+
+		ipconfig = __connman_service_get_ip6config(service);
+		if (ipconfig != NULL)
+			__connman_ipconfig_ipv6_set_privacy(ipconfig,
+							config->ipv6_privacy);
+	}
+
+	if (config->ipv4_address != NULL) {
+		struct connman_ipaddress *address;
+
+		if (config->ipv4_netmask == 0 ||
+					config->ipv4_gateway == NULL) {
+			DBG("IPv4 netmask or gateway missing");
+			return;
+		}
+
+		address = connman_ipaddress_alloc(AF_INET);
+		if (address == NULL)
+			return;
+
+		connman_ipaddress_set_ipv4(address, config->ipv4_address,
+					config->ipv4_netmask,
+					config->ipv4_gateway);
+
+		connman_network_set_ipv4_method(network,
+						CONNMAN_IPCONFIG_METHOD_FIXED);
+
+		if (connman_network_set_ipaddress(network, address) < 0)
+			DBG("Unable to set IPv4 address to network %p",
+								network);
+
+		connman_ipaddress_free(address);
+	}
+
+	__connman_service_disconnect(service);
+
+	service_id = __connman_service_get_ident(service);
+	config->service_identifiers =
+		g_slist_prepend(config->service_identifiers,
+				g_strdup(service_id));
+
+	__connman_service_set_immutable(service, TRUE);
+
+	__connman_service_set_favorite_delayed(service, TRUE, TRUE);
+
+	__connman_service_set_config(service, config->config_ident,
+						config->config_entry);
+
+	if (config->domain_name != NULL)
+		__connman_service_set_domainname(service, config->domain_name);
+
+	if (config->nameservers != NULL) {
+		int i;
+
+		__connman_service_nameserver_clear(service);
+
+		for (i = 0; config->nameservers[i] != NULL; i++) {
+			__connman_service_nameserver_append(service,
+						config->nameservers[i], FALSE);
+		}
+	}
+
+	if (config->search_domains != NULL)
+		__connman_service_set_search_domains(service,
+						config->search_domains);
+
+	if (config->timeservers != NULL)
+		__connman_service_set_timeservers(service,
+						config->timeservers);
+
+	if (g_strcmp0(config->type, "wifi") == 0 &&
+				type == CONNMAN_SERVICE_TYPE_WIFI) {
+		provision_service_wifi(key, config, service, network,
+							ssid, ssid_len);
+	} else
+		__connman_service_connect(service);
 
 	__connman_service_mark_dirty();
 
