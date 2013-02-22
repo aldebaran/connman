@@ -1718,6 +1718,25 @@ static int string2privacy(const char *privacy)
 		return 0;
 }
 
+int __connman_ipconfig_ipv6_set_privacy(struct connman_ipconfig *ipconfig,
+					const char *value)
+{
+	int privacy;
+
+	if (ipconfig == NULL)
+		return -EINVAL;
+
+	DBG("ipconfig %p privacy %s", ipconfig, value);
+
+	privacy = string2privacy(value);
+
+	ipconfig->ipv6_privacy_config = privacy;
+
+	enable_ipv6(ipconfig);
+
+	return 0;
+}
+
 void __connman_ipconfig_append_ipv4(struct connman_ipconfig *ipconfig,
 							DBusMessageIter *iter)
 {
