@@ -655,6 +655,8 @@ void __connman_service_nameserver_add_routes(struct connman_service *service,
 						const char *gw);
 void __connman_service_nameserver_del_routes(struct connman_service *service,
 					enum connman_ipconfig_type type);
+void __connman_service_set_timeservers(struct connman_service *service,
+						char **timeservers);
 int __connman_service_timeserver_append(struct connman_service *service,
 						const char *timeserver);
 int __connman_service_timeserver_remove(struct connman_service *service,

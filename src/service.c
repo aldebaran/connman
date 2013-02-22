@@ -2521,6 +2521,21 @@ const char *connman_service_get_proxy_autoconfig(struct connman_service *service
 	return NULL;
 }
 
+void __connman_service_set_timeservers(struct connman_service *service,
+				char **timeservers)
+{
+	int i;
+
+	if (service == NULL)
+		return;
+
+	g_strfreev(service->timeservers);
+	service->timeservers = NULL;
+
+	for (i = 0; timeservers != NULL && timeservers[i] != NULL; i++)
+		__connman_service_timeserver_append(service, timeservers[i]);
+}
+
 int __connman_service_timeserver_append(struct connman_service *service,
 						const char *timeserver)
 {
