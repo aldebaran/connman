@@ -386,9 +386,9 @@ out:
 	return err;
 }
 
-static int load_service_generic(GKeyFile *keyfile, const char *group,
-				struct connman_config *config,
-				struct connman_config_service *service)
+static connman_bool_t load_service_generic(GKeyFile *keyfile,
+			const char *group, struct connman_config *config,
+			struct connman_config_service *service)
 {
 	char *str, *mask;
 	char **strlist;
@@ -506,7 +506,7 @@ static int load_service_generic(GKeyFile *keyfile, const char *group,
 			g_strfreev(strlist);
 	}
 
-	return 0;
+	return TRUE;
 
 err:
 	g_free(service->ident);
@@ -519,23 +519,22 @@ err:
 	g_free(service->mac);
 	g_free(service);
 
-	return -EINVAL;
+	return FALSE;
 }
 
-static int load_service(GKeyFile *keyfile, const char *group,
+static connman_bool_t load_service(GKeyFile *keyfile, const char *group,
 						struct connman_config *config)
 {
 	struct connman_config_service *service;
 	const char *ident;
 	char *str, *hex_ssid;
 	gboolean service_created = FALSE;
-	int err;
 
 	/* Strip off "service_" prefix */
 	ident = group + 8;
 
 	if (strlen(ident) < 1)
-		return -EINVAL;
+		return FALSE;
 
 	/* Verify that provided keys are good */
 	check_keys(keyfile, group, service_possible_keys);
@@ -544,7 +543,7 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	if (service == NULL) {
 		service = g_try_new0(struct connman_config_service, 1);
 		if (service == NULL)
-			return -ENOMEM;
+			return FALSE;
 
 		service->ident = g_strdup(ident);
 
@@ -558,13 +557,11 @@ static int load_service(GKeyFile *keyfile, const char *group,
 	} else {
 		DBG("Type of the configured service is missing for group %s",
 									group);
-		err = -EINVAL;
 		goto err;
 	}
 
-	err = load_service_generic(keyfile, group, config, service);
-	if (err != 0)
-		return err;
+	if (load_service_generic(keyfile, group, config, service) == FALSE)
+		return FALSE;
 
 	if (g_strcmp0(str, "ethernet") == 0) {
 		service->config_ident = g_strdup(config->ident);
@@ -591,7 +588,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 		ssid = g_try_malloc0(hex_ssid_len / 2);
 		if (ssid == NULL) {
-			err = -ENOMEM;
 			g_free(hex_ssid);
 			goto err;
 		}
@@ -601,7 +597,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 				connman_warn("Invalid SSID %s", hex_ssid);
 				g_free(ssid);
 				g_free(hex_ssid);
-				err = -EILSEQ;
 				goto err;
 			}
 			ssid[j++] = hex;
@@ -618,10 +613,8 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 		ssid_len = strlen(service->name);
 		ssid = g_try_malloc0(ssid_len);
-		if (ssid == NULL) {
-			err = -ENOMEM;
+		if (ssid == NULL)
 			goto err;
-		}
 
 		memcpy(ssid, service->name, ssid_len);
 		g_free(service->ssid);
@@ -631,7 +624,6 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	if (is_protected_service(service) == TRUE) {
 		connman_error("Trying to provision a protected service");
-		err = -EACCES;
 		goto err;
 	}
 
@@ -708,7 +700,7 @@ static int load_service(GKeyFile *keyfile, const char *group,
 
 	connman_info("Adding service configuration %s", service->ident);
 
-	return 0;
+	return TRUE;
 
 err:
 	if (service_created == TRUE) {
@@ -719,7 +711,7 @@ err:
 		g_free(service);
 	}
 
-	return err;
+	return FALSE;
 }
 
 static int load_config(struct connman_config *config)
@@ -765,7 +757,7 @@ static int load_config(struct connman_config *config)
 
 	for (i = 0; groups[i] != NULL; i++) {
 		if (g_str_has_prefix(groups[i], "service_") == TRUE) {
-			if (load_service(keyfile, groups[i], config) == 0)
+			if (load_service(keyfile, groups[i], config) == TRUE)
 				found = TRUE;
 		}
 	}
