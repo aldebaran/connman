@@ -37,8 +37,6 @@
 #include "dbus.h"
 #include "gsupplicant.h"
 
-#define TIMEOUT 5000
-
 #define IEEE80211_CAP_ESS	0x0001
 #define IEEE80211_CAP_IBSS	0x0002
 #define IEEE80211_CAP_PRIVACY	0x0010
