@@ -714,15 +714,33 @@ err:
 	return FALSE;
 }
 
+static connman_bool_t load_service_from_keyfile(GKeyFile *keyfile,
+						struct connman_config *config)
+{
+	connman_bool_t found = FALSE;
+	char **groups;
+	int i;
+
+	groups = g_key_file_get_groups(keyfile, NULL);
+
+	for (i = 0; groups[i] != NULL; i++) {
+		if (g_str_has_prefix(groups[i], "service_") == FALSE)
+			continue;
+		if (load_service(keyfile, groups[i], config) == TRUE)
+			found = TRUE;
+	}
+
+	g_strfreev(groups);
+
+	return found;
+}
+
 static int load_config(struct connman_config *config)
 {
-	GKeyFile *keyfile;
 	GError *error = NULL;
-	gsize length;
-	char **groups;
+	gboolean protected;
+	GKeyFile *keyfile;
 	char *str;
-	gboolean protected, found = FALSE;
-	int i;
 
 	DBG("config %p", config);
 
@@ -753,21 +771,10 @@ static int load_config(struct connman_config *config)
 		config->protected = TRUE;
 	g_clear_error(&error);
 
-	groups = g_key_file_get_groups(keyfile, &length);
-
-	for (i = 0; groups[i] != NULL; i++) {
-		if (g_str_has_prefix(groups[i], "service_") == TRUE) {
-			if (load_service(keyfile, groups[i], config) == TRUE)
-				found = TRUE;
-		}
-	}
-
-	if (found == FALSE)
+	if (load_service_from_keyfile(keyfile, config) == FALSE)
 		connman_warn("Config file %s/%s.config does not contain any "
 			"configuration that can be provisioned!",
 			STORAGEDIR, config->ident);
-
-	g_strfreev(groups);
 
 	g_key_file_free(keyfile);
 
