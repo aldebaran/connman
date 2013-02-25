@@ -2,8 +2,8 @@ Connman configuration file format for VPN
 *****************************************
 
 Connman VPN uses configuration files to provision existing providers.
-vpnd will be looking for its configuration files at STORAGEDIR/vpn
-which by default points to /var/lib/connman/vpn. Configuration file names
+vpnd will be looking for its configuration files at VPN_STORAGEDIR
+which by default points to /var/lib/connman-vpn. Configuration file names
 must not include other characters than letters or numbers and must have
 a .config suffix. Those configuration files are text files with a simple
 format and we typically have one file per provisioned network.
