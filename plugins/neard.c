@@ -35,6 +35,7 @@
 #include <connman/plugin.h>
 #include <connman/dbus.h>
 #include <connman/technology.h>
+#include <connman/provision.h>
 
 #include <gdbus.h>
 
@@ -46,6 +47,14 @@
 
 #define AGENT_PATH "/net/connman/neard_handover_agent"
 #define AGENT_TYPE "wifi"
+
+#define NEARD_SERVICE_GROUP "service_neard_provision"
+
+/* Configuration keys */
+#define SERVICE_KEY_TYPE               "Type"
+#define SERVICE_KEY_SSID               "SSID"
+#define SERVICE_KEY_PASSPHRASE         "Passphrase"
+#define SERVICE_KEY_HIDDEN             "Hidden"
 
 struct data_elements {
 	unsigned int value;
@@ -69,6 +78,10 @@ static const struct data_elements  DEs[DE_MAX] = {
 #define DE_VAL_OPEN                 0x0001
 #define DE_VAL_PSK                  0x0022
 
+struct wifi_sc {
+	gchar *ssid;
+	gchar *passphrase;
+};
 
 static DBusConnection *connection = NULL;
 DBusPendingCall *register_call = NULL;
@@ -137,10 +150,25 @@ static uint8_t *encode_to_tlv(const char *ssid, const char *psk, int *length)
 	return tlv_msg;
 }
 
-static int parse_request_oob_params(DBusMessage *message)
+static DBusMessage *get_reply_on_error(DBusMessage *message, int error)
+{
+	if (error == ENOTSUP)
+		return g_dbus_create_error(message,
+					NEARD_ERROR_INTERFACE ".NotSupported",
+					"Operation is not supported");
+
+	return g_dbus_create_error(message,
+		NEARD_ERROR_INTERFACE ".Failed", "Invalid parameters");
+}
+
+static int parse_request_oob_params(DBusMessage *message,
+				const uint8_t **tlv_msg, int *length)
 {
 	DBusMessageIter iter;
 	DBusMessageIter array;
+	DBusMessageIter dict_entry;
+	const char *key;
+	int arg_type;
 
 	dbus_message_iter_init(message, &iter);
 
@@ -148,10 +176,42 @@ static int parse_request_oob_params(DBusMessage *message)
 		return -EINVAL;
 
 	dbus_message_iter_recurse(&iter, &array);
-	if (dbus_message_iter_get_arg_type(&array) != DBUS_TYPE_DICT_ENTRY)
+	arg_type = dbus_message_iter_get_arg_type(&array);
+	if (arg_type != DBUS_TYPE_DICT_ENTRY)
 		return -EINVAL;
 
-	return 0;
+	if (tlv_msg == NULL && length == NULL)
+		return 0;
+
+	while (arg_type != DBUS_TYPE_INVALID) {
+		dbus_message_iter_recurse(&array, &dict_entry);
+		if (dbus_message_iter_get_arg_type(&dict_entry) !=
+							DBUS_TYPE_STRING)
+			return -EINVAL;
+
+		dbus_message_iter_get_basic(&dict_entry, &key);
+		if (g_strcmp0(key, "WSC") == 0) {
+			DBusMessageIter value;
+			DBusMessageIter fixed_array;
+
+			dbus_message_iter_next(&dict_entry);
+			dbus_message_iter_recurse(&dict_entry, &value);
+
+			if (dbus_message_iter_get_arg_type(&value) !=
+							DBUS_TYPE_ARRAY)
+				return -EINVAL;
+
+			dbus_message_iter_recurse(&value, &fixed_array);
+			dbus_message_iter_get_fixed_array(&fixed_array,
+							tlv_msg, length);
+			return 0;
+		}
+
+		dbus_message_iter_next(&array);
+		arg_type = dbus_message_iter_get_arg_type(&array);
+	}
+
+	return -EINVAL;
 }
 
 static DBusMessage *create_request_oob_reply(DBusMessage *message)
@@ -164,15 +224,11 @@ static DBusMessage *create_request_oob_reply(DBusMessage *message)
 	int length;
 
 	if (connman_technology_get_wifi_tethering(&ssid, &psk) == FALSE)
-		return g_dbus_create_error(message,
-					NEARD_ERROR_INTERFACE ".NotSupported",
-					"Operation is not supported");
+		return get_reply_on_error(message, ENOTSUP);
 
 	tlv_msg = encode_to_tlv(ssid, psk, &length);
 	if (tlv_msg == NULL)
-		return g_dbus_create_error(message,
-					NEARD_ERROR_INTERFACE ".NotSupported",
-					"Operation is not supported");
+		return get_reply_on_error(message, ENOTSUP);
 
 	reply = dbus_message_new_method_return(message);
 	if (reply == NULL)
@@ -198,22 +254,207 @@ static DBusMessage *request_oob_method(DBusConnection *dbus_conn,
 {
 	DBG("");
 
-	if (parse_request_oob_params(message) != 0)
-		return g_dbus_create_error(message,
-					NEARD_ERROR_INTERFACE ".Failed",
-					"Invalid parameters");
+	if (parse_request_oob_params(message, NULL, NULL) != 0)
+		return get_reply_on_error(message, EINVAL);
 
 	return create_request_oob_reply(message);
+}
+
+static void free_wifi_sc(struct wifi_sc *wsc)
+{
+	if (wsc == NULL)
+		return;
+
+	g_free(wsc->ssid);
+	g_free(wsc->passphrase);
+
+	g_free(wsc);
+}
+
+static inline int get_2b_from_tlv(const uint8_t *tlv_msg, uint16_t *val)
+{
+	*val = ntohs(tlv_msg[0] | (tlv_msg[1] << 8));
+
+	return 2;
+}
+
+static uint8_t *get_byte_array_from_tlv(const uint8_t *tlv_msg, int length)
+{
+	uint8_t *array;
+
+	array = g_try_malloc0(sizeof(uint8_t) * length);
+	if (array == NULL)
+		return NULL;
+
+	memcpy((void *)array, (void *)tlv_msg, length*sizeof(uint8_t));
+
+	return array;
+}
+
+static char *get_string_from_tlv(const uint8_t *tlv_msg, int length)
+{
+	char *str;
+
+	str = g_try_malloc0((sizeof(char) * length) + 1);
+	if (str == NULL)
+		return NULL;
+
+	memcpy((void *)str, (void *)tlv_msg, length*sizeof(char));
+
+	return str;
+}
+
+static inline DEid get_de_id(uint16_t attr)
+{
+	int i;
+
+	for (i = 0; i < DE_MAX && DEs[i].value != 0; i++) {
+		if (attr == DEs[i].value)
+			return i;
+	}
+
+	return DE_MAX;
+}
+
+static inline gboolean is_de_length_fine(DEid id, uint16_t length)
+{
+	if (DEs[id].fixed_length == TRUE)
+		return (length == DEs[id].length);
+
+	return (length <= DEs[id].length);
+}
+
+static char *get_hexstr_from_byte_array(const uint8_t *bt, int length)
+{
+	char *hex_str;
+	int i, j;
+
+	hex_str = g_try_malloc0(((length*2)+1) * sizeof(char));
+	if (hex_str == NULL)
+		return NULL;
+
+	for (i = 0, j = 0; i < length; i++, j += 2)
+		snprintf(hex_str+j, 3, "%02x", bt[i]);
+
+	return hex_str;
+}
+
+static struct wifi_sc *decode_from_tlv(const uint8_t *tlv_msg, int length)
+{
+	struct wifi_sc *wsc;
+	uint16_t attr, len;
+	uint8_t *bt;
+	int pos;
+	DEid id;
+
+	if (tlv_msg == NULL || length == 0)
+		return NULL;
+
+	wsc = g_try_malloc0(sizeof(struct wifi_sc));
+	if (wsc == NULL)
+		return NULL;
+
+	pos = 0;
+	while (pos < length) {
+		pos += get_2b_from_tlv(tlv_msg+pos, &attr);
+		pos += get_2b_from_tlv(tlv_msg+pos, &len);
+
+		if (len > length - pos)
+			goto error;
+
+		id = get_de_id(attr);
+		if (id == DE_MAX) {
+			pos += len;
+			continue;
+		}
+
+		if (is_de_length_fine(id, len) == FALSE)
+			goto error;
+
+		switch (id) {
+		case DE_AUTHENTICATION_TYPE:
+			break;
+		case DE_NETWORK_KEY:
+			wsc->passphrase = get_string_from_tlv(tlv_msg+pos,
+									len);
+			break;
+		case DE_SSID:
+			bt = get_byte_array_from_tlv(tlv_msg+pos, len);
+			wsc->ssid = get_hexstr_from_byte_array(bt, len);
+			g_free(bt);
+
+			break;
+		case DE_MAX:
+			/* Falling back. Should never happen though. */
+		default:
+			break;
+		}
+
+		pos += len;
+	}
+
+	return wsc;
+
+error:
+	free_wifi_sc(wsc);
+	return NULL;
+}
+
+static int handle_wcs_data(const uint8_t *tlv_msg, int length)
+{
+	struct wifi_sc *wsc = NULL;
+	GKeyFile *keyfile = NULL;
+	int ret = -EINVAL;
+
+	wsc = decode_from_tlv(tlv_msg, length);
+	if (wsc == NULL)
+		return -EINVAL;
+
+	if (wsc->ssid == NULL)
+		goto out;
+
+	keyfile = g_key_file_new();
+	if (keyfile == NULL) {
+		ret = -ENOMEM;
+		goto out;
+	}
+
+	g_key_file_set_string(keyfile, NEARD_SERVICE_GROUP,
+					SERVICE_KEY_TYPE, "wifi");
+	g_key_file_set_string(keyfile, NEARD_SERVICE_GROUP,
+					SERVICE_KEY_SSID, wsc->ssid);
+	g_key_file_set_boolean(keyfile, NEARD_SERVICE_GROUP,
+					SERVICE_KEY_HIDDEN, TRUE);
+
+	if (wsc->passphrase != NULL)
+		g_key_file_set_string(keyfile, NEARD_SERVICE_GROUP,
+				SERVICE_KEY_PASSPHRASE, wsc->passphrase);
+
+	ret = connman_config_provision_mutable_service(keyfile);
+
+out:
+	g_key_file_free(keyfile);
+	free_wifi_sc(wsc);
+	return ret;
 }
 
 static DBusMessage *push_oob_method(DBusConnection *dbus_conn,
 					DBusMessage *message, void *user_data)
 {
+	const uint8_t *tlv_msg;
+	int err = EINVAL;
+	int length;
+
 	DBG("");
 
-	return g_dbus_create_error(message,
-				NEARD_ERROR_INTERFACE ".NotSupported",
-				"Operation is not supported");
+	if (parse_request_oob_params(message, &tlv_msg, &length) != 0)
+		return get_reply_on_error(message, err);
+
+	err = handle_wcs_data(tlv_msg, length);
+	if (err != 0)
+		return get_reply_on_error(message, err);
+
+	return g_dbus_create_reply(message, DBUS_TYPE_INVALID);
 }
 
 static DBusMessage *release_method(DBusConnection *dbus_conn,
