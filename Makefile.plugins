@@ -241,6 +241,11 @@ plugins_session_policy_local_la_LDFLAGS = $(plugin_ldflags)
 endif
 endif
 
+if NEARD
+builtin_modules += neard
+builtin_sources += plugins/neard.c
+endif
+
 EXTRA_DIST += plugins/polkit.policy
 
 plugins/net.connman.policy: plugins/polkit.policy

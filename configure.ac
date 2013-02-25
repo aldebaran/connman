@@ -325,6 +325,11 @@ AC_ARG_ENABLE(pacrunner, AC_HELP_STRING([--disable-pacrunner],
 					[enable_pacrunner=${enableval}])
 AM_CONDITIONAL(PACRUNNER, test "${enable_pacrunner}" != "no")
 
+AC_ARG_ENABLE(neard, AC_HELP_STRING([--disable-neard],
+				[disable Neard support]),
+					[enable_neard=${enableval}])
+AM_CONDITIONAL(NEARD, test "${enable_neard}" != "no")
+
 AC_ARG_ENABLE(wispr, AC_HELP_STRING([--disable-wispr],
 				[disable WISPr support]),
 					[enable_wispr=${enableval}])
