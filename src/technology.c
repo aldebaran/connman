@@ -315,6 +315,45 @@ int connman_technology_set_regdom(const char *alpha2)
 	return 0;
 }
 
+static struct connman_technology *technology_find(enum connman_service_type type)
+{
+	GSList *list;
+
+	DBG("type %d", type);
+
+	for (list = technology_list; list; list = list->next) {
+		struct connman_technology *technology = list->data;
+
+		if (technology->type == type)
+			return technology;
+	}
+
+	return NULL;
+}
+
+connman_bool_t connman_technology_get_wifi_tethering(const char **ssid,
+							const char **psk)
+{
+	struct connman_technology *technology;
+
+	if (ssid == NULL || psk == NULL)
+		return FALSE;
+
+	*ssid = *psk = NULL;
+
+	technology = technology_find(CONNMAN_SERVICE_TYPE_WIFI);
+	if (technology == NULL)
+		return FALSE;
+
+	if (technology->tethering == FALSE)
+		return FALSE;
+
+	*ssid = technology->tethering_ident;
+	*psk = technology->tethering_passphrase;
+
+	return TRUE;
+}
+
 static void free_rfkill(gpointer data)
 {
 	struct connman_rfkill *rfkill = data;
@@ -818,22 +857,6 @@ static DBusMessage *set_property(DBusConnection *conn,
 		return __connman_error_invalid_property(msg);
 
 	return g_dbus_create_reply(msg, DBUS_TYPE_INVALID);
-}
-
-static struct connman_technology *technology_find(enum connman_service_type type)
-{
-	GSList *list;
-
-	DBG("type %d", type);
-
-	for (list = technology_list; list; list = list->next) {
-		struct connman_technology *technology = list->data;
-
-		if (technology->type == type)
-			return technology;
-	}
-
-	return NULL;
 }
 
 static void reply_scan_pending(struct connman_technology *technology, int err)

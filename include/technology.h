@@ -42,6 +42,9 @@ int connman_technology_set_regdom(const char *alpha2);
 void connman_technology_regdom_notify(struct connman_technology *technology,
 							const char *alpha2);
 
+connman_bool_t connman_technology_get_wifi_tethering(const char **ssid,
+							const char **psk);
+
 struct connman_technology_driver {
 	const char *name;
 	enum connman_service_type type;
