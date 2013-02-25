@@ -42,6 +42,7 @@ struct connman_config_entry {
 	connman_bool_t hidden;
 };
 
+int connman_config_provision_mutable_service(GKeyFile *keyfile);
 struct connman_config_entry **connman_config_get_entries(const char *type);
 void connman_config_free_entries(struct connman_config_entry **entries);
 

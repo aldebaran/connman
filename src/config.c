@@ -56,6 +56,8 @@ struct connman_config_service {
 	char *config_ident; /* file prefix */
 	char *config_entry; /* entry name */
 	connman_bool_t hidden;
+	connman_bool_t virtual;
+	char *virtual_file;
 	char *ipv4_address;
 	char *ipv4_netmask;
 	char *ipv4_gateway;
@@ -173,6 +175,9 @@ static void unregister_service(gpointer data)
 	protected_services = g_slist_remove(protected_services,
 						config_service);
 
+	if (config_service->virtual == TRUE)
+		goto free_only;
+
 	for (list = config_service->service_identifiers; list != NULL;
 							list = list->next) {
 		service_id = list->data;
@@ -238,6 +243,7 @@ free_only:
 	g_slist_free_full(config_service->service_identifiers, g_free);
 	g_free(config_service->config_ident);
 	g_free(config_service->config_entry);
+	g_free(config_service->virtual_file);
 	g_free(config_service);
 }
 
@@ -1021,6 +1027,23 @@ static void provision_service_wifi(gpointer key,
 		__connman_service_set_hidden(service);
 }
 
+struct connect_virtual {
+	struct connman_service *service;
+	const char *vfile;
+};
+
+static gboolean remove_virtual_config(gpointer user_data)
+{
+	struct connect_virtual *virtual = user_data;
+
+	__connman_service_connect(virtual->service);
+	g_hash_table_remove(config_table, virtual->vfile);
+
+	g_free(virtual);
+
+	return FALSE;
+}
+
 static void provision_service(gpointer key, gpointer value,
 							gpointer user_data)
 {
@@ -1157,7 +1180,8 @@ static void provision_service(gpointer key, gpointer value,
 		g_slist_prepend(config->service_identifiers,
 				g_strdup(service_id));
 
-	__connman_service_set_immutable(service, TRUE);
+	if (config->virtual == FALSE)
+		__connman_service_set_immutable(service, TRUE);
 
 	__connman_service_set_favorite_delayed(service, TRUE, TRUE);
 
@@ -1197,7 +1221,16 @@ static void provision_service(gpointer key, gpointer value,
 
 	__connman_service_save(service);
 
-	__connman_service_auto_connect();
+	if (config->virtual == TRUE) {
+		struct connect_virtual *virtual;
+
+		virtual = g_malloc0(sizeof(struct connect_virtual));
+		virtual->service = service;
+		virtual->vfile = config->virtual_file;
+
+		g_timeout_add(0, remove_virtual_config, virtual);
+	} else
+		__connman_service_auto_connect();
 }
 
 int __connman_config_provision_service(struct connman_service *service)
@@ -1292,6 +1325,74 @@ int __connman_config_provision_service_ident(struct connman_service *service,
 	}
 
 	return ret;
+}
+
+static void generate_random_string(char *str, int length)
+{
+	uint8_t val;
+	int i;
+
+	memset(str, '\0', length);
+
+	for (i = 0; i < length-1; i++) {
+		do {
+			val = (uint8_t)(random() % 122);
+			if (val < 48)
+				val += 48;
+		} while((val > 57 && val < 65) || (val > 90 && val < 97));
+
+		str[i] = val;
+	}
+}
+
+int connman_config_provision_mutable_service(GKeyFile *keyfile)
+{
+	struct connman_config_service *service_config;
+	struct connman_config *config;
+	char *vfile, *group;
+	char rstr[11];
+
+	DBG("");
+
+	generate_random_string(rstr, 11);
+
+	vfile = g_strdup_printf("service_mutable_%s.config", rstr);
+
+	config = create_config(vfile);
+	if (config == NULL)
+		return -ENOMEM;
+
+	if (load_service_from_keyfile(keyfile, config) == FALSE)
+		goto error;
+
+	group = g_key_file_get_start_group(keyfile);
+
+	service_config = g_hash_table_lookup(config->service_table, group+8);
+	if (service_config == NULL)
+		goto error;
+
+	/* Specific to non file based config: */
+	g_free(service_config->config_ident);
+	service_config->config_ident = NULL;
+	g_free(service_config->config_entry);
+	service_config->config_entry = NULL;
+
+	service_config->virtual = TRUE;
+	service_config->virtual_file = vfile;
+
+	__connman_service_provision_changed(vfile);
+
+	if (g_strcmp0(service_config->type, "wifi") == 0)
+		__connman_device_request_scan(CONNMAN_SERVICE_TYPE_WIFI);
+
+	return 0;
+
+error:
+	DBG("Could not proceed");
+	g_hash_table_remove(config_table, vfile);
+	g_free(vfile);
+
+	return -EINVAL;
 }
 
 struct connman_config_entry **connman_config_get_entries(const char *type)
