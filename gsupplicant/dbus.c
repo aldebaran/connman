@@ -30,7 +30,7 @@
 
 #include "dbus.h"
 
-#define TIMEOUT 5000
+#define TIMEOUT 30000
 
 static DBusConnection *connection;
 
