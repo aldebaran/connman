@@ -1,3 +1,15 @@
+ver 1.12:
+	Fix issue with overwriting gateway address.
+	Fix issue with missing IP address validation.
+	Fix issue with parsing of IPv6 configuration settings.
+	Fix issue with DHCP server address stored in host order.
+	Fix issue with resolver query failures and pending results.
+	Fix issue with wrongly reported max scan SSID parameter.
+	Fix issue with handling errors from WiFi fast scanning.
+	Add support for WiFi provisioning via NFC.
+	Add support for VPN daemon provisioning.
+	Add support for Ethernet provisioning.
+
 ver 1.11:
 	Fix issue with agent reference counting imbalance.
 	Fix issue with handling max number of SSID for scanning.
