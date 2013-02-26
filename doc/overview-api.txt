@@ -197,7 +197,7 @@ included in this list. They will only show up once a carrier is detected.
 
 The service interface is not meant for basic device configuration task. So
 switching a device on and off (via RFKILL for example) should be done via
-the device interface.
+the technology interface.
 
 Due to limited screen size of small devices and the big amount of WiFi
 access points that are deployed right now it might be sensible to not show
@@ -218,6 +218,19 @@ derives from the netork details.
 In case of WiFi this will be the SSID value. The SSID is a binary array and
 will be converted into printable form. Unprintable characters are replaced
 with spaces.
+
+In addition to WiFi naming, WiFi networks are subject to a grouping policy
+performed around SSID and security type. This means that one service will be
+seen for N WiFi networks providing the same SSID and the same security metod.
+For instance, if 5 APs are servicing an SSID called "TEST" with WPA2
+authentication and 3 APs are servicing the same SSID with open authentication
+method, the user will see only two services listed with the name "TEST"
+differentiated by their security type, which are "psk" and "none". Such
+policy is also applied to hidden networks, where hidden services will have an
+empty name and will be differentiated by the security type. The user has then
+to select the one with the right security and the Agent API will request any
+required information such as the SSID for the network (See "Application
+basics" below).
 
 For Bluetooth the device alias is used. The alias is different since it
 can be overwritten by the user via the Bluetooth service. The identification
@@ -376,9 +389,14 @@ will result in an error if no cable is plugged in. All connection attempts
 can fail for one reason or another. Application should be able to handle
 such errors and will also be notified of changes via signals.
 
-In future versions Connection Manager will interact with an agent to confirm
-certain transactions with the user. This functionality is currently not
-implemented.
+Connection Manager will interact with an agent via the Agent API to confirm
+certain transactions with the user. If Connection Manager needs extra
+information, it will ask the user for exactly the information it requires,
+i.e. passphrase, network's name (for hidden WiFi networks) and more depending
+on the use case (e.g. WPS, EAP). Therefore an application environment using
+Connection Manager should implement one dedicated Connection Manager agent
+according to the Agent API in order to interact with the user. Please see
+agent-api.txt for implementation details.
 
 To monitor the current status of a service the state property can be used. It
 gives detailed information about the current progress.
