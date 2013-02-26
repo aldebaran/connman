@@ -48,7 +48,7 @@
 #define SET_PROPERTY			"SetProperty"
 #define GET_DEVICES			"GetDevices"
 
-#define TIMEOUT 40000
+#define TIMEOUT 60000
 
 static DBusConnection *connection;
 
