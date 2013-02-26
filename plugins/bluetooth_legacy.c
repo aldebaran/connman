@@ -63,7 +63,7 @@
 
 #define UUID_NAP	"00001116-0000-1000-8000-00805f9b34fb"
 
-#define TIMEOUT 5000
+#define TIMEOUT 60000
 
 static DBusConnection *connection;
 
