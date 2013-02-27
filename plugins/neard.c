@@ -39,6 +39,8 @@
 
 #include <gdbus.h>
 
+#define TIMEOUT 30000
+
 #define NEARD_SERVICE "org.neard"
 #define NEARD_PATH "/"
 #define NEARD_MANAGER_INTERFACE "org.neard.Manager"
@@ -528,7 +530,7 @@ static void register_agent(void)
 			&path, DBUS_TYPE_STRING, &type, DBUS_TYPE_INVALID);
 
 	if (dbus_connection_send_with_reply(connection, message,
-			&register_call, DBUS_TIMEOUT_USE_DEFAULT) == FALSE) {
+					&register_call, TIMEOUT) == FALSE) {
 		dbus_message_unref(message);
 		goto out;
 	}
