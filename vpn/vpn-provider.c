@@ -1869,9 +1869,13 @@ static const char *get_string(GHashTable *settings, const char *key)
 static GSList *parse_user_networks(const char *network_str)
 {
 	GSList *networks = NULL;
-	char **elems = g_strsplit(network_str, ",", 0);
+	char **elems;
 	int i = 0;
 
+	if (network_str == NULL)
+		return NULL;
+
+	elems = g_strsplit(network_str, ",", 0);
 	if (elems == NULL)
 		return NULL;
 
