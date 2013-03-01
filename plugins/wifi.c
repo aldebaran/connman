@@ -530,7 +530,8 @@ static void scan_callback_hidden(int result,
 {
 	struct connman_device *device = user_data;
 	struct wifi_data *wifi = connman_device_get_data(device);
-	int driver_max_ssids;
+	GSupplicantScanParams *scan_params;
+	int driver_max_ssids, ret;
 
 	DBG("result %d wifi %p", result, wifi);
 
@@ -539,31 +540,29 @@ static void scan_callback_hidden(int result,
 
 	/*
 	 * Scan hidden networks so that we can autoconnect to them.
+	 * We will assume 1 as a default number of ssid to scan.
 	 */
 	driver_max_ssids = g_supplicant_interface_get_max_scan_ssids(
 							wifi->interface);
+	if (driver_max_ssids == 0)
+		driver_max_ssids = 1;
+
 	DBG("max ssids %d", driver_max_ssids);
 
-	if (driver_max_ssids > 0) {
-		GSupplicantScanParams *scan_params;
-		int ret;
+	scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
+	if (scan_params == NULL)
+		goto out;
 
-		scan_params = g_try_malloc0(sizeof(GSupplicantScanParams));
-		if (scan_params == NULL)
-			goto out;
-
-		if (get_hidden_connections(driver_max_ssids,
-						scan_params) > 0) {
-			ret = g_supplicant_interface_scan(wifi->interface,
+	if (get_hidden_connections(driver_max_ssids, scan_params) > 0) {
+		ret = g_supplicant_interface_scan(wifi->interface,
 							scan_params,
 							scan_callback,
 							device);
-			if (ret == 0)
-				return;
-		}
-
-		g_supplicant_free_scan_params(scan_params);
+		if (ret == 0)
+			return;
 	}
+
+	g_supplicant_free_scan_params(scan_params);
 
 out:
 	scan_callback(result, interface, user_data);
