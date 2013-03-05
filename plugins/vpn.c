@@ -81,6 +81,7 @@ struct connection_data {
 	char **host_ip;
 	char *domain;
 	char **nameservers;
+	gboolean immutable;
 
 	GHashTable *server_routes;
 	GHashTable *user_routes;
@@ -599,6 +600,8 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 		} else if (g_str_equal(key, "Type") == TRUE) {
 			dbus_message_iter_get_basic(&value, &str);
 			data->type = g_strdup(str);
+		} else if (g_str_equal(key, "Immutable") == TRUE) {
+			dbus_message_iter_get_basic(&value, &data->immutable);
 		} else if (g_str_equal(key, "Host") == TRUE) {
 			dbus_message_iter_get_basic(&value, &str);
 			data->host = g_strdup(str);
