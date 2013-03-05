@@ -4722,6 +4722,10 @@ int __connman_service_set_immutable(struct connman_service *service,
 {
 	if (service->hidden == TRUE)
 		return -EOPNOTSUPP;
+
+	if (service->immutable == immutable)
+		return 0;
+
 	service->immutable = immutable;
 
 	immutable_changed(service);
