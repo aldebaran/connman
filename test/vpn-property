@@ -61,6 +61,12 @@ if (argc < 3):
 		print "    %s = %s" % (key, val)
 
 elif (argc < 4):
-	connection.ClearProperty(sys.argv[2])
+	try:
+		connection.ClearProperty(sys.argv[2])
+	except dbus.DBusException, error:
+		print "%s: %s" % (error._dbus_error_name, error.message)
 else:
-	connection.SetProperty(sys.argv[2], sys.argv[3])
+	try:
+		connection.SetProperty(sys.argv[2], sys.argv[3])
+	except dbus.DBusException, error:
+		print "%s: %s" % (error._dbus_error_name, error.message)
