@@ -408,6 +408,9 @@ static DBusMessage *set_property(DBusConnection *conn, DBusMessage *msg,
 
 	DBG("conn %p", conn);
 
+	if (provider->immutable == TRUE)
+		return __connman_error_not_supported(msg);
+
 	if (dbus_message_iter_init(msg, &iter) == FALSE)
 		return __connman_error_invalid_arguments(msg);
 
@@ -457,6 +460,9 @@ static DBusMessage *clear_property(DBusConnection *conn, DBusMessage *msg,
 	const char *name;
 
 	DBG("conn %p", conn);
+
+	if (provider->immutable == TRUE)
+		return __connman_error_not_supported(msg);
 
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_STRING, &name,
 							DBUS_TYPE_INVALID);
