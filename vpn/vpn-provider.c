@@ -53,6 +53,7 @@ struct vpn_route {
 
 struct vpn_setting {
 	gboolean hide_value;
+	gboolean immutable;
 	char *value;
 };
 
@@ -2007,7 +2008,7 @@ int __vpn_provider_create_from_config(GHashTable *settings,
 	g_hash_table_iter_init(&hash, settings);
 
 	while (g_hash_table_iter_next(&hash, &key, &value) == TRUE)
-		vpn_provider_set_string(provider, key, value);
+		__vpn_provider_set_string_immutable(provider, key, value);
 
 	vpn_provider_save(provider);
 
@@ -2083,9 +2084,11 @@ const char * __vpn_provider_get_ident(struct vpn_provider *provider)
 }
 
 static int set_string(struct vpn_provider *provider,
-		const char *key, const char *value, gboolean hide_value)
+			const char *key, const char *value,
+			gboolean hide_value, gboolean immutable)
 {
-	DBG("provider %p key %s value %s", provider, key,
+	DBG("provider %p key %s immutable %s value %s", provider, key,
+		immutable ? "yes" : "no",
 		hide_value ? "<not printed>" : value);
 
 	if (g_str_equal(key, "Type") == TRUE) {
@@ -2108,12 +2111,22 @@ static int set_string(struct vpn_provider *provider,
 	} else {
 		struct vpn_setting *setting;
 
+		setting = g_hash_table_lookup(provider->setting_strings, key);
+		if (setting != NULL && immutable == FALSE &&
+						setting->immutable == TRUE) {
+			DBG("Trying to set immutable variable %s", key);
+			return -EPERM;
+		}
+
 		setting = g_try_new(struct vpn_setting, 1);
 		if (setting == NULL)
 			return -ENOMEM;
 
 		setting->value = g_strdup(value);
 		setting->hide_value = hide_value;
+
+		if (immutable == TRUE)
+			setting->immutable = TRUE;
 
 		if (hide_value == FALSE)
 			send_value(provider->path, key, setting->value);
@@ -2128,13 +2141,19 @@ static int set_string(struct vpn_provider *provider,
 int vpn_provider_set_string(struct vpn_provider *provider,
 					const char *key, const char *value)
 {
-	return set_string(provider, key, value, FALSE);
+	return set_string(provider, key, value, FALSE, FALSE);
 }
 
 int vpn_provider_set_string_hide_value(struct vpn_provider *provider,
 					const char *key, const char *value)
 {
-	return set_string(provider, key, value, TRUE);
+	return set_string(provider, key, value, TRUE, FALSE);
+}
+
+int __vpn_provider_set_string_immutable(struct vpn_provider *provider,
+					const char *key, const char *value)
+{
+	return set_string(provider, key, value, FALSE, TRUE);
 }
 
 const char *vpn_provider_get_string(struct vpn_provider *provider,
