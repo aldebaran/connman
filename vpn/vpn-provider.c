@@ -83,6 +83,7 @@ struct vpn_provider {
 	guint notify_id;
 	char *config_file;
 	char *config_entry;
+	connman_bool_t immutable;
 };
 
 static void append_properties(DBusMessageIter *iter,
@@ -1340,6 +1341,9 @@ static void append_properties(DBusMessageIter *iter,
 		connman_dbus_dict_append_basic(&dict, "Domain",
 					DBUS_TYPE_STRING, &provider->domain);
 
+	connman_dbus_dict_append_basic(&dict, "Immutable", DBUS_TYPE_BOOLEAN,
+					&provider->immutable);
+
 	if (provider->family == AF_INET)
 		connman_dbus_dict_append_dict(&dict, "IPv4", append_ipv4,
 						provider);
@@ -1581,6 +1585,7 @@ static void provider_initialize(struct vpn_provider *provider)
 	provider->type = NULL;
 	provider->domain = NULL;
 	provider->identifier = NULL;
+	provider->immutable = FALSE;
 	provider->user_networks = NULL;
 	provider->routes = g_hash_table_new_full(g_direct_hash, g_direct_equal,
 					NULL, free_route);
