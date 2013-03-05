@@ -301,6 +301,7 @@ static int create_provider(struct connection_data *data, void *user_data)
 
 	err = connman_provider_create_service(data->provider);
 	if (err == 0) {
+		connman_provider_set_immutable(data->provider, data->immutable);
 		if (g_str_equal(data->state, "ready") == TRUE) {
 			connman_provider_set_index(data->provider,
 							data->index);
