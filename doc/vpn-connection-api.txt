@@ -75,6 +75,14 @@ Properties	string State [readonly]
 
 		       The VPN host (server) address.
 
+		boolean Immutable [readonly]
+
+			This value will be set to true if the connection is
+			configured externally via a configuration file.
+
+			The only valid operation are Connect(), Disconnect()
+                        and GetProperties()
+
 		int Index [readonly]
 
 			The index of the VPN network tunneling interface.
