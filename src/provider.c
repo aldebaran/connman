@@ -334,6 +334,19 @@ int connman_provider_create_service(struct connman_provider *provider)
 	return 0;
 }
 
+int connman_provider_set_immutable(struct connman_provider *provider,
+						connman_bool_t immutable)
+{
+	if (provider == NULL)
+		return -EINVAL;
+
+	if (provider->vpn_service == NULL)
+		return -ESRCH;
+
+	return __connman_service_set_immutable(provider->vpn_service,
+						immutable);
+}
+
 static struct connman_provider *provider_lookup(const char *identifier)
 {
 	return g_hash_table_lookup(provider_hash, identifier);
