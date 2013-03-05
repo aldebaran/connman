@@ -834,7 +834,16 @@ static int vpn_provider_save(struct vpn_provider *provider)
 {
 	GKeyFile *keyfile;
 
-	DBG("provider %p", provider);
+	DBG("provider %p immutable %s", provider,
+					provider->immutable ? "yes" : "no");
+
+	if (provider->immutable == TRUE) {
+		/*
+		 * Do not save providers that are provisioned via .config
+		 * file.
+		 */
+		return -EPERM;
+	}
 
 	keyfile = g_key_file_new();
 	if (keyfile == NULL)
@@ -2004,8 +2013,7 @@ int __vpn_provider_create_from_config(GHashTable *settings,
 		provider->config_file = g_strdup(config_ident);
 		provider->config_entry = g_strdup(config_entry);
 
-		if (provider_register(provider) == 0)
-			vpn_provider_load(provider);
+		provider_register(provider);
 
 		provider_resolv_host_addr(provider);
 	}
@@ -2020,6 +2028,8 @@ int __vpn_provider_create_from_config(GHashTable *settings,
 
 	while (g_hash_table_iter_next(&hash, &key, &value) == TRUE)
 		__vpn_provider_set_string_immutable(provider, key, value);
+
+	provider->immutable = TRUE;
 
 	vpn_provider_save(provider);
 
