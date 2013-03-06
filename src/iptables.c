@@ -301,9 +301,13 @@ static gboolean is_fallthrough(struct connman_iptables_entry *e)
 	struct xt_entry_target *target;
 
 	target = ipt_get_target(e->entry);
-	if (!strcmp(target->u.user.name, ""))
-		return true;
+	if (!g_strcmp0(target->u.user.name, IPT_STANDARD_TARGET)) {
+		struct xt_standard_target *t;
 
+		t = (struct xt_standard_target *)target;
+		if (t->verdict == 0)
+			return true;
+	}
 	return false;
 }
 
