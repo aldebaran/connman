@@ -331,7 +331,7 @@ test_scripts = test/get-state test/list-services \
 		test/set-nameservers test/set-domains test/set-timeservers
 
 test_scripts += test/vpn-connect test/vpn-disconnect test/vpn-get \
-		test/monitor-vpn
+		test/monitor-vpn test/vpn-property
 
 if TEST
 testdir = $(pkglibdir)/test
