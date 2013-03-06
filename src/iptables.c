@@ -1054,7 +1054,7 @@ static int iptables_delete_rule(struct connman_iptables *table,
 static int iptables_change_policy(struct connman_iptables *table,
 				const char *chain_name, const char *policy)
 {
-	GList *chain_head;
+	GList *chain_head, *chain_tail;
 	struct connman_iptables_entry *entry;
 	struct xt_entry_target *target;
 	struct xt_standard_target *t;
@@ -1072,6 +1072,11 @@ static int iptables_change_policy(struct connman_iptables *table,
 	if (entry->builtin < 0)
 		return -EINVAL;
 
+	chain_tail = find_chain_tail(table, chain_name);
+	if (chain_tail == NULL)
+		return -EINVAL;
+
+	entry = chain_tail->prev->data;
 	target = ipt_get_target(entry->entry);
 
 	t = (struct xt_standard_target *)target;
