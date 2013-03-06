@@ -1061,8 +1061,13 @@ static int iptables_change_policy(struct connman_iptables *table,
 	int verdict;
 
 	verdict = target_to_verdict(policy);
-	if (verdict == 0)
+	switch (verdict) {
+	case -NF_ACCEPT - 1:
+	case -NF_DROP - 1:
+		break;
+	default:
 		return -EINVAL;
+	}
 
 	chain_head = find_chain_head(table, chain_name);
 	if (chain_head == NULL)
