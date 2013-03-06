@@ -2310,6 +2310,14 @@ void flush_table(const char *name)
 			table->blob_entries->size,
 			flush_table_cb, &chains);
 
+
+	/*
+	 * The offset update code is fragile and it works
+	 * only safe if we remove elements and move forwards
+	 * in the table.
+	 */
+	chains = g_slist_reverse(chains);
+
 	for (list = chains; list != NULL; list = list->next) {
 		char *chain = list->data;
 
