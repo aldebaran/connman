@@ -1600,9 +1600,6 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 	if (xt_m->init != NULL)
 		xt_m->init(xt_m->m);
 
-	if (xt_m == xt_m->next)
-		goto done;
-
 #if XTABLES_VERSION_CODE > 5
 	if (xt_m->x6_options != NULL)
 		iptables_globals.opts =
@@ -1627,7 +1624,6 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 		xt_m = NULL;
 	}
 
-done:
 	return xt_m;
 }
 
