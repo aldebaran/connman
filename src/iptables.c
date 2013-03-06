@@ -182,48 +182,65 @@ typedef int (*iterate_entries_cb_t)(struct ipt_entry *entry, int builtin,
 					unsigned int hook,size_t size,
 					unsigned int offset, void *user_data);
 
+static unsigned int next_hook_entry_index(unsigned int *valid_hooks)
+{
+	unsigned int h;
+
+	if (*valid_hooks == 0)
+		return NF_INET_NUMHOOKS;
+
+	h = __builtin_ffs(*valid_hooks) - 1;
+	*valid_hooks ^= (1 << h);
+
+	return h;
+}
+
 static int iterate_entries(struct ipt_entry *entries,
 				unsigned int valid_hooks,
 				unsigned int *hook_entry,
+				unsigned int *underflow,
 				size_t size, iterate_entries_cb_t cb,
 				void *user_data)
 {
-	unsigned int i, h;
+	unsigned int offset, h, hook;
 	int builtin, err;
 	struct ipt_entry *entry;
 
-	if (valid_hooks != 0)
-		h = __builtin_ffs(valid_hooks) - 1;
-	else
-		h = NF_INET_NUMHOOKS;
+	h = next_hook_entry_index(&valid_hooks);
+	hook = h;
 
-	for (i = 0, entry = entries; i < size;
-			i += entry->next_offset) {
+	for (offset = 0, entry = entries; offset < size;
+			offset += entry->next_offset) {
 		builtin = -1;
-		entry = (void *)entries + i;
+		entry = (void *)entries + offset;
 
 		/*
-		 * Find next valid hook which offset is higher
-		 * or equal with the current offset.
+		 * Updating builtin, hook and h is very tricky.
+		 * The rules are:
+		 * - builtin is only set to the current hook number
+		 *   if the current entry is the hook entry (aka chain
+		 *   head). And only for builtin chains, never for
+		 *   the user chains.
+		 * - hook is the current hook number. If we
+		 *   look at user chains it needs to be NF_INET_NETNUMHOOKS.
+		 * - h is the next hook entry. Thous we need to be carefully
+		 *   not to access the table when h is NF_INET_NETNUMHOOKS.
 		 */
-		if (h < NF_INET_NUMHOOKS) {
-			if (hook_entry[h] < i) {
-				valid_hooks ^= (1 << h);
-
-				if (valid_hooks != 0)
-					h = __builtin_ffs(valid_hooks) - 1;
-				else
-					h = NF_INET_NUMHOOKS;
-			}
-
-			if (hook_entry[h] == i)
-				builtin = h;
+		if (h < NF_INET_NUMHOOKS && hook_entry[h] == offset) {
+			builtin = h;
+			hook = h;
 		}
 
-		err = cb(entry, builtin, h, size, i, user_data);
+		if (h == NF_INET_NUMHOOKS)
+			hook = h;
+
+		if (h < NF_INET_NUMHOOKS && underflow[h] <= offset) {
+			h = next_hook_entry_index(&valid_hooks);
+		}
+
+		err = cb(entry, builtin, hook, size, offset, user_data);
 		if (err < 0)
 			return err;
-
 	}
 
 	return 0;
@@ -1273,6 +1290,7 @@ static void dump_table(struct connman_iptables *table)
 	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks,
 			table->info->hook_entry,
+			table->info->underflow,
 			table->blob_entries->size,
 			print_entry, dump_entry);
 }
@@ -1297,7 +1315,8 @@ static void dump_ipt_replace(struct ipt_replace *repl)
 		repl->underflow[NF_IP_POST_ROUTING]);
 
 	iterate_entries(repl->entries, repl->valid_hooks,
-			repl->hook_entry, repl->size, print_entry, dump_entry);
+			repl->hook_entry, repl->underflow,
+			repl->size, print_entry, dump_entry);
 }
 
 static int iptables_get_entries(struct connman_iptables *table)
@@ -1426,7 +1445,8 @@ static struct connman_iptables *iptables_init(const char *table_name)
 
 	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks, table->info->hook_entry,
-			table->blob_entries->size, add_entry, table);
+			table->info->underflow, table->blob_entries->size,
+			add_entry, table);
 
 	g_hash_table_insert(table_hash, g_strdup(table_name), table);
 
@@ -2286,6 +2306,7 @@ void flush_table(const char *name)
 	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks,
 			table->info->hook_entry,
+			table->info->underflow,
 			table->blob_entries->size,
 			flush_table_cb, &chains);
 
