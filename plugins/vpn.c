@@ -1440,7 +1440,7 @@ static void destroy_provider(struct connection_data *data)
 
 	connman_provider_set_data(data->provider, NULL);
 
-	connman_provider_put(data->provider);
+	connman_provider_remove(data->provider);
 
 	data->provider = NULL;
 }
