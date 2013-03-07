@@ -161,7 +161,7 @@ static DBusMessage *remove_provider(DBusConnection *conn,
 	dbus_message_get_args(msg, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 							DBUS_TYPE_INVALID);
 
-	err = __connman_provider_remove(path);
+	err = __connman_provider_remove_by_path(path);
 	if (err < 0)
 		return __connman_error_failed(msg, -err);
 

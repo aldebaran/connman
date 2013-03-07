@@ -174,7 +174,7 @@ int __connman_provider_connect(struct connman_provider *provider)
 	return 0;
 }
 
-int __connman_provider_remove(const char *path)
+int __connman_provider_remove_by_path(const char *path)
 {
 	struct connman_provider *provider;
 	GHashTableIter iter;
