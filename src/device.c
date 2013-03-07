@@ -1306,15 +1306,21 @@ connman_bool_t __connman_device_isfiltered(const char *devname)
 {
 	char **pattern;
 	char **blacklisted_interfaces;
+	gboolean match;
 
 	if (device_filter == NULL)
 		goto nodevice;
 
-	for (pattern = device_filter; *pattern; pattern++) {
-		if (g_pattern_match_simple(*pattern, devname) == FALSE) {
-			DBG("ignoring device %s (match)", devname);
-			return TRUE;
+	for (pattern = device_filter, match = FALSE; *pattern; pattern++) {
+		if (g_pattern_match_simple(*pattern, devname) == TRUE) {
+			match = TRUE;
+			break;
 		}
+	}
+
+	if (match == FALSE) {
+		DBG("ignoring device %s (match)", devname);
+		return TRUE;
 	}
 
 nodevice:
