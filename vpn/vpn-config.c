@@ -539,28 +539,40 @@ static void config_notify_handler(struct inotify_event *event,
 	}
 
 	if (event->mask & IN_CREATE)
-		create_config(ident);
+		return;
+
+	if (event->mask & IN_DELETE) {
+		g_hash_table_remove(config_table, ident);
+		return;
+	}
 
 	if (event->mask & IN_MODIFY) {
 		struct vpn_config *config;
+		char *path = get_dir();
 
 		config = g_hash_table_lookup(config_table, ident);
 		if (config != NULL) {
-			char *path = get_dir();
-
 			g_hash_table_remove_all(config->provider_table);
 			load_config(config, path, REMOVE);
 
 			/* Re-scan the config file for any changes */
 			g_hash_table_remove_all(config->provider_table);
 			load_config(config, path, ADD);
-
-			g_free(path);
+		} else {
+			/*
+			 * Inotify will send create event followed by modify
+			 * event for any config file that is copied to
+			 * monitored directory. So in practice we should just
+			 * ignore the create event and trust only the modify
+			 * one in order to avoid create/remove/create loop
+			 */
+			config = create_config(ident);
+			if (config != NULL)
+				load_config(config, path, ADD);
 		}
-	}
 
-	if (event->mask & IN_DELETE)
-		g_hash_table_remove(config_table, ident);
+		g_free(path);
+	}
 }
 
 int __vpn_config_init(void)
