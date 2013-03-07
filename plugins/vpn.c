@@ -796,6 +796,14 @@ static int provider_remove(struct connman_provider *provider)
 
 	DBG("provider %p data %p", provider, data);
 
+	if (data == NULL) {
+		/*
+		 * This means the provider is already removed,
+		 * just ignore the dbus in this case.
+		 */
+		return -EALREADY;
+	}
+
 	/*
 	 * When provider.c:provider_remove() calls this function,
 	 * it will remove the provider itself after the call.
