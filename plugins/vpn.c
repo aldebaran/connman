@@ -1508,6 +1508,7 @@ static gboolean connection_removed(DBusConnection *conn, DBusMessage *message,
 {
 	const char *path;
 	const char *signature = DBUS_TYPE_OBJECT_PATH_AS_STRING;
+	struct connection_data *data;
 
 	if (dbus_message_has_signature(message, signature) == FALSE) {
 		connman_error("vpn removed signature \"%s\" does not match "
@@ -1518,7 +1519,11 @@ static gboolean connection_removed(DBusConnection *conn, DBusMessage *message,
 
 	dbus_message_get_args(message, NULL, DBUS_TYPE_OBJECT_PATH, &path,
 				DBUS_TYPE_INVALID);
-	remove_connection(conn, path);
+
+	data = g_hash_table_lookup(vpn_connections, get_ident(path));
+	if (data != NULL)
+		remove_connection(conn, path);
+
 	return TRUE;
 }
 
