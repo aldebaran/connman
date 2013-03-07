@@ -50,10 +50,10 @@ Properties	boolean Powered [readwrite]
 
 		boolean Connected [readonly]
 
-			Boolean representing if a technolgy is connected.
+			Boolean representing if a technology is connected.
 
 			This is just a convience property for allowing the
-			UI to easily show if this technolgy has an active
+			UI to easily show if this technology has an active
 			connection or not.
 
 			If this property is True it means that at least one

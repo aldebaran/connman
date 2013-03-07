@@ -180,5 +180,5 @@ Settings	string State [readonly]
 			session with 'any' will be created.
 
 			(This setting will be removed when the unique process
-			identifaction problem is solved.)
+			identification problem is solved.)
 
