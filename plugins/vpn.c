@@ -252,6 +252,8 @@ static void set_provider_state(struct connection_data *data)
 	enum connman_provider_state state = CONNMAN_PROVIDER_STATE_UNKNOWN;
 	int err = 0;
 
+	DBG("provider %p new state %s", data->provider, data->state);
+
 	if (g_str_equal(data->state, "ready") == TRUE) {
 		state = CONNMAN_PROVIDER_STATE_READY;
 		goto set;
