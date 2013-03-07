@@ -93,7 +93,6 @@ int __vpn_provider_connect_path(const char *path);
 int __vpn_provider_disconnect(struct vpn_provider *provider);
 int __vpn_provider_remove(const char *path);
 int __vpn_provider_delete(struct vpn_provider *provider);
-void __vpn_provider_check_connections(void);
 void __vpn_provider_cleanup(void);
 int __vpn_provider_init(gboolean handle_routes);
 
