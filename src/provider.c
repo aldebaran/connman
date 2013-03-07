@@ -150,6 +150,19 @@ int connman_provider_disconnect(struct connman_provider *provider)
 	return 0;
 }
 
+int connman_provider_remove(struct connman_provider *provider)
+{
+	DBG("Removing VPN %s", provider->identifier);
+
+	provider_remove(provider);
+
+	connman_provider_set_state(provider, CONNMAN_PROVIDER_STATE_IDLE);
+
+	g_hash_table_remove(provider_hash, provider->identifier);
+
+	return 0;
+}
+
 int __connman_provider_connect(struct connman_provider *provider)
 {
 	int err;

@@ -79,6 +79,7 @@ void connman_provider_unref_debug(struct connman_provider *provider,
 			const char *file, int line, const char *caller);
 
 int connman_provider_disconnect(struct connman_provider *provider);
+int connman_provider_remove(struct connman_provider *provider);
 
 int connman_provider_set_string(struct connman_provider *provider,
 					const char *key, const char *value);
