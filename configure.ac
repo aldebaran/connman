@@ -258,7 +258,7 @@ if (test -n "${path_systemdunit}"); then
 fi
 AM_CONDITIONAL(SYSTEMD, test -n "${path_systemdunit}")
 
-PKG_CHECK_MODULES(XTABLES, xtables, dummy=yes,
+PKG_CHECK_MODULES(XTABLES, xtables >= 1.4.11, dummy=yes,
 				AC_MSG_ERROR(Xtables library is required))
 AC_SUBST(XTABLES_CFLAGS)
 AC_SUBST(XTABLES_LIBS)

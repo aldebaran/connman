@@ -1556,7 +1556,6 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 			xt_t->init(xt_t->t);
 	}
 
-#if XTABLES_VERSION_CODE > 5
 	if (xt_t->x6_options != NULL)
 		iptables_globals.opts =
 			xtables_options_xfrm(
@@ -1565,12 +1564,9 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 				xt_t->x6_options,
 				&xt_t->option_offset);
 	else
-#endif
 		iptables_globals.opts =
 			xtables_merge_options(
-#if XTABLES_VERSION_CODE > 5
 				iptables_globals.orig_opts,
-#endif
 				iptables_globals.opts,
 				xt_t->extra_opts,
 				&xt_t->option_offset);
@@ -1607,7 +1603,6 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 	if (xt_m->init != NULL)
 		xt_m->init(xt_m->m);
 
-#if XTABLES_VERSION_CODE > 5
 	if (xt_m->x6_options != NULL)
 		iptables_globals.opts =
 			xtables_options_xfrm(
@@ -1616,12 +1611,9 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 				xt_m->x6_options,
 				&xt_m->option_offset);
 	else
-#endif
 			iptables_globals.opts =
 			xtables_merge_options(
-#if XTABLES_VERSION_CODE > 5
 				iptables_globals.orig_opts,
-#endif
 				iptables_globals.opts,
 				xt_m->extra_opts,
 				&xt_m->option_offset);
@@ -1721,15 +1713,11 @@ static int prepare_getopt_args(const char *str, struct parse_context *ctx)
 	return 0;
 }
 
-#if XTABLES_VERSION_CODE > 5
-
 static int parse_xt_modules(int c, connman_bool_t invert,
 				struct parse_context *ctx)
 {
 	struct xtables_match *m;
 	struct xtables_rule_match *rm;
-
-	DBG("xtables version code > 5");
 
 	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next) {
 		if (rm->completed != 0)
@@ -1768,8 +1756,6 @@ static int final_check_xt_modules(struct parse_context *ctx)
 {
 	struct xtables_rule_match *rm;
 
-	DBG("xtables version code > 5");
-
 	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next)
 		xtables_option_mfcall(rm->match);
 
@@ -1778,63 +1764,6 @@ static int final_check_xt_modules(struct parse_context *ctx)
 
 	return 0;
 }
-
-#else
-
-static int parse_xt_modules(int c, connman_bool_t invert,
-				struct parse_context *ctx)
-{
-	struct xtables_match *m;
-	struct xtables_rule_match *rm;
-	int err;
-
-	DBG("xtables version code <= 5");
-
-	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next) {
-		if (rm->completed == 1)
-			continue;
-
-		m = rm->match;
-
-		if (m->parse == NULL)
-			continue;
-
-		err = m->parse(c - m->option_offset,
-				argv, invert, &m->mflags,
-				NULL, &m->m);
-		if (err > 0)
-			return -err;
-	}
-
-	if (ctx->xt_t == NULL)
-		return 0;
-
-	if (ctx->xt_t->parse == NULL)
-		return 0;
-
-	err = ctx->xt_m->parse(c - ctx->xt_m->option_offset,
-				ctx->argv, invert, &ctx->xt_m->mflags,
-				NULL, &ctx->xt_m->m);
-	return -err;
-}
-
-static int final_check_xt_modules(struct parse_context *ctx)
-{
-	struct xtables_rule_match *rm;
-
-	DBG("xtables version code <= 5");
-
-	for (rm = ctx->xt_rm; rm != NULL; rm = rm->next)
-		if (rm->match->final_check != NULL)
-			rm->match->final_check(rm->match->mflags);
-
-	if (ctx->xt_t != NULL && ctx->xt_t->final_check != NULL)
-		ctx->xt_t->final_check(ctx->xt_t->tflags);
-
-	return 0;
-}
-
-#endif
 
 static int parse_rule_spec(struct connman_iptables *table,
 				struct parse_context *ctx)
