@@ -27,7 +27,7 @@
 
 #include <gdbus.h>
 
-#include "test-connman.h"
+#include "session-test.h"
 
 enum test_session_state {
 	TEST_SESSION_STATE_0 = 0,

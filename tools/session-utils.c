@@ -27,7 +27,7 @@
 
 #include <gdbus.h>
 
-#include "test-connman.h"
+#include "session-test.h"
 
 #define ENABLE_WRAPPER 1
 #define PROPERTY_CHANGED		"PropertyChanged"

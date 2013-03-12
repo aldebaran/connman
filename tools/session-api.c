@@ -27,7 +27,7 @@
 
 #include <gdbus.h>
 
-#include "test-connman.h"
+#include "session-test.h"
 
 static enum connman_session_state string2state(const char *state)
 {

@@ -25,7 +25,7 @@
 
 #include <stdio.h>
 
-#include "test-connman.h"
+#include "session-test.h"
 
 static DBusMessage *set_property(DBusConnection *connection,
 				const char *property, int type, void *value)
