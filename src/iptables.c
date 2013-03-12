@@ -260,16 +260,16 @@ static int print_entry(struct ipt_entry *entry, int builtin, unsigned int hook,
 
 static int target_to_verdict(const char *target_name)
 {
-	if (!strcmp(target_name, LABEL_ACCEPT))
+	if (!g_strcmp0(target_name, LABEL_ACCEPT))
 		return -NF_ACCEPT - 1;
 
-	if (!strcmp(target_name, LABEL_DROP))
+	if (!g_strcmp0(target_name, LABEL_DROP))
 		return -NF_DROP - 1;
 
-	if (!strcmp(target_name, LABEL_QUEUE))
+	if (!g_strcmp0(target_name, LABEL_QUEUE))
 		return -NF_QUEUE - 1;
 
-	if (!strcmp(target_name, LABEL_RETURN))
+	if (!g_strcmp0(target_name, LABEL_RETURN))
 		return XT_RETURN;
 
 	return 0;
@@ -277,10 +277,10 @@ static int target_to_verdict(const char *target_name)
 
 static gboolean is_builtin_target(const char *target_name)
 {
-	if (!strcmp(target_name, LABEL_ACCEPT) ||
-		!strcmp(target_name, LABEL_DROP) ||
-		!strcmp(target_name, LABEL_QUEUE) ||
-		!strcmp(target_name, LABEL_RETURN))
+	if (!g_strcmp0(target_name, LABEL_ACCEPT) ||
+		!g_strcmp0(target_name, LABEL_DROP) ||
+		!g_strcmp0(target_name, LABEL_QUEUE) ||
+		!g_strcmp0(target_name, LABEL_RETURN))
 		return TRUE;
 
 	return FALSE;
@@ -292,7 +292,7 @@ static gboolean is_jump(struct connman_iptables_entry *e)
 
 	target = ipt_get_target(e->entry);
 
-	if (!strcmp(target->u.user.name, IPT_STANDARD_TARGET)) {
+	if (!g_strcmp0(target->u.user.name, IPT_STANDARD_TARGET)) {
 		struct xt_standard_target *t;
 
 		t = (struct xt_standard_target *)target;
@@ -339,7 +339,7 @@ static gboolean is_chain(struct connman_iptables *table,
 		return TRUE;
 
 	target = ipt_get_target(entry);
-	if (!strcmp(target->u.user.name, IPT_ERROR_TARGET))
+	if (!g_strcmp0(target->u.user.name, IPT_ERROR_TARGET))
 		return TRUE;
 
 	return FALSE;
@@ -360,13 +360,13 @@ static GList *find_chain_head(struct connman_iptables *table,
 
 		/* Buit-in chain */
 		builtin = head->builtin;
-		if (builtin >= 0 && !strcmp(hooknames[builtin], chain_name))
+		if (builtin >= 0 && !g_strcmp0(hooknames[builtin], chain_name))
 			break;
 
 		/* User defined chain */
 		target = ipt_get_target(entry);
-		if (!strcmp(target->u.user.name, IPT_ERROR_TARGET) &&
-		    !strcmp((char *)target->data, chain_name))
+		if (!g_strcmp0(target->u.user.name, IPT_ERROR_TARGET) &&
+		    !g_strcmp0((char *)target->data, chain_name))
 			break;
 	}
 
@@ -609,9 +609,9 @@ static int iptables_add_chain(struct connman_iptables *table,
 	entry_head->next_offset = entry_head_size;
 
 	error = (struct error_target *) entry_head->elems;
-	strcpy(error->t.u.user.name, IPT_ERROR_TARGET);
+	g_stpcpy(error->t.u.user.name, IPT_ERROR_TARGET);
 	error->t.u.user.target_size = ALIGN(sizeof(struct error_target));
-	strcpy(error->error, name);
+	g_stpcpy(error->error, name);
 
 	if (iptables_add_entry(table, entry_head, last, -1) < 0)
 		goto err_head;
@@ -845,11 +845,11 @@ static gboolean is_same_target(struct xt_entry_target *xt_e_t1,
 	if (xt_e_t1 == NULL || xt_e_t2 == NULL)
 		return FALSE;
 
-	if (strcmp(xt_e_t1->u.user.name, "") == 0 &&
-			strcmp(xt_e_t2->u.user.name, "") == 0) {
+	if (g_strcmp0(xt_e_t1->u.user.name, "") == 0 &&
+			g_strcmp0(xt_e_t2->u.user.name, "") == 0) {
 		/* fallthrough */
 		return TRUE;
-	} else if (strcmp(xt_e_t1->u.user.name, IPT_STANDARD_TARGET) == 0) {
+	} else if (g_strcmp0(xt_e_t1->u.user.name, IPT_STANDARD_TARGET) == 0) {
 		struct xt_standard_target *xt_s_t1;
 		struct xt_standard_target *xt_s_t2;
 
@@ -862,7 +862,7 @@ static gboolean is_same_target(struct xt_entry_target *xt_e_t1,
 		if (xt_e_t1->u.target_size != xt_e_t2->u.target_size)
 			return FALSE;
 
-		if (strcmp(xt_e_t1->u.user.name, xt_e_t2->u.user.name) != 0)
+		if (g_strcmp0(xt_e_t1->u.user.name, xt_e_t2->u.user.name) != 0)
 			return FALSE;
 
 		for (i = 0; i < xt_e_t1->u.target_size -
@@ -889,7 +889,7 @@ static gboolean is_same_match(struct xt_entry_match *xt_e_m1,
 	if (xt_e_m1->u.user.revision != xt_e_m2->u.user.revision)
 		return FALSE;
 
-	if (strcmp(xt_e_m1->u.user.name, xt_e_m2->u.user.name) != 0)
+	if (g_strcmp0(xt_e_m1->u.user.name, xt_e_m2->u.user.name) != 0)
 		return FALSE;
 
 	for (i = 0; i < xt_e_m1->u.match_size - sizeof(struct xt_entry_match);
@@ -1107,7 +1107,7 @@ static struct ipt_replace *iptables_blob(struct connman_iptables *table)
 		return NULL;
 	}
 
-	strcpy(r->name, table->info->name);
+	g_stpcpy(r->name, table->info->name);
 	r->num_entries = table->num_entries;
 	r->size = table->size;
 
@@ -1159,7 +1159,7 @@ static void dump_target(struct ipt_entry *entry)
 
 	target = ipt_get_target(entry);
 
-	if (!strcmp(target->u.user.name, IPT_STANDARD_TARGET)) {
+	if (!g_strcmp0(target->u.user.name, IPT_STANDARD_TARGET)) {
 		struct xt_standard_target *t;
 
 		t = (struct xt_standard_target *)target;
@@ -1251,7 +1251,7 @@ static int dump_entry(struct ipt_entry *entry, int builtin,
 		return 0;
 	}
 
-	if (!strcmp(target->u.user.name, IPT_ERROR_TARGET)) {
+	if (!g_strcmp0(target->u.user.name, IPT_ERROR_TARGET)) {
 		DBG("\tUSER CHAIN (%s) match %p  target %p",
 			target->data, entry->elems,
 			(char *)entry + entry->target_offset);
@@ -1422,7 +1422,7 @@ static struct connman_iptables *iptables_init(const char *table_name)
 		goto err;
 
 	s = sizeof(*table->info);
-	strcpy(table->info->name, table_name);
+	g_stpcpy(table->info->name, table_name);
 	if (getsockopt(table->ipt_sock, IPPROTO_IP, IPT_SO_GET_INFO,
 						table->info, &s) < 0) {
 		connman_error("iptables support missing error %d (%s)", errno,
@@ -1435,7 +1435,7 @@ static struct connman_iptables *iptables_init(const char *table_name)
 	if (table->blob_entries == NULL)
 		goto err;
 
-	strcpy(table->blob_entries->name, table_name);
+	g_stpcpy(table->blob_entries->name, table_name);
 	table->blob_entries->size = table->info->size;
 
 	if (iptables_get_entries(table) < 0)
@@ -1534,7 +1534,7 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 		struct xt_standard_target *target;
 
 		target = (struct xt_standard_target *)(xt_t->t);
-		strcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
+		g_stpcpy(target->target.u.user.name, IPT_STANDARD_TARGET);
 
 		if (is_builtin == TRUE)
 			target->verdict = target_to_verdict(target_name);
@@ -1550,7 +1550,7 @@ static struct xtables_target *prepare_target(struct connman_iptables *table,
 			target->verdict = target_rule->offset;
 		}
 	} else {
-		strcpy(xt_t->t->u.user.name, target_name);
+		g_stpcpy(xt_t->t->u.user.name, target_name);
 		xt_t->t->u.user.revision = xt_t->revision;
 		if (xt_t->init != NULL)
 			xt_t->init(xt_t->t);
@@ -1597,7 +1597,7 @@ static struct xtables_match *prepare_matches(struct connman_iptables *table,
 		return NULL;
 
 	xt_m->m->u.match_size = match_size;
-	strcpy(xt_m->m->u.user.name, xt_m->name);
+	g_stpcpy(xt_m->m->u.user.name, xt_m->name);
 	xt_m->m->u.user.revision = xt_m->revision;
 
 	if (xt_m->init != NULL)
@@ -1892,7 +1892,7 @@ static int parse_rule_spec(struct connman_iptables *table,
 			if (len + 1 > IFNAMSIZ)
 				break;
 
-			strcpy(ctx->ip->iniface, optarg);
+			g_stpcpy(ctx->ip->iniface, optarg);
 			memset(ctx->ip->iniface_mask, 0xff, len + 1);
 
 			if (invert)
@@ -1906,7 +1906,7 @@ static int parse_rule_spec(struct connman_iptables *table,
 			if (len + 1 > IFNAMSIZ)
 				break;
 
-			strcpy(ctx->ip->outiface, optarg);
+			g_stpcpy(ctx->ip->outiface, optarg);
 			memset(ctx->ip->outiface_mask, 0xff, len + 1);
 
 			if (invert)
@@ -2229,7 +2229,7 @@ static int flush_table_cb(struct ipt_entry *entry, int builtin,
 
 	target = ipt_get_target(entry);
 
-	if (!strcmp(target->u.user.name, IPT_ERROR_TARGET))
+	if (!g_strcmp0(target->u.user.name, IPT_ERROR_TARGET))
 		name = g_strdup((const char*)target->data);
 	else if (builtin >= 0)
 		  name = g_strdup(hooknames[builtin]);
