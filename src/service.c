@@ -3099,6 +3099,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		int index;
 		const char *gw;
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
@@ -3162,6 +3165,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		GSList *list = NULL;
 		int count = 0;
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
@@ -3203,6 +3209,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		DBusMessageIter entry;
 		GString *str;
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
@@ -3239,6 +3248,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 	} else if (g_str_equal(name, "Proxy.Configuration") == TRUE) {
 		int err;
 
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
+
 		if (type != DBUS_TYPE_ARRAY)
 			return __connman_error_invalid_arguments(msg);
 
@@ -3260,6 +3272,9 @@ static DBusMessage *set_property(DBusConnection *conn,
 		enum connman_ipconfig_type type =
 			CONNMAN_IPCONFIG_TYPE_UNKNOWN;
 		int err = 0;
+
+		if (service->immutable == TRUE)
+			return __connman_error_not_supported(msg);
 
 		DBG("%s", name);
 
