@@ -47,15 +47,15 @@ tools/wpad-test
 tools/resolv-test
 tools/polkit-test
 tools/iptables-test
+tools/iptables-unit
 tools/supplicant-test
 tools/dbus-test
 tools/stats-tool
 tools/stats-ringbuffer-dump
 tools/private-network-test
-unit/test-session
+tools/session-test
 unit/test-ippool
 unit/test-nat
-unit/test-iptables
 unit/test-pbkdf2-sha1
 unit/test-prf-sha1
 
