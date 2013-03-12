@@ -613,8 +613,6 @@ static int iptables_add_chain(struct connman_iptables *table,
 	if (entry_head == NULL)
 		goto err_head;
 
-	memset(entry_head, 0, entry_head_size);
-
 	entry_head->target_offset = sizeof(struct ipt_entry);
 	entry_head->next_offset = entry_head_size;
 
@@ -632,8 +630,6 @@ static int iptables_add_chain(struct connman_iptables *table,
 	entry_return = g_try_malloc0(entry_return_size);
 	if (entry_return == NULL)
 		goto err;
-
-	memset(entry_return, 0, entry_return_size);
 
 	entry_return->target_offset = sizeof(struct ipt_entry);
 	entry_return->next_offset = entry_return_size;
