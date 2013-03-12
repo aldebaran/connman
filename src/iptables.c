@@ -160,6 +160,7 @@ struct connman_iptables_entry {
 };
 
 struct connman_iptables {
+	char *name;
 	int ipt_sock;
 
 	struct ipt_getinfo *info;
@@ -521,6 +522,8 @@ static int iptables_flush_chain(struct connman_iptables *table,
 	struct connman_iptables_entry *entry;
 	int builtin, removed = 0;
 
+	DBG("table %s chain %s", table->name, name);
+
 	chain_head = find_chain_head(table, name);
 	if (chain_head == NULL)
 		return -EINVAL;
@@ -584,6 +587,8 @@ static int iptables_add_chain(struct connman_iptables *table,
 	struct error_target *error;
 	struct ipt_standard_target *standard;
 	u_int16_t entry_head_size, entry_return_size;
+
+	DBG("table %s chain %s", table->name, name);
 
 	last = g_list_last(table->entries);
 
@@ -651,6 +656,8 @@ static int iptables_delete_chain(struct connman_iptables *table,
 {
 	struct connman_iptables_entry *entry;
 	GList *chain_head, *chain_tail;
+
+	DBG("table %s chain %s", table->name, name);
 
 	chain_head = find_chain_head(table, name);
 	if (chain_head == NULL)
@@ -805,6 +812,8 @@ static int iptables_append_rule(struct connman_iptables *table,
 	struct ipt_entry *new_entry;
 	int builtin = -1, ret;
 	GList *chain_tail;
+
+	DBG("table %s chain %s", table->name, chain_name);
 
 	chain_tail = find_chain_tail(table, chain_name);
 	if (chain_tail == NULL)
@@ -993,6 +1002,8 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	GList *chain_head, *chain_tail, *list;
 	int builtin, removed;
 
+	DBG("table %s chain %s", table->name, chain_name);
+
 	removed = 0;
 
 	chain_head = find_chain_head(table, chain_name);
@@ -1056,6 +1067,8 @@ static int iptables_change_policy(struct connman_iptables *table,
 	struct xt_entry_target *target;
 	struct xt_standard_target *t;
 	int verdict;
+
+	DBG("table %s chain %s policy %s", table->name, chain_name, policy);
 
 	verdict = target_to_verdict(policy);
 	switch (verdict) {
@@ -1377,6 +1390,7 @@ static void table_cleanup(struct connman_iptables *table)
 	}
 
 	g_list_free(table->entries);
+	g_free(table->name);
 	g_free(table->info);
 	g_free(table->blob_entries);
 	g_free(table);
@@ -1671,7 +1685,8 @@ static struct connman_iptables *pre_load_table(const char *table_name,
 	if (table == NULL)
 		return NULL;
 
-	g_hash_table_insert(table_hash, g_strdup(table_name), table);
+	table->name = g_strdup(table_name);
+	g_hash_table_replace(table_hash, table->name, table);
 
 	return table;
 }
@@ -1850,8 +1865,6 @@ static int parse_rule_spec(struct connman_iptables *table,
 	 */
 	connman_bool_t invert = FALSE;
 	int len, c, err;
-
-	DBG("");
 
 	ctx->ip = g_try_new0(struct ipt_ip, 1);
 	if (ctx->ip == NULL)
@@ -2288,7 +2301,7 @@ int __connman_iptables_init(void)
 		debug_enabled = TRUE;
 
 	table_hash = g_hash_table_new_full(g_str_hash, g_str_equal,
-						g_free, remove_table);
+						NULL, remove_table);
 
 	xtables_init_all(&iptables_globals, NFPROTO_IPV4);
 
