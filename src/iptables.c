@@ -1022,6 +1022,22 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	entry = chain_head->data;
 	builtin = entry->builtin;
 
+	if (builtin >= 0 && list == chain_head) {
+		/*
+		 * We are about to remove the first rule in the
+		 * chain. In this case we need to store the builtin
+		 * value to the new chain_head.
+		 *
+		 * Note, for builtin chains, chain_head->next is
+		 * always valid. A builtin chain has always a policy
+		 * rule at the end.
+		 */
+		chain_head = chain_head->next;
+
+		entry = chain_head->data;
+		entry->builtin = builtin;
+	}
+
 	entry = list->data;
 	if (entry == NULL)
 		return -EINVAL;
@@ -1035,12 +1051,6 @@ static int iptables_delete_rule(struct connman_iptables *table,
 	removed += remove_table_entry(table, entry);
 
 	if (builtin >= 0) {
-		list = list->next;
-		if (list) {
-			entry = list->data;
-			entry->builtin = builtin;
-		}
-
 		table->underflow[builtin] -= removed;
 		for (list = chain_tail; list; list = list->next) {
 			entry = list->data;
