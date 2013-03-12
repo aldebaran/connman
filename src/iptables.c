@@ -2091,6 +2091,21 @@ static void cleanup_parse_context(struct parse_context *ctx)
 	g_free(ctx);
 }
 
+int __connman_iptables_dump(const char *table_name)
+{
+	struct connman_iptables *table;
+
+	DBG("-t %s -L", table_name);
+
+	table = pre_load_table(table_name, NULL);
+	if (table == NULL)
+		return -EINVAL;
+
+	dump_table(table);
+
+	return 0;
+}
+
 int __connman_iptables_new_chain(const char *table_name,
 					const char *chain)
 {

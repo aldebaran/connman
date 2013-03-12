@@ -790,6 +790,7 @@ int __connman_stats_get(struct connman_service *service,
 				connman_bool_t roaming,
 				struct connman_stats_data *data);
 
+int __connman_iptables_dump(const char *table_name);
 int __connman_iptables_new_chain(const char *table_name,
 					const char *chain);
 int __connman_iptables_delete_chain(const char *table_name,
