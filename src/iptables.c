@@ -1668,11 +1668,9 @@ out:
 	return err;
 }
 
-static struct connman_iptables *pre_load_table(const char *table_name,
-					struct connman_iptables *table)
+static struct connman_iptables *get_table(const char *table_name)
 {
-	if (table != NULL)
-		return table;
+	struct connman_iptables *table;
 
 	if (table_name == NULL)
 		table_name = "filter";
@@ -2043,7 +2041,7 @@ int __connman_iptables_dump(const char *table_name)
 
 	DBG("-t %s -L", table_name);
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL)
 		return -EINVAL;
 
@@ -2059,7 +2057,7 @@ int __connman_iptables_new_chain(const char *table_name,
 
 	DBG("-t %s -N %s", table_name, chain);
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL)
 		return -EINVAL;
 
@@ -2073,7 +2071,7 @@ int __connman_iptables_delete_chain(const char *table_name,
 
 	DBG("-t %s -X %s", table_name, chain);
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL)
 		return -EINVAL;
 
@@ -2087,7 +2085,7 @@ int __connman_iptables_flush_chain(const char *table_name,
 
 	DBG("-t %s -F %s", table_name, chain);
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL)
 		return -EINVAL;
 
@@ -2102,7 +2100,7 @@ int __connman_iptables_change_policy(const char *table_name,
 
 	DBG("-t %s -F %s", table_name, chain);
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL)
 		return -EINVAL;
 
@@ -2128,7 +2126,7 @@ int __connman_iptables_append(const char *table_name,
 	if (err < 0)
 		goto out;
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL) {
 		err = -EINVAL;
 		goto out;
@@ -2171,7 +2169,7 @@ int __connman_iptables_delete(const char *table_name,
 	if (err < 0)
 		goto out;
 
-	table = pre_load_table(table_name, NULL);
+	table = get_table(table_name);
 	if (table == NULL) {
 		err = -EINVAL;
 		goto out;
@@ -2263,7 +2261,7 @@ void flush_table(const char *name)
 	GSList *chains = NULL, *list;
 	struct connman_iptables *table;
 
-	table = pre_load_table(name, NULL);
+	table = get_table(name);
 	if (table == NULL)
 		return;
 
