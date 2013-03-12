@@ -1388,9 +1388,6 @@ static struct connman_iptables *iptables_init(const char *table_name)
 	char *module = NULL;
 	socklen_t s;
 
-	if (table_name == NULL)
-		table_name = "filter";
-
 	DBG("%s", table_name);
 
 	if (xtables_insmod("ip_tables", NULL, TRUE) != 0)
@@ -1404,10 +1401,6 @@ static struct connman_iptables *iptables_init(const char *table_name)
 		DBG("%s module loading gives error but trying anyway", module);
 
 	g_free(module);
-
-	table = g_hash_table_lookup(table_hash, table_name);
-	if (table != NULL)
-		return table;
 
 	table = g_try_new0(struct connman_iptables, 1);
 	if (table == NULL)
@@ -1454,8 +1447,6 @@ static struct connman_iptables *iptables_init(const char *table_name)
 			table->info->valid_hooks, table->info->hook_entry,
 			table->info->underflow, table->blob_entries->size,
 			add_entry, table);
-
-	g_hash_table_insert(table_hash, g_strdup(table_name), table);
 
 	if (debug_enabled == TRUE)
 		dump_table(table);
@@ -1669,7 +1660,20 @@ static struct connman_iptables *pre_load_table(const char *table_name,
 	if (table != NULL)
 		return table;
 
-	return iptables_init(table_name);
+	if (table_name == NULL)
+		table_name = "filter";
+
+	table = g_hash_table_lookup(table_hash, table_name);
+	if (table != NULL)
+		return table;
+
+	table = iptables_init(table_name);
+	if (table == NULL)
+		return NULL;
+
+	g_hash_table_insert(table_hash, g_strdup(table_name), table);
+
+	return table;
 }
 
 struct parse_context {
