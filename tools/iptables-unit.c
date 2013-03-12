@@ -296,14 +296,51 @@ static void test_nat_basic1(void)
 	g_free(service);
 }
 
+static gchar *option_debug = NULL;
+
+static gboolean parse_debug(const char *key, const char *value,
+					gpointer user_data, GError **error)
+{
+	if (value)
+		option_debug = g_strdup(value);
+	else
+		option_debug = g_strdup("*");
+
+	return TRUE;
+}
+
+static GOptionEntry options[] = {
+	{ "debug", 'd', G_OPTION_FLAG_OPTIONAL_ARG,
+				G_OPTION_ARG_CALLBACK, parse_debug,
+				"Specify debug options to enable", "DEBUG" },
+	{ NULL },
+};
+
 int main(int argc, char *argv[])
 {
+	GOptionContext *context;
+	GError *error = NULL;
 	int err;
 
 	g_test_init(&argc, &argv, NULL);
 
-	__connman_log_init(argv[0], "*", FALSE, FALSE,
+	context = g_option_context_new(NULL);
+	g_option_context_add_main_entries(context, options, NULL);
+
+	if (g_option_context_parse(context, &argc, &argv, &error) == FALSE) {
+		if (error != NULL) {
+			g_printerr("%s\n", error->message);
+			g_error_free(error);
+		} else
+			g_printerr("An unknown error occurred\n");
+		return 1;
+	}
+
+	g_option_context_free(context);
+
+	__connman_log_init(argv[0], option_debug, FALSE, FALSE,
 			"Unit Tests Connection Manager", VERSION);
+
 	__connman_iptables_init();
 	__connman_nat_init();
 
@@ -322,6 +359,8 @@ int main(int argc, char *argv[])
 
 	__connman_nat_cleanup();
 	__connman_iptables_cleanup();
+
+	g_free(option_debug);
 
 	return err;
 }
