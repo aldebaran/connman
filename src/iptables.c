@@ -515,6 +515,29 @@ static int remove_table_entry(struct connman_iptables *table,
 	return removed;
 }
 
+static void delete_update_hooks(struct connman_iptables *table,
+				int builtin, GList *chain_head,
+				int removed)
+{
+	struct connman_iptables_entry *e;
+	GList *list;
+
+	e = chain_head->data;
+	e->builtin = builtin;
+
+	table->underflow[builtin] -= removed;
+
+	for (list = chain_head->next; list; list = list->next) {
+		e = list->data;
+
+		if (e->builtin < 0)
+			continue;
+
+		table->hook_entry[e->builtin] -= removed;
+		table->underflow[e->builtin] -= removed;
+	}
+}
+
 static int iptables_flush_chain(struct connman_iptables *table,
 						const char *name)
 {
@@ -552,26 +575,8 @@ static int iptables_flush_chain(struct connman_iptables *table,
 		list = next;
 	}
 
-	if (builtin >= 0) {
-		struct connman_iptables_entry *e;
-
-		entry = list->data;
-
-		entry->builtin = builtin;
-
-		table->underflow[builtin] -= removed;
-
-		for (list = chain_tail; list; list = list->next) {
-			e = list->data;
-
-			builtin = e->builtin;
-			if (builtin < 0)
-				continue;
-
-			table->hook_entry[builtin] -= removed;
-			table->underflow[builtin] -= removed;
-		}
-	}
+	if (builtin >= 0)
+		delete_update_hooks(table, builtin, chain_tail->prev, removed);
 
 	update_offsets(table);
 
@@ -1050,19 +1055,8 @@ static int iptables_delete_rule(struct connman_iptables *table,
 
 	removed += remove_table_entry(table, entry);
 
-	if (builtin >= 0) {
-		table->underflow[builtin] -= removed;
-		for (list = chain_tail; list; list = list->next) {
-			entry = list->data;
-
-			builtin = entry->builtin;
-			if (builtin < 0)
-				continue;
-
-			table->hook_entry[builtin] -= removed;
-			table->underflow[builtin] -= removed;
-		}
-	}
+	if (builtin >= 0)
+		delete_update_hooks(table, builtin, chain_head, removed);
 
 	update_offsets(table);
 
