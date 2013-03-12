@@ -296,7 +296,8 @@ tools_dbus_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
 tools_polkit_test_LDADD = @DBUS_LIBS@
 
-tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@
+tools_iptables_test_SOURCES = src/log.c src/iptables.c tools/iptables-test.c
+tools_iptables_test_LDADD = @GLIB_LIBS@ @XTABLES_LIBS@ -ldl
 
 tools_private_network_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@
 
