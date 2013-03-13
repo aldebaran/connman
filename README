@@ -204,6 +204,49 @@ For a working system, certain configuration options need to be enabled:
 		in order to enable the dbus access.
 
 
+Activating debugging
+====================
+
+One can activate debugging prints in ConnMan using -d command line option.
+If the -d option has no parameters, then debugging is activated for all
+source code files. If the -d option has parameters, they tell which source
+code files have debugging activated. One can use wild cards in file names.
+Example:
+    -d                   Activate all normal debug prints
+    -d src/service.c     This prints debugging info from src/service.c
+                         file only
+    -d src/network.c:src/ipconfig.c
+                         This activates debug prints in src/network.c
+                         and src/ipconfig.c files.
+    -d 'src/n*.c'        This would activate debug print from all the C source
+                         files starting with letter 'n' in src directory.
+                         Note the quotation marks around option, that is to
+                         prevent shell expansion.
+    -d '*/n*.c:*/i*.c'   Activate debug prints for all C source files starting
+                         with letters 'n' or 'i' in any sub-directory.
+
+Some components of ConnMan have environment variable activated debug prints.
+If the environment variable is set, then corresponding component will print
+some extra debugging information.
+Following environment variables can be used:
+    CONNMAN_DHCP_DEBUG        DHCPv4 related debug information
+    CONNMAN_DHCPV6_DEBUG      DHCPv6 related debug information
+    CONNMAN_IPTABLES_DEBUG    Extra information when iptables is used
+    CONNMAN_RESOLV_DEBUG      Name resolver debug prints. These debug prints
+                              are used when ConnMan resolves host names for
+                              its own use.
+                              Note that the DNS proxy debug prints do not
+                              use this environment variable. For that, one
+                              can use "-d src/dnsproxy.c" command line option.
+    CONNMAN_SUPPLICANT_DEBUG  Debugging prints for communication between
+                              connmand and wpa_supplicant processes.
+    CONNMAN_WEB_DEBUG         Debug information when ConnMan does Internet
+                              connectivity check in Wispr and 6to4 components.
+
+Example:
+    CONNMAN_WEB_DEBUG=1 src/connmand -n
+
+
 Kernel configuration
 ====================
 
