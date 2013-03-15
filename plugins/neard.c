@@ -172,6 +172,9 @@ static int parse_request_oob_params(DBusMessage *message,
 	const char *key;
 	int arg_type;
 
+	if (tlv_msg == NULL || length == NULL)
+		return -EINVAL;
+
 	dbus_message_iter_init(message, &iter);
 
 	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
@@ -181,9 +184,6 @@ static int parse_request_oob_params(DBusMessage *message,
 	arg_type = dbus_message_iter_get_arg_type(&array);
 	if (arg_type != DBUS_TYPE_DICT_ENTRY)
 		return -EINVAL;
-
-	if (tlv_msg == NULL && length == NULL)
-		return 0;
 
 	while (arg_type != DBUS_TYPE_INVALID) {
 		dbus_message_iter_recurse(&array, &dict_entry);
@@ -254,9 +254,13 @@ out:
 static DBusMessage *request_oob_method(DBusConnection *dbus_conn,
 					DBusMessage *message, void *user_data)
 {
+	DBusMessageIter iter;
+
 	DBG("");
 
-	if (parse_request_oob_params(message, NULL, NULL) != 0)
+	dbus_message_iter_init(message, &iter);
+
+	if (dbus_message_iter_get_arg_type(&iter) != DBUS_TYPE_ARRAY)
 		return get_reply_on_error(message, EINVAL);
 
 	return create_request_oob_reply(message);
