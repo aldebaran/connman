@@ -309,6 +309,8 @@ tools_session_test_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		tools/session-api.c tools/session-test.h
 tools_session_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
 
+tools_iptables_unit_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
+		-DIPTABLES_SAVE=\""${IPTABLES_SAVE}"\"
 tools_iptables_unit_SOURCES = $(gdbus_sources) src/log.c \
 		 src/iptables.c src/nat.c tools/iptables-unit.c
 tools_iptables_unit_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ @XTABLES_LIBS@ -ldl

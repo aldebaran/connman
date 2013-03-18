@@ -340,6 +340,15 @@ AC_ARG_ENABLE(tools, AC_HELP_STRING([--disable-tools],
 					[enable_tools=${enableval}])
 AM_CONDITIONAL(TOOLS, test "${enable_tools}" != "no")
 
+if (test "${enable_tools}" != "no"); then
+	AC_PATH_PROGS(IPTABLES_SAVE, [iptables-save], [],
+						$PATH:/sbin:/usr/sbin)
+	IPTABLES_SAVE=$ac_cv_path_IPTABLES_SAVE
+else
+	IPTABLES_SAVE=""
+fi
+AC_SUBST(IPTABLES_SAVE)
+
 AC_ARG_ENABLE(client, AC_HELP_STRING([--disable-client],
 				[disable command line client]),
 					[enable_client=${enableval}])

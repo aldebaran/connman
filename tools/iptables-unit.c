@@ -27,6 +27,52 @@
 
 #include "../src/connman.h"
 
+static connman_bool_t assert_rule(const char *table_name, const char *rule)
+{
+	char *cmd, *output, **lines;
+	GError **error = NULL;
+	int i;
+
+	cmd = g_strdup_printf(IPTABLES_SAVE " -t %s", table_name);
+	g_spawn_command_line_sync(cmd, &output, NULL, NULL, error);
+	g_free(cmd);
+
+	lines = g_strsplit(output, "\n", 0);
+	g_free(output);
+
+	for (i = 0; lines[i] != NULL; i++) {
+		DBG("lines[%02d]: %s\n", i, lines[i]);
+		if (g_strcmp0(lines[i], rule) == 0)
+			break;
+	}
+	g_strfreev(lines);
+
+	if (lines[i] == NULL)
+		return FALSE;
+
+	return TRUE;
+}
+
+static void assert_rule_exists(const char *table_name, const char *rule)
+{
+	if (g_strcmp0(IPTABLES_SAVE, "") == 0) {
+		DBG("iptables-save is missing, no assertion possible");
+		return;
+	}
+
+	g_assert(assert_rule(table_name, rule));
+}
+
+static void assert_rule_not_exists(const char *table_name, const char *rule)
+{
+	if (g_strcmp0(IPTABLES_SAVE, "") == 0) {
+		DBG("iptables-save is missing, no assertion possible");
+		return;
+	}
+
+	g_assert(!assert_rule(table_name, rule));
+}
+
 static void test_iptables_chain0(void)
 {
 	int err;
@@ -37,11 +83,15 @@ static void test_iptables_chain0(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter", ":foo - [0:0]");
+
 	err = __connman_iptables_delete_chain("filter", "foo");
 	g_assert(err == 0);
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
+
+	assert_rule_not_exists("filter", ":foo - [0:0]");
 }
 
 static void test_iptables_chain1(void)
@@ -94,11 +144,16 @@ static void test_iptables_chain3(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter", ":user-chain-0 - [0:0]");
+
 	err = __connman_iptables_new_chain("filter", "user-chain-1");
 	g_assert(err == 0);
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
+
+	assert_rule_exists("filter", ":user-chain-0 - [0:0]");
+	assert_rule_exists("filter", ":user-chain-1 - [0:0]");
 
 	err = __connman_iptables_delete_chain("filter", "user-chain-1");
 	g_assert(err == 0);
@@ -106,11 +161,16 @@ static void test_iptables_chain3(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter", ":user-chain-0 - [0:0]");
+	assert_rule_not_exists("filter", ":user-chain-1 - [0:0]");
+
 	err = __connman_iptables_delete_chain("filter", "user-chain-0");
 	g_assert(err == 0);
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
+
+	assert_rule_not_exists("filter", ":user-chain-0 - [0:0]");
 }
 
 static void test_iptables_rule0(void)
@@ -126,14 +186,19 @@ static void test_iptables_rule0(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter",
+				"-A INPUT -m mark --mark 0x1 -j LOG");
+
 	err = __connman_iptables_delete("filter", "INPUT",
 					"-m mark --mark 1 -j LOG");
 	g_assert(err == 0);
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
-}
 
+	assert_rule_not_exists("filter",
+				"-A INPUT -m mark --mark 0x1 -j LOG");
+}
 
 static void test_iptables_rule1(void)
 {
@@ -147,11 +212,17 @@ static void test_iptables_rule1(void)
 	err = __connman_iptables_commit("nat");
 	g_assert(err == 0);
 
+	assert_rule_exists("nat",
+		"-A POSTROUTING -s 10.10.1.0/24 -o eth0 -j MASQUERADE");
+
 	err = __connman_iptables_delete("nat", "POSTROUTING",
 				"-s 10.10.1.0/24 -o eth0 -j MASQUERADE");
 
 	err = __connman_iptables_commit("nat");
 	g_assert(err == 0);
+
+	assert_rule_not_exists("nat",
+		"-A POSTROUTING -s 10.10.1.0/24 -o eth0 -j MASQUERADE");
 }
 
 static void test_iptables_rule2(void)
@@ -167,6 +238,9 @@ static void test_iptables_rule2(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter",
+				"-A INPUT -m mark --mark 0x1 -j LOG");
+
 	err = __connman_iptables_append("filter", "INPUT",
 					"-m mark --mark 2 -j LOG");
 	g_assert(err == 0);
@@ -174,6 +248,11 @@ static void test_iptables_rule2(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter",
+				"-A INPUT -m mark --mark 0x1 -j LOG");
+	assert_rule_exists("filter",
+				"-A INPUT -m mark --mark 0x2 -j LOG");
+
 	err = __connman_iptables_delete("filter", "INPUT",
 					"-m mark --mark 2 -j LOG");
 	g_assert(err == 0);
@@ -181,12 +260,20 @@ static void test_iptables_rule2(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter",
+				"-A INPUT -m mark --mark 0x1 -j LOG");
+	assert_rule_not_exists("filter",
+				"-A INPUT -m mark --mark 0x2 -j LOG");
+
 	err = __connman_iptables_delete("filter", "INPUT",
 					"-m mark --mark 1 -j LOG");
 	g_assert(err == 0);
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
+
+	assert_rule_not_exists("filter",
+				"-A INPUT -m mark --mark 0x1 -j LOG");
 }
 
 static void test_iptables_target0(void)
@@ -206,6 +293,9 @@ static void test_iptables_target0(void)
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
 
+	assert_rule_exists("filter", "-A INPUT -m mark --mark 0x1");
+	assert_rule_exists("filter", "-A INPUT -m mark --mark 0x2");
+
 	err = __connman_iptables_delete("filter", "INPUT",
 					"-m mark --mark 1");
 	g_assert(err == 0);
@@ -219,6 +309,9 @@ static void test_iptables_target0(void)
 
 	err = __connman_iptables_commit("filter");
 	g_assert(err == 0);
+
+	assert_rule_not_exists("filter", "-A INPUT -m mark --mark 0x1");
+	assert_rule_not_exists("filter", "-A INPUT -m mark --mark 0x2");
 }
 
 struct connman_notifier *nat_notifier;
@@ -258,6 +351,19 @@ static void test_nat_basic0(void)
 
 	err = __connman_iptables_commit("nat");
 	g_assert(err == 0);
+
+	assert_rule_exists("nat",
+		"-A POSTROUTING -s 192.168.2.0/24 -o eth0 -j MASQUERADE");
+
+	err = __connman_iptables_delete("nat", "POSTROUTING",
+					"-s 192.168.2.1/24 -o eth0 -j MASQUERADE");
+	g_assert(err == 0);
+
+	err = __connman_iptables_commit("nat");
+	g_assert(err == 0);
+
+	assert_rule_not_exists("nat",
+		"-A POSTROUTING -s 192.168.2.0/24 -o eth0 -j MASQUERADE");
 
 	__connman_nat_disable("bridge");
 }
