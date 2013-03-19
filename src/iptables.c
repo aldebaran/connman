@@ -768,7 +768,8 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 				struct ipt_ip *ip, const char *chain_name,
 				const char *target_name,
 				struct xtables_target *xt_t,
-				int *builtin, struct xtables_rule_match *xt_rm)
+				int *builtin, struct xtables_rule_match *xt_rm,
+				connman_bool_t insert)
 {
 	GList *chain_tail, *chain_head;
 	struct ipt_entry *new_entry;
@@ -796,7 +797,7 @@ static struct ipt_entry *prepare_rule_inclusion(struct connman_iptables *table,
 	head = chain_head->data;
 	if (head->builtin < 0)
 		*builtin = -1;
-	else if (chain_head == chain_tail->prev) {
+	else if (insert == TRUE || chain_head == chain_tail->prev) {
 		*builtin = head->builtin;
 		head->builtin = -1;
 	}
@@ -821,7 +822,7 @@ static int iptables_append_rule(struct connman_iptables *table,
 		return -EINVAL;
 
 	new_entry = prepare_rule_inclusion(table, ip, chain_name,
-					target_name, xt_t, &builtin, xt_rm);
+				target_name, xt_t, &builtin, xt_rm, FALSE);
 	if (new_entry == NULL)
 		return -EINVAL;
 
