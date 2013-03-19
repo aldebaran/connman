@@ -30,6 +30,7 @@
 
 enum iptables_command {
 	IPTABLES_COMMAND_APPEND,
+	IPTABLES_COMMAND_INSERT,
 	IPTABLES_COMMAND_DELETE,
 	IPTABLES_COMMAND_POLICY,
 	IPTABLES_COMMAND_CHAIN_INSERT,
@@ -48,11 +49,15 @@ int main(int argc, char *argv[])
 	opterr = 0;
 
 	while ((c = getopt_long(argc, argv,
-                               "-A:D:P:N:X:F:Lt:", NULL, NULL)) != -1) {
+                               "-A:I:D:P:N:X:F:Lt:", NULL, NULL)) != -1) {
 		switch (c) {
 		case 'A':
 			chain = optarg;
 			cmd = IPTABLES_COMMAND_APPEND;
+			break;
+		case 'I':
+			chain = optarg;
+			cmd = IPTABLES_COMMAND_INSERT;
 			break;
 		case 'D':
 			chain = optarg;
@@ -105,6 +110,9 @@ out:
 	case IPTABLES_COMMAND_APPEND:
 		err = __connman_iptables_append(table, chain, rule);
 		break;
+	case IPTABLES_COMMAND_INSERT:
+		err = __connman_iptables_insert(table, chain, rule);
+		break;
 	case IPTABLES_COMMAND_DELETE:
 		err = __connman_iptables_delete(table, chain, rule);
 		break;
@@ -127,7 +135,7 @@ out:
 		break;
 	case IPTABLES_COMMAND_UNKNOWN:
 		printf("Missing command\n");
-		printf("usage: iptables-test [-t table] {-A|-D} chain rule\n");
+		printf("usage: iptables-test [-t table] {-A|-I|-D} chain rule\n");
 		printf("       iptables-test [-t table] {-N|-X|-F} chain\n");
 		printf("       iptables-test [-t table] -L\n");
 		printf("       iptables-test [-t table] -P chain target\n");
