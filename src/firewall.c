@@ -38,6 +38,16 @@ static const char *builtin_chains[] = {
 	[NF_IP_POST_ROUTING]	= "POSTROUTING",
 };
 
+struct fw_rule {
+	char *table;
+	char *chain;
+	char *rule_spec;
+};
+
+struct firewall_context {
+	GList *rules;
+};
+
 static int chain_to_index(const char *chain_name)
 {
 	if (!g_strcmp0(builtin_chains[NF_IP_PRE_ROUTING], chain_name))
@@ -60,6 +70,124 @@ static int managed_chain_to_index(const char *chain_name)
 		return -1;
 
 	return chain_to_index(chain_name + strlen(CHAIN_PREFIX));
+}
+
+static void cleanup_fw_rule(gpointer user_data)
+{
+	struct fw_rule *rule = user_data;
+
+	g_free(rule->rule_spec);
+	g_free(rule->chain);
+	g_free(rule->table);
+	g_free(rule);
+}
+
+struct firewall_context *__connman_firewall_create(void)
+{
+	struct firewall_context *ctx;
+
+	ctx = g_new0(struct firewall_context, 1);
+
+	return ctx;
+}
+
+void __connman_firewall_destroy(struct firewall_context *ctx)
+{
+	g_list_free_full(ctx->rules, cleanup_fw_rule);
+	g_free(ctx);
+}
+
+int __connman_firewall_add_rule(struct firewall_context *ctx,
+				const char *table,
+				const char *chain,
+				const char *rule_fmt, ...)
+{
+	va_list args;
+	char *rule_spec;
+	struct fw_rule *rule;
+
+	va_start(args, rule_fmt);
+
+	rule_spec = g_strdup_vprintf(rule_fmt, args);
+
+	va_end(args);
+
+	rule = g_new0(struct fw_rule, 1);
+
+	rule->table = g_strdup(table);
+	rule->chain = g_strdup(chain);
+	rule->rule_spec = rule_spec;
+
+	ctx->rules = g_list_append(ctx->rules, rule);
+
+	return 0;
+}
+
+static int firewall_disable(GList *rules)
+{
+	struct fw_rule *rule;
+	GList *list;
+	int err;
+
+	for (list = rules; list != NULL; list = g_list_previous(list)) {
+		rule = list->data;
+
+		err = __connman_iptables_delete(rule->table,
+						rule->chain,
+						rule->rule_spec);
+		if (err < 0) {
+			connman_error("Cannot remove previously installed "
+				"iptables rules: %s", strerror(-err));
+			return err;
+		}
+
+		err = __connman_iptables_commit(rule->table);
+		if (err < 0) {
+			connman_error("Cannot remove previously installed "
+				"iptables rules: %s", strerror(-err));
+			return err;
+		}
+	}
+
+	return 0;
+}
+
+int __connman_firewall_enable(struct firewall_context *ctx)
+{
+	struct fw_rule *rule;
+	GList *list;
+	int err;
+
+	for (list = g_list_first(ctx->rules); list != NULL;
+			list = g_list_next(list)) {
+		rule = list->data;
+
+		DBG("%s %s %s", rule->table, rule->chain, rule->rule_spec);
+
+		err = __connman_iptables_append(rule->table,
+					rule->chain,
+					rule->rule_spec);
+		if (err < 0)
+			goto err;
+
+		err = __connman_iptables_commit(rule->table);
+		if (err < 0)
+			goto err;
+	}
+
+	return 0;
+
+err:
+	connman_warn("Failed to install iptables rules: %s", strerror(-err));
+
+	firewall_disable(g_list_previous(list));
+
+	return err;
+}
+
+int __connman_firewall_disable(struct firewall_context *ctx)
+{
+	return firewall_disable(g_list_last(ctx->rules));
 }
 
 static void iterate_chains_cb(const char *chain_name, void *user_data)

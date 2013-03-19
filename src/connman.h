@@ -880,6 +880,16 @@ int __connman_nat_enable(const char *name, const char *address,
 				unsigned char prefixlen);
 void __connman_nat_disable(const char *name);
 
+struct firewall_context;
+
+struct firewall_context *__connman_firewall_create(void);
+void __connman_firewall_destroy(struct firewall_context *ctx);
+int __connman_firewall_add_rule(struct firewall_context *ctx,
+				const char *table,
+				const char *chain,
+				const char *rule_fmt, ...);
+int __connman_firewall_enable(struct firewall_context *ctx);
+int __connman_firewall_disable(struct firewall_context *ctx);
 
 int __connman_firewall_init(void);
 void __connman_firewall_cleanup(void);
