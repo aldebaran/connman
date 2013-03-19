@@ -803,6 +803,9 @@ int __connman_iptables_change_policy(const char *table_name,
 int __connman_iptables_append(const char *table_name,
 			const char *chain,
 			const char *rule_spec);
+int __connman_iptables_insert(const char *table_name,
+			const char *chain,
+			const char *rule_spec);
 int __connman_iptables_delete(const char *table_name,
 			const char *chain,
 			const char *rule_spec);

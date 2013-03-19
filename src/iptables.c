@@ -833,6 +833,37 @@ static int iptables_append_rule(struct connman_iptables *table,
 	return ret;
 }
 
+static int iptables_insert_rule(struct connman_iptables *table,
+				struct ipt_ip *ip, const char *chain_name,
+				const char *target_name,
+				struct xtables_target *xt_t,
+				struct xtables_rule_match *xt_rm)
+{
+	struct ipt_entry *new_entry;
+	int builtin = -1, ret;
+	GList *chain_head;
+
+	DBG("table %s chain %s", table->name, chain_name);
+
+	chain_head = find_chain_head(table, chain_name);
+	if (chain_head == NULL)
+		return -EINVAL;
+
+	new_entry = prepare_rule_inclusion(table, ip, chain_name,
+				target_name, xt_t, &builtin, xt_rm, TRUE);
+	if (new_entry == NULL)
+		return -EINVAL;
+
+	if (builtin == -1)
+		chain_head = chain_head->next;
+
+	ret = iptables_add_entry(table, new_entry, chain_head, builtin);
+	if (ret < 0)
+		g_free(new_entry);
+
+	return ret;
+}
+
 static gboolean is_same_ipt_entry(struct ipt_entry *i_e1,
 					struct ipt_entry *i_e2)
 {
@@ -2143,6 +2174,49 @@ int __connman_iptables_append(const char *table_name,
 		target_name = ctx->xt_t->name;
 
 	err = iptables_append_rule(table, ctx->ip, chain,
+				target_name, ctx->xt_t, ctx->xt_rm);
+out:
+	cleanup_parse_context(ctx);
+	reset_xtables();
+
+	return err;
+}
+
+int __connman_iptables_insert(const char *table_name,
+				const char *chain,
+				const char *rule_spec)
+{
+	struct connman_iptables *table;
+	struct parse_context *ctx;
+	const char *target_name;
+	int err;
+
+	ctx = g_try_new0(struct parse_context, 1);
+	if (ctx == NULL)
+		return -ENOMEM;
+
+	DBG("-t %s -I %s %s", table_name, chain, rule_spec);
+
+	err = prepare_getopt_args(rule_spec, ctx);
+	if (err < 0)
+		goto out;
+
+	table = get_table(table_name);
+	if (table == NULL) {
+		err = -EINVAL;
+		goto out;
+	}
+
+	err = parse_rule_spec(table, ctx);
+	if (err < 0)
+		goto out;
+
+	if (ctx->xt_t == NULL)
+		target_name = NULL;
+	else
+		target_name = ctx->xt_t->name;
+
+	err = iptables_insert_rule(table, ctx->ip, chain,
 				target_name, ctx->xt_t, ctx->xt_rm);
 out:
 	cleanup_parse_context(ctx);
