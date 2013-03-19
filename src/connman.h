@@ -810,6 +810,12 @@ int __connman_iptables_delete(const char *table_name,
 			const char *chain,
 			const char *rule_spec);
 
+typedef void (*connman_iptables_iterate_chains_cb_t) (const char *chain_name,
+							void *user_data);
+int __connman_iptables_iterate_chains(const char *table_name,
+				connman_iptables_iterate_chains_cb_t cb,
+				void *user_data);
+
 int __connman_iptables_init(void);
 void __connman_iptables_cleanup(void);
 int __connman_iptables_commit(const char *table_name);

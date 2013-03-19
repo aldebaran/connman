@@ -36,8 +36,6 @@
 
 #include "connman.h"
 
-void flush_table(const char *name);
-
 /*
  * Some comments on how the iptables API works (some of them from the
  * source code from iptables and the kernel):
@@ -2306,13 +2304,13 @@ static void remove_table(gpointer user_data)
 	table_cleanup(table);
 }
 
-static int flush_table_cb(struct ipt_entry *entry, int builtin,
+static int iterate_chains_cb(struct ipt_entry *entry, int builtin,
 				unsigned int hook, size_t size,
 				unsigned int offset, void *user_data)
 {
-	GSList **chains = user_data;
+	struct cb_data *cbd = user_data;
+	connman_iptables_iterate_chains_cb_t cb = cbd->cb;
 	struct xt_entry_target *target;
-	char *name;
 
 	if (offset + entry->next_offset == size)
 		return 0;
@@ -2320,50 +2318,34 @@ static int flush_table_cb(struct ipt_entry *entry, int builtin,
 	target = ipt_get_target(entry);
 
 	if (!g_strcmp0(target->u.user.name, IPT_ERROR_TARGET))
-		name = g_strdup((const char*)target->data);
+		(*cb)((const char*)target->data, cbd->user_data);
 	else if (builtin >= 0)
-		  name = g_strdup(hooknames[builtin]);
-	else
-		return 0;
-
-	*chains = g_slist_prepend(*chains, name);
+		(*cb)(hooknames[builtin], cbd->user_data);
 
 	return 0;
 }
 
-void flush_table(const char *name)
+int __connman_iptables_iterate_chains(const char *table_name,
+				connman_iptables_iterate_chains_cb_t cb,
+				void *user_data)
 {
-	GSList *chains = NULL, *list;
+	struct cb_data *cbd = cb_data_new(cb, user_data);
 	struct connman_iptables *table;
 
-	table = get_table(name);
+	table = get_table(table_name);
 	if (table == NULL)
-		return;
+		return -EINVAL;
 
 	iterate_entries(table->blob_entries->entrytable,
 			table->info->valid_hooks,
 			table->info->hook_entry,
 			table->info->underflow,
 			table->blob_entries->size,
-			flush_table_cb, &chains);
+			iterate_chains_cb, cbd);
 
+	g_free(cbd);
 
-	/*
-	 * The offset update code is fragile and it works
-	 * only safe if we remove elements and move forwards
-	 * in the table.
-	 */
-	chains = g_slist_reverse(chains);
-
-	for (list = chains; list != NULL; list = list->next) {
-		char *chain = list->data;
-
-		DBG("chain %s", chain);
-		iptables_flush_chain(table, chain);
-	}
-
-	__connman_iptables_commit(name);
-	g_slist_free_full(chains, g_free);
+	return 0;
 }
 
 int __connman_iptables_init(void)
