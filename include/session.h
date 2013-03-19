@@ -49,6 +49,23 @@ enum connman_session_type {
 	CONNMAN_SESSION_TYPE_INTERNET = 3,
 };
 
+struct cb_data {
+	void *cb;
+	void *user_data;
+	void *data;
+};
+
+static inline struct cb_data *cb_data_new(void *cb, void *user_data)
+{
+	struct cb_data *ret;
+
+	ret = g_new0(struct cb_data, 1);
+	ret->cb = cb;
+	ret->user_data = user_data;
+
+	return ret;
+}
+
 struct connman_session;
 
 struct connman_session_config {
