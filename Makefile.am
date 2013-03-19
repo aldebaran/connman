@@ -240,7 +240,7 @@ client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
 client_connmanctl_LDADD = @DBUS_LIBS@ @GLIB_LIBS@ -lreadline -ldl
 endif
 
-noinst_PROGRAMS += unit/test-pbkdf2-sha1 unit/test-prf-sha1
+noinst_PROGRAMS += unit/test-pbkdf2-sha1 unit/test-prf-sha1 unit/test-ippool
 
 unit_test_pbkdf2_sha1_SOURCES = unit/test-pbkdf2-sha1.c \
 				src/shared/sha1.h src/shared/sha1.c
@@ -250,7 +250,11 @@ unit_test_prf_sha1_SOURCES = unit/test-prf-sha1.c \
 				src/shared/sha1.h src/shared/sha1.c
 unit_test_prf_sha1_LDADD = @GLIB_LIBS@
 
-TESTS = unit/test-pbkdf2-sha1 unit/test-prf-sha1
+unit_test_ippool_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
+		 src/ippool.c unit/test-ippool.c
+unit_test_ippool_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
+
+TESTS = unit/test-pbkdf2-sha1 unit/test-prf-sha1 unit/test-ippool
 
 if WISPR
 noinst_PROGRAMS += tools/wispr
@@ -266,8 +270,7 @@ noinst_PROGRAMS += tools/supplicant-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
-			tools/session-test unit/test-ippool \
-			tools/iptables-unit
+			tools/session-test tools/iptables-unit
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \
@@ -305,11 +308,6 @@ tools_session_test_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
 		tools/session-test.c tools/session-utils.c tools/manager-api.c \
 		tools/session-api.c tools/session-test.h
 tools_session_test_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
-
-unit_test_ippool_SOURCES = $(gdbus_sources) src/log.c src/dbus.c \
-		 src/ippool.c unit/test-ippool.c
-unit_test_ippool_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ -ldl
-unit_objects += $(unit_test_ippool_OBJECTS)
 
 tools_iptables_unit_SOURCES = $(gdbus_sources) src/log.c \
 		 src/iptables.c src/nat.c tools/iptables-unit.c
