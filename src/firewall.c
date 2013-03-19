@@ -23,6 +23,8 @@
 #include <config.h>
 #endif
 
+#include <errno.h>
+
 #include <xtables.h>
 #include <linux/netfilter_ipv4/ip_tables.h>
 
@@ -38,6 +40,11 @@ static const char *builtin_chains[] = {
 	[NF_IP_POST_ROUTING]	= "POSTROUTING",
 };
 
+struct connman_managed_table {
+	char *name;
+	unsigned int chains[NF_INET_NUMHOOKS];
+};
+
 struct fw_rule {
 	char *table;
 	char *chain;
@@ -47,6 +54,8 @@ struct fw_rule {
 struct firewall_context {
 	GList *rules;
 };
+
+static GSList *managed_tables;
 
 static int chain_to_index(const char *chain_name)
 {
@@ -70,6 +79,165 @@ static int managed_chain_to_index(const char *chain_name)
 		return -1;
 
 	return chain_to_index(chain_name + strlen(CHAIN_PREFIX));
+}
+
+static int insert_managed_chain(const char *table_name, int id)
+{
+	char *rule, *managed_chain;
+	int err;
+
+	managed_chain = g_strdup_printf("%s%s", CHAIN_PREFIX,
+					builtin_chains[id]);
+
+	err = __connman_iptables_new_chain(table_name, managed_chain);
+	if (err < 0)
+		goto out;
+
+	rule = g_strdup_printf("-j %s", managed_chain);
+	err = __connman_iptables_insert(table_name, builtin_chains[id], rule);
+	g_free(rule);
+	if (err < 0) {
+		__connman_iptables_delete_chain(table_name, managed_chain);
+		goto out;
+	}
+
+out:
+	g_free(managed_chain);
+
+	return err;
+}
+
+static int delete_managed_chain(const char *table_name, int id)
+{
+	char *rule, *managed_chain;
+	int err;
+
+	managed_chain = g_strdup_printf("%s%s", CHAIN_PREFIX,
+					builtin_chains[id]);
+
+	rule = g_strdup_printf("-j %s", managed_chain);
+	err = __connman_iptables_delete(table_name, builtin_chains[id], rule);
+	g_free(rule);
+
+	if (err < 0)
+		goto out;
+
+	err =  __connman_iptables_delete_chain(table_name, managed_chain);
+
+out:
+	g_free(managed_chain);
+
+	return err;
+}
+
+static int insert_managed_rule(const char *table_name,
+				const char *chain_name,
+				const char *rule_spec)
+{
+	struct connman_managed_table *mtable = NULL;
+	GSList *list;
+	char *chain;
+	int id, err;
+
+	id = chain_to_index(chain_name);
+	if (id < 0) {
+		/* This chain is not managed */
+		chain = g_strdup(chain_name);
+		goto out;
+	}
+
+	for (list = managed_tables; list != NULL; list = list->next) {
+		mtable = list->data;
+
+		if (g_strcmp0(mtable->name, table_name) == 0)
+			break;
+
+		mtable = NULL;
+	}
+
+	if (mtable == NULL) {
+		mtable = g_new0(struct connman_managed_table, 1);
+		mtable->name = g_strdup(table_name);
+
+		managed_tables = g_slist_prepend(managed_tables, mtable);
+	}
+
+	if (mtable->chains[id] == 0) {
+		DBG("table %s add managed chain for %s",
+			table_name, chain_name);
+
+		err = insert_managed_chain(table_name, id);
+		if (err < 0)
+			return err;
+	}
+
+	mtable->chains[id]++;
+	chain = g_strdup_printf("%s%s", CHAIN_PREFIX, chain_name);
+
+out:
+	err = __connman_iptables_append(table_name, chain, rule_spec);
+
+	g_free(chain);
+
+	return err;
+ }
+
+static int delete_managed_rule(const char *table_name,
+				const char *chain_name,
+				const char *rule_spec)
+ {
+	struct connman_managed_table *mtable = NULL;
+	GSList *list;
+	int id, err;
+	char *managed_chain;
+
+	id = chain_to_index(chain_name);
+	if (id < 0) {
+		/* This chain is not managed */
+		return __connman_iptables_delete(table_name, chain_name,
+							rule_spec);
+	}
+
+	managed_chain = g_strdup_printf("%s%s", CHAIN_PREFIX, chain_name);
+
+	err = __connman_iptables_delete(table_name, managed_chain,
+					rule_spec);
+
+	for (list = managed_tables; list != NULL; list = list->next) {
+		mtable = list->data;
+
+		if (g_strcmp0(mtable->name, table_name) == 0)
+			break;
+
+		mtable = NULL;
+	}
+
+	if (mtable == NULL) {
+		err = -ENOENT;
+		goto out;
+	}
+
+	mtable->chains[id]--;
+	if (mtable->chains[id] > 0)
+		goto out;
+
+	DBG("table %s remove managed chain for %s",
+			table_name, chain_name);
+
+	err = delete_managed_chain(table_name, id);
+
+ out:
+	g_free(managed_chain);
+
+	return err;
+}
+
+static void cleanup_managed_table(gpointer user_data)
+{
+	struct connman_managed_table *table = user_data;
+
+	g_free(table->name);
+	g_free(table);
 }
 
 static void cleanup_fw_rule(gpointer user_data)
@@ -132,9 +300,8 @@ static int firewall_disable(GList *rules)
 	for (list = rules; list != NULL; list = g_list_previous(list)) {
 		rule = list->data;
 
-		err = __connman_iptables_delete(rule->table,
-						rule->chain,
-						rule->rule_spec);
+		err = delete_managed_rule(rule->table,
+						rule->chain, rule->rule_spec);
 		if (err < 0) {
 			connman_error("Cannot remove previously installed "
 				"iptables rules: %s", strerror(-err));
@@ -164,9 +331,8 @@ int __connman_firewall_enable(struct firewall_context *ctx)
 
 		DBG("%s %s %s", rule->table, rule->chain, rule->rule_spec);
 
-		err = __connman_iptables_append(rule->table,
-					rule->chain,
-					rule->rule_spec);
+		err = insert_managed_rule(rule->table,
+						rule->chain, rule->rule_spec);
 		if (err < 0)
 			goto err;
 
@@ -270,4 +436,6 @@ int __connman_firewall_init(void)
 void __connman_firewall_cleanup(void)
 {
 	DBG("");
+
+	g_slist_free_full(managed_tables, cleanup_managed_table);
 }
