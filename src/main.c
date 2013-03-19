@@ -633,6 +633,7 @@ int main(int argc, char *argv[])
 
 	__connman_ippool_init();
 	__connman_iptables_init();
+	__connman_firewall_init();
 	__connman_nat_init();
 	__connman_tethering_init();
 	__connman_counter_init();
@@ -693,6 +694,7 @@ int main(int argc, char *argv[])
 	__connman_counter_cleanup();
 	__connman_tethering_cleanup();
 	__connman_nat_cleanup();
+	__connman_firewall_cleanup();
 	__connman_iptables_cleanup();
 	__connman_ippool_cleanup();
 	__connman_device_cleanup();

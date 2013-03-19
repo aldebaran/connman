@@ -879,3 +879,7 @@ void __connman_nat_cleanup(void);
 int __connman_nat_enable(const char *name, const char *address,
 				unsigned char prefixlen);
 void __connman_nat_disable(const char *name);
+
+
+int __connman_firewall_init(void);
+void __connman_firewall_cleanup(void);
