@@ -2916,6 +2916,9 @@ int __connman_dnsproxy_add_listener(int index)
 	if (index < 0)
 		return -EINVAL;
 
+	if (listener_table == NULL)
+		return 0;
+
 	if (g_hash_table_lookup(listener_table, GINT_TO_POINTER(index)) != NULL)
 		return 0;
 
@@ -2946,6 +2949,9 @@ void __connman_dnsproxy_remove_listener(int index)
 	struct listener_data *ifdata;
 
 	DBG("index %d", index);
+
+	if (listener_table == NULL)
+		return;
 
 	ifdata = g_hash_table_lookup(listener_table, GINT_TO_POINTER(index));
 	if (ifdata == NULL)
