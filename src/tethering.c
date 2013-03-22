@@ -35,6 +35,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <linux/if_tun.h>
+#include <netinet/in.h>
 #include <linux/if_bridge.h>
 
 #include "connman.h"
