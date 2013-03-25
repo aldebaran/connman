@@ -1234,6 +1234,27 @@ static const char *state2string(enum vpn_provider_state state)
 	return NULL;
 }
 
+static void append_nameservers(DBusMessageIter *iter, char **servers)
+{
+	int i;
+
+	DBG("%p", servers);
+
+	for (i = 0; servers[i] != NULL; i++) {
+		DBG("servers[%d] %s", i, servers[i]);
+		dbus_message_iter_append_basic(iter,
+					DBUS_TYPE_STRING, &servers[i]);
+	}
+}
+
+static void append_dns(DBusMessageIter *iter, void *user_data)
+{
+	struct vpn_provider *provider = user_data;
+
+	if (provider->nameservers != NULL)
+		append_nameservers(iter, provider->nameservers);
+}
+
 static int provider_indicate_state(struct vpn_provider *provider,
 				enum vpn_provider_state state)
 {
@@ -1261,6 +1282,12 @@ static int provider_indicate_state(struct vpn_provider *provider,
 			connman_dbus_property_changed_dict(provider->path,
 					VPN_CONNECTION_INTERFACE, "IPv6",
 					append_ipv6, provider);
+
+		connman_dbus_property_changed_array(provider->path,
+						VPN_CONNECTION_INTERFACE,
+						"Nameservers",
+						DBUS_TYPE_STRING,
+						append_dns, provider);
 	}
 
 	if (old_state != state)
@@ -1276,27 +1303,6 @@ static int provider_indicate_state(struct vpn_provider *provider,
 		provider->state = VPN_PROVIDER_STATE_IDLE;
 
 	return 0;
-}
-
-static void append_nameservers(DBusMessageIter *iter, char **servers)
-{
-	int i;
-
-	DBG("%p", servers);
-
-	for (i = 0; servers[i] != NULL; i++) {
-		DBG("servers[%d] %s", i, servers[i]);
-		dbus_message_iter_append_basic(iter,
-					DBUS_TYPE_STRING, &servers[i]);
-	}
-}
-
-static void append_dns(DBusMessageIter *iter, void *user_data)
-{
-	struct vpn_provider *provider = user_data;
-
-	if (provider->nameservers != NULL)
-		append_nameservers(iter, provider->nameservers);
 }
 
 static void append_state(DBusMessageIter *iter,
