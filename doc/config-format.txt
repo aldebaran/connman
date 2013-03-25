@@ -37,12 +37,16 @@ Allowed fields:
 - Type: Service type. We currently only support wifi and ethernet.
 - IPv4: The IPv4 address, netmask and gateway. Format of the entry
   is network/netmask/gateway. The mask length can be used instead
-  of netmask.
+  of netmask. The field can also contain the string "off" or "dhcp".
+  If the setting is "off", then no IPv4 address is set to the interface.
+  If the setting is "dhcp", then DHCPv4 address resolution is activated.
   Example: 192.168.1.2/24/192.168.1.1
            192.168.200.100/255.255.255.0/192.168.200.1
 - IPv6: The IPv6 address, prefix length and gateway. Format of the entry
   is network/prefixlen/gateway. For IPv6 addresses only prefix length is
-  accepted.
+  accepted. The field can also contain the string "off" or "auto".
+  If the setting is "off", then no IPv6 address is set to the interface.
+  If the setting is "auto", then SLAAC or DHCPv6 is used.
   Example: 2001:db8::2/64/2001:db8::1
 - IPv6.Privacy: IPv6 privacy option. Value can be either "disabled",
   "enabled" or "prefered". See use_tempaddr variable description in Linux

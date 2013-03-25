@@ -392,6 +392,18 @@ out:
 	return err;
 }
 
+static connman_bool_t check_address(char *address_str, char **address)
+{
+	if (g_ascii_strcasecmp(address_str, "auto") == 0 ||
+			g_ascii_strcasecmp(address_str, "dhcp") == 0 ||
+			g_ascii_strcasecmp(address_str, "off") == 0) {
+		*address = address_str;
+		return FALSE;
+	}
+
+	return TRUE;
+}
+
 static connman_bool_t load_service_generic(GKeyFile *keyfile,
 			const char *group, struct connman_config *config,
 			struct connman_config_service *service)
@@ -401,7 +413,7 @@ static connman_bool_t load_service_generic(GKeyFile *keyfile,
 	gsize length;
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv4, NULL);
-	if (str != NULL) {
+	if (str != NULL && check_address(str, &service->ipv4_address) == TRUE) {
 		mask = NULL;
 
 		if (parse_address(str, AF_INET, &service->ipv4_address,
@@ -436,7 +448,7 @@ static connman_bool_t load_service_generic(GKeyFile *keyfile,
 	}
 
 	str = g_key_file_get_string(keyfile, group, SERVICE_KEY_IPv6, NULL);
-	if (str != NULL) {
+	if (str != NULL && check_address(str, &service->ipv6_address) == TRUE) {
 		long int value;
 		char *ptr;
 
@@ -1110,7 +1122,17 @@ static void provision_service(gpointer key, gpointer value,
 			return;
 	}
 
-	if (config->ipv6_address != NULL) {
+	if (config->ipv6_address == NULL) {
+		connman_network_set_ipv6_method(network,
+						CONNMAN_IPCONFIG_METHOD_AUTO);
+	} else if (g_ascii_strcasecmp(config->ipv6_address, "off") == 0) {
+		connman_network_set_ipv6_method(network,
+						CONNMAN_IPCONFIG_METHOD_OFF);
+	} else if (g_ascii_strcasecmp(config->ipv6_address, "auto") == 0 ||
+			g_ascii_strcasecmp(config->ipv6_address, "dhcp") == 0) {
+		connman_network_set_ipv6_method(network,
+						CONNMAN_IPCONFIG_METHOD_AUTO);
+	} else {
 		struct connman_ipaddress *address;
 
 		if (config->ipv6_prefix_length == 0 ||
@@ -1146,7 +1168,17 @@ static void provision_service(gpointer key, gpointer value,
 							config->ipv6_privacy);
 	}
 
-	if (config->ipv4_address != NULL) {
+	if (config->ipv4_address == NULL) {
+		connman_network_set_ipv4_method(network,
+						CONNMAN_IPCONFIG_METHOD_DHCP);
+	} else if (g_ascii_strcasecmp(config->ipv4_address, "off") == 0) {
+		connman_network_set_ipv4_method(network,
+						CONNMAN_IPCONFIG_METHOD_OFF);
+	} else if (g_ascii_strcasecmp(config->ipv4_address, "auto") == 0 ||
+			g_ascii_strcasecmp(config->ipv4_address, "dhcp") == 0) {
+		connman_network_set_ipv4_method(network,
+						CONNMAN_IPCONFIG_METHOD_DHCP);
+	} else {
 		struct connman_ipaddress *address;
 
 		if (config->ipv4_netmask == 0 ||
