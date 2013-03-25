@@ -233,6 +233,11 @@ static void reset_autoscan(struct connman_device *device)
 
 static void stop_autoscan(struct connman_device *device)
 {
+	const struct wifi_data *wifi = connman_device_get_data(device);
+
+	if (wifi == NULL || wifi->autoscan == NULL)
+		return;
+
 	reset_autoscan(device);
 
 	connman_device_set_scanning(device, FALSE);
