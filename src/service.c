@@ -5849,7 +5849,10 @@ int __connman_service_disconnect(struct connman_service *service)
 							NULL);
 
 	__connman_ipconfig_address_remove(service->ipconfig_ipv4);
+	settings_changed(service, service->ipconfig_ipv4);
+
 	__connman_ipconfig_address_remove(service->ipconfig_ipv6);
+	settings_changed(service, service->ipconfig_ipv6);
 
 	__connman_ipconfig_disable(service->ipconfig_ipv4);
 	__connman_ipconfig_disable(service->ipconfig_ipv6);
