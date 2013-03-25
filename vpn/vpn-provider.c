@@ -2139,7 +2139,7 @@ static int set_string(struct vpn_provider *provider,
 			return -EPERM;
 		}
 
-		setting = g_try_new(struct vpn_setting, 1);
+		setting = g_try_new0(struct vpn_setting, 1);
 		if (setting == NULL)
 			return -ENOMEM;
 
