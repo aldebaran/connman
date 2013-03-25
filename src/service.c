@@ -1757,16 +1757,21 @@ static void append_provider(DBusMessageIter *iter, void *user_data)
 static void settings_changed(struct connman_service *service,
 				struct connman_ipconfig *ipconfig)
 {
+	enum connman_ipconfig_type type;
+
 	if (allow_property_changed(service) == FALSE)
 		return;
 
-	connman_dbus_property_changed_dict(service->path,
-					CONNMAN_SERVICE_INTERFACE, "IPv4",
-							append_ipv4, service);
+	type = __connman_ipconfig_get_config_type(ipconfig);
 
-	connman_dbus_property_changed_dict(service->path,
+	if (type == CONNMAN_IPCONFIG_TYPE_IPV4)
+		connman_dbus_property_changed_dict(service->path,
+					CONNMAN_SERVICE_INTERFACE, "IPv4",
+					append_ipv4, service);
+	else if (type == CONNMAN_IPCONFIG_TYPE_IPV6)
+		connman_dbus_property_changed_dict(service->path,
 					CONNMAN_SERVICE_INTERFACE, "IPv6",
-							append_ipv6, service);
+					append_ipv6, service);
 
 	__connman_notifier_ipconfig_changed(service, ipconfig);
 }
