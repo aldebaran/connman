@@ -109,7 +109,7 @@ void connman_provider_put(struct connman_provider *provider);
 int connman_provider_set_domain(struct connman_provider *provider,
 				const char *domain);
 int connman_provider_set_nameservers(struct connman_provider *provider,
-					const char *nameservers);
+					char * const *nameservers);
 int connman_provider_append_route(struct connman_provider *provider,
 					const char *key, const char *value);
 

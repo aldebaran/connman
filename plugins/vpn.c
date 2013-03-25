@@ -643,6 +643,10 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 
 	resolv_host_addr(data);
 
+	if (data->nameservers != NULL)
+		connman_provider_set_nameservers(data->provider,
+						data->nameservers);
+
 	if (data->connect_pending == TRUE)
 		connect_provider(data, data->cb_data);
 
@@ -1756,7 +1760,10 @@ static gboolean property_changed(DBusConnection *conn,
 			set_routes(data->provider,
 						CONNMAN_PROVIDER_ROUTE_USER);
 	} else if (g_str_equal(key, "Nameservers") == TRUE) {
-		extract_nameservers(&value, data);
+		if (extract_nameservers(&value, data) == 0 &&
+						data->nameservers != NULL)
+			connman_provider_set_nameservers(data->provider,
+							data->nameservers);
 	}
 
 	if (ip_set == TRUE && err == 0) {

@@ -552,26 +552,20 @@ int connman_provider_set_domain(struct connman_provider *provider,
 }
 
 int connman_provider_set_nameservers(struct connman_provider *provider,
-					const char *nameservers)
+					char * const * nameservers)
 {
 	int i;
-	char **nameservers_array = NULL;
 
-	DBG("provider %p nameservers %s", provider, nameservers);
+	DBG("provider %p nameservers %p", provider, nameservers);
 
 	__connman_service_nameserver_clear(provider->vpn_service);
 
 	if (nameservers == NULL)
 		return 0;
 
-	nameservers_array = g_strsplit(nameservers, " ", 0);
-
-	for (i = 0; nameservers_array[i] != NULL; i++) {
+	for (i = 0; nameservers[i] != NULL; i++)
 		__connman_service_nameserver_append(provider->vpn_service,
-						nameservers_array[i], FALSE);
-	}
-
-	g_strfreev(nameservers_array);
+						nameservers[i], FALSE);
 
 	return 0;
 }
