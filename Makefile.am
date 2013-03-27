@@ -236,7 +236,8 @@ client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
 			client/technology.h client/technology.c \
 			client/interactive.h client/interactive.c \
 			client/monitor.h client/monitor.c \
-			client/commands.c client/main.c
+			client/commands.h client/commands.c client/main.c \
+			client/input.h client/input.c
 
 client_connmanctl_LDADD = @DBUS_LIBS@ @GLIB_LIBS@ -lreadline -ldl
 endif
