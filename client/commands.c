@@ -144,12 +144,29 @@ static int cmd_disable(char *args[], int num, struct option *options)
 	return 0;
 }
 
+static void state_print(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	DBusMessageIter entry;
+
+	if (error != NULL) {
+		fprintf(stderr, "Error: %s", error);
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &entry);
+	__connmanctl_dbus_print(&entry, "  ", " = ", "\n");
+	fprintf(stdout, "\n");
+}
+
 static int cmd_state(char *args[], int num, struct option *options)
 {
 	if (num > 1)
 		return -E2BIG;
 
-	return list_properties(connection, "GetProperties", NULL);
+	return __connmanctl_dbus_method_call(connection, "/",
+			"net.connman.Manager", "GetProperties",
+			state_print, NULL, DBUS_TYPE_INVALID);
 }
 
 static int cmd_services(char *args[], int num, struct option *options)
