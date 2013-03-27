@@ -59,7 +59,6 @@ static char *ipv6[] = {
 	"Address",
 	"PrefixLength",
 	"Gateway",
-	"Privacy",
 	NULL
 };
 
@@ -411,14 +410,127 @@ static int cmd_disconnect(char *args[], int num, struct option *options)
 	return 0;
 }
 
+static void config_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *service_name = user_data;
+
+	if (error != NULL)
+		fprintf(stderr, "Error %s: %s\n", service_name, error);
+
+	g_free(user_data);
+}
+
+struct config_append {
+	char **opts;
+	int values;
+};
+
+static void config_append_ipv4(DBusMessageIter *iter,
+		void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+	int i = 0;
+
+	if (opts == NULL)
+		return;
+
+	while (opts[i] != NULL && ipv4[i] != NULL) {
+		__connmanctl_dbus_append_dict_entry(iter, ipv4[i],
+				DBUS_TYPE_STRING, &opts[i]);
+		i++;
+	}
+
+	append->values = i;
+}
+
+static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+
+	if (opts == NULL)
+		return;
+
+	append->values = 1;
+
+	if (g_strcmp0(opts[0], "auto") == 0) {
+		char *str;
+
+		switch (parse_boolean(opts[1])) {
+		case 0:
+			append->values = 2;
+
+			str = "disabled";
+			__connmanctl_dbus_append_dict_entry(iter, "Privacy",
+					DBUS_TYPE_STRING, &str);
+			break;
+
+		case 1:
+			append->values = 2;
+
+			str = "enabled";
+			__connmanctl_dbus_append_dict_entry(iter, "Privacy",
+					DBUS_TYPE_STRING, &str);
+			break;
+
+		default:
+			if (opts[1] != NULL) {
+				append->values = 2;
+
+				if (g_strcmp0(opts[0], "prefered") != 0) {
+					fprintf(stderr, "Error %s: %s\n",
+							opts[1],
+							strerror(-EINVAL));
+					return;
+				}
+
+				str = "prefered";
+				__connmanctl_dbus_append_dict_entry(iter,
+						"Privacy", DBUS_TYPE_STRING,
+						&str);
+			}
+			break;
+		}
+	} else if (g_strcmp0(opts[0], "manual") == 0) {
+		int i = 1;
+
+		while (opts[i] != NULL && ipv6[i] != NULL) {
+			if (i == 2) {
+				int value = atoi(opts[i]);
+				__connmanctl_dbus_append_dict_entry(iter,
+						ipv6[i], DBUS_TYPE_BYTE,
+						&value);
+			} else {
+				__connmanctl_dbus_append_dict_entry(iter,
+						ipv6[i], DBUS_TYPE_STRING,
+						&opts[i]);
+			}
+			i++;
+		}
+
+		append->values = i;
+
+	} else if (g_strcmp0(opts[0], "off") != 0) {
+		fprintf(stderr, "Error %s: %s\n", opts[0], strerror(-EINVAL));
+
+		return;
+	}
+
+	__connmanctl_dbus_append_dict_entry(iter, "Method", DBUS_TYPE_STRING,
+				&opts[0]);
+}
+
 static int cmd_config(char *args[], int num, struct option *options)
 {
-	int res = 0, index = 2, oldindex = 0;
+	int result = 0, res = 0, index = 2, oldindex = 0;
 	int c;
-	char *service_name;
+	char *service_name, *path;
 	DBusMessage *message;
 	char **opt_start;
 	dbus_bool_t val;
+	struct config_append append;
 
 	service_name = args[1];
 	if (service_name == NULL)
@@ -427,6 +539,9 @@ static int cmd_config(char *args[], int num, struct option *options)
 	while (index < num && args[index] != NULL) {
 		c = parse_args(args[index], options);
 		opt_start = &args[index + 1];
+		append.opts = opt_start;
+		append.values = 0;
+
 		res = 0;
 
 		message = get_message(connection, "GetServices");
@@ -434,6 +549,7 @@ static int cmd_config(char *args[], int num, struct option *options)
 			return -ENOMEM;
 
 		oldindex = index;
+		path = g_strdup_printf("/net/connman/service/%s", service_name);
 
 		switch (c) {
 		case 'a':
@@ -448,25 +564,36 @@ static int cmd_config(char *args[], int num, struct option *options)
 				res = -EINVAL;
 				break;
 			}
-			if (res == 0)
-				res = set_service_property(connection, message,
-						service_name, "AutoConnect",
-						NULL, &val, 0);
+
+			index++;
+
+			if (res == 0) {
+				res = __connmanctl_dbus_set_property(connection,
+						path, "net.connman.Service",
+						config_return,
+						g_strdup(service_name),
+						"AutoConnect",
+						DBUS_TYPE_BOOLEAN, &val);
+			}
 			break;
 		case 'i':
-			res = set_service_property(connection, message,
-					service_name, "IPv4.Configuration",
-					ipv4, opt_start, 0);
-			if (res < 0)
-				index += 4;
+			res = __connmanctl_dbus_set_property_dict(connection,
+					path, "net.connman.Service",
+					config_return, g_strdup(service_name),
+					"IPv4.Configuration", DBUS_TYPE_STRING,
+					config_append_ipv4, &append);
+			index += append.values;
 			break;
+
 		case 'v':
-			res = set_service_property(connection, message,
-					service_name, "IPv6.Configuration",
-					ipv6, opt_start, 0);
-			if (res < 0)
-				index += 5;
+			res = __connmanctl_dbus_set_property_dict(connection,
+					path, "net.connman.Service",
+					config_return, g_strdup(service_name),
+					"IPv6.Configuration", DBUS_TYPE_STRING,
+					config_append_ipv6, &append);
+			index += append.values;
 			break;
+
 		case 'n':
 			res = set_service_property(connection, message,
 					service_name,
@@ -523,25 +650,32 @@ static int cmd_config(char *args[], int num, struct option *options)
 
 			break;
 		case 'r':
-			res = remove_service(connection, message, service_name);
+			res = __connmanctl_dbus_method_call(connection,
+					path, "net.connman.Service", "Remove",
+					config_return, g_strdup(service_name),
+					DBUS_TYPE_INVALID);
 			break;
 		default:
 			res = -EINVAL;
 			break;
 		}
 
+		g_free(path);
 		dbus_message_unref(message);
 
 		if (res < 0) {
-			printf("Error '%s': %s\n", args[oldindex],
-					strerror(-res));
+			if (res == -EINPROGRESS)
+				result = -EINPROGRESS;
+			else
+				printf("Error '%s': %s\n", args[oldindex],
+						strerror(-res));
 		} else
 			index += res;
 
 		index++;
 	}
 
-	return 0;
+	return result;
 }
 
 static DBusHandlerResult monitor_changed(DBusConnection *connection,
@@ -768,9 +902,10 @@ static const char *config_desc[] = {
 	"<dns1> [<dns2>] [<dns3>]",
 	"<ntp1> [<ntp2>] [...]",
 	"<domain1> [<domain2>] [...]",
-	"off|auto|manual <address> <prefixlength> <gateway> <privacy>",
+	"off|auto [enable|disable|prefered]|\n"
+	"\t\t\tmanual <address> <prefixlength> <gateway>",
 	"direct|auto <URL>|manual <URL1> [<URL2>] [...]\n"
-	"                   [exclude <exclude1> [<exclude2>] [...]]",
+	"\t\t\t[exclude <exclude1> [<exclude2>] [...]]",
 	"yes|no",
 	"off|dhcp|manual <address> <prefixlength> <gateway>",
 	"                 Remove service",
