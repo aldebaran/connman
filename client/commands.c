@@ -672,7 +672,11 @@ static const struct {
 
 static int cmd_help(char *args[], int num, struct option *options)
 {
+	bool interactive = __connmanctl_is_interactive();
 	int i, j;
+
+	if (interactive == false)
+		fprintf(stdout, "Usage: connmanctl [[command] [args]]\n");
 
 	for (i = 0; cmd_table[i].cmd != NULL; i++) {
 		const char *cmd = cmd_table[i].cmd;
@@ -696,6 +700,10 @@ static int cmd_help(char *args[], int num, struct option *options)
 			}
 		}
 	}
+
+	if (interactive == false)
+		fprintf(stdout, "\nNote: arguments and output are considered "
+				"EXPERIMENTAL for now.\n");
 
 	return 0;
 }
