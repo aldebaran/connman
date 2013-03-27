@@ -88,10 +88,30 @@ static int parse_args(char *arg, struct option *options)
 	return '?';
 }
 
+static void enable_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *tech = user_data;
+	char *str;
+
+	str = strrchr(tech, '/');
+	if (str != NULL)
+		str++;
+	else
+		str = tech;
+
+	if (error == NULL) {
+		fprintf(stdout, "Enabled %s\n", str);
+	} else
+		fprintf(stderr, "Error %s: %s\n", str, error);
+
+	g_free(user_data);
+}
+
 static int cmd_enable(char *args[], int num, struct option *options)
 {
-	DBusMessage *message;
-	int err;
+	char *tech;
+	dbus_bool_t b = TRUE;
 
 	if (num > 2)
 		return -E2BIG;
@@ -100,26 +120,42 @@ static int cmd_enable(char *args[], int num, struct option *options)
 		return -EINVAL;
 
 	if (strcmp(args[1], "offlinemode") == 0) {
-		err = set_manager(connection, "OfflineMode", TRUE);
-		if (err == 0)
-			printf("OfflineMode enabled\n");
-
-		return 0;
+		tech = g_strdup(args[1]);
+		return __connmanctl_dbus_set_property(connection, "/",
+				"net.connman.Manager", enable_return, tech,
+				"OfflineMode", DBUS_TYPE_BOOLEAN, &b);
 	}
 
-	message = get_message(connection, "GetTechnologies");
-	if (message == NULL)
-		return -ENOMEM;
+	tech = g_strdup_printf("/net/connman/technology/%s", args[1]);
+	return __connmanctl_dbus_set_property(connection, tech,
+				"net.connman.Technology", enable_return, tech,
+				"Powered", DBUS_TYPE_BOOLEAN, &b);
+}
 
-	set_technology(connection, message, "Powered", args[1], TRUE);
+static void disable_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *tech = user_data;
+	char *str;
 
-	return 0;
+	str = strrchr(tech, '/');
+	if (str != NULL)
+		str++;
+	else
+		str = tech;
+
+	if (error == NULL) {
+		fprintf(stdout, "Disabled %s\n", str);
+	} else
+		fprintf(stderr, "Error %s: %s\n", str, error);
+
+	g_free(user_data);
 }
 
 static int cmd_disable(char *args[], int num, struct option *options)
 {
-	DBusMessage *message;
-	int err;
+	char *tech;
+	dbus_bool_t b = FALSE;
 
 	if (num > 2)
 		return -E2BIG;
@@ -128,20 +164,16 @@ static int cmd_disable(char *args[], int num, struct option *options)
 		return -EINVAL;
 
 	if (strcmp(args[1], "offlinemode") == 0) {
-		err = set_manager(connection, "OfflineMode", FALSE);
-		if (err == 0)
-			printf("OfflineMode enabled\n");
-
-		return 0;
+		tech = g_strdup(args[1]);
+		return __connmanctl_dbus_set_property(connection, "/",
+				"net.connman.Manager", disable_return, tech,
+				"OfflineMode", DBUS_TYPE_BOOLEAN, &b);
 	}
 
-	message = get_message(connection, "GetTechnologies");
-	if (message == NULL)
-		return -ENOMEM;
-
-	set_technology(connection, message, "Powered", args[1], FALSE);
-
-	return 0;
+	tech = g_strdup_printf("/net/connman/technology/%s", args[1]);
+	return __connmanctl_dbus_set_property(connection, tech,
+				"net.connman.Technology", disable_return, tech,
+				"Powered", DBUS_TYPE_BOOLEAN, &b);
 }
 
 static void state_print(DBusMessageIter *iter, const char *error,
