@@ -244,10 +244,24 @@ static int cmd_technologies(char *args[], int num, struct option *options)
 			technology_print, NULL,	DBUS_TYPE_INVALID);
 }
 
+static void scan_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *path = user_data;
+
+	if (error == NULL) {
+		char *str = strrchr(path, '/');
+		str++;
+		fprintf(stdout, "Scan completed for %s\n", str);
+	} else
+		fprintf(stderr, "Error %s: %s", path, error);
+
+	g_free(user_data);
+}
+
 static int cmd_scan(char *args[], int num, struct option *options)
 {
-	DBusMessage *message;
-	int err;
+	char *path;
 
 	if (num > 2)
 		return -E2BIG;
@@ -255,16 +269,10 @@ static int cmd_scan(char *args[], int num, struct option *options)
 	if (num < 2)
 		return -EINVAL;
 
-	message = get_message(connection, "GetTechnologies");
-	if (message == NULL)
-		err = -ENOMEM;
-	else {
-		err = scan_technology(connection, message, args[1]);
-		if (err == 0)
-			printf("Scan completed\n");
-	}
-
-	return 0;
+	path = g_strdup_printf("/net/connman/technology/%s", args[1]);
+	return __connmanctl_dbus_method_call(connection, path,
+			"net.connman.Technology", "Scan",
+			scan_return, path, DBUS_TYPE_INVALID);
 }
 
 static void connect_return(DBusMessageIter *iter, const char *error,
