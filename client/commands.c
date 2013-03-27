@@ -236,9 +236,24 @@ static int cmd_scan(char *args[], int num, struct option *options)
 	return 0;
 }
 
+static void connect_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *path = user_data;
+
+	if (error == NULL) {
+		char *str = strrchr(path, '/');
+		str++;
+		fprintf(stdout, "Connected %s\n", str);
+	} else
+		fprintf(stderr, "Error %s: %s\n", path, error);
+
+	g_free(user_data);
+}
+
 static int cmd_connect(char *args[], int num, struct option *options)
 {
-	int err;
+	char *path;
 
 	if (num > 2)
 		return -E2BIG;
@@ -246,16 +261,30 @@ static int cmd_connect(char *args[], int num, struct option *options)
 	if (num < 2)
 		return -EINVAL;
 
-	err = connect_service(connection, args[1]);
-	if (err == 0)
-		printf("Connected\n");
+	path = g_strdup_printf("/net/connman/service/%s", args[1]);
+	return __connmanctl_dbus_method_call(connection, path,
+			"net.connman.Service", "Connect",
+			connect_return, path, DBUS_TYPE_INVALID);
+}
 
-	return 0;
+static void disconnect_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *path = user_data;
+
+	if (error == NULL) {
+		char *str = strrchr(path, '/');
+		str++;
+		fprintf(stdout, "Disconnected %s\n", str);
+	} else
+		fprintf(stderr, "Error %s: %s\n", path, error);
+
+	g_free(user_data);
 }
 
 static int cmd_disconnect(char *args[], int num, struct option *options)
 {
-	int err;
+	char *path;
 
 	if (num > 2)
 		return -E2BIG;
@@ -263,9 +292,10 @@ static int cmd_disconnect(char *args[], int num, struct option *options)
 	if (num < 2)
 		return -EINVAL;
 
-	err = disconnect_service(connection, args[1]);
-	if (err == 0)
-		printf("Disconnected\n");
+	path = g_strdup_printf("/net/connman/service/%s", args[1]);
+	return __connmanctl_dbus_method_call(connection, path,
+			"net.connman.Service", "Disconnect",
+			disconnect_return, path, DBUS_TYPE_INVALID);
 
 	return 0;
 }
