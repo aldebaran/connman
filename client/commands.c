@@ -608,7 +608,6 @@ static int cmd_config(char *args[], int num, struct option *options)
 	int result = 0, res = 0, index = 2, oldindex = 0;
 	int c;
 	char *service_name, *path;
-	DBusMessage *message;
 	char **opt_start;
 	dbus_bool_t val;
 	struct config_append append;
@@ -624,10 +623,6 @@ static int cmd_config(char *args[], int num, struct option *options)
 		append.values = 0;
 
 		res = 0;
-
-		message = get_message(connection, "GetServices");
-		if (message == NULL)
-			return -ENOMEM;
 
 		oldindex = index;
 		path = g_strdup_printf("/net/connman/service/%s", service_name);
@@ -726,7 +721,6 @@ static int cmd_config(char *args[], int num, struct option *options)
 		}
 
 		g_free(path);
-		dbus_message_unref(message);
 
 		if (res < 0) {
 			if (res == -EINPROGRESS)
