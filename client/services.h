@@ -22,5 +22,4 @@
 
 #include <dbus/dbus.h>
 
-int parse_boolean(char *arg);
 void __connmanctl_services_list(DBusMessageIter *iter);

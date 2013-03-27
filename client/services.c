@@ -35,32 +35,6 @@
 
 #include "services.h"
 
-int parse_boolean(char *arg)
-{
-	if (arg == NULL)
-		return -1;
-
-	if (strcasecmp(arg, "no") == 0 ||
-			strcasecmp(arg, "false") == 0 ||
-			strcasecmp(arg, "off" ) == 0 ||
-			strcasecmp(arg, "disable" ) == 0 ||
-			strcasecmp(arg, "n") == 0 ||
-			strcasecmp(arg, "f") == 0 ||
-			strcasecmp(arg, "0") == 0)
-		return 0;
-
-	if (strcasecmp(arg, "yes") == 0 ||
-			strcasecmp(arg, "true") == 0 ||
-			strcasecmp(arg, "on") == 0 ||
-			strcasecmp(arg, "enable" ) == 0 ||
-			strcasecmp(arg, "y") == 0 ||
-			strcasecmp(arg, "t") == 0 ||
-			strcasecmp(arg, "1") == 0)
-		return 1;
-
-	return -1;
-}
-
 static void print_service(char *path, DBusMessageIter *iter)
 {
 	char *name = "", *str = NULL;
