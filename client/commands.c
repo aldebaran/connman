@@ -205,12 +205,43 @@ static int cmd_services(char *args[], int num, struct option *options)
 	return err;
 }
 
+static void technology_print(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	DBusMessageIter array;
+
+	if (error != NULL) {
+		fprintf(stderr, "Error: %s\n", error);
+		return;
+	}
+
+	dbus_message_iter_recurse(iter, &array);
+	while (dbus_message_iter_get_arg_type(&array) == DBUS_TYPE_STRUCT) {
+		DBusMessageIter entry, dict;
+		const char *path;
+
+		dbus_message_iter_recurse(&array, &entry);
+		dbus_message_iter_get_basic(&entry, &path);
+		fprintf(stdout, "%s\n", path);
+
+		dbus_message_iter_next(&entry);
+
+		dbus_message_iter_recurse(&entry, &dict);
+		__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
+		fprintf(stdout, "\n");
+
+		dbus_message_iter_next(&array);
+	}
+}
+
 static int cmd_technologies(char *args[], int num, struct option *options)
 {
 	if (num > 1)
 		return -E2BIG;
 
-	return list_properties(connection, "GetTechnologies", NULL);
+	return __connmanctl_dbus_method_call(connection, "/",
+			"net.connman.Manager", "GetTechnologies",
+			technology_print, NULL,	DBUS_TYPE_INVALID);
 }
 
 static int cmd_scan(char *args[], int num, struct option *options)
