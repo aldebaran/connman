@@ -62,12 +62,6 @@ static char *ipv6[] = {
 	NULL
 };
 
-static char *proxy_simple[] = {
-	"Method",
-	"URL",
-	NULL
-};
-
 static int cmd_help(char *args[], int num, struct option *options);
 
 static int parse_args(char *arg, struct option *options)
@@ -540,6 +534,75 @@ static void config_append_str(DBusMessageIter *iter, void *user_data)
 	append->values = i;
 }
 
+static void append_servers(DBusMessageIter *iter, void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+	int i = 1;
+
+	if (opts == NULL)
+		return;
+
+	while (opts[i] != NULL && g_strcmp0(opts[i], "--excludes") != 0) {
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+				&opts[i]);
+		i++;
+	}
+
+	append->values = i;
+}
+
+static void append_excludes(DBusMessageIter *iter, void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+	int i = append->values;
+
+	if (opts == NULL || opts[i] == NULL ||
+			g_strcmp0(opts[i], "--excludes") != 0)
+		return;
+
+	i++;
+	while (opts[i] != NULL) {
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+				&opts[i]);
+		i++;
+	}
+
+	append->values = i;
+}
+
+static void config_append_proxy(DBusMessageIter *iter, void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+
+	if (opts == NULL)
+		return;
+
+	if (g_strcmp0(opts[0], "manual") == 0) {
+		__connmanctl_dbus_append_dict_string_array(iter, "Servers",
+				append_servers, append);
+
+		__connmanctl_dbus_append_dict_string_array(iter, "Excludes",
+				append_excludes, append);
+
+	} else if (g_strcmp0(opts[0], "auto") == 0) {
+		if (opts[1] != NULL) {
+			__connmanctl_dbus_append_dict_entry(iter, "URL",
+					DBUS_TYPE_STRING, &opts[1]);
+			append->values++;
+		}
+
+	} else if (g_strcmp0(opts[0], "direct") != 0)
+		return;
+
+	__connmanctl_dbus_append_dict_entry(iter, "Method",DBUS_TYPE_STRING,
+			&opts[0]);
+
+	append->values++;
+}
+
 static int cmd_config(char *args[], int num, struct option *options)
 {
 	int result = 0, res = 0, index = 2, oldindex = 0;
@@ -643,41 +706,13 @@ static int cmd_config(char *args[], int num, struct option *options)
 			break;
 
 		case 'x':
-			if (*opt_start == NULL) {
-				res = -EINVAL;
-				break;
-			}
-
-			if (strcmp(*opt_start, "direct") == 0) {
-				res = set_service_property(connection, message,
-						service_name,
-						"Proxy.Configuration",
-						proxy_simple, opt_start, 1);
-				break;
-			}
-
-			if (strcmp(*opt_start, "auto") == 0) {
-				res = set_service_property(connection, message,
-						service_name,
-						"Proxy.Configuration",
-						proxy_simple, opt_start, 1);
-				break;
-			}
-
-			if (strcmp(*opt_start, "manual") == 0) {
-					char **url_start = &args[index + 2];
-
-					if (*url_start != NULL &&
-						strcmp(*url_start,
-							"servers") == 0) {
-						url_start = &args[index + 3];
-						index++;
-					}
-					res = store_proxy_input(connection,
-							message, service_name,
-							0, url_start);
-			}
-
+			res = __connmanctl_dbus_set_property_dict(connection,
+					path, "net.connman.Service",
+					config_return, g_strdup(service_name),
+					"Proxy.Configuration",
+					DBUS_TYPE_STRING, config_append_proxy,
+					&append);
+			index += append.values;
 			break;
 		case 'r':
 			res = __connmanctl_dbus_method_call(connection,
