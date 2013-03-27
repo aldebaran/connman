@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <glib.h>
 
+#include "input.h"
 #include "dbus_helpers.h"
 
 #define TIMEOUT         60000
@@ -129,6 +130,8 @@ static void dbus_method_reply(DBusPendingCall *call, void *user_data)
 	DBusMessage *reply;
 	DBusMessageIter iter;
 
+	__connmanctl_save_rl();
+
 	reply = dbus_pending_call_steal_reply(call);
 	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
 		DBusError err;
@@ -146,6 +149,10 @@ static void dbus_method_reply(DBusPendingCall *call, void *user_data)
 	callback->cb(&iter, NULL, callback->user_data);
 
 end:
+	__connmanctl_redraw_rl();
+	if (__connmanctl_is_interactive() == false)
+		__connmanctl_quit();
+
 	g_free(callback);
 	dbus_message_unref(reply);
 }

@@ -38,9 +38,9 @@
 #include "technology.h"
 #include "data_manager.h"
 
-#include "commands.h"
 #include "dbus_helpers.h"
 #include "input.h"
+#include "commands.h"
 
 #define MANDATORY_ARGS 3
 
@@ -404,6 +404,8 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 	if (path != NULL && *path != '\0')
 		path++;
 
+	__connmanctl_save_rl();
+
 	if (dbus_message_is_signal(message, "net.connman.Manager",
 					"ServicesChanged") == TRUE) {
 
@@ -431,6 +433,8 @@ static DBusHandlerResult monitor_changed(DBusConnection *connection,
 
 	__connmanctl_dbus_print(&iter, "", " = ", " = ");
 	fprintf(stdout, "\n");
+
+	__connmanctl_redraw_rl();
 
 	return DBUS_HANDLER_RESULT_HANDLED;
 }
