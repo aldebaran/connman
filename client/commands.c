@@ -522,6 +522,24 @@ static void config_append_ipv6(DBusMessageIter *iter, void *user_data)
 				&opts[0]);
 }
 
+static void config_append_str(DBusMessageIter *iter, void *user_data)
+{
+	struct config_append *append = user_data;
+	char **opts = append->opts;
+	int i = 0;
+
+	if (opts == NULL)
+		return;
+
+	while (opts[i] != NULL) {
+		dbus_message_iter_append_basic(iter, DBUS_TYPE_STRING,
+				&opts[i]);
+		i++;
+	}
+
+	append->values = i;
+}
+
 static int cmd_config(char *args[], int num, struct option *options)
 {
 	int result = 0, res = 0, index = 2, oldindex = 0;
@@ -595,23 +613,35 @@ static int cmd_config(char *args[], int num, struct option *options)
 			break;
 
 		case 'n':
-			res = set_service_property(connection, message,
-					service_name,
+			res = __connmanctl_dbus_set_property_array(connection,
+					path, "net.connman.Service",
+					config_return, g_strdup(service_name),
 					"Nameservers.Configuration",
-					NULL, opt_start, 0);
+					DBUS_TYPE_STRING, config_append_str,
+					&append);
+			index += append.values;
 			break;
+
 		case 't':
-			res = set_service_property(connection, message,
-					service_name,
+			res = __connmanctl_dbus_set_property_array(connection,
+					path, "net.connman.Service",
+					config_return, g_strdup(service_name),
 					"Timeservers.Configuration",
-					NULL, opt_start, 0);
+					DBUS_TYPE_STRING, config_append_str,
+					&append);
+			index += append.values;
 			break;
+
 		case 'd':
-			res = set_service_property(connection, message,
-					service_name,
+			res = __connmanctl_dbus_set_property_array(connection,
+					path, "net.connman.Service",
+					config_return, g_strdup(service_name),
 					"Domains.Configuration",
-					NULL, opt_start, 0);
+					DBUS_TYPE_STRING, config_append_str,
+					&append);
+			index += append.values;
 			break;
+
 		case 'x':
 			if (*opt_start == NULL) {
 				res = -EINVAL;
