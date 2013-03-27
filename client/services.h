@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2012  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2012-2013  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -34,6 +34,7 @@ struct service_data {
 };
 
 int parse_boolean(char *arg);
+void __connmanctl_services_list(DBusMessageIter *iter);
 char *strip_service_path(char *service);
 void extract_service_name(DBusMessageIter *dict, struct service_data *service);
 int set_service_property(DBusConnection *connection, DBusMessage *message,
