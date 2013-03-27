@@ -228,14 +228,12 @@ noinst_PROGRAMS += client/connmanctl
 
 MANUAL_PAGES += doc/connmanctl.1
 
-client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
+client_connmanctl_SOURCES =  $(gdbus_sources) \
 			client/dbus_helpers.h client/dbus_helpers.c \
-			client/dbus.h client/dbus.c \
-			client/data_manager.h client/data_manager.c \
 			client/services.h client/services.c \
-			client/technology.h client/technology.c \
-			client/commands.h client/commands.c client/main.c \
-			client/input.h client/input.c
+			client/commands.h client/commands.c \
+			client/input.h client/input.c \
+			client/main.c
 
 client_connmanctl_LDADD = @DBUS_LIBS@ @GLIB_LIBS@ -lreadline -ldl
 endif

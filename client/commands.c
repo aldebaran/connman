@@ -34,15 +34,10 @@
 #include <glib.h>
 #include <gdbus.h>
 
-#include "services.h"
-#include "technology.h"
-#include "data_manager.h"
-
 #include "dbus_helpers.h"
 #include "input.h"
+#include "services.h"
 #include "commands.h"
-
-#define MANDATORY_ARGS 3
 
 static DBusConnection *connection;
 
