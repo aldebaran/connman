@@ -234,7 +234,6 @@ client_connmanctl_SOURCES =  $(gdbus_sources) src/connman.h \
 			client/data_manager.h client/data_manager.c \
 			client/services.h client/services.c \
 			client/technology.h client/technology.c \
-			client/interactive.h client/interactive.c \
 			client/commands.h client/commands.c client/main.c \
 			client/input.h client/input.c
 
