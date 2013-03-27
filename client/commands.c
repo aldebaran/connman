@@ -37,7 +37,6 @@
 #include "services.h"
 #include "technology.h"
 #include "data_manager.h"
-#include "monitor.h"
 #include "interactive.h"
 
 #include "dbus_helpers.h"

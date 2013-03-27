@@ -39,7 +39,6 @@
 #include "services.h"
 #include "technology.h"
 #include "interactive.h"
-#include "monitor.h"
 
 static GMainLoop *main_loop;
 DBusConnection *connection;

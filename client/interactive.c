@@ -43,7 +43,6 @@
 #include "services.h"
 #include "technology.h"
 #include "data_manager.h"
-#include "monitor.h"
 #include "interactive.h"
 
 static DBusConnection *interactive_conn;
