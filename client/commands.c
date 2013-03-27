@@ -201,12 +201,50 @@ static int cmd_state(char *args[], int num, struct option *options)
 			state_print, NULL, DBUS_TYPE_INVALID);
 }
 
+static void services_list(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	if (error == NULL) {
+		__connmanctl_services_list(iter);
+		fprintf(stdout, "\n");
+	} else {
+		fprintf(stderr, "Error: %s\n", error);
+	}
+}
+
+static void services_properties(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	char *path = user_data;
+	char *str;
+	DBusMessageIter dict;
+
+	if (error == NULL) {
+		fprintf(stdout, "%s\n", path);
+
+		dbus_message_iter_recurse(iter, &dict);
+		__connmanctl_dbus_print(&dict, "  ", " = ", "\n");
+
+		fprintf(stdout, "\n");
+
+	} else {
+		str = strrchr(path, '/');
+		if (str != NULL)
+			str++;
+		else
+			str = path;
+
+		fprintf(stderr, "Error %s: %s\n", str, error);
+	}
+
+	g_free(user_data);
+}
+
 static int cmd_services(char *args[], int num, struct option *options)
 {
 	char *service_name = NULL;
-	int err = 0;
+	char *path;
 	int c;
-	DBusMessage *message;
 
 	if (num > 3)
 		return -E2BIG;
@@ -227,14 +265,16 @@ static int cmd_services(char *args[], int num, struct option *options)
 		break;
 	}
 
-	message = get_message(connection, "GetServices");
-	if (message == NULL)
-		return -ENOMEM;
+	if (service_name == NULL) {
+		return __connmanctl_dbus_method_call(connection, "/",
+			"net.connman.Manager", "GetServices",
+			services_list, NULL, DBUS_TYPE_INVALID);
+	}
 
-	err = list_properties(connection, "GetServices", service_name);
-	dbus_message_unref(message);
-
-	return err;
+	path = g_strdup_printf("/net/connman/service/%s", service_name);
+	return __connmanctl_dbus_method_call(connection, path,
+			"net.connman.Service", "GetProperties",
+			services_properties, path, DBUS_TYPE_INVALID);
 }
 
 static void technology_print(DBusMessageIter *iter, const char *error,
