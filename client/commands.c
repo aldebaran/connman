@@ -2,7 +2,7 @@
  *
  *  Connection Manager
  *
- *  Copyright (C) 2012  Intel Corporation. All rights reserved.
+ *  Copyright (C) 2012-2013  Intel Corporation. All rights reserved.
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -29,6 +29,7 @@
 #include <string.h>
 #include <errno.h>
 #include <getopt.h>
+#include <stdbool.h>
 
 #include <glib.h>
 #include <gdbus.h>
@@ -38,6 +39,9 @@
 #include "data_manager.h"
 #include "monitor.h"
 #include "interactive.h"
+
+#include "dbus_helpers.h"
+#include "input.h"
 
 #define MANDATORY_ARGS 3
 
@@ -381,36 +385,191 @@ static int cmd_config(char *args[], int num, struct option *options)
 	return 0;
 }
 
+static DBusHandlerResult monitor_changed(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	DBusMessageIter iter;
+	const char *interface, *path;
+
+	interface = dbus_message_get_interface(message);
+	if (strncmp(interface, "net.connman.", 12) != 0)
+		return DBUS_HANDLER_RESULT_NOT_YET_HANDLED;
+
+	interface = strrchr(interface, '.');
+	if (interface != NULL && *interface != '\0')
+		interface++;
+
+	path = strrchr(dbus_message_get_path(message), '/');
+	if (path != NULL && *path != '\0')
+		path++;
+
+	if (dbus_message_is_signal(message, "net.connman.Manager",
+					"ServicesChanged") == TRUE) {
+
+		fprintf(stdout, "%-12s %-20s = {\n", interface,
+				"ServicesChanged");
+		dbus_message_iter_init(message, &iter);
+		__connmanctl_services_list(&iter);
+		fprintf(stdout, "\n}\n");
+
+		__connmanctl_redraw_rl();
+
+		return DBUS_HANDLER_RESULT_HANDLED;
+	}
+
+	if (dbus_message_is_signal(message, "net.connman.Manager",
+					"TechnologyAdded") == TRUE)
+		path = "TechnologyAdded";
+
+	if (dbus_message_is_signal(message, "net.connman.Manager",
+					"TechnologyRemoved") == TRUE)
+		path = "TechnologyRemoved";
+
+	fprintf(stdout, "%-12s %-20s ", interface, path);
+	dbus_message_iter_init(message, &iter);
+
+	__connmanctl_dbus_print(&iter, "", " = ", " = ");
+	fprintf(stdout, "\n");
+
+	return DBUS_HANDLER_RESULT_HANDLED;
+}
+
+static bool monitor_s = false;
+static bool monitor_t = false;
+static bool monitor_m = false;
+
+static void monitor_add(char *interface)
+{
+	char *rule;
+	DBusError err;
+
+	if (monitor_s == false && monitor_t == false && monitor_m == false)
+		dbus_connection_add_filter(connection, monitor_changed,
+				NULL, NULL);
+
+	if (g_strcmp0(interface, "Service") == 0) {
+		if (monitor_s == true)
+			return;
+		monitor_s = true;
+	} else if (g_strcmp0(interface, "Technology") == 0) {
+		if (monitor_t == true)
+			return;
+		monitor_t = true;
+	} else if (g_strcmp0(interface, "Manager") == 0) {
+		if (monitor_m == true)
+			return;
+		monitor_m = true;
+	} else
+		return;
+
+	dbus_error_init(&err);
+	rule  = g_strdup_printf("type='signal',interface='net.connman.%s'",
+			interface);
+	dbus_bus_add_match(connection, rule, &err);
+	g_free(rule);
+
+	if (dbus_error_is_set(&err))
+		fprintf(stderr, "Error: %s\n", err.message);
+}
+
+static void monitor_del(char *interface)
+{
+	char *rule;
+
+	if (g_strcmp0(interface, "Service") == 0) {
+		if (monitor_s == false)
+			return;
+		monitor_s = false;
+	} else if (g_strcmp0(interface, "Technology") == 0) {
+		if (monitor_t == false)
+			return;
+		monitor_t = false;
+	} else if (g_strcmp0(interface, "Manager") == 0) {
+		if (monitor_m == false)
+			return;
+		monitor_m = false;
+	} else
+		return;
+
+	rule  = g_strdup_printf("type='signal',interface='net.connman.%s'",
+			interface);
+	dbus_bus_remove_match(connection, rule, NULL);
+	g_free(rule);
+
+	if (monitor_s == false && monitor_t == false && monitor_m == false)
+		dbus_connection_remove_filter(connection, monitor_changed,
+				NULL);
+}
+
 static int cmd_monitor(char *args[], int num, struct option *options)
 {
+	bool add = true;
 	int c;
 
 	if (num > 3)
 		return -E2BIG;
 
+	if (num == 3) {
+		switch (parse_boolean(args[2])) {
+		case 0:
+			add = false;
+			break;
+
+		default:
+			break;
+		}
+	}
+
 	c = parse_args(args[1], options);
 	switch (c) {
 	case -1:
-		monitor_connman_service(connection);
-		monitor_connman_technology(connection);
-		monitor_connman_manager(connection);
+		monitor_add("Service");
+		monitor_add("Technology");
+		monitor_add("Manager");
 		break;
 
 	case 's':
-		monitor_connman_service(connection);
+		if (add == true)
+			monitor_add("Service");
+		else
+			monitor_del("Service");
 		break;
 
 	case 'c':
-		monitor_connman_technology(connection);
+		if (add == true)
+			monitor_add("Technology");
+		else
+			monitor_del("Technology");
 		break;
 
 	case 'm':
-		monitor_connman_manager(connection);
+		if (add == true)
+			monitor_add("Manager");
+		else
+			monitor_del("Manager");
 		break;
 
 	default:
-		return -EINVAL;
+		switch(parse_boolean(args[1])) {
+		case 0:
+			monitor_del("Service");
+			monitor_del("Technology");
+			monitor_del("Manager");
+			break;
+
+		case 1:
+			monitor_add("Service");
+			monitor_add("Technology");
+			monitor_add("Manager");
+			break;
+
+		default:
+			return -EINVAL;
+		}
 	}
+
+	if (add == true)
+		return -EINPROGRESS;
 
 	return 0;
 }
@@ -463,9 +622,9 @@ static struct option monitor_options[] = {
 };
 
 static const char *monitor_desc[] = {
-	"                 Monitor only services",
-	"                 Monitor only technologies",
-	"                 Monitor only manager interface",
+	"[off]            Monitor only services",
+	"[off]            Monitor only technologies",
+	"[off]            Monitor only manager interface",
 	NULL
 };
 
@@ -495,7 +654,7 @@ static const struct {
 	  cmd_disconnect, "Disconnect a given service" },
 	{ "config",       "<service>",    config_options,  &config_desc[0],
 	  cmd_config, "Set service configuration options" },
-	{ "monitor",      NULL,           monitor_options, &monitor_desc[0],
+	{ "monitor",      "[off]",        monitor_options, &monitor_desc[0],
 	  cmd_monitor, "Monitor signals from interfaces" },
 	{ "help",         NULL,           NULL,            NULL,
 	  cmd_help, "Show help" },
