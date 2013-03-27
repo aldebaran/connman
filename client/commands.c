@@ -37,12 +37,14 @@
 #include "services.h"
 #include "technology.h"
 #include "data_manager.h"
-#include "interactive.h"
 
+#include "commands.h"
 #include "dbus_helpers.h"
 #include "input.h"
 
 #define MANDATORY_ARGS 3
+
+static DBusConnection *connection;
 
 static char *ipv4[] = {
 	"Method",
@@ -575,7 +577,7 @@ static int cmd_monitor(char *args[], int num, struct option *options)
 
 static int cmd_exit(char *args[], int num, struct option *options)
 {
-	return 0;
+	return 1;
 }
 
 static struct option service_options[] = {
@@ -694,21 +696,24 @@ static int cmd_help(char *args[], int num, struct option *options)
 	return 0;
 }
 
-int commands(DBusConnection *connection, char *argv[], int argc)
+int commands(DBusConnection *dbus_conn, char *argv[], int argc)
 {
 	int i, result;
+
+	connection = dbus_conn;
 
 	for (i = 0; cmd_table[i].cmd != NULL; i++) {
 		if (g_strcmp0(cmd_table[i].cmd, argv[0]) == 0 &&
 				cmd_table[i].func != NULL) {
 			result = cmd_table[i].func(argv, argc,
 					cmd_table[i].options);
-			if (result < 0)
-				printf("Error '%s': %s\n", argv[0],
+			if (result < 0 && result != -EINPROGRESS)
+				fprintf(stderr, "Error '%s': %s\n", argv[0],
 						strerror(-result));
 			return result;
 		}
 	}
 
-	return -1;
+	fprintf(stderr, "Error '%s': Unknown command\n", argv[0]);
+	return -EINVAL;
 }
