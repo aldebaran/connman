@@ -24,6 +24,7 @@
 #define __CONNMANCTL_DBUS_HELPERS_H
 
 #include <dbus/dbus.h>
+#include "../include/dbus.h"
 
 #ifdef __cplusplus
 extern "C" {
@@ -38,6 +39,28 @@ int __connmanctl_dbus_method_call(DBusConnection *connection, const char *path,
 		const char *interface, const char *method,
 		connmanctl_dbus_method_return_func_t cb, void * user_data,
 		int arg1, ...);
+
+int __connmanctl_dbus_set_property(DBusConnection *connection,
+		const char *path, const char *interface,
+		connmanctl_dbus_method_return_func_t cb, void * user_data,
+		const char *property, int type, void *value);
+
+void __connmanctl_dbus_append_dict_entry(DBusMessageIter *iter, char *property,
+		int type, void *value);
+int __connmanctl_dbus_set_property_dict(DBusConnection *connection,
+		const char *path, const char *interface,
+		connmanctl_dbus_method_return_func_t cb, void * user_data,
+		const char *property, int type,
+		connman_dbus_append_cb_t append_fn, void *append_user_data);
+
+void __connmanctl_dbus_append_dict_string_array(DBusMessageIter *iter,
+		const char *property, connman_dbus_append_cb_t append_fn,
+		void *append_user_data);
+int __connmanctl_dbus_set_property_array(DBusConnection *connection,
+		const char *path, const char *interface,
+		connmanctl_dbus_method_return_func_t cb, void *user_data,
+		const char *property, int type,
+		connman_dbus_append_cb_t append_fn, void *append_user_data);
 
 #ifdef __cplusplus
 }
