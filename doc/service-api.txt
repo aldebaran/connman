@@ -92,18 +92,12 @@ Methods		dict GetProperties()  [deprecated]
 			If a service has been used before, this allows a
 			reorder of the favorite services.
 
-			The target service object must be part of this
-			profile. Moving between profiles is not supported.
-
 			Possible Errors: [service].Error.InvalidArguments
 
 		void MoveAfter(object service)
 
 			If a service has been used before, this allows a
 			reorder of the favorite services.
-
-			The target service object must be part of this
-			profile. Moving between profiles is not supported.
 
 			Possible Errors: [service].Error.InvalidArguments
 
