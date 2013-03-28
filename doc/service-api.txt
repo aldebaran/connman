@@ -471,18 +471,15 @@ Properties	string State [readonly]
 
 				The Ethernet MTU (default is 1500).
 
-			uint16 Speed [readonly]
+			uint16 Speed [readonly] [deprecated]
 
 				Selected speed of the line.
 
-				This information might not always be
-				available.
+				This information is not available.
 
-			string Duplex [readonly]
+			string Duplex [readonly] [deprecated]
 
 				Selected duplex settings of the line.
-
 				Possible values are "half" and "full".
 
-				This information might not always be
-				available.
+				This information is not available.
