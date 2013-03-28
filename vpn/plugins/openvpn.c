@@ -107,6 +107,29 @@ static struct nameserver_entry *ov_append_dns_entries(const char *key,
 	return entry;
 }
 
+static char *ov_get_domain_name(const char *key, const char *value)
+{
+	gchar **options;
+	char *domain = NULL;
+
+	if (g_str_has_prefix(key, "foreign_option_") == FALSE)
+		return NULL;
+
+	options = g_strsplit(value, " ", 3);
+	if (options[0] != NULL &&
+		!strcmp(options[0], "dhcp-option") &&
+			options[1] != NULL &&
+			!strcmp(options[1], "DOMAIN") &&
+				options[2] != NULL) {
+
+		domain = g_strdup(options[2]);
+	}
+
+	g_strfreev(options);
+
+	return domain;
+}
+
 static gint cmp_ns(gconstpointer a, gconstpointer b)
 {
 	struct nameserver_entry *entry_a = (struct nameserver_entry *)a;
@@ -184,6 +207,13 @@ static int ov_notify(DBusMessage *msg, struct vpn_provider *provider)
 		if ((ns_entry = ov_append_dns_entries(key, value)) != NULL)
 			nameserver_list = g_slist_prepend(nameserver_list,
 							ns_entry);
+		else {
+			char *domain = ov_get_domain_name(key, value);
+			if (domain != NULL) {
+				vpn_provider_set_domain(provider, domain);
+				g_free(domain);
+			}
+		}
 
 		dbus_message_iter_next(&dict);
 	}
