@@ -610,6 +610,7 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 			data->host = g_strdup(str);
 		} else if (g_str_equal(key, "Domain") == TRUE) {
 			dbus_message_iter_get_basic(&value, &str);
+			g_free(data->domain);
 			data->domain = g_strdup(str);
 		} else if (g_str_equal(key, "Nameservers") == TRUE) {
 			extract_nameservers(&value, data);
@@ -646,6 +647,10 @@ static void add_connection(const char *path, DBusMessageIter *properties,
 	if (data->nameservers != NULL)
 		connman_provider_set_nameservers(data->provider,
 						data->nameservers);
+
+	if (data->domain != NULL)
+		connman_provider_set_domain(data->provider,
+						data->domain);
 
 	if (data->connect_pending == TRUE)
 		connect_provider(data, data->cb_data);
@@ -1764,6 +1769,11 @@ static gboolean property_changed(DBusConnection *conn,
 						data->nameservers != NULL)
 			connman_provider_set_nameservers(data->provider,
 							data->nameservers);
+	} else if (g_str_equal(key, "Domain") == TRUE) {
+		dbus_message_iter_get_basic(&value, &str);
+		g_free(data->domain);
+		data->domain = g_strdup(str);
+		connman_provider_set_domain(data->provider, data->domain);
 	}
 
 	if (ip_set == TRUE && err == 0) {
