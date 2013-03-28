@@ -179,6 +179,7 @@ struct modem_data {
 	char *name;
 	uint8_t strength;
 	uint8_t data_strength; /* 1xEVDO signal strength */
+	connman_bool_t registered;
 	connman_bool_t roaming;
 
 	/* pending calls */
@@ -1457,7 +1458,7 @@ static void netreg_update_datastrength(struct modem_data *modem,
 	connman_network_update(modem->network);
 }
 
-static void netreg_update_roaming(struct modem_data *modem,
+static void netreg_update_status(struct modem_data *modem,
 					DBusMessageIter *value)
 {
 	char *status;
@@ -1465,10 +1466,8 @@ static void netreg_update_roaming(struct modem_data *modem,
 
 	dbus_message_iter_get_basic(value, &status);
 
-	if (g_str_equal(status, "roaming") == TRUE)
-		roaming = TRUE;
-	else
-		roaming = FALSE;
+	roaming = g_str_equal(status, "roaming");
+	modem->registered = roaming || g_str_equal(status, "registered");
 
 	if (roaming == modem->roaming)
 		return;
@@ -1532,7 +1531,7 @@ static gboolean netreg_changed(DBusConnection *conn, DBusMessage *message,
 	else if (g_str_equal(key, "Strength") == TRUE)
 		netreg_update_strength(modem, &value);
 	else if (g_str_equal(key, "Status") == TRUE)
-		netreg_update_roaming(modem, &value);
+		netreg_update_status(modem, &value);
 	else if (g_str_equal(key, "MobileCountryCode") == TRUE)
 		netreg_update_regdom(modem, &value);
 
@@ -1559,7 +1558,7 @@ static void netreg_properties_reply(struct modem_data *modem,
 		else if (g_str_equal(key, "Strength") == TRUE)
 			netreg_update_strength(modem, &value);
 		else if (g_str_equal(key, "Status") == TRUE)
-			netreg_update_roaming(modem, &value);
+			netreg_update_status(modem, &value);
 		else if (g_str_equal(key, "MobileCountryCode") == TRUE)
 			netreg_update_regdom(modem, &value);
 
@@ -1646,9 +1645,12 @@ static gboolean cdma_netreg_changed(DBusConnection *conn,
 	else if (g_str_equal(key, "DataStrength") == TRUE)
 		netreg_update_datastrength(modem, &value);
 	else if (g_str_equal(key, "Status") == TRUE)
-		netreg_update_roaming(modem, &value);
+		netreg_update_status(modem, &value);
 
-	add_cdma_network(modem);
+	if (modem->registered == TRUE)
+		add_cdma_network(modem);
+	else
+		remove_network(modem);
 
 	return TRUE;
 }
@@ -1675,12 +1677,15 @@ static void cdma_netreg_properties_reply(struct modem_data *modem,
 		else if (g_str_equal(key, "DataStrength") == TRUE)
 			netreg_update_datastrength(modem, &value);
 		else if (g_str_equal(key, "Status") == TRUE)
-			netreg_update_roaming(modem, &value);
+			netreg_update_status(modem, &value);
 
 		dbus_message_iter_next(dict);
 	}
 
-	add_cdma_network(modem);
+	if (modem->registered == TRUE)
+		add_cdma_network(modem);
+	else
+		remove_network(modem);
 }
 
 static int cdma_netreg_get_properties(struct modem_data *modem)
