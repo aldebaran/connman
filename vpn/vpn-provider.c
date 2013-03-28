@@ -1288,6 +1288,13 @@ static int provider_indicate_state(struct vpn_provider *provider,
 						"Nameservers",
 						DBUS_TYPE_STRING,
 						append_dns, provider);
+
+		if (provider->domain != NULL)
+			connman_dbus_property_changed_basic(provider->path,
+						VPN_CONNECTION_INTERFACE,
+						"Domain",
+						DBUS_TYPE_STRING,
+						&provider->domain);
 	}
 
 	if (old_state != state)
