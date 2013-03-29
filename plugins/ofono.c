@@ -2034,8 +2034,11 @@ static void modem_update_interfaces(struct modem_data *modem,
 	}
 
 	if (api_added(old_ifaces, new_ifaces, OFONO_API_CDMA_CM) == TRUE) {
-		if (ready_to_create_device(modem) == TRUE)
+		if (ready_to_create_device(modem) == TRUE) {
 			create_device(modem);
+			if (modem->registered == TRUE)
+				add_cdma_network(modem);
+		}
 
 		if (modem->device != NULL)
 			cdma_cm_get_properties(modem);
@@ -2131,8 +2134,11 @@ static gboolean modem_changed(DBusConnection *conn, DBusMessage *message,
 
 		if (has_interface(modem->interfaces,
 					 OFONO_API_CDMA_CM) == TRUE) {
-			if (ready_to_create_device(modem) == TRUE)
+			if (ready_to_create_device(modem) == TRUE) {
 				create_device(modem);
+				if (modem->registered == TRUE)
+					add_cdma_network(modem);
+			}
 		}
 	}
 
