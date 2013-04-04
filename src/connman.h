@@ -133,6 +133,7 @@ int __connman_inet_modify_address(int cmd, int flags, int index, int family,
 				const char *peer,
 				unsigned char prefixlen,
 				const char *broadcast);
+int __connman_inet_get_interface_address(int index, int family, void *address);
 
 #include <netinet/ip6.h>
 #include <netinet/icmp6.h>

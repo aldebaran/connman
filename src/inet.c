@@ -45,6 +45,7 @@
 #include <fcntl.h>
 #include <linux/if_tun.h>
 #include <ctype.h>
+#include <ifaddrs.h>
 
 #include "connman.h"
 
@@ -2375,4 +2376,58 @@ connman_bool_t connman_inet_is_ipv6_supported()
 
 	close(sk);
 	return TRUE;
+}
+
+int __connman_inet_get_interface_address(int index, int family, void *address)
+{
+	struct ifaddrs *ifaddr, *ifa;
+	int err = -ENOENT;
+	char name[IF_NAMESIZE];
+
+	if (if_indextoname(index, name) == NULL)
+		return -EINVAL;
+
+	DBG("index %d interface %s", index, name);
+
+	if (getifaddrs(&ifaddr) < 0) {
+		err = -errno;
+		DBG("Cannot get addresses err %d/%s", err, strerror(-err));
+		return err;
+	}
+
+	for (ifa = ifaddr; ifa != NULL; ifa = ifa->ifa_next) {
+		if (ifa->ifa_addr == NULL)
+			continue;
+
+		if (strncmp(ifa->ifa_name, name, IF_NAMESIZE) == 0 &&
+					ifa->ifa_addr->sa_family == family) {
+			if (family == AF_INET) {
+				struct sockaddr_in *in4 = (struct sockaddr_in *)
+					ifa->ifa_addr;
+				if (in4->sin_addr.s_addr == INADDR_ANY)
+					continue;
+				memcpy(address, &in4->sin_addr,
+							sizeof(struct in_addr));
+			} else if (family == AF_INET6) {
+				struct sockaddr_in6 *in6 =
+					(struct sockaddr_in6 *)ifa->ifa_addr;
+				if (memcmp(&in6->sin6_addr, &in6addr_any,
+						sizeof(struct in6_addr)) == 0)
+					continue;
+				memcpy(address, &in6->sin6_addr,
+						sizeof(struct in6_addr));
+
+			} else {
+				err = -EINVAL;
+				goto out;
+			}
+
+			err = 0;
+			break;
+		}
+	}
+
+out:
+	freeifaddrs(ifaddr);
+	return err;
 }
