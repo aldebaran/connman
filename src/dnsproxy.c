@@ -303,7 +303,7 @@ static void refresh_dns_entry(struct cache_entry *entry, char *name)
 	if (ipv6_resolve == NULL) {
 		ipv6_resolve = g_resolv_new(0);
 		g_resolv_set_address_family(ipv6_resolve, AF_INET6);
-		g_resolv_add_nameserver(ipv6_resolve, "127.0.0.1", 53, 0);
+		g_resolv_add_nameserver(ipv6_resolve, "::1", 53, 0);
 	}
 
 	if (entry->ipv4 == NULL) {
