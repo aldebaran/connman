@@ -701,6 +701,51 @@ static uint16_t cache_check_validity(char *question, uint16_t type,
 	return type;
 }
 
+static void cache_element_destroy(gpointer value)
+{
+	struct cache_entry *entry = value;
+
+	if (entry == NULL)
+		return;
+
+	if (entry->ipv4 != NULL) {
+		g_free(entry->ipv4->data);
+		g_free(entry->ipv4);
+	}
+
+	if (entry->ipv6 != NULL) {
+		g_free(entry->ipv6->data);
+		g_free(entry->ipv6);
+	}
+
+	g_free(entry->key);
+	g_free(entry);
+
+	if (--cache_size < 0)
+		cache_size = 0;
+}
+
+static gboolean try_remove_cache(gpointer user_data)
+{
+	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1) {
+		DBG("No cache users, removing it.");
+
+		g_hash_table_destroy(cache);
+		cache = NULL;
+	}
+
+	return FALSE;
+}
+
+static void create_cache()
+{
+	if (__sync_fetch_and_add(&cache_refcount, 1) == 0)
+		cache = g_hash_table_new_full(g_str_hash,
+					g_str_equal,
+					NULL,
+					cache_element_destroy);
+}
+
 static struct cache_entry *cache_check(gpointer request, int *qtype, int proto)
 {
 	char *question;
@@ -725,6 +770,11 @@ static struct cache_entry *cache_check(gpointer request, int *qtype, int proto)
 	/* We only cache either A (1) or AAAA (28) requests */
 	if (type != 1 && type != 28)
 		return NULL;
+
+	if (cache == NULL) {
+		create_cache();
+		return NULL;
+	}
 
 	entry = g_hash_table_lookup(cache, question);
 	if (entry == NULL)
@@ -1332,7 +1382,11 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	if ((err == -ENOMSG || err == -ENOBUFS) &&
 			reply_query_type(msg + offset,
 					msg_len - offset) == 28) {
-		entry = g_hash_table_lookup(cache, question);
+		if (cache == NULL) {
+			create_cache();
+			entry = NULL;
+		} else
+			entry = g_hash_table_lookup(cache, question);
 		if (entry && entry->ipv4 && entry->ipv6 == NULL) {
 			int cache_offset = 0;
 
@@ -1733,42 +1787,6 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 	return err;
 }
 
-static void cache_element_destroy(gpointer value)
-{
-	struct cache_entry *entry = value;
-
-	if (entry == NULL)
-		return;
-
-	if (entry->ipv4 != NULL) {
-		g_free(entry->ipv4->data);
-		g_free(entry->ipv4);
-	}
-
-	if (entry->ipv6 != NULL) {
-		g_free(entry->ipv6->data);
-		g_free(entry->ipv6);
-	}
-
-	g_free(entry->key);
-	g_free(entry);
-
-	if (--cache_size < 0)
-		cache_size = 0;
-}
-
-static gboolean try_remove_cache(gpointer user_data)
-{
-	if (__sync_fetch_and_sub(&cache_refcount, 1) == 1) {
-		DBG("No cache users, removing it.");
-
-		g_hash_table_destroy(cache);
-		cache = NULL;
-	}
-
-	return FALSE;
-}
-
 static void server_destroy_socket(struct server_data *data)
 {
 	DBG("index %d server %s proto %d", data->index,
@@ -2138,11 +2156,7 @@ static int server_create_socket(struct server_data *data)
 		}
 	}
 
-	if (__sync_fetch_and_add(&cache_refcount, 1) == 0)
-		cache = g_hash_table_new_full(g_str_hash,
-					g_str_equal,
-					NULL,
-					cache_element_destroy);
+	create_cache();
 
 	return 0;
 }
