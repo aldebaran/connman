@@ -105,6 +105,7 @@ struct request_data {
 	socklen_t sa_len;
 	int client_sk;
 	int protocol;
+	int family;
 	guint16 srcid;
 	guint16 dstid;
 	guint16 altid;
@@ -123,10 +124,16 @@ struct request_data {
 
 struct listener_data {
 	int index;
-	GIOChannel *udp_listener_channel;
-	guint udp_listener_watch;
-	GIOChannel *tcp_listener_channel;
-	guint tcp_listener_watch;
+
+	GIOChannel *udp4_listener_channel;
+	GIOChannel *tcp4_listener_channel;
+	guint udp4_listener_watch;
+	guint tcp4_listener_watch;
+
+	GIOChannel *udp6_listener_channel;
+	GIOChannel *tcp6_listener_channel;
+	guint udp6_listener_watch;
+	guint tcp6_listener_watch;
 };
 
 struct cache_data {
@@ -468,17 +475,29 @@ static void send_response(int sk, unsigned char *buf, int len,
 	}
 }
 
+static int get_req_udp_socket(struct request_data *req)
+{
+	GIOChannel *channel;
+
+	if (req->family == AF_INET)
+		channel = req->ifdata->udp4_listener_channel;
+	else
+		channel = req->ifdata->udp6_listener_channel;
+
+	if (channel == NULL)
+		return -1;
+
+	return g_io_channel_unix_get_fd(channel);
+}
+
 static gboolean request_timeout(gpointer user_data)
 {
 	struct request_data *req = user_data;
-	struct listener_data *ifdata;
 
 	DBG("id 0x%04x", req->srcid);
 
 	if (req == NULL)
 		return FALSE;
-
-	ifdata = req->ifdata;
 
 	request_list = g_slist_remove(request_list, req);
 	req->numserv--;
@@ -486,7 +505,9 @@ static gboolean request_timeout(gpointer user_data)
 	if (req->resplen > 0 && req->resp != NULL) {
 		int sk, err;
 
-		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
+		sk = get_req_udp_socket(req);
+		if (sk < 0)
+			return FALSE;
 
 		err = sendto(sk, req->resp, req->resplen, MSG_NOSIGNAL,
 						&req->sa, req->sa_len);
@@ -506,10 +527,12 @@ static gboolean request_timeout(gpointer user_data)
 
 			hdr = (void *) (req->request);
 			hdr->id = req->srcid;
-			sk = g_io_channel_unix_get_fd(
-						ifdata->udp_listener_channel);
-			send_response(sk, req->request, req->request_len,
-					&req->sa, req->sa_len, IPPROTO_UDP);
+
+			sk = get_req_udp_socket(req);
+			if (sk >= 0)
+				send_response(sk, req->request,
+					req->request_len, &req->sa,
+					req->sa_len, IPPROTO_UDP);
 		}
 	}
 
@@ -1494,8 +1517,7 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 		}
 
 		if (data != NULL && req->protocol == IPPROTO_UDP) {
-			int udp_sk = g_io_channel_unix_get_fd(
-					req->ifdata->udp_listener_channel);
+			int udp_sk = get_req_udp_socket(req);
 
 			send_cached_response(udp_sk, data->data,
 				data->data_len, &req->sa, req->sa_len,
@@ -1600,7 +1622,6 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 	struct domain_hdr *hdr;
 	struct request_data *req;
 	int dns_id, sk, err, offset = protocol_offset(protocol);
-	struct listener_data *ifdata;
 
 	if (offset < 0)
 		return offset;
@@ -1616,8 +1637,6 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 
 	DBG("req %p dstid 0x%04x altid 0x%04x rcode %d",
 			req, req->dstid, req->altid, hdr->rcode);
-
-	ifdata = req->ifdata;
 
 	reply[offset] = req->srcid & 0xff;
 	reply[offset + 1] = req->srcid >> 8;
@@ -1694,7 +1713,7 @@ static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
 	request_list = g_slist_remove(request_list, req);
 
 	if (protocol == IPPROTO_UDP) {
-		sk = g_io_channel_unix_get_fd(ifdata->udp_listener_channel);
+		sk = get_req_udp_socket(req);
 		err = sendto(sk, req->resp, req->resplen, 0,
 			     &req->sa, req->sa_len);
 	} else {
@@ -2515,25 +2534,29 @@ static int parse_request(unsigned char *buf, int len,
 }
 
 static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+				struct listener_data *ifdata, int family,
+				guint *listener_watch)
 {
 	unsigned char buf[768];
 	char query[512];
 	struct request_data *req;
 	int sk, client_sk, len, err;
-	struct sockaddr_in6 client_addr;
-	socklen_t client_addr_len = sizeof(client_addr);
+	struct sockaddr_in6 client_addr6;
+	socklen_t client_addr6_len = sizeof(client_addr6);
+	struct sockaddr_in client_addr4;
+	socklen_t client_addr4_len = sizeof(client_addr4);
+	void *client_addr;
+	socklen_t *client_addr_len;
 	GSList *list;
-	struct listener_data *ifdata = user_data;
 	int waiting_for_connect = FALSE, qtype = 0;
 	struct cache_entry *entry;
 
 	DBG("condition 0x%x", condition);
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
-		if (ifdata->tcp_listener_watch > 0)
-			g_source_remove(ifdata->tcp_listener_watch);
-		ifdata->tcp_listener_watch = 0;
+		if (*listener_watch > 0)
+			g_source_remove(*listener_watch);
+		*listener_watch = 0;
 
 		connman_error("Error with TCP listener channel");
 
@@ -2542,10 +2565,19 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	sk = g_io_channel_unix_get_fd(channel);
 
-	client_sk = accept(sk, (void *)&client_addr, &client_addr_len);
+	if (family == AF_INET) {
+		client_addr = &client_addr4;
+		client_addr_len = &client_addr4_len;
+	} else {
+		client_addr = &client_addr6;
+		client_addr_len = &client_addr6_len;
+	}
+
+	client_sk = accept(sk, client_addr, client_addr_len);
+
 	if (client_sk < 0) {
 		connman_error("Accept failure on TCP listener");
-		ifdata->tcp_listener_watch = 0;
+		*listener_watch = 0;
 		return FALSE;
 	}
 
@@ -2566,10 +2598,11 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
-	memcpy(&req->sa, &client_addr, client_addr_len);
-	req->sa_len = client_addr_len;
+	memcpy(&req->sa, client_addr, *client_addr_len);
+	req->sa_len = *client_addr_len;
 	req->client_sk = client_sk;
 	req->protocol = IPPROTO_TCP;
+	req->family = family;
 
 	req->srcid = buf[2] | (buf[3] << 8);
 	req->dstid = get_id();
@@ -2580,7 +2613,7 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	buf[3] = req->dstid >> 8;
 
 	req->numserv = 0;
-	req->ifdata = (struct listener_data *) ifdata;
+	req->ifdata = ifdata;
 	req->append_domain = FALSE;
 
 	/*
@@ -2662,28 +2695,57 @@ static gboolean tcp_listener_event(GIOChannel *channel, GIOCondition condition,
 	return TRUE;
 }
 
+static gboolean tcp4_listener_event(GIOChannel *channel, GIOCondition condition,
+				gpointer user_data)
+{
+	struct listener_data *ifdata = user_data;
+
+	return tcp_listener_event(channel, condition, ifdata, AF_INET,
+				&ifdata->tcp4_listener_watch);
+}
+
+static gboolean tcp6_listener_event(GIOChannel *channel, GIOCondition condition,
+				gpointer user_data)
+{
+	struct listener_data *ifdata = user_data;
+
+	return tcp_listener_event(channel, condition, user_data, AF_INET6,
+				&ifdata->tcp6_listener_watch);
+}
+
 static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
-							gpointer user_data)
+				struct listener_data *ifdata, int family,
+				guint *listener_watch)
 {
 	unsigned char buf[768];
 	char query[512];
 	struct request_data *req;
-	struct sockaddr_in6 client_addr;
-	socklen_t client_addr_len = sizeof(client_addr);
+	struct sockaddr_in6 client_addr6;
+	socklen_t client_addr6_len = sizeof(client_addr6);
+	struct sockaddr_in client_addr4;
+	socklen_t client_addr4_len = sizeof(client_addr4);
+	void *client_addr;
+	socklen_t *client_addr_len;
 	int sk, err, len;
-	struct listener_data *ifdata = user_data;
 
 	if (condition & (G_IO_NVAL | G_IO_ERR | G_IO_HUP)) {
 		connman_error("Error with UDP listener channel");
-		ifdata->udp_listener_watch = 0;
+		*listener_watch = 0;
 		return FALSE;
 	}
 
 	sk = g_io_channel_unix_get_fd(channel);
 
-	memset(&client_addr, 0, client_addr_len);
-	len = recvfrom(sk, buf, sizeof(buf), 0, (void *)&client_addr,
-		       &client_addr_len);
+	if (family == AF_INET) {
+		client_addr = &client_addr4;
+		client_addr_len = &client_addr4_len;
+	} else {
+		client_addr = &client_addr6;
+		client_addr_len = &client_addr6_len;
+	}
+
+	memset(client_addr, 0, *client_addr_len);
+	len = recvfrom(sk, buf, sizeof(buf), 0, client_addr, client_addr_len);
 	if (len < 2)
 		return TRUE;
 
@@ -2691,8 +2753,8 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 
 	err = parse_request(buf, len, query, sizeof(query));
 	if (err < 0 || (g_slist_length(server_list) == 0)) {
-		send_response(sk, buf, len, (void *)&client_addr,
-				client_addr_len, IPPROTO_UDP);
+		send_response(sk, buf, len, client_addr,
+				*client_addr_len, IPPROTO_UDP);
 		return TRUE;
 	}
 
@@ -2700,10 +2762,11 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	if (req == NULL)
 		return TRUE;
 
-	memcpy(&req->sa, &client_addr, client_addr_len);
-	req->sa_len = client_addr_len;
+	memcpy(&req->sa, client_addr, *client_addr_len);
+	req->sa_len = *client_addr_len;
 	req->client_sk = 0;
 	req->protocol = IPPROTO_UDP;
+	req->family = family;
 
 	req->srcid = buf[0] | (buf[1] << 8);
 	req->dstid = get_id();
@@ -2714,7 +2777,7 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	buf[1] = req->dstid >> 8;
 
 	req->numserv = 0;
-	req->ifdata = (struct listener_data *) ifdata;
+	req->ifdata = ifdata;
 	req->append_domain = FALSE;
 
 	if (resolv(req, buf, query) == TRUE) {
@@ -2729,7 +2792,25 @@ static gboolean udp_listener_event(GIOChannel *channel, GIOCondition condition,
 	return TRUE;
 }
 
-static int create_dns_listener(int protocol, struct listener_data *ifdata)
+static gboolean udp4_listener_event(GIOChannel *channel, GIOCondition condition,
+				gpointer user_data)
+{
+	struct listener_data *ifdata = user_data;
+
+	return udp_listener_event(channel, condition, ifdata, AF_INET,
+				&ifdata->udp4_listener_watch);
+}
+
+static gboolean udp6_listener_event(GIOChannel *channel, GIOCondition condition,
+				gpointer user_data)
+{
+	struct listener_data *ifdata = user_data;
+
+	return udp_listener_event(channel, condition, user_data, AF_INET6,
+				&ifdata->udp6_listener_watch);
+}
+
+static GIOChannel *get_listener(int family, int protocol, int index)
 {
 	GIOChannel *channel;
 	const char *proto;
@@ -2739,11 +2820,10 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 		struct sockaddr_in sin;
 	} s;
 	socklen_t slen;
-	int sk, type, v6only = 0;
-	int family = AF_INET6;
+	int sk, type;
 	char *interface;
 
-	DBG("index %d", ifdata->index);
+	DBG("family %d protocol %d index %d", family, protocol, index);
 
 	switch (protocol) {
 	case IPPROTO_UDP:
@@ -2757,84 +2837,127 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 		break;
 
 	default:
-		return -EINVAL;
+		return NULL;
 	}
 
 	sk = socket(family, type, protocol);
 	if (sk < 0 && family == AF_INET6 && errno == EAFNOSUPPORT) {
-		connman_error("No IPv6 support; DNS proxy listening only on Legacy IP");
-		family = AF_INET;
-		sk = socket(family, type, protocol);
-	}
-	if (sk < 0) {
-		connman_error("Failed to create %s listener socket", proto);
-		return -EIO;
+		connman_error("No IPv6 support");
+		return NULL;
 	}
 
-	interface = connman_inet_ifname(ifdata->index);
+	if (sk < 0) {
+		connman_error("Failed to create %s listener socket", proto);
+		return NULL;
+	}
+
+	interface = connman_inet_ifname(index);
 	if (interface == NULL || setsockopt(sk, SOL_SOCKET, SO_BINDTODEVICE,
 					interface,
 					strlen(interface) + 1) < 0) {
-		connman_error("Failed to bind %s listener interface", proto);
+		connman_error("Failed to bind %s listener interface "
+			"for %s (%d/%s)",
+			proto, family == AF_INET ? "IPv4" : "IPv6",
+			-errno, strerror(errno));
 		close(sk);
 		g_free(interface);
-		return -EIO;
+		return NULL;
 	}
 	g_free(interface);
 
-	/* Ensure it accepts Legacy IP connections too */
-	if (family == AF_INET6 &&
-			setsockopt(sk, SOL_IPV6, IPV6_V6ONLY,
-					&v6only, sizeof(v6only)) < 0) {
-		connman_error("Failed to clear V6ONLY on %s listener socket",
-			      proto);
-		close(sk);
-		return -EIO;
-	}
-
-	if (family == AF_INET) {
-		memset(&s.sin, 0, sizeof(s.sin));
-		s.sin.sin_family = AF_INET;
-		s.sin.sin_port = htons(53);
-		s.sin.sin_addr.s_addr = htonl(INADDR_ANY);
-		slen = sizeof(s.sin);
-	} else {
+	if (family == AF_INET6) {
 		memset(&s.sin6, 0, sizeof(s.sin6));
 		s.sin6.sin6_family = AF_INET6;
 		s.sin6.sin6_port = htons(53);
-		s.sin6.sin6_addr = in6addr_any;
 		slen = sizeof(s.sin6);
+
+		if (__connman_inet_get_interface_address(index,
+						AF_INET6,
+						&s.sin6.sin6_addr) < 0) {
+			/* So we could not find suitable IPv6 address for
+			 * the interface. This could happen if we have
+			 * disabled IPv6 for the interface.
+			 */
+			close(sk);
+			return NULL;
+		}
+
+	} else if (family == AF_INET) {
+		memset(&s.sin, 0, sizeof(s.sin));
+		s.sin.sin_family = AF_INET;
+		s.sin.sin_port = htons(53);
+		slen = sizeof(s.sin);
+
+		if (__connman_inet_get_interface_address(index,
+						AF_INET,
+						&s.sin.sin_addr) < 0) {
+			close(sk);
+			return NULL;
+		}
+	} else {
+		close(sk);
+		return NULL;
 	}
 
 	if (bind(sk, &s.sa, slen) < 0) {
 		connman_error("Failed to bind %s listener socket", proto);
 		close(sk);
-		return -EIO;
+		return NULL;
 	}
 
 	if (protocol == IPPROTO_TCP && listen(sk, 10) < 0) {
-		connman_error("Failed to listen on TCP socket");
+		connman_error("Failed to listen on TCP socket %d/%s", -errno,
+			strerror(errno));
 		close(sk);
-		return -EIO;
+		return NULL;
 	}
 
 	channel = g_io_channel_unix_new(sk);
 	if (channel == NULL) {
 		connman_error("Failed to create %s listener channel", proto);
 		close(sk);
-		return -EIO;
+		return NULL;
 	}
 
 	g_io_channel_set_close_on_unref(channel, TRUE);
 
+	return channel;
+}
+
+static int create_dns_listener(int protocol, struct listener_data *ifdata)
+{
 	if (protocol == IPPROTO_TCP) {
-		ifdata->tcp_listener_channel = channel;
-		ifdata->tcp_listener_watch = g_io_add_watch(channel,
-				G_IO_IN, tcp_listener_event, (gpointer) ifdata);
+		ifdata->tcp4_listener_channel = get_listener(AF_INET, protocol,
+							ifdata->index);
+		if (ifdata->tcp4_listener_channel != NULL)
+			ifdata->tcp4_listener_watch =
+				g_io_add_watch(ifdata->tcp4_listener_channel,
+					G_IO_IN, tcp4_listener_event,
+					(gpointer)ifdata);
+
+		ifdata->tcp6_listener_channel = get_listener(AF_INET6, protocol,
+							ifdata->index);
+		if (ifdata->tcp6_listener_channel != NULL)
+			ifdata->tcp6_listener_watch =
+				g_io_add_watch(ifdata->tcp6_listener_channel,
+					G_IO_IN, tcp6_listener_event,
+					(gpointer)ifdata);
 	} else {
-		ifdata->udp_listener_channel = channel;
-		ifdata->udp_listener_watch = g_io_add_watch(channel,
-				G_IO_IN, udp_listener_event, (gpointer) ifdata);
+		ifdata->udp4_listener_channel = get_listener(AF_INET, protocol,
+							ifdata->index);
+		if (ifdata->udp4_listener_channel != NULL)
+			ifdata->udp4_listener_watch =
+				g_io_add_watch(ifdata->udp4_listener_channel,
+					G_IO_IN, udp4_listener_event,
+					(gpointer)ifdata);
+
+		ifdata->udp6_listener_channel = get_listener(AF_INET6, protocol,
+							ifdata->index);
+		if (ifdata->udp6_listener_channel != NULL)
+			ifdata->udp6_listener_watch =
+				g_io_add_watch(ifdata->udp6_listener_channel,
+					G_IO_IN, udp6_listener_event,
+					(gpointer)ifdata);
 	}
 
 	return 0;
@@ -2844,20 +2967,27 @@ static void destroy_udp_listener(struct listener_data *ifdata)
 {
 	DBG("index %d", ifdata->index);
 
-	if (ifdata->udp_listener_watch > 0)
-		g_source_remove(ifdata->udp_listener_watch);
+	if (ifdata->udp4_listener_watch > 0)
+		g_source_remove(ifdata->udp4_listener_watch);
 
-	g_io_channel_unref(ifdata->udp_listener_channel);
+	if (ifdata->udp6_listener_watch > 0)
+		g_source_remove(ifdata->udp6_listener_watch);
+
+	g_io_channel_unref(ifdata->udp4_listener_channel);
+	g_io_channel_unref(ifdata->udp6_listener_channel);
 }
 
 static void destroy_tcp_listener(struct listener_data *ifdata)
 {
 	DBG("index %d", ifdata->index);
 
-	if (ifdata->tcp_listener_watch > 0)
-		g_source_remove(ifdata->tcp_listener_watch);
+	if (ifdata->tcp4_listener_watch > 0)
+		g_source_remove(ifdata->tcp4_listener_watch);
+	if (ifdata->tcp6_listener_watch > 0)
+		g_source_remove(ifdata->tcp6_listener_watch);
 
-	g_io_channel_unref(ifdata->tcp_listener_channel);
+	g_io_channel_unref(ifdata->tcp4_listener_channel);
+	g_io_channel_unref(ifdata->tcp6_listener_channel);
 }
 
 static int create_listener(struct listener_data *ifdata)
@@ -2927,10 +3057,14 @@ int __connman_dnsproxy_add_listener(int index)
 		return -ENOMEM;
 
 	ifdata->index = index;
-	ifdata->udp_listener_channel = NULL;
-	ifdata->udp_listener_watch = 0;
-	ifdata->tcp_listener_channel = NULL;
-	ifdata->tcp_listener_watch = 0;
+	ifdata->udp4_listener_channel = NULL;
+	ifdata->udp4_listener_watch = 0;
+	ifdata->tcp4_listener_channel = NULL;
+	ifdata->tcp4_listener_watch = 0;
+	ifdata->udp6_listener_channel = NULL;
+	ifdata->udp6_listener_watch = 0;
+	ifdata->tcp6_listener_channel = NULL;
+	ifdata->tcp6_listener_watch = 0;
 
 	err = create_listener(ifdata);
 	if (err < 0) {
