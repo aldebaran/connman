@@ -2924,8 +2924,19 @@ static GIOChannel *get_listener(int family, int protocol, int index)
 	return channel;
 }
 
+#define UDP_IPv4_FAILED 0x01
+#define TCP_IPv4_FAILED 0x02
+#define UDP_IPv6_FAILED 0x04
+#define TCP_IPv6_FAILED 0x08
+#define UDP_FAILED (UDP_IPv4_FAILED | UDP_IPv6_FAILED)
+#define TCP_FAILED (TCP_IPv4_FAILED | TCP_IPv6_FAILED)
+#define IPv6_FAILED (UDP_IPv6_FAILED | TCP_IPv6_FAILED)
+#define IPv4_FAILED (UDP_IPv4_FAILED | TCP_IPv4_FAILED)
+
 static int create_dns_listener(int protocol, struct listener_data *ifdata)
 {
+	int ret = 0;
+
 	if (protocol == IPPROTO_TCP) {
 		ifdata->tcp4_listener_channel = get_listener(AF_INET, protocol,
 							ifdata->index);
@@ -2934,6 +2945,8 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 				g_io_add_watch(ifdata->tcp4_listener_channel,
 					G_IO_IN, tcp4_listener_event,
 					(gpointer)ifdata);
+		else
+			ret |= TCP_IPv4_FAILED;
 
 		ifdata->tcp6_listener_channel = get_listener(AF_INET6, protocol,
 							ifdata->index);
@@ -2942,6 +2955,8 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 				g_io_add_watch(ifdata->tcp6_listener_channel,
 					G_IO_IN, tcp6_listener_event,
 					(gpointer)ifdata);
+		else
+			ret |= TCP_IPv6_FAILED;
 	} else {
 		ifdata->udp4_listener_channel = get_listener(AF_INET, protocol,
 							ifdata->index);
@@ -2950,6 +2965,8 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 				g_io_add_watch(ifdata->udp4_listener_channel,
 					G_IO_IN, udp4_listener_event,
 					(gpointer)ifdata);
+		else
+			ret |= UDP_IPv4_FAILED;
 
 		ifdata->udp6_listener_channel = get_listener(AF_INET6, protocol,
 							ifdata->index);
@@ -2958,9 +2975,11 @@ static int create_dns_listener(int protocol, struct listener_data *ifdata)
 				g_io_add_watch(ifdata->udp6_listener_channel,
 					G_IO_IN, udp6_listener_event,
 					(gpointer)ifdata);
+		else
+			ret |= UDP_IPv6_FAILED;
 	}
 
-	return 0;
+	return ret;
 }
 
 static void destroy_udp_listener(struct listener_data *ifdata)
@@ -2995,18 +3014,23 @@ static int create_listener(struct listener_data *ifdata)
 	int err, index;
 
 	err = create_dns_listener(IPPROTO_UDP, ifdata);
-	if (err < 0)
-		return err;
+	if ((err & UDP_FAILED) == UDP_FAILED)
+		return -EIO;
 
-	err = create_dns_listener(IPPROTO_TCP, ifdata);
-	if (err < 0) {
+	err |= create_dns_listener(IPPROTO_TCP, ifdata);
+	if ((err & TCP_FAILED) == TCP_FAILED) {
 		destroy_udp_listener(ifdata);
-		return err;
+		return -EIO;
 	}
 
 	index = connman_inet_ifindex("lo");
-	if (ifdata->index == index)
-		__connman_resolvfile_append(index, NULL, "127.0.0.1");
+	if (ifdata->index == index) {
+		if ((err & IPv6_FAILED) != IPv6_FAILED)
+			__connman_resolvfile_append(index, NULL, "::1");
+
+		if ((err & IPv4_FAILED) != IPv4_FAILED)
+			__connman_resolvfile_append(index, NULL, "127.0.0.1");
+	}
 
 	return 0;
 }
@@ -3017,8 +3041,10 @@ static void destroy_listener(struct listener_data *ifdata)
 	GSList *list;
 
 	index = connman_inet_ifindex("lo");
-	if (ifdata->index == index)
+	if (ifdata->index == index) {
 		__connman_resolvfile_remove(index, NULL, "127.0.0.1");
+		__connman_resolvfile_remove(index, NULL, "::1");
+	}
 
 	for (list = request_list; list; list = list->next) {
 		struct request_data *req = list->data;
