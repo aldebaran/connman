@@ -2327,6 +2327,9 @@ int __connman_dnsproxy_append(int index, const char *domain,
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
 		return -ENODEV;
 
+	if (g_str_equal(server, "::1") == TRUE)
+		return -ENODEV;
+
 	data = find_server(index, server, IPPROTO_UDP);
 	if (data != NULL) {
 		append_domain(index, domain);
@@ -2361,6 +2364,9 @@ int __connman_dnsproxy_remove(int index, const char *domain,
 		return -EINVAL;
 
 	if (g_str_equal(server, "127.0.0.1") == TRUE)
+		return -ENODEV;
+
+	if (g_str_equal(server, "::1") == TRUE)
 		return -ENODEV;
 
 	remove_server(index, domain, server, IPPROTO_UDP);
