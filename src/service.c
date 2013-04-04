@@ -3425,7 +3425,7 @@ static void preferred_tech_add_by_type(gpointer data, gpointer user_data)
 	}
 }
 
-static GSequence* preferred_tech_list_get(GSequence *list)
+static GSequence* preferred_tech_list_get(void)
 {
 	unsigned int *tech_array;
 	struct preferred_tech_data tech_data;
@@ -3520,7 +3520,7 @@ static gboolean run_auto_connect(gpointer data)
 
 	DBG("");
 
-	preferred_tech = preferred_tech_list_get(service_list);
+	preferred_tech = preferred_tech_list_get();
 	if (preferred_tech != NULL)
 		iter = g_sequence_get_begin_iter(preferred_tech);
 
