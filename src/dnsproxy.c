@@ -494,10 +494,10 @@ static gboolean request_timeout(gpointer user_data)
 {
 	struct request_data *req = user_data;
 
-	DBG("id 0x%04x", req->srcid);
-
 	if (req == NULL)
 		return FALSE;
+
+	DBG("id 0x%04x", req->srcid);
 
 	request_list = g_slist_remove(request_list, req);
 	req->numserv--;
