@@ -490,6 +490,17 @@ static int get_req_udp_socket(struct request_data *req)
 	return g_io_channel_unix_get_fd(channel);
 }
 
+static void destroy_request_data(struct request_data *req)
+{
+	if (req->timeout > 0)
+		g_source_remove(req->timeout);
+
+	g_free(req->resp);
+	g_free(req->request);
+	g_free(req->name);
+	g_free(req);
+}
+
 static gboolean request_timeout(gpointer user_data)
 {
 	struct request_data *req = user_data;
@@ -536,8 +547,8 @@ static gboolean request_timeout(gpointer user_data)
 		}
 	}
 
-	g_free(req->resp);
-	g_free(req);
+	req->timeout = 0;
+	destroy_request_data(req);
 
 	return FALSE;
 }
@@ -1603,17 +1614,6 @@ static int ns_resolv(struct server_data *server, struct request_data *req,
 	}
 
 	return 0;
-}
-
-static void destroy_request_data(struct request_data *req)
-{
-	if (req->timeout > 0)
-		g_source_remove(req->timeout);
-
-	g_free(req->resp);
-	g_free(req->request);
-	g_free(req->name);
-	g_free(req);
 }
 
 static int forward_dns_reply(unsigned char *reply, int reply_len, int protocol,
