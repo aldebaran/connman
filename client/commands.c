@@ -987,7 +987,7 @@ static const char *config_desc[] = {
 	"direct|auto <URL>|manual <URL1> [<URL2>] [...]\n"
 	"\t\t\t[exclude <exclude1> [<exclude2>] [...]]",
 	"yes|no",
-	"off|dhcp|manual <address> <prefixlength> <gateway>",
+	"off|dhcp|manual <address> <netmask> <gateway>",
 	"                 Remove service",
 	NULL
 };
