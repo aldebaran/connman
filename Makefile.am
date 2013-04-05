@@ -268,7 +268,8 @@ noinst_PROGRAMS += tools/supplicant-test \
 			tools/dbus-test tools/polkit-test \
 			tools/iptables-test tools/tap-test tools/wpad-test \
 			tools/stats-tool tools/private-network-test \
-			tools/session-test tools/iptables-unit
+			tools/session-test tools/iptables-unit \
+			tools/dnsproxy-unit
 
 tools_supplicant_test_SOURCES = $(gdbus_sources) tools/supplicant-test.c \
 			tools/supplicant-dbus.h tools/supplicant-dbus.c \
@@ -312,6 +313,9 @@ tools_iptables_unit_CFLAGS = @DBUS_CFLAGS@ @GLIB_CFLAGS@ @XTABLES_CFLAGS@ \
 tools_iptables_unit_SOURCES = $(gdbus_sources) src/log.c \
 		 src/iptables.c src/firewall.c src/nat.c tools/iptables-unit.c
 tools_iptables_unit_LDADD = @GLIB_LIBS@ @DBUS_LIBS@ @XTABLES_LIBS@ -ldl
+
+tools_dnsproxy_unit_SOURCES = tools/dnsproxy-unit.c
+tools_dnsproxy_unit_LDADD = @GLIB_LIBS@
 
 endif
 
