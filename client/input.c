@@ -124,6 +124,10 @@ static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
 
 int __connmanctl_input_init(int argc, char *argv[])
 {
+	char *help[] = {
+		"help",
+		NULL
+	};
 	guint source = 0;
 	int err;
 	DBusError dbus_err;
@@ -153,7 +157,12 @@ int __connmanctl_input_init(int argc, char *argv[])
 
 	} else {
 		interactive = false;
-		err = commands(connection, argv + 1, argc -1);
+
+		if (strcmp(argv[1], "--help") == 0 ||
+				strcmp(argv[1], "-h") == 0)
+			err = commands(connection, help, 1);
+		else
+			err = commands(connection, argv + 1, argc -1);
 	}
 
 	if (err == -EINPROGRESS) {
