@@ -1480,6 +1480,7 @@ static void connection_destroy(gpointer hash_data)
 	g_free(data->type);
 	g_free(data->name);
 	g_free(data->host);
+	g_free(data->host_ip);
 	g_free(data->domain);
 	g_hash_table_destroy(data->server_routes);
 	g_hash_table_destroy(data->user_routes);
