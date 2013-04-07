@@ -1556,12 +1556,16 @@ static int cache_update(struct server_data *srv, unsigned char *msg,
 	 * two bytes. This way we do not need to know the format
 	 * (UDP/TCP) of the cached message.
 	 */
+	if (srv->protocol == IPPROTO_UDP)
+		memcpy(ptr + 2, msg, offset + 12);
+	else
+		memcpy(ptr, msg, offset + 12);
+
 	ptr[0] = (data->data_len - 2) / 256;
 	ptr[1] = (data->data_len - 2) - ptr[0] * 256;
 	if (srv->protocol == IPPROTO_UDP)
 		ptr += 2;
 
-	memcpy(ptr, msg, offset + 12);
 	memcpy(ptr + offset + 12, question, qlen + 1); /* copy also the \0 */
 
 	q = (void *) (ptr + offset + 12 + qlen + 1);
