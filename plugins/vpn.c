@@ -395,6 +395,7 @@ static int extract_ip(DBusMessageIter *array, int family,
 		dbus_message_iter_next(&dict);
 	}
 
+	connman_ipaddress_free(data->ip);
 	data->ip = connman_ipaddress_alloc(family);
 	if (data->ip == NULL)
 		return -ENOMEM;
