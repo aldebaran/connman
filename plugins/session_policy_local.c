@@ -294,6 +294,8 @@ static int load_policy(struct policy_data *policy)
 	char *str, **tokens;
 	int i, err = 0;
 
+	connman_session_set_default_config(config);
+
 	pathname = g_strdup_printf("%s/%s", POLICYDIR, policy->ident);
 	if(pathname == NULL)
 		return -ENOMEM;
@@ -318,8 +320,6 @@ static int load_policy(struct policy_data *policy)
 	if (str != NULL) {
 		config->roaming_policy = connman_session_parse_roaming_policy(str);
 		g_free(str);
-	} else {
-		config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
 	}
 
 	str = g_key_file_get_string(keyfile, "Default", "ConnectionType",
@@ -327,8 +327,6 @@ static int load_policy(struct policy_data *policy)
 	if (str != NULL) {
 		config->type = connman_session_parse_connection_type(str);
 		g_free(str);
-	} else {
-		config->type = CONNMAN_SESSION_TYPE_ANY;
 	}
 
 	config->ecall = g_key_file_get_boolean(keyfile, "Default",
