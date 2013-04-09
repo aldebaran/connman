@@ -517,7 +517,7 @@ static int filter_bearer(GSList *policy_bearers,
 	GSList *it;
 
 	if (policy_bearers == NULL)
-		goto clone;
+		return 0;
 
 	for (it = policy_bearers; it != NULL; it = it->next) {
 		policy = GPOINTER_TO_INT(it->data);
