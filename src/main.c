@@ -676,11 +676,11 @@ int main(int argc, char *argv[])
 	__connman_wpad_cleanup();
 	__connman_dhcpv6_cleanup();
 	__connman_dhcp_cleanup();
+	__connman_session_cleanup();
 	__connman_plugin_cleanup();
 	__connman_provider_cleanup();
 	__connman_connection_cleanup();
 	__connman_timeserver_cleanup();
-	__connman_session_cleanup();
 	__connman_detect_cleanup();
 	__connman_proxy_cleanup();
 	__connman_task_cleanup();
