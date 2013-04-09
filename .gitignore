@@ -48,6 +48,7 @@ tools/resolv-test
 tools/polkit-test
 tools/iptables-test
 tools/iptables-unit
+tools/dnsproxy-unit
 tools/supplicant-test
 tools/dbus-test
 tools/stats-tool
