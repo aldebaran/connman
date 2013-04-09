@@ -332,13 +332,13 @@ static int load_policy(struct policy_data *policy)
 	config->ecall = g_key_file_get_boolean(keyfile, "Default",
 						"EmergencyCall", NULL);
 
-	g_slist_free(config->allowed_bearers);
-	config->allowed_bearers = NULL;
-
 	str = g_key_file_get_string(keyfile, "Default", "AllowedBearers",
 				NULL);
 
 	if (str != NULL) {
+		g_slist_free(config->allowed_bearers);
+		config->allowed_bearers = NULL;
+
 		tokens = g_strsplit(str, " ", 0);
 
 		for (i = 0; tokens[i] != NULL; i++) {
@@ -350,11 +350,6 @@ static int load_policy(struct policy_data *policy)
 
 		g_free(str);
 		g_strfreev(tokens);
-	} else {
-		config->allowed_bearers = g_slist_append(NULL,
-				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
-		if (config->allowed_bearers == NULL)
-			err = -ENOMEM;
 	}
 
 	g_key_file_free(keyfile);
