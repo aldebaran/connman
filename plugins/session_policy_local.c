@@ -390,6 +390,7 @@ static void notify_handler(struct inotify_event *event,
                                         const char *ident)
 {
 	struct policy_data *policy;
+	int err;
 
 	if (ident == NULL)
 		return;
@@ -411,8 +412,10 @@ static void notify_handler(struct inotify_event *event,
 	if (event->mask & IN_MODIFY) {
 		connman_info("Policy modifed for '%s'", ident);
 
-		if (load_policy(policy) < 0) {
-			remove_policy(policy);
+		err = load_policy(policy);
+		if (err < 0) {
+			connman_warn("Loading policy file '%s' failed with %s",
+					ident, strerror(-err));
 			return;
 		}
 	}
