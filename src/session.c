@@ -359,6 +359,9 @@ static void remove_policy(struct connman_session_policy *policy)
 	gpointer key, value;
 	struct connman_session *session;
 
+	if (session_hash == NULL)
+		return;
+
 	DBG("policy %p name %s", policy, policy->name);
 
 	g_hash_table_iter_init(&iter, session_hash);
