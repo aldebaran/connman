@@ -404,6 +404,13 @@ static void notify_handler(struct inotify_event *event,
 			policy_ref(policy);
 		else
 			policy = create_policy(ident);
+
+		err = load_policy(policy);
+		if (err < 0) {
+			connman_warn("Loading policy file '%s' failed with %s",
+					ident, strerror(-err));
+			return;
+		}
 	}
 
 	if (policy == NULL)
