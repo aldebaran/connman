@@ -1,3 +1,18 @@
+ver 1.13:
+	Fix issue with auto-scanning of known hidden SSIDs.
+	Fix issue with not correctly terminated auto-scanning.
+	Fix issue with missing enforcing of immutable services.
+	Fix issue with missing handling of multiple connection attempts.
+	Fix issue with missing WISPr restart after nameserver change.
+	Fix issue with missing provisioning for IP address method.
+	Fix issue with missing IP configuration signal on disconnect.
+	Fix issue with DNS proxy and memory leaks on request timeouts.
+	Fix issue with DNS proxy and handling partial TCP messages.
+	Fix issue with DNS proxy and handling of EDNS0 buffers.
+	Fix issue with DNS proxy and handling of IPv6 loopback.
+	Fix issue with DNS proxy listening on all interfaces.
+	Fix issue with CDMA network creation.
+
 ver 1.12:
 	Fix issue with overwriting gateway address.
 	Fix issue with missing IP address validation.
