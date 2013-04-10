@@ -3798,8 +3798,10 @@ static DBusMessage *connect_service(DBusConnection *conn,
 			err = __connman_service_disconnect(temp);
 			if (err < 0 && err != -EINPROGRESS)
 				return __connman_error_in_progress(msg);
-			else
+			else {
+				set_idle(temp);
 				break;
+			}
 		}
 
 		iter = g_sequence_iter_next(iter);
