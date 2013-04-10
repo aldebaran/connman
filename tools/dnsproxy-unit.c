@@ -50,7 +50,7 @@
 #define LOG(fmt, arg...)
 #endif
 
-unsigned char msg[] = {
+static unsigned char msg[] = {
 	0x00, 0x1c, /* len 28 */
 	0x31, 0x82, /* tran id */
 	0x01, 0x00, /* flags (recursion required) */
@@ -65,7 +65,7 @@ unsigned char msg[] = {
 	0x00, 0x01, /* class IN */
 };
 
-unsigned char msg2[] = {
+static unsigned char msg2[] = {
 	0x00, 0x1c, /* len 28 */
 	0x31, 0x83, /* tran id */
 	0x01, 0x00, /* flags (recursion required) */
@@ -93,7 +93,7 @@ unsigned char msg2[] = {
 	0x00, 0x01, /* class IN */
 };
 
-unsigned char msg_invalid[] = {
+static unsigned char msg_invalid[] = {
 	0x00, 0x1c, /* len 28 */
 	0x31, 0xC0, /* tran id */
 };
