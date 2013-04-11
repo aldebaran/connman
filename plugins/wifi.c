@@ -93,6 +93,7 @@ struct wifi_data {
 	GSList *networks;
 	GSupplicantInterface *interface;
 	GSupplicantState state;
+	connman_bool_t disabling;
 	connman_bool_t connected;
 	connman_bool_t disconnecting;
 	connman_bool_t tethering;
@@ -171,6 +172,7 @@ static int wifi_probe(struct connman_device *device)
 	if (wifi == NULL)
 		return -ENOMEM;
 
+	wifi->disabling = FALSE;
 	wifi->connected = FALSE;
 	wifi->disconnecting = FALSE;
 	wifi->tethering = FALSE;
@@ -527,7 +529,14 @@ static void scan_callback(int result, GSupplicantInterface *interface,
 	if (result != -ENOLINK)
 		start_autoscan(device);
 
-	connman_device_unref(device);
+	/*
+	 * If we are here then we were scanning; however, if we are also
+	 * mid-flight disabling the interface, then wifi_disable has
+	 * already unreferenced the device and we needn't do it here.
+	 */
+
+	if (wifi->disabling != TRUE)
+		connman_device_unref(device);
 }
 
 static void scan_callback_hidden(int result,
@@ -724,6 +733,27 @@ static void interface_create_callback(int result,
 	}
 }
 
+/*
+ * The sole function of this callback is to avoid a race between scan completion
+ * and wifi_disable that can otherwise cause a reference count underflow if the
+ * disabling state is not tracked and observed.
+ */
+static void interface_remove_callback(int result,
+					GSupplicantInterface *interface,
+							void *user_data)
+{
+	struct wifi_data *wifi = user_data;
+
+	DBG("result %d ifname %s, wifi %p", result,
+				g_supplicant_interface_get_ifname(interface),
+				wifi);
+
+	if (result < 0 || wifi == NULL)
+		return;
+
+	wifi->disabling = FALSE;
+}
+
 static int wifi_enable(struct connman_device *device)
 {
 	struct wifi_data *wifi = connman_device_get_data(device);
@@ -741,6 +771,8 @@ static int wifi_enable(struct connman_device *device)
 							wifi);
 	if (ret < 0)
 		return ret;
+
+	wifi->disabling = FALSE;
 
 	return -EINPROGRESS;
 }
@@ -771,9 +803,13 @@ static int wifi_disable(struct connman_device *device)
 
 	remove_networks(device, wifi);
 
-	ret = g_supplicant_interface_remove(wifi->interface, NULL, NULL);
+	ret = g_supplicant_interface_remove(wifi->interface,
+						interface_remove_callback,
+							wifi);
 	if (ret < 0)
 		return ret;
+
+	wifi->disabling = TRUE;
 
 	return -EINPROGRESS;
 }
