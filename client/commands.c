@@ -1277,3 +1277,25 @@ int __connmanctl_commands(DBusConnection *dbus_conn, char *argv[], int argc)
 	fprintf(stderr, "Error '%s': Unknown command\n", argv[0]);
 	return -EINVAL;
 }
+
+char *__connmanctl_lookup_command(const char *text, int state)
+{
+	static int i = 0;
+	static int len = 0;
+
+	if (state == 0) {
+		i = 0;
+		len = strlen(text);
+	}
+
+	while (cmd_table[i].cmd != NULL) {
+		const char *command = cmd_table[i].cmd;
+
+		i++;
+
+		if (strncmp(text, command, len) == 0)
+			return strdup(command);
+	}
+
+	return NULL;
+}

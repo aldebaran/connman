@@ -23,3 +23,4 @@
 #include <dbus/dbus.h>
 
 int __connmanctl_commands(DBusConnection *connection, char *argv[], int argc);
+char *__connmanctl_lookup_command(const char *text, int state);

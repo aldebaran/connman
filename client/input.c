@@ -122,6 +122,19 @@ static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
 	return TRUE;
 }
 
+static char **complete_command(const char *text, int start, int end)
+{
+	char **command = NULL;
+
+	rl_attempted_completion_over = 1;
+
+	if (start == 0)
+		command = rl_completion_matches(text,
+				__connmanctl_lookup_command);
+
+	return command;
+}
+
 int __connmanctl_input_init(int argc, char *argv[])
 {
 	char *help[] = {
@@ -153,6 +166,7 @@ int __connmanctl_input_init(int argc, char *argv[])
 		g_io_channel_unref(channel);
 
 		rl_callback_handler_install("connmanctl> ", rl_handler);
+		rl_attempted_completion_function = complete_command;
 		err = -EINPROGRESS;
 
 	} else {
