@@ -76,7 +76,7 @@ struct connman_session_config {
 	GSList *allowed_bearers;
 };
 
-typedef int (* connman_session_config_cb) (struct connman_session *session,
+typedef int (* connman_session_config_func_t) (struct connman_session *session,
 					struct connman_session_config *config,
 					void *user_data, int err);
 
@@ -84,7 +84,7 @@ struct connman_session_policy {
 	const char *name;
 	int priority;
 	int (*create)(struct connman_session *session,
-			connman_session_config_cb callback,
+			connman_session_config_func_t cb,
 			void *user_data);
 	void (*destroy)(struct connman_session *session);
 };

@@ -313,7 +313,7 @@ static void cleanup_user_config(struct user_config *user_config)
 }
 
 static int create_policy_config(struct connman_session *session,
-				connman_session_config_cb callback,
+				connman_session_config_func_t cb,
 				struct user_config *user_config)
 {
 	struct connman_session_config *config;
@@ -326,10 +326,10 @@ static int create_policy_config(struct connman_session *session,
 			return -ENOMEM;
 		}
 
-		return callback(session, config, user_config, 0);
+		return cb(session, config, user_config, 0);
 	}
 
-	return (*session->policy->create)(session, callback, user_config);
+	return (*session->policy->create)(session, cb, user_config);
 }
 
 static void probe_policy(struct connman_session_policy *policy)

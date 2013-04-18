@@ -163,7 +163,7 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 					int err)
 {
 	struct cb_data *cbd = user_data;
-	connman_session_config_cb cb = cbd->cb;
+	connman_session_config_func_t cb = cbd->cb;
 	struct create_data *data = cbd->data;
 	struct policy_data *policy;
 	struct connman_session_config *config = NULL;
@@ -204,10 +204,10 @@ done:
 }
 
 static int policy_local_create(struct connman_session *session,
-				connman_session_config_cb callback,
+				connman_session_config_func_t cb,
 				void *user_data)
 {
-	struct cb_data *cbd = cb_data_new(callback, user_data);
+	struct cb_data *cbd = cb_data_new(cb, user_data);
 	struct create_data *data;
 	const char *owner;
 	int err;
