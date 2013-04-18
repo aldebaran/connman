@@ -102,7 +102,7 @@ static void rl_handler(char *input)
 	args = g_strsplit(input, " ", 0);
 	num = g_strv_length(args);
 
-	err = commands(connection, args, num);
+	err = __connmanctl_commands(connection, args, num);
 
 	g_strfreev(args);
 
@@ -160,9 +160,10 @@ int __connmanctl_input_init(int argc, char *argv[])
 
 		if (strcmp(argv[1], "--help") == 0 ||
 				strcmp(argv[1], "-h") == 0)
-			err = commands(connection, help, 1);
+			err = __connmanctl_commands(connection, help, 1);
 		else
-			err = commands(connection, argv + 1, argc -1);
+			err = __connmanctl_commands(connection, argv + 1,
+					argc -1);
 	}
 
 	if (err == -EINPROGRESS) {

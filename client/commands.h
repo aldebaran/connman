@@ -22,4 +22,4 @@
 
 #include <dbus/dbus.h>
 
-int commands(DBusConnection *connection, char *argv[], int argc);
+int __connmanctl_commands(DBusConnection *connection, char *argv[], int argc);

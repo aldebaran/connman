@@ -1256,7 +1256,7 @@ static int cmd_help(char *args[], int num, struct option *options)
 	return 0;
 }
 
-int commands(DBusConnection *dbus_conn, char *argv[], int argc)
+int __connmanctl_commands(DBusConnection *dbus_conn, char *argv[], int argc)
 {
 	int i, result;
 
