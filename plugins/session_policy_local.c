@@ -51,8 +51,6 @@ static GHashTable *session_hash;
 
 struct create_data {
 	struct connman_session *session;
-	connman_session_config_cb callback;
-	void *user_data;
 };
 
 struct policy_data {
@@ -164,7 +162,9 @@ static void policy_unref(struct policy_data *policy)
 static void selinux_context_reply(const unsigned char *context, void *user_data,
 					int err)
 {
-	struct create_data *data = user_data;
+	struct cb_data *cbd = user_data;
+	connman_session_config_cb cb = cbd->cb;
+	struct create_data *data = cbd->data;
 	struct policy_data *policy;
 	struct connman_session_config *config = NULL;
 	char *ident = NULL;
@@ -196,8 +196,9 @@ static void selinux_context_reply(const unsigned char *context, void *user_data,
 	config = policy->config;
 
 done:
-	(*data->callback)(data->session, config, data->user_data, err);
+	(*cb)(data->session, config, cbd->user_data, err);
 
+	g_free(cbd);
 	g_free(data);
 	g_free(ident);
 }
@@ -206,6 +207,7 @@ static int policy_local_create(struct connman_session *session,
 				connman_session_config_cb callback,
 				void *user_data)
 {
+	struct cb_data *cbd = cb_data_new(callback, user_data);
 	struct create_data *data;
 	const char *owner;
 	int err;
@@ -215,19 +217,19 @@ static int policy_local_create(struct connman_session *session,
 	data = g_try_new0(struct create_data, 1);
 	if (data == NULL)
 		return -ENOMEM;
+	cbd->data = data;
 
 	data->session = session;
-	data->callback = callback;
-	data->user_data = user_data;
 
 	owner = connman_session_get_owner(session);
 
 	err = connman_dbus_get_selinux_context(connection, owner,
 					selinux_context_reply,
-					data);
+					cbd);
 	if (err < 0) {
 		connman_error("Could not get SELinux context");
 		g_free(data);
+		g_free(cbd);
 		return err;
 	}
 
