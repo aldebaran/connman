@@ -406,8 +406,8 @@ dbus_bool_t __connman_dbus_append_objpath_dict_array(DBusMessage *msg,
 	return TRUE;
 }
 
-struct selinux_data {
-	connman_dbus_get_context_cb_t func;
+struct callback_data {
+	void *cb;
 	void *user_data;
 };
 
@@ -448,7 +448,8 @@ static unsigned char *parse_context(DBusMessage *msg)
 
 static void selinux_get_context_reply(DBusPendingCall *call, void *user_data)
 {
-	struct selinux_data *data = user_data;
+	struct callback_data *data = user_data;
+	connman_dbus_get_context_cb_t cb = data->cb;
 	DBusMessage *reply;
 	unsigned char *context = NULL;
 	int err = 0;
@@ -470,7 +471,7 @@ static void selinux_get_context_reply(DBusPendingCall *call, void *user_data)
 	context = parse_context(reply);
 
 done:
-	(*data->func)(context, data->user_data, err);
+	(*cb)(context, data->user_data, err);
 
 	g_free(context);
 
@@ -484,7 +485,7 @@ int connman_dbus_get_selinux_context(DBusConnection *connection,
 				connman_dbus_get_context_cb_t func,
 				void *user_data)
 {
-	struct selinux_data *data;
+	struct callback_data *data;
 	DBusPendingCall *call;
 	DBusMessage *msg = NULL;
 	int err;
@@ -492,7 +493,7 @@ int connman_dbus_get_selinux_context(DBusConnection *connection,
 	if (func == NULL)
 		return -EINVAL;
 
-	data = g_try_new0(struct selinux_data, 1);
+	data = g_try_new0(struct callback_data, 1);
 	if (data == NULL) {
 		DBG("Can't allocate data structure");
 		return -ENOMEM;
@@ -523,7 +524,7 @@ int connman_dbus_get_selinux_context(DBusConnection *connection,
 		goto err;
 	}
 
-	data->func = func;
+	data->cb = func;
 	data->user_data = user_data;
 
 	dbus_pending_call_set_notify(call, selinux_get_context_reply,
