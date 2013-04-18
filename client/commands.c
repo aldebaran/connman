@@ -330,6 +330,176 @@ static int cmd_technologies(char *args[], int num, struct option *options)
 			technology_print, NULL,	DBUS_TYPE_INVALID);
 }
 
+struct tether_enable {
+	char *path;
+	dbus_bool_t enable;
+};
+
+static void tether_set_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	struct tether_enable *tether = user_data;
+	char *str;
+
+	str = strrchr(tether->path, '/');
+	if (str != NULL)
+		str++;
+	else
+		str = tether->path;
+
+	if (error == NULL) {
+		fprintf(stdout, "%s tethering for %s\n",
+				tether->enable == TRUE ? "Enabled": "Disabled",
+				str);
+	} else
+		fprintf(stderr, "Error %s %s tethering: %s\n",
+				tether->enable == TRUE ?
+				"enabling": "disabling", str, error);
+
+	g_free(tether->path);
+	g_free(user_data);
+}
+
+static int tether_set(char *technology, int set_tethering)
+{
+	struct tether_enable *tether = g_new(struct tether_enable, 1);
+
+	switch(set_tethering) {
+	case 1:
+		tether->enable = TRUE;
+		break;
+	case 0:
+		tether->enable = FALSE;
+		break;
+	default:
+		g_free(tether);
+		return 0;
+	}
+
+	tether->path = g_strdup_printf("/net/connman/technology/%s",
+			technology);
+
+	return __connmanctl_dbus_set_property(connection, tether->path,
+			"net.connman.Technology", tether_set_return,
+			tether, "Tethering", DBUS_TYPE_BOOLEAN,
+			&tether->enable);
+}
+
+struct tether_properties {
+	int ssid_result;
+	int passphrase_result;
+	int set_tethering;
+};
+
+static void tether_update(struct tether_properties *tether)
+{
+	printf("%d %d %d\n", tether->ssid_result, tether->passphrase_result,
+		tether->set_tethering);
+
+	if (tether->ssid_result == 0 && tether->passphrase_result == 0)
+		tether_set("wifi", tether->set_tethering);
+
+	if (tether->ssid_result != -EINPROGRESS &&
+			tether->passphrase_result != -EINPROGRESS)
+		g_free(tether);
+}
+
+static void tether_set_ssid_return(DBusMessageIter *iter, const char *error,
+		void *user_data)
+{
+	struct tether_properties *tether = user_data;
+
+	if (error == NULL) {
+		fprintf(stdout, "Wifi SSID set\n");
+		tether->ssid_result = 0;
+	} else {
+		fprintf(stderr, "Error setting wifi SSID: %s\n", error);
+		tether->ssid_result = -EINVAL;
+	}
+
+	tether_update(tether);
+}
+
+static void tether_set_passphrase_return(DBusMessageIter *iter,
+		const char *error, void *user_data)
+{
+	struct tether_properties *tether = user_data;
+
+	if (error == NULL) {
+		fprintf(stdout, "Wifi passphrase set\n");
+		tether->passphrase_result = 0;
+	} else {
+		fprintf(stderr, "Error setting wifi passphrase: %s\n", error);
+		tether->passphrase_result = -EINVAL;
+	}
+
+	tether_update(tether);
+}
+
+static int tether_set_ssid(char *ssid, char *passphrase, int set_tethering)
+{
+	struct tether_properties *tether = g_new(struct tether_properties, 1);
+
+	tether->set_tethering = set_tethering;
+
+	tether->ssid_result = __connmanctl_dbus_set_property(connection,
+			"/net/connman/technology/wifi",
+			"net.connman.Technology",
+			tether_set_ssid_return, tether,
+			"TetheringIdentifier", DBUS_TYPE_STRING, &ssid);
+
+	tether->passphrase_result =__connmanctl_dbus_set_property(connection,
+			"/net/connman/technology/wifi",
+			"net.connman.Technology",
+			tether_set_passphrase_return, tether,
+			"TetheringPassphrase", DBUS_TYPE_STRING, &passphrase);
+
+	if (tether->ssid_result != -EINPROGRESS &&
+			tether->passphrase_result != -EINPROGRESS) {
+		g_free(tether);
+		return -ENXIO;
+	}
+
+	return -EINPROGRESS;
+}
+
+static int cmd_tether(char *args[], int num, struct option *options)
+{
+	char *ssid, *passphrase;
+	int set_tethering;
+
+	if (num < 3)
+		return -EINVAL;
+
+	passphrase = args[num - 1];
+	ssid = args[num - 2];
+
+	set_tethering = parse_boolean(args[2]);
+
+	if (strcmp(args[1], "wifi") == 0) {
+
+		if (num > 5)
+			return -E2BIG;
+
+		if (num == 5 && set_tethering == -1)
+			return -EINVAL;
+
+		if (num == 4)
+			set_tethering = -1;
+
+		if (num > 3)
+			return tether_set_ssid(ssid, passphrase, set_tethering);
+	}
+
+	if (num > 3)
+		return -E2BIG;
+
+	if (set_tethering == -1)
+		return -EINVAL;
+
+	return tether_set(args[1], set_tethering);
+}
+
 static void scan_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
@@ -1020,6 +1190,11 @@ static const struct {
 	  cmd_disable, "Disables given technology or offline mode"},
 	{ "state",        NULL,           NULL,            NULL,
 	  cmd_state, "Shows if the system is online or offline" },
+	{ "tether", "<technology> on|off\n"
+	            "            wifi [on|off] <ssid> <passphrase> ",
+	                                  NULL,            NULL,
+	  cmd_tether,
+	  "Enable, disable tethering, set SSID and passphrase for wifi" },
 	{ "services",     "[<service>]",  service_options, &service_desc[0],
 	  cmd_services, "Display services" },
 	{ "technologies", NULL,           NULL,            NULL,
