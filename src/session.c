@@ -410,7 +410,7 @@ void connman_session_policy_unregister(struct connman_session_policy *policy)
 	remove_policy(policy);
 }
 
-int connman_session_set_default_config(struct connman_session_config *config)
+void connman_session_set_default_config(struct connman_session_config *config)
 {
 	config->priority = FALSE;
 	config->roaming_policy = CONNMAN_SESSION_ROAMING_POLICY_DEFAULT;
@@ -420,24 +420,14 @@ int connman_session_set_default_config(struct connman_session_config *config)
 	g_slist_free(config->allowed_bearers);
 	config->allowed_bearers = g_slist_prepend(NULL,
 				GINT_TO_POINTER(CONNMAN_SERVICE_TYPE_UNKNOWN));
-	if (config->allowed_bearers == NULL)
-		return -ENOMEM;
-
-	return 0;
 }
 
 struct connman_session_config *connman_session_create_default_config(void)
 {
 	struct connman_session_config *config;
 
-	config = g_try_new0(struct connman_session_config, 1);
-	if (config == NULL)
-		return NULL;
-
-	if (connman_session_set_default_config(config) < 0) {
-		g_free(config);
-		return NULL;
-	}
+	config = g_new0(struct connman_session_config, 1);
+	connman_session_set_default_config(config);
 
 	return config;
 }

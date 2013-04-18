@@ -127,11 +127,6 @@ static struct policy_data *create_policy(const char *ident)
 		return NULL;
 
 	policy->config = connman_session_create_default_config();
-	if (policy->config == NULL) {
-		g_free(policy);
-		return NULL;
-	}
-
 	policy->refcount = 1;
 	policy->ident = g_strdup(ident);
 
@@ -369,7 +364,6 @@ static void update_session(struct connman_session *session)
 static void remove_policy(struct policy_data *policy)
 {
 	connman_bool_t update = FALSE;
-	int err;
 
 	if (policy->session != NULL)
 		update = TRUE;
@@ -379,12 +373,7 @@ static void remove_policy(struct policy_data *policy)
 	if (update == FALSE)
 		return;
 
-	err = connman_session_set_default_config(policy->config);
-	if (err < 0) {
-		connman_session_destroy(policy->session);
-		return;
-	}
-
+	connman_session_set_default_config(policy->config);
 	update_session(policy->session);
 }
 
