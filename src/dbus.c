@@ -411,6 +411,99 @@ struct callback_data {
 	void *user_data;
 };
 
+static void get_connection_unix_user_reply(DBusPendingCall *call,
+						void *user_data)
+{
+	struct callback_data *data = user_data;
+	connman_dbus_get_connection_unix_user_cb_t cb = data->cb;
+	DBusMessageIter iter;
+	DBusMessage *reply;
+	int err = 0;
+	unsigned int uid;
+
+	reply = dbus_pending_call_steal_reply(call);
+
+	if (dbus_message_get_type(reply) == DBUS_MESSAGE_TYPE_ERROR) {
+		DBG("Failed to retrieve UID");
+		err = -EIO;
+		goto done;
+	}
+
+	if (dbus_message_has_signature(reply, "u") == FALSE) {
+		DBG("Message signature is wrong");
+		err = -EINVAL;
+		goto done;
+	}
+
+	dbus_message_iter_init(reply, &iter);
+	dbus_message_iter_get_basic(&iter, &uid);
+
+done:
+	(*cb)(uid, data->user_data, err);
+
+	dbus_message_unref(reply);
+
+	dbus_pending_call_unref(call);
+}
+
+int connman_dbus_get_connection_unix_user(DBusConnection *connection,
+				const char *bus_name,
+				connman_dbus_get_connection_unix_user_cb_t func,
+				void *user_data)
+{
+	struct callback_data *data;
+	DBusPendingCall *call;
+	DBusMessage *msg = NULL;
+	int err;
+
+	data = g_try_new0(struct callback_data, 1);
+	if (data == NULL) {
+		DBG("Can't allocate data structure");
+		return -ENOMEM;
+	}
+
+	msg = dbus_message_new_method_call(DBUS_SERVICE_DBUS, DBUS_PATH_DBUS,
+					DBUS_INTERFACE_DBUS,
+					"GetConnectionUnixUser");
+	if (msg == NULL) {
+		DBG("Can't allocate new message");
+		err = -ENOMEM;
+		goto err;
+	}
+
+	dbus_message_append_args(msg, DBUS_TYPE_STRING, &bus_name,
+					DBUS_TYPE_INVALID);
+
+	if (dbus_connection_send_with_reply(connection, msg,
+						&call, -1) == FALSE) {
+		DBG("Failed to execute method call");
+		err = -EINVAL;
+		goto err;
+	}
+
+	if (call == NULL) {
+		DBG("D-Bus connection not available");
+		err = -EINVAL;
+		goto err;
+	}
+
+	data->cb = func;
+	data->user_data = user_data;
+
+	dbus_pending_call_set_notify(call, get_connection_unix_user_reply,
+							data, g_free);
+
+	dbus_message_unref(msg);
+
+	return 0;
+
+err:
+	dbus_message_unref(msg);
+	g_free(data);
+
+	return err;
+}
+
 static unsigned char *parse_context(DBusMessage *msg)
 {
 	DBusMessageIter iter, array;
