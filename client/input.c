@@ -88,26 +88,38 @@ void __connmanctl_redraw_rl(void)
 
 static void rl_handler(char *input)
 {
-	char **args;
-	int num, err;
+	char **args, **trim_args;
+	int num, len, err, i;
 
 	if (input == NULL) {
 		rl_newline(1, '\n');
 		g_main_loop_quit(main_loop);
 		return;
 	}
-	if (*input != '\0')
-		add_history(input);
 
 	args = g_strsplit(input, " ", 0);
 	num = g_strv_length(args);
 
-	err = __connmanctl_commands(connection, args, num);
+	trim_args = g_new0(char *, num);
+	for (i = 0, len = 0; i < num; i++) {
+		if (*args[i] != '\0') {
+			trim_args[len] = args[i];
+			len++;
+		}
+	}
+
+	if (len > 0) {
+
+		add_history(input);
+
+		err = __connmanctl_commands(connection, trim_args, len);
+
+		if (err > 0)
+			g_main_loop_quit(main_loop);
+	}
 
 	g_strfreev(args);
-
-	if (err > 0)
-		g_main_loop_quit(main_loop);
+	g_free(trim_args);
 }
 
 static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
