@@ -29,6 +29,7 @@
 #include <netdb.h>
 #include <gdbus.h>
 #include <ctype.h>
+#include <stdint.h>
 
 #include <connman/storage.h>
 #include <connman/setting.h>
@@ -72,7 +73,7 @@ struct connman_service {
 	enum connman_service_state state_ipv4;
 	enum connman_service_state state_ipv6;
 	enum connman_service_error error;
-	connman_uint8_t strength;
+	uint8_t strength;
 	connman_bool_t favorite;
 	connman_bool_t immutable;
 	connman_bool_t hidden;
@@ -6417,7 +6418,7 @@ static enum connman_service_security convert_wifi_security(const char *security)
 static void update_from_network(struct connman_service *service,
 					struct connman_network *network)
 {
-	connman_uint8_t strength = service->strength;
+	uint8_t strength = service->strength;
 	GSequenceIter *iter;
 	const char *str;
 
@@ -6578,7 +6579,7 @@ void __connman_service_update_from_network(struct connman_network *network)
 {
 	connman_bool_t need_sort = FALSE;
 	struct connman_service *service;
-	connman_uint8_t strength;
+	uint8_t strength;
 	connman_bool_t roaming;
 	GSequenceIter *iter;
 	const char *name;
