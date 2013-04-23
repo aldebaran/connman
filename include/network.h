@@ -23,6 +23,8 @@
 #ifndef __CONNMAN_NETWORK_H
 #define __CONNMAN_NETWORK_H
 
+#include <stdint.h>
+
 #include <connman/types.h>
 #include <connman/device.h>
 #include <connman/ipconfig.h>
@@ -118,8 +120,8 @@ int connman_network_set_domain(struct connman_network *network,
 int connman_network_set_name(struct connman_network *network,
 							const char *name);
 int connman_network_set_strength(struct connman_network *network,
-						connman_uint8_t strength);
-connman_uint8_t connman_network_get_strength(struct connman_network *network);
+						uint8_t strength);
+uint8_t connman_network_get_strength(struct connman_network *network);
 int connman_network_set_frequency(struct connman_network *network,
 					connman_uint16_t frequency);
 connman_uint16_t connman_network_get_frequency(struct connman_network *network);

@@ -50,7 +50,7 @@ struct connman_network {
 	connman_bool_t available;
 	connman_bool_t connected;
 	connman_bool_t roaming;
-	connman_uint8_t strength;
+	uint8_t strength;
 	connman_uint16_t frequency;
 	char *identifier;
 	char *name;
@@ -1769,7 +1769,7 @@ int connman_network_set_name(struct connman_network *network,
  */
 
 int connman_network_set_strength(struct connman_network *network,
-						connman_uint8_t strength)
+						uint8_t strength)
 {
 	DBG("network %p strengh %d", network, strength);
 
@@ -1778,7 +1778,7 @@ int connman_network_set_strength(struct connman_network *network,
 	return 0;
 }
 
-connman_uint8_t connman_network_get_strength(struct connman_network *network)
+uint8_t connman_network_get_strength(struct connman_network *network)
 {
 	return network->strength;
 }
