@@ -51,7 +51,7 @@ struct connman_network {
 	connman_bool_t connected;
 	connman_bool_t roaming;
 	uint8_t strength;
-	connman_uint16_t frequency;
+	uint16_t frequency;
 	char *identifier;
 	char *name;
 	char *node;
@@ -1784,7 +1784,7 @@ uint8_t connman_network_get_strength(struct connman_network *network)
 }
 
 int connman_network_set_frequency(struct connman_network *network,
-						connman_uint16_t frequency)
+						uint16_t frequency)
 {
 	DBG("network %p frequency %d", network, frequency);
 
@@ -1793,13 +1793,13 @@ int connman_network_set_frequency(struct connman_network *network,
 	return 0;
 }
 
-connman_uint16_t connman_network_get_frequency(struct connman_network *network)
+uint16_t connman_network_get_frequency(struct connman_network *network)
 {
 	return network->frequency;
 }
 
 int connman_network_set_wifi_channel(struct connman_network *network,
-						connman_uint16_t channel)
+						uint16_t channel)
 {
 	DBG("network %p wifi channel %d", network, channel);
 
@@ -1808,7 +1808,7 @@ int connman_network_set_wifi_channel(struct connman_network *network,
 	return 0;
 }
 
-connman_uint16_t connman_network_get_wifi_channel(struct connman_network *network)
+uint16_t connman_network_get_wifi_channel(struct connman_network *network)
 {
 	return network->wifi.channel;
 }
