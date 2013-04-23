@@ -83,8 +83,6 @@ Core
    Complexity: C1
 
    Go through variable types and use the following:
-   * uint8_t instead of connman_uint8_t, unsigned char
-   * uint16_t instead of connman_uint16_t, unsigned short
    * bool from <stdbool.h> instead of connman_bool_t and gboolean, in the
      latter case in those places it makes sense
 
