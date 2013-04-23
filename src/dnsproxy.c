@@ -3426,7 +3426,7 @@ int __connman_dnsproxy_add_listener(int index)
 		return -EINVAL;
 
 	if (listener_table == NULL)
-		return 0;
+		return -ENOENT;
 
 	if (g_hash_table_lookup(listener_table, GINT_TO_POINTER(index)) != NULL)
 		return 0;
