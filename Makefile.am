@@ -353,6 +353,8 @@ EXTRA_DIST += doc/overview-api.txt doc/behavior-api.txt \
 				doc/vpn-connection-api.txt \
 				doc/vpn-manager-api.txt doc/vpn-overview.txt
 
+EXTRA_DIST += src/main.conf
+
 MANUAL_PAGES += doc/connman.8 doc/connman.conf.5
 
 noinst_dist_man_MANS = $(MANUAL_PAGES)
