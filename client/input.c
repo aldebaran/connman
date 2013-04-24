@@ -56,9 +56,6 @@ bool __connmanctl_is_interactive(void)
 
 void __connmanctl_save_rl(void)
 {
-	if (interactive == false)
-		return;
-
 	save_input = !RL_ISSTATE(RL_STATE_DONE);
 
 	if (save_input) {
@@ -72,9 +69,6 @@ void __connmanctl_save_rl(void)
 
 void __connmanctl_redraw_rl(void)
 {
-	if (interactive == false)
-		return;
-
 	if (save_input) {
 		rl_restore_prompt();
 		rl_replace_line(saved_line, 0);
@@ -134,6 +128,13 @@ static gboolean input_handler(GIOChannel *channel, GIOCondition condition,
 	return TRUE;
 }
 
+static char **complete_agent(const char *text, int start, int end)
+{
+	rl_attempted_completion_over = 1;
+
+	return NULL;
+}
+
 static char **complete_command(const char *text, int start, int end)
 {
 	char **command = NULL;
@@ -147,6 +148,24 @@ static char **complete_command(const char *text, int start, int end)
 	return command;
 }
 
+void __connmanctl_agent_mode(const char *prompt,
+		connmanctl_input_func_t input_handler)
+{
+	if (input_handler != NULL)
+		rl_callback_handler_install(prompt, input_handler);
+	else {
+		rl_set_prompt(prompt);
+		rl_callback_handler_remove();
+	}
+	rl_attempted_completion_function = complete_agent;
+}
+
+void __connmanctl_command_mode(void)
+{
+	rl_callback_handler_install("connmanctl> ", rl_handler);
+	rl_attempted_completion_function = complete_command;
+}
+
 int __connmanctl_input_init(int argc, char *argv[])
 {
 	char *help[] = {
@@ -156,6 +175,7 @@ int __connmanctl_input_init(int argc, char *argv[])
 	guint source = 0;
 	int err;
 	DBusError dbus_err;
+	GIOChannel *channel;
 
 	dbus_error_init(&dbus_err);
 	connection = g_dbus_setup_bus(DBUS_BUS_SYSTEM, NULL, &dbus_err);
@@ -166,19 +186,15 @@ int __connmanctl_input_init(int argc, char *argv[])
 		return 1;
 	}
 
-	if (argc < 2) {
-		GIOChannel *channel;
+	channel = g_io_channel_unix_new(fileno(stdin));
+	source = g_io_add_watch(channel, G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
+			input_handler, NULL);
+	g_io_channel_unref(channel);
 
+	if (argc < 2) {
 		interactive = true;
 
-		channel = g_io_channel_unix_new(fileno(stdin));
-		source = g_io_add_watch(channel,
-				G_IO_IN|G_IO_ERR|G_IO_HUP|G_IO_NVAL,
-				input_handler, NULL);
-		g_io_channel_unref(channel);
-
-		rl_callback_handler_install("connmanctl> ", rl_handler);
-		rl_attempted_completion_function = complete_command;
+		__connmanctl_command_mode();
 		err = -EINPROGRESS;
 
 	} else {
@@ -196,11 +212,10 @@ int __connmanctl_input_init(int argc, char *argv[])
 		main_loop = g_main_loop_new(NULL, FALSE);
 		g_main_loop_run(main_loop);
 
-		if (source > 0)
-			g_source_remove(source);
-
 		err = 0;
 	}
+
+	g_source_remove(source);
 
 	if (interactive == true) {
 		rl_callback_handler_remove();
