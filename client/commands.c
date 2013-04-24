@@ -37,6 +37,7 @@
 #include "input.h"
 #include "services.h"
 #include "commands.h"
+#include "agent.h"
 
 static DBusConnection *connection;
 
@@ -1151,6 +1152,33 @@ static int cmd_monitor(char *args[], int num, struct connman_option *options)
 	return 0;
 }
 
+static int cmd_agent(char *args[], int num, struct connman_option *options)
+{
+	if (num > 2)
+		return -E2BIG;
+
+	if (num < 2)
+		return -EINVAL;
+
+	switch(parse_boolean(args[1])) {
+	case 0:
+		__connmanctl_agent_unregister(connection);
+		break;
+
+	case 1:
+		if (__connmanctl_agent_register(connection) == -EINPROGRESS)
+			return -EINPROGRESS;
+
+		break;
+
+	default:
+		return -EINVAL;
+		break;
+	}
+
+	return 0;
+}
+
 static int cmd_exit(char *args[], int num, struct connman_option *options)
 {
 	return 1;
@@ -1213,6 +1241,8 @@ static const struct {
 	  "Set service configuration options" },
 	{ "monitor",      "[off]",        monitor_options, cmd_monitor,
 	  "Monitor signals from interfaces" },
+	{ "agent", "on|off",              NULL,            cmd_agent,
+	  "Agent mode" },
 	{ "help",         NULL,           NULL,            cmd_help,
 	  "Show help" },
 	{ "exit",         NULL,           NULL,            cmd_exit,
