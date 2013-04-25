@@ -647,6 +647,36 @@ int __connman_device_disconnect(struct connman_device *device)
 	return 0;
 }
 
+int connman_device_disconnect_service(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	device->reconnect = FALSE;
+
+	if (device->network) {
+		struct connman_service *service =
+			connman_service_lookup_from_network(device->network);
+
+		if (service != NULL)
+			__connman_service_disconnect(service);
+		else
+			connman_network_set_connected(device->network, FALSE);
+	}
+
+	return 0;
+}
+
+int connman_device_reconnect_service(struct connman_device *device)
+{
+	DBG("device %p", device);
+
+	device->reconnect = TRUE;
+
+	__connman_service_auto_connect();
+
+	return 0;
+}
+
 static void mark_network_available(gpointer key, gpointer value,
 							gpointer user_data)
 {
@@ -1030,6 +1060,19 @@ struct connman_device *__connman_device_find_device(
 			continue;
 
 		return device;
+	}
+
+	return NULL;
+}
+
+struct connman_device *connman_device_find_by_index(int index)
+{
+	GSList *list;
+
+	for (list = device_list; list != NULL; list = list->next) {
+		struct connman_device *device = list->data;
+		if (device->index == index)
+			return device;
 	}
 
 	return NULL;
