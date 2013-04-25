@@ -32,10 +32,12 @@
 
 #include <gdbus.h>
 
+#include "input.h"
 #include "dbus_helpers.h"
 #include "agent.h"
 
 static bool agent_registered = false;
+static DBusMessage *agent_message = NULL;
 
 #define AGENT_INTERFACE      "net.connman.Agent"
 
@@ -49,7 +51,55 @@ static char *agent_path(void)
 	return path;
 }
 
+static void pending_message_remove()
+{
+	if (agent_message != NULL) {
+		dbus_message_unref(agent_message);
+		agent_message = NULL;
+	}
+}
+
+static void pending_command_complete(char *message)
+{
+	__connmanctl_save_rl();
+
+	fprintf(stdout, message);
+
+	__connmanctl_redraw_rl();
+
+	if (__connmanctl_is_interactive() == true)
+		__connmanctl_command_mode();
+	else
+		__connmanctl_agent_mode("", NULL);
+}
+
+static DBusMessage *agent_release(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	g_dbus_unregister_interface(connection, agent_path(), AGENT_INTERFACE);
+	agent_registered = false;
+
+	pending_message_remove();
+	pending_command_complete("Agent unregistered by ConnMan\n");
+
+	if (__connmanctl_is_interactive() == false)
+		__connmanctl_quit();
+
+	return dbus_message_new_method_return(message);
+}
+
+static DBusMessage *agent_cancel(DBusConnection *connection,
+		DBusMessage *message, void *user_data)
+{
+	pending_message_remove();
+	pending_command_complete("Agent request cancelled by ConnMan\n");
+
+	return dbus_message_new_method_return(message);
+}
+
 static const GDBusMethodTable agent_methods[] = {
+	{ GDBUS_METHOD("Release", NULL, NULL, agent_release) },
+	{ GDBUS_METHOD("Cancel", NULL, NULL, agent_cancel) },
 	{ },
 };
 
