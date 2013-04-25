@@ -107,7 +107,7 @@ static int parse_args(char *arg, struct connman_option *options)
 	return '?';
 }
 
-static void enable_return(DBusMessageIter *iter, const char *error,
+static int enable_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *tech = user_data;
@@ -125,6 +125,8 @@ static void enable_return(DBusMessageIter *iter, const char *error,
 		fprintf(stderr, "Error %s: %s\n", str, error);
 
 	g_free(user_data);
+
+	return 0;
 }
 
 static int cmd_enable(char *args[], int num, struct connman_option *options)
@@ -151,7 +153,7 @@ static int cmd_enable(char *args[], int num, struct connman_option *options)
 				"Powered", DBUS_TYPE_BOOLEAN, &b);
 }
 
-static void disable_return(DBusMessageIter *iter, const char *error,
+static int disable_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *tech = user_data;
@@ -169,6 +171,8 @@ static void disable_return(DBusMessageIter *iter, const char *error,
 		fprintf(stderr, "Error %s: %s\n", str, error);
 
 	g_free(user_data);
+
+	return 0;
 }
 
 static int cmd_disable(char *args[], int num, struct connman_option *options)
@@ -195,19 +199,21 @@ static int cmd_disable(char *args[], int num, struct connman_option *options)
 				"Powered", DBUS_TYPE_BOOLEAN, &b);
 }
 
-static void state_print(DBusMessageIter *iter, const char *error,
+static int state_print(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	DBusMessageIter entry;
 
 	if (error != NULL) {
 		fprintf(stderr, "Error: %s", error);
-		return;
+		return 0;
 	}
 
 	dbus_message_iter_recurse(iter, &entry);
 	__connmanctl_dbus_print(&entry, "  ", " = ", "\n");
 	fprintf(stdout, "\n");
+
+	return 0;
 }
 
 static int cmd_state(char *args[], int num, struct connman_option *options)
@@ -220,7 +226,7 @@ static int cmd_state(char *args[], int num, struct connman_option *options)
 			state_print, NULL, DBUS_TYPE_INVALID);
 }
 
-static void services_list(DBusMessageIter *iter, const char *error,
+static int services_list(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	if (error == NULL) {
@@ -229,9 +235,11 @@ static void services_list(DBusMessageIter *iter, const char *error,
 	} else {
 		fprintf(stderr, "Error: %s\n", error);
 	}
+
+	return 0;
 }
 
-static void services_properties(DBusMessageIter *iter, const char *error,
+static int services_properties(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *path = user_data;
@@ -257,6 +265,8 @@ static void services_properties(DBusMessageIter *iter, const char *error,
 	}
 
 	g_free(user_data);
+
+	return 0;
 }
 
 static int cmd_services(char *args[], int num, struct connman_option *options)
@@ -296,14 +306,14 @@ static int cmd_services(char *args[], int num, struct connman_option *options)
 			services_properties, path, DBUS_TYPE_INVALID);
 }
 
-static void technology_print(DBusMessageIter *iter, const char *error,
+static int technology_print(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	DBusMessageIter array;
 
 	if (error != NULL) {
 		fprintf(stderr, "Error: %s\n", error);
-		return;
+		return 0;
 	}
 
 	dbus_message_iter_recurse(iter, &array);
@@ -323,6 +333,8 @@ static void technology_print(DBusMessageIter *iter, const char *error,
 
 		dbus_message_iter_next(&array);
 	}
+
+	return 0;
 }
 
 static int cmd_technologies(char *args[], int num,
@@ -341,7 +353,7 @@ struct tether_enable {
 	dbus_bool_t enable;
 };
 
-static void tether_set_return(DBusMessageIter *iter, const char *error,
+static int tether_set_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	struct tether_enable *tether = user_data;
@@ -364,6 +376,8 @@ static void tether_set_return(DBusMessageIter *iter, const char *error,
 
 	g_free(tether->path);
 	g_free(user_data);
+
+	return 0;
 }
 
 static int tether_set(char *technology, int set_tethering)
@@ -397,20 +411,24 @@ struct tether_properties {
 	int set_tethering;
 };
 
-static void tether_update(struct tether_properties *tether)
+static int tether_update(struct tether_properties *tether)
 {
 	printf("%d %d %d\n", tether->ssid_result, tether->passphrase_result,
 		tether->set_tethering);
 
 	if (tether->ssid_result == 0 && tether->passphrase_result == 0)
-		tether_set("wifi", tether->set_tethering);
+		return tether_set("wifi", tether->set_tethering);
 
 	if (tether->ssid_result != -EINPROGRESS &&
-			tether->passphrase_result != -EINPROGRESS)
+			tether->passphrase_result != -EINPROGRESS) {
 		g_free(tether);
+		return 0;
+	}
+
+	return -EINPROGRESS;
 }
 
-static void tether_set_ssid_return(DBusMessageIter *iter, const char *error,
+static int tether_set_ssid_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	struct tether_properties *tether = user_data;
@@ -423,10 +441,10 @@ static void tether_set_ssid_return(DBusMessageIter *iter, const char *error,
 		tether->ssid_result = -EINVAL;
 	}
 
-	tether_update(tether);
+	return tether_update(tether);
 }
 
-static void tether_set_passphrase_return(DBusMessageIter *iter,
+static int tether_set_passphrase_return(DBusMessageIter *iter,
 		const char *error, void *user_data)
 {
 	struct tether_properties *tether = user_data;
@@ -439,7 +457,7 @@ static void tether_set_passphrase_return(DBusMessageIter *iter,
 		tether->passphrase_result = -EINVAL;
 	}
 
-	tether_update(tether);
+	return tether_update(tether);
 }
 
 static int tether_set_ssid(char *ssid, char *passphrase, int set_tethering)
@@ -506,7 +524,7 @@ static int cmd_tether(char *args[], int num, struct connman_option *options)
 	return tether_set(args[1], set_tethering);
 }
 
-static void scan_return(DBusMessageIter *iter, const char *error,
+static int scan_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *path = user_data;
@@ -519,6 +537,8 @@ static void scan_return(DBusMessageIter *iter, const char *error,
 		fprintf(stderr, "Error %s: %s", path, error);
 
 	g_free(user_data);
+
+	return 0;
 }
 
 static int cmd_scan(char *args[], int num, struct connman_option *options)
@@ -537,7 +557,7 @@ static int cmd_scan(char *args[], int num, struct connman_option *options)
 			scan_return, path, DBUS_TYPE_INVALID);
 }
 
-static void connect_return(DBusMessageIter *iter, const char *error,
+static int connect_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *path = user_data;
@@ -550,6 +570,8 @@ static void connect_return(DBusMessageIter *iter, const char *error,
 		fprintf(stderr, "Error %s: %s\n", path, error);
 
 	g_free(user_data);
+
+	return 0;
 }
 
 static int cmd_connect(char *args[], int num, struct connman_option *options)
@@ -568,7 +590,7 @@ static int cmd_connect(char *args[], int num, struct connman_option *options)
 			connect_return, path, DBUS_TYPE_INVALID);
 }
 
-static void disconnect_return(DBusMessageIter *iter, const char *error,
+static int disconnect_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *path = user_data;
@@ -581,6 +603,8 @@ static void disconnect_return(DBusMessageIter *iter, const char *error,
 		fprintf(stderr, "Error %s: %s\n", path, error);
 
 	g_free(user_data);
+
+	return 0;
 }
 
 static int cmd_disconnect(char *args[], int num, struct connman_option *options)
@@ -597,11 +621,9 @@ static int cmd_disconnect(char *args[], int num, struct connman_option *options)
 	return __connmanctl_dbus_method_call(connection, path,
 			"net.connman.Service", "Disconnect",
 			disconnect_return, path, DBUS_TYPE_INVALID);
-
-	return 0;
 }
 
-static void config_return(DBusMessageIter *iter, const char *error,
+static int config_return(DBusMessageIter *iter, const char *error,
 		void *user_data)
 {
 	char *service_name = user_data;
@@ -610,6 +632,8 @@ static void config_return(DBusMessageIter *iter, const char *error,
 		fprintf(stderr, "Error %s: %s\n", service_name, error);
 
 	g_free(user_data);
+
+	return 0;
 }
 
 struct config_append {

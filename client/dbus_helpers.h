@@ -32,7 +32,7 @@ extern "C" {
 void __connmanctl_dbus_print(DBusMessageIter *iter, const char *pre,
 		const char *dict, const char *sep);
 
-typedef void (*connmanctl_dbus_method_return_func_t)(DBusMessageIter *iter,
+typedef int (*connmanctl_dbus_method_return_func_t)(DBusMessageIter *iter,
 		const char *error, void *user_data);
 int __connmanctl_dbus_method_call(DBusConnection *connection, const char *path,
 		const char *interface, const char *method,

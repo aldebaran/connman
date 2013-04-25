@@ -127,6 +127,7 @@ struct dbus_callback {
 static void dbus_method_reply(DBusPendingCall *call, void *user_data)
 {
 	struct dbus_callback *callback = user_data;
+	int res = 0;
 	DBusMessage *reply;
 	DBusMessageIter iter;
 
@@ -146,11 +147,11 @@ static void dbus_method_reply(DBusPendingCall *call, void *user_data)
 	}
 
 	dbus_message_iter_init(reply, &iter);
-	callback->cb(&iter, NULL, callback->user_data);
+	res = callback->cb(&iter, NULL, callback->user_data);
 
 end:
 	__connmanctl_redraw_rl();
-	if (__connmanctl_is_interactive() == false)
+	if (__connmanctl_is_interactive() == false && res != -EINPROGRESS)
 		__connmanctl_quit();
 
 	g_free(callback);
