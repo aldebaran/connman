@@ -99,6 +99,30 @@ static void rfkill_check(gpointer key, gpointer value, gpointer user_data)
 				rfkill->softblock, rfkill->hardblock);
 }
 
+connman_bool_t
+connman_technology_is_tethering_allowed(enum connman_service_type type)
+{
+	static char *allowed_default[] = { "wifi", "bluetooth", "gadget",
+					   NULL };
+	const char *type_str = __connman_service_type2string(type);
+	char **allowed;
+	int i;
+
+	if (type_str == NULL)
+		return FALSE;
+
+	allowed = connman_setting_get_string_list("AllowedTetheringTechnologies");
+	if (allowed == NULL)
+		allowed = allowed_default;
+
+	for (i = 0; allowed[i] != NULL; i++) {
+		if (g_strcmp0(allowed[i], type_str) == 0)
+			return TRUE;
+	}
+
+	return FALSE;
+}
+
 /**
  * connman_technology_driver_register:
  * @driver: Technology driver definition
@@ -786,6 +810,13 @@ static DBusMessage *set_property(DBusConnection *conn,
 
 		if (type != DBUS_TYPE_BOOLEAN)
 			return __connman_error_invalid_arguments(msg);
+
+		if (connman_technology_is_tethering_allowed(technology->type)
+								== FALSE) {
+			DBG("%s tethering not allowed by config file",
+				__connman_service_type2string(technology->type));
+			return __connman_error_not_supported(msg);
+		}
 
 		dbus_message_iter_get_basic(&value, &tethering);
 
