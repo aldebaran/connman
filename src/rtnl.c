@@ -460,10 +460,8 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 
 		if (type == ARPHRD_ETHER)
 			read_uevent(interface);
-
-		__connman_technology_add_interface(interface->service_type,
-			interface->index, interface->name, interface->ident);
-	}
+	} else
+		interface = NULL;
 
 	for (list = rtnl_list; list; list = list->next) {
 		struct connman_rtnl *rtnl = list->data;
@@ -471,6 +469,16 @@ static void process_newlink(unsigned short type, int index, unsigned flags,
 		if (rtnl->newlink)
 			rtnl->newlink(type, index, flags, change);
 	}
+
+	/*
+	 * The interface needs to be added after the newlink call.
+	 * The newlink will create the technology when needed and
+	 * __connman_technology_add_interface() expects the
+	 * technology to be there already.
+	 */
+	if (interface != NULL)
+		__connman_technology_add_interface(interface->service_type,
+			interface->index, interface->name, interface->ident);
 
 	for (list = watch_list; list; list = list->next) {
 		struct watch_data *watch = list->data;
