@@ -71,6 +71,7 @@ static struct {
 	connman_bool_t allow_hostname_updates;
 	connman_bool_t single_tech;
 	char **allowed_tethering_technologies;
+	connman_bool_t persistent_tethering_mode;
 } connman_settings  = {
 	.bg_scan = TRUE,
 	.pref_timeservers = NULL,
@@ -83,6 +84,7 @@ static struct {
 	.allow_hostname_updates = TRUE,
 	.single_tech = FALSE,
 	.allowed_tethering_technologies = NULL,
+	.persistent_tethering_mode = FALSE,
 };
 
 #define CONF_BG_SCAN                    "BackgroundScanning"
@@ -96,6 +98,7 @@ static struct {
 #define CONF_ALLOW_HOSTNAME_UPDATES     "AllowHostnameUpdates"
 #define CONF_SINGLE_TECH                "SingleConnectedTechnology"
 #define CONF_ALLOWED_TETHERING_TECHNOLOGIES   "AllowedTetheringTechnologies"
+#define CONF_PERSISTENT_TETHERING_MODE  "PersistentTetheringMode"
 
 static const char *supported_options[] = {
 	CONF_BG_SCAN,
@@ -109,6 +112,7 @@ static const char *supported_options[] = {
 	CONF_ALLOW_HOSTNAME_UPDATES,
 	CONF_SINGLE_TECH,
 	CONF_ALLOWED_TETHERING_TECHNOLOGIES,
+	CONF_PERSISTENT_TETHERING_MODE,
 	NULL
 };
 
@@ -340,6 +344,14 @@ static void parse_config(GKeyFile *config)
 		connman_settings.allowed_tethering_technologies = tethering;
 
 	g_clear_error(&error);
+
+	boolean = g_key_file_get_boolean(config, "General",
+					CONF_PERSISTENT_TETHERING_MODE,
+					&error);
+	if (error == NULL)
+		connman_settings.persistent_tethering_mode = boolean;
+
+	g_clear_error(&error);
 }
 
 static int config_init(const char *file)
@@ -510,6 +522,9 @@ connman_bool_t connman_setting_get_bool(const char *key)
 
 	if (g_str_equal(key, CONF_SINGLE_TECH) == TRUE)
 		return connman_settings.single_tech;
+
+	if (g_str_equal(key, CONF_PERSISTENT_TETHERING_MODE) == TRUE)
+		return connman_settings.persistent_tethering_mode;
 
 	return FALSE;
 }
