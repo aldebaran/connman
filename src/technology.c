@@ -60,6 +60,10 @@ struct connman_technology {
 	connman_bool_t connected;
 
 	connman_bool_t tethering;
+	connman_bool_t tethering_persistent; /* Tells the save status, needed
+					      * as offline mode might set
+					      * tethering OFF.
+					      */
 	char *tethering_ident;
 	char *tethering_passphrase;
 
@@ -204,6 +208,69 @@ void connman_technology_driver_unregister(struct connman_technology_driver *driv
 	driver_list = g_slist_remove(driver_list, driver);
 }
 
+static const char *get_name(enum connman_service_type type)
+{
+	switch (type) {
+	case CONNMAN_SERVICE_TYPE_UNKNOWN:
+	case CONNMAN_SERVICE_TYPE_SYSTEM:
+	case CONNMAN_SERVICE_TYPE_GPS:
+	case CONNMAN_SERVICE_TYPE_VPN:
+	case CONNMAN_SERVICE_TYPE_GADGET:
+		break;
+	case CONNMAN_SERVICE_TYPE_ETHERNET:
+		return "Wired";
+	case CONNMAN_SERVICE_TYPE_WIFI:
+		return "WiFi";
+	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
+		return "Bluetooth";
+	case CONNMAN_SERVICE_TYPE_CELLULAR:
+		return "Cellular";
+	}
+
+	return NULL;
+}
+
+static void technology_save(struct connman_technology *technology)
+{
+	GKeyFile *keyfile;
+	gchar *identifier;
+
+	DBG("technology %p", technology);
+
+	keyfile = __connman_storage_load_global();
+	if (keyfile == NULL)
+		keyfile = g_key_file_new();
+
+	identifier = g_strdup_printf("%s", get_name(technology->type));
+	if (identifier == NULL)
+		goto done;
+
+	g_key_file_set_boolean(keyfile, identifier, "Enable",
+				technology->enable_persistent);
+
+	g_key_file_set_boolean(keyfile, identifier, "Tethering",
+				technology->tethering_persistent);
+
+	if (technology->tethering_ident != NULL)
+		g_key_file_set_string(keyfile, identifier,
+					"Tethering.Identifier",
+					technology->tethering_ident);
+
+	if (technology->tethering_passphrase != NULL)
+		g_key_file_set_string(keyfile, identifier,
+					"Tethering.Passphrase",
+					technology->tethering_passphrase);
+
+done:
+	g_free(identifier);
+
+	__connman_storage_save_global(keyfile);
+
+	g_key_file_free(keyfile);
+
+	return;
+}
+
 static void tethering_changed(struct connman_technology *technology)
 {
 	connman_bool_t tethering = technology->tethering;
@@ -211,6 +278,8 @@ static void tethering_changed(struct connman_technology *technology)
 	connman_dbus_property_changed_basic(technology->path,
 				CONNMAN_TECHNOLOGY_INTERFACE, "Tethering",
 						DBUS_TYPE_BOOLEAN, &tethering);
+
+	technology_save(technology);
 }
 
 void connman_technology_tethering_notify(struct connman_technology *technology,
@@ -385,72 +454,12 @@ static void free_rfkill(gpointer data)
 	g_free(rfkill);
 }
 
-static const char *get_name(enum connman_service_type type)
-{
-	switch (type) {
-	case CONNMAN_SERVICE_TYPE_UNKNOWN:
-	case CONNMAN_SERVICE_TYPE_SYSTEM:
-	case CONNMAN_SERVICE_TYPE_GPS:
-	case CONNMAN_SERVICE_TYPE_VPN:
-	case CONNMAN_SERVICE_TYPE_GADGET:
-		break;
-	case CONNMAN_SERVICE_TYPE_ETHERNET:
-		return "Wired";
-	case CONNMAN_SERVICE_TYPE_WIFI:
-		return "WiFi";
-	case CONNMAN_SERVICE_TYPE_BLUETOOTH:
-		return "Bluetooth";
-	case CONNMAN_SERVICE_TYPE_CELLULAR:
-		return "Cellular";
-	}
-
-	return NULL;
-}
-
-static void technology_save(struct connman_technology *technology)
-{
-	GKeyFile *keyfile;
-	gchar *identifier;
-
-	DBG("technology %p", technology);
-
-	keyfile = __connman_storage_load_global();
-	if (keyfile == NULL)
-		keyfile = g_key_file_new();
-
-	identifier = g_strdup_printf("%s", get_name(technology->type));
-	if (identifier == NULL)
-		goto done;
-
-	g_key_file_set_boolean(keyfile, identifier, "Enable",
-				technology->enable_persistent);
-
-	if (technology->tethering_ident != NULL)
-		g_key_file_set_string(keyfile, identifier,
-					"Tethering.Identifier",
-					technology->tethering_ident);
-
-	if (technology->tethering_passphrase != NULL)
-		g_key_file_set_string(keyfile, identifier,
-					"Tethering.Passphrase",
-					technology->tethering_passphrase);
-
-done:
-	g_free(identifier);
-
-	__connman_storage_save_global(keyfile);
-
-	g_key_file_free(keyfile);
-
-	return;
-}
-
 static void technology_load(struct connman_technology *technology)
 {
 	GKeyFile *keyfile;
 	gchar *identifier;
 	GError *error = NULL;
-	connman_bool_t enable;
+	connman_bool_t enable, need_saving = FALSE;
 
 	DBG("technology %p", technology);
 
@@ -478,9 +487,21 @@ static void technology_load(struct connman_technology *technology)
 		else
 			technology->enable_persistent = FALSE;
 
-		technology_save(technology);
+		need_saving = TRUE;
 		g_clear_error(&error);
 	}
+
+	enable = g_key_file_get_boolean(keyfile, identifier,
+					"Tethering", &error);
+	if (error == NULL)
+		technology->tethering_persistent = enable;
+	else {
+		need_saving = TRUE;
+		g_clear_error(&error);
+	}
+
+	if (need_saving == TRUE)
+		technology_save(technology);
 
 	technology->tethering_ident = g_key_file_get_string(keyfile,
 				identifier, "Tethering.Identifier", NULL);
@@ -702,6 +723,10 @@ static int technology_enable(struct connman_technology *technology)
 	if (technology->pending_reply != NULL)
 		return -EBUSY;
 
+	if (connman_setting_get_bool("PersistentTetheringMode")	== TRUE &&
+					technology->tethering == TRUE)
+		set_tethering(technology, TRUE);
+
 	if (technology->rfkill_driven == TRUE)
 		err = __connman_rfkill_block(technology->type, FALSE);
 
@@ -830,6 +855,10 @@ static DBusMessage *set_property(DBusConnection *conn,
 		err = set_tethering(technology, tethering);
 		if (err < 0)
 			return __connman_error_failed(msg, -err);
+
+		technology->tethering_persistent = tethering;
+
+		technology_save(technology);
 
 	} else if (g_str_equal(name, "TetheringIdentifier") == TRUE) {
 		const char *str;
@@ -1169,6 +1198,20 @@ static void technology_put(struct connman_technology *technology)
 	g_free(technology);
 }
 
+static void enable_tethering(struct connman_technology *technology)
+{
+	int ret;
+
+	if (connman_setting_get_bool("PersistentTetheringMode") == FALSE)
+		return;
+
+	ret = set_tethering(technology, TRUE);
+	if (ret < 0 && ret != -EALREADY)
+		DBG("Cannot enable tethering yet for %s (%d/%s)",
+			get_name(technology->type),
+			-ret, strerror(-ret));
+}
+
 void __connman_technology_add_interface(enum connman_service_type type,
 				int index, const char *name, const char *ident)
 {
@@ -1205,6 +1248,13 @@ void __connman_technology_add_interface(enum connman_service_type type,
 		if(driver->add_interface != NULL)
 			driver->add_interface(technology, index, name, ident);
 	}
+
+	/*
+	 * At this point we can try to enable tethering automatically as
+	 * now the interfaces are set properly.
+	 */
+	if (technology->tethering_persistent == TRUE)
+		enable_tethering(technology);
 }
 
 void __connman_technology_remove_interface(enum connman_service_type type,
@@ -1250,9 +1300,9 @@ int __connman_technology_add_device(struct connman_device *device)
 	struct connman_technology *technology;
 	enum connman_service_type type;
 
-	DBG("device %p", device);
-
 	type = __connman_device_get_service_type(device);
+
+	DBG("device %p type %s", device, get_name(type));
 
 	technology = technology_get(type);
 	if (technology == NULL) {
@@ -1351,6 +1401,9 @@ static int technology_enabled(struct connman_technology *technology)
 
 	technology->enabled = TRUE;
 
+	if (technology->tethering_persistent == TRUE)
+		enable_tethering(technology);
+
 	powered_changed(technology);
 
 	return 0;
@@ -1364,8 +1417,15 @@ int __connman_technology_enabled(enum connman_service_type type)
 	if (technology == NULL)
 		return -ENXIO;
 
-	if (technology->rfkill_driven == TRUE)
+	DBG("technology %p type %s rfkill %d enabled %d", technology,
+		get_name(type), technology->rfkill_driven,
+		technology->enabled);
+
+	if (technology->rfkill_driven == TRUE) {
+		if (technology->tethering_persistent == TRUE)
+			enable_tethering(technology);
 		return 0;
+	}
 
 	return technology_enabled(technology);
 }
