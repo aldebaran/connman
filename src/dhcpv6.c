@@ -271,6 +271,8 @@ static void info_req_cb(GDHCPClient *dhcp_client, gpointer user_data)
 		return;
 	}
 
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
 	option = g_dhcp_client_get_option(dhcp_client, G_DHCPV6_DNS_SERVERS);
 	entries = g_list_length(option);
 
@@ -570,6 +572,7 @@ static void rebind_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	g_dhcpv6_client_reset_rebind(dhcp_client);
 	g_dhcpv6_client_reset_renew(dhcp_client);
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
 	re_cb(dhcp_client, user_data);
 }
@@ -652,6 +655,8 @@ static gboolean timeout_rebind(gpointer user_data)
 
 	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_rebind, dhcp);
 
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
 	g_dhcp_client_start(dhcp->dhcp_client, NULL);
 
 	return FALSE;
@@ -675,6 +680,8 @@ static gboolean start_rebind(gpointer user_data)
 static void request_cb(GDHCPClient *dhcp_client, gpointer user_data)
 {
 	DBG("");
+
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
 	re_cb(dhcp_client, user_data);
 }
@@ -733,6 +740,8 @@ static gboolean timeout_request(gpointer user_data)
 	DBG("request RT timeout %d msec", dhcp->RT);
 	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_request, dhcp);
 
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
 	g_dhcp_client_start(dhcp->dhcp_client, NULL);
 
 	return FALSE;
@@ -743,6 +752,7 @@ static void renew_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	DBG("");
 
 	g_dhcpv6_client_reset_renew(dhcp_client);
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
 
 	re_cb(dhcp_client, user_data);
 }
@@ -794,6 +804,8 @@ static gboolean timeout_renew(gpointer user_data)
 	DBG("renew RT timeout %d msec", dhcp->RT);
 
 	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_renew, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
 
 	g_dhcp_client_start(dhcp->dhcp_client, NULL);
 
@@ -979,6 +991,8 @@ static gboolean timeout_info_req(gpointer user_data)
 
 	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_info_req, dhcp);
 
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
+
 	g_dhcp_client_start(dhcp->dhcp_client, NULL);
 
 	return FALSE;
@@ -1045,6 +1059,8 @@ static void advertise_cb(GDHCPClient *dhcp_client, gpointer user_data)
 
 	clear_timer(dhcp);
 
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
+
 	if (g_dhcpv6_client_get_status(dhcp_client) != 0) {
 		if (dhcp->callback != NULL)
 			dhcp->callback(dhcp->network, FALSE);
@@ -1070,6 +1086,8 @@ static void solicitation_cb(GDHCPClient *dhcp_client, gpointer user_data)
 	clear_timer(dhcp);
 
 	set_addresses(dhcp_client, dhcp);
+
+	g_dhcpv6_client_clear_retransmit(dhcp_client);
 }
 
 static gboolean timeout_solicitation(gpointer user_data)
@@ -1081,6 +1099,8 @@ static gboolean timeout_solicitation(gpointer user_data)
 	DBG("solicit RT timeout %d msec", dhcp->RT);
 
 	dhcp->timeout = g_timeout_add(dhcp->RT, timeout_solicitation, dhcp);
+
+	g_dhcpv6_client_set_retransmit(dhcp->dhcp_client);
 
 	g_dhcp_client_start(dhcp->dhcp_client, NULL);
 
