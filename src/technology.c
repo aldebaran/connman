@@ -1367,6 +1367,10 @@ int __connman_technology_remove_device(struct connman_device *device)
 
 	technology->device_list = g_slist_remove(technology->device_list,
 								device);
+
+	if (technology->tethering == TRUE)
+		set_tethering(technology, FALSE);
+
 	technology_put(technology);
 
 	return 0;
