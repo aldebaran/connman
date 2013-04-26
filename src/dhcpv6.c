@@ -535,6 +535,8 @@ static int set_addresses(GDHCPClient *dhcp_client,
 		DBG("new address %s/%d", address, prefix_len);
 	}
 
+	g_free(address);
+
 	return 0;
 }
 
