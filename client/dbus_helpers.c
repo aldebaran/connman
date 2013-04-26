@@ -277,7 +277,8 @@ int __connmanctl_dbus_set_property_dict(DBusConnection *connection,
 		const char *path, const char *interface,
 		connmanctl_dbus_method_return_func_t cb, void *user_data,
 		const char *property, int type,
-		connman_dbus_append_cb_t append_fn, void *append_user_data)
+		connmanctl_dbus_append_func_t append_fn,
+		void *append_user_data)
 {
 	DBusMessage *message;
 	DBusMessageIter iter, variant, dict;
@@ -314,7 +315,8 @@ int __connmanctl_dbus_set_property_dict(DBusConnection *connection,
 }
 
 static void append_variant_array(DBusMessageIter *iter, const char *property,
-		connman_dbus_append_cb_t append_fn, void *append_user_data)
+		connmanctl_dbus_append_func_t append_fn,
+		void *append_user_data)
 {
 	DBusMessageIter variant, array;
 
@@ -334,7 +336,7 @@ static void append_variant_array(DBusMessageIter *iter, const char *property,
 }
 
 void __connmanctl_dbus_append_dict_string_array(DBusMessageIter *iter,
-		const char *property, connman_dbus_append_cb_t append_fn,
+		const char *property, connmanctl_dbus_append_func_t append_fn,
 		void *append_user_data)
 {
 	DBusMessageIter dict_entry;
@@ -352,7 +354,8 @@ int __connmanctl_dbus_set_property_array(DBusConnection *connection,
 		const char *path, const char *interface,
 		connmanctl_dbus_method_return_func_t cb, void *user_data,
 		const char *property, int type,
-		connman_dbus_append_cb_t append_fn, void *append_user_data)
+		connmanctl_dbus_append_func_t append_fn,
+		void *append_user_data)
 {
 	DBusMessage *message;
 	DBusMessageIter iter;
