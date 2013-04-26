@@ -797,13 +797,14 @@ static int send_dhcpv6_msg(GDHCPClient *dhcp_client, int type, char *msg)
 	packet = (struct dhcpv6_packet *)&buf[0];
 	ptr = buf + sizeof(struct dhcpv6_packet);
 
-	debug(dhcp_client, "sending DHCPv6 %s message", msg);
-
 	init_packet(dhcp_client, packet, type);
 
 	dhcp_client->xid = packet->transaction_id[0] << 16 |
 			packet->transaction_id[1] << 8 |
 			packet->transaction_id[2];
+
+	debug(dhcp_client, "sending DHCPv6 %s message xid 0x%04x", msg,
+							dhcp_client->xid);
 
 	max_buf = MAX_DHCPV6_PKT_SIZE - sizeof(struct dhcpv6_packet);
 
@@ -1823,6 +1824,7 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 	uint8_t *message_type = NULL, *client_id = NULL, *option,
 		*server_id = NULL;
 	uint16_t option_len = 0, status = 0;
+	uint32_t xid = 0;
 	gpointer pkt;
 	unsigned char buf[MAX_DHCPV6_PKT_SIZE];
 	uint16_t pkt_len = 0;
@@ -1848,9 +1850,14 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 						dhcp_client->listener_sockfd);
 			pkt_len = re;
 			pkt = packet6;
-		} else
+			xid = packet6->transaction_id[0] << 16 |
+				packet6->transaction_id[1] << 8 |
+				packet6->transaction_id[2];
+		} else {
 			re = dhcp_recv_l3_packet(&packet,
 						dhcp_client->listener_sockfd);
+			xid = packet.xid;
+		}
 	} else if (dhcp_client->listen_mode == L_ARP) {
 		ipv4ll_recv_arp_packet(dhcp_client);
 		return TRUE;
@@ -1910,8 +1917,8 @@ static gboolean listener_event(GIOChannel *channel, GIOCondition condition,
 		/* No message type / client id option, ignore package */
 		return TRUE;
 
-	debug(dhcp_client, "received DHCP packet (current state %d)",
-							dhcp_client->state);
+	debug(dhcp_client, "received DHCP packet xid 0x%04x "
+			"(current state %d)", xid, dhcp_client->state);
 
 	switch (dhcp_client->state) {
 	case INIT_SELECTING:
