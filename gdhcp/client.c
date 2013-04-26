@@ -143,6 +143,7 @@ struct _GDHCPClient {
 	time_t last_renew;
 	time_t last_rebind;
 	time_t expire;
+	gboolean retransmit;
 };
 
 static inline void debug(GDHCPClient *client, const char *format, ...)
@@ -566,6 +567,22 @@ static void get_interface_mac_address(int index, uint8_t *mac_address)
 
 done:
 	close(sk);
+}
+
+void g_dhcpv6_client_set_retransmit(GDHCPClient *dhcp_client)
+{
+	if (dhcp_client == NULL)
+		return;
+
+	dhcp_client->retransmit = TRUE;
+}
+
+void g_dhcpv6_client_clear_retransmit(GDHCPClient *dhcp_client)
+{
+	if (dhcp_client == NULL)
+		return;
+
+	dhcp_client->retransmit = FALSE;
 }
 
 int g_dhcpv6_create_duid(GDHCPDuidType duid_type, int index, int type,
