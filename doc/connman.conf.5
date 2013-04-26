@@ -78,12 +78,13 @@ List of preferred technologies from the most preferred
 one to the least preferred one separated by commas ",".
 Services of the listed technology type will be tried one
 by one in the order given, until one of them gets connected
-with state 'online' or they are all tried. A service of a
-preferred technology type in state 'ready' will get the
-default route when compared to a non-preferred type; a
-service of a preferred technology type in state 'online'
-will get the default route when compared to either a
-non-preferred type or a preferred type in state 'ready'.
+or they are all tried. A service of a preferred technology
+type in state 'ready' will get the default route when
+compared to another preferred type further down the list
+with state 'ready' or with a non-preferred type; a service
+of a preferred technology type in state 'online' will get
+the default route when compared to either a non-preferred
+type or a preferred type further down in the list.
 .TP
 .B NetworkInterfaceBlacklist=\fPinterface1,interface2,...\fP
 List of blacklisted network interfaces separated by ",".
@@ -96,5 +97,34 @@ vmnet,vboxnet,virbr.
 Allow connman to change the system hostname. This can
 happen for example if we receive DHCP hostname option.
 Default value is true.
+.TP
+.B SingleConnectedTechnology=\fPtrue|false\fP
+Keep only a single connected technology at any time. When a new
+service is connected by the user or a better one is found according
+to PreferredTechnologies, the new service is kept connected and all
+the other previously connected services are disconnected. With this
+setting it does not matter whether the previously connected services
+are in 'online' or 'ready' states, the newly connected service is
+the only one that will be kept connected. A service connected by the
+user will be used until going out of network coverage. With this
+setting enabled applications will notice more network breaks than
+normal. Default value is false.
+.TP
+.B AllowedTetheringTechnologies=\fPtechnology1,technology2,...\fP
+List of technologies that are allowed to enable tethering separated by ",".
+The default value is wifi,bluetooth,gadget. Only those technologies listed
+here are used for tethering. If one wants to tether ethernet,
+then add "ethernet" in the list.
+NOTE that if ethernet tethering is enabled, then a DHCP server is
+started on all ethernet interfaces. Tethered ethernet should
+never be connected to corporate or home network as it will disrupt
+normal operation of these networks. Due to this ethernet is not
+tethered by default. Do not activate ethernet tethering unless you
+really know what you are doing.
+.TP
+.B PersistentTetheringMode=\fPtrue|false\fP
+Restore earlier tethering status when returning from offline mode,
+re-enabling a technology, and after restarts and reboots.
+Default value is false.
 .SH "SEE ALSO"
 .BR Connman (8)
