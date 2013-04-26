@@ -1184,12 +1184,14 @@ static const struct {
         int (*func) (char *args[], int num, struct option *options);
         const char *desc;
 } cmd_table[] = {
+	{ "state",        NULL,           NULL,            NULL,
+	  cmd_state, "Shows if the system is online or offline" },
+	{ "technologies", NULL,           NULL,            NULL,
+	  cmd_technologies, "Display technologies" },
 	{ "enable",       "<technology>|offline", NULL,    NULL,
 	  cmd_enable, "Enables given technology or offline mode" },
 	{ "disable",      "<technology>|offline", NULL,    NULL,
 	  cmd_disable, "Disables given technology or offline mode"},
-	{ "state",        NULL,           NULL,            NULL,
-	  cmd_state, "Shows if the system is online or offline" },
 	{ "tether", "<technology> on|off\n"
 	            "            wifi [on|off] <ssid> <passphrase> ",
 	                                  NULL,            NULL,
@@ -1197,8 +1199,6 @@ static const struct {
 	  "Enable, disable tethering, set SSID and passphrase for wifi" },
 	{ "services",     "[<service>]",  service_options, &service_desc[0],
 	  cmd_services, "Display services" },
-	{ "technologies", NULL,           NULL,            NULL,
-	  cmd_technologies, "Display technologies" },
 	{ "scan",         "<technology>", NULL,            NULL,
 	  cmd_scan, "Scans for new services for given technology" },
 	{ "connect",      "<service>",    NULL,            NULL,
